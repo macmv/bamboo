@@ -1,10 +1,45 @@
 use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
-use std::{io, io::Cursor};
+use std::{error::Error, fmt, io, io::Cursor};
+
+#[derive(Debug)]
+pub struct BufferError {
+  err: BufferErrorKind,
+  pos: u64,
+  reading: bool,
+}
+
+impl fmt::Display for BufferError {
+  fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    if self.reading {
+      write!(f, "error while reading from buffer at index {}: {}", self.pos, self.err)
+    } else {
+      write!(f, "error while writing to buffer at index {}: {}", self.pos, self.err)
+    }
+  }
+}
+
+#[derive(Debug)]
+pub enum BufferErrorKind {
+  IO(io::Error),
+  VarInt(),
+}
+
+impl fmt::Display for BufferErrorKind {
+  fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    match self {
+      Self::IO(e) => write!(f, "{}", e),
+      Self::VarInt() => write!(f, "varint is too long"),
+    }
+  }
+}
+
+impl Error for BufferError {}
+impl Error for BufferErrorKind {}
 
 #[derive(Debug)]
 pub struct Buffer {
   data: Cursor<Vec<u8>>,
-  err: Option<io::Error>,
+  err: Option<BufferError>,
 }
 
 macro_rules! add_read {
@@ -16,7 +51,7 @@ macro_rules! add_read {
       match self.data.$fn::<BigEndian>() {
         Ok(v) => v,
         Err(e) => {
-          self.err = Some(e);
+          self.set_err(BufferErrorKind::IO(e), true);
           0
         }
       }
@@ -33,7 +68,7 @@ macro_rules! add_read_byte {
       match self.data.$fn() {
         Ok(v) => v,
         Err(e) => {
-          self.err = Some(e);
+          self.set_err(BufferErrorKind::IO(e), true);
           0
         }
       }
@@ -49,7 +84,9 @@ macro_rules! add_write {
       }
       match self.data.$fn::<BigEndian>(v) {
         Ok(()) => {}
-        Err(e) => self.err = Some(e),
+        Err(e) => {
+          self.set_err(BufferErrorKind::IO(e), false);
+        }
       }
     }
   };
@@ -63,7 +100,9 @@ macro_rules! add_write_byte {
       }
       match self.data.$fn(v) {
         Ok(()) => {}
-        Err(e) => self.err = Some(e),
+        Err(e) => {
+          self.set_err(BufferErrorKind::IO(e), false);
+        }
       }
     }
   };
@@ -74,8 +113,12 @@ impl Buffer {
     Buffer { data: Cursor::new(data), err: None }
   }
 
-  pub fn err(&self) -> &Option<io::Error> {
+  pub fn err(&self) -> &Option<BufferError> {
     &self.err
+  }
+
+  pub fn set_err(&mut self, err: BufferErrorKind, reading: bool) {
+    self.err = Some(BufferError { err, pos: self.data.position(), reading });
   }
 
   add_read_byte!(read_u8, u8);
@@ -102,6 +145,7 @@ impl Buffer {
       let read = self.read_u8();
       if i == 4 && read & 0b10000000 != 0 {
         // TODO: Custom error here
+        self.set_err(BufferErrorKind::VarInt(), true);
         return 0;
       }
 
