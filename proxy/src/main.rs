@@ -1,12 +1,17 @@
 #[macro_use]
 extern crate log;
 
+pub mod packet;
+pub mod packet_stream;
+
+use crate::packet_stream::Stream;
+
 use common::proto::{
   minecraft_client::MinecraftClient, Packet, ReserveSlotsRequest, ReserveSlotsResponse,
   StatusRequest, StatusResponse,
 };
 use std::error::Error;
-use tokio::net::TcpListener;
+use tokio::net::{TcpListener, TcpStream};
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn Error>> {
@@ -24,12 +29,14 @@ async fn main() -> Result<(), Box<dyn Error>> {
   }
 }
 
-async fn handle_client<T>(sock: T) -> Result<(), Box<dyn Error>> {
+async fn handle_client(sock: TcpStream) -> Result<(), Box<dyn Error>> {
   let mut client = MinecraftClient::connect("http://0.0.0.0:8483").await?;
 
   let req = tonic::Request::new(StatusRequest {});
 
-  println!("Sending request to gRPC Server...");
+  let stream = Stream::new(&sock);
+
+  info!("New client!");
   let res = client.status(req).await?;
 
   dbg!(res);
