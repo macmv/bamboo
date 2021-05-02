@@ -52,13 +52,31 @@ pub struct ServerListener {
 impl ClientListener {
   pub async fn run(&mut self) -> io::Result<()> {
     loop {
-      self.client.poll().await?
+      self.client.poll().await?;
+      loop {
+        let p = self.client.read().unwrap();
+        if p.is_none() {
+          break;
+        }
+        let p = p.unwrap();
+        let err = p.err();
+        match err {
+          Some(e) => {
+            error!("error while parsing packet: {}", e);
+            break;
+          }
+          None => {}
+        }
+        info!("got packet {:?}", p);
+      }
     }
   }
 }
 
 impl ServerListener {
-  pub async fn run(&mut self) {}
+  pub async fn run(&mut self) {
+    loop {}
+  }
 }
 
 impl Conn {

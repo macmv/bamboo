@@ -41,12 +41,15 @@ async fn handle_client(sock: TcpStream) -> Result<(), Box<dyn Error>> {
   conn.handshake().await?;
 
   let (mut client_listener, mut server_listener) = conn.split();
-  tokio::spawn(async move {
-    client_listener.run();
-  });
-  tokio::spawn(async move {
-    server_listener.run();
-  });
+  let mut handles = vec![];
+  handles.push(tokio::spawn(async move {
+    client_listener.run().await.unwrap();
+  }));
+  handles.push(tokio::spawn(async move {
+    server_listener.run().await;
+  }));
+
+  futures::future::join_all(handles).await;
 
   // info!("New client!");
   // let res = client.status(req).await?;

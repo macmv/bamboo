@@ -619,6 +619,7 @@ name = "proxy"
 version = "0.1.0"
 dependencies = [
  "common",
+ "futures",
  "log",
  "ringbuf",
  "tokio",
