@@ -49,7 +49,7 @@ pub struct ServerListener {
 
 impl ClientListener {
   pub async fn run(&mut self) -> io::Result<()> {
-    loop {
+    'running: loop {
       self.client.poll().await?;
       loop {
         let p = self.client.read().unwrap();
@@ -61,7 +61,10 @@ impl ClientListener {
         match err {
           Some(e) => {
             error!("error while parsing packet: {}", e);
-            break;
+            break 'running Err(io::Error::new(
+              ErrorKind::InvalidInput,
+              format!("failed to parse packet, closing connection"),
+            ));
           }
           None => {}
         }
