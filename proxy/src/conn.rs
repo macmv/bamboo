@@ -3,13 +3,11 @@ use crate::{
   packet_stream::{StreamReader, StreamWriter},
 };
 
-use common::proto::minecraft_client::MinecraftClient;
-use std::{
-  io,
-  io::{Error, ErrorKind},
-  sync::Arc,
-};
-use tonic::transport::channel::Channel;
+use common::{proto, proto::minecraft_client::MinecraftClient};
+use std::{error::Error, io, io::ErrorKind, sync::Arc};
+use tokio::sync::mpsc;
+use tokio_stream::wrappers::UnboundedReceiverStream;
+use tonic::{transport::channel::Channel, Request, Status, Streaming};
 
 #[derive(Debug, Copy, Clone)]
 pub enum State {
@@ -41,12 +39,12 @@ pub struct Conn {
 
 pub struct ClientListener {
   client: StreamReader,
-  server: Arc<MinecraftClient<Channel>>,
+  server: mpsc::UnboundedSender<proto::Packet>,
 }
 
 pub struct ServerListener {
   client: StreamWriter,
-  server: Arc<MinecraftClient<Channel>>,
+  server: Streaming<proto::Packet>,
 }
 
 impl ClientListener {
@@ -67,15 +65,24 @@ impl ClientListener {
           }
           None => {}
         }
-        info!("got packet {:?}", p);
+        info!("got tcp packet {:?}", p);
       }
     }
   }
 }
 
 impl ServerListener {
-  pub async fn run(&mut self) {
-    loop {}
+  pub async fn run(&mut self) -> Result<(), Box<dyn Error>> {
+    loop {
+      match self.server.message().await? {
+        Some(m) => {
+          info!("got grpc packet {:?}", m);
+        }
+        None => break,
+      }
+    }
+
+    Ok(())
   }
 }
 
@@ -93,12 +100,16 @@ impl Conn {
     })
   }
 
-  pub fn split(self) -> (ClientListener, ServerListener) {
-    let server = Arc::new(self.server);
-    (
-      ClientListener { client: self.client_reader, server: server.clone() },
-      ServerListener { client: self.client_writer, server },
-    )
+  pub async fn split(mut self) -> Result<(ClientListener, ServerListener), Status> {
+    let (tx, rx) = mpsc::unbounded_channel();
+
+    let response = self.server.connection(Request::new(UnboundedReceiverStream::new(rx))).await?;
+    let inbound = response.into_inner();
+
+    Ok((
+      ClientListener { client: self.client_reader, server: tx },
+      ServerListener { client: self.client_writer, server: inbound },
+    ))
   }
 
   pub async fn handshake(&mut self) -> io::Result<()> {
@@ -121,7 +132,7 @@ impl Conn {
         match self.state {
           State::Handshake => {
             if p.id() != 0 {
-              return Err(Error::new(
+              return Err(io::Error::new(
                 ErrorKind::InvalidInput,
                 format!("unknown handshake packet {}", p.id()),
               ));
@@ -161,7 +172,7 @@ impl Conn {
               // Encryption response
               1 => {}
               _ => {
-                return Err(Error::new(
+                return Err(io::Error::new(
                   ErrorKind::InvalidInput,
                   format!("unknown login packet {}", p.id()),
                 ));
@@ -169,7 +180,7 @@ impl Conn {
             }
           }
           v => {
-            return Err(Error::new(
+            return Err(io::Error::new(
               ErrorKind::InvalidInput,
               format!("invalid connection state {:?}", v),
             ));

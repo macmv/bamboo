@@ -40,7 +40,7 @@ async fn handle_client(sock: TcpStream) -> Result<(), Box<dyn Error>> {
 
   conn.handshake().await?;
 
-  let (mut client_listener, mut server_listener) = conn.split();
+  let (mut client_listener, mut server_listener) = conn.split().await?;
   let mut handles = vec![];
   handles.push(tokio::spawn(async move {
     client_listener.run().await.unwrap();
