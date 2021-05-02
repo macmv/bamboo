@@ -4,6 +4,7 @@ use common::proto::minecraft_client::MinecraftClient;
 use std::{
   io,
   io::{Error, ErrorKind},
+  sync::Arc,
 };
 use tonic::transport::channel::Channel;
 
@@ -34,9 +35,36 @@ pub struct Conn {
   state: State,
 }
 
+pub struct ClientListener {
+  client: Arc<Stream>,
+  server: Arc<MinecraftClient<Channel>>,
+}
+
+pub struct ServerListener {
+  client: Arc<Stream>,
+  server: Arc<MinecraftClient<Channel>>,
+}
+
+impl ClientListener {
+  pub async fn run(&self) {}
+}
+
+impl ServerListener {
+  pub async fn run(&self) {}
+}
+
 impl Conn {
   pub async fn new(client: Stream, ip: String) -> Result<Self, tonic::transport::Error> {
     Ok(Conn { client, server: MinecraftClient::connect(ip).await?, state: State::Handshake })
+  }
+
+  pub fn split(self) -> (ClientListener, ServerListener) {
+    let client = Arc::new(self.client);
+    let server = Arc::new(self.server);
+    (
+      ClientListener { client: client.clone(), server: server.clone() },
+      ServerListener { client, server },
+    )
   }
 
   pub async fn handshake(&mut self) -> io::Result<()> {
@@ -83,6 +111,7 @@ impl Conn {
                 self.client.write(out).await?;
 
                 self.state = State::Play;
+                // Successful login, we can break now
                 break 'login;
 
                 // let mut out = Packet::new(1);

@@ -40,6 +40,14 @@ async fn handle_client(sock: TcpStream) -> Result<(), Box<dyn Error>> {
 
   conn.handshake().await?;
 
+  let (client_listener, server_listener) = conn.split();
+  tokio::spawn(async move {
+    client_listener.run();
+  });
+  tokio::spawn(async move {
+    server_listener.run();
+  });
+
   // info!("New client!");
   // let res = client.status(req).await?;
   //

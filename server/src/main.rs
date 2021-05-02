@@ -63,7 +63,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     .register_encoded_file_descriptor_set(common::proto::FILE_DESCRIPTOR_SET)
     .build()?;
 
-  info!("Listening on {}", addr);
+  info!("listening on {}", addr);
   Server::builder().add_service(svc).add_service(descriptor).serve(addr).await?;
   Ok(())
 }
