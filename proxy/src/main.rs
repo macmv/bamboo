@@ -82,7 +82,7 @@ async fn handle_client(sock: TcpStream) -> Result<(), Box<dyn Error>> {
               let mut out = Packet::new(2);
               out.buf.write_str("a0ebbc8d-e0b0-4c23-a965-efba61ff0ae8");
               out.buf.write_str("macmv");
-              stream.write(out);
+              stream.write(out).await?;
             }
             // Encryption response
             1 => {}

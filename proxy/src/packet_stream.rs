@@ -3,7 +3,7 @@ use crate::packet::Packet;
 use common::util;
 use ringbuf::{Consumer, Producer, RingBuffer};
 use std::io::Result;
-use tokio::{io::AsyncReadExt, net::TcpStream};
+use tokio::{io::AsyncReadExt, io::AsyncWriteExt, net::TcpStream};
 
 pub struct Stream {
   stream: TcpStream,
@@ -47,5 +47,9 @@ impl Stream {
     self.cons.pop_slice(&mut vec);
     Ok(Some(Packet::from_buf(vec)))
   }
-  pub fn write(&self, p: Packet) {}
+  pub async fn write(&mut self, p: Packet) -> Result<()> {
+    let bytes = p.buf.into_inner();
+    self.stream.write(&bytes).await?;
+    Ok(())
+  }
 }
