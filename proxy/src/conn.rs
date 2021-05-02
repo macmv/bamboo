@@ -1,9 +1,13 @@
 use crate::{packet::Packet, packet_stream::Stream};
 
 use common::proto::minecraft_client::MinecraftClient;
-use std::io::Result;
+use std::{
+  io,
+  io::{Error, ErrorKind},
+};
 use tonic::transport::channel::Channel;
 
+#[derive(Debug, Copy, Clone)]
 pub enum State {
   Handshake,
   Status,
@@ -31,21 +35,11 @@ pub struct Conn {
 }
 
 impl Conn {
-  pub async fn new(client: Stream, ip: String) -> Self {
-    Conn {
-      client,
-      server: match MinecraftClient::connect(ip).await {
-        Ok(v) => v,
-        Err(e) => {
-          error!("{}", e);
-          panic!("could not connect to server");
-        }
-      },
-      state: State::Handshake,
-    }
+  pub async fn new(client: Stream, ip: String) -> Result<Self, tonic::transport::Error> {
+    Ok(Conn { client, server: MinecraftClient::connect(ip).await?, state: State::Handshake })
   }
 
-  pub async fn handshake(&mut self) -> Result<()> {
+  pub async fn handshake(&mut self) -> io::Result<()> {
     'login: loop {
       self.client.poll().await.unwrap();
       loop {
@@ -65,8 +59,10 @@ impl Conn {
         match self.state {
           State::Handshake => {
             if p.id() != 0 {
-              error!("unknown handshake packet id: {}", p.id());
-              break 'login;
+              return Err(Error::new(
+                ErrorKind::InvalidInput,
+                format!("unknown handshake packet {}", p.id()),
+              ));
             }
             let _version = p.buf.read_varint();
             let _addr = p.buf.read_str();
@@ -87,32 +83,33 @@ impl Conn {
                 self.client.write(out).await?;
 
                 self.state = State::Play;
+                break 'login;
 
-                let mut out = Packet::new(1);
-                out.buf.write_i32(0); // EID 0
-                out.buf.write_u8(1); // Creative
-                out.buf.write_u8(0); // Overworld
-                out.buf.write_u8(1); // Difficulty
-                out.buf.write_u8(1); // Max players
-                out.buf.write_str("default"); // Level type
-                out.buf.write_bool(false); // Don't reduce debug info
-                self.client.write(out).await?;
+                // let mut out = Packet::new(1);
+                // out.buf.write_i32(0); // EID 0
+                // out.buf.write_u8(1); // Creative
+                // out.buf.write_u8(0); // Overworld
+                // out.buf.write_u8(1); // Difficulty
+                // out.buf.write_u8(1); // Max players
+                // out.buf.write_str("default"); // Level type
+                // out.buf.write_bool(false); // Don't reduce debug info
+                // self.client.write(out).await?;
               }
               // Encryption response
               1 => {}
               _ => {
-                error!("unknown login packet id: {}", p.id());
-                break 'login;
+                return Err(Error::new(
+                  ErrorKind::InvalidInput,
+                  format!("unknown login packet {}", p.id()),
+                ));
               }
             }
           }
-          State::Play => {
-            error!("unknown play packet id: {}", p.id());
-            break 'login;
-          }
-          State::Invalid => {
-            error!("invalid connection state");
-            break 'login;
+          v => {
+            return Err(Error::new(
+              ErrorKind::InvalidInput,
+              format!("invalid connection state {:?}", v),
+            ));
           }
         }
       }

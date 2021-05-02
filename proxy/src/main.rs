@@ -21,7 +21,12 @@ async fn main() -> Result<(), Box<dyn Error>> {
   loop {
     let (socket, _) = listener.accept().await?;
     tokio::spawn(async move {
-      handle_client(socket).await.unwrap();
+      match handle_client(socket).await {
+        Ok(_) => {}
+        Err(e) => {
+          error!("error in connection: {}", e);
+        }
+      };
     });
   }
 }
@@ -31,7 +36,7 @@ async fn handle_client(sock: TcpStream) -> Result<(), Box<dyn Error>> {
   // let req = tonic::Request::new(StatusRequest {});
 
   let stream = Stream::new(sock);
-  let mut conn = Conn::new(stream, "http://0.0.0.0:8483".into()).await;
+  let mut conn = Conn::new(stream, "http://0.0.0.0:8483".into()).await?;
 
   conn.handshake().await?;
 
