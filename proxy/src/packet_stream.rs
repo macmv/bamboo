@@ -18,7 +18,7 @@ impl Stream {
     let mut vec = vec![0u8; 256];
     let len = self.stream.read(&mut vec).await?;
     vec.truncate(len);
-    self.buf.write(vec);
+    self.buf.append(vec);
     Ok(())
   }
   pub fn read(&mut self) -> Result<Option<Packet>> {
