@@ -131,16 +131,8 @@ impl Buffer {
   /// Writes all of data to the buffer. This will increment the position of the
   /// reader as well. Use append to write to the end of the buffer without
   /// changing position.
-  pub fn write(&mut self, data: Vec<u8>) {
-    match self.data.write(&data) {
-      Ok(_) => {}
-      Err(e) => self.set_err(BufferErrorKind::IO(e), true),
-    };
-  }
-  /// Writes all of data to the buffer. This will not change the reading/writing
-  /// position.
-  pub fn append(&mut self, data: Vec<u8>) {
-    match self.data.get_mut().write(&data) {
+  pub fn write(&mut self, data: &[u8]) {
+    match self.data.write(data) {
       Ok(_) => {}
       Err(e) => self.set_err(BufferErrorKind::IO(e), true),
     };
@@ -188,6 +180,13 @@ impl Buffer {
         "".into()
       }
     }
+  }
+  pub fn write_str(&mut self, v: &str) {
+    if self.err.is_some() {
+      return;
+    }
+    self.write_varint(v.len() as i32);
+    self.write(v.as_bytes());
   }
 
   pub fn read_varint(&mut self) -> i32 {
