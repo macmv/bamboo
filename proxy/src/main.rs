@@ -83,6 +83,16 @@ async fn handle_client(sock: TcpStream) -> Result<(), Box<dyn Error>> {
               out.buf.write_str("a0ebbc8d-e0b0-4c23-a965-efba61ff0ae8");
               out.buf.write_str("macmv");
               stream.write(out).await?;
+
+              let mut out = Packet::new(1);
+              out.buf.write_i32(0); // EID 0
+              out.buf.write_u8(1); // Creative
+              out.buf.write_u8(0); // Overworld
+              out.buf.write_u8(1); // Difficulty
+              out.buf.write_u8(1); // Max players
+              out.buf.write_str("default"); // Level type
+              out.buf.write_bool(false); // Don't reduce debug info
+              stream.write(out).await?;
             }
             // Encryption response
             1 => {}

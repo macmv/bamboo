@@ -149,6 +149,9 @@ impl Buffer {
     self.data.get_ref().len()
   }
 
+  pub fn read_bool(&mut self) -> bool {
+    self.read_u8() != 0
+  }
   add_read_byte!(read_u8, u8);
   add_read!(read_u16, u16);
   add_read!(read_u32, u32);
@@ -158,6 +161,13 @@ impl Buffer {
   add_read!(read_i32, i32);
   add_read!(read_i64, i64);
 
+  pub fn write_bool(&mut self, v: bool) {
+    if v {
+      self.write_u8(1);
+    } else {
+      self.write_u8(0);
+    }
+  }
   add_write_byte!(write_u8, u8);
   add_write!(write_u16, u16);
   add_write!(write_u32, u32);

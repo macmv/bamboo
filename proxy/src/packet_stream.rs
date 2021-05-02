@@ -1,6 +1,6 @@
 use crate::packet::Packet;
 
-use common::util;
+use common::{util, util::Buffer};
 use ringbuf::{Consumer, Producer, RingBuffer};
 use std::io::Result;
 use tokio::{io::AsyncReadExt, io::AsyncWriteExt, net::TcpStream};
@@ -48,7 +48,14 @@ impl Stream {
     Ok(Some(Packet::from_buf(vec)))
   }
   pub async fn write(&mut self, p: Packet) -> Result<()> {
+    // This is the packet, including it's id
     let bytes = p.buf.into_inner();
+
+    // Length varint
+    let mut buf = Buffer::new(vec![]);
+    buf.write_varint(bytes.len() as i32);
+    self.stream.write(&buf.into_inner()).await?;
+
     self.stream.write(&bytes).await?;
     Ok(())
   }
