@@ -3,19 +3,34 @@ use crate::packet::Packet;
 use common::{util, util::Buffer};
 use ringbuf::{Consumer, Producer, RingBuffer};
 use std::io::Result;
-use tokio::{io::AsyncReadExt, io::AsyncWriteExt, net::TcpStream};
+use tokio::{
+  io::AsyncReadExt,
+  io::AsyncWriteExt,
+  net::{
+    tcp::{OwnedReadHalf, OwnedWriteHalf},
+    TcpStream,
+  },
+};
 
-pub struct Stream {
-  stream: TcpStream,
+pub struct StreamReader {
+  stream: OwnedReadHalf,
   prod: Producer<u8>,
   cons: Consumer<u8>,
 }
+pub struct StreamWriter {
+  stream: OwnedWriteHalf,
+}
 
-impl Stream {
-  pub fn new(stream: TcpStream) -> Self {
+pub fn new(stream: TcpStream) -> (StreamReader, StreamWriter) {
+  let (read, write) = stream.into_split();
+  (StreamReader::new(read), StreamWriter::new(write))
+}
+
+impl StreamReader {
+  pub fn new(stream: OwnedReadHalf) -> Self {
     let buf = RingBuffer::new(1024);
     let (prod, cons) = buf.split();
-    Stream { stream, prod, cons }
+    StreamReader { stream, prod, cons }
   }
 
   pub async fn poll(&mut self) -> Result<()> {
@@ -46,6 +61,12 @@ impl Stream {
     let mut vec = vec![0u8; packet_len as usize];
     self.cons.pop_slice(&mut vec);
     Ok(Some(Packet::from_buf(vec)))
+  }
+}
+
+impl StreamWriter {
+  pub fn new(stream: OwnedWriteHalf) -> Self {
+    StreamWriter { stream }
   }
   pub async fn write(&mut self, p: Packet) -> Result<()> {
     // This is the packet, including it's id

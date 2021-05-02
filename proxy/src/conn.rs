@@ -1,4 +1,7 @@
-use crate::{packet::Packet, packet_stream::Stream};
+use crate::{
+  packet::Packet,
+  packet_stream::{StreamReader, StreamWriter},
+};
 
 use common::proto::minecraft_client::MinecraftClient;
 use std::{
@@ -30,48 +33,61 @@ impl State {
 }
 
 pub struct Conn {
-  client: Stream,
+  client_reader: StreamReader,
+  client_writer: StreamWriter,
   server: MinecraftClient<Channel>,
   state: State,
 }
 
 pub struct ClientListener {
-  client: Arc<Stream>,
+  client: StreamReader,
   server: Arc<MinecraftClient<Channel>>,
 }
 
 pub struct ServerListener {
-  client: Arc<Stream>,
+  client: StreamWriter,
   server: Arc<MinecraftClient<Channel>>,
 }
 
 impl ClientListener {
-  pub async fn run(&self) {}
+  pub async fn run(&mut self) -> io::Result<()> {
+    loop {
+      self.client.poll().await?
+    }
+  }
 }
 
 impl ServerListener {
-  pub async fn run(&self) {}
+  pub async fn run(&mut self) {}
 }
 
 impl Conn {
-  pub async fn new(client: Stream, ip: String) -> Result<Self, tonic::transport::Error> {
-    Ok(Conn { client, server: MinecraftClient::connect(ip).await?, state: State::Handshake })
+  pub async fn new(
+    client_reader: StreamReader,
+    client_writer: StreamWriter,
+    ip: String,
+  ) -> Result<Self, tonic::transport::Error> {
+    Ok(Conn {
+      client_reader,
+      client_writer,
+      server: MinecraftClient::connect(ip).await?,
+      state: State::Handshake,
+    })
   }
 
   pub fn split(self) -> (ClientListener, ServerListener) {
-    let client = Arc::new(self.client);
     let server = Arc::new(self.server);
     (
-      ClientListener { client: client.clone(), server: server.clone() },
-      ServerListener { client, server },
+      ClientListener { client: self.client_reader, server: server.clone() },
+      ServerListener { client: self.client_writer, server },
     )
   }
 
   pub async fn handshake(&mut self) -> io::Result<()> {
     'login: loop {
-      self.client.poll().await.unwrap();
+      self.client_reader.poll().await.unwrap();
       loop {
-        let p = self.client.read().unwrap();
+        let p = self.client_reader.read().unwrap();
         if p.is_none() {
           break;
         }
@@ -108,7 +124,7 @@ impl Conn {
                 let mut out = Packet::new(2);
                 out.buf.write_str("a0ebbc8d-e0b0-4c23-a965-efba61ff0ae8");
                 out.buf.write_str("macmv");
-                self.client.write(out).await?;
+                self.client_writer.write(out).await?;
 
                 self.state = State::Play;
                 // Successful login, we can break now

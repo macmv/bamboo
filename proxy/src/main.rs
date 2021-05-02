@@ -5,7 +5,7 @@ pub mod conn;
 pub mod packet;
 pub mod packet_stream;
 
-use crate::{conn::Conn, packet::Packet, packet_stream::Stream};
+use crate::conn::Conn;
 
 use std::error::Error;
 use tokio::net::{TcpListener, TcpStream};
@@ -35,12 +35,12 @@ async fn handle_client(sock: TcpStream) -> Result<(), Box<dyn Error>> {
   // let mut client = MinecraftClient::connect().await?;
   // let req = tonic::Request::new(StatusRequest {});
 
-  let stream = Stream::new(sock);
-  let mut conn = Conn::new(stream, "http://0.0.0.0:8483".into()).await?;
+  let (reader, writer) = packet_stream::new(sock);
+  let mut conn = Conn::new(reader, writer, "http://0.0.0.0:8483".into()).await?;
 
   conn.handshake().await?;
 
-  let (client_listener, server_listener) = conn.split();
+  let (mut client_listener, mut server_listener) = conn.split();
   tokio::spawn(async move {
     client_listener.run();
   });
