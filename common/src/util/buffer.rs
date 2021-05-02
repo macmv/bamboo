@@ -158,6 +158,25 @@ impl Buffer {
     }
     res
   }
+  pub fn write_varint(&mut self, v: i32) {
+    // Need to work with u32, as >> acts differently on i32 vs u32.
+    let mut val = v as u32;
+    for _ in 0..5 {
+      let mut b: u8 = val as u8 & 0b01111111;
+      val >>= 7;
+      if val != 0 {
+        b |= 0b10000000;
+      }
+      self.write_u8(b);
+      if val == 0 {
+        break;
+      }
+    }
+  }
+
+  pub fn into_inner(self) -> Vec<u8> {
+    self.data.into_inner()
+  }
 }
 
 #[cfg(test)]
@@ -185,5 +204,28 @@ mod tests {
     let mut buf = Buffer::new(vec![255, 255, 255, 255, 255]);
     assert_eq!(0, buf.read_varint());
     assert!(buf.err().is_some());
+  }
+
+  #[test]
+  pub fn write_varint() {
+    let mut buf = Buffer::new(vec![]);
+    buf.write_varint(1);
+    assert!(buf.err().is_none());
+    assert_eq!(vec![1], buf.into_inner());
+
+    let mut buf = Buffer::new(vec![]);
+    buf.write_varint(127);
+    assert!(buf.err().is_none());
+    assert_eq!(vec![127], buf.into_inner());
+
+    let mut buf = Buffer::new(vec![]);
+    buf.write_varint(256);
+    assert!(buf.err().is_none());
+    assert_eq!(vec![128, 2], buf.into_inner());
+
+    let mut buf = Buffer::new(vec![]);
+    buf.write_varint(-1);
+    assert!(buf.err().is_none());
+    assert_eq!(vec![255, 255, 255, 255, 15], buf.into_inner());
   }
 }
