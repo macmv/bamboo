@@ -1,0 +1,14 @@
+syntax = "proto3";
+
+package proto;
+
+option java_package = "net.cubiness.goserver";
+option java_outer_classname = "GoServer";
+
+import "connection.proto";
+
+message World {
+  map<uint64, Chunk> chunks = 1;
+  string name = 2;
+}
+

@@ -1,0 +1,4 @@
+edition = "2018"
+tab_spaces = 2
+use_small_heuristics = "Max"
+wrap_comments = true
