@@ -11,8 +11,8 @@ impl Stream {
     Stream { stream }
   }
 
-  pub fn read() -> Packet {
-    Packet {}
+  pub fn read(&self) -> Packet {
+    Packet::new(vec![1, 2, 3])
   }
-  pub fn write(p: Packet) {}
+  pub fn write(&self, p: Packet) {}
 }

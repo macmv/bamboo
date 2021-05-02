@@ -1,5 +1,7 @@
 use flexi_logger::{Duplicate, LogTarget, Logger};
 
+pub mod util;
+
 pub mod proto {
   tonic::include_proto!("connection");
 

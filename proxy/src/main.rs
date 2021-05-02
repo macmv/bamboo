@@ -6,9 +6,12 @@ pub mod packet_stream;
 
 use crate::packet_stream::Stream;
 
-use common::proto::{
-  minecraft_client::MinecraftClient, Packet, ReserveSlotsRequest, ReserveSlotsResponse,
-  StatusRequest, StatusResponse,
+use common::{
+  proto::{
+    minecraft_client::MinecraftClient, Packet, ReserveSlotsRequest, ReserveSlotsResponse,
+    StatusRequest, StatusResponse,
+  },
+  util,
 };
 use std::error::Error;
 use tokio::net::{TcpListener, TcpStream};
@@ -16,6 +19,11 @@ use tokio::net::{TcpListener, TcpStream};
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn Error>> {
   common::init();
+
+  let mut buf = util::Buffer::new([]);
+  let a = buf.read_u8();
+  let b = buf.read_u16();
+  dbg!(a, b, buf);
 
   let addr = "0.0.0.0:25565";
   info!("Listening for clients on {}", addr);
@@ -34,7 +42,13 @@ async fn handle_client(sock: TcpStream) -> Result<(), Box<dyn Error>> {
 
   let req = tonic::Request::new(StatusRequest {});
 
-  let stream = Stream::new(&sock);
+  let stream = Stream::new(sock);
+
+  loop {
+    let p = stream.read();
+    info!("Got minecraft packet: {:?}", p);
+    break;
+  }
 
   info!("New client!");
   let res = client.status(req).await?;

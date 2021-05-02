@@ -8,6 +8,7 @@ edition = "2018"
 [dependencies]
 flexi_logger = "0.17"
 log = "0.4"
+byteorder = "1.4"
 tonic = "0.4"
 tonic-reflection = "0.1"
 prost = "0.7"
