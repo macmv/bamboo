@@ -20,11 +20,6 @@ use tokio::net::{TcpListener, TcpStream};
 async fn main() -> Result<(), Box<dyn Error>> {
   common::init();
 
-  let mut buf = util::Buffer::new(vec![1, 2, 3]);
-  let a = buf.read_u8();
-  let b = buf.read_u16();
-  dbg!(a, b, buf);
-
   let addr = "0.0.0.0:25565";
   info!("Listening for clients on {}", addr);
   let listener = TcpListener::bind(addr).await?;
@@ -38,22 +33,36 @@ async fn main() -> Result<(), Box<dyn Error>> {
 }
 
 async fn handle_client(sock: TcpStream) -> Result<(), Box<dyn Error>> {
-  let mut client = MinecraftClient::connect("http://0.0.0.0:8483").await?;
+  // let mut client = MinecraftClient::connect("http://0.0.0.0:8483").await?;
+  // let req = tonic::Request::new(StatusRequest {});
 
-  let req = tonic::Request::new(StatusRequest {});
-
-  let stream = Stream::new(sock);
+  let mut stream = Stream::new(sock);
 
   loop {
-    let p = stream.read();
-    info!("Got minecraft packet: {:?}", p);
+    stream.poll().await.unwrap();
+    loop {
+      let p = stream.read().unwrap();
+      if p.is_none() {
+        break;
+      }
+      let p = p.unwrap();
+      let err = p.err();
+      match err {
+        Some(e) => {
+          error!("error while parsing packet: {}", e);
+          break;
+        }
+        None => {}
+      }
+      info!("Got minecraft packet: {:?}", p);
+    }
     break;
   }
 
-  info!("New client!");
-  let res = client.status(req).await?;
-
-  dbg!(res);
+  // info!("New client!");
+  // let res = client.status(req).await?;
+  //
+  // dbg!(res);
 
   Ok(())
 }

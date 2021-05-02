@@ -1,5 +1,9 @@
 use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
-use std::{error::Error, fmt, io, io::Cursor};
+use std::{
+  error::Error,
+  fmt, io,
+  io::{Cursor, Read, Write},
+};
 
 #[derive(Debug)]
 pub struct BufferError {
@@ -116,9 +120,26 @@ impl Buffer {
   pub fn err(&self) -> &Option<BufferError> {
     &self.err
   }
-
-  pub fn set_err(&mut self, err: BufferErrorKind, reading: bool) {
+  fn set_err(&mut self, err: BufferErrorKind, reading: bool) {
     self.err = Some(BufferError { err, pos: self.data.position(), reading });
+  }
+
+  pub fn write(&mut self, data: Vec<u8>) {
+    match self.data.write(&data) {
+      Ok(_) => {}
+      Err(e) => self.set_err(BufferErrorKind::IO(e), true),
+    };
+  }
+  pub fn read(&mut self, len: usize) -> Vec<u8> {
+    let mut vec = vec![0u8; len];
+    match self.data.read(&mut vec) {
+      Ok(_) => {}
+      Err(e) => self.set_err(BufferErrorKind::IO(e), true),
+    }
+    vec
+  }
+  pub fn len(&self) -> usize {
+    self.data.get_ref().len()
   }
 
   add_read_byte!(read_u8, u8);

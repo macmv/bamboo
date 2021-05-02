@@ -1,12 +1,21 @@
-use common::util::Buffer;
+use common::util::{Buffer, BufferError};
 
 #[derive(Debug)]
 pub struct Packet {
-  data: Buffer,
+  buf: Buffer,
+  id: i32,
 }
 
 impl Packet {
   pub fn new(data: Vec<u8>) -> Packet {
-    Packet { data: Buffer::new(data) }
+    let mut buf = Buffer::new(data);
+    let id = buf.read_varint();
+    Packet { buf, id }
+  }
+  pub fn id(&self) -> i32 {
+    self.id
+  }
+  pub fn err(&self) -> &Option<BufferError> {
+    self.buf.err()
   }
 }
