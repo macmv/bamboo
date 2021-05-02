@@ -9,5 +9,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     .file_descriptor_set_path(out_dir.join("connection.bin"))
     .compile(&["proto/connection.proto"], &["proto"])
     .unwrap();
+
   Ok(())
 }

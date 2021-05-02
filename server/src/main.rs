@@ -2,14 +2,7 @@ use tokio::sync::mpsc;
 use tokio_stream::wrappers::ReceiverStream;
 use tonic::{transport::Server, Request, Response, Status, Streaming};
 
-pub mod proto {
-  tonic::include_proto!("connection");
-
-  pub(crate) const FILE_DESCRIPTOR_SET: &'static [u8] =
-    tonic::include_file_descriptor_set!("connection");
-}
-
-use proto::{
+use common::proto::{
   minecraft_server::{Minecraft, MinecraftServer},
   Packet, ReserveSlotsRequest, ReserveSlotsResponse, StatusRequest, StatusResponse,
 };
@@ -58,7 +51,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
   let svc = MinecraftServer::new(ServerImpl::default());
   let descriptor = tonic_reflection::server::Builder::configure()
-    .register_encoded_file_descriptor_set(proto::FILE_DESCRIPTOR_SET)
+    .register_encoded_file_descriptor_set(common::proto::FILE_DESCRIPTOR_SET)
     .build()?;
 
   Server::builder().add_service(svc).add_service(descriptor).serve(addr).await?;
