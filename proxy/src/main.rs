@@ -21,7 +21,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
   common::init();
 
   let addr = "0.0.0.0:25565";
-  info!("Listening for clients on {}", addr);
+  info!("listening for clients on {}", addr);
   let listener = TcpListener::bind(addr).await?;
 
   loop {
@@ -41,7 +41,7 @@ async fn handle_client(sock: TcpStream) -> Result<(), Box<dyn Error>> {
   // TODO: Move this into an enum
   let mut state = 0;
 
-  loop {
+  'login: loop {
     stream.poll().await.unwrap();
     loop {
       let p = stream.read().unwrap();
@@ -57,14 +57,45 @@ async fn handle_client(sock: TcpStream) -> Result<(), Box<dyn Error>> {
         }
         None => {}
       }
-      let version = p.buf.read_varint();
-      let addr = p.buf.read_str();
-      let port = p.buf.read_u16();
-      let next = p.buf.read_varint();
-      dbg!(version, addr, port, next);
-      info!("Got minecraft packet: {:?}", p);
+      match state {
+        // Handshake
+        0 => {
+          if p.id() != 0 {
+            error!("unknown handshake packet id: {}", p.id());
+            break 'login;
+          }
+          let _version = p.buf.read_varint();
+          let _addr = p.buf.read_str();
+          let _port = p.buf.read_u16();
+          let next = p.buf.read_varint();
+          state = next;
+        }
+        // Status
+        1 => {}
+        // Login
+        2 => {
+          match p.id() {
+            // Login start
+            0 => {
+              let username = p.buf.read_str();
+              info!("got username {}", username);
+            }
+            // Encryption response
+            1 => {}
+            _ => {
+              error!("unknown handshake packet id: {}", p.id());
+              break 'login;
+            }
+          }
+        }
+        // Play
+        3 => {}
+        _ => {
+          error!("invalid state: {}", state);
+          break 'login;
+        }
+      }
     }
-    break;
   }
 
   // info!("New client!");
