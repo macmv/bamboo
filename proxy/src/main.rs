@@ -4,12 +4,12 @@ extern crate log;
 pub mod packet;
 pub mod packet_stream;
 
-use crate::packet_stream::Stream;
+use crate::{packet::Packet, packet_stream::Stream};
 
 use common::{
   proto::{
-    minecraft_client::MinecraftClient, Packet, ReserveSlotsRequest, ReserveSlotsResponse,
-    StatusRequest, StatusResponse,
+    minecraft_client::MinecraftClient, ReserveSlotsRequest, ReserveSlotsResponse, StatusRequest,
+    StatusResponse,
   },
   util,
 };
@@ -79,6 +79,10 @@ async fn handle_client(sock: TcpStream) -> Result<(), Box<dyn Error>> {
             0 => {
               let username = p.buf.read_str();
               info!("got username {}", username);
+              let mut out = Packet::new(2);
+              out.buf.write_str("a0ebbc8d-e0b0-4c23-a965-efba61ff0ae8");
+              out.buf.write_str("macmv");
+              stream.write(out);
             }
             // Encryption response
             1 => {}

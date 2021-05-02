@@ -7,7 +7,12 @@ pub struct Packet {
 }
 
 impl Packet {
-  pub fn new(data: Vec<u8>) -> Packet {
+  pub fn new(id: i32) -> Packet {
+    let mut buf = Buffer::new(vec![]);
+    buf.write_varint(id);
+    Packet { buf, id }
+  }
+  pub fn from_buf(data: Vec<u8>) -> Packet {
     let mut buf = Buffer::new(data);
     let id = buf.read_varint();
     Packet { buf, id }

@@ -45,7 +45,7 @@ impl Stream {
     self.cons.discard(read as usize);
     let mut vec = vec![0u8; packet_len as usize];
     self.cons.pop_slice(&mut vec);
-    Ok(Some(Packet::new(vec)))
+    Ok(Some(Packet::from_buf(vec)))
   }
   pub fn write(&self, p: Packet) {}
 }
