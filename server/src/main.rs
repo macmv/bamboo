@@ -1,3 +1,6 @@
+#[macro_use]
+extern crate log;
+
 use tokio::sync::mpsc;
 use tokio_stream::wrappers::ReceiverStream;
 use tonic::{transport::Server, Request, Response, Status, Streaming};
@@ -51,6 +54,8 @@ impl Minecraft for ServerImpl {
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
+  common::init();
+
   let addr = "0.0.0.0:8483".parse().unwrap();
 
   let svc = MinecraftServer::new(ServerImpl::default());
@@ -58,6 +63,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     .register_encoded_file_descriptor_set(common::proto::FILE_DESCRIPTOR_SET)
     .build()?;
 
+  info!("Listening on {}", addr);
   Server::builder().add_service(svc).add_service(descriptor).serve(addr).await?;
   Ok(())
 }
