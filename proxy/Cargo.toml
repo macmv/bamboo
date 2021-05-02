@@ -8,5 +8,6 @@ edition = "2018"
 [dependencies]
 common = { path = "../common" }
 log = "0.4"
+ringbuf = "0.2.4"
 tonic = "0.4"
 tokio = { version = "1.5", features = ["rt-multi-thread"] }
