@@ -4,6 +4,7 @@ use std::{
   error::Error,
   fmt, io,
   io::{Cursor, Read, Write},
+  string::FromUtf8Error,
 };
 
 #[derive(Debug)]
@@ -26,6 +27,7 @@ impl fmt::Display for BufferError {
 #[derive(Debug)]
 pub enum BufferErrorKind {
   IO(io::Error),
+  FromUtf8Error(FromUtf8Error),
   VarInt(),
 }
 
@@ -33,6 +35,7 @@ impl fmt::Display for BufferErrorKind {
   fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
     match self {
       Self::IO(e) => write!(f, "{}", e),
+      Self::FromUtf8Error(e) => write!(f, "{}", e),
       Self::VarInt() => write!(f, "varint is too long"),
     }
   }
@@ -172,7 +175,25 @@ impl Buffer {
   add_write!(write_i32, i32);
   add_write!(write_i64, i64);
 
+  pub fn read_str(&mut self) -> String {
+    if self.err.is_some() {
+      return "".into();
+    }
+    let len = self.read_varint();
+    let vec = self.read(len as usize);
+    match String::from_utf8(vec) {
+      Ok(v) => v,
+      Err(e) => {
+        self.set_err(BufferErrorKind::FromUtf8Error(e), true);
+        "".into()
+      }
+    }
+  }
+
   pub fn read_varint(&mut self) -> i32 {
+    if self.err.is_some() {
+      return 0;
+    }
     let mut res: i32 = 0;
     for i in 0..5 {
       let read = self.read_u8();

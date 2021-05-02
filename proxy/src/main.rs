@@ -38,6 +38,9 @@ async fn handle_client(sock: TcpStream) -> Result<(), Box<dyn Error>> {
 
   let mut stream = Stream::new(sock);
 
+  // TODO: Move this into an enum
+  let mut state = 0;
+
   loop {
     stream.poll().await.unwrap();
     loop {
@@ -45,7 +48,7 @@ async fn handle_client(sock: TcpStream) -> Result<(), Box<dyn Error>> {
       if p.is_none() {
         break;
       }
-      let p = p.unwrap();
+      let mut p = p.unwrap();
       let err = p.err();
       match err {
         Some(e) => {
@@ -54,6 +57,11 @@ async fn handle_client(sock: TcpStream) -> Result<(), Box<dyn Error>> {
         }
         None => {}
       }
+      let version = p.buf.read_varint();
+      let addr = p.buf.read_str();
+      let port = p.buf.read_u16();
+      let next = p.buf.read_varint();
+      dbg!(version, addr, port, next);
       info!("Got minecraft packet: {:?}", p);
     }
     break;

@@ -2,7 +2,7 @@ use common::util::{Buffer, BufferError};
 
 #[derive(Debug)]
 pub struct Packet {
-  buf: Buffer,
+  pub buf: Buffer,
   id: i32,
 }
 

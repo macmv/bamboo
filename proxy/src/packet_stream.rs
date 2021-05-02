@@ -1,6 +1,6 @@
 use crate::packet::Packet;
 
-use common::{util, util::Buffer};
+use common::util;
 use ringbuf::{Consumer, Producer, RingBuffer};
 use std::io::Result;
 use tokio::{io::AsyncReadExt, net::TcpStream};
