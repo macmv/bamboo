@@ -20,7 +20,7 @@ use tokio::net::{TcpListener, TcpStream};
 async fn main() -> Result<(), Box<dyn Error>> {
   common::init();
 
-  let mut buf = util::Buffer::new([]);
+  let mut buf = util::Buffer::new(vec![1, 2, 3]);
   let a = buf.read_u8();
   let b = buf.read_u16();
   dbg!(a, b, buf);

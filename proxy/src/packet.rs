@@ -1,9 +1,8 @@
 use common::util::Buffer;
-use std::io::Cursor;
 
 #[derive(Debug)]
 pub struct Packet {
-  data: Buffer<Vec<u8>>,
+  data: Buffer,
 }
 
 impl Packet {
