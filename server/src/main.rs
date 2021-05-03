@@ -16,8 +16,12 @@ use common::proto::{
   Packet, ReserveSlotsRequest, ReserveSlotsResponse, StatusRequest, StatusResponse,
 };
 
-#[derive(Default)]
-pub struct ServerImpl {}
+use world::WorldManager;
+
+#[derive(Clone)]
+pub struct ServerImpl {
+  worlds: WorldManager,
+}
 
 #[tonic::async_trait]
 impl Minecraft for ServerImpl {
@@ -31,6 +35,7 @@ impl Minecraft for ServerImpl {
     dbg!(req);
 
     tokio::spawn(async move {
+      let conn = net::Connection::new();
       loop {
         let mut p = Packet::default();
         p.id = 10;
@@ -68,7 +73,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
   let addr = "0.0.0.0:8483".parse().unwrap();
 
-  let svc = MinecraftServer::new(ServerImpl::default());
+  let svc = MinecraftServer::new(ServerImpl { worlds: WorldManager::new() });
   let descriptor = tonic_reflection::server::Builder::configure()
     .register_encoded_file_descriptor_set(common::proto::FILE_DESCRIPTOR_SET)
     .build()?;

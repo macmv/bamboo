@@ -1,13 +1,27 @@
 mod chunk;
 
-use std::{collections::HashMap, sync::Mutex};
+use std::{
+  collections::HashMap,
+  sync::{Arc, Mutex},
+};
 
 pub struct World {
-  chunks: Mutex<HashMap<chunk::Pos, chunk::Chunk>>,
+  chunks: HashMap<chunk::Pos, Arc<Mutex<chunk::Chunk>>>,
+}
+
+#[derive(Clone)]
+pub struct WorldManager {
+  worlds: Vec<Arc<World>>,
 }
 
 impl World {
   pub fn new() -> Self {
-    World { chunks: Mutex::new(HashMap::new()) }
+    World { chunks: HashMap::new() }
+  }
+}
+
+impl WorldManager {
+  pub fn new() -> Self {
+    WorldManager { worlds: Vec::new() }
   }
 }
