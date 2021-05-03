@@ -1,3 +1,5 @@
+mod direct;
+mod paletted;
 mod section;
 
 use section::Section;
@@ -10,5 +12,5 @@ pub struct Pos {
 
 /// A chunk column.
 pub struct Chunk {
-  sections: Vec<Section>,
+  sections: Vec<Box<dyn Section>>,
 }

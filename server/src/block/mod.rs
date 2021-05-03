@@ -1,6 +1,7 @@
-pub struct Block {}
-pub struct Pos {
-  x: i32,
-  y: i32,
-  z: i32,
-}
+pub mod kind;
+pub mod pos;
+pub mod ty;
+
+pub use kind::Kind;
+pub use pos::{Pos, PosError};
+pub use ty::Type;

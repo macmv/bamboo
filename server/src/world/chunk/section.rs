@@ -1,10 +1,7 @@
+use crate::block;
+
 /// A chunk section.
-pub enum Section {
-  // This is faster than using traits.
-  Palletted(PalettedSection),
-  Direct(DirectSection),
+pub trait Section {
+  fn set_block(&mut self, pos: block::Pos, ty: block::Type) -> Result<(), block::PosError>;
+  fn get_block(&self, pos: block::Pos) -> Result<block::Type, block::PosError>;
 }
-
-pub struct PalettedSection {}
-
-pub struct DirectSection {}
