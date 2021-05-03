@@ -2,10 +2,13 @@ use crate::packet::Packet;
 
 use common::{util, util::Buffer};
 use ringbuf::{Consumer, Producer, RingBuffer};
-use std::io::Result;
+use std::{
+  io,
+  io::{ErrorKind, Result},
+  net::TcpStream as StdTcpStream,
+};
 use tokio::{
-  io::AsyncReadExt,
-  io::AsyncWriteExt,
+  io::{AsyncReadExt, AsyncWriteExt},
   net::{
     tcp::{OwnedReadHalf, OwnedWriteHalf},
     TcpStream,
@@ -21,9 +24,11 @@ pub struct StreamWriter {
   stream: OwnedWriteHalf,
 }
 
-pub fn new(stream: TcpStream) -> (StreamReader, StreamWriter) {
-  let (read, write) = stream.into_split();
-  (StreamReader::new(read), StreamWriter::new(write))
+pub fn new(stream: StdTcpStream) -> Result<(StreamReader, StreamWriter)> {
+  // We want to block on read calls
+  // stream.set_nonblocking(true)?;
+  let (read, write) = TcpStream::from_std(stream)?.into_split();
+  Ok((StreamReader::new(read), StreamWriter::new(write)))
 }
 
 impl StreamReader {
@@ -34,10 +39,17 @@ impl StreamReader {
   }
 
   pub async fn poll(&mut self) -> Result<()> {
-    let mut vec = vec![0u8; 256];
-    let len = self.stream.read(&mut vec).await?;
-    vec.truncate(len);
-    self.prod.push_slice(&vec);
+    let mut msg = vec![0u8; 256];
+
+    let n = self.stream.read_buf(&mut msg).await?;
+    info!("Got bytes: {}", n);
+    msg.truncate(n);
+    if msg.len() == 0 {
+      info!("got empty");
+      return Err(io::Error::new(ErrorKind::InvalidInput, format!("msg len 0")));
+    }
+    info!("got slice");
+    self.prod.push_slice(&msg);
     Ok(())
   }
   pub fn read(&mut self) -> Result<Option<Packet>> {
