@@ -1,6 +1,11 @@
 #[macro_use]
 extern crate log;
 
+pub mod block;
+pub mod item;
+pub mod net;
+pub mod world;
+
 use std::time::Duration;
 use tokio::{sync::mpsc, time};
 use tokio_stream::wrappers::ReceiverStream;
