@@ -39,39 +39,38 @@ impl StreamReader {
   }
 
   pub async fn poll(&mut self) -> Result<()> {
-    let mut msg = vec![0u8; 256];
+    let mut msg = vec![];
 
+    // This appends to msg, so we don't need to truncate
     let n = self.stream.read_buf(&mut msg).await?;
-    info!("Got bytes: {}", n);
-    msg.truncate(n);
-    if msg.len() == 0 {
-      info!("got empty");
-      return Err(io::Error::new(ErrorKind::InvalidInput, format!("msg len 0")));
+    if n == 0 {
+      return Err(io::Error::new(ErrorKind::ConnectionAborted, format!("client has disconnected")));
     }
-    info!("got slice");
     self.prod.push_slice(&msg);
     Ok(())
   }
   pub fn read(&mut self) -> Result<Option<Packet>> {
-    let mut packet_len = 0;
+    let mut len = 0;
     let mut read = -1;
-    self.cons.access(|a, b| {
-      let (len, amount_read) = util::read_varint(a);
-      packet_len = len;
-      read = amount_read;
+    self.cons.access(|a, _| {
+      let (a, b) = util::read_varint(a);
+      len = a as isize;
+      read = b;
     });
+    // Varint that is more than 5 bytes long.
     if read < 0 {
-      // TODO: -1 means invalid varint, so we should error here
-      return Ok(None);
+      return Err(io::Error::new(ErrorKind::InvalidInput, format!("invalid varint")));
     }
     // Incomplete varint, or an incomplete packet
-    if read == 0 || packet_len as isize > self.cons.len() as isize {
+    if read == 0 || len > self.cons.len() as isize {
       return Ok(None);
     }
     // Now that we know we have a valid packet, we pop the length bytes
     self.cons.discard(read as usize);
-    let mut vec = vec![0u8; packet_len as usize];
+    // Now we pop the packet data
+    let mut vec = vec![0; len as usize];
     self.cons.pop_slice(&mut vec);
+    // And parse it
     Ok(Some(Packet::from_buf(vec)))
   }
 }

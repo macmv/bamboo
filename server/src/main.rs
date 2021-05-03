@@ -1,7 +1,8 @@
 #[macro_use]
 extern crate log;
 
-use tokio::sync::mpsc;
+use std::time::Duration;
+use tokio::{sync::mpsc, time};
 use tokio_stream::wrappers::ReceiverStream;
 use tonic::{transport::Server, Request, Response, Status, Streaming};
 
@@ -20,17 +21,21 @@ impl Minecraft for ServerImpl {
     &self,
     req: Request<Streaming<Packet>>,
   ) -> Result<Response<Self::ConnectionStream>, Status> {
-    let (tx, rx) = mpsc::channel(4);
+    let (tx, rx) = mpsc::channel(8);
 
     dbg!(req);
 
     tokio::spawn(async move {
-      let mut p = Packet::default();
-      p.id = 10;
-      println!("  => send {:?}", p);
-      tx.send(Ok(p)).await.unwrap();
+      loop {
+        let mut p = Packet::default();
+        p.id = 10;
+        println!("  => send {:?}", p);
+        tx.send(Ok(p)).await.unwrap();
 
-      println!(" /// done sending");
+        time::sleep(Duration::from_secs(1)).await;
+      }
+
+      // println!(" /// done sending");
     });
 
     Ok(Response::new(ReceiverStream::new(rx)))

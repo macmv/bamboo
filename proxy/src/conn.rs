@@ -4,9 +4,9 @@ use crate::{
 };
 
 use common::{proto, proto::minecraft_client::MinecraftClient};
-use std::{error::Error, io, io::ErrorKind, sync::Arc};
+use std::{error::Error, io, io::ErrorKind};
 use tokio::sync::mpsc;
-use tokio_stream::wrappers::UnboundedReceiverStream;
+use tokio_stream::wrappers::ReceiverStream;
 use tonic::{transport::channel::Channel, Request, Status, Streaming};
 
 #[derive(Debug, Copy, Clone)]
@@ -39,7 +39,7 @@ pub struct Conn {
 
 pub struct ClientListener {
   client: StreamReader,
-  server: mpsc::UnboundedSender<proto::Packet>,
+  server: mpsc::Sender<proto::Packet>,
 }
 
 pub struct ServerListener {
@@ -84,6 +84,7 @@ impl ServerListener {
         None => break,
       }
     }
+    info!("closing connection with server");
 
     Ok(())
   }
@@ -104,9 +105,9 @@ impl Conn {
   }
 
   pub async fn split(mut self) -> Result<(ClientListener, ServerListener), Status> {
-    let (tx, rx) = mpsc::unbounded_channel();
+    let (tx, rx) = mpsc::channel(8);
 
-    let response = self.server.connection(Request::new(UnboundedReceiverStream::new(rx))).await?;
+    let response = self.server.connection(Request::new(ReceiverStream::new(rx))).await?;
     let inbound = response.into_inner();
 
     Ok((

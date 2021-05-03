@@ -45,10 +45,22 @@ async fn handle_client(sock: TcpStream) -> Result<(), Box<dyn Error>> {
   let (mut client_listener, mut server_listener) = conn.split().await?;
   let mut handles = vec![];
   handles.push(tokio::spawn(async move {
-    client_listener.run().await.unwrap();
+    match client_listener.run().await {
+      Ok(_) => {}
+      Err(e) => {
+        error!("error while listening to client: {}", e);
+        // TODO: Stop the other task
+      }
+    };
   }));
   handles.push(tokio::spawn(async move {
-    server_listener.run().await;
+    match server_listener.run().await {
+      Ok(_) => {}
+      Err(e) => {
+        error!("error while listening to server: {}", e);
+        // TODO: Stop the other task
+      }
+    };
   }));
 
   futures::future::join_all(handles).await;
