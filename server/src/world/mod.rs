@@ -6,7 +6,7 @@ use std::{
 };
 
 pub struct World {
-  chunks: HashMap<chunk::Pos, Arc<Mutex<chunk::Chunk>>>,
+  chunks: HashMap<chunk::Pos, Mutex<chunk::Chunk>>,
 }
 
 #[derive(Clone)]
