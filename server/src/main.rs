@@ -34,19 +34,7 @@ impl Minecraft for ServerImpl {
 
     dbg!(req);
 
-    tokio::spawn(async move {
-      let conn = net::Connection::new();
-      loop {
-        let mut p = Packet::default();
-        p.id = 10;
-        println!("  => send {:?}", p);
-        tx.send(Ok(p)).await.unwrap();
-
-        time::sleep(Duration::from_secs(1)).await;
-      }
-
-      // println!(" /// done sending");
-    });
+    self.worlds.new_player(tx);
 
     Ok(Response::new(ReceiverStream::new(rx)))
   }
