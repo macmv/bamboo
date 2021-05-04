@@ -34,7 +34,7 @@ impl WorldManager {
 
   pub fn new_player(&self, req: Streaming<Packet>, tx: Sender<Result<Packet, Status>>) {
     tokio::spawn(async move {
-      let conn = Connection::new(req, tx);
+      let mut conn = Connection::new(req, tx);
       match conn.run().await {
         Ok(_) => {}
         Err(e) => {
