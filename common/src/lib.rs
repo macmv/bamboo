@@ -1,6 +1,9 @@
 use flexi_logger::{Duplicate, LogTarget, Logger};
 
+pub mod registry;
 pub mod util;
+
+pub use registry::Registry;
 
 pub mod proto {
   tonic::include_proto!("connection");
