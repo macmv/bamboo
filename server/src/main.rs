@@ -32,9 +32,7 @@ impl Minecraft for ServerImpl {
   ) -> Result<Response<Self::ConnectionStream>, Status> {
     let (tx, rx) = mpsc::channel(8);
 
-    dbg!(req);
-
-    self.worlds.new_player(tx);
+    self.worlds.new_player(req, tx);
 
     Ok(Response::new(ReceiverStream::new(rx)))
   }

@@ -6,11 +6,11 @@ use std::{
   time::Duration,
 };
 use tokio::{sync::mpsc::Sender, time};
-use tonic::Status;
+use tonic::{Status, Streaming};
 
 use common::proto::Packet;
 
-use crate::net;
+use crate::net::Connection;
 
 pub struct World {
   chunks: HashMap<chunk::Pos, Mutex<chunk::Chunk>>,
@@ -32,19 +32,23 @@ impl WorldManager {
     WorldManager { worlds: Vec::new() }
   }
 
-  pub fn new_player(&self, tx: Sender<Result<Packet, Status>>) {
+  pub fn new_player(&self, req: Streaming<Packet>, tx: Sender<Result<Packet, Status>>) {
     tokio::spawn(async move {
-      let conn = net::Connection::new();
-      loop {
-        let mut p = Packet::default();
-        p.id = 10;
-        println!("  => send {:?}", p);
-        tx.send(Ok(p)).await.unwrap();
-
-        time::sleep(Duration::from_secs(1)).await;
+      let conn = Connection::new(req, tx);
+      match conn.run().await {
+        Ok(_) => {}
+        Err(e) => {
+          error!("error in connection: {}", e);
+        }
       }
-
-      // println!(" /// done sending");
+      // loop {
+      //   let mut p = Packet::default();
+      //   p.id = 10;
+      //   println!("  => send {:?}", p);
+      //   tx.send(Ok(p)).await.unwrap();
+      //
+      //   time::sleep(Duration::from_secs(1)).await;
+      // }
     });
   }
 }
