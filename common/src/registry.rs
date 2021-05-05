@@ -68,6 +68,8 @@ impl<K: Eq + Hash + Debug + Clone + Copy, V> Registry<K, V> {
   /// entry, then it will be moved backwards, so that inserts in the future work
   /// as expected.
   ///
+  /// # Example
+  ///
   /// ```rust
   /// # use common::registry::Registry;
   /// # let some_value = 100;
@@ -110,10 +112,37 @@ impl<K: Eq + Hash + Debug + Clone + Copy, V> Registry<K, V> {
     }
   }
 
-  /// Appends the given item to the end of the registry. Panics if the key
-  /// already exists. This will also set the currently writing index to be at
-  /// the end of the list, so any future calls to [`insert`](Self::insert) will
-  /// append at the end of the registry.
+  /// Appends the given item to the end of the registry. This will also set the
+  /// currently writing index to be at the end of the list, so any future
+  /// calls to [`insert`](Self::insert) will append at the end of the
+  /// registry.
+  ///
+  /// # Example
+  ///
+  /// ```rust
+  /// # use common::registry::Registry;
+  /// # let some_value = 100;
+  /// let mut reg = Registry::new();
+  /// reg.add("a", some_value);
+  /// reg.add("b", some_value);
+  /// reg.add("c", some_value);
+  /// // The registry now has 3 items, "a", "b", "c", in that order.
+  ///
+  /// reg.insert_at(1, "inserted", some_value);
+  /// reg.add("added at end", some_value);
+  /// // The registry now contains "a", "inserted", "b", c", "added at end".
+  ///
+  /// // This insert call will add at the end of the registry, not at index 2.
+  /// reg.insert("another insert", some_value);
+  ///
+  /// // The registry now contains "a", "inserted", "b", c", "added at end", and "another insert".
+  /// ```
+  /// See also: [`insert`](Self::insert) and [`insert_at`](Self::insert_at).
+  ///
+  /// # Panics
+  ///
+  /// This function will panic if the key is already present in the registry. If
+  /// [`get(k)`](Self::get) returns `None`, then this function will not panic.
   pub fn add(&mut self, k: K, v: V) {
     if self.ids.contains_key(&k) {
       panic!("registry already contains key {:?}", k);
