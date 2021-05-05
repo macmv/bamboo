@@ -17,8 +17,8 @@ use tokio::{
 
 pub struct StreamReader {
   stream: OwnedReadHalf,
-  prod: Producer<u8>,
-  cons: Consumer<u8>,
+  prod:   Producer<u8>,
+  cons:   Consumer<u8>,
 }
 pub struct StreamWriter {
   stream: OwnedWriteHalf,

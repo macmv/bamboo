@@ -9,8 +9,8 @@ use std::{
 
 #[derive(Debug)]
 pub struct BufferError {
-  err: BufferErrorKind,
-  pos: u64,
+  err:     BufferErrorKind,
+  pos:     u64,
   reading: bool,
 }
 
@@ -47,7 +47,7 @@ impl Error for BufferErrorKind {}
 #[derive(Debug)]
 pub struct Buffer {
   data: Cursor<Vec<u8>>,
-  err: Option<BufferError>,
+  err:  Option<BufferError>,
 }
 
 macro_rules! add_read {

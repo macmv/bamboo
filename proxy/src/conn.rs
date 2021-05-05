@@ -33,8 +33,8 @@ impl State {
 pub struct Conn {
   client_reader: StreamReader,
   client_writer: StreamWriter,
-  server: MinecraftClient<Channel>,
-  state: State,
+  server:        MinecraftClient<Channel>,
+  state:         State,
 }
 
 pub struct ClientListener {

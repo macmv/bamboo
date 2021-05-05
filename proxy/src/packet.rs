@@ -3,7 +3,7 @@ use common::util::{Buffer, BufferError};
 #[derive(Debug)]
 pub struct Packet {
   pub buf: Buffer,
-  id: i32,
+  id:      i32,
 }
 
 impl Packet {

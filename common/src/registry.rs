@@ -1,5 +1,16 @@
 use std::{cmp::Eq, collections::HashMap, fmt::Debug, hash::Hash, rc::Rc, slice};
 
+/// This is a registry. It is essentially an ordered hashmap. It is intended to
+/// be generated during load time, and then either used to generate compressed
+/// data, or just stored and referenced at runtime.
+///
+/// Blocks/items will be registered with a [`VersionedRegistry`], so that any
+/// changes made to older versions of the game will be propogated to newer
+/// versions.
+///
+/// This is going to be used to generate packet specs. Because packet specs for
+/// a version can be built entireley on their own, it is easier to clone a
+/// registry and then edit the cloned one.
 #[derive(Clone)]
 pub struct Registry<K: Eq + Hash + Debug + Clone + Copy, V> {
   // The list of registered items.
@@ -8,16 +19,79 @@ pub struct Registry<K: Eq + Hash + Debug + Clone + Copy, V> {
   // element.
   index: usize,
   // A way to access the items by a unique id.
-  ids: HashMap<K, usize>,
+  ids:   HashMap<K, usize>,
+}
+
+impl<K: Eq + Hash + Debug + Clone + Copy, V> Registry<K, V> {
+  /// Creates an empty registry. Any [`insert`](Self::insert) calls will do the
+  /// same thing as [`add`](Self::add).
+  pub fn new() -> Self {
+    Registry { items: vec![], index: 0, ids: HashMap::new() }
+  }
+  /// Inserts an element to the registry. If [`insert_at`](Self::insert_at) has
+  /// not been called yet, this is the same as calling [`add`](Self::add).
+  /// Panics if the key already exists.
+  pub fn insert(&mut self, k: K, v: V) {
+    if self.ids.contains_key(&k) {
+      panic!("registry already contains key {:?}", k);
+    }
+    self.ids.insert(k, self.index);
+    self.items.insert(self.index, (k, v));
+    self.index += 1;
+  }
+  /// This starts inserting items at the new index `i`. The new item created
+  /// from k and v will have the index `i`. All items with a larger index will
+  /// be shifted downwards by one. Any calls to [`insert`](Self::insert) after
+  /// this will place new items right after this one.
+  pub fn insert_at(&mut self, i: usize, k: K, v: V) {
+    if i > self.items.len() {
+      panic!("i cannot be greater than items.len()");
+    }
+    self.index = i;
+    self.insert(k, v);
+  }
+
+  /// Appends the given item to the end of the registry. Panics if the key
+  /// already exists. This will also set the currently writing index to be at
+  /// the end of the list, so any future calls to [`insert`](Self::insert) will
+  /// append at the end of the registry.
+  pub fn add(&mut self, k: K, v: V) {
+    if self.ids.contains_key(&k) {
+      panic!("registry already contains key {:?}", k);
+    }
+    self.index = self.items.len();
+    self.ids.insert(k, self.index);
+    self.items.push((k, v));
+  }
+
+  /// Gets an item within the registry. This could be used to retrieve
+  /// items/blocks by name, or a packet from its id over the wire.
+  pub fn get(&self, k: K) -> Option<(usize, &V)> {
+    match self.ids.get(&k) {
+      Some(index) => Some((*index, &self.items[self.index].1)),
+      None => None,
+    }
+  }
+
+  /// Gets an item within the registry, via it's index. This could be used to
+  /// retrieve a block/item by its id, or a packet from its id internally.
+  pub fn get_index(&self, i: usize) -> Option<&(K, V)> {
+    self.items.get(i)
+  }
+
+  /// Iterates through all elements, in order of index.
+  pub fn iter(&self) -> slice::Iter<'_, (K, V)> {
+    self.items.iter()
+  }
 }
 
 /// This is a registry with any number of children. It is used to build the tree
-/// of registries used in the VersionedRegistry. In most situations, you
-/// probably just want to use a VersionedRegistry. This registry also calls
+/// of registries used in the [`VersionedRegistry`]. In most situations, you
+/// probably just want to use a [`VersionedRegistry`]. This registry also calls
 /// clone on the values for every child registry that it is inserted into, so V
-/// should probably be an Rc.
+/// should probably be an [`Rc`] or [`Arc`](std::sync::Arc).
 pub struct CloningRegistry<K: Eq + Hash + Debug + Clone + Copy, V: Clone> {
-  current: Registry<K, V>,
+  current:  Registry<K, V>,
   children: Vec<CloningRegistry<K, V>>,
 }
 
@@ -84,65 +158,6 @@ impl<Ver: Eq + Hash + Debug, K: Eq + Hash + Debug + Clone + Copy, V> VersionedRe
       Some(reg) => reg.insert(k, Rc::new(v)),
       None => panic!("unknown version {:?}", ver),
     }
-  }
-}
-
-impl<K: Eq + Hash + Debug + Clone + Copy, V> Registry<K, V> {
-  pub fn new() -> Self {
-    Registry { items: vec![], index: 0, ids: HashMap::new() }
-  }
-  /// Inserts an element to the registry. If insert_at() has not been called
-  /// yet, this is the same as calling [`add()`]. Panics if the key already
-  /// exists.
-  pub fn insert(&mut self, k: K, v: V) {
-    if self.ids.contains_key(&k) {
-      panic!("registry already contains key {:?}", k);
-    }
-    self.ids.insert(k, self.index);
-    self.items.insert(self.index, (k, v));
-    self.index += 1;
-  }
-  /// This starts inserting items at the new index `i`. The new item created
-  /// from k and v will have the index `i + 1`. All items with a larger index
-  /// will be shifted downwards by one. Any calls to insert() after this will
-  /// place new items right after this one.
-  pub fn insert_at(&mut self, i: usize, k: K, v: V) {
-    if i > self.items.len() {
-      panic!("i cannot be greater than items.len()");
-    }
-    self.index = i;
-    self.insert(k, v);
-  }
-
-  /// Appends the given item to the end of the registry. Panics if the key
-  /// already exists.
-  pub fn add(&mut self, k: K, v: V) {
-    if self.ids.contains_key(&k) {
-      panic!("registry already contains key {:?}", k);
-    }
-    self.index = self.items.len();
-    self.ids.insert(k, self.index);
-    self.items.push((k, v));
-  }
-
-  /// Gets an item within the registry. This could be used to retrieve
-  /// items/blocks by name, or a packet from its id over the wire.
-  pub fn get(&self, k: K) -> Option<(usize, &V)> {
-    match self.ids.get(&k) {
-      Some(index) => Some((*index, &self.items[self.index].1)),
-      None => None,
-    }
-  }
-
-  /// Gets an item within the registry, via it's index. This could be used to
-  /// retrieve a block by its id, or a packet from its id internally.
-  pub fn get_index(&self, i: usize) -> Option<&(K, V)> {
-    self.items.get(i)
-  }
-
-  /// Iterates through all elements, in order of index.
-  pub fn iter(&self) -> slice::Iter<'_, (K, V)> {
-    self.items.iter()
   }
 }
 

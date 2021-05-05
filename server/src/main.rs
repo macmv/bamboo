@@ -39,7 +39,7 @@ impl Minecraft for ServerImpl {
   async fn status(&self, req: Request<StatusRequest>) -> Result<Response<StatusResponse>, Status> {
     dbg!(req);
     Ok(Response::new(StatusResponse {
-      id: vec![],
+      id:          vec![],
       num_players: 5,
       server_type: "sugarcane-rs".into(),
     }))
