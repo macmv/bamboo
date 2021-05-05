@@ -15,4 +15,9 @@ impl Player {
   pub fn new(id: u32, username: String, uuid: UUID, conn: Connection) -> Self {
     Player { id, username, uuid, conn }
   }
+
+  /// Returns the player's username.
+  pub fn username(&self) -> &str {
+    &self.username
+  }
 }
