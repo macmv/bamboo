@@ -16,7 +16,10 @@ use tonic::{Status, Streaming};
 
 use common::{math::UUID, proto::Packet};
 
-use crate::{net::Connection, player::Player};
+use crate::{
+  net::{cb, Connection},
+  player::Player,
+};
 
 pub struct World {
   chunks:  HashMap<chunk::Pos, Mutex<chunk::Chunk>>,
@@ -39,13 +42,17 @@ impl World {
     let conn = Arc::new(conn);
     let player = Arc::new(Mutex::new(Player::new(self.eid(), username, id, conn.clone())));
     self.players.push(player.clone());
+
+    let c = conn.clone();
     tokio::spawn(async move {
       // Network recieving task
-      conn.run().await.unwrap();
+      c.run().await.unwrap();
     });
+
     let mut int = time::interval(Duration::from_millis(50));
     tokio::spawn(async move {
       // Player tick loop
+      let mut tick = 0;
       loop {
         int.tick().await;
         let player = player.lock().await;
@@ -54,6 +61,12 @@ impl World {
         if player.conn().closed() {
           break;
         }
+        // Once per second, send keep alive packet
+        if tick % 20 == 0 {
+          let out = cb::Packet::new(cb::ID::KeepAlive);
+          conn.send(out).await;
+        }
+        tick += 1;
       }
     });
   }

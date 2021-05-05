@@ -1,5 +1,5 @@
-pub mod clientbound;
-pub mod serverbound;
+pub mod cb;
+pub mod sb;
 
 use log::info;
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -10,19 +10,24 @@ use common::proto;
 
 pub struct Connection {
   rx:     Mutex<Streaming<proto::Packet>>,
-  tx:     Sender<Result<proto::Packet, Status>>,
+  tx:     Mutex<Sender<Result<proto::Packet, Status>>>,
   closed: AtomicBool,
 }
 
 impl Connection {
-  pub fn new(rx: Streaming<proto::Packet>, tx: Sender<Result<proto::Packet, Status>>) -> Self {
-    Connection { rx: Mutex::new(rx), tx, closed: false.into() }
+  pub(crate) fn new(
+    rx: Streaming<proto::Packet>,
+    tx: Sender<Result<proto::Packet, Status>>,
+  ) -> Self {
+    Connection { rx: Mutex::new(rx), tx: Mutex::new(tx), closed: false.into() }
   }
 
-  pub async fn run(&self) -> Result<(), Status> {
+  /// This starts up the recieving loop for this connection. Do not call this
+  /// more than once.
+  pub(crate) async fn run(&self) -> Result<(), Status> {
     'running: loop {
       let p = match self.rx.lock().await.message().await? {
-        Some(p) => serverbound::Packet::from(p),
+        Some(p) => sb::Packet::from(p),
         None => break 'running,
       };
       info!("got packet from client {:?}", p);
@@ -31,6 +36,13 @@ impl Connection {
     Ok(())
   }
 
+  /// Sends a packet to the proxy, which will then get sent to the client.
+  pub async fn send(&self, p: cb::Packet) {
+    info!("sending packet");
+    self.tx.lock().await.send(Ok(p.to_proto())).await.unwrap();
+  }
+
+  // Returns true if the connection has been closed.
   pub fn closed(&self) -> bool {
     self.closed.load(Ordering::SeqCst)
   }
