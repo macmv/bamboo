@@ -9,7 +9,7 @@ pub(super) fn gen_spec() -> PacketSpec {
   let mut spec = PacketSpec { gens: HashMap::new() };
   spec.add(cb::ID::KeepAlive, |p: cb::Packet| {
     let mut out = Packet::new(0x00);
-    out.buf.write_i32(p.pb().ints[0]);
+    out.buf.write_varint(p.pb().ints[0]);
     out
   });
   spec

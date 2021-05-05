@@ -201,7 +201,7 @@ fn create_empty(id: ID) -> proto::Packet {
     ID::UnloadChunk               => proto::Packet { ..Default::default() },
     ID::ChangeGameState           => proto::Packet { ..Default::default() },
     ID::OpenHorseWindow           => proto::Packet { ..Default::default() },
-    ID::KeepAlive                 => proto::Packet { ..Default::default() },
+    ID::KeepAlive                 => proto::Packet { ints: vec![0], ..Default::default() },
     ID::ChunkData                 => proto::Packet { ..Default::default() },
     ID::Effect                    => proto::Packet { ..Default::default() },
     ID::Particle                  => proto::Packet { ..Default::default() },
