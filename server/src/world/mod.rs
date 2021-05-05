@@ -2,7 +2,10 @@ mod chunk;
 
 use std::{
   collections::HashMap,
-  sync::{Arc, Mutex},
+  sync::{
+    atomic::{AtomicU32, Ordering},
+    Arc, Mutex,
+  },
   time::Duration,
 };
 use tokio::{sync::mpsc::Sender, time};
@@ -21,7 +24,7 @@ pub struct WorldManager {
   // This will always have at least 1 entry. The world at index 0 is considered the "default"
   // world.
   worlds: Vec<Arc<World>>,
-  eid:    u32,
+  eid:    Arc<AtomicU32>,
 }
 
 impl World {
@@ -33,16 +36,16 @@ impl World {
 
 impl WorldManager {
   pub fn new() -> Self {
-    WorldManager { worlds: vec![Arc::new(World::new())], eid: 1 }
+    WorldManager { worlds: vec![Arc::new(World::new())], eid: Arc::new(1.into()) }
   }
 
   pub fn new_player(&self, req: Streaming<Packet>, tx: Sender<Result<Packet, Status>>) {
     let world = self.worlds[0].clone();
+    let eid = self.eid.fetch_add(1, Ordering::SeqCst);
     tokio::spawn(async move {
-      // TODO: EID counter
-      let mut player =
-        Player::new(1, "macmv".into(), UUID::from_u128(0xff1232452345), Connection::new(req, tx));
-      // self.eid += 1;
+      // TODO: Username/UUID
+      let player =
+        Player::new(eid, "macmv".into(), UUID::from_u128(0xff1232452345), Connection::new(req, tx));
 
       // Default world. Might want to change this later, but for now this is easiest.
       world.new_player(player);
