@@ -3,25 +3,25 @@ pub mod serverbound;
 
 use log::info;
 use std::sync::atomic::{AtomicBool, Ordering};
-use tokio::sync::mpsc::Sender;
+use tokio::sync::{mpsc::Sender, Mutex};
 use tonic::{Status, Streaming};
 
 use common::proto;
 
 pub struct Connection {
-  rx:     Streaming<proto::Packet>,
+  rx:     Mutex<Streaming<proto::Packet>>,
   tx:     Sender<Result<proto::Packet, Status>>,
   closed: AtomicBool,
 }
 
 impl Connection {
   pub fn new(rx: Streaming<proto::Packet>, tx: Sender<Result<proto::Packet, Status>>) -> Self {
-    Connection { rx, tx, closed: false.into() }
+    Connection { rx: Mutex::new(rx), tx, closed: false.into() }
   }
 
-  pub async fn run(&mut self) -> Result<(), Status> {
+  pub async fn run(&self) -> Result<(), Status> {
     'running: loop {
-      let p = match self.rx.message().await? {
+      let p = match self.rx.lock().await.message().await? {
         Some(p) => serverbound::Packet::from(p),
         None => break 'running,
       };

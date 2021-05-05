@@ -10,11 +10,11 @@ pub struct Player {
   // Player's username
   username: String,
   uuid:     UUID,
-  conn:     Connection,
+  conn:     Arc<Connection>,
 }
 
 impl Player {
-  pub fn new(id: u32, username: String, uuid: UUID, conn: Connection) -> Self {
+  pub fn new(id: u32, username: String, uuid: UUID, conn: Arc<Connection>) -> Self {
     Player { id, username, uuid, conn }
   }
 
@@ -26,10 +26,5 @@ impl Player {
   /// to check if the player has disconnected.
   pub fn conn(&self) -> &Connection {
     &self.conn
-  }
-  /// Returns the connection that this player is connected on. This is how
-  /// packets should be sent.
-  pub fn conn_mut(&mut self) -> &mut Connection {
-    &mut self.conn
   }
 }

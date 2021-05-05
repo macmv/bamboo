@@ -36,18 +36,16 @@ impl World {
     World { chunks: HashMap::new(), players: vec![], eid: Arc::new(1.into()) }
   }
   fn new_player(&mut self, username: String, id: UUID, conn: Connection) {
-    let player = Arc::new(Mutex::new(Player::new(self.eid(), username, id, conn)));
+    let conn = Arc::new(conn);
+    let player = Arc::new(Mutex::new(Player::new(self.eid(), username, id, conn.clone())));
     self.players.push(player.clone());
-    // Network recieving task
-    let p = player.clone();
     tokio::spawn(async move {
-      // TODO: Deadlock here
-      let mut p = p.lock().await;
-      p.conn_mut().run().await.unwrap();
+      // Network recieving task
+      conn.run().await.unwrap();
     });
-    // Player tick loop
     let mut int = time::interval(Duration::from_millis(50));
     tokio::spawn(async move {
+      // Player tick loop
       loop {
         int.tick().await;
         let player = player.lock().await;
