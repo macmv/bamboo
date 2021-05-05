@@ -1,4 +1,12 @@
-use std::{cmp::Eq, collections::HashMap, fmt::Debug, hash::Hash, rc::Rc, slice};
+use std::{
+  cell::{Ref, RefCell},
+  cmp::Eq,
+  collections::HashMap,
+  fmt::Debug,
+  hash::Hash,
+  rc::Rc,
+  slice,
+};
 
 /// This is a registry. It is essentially an ordered hashmap. It is intended to
 /// be generated during load time, and then either used to generate compressed
@@ -11,7 +19,7 @@ use std::{cmp::Eq, collections::HashMap, fmt::Debug, hash::Hash, rc::Rc, slice};
 /// This is going to be used to generate packet specs. Because packet specs for
 /// a version can be built entireley on their own, it is easier to clone a
 /// registry and then edit the cloned one.
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct Registry<K: Eq + Hash + Debug + Clone + Copy, V> {
   // The list of registered items.
   items: Vec<(K, V)>,
@@ -90,33 +98,40 @@ impl<K: Eq + Hash + Debug + Clone + Copy, V> Registry<K, V> {
 /// probably just want to use a [`VersionedRegistry`]. This registry also calls
 /// clone on the values for every child registry that it is inserted into, so V
 /// should probably be an [`Rc`] or [`Arc`](std::sync::Arc).
+#[derive(Debug)]
 pub struct CloningRegistry<K: Eq + Hash + Debug + Clone + Copy, V: Clone> {
   current:  Registry<K, V>,
-  children: Vec<CloningRegistry<K, V>>,
+  children: Vec<Rc<RefCell<CloningRegistry<K, V>>>>,
 }
 
 impl<K: Eq + Hash + Debug + Clone + Copy, V: Clone> CloningRegistry<K, V> {
-  pub fn new(children: Vec<CloningRegistry<K, V>>) -> Self {
-    CloningRegistry { current: Registry::new(), children }
+  pub fn new() -> Self {
+    CloningRegistry { current: Registry::new(), children: vec![] }
+  }
+
+  /// Adds a new child to this registry. All future calls that modify this
+  /// registry will also modify this child.
+  pub fn add_child(&mut self, child: Rc<RefCell<CloningRegistry<K, V>>>) {
+    self.children.push(child);
   }
 
   pub fn insert(&mut self, k: K, v: V) {
     self.current.insert(k, v.clone());
     for c in &mut self.children {
-      c.insert(k, v.clone());
+      c.borrow_mut().insert(k, v.clone());
     }
   }
   pub fn insert_at(&mut self, i: usize, k: K, v: V) {
     self.current.insert_at(i, k, v.clone());
     for c in &mut self.children {
-      c.insert_at(i, k, v.clone());
+      c.borrow_mut().insert_at(i, k, v.clone());
     }
   }
 
   pub fn add(&mut self, k: K, v: V) {
     self.current.add(k, v.clone());
     for c in &mut self.children {
-      c.add(k, v.clone());
+      c.borrow_mut().add(k, v.clone());
     }
   }
 
@@ -142,21 +157,63 @@ impl<K: Eq + Hash + Debug + Clone + Copy, V: Clone> CloningRegistry<K, V> {
 /// older version, which will then propogate through all the newer versions.
 /// This is primarily used to build the block table. It makes it very easy to
 /// generate all block ids for all versions at the same time.
-pub struct VersionedRegistry<Ver: Eq + Hash + Debug, K: Eq + Hash + Debug + Clone + Copy, V> {
-  versions: HashMap<Ver, CloningRegistry<K, Rc<V>>>,
+#[derive(Debug)]
+pub struct VersionedRegistry<
+  Ver: Eq + Hash + Debug + Clone + Copy,
+  K: Eq + Hash + Debug + Clone + Copy,
+  V: Clone,
+> {
+  current:  Ver,
+  versions: HashMap<Ver, Rc<RefCell<CloningRegistry<K, Rc<V>>>>>,
 }
 
-impl<Ver: Eq + Hash + Debug, K: Eq + Hash + Debug + Clone + Copy, V> VersionedRegistry<Ver, K, V> {
+impl<Ver: Eq + Hash + Debug + Clone + Copy, K: Eq + Hash + Debug + Clone + Copy, V: Clone>
+  VersionedRegistry<Ver, K, V>
+{
   pub fn new(initial: Ver) -> Self {
-    let mut reg = VersionedRegistry { versions: HashMap::new() };
-    reg.versions.insert(initial, CloningRegistry::new(vec![]));
+    let mut reg = VersionedRegistry { current: initial, versions: HashMap::new() };
+    reg.versions.insert(initial, Rc::new(RefCell::new(CloningRegistry::new())));
     reg
+  }
+
+  pub fn add_version(&mut self, ver: Ver) {
+    match self.versions.get_mut(&ver) {
+      Some(_) => panic!("already contains version {:?}", ver),
+      None => {
+        let new = Rc::new(RefCell::new(CloningRegistry::new()));
+        self.versions[&self.current].borrow_mut().add_child(new.clone());
+        self.versions.insert(ver, new);
+        self.current = ver;
+      }
+    }
   }
 
   pub fn insert(&mut self, ver: Ver, k: K, v: V) {
     match self.versions.get_mut(&ver) {
-      Some(reg) => reg.insert(k, Rc::new(v)),
+      Some(reg) => reg.borrow_mut().insert(k, Rc::new(v)),
       None => panic!("unknown version {:?}", ver),
+    }
+  }
+  pub fn insert_at(&mut self, ver: Ver, i: usize, k: K, v: V) {
+    match self.versions.get_mut(&ver) {
+      Some(reg) => reg.borrow_mut().insert_at(i, k, Rc::new(v)),
+      None => panic!("unknown version {:?}", ver),
+    }
+  }
+
+  pub fn add(&mut self, ver: Ver, k: K, v: V) {
+    match self.versions.get_mut(&ver) {
+      Some(reg) => reg.borrow_mut().add(k, Rc::new(v)),
+      None => panic!("unknown version {:?}", ver),
+    }
+  }
+
+  /// Gets an item within the registry. This could be used to retrieve
+  /// items/blocks by name, or a packet from its id over the wire.
+  pub fn get(&self, ver: Ver) -> Option<Ref<CloningRegistry<K, Rc<V>>>> {
+    match self.versions.get(&ver) {
+      Some(reg) => Some(reg.borrow()),
+      None => None,
     }
   }
 }
@@ -218,40 +275,41 @@ mod tests {
     }
   }
 
-  // #[test]
-  // pub fn versioned_registry_insert() {
-  //   let mut reg = VersionedRegistry::new(2);
-  //   // Version 3 extends from version 2.
-  //   reg.add_version(3);
-  //   // This should be added to both.
-  //   reg.add(2, "first", 5);
-  //   reg.add(2, "second", 10);
-  //   // This should only be added to v3.
-  //   reg.add(3, "third", 20);
-  //   for (i, (k, v)) in reg.get(2).iter().enumerate() {
-  //     if i == 0 {
-  //       assert_eq!(k, &"first");
-  //       assert_eq!(v, &5);
-  //     } else if i == 1 {
-  //       assert_eq!(k, &"second");
-  //       assert_eq!(v, &10);
-  //     } else {
-  //       unreachable!("should not have added more than 2 items to v2");
-  //     }
-  //   }
-  //   for (i, (k, v)) in reg.get(3).iter().enumerate() {
-  //     if i == 0 {
-  //       assert_eq!(k, &"first");
-  //       assert_eq!(v, &5);
-  //     } else if i == 1 {
-  //       assert_eq!(k, &"second");
-  //       assert_eq!(v, &10);
-  //     } else if i == 2 {
-  //       assert_eq!(k, &"third");
-  //       assert_eq!(v, &10);
-  //     } else {
-  //       unreachable!("should not have added more than 3 items to v3");
-  //     }
-  //   }
-  // }
+  #[test]
+  pub fn versioned_registry_insert() {
+    let mut reg = VersionedRegistry::new(2);
+    // Version 3 extends from version 2.
+    reg.add_version(3);
+    // This should be added to both.
+    reg.add(2, "first", 5);
+    reg.add(2, "second", 10);
+    // This should only be added to v3.
+    reg.add(3, "third", 20);
+    dbg!(&reg);
+    for (i, (k, v)) in reg.get(2).unwrap().iter().enumerate() {
+      if i == 0 {
+        assert_eq!(k, &"first");
+        assert_eq!(v.as_ref(), &5);
+      } else if i == 1 {
+        assert_eq!(k, &"second");
+        assert_eq!(v.as_ref(), &10);
+      } else {
+        unreachable!("should not have added more than 2 items to v2");
+      }
+    }
+    for (i, (k, v)) in reg.get(3).unwrap().iter().enumerate() {
+      if i == 0 {
+        assert_eq!(k, &"first");
+        assert_eq!(v.as_ref(), &5);
+      } else if i == 1 {
+        assert_eq!(k, &"second");
+        assert_eq!(v.as_ref(), &10);
+      } else if i == 2 {
+        assert_eq!(k, &"third");
+        assert_eq!(v.as_ref(), &20);
+      } else {
+        unreachable!("should not have added more than 3 items to v3");
+      }
+    }
+  }
 }
