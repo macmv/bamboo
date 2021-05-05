@@ -4,6 +4,7 @@ extern crate log;
 pub mod block;
 pub mod item;
 pub mod net;
+pub mod player;
 pub mod world;
 
 use std::time::Duration;

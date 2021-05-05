@@ -5,6 +5,7 @@
 
 use flexi_logger::{Duplicate, LogTarget, Logger};
 
+pub mod math;
 pub mod registry;
 pub mod util;
 
