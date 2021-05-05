@@ -4,11 +4,14 @@ use std::{
   collections::HashMap,
   sync::{
     atomic::{AtomicU32, Ordering},
-    Arc, Mutex,
+    Arc,
   },
   time::Duration,
 };
-use tokio::{sync::mpsc::Sender, time};
+use tokio::{
+  sync::{mpsc::Sender, Mutex},
+  time,
+};
 use tonic::{Status, Streaming};
 
 use common::{math::UUID, proto::Packet};
@@ -35,14 +38,24 @@ impl World {
   fn new_player(&mut self, username: String, id: UUID, conn: Connection) {
     let player = Arc::new(Mutex::new(Player::new(self.eid(), username, id, conn)));
     self.players.push(player.clone());
+    // Network recieving task
+    let p = player.clone();
+    tokio::spawn(async move {
+      // TODO: Deadlock here
+      let mut p = p.lock().await;
+      p.conn_mut().run().await.unwrap();
+    });
     // Player tick loop
     let mut int = time::interval(Duration::from_millis(50));
     tokio::spawn(async move {
-      'tick: loop {
+      loop {
         int.tick().await;
-        let player = player.lock().unwrap();
+        let player = player.lock().await;
         // Do player collision and packets and stuff
         info!("player tick for {}", player.username());
+        if player.conn().closed() {
+          break;
+        }
       }
     });
   }
@@ -60,9 +73,9 @@ impl WorldManager {
 
   /// Adds a new player into the game. This should be called when a new grpc
   /// proxy connects.
-  pub fn new_player(&self, req: Streaming<Packet>, tx: Sender<Result<Packet, Status>>) {
+  pub async fn new_player(&self, req: Streaming<Packet>, tx: Sender<Result<Packet, Status>>) {
     // Default world. Might want to change this later, but for now this is easiest.
-    self.worlds[0].lock().unwrap().new_player(
+    self.worlds[0].lock().await.new_player(
       "macmv".into(),
       UUID::from_u128(0x1111111),
       Connection::new(req, tx),
