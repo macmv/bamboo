@@ -13,15 +13,54 @@ pub struct Registry<K: Eq + Hash + Debug + Clone + Copy, V> {
 
 /// This is a registry with any number of children. It is used to build the tree
 /// of registries used in the VersionedRegistry. In most situations, you
-/// probably just want to use a VersionedRegistry.
-pub struct CloningRegistry<K: Eq + Hash + Debug + Clone + Copy, V> {
-  current: Rc<Registry<K, V>>,
-  children: Vec<Rc<CloningRegistry<K, V>>>,
+/// probably just want to use a VersionedRegistry. This registry also calls
+/// clone on the values for every child registry that it is inserted into, so V
+/// should probably be an Rc.
+pub struct CloningRegistry<K: Eq + Hash + Debug + Clone + Copy, V: Clone> {
+  current: Registry<K, V>,
+  children: Vec<CloningRegistry<K, V>>,
 }
 
-impl<K: Eq + Hash + Debug + Clone + Copy, V> CloningRegistry<K, V> {
-  pub fn new(children: Vec<Rc<CloningRegistry<K, V>>>) -> Self {
-    CloningRegistry { current: Rc::new(Registry::new()), children }
+impl<K: Eq + Hash + Debug + Clone + Copy, V: Clone> CloningRegistry<K, V> {
+  pub fn new(children: Vec<CloningRegistry<K, V>>) -> Self {
+    CloningRegistry { current: Registry::new(), children }
+  }
+
+  pub fn insert(&mut self, k: K, v: V) {
+    self.current.insert(k, v.clone());
+    for c in &mut self.children {
+      c.insert(k, v.clone());
+    }
+  }
+  pub fn insert_at(&mut self, i: usize, k: K, v: V) {
+    self.current.insert_at(i, k, v.clone());
+    for c in &mut self.children {
+      c.insert_at(i, k, v.clone());
+    }
+  }
+
+  pub fn add(&mut self, k: K, v: V) {
+    self.current.add(k, v.clone());
+    for c in &mut self.children {
+      c.add(k, v.clone());
+    }
+  }
+
+  /// Gets an item within the registry. This could be used to retrieve
+  /// items/blocks by name, or a packet from its id over the wire.
+  pub fn get(&self, k: K) -> Option<(usize, &V)> {
+    self.current.get(k)
+  }
+
+  /// Gets an item within the registry, via it's index. This could be used to
+  /// retrieve a block by its id, or a packet from its id internally.
+  pub fn get_index(&self, i: usize) -> Option<&(K, V)> {
+    self.current.get_index(i)
+  }
+
+  /// Iterates through all elements, in order of index.
+  pub fn iter(&self) -> slice::Iter<'_, (K, V)> {
+    self.current.iter()
   }
 }
 
@@ -30,19 +69,20 @@ impl<K: Eq + Hash + Debug + Clone + Copy, V> CloningRegistry<K, V> {
 /// This is primarily used to build the block table. It makes it very easy to
 /// generate all block ids for all versions at the same time.
 pub struct VersionedRegistry<Ver: Eq + Hash + Debug, K: Eq + Hash + Debug + Clone + Copy, V> {
-  versions: HashMap<Ver, Rc<CloningRegistry<K, V>>>,
+  versions: HashMap<Ver, CloningRegistry<K, Rc<V>>>,
 }
 
 impl<Ver: Eq + Hash + Debug, K: Eq + Hash + Debug + Clone + Copy, V> VersionedRegistry<Ver, K, V> {
   pub fn new(initial: Ver) -> Self {
     let mut reg = VersionedRegistry { versions: HashMap::new() };
-    reg.versions.insert(initial, Rc::new(CloningRegistry::new(vec![])));
+    reg.versions.insert(initial, CloningRegistry::new(vec![]));
     reg
   }
 
   pub fn insert(&mut self, ver: Ver, k: K, v: V) {
-    if !self.versions.contains_key(&ver) {
-      panic!("unknown version {:?}", ver);
+    match self.versions.get_mut(&ver) {
+      Some(reg) => reg.insert(k, Rc::new(v)),
+      None => panic!("unknown version {:?}", ver),
     }
   }
 }
@@ -162,4 +202,41 @@ mod tests {
       }
     }
   }
+
+  // #[test]
+  // pub fn versioned_registry_insert() {
+  //   let mut reg = VersionedRegistry::new(2);
+  //   // Version 3 extends from version 2.
+  //   reg.add_version(3);
+  //   // This should be added to both.
+  //   reg.add(2, "first", 5);
+  //   reg.add(2, "second", 10);
+  //   // This should only be added to v3.
+  //   reg.add(3, "third", 20);
+  //   for (i, (k, v)) in reg.get(2).iter().enumerate() {
+  //     if i == 0 {
+  //       assert_eq!(k, &"first");
+  //       assert_eq!(v, &5);
+  //     } else if i == 1 {
+  //       assert_eq!(k, &"second");
+  //       assert_eq!(v, &10);
+  //     } else {
+  //       unreachable!("should not have added more than 2 items to v2");
+  //     }
+  //   }
+  //   for (i, (k, v)) in reg.get(3).iter().enumerate() {
+  //     if i == 0 {
+  //       assert_eq!(k, &"first");
+  //       assert_eq!(v, &5);
+  //     } else if i == 1 {
+  //       assert_eq!(k, &"second");
+  //       assert_eq!(v, &10);
+  //     } else if i == 2 {
+  //       assert_eq!(k, &"third");
+  //       assert_eq!(v, &10);
+  //     } else {
+  //       unreachable!("should not have added more than 3 items to v3");
+  //     }
+  //   }
+  // }
 }
