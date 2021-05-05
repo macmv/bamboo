@@ -92,6 +92,7 @@ impl<K: Eq + Hash + Debug + Clone + Copy, V> Registry<K, V> {
     self.items.iter()
   }
 
+  #[cfg(test)]
   fn validate_index(&self, i: usize) {
     let (k, _) = self.items.get(i).unwrap();
     assert_eq!(self.ids[k], i);
@@ -157,6 +158,7 @@ impl<K: Eq + Hash + Debug + Clone + Copy, V: Clone> CloningRegistry<K, V> {
     self.current.iter()
   }
 
+  #[cfg(test)]
   fn validate_index(&self, i: usize) {
     self.current.validate_index(i);
   }
