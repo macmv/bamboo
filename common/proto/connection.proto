@@ -38,14 +38,14 @@ message Packet {
   repeated uint64 longs              = 6;
   repeated float floats              = 7;
   repeated double doubles            = 8;
-  repeated string strings            = 9;
+  repeated string strs               = 9;
   repeated UUID uuids                = 10;
-  repeated bytes NBTTags             = 11;
-  repeated bytes byteArrays          = 12;
-  repeated uint64 positions          = 13;
-  repeated IntArray intArrays        = 14;
-  repeated LongArray longArrays      = 15;
-  repeated StringArray stringArrays  = 16;
+  repeated uint64 positions          = 11;
+  repeated bytes NBTTags             = 12;
+  repeated bytes byte_arrs           = 13;
+  repeated IntArray int_arrs         = 14;
+  repeated LongArray long_arrs       = 15;
+  repeated StringArray str_arrs      = 16;
   repeated google.protobuf.Any other = 17;
 }
 
