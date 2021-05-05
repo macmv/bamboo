@@ -14,12 +14,9 @@ use tokio::{
 };
 use tonic::{Status, Streaming};
 
-use common::{math::UUID, proto::Packet};
+use common::{math::UUID, net::cb, proto::Packet};
 
-use crate::{
-  net::{cb, Connection},
-  player::Player,
-};
+use crate::{net::Connection, player::Player};
 
 pub struct World {
   chunks:  HashMap<chunk::Pos, Mutex<chunk::Chunk>>,

@@ -3,7 +3,10 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use tokio::sync::{mpsc::Sender, Mutex};
 use tonic::{Status, Streaming};
 
-use common::{net::cb, proto};
+use common::{
+  net::{cb, sb},
+  proto,
+};
 
 pub struct Connection {
   rx:     Mutex<Streaming<proto::Packet>>,

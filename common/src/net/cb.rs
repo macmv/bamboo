@@ -16,6 +16,10 @@ impl Packet {
     let id = ID::from_i32(pb.id);
     Packet { id, pb }
   }
+  pub fn to_proto(mut self) -> proto::Packet {
+    self.pb.id = self.id.to_i32();
+    self.pb
+  }
   pub fn id(&self) -> ID {
     self.id
   }
