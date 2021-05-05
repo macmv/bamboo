@@ -14,8 +14,8 @@ use num_derive::{FromPrimitive, ToPrimitive};
 /// This will always be non exhaustive, as there will always be new versions
 /// added to the game.
 #[non_exhaustive]
-#[derive(Clone, Copy, FromPrimitive, ToPrimitive, Debug)]
-pub enum Protocol {
+#[derive(Clone, Copy, FromPrimitive, ToPrimitive, Debug, PartialEq, Eq, Hash)]
+pub enum ProtocolVersion {
   VInvalid = 0,
 
   V1_8 = 47,
@@ -54,7 +54,7 @@ pub enum Protocol {
   V1_16_5 = 754,
 }
 
-impl Protocol {
+impl ProtocolVersion {
   /// Creates a new protocol version from the given id. If the version is
   /// invalid, then this returns `VInvalid`.
   pub fn from(v: u32) -> Self {
