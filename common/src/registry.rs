@@ -43,6 +43,11 @@ impl<K: Eq + Hash + Debug + Clone + Copy, V> Registry<K, V> {
     if self.ids.contains_key(&k) {
       panic!("registry already contains key {:?}", k);
     }
+    // Shifts all ids after index up by one, so that they correctly index into
+    // self.items.
+    for (k, _) in &self.items[self.index..] {
+      *self.ids.get_mut(k).unwrap() += 1;
+    }
     self.ids.insert(k, self.index);
     self.items.insert(self.index, (k, v));
     self.index += 1;
