@@ -4,6 +4,7 @@ extern crate log;
 pub mod conn;
 pub mod packet;
 pub mod packet_stream;
+pub mod version;
 
 use crate::conn::Conn;
 

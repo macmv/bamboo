@@ -64,6 +64,7 @@ impl World {
         // Once per second, send keep alive packet
         if tick % 20 == 0 {
           let out = cb::Packet::new(cb::ID::KeepAlive);
+          // TODO: Keep alive id
           conn.send(out).await;
         }
         tick += 1;
@@ -86,6 +87,7 @@ impl WorldManager {
   /// proxy connects.
   pub async fn new_player(&self, req: Streaming<Packet>, tx: Sender<Result<Packet, Status>>) {
     // Default world. Might want to change this later, but for now this is easiest.
+    // TODO: Player name, uuid
     self.worlds[0].lock().await.new_player(
       "macmv".into(),
       UUID::from_u128(0x1111111),

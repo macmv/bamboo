@@ -1,6 +1,6 @@
 use num_derive::FromPrimitive;
 
-use common::proto;
+use crate::proto;
 
 #[derive(Clone, Debug)]
 pub struct Packet {
@@ -8,7 +8,7 @@ pub struct Packet {
   pb: proto::Packet,
 }
 
-#[derive(Clone, Copy, FromPrimitive, Debug)]
+#[derive(Clone, Copy, FromPrimitive, Debug, PartialEq, Eq, Hash)]
 pub enum ID {
   TeleportConfirm,
   QueryBlockNBT,

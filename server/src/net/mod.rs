@@ -1,12 +1,9 @@
-pub mod cb;
-pub mod sb;
-
 use log::info;
 use std::sync::atomic::{AtomicBool, Ordering};
 use tokio::sync::{mpsc::Sender, Mutex};
 use tonic::{Status, Streaming};
 
-use common::proto;
+use common::{net::cb, proto};
 
 pub struct Connection {
   rx:     Mutex<Streaming<proto::Packet>>,

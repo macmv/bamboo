@@ -1,10 +1,11 @@
 use crate::{
   packet::Packet,
   packet_stream::{StreamReader, StreamWriter},
+  version,
 };
 
-use common::{proto, proto::minecraft_client::MinecraftClient};
-use std::{error::Error, io, io::ErrorKind};
+use common::{net::cb, proto, proto::minecraft_client::MinecraftClient, version::ProtocolVersion};
+use std::{error::Error, io, io::ErrorKind, sync::Arc};
 use tokio::sync::mpsc;
 use tokio_stream::wrappers::ReceiverStream;
 use tonic::{transport::channel::Channel, Request, Status, Streaming};
@@ -35,16 +36,19 @@ pub struct Conn {
   client_writer: StreamWriter,
   server:        MinecraftClient<Channel>,
   state:         State,
+  gen:           Arc<version::Generator>,
 }
 
 pub struct ClientListener {
   client: StreamReader,
   server: mpsc::Sender<proto::Packet>,
+  gen:    Arc<version::Generator>,
 }
 
 pub struct ServerListener {
   client: StreamWriter,
   server: Streaming<proto::Packet>,
+  gen:    Arc<version::Generator>,
 }
 
 impl ClientListener {
@@ -77,12 +81,13 @@ impl ClientListener {
 impl ServerListener {
   pub async fn run(&mut self) -> Result<(), Box<dyn Error>> {
     loop {
-      match self.server.message().await? {
-        Some(m) => {
-          info!("got grpc packet {:?}", m);
-        }
-        None => break,
+      let p = self.server.message().await?;
+      if p.is_none() {
+        break;
       }
+      let p = p.unwrap();
+      let cb = self.gen.clientbound(ProtocolVersion::V1_8, cb::Packet::from_proto(p));
+      self.client.write(cb).await;
     }
     info!("closing connection with server");
 
@@ -101,6 +106,7 @@ impl Conn {
       client_writer,
       server: MinecraftClient::connect(ip).await?,
       state: State::Handshake,
+      gen: Arc::new(version::Generator::new()),
     })
   }
 
@@ -111,8 +117,8 @@ impl Conn {
     let inbound = response.into_inner();
 
     Ok((
-      ClientListener { client: self.client_reader, server: tx },
-      ServerListener { client: self.client_writer, server: inbound },
+      ClientListener { gen: self.gen.clone(), client: self.client_reader, server: tx },
+      ServerListener { gen: self.gen, client: self.client_writer, server: inbound },
     ))
   }
 

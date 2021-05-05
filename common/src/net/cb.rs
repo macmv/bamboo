@@ -1,6 +1,6 @@
-use num_derive::ToPrimitive;
+use num_derive::{FromPrimitive, ToPrimitive};
 
-use common::proto;
+use crate::proto;
 
 #[derive(Clone, Debug)]
 pub struct Packet {
@@ -12,16 +12,28 @@ impl Packet {
   pub fn new(id: ID) -> Self {
     Packet { id, pb: proto::Packet::default() }
   }
-  pub fn to_proto(mut self) -> proto::Packet {
-    match num::ToPrimitive::to_i32(&self.id) {
-      Some(v) => self.pb.id = v,
-      None => panic!("error converting packet id to int"),
-    }
-    self.pb
+  pub fn from_proto(pb: proto::Packet) -> Self {
+    let id = ID::from_i32(pb.id);
+    Packet { id, pb }
+  }
+  pub fn id(&self) -> ID {
+    self.id
+  }
+  pub fn pb(&self) -> &proto::Packet {
+    &self.pb
   }
 }
 
-#[derive(Clone, Copy, ToPrimitive, Debug)]
+impl ID {
+  pub fn to_i32(&self) -> i32 {
+    num::ToPrimitive::to_i32(self).unwrap()
+  }
+  pub fn from_i32(id: i32) -> Self {
+    num::FromPrimitive::from_i32(id).unwrap()
+  }
+}
+
+#[derive(Clone, Copy, FromPrimitive, ToPrimitive, Debug, PartialEq, Eq, Hash)]
 pub enum ID {
   SpawnEntity = 0,
   SpawnExpOrb,

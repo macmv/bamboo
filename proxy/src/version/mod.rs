@@ -1,7 +1,7 @@
 mod cb;
 mod sb;
 
-use common::{proto, version::ProtocolVersion};
+use common::{net::cb::Packet as CbPacket, version::ProtocolVersion};
 
 use crate::packet::Packet;
 
@@ -14,7 +14,7 @@ impl Generator {
   pub fn new() -> Generator {
     Generator { cb: cb::Generator::new() }
   }
-  pub fn clientbound(&self, v: ProtocolVersion, p: proto::Packet) -> Packet {
+  pub fn clientbound(&self, v: ProtocolVersion, p: CbPacket) -> Packet {
     self.cb.convert(v, p)
   }
 }
