@@ -91,6 +91,11 @@ impl<K: Eq + Hash + Debug + Clone + Copy, V> Registry<K, V> {
   pub fn iter(&self) -> slice::Iter<'_, (K, V)> {
     self.items.iter()
   }
+
+  fn validate_index(&self, i: usize) {
+    let (k, _) = self.items.get(i).unwrap();
+    assert_eq!(self.ids[k], i);
+  }
 }
 
 /// This is a registry with any number of children. It is used to build the tree
@@ -150,6 +155,10 @@ impl<K: Eq + Hash + Debug + Clone + Copy, V: Clone> CloningRegistry<K, V> {
   /// Iterates through all elements, in order of index.
   pub fn iter(&self) -> slice::Iter<'_, (K, V)> {
     self.current.iter()
+  }
+
+  fn validate_index(&self, i: usize) {
+    self.current.validate_index(i);
   }
 }
 
@@ -236,6 +245,7 @@ mod tests {
       }
       assert_eq!(v, &e);
       assert_eq!(reg.get_index(i).unwrap(), &e);
+      reg.validate_index(i);
     }
   }
 
@@ -263,6 +273,7 @@ mod tests {
       }
       assert_eq!(v, &e);
       assert_eq!(reg.get_index(i).unwrap(), &e);
+      reg.validate_index(i);
     }
   }
 
@@ -287,6 +298,7 @@ mod tests {
       }
       assert_eq!(v, &e);
       assert_eq!(current.get_index(i).unwrap(), &e);
+      current.validate_index(i);
     }
     let current = reg.get(3).unwrap();
     for (i, v) in current.iter().enumerate() {
@@ -299,6 +311,7 @@ mod tests {
       }
       assert_eq!(v, &e);
       assert_eq!(current.get_index(i).unwrap(), &e);
+      current.validate_index(i);
     }
   }
 }
