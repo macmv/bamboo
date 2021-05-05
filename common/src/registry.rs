@@ -13,11 +13,11 @@ use std::{
 /// data, or just stored and referenced at runtime.
 ///
 /// Blocks/items will be registered with a [`VersionedRegistry`], so that any
-/// changes made to older versions of the game will be propogated to newer
+/// changes made to older versions of the game will be propagated to newer
 /// versions.
 ///
 /// This is going to be used to generate packet specs. Because packet specs for
-/// a version can be built entireley on their own, it is easier to clone a
+/// a version can be built entirely on their own, it is easier to clone a
 /// registry and then edit the cloned one.
 #[derive(Clone, Debug)]
 pub struct Registry<K: Eq + Hash + Debug + Clone + Copy, V> {
@@ -62,6 +62,52 @@ impl<K: Eq + Hash + Debug + Clone + Copy, V> Registry<K, V> {
     }
     self.index = i;
     self.insert(k, v);
+  }
+
+  /// Removes the entry with the given key. If the writing index is past that
+  /// entry, then it will be moved backwards, so that inserts in the future work
+  /// as expected.
+  ///
+  /// ```rust
+  /// # use common::registry::Registry;
+  /// # let some_value = 100;
+  /// let mut reg = Registry::new();
+  /// reg.add("a", some_value);
+  /// reg.add("b", some_value);
+  /// reg.add("c", some_value);
+  /// reg.insert_at(1, "inserted", some_value);
+  /// // We now have a registry which looks like:
+  /// // - a
+  /// // - inserted
+  /// // - b
+  /// // - c
+  /// reg.remove("a");
+  /// reg.insert("inserted again", some_value);
+  /// // We now have a registry which looks like:
+  /// // - inserted
+  /// // - inserted again
+  /// // - b
+  /// // - c
+  /// ```
+  ///
+  /// Without the decrement of the insert index, `"insert again"` would have
+  /// been placed after `"b"`.
+  pub fn remove(&mut self, k: K) {
+    self.remove_index(self.ids[&k]);
+  }
+  /// Removes an entry via its index. See [`remove`](Self::remove) for more.
+  pub fn remove_index(&mut self, i: usize) {
+    // Shifts all ids after index down by one, so that they correctly index into
+    // self.items.
+    for (k, _) in &self.items[i + 1..] {
+      *self.ids.get_mut(k).unwrap() -= 1;
+    }
+    let (k, _) = self.items[i];
+    self.ids.remove(&k);
+    self.items.remove(i);
+    if self.index >= i {
+      self.index -= 1;
+    }
   }
 
   /// Appends the given item to the end of the registry. Panics if the key
@@ -277,6 +323,66 @@ mod tests {
         4 => e = ("second", 10),
         5 => e = ("third", 20),
         _ => unreachable!("should not have added more than 6 items"),
+      }
+      assert_eq!(v, &e);
+      assert_eq!(reg.get_index(i).unwrap(), &e);
+      reg.validate_index(i);
+    }
+  }
+
+  #[test]
+  pub fn registry_remove() {
+    let mut reg = Registry::new();
+    reg.add("first", 5);
+    reg.add("second", 10);
+    reg.add("third", 20);
+    reg.add("fourth", 20);
+    reg.insert_at(1, "funny", 420);
+    for (i, v) in reg.iter().enumerate() {
+      // Expected value
+      let e;
+      match i {
+        0 => e = ("first", 5),
+        1 => e = ("funny", 420),
+        2 => e = ("second", 10),
+        3 => e = ("third", 20),
+        4 => e = ("fourth", 20),
+        _ => unreachable!("too many items"),
+      }
+      assert_eq!(v, &e);
+      assert_eq!(reg.get_index(i).unwrap(), &e);
+      reg.validate_index(i);
+    }
+    // This should decrement all elements, including reg.index. We validate that
+    // reg.index has been decreased by checking the output of reg.insert(). See
+    // below.
+    reg.remove("funny");
+    for (i, v) in reg.iter().enumerate() {
+      // Expected value
+      let e;
+      match i {
+        0 => e = ("first", 5),
+        1 => e = ("second", 10),
+        2 => e = ("third", 20),
+        3 => e = ("fourth", 20),
+        _ => unreachable!("too many items"),
+      }
+      assert_eq!(v, &e);
+      assert_eq!(reg.get_index(i).unwrap(), &e);
+      reg.validate_index(i);
+    }
+    // If reg.index was not decremented, then this would insert at index 2.
+    reg.insert("funny (but new)", 420);
+    for (i, v) in reg.iter().enumerate() {
+      // Expected value
+      let e;
+      match i {
+        0 => e = ("first", 5),
+        1 => e = ("funny (but new)", 420),
+        2 => e = ("second", 10),
+        3 => e = ("third", 20),
+        4 => e = ("fourth", 20),
+        _ => unreachable!("too many items"),
       }
       assert_eq!(v, &e);
       assert_eq!(reg.get_index(i).unwrap(), &e);
