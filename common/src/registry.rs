@@ -227,16 +227,15 @@ mod tests {
     let mut reg = Registry::new();
     reg.add("stone", 5);
     reg.add("dirt", 10);
-    for (i, (k, v)) in reg.iter().enumerate() {
-      if i == 0 {
-        assert_eq!(k, &"stone");
-        assert_eq!(v, &5);
-      } else if i == 1 {
-        assert_eq!(k, &"dirt");
-        assert_eq!(v, &10);
-      } else {
-        unreachable!("should not have added more than 2 items");
+    for (i, v) in reg.iter().enumerate() {
+      let e;
+      match i {
+        0 => e = ("stone", 5),
+        1 => e = ("dirt", 10),
+        _ => unreachable!("should not have added more than 2 items"),
       }
+      assert_eq!(v, &e);
+      assert_eq!(reg.get_index(i).unwrap(), &e);
     }
   }
 
@@ -249,29 +248,21 @@ mod tests {
     reg.insert_at(1, "inserted at", 100);
     reg.insert_at(1, "inserted at again", 100);
     reg.insert("inserted", 100);
-    for (i, (k, v)) in reg.iter().enumerate() {
+    for (i, v) in reg.iter().enumerate() {
       dbg!(i);
-      if i == 0 {
-        assert_eq!(k, &"first");
-        assert_eq!(v, &5);
-      } else if i == 1 {
-        assert_eq!(k, &"inserted at again");
-        assert_eq!(v, &100);
-      } else if i == 2 {
-        assert_eq!(k, &"inserted");
-        assert_eq!(v, &100);
-      } else if i == 3 {
-        assert_eq!(k, &"inserted at");
-        assert_eq!(v, &100);
-      } else if i == 4 {
-        assert_eq!(k, &"second");
-        assert_eq!(v, &10);
-      } else if i == 5 {
-        assert_eq!(k, &"third");
-        assert_eq!(v, &20);
-      } else {
-        unreachable!("should not have added more than 6 items");
+      // Expected value
+      let e;
+      match i {
+        0 => e = ("first", 5),
+        1 => e = ("inserted at again", 100),
+        2 => e = ("inserted", 100),
+        3 => e = ("inserted at", 100),
+        4 => e = ("second", 10),
+        5 => e = ("third", 20),
+        _ => unreachable!("should not have added more than 6 items"),
       }
+      assert_eq!(v, &e);
+      assert_eq!(reg.get_index(i).unwrap(), &e);
     }
   }
 
@@ -286,30 +277,28 @@ mod tests {
     // This should only be added to v3.
     reg.add(3, "third", 20);
     dbg!(&reg);
-    for (i, (k, v)) in reg.get(2).unwrap().iter().enumerate() {
-      if i == 0 {
-        assert_eq!(k, &"first");
-        assert_eq!(v.as_ref(), &5);
-      } else if i == 1 {
-        assert_eq!(k, &"second");
-        assert_eq!(v.as_ref(), &10);
-      } else {
-        unreachable!("should not have added more than 2 items to v2");
+    let current = reg.get(2).unwrap();
+    for (i, v) in current.iter().enumerate() {
+      let e;
+      match i {
+        0 => e = ("first", Rc::new(5)),
+        1 => e = ("second", Rc::new(10)),
+        _ => unreachable!("should not have added more than 2 items to v2"),
       }
+      assert_eq!(v, &e);
+      assert_eq!(current.get_index(i).unwrap(), &e);
     }
-    for (i, (k, v)) in reg.get(3).unwrap().iter().enumerate() {
-      if i == 0 {
-        assert_eq!(k, &"first");
-        assert_eq!(v.as_ref(), &5);
-      } else if i == 1 {
-        assert_eq!(k, &"second");
-        assert_eq!(v.as_ref(), &10);
-      } else if i == 2 {
-        assert_eq!(k, &"third");
-        assert_eq!(v.as_ref(), &20);
-      } else {
-        unreachable!("should not have added more than 3 items to v3");
+    let current = reg.get(3).unwrap();
+    for (i, v) in current.iter().enumerate() {
+      let e;
+      match i {
+        0 => e = ("first", Rc::new(5)),
+        1 => e = ("second", Rc::new(10)),
+        2 => e = ("third", Rc::new(20)),
+        _ => unreachable!("should not have added more than 3 items to v3"),
       }
+      assert_eq!(v, &e);
+      assert_eq!(current.get_index(i).unwrap(), &e);
     }
   }
 }
