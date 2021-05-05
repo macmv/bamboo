@@ -1,9 +1,14 @@
+use crate::proto;
+
 #[derive(Debug, Clone, Copy)]
 pub struct UUID(u128);
 
 impl UUID {
   pub fn from_u128(v: u128) -> Self {
     UUID(v)
+  }
+  pub fn as_proto(&self) -> proto::Uuid {
+    proto::Uuid { be_data: self.as_be_bytes().to_vec() }
   }
   /// Returns the uuid represented as a hex string, with no dashes or other
   /// characters.

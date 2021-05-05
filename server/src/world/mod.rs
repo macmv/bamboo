@@ -60,8 +60,8 @@ impl World {
         }
         // Once per second, send keep alive packet
         if tick % 20 == 0 {
-          let out = cb::Packet::new(cb::ID::KeepAlive);
-          // TODO: Keep alive id
+          let mut out = cb::Packet::new(cb::ID::KeepAlive);
+          out.set_i32(0, 1234556);
           conn.send(out).await;
         }
         tick += 1;
