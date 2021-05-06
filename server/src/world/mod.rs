@@ -14,12 +14,16 @@ use tokio::{
 };
 use tonic::{Status, Streaming};
 
-use common::{math::UUID, net::cb, proto::Packet};
+use common::{
+  math::{Pos, UUID},
+  net::cb,
+  proto::Packet,
+};
 
 use crate::{net::Connection, player::Player};
 
 pub struct World {
-  chunks:  HashMap<chunk::Pos, Mutex<chunk::Chunk>>,
+  chunks:  HashMap<Pos, Mutex<chunk::Chunk>>,
   players: Vec<Arc<Mutex<Player>>>,
   eid:     Arc<AtomicU32>,
 }

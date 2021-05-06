@@ -80,6 +80,36 @@ impl Pos {
   pub fn z(&self) -> i32 {
     self.z
   }
+  /// Returns the chunk X value of the position. This is just x / 16, rounded
+  /// down.
+  #[inline(always)]
+  pub fn chunk_x(&self) -> i32 {
+    if self.x < 0 {
+      (self.x + 1) / 16 - 1
+    } else {
+      self.x / 16
+    }
+  }
+  /// Returns the chunk Y value of the position. This is just y / 16, rounded
+  /// down.
+  #[inline(always)]
+  pub fn chunk_y(&self) -> i32 {
+    if self.y < 0 {
+      (self.y + 1) / 16 - 1
+    } else {
+      self.y / 16
+    }
+  }
+  /// Returns the chunk Z value of the position. This is just z / 16, rounded
+  /// down.
+  #[inline(always)]
+  pub fn chunk_z(&self) -> i32 {
+    if self.z < 0 {
+      (self.z + 1) / 16 - 1
+    } else {
+      self.z / 16
+    }
+  }
   /// Creates a new error from this position. This should be used to signify
   /// that an invalid position was passed somewhere.
   pub fn err(&self, msg: String) -> PosError {

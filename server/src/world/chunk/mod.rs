@@ -4,26 +4,61 @@ mod section;
 
 use std::collections::HashMap;
 
-use common::{proto, version::BlockVersion};
-
+use crate::block;
 use section::Section;
 
-/// A chunk column position.
-pub struct Pos {
-  x: i32,
-  z: i32,
-}
+use common::{
+  math::{Pos, PosError},
+  proto,
+  version::BlockVersion,
+};
 
 /// A chunk column. This is not clone, because that would mean duplicating an
 /// entire chunk, which you probably don't want to do. If you do need to clone a
 /// chunk, use [`Chunk::duplicate()`].
 pub struct Chunk {
   sections: Vec<Option<Box<dyn Section + Send>>>,
+  ver:      BlockVersion,
 }
 
 impl Chunk {
-  pub fn new(v: BlockVersion) -> Self {
-    Chunk { sections: Vec::new() }
+  pub fn new(ver: BlockVersion) -> Self {
+    Chunk { sections: Vec::new(), ver }
+  }
+  /// This updates the internal data to contain a block at the given position.
+  /// In release mode, the position is not checked. In any other mode, a
+  /// PosError will be returned if any of the x, y, or z are outside of 0..16
+  fn set_block(&mut self, pos: Pos, ty: block::Type) -> Result<(), PosError> {
+    let index = pos.chunk_y();
+    if index < 0 || index >= 16 {
+      return Err(pos.err("Y coordinate is outside of chunk".into()));
+    }
+    let index = index as usize;
+    if index >= self.sections.len() {
+      self.sections.resize_with(index + 1, || None);
+    }
+    if self.sections[index].is_none() {
+      self.sections[index] = Some(if self.ver > BlockVersion::V1_8 {
+        fixed::Section::new()
+      } else {
+        paletted::Section::new()
+      })
+    }
+    self.sections[index].unwrap().set_block(pos, ty)
+  }
+  /// This updates the internal data to contain a block at the given position.
+  /// In release mode, the position is not checked. In any other mode, a
+  /// PosError will be returned if any of the x, y, or z are outside of 0..16
+  fn get_block(&self, pos: Pos) -> Result<block::Type, PosError> {
+    let index = pos.chunk_y();
+    if index < 0 || index >= 16 {
+      return Err(pos.err("Y coordinate is outside of chunk".into()));
+    }
+    let index = index as usize;
+    if index >= self.sections.len() || self.sections[index].is_none() {
+      return Ok(block::Type::air());
+    }
+    self.sections[index].unwrap().get_block(pos)
   }
   /// Generates a protobuf containing all of the chunk data. X and Z will both
   /// be 0.

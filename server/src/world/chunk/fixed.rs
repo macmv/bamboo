@@ -11,8 +11,8 @@ pub struct Section {
 }
 
 impl Section {
-  fn new() -> Self {
-    Section { data: [0; 16 * 16 * 16] }
+  pub(super) fn new() -> Box<dyn ChunkSection + Send> {
+    Box::new(Section { data: [0; 16 * 16 * 16] })
   }
   fn set_block_id(&mut self, p: Pos, id: u16) {
     self.data[p.y() as usize * 16 * 16 + p.z() as usize * 16 + p.x() as usize] = id;
