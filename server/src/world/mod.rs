@@ -34,8 +34,8 @@ pub struct ChunkRef<'a> {
 }
 
 impl ChunkRef<'_> {
-  fn lock<'a>(&'a self) -> &'a MultiChunk {
-    &self.chunks.get(&self.pos).unwrap().lock().unwrap()
+  fn lock<'a>(&'a self) -> StdMutexGuard<'a, MultiChunk> {
+    self.chunks.get(&self.pos).unwrap().lock().unwrap()
   }
 }
 
@@ -92,7 +92,8 @@ impl World {
           for z in -10..10 {
             let mut out = cb::Packet::new(cb::ID::ChunkData);
             {
-              let chunk = self.chunk(ChunkPos::new(x, z)).await.lock();
+              let chunk = self.chunk(ChunkPos::new(x, z)).await;
+              let chunk = chunk.lock();
               out.set_other(&chunk.to_proto(p.ver().block())).unwrap();
             }
             conn.send(out).await;
@@ -117,7 +118,7 @@ impl World {
       let mut chunks = self.chunks.write().await;
       // Make sure that we didn't get a race condition
       if !chunks.contains_key(&pos) {
-        // And finally generate the chunk.
+        // TODO: Terrain generation here
         chunks.insert(pos, Arc::new(StdMutex::new(MultiChunk::new())));
       }
     }
