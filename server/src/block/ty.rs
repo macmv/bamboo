@@ -14,4 +14,7 @@ impl Type {
   pub fn kind(&self) -> &Kind {
     &self.kind
   }
+  pub fn id(&self) -> i32 {
+    0
+  }
 }

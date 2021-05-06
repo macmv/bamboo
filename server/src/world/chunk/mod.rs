@@ -1,4 +1,4 @@
-mod direct;
+mod fixed;
 mod paletted;
 mod section;
 

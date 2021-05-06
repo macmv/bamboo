@@ -65,6 +65,26 @@ impl Pos {
     let z = self.z as u64;
     ((x & 0x3ffffff) << 38) | ((y & 0xfff) << 26) | (z & 0x3ffffff)
   }
+  /// Returns the X value of the position.
+  #[inline(always)]
+  pub fn x(&self) -> i32 {
+    self.x
+  }
+  /// Returns the Y value of the position.
+  #[inline(always)]
+  pub fn y(&self) -> i32 {
+    self.y
+  }
+  /// Returns the Z value of the position.
+  #[inline(always)]
+  pub fn z(&self) -> i32 {
+    self.z
+  }
+  /// Creates a new error from this position. This should be used to signify
+  /// that an invalid position was passed somewhere.
+  pub fn err(&self, msg: String) -> PosError {
+    PosError { pos: *self, msg }
+  }
 }
 
 impl Add for Pos {
