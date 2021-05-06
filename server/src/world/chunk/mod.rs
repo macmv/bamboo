@@ -4,7 +4,7 @@ mod section;
 
 use std::collections::HashMap;
 
-use common::proto;
+use common::{proto, version::BlockVersion};
 
 use section::Section;
 
@@ -22,7 +22,7 @@ pub struct Chunk {
 }
 
 impl Chunk {
-  pub fn new() -> Self {
+  pub fn new(v: BlockVersion) -> Self {
     Chunk { sections: Vec::new() }
   }
   /// Generates a protobuf containing all of the chunk data. X and Z will both

@@ -1,5 +1,43 @@
 use num_derive::{FromPrimitive, ToPrimitive};
 
+/// A list of all supported block versions. This is mostly the same as all major
+/// versions of the game. Any time the game gets new blocks, there is a new
+/// version added to this enum.
+#[non_exhaustive]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
+pub enum BlockVersion {
+  Invalid,
+  V1_8,
+  V1_9,
+  V1_10,
+  V1_11,
+  V1_12,
+  V1_13,
+  V1_14,
+  V1_15,
+  V1_16,
+}
+
+impl BlockVersion {
+  /// Returns the protocol version for this block version. This will always
+  /// return the latest version that uses this block version.
+  pub fn protocol(&self) -> ProtocolVersion {
+    // This should always be exaustive, so that new versions don't get missed.
+    match self {
+      Self::Invalid => ProtocolVersion::Invalid,
+      Self::V1_8 => ProtocolVersion::V1_8,
+      Self::V1_9 => ProtocolVersion::V1_9_4,
+      Self::V1_10 => ProtocolVersion::V1_10,
+      Self::V1_11 => ProtocolVersion::V1_11_2,
+      Self::V1_12 => ProtocolVersion::V1_12_2,
+      Self::V1_13 => ProtocolVersion::V1_13_2,
+      Self::V1_14 => ProtocolVersion::V1_14_4,
+      Self::V1_15 => ProtocolVersion::V1_15_2,
+      Self::V1_16 => ProtocolVersion::V1_16_5,
+    }
+  }
+}
+
 /// A list of all protocol versions. This is mostly inclusive to what this
 /// server supports. I do not plan to add support for anything pre-1.8.
 /// Currently, 1.9 - 1.11 is not worth my time, so I probably will never support
@@ -69,6 +107,39 @@ impl ProtocolVersion {
     match num::ToPrimitive::to_u32(self) {
       Some(v) => v,
       None => 0,
+    }
+  }
+  /// Returns the block version that this protocol version uses.
+  pub fn block(&self) -> BlockVersion {
+    match self {
+      // Should always be exaustive, so that new versions aren't missed.
+      Self::Invalid => BlockVersion::Invalid,
+      Self::V1_8 => BlockVersion::V1_8,
+      Self::V1_9 => BlockVersion::V1_9,
+      Self::V1_9_2 => BlockVersion::V1_9,
+      Self::V1_9_4 => BlockVersion::V1_9,
+      Self::V1_10 => BlockVersion::V1_10,
+      Self::V1_11 => BlockVersion::V1_11,
+      Self::V1_11_2 => BlockVersion::V1_11,
+      Self::V1_12 => BlockVersion::V1_12,
+      Self::V1_12_1 => BlockVersion::V1_12,
+      Self::V1_12_2 => BlockVersion::V1_12,
+      Self::V1_13 => BlockVersion::V1_13,
+      Self::V1_13_1 => BlockVersion::V1_13,
+      Self::V1_13_2 => BlockVersion::V1_13,
+      Self::V1_14 => BlockVersion::V1_14,
+      Self::V1_14_1 => BlockVersion::V1_14,
+      Self::V1_14_2 => BlockVersion::V1_14,
+      Self::V1_14_3 => BlockVersion::V1_14,
+      Self::V1_14_4 => BlockVersion::V1_14,
+      Self::V1_15 => BlockVersion::V1_15,
+      Self::V1_15_1 => BlockVersion::V1_15,
+      Self::V1_15_2 => BlockVersion::V1_15,
+      Self::V1_16 => BlockVersion::V1_16,
+      Self::V1_16_1 => BlockVersion::V1_16,
+      Self::V1_16_2 => BlockVersion::V1_16,
+      Self::V1_16_3 => BlockVersion::V1_16,
+      Self::V1_16_5 => BlockVersion::V1_16,
     }
   }
 }
