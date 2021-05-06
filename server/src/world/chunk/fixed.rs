@@ -17,6 +17,9 @@ impl Section {
   fn set_block_id(&mut self, p: Pos, id: u16) {
     self.data[p.y() as usize * 16 * 16 + p.z() as usize * 16 + p.x() as usize] = id;
   }
+  fn get_block_id(&mut self, p: Pos) -> u16 {
+    self.data[p.y() as usize * 16 * 16 + p.z() as usize * 16 + p.x() as usize]
+  }
 }
 
 impl ChunkSection for Section {
@@ -63,5 +66,16 @@ mod tests {
     e[16] = 10;
     e[16 * 16] = 20;
     assert_eq!(s.data, e);
+  }
+
+  #[test]
+  fn get_block_id() {
+    let mut s = Section::new();
+    s.set_block_id(Pos::new(1, 0, 0), 5);
+    s.set_block_id(Pos::new(0, 1, 0), 10);
+    s.set_block_id(Pos::new(0, 0, 1), 20);
+    assert_eq!(s.get_block_id(Pos::new(1, 0, 0)), 5);
+    assert_eq!(s.get_block_id(Pos::new(0, 1, 0)), 10);
+    assert_eq!(s.get_block_id(Pos::new(0, 0, 1)), 20);
   }
 }
