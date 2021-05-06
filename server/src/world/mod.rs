@@ -3,6 +3,7 @@ mod chunk;
 use std::{
   collections::HashMap,
   future::Future,
+  ops::Deref,
   sync::{
     atomic::{AtomicU32, Ordering},
     Arc,
@@ -25,8 +26,22 @@ use common::{
 use crate::{net::Connection, player::Player};
 use chunk::MultiChunk;
 
+// pub struct ChunkRef<'a> {
+//   chunk:  Option<MutexGuard<'a, MultiChunk>>,
+//   // Need to keep this is scope while we mess with the chunk
+//   chunks: RwLockReadGuard<'a, HashMap<ChunkPos, Mutex<MultiChunk>>>,
+// }
+//
+// impl Deref for ChunkRef<'_> {
+//   type Target = MultiChunk;
+//
+//   fn deref(&self) -> &MultiChunk {
+//     &self.chunk
+//   }
+// }
+
 pub struct World {
-  chunks:  RwLock<HashMap<ChunkPos, Mutex<MultiChunk>>>,
+  chunks:  RwLock<HashMap<ChunkPos, Arc<Mutex<MultiChunk>>>>,
   players: Mutex<Vec<Arc<Mutex<Player>>>>,
   eid:     Arc<AtomicU32>,
 }
@@ -76,8 +91,8 @@ impl World {
         }
         for x in -10..10 {
           for z in -10..10 {
-            let chunks = self.chunks().await;
-            let chunk = chunks[&ChunkPos::new(x, z)].lock().await;
+            let chunk = self.chunk(ChunkPos::new(x, z)).await;
+            let chunk = chunk.lock().await;
 
             let mut out = cb::Packet::new(cb::ID::ChunkData);
             out.set_other(&chunk.to_proto(p.ver().block())).unwrap();
@@ -94,19 +109,22 @@ impl World {
     self.eid.fetch_add(1, Ordering::SeqCst)
   }
 
-  /// Returns a locked reference to all the chunks in the world.
-  pub async fn chunks<'a>(&'a self) -> RwLockReadGuard<'a, HashMap<ChunkPos, Mutex<MultiChunk>>> {
-    self.chunks.read().await
+  /// Returns a locked Chunk. This will generate a new chunk if there is not one
+  /// stored there.
+  pub async fn chunk<'a>(&'a self, pos: ChunkPos) -> Arc<Mutex<MultiChunk>> {
+    // We first check (read-only) if we need to generate a new chunk
+    if !self.chunks.read().await.contains_key(&pos) {
+      // If we do, we lock it for writing
+      let mut chunks = self.chunks.write().await;
+      // Make sure that we didn't get a race condition
+      if !chunks.contains_key(&pos) {
+        // And finally generate the chunk.
+        chunks.insert(pos, Arc::new(Mutex::new(MultiChunk::new())));
+      }
+    }
+    let chunks = self.chunks.read().await;
+    chunks[&pos].clone()
   }
-  // Returns a locked Chunk. This will generate a new chunk if there is not one
-  // stored there.
-  // pub async fn chunk<'a>(&'a self, pos: ChunkPos) -> MutexGuard<'a, MultiChunk>
-  // {   if !self.chunks.read().await.contains_key(&pos) {
-  //     // TODO: Terrain generation goes here
-  //     self.chunks.write().await.insert(pos, Mutex::new(MultiChunk::new()));
-  //   }
-  //   // self.chunks.read().await[&pos].lock().await
-  // }
 }
 
 impl WorldManager {
