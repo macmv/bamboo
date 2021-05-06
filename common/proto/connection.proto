@@ -101,7 +101,7 @@ message MultiBlockChange {
   int32 z = 4;
 }
 
-message ChunkData {
+message Chunk {
   int32 x = 1;
   int32 z = 2;
   map<int32, Section> sections = 3;

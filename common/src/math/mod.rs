@@ -1,5 +1,5 @@
 mod pos;
-pub use pos::Pos;
+pub use pos::{Pos, PosError};
 
 use crate::proto;
 

@@ -1,10 +1,34 @@
-use std::ops::{Add, AddAssign, Sub, SubAssign};
+use std::{
+  error::Error,
+  fmt,
+  ops::{Add, AddAssign, Sub, SubAssign},
+};
+
+#[derive(Debug)]
+pub struct PosError {
+  pos: Pos,
+  msg: String,
+}
+
+impl fmt::Display for PosError {
+  fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    write!(f, "invalid position: {} {}", self.pos, self.msg)
+  }
+}
+
+impl Error for PosError {}
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Pos {
   x: i32,
   y: i32,
   z: i32,
+}
+
+impl fmt::Display for Pos {
+  fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    write!(f, "Pos({} {} {})", self.x, self.y, self.z)
+  }
 }
 
 impl Pos {

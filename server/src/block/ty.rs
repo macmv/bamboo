@@ -8,6 +8,9 @@ pub struct Type {
 }
 
 impl Type {
+  pub fn air() -> Type {
+    Type { kind: Kind::air() }
+  }
   pub fn kind(&self) -> &Kind {
     &self.kind
   }

@@ -94,7 +94,7 @@ impl Packet {
     Ok(())
   }
   pub fn decode_other(&self) -> Box<dyn prost::Message> {
-    build_any_decode![self.pb.other.clone().unwrap(), ChunkData, BossBar]
+    build_any_decode![self.pb.other.clone().unwrap(), Chunk, BossBar]
   }
 }
 

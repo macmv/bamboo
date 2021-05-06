@@ -10,6 +10,9 @@ pub struct Kind {
 }
 
 impl Kind {
+  pub fn air() -> Kind {
+    Kind { types: Vec::new() }
+  }
   pub fn default_type(&self) -> &Type {
     &self.types[0]
   }
