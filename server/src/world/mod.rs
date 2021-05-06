@@ -109,8 +109,10 @@ impl World {
     self.eid.fetch_add(1, Ordering::SeqCst)
   }
 
-  /// Returns a locked Chunk. This will generate a new chunk if there is not one
-  /// stored there.
+  /// This calls f(), and passes it a locked chunk. Because there are multiple
+  /// mutexes around the chunk data, this is the cleanest way to access a
+  /// chunk. This will also generate a new chunk if there is not one stored
+  /// there.
   pub async fn chunk<F>(&self, pos: ChunkPos, f: F)
   where
     F: FnOnce(StdMutexGuard<MultiChunk>),
