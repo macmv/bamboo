@@ -1,5 +1,5 @@
 use num_derive::{FromPrimitive, ToPrimitive};
-use prost::EncodeError;
+use prost::{DecodeError, EncodeError, Message};
 use prost_types::Any;
 
 use crate::{math::UUID, proto};
@@ -21,6 +21,28 @@ macro_rules! add_fn {
       self.pb.$arr[i] = $convert(v);
     }
   };
+}
+
+macro_rules! create_type_url {
+  ($ty: expr) => {
+    stringify!(type.googleapis.com/google.rpc.$ty)
+  }
+}
+
+macro_rules! build_any_decode {
+  [$any: expr, $($val: ident),*] => {
+    match $any.type_url.as_str() {
+      $(
+        create_type_url!($val) => {
+          match proto::$val::decode($any.value.as_slice()) {
+            Ok(msg) => Box::new(msg),
+            Err(e) => panic!("error decoding any: {}", e),
+          }
+        },
+      )*
+      _ => panic!("unknown type {}", $any.type_url),
+    }
+  }
 }
 
 impl Packet {
@@ -63,11 +85,15 @@ impl Packet {
     // TODO: Pass names into this function or something
     let name = "proto.ChunkData".into();
     let any = Any { type_url: name, value: b.to_vec() };
+
     if self.pb.other.is_none() {
       panic!("packet {:?} does not need an other!", self.id);
     }
     self.pb.other = Some(any);
     Ok(())
+  }
+  pub fn decode_other(&self) -> Box<dyn prost::Message> {
+    build_any_decode![self.pb.other.clone().unwrap(), ChunkData, BossBar]
   }
 }
 
