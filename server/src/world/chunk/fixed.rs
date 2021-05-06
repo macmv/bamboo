@@ -17,7 +17,7 @@ impl Section {
   fn set_block_id(&mut self, p: Pos, id: u16) {
     self.data[p.y() as usize * 16 * 16 + p.z() as usize * 16 + p.x() as usize] = id;
   }
-  fn get_block_id(&mut self, p: Pos) -> u16 {
+  fn get_block_id(&self, p: Pos) -> u16 {
     self.data[p.y() as usize * 16 * 16 + p.z() as usize * 16 + p.x() as usize]
   }
 }
@@ -26,7 +26,7 @@ impl ChunkSection for Section {
   /// This updates the internal data to contain a block at the given position.
   /// In release mode, the position is not checked. In any other mode, a
   /// PosError will be returned if any of the x, y, or z are outside of 0..16
-  #[cfg(not(release))]
+  #[cfg(debug_assertions)]
   fn set_block(&mut self, pos: Pos, ty: block::Type) -> Result<(), PosError> {
     if pos.x() >= 16 || pos.x() < 0 || pos.y() >= 16 || pos.y() < 0 || pos.z() >= 16 || pos.z() < 0
     {
@@ -35,13 +35,25 @@ impl ChunkSection for Section {
     self.set_block_id(pos, ty.id() as u16);
     Ok(())
   }
-  #[cfg(release)]
+  #[cfg(not(debug_assertions))]
   fn set_block(&mut self, pos: Pos, ty: block::Type) -> Result<(), PosError> {
-    self.set_block_id(pos, ty.id());
+    self.set_block_id(pos, ty.id() as u16);
     Ok(())
   }
+  /// This updates the internal data to contain a block at the given position.
+  /// In release mode, the position is not checked. In any other mode, a
+  /// PosError will be returned if any of the x, y, or z are outside of 0..16
+  #[cfg(debug_assertions)]
   fn get_block(&self, pos: Pos) -> Result<block::Type, PosError> {
-    Ok(block::Type::air())
+    if pos.x() >= 16 || pos.x() < 0 || pos.y() >= 16 || pos.y() < 0 || pos.z() >= 16 || pos.z() < 0
+    {
+      return Err(pos.err("expected a pos within 0 <= x, y, z < 16".into()));
+    }
+    Ok(block::Type::from_id(self.get_block_id(pos) as u32))
+  }
+  #[cfg(not(debug_assertions))]
+  fn get_block(&self, pos: Pos) -> Result<block::Type, PosError> {
+    Ok(block::Type::from_id(self.get_block_id(pos) as u32))
   }
   fn duplicate(&self) -> Box<dyn ChunkSection + Send> {
     Box::new(Section { data: self.data.clone() })

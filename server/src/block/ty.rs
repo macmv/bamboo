@@ -8,13 +8,16 @@ pub struct Type {
 }
 
 impl Type {
+  pub fn from_id(id: u32) -> Self {
+    Type::air()
+  }
   pub fn air() -> Type {
     Type { kind: Kind::air() }
   }
   pub fn kind(&self) -> &Kind {
     &self.kind
   }
-  pub fn id(&self) -> i32 {
+  pub fn id(&self) -> u32 {
     0
   }
 }
