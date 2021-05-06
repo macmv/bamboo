@@ -83,7 +83,8 @@ impl Packet {
     let mut b = bytes::BytesMut::new();
     v.encode(&mut b)?;
     // TODO: Pass names into this function or something
-    let name = "proto.ChunkData".into();
+    let name = create_type_url!(v).into();
+    dbg!(&name);
     let any = Any { type_url: name, value: b.to_vec() };
 
     if self.pb.other.is_none() {
