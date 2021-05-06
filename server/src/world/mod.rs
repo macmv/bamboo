@@ -27,17 +27,17 @@ use common::{
 use crate::{net::Connection, player::Player};
 use chunk::MultiChunk;
 
-pub struct ChunkRef<'a> {
-  pos:    ChunkPos,
-  // Need to keep this is scope while we mess with the chunk
-  chunks: RwLockReadGuard<'a, HashMap<ChunkPos, Arc<StdMutex<MultiChunk>>>>,
-}
-
-impl ChunkRef<'_> {
-  fn lock<'a>(&'a self) -> StdMutexGuard<'a, MultiChunk> {
-    self.chunks.get(&self.pos).unwrap().lock().unwrap()
-  }
-}
+// pub struct ChunkRef<'a> {
+//   pos:    ChunkPos,
+//   // Need to keep this is scope while we mess with the chunk
+//   chunks: RwLockReadGuard<'a, HashMap<ChunkPos, Arc<StdMutex<MultiChunk>>>>,
+// }
+//
+// impl ChunkRef<'_> {
+//   fn lock<'a>(&'a self) -> StdMutexGuard<'a, MultiChunk> {
+//     self.chunks.get(&self.pos).unwrap().lock().unwrap()
+//   }
+// }
 
 pub struct World {
   chunks:  RwLock<HashMap<ChunkPos, Arc<StdMutex<MultiChunk>>>>,
@@ -91,11 +91,11 @@ impl World {
         for x in -10..10 {
           for z in -10..10 {
             let mut out = cb::Packet::new(cb::ID::ChunkData);
-            {
-              let chunk = self.chunk(ChunkPos::new(x, z)).await;
-              let chunk = chunk.lock();
-              out.set_other(&chunk.to_proto(p.ver().block())).unwrap();
-            }
+            self
+              .chunk(ChunkPos::new(x, z), |c| {
+                out.set_other(&c.to_proto(p.ver().block())).unwrap();
+              })
+              .await;
             conn.send(out).await;
           }
         }
@@ -111,7 +111,10 @@ impl World {
 
   /// Returns a locked Chunk. This will generate a new chunk if there is not one
   /// stored there.
-  pub async fn chunk<'a>(&'a self, pos: ChunkPos) -> ChunkRef<'a> {
+  pub async fn chunk<F>(&self, pos: ChunkPos, f: F)
+  where
+    F: FnOnce(StdMutexGuard<MultiChunk>),
+  {
     // We first check (read-only) if we need to generate a new chunk
     if !self.chunks.read().await.contains_key(&pos) {
       // If we do, we lock it for writing
@@ -123,7 +126,8 @@ impl World {
       }
     }
     let chunks = self.chunks.read().await;
-    ChunkRef { chunks, pos }
+    let c = chunks[&pos].lock().unwrap();
+    f(c);
   }
 }
 
