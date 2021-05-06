@@ -1,9 +1,12 @@
+mod chunk_pos;
 mod pos;
+
+pub use chunk_pos::ChunkPos;
 pub use pos::{Pos, PosError};
 
 use crate::proto;
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, Hash, PartialEq, Eq)]
 pub struct UUID(u128);
 
 impl UUID {

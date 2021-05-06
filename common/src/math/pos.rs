@@ -18,7 +18,7 @@ impl fmt::Display for PosError {
 
 impl Error for PosError {}
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, Hash, PartialEq, Eq)]
 pub struct Pos {
   x: i32,
   y: i32,

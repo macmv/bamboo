@@ -15,7 +15,7 @@ use tokio::{
 use tonic::{Status, Streaming};
 
 use common::{
-  math::{Pos, UUID},
+  math::{ChunkPos, UUID},
   net::cb,
   proto::Packet,
 };
@@ -23,7 +23,7 @@ use common::{
 use crate::{net::Connection, player::Player};
 
 pub struct World {
-  chunks:  HashMap<Pos, Mutex<chunk::Chunk>>,
+  chunks:  HashMap<ChunkPos, Mutex<chunk::Chunk>>,
   players: Vec<Arc<Mutex<Player>>>,
   eid:     Arc<AtomicU32>,
 }
