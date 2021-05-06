@@ -1,6 +1,7 @@
-use common::math::UUID;
 use std::sync::Arc;
 use tonic::Status;
+
+use common::{math::UUID, version::ProtocolVersion};
 
 use crate::net::Connection;
 
@@ -11,11 +12,18 @@ pub struct Player {
   username: String,
   uuid:     UUID,
   conn:     Arc<Connection>,
+  ver:      ProtocolVersion,
 }
 
 impl Player {
-  pub fn new(id: u32, username: String, uuid: UUID, conn: Arc<Connection>) -> Self {
-    Player { id, username, uuid, conn }
+  pub fn new(
+    id: u32,
+    username: String,
+    uuid: UUID,
+    conn: Arc<Connection>,
+    ver: ProtocolVersion,
+  ) -> Self {
+    Player { id, username, uuid, conn, ver }
   }
 
   /// Returns the player's username.
@@ -26,5 +34,10 @@ impl Player {
   /// to check if the player has disconnected.
   pub fn conn(&self) -> &Connection {
     &self.conn
+  }
+
+  /// Returns the version that this player is on.
+  pub fn ver(&self) -> ProtocolVersion {
+    self.ver
   }
 }
