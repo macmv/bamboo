@@ -1,3 +1,6 @@
+mod pos;
+pub use pos::Pos;
+
 use crate::proto;
 
 #[derive(Debug, Clone, Copy)]

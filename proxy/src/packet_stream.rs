@@ -1,6 +1,6 @@
 use crate::packet::Packet;
 
-use common::{util, util::Buffer};
+use common::{util, util::Buffer, version::ProtocolVersion};
 use ringbuf::{Consumer, Producer, RingBuffer};
 use std::{
   io,
@@ -16,26 +16,31 @@ use tokio::{
 };
 
 pub struct StreamReader {
-  stream: OwnedReadHalf,
-  prod:   Producer<u8>,
-  cons:   Consumer<u8>,
+  stream:         OwnedReadHalf,
+  prod:           Producer<u8>,
+  cons:           Consumer<u8>,
+  pub(crate) ver: ProtocolVersion,
 }
 pub struct StreamWriter {
-  stream: OwnedWriteHalf,
+  stream:         OwnedWriteHalf,
+  pub(crate) ver: ProtocolVersion,
 }
 
 pub fn new(stream: StdTcpStream) -> Result<(StreamReader, StreamWriter)> {
   // We want to block on read calls
   // stream.set_nonblocking(true)?;
   let (read, write) = TcpStream::from_std(stream)?.into_split();
-  Ok((StreamReader::new(read), StreamWriter::new(write)))
+  Ok((
+    StreamReader::new(read, ProtocolVersion::Invalid),
+    StreamWriter::new(write, ProtocolVersion::Invalid),
+  ))
 }
 
 impl StreamReader {
-  pub fn new(stream: OwnedReadHalf) -> Self {
+  pub fn new(stream: OwnedReadHalf, ver: ProtocolVersion) -> Self {
     let buf = RingBuffer::new(1024);
     let (prod, cons) = buf.split();
-    StreamReader { stream, prod, cons }
+    StreamReader { stream, prod, cons, ver }
   }
 
   pub async fn poll(&mut self) -> Result<()> {
@@ -71,17 +76,17 @@ impl StreamReader {
     let mut vec = vec![0; len as usize];
     self.cons.pop_slice(&mut vec);
     // And parse it
-    Ok(Some(Packet::from_buf(vec)))
+    Ok(Some(Packet::from_buf(vec, self.ver)))
   }
 }
 
 impl StreamWriter {
-  pub fn new(stream: OwnedWriteHalf) -> Self {
-    StreamWriter { stream }
+  pub fn new(stream: OwnedWriteHalf, ver: ProtocolVersion) -> Self {
+    StreamWriter { stream, ver }
   }
   pub async fn write(&mut self, p: Packet) -> Result<()> {
     // This is the packet, including it's id
-    let bytes = p.buf.into_inner();
+    let bytes = p.serialize();
 
     // Length varint
     let mut buf = Buffer::new(vec![]);

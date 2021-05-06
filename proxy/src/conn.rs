@@ -123,6 +123,7 @@ impl Conn {
   }
 
   pub async fn handshake(&mut self) -> io::Result<()> {
+    let mut ver = None;
     'login: loop {
       self.client_reader.poll().await.unwrap();
       loop {
@@ -147,10 +148,14 @@ impl Conn {
                 format!("unknown handshake packet {}", p.id()),
               ));
             }
-            let _version = p.buf.read_varint();
-            let _addr = p.buf.read_str();
-            let _port = p.buf.read_u16();
-            let next = p.buf.read_varint();
+            ver = Some(ProtocolVersion::from(p.read_varint()));
+            // Make sure that the version is know to the reader/writers
+            self.client_reader.ver = ver.unwrap();
+            self.client_writer.ver = ver.unwrap();
+
+            let _addr = p.read_str();
+            let _port = p.read_u16();
+            let next = p.read_varint();
             self.state = State::from_next(next);
           }
           State::Status => {}
@@ -158,11 +163,11 @@ impl Conn {
             match p.id() {
               // Login start
               0 => {
-                let username = p.buf.read_str();
+                let username = p.read_str();
                 info!("got username {}", username);
-                let mut out = Packet::new(2);
-                out.buf.write_str("a0ebbc8d-e0b0-4c23-a965-efba61ff0ae8");
-                out.buf.write_str("macmv");
+                let mut out = Packet::new(2, ver.unwrap());
+                out.write_str("a0ebbc8d-e0b0-4c23-a965-efba61ff0ae8");
+                out.write_str("macmv");
                 self.client_writer.write(out).await?;
 
                 self.state = State::Play;
