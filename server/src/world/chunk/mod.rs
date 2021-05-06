@@ -44,7 +44,10 @@ impl Chunk {
         paletted::Section::new()
       })
     }
-    self.sections[index].unwrap().set_block(pos, ty)
+    match &mut self.sections[index] {
+      Some(s) => s.set_block(pos, ty),
+      None => unreachable!(),
+    }
   }
   /// This updates the internal data to contain a block at the given position.
   /// In release mode, the position is not checked. In any other mode, a
@@ -58,7 +61,10 @@ impl Chunk {
     if index >= self.sections.len() || self.sections[index].is_none() {
       return Ok(block::Type::air());
     }
-    self.sections[index].unwrap().get_block(pos)
+    match &self.sections[index] {
+      Some(s) => s.get_block(pos),
+      None => unreachable!(),
+    }
   }
   /// Generates a protobuf containing all of the chunk data. X and Z will both
   /// be 0.
