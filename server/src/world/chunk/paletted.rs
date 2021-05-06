@@ -15,7 +15,7 @@ impl Section {
 }
 
 impl ChunkSection for Section {
-  fn set_block(&mut self, pos: Pos, ty: block::Type) -> Result<(), PosError> {
+  fn set_block(&mut self, pos: Pos, ty: &block::Type) -> Result<(), PosError> {
     Ok(())
   }
   fn get_block(&self, pos: Pos) -> Result<block::Type, PosError> {

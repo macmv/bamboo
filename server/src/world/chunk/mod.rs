@@ -1,6 +1,9 @@
 mod fixed;
+mod multi;
 mod paletted;
 mod section;
+
+pub use multi::MultiChunk;
 
 use std::collections::HashMap;
 
@@ -16,6 +19,8 @@ use common::{
 /// A chunk column. This is not clone, because that would mean duplicating an
 /// entire chunk, which you probably don't want to do. If you do need to clone a
 /// chunk, use [`Chunk::duplicate()`].
+///
+/// If you want to create a cross-versioned chunk, use [`MultiChunk`] instead.
 pub struct Chunk {
   sections: Vec<Option<Box<dyn Section + Send>>>,
   ver:      BlockVersion,
@@ -28,7 +33,7 @@ impl Chunk {
   /// This updates the internal data to contain a block at the given position.
   /// In release mode, the position is not checked. In any other mode, a
   /// PosError will be returned if any of the x, y, or z are outside of 0..16
-  fn set_block(&mut self, pos: Pos, ty: block::Type) -> Result<(), PosError> {
+  fn set_block(&mut self, pos: Pos, ty: &block::Type) -> Result<(), PosError> {
     let index = pos.chunk_y();
     if index < 0 || index >= 16 {
       return Err(pos.err("Y coordinate is outside of chunk".into()));

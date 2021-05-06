@@ -23,7 +23,7 @@ use common::{
 use crate::{net::Connection, player::Player};
 
 pub struct World {
-  chunks:  HashMap<ChunkPos, Mutex<chunk::Chunk>>,
+  chunks:  HashMap<ChunkPos, Mutex<chunk::MultiChunk>>,
   players: Vec<Arc<Mutex<Player>>>,
   eid:     Arc<AtomicU32>,
 }

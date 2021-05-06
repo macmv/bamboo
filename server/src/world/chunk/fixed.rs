@@ -27,7 +27,7 @@ impl ChunkSection for Section {
   /// In release mode, the position is not checked. In any other mode, a
   /// PosError will be returned if any of the x, y, or z are outside of 0..16
   #[cfg(debug_assertions)]
-  fn set_block(&mut self, pos: Pos, ty: block::Type) -> Result<(), PosError> {
+  fn set_block(&mut self, pos: Pos, ty: &block::Type) -> Result<(), PosError> {
     if pos.x() >= 16 || pos.x() < 0 || pos.y() >= 16 || pos.y() < 0 || pos.z() >= 16 || pos.z() < 0
     {
       return Err(pos.err("expected a pos within 0 <= x, y, z < 16".into()));

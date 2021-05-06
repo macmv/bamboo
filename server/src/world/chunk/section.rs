@@ -7,7 +7,7 @@ use common::{
 
 /// A chunk section.
 pub trait Section {
-  fn set_block(&mut self, pos: Pos, ty: block::Type) -> Result<(), PosError>;
+  fn set_block(&mut self, pos: Pos, ty: &block::Type) -> Result<(), PosError>;
   fn get_block(&self, pos: Pos) -> Result<block::Type, PosError>;
   fn duplicate(&self) -> Box<dyn Section + Send>;
   fn to_proto(&self) -> proto::chunk::Section;
