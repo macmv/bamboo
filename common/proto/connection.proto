@@ -29,40 +29,37 @@ message ReserveSlotsResponse {
 }
 
 message Packet {
-  int32 id                           = 1;
-  repeated bool bools                = 2;
-  bytes bytes                        = 3;
+  int32 id                     = 1;
+  repeated bool bools          = 2;
+  bytes bytes                  = 3;
   // There is no int16 type in protobuf. This is here to keep the packets the same as their packet definitions
-  repeated int32 shorts              = 4;
-  repeated int32 ints                = 5;
-  repeated uint64 longs              = 6;
-  repeated float floats              = 7;
-  repeated double doubles            = 8;
-  repeated string strs               = 9;
-  repeated UUID uuids                = 10;
-  repeated uint64 positions          = 11;
-  repeated bytes NBTTags             = 12;
-  repeated bytes byte_arrs           = 13;
-  repeated IntArray int_arrs         = 14;
-  repeated LongArray long_arrs       = 15;
-  repeated StringArray str_arrs      = 16;
-  repeated google.protobuf.Any other = 17;
+  repeated int32 shorts        = 4;
+  repeated int32 ints          = 5;
+  repeated uint64 longs        = 6;
+  repeated float floats        = 7;
+  repeated double doubles      = 8;
+  repeated string strs         = 9;
+  repeated UUID uuids          = 10;
+  repeated uint64 positions    = 11;
+  repeated bytes NBTTags       = 12;
+  repeated bytes byte_arrs     = 13;
+  repeated IntArray int_arrs   = 14;
+  repeated LongArray long_arrs = 15;
+  repeated StrArray str_arrs   = 16;
+  google.protobuf.Any other    = 17;
 }
 
 message UUID {
   bytes be_data = 1;
 }
-
 message IntArray {
   repeated int32 ints = 1;
 }
-
 message LongArray {
   repeated uint64 longs = 1;
 }
-
-message StringArray {
-  repeated string strings = 1;
+message StrArray {
+  repeated string strs = 1;
 }
 
 message Item {
@@ -104,7 +101,7 @@ message MultiBlockChange {
   int32 z = 4;
 }
 
-message Chunk {
+message ChunkData {
   int32 x = 1;
   int32 z = 2;
   map<int32, Section> sections = 3;

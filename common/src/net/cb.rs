@@ -1,4 +1,6 @@
 use num_derive::{FromPrimitive, ToPrimitive};
+use prost::EncodeError;
+use prost_types::Any;
 
 use crate::{math::UUID, proto};
 
@@ -14,9 +16,9 @@ macro_rules! add_fn {
       self.pb.$arr[i] = v;
     }
   };
-  ($name: ident, $arr: ident, $ty: ty, $convert: ident) => {
+  ($name: ident, $arr: ident, $ty: ty, $convert: expr) => {
     pub fn $name(&mut self, i: usize, v: $ty) {
-      self.pb.$arr[i] = v.$convert();
+      self.pb.$arr[i] = $convert(v);
     }
   };
 }
@@ -45,15 +47,28 @@ impl Packet {
   add_fn!(set_u64, longs, u64);
   add_fn!(set_f32, floats, f32);
   add_fn!(set_f64, doubles, f64);
-  add_fn!(set_str, strings, String);
-  add_fn!(set_uuid, uuids, UUID, as_proto);
-  add_fn!(set_byte_arr, byte_arrays, Vec<u8>);
+  add_fn!(set_str, strs, String);
+  add_fn!(set_uuid, uuids, UUID, |v: UUID| { v.as_proto() });
+  add_fn!(set_byte_arr, byte_arrs, Vec<u8>);
+  add_fn!(set_i32_arr, int_arrs, Vec<i32>, |v: Vec<i32>| { proto::IntArray { ints: v } });
+  add_fn!(set_u64_arr, long_arrs, Vec<u64>, |v: Vec<u64>| { proto::LongArray { longs: v } });
+  add_fn!(set_str_arr, str_arrs, Vec<String>, |v: Vec<String>| { proto::StrArray { strs: v } });
 
-  // repeated uint64 positions          = 13;
-  // repeated IntArray intArrays        = 14;
-  // repeated LongArray longArrays      = 15;
-  // repeated StringArray stringArrays  = 16;
-  // repeated google.protobuf.Any other = 17;
+  pub fn set_other<M>(&mut self, v: &M) -> Result<(), EncodeError>
+  where
+    M: prost::Message + Sized,
+  {
+    let mut b = bytes::BytesMut::new();
+    v.encode(&mut b)?;
+    // TODO: Pass names into this function or something
+    let name = "proto.ChunkData".into();
+    let any = Any { type_url: name, value: b.to_vec() };
+    if self.pb.other.is_none() {
+      panic!("packet {:?} does not need an other!", self.id);
+    }
+    self.pb.other = Some(any);
+    Ok(())
+  }
 }
 
 impl ID {
@@ -167,9 +182,23 @@ pub enum ID {
 
 macro_rules! id_init {
   ($($ty: ident: $num: expr),*) => {
-    proto::Packet { $(
-      $ty: vec![Default::default(); $num],
-    )* ..Default::default() }
+    proto::Packet {
+      $(
+        $ty: vec![Default::default(); $num],
+      )*
+      ..Default::default()
+    }
+  };
+}
+macro_rules! id_init_other {
+  ($($ty: ident: $num: expr),*) => {
+    proto::Packet {
+      $(
+        $ty: vec![Default::default(); $num],
+      )*
+      other: Some(Default::default()),
+      ..Default::default()
+    }
   };
 }
 
@@ -223,17 +252,17 @@ fn create_empty(id: ID) -> proto::Packet {
     ID::BlockEntityData           => id_init!(positions: 1, bytes: 1, nbt_tags: 1),
     ID::BlockAction               => id_init!(positions: 1, bytes: 2, ints: 1),
     ID::BlockChange               => id_init!(positions: 1, ints: 1),
-    ID::BossBar                   => id_init!(uuids: 1, ints: 1, other: 1), // TODO: Custom type here
+    ID::BossBar                   => id_init_other!(uuids: 1, ints: 1), // TODO: Custom type here
     ID::ServerDifficulty          => id_init!(bytes: 1, bools: 1),
     ID::ChatMessage               => id_init!(strs: 1, bytes: 1, uuids: 1),
     ID::MultiBlockChange          => id_init!(positions: 1, bools: 1, byte_arrs: 1),
-    ID::TabComplete               => id_init!(ints: 3, other: 1), // TODO: Custom type here
+    ID::TabComplete               => id_init_other!(ints: 3), // TODO: Custom type here
     ID::DeclareCommands           => id_init!(ints: 1, byte_arrs: 1),
     ID::WindowConfirm             => id_init!(bytes: 1, shorts: 1, bools: 1),
     ID::CloseWindow               => id_init!(bytes: 1),
-    ID::WindowItems               => id_init!(bytes: 1, shorts: 1, other: 1), // TODO: Setup slot type
+    ID::WindowItems               => id_init_other!(bytes: 1, shorts: 1), // TODO: Setup slot type
     ID::WindowProperty            => id_init!(bytes: 1, shorts: 2),
-    ID::SetSlot                   => id_init!(bytes: 1, shorts: 1, other: 1),
+    ID::SetSlot                   => id_init_other!(bytes: 1, shorts: 1),
     ID::SetCooldown               => id_init!(ints: 2),
     ID::PluginMessage             => id_init!(strs: 1, byte_arrs: 1),
     // There is an extra int here, which should be used to set the sound id.
@@ -248,14 +277,14 @@ fn create_empty(id: ID) -> proto::Packet {
     // Newer clients use a long, which is ridiculous. Just cast this on newer clients.
     ID::KeepAlive                 => id_init!(ints: 1),
     // This should be its own type. It changes so much that relying on int arrays is too difficult.
-    ID::ChunkData                 => id_init!(other: 1), // TODO: Custom type here
+    ID::ChunkData                 => id_init_other!(), // TODO: Custom type here
     ID::Effect                    => id_init!(ints: 2, positions: 1, bools: 1),
     ID::Particle                  => id_init!(ints: 2, bools: 1, doubles: 3, floats: 4, byte_arrs: 1),
     // Only used on newer versions. For older clients, light data is sent with ChunkData.
     ID::UpdateLight               => id_init!(ints: 6, bools: 1, byte_arrs: 2),
     ID::JoinGame                  => id_init!(ints: 3, bools: 5, bytes: 1, str_arrs: 1, nbt_tags: 2, strs: 1, longs: 1),
-    ID::MapData                   => id_init!(other: 1), // TODO: Custom proto
-    ID::TradeList                 => id_init!(other: 1), // TODO: Custom proto
+    ID::MapData                   => id_init_other!(), // TODO: Custom proto
+    ID::TradeList                 => id_init_other!(), // TODO: Custom proto
     ID::EntityPosition            => id_init!(ints: 1, shorts: 3, bools: 1),
     ID::EntityPositionAndRotation => id_init!(ints: 1, shorts: 3, bytes: 2, bools: 1),
     ID::EntityRotation            => id_init!(ints: 1, bytes: 2, bools: 1),
@@ -269,7 +298,7 @@ fn create_empty(id: ID) -> proto::Packet {
     // Enter combat and End combat are ignored, so the event will always be 2: Entity Dead,
     // which will display the death screen.
     ID::EnterCombat               => id_init!(ints: 2, strs: 1),
-    ID::PlayerInfo                => id_init!(other: 1), // TODO: Custom proto
+    ID::PlayerInfo                => id_init_other!(), // TODO: Custom proto
     ID::FacePlayer                => id_init!(ints: 3, doubles: 3, bools: 1),
     ID::PlayerPositionAndLook     => id_init!(doubles: 3, floats: 2, bytes: 1, ints: 1),
     ID::UnlockRecipies            => id_init!(ints: 1, bools: 8, str_arrs: 2),
@@ -280,7 +309,7 @@ fn create_empty(id: ID) -> proto::Packet {
     ID::EntityHeadLook            => id_init!(ints: 1, bytes: 1),
     // Empty string means that the string is not present (in this case).
     ID::SelectAdvancementTab      => id_init!(strs: 1),
-    ID::WorldBorder               => id_init!(other: 1), // TODO: Custom proto
+    ID::WorldBorder               => id_init_other!(), // TODO: Custom proto
     ID::Camera                    => id_init!(ints: 1),
     ID::HeldItemChange            => id_init!(bytes: 1),
     ID::UpdateViewPosition        => id_init!(ints: 2),
@@ -289,16 +318,16 @@ fn create_empty(id: ID) -> proto::Packet {
     ID::EntityMetadata            => id_init!(ints: 1, byte_arrs: 1),
     ID::AttachEntity              => id_init!(ints: 2),
     ID::EntityVelocity            => id_init!(ints: 1, shorts: 3),
-    ID::EntityEquipment           => id_init!(ints: 1, bytes: 1, other: 1),
+    ID::EntityEquipment           => id_init_other!(ints: 1, bytes: 1),
     ID::SetExp                    => id_init!(floats: 1, ints: 2),
     ID::UpdateHealth              => id_init!(floats: 2, ints: 1),
     ID::ScoreboardObjective       => id_init!(strs: 2, bytes: 1, ints: 1),
     ID::SetPassengers             => id_init!(ints: 2, int_arrs: 1),
-    ID::Teams                     => id_init!(other: 1), // TODO: Custom proto
+    ID::Teams                     => id_init_other!(), // TODO: Custom proto
     ID::UpdateScore               => id_init!(strs: 2, bytes: 1, ints: 1),
     ID::SpawnPosition             => id_init!(positions: 1),
     ID::TimeUpdate                => id_init!(longs: 2),
-    ID::Title                     => id_init!(other: 1), // TODO: Custom proto
+    ID::Title                     => id_init_other!(), // TODO: Custom proto
     // TODO: Sound ids change to a string in 1.17
     ID::EntitySoundEffect         => id_init!(ints: 3, floats: 2),
     ID::SoundEffect               => id_init!(ints: 5, floats: 2),
@@ -307,12 +336,12 @@ fn create_empty(id: ID) -> proto::Packet {
     ID::NBTQueryResponse          => id_init!(ints: 1, nbt_tags: 1),
     ID::CollectItem               => id_init!(ints: 3),
     ID::EntityTeleport            => id_init!(ints: 1, doubles: 3, bytes: 2, bools: 1),
-    ID::Advancements              => id_init!(other: 1), // TODO: Custom proto
-    ID::EntityProperties          => id_init!(other: 1), // TODO: Custom proto
+    ID::Advancements              => id_init_other!(), // TODO: Custom proto
+    ID::EntityProperties          => id_init_other!(), // TODO: Custom proto
     // TODO: Effect ids change to strings in 1.17
     ID::EntityEffect              => id_init!(ints: 2, bytes: 3),
-    ID::DeclareRecipies           => id_init!(other: 1), // TODO: Custom proto
-    ID::Tags                      => id_init!(other: 1), // TODO: Custom proto
+    ID::DeclareRecipies           => id_init_other!(), // TODO: Custom proto
+    ID::Tags                      => id_init_other!(), // TODO: Custom proto
     // ID::Login                     => id_init!(other: 1),
     _                             => proto::Packet::default(),
   }

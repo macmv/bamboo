@@ -114,6 +114,7 @@ name = "common"
 version = "0.1.0"
 dependencies = [
  "byteorder",
+ "bytes",
  "flexi_logger",
  "futures",
  "log",
