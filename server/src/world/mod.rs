@@ -6,12 +6,12 @@ use std::{
   ops::Deref,
   sync::{
     atomic::{AtomicU32, Ordering},
-    Arc,
+    Arc, Mutex, MutexGuard,
   },
   time::Duration,
 };
 use tokio::{
-  sync::{mpsc::Sender, Mutex, MutexGuard, RwLock, RwLockReadGuard},
+  sync::{mpsc::Sender, RwLock, RwLockReadGuard},
   time,
 };
 use tonic::{Status, Streaming};
@@ -26,19 +26,19 @@ use common::{
 use crate::{net::Connection, player::Player};
 use chunk::MultiChunk;
 
-// pub struct ChunkRef<'a> {
-//   chunk:  Option<MutexGuard<'a, MultiChunk>>,
-//   // Need to keep this is scope while we mess with the chunk
-//   chunks: RwLockReadGuard<'a, HashMap<ChunkPos, Mutex<MultiChunk>>>,
-// }
-//
-// impl Deref for ChunkRef<'_> {
-//   type Target = MultiChunk;
-//
-//   fn deref(&self) -> &MultiChunk {
-//     &self.chunk
-//   }
-// }
+pub struct ChunkRef<'a> {
+  pos:    ChunkPos,
+  // Need to keep this is scope while we mess with the chunk
+  chunks: RwLockReadGuard<'a, HashMap<ChunkPos, Arc<Mutex<MultiChunk>>>>,
+}
+
+impl Deref for ChunkRef<'_> {
+  type Target = MultiChunk;
+
+  fn deref(&self) -> &Self::Target {
+    &self.chunks.get(&self.pos).unwrap().lock().unwrap()
+  }
+}
 
 pub struct World {
   chunks:  RwLock<HashMap<ChunkPos, Arc<Mutex<MultiChunk>>>>,
@@ -63,7 +63,7 @@ impl World {
   }
   async fn new_player(self: Arc<Self>, conn: Arc<Connection>, player: Player) {
     let player = Arc::new(Mutex::new(player));
-    self.players.lock().await.push(player.clone());
+    self.players.lock().unwrap().push(player.clone());
 
     let c = conn.clone();
     tokio::spawn(async move {
@@ -77,7 +77,7 @@ impl World {
       let mut tick = 0;
       loop {
         int.tick().await;
-        let p = player.lock().await;
+        let p = player.lock().unwrap();
         // Do player collision and packets and stuff
         info!("player tick for {}", p.username());
         if p.conn().closed() {
@@ -92,7 +92,6 @@ impl World {
         for x in -10..10 {
           for z in -10..10 {
             let chunk = self.chunk(ChunkPos::new(x, z)).await;
-            let chunk = chunk.lock().await;
 
             let mut out = cb::Packet::new(cb::ID::ChunkData);
             out.set_other(&chunk.to_proto(p.ver().block())).unwrap();
@@ -111,7 +110,7 @@ impl World {
 
   /// Returns a locked Chunk. This will generate a new chunk if there is not one
   /// stored there.
-  pub async fn chunk<'a>(&'a self, pos: ChunkPos) -> Arc<Mutex<MultiChunk>> {
+  pub async fn chunk<'a>(&'a self, pos: ChunkPos) -> ChunkRef<'a> {
     // We first check (read-only) if we need to generate a new chunk
     if !self.chunks.read().await.contains_key(&pos) {
       // If we do, we lock it for writing
@@ -123,7 +122,7 @@ impl World {
       }
     }
     let chunks = self.chunks.read().await;
-    chunks[&pos].clone()
+    ChunkRef { chunks, pos }
   }
 }
 
