@@ -6,12 +6,16 @@ pub mod packet;
 pub mod packet_stream;
 pub mod version;
 
-use crate::conn::Conn;
-
 use std::{
   error::Error,
   net::{TcpListener, TcpStream},
+  sync::{
+    atomic::{AtomicBool, Ordering},
+    Arc,
+  },
 };
+
+use crate::conn::Conn;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn Error>> {
@@ -43,28 +47,37 @@ async fn handle_client(sock: TcpStream) -> Result<(), Box<dyn Error>> {
 
   conn.handshake().await?;
 
+  // TODO: Read more about select!, instead of using an atomic bool, use something
+  // that will wake up each task. See more here:
+  // https://rust-lang.github.io/async-book/06_multiple_futures/03_select.html.
+  let closed = Arc::new(AtomicBool::new(false));
+
   let (mut client_listener, mut server_listener) = conn.split().await?;
   let mut handles = vec![];
+  let c = closed.clone();
   handles.push(tokio::spawn(async move {
-    match client_listener.run().await {
+    match client_listener.run(c.clone()).await {
       Ok(_) => {}
       Err(e) => {
         error!("error while listening to client: {}", e);
-        // TODO: Stop the other task
+        c.store(true, Ordering::Relaxed);
       }
     };
   }));
+  let c = closed.clone();
   handles.push(tokio::spawn(async move {
-    match server_listener.run().await {
+    match server_listener.run(c.clone()).await {
       Ok(_) => {}
       Err(e) => {
         error!("error while listening to server: {}", e);
-        // TODO: Stop the other task
+        c.store(true, Ordering::Relaxed);
       }
     };
   }));
 
   futures::future::join_all(handles).await;
+
+  info!("All tasks have closed!");
 
   // info!("New client!");
   // let res = client.status(req).await?;

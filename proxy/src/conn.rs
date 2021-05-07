@@ -5,8 +5,16 @@ use crate::{
 };
 
 use common::{net::cb, proto, proto::minecraft_client::MinecraftClient, version::ProtocolVersion};
-use std::{error::Error, io, io::ErrorKind, sync::Arc};
-use tokio::sync::mpsc;
+use std::{
+  error::Error,
+  io,
+  io::ErrorKind,
+  sync::{
+    atomic::{AtomicBool, Ordering},
+    Arc,
+  },
+};
+use tokio::sync::{mpsc, oneshot};
 use tokio_stream::wrappers::ReceiverStream;
 use tonic::{transport::channel::Channel, Request, Status, Streaming};
 
@@ -52,12 +60,12 @@ pub struct ServerListener {
 }
 
 impl ClientListener {
-  pub async fn run(&mut self) -> Result<(), Box<dyn Error>> {
+  pub async fn run(&mut self, closed: Arc<AtomicBool>) -> Result<(), Box<dyn Error>> {
     'running: loop {
       self.client.poll().await?;
       loop {
         let p = self.client.read().unwrap();
-        if p.is_none() {
+        if p.is_none() || closed.load(Ordering::Relaxed) {
           break;
         }
         let p = p.unwrap();
@@ -81,10 +89,10 @@ impl ClientListener {
 }
 
 impl ServerListener {
-  pub async fn run(&mut self) -> Result<(), Box<dyn Error>> {
+  pub async fn run(&mut self, closed: Arc<AtomicBool>) -> Result<(), Box<dyn Error>> {
     loop {
       let p = self.server.message().await?;
-      if p.is_none() {
+      if p.is_none() || closed.load(Ordering::Relaxed) {
         break;
       }
       let p = p.unwrap();
