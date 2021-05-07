@@ -61,18 +61,29 @@ pub struct ServerListener {
 }
 
 impl ClientListener {
+  /// This starts listening for packets from the server. The rx and tx are used
+  /// to close the ServerListener. Specifically, the tx will send a value once
+  /// this listener has been closed, and this listener will close once the rx
+  /// gets a message.
   pub async fn run(
     &mut self,
     tx: oneshot::Sender<()>,
-    mut rx: oneshot::Receiver<()>,
+    rx: oneshot::Receiver<()>,
   ) -> Result<(), Box<dyn Error>> {
-    let mut fail = Ok(());
-    'running: loop {
+    let res = self.run_inner(rx).await;
+    // Close the other connection. We ignore the result, as that means the rx has
+    // been dropped. We don't care if the rx has been dropped, because that means
+    // the other listener has already closed.
+    let _ = tx.send(());
+    res
+  }
+  async fn run_inner(&mut self, mut rx: oneshot::Receiver<()>) -> Result<(), Box<dyn Error>> {
+    loop {
       let fut = self.client.poll();
 
       tokio::select! {
-        val = fut => (),
-        val = &mut rx => break,
+        _ = fut => (),
+        _ = &mut rx => break,
       }
       loop {
         let p = self.client.read().unwrap();
@@ -84,11 +95,10 @@ impl ClientListener {
         match err {
           Some(e) => {
             error!("error while parsing packet: {}", e);
-            fail = Err(Box::new(io::Error::new(
+            return Err(Box::new(io::Error::new(
               ErrorKind::InvalidData,
               format!("failed to parse packet, closing connection"),
             )));
-            break 'running;
           }
           None => {}
         }
@@ -97,25 +107,25 @@ impl ClientListener {
         self.server.send(sb.to_proto()).await?;
       }
     }
-    // Close the other connection. We don't care if the rx has been dropped, because
-    // that means the other listener has already closed.
-    let _ = tx.send(());
-    // Possibly more error handling here
-    fail?;
     Ok(())
   }
 }
 
 impl ServerListener {
   /// This starts listening for packets from the server. The rx and tx are used
-  /// to close the ClientListener. Specifically, the tx will be closed once this
-  /// listener has been closed, and this listener will close once the rx gets a
-  /// message.
+  /// to close the ClientListener. Specifically, the tx will send a value once
+  /// this listener has been closed, and this listener will close once the rx
+  /// gets a message.
   pub async fn run(
     &mut self,
     tx: oneshot::Sender<()>,
-    mut rx: oneshot::Receiver<()>,
+    rx: oneshot::Receiver<()>,
   ) -> Result<(), Box<dyn Error>> {
+    let res = self.run_inner(rx).await;
+    let _ = tx.send(());
+    res
+  }
+  async fn run_inner(&mut self, mut rx: oneshot::Receiver<()>) -> Result<(), Box<dyn Error>> {
     loop {
       let pb = self.server.message();
       let p;
@@ -128,11 +138,6 @@ impl ServerListener {
       let cb = self.gen.clientbound(ProtocolVersion::V1_8, cb::Packet::from_proto(p))?;
       self.client.write(cb).await.unwrap();
     }
-    // Close the other connection. We don't care if the rx has been dropped, because
-    // that means the other listener has already closed.
-    let _ = tx.send(());
-    info!("closing connection with server");
-
     Ok(())
   }
 }
