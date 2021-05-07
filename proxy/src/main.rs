@@ -14,6 +14,7 @@ use std::{
     Arc,
   },
 };
+use tokio::sync::oneshot;
 
 use crate::conn::Conn;
 
@@ -47,30 +48,27 @@ async fn handle_client(sock: TcpStream) -> Result<(), Box<dyn Error>> {
 
   conn.handshake().await?;
 
-  // TODO: Read more about select!, instead of using an atomic bool, use something
-  // that will wake up each task. See more here:
-  // https://rust-lang.github.io/async-book/06_multiple_futures/03_select.html.
-  let closed = Arc::new(AtomicBool::new(false));
+  // These four values are passed to each listener. When one listener closes, it
+  // sends a message to the tx. Since the rx is passed to the other listener, that
+  // listener will then close itself.
+  let (server_tx, client_rx) = oneshot::channel();
+  let (client_tx, server_rx) = oneshot::channel();
 
   let (mut client_listener, mut server_listener) = conn.split().await?;
   let mut handles = vec![];
-  let c = closed.clone();
   handles.push(tokio::spawn(async move {
-    match client_listener.run(c.clone()).await {
+    match client_listener.run(client_tx, client_rx).await {
       Ok(_) => {}
       Err(e) => {
         error!("error while listening to client: {}", e);
-        c.store(true, Ordering::Relaxed);
       }
     };
   }));
-  let c = closed.clone();
   handles.push(tokio::spawn(async move {
-    match server_listener.run(c.clone()).await {
+    match server_listener.run(server_tx, server_rx).await {
       Ok(_) => {}
       Err(e) => {
         error!("error while listening to server: {}", e);
-        c.store(true, Ordering::Relaxed);
       }
     };
   }));

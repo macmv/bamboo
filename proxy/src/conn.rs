@@ -14,6 +14,7 @@ use std::{
     Arc,
   },
 };
+use tokio::select;
 use tokio::sync::{mpsc, oneshot};
 use tokio_stream::wrappers::ReceiverStream;
 use tonic::{transport::channel::Channel, Request, Status, Streaming};
@@ -60,12 +61,22 @@ pub struct ServerListener {
 }
 
 impl ClientListener {
-  pub async fn run(&mut self, closed: Arc<AtomicBool>) -> Result<(), Box<dyn Error>> {
+  pub async fn run(
+    &mut self,
+    tx: oneshot::Sender<()>,
+    mut rx: oneshot::Receiver<()>,
+  ) -> Result<(), Box<dyn Error>> {
+    let mut fail = Ok(());
     'running: loop {
-      self.client.poll().await?;
+      let fut = self.client.poll();
+
+      tokio::select! {
+        val = fut => (),
+        val = &mut rx => break,
+      }
       loop {
         let p = self.client.read().unwrap();
-        if p.is_none() || closed.load(Ordering::Relaxed) {
+        if p.is_none() {
           break;
         }
         let p = p.unwrap();
@@ -73,10 +84,11 @@ impl ClientListener {
         match err {
           Some(e) => {
             error!("error while parsing packet: {}", e);
-            break 'running Err(Box::new(io::Error::new(
+            fail = Err(Box::new(io::Error::new(
               ErrorKind::InvalidData,
               format!("failed to parse packet, closing connection"),
             )));
+            break 'running;
           }
           None => {}
         }
@@ -85,20 +97,40 @@ impl ClientListener {
         self.server.send(sb.to_proto()).await?;
       }
     }
+    // Close the other connection. We don't care if the rx has been dropped, because
+    // that means the other listener has already closed.
+    let _ = tx.send(());
+    // Possibly more error handling here
+    fail?;
+    Ok(())
   }
 }
 
 impl ServerListener {
-  pub async fn run(&mut self, closed: Arc<AtomicBool>) -> Result<(), Box<dyn Error>> {
+  /// This starts listening for packets from the server. The rx and tx are used
+  /// to close the ClientListener. Specifically, the tx will be closed once this
+  /// listener has been closed, and this listener will close once the rx gets a
+  /// message.
+  pub async fn run(
+    &mut self,
+    tx: oneshot::Sender<()>,
+    mut rx: oneshot::Receiver<()>,
+  ) -> Result<(), Box<dyn Error>> {
     loop {
-      let p = self.server.message().await?;
-      if p.is_none() || closed.load(Ordering::Relaxed) {
-        break;
+      let pb = self.server.message();
+      let p;
+
+      tokio::select! {
+        val = pb => p = val?,
+        _ = &mut rx => break,
       }
       let p = p.unwrap();
       let cb = self.gen.clientbound(ProtocolVersion::V1_8, cb::Packet::from_proto(p))?;
       self.client.write(cb).await.unwrap();
     }
+    // Close the other connection. We don't care if the rx has been dropped, because
+    // that means the other listener has already closed.
+    let _ = tx.send(());
     info!("closing connection with server");
 
     Ok(())
