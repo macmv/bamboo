@@ -1,5 +1,6 @@
 use common::{
   math::Pos,
+  proto,
   util::{Buffer, BufferError},
   version::ProtocolVersion,
 };
@@ -63,6 +64,7 @@ impl Packet {
   add_writer!(write_varint, i32);
   add_writer!(write_str, &str);
   add_writer!(write_bool, bool);
+  add_writer!(write_fixed_int, f64);
 
   add_reader!(read_u8, u8);
   add_reader!(read_u16, u16);
@@ -89,5 +91,9 @@ impl Packet {
     } else {
       self.buf.write_u64(pos.to_u64());
     }
+  }
+
+  pub fn write_uuid(&mut self, v: &proto::Uuid) {
+    self.write_buf(&v.be_data);
   }
 }

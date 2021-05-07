@@ -54,6 +54,21 @@ pub(super) fn gen_spec() -> PacketSpec {
     out.write_pos(p.pb().longs[0]); // The location that your compass points to
     Ok(out)
   });
+  spec.add(cb::ID::UpdateHealth, |p: cb::Packet, v: ProtocolVersion| {
+    let mut out = Packet::new(0x06, v);
+    out.write_f32(p.pb().floats[0]); // Health
+    out.write_varint(p.pb().ints[0]); // Food
+    out.write_f32(p.pb().floats[0]); // Saturation
+    Ok(out)
+  });
+  spec.add(cb::ID::Respawn, |p: cb::Packet, v: ProtocolVersion| {
+    let mut out = Packet::new(0x07, v);
+    out.write_i32(p.pb().ints[0]); // Dimension
+    out.write_u8(1); // Difficulty
+    out.write_u8(p.pb().bytes[0]); // Gamemode
+    out.write_str("default"); // Level type
+    Ok(out)
+  });
   spec.add(cb::ID::PlayerPositionAndLook, |p: cb::Packet, v: ProtocolVersion| {
     let mut out = Packet::new(0x08, v);
     out.write_f64(p.pb().doubles[0]); // X
@@ -62,6 +77,37 @@ pub(super) fn gen_spec() -> PacketSpec {
     out.write_f32(p.pb().floats[0]); // Yaw
     out.write_f32(p.pb().floats[1]); // Pitch
     out.write_u8(p.pb().bytes[0]); // Flags
+    Ok(out)
+  });
+  spec.add(cb::ID::HeldItemChange, |p: cb::Packet, v: ProtocolVersion| {
+    let mut out = Packet::new(0x09, v);
+    out.write_u8(p.pb().bytes[0]); // Slot
+    Ok(out)
+  });
+  // Use bed doesn't exist in newer versions
+  spec.add(cb::ID::EntityAnimation, |p: cb::Packet, v: ProtocolVersion| {
+    let mut out = Packet::new(0x0b, v);
+    out.write_varint(p.pb().ints[0]); // Player's ID (eid? not sure)
+    out.write_u8(p.pb().bytes[0]); // Animation
+    Ok(out)
+  });
+  spec.add(cb::ID::SpawnPlayer, |p: cb::Packet, v: ProtocolVersion| {
+    let mut out = Packet::new(0x0c, v);
+    out.write_varint(p.pb().ints[0]); // Player's EID
+    out.write_uuid(&p.pb().uuids[0]); // Player's UUID
+    out.write_fixed_int(p.pb().doubles[0]); // X
+    out.write_fixed_int(p.pb().doubles[1]); // Y
+    out.write_fixed_int(p.pb().doubles[2]); // Z
+    out.write_u8(p.pb().bytes[0]); // Yaw
+    out.write_u8(p.pb().bytes[1]); // Pitch
+    out.write_u16(0); // Current item (0 -> none)
+    out.write_u8(0xff); // Empty Metadata
+    Ok(out)
+  });
+  spec.add(cb::ID::CollectItem, |p: cb::Packet, v: ProtocolVersion| {
+    let mut out = Packet::new(0x0d, v);
+    out.write_varint(p.pb().ints[0]); // Collected EID
+    out.write_varint(p.pb().ints[1]); // Collector EID
     Ok(out)
   });
   spec.add(cb::ID::ChunkData, |p: cb::Packet, v: ProtocolVersion| {

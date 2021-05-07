@@ -188,6 +188,13 @@ impl Buffer {
     self.data.write(v).unwrap();
   }
 
+  /// This writes a fixed point floating number to the buffer. This simply
+  /// multiplies the f64 by 32, and then writes that int into the buffer. This
+  /// is not used on newer clients, but is common on older clients.
+  pub fn write_fixed_int(&mut self, v: f64) {
+    self.write_i32((v * 32.0) as i32);
+  }
+
   pub fn read_str(&mut self) -> String {
     if self.err.is_some() {
       return "".into();
