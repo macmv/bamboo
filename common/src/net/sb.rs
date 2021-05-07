@@ -102,15 +102,15 @@ impl Packet {
   }
   add_fn!(set_bool, bools, bool);
   add_fn!(set_byte, bytes, u8);
-  add_fn!(set_i32, ints, i32);
-  add_fn!(set_u64, longs, u64);
-  add_fn!(set_f32, floats, f32);
-  add_fn!(set_f64, doubles, f64);
+  add_fn!(set_int, ints, i32);
+  add_fn!(set_long, longs, u64);
+  add_fn!(set_float, floats, f32);
+  add_fn!(set_double, doubles, f64);
   add_fn!(set_str, strs, String);
   add_fn!(set_uuid, uuids, UUID, |v: UUID| { v.as_proto() });
   add_fn!(set_byte_arr, byte_arrs, Vec<u8>);
-  add_fn!(set_i32_arr, int_arrs, Vec<i32>, |v: Vec<i32>| { proto::IntArray { ints: v } });
-  add_fn!(set_u64_arr, long_arrs, Vec<u64>, |v: Vec<u64>| { proto::LongArray { longs: v } });
+  add_fn!(set_int_arr, int_arrs, Vec<i32>, |v: Vec<i32>| { proto::IntArray { ints: v } });
+  add_fn!(set_long_arr, long_arrs, Vec<u64>, |v: Vec<u64>| { proto::LongArray { longs: v } });
   add_fn!(set_str_arr, str_arrs, Vec<String>, |v: Vec<String>| { proto::StrArray { strs: v } });
 }
 
