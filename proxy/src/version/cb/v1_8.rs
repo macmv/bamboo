@@ -54,6 +54,16 @@ pub(super) fn gen_spec() -> PacketSpec {
     out.write_pos(p.pb().longs[0]); // The location that your compass points to
     Ok(out)
   });
+  spec.add(cb::ID::PlayerPositionAndLook, |p: cb::Packet, v: ProtocolVersion| {
+    let mut out = Packet::new(0x08, v);
+    out.write_f64(p.pb().doubles[0]); // X
+    out.write_f64(p.pb().doubles[1]); // Y
+    out.write_f64(p.pb().doubles[2]); // Z
+    out.write_f32(p.pb().floats[0]); // Yaw
+    out.write_f32(p.pb().floats[1]); // Pitch
+    out.write_u8(p.pb().bytes[0]); // Flags
+    Ok(out)
+  });
   spec.add(cb::ID::ChunkData, |p: cb::Packet, v: ProtocolVersion| {
     let mut out = Packet::new(0x21, v);
     // TODO: Error handling should be done within the packet.

@@ -58,6 +58,8 @@ impl Packet {
 
   add_writer!(write_buf, &Vec<u8>);
 
+  add_writer!(write_f32, f32);
+  add_writer!(write_f64, f64);
   add_writer!(write_varint, i32);
   add_writer!(write_str, &str);
   add_writer!(write_bool, bool);
@@ -71,6 +73,8 @@ impl Packet {
   add_reader!(read_i32, i32);
   add_reader!(read_i64, i64);
 
+  add_reader!(read_f32, f32);
+  add_reader!(read_f64, f64);
   add_reader!(read_varint, i32);
   add_reader!(read_str, String);
   add_reader!(read_bool, bool);

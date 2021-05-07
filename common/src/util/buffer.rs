@@ -52,16 +52,16 @@ pub struct Buffer {
 }
 
 macro_rules! add_read {
-  ($fn: ident, $ty: ty) => {
+  ($fn: ident, $ty: ty, $zero: expr) => {
     pub fn $fn(&mut self) -> $ty {
       if self.err.is_some() {
-        return 0;
+        return $zero;
       }
       match self.data.$fn::<BigEndian>() {
         Ok(v) => v,
         Err(e) => {
           self.set_err(BufferErrorKind::IO(e), true);
-          0
+          $zero
         }
       }
     }
@@ -154,13 +154,16 @@ impl Buffer {
     self.read_u8() != 0
   }
   add_read_byte!(read_u8, u8);
-  add_read!(read_u16, u16);
-  add_read!(read_u32, u32);
-  add_read!(read_u64, u64);
+  add_read!(read_u16, u16, 0);
+  add_read!(read_u32, u32, 0);
+  add_read!(read_u64, u64, 0);
   add_read_byte!(read_i8, i8);
-  add_read!(read_i16, i16);
-  add_read!(read_i32, i32);
-  add_read!(read_i64, i64);
+  add_read!(read_i16, i16, 0);
+  add_read!(read_i32, i32, 0);
+  add_read!(read_i64, i64, 0);
+
+  add_read!(read_f32, f32, 0.0);
+  add_read!(read_f64, f64, 0.0);
 
   pub fn write_bool(&mut self, v: bool) {
     if v {
@@ -177,6 +180,9 @@ impl Buffer {
   add_write!(write_i16, i16);
   add_write!(write_i32, i32);
   add_write!(write_i64, i64);
+
+  add_write!(write_f32, f32);
+  add_write!(write_f64, f64);
 
   pub fn write_buf(&mut self, v: &Vec<u8>) {
     self.data.write(v).unwrap();
@@ -283,7 +289,7 @@ mod tests {
     let mut buf = Buffer::new(vec![]);
     buf.write_varint(1);
     assert!(buf.err().is_none());
-    assert_eq!(vec![1], buf.into_inner());
+    assert_eq!(vec![1], buf);
 
     let mut buf = Buffer::new(vec![]);
     buf.write_varint(127);
