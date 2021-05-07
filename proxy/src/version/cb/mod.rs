@@ -1,5 +1,5 @@
 use common::{net::cb, version::ProtocolVersion};
-use std::{collections::HashMap, io, sync::Mutex};
+use std::{collections::HashMap, io, io::ErrorKind, sync::Mutex};
 
 use crate::packet::Packet;
 
@@ -33,6 +33,14 @@ impl Generator {
   }
 
   pub fn convert(&self, v: ProtocolVersion, p: cb::Packet) -> io::Result<Packet> {
-    self.gens[&v].gens[&p.id()].lock().unwrap()(p, v)
+    match self.gens.get(&v) {
+      Some(g) => match g.gens.get(&p.id()) {
+        Some(g) => g.lock().unwrap()(p, v),
+        None => {
+          Err(io::Error::new(ErrorKind::InvalidInput, format!("unknown packet {:?}", p.id())))
+        }
+      },
+      None => Err(io::Error::new(ErrorKind::InvalidInput, format!("unknown version {:?}", v))),
+    }
   }
 }
