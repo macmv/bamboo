@@ -72,6 +72,24 @@ impl World {
 
     let mut int = time::interval(Duration::from_millis(50));
     tokio::spawn(async move {
+      // Player init
+      {
+        let p = player.lock().await;
+        for x in -10..10 {
+          for z in -10..10 {
+            let mut out = cb::Packet::new(cb::ID::ChunkData);
+            self
+              .chunk(ChunkPos::new(x, z), |c| {
+                let mut pb = c.to_proto(p.ver().block());
+                pb.x = x;
+                pb.z = z;
+                out.set_other(Other::Chunk(pb)).unwrap();
+              })
+              .await;
+            conn.send(out).await;
+          }
+        }
+      }
       // Player tick loop
       let mut tick = 0;
       loop {
@@ -87,20 +105,6 @@ impl World {
           let mut out = cb::Packet::new(cb::ID::KeepAlive);
           out.set_i32(0, 1234556);
           conn.send(out).await;
-        }
-        for x in -10..10 {
-          for z in -10..10 {
-            let mut out = cb::Packet::new(cb::ID::ChunkData);
-            self
-              .chunk(ChunkPos::new(x, z), |c| {
-                let mut pb = c.to_proto(p.ver().block());
-                pb.x = x;
-                pb.z = z;
-                out.set_other(Other::Chunk(pb)).unwrap();
-              })
-              .await;
-            conn.send(out).await;
-          }
         }
         tick += 1;
       }
