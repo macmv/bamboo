@@ -1,7 +1,10 @@
 use num_derive::{FromPrimitive, ToPrimitive};
 use std::fmt;
 
-use crate::{math::UUID, proto};
+use crate::{
+  math::{Pos, UUID},
+  proto,
+};
 
 #[derive(Clone, Debug)]
 pub struct Packet {
@@ -112,6 +115,7 @@ impl Packet {
   add_fn!(set_int_arr, int_arrs, Vec<i32>, |v: Vec<i32>| { proto::IntArray { ints: v } });
   add_fn!(set_long_arr, long_arrs, Vec<u64>, |v: Vec<u64>| { proto::LongArray { longs: v } });
   add_fn!(set_str_arr, str_arrs, Vec<String>, |v: Vec<String>| { proto::StrArray { strs: v } });
+  add_fn!(set_pos, positions, Pos, |v: Pos| { v.to_u64() });
 }
 
 macro_rules! value_non_empty {

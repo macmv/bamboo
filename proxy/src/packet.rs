@@ -98,6 +98,17 @@ impl Packet {
     }
   }
 
+  /// This parses a postition from the internal buffer (format depends on the
+  /// version), and then returns that as a Pos struct.
+  pub fn read_pos(&mut self) -> Pos {
+    let num = self.read_u64();
+    if self.ver < ProtocolVersion::V1_14 {
+      Pos::from_old_u64(num)
+    } else {
+      Pos::from_u64(num)
+    }
+  }
+
   pub fn write_uuid(&mut self, v: &proto::Uuid) {
     self.write_buf(&v.be_data);
   }
