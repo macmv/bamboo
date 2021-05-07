@@ -96,7 +96,13 @@ impl ClientListener {
           }
           None => {}
         }
-        let sb = self.gen.serverbound(self.ver, p)?;
+        let sb = match self.gen.serverbound(self.ver, p) {
+          Err(e) => {
+            warn!("{}", e);
+            continue;
+          }
+          Ok(v) => v,
+        };
         info!("got proto: {}", &sb);
         self.server.send(sb.to_proto()).await?;
       }

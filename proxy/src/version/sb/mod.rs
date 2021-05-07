@@ -36,7 +36,7 @@ impl Generator {
         Some(Some(g)) => g.lock().unwrap()(p),
         _ => Err(io::Error::new(
           ErrorKind::InvalidInput,
-          format!("got unknown packet from client {:?}", p.id()),
+          format!("got unknown packet id from client {:#04x}", p.id()),
         )),
       },
       None => Err(io::Error::new(ErrorKind::InvalidInput, format!("unknown version {:?}", v))),
