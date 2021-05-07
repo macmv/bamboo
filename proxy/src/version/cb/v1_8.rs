@@ -3,7 +3,10 @@ use std::collections::HashMap;
 use super::PacketSpec;
 use crate::packet::Packet;
 
-use common::{net::cb, version::ProtocolVersion};
+use common::{
+  net::{cb, Other},
+  version::ProtocolVersion,
+};
 
 pub(super) fn gen_spec() -> PacketSpec {
   let mut spec = PacketSpec { gens: HashMap::new() };
@@ -49,8 +52,14 @@ pub(super) fn gen_spec() -> PacketSpec {
   });
   spec.add(cb::ID::ChunkData, |p: cb::Packet, v: ProtocolVersion| {
     let mut out = Packet::new(0x21, v);
-    let chunk = p.read_other();
-    dbg!(chunk);
+    // TODO: Error handling should be done within the packet.
+    let chunk = match p.read_other().unwrap() {
+      Other::Chunk(c) => c,
+      o => panic!("expected chunk, got {:?}", o),
+    };
+    dbg!(&chunk);
+    out.write_i32(chunk.x);
+    out.write_i32(chunk.z);
     out
   });
   spec
