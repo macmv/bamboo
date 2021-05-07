@@ -117,7 +117,6 @@ pub(super) fn gen_spec() -> PacketSpec {
       Other::Chunk(c) => c,
       o => return Err(Error::new(ErrorKind::InvalidData, format!("expected chunk, got {:?}", o))),
     };
-    dbg!(&chunk);
     out.write_i32(chunk.x);
     out.write_i32(chunk.z);
     out.write_bool(true); // Always a new chunk

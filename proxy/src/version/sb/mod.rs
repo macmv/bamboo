@@ -1,4 +1,4 @@
-use common::{net::cb, version::ProtocolVersion};
+use common::{net::sb, version::ProtocolVersion};
 use std::{collections::HashMap, io, io::ErrorKind, sync::Mutex};
 
 use crate::packet::Packet;
@@ -6,16 +6,15 @@ use crate::packet::Packet;
 mod v1_8;
 
 struct PacketSpec {
-  // This is keyed with protobuf packet ids, as this spec will be converting from protobuf to tcp.
-  gens:
-    HashMap<cb::ID, Box<Mutex<dyn Fn(cb::Packet, ProtocolVersion) -> io::Result<Packet> + Send>>>,
+  // Each index is a tcp packet id. Each generator creates a protobuf from a tcp packet.
+  gens: Vec<Box<Mutex<dyn Fn(Packet, ProtocolVersion) -> io::Result<sb::Packet> + Send>>>,
 }
 
 impl PacketSpec {
   fn add(
     &mut self,
-    id: cb::ID,
-    f: impl Fn(cb::Packet, ProtocolVersion) -> io::Result<Packet> + Send + 'static,
+    id: usize,
+    f: impl Fn(Packet, ProtocolVersion) -> io::Result<sb::Packet> + Send + 'static,
   ) {
     self.gens.insert(id, Box::new(Mutex::new(f)));
   }
@@ -32,13 +31,13 @@ impl Generator {
     Generator { gens }
   }
 
-  pub fn convert(&self, v: ProtocolVersion, p: cb::Packet) -> io::Result<Packet> {
+  pub fn convert(&self, v: ProtocolVersion, p: Packet) -> io::Result<sb::Packet> {
     match self.gens.get(&v) {
-      Some(g) => match g.gens.get(&p.id()) {
+      Some(g) => match g.gens.get(p.id() as usize) {
         Some(g) => g.lock().unwrap()(p, v),
         None => Err(io::Error::new(
           ErrorKind::InvalidInput,
-          format!("got unknown packet from server {:?}", p.id()),
+          format!("got unknown packet from client {:?}", p.id()),
         )),
       },
       None => Err(io::Error::new(ErrorKind::InvalidInput, format!("unknown version {:?}", v))),

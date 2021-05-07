@@ -52,7 +52,7 @@ pub struct ServerListener {
 }
 
 impl ClientListener {
-  pub async fn run(&mut self) -> io::Result<()> {
+  pub async fn run(&mut self) -> Result<(), Box<dyn Error>> {
     'running: loop {
       self.client.poll().await?;
       loop {
@@ -65,14 +65,17 @@ impl ClientListener {
         match err {
           Some(e) => {
             error!("error while parsing packet: {}", e);
-            break 'running Err(io::Error::new(
-              ErrorKind::InvalidInput,
+            break 'running Err(Box::new(io::Error::new(
+              ErrorKind::InvalidData,
               format!("failed to parse packet, closing connection"),
-            ));
+            )));
           }
           None => {}
         }
-        info!("got tcp packet {:?}", p);
+        info!("got packet: {:?}", &p);
+        let sb = self.gen.serverbound(ProtocolVersion::V1_8, p)?;
+        info!("got proto: {:?}", &sb);
+        self.server.send(sb.into()).await?;
       }
     }
   }

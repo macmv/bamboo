@@ -65,4 +65,7 @@ impl Packet {
       None => None,
     }
   }
+  pub fn into(self) -> proto::Packet {
+    self.pb
+  }
 }
