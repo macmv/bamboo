@@ -2,6 +2,7 @@ use num_derive::{FromPrimitive, ToPrimitive};
 use prost::{DecodeError, EncodeError, Message};
 use prost_types::Any;
 
+use super::other::Other;
 use crate::{math::UUID, proto};
 
 #[derive(Clone, Debug)]
@@ -21,28 +22,6 @@ macro_rules! add_fn {
       self.pb.$arr[i] = $convert(v);
     }
   };
-}
-
-macro_rules! create_type_url {
-  ($ty: expr) => {
-    stringify!(type.googleapis.com/google.rpc.$ty)
-  }
-}
-
-macro_rules! build_any_decode {
-  [$any: expr, $($val: ident),*] => {
-    match $any.type_url.as_str() {
-      $(
-        create_type_url!($val) => {
-          match proto::$val::decode($any.value.as_slice()) {
-            Ok(msg) => Box::new(msg),
-            Err(e) => panic!("error decoding any: {}", e),
-          }
-        },
-      )*
-      _ => panic!("unknown type {}", $any.type_url),
-    }
-  }
 }
 
 impl Packet {
@@ -76,25 +55,20 @@ impl Packet {
   add_fn!(set_u64_arr, long_arrs, Vec<u64>, |v: Vec<u64>| { proto::LongArray { longs: v } });
   add_fn!(set_str_arr, str_arrs, Vec<String>, |v: Vec<String>| { proto::StrArray { strs: v } });
 
-  pub fn set_other<M>(&mut self, v: &M) -> Result<(), EncodeError>
-  where
-    M: prost::Message + Sized,
-  {
-    let mut b = bytes::BytesMut::new();
-    v.encode(&mut b)?;
-    // TODO: Pass names into this function or something
-    let name = create_type_url!(v).into();
-    dbg!(&name);
-    let any = Any { type_url: name, value: b.to_vec() };
-
+  /// Generates an any type from the given value, and embeds that into the
+  /// protbuf.
+  pub fn set_other(&mut self, v: Other) -> Result<(), EncodeError> {
     if self.pb.other.is_none() {
       panic!("packet {:?} does not need an other!", self.id);
     }
-    self.pb.other = Some(any);
+    self.pb.other = Some(v.to_any()?);
     Ok(())
   }
-  pub fn decode_other(&self) -> Box<dyn prost::Message> {
-    build_any_decode![self.pb.other.clone().unwrap(), Chunk, BossBar]
+
+  /// Reads the 'other' field of this protobuf. This is an any type, so the
+  /// message returned can be any type.
+  pub fn read_other(&self) -> Result<Other, DecodeError> {
+    Other::from_any(self.pb.other.clone().unwrap())
   }
 }
 

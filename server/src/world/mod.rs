@@ -19,7 +19,7 @@ use tonic::{Status, Streaming};
 
 use common::{
   math::{ChunkPos, UUID},
-  net::cb,
+  net::{cb, Other},
   proto::Packet,
   version::ProtocolVersion,
 };
@@ -93,7 +93,7 @@ impl World {
             let mut out = cb::Packet::new(cb::ID::ChunkData);
             self
               .chunk(ChunkPos::new(x, z), |c| {
-                out.set_other(&c.to_proto(p.ver().block())).unwrap();
+                out.set_other(Other::Chunk(c.to_proto(p.ver().block()))).unwrap();
               })
               .await;
             conn.send(out).await;

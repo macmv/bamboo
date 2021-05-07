@@ -47,5 +47,11 @@ pub(super) fn gen_spec() -> PacketSpec {
     out.write_pos(p.pb().longs[0]); // The location that your compass points to
     out
   });
+  spec.add(cb::ID::ChunkData, |p: cb::Packet, v: ProtocolVersion| {
+    let mut out = Packet::new(0x21, v);
+    let chunk = p.read_other();
+    dbg!(chunk);
+    out
+  });
   spec
 }
