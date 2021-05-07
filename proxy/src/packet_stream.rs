@@ -91,8 +91,7 @@ impl StreamWriter {
     // Length varint
     let mut buf = Buffer::new(vec![]);
     buf.write_varint(bytes.len() as i32);
-    self.stream.write(&buf.into_inner()).await?;
-
+    self.stream.write(&buf).await?;
     self.stream.write(&bytes).await?;
     Ok(())
   }

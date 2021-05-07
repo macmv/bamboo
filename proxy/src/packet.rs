@@ -43,8 +43,8 @@ impl Packet {
   pub fn err(&self) -> &Option<BufferError> {
     self.buf.err()
   }
-  pub fn serialize(self) -> Vec<u8> {
-    self.buf.into_inner()
+  pub fn serialize<'a>(&'a self) -> &'a Vec<u8> {
+    &self.buf
   }
 
   add_writer!(write_u8, u8);
@@ -55,6 +55,8 @@ impl Packet {
   add_writer!(write_i16, i16);
   add_writer!(write_i32, i32);
   add_writer!(write_i64, i64);
+
+  add_writer!(write_buf, &Vec<u8>);
 
   add_writer!(write_varint, i32);
   add_writer!(write_str, &str);
