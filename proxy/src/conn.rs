@@ -85,8 +85,8 @@ impl ClientListener {
           break;
         }
         let p = p.unwrap();
-        let err = p.err();
-        match err {
+        // Make sure there were no errors set within the packet during parsing
+        match p.err() {
           Some(e) => {
             error!("error while parsing packet: {}", e);
             return Err(Box::new(io::Error::new(
@@ -96,6 +96,9 @@ impl ClientListener {
           }
           None => {}
         }
+        // Converting a tcp packet to a grpc packet should always work. If it fails,
+        // then it is either an invalid version or an unknown packet. Either way, we
+        // only want to print a warning.
         let sb = match self.gen.serverbound(self.ver, p) {
           Err(e) => {
             warn!("{}", e);
