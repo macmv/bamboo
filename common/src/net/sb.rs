@@ -183,7 +183,7 @@ fn create_empty(id: ID) -> proto::Packet {
     ID::ClickWindowButton          => id_init!(bytes: 2),
     ID::ClickWindow                => id_init!(bytes: 2, shorts: 2, ints: 1), // TODO: Setup slot type
     ID::CloseWindow                => id_init!(bytes: 1),
-    ID::PluginMessage              => id_init!(strs: 1, bytes: 1),
+    ID::PluginMessage              => id_init!(strs: 1, byte_arrs: 1),
     ID::EditBook                   => id_init!(bools: 1, ints: 1), // TODO: Setup slot type
     ID::EntityNBTRequest           => id_init!(), // TODO: Figure out what this packet is
     ID::InteractEntity             => id_init!(ints: 3, floats: 3, bools: 1),

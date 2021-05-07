@@ -80,6 +80,7 @@ impl Packet {
   add_reader!(read_varint, i32);
   add_reader!(read_str, String);
   add_reader!(read_bool, bool);
+  add_reader!(read_all, Vec<u8>);
 
   pub fn len(&self) -> usize {
     self.buf.len()
