@@ -27,7 +27,7 @@ impl Connection {
   pub(crate) async fn run(&self) -> Result<(), Status> {
     'running: loop {
       let p = match self.rx.lock().await.message().await? {
-        Some(p) => sb::Packet::from(p),
+        Some(p) => sb::Packet::from_proto(p),
         None => break 'running,
       };
       info!("got packet from client {:?}", p);

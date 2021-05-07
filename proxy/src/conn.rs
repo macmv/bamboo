@@ -75,7 +75,7 @@ impl ClientListener {
         info!("got packet: {:?}", &p);
         let sb = self.gen.serverbound(ProtocolVersion::V1_8, p)?;
         info!("got proto: {:?}", &sb);
-        self.server.send(sb.into()).await?;
+        self.server.send(sb.to_proto()).await?;
       }
     }
   }

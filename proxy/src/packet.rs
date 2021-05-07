@@ -81,6 +81,10 @@ impl Packet {
   add_reader!(read_str, String);
   add_reader!(read_bool, bool);
 
+  pub fn len(&self) -> usize {
+    self.buf.len()
+  }
+
   /// This parses a postition from a grpc packet (always new format), and then
   /// writes the long back into the buffer, with either the new or old format.
   /// The new format will be used for any packet with version 1.14 or later.
