@@ -1,5 +1,5 @@
 use common::{net::cb, version::ProtocolVersion};
-use std::{collections::HashMap, sync::Mutex};
+use std::{collections::HashMap, io, sync::Mutex};
 
 use crate::packet::Packet;
 
@@ -7,14 +7,15 @@ mod v1_8;
 
 struct PacketSpec {
   // This is keyed with protobuf packet ids, as this spec will be converting from protobuf to tcp.
-  gens: HashMap<cb::ID, Box<Mutex<dyn Fn(cb::Packet, ProtocolVersion) -> Packet + Send>>>,
+  gens:
+    HashMap<cb::ID, Box<Mutex<dyn Fn(cb::Packet, ProtocolVersion) -> io::Result<Packet> + Send>>>,
 }
 
 impl PacketSpec {
   fn add(
     &mut self,
     id: cb::ID,
-    f: impl Fn(cb::Packet, ProtocolVersion) -> Packet + Send + 'static,
+    f: impl Fn(cb::Packet, ProtocolVersion) -> io::Result<Packet> + Send + 'static,
   ) {
     self.gens.insert(id, Box::new(Mutex::new(f)));
   }
@@ -31,9 +32,7 @@ impl Generator {
     Generator { gens }
   }
 
-  pub fn convert(&self, v: ProtocolVersion, p: cb::Packet) -> Packet {
-    // Protocol ids are compacted, and in the same order for all versions. It is the
-    // tcp id that need to be referenced with a HashMap. See sb::Generator for more.
+  pub fn convert(&self, v: ProtocolVersion, p: cb::Packet) -> io::Result<Packet> {
     self.gens[&v].gens[&p.id()].lock().unwrap()(p, v)
   }
 }

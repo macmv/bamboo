@@ -86,7 +86,7 @@ impl ServerListener {
         break;
       }
       let p = p.unwrap();
-      let cb = self.gen.clientbound(ProtocolVersion::V1_8, cb::Packet::from_proto(p));
+      let cb = self.gen.clientbound(ProtocolVersion::V1_8, cb::Packet::from_proto(p))?;
       self.client.write(cb).await.unwrap();
     }
     info!("closing connection with server");

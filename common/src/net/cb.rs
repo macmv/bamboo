@@ -1,6 +1,5 @@
 use num_derive::{FromPrimitive, ToPrimitive};
-use prost::{DecodeError, EncodeError, Message};
-use prost_types::Any;
+use prost::{DecodeError, EncodeError};
 
 use super::other::Other;
 use crate::{math::UUID, proto};
@@ -72,10 +71,14 @@ impl Packet {
   }
 }
 
+/// A grpc packet ID. This is roughly the same as the latest packet version, but
+/// in any order.
 impl ID {
+  /// Returns the id as an i32. Used when serializing protobufs.
   pub fn to_i32(&self) -> i32 {
     num::ToPrimitive::to_i32(self).unwrap()
   }
+  /// Creates an id from an i32. Used when deserializing protobufs.
   pub fn from_i32(id: i32) -> Self {
     num::FromPrimitive::from_i32(id).unwrap()
   }
