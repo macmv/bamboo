@@ -1,4 +1,5 @@
 use num_derive::{FromPrimitive, ToPrimitive};
+use std::fmt;
 
 use crate::{math::UUID, proto};
 
@@ -111,6 +112,54 @@ impl Packet {
   add_fn!(set_i32_arr, int_arrs, Vec<i32>, |v: Vec<i32>| { proto::IntArray { ints: v } });
   add_fn!(set_u64_arr, long_arrs, Vec<u64>, |v: Vec<u64>| { proto::LongArray { longs: v } });
   add_fn!(set_str_arr, str_arrs, Vec<String>, |v: Vec<String>| { proto::StrArray { strs: v } });
+}
+
+macro_rules! value_non_empty {
+  ($self: ident, $f: expr, $var: ident, $fmt: expr) => {
+    if $self.pb.$var.len() != 0 {
+      write!($f, concat!("  ", stringify!($var), ": ", $fmt, "\n"), $self.pb.$var)?;
+    }
+  };
+  ($self: ident, $f: expr, $var: ident, $fmt: expr, $extra: expr) => {
+    if $self.pb.$var.len() != 0 {
+      write!($f, concat!("  ", stringify!($var), ": ", $fmt, "\n"), $self.pb.$var, $extra)?;
+    }
+  };
+}
+
+impl fmt::Display for Packet {
+  fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+    write!(f, "Packet(\n")?;
+    write!(f, "  id: {:?}\n", self.id)?;
+    value_non_empty!(self, f, bytes, "{:?}");
+    value_non_empty!(self, f, bools, "{:?}");
+    value_non_empty!(self, f, shorts, "{:?}");
+    value_non_empty!(self, f, ints, "{:?}");
+    value_non_empty!(self, f, longs, "{:?}");
+    value_non_empty!(self, f, floats, "{:?}");
+    value_non_empty!(self, f, doubles, "{:?}");
+    value_non_empty!(self, f, strs, "{:?}");
+    value_non_empty!(self, f, uuids, "{:?}");
+    value_non_empty!(self, f, positions, "{:?}");
+    value_non_empty!(self, f, nbt_tags, "{:?}");
+    value_non_empty!(
+      self,
+      f,
+      byte_arrs,
+      "{:?}\n  byte_arrs as strings: {:?}",
+      self
+        .pb
+        .byte_arrs
+        .iter()
+        .map(|a| String::from_utf8(a.to_vec()).ok())
+        .collect::<Vec<Option<String>>>()
+    );
+    value_non_empty!(self, f, int_arrs, "{:?}");
+    value_non_empty!(self, f, long_arrs, "{:?}");
+    value_non_empty!(self, f, str_arrs, "{:?}");
+    write!(f, ")\n")?;
+    Ok(())
+  }
 }
 
 macro_rules! id_init {
