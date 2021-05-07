@@ -4,6 +4,7 @@ use std::{
   error::Error,
   fmt, io,
   io::{Cursor, Read, Write},
+  ops::Deref,
   string::FromUtf8Error,
 };
 
@@ -177,6 +178,10 @@ impl Buffer {
   add_write!(write_i32, i32);
   add_write!(write_i64, i64);
 
+  pub fn write_buf(&mut self, v: &Vec<u8>) {
+    self.data.write(v).unwrap();
+  }
+
   pub fn read_str(&mut self) -> String {
     if self.err.is_some() {
       return "".into();
@@ -236,9 +241,13 @@ impl Buffer {
       }
     }
   }
+}
 
-  pub fn into_inner(self) -> Vec<u8> {
-    self.data.into_inner()
+impl Deref for Buffer {
+  type Target = Vec<u8>;
+
+  fn deref(&self) -> &Self::Target {
+    self.data.get_ref()
   }
 }
 
