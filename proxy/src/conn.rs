@@ -5,16 +5,7 @@ use crate::{
 };
 
 use common::{net::cb, proto, proto::minecraft_client::MinecraftClient, version::ProtocolVersion};
-use std::{
-  error::Error,
-  io,
-  io::ErrorKind,
-  sync::{
-    atomic::{AtomicBool, Ordering},
-    Arc,
-  },
-};
-use tokio::select;
+use std::{error::Error, io, io::ErrorKind, sync::Arc};
 use tokio::sync::{mpsc, oneshot};
 use tokio_stream::wrappers::ReceiverStream;
 use tonic::{transport::channel::Channel, Request, Status, Streaming};
@@ -46,18 +37,21 @@ pub struct Conn {
   server:        MinecraftClient<Channel>,
   state:         State,
   gen:           Arc<version::Generator>,
+  ver:           ProtocolVersion,
 }
 
 pub struct ClientListener {
   client: StreamReader,
   server: mpsc::Sender<proto::Packet>,
   gen:    Arc<version::Generator>,
+  ver:    ProtocolVersion,
 }
 
 pub struct ServerListener {
   client: StreamWriter,
   server: Streaming<proto::Packet>,
   gen:    Arc<version::Generator>,
+  ver:    ProtocolVersion,
 }
 
 impl ClientListener {
@@ -86,7 +80,7 @@ impl ClientListener {
         _ = &mut rx => break,
       }
       loop {
-        let p = self.client.read().unwrap();
+        let p = self.client.read(self.ver).unwrap();
         if p.is_none() {
           break;
         }
@@ -102,7 +96,7 @@ impl ClientListener {
           }
           None => {}
         }
-        let sb = self.gen.serverbound(ProtocolVersion::V1_8, p)?;
+        let sb = self.gen.serverbound(self.ver, p)?;
         info!("got proto: {}", &sb);
         self.server.send(sb.to_proto()).await?;
       }
@@ -135,7 +129,7 @@ impl ServerListener {
         _ = &mut rx => break,
       }
       let p = p.unwrap();
-      let cb = self.gen.clientbound(ProtocolVersion::V1_8, cb::Packet::from_proto(p))?;
+      let cb = self.gen.clientbound(self.ver, cb::Packet::from_proto(p))?;
       self.client.write(cb).await.unwrap();
     }
     Ok(())
@@ -154,6 +148,7 @@ impl Conn {
       server: MinecraftClient::connect(ip).await?,
       state: State::Handshake,
       gen: Arc::new(version::Generator::new()),
+      ver: ProtocolVersion::Invalid,
     })
   }
 
@@ -164,17 +159,26 @@ impl Conn {
     let inbound = response.into_inner();
 
     Ok((
-      ClientListener { gen: self.gen.clone(), client: self.client_reader, server: tx },
-      ServerListener { gen: self.gen, client: self.client_writer, server: inbound },
+      ClientListener {
+        ver:    self.ver,
+        gen:    self.gen.clone(),
+        client: self.client_reader,
+        server: tx,
+      },
+      ServerListener {
+        ver:    self.ver,
+        gen:    self.gen,
+        client: self.client_writer,
+        server: inbound,
+      },
     ))
   }
 
   pub async fn handshake(&mut self) -> io::Result<()> {
-    let mut ver = None;
     'login: loop {
       self.client_reader.poll().await.unwrap();
       loop {
-        let p = self.client_reader.read().unwrap();
+        let p = self.client_reader.read(self.ver).unwrap();
         if p.is_none() {
           break;
         }
@@ -195,10 +199,13 @@ impl Conn {
                 format!("unknown handshake packet {}", p.id()),
               ));
             }
-            ver = Some(ProtocolVersion::from(p.read_varint()));
-            // Make sure that the version is know to the reader/writers
-            self.client_reader.ver = ver.unwrap();
-            self.client_writer.ver = ver.unwrap();
+            self.ver = ProtocolVersion::from(p.read_varint());
+            if self.ver == ProtocolVersion::Invalid {
+              return Err(io::Error::new(
+                ErrorKind::InvalidInput,
+                format!("client sent an invalid version"),
+              ));
+            }
 
             let _addr = p.read_str();
             let _port = p.read_u16();
@@ -212,7 +219,7 @@ impl Conn {
               0 => {
                 let username = p.read_str();
                 info!("got username {}", username);
-                let mut out = Packet::new(2, ver.unwrap());
+                let mut out = Packet::new(2, self.ver);
                 out.write_str("a0ebbc8d-e0b0-4c23-a965-efba61ff0ae8");
                 out.write_str("macmv");
                 self.client_writer.write(out).await?;

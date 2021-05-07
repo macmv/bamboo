@@ -16,31 +16,26 @@ use tokio::{
 };
 
 pub struct StreamReader {
-  stream:         OwnedReadHalf,
-  prod:           Producer<u8>,
-  cons:           Consumer<u8>,
-  pub(crate) ver: ProtocolVersion,
+  stream: OwnedReadHalf,
+  prod:   Producer<u8>,
+  cons:   Consumer<u8>,
 }
 pub struct StreamWriter {
-  stream:         OwnedWriteHalf,
-  pub(crate) ver: ProtocolVersion,
+  stream: OwnedWriteHalf,
 }
 
 pub fn new(stream: StdTcpStream) -> Result<(StreamReader, StreamWriter)> {
   // We want to block on read calls
   // stream.set_nonblocking(true)?;
   let (read, write) = TcpStream::from_std(stream)?.into_split();
-  Ok((
-    StreamReader::new(read, ProtocolVersion::Invalid),
-    StreamWriter::new(write, ProtocolVersion::Invalid),
-  ))
+  Ok((StreamReader::new(read), StreamWriter::new(write)))
 }
 
 impl StreamReader {
-  pub fn new(stream: OwnedReadHalf, ver: ProtocolVersion) -> Self {
+  pub fn new(stream: OwnedReadHalf) -> Self {
     let buf = RingBuffer::new(1024);
     let (prod, cons) = buf.split();
-    StreamReader { stream, prod, cons, ver }
+    StreamReader { stream, prod, cons }
   }
 
   pub async fn poll(&mut self) -> Result<()> {
@@ -54,7 +49,7 @@ impl StreamReader {
     self.prod.push_slice(&msg);
     Ok(())
   }
-  pub fn read(&mut self) -> Result<Option<Packet>> {
+  pub fn read(&mut self, ver: ProtocolVersion) -> Result<Option<Packet>> {
     let mut len = 0;
     let mut read = -1;
     self.cons.access(|a, _| {
@@ -76,13 +71,13 @@ impl StreamReader {
     let mut vec = vec![0; len as usize];
     self.cons.pop_slice(&mut vec);
     // And parse it
-    Ok(Some(Packet::from_buf(vec, self.ver)))
+    Ok(Some(Packet::from_buf(vec, ver)))
   }
 }
 
 impl StreamWriter {
-  pub fn new(stream: OwnedWriteHalf, ver: ProtocolVersion) -> Self {
-    StreamWriter { stream, ver }
+  pub fn new(stream: OwnedWriteHalf) -> Self {
+    StreamWriter { stream }
   }
   pub async fn write(&mut self, p: Packet) -> Result<()> {
     // This is the packet, including it's id
