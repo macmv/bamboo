@@ -7,11 +7,11 @@ mod v1_8;
 
 struct PacketSpec {
   // Each index is a tcp packet id. Each generator creates a protobuf from a tcp packet.
-  gens: Vec<Option<Box<Mutex<dyn Fn(Packet) -> io::Result<sb::Packet> + Send>>>>,
+  gens: Vec<Option<Box<Mutex<dyn Fn(&mut Packet) -> io::Result<sb::Packet> + Send>>>>,
 }
 
 impl PacketSpec {
-  fn add(&mut self, id: usize, f: impl Fn(Packet) -> io::Result<sb::Packet> + Send + 'static) {
+  fn add(&mut self, id: usize, f: impl Fn(&mut Packet) -> io::Result<sb::Packet> + Send + 'static) {
     if id >= self.gens.len() {
       self.gens.resize_with(id + 1, || None);
     }
@@ -30,16 +30,21 @@ impl Generator {
     Generator { gens }
   }
 
-  pub fn convert(&self, v: ProtocolVersion, p: Packet) -> io::Result<sb::Packet> {
-    match self.gens.get(&v) {
+  pub fn convert(&self, v: ProtocolVersion, mut p: Packet) -> io::Result<sb::Packet> {
+    let packet = match self.gens.get(&v) {
       Some(g) => match g.gens.get(p.id() as usize) {
-        Some(Some(g)) => g.lock().unwrap()(p),
+        Some(Some(g)) => g.lock().unwrap()(&mut p),
         _ => Err(io::Error::new(
           ErrorKind::InvalidInput,
           format!("got unknown packet id from client {:#04x}", p.id()),
         )),
       },
       None => Err(io::Error::new(ErrorKind::InvalidInput, format!("unknown version {:?}", v))),
+    }?;
+    if p.remaining() > 0 {
+      Err(io::Error::new(ErrorKind::Other, format!("parser didn't read {} bytes", p.remaining())))
+    } else {
+      Ok(packet)
     }
   }
 }

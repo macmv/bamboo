@@ -1,6 +1,7 @@
 use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
 use log::info;
 use std::{
+  convert::TryFrom,
   error::Error,
   fmt, io,
   io::{Cursor, Read, Write},
@@ -148,6 +149,9 @@ impl Buffer {
   }
   pub fn len(&self) -> usize {
     self.data.get_ref().len()
+  }
+  pub fn index(&self) -> usize {
+    usize::try_from(self.data.position()).unwrap()
   }
 
   pub fn read_bool(&mut self) -> bool {

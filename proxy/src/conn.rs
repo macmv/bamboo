@@ -97,13 +97,18 @@ impl ClientListener {
           None => {}
         }
         // Converting a tcp packet to a grpc packet should always work. If it fails,
-        // then it is either an invalid version or an unknown packet. Either way, we
-        // only want to print a warning.
+        // then it is either an invalid version, an unknown packet, or a parsing error.
+        // If it is a parsing error, we want to close the connection.
         let sb = match self.gen.serverbound(self.ver, p) {
-          Err(e) => {
-            warn!("{}", e);
-            continue;
-          }
+          Err(e) => match e.kind() {
+            ErrorKind::Other => {
+              return Err(Box::new(e));
+            }
+            _ => {
+              warn!("{}", e);
+              continue;
+            }
+          },
           Ok(v) => v,
         };
         info!("got proto: {}", &sb);

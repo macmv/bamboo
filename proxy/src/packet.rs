@@ -82,6 +82,9 @@ impl Packet {
   add_reader!(read_bool, bool);
   add_reader!(read_all, Vec<u8>);
 
+  pub fn remaining(&self) -> usize {
+    self.buf.len() - self.buf.index()
+  }
   pub fn len(&self) -> usize {
     self.buf.len()
   }
