@@ -93,7 +93,10 @@ impl World {
             let mut out = cb::Packet::new(cb::ID::ChunkData);
             self
               .chunk(ChunkPos::new(x, z), |c| {
-                out.set_other(Other::Chunk(c.to_proto(p.ver().block()))).unwrap();
+                let mut pb = c.to_proto(p.ver().block());
+                pb.x = x;
+                pb.z = z;
+                out.set_other(Other::Chunk(pb)).unwrap();
               })
               .await;
             conn.send(out).await;
