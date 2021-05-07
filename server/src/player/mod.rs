@@ -7,7 +7,7 @@ use crate::net::Connection;
 
 pub struct Player {
   // The EID of the player. Never changes.
-  id:       u32,
+  id:       i32,
   // Player's username
   username: String,
   uuid:     UUID,
@@ -17,7 +17,7 @@ pub struct Player {
 
 impl Player {
   pub fn new(
-    id: u32,
+    id: i32,
     username: String,
     uuid: UUID,
     conn: Arc<Connection>,

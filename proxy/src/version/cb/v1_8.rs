@@ -21,7 +21,7 @@ pub(super) fn gen_spec() -> PacketSpec {
   });
   spec.add(cb::ID::JoinGame, |p: cb::Packet, v: ProtocolVersion| {
     let mut out = Packet::new(0x01, v);
-    out.write_varint(p.pb().ints[0]); // EID
+    out.write_i32(p.pb().ints[0]); // EID
     out.write_u8(p.pb().bytes[0]); // Gamemode
     out.write_u8(0); // Dimension. TODO: Cross dimension stuff with the new codec system
     out.write_u8(1); // Difficulty

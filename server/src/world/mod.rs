@@ -6,7 +6,7 @@ use std::{
   marker::PhantomData,
   ops::Deref,
   sync::{
-    atomic::{AtomicU32, Ordering},
+    atomic::{AtomicI32, Ordering},
     Arc, Mutex as StdMutex, MutexGuard as StdMutexGuard,
   },
   time::Duration,
@@ -42,7 +42,7 @@ use chunk::MultiChunk;
 pub struct World {
   chunks:  RwLock<HashMap<ChunkPos, Arc<StdMutex<MultiChunk>>>>,
   players: Mutex<Vec<Arc<Mutex<Player>>>>,
-  eid:     Arc<AtomicU32>,
+  eid:     Arc<AtomicI32>,
 }
 
 #[derive(Clone)]
@@ -75,6 +75,13 @@ impl World {
       // Player init
       {
         let p = player.lock().await;
+
+        let mut out = cb::Packet::new(cb::ID::JoinGame);
+        out.set_i32(0, self.eid());
+        out.set_byte(0, 1); // Creative
+        out.set_bool(0, false); // Don't reduce debug info
+        conn.send(out).await;
+
         for x in -10..10 {
           for z in -10..10 {
             let mut out = cb::Packet::new(cb::ID::ChunkData);
@@ -89,6 +96,16 @@ impl World {
             conn.send(out).await;
           }
         }
+
+        let mut out = cb::Packet::new(cb::ID::PlayerPositionAndLook);
+        out.set_f64(0, 0.0); // X
+        out.set_f64(1, 60.0); // Y
+        out.set_f64(2, 0.0); // Z
+        out.set_f32(0, 0.0); // Yaw
+        out.set_f32(1, 0.0); // Pitch
+        out.set_byte(0, 0); // Flags
+        out.set_i32(0, 1234); // TP id
+        conn.send(out).await;
       }
       // Player tick loop
       let mut tick = 0;
@@ -112,7 +129,7 @@ impl World {
   }
 
   /// Returns a new, unique EID.
-  pub fn eid(&self) -> u32 {
+  pub fn eid(&self) -> i32 {
     self.eid.fetch_add(1, Ordering::SeqCst)
   }
 
