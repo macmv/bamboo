@@ -1,5 +1,5 @@
 use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
-use log::info;
+
 use std::{
   convert::TryFrom,
   error::Error,

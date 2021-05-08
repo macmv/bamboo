@@ -8,7 +8,7 @@ pub struct Type {
 }
 
 impl Type {
-  pub fn from_id(id: u32) -> Self {
+  pub fn from_id(_id: u32) -> Self {
     Type::air()
   }
   pub fn air() -> Type {

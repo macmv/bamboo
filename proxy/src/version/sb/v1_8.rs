@@ -1,11 +1,7 @@
 use super::PacketSpec;
 use crate::packet::Packet;
 
-use common::{
-  net::{sb, Other},
-  util::Buffer,
-  version::ProtocolVersion,
-};
+use common::net::sb;
 
 pub(super) fn gen_spec() -> PacketSpec {
   let mut spec = PacketSpec { gens: Vec::new() };

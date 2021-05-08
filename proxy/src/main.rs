@@ -9,10 +9,6 @@ pub mod version;
 use std::{
   error::Error,
   net::{TcpListener, TcpStream},
-  sync::{
-    atomic::{AtomicBool, Ordering},
-    Arc,
-  },
 };
 use tokio::sync::oneshot;
 

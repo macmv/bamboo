@@ -2,9 +2,6 @@ mod chunk;
 
 use std::{
   collections::HashMap,
-  future::Future,
-  marker::PhantomData,
-  ops::Deref,
   sync::{
     atomic::{AtomicI32, Ordering},
     Arc, Mutex as StdMutex, MutexGuard as StdMutexGuard,
@@ -12,7 +9,7 @@ use std::{
   time::Duration,
 };
 use tokio::{
-  sync::{mpsc::Sender, Mutex, MutexGuard, RwLock, RwLockReadGuard},
+  sync::{mpsc::Sender, Mutex, RwLock},
   time,
 };
 use tonic::{Status, Streaming};

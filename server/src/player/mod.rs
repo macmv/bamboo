@@ -1,5 +1,4 @@
 use std::sync::Arc;
-use tonic::Status;
 
 use common::{math::UUID, version::ProtocolVersion};
 
@@ -7,10 +6,10 @@ use crate::net::Connection;
 
 pub struct Player {
   // The EID of the player. Never changes.
-  id:       i32,
+  _id:      i32,
   // Player's username
   username: String,
-  uuid:     UUID,
+  _uuid:    UUID,
   conn:     Arc<Connection>,
   ver:      ProtocolVersion,
 }
@@ -23,7 +22,7 @@ impl Player {
     conn: Arc<Connection>,
     ver: ProtocolVersion,
   ) -> Self {
-    Player { id, username, uuid, conn, ver }
+    Player { _id: id, username, _uuid: uuid, conn, ver }
   }
 
   /// Returns the player's username.

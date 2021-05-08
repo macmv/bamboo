@@ -176,17 +176,17 @@ macro_rules! id_init {
     }
   };
 }
-macro_rules! id_init_other {
-  ($($ty: ident: $num: expr),*) => {
-    proto::Packet {
-      $(
-        $ty: vec![Default::default(); $num],
-      )*
-      other: Some(Default::default()),
-      ..Default::default()
-    }
-  };
-}
+// macro_rules! id_init_other {
+//   ($($ty: ident: $num: expr),*) => {
+//     proto::Packet {
+//       $(
+//         $ty: vec![Default::default(); $num],
+//       )*
+//       other: Some(Default::default()),
+//       ..Default::default()
+//     }
+//   };
+// }
 
 #[rustfmt::skip]
 fn create_empty(id: ID) -> proto::Packet {
