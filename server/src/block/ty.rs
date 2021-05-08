@@ -1,5 +1,7 @@
 use super::Kind;
 
+use common::version::BlockVersion;
+
 /// A single block type. This is different from a block kind, which is more
 /// general. For example, there is one block kind for oak stairs. However, there
 /// are 32 types for an oak stair, based on it's state (rotation, in this case).
@@ -17,7 +19,9 @@ impl Type {
   pub fn kind(&self) -> &Kind {
     &self.kind
   }
-  pub fn id(&self) -> u32 {
+  /// Gets the block id for the given version. This is simply a lookup in a
+  /// hashtable. It will panic if the version is invalid.
+  pub fn id(&self, _v: BlockVersion) -> u32 {
     0
   }
 }

@@ -1,5 +1,4 @@
 use super::section::Section as ChunkSection;
-use crate::block;
 
 use common::{
   math::{Pos, PosError},
@@ -21,11 +20,11 @@ impl Section {
 }
 
 impl ChunkSection for Section {
-  fn set_block(&mut self, _pos: Pos, _ty: &block::Type) -> Result<(), PosError> {
+  fn set_block(&mut self, _pos: Pos, _ty: u32) -> Result<(), PosError> {
     Ok(())
   }
-  fn get_block(&self, _pos: Pos) -> Result<block::Type, PosError> {
-    Ok(block::Type::air())
+  fn get_block(&self, _pos: Pos) -> Result<u32, PosError> {
+    Ok(0)
   }
   fn duplicate(&self) -> Box<dyn ChunkSection + Send> {
     Box::new(Section {})

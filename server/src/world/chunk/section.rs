@@ -1,5 +1,3 @@
-use crate::block;
-
 use common::{
   math::{Pos, PosError},
   proto,

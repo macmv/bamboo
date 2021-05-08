@@ -38,16 +38,27 @@ impl MultiChunk {
   /// server is only running on 1.17, then p.y needs to be within the world
   /// height (whatever that may be). Otherwise, p.y must be within 0..256.
   pub fn set_block(&mut self, p: Pos, ty: &block::Type) -> Result<(), PosError> {
-    for (_, c) in self.versions.iter_mut() {
-      c.set_block(p, ty)?;
+    for (v, c) in self.versions.iter_mut() {
+      c.set_block(p, ty.id(*v))?;
     }
     Ok(())
   }
 
   /// Gets the type of a block within this chunk. Pos must be within the chunk.
   /// See [`set_block`](Self::set_block) for more.
-  pub fn get_block(&self, p: Pos) -> Result<block::Type, PosError> {
+  ///
+  /// This will return a blockid. This block id is from the primary version of
+  /// this chunk. That can be known by calling [`primary`](Self::primary). It
+  /// will usually be the latest version that this server supports. Regardless
+  /// of what it is, this should be handled within the World.
+  pub fn get_block(&self, p: Pos) -> Result<u32, PosError> {
     self.versions[&self.primary].get_block(p)
+  }
+
+  /// Returns the primary version that this chunk is using. This is the version
+  /// that all ids returned from get_block() are using.
+  pub fn primary(&self) -> BlockVersion {
+    self.primary
   }
 
   /// Generates a protobuf for the given version. The proto's X and Z

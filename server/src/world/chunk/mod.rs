@@ -7,7 +7,6 @@ pub use multi::MultiChunk;
 
 use std::collections::HashMap;
 
-use crate::block;
 use section::Section;
 
 use common::{
@@ -33,7 +32,7 @@ impl Chunk {
   /// This updates the internal data to contain a block at the given position.
   /// In release mode, the position is not checked. In any other mode, a
   /// PosError will be returned if any of the x, y, or z are outside of 0..16
-  fn set_block(&mut self, pos: Pos, ty: &block::Type) -> Result<(), PosError> {
+  fn set_block(&mut self, pos: Pos, ty: u32) -> Result<(), PosError> {
     let index = pos.chunk_y();
     if !(0..16).contains(&index) {
       return Err(pos.err("Y coordinate is outside of chunk".into()));
@@ -57,14 +56,14 @@ impl Chunk {
   /// This updates the internal data to contain a block at the given position.
   /// In release mode, the position is not checked. In any other mode, a
   /// PosError will be returned if any of the x, y, or z are outside of 0..16
-  fn get_block(&self, pos: Pos) -> Result<block::Type, PosError> {
+  fn get_block(&self, pos: Pos) -> Result<u32, PosError> {
     let index = pos.chunk_y();
     if !(0..16).contains(&index) {
       return Err(pos.err("Y coordinate is outside of chunk".into()));
     }
     let index = index as usize;
     if index >= self.sections.len() || self.sections[index].is_none() {
-      return Ok(block::Type::air());
+      return Ok(0);
     }
     match &self.sections[index] {
       Some(s) => s.get_block(pos),
