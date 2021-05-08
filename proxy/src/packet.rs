@@ -44,7 +44,7 @@ impl Packet {
   pub fn err(&self) -> &Option<BufferError> {
     self.buf.err()
   }
-  pub fn serialize<'a>(&'a self) -> &'a Vec<u8> {
+  pub fn serialize(&self) -> &Vec<u8> {
     &self.buf
   }
 
@@ -57,7 +57,7 @@ impl Packet {
   add_writer!(write_i32, i32);
   add_writer!(write_i64, i64);
 
-  add_writer!(write_buf, &Vec<u8>);
+  add_writer!(write_buf, &[u8]);
 
   add_writer!(write_f32, f32);
   add_writer!(write_f64, f64);
@@ -87,6 +87,9 @@ impl Packet {
   }
   pub fn len(&self) -> usize {
     self.buf.len()
+  }
+  pub fn is_empty(&self) -> bool {
+    self.buf.len() == 0
   }
 
   /// This parses a postition from a grpc packet (always new format), and then

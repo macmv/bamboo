@@ -44,7 +44,7 @@ impl StreamReader {
     // This appends to msg, so we don't need to truncate
     let n = self.stream.read_buf(&mut msg).await?;
     if n == 0 {
-      return Err(io::Error::new(ErrorKind::ConnectionAborted, format!("client has disconnected")));
+      return Err(io::Error::new(ErrorKind::ConnectionAborted, "client has disconnected"));
     }
     self.prod.push_slice(&msg);
     Ok(())
@@ -59,7 +59,7 @@ impl StreamReader {
     });
     // Varint that is more than 5 bytes long.
     if read < 0 {
-      return Err(io::Error::new(ErrorKind::InvalidInput, format!("invalid varint")));
+      return Err(io::Error::new(ErrorKind::InvalidInput, "invalid varint"));
     }
     // Incomplete varint, or an incomplete packet
     if read == 0 || len > self.cons.len() as isize {

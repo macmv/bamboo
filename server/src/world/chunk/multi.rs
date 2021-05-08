@@ -14,7 +14,19 @@ pub struct MultiChunk {
   versions: HashMap<BlockVersion, Chunk>,
 }
 
+impl Default for MultiChunk {
+  fn default() -> Self {
+    MultiChunk::new()
+  }
+}
+
 impl MultiChunk {
+  /// Creates an empty chunk. Currently, it just creates a seperate chunk for
+  /// every supported version. In the future, it will take a list of versions as
+  /// parameters. If it is fast enough, I might generate a mapping of all new
+  /// block ids and how they can be transformed into old block ids. Then, this
+  /// would only store one chunk, and would perform all conversions when you
+  /// actually tried to get an old id.
   pub fn new() -> MultiChunk {
     let mut versions = HashMap::new();
     versions.insert(BlockVersion::V1_8, Chunk::new(BlockVersion::V1_8));
@@ -39,7 +51,7 @@ impl MultiChunk {
   }
 
   /// Generates a protobuf for the given version. The proto's X and Z
-  /// coordinates must be sent before it can be sent over a grpc connection.
+  /// coordinates are 0.
   pub fn to_proto(&self, v: BlockVersion) -> proto::Chunk {
     self.versions[&v].to_proto()
   }

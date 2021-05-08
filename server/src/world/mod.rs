@@ -49,6 +49,12 @@ pub struct WorldManager {
   worlds: Vec<Arc<World>>,
 }
 
+impl Default for World {
+  fn default() -> Self {
+    World::new()
+  }
+}
+
 impl World {
   pub fn new() -> Self {
     World {
@@ -142,15 +148,18 @@ impl World {
     if !self.chunks.read().await.contains_key(&pos) {
       // If we do, we lock it for writing
       let mut chunks = self.chunks.write().await;
-      // Make sure that we didn't get a race condition
-      if !chunks.contains_key(&pos) {
-        // TODO: Terrain generation here
-        chunks.insert(pos, Arc::new(StdMutex::new(MultiChunk::new())));
-      }
+      // Make sure that the chunk was not written in between locking this chunk
+      chunks.entry(pos).or_insert_with(|| Arc::new(StdMutex::new(MultiChunk::new())));
     }
     let chunks = self.chunks.read().await;
     let c = chunks[&pos].lock().unwrap();
     f(c);
+  }
+}
+
+impl Default for WorldManager {
+  fn default() -> Self {
+    WorldManager::new()
   }
 }
 

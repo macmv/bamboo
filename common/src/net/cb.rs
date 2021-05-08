@@ -31,15 +31,25 @@ impl Packet {
     let id = ID::from_i32(pb.id);
     Packet { id, pb }
   }
-  pub fn to_proto(mut self) -> proto::Packet {
+  pub fn into_proto(mut self) -> proto::Packet {
     self.pb.id = self.id.to_i32();
     self.pb
   }
-  pub fn id(&self) -> ID {
-    self.id
-  }
+  /// Returns the protobuf stored in this packet. If this packet was created
+  /// through [`new`](Self::new), then the id will always be 0. If it was
+  /// created with [`from_proto`](Self::from_proto), then this will just
+  /// return that proto.
+  ///
+  /// This should only be used when reading a clientbound packet. If you want to
+  /// generate a clientbound packet, use the set_* functions.
+  ///
+  /// In practice, this is only used in the proxy, when converting a grpc packet
+  /// to a tcp packet.
   pub fn pb(&self) -> &proto::Packet {
     &self.pb
+  }
+  pub fn id(&self) -> ID {
+    self.id
   }
   add_fn!(set_bool, bools, bool);
   add_fn!(set_byte, bytes, u8);
@@ -75,8 +85,8 @@ impl Packet {
 /// in any order.
 impl ID {
   /// Returns the id as an i32. Used when serializing protobufs.
-  pub fn to_i32(&self) -> i32 {
-    num::ToPrimitive::to_i32(self).unwrap()
+  pub fn to_i32(self) -> i32 {
+    num::ToPrimitive::to_i32(&self).unwrap()
   }
   /// Creates an id from an i32. Used when deserializing protobufs.
   pub fn from_i32(id: i32) -> Self {

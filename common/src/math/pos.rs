@@ -50,7 +50,7 @@ impl Pos {
   /// Converts the block position into a u64. This is what should be sent to
   /// clients with versions 1.14 and up. This is also what should be used to
   /// encode a position within a grpc packet.
-  pub fn to_u64(&self) -> u64 {
+  pub fn to_u64(self) -> u64 {
     let x = self.x as u64;
     let y = self.y as u64;
     let z = self.z as u64;
@@ -59,7 +59,7 @@ impl Pos {
   /// Converts a block position to a u64. This is what should be used for
   /// clients running 1.13 or below. This should never be used in a grpc
   /// connection.
-  pub fn to_old_u64(&self) -> u64 {
+  pub fn to_old_u64(self) -> u64 {
     let x = self.x as u64;
     let y = self.y as u64;
     let z = self.z as u64;

@@ -5,13 +5,15 @@ use crate::packet::Packet;
 
 mod v1_8;
 
+trait PacketFn = Fn(&mut Packet) -> io::Result<sb::Packet> + Send;
+
 struct PacketSpec {
   // Each index is a tcp packet id. Each generator creates a protobuf from a tcp packet.
-  gens: Vec<Option<Box<Mutex<dyn Fn(&mut Packet) -> io::Result<sb::Packet> + Send>>>>,
+  gens: Vec<Option<Box<Mutex<dyn PacketFn>>>>,
 }
 
 impl PacketSpec {
-  fn add(&mut self, id: usize, f: impl Fn(&mut Packet) -> io::Result<sb::Packet> + Send + 'static) {
+  fn add(&mut self, id: usize, f: impl PacketFn + 'static) {
     if id >= self.gens.len() {
       self.gens.resize_with(id + 1, || None);
     }

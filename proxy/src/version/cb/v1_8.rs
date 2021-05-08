@@ -125,7 +125,7 @@ pub(super) fn gen_spec() -> PacketSpec {
     let skylight = true; // Assume overworld
 
     let mut bitmask = 0;
-    for (y, _) in &chunk.sections {
+    for y in chunk.sections.keys() {
       bitmask |= 1 << y;
     }
     out.write_u16(bitmask);
@@ -136,16 +136,12 @@ pub(super) fn gen_spec() -> PacketSpec {
     for (y, s) in &chunk.sections {
       sections[*y as usize] = Some(s);
     }
-    // Iterates through chunks in order, from ground up
+    // Iterates through chunks in order, from ground up. flatten() skips all None
+    // sections.
     let mut total_sections = 0;
-    for s in sections {
-      match s {
-        Some(s) => {
-          total_sections += 1;
-          buf.write_buf(&s.data);
-        }
-        _ => (),
-      }
+    for s in sections.into_iter().flatten() {
+      total_sections += 1;
+      buf.write_buf(&s.data);
     }
     // Light data
     for _ in 0..total_sections * 16 * 16 * 16 / 2 {

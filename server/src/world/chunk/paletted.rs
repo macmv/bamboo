@@ -8,8 +8,14 @@ use common::{
 
 pub struct Section {}
 
+impl Default for Section {
+  fn default() -> Self {
+    Section {}
+  }
+}
+
 impl Section {
-  pub(super) fn new() -> Box<dyn ChunkSection + Send> {
+  pub(super) fn new() -> Box<Self> {
     Box::new(Section {})
   }
 }

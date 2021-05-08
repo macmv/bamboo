@@ -35,7 +35,7 @@ impl Chunk {
   /// PosError will be returned if any of the x, y, or z are outside of 0..16
   fn set_block(&mut self, pos: Pos, ty: &block::Type) -> Result<(), PosError> {
     let index = pos.chunk_y();
-    if index < 0 || index >= 16 {
+    if !(0..16).contains(&index) {
       return Err(pos.err("Y coordinate is outside of chunk".into()));
     }
     let index = index as usize;
@@ -59,7 +59,7 @@ impl Chunk {
   /// PosError will be returned if any of the x, y, or z are outside of 0..16
   fn get_block(&self, pos: Pos) -> Result<block::Type, PosError> {
     let index = pos.chunk_y();
-    if index < 0 || index >= 16 {
+    if !(0..16).contains(&index) {
       return Err(pos.err("Y coordinate is outside of chunk".into()));
     }
     let index = index as usize;

@@ -66,8 +66,8 @@ pub enum ID {
 /// in any order.
 impl ID {
   /// Returns the id as an i32. Used when serializing protobufs.
-  pub fn to_i32(&self) -> i32 {
-    num::ToPrimitive::to_i32(self).unwrap()
+  pub fn to_i32(self) -> i32 {
+    num::ToPrimitive::to_i32(&self).unwrap()
   }
   /// Creates an id from an i32. Used when deserializing protobufs.
   pub fn from_i32(id: i32) -> Self {
@@ -96,7 +96,7 @@ impl Packet {
     let id = ID::from_i32(pb.id);
     Packet { id, pb }
   }
-  pub fn to_proto(mut self) -> proto::Packet {
+  pub fn into_proto(mut self) -> proto::Packet {
     self.pb.id = self.id.to_i32();
     self.pb
   }
@@ -121,20 +121,20 @@ impl Packet {
 macro_rules! value_non_empty {
   ($self: ident, $f: expr, $var: ident, $fmt: expr) => {
     if $self.pb.$var.len() != 0 {
-      write!($f, concat!("  ", stringify!($var), ": ", $fmt, "\n"), $self.pb.$var)?;
+      writeln!($f, concat!("  ", stringify!($var), ": ", $fmt), $self.pb.$var)?;
     }
   };
   ($self: ident, $f: expr, $var: ident, $fmt: expr, $extra: expr) => {
     if $self.pb.$var.len() != 0 {
-      write!($f, concat!("  ", stringify!($var), ": ", $fmt, "\n"), $self.pb.$var, $extra)?;
+      writeln!($f, concat!("  ", stringify!($var), ": ", $fmt), $self.pb.$var, $extra)?;
     }
   };
 }
 
 impl fmt::Display for Packet {
   fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-    write!(f, "Packet(\n")?;
-    write!(f, "  id: {:?}\n", self.id)?;
+    writeln!(f, "Packet(")?;
+    writeln!(f, "  id: {:?}", self.id)?;
     value_non_empty!(self, f, bytes, "{:?}");
     value_non_empty!(self, f, bools, "{:?}");
     value_non_empty!(self, f, shorts, "{:?}");
@@ -161,7 +161,7 @@ impl fmt::Display for Packet {
     value_non_empty!(self, f, int_arrs, "{:?}");
     value_non_empty!(self, f, long_arrs, "{:?}");
     value_non_empty!(self, f, str_arrs, "{:?}");
-    write!(f, ")\n")?;
+    writeln!(f, ")")?;
     Ok(())
   }
 }

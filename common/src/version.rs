@@ -104,10 +104,7 @@ impl ProtocolVersion {
   /// Returns the protocol id. This is the version that is sent to the server
   /// from the client. If this is 0, then this is an invalid protocol.
   pub fn id(&self) -> u32 {
-    match num::ToPrimitive::to_u32(self) {
-      Some(v) => v,
-      None => 0,
-    }
+    num::ToPrimitive::to_u32(self).unwrap_or(0)
   }
   /// Returns the block version that this protocol version uses.
   pub fn block(&self) -> BlockVersion {

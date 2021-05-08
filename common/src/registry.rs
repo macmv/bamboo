@@ -30,6 +30,13 @@ pub struct Registry<K: Eq + Hash + Debug + Clone + Copy, V> {
   ids:   HashMap<K, usize>,
 }
 
+impl<K: Eq + Hash + Debug + Clone + Copy, V> Default for Registry<K, V> {
+  /// Same as calling [`new`](Self::new).
+  fn default() -> Self {
+    Registry::new()
+  }
+}
+
 impl<K: Eq + Hash + Debug + Clone + Copy, V> Registry<K, V> {
   /// Creates an empty registry. Any [`insert`](Self::insert) calls will do the
   /// same thing as [`add`](Self::add).
@@ -155,10 +162,7 @@ impl<K: Eq + Hash + Debug + Clone + Copy, V> Registry<K, V> {
   /// Gets an item within the registry. This could be used to retrieve
   /// items/blocks by name, or a packet from its id over the wire.
   pub fn get(&self, k: K) -> Option<(usize, &V)> {
-    match self.ids.get(&k) {
-      Some(index) => Some((*index, &self.items[self.index].1)),
-      None => None,
-    }
+    self.ids.get(&k).map(|index| (*index, &self.items[self.index].1))
   }
 
   /// Gets an item within the registry, via it's index. This could be used to
@@ -190,7 +194,17 @@ pub struct CloningRegistry<K: Eq + Hash + Debug + Clone + Copy, V: Clone> {
   children: Vec<Rc<RefCell<CloningRegistry<K, V>>>>,
 }
 
+impl<K: Eq + Hash + Debug + Clone + Copy, V: Clone> Default for CloningRegistry<K, V> {
+  /// Same as calling [`new`](Self::new).
+  fn default() -> Self {
+    CloningRegistry::new()
+  }
+}
+
 impl<K: Eq + Hash + Debug + Clone + Copy, V: Clone> CloningRegistry<K, V> {
+  /// Creates an empty cloning registry. Any children that are added to this
+  /// registry will also be called every time a modifying function is called on
+  /// this registry.
   pub fn new() -> Self {
     CloningRegistry { current: Registry::new(), children: vec![] }
   }
@@ -244,6 +258,8 @@ impl<K: Eq + Hash + Debug + Clone + Copy, V: Clone> CloningRegistry<K, V> {
   }
 }
 
+type CloningRegRef<K, V> = Rc<RefCell<CloningRegistry<K, Rc<V>>>>;
+
 /// This is a registry setup such that a single item/block can be added to an
 /// older version, which will then propogate through all the newer versions.
 /// This is primarily used to build the block table. It makes it very easy to
@@ -255,7 +271,7 @@ pub struct VersionedRegistry<
   V: Clone,
 > {
   current:  Ver,
-  versions: HashMap<Ver, Rc<RefCell<CloningRegistry<K, Rc<V>>>>>,
+  versions: HashMap<Ver, CloningRegRef<K, V>>,
 }
 
 impl<Ver: Eq + Hash + Debug + Clone + Copy, K: Eq + Hash + Debug + Clone + Copy, V: Clone>
@@ -299,13 +315,8 @@ impl<Ver: Eq + Hash + Debug + Clone + Copy, K: Eq + Hash + Debug + Clone + Copy,
     }
   }
 
-  /// Gets an item within the registry. This could be used to retrieve
-  /// items/blocks by name, or a packet from its id over the wire.
   pub fn get(&self, ver: Ver) -> Option<Ref<CloningRegistry<K, Rc<V>>>> {
-    match self.versions.get(&ver) {
-      Some(reg) => Some(reg.borrow()),
-      None => None,
-    }
+    self.versions.get(&ver).map(|reg| reg.borrow())
   }
 }
 

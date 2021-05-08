@@ -14,6 +14,12 @@ pub struct Generator {
   sb: sb::Generator,
 }
 
+impl Default for Generator {
+  fn default() -> Self {
+    Generator::new()
+  }
+}
+
 impl Generator {
   pub fn new() -> Generator {
     Generator { cb: cb::Generator::new(), sb: sb::Generator::new() }

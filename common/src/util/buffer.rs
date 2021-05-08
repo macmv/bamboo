@@ -150,6 +150,9 @@ impl Buffer {
   pub fn len(&self) -> usize {
     self.data.get_ref().len()
   }
+  pub fn is_empty(&self) -> bool {
+    self.len() == 0
+  }
   pub fn index(&self) -> usize {
     usize::try_from(self.data.position()).unwrap()
   }
@@ -203,8 +206,8 @@ impl Buffer {
     }
   }
 
-  pub fn write_buf(&mut self, v: &Vec<u8>) {
-    self.data.write(v).unwrap();
+  pub fn write_buf(&mut self, v: &[u8]) {
+    self.data.write_all(v).unwrap();
   }
 
   /// This writes a fixed point floating number to the buffer. This simply
@@ -273,6 +276,11 @@ impl Buffer {
       }
     }
   }
+
+  #[cfg(test)]
+  fn into_inner(self) -> Vec<u8> {
+    self.data.into_inner()
+  }
 }
 
 impl Deref for Buffer {
@@ -315,7 +323,7 @@ mod tests {
     let mut buf = Buffer::new(vec![]);
     buf.write_varint(1);
     assert!(buf.err().is_none());
-    assert_eq!(vec![1], buf);
+    assert_eq!(vec![1], buf.into_inner());
 
     let mut buf = Buffer::new(vec![]);
     buf.write_varint(127);

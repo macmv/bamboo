@@ -91,7 +91,7 @@ impl ClientListener {
             error!("error while parsing packet: {}", e);
             return Err(Box::new(io::Error::new(
               ErrorKind::InvalidData,
-              format!("failed to parse packet, closing connection"),
+              "failed to parse packet, closing connection",
             )));
           }
           None => {}
@@ -112,7 +112,7 @@ impl ClientListener {
           Ok(v) => v,
         };
         info!("got proto: {}", &sb);
-        self.server.send(sb.to_proto()).await?;
+        self.server.send(sb.into_proto()).await?;
       }
     }
     Ok(())
@@ -217,7 +217,7 @@ impl Conn {
             if self.ver == ProtocolVersion::Invalid {
               return Err(io::Error::new(
                 ErrorKind::InvalidInput,
-                format!("client sent an invalid version"),
+                "client sent an invalid version",
               ));
             }
 

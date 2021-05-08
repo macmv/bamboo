@@ -11,7 +11,7 @@ pub struct Section {
 }
 
 impl Section {
-  pub(super) fn new() -> Box<dyn ChunkSection + Send> {
+  pub(super) fn new() -> Box<Self> {
     Box::new(Section { data: [0; 16 * 16 * 16] })
   }
   fn set_block_id(&mut self, p: Pos, id: u16) {
@@ -56,7 +56,7 @@ impl ChunkSection for Section {
     Ok(block::Type::from_id(self.get_block_id(pos) as u32))
   }
   fn duplicate(&self) -> Box<dyn ChunkSection + Send> {
-    Box::new(Section { data: self.data.clone() })
+    Box::new(Section { data: self.data })
   }
   fn to_proto(&self) -> proto::chunk::Section {
     proto::chunk::Section::default()

@@ -5,18 +5,14 @@ use crate::packet::Packet;
 
 mod v1_8;
 
+trait PacketFn = Fn(cb::Packet, ProtocolVersion) -> io::Result<Packet> + Send;
+
 struct PacketSpec {
-  // This is keyed with protobuf packet ids, as this spec will be converting from protobuf to tcp.
-  gens:
-    HashMap<cb::ID, Box<Mutex<dyn Fn(cb::Packet, ProtocolVersion) -> io::Result<Packet> + Send>>>,
+  gens: HashMap<cb::ID, Box<Mutex<dyn PacketFn>>>,
 }
 
 impl PacketSpec {
-  fn add(
-    &mut self,
-    id: cb::ID,
-    f: impl Fn(cb::Packet, ProtocolVersion) -> io::Result<Packet> + Send + 'static,
-  ) {
+  fn add(&mut self, id: cb::ID, f: impl PacketFn + 'static) {
     self.gens.insert(id, Box::new(Mutex::new(f)));
   }
 }

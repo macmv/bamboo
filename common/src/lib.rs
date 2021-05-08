@@ -16,7 +16,7 @@ pub use registry::Registry;
 pub mod proto {
   tonic::include_proto!("connection");
 
-  pub const FILE_DESCRIPTOR_SET: &'static [u8] = tonic::include_file_descriptor_set!("connection");
+  pub const FILE_DESCRIPTOR_SET: &[u8] = tonic::include_file_descriptor_set!("connection");
 }
 
 /// Initializes logger. Might do more things in the future.
