@@ -4,24 +4,24 @@ use std::{
   collections::HashMap,
   sync::{
     atomic::{AtomicI32, Ordering},
-    Arc, Mutex as StdMutex, MutexGuard as StdMutexGuard,
+    Arc, Mutex as StdMutex, MutexGuard as StdMutexGuard, RwLock,
   },
   time::Duration,
 };
 use tokio::{
-  sync::{mpsc::Sender, Mutex, RwLock},
+  sync::{mpsc::Sender, Mutex},
   time,
 };
 use tonic::{Status, Streaming};
 
 use common::{
-  math::{ChunkPos, UUID},
+  math::{ChunkPos, Pos, PosError, UUID},
   net::{cb, Other},
   proto::Packet,
   version::ProtocolVersion,
 };
 
-use crate::{net::Connection, player::Player};
+use crate::{block, net::Connection, player::Player};
 use chunk::MultiChunk;
 
 // pub struct ChunkRef<'a> {
@@ -88,14 +88,12 @@ impl World {
         for x in -10..10 {
           for z in -10..10 {
             let mut out = cb::Packet::new(cb::ID::ChunkData);
-            self
-              .chunk(ChunkPos::new(x, z), |c| {
-                let mut pb = c.to_proto(p.ver().block());
-                pb.x = x;
-                pb.z = z;
-                out.set_other(Other::Chunk(pb)).unwrap();
-              })
-              .await;
+            self.chunk(ChunkPos::new(x, z), |c| {
+              let mut pb = c.to_proto(p.ver().block());
+              pb.x = x;
+              pb.z = z;
+              out.set_other(Other::Chunk(pb)).unwrap();
+            });
             conn.send(out).await;
           }
         }
@@ -140,20 +138,26 @@ impl World {
   /// mutexes around the chunk data, this is the cleanest way to access a
   /// chunk. This will also generate a new chunk if there is not one stored
   /// there.
-  pub async fn chunk<F>(&self, pos: ChunkPos, f: F)
+  pub fn chunk<F, R>(&self, pos: ChunkPos, f: F) -> R
   where
-    F: FnOnce(StdMutexGuard<MultiChunk>),
+    F: FnOnce(StdMutexGuard<MultiChunk>) -> R,
   {
     // We first check (read-only) if we need to generate a new chunk
-    if !self.chunks.read().await.contains_key(&pos) {
+    if !self.chunks.read().unwrap().contains_key(&pos) {
       // If we do, we lock it for writing
-      let mut chunks = self.chunks.write().await;
+      let mut chunks = self.chunks.write().unwrap();
       // Make sure that the chunk was not written in between locking this chunk
       chunks.entry(pos).or_insert_with(|| Arc::new(StdMutex::new(MultiChunk::new())));
     }
-    let chunks = self.chunks.read().await;
+    let chunks = self.chunks.read().unwrap();
     let c = chunks[&pos].lock().unwrap();
-    f(c);
+    f(c)
+  }
+
+  /// This sets a block within the world. It will return an error if the
+  /// position is outside of the world.
+  pub fn set_block(&self, pos: Pos, ty: block::Type) -> Result<(), PosError> {
+    self.chunk(pos.chunk(), |mut c| c.set_block(pos.chunk_rel(), &ty))
   }
 }
 
