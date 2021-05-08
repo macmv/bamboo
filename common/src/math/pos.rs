@@ -1,3 +1,4 @@
+use super::ChunkPos;
 use std::{
   error::Error,
   fmt,
@@ -79,6 +80,35 @@ impl Pos {
   #[inline(always)]
   pub fn z(&self) -> i32 {
     self.z
+  }
+  /// Returns the chunk that this block position is in.
+  #[inline(always)]
+  pub fn chunk(&self) -> ChunkPos {
+    ChunkPos::new(self.chunk_x(), self.chunk_z())
+  }
+  /// Returns this position within the 0, 0 chunk column. That is, the X and Z
+  /// are both set to the positive modulo 16.
+  #[inline(always)]
+  pub fn chunk_rel(&self) -> Pos {
+    Pos { x: self.chunk_rel_x(), y: self.y, z: self.chunk_rel_z() }
+  }
+  /// Returns the chunk X value of the position. This is just x / 16, rounded
+  /// down.
+  #[inline(always)]
+  pub fn chunk_rel_x(&self) -> i32 {
+    (self.x % 16 + 16) % 16
+  }
+  /// Returns the chunk Y value of the position. This is just y / 16, rounded
+  /// down.
+  #[inline(always)]
+  pub fn chunk_rel_y(&self) -> i32 {
+    (self.y % 16 + 16) % 16
+  }
+  /// Returns the chunk Z value of the position. This is just z / 16, rounded
+  /// down.
+  #[inline(always)]
+  pub fn chunk_rel_z(&self) -> i32 {
+    (self.z % 16 + 16) % 16
   }
   /// Returns the chunk X value of the position. This is just x / 16, rounded
   /// down.
