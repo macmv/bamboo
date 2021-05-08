@@ -134,10 +134,15 @@ impl World {
     self.eid.fetch_add(1, Ordering::SeqCst)
   }
 
-  /// This calls f(), and passes it a locked chunk. Because there are multiple
-  /// mutexes around the chunk data, this is the cleanest way to access a
-  /// chunk. This will also generate a new chunk if there is not one stored
-  /// there.
+  /// This calls f(), and passes it a locked chunk. This will also generate a
+  /// new chunk if there is not one stored there.
+  ///
+  /// I tried to make the chunk a returned value, but that ended up being too
+  /// difficult. Since the entire chunks map must be locked for reading, that
+  /// read lock must be held while the chunk is in scope. Because of this, you
+  /// would have needed to call two functions to get it working. I tried my best
+  /// with the [`Deref`](std::ops::Deref) trait, but I couldn't get it to work
+  /// the way I liked.
   pub fn chunk<F, R>(&self, pos: ChunkPos, f: F) -> R
   where
     F: FnOnce(StdMutexGuard<MultiChunk>) -> R,

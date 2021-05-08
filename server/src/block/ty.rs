@@ -7,17 +7,12 @@ pub struct Type {
   kind: Kind,
 }
 
-static AIR: Type = Type { kind: Kind::Air };
-
 impl Type {
   /// Creates a new block type. This should only be used when constructing the
   /// block tables. If you need to get a pre-existing block type, use
   /// [`WorldManager::get_block`].
   pub(crate) fn new(kind: Kind) -> Self {
     Type { kind }
-  }
-  pub fn air() -> Type {
-    AIR
   }
   pub fn kind(&self) -> &Kind {
     &self.kind
