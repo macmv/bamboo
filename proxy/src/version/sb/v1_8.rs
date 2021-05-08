@@ -67,31 +67,36 @@ pub(super) fn gen_spec() -> PacketSpec {
   });
   spec.add(0x07, |p: &mut Packet| {
     let mut out = sb::Packet::new(sb::ID::PlayerDigging);
-    out.set_byte(0, p.read_u8()); // Action:
-                                  // 0 -> start digging
-                                  // 1 -> cancel digging
-                                  // 2 -> finished digging
-                                  // 3 -> drop item stack
-                                  // 4 -> drop item
-                                  // 5 -> shoot arrow / finish eating
-
+    // Action:
+    // 0 -> start digging
+    // 1 -> cancel digging
+    // 2 -> finished digging
+    // 3 -> drop item stack
+    // 4 -> drop item
+    // 5 -> shoot arrow / finish eating
+    // Newer clients use a varint for this, so it is stored as an int in grpc.
+    out.set_int(0, p.read_u8().into());
     out.set_pos(0, p.read_pos()); // Block pos
-    out.set_byte(1, p.read_u8()); // Face
+    out.set_byte(0, p.read_u8()); // Face
     Ok(out)
   });
   spec.add(0x08, |p: &mut Packet| {
     let mut out = sb::Packet::new(sb::ID::PlayerBlockPlace);
+    out.set_int(0, 0); // Main hand
     out.set_pos(0, p.read_pos()); // Block pos
-    out.set_byte(0, p.read_u8()); // Face
-                                  // TODO: Parse slot data here
-    if p.read_bool() {
-      p.read_varint(); // Item id
+    out.set_int(1, p.read_u8().into()); // Face
+    let id = p.read_i16(); // Item id
+    if id != -1 {
+      // TODO: Parse slot in one function
       p.read_u8(); // Item count
-      p.read_u8(); // NBT (lets hope its empty)
+      p.read_u16(); // Item damage
+      p.read_u8(); // NBT (lets hope its empty, because I couldn't be bothered
+                   // to parse it)
     }
-    out.set_byte(0, p.read_u8()); // Cursor pos X
-    out.set_byte(1, p.read_u8()); // Cursor pos Y
-    out.set_byte(2, p.read_u8()); // Cursor pos Z
+    out.set_float(0, p.read_u8() as f32 / 256.0); // Cursor pos X
+    out.set_float(1, p.read_u8() as f32 / 256.0); // Cursor pos Y
+    out.set_float(2, p.read_u8() as f32 / 256.0); // Cursor pos Z
+    out.set_bool(0, false); // If the player is inside a block
     Ok(out)
   });
   spec.add(0x17, |p: &mut Packet| {
