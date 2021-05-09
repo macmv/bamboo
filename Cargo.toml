@@ -3,3 +3,8 @@ members = [
   "server",
   "proxy",
 ]
+
+# Using cargo flamegraph, this is needed.
+# See more: https://github.com/flamegraph-rs/flamegraph
+[profile.release]
+debug = true
