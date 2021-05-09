@@ -2,6 +2,7 @@
 members = [
   "server",
   "proxy",
+  "gens",
 ]
 
 # Using cargo flamegraph, this is needed.

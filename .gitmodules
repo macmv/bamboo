@@ -1,0 +1,3 @@
+[submodule "gens/minecraft-data"]
+	path = gens/minecraft-data
+	url = https://github.com/PrismarineJS/minecraft-data
