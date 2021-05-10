@@ -1,27 +1,26 @@
-use super::Kind;
+use std::sync::Arc;
 
 use common::version::BlockVersion;
+
+use super::Kind;
 
 /// A single block type. This is different from a block kind, which is more
 /// general. For example, there is one block kind for oak stairs. However, there
 /// are 32 types for an oak stair, based on it's state (rotation, in this case).
+#[derive(Debug)]
 pub struct Type {
-  kind: Kind,
+  kind:  Arc<Kind>,
+  state: u32,
 }
 
 impl Type {
-  /// Creates a new block type. This should only be used when constructing the
-  /// block tables. If you need to get a pre-existing block type, use
-  /// [`WorldManager::get_block`].
-  pub(crate) fn new(kind: Kind) -> Self {
-    Type { kind }
-  }
+  /// Returns the block kind that this state comes from.
   pub fn kind(&self) -> &Kind {
     &self.kind
   }
   /// Gets the block id for the given version. This is simply a lookup in a
   /// hashtable. It will panic if the version is invalid.
   pub fn id(&self, _v: BlockVersion) -> u32 {
-    0
+    self.state
   }
 }

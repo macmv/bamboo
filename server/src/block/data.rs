@@ -1,4 +1,4 @@
-use super::Kind;
+use super::{Kind, Type};
 use std::collections::HashMap;
 
 /// Any data specific to a block kind. This includes all function handlers for
@@ -6,7 +6,11 @@ use std::collections::HashMap;
 /// have.
 #[derive(Debug)]
 pub struct Data {
-  state: u32,
+  state:         u32,
+  // A list of types in order. This will always be at least one element long.
+  types:         Vec<Type>,
+  // The default type. This is an index into types.
+  default_index: u32,
 }
 
 /// Generates a table from all block kinds to any block data that kind has. This

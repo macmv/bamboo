@@ -1,6 +1,6 @@
 use convert_case::{Case, Casing};
 use serde_derive::Deserialize;
-use std::{error::Error, fs, fs::File, io::Write, path::Path};
+use std::{error::Error, fs, fs::File, io, io::Write, path::Path};
 
 #[derive(Debug, Deserialize)]
 struct BlockState {
@@ -65,11 +65,25 @@ pub fn generate(dir: &Path) -> Result<(), Box<dyn Error>> {
     writeln!(f, "{{")?;
     for b in &data {
       let name = b.name.to_case(Case::Pascal);
+
       writeln!(f, "blocks.insert(Kind::{}, Data{{", name)?;
       writeln!(f, "  state: {},", b.min_state_id)?;
+      writeln!(f, "  default_index: {},", b.default_state - b.min_state_id)?;
+      writeln!(f, "  types: ")?;
+      generate_states(b, &mut f)?;
       writeln!(f, "}});")?;
     }
     writeln!(f, "}}")?;
   }
+  Ok(())
+}
+
+fn generate_states(b: &Block, f: &mut File) -> io::Result<()> {
+  if b.states.is_empty() {
+    return writeln!(f, "vec![],");
+  }
+  writeln!(f, "vec![")?;
+  writeln!(f, "    ")?;
+  writeln!(f, "],")?;
   Ok(())
 }
