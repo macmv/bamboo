@@ -1,16 +1,22 @@
 use convert_case::{Case, Casing};
 use serde_derive::Deserialize;
-use std::{error::Error, fs, fs::File, io, io::Write, path::Path};
+use std::{collections::HashMap, error::Error, fs, fs::File, io, io::Write, path::Path};
 
-#[derive(Debug, Deserialize)]
-struct BlockState {
+#[derive(Default, Debug, Deserialize)]
+struct JsonBlockState {
   name:       String,
   #[serde(alias = "type")]
   ty:         String,
   num_values: u32,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug)]
+struct BlockState {
+  id:         u32,
+  properties: HashMap<String, String>,
+}
+
+#[derive(Default, Debug, Deserialize)]
 struct Block {
   id:            u32,
   #[serde(alias = "displayName")]
@@ -21,7 +27,7 @@ struct Block {
   min_state_id:  u32,
   #[serde(alias = "maxStateId")]
   max_state_id:  u32,
-  states:        Vec<BlockState>,
+  states:        Vec<JsonBlockState>,
   // Vec of item ids
   drops:         Vec<u32>,
   diggable:      bool,
@@ -65,12 +71,19 @@ pub fn generate(dir: &Path) -> Result<(), Box<dyn Error>> {
     writeln!(f, "{{")?;
     for b in &data {
       let name = b.name.to_case(Case::Pascal);
+      let states = generate_states(b);
 
       writeln!(f, "blocks.insert(Kind::{}, Data{{", name)?;
       writeln!(f, "  state: {},", b.min_state_id)?;
       writeln!(f, "  default_index: {},", b.default_state - b.min_state_id)?;
-      writeln!(f, "  types:")?;
-      generate_states(b, &mut f, &name)?;
+      writeln!(f, "  types: vec![")?;
+      for s in states {
+        writeln!(f, "    Type{{")?;
+        writeln!(f, "      kind: Kind::{},", name)?;
+        writeln!(f, "      state: {},", s.id)?;
+        writeln!(f, "    }},")?;
+      }
+      writeln!(f, "  ],")?;
       writeln!(f, "}});")?;
     }
     writeln!(f, "}}")?;
@@ -78,20 +91,57 @@ pub fn generate(dir: &Path) -> Result<(), Box<dyn Error>> {
   Ok(())
 }
 
-fn generate_states(b: &Block, f: &mut File, kind: &str) -> io::Result<()> {
+fn generate_states(b: &Block) -> Vec<BlockState> {
   if b.states.is_empty() {
-    return writeln!(f, "vec![],");
+    return vec![];
   }
-  let ids = vec![1, 2, 3];
-  // `d` is the variable to the kind, so when we make each type, we must clone
-  // that
-  writeln!(f, " vec![")?;
-  for id in ids {
-    writeln!(f, "    Type{{")?;
-    writeln!(f, "      kind: Kind::{},", kind)?;
-    writeln!(f, "      state: {},", id)?;
-    writeln!(f, "    }},")?;
+  dbg!(b);
+  let mut indicies = vec![0; b.states.len()];
+  let mut states = vec![];
+  let mut i = 0;
+  let mut finished = false;
+  while !finished {
+    let mut props = HashMap::new();
+    for (k, v) in indicies.iter().enumerate() {
+      props.insert(b.states[k].name.clone(), "hello".into());
+    }
+    states.push(BlockState { id: b.min_state_id + i, properties: props });
+    i += 1;
+    dbg!(i, &indicies);
+
+    finished = true;
+    // This iterates through indicies to crawl over all possible combinations of
+    // states
+    for (i, val) in indicies.iter_mut().enumerate() {
+      *val += 1;
+      if *val < b.states[i].num_values {
+        finished = false;
+        break;
+      }
+      *val = 0;
+    }
   }
-  writeln!(f, "  ],")?;
-  Ok(())
+  dbg!(&states);
+  // Sanity check
+  assert_eq!(states.len() as u32, b.max_state_id - b.min_state_id + 1);
+  states
+}
+
+#[cfg(test)]
+mod tests {
+  use super::*;
+
+  #[test]
+  fn test_generate_states() {
+    generate_states(&Block {
+      states: vec![
+        JsonBlockState { name: "small".into(), num_values: 3, ..Default::default() },
+        JsonBlockState { name: "big".into(), num_values: 5, ..Default::default() },
+      ],
+      min_state_id: 20,
+      max_state_id: 34,
+      ..Default::default()
+    });
+    assert!(false);
+  }
 }
