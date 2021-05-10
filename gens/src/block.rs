@@ -46,14 +46,30 @@ pub fn generate(dir: &Path) -> Result<(), Box<dyn Error>> {
     serde_json::from_str(include_str!("../minecraft-data/data/pc/1.16.2/blocks.json"))?;
 
   fs::create_dir_all(&dir)?;
-  let mut f = File::create(&dir.join("kind.rs"))?;
-  writeln!(f, "/// Auto generated block kind. This is directly generated")?;
-  writeln!(f, "/// from prismarine data. Do not edit this.")?;
-  writeln!(f, "#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]")?;
-  writeln!(f, "pub enum Kind {{")?;
-  for b in data {
-    writeln!(f, "  {},", b.name.to_case(Case::Pascal))?;
+  {
+    let mut f = File::create(&dir.join("kind.rs"))?;
+    writeln!(f, "/// Auto generated block kind. This is directly generated")?;
+    writeln!(f, "/// from prismarine data.")?;
+    writeln!(f, "#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]")?;
+    writeln!(f, "pub enum Kind {{")?;
+    for b in &data {
+      let name = b.name.to_case(Case::Pascal);
+      writeln!(f, "  {},", name)?;
+    }
+    writeln!(f, "}}")?;
   }
-  writeln!(f, "}}")?;
+  {
+    let mut f = File::create(&dir.join("data.rs"))?;
+
+    // Include macro must be one statement
+    writeln!(f, "{{")?;
+    for b in &data {
+      let name = b.name.to_case(Case::Pascal);
+      writeln!(f, "blocks.insert(Kind::{}, Data{{", name)?;
+      writeln!(f, "  state: {},", b.min_state_id)?;
+      writeln!(f, "}});")?;
+    }
+    writeln!(f, "}}")?;
+  }
   Ok(())
 }
