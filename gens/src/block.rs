@@ -1,6 +1,6 @@
 use convert_case::{Case, Casing};
 use serde_derive::Deserialize;
-use std::{collections::HashMap, error::Error, fs, fs::File, io, io::Write, path::Path};
+use std::{collections::HashMap, error::Error, fs, fs::File, io::Write, path::Path};
 
 #[derive(Default, Debug, Deserialize)]
 struct JsonBlockState {
