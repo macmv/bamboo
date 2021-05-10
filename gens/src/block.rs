@@ -13,7 +13,7 @@ struct JsonBlockState {
   values:     Option<Vec<String>>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Eq)]
 struct BlockState {
   id:         u32,
   properties: HashMap<String, String>,
@@ -110,7 +110,6 @@ fn generate_states(b: &Block) -> Vec<BlockState> {
     }
     states.push(BlockState { id: b.min_state_id + i as u32, properties: props });
     i += 1;
-    dbg!(i, &indicies);
 
     finished = true;
     // This iterates through indicies to crawl over all possible combinations of
@@ -124,7 +123,6 @@ fn generate_states(b: &Block) -> Vec<BlockState> {
       *val = 0;
     }
   }
-  dbg!(&states);
   // Sanity check
   assert_eq!(states.len() as u32, b.max_state_id - b.min_state_id + 1);
   states
@@ -167,24 +165,90 @@ mod tests {
 
   #[test]
   fn test_generate_states() {
-    generate_states(&Block {
+    let expected = vec![
+      BlockState {
+        id:         20,
+        properties: [("small", "false"), ("big", "0")]
+          .iter()
+          .map(|(key, val)| ((*key).into(), (*val).into()))
+          .collect(),
+      },
+      BlockState {
+        id:         21,
+        properties: [("small", "true"), ("big", "0")]
+          .iter()
+          .map(|(key, val)| ((*key).into(), (*val).into()))
+          .collect(),
+      },
+      BlockState {
+        id:         22,
+        properties: [("small", "false"), ("big", "1")]
+          .iter()
+          .map(|(key, val)| ((*key).into(), (*val).into()))
+          .collect(),
+      },
+      BlockState {
+        id:         23,
+        properties: [("small", "true"), ("big", "1")]
+          .iter()
+          .map(|(key, val)| ((*key).into(), (*val).into()))
+          .collect(),
+      },
+      BlockState {
+        id:         24,
+        properties: [("small", "false"), ("big", "2")]
+          .iter()
+          .map(|(key, val)| ((*key).into(), (*val).into()))
+          .collect(),
+      },
+      BlockState {
+        id:         25,
+        properties: [("small", "true"), ("big", "2")]
+          .iter()
+          .map(|(key, val)| ((*key).into(), (*val).into()))
+          .collect(),
+      },
+      BlockState {
+        id:         26,
+        properties: [("small", "false"), ("big", "3")]
+          .iter()
+          .map(|(key, val)| ((*key).into(), (*val).into()))
+          .collect(),
+      },
+      BlockState {
+        id:         27,
+        properties: [("small", "true"), ("big", "3")]
+          .iter()
+          .map(|(key, val)| ((*key).into(), (*val).into()))
+          .collect(),
+      },
+    ];
+    let got = generate_states(&Block {
       states: vec![
         JsonBlockState {
-          ty: "int".into(),
+          ty: "bool".into(),
           name: "small".into(),
-          num_values: 3,
+          num_values: 2,
           ..Default::default()
         },
         JsonBlockState {
           ty: "int".into(),
           name: "big".into(),
-          num_values: 5,
+          num_values: 4,
           ..Default::default()
         },
       ],
       min_state_id: 20,
-      max_state_id: 34,
+      max_state_id: 27,
       ..Default::default()
     });
+    dbg!(&expected, &got);
+    if expected.len() != got.len() {
+      assert!(false, "different length arrays");
+    }
+    assert!(expected.iter().zip(got.iter()).all(|(a, b)| a == b), "different arrays");
   }
+
+  #[test]
+  fn test_state_value() {}
 }
