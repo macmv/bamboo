@@ -1,6 +1,8 @@
-use convert_case::{Case, Casing};
+// This handles loading all block versions 1.13 and up
 use serde_derive::Deserialize;
-use std::{collections::HashMap, error::Error, fs, fs::File, io::Write, path::Path};
+use std::{collections::HashMap, io};
+
+use super::{BlockVersion, State};
 
 #[derive(Default, Debug, Deserialize)]
 struct JsonBlockState {
@@ -13,14 +15,8 @@ struct JsonBlockState {
   values:     Option<Vec<String>>,
 }
 
-#[derive(Debug, PartialEq, Eq)]
-struct BlockState {
-  id:         u32,
-  properties: HashMap<String, String>,
-}
-
 #[derive(Default, Debug, Deserialize)]
-struct Block {
+struct JsonBlock {
   id:            u32,
   #[serde(alias = "displayName")]
   display_name:  String,
@@ -48,53 +44,13 @@ struct Block {
   resistance:    f32,
 }
 
-pub fn generate(dir: &Path) -> Result<(), Box<dyn Error>> {
-  let dir = Path::new(dir).join("block");
-
-  let data: Vec<Block> =
-    serde_json::from_str(include_str!("../minecraft-data/data/pc/1.16.2/blocks.json"))?;
-
-  fs::create_dir_all(&dir)?;
-  {
-    let mut f = File::create(&dir.join("kind.rs"))?;
-    writeln!(f, "/// Auto generated block kind. This is directly generated")?;
-    writeln!(f, "/// from prismarine data.")?;
-    writeln!(f, "#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]")?;
-    writeln!(f, "pub enum Kind {{")?;
-    for b in &data {
-      let name = b.name.to_case(Case::Pascal);
-      writeln!(f, "  {},", name)?;
-    }
-    writeln!(f, "}}")?;
-  }
-  {
-    let mut f = File::create(&dir.join("data.rs"))?;
-
-    // Include macro must be one statement
-    writeln!(f, "{{")?;
-    for b in &data {
-      let name = b.name.to_case(Case::Pascal);
-      let states = generate_states(b);
-
-      writeln!(f, "blocks.insert(Kind::{}, Data{{", name)?;
-      writeln!(f, "  state: {},", b.min_state_id)?;
-      writeln!(f, "  default_index: {},", b.default_state - b.min_state_id)?;
-      writeln!(f, "  types: vec![")?;
-      for s in states {
-        writeln!(f, "    Type{{")?;
-        writeln!(f, "      kind: Kind::{},", name)?;
-        writeln!(f, "      state: {},", s.id)?;
-        writeln!(f, "    }},")?;
-      }
-      writeln!(f, "  ],")?;
-      writeln!(f, "}});")?;
-    }
-    writeln!(f, "}}")?;
-  }
-  Ok(())
+pub(super) fn load_data(file: &str) -> io::Result<BlockVersion> {
+  let data: Vec<JsonBlock> = serde_json::from_str(file)?;
+  let ver = BlockVersion { blocks: vec![] };
+  Ok(ver)
 }
 
-fn generate_states(b: &Block) -> Vec<BlockState> {
+fn generate_states(b: &JsonBlock) -> Vec<State> {
   if b.states.is_empty() {
     return vec![];
   }
@@ -108,7 +64,7 @@ fn generate_states(b: &Block) -> Vec<BlockState> {
     for (k, v) in indicies.iter().enumerate() {
       props.insert(b.states[k].name.clone(), state_value(&b.states[k], *v));
     }
-    states.push(BlockState { id: b.min_state_id + i as u32, properties: props });
+    states.push(State { id: b.min_state_id + i as u32, properties: props });
     i += 1;
 
     finished = true;
@@ -166,56 +122,56 @@ mod tests {
   #[test]
   fn test_generate_states() {
     let expected = vec![
-      BlockState {
+      State {
         id:         20,
         properties: [("small", "false"), ("big", "0")]
           .iter()
           .map(|(key, val)| ((*key).into(), (*val).into()))
           .collect(),
       },
-      BlockState {
+      State {
         id:         21,
         properties: [("small", "true"), ("big", "0")]
           .iter()
           .map(|(key, val)| ((*key).into(), (*val).into()))
           .collect(),
       },
-      BlockState {
+      State {
         id:         22,
         properties: [("small", "false"), ("big", "1")]
           .iter()
           .map(|(key, val)| ((*key).into(), (*val).into()))
           .collect(),
       },
-      BlockState {
+      State {
         id:         23,
         properties: [("small", "true"), ("big", "1")]
           .iter()
           .map(|(key, val)| ((*key).into(), (*val).into()))
           .collect(),
       },
-      BlockState {
+      State {
         id:         24,
         properties: [("small", "false"), ("big", "2")]
           .iter()
           .map(|(key, val)| ((*key).into(), (*val).into()))
           .collect(),
       },
-      BlockState {
+      State {
         id:         25,
         properties: [("small", "true"), ("big", "2")]
           .iter()
           .map(|(key, val)| ((*key).into(), (*val).into()))
           .collect(),
       },
-      BlockState {
+      State {
         id:         26,
         properties: [("small", "false"), ("big", "3")]
           .iter()
           .map(|(key, val)| ((*key).into(), (*val).into()))
           .collect(),
       },
-      BlockState {
+      State {
         id:         27,
         properties: [("small", "true"), ("big", "3")]
           .iter()
@@ -223,7 +179,7 @@ mod tests {
           .collect(),
       },
     ];
-    let got = generate_states(&Block {
+    let got = generate_states(&JsonBlock {
       states: vec![
         JsonBlockState {
           ty: "bool".into(),
