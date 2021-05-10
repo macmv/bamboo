@@ -250,5 +250,51 @@ mod tests {
   }
 
   #[test]
-  fn test_state_value() {}
+  fn test_state_value() {
+    let bs = &JsonBlockState { ty: "int".into(), num_values: 3, ..Default::default() };
+    assert_eq!(state_value(bs, 0), "0");
+    assert_eq!(state_value(bs, 1), "1");
+    assert_eq!(state_value(bs, 2), "2");
+
+    let bs = &JsonBlockState { ty: "bool".into(), num_values: 2, ..Default::default() };
+    assert_eq!(state_value(bs, 0), "false");
+    assert_eq!(state_value(bs, 1), "true");
+
+    let bs = &JsonBlockState {
+      ty: "enum".into(),
+      num_values: 4,
+      values: Some(vec!["a".into(), "b".into(), "c".into(), "d".into()]),
+      ..Default::default()
+    };
+    assert_eq!(state_value(bs, 0), "a");
+    assert_eq!(state_value(bs, 1), "b");
+    assert_eq!(state_value(bs, 2), "c");
+    assert_eq!(state_value(bs, 3), "d");
+  }
+
+  #[test]
+  #[should_panic]
+  fn panic_int_state_value() {
+    state_value(&JsonBlockState { ty: "int".into(), num_values: 3, ..Default::default() }, 3);
+  }
+
+  #[test]
+  #[should_panic]
+  fn panic_bool_state_value() {
+    state_value(&JsonBlockState { ty: "bool".into(), num_values: 2, ..Default::default() }, 2);
+  }
+
+  #[test]
+  #[should_panic]
+  fn panic_enum_state_value() {
+    state_value(
+      &JsonBlockState {
+        ty: "enum".into(),
+        num_values: 2,
+        values: Some(vec!["a".into(), "b".into()]),
+        ..Default::default()
+      },
+      2,
+    );
+  }
 }
