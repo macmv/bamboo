@@ -1,5 +1,3 @@
-use std::sync::Arc;
-
 use common::version::BlockVersion;
 
 use super::Kind;
@@ -9,8 +7,8 @@ use super::Kind;
 /// are 32 types for an oak stair, based on it's state (rotation, in this case).
 #[derive(Debug)]
 pub struct Type {
-  kind:  Arc<Kind>,
-  state: u32,
+  pub(super) kind:  Kind,
+  pub(super) state: u32,
 }
 
 impl Type {

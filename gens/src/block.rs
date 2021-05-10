@@ -69,8 +69,8 @@ pub fn generate(dir: &Path) -> Result<(), Box<dyn Error>> {
       writeln!(f, "blocks.insert(Kind::{}, Data{{", name)?;
       writeln!(f, "  state: {},", b.min_state_id)?;
       writeln!(f, "  default_index: {},", b.default_state - b.min_state_id)?;
-      writeln!(f, "  types: ")?;
-      generate_states(b, &mut f)?;
+      writeln!(f, "  types:")?;
+      generate_states(b, &mut f, &name)?;
       writeln!(f, "}});")?;
     }
     writeln!(f, "}}")?;
@@ -78,12 +78,20 @@ pub fn generate(dir: &Path) -> Result<(), Box<dyn Error>> {
   Ok(())
 }
 
-fn generate_states(b: &Block, f: &mut File) -> io::Result<()> {
+fn generate_states(b: &Block, f: &mut File, kind: &str) -> io::Result<()> {
   if b.states.is_empty() {
     return writeln!(f, "vec![],");
   }
-  writeln!(f, "vec![")?;
-  writeln!(f, "    ")?;
-  writeln!(f, "],")?;
+  let ids = vec![1, 2, 3];
+  // `d` is the variable to the kind, so when we make each type, we must clone
+  // that
+  writeln!(f, " vec![")?;
+  for id in ids {
+    writeln!(f, "    Type{{")?;
+    writeln!(f, "      kind: Kind::{},", kind)?;
+    writeln!(f, "      state: {},", id)?;
+    writeln!(f, "    }},")?;
+  }
+  writeln!(f, "  ],")?;
   Ok(())
 }
