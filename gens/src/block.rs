@@ -5,9 +5,12 @@ use std::{collections::HashMap, error::Error, fs, fs::File, io, io::Write, path:
 #[derive(Default, Debug, Deserialize)]
 struct JsonBlockState {
   name:       String,
+  // One of 'int', 'bool', or 'enum'
   #[serde(alias = "type")]
   ty:         String,
   num_values: u32,
+  // Only present if ty is 'enum'
+  values:     Option<Vec<String>>,
 }
 
 #[derive(Debug)]
@@ -103,9 +106,9 @@ fn generate_states(b: &Block) -> Vec<BlockState> {
   while !finished {
     let mut props = HashMap::new();
     for (k, v) in indicies.iter().enumerate() {
-      props.insert(b.states[k].name.clone(), "hello".into());
+      props.insert(b.states[k].name.clone(), state_value(&b.states[k], *v));
     }
-    states.push(BlockState { id: b.min_state_id + i, properties: props });
+    states.push(BlockState { id: b.min_state_id + i as u32, properties: props });
     i += 1;
     dbg!(i, &indicies);
 
@@ -114,7 +117,7 @@ fn generate_states(b: &Block) -> Vec<BlockState> {
     // states
     for (i, val) in indicies.iter_mut().enumerate() {
       *val += 1;
-      if *val < b.states[i].num_values {
+      if *val < b.states[i].num_values as usize {
         finished = false;
         break;
       }
@@ -127,6 +130,37 @@ fn generate_states(b: &Block) -> Vec<BlockState> {
   states
 }
 
+fn state_value(s: &JsonBlockState, index: usize) -> String {
+  match s.ty.as_ref() {
+    "bool" => match index {
+      0 => "false".into(),
+      1 => "true".into(),
+      v => panic!("state index is invalid: bool should be within 0..2, but got: {}", v),
+    },
+    "int" => {
+      if index >= s.num_values as usize {
+        panic!(
+          "state index is invalid: int should be within 0..{}, but got: {}",
+          s.num_values, index
+        )
+      }
+      index.to_string()
+    }
+    "enum" => match &s.values {
+      Some(values) => match values.get(index) {
+        Some(v) => v.clone(),
+        None => panic!(
+          "state index is invalid: enum should be within 0..{}, but got: {}",
+          values.len(),
+          index,
+        ),
+      },
+      None => panic!("got enum, but no values"),
+    },
+    v => panic!("state type is invalid: {}", v),
+  }
+}
+
 #[cfg(test)]
 mod tests {
   use super::*;
@@ -135,13 +169,22 @@ mod tests {
   fn test_generate_states() {
     generate_states(&Block {
       states: vec![
-        JsonBlockState { name: "small".into(), num_values: 3, ..Default::default() },
-        JsonBlockState { name: "big".into(), num_values: 5, ..Default::default() },
+        JsonBlockState {
+          ty: "int".into(),
+          name: "small".into(),
+          num_values: 3,
+          ..Default::default()
+        },
+        JsonBlockState {
+          ty: "int".into(),
+          name: "big".into(),
+          num_values: 5,
+          ..Default::default()
+        },
       ],
       min_state_id: 20,
       max_state_id: 34,
       ..Default::default()
     });
-    assert!(false);
   }
 }
