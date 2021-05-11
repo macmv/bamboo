@@ -50,8 +50,6 @@ pub fn generate(dir: &Path) -> Result<(), Box<dyn Error>> {
     fixed::load_data(include_str!("../../minecraft-data/data/pc/1.9/blocks.json"))?,
     fixed::load_data(include_str!("../../minecraft-data/data/pc/1.8/blocks.json"))?,
   ];
-  let version_names =
-    vec!["V1_16", "V1_15", "V1_14", "V1_13", "V1_12", "V1_11", "V1_10", "V1_9", "V1_8"];
   let latest = &versions[0];
 
   fs::create_dir_all(&dir)?;
@@ -94,35 +92,25 @@ pub fn generate(dir: &Path) -> Result<(), Box<dyn Error>> {
   }
   {
     // Generates the cross-versioning data
-    let mut f = File::create(&dir.join("versions.rs"))?;
+    //
+    // This cannot be in a source file, as that would take multiple minutes (and
+    // 10gb of ram) to compile. So we do a bit of pre-processing on load.
+    let mut f = File::create(&dir.join("versions.csv"))?;
 
-    // Include macro must be one statement
-    writeln!(f, "{{")?;
+    let mut to_old = vec![];
     for (i, v) in versions.iter().enumerate() {
       if i == 0 {
         continue;
       }
-      let (to_old, to_new) = versions::generate(latest, v);
-
-      // writeln!(f, "let mut map = HashMap::new();")?;
-      // for (k, v) in to_new {
-      //   writeln!(f, "map.insert({}, {});", k, v)?;
-      // }
-      //
-      // writeln!(f, "versions.insert(BlockVersion::{}, Version{{",
-      // version_names[i])?;     writeln!(f, "  ver: BlockVersion::{},",
-      // version_names[i])?;
-      //
-      // write!(f, "  to_old: vec![")?;
-      // for id in to_old {
-      //   write!(f, "{}, ", id)?;
-      // }
-      // writeln!(f, "],")?;
-      //
-      // writeln!(f, "  to_new: map,")?;
-      // writeln!(f, "}});")?;
+      to_old.push(versions::generate(latest, v));
     }
-    writeln!(f, "}}")?;
+    for i in 0..to_old[0].len() {
+      write!(f, "{},", i)?;
+      for arr in &to_old {
+        write!(f, "{},", arr[i])?;
+      }
+      writeln!(f)?;
+    }
   }
   Ok(())
 }
