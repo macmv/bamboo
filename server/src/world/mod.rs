@@ -47,22 +47,17 @@ pub struct World {
 pub struct WorldManager {
   // This will always have at least 1 entry. The world at index 0 is considered the "default"
   // world.
-  worlds: Vec<Arc<World>>,
-}
-
-impl Default for World {
-  fn default() -> Self {
-    World::new()
-  }
+  worlds:    Vec<Arc<World>>,
+  converter: Arc<block::Converter>,
 }
 
 impl World {
-  pub fn new() -> Self {
+  pub fn new(converter: Arc<block::Converter>) -> Self {
     World {
-      chunks:    RwLock::new(HashMap::new()),
-      players:   Mutex::new(vec![]),
-      eid:       Arc::new(1.into()),
-      converter: Arc::new(block::Converter::new()),
+      chunks: RwLock::new(HashMap::new()),
+      players: Mutex::new(vec![]),
+      eid: Arc::new(1.into()),
+      converter,
     }
   }
   async fn new_player(self: Arc<Self>, conn: Arc<Connection>, player: Player) {
@@ -178,7 +173,13 @@ impl Default for WorldManager {
 
 impl WorldManager {
   pub fn new() -> Self {
-    WorldManager { worlds: vec![Arc::new(World::new())] }
+    let mut w = WorldManager { converter: Arc::new(block::Converter::new()), worlds: vec![] };
+    w.add_world();
+    w
+  }
+
+  pub fn add_world(&mut self) {
+    self.worlds.push(Arc::new(World::new(self.converter.clone())));
   }
 
   /// Adds a new player into the game. This should be called when a new grpc
