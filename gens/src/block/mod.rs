@@ -1,5 +1,6 @@
 mod fixed;
 mod paletted;
+mod versions;
 
 use convert_case::{Case, Casing};
 use std::{collections::HashMap, error::Error, fs, fs::File, io::Write, path::Path};
@@ -86,6 +87,29 @@ pub fn generate(dir: &Path) -> Result<(), Box<dyn Error>> {
       }
       writeln!(f, "  ],")?;
       writeln!(f, "}});")?;
+    }
+    writeln!(f, "}}")?;
+  }
+  {
+    // Generates the cross-versioning data
+    let mut f = File::create(&dir.join("versions.rs"))?;
+
+    // Include macro must be one statement
+    writeln!(f, "{{")?;
+    for v in &versions[1..] {
+      let (to_old, to_new) = versions::generate(latest, v);
+
+      write!(f, "to_old.push(vec![")?;
+      for id in to_old {
+        write!(f, "{}, ", id)?;
+      }
+      writeln!(f, "]);")?;
+
+      writeln!(f, "let map = HashMap::new()")?;
+      for (k, v) in to_new {
+        writeln!(f, "map.insert({}, {});", k, v)?;
+      }
+      writeln!(f, "to_new.push(map);")?;
     }
     writeln!(f, "}}")?;
   }
