@@ -48,9 +48,6 @@ pub fn generate_versions() -> HashMap<BlockVersion, Version> {
     }
   }
 
-  dbg!(versions);
-  panic!();
-
   HashMap::new()
 }
 
