@@ -50,6 +50,8 @@ pub fn generate(dir: &Path) -> Result<(), Box<dyn Error>> {
     fixed::load_data(include_str!("../../minecraft-data/data/pc/1.9/blocks.json"))?,
     fixed::load_data(include_str!("../../minecraft-data/data/pc/1.8/blocks.json"))?,
   ];
+  let version_names =
+    vec!["V1_16", "V1_15", "V1_14", "V1_13", "V1_12", "V1_11", "V1_10", "V1_9", "V1_8"];
   let latest = &versions[0];
 
   fs::create_dir_all(&dir)?;
@@ -96,20 +98,29 @@ pub fn generate(dir: &Path) -> Result<(), Box<dyn Error>> {
 
     // Include macro must be one statement
     writeln!(f, "{{")?;
-    for v in &versions[1..] {
+    for (i, v) in versions.iter().enumerate() {
+      if i == 0 {
+        continue;
+      }
       let (to_old, to_new) = versions::generate(latest, v);
 
-      write!(f, "to_old.push(vec![")?;
-      for id in to_old {
-        write!(f, "{}, ", id)?;
-      }
-      writeln!(f, "]);")?;
-
-      writeln!(f, "let map = HashMap::new()")?;
-      for (k, v) in to_new {
-        writeln!(f, "map.insert({}, {});", k, v)?;
-      }
-      writeln!(f, "to_new.push(map);")?;
+      // writeln!(f, "let mut map = HashMap::new();")?;
+      // for (k, v) in to_new {
+      //   writeln!(f, "map.insert({}, {});", k, v)?;
+      // }
+      //
+      // writeln!(f, "versions.insert(BlockVersion::{}, Version{{",
+      // version_names[i])?;     writeln!(f, "  ver: BlockVersion::{},",
+      // version_names[i])?;
+      //
+      // write!(f, "  to_old: vec![")?;
+      // for id in to_old {
+      //   write!(f, "{}, ", id)?;
+      // }
+      // writeln!(f, "],")?;
+      //
+      // writeln!(f, "  to_new: map,")?;
+      // writeln!(f, "}});")?;
     }
     writeln!(f, "}}")?;
   }

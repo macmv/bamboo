@@ -1,7 +1,7 @@
 mod data;
 mod kind;
 mod ty;
-mod versions;
+mod version;
 
 pub use data::Data;
 pub use kind::Kind;
