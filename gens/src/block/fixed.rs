@@ -51,7 +51,10 @@ struct JsonBlock {
   #[serde(alias = "stackSize")]
   stack_size:   u32,
   resistance:   f32,
-  material:     Option<String>,
+
+  material:      Option<String>,
+  #[serde(alias = "harvestTools")]
+  harvest_tools: Option<HashMap<String, bool>>,
 }
 
 pub(super) fn load_data(file: &str) -> io::Result<BlockVersion> {

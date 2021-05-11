@@ -36,6 +36,10 @@ struct BlockVersion {
 pub fn generate(dir: &Path) -> Result<(), Box<dyn Error>> {
   let dir = Path::new(dir).join("block");
 
+  fixed::load_data(include_str!("../../minecraft-data/data/pc/1.8/blocks.json"))?;
+  fixed::load_data(include_str!("../../minecraft-data/data/pc/1.9/blocks.json"))?;
+  fixed::load_data(include_str!("../../minecraft-data/data/pc/1.10/blocks.json"))?;
+  fixed::load_data(include_str!("../../minecraft-data/data/pc/1.11/blocks.json"))?;
   fixed::load_data(include_str!("../../minecraft-data/data/pc/1.12/blocks.json"))?;
   // 1.13 is a seperate version, but the json is malformatted. So we only support
   // 1.13.2.
