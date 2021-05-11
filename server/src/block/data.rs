@@ -23,8 +23,23 @@ pub struct Data {
 /// [`WorldManager`](crate::world::WorldManager). This is left public as it may
 /// be moved to a seperate crate in the future, as it takes a long time to
 /// generate the source files for this.
+///
+/// Most of this function is generated at compile time. See
+/// `gens/src/block/mod.rs` and `build.rs` for more.
 pub fn generate_data() -> HashMap<Kind, Data> {
   let mut blocks = HashMap::new();
   include!(concat!(env!("OUT_DIR"), "/block/data.rs"));
   blocks
+}
+
+#[cfg(test)]
+mod tests {
+  use super::*;
+
+  #[test]
+  fn test_generate() {
+    dbg!(generate_data());
+    // Used to show debug output.
+    // assert!(false);
+  }
 }

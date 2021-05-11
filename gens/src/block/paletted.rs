@@ -2,7 +2,7 @@
 use serde_derive::Deserialize;
 use std::{collections::HashMap, io};
 
-use super::{BlockVersion, State};
+use super::{Block, BlockVersion, State};
 
 #[derive(Default, Debug, Deserialize)]
 struct JsonBlockState {
@@ -46,7 +46,16 @@ struct JsonBlock {
 
 pub(super) fn load_data(file: &str) -> io::Result<BlockVersion> {
   let data: Vec<JsonBlock> = serde_json::from_str(file)?;
-  let ver = BlockVersion { blocks: vec![] };
+  let mut ver = BlockVersion { blocks: vec![] };
+  for b in data {
+    dbg!(&b);
+    ver.blocks.push(Block {
+      states:        generate_states(&b),
+      name:          b.name,
+      id:            b.min_state_id,
+      default_index: b.default_state - b.min_state_id,
+    });
+  }
   Ok(ver)
 }
 
@@ -54,7 +63,6 @@ fn generate_states(b: &JsonBlock) -> Vec<State> {
   if b.states.is_empty() {
     return vec![];
   }
-  dbg!(b);
   let mut indicies = vec![0; b.states.len()];
   let mut states = vec![];
   let mut i = 0;
