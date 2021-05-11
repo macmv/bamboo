@@ -43,6 +43,7 @@ struct JsonBlock {
   #[serde(alias = "defaultState")]
   default_state: u32,
   resistance:    f32,
+  material:      Option<String>,
 }
 
 pub(super) fn load_data(file: &str) -> io::Result<BlockVersion> {
