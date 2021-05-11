@@ -32,12 +32,9 @@ pub fn generate_versions() -> HashMap<BlockVersion, Version> {
   for (i, l) in csv.lines().enumerate() {
     let sections = l.split(',');
     if i == 0 {
-      for _ in sections {
-        versions.push(Version {
-          to_old: vec![],
-          to_new: HashMap::new(),
-          ver:    BlockVersion::V1_8,
-        });
+      for (j, _) in sections.enumerate() {
+        let ver = BlockVersion::from_index(j as u32);
+        versions.push(Version { to_old: vec![], to_new: HashMap::new(), ver });
       }
     } else {
       for (j, s) in sections.enumerate() {
@@ -48,7 +45,7 @@ pub fn generate_versions() -> HashMap<BlockVersion, Version> {
     }
   }
 
-  HashMap::new()
+  versions.into_iter().enumerate().map(|(i, v)| (BlockVersion::from_index(i as u32), v)).collect()
 }
 
 #[cfg(test)]

@@ -36,6 +36,23 @@ impl BlockVersion {
       Self::V1_16 => ProtocolVersion::V1_16_5,
     }
   }
+
+  /// Returns the protocol version from the given index. 0 -> 1.8, 1 -> 1.9,
+  /// etc.
+  pub fn from_index(i: u32) -> BlockVersion {
+    match i {
+      0 => Self::V1_8,
+      1 => Self::V1_9,
+      2 => Self::V1_10,
+      3 => Self::V1_11,
+      4 => Self::V1_12,
+      5 => Self::V1_13,
+      6 => Self::V1_14,
+      7 => Self::V1_15,
+      8 => Self::V1_16,
+      _ => Self::Invalid,
+    }
+  }
 }
 
 /// A list of all protocol versions. This is mostly inclusive to what this
