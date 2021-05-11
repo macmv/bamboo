@@ -21,7 +21,8 @@ struct JsonBlock {
   #[serde(alias = "displayName")]
   display_name:  String,
   name:          String,
-  hardness:      f32,
+  // If this is None or 0, then it is unbreakable
+  hardness:      Option<f32>,
   #[serde(alias = "minStateId")]
   min_state_id:  u32,
   #[serde(alias = "maxStateId")]
