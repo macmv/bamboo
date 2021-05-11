@@ -16,9 +16,9 @@ impl Type {
   pub fn kind(&self) -> &Kind {
     &self.kind
   }
-  /// Gets the block id for the given version. This is simply a lookup in a
-  /// hashtable. It will panic if the version is invalid.
-  pub fn id(&self, _v: BlockVersion) -> u32 {
+  /// Gets the block id for the given version. This will always be the latest
+  /// blockstate id.
+  pub fn id(&self) -> u32 {
     self.state
   }
 }

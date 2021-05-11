@@ -37,9 +37,10 @@ use chunk::MultiChunk;
 // }
 
 pub struct World {
-  chunks:  RwLock<HashMap<ChunkPos, Arc<StdMutex<MultiChunk>>>>,
-  players: Mutex<Vec<Arc<Mutex<Player>>>>,
-  eid:     Arc<AtomicI32>,
+  chunks:    RwLock<HashMap<ChunkPos, Arc<StdMutex<MultiChunk>>>>,
+  players:   Mutex<Vec<Arc<Mutex<Player>>>>,
+  eid:       Arc<AtomicI32>,
+  converter: Arc<block::Converter>,
 }
 
 #[derive(Clone)]
@@ -58,9 +59,10 @@ impl Default for World {
 impl World {
   pub fn new() -> Self {
     World {
-      chunks:  RwLock::new(HashMap::new()),
-      players: Mutex::new(vec![]),
-      eid:     Arc::new(1.into()),
+      chunks:    RwLock::new(HashMap::new()),
+      players:   Mutex::new(vec![]),
+      eid:       Arc::new(1.into()),
+      converter: Arc::new(block::Converter::new()),
     }
   }
   async fn new_player(self: Arc<Self>, conn: Arc<Connection>, player: Player) {
@@ -152,7 +154,9 @@ impl World {
       // If we do, we lock it for writing
       let mut chunks = self.chunks.write().unwrap();
       // Make sure that the chunk was not written in between locking this chunk
-      chunks.entry(pos).or_insert_with(|| Arc::new(StdMutex::new(MultiChunk::new())));
+      chunks
+        .entry(pos)
+        .or_insert_with(|| Arc::new(StdMutex::new(MultiChunk::new(self.converter.clone()))));
     }
     let chunks = self.chunks.read().unwrap();
     let c = chunks[&pos].lock().unwrap();

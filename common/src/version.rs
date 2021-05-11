@@ -4,7 +4,7 @@ use num_derive::{FromPrimitive, ToPrimitive};
 /// versions of the game. Any time the game gets new blocks, there is a new
 /// version added to this enum.
 #[non_exhaustive]
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, FromPrimitive, ToPrimitive)]
 pub enum BlockVersion {
   Invalid,
   V1_8,
@@ -19,6 +19,11 @@ pub enum BlockVersion {
 }
 
 impl BlockVersion {
+  /// Returns the latest version. This is the version that block ids are stored
+  /// in.
+  pub fn latest() -> Self {
+    Self::V1_16
+  }
   /// Returns the protocol version for this block version. This will always
   /// return the latest version that uses this block version.
   pub fn protocol(&self) -> ProtocolVersion {
@@ -39,19 +44,15 @@ impl BlockVersion {
 
   /// Returns the protocol version from the given index. 0 -> 1.8, 1 -> 1.9,
   /// etc.
-  pub fn from_index(i: u32) -> BlockVersion {
-    match i {
-      0 => Self::V1_8,
-      1 => Self::V1_9,
-      2 => Self::V1_10,
-      3 => Self::V1_11,
-      4 => Self::V1_12,
-      5 => Self::V1_13,
-      6 => Self::V1_14,
-      7 => Self::V1_15,
-      8 => Self::V1_16,
-      _ => Self::Invalid,
+  pub fn from_index(v: u32) -> Self {
+    match num::FromPrimitive::from_u32(v) {
+      Some(v) => v,
+      None => Self::Invalid,
     }
+  }
+
+  pub fn to_index(self) -> u32 {
+    num::ToPrimitive::to_u32(&self).unwrap_or(0)
   }
 }
 

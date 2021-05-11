@@ -1,7 +1,30 @@
-use super::{Kind, Type};
-use std::{collections::HashMap, io::BufReader};
+use std::collections::HashMap;
 
 use common::version::BlockVersion;
+
+pub struct Converter {
+  versions: Vec<Version>,
+}
+
+impl Converter {
+  pub fn new() -> Self {
+    Self { versions: generate_versions() }
+  }
+
+  pub fn to_latest(&self, id: u32, ver: BlockVersion) -> u32 {
+    match self.versions[ver.to_index() as usize].to_new.get(&id) {
+      Some(v) => *v,
+      None => 0,
+    }
+  }
+
+  pub fn to_old(&self, id: u32, ver: BlockVersion) -> u32 {
+    match self.versions[ver.to_index() as usize].to_old.get(id as usize) {
+      Some(v) => *v,
+      None => 0,
+    }
+  }
+}
 
 /// Any data specific to a block kind. This includes all function handlers for
 /// when a block gets placed/broken, and any custom functionality a block might
@@ -26,7 +49,11 @@ pub struct Version {
 ///
 /// Most of this function is generated at compile time. See
 /// `gens/src/block/mod.rs` and `build.rs` for more.
-pub fn generate_versions() -> HashMap<BlockVersion, Version> {
+///
+/// This Vec<Version> is in order of block versions. Use
+/// BlockVersion::from_index() and BlockVersion::to_index() to convert between
+/// indicies and block versions.
+pub fn generate_versions() -> Vec<Version> {
   let mut versions = vec![];
   let csv = include_str!(concat!(env!("OUT_DIR"), "/block/versions.csv"));
   for (i, l) in csv.lines().enumerate() {
@@ -45,7 +72,7 @@ pub fn generate_versions() -> HashMap<BlockVersion, Version> {
     }
   }
 
-  versions.into_iter().enumerate().map(|(i, v)| (BlockVersion::from_index(i as u32), v)).collect()
+  versions
 }
 
 #[cfg(test)]

@@ -20,7 +20,11 @@ pub trait Section {
   /// `[#derive(Clone)]` on structs that contain a Section should not clone an
   /// entire section.
   fn duplicate(&self) -> Box<dyn Section + Send>;
-  /// Generates a protobuf from the given hcunk column. Should only be used in
+  /// Generates a protobuf from the given chunk column. Should only be used in
   /// `Chunk::to_proto`. This should have no effect on the chunk itself.
-  fn to_proto(&self) -> proto::chunk::Section;
+  fn to_latest_proto(&self) -> proto::chunk::Section;
+  /// Generates a protobuf from the given chunk column. Should only be used in
+  /// `Chunk::to_proto`. This should have no effect on the chunk itself. This
+  /// will call f for every block id it encounters.
+  fn to_old_proto(&self, f: &dyn Fn(u32) -> u32) -> proto::chunk::Section;
 }

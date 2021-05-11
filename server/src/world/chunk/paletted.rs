@@ -29,7 +29,10 @@ impl ChunkSection for Section {
   fn duplicate(&self) -> Box<dyn ChunkSection + Send> {
     Box::new(Section {})
   }
-  fn to_proto(&self) -> proto::chunk::Section {
+  fn to_latest_proto(&self) -> proto::chunk::Section {
+    proto::chunk::Section::default()
+  }
+  fn to_old_proto(&self, f: &dyn Fn(u32) -> u32) -> proto::chunk::Section {
     proto::chunk::Section::default()
   }
 }

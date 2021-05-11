@@ -72,12 +72,29 @@ impl Chunk {
   }
   /// Generates a protobuf containing all of the chunk data. X and Z will both
   /// be 0.
-  pub fn to_proto(&self) -> proto::Chunk {
+  pub fn to_latest_proto(&self) -> proto::Chunk {
     let mut sections = HashMap::new();
     for (i, s) in self.sections.iter().enumerate() {
       match s {
         Some(s) => {
-          sections.insert(i as i32, s.to_proto());
+          sections.insert(i as i32, s.to_latest_proto());
+        }
+        None => {}
+      }
+    }
+    proto::Chunk { sections, ..Default::default() }
+  }
+  /// Generates a protobuf containing all of the chunk data. X and Z will both
+  /// be 0. This will call the given function for every block id it encounters.
+  pub fn to_old_proto<F>(&self, f: F) -> proto::Chunk
+  where
+    F: Fn(u32) -> u32,
+  {
+    let mut sections = HashMap::new();
+    for (i, s) in self.sections.iter().enumerate() {
+      match s {
+        Some(s) => {
+          sections.insert(i as i32, s.to_old_proto(&f));
         }
         None => {}
       }
