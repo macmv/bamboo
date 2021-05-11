@@ -2,15 +2,32 @@ use std::collections::HashMap;
 
 use common::version::BlockVersion;
 
+/// This is a version converter. It is how all block ids are converter between
+/// versions. At compile time, all of the vanilla Minecraft versions that are
+/// supported are processed and converted into various files. One of these files
+/// is a csv file, which is embedded into this binary. This csv contains a list
+/// of all modern blocks within the game, and the ids that those ids map to in
+/// all older versions of the game. This file is quite large, and is parsed any
+/// time one of these is created. This type ends up using about 600K of memory,
+/// so you should only ever create one. The
+/// [`WorldManager`](crate::world::WorldManager) has one of these which you can
+/// use.
 pub struct Converter {
   versions: Vec<Version>,
 }
 
 impl Converter {
+  /// Creates a new converter. This will parse the csv file, and allocate around
+  /// 600K of memory. Do not call this unless you have a very good reason.
+  /// Instead, use
+  /// [`WorldManager::get_converter`](crate::world::WorldManager::
+  /// get_converter).
   pub fn new() -> Self {
     Self { versions: generate_versions() }
   }
 
+  /// Takes the given old block id, which is part of `ver`, and returns the new
+  /// id that it maps to. If the id is invalid, this will return 0 (air).
   pub fn to_latest(&self, id: u32, ver: BlockVersion) -> u32 {
     match self.versions[ver.to_index() as usize].to_new.get(&id) {
       Some(v) => *v,
@@ -18,6 +35,8 @@ impl Converter {
     }
   }
 
+  /// Takes the new block id, and converts it to the old id, for the given
+  /// version. If the id is invalid, this will return 0 (air).
   pub fn to_old(&self, id: u32, ver: BlockVersion) -> u32 {
     match self.versions[ver.to_index() as usize].to_old.get(id as usize) {
       Some(v) => *v,
@@ -26,9 +45,12 @@ impl Converter {
   }
 }
 
-/// Any data specific to a block kind. This includes all function handlers for
-/// when a block gets placed/broken, and any custom functionality a block might
-/// have.
+/// This is the conversion table for a single old version of the game and the
+/// latest version. This includes a list of old ids, whose index is the new
+/// block id. It also contains a HashMap, which is used to convert old ids into
+/// new ones. This might not be fastest or most memory efficient way, but it is
+/// certainly the easiest. Especially before 1.13, block ids are very sparse,
+/// and a HashMap will be the best option.
 #[derive(Debug)]
 pub struct Version {
   to_old: Vec<u32>,

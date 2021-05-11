@@ -182,6 +182,12 @@ impl WorldManager {
     self.worlds.push(Arc::new(World::new(self.converter.clone())));
   }
 
+  /// Returns the current converter. This can be used to convert old block ids
+  /// to new ones, and vice versa.
+  pub fn get_converter(&self) -> &block::Converter {
+    &self.converter
+  }
+
   /// Adds a new player into the game. This should be called when a new grpc
   /// proxy connects.
   pub async fn new_player(&self, req: Streaming<Packet>, tx: Sender<Result<Packet, Status>>) {
