@@ -61,7 +61,6 @@ pub(super) fn load_data(file: &str) -> io::Result<BlockVersion> {
   let data: Vec<JsonBlock> = serde_json::from_str(file)?;
   let mut ver = BlockVersion { blocks: vec![] };
   for b in data {
-    dbg!(&b);
     let state = b.id << 4;
     ver.blocks.push(Block {
       states:        b

@@ -5,7 +5,7 @@ mod versions;
 use convert_case::{Case, Casing};
 use std::{collections::HashMap, error::Error, fs, fs::File, io::Write, path::Path};
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Clone)]
 struct State {
   // In fixed data, this is block id << 4 | meta
   // In paletted data, this is a global state id
@@ -14,7 +14,7 @@ struct State {
   properties: HashMap<String, String>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 struct Block {
   // In fixed data, id is the block id << 4
   // In paletted data, this is the min state id
