@@ -106,8 +106,11 @@ pub fn generate(dir: &Path) -> Result<(), Box<dyn Error>> {
     }
     for i in 0..to_old[0].len() {
       write!(f, "{},", i)?;
-      for arr in &to_old {
-        write!(f, "{},", arr[i])?;
+      for (j, arr) in to_old.iter().enumerate() {
+        write!(f, "{}", arr[i])?;
+        if j != to_old.len() - 1 {
+          write!(f, ",")?;
+        }
       }
       writeln!(f)?;
     }

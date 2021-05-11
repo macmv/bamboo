@@ -1,5 +1,5 @@
 use super::{Kind, Type};
-use std::collections::HashMap;
+use std::{collections::HashMap, io::BufReader};
 
 use common::version::BlockVersion;
 
@@ -27,9 +27,31 @@ pub struct Version {
 /// Most of this function is generated at compile time. See
 /// `gens/src/block/mod.rs` and `build.rs` for more.
 pub fn generate_versions() -> HashMap<BlockVersion, Version> {
-  let mut versions = HashMap::new();
-  include!(concat!(env!("OUT_DIR"), "/block/versions.rs"));
-  versions
+  let mut versions = vec![];
+  let csv = include_str!(concat!(env!("OUT_DIR"), "/block/versions.csv"));
+  for (i, l) in csv.lines().enumerate() {
+    let sections = l.split(',');
+    if i == 0 {
+      for _ in sections {
+        versions.push(Version {
+          to_old: vec![],
+          to_new: HashMap::new(),
+          ver:    BlockVersion::V1_8,
+        });
+      }
+    } else {
+      for (j, s) in sections.enumerate() {
+        let v = s.parse().unwrap();
+        versions[j].to_old.push(v);
+        versions[j].to_new.insert(v, i as u32);
+      }
+    }
+  }
+
+  dbg!(versions);
+  panic!();
+
+  HashMap::new()
 }
 
 #[cfg(test)]
