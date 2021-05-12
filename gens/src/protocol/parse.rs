@@ -22,9 +22,9 @@ impl<'de> Deserialize<'de> for JsonType {
       ($self:expr, $k:expr, $s:expr, [$($name:expr, $kind:ident),*]) => {
         match $k {
           $(
-            $name => Ok(JsonTypeValue::$kind($s.next_element()?.ok_or_else(|| de::Error::invalid_length(1, $self))?)),
+            $name => JsonTypeValue::$kind($s.next_element()?.ok_or_else(|| de::Error::invalid_length(1, $self))?),
           )*
-          v => Err(de::Error::unknown_variant(v, &[$($name),*]))
+          _ => JsonTypeValue::Custom($s.next_element()?.ok_or_else(|| de::Error::invalid_length(1, $self))?),
         }
       };
     }
@@ -32,11 +32,11 @@ impl<'de> Deserialize<'de> for JsonType {
     impl<'de> Visitor<'de> for Arr {
       type Value = JsonType;
 
-      fn expecting(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
-        write!(f, "a string")
+      fn expecting(&self, f: &mut fmt::Formatter) -> ::std::fmt::Result {
+        write!(f, "a protocol type field")
       }
 
-      fn visit_str<E>(self, mut s: &str) -> Result<Self::Value, E>
+      fn visit_str<E>(self, s: &str) -> Result<Self::Value, E>
       where
         E: de::Error,
       {
@@ -68,7 +68,7 @@ impl<'de> Deserialize<'de> for JsonType {
             "bitfield",
             Bitfield
           ]
-        )?;
+        );
         Ok(JsonType { kind: kind.into(), value: Box::new(value) })
       }
     }
@@ -96,6 +96,8 @@ enum JsonTypeValue {
   Option(Option<JsonType>),
   // This is a value that may or may not exist
   Bitfield(Vec<JsonBitfield>),
+  // Custom type
+  Custom(HashMap<String, String>),
 }
 
 #[derive(Debug, Deserialize)]
@@ -107,7 +109,8 @@ struct JsonBitfield {
 
 #[derive(Debug, Deserialize)]
 struct JsonContainer {
-  name: String,
+  name: Option<String>,
+  anon: Option<bool>,
   #[serde(alias = "type")]
   ty:   JsonType,
 }
@@ -119,9 +122,18 @@ struct JsonContainer {
 struct JsonArray {
   #[serde(alias = "countType")]
   count_type: Option<JsonType>,
-  count:      Option<u32>,
+  count:      Option<CountType>,
   #[serde(alias = "type")]
   ty:         JsonType,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(untagged)]
+enum CountType {
+  // A hardocded count
+  Fixed(u32),
+  // Another protocol field should be used as the count
+  Named(String),
 }
 
 #[derive(Debug, Deserialize)]
@@ -220,8 +232,8 @@ pub(super) fn load_all(path: &Path) -> Result<HashMap<String, Version>, Box<dyn 
         to_server: generate_list(&json.play.to_server.types),
       },
     );
-    panic!();
   }
+  panic!();
 
   Ok(versions)
 }
