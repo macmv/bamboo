@@ -65,7 +65,9 @@ impl<'de> Deserialize<'de> for Type {
             "option",
             Option,
             "bitfield",
-            Bitfield
+            Bitfield,
+            "topBitSetTerminatedArray",
+            TopBitSetTerminatedArray
           ]
         );
         Ok(Type { kind: kind.into(), value: Box::new(value) })
@@ -95,8 +97,16 @@ pub enum TypeValue {
   Option(Option<Type>),
   // This is a value that may or may not exist
   Bitfield(Vec<Bitfield>),
+  // minecraft go brrrrrr
+  TopBitSetTerminatedArray(TopBitSetTerminatedArray),
   // Custom type
   Custom(HashMap<String, String>),
+}
+
+#[derive(Debug, Deserialize)]
+pub struct TopBitSetTerminatedArray {
+  #[serde(alias = "type")]
+  pub ty: Type,
 }
 
 #[derive(Debug, Deserialize)]
@@ -279,6 +289,7 @@ pub struct Switch {
   #[serde(alias = "compareTo")]
   pub compare_to: String,
   pub fields:     HashMap<String, Type>,
+  pub default:    Option<Type>,
 }
 
 #[derive(Debug, Deserialize)]

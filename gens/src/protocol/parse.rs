@@ -22,6 +22,10 @@ pub(super) fn load_all(path: &Path) -> Result<HashMap<String, Version>, Box<dyn 
     } else {
       continue;
     }
+    // 1.7 has incompatibilities that I couldn't be bothered to fix
+    if ver_str == "V1_7" {
+      continue;
+    }
 
     let fname = p.join("protocol.json");
     let file = match fs::read_to_string(&fname) {
