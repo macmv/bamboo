@@ -244,7 +244,6 @@ impl<'de> Deserialize<'de> for Array {
           },
         };
         let ty = ty.ok_or_else(|| de::Error::missing_field("type"))?;
-        dbg!(&count);
         Ok(Array { count, ty })
       }
     }

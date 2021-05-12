@@ -24,7 +24,11 @@ pub(super) fn load_all(path: &Path) -> Result<HashMap<String, Version>, Box<dyn 
     }
 
     let fname = p.join("protocol.json");
-    let json: json::ProtocolVersion = match serde_json::from_str(&fs::read_to_string(&fname)?) {
+    let file = match fs::read_to_string(&fname) {
+      Ok(v) => v,
+      Err(_) => continue,
+    };
+    let json: json::ProtocolVersion = match serde_json::from_str(&file) {
       Ok(v) => v,
       Err(e) => panic!("while reading file {}, got json error {}", fname.display(), e),
     };
