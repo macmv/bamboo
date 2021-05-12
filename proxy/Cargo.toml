@@ -14,3 +14,6 @@ tokio = { version = "1.5", features = ["rt-multi-thread"] }
 tokio-stream = "0.1"
 futures = "0.3"
 async-stream = "0.3"
+
+[build-dependencies]
+gens = { path = "../gens" }

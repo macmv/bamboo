@@ -709,6 +709,7 @@ dependencies = [
  "async-stream",
  "common",
  "futures",
+ "gens",
  "log",
  "ringbuf",
  "tokio",
