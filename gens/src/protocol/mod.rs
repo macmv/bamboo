@@ -1,3 +1,4 @@
+mod json;
 mod parse;
 
 use convert_case::{Case, Casing};
