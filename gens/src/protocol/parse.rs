@@ -47,7 +47,7 @@ fn generate_list(json: &json::TypeMap) -> Vec<Packet> {
   let packets = vec![];
 
   for (k, v) in json {
-    dbg!(k, v);
+    // dbg!(k, v);
   }
 
   packets

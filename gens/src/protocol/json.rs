@@ -1,6 +1,6 @@
 use serde::de::{self, Deserialize, Deserializer, MapAccess, SeqAccess, Visitor};
 use serde_derive::Deserialize;
-use std::collections::HashMap;
+use std::{collections::HashMap, convert::TryInto};
 
 pub type TypeMap = HashMap<String, Type>;
 
@@ -127,7 +127,7 @@ impl<'de> Deserialize<'de> for Container {
         write!(f, "a protocol type field")
       }
 
-      fn visit_map<V>(self, mut map: V) -> Result<Container, V::Error>
+      fn visit_map<V>(self, mut map: V) -> Result<Self::Value, V::Error>
       where
         V: MapAccess<'de>,
       {
@@ -172,22 +172,85 @@ impl<'de> Deserialize<'de> for Container {
 // If count_type is none, then it is a fixed length array of length count. If
 // count is none, then this is an array prefixed with a value of the given type.
 // If both are none, this is invalid.
-#[derive(Debug, Deserialize)]
+#[derive(Debug)]
 pub struct Array {
-  #[serde(alias = "countType")]
-  pub count_type: Option<Type>,
-  pub count:      Option<CountType>,
-  #[serde(alias = "type")]
-  pub ty:         Type,
+  pub count: CountType,
+  pub ty:    Type,
 }
 
 #[derive(Debug, Deserialize)]
 #[serde(untagged)]
 pub enum CountType {
+  // The array will be prefixed with this field.
+  // This will be deserialized from count_type, so we don't want serde to deserialize to this. See
+  // [`Array`] for more.
+  #[serde(skip)]
+  Typed(String),
   // A hardocded count
   Fixed(u32),
   // Another protocol field should be used as the count
   Named(String),
+}
+
+impl<'de> Deserialize<'de> for Array {
+  fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+  where
+    D: Deserializer<'de>,
+  {
+    struct Inner;
+
+    impl<'de> Visitor<'de> for Inner {
+      type Value = Array;
+
+      fn expecting(&self, f: &mut std::fmt::Formatter) -> ::std::fmt::Result {
+        write!(f, "an array object")
+      }
+
+      fn visit_map<V>(self, mut map: V) -> Result<Self::Value, V::Error>
+      where
+        V: MapAccess<'de>,
+      {
+        let mut count_type: Option<String> = None;
+        let mut count = None;
+        let mut ty = None;
+        while let Some(key) = map.next_key()? {
+          match key {
+            "countType" => {
+              if count.is_some() || count_type.is_some() {
+                return Err(de::Error::duplicate_field("count_type"));
+              }
+              count_type = Some(map.next_value()?);
+            }
+            "count" => {
+              if count.is_some() || count_type.is_some() {
+                return Err(de::Error::duplicate_field("count"));
+              }
+              count = Some(map.next_value()?);
+            }
+            "type" => {
+              if ty.is_some() {
+                return Err(de::Error::duplicate_field("type"));
+              }
+              ty = Some(map.next_value()?);
+            }
+            v => return Err(de::Error::unknown_field(v, &["count", "count_type", "type"])),
+          }
+        }
+        let count = match count {
+          Some(v) => v,
+          None => match count_type {
+            Some(v) => CountType::Typed(v),
+            None => return Err(de::Error::missing_field("count")),
+          },
+        };
+        let ty = ty.ok_or_else(|| de::Error::missing_field("type"))?;
+        dbg!(&count);
+        Ok(Array { count, ty })
+      }
+    }
+
+    deserializer.deserialize_any(Inner)
+  }
 }
 
 #[derive(Debug, Deserialize)]
