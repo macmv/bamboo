@@ -21,4 +21,4 @@ num-derive = "0.3"
 
 [build-dependencies]
 tonic-build = "0.4"
-gens = { path = "../gens" }
+data = { path = "../data" }

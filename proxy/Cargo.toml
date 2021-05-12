@@ -16,4 +16,4 @@ futures = "0.3"
 async-stream = "0.3"
 
 [build-dependencies]
-gens = { path = "../gens" }
+data = { path = "../data" }

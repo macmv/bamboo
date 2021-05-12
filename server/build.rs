@@ -1,6 +1,6 @@
-extern crate gens;
+extern crate data;
 
 fn main() {
-  println!("cargo:rerun-if-changed=gens");
-  gens::generate();
+  println!("cargo:rerun-if-changed=data");
+  data::generate();
 }
