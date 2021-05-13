@@ -5,7 +5,7 @@ use common::{
   net::{cb::Packet as CbPacket, sb::Packet as SbPacket},
   version::ProtocolVersion,
 };
-use std::io;
+use std::{collections::HashMap, io};
 
 use crate::packet::Packet;
 
@@ -22,7 +22,7 @@ impl Default for Generator {
 
 impl Generator {
   pub fn new() -> Generator {
-    let v: data::protocol::Version =
+    let v: HashMap<String, data::protocol::Version> =
       serde_json::from_str(include_str!(concat!(env!("OUT_DIR"), "/protocol/versions.json")))
         .unwrap();
     dbg!(v);

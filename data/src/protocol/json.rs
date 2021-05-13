@@ -1,6 +1,6 @@
 use serde::de::{self, Deserialize, Deserializer, MapAccess, SeqAccess, Visitor};
-use serde_derive::{Deserialize, Serialize};
-use std::{collections::HashMap, convert::TryInto};
+use serde_derive::Deserialize;
+use std::collections::HashMap;
 
 pub type TypeMap = HashMap<String, Type>;
 
@@ -65,7 +65,7 @@ impl<'de> Deserialize<'de> for Type {
             "option",
             Option,
             "bitfield",
-            Bitfield,
+            BitField,
             "topBitSetTerminatedArray",
             TopBitSetTerminatedArray
           ]
@@ -94,9 +94,9 @@ pub enum TypeValue {
   // This is a byte array, with a length type
   Buffer(Buffer),
   // This is a value that may or may not exist
-  Option(Option<Type>),
+  Option(Type),
   // This is a value that may or may not exist
-  Bitfield(Vec<Bitfield>),
+  BitField(Vec<BitField>),
   // minecraft go brrrrrr
   TopBitSetTerminatedArray(TopBitSetTerminatedArray),
   // Custom type
@@ -110,7 +110,7 @@ pub struct TopBitSetTerminatedArray {
 }
 
 #[derive(Debug, Deserialize)]
-pub struct Bitfield {
+pub struct BitField {
   pub name:   String,
   pub size:   u32,
   pub signed: bool,
@@ -296,7 +296,7 @@ pub struct Switch {
 pub struct Buffer {
   // The type that the length is in
   #[serde(alias = "countType")]
-  pub count_type: String,
+  pub count_type: CountType,
 }
 
 #[derive(Debug, Deserialize)]
@@ -316,7 +316,7 @@ pub struct ClientServerMap {
 
 #[derive(Debug, Deserialize)]
 pub struct ProtocolVersion {
-  // types: HashMap<String, TypeDef>,
+  pub types:       HashMap<String, Type>,
   pub handshaking: ClientServerMap,
   pub status:      ClientServerMap,
   pub login:       ClientServerMap,

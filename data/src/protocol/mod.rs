@@ -5,17 +5,76 @@ use serde_derive::Deserialize;
 use serde_derive::Serialize;
 use std::{collections::HashMap, error::Error, fs, fs::File, io::Write, path::Path};
 
-#[derive(Debug, Serialize, Deserialize)]
-#[serde(untagged)]
-pub enum PacketField {
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub enum IntType {
   I8,
+  U8,
   I16,
-  Varint,
+  I32,
+  I64,
+  VarInt,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub enum FloatType {
+  F32,
+  F64,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub enum CountType {
+  // A typed count
+  Typed(IntType),
+  // A hardocded count
+  Fixed(u32),
+  // Another protocol field should be used as the count
+  Named(String),
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct BitField {
+  name:   String,
+  size:   u32,
+  signed: bool,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub enum PacketField {
+  Bool,
+  Int(IntType),
+  Float(FloatType),
+  UUID,
+  String,
+  Position,
+
+  NBT,
+  Slot,
+  OptionalNBT,
+  RestBuffer, // The rest of the buffer
+  EntityMetadata,
+
+  Option(Box<PacketField>),
+  Array { count: CountType, value: Box<PacketField> },
+  Buffer(CountType),
+  BitField(Vec<BitField>),
+  Container(HashMap<String, PacketField>),
+  Switch { compare_to: String, fields: HashMap<String, PacketField> },
+  Mappings(HashMap<String, u32>), // Mapping of packet names to ids
+}
+
+impl PacketField {
+  pub fn as_container(self) -> Option<HashMap<String, PacketField>> {
+    match self {
+      Self::Container(v) => Some(v),
+      _ => None,
+    }
+  }
 }
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Packet {
-  pub values: HashMap<String, PacketField>,
+  pub name:   String,
+  pub fields: HashMap<String, PacketField>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
