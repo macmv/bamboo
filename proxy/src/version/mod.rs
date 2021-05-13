@@ -22,6 +22,10 @@ impl Default for Generator {
 
 impl Generator {
   pub fn new() -> Generator {
+    let v: data::protocol::Version =
+      serde_json::from_str(include_str!(concat!(env!("OUT_DIR"), "/protocol/versions.json")))
+        .unwrap();
+    dbg!(v);
     Generator { cb: cb::Generator::new(), sb: sb::Generator::new() }
   }
   pub fn clientbound(&self, v: ProtocolVersion, p: CbPacket) -> io::Result<Packet> {

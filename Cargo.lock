@@ -712,6 +712,7 @@ dependencies = [
  "futures",
  "log",
  "ringbuf",
+ "serde_json",
  "tokio",
  "tokio-stream",
  "tonic",

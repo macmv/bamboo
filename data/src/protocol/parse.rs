@@ -46,7 +46,6 @@ pub(super) fn load_all(path: &Path) -> Result<HashMap<String, Version>, Box<dyn 
       },
     );
   }
-  panic!();
 
   Ok(versions)
 }

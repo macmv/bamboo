@@ -1,7 +1,7 @@
 use crate::{
   packet::Packet,
   packet_stream::{StreamReader, StreamWriter},
-  version,
+  version::Generator,
 };
 
 use common::{net::cb, proto, proto::minecraft_client::MinecraftClient, version::ProtocolVersion};
@@ -36,21 +36,21 @@ pub struct Conn {
   client_writer: StreamWriter,
   server:        MinecraftClient<Channel>,
   state:         State,
-  gen:           Arc<version::Generator>,
+  gen:           Arc<Generator>,
   ver:           ProtocolVersion,
 }
 
 pub struct ClientListener {
   client: StreamReader,
   server: mpsc::Sender<proto::Packet>,
-  gen:    Arc<version::Generator>,
+  gen:    Arc<Generator>,
   ver:    ProtocolVersion,
 }
 
 pub struct ServerListener {
   client: StreamWriter,
   server: Streaming<proto::Packet>,
-  gen:    Arc<version::Generator>,
+  gen:    Arc<Generator>,
   ver:    ProtocolVersion,
 }
 
@@ -152,6 +152,7 @@ impl ServerListener {
 
 impl Conn {
   pub async fn new(
+    gen: Arc<Generator>,
     client_reader: StreamReader,
     client_writer: StreamWriter,
     ip: String,
@@ -161,7 +162,7 @@ impl Conn {
       client_writer,
       server: MinecraftClient::connect(ip).await?,
       state: State::Handshake,
-      gen: Arc::new(version::Generator::new()),
+      gen,
       ver: ProtocolVersion::Invalid,
     })
   }

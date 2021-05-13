@@ -1,28 +1,30 @@
 mod json;
 mod parse;
 
-use convert_case::{Case, Casing};
 use serde_derive::Deserialize;
+use serde_derive::Serialize;
 use std::{collections::HashMap, error::Error, fs, fs::File, io::Write, path::Path};
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 #[serde(untagged)]
-enum PacketField {
+pub enum PacketField {
   I8,
   I16,
   Varint,
 }
 
-struct Packet {
-  values: HashMap<String, PacketField>,
+#[derive(Debug, Serialize, Deserialize)]
+pub struct Packet {
+  pub values: HashMap<String, PacketField>,
 }
 
-struct Version {
-  to_client: Vec<Packet>,
-  to_server: Vec<Packet>,
+#[derive(Debug, Serialize, Deserialize)]
+pub struct Version {
+  pub to_client: Vec<Packet>,
+  pub to_server: Vec<Packet>,
 }
 
-pub fn generate(dir: &Path) -> Result<(), Box<dyn Error>> {
+pub fn store(dir: &Path) -> Result<(), Box<dyn Error>> {
   let dir = Path::new(dir).join("protocol");
 
   // This is done at runtime of the buildscript, so this path must be relative to
@@ -31,10 +33,10 @@ pub fn generate(dir: &Path) -> Result<(), Box<dyn Error>> {
 
   fs::create_dir_all(&dir)?;
   {
-    // Generates the block kinds enum
-    let mut f = File::create(&dir.join("versions.rs"))?;
-    writeln!(f, "/// Auto generated block kind. This is directly generated")?;
-    writeln!(f, "/// from prismarine data.")?;
+    // Generates the version json in a much more easily read format. This is much
+    // faster to compile than generating source code.
+    let mut f = File::create(&dir.join("versions.json"))?;
+    writeln!(f, "{}", serde_json::to_string(&versions)?)?;
   }
   Ok(())
 }

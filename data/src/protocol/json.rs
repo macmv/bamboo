@@ -1,5 +1,5 @@
 use serde::de::{self, Deserialize, Deserializer, MapAccess, SeqAccess, Visitor};
-use serde_derive::Deserialize;
+use serde_derive::{Deserialize, Serialize};
 use std::{collections::HashMap, convert::TryInto};
 
 pub type TypeMap = HashMap<String, Type>;

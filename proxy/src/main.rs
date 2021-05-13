@@ -11,10 +11,12 @@ pub mod version;
 use std::{
   error::Error,
   net::{TcpListener, TcpStream},
+  sync::Arc,
 };
 use tokio::sync::oneshot;
 
 use crate::conn::Conn;
+use version::Generator;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn Error>> {
@@ -23,11 +25,13 @@ async fn main() -> Result<(), Box<dyn Error>> {
   let addr = "0.0.0.0:25565";
   info!("listening for clients on {}", addr);
   let listener = TcpListener::bind(addr)?;
+  let gen = Arc::new(Generator::new());
 
   loop {
     let (socket, _) = listener.accept()?;
+    let gen = gen.clone();
     tokio::spawn(async move {
-      match handle_client(socket).await {
+      match handle_client(gen, socket).await {
         Ok(_) => {}
         Err(e) => {
           error!("error in connection: {}", e);
@@ -37,12 +41,12 @@ async fn main() -> Result<(), Box<dyn Error>> {
   }
 }
 
-async fn handle_client(sock: TcpStream) -> Result<(), Box<dyn Error>> {
+async fn handle_client(gen: Arc<Generator>, sock: TcpStream) -> Result<(), Box<dyn Error>> {
   // let mut client = MinecraftClient::connect().await?;
   // let req = tonic::Request::new(StatusRequest {});
 
   let (reader, writer) = packet_stream::new(sock)?;
-  let mut conn = Conn::new(reader, writer, "http://0.0.0.0:8483".into()).await?;
+  let mut conn = Conn::new(gen, reader, writer, "http://0.0.0.0:8483".into()).await?;
 
   conn.handshake().await?;
 
