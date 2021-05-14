@@ -2,12 +2,12 @@ use serde::de::{self, Deserialize, Deserializer, MapAccess, SeqAccess, Visitor};
 use serde_derive::Deserialize;
 use std::collections::HashMap;
 
-pub type TypeMap = HashMap<String, Type>;
+pub(crate) type TypeMap = HashMap<String, Type>;
 
 #[derive(Debug)]
-pub struct Type {
-  pub kind:  String,
-  pub value: Box<TypeValue>,
+pub(crate) struct Type {
+  pub(crate) kind:  String,
+  pub(crate) value: Box<TypeValue>,
 }
 
 impl<'de> Deserialize<'de> for Type {
@@ -18,7 +18,7 @@ impl<'de> Deserialize<'de> for Type {
     struct Arr;
 
     macro_rules! match_values {
-      ($self:expr, $k:expr, $s:expr, [$($name:expr, $kind:ident),*]) => {
+      ($self:expr, $k:expr, $s:expr, [$($name:expr, $kind:ident),*,]) => {
         match $k {
           $(
             $name => TypeValue::$kind($s.next_element()?.ok_or_else(|| de::Error::invalid_length(1, $self))?),
@@ -67,7 +67,9 @@ impl<'de> Deserialize<'de> for Type {
             "bitfield",
             BitField,
             "topBitSetTerminatedArray",
-            TopBitSetTerminatedArray
+            TopBitSetTerminatedArray,
+            "entityMetadataLoop",
+            EntityMetadataLoop,
           ]
         );
         Ok(Type { kind: kind.into(), value: Box::new(value) })
@@ -80,7 +82,7 @@ impl<'de> Deserialize<'de> for Type {
 
 #[derive(Debug, Deserialize)]
 #[serde(untagged)]
-pub enum TypeValue {
+pub(crate) enum TypeValue {
   // Just a string type (will be something like "varint")
   Direct(String),
   // A container. This is a list of objects
@@ -98,29 +100,32 @@ pub enum TypeValue {
   // This is a value that may or may not exist
   BitField(Vec<BitField>),
   // minecraft go brrrrrr
-  TopBitSetTerminatedArray(TopBitSetTerminatedArray),
-  // Custom type
+  TopBitSetTerminatedArray(Type),
+  // Entity metadata
+  EntityMetadataLoop(EntityMetadataLoop),
   Custom(HashMap<String, String>),
 }
 
 #[derive(Debug, Deserialize)]
-pub struct TopBitSetTerminatedArray {
+pub(crate) struct EntityMetadataLoop {
+  #[serde(alias = "endVal")]
+  pub(crate) end: u32,
   #[serde(alias = "type")]
-  pub ty: Type,
+  pub(crate) ty:  Type,
 }
 
 #[derive(Debug, Deserialize)]
-pub struct BitField {
-  pub name:   String,
-  pub size:   u32,
-  pub signed: bool,
+pub(crate) struct BitField {
+  pub(crate) name:   String,
+  pub(crate) size:   u32,
+  pub(crate) signed: bool,
 }
 
 #[derive(Debug)]
-pub struct Container {
+pub(crate) struct Container {
   // If there is no name, then this is an anonymous container
-  pub name: Option<String>,
-  pub ty:   Type,
+  pub(crate) name: Option<String>,
+  pub(crate) ty:   Type,
 }
 
 impl<'de> Deserialize<'de> for Container {
@@ -179,18 +184,25 @@ impl<'de> Deserialize<'de> for Container {
   }
 }
 
+#[derive(Debug, Deserialize)]
+pub(crate) struct Buffer {
+  // The type that the length is in
+  #[serde(alias = "countType")]
+  pub(crate) count: CountType,
+}
+
 // If count_type is none, then it is a fixed length array of length count. If
 // count is none, then this is an array prefixed with a value of the given type.
 // If both are none, this is invalid.
 #[derive(Debug)]
-pub struct Array {
-  pub count: CountType,
-  pub ty:    Type,
+pub(crate) struct Array {
+  pub(crate) count: CountType,
+  pub(crate) ty:    Type,
 }
 
 #[derive(Debug, Deserialize)]
 #[serde(untagged)]
-pub enum CountType {
+pub(crate) enum CountType {
   // The array will be prefixed with this field.
   // This will be deserialized from count_type, so we don't want serde to deserialize to this. See
   // [`Array`] for more.
@@ -263,62 +275,41 @@ impl<'de> Deserialize<'de> for Array {
 }
 
 #[derive(Debug, Deserialize)]
-pub struct Object {
-  pub name: String,
+pub(crate) struct Mapper {
+  pub(crate) mappings: HashMap<String, String>,
   #[serde(alias = "type")]
-  pub ty:   Type,
+  pub(crate) ty:       Type,
 }
 
 #[derive(Debug, Deserialize)]
-pub struct AnonObject {
-  pub anon: bool,
-  #[serde(alias = "type")]
-  pub ty:   Type,
-}
-
-#[derive(Debug, Deserialize)]
-pub struct Mapper {
-  pub mappings: HashMap<String, String>,
-  #[serde(alias = "type")]
-  pub ty:       Type,
-}
-
-#[derive(Debug, Deserialize)]
-pub struct Switch {
+pub(crate) struct Switch {
   // Another field name to be compared with
   #[serde(alias = "compareTo")]
-  pub compare_to: String,
-  pub fields:     HashMap<String, Type>,
-  pub default:    Option<Type>,
+  pub(crate) compare_to: String,
+  pub(crate) fields:     HashMap<String, Type>,
+  pub(crate) default:    Option<Type>,
 }
 
 #[derive(Debug, Deserialize)]
-pub struct Buffer {
-  // The type that the length is in
-  #[serde(alias = "countType")]
-  pub count_type: CountType,
-}
-
-#[derive(Debug, Deserialize)]
-pub struct PacketMap {
+pub(crate) struct PacketMap {
   // This is a map of length two arrays
   // The first element is a PacketEntry::Kind, and the second is a PacketEntry::Value.
-  pub types: TypeMap,
+  pub(crate) types: TypeMap,
 }
 
 #[derive(Debug, Deserialize)]
 pub struct ClientServerMap {
   #[serde(alias = "toClient")]
-  pub to_client: PacketMap,
+  pub(crate) to_client: PacketMap,
   #[serde(alias = "toServer")]
-  pub to_server: PacketMap,
+  pub(crate) to_server: PacketMap,
 }
 
 #[derive(Debug, Deserialize)]
 pub struct ProtocolVersion {
-  pub types:       HashMap<String, Type>,
-  pub handshaking: ClientServerMap,
-  pub status:      ClientServerMap,
-  pub login:       ClientServerMap,
-  pub play:        ClientServerMap,
+  pub(crate) types:       HashMap<String, Type>,
+  pub(crate) handshaking: ClientServerMap,
+  pub(crate) status:      ClientServerMap,
+  pub(crate) login:       ClientServerMap,
+  pub(crate) play:        ClientServerMap,
 }

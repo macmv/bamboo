@@ -40,6 +40,8 @@ pub struct BitField {
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub enum PacketField {
+  // Simple fields
+  Native, // Should never exist
   Bool,
   Int(IntType),
   Float(FloatType),
@@ -47,12 +49,14 @@ pub enum PacketField {
   String,
   Position,
 
+  // Sizable fields
   NBT,
   Slot,
   OptionalNBT,
   RestBuffer, // The rest of the buffer
   EntityMetadata,
 
+  // Complicated fields
   Option(Box<PacketField>),
   Array { count: CountType, value: Box<PacketField> },
   Buffer(CountType),
@@ -60,6 +64,9 @@ pub enum PacketField {
   Container(HashMap<String, PacketField>),
   Switch { compare_to: String, fields: HashMap<String, PacketField> },
   Mappings(HashMap<String, u32>), // Mapping of packet names to ids
+
+  // Logical fields
+  CompareTo(String),
 }
 
 impl PacketField {

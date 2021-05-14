@@ -38,12 +38,13 @@ pub(super) fn load_all(path: &Path) -> Result<HashMap<String, Version>, Box<dyn 
     };
 
     println!("ver: {}", &ver_str);
-    let types = generate_types(json.types);
+    let mut types;
+    generate_types(json.types, &mut types);
     versions.insert(
       ver_str,
       Version {
-        to_client: generate_list(json.play.to_client.types, &types),
-        to_server: generate_list(json.play.to_server.types, &types),
+        to_client: generate_packets(json.play.to_client.types, types.clone()),
+        to_server: generate_packets(json.play.to_server.types, types.clone()),
       },
     );
   }
@@ -51,29 +52,36 @@ pub(super) fn load_all(path: &Path) -> Result<HashMap<String, Version>, Box<dyn 
   Ok(versions)
 }
 
-fn generate_types(json: json::TypeMap) -> HashMap<String, PacketField> {
-  let mut types = HashMap::new();
-
+fn generate_types(json: json::TypeMap, types: &mut HashMap<String, PacketField>) {
   for (k, v) in json {
+    // String is not defined as a native type, so we get some issues with pstring
+    // existing.
+    if v.kind == "pstring" {
+      continue;
+    }
     let mut ty = parse_type(v, &types);
     types.insert(k, ty);
   }
-
-  types
 }
 
-fn generate_list(json: json::TypeMap, types: &HashMap<String, PacketField>) -> (Vec<Packet>) {
-  let mut packets = vec![];
+fn generate_packets(json: json::TypeMap, mut types: HashMap<String, PacketField>) -> Vec<Packet> {
+  generate_types(json, &mut types);
+  let mut ordered_packets = vec![];
 
-  for (k, v) in json {
-    let mut fields = parse_type(v, &types).as_container().unwrap();
-    packets.push(Packet { name: k, fields });
-    // dbg!(k, v);
+  match types.get("mappings") {
+    Some(PacketField::Mappings(mappings)) => {
+      for (k, v) in mappings.into_iter() {
+        let name: String = k.clone();
+        ordered_packets[*v as usize] =
+          Packet { fields: types[&name].clone().as_container().unwrap(), name };
+      }
+    }
+    _ => panic!("did not get mappings field"),
   }
 
   panic!();
 
-  packets
+  ordered_packets
 }
 
 fn parse_int(v: &str) -> Option<IntType> {
@@ -106,7 +114,8 @@ fn parse_count(v: json::CountType) -> CountType {
 
 fn parse_type(v: json::Type, types: &HashMap<String, PacketField>) -> PacketField {
   match *v.value {
-    json::TypeValue::Direct(v) => match v.as_ref() {
+    json::TypeValue::Direct(n) => match n.as_ref() {
+      "native" => PacketField::Native,
       "bool" => PacketField::Bool,
       "UUID" => PacketField::UUID,
       "string" => PacketField::String,
@@ -129,7 +138,7 @@ fn parse_type(v: json::Type, types: &HashMap<String, PacketField>) -> PacketFiel
         },
       },
     },
-    json::TypeValue::Buffer(v) => PacketField::Buffer(parse_count(v.count_type)),
+    json::TypeValue::Buffer(v) => PacketField::Buffer(parse_count(v.count)),
     json::TypeValue::Array(v) => {
       PacketField::Array { count: parse_count(v.count), value: Box::new(parse_type(v.ty, types)) }
     }
@@ -140,7 +149,7 @@ fn parse_type(v: json::Type, types: &HashMap<String, PacketField>) -> PacketFiel
     json::TypeValue::Container(v) => {
       let mut fields = HashMap::new();
       for c in v {
-        fields.insert(c.name.clone().unwrap(), parse_type(c.ty, types));
+        fields.insert(c.name.clone().unwrap_or_else(|| "unnamed".into()), parse_type(c.ty, types));
       }
       PacketField::Container(fields)
     }
@@ -162,6 +171,18 @@ fn parse_type(v: json::Type, types: &HashMap<String, PacketField>) -> PacketFiel
       }
       PacketField::Mappings(mappings)
     }
-    v => panic!("invalid type. got: {:?}", v),
+    json::TypeValue::EntityMetadataLoop(_) => PacketField::Native,
+    json::TypeValue::TopBitSetTerminatedArray(_) => PacketField::Native,
+    json::TypeValue::Custom(v) => {
+      if v.len() != 1 {
+        panic!("invalid type. got: {:?}", v);
+      }
+      let k = v.keys().next().unwrap();
+      let v = v[k].clone();
+      match k.as_ref() {
+        "compareTo" => PacketField::CompareTo(v),
+        _ => panic!("invalid type. got: {} {}", k, v),
+      }
+    }
   }
 }
