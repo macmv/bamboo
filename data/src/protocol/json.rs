@@ -4,7 +4,7 @@ use std::collections::HashMap;
 
 pub(crate) type TypeMap = HashMap<String, Type>;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub(crate) struct Type {
   pub(crate) kind:  String,
   pub(crate) value: Box<TypeValue>,
@@ -80,7 +80,7 @@ impl<'de> Deserialize<'de> for Type {
   }
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Clone)]
 #[serde(untagged)]
 pub(crate) enum TypeValue {
   // Just a string type (will be something like "varint")
@@ -106,7 +106,7 @@ pub(crate) enum TypeValue {
   Custom(HashMap<String, String>),
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Clone)]
 pub(crate) struct EntityMetadataLoop {
   #[serde(alias = "endVal")]
   pub(crate) end: u32,
@@ -114,14 +114,14 @@ pub(crate) struct EntityMetadataLoop {
   pub(crate) ty:  Type,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Clone)]
 pub(crate) struct BitField {
   pub(crate) name:   String,
   pub(crate) size:   u32,
   pub(crate) signed: bool,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub(crate) struct Container {
   // If there is no name, then this is an anonymous container
   pub(crate) name: Option<String>,
@@ -184,7 +184,7 @@ impl<'de> Deserialize<'de> for Container {
   }
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Clone)]
 pub(crate) struct Buffer {
   // The type that the length is in
   #[serde(alias = "countType")]
@@ -194,13 +194,13 @@ pub(crate) struct Buffer {
 // If count_type is none, then it is a fixed length array of length count. If
 // count is none, then this is an array prefixed with a value of the given type.
 // If both are none, this is invalid.
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub(crate) struct Array {
   pub(crate) count: CountType,
   pub(crate) ty:    Type,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Clone)]
 #[serde(untagged)]
 pub(crate) enum CountType {
   // The array will be prefixed with this field.
@@ -274,14 +274,14 @@ impl<'de> Deserialize<'de> for Array {
   }
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Clone)]
 pub(crate) struct Mapper {
   pub(crate) mappings: HashMap<String, String>,
   #[serde(alias = "type")]
   pub(crate) ty:       Type,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Clone)]
 pub(crate) struct Switch {
   // Another field name to be compared with
   #[serde(alias = "compareTo")]

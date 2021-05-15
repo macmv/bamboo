@@ -13,6 +13,7 @@ pub enum IntType {
   I32,
   I64,
   VarInt,
+  OptVarInt, // Acts the same as a varint, but is sometimes not present
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -67,12 +68,25 @@ pub enum PacketField {
 
   // Logical fields
   CompareTo(String),
+  DefinedType(String), // Another type, defined within either the types map or the packets map
 }
 
 impl PacketField {
-  pub fn as_container(self) -> Option<HashMap<String, PacketField>> {
+  pub fn to_container(self) -> Option<HashMap<String, PacketField>> {
     match self {
       Self::Container(v) => Some(v),
+      _ => None,
+    }
+  }
+  pub fn to_compare(self) -> Option<String> {
+    match self {
+      Self::CompareTo(v) => Some(v),
+      _ => None,
+    }
+  }
+  pub fn to_defined(self) -> Option<String> {
+    match self {
+      Self::DefinedType(v) => Some(v),
       _ => None,
     }
   }

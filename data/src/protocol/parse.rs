@@ -1,5 +1,5 @@
 use super::{json, BitField, CountType, FloatType, IntType, Packet, PacketField, Version};
-use std::{collections::HashMap, error::Error, fs, path::Path};
+use std::{collections::HashMap, error::Error, fs, io, io::ErrorKind, path::Path};
 
 pub(super) fn load_all(path: &Path) -> Result<HashMap<String, Version>, Box<dyn Error>> {
   let mut versions = HashMap::new();
@@ -38,13 +38,19 @@ pub(super) fn load_all(path: &Path) -> Result<HashMap<String, Version>, Box<dyn 
     };
 
     println!("ver: {}", &ver_str);
-    let mut types;
-    generate_types(json.types, &mut types);
+    let mut types = HashMap::new();
+    generate_types(json.types, &mut types)?;
     versions.insert(
       ver_str,
       Version {
-        to_client: generate_packets(json.play.to_client.types, types.clone()),
-        to_server: generate_packets(json.play.to_server.types, types.clone()),
+        to_client: match generate_packets(json.play.to_client.types, types.clone()) {
+          Ok(v) => v.into_iter().map(|v| v.unwrap()).collect(),
+          Err(e) => panic!("error while parsing clientbound packets for version {}: {}", &name, e),
+        },
+        to_server: match generate_packets(json.play.to_server.types, types.clone()) {
+          Ok(v) => v.into_iter().map(|v| v.unwrap()).collect(),
+          Err(e) => panic!("error while parsing serverbound packets for version {}: {}", &name, e),
+        },
       },
     );
   }
@@ -52,36 +58,65 @@ pub(super) fn load_all(path: &Path) -> Result<HashMap<String, Version>, Box<dyn 
   Ok(versions)
 }
 
-fn generate_types(json: json::TypeMap, types: &mut HashMap<String, PacketField>) {
+// Some types are defined in the to_client and to_server fields. In order to
+// generate those types first, we must run two passes. The first pass will
+// generate all types (parse_packets: false). And the second pass will generate
+// all packets (parse_packets: true).
+fn generate_types(json: json::TypeMap, types: &mut HashMap<String, PacketField>) -> io::Result<()> {
   for (k, v) in json {
     // String is not defined as a native type, so we get some issues with pstring
     // existing.
     if v.kind == "pstring" {
       continue;
     }
-    let mut ty = parse_type(v, &types);
-    types.insert(k, ty);
+    types.insert(k, parse_type(v, &types));
   }
+  Ok(())
 }
 
-fn generate_packets(json: json::TypeMap, mut types: HashMap<String, PacketField>) -> Vec<Packet> {
-  generate_types(json, &mut types);
+fn generate_packets(
+  json: json::TypeMap,
+  mut types: HashMap<String, PacketField>,
+) -> io::Result<Vec<Option<Packet>>> {
+  generate_types(json, &mut types)?;
   let mut ordered_packets = vec![];
 
-  match types.get("mappings") {
-    Some(PacketField::Mappings(mappings)) => {
-      for (k, v) in mappings.into_iter() {
-        let name: String = k.clone();
-        ordered_packets[*v as usize] =
-          Packet { fields: types[&name].clone().as_container().unwrap(), name };
+  match types.get("packet") {
+    Some(PacketField::Container(values)) => {
+      let names = match &values["name"] {
+        PacketField::Mappings(v) => v,
+        _ => {
+          return Err(io::Error::new(
+            ErrorKind::InvalidData,
+            format!("expected a mappings type, got: {:?}", values["name"]),
+          ))
+        }
+      };
+      let params = match &values["params"] {
+        PacketField::Switch { compare_to: _, fields } => fields,
+        _ => {
+          return Err(io::Error::new(
+            ErrorKind::InvalidData,
+            format!("expected a switch, got: {:?}", values["name"]),
+          ))
+        }
+      };
+      for (k, v) in names {
+        let name = params[k].clone().to_defined().unwrap().clone();
+        let v = *v as usize;
+        if v >= ordered_packets.len() {
+          for _ in ordered_packets.len()..v + 1 {
+            ordered_packets.push(None);
+          }
+        }
+        ordered_packets[v] =
+          Some(Packet { fields: types[&name].clone().to_container().unwrap(), name });
       }
     }
-    _ => panic!("did not get mappings field"),
+    _ => return Err(io::Error::new(ErrorKind::InvalidData, "did not get mappings field")),
   }
 
-  panic!();
-
-  ordered_packets
+  Ok(ordered_packets)
 }
 
 fn parse_int(v: &str) -> Option<IntType> {
@@ -92,6 +127,7 @@ fn parse_int(v: &str) -> Option<IntType> {
     "i32" => Some(IntType::I32),
     "i64" => Some(IntType::I64),
     "varint" => Some(IntType::VarInt),
+    "optvarint" => Some(IntType::OptVarInt),
     _ => None,
   }
 }
@@ -131,10 +167,7 @@ fn parse_type(v: json::Type, types: &HashMap<String, PacketField>) -> PacketFiel
         Some(v) => PacketField::Int(v),
         None => match parse_float(&v) {
           Some(v) => PacketField::Float(v),
-          None => match types.get(v) {
-            Some(v) => v.clone(),
-            None => panic!("unknown field type: {}", v),
-          },
+          None => PacketField::DefinedType(v.to_string()),
         },
       },
     },
@@ -143,7 +176,11 @@ fn parse_type(v: json::Type, types: &HashMap<String, PacketField>) -> PacketFiel
       PacketField::Array { count: parse_count(v.count), value: Box::new(parse_type(v.ty, types)) }
     }
     json::TypeValue::Switch(v) => {
-      PacketField::Switch { compare_to: v.compare_to, fields: HashMap::new() }
+      let mut fields = HashMap::new();
+      for (k, v) in v.fields {
+        fields.insert(k, parse_type(v, types));
+      }
+      PacketField::Switch { compare_to: v.compare_to, fields }
     }
     json::TypeValue::Option(v) => PacketField::Option(Box::new(parse_type(v, types))),
     json::TypeValue::Container(v) => {
@@ -164,9 +201,9 @@ fn parse_type(v: json::Type, types: &HashMap<String, PacketField>) -> PacketFiel
       let mut mappings = HashMap::new();
       for (k, v) in v.mappings {
         mappings.insert(
-          k,
-          u32::from_str_radix(&v, 16)
-            .unwrap_or_else(|v| panic!("could not parse packet id: {}", v)),
+          v,
+          u32::from_str_radix(&k[2..], 16)
+            .unwrap_or_else(|e| panic!("could not parse packet id: {}, err: {}", k, e)),
         );
       }
       PacketField::Mappings(mappings)
