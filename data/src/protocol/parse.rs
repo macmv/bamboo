@@ -123,6 +123,7 @@ fn parse_int(v: &str) -> Option<IntType> {
   match v {
     "i8" => Some(IntType::I8),
     "u8" => Some(IntType::U8),
+    "u16" => Some(IntType::U16),
     "i16" => Some(IntType::I16),
     "i32" => Some(IntType::I32),
     "i64" => Some(IntType::I64),
@@ -142,7 +143,9 @@ fn parse_float(v: &str) -> Option<FloatType> {
 
 fn parse_count(v: json::CountType) -> CountType {
   match v {
-    json::CountType::Typed(v) => CountType::Typed(parse_int(&v).unwrap()),
+    json::CountType::Typed(v) => {
+      CountType::Typed(parse_int(&v).expect(&format!("could not parse int: {}", v)))
+    }
     json::CountType::Fixed(v) => CountType::Fixed(v),
     json::CountType::Named(v) => CountType::Named(v),
   }

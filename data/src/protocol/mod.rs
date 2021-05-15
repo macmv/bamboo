@@ -9,6 +9,7 @@ use std::{collections::HashMap, error::Error, fs, fs::File, io::Write, path::Pat
 pub enum IntType {
   I8,
   U8,
+  U16,
   I16,
   I32,
   I64,
