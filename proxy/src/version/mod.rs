@@ -10,9 +10,8 @@ use std::{collections::HashMap, io};
 use crate::packet::Packet;
 
 pub struct Generator {
-  versions: HashMap<ProtocolVersion, data::protocol::Version>,
-  cb:       cb::Generator<'static>,
-  sb:       sb::Generator<'static>,
+  cb: cb::Generator,
+  sb: sb::Generator,
 }
 
 impl Default for Generator {
@@ -26,8 +25,15 @@ impl Generator {
     let v: HashMap<String, data::protocol::Version> =
       serde_json::from_str(include_str!(concat!(env!("OUT_DIR"), "/protocol/versions.json")))
         .unwrap();
-    let v = v.into_iter().map(|(k, v)| (ProtocolVersion::from_str(&k), v)).collect();
-    Generator { versions: v, cb: cb::Generator::new(&v), sb: sb::Generator::new(&v) }
+    let v: HashMap<ProtocolVersion, data::protocol::Version> =
+      v.into_iter().map(|(k, v)| (ProtocolVersion::from_str(&k), v)).collect();
+    let mut to_client = HashMap::new();
+    let mut to_server = HashMap::new();
+    for (k, v) in v.into_iter() {
+      to_client.insert(k, v.to_client);
+      to_server.insert(k, v.to_server);
+    }
+    Generator { cb: cb::Generator::new(to_client), sb: sb::Generator::new(to_server) }
   }
   pub fn clientbound(&self, v: ProtocolVersion, p: CbPacket) -> io::Result<Packet> {
     self.cb.convert(v, p)

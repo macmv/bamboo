@@ -21,19 +21,22 @@ impl PacketSpec {
   }
 }
 
-pub(super) struct Generator<'a> {
+pub(super) struct Generator {
   // gens: HashMap<ProtocolVersion, PacketSpec>,
-  versions: &'a HashMap<ProtocolVersion, data::protocol::Version>,
+  versions: HashMap<ProtocolVersion, Vec<data::protocol::Packet>>,
 }
 
-impl Generator<'_> {
-  pub fn new(versions: &HashMap<ProtocolVersion, data::protocol::Version>) -> Generator {
+impl Generator {
+  pub fn new(versions: HashMap<ProtocolVersion, Vec<data::protocol::Packet>>) -> Generator {
     // let mut gens = HashMap::new();
     // gens.insert(ProtocolVersion::V1_8, v1_8::gen_spec());
     Generator { versions }
   }
 
   pub fn convert(&self, v: ProtocolVersion, mut p: Packet) -> io::Result<sb::Packet> {
+    let spec = &self.versions[&v][p.id() as usize];
+    dbg!(spec);
+    Ok(sb::Packet::new(sb::ID::KeepAlive))
     // let packet = match self.gens.get(&v) {
     //   Some(g) => match g.gens.get(p.id() as usize) {
     //     Some(Some(g)) => g.lock().unwrap()(&mut p),
