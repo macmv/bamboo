@@ -99,11 +99,59 @@ pub(crate) enum TypeValue {
   Option(Type),
   // This is a value that may or may not exist
   BitField(Vec<BitField>),
-  // minecraft go brrrrrr
-  TopBitSetTerminatedArray(Type),
+  // This is an array of elements, where each element is a contianer. The first element in that
+  // container must be a number type. The highest bit in that number will be set if another entry
+  // continues. Otherwise, the given container is the last item in the array.
+  //
+  // Minecraft dude. Why?
+  TopBitSetTerminatedArray(TopBitSetTerminatedArray),
   // Entity metadata
   EntityMetadataLoop(EntityMetadataLoop),
   Custom(HashMap<String, String>),
+}
+
+#[derive(Debug, Clone)]
+pub(crate) struct TopBitSetTerminatedArray {
+  pub(crate) ty: Type,
+}
+
+impl<'de> Deserialize<'de> for TopBitSetTerminatedArray {
+  fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+  where
+    D: Deserializer<'de>,
+  {
+    struct Inner;
+
+    impl<'de> Visitor<'de> for Inner {
+      type Value = TopBitSetTerminatedArray;
+
+      fn expecting(&self, f: &mut std::fmt::Formatter) -> ::std::fmt::Result {
+        write!(f, "a protocol type field")
+      }
+
+      fn visit_map<V>(self, mut map: V) -> Result<Self::Value, V::Error>
+      where
+        V: MapAccess<'de>,
+      {
+        let mut ty = None;
+        while let Some(key) = map.next_key()? {
+          match key {
+            "type" => {
+              if ty.is_some() {
+                return Err(de::Error::duplicate_field("type"));
+              }
+              ty = Some(map.next_value()?);
+            }
+            v => return Err(de::Error::unknown_field(v, &["type"])),
+          }
+        }
+        let ty = ty.ok_or_else(|| de::Error::missing_field("type"))?;
+        Ok(TopBitSetTerminatedArray { ty })
+      }
+    }
+
+    deserializer.deserialize_any(Inner)
+  }
 }
 
 #[derive(Debug, Deserialize, Clone)]
