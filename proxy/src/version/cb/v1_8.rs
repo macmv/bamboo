@@ -16,7 +16,7 @@ pub(super) fn gen_spec() -> PacketSpec {
   let mut spec = PacketSpec { gens: HashMap::new() };
   spec.add(cb::ID::KeepAlive, |p: cb::Packet, v: ProtocolVersion| {
     let mut out = Packet::new(0x00, v);
-    out.write_varint(p.pb().ints[0]); // Keep alive id
+    out.write_varint(p.get_int("keep_alive_id")?); // Keep alive id
     Ok(out)
   });
   spec.add(cb::ID::JoinGame, |p: cb::Packet, v: ProtocolVersion| {

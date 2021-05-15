@@ -1,8 +1,9 @@
 use num_derive::{FromPrimitive, ToPrimitive};
 use prost::{DecodeError, EncodeError};
+use std::{convert::TryInto, io};
 
 use super::other::Other;
-use crate::{math::UUID, proto};
+use crate::{math::UUID, proto, proto::packet_field::Type as FieldType};
 
 #[derive(Clone, Debug)]
 pub struct Packet {
@@ -10,7 +11,7 @@ pub struct Packet {
   pb: proto::Packet,
 }
 
-macro_rules! add_fn {
+macro_rules! add_set {
   ($name: ident, $key: ident, $ty: ty) => {
     pub fn $name(&mut self, n: String, v: $ty) {
       self.pb.fields.insert(n, proto::PacketField { $key: v, ..Default::default() });
@@ -19,6 +20,34 @@ macro_rules! add_fn {
   ($name: ident, $key: ident, $ty: ty, $convert: expr) => {
     pub fn $name(&mut self, n: String, v: $ty) {
       self.pb.fields.insert(n, proto::PacketField { $key: $convert(v), ..Default::default() });
+    }
+  };
+}
+macro_rules! add_get {
+  ($name: ident, $ty_name: ident, $key: ident, $ty: ty) => {
+    pub fn $name(&mut self, n: &str) -> io::Result<$ty> {
+      let field = self.get_field(n, FieldType::$ty_name)?;
+      Ok(field.$key)
+    }
+  };
+  ($name: ident, $ty_name: ident, $key: ident, $ty: ty, $convert: expr) => {
+    pub fn $name(&mut self, n: &str) -> io::Result<$ty> {
+      let field = self.get_field(n, FieldType::$ty_name)?;
+      Ok($convert(field.$key))
+    }
+  };
+}
+macro_rules! add_get_ref {
+  ($name: ident, $ty_name: ident, $key: ident, $ty: ty) => {
+    pub fn $name(&mut self, n: &str) -> io::Result<$ty> {
+      let field = self.get_field(n, FieldType::$ty_name)?;
+      Ok(&field.$key)
+    }
+  };
+  ($name: ident, $ty_name: ident, $key: ident, $ty: ty, $convert: expr) => {
+    pub fn $name(&mut self, n: &str) -> io::Result<$ty> {
+      let field = self.get_field(n, FieldType::$ty_name)?;
+      Ok($convert(&field.$key))
     }
   };
 }
@@ -51,18 +80,48 @@ impl Packet {
   pub fn id(&self) -> ID {
     self.id
   }
-  add_fn!(set_bool, bool, bool);
-  add_fn!(set_byte, byte, u8, |v: u8| v.into());
-  add_fn!(set_i32, int, i32);
-  add_fn!(set_u64, long, u64);
-  add_fn!(set_f32, float, f32);
-  add_fn!(set_f64, double, f64);
-  add_fn!(set_str, str, String);
-  add_fn!(set_uuid, uuid, UUID, |v: UUID| { Some(v.as_proto()) });
-  add_fn!(set_byte_arr, byte_arr, Vec<u8>);
-  add_fn!(set_i32_arr, int_arr, Vec<i32>);
-  add_fn!(set_u64_arr, long_arr, Vec<u64>);
-  add_fn!(set_str_arr, str_arr, Vec<String>);
+  fn get_field(&self, n: &str, ty: FieldType) -> io::Result<&proto::PacketField> {
+    let field = match self.pb.fields.get(n) {
+      Some(v) => v,
+      None => {
+        return Err(io::Error::new(io::ErrorKind::InvalidData, format!("no value for key {}", n)))
+      }
+    };
+    if proto::packet_field::Type::from_i32(field.ty).unwrap() != ty {
+      return Err(io::Error::new(
+        io::ErrorKind::InvalidData,
+        format!("expected a {:?}, got {}", ty, field.ty),
+      ));
+    }
+    Ok(field)
+  }
+  add_set!(set_bool, bool, bool);
+  add_set!(set_byte, byte, u8, |v: u8| v.into());
+  add_set!(set_i32, int, i32);
+  add_set!(set_u64, long, u64);
+  add_set!(set_f32, float, f32);
+  add_set!(set_f64, double, f64);
+  add_set!(set_str, str, String);
+  add_set!(set_uuid, uuid, UUID, |v: UUID| { Some(v.as_proto()) });
+  add_set!(set_byte_arr, byte_arr, Vec<u8>);
+  add_set!(set_i32_arr, int_arr, Vec<i32>);
+  add_set!(set_u64_arr, long_arr, Vec<u64>);
+  add_set!(set_str_arr, str_arr, Vec<String>);
+
+  add_get!(get_bool, Bool, bool, bool);
+  add_get!(get_byte, Byte, byte, u8, |v: u32| v.try_into().unwrap());
+  add_get!(get_i32, Int, int, i32);
+  add_get!(get_u64, Long, long, u64);
+  add_get!(get_f32, Float, float, f32);
+  add_get!(get_f64, Double, double, f64);
+  add_get_ref!(get_str, Str, str, &str);
+  add_get_ref!(get_uuid, Uuid, uuid, UUID, |v: &Option<proto::Uuid>| UUID::from_proto(
+    v.clone().unwrap()
+  ));
+  add_get_ref!(get_byte_arr, ByteArr, byte_arr, &Vec<u8>);
+  add_get_ref!(get_i32_arr, IntArr, int_arr, &Vec<i32>);
+  add_get_ref!(get_u64_arr, LongArr, long_arr, &Vec<u64>);
+  add_get_ref!(get_str_arr, StrArr, str_arr, &Vec<String>);
 
   // /// Generates an any type from the given value, and embeds that into the
   // /// protbuf.

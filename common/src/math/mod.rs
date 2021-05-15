@@ -3,6 +3,7 @@ mod pos;
 
 pub use chunk_pos::ChunkPos;
 pub use pos::{Pos, PosError};
+use std::convert::TryInto;
 
 use crate::proto;
 
@@ -12,6 +13,9 @@ pub struct UUID(u128);
 impl UUID {
   pub fn from_u128(v: u128) -> Self {
     UUID(v)
+  }
+  pub fn from_proto(v: proto::Uuid) -> Self {
+    Self(u128::from_be_bytes(v.be_data.try_into().unwrap()))
   }
   pub fn as_proto(&self) -> proto::Uuid {
     proto::Uuid { be_data: self.as_be_bytes().to_vec() }
