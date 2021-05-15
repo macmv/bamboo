@@ -29,8 +29,9 @@ message ReserveSlotsResponse {
 }
 
 message Packet {
-  int32 id                     = 1;
+  int32 id                        = 1;
   map<string, PacketField> fields = 2;
+  google.protobuf.Any other       = 3;
 }
 
 message PacketField {
@@ -50,7 +51,6 @@ message PacketField {
     IntArr  = 12;
     LongArr = 13;
     StrArr  = 14;
-    Other   = 15;
   }
   Type ty                   = 1;
   bool bool                 = 2;
@@ -68,7 +68,6 @@ message PacketField {
   repeated int32 int_arr    = 14;
   repeated uint64 long_arr  = 15;
   repeated string str_arr   = 16;
-  google.protobuf.Any other = 17;
 }
 
 message UUID {

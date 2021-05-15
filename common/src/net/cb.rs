@@ -3,7 +3,11 @@ use prost::{DecodeError, EncodeError};
 use std::{convert::TryInto, io};
 
 use super::other::Other;
-use crate::{math::UUID, proto, proto::packet_field::Type as FieldType};
+use crate::{
+  math::{Pos, UUID},
+  proto,
+  proto::packet_field::Type as FieldType,
+};
 
 #[derive(Clone, Debug)]
 pub struct Packet {
@@ -25,13 +29,13 @@ macro_rules! add_set {
 }
 macro_rules! add_get {
   ($name: ident, $ty_name: ident, $key: ident, $ty: ty) => {
-    pub fn $name(&mut self, n: &str) -> io::Result<$ty> {
+    pub fn $name(&self, n: &str) -> io::Result<$ty> {
       let field = self.get_field(n, FieldType::$ty_name)?;
       Ok(field.$key)
     }
   };
   ($name: ident, $ty_name: ident, $key: ident, $ty: ty, $convert: expr) => {
-    pub fn $name(&mut self, n: &str) -> io::Result<$ty> {
+    pub fn $name(&self, n: &str) -> io::Result<$ty> {
       let field = self.get_field(n, FieldType::$ty_name)?;
       Ok($convert(field.$key))
     }
@@ -39,13 +43,13 @@ macro_rules! add_get {
 }
 macro_rules! add_get_ref {
   ($name: ident, $ty_name: ident, $key: ident, $ty: ty) => {
-    pub fn $name(&mut self, n: &str) -> io::Result<$ty> {
+    pub fn $name(&self, n: &str) -> io::Result<$ty> {
       let field = self.get_field(n, FieldType::$ty_name)?;
       Ok(&field.$key)
     }
   };
   ($name: ident, $ty_name: ident, $key: ident, $ty: ty, $convert: expr) => {
-    pub fn $name(&mut self, n: &str) -> io::Result<$ty> {
+    pub fn $name(&self, n: &str) -> io::Result<$ty> {
       let field = self.get_field(n, FieldType::$ty_name)?;
       Ok($convert(&field.$key))
     }
@@ -110,10 +114,12 @@ impl Packet {
 
   add_get!(get_bool, Bool, bool, bool);
   add_get!(get_byte, Byte, byte, u8, |v: u32| v.try_into().unwrap());
-  add_get!(get_i32, Int, int, i32);
-  add_get!(get_u64, Long, long, u64);
-  add_get!(get_f32, Float, float, f32);
-  add_get!(get_f64, Double, double, f64);
+  add_get!(get_short, Short, short, i16, |v: i32| v.try_into().unwrap());
+  add_get!(get_int, Int, int, i32);
+  add_get!(get_long, Long, long, u64);
+  add_get!(get_float, Float, float, f32);
+  add_get!(get_double, Double, double, f64);
+  add_get!(get_pos, Pos, pos, Pos, |v: u64| Pos::from_u64(v)); // This will always be in the new position format
   add_get_ref!(get_str, Str, str, &str);
   add_get_ref!(get_uuid, Uuid, uuid, UUID, |v: &Option<proto::Uuid>| UUID::from_proto(
     v.clone().unwrap()
@@ -123,21 +129,21 @@ impl Packet {
   add_get_ref!(get_u64_arr, LongArr, long_arr, &Vec<u64>);
   add_get_ref!(get_str_arr, StrArr, str_arr, &Vec<String>);
 
-  // /// Generates an any type from the given value, and embeds that into the
-  // /// protbuf.
-  // pub fn set_other(&mut self, v: Other) -> Result<(), EncodeError> {
-  //   if self.pb.other.is_none() {
-  //     panic!("packet {:?} does not need an other!", self.id);
-  //   }
-  //   self.pb.other = Some(v.to_any()?);
-  //   Ok(())
-  // }
+  /// Generates an any type from the given value, and embeds that into the
+  /// protbuf.
+  pub fn set_other(&mut self, v: Other) -> Result<(), EncodeError> {
+    if self.pb.other.is_none() {
+      panic!("packet {:?} does not need an other!", self.id);
+    }
+    self.pb.other = Some(v.to_any()?);
+    Ok(())
+  }
 
-  // /// Reads the 'other' field of this protobuf. This is an any type, so the
-  // /// message returned can be any type.
-  // pub fn read_other(&self) -> Result<Other, DecodeError> {
-  //   Other::from_any(self.pb.other.clone().unwrap())
-  // }
+  /// Reads the 'other' field of this protobuf. This is an any type, so the
+  /// message returned can be any type.
+  pub fn read_other(&self) -> Result<Other, DecodeError> {
+    Other::from_any(self.pb.other.clone().unwrap())
+  }
 }
 
 /// A grpc packet ID. This is roughly the same as the latest packet version, but

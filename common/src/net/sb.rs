@@ -155,7 +155,6 @@ impl fmt::Display for Packet {
         FieldType::IntArr => value_non_empty!(v, f, int_arr, "{:?}"),
         FieldType::LongArr => value_non_empty!(v, f, long_arr, "{:?}"),
         FieldType::StrArr => value_non_empty!(v, f, str_arr, "{:?}"),
-        FieldType::Other => value_non_empty!(v, f, other, "{:?}"),
       }
     }
     writeln!(f, ")")?;

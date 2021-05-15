@@ -95,12 +95,11 @@ impl Packet {
   /// This parses a postition from a grpc packet (always new format), and then
   /// writes the long back into the buffer, with either the new or old format.
   /// The new format will be used for any packet with version 1.14 or later.
-  pub fn write_pos(&mut self, v: u64) {
-    let pos = Pos::from_u64(v);
+  pub fn write_pos(&mut self, p: Pos) {
     if self.ver < ProtocolVersion::V1_14 {
-      self.buf.write_u64(pos.to_old_u64());
+      self.buf.write_u64(p.to_old_u64());
     } else {
-      self.buf.write_u64(pos.to_u64());
+      self.buf.write_u64(p.to_u64());
     }
   }
 
