@@ -17,27 +17,28 @@ impl PacketSpec {
   }
 }
 
-pub(super) struct Generator {
-  gens: HashMap<ProtocolVersion, PacketSpec>,
+pub(super) struct Generator<'a> {
+  // gens: HashMap<ProtocolVersion, PacketSpec>,
+  versions: &'a HashMap<ProtocolVersion, data::protocol::Version>,
 }
 
-impl Generator {
-  pub fn new() -> Generator {
-    let mut gens = HashMap::new();
-    gens.insert(ProtocolVersion::V1_8, v1_8::gen_spec());
-    Generator { gens }
+impl Generator<'_> {
+  pub fn new(versions: &HashMap<ProtocolVersion, data::protocol::Version>) -> Generator {
+    // let mut gens = HashMap::new();
+    // gens.insert(ProtocolVersion::V1_8, v1_8::gen_spec());
+    Generator { versions }
   }
 
   pub fn convert(&self, v: ProtocolVersion, p: cb::Packet) -> io::Result<Packet> {
-    match self.gens.get(&v) {
-      Some(g) => match g.gens.get(&p.id()) {
-        Some(g) => g.lock().unwrap()(p, v),
-        None => Err(io::Error::new(
-          ErrorKind::InvalidInput,
-          format!("got unknown packet from server {:?}", p.id()),
-        )),
-      },
-      None => Err(io::Error::new(ErrorKind::InvalidInput, format!("unknown version {:?}", v))),
-    }
+    // match self.gens.get(&v) {
+    //   Some(g) => match g.gens.get(&p.id()) {
+    //     Some(g) => g.lock().unwrap()(p, v),
+    //     None => Err(io::Error::new(
+    //       ErrorKind::InvalidInput,
+    //       format!("got unknown packet from server {:?}", p.id()),
+    //     )),
+    //   },
+    //   None => Err(io::Error::new(ErrorKind::InvalidInput, format!("unknown
+    // version {:?}", v))), }
   }
 }

@@ -1,4 +1,5 @@
 use num_derive::{FromPrimitive, ToPrimitive};
+use strum_macros::EnumString;
 
 /// A list of all supported block versions. This is mostly the same as all major
 /// versions of the game. Any time the game gets new blocks, there is a new
@@ -70,7 +71,9 @@ impl BlockVersion {
 /// This will always be non exhaustive, as there will always be new versions
 /// added to the game.
 #[non_exhaustive]
-#[derive(Clone, Copy, FromPrimitive, ToPrimitive, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
+#[derive(
+  Clone, Copy, FromPrimitive, ToPrimitive, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, EnumString,
+)]
 pub enum ProtocolVersion {
   Invalid = 0,
 
@@ -117,6 +120,15 @@ impl ProtocolVersion {
     match num::FromPrimitive::from_i32(v) {
       Some(v) => v,
       None => Self::Invalid,
+    }
+  }
+  /// Converts the given string to a protocol version. This string should be in
+  /// the same format as the enums. That is, V1_12_2 would get
+  /// `ProtocolVersion::V1_12_2`.
+  pub fn from_str(s: &str) -> Self {
+    match s.parse() {
+      Ok(v) => v,
+      Err(_) => Self::Invalid,
     }
   }
   /// Returns the protocol id. This is the version that is sent to the server

@@ -21,32 +21,33 @@ impl PacketSpec {
   }
 }
 
-pub(super) struct Generator {
-  gens: HashMap<ProtocolVersion, PacketSpec>,
+pub(super) struct Generator<'a> {
+  // gens: HashMap<ProtocolVersion, PacketSpec>,
+  versions: &'a HashMap<ProtocolVersion, data::protocol::Version>,
 }
 
-impl Generator {
-  pub fn new() -> Generator {
-    let mut gens = HashMap::new();
-    gens.insert(ProtocolVersion::V1_8, v1_8::gen_spec());
-    Generator { gens }
+impl Generator<'_> {
+  pub fn new(versions: &HashMap<ProtocolVersion, data::protocol::Version>) -> Generator {
+    // let mut gens = HashMap::new();
+    // gens.insert(ProtocolVersion::V1_8, v1_8::gen_spec());
+    Generator { versions }
   }
 
   pub fn convert(&self, v: ProtocolVersion, mut p: Packet) -> io::Result<sb::Packet> {
-    let packet = match self.gens.get(&v) {
-      Some(g) => match g.gens.get(p.id() as usize) {
-        Some(Some(g)) => g.lock().unwrap()(&mut p),
-        _ => Err(io::Error::new(
-          ErrorKind::InvalidInput,
-          format!("got unknown packet id from client {:#04x}", p.id()),
-        )),
-      },
-      None => Err(io::Error::new(ErrorKind::InvalidInput, format!("unknown version {:?}", v))),
-    }?;
-    if p.remaining() > 0 {
-      Err(io::Error::new(ErrorKind::Other, format!("parser didn't read {} bytes", p.remaining())))
-    } else {
-      Ok(packet)
-    }
+    // let packet = match self.gens.get(&v) {
+    //   Some(g) => match g.gens.get(p.id() as usize) {
+    //     Some(Some(g)) => g.lock().unwrap()(&mut p),
+    //     _ => Err(io::Error::new(
+    //       ErrorKind::InvalidInput,
+    //       format!("got unknown packet id from client {:#04x}", p.id()),
+    //     )),
+    //   },
+    //   None => Err(io::Error::new(ErrorKind::InvalidInput, format!("unknown
+    // version {:?}", v))), }?;
+    // if p.remaining() > 0 {
+    //   Err(io::Error::new(ErrorKind::Other, format!("parser didn't read {}
+    // bytes", p.remaining()))) } else {
+    //   Ok(packet)
+    // }
   }
 }
