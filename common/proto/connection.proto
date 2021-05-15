@@ -30,36 +30,31 @@ message ReserveSlotsResponse {
 
 message Packet {
   int32 id                     = 1;
-  repeated bool bools          = 2;
-  bytes bytes                  = 3;
+  map<string, PacketField> fields = 2;
+}
+
+message PacketField {
+  bool bool                 = 1;
+  uint32 byte               = 2;
   // There is no int16 type in protobuf. This is here to keep the packets the same as their packet definitions
-  repeated int32 shorts        = 4;
-  repeated int32 ints          = 5;
-  repeated uint64 longs        = 6;
-  repeated float floats        = 7;
-  repeated double doubles      = 8;
-  repeated string strs         = 9;
-  repeated UUID uuids          = 10;
-  repeated uint64 positions    = 11;
-  repeated bytes NBTTags       = 12;
-  repeated bytes byte_arrs     = 13;
-  repeated IntArray int_arrs   = 14;
-  repeated LongArray long_arrs = 15;
-  repeated StrArray str_arrs   = 16;
-  google.protobuf.Any other    = 17;
+  int32 short               = 3;
+  int32 int                 = 4;
+  uint64 long               = 5;
+  float float               = 6;
+  double double             = 7;
+  string str                = 8;
+  UUID uuid                 = 9;
+  uint64 pos                = 10;
+  bytes nbt                 = 11;
+  bytes byte_arr            = 12;
+  repeated int32 int_arr    = 13;
+  repeated uint64 long_arr  = 14;
+  repeated string str_arr   = 15;
+  google.protobuf.Any other = 16;
 }
 
 message UUID {
   bytes be_data = 1;
-}
-message IntArray {
-  repeated int32 ints = 1;
-}
-message LongArray {
-  repeated uint64 longs = 1;
-}
-message StrArray {
-  repeated string strs = 1;
 }
 
 message Item {
