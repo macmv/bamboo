@@ -34,23 +34,41 @@ message Packet {
 }
 
 message PacketField {
-  bool bool                 = 1;
-  uint32 byte               = 2;
-  // There is no int16 type in protobuf. This is here to keep the packets the same as their packet definitions
-  int32 short               = 3;
-  int32 int                 = 4;
-  uint64 long               = 5;
-  float float               = 6;
-  double double             = 7;
-  string str                = 8;
-  UUID uuid                 = 9;
-  uint64 pos                = 10;
-  bytes nbt                 = 11;
-  bytes byte_arr            = 12;
-  repeated int32 int_arr    = 13;
-  repeated uint64 long_arr  = 14;
-  repeated string str_arr   = 15;
-  google.protobuf.Any other = 16;
+  enum Type {
+    Bool    = 0;
+    Byte    = 1;
+    Short   = 2;
+    Int     = 3;
+    Long    = 4;
+    Float   = 5;
+    Double  = 6;
+    Str     = 7;
+    UUID    = 8;
+    Pos     = 9;
+    NBT     = 10;
+    ByteArr = 11;
+    IntArr  = 12;
+    LongArr = 13;
+    StrArr  = 14;
+    Other   = 15;
+  }
+  Type ty                   = 1;
+  bool bool                 = 2;
+  uint32 byte               = 3;
+  int32 short               = 4;
+  int32 int                 = 5;
+  uint64 long               = 6;
+  float float               = 7;
+  double double             = 8;
+  string str                = 9;
+  UUID uuid                 = 10;
+  uint64 pos                = 11;
+  bytes nbt                 = 12;
+  bytes byte_arr            = 13;
+  repeated int32 int_arr    = 14;
+  repeated uint64 long_arr  = 15;
+  repeated string str_arr   = 16;
+  google.protobuf.Any other = 17;
 }
 
 message UUID {

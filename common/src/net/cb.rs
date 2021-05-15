@@ -11,14 +11,14 @@ pub struct Packet {
 }
 
 macro_rules! add_fn {
-  ($name: ident, $arr: ident, $ty: ty) => {
-    pub fn $name(&mut self, i: usize, v: $ty) {
-      self.pb.$arr[i] = v;
+  ($name: ident, $key: ident, $ty: ty) => {
+    pub fn $name(&mut self, n: String, v: $ty) {
+      self.pb.fields.insert(n, proto::PacketField { $key: v, ..Default::default() });
     }
   };
-  ($name: ident, $arr: ident, $ty: ty, $convert: expr) => {
-    pub fn $name(&mut self, i: usize, v: $ty) {
-      self.pb.$arr[i] = $convert(v);
+  ($name: ident, $key: ident, $ty: ty, $convert: expr) => {
+    pub fn $name(&mut self, n: String, v: $ty) {
+      self.pb.fields.insert(n, proto::PacketField { $key: $convert(v), ..Default::default() });
     }
   };
 }
@@ -51,34 +51,34 @@ impl Packet {
   pub fn id(&self) -> ID {
     self.id
   }
-  add_fn!(set_bool, bools, bool);
-  add_fn!(set_byte, bytes, u8);
-  add_fn!(set_i32, ints, i32);
-  add_fn!(set_u64, longs, u64);
-  add_fn!(set_f32, floats, f32);
-  add_fn!(set_f64, doubles, f64);
-  add_fn!(set_str, strs, String);
-  add_fn!(set_uuid, uuids, UUID, |v: UUID| { v.as_proto() });
-  add_fn!(set_byte_arr, byte_arrs, Vec<u8>);
-  add_fn!(set_i32_arr, int_arrs, Vec<i32>, |v: Vec<i32>| { proto::IntArray { ints: v } });
-  add_fn!(set_u64_arr, long_arrs, Vec<u64>, |v: Vec<u64>| { proto::LongArray { longs: v } });
-  add_fn!(set_str_arr, str_arrs, Vec<String>, |v: Vec<String>| { proto::StrArray { strs: v } });
+  add_fn!(set_bool, bool, bool);
+  add_fn!(set_byte, byte, u8, |v: u8| v.into());
+  add_fn!(set_i32, int, i32);
+  add_fn!(set_u64, long, u64);
+  add_fn!(set_f32, float, f32);
+  add_fn!(set_f64, double, f64);
+  add_fn!(set_str, str, String);
+  add_fn!(set_uuid, uuid, UUID, |v: UUID| { Some(v.as_proto()) });
+  add_fn!(set_byte_arr, byte_arr, Vec<u8>);
+  add_fn!(set_i32_arr, int_arr, Vec<i32>);
+  add_fn!(set_u64_arr, long_arr, Vec<u64>);
+  add_fn!(set_str_arr, str_arr, Vec<String>);
 
-  /// Generates an any type from the given value, and embeds that into the
-  /// protbuf.
-  pub fn set_other(&mut self, v: Other) -> Result<(), EncodeError> {
-    if self.pb.other.is_none() {
-      panic!("packet {:?} does not need an other!", self.id);
-    }
-    self.pb.other = Some(v.to_any()?);
-    Ok(())
-  }
+  // /// Generates an any type from the given value, and embeds that into the
+  // /// protbuf.
+  // pub fn set_other(&mut self, v: Other) -> Result<(), EncodeError> {
+  //   if self.pb.other.is_none() {
+  //     panic!("packet {:?} does not need an other!", self.id);
+  //   }
+  //   self.pb.other = Some(v.to_any()?);
+  //   Ok(())
+  // }
 
-  /// Reads the 'other' field of this protobuf. This is an any type, so the
-  /// message returned can be any type.
-  pub fn read_other(&self) -> Result<Other, DecodeError> {
-    Other::from_any(self.pb.other.clone().unwrap())
-  }
+  // /// Reads the 'other' field of this protobuf. This is an any type, so the
+  // /// message returned can be any type.
+  // pub fn read_other(&self) -> Result<Other, DecodeError> {
+  //   Other::from_any(self.pb.other.clone().unwrap())
+  // }
 }
 
 /// A grpc packet ID. This is roughly the same as the latest packet version, but
@@ -210,7 +210,6 @@ macro_rules! id_init_other {
       $(
         $ty: vec![Default::default(); $num],
       )*
-      other: Some(Default::default()),
       ..Default::default()
     }
   };
@@ -252,111 +251,112 @@ fn create_empty(id: ID) -> proto::Packet {
   //
   // Some ints that are the length of an array are usually excluded, as protobuf arrays know
   // their own length. Any fields that are never used by the client are mostly removed.
-  match id {
-    ID::SpawnEntity               => id_init!(ints: 3, uuids: 1, doubles: 3, bytes: 2, shorts: 3),
-    ID::SpawnExpOrb               => id_init!(ints: 1, doubles: 3, shorts: 1),
-    ID::SpawnWeatherEntity        => id_init!(), // TODO: I think this packet was removed, idk
-    ID::SpawnLivingEntity         => id_init!(ints: 2, uuids: 1, doubles: 3, bytes: 3, shorts: 3),
-    ID::SpawnPainting             => id_init!(ints: 2, uuids: 1, positions: 1, bytes: 1),
-    ID::SpawnPlayer               => id_init!(ints: 1, uuids: 1, doubles: 3, bytes: 2),
-    ID::EntityAnimation           => id_init!(ints: 1, bytes: 1),
-    ID::Statistics                => id_init!(int_arrs: 3),
-    ID::AcknowledgePlayerDigging  => id_init!(positions: 1, ints: 2, bools: 1),
-    ID::BlockBreakAnimation       => id_init!(ints: 1, positions: 1, bytes: 1),
-    ID::BlockEntityData           => id_init!(positions: 1, bytes: 1, nbt_tags: 1),
-    ID::BlockAction               => id_init!(positions: 1, bytes: 2, ints: 1),
-    ID::BlockChange               => id_init!(positions: 1, ints: 1),
-    ID::BossBar                   => id_init_other!(uuids: 1, ints: 1), // TODO: Custom type here
-    ID::ServerDifficulty          => id_init!(bytes: 1, bools: 1),
-    ID::ChatMessage               => id_init!(strs: 1, bytes: 1, uuids: 1),
-    ID::MultiBlockChange          => id_init!(positions: 1, bools: 1, byte_arrs: 1),
-    ID::TabComplete               => id_init_other!(ints: 3), // TODO: Custom type here
-    ID::DeclareCommands           => id_init!(ints: 1, byte_arrs: 1),
-    ID::WindowConfirm             => id_init!(bytes: 1, shorts: 1, bools: 1),
-    ID::CloseWindow               => id_init!(bytes: 1),
-    ID::WindowItems               => id_init_other!(bytes: 1, shorts: 1), // TODO: Setup slot type
-    ID::WindowProperty            => id_init!(bytes: 1, shorts: 2),
-    ID::SetSlot                   => id_init_other!(bytes: 1, shorts: 1),
-    ID::SetCooldown               => id_init!(ints: 2),
-    ID::PluginMessage             => id_init!(strs: 1, byte_arrs: 1),
-    // There is an extra int here, which should be used to set the sound id.
-    // This is for backwards compatibility, as older clients do not use a sound by name.
-    ID::NamedSoundEffect          => id_init!(strs: 1, ints: 5, floats: 2),
-    ID::Disconnect                => id_init!(strs: 1),
-    ID::EntityStatus              => id_init!(ints: 1, bytes: 1),
-    ID::Explosion                 => id_init!(floats: 7, byte_arrs: 1),
-    ID::UnloadChunk               => id_init!(ints: 2),
-    ID::ChangeGameState           => id_init!(bytes: 1, floats: 1),
-    ID::OpenHorseWindow           => id_init!(bytes: 1, ints: 2), // TODO: Find out more about this packet
-    // Newer clients use a long, which is ridiculous. Just cast this on newer clients.
-    ID::KeepAlive                 => id_init!(ints: 1),
-    // This should be its own type. It changes so much that relying on int arrays is too difficult.
-    ID::ChunkData                 => id_init_other!(), // TODO: Custom type here
-    ID::Effect                    => id_init!(ints: 2, positions: 1, bools: 1),
-    ID::Particle                  => id_init!(ints: 2, bools: 1, doubles: 3, floats: 4, byte_arrs: 1),
-    // Only used on newer versions. For older clients, light data is sent with ChunkData.
-    ID::UpdateLight               => id_init!(ints: 6, bools: 1, byte_arrs: 2),
-    ID::JoinGame                  => id_init!(ints: 3, bools: 5, bytes: 1, str_arrs: 1, nbt_tags: 2, strs: 1, longs: 1),
-    ID::MapData                   => id_init_other!(), // TODO: Custom proto
-    ID::TradeList                 => id_init_other!(), // TODO: Custom proto
-    ID::EntityPosition            => id_init!(ints: 1, shorts: 3, bools: 1),
-    ID::EntityPositionAndRotation => id_init!(ints: 1, shorts: 3, bytes: 2, bools: 1),
-    ID::EntityRotation            => id_init!(ints: 1, bytes: 2, bools: 1),
-    ID::EntityOnGround            => id_init!(ints: 1, bools: 1),
-    ID::VehicleMove               => id_init!(doubles: 3, floats: 2),
-    ID::OpenBook                  => id_init!(ints: 1),
-    ID::OpenWindow                => id_init!(ints: 2, strs: 1),
-    ID::OpenSignEditor            => id_init!(positions: 1),
-    ID::CraftRecipeResponse       => id_init!(bytes: 1, strs: 1),
-    ID::PlayerAbilities           => id_init!(bytes: 1, floats: 2),
-    // Enter combat and End combat are ignored, so the event will always be 2: Entity Dead,
-    // which will display the death screen.
-    ID::EnterCombat               => id_init!(ints: 2, strs: 1),
-    ID::PlayerInfo                => id_init_other!(), // TODO: Custom proto
-    ID::FacePlayer                => id_init!(ints: 3, doubles: 3, bools: 1),
-    ID::PlayerPositionAndLook     => id_init!(doubles: 3, floats: 2, bytes: 1, ints: 1),
-    ID::UnlockRecipies            => id_init!(ints: 1, bools: 8, str_arrs: 2),
-    ID::DestroyEntity             => id_init!(int_arrs: 1),
-    ID::RemoveEntityEffect        => id_init!(ints: 1, bytes: 1),
-    ID::ResourcePack              => id_init!(strs: 2),
-    ID::Respawn                   => id_init!(nbt_tags: 1, strs: 1, longs: 1, bytes: 2, bools: 3),
-    ID::EntityHeadLook            => id_init!(ints: 1, bytes: 1),
-    // Empty string means that the string is not present (in this case).
-    ID::SelectAdvancementTab      => id_init!(strs: 1),
-    ID::WorldBorder               => id_init_other!(), // TODO: Custom proto
-    ID::Camera                    => id_init!(ints: 1),
-    ID::HeldItemChange            => id_init!(bytes: 1),
-    ID::UpdateViewPosition        => id_init!(ints: 2),
-    ID::UpdateViewDistance        => id_init!(ints: 1),
-    ID::DisplayScoreboard         => id_init!(bytes: 1, strs: 1),
-    ID::EntityMetadata            => id_init!(ints: 1, byte_arrs: 1),
-    ID::AttachEntity              => id_init!(ints: 2),
-    ID::EntityVelocity            => id_init!(ints: 1, shorts: 3),
-    ID::EntityEquipment           => id_init_other!(ints: 1, bytes: 1),
-    ID::SetExp                    => id_init!(floats: 1, ints: 2),
-    ID::UpdateHealth              => id_init!(floats: 2, ints: 1),
-    ID::ScoreboardObjective       => id_init!(strs: 2, bytes: 1, ints: 1),
-    ID::SetPassengers             => id_init!(ints: 2, int_arrs: 1),
-    ID::Teams                     => id_init_other!(), // TODO: Custom proto
-    ID::UpdateScore               => id_init!(strs: 2, bytes: 1, ints: 1),
-    ID::SpawnPosition             => id_init!(positions: 1),
-    ID::TimeUpdate                => id_init!(longs: 2),
-    ID::Title                     => id_init_other!(), // TODO: Custom proto
-    // TODO: Sound ids change to a string in 1.17
-    ID::EntitySoundEffect         => id_init!(ints: 3, floats: 2),
-    ID::SoundEffect               => id_init!(ints: 5, floats: 2),
-    ID::StopSound                 => id_init!(bytes: 1, ints: 1, strs: 1),
-    ID::PlayerListHeader          => id_init!(strs: 2),
-    ID::NBTQueryResponse          => id_init!(ints: 1, nbt_tags: 1),
-    ID::CollectItem               => id_init!(ints: 3),
-    ID::EntityTeleport            => id_init!(ints: 1, doubles: 3, bytes: 2, bools: 1),
-    ID::Advancements              => id_init_other!(), // TODO: Custom proto
-    ID::EntityProperties          => id_init_other!(), // TODO: Custom proto
-    // TODO: Effect ids change to strings in 1.17
-    ID::EntityEffect              => id_init!(ints: 2, bytes: 3),
-    ID::DeclareRecipies           => id_init_other!(), // TODO: Custom proto
-    ID::Tags                      => id_init_other!(), // TODO: Custom proto
-    // ID::Login                     => id_init!(other: 1),
-    _                             => proto::Packet::default(),
-  }
+  // match id {
+  //   ID::SpawnEntity               => id_init!(ints: 3, uuids: 1, doubles: 3, bytes: 2, shorts: 3),
+  //   ID::SpawnExpOrb               => id_init!(ints: 1, doubles: 3, shorts: 1),
+  //   ID::SpawnWeatherEntity        => id_init!(), // TODO: I think this packet was removed, idk
+  //   ID::SpawnLivingEntity         => id_init!(ints: 2, uuids: 1, doubles: 3, bytes: 3, shorts: 3),
+  //   ID::SpawnPainting             => id_init!(ints: 2, uuids: 1, positions: 1, bytes: 1),
+  //   ID::SpawnPlayer               => id_init!(ints: 1, uuids: 1, doubles: 3, bytes: 2),
+  //   ID::EntityAnimation           => id_init!(ints: 1, bytes: 1),
+  //   ID::Statistics                => id_init!(int_arrs: 3),
+  //   ID::AcknowledgePlayerDigging  => id_init!(positions: 1, ints: 2, bools: 1),
+  //   ID::BlockBreakAnimation       => id_init!(ints: 1, positions: 1, bytes: 1),
+  //   ID::BlockEntityData           => id_init!(positions: 1, bytes: 1, nbt_tags: 1),
+  //   ID::BlockAction               => id_init!(positions: 1, bytes: 2, ints: 1),
+  //   ID::BlockChange               => id_init!(positions: 1, ints: 1),
+  //   ID::BossBar                   => id_init_other!(uuids: 1, ints: 1), // TODO: Custom type here
+  //   ID::ServerDifficulty          => id_init!(bytes: 1, bools: 1),
+  //   ID::ChatMessage               => id_init!(strs: 1, bytes: 1, uuids: 1),
+  //   ID::MultiBlockChange          => id_init!(positions: 1, bools: 1, byte_arrs: 1),
+  //   ID::TabComplete               => id_init_other!(ints: 3), // TODO: Custom type here
+  //   ID::DeclareCommands           => id_init!(ints: 1, byte_arrs: 1),
+  //   ID::WindowConfirm             => id_init!(bytes: 1, shorts: 1, bools: 1),
+  //   ID::CloseWindow               => id_init!(bytes: 1),
+  //   ID::WindowItems               => id_init_other!(bytes: 1, shorts: 1), // TODO: Setup slot type
+  //   ID::WindowProperty            => id_init!(bytes: 1, shorts: 2),
+  //   ID::SetSlot                   => id_init_other!(bytes: 1, shorts: 1),
+  //   ID::SetCooldown               => id_init!(ints: 2),
+  //   ID::PluginMessage             => id_init!(strs: 1, byte_arrs: 1),
+  //   // There is an extra int here, which should be used to set the sound id.
+  //   // This is for backwards compatibility, as older clients do not use a sound by name.
+  //   ID::NamedSoundEffect          => id_init!(strs: 1, ints: 5, floats: 2),
+  //   ID::Disconnect                => id_init!(strs: 1),
+  //   ID::EntityStatus              => id_init!(ints: 1, bytes: 1),
+  //   ID::Explosion                 => id_init!(floats: 7, byte_arrs: 1),
+  //   ID::UnloadChunk               => id_init!(ints: 2),
+  //   ID::ChangeGameState           => id_init!(bytes: 1, floats: 1),
+  //   ID::OpenHorseWindow           => id_init!(bytes: 1, ints: 2), // TODO: Find out more about this packet
+  //   // Newer clients use a long, which is ridiculous. Just cast this on newer clients.
+  //   ID::KeepAlive                 => id_init!(ints: 1),
+  //   // This should be its own type. It changes so much that relying on int arrays is too difficult.
+  //   ID::ChunkData                 => id_init_other!(), // TODO: Custom type here
+  //   ID::Effect                    => id_init!(ints: 2, positions: 1, bools: 1),
+  //   ID::Particle                  => id_init!(ints: 2, bools: 1, doubles: 3, floats: 4, byte_arrs: 1),
+  //   // Only used on newer versions. For older clients, light data is sent with ChunkData.
+  //   ID::UpdateLight               => id_init!(ints: 6, bools: 1, byte_arrs: 2),
+  //   ID::JoinGame                  => id_init!(ints: 3, bools: 5, bytes: 1, str_arrs: 1, nbt_tags: 2, strs: 1, longs: 1),
+  //   ID::MapData                   => id_init_other!(), // TODO: Custom proto
+  //   ID::TradeList                 => id_init_other!(), // TODO: Custom proto
+  //   ID::EntityPosition            => id_init!(ints: 1, shorts: 3, bools: 1),
+  //   ID::EntityPositionAndRotation => id_init!(ints: 1, shorts: 3, bytes: 2, bools: 1),
+  //   ID::EntityRotation            => id_init!(ints: 1, bytes: 2, bools: 1),
+  //   ID::EntityOnGround            => id_init!(ints: 1, bools: 1),
+  //   ID::VehicleMove               => id_init!(doubles: 3, floats: 2),
+  //   ID::OpenBook                  => id_init!(ints: 1),
+  //   ID::OpenWindow                => id_init!(ints: 2, strs: 1),
+  //   ID::OpenSignEditor            => id_init!(positions: 1),
+  //   ID::CraftRecipeResponse       => id_init!(bytes: 1, strs: 1),
+  //   ID::PlayerAbilities           => id_init!(bytes: 1, floats: 2),
+  //   // Enter combat and End combat are ignored, so the event will always be 2: Entity Dead,
+  //   // which will display the death screen.
+  //   ID::EnterCombat               => id_init!(ints: 2, strs: 1),
+  //   ID::PlayerInfo                => id_init_other!(), // TODO: Custom proto
+  //   ID::FacePlayer                => id_init!(ints: 3, doubles: 3, bools: 1),
+  //   ID::PlayerPositionAndLook     => id_init!(doubles: 3, floats: 2, bytes: 1, ints: 1),
+  //   ID::UnlockRecipies            => id_init!(ints: 1, bools: 8, str_arrs: 2),
+  //   ID::DestroyEntity             => id_init!(int_arrs: 1),
+  //   ID::RemoveEntityEffect        => id_init!(ints: 1, bytes: 1),
+  //   ID::ResourcePack              => id_init!(strs: 2),
+  //   ID::Respawn                   => id_init!(nbt_tags: 1, strs: 1, longs: 1, bytes: 2, bools: 3),
+  //   ID::EntityHeadLook            => id_init!(ints: 1, bytes: 1),
+  //   // Empty string means that the string is not present (in this case).
+  //   ID::SelectAdvancementTab      => id_init!(strs: 1),
+  //   ID::WorldBorder               => id_init_other!(), // TODO: Custom proto
+  //   ID::Camera                    => id_init!(ints: 1),
+  //   ID::HeldItemChange            => id_init!(bytes: 1),
+  //   ID::UpdateViewPosition        => id_init!(ints: 2),
+  //   ID::UpdateViewDistance        => id_init!(ints: 1),
+  //   ID::DisplayScoreboard         => id_init!(bytes: 1, strs: 1),
+  //   ID::EntityMetadata            => id_init!(ints: 1, byte_arrs: 1),
+  //   ID::AttachEntity              => id_init!(ints: 2),
+  //   ID::EntityVelocity            => id_init!(ints: 1, shorts: 3),
+  //   ID::EntityEquipment           => id_init_other!(ints: 1, bytes: 1),
+  //   ID::SetExp                    => id_init!(floats: 1, ints: 2),
+  //   ID::UpdateHealth              => id_init!(floats: 2, ints: 1),
+  //   ID::ScoreboardObjective       => id_init!(strs: 2, bytes: 1, ints: 1),
+  //   ID::SetPassengers             => id_init!(ints: 2, int_arrs: 1),
+  //   ID::Teams                     => id_init_other!(), // TODO: Custom proto
+  //   ID::UpdateScore               => id_init!(strs: 2, bytes: 1, ints: 1),
+  //   ID::SpawnPosition             => id_init!(positions: 1),
+  //   ID::TimeUpdate                => id_init!(longs: 2),
+  //   ID::Title                     => id_init_other!(), // TODO: Custom proto
+  //   // TODO: Sound ids change to a string in 1.17
+  //   ID::EntitySoundEffect         => id_init!(ints: 3, floats: 2),
+  //   ID::SoundEffect               => id_init!(ints: 5, floats: 2),
+  //   ID::StopSound                 => id_init!(bytes: 1, ints: 1, strs: 1),
+  //   ID::PlayerListHeader          => id_init!(strs: 2),
+  //   ID::NBTQueryResponse          => id_init!(ints: 1, nbt_tags: 1),
+  //   ID::CollectItem               => id_init!(ints: 3),
+  //   ID::EntityTeleport            => id_init!(ints: 1, doubles: 3, bytes: 2, bools: 1),
+  //   ID::Advancements              => id_init_other!(), // TODO: Custom proto
+  //   ID::EntityProperties          => id_init_other!(), // TODO: Custom proto
+  //   // TODO: Effect ids change to strings in 1.17
+  //   ID::EntityEffect              => id_init!(ints: 2, bytes: 3),
+  //   ID::DeclareRecipies           => id_init_other!(), // TODO: Custom proto
+  //   ID::Tags                      => id_init_other!(), // TODO: Custom proto
+  //   // ID::Login                     => id_init!(other: 1),
+  //   _                             => proto::Packet::default(),
+  // }
+  id_init!()
 }

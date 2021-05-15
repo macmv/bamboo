@@ -4,6 +4,7 @@ use std::fmt;
 use crate::{
   math::{Pos, UUID},
   proto,
+  proto::packet_field::Type as FieldType,
 };
 
 #[derive(Clone, Debug)]
@@ -76,14 +77,14 @@ impl ID {
 }
 
 macro_rules! add_fn {
-  ($name: ident, $arr: ident, $ty: ty) => {
-    pub fn $name(&mut self, i: usize, v: $ty) {
-      self.pb.$arr[i] = v;
+  ($name: ident, $key: ident, $ty: ty) => {
+    pub fn $name(&mut self, n: String, v: $ty) {
+      self.pb.fields.insert(n, proto::PacketField { $key: v, ..Default::default() });
     }
   };
-  ($name: ident, $arr: ident, $ty: ty, $convert: expr) => {
-    pub fn $name(&mut self, i: usize, v: $ty) {
-      self.pb.$arr[i] = $convert(v);
+  ($name: ident, $key: ident, $ty: ty, $convert: expr) => {
+    pub fn $name(&mut self, n: String, v: $ty) {
+      self.pb.fields.insert(n, proto::PacketField { $key: $convert(v), ..Default::default() });
     }
   };
 }
@@ -103,31 +104,27 @@ impl Packet {
   pub fn id(&self) -> ID {
     self.id
   }
-  add_fn!(set_bool, bools, bool);
-  add_fn!(set_byte, bytes, u8);
-  add_fn!(set_int, ints, i32);
-  add_fn!(set_long, longs, u64);
-  add_fn!(set_float, floats, f32);
-  add_fn!(set_double, doubles, f64);
-  add_fn!(set_str, strs, String);
-  add_fn!(set_uuid, uuids, UUID, |v: UUID| { v.as_proto() });
-  add_fn!(set_byte_arr, byte_arrs, Vec<u8>);
-  add_fn!(set_int_arr, int_arrs, Vec<i32>, |v: Vec<i32>| { proto::IntArray { ints: v } });
-  add_fn!(set_long_arr, long_arrs, Vec<u64>, |v: Vec<u64>| { proto::LongArray { longs: v } });
-  add_fn!(set_str_arr, str_arrs, Vec<String>, |v: Vec<String>| { proto::StrArray { strs: v } });
-  add_fn!(set_pos, positions, Pos, |v: Pos| { v.to_u64() });
+  add_fn!(set_bool, bool, bool);
+  add_fn!(set_byte, byte, u8, |v: u8| v.into());
+  add_fn!(set_int, int, i32);
+  add_fn!(set_long, long, u64);
+  add_fn!(set_float, float, f32);
+  add_fn!(set_double, double, f64);
+  add_fn!(set_str, str, String);
+  add_fn!(set_uuid, uuid, UUID, |v: UUID| { Some(v.as_proto()) });
+  add_fn!(set_pos, pos, Pos, |v: Pos| { v.to_u64() });
+  add_fn!(set_byte_arr, byte_arr, Vec<u8>);
+  add_fn!(set_int_arr, int_arr, Vec<i32>);
+  add_fn!(set_long_arr, long_arr, Vec<u64>);
+  add_fn!(set_str_arr, str_arr, Vec<String>);
 }
 
 macro_rules! value_non_empty {
-  ($self: ident, $f: expr, $var: ident, $fmt: expr) => {
-    if $self.pb.$var.len() != 0 {
-      writeln!($f, concat!("  ", stringify!($var), ": ", $fmt), $self.pb.$var)?;
-    }
+  ($field: ident, $f: expr, $var: ident, $fmt: expr) => {
+    writeln!($f, concat!("  {}: ", $fmt), $field.0, $field.1.$var)?;
   };
-  ($self: ident, $f: expr, $var: ident, $fmt: expr, $extra: expr) => {
-    if $self.pb.$var.len() != 0 {
-      writeln!($f, concat!("  ", stringify!($var), ": ", $fmt), $self.pb.$var, $extra)?;
-    }
+  ($field: ident, $f: expr, $var: ident, $fmt: expr, $extra: expr) => {
+    writeln!($f, concat!("  {}: ", $fmt), $field.0, $field.1.$var, $extra)?;
   };
 }
 
@@ -135,32 +132,32 @@ impl fmt::Display for Packet {
   fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
     writeln!(f, "Packet(")?;
     writeln!(f, "  id: {:?}", self.id)?;
-    value_non_empty!(self, f, bytes, "{:?}");
-    value_non_empty!(self, f, bools, "{:?}");
-    value_non_empty!(self, f, shorts, "{:?}");
-    value_non_empty!(self, f, ints, "{:?}");
-    value_non_empty!(self, f, longs, "{:?}");
-    value_non_empty!(self, f, floats, "{:?}");
-    value_non_empty!(self, f, doubles, "{:?}");
-    value_non_empty!(self, f, strs, "{:?}");
-    value_non_empty!(self, f, uuids, "{:?}");
-    value_non_empty!(self, f, positions, "{:?}");
-    value_non_empty!(self, f, nbt_tags, "{:?}");
-    value_non_empty!(
-      self,
-      f,
-      byte_arrs,
-      "{:?}\n  byte_arrs as strings: {:?}",
-      self
-        .pb
-        .byte_arrs
-        .iter()
-        .map(|a| String::from_utf8(a.to_vec()).ok())
-        .collect::<Vec<Option<String>>>()
-    );
-    value_non_empty!(self, f, int_arrs, "{:?}");
-    value_non_empty!(self, f, long_arrs, "{:?}");
-    value_non_empty!(self, f, str_arrs, "{:?}");
+    for v in self.pb.fields.iter() {
+      match FieldType::from_i32(v.1.ty).unwrap() {
+        FieldType::Bool => value_non_empty!(v, f, bool, "{:?}"),
+        FieldType::Byte => value_non_empty!(v, f, byte, "{:?}"),
+        FieldType::Short => value_non_empty!(v, f, short, "{:?}"),
+        FieldType::Int => value_non_empty!(v, f, int, "{:?}"),
+        FieldType::Long => value_non_empty!(v, f, long, "{:?}"),
+        FieldType::Float => value_non_empty!(v, f, float, "{:?}"),
+        FieldType::Double => value_non_empty!(v, f, double, "{:?}"),
+        FieldType::Str => value_non_empty!(v, f, str, "{:?}"),
+        FieldType::Uuid => value_non_empty!(v, f, uuid, "{:?}"),
+        FieldType::Pos => value_non_empty!(v, f, pos, "{:?}"),
+        FieldType::Nbt => value_non_empty!(v, f, nbt, "{:?}"),
+        FieldType::ByteArr => value_non_empty!(
+          v,
+          f,
+          byte_arr,
+          "{:?}\n  byte_arrs as strings: {:?}",
+          String::from_utf8(v.1.byte_arr.clone())
+        ),
+        FieldType::IntArr => value_non_empty!(v, f, int_arr, "{:?}"),
+        FieldType::LongArr => value_non_empty!(v, f, long_arr, "{:?}"),
+        FieldType::StrArr => value_non_empty!(v, f, str_arr, "{:?}"),
+        FieldType::Other => value_non_empty!(v, f, other, "{:?}"),
+      }
+    }
     writeln!(f, ")")?;
     Ok(())
   }
@@ -224,52 +221,53 @@ fn create_empty(id: ID) -> proto::Packet {
   //
   // Some ints that are the length of an array are usually excluded, as protobuf arrays know
   // their own length. Any fields that are never used by the client are mostly removed.
-  match id {
-    ID::TeleportConfirm            => id_init!(ints: 1),
-    ID::QueryBlockNBT              => id_init!(ints: 1, positions: 1),
-    ID::SetDifficulty              => id_init!(bytes: 1),
-    ID::ChatMessage                => id_init!(strs: 1),
-    ID::ClientStatus               => id_init!(ints: 1),
-    ID::ClientSettings             => id_init!(strs: 1, bytes: 2, ints: 2, bools: 1),
-    ID::TabComplete                => id_init!(ints: 1, strs: 1),
-    ID::WindowConfirmation         => id_init!(bytes: 1, shorts: 1, bools: 1),
-    ID::ClickWindowButton          => id_init!(bytes: 2),
-    ID::ClickWindow                => id_init!(bytes: 2, shorts: 2, ints: 1), // TODO: Setup slot type
-    ID::CloseWindow                => id_init!(bytes: 1),
-    ID::PluginMessage              => id_init!(strs: 1, byte_arrs: 1),
-    ID::EditBook                   => id_init!(bools: 1, ints: 1), // TODO: Setup slot type
-    ID::EntityNBTRequest           => id_init!(), // TODO: Figure out what this packet is
-    ID::InteractEntity             => id_init!(ints: 3, floats: 3, bools: 1),
-    ID::KeepAlive                  => id_init!(ints: 1), // Using a long here is dumb
-    ID::LockDifficulty             => id_init!(bools: 1),
-    ID::PlayerPosition             => id_init!(doubles: 3, bools: 1),
-    ID::PlayerPositionAndRotation  => id_init!(doubles: 3, floats: 2, bools: 1),
-    ID::PlayerRotation             => id_init!(floats: 2, bools: 1),
-    ID::PlayerOnGround             => id_init!(bools: 1),
-    ID::VehicleMove                => id_init!(doubles: 3, floats: 2),
-    ID::SteerBoat                  => id_init!(bools: 2),
-    ID::PickItem                   => id_init!(ints: 1),
-    ID::CraftRecipeRequest         => id_init!(bytes: 1, strs: 1, bools: 1),
-    ID::PlayerAbilities            => id_init!(bytes: 1),
-    ID::PlayerDigging              => id_init!(ints: 1, positions: 1, bytes: 1),
-    ID::EntityAction               => id_init!(ints: 3),
-    ID::SteerVehicle               => id_init!(floats: 2, bytes: 1),
-    ID::RecipeBookData             => id_init!(ints: 1, bools: 2),
-    ID::NameItem                   => id_init!(strs: 1),
-    ID::ResourcePackStatus         => id_init!(ints: 1),
-    ID::AdvancementTab             => id_init!(ints: 1, strs: 1),
-    ID::SelectTrade                => id_init!(ints: 1),
-    ID::SetBeaconEffect            => id_init!(ints: 2),
-    ID::HeldItemChange             => id_init!(shorts: 1),
-    ID::UpdateCommandBlock         => id_init!(positions: 1, strs: 1, ints: 1, bytes: 1),
-    ID::UpdateCommandBlockMinecart => id_init!(ints: 1, strs: 1, bools: 1),
-    ID::CreativeInventoryAction    => id_init!(shorts: 1), // TODO: Setup slot type
-    ID::UpdateJigsawBlock          => id_init!(positions: 1, strs: 5),
-    ID::UpdateStructureBlock       => id_init!(positions: 1, ints: 4, strs: 2, bytes: 7, floats: 1, longs: 1),
-    ID::UpdateSign                 => id_init!(positions: 1, strs: 4),
-    ID::Animation                  => id_init!(ints: 1),
-    ID::Spectate                   => id_init!(uuids: 1),
-    ID::PlayerBlockPlace           => id_init!(ints: 2, positions: 1, floats: 3, bools: 1),
-    ID::UseItem                    => id_init!(ints: 1),
-  }
+  // match id {
+  //   ID::TeleportConfirm            => id_init!(ints: 1),
+  //   ID::QueryBlockNBT              => id_init!(ints: 1, positions: 1),
+  //   ID::SetDifficulty              => id_init!(bytes: 1),
+  //   ID::ChatMessage                => id_init!(strs: 1),
+  //   ID::ClientStatus               => id_init!(ints: 1),
+  //   ID::ClientSettings             => id_init!(strs: 1, bytes: 2, ints: 2, bools: 1),
+  //   ID::TabComplete                => id_init!(ints: 1, strs: 1),
+  //   ID::WindowConfirmation         => id_init!(bytes: 1, shorts: 1, bools: 1),
+  //   ID::ClickWindowButton          => id_init!(bytes: 2),
+  //   ID::ClickWindow                => id_init!(bytes: 2, shorts: 2, ints: 1), // TODO: Setup slot type
+  //   ID::CloseWindow                => id_init!(bytes: 1),
+  //   ID::PluginMessage              => id_init!(strs: 1, byte_arrs: 1),
+  //   ID::EditBook                   => id_init!(bools: 1, ints: 1), // TODO: Setup slot type
+  //   ID::EntityNBTRequest           => id_init!(), // TODO: Figure out what this packet is
+  //   ID::InteractEntity             => id_init!(ints: 3, floats: 3, bools: 1),
+  //   ID::KeepAlive                  => id_init!(ints: 1), // Using a long here is dumb
+  //   ID::LockDifficulty             => id_init!(bools: 1),
+  //   ID::PlayerPosition             => id_init!(doubles: 3, bools: 1),
+  //   ID::PlayerPositionAndRotation  => id_init!(doubles: 3, floats: 2, bools: 1),
+  //   ID::PlayerRotation             => id_init!(floats: 2, bools: 1),
+  //   ID::PlayerOnGround             => id_init!(bools: 1),
+  //   ID::VehicleMove                => id_init!(doubles: 3, floats: 2),
+  //   ID::SteerBoat                  => id_init!(bools: 2),
+  //   ID::PickItem                   => id_init!(ints: 1),
+  //   ID::CraftRecipeRequest         => id_init!(bytes: 1, strs: 1, bools: 1),
+  //   ID::PlayerAbilities            => id_init!(bytes: 1),
+  //   ID::PlayerDigging              => id_init!(ints: 1, positions: 1, bytes: 1),
+  //   ID::EntityAction               => id_init!(ints: 3),
+  //   ID::SteerVehicle               => id_init!(floats: 2, bytes: 1),
+  //   ID::RecipeBookData             => id_init!(ints: 1, bools: 2),
+  //   ID::NameItem                   => id_init!(strs: 1),
+  //   ID::ResourcePackStatus         => id_init!(ints: 1),
+  //   ID::AdvancementTab             => id_init!(ints: 1, strs: 1),
+  //   ID::SelectTrade                => id_init!(ints: 1),
+  //   ID::SetBeaconEffect            => id_init!(ints: 2),
+  //   ID::HeldItemChange             => id_init!(shorts: 1),
+  //   ID::UpdateCommandBlock         => id_init!(positions: 1, strs: 1, ints: 1, bytes: 1),
+  //   ID::UpdateCommandBlockMinecart => id_init!(ints: 1, strs: 1, bools: 1),
+  //   ID::CreativeInventoryAction    => id_init!(shorts: 1), // TODO: Setup slot type
+  //   ID::UpdateJigsawBlock          => id_init!(positions: 1, strs: 5),
+  //   ID::UpdateStructureBlock       => id_init!(positions: 1, ints: 4, strs: 2, bytes: 7, floats: 1, longs: 1),
+  //   ID::UpdateSign                 => id_init!(positions: 1, strs: 4),
+  //   ID::Animation                  => id_init!(ints: 1),
+  //   ID::Spectate                   => id_init!(uuids: 1),
+  //   ID::PlayerBlockPlace           => id_init!(ints: 2, positions: 1, floats: 3, bools: 1),
+  //   ID::UseItem                    => id_init!(ints: 1),
+  // }
+  id_init!()
 }
