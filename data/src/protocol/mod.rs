@@ -73,19 +73,19 @@ pub enum PacketField {
 }
 
 impl PacketField {
-  pub fn to_container(self) -> Option<HashMap<String, PacketField>> {
+  pub fn into_container(self) -> Option<HashMap<String, PacketField>> {
     match self {
       Self::Container(v) => Some(v),
       _ => None,
     }
   }
-  pub fn to_compare(self) -> Option<String> {
+  pub fn into_compare(self) -> Option<String> {
     match self {
       Self::CompareTo(v) => Some(v),
       _ => None,
     }
   }
-  pub fn to_defined(self) -> Option<String> {
+  pub fn into_defined(self) -> Option<String> {
     match self {
       Self::DefinedType(v) => Some(v),
       _ => None,

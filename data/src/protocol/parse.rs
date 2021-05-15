@@ -102,7 +102,7 @@ fn generate_packets(
         }
       };
       for (k, v) in names {
-        let name = params[k].clone().to_defined().unwrap().clone();
+        let name = params[k].clone().into_defined().unwrap().clone();
         let v = *v as usize;
         if v >= ordered_packets.len() {
           for _ in ordered_packets.len()..v + 1 {
@@ -110,7 +110,7 @@ fn generate_packets(
           }
         }
         ordered_packets[v] =
-          Some(Packet { fields: types[&name].clone().to_container().unwrap(), name });
+          Some(Packet { fields: types[&name].clone().into_container().unwrap(), name });
       }
     }
     _ => return Err(io::Error::new(ErrorKind::InvalidData, "did not get mappings field")),
@@ -144,7 +144,7 @@ fn parse_float(v: &str) -> Option<FloatType> {
 fn parse_count(v: json::CountType) -> CountType {
   match v {
     json::CountType::Typed(v) => {
-      CountType::Typed(parse_int(&v).expect(&format!("could not parse int: {}", v)))
+      CountType::Typed(parse_int(&v).unwrap_or_else(|| panic!("could not parse int: {}", v)))
     }
     json::CountType::Fixed(v) => CountType::Fixed(v),
     json::CountType::Named(v) => CountType::Named(v),
