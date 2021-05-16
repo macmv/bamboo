@@ -16,14 +16,24 @@ pub struct Packet {
 }
 
 macro_rules! add_set {
-  ($name: ident, $key: ident, $ty: ty) => {
-    pub fn $name(&mut self, n: String, v: $ty) {
-      self.pb.fields.insert(n, proto::PacketField { $key: v, ..Default::default() });
+  ($name: ident, $key: ident, $ty_name: ident, $ty: ty) => {
+    pub fn $name(&mut self, n: &str, v: $ty) {
+      self.pb.fields.insert(
+        n.into(),
+        proto::PacketField { ty: FieldType::$ty_name.into(), $key: v, ..Default::default() },
+      );
     }
   };
-  ($name: ident, $key: ident, $ty: ty, $convert: expr) => {
-    pub fn $name(&mut self, n: String, v: $ty) {
-      self.pb.fields.insert(n, proto::PacketField { $key: $convert(v), ..Default::default() });
+  ($name: ident, $key: ident, $ty_name: ident, $ty: ty, $convert: expr) => {
+    pub fn $name(&mut self, n: &str, v: $ty) {
+      self.pb.fields.insert(
+        n.into(),
+        proto::PacketField {
+          ty: FieldType::$ty_name.into(),
+          $key: $convert(v),
+          ..Default::default()
+        },
+      );
     }
   };
 }
@@ -99,18 +109,18 @@ impl Packet {
     }
     Ok(field)
   }
-  add_set!(set_bool, bool, bool);
-  add_set!(set_byte, byte, u8, |v: u8| v.into());
-  add_set!(set_i32, int, i32);
-  add_set!(set_u64, long, u64);
-  add_set!(set_f32, float, f32);
-  add_set!(set_f64, double, f64);
-  add_set!(set_str, str, String);
-  add_set!(set_uuid, uuid, UUID, |v: UUID| { Some(v.as_proto()) });
-  add_set!(set_byte_arr, byte_arr, Vec<u8>);
-  add_set!(set_i32_arr, int_arr, Vec<i32>);
-  add_set!(set_u64_arr, long_arr, Vec<u64>);
-  add_set!(set_str_arr, str_arr, Vec<String>);
+  add_set!(set_bool, bool, Bool, bool);
+  add_set!(set_byte, byte, Byte, u8, |v: u8| v.into());
+  add_set!(set_i32, int, Int, i32);
+  add_set!(set_u64, long, Long, u64);
+  add_set!(set_f32, float, Float, f32);
+  add_set!(set_f64, double, Double, f64);
+  add_set!(set_str, str, Str, String);
+  add_set!(set_uuid, uuid, Uuid, UUID, |v: UUID| { Some(v.as_proto()) });
+  add_set!(set_byte_arr, byte_arr, ByteArr, Vec<u8>);
+  add_set!(set_i32_arr, int_arr, IntArr, Vec<i32>);
+  add_set!(set_u64_arr, long_arr, LongArr, Vec<u64>);
+  add_set!(set_str_arr, str_arr, StrArr, Vec<String>);
 
   add_get!(get_bool, Bool, bool, bool);
   add_get!(get_byte, Byte, byte, u8, |v: u32| v.try_into().unwrap());

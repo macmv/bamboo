@@ -77,9 +77,9 @@ impl World {
         let p = player.lock().await;
 
         let mut out = cb::Packet::new(cb::ID::JoinGame);
-        out.set_i32(0, self.eid());
-        out.set_byte(0, 1); // Creative
-        out.set_bool(0, false); // Don't reduce debug info
+        out.set_i32("eid", self.eid());
+        out.set_byte("gamemode", 1); // Creative
+        out.set_bool("reduced_debug_info", false); // Don't reduce debug info
         conn.send(out).await;
 
         for x in -10..10 {
@@ -96,13 +96,13 @@ impl World {
         }
 
         let mut out = cb::Packet::new(cb::ID::PlayerPositionAndLook);
-        out.set_f64(0, 0.0); // X
-        out.set_f64(1, 60.0); // Y
-        out.set_f64(2, 0.0); // Z
-        out.set_f32(0, 0.0); // Yaw
-        out.set_f32(1, 0.0); // Pitch
-        out.set_byte(0, 0); // Flags
-        out.set_i32(0, 1234); // TP id
+        out.set_f64("x", 0.0); // X
+        out.set_f64("y", 60.0); // Y
+        out.set_f64("z", 0.0); // Z
+        out.set_f32("yaw", 0.0); // Yaw
+        out.set_f32("pitch", 0.0); // Pitch
+        out.set_byte("flags", 0); // Flags
+        out.set_i32("teleport_id", 1234); // TP id
         conn.send(out).await;
       }
       // Player tick loop
@@ -118,7 +118,7 @@ impl World {
         // Once per second, send keep alive packet
         if tick % 20 == 0 {
           let mut out = cb::Packet::new(cb::ID::KeepAlive);
-          out.set_i32(0, 1234556);
+          out.set_i32("keep_alive_id", 1234556);
           conn.send(out).await;
         }
         tick += 1;
