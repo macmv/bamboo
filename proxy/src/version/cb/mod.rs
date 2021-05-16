@@ -30,6 +30,7 @@ impl Generator {
   }
 
   pub fn convert(&self, v: ProtocolVersion, p: cb::Packet) -> io::Result<Packet> {
+    dbg!("sending packet to client: {:?}", &p);
     match self.gens.get(&v) {
       Some(g) => match g.gens.get(&p.id()) {
         Some(g) => g.lock().unwrap()(p, v),

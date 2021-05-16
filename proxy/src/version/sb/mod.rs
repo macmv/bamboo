@@ -16,7 +16,8 @@ impl Generator {
 
   pub fn convert(&self, v: ProtocolVersion, mut p: Packet) -> io::Result<sb::Packet> {
     let spec = &self.versions[&v][p.id() as usize];
-    dbg!(spec);
-    Ok(sb::Packet::new(sb::ID::KeepAlive))
+    dbg!(p.id());
+    Err(io::Error::new(io::ErrorKind::InvalidData, "gaming"))
+    // Ok(sb::Packet::new(sb::ID::ChatMessage))
   }
 }

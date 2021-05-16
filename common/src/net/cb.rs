@@ -142,9 +142,9 @@ impl Packet {
   /// Generates an any type from the given value, and embeds that into the
   /// protbuf.
   pub fn set_other(&mut self, v: Other) -> Result<(), EncodeError> {
-    if self.pb.other.is_none() {
-      panic!("packet {:?} does not need an other!", self.id);
-    }
+    // if self.pb.other.is_none() {
+    //   panic!("packet {:?} does not need an other!", self.id);
+    // }
     self.pb.other = Some(v.to_any()?);
     Ok(())
   }
