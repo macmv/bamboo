@@ -1,4 +1,6 @@
-use super::{json, BitField, CountType, FloatType, IntType, Packet, PacketField, Version};
+use super::{
+  json, BitField, Container, CountType, FloatType, IntType, Packet, PacketField, Version,
+};
 use convert_case::{Case, Casing};
 use std::{collections::HashMap, error::Error, fs, io, io::ErrorKind, path::Path};
 
@@ -85,21 +87,21 @@ fn generate_packets(
 
   match types.get("packet") {
     Some(PacketField::Container(values)) => {
-      let names = match &values["name"] {
+      let names = match &values.get("name") {
         PacketField::Mappings(v) => v,
         _ => {
           return Err(io::Error::new(
             ErrorKind::InvalidData,
-            format!("expected a mappings type, got: {:?}", values["name"]),
+            format!("expected a mappings type, got: {:?}", values.get("name")),
           ))
         }
       };
-      let params = match &values["params"] {
+      let params = match &values.get("params") {
         PacketField::Switch { compare_to: _, fields } => fields,
         _ => {
           return Err(io::Error::new(
             ErrorKind::InvalidData,
-            format!("expected a switch, got: {:?}", values["name"]),
+            format!("expected a switch, got: {:?}", values.get("name")),
           ))
         }
       };
@@ -114,9 +116,11 @@ fn generate_packets(
             packets.push(None);
           }
         }
+        let cont = types[&long_name].clone().into_container().unwrap();
         packets[id] = Some(Packet {
-          fields: types[&long_name].clone().into_container().unwrap(),
-          name:   short_name.into(),
+          field_names: cont.names,
+          fields:      cont.fields,
+          name:        short_name.into(),
         });
       }
     }
@@ -193,14 +197,14 @@ fn parse_type(v: json::Type, types: &HashMap<String, PacketField>) -> PacketFiel
     }
     json::TypeValue::Option(v) => PacketField::Option(Box::new(parse_type(v, types))),
     json::TypeValue::Container(v) => {
-      let mut fields = HashMap::new();
+      let mut names = HashMap::new();
+      let mut fields = vec![];
       for c in v {
-        fields.insert(
-          c.name.clone().unwrap_or_else(|| "unnamed".into()).to_case(Case::Snake),
-          parse_type(c.ty, types),
-        );
+        let name = c.name.clone().unwrap_or_else(|| "unnamed".into()).to_case(Case::Snake);
+        names.insert(name.clone(), fields.len());
+        fields.push((name, parse_type(c.ty, types)));
       }
-      PacketField::Container(fields)
+      PacketField::Container(Container { fields, names })
     }
     json::TypeValue::BitField(v) => {
       let mut fields = vec![];

@@ -72,7 +72,7 @@ pub enum PacketField {
   Array { count: CountType, value: Box<PacketField> },
   Buffer(CountType),
   BitField(Vec<BitField>),
-  Container(HashMap<String, PacketField>),
+  Container(Container),
   Switch { compare_to: String, fields: HashMap<String, PacketField> },
   Mappings(HashMap<String, u32>), // Mapping of packet names to ids
 
@@ -81,8 +81,20 @@ pub enum PacketField {
   DefinedType(String), // Another type, defined within either the types map or the packets map
 }
 
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct Container {
+  pub fields: Vec<(String, PacketField)>,
+  pub names:  HashMap<String, usize>,
+}
+
+impl Container {
+  pub fn get(&self, n: &str) -> &PacketField {
+    &self.fields[self.names[n]].1
+  }
+}
+
 impl PacketField {
-  pub fn into_container(self) -> Option<HashMap<String, PacketField>> {
+  pub fn into_container(self) -> Option<Container> {
     match self {
       Self::Container(v) => Some(v),
       _ => None,
@@ -104,8 +116,10 @@ impl PacketField {
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Packet {
-  pub name:   String,
-  pub fields: HashMap<String, PacketField>,
+  pub name:        String,
+  // Can be used to lookup a field by name
+  pub field_names: HashMap<String, usize>,
+  pub fields:      Vec<(String, PacketField)>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
