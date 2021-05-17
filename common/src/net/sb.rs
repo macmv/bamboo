@@ -13,55 +13,8 @@ pub struct Packet {
   pb: proto::Packet,
 }
 
-#[derive(Clone, Copy, ToPrimitive, FromPrimitive, Debug, PartialEq, Eq, Hash)]
-pub enum ID {
-  TeleportConfirm,
-  QueryBlockNBT,
-  SetDifficulty,
-  ChatMessage,
-  ClientStatus,
-  ClientSettings,
-  TabComplete,
-  WindowConfirmation,
-  ClickWindowButton,
-  ClickWindow,
-  CloseWindow,
-  PluginMessage,
-  EditBook,
-  EntityNBTRequest,
-  InteractEntity,
-  KeepAlive,
-  LockDifficulty,
-  PlayerPosition,
-  PlayerPositionAndRotation,
-  PlayerRotation,
-  PlayerOnGround,
-  VehicleMove,
-  SteerBoat,
-  PickItem,
-  CraftRecipeRequest,
-  PlayerAbilities,
-  PlayerDigging,
-  EntityAction,
-  SteerVehicle,
-  RecipeBookData,
-  NameItem,
-  ResourcePackStatus,
-  AdvancementTab,
-  SelectTrade,
-  SetBeaconEffect,
-  HeldItemChange,
-  UpdateCommandBlock,
-  UpdateCommandBlockMinecart,
-  CreativeInventoryAction,
-  UpdateJigsawBlock,
-  UpdateStructureBlock,
-  UpdateSign,
-  Animation,
-  Spectate,
-  PlayerBlockPlace,
-  UseItem,
-}
+// Is the ID enum
+include!(concat!(env!("OUT_DIR"), "/protocol/sb.rs"));
 
 /// A grpc packet ID. This is roughly the same as the latest packet version, but
 /// in any order.
