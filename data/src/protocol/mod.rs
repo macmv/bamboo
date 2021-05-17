@@ -62,7 +62,6 @@ pub enum PacketField {
 
   // Sizable fields
   NBT,
-  Slot,
   OptionalNBT,
   RestBuffer, // The rest of the buffer
   EntityMetadata,
@@ -111,6 +110,7 @@ pub struct Packet {
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Version {
   // The index is the packet's id. The names should be mapped to the indicies as well.
+  pub types:     HashMap<String, PacketField>,
   pub to_client: Vec<Packet>,
   pub to_server: Vec<Packet>,
 }

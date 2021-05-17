@@ -51,6 +51,7 @@ pub(super) fn load_all(path: &Path) -> Result<HashMap<String, Version>, Box<dyn 
           Ok(v) => v.into_iter().map(|v| v.unwrap()).collect(),
           Err(e) => panic!("error while parsing serverbound packets for version {}: {}", &name, e),
         },
+        types,
       },
     );
   }
@@ -167,7 +168,6 @@ fn parse_type(v: json::Type, types: &HashMap<String, PacketField>) -> PacketFiel
 
       "nbt" => PacketField::NBT,
       "optionalNbt" => PacketField::OptionalNBT,
-      "slot" => PacketField::Slot,
       "restBuffer" => PacketField::RestBuffer,
       "entityMetadata" => PacketField::RestBuffer,
 

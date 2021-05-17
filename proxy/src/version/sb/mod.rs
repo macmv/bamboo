@@ -18,7 +18,9 @@ impl Generator {
   }
 
   pub fn convert(&self, v: ProtocolVersion, mut p: Packet) -> io::Result<sb::Packet> {
-    let spec = &self.versions[&v].packets[p.id() as usize];
+    let ver = &self.versions[&v];
+    let types = &ver.types;
+    let spec = &ver.packets[p.id() as usize];
     dbg!(&spec.name, p.id());
     let mut out = sb::Packet::new(sb::ID::from_str(&spec.name));
     for (n, f) in &spec.fields {
@@ -37,6 +39,12 @@ impl Generator {
         PacketField::Bool => out.set_bool(n.into(), p.read_bool()),
         PacketField::RestBuffer => out.set_byte_arr(n.into(), p.read_all()),
         PacketField::String => out.set_str(n.into(), p.read_str()),
+        PacketField::DefinedType(v) => match types.get(v) {
+          Some(v) => {
+            dbg!(n, v);
+          }
+          None => unreachable!("unknown defined type: {}", v),
+        },
         v => unreachable!("invalid packet field {:?}", v),
       }
     }

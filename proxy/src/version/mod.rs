@@ -17,6 +17,7 @@ pub struct Generator {
 struct PacketVersion {
   names:   HashMap<String, usize>,
   packets: Vec<data::protocol::Packet>,
+  types:   HashMap<String, data::protocol::PacketField>,
 }
 
 impl Default for Generator {
@@ -39,6 +40,7 @@ impl Generator {
         k,
         PacketVersion {
           names:   v.to_client.iter().enumerate().map(|(i, p)| (p.name.clone(), i)).collect(),
+          types:   v.types.clone(),
           packets: v.to_client,
         },
       );
@@ -46,6 +48,7 @@ impl Generator {
         k,
         PacketVersion {
           names:   v.to_server.iter().enumerate().map(|(i, p)| (p.name.clone(), i)).collect(),
+          types:   v.types,
           packets: v.to_server,
         },
       );
