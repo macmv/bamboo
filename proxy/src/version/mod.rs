@@ -39,14 +39,14 @@ impl Generator {
       serde_json::from_str(include_str!(concat!(env!("OUT_DIR"), "/protocol/versions.json")))
         .unwrap();
     let v: HashMap<ProtocolVersion, data::protocol::Version> =
-      v.into_iter().map(|(k, v)| (ProtocolVersion::from_str(&k), v)).collect();
+      v.into_iter().map(|(k, v)| (ProtocolVersion::parse_str(&k), v)).collect();
     let mut to_client = HashMap::new();
     let mut to_server = HashMap::new();
     for (k, v) in v.into_iter() {
       to_client.insert(
         k,
         PacketVersion {
-          ids:     generate_ids(&v.to_client, |name| CbID::from_str(name).to_i32()),
+          ids:     generate_ids(&v.to_client, |name| CbID::parse_str(name).to_i32()),
           types:   v.types.clone(),
           packets: v.to_client,
         },
@@ -54,7 +54,7 @@ impl Generator {
       to_server.insert(
         k,
         PacketVersion {
-          ids:     generate_ids(&v.to_server, |name| SbID::from_str(name).to_i32()),
+          ids:     generate_ids(&v.to_server, |name| SbID::parse_str(name).to_i32()),
           types:   v.types,
           packets: v.to_server,
         },

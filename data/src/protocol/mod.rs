@@ -182,7 +182,9 @@ fn generate_ids(f: &mut File, packets: &[String]) -> io::Result<()> {
   }
   writeln!(f, "}}")?;
   writeln!(f, "impl ID {{")?;
-  writeln!(f, "  pub fn from_str(s: &str) -> Self {{")?;
+  writeln!(f, "  /// Parses the given string as a packet id. The string should be in")?;
+  writeln!(f, "  /// snake case.")?;
+  writeln!(f, "  pub fn parse_str(s: &str) -> Self {{")?;
   writeln!(f, "    match s {{")?;
   for n in packets {
     let name = n.to_case(Case::Pascal);

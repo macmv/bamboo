@@ -21,7 +21,7 @@ impl Generator {
     let ver = &self.versions[&v];
     let types = &ver.types;
     let spec = &ver.packets[p.id() as usize];
-    let mut out = sb::Packet::new(sb::ID::from_str(&spec.name));
+    let mut out = sb::Packet::new(sb::ID::parse_str(&spec.name));
     for (n, f) in &spec.fields {
       match f {
         PacketField::Int(v) => match v {

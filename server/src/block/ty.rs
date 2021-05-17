@@ -1,5 +1,3 @@
-use common::version::BlockVersion;
-
 use super::Kind;
 
 /// A single block type. This is different from a block kind, which is more

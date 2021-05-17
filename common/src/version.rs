@@ -124,13 +124,16 @@ impl ProtocolVersion {
   }
   /// Converts the given string to a protocol version. This string should be in
   /// the same format as the enums. That is, V1_12_2 would get
-  /// `ProtocolVersion::V1_12_2`.
-  pub fn from_str(s: &str) -> Self {
+  /// `ProtocolVersion::V1_12_2`. This is different than
+  /// [`from_str`](Self::from_str), because this will return [`Self::Invalid`]
+  /// if the string could not be parsed.
+  pub fn parse_str(s: &str) -> Self {
     match s.parse() {
       Ok(v) => v,
       Err(_) => Self::Invalid,
     }
   }
+
   /// Returns the protocol id. This is the version that is sent to the server
   /// from the client. If this is 0, then this is an invalid protocol.
   pub fn id(&self) -> u32 {

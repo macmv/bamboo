@@ -12,6 +12,10 @@ use common::version::BlockVersion;
 /// so you should only ever create one. The
 /// [`WorldManager`](crate::world::WorldManager) has one of these which you can
 /// use.
+///
+/// This type does not implement [`Default`], because it is very expensive to
+/// create one of these. A new one should only be constructed explicitly, and
+/// should never be neccessary.
 pub struct Converter {
   versions: Vec<Version>,
 }
@@ -22,6 +26,7 @@ impl Converter {
   /// Instead, use
   /// [`WorldManager::get_converter`](crate::world::WorldManager::
   /// get_converter).
+  #[allow(clippy::new_without_default)]
   pub fn new() -> Self {
     Self { versions: generate_versions() }
   }

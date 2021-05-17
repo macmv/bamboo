@@ -1,13 +1,12 @@
-use num_derive::{FromPrimitive, ToPrimitive};
-use prost::{DecodeError, EncodeError};
-use std::{convert::TryInto, fmt, io};
-
 use super::other::Other;
 use crate::{
   math::{Pos, UUID},
   proto,
   proto::packet_field::Type as FieldType,
 };
+use num_derive::{FromPrimitive, ToPrimitive};
+use prost::{DecodeError, EncodeError};
+use std::{convert::TryInto, fmt, io};
 
 #[derive(Clone, Debug)]
 pub struct Packet {
@@ -207,16 +206,6 @@ impl ID {
 include!(concat!(env!("OUT_DIR"), "/protocol/cb.rs"));
 
 macro_rules! id_init {
-  ($($ty: ident: $num: expr),*) => {
-    proto::Packet {
-      $(
-        $ty: vec![Default::default(); $num],
-      )*
-      ..Default::default()
-    }
-  };
-}
-macro_rules! id_init_other {
   ($($ty: ident: $num: expr),*) => {
     proto::Packet {
       $(
