@@ -30,7 +30,7 @@ impl Connection {
         Some(p) => sb::Packet::from_proto(p),
         None => break 'running,
       };
-      info!("got packet from client {:?}", p);
+      // info!("got packet from client {:?}", p);
     }
     self.closed.store(true, Ordering::SeqCst);
     Ok(())

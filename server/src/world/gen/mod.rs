@@ -1,0 +1,21 @@
+use super::chunk::MultiChunk;
+use crate::block;
+use common::math::Pos;
+
+pub struct Generator {}
+
+impl Generator {
+  pub fn new() -> Self {
+    Self {}
+  }
+  pub fn generate(&self, c: &mut MultiChunk) {
+    for x in 0..16 {
+      for y in 0..2 {
+        for z in 0..16 {
+          dbg!(x, y, z);
+          c.set_kind(Pos::new(x, y, z), block::Kind::Stone).unwrap();
+        }
+      }
+    }
+  }
+}

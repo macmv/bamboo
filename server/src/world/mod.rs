@@ -1,4 +1,5 @@
 mod chunk;
+mod gen;
 
 use std::{
   collections::HashMap,
@@ -23,6 +24,7 @@ use common::{
 
 use crate::{block, net::Connection, player::Player};
 use chunk::MultiChunk;
+use gen::Generator;
 
 // pub struct ChunkRef<'a> {
 //   pos:    ChunkPos,
@@ -40,7 +42,8 @@ pub struct World {
   chunks:    RwLock<HashMap<ChunkPos, Arc<StdMutex<MultiChunk>>>>,
   players:   Mutex<Vec<Arc<Mutex<Player>>>>,
   eid:       Arc<AtomicI32>,
-  converter: Arc<block::Converter>,
+  converter: Arc<block::TypeConverter>,
+  generator: StdMutex<Generator>,
 }
 
 #[derive(Clone)]
@@ -48,16 +51,17 @@ pub struct WorldManager {
   // This will always have at least 1 entry. The world at index 0 is considered the "default"
   // world.
   worlds:    Vec<Arc<World>>,
-  converter: Arc<block::Converter>,
+  converter: Arc<block::TypeConverter>,
 }
 
 impl World {
-  pub fn new(converter: Arc<block::Converter>) -> Self {
+  pub fn new(converter: Arc<block::TypeConverter>) -> Self {
     World {
       chunks: RwLock::new(HashMap::new()),
       players: Mutex::new(vec![]),
       eid: Arc::new(1.into()),
       converter,
+      generator: StdMutex::new(Generator::new()),
     }
   }
   async fn new_player(self: Arc<Self>, conn: Arc<Connection>, player: Player) {
@@ -153,9 +157,11 @@ impl World {
       // If we do, we lock it for writing
       let mut chunks = self.chunks.write().unwrap();
       // Make sure that the chunk was not written in between locking this chunk
-      chunks
-        .entry(pos)
-        .or_insert_with(|| Arc::new(StdMutex::new(MultiChunk::new(self.converter.clone()))));
+      chunks.entry(pos).or_insert_with(|| {
+        let mut c = MultiChunk::new(self.converter.clone());
+        self.generator.lock().unwrap().generate(&mut c);
+        Arc::new(StdMutex::new(c))
+      });
     }
     let chunks = self.chunks.read().unwrap();
     let c = chunks[&pos].lock().unwrap();
@@ -165,7 +171,7 @@ impl World {
   /// This sets a block within the world. It will return an error if the
   /// position is outside of the world.
   pub fn set_block(&self, pos: Pos, ty: block::Type) -> Result<(), PosError> {
-    self.chunk(pos.chunk(), |mut c| c.set_block(pos.chunk_rel(), &ty))
+    self.chunk(pos.chunk(), |mut c| c.set_type(pos.chunk_rel(), &ty))
   }
 }
 
@@ -177,7 +183,8 @@ impl Default for WorldManager {
 
 impl WorldManager {
   pub fn new() -> Self {
-    let mut w = WorldManager { converter: Arc::new(block::Converter::new()), worlds: vec![] };
+    let mut w =
+      WorldManager { converter: Arc::new(block::TypeConverter::new()), worlds: vec![] };
     w.add_world();
     w
   }
@@ -187,8 +194,9 @@ impl WorldManager {
   }
 
   /// Returns the current converter. This can be used to convert old block ids
-  /// to new ones, and vice versa.
-  pub fn get_converter(&self) -> &block::Converter {
+  /// to new ones, and vice versa. This can also be used to convert block kinds
+  /// to types.
+  pub fn get_converter(&self) -> &block::TypeConverter {
     &self.converter
   }
 

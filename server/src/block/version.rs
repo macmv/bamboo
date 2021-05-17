@@ -1,5 +1,7 @@
 use std::collections::HashMap;
 
+use super::{data, data::Data, Kind};
+
 use common::version::BlockVersion;
 
 /// This is a version converter. It is how all block ids are converter between
@@ -16,11 +18,15 @@ use common::version::BlockVersion;
 /// This type does not implement [`Default`], because it is very expensive to
 /// create one of these. A new one should only be constructed explicitly, and
 /// should never be neccessary.
-pub struct Converter {
+pub struct TypeConverter {
+  // Each index into the outer vec is a kind id. Indexing into the inner vec is each variant of the
+  // given kind. These are in such an order that iterating through both of them will get all block
+  // types in the same order as the global palette of the latest version.
+  kinds:    Vec<Data>,
   versions: Vec<Version>,
 }
 
-impl Converter {
+impl TypeConverter {
   /// Creates a new converter. This will parse the csv file, and allocate around
   /// 600K of memory. Do not call this unless you have a very good reason.
   /// Instead, use
@@ -28,7 +34,7 @@ impl Converter {
   /// get_converter).
   #[allow(clippy::new_without_default)]
   pub fn new() -> Self {
-    Self { versions: generate_versions() }
+    Self { kinds: data::generate_kinds(), versions: generate_versions() }
   }
 
   /// Takes the given old block id, which is part of `ver`, and returns the new
@@ -47,6 +53,12 @@ impl Converter {
       Some(v) => *v,
       None => 0,
     }
+  }
+
+  /// Gets all the data for a given block kind. This includes all the types, the
+  /// default type, and state ids.
+  pub fn get(&self, k: Kind) -> &Data {
+    &self.kinds[k.to_u32() as usize]
   }
 }
 

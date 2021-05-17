@@ -1,5 +1,4 @@
 use super::{Kind, Type};
-use std::collections::HashMap;
 
 /// Any data specific to a block kind. This includes all function handlers for
 /// when a block gets placed/broken, and any custom functionality a block might
@@ -11,6 +10,17 @@ pub struct Data {
   types:         Vec<Type>,
   // The default type. This is an index into types.
   default_index: u32,
+}
+
+impl Data {
+  /// Returns the default type for this kind. This is usually what should be
+  /// placed down when the user right clicks on a block. Sometimes, for blocks
+  /// like stairs or doors, the type that should be placed must be computed when
+  /// they place the block, as things like their position/rotation affect which
+  /// block gets placed.
+  pub fn default_type(&self) -> &Type {
+    &self.types[self.default_index as usize]
+  }
 }
 
 /// Generates a table from all block kinds to any block data that kind has. This
@@ -26,8 +36,8 @@ pub struct Data {
 ///
 /// Most of this function is generated at compile time. See
 /// `gens/src/block/mod.rs` and `build.rs` for more.
-pub fn generate_data() -> HashMap<Kind, Data> {
-  let mut blocks = HashMap::new();
+pub fn generate_kinds() -> Vec<Data> {
+  let mut blocks = vec![];
   include!(concat!(env!("OUT_DIR"), "/block/data.rs"));
   blocks
 }
@@ -38,7 +48,7 @@ mod tests {
 
   #[test]
   fn test_generate() {
-    dbg!(generate_data());
+    dbg!(generate_kinds());
     // Used to show debug output.
     // assert!(false);
   }
