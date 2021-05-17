@@ -49,7 +49,13 @@ impl ChunkSection for Section {
     proto::chunk::Section::default()
   }
   fn to_old_proto(&self, f: &dyn Fn(u32) -> u32) -> proto::chunk::Section {
-    proto::chunk::Section::default()
+    let mut data = Vec::with_capacity(self.data.len() * 2);
+    for id in self.data {
+      // Converts it to an old id
+      let id = f(id.into()) as u16;
+      data.extend_from_slice(&id.to_le_bytes());
+    }
+    proto::chunk::Section { data, ..Default::default() }
   }
 }
 

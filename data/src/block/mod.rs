@@ -79,11 +79,18 @@ pub fn generate(dir: &Path) -> Result<(), Box<dyn Error>> {
       writeln!(f, "  state: {},", b.id)?;
       writeln!(f, "  default_index: {},", b.default_index)?;
       writeln!(f, "  types: vec![")?;
-      for s in &b.states {
+      if b.states.is_empty() {
         writeln!(f, "    Type{{")?;
         writeln!(f, "      kind: Kind::{},", name)?;
-        writeln!(f, "      state: {},", s.id)?;
+        writeln!(f, "      state: {},", b.id)?;
         writeln!(f, "    }},")?;
+      } else {
+        for s in &b.states {
+          writeln!(f, "    Type{{")?;
+          writeln!(f, "      kind: Kind::{},", name)?;
+          writeln!(f, "      state: {},", s.id)?;
+          writeln!(f, "    }},")?;
+        }
       }
       writeln!(f, "  ],")?;
       writeln!(f, "}});")?;

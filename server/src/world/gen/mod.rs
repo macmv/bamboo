@@ -12,8 +12,7 @@ impl Generator {
     for x in 0..16 {
       for y in 0..2 {
         for z in 0..16 {
-          dbg!(x, y, z);
-          c.set_kind(Pos::new(x, y, z), block::Kind::Stone).unwrap();
+          c.set_kind(Pos::new(x, y, z), block::Kind::Grass).unwrap();
         }
       }
     }
