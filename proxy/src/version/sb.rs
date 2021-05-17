@@ -21,7 +21,6 @@ impl Generator {
     let ver = &self.versions[&v];
     let types = &ver.types;
     let spec = &ver.packets[p.id() as usize];
-    dbg!(&spec.name, p.id());
     let mut out = sb::Packet::new(sb::ID::from_str(&spec.name));
     for (n, f) in &spec.fields {
       match f {
