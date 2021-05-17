@@ -77,8 +77,12 @@ impl World {
         let p = player.lock().await;
 
         let mut out = cb::Packet::new(cb::ID::Login);
-        out.set_i32("eid", self.eid());
-        out.set_byte("gamemode", 1); // Creative
+        out.set_i32("entity_id", self.eid());
+        out.set_byte("game_mode", 1); // Creative
+        out.set_byte("difficulty", 1); // Normal
+        out.set_byte("dimension", 0); // Overworld
+        out.set_str("level_type", "default".into());
+        out.set_byte("max_players", 0); // Ignored
         out.set_bool("reduced_debug_info", false); // Don't reduce debug info
         conn.send(out).await;
 

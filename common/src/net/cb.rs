@@ -101,10 +101,11 @@ impl Packet {
         return Err(io::Error::new(io::ErrorKind::InvalidData, format!("no value for key {}", n)))
       }
     };
-    if proto::packet_field::Type::from_i32(field.ty).unwrap() != ty {
+    let got = proto::packet_field::Type::from_i32(field.ty).unwrap();
+    if got != ty {
       return Err(io::Error::new(
         io::ErrorKind::InvalidData,
-        format!("expected a {:?}, got {}", ty, field.ty),
+        format!("expected {} to be a {:?}, got {:?}", n, ty, got),
       ));
     }
     Ok(field)
@@ -162,25 +163,25 @@ impl fmt::Display for Packet {
     for (n, v) in self.pb.fields.iter() {
       match FieldType::from_i32(v.ty).unwrap() {
         FieldType::Bool => writeln!(f, "  {}: {}", n, v.bool),
-        FieldType::Byte => writeln!(f, "  {}: {}", n, v.byte),
-        FieldType::Short => writeln!(f, "  {}: {}", n, v.short),
-        FieldType::Int => writeln!(f, "  {}: {}", n, v.int),
-        FieldType::Long => writeln!(f, "  {}: {}", n, v.long),
-        FieldType::Float => writeln!(f, "  {}: {}", n, v.float),
-        FieldType::Double => writeln!(f, "  {}: {}", n, v.double),
-        FieldType::Str => writeln!(f, "  {}: {}", n, v.str),
+        FieldType::Byte => writeln!(f, "  {}: {} (byte)", n, v.byte),
+        FieldType::Short => writeln!(f, "  {}: {} (short)", n, v.short),
+        FieldType::Int => writeln!(f, "  {}: {} (int)", n, v.int),
+        FieldType::Long => writeln!(f, "  {}: {} (long)", n, v.long),
+        FieldType::Float => writeln!(f, "  {}: {} (float)", n, v.float),
+        FieldType::Double => writeln!(f, "  {}: {} (double)", n, v.double),
+        FieldType::Str => writeln!(f, "  {}: \"{}\"", n, v.str),
         FieldType::Uuid => writeln!(f, "  {}: {:?}", n, v.uuid),
         FieldType::Pos => writeln!(f, "  {}: {}", n, v.pos),
-        FieldType::Nbt => writeln!(f, "  {}: {:?}", n, v.nbt),
+        FieldType::Nbt => writeln!(f, "  {}: {:?}", n, v.nbt), // TODO: Format this as nbt
         FieldType::ByteArr => writeln!(
           f,
-          "  {}: {:?}\n  byte_arrs as strings: {:?}",
+          "  {}: {:?}\n  byte_arr as string: {:?}",
           n,
           v.byte_arr,
           String::from_utf8(v.byte_arr.clone())
         ),
-        FieldType::IntArr => writeln!(f, "  {}: {:?}", n, v.int_arr),
-        FieldType::LongArr => writeln!(f, "  {}: {:?}", n, v.long_arr),
+        FieldType::IntArr => writeln!(f, "  {}: {:?} (int arr)", n, v.int_arr),
+        FieldType::LongArr => writeln!(f, "  {}: {:?} (long arr)", n, v.long_arr),
         FieldType::StrArr => writeln!(f, "  {}: {:?}", n, v.str_arr),
       }?;
     }

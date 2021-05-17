@@ -1,4 +1,5 @@
 use super::{json, BitField, CountType, FloatType, IntType, Packet, PacketField, Version};
+use convert_case::{Case, Casing};
 use std::{collections::HashMap, error::Error, fs, io, io::ErrorKind, path::Path};
 
 pub(super) fn load_all(path: &Path) -> Result<HashMap<String, Version>, Box<dyn Error>> {
@@ -194,7 +195,10 @@ fn parse_type(v: json::Type, types: &HashMap<String, PacketField>) -> PacketFiel
     json::TypeValue::Container(v) => {
       let mut fields = HashMap::new();
       for c in v {
-        fields.insert(c.name.clone().unwrap_or_else(|| "unnamed".into()), parse_type(c.ty, types));
+        fields.insert(
+          c.name.clone().unwrap_or_else(|| "unnamed".into()).to_case(Case::Snake),
+          parse_type(c.ty, types),
+        );
       }
       PacketField::Container(fields)
     }

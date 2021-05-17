@@ -32,8 +32,8 @@ impl Generator {
     Generator { gens, versions }
   }
 
-  pub fn convert(&self, v: ProtocolVersion, p: cb::Packet) -> io::Result<Option<Packet>> {
-    println!("sending packet to client: {}", &p);
+  pub fn convert(&self, v: ProtocolVersion, p: &cb::Packet) -> io::Result<Option<Packet>> {
+    println!("sending packet to client: {}", p);
     let ver = &self.versions[&v];
     // This is the old id
     let id = match ver.ids[p.id().to_i32() as usize] {
@@ -46,7 +46,6 @@ impl Generator {
     // Old id can be used to index into packets
     let spec = &ver.packets[id];
     let mut out = Packet::new(0x00, v);
-    dbg!(&spec.fields);
     for (n, f) in &spec.fields {
       match f {
         PacketField::Int(v) => match v {

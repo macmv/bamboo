@@ -63,7 +63,13 @@ impl Generator {
     Generator { cb: cb::Generator::new(to_client), sb: sb::Generator::new(to_server) }
   }
   pub fn clientbound(&self, v: ProtocolVersion, p: CbPacket) -> io::Result<Option<Packet>> {
-    self.cb.convert(v, p)
+    match self.cb.convert(v, &p) {
+      Ok(v) => Ok(v),
+      Err(e) => Err(io::Error::new(
+        io::ErrorKind::InvalidData,
+        format!("error while parsing packet {}: {}", &p, e),
+      )),
+    }
   }
   pub fn serverbound(&self, v: ProtocolVersion, p: Packet) -> io::Result<SbPacket> {
     self.sb.convert(v, p)
