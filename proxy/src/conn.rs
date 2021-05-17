@@ -111,7 +111,7 @@ impl ClientListener {
           },
           Ok(v) => v,
         };
-        info!("got proto: {}", &sb);
+        trace!("sending proto: {}", &sb);
         self.server.send(sb.into_proto()).await?;
       }
     }

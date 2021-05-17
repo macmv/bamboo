@@ -30,14 +30,24 @@ impl ID {
 }
 
 macro_rules! add_fn {
-  ($name: ident, $key: ident, $ty: ty) => {
+  ($name: ident, $key: ident, $ty_name: ident, $ty: ty) => {
     pub fn $name(&mut self, n: String, v: $ty) {
-      self.pb.fields.insert(n, proto::PacketField { $key: v, ..Default::default() });
+      self.pb.fields.insert(
+        n,
+        proto::PacketField { ty: FieldType::$ty_name.into(), $key: v, ..Default::default() },
+      );
     }
   };
-  ($name: ident, $key: ident, $ty: ty, $convert: expr) => {
+  ($name: ident, $key: ident, $ty_name: ident, $ty: ty, $convert: expr) => {
     pub fn $name(&mut self, n: String, v: $ty) {
-      self.pb.fields.insert(n, proto::PacketField { $key: $convert(v), ..Default::default() });
+      self.pb.fields.insert(
+        n,
+        proto::PacketField {
+          ty: FieldType::$ty_name.into(),
+          $key: $convert(v),
+          ..Default::default()
+        },
+      );
     }
   };
 }
@@ -57,20 +67,20 @@ impl Packet {
   pub fn id(&self) -> ID {
     self.id
   }
-  add_fn!(set_bool, bool, bool);
-  add_fn!(set_byte, byte, u8, |v: u8| v.into());
-  add_fn!(set_short, short, i16, |v: i16| v.into());
-  add_fn!(set_int, int, i32);
-  add_fn!(set_long, long, u64);
-  add_fn!(set_float, float, f32);
-  add_fn!(set_double, double, f64);
-  add_fn!(set_str, str, String);
-  add_fn!(set_uuid, uuid, UUID, |v: UUID| { Some(v.as_proto()) });
-  add_fn!(set_pos, pos, Pos, |v: Pos| { v.to_u64() });
-  add_fn!(set_byte_arr, byte_arr, Vec<u8>);
-  add_fn!(set_int_arr, int_arr, Vec<i32>);
-  add_fn!(set_long_arr, long_arr, Vec<u64>);
-  add_fn!(set_str_arr, str_arr, Vec<String>);
+  add_fn!(set_bool, bool, Bool, bool);
+  add_fn!(set_byte, byte, Byte, u8, |v: u8| v.into());
+  add_fn!(set_short, short, Short, i16, |v: i16| v.into());
+  add_fn!(set_int, int, Int, i32);
+  add_fn!(set_long, long, Long, u64);
+  add_fn!(set_float, float, Float, f32);
+  add_fn!(set_double, double, Double, f64);
+  add_fn!(set_str, str, Str, String);
+  add_fn!(set_uuid, uuid, Uuid, UUID, |v: UUID| { Some(v.as_proto()) });
+  add_fn!(set_pos, pos, Pos, Pos, |v: Pos| { v.to_u64() });
+  add_fn!(set_byte_arr, byte_arr, ByteArr, Vec<u8>);
+  add_fn!(set_int_arr, int_arr, IntArr, Vec<i32>);
+  add_fn!(set_long_arr, long_arr, LongArr, Vec<u64>);
+  add_fn!(set_str_arr, str_arr, StrArr, Vec<String>);
 }
 
 macro_rules! value_non_empty {
