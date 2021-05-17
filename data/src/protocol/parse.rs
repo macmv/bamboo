@@ -79,7 +79,7 @@ fn generate_packets(
   mut types: HashMap<String, PacketField>,
 ) -> io::Result<Vec<Option<Packet>>> {
   generate_types(json, &mut types)?;
-  let mut ordered_packets = vec![];
+  let mut packets = vec![];
 
   match types.get("packet") {
     Some(PacketField::Container(values)) => {
@@ -102,21 +102,23 @@ fn generate_packets(
         }
       };
       for (k, v) in names {
+        // The packet name. This looks up the given key in a list of keys to names (see
+        // the json for more).
         let name = params[k].clone().into_defined().unwrap().clone();
-        let v = *v as usize;
-        if v >= ordered_packets.len() {
-          for _ in ordered_packets.len()..v + 1 {
-            ordered_packets.push(None);
+        // The packet id
+        let id = *v as usize;
+        if id >= packets.len() {
+          for _ in packets.len()..id + 1 {
+            packets.push(None);
           }
         }
-        ordered_packets[v] =
-          Some(Packet { fields: types[&name].clone().into_container().unwrap(), name });
+        packets[id] = Some(Packet { fields: types[&name].clone().into_container().unwrap(), name });
       }
     }
     _ => return Err(io::Error::new(ErrorKind::InvalidData, "did not get mappings field")),
   }
 
-  Ok(ordered_packets)
+  Ok(packets)
 }
 
 fn parse_int(v: &str) -> Option<IntType> {

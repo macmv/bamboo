@@ -14,6 +14,11 @@ pub struct Generator {
   sb: sb::Generator,
 }
 
+struct PacketVersion {
+  names:   HashMap<String, usize>,
+  packets: Vec<data::protocol::Packet>,
+}
+
 impl Default for Generator {
   fn default() -> Self {
     Generator::new()
@@ -30,8 +35,20 @@ impl Generator {
     let mut to_client = HashMap::new();
     let mut to_server = HashMap::new();
     for (k, v) in v.into_iter() {
-      to_client.insert(k, v.to_client);
-      to_server.insert(k, v.to_server);
+      to_client.insert(
+        k,
+        PacketVersion {
+          names:   v.to_client.iter().enumerate().map(|(i, p)| (p.name.clone(), i)).collect(),
+          packets: v.to_client,
+        },
+      );
+      to_server.insert(
+        k,
+        PacketVersion {
+          names:   v.to_server.iter().enumerate().map(|(i, p)| (p.name.clone(), i)).collect(),
+          packets: v.to_server,
+        },
+      );
     }
     Generator { cb: cb::Generator::new(to_client), sb: sb::Generator::new(to_server) }
   }

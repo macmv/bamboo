@@ -101,6 +101,7 @@ pub struct Packet {
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Version {
+  // The index is the packet's id. The names should be mapped to the indicies as well.
   pub to_client: Vec<Packet>,
   pub to_server: Vec<Packet>,
 }

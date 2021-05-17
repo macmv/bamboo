@@ -3,6 +3,8 @@ use std::{collections::HashMap, io, io::ErrorKind, sync::Mutex};
 
 use crate::packet::Packet;
 
+use super::PacketVersion;
+
 mod v1_8;
 
 trait PacketFn = Fn(cb::Packet, ProtocolVersion) -> io::Result<Packet> + Send;
@@ -19,11 +21,11 @@ impl PacketSpec {
 
 pub(super) struct Generator {
   gens:     HashMap<ProtocolVersion, PacketSpec>,
-  versions: HashMap<ProtocolVersion, Vec<data::protocol::Packet>>,
+  versions: HashMap<ProtocolVersion, PacketVersion>,
 }
 
 impl Generator {
-  pub fn new(versions: HashMap<ProtocolVersion, Vec<data::protocol::Packet>>) -> Generator {
+  pub fn new(versions: HashMap<ProtocolVersion, PacketVersion>) -> Generator {
     let mut gens = HashMap::new();
     gens.insert(ProtocolVersion::V1_8, v1_8::gen_spec());
     Generator { gens, versions }
@@ -31,6 +33,8 @@ impl Generator {
 
   pub fn convert(&self, v: ProtocolVersion, p: cb::Packet) -> io::Result<Packet> {
     dbg!("sending packet to client: {:?}", &p);
+    let index = self.versions[&v].names[p.name()];
+    let spec = &self.versions[&v].packets[p.id().to_i32() as usize];
     match self.gens.get(&v) {
       Some(g) => match g.gens.get(&p.id()) {
         Some(g) => g.lock().unwrap()(p, v),
