@@ -101,18 +101,21 @@ fn generate_packets(
           ))
         }
       };
-      for (k, v) in names {
-        // The packet name. This looks up the given key in a list of keys to names (see
-        // the json for more).
-        let name = params[k].clone().into_defined().unwrap().clone();
+      for (short_name, id) in names {
+        // short_name is something like 'teams', while long_name is something like
+        // 'packet_teams'.
+        let long_name = params[short_name].clone().into_defined().unwrap().clone();
         // The packet id
-        let id = *v as usize;
+        let id = *id as usize;
         if id >= packets.len() {
           for _ in packets.len()..id + 1 {
             packets.push(None);
           }
         }
-        packets[id] = Some(Packet { fields: types[&name].clone().into_container().unwrap(), name });
+        packets[id] = Some(Packet {
+          fields: types[&long_name].clone().into_container().unwrap(),
+          name:   short_name.into(),
+        });
       }
     }
     _ => return Err(io::Error::new(ErrorKind::InvalidData, "did not get mappings field")),

@@ -1,9 +1,18 @@
 mod json;
 mod parse;
 
+use convert_case::{Case, Casing};
+use itertools::Itertools;
 use serde_derive::Deserialize;
 use serde_derive::Serialize;
-use std::{collections::HashMap, error::Error, fs, fs::File, io::Write, path::Path};
+use std::{
+  collections::{HashMap, HashSet},
+  error::Error,
+  fs,
+  fs::File,
+  io::Write,
+  path::Path,
+};
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub enum IntType {
@@ -119,6 +128,46 @@ pub fn store(dir: &Path) -> Result<(), Box<dyn Error>> {
     // faster to compile than generating source code.
     let mut f = File::create(&dir.join("versions.json"))?;
     writeln!(f, "{}", serde_json::to_string(&versions)?)?;
+  }
+  {
+    // Generates the packet id enum, for clientbound and serverbound packets
+    let mut to_client = HashSet::new();
+    let mut to_server = HashSet::new();
+
+    for (_, v) in versions {
+      for p in v.to_client {
+        to_client.insert(p.name);
+      }
+      for p in v.to_server {
+        to_server.insert(p.name);
+      }
+    }
+
+    let mut f = File::create(&dir.join("cb.rs"))?;
+    writeln!(f, "/// Auto generated packet ids. This is a combination of all packet")?;
+    writeln!(f, "/// names for all versions. Some of these packets are never used.")?;
+    writeln!(f, "#[derive(Clone, Copy, Debug, FromPrimitive, ToPrimitive, PartialEq, Eq, Hash)]")?;
+    writeln!(f, "pub enum ID {{")?;
+    // We always want a None type, to signify an invalid packet
+    writeln!(f, "  None,")?;
+    for n in to_client.iter().sorted() {
+      let name = n.to_case(Case::Pascal);
+      writeln!(f, "  {},", name)?;
+    }
+    writeln!(f, "}}")?;
+
+    let mut f = File::create(&dir.join("sb.rs"))?;
+    writeln!(f, "/// Auto generated packet ids. This is a combination of all packet")?;
+    writeln!(f, "/// names for all versions. Some of these packets are never used.")?;
+    writeln!(f, "#[derive(Clone, Copy, Debug, FromPrimitive, ToPrimitive, PartialEq, Eq, Hash)]")?;
+    writeln!(f, "pub enum ID {{")?;
+    // We always want a None type, to signify an invalid packet
+    writeln!(f, "  None,")?;
+    for n in to_server.iter().sorted() {
+      let name = n.to_case(Case::Pascal);
+      writeln!(f, "  {},", name)?;
+    }
+    writeln!(f, "}}")?;
   }
   Ok(())
 }

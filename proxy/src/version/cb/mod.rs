@@ -33,7 +33,7 @@ impl Generator {
 
   pub fn convert(&self, v: ProtocolVersion, p: cb::Packet) -> io::Result<Packet> {
     dbg!("sending packet to client: {:?}", &p);
-    let index = self.versions[&v].names[p.name()];
+    // let index = self.versions[&v].names[p.name()];
     let spec = &self.versions[&v].packets[p.id().to_i32() as usize];
     match self.gens.get(&v) {
       Some(g) => match g.gens.get(&p.id()) {

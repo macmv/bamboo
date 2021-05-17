@@ -76,7 +76,7 @@ impl World {
       {
         let p = player.lock().await;
 
-        let mut out = cb::Packet::new(cb::ID::JoinGame);
+        let mut out = cb::Packet::new(cb::ID::Login);
         out.set_i32("eid", self.eid());
         out.set_byte("gamemode", 1); // Creative
         out.set_bool("reduced_debug_info", false); // Don't reduce debug info
@@ -84,7 +84,7 @@ impl World {
 
         for x in -10..10 {
           for z in -10..10 {
-            let mut out = cb::Packet::new(cb::ID::ChunkData);
+            let mut out = cb::Packet::new(cb::ID::MapChunk);
             self.chunk(ChunkPos::new(x, z), |c| {
               let mut pb = c.to_proto(p.ver().block());
               pb.x = x;
@@ -95,7 +95,7 @@ impl World {
           }
         }
 
-        let mut out = cb::Packet::new(cb::ID::PlayerPositionAndLook);
+        let mut out = cb::Packet::new(cb::ID::Position);
         out.set_f64("x", 0.0); // X
         out.set_f64("y", 60.0); // Y
         out.set_f64("z", 0.0); // Z

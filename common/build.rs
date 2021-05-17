@@ -10,5 +10,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     .compile(&["proto/connection.proto"], &["proto"])
     .unwrap();
 
+  data::store_protocols();
+
   Ok(())
 }

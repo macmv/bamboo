@@ -19,7 +19,7 @@ pub(super) fn gen_spec() -> PacketSpec {
     out.write_varint(p.get_int("keep_alive_id")?); // Keep alive id
     Ok(out)
   });
-  spec.add(cb::ID::JoinGame, |p: cb::Packet, v: ProtocolVersion| {
+  spec.add(cb::ID::Login, |p: cb::Packet, v: ProtocolVersion| {
     let mut out = Packet::new(0x01, v);
     out.write_i32(p.get_int("eid")?); // EID
     out.write_u8(p.get_byte("gamemode")?); // Gamemode
@@ -30,13 +30,13 @@ pub(super) fn gen_spec() -> PacketSpec {
     out.write_bool(p.get_bool("reduced_debug_info")?);
     Ok(out)
   });
-  spec.add(cb::ID::ChatMessage, |p: cb::Packet, v: ProtocolVersion| {
+  spec.add(cb::ID::Chat, |p: cb::Packet, v: ProtocolVersion| {
     let mut out = Packet::new(0x02, v);
     out.write_str(p.get_str("message")?); // Message, json encoded
     out.write_u8(p.get_byte("position")?); // Position 0: chat box, 1: system message, 2: game info (above hotbar)
     Ok(out)
   });
-  spec.add(cb::ID::TimeUpdate, |p: cb::Packet, v: ProtocolVersion| {
+  spec.add(cb::ID::UpdateTime, |p: cb::Packet, v: ProtocolVersion| {
     let mut out = Packet::new(0x03, v);
     out.write_u64(p.get_long("age")?); // World age
     out.write_u64(p.get_long("time")?); // Time of day
@@ -62,7 +62,7 @@ pub(super) fn gen_spec() -> PacketSpec {
     out.write_str("default"); // Level type
     Ok(out)
   });
-  spec.add(cb::ID::PlayerPositionAndLook, |p: cb::Packet, v: ProtocolVersion| {
+  spec.add(cb::ID::Position, |p: cb::Packet, v: ProtocolVersion| {
     let mut out = Packet::new(0x08, v);
     out.write_f64(p.get_double("x")?); // X
     out.write_f64(p.get_double("y")?); // Y
@@ -72,12 +72,12 @@ pub(super) fn gen_spec() -> PacketSpec {
     out.write_u8(p.get_byte("flags")?); // Flags
     Ok(out)
   });
-  spec.add(cb::ID::HeldItemChange, |p: cb::Packet, v: ProtocolVersion| {
+  spec.add(cb::ID::HeldItemSlot, |p: cb::Packet, v: ProtocolVersion| {
     let mut out = Packet::new(0x09, v);
     out.write_u8(p.get_byte("slot")?); // Slot
     Ok(out)
   });
-  spec.add(cb::ID::ChunkData, |p: cb::Packet, v: ProtocolVersion| {
+  spec.add(cb::ID::MapChunk, |p: cb::Packet, v: ProtocolVersion| {
     let mut out = Packet::new(0x21, v);
     // TODO: Error handling should be done within the packet.
     let chunk = match p.read_other().unwrap() {
