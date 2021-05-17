@@ -59,6 +59,7 @@ impl Packet {
   }
   add_fn!(set_bool, bool, bool);
   add_fn!(set_byte, byte, u8, |v: u8| v.into());
+  add_fn!(set_short, short, i16, |v: i16| v.into());
   add_fn!(set_int, int, i32);
   add_fn!(set_long, long, u64);
   add_fn!(set_float, float, f32);

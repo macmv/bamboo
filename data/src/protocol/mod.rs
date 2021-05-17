@@ -142,6 +142,8 @@ pub fn store(dir: &Path) -> Result<(), Box<dyn Error>> {
         to_server.insert(p.name);
       }
     }
+    let to_client: Vec<String> = to_client.into_iter().sorted().collect();
+    let to_server: Vec<String> = to_server.into_iter().sorted().collect();
 
     let mut f = File::create(&dir.join("cb.rs"))?;
     writeln!(f, "/// Auto generated packet ids. This is a combination of all packet")?;
@@ -150,7 +152,7 @@ pub fn store(dir: &Path) -> Result<(), Box<dyn Error>> {
     writeln!(f, "pub enum ID {{")?;
     // We always want a None type, to signify an invalid packet
     writeln!(f, "  None,")?;
-    for n in to_client.iter().sorted() {
+    for n in &to_client {
       let name = n.to_case(Case::Pascal);
       writeln!(f, "  {},", name)?;
     }
@@ -163,10 +165,21 @@ pub fn store(dir: &Path) -> Result<(), Box<dyn Error>> {
     writeln!(f, "pub enum ID {{")?;
     // We always want a None type, to signify an invalid packet
     writeln!(f, "  None,")?;
-    for n in to_server.iter().sorted() {
+    for n in &to_server {
       let name = n.to_case(Case::Pascal);
       writeln!(f, "  {},", name)?;
     }
+    writeln!(f, "}}")?;
+    writeln!(f, "impl ID {{")?;
+    writeln!(f, "  pub fn from_str(s: &str) -> Self {{")?;
+    writeln!(f, "    match s {{")?;
+    for n in &to_server {
+      let name = n.to_case(Case::Pascal);
+      writeln!(f, "      \"{}\" => ID::{},", n, name)?;
+    }
+    writeln!(f, "      _ => ID::None,")?;
+    writeln!(f, "    }}")?;
+    writeln!(f, "  }}")?;
     writeln!(f, "}}")?;
   }
   Ok(())
