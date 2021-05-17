@@ -10,6 +10,7 @@ use std::{
   error::Error,
   fs,
   fs::File,
+  io,
   io::Write,
   path::Path,
 };
@@ -146,41 +147,36 @@ pub fn store(dir: &Path) -> Result<(), Box<dyn Error>> {
     let to_server: Vec<String> = to_server.into_iter().sorted().collect();
 
     let mut f = File::create(&dir.join("cb.rs"))?;
-    writeln!(f, "/// Auto generated packet ids. This is a combination of all packet")?;
-    writeln!(f, "/// names for all versions. Some of these packets are never used.")?;
-    writeln!(f, "#[derive(Clone, Copy, Debug, FromPrimitive, ToPrimitive, PartialEq, Eq, Hash)]")?;
-    writeln!(f, "pub enum ID {{")?;
-    // We always want a None type, to signify an invalid packet
-    writeln!(f, "  None,")?;
-    for n in &to_client {
-      let name = n.to_case(Case::Pascal);
-      writeln!(f, "  {},", name)?;
-    }
-    writeln!(f, "}}")?;
+    generate_ids(&mut f, &to_client)?;
 
     let mut f = File::create(&dir.join("sb.rs"))?;
-    writeln!(f, "/// Auto generated packet ids. This is a combination of all packet")?;
-    writeln!(f, "/// names for all versions. Some of these packets are never used.")?;
-    writeln!(f, "#[derive(Clone, Copy, Debug, FromPrimitive, ToPrimitive, PartialEq, Eq, Hash)]")?;
-    writeln!(f, "pub enum ID {{")?;
-    // We always want a None type, to signify an invalid packet
-    writeln!(f, "  None,")?;
-    for n in &to_server {
-      let name = n.to_case(Case::Pascal);
-      writeln!(f, "  {},", name)?;
-    }
-    writeln!(f, "}}")?;
-    writeln!(f, "impl ID {{")?;
-    writeln!(f, "  pub fn from_str(s: &str) -> Self {{")?;
-    writeln!(f, "    match s {{")?;
-    for n in &to_server {
-      let name = n.to_case(Case::Pascal);
-      writeln!(f, "      \"{}\" => ID::{},", n, name)?;
-    }
-    writeln!(f, "      _ => ID::None,")?;
-    writeln!(f, "    }}")?;
-    writeln!(f, "  }}")?;
-    writeln!(f, "}}")?;
+    generate_ids(&mut f, &to_server)?;
   }
+  Ok(())
+}
+
+fn generate_ids(f: &mut File, packets: &[String]) -> io::Result<()> {
+  writeln!(f, "/// Auto generated packet ids. This is a combination of all packet")?;
+  writeln!(f, "/// names for all versions. Some of these packets are never used.")?;
+  writeln!(f, "#[derive(Clone, Copy, Debug, FromPrimitive, ToPrimitive, PartialEq, Eq, Hash)]")?;
+  writeln!(f, "pub enum ID {{")?;
+  // We always want a None type, to signify an invalid packet
+  writeln!(f, "  None,")?;
+  for n in packets {
+    let name = n.to_case(Case::Pascal);
+    writeln!(f, "  {},", name)?;
+  }
+  writeln!(f, "}}")?;
+  writeln!(f, "impl ID {{")?;
+  writeln!(f, "  pub fn from_str(s: &str) -> Self {{")?;
+  writeln!(f, "    match s {{")?;
+  for n in packets {
+    let name = n.to_case(Case::Pascal);
+    writeln!(f, "      \"{}\" => ID::{},", n, name)?;
+  }
+  writeln!(f, "      _ => ID::None,")?;
+  writeln!(f, "    }}")?;
+  writeln!(f, "  }}")?;
+  writeln!(f, "}}")?;
   Ok(())
 }

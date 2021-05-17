@@ -1,6 +1,6 @@
 use num_derive::{FromPrimitive, ToPrimitive};
 use prost::{DecodeError, EncodeError};
-use std::{convert::TryInto, io};
+use std::{convert::TryInto, fmt, io};
 
 use super::other::Other;
 use crate::{
@@ -153,6 +153,39 @@ impl Packet {
   /// message returned can be any type.
   pub fn read_other(&self) -> Result<Other, DecodeError> {
     Other::from_any(self.pb.other.clone().unwrap())
+  }
+}
+impl fmt::Display for Packet {
+  fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+    writeln!(f, "Packet(")?;
+    writeln!(f, "  id: {:?}", self.id)?;
+    for (n, v) in self.pb.fields.iter() {
+      match FieldType::from_i32(v.ty).unwrap() {
+        FieldType::Bool => writeln!(f, "  {}: {}", n, v.bool),
+        FieldType::Byte => writeln!(f, "  {}: {}", n, v.byte),
+        FieldType::Short => writeln!(f, "  {}: {}", n, v.short),
+        FieldType::Int => writeln!(f, "  {}: {}", n, v.int),
+        FieldType::Long => writeln!(f, "  {}: {}", n, v.long),
+        FieldType::Float => writeln!(f, "  {}: {}", n, v.float),
+        FieldType::Double => writeln!(f, "  {}: {}", n, v.double),
+        FieldType::Str => writeln!(f, "  {}: {}", n, v.str),
+        FieldType::Uuid => writeln!(f, "  {}: {:?}", n, v.uuid),
+        FieldType::Pos => writeln!(f, "  {}: {}", n, v.pos),
+        FieldType::Nbt => writeln!(f, "  {}: {:?}", n, v.nbt),
+        FieldType::ByteArr => writeln!(
+          f,
+          "  {}: {:?}\n  byte_arrs as strings: {:?}",
+          n,
+          v.byte_arr,
+          String::from_utf8(v.byte_arr.clone())
+        ),
+        FieldType::IntArr => writeln!(f, "  {}: {:?}", n, v.int_arr),
+        FieldType::LongArr => writeln!(f, "  {}: {:?}", n, v.long_arr),
+        FieldType::StrArr => writeln!(f, "  {}: {:?}", n, v.str_arr),
+      }?;
+    }
+    writeln!(f, ")")?;
+    Ok(())
   }
 }
 
