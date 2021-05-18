@@ -1,0 +1,4 @@
+test:
+  stage: test
+  script:
+    - cargo test
