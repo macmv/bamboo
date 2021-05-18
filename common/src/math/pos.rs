@@ -213,5 +213,25 @@ mod tests {
     assert_eq!(p.x(), x);
     assert_eq!(p.y(), y);
     assert_eq!(p.z(), z);
+
+    let x = 1234;
+    let y = 124;
+    let z = 5678;
+    let p = Pos::from_u64(
+      ((x as u64 & 0x3ffffff) << 38) | ((z as u64 & 0x3ffffff) << 12) | (y as u64 & 0xfff),
+    );
+    assert_eq!(p.x(), x);
+    assert_eq!(p.y(), y);
+    assert_eq!(p.z(), z);
+
+    let x = -15555;
+    let y = -120;
+    let z = -105661;
+    let p = Pos::from_u64(
+      ((x as u64 & 0x3ffffff) << 38) | ((z as u64 & 0x3ffffff) << 12) | (y as u64 & 0xfff),
+    );
+    assert_eq!(p.x(), x);
+    assert_eq!(p.y(), y);
+    assert_eq!(p.z(), z);
   }
 }
