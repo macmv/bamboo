@@ -49,7 +49,7 @@ impl Chunk {
       })
     }
     match &mut self.sections[index] {
-      Some(s) => s.set_block(pos, ty),
+      Some(s) => s.set_block(Pos::new(pos.x(), pos.chunk_rel_y(), pos.z()), ty),
       None => unreachable!(),
     }
   }

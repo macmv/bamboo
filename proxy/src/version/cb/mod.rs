@@ -49,7 +49,6 @@ impl Generator {
     // If we have a generator for this packet, we use that instead. Generators are
     // used for things like chunk packets, which are just simpler to serialize
     // manually.
-    dbg!(&spec.fields);
     if let Some(g) = self.gens[&v].gens.get(&p.id()) {
       out = match g.lock().unwrap()(out, p)? {
         Some(v) => v,
@@ -75,7 +74,7 @@ impl Generator {
         }
       }
     }
-    println!("writing packet {:?}: {:?}", new_id, &out);
+    // println!("writing packet {:?}: {:?}", new_id, &out);
     Ok(Some(out))
   }
 }
