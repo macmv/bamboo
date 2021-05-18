@@ -30,6 +30,12 @@ impl Connection {
         Some(p) => sb::Packet::from_proto(p),
         None => break 'running,
       };
+      match p.id() {
+        sb::ID::BlockDig => {
+          info!("digging at {}", p.get_pos("location"));
+        }
+        _ => warn!("got unknown packet from client: {:?}", p),
+      }
       // info!("got packet from client {:?}", p);
     }
     self.closed.store(true, Ordering::SeqCst);

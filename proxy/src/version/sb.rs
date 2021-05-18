@@ -44,6 +44,7 @@ impl Generator {
           }
           None => unreachable!("unknown defined type: {}", v),
         },
+        PacketField::Position => out.set_pos(n.into(), p.read_pos()),
         v => unreachable!("invalid packet field {:?}", v),
       }
     }
