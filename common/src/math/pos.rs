@@ -38,15 +38,23 @@ impl Pos {
   pub fn new(x: i32, y: i32, z: i32) -> Self {
     Pos { x, y, z }
   }
-  /// Converts a block position from a u64 into a Pos struct. This format of u64
-  /// is used for versions 1.14 and up. This is also the format used with grpc.
+  /// Converts a block position from a u64 into a Pos. This format of u64 is
+  /// used for versions 1.14 and up. This is also the format used with grpc.
   pub fn from_u64(v: u64) -> Self {
-    Pos { x: (v >> 38) as i32, y: (v & 0xfff) as i32, z: (v << 26 >> 38) as i32 }
+    // Rust will carry the negative sign for signed ints on right shift. So, we need
+    // to cast to i64 sometimes.
+    let x = (v as i64 >> 38) as i32;
+    let y = ((v << 52) as i64 >> 52) as i32;
+    let z = ((v << 26) as i64 >> 38) as i32;
+    Pos::new(x, y, z)
   }
-  /// Converts a block position from a u64 into a Pos struct. This format of u64
-  /// is used for versions 1.13 and below. This should never be used with grpc.
+  /// Converts a block position from a u64 into a Pos. This format of u64 is
+  /// used for versions 1.13 and below. This should never be used with grpc.
   pub fn from_old_u64(v: u64) -> Self {
-    Pos { x: (v >> 38) as i32, y: ((v >> 26) & 0xfff) as i32, z: (v & 0x3ffffff) as i32 }
+    let x = (v as i64 >> 38) as i32;
+    let y = ((v << 26) as i64 >> 52) as i32;
+    let z = ((v << 38) as i64 >> 38) as i32;
+    Pos::new(x, y, z)
   }
   /// Converts the block position into a u64. This is what should be sent to
   /// clients with versions 1.14 and up. This is also what should be used to
