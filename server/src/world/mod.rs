@@ -119,11 +119,11 @@ impl World {
       loop {
         int.tick().await;
         let p = player.lock().await;
-        // Do player collision and packets and stuff
-        info!("player tick for {}", p.username());
         if p.conn().closed() {
+          // TODO: Close any other tasks for this player
           break;
         }
+        // Do player collision and packets and stuff
         // Once per second, send keep alive packet
         if tick % 20 == 0 {
           let mut out = cb::Packet::new(cb::ID::KeepAlive);

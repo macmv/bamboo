@@ -36,9 +36,10 @@ impl Connection {
         sb::ID::BlockDig => {
           let pos = p.get_pos("location");
           info!("digging at {}", &pos);
-          player.lock().await.world().set_kind(pos, block::Kind::Air);
+          player.lock().await.world().set_kind(pos, block::Kind::Air).unwrap();
         }
-        _ => warn!("got unknown packet from client: {:?}", p),
+        // _ => warn!("got unknown packet from client: {:?}", p),
+        _ => (),
       }
       // info!("got packet from client {:?}", p);
     }

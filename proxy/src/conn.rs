@@ -73,18 +73,13 @@ impl ClientListener {
   }
   async fn run_inner(&mut self, mut rx: oneshot::Receiver<()>) -> Result<(), Box<dyn Error>> {
     loop {
-      let fut = self.client.poll();
-
       tokio::select! {
-        _ = fut => (),
+        v = self.client.poll() => v?,
         _ = &mut rx => break,
       }
       loop {
         let p = self.client.read(self.ver).unwrap();
-        if p.is_none() {
-          break;
-        }
-        let p = p.unwrap();
+        let p = if let Some(v) = p { v } else { break };
         // Make sure there were no errors set within the packet during parsing
         match p.err() {
           Some(e) => {
@@ -139,7 +134,7 @@ impl ServerListener {
       let p;
 
       tokio::select! {
-        val = pb => p = val?,
+        v = pb => p = v?,
         _ = &mut rx => break,
       }
       let p = p.unwrap();
