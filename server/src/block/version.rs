@@ -49,7 +49,10 @@ impl TypeConverter {
   /// Takes the new block id, and converts it to the old id, for the given
   /// version. If the id is invalid, this will return 0 (air).
   pub fn to_old(&self, id: u32, ver: BlockVersion) -> u32 {
-    match self.versions[ver.to_index() as usize].to_old.get(id as usize) {
+    if ver == BlockVersion::latest() {
+      return id;
+    }
+    match self.versions[ver.to_index() as usize - 1].to_old.get(id as usize) {
       Some(v) => *v,
       None => 0,
     }
@@ -96,22 +99,29 @@ pub fn generate_versions() -> Vec<Version> {
   let mut versions = vec![];
   let csv = include_str!(concat!(env!("OUT_DIR"), "/block/versions.csv"));
   for (i, l) in csv.lines().enumerate() {
-    let sections = l.split(',');
+    let mut sections = l.split(',').enumerate();
+    // Remove the first element. This is the latest block id, which will always be
+    // the same as i.
+    sections.next().unwrap();
     if i == 0 {
-      for (j, _) in sections.enumerate() {
-        let ver = BlockVersion::from_index(j as u32);
-        versions.push(Version { to_old: vec![], to_new: HashMap::new(), ver });
+      for (j, _) in sections {
+        let ver = BlockVersion::from_index_rev(j as u32);
+        versions.push(Version { to_old: vec![0], to_new: [(0, 0)].iter().cloned().collect(), ver });
       }
     } else {
-      for (j, s) in sections.enumerate() {
+      for (j, s) in sections {
         let v = s.parse().unwrap();
-        versions[j].to_old.push(v);
-        versions[j].to_new.insert(v, i as u32);
+        // This versions list doesn't contain latest, so we have to subtract one.
+        versions[j - 1].to_old.push(v);
+        versions[j - 1].to_new.insert(v, i as u32);
       }
     }
   }
 
-  versions
+  // In this list, versions[0] is the latest version. The way the BlockVersion
+  // enum is built, this is backwards. So we reverse it here, so that the types
+  // using this list can just call BlockVersion::to_index().
+  versions.into_iter().rev().collect()
 }
 
 #[cfg(test)]
@@ -119,8 +129,22 @@ mod tests {
   use super::*;
 
   #[test]
-  fn test_generate() {
-    dbg!(generate_versions());
+  fn test_convert() {
+    let conv = TypeConverter::new();
+
+    // This line makes it easy to test each version
+    // 15743,11268,11252,8595,4080,4080,4080,4080,0
+
+    assert_eq!(conv.to_old(15743, BlockVersion::V1_16), 15743);
+    assert_eq!(conv.to_old(15743, BlockVersion::V1_15), 11268);
+    assert_eq!(conv.to_old(15743, BlockVersion::V1_14), 11252);
+    assert_eq!(conv.to_old(15743, BlockVersion::V1_13), 8595);
+    assert_eq!(conv.to_old(15743, BlockVersion::V1_12), 4080);
+    assert_eq!(conv.to_old(15743, BlockVersion::V1_11), 4080);
+    assert_eq!(conv.to_old(15743, BlockVersion::V1_10), 4080);
+    assert_eq!(conv.to_old(15743, BlockVersion::V1_9), 4080);
+    assert_eq!(conv.to_old(15743, BlockVersion::V1_8), 0);
+
     // Used to show debug output.
     // assert!(false);
   }

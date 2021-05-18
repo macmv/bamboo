@@ -1,23 +1,58 @@
 use num_derive::{FromPrimitive, ToPrimitive};
 use strum_macros::EnumString;
 
-/// A list of all supported block versions. This is mostly the same as all major
-/// versions of the game. Any time the game gets new blocks, there is a new
-/// version added to this enum.
-#[non_exhaustive]
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, FromPrimitive, ToPrimitive)]
-pub enum BlockVersion {
-  Invalid,
-  V1_8,
-  V1_9,
-  V1_10,
-  V1_11,
-  V1_12,
-  V1_13,
-  V1_14,
-  V1_15,
-  V1_16,
+macro_rules! ignore {
+  ($v: expr, $e: expr) => {
+    $v
+  };
 }
+
+macro_rules! block_version {
+  [$([$v: ident, $pv: ident]),*,] => {
+
+    /// A list of all supported block versions. This is mostly the same as all major
+    /// versions of the game. Any time the game gets new blocks, there is a new
+    /// version added to this enum.
+    #[non_exhaustive]
+    #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, FromPrimitive, ToPrimitive)]
+    pub enum BlockVersion {
+      Invalid,
+      $(
+        $v,
+      )*
+    }
+
+    impl BlockVersion {
+      /// Returns the protocol version for this block version. This will always
+      /// return the latest version that uses this block version.
+      pub fn protocol(&self) -> ProtocolVersion {
+        // This should always be exaustive, so that new versions don't get missed.
+        match self {
+          Self::Invalid => ProtocolVersion::Invalid,
+          $(
+            Self::$v => ProtocolVersion::$pv,
+          )*
+        }
+      }
+      /// This returns the total number of block versions.
+      pub fn len() -> u32 {
+        0 $(+ ignore!(1, $v))*
+      }
+    }
+  }
+}
+
+block_version![
+  [V1_8, V1_8],
+  [V1_9, V1_9_4],
+  [V1_10, V1_10],
+  [V1_11, V1_11_2],
+  [V1_12, V1_12_2],
+  [V1_13, V1_13_2],
+  [V1_14, V1_14_4],
+  [V1_15, V1_15_2],
+  [V1_16, V1_16_5],
+];
 
 impl BlockVersion {
   /// Returns the latest version. This is the version that block ids are stored
@@ -25,22 +60,20 @@ impl BlockVersion {
   pub fn latest() -> Self {
     Self::V1_16
   }
-  /// Returns the protocol version for this block version. This will always
-  /// return the latest version that uses this block version.
-  pub fn protocol(&self) -> ProtocolVersion {
-    // This should always be exaustive, so that new versions don't get missed.
-    match self {
-      Self::Invalid => ProtocolVersion::Invalid,
-      Self::V1_8 => ProtocolVersion::V1_8,
-      Self::V1_9 => ProtocolVersion::V1_9_4,
-      Self::V1_10 => ProtocolVersion::V1_10,
-      Self::V1_11 => ProtocolVersion::V1_11_2,
-      Self::V1_12 => ProtocolVersion::V1_12_2,
-      Self::V1_13 => ProtocolVersion::V1_13_2,
-      Self::V1_14 => ProtocolVersion::V1_14_4,
-      Self::V1_15 => ProtocolVersion::V1_15_2,
-      Self::V1_16 => ProtocolVersion::V1_16_5,
+
+  /// Returns the protocol version from the given index. 0 -> latest, 1 -> one
+  /// before latest, etc.
+  pub fn from_index_rev(v: u32) -> Self {
+    match num::FromPrimitive::from_u32(Self::len() - v) {
+      Some(v) => v,
+      None => Self::Invalid,
     }
+  }
+
+  /// Returns the given index of this block version. Latest -> 0, the version
+  /// before latest -> 1, etc.
+  pub fn to_index_rev(self) -> u32 {
+    Self::len() - num::ToPrimitive::to_u32(&self).unwrap_or(0)
   }
 
   /// Returns the protocol version from the given index. 0 -> 1.8, 1 -> 1.9,
@@ -52,6 +85,7 @@ impl BlockVersion {
     }
   }
 
+  /// Returns the given index of this block version. 1.8 -> 0, 1.9 -> 1, etc.
   pub fn to_index(self) -> u32 {
     num::ToPrimitive::to_u32(&self).unwrap_or(0)
   }
