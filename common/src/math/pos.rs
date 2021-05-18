@@ -87,31 +87,32 @@ impl Pos {
     ChunkPos::new(self.chunk_x(), self.chunk_z())
   }
   /// Returns this position within the 0, 0 chunk column. That is, the X and Z
-  /// are both set to the positive modulo 16.
+  /// are both set to the chunk relative position. The Y value is unchanged.
   #[inline(always)]
   pub fn chunk_rel(&self) -> Pos {
     Pos { x: self.chunk_rel_x(), y: self.y, z: self.chunk_rel_z() }
   }
-  /// Returns the chunk X value of the position. This is just x / 16, rounded
-  /// down.
+  /// Returns the block X coordinate within 0..16. This is not the same as X %
+  /// 16, because that will give negative numbers for negative X values.
   #[inline(always)]
   pub fn chunk_rel_x(&self) -> i32 {
     (self.x % 16 + 16) % 16
   }
-  /// Returns the chunk Y value of the position. This is just y / 16, rounded
-  /// down.
+  /// Returns the block Y coordinate within 0..16. This is not the same as Y %
+  /// 16, because that will give negative numbers for negative Y values.
   #[inline(always)]
   pub fn chunk_rel_y(&self) -> i32 {
     (self.y % 16 + 16) % 16
   }
-  /// Returns the chunk Z value of the position. This is just z / 16, rounded
-  /// down.
+  /// Returns the block Z coordinate within 0..16. This is not the same as Z %
+  /// 16, because that will give negative numbers for negative Z values.
   #[inline(always)]
   pub fn chunk_rel_z(&self) -> i32 {
     (self.z % 16 + 16) % 16
   }
-  /// Returns the chunk X value of the position. This is just x / 16, rounded
-  /// down.
+  /// Returns the chunk X of this position. This is X / 16, rounded to negative
+  /// infinity. Rust rounds to zero be default, so this is not the same as X /
+  /// 16.
   #[inline(always)]
   pub fn chunk_x(&self) -> i32 {
     if self.x < 0 {
@@ -120,8 +121,9 @@ impl Pos {
       self.x / 16
     }
   }
-  /// Returns the chunk Y value of the position. This is just y / 16, rounded
-  /// down.
+  /// Returns the chunk Y of this position. This is Y / 16, rounded to negative
+  /// infinity. Rust rounds to zero be default, so this is not the same as Y /
+  /// 16.
   #[inline(always)]
   pub fn chunk_y(&self) -> i32 {
     if self.y < 0 {
@@ -130,8 +132,9 @@ impl Pos {
       self.y / 16
     }
   }
-  /// Returns the chunk Z value of the position. This is just z / 16, rounded
-  /// down.
+  /// Returns the chunk Z of this position. This is Z / 16, rounded to negative
+  /// infinity. Rust rounds to zero be default, so this is not the same as Z /
+  /// 16.
   #[inline(always)]
   pub fn chunk_z(&self) -> i32 {
     if self.z < 0 {
