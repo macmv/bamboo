@@ -45,8 +45,15 @@ impl ChunkSection for Section {
   fn duplicate(&self) -> Box<dyn ChunkSection + Send> {
     Box::new(Section { data: self.data })
   }
+  /// For a fixed chunk, this should never be called. The latest version of
+  /// minecraft will always be a paletted chunk. Unless the actuall json data is
+  /// changed, this function shouldn't be called.
   fn to_latest_proto(&self) -> proto::chunk::Section {
-    proto::chunk::Section::default()
+    let mut data = Vec::with_capacity(self.data.len() * 2);
+    for id in self.data {
+      data.extend_from_slice(&id.to_le_bytes());
+    }
+    proto::chunk::Section { data, ..Default::default() }
   }
   fn to_old_proto(&self, f: &dyn Fn(u32) -> u32) -> proto::chunk::Section {
     let mut data = Vec::with_capacity(self.data.len() * 2);
