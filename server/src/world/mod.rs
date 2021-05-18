@@ -69,9 +69,10 @@ impl World {
     self.players.lock().await.push(player.clone());
 
     let c = conn.clone();
+    let p = player.clone();
     tokio::spawn(async move {
       // Network recieving task
-      c.run().await.unwrap();
+      c.run(p.as_ref()).await.unwrap();
     });
 
     let mut int = time::interval(Duration::from_millis(50));
@@ -173,6 +174,13 @@ impl World {
   pub fn set_block(&self, pos: Pos, ty: block::Type) -> Result<(), PosError> {
     self.chunk(pos.chunk(), |mut c| c.set_type(pos.chunk_rel(), &ty))
   }
+
+  /// This sets a block within the world. This will use the default type of the
+  /// given kind. It will return an error if the position is outside of the
+  /// world.
+  pub fn set_kind(&self, pos: Pos, kind: block::Kind) -> Result<(), PosError> {
+    self.chunk(pos.chunk(), |mut c| c.set_kind(pos.chunk_rel(), kind))
+  }
 }
 
 impl Default for WorldManager {
@@ -213,6 +221,7 @@ impl WorldManager {
       UUID::from_u128(0x1111111),
       conn.clone(),
       ProtocolVersion::V1_8,
+      w.clone(),
     );
     w.new_player(conn, player).await;
   }

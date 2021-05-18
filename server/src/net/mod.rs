@@ -8,6 +8,8 @@ use common::{
   proto,
 };
 
+use crate::{block, player::Player};
+
 pub struct Connection {
   rx:     Mutex<Streaming<proto::Packet>>,
   tx:     Mutex<Sender<Result<proto::Packet, Status>>>,
@@ -24,7 +26,7 @@ impl Connection {
 
   /// This starts up the recieving loop for this connection. Do not call this
   /// more than once.
-  pub(crate) async fn run(&self) -> Result<(), Status> {
+  pub(crate) async fn run(&self, player: &Mutex<Player>) -> Result<(), Status> {
     'running: loop {
       let p = match self.rx.lock().await.message().await? {
         Some(p) => sb::Packet::from_proto(p),
@@ -32,7 +34,9 @@ impl Connection {
       };
       match p.id() {
         sb::ID::BlockDig => {
-          info!("digging at {}", p.get_pos("location"));
+          let pos = p.get_pos("location");
+          info!("digging at {}", &pos);
+          player.lock().await.world().set_kind(pos, block::Kind::Air);
         }
         _ => warn!("got unknown packet from client: {:?}", p),
       }

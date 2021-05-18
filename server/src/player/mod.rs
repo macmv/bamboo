@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use common::{math::UUID, version::ProtocolVersion};
 
-use crate::net::Connection;
+use crate::{net::Connection, world::World};
 
 pub struct Player {
   // The EID of the player. Never changes.
@@ -12,6 +12,7 @@ pub struct Player {
   _uuid:    UUID,
   conn:     Arc<Connection>,
   ver:      ProtocolVersion,
+  world:    Arc<World>,
 }
 
 impl Player {
@@ -21,8 +22,9 @@ impl Player {
     uuid: UUID,
     conn: Arc<Connection>,
     ver: ProtocolVersion,
+    world: Arc<World>,
   ) -> Self {
-    Player { _id: id, username, _uuid: uuid, conn, ver }
+    Player { _id: id, username, _uuid: uuid, conn, ver, world }
   }
 
   /// Returns the player's username.
@@ -38,5 +40,10 @@ impl Player {
   /// Returns the version that this player is on.
   pub fn ver(&self) -> ProtocolVersion {
     self.ver
+  }
+
+  /// Returns a reference to the world the player is in.
+  pub fn world(&self) -> &World {
+    &self.world
   }
 }
