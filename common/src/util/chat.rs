@@ -83,6 +83,57 @@ pub enum HoverEvent {
   ShowEntity(String),
 }
 
+macro_rules! add_bool {
+  ($name: ident, $sname: expr) => {
+    #[doc = "Makes this chat section "]
+    #[doc = $sname]
+    pub fn $name(mut self) -> Self {
+      self.$name = Some(true);
+      self
+    }
+  };
+}
+
+impl Section {
+  add_bool!(bold, stringify!(bold));
+  add_bool!(italic, stringify!(italic));
+  add_bool!(underlined, stringify!(underlined));
+  add_bool!(strikethrough, stringify!(strikethrough));
+  add_bool!(obfuscated, stringify!(obfuscated));
+  /// Applies the given color to this section
+  pub fn color(mut self, c: Color) -> Self {
+    self.color = Some(c);
+    self
+  }
+  /// If a client shift-right-clicks on this section, the given text will be
+  /// inserted into the chat box.
+  pub fn insertion(mut self, text: String) -> Self {
+    self.insertion = Some(text);
+    self
+  }
+  /// When the client clicks on this section, something will happen.
+  pub fn on_click(mut self, e: ClickEvent) -> Self {
+    self.click_event = Some(e);
+    self
+  }
+  /// When the client hoveres over this section, something will happen.
+  pub fn on_hover(mut self, e: HoverEvent) -> Self {
+    self.hover_event = Some(e);
+    self
+  }
+  /// This adds a child section to this chat section. Any properities left blank
+  /// on that child will be filled in from this section. If you want multiple
+  /// chat sections in a row, you probably want to use [`Chat::add`] instead.
+  /// This is instead useful for something like a hyperlink, where part of it
+  /// should be a different color.
+  pub fn add_extra(&mut self, msg: String) -> &mut Section {
+    let s = Section { text: msg, ..Default::default() };
+    let idx = self.extra.len();
+    self.extra.push(s);
+    self.extra.get_mut(idx).unwrap()
+  }
+}
+
 #[derive(Debug, Serialize)]
 pub enum Color {
   Black,
