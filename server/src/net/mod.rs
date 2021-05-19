@@ -51,7 +51,8 @@ impl Connection {
         sb::ID::BlockDig => {
           let pos = p.get_pos("location");
           info!("digging at {}", &pos);
-          player.lock().await.world().set_kind(pos, block::Kind::Air).unwrap();
+          let world = player.lock().await.clone_world();
+          world.set_kind(pos, block::Kind::Air).await.unwrap();
         }
         sb::ID::Position => {
           let mut player = player.lock().await;

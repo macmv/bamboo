@@ -1,4 +1,4 @@
-use std::sync::Arc;
+use std::{fmt, sync::Arc};
 
 use common::{math::UUID, version::ProtocolVersion};
 
@@ -9,7 +9,7 @@ pub struct Player {
   _id:      i32,
   // Player's username
   username: String,
-  _uuid:    UUID,
+  uuid:     UUID,
   conn:     Arc<Connection>,
   ver:      ProtocolVersion,
   world:    Arc<World>,
@@ -29,6 +29,21 @@ pub struct Player {
   next_pitch: f32,
 }
 
+impl fmt::Debug for Player {
+  fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+    f.debug_struct("Player")
+      .field("username", &self.username)
+      .field("uuid", &self.uuid)
+      .field("ver", &self.ver)
+      .field("x", &self.x)
+      .field("y", &self.x)
+      .field("z", &self.x)
+      .field("yaw", &self.x)
+      .field("pitch", &self.x)
+      .finish()
+  }
+}
+
 impl Player {
   pub fn new(
     id: i32,
@@ -44,7 +59,7 @@ impl Player {
     Player {
       _id: id,
       username,
-      _uuid: uuid,
+      uuid,
       conn,
       ver,
       world,
@@ -85,6 +100,10 @@ impl Player {
   pub fn world(&self) -> &World {
     &self.world
   }
+  /// Returns a cloned reference to the world that the player is in.
+  pub fn clone_world(&self) -> Arc<World> {
+    self.world.clone()
+  }
 
   /// This will move the player on the next player tick. Used whenever a
   /// position packet is recieved.
@@ -111,5 +130,30 @@ impl Player {
     self.z = self.next_z;
     self.yaw = self.next_yaw;
     self.pitch = self.next_pitch;
+  }
+
+  /// Returns the player's X position. This is only updated once per tick.
+  pub fn x(&self) -> f64 {
+    self.x
+  }
+  /// Returns the player's Y position. This is only updated once per tick.
+  pub fn y(&self) -> f64 {
+    self.y
+  }
+  /// Returns the player's Z position. This is only updated once per tick.
+  pub fn z(&self) -> f64 {
+    self.z
+  }
+  /// Returns the player's yaw angle. This is the amount that they are looking
+  /// to the side. It is in the range -180-180. This is only updated once per
+  /// tick.
+  pub fn yaw(&self) -> f32 {
+    self.yaw
+  }
+  /// Returns the player's pitch angle. This is the amount that they are looking
+  /// up or down. It is within the range -90..90. This is only updated once per
+  /// tick.
+  pub fn pitch(&self) -> f32 {
+    self.pitch
   }
 }

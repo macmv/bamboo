@@ -172,15 +172,30 @@ impl World {
 
   /// This sets a block within the world. It will return an error if the
   /// position is outside of the world.
-  pub fn set_block(&self, pos: Pos, ty: block::Type) -> Result<(), PosError> {
-    self.chunk(pos.chunk(), |mut c| c.set_type(pos.chunk_rel(), &ty))
+  pub async fn set_block(&self, pos: Pos, ty: &block::Type) -> Result<(), PosError> {
+    self.chunk(pos.chunk(), |mut c| c.set_type(pos.chunk_rel(), ty))?;
+    let mut out = cb::Packet::new(cb::ID::BlockChange);
+    out.set_f64("x", 0.0); // X
+    out.set_f64("y", 60.0); // Y
+    out.set_f64("z", 0.0); // Z
+    out.set_f32("yaw", 0.0); // Yaw
+    out.set_f32("pitch", 0.0); // Pitch
+    out.set_byte("flags", 0); // Flags
+    out.set_i32("teleport_id", 1234); // TP id
+    for p in self.players.lock().await.iter() {
+      info!("locking player...");
+      let p = p.lock().await;
+      info!("sending block change to {:?}", p);
+      p.conn().send(out.clone()).await;
+    }
+    Ok(())
   }
 
   /// This sets a block within the world. This will use the default type of the
   /// given kind. It will return an error if the position is outside of the
   /// world.
-  pub fn set_kind(&self, pos: Pos, kind: block::Kind) -> Result<(), PosError> {
-    self.chunk(pos.chunk(), |mut c| c.set_kind(pos.chunk_rel(), kind))
+  pub async fn set_kind(&self, pos: Pos, kind: block::Kind) -> Result<(), PosError> {
+    self.set_block(pos, self.converter.get(kind).default_type()).await
   }
 }
 
