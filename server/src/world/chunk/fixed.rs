@@ -50,14 +50,15 @@ impl ChunkSection for Section {
   /// changed, this function shouldn't be called.
   fn to_latest_proto(&self) -> proto::chunk::Section {
     let mut data = Vec::with_capacity(self.data.len() * 2);
-    for id in self.data {
+    for id in &self.data {
       data.extend_from_slice(&id.to_le_bytes());
     }
     proto::chunk::Section { data, ..Default::default() }
   }
   fn to_old_proto(&self, f: &dyn Fn(u32) -> u32) -> proto::chunk::Section {
     let mut data = Vec::with_capacity(self.data.len() * 2);
-    for id in self.data {
+    for id in &self.data {
+      let id = *id;
       // Converts it to an old id
       let id = f(id.into()) as u16;
       data.extend_from_slice(&id.to_le_bytes());

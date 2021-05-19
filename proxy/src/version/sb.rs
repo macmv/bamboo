@@ -6,8 +6,6 @@ use crate::packet::Packet;
 
 use super::PacketVersion;
 
-trait PacketFn = Fn(&mut Packet) -> io::Result<sb::Packet> + Send;
-
 pub(super) struct Generator {
   versions: HashMap<ProtocolVersion, PacketVersion>,
 }

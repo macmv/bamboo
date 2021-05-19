@@ -1,6 +1,6 @@
 use common::{net::cb, version::ProtocolVersion};
 use data::protocol::{FloatType, IntType, PacketField};
-use std::{collections::HashMap, io, io::ErrorKind, sync::Mutex};
+use std::{collections::HashMap, io, sync::Mutex};
 
 use crate::packet::Packet;
 
@@ -8,15 +8,19 @@ use super::PacketVersion;
 
 mod v1_8;
 
-trait PacketFn = Fn(Packet, &cb::Packet) -> io::Result<Option<Packet>> + Send;
+type BoxedPacketFn = Box<dyn Fn(Packet, &cb::Packet) -> io::Result<Option<Packet>> + Send + Sync>;
 
 struct PacketSpec {
-  gens: HashMap<cb::ID, Box<Mutex<dyn PacketFn>>>,
+  gens: HashMap<cb::ID, BoxedPacketFn>,
 }
 
 impl PacketSpec {
-  fn add(&mut self, id: cb::ID, f: impl PacketFn + 'static) {
-    self.gens.insert(id, Box::new(Mutex::new(f)));
+  fn add(
+    &mut self,
+    id: cb::ID,
+    f: impl Fn(Packet, &cb::Packet) -> io::Result<Option<Packet>> + Send + Sync + 'static,
+  ) {
+    self.gens.insert(id, Box::new(f));
   }
 }
 
@@ -50,7 +54,7 @@ impl Generator {
     // used for things like chunk packets, which are just simpler to serialize
     // manually.
     if let Some(g) = self.gens[&v].gens.get(&p.id()) {
-      out = match g.lock().unwrap()(out, p)? {
+      out = match g(out, p)? {
         Some(v) => v,
         None => return Ok(None),
       }
