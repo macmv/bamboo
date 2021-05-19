@@ -166,7 +166,7 @@ impl Section {
   /// chat sections in a row, you probably want to use [`Chat::add`] instead.
   /// This is instead useful for something like a hyperlink, where part of it
   /// should be a different color.
-  pub fn add_extra(&mut self, msg: String) -> &mut Section {
+  pub fn add_child(&mut self, msg: String) -> &mut Section {
     let s = Section { text: msg, ..Default::default() };
     let idx = self.extra.len();
     self.extra.push(s);
@@ -292,6 +292,16 @@ mod tests {
       assert_eq!(
         msg.to_json(),
         r#"{"text":"hover time","hoverEvent":{"action":"show_text","value":"big gaming"}}"#
+      );
+
+      // Children testing
+      let mut msg = Chat::empty();
+      // This adds a child section to this first section. This child will be rendered
+      // in bold and italics, even though `bold` is not set to true on the child.
+      msg.add("main section ".into()).bold().add_child("hello".into()).italic();
+      assert_eq!(
+        msg.to_json(),
+        r#"{"text":"main section ","bold":true,"extra":[{"text":"hello","italic":true}]}"#
       );
     }
   }
