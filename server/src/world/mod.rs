@@ -19,6 +19,7 @@ use common::{
   math::{ChunkPos, Pos, PosError, UUID},
   net::{cb, Other},
   proto::Packet,
+  util::Chat,
   version::ProtocolVersion,
 };
 
@@ -193,9 +194,9 @@ impl World {
   }
 
   /// This broadcasts a chat message to everybody in the world.
-  pub async fn broadcast(&self, msg: &str) {
+  pub async fn broadcast(&self, msg: &Chat) {
     let mut out = cb::Packet::new(cb::ID::Chat);
-    out.set_str("message", format!("{{\"text\":\"{}\"}}", msg));
+    out.set_str("message", msg.to_json());
     out.set_byte("position", 0); // Chat box, not over hotbar
 
     for p in self.players.lock().await.iter() {

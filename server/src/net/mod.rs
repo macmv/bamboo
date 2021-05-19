@@ -7,6 +7,7 @@ use common::{
   math::UUID,
   net::{cb, sb},
   proto,
+  util::chat::{Chat, Color, HoverEvent},
 };
 
 use crate::{block, player::Player};
@@ -57,7 +58,12 @@ impl Connection {
             world = p.clone_world();
             username = p.username().to_string();
           }
-          world.broadcast(&format!("<{}> {}", username, message)).await;
+          let mut msg = Chat::empty();
+          msg.add("<".into());
+          msg.add(username).color(Color::Red);
+          msg.add("> ".into());
+          msg.add(message.into()).on_hover(HoverEvent::ShowText("Hover time".into()));
+          world.broadcast(&msg).await;
         }
         sb::ID::BlockDig => {
           let pos = p.get_pos("location");
