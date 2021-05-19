@@ -1,4 +1,4 @@
-use serde::{Serialize, Serializer};
+use serde::ser::{Serialize, SerializeStruct, Serializer};
 use serde_derive::Serialize;
 
 #[derive(Clone)]
@@ -60,22 +60,43 @@ pub struct Section {
   insertion:     Option<String>,
   // Clicking on this section will do something
   #[serde(skip_serializing_if = "Option::is_none")]
+  #[serde(rename = "clickEvent")]
   click_event:   Option<ClickEvent>,
   // Hovering over this section will do something
   #[serde(skip_serializing_if = "Option::is_none")]
+  #[serde(rename = "hoverEvent")]
   hover_event:   Option<HoverEvent>,
   // Any child elements. If any of their options are None, then these options should be used.
   #[serde(skip_serializing_if = "Vec::is_empty")]
   extra:         Vec<Section>,
 }
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone)]
 pub enum ClickEvent {
   OpenURL(String),
   RunCommand(String),
   SuggestCommand(String),
   ChangePage(String),
   CopyToClipboard(String),
+}
+
+impl Serialize for ClickEvent {
+  fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+  where
+    S: Serializer,
+  {
+    let mut s = serializer.serialize_struct("clickEvent", 2)?;
+    let (action, val) = match self {
+      Self::OpenURL(v) => ("open_url", v),
+      Self::RunCommand(v) => ("run_command", v),
+      Self::SuggestCommand(v) => ("suggest_command", v),
+      Self::ChangePage(v) => ("change_page", v),
+      Self::CopyToClipboard(v) => ("copy_to_clipboard", v),
+    };
+    s.serialize_field("action", action)?;
+    s.serialize_field("value", val)?;
+    s.end()
+  }
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -231,6 +252,22 @@ mod tests {
       let mut m = msg.clone();
       m.add("custom color".into()).color(Color::rgb(0, 127, 255));
       assert_eq!(m.to_json(), r##"{"text":"custom color","color":"#007fff"}"##);
+    }
+
+    // Test all the other nonsense
+    {
+      // Insertion text
+      let mut msg = Chat::empty();
+      msg.add("click me!".into()).insertion("I am text".into());
+      assert_eq!(msg.to_json(), r#"{"text":"click me!","insertion":"I am text"}"#);
+
+      // Click event
+      let mut msg = Chat::empty();
+      msg.add("click me!".into()).on_click(ClickEvent::OpenURL("https://google.com".into()));
+      assert_eq!(
+        msg.to_json(),
+        r#"{"text":"click me!","clickEvent":{"action":"open_url","value":"https://google.com"}}"#
+      );
     }
   }
 }
