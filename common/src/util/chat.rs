@@ -1,13 +1,28 @@
 use serde_derive::Serialize;
 
 pub struct Chat {
-  sections: Vec<ChatSection>,
+  sections: Vec<Section>,
 }
 
 impl Chat {
-  /// Creates a new Chat message.
+  /// Creates a new Chat message. This will contain a single section, with the
+  /// given text set. No formatting will be applied.
   pub fn new(msg: String) -> Self {
-    Chat { sections: vec![ChatSection { text: msg, ..Default::default() }] }
+    Chat { sections: vec![Section { text: msg, ..Default::default() }] }
+  }
+  /// Creates a new Chat message, with no sections.
+  pub fn empty() -> Self {
+    Chat { sections: vec![] }
+  }
+
+  /// Adds a new chat section, with the given string. The returned reference is
+  /// a reference into self, so it must be dropped before adding another
+  /// section.
+  pub fn add(&mut self, msg: String) -> &mut Section {
+    let s = Section { text: msg, ..Default::default() };
+    let idx = self.sections.len();
+    self.sections.push(s);
+    self.sections.get_mut(idx).unwrap()
   }
 
   /// Generates a json message that represents this chat message. This is used
@@ -24,7 +39,7 @@ impl Chat {
 }
 
 #[derive(Debug, Default, Serialize)]
-struct ChatSection {
+pub struct Section {
   text:          String,
   #[serde(skip_serializing_if = "Option::is_none")]
   bold:          Option<bool>,
@@ -49,7 +64,7 @@ struct ChatSection {
   hover_event:   Option<HoverEvent>,
   // Any child elements. If any of their options are None, then these options should be used.
   #[serde(skip_serializing_if = "Vec::is_empty")]
-  extra:         Vec<ChatSection>,
+  extra:         Vec<Section>,
 }
 
 #[derive(Debug, Serialize)]
