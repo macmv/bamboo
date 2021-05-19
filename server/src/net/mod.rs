@@ -48,9 +48,19 @@ impl Connection {
         None => break 'running,
       };
       match p.id() {
+        sb::ID::Chat => {
+          let message = p.get_str("message");
+          let world;
+          let username;
+          {
+            let p = player.lock().await;
+            world = p.clone_world();
+            username = p.username().to_string();
+          }
+          world.broadcast(&format!("<{}> {}", username, message)).await;
+        }
         sb::ID::BlockDig => {
           let pos = p.get_pos("location");
-          info!("digging at {}", &pos);
           let world = player.lock().await.clone_world();
           world.set_kind(pos, block::Kind::Air).await.unwrap();
         }

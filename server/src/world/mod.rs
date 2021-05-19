@@ -191,6 +191,18 @@ impl World {
   pub async fn set_kind(&self, pos: Pos, kind: block::Kind) -> Result<(), PosError> {
     self.set_block(pos, self.converter.get(kind).default_type()).await
   }
+
+  /// This broadcasts a chat message to everybody in the world.
+  pub async fn broadcast(&self, msg: &str) {
+    let mut out = cb::Packet::new(cb::ID::Chat);
+    out.set_str("message", format!("{{\"text\":\"{}\"}}", msg));
+    out.set_byte("position", 0); // Chat box, not over hotbar
+
+    for p in self.players.lock().await.iter() {
+      let p = p.lock().await;
+      p.conn().send(out.clone()).await;
+    }
+  }
 }
 
 impl Default for WorldManager {
