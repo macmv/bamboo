@@ -1,3 +1,5 @@
+use serde_derive::Serialize;
+
 pub struct Chat {
   sections: Vec<ChatSection>,
 }
@@ -11,32 +13,46 @@ impl Chat {
   /// Generates a json message that represents this chat message. This is used
   /// when serializing chat packets, and when dealing with things like books.
   pub fn to_json(&self) -> String {
-    if self.sections.len() == 1 {
-      return serde_json::serialize(self.sections[0]);
+    if self.sections.is_empty() {
+      "{}".into()
+    } else if self.sections.len() == 1 {
+      serde_json::to_string(&self.sections[0]).unwrap()
+    } else {
+      serde_json::to_string(&self.sections).unwrap()
     }
   }
 }
 
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Serialize)]
 struct ChatSection {
   text:          String,
-  bol:           Option<bool>,
+  #[serde(skip_serializing_if = "Option::is_none")]
+  bold:          Option<bool>,
+  #[serde(skip_serializing_if = "Option::is_none")]
   italic:        Option<bool>,
+  #[serde(skip_serializing_if = "Option::is_none")]
   underlined:    Option<bool>,
+  #[serde(skip_serializing_if = "Option::is_none")]
   strikethrough: Option<bool>,
+  #[serde(skip_serializing_if = "Option::is_none")]
   obfuscated:    Option<bool>,
+  #[serde(skip_serializing_if = "Option::is_none")]
   color:         Option<Color>,
   // Holding shift and clicking on this section will insert this text into the chat box.
+  #[serde(skip_serializing_if = "Option::is_none")]
   insertion:     Option<String>,
   // Clicking on this section will do something
+  #[serde(skip_serializing_if = "Option::is_none")]
   click_event:   Option<ClickEvent>,
   // Hovering over this section will do something
+  #[serde(skip_serializing_if = "Option::is_none")]
   hover_event:   Option<HoverEvent>,
   // Any child elements. If any of their options are None, then these options should be used.
+  #[serde(skip_serializing_if = "Vec::is_empty")]
   extra:         Vec<ChatSection>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Serialize)]
 pub enum ClickEvent {
   OpenURL(String),
   RunCommand(String),
@@ -45,14 +61,14 @@ pub enum ClickEvent {
   CopyToClipboard(String),
 }
 
-#[derive(Debug)]
+#[derive(Debug, Serialize)]
 pub enum HoverEvent {
   ShowText(String),
   ShowItem(String),
   ShowEntity(String),
 }
 
-#[derive(Debug)]
+#[derive(Debug, Serialize)]
 pub enum Color {
   Black,
   DarkBlue,
@@ -101,5 +117,16 @@ impl Color {
       Self::White => "white",
       Self::Custom(v) => &v,
     }
+  }
+}
+
+#[cfg(test)]
+mod tests {
+  use super::*;
+
+  #[test]
+  fn serialize() {
+    let msg = Chat::new("Hello!".into());
+    assert_eq!(msg.to_json(), r#"{"text":"Hello!"}"#);
   }
 }

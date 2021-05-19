@@ -21,6 +21,9 @@ num-derive = "0.3"
 strum = "0.20"
 strum_macros = "0.20"
 bytes = "1.0.1"
+serde = "1.0"
+serde_derive = "1.0"
+serde_json = "1.0"
 
 [build-dependencies]
 # We need to disable default features, as that uses rustfmt, which is not installed in Docker containers.
