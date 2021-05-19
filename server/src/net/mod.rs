@@ -38,6 +38,19 @@ impl Connection {
           info!("digging at {}", &pos);
           player.lock().await.world().set_kind(pos, block::Kind::Air).unwrap();
         }
+        sb::ID::Position => {
+          let mut player = player.lock().await;
+          player.set_next_pos(p.get_double("x"), p.get_double("y"), p.get_double("z"));
+        }
+        sb::ID::PositionLook => {
+          let mut player = player.lock().await;
+          player.set_next_pos(p.get_double("x"), p.get_double("y"), p.get_double("z"));
+          player.set_next_look(p.get_float("yaw"), p.get_float("pitch"));
+        }
+        sb::ID::Look => {
+          let mut player = player.lock().await;
+          player.set_next_look(p.get_float("yaw"), p.get_float("pitch"));
+        }
         // _ => warn!("got unknown packet from client: {:?}", p),
         _ => (),
       }
@@ -49,7 +62,6 @@ impl Connection {
 
   /// Sends a packet to the proxy, which will then get sent to the client.
   pub async fn send(&self, p: cb::Packet) {
-    info!("sending packet");
     self.tx.lock().await.send(Ok(p.into_proto())).await.unwrap();
   }
 

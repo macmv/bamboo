@@ -118,11 +118,12 @@ impl World {
       let mut tick = 0;
       loop {
         int.tick().await;
-        let p = player.lock().await;
+        let mut p = player.lock().await;
         if p.conn().closed() {
           // TODO: Close any other tasks for this player
           break;
         }
+        p.tick();
         // Do player collision and packets and stuff
         // Once per second, send keep alive packet
         if tick % 20 == 0 {
@@ -222,6 +223,9 @@ impl WorldManager {
       conn.clone(),
       ProtocolVersion::V1_8,
       w.clone(),
+      0.0,
+      60.0,
+      0.0,
     );
     w.new_player(conn, player).await;
   }
