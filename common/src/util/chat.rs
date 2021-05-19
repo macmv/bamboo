@@ -99,11 +99,28 @@ impl Serialize for ClickEvent {
   }
 }
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone)]
 pub enum HoverEvent {
   ShowText(String),
   ShowItem(String),
   ShowEntity(String),
+}
+
+impl Serialize for HoverEvent {
+  fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+  where
+    S: Serializer,
+  {
+    let mut s = serializer.serialize_struct("hoverEvent", 2)?;
+    let (action, val) = match self {
+      Self::ShowText(v) => ("show_text", v),
+      Self::ShowItem(v) => ("show_item", v),
+      Self::ShowEntity(v) => ("show_entity", v),
+    };
+    s.serialize_field("action", action)?;
+    s.serialize_field("value", val)?;
+    s.end()
+  }
 }
 
 macro_rules! add_bool {
@@ -267,6 +284,14 @@ mod tests {
       assert_eq!(
         msg.to_json(),
         r#"{"text":"click me!","clickEvent":{"action":"open_url","value":"https://google.com"}}"#
+      );
+
+      // Hover event
+      let mut msg = Chat::empty();
+      msg.add("hover time".into()).on_hover(HoverEvent::ShowText("big gaming".into()));
+      assert_eq!(
+        msg.to_json(),
+        r#"{"text":"hover time","hoverEvent":{"action":"show_text","value":"big gaming"}}"#
       );
     }
   }
