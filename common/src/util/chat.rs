@@ -227,6 +227,10 @@ mod tests {
       let mut m = msg.clone();
       m.add("another color".into()).color(Color::Black);
       assert_eq!(m.to_json(), r#"{"text":"another color","color":"black"}"#);
+
+      let mut m = msg.clone();
+      m.add("custom color".into()).color(Color::rgb(0, 127, 255));
+      assert_eq!(m.to_json(), r##"{"text":"custom color","color":"#007fff"}"##);
     }
   }
 }
