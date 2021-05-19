@@ -1,17 +1,14 @@
 stages:
-  - build
+  - test
 
-rust-latest:
-  stage: build
+rust-latest-test:
+  stage: test
   image: rust:latest
   script:
-    - cargo build --verbose
     - cargo test --verbose
 
-rust-nightly:
-  stage: build
+rust-nightly-test:
+  stage: test
   image: rustlang/rust:nightly
   script:
-    - cargo build --verbose
     - cargo test --verbose
-  allow_failure: true
