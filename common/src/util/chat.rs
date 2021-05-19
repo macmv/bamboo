@@ -1,6 +1,41 @@
+//! The `chat` crate handles any chat messages in Minecraft. This is most
+//! commonly used in the chat box, but is also used in written books and window
+//! titles.
+//!
+//! A chat message is a list of [`Section`]s. Each of these sections has a text
+//! component, and a bunch of styling options. To add a section to a chat
+//! message, use [`Chat::add`]. This will add a section with the given text, and
+//! no styling options.
+//!
+//! # Example
+//!
+//! ```rust
+//! use common::util::{Chat, chat::Color};
+//!
+//! let mut msg = Chat::new("Hello! ".to_string());
+//!
+//! msg.add("I am a section. ".to_string()).bold();
+//! msg.add("I am another section".to_string()).color(Color::BrightGreen).italic();
+//!
+//! let json = msg.to_json();
+//! assert_eq!(json, r#"[{"text":"Hello! "},{"text":"I am a section. ","bold":true},{"text":"I am another section","italic":true,"color":"green"}]"#);
+//! ```
+//!
+//! This will make a chat message with three sections. The first one contains
+//! the text `Hello! `, and has no formatting options. A space has been added to
+//! the end so that the next section won't be right up against this text. The
+//! next section has the text `I am a section. `, and is formatted in bold.
+//! Finally, the last section `I am another section`, will be show in bright
+//! green italics on the client.
+//!
+//! The resulting json is not very nice to look at, but it is what the Minecraft
+//! client parses.
+
 use serde::ser::{Serialize, SerializeStruct, Serializer};
 use serde_derive::Serialize;
 
+/// This is a chat message. It has a list of sections, and can be serialized to
+/// json.
 #[derive(Clone)]
 pub struct Chat {
   sections: Vec<Section>,
@@ -40,6 +75,35 @@ impl Chat {
   }
 }
 
+/// This is a chat message section. It has some text, and a lot of optional
+/// fields:
+/// - [`bold`]: If true, this section will be rendered in bold.
+/// - [`italic`]: If true, this section will be rendered in italics.
+/// - [`underlined`]: If true, this section will be rendered with an underline.
+/// - [`strikethrough`]: If true, this section will be rendered with a line
+///   through it.
+/// - [`obfuscated`]: If true, this section will be rendered as random always
+///   changing letters.
+/// - [`color`]: This is the [`Color`] to render this section in.
+/// - [`insertion`]: If the user shift-right-clicks on this section, the
+///   insertion text will be added to the chat box.
+/// - [`on_click`]: If a user clicks on this chat message, the given
+///   [`ClickEvent`] will happen.
+/// - [`on_hover`]: If a user hovers over this chat message, the given
+///   [`HoverEvent`] will happen.
+/// - [`add_child`]: Adds a child chat section. If any of the children's fields
+///   are left blank, then it will copy then from this section.
+///
+/// [`bold`]: Self::bold
+/// [`italic`]: Self::italic
+/// [`underlined`]: Self::underlined
+/// [`strikethrough`]: Self::strikethrough
+/// [`obfuscated`]: Self::obfuscated
+/// [`color`]: Self::color
+/// [`insertion`]: Self::insertion
+/// [`on_click`]: Self::on_click
+/// [`on_hover`]: Self::on_hover
+/// [`add_child`]: Self::add_child
 #[derive(Debug, Default, Clone, Serialize)]
 pub struct Section {
   text:          String,
@@ -124,23 +188,42 @@ impl Serialize for HoverEvent {
 }
 
 macro_rules! add_bool {
-  ($name: ident, $sname: expr) => {
-    #[doc = "Makes this chat section "]
-    #[doc = $sname]
+  (
+    $(#[$meta:meta])*
+    $name: ident
+  ) => (
+    $(#[$meta])*
     pub fn $name(&mut self) -> &mut Self {
       self.$name = Some(true);
       self
     }
-  };
+  )
 }
 
 impl Section {
-  add_bool!(bold, stringify!(bold));
-  add_bool!(italic, stringify!(italic));
-  add_bool!(underlined, stringify!(underlined));
-  add_bool!(strikethrough, stringify!(strikethrough));
-  add_bool!(obfuscated, stringify!(obfuscated));
-  /// Applies the given color to this section
+  add_bool!(
+    /// Makes this chat section bold.
+    bold
+  );
+  add_bool!(
+    /// Makes this chat section italic.
+    italic
+  );
+  add_bool!(
+    /// Makes this chat section underlined.
+    underlined
+  );
+  add_bool!(
+    /// Makes this chat section strikethrough (puts a line through the middle of
+    /// it).
+    strikethrough
+  );
+  add_bool!(
+    /// Makes this chat section obfuscated. All the letters will be randomized
+    /// constantly.
+    obfuscated
+  );
+  /// Applies the given color to this section.
   pub fn color(&mut self, c: Color) -> &mut Self {
     self.color = Some(c);
     self
@@ -156,7 +239,7 @@ impl Section {
     self.click_event = Some(e);
     self
   }
-  /// When the client hoveres over this section, something will happen.
+  /// When the client hovers over this section, something will happen.
   pub fn on_hover(&mut self, e: HoverEvent) -> &mut Self {
     self.hover_event = Some(e);
     self
