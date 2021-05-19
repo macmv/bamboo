@@ -87,7 +87,7 @@ macro_rules! add_bool {
   ($name: ident, $sname: expr) => {
     #[doc = "Makes this chat section "]
     #[doc = $sname]
-    pub fn $name(mut self) -> Self {
+    pub fn $name(&mut self) -> &mut Self {
       self.$name = Some(true);
       self
     }
@@ -101,23 +101,23 @@ impl Section {
   add_bool!(strikethrough, stringify!(strikethrough));
   add_bool!(obfuscated, stringify!(obfuscated));
   /// Applies the given color to this section
-  pub fn color(mut self, c: Color) -> Self {
+  pub fn color(&mut self, c: Color) -> &mut Self {
     self.color = Some(c);
     self
   }
   /// If a client shift-right-clicks on this section, the given text will be
   /// inserted into the chat box.
-  pub fn insertion(mut self, text: String) -> Self {
+  pub fn insertion(&mut self, text: String) -> &mut Self {
     self.insertion = Some(text);
     self
   }
   /// When the client clicks on this section, something will happen.
-  pub fn on_click(mut self, e: ClickEvent) -> Self {
+  pub fn on_click(&mut self, e: ClickEvent) -> &mut Self {
     self.click_event = Some(e);
     self
   }
   /// When the client hoveres over this section, something will happen.
-  pub fn on_hover(mut self, e: HoverEvent) -> Self {
+  pub fn on_hover(&mut self, e: HoverEvent) -> &mut Self {
     self.hover_event = Some(e);
     self
   }
@@ -192,7 +192,13 @@ mod tests {
 
   #[test]
   fn serialize() {
-    let msg = Chat::new("Hello!".into());
+    let mut msg = Chat::new("Hello!".into());
     assert_eq!(msg.to_json(), r#"{"text":"Hello!"}"#);
+
+    msg.add(" more text".into()).bold().italic();
+    assert_eq!(
+      msg.to_json(),
+      r#"[{"text":"Hello!"},{"text":" more text","bold":true,"italic":true}]"#
+    );
   }
 }
