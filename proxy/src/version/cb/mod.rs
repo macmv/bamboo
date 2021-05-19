@@ -74,6 +74,7 @@ impl Generator {
           },
           PacketField::Bool => out.write_bool(p.get_bool(n)?),
           PacketField::String => out.write_str(p.get_str(n)?),
+          PacketField::Position => out.write_pos(p.get_pos(n)?),
           v => unreachable!("invalid packet field {:?}", v),
         }
       }

@@ -174,19 +174,13 @@ impl World {
   /// position is outside of the world.
   pub async fn set_block(&self, pos: Pos, ty: &block::Type) -> Result<(), PosError> {
     self.chunk(pos.chunk(), |mut c| c.set_type(pos.chunk_rel(), ty))?;
-    let mut out = cb::Packet::new(cb::ID::BlockChange);
-    out.set_f64("x", 0.0); // X
-    out.set_f64("y", 60.0); // Y
-    out.set_f64("z", 0.0); // Z
-    out.set_f32("yaw", 0.0); // Yaw
-    out.set_f32("pitch", 0.0); // Pitch
-    out.set_byte("flags", 0); // Flags
-    out.set_i32("teleport_id", 1234); // TP id
+
     for p in self.players.lock().await.iter() {
-      info!("locking player...");
       let p = p.lock().await;
-      info!("sending block change to {:?}", p);
-      p.conn().send(out.clone()).await;
+      let mut out = cb::Packet::new(cb::ID::BlockChange);
+      out.set_pos("location", pos);
+      out.set_i32("type", self.converter.to_old(ty.id(), p.ver().block()) as i32);
+      p.conn().send(out).await;
     }
     Ok(())
   }

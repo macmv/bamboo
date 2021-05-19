@@ -116,6 +116,7 @@ impl Packet {
   add_set!(set_f32, float, Float, f32);
   add_set!(set_f64, double, Double, f64);
   add_set!(set_str, str, Str, String);
+  add_set!(set_pos, pos, Pos, Pos, |v: Pos| v.to_u64()); // This will always be in the new position format
   add_set!(set_uuid, uuid, Uuid, UUID, |v: UUID| { Some(v.as_proto()) });
   add_set!(set_byte_arr, byte_arr, ByteArr, Vec<u8>);
   add_set!(set_i32_arr, int_arr, IntArr, Vec<i32>);
