@@ -4,6 +4,7 @@ use tokio::sync::{mpsc::Sender, Mutex};
 use tonic::{Status, Streaming};
 
 use common::{
+  math::UUID,
   net::{cb, sb},
   proto,
 };
@@ -22,6 +23,20 @@ impl Connection {
     tx: Sender<Result<proto::Packet, Status>>,
   ) -> Self {
     Connection { rx: Mutex::new(rx), tx: Mutex::new(tx), closed: false.into() }
+  }
+
+  /// This waits for the a login packet from the proxy. If any other packet is
+  /// recieved, this will panic. This should only be called right after a
+  /// connection is created.
+  pub(crate) async fn wait_for_login(&self) -> (String, UUID) {
+    let p = match self.rx.lock().await.message().await.unwrap() {
+      Some(p) => sb::Packet::from_proto(p),
+      None => panic!("connection was closed while listening for a login packet"),
+    };
+    match p.id() {
+      sb::ID::Login => (p.get_str("username").into(), p.get_uuid("uuid")),
+      _ => panic!("expecting login packet, got: {}", p),
+    }
   }
 
   /// This starts up the recieving loop for this connection. Do not call this

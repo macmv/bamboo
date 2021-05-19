@@ -64,7 +64,8 @@ impl World {
       generator: StdMutex::new(Generator::new()),
     }
   }
-  async fn new_player(self: Arc<Self>, conn: Arc<Connection>, player: Player) {
+  async fn new_player(self: Arc<Self>, player: Player) {
+    let conn = player.clone_conn();
     let player = Arc::new(Mutex::new(player));
     self.players.lock().await.push(player.clone());
 
@@ -215,18 +216,10 @@ impl WorldManager {
     // Default world. Might want to change this later, but for now this is easiest.
     // TODO: Player name, uuid
     let conn = Arc::new(Connection::new(req, tx));
+    let (username, uuid) = conn.wait_for_login().await;
     let w = self.worlds[0].clone();
-    let player = Player::new(
-      w.eid(),
-      "macmv".into(),
-      UUID::from_u128(0x1111111),
-      conn.clone(),
-      ProtocolVersion::V1_8,
-      w.clone(),
-      0.0,
-      60.0,
-      0.0,
-    );
-    w.new_player(conn, player).await;
+    let player =
+      Player::new(w.eid(), username, uuid, conn, ProtocolVersion::V1_8, w.clone(), 0.0, 60.0, 0.0);
+    w.new_player(player).await;
   }
 }

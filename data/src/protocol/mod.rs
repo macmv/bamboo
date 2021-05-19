@@ -157,6 +157,10 @@ pub fn store(dir: &Path) -> Result<(), Box<dyn Error>> {
         to_server.insert(p.name);
       }
     }
+    // This is a custom packet. It is a packet sent from the proxy to the server,
+    // which is used to authenticate the player.
+    to_server.insert("Login".into());
+
     let to_client: Vec<String> = to_client.into_iter().sorted().collect();
     let to_server: Vec<String> = to_server.into_iter().sorted().collect();
 

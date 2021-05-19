@@ -65,10 +65,15 @@ impl Player {
   pub fn username(&self) -> &str {
     &self.username
   }
-  /// Returns the connection that this player is connected on. This can be used
-  /// to check if the player has disconnected.
+  /// Returns the connection that this player is using. This can be used to
+  /// check if the player has disconnected.
   pub fn conn(&self) -> &Connection {
     &self.conn
+  }
+  /// Returns the connection that this player is using. This will clone the
+  /// internal Arc that is used to store the connection.
+  pub(crate) fn clone_conn(&self) -> Arc<Connection> {
+    self.conn.clone()
   }
 
   /// Returns the version that this player is on.
