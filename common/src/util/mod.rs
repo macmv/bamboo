@@ -1,6 +1,8 @@
-pub mod buffer;
+mod buffer;
+mod chat;
 
 pub use buffer::{Buffer, BufferError};
+pub use chat::Chat;
 
 pub fn read_varint(buf: &[u8]) -> (i32, isize) {
   let mut res: i32 = 0;
