@@ -1,5 +1,5 @@
 mod buffer;
-mod chat;
+pub mod chat;
 
 pub use buffer::{Buffer, BufferError};
 pub use chat::Chat;
