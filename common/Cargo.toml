@@ -10,7 +10,6 @@ flexi_logger = "0.17"
 log = "0.4"
 byteorder = "1.4"
 tonic = "0.4"
-tonic-reflection = "0.1"
 prost = "0.7"
 prost-types = "0.7"
 futures = "0.3.14"
@@ -24,5 +23,6 @@ strum_macros = "0.20"
 bytes = "1.0.1"
 
 [build-dependencies]
-tonic-build = "0.4"
+# We need to disable default features, as that uses rustfmt, which is not installed in Docker containers.
+tonic-build = { version = "0.4", default-features = false, features = ["transport", "prost"] }
 data = { path = "../data" }

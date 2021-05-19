@@ -61,11 +61,21 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
   let addr = "0.0.0.0:8483".parse().unwrap();
 
   let svc = MinecraftServer::new(ServerImpl { worlds: WorldManager::new() });
-  let descriptor = tonic_reflection::server::Builder::configure()
-    .register_encoded_file_descriptor_set(common::proto::FILE_DESCRIPTOR_SET)
-    .build()?;
+
+  // This is the code needed for reflection. It is disabled for now, as
+  // tonic-reflection does not allow you to disable rustfmt. For docker builds,
+  // rustfmt is not installed.
+  //
+  // let desc = tonic_reflection::server::Builder::configure()
+  //   .register_encoded_file_descriptor_set(common::proto::FILE_DESCRIPTOR_SET)
+  //   .build()?;
+  //
+  // Server::builder()
+  //   .add_service(svc)
+  //   .add_service(desc)
+  //   .serve(addr).await?;
 
   info!("listening on {}", addr);
-  Server::builder().add_service(svc).add_service(descriptor).serve(addr).await?;
+  Server::builder().add_service(svc).serve(addr).await?;
   Ok(())
 }
