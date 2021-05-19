@@ -4,7 +4,13 @@ use crate::{
   version::Generator,
 };
 
-use common::{net::cb, proto, proto::minecraft_client::MinecraftClient, version::ProtocolVersion};
+use common::{
+  math::UUID,
+  net::{cb, sb},
+  proto,
+  proto::minecraft_client::MinecraftClient,
+  version::ProtocolVersion,
+};
 use std::{error::Error, io, io::ErrorKind, sync::Arc};
 use tokio::sync::{mpsc, oneshot};
 use tokio_stream::wrappers::ReceiverStream;
@@ -112,6 +118,13 @@ impl ClientListener {
     }
     Ok(())
   }
+
+  /// Sends a packet to the server. Should only be used for things like login
+  /// packets.
+  pub async fn send_to_server(&mut self, p: sb::Packet) -> Result<(), Box<dyn Error>> {
+    self.server.send(p.into_proto()).await?;
+    Ok(())
+  }
 }
 
 impl ServerListener {
@@ -186,7 +199,9 @@ impl Conn {
     ))
   }
 
-  pub async fn handshake(&mut self) -> io::Result<()> {
+  pub async fn handshake(&mut self) -> io::Result<(String, UUID)> {
+    let mut username = None;
+    let mut uuid = None;
     'login: loop {
       self.client_reader.poll().await.unwrap();
       loop {
@@ -229,12 +244,23 @@ impl Conn {
             match p.id() {
               // Login start
               0 => {
-                let username = p.read_str();
-                info!("got username {}", username);
+                if username.is_some() {
+                  return Err(io::Error::new(
+                    ErrorKind::InvalidInput,
+                    "client sent two login packets",
+                  ));
+                }
+                let name = p.read_str();
+                info!("got username {}", &name);
+                let id = UUID::from_bytes(*md5::compute(&name));
+
                 let mut out = Packet::new(2, self.ver);
-                out.write_str("a0ebbc8d-e0b0-4c23-a965-efba61ff0ae8");
-                out.write_str("macmv");
+                out.write_str(&id.as_dashed_str());
+                out.write_str(&name);
                 self.client_writer.write(out).await?;
+
+                username = Some(name);
+                uuid = Some(id);
 
                 self.state = State::Play;
                 // Successful login, we can break now
@@ -269,6 +295,6 @@ impl Conn {
         }
       }
     }
-    Ok(())
+    Ok((username.unwrap(), uuid.unwrap()))
   }
 }

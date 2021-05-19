@@ -14,6 +14,7 @@ use std::{
 use tokio::sync::oneshot;
 
 use crate::conn::Conn;
+use common::net::sb;
 use version::Generator;
 
 #[tokio::main]
@@ -46,7 +47,7 @@ async fn handle_client(gen: Arc<Generator>, sock: TcpStream) -> Result<(), Box<d
   let (reader, writer) = packet_stream::new(sock)?;
   let mut conn = Conn::new(gen, reader, writer, "http://0.0.0.0:8483".into()).await?;
 
-  conn.handshake().await?;
+  let (name, id) = conn.handshake().await?;
 
   // These four values are passed to each listener. When one listener closes, it
   // sends a message to the tx. Since the rx is passed to the other listener, that
@@ -55,6 +56,13 @@ async fn handle_client(gen: Arc<Generator>, sock: TcpStream) -> Result<(), Box<d
   let (client_tx, server_rx) = oneshot::channel();
 
   let (mut client_listener, mut server_listener) = conn.split().await?;
+
+  // Tells the server who this client is
+  let mut out = sb::Packet::new(sb::ID::Login);
+  out.set_str("username".into(), name);
+  out.set_uuid("uuid".into(), id);
+  client_listener.send_to_server(out).await?;
+
   let mut handles = vec![];
   handles.push(tokio::spawn(async move {
     match client_listener.run(client_tx, client_rx).await {

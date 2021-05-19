@@ -11,6 +11,9 @@ use crate::proto;
 pub struct UUID(u128);
 
 impl UUID {
+  pub fn from_bytes(v: [u8; 16]) -> Self {
+    UUID(u128::from_be_bytes(v))
+  }
   pub fn from_u128(v: u128) -> Self {
     UUID(v)
   }

@@ -46,7 +46,6 @@ pub struct World {
   generator: StdMutex<Generator>,
 }
 
-#[derive(Clone)]
 pub struct WorldManager {
   // This will always have at least 1 entry. The world at index 0 is considered the "default"
   // world.
@@ -213,8 +212,6 @@ impl WorldManager {
   /// Adds a new player into the game. This should be called when a new grpc
   /// proxy connects.
   pub async fn new_player(&self, req: Streaming<Packet>, tx: Sender<Result<Packet, Status>>) {
-    // Default world. Might want to change this later, but for now this is easiest.
-    // TODO: Player name, uuid
     let conn = Arc::new(Connection::new(req, tx));
     let (username, uuid) = conn.wait_for_login().await;
     let w = self.worlds[0].clone();

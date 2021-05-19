@@ -7,6 +7,7 @@ pub mod net;
 pub mod player;
 pub mod world;
 
+use std::sync::Arc;
 use tokio::sync::mpsc;
 use tokio_stream::wrappers::ReceiverStream;
 use tonic::{transport::Server, Request, Response, Status, Streaming};
@@ -20,7 +21,7 @@ use world::WorldManager;
 
 #[derive(Clone)]
 pub struct ServerImpl {
-  worlds: WorldManager,
+  worlds: Arc<WorldManager>,
 }
 
 #[tonic::async_trait]
@@ -32,7 +33,13 @@ impl Minecraft for ServerImpl {
   ) -> Result<Response<Self::ConnectionStream>, Status> {
     let (tx, rx) = mpsc::channel(8);
 
-    self.worlds.new_player(req.into_inner(), tx).await;
+    // We need to wait for a packet to be recieved from the proxy before we can
+    // create the player (we need a username and uuid). Therefore, we need to do
+    // this on another task.
+    let worlds = self.worlds.clone();
+    tokio::spawn(async move {
+      worlds.new_player(req.into_inner(), tx).await;
+    });
 
     Ok(Response::new(ReceiverStream::new(rx)))
   }
@@ -59,7 +66,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
   let addr = "0.0.0.0:8483".parse().unwrap();
 
-  let svc = MinecraftServer::new(ServerImpl { worlds: WorldManager::new() });
+  let svc = MinecraftServer::new(ServerImpl { worlds: Arc::new(WorldManager::new()) });
 
   // This is the code needed for reflection. It is disabled for now, as
   // tonic-reflection does not allow you to disable rustfmt. For docker builds,
