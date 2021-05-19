@@ -1,5 +1,7 @@
+use serde::{Serialize, Serializer};
 use serde_derive::Serialize;
 
+#[derive(Clone)]
 pub struct Chat {
   sections: Vec<Section>,
 }
@@ -38,7 +40,7 @@ impl Chat {
   }
 }
 
-#[derive(Debug, Default, Serialize)]
+#[derive(Debug, Default, Clone, Serialize)]
 pub struct Section {
   text:          String,
   #[serde(skip_serializing_if = "Option::is_none")]
@@ -67,7 +69,7 @@ pub struct Section {
   extra:         Vec<Section>,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Clone, Serialize)]
 pub enum ClickEvent {
   OpenURL(String),
   RunCommand(String),
@@ -76,7 +78,7 @@ pub enum ClickEvent {
   CopyToClipboard(String),
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Clone, Serialize)]
 pub enum HoverEvent {
   ShowText(String),
   ShowItem(String),
@@ -134,7 +136,7 @@ impl Section {
   }
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Clone)]
 pub enum Color {
   Black,
   DarkBlue,
@@ -146,7 +148,7 @@ pub enum Color {
   Gray,
   DarkGray,
   Blue,
-  Bright,
+  BrightGreen,
   Cyan,
   Red,
   Pink,
@@ -175,7 +177,7 @@ impl Color {
       Self::Gray => "gray",
       Self::DarkGray => "dark_gray",
       Self::Blue => "blue",
-      Self::Bright => "green",
+      Self::BrightGreen => "green",
       Self::Cyan => "aqua",
       Self::Red => "red",
       Self::Pink => "pink",
@@ -186,19 +188,45 @@ impl Color {
   }
 }
 
+impl Serialize for Color {
+  fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+  where
+    S: Serializer,
+  {
+    serializer.serialize_str(self.to_str())
+  }
+}
+
 #[cfg(test)]
 mod tests {
   use super::*;
 
   #[test]
   fn serialize() {
-    let mut msg = Chat::new("Hello!".into());
-    assert_eq!(msg.to_json(), r#"{"text":"Hello!"}"#);
+    // Test the basics of serialization
+    {
+      let mut msg = Chat::new("Hello!".into());
+      assert_eq!(msg.to_json(), r#"{"text":"Hello!"}"#);
 
-    msg.add(" more text".into()).bold().italic();
-    assert_eq!(
-      msg.to_json(),
-      r#"[{"text":"Hello!"},{"text":" more text","bold":true,"italic":true}]"#
-    );
+      msg.add(" more text".into()).bold().italic();
+      assert_eq!(
+        msg.to_json(),
+        r#"[{"text":"Hello!"},{"text":" more text","bold":true,"italic":true}]"#
+      );
+    }
+
+    // Test serializing colors
+    {
+      let msg = Chat::empty();
+      assert_eq!(msg.to_json(), r#"{}"#);
+
+      let mut m = msg.clone();
+      m.add("colored".into()).color(Color::BrightGreen);
+      assert_eq!(m.to_json(), r#"{"text":"colored","color":"green"}"#);
+
+      let mut m = msg.clone();
+      m.add("another color".into()).color(Color::Black);
+      assert_eq!(m.to_json(), r#"{"text":"another color","color":"black"}"#);
+    }
   }
 }
