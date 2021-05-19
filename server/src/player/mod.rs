@@ -1,6 +1,6 @@
 use std::{fmt, sync::Arc};
 
-use common::{math::UUID, version::ProtocolVersion};
+use common::{math::UUID, net::cb, util::Chat, version::ProtocolVersion};
 
 use crate::{net::Connection, world::World};
 
@@ -118,6 +118,13 @@ impl Player {
   pub(crate) fn set_next_look(&mut self, yaw: f32, pitch: f32) {
     self.next_yaw = yaw;
     self.next_pitch = pitch;
+  }
+
+  pub async fn send_message(&self, msg: &Chat) {
+    let mut out = cb::Packet::new(cb::ID::Chat);
+    out.set_str("message", msg.to_json());
+    out.set_byte("position", 0); // Chat box, not over hotbar
+    self.conn().send(out).await;
   }
 
   /// Updates the player's position/velocity. This will apply gravity, and do
