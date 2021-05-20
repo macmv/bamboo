@@ -34,7 +34,7 @@ pub fn generate(dir: &Path) -> Result<(), Box<dyn Error>> {
     let mut f = File::create(&dir.join("type.rs"))?;
     writeln!(f, "/// Auto generated item type. This is directly generated")?;
     writeln!(f, "/// from prismarine data.")?;
-    writeln!(f, "#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, ToPrimitive)]")?;
+    writeln!(f, "#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, FromPrimitive, ToPrimitive)]")?;
     writeln!(f, "pub enum Type {{")?;
     for i in latest {
       let name = i.name.to_case(Case::Pascal);

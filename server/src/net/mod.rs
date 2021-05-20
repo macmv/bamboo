@@ -1,4 +1,3 @@
-use log::info;
 use std::sync::atomic::{AtomicBool, Ordering};
 use tokio::sync::{mpsc::Sender, Mutex};
 use tonic::{Status, Streaming};
@@ -68,8 +67,8 @@ impl Connection {
         sb::ID::SetCreativeSlot => {
           let slot = p.get_short("slot");
           let id = p.get_int("item-id");
-          let count = p.get_int("item-count");
-          let _nbt = p.get_int("item-nbt");
+          let count = p.get_byte("item-count");
+          let _nbt = p.get_byte_arr("item-nbt");
 
           let mut p = player.lock().await;
           let id = p.world().get_item_converter().to_latest(id as u32, p.ver().block());

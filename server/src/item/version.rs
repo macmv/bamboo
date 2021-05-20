@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use super::{data, data::Data, Type};
+use super::{data, data::Data};
 
 use common::version::BlockVersion;
 
@@ -26,6 +26,7 @@ impl TypeConverter {
   /// Takes the given old item id, which is part of `ver`, and returns the new
   /// id that it maps to. If the id is invalid, this will return 0 (empty).
   pub fn to_latest(&self, id: u32, ver: BlockVersion) -> u32 {
+    dbg!(&self.versions[ver.to_index() as usize]);
     match self.versions[ver.to_index() as usize].to_new.get(&id) {
       Some(v) => *v,
       None => 0,
@@ -77,7 +78,7 @@ pub struct Version {
 /// indicies and block versions.
 pub fn generate_versions() -> Vec<Version> {
   let mut versions = vec![];
-  let csv = include_str!(concat!(env!("OUT_DIR"), "/block/versions.csv"));
+  let csv = include_str!(concat!(env!("OUT_DIR"), "/item/versions.csv"));
   for (i, l) in csv.lines().enumerate() {
     let mut sections = l.split(',').enumerate();
     // Remove the first element. This is the latest block id, which will always be
