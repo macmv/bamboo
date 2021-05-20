@@ -17,9 +17,21 @@ impl Stack {
     Stack { item, amount: 1 }
   }
 
+  /// Sets the amount in self, and returns the modified self.
+  pub fn with_amount(mut self, amount: u8) -> Self {
+    self.amount = amount;
+    self
+  }
+  /// Sets the amount in the item stack.
+  pub fn set_amount(&mut self, amount: u8) {
+    self.amount = amount;
+  }
+
+  /// Returns the number of items in this item stack.
   pub fn amount(&self) -> u8 {
     self.amount
   }
+  /// Returns the item that is in this item stack.
   pub fn item(&self) -> Type {
     self.item
   }

@@ -100,6 +100,15 @@ impl Player {
     self.ver
   }
 
+  /// Returns a reference to the player's inventory.
+  pub fn inventory(&self) -> &Inventory {
+    &self.inventory
+  }
+  // Returns a mutable reference to the player's inventory.
+  pub fn inventory_mut(&mut self) -> &mut Inventory {
+    &mut self.inventory
+  }
+
   /// Returns a reference to the world the player is in.
   pub fn world(&self) -> &World {
     &self.world

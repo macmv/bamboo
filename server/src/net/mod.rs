@@ -10,7 +10,7 @@ use common::{
   util::chat::{Chat, Color, HoverEvent},
 };
 
-use crate::{block, player::Player};
+use crate::{block, item, player::Player};
 
 pub struct Connection {
   rx:     Mutex<Streaming<proto::Packet>>,
@@ -64,6 +64,17 @@ impl Connection {
           msg.add("> ".into());
           msg.add(message.into()).on_hover(HoverEvent::ShowText("Hover time".into()));
           world.broadcast(&msg).await;
+        }
+        sb::ID::SetCreativeSlot => {
+          let slot = p.get_short("slot");
+          let id = p.get_int("item-id");
+          let count = p.get_int("item-count");
+          let _nbt = p.get_int("item-nbt");
+
+          let mut p = player.lock().await;
+          let id = p.world().get_item_converter().to_latest(id as u32, p.ver().block());
+          let inv = p.inventory_mut();
+          inv.set(slot as u32, item::Stack::new(item::Type::from_u32(id)).with_amount(count));
         }
         sb::ID::BlockDig => {
           let pos = p.get_pos("location");

@@ -16,14 +16,14 @@ use tokio::{
 use tonic::{Status, Streaming};
 
 use common::{
-  math::{ChunkPos, Pos, PosError, UUID},
+  math::{ChunkPos, Pos, PosError},
   net::{cb, Other},
   proto::Packet,
   util::Chat,
   version::ProtocolVersion,
 };
 
-use crate::{block, net::Connection, player::Player};
+use crate::{block, item, net::Connection, player::Player};
 use chunk::MultiChunk;
 use gen::Generator;
 
@@ -40,27 +40,33 @@ use gen::Generator;
 // }
 
 pub struct World {
-  chunks:    RwLock<HashMap<ChunkPos, Arc<StdMutex<MultiChunk>>>>,
-  players:   Mutex<Vec<Arc<Mutex<Player>>>>,
-  eid:       Arc<AtomicI32>,
-  converter: Arc<block::TypeConverter>,
-  generator: StdMutex<Generator>,
+  chunks:          RwLock<HashMap<ChunkPos, Arc<StdMutex<MultiChunk>>>>,
+  players:         Mutex<Vec<Arc<Mutex<Player>>>>,
+  eid:             Arc<AtomicI32>,
+  block_converter: Arc<block::TypeConverter>,
+  item_converter:  Arc<item::TypeConverter>,
+  generator:       StdMutex<Generator>,
 }
 
 pub struct WorldManager {
   // This will always have at least 1 entry. The world at index 0 is considered the "default"
   // world.
-  worlds:    Vec<Arc<World>>,
-  converter: Arc<block::TypeConverter>,
+  worlds:          Vec<Arc<World>>,
+  block_converter: Arc<block::TypeConverter>,
+  item_converter:  Arc<item::TypeConverter>,
 }
 
 impl World {
-  pub fn new(converter: Arc<block::TypeConverter>) -> Self {
+  pub fn new(
+    block_converter: Arc<block::TypeConverter>,
+    item_converter: Arc<item::TypeConverter>,
+  ) -> Self {
     World {
       chunks: RwLock::new(HashMap::new()),
       players: Mutex::new(vec![]),
       eid: Arc::new(1.into()),
-      converter,
+      block_converter,
+      item_converter,
       generator: StdMutex::new(Generator::new()),
     }
   }
@@ -142,6 +148,19 @@ impl World {
     self.eid.fetch_add(1, Ordering::SeqCst)
   }
 
+  /// Returns the current block converter. This can be used to convert old block
+  /// ids to new ones, and vice versa. This can also be used to convert block
+  /// kinds to types.
+  pub fn get_block_converter(&self) -> &block::TypeConverter {
+    &self.block_converter
+  }
+
+  /// Returns the current item converter. This can be used to convert old item
+  /// ids to new ones, and vice versa.
+  pub fn get_item_converter(&self) -> &item::TypeConverter {
+    &self.item_converter
+  }
+
   /// This calls f(), and passes it a locked chunk. This will also generate a
   /// new chunk if there is not one stored there.
   ///
@@ -161,7 +180,7 @@ impl World {
       let mut chunks = self.chunks.write().unwrap();
       // Make sure that the chunk was not written in between locking this chunk
       chunks.entry(pos).or_insert_with(|| {
-        let mut c = MultiChunk::new(self.converter.clone());
+        let mut c = MultiChunk::new(self.block_converter.clone());
         self.generator.lock().unwrap().generate(&mut c);
         Arc::new(StdMutex::new(c))
       });
@@ -180,7 +199,7 @@ impl World {
       let p = p.lock().await;
       let mut out = cb::Packet::new(cb::ID::BlockChange);
       out.set_pos("location", pos);
-      out.set_i32("type", self.converter.to_old(ty.id(), p.ver().block()) as i32);
+      out.set_i32("type", self.block_converter.to_old(ty.id(), p.ver().block()) as i32);
       p.conn().send(out).await;
     }
     Ok(())
@@ -190,7 +209,7 @@ impl World {
   /// given kind. It will return an error if the position is outside of the
   /// world.
   pub async fn set_kind(&self, pos: Pos, kind: block::Kind) -> Result<(), PosError> {
-    self.set_block(pos, self.converter.get(kind).default_type()).await
+    self.set_block(pos, self.block_converter.get(kind).default_type()).await
   }
 
   /// This broadcasts a chat message to everybody in the world.
@@ -214,21 +233,32 @@ impl Default for WorldManager {
 
 impl WorldManager {
   pub fn new() -> Self {
-    let mut w =
-      WorldManager { converter: Arc::new(block::TypeConverter::new()), worlds: vec![] };
+    let mut w = WorldManager {
+      block_converter: Arc::new(block::TypeConverter::new()),
+      item_converter:  Arc::new(item::TypeConverter::new()),
+      worlds:          vec![],
+    };
     w.add_world();
     w
   }
 
   pub fn add_world(&mut self) {
-    self.worlds.push(Arc::new(World::new(self.converter.clone())));
+    self
+      .worlds
+      .push(Arc::new(World::new(self.block_converter.clone(), self.item_converter.clone())));
   }
 
-  /// Returns the current converter. This can be used to convert old block ids
-  /// to new ones, and vice versa. This can also be used to convert block kinds
-  /// to types.
-  pub fn get_converter(&self) -> &block::TypeConverter {
-    &self.converter
+  /// Returns the current block converter. This can be used to convert old block
+  /// ids to new ones, and vice versa. This can also be used to convert block
+  /// kinds to types.
+  pub fn get_block_converter(&self) -> &block::TypeConverter {
+    &self.block_converter
+  }
+
+  /// Returns the current item converter. This can be used to convert old item
+  /// ids to new ones, and vice versa.
+  pub fn get_item_converter(&self) -> &item::TypeConverter {
+    &self.item_converter
   }
 
   /// Adds a new player into the game. This should be called when a new grpc
