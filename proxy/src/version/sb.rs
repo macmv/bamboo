@@ -39,9 +39,9 @@ impl Generator {
         PacketField::DefinedType(v) => match v.as_ref() {
           "slot" => {
             let (id, count, nbt) = p.read_item();
-            out.set_int("item".into(), id);
-            out.set_byte("count".into(), count);
-            out.set_byte_arr("nbt".into(), nbt);
+            out.set_int(format!("{}-id", n), id);
+            out.set_byte(format!("{}-count", n), count);
+            out.set_byte_arr(format!("{}-nbt", n), nbt);
           }
           v => {
             unreachable!("invalid defined type: {}", v);
