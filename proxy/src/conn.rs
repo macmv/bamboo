@@ -178,7 +178,7 @@ impl Conn {
   }
 
   pub async fn split(mut self) -> Result<(ClientListener, ServerListener), Status> {
-    let (tx, rx) = mpsc::channel(8);
+    let (tx, rx) = mpsc::channel(1);
 
     let response = self.server.connection(Request::new(ReceiverStream::new(rx))).await?;
     let inbound = response.into_inner();

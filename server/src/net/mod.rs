@@ -3,7 +3,7 @@ use tokio::sync::{mpsc::Sender, Mutex};
 use tonic::{Status, Streaming};
 
 use common::{
-  math::UUID,
+  math::{Pos, UUID},
   net::{cb, sb},
   proto,
   util::chat::{Chat, Color, HoverEvent},
@@ -79,6 +79,12 @@ impl Connection {
           let pos = p.get_pos("location");
           let world = player.lock().await.clone_world();
           world.set_kind(pos, block::Kind::Air).await.unwrap();
+        }
+        sb::ID::BlockPlace => {
+          let pos = p.get_pos("location");
+          let world = player.lock().await.clone_world();
+          info!("got place block at {}", pos);
+          world.set_kind(pos + Pos::new(0, 1, 0), block::Kind::Stone).await.unwrap();
         }
         sb::ID::Position => {
           let mut player = player.lock().await;
