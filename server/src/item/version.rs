@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use super::{data, data::Data, Kind};
+use super::{data, data::Data, Type};
 
 use common::version::BlockVersion;
 
@@ -8,6 +8,7 @@ use common::version::BlockVersion;
 /// versions. This is much simpler than block conversion, as there are not
 /// multiple states.
 pub struct TypeConverter {
+  types:    Vec<Data>,
   versions: Vec<Version>,
 }
 
@@ -19,7 +20,7 @@ impl TypeConverter {
   /// get_item_converter).
   #[allow(clippy::new_without_default)]
   pub fn new() -> Self {
-    Self { kinds: data::generate_kinds(), versions: generate_versions() }
+    Self { types: data::generate_items(), versions: generate_versions() }
   }
 
   /// Takes the given old item id, which is part of `ver`, and returns the new

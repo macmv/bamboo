@@ -4,12 +4,11 @@ use std::{collections::HashMap, error::Error, fs, fs::File, io::Write, path::Pat
 
 #[derive(Debug, Clone, Deserialize)]
 struct Item {
-  // The item id
   id:           u32,
-  // The name of the item (for example, grass_block)
   name:         String,
-  // The display name (for example, Grass Block)
+  #[serde(rename = "displayName")]
   display_name: String,
+  #[serde(rename = "stackSize")]
   stack_size:   u32,
 }
 
@@ -37,9 +36,23 @@ pub fn generate(dir: &Path) -> Result<(), Box<dyn Error>> {
     writeln!(f, "/// from prismarine data.")?;
     writeln!(f, "#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, ToPrimitive)]")?;
     writeln!(f, "pub enum Type {{")?;
-    for b in latest {
-      let name = b.name.to_case(Case::Pascal);
+    for i in latest {
+      let name = i.name.to_case(Case::Pascal);
       writeln!(f, "  {},", name)?;
+    }
+    writeln!(f, "}}")?;
+  }
+  {
+    // Generates the item data (things like stack size, display name)
+    let mut f = File::create(&dir.join("data.rs"))?;
+
+    // Include macro must be one statement
+    writeln!(f, "{{")?;
+    for i in latest {
+      writeln!(f, "items.push(Data{{")?;
+      writeln!(f, "  display_name: \"{}\",", i.display_name)?;
+      writeln!(f, "  stack_size: {},", i.stack_size)?;
+      writeln!(f, "}});")?;
     }
     writeln!(f, "}}")?;
   }

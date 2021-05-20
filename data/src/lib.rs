@@ -8,11 +8,18 @@ pub mod protocol;
 
 use std::{env, path::Path};
 
-pub fn generate() {
+pub fn generate_blocks() {
   let out = env::var_os("OUT_DIR").unwrap();
   let dir = Path::new(&out);
 
   block::generate(&dir).unwrap();
+}
+
+pub fn generate_items() {
+  let out = env::var_os("OUT_DIR").unwrap();
+  let dir = Path::new(&out);
+
+  item::generate(&dir).unwrap();
 }
 
 /// This should be run in build.rs. It reads all protocols from minecraft-data,
