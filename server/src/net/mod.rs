@@ -81,10 +81,16 @@ impl Connection {
           world.set_kind(pos, block::Kind::Air).await.unwrap();
         }
         sb::ID::BlockPlace => {
-          let pos = p.get_pos("location");
-          let world = player.lock().await.clone_world();
-          info!("got place block at {}", pos);
-          world.set_kind(pos + Pos::new(0, 1, 0), block::Kind::Stone).await.unwrap();
+          let mut pos = p.get_pos("location");
+          let dir = p.get_byte("direction");
+
+          if pos == Pos::new(-1, -1, -1) && dir as i8 == -1 {
+            // Client is eating, or head is inside block
+          } else {
+            pos += Pos::dir_from_byte(dir);
+            let world = player.lock().await.clone_world();
+            world.set_kind(pos, block::Kind::Stone).await.unwrap();
+          }
         }
         sb::ID::Position => {
           let mut player = player.lock().await;

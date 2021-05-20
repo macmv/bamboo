@@ -56,6 +56,22 @@ impl Pos {
     let z = ((v << 38) as i64 >> 38) as i32;
     Pos::new(x, y, z)
   }
+  /// This creates a "unit" position. Whenever a block is placed, the direction
+  /// is sent as a byte. This is a value from 0..6. This function parses that
+  /// byte, and generates a position that is something like (1, 0, 0) or (0, -1,
+  /// 0). The result is intended to be added to a block position, to offset it
+  /// by one block. If the value is outside if 0..6, then (0, 0, 0) is returned.
+  pub fn dir_from_byte(v: u8) -> Self {
+    match v {
+      0 => Pos::new(0, -1, 0),
+      1 => Pos::new(0, 1, 0),
+      2 => Pos::new(0, 0, -1),
+      3 => Pos::new(0, 0, 1),
+      4 => Pos::new(-1, 0, 0),
+      5 => Pos::new(1, 0, 0),
+      _ => Pos::new(0, 0, 0),
+    }
+  }
   /// Converts the block position into a u64. This is what should be sent to
   /// clients with versions 1.14 and up. This is also what should be used to
   /// encode a position within a grpc packet.
