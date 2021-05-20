@@ -2,7 +2,7 @@ use std::{fmt, sync::Arc};
 
 use common::{math::UUID, net::cb, util::Chat, version::ProtocolVersion};
 
-use crate::{net::Connection, world::World};
+use crate::{item::Inventory, net::Connection, world::World};
 
 pub struct Player {
   // The EID of the player. Never changes.
@@ -13,6 +13,8 @@ pub struct Player {
   conn:     Arc<Connection>,
   ver:      ProtocolVersion,
   world:    Arc<World>,
+
+  inventory: Inventory,
 
   x: f64,
   y: f64,
@@ -35,6 +37,7 @@ impl fmt::Debug for Player {
       .field("username", &self.username)
       .field("uuid", &self.uuid)
       .field("ver", &self.ver)
+      .field("inventory", &self.inventory)
       .field("x", &self.x)
       .field("y", &self.x)
       .field("z", &self.x)
@@ -63,6 +66,7 @@ impl Player {
       conn,
       ver,
       world,
+      inventory: Inventory::new(46), // This is 45 on 1.8, because there was no off hand.
       x,
       y,
       z,
