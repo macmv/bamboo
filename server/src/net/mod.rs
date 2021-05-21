@@ -41,7 +41,7 @@ impl Connection {
 
   /// This starts up the recieving loop for this connection. Do not call this
   /// more than once.
-  pub(crate) async fn run(&self, player: &Mutex<Player>) -> Result<(), Status> {
+  pub(crate) async fn run(&self, player: &Player) -> Result<(), Status> {
     'running: loop {
       let p = match self.rx.lock().await.message().await? {
         Some(p) => sb::Packet::from_proto(p),
@@ -50,19 +50,13 @@ impl Connection {
       match p.id() {
         sb::ID::Chat => {
           let message = p.get_str("message");
-          let world;
-          let username;
-          {
-            let p = player.lock().await;
-            world = p.clone_world();
-            username = p.username().to_string();
-          }
+
           let mut msg = Chat::empty();
           msg.add("<".into());
-          msg.add(username).color(Color::Red);
+          msg.add(player.username().into()).color(Color::Red);
           msg.add("> ".into());
           msg.add(message.into()).on_hover(HoverEvent::ShowText("Hover time".into()));
-          world.broadcast(&msg).await;
+          player.world().broadcast(&msg).await;
         }
         sb::ID::SetCreativeSlot => {
           let slot = p.get_short("slot");
@@ -70,15 +64,14 @@ impl Connection {
           let count = p.get_byte("item-count");
           let _nbt = p.get_byte_arr("item-nbt");
 
-          let mut p = player.lock().await;
-          let id = p.world().get_item_converter().to_latest(id as u32, p.ver().block());
-          let inv = p.inventory_mut();
-          inv.set(slot as u32, item::Stack::new(item::Type::from_u32(id)).with_amount(count));
+          let id = player.world().get_item_converter().to_latest(id as u32, player.ver().block());
+          player
+            .lock_inventory()
+            .set(slot as u32, item::Stack::new(item::Type::from_u32(id)).with_amount(count));
         }
         sb::ID::BlockDig => {
           let pos = p.get_pos("location");
-          let world = player.lock().await.clone_world();
-          world.set_kind(pos, block::Kind::Air).await.unwrap();
+          player.world().set_kind(pos, block::Kind::Air).await.unwrap();
         }
         sb::ID::BlockPlace => {
           let mut pos = p.get_pos("location");
@@ -88,21 +81,17 @@ impl Connection {
             // Client is eating, or head is inside block
           } else {
             pos += Pos::dir_from_byte(dir);
-            let world = player.lock().await.clone_world();
-            world.set_kind(pos, block::Kind::Stone).await.unwrap();
+            player.world().set_kind(pos, block::Kind::Stone).await.unwrap();
           }
         }
         sb::ID::Position => {
-          let mut player = player.lock().await;
           player.set_next_pos(p.get_double("x"), p.get_double("y"), p.get_double("z"));
         }
         sb::ID::PositionLook => {
-          let mut player = player.lock().await;
           player.set_next_pos(p.get_double("x"), p.get_double("y"), p.get_double("z"));
           player.set_next_look(p.get_float("yaw"), p.get_float("pitch"));
         }
         sb::ID::Look => {
-          let mut player = player.lock().await;
           player.set_next_look(p.get_float("yaw"), p.get_float("pitch"));
         }
         // _ => warn!("got unknown packet from client: {:?}", p),

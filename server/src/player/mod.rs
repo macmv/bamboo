@@ -1,21 +1,14 @@
-use std::{fmt, sync::Arc};
+use std::{
+  fmt,
+  sync::{Arc, Mutex, MutexGuard},
+};
 
 use common::{math::UUID, net::cb, util::Chat, version::ProtocolVersion};
 
 use crate::{item::Inventory, net::Connection, world::World};
 
-pub struct Player {
-  // The EID of the player. Never changes.
-  _id:      i32,
-  // Player's username
-  username: String,
-  uuid:     UUID,
-  conn:     Arc<Connection>,
-  ver:      ProtocolVersion,
-  world:    Arc<World>,
-
-  inventory: Inventory,
-
+#[derive(Debug)]
+struct PlayerPosition {
   x: f64,
   y: f64,
   z: f64,
@@ -31,6 +24,21 @@ pub struct Player {
   next_pitch: f32,
 }
 
+pub struct Player {
+  // The EID of the player. Never changes.
+  _id:      i32,
+  // Player's username
+  username: String,
+  uuid:     UUID,
+  conn:     Arc<Connection>,
+  ver:      ProtocolVersion,
+  world:    Arc<World>,
+
+  inventory: Mutex<Inventory>,
+
+  pos: Mutex<PlayerPosition>,
+}
+
 impl fmt::Debug for Player {
   fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
     f.debug_struct("Player")
@@ -38,11 +46,7 @@ impl fmt::Debug for Player {
       .field("uuid", &self.uuid)
       .field("ver", &self.ver)
       .field("inventory", &self.inventory)
-      .field("x", &self.x)
-      .field("y", &self.x)
-      .field("z", &self.x)
-      .field("yaw", &self.x)
-      .field("pitch", &self.x)
+      .field("pos", &self.pos)
       .finish()
   }
 }
@@ -66,17 +70,20 @@ impl Player {
       conn,
       ver,
       world,
-      inventory: Inventory::new(46), // This is 45 on 1.8, because there was no off hand.
-      x,
-      y,
-      z,
-      next_x: x,
-      next_y: y,
-      next_z: z,
-      yaw: 0.0,
-      pitch: 0.0,
-      next_yaw: 0.0,
-      next_pitch: 0.0,
+      // This is 45 on 1.8, because there was no off hand.
+      inventory: Mutex::new(Inventory::new(46)),
+      pos: Mutex::new(PlayerPosition {
+        x,
+        y,
+        z,
+        next_x: x,
+        next_y: y,
+        next_z: z,
+        yaw: 0.0,
+        pitch: 0.0,
+        next_yaw: 0.0,
+        next_pitch: 0.0,
+      }),
     }
   }
 
@@ -100,13 +107,9 @@ impl Player {
     self.ver
   }
 
-  /// Returns a reference to the player's inventory.
-  pub fn inventory(&self) -> &Inventory {
-    &self.inventory
-  }
-  // Returns a mutable reference to the player's inventory.
-  pub fn inventory_mut(&mut self) -> &mut Inventory {
-    &mut self.inventory
+  /// Returns a locked reference to the player's inventory.
+  pub fn lock_inventory(&self) -> MutexGuard<Inventory> {
+    self.inventory.lock().unwrap()
   }
 
   /// Returns a reference to the world the player is in.
@@ -120,17 +123,19 @@ impl Player {
 
   /// This will move the player on the next player tick. Used whenever a
   /// position packet is recieved.
-  pub(crate) fn set_next_pos(&mut self, x: f64, y: f64, z: f64) {
-    self.next_x = x;
-    self.next_y = y;
-    self.next_z = z;
+  pub(crate) fn set_next_pos(&self, x: f64, y: f64, z: f64) {
+    let mut pos = self.pos.lock().unwrap();
+    pos.next_x = x;
+    pos.next_y = y;
+    pos.next_z = z;
   }
 
   /// This will set the player's look direction on the next player tick. Used
   /// whenever a player look packet is recieved.
-  pub(crate) fn set_next_look(&mut self, yaw: f32, pitch: f32) {
-    self.next_yaw = yaw;
-    self.next_pitch = pitch;
+  pub(crate) fn set_next_look(&self, yaw: f32, pitch: f32) {
+    let mut pos = self.pos.lock().unwrap();
+    pos.next_yaw = yaw;
+    pos.next_pitch = pitch;
   }
 
   pub async fn send_message(&self, msg: &Chat) {
@@ -143,37 +148,32 @@ impl Player {
   /// Updates the player's position/velocity. This will apply gravity, and do
   /// collision checks. Should never be called at a different rate than the
   /// global tick rate.
-  pub(crate) fn tick(&mut self) {
+  pub(crate) fn tick(&self) {
+    let mut pos = self.pos.lock().unwrap();
     // TODO: Movement checks
-    self.x = self.next_x;
-    self.y = self.next_y;
-    self.z = self.next_z;
-    self.yaw = self.next_yaw;
-    self.pitch = self.next_pitch;
+    pos.x = pos.next_x;
+    pos.y = pos.next_y;
+    pos.z = pos.next_z;
+    pos.yaw = pos.next_yaw;
+    pos.pitch = pos.next_pitch;
   }
 
-  /// Returns the player's X position. This is only updated once per tick.
-  pub fn x(&self) -> f64 {
-    self.x
+  /// Returns the player's position. This is only updated once per tick.
+  pub fn pos(&self) -> (f64, f64, f64) {
+    let pos = self.pos.lock().unwrap();
+    (pos.x, pos.y, pos.z)
   }
-  /// Returns the player's Y position. This is only updated once per tick.
-  pub fn y(&self) -> f64 {
-    self.y
+  /// Returns the player's pitch and yaw angle. This is the amount that they are
+  /// looking to the side. It is in the range -180-180. This is only updated
+  /// once per tick.
+  pub fn rotation(&self) -> (f32, f32) {
+    let pos = self.pos.lock().unwrap();
+    (pos.pitch, pos.yaw)
   }
-  /// Returns the player's Z position. This is only updated once per tick.
-  pub fn z(&self) -> f64 {
-    self.z
-  }
-  /// Returns the player's yaw angle. This is the amount that they are looking
-  /// to the side. It is in the range -180-180. This is only updated once per
-  /// tick.
-  pub fn yaw(&self) -> f32 {
-    self.yaw
-  }
-  /// Returns the player's pitch angle. This is the amount that they are looking
-  /// up or down. It is within the range -90..90. This is only updated once per
-  /// tick.
-  pub fn pitch(&self) -> f32 {
-    self.pitch
-  }
+}
+
+#[test]
+fn assert_sync() {
+  fn is_sync<T: Send + Sync>() {}
+  is_sync::<Player>(); // only compiles is player is Sync
 }
