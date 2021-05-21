@@ -29,6 +29,6 @@ mod tests {
   fn test_generate() {
     dbg!(generate_items());
     // Used to show debug output.
-    assert!(false);
+    // assert!(false);
   }
 }

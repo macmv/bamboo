@@ -104,29 +104,3 @@ pub fn generate_versions() -> Vec<Version> {
   // using this list can just call BlockVersion::to_index().
   versions.into_iter().rev().collect()
 }
-
-#[cfg(test)]
-mod tests {
-  use super::*;
-
-  #[test]
-  fn test_convert() {
-    let conv = TypeConverter::new();
-
-    // This line makes it easy to test each version
-    // 15743,11268,11252,8595,4080,4080,4080,4080,0
-
-    assert_eq!(conv.to_old(15743, BlockVersion::V1_16), 15743);
-    assert_eq!(conv.to_old(15743, BlockVersion::V1_15), 11268);
-    assert_eq!(conv.to_old(15743, BlockVersion::V1_14), 11252);
-    assert_eq!(conv.to_old(15743, BlockVersion::V1_13), 8595);
-    assert_eq!(conv.to_old(15743, BlockVersion::V1_12), 4080);
-    assert_eq!(conv.to_old(15743, BlockVersion::V1_11), 4080);
-    assert_eq!(conv.to_old(15743, BlockVersion::V1_10), 4080);
-    assert_eq!(conv.to_old(15743, BlockVersion::V1_9), 4080);
-    assert_eq!(conv.to_old(15743, BlockVersion::V1_8), 0);
-
-    // Used to show debug output.
-    // assert!(false);
-  }
-}
