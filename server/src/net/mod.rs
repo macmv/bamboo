@@ -13,7 +13,7 @@ use crate::{block, item, player::Player};
 
 pub struct Connection {
   rx:     Mutex<Streaming<proto::Packet>>,
-  tx:     Mutex<Sender<Result<proto::Packet, Status>>>,
+  tx:     Sender<Result<proto::Packet, Status>>,
   closed: AtomicBool,
 }
 
@@ -22,7 +22,7 @@ impl Connection {
     rx: Streaming<proto::Packet>,
     tx: Sender<Result<proto::Packet, Status>>,
   ) -> Self {
-    Connection { rx: Mutex::new(rx), tx: Mutex::new(tx), closed: false.into() }
+    Connection { rx: Mutex::new(rx), tx, closed: false.into() }
   }
 
   /// This waits for the a login packet from the proxy. If any other packet is
@@ -105,7 +105,7 @@ impl Connection {
 
   /// Sends a packet to the proxy, which will then get sent to the client.
   pub async fn send(&self, p: cb::Packet) {
-    self.tx.lock().await.send(Ok(p.into_proto())).await.unwrap();
+    self.tx.send(Ok(p.into_proto())).await.unwrap();
   }
 
   // Returns true if the connection has been closed.
