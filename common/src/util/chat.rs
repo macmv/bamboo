@@ -31,7 +31,7 @@
 //! The resulting json is not very nice to look at, but it is what the Minecraft
 //! client parses.
 
-use serde::ser::{Serialize, SerializeStruct, Serializer};
+use serde::ser::{Serialize, SerializeMap, SerializeSeq, SerializeStruct, Serializer};
 use serde_derive::Serialize;
 
 /// This is a chat message. It has a list of sections, and can be serialized to
@@ -65,12 +65,33 @@ impl Chat {
   /// Generates a json message that represents this chat message. This is used
   /// when serializing chat packets, and when dealing with things like books.
   pub fn to_json(&self) -> String {
+    serde_json::to_string(self).unwrap()
+    // if self.sections.is_empty() {
+    //   "{}".into()
+    // } else if self.sections.len() == 1 {
+    //   serde_json::to_string(&self.sections[0]).unwrap()
+    // } else {
+    //   serde_json::to_string(&self.sections).unwrap()
+    // }
+  }
+}
+
+impl Serialize for Chat {
+  fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+  where
+    S: Serializer,
+  {
     if self.sections.is_empty() {
-      "{}".into()
+      let s = serializer.serialize_map(Some(0))?;
+      s.end()
     } else if self.sections.len() == 1 {
-      serde_json::to_string(&self.sections[0]).unwrap()
+      self.sections[0].serialize(serializer)
     } else {
-      serde_json::to_string(&self.sections).unwrap()
+      let mut s = serializer.serialize_seq(Some(self.sections.len()))?;
+      for sec in &self.sections {
+        s.serialize_element(sec)?;
+      }
+      s.end()
     }
   }
 }

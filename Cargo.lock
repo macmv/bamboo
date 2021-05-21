@@ -734,6 +734,8 @@ dependencies = [
  "log",
  "md5",
  "ringbuf",
+ "serde",
+ "serde_derive",
  "serde_json",
  "tokio",
  "tokio-stream",
