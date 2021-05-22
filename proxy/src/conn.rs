@@ -228,7 +228,7 @@ impl Conn {
     ))
   }
 
-  pub async fn handshake(&mut self) -> io::Result<(String, UUID)> {
+  pub async fn handshake(&mut self, compression: i32) -> io::Result<(String, UUID)> {
     let mut username = None;
     let uuid;
     'login: loop {
@@ -316,6 +316,13 @@ impl Conn {
                 info!("got username {}", &name);
                 let id = UUID::from_bytes(*md5::compute(&name));
 
+                // Set compression
+                let mut out = Packet::new(3, self.ver);
+                out.write_varint(compression);
+                self.client_writer.write(out).await?;
+                self.client_writer.set_compression(compression);
+
+                // Login success
                 let mut out = Packet::new(2, self.ver);
                 out.write_str(&id.as_dashed_str());
                 out.write_str(&name);

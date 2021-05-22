@@ -1,6 +1,7 @@
 use crate::packet::Packet;
 
 use common::{util, util::Buffer, version::ProtocolVersion};
+use miniz_oxide::deflate::compress_to_vec_zlib;
 use ringbuf::{Consumer, Producer, RingBuffer};
 use std::{
   io,
@@ -21,7 +22,10 @@ pub struct StreamReader {
   cons:   Consumer<u8>,
 }
 pub struct StreamWriter {
-  stream: OwnedWriteHalf,
+  stream:      OwnedWriteHalf,
+  // If this is zero, compression is disabled.
+  compression: usize,
+  encryption:  bool,
 }
 
 pub fn new(stream: StdTcpStream) -> Result<(StreamReader, StreamWriter)> {
@@ -77,17 +81,47 @@ impl StreamReader {
 
 impl StreamWriter {
   pub fn new(stream: OwnedWriteHalf) -> Self {
-    StreamWriter { stream }
+    StreamWriter { stream, compression: 0, encryption: false }
+  }
+  pub fn set_compression(&mut self, compression: i32) {
+    self.compression = compression as usize;
   }
   pub async fn write(&mut self, p: Packet) -> Result<()> {
     // This is the packet, including it's id
     let bytes = p.serialize();
 
-    // Length varint
+    // Either the uncompressed length, or the total and uncompressed length.
     let mut buf = Buffer::new(vec![]);
-    buf.write_varint(bytes.len() as i32);
-    self.stream.write(&buf).await?;
-    self.stream.write(&bytes).await?;
+
+    if self.compression != 0 {
+      if bytes.len() > self.compression {
+        let uncompressed_length = bytes.len();
+        let compressed = compress_to_vec_zlib(bytes, 1);
+
+        // See how many bytes the uncompressed_length varint takes up
+        let mut uncompressed_length_buf = Buffer::new(vec![]);
+        uncompressed_length_buf.write_varint(uncompressed_length as i32);
+
+        // This is the total length of the packet.
+        let total_length = uncompressed_length_buf.len() + compressed.len();
+        buf.write_varint(total_length as i32);
+        buf.write_varint(uncompressed_length as i32);
+        self.stream.write(&buf).await?;
+        self.stream.write(&compressed).await?;
+      } else {
+        // The 1 is for the zero uncompressed_length
+        buf.write_varint(bytes.len() as i32 + 1);
+        buf.write_varint(0);
+        self.stream.write(&buf).await?;
+        self.stream.write(&bytes).await?;
+      }
+    } else {
+      // Uncompressed packets just have the length prefixed.
+      buf.write_varint(bytes.len() as i32);
+      self.stream.write(&buf).await?;
+      self.stream.write(&bytes).await?;
+    }
+
     Ok(())
   }
 }

@@ -47,7 +47,9 @@ async fn handle_client(gen: Arc<Generator>, sock: TcpStream) -> Result<(), Box<d
   let (reader, writer) = packet_stream::new(sock)?;
   let mut conn = Conn::new(gen, reader, writer, "http://0.0.0.0:8483".into()).await?;
 
-  let (name, id) = conn.handshake().await?;
+  let compression = 256;
+
+  let (name, id) = conn.handshake(compression).await?;
 
   // These four values are passed to each listener. When one listener closes, it
   // sends a message to the tx. Since the rx is passed to the other listener, that
