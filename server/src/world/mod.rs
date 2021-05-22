@@ -16,7 +16,7 @@ use tokio::{
 use tonic::{Status, Streaming};
 
 use common::{
-  math::{ChunkPos, Pos, PosError},
+  math::{ChunkPos, Pos, PosError, UUID},
   net::{cb, Other},
   proto::Packet,
   util::Chat,
@@ -41,7 +41,7 @@ use gen::Generator;
 
 pub struct World {
   chunks:          RwLock<HashMap<ChunkPos, Arc<StdMutex<MultiChunk>>>>,
-  players:         Mutex<Vec<Arc<Player>>>,
+  players:         Mutex<HashMap<UUID, Arc<Player>>>,
   eid:             Arc<AtomicI32>,
   block_converter: Arc<block::TypeConverter>,
   item_converter:  Arc<item::TypeConverter>,
@@ -63,7 +63,7 @@ impl World {
   ) -> Self {
     World {
       chunks: RwLock::new(HashMap::new()),
-      players: Mutex::new(vec![]),
+      players: Mutex::new(HashMap::new()),
       eid: Arc::new(1.into()),
       block_converter,
       item_converter,
@@ -73,17 +73,19 @@ impl World {
   async fn new_player(self: Arc<Self>, player: Player) {
     let conn = player.clone_conn();
     let player = Arc::new(player);
-    self.players.lock().await.push(player.clone());
+    self.players.lock().await.insert(player.id(), player.clone());
 
+    // Network recieving task
     let c = conn.clone();
     let p = player.clone();
     tokio::spawn(async move {
-      // Network recieving task
       c.run(&p).await.unwrap();
     });
 
+    // Player tick loop
     let mut int = time::interval(Duration::from_millis(50));
     tokio::spawn(async move {
+      info!("{} has logged in", player.username());
       // Player init
       {
         let mut out = cb::Packet::new(cb::ID::Login);
@@ -137,6 +139,8 @@ impl World {
         }
         tick += 1;
       }
+      info!("{} has logged out", player.username());
+      self.players.lock().await.remove(&player.id());
     });
   }
 
@@ -192,7 +196,7 @@ impl World {
   pub async fn set_block(&self, pos: Pos, ty: &block::Type) -> Result<(), PosError> {
     self.chunk(pos.chunk(), |mut c| c.set_type(pos.chunk_rel(), ty))?;
 
-    for p in self.players.lock().await.iter() {
+    for p in self.players.lock().await.values() {
       let mut out = cb::Packet::new(cb::ID::BlockChange);
       out.set_pos("location", pos);
       out.set_i32("type", self.block_converter.to_old(ty.id(), p.ver().block()) as i32);
@@ -214,7 +218,7 @@ impl World {
     out.set_str("message", msg.to_json());
     out.set_byte("position", 0); // Chat box, not over hotbar
 
-    for p in self.players.lock().await.iter() {
+    for p in self.players.lock().await.values() {
       p.conn().send(out.clone()).await;
     }
   }

@@ -26,7 +26,7 @@ struct PlayerPosition {
 
 pub struct Player {
   // The EID of the player. Never changes.
-  _id:      i32,
+  eid:      i32,
   // Player's username
   username: String,
   uuid:     UUID,
@@ -53,7 +53,7 @@ impl fmt::Debug for Player {
 
 impl Player {
   pub fn new(
-    id: i32,
+    eid: i32,
     username: String,
     uuid: UUID,
     conn: Arc<Connection>,
@@ -64,7 +64,7 @@ impl Player {
     z: f64,
   ) -> Self {
     Player {
-      _id: id,
+      eid,
       username,
       uuid,
       conn,
@@ -100,6 +100,14 @@ impl Player {
   /// internal Arc that is used to store the connection.
   pub(crate) fn clone_conn(&self) -> Arc<Connection> {
     self.conn.clone()
+  }
+  /// Returns the player's entity id. Used to send packets about entities.
+  pub fn eid(&self) -> i32 {
+    self.eid
+  }
+  /// Returns the player's uuid. Used to lookup players in the world.
+  pub fn id(&self) -> UUID {
+    self.uuid
   }
 
   /// Returns the version that this player is on.

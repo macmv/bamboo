@@ -43,9 +43,16 @@ impl Connection {
   /// more than once.
   pub(crate) async fn run(&self, player: &Player) -> Result<(), Status> {
     'running: loop {
-      let p = match self.rx.lock().await.message().await? {
-        Some(p) => sb::Packet::from_proto(p),
-        None => break 'running,
+      let p = match self.rx.lock().await.message().await {
+        Ok(Some(p)) => sb::Packet::from_proto(p),
+        Ok(None) => break 'running,
+        Err(e) => {
+          if e.code() != tonic::Code::Cancelled {
+            return Err(e);
+          } else {
+            break 'running;
+          }
+        }
       };
       match p.id() {
         sb::ID::Chat => {
