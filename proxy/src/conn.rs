@@ -320,7 +320,9 @@ impl Conn {
                 let mut out = Packet::new(3, self.ver);
                 out.write_varint(compression);
                 self.client_writer.write(out).await?;
+                // Must happen after the packet has been sent
                 self.client_writer.set_compression(compression);
+                self.client_reader.set_compression(compression);
 
                 // Login success
                 let mut out = Packet::new(2, self.ver);

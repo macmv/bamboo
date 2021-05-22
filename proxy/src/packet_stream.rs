@@ -1,7 +1,7 @@
 use crate::packet::Packet;
 
 use common::{util, util::Buffer, version::ProtocolVersion};
-use miniz_oxide::deflate::compress_to_vec_zlib;
+use miniz_oxide::{deflate::compress_to_vec_zlib, inflate::decompress_to_vec_zlib};
 use ringbuf::{Consumer, Producer, RingBuffer};
 use std::{
   io,
@@ -17,9 +17,11 @@ use tokio::{
 };
 
 pub struct StreamReader {
-  stream: OwnedReadHalf,
-  prod:   Producer<u8>,
-  cons:   Consumer<u8>,
+  stream:      OwnedReadHalf,
+  prod:        Producer<u8>,
+  cons:        Consumer<u8>,
+  // If this is zero, compression is disabled.
+  compression: usize,
 }
 pub struct StreamWriter {
   stream:      OwnedWriteHalf,
@@ -39,7 +41,10 @@ impl StreamReader {
   pub fn new(stream: OwnedReadHalf) -> Self {
     let buf = RingBuffer::new(1024);
     let (prod, cons) = buf.split();
-    StreamReader { stream, prod, cons }
+    StreamReader { stream, prod, cons, compression: 0 }
+  }
+  pub fn set_compression(&mut self, compression: i32) {
+    self.compression = compression as usize;
   }
 
   pub async fn poll(&mut self) -> Result<()> {
@@ -63,7 +68,7 @@ impl StreamReader {
     });
     // Varint that is more than 5 bytes long.
     if read < 0 {
-      return Err(io::Error::new(ErrorKind::InvalidInput, "invalid varint"));
+      return Err(io::Error::new(ErrorKind::InvalidData, "invalid varint"));
     }
     // Incomplete varint, or an incomplete packet
     if read == 0 || len > self.cons.len() as isize {
@@ -71,11 +76,23 @@ impl StreamReader {
     }
     // Now that we know we have a valid packet, we pop the length bytes
     self.cons.discard(read as usize);
-    // Now we pop the packet data
     let mut vec = vec![0; len as usize];
     self.cons.pop_slice(&mut vec);
     // And parse it
-    Ok(Some(Packet::from_buf(vec, ver)))
+    if self.compression != 0 {
+      let mut buf = Buffer::new(vec);
+      let uncompressed_length = buf.read_varint();
+      if uncompressed_length == 0 {
+        Ok(Some(Packet::from_buf(buf.read_all(), ver)))
+      } else {
+        let decompressed = decompress_to_vec_zlib(&buf.read_all()).map_err(|e| {
+          io::Error::new(ErrorKind::InvalidData, format!("invalid zlib data: {:?}", e))
+        })?;
+        Ok(Some(Packet::from_buf(decompressed, ver)))
+      }
+    } else {
+      Ok(Some(Packet::from_buf(vec, ver)))
+    }
   }
 }
 
