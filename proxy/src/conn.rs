@@ -9,8 +9,10 @@ use common::{
   net::{cb, sb},
   proto,
   proto::minecraft_client::MinecraftClient,
+  util::{chat::HoverEvent, Chat},
   version::ProtocolVersion,
 };
+use serde_derive::Serialize;
 use std::{error::Error, io, io::ErrorKind, sync::Arc};
 use tokio::sync::{mpsc, oneshot};
 use tokio_stream::wrappers::ReceiverStream;
@@ -160,6 +162,33 @@ impl ServerListener {
   }
 }
 
+#[derive(Serialize)]
+struct JsonStatus {
+  version:     JsonVersion,
+  players:     JsonPlayers,
+  description: Chat,
+  favicon:     String,
+}
+
+#[derive(Serialize)]
+struct JsonVersion {
+  name:     String,
+  protocol: i32,
+}
+
+#[derive(Serialize)]
+struct JsonPlayers {
+  max:    i32,
+  online: i32,
+  sample: Vec<JsonPlayer>,
+}
+
+#[derive(Serialize)]
+struct JsonPlayer {
+  name: String,
+  id:   String,
+}
+
 impl Conn {
   pub async fn new(
     gen: Arc<Generator>,
@@ -201,7 +230,7 @@ impl Conn {
 
   pub async fn handshake(&mut self) -> io::Result<(String, UUID)> {
     let mut username = None;
-    let mut uuid = None;
+    let uuid;
     'login: loop {
       self.client_reader.poll().await.unwrap();
       loop {
@@ -239,7 +268,40 @@ impl Conn {
             let next = p.read_varint();
             self.state = State::from_next(next);
           }
-          State::Status => {}
+          State::Status => {
+            match p.id() {
+              // Server status
+              0 => {
+                let mut description = Chat::empty();
+                description.add("Big ".into());
+                description
+                  .add("Gaming".into())
+                  .on_hover(HoverEvent::ShowText("I am Gaming".into()));
+                let status = JsonStatus {
+                  version: JsonVersion { name: "1.8".into(), protocol: self.ver.id() as i32 },
+                  players: JsonPlayers {
+                    max:    69,
+                    online: 420,
+                    sample: vec![JsonPlayer {
+                      name: "macmv".into(),
+                      id:   "a0ebbc8d-e0b0-4c23-a965-efba61ff0ae8".into(),
+                    }],
+                  },
+                  description,
+                  favicon: "".into(),
+                };
+                let mut out = Packet::new(0, self.ver);
+                out.write_str(&serde_json::to_string(&status).unwrap());
+                self.client_writer.write(out).await?;
+              }
+              _ => {
+                return Err(io::Error::new(
+                  ErrorKind::InvalidInput,
+                  format!("unknown status packet {}", p.id()),
+                ));
+              }
+            }
+          }
           State::Login => {
             match p.id() {
               // Login start
