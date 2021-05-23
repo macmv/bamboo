@@ -373,8 +373,8 @@ impl Conn {
                     // Wait for encryption response to enable encryption
                   }
                   None => {
-                    self.send_compression(compression);
-                    self.send_success(uuid.as_ref().unwrap(), username.as_ref().unwrap());
+                    self.send_compression(compression).await?;
+                    self.send_success(uuid.as_ref().unwrap(), username.as_ref().unwrap()).await?;
                     // Successful login, we can break now
                     break 'login;
                   }
@@ -425,8 +425,8 @@ impl Conn {
                 self.client_writer.enable_encryption(&secret);
                 self.client_reader.enable_encryption(&secret);
 
-                self.send_compression(compression);
-                self.send_success(uuid.as_ref().unwrap(), username.as_ref().unwrap());
+                self.send_compression(compression).await?;
+                self.send_success(uuid.as_ref().unwrap(), username.as_ref().unwrap()).await?;
                 // Successful login, we can break now
                 break 'login;
               }

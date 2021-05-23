@@ -66,6 +66,9 @@ impl StreamReader {
     if n == 0 {
       return Err(io::Error::new(ErrorKind::ConnectionAborted, "client has disconnected"));
     }
+    if let Some(c) = &mut self.cipher {
+      c.decrypt(&mut msg);
+    }
     self.prod.push_slice(&msg);
     Ok(())
   }
