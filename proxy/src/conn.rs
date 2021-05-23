@@ -9,7 +9,7 @@ use common::{
   net::{cb, sb},
   proto,
   proto::minecraft_client::MinecraftClient,
-  util::{chat::HoverEvent, Chat},
+  util::{chat::Color, Chat},
   version::ProtocolVersion,
 };
 use rand::{rngs::OsRng, RngCore};
@@ -230,6 +230,52 @@ impl Conn {
     ))
   }
 
+  /// Sends the set compression packet, if needed.
+  async fn send_compression(&mut self, compression: i32) -> io::Result<()> {
+    // Set compression, only if the thresh hold is non-zero
+    if compression != 0 {
+      let mut out = Packet::new(3, self.ver);
+      out.write_varint(compression);
+      self.client_writer.write(out).await?;
+      // Must happen after the packet has been sent
+      self.client_writer.set_compression(compression);
+      self.client_reader.set_compression(compression);
+    }
+    Ok(())
+  }
+
+  /// Sends the login success packet, and sets the state to Play.
+  async fn send_success(&mut self, uuid: &UUID, username: &str) -> io::Result<()> {
+    // Login success
+    let mut out = Packet::new(2, self.ver);
+    out.write_str(&uuid.as_dashed_str());
+    out.write_str(username);
+    self.client_writer.write(out).await?;
+
+    self.state = State::Play;
+    Ok(())
+  }
+
+  /// Sends the login success packet, and sets the state to Play.
+  fn build_status(&self) -> JsonStatus {
+    let mut description = Chat::empty();
+    description.add("Big ".into()).color(Color::BrightGreen);
+    description.add("Gaming".into()).color(Color::Red);
+    JsonStatus {
+      version: JsonVersion { name: "1.8".into(), protocol: self.ver.id() as i32 },
+      players: JsonPlayers {
+        max:    69,
+        online: 420,
+        sample: vec![JsonPlayer {
+          name: "macmv".into(),
+          id:   "a0ebbc8d-e0b0-4c23-a965-efba61ff0ae8".into(),
+        }],
+      },
+      description,
+      favicon: "".into(),
+    }
+  }
+
   pub async fn handshake(
     &mut self,
     compression: i32,
@@ -281,24 +327,7 @@ impl Conn {
             match p.id() {
               // Server status
               0 => {
-                let mut description = Chat::empty();
-                description.add("Big ".into());
-                description
-                  .add("Gaming".into())
-                  .on_hover(HoverEvent::ShowText("I am Gaming".into()));
-                let status = JsonStatus {
-                  version: JsonVersion { name: "1.8".into(), protocol: self.ver.id() as i32 },
-                  players: JsonPlayers {
-                    max:    69,
-                    online: 420,
-                    sample: vec![JsonPlayer {
-                      name: "macmv".into(),
-                      id:   "a0ebbc8d-e0b0-4c23-a965-efba61ff0ae8".into(),
-                    }],
-                  },
-                  description,
-                  favicon: "".into(),
-                };
+                let status = self.build_status();
                 let mut out = Packet::new(0, self.ver);
                 out.write_str(&serde_json::to_string(&status).unwrap());
                 self.client_writer.write(out).await?;
@@ -344,23 +373,8 @@ impl Conn {
                     // Wait for encryption response to enable encryption
                   }
                   None => {
-                    // Set compression, only if the thresh hold is non-zero
-                    if compression != 0 {
-                      let mut out = Packet::new(3, self.ver);
-                      out.write_varint(compression);
-                      self.client_writer.write(out).await?;
-                      // Must happen after the packet has been sent
-                      self.client_writer.set_compression(compression);
-                      self.client_reader.set_compression(compression);
-                    }
-
-                    // Login success
-                    let mut out = Packet::new(2, self.ver);
-                    out.write_str(&id.as_dashed_str());
-                    out.write_str(username.as_ref().unwrap());
-                    self.client_writer.write(out).await?;
-
-                    self.state = State::Play;
+                    self.send_compression(compression);
+                    self.send_success(uuid.as_ref().unwrap(), username.as_ref().unwrap());
                     // Successful login, we can break now
                     break 'login;
                   }
@@ -370,10 +384,12 @@ impl Conn {
               1 => {
                 info!("got encryption response");
                 let len = p.read_varint();
-                let secret = p.read_buf(len);
+                let recieved_secret = p.read_buf(len);
                 let len = p.read_varint();
                 let recieved_token = p.read_buf(len);
 
+                let decrypted_secret =
+                  key.decrypt(PaddingScheme::PKCS1v15Encrypt, &recieved_secret).unwrap();
                 let decrypted_token =
                   key.decrypt(PaddingScheme::PKCS1v15Encrypt, &recieved_token).unwrap();
 
@@ -387,6 +403,14 @@ impl Conn {
                     ),
                   ));
                 }
+
+                self.client_writer.enable_encryption(decrypted_secret);
+                self.client_reader.enable_encryption(decrypted_secret);
+
+                self.send_compression(compression);
+                self.send_success(uuid.as_ref().unwrap(), username.as_ref().unwrap());
+                // Successful login, we can break now
+                break 'login;
               }
               _ => {
                 return Err(io::Error::new(
