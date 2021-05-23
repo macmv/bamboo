@@ -1,6 +1,9 @@
 use crate::packet::Packet;
 
-use aes::{cipher::NewCipher, Aes128};
+use aes::{
+  cipher::{AsyncStreamCipher, NewCipher},
+  Aes128,
+};
 use cfb8::Cfb8;
 use common::{util, util::Buffer, version::ProtocolVersion};
 use miniz_oxide::{deflate::compress_to_vec_zlib, inflate::decompress_to_vec_zlib};
@@ -115,9 +118,17 @@ impl StreamWriter {
     self.cipher = Some(Cfb8::new_from_slices(secret, secret).unwrap());
   }
 
+  async fn write_data(&mut self, data: &mut [u8]) -> Result<()> {
+    if let Some(c) = &mut self.cipher {
+      c.encrypt(data);
+    }
+    self.stream.write(data).await?;
+    Ok(())
+  }
+
   pub async fn write(&mut self, p: Packet) -> Result<()> {
     // This is the packet, including it's id
-    let bytes = p.serialize();
+    let mut bytes = p.serialize();
 
     // Either the uncompressed length, or the total and uncompressed length.
     let mut buf = Buffer::new(vec![]);
@@ -125,7 +136,7 @@ impl StreamWriter {
     if self.compression != 0 {
       if bytes.len() > self.compression {
         let uncompressed_length = bytes.len();
-        let compressed = compress_to_vec_zlib(bytes, 1);
+        let mut compressed = compress_to_vec_zlib(&bytes, 1);
 
         // See how many bytes the uncompressed_length varint takes up
         let mut uncompressed_length_buf = Buffer::new(vec![]);
@@ -135,20 +146,20 @@ impl StreamWriter {
         let total_length = uncompressed_length_buf.len() + compressed.len();
         buf.write_varint(total_length as i32);
         buf.write_varint(uncompressed_length as i32);
-        self.stream.write(&buf).await?;
-        self.stream.write(&compressed).await?;
+        self.write_data(&mut buf).await?;
+        self.write_data(&mut compressed).await?;
       } else {
         // The 1 is for the zero uncompressed_length
         buf.write_varint(bytes.len() as i32 + 1);
         buf.write_varint(0);
-        self.stream.write(&buf).await?;
-        self.stream.write(&bytes).await?;
+        self.write_data(&mut buf).await?;
+        self.write_data(&mut bytes).await?;
       }
     } else {
       // Uncompressed packets just have the length prefixed.
       buf.write_varint(bytes.len() as i32);
-      self.stream.write(&buf).await?;
-      self.stream.write(&bytes).await?;
+      self.write_data(&mut buf).await?;
+      self.write_data(&mut bytes).await?;
     }
 
     Ok(())

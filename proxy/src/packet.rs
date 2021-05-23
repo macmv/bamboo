@@ -44,8 +44,8 @@ impl Packet {
   pub fn err(&self) -> &Option<BufferError> {
     self.buf.err()
   }
-  pub fn serialize(&self) -> &Vec<u8> {
-    &self.buf
+  pub fn serialize(self) -> Vec<u8> {
+    self.buf.to_vec()
   }
 
   add_writer!(write_u8, u8);

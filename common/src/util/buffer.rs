@@ -5,7 +5,7 @@ use std::{
   error::Error,
   fmt, io,
   io::{Cursor, Read, Write},
-  ops::Deref,
+  ops::{Deref, DerefMut},
   string::FromUtf8Error,
 };
 
@@ -302,6 +302,12 @@ impl Deref for Buffer {
 
   fn deref(&self) -> &Self::Target {
     self.data.get_ref()
+  }
+}
+
+impl DerefMut for Buffer {
+  fn deref_mut(&mut self) -> &mut Self::Target {
+    self.data.get_mut()
   }
 }
 
