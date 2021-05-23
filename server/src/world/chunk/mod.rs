@@ -12,8 +12,13 @@ use section::Section;
 use common::{
   math::{Pos, PosError},
   proto,
-  version::BlockVersion,
 };
+
+#[derive(Debug)]
+pub enum ChunkKind {
+  Fixed,
+  Paletted,
+}
 
 /// A chunk column. This is not clone, because that would mean duplicating an
 /// entire chunk, which you probably don't want to do. If you do need to clone a
@@ -22,12 +27,12 @@ use common::{
 /// If you want to create a cross-versioned chunk, use [`MultiChunk`] instead.
 pub struct Chunk {
   sections: Vec<Option<Box<dyn Section + Send>>>,
-  ver:      BlockVersion,
+  kind:     ChunkKind,
 }
 
 impl Chunk {
-  pub fn new(ver: BlockVersion) -> Self {
-    Chunk { sections: Vec::new(), ver }
+  pub fn new(kind: ChunkKind) -> Self {
+    Chunk { sections: Vec::new(), kind }
   }
   /// This updates the internal data to contain a block at the given position.
   /// In release mode, the position is not checked. In any other mode, a
@@ -42,11 +47,10 @@ impl Chunk {
       self.sections.resize_with(index + 1, || None);
     }
     if self.sections[index].is_none() {
-      self.sections[index] = Some(if self.ver > BlockVersion::V1_8 {
-        fixed::Section::new()
-      } else {
-        paletted::Section::new()
-      })
+      self.sections[index] = Some(match &self.kind {
+        ChunkKind::Paletted => paletted::Section::new(),
+        ChunkKind::Fixed => fixed::Section::new(),
+      });
     }
     match &mut self.sections[index] {
       Some(s) => s.set_block(Pos::new(pos.x(), pos.chunk_rel_y(), pos.z()), ty),
