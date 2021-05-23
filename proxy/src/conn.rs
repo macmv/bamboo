@@ -228,9 +228,13 @@ impl Conn {
     ))
   }
 
-  pub async fn handshake(&mut self, compression: i32) -> io::Result<(String, UUID)> {
+  pub async fn handshake(
+    &mut self,
+    compression: i32,
+    der_key: Option<&[u8]>,
+  ) -> io::Result<(String, UUID)> {
     let mut username = None;
-    let uuid;
+    let mut uuid;
     'login: loop {
       self.client_reader.poll().await.unwrap();
       loop {
@@ -316,26 +320,41 @@ impl Conn {
                 info!("got username {}", &name);
                 let id = UUID::from_bytes(*md5::compute(&name));
 
-                // Set compression
-                let mut out = Packet::new(3, self.ver);
-                out.write_varint(compression);
-                self.client_writer.write(out).await?;
-                // Must happen after the packet has been sent
-                self.client_writer.set_compression(compression);
-                self.client_reader.set_compression(compression);
-
-                // Login success
-                let mut out = Packet::new(2, self.ver);
-                out.write_str(&id.as_dashed_str());
-                out.write_str(&name);
-                self.client_writer.write(out).await?;
-
                 username = Some(name);
                 uuid = Some(id);
 
-                self.state = State::Play;
-                // Successful login, we can break now
-                break 'login;
+                match der_key {
+                  Some(key) => {
+                    // Encryption request
+                    let mut out = Packet::new(1, self.ver);
+                    out.write_str(""); // Server id, should be empty
+                    out.write_varint(key.len() as i32); // Key len
+                    out.write_buf(key); // DER encoded RSA key
+                    self.client_writer.write(out).await?;
+                    // Wait for encryption response to enable encryption
+                  }
+                  None => {
+                    // Set compression, only if the thresh hold is non-zero
+                    if compression != 0 {
+                      let mut out = Packet::new(3, self.ver);
+                      out.write_varint(compression);
+                      self.client_writer.write(out).await?;
+                      // Must happen after the packet has been sent
+                      self.client_writer.set_compression(compression);
+                      self.client_reader.set_compression(compression);
+                    }
+
+                    // Login success
+                    let mut out = Packet::new(2, self.ver);
+                    out.write_str(&id.as_dashed_str());
+                    out.write_str(username.as_ref().unwrap());
+                    self.client_writer.write(out).await?;
+
+                    self.state = State::Play;
+                    // Successful login, we can break now
+                    break 'login;
+                  }
+                }
 
                 // let mut out = Packet::new(1);
                 // out.buf.write_i32(0); // EID 0

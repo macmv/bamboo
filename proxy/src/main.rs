@@ -26,11 +26,13 @@ async fn main() -> Result<(), Box<dyn Error>> {
   let listener = TcpListener::bind(addr)?;
   let gen = Arc::new(Generator::new());
 
+  let der_key = None;
+
   loop {
     let (socket, _) = listener.accept()?;
     let gen = gen.clone();
     tokio::spawn(async move {
-      match handle_client(gen, socket).await {
+      match handle_client(gen, socket, der_key).await {
         Ok(_) => {}
         Err(e) => {
           error!("error in connection: {}", e);
@@ -40,7 +42,11 @@ async fn main() -> Result<(), Box<dyn Error>> {
   }
 }
 
-async fn handle_client(gen: Arc<Generator>, sock: TcpStream) -> Result<(), Box<dyn Error>> {
+async fn handle_client(
+  gen: Arc<Generator>,
+  sock: TcpStream,
+  der_key: Option<&[u8]>,
+) -> Result<(), Box<dyn Error>> {
   // let mut client = MinecraftClient::connect().await?;
   // let req = tonic::Request::new(StatusRequest {});
 
@@ -49,7 +55,7 @@ async fn handle_client(gen: Arc<Generator>, sock: TcpStream) -> Result<(), Box<d
 
   let compression = 256;
 
-  let (name, id) = conn.handshake(compression).await?;
+  let (name, id) = conn.handshake(compression, der_key).await?;
 
   // These four values are passed to each listener. When one listener closes, it
   // sends a message to the tx. Since the rx is passed to the other listener, that
