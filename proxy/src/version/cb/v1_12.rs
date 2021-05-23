@@ -30,53 +30,14 @@ pub(super) fn gen_spec() -> PacketSpec {
     for y in chunk.sections.keys() {
       bitmask |= 1 << y;
     }
-    out.write_u16(bitmask);
+    out.write_varint(bitmask);
 
-    let mut buf = Buffer::new(vec![]);
-    // Makes an ordered list of chunk sections
-    let mut sections = vec![None; 16];
-    for (y, s) in &chunk.sections {
-      sections[*y as usize] = Some(s);
-    }
-    // Iterates through chunks in order, from ground up. flatten() skips all None
-    // sections.
-    let mut total_sections = 0;
-    for s in sections.into_iter().flatten() {
-      total_sections += 1;
-      buf.write_buf(&s.data);
-    }
-    // Light data
-    for _ in 0..total_sections * 16 * 16 * 16 / 2 {
-      // Each lighting value is 1/2 byte
-      buf.write_u8(0xff);
-    }
-    if skylight {
-      for _ in 0..total_sections * 16 * 16 * 16 / 2 {
-        // Each lighting value is 1/2 byte
-        buf.write_u8(0xff);
-      }
-    }
-    if biomes {
-      for _ in 0..256 {
-        buf.write_u8(127); // Void biome
-      }
-    }
+    // TODO: Figure out the deal with paletted sections
+    out.write_varint(0);
+    // out.write_buf(&buf);
 
-    // Not needed. Leaving commented out for reference
-    //
-    // expected := num_sections * 16*16*16 * 2 // Block data
-    // expected += num_sections * 16*16*16 / 2 // Block light data
-    // if skylight {
-    //   expected += num_sections * 16*16*16 / 2 // Sky light data
-    // }
-    // if biomes {
-    //   expected += 256 // Biome data
-    // }
-    // if buf.Length() != int32(expected) {
-    //   fmt.Println("ERROR: Incorrectly serialized chunk! Expected length:",
-    // expected, "actual length:", buf.Length()) }
-    out.write_varint(buf.len() as i32);
-    out.write_buf(&buf);
+    // No block entities
+    out.write_varint(0);
 
     Ok(Some(out))
   });

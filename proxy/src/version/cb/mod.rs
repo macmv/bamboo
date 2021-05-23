@@ -8,6 +8,7 @@ use super::PacketVersion;
 
 mod v1_12;
 mod v1_8;
+mod v1_9;
 
 type BoxedPacketFn = Box<dyn Fn(Packet, &cb::Packet) -> io::Result<Option<Packet>> + Send + Sync>;
 
@@ -34,6 +35,7 @@ impl Generator {
   pub fn new(versions: HashMap<ProtocolVersion, PacketVersion>) -> Generator {
     let mut gens = HashMap::new();
     gens.insert(ProtocolVersion::V1_8, v1_8::gen_spec());
+    gens.insert(ProtocolVersion::V1_9_4, v1_9::gen_spec());
     gens.insert(ProtocolVersion::V1_12_2, v1_12::gen_spec());
     Generator { gens, versions }
   }
