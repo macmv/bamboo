@@ -109,6 +109,15 @@ impl Packet {
     }
     Ok(field)
   }
+  fn get_field_any(&self, n: &str) -> io::Result<&proto::PacketField> {
+    let field = match self.pb.fields.get(n) {
+      Some(v) => v,
+      None => {
+        return Err(io::Error::new(io::ErrorKind::InvalidData, format!("no value for key {}", n)))
+      }
+    };
+    Ok(field)
+  }
   add_set!(set_bool, bool, Bool, bool);
   add_set!(set_byte, byte, Byte, u8, |v: u8| v.into());
   add_set!(set_i32, int, Int, i32);
@@ -125,9 +134,6 @@ impl Packet {
 
   add_get!(get_bool, Bool, bool, bool);
   add_get!(get_byte, Byte, byte, u8, |v: u32| v.try_into().unwrap());
-  add_get!(get_short, Short, short, i16, |v: i32| v.try_into().unwrap());
-  add_get!(get_int, Int, int, i32);
-  add_get!(get_long, Long, long, u64);
   add_get!(get_float, Float, float, f32);
   add_get!(get_double, Double, double, f64);
   add_get!(get_pos, Pos, pos, Pos, |v: u64| Pos::from_u64(v)); // This will always be in the new position format
@@ -139,6 +145,51 @@ impl Packet {
   add_get_ref!(get_i32_arr, IntArr, int_arr, &Vec<i32>);
   add_get_ref!(get_u64_arr, LongArr, long_arr, &Vec<u64>);
   add_get_ref!(get_str_arr, StrArr, str_arr, &Vec<String>);
+
+  /// Gets the given field within the packet. If the field is a byte, it will be
+  /// casted to a short.
+  pub fn get_short(&self, n: &str) -> io::Result<i16> {
+    let field = self.get_field_any(n)?;
+    match proto::packet_field::Type::from_i32(field.ty).unwrap() {
+      FieldType::Short => Ok(field.short.try_into().unwrap()),
+      FieldType::Byte => Ok(field.byte.try_into().unwrap()),
+      v => Err(io::Error::new(
+        io::ErrorKind::InvalidData,
+        format!("expected {} to be a a short or byte, got {:?}", n, v),
+      )),
+    }
+  }
+
+  /// Gets the given field within the packet. If the field is a byte or a short,
+  /// it will be casted to an int.
+  pub fn get_int(&self, n: &str) -> io::Result<i32> {
+    let field = self.get_field_any(n)?;
+    match proto::packet_field::Type::from_i32(field.ty).unwrap() {
+      FieldType::Int => Ok(field.int),
+      FieldType::Short => Ok(field.short),
+      FieldType::Byte => Ok(field.byte.try_into().unwrap()),
+      v => Err(io::Error::new(
+        io::ErrorKind::InvalidData,
+        format!("expected {} to be a an int, short, or byte, got {:?}", n, v),
+      )),
+    }
+  }
+
+  /// Gets the given field within the packet. If the field is an int, short, or
+  /// a byte, it will be casted to a long.
+  pub fn get_long(&self, n: &str) -> io::Result<u64> {
+    let field = self.get_field_any(n)?;
+    match proto::packet_field::Type::from_i32(field.ty).unwrap() {
+      FieldType::Long => Ok(field.long),
+      FieldType::Int => Ok(field.int.try_into().unwrap()),
+      FieldType::Short => Ok(field.short.try_into().unwrap()),
+      FieldType::Byte => Ok(field.byte.try_into().unwrap()),
+      v => Err(io::Error::new(
+        io::ErrorKind::InvalidData,
+        format!("expected {} to be a a long, int, short, or byte, got {:?}", n, v),
+      )),
+    }
+  }
 
   /// Generates an any type from the given value, and embeds that into the
   /// protbuf.
