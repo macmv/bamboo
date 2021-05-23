@@ -34,7 +34,7 @@ impl MultiChunk {
   /// server is only running on 1.17, then p.y needs to be within the world
   /// height (whatever that may be). Otherwise, p.y must be within 0..256.
   pub fn set_type(&mut self, p: Pos, ty: &block::Type) -> Result<(), PosError> {
-    self.fixed.set_block(p, ty.id())?;
+    self.fixed.set_block(p, self.types.to_old(ty.id(), BlockVersion::V1_8))?;
     self.paletted.set_block(p, ty.id())?;
     Ok(())
   }
@@ -43,7 +43,10 @@ impl MultiChunk {
   /// [`set_type`](Self::set_type), but it uses a kind instead of a type. This
   /// will use the default type of the given kind.
   pub fn set_kind(&mut self, p: Pos, kind: block::Kind) -> Result<(), PosError> {
-    self.fixed.set_block(p, self.types.get(kind).default_type().id())?;
+    self.fixed.set_block(
+      p,
+      self.types.to_old(self.types.get(kind).default_type().id(), BlockVersion::V1_8),
+    )?;
     self.paletted.set_block(p, self.types.get(kind).default_type().id())?;
     Ok(())
   }
@@ -56,7 +59,7 @@ impl MultiChunk {
   /// will usually be the latest version that this server supports. Regardless
   /// of what it is, this should be handled within the World.
   pub fn get_block(&self, p: Pos) -> Result<u32, PosError> {
-    self.fixed.get_block(p)
+    self.paletted.get_block(p)
   }
 
   /// Generates a protobuf for the given version. The proto's X and Z
@@ -64,10 +67,10 @@ impl MultiChunk {
   pub fn to_proto(&self, v: BlockVersion) -> proto::Chunk {
     if v == BlockVersion::latest() {
       self.paletted.to_latest_proto()
-    } else if v >= BlockVersion::V1_13 {
+    } else if v >= BlockVersion::V1_9 {
       self.paletted.to_old_proto(|id| self.types.to_old(id, v))
     } else {
-      self.fixed.to_old_proto(|id| self.types.to_old(id, v))
+      self.fixed.to_latest_proto()
     }
   }
 }

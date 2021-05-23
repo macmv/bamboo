@@ -6,6 +6,7 @@ use common::{
   proto,
 };
 
+/// Only used for 1.8. This is a chunk section that does not contain a palette.
 pub struct Section {
   data: [u16; 16 * 16 * 16],
 }
@@ -45,9 +46,8 @@ impl ChunkSection for Section {
   fn duplicate(&self) -> Box<dyn ChunkSection + Send> {
     Box::new(Section { data: self.data })
   }
-  /// For a fixed chunk, this should never be called. The latest version of
-  /// minecraft will always be a paletted chunk. Unless the actuall json data is
-  /// changed, this function shouldn't be called.
+  /// This is always called, because this type of chunk section is only used for
+  /// one version.
   fn to_latest_proto(&self) -> proto::chunk::Section {
     let mut data = Vec::with_capacity(self.data.len() * 2);
     for id in &self.data {
@@ -55,6 +55,7 @@ impl ChunkSection for Section {
     }
     proto::chunk::Section { data, ..Default::default() }
   }
+  /// Never called, as fixed chunks only are used on one version.
   fn to_old_proto(&self, f: &dyn Fn(u32) -> u32) -> proto::chunk::Section {
     let mut data = Vec::with_capacity(self.data.len() * 2);
     for id in &self.data {
