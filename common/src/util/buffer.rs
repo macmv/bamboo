@@ -206,6 +206,20 @@ impl Buffer {
     }
   }
 
+  pub fn read_buf(&mut self, len: i32) -> Vec<u8> {
+    if self.err.is_some() {
+      return vec![];
+    }
+    // TODO: Possibly change this limit
+    let mut buf = vec![0; len as usize];
+    match self.data.read(&mut buf) {
+      Ok(len) => buf.to_vec(),
+      Err(e) => {
+        self.set_err(BufferErrorKind::IO(e), true);
+        vec![]
+      }
+    }
+  }
   pub fn write_buf(&mut self, v: &[u8]) {
     self.data.write_all(v).unwrap();
   }

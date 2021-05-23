@@ -12,6 +12,8 @@ use common::{
   util::{chat::HoverEvent, Chat},
   version::ProtocolVersion,
 };
+use rand::{rngs::OsRng, RngCore};
+use rsa::{padding::PaddingScheme, RSAPrivateKey};
 use serde_derive::Serialize;
 use std::{error::Error, io, io::ErrorKind, sync::Arc};
 use tokio::sync::{mpsc, oneshot};
@@ -231,10 +233,13 @@ impl Conn {
   pub async fn handshake(
     &mut self,
     compression: i32,
+    key: RSAPrivateKey,
     der_key: Option<Vec<u8>>,
   ) -> io::Result<(String, UUID)> {
     let mut username = None;
     let mut uuid;
+    // The four byte verify token, used by the client in encryption.
+    let mut token = [0u8; 4];
     'login: loop {
       self.client_reader.poll().await.unwrap();
       loop {
@@ -325,13 +330,16 @@ impl Conn {
 
                 match &der_key {
                   Some(key) => {
+                    // Make sure to actually generate a token
+                    OsRng.fill_bytes(&mut token);
+
                     // Encryption request
                     let mut out = Packet::new(1, self.ver);
                     out.write_str(""); // Server id, should be empty
                     out.write_varint(key.len() as i32); // Key len
                     out.write_buf(key); // DER encoded RSA key
                     out.write_varint(4); // Token len
-                    out.write_buf(&[4, 5, 6, 7]); // Verify token
+                    out.write_buf(&token); // Verify token
                     self.client_writer.write(out).await?;
                     // Wait for encryption response to enable encryption
                   }
@@ -357,20 +365,28 @@ impl Conn {
                     break 'login;
                   }
                 }
-
-                // let mut out = Packet::new(1);
-                // out.buf.write_i32(0); // EID 0
-                // out.buf.write_u8(1); // Creative
-                // out.buf.write_u8(0); // Overworld
-                // out.buf.write_u8(1); // Difficulty
-                // out.buf.write_u8(1); // Max players
-                // out.buf.write_str("default"); // Level type
-                // out.buf.write_bool(false); // Don't reduce debug info
-                // self.client.write(out).await?;
               }
               // Encryption response
               1 => {
                 info!("got encryption response");
+                let len = p.read_varint();
+                let secret = p.read_buf(len);
+                let len = p.read_varint();
+                let recieved_token = p.read_buf(len);
+
+                let decrypted_token =
+                  key.decrypt(PaddingScheme::PKCS1v15Encrypt, &recieved_token).unwrap();
+
+                // Make sure the client sent the correct verify token back
+                if decrypted_token != token {
+                  return Err(io::Error::new(
+                    ErrorKind::InvalidInput,
+                    format!(
+                      "invalid verify token recieved from client (len: {})",
+                      decrypted_token.len()
+                    ),
+                  ));
+                }
               }
               _ => {
                 return Err(io::Error::new(
