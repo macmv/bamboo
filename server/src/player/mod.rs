@@ -3,19 +3,26 @@ use std::{
   sync::{Arc, Mutex, MutexGuard},
 };
 
-use common::{math::UUID, net::cb, util::Chat, version::ProtocolVersion};
+use common::{
+  math::{FPos, UUID},
+  net::cb,
+  util::Chat,
+  version::ProtocolVersion,
+};
 
 use crate::{item::Inventory, net::Connection, world::World};
 
 #[derive(Debug)]
 struct PlayerPosition {
-  x: f64,
-  y: f64,
-  z: f64,
+  // This is the current position of the player. It is only updated once per tick.
+  curr: FPos,
 
-  next_x: f64,
-  next_y: f64,
-  next_z: f64,
+  // This is the position on the previous tick. It is only updated once per tick.
+  prev: FPos,
+
+  // This is the most recently recieved position packet. It is updated whenever a position packet
+  // is recieved. It is also used to set x,y,z on the next tick.
+  next: FPos,
 
   yaw:   f32,
   pitch: f32,
@@ -59,9 +66,7 @@ impl Player {
     conn: Arc<Connection>,
     ver: ProtocolVersion,
     world: Arc<World>,
-    x: f64,
-    y: f64,
-    z: f64,
+    pos: FPos,
   ) -> Self {
     Player {
       eid,
@@ -73,15 +78,12 @@ impl Player {
       // This is 45 on 1.8, because there was no off hand.
       inventory: Mutex::new(Inventory::new(46)),
       pos: Mutex::new(PlayerPosition {
-        x,
-        y,
-        z,
-        next_x: x,
-        next_y: y,
-        next_z: z,
-        yaw: 0.0,
-        pitch: 0.0,
-        next_yaw: 0.0,
+        curr:       pos,
+        prev:       pos,
+        next:       pos,
+        yaw:        0.0,
+        pitch:      0.0,
+        next_yaw:   0.0,
         next_pitch: 0.0,
       }),
     }
@@ -133,9 +135,7 @@ impl Player {
   /// position packet is recieved.
   pub(crate) fn set_next_pos(&self, x: f64, y: f64, z: f64) {
     let mut pos = self.pos.lock().unwrap();
-    pos.next_x = x;
-    pos.next_y = y;
-    pos.next_z = z;
+    pos.next = FPos::new(x, y, z);
   }
 
   /// This will set the player's look direction on the next player tick. Used
@@ -158,19 +158,31 @@ impl Player {
   /// global tick rate.
   pub(crate) fn tick(&self) {
     let mut pos = self.pos.lock().unwrap();
+    pos.prev = pos.curr;
     // TODO: Movement checks
-    pos.x = pos.next_x;
-    pos.y = pos.next_y;
-    pos.z = pos.next_z;
+    pos.curr = pos.next;
     pos.yaw = pos.next_yaw;
     pos.pitch = pos.next_pitch;
+    // Whether or not the collision checks passes, we now have a movement
+    // vector; from prev to curr.
   }
 
-  /// Returns the player's position. This is only updated once per tick.
-  pub fn pos(&self) -> (f64, f64, f64) {
+  /// Returns the player's position. This is only updated once per tick. This
+  /// also needs to lock a mutex, so you should not call it very often.
+  pub fn pos(&self) -> FPos {
     let pos = self.pos.lock().unwrap();
-    (pos.x, pos.y, pos.z)
+    pos.curr
   }
+  /// Returns the player's current and previous position. This is only updated
+  /// once per tick. This needs to lock a mutex, so if you need the player's
+  /// previous position, it is better to call this without calling
+  /// [`pos`](Self::pos). The first item returned is the current position, and
+  /// the second item is the previous position.
+  pub fn pos_with_prev(&self) -> (FPos, FPos) {
+    let pos = self.pos.lock().unwrap();
+    (pos.curr, pos.prev)
+  }
+
   /// Returns the player's pitch and yaw angle. This is the amount that they are
   /// looking to the side. It is in the range -180-180. This is only updated
   /// once per tick.

@@ -1,7 +1,9 @@
 mod chunk_pos;
+mod fpos;
 mod pos;
 
 pub use chunk_pos::ChunkPos;
+pub use fpos::{FPos, FPosError};
 pub use pos::{Pos, PosError};
 use std::convert::TryInto;
 

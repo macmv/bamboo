@@ -16,7 +16,7 @@ use tokio::{
 use tonic::{Status, Streaming};
 
 use common::{
-  math::{ChunkPos, Pos, PosError, UUID},
+  math::{ChunkPos, FPos, Pos, PosError, UUID},
   net::{cb, Other},
   proto::Packet,
   util::Chat,
@@ -129,6 +129,8 @@ impl World {
           // TODO: Close any other tasks for this player
           break;
         }
+        // Updates the player correctly, and performs collision checks. This also
+        // handles new chunks.
         player.tick();
         // Do player collision and packets and stuff
         // Once per second, send keep alive packet
@@ -266,8 +268,15 @@ impl WorldManager {
     let conn = Arc::new(Connection::new(req, tx));
     let (username, uuid) = conn.wait_for_login().await;
     let w = self.worlds[0].clone();
-    let player =
-      Player::new(w.eid(), username, uuid, conn, ProtocolVersion::V1_8, w.clone(), 0.0, 60.0, 0.0);
+    let player = Player::new(
+      w.eid(),
+      username,
+      uuid,
+      conn,
+      ProtocolVersion::V1_8,
+      w.clone(),
+      FPos::new(0.0, 60.0, 0.0),
+    );
     w.new_player(player).await;
   }
 }
