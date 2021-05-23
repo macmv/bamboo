@@ -15,7 +15,7 @@ use common::{
 use rand::{rngs::OsRng, RngCore};
 use rsa::{padding::PaddingScheme, RSAPrivateKey};
 use serde_derive::Serialize;
-use std::{error::Error, io, io::ErrorKind, sync::Arc};
+use std::{convert::TryInto, error::Error, io, io::ErrorKind, sync::Arc};
 use tokio::sync::{mpsc, oneshot};
 use tokio_stream::wrappers::ReceiverStream;
 use tonic::{transport::channel::Channel, Request, Status, Streaming};
@@ -283,7 +283,7 @@ impl Conn {
     der_key: Option<Vec<u8>>,
   ) -> io::Result<(String, UUID)> {
     let mut username = None;
-    let mut uuid;
+    let mut uuid = None;
     // The four byte verify token, used by the client in encryption.
     let mut token = [0u8; 4];
     'login: loop {
@@ -382,7 +382,12 @@ impl Conn {
               }
               // Encryption response
               1 => {
-                info!("got encryption response");
+                if username.is_none() {
+                  return Err(io::Error::new(
+                    ErrorKind::InvalidInput,
+                    "client did not send login start before sending ecryption response",
+                  ));
+                }
                 let len = p.read_varint();
                 let recieved_secret = p.read_buf(len);
                 let len = p.read_varint();
@@ -403,9 +408,22 @@ impl Conn {
                     ),
                   ));
                 }
+                let len = decrypted_secret.len();
+                let secret = match decrypted_secret.try_into() {
+                  Ok(v) => v,
+                  Err(_) => {
+                    return Err(io::Error::new(
+                      ErrorKind::InvalidInput,
+                      format!(
+                        "invalid secret recieved from client (len: {}, expected len 16)",
+                        len,
+                      ),
+                    ))
+                  }
+                };
 
-                self.client_writer.enable_encryption(decrypted_secret);
-                self.client_reader.enable_encryption(decrypted_secret);
+                self.client_writer.enable_encryption(&secret);
+                self.client_reader.enable_encryption(&secret);
 
                 self.send_compression(compression);
                 self.send_success(uuid.as_ref().unwrap(), username.as_ref().unwrap());

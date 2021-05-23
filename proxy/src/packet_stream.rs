@@ -1,5 +1,7 @@
 use crate::packet::Packet;
 
+use aes::{cipher::NewCipher, Aes128};
+use cfb8::Cfb8;
 use common::{util, util::Buffer, version::ProtocolVersion};
 use miniz_oxide::{deflate::compress_to_vec_zlib, inflate::decompress_to_vec_zlib};
 use ringbuf::{Consumer, Producer, RingBuffer};
@@ -22,12 +24,15 @@ pub struct StreamReader {
   cons:        Consumer<u8>,
   // If this is zero, compression is disabled.
   compression: usize,
+  // If this is none, then encryption is disabled.
+  cipher:      Option<Cfb8<Aes128>>,
 }
 pub struct StreamWriter {
   stream:      OwnedWriteHalf,
   // If this is zero, compression is disabled.
   compression: usize,
-  encryption:  bool,
+  // If this is none, then encryption is disabled.
+  cipher:      Option<Cfb8<Aes128>>,
 }
 
 pub fn new(stream: StdTcpStream) -> Result<(StreamReader, StreamWriter)> {
@@ -41,10 +46,13 @@ impl StreamReader {
   pub fn new(stream: OwnedReadHalf) -> Self {
     let buf = RingBuffer::new(1024);
     let (prod, cons) = buf.split();
-    StreamReader { stream, prod, cons, compression: 0 }
+    StreamReader { stream, prod, cons, compression: 0, cipher: None }
   }
   pub fn set_compression(&mut self, compression: i32) {
     self.compression = compression as usize;
+  }
+  pub fn enable_encryption(&mut self, secret: &[u8; 16]) {
+    self.cipher = Some(Cfb8::new_from_slices(secret, secret).unwrap());
   }
 
   pub async fn poll(&mut self) -> Result<()> {
@@ -98,11 +106,15 @@ impl StreamReader {
 
 impl StreamWriter {
   pub fn new(stream: OwnedWriteHalf) -> Self {
-    StreamWriter { stream, compression: 0, encryption: false }
+    StreamWriter { stream, compression: 0, cipher: None }
   }
   pub fn set_compression(&mut self, compression: i32) {
     self.compression = compression as usize;
   }
+  pub fn enable_encryption(&mut self, secret: &[u8; 16]) {
+    self.cipher = Some(Cfb8::new_from_slices(secret, secret).unwrap());
+  }
+
   pub async fn write(&mut self, p: Packet) -> Result<()> {
     // This is the packet, including it's id
     let bytes = p.serialize();
