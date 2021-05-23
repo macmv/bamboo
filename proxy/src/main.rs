@@ -6,6 +6,8 @@ pub mod packet;
 pub mod packet_stream;
 pub mod version;
 
+use rand::rngs::OsRng;
+use rsa::{PublicKeyParts, RSAPrivateKey};
 use std::{
   error::Error,
   net::{TcpListener, TcpStream},
@@ -26,13 +28,16 @@ async fn main() -> Result<(), Box<dyn Error>> {
   let listener = TcpListener::bind(addr)?;
   let gen = Arc::new(Generator::new());
 
-  let der_key = None;
+  // Minecraft uses 1024 bits for this.
+  let key = RSAPrivateKey::new(&mut OsRng, 1024).expect("failed to generate a key");
+  let der_key = Some(rsa_der::public_key_to_der(&key.n().to_bytes_be(), &key.e().to_bytes_be()));
 
   loop {
     let (socket, _) = listener.accept()?;
     let gen = gen.clone();
+    let k = der_key.clone();
     tokio::spawn(async move {
-      match handle_client(gen, socket, der_key).await {
+      match handle_client(gen, socket, k).await {
         Ok(_) => {}
         Err(e) => {
           error!("error in connection: {}", e);
@@ -45,7 +50,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
 async fn handle_client(
   gen: Arc<Generator>,
   sock: TcpStream,
-  der_key: Option<&[u8]>,
+  der_key: Option<Vec<u8>>,
 ) -> Result<(), Box<dyn Error>> {
   // let mut client = MinecraftClient::connect().await?;
   // let req = tonic::Request::new(StatusRequest {});

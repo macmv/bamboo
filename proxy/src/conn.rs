@@ -231,7 +231,7 @@ impl Conn {
   pub async fn handshake(
     &mut self,
     compression: i32,
-    der_key: Option<&[u8]>,
+    der_key: Option<Vec<u8>>,
   ) -> io::Result<(String, UUID)> {
     let mut username = None;
     let mut uuid;
@@ -323,13 +323,15 @@ impl Conn {
                 username = Some(name);
                 uuid = Some(id);
 
-                match der_key {
+                match &der_key {
                   Some(key) => {
                     // Encryption request
                     let mut out = Packet::new(1, self.ver);
                     out.write_str(""); // Server id, should be empty
                     out.write_varint(key.len() as i32); // Key len
                     out.write_buf(key); // DER encoded RSA key
+                    out.write_varint(4); // Token len
+                    out.write_buf(&[4, 5, 6, 7]); // Verify token
                     self.client_writer.write(out).await?;
                     // Wait for encryption response to enable encryption
                   }
@@ -367,7 +369,9 @@ impl Conn {
                 // self.client.write(out).await?;
               }
               // Encryption response
-              1 => {}
+              1 => {
+                info!("got encryption response");
+              }
               _ => {
                 return Err(io::Error::new(
                   ErrorKind::InvalidInput,
