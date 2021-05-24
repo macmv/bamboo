@@ -286,7 +286,6 @@ impl ChunkSection for Section {
     }
   }
   fn to_old_proto(&self, f: &dyn Fn(u32) -> u32) -> proto::chunk::Section {
-    dbg!(&self.palette);
     proto::chunk::Section {
       palette:        self.palette.iter().map(|v| f(*v)).collect(),
       bits_per_block: self.bits_per_block.into(),

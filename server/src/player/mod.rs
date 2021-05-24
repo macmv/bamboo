@@ -165,6 +165,9 @@ impl Player {
     pos.pitch = pos.next_pitch;
     // Whether or not the collision checks passes, we now have a movement
     // vector; from prev to curr.
+    let old_chunk = pos.prev.block().chunk();
+    let new_chunk = pos.curr.block().chunk();
+    if old_chunk != new_chunk {}
   }
 
   /// Returns the player's position. This is only updated once per tick. This
