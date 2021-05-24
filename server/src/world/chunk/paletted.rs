@@ -36,9 +36,10 @@ impl Section {
   fn index(&self, pos: Pos) -> (usize, usize, usize) {
     let index = (pos.y() << 8 | pos.z() << 4 | pos.x()) as usize;
     let bpb = self.bits_per_block as usize;
-    let first = index * bpb / 64;
-    let second = (index + 1) * bpb / 64;
-    let shift = index * bpb % 64;
+    let bit_index = index * bpb;
+    let first = bit_index / 64;
+    let second = (bit_index + bpb - 1) / 64;
+    let shift = bit_index % 64;
     (first, second, shift)
   }
   /// Writes a single palette id into self.data.
@@ -111,34 +112,35 @@ impl Section {
   /// self.bits_per_block, and update the long array.
   fn increase_bits_per_block(&mut self) {
     let bpb = (self.bits_per_block + 1) as usize;
-    let new_data = vec![0; 16 * 16 * 16 * bpb as usize / 64];
+    let mut new_data = vec![0; 16 * 16 * 16 * bpb / 64];
     let mut bit_index = 0;
     for y in 0..16 {
       for z in 0..16 {
         for x in 0..16 {
-          bit_index += bpb;
           let first = bit_index / 64;
-          let second = (bit_index + bpb) / 64;
+          let second = (bit_index + bpb - 1) / 64;
           let shift = bit_index % 64;
           let id = self.get_palette(Pos::new(x, y, z));
           if first == second {
             // Clear the bits of the new id
-            self.data[first] &= !(((1 << bpb) - 1) << shift);
+            new_data[first] &= !(((1 << bpb) - 1) << shift);
             // Set the new id
-            self.data[first] |= (id as u64) << shift;
+            new_data[first] |= (id as u64) << shift;
           } else {
             let second_shift = 64 - shift;
             // Clear the bits of the new id
-            self.data[first] &= !(((1 << bpb) - 1) << shift);
-            self.data[second] &= !(((1 << bpb) - 1) >> second_shift);
+            new_data[first] &= !(((1 << bpb) - 1) << shift);
+            new_data[second] &= !(((1 << bpb) - 1) >> second_shift);
             // Set the new id
-            self.data[first] |= (id as u64) << shift;
-            self.data[second] |= (id as u64) >> second_shift;
+            new_data[first] |= (id as u64) << shift;
+            new_data[second] |= (id as u64) >> second_shift;
           }
+          bit_index += bpb;
         }
       }
     }
     self.data = new_data;
+    self.bits_per_block += 1;
   }
 }
 
@@ -182,6 +184,7 @@ mod tests {
     assert_eq!(s.index(Pos::new(1, 0, 0)), (0, 0, 4));
     assert_eq!(s.index(Pos::new(2, 0, 0)), (0, 0, 8));
     assert_eq!(s.index(Pos::new(0, 0, 1)), (1, 1, 0));
+    assert_eq!(s.index(Pos::new(15, 15, 15)), (255, 255, 60));
 
     let s = Section { bits_per_block: 5, ..Default::default() };
     assert_eq!(s.index(Pos::new(0, 0, 0)), (0, 0, 0));
@@ -245,5 +248,30 @@ mod tests {
     assert_eq!(s.get_palette(Pos::new(1, 0, 0)), 0x0);
     assert_eq!(s.get_palette(Pos::new(2, 0, 0)), 0x1f);
     assert_eq!(s.get_palette(Pos::new(12, 0, 0)), 0x1f);
+  }
+  #[test]
+  fn test_increase_bits_per_block() {
+    let mut s = Section::default();
+    // Place some blocks
+    s.set_palette(Pos::new(0, 0, 0), 0xf);
+    s.set_palette(Pos::new(1, 0, 0), 0x0);
+    s.set_palette(Pos::new(2, 0, 0), 0xf);
+    s.set_palette(Pos::new(3, 0, 0), 0xa);
+    // We want a split value
+    s.set_palette(Pos::new(25, 0, 0), 0xf);
+
+    s.increase_bits_per_block();
+    // Sanity check
+    assert_eq!(s.bits_per_block, 5);
+    // Get blocks should work
+    assert_eq!(s.get_palette(Pos::new(0, 0, 0)), 0xf);
+    assert_eq!(s.get_palette(Pos::new(1, 0, 0)), 0x0);
+    assert_eq!(s.get_palette(Pos::new(2, 0, 0)), 0xf);
+    assert_eq!(s.get_palette(Pos::new(3, 0, 0)), 0xa);
+    assert_eq!(s.get_palette(Pos::new(25, 0, 0)), 0xf);
+    // Make sure the data is correct
+    assert_eq!(s.data[0], 0xa << 15 | 0xf << 10 | 0xf);
+    assert_eq!(s.data[1], 0xf << 61);
+    assert_eq!(s.data[2], 0xf >> 3);
   }
 }
