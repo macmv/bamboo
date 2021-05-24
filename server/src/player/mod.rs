@@ -177,102 +177,90 @@ impl Player {
       let view_distance = 10; // TODO: Listen for client settings on this
       let delta = new_chunk - old_chunk;
       let new_top_left = new_chunk - ChunkPos::new(view_distance, view_distance);
-      let new_bottom_right = new_chunk + ChunkPos::new(view_distance, view_distance);
+      let new_bot_right = new_chunk + ChunkPos::new(view_distance, view_distance);
       let old_top_left = old_chunk - ChunkPos::new(view_distance, view_distance);
-      let old_bottom_right = old_chunk + ChunkPos::new(view_distance, view_distance);
-      // New chunks
-      {
-        // Sides (including corners)
-        {
-          let min_x = match delta.x().cmp(&0) {
-            Ordering::Greater => old_bottom_right.x(),
-            Ordering::Less => new_top_left.x(),
-            _ => 0,
-          };
-          let max_x = match delta.x().cmp(&0) {
-            Ordering::Greater => new_bottom_right.x(),
-            Ordering::Less => old_top_left.x(),
-            _ => 0,
-          };
-          for z in new_top_left.z()..=new_bottom_right.z() {
-            for x in min_x..=max_x {
-              self
-                .conn
-                .send(self.world.serialize_chunk(ChunkPos::new(x, z), self.ver().block()))
-                .await;
-            }
-          }
+      let old_bot_right = old_chunk + ChunkPos::new(view_distance, view_distance);
+      // Sides (including corners)
+      match delta.x().cmp(&0) {
+        Ordering::Greater => {
+          self
+            .load_chunks(
+              ChunkPos::new(new_bot_right.x(), new_top_left.z()),
+              ChunkPos::new(old_bot_right.x(), new_bot_right.z()),
+            )
+            .await;
+          self
+            .unload_chunks(
+              ChunkPos::new(old_top_left.x(), old_top_left.z()),
+              ChunkPos::new(new_top_left.x(), old_bot_right.z()),
+            )
+            .await;
         }
-        // Top/Bottom (excluding corners)
-        {
-          let min_z = match delta.z().cmp(&0) {
-            Ordering::Greater => old_bottom_right.z(),
-            Ordering::Less => new_top_left.z(),
-            _ => 0,
-          };
-          let max_z = match delta.z().cmp(&0) {
-            Ordering::Greater => new_bottom_right.z(),
-            Ordering::Less => old_top_left.z(),
-            _ => 0,
-          };
-          let min_x = cmp::max(new_top_left.x(), old_top_left.x());
-          let max_x = cmp::min(old_bottom_right.x(), new_bottom_right.x());
-          for z in min_z..=max_z {
-            for x in min_x..=max_x {
-              self
-                .conn
-                .send(self.world.serialize_chunk(ChunkPos::new(x, z), self.ver().block()))
-                .await;
-            }
-          }
+        Ordering::Less => {
+          self
+            .load_chunks(
+              ChunkPos::new(old_top_left.x(), new_top_left.z()),
+              ChunkPos::new(new_top_left.x(), new_bot_right.z()),
+            )
+            .await;
+          self
+            .unload_chunks(
+              ChunkPos::new(new_bot_right.x(), old_top_left.z()),
+              ChunkPos::new(old_bot_right.x(), old_bot_right.z()),
+            )
+            .await;
         }
+        _ => {}
+      };
+      // Top/Bottom (excluding corners)
+      match delta.z().cmp(&0) {
+        Ordering::Greater => {
+          self
+            .load_chunks(
+              ChunkPos::new(cmp::max(old_top_left.x(), new_top_left.x()), old_bot_right.z()),
+              ChunkPos::new(cmp::min(old_bot_right.x(), new_bot_right.x()), new_bot_right.z()),
+            )
+            .await;
+          self
+            .unload_chunks(
+              ChunkPos::new(cmp::max(old_top_left.x(), new_top_left.x()), old_top_left.z()),
+              ChunkPos::new(cmp::min(old_bot_right.x(), new_bot_right.x()), new_top_left.z()),
+            )
+            .await;
+        }
+        Ordering::Less => {
+          self
+            .load_chunks(
+              ChunkPos::new(cmp::max(old_top_left.x(), new_top_left.x()), old_top_left.z()),
+              ChunkPos::new(cmp::min(old_bot_right.x(), new_bot_right.x()), new_top_left.z()),
+            )
+            .await;
+          self
+            .unload_chunks(
+              ChunkPos::new(cmp::max(old_top_left.x(), new_top_left.x()), old_bot_right.z()),
+              ChunkPos::new(cmp::min(old_bot_right.x(), new_bot_right.x()), new_bot_right.z()),
+            )
+            .await;
+        }
+        _ => {}
+      };
+    }
+  }
+
+  async fn load_chunks(&self, min: ChunkPos, max: ChunkPos) {
+    for x in min.x()..max.x() {
+      for z in min.z()..max.z() {
+        self.conn.send(self.world.serialize_chunk(ChunkPos::new(x, z), self.ver().block())).await;
       }
-      // Old chunks
-      {
-        // Sides (including corners)
-        {
-          let min_x = match delta.x().cmp(&0) {
-            Ordering::Less => new_bottom_right.x(),
-            Ordering::Greater => old_top_left.x(),
-            _ => 0,
-          };
-          let max_x = match delta.x().cmp(&0) {
-            Ordering::Less => old_bottom_right.x(),
-            Ordering::Greater => new_top_left.x(),
-            _ => 0,
-          };
-          for z in old_top_left.z()..=old_bottom_right.z() {
-            for x in min_x..=max_x {
-              let mut out = cb::Packet::new(cb::ID::UnloadChunk);
-              out.set_i32("chunk_x", x);
-              out.set_i32("chunk_z", z);
-              self.conn.send(out).await;
-            }
-          }
-        }
-        // Top/Bottom (excluding corners)
-        {
-          let min_z = match delta.z().cmp(&0) {
-            Ordering::Less => new_bottom_right.z(),
-            Ordering::Greater => old_top_left.z(),
-            _ => 0,
-          };
-          let max_z = match delta.z().cmp(&0) {
-            Ordering::Less => old_bottom_right.z(),
-            Ordering::Greater => new_top_left.z(),
-            _ => 0,
-          };
-          let min_x = cmp::max(new_top_left.x(), old_top_left.x());
-          let max_x = cmp::min(old_bottom_right.x(), new_bottom_right.x());
-          for z in min_z..=max_z {
-            for x in min_x..=max_x {
-              let mut out = cb::Packet::new(cb::ID::UnloadChunk);
-              out.set_i32("chunk_x", x);
-              out.set_i32("chunk_z", z);
-              self.conn.send(out).await;
-            }
-          }
-        }
+    }
+  }
+  async fn unload_chunks(&self, min: ChunkPos, max: ChunkPos) {
+    for x in min.x()..max.x() {
+      for z in min.z()..max.z() {
+        let mut out = cb::Packet::new(cb::ID::UnloadChunk);
+        out.set_i32("chunk_x", x);
+        out.set_i32("chunk_z", z);
+        self.conn.send(out).await;
       }
     }
   }
