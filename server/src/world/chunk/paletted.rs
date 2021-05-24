@@ -107,7 +107,7 @@ impl Section {
     // We add to this in set_block, not here
     self.block_amounts.insert(palette_id as usize, 0);
     for (_, p) in self.reverse_palette.iter_mut() {
-      if *p > palette_id {
+      if *p >= palette_id {
         *p += 1;
       }
     }
@@ -323,15 +323,19 @@ mod tests {
     let mut s = Section::default();
     assert_eq!(s.insert(5), 1);
     assert_eq!(s.palette, vec![0, 5]);
+    assert_eq!(s.reverse_palette, vec![(0, 0), (5, 1)].into_iter().collect());
     assert_eq!(s.insert(10), 2);
     assert_eq!(s.palette, vec![0, 5, 10]);
+    assert_eq!(s.reverse_palette, vec![(0, 0), (5, 1), (10, 2)].into_iter().collect());
 
     // Tests the insert part
     let mut s = Section::default();
     assert_eq!(s.insert(10), 1);
     assert_eq!(s.palette, vec![0, 10]);
+    assert_eq!(s.reverse_palette, vec![(0, 0), (10, 1)].into_iter().collect());
     assert_eq!(s.insert(5), 1);
     assert_eq!(s.palette, vec![0, 5, 10]);
+    assert_eq!(s.reverse_palette, vec![(0, 0), (5, 1), (10, 2)].into_iter().collect());
   }
   #[test]
   fn test_set_block() -> Result<(), PosError> {
