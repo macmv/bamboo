@@ -3,7 +3,14 @@ mod paletted;
 mod versions;
 
 use convert_case::{Case, Casing};
-use std::{collections::HashMap, error::Error, fs, fs::File, io::Write, path::Path};
+use std::{
+  collections::{HashMap, HashSet},
+  error::Error,
+  fs,
+  fs::File,
+  io::Write,
+  path::Path,
+};
 
 #[derive(Debug, PartialEq, Eq, Clone)]
 struct State {
@@ -34,7 +41,7 @@ struct BlockVersion {
   blocks: Vec<Block>,
 }
 
-pub fn generate(dir: &Path) -> Result<(), Box<dyn Error>> {
+pub fn generate(dir: &Path) -> Result<HashSet<String>, Box<dyn Error>> {
   let dir = Path::new(dir).join("block");
 
   let versions = vec![
@@ -53,6 +60,7 @@ pub fn generate(dir: &Path) -> Result<(), Box<dyn Error>> {
   let latest = &versions[0];
 
   fs::create_dir_all(&dir)?;
+  let mut out = HashSet::new();
   {
     // Generates the block kinds enum
     let mut f = File::create(&dir.join("kind.rs"))?;
@@ -63,6 +71,7 @@ pub fn generate(dir: &Path) -> Result<(), Box<dyn Error>> {
     for b in &latest.blocks {
       let name = b.name.to_case(Case::Pascal);
       writeln!(f, "  {},", name)?;
+      out.insert(name);
     }
     writeln!(f, "}}")?;
   }
@@ -122,5 +131,5 @@ pub fn generate(dir: &Path) -> Result<(), Box<dyn Error>> {
       writeln!(f)?;
     }
   }
-  Ok(())
+  Ok(out)
 }

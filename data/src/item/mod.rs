@@ -1,6 +1,13 @@
 use convert_case::{Case, Casing};
 use serde_derive::Deserialize;
-use std::{collections::HashMap, error::Error, fs, fs::File, io::Write, path::Path};
+use std::{
+  collections::{HashMap, HashSet},
+  error::Error,
+  fs,
+  fs::File,
+  io::Write,
+  path::Path,
+};
 
 #[derive(Debug, Clone, Deserialize)]
 struct Item {
@@ -12,7 +19,9 @@ struct Item {
   stack_size:   u32,
 }
 
-pub fn generate(dir: &Path) -> Result<(), Box<dyn Error>> {
+// Generates all item data. Uses the set of valid block enum names to generate
+// the block to place for each item.
+pub fn generate(dir: &Path, blocks: HashSet<String>) -> Result<(), Box<dyn Error>> {
   let dir = Path::new(dir).join("item");
 
   let versions = vec![
@@ -49,9 +58,14 @@ pub fn generate(dir: &Path) -> Result<(), Box<dyn Error>> {
     // Include macro must be one statement
     writeln!(f, "{{")?;
     for i in latest {
+      let mut block = i.name.to_case(Case::Pascal);
+      if !blocks.contains(&block) {
+        block = "Air".into();
+      }
       writeln!(f, "items.push(Data{{")?;
       writeln!(f, "  display_name: \"{}\",", i.display_name)?;
       writeln!(f, "  stack_size: {},", i.stack_size)?;
+      writeln!(f, "  block_to_place: block::Kind::{},", block)?;
       writeln!(f, "}});")?;
     }
     writeln!(f, "}}")?;

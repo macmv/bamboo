@@ -1,10 +1,13 @@
+use crate::block;
+
 /// Any data specific to a block kind. This includes all function handlers for
 /// when a block gets placed/broken, and any custom functionality a block might
 /// have.
 #[derive(Debug)]
 pub struct Data {
-  display_name: &'static str,
-  stack_size:   u32,
+  display_name:   &'static str,
+  stack_size:     u32,
+  block_to_place: block::Kind,
 }
 
 impl Data {
