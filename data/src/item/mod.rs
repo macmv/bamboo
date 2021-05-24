@@ -84,15 +84,13 @@ pub fn generate(dir: &Path, blocks: HashSet<String>) -> Result<(), Box<dyn Error
       }
       to_old.push(generate_conversion(latest, v));
     }
-    for i in 0..to_old[0].len() {
-      write!(f, "{},", i)?;
-      for (j, arr) in to_old.iter().enumerate() {
-        write!(f, "{}", arr[i])?;
-        if j != to_old.len() - 1 {
-          write!(f, ",")?;
-        }
-      }
-      writeln!(f)?;
+    for i in 0..latest.len() {
+      writeln!(
+        f,
+        "{},{}",
+        i,
+        to_old.iter().map(|arr| arr[i].to_string()).collect::<Vec<String>>().join(",")
+      )?;
     }
   }
   Ok(())

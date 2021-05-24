@@ -85,6 +85,7 @@ pub fn generate_versions() -> Vec<Version> {
   let mut versions = vec![];
   let csv = include_str!(concat!(env!("OUT_DIR"), "/item/versions.csv"));
   for (i, l) in csv.lines().enumerate() {
+    dbg!(l);
     let mut sections = l.split(',').enumerate();
     // Remove the first element. This is the latest block id, which will always be
     // the same as i.
@@ -108,4 +109,17 @@ pub fn generate_versions() -> Vec<Version> {
   // enum is built, this is backwards. So we reverse it here, so that the types
   // using this list can just call BlockVersion::to_index().
   versions.into_iter().rev().collect()
+}
+
+#[cfg(test)]
+mod tests {
+  use super::*;
+
+  #[test]
+  fn test_versioning() {
+    let conv = TypeConverter::new();
+
+    // Diamond block
+    assert_eq!(conv.to_old(182, BlockVersion::V1_8), 57);
+  }
 }

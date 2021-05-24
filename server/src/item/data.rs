@@ -34,8 +34,15 @@ mod tests {
   use super::*;
 
   #[test]
-  fn test_generate() {
-    dbg!(generate_items());
+  fn test_blocks() {
+    let data = generate_items();
+
+    // Sanity check some random blocks
+    assert_eq!(data[0].block_to_place, block::Kind::Air);
+    assert_eq!(data[1].block_to_place, block::Kind::Stone);
+    assert_eq!(data[2].block_to_place, block::Kind::Granite);
+    assert_eq!(data[182].block_to_place, block::Kind::DiamondBlock);
+    assert_eq!(data[430].block_to_place, block::Kind::Observer);
     // Used to show debug output.
     // assert!(false);
   }
