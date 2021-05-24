@@ -30,7 +30,7 @@ pub(super) fn gen_spec() -> PacketSpec {
     for y in chunk.sections.keys() {
       bitmask |= 1 << y;
     }
-    out.write_u16(bitmask);
+    out.write_varint(bitmask);
 
     let mut buf = Buffer::new(vec![]);
     // Makes an ordered list of chunk sections
@@ -40,30 +40,39 @@ pub(super) fn gen_spec() -> PacketSpec {
     }
     // Iterates through chunks in order, from ground up. flatten() skips all None
     // sections.
-    let mut total_sections = 0;
     for s in sections.into_iter().flatten() {
-      total_sections += 1;
+      // The bits per block
+      buf.write_u8(s.bits_per_block as u8);
+      // The length of the palette
+      buf.write_varint(s.palette.len() as i32);
+      for g in &s.palette {
+        buf.write_varint(*g as i32);
+      }
+      // Number of longs in the data array
+      buf.write_varint(s.data.len() as i32);
       buf.write_buf(&s.data.iter().map(|v| v.to_le_bytes()).flatten().collect::<Vec<u8>>());
-    }
-    // Light data
-    for _ in 0..total_sections * 16 * 16 * 16 / 2 {
-      // Each lighting value is 1/2 byte
-      buf.write_u8(0xff);
-    }
-    if skylight {
-      for _ in 0..total_sections * 16 * 16 * 16 / 2 {
+      // Light data
+      for _ in 0..16 * 16 * 16 / 2 {
         // Each lighting value is 1/2 byte
         buf.write_u8(0xff);
       }
-    }
-    if biomes {
-      for _ in 0..256 {
-        buf.write_u8(127); // Void biome
+      if skylight {
+        for _ in 0..16 * 16 * 16 / 2 {
+          // Each lighting value is 1/2 byte
+          buf.write_u8(0xff);
+        }
       }
     }
+    // if biomes {
+    //   for _ in 0..256 {
+    //     buf.write_u8(127); // Void biome
+    //   }
+    // }
 
     out.write_varint(buf.len() as i32);
     out.write_buf(&buf);
+    // No tile entities
+    out.write_varint(0);
 
     Ok(Some(out))
   });
