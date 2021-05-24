@@ -323,19 +323,53 @@ mod tests {
     let mut s = Section::default();
     assert_eq!(s.insert(5), 1);
     assert_eq!(s.palette, vec![0, 5]);
+    assert_eq!(s.block_amounts, vec![4096, 0]);
     assert_eq!(s.reverse_palette, vec![(0, 0), (5, 1)].into_iter().collect());
     assert_eq!(s.insert(10), 2);
     assert_eq!(s.palette, vec![0, 5, 10]);
+    assert_eq!(s.block_amounts, vec![4096, 0, 0]);
     assert_eq!(s.reverse_palette, vec![(0, 0), (5, 1), (10, 2)].into_iter().collect());
 
     // Tests the insert part
     let mut s = Section::default();
     assert_eq!(s.insert(10), 1);
     assert_eq!(s.palette, vec![0, 10]);
+    assert_eq!(s.block_amounts, vec![4096, 0]);
     assert_eq!(s.reverse_palette, vec![(0, 0), (10, 1)].into_iter().collect());
     assert_eq!(s.insert(5), 1);
     assert_eq!(s.palette, vec![0, 5, 10]);
+    assert_eq!(s.block_amounts, vec![4096, 0, 0]);
     assert_eq!(s.reverse_palette, vec![(0, 0), (5, 1), (10, 2)].into_iter().collect());
+  }
+  #[test]
+  fn test_remove() {
+    // Tests the pop part
+    let mut s = Section {
+      palette: vec![0, 5, 10],
+      block_amounts: vec![4096, 0, 0],
+      reverse_palette: vec![(0, 0), (5, 1), (10, 2)].into_iter().collect(),
+      ..Default::default()
+    };
+    s.remove(2);
+    assert_eq!(s.palette, vec![0, 5]);
+    assert_eq!(s.reverse_palette, vec![(0, 0), (5, 1)].into_iter().collect());
+    s.remove(1);
+    assert_eq!(s.palette, vec![0]);
+    assert_eq!(s.reverse_palette, vec![(0, 0)].into_iter().collect());
+
+    // Tests the remove part (should affect the elements in the map)
+    let mut s = Section {
+      palette: vec![0, 5, 10],
+      block_amounts: vec![4096, 0, 0],
+      reverse_palette: vec![(0, 0), (5, 1), (10, 2)].into_iter().collect(),
+      ..Default::default()
+    };
+    s.remove(1);
+    assert_eq!(s.palette, vec![0, 10]);
+    assert_eq!(s.reverse_palette, vec![(0, 0), (10, 1)].into_iter().collect());
+    s.remove(1);
+    assert_eq!(s.palette, vec![0]);
+    assert_eq!(s.reverse_palette, vec![(0, 0)].into_iter().collect());
   }
   #[test]
   fn test_set_block() -> Result<(), PosError> {
