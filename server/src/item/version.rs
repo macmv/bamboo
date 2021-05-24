@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use super::{data, data::Data};
+use super::{data, data::Data, Type};
 
 use common::version::BlockVersion;
 
@@ -42,6 +42,12 @@ impl TypeConverter {
       Some(v) => *v,
       None => 0,
     }
+  }
+
+  /// Returns any data about this item. Includes things like max stack size,
+  /// display name, etc.
+  pub fn get_data(&self, item: Type) -> &Data {
+    &self.types[item.to_u32() as usize]
   }
 }
 

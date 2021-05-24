@@ -82,10 +82,12 @@ impl Connection {
           let count = p.get_byte("item-count");
           let _nbt = p.get_byte_arr("item-nbt");
 
-          let id = player.world().get_item_converter().to_latest(id as u32, player.ver().block());
-          player
-            .lock_inventory()
-            .set(slot as u32, item::Stack::new(item::Type::from_u32(id)).with_amount(count));
+          if slot > 0 {
+            let id = player.world().get_item_converter().to_latest(id as u32, player.ver().block());
+            player
+              .lock_inventory()
+              .set(slot as u32, item::Stack::new(item::Type::from_u32(id)).with_amount(count));
+          }
         }
         sb::ID::BlockDig => {
           let pos = p.get_pos("location");
@@ -99,11 +101,12 @@ impl Connection {
           let mut pos = p.get_pos("location");
           let dir = p.get_byte("direction");
 
-          {
+          let data = {
             let inv = player.lock_inventory();
             let stack = inv.main_hand();
-            dbg!(stack);
-          }
+            player.world().get_item_converter().get_data(stack.item())
+          };
+          player.send_message(&Chat::new(format!("placing item: {:?}", data))).await;
 
           if pos == Pos::new(-1, -1, -1) && dir as i8 == -1 {
             // Client is eating, or head is inside block
