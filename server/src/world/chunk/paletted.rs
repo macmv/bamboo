@@ -434,16 +434,26 @@ mod tests {
     assert_eq!(s.block_amounts, vec![4096]);
     assert_eq!(s.palette, vec![0]);
 
+    // Make sure that replacing blocks works
+    let mut s = Section::default();
+    s.set_block(Pos::new(1, 0, 0), 5)?;
+    assert_eq!(s.palette, vec![0, 5]);
+    assert_eq!(s.block_amounts, vec![4095, 1]);
+    s.set_block(Pos::new(1, 0, 0), 10)?;
+    assert_eq!(s.palette, vec![0, 10]);
+    assert_eq!(s.block_amounts, vec![4095, 1]);
+
     // Test get block
     let mut s = Section::default();
     s.set_block(Pos::new(0, 0, 0), 10)?;
     assert_eq!(s.get_block(Pos::new(0, 0, 0))?, 10);
     s.set_block(Pos::new(0, 0, 0), 123)?;
+    dbg!(&s.reverse_palette);
     assert_eq!(s.get_block(Pos::new(0, 0, 0))?, 123);
     s.set_block(Pos::new(1, 3, 2), 5)?;
     assert_eq!(s.get_block(Pos::new(1, 3, 2))?, 5);
     s.set_block(Pos::new(15, 15, 15), 420)?;
-    assert_eq!(s.get_block(Pos::new(1, 3, 2))?, 420);
+    assert_eq!(s.get_block(Pos::new(15, 15, 15))?, 420);
 
     Ok(())
   }
