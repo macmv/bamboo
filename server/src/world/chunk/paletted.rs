@@ -174,9 +174,20 @@ impl Section {
 
 impl ChunkSection for Section {
   fn set_block(&mut self, pos: Pos, ty: u32) -> Result<(), PosError> {
+    // Currently, this function is almost as fast as it could be. The one limiting
+    // factor is with replacing a single unique block with another unique block. If
+    // that moves the block data over the bits_per_block threshhold, all of the data
+    // will be copied twice. It will also insert and remove from the palette at the
+    // same index.
+    //
+    // This is less than optimal, to say the least. However, the only way this could
+    // happen ingame is with a /setblock. This will not happen at all with
+    // breaking/placing blocks, as air will always be in the palette. So in
+    // survival, this will never come up.
     let prev = self.get_palette(pos);
     let palette_id = if let Some(&palette_id) = self.reverse_palette.get(&ty) {
       if prev == palette_id {
+        // The same block is being placed, so we do nothing.
         return Ok(());
       }
       self.set_palette(pos, palette_id);
@@ -184,7 +195,10 @@ impl ChunkSection for Section {
     } else {
       let palette_id = self.insert(ty);
       // Sanity check
+      #[cfg(debug_assertions)]
       if prev == palette_id {
+        // This can never happen, because ty should not be in the palette. `insert()`
+        // should return a unique id, and this asserts that is true.
         unreachable!(
           "while setting {} to {}, prev and palette id were the same ({}, should never happen)",
           pos, ty, prev
