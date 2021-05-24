@@ -99,7 +99,7 @@ impl Section {
     let mut palette_id = self.palette.len() as u32;
     for (i, g) in self.palette.iter().enumerate() {
       if *g > ty {
-        palette_id = (i - 1) as u32;
+        palette_id = i as u32;
         break;
       }
     }
@@ -319,7 +319,19 @@ mod tests {
   }
   #[test]
   fn test_insert() {
+    // Tests the append part
     let mut s = Section::default();
+    assert_eq!(s.insert(5), 1);
+    assert_eq!(s.palette, vec![0, 5]);
+    assert_eq!(s.insert(10), 2);
+    assert_eq!(s.palette, vec![0, 5, 10]);
+
+    // Tests the insert part
+    let mut s = Section::default();
+    assert_eq!(s.insert(10), 1);
+    assert_eq!(s.palette, vec![0, 10]);
+    assert_eq!(s.insert(5), 1);
+    assert_eq!(s.palette, vec![0, 5, 10]);
   }
   #[test]
   fn test_set_block() -> Result<(), PosError> {
