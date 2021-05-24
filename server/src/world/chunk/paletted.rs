@@ -297,4 +297,27 @@ mod tests {
     assert_eq!(s.data[1], 0xf << 61);
     assert_eq!(s.data[2], 0xf >> 3);
   }
+  #[test]
+  fn test_set_block() -> Result<(), PosError> {
+    // This tests the entire functionality of set_block, assuming that all above
+    // tests passed.
+    let mut s = Section::default();
+    s.set_block(Pos::new(0, 0, 0), 5)?;
+    assert_eq!(s.block_amounts, vec![4095, 1]);
+    assert_eq!(s.palette, vec![0, 5]);
+
+    s.set_block(Pos::new(1, 0, 0), 5)?;
+    assert_eq!(s.block_amounts, vec![4094, 2]);
+    assert_eq!(s.palette, vec![0, 5]);
+
+    s.set_block(Pos::new(1, 0, 0), 0)?;
+    assert_eq!(s.block_amounts, vec![4095, 1]);
+    assert_eq!(s.palette, vec![0, 5]);
+
+    s.set_block(Pos::new(0, 0, 0), 0)?;
+    assert_eq!(s.block_amounts, vec![4096]);
+    assert_eq!(s.palette, vec![0]);
+
+    Ok(())
+  }
 }
