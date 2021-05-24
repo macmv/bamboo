@@ -70,12 +70,14 @@ async fn handle_client(
   let (server_tx, client_rx) = oneshot::channel();
   let (client_tx, server_rx) = oneshot::channel();
 
+  let ver = conn.ver().id() as i32;
   let (mut client_listener, mut server_listener) = conn.split().await?;
 
   // Tells the server who this client is
   let mut out = sb::Packet::new(sb::ID::Login);
   out.set_str("username".into(), name);
   out.set_uuid("uuid".into(), id);
+  out.set_int("ver".into(), ver);
   client_listener.send_to_server(out).await?;
 
   let mut handles = vec![];

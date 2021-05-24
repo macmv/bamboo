@@ -7,6 +7,7 @@ use common::{
   net::{cb, sb},
   proto,
   util::chat::{Chat, Color, HoverEvent},
+  version::ProtocolVersion,
 };
 
 use crate::{block, item, player::Player};
@@ -28,13 +29,15 @@ impl Connection {
   /// This waits for the a login packet from the proxy. If any other packet is
   /// recieved, this will panic. This should only be called right after a
   /// connection is created.
-  pub(crate) async fn wait_for_login(&self) -> (String, UUID) {
+  pub(crate) async fn wait_for_login(&self) -> (String, UUID, ProtocolVersion) {
     let p = match self.rx.lock().await.message().await.unwrap() {
       Some(p) => sb::Packet::from_proto(p),
       None => panic!("connection was closed while listening for a login packet"),
     };
     match p.id() {
-      sb::ID::Login => (p.get_str("username").into(), p.get_uuid("uuid")),
+      sb::ID::Login => {
+        (p.get_str("username").into(), p.get_uuid("uuid"), ProtocolVersion::from(p.get_int("ver")))
+      }
       _ => panic!("expecting login packet, got: {}", p),
     }
   }

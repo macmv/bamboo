@@ -207,6 +207,9 @@ impl Conn {
       ver: ProtocolVersion::Invalid,
     })
   }
+  pub fn ver(&self) -> ProtocolVersion {
+    self.ver
+  }
 
   pub async fn split(mut self) -> Result<(ClientListener, ServerListener), Status> {
     let (tx, rx) = mpsc::channel(1);
@@ -256,11 +259,12 @@ impl Conn {
     Ok(())
   }
 
-  /// Sends the login success packet, and sets the state to Play.
+  /// Generates the json status for the server
   fn build_status(&self) -> JsonStatus {
     let mut description = Chat::empty();
-    description.add("Big ".into()).color(Color::BrightGreen);
-    description.add("Gaming".into()).color(Color::Red);
+    description.add("Sugarcane".into()).color(Color::BrightGreen);
+    description.add(" -- ".into()).color(Color::Gray);
+    description.add("Development mode".into()).color(Color::Blue);
     JsonStatus {
       version: JsonVersion { name: "1.8".into(), protocol: self.ver.id() as i32 },
       players: JsonPlayers {
