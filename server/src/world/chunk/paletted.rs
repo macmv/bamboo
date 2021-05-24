@@ -63,11 +63,70 @@ impl Section {
       self.data[second] |= (id as u64) >> second_shift;
     }
   }
+  /// This adds a new item to the palette. It will shift all block data, and
+  /// extend bits per block (if needed). `ty` must not already be in the
+  /// palette. Returns the new palette id.
+  fn insert(&mut self, ty: u32) -> u32 {
+    if self.palette.len() + 1 >= 1 << self.bits_per_block as usize {
+      self.increase_bits_per_block();
+    }
+    let mut palette_id = self.palette.len() as u32;
+    for (i, g) in self.palette.iter().enumerate() {
+      if *g > ty {
+        palette_id = (i - 1) as u32;
+        break;
+      }
+    }
+    self.palette.insert(palette_id as usize, ty);
+    for (_, p) in self.reverse_palette.iter_mut() {
+      if *p > palette_id {
+        *p += 1;
+      }
+    }
+    self.reverse_palette.insert(ty, palette_id);
+    palette_id
+  }
+  /// Increases the bits per block by one. This will increase
+  /// self.bits_per_block, and update the long array.
+  fn increase_bits_per_block(&mut self) {
+    let bpb = (self.bits_per_block + 1) as usize;
+    let new_data = vec![0; 16 * 16 * 16 * bpb as usize / 64];
+    let mut bit_index = 0;
+    for y in 0..16 {
+      for z in 0..16 {
+        for x in 0..16 {
+          bit_index += bpb;
+          let first = bit_index / 64;
+          let second = (bit_index + bpb) / 64;
+          let shift = bit_index % 64;
+          let id = self.get_palette(Pos::new(x, y, z));
+          if first == second {
+            // Clear the bits of the new id
+            self.data[first] &= !(((1 << bpb) - 1) << shift);
+            // Set the new id
+            self.data[first] |= (id as u64) << shift;
+          } else {
+            let second_shift = 64 - shift;
+            // Clear the bits of the new id
+            self.data[first] &= !(((1 << bpb) - 1) << shift);
+            self.data[second] &= !(((1 << bpb) - 1) >> second_shift);
+            // Set the new id
+            self.data[first] |= (id as u64) << shift;
+            self.data[second] |= (id as u64) >> second_shift;
+          }
+        }
+      }
+    }
+    self.data = new_data;
+  }
 }
 
 impl ChunkSection for Section {
   fn set_block(&mut self, pos: Pos, ty: u32) -> Result<(), PosError> {
     if let Some(&palette_id) = self.reverse_palette.get(&ty) {
+      self.set_palette(pos, palette_id);
+    } else {
+      let palette_id = self.insert(ty);
       self.set_palette(pos, palette_id);
     }
     Ok(())
