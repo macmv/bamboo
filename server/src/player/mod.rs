@@ -12,7 +12,11 @@ use common::{
   version::ProtocolVersion,
 };
 
-use crate::{item::Inventory, net::Connection, world::World};
+use crate::{
+  item::{Inventory, Stack},
+  net::Connection,
+  world::World,
+};
 
 #[derive(Debug)]
 struct PlayerPosition {
@@ -33,6 +37,43 @@ struct PlayerPosition {
   next_pitch: f32,
 }
 
+#[derive(Debug)]
+pub struct PlayerInventory {
+  inv:            Inventory,
+  // An index into the hotbar (0..=8)
+  selected_index: u8,
+}
+
+impl PlayerInventory {
+  pub fn new() -> Self {
+    PlayerInventory { inv: Inventory::new(46), selected_index: 0 }
+  }
+
+  /// Returns the item in the player's main hand.
+  pub fn main_hand(&self) -> &Stack {
+    self.inv.get(self.selected_index as u32 + 36)
+  }
+
+  /// Returns the currently selected hotbar index.
+  pub fn selected_index(&self) -> u8 {
+    self.selected_index
+  }
+
+  /// Gets the item at the given index. 0 is part of the armor slots, not the
+  /// start of the hotbar. To access the hotbar, add 36 to the index returned
+  /// from main_hand.
+  pub fn get(&self, index: u32) -> &Stack {
+    self.inv.get(index)
+  }
+
+  /// Sets the item in the inventory.
+  ///
+  /// TODO: Send a packet here.
+  pub fn set(&mut self, index: u32, stack: Stack) {
+    self.inv.set(index, stack)
+  }
+}
+
 pub struct Player {
   // The EID of the player. Never changes.
   eid:      i32,
@@ -43,7 +84,7 @@ pub struct Player {
   ver:      ProtocolVersion,
   world:    Arc<World>,
 
-  inventory: Mutex<Inventory>,
+  inv: Mutex<PlayerInventory>,
 
   pos: Mutex<PlayerPosition>,
 }
@@ -54,7 +95,7 @@ impl fmt::Debug for Player {
       .field("username", &self.username)
       .field("uuid", &self.uuid)
       .field("ver", &self.ver)
-      .field("inventory", &self.inventory)
+      .field("inv", &self.inv)
       .field("pos", &self.pos)
       .finish()
   }
@@ -78,7 +119,7 @@ impl Player {
       ver,
       world,
       // This is 45 on 1.8, because there was no off hand.
-      inventory: Mutex::new(Inventory::new(46)),
+      inv: Mutex::new(PlayerInventory::new()),
       pos: Mutex::new(PlayerPosition {
         curr:       pos,
         prev:       pos,
@@ -120,8 +161,8 @@ impl Player {
   }
 
   /// Returns a locked reference to the player's inventory.
-  pub fn lock_inventory(&self) -> MutexGuard<Inventory> {
-    self.inventory.lock().unwrap()
+  pub fn lock_inventory(&self) -> MutexGuard<PlayerInventory> {
+    self.inv.lock().unwrap()
   }
 
   /// Returns a reference to the world the player is in.

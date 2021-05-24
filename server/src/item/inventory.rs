@@ -15,7 +15,7 @@ impl Inventory {
     self.items[index as usize] = stack;
   }
   /// Returns a reference to the item stack at the given index.
-  pub fn get(&mut self, index: u32) -> &Stack {
+  pub fn get(&self, index: u32) -> &Stack {
     &self.items[index as usize]
   }
   /// Returns a mutable reference to the item stack at the given index.

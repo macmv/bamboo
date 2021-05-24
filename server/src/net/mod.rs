@@ -63,9 +63,14 @@ impl Connection {
 
           let mut msg = Chat::empty();
           msg.add("<".into());
-          msg.add(player.username().into()).color(Color::Red);
+          msg.add(player.username().into()).color(Color::BrightGreen).on_hover(
+            HoverEvent::ShowText(format!(
+              "wow it is almost like {} sent this message",
+              player.username()
+            )),
+          );
           msg.add("> ".into());
-          msg.add(message.into()).on_hover(HoverEvent::ShowText("Hover time".into()));
+          msg.add(message.into());
           player.world().broadcast(&msg).await;
         }
         sb::ID::SetCreativeSlot => {
@@ -86,6 +91,12 @@ impl Connection {
         sb::ID::BlockPlace => {
           let mut pos = p.get_pos("location");
           let dir = p.get_byte("direction");
+
+          {
+            let inv = player.lock_inventory();
+            let stack = inv.main_hand();
+            dbg!(stack);
+          }
 
           if pos == Pos::new(-1, -1, -1) && dir as i8 == -1 {
             // Client is eating, or head is inside block
