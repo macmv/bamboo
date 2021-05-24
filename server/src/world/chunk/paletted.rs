@@ -214,8 +214,9 @@ impl ChunkSection for Section {
     }
     Ok(())
   }
-  fn get_block(&self, _pos: Pos) -> Result<u32, PosError> {
-    Ok(0)
+  fn get_block(&self, pos: Pos) -> Result<u32, PosError> {
+    let id = self.get_palette(pos);
+    Ok(self.palette[id as usize])
   }
   fn duplicate(&self) -> Box<dyn ChunkSection + Send> {
     Box::new(Section {
@@ -390,7 +391,7 @@ mod tests {
     assert_eq!(s.reverse_palette, vec![(0, 0)].into_iter().collect());
   }
   #[test]
-  fn test_set_block() -> Result<(), PosError> {
+  fn test_set_get_block() -> Result<(), PosError> {
     // This tests the entire functionality of set_block, assuming that all above
     // tests passed.
 
@@ -432,6 +433,17 @@ mod tests {
     s.set_block(Pos::new(0, 0, 0), 0)?;
     assert_eq!(s.block_amounts, vec![4096]);
     assert_eq!(s.palette, vec![0]);
+
+    // Test get block
+    let mut s = Section::default();
+    s.set_block(Pos::new(0, 0, 0), 10)?;
+    assert_eq!(s.get_block(Pos::new(0, 0, 0))?, 10);
+    s.set_block(Pos::new(0, 0, 0), 123)?;
+    assert_eq!(s.get_block(Pos::new(0, 0, 0))?, 123);
+    s.set_block(Pos::new(1, 3, 2), 5)?;
+    assert_eq!(s.get_block(Pos::new(1, 3, 2))?, 5);
+    s.set_block(Pos::new(15, 15, 15), 420)?;
+    assert_eq!(s.get_block(Pos::new(1, 3, 2))?, 420);
 
     Ok(())
   }
