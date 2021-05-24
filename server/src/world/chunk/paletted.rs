@@ -114,6 +114,23 @@ impl Section {
     self.reverse_palette.insert(ty, palette_id);
     palette_id
   }
+  /// This removes the given palette id from the palette. This includes
+  /// modifying the block_amounts array. It will also decrease the bits per
+  /// block if needed. `id` must be a valid index into the palette.
+  fn remove(&mut self, id: u32) {
+    // if self.palette.len() - 1 < 1 << (self.bits_per_block as usize - 1) {
+    //   self.decrease_bits_per_block();
+    // }
+    let ty = self.palette[id as usize];
+    self.palette.remove(id as usize);
+    self.block_amounts.remove(id as usize);
+    for (_, p) in self.reverse_palette.iter_mut() {
+      if *p > id {
+        *p -= 1;
+      }
+    }
+    self.reverse_palette.remove(&ty);
+  }
   /// Increases the bits per block by one. This will increase
   /// self.bits_per_block, and update the long array. It does not affect the
   /// palette at all.
@@ -164,7 +181,10 @@ impl ChunkSection for Section {
       let palette_id = self.insert(ty);
       // Sanity check
       if prev == palette_id {
-        unreachable!();
+        unreachable!(
+          "while setting {} to {}, prev and palette id were the same ({}, should never happen)",
+          pos, ty, prev
+        );
       }
       self.set_palette(pos, palette_id);
       palette_id
@@ -172,7 +192,7 @@ impl ChunkSection for Section {
     self.block_amounts[palette_id as usize] += 1;
     self.block_amounts[prev as usize] -= 1;
     if self.block_amounts[prev as usize] == 0 {
-      // self.remove(prev);
+      self.remove(prev);
     }
     Ok(())
   }
@@ -298,9 +318,15 @@ mod tests {
     assert_eq!(s.data[2], 0xf >> 3);
   }
   #[test]
+  fn test_insert() {
+    let mut s = Section::default();
+  }
+  #[test]
   fn test_set_block() -> Result<(), PosError> {
     // This tests the entire functionality of set_block, assuming that all above
     // tests passed.
+
+    // Sanity check for palette and block amounts
     let mut s = Section::default();
     s.set_block(Pos::new(0, 0, 0), 5)?;
     assert_eq!(s.block_amounts, vec![4095, 1]);
@@ -314,6 +340,27 @@ mod tests {
     assert_eq!(s.block_amounts, vec![4095, 1]);
     assert_eq!(s.palette, vec![0, 5]);
 
+    s.set_block(Pos::new(0, 0, 0), 0)?;
+    assert_eq!(s.block_amounts, vec![4096]);
+    assert_eq!(s.palette, vec![0]);
+
+    // Make sure that higher palette ids get shifted down correctly.
+    let mut s = Section::default();
+    s.set_block(Pos::new(0, 0, 0), 10)?;
+    assert_eq!(s.block_amounts, vec![4095, 1]);
+    assert_eq!(s.palette, vec![0, 10]);
+
+    // 5 should be inserted in the middle
+    s.set_block(Pos::new(1, 0, 0), 5)?;
+    assert_eq!(s.block_amounts, vec![4094, 1, 1]);
+    assert_eq!(s.palette, vec![0, 5, 10]);
+
+    // 10 should be shifted down
+    s.set_block(Pos::new(1, 0, 0), 0)?;
+    assert_eq!(s.block_amounts, vec![4095, 1]);
+    assert_eq!(s.palette, vec![0, 10]);
+
+    // Default state
     s.set_block(Pos::new(0, 0, 0), 0)?;
     assert_eq!(s.block_amounts, vec![4096]);
     assert_eq!(s.palette, vec![0]);
