@@ -200,8 +200,8 @@ impl Player {
               max_x = 0;
             }
           }
-          for x in min_x..=max_x {
-            for z in new_top_left.z()..=new_bottom_right.z() {
+          for z in new_top_left.z()..=new_bottom_right.z() {
+            for x in min_x..=max_x {
               self
                 .conn
                 .send(self.world.serialize_chunk(ChunkPos::new(x, z), self.ver().block()))
@@ -235,6 +235,65 @@ impl Player {
                 .conn
                 .send(self.world.serialize_chunk(ChunkPos::new(x, z), self.ver().block()))
                 .await;
+            }
+          }
+        }
+      }
+      // Old chunks
+      {
+        // Sides (including corners)
+        {
+          let min_x;
+          let max_x;
+          match delta.x().cmp(&0) {
+            Ordering::Less => {
+              min_x = new_bottom_right.x();
+              max_x = old_bottom_right.x();
+            }
+            Ordering::Greater => {
+              min_x = old_top_left.x();
+              max_x = new_top_left.x();
+            }
+            _ => {
+              min_x = 0;
+              max_x = 0;
+            }
+          }
+          for z in old_top_left.z()..=old_bottom_right.z() {
+            for x in min_x..=max_x {
+              let mut out = cb::Packet::new(cb::ID::UnloadChunk);
+              out.set_i32("chunk_x", x);
+              out.set_i32("chunk_z", z);
+              self.conn.send(out).await;
+            }
+          }
+        }
+        // Top/Bottom (excluding corners)
+        {
+          let min_z;
+          let max_z;
+          match delta.z().cmp(&0) {
+            Ordering::Less => {
+              min_z = new_bottom_right.z();
+              max_z = old_bottom_right.z();
+            }
+            Ordering::Greater => {
+              min_z = old_top_left.z();
+              max_z = new_top_left.z();
+            }
+            _ => {
+              min_z = 0;
+              max_z = 0;
+            }
+          }
+          let min_x = cmp::max(new_top_left.x(), old_top_left.x());
+          let max_x = cmp::min(old_bottom_right.x(), new_bottom_right.x());
+          for z in min_z..=max_z {
+            for x in min_x..=max_x {
+              let mut out = cb::Packet::new(cb::ID::UnloadChunk);
+              out.set_i32("chunk_x", x);
+              out.set_i32("chunk_z", z);
+              self.conn.send(out).await;
             }
           }
         }
