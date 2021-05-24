@@ -70,9 +70,9 @@ pub(super) fn gen_spec() -> PacketSpec {
       }
     }
 
-    if chunk.x == 3 && chunk.z == 5 {
-      println!("{:x?}", buf);
-    }
+    // if chunk.x == 3 && chunk.z == 5 {
+    //   println!("{:x?}", buf);
+    // }
 
     out.write_varint(buf.len() as i32);
     out.write_buf(&buf);

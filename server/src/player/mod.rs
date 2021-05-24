@@ -1,10 +1,11 @@
 use std::{
+  cmp::Ordering,
   fmt,
   sync::{Arc, Mutex, MutexGuard},
 };
 
 use common::{
-  math::{FPos, UUID},
+  math::{ChunkPos, FPos, UUID},
   net::cb,
   util::Chat,
   version::ProtocolVersion,
@@ -156,18 +157,85 @@ impl Player {
   /// Updates the player's position/velocity. This will apply gravity, and do
   /// collision checks. Should never be called at a different rate than the
   /// global tick rate.
-  pub(crate) fn tick(&self) {
-    let mut pos = self.pos.lock().unwrap();
-    pos.prev = pos.curr;
-    // TODO: Movement checks
-    pos.curr = pos.next;
-    pos.yaw = pos.next_yaw;
-    pos.pitch = pos.next_pitch;
-    // Whether or not the collision checks passes, we now have a movement
-    // vector; from prev to curr.
-    let old_chunk = pos.prev.block().chunk();
-    let new_chunk = pos.curr.block().chunk();
-    if old_chunk != new_chunk {}
+  pub(crate) async fn tick(&self) {
+    let old_chunk;
+    let new_chunk;
+    {
+      let mut pos = self.pos.lock().unwrap();
+      pos.prev = pos.curr;
+      // TODO: Movement checks
+      pos.curr = pos.next;
+      pos.yaw = pos.next_yaw;
+      pos.pitch = pos.next_pitch;
+      // Whether or not the collision checks passes, we now have a movement
+      // vector; from prev to curr.
+      old_chunk = pos.prev.block().chunk();
+      new_chunk = pos.curr.block().chunk();
+    }
+    if old_chunk != new_chunk {
+      let view_distance = 10; // TODO: Listen for client settings on this
+      let delta = new_chunk - old_chunk;
+      let new_top_left = new_chunk - ChunkPos::new(view_distance, view_distance);
+      let new_bottom_right = new_chunk + ChunkPos::new(view_distance, view_distance);
+      let old_top_left = old_chunk - ChunkPos::new(view_distance, view_distance);
+      let old_bottom_right = old_chunk + ChunkPos::new(view_distance, view_distance);
+      {
+        // Sides
+        {
+          let min_x;
+          let max_x;
+          match delta.x().cmp(&0) {
+            Ordering::Greater => {
+              min_x = old_bottom_right.x();
+              max_x = new_bottom_right.x();
+            }
+            Ordering::Less => {
+              min_x = new_top_left.x();
+              max_x = old_top_left.x();
+            }
+            _ => {
+              min_x = 0;
+              max_x = 0;
+            }
+          }
+          for x in min_x..=max_x {
+            for z in new_top_left.z()..=new_bottom_right.z() {
+              self
+                .conn
+                .send(self.world.serialize_chunk(ChunkPos::new(x, z), self.ver().block()))
+                .await;
+            }
+          }
+        }
+        // Top/Bottom
+        {
+          let min_z;
+          let max_z;
+          match delta.z().cmp(&0) {
+            Ordering::Greater => {
+              min_z = old_bottom_right.z();
+              max_z = new_bottom_right.z();
+            }
+            Ordering::Less => {
+              min_z = new_top_left.z();
+              max_z = old_top_left.z();
+            }
+            _ => {
+              min_z = 0;
+              max_z = 0;
+            }
+          }
+          for z in min_z..=max_z {
+            for x in new_top_left.x()..=new_bottom_right.x() {
+              self
+                .conn
+                .send(self.world.serialize_chunk(ChunkPos::new(x, z), self.ver().block()))
+                .await;
+            }
+          }
+        }
+      }
+    }
   }
 
   /// Returns the player's position. This is only updated once per tick. This

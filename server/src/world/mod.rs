@@ -20,7 +20,7 @@ use common::{
   net::{cb, Other},
   proto::Packet,
   util::Chat,
-  version::ProtocolVersion,
+  version::BlockVersion,
 };
 
 use crate::{block, item, net::Connection, player::Player};
@@ -98,16 +98,9 @@ impl World {
         out.set_bool("reduced_debug_info", false); // Don't reduce debug info
         conn.send(out).await;
 
-        for x in -10..10 {
-          for z in -10..10 {
-            let mut out = cb::Packet::new(cb::ID::MapChunk);
-            self.chunk(ChunkPos::new(x, z), |c| {
-              let mut pb = c.to_proto(player.ver().block());
-              pb.x = x;
-              pb.z = z;
-              out.set_other(Other::Chunk(pb)).unwrap();
-            });
-            conn.send(out).await;
+        for x in -10..=10 {
+          for z in -10..=10 {
+            conn.send(self.serialize_chunk(ChunkPos::new(x, z), player.ver().block())).await;
           }
         }
 
@@ -131,7 +124,7 @@ impl World {
         }
         // Updates the player correctly, and performs collision checks. This also
         // handles new chunks.
-        player.tick();
+        player.tick().await;
         // Do player collision and packets and stuff
         // Once per second, send keep alive packet
         if tick % 20 == 0 {
@@ -191,6 +184,23 @@ impl World {
     let chunks = self.chunks.read().unwrap();
     let c = chunks[&pos].lock().unwrap();
     f(c)
+  }
+
+  /// This serializes a chunk for the given version. This packet can be sent
+  /// directly to a client. Note that on most vanilla versions, sending a chunk
+  /// to a client that already has loaded that chunk will cause a memory leak.
+  /// Unloading a chunk multiple times will not cause a memory leak. If you are
+  /// trying to re-send an entire chunk to a player, make sure to send them an
+  /// unload chunk packet first. Use at your own risk!
+  pub fn serialize_chunk(&self, pos: ChunkPos, ver: BlockVersion) -> cb::Packet {
+    let mut out = cb::Packet::new(cb::ID::MapChunk);
+    self.chunk(pos, |c| {
+      let mut pb = c.to_proto(ver);
+      pb.x = pos.x();
+      pb.z = pos.z();
+      out.set_other(Other::Chunk(pb)).unwrap();
+    });
+    out
   }
 
   /// This sets a block within the world. It will return an error if the
