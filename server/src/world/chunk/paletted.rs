@@ -44,6 +44,24 @@ impl Section {
   /// Writes a single palette id into self.data.
   fn set_palette(&mut self, pos: Pos, id: u32) {
     let (first, second, shift) = self.index(pos);
+    let bpb = self.bits_per_block as usize;
+    if id >= 1 << bpb {
+      panic!("passed invalid id {} (must be within 0..{})", id, 1 << bpb);
+    }
+    if first == second {
+      // Clear the bits of the new id
+      self.data[first] &= !(((1 << bpb) - 1) << shift);
+      // Set the new id
+      self.data[first] |= (id as u64) << shift;
+    } else {
+      let second_shift = 64 - shift;
+      // Clear the bits of the new id
+      self.data[first] &= !(((1 << bpb) - 1) << shift);
+      self.data[second] &= !(((1 << bpb) - 1) >> second_shift);
+      // Set the new id
+      self.data[first] |= (id as u64) << shift;
+      self.data[second] |= (id as u64) >> second_shift;
+    }
   }
 }
 
@@ -91,5 +109,40 @@ mod tests {
     // The id will be split between two longs
     assert_eq!(s.index(Pos::new(12, 0, 0)), (0, 1, 60));
     assert_eq!(s.index(Pos::new(13, 0, 0)), (1, 1, 1));
+  }
+
+  #[test]
+  fn test_set_palette() {
+    let mut s = Section::default();
+    // Sanity check
+    s.set_palette(Pos::new(0, 0, 0), 0xf);
+    assert_eq!(s.data[0], 0xf);
+    // Sanity check
+    s.set_palette(Pos::new(2, 0, 0), 0xf);
+    assert_eq!(s.data[0], 0xf0f);
+    // Should work up to the edge of the long
+    s.set_palette(Pos::new(15, 0, 0), 0xf);
+    assert_eq!(s.data[0], 0xf000000000000f0f);
+    // Clearing bits should work
+    s.set_palette(Pos::new(15, 0, 0), 0x3);
+    assert_eq!(s.data[0], 0x3000000000000f0f);
+
+    let mut s = Section { bits_per_block: 5, ..Default::default() };
+    // Sanity check
+    s.set_palette(Pos::new(0, 0, 0), 0x1f);
+    assert_eq!(s.data[0], 0x1f);
+    // Sanity check
+    s.set_palette(Pos::new(2, 0, 0), 0x1f);
+    assert_eq!(s.data[0], 0x1f << 10 | 0x1f);
+    // Should split the id correctly
+    s.set_palette(Pos::new(12, 0, 0), 0x1f);
+    assert_eq!(s.data[0], 0x1f << 60 | 0x1f << 10 | 0x1f);
+    assert_eq!(s.data[1], 0x1f >> 4);
+    s.set_palette(Pos::new(25, 0, 0), 0x1f);
+    assert_eq!(s.data[1], 0x1f << 61 | 0x1f >> 4);
+    assert_eq!(s.data[2], 0x1f >> 3);
+    // Clearing bits should work
+    s.set_palette(Pos::new(0, 0, 0), 0x3);
+    assert_eq!(s.data[0], 0x1f << 60 | 0x1f << 10 | 0x03);
   }
 }
