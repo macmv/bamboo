@@ -228,10 +228,20 @@ impl ChunkSection for Section {
     })
   }
   fn to_latest_proto(&self) -> proto::chunk::Section {
-    unreachable!();
+    proto::chunk::Section {
+      palette:        self.palette.clone(),
+      bits_per_block: self.bits_per_block.into(),
+      non_air_blocks: (4096 - self.block_amounts[0]) as i32,
+      data:           self.data.clone(),
+    }
   }
   fn to_old_proto(&self, f: &dyn Fn(u32) -> u32) -> proto::chunk::Section {
-    unreachable!();
+    proto::chunk::Section {
+      palette:        self.palette.iter().map(|v| f(*v)).collect(),
+      bits_per_block: self.bits_per_block.into(),
+      non_air_blocks: (4096 - self.block_amounts[0]) as i32,
+      data:           self.data.clone(),
+    }
   }
 }
 
