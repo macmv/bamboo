@@ -136,6 +136,7 @@ impl Section {
       }
     }
     self.reverse_palette.remove(&ty);
+    self.shift_all_above(id, -1);
   }
   /// This shifts all values in self.data by the given shift value. To clarify,
   /// this just adds shift_amount. It does not bitshift. Used after the palette
@@ -160,9 +161,10 @@ impl Section {
             // Get the id from the two values
             self.data[first] >> shift & ((1 << bpb) - 1)
               | self.data[second] << second_shift & ((1 << bpb) - 1)
-          };
+          } as i32;
           if val as u32 >= id {
-            val += shift_amount as u64;
+            val += shift_amount;
+            let val = val as u64;
             if first == second {
               // Clear the bits of the new id
               self.data[first] &= !(((1 << bpb) - 1) << shift);
@@ -420,7 +422,7 @@ mod tests {
     assert_eq!(s.reverse_palette, vec![(0, 0), (5, 1), (10, 2)].into_iter().collect());
   }
   #[test]
-  fn test_shift_data() -> Result<(), PosError> {
+  fn test_shift_data_up() -> Result<(), PosError> {
     // Tests shifting all of the block data (this should happen during insert())
 
     // This section has two blocks placed, one with id 5, and the other with id 10.
@@ -470,6 +472,29 @@ mod tests {
     s.remove(1);
     assert_eq!(s.palette, vec![0]);
     assert_eq!(s.reverse_palette, vec![(0, 0)].into_iter().collect());
+  }
+  #[test]
+  fn test_shift_data_down() -> Result<(), PosError> {
+    // Tests shifting all of the block data (this should happen during insert())
+
+    // This section has one blocks placed with id 10. This is the situation where
+    // data has just been modified to no longer contain 5, and we want to remove it
+    // from the palette now.
+    let mut data = vec![0; 4096];
+    data[0] = 0x2;
+    let mut s = Section {
+      palette: vec![0, 5, 10],
+      block_amounts: vec![4096, 0, 0],
+      reverse_palette: vec![(0, 0), (5, 1), (10, 2)].into_iter().collect(),
+      data,
+      ..Default::default()
+    };
+    // Should shift the block data down.
+    s.remove(1);
+    assert_eq!(s.data[0], 0x1);
+    // Removing 1 again undefined behavior, as 1 is in the block data now. remove()
+    // should never be called with the given palette id present.
+    Ok(())
   }
   #[test]
   fn test_set_get_block() -> Result<(), PosError> {
