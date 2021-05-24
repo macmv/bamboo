@@ -103,8 +103,10 @@ fn load_data(data: &str) -> Result<Vec<Item>, Box<dyn Error>> {
 
 fn generate_conversion(latest: &[Item], old: &[Item]) -> Vec<u32> {
   let mut m = HashMap::new();
-  for (i, item) in old.iter().enumerate() {
-    m.insert(&item.name, i as u32);
+  for item in old {
+    // Old versions of minecraft suck. Item id 26 is just missing from 1.8.
+    // WHYYYYYYYY
+    m.insert(&item.name, item.id);
   }
   let mut out = Vec::with_capacity(latest.len());
   for i in latest {

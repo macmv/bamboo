@@ -85,7 +85,6 @@ pub fn generate_versions() -> Vec<Version> {
   let mut versions = vec![];
   let csv = include_str!(concat!(env!("OUT_DIR"), "/item/versions.csv"));
   for (i, l) in csv.lines().enumerate() {
-    dbg!(l);
     let mut sections = l.split(',').enumerate();
     // Remove the first element. This is the latest block id, which will always be
     // the same as i.
