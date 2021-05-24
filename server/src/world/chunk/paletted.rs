@@ -11,6 +11,8 @@ pub struct Section {
   data:            Vec<u64>,
   // Each index into palette is a palette id. The values are global ids.
   palette:         Vec<u32>,
+  // Each index is a palette id, and the sum of this array must always be 4096 (16 * 16 * 16).
+  block_amounts:   Vec<u32>,
   // This maps global ids to palette ids.
   reverse_palette: HashMap<u32, u32>,
 }
@@ -24,6 +26,7 @@ impl Default for Section {
       // Number of blocks times bits per block divided by sizeof(u64)
       data: vec![0; 16 * 16 * 16 * 4 / 64],
       palette: vec![0],
+      block_amounts: vec![4096],
       reverse_palette,
     }
   }
@@ -86,8 +89,9 @@ impl Section {
     v
   }
   /// This adds a new item to the palette. It will shift all block data, and
-  /// extend bits per block (if needed). `ty` must not already be in the
-  /// palette. Returns the new palette id.
+  /// extend bits per block (if needed). It will also update the palettes, and
+  /// shift the block amounts around. `ty` must not already be in the palette.
+  /// Returns the new palette id.
   fn insert(&mut self, ty: u32) -> u32 {
     if self.palette.len() + 1 >= 1 << self.bits_per_block as usize {
       self.increase_bits_per_block();
@@ -100,6 +104,8 @@ impl Section {
       }
     }
     self.palette.insert(palette_id as usize, ty);
+    // We add to this in set_block, not here
+    self.block_amounts.insert(palette_id as usize, 0);
     for (_, p) in self.reverse_palette.iter_mut() {
       if *p > palette_id {
         *p += 1;
@@ -109,7 +115,8 @@ impl Section {
     palette_id
   }
   /// Increases the bits per block by one. This will increase
-  /// self.bits_per_block, and update the long array.
+  /// self.bits_per_block, and update the long array. It does not affect the
+  /// palette at all.
   fn increase_bits_per_block(&mut self) {
     let bpb = (self.bits_per_block + 1) as usize;
     let mut new_data = vec![0; 16 * 16 * 16 * bpb / 64];
@@ -146,11 +153,26 @@ impl Section {
 
 impl ChunkSection for Section {
   fn set_block(&mut self, pos: Pos, ty: u32) -> Result<(), PosError> {
-    if let Some(&palette_id) = self.reverse_palette.get(&ty) {
+    let prev = self.get_palette(pos);
+    let palette_id = if let Some(&palette_id) = self.reverse_palette.get(&ty) {
+      if prev == palette_id {
+        return Ok(());
+      }
       self.set_palette(pos, palette_id);
+      palette_id
     } else {
       let palette_id = self.insert(ty);
+      // Sanity check
+      if prev == palette_id {
+        unreachable!();
+      }
       self.set_palette(pos, palette_id);
+      palette_id
+    };
+    self.block_amounts[palette_id as usize] += 1;
+    self.block_amounts[prev as usize] -= 1;
+    if self.block_amounts[prev as usize] == 0 {
+      // self.remove(prev);
     }
     Ok(())
   }
@@ -162,6 +184,7 @@ impl ChunkSection for Section {
       bits_per_block:  self.bits_per_block,
       data:            self.data.clone(),
       palette:         self.palette.clone(),
+      block_amounts:   self.block_amounts.clone(),
       reverse_palette: self.reverse_palette.clone(),
     })
   }
