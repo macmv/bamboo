@@ -4,7 +4,7 @@ use common::{
   math::{Pos, PosError},
   proto,
 };
-use std::collections::HashMap;
+use std::{collections::HashMap, convert::TryFrom};
 
 pub struct Section {
   bits_per_block:  u8,
@@ -62,6 +62,27 @@ impl Section {
       self.data[first] |= (id as u64) << shift;
       self.data[second] |= (id as u64) >> second_shift;
     }
+  }
+  /// Returns the palette id at the given position. This only reads from
+  /// `self.data`.
+  fn get_palette(&self, pos: Pos) -> u32 {
+    let (first, second, shift) = self.index(pos);
+    let bpb = self.bits_per_block as usize;
+    let val = if first == second {
+      // Get the id from data
+      self.data[first] >> shift & ((1 << bpb) - 1)
+    } else {
+      let second_shift = 64 - shift;
+      // Get the id from the two values
+      self.data[first] >> shift & ((1 << bpb) - 1)
+        | self.data[second] << second_shift & ((1 << bpb) - 1)
+    };
+
+    #[cfg(not(debug_assertions))]
+    let v = val as u32;
+    #[cfg(debug_assertions)]
+    let v = u32::try_from(val).unwrap();
+    v
   }
   /// This adds a new item to the palette. It will shift all block data, and
   /// extend bits per block (if needed). `ty` must not already be in the
@@ -203,5 +224,26 @@ mod tests {
     // Clearing bits should work
     s.set_palette(Pos::new(0, 0, 0), 0x3);
     assert_eq!(s.data[0], 0x1f << 60 | 0x1f << 10 | 0x03);
+  }
+  #[test]
+  fn test_get_palette() {
+    let mut data = vec![0; 16 * 16 * 16 * 4 / 64];
+    data[0] = 0xfaf;
+    let s = Section { data, ..Default::default() };
+    // Sanity check
+    assert_eq!(s.get_palette(Pos::new(0, 0, 0)), 0xf);
+    assert_eq!(s.get_palette(Pos::new(1, 0, 0)), 0xa);
+    assert_eq!(s.get_palette(Pos::new(2, 0, 0)), 0xf);
+    assert_eq!(s.get_palette(Pos::new(3, 0, 0)), 0x0);
+
+    let mut data = vec![0; 16 * 16 * 16 * 4 / 64];
+    data[0] = 0x1f << 60 | 0x1f << 10 | 0x1f;
+    data[1] = 0x1f >> 4;
+    let s = Section { bits_per_block: 5, data, ..Default::default() };
+    // Make sure it works with split values
+    assert_eq!(s.get_palette(Pos::new(0, 0, 0)), 0x1f);
+    assert_eq!(s.get_palette(Pos::new(1, 0, 0)), 0x0);
+    assert_eq!(s.get_palette(Pos::new(2, 0, 0)), 0x1f);
+    assert_eq!(s.get_palette(Pos::new(12, 0, 0)), 0x1f);
   }
 }
