@@ -36,6 +36,7 @@ impl Section {
   pub(super) fn new() -> Box<Self> {
     Box::new(Self::default())
   }
+  #[inline(always)]
   fn index(&self, pos: Pos) -> (usize, usize, usize) {
     let index = (pos.y() << 8 | pos.z() << 4 | pos.x()) as usize;
     let bpb = self.bits_per_block as usize;
@@ -114,6 +115,7 @@ impl Section {
       }
     }
     self.reverse_palette.insert(ty, palette_id);
+    self.shift_all_above(palette_id, 1);
     palette_id
   }
   /// This removes the given palette id from the palette. This includes
@@ -134,6 +136,52 @@ impl Section {
       }
     }
     self.reverse_palette.remove(&ty);
+  }
+  /// This shifts all values in self.data by the given shift value. To clarify,
+  /// this just adds shift_amount. It does not bitshift. Used after the palette
+  /// has been modified. This also checks if each block id is `>= id`, not `>
+  /// id`.
+  fn shift_all_above(&mut self, id: u32, shift_amount: i32) {
+    let bpb = self.bits_per_block as usize;
+    let mut bit_index = 0;
+    for _ in 0..16 {
+      for _ in 0..16 {
+        for _ in 0..16 {
+          // Manual implementation of get_palette and set_palette, as calling index()
+          // would be slower.
+          let first = bit_index / 64;
+          let second = (bit_index + bpb - 1) / 64;
+          let shift = bit_index % 64;
+          let mut val = if first == second {
+            // Get the id from data
+            self.data[first] >> shift & ((1 << bpb) - 1)
+          } else {
+            let second_shift = 64 - shift;
+            // Get the id from the two values
+            self.data[first] >> shift & ((1 << bpb) - 1)
+              | self.data[second] << second_shift & ((1 << bpb) - 1)
+          };
+          if val as u32 >= id {
+            val += shift_amount as u64;
+            if first == second {
+              // Clear the bits of the new id
+              self.data[first] &= !(((1 << bpb) - 1) << shift);
+              // Set the new id
+              self.data[first] |= val << shift;
+            } else {
+              let second_shift = 64 - shift;
+              // Clear the bits of the new id
+              self.data[first] &= !(((1 << bpb) - 1) << shift);
+              self.data[second] &= !(((1 << bpb) - 1) >> second_shift);
+              // Set the new id
+              self.data[first] |= val << shift;
+              self.data[second] |= val >> second_shift;
+            }
+          }
+          bit_index += bpb;
+        }
+      }
+    }
   }
   /// Increases the bits per block by one. This will increase
   /// self.bits_per_block, and update the long array. It does not affect the
@@ -370,6 +418,28 @@ mod tests {
     assert_eq!(s.palette, vec![0, 5, 10]);
     assert_eq!(s.block_amounts, vec![4096, 0, 0]);
     assert_eq!(s.reverse_palette, vec![(0, 0), (5, 1), (10, 2)].into_iter().collect());
+  }
+  #[test]
+  fn test_shift_data() -> Result<(), PosError> {
+    // Tests shifting all of the block data (this should happen during insert())
+
+    // This section has two blocks placed, one with id 5, and the other with id 10.
+    let mut data = vec![0; 4096];
+    data[0] = 0x1002;
+    let mut s = Section {
+      palette: vec![0, 5, 10],
+      block_amounts: vec![4096, 0, 0],
+      reverse_palette: vec![(0, 0), (5, 1), (10, 2)].into_iter().collect(),
+      data,
+      ..Default::default()
+    };
+    // Should shift the block data up.
+    s.insert(3);
+    assert_eq!(s.data[0], 0x2003);
+    // Should shift some of the block data up.
+    s.insert(7);
+    assert_eq!(s.data[0], 0x2004);
+    Ok(())
   }
   #[test]
   fn test_remove() {
