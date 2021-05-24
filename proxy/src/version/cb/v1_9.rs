@@ -43,7 +43,7 @@ pub(super) fn gen_spec() -> PacketSpec {
     let mut total_sections = 0;
     for s in sections.into_iter().flatten() {
       total_sections += 1;
-      buf.write_buf(&s.data);
+      buf.write_buf(&s.data.iter().map(|v| v.to_le_bytes()).flatten().collect::<Vec<u8>>());
     }
     // Light data
     for _ in 0..total_sections * 16 * 16 * 16 / 2 {

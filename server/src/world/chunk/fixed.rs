@@ -49,20 +49,17 @@ impl ChunkSection for Section {
   /// This is always called, because this type of chunk section is only used for
   /// one version.
   fn to_latest_proto(&self) -> proto::chunk::Section {
-    let mut data = Vec::with_capacity(self.data.len() * 2);
-    for id in &self.data {
-      data.extend_from_slice(&id.to_le_bytes());
+    let mut data = vec![0; self.data.len() / 4]; // 8 bytes per u64, 2 bytes per u16
+    for (i, id) in self.data.iter().enumerate() {
+      data[i / 4] |= u64::from(*id) << (i % 4 * 16);
     }
     proto::chunk::Section { data, ..Default::default() }
   }
   /// Never called, as fixed chunks only are used on one version.
   fn to_old_proto(&self, f: &dyn Fn(u32) -> u32) -> proto::chunk::Section {
-    let mut data = Vec::with_capacity(self.data.len() * 2);
-    for id in &self.data {
-      let id = *id;
-      // Converts it to an old id
-      let id = f(id.into()) as u16;
-      data.extend_from_slice(&id.to_le_bytes());
+    let mut data = vec![0; self.data.len() / 4]; // 8 bytes per u64, 2 bytes per u16
+    for (i, id) in self.data.iter().enumerate() {
+      data[i / 4] |= u64::from(f(u32::from(*id))) << (i % 4);
     }
     proto::chunk::Section { data, ..Default::default() }
   }

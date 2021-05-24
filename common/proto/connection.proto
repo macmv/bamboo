@@ -124,7 +124,7 @@ message Chunk {
     repeated uint32 palette = 1;
     int32 bitsPerBlock = 2;
     int32 nonAirBlocks = 3;
-    bytes data = 4;
+    repeated uint64 data = 4;
   }
 }
 
