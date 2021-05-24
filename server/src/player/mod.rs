@@ -185,13 +185,13 @@ impl Player {
         // Sides (including corners)
         {
           let min_x = match delta.x().cmp(&0) {
-            Ordering::Less => old_bottom_right.x(),
-            Ordering::Greater => new_top_left.x(),
+            Ordering::Greater => old_bottom_right.x(),
+            Ordering::Less => new_top_left.x(),
             _ => 0,
           };
           let max_x = match delta.x().cmp(&0) {
-            Ordering::Less => new_bottom_right.x(),
-            Ordering::Greater => old_top_left.x(),
+            Ordering::Greater => new_bottom_right.x(),
+            Ordering::Less => old_top_left.x(),
             _ => 0,
           };
           for z in new_top_left.z()..=new_bottom_right.z() {
@@ -206,13 +206,13 @@ impl Player {
         // Top/Bottom (excluding corners)
         {
           let min_z = match delta.z().cmp(&0) {
-            Ordering::Less => old_bottom_right.z(),
-            Ordering::Greater => new_top_left.z(),
+            Ordering::Greater => old_bottom_right.z(),
+            Ordering::Less => new_top_left.z(),
             _ => 0,
           };
           let max_z = match delta.z().cmp(&0) {
-            Ordering::Less => new_bottom_right.z(),
-            Ordering::Greater => old_top_left.z(),
+            Ordering::Greater => new_bottom_right.z(),
+            Ordering::Less => old_top_left.z(),
             _ => 0,
           };
           let min_x = cmp::max(new_top_left.x(), old_top_left.x());
