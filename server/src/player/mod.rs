@@ -1,4 +1,5 @@
 use std::{
+  cmp,
   cmp::Ordering,
   fmt,
   sync::{Arc, Mutex, MutexGuard},
@@ -179,8 +180,9 @@ impl Player {
       let new_bottom_right = new_chunk + ChunkPos::new(view_distance, view_distance);
       let old_top_left = old_chunk - ChunkPos::new(view_distance, view_distance);
       let old_bottom_right = old_chunk + ChunkPos::new(view_distance, view_distance);
+      // New chunks
       {
-        // Sides
+        // Sides (including corners)
         {
           let min_x;
           let max_x;
@@ -207,7 +209,7 @@ impl Player {
             }
           }
         }
-        // Top/Bottom
+        // Top/Bottom (excluding corners)
         {
           let min_z;
           let max_z;
@@ -225,8 +227,10 @@ impl Player {
               max_z = 0;
             }
           }
+          let min_x = cmp::max(new_top_left.x(), old_top_left.x());
+          let max_x = cmp::min(old_bottom_right.x(), new_bottom_right.x());
           for z in min_z..=max_z {
-            for x in new_top_left.x()..=new_bottom_right.x() {
+            for x in min_x..=max_x {
               self
                 .conn
                 .send(self.world.serialize_chunk(ChunkPos::new(x, z), self.ver().block()))
