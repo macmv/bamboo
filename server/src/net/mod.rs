@@ -1,4 +1,7 @@
-use std::sync::atomic::{AtomicBool, Ordering};
+use std::{
+  convert::TryInto,
+  sync::atomic::{AtomicBool, Ordering},
+};
 use tokio::sync::{mpsc::Sender, Mutex};
 use tonic::{Status, Streaming};
 
@@ -87,6 +90,10 @@ impl Connection {
         sb::ID::BlockDig => {
           let pos = p.get_pos("location");
           player.world().set_kind(pos, block::Kind::Air).await.unwrap();
+        }
+        sb::ID::HeldItemSlot => {
+          let slot = p.get_short("slot_id");
+          player.lock_inventory().set_selected(slot.try_into().unwrap());
         }
         sb::ID::BlockPlace => {
           let mut pos = p.get_pos("location");

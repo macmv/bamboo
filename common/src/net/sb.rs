@@ -114,7 +114,7 @@ impl Packet {
   fn get_field(&self, n: &str, ty: FieldType) -> &proto::PacketField {
     let field = match self.pb.fields.get(n) {
       Some(v) => v,
-      None => panic!("no value for key {}", n),
+      None => panic!("while deserializing packet {}, got no value for key {}", self, n),
     };
     let got = proto::packet_field::Type::from_i32(field.ty).unwrap();
     if got != ty {
@@ -178,7 +178,7 @@ impl fmt::Display for Packet {
         FieldType::StrArr => value_non_empty!(v, f, str_arr, "{:?}"),
       }
     }
-    writeln!(f, ")")?;
+    write!(f, ")")?;
     Ok(())
   }
 }

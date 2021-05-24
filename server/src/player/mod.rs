@@ -59,6 +59,12 @@ impl PlayerInventory {
     self.selected_index
   }
 
+  /// Sets the selected index. Should only be used when recieving a held item
+  /// slot packet.
+  pub(crate) fn set_selected(&mut self, index: u8) {
+    self.selected_index = index;
+  }
+
   /// Gets the item at the given index. 0 is part of the armor slots, not the
   /// start of the hotbar. To access the hotbar, add 36 to the index returned
   /// from main_hand.
