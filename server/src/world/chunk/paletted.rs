@@ -90,8 +90,10 @@ impl Section {
   }
   /// This adds a new item to the palette. It will shift all block data, and
   /// extend bits per block (if needed). It will also update the palettes, and
-  /// shift the block amounts around. `ty` must not already be in the palette.
-  /// Returns the new palette id.
+  /// shift the block amounts around. It will not modify the actual amounts in
+  /// block_amounts, only the position of each amount. It will insert a 0 into
+  /// block_amounts at the index returned. `ty` must not already be in the
+  /// palette. Returns the new palette id.
   fn insert(&mut self, ty: u32) -> u32 {
     if self.palette.len() + 1 >= 1 << self.bits_per_block as usize {
       self.increase_bits_per_block();
@@ -115,8 +117,10 @@ impl Section {
     palette_id
   }
   /// This removes the given palette id from the palette. This includes
-  /// modifying the block_amounts array. It will also decrease the bits per
-  /// block if needed. `id` must be a valid index into the palette.
+  /// modifying the block_amounts array. It will not affect any of the values in
+  /// block_amounts, but it will shift the values over if needed. It will also
+  /// decrease the bits per block if needed. `id` must be a valid index into
+  /// the palette.
   fn remove(&mut self, id: u32) {
     // if self.palette.len() - 1 < 1 << (self.bits_per_block as usize - 1) {
     //   self.decrease_bits_per_block();
