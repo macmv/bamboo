@@ -63,11 +63,12 @@ pub(super) fn gen_spec() -> PacketSpec {
         }
       }
     }
-    // if biomes {
-    //   for _ in 0..256 {
-    //     buf.write_u8(127); // Void biome
-    //   }
-    // }
+
+    if biomes {
+      for _ in 0..256 {
+        buf.write_u8(127); // Void biome
+      }
+    }
 
     if chunk.x == 3 && chunk.z == 5 {
       println!("{:x?}", buf);
