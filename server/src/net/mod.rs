@@ -101,18 +101,19 @@ impl Connection {
           let mut pos = p.get_pos("location");
           let dir = p.get_byte("direction");
 
-          let data = {
-            let inv = player.lock_inventory();
-            let stack = inv.main_hand();
-            player.world().get_item_converter().get_data(stack.item())
-          };
-          player.send_message(&Chat::new(format!("placing item: {:?}", data))).await;
-
           if pos == Pos::new(-1, -1, -1) && dir as i8 == -1 {
             // Client is eating, or head is inside block
           } else {
+            let data = {
+              let inv = player.lock_inventory();
+              let stack = inv.main_hand();
+              player.world().get_item_converter().get_data(stack.item())
+            };
+            let kind = data.block_to_place();
+            player.send_message(&Chat::new(format!("placing item: {:?}", kind))).await;
+
             pos += Pos::dir_from_byte(dir);
-            player.world().set_kind(pos, block::Kind::Stone).await.unwrap();
+            player.world().set_kind(pos, kind).await.unwrap();
           }
         }
         sb::ID::Position => {

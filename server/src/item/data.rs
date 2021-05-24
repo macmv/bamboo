@@ -14,6 +14,11 @@ impl Data {
   pub fn display_name(&self) -> &str {
     &self.display_name
   }
+
+  /// Returns the block to place from this item.
+  pub fn block_to_place(&self) -> block::Kind {
+    self.block_to_place
+  }
 }
 
 /// Generates a table from all items to any metadata that type has. This
