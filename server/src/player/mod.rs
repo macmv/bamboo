@@ -223,10 +223,10 @@ impl Player {
     if old_chunk != new_chunk {
       let view_distance = 10; // TODO: Listen for client settings on this
       let delta = new_chunk - old_chunk;
-      let new_top_left = new_chunk - ChunkPos::new(view_distance, view_distance);
-      let new_bot_right = new_chunk + ChunkPos::new(view_distance, view_distance);
-      let old_top_left = old_chunk - ChunkPos::new(view_distance, view_distance);
-      let old_bot_right = old_chunk + ChunkPos::new(view_distance, view_distance);
+      let new_tl = new_chunk - ChunkPos::new(view_distance, view_distance);
+      let new_br = new_chunk + ChunkPos::new(view_distance, view_distance);
+      let old_tl = old_chunk - ChunkPos::new(view_distance, view_distance);
+      let old_br = old_chunk + ChunkPos::new(view_distance, view_distance);
       // Sides (including corners)
       let load_min;
       let load_max;
@@ -234,16 +234,16 @@ impl Player {
       let unload_max;
       match delta.x().cmp(&0) {
         Ordering::Greater => {
-          load_min = ChunkPos::new(old_bot_right.x(), new_top_left.z());
-          load_max = new_bot_right;
-          unload_min = old_top_left;
-          unload_max = ChunkPos::new(new_top_left.x(), old_bot_right.z());
+          load_min = ChunkPos::new(old_br.x(), new_tl.z());
+          load_max = new_br;
+          unload_min = old_tl;
+          unload_max = ChunkPos::new(new_tl.x(), old_br.z());
         }
         Ordering::Less => {
-          load_min = new_top_left;
-          load_max = ChunkPos::new(old_top_left.x(), new_bot_right.z());
-          unload_min = ChunkPos::new(new_bot_right.x(), old_top_left.z());
-          unload_max = old_bot_right;
+          load_min = new_tl;
+          load_max = ChunkPos::new(old_tl.x(), new_br.z());
+          unload_min = ChunkPos::new(new_br.x(), old_tl.z());
+          unload_max = old_br;
         }
         _ => {
           load_min = ChunkPos::new(0, 0);
@@ -255,37 +255,32 @@ impl Player {
       self.load_chunks(load_min, load_max).await;
       self.unload_chunks(unload_min, unload_max).await;
       // Top/Bottom (excluding corners)
+      let load_min;
+      let load_max;
+      let unload_min;
+      let unload_max;
       match delta.z().cmp(&0) {
         Ordering::Greater => {
-          self
-            .load_chunks(
-              ChunkPos::new(cmp::max(old_top_left.x(), new_top_left.x()), old_bot_right.z()),
-              ChunkPos::new(cmp::min(old_bot_right.x(), new_bot_right.x()), new_bot_right.z()),
-            )
-            .await;
-          self
-            .unload_chunks(
-              ChunkPos::new(cmp::max(old_top_left.x(), new_top_left.x()), old_top_left.z()),
-              ChunkPos::new(cmp::min(old_bot_right.x(), new_bot_right.x()), new_top_left.z()),
-            )
-            .await;
+          load_min = ChunkPos::new(new_tl.x(), old_br.z());
+          load_max = ChunkPos::new(cmp::min(new_br.x(), old_br.x()), new_br.z());
+          unload_min = ChunkPos::new(cmp::max(new_tl.x(), old_tl.x()), old_tl.z());
+          unload_max = ChunkPos::new(old_br.x(), new_tl.z());
         }
         Ordering::Less => {
-          self
-            .load_chunks(
-              ChunkPos::new(cmp::max(old_top_left.x(), new_top_left.x()), old_top_left.z()),
-              ChunkPos::new(cmp::min(old_bot_right.x(), new_bot_right.x()), new_top_left.z()),
-            )
-            .await;
-          self
-            .unload_chunks(
-              ChunkPos::new(cmp::max(old_top_left.x(), new_top_left.x()), old_bot_right.z()),
-              ChunkPos::new(cmp::min(old_bot_right.x(), new_bot_right.x()), new_bot_right.z()),
-            )
-            .await;
+          load_min = ChunkPos::new(cmp::max(old_tl.x(), new_tl.x()), new_tl.z());
+          load_max = ChunkPos::new(new_br.x(), old_tl.z());
+          unload_min = ChunkPos::new(old_tl.x(), new_br.z());
+          unload_max = ChunkPos::new(cmp::min(old_br.x(), new_br.x()), old_br.z());
         }
-        _ => {}
+        _ => {
+          load_min = ChunkPos::new(0, 0);
+          load_max = ChunkPos::new(0, 0);
+          unload_min = ChunkPos::new(0, 0);
+          unload_max = ChunkPos::new(0, 0);
+        }
       };
+      self.load_chunks(load_min, load_max).await;
+      self.unload_chunks(unload_min, unload_max).await;
     }
   }
 
