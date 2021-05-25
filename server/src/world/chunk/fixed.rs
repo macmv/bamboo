@@ -59,7 +59,7 @@ impl ChunkSection for Section {
   fn to_old_proto(&self, f: &dyn Fn(u32) -> u32) -> proto::chunk::Section {
     let mut data = vec![0; self.data.len() / 4]; // 8 bytes per u64, 2 bytes per u16
     for (i, id) in self.data.iter().enumerate() {
-      data[i / 4] |= u64::from(f(u32::from(*id))) << (i % 4);
+      data[i / 4] |= u64::from(f(u32::from(*id))) << (i % 4 * 16);
     }
     proto::chunk::Section { data, ..Default::default() }
   }

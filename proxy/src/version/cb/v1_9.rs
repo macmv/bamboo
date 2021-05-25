@@ -50,7 +50,7 @@ pub(super) fn gen_spec() -> PacketSpec {
       }
       // Number of longs in the data array
       buf.write_varint(s.data.len() as i32);
-      buf.write_buf(&s.data.iter().map(|v| v.to_le_bytes()).flatten().collect::<Vec<u8>>());
+      buf.write_buf(&s.data.iter().map(|v| v.to_be_bytes()).flatten().collect::<Vec<u8>>());
       // Light data
       for _ in 0..16 * 16 * 16 / 2 {
         // Each lighting value is 1/2 byte

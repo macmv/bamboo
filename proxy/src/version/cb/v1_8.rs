@@ -53,6 +53,9 @@ pub(super) fn gen_spec() -> PacketSpec {
     let mut total_sections = 0;
     for s in sections.into_iter().flatten() {
       total_sections += 1;
+      // These are little endian. I don't know why. It probably has something to do
+      // with the way I serialize things, but I couldn't really be bothered to figure
+      // it out (because it works).
       buf.write_buf(&s.data.iter().map(|v| v.to_le_bytes()).flatten().collect::<Vec<u8>>());
     }
     // Light data
