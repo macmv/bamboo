@@ -2,6 +2,7 @@
 extern crate log;
 
 pub mod block;
+pub mod entity;
 pub mod item;
 pub mod net;
 pub mod player;
