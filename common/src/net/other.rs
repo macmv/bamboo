@@ -55,4 +55,4 @@ macro_rules! generate_other {
   };
 }
 
-generate_other![Chunk, BossBar];
+generate_other![Chunk, PlayerList, BossBar];

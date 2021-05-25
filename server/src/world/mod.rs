@@ -3,7 +3,6 @@ mod gen;
 
 use std::{
   collections::HashMap,
-  convert::TryInto,
   sync::{
     atomic::{AtomicI32, Ordering},
     Arc, Mutex as StdMutex, MutexGuard as StdMutexGuard, RwLock,
@@ -19,7 +18,7 @@ use tonic::{Status, Streaming};
 use common::{
   math::{ChunkPos, FPos, Pos, PosError, UUID},
   net::{cb, Other},
-  proto::Packet,
+  proto::{player_list, Packet, PlayerList},
   util::Chat,
   version::BlockVersion,
 };
@@ -119,7 +118,11 @@ impl World {
         out.set_int("teleport_id", 1234); // TP id
         conn.send(out).await;
 
-        for p in self
+        let mut info = PlayerList {
+          action: 0, // Add player
+          ..Default::default()
+        };
+        for out in self
           .for_players(ChunkPos::new(0, 0), |p| {
             let mut out = cb::Packet::new(cb::ID::NamedEntitySpawn);
             out.set_int("entity_id", p.eid());
@@ -132,12 +135,24 @@ impl World {
             out.set_float("pitch", pitch);
             out.set_short("current_item", 0);
             out.set_byte_arr("metadata", vec![127]);
+            info.players.push(player_list::Player {
+              uuid:             Some(p.id().as_proto()),
+              name:             p.username().into(),
+              properties:       vec![],
+              gamemode:         1,
+              ping:             300,
+              has_display_name: false,
+              display_name:     "".into(),
+            });
             Some(out)
           })
           .await
         {
-          conn.send(p).await;
+          conn.send(out).await;
         }
+        let mut out = cb::Packet::new(cb::ID::PlayerInfo);
+        out.set_other(Other::PlayerList(info)).unwrap();
+        conn.send(out).await;
       }
       // Player tick loop
       let mut tick = 0;
@@ -267,9 +282,9 @@ impl World {
   }
 
   // Runs f for all players within render distance of the chunk.
-  pub async fn for_players<F, R>(&self, pos: ChunkPos, f: F) -> Vec<R>
+  pub async fn for_players<F, R>(&self, pos: ChunkPos, mut f: F) -> Vec<R>
   where
-    F: Fn(&Player) -> Option<R>,
+    F: FnMut(&Player) -> Option<R>,
   {
     let mut out = vec![];
     for p in self.players.lock().await.values() {

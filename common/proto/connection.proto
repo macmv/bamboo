@@ -150,6 +150,26 @@ message Map {
   }
 }
 
+message PlayerList {
+  int32 action = 1;
+  repeated Player players = 2;
+  message Player {
+    UUID uuid = 1;
+    string name = 2;
+    repeated Property properties = 3;
+    int32 gamemode = 4;
+    int32 ping = 5; // Ping in ms. Affects the green bars next to their name.
+    bool has_display_name = 6;
+    string display_name = 7; // Json chat message
+  }
+  message Property {
+    string name = 1;
+    string value = 2;
+    bool signed = 3;
+    string signature = 4;
+  }
+}
+
 message EntityMetadata {
   map<int32, EntityMetadataField> values = 1;
 }
