@@ -151,7 +151,14 @@ message Map {
 }
 
 message PlayerList {
-  int32 action = 1;
+  enum Action {
+    AddPlayer         = 0;
+    UpdateGamemode    = 1;
+    UpdateLatency     = 2;
+    UpdateDisplayName = 3;
+    RemovePlayer      = 4;
+  }
+  Action action = 1;
   repeated Player players = 2;
   message Player {
     UUID uuid = 1;

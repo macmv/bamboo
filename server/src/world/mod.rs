@@ -118,10 +118,8 @@ impl World {
         out.set_int("teleport_id", 1234); // TP id
         conn.send(out).await;
 
-        let mut info = PlayerList {
-          action: 0, // Add player
-          ..Default::default()
-        };
+        let mut info =
+          PlayerList { action: player_list::Action::AddPlayer.into(), ..Default::default() };
         for out in self
           .for_players(ChunkPos::new(0, 0), |p| {
             let mut out = cb::Packet::new(cb::ID::NamedEntitySpawn);
