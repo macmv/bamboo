@@ -99,9 +99,9 @@ impl Connection {
         }
         sb::ID::BlockPlace => {
           let mut pos = p.get_pos("location");
-          let dir = p.get_byte("direction");
+          let dir = p.get_int("direction");
 
-          if pos == Pos::new(-1, -1, -1) && dir as i8 == -1 {
+          if pos == Pos::new(-1, -1, -1) && dir == -1 {
             // Client is eating, or head is inside block
           } else {
             let data = {
@@ -110,9 +110,8 @@ impl Connection {
               player.world().get_item_converter().get_data(stack.item())
             };
             let kind = data.block_to_place();
-            player.send_message(&Chat::new(format!("placing item: {:?}", kind))).await;
-
-            pos += Pos::dir_from_byte(dir);
+            pos += Pos::dir_from_byte(dir.try_into().unwrap());
+            player.send_message(&Chat::new(format!("placing item: {:?} at {}", kind, pos))).await;
             player.world().set_kind(pos, kind).await.unwrap();
           }
         }

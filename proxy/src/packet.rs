@@ -121,19 +121,18 @@ impl Packet {
   /// This parses a postition from the internal buffer (format depends on the
   /// version), and then returns that as a Pos struct.
   pub fn read_item(&mut self) -> (i32, u8, Vec<u8>) {
-    match self.ver {
-      ProtocolVersion::V1_8 => {
-        let id = self.read_i16();
-        let mut count = 0;
-        let nbt = vec![];
-        if id != -1 {
-          count = self.read_u8();
-          self.read_i16(); // Item damage
-          self.read_u8(); // TODO: Actuall parse NBT data
-        }
-        (id.into(), count, nbt)
+    if self.ver < ProtocolVersion::V1_13 {
+      let id = self.read_i16();
+      let mut count = 0;
+      let nbt = vec![];
+      if id != -1 {
+        count = self.read_u8();
+        self.read_i16(); // Item damage
+        self.read_u8(); // TODO: Actually parse NBT data
       }
-      v => unreachable!("invalid version: {:?}", v),
+      (id.into(), count, nbt)
+    } else {
+      unreachable!("invalid version: {:?}", self.ver);
     }
   }
 

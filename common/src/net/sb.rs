@@ -122,11 +122,15 @@ impl Packet {
     }
     field
   }
+  fn get_field_any(&self, n: &str) -> &proto::PacketField {
+    let field = match self.pb.fields.get(n) {
+      Some(v) => v,
+      None => panic!("while deserializing packet {}, got no value for key {}", self, n),
+    };
+    field
+  }
   add_get!(get_bool, bool, Bool, bool);
   add_get!(get_byte, byte, Byte, u8, |v: u32| v.try_into().unwrap());
-  add_get!(get_short, short, Short, i16, |v: i32| v.try_into().unwrap());
-  add_get!(get_int, int, Int, i32);
-  add_get!(get_long, long, Long, u64);
   add_get!(get_float, float, Float, f32);
   add_get!(get_double, double, Double, f64);
   add_get!(get_pos, pos, Pos, Pos, |v: u64| { Pos::from_u64(v) });
@@ -138,6 +142,48 @@ impl Packet {
   add_get_ref!(get_int_arr, int_arr, IntArr, &Vec<i32>);
   add_get_ref!(get_long_arr, long_arr, LongArr, &Vec<u64>);
   add_get_ref!(get_str_arr, str_arr, StrArr, &Vec<String>);
+
+  /// Gets the given field within the packet. If the field is a byte, it will be
+  /// casted to a short.
+  pub fn get_short(&self, n: &str) -> i16 {
+    // let field = self.get_field(n, FieldType::$ty_name);
+    // $convert(field.$key)
+    let field = self.get_field_any(n);
+    match proto::packet_field::Type::from_i32(field.ty).unwrap() {
+      FieldType::Short => field.short.try_into().unwrap(),
+      FieldType::Byte => field.byte.try_into().unwrap(),
+      v => panic!("expected {} to be a short of byte, got {:?}", n, v),
+    }
+  }
+
+  /// Gets the given field within the packet. If the field is a short or byte,
+  /// it will be casted to an int.
+  pub fn get_int(&self, n: &str) -> i32 {
+    // let field = self.get_field(n, FieldType::$ty_name);
+    // $convert(field.$key)
+    let field = self.get_field_any(n);
+    match proto::packet_field::Type::from_i32(field.ty).unwrap() {
+      FieldType::Int => field.int,
+      FieldType::Short => field.short,
+      FieldType::Byte => field.byte.try_into().unwrap(),
+      v => panic!("expected {} to be a short of byte, got {:?}", n, v),
+    }
+  }
+
+  /// Gets the given field within the packet. If the field is an int, short, or
+  /// byte, it will be casted to a long.
+  pub fn get_long(&self, n: &str) -> u64 {
+    // let field = self.get_field(n, FieldType::$ty_name);
+    // $convert(field.$key)
+    let field = self.get_field_any(n);
+    match proto::packet_field::Type::from_i32(field.ty).unwrap() {
+      FieldType::Long => field.long,
+      FieldType::Int => field.int as u64,
+      FieldType::Short => field.short as u64,
+      FieldType::Byte => field.byte.into(),
+      v => panic!("expected {} to be a short of byte, got {:?}", n, v),
+    }
+  }
 }
 
 macro_rules! value_non_empty {
