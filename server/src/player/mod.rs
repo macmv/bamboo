@@ -228,37 +228,32 @@ impl Player {
       let old_top_left = old_chunk - ChunkPos::new(view_distance, view_distance);
       let old_bot_right = old_chunk + ChunkPos::new(view_distance, view_distance);
       // Sides (including corners)
+      let load_min;
+      let load_max;
+      let unload_min;
+      let unload_max;
       match delta.x().cmp(&0) {
         Ordering::Greater => {
-          self
-            .load_chunks(
-              ChunkPos::new(new_bot_right.x(), new_top_left.z()),
-              ChunkPos::new(old_bot_right.x(), new_bot_right.z()),
-            )
-            .await;
-          self
-            .unload_chunks(
-              ChunkPos::new(old_top_left.x(), old_top_left.z()),
-              ChunkPos::new(new_top_left.x(), old_bot_right.z()),
-            )
-            .await;
+          load_min = ChunkPos::new(old_bot_right.x(), new_top_left.z());
+          load_max = new_bot_right;
+          unload_min = old_top_left;
+          unload_max = ChunkPos::new(new_top_left.x(), old_bot_right.z());
         }
         Ordering::Less => {
-          self
-            .load_chunks(
-              ChunkPos::new(old_top_left.x(), new_top_left.z()),
-              ChunkPos::new(new_top_left.x(), new_bot_right.z()),
-            )
-            .await;
-          self
-            .unload_chunks(
-              ChunkPos::new(new_bot_right.x(), old_top_left.z()),
-              ChunkPos::new(old_bot_right.x(), old_bot_right.z()),
-            )
-            .await;
+          load_min = new_top_left;
+          load_max = ChunkPos::new(old_top_left.x(), new_bot_right.z());
+          unload_min = ChunkPos::new(new_bot_right.x(), old_top_left.z());
+          unload_max = old_bot_right;
         }
-        _ => {}
+        _ => {
+          load_min = ChunkPos::new(0, 0);
+          load_max = ChunkPos::new(0, 0);
+          unload_min = ChunkPos::new(0, 0);
+          unload_max = ChunkPos::new(0, 0);
+        }
       };
+      self.load_chunks(load_min, load_max).await;
+      self.unload_chunks(unload_min, unload_max).await;
       // Top/Bottom (excluding corners)
       match delta.z().cmp(&0) {
         Ordering::Greater => {
