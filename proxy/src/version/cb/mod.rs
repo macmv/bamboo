@@ -89,6 +89,7 @@ impl Generator {
             PacketField::Bool => out.write_bool(p.get_bool(n)?),
             PacketField::String => out.write_str(p.get_str(n)?),
             PacketField::Position => out.write_pos(p.get_pos(n)?),
+            PacketField::UUID => out.write_uuid(p.get_uuid(n)?),
             v => {
               // For entity metadata. I just wanted to see a mob ingame.
               out.write_u8(127);

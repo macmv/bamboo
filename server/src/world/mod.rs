@@ -3,6 +3,7 @@ mod gen;
 
 use std::{
   collections::HashMap,
+  convert::TryInto,
   sync::{
     atomic::{AtomicI32, Ordering},
     Arc, Mutex as StdMutex, MutexGuard as StdMutexGuard, RwLock,
@@ -120,19 +121,17 @@ impl World {
 
         for p in self
           .for_players(ChunkPos::new(0, 0), |p| {
-            let mut out = cb::Packet::new(cb::ID::SpawnEntityLiving);
+            let mut out = cb::Packet::new(cb::ID::NamedEntitySpawn);
             out.set_int("entity_id", p.eid());
-            out.set_byte("type", 50);
+            out.set_uuid("player_uuid", p.id());
             let (pos, pitch, yaw) = p.pos_look();
             out.set_double("x", pos.x());
             out.set_double("y", pos.y());
             out.set_double("z", pos.z());
             out.set_float("yaw", yaw);
             out.set_float("pitch", pitch);
-            out.set_float("head_pitch", 0.0);
-            out.set_short("velocity_x", 0);
-            out.set_short("velocity_y", 0);
-            out.set_short("velocity_z", 0);
+            out.set_short("current_item", 0);
+            out.set_byte_arr("metadata", vec![127]);
             Some(out)
           })
           .await
@@ -181,6 +180,12 @@ impl World {
   /// ids to new ones, and vice versa.
   pub fn get_item_converter(&self) -> &item::TypeConverter {
     &self.item_converter
+  }
+
+  /// Returns the current entity converter. This can be used to convert old
+  /// entity ids to new ones, and vice versa.
+  pub fn get_entity_converter(&self) -> &entity::TypeConverter {
+    &self.entity_converter
   }
 
   /// This calls f(), and passes it a locked chunk. This will also generate a

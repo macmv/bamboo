@@ -1,6 +1,5 @@
 use common::{
-  math::Pos,
-  proto,
+  math::{Pos, UUID},
   util::{Buffer, BufferError},
   version::ProtocolVersion,
 };
@@ -136,7 +135,7 @@ impl Packet {
     }
   }
 
-  pub fn write_uuid(&mut self, v: &proto::Uuid) {
-    self.write_buf(&v.be_data);
+  pub fn write_uuid(&mut self, v: UUID) {
+    self.write_buf(&v.as_be_bytes());
   }
 }
