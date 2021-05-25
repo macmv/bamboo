@@ -43,6 +43,7 @@ pub fn generate(dir: &Path) -> Result<(), Box<dyn Error>> {
     writeln!(f, "/// from prismarine data.")?;
     writeln!(f, "#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, FromPrimitive, ToPrimitive)]")?;
     writeln!(f, "pub enum Type {{")?;
+    writeln!(f, "  None,")?;
     for e in latest {
       let name = e.name.to_case(Case::Pascal);
       writeln!(f, "  {},", name)?;
@@ -58,8 +59,8 @@ pub fn generate(dir: &Path) -> Result<(), Box<dyn Error>> {
     for e in latest {
       writeln!(f, "entities.push(Data{{")?;
       writeln!(f, "  display_name: \"{}\",", e.display_name)?;
-      writeln!(f, "  width: {},", e.width.unwrap_or(0.0))?;
-      writeln!(f, "  height: {},", e.height.unwrap_or(0.0))?;
+      writeln!(f, "  width: {:.1},", e.width.unwrap_or(0.0))?;
+      writeln!(f, "  height: {:.1},", e.height.unwrap_or(0.0))?;
       writeln!(f, "}});")?;
     }
     writeln!(f, "}}")?;

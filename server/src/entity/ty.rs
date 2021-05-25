@@ -13,6 +13,6 @@ impl Type {
   /// Returns the item with the given id. If the id is invalid, this returns
   /// `Type::Air`.
   pub fn from_u32(v: u32) -> Type {
-    num::FromPrimitive::from_u32(v).unwrap_or(Type::Air)
+    num::FromPrimitive::from_u32(v).unwrap_or(Type::None)
   }
 }

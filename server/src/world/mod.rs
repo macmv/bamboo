@@ -23,7 +23,7 @@ use common::{
   version::BlockVersion,
 };
 
-use crate::{block, item, net::Connection, player::Player};
+use crate::{block, entity, item, net::Connection, player::Player};
 use chunk::MultiChunk;
 use gen::Generator;
 
@@ -40,26 +40,29 @@ use gen::Generator;
 // }
 
 pub struct World {
-  chunks:          RwLock<HashMap<ChunkPos, Arc<StdMutex<MultiChunk>>>>,
-  players:         Mutex<HashMap<UUID, Arc<Player>>>,
-  eid:             Arc<AtomicI32>,
-  block_converter: Arc<block::TypeConverter>,
-  item_converter:  Arc<item::TypeConverter>,
-  generator:       StdMutex<Generator>,
+  chunks:           RwLock<HashMap<ChunkPos, Arc<StdMutex<MultiChunk>>>>,
+  players:          Mutex<HashMap<UUID, Arc<Player>>>,
+  eid:              Arc<AtomicI32>,
+  block_converter:  Arc<block::TypeConverter>,
+  item_converter:   Arc<item::TypeConverter>,
+  entity_converter: Arc<entity::TypeConverter>,
+  generator:        StdMutex<Generator>,
 }
 
 pub struct WorldManager {
   // This will always have at least 1 entry. The world at index 0 is considered the "default"
   // world.
-  worlds:          Vec<Arc<World>>,
-  block_converter: Arc<block::TypeConverter>,
-  item_converter:  Arc<item::TypeConverter>,
+  worlds:           Vec<Arc<World>>,
+  block_converter:  Arc<block::TypeConverter>,
+  item_converter:   Arc<item::TypeConverter>,
+  entity_converter: Arc<entity::TypeConverter>,
 }
 
 impl World {
   pub fn new(
     block_converter: Arc<block::TypeConverter>,
     item_converter: Arc<item::TypeConverter>,
+    entity_converter: Arc<entity::TypeConverter>,
   ) -> Self {
     World {
       chunks: RwLock::new(HashMap::new()),
@@ -67,6 +70,7 @@ impl World {
       eid: Arc::new(1.into()),
       block_converter,
       item_converter,
+      entity_converter,
       generator: StdMutex::new(Generator::new()),
     }
   }
@@ -245,18 +249,21 @@ impl Default for WorldManager {
 impl WorldManager {
   pub fn new() -> Self {
     let mut w = WorldManager {
-      block_converter: Arc::new(block::TypeConverter::new()),
-      item_converter:  Arc::new(item::TypeConverter::new()),
-      worlds:          vec![],
+      block_converter:  Arc::new(block::TypeConverter::new()),
+      item_converter:   Arc::new(item::TypeConverter::new()),
+      entity_converter: Arc::new(entity::TypeConverter::new()),
+      worlds:           vec![],
     };
     w.add_world();
     w
   }
 
   pub fn add_world(&mut self) {
-    self
-      .worlds
-      .push(Arc::new(World::new(self.block_converter.clone(), self.item_converter.clone())));
+    self.worlds.push(Arc::new(World::new(
+      self.block_converter.clone(),
+      self.item_converter.clone(),
+      self.entity_converter.clone(),
+    )));
   }
 
   /// Returns the current block converter. This can be used to convert old block
