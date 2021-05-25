@@ -9,10 +9,20 @@ use crate::packet::Packet;
 use common::{
   net::{cb, Other},
   util::Buffer,
+  version::ProtocolVersion,
 };
 
 pub(super) fn gen_spec() -> PacketSpec {
   let mut spec = PacketSpec { gens: HashMap::new() };
+  spec.add(cb::ID::UnloadChunk, |_: Packet, p: &cb::Packet| {
+    let mut out = Packet::new(0x21, ProtocolVersion::V1_8); // Map chunk for 1.8
+    out.write_i32(p.get_int("chunk_x")?);
+    out.write_i32(p.get_int("chunk_z")?);
+    out.write_bool(true); // Must be true to unload
+    out.write_u16(0); // No chunks
+    out.write_varint(0); // No data
+    Ok(Some(out))
+  });
   spec.add(cb::ID::MapChunk, |mut out: Packet, p: &cb::Packet| {
     // TODO: Error handling should be done within the packet.
     let chunk = match p.read_other().unwrap() {

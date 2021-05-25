@@ -43,46 +43,58 @@ impl Generator {
   pub fn convert(&self, v: ProtocolVersion, p: &cb::Packet) -> io::Result<Option<Packet>> {
     let ver = &self.versions[&v];
     let new_id = p.id();
+    // Check for a generator
+    let g = self.gens[&v].gens.get(&p.id());
     // This is the old id
-    let id = match ver.ids[new_id.to_i32() as usize] {
-      Some(v) => v,
+    let id: i32 = match ver.ids[new_id.to_i32() as usize] {
+      Some(v) => v as i32,
       None => {
-        warn!("got packet that does not exist for client: {}", p);
-        return Ok(None);
-      }
-    };
-    // Old id can be used to index into packets
-    let spec = &ver.packets[id];
-    let mut out = Packet::new(id as i32, v);
-    // If we have a generator for this packet, we use that instead. Generators are
-    // used for things like chunk packets, which are just simpler to serialize
-    // manually.
-    if let Some(g) = self.gens[&v].gens.get(&p.id()) {
-      out = match g(out, p)? {
-        Some(v) => v,
-        None => return Ok(None),
-      }
-    } else {
-      for (n, f) in &spec.fields {
-        match f {
-          PacketField::Int(v) => match v {
-            IntType::VarInt | IntType::OptVarInt => out.write_varint(p.get_int(n)?),
-            IntType::U8 | IntType::I8 => out.write_u8(p.get_byte(n)?),
-            IntType::U16 | IntType::I16 => out.write_i16(p.get_short(n)?),
-            IntType::I32 => out.write_i32(p.get_int(n)?),
-            IntType::I64 => out.write_u64(p.get_long(n)?),
-          },
-          PacketField::Float(v) => match v {
-            FloatType::F32 => out.write_f32(p.get_float(n)?),
-            FloatType::F64 => out.write_f64(p.get_double(n)?),
-          },
-          PacketField::Bool => out.write_bool(p.get_bool(n)?),
-          PacketField::String => out.write_str(p.get_str(n)?),
-          PacketField::Position => out.write_pos(p.get_pos(n)?),
-          v => unreachable!("invalid packet field {:?}", v),
+        if g.is_none() {
+          warn!("got packet that has no generator and does not exist for ver {:?}: {}", v, p);
+          return Ok(None);
+        } else {
+          -1
         }
       }
-    }
+    };
+    let out = match g {
+      // If we have a generator for this packet, we use that instead. Generators are
+      // used for things like chunk packets, which are just simpler to serialize
+      // manually.
+      Some(g) => {
+        // If we have a generator, we may or may not have a valid packet id.
+        let out = if id != -1 { Packet::new(id, v) } else { Packet::new(0, v) };
+        match g(out, p)? {
+          Some(v) => v,
+          None => return Ok(None),
+        }
+      }
+      None => {
+        // Here, we must have a valid packet id, or we would have returned already.
+        let spec = &ver.packets[id as usize];
+        let mut out = Packet::new(id, v);
+        for (n, f) in &spec.fields {
+          match f {
+            PacketField::Int(v) => match v {
+              IntType::VarInt | IntType::OptVarInt => out.write_varint(p.get_int(n)?),
+              IntType::U8 | IntType::I8 => out.write_u8(p.get_byte(n)?),
+              IntType::U16 | IntType::I16 => out.write_i16(p.get_short(n)?),
+              IntType::I32 => out.write_i32(p.get_int(n)?),
+              IntType::I64 => out.write_u64(p.get_long(n)?),
+            },
+            PacketField::Float(v) => match v {
+              FloatType::F32 => out.write_f32(p.get_float(n)?),
+              FloatType::F64 => out.write_f64(p.get_double(n)?),
+            },
+            PacketField::Bool => out.write_bool(p.get_bool(n)?),
+            PacketField::String => out.write_str(p.get_str(n)?),
+            PacketField::Position => out.write_pos(p.get_pos(n)?),
+            v => unreachable!("invalid packet field {:?}", v),
+          }
+        }
+        out
+      }
+    };
     // println!("writing packet {:?}: {:?}", new_id, &out);
     Ok(Some(out))
   }
