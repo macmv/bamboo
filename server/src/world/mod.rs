@@ -93,7 +93,7 @@ impl World {
       // Player init
       {
         let mut out = cb::Packet::new(cb::ID::Login);
-        out.set_i32("entity_id", self.eid());
+        out.set_int("entity_id", self.eid());
         out.set_byte("game_mode", 1); // Creative
         out.set_byte("difficulty", 1); // Normal
         out.set_byte("dimension", 0); // Overworld
@@ -109,14 +109,36 @@ impl World {
         }
 
         let mut out = cb::Packet::new(cb::ID::Position);
-        out.set_f64("x", 0.0); // X
-        out.set_f64("y", 60.0); // Y
-        out.set_f64("z", 0.0); // Z
-        out.set_f32("yaw", 0.0); // Yaw
-        out.set_f32("pitch", 0.0); // Pitch
+        out.set_double("x", 0.0); // X
+        out.set_double("y", 60.0); // Y
+        out.set_double("z", 0.0); // Z
+        out.set_float("yaw", 0.0); // Yaw
+        out.set_float("pitch", 0.0); // Pitch
         out.set_byte("flags", 0); // Flags
-        out.set_i32("teleport_id", 1234); // TP id
+        out.set_int("teleport_id", 1234); // TP id
         conn.send(out).await;
+
+        for p in self
+          .for_players(ChunkPos::new(0, 0), |p| {
+            let mut out = cb::Packet::new(cb::ID::SpawnEntityLiving);
+            out.set_int("entity_id", p.eid());
+            out.set_byte("type", 50);
+            let (pos, pitch, yaw) = p.pos_look();
+            out.set_double("x", pos.x());
+            out.set_double("y", pos.y());
+            out.set_double("z", pos.z());
+            out.set_float("yaw", yaw);
+            out.set_float("pitch", pitch);
+            out.set_float("head_pitch", 0.0);
+            out.set_short("velocity_x", 0);
+            out.set_short("velocity_y", 0);
+            out.set_short("velocity_z", 0);
+            Some(out)
+          })
+          .await
+        {
+          conn.send(p).await;
+        }
       }
       // Player tick loop
       let mut tick = 0;
@@ -133,7 +155,7 @@ impl World {
         // Once per second, send keep alive packet
         if tick % 20 == 0 {
           let mut out = cb::Packet::new(cb::ID::KeepAlive);
-          out.set_i32("keep_alive_id", 1234556);
+          out.set_int("keep_alive_id", 1234556);
           conn.send(out).await;
         }
         tick += 1;
@@ -215,7 +237,7 @@ impl World {
     for p in self.players.lock().await.values() {
       let mut out = cb::Packet::new(cb::ID::BlockChange);
       out.set_pos("location", pos);
-      out.set_i32("type", self.block_converter.to_old(ty.id(), p.ver().block()) as i32);
+      out.set_int("type", self.block_converter.to_old(ty.id(), p.ver().block()) as i32);
       p.conn().send(out).await;
     }
     Ok(())
@@ -237,6 +259,25 @@ impl World {
     for p in self.players.lock().await.values() {
       p.conn().send(out.clone()).await;
     }
+  }
+
+  // Runs f for all players within render distance of the chunk.
+  pub async fn for_players<F, R>(&self, pos: ChunkPos, f: F) -> Vec<R>
+  where
+    F: Fn(&Player) -> Option<R>,
+  {
+    let mut out = vec![];
+    for p in self.players.lock().await.values() {
+      // Only call f in p is in view of pos
+      if p.in_view(pos) {
+        let v = f(p);
+        match v {
+          Some(v) => out.push(v),
+          None => break,
+        }
+      }
+    }
+    out
   }
 }
 

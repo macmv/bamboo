@@ -120,20 +120,20 @@ impl Packet {
   }
   add_set!(set_bool, bool, Bool, bool);
   add_set!(set_byte, byte, Byte, u8, |v: u8| v.into());
-  add_set!(set_i32, int, Int, i32);
-  add_set!(set_u64, long, Long, u64);
-  add_set!(set_f32, float, Float, f32);
-  add_set!(set_f64, double, Double, f64);
+  add_set!(set_int, int, Int, i32);
+  add_set!(set_short, short, Short, i16, |v: i16| v.into());
+  add_set!(set_long, long, Long, u64);
+  add_set!(set_float, float, Float, f32);
+  add_set!(set_double, double, Double, f64);
   add_set!(set_str, str, Str, String);
   add_set!(set_pos, pos, Pos, Pos, |v: Pos| v.to_u64()); // This will always be in the new position format
   add_set!(set_uuid, uuid, Uuid, UUID, |v: UUID| { Some(v.as_proto()) });
   add_set!(set_byte_arr, byte_arr, ByteArr, Vec<u8>);
-  add_set!(set_i32_arr, int_arr, IntArr, Vec<i32>);
-  add_set!(set_u64_arr, long_arr, LongArr, Vec<u64>);
+  add_set!(set_int_arr, int_arr, IntArr, Vec<i32>);
+  add_set!(set_long_arr, long_arr, LongArr, Vec<u64>);
   add_set!(set_str_arr, str_arr, StrArr, Vec<String>);
 
   add_get!(get_bool, Bool, bool, bool);
-  add_get!(get_byte, Byte, byte, u8, |v: u32| v.try_into().unwrap());
   add_get!(get_float, Float, float, f32);
   add_get!(get_double, Double, double, f64);
   add_get!(get_pos, Pos, pos, Pos, |v: u64| Pos::from_u64(v)); // This will always be in the new position format
@@ -146,6 +146,20 @@ impl Packet {
   add_get_ref!(get_u64_arr, LongArr, long_arr, &Vec<u64>);
   add_get_ref!(get_str_arr, StrArr, str_arr, &Vec<String>);
 
+  /// Gets the given field within the packet. If the field is a float, it will
+  /// be casted to a byte (it will be multiplied by 256).
+  pub fn get_byte(&self, n: &str) -> io::Result<u8> {
+    let field = self.get_field_any(n)?;
+    match proto::packet_field::Type::from_i32(field.ty).unwrap() {
+      FieldType::Byte => Ok(field.byte.try_into().unwrap()),
+      FieldType::Float => Ok((field.float * 256.0) as u8),
+      v => Err(io::Error::new(
+        io::ErrorKind::InvalidData,
+        format!("expected {} to be a byte or float, got {:?}", n, v),
+      )),
+    }
+  }
+
   /// Gets the given field within the packet. If the field is a byte, it will be
   /// casted to a short.
   pub fn get_short(&self, n: &str) -> io::Result<i16> {
@@ -155,22 +169,29 @@ impl Packet {
       FieldType::Byte => Ok(field.byte.try_into().unwrap()),
       v => Err(io::Error::new(
         io::ErrorKind::InvalidData,
-        format!("expected {} to be a a short or byte, got {:?}", n, v),
+        format!("expected {} to be a short or byte, got {:?}", n, v),
       )),
     }
   }
 
   /// Gets the given field within the packet. If the field is a byte or a short,
-  /// it will be casted to an int.
+  /// it will be casted to an int. If the field is a float or double, it will be
+  /// cast to a fixed in (for 1.8), which just means multiplying it by 32 and
+  /// then returning that casted to an int.
   pub fn get_int(&self, n: &str) -> io::Result<i32> {
     let field = self.get_field_any(n)?;
     match proto::packet_field::Type::from_i32(field.ty).unwrap() {
       FieldType::Int => Ok(field.int),
       FieldType::Short => Ok(field.short),
       FieldType::Byte => Ok(field.byte.try_into().unwrap()),
+      // The field is a float in other versions, but is listed as an int in 1.8. This most
+      // likely means a fixed int, which is 1.8's method of representing floats. Since clientbound
+      // packets don't know the client version, we assume that a fixed int is possible here.
+      FieldType::Float => Ok((field.float * 32.0) as i32),
+      FieldType::Double => Ok((field.double * 32.0) as i32),
       v => Err(io::Error::new(
         io::ErrorKind::InvalidData,
-        format!("expected {} to be a an int, short, or byte, got {:?}", n, v),
+        format!("expected {} to be an int, short, byte, float, or double, got {:?}", n, v),
       )),
     }
   }
@@ -186,7 +207,7 @@ impl Packet {
       FieldType::Byte => Ok(field.byte.try_into().unwrap()),
       v => Err(io::Error::new(
         io::ErrorKind::InvalidData,
-        format!("expected {} to be a a long, int, short, or byte, got {:?}", n, v),
+        format!("expected {} to be a long, int, short, or byte, got {:?}", n, v),
       )),
     }
   }

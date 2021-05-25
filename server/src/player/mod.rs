@@ -295,8 +295,8 @@ impl Player {
     for x in min.x()..max.x() {
       for z in min.z()..max.z() {
         let mut out = cb::Packet::new(cb::ID::UnloadChunk);
-        out.set_i32("chunk_x", x);
-        out.set_i32("chunk_z", z);
+        out.set_int("chunk_x", x);
+        out.set_int("chunk_z", z);
         self.conn.send(out).await;
       }
     }
@@ -307,6 +307,13 @@ impl Player {
   pub fn pos(&self) -> FPos {
     let pos = self.pos.lock().unwrap();
     pos.curr
+  }
+  /// Returns the player's position and looking direction. This is only updated
+  /// once per tick. This also locks a mutex, so you should not call it very
+  /// often.
+  pub fn pos_look(&self) -> (FPos, f32, f32) {
+    let pos = self.pos.lock().unwrap();
+    (pos.curr, pos.pitch, pos.yaw)
   }
   /// Returns the player's current and previous position. This is only updated
   /// once per tick. This needs to lock a mutex, so if you need the player's
@@ -321,9 +328,16 @@ impl Player {
   /// Returns the player's pitch and yaw angle. This is the amount that they are
   /// looking to the side. It is in the range -180-180. This is only updated
   /// once per tick.
-  pub fn rotation(&self) -> (f32, f32) {
+  pub fn look(&self) -> (f32, f32) {
     let pos = self.pos.lock().unwrap();
     (pos.pitch, pos.yaw)
+  }
+
+  /// Returns true if the player is within render distance of the given chunk
+  pub fn in_view(&self, pos: ChunkPos) -> bool {
+    let delta = pos - self.pos().block().chunk();
+    // TODO: Store view distance
+    delta.x().abs() <= 10 && delta.z().abs() <= 10
   }
 }
 
