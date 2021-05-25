@@ -43,11 +43,12 @@ pub fn generate(dir: &Path) -> Result<(), Box<dyn Error>> {
     writeln!(f, "/// from prismarine data.")?;
     writeln!(f, "#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, FromPrimitive, ToPrimitive)]")?;
     writeln!(f, "pub enum Type {{")?;
-    writeln!(f, "  None,")?;
     for e in latest {
       let name = e.name.to_case(Case::Pascal);
       writeln!(f, "  {},", name)?;
     }
+    // Must be last, so that ToPrimitive and FromPrimitive work correctly
+    writeln!(f, "  None,")?;
     writeln!(f, "}}")?;
   }
   {
