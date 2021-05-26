@@ -336,6 +336,14 @@ impl Conn {
                 out.write_str(&serde_json::to_string(&status).unwrap());
                 self.client_writer.write(out).await?;
               }
+              // Ping
+              1 => {
+                let id = p.read_u64();
+                // Send pong
+                let mut out = Packet::new(1, self.ver);
+                out.write_u64(id);
+                self.client_writer.write(out).await?;
+              }
               _ => {
                 return Err(io::Error::new(
                   ErrorKind::InvalidInput,
