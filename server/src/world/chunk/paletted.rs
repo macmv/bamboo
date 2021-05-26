@@ -239,22 +239,25 @@ impl ChunkSection for Section {
     // breaking/placing blocks, as air will always be in the palette. So in
     // survival, this will never come up.
     let mut prev = self.get_palette(pos);
-    let palette_id = if let Some(&palette_id) = self.reverse_palette.get(&ty) {
-      if prev == palette_id {
-        // The same block is being placed, so we do nothing.
-        return Ok(());
+    let palette_id = match self.reverse_palette.get(&ty) {
+      Some(&palette_id) => {
+        if prev == palette_id {
+          // The same block is being placed, so we do nothing.
+          return Ok(());
+        }
+        self.set_palette(pos, palette_id);
+        palette_id
       }
-      self.set_palette(pos, palette_id);
-      palette_id
-    } else {
-      let palette_id = self.insert(ty);
-      // If insert() was called, and it inserted before prev, the block_amounts would
-      // have been shifted, and prev needs to be shifted as well.
-      if palette_id <= prev {
-        prev += 1;
+      None => {
+        let palette_id = self.insert(ty);
+        // If insert() was called, and it inserted before prev, the block_amounts would
+        // have been shifted, and prev needs to be shifted as well.
+        if palette_id <= prev {
+          prev += 1;
+        }
+        self.set_palette(pos, palette_id);
+        palette_id
       }
-      self.set_palette(pos, palette_id);
-      palette_id
     };
     self.block_amounts[palette_id as usize] += 1;
     self.block_amounts[prev as usize] -= 1;
@@ -265,9 +268,12 @@ impl ChunkSection for Section {
   }
   fn fill(&mut self, min: Pos, max: Pos, ty: u32) -> Result<(), PosError> {
     if min == Pos::new(0, 0, 0) && max == Pos::new(15, 15, 15) {
+      // Simple case. We get to just replace the whole section.
       if ty == 0 {
+        // With air, this is even easier.
         *self = Section::default();
       } else {
+        // With anything else, we need to make sure air stays in the palette.
         *self = Section {
           data: vec![0x1111111111111111; 16 * 16 * 16 * 4 / 64],
           palette: vec![0, ty],
@@ -275,6 +281,48 @@ impl ChunkSection for Section {
           block_amounts: vec![0, 4096],
           ..Default::default()
         };
+      }
+    } else {
+      // More difficult case. Here, we need to modify all the block amounts,
+      // then remove all the items we need to from the palette. Then, we add the
+      // new item to the palette, and update the block data.
+      for y in min.y()..=max.y() {
+        for z in min.z()..=max.z() {
+          for x in min.x()..=max.x() {
+            let id = self.get_palette(Pos::new(x, y, z));
+            let amt = self.block_amounts[id as usize];
+            // Debug assertions mean that we cannot subtract with overflow here.
+            self.block_amounts[id as usize] = amt - 1;
+          }
+        }
+      }
+      let mut ids_to_remove = vec![];
+      for (id, amt) in self.block_amounts.iter().enumerate() {
+        #[cfg(debug_assertions)]
+        if *amt > 4096 {
+          dbg!(&self);
+          unreachable!("amount is invalid! should not be possible")
+        }
+        // Make sure we do not remove air from the palette.
+        if *amt == 0 && id != 0 {
+          ids_to_remove.push(id as u32);
+        }
+      }
+      for id in ids_to_remove {
+        self.remove(id);
+      }
+      let palette_id = match self.reverse_palette.get(&ty) {
+        Some(&palette_id) => palette_id,
+        None => self.insert(ty),
+      };
+      self.block_amounts[palette_id as usize] +=
+        ((max.x() - min.x() + 1) * (max.y() - min.y() + 1) * (max.z() - min.z() + 1)) as u32;
+      for y in min.y()..=max.y() {
+        for z in min.z()..=max.z() {
+          for x in min.x()..=max.x() {
+            self.set_palette(Pos::new(x, y, z), palette_id);
+          }
+        }
       }
     }
     Ok(())
@@ -619,15 +667,17 @@ mod tests {
     let mut s = Section::default();
     s.fill(Pos::new(3, 4, 5), Pos::new(8, 9, 10), 20)?;
 
+    dbg!(&s);
     for x in 0..16 {
       for y in 0..16 {
         for z in 0..16 {
           let expected =
-            if x >= 3 && x <= 8 && y >= 4 && y <= 9 && z <= 5 && z <= 10 { 20 } else { 0 };
+            if x >= 3 && x <= 8 && y >= 4 && y <= 9 && z >= 5 && z <= 10 { 20 } else { 0 };
           assert_eq!(s.get_block(Pos::new(x, y, z))?, expected);
         }
       }
     }
+    assert_eq!(s.block_amounts[0] + s.block_amounts[1], 4096);
 
     Ok(())
   }
