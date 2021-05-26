@@ -99,7 +99,12 @@ impl Connection {
         }
         sb::ID::BlockPlace => {
           let mut pos = p.get_pos("location");
-          let dir = p.get_int("direction");
+          let mut dir = p.get_int("direction");
+
+          if player.ver() == ProtocolVersion::V1_8 {
+            // 1.8 clients send this as a byte, and it needs to stay signed correctly
+            dir = (dir as i8).into()
+          }
 
           if pos == Pos::new(-1, -1, -1) && dir == -1 {
             // Client is eating, or head is inside block
