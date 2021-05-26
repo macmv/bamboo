@@ -258,17 +258,23 @@ impl ChunkSection for Section {
     };
     self.block_amounts[palette_id as usize] += 1;
     self.block_amounts[prev as usize] -= 1;
-    if self.block_amounts[prev as usize] == 0 {
+    if self.block_amounts[prev as usize] == 0 && prev != 0 {
       self.remove(prev);
     }
     Ok(())
   }
   fn fill(&mut self, min: Pos, max: Pos, ty: u32) -> Result<(), PosError> {
     if min == Pos::new(0, 0, 0) && max == Pos::new(15, 15, 15) {
-      *self = Section {
-        palette: vec![ty],
-        reverse_palette: vec![(ty, 0)].iter().cloned().collect(),
-        ..Default::default()
+      if ty == 0 {
+        *self = Section::default();
+      } else {
+        *self = Section {
+          data: vec![0x1111111111111111; 16 * 16 * 16 * 4 / 64],
+          palette: vec![0, ty],
+          reverse_palette: vec![(0, 0), (ty, 1)].iter().cloned().collect(),
+          block_amounts: vec![0, 4096],
+          ..Default::default()
+        };
       }
     }
     Ok(())
@@ -580,18 +586,17 @@ mod tests {
         }
       }
     }
-    assert_eq!(s.data, vec![0; 16 * 16 * 16 * 4 / 64]);
-    assert_eq!(s.palette, vec![20]);
-    assert_eq!(s.block_amounts, vec![4096]);
+    assert_eq!(s.data, vec![0x1111111111111111; 16 * 16 * 16 * 4 / 64]);
+    assert_eq!(s.palette, vec![0, 20]);
+    assert_eq!(s.block_amounts, vec![0, 4096]);
 
     s.set_block(Pos::new(0, 0, 0), 5)?;
 
-    let mut data = vec![0x1111111111111111; 16 * 16 * 16 * 4 / 64];
-    data[0] = 0x1111111111111110;
-
+    let mut data = vec![0x2222222222222222; 16 * 16 * 16 * 4 / 64];
+    data[0] = 0x2222222222222221;
     assert_eq!(s.data, data);
-    assert_eq!(s.palette, vec![5, 20]);
-    assert_eq!(s.block_amounts, vec![1, 4095]);
+    assert_eq!(s.palette, vec![0, 5, 20]);
+    assert_eq!(s.block_amounts, vec![0, 1, 4095]);
 
     Ok(())
   }
