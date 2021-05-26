@@ -54,16 +54,17 @@ impl Section {
     if id >= 1 << bpb {
       panic!("passed invalid id {} (must be within 0..{})", id, 1 << bpb);
     }
+    let mask = (1 << bpb) - 1;
     if first == second {
       // Clear the bits of the new id
-      self.data[first] &= !(((1 << bpb) - 1) << shift);
+      self.data[first] &= !(mask << shift);
       // Set the new id
       self.data[first] |= (id as u64) << shift;
     } else {
       let second_shift = 64 - shift;
       // Clear the bits of the new id
-      self.data[first] &= !(((1 << bpb) - 1) << shift);
-      self.data[second] &= !(((1 << bpb) - 1) >> second_shift);
+      self.data[first] &= !(mask << shift);
+      self.data[second] &= !(mask >> second_shift);
       // Set the new id
       self.data[first] |= (id as u64) << shift;
       self.data[second] |= (id as u64) >> second_shift;
@@ -74,14 +75,14 @@ impl Section {
   fn get_palette(&self, pos: Pos) -> u32 {
     let (first, second, shift) = self.index(pos);
     let bpb = self.bits_per_block as usize;
+    let mask = (1 << bpb) - 1;
     let val = if first == second {
       // Get the id from data
-      self.data[first] >> shift & ((1 << bpb) - 1)
+      (self.data[first] >> shift) & mask
     } else {
       let second_shift = 64 - shift;
       // Get the id from the two values
-      self.data[first] >> shift & ((1 << bpb) - 1)
-        | self.data[second] << second_shift & ((1 << bpb) - 1)
+      (self.data[first] >> shift) & mask | (self.data[second] << second_shift) & mask
     };
 
     #[cfg(not(debug_assertions))]
@@ -146,6 +147,7 @@ impl Section {
   fn shift_all_above(&mut self, id: u32, shift_amount: i32) {
     let bpb = self.bits_per_block as usize;
     let mut bit_index = 0;
+    let mask = (1 << bpb) - 1;
     for _ in 0..16 {
       for _ in 0..16 {
         for _ in 0..16 {
@@ -156,26 +158,25 @@ impl Section {
           let shift = bit_index % 64;
           let mut val = if first == second {
             // Get the id from data
-            self.data[first] >> shift & ((1 << bpb) - 1)
+            self.data[first] >> shift & mask
           } else {
             let second_shift = 64 - shift;
             // Get the id from the two values
-            self.data[first] >> shift & ((1 << bpb) - 1)
-              | self.data[second] << second_shift & ((1 << bpb) - 1)
+            (self.data[first] >> shift) & mask | (self.data[second] << second_shift) & mask
           } as i32;
           if val as u32 >= id {
             val += shift_amount;
             let val = val as u64;
             if first == second {
               // Clear the bits of the new id
-              self.data[first] &= !(((1 << bpb) - 1) << shift);
+              self.data[first] &= !(mask << shift);
               // Set the new id
               self.data[first] |= val << shift;
             } else {
               let second_shift = 64 - shift;
               // Clear the bits of the new id
-              self.data[first] &= !(((1 << bpb) - 1) << shift);
-              self.data[second] &= !(((1 << bpb) - 1) >> second_shift);
+              self.data[first] &= !(mask << shift);
+              self.data[second] &= !(mask >> second_shift);
               // Set the new id
               self.data[first] |= val << shift;
               self.data[second] |= val >> second_shift;
@@ -193,6 +194,7 @@ impl Section {
     let bpb = (self.bits_per_block + 1) as usize;
     let mut new_data = vec![0; 16 * 16 * 16 * bpb / 64];
     let mut bit_index = 0;
+    let mask = (1 << bpb) - 1;
     for y in 0..16 {
       for z in 0..16 {
         for x in 0..16 {
@@ -202,14 +204,14 @@ impl Section {
           let id = self.get_palette(Pos::new(x, y, z));
           if first == second {
             // Clear the bits of the new id
-            new_data[first] &= !(((1 << bpb) - 1) << shift);
+            new_data[first] &= !(mask << shift);
             // Set the new id
             new_data[first] |= (id as u64) << shift;
           } else {
             let second_shift = 64 - shift;
             // Clear the bits of the new id
-            new_data[first] &= !(((1 << bpb) - 1) << shift);
-            new_data[second] &= !(((1 << bpb) - 1) >> second_shift);
+            new_data[first] &= !(mask << shift);
+            new_data[second] &= !(mask >> second_shift);
             // Set the new id
             new_data[first] |= (id as u64) << shift;
             new_data[second] |= (id as u64) >> second_shift;
