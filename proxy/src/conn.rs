@@ -16,7 +16,7 @@ use rand::{rngs::OsRng, RngCore};
 use rsa::{padding::PaddingScheme, RSAPrivateKey};
 use serde_derive::Serialize;
 use sha1::{Digest, Sha1};
-use std::{convert::TryInto, error::Error, io, io::ErrorKind, sync::Arc};
+use std::{collections::HashMap, convert::TryInto, error::Error, io, io::ErrorKind, sync::Arc};
 use tokio::sync::{mpsc, oneshot};
 use tokio_stream::wrappers::ReceiverStream;
 use tonic::{transport::channel::Channel, Request, Status, Streaming};
@@ -441,7 +441,19 @@ impl Conn {
                 hash.update("");
                 hash.update(secret);
                 hash.update(der_key.unwrap());
-                let url = format!("https://sessionserver.mojang.com/session/minecraft/hasJoined?username={}&serverId={:x}", username.as_ref().unwrap(), hash.finalize());
+                let res = match reqwest::get(format!(
+                  "https://sessionserver.mojang.com/session/minecraft/hasJoined?username={}&serverId={}",
+                  username.as_ref().unwrap(),
+                  hexdigest(hash)
+                )).await {
+                  Ok(v) => v,
+                  Err(e) => return Err(io::Error::new(
+                    ErrorKind::Other,
+                    format!("failed to authenticate client: {}", e),
+                  ))
+                };
+
+                dbg!(res);
 
                 self.client_writer.enable_encryption(&secret);
                 self.client_reader.enable_encryption(&secret);
