@@ -62,7 +62,7 @@ async fn handle_client(
 
   let compression = 256;
 
-  let (name, id) = match conn.handshake(compression, key, der_key).await? {
+  let info = match conn.handshake(compression, key, der_key).await? {
     Some(v) => v,
     // Means the client was either not allowed to join, or was just sending a status request.
     None => return Ok(()),
@@ -79,9 +79,10 @@ async fn handle_client(
 
   // Tells the server who this client is
   let mut out = sb::Packet::new(sb::ID::Login);
-  out.set_str("username".into(), name);
-  out.set_uuid("uuid".into(), id);
+  out.set_str("username".into(), info.name);
+  out.set_uuid("uuid".into(), info.id);
   out.set_int("ver".into(), ver);
+  // TODO: Send texture data
   client_listener.send_to_server(out).await?;
 
   let mut handles = vec![];

@@ -119,15 +119,14 @@ impl<'de> Deserialize<'de> for UUID {
       type Value = UUID;
 
       fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-        formatter.write_str("a dashed UUID")
+        formatter.write_str("a UUID")
       }
 
       fn visit_str<E>(self, value: &str) -> Result<UUID, E>
       where
         E: de::Error,
       {
-        UUID::from_dashed_str(value)
-          .map_err(|_| de::Error::invalid_value(Unexpected::Str(value), &self))
+        UUID::from_str(value).map_err(|_| de::Error::invalid_value(Unexpected::Str(value), &self))
       }
     }
     deserializer.deserialize_str(Inner)

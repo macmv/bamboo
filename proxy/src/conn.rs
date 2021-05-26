@@ -14,9 +14,9 @@ use common::{
 };
 use rand::{rngs::OsRng, RngCore};
 use rsa::{padding::PaddingScheme, RSAPrivateKey};
-use serde_derive::Serialize;
+use serde_derive::{Deserialize, Serialize};
 use sha1::{Digest, Sha1};
-use std::{collections::HashMap, convert::TryInto, error::Error, io, io::ErrorKind, sync::Arc};
+use std::{convert::TryInto, error::Error, io, io::ErrorKind, sync::Arc};
 use tokio::sync::{mpsc, oneshot};
 use tokio_stream::wrappers::ReceiverStream;
 use tonic::{transport::channel::Channel, Request, Status, Streaming};
@@ -63,6 +63,25 @@ pub struct ServerListener {
   server: Streaming<proto::Packet>,
   gen:    Arc<Generator>,
   ver:    ProtocolVersion,
+}
+
+#[derive(Deserialize, Debug)]
+pub struct LoginInfo {
+  pub id:         UUID,
+  // Player's username
+  pub name:       String,
+  // Things like textures
+  pub properties: Vec<LoginProperty>,
+}
+
+#[derive(Deserialize, Debug)]
+pub struct LoginProperty {
+  // Example: "textures"
+  pub name:      String,
+  // Example: base64 encoded png
+  pub value:     String,
+  // Example: base64 signature, signed with Yggdrasil's private key
+  pub signature: Option<String>,
 }
 
 impl ClientListener {
@@ -249,11 +268,11 @@ impl Conn {
   }
 
   /// Sends the login success packet, and sets the state to Play.
-  async fn send_success(&mut self, uuid: &UUID, username: &str) -> io::Result<()> {
+  async fn send_success(&mut self, info: &LoginInfo) -> io::Result<()> {
     // Login success
     let mut out = Packet::new(2, self.ver);
-    out.write_str(&uuid.as_dashed_str());
-    out.write_str(username);
+    out.write_str(&info.id.as_dashed_str());
+    out.write_str(&info.name);
     self.client_writer.write(out).await?;
 
     self.state = State::Play;
@@ -281,14 +300,29 @@ impl Conn {
     }
   }
 
+  /// Runs the entire login process with the client. If compression is 0, then
+  /// compression will not be enabled. The key should always be the server's
+  /// private key, even if it won't be used. The der_key should be the der
+  /// encoded public key. Although this function could just generate that from
+  /// the private key, this is faster. Also, if the der_key is None, then
+  /// encryption will be disabled.
+  ///
+  /// This function will return an error if anything goes wrong. The client
+  /// should always be kicked if an error is returned. If Ok(None) is returned,
+  /// then the client will have already closed the connection. This is for when
+  /// the client just wants to get the status of the server. If this function
+  /// returns Ok(Some(LoginInfo)), then a connection should be initialized with
+  /// a grpc server.
   pub async fn handshake(
     &mut self,
     compression: i32,
     key: RSAPrivateKey,
     der_key: Option<Vec<u8>>,
-  ) -> io::Result<Option<(String, UUID)>> {
-    let mut username = None;
-    let mut uuid = None;
+  ) -> io::Result<Option<LoginInfo>> {
+    // The name sent from the client. The mojang auth server also sends us a
+    // username; we use this to validate the client info with the mojang auth info.
+    let mut username: Option<String> = None;
+    let mut info = None;
     // The four byte verify token, used by the client in encryption.
     let mut token = [0u8; 4];
     'login: loop {
@@ -366,11 +400,15 @@ impl Conn {
                   ));
                 }
                 let name = p.read_str();
-                info!("got username {}", &name);
-                let id = UUID::from_bytes(*md5::compute(&name));
-
-                username = Some(name);
-                uuid = Some(id);
+                username = Some(name.to_string());
+                if der_key.is_none() {
+                  info = Some(LoginInfo {
+                    // Generate uuid if we are in offline mode
+                    id: UUID::from_bytes(*md5::compute(&name)),
+                    name,
+                    properties: vec![],
+                  });
+                }
 
                 match &der_key {
                   Some(key) => {
@@ -389,7 +427,7 @@ impl Conn {
                   }
                   None => {
                     self.send_compression(compression).await?;
-                    self.send_success(uuid.as_ref().unwrap(), username.as_ref().unwrap()).await?;
+                    self.send_success(info.as_ref().unwrap()).await?;
                     // Successful login, we can break now
                     break 'login;
                   }
@@ -441,25 +479,29 @@ impl Conn {
                 hash.update("");
                 hash.update(secret);
                 hash.update(der_key.unwrap());
-                let res = match reqwest::get(format!(
+                info = match reqwest::get(format!(
                   "https://sessionserver.mojang.com/session/minecraft/hasJoined?username={}&serverId={}",
                   username.as_ref().unwrap(),
                   hexdigest(hash)
                 )).await {
-                  Ok(v) => v,
+                  Ok(v) => match v.json().await {
+                    Ok(v) => Some(v),
+                    Err(e) => return Err(io::Error::new(
+                      ErrorKind::InvalidData,
+                      format!("invalid json data recieved from session server: {}", e),
+                    ))
+                  },
                   Err(e) => return Err(io::Error::new(
                     ErrorKind::Other,
                     format!("failed to authenticate client: {}", e),
                   ))
                 };
 
-                dbg!(res);
-
                 self.client_writer.enable_encryption(&secret);
                 self.client_reader.enable_encryption(&secret);
 
                 self.send_compression(compression).await?;
-                self.send_success(uuid.as_ref().unwrap(), username.as_ref().unwrap()).await?;
+                self.send_success(info.as_ref().unwrap()).await?;
                 // Successful login, we can break now
                 break 'login;
               }
@@ -480,7 +522,7 @@ impl Conn {
         }
       }
     }
-    Ok(Some((username.unwrap(), uuid.unwrap())))
+    Ok(info)
   }
 }
 
