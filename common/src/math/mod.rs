@@ -5,12 +5,35 @@ mod pos;
 pub use chunk_pos::ChunkPos;
 pub use fpos::{FPos, FPosError};
 pub use pos::{Pos, PosError};
-use std::convert::TryInto;
+
+use serde::de::{self, Deserialize, Deserializer, Unexpected, Visitor};
+use std::{convert::TryInto, error::Error, fmt, num::ParseIntError, str::FromStr};
 
 use crate::proto;
 
 #[derive(Debug, Clone, Copy, Hash, PartialEq, Eq)]
 pub struct UUID(u128);
+
+#[derive(Debug)]
+pub enum UUIDParseError {
+  Int(ParseIntError),
+  Length(usize),
+}
+
+impl fmt::Display for UUIDParseError {
+  fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+    write!(
+      f,
+      "error while parsing uuid: {}",
+      match self {
+        Self::Int(e) => format!("int parsing error: {}", e),
+        Self::Length(len) => format!("invalid length: {}", len),
+      }
+    )
+  }
+}
+
+impl Error for UUIDParseError {}
 
 impl UUID {
   pub fn from_bytes(v: [u8; 16]) -> Self {
@@ -21,6 +44,14 @@ impl UUID {
   }
   pub fn from_proto(v: proto::Uuid) -> Self {
     Self(u128::from_be_bytes(v.be_data.try_into().unwrap()))
+  }
+  /// Parses the string as a uuid with dashes in between. This is the same
+  /// format returned from [`as_dashed_str`](Self::as_dashed_str).
+  pub fn from_dashed_str(s: &str) -> Result<Self, UUIDParseError> {
+    if s.len() != 36 {
+      return Err(UUIDParseError::Length(s.len()));
+    }
+    Self::from_str(&s.split('-').collect::<Vec<&str>>().join(""))
   }
   pub fn as_proto(&self) -> proto::Uuid {
     proto::Uuid { be_data: self.as_be_bytes().to_vec() }
@@ -36,7 +67,7 @@ impl UUID {
   pub fn as_dashed_str(&self) -> String {
     format!(
       "{:x}-{:x}-{:x}-{:x}-{:x}",
-      //         11111111222233334444555555555555
+      //          11111111222233334444555555555555
       (self.0 & 0xffffffff000000000000000000000000) >> (24 * 4), // 4 bits per digit
       (self.0 & 0x00000000ffff00000000000000000000) >> (20 * 4),
       (self.0 & 0x000000000000ffff0000000000000000) >> (16 * 4),
@@ -61,6 +92,45 @@ impl UUID {
   /// protocol.
   pub fn as_be_bytes(&self) -> [u8; 16] {
     self.0.to_be_bytes()
+  }
+}
+
+impl FromStr for UUID {
+  type Err = UUIDParseError;
+
+  fn from_str(s: &str) -> Result<Self, Self::Err> {
+    if s.len() != 32 {
+      return Err(UUIDParseError::Length(s.len()));
+    }
+    match u128::from_str_radix(s, 16) {
+      Ok(v) => Ok(Self::from_u128(v)),
+      Err(e) => Err(UUIDParseError::Int(e)),
+    }
+  }
+}
+
+impl<'de> Deserialize<'de> for UUID {
+  fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+  where
+    D: Deserializer<'de>,
+  {
+    struct Inner;
+    impl<'de> Visitor<'de> for Inner {
+      type Value = UUID;
+
+      fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+        formatter.write_str("a dashed UUID")
+      }
+
+      fn visit_str<E>(self, value: &str) -> Result<UUID, E>
+      where
+        E: de::Error,
+      {
+        UUID::from_dashed_str(value)
+          .map_err(|_| de::Error::invalid_value(Unexpected::Str(value), &self))
+      }
+    }
+    deserializer.deserialize_str(Inner)
   }
 }
 
