@@ -1,10 +1,12 @@
 mod chunk_pos;
 mod fpos;
 mod pos;
+mod rng;
 
 pub use chunk_pos::ChunkPos;
 pub use fpos::{FPos, FPosError};
 pub use pos::{Pos, PosError};
+pub use rng::WyhashRng;
 
 use serde::de::{self, Deserialize, Deserializer, Unexpected, Visitor};
 use std::{convert::TryInto, error::Error, fmt, num::ParseIntError, str::FromStr};
