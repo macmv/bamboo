@@ -25,7 +25,7 @@ use common::{
 
 use crate::{block, entity, item, net::Connection, player::Player};
 use chunk::MultiChunk;
-use gen::Generator;
+use gen::WorldGen;
 
 // pub struct ChunkRef<'a> {
 //   pos:    ChunkPos,
@@ -46,7 +46,7 @@ pub struct World {
   block_converter:  Arc<block::TypeConverter>,
   item_converter:   Arc<item::TypeConverter>,
   entity_converter: Arc<entity::TypeConverter>,
-  generator:        StdMutex<Generator>,
+  generator:        StdMutex<WorldGen>,
 }
 
 pub struct WorldManager {
@@ -71,7 +71,7 @@ impl World {
       block_converter,
       item_converter,
       entity_converter,
-      generator: StdMutex::new(Generator::new()),
+      generator: StdMutex::new(WorldGen::new()),
     }
   }
   async fn new_player(self: Arc<Self>, player: Player) {

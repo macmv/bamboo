@@ -1,60 +1,35 @@
 use super::chunk::MultiChunk;
 use crate::block;
-use common::math::{ChunkPos, PointGrid, Pos};
+use common::math::{ChunkPos, PointGrid, Pos, Voronoi};
 use noise::{NoiseFn, Perlin};
 use std::cmp::Ordering;
 
-pub struct Generator {
-  noise: Perlin,
-  grid:  PointGrid,
+mod desert;
+mod forest;
+
+pub trait BiomeGen {
+  fn fill_chunk(&self, world: &WorldGen, pos: ChunkPos, chunk: &mut MultiChunk);
 }
 
-impl Generator {
+pub struct WorldGen {
+  biome_map: Voronoi,
+  biomes:    Vec<Box<dyn BiomeGen + Send>>,
+  height:    Perlin,
+}
+
+impl WorldGen {
   pub fn new() -> Self {
-    Self { noise: Perlin::new(), grid: PointGrid::new(12345, 16, 5) }
-  }
-  pub fn generate(&self, pos: ChunkPos, c: &mut MultiChunk) {
-    // This is the height at the middle of the chunk. It is a good average height
-    // for the whole chunk.
-    let average_stone_height = self.height_at(pos.block() + Pos::new(8, 0, 8)) as i32 - 5;
-    c.fill_kind(Pos::new(0, 0, 0), Pos::new(15, average_stone_height, 15), block::Kind::Stone)
-      .unwrap();
-    for x in 0..16 {
-      for z in 0..16 {
-        let height = self.height_at(pos.block() + Pos::new(x, 0, z)) as i32;
-        let stone_height = height - 5;
-        match stone_height.cmp(&average_stone_height) {
-          Ordering::Less => {
-            c.fill_kind(
-              Pos::new(x, stone_height + 1, z),
-              Pos::new(x, average_stone_height, z),
-              block::Kind::Air,
-            )
-            .unwrap();
-          }
-          Ordering::Greater => {
-            c.fill_kind(
-              Pos::new(x, average_stone_height, z),
-              Pos::new(x, stone_height, z),
-              block::Kind::Stone,
-            )
-            .unwrap();
-          }
-          _ => {}
-        }
-        c.fill_kind(Pos::new(x, height - 4, z), Pos::new(x, height - 1, z), block::Kind::Dirt)
-          .unwrap();
-        c.set_kind(Pos::new(x, height, z), block::Kind::Grass).unwrap();
-        // Trees
-        let p = pos.block() + Pos::new(x, 0, z);
-        if self.grid.contains(p.x(), p.z()) {
-          c.fill_kind(Pos::new(x, height + 1, z), Pos::new(x, height + 4, z), block::Kind::Stone)
-            .unwrap();
-        }
-      }
+    Self {
+      biome_map: Voronoi::new(1231451),
+      biomes:    vec![desert::Gen::new(), forest::Gen::new()],
+      height:    Perlin::new(),
     }
   }
-  fn height_at(&self, pos: Pos) -> f64 {
-    self.noise.get([pos.x() as f64 / 100.0, pos.z() as f64 / 100.0]) * 30.0 + 60.0
+  pub fn generate(&self, pos: ChunkPos, c: &mut MultiChunk) {
+    let biome = self.biome_map.get(pos.block().x(), pos.block().z()) as usize % self.biomes.len();
+    self.biomes[biome].fill_chunk(self, pos, c);
+  }
+  pub fn height_at(&self, pos: Pos) -> f64 {
+    self.height.get([pos.x() as f64 / 100.0, pos.z() as f64 / 100.0]) * 30.0 + 60.0
   }
 }
