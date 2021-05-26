@@ -62,7 +62,11 @@ async fn handle_client(
 
   let compression = 256;
 
-  let (name, id) = conn.handshake(compression, key, der_key).await?;
+  let (name, id) = match conn.handshake(compression, key, der_key).await? {
+    Some(v) => v,
+    // Means the client was either not allowed to join, or was just sending a status request.
+    None => return Ok(()),
+  };
 
   // These four values are passed to each listener. When one listener closes, it
   // sends a message to the tx. Since the rx is passed to the other listener, that

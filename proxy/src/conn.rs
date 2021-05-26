@@ -285,7 +285,7 @@ impl Conn {
     compression: i32,
     key: RSAPrivateKey,
     der_key: Option<Vec<u8>>,
-  ) -> io::Result<(String, UUID)> {
+  ) -> io::Result<Option<(String, UUID)>> {
     let mut username = None;
     let mut uuid = None;
     // The four byte verify token, used by the client in encryption.
@@ -343,6 +343,8 @@ impl Conn {
                 let mut out = Packet::new(1, self.ver);
                 out.write_u64(id);
                 self.client_writer.write(out).await?;
+                // Client is done sending packets, we can close now.
+                return Ok(None);
               }
               _ => {
                 return Err(io::Error::new(
@@ -459,6 +461,6 @@ impl Conn {
         }
       }
     }
-    Ok((username.unwrap(), uuid.unwrap()))
+    Ok(Some((username.unwrap(), uuid.unwrap())))
   }
 }
