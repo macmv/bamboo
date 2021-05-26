@@ -221,7 +221,7 @@ impl World {
       // Make sure that the chunk was not written in between locking this chunk
       chunks.entry(pos).or_insert_with(|| {
         let mut c = MultiChunk::new(self.block_converter.clone());
-        self.generator.lock().unwrap().generate(&mut c);
+        self.generator.lock().unwrap().generate(pos, &mut c);
         Arc::new(StdMutex::new(c))
       });
     }

@@ -68,6 +68,9 @@ impl Chunk {
     if !(0..16).contains(&max_index) {
       return Err(max.err("Y coordinate is outside of chunk".into()));
     }
+    if max_index < min_index {
+      return Err(max.err("max is less than min".into()));
+    }
     if max_index >= self.sections.len() {
       self.sections.resize_with(max_index + 1, || None);
     }
