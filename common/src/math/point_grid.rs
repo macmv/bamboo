@@ -20,8 +20,8 @@ impl PointGrid {
     for row in points.iter_mut() {
       for p in row.iter_mut() {
         let num = rng.next_u64();
-        p.0 = num as u32;
-        p.1 = (num >> 32) as u32;
+        p.0 = num as u32 % square_size;
+        p.1 = (num >> 32) as u32 % square_size;
       }
     }
     Self { square_size, points }

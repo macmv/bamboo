@@ -1,16 +1,17 @@
 use super::chunk::MultiChunk;
 use crate::block;
-use common::math::{ChunkPos, Pos};
+use common::math::{ChunkPos, PointGrid, Pos};
 use noise::{NoiseFn, Perlin};
 use std::cmp::Ordering;
 
 pub struct Generator {
   noise: Perlin,
+  grid:  PointGrid,
 }
 
 impl Generator {
   pub fn new() -> Self {
-    Self { noise: Perlin::new() }
+    Self { noise: Perlin::new(), grid: PointGrid::new(12345, 16, 5) }
   }
   pub fn generate(&self, pos: ChunkPos, c: &mut MultiChunk) {
     // This is the height at the middle of the chunk. It is a good average height
@@ -44,6 +45,12 @@ impl Generator {
         c.fill_kind(Pos::new(x, height - 4, z), Pos::new(x, height - 1, z), block::Kind::Dirt)
           .unwrap();
         c.set_kind(Pos::new(x, height, z), block::Kind::Grass).unwrap();
+        // Trees
+        let p = pos.block() + Pos::new(x, 0, z);
+        if self.grid.contains([p.x(), p.z()]) {
+          c.fill_kind(Pos::new(x, height + 1, z), Pos::new(x, height + 4, z), block::Kind::Stone)
+            .unwrap();
+        }
       }
     }
   }

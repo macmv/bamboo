@@ -10,7 +10,7 @@ impl WyhashRng {
 
 impl RngCore for WyhashRng {
   fn next_u64(&mut self) -> u64 {
-    self.0 += 0x60bee2bee120fc15;
+    self.0 = self.0.wrapping_add(0x60bee2bee120fc15);
     let mut tmp = self.0 as u128 * 0xa3b195354a39b70d;
     let m1 = ((tmp >> 64) ^ tmp) as u64;
     tmp = m1 as u128 * 0x1b03738712fad5c9;
