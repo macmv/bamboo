@@ -22,6 +22,7 @@ impl ChunkSection for Section {
   /// In release mode, the position is not checked. In any other mode, a
   /// PosError will be returned if any of the x, y, or z are outside of 0..16
   fn set_block(&mut self, pos: Pos, ty: u32) -> Result<(), PosError> {
+    #[cfg(debug_assertions)]
     if pos.x() >= 16 || pos.x() < 0 || pos.y() >= 16 || pos.y() < 0 || pos.z() >= 16 || pos.z() < 0
     {
       return Err(pos.err("expected a pos within 0 <= x, y, z < 16".into()));
@@ -31,6 +32,16 @@ impl ChunkSection for Section {
     #[cfg(debug_assertions)]
     let v = u16::try_from(ty).unwrap();
     self.data[pos.y() as usize * 16 * 16 + pos.z() as usize * 16 + pos.x() as usize] = v;
+    Ok(())
+  }
+  fn fill(&mut self, min: Pos, max: Pos, ty: u32) -> Result<(), PosError> {
+    for y in min.y()..=max.y() {
+      for z in min.z()..=max.z() {
+        for x in min.x()..=max.x() {
+          self.set_block(Pos::new(x, y, z), ty)?;
+        }
+      }
+    }
     Ok(())
   }
   /// This updates the internal data to contain a block at the given position.

@@ -12,6 +12,14 @@ pub trait Section {
   /// higher bits in the id. In release, this should be done silently, and in
   /// debug, this should panic.
   fn set_block(&mut self, pos: Pos, ty: u32) -> Result<(), PosError>;
+  /// This fills the chunk section with the given block. Min and max are
+  /// inclusive coordinates, and min must be less than or equal to max. This
+  /// function should only validate that if debug assertions are enabled.
+  ///
+  /// For fixed chunks, this is the same as calling set_block in a for loop.
+  /// However, for paletted chunks, this can lead to large performance
+  /// improvements.
+  fn fill(&mut self, min: Pos, max: Pos, ty: u32) -> Result<(), PosError>;
   /// This gets the block id at the given position. If the position is outside
   /// of the chunk column, it will return an error. If this chunk is <1.13, then
   /// it will return an number in the format `(id << 4) | meta`
