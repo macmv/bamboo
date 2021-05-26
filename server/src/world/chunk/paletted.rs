@@ -6,6 +6,7 @@ use common::{
 };
 use std::{collections::HashMap, convert::TryFrom};
 
+#[derive(Debug)]
 pub struct Section {
   bits_per_block:  u8,
   data:            Vec<u64>,
@@ -235,6 +236,10 @@ impl ChunkSection for Section {
     // breaking/placing blocks, as air will always be in the palette. So in
     // survival, this will never come up.
     let prev = self.get_palette(pos);
+    #[cfg(debug_assertions)]
+    if prev > self.block_amounts.len() as u32 {
+      dbg!(&self, prev, pos);
+    }
     let palette_id = if let Some(&palette_id) = self.reverse_palette.get(&ty) {
       if prev == palette_id {
         // The same block is being placed, so we do nothing.
@@ -244,16 +249,6 @@ impl ChunkSection for Section {
       palette_id
     } else {
       let palette_id = self.insert(ty);
-      // Sanity check
-      #[cfg(debug_assertions)]
-      if prev == palette_id {
-        // This can never happen, because ty should not be in the palette. `insert()`
-        // should return a unique id, and this asserts that is true.
-        unreachable!(
-          "while setting {} to {}, prev and palette id were the same ({}, should never happen)",
-          pos, ty, prev
-        );
-      }
       self.set_palette(pos, palette_id);
       palette_id
     };
