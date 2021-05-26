@@ -9,12 +9,6 @@ impl Generator {
     Self {}
   }
   pub fn generate(&self, c: &mut MultiChunk) {
-    for x in 0..16 {
-      for y in 0..20 {
-        for z in 0..16 {
-          c.set_kind(Pos::new(x, y, z), block::Kind::Grass).unwrap();
-        }
-      }
-    }
+    c.fill_kind(Pos::new(0, 0, 0), Pos::new(15, 20, 15), block::Kind::Grass).unwrap();
   }
 }
