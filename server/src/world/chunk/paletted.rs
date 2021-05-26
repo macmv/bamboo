@@ -259,7 +259,6 @@ impl ChunkSection for Section {
     self.block_amounts[palette_id as usize] += 1;
     self.block_amounts[prev as usize] -= 1;
     if self.block_amounts[prev as usize] == 0 {
-      println!("removing after setting {}", ty);
       self.remove(prev);
     }
     Ok(())
