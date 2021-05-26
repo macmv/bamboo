@@ -51,6 +51,7 @@ impl Section {
   fn set_palette(&mut self, pos: Pos, id: u32) {
     let (first, second, shift) = self.index(pos);
     let bpb = self.bits_per_block as usize;
+    #[cfg(debug_assertions)]
     if id >= 1 << bpb {
       panic!("passed invalid id {} (must be within 0..{})", id, 1 << bpb);
     }
@@ -145,44 +146,14 @@ impl Section {
   /// has been modified. This also checks if each block id is `>= id`, not `>
   /// id`.
   fn shift_all_above(&mut self, id: u32, shift_amount: i32) {
-    let bpb = self.bits_per_block as usize;
-    let mut bit_index = 0;
-    let mask = (1 << bpb) - 1;
-    for _ in 0..16 {
-      for _ in 0..16 {
-        for _ in 0..16 {
-          // Manual implementation of get_palette and set_palette, as calling index()
-          // would be slower.
-          let first = bit_index / 64;
-          let second = (bit_index + bpb - 1) / 64;
-          let shift = bit_index % 64;
-          let mut val = if first == second {
-            // Get the id from data
-            self.data[first] >> shift & mask
-          } else {
-            let second_shift = 64 - shift;
-            // Get the id from the two values
-            (self.data[first] >> shift) & mask | (self.data[second] << second_shift) & mask
-          } as i32;
-          if val as u32 >= id {
-            val += shift_amount;
-            let val = val as u64;
-            if first == second {
-              // Clear the bits of the new id
-              self.data[first] &= !(mask << shift);
-              // Set the new id
-              self.data[first] |= val << shift;
-            } else {
-              let second_shift = 64 - shift;
-              // Clear the bits of the new id
-              self.data[first] &= !(mask << shift);
-              self.data[second] &= !(mask >> second_shift);
-              // Set the new id
-              self.data[first] |= val << shift;
-              self.data[second] |= val >> second_shift;
-            }
+    for y in 0..16 {
+      for z in 0..16 {
+        for x in 0..16 {
+          let pos = Pos::new(x, y, z);
+          let val = self.get_palette(pos);
+          if val >= id {
+            self.set_palette(pos, (val as i32 + shift_amount) as u32);
           }
-          bit_index += bpb;
         }
       }
     }
@@ -237,11 +208,7 @@ impl ChunkSection for Section {
     // happen ingame is with a /setblock. This will not happen at all with
     // breaking/placing blocks, as air will always be in the palette. So in
     // survival, this will never come up.
-    let prev = self.get_palette(pos);
-    #[cfg(debug_assertions)]
-    if prev > self.block_amounts.len() as u32 {
-      dbg!(&self, prev, pos);
-    }
+    let mut prev = self.get_palette(pos);
     let palette_id = if let Some(&palette_id) = self.reverse_palette.get(&ty) {
       if prev == palette_id {
         // The same block is being placed, so we do nothing.
@@ -251,12 +218,18 @@ impl ChunkSection for Section {
       palette_id
     } else {
       let palette_id = self.insert(ty);
+      // If insert() was called, and it inserted before prev, the block_amounts would
+      // have been shifted, and prev needs to be shifted as well.
+      if palette_id <= prev {
+        prev += 1;
+      }
       self.set_palette(pos, palette_id);
       palette_id
     };
     self.block_amounts[palette_id as usize] += 1;
     self.block_amounts[prev as usize] -= 1;
     if self.block_amounts[prev as usize] == 0 {
+      println!("removing after setting {}", ty);
       self.remove(prev);
     }
     Ok(())
@@ -312,7 +285,6 @@ mod tests {
     assert_eq!(s.index(Pos::new(12, 0, 0)), (0, 1, 60));
     assert_eq!(s.index(Pos::new(13, 0, 0)), (1, 1, 1));
   }
-
   #[test]
   fn test_set_palette() {
     let mut s = Section::default();
@@ -575,8 +547,8 @@ mod tests {
 
     s.set_block(Pos::new(0, 0, 0), 5)?;
 
-    let mut data = vec![0; 16 * 16 * 16 * 4 / 64];
-    data[0] = 0x1;
+    let mut data = vec![0x1111111111111111; 16 * 16 * 16 * 4 / 64];
+    data[0] = 0x1111111111111110;
 
     assert_eq!(s.data, data);
     assert_eq!(s.palette, vec![5, 20]);
