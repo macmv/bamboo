@@ -559,4 +559,29 @@ mod tests {
 
     Ok(())
   }
+  #[test]
+  fn test_set_all() -> Result<(), PosError> {
+    let mut s = Section::default();
+    for x in 0..16 {
+      for y in 0..16 {
+        for z in 0..16 {
+          s.set_block(Pos::new(x, y, z), 20)?;
+        }
+      }
+    }
+    assert_eq!(s.data, vec![0; 16 * 16 * 16 * 4 / 64]);
+    assert_eq!(s.palette, vec![20]);
+    assert_eq!(s.block_amounts, vec![4096]);
+
+    s.set_block(Pos::new(0, 0, 0), 5)?;
+
+    let mut data = vec![0; 16 * 16 * 16 * 4 / 64];
+    data[0] = 0x1;
+
+    assert_eq!(s.data, data);
+    assert_eq!(s.palette, vec![5, 20]);
+    assert_eq!(s.block_amounts, vec![1, 4095]);
+
+    Ok(())
+  }
 }
