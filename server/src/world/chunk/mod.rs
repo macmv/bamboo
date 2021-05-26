@@ -5,7 +5,7 @@ mod section;
 
 pub use multi::MultiChunk;
 
-use std::collections::HashMap;
+use std::{cmp, collections::HashMap};
 
 use section::Section;
 
@@ -38,11 +38,10 @@ impl Chunk {
   /// In release mode, the position is not checked. In any other mode, a
   /// PosError will be returned if any of the x, y, or z are outside of 0..16
   fn set_block(&mut self, pos: Pos, ty: u32) -> Result<(), PosError> {
-    let index = pos.chunk_y();
+    let index = pos.chunk_y() as usize;
     if !(0..16).contains(&index) {
       return Err(pos.err("Y coordinate is outside of chunk".into()));
     }
-    let index = index as usize;
     if index >= self.sections.len() {
       self.sections.resize_with(index + 1, || None);
     }
@@ -56,6 +55,43 @@ impl Chunk {
       Some(s) => s.set_block(Pos::new(pos.x(), pos.chunk_rel_y(), pos.z()), ty),
       None => unreachable!(),
     }
+  }
+  /// This fills the given region with the given block. See
+  /// [`set_block`](Self::set_block) for details about the bounds of min and
+  /// max.
+  fn fill(&mut self, min: Pos, max: Pos, ty: u32) -> Result<(), PosError> {
+    let min_index = min.chunk_y() as usize;
+    let max_index = max.chunk_y() as usize;
+    if !(0..16).contains(&min_index) {
+      return Err(min.err("Y coordinate is outside of chunk".into()));
+    }
+    if !(0..16).contains(&max_index) {
+      return Err(max.err("Y coordinate is outside of chunk".into()));
+    }
+    if max_index >= self.sections.len() {
+      self.sections.resize_with(max_index + 1, || None);
+    }
+    for index in min_index..=max_index {
+      if self.sections[index].is_none() {
+        self.sections[index] = Some(match &self.kind {
+          ChunkKind::Paletted => paletted::Section::new(),
+          ChunkKind::Fixed => fixed::Section::new(),
+        });
+      }
+      match &mut self.sections[index] {
+        Some(s) => {
+          let min = Pos::new(min.x(), cmp::max(min.y(), index as i32 * 16), min.z());
+          let max = Pos::new(max.x(), cmp::min(max.y(), index as i32 * 16 + 15), max.z());
+          s.fill(
+            Pos::new(min.x(), min.chunk_rel_y(), min.z()),
+            Pos::new(max.x(), max.chunk_rel_y(), max.z()),
+            ty,
+          )?;
+        }
+        None => unreachable!(),
+      }
+    }
+    Ok(())
   }
   /// This updates the internal data to contain a block at the given position.
   /// In release mode, the position is not checked. In any other mode, a

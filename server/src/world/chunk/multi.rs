@@ -39,6 +39,18 @@ impl MultiChunk {
     Ok(())
   }
 
+  /// Fills the region within this chunk. Min and max must be within the chunk
+  /// column (see [`set_type`](Self::set_type)), and min must be less than or
+  /// equal to max.
+  ///
+  /// Since multi chunks always store a fixed chunk and a paletted chunk, this
+  /// will always be faster than calling set_type in a loop.
+  pub fn fill(&mut self, min: Pos, max: Pos, ty: &block::Type) -> Result<(), PosError> {
+    self.fixed.fill(min, max, self.types.to_old(ty.id(), BlockVersion::V1_8))?;
+    self.paletted.fill(min, max, ty.id())?;
+    Ok(())
+  }
+
   /// Sets a block within this chunk. This is the same as
   /// [`set_type`](Self::set_type), but it uses a kind instead of a type. This
   /// will use the default type of the given kind.
