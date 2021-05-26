@@ -146,14 +146,44 @@ impl Section {
   /// has been modified. This also checks if each block id is `>= id`, not `>
   /// id`.
   fn shift_all_above(&mut self, id: u32, shift_amount: i32) {
-    for y in 0..16 {
-      for z in 0..16 {
-        for x in 0..16 {
-          let pos = Pos::new(x, y, z);
-          let val = self.get_palette(pos);
-          if val >= id {
-            self.set_palette(pos, (val as i32 + shift_amount) as u32);
+    let bpb = self.bits_per_block as usize;
+    let mut bit_index = 0;
+    let mask = (1 << bpb) - 1;
+    for _ in 0..16 {
+      for _ in 0..16 {
+        for _ in 0..16 {
+          // Manual implementation of get_palette and set_palette, as calling index()
+          // would be slower.
+          let first = bit_index / 64;
+          let second = (bit_index + bpb - 1) / 64;
+          let shift = bit_index % 64;
+          let mut val = if first == second {
+            // Get the id from data
+            self.data[first] >> shift & mask
+          } else {
+            let second_shift = 64 - shift;
+            // Get the id from the two values
+            (self.data[first] >> shift) & mask | (self.data[second] << second_shift) & mask
+          } as i32;
+          if val as u32 >= id {
+            val += shift_amount;
+            let val = val as u64;
+            if first == second {
+              // Clear the bits of the new id
+              self.data[first] &= !(mask << shift);
+              // Set the new id
+              self.data[first] |= val << shift;
+            } else {
+              let second_shift = 64 - shift;
+              // Clear the bits of the new id
+              self.data[first] &= !(mask << shift);
+              self.data[second] &= !(mask >> second_shift);
+              // Set the new id
+              self.data[first] |= val << shift;
+              self.data[second] |= val >> second_shift;
+            }
           }
+          bit_index += bpb;
         }
       }
     }
