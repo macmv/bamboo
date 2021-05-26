@@ -14,6 +14,6 @@ impl Voronoi {
 
   pub fn get(&self, x: i32, y: i32) -> u32 {
     let (px, py) = self.grid.closest_point(x, y);
-    0
+    (px ^ py) as u32
   }
 }

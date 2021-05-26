@@ -29,19 +29,28 @@ impl PointGrid {
 
   /// Returns true if there is a point at that position. The coordinates will be
   /// wrapped around the grid.
-  pub fn contains(&self, point: [i32; 2]) -> bool {
-    let (rx, ry, x, y) = self.normalize(point);
+  pub fn contains(&self, x: i32, y: i32) -> bool {
+    let (rx, ry, x, y) = self.normalize(x, y);
     let p = self.points[y as usize][x as usize];
     p.0 == rx && p.1 == ry
   }
 
-  fn normalize(&self, point: [i32; 2]) -> (u32, u32, u32, u32) {
+  /// Returns the closest point to the given point.
+  pub fn closest_point(&self, x: i32, y: i32) -> (i32, i32) {
+    let (_, _, px, py) = self.normalize(x, y);
+    let p = self.points[py as usize][px as usize];
+    let x = x / self.square_size as i32;
+    let y = y / self.square_size as i32;
+    (p.0 as i32 + x * self.square_size as i32, p.1 as i32 + y * self.square_size as i32)
+  }
+
+  fn normalize(&self, x: i32, y: i32) -> (u32, u32, u32, u32) {
     let s = self.square_size as i32;
-    let rx = ((point[0] % s) + s) as u32 % self.square_size;
-    let ry = ((point[1] % s) + s) as u32 % self.square_size;
+    let rx = ((x % s) + s) as u32 % self.square_size;
+    let ry = ((y % s) + s) as u32 % self.square_size;
     let len = self.points.len() as i32;
-    let x = (((point[0] / self.square_size as i32) % len) + len) as u32 % self.points.len() as u32;
-    let y = (((point[1] / self.square_size as i32) % len) + len) as u32 % self.points.len() as u32;
+    let x = (((x / self.square_size as i32) % len) + len) as u32 % self.points.len() as u32;
+    let y = (((y / self.square_size as i32) % len) + len) as u32 % self.points.len() as u32;
     (rx, ry, x, y)
   }
 }
@@ -53,8 +62,8 @@ mod tests {
   #[test]
   fn test_normalize() {
     let g = PointGrid { square_size: 5, points: vec![vec![], vec![], vec![], vec![]] };
-    assert_eq!(g.normalize([1, 3]), (1, 3, 0, 0));
-    assert_eq!(g.normalize([7, 2]), (2, 2, 1, 0));
+    assert_eq!(g.normalize(1, 3), (1, 3, 0, 0));
+    assert_eq!(g.normalize(7, 2), (2, 2, 1, 0));
   }
   #[test]
   fn test_contains() {
@@ -66,9 +75,9 @@ mod tests {
         vec![(0, 0), (0, 0), (0, 0)],
       ],
     };
-    dbg!(g.normalize([1, 1]));
-    assert!(g.contains([1, 1]));
-    dbg!(g.normalize([3, 9]));
-    assert!(g.contains([3, 9]));
+    dbg!(g.normalize(1, 1));
+    assert!(g.contains(1, 1));
+    dbg!(g.normalize(3, 9));
+    assert!(g.contains(3, 9));
   }
 }

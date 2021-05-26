@@ -47,7 +47,7 @@ impl Generator {
         c.set_kind(Pos::new(x, height, z), block::Kind::Grass).unwrap();
         // Trees
         let p = pos.block() + Pos::new(x, 0, z);
-        if self.grid.contains([p.x(), p.z()]) {
+        if self.grid.contains(p.x(), p.z()) {
           c.fill_kind(Pos::new(x, height + 1, z), Pos::new(x, height + 4, z), block::Kind::Stone)
             .unwrap();
         }
