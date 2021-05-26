@@ -600,4 +600,35 @@ mod tests {
 
     Ok(())
   }
+  #[test]
+  fn test_fill() -> Result<(), PosError> {
+    let mut s = Section::default();
+    s.fill(Pos::new(0, 0, 0), Pos::new(15, 15, 15), 20)?;
+    assert_eq!(s.data, vec![0x1111111111111111; 16 * 16 * 16 * 4 / 64]);
+    assert_eq!(s.palette, vec![0, 20]);
+    assert_eq!(s.block_amounts, vec![0, 4096]);
+
+    s.set_block(Pos::new(0, 0, 0), 5)?;
+
+    let mut data = vec![0x2222222222222222; 16 * 16 * 16 * 4 / 64];
+    data[0] = 0x2222222222222221;
+    assert_eq!(s.data, data);
+    assert_eq!(s.palette, vec![0, 5, 20]);
+    assert_eq!(s.block_amounts, vec![0, 1, 4095]);
+
+    let mut s = Section::default();
+    s.fill(Pos::new(3, 4, 5), Pos::new(8, 9, 10), 20)?;
+
+    for x in 0..16 {
+      for y in 0..16 {
+        for z in 0..16 {
+          let expected =
+            if x >= 3 && x <= 8 && y >= 4 && y <= 9 && z <= 5 && z <= 10 { 20 } else { 0 };
+          assert_eq!(s.get_block(Pos::new(x, y, z))?, expected);
+        }
+      }
+    }
+
+    Ok(())
+  }
 }
