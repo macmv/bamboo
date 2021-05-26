@@ -15,26 +15,35 @@ impl Generator {
   pub fn generate(&self, pos: ChunkPos, c: &mut MultiChunk) {
     // This is the height at the middle of the chunk. It is a good average height
     // for the whole chunk.
-    let average_height = self.height_at(pos.block() + Pos::new(8, 0, 8)) as i32;
-    c.fill_kind(Pos::new(0, 0, 0), Pos::new(15, average_height, 15), block::Kind::Grass).unwrap();
+    let average_stone_height = self.height_at(pos.block() + Pos::new(8, 0, 8)) as i32 - 5;
+    c.fill_kind(Pos::new(0, 0, 0), Pos::new(15, average_stone_height, 15), block::Kind::Stone)
+      .unwrap();
     for x in 0..16 {
       for z in 0..16 {
         let height = self.height_at(pos.block() + Pos::new(x, 0, z)) as i32;
-        match height.cmp(&average_height) {
+        let stone_height = height - 5;
+        match stone_height.cmp(&average_stone_height) {
           Ordering::Less => {
             c.fill_kind(
-              Pos::new(x, height + 1, z),
-              Pos::new(x, average_height, z),
+              Pos::new(x, stone_height + 1, z),
+              Pos::new(x, average_stone_height, z),
               block::Kind::Air,
             )
             .unwrap();
           }
           Ordering::Greater => {
-            c.fill_kind(Pos::new(x, average_height, z), Pos::new(x, height, z), block::Kind::Grass)
-              .unwrap();
+            c.fill_kind(
+              Pos::new(x, average_stone_height, z),
+              Pos::new(x, stone_height, z),
+              block::Kind::Stone,
+            )
+            .unwrap();
           }
           _ => {}
         }
+        c.fill_kind(Pos::new(x, height - 4, z), Pos::new(x, height - 1, z), block::Kind::Dirt)
+          .unwrap();
+        c.set_kind(Pos::new(x, height, z), block::Kind::Grass).unwrap();
       }
     }
   }
