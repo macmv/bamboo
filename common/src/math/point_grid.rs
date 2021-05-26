@@ -37,6 +37,33 @@ impl PointGrid {
 
   /// Returns the closest point to the given point.
   pub fn closest_point(&self, x: i32, y: i32) -> (i32, i32) {
+    let s = self.square_size as i32;
+    let points = vec![
+      self.get(x - s, y - s),
+      self.get(x, y - s),
+      self.get(x + s, y - s),
+      self.get(x - s, y),
+      self.get(x, y),
+      self.get(x + s, y),
+      self.get(x - s, y + s),
+      self.get(x, y + s),
+      self.get(x + s, y + s),
+    ];
+    let mut min_dist = s as f64 * 3.0;
+    let mut out = (0, 0);
+    for (px, py) in points {
+      let dist = ((px - x).pow(2) as f64 + (py - y).pow(2) as f64).sqrt();
+      if dist < min_dist {
+        out = (px, py);
+        min_dist = dist;
+      }
+    }
+    out
+  }
+
+  // Takes two absolute coordinates for a point, and retrieves the point in
+  // that square in absolute coordinate form.
+  fn get(&self, x: i32, y: i32) -> (i32, i32) {
     let (_, _, px, py) = self.normalize(x, y);
     let p = self.points[py as usize][px as usize];
     let x = x / self.square_size as i32;
@@ -44,6 +71,8 @@ impl PointGrid {
     (p.0 as i32 + x * self.square_size as i32, p.1 as i32 + y * self.square_size as i32)
   }
 
+  /// Takes a user-passed coordinate, and returns the relative x and y, along
+  /// with the x and y indicies to use to lookup the point.
   fn normalize(&self, x: i32, y: i32) -> (u32, u32, u32, u32) {
     let s = self.square_size as i32;
     let rx = ((x % s) + s) as u32 % self.square_size;
