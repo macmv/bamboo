@@ -26,6 +26,7 @@ md5 = "0.7.0"
 rand = "0.8.3"
 rsa = "0.4.0"
 rsa-der = "0.2.1"
+sha-1 = "0.9.6"
 
 [build-dependencies]
 data = { path = "../data" }

@@ -15,6 +15,7 @@ use common::{
 use rand::{rngs::OsRng, RngCore};
 use rsa::{padding::PaddingScheme, RSAPrivateKey};
 use serde_derive::Serialize;
+use sha1::{Digest, Sha1};
 use std::{convert::TryInto, error::Error, io, io::ErrorKind, sync::Arc};
 use tokio::sync::{mpsc, oneshot};
 use tokio_stream::wrappers::ReceiverStream;
@@ -436,6 +437,12 @@ impl Conn {
                   }
                 };
 
+                let mut hash = Sha1::new();
+                hash.update("");
+                hash.update(secret);
+                hash.update(der_key.unwrap());
+                let url = format!("https://sessionserver.mojang.com/session/minecraft/hasJoined?username={}&serverId={:x}", username.as_ref().unwrap(), hash.finalize());
+
                 self.client_writer.enable_encryption(&secret);
                 self.client_reader.enable_encryption(&secret);
 
@@ -462,5 +469,48 @@ impl Conn {
       }
     }
     Ok(Some((username.unwrap(), uuid.unwrap())))
+  }
+}
+
+fn hexdigest(hash: Sha1) -> String {
+  let mut hex = hash.finalize();
+
+  let negative = (hex[0] & 0x80) == 0x80;
+
+  if negative {
+    let mut carry = true;
+    for i in (0..hex.len()).rev() {
+      hex[i] = !hex[i];
+      if carry {
+        carry = hex[i] == 0xff;
+        hex[i] += 1;
+      }
+    }
+  }
+  let out = format!("{:x}", hex).trim_start_matches('0').into();
+  if negative {
+    format!("-{}", out)
+  } else {
+    out
+  }
+}
+
+#[cfg(test)]
+mod tests {
+  use super::*;
+
+  #[test]
+  fn test_sha1() {
+    let mut hash = Sha1::new();
+    hash.update(b"Notch");
+    assert_eq!(hexdigest(hash), "4ed1f46bbe04bc756bcb17c0c7ce3e4632f06a48");
+
+    let mut hash = Sha1::new();
+    hash.update(b"jeb_");
+    assert_eq!(hexdigest(hash), "-7c9d5b0044c130109a5d7b5fb5c317c02b4e28c1");
+
+    let mut hash = Sha1::new();
+    hash.update(b"simon");
+    assert_eq!(hexdigest(hash), "88e16a1019277b15d58faf0541e11910eb756f6");
   }
 }
