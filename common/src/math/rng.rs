@@ -2,6 +2,12 @@ use rand_core::{impls, Error, RngCore};
 
 pub struct WyhashRng(u64);
 
+impl WyhashRng {
+  pub fn new(seed: u64) -> Self {
+    WyhashRng(seed)
+  }
+}
+
 impl RngCore for WyhashRng {
   fn next_u64(&mut self) -> u64 {
     self.0 += 0x60bee2bee120fc15;

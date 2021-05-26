@@ -1,10 +1,12 @@
 mod chunk_pos;
 mod fpos;
+mod point_grid;
 mod pos;
 mod rng;
 
 pub use chunk_pos::ChunkPos;
 pub use fpos::{FPos, FPosError};
+pub use point_grid::PointGrid;
 pub use pos::{Pos, PosError};
 pub use rng::WyhashRng;
 
