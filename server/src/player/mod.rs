@@ -195,10 +195,18 @@ impl Player {
     pos.next_pitch = pitch;
   }
 
+  /// Sends the player a chat message.
   pub async fn send_message(&self, msg: &Chat) {
     let mut out = cb::Packet::new(cb::ID::Chat);
     out.set_str("message", msg.to_json());
-    out.set_byte("position", 0); // Chat box, not over hotbar
+    out.set_byte("position", 0); // Chat box, not system message or over hotbar
+    self.conn().send(out).await;
+  }
+  /// Sends the player a chat message, which will appear over their hotbar.
+  pub async fn send_hotbar(&self, msg: &Chat) {
+    let mut out = cb::Packet::new(cb::ID::Chat);
+    out.set_str("message", msg.to_json());
+    out.set_byte("position", 2); // Hotbar, not chat box or system message
     self.conn().send(out).await;
   }
 
