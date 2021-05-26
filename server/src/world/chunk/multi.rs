@@ -51,6 +51,18 @@ impl MultiChunk {
     Ok(())
   }
 
+  /// This is the same as [`fill`](Self::fill), but it converts the block kind
+  /// to it's default type.
+  pub fn fill_kind(&mut self, min: Pos, max: Pos, kind: block::Kind) -> Result<(), PosError> {
+    self.fixed.fill(
+      min,
+      max,
+      self.types.to_old(self.types.get(kind).default_type().id(), BlockVersion::V1_8),
+    )?;
+    self.paletted.fill(min, max, self.types.get(kind).default_type().id())?;
+    Ok(())
+  }
+
   /// Sets a block within this chunk. This is the same as
   /// [`set_type`](Self::set_type), but it uses a kind instead of a type. This
   /// will use the default type of the given kind.
