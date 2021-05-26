@@ -263,6 +263,16 @@ impl ChunkSection for Section {
     }
     Ok(())
   }
+  fn fill(&mut self, min: Pos, max: Pos, ty: u32) -> Result<(), PosError> {
+    if min == Pos::new(0, 0, 0) && max == Pos::new(15, 15, 15) {
+      *self = Section {
+        palette: vec![ty],
+        reverse_palette: vec![(ty, 0)].iter().cloned().collect(),
+        ..Default::default()
+      }
+    }
+    Ok(())
+  }
   fn get_block(&self, pos: Pos) -> Result<u32, PosError> {
     let id = self.get_palette(pos);
     Ok(self.palette[id as usize])
