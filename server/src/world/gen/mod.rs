@@ -1,8 +1,8 @@
 use super::chunk::MultiChunk;
 use crate::block;
-use common::math::{ChunkPos, PointGrid, Pos, Voronoi};
+use common::math::{ChunkPos, Pos, Voronoi};
 use noise::{NoiseFn, Perlin};
-use std::cmp::Ordering;
+use std::{cmp::Ordering, collections::HashSet};
 
 mod desert;
 mod forest;
@@ -95,6 +95,26 @@ pub trait BiomeGen {
       }
     }
   }
+  /// This fills a single block column with this chunk. If there are multiple
+  /// biomes in a chunk, this is called instead of fill_chunk. Y of pos will
+  /// always be 0.
+  fn fill_column(&self, world: &WorldGen, pos: Pos, c: &mut MultiChunk) {
+    let height = self.height_at(world, pos);
+    let pos = pos.chunk_rel();
+    let layers = self.layers();
+    let min_height = height - layers.total_height() as i32;
+    c.fill_kind(pos, pos + Pos::new(0, min_height, 0), layers.main_area).unwrap();
+    let mut level = min_height as u32;
+    for (k, depth) in &layers.layers {
+      c.fill_kind(
+        pos + Pos::new(0, level as i32, 0),
+        pos + Pos::new(0, (level + depth) as i32, 0),
+        *k,
+      )
+      .unwrap();
+      level += depth;
+    }
+  }
   /// Decorates the given chunk. This is called for every chunk where a block of
   /// this biome is in the radius of [`decorate_radius`].
   fn decorate(&self, _world: &WorldGen, _pos: ChunkPos, _c: &mut MultiChunk) {}
@@ -134,8 +154,27 @@ impl WorldGen {
     }
   }
   pub fn generate(&self, pos: ChunkPos, c: &mut MultiChunk) {
-    let biome = self.biome_map.get(pos.block().x(), pos.block().z()) as usize % self.biomes.len();
-    self.biomes[biome].fill_chunk(self, pos, c);
+    let mut biomes = HashSet::new();
+    for x in 0..16 {
+      for z in 0..16 {
+        let biome =
+          self.biome_map.get(pos.block().x() + x, pos.block().z() + z) as usize % self.biomes.len();
+        biomes.insert(biome);
+      }
+    }
+    if biomes.len() == 1 {
+      for b in biomes {
+        self.biomes[b].fill_chunk(self, pos, c);
+      }
+    } else {
+      for x in 0..16 {
+        for z in 0..16 {
+          let biome = self.biome_map.get(pos.block().x() + x, pos.block().z() + z) as usize
+            % self.biomes.len();
+          self.biomes[biome].fill_column(self, pos.block() + Pos::new(x, 0, z), c);
+        }
+      }
+    }
   }
   pub fn height_at(&self, pos: Pos) -> f64 {
     self.height.get([pos.x() as f64 / 100.0, pos.z() as f64 / 100.0]) * 30.0 + 60.0
