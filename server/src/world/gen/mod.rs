@@ -163,8 +163,8 @@ impl WorldGen {
       }
     }
     if biomes.len() == 1 {
-      for b in biomes {
-        self.biomes[b].fill_chunk(self, pos, c);
+      for b in &biomes {
+        self.biomes[*b].fill_chunk(self, pos, c);
       }
     } else {
       for x in 0..16 {
@@ -174,6 +174,9 @@ impl WorldGen {
           self.biomes[biome].fill_column(self, pos.block() + Pos::new(x, 0, z), c);
         }
       }
+    }
+    for b in &biomes {
+      self.biomes[*b].decorate(self, pos, c);
     }
   }
   pub fn height_at(&self, pos: Pos) -> f64 {
