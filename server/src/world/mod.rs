@@ -20,7 +20,7 @@ use common::{
   math::{ChunkPos, FPos, Pos, PosError, UUID},
   net::{cb, Other},
   proto::{player_list, Packet, PlayerList},
-  util::Chat,
+  util::chat::{Chat, Color},
   version::BlockVersion,
 };
 
@@ -43,7 +43,7 @@ use gen::WorldGen;
 pub struct World {
   chunks:           RwLock<HashMap<ChunkPos, Arc<StdMutex<MultiChunk>>>>,
   players:          Mutex<HashMap<UUID, Arc<Player>>>,
-  eid:              Arc<AtomicI32>,
+  eid:              AtomicI32,
   block_converter:  Arc<block::TypeConverter>,
   item_converter:   Arc<item::TypeConverter>,
   entity_converter: Arc<entity::TypeConverter>,
@@ -65,16 +65,53 @@ impl World {
     block_converter: Arc<block::TypeConverter>,
     item_converter: Arc<item::TypeConverter>,
     entity_converter: Arc<entity::TypeConverter>,
-  ) -> Self {
-    World {
+  ) -> Arc<Self> {
+    let world = Arc::new(World {
       chunks: RwLock::new(HashMap::new()),
       players: Mutex::new(HashMap::new()),
-      eid: Arc::new(1.into()),
+      eid: 1.into(),
       block_converter,
       item_converter,
       entity_converter,
       generator: StdMutex::new(WorldGen::new()),
       mspt: 0.into(),
+    });
+    let w = world.clone();
+    tokio::spawn(async move {
+      w.global_tick_loop().await;
+    });
+    world
+  }
+  async fn global_tick_loop(self: Arc<Self>) {
+    let mut int = time::interval(Duration::from_millis(50));
+    let mut tick = 0;
+    loop {
+      int.tick().await;
+      if tick % 20 == 0 {
+        let mut header = Chat::empty();
+        let mut footer = Chat::empty();
+
+        header.add("big gaming".into()).color(Color::Blue);
+        footer.add("mspt: ".into());
+        let mspt = self.mspt.swap(0, Ordering::SeqCst) / 20;
+        footer.add(format!("{}", mspt)).color(if mspt > 50 {
+          Color::Red
+        } else if mspt > 20 {
+          Color::Gold
+        } else if mspt > 10 {
+          Color::Yellow
+        } else {
+          Color::BrightGreen
+        });
+
+        let mut out = cb::Packet::new(cb::ID::PlayerlistHeader);
+        out.set_str("header", header.to_json());
+        out.set_str("footer", footer.to_json());
+        for p in self.players.lock().await.values() {
+          p.conn().send(out.clone()).await;
+        }
+      }
+      tick += 1;
     }
   }
   async fn new_player(self: Arc<Self>, player: Player) {
@@ -323,11 +360,11 @@ impl WorldManager {
   }
 
   pub fn add_world(&mut self) {
-    self.worlds.push(Arc::new(World::new(
+    self.worlds.push(World::new(
       self.block_converter.clone(),
       self.item_converter.clone(),
       self.entity_converter.clone(),
-    )));
+    ));
   }
 
   /// Returns the current block converter. This can be used to convert old block
