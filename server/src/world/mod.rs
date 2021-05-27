@@ -3,11 +3,12 @@ mod gen;
 
 use std::{
   collections::HashMap,
+  convert::TryInto,
   sync::{
-    atomic::{AtomicI32, Ordering},
+    atomic::{AtomicI32, AtomicU32, Ordering},
     Arc, Mutex as StdMutex, MutexGuard as StdMutexGuard, RwLock,
   },
-  time::Duration,
+  time::{Duration, Instant},
 };
 use tokio::{
   sync::{mpsc::Sender, Mutex},
@@ -47,6 +48,7 @@ pub struct World {
   item_converter:   Arc<item::TypeConverter>,
   entity_converter: Arc<entity::TypeConverter>,
   generator:        StdMutex<WorldGen>,
+  mspt:             AtomicU32,
 }
 
 pub struct WorldManager {
@@ -72,6 +74,7 @@ impl World {
       item_converter,
       entity_converter,
       generator: StdMutex::new(WorldGen::new()),
+      mspt: 0.into(),
     }
   }
   async fn new_player(self: Arc<Self>, player: Player) {
@@ -160,6 +163,7 @@ impl World {
           // TODO: Close any other tasks for this player
           break;
         }
+        let start = Instant::now();
         // Updates the player correctly, and performs collision checks. This also
         // handles new chunks.
         player.tick().await;
@@ -171,6 +175,7 @@ impl World {
           conn.send(out).await;
         }
         tick += 1;
+        self.mspt.fetch_add(start.elapsed().as_millis().try_into().unwrap(), Ordering::SeqCst);
       }
       info!("{} has logged out", player.username());
       self.players.lock().await.remove(&player.id());
