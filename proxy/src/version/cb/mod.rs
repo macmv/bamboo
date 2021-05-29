@@ -6,6 +6,8 @@ use crate::packet::Packet;
 
 use super::PacketVersion;
 
+mod utils;
+mod v1_10;
 mod v1_12;
 mod v1_8;
 mod v1_9;
@@ -36,6 +38,7 @@ impl Generator {
     let mut gens = HashMap::new();
     gens.insert(ProtocolVersion::V1_8, v1_8::gen_spec());
     gens.insert(ProtocolVersion::V1_9_4, v1_9::gen_spec());
+    gens.insert(ProtocolVersion::V1_10, v1_10::gen_spec());
     gens.insert(ProtocolVersion::V1_12_2, v1_12::gen_spec());
     Generator { gens, versions }
   }
