@@ -3,74 +3,18 @@ use std::{
   io::{Error, ErrorKind},
 };
 
-use super::PacketSpec;
+use super::{utils, PacketSpec};
 use crate::packet::Packet;
 
 use common::{
-  math::UUID,
   net::{cb, Other},
-  proto::player_list,
   util::Buffer,
   version::ProtocolVersion,
 };
 
 pub(super) fn gen_spec() -> PacketSpec {
   let mut spec = PacketSpec { gens: HashMap::new() };
-  spec.add(cb::ID::PlayerInfo, |mut out: Packet, p: &cb::Packet| {
-    let info = match p.read_other().unwrap() {
-      Other::PlayerList(c) => c,
-      o => {
-        return Err(Error::new(
-          ErrorKind::InvalidData,
-          format!("expected player list, got {:?}", o),
-        ))
-      }
-    };
-    out.write_varint(info.action);
-    out.write_varint(info.players.len() as i32);
-    for p in info.players {
-      out.write_uuid(match p.uuid {
-        Some(v) => UUID::from_proto(v),
-        None => return Err(Error::new(ErrorKind::InvalidData, "empty player uuid in player list")),
-      });
-      match player_list::Action::from_i32(info.action).unwrap() {
-        player_list::Action::AddPlayer => {
-          out.write_str(&p.name);
-          out.write_varint(p.properties.len() as i32);
-          for p in p.properties {
-            out.write_str(&p.name);
-            out.write_str(&p.value);
-            out.write_bool(p.signed);
-            if p.signed {
-              out.write_str(&p.signature);
-            }
-          }
-          out.write_varint(p.gamemode);
-          out.write_varint(p.ping);
-          out.write_bool(p.has_display_name);
-          if p.has_display_name {
-            out.write_str(&p.display_name);
-          }
-        }
-        player_list::Action::UpdateGamemode => {
-          out.write_varint(p.gamemode);
-        }
-        player_list::Action::UpdateLatency => {
-          out.write_varint(p.ping);
-        }
-        player_list::Action::UpdateDisplayName => {
-          out.write_bool(p.has_display_name);
-          if p.has_display_name {
-            out.write_str(&p.display_name);
-          }
-        }
-        player_list::Action::RemovePlayer => {
-          // No fields
-        }
-      }
-    }
-    Ok(Some(out))
-  });
+  spec.add(cb::ID::PlayerInfo, utils::generate_player_info);
   spec.add(cb::ID::UnloadChunk, |_: Packet, p: &cb::Packet| {
     let mut out = Packet::new(0x21, ProtocolVersion::V1_8); // Map chunk for 1.8
     out.write_i32(p.get_int("chunk_x")?);
