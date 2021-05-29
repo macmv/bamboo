@@ -1,4 +1,5 @@
-use super::{Metadata, Type};
+use super::Metadata;
+use common::util;
 use std::{error::Error, fmt};
 
 #[derive(Debug)]
@@ -15,6 +16,9 @@ impl Error for IndexError {}
 impl Metadata {
   pub fn set_byte(&mut self, index: u8, value: u8) -> Result<(), IndexError> {
     self.set_field(index, vec![value])
+  }
+  pub fn set_varint(&mut self, index: u8, value: i32) -> Result<(), IndexError> {
+    self.set_field(index, util::serialize_varint(value))
   }
 
   fn set_field(&mut self, index: u8, value: Vec<u8>) -> Result<(), IndexError> {
