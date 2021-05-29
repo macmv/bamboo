@@ -1,11 +1,7 @@
 use num_derive::{FromPrimitive, ToPrimitive};
 use std::{convert::TryInto, fmt};
 
-use crate::{
-  math::{Pos, UUID},
-  proto,
-  proto::packet_field::Type as FieldType,
-};
+use crate::{math::Pos, proto, proto::packet_field::Type as FieldType, util::UUID};
 
 #[derive(Clone, Debug)]
 pub struct Packet {

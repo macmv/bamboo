@@ -3,10 +3,9 @@ use std::io::{Error, ErrorKind, Result};
 use crate::packet::Packet;
 
 use common::{
-  math::UUID,
   net::{cb, Other},
   proto::player_list,
-  util::Buffer,
+  util::{Buffer, UUID},
 };
 
 // Same for all versions

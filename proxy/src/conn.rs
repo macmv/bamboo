@@ -5,11 +5,10 @@ use crate::{
 };
 
 use common::{
-  math::UUID,
   net::{cb, sb},
   proto,
   proto::minecraft_client::MinecraftClient,
-  util::{chat::Color, Chat},
+  util::{chat::Color, Chat, UUID},
   version::ProtocolVersion,
 };
 use rand::{rngs::OsRng, RngCore};

@@ -1,9 +1,5 @@
 use super::other::Other;
-use crate::{
-  math::{Pos, UUID},
-  proto,
-  proto::packet_field::Type as FieldType,
-};
+use crate::{math::Pos, proto, proto::packet_field::Type as FieldType, util::UUID};
 use num_derive::{FromPrimitive, ToPrimitive};
 use prost::{DecodeError, EncodeError};
 use std::{convert::TryInto, fmt, io};

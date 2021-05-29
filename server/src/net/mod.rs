@@ -6,10 +6,13 @@ use tokio::sync::{mpsc::Sender, Mutex};
 use tonic::{Status, Streaming};
 
 use common::{
-  math::{Pos, UUID},
+  math::Pos,
   net::{cb, sb},
   proto,
-  util::chat::{Chat, Color, HoverEvent},
+  util::{
+    chat::{Chat, Color, HoverEvent},
+    UUID,
+  },
   version::ProtocolVersion,
 };
 

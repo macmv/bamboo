@@ -17,10 +17,13 @@ use tokio::{
 use tonic::{Status, Streaming};
 
 use common::{
-  math::{ChunkPos, FPos, Pos, PosError, UUID},
+  math::{ChunkPos, FPos, Pos, PosError},
   net::{cb, Other},
   proto::{player_list, Packet, PlayerList},
-  util::chat::{Chat, Color},
+  util::{
+    chat::{Chat, Color},
+    UUID,
+  },
   version::BlockVersion,
 };
 

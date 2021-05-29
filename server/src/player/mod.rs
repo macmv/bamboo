@@ -6,9 +6,9 @@ use std::{
 };
 
 use common::{
-  math::{ChunkPos, FPos, UUID},
+  math::{ChunkPos, FPos},
   net::cb,
-  util::Chat,
+  util::{Chat, UUID},
   version::ProtocolVersion,
 };
 

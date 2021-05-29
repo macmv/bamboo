@@ -1,6 +1,6 @@
 use common::{
-  math::{Pos, UUID},
-  util::{Buffer, BufferError},
+  math::Pos,
+  util::{Buffer, BufferError, UUID},
   version::ProtocolVersion,
 };
 
