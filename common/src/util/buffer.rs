@@ -291,8 +291,7 @@ impl Buffer {
     }
   }
 
-  #[cfg(test)]
-  fn into_inner(self) -> Vec<u8> {
+  pub fn into_inner(self) -> Vec<u8> {
     self.data.into_inner()
   }
 }

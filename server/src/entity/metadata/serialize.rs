@@ -2,7 +2,7 @@ use super::{Field, Metadata, Pose};
 use crate::item;
 use common::{
   math::{BlockDirection, Pos},
-  util::{Chat, UUID},
+  util::{Buffer, Chat, UUID},
   version::ProtocolVersion,
 };
 use std::{error::Error, fmt};
@@ -180,5 +180,61 @@ impl Metadata {
     }
     self.fields.insert(index, value);
     Ok(())
+  }
+
+  /// Serializes the entity metadata. This will not consume the metadata, and
+  /// will never fail. The `set` functions are where error handling is done.
+  pub fn serialize(&self) -> Vec<u8> {
+    let mut out = Buffer::new(vec![]);
+    for (id, field) in &self.fields {
+      if self.ver == ProtocolVersion::V1_8 {
+        // Index and type are the same byte in 1.8
+        let mut index_type = id & 0x1f;
+        match field {
+          Field::Byte(_) => index_type |= 0 << 5,
+          Field::Short(_) => index_type |= 1 << 5,
+          Field::Int(_) => index_type |= 2 << 5,
+          Field::Float(_) => index_type |= 3 << 5,
+          Field::String(_) => index_type |= 4 << 5,
+          Field::Item(_) => index_type |= 5 << 5,
+          Field::Position(_) => index_type |= 6 << 5,
+          Field::Rotation(_, _, _) => index_type |= 7 << 5,
+          _ => unreachable!(),
+        }
+        out.write_u8(index_type);
+        match field {
+          Field::Byte(v) => out.write_u8(*v),
+          Field::Short(v) => out.write_i16(*v),
+          Field::Int(v) => out.write_i32(*v),
+          Field::Float(v) => out.write_f32(*v),
+          Field::String(v) => out.write_str(v),
+          Field::Item(v) => {
+            out.write_i16(v.item().to_u32() as i16);
+            out.write_u8(v.amount());
+            out.write_i16(0); // Item damage
+            out.write_u8(0x00); // TODO: NBT
+          }
+          Field::Position(v) => {
+            out.write_i32(v.x());
+            out.write_i32(v.y());
+            out.write_i32(v.z());
+          }
+          Field::Rotation(x, y, z) => {
+            out.write_f32(*x);
+            out.write_f32(*y);
+            out.write_f32(*z);
+          }
+          _ => unreachable!(),
+        }
+      } else {
+        out.write_varint((*id).into());
+      }
+    }
+    if self.ver == ProtocolVersion::V1_8 {
+      out.write_varint(127);
+    } else {
+      out.write_varint(0xff);
+    }
+    out.into_inner()
   }
 }
