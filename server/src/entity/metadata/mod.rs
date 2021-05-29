@@ -2,7 +2,7 @@ mod serialize;
 
 use crate::item;
 use common::{
-  math::{BlockDirection, FPos},
+  math::{BlockDirection, Pos},
   util::{Chat, UUID},
   version::ProtocolVersion,
 };
@@ -14,6 +14,16 @@ pub struct VillagerData {
   level:      i32,
 }
 
+pub enum Pose {
+  Standing,
+  FallFlying,
+  Sleeping,
+  Swimming,
+  SpinAttack,
+  Sneaking,
+  Dying,
+}
+
 /// The types for each metadata field. Updated to the latest version of the
 /// game.
 pub enum Field {
@@ -21,26 +31,32 @@ pub enum Field {
   Short(i16),
   Int(i32),
 
-  // Valid in 1.9+
+  // Valid for all versions
   Byte(u8),
-  Varint(i32),
   Float(f32),
   String(String),
+  Item(item::Stack),
+  Position(Pos),
+  Rotation(f32, f32, f32), // Rotation on x, y, z
+
+  // Valid in 1.9+
+  Varint(i32),
   Chat(Chat),
-  OptChat(Option<Chat>),
-  Slot(item::Stack),
   Bool(bool),
-  Rotation(f32, f32),
-  Position(FPos),
-  OptPosition(Option<FPos>),
+  OptPosition(Option<Pos>),
   Direction(BlockDirection),
   OptUUID(Option<UUID>),
   OptBlockID(i32),
+
+  // Valid for 1.13+
+  OptChat(Option<Chat>),
   NBT(Vec<u8>),
   Particle(i32),
+
+  // Valid for 1.14+
   VillagerData(VillagerData),
   OptVarint(Option<i32>),
-  Pose(i32),
+  Pose(Pose),
 }
 
 pub struct Metadata {
