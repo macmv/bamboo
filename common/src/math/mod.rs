@@ -18,7 +18,7 @@ pub enum BlockDirection {
   Down,
   Up,
   North,
-  Sourth,
+  South,
   West,
   East,
 }

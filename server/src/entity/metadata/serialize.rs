@@ -228,6 +228,131 @@ impl Metadata {
         }
       } else {
         out.write_varint((*id).into());
+        // Thank you minecraft. All of this is just for the metadata types.
+        out.write_u8(match field {
+          Field::Byte(_) => 0,
+          Field::Varint(_) => 1,
+          Field::Float(_) => 2,
+          Field::String(_) => 3,
+          Field::Chat(_) => 5,
+          _ => {
+            if self.ver >= ProtocolVersion::V1_13 {
+              match field {
+                Field::OptChat(_) => 5,
+                Field::Item(_) => 6,
+                Field::Bool(_) => 7,
+                Field::Rotation(_, _, _) => 8,
+                Field::Position(_) => 9,
+                Field::OptPosition(_) => 10,
+                Field::Direction(_) => 11,
+                Field::OptUUID(_) => 12,
+                Field::BlockID(_) => 13,
+                Field::NBT(_) => 14,
+                Field::Particle(_) => 15,
+                _ => {
+                  if self.ver >= ProtocolVersion::V1_14 {
+                    match field {
+                      Field::VillagerData(_, _, _) => 16,
+                      Field::OptVarint(_) => 17,
+                      Field::Pose(_) => 18,
+                      _ => unreachable!(),
+                    }
+                  } else {
+                    unreachable!()
+                  }
+                }
+              }
+            } else {
+              match field {
+                Field::Item(_) => 5,
+                Field::Bool(_) => 6,
+                Field::Rotation(_, _, _) => 7,
+                Field::Position(_) => 8,
+                Field::OptPosition(_) => 9,
+                Field::Direction(_) => 10,
+                Field::OptUUID(_) => 11,
+                Field::BlockID(_) => 12,
+                _ => {
+                  if self.ver == ProtocolVersion::V1_12 {
+                    match field {
+                      Field::NBT(_) => 13,
+                      _ => unreachable!(),
+                    }
+                  } else {
+                    unreachable!()
+                  }
+                }
+              }
+            }
+          }
+        });
+        match field {
+          Field::Short(_) => unreachable!(),
+          Field::Int(_) => unreachable!(),
+          Field::Byte(v) => out.write_u8(*v),
+          Field::Varint(v) => out.write_varint(*v),
+          Field::Float(v) => out.write_f32(*v),
+          Field::String(v) => out.write_str(v),
+          Field::Chat(v) => out.write_str(&v.to_json()),
+          Field::OptChat(v) => {
+            out.write_bool(v.is_some());
+            if let Some(v) = v {
+              out.write_str(&v.to_json());
+            }
+          }
+          Field::Item(v) => {} // TODO: Slot data
+          Field::Bool(v) => out.write_bool(*v),
+          Field::Rotation(x, y, z) => {
+            out.write_f32(*x);
+            out.write_f32(*y);
+            out.write_f32(*z);
+          }
+          Field::Position(v) => {
+            out.write_i32(v.x());
+            out.write_i32(v.y());
+            out.write_i32(v.z());
+          }
+          Field::OptPosition(v) => {
+            out.write_bool(v.is_some());
+            if let Some(v) = v {
+              out.write_i32(v.x());
+              out.write_i32(v.y());
+              out.write_i32(v.z());
+            }
+          }
+          Field::Direction(v) => match v {
+            BlockDirection::Down => out.write_varint(0),
+            BlockDirection::Up => out.write_varint(1),
+            BlockDirection::North => out.write_varint(2),
+            BlockDirection::South => out.write_varint(3),
+            BlockDirection::West => out.write_varint(4),
+            BlockDirection::East => out.write_varint(5),
+          },
+          Field::OptUUID(v) => {
+            out.write_bool(v.is_some());
+            if let Some(v) = v {
+              out.write_buf(&v.as_le_bytes());
+            }
+          }
+          Field::BlockID(v) => out.write_varint(*v),
+          Field::NBT(v) => out.write_buf(v),
+          Field::Particle(v) => out.write_buf(v),
+          Field::VillagerData(ty, p, l) => {
+            out.write_varint(*ty);
+            out.write_varint(*p);
+            out.write_varint(*l);
+          }
+          Field::OptVarint(v) => out.write_varint(v.unwrap_or(0)),
+          Field::Pose(v) => match v {
+            Pose::Standing => out.write_varint(0),
+            Pose::FallFlying => out.write_varint(1),
+            Pose::Sleeping => out.write_varint(2),
+            Pose::Swimming => out.write_varint(3),
+            Pose::SpinAttack => out.write_varint(4),
+            Pose::Sneaking => out.write_varint(5),
+            Pose::Dying => out.write_varint(6),
+          },
+        }
       }
     }
     if self.ver == ProtocolVersion::V1_8 {
