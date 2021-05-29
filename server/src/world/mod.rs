@@ -172,7 +172,7 @@ impl World {
             out.set_float("yaw", yaw);
             out.set_float("pitch", pitch);
             out.set_short("current_item", 0);
-            out.set_byte_arr("metadata", vec![127]);
+            out.set_byte_arr("metadata", vec![0xff]);
             info.players.push(player_list::Player {
               uuid:             Some(p.id().as_proto()),
               name:             p.username().into(),
