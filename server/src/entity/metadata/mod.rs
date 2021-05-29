@@ -8,12 +8,6 @@ use common::{
 };
 use std::collections::HashMap;
 
-pub struct VillagerData {
-  ty:         i32,
-  profession: i32,
-  level:      i32,
-}
-
 pub enum Pose {
   Standing,
   FallFlying,
@@ -46,15 +40,17 @@ pub enum Field {
   OptPosition(Option<Pos>),
   Direction(BlockDirection),
   OptUUID(Option<UUID>),
-  OptBlockID(i32),
+  BlockID(i32),
+
+  // Valid for 1.12+
+  NBT(Vec<u8>), // TODO: Implement NBT
 
   // Valid for 1.13+
   OptChat(Option<Chat>),
-  NBT(Vec<u8>),
-  Particle(i32),
+  Particle(Vec<u8>), // TODO: Implement particle data
 
   // Valid for 1.14+
-  VillagerData(VillagerData),
+  VillagerData(i32, i32, i32),
   OptVarint(Option<i32>),
   Pose(Pose),
 }
