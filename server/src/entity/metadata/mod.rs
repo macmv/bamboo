@@ -1,37 +1,52 @@
 mod serialize;
 
+use crate::item;
+use common::{
+  math::{BlockDirection, FPos},
+  util::{Chat, UUID},
+  version::ProtocolVersion,
+};
 use std::collections::HashMap;
 
-use common::version::ProtocolVersion;
+pub struct VillagerData {
+  ty:         i32,
+  profession: i32,
+  level:      i32,
+}
 
 /// The types for each metadata field. Updated to the latest version of the
 /// game.
-pub enum Type {
-  Byte,
-  Varint,
-  Float,
-  String,
-  Chat,
-  OptChat,
-  Slot,
-  Bool,
-  Rotation,
-  Position,
-  OptPosition,
-  Direction,
-  OptUUID,
-  OptBlockID,
-  NBT,
-  Particle,
-  VaillagerData,
-  OptVarint,
-  Pose,
+pub enum Field {
+  // Only valid on 1.8
+  Short(i16),
+  Int(i32),
+
+  // Valid in 1.9+
+  Byte(u8),
+  Varint(i32),
+  Float(f32),
+  String(String),
+  Chat(Chat),
+  OptChat(Option<Chat>),
+  Slot(item::Stack),
+  Bool(bool),
+  Rotation(f32, f32),
+  Position(FPos),
+  OptPosition(Option<FPos>),
+  Direction(BlockDirection),
+  OptUUID(Option<UUID>),
+  OptBlockID(i32),
+  NBT(Vec<u8>),
+  Particle(i32),
+  VillagerData(VillagerData),
+  OptVarint(Option<i32>),
+  Pose(i32),
 }
 
 pub struct Metadata {
   ver:    ProtocolVersion,
   // A sparse map of indices to serialized fields.
-  fields: HashMap<u8, Vec<u8>>,
+  fields: HashMap<u8, Field>,
 }
 
 impl Metadata {
