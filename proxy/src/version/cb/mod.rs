@@ -93,11 +93,8 @@ impl Generator {
             PacketField::String => out.write_str(p.get_str(n)?),
             PacketField::Position => out.write_pos(p.get_pos(n)?),
             PacketField::UUID => out.write_uuid(p.get_uuid(n)?),
-            v => {
-              // For entity metadata. I just wanted to see a mob ingame.
-              out.write_u8(0xff);
-              warn!("invalid packet field {:?}", v)
-            }
+            PacketField::RestBuffer => out.write_buf(p.get_byte_arr(n)?),
+            v => error!("invalid packet field {:?}", v),
           }
         }
         out
