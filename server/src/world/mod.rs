@@ -130,96 +130,102 @@ impl World {
     });
 
     // Player tick loop
-    let mut int = time::interval(Duration::from_millis(50));
     tokio::spawn(async move {
-      info!("{} has logged in", player.username());
-      // Player init
-      {
-        let mut out = cb::Packet::new(cb::ID::Login);
-        out.set_int("entity_id", self.eid());
-        out.set_byte("game_mode", 1); // Creative
-        out.set_byte("difficulty", 1); // Normal
-        out.set_byte("dimension", 0); // Overworld
-        out.set_str("level_type", "default".into());
-        out.set_byte("max_players", 0); // Ignored
-        out.set_bool("reduced_debug_info", false); // Don't reduce debug info
-        conn.send(out).await;
-
-        for x in -10..=10 {
-          for z in -10..=10 {
-            conn.send(self.serialize_chunk(ChunkPos::new(x, z), player.ver().block())).await;
-          }
-        }
-
-        let mut out = cb::Packet::new(cb::ID::Position);
-        out.set_double("x", 0.0); // X
-        out.set_double("y", 60.0); // Y
-        out.set_double("z", 0.0); // Z
-        out.set_float("yaw", 0.0); // Yaw
-        out.set_float("pitch", 0.0); // Pitch
-        out.set_byte("flags", 0); // Flags
-        out.set_int("teleport_id", 1234); // TP id
-        conn.send(out).await;
-
-        let mut info =
-          PlayerList { action: player_list::Action::AddPlayer.into(), ..Default::default() };
-        for out in self
-          .for_players(ChunkPos::new(0, 0), |p| {
-            let mut out = cb::Packet::new(cb::ID::NamedEntitySpawn);
-            out.set_int("entity_id", p.eid());
-            out.set_uuid("player_uuid", p.id());
-            let (pos, pitch, yaw) = p.pos_look();
-            out.set_double("x", pos.x());
-            out.set_double("y", pos.y());
-            out.set_double("z", pos.z());
-            out.set_float("yaw", yaw);
-            out.set_float("pitch", pitch);
-            out.set_short("current_item", 0);
-            out.set_byte_arr("metadata", p.metadata(player.ver()).serialize());
-            info.players.push(player_list::Player {
-              uuid:             Some(p.id().as_proto()),
-              name:             p.username().into(),
-              properties:       vec![],
-              gamemode:         1,
-              ping:             300,
-              has_display_name: false,
-              display_name:     "".into(),
-            });
-            Some(out)
-          })
-          .await
-        {
-          conn.send(out).await;
-        }
-        let mut out = cb::Packet::new(cb::ID::PlayerInfo);
-        out.set_other(Other::PlayerList(info)).unwrap();
-        conn.send(out).await;
-      }
-      // Player tick loop
-      let mut tick = 0;
-      loop {
-        int.tick().await;
-        if conn.closed() {
-          // TODO: Close any other tasks for this player
-          break;
-        }
-        let start = Instant::now();
-        // Updates the player correctly, and performs collision checks. This also
-        // handles new chunks.
-        player.tick().await;
-        // Do player collision and packets and stuff
-        // Once per second, send keep alive packet
-        if tick % 20 == 0 {
-          let mut out = cb::Packet::new(cb::ID::KeepAlive);
-          out.set_int("keep_alive_id", 1234556);
-          conn.send(out).await;
-        }
-        tick += 1;
-        self.mspt.fetch_add(start.elapsed().as_millis().try_into().unwrap(), Ordering::SeqCst);
-      }
-      info!("{} has logged out", player.username());
-      self.players.lock().await.remove(&player.id());
+      let name = player.username().to_string();
+      let id = player.id();
+      info!("{} has logged in", name);
+      self.player_loop(player, conn).await;
+      info!("{} has logged out", name);
+      self.players.lock().await.remove(&id);
     });
+  }
+
+  async fn player_loop(&self, player: Arc<Player>, conn: Arc<Connection>) {
+    let mut int = time::interval(Duration::from_millis(50));
+    // Player init
+    {
+      let mut out = cb::Packet::new(cb::ID::Login);
+      out.set_int("entity_id", self.eid());
+      out.set_byte("game_mode", 1); // Creative
+      out.set_byte("difficulty", 1); // Normal
+      out.set_byte("dimension", 0); // Overworld
+      out.set_str("level_type", "default".into());
+      out.set_byte("max_players", 0); // Ignored
+      out.set_bool("reduced_debug_info", false); // Don't reduce debug info
+      conn.send(out).await;
+
+      for x in -10..=10 {
+        for z in -10..=10 {
+          conn.send(self.serialize_chunk(ChunkPos::new(x, z), player.ver().block())).await;
+        }
+      }
+
+      let mut out = cb::Packet::new(cb::ID::Position);
+      out.set_double("x", 0.0); // X
+      out.set_double("y", 60.0); // Y
+      out.set_double("z", 0.0); // Z
+      out.set_float("yaw", 0.0); // Yaw
+      out.set_float("pitch", 0.0); // Pitch
+      out.set_byte("flags", 0); // Flags
+      out.set_int("teleport_id", 1234); // TP id
+      conn.send(out).await;
+
+      let mut info =
+        PlayerList { action: player_list::Action::AddPlayer.into(), ..Default::default() };
+      for out in self
+        .for_players(ChunkPos::new(0, 0), |p| {
+          let mut out = cb::Packet::new(cb::ID::NamedEntitySpawn);
+          out.set_int("entity_id", p.eid());
+          out.set_uuid("player_uuid", p.id());
+          let (pos, pitch, yaw) = p.pos_look();
+          out.set_double("x", pos.x());
+          out.set_double("y", pos.y());
+          out.set_double("z", pos.z());
+          out.set_float("yaw", yaw);
+          out.set_float("pitch", pitch);
+          out.set_short("current_item", 0);
+          out.set_byte_arr("metadata", p.metadata(player.ver()).serialize());
+          info.players.push(player_list::Player {
+            uuid:             Some(p.id().as_proto()),
+            name:             p.username().into(),
+            properties:       vec![],
+            gamemode:         1,
+            ping:             300,
+            has_display_name: false,
+            display_name:     "".into(),
+          });
+          Some(out)
+        })
+        .await
+      {
+        conn.send(out).await;
+      }
+      let mut out = cb::Packet::new(cb::ID::PlayerInfo);
+      out.set_other(Other::PlayerList(info)).unwrap();
+      conn.send(out).await;
+    }
+    // Player tick loop
+    let mut tick = 0;
+    loop {
+      int.tick().await;
+      if conn.closed() {
+        // TODO: Close any other tasks for this player
+        break;
+      }
+      let start = Instant::now();
+      // Updates the player correctly, and performs collision checks. This also
+      // handles new chunks.
+      player.tick().await;
+      // Do player collision and packets and stuff
+      // Once per second, send keep alive packet
+      if tick % 20 == 0 {
+        let mut out = cb::Packet::new(cb::ID::KeepAlive);
+        out.set_int("keep_alive_id", 1234556);
+        conn.send(out).await;
+      }
+      tick += 1;
+      self.mspt.fetch_add(start.elapsed().as_millis().try_into().unwrap(), Ordering::SeqCst);
+    }
   }
 
   /// Returns a new, unique EID.

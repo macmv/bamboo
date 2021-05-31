@@ -146,7 +146,12 @@ impl Connection {
 
   /// Sends a packet to the proxy, which will then get sent to the client.
   pub async fn send(&self, p: cb::Packet) {
-    self.tx.send(Ok(p.into_proto())).await.unwrap();
+    match self.tx.send(Ok(p.into_proto())).await {
+      Ok(_) => (),
+      Err(_) => {
+        slf.closed.store(true, Ordering::SeqCst);
+      }
+    }
   }
 
   // Returns true if the connection has been closed.
