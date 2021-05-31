@@ -149,7 +149,7 @@ impl Connection {
     match self.tx.send(Ok(p.into_proto())).await {
       Ok(_) => (),
       Err(_) => {
-        slf.closed.store(true, Ordering::SeqCst);
+        self.closed.store(true, Ordering::SeqCst);
       }
     }
   }
