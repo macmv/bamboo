@@ -13,6 +13,7 @@ use common::{
 };
 
 use crate::{
+  entity::Metadata,
   item::{Inventory, Stack},
   net::Connection,
   world::World,
@@ -308,6 +309,15 @@ impl Player {
         self.conn.send(out).await;
       }
     }
+  }
+
+  /// Generates the player's metadata for the given version. This will include
+  /// all fields possible about the player. This should only be called when
+  /// spawning in a new player.
+  pub fn metadata(&self, ver: ProtocolVersion) -> Metadata {
+    let mut meta = Metadata::new(ver);
+    meta.set_byte(0, 0b11111111).unwrap();
+    meta
   }
 
   /// Returns the player's position. This is only updated once per tick. This
