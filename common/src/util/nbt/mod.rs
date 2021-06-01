@@ -25,6 +25,16 @@ pub enum Tag {
 
 impl NBT {
   pub fn new(name: &str, tag: Tag) -> Self {
+    if let Tag::List(inner) = &tag {
+      if let Some(v) = inner.get(0) {
+        let ty = v.ty();
+        for v in inner {
+          if v.ty() != ty {
+            panic!("the given list contains multiple types: {:?}", inner);
+          }
+        }
+      }
+    }
     NBT { tag, name: name.into() }
   }
 
@@ -54,7 +64,7 @@ mod tests {
 
   #[test]
   fn test_list() {
-    let mut list = NBT::new("List", Tag::List(vec![]));
+    let mut list = NBT::new("List", Tag::List(vec![Tag::Int(5), Tag::Int(6)]));
     list.list_add(Tag::Int(5));
     list.list_add(Tag::Int(7));
   }
