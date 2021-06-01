@@ -1,11 +1,15 @@
 mod serialize;
 
+/// This is an nbt tag. It has a name, and any amount of data. This can be used
+/// to store item data, entity data, level data, and more.
 #[derive(Debug)]
 pub struct NBT {
   tag:  Tag,
   name: String,
 }
 
+/// This is a single tag. It does not contain a name, but has the actual data
+/// for any of the nbt tags.
 #[derive(Debug)]
 pub enum Tag {
   End,
@@ -24,6 +28,12 @@ pub enum Tag {
 }
 
 impl NBT {
+  /// Creates a new nbt tag. The tag value can be anything.
+  ///
+  /// # Panics
+  /// This will panic if the tag is a list, and the values within that list
+  /// contain multiple types. This is a limitation with the nbt data format:
+  /// lists can only contain one type of data.
   pub fn new(name: &str, tag: Tag) -> Self {
     if let Tag::List(inner) = &tag {
       if let Some(v) = inner.get(0) {
@@ -54,6 +64,16 @@ impl NBT {
       }
     } else {
       panic!("called list_add on non-list type: {:?}", self);
+    }
+  }
+
+  /// Appends the given element to the compound. This will panic if self is not
+  /// a compound tag.
+  pub fn compound_add(&mut self, nbt: NBT) {
+    if let Tag::Compound(inner) = &mut self.tag {
+      inner.push(nbt);
+    } else {
+      panic!("called compound_add on non-compound type: {:?}", self);
     }
   }
 }
