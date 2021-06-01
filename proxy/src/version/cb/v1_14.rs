@@ -53,7 +53,7 @@ pub(super) fn gen_spec() -> PacketSpec {
     // Iterates through chunks in order, from ground up. flatten() skips all None
     // sections.
     for s in sections.into_iter().flatten() {
-      // The bits per block
+      buf.write_u16(s.non_air_blocks as u16);
       buf.write_u8(s.bits_per_block as u8);
       if s.bits_per_block <= 8 {
         // The length of the palette
@@ -65,17 +65,7 @@ pub(super) fn gen_spec() -> PacketSpec {
       // Number of longs in the data array
       buf.write_varint(s.data.len() as i32);
       buf.write_buf(&s.data.iter().map(|v| v.to_be_bytes()).flatten().collect::<Vec<u8>>());
-      // Light data
-      for _ in 0..16 * 16 * 16 / 2 {
-        // Each lighting value is 1/2 byte
-        buf.write_u8(0xff);
-      }
-      if skylight {
-        for _ in 0..16 * 16 * 16 / 2 {
-          // Each lighting value is 1/2 byte
-          buf.write_u8(0xff);
-        }
-      }
+      // Light data is now sent in another packet
     }
 
     if biomes {
