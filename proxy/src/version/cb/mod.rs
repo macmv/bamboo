@@ -14,7 +14,7 @@ mod v1_14;
 mod v1_8;
 mod v1_9;
 
-type BoxedPacketFn = Box<dyn Fn(Packet, &cb::Packet) -> io::Result<Option<Packet>> + Send + Sync>;
+type BoxedPacketFn = Box<dyn Fn(Packet, &cb::Packet) -> io::Result<Vec<Packet>> + Send + Sync>;
 
 struct PacketSpec {
   gens: HashMap<cb::ID, BoxedPacketFn>,
@@ -24,7 +24,7 @@ impl PacketSpec {
   fn add(
     &mut self,
     id: cb::ID,
-    f: impl Fn(Packet, &cb::Packet) -> io::Result<Option<Packet>> + Send + Sync + 'static,
+    f: impl Fn(Packet, &cb::Packet) -> io::Result<Vec<Packet>> + Send + Sync + 'static,
   ) {
     self.gens.insert(id, Box::new(f));
   }
@@ -47,7 +47,14 @@ impl Generator {
     Generator { gens, versions }
   }
 
-  pub fn convert(&self, v: ProtocolVersion, p: &cb::Packet) -> io::Result<Option<Packet>> {
+  pub fn convert_id(&self, v: ProtocolVersion, id: cb::ID) -> i32 {
+    match self.versions[&v].ids[id.to_i32() as usize] {
+      Some(v) => v as i32,
+      None => -1,
+    }
+  }
+
+  pub fn convert(&self, v: ProtocolVersion, p: &cb::Packet) -> io::Result<Vec<Packet>> {
     let ver = &self.versions[&v];
     let new_id = p.id();
     // Check for a generator
@@ -59,17 +66,11 @@ impl Generator {
     }
     let g = self.gens[&v].gens.get(&p.id());
     // This is the old id
-    let id: i32 = match ver.ids[new_id.to_i32() as usize] {
-      Some(v) => v as i32,
-      None => {
-        if g.is_none() {
-          warn!("got packet that has no generator and does not exist for ver {:?}: {}", v, p);
-          return Ok(None);
-        } else {
-          -1
-        }
-      }
-    };
+    let id = self.convert_id(v, new_id);
+    if g.is_none() && id == -1 {
+      warn!("got packet that has no generator and does not exist for ver {:?}: {}", v, p);
+      return Ok(vec![]);
+    }
     let out = match g {
       // If we have a generator for this packet, we use that instead. Generators are
       // used for things like chunk packets, which are just simpler to serialize
@@ -77,10 +78,7 @@ impl Generator {
       Some(g) => {
         // If we have a generator, we may or may not have a valid packet id.
         let out = if id != -1 { Packet::new(id, v) } else { Packet::new(0, v) };
-        match g(out, p)? {
-          Some(v) => v,
-          None => return Ok(None),
-        }
+        g(out, p)?
       }
       None => {
         // Here, we must have a valid packet id, or we would have returned already.
@@ -107,10 +105,10 @@ impl Generator {
             v => error!("invalid packet field {:?}", v),
           }
         }
-        out
+        vec![out]
       }
     };
     // println!("writing packet {:?}: {:?}", new_id, &out);
-    Ok(Some(out))
+    Ok(out)
   }
 }

@@ -82,7 +82,7 @@ pub(super) fn gen_spec() -> PacketSpec {
     // No tile entities
     out.write_varint(0);
 
-    Ok(Some(out))
+    Ok(vec![out])
   });
   spec
 }

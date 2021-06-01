@@ -175,7 +175,7 @@ impl ServerListener {
       }
       let p = p.unwrap();
       let cb = self.gen.clientbound(self.ver, cb::Packet::from_proto(p))?;
-      if let Some(p) = cb {
+      for p in cb {
         self.client.write(p).await?;
       }
     }

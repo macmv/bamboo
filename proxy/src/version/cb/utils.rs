@@ -9,7 +9,7 @@ use common::{
 };
 
 // Same for all versions
-pub(super) fn generate_player_info(mut out: Packet, p: &cb::Packet) -> Result<Option<Packet>> {
+pub(super) fn generate_player_info(mut out: Packet, p: &cb::Packet) -> Result<Vec<Packet>> {
   let info = match p.read_other().unwrap() {
     Other::PlayerList(c) => c,
     o => {
@@ -59,11 +59,11 @@ pub(super) fn generate_player_info(mut out: Packet, p: &cb::Packet) -> Result<Op
       }
     }
   }
-  Ok(Some(out))
+  Ok(vec![out])
 }
 
 // Applies to 1.9 - 1.12, but 1.10 doesn't work, so idk
-pub(super) fn generate_1_9_chunk(mut out: Packet, p: &cb::Packet) -> Result<Option<Packet>> {
+pub(super) fn generate_1_9_chunk(mut out: Packet, p: &cb::Packet) -> Result<Vec<Packet>> {
   // TODO: Error handling should be done within the packet.
   let chunk = match p.read_other().unwrap() {
     Other::Chunk(c) => c,
@@ -129,5 +129,5 @@ pub(super) fn generate_1_9_chunk(mut out: Packet, p: &cb::Packet) -> Result<Opti
   // No tile entities
   out.write_varint(0);
 
-  Ok(Some(out))
+  Ok(vec![out])
 }

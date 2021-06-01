@@ -62,7 +62,7 @@ impl Generator {
     }
     Generator { cb: cb::Generator::new(to_client), sb: sb::Generator::new(to_server) }
   }
-  pub fn clientbound(&self, v: ProtocolVersion, p: CbPacket) -> io::Result<Option<Packet>> {
+  pub fn clientbound(&self, v: ProtocolVersion, p: CbPacket) -> io::Result<Vec<Packet>> {
     match self.cb.convert(v, &p) {
       Ok(v) => Ok(v),
       Err(e) => Err(io::Error::new(
