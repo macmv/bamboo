@@ -63,6 +63,7 @@ impl Tag {
         for nbt in v {
           out.write_buf(&nbt.serialize());
         }
+        out.write_u8(Self::End.ty());
       }
       Self::IntArray(v) => {
         out.write_i32(v.len() as i32);
@@ -87,6 +88,7 @@ mod tests {
 
   #[test]
   fn test_serialize() {
-    let nbt = NBT::new("", Tag::Compound(vec![]));
+    let nbt =
+      NBT::new("", Tag::Compound(vec![NBT::new("MOTION_BLOCKING", Tag::LongArray(vec![5, 7]))]));
   }
 }
