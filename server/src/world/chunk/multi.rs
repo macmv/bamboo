@@ -96,7 +96,7 @@ impl MultiChunk {
     } else {
       self.fixed.to_latest_proto()
     };
-    chunk.heightmap = vec![0; 256];
+    chunk.heightmap = vec![0; 256 * 9 / 64];
     let mut shift = 0;
     let mut index = 0;
     for _ in 0..16 {
