@@ -1,5 +1,6 @@
 mod buffer;
 pub mod chat;
+mod nbt;
 
 use crate::proto;
 use serde::de::{self, Deserialize, Deserializer, Unexpected, Visitor};
@@ -7,6 +8,7 @@ use std::{convert::TryInto, error::Error, fmt, num::ParseIntError, str::FromStr}
 
 pub use buffer::{Buffer, BufferError};
 pub use chat::Chat;
+pub use nbt::NBT;
 
 pub fn serialize_varint(v: i32) -> Vec<u8> {
   // Need to work with u32, as >> acts differently on i32 vs u32.
