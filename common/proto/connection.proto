@@ -46,11 +46,10 @@ message PacketField {
     Str     = 7;
     UUID    = 8;
     Pos     = 9;
-    NBT     = 10;
-    ByteArr = 11;
-    IntArr  = 12;
-    LongArr = 13;
-    StrArr  = 14;
+    ByteArr = 10;
+    IntArr  = 11;
+    LongArr = 12;
+    StrArr  = 13;
   }
   Type ty                   = 1;
   bool bool                 = 2;
@@ -63,11 +62,10 @@ message PacketField {
   string str                = 9;
   UUID uuid                 = 10;
   uint64 pos                = 11;
-  bytes nbt                 = 12;
-  bytes byte_arr            = 13;
-  repeated int32 int_arr    = 14;
-  repeated uint64 long_arr  = 15;
-  repeated string str_arr   = 16;
+  bytes byte_arr            = 12;
+  repeated int32 int_arr    = 13;
+  repeated uint64 long_arr  = 14;
+  repeated string str_arr   = 15;
 }
 
 message UUID {

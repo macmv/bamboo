@@ -128,6 +128,7 @@ impl Generator {
             PacketField::Position => out.write_pos(p.get_pos(n)?),
             PacketField::UUID => out.write_uuid(p.get_uuid(n)?),
             PacketField::RestBuffer => out.write_buf(p.get_byte_arr(n)?),
+            PacketField::NBT => out.write_buf(p.get_byte_arr(n)?),
             v => error!("invalid packet field {:?}", v),
           }
         }

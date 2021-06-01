@@ -207,7 +207,6 @@ impl fmt::Display for Packet {
         FieldType::Str => value_non_empty!(v, f, str, "{:?}"),
         FieldType::Uuid => value_non_empty!(v, f, uuid, "{:?}"),
         FieldType::Pos => value_non_empty!(v, f, pos, "{:?}"),
-        FieldType::Nbt => value_non_empty!(v, f, nbt, "{:?}"),
         FieldType::ByteArr => value_non_empty!(
           v,
           f,

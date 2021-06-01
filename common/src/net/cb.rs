@@ -240,7 +240,6 @@ impl fmt::Display for Packet {
         FieldType::Str => writeln!(f, "  {}: \"{}\"", n, v.str),
         FieldType::Uuid => writeln!(f, "  {}: {:?}", n, v.uuid),
         FieldType::Pos => writeln!(f, "  {}: {}", n, v.pos),
-        FieldType::Nbt => writeln!(f, "  {}: {:?}", n, v.nbt), // TODO: Format this as nbt
         FieldType::ByteArr => writeln!(
           f,
           "  {}: {:?}\n  byte_arr as string: {:?}",
