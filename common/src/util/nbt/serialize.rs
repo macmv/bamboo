@@ -15,7 +15,7 @@ impl NBT {
 
 impl Tag {
   /// Returns the type of the tag.
-  fn ty(&self) -> u8 {
+  pub fn ty(&self) -> u8 {
     match self {
       Self::End => 0,
       Self::Byte(_) => 1,
@@ -24,7 +24,7 @@ impl Tag {
       Self::Long(_) => 4,
       Self::Float(_) => 5,
       Self::Double(_) => 6,
-      Self::ByteArray(_) => 7,
+      Self::ByteArr(_) => 7,
       Self::String(_) => 8,
       Self::List(_) => 9,
       Self::Compound(_) => 10,
@@ -44,7 +44,7 @@ impl Tag {
       Self::Long(v) => out.write_i64(*v),
       Self::Float(v) => out.write_f32(*v),
       Self::Double(v) => out.write_f64(*v),
-      Self::ByteArray(v) => {
+      Self::ByteArr(v) => {
         out.write_i32(v.len() as i32);
         out.write_buf(v);
       }
@@ -78,5 +78,15 @@ impl Tag {
       }
     }
     out.into_inner()
+  }
+}
+
+#[cfg(test)]
+mod tests {
+  use super::*;
+
+  #[test]
+  fn test_serialize() {
+    let nbt = NBT::new("", Tag::Compound(vec![]));
   }
 }
