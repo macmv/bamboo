@@ -149,6 +149,7 @@ impl World {
       out.set_byte("game_mode", 1); // Creative
       out.set_byte("difficulty", 1); // Normal
       out.set_byte("dimension", 0); // Overworld
+      out.set_byte("view_distance", 10); // 10 chunk view distance TODO: Don't hardcode view distance
       out.set_str("level_type", "default".into());
       out.set_byte("max_players", 0); // Ignored
       out.set_bool("reduced_debug_info", false); // Don't reduce debug info
