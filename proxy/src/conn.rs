@@ -270,7 +270,11 @@ impl Conn {
   async fn send_success(&mut self, info: &LoginInfo) -> io::Result<()> {
     // Login success
     let mut out = Packet::new(2, self.ver);
-    out.write_str(&info.id.as_dashed_str());
+    if self.ver >= ProtocolVersion::V1_16 {
+      out.write_uuid(info.id);
+    } else {
+      out.write_str(&info.id.as_dashed_str());
+    }
     out.write_str(&info.name);
     self.client_writer.write(out).await?;
 
