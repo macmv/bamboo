@@ -1,6 +1,6 @@
 use common::{net::cb, version::ProtocolVersion};
 use data::protocol::{FloatType, IntType, PacketField};
-use std::{collections::HashMap, io, sync::Mutex};
+use std::{collections::HashMap, io};
 
 use crate::packet::Packet;
 
@@ -47,6 +47,12 @@ impl Generator {
     let ver = &self.versions[&v];
     let new_id = p.id();
     // Check for a generator
+    if self.gens.get(&v).is_none() {
+      return Err(io::Error::new(
+        io::ErrorKind::InvalidInput,
+        format!("unimplemented version {:?}", v),
+      ));
+    }
     let g = self.gens[&v].gens.get(&p.id());
     // This is the old id
     let id: i32 = match ver.ids[new_id.to_i32() as usize] {
