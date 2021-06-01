@@ -1,8 +1,11 @@
 mod serialize;
 
-use std::collections::HashSet;
+pub struct NBT {
+  tag:  Tag,
+  name: String,
+}
 
-pub enum NBT {
+enum Tag {
   End,
   Byte(i8),
   Short(i16),
@@ -12,8 +15,8 @@ pub enum NBT {
   Double(f64),
   ByteArray(Vec<u8>),
   String(String),
-  List(Vec<NBT>), // All elements must be the same type
-  Compound(HashSet<NBT>),
+  List(Vec<Tag>),     // All elements must be the same type, and un-named.
+  Compound(Vec<NBT>), // Types can be any kind, and named. Order is not defined.
   IntArray(Vec<i32>),
   LongArray(Vec<i64>),
 }
