@@ -148,6 +148,11 @@ pub enum ProtocolVersion {
 }
 
 impl ProtocolVersion {
+  /// Returns the latest protocol version.
+  pub fn latest() -> Self {
+    Self::V1_16_5
+  }
+
   /// Creates a new protocol version from the given id. If the version is
   /// invalid, then this returns `VInvalid`.
   pub fn from(v: i32) -> Self {

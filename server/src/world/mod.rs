@@ -160,6 +160,13 @@ impl World {
       out.set_byte("hashed_seed", 0);
       out.set_bool("enable_respawn_screen", true);
 
+      // 1.16+
+      out.set_bool("is_hardcore", false);
+      out.set_bool("is_flat", false); // Changes the horizon line
+      out.set_byte("previous_game_mode", 1);
+      out.set_str("world_name", "overworld".into());
+      out.set_bool("is_debug", false); // This is not reduced_debug_info, this is for the world being a debug world
+
       conn.send(out).await;
 
       for x in -10..=10 {

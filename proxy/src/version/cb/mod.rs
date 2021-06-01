@@ -37,8 +37,9 @@ impl PacketSpec {
 }
 
 pub(super) struct Generator {
-  gens:     HashMap<ProtocolVersion, PacketSpec>,
-  versions: HashMap<ProtocolVersion, PacketVersion>,
+  gens:          HashMap<ProtocolVersion, PacketSpec>,
+  versions:      HashMap<ProtocolVersion, PacketVersion>,
+  same_versions: HashMap<ProtocolVersion, ProtocolVersion>,
 }
 
 impl Generator {
@@ -51,30 +52,48 @@ impl Generator {
     gens.insert(ProtocolVersion::V1_13_2, v1_13::gen_spec());
     gens.insert(ProtocolVersion::V1_14_4, v1_14::gen_spec());
     gens.insert(ProtocolVersion::V1_15_2, v1_15::gen_spec());
-    gens.insert(ProtocolVersion::V1_16_5, v1_16::gen_spec());
-    Generator { gens, versions }
+    gens.insert(ProtocolVersion::V1_16_2, v1_16::gen_spec());
+
+    let mut same_versions = HashMap::new();
+    same_versions.insert(ProtocolVersion::V1_16, ProtocolVersion::V1_16_2);
+    same_versions.insert(ProtocolVersion::V1_16_1, ProtocolVersion::V1_16_2);
+    same_versions.insert(ProtocolVersion::V1_16_3, ProtocolVersion::V1_16_2);
+    same_versions.insert(ProtocolVersion::V1_16_5, ProtocolVersion::V1_16_2);
+    Generator { gens, versions, same_versions }
+  }
+
+  fn get_ver(&self, v: ProtocolVersion) -> &PacketVersion {
+    match self.versions.get(&v) {
+      Some(v) => v,
+      None => &self.versions[&self.same_versions[&v]],
+    }
+  }
+
+  fn get_gen(&self, v: ProtocolVersion) -> &PacketSpec {
+    match self.gens.get(&v) {
+      Some(v) => v,
+      None => &self.gens[&self.same_versions[&v]],
+    }
   }
 
   pub fn convert_id(&self, v: ProtocolVersion, id: cb::ID) -> i32 {
-    match self.versions.get(&v) {
-      Some(v) => match v.ids[id.to_i32() as usize] {
-        Some(v) => v as i32,
-        None => -1,
-      },
-      None => panic!("unknown version: {:?}", v),
+    match self.get_ver(v).ids[id.to_i32() as usize] {
+      Some(v) => v as i32,
+      None => -1,
     }
   }
 
   pub fn convert(&self, v: ProtocolVersion, p: &cb::Packet) -> io::Result<Vec<Packet>> {
     let new_id = p.id();
     // Check for a generator
-    if self.gens.get(&v).is_none() {
-      return Err(io::Error::new(
-        io::ErrorKind::InvalidInput,
-        format!("unimplemented version {:?}", v),
-      ));
-    }
-    let out = match self.gens[&v].gens.get(&p.id()) {
+    let gen = self.get_gen(v);
+    // if gen.is_none() {
+    //   return Err(io::Error::new(
+    //     io::ErrorKind::InvalidInput,
+    //     format!("unimplemented version {:?}", v),
+    //   ));
+    // }
+    let out = match gen.gens.get(&p.id()) {
       // If we have a generator for this packet, we use that instead. Generators are
       // used for things like chunk packets, which are just simpler to serialize
       // manually.
@@ -89,7 +108,7 @@ impl Generator {
           return Ok(vec![]);
         }
         // Here, we must have a valid packet id, or we would have returned already.
-        let spec = &self.versions[&v].packets[id as usize];
+        let spec = &self.get_ver(v).packets[id as usize];
         let mut out = Packet::new(id, v);
         for (n, f) in &spec.fields {
           match f {
