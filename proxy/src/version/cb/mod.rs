@@ -14,7 +14,8 @@ mod v1_14;
 mod v1_8;
 mod v1_9;
 
-type BoxedPacketFn = Box<dyn Fn(Packet, &cb::Packet) -> io::Result<Vec<Packet>> + Send + Sync>;
+type BoxedPacketFn =
+  Box<dyn Fn(&Generator, ProtocolVersion, &cb::Packet) -> io::Result<Vec<Packet>> + Send + Sync>;
 
 struct PacketSpec {
   gens: HashMap<cb::ID, BoxedPacketFn>,
@@ -24,7 +25,10 @@ impl PacketSpec {
   fn add(
     &mut self,
     id: cb::ID,
-    f: impl Fn(Packet, &cb::Packet) -> io::Result<Vec<Packet>> + Send + Sync + 'static,
+    f: impl Fn(&Generator, ProtocolVersion, &cb::Packet) -> io::Result<Vec<Packet>>
+      + Send
+      + Sync
+      + 'static,
   ) {
     self.gens.insert(id, Box::new(f));
   }
@@ -64,23 +68,20 @@ impl Generator {
         format!("unimplemented version {:?}", v),
       ));
     }
-    let g = self.gens[&v].gens.get(&p.id());
-    // This is the old id
-    let id = self.convert_id(v, new_id);
-    if g.is_none() && id == -1 {
-      warn!("got packet that has no generator and does not exist for ver {:?}: {}", v, p);
-      return Ok(vec![]);
-    }
-    let out = match g {
+    let out = match self.gens[&v].gens.get(&p.id()) {
       // If we have a generator for this packet, we use that instead. Generators are
       // used for things like chunk packets, which are just simpler to serialize
       // manually.
       Some(g) => {
-        // If we have a generator, we may or may not have a valid packet id.
-        let out = if id != -1 { Packet::new(id, v) } else { Packet::new(0, v) };
-        g(out, p)?
+        // If we have a generator, we just want to use that
+        g(self, v, p)?
       }
       None => {
+        let id = self.convert_id(v, new_id);
+        if id == -1 {
+          warn!("got packet that has no generator and does not exist for ver {:?}: {}", v, p);
+          return Ok(vec![]);
+        }
         // Here, we must have a valid packet id, or we would have returned already.
         let spec = &ver.packets[id as usize];
         let mut out = Packet::new(id, v);

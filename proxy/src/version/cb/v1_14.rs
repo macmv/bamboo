@@ -17,7 +17,9 @@ use common::{
 pub(super) fn gen_spec() -> PacketSpec {
   let mut spec = PacketSpec { gens: HashMap::new() };
   spec.add(cb::ID::PlayerInfo, utils::generate_player_info);
-  spec.add(cb::ID::MapChunk, |mut out: Packet, p: &cb::Packet| {
+  spec.add(cb::ID::MapChunk, |gen, v, p| {
+    let mut out = Packet::new(gen.convert_id(v, cb::ID::MapChunk), v);
+    let mut light = Packet::new(gen.convert_id(v, cb::ID::UpdateLight), v);
     // TODO: Error handling should be done within the packet.
     let chunk = match p.read_other().unwrap() {
       Other::Chunk(c) => c,
