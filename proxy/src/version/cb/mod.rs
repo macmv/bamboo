@@ -12,6 +12,7 @@ mod v1_12;
 mod v1_13;
 mod v1_14;
 mod v1_15;
+mod v1_16;
 mod v1_8;
 mod v1_9;
 
@@ -50,18 +51,21 @@ impl Generator {
     gens.insert(ProtocolVersion::V1_13_2, v1_13::gen_spec());
     gens.insert(ProtocolVersion::V1_14_4, v1_14::gen_spec());
     gens.insert(ProtocolVersion::V1_15_2, v1_15::gen_spec());
+    gens.insert(ProtocolVersion::V1_16_5, v1_16::gen_spec());
     Generator { gens, versions }
   }
 
   pub fn convert_id(&self, v: ProtocolVersion, id: cb::ID) -> i32 {
-    match self.versions[&v].ids[id.to_i32() as usize] {
-      Some(v) => v as i32,
-      None => -1,
+    match self.versions.get(&v) {
+      Some(v) => match v.ids[id.to_i32() as usize] {
+        Some(v) => v as i32,
+        None => -1,
+      },
+      None => panic!("unknown version: {:?}", v),
     }
   }
 
   pub fn convert(&self, v: ProtocolVersion, p: &cb::Packet) -> io::Result<Vec<Packet>> {
-    let ver = &self.versions[&v];
     let new_id = p.id();
     // Check for a generator
     if self.gens.get(&v).is_none() {
@@ -85,7 +89,7 @@ impl Generator {
           return Ok(vec![]);
         }
         // Here, we must have a valid packet id, or we would have returned already.
-        let spec = &ver.packets[id as usize];
+        let spec = &self.versions[&v].packets[id as usize];
         let mut out = Packet::new(id, v);
         for (n, f) in &spec.fields {
           match f {
