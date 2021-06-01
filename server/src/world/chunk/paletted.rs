@@ -67,6 +67,7 @@ impl Section {
       self.data[first] &= !(mask << shift);
       self.data[second] &= !(mask >> second_shift);
       // Set the new id
+      // TODO: All of these shifts will break on 5+ bits per block. Need to fix.
       self.data[first] |= (id as u64) << shift;
       self.data[second] |= (id as u64) >> second_shift;
     }
