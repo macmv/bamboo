@@ -38,7 +38,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
     let k = key.clone();
     let d = der_key.clone();
     tokio::spawn(async move {
-      match handle_client(gen, socket, k, d).await {
+      match handle_client(gen, socket, k, None).await {
         Ok(_) => {}
         Err(e) => {
           error!("error in connection: {}", e);

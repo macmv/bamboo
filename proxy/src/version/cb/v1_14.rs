@@ -27,6 +27,8 @@ pub(super) fn gen_spec() -> PacketSpec {
     };
     out.write_i32(chunk.x);
     out.write_i32(chunk.z);
+    light.write_varint(chunk.x);
+    light.write_varint(chunk.z);
     out.write_bool(true); // Always a new chunk
 
     let biomes = true; // Always true with new chunk set
@@ -37,6 +39,11 @@ pub(super) fn gen_spec() -> PacketSpec {
       bitmask |= 1 << y;
     }
     out.write_varint(bitmask);
+    // TODO: Send light data
+    light.write_varint(bitmask << 1); // Sky light mask (0 bit is blocks -16 to -1, so we << 1)
+    light.write_varint(bitmask << 1); // Block light mask
+    light.write_varint(0); // Empty sky light mask
+    light.write_varint(0); // Empty block light mask
 
     out.write_buf(
       &NBT::new(
@@ -58,7 +65,6 @@ pub(super) fn gen_spec() -> PacketSpec {
       buf.write_u16(s.non_air_blocks as u16);
       buf.write_u8(s.bits_per_block as u8);
       if s.bits_per_block <= 8 {
-        // The length of the palette
         buf.write_varint(s.palette.len() as i32);
         for g in &s.palette {
           buf.write_varint(*g as i32);
@@ -67,7 +73,17 @@ pub(super) fn gen_spec() -> PacketSpec {
       // Number of longs in the data array
       buf.write_varint(s.data.len() as i32);
       buf.write_buf(&s.data.iter().map(|v| v.to_be_bytes()).flatten().collect::<Vec<u8>>());
-      // Light data is now sent in another packet
+
+      // Sky light
+      light.write_varint(2048);
+      for _ in 0..16 * 16 * 16 / 2 {
+        light.write_u8(0xff);
+      }
+      // Block light
+      light.write_varint(2048);
+      for _ in 0..16 * 16 * 16 / 2 {
+        light.write_u8(0xff);
+      }
     }
 
     if biomes {
