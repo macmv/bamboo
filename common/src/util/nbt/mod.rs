@@ -1,6 +1,6 @@
 mod serialize;
 
-use std::collections::HashMap;
+use std::collections::HashSet;
 
 pub enum NBT {
   End,
@@ -13,7 +13,7 @@ pub enum NBT {
   ByteArray(Vec<u8>),
   String(String),
   List(Vec<NBT>), // All elements must be the same type
-  Compound(HashMap<String, NBT>),
+  Compound(HashSet<NBT>),
   IntArray(Vec<i32>),
   LongArray(Vec<i64>),
 }
