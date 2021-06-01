@@ -118,7 +118,7 @@ message Chunk {
   int32 z = 2;
   map<int32, Section> sections = 3;
   repeated bytes blockEntities = 4; // repeated nbt tags
-  repeated uint64 heightmap = 5;
+  repeated int64 heightmap = 5;
 
   message Section {
     repeated uint32 palette = 1;

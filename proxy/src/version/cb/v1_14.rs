@@ -8,7 +8,10 @@ use crate::packet::Packet;
 
 use common::{
   net::{cb, Other},
-  util::Buffer,
+  util::{
+    nbt::{Tag, NBT},
+    Buffer,
+  },
 };
 
 pub(super) fn gen_spec() -> PacketSpec {
@@ -32,6 +35,14 @@ pub(super) fn gen_spec() -> PacketSpec {
       bitmask |= 1 << y;
     }
     out.write_varint(bitmask);
+
+    out.write_buf(
+      &NBT::new(
+        "",
+        Tag::Compound(vec![NBT::new("MOTION_BLOCKING", Tag::LongArray(chunk.heightmap))]),
+      )
+      .serialize(),
+    );
 
     let mut buf = Buffer::new(vec![]);
     // Makes an ordered list of chunk sections
