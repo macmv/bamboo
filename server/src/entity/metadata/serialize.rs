@@ -358,7 +358,7 @@ impl Metadata {
     if self.ver == ProtocolVersion::V1_8 {
       out.write_varint(127);
     } else {
-      out.write_varint(0xff);
+      out.write_u8(0xff);
     }
     out.into_inner()
   }
