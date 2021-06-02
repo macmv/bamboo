@@ -100,12 +100,31 @@ impl Tag {
 #[cfg(test)]
 mod tests {
   use super::*;
+  use flate2::read::GzDecoder;
+  use std::io::prelude::*;
 
   #[test]
   fn deserialize() -> Result<(), ParseError> {
-    let v = NBT::new("hello", Tag::compound(&[("small", Tag::Byte(5))]));
+    let v = NBT::new(
+      "hello",
+      Tag::compound(&[
+        ("small", Tag::Byte(5)),
+        ("i is short", Tag::Short(7)),
+        ("int time", Tag::Int(12)),
+        ("mmmm long", Tag::Long(123564536)),
+        ("big str", Tag::String("hello i am a string".into())),
+      ]),
+    );
     let new = NBT::deserialize(v.serialize())?;
     assert_eq!(new, v);
+    assert!(false);
+
+    let mut data = vec![];
+    let mut decoder = GzDecoder::new(&include_bytes!("../../../../data/nbt/bigtest.nbt")[..]);
+    decoder.read_to_end(&mut data).unwrap();
+    dbg!(&data);
+    let v = NBT::deserialize(data)?;
+    dbg!(v);
     Ok(())
   }
 }

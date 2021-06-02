@@ -1,6 +1,4 @@
 mod deserialize;
-mod err;
-mod ser;
 mod serialize;
 
 use std::collections::HashMap;
