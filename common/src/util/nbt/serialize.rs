@@ -64,6 +64,10 @@ impl Tag {
           // Each element in the HashMap is essentially a NBT, but we store it in a
           // seperated form, so we have a manual implementation of serialize() here.
           out.write_u8(tag.ty());
+          if tag.ty() == Self::End.ty() {
+            // End tags don't have a name, so we stop early.
+            break;
+          }
           out.write_u16(name.len() as u16);
           out.write_buf(name.as_bytes());
           out.write_buf(&tag.serialize());

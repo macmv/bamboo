@@ -136,14 +136,76 @@ mod tests {
     );
     let new = NBT::deserialize(v.serialize())?;
     assert_eq!(new, v);
-    assert!(false);
 
+    let expected = NBT::new(
+      "Level",
+      Tag::compound(&[
+        (
+          "nested compound test",
+          Tag::compound(&[
+            (
+              "egg",
+              Tag::compound(&[("name", Tag::String("Eggbert".into())), ("value", Tag::Float(0.5))]),
+            ),
+            (
+              "ham",
+              Tag::compound(&[("name", Tag::String("Hampus".into())), ("value", Tag::Float(0.75))]),
+            ),
+          ]),
+        ),
+        ("byteTest", Tag::Int(127)),
+        ("shortTest", Tag::Long(32767)),
+        ("intTest", Tag::Int(2147483647)),
+        ("longTest", Tag::Long(9223372036854775807)),
+        ("floatTest", Tag::Double(0.49823147058486938)),
+        ("doubleTest", Tag::Double(0.49312871321823148)),
+        (
+          "stringTest",
+          Tag::String(
+            "HELLO WORLD THIS IS A TEST STRING ÅÄÖ!".into(),
+          ),
+        ),
+        (
+          "listTest (long)",
+          Tag::List(vec![
+            Tag::Long(11),
+            Tag::Long(12),
+            Tag::Long(13),
+            Tag::Long(14),
+            Tag::Long(15),
+          ]),
+        ),
+        (
+          "listTest (compound)",
+          Tag::List(vec![
+            Tag::compound(&[
+              ("created-on", Tag::Long(1264099775885)),
+              ("name", Tag::String("Compound tag #0".into())),
+            ]),
+            Tag::compound(&[
+              ("created-on", Tag::Long(1264099775885)),
+              ("name", Tag::String("Compound tag #1".into())),
+            ]),
+          ]),
+        ),
+        (
+          "byteArrayTest (the first 1000 values of (n*n*255+n*7)%100, starting with n=0 (0, 62, 34, 16, 8, ...))",
+          Tag::ByteArr({
+            let mut out = vec![0; 1000];
+            for n in 0..1000 {
+              out[n] = ((n * n * 255 + n * 7) % 100) as u8;
+            }
+            out
+          }),
+        ),
+      ]),
+    );
     let mut data = vec![];
     let mut decoder = GzDecoder::new(&include_bytes!("../../../../data/nbt/bigtest.nbt")[..]);
     decoder.read_to_end(&mut data).unwrap();
     dbg!(&data);
     let v = NBT::deserialize(data)?;
-    dbg!(v);
+    assert_eq!(v, expected);
     Ok(())
   }
 }
