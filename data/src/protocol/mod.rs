@@ -15,7 +15,7 @@ use std::{
   path::Path,
 };
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq)]
 pub enum IntType {
   I8,
   U8,
@@ -27,13 +27,13 @@ pub enum IntType {
   OptVarInt, // Acts the same as a varint, but is sometimes not present
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq)]
 pub enum FloatType {
   F32,
   F64,
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq)]
 pub enum CountType {
   // A typed count
   Typed(IntType),
@@ -43,14 +43,14 @@ pub enum CountType {
   Named(String),
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq)]
 pub struct BitField {
   name:   String,
   size:   u32,
   signed: bool,
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
 pub enum PacketField {
   // Simple fields
   Native, // Should never exist
@@ -81,7 +81,7 @@ pub enum PacketField {
   DefinedType(String), // Another type, defined within either the types map or the packets map
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
 pub struct Container {
   pub fields: Vec<(String, PacketField)>,
   pub names:  HashMap<String, usize>,

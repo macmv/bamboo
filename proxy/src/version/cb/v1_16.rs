@@ -55,7 +55,7 @@ pub(super) fn gen_spec() -> PacketSpec {
 
     if biomes {
       for _ in 0..1024 {
-        out.write_i32(127); // Void biome
+        out.write_i32(0); // Custom biome
       }
     }
 

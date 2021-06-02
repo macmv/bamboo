@@ -22,9 +22,10 @@ use common::{
   proto::{player_list, Packet, PlayerList},
   util::{
     chat::{Chat, Color},
+    nbt::{Tag, NBT},
     UUID,
   },
-  version::BlockVersion,
+  version::{BlockVersion, ProtocolVersion},
 };
 
 use crate::{block, entity, item, net::Connection, player::Player};
@@ -148,7 +149,9 @@ impl World {
       out.set_int("entity_id", self.eid());
       out.set_byte("game_mode", 1); // Creative
       out.set_byte("difficulty", 1); // Normal
-      out.set_byte("dimension", 0); // Overworld
+      if player.ver() < ProtocolVersion::V1_16 {
+        out.set_byte("dimension", 0); // Overworld
+      }
       out.set_str("level_type", "default".into());
       out.set_byte("max_players", 0); // Ignored
       out.set_bool("reduced_debug_info", false); // Don't reduce debug info
@@ -161,11 +164,64 @@ impl World {
       out.set_bool("enable_respawn_screen", true);
 
       // 1.16+
-      out.set_bool("is_hardcore", false);
-      out.set_bool("is_flat", false); // Changes the horizon line
-      out.set_byte("previous_game_mode", 1);
-      out.set_str("world_name", "overworld".into());
-      out.set_bool("is_debug", false); // This is not reduced_debug_info, this is for the world being a debug world
+      if player.ver() >= ProtocolVersion::V1_16 {
+        out.set_bool("is_hardcore", false);
+        out.set_bool("is_flat", false); // Changes the horizon line
+        out.set_byte("previous_game_mode", 1);
+        out.set_str("world_name", "overworld".into());
+        out.set_bool("is_debug", false); // This is not reduced_debug_info, this is for the world being a debug world
+
+        let dimension = Tag::Compound(vec![
+          NBT::new("piglin_safe", Tag::Byte(0)),
+          NBT::new("natural", Tag::Byte(1)),
+          NBT::new("ambient_light", Tag::Float(0.0)),
+          NBT::new("fixed_time", Tag::Long(6000)),
+          NBT::new("infiniburn", Tag::String("".into())),
+        ]);
+        let biome = Tag::Compound(vec![
+          NBT::new("depth", Tag::Float(1.0)),
+          NBT::new("temperature", Tag::Float(1.0)),
+          NBT::new("scale", Tag::Float(1.0)),
+          NBT::new("downfall", Tag::Float(1.0)),
+          NBT::new("category", Tag::Float(1.0)),
+        ]);
+        let codec = NBT::new(
+          "",
+          Tag::Compound(vec![
+            NBT::new(
+              "minecraft:dimension_type",
+              Tag::Compound(vec![
+                NBT::new("type", Tag::String("minecraft:dimension_type".into())),
+                NBT::new(
+                  "value",
+                  Tag::List(vec![Tag::Compound(vec![
+                    NBT::new("name", Tag::String("minecraft:overworld".into())),
+                    NBT::new("id", Tag::Int(0)),
+                    NBT::new("element", dimension.clone()),
+                  ])]),
+                ),
+              ]),
+            ),
+            NBT::new(
+              "minecraft:worldgen/biome",
+              Tag::Compound(vec![
+                NBT::new("type", Tag::String("minecraft:worldgen/biome".into())),
+                NBT::new(
+                  "value",
+                  Tag::List(vec![Tag::Compound(vec![
+                    NBT::new("name", Tag::String("minecraft:plains".into())),
+                    NBT::new("id", Tag::Int(0)),
+                    NBT::new("element", biome),
+                  ])]),
+                ),
+              ]),
+            ),
+          ]),
+        );
+        out.set_byte_arr("dimension_codec", codec.serialize());
+        out.set_byte_arr("dimension", NBT::new("", dimension).serialize());
+        out.set_str_arr("world_names", vec!["minecraft:overworld".into()]);
+      }
 
       conn.send(out).await;
 
