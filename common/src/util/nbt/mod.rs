@@ -1,3 +1,4 @@
+mod deserialize;
 mod serialize;
 
 /// This is an nbt tag. It has a name, and any amount of data. This can be used
