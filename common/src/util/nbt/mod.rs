@@ -79,6 +79,16 @@ impl NBT {
       panic!("called compound_add on non-compound type: {:?}", self);
     }
   }
+
+  /// If this is a compound tag, this returns the inner data of the tag.
+  /// Otherwise, this panics.
+  pub fn compound(&self) -> &HashMap<String, Tag> {
+    if let Tag::Compound(inner) = &self.tag {
+      &inner
+    } else {
+      panic!("called compound on non-compound type: {:?}", self);
+    }
+  }
 }
 
 impl Tag {

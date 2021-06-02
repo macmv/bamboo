@@ -153,11 +153,11 @@ mod tests {
             ),
           ]),
         ),
-        ("byteTest", Tag::Int(127)),
-        ("shortTest", Tag::Long(32767)),
+        ("byteTest", Tag::Byte(127)),
+        ("shortTest", Tag::Short(32767)),
         ("intTest", Tag::Int(2147483647)),
         ("longTest", Tag::Long(9223372036854775807)),
-        ("floatTest", Tag::Double(0.49823147058486938)),
+        ("floatTest", Tag::Float(0.49823147058486938)),
         ("doubleTest", Tag::Double(0.49312871321823148)),
         (
           "stringTest",
@@ -205,6 +205,12 @@ mod tests {
     decoder.read_to_end(&mut data).unwrap();
     dbg!(&data);
     let v = NBT::deserialize(data)?;
+
+    // More readable errors
+    let expected_map = expected.compound();
+    for (name, val) in v.compound() {
+      assert_eq!(&expected_map[name], val);
+    }
     assert_eq!(v, expected);
     Ok(())
   }
