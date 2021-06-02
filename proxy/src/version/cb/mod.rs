@@ -129,7 +129,30 @@ impl Generator {
             PacketField::UUID => out.write_uuid(p.get_uuid(n)?),
             PacketField::RestBuffer => out.write_buf(p.get_byte_arr(n)?),
             PacketField::NBT => out.write_buf(p.get_byte_arr(n)?),
-            v => error!("invalid packet field {:?}", v),
+            PacketField::Array { count, value } => {
+              if **value == PacketField::String {
+                let arr = p.get_str_arr(n)?;
+                if *count == CountType::Typed(IntType::VarInt) {
+                  out.write_varint(arr.len() as i32);
+                } else {
+                  error!(
+                    "while parsing spec for {:?} packet, got invalid array count type {:?}",
+                    new_id, count
+                  )
+                }
+                for v in arr {
+                  out.write_str(v);
+                }
+              } else {
+                error!(
+                  "while parsing spec for {:?} packet, got invalid array value type {:?}",
+                  new_id, value
+                )
+              }
+            }
+            v => {
+              error!("while parsing spec for {:?} packet, got invalid packet field {:?}", new_id, v)
+            }
           }
         }
         vec![out]
