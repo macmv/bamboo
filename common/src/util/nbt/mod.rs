@@ -1,6 +1,8 @@
 mod deserialize;
 mod serialize;
 
+use std::collections::HashSet;
+
 /// This is an nbt tag. It has a name, and any amount of data. This can be used
 /// to store item data, entity data, level data, and more.
 #[derive(Debug, Clone, PartialEq)]
@@ -22,8 +24,8 @@ pub enum Tag {
   Double(f64),
   ByteArr(Vec<u8>),
   String(String),
-  List(Vec<Tag>),     // All elements must be the same type, and un-named.
-  Compound(Vec<NBT>), // Types can be any kind, and named. Order is not defined.
+  List(Vec<Tag>),              // All elements must be the same type, and un-named.
+  Compound(UnorderedSet<NBT>), // Types can be any kind, and named. Order is not defined.
   IntArray(Vec<i32>),
   LongArray(Vec<i64>),
 }
