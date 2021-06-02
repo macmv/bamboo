@@ -3,7 +3,7 @@ mod serialize;
 
 /// This is an nbt tag. It has a name, and any amount of data. This can be used
 /// to store item data, entity data, level data, and more.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct NBT {
   tag:  Tag,
   name: String,
@@ -11,7 +11,7 @@ pub struct NBT {
 
 /// This is a single tag. It does not contain a name, but has the actual data
 /// for any of the nbt tags.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum Tag {
   End,
   Byte(i8),

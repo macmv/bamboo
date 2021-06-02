@@ -1,12 +1,24 @@
 use crate::util::Buffer;
-use std::string::FromUtf8Error;
+use std::{error::Error, fmt, string::FromUtf8Error};
 
 use super::{Tag, NBT};
 
+#[derive(Debug)]
 pub enum ParseError {
   InvalidType(u8),
   InvalidString(FromUtf8Error),
 }
+
+impl fmt::Display for ParseError {
+  fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+    match self {
+      Self::InvalidType(ty) => write!(f, "invalid tag type: {}", ty),
+      Self::InvalidString(e) => write!(f, "invalid string: {}", e),
+    }
+  }
+}
+
+impl Error for ParseError {}
 
 impl NBT {
   pub fn deserialize(buf: Vec<u8>) -> Result<Self, ParseError> {
@@ -55,7 +67,6 @@ impl Tag {
         loop {
           let val = NBT::deserialize_buf(buf)?;
           if val.tag.ty() == Self::End.ty() {
-            inner.push(val);
             break;
           }
           inner.push(val);
@@ -80,5 +91,18 @@ impl Tag {
       }
       _ => Err(ParseError::InvalidType(ty)),
     }
+  }
+}
+
+#[cfg(test)]
+mod tests {
+  use super::*;
+
+  #[test]
+  fn deserialize() -> Result<(), ParseError> {
+    let v = NBT::new("hello", Tag::Compound(vec![NBT::new("small", Tag::Byte(5))]));
+    let new = NBT::deserialize(v.serialize())?;
+    assert_eq!(new, v);
+    Ok(())
   }
 }
