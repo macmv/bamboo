@@ -1,7 +1,6 @@
 mod buffer;
 pub mod chat;
 pub mod nbt;
-mod unordered_set;
 
 use crate::proto;
 use serde::de::{self, Deserialize, Deserializer, Unexpected, Visitor};
@@ -9,7 +8,6 @@ use std::{convert::TryInto, error::Error, fmt, num::ParseIntError, str::FromStr}
 
 pub use buffer::{Buffer, BufferError};
 pub use chat::Chat;
-pub use unordered_set::UnorderedSet;
 
 pub fn serialize_varint(v: i32) -> Vec<u8> {
   // Need to work with u32, as >> acts differently on i32 vs u32.

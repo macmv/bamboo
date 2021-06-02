@@ -1,5 +1,5 @@
 use crate::util::Buffer;
-use std::{error::Error, fmt, string::FromUtf8Error};
+use std::{collections::HashMap, error::Error, fmt, string::FromUtf8Error};
 
 use super::{Tag, NBT};
 
@@ -63,13 +63,16 @@ impl Tag {
         Ok(Self::List(inner))
       }
       10 => {
-        let mut inner = vec![];
+        let mut inner = HashMap::new();
         loop {
-          let val = NBT::deserialize_buf(buf)?;
-          if val.tag.ty() == Self::End.ty() {
+          let ty = buf.read_u8();
+          let len = buf.read_u16();
+          let name = String::from_utf8(buf.read(len as usize)).unwrap();
+          let tag = Tag::deserialize(ty, buf)?;
+          if tag.ty() == Self::End.ty() {
             break;
           }
-          inner.push(val);
+          inner.insert(name, tag);
         }
         Ok(Self::Compound(inner))
       }
@@ -100,7 +103,7 @@ mod tests {
 
   #[test]
   fn deserialize() -> Result<(), ParseError> {
-    let v = NBT::new("hello", Tag::Compound(vec![NBT::new("small", Tag::Byte(5))]));
+    let v = NBT::new("hello", Tag::compound(&[("small", Tag::Byte(5))]));
     let new = NBT::deserialize(v.serialize())?;
     assert_eq!(new, v);
     Ok(())

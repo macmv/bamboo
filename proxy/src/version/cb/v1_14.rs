@@ -46,11 +46,8 @@ pub(super) fn gen_spec() -> PacketSpec {
     light.write_varint(0); // Empty block light mask
 
     out.write_buf(
-      &NBT::new(
-        "",
-        Tag::Compound(vec![NBT::new("MOTION_BLOCKING", Tag::LongArray(chunk.heightmap))]),
-      )
-      .serialize(),
+      &NBT::new("", Tag::compound(&[("MOTION_BLOCKING", Tag::LongArray(chunk.heightmap))]))
+        .serialize(),
     );
 
     let mut buf = Buffer::new(vec![]);

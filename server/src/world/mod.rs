@@ -171,47 +171,47 @@ impl World {
         out.set_str("world_name", "overworld".into());
         out.set_bool("is_debug", false); // This is not reduced_debug_info, this is for the world being a debug world
 
-        let dimension = Tag::Compound(vec![
-          NBT::new("piglin_safe", Tag::Byte(0)),
-          NBT::new("natural", Tag::Byte(1)),
-          NBT::new("ambient_light", Tag::Float(0.0)),
-          NBT::new("fixed_time", Tag::Long(6000)),
-          NBT::new("infiniburn", Tag::String("".into())),
+        let dimension = Tag::compound(&[
+          ("piglin_safe", Tag::Byte(0)),
+          ("natural", Tag::Byte(1)),
+          ("ambient_light", Tag::Float(0.0)),
+          ("fixed_time", Tag::Long(6000)),
+          ("infiniburn", Tag::String("".into())),
         ]);
-        let biome = Tag::Compound(vec![
-          NBT::new("depth", Tag::Float(1.0)),
-          NBT::new("temperature", Tag::Float(1.0)),
-          NBT::new("scale", Tag::Float(1.0)),
-          NBT::new("downfall", Tag::Float(1.0)),
-          NBT::new("category", Tag::Float(1.0)),
+        let biome = Tag::compound(&[
+          ("depth", Tag::Float(1.0)),
+          ("temperature", Tag::Float(1.0)),
+          ("scale", Tag::Float(1.0)),
+          ("downfall", Tag::Float(1.0)),
+          ("category", Tag::Float(1.0)),
         ]);
         let codec = NBT::new(
           "",
-          Tag::Compound(vec![
-            NBT::new(
+          Tag::compound(&[
+            (
               "minecraft:dimension_type",
-              Tag::Compound(vec![
-                NBT::new("type", Tag::String("minecraft:dimension_type".into())),
-                NBT::new(
+              Tag::compound(&[
+                ("type", Tag::String("minecraft:dimension_type".into())),
+                (
                   "value",
-                  Tag::List(vec![Tag::Compound(vec![
-                    NBT::new("name", Tag::String("minecraft:overworld".into())),
-                    NBT::new("id", Tag::Int(0)),
-                    NBT::new("element", dimension.clone()),
+                  Tag::List(vec![Tag::compound(&[
+                    ("name", Tag::String("minecraft:overworld".into())),
+                    ("id", Tag::Int(0)),
+                    ("element", dimension.clone()),
                   ])]),
                 ),
               ]),
             ),
-            NBT::new(
+            (
               "minecraft:worldgen/biome",
-              Tag::Compound(vec![
-                NBT::new("type", Tag::String("minecraft:worldgen/biome".into())),
-                NBT::new(
+              Tag::compound(&[
+                ("type", Tag::String("minecraft:worldgen/biome".into())),
+                (
                   "value",
-                  Tag::List(vec![Tag::Compound(vec![
-                    NBT::new("name", Tag::String("minecraft:plains".into())),
-                    NBT::new("id", Tag::Int(0)),
-                    NBT::new("element", biome),
+                  Tag::List(vec![Tag::compound(&[
+                    ("name", Tag::String("minecraft:plains".into())),
+                    ("id", Tag::Int(0)),
+                    ("element", biome),
                   ])]),
                 ),
               ]),

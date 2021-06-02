@@ -1,7 +1,7 @@
 mod deserialize;
 mod serialize;
 
-use std::collections::HashSet;
+use std::collections::HashMap;
 
 /// This is an nbt tag. It has a name, and any amount of data. This can be used
 /// to store item data, entity data, level data, and more.
@@ -24,8 +24,8 @@ pub enum Tag {
   Double(f64),
   ByteArr(Vec<u8>),
   String(String),
-  List(Vec<Tag>),              // All elements must be the same type, and un-named.
-  Compound(UnorderedSet<NBT>), // Types can be any kind, and named. Order is not defined.
+  List(Vec<Tag>),                 // All elements must be the same type, and un-named.
+  Compound(HashMap<String, Tag>), // Types can be any kind, and are named. Order is not defined.
   IntArray(Vec<i32>),
   LongArray(Vec<i64>),
 }
@@ -72,12 +72,23 @@ impl NBT {
 
   /// Appends the given element to the compound. This will panic if self is not
   /// a compound tag.
-  pub fn compound_add(&mut self, nbt: NBT) {
+  pub fn compound_add(&mut self, name: String, value: Tag) {
     if let Tag::Compound(inner) = &mut self.tag {
-      inner.push(nbt);
+      inner.insert(name, value);
     } else {
       panic!("called compound_add on non-compound type: {:?}", self);
     }
+  }
+}
+
+impl Tag {
+  /// A simpler way to construct compound tags inline.
+  pub fn compound(value: &[(&str, Tag)]) -> Self {
+    let mut inner = HashMap::new();
+    for (name, tag) in value {
+      inner.insert(name.to_string(), tag.clone());
+    }
+    Self::Compound(inner)
   }
 }
 

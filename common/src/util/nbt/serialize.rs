@@ -60,8 +60,13 @@ impl Tag {
         }
       }
       Self::Compound(v) => {
-        for nbt in v {
-          out.write_buf(&nbt.serialize());
+        for (name, tag) in v {
+          // Each element in the HashMap is essentially a NBT, but we store it in a
+          // seperated form, so we have a manual implementation of serialize() here.
+          out.write_u8(tag.ty());
+          out.write_u16(name.len() as u16);
+          out.write_buf(name.as_bytes());
+          out.write_buf(&tag.serialize());
         }
         out.write_u8(Self::End.ty());
       }
@@ -88,7 +93,6 @@ mod tests {
 
   #[test]
   fn test_serialize() {
-    let nbt =
-      NBT::new("", Tag::Compound(vec![NBT::new("MOTION_BLOCKING", Tag::LongArray(vec![5, 7]))]));
+    let nbt = NBT::new("", Tag::compound(&[("MOTION_BLOCKING", Tag::LongArray(vec![5, 7]))]));
   }
 }
