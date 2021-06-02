@@ -40,6 +40,7 @@ pub(super) fn gen_spec() -> PacketSpec {
     }
     out.write_varint(bitmask);
     // TODO: Send light data
+    light.write_bool(false); // Trust edges
     light.write_varint(bitmask << 1); // Sky light mask (0 bit is blocks -16 to -1, so we << 1)
     light.write_varint(bitmask << 1); // Block light mask
     light.write_varint(0); // Empty sky light mask
@@ -51,8 +52,9 @@ pub(super) fn gen_spec() -> PacketSpec {
     );
 
     if biomes {
+      out.write_varint(1024);
       for _ in 0..1024 {
-        out.write_i32(0); // Custom biome
+        out.write_varint(0); // Custom biome
       }
     }
 

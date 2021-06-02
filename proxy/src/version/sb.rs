@@ -7,16 +7,27 @@ use crate::packet::Packet;
 use super::PacketVersion;
 
 pub(super) struct Generator {
-  versions: HashMap<ProtocolVersion, PacketVersion>,
+  versions:      HashMap<ProtocolVersion, PacketVersion>,
+  same_versions: HashMap<ProtocolVersion, ProtocolVersion>,
 }
 
 impl Generator {
-  pub fn new(versions: HashMap<ProtocolVersion, PacketVersion>) -> Generator {
-    Generator { versions }
+  pub fn new(
+    versions: HashMap<ProtocolVersion, PacketVersion>,
+    same_versions: HashMap<ProtocolVersion, ProtocolVersion>,
+  ) -> Generator {
+    Generator { versions, same_versions }
+  }
+
+  fn get_ver(&self, v: ProtocolVersion) -> &PacketVersion {
+    match self.versions.get(&v) {
+      Some(v) => v,
+      None => &self.versions[&self.same_versions[&v]],
+    }
   }
 
   pub fn convert(&self, v: ProtocolVersion, mut p: Packet) -> io::Result<sb::Packet> {
-    let ver = &self.versions[&v];
+    let ver = &self.get_ver(v);
     // let types = &ver.types;
     let spec = &ver.packets[p.id() as usize];
     let mut out = sb::Packet::new(sb::ID::parse_str(&spec.name));

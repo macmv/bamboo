@@ -177,13 +177,32 @@ impl World {
           ("ambient_light", Tag::Float(0.0)),
           ("fixed_time", Tag::Long(6000)),
           ("infiniburn", Tag::String("".into())),
+          ("respawn_anchor_works", Tag::Byte(0)),
+          ("has_skylight", Tag::Byte(1)),
+          ("bed_works", Tag::Byte(1)),
+          ("effects", Tag::String("minecraft:overworld".into())),
+          ("has_raids", Tag::Byte(0)),
+          ("logical_height", Tag::Int(128)),
+          ("coordinate_scale", Tag::Float(1.0)),
+          ("ultrawarm", Tag::Byte(0)),
+          ("has_ceiling", Tag::Byte(0)),
         ]);
         let biome = Tag::compound(&[
+          ("precipitation", Tag::String("rain".into())),
           ("depth", Tag::Float(1.0)),
           ("temperature", Tag::Float(1.0)),
           ("scale", Tag::Float(1.0)),
           ("downfall", Tag::Float(1.0)),
-          ("category", Tag::Float(1.0)),
+          ("category", Tag::String("none".into())),
+          (
+            "effects",
+            Tag::compound(&[
+              ("sky_color", Tag::Int(0xff00ff)),
+              ("water_color", Tag::Int(0xff00ff)),
+              ("fog_color", Tag::Int(0xff00ff)),
+              ("water_fog_color", Tag::Int(0xff00ff)),
+            ]),
+          ),
         ]);
         let codec = NBT::new(
           "",

@@ -43,7 +43,10 @@ pub(super) struct Generator {
 }
 
 impl Generator {
-  pub fn new(versions: HashMap<ProtocolVersion, PacketVersion>) -> Generator {
+  pub fn new(
+    versions: HashMap<ProtocolVersion, PacketVersion>,
+    same_versions: HashMap<ProtocolVersion, ProtocolVersion>,
+  ) -> Generator {
     let mut gens = HashMap::new();
     gens.insert(ProtocolVersion::V1_8, v1_8::gen_spec());
     gens.insert(ProtocolVersion::V1_9_4, v1_9::gen_spec());
@@ -53,12 +56,6 @@ impl Generator {
     gens.insert(ProtocolVersion::V1_14_4, v1_14::gen_spec());
     gens.insert(ProtocolVersion::V1_15_2, v1_15::gen_spec());
     gens.insert(ProtocolVersion::V1_16_2, v1_16::gen_spec());
-
-    let mut same_versions = HashMap::new();
-    same_versions.insert(ProtocolVersion::V1_16, ProtocolVersion::V1_16_2);
-    same_versions.insert(ProtocolVersion::V1_16_1, ProtocolVersion::V1_16_2);
-    same_versions.insert(ProtocolVersion::V1_16_3, ProtocolVersion::V1_16_2);
-    same_versions.insert(ProtocolVersion::V1_16_5, ProtocolVersion::V1_16_2);
     Generator { gens, versions, same_versions }
   }
 

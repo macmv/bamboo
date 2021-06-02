@@ -60,7 +60,16 @@ impl Generator {
         },
       );
     }
-    Generator { cb: cb::Generator::new(to_client), sb: sb::Generator::new(to_server) }
+
+    let mut same_versions = HashMap::new();
+    same_versions.insert(ProtocolVersion::V1_16, ProtocolVersion::V1_16_2);
+    same_versions.insert(ProtocolVersion::V1_16_1, ProtocolVersion::V1_16_2);
+    same_versions.insert(ProtocolVersion::V1_16_3, ProtocolVersion::V1_16_2);
+    same_versions.insert(ProtocolVersion::V1_16_5, ProtocolVersion::V1_16_2);
+    Generator {
+      cb: cb::Generator::new(to_client, same_versions.clone()),
+      sb: sb::Generator::new(to_server, same_versions),
+    }
   }
   pub fn clientbound(&self, v: ProtocolVersion, p: CbPacket) -> io::Result<Vec<Packet>> {
     match self.cb.convert(v, &p) {
