@@ -47,7 +47,7 @@ impl Tag {
         Ok(Self::ByteArr(buf.read(len as usize)))
       }
       8 => {
-        let len = buf.read_i32();
+        let len = buf.read_u16();
         match String::from_utf8(buf.read(len as usize)) {
           Ok(v) => Ok(Self::String(v)),
           Err(e) => Err(ParseError::InvalidString(e)),
@@ -66,12 +66,12 @@ impl Tag {
         let mut inner = HashMap::new();
         loop {
           let ty = buf.read_u8();
+          if ty == Self::End.ty() {
+            break;
+          }
           let len = buf.read_u16();
           let name = String::from_utf8(buf.read(len as usize)).unwrap();
           let tag = Tag::deserialize(ty, buf)?;
-          if tag.ty() == Self::End.ty() {
-            break;
-          }
           inner.insert(name, tag);
         }
         Ok(Self::Compound(inner))
@@ -112,7 +112,26 @@ mod tests {
         ("i is short", Tag::Short(7)),
         ("int time", Tag::Int(12)),
         ("mmmm long", Tag::Long(123564536)),
+        ("funny number", Tag::Float(123.0)),
+        ("big number", Tag::Double(123.0)),
+        ("arrrrrrrr", Tag::ByteArr(vec![0, 4, 5, 7, 7, 7, 8, 9])),
         ("big str", Tag::String("hello i am a string".into())),
+        (
+          "str list time",
+          Tag::List(vec![
+            Tag::String("list elem 1".into()),
+            Tag::String("list elem 2".into()),
+            Tag::String("list elem 3".into()),
+          ]),
+        ),
+        (
+          "nested compound",
+          Tag::compound(&[
+            ("inner 1", Tag::compound(&[("num", Tag::Int(5))])),
+            ("inner 2", Tag::compound(&[("str", Tag::String("words".into()))])),
+            ("compound more", Tag::Long(12313)),
+          ]),
+        ),
       ]),
     );
     let new = NBT::deserialize(v.serialize())?;

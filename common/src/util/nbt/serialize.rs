@@ -49,7 +49,7 @@ impl Tag {
         out.write_buf(v);
       }
       Self::String(v) => {
-        out.write_i32(v.len() as i32);
+        out.write_u16(v.len() as u16);
         out.write_buf(v.as_bytes());
       }
       Self::List(v) => {
