@@ -1,7 +1,7 @@
 use super::chunk::MultiChunk;
 use crate::block;
 use common::math::{ChunkPos, Pos, Voronoi};
-use noise::{NoiseFn, Perlin};
+use noise::{BasicMulti, NoiseFn};
 use std::{cmp::Ordering, collections::HashSet};
 
 mod desert;
@@ -142,15 +142,17 @@ pub trait BiomeGen {
 pub struct WorldGen {
   biome_map: Voronoi,
   biomes:    Vec<Box<dyn BiomeGen + Send>>,
-  height:    Perlin,
+  height:    BasicMulti,
 }
 
 impl WorldGen {
   pub fn new() -> Self {
+    let mut height = BasicMulti::new();
+    height.octaves = 5;
     Self {
       biome_map: Voronoi::new(1231451),
-      biomes:    vec![desert::Gen::new(), forest::Gen::new()],
-      height:    Perlin::new(),
+      biomes: vec![desert::Gen::new(), forest::Gen::new()],
+      height,
     }
   }
   pub fn generate(&self, pos: ChunkPos, c: &mut MultiChunk) {
@@ -180,6 +182,6 @@ impl WorldGen {
     }
   }
   pub fn height_at(&self, pos: Pos) -> f64 {
-    self.height.get([pos.x() as f64 / 100.0, pos.z() as f64 / 100.0]) * 30.0 + 60.0
+    self.height.get([pos.x() as f64 / 512.0, pos.z() as f64 / 512.0]) * 20.0 + 60.0
   }
 }
