@@ -118,7 +118,11 @@ pub fn generate(dir: &Path) -> Result<HashSet<String>, Box<dyn Error>> {
       if i == 0 {
         continue;
       }
-      to_old.push(versions::generate(latest, v));
+      if i >= versions.len() - 4 {
+        to_old.push(versions::generate_old(latest, v));
+      } else {
+        to_old.push(versions::generate(latest, v));
+      }
     }
     for i in 0..to_old[0].len() {
       write!(f, "{},", i)?;

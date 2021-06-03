@@ -1,0 +1,4 @@
+stone: stone 0
+granite: stone 1
+polished_granite: stone 2
+grass_block: grass
