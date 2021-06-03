@@ -15,12 +15,13 @@ pub(super) fn generate(latest: &BlockVersion, old: &BlockVersion) -> Vec<u32> {
     if b.states.is_empty() {
       to_old.push(old_block.id);
     } else {
-      for i in 0..b.states.len() as u32 {
-        let old_id;
-        if i as usize >= old_block.states.len() {
-          old_id = 0;
-        } else {
-          old_id = old_block.states[i as usize].id;
+      for s in &b.states {
+        let mut old_id = 0;
+        for o in &old_block.states {
+          if o.properties == s.properties {
+            old_id = o.id;
+            break;
+          }
         }
         to_old.push(old_id);
       }
