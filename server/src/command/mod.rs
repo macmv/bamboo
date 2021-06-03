@@ -110,10 +110,23 @@ impl Command {
   pub fn parse(&self, text: &str) -> Result<Vec<Arg>, ParseError> {
     let (arg, index) = self.parse_arg(text)?;
     let mut out = vec![arg];
+    let mut errors = vec![];
     for c in &self.children {
-      out.extend(c.parse(&text[index..])?);
+      match c.parse(&text[index..]) {
+        Ok(v) => {
+          out.extend(v);
+          break;
+        }
+        Err(e) => {
+          errors.push(e);
+        }
+      }
     }
-    Ok(out)
+    if !self.children.is_empty() && out.len() == 1 {
+      Err(ParseError::NoChildren(errors))
+    } else {
+      Ok(out)
+    }
   }
   /// Tries to parse the current argument with the given text. This will ignore
   /// any children that this command may have. If successful, this will return
