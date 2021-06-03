@@ -109,6 +109,9 @@ impl Command {
   /// will be returned. Otherwise, a list of fields will be returned.
   pub fn parse(&self, text: &str) -> Result<Vec<Arg>, ParseError> {
     let (arg, index) = self.parse_arg(text)?;
+    if self.children.is_empty() && index < text.len() {
+      return Err(ParseError::Trailing(text[index..].into()));
+    }
     let mut out = vec![arg];
     let mut errors = vec![];
     for c in &self.children {
@@ -179,8 +182,12 @@ mod tests {
     c.add_arg("min", Parser::BlockPos)
       .add_arg("max", Parser::BlockPos)
       .add_arg("block", Parser::BlockState);
+    let v = match c.parse("fill 20 20 20 10 30 10 minecraft:stone") {
+      Ok(v) => v,
+      Err(e) => panic!("{}", e),
+    };
     assert_eq!(
-      c.parse("fill 20 20 20 10 30 10 minecraft:stone")?,
+      v,
       vec![
         Arg::Literal("fill".into()),
         Arg::BlockPos(Pos::new(20, 20, 20)),
