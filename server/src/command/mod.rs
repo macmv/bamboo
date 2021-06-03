@@ -102,6 +102,35 @@ impl Command {
     let index = self.children.len() - 1;
     self.children.get_mut(index).unwrap()
   }
+  /// Parses the given text. The given text should be the entire command without
+  /// a slash at the start. If anything went wrong during parsing, a ParseError
+  /// will be returned. Otherwise, a list of fields will be returned.
+  pub fn parse(&self, text: &str) -> Result<Vec<Arg>, ParseError> {
+    let mut out = vec![];
+    if let Some(index) = self.matches(text) {
+      for c in self.children {
+        out.extend(c.parse(text[index..])?);
+      }
+    }
+  }
+  /// Tries to parse the current argument with the given text. This will ignore
+  /// any children that this command may have. If successful, this will return
+  /// the argument, and the starting index of the next argument.
+  ///
+  /// This can be used with top level commands to check if they match some text.
+  pub fn parse_arg(&self, text: &str) -> Result<(Arg, usize), ParseError> {
+    match self.ty {
+      NodeType::Root => panic!("cannot call matches on root node!"),
+      NodeType::Literal => {
+        if text.starts_with(&self.name + " ") {
+          Ok((Arg::Literal(self.name.clone()), self.name.len() + 1))
+        } else {
+          Err(ParseError(LiteralNonMatch))
+        }
+      }
+      NodeType::Argument(p) => p.matches(text),
+    }
+  }
 }
 
 #[cfg(test)]

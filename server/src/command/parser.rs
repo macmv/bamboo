@@ -1,3 +1,14 @@
+use crate::{block, item};
+use common::{
+  math::{ChunkPos, Pos},
+  util::{
+    chat::{Chat, Color},
+    nbt::NBT,
+    UUID,
+  },
+};
+use std::collections::HashMap;
+
 /// A string parsing type. Used only in [`Parser::String`].
 #[derive(Debug, Clone)]
 pub enum StringType {
@@ -117,4 +128,102 @@ pub enum Parser {
   Modid,
   /// A enum class to use for suggestion. Added by Minecraft Forge.
   Enum,
+}
+
+pub enum EntitySelector {
+  /// A username
+  Name(String),
+  /// All entites, with the given restrictions
+  Entities(HashMap<String, String>), //
+  /// All players, with the given restrictions
+  Players(HashMap<String, String>),
+  /// The player who ran the command (@s)
+  Runner,
+  /// The player who is closest (@p)
+  Closest(HashMap<String, String>),
+  /// Random player (@r)
+  Random(HashMap<String, String>),
+}
+
+/// This is the result of a parsed command. It contains all the values from
+/// Parser, but also contains the data that each argument contains.
+///
+/// I do not know what a lot of these types do. Most of them seem pointless, so
+/// I have not bothered to see what they do ingame. Send a PR if you know how
+/// this should work.
+pub enum Arg {
+  /// A parsed literal.
+  Literal(String),
+
+  Bool(bool),
+  Double(f64),
+  Float(f32),
+  Integer(i32),
+  String(String),
+  Entity(EntitySelector),
+  ScoreHolder(String),
+  GameProfile(EntitySelector),
+  BlockPos(Pos),
+  ColumnPos(ChunkPos),
+  Vec3(f64, f64, f64),
+  Vec2(f64, f64),
+  // A block kind, with state info, and optional nbt
+  BlockState(block::Kind, HashMap<String, String>, Option<NBT>),
+  BlockPredicate(block::Kind),
+  ItemStack(item::Stack),
+  ItemPredicate(item::Type),
+  Color(Color),
+  Component(Chat),
+  Message(String),
+  Nbt(NBT),
+  NbtPath(String),
+  Objective(String),
+  ObjectiveCriteria(String),
+  Operation(String),
+  Particle(String), // TODO: Particles
+  Rotation(f32, f32),
+  Angle(f32),
+  ScoreboardSlot(String),
+  Swizzle(f64, f64, f64),
+  Team(String),
+  /// A name for an inventory slot. Unclear on what is valid. Parsed as a string
+  /// for now.
+  ItemSlot(String),
+  /// An identifier. Parsed as a string for now.
+  ResourceLocation(String),
+  /// A potion effect. Parsed as an identifier (things like `minecraft:foo`).
+  MobEffect(String),
+  /// A function. Also parsed as a string, because I do not know what this is.
+  Function(String),
+  /// Entity anchor. What even is this thing. Parsed as a string,
+  EntityAnchor(String),
+  Range {
+    min: f64,
+    max: f64,
+  },
+  IntRange {
+    min: i32,
+    max: i32,
+  },
+  FloatRange {
+    min: f64,
+    max: f64,
+  },
+  /// Represents a item enchantment. Parsed as a string.
+  ItemEnchantment(String),
+  /// Represents an entity summon. Once again, a string.
+  EntitySummon(String),
+  /// Represents a dimension. MORE STRINGS
+  Dimension(String),
+  Uuid(UUID),
+  /// Different to nbt how?
+  NbtTag(NBT),
+  /// Once again, different to nbt how?
+  NbtCompoundTag(NBT),
+  Time(u64),
+
+  /// A forge mod id
+  Modid(String),
+  /// A enum class to use for suggestion. Added by Minecraft Forge.
+  Enum(String),
 }
