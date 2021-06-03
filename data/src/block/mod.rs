@@ -36,6 +36,33 @@ struct Block {
   name:          String,
 }
 
+impl Block {
+  pub fn prop_strs(&self) -> Vec<String> {
+    if self.states.is_empty() {
+      return vec![self.name.clone()];
+    }
+    self.states.iter().map(|s| s.prop_str(&self.name)).collect()
+  }
+}
+
+impl State {
+  fn prop_str(&self, name: &str) -> String {
+    let mut out = format!("{}[", name);
+    let mut sorted_properties: Vec<(String, String)> =
+      self.properties.iter().map(|(k, v)| (k.clone(), v.clone())).collect();
+    sorted_properties.sort();
+    for (k, v) in sorted_properties {
+      if !out.ends_with('[') {
+        out += ",";
+      }
+      out += &k;
+      out += "=";
+      out += &v;
+    }
+    out + "]"
+  }
+}
+
 #[derive(Debug)]
 struct BlockVersion {
   blocks: Vec<Block>,
@@ -118,7 +145,8 @@ pub fn generate(dir: &Path) -> Result<HashSet<String>, Box<dyn Error>> {
       if i == 0 {
         continue;
       }
-      if i >= versions.len() - 4 {
+      if i >= versions.len() - 5 {
+        // 1.8-1.12
         to_old.push(versions::generate_old(latest, v));
       } else {
         to_old.push(versions::generate(latest, v));

@@ -1,4 +1,35 @@
-stone: stone 0
-granite: stone 1
-polished_granite: stone 2
+stone:             stone 0
+granite:           stone 1
+polished_granite:  stone 2
+diorite:           stone 3
+polished_diorite:  stone 4
+andesite:          stone 5
+polished_andesite: stone 6
+
 grass_block: grass
+
+dirt:        dirt 0
+coarse_dirt: dirt 1
+podzol:      dirt 2
+
+oak_planks:      planks 0
+spruce_planks:   planks 1
+birch_planks:    planks 2
+jungle_planks:   planks 3
+acacia_planks:   planks 4
+dark_oak_planks: planks 5
+
+oak_sapling:      sapling 0
+spruce_sapling:   sapling 1
+birch_sapling:    sapling 2
+jungle_sapling:   sapling 3
+acacia_sapling:   sapling 4
+dark_oak_sapling: sapling 5
+
+sand:     sand 0
+red_sand: sand 1
+
+oak_log[axis=x]: log 0
+oak_log[axis=y]: log 1
+oak_log[axis=z]: log 2
+oak_wood:        log 3
