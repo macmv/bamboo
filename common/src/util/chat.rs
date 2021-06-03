@@ -36,7 +36,7 @@ use serde_derive::Serialize;
 
 /// This is a chat message. It has a list of sections, and can be serialized to
 /// json.
-#[derive(Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct Chat {
   sections: Vec<Section>,
 }
@@ -125,7 +125,7 @@ impl Serialize for Chat {
 /// [`on_click`]: Self::on_click
 /// [`on_hover`]: Self::on_hover
 /// [`add_child`]: Self::add_child
-#[derive(Debug, Default, Clone, Serialize)]
+#[derive(Debug, Default, Clone, Serialize, PartialEq)]
 pub struct Section {
   text:          String,
   #[serde(skip_serializing_if = "Option::is_none")]
@@ -156,7 +156,7 @@ pub struct Section {
   extra:         Vec<Section>,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ClickEvent {
   OpenURL(String),
   RunCommand(String),
@@ -184,7 +184,7 @@ impl Serialize for ClickEvent {
   }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum HoverEvent {
   ShowText(String),
   ShowItem(String),
@@ -278,7 +278,7 @@ impl Section {
   }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Color {
   Black,
   DarkBlue,

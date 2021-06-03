@@ -1,6 +1,6 @@
 use super::Type;
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Stack {
   item:   Type,
   amount: u8,

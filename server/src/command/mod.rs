@@ -138,6 +138,9 @@ impl Command {
 #[cfg(test)]
 mod tests {
   use super::*;
+  use crate::block;
+  use common::math::Pos;
+  use std::collections::HashMap;
 
   #[test]
   fn construction() {
@@ -155,5 +158,23 @@ mod tests {
       .add_arg("radius", Parser::Float { min: Some(0.0), max: None })
       .add_arg("block", Parser::BlockState);
     dbg!(c);
+  }
+
+  #[test]
+  fn parse() -> Result<(), ParseError> {
+    let mut c = Command::new("fill");
+    c.add_arg("min", Parser::BlockPos)
+      .add_arg("max", Parser::BlockPos)
+      .add_arg("block", Parser::BlockState);
+    assert_eq!(
+      c.parse("fill 20 20 20 10 30 10 minecraft:stone")?,
+      vec![
+        Arg::Literal("fill".into()),
+        Arg::BlockPos(Pos::new(20, 20, 20)),
+        Arg::BlockPos(Pos::new(10, 30, 10)),
+        Arg::BlockState(block::Kind::Stone, HashMap::new(), None),
+      ]
+    );
+    Ok(())
   }
 }

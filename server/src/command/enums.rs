@@ -130,6 +130,8 @@ pub enum Parser {
   Enum,
 }
 
+/// An entity selector (things like `@a`, `@p`, or just a username).
+#[derive(Debug, Clone, PartialEq)]
 pub enum EntitySelector {
   /// A username
   Name(String),
@@ -151,6 +153,7 @@ pub enum EntitySelector {
 /// I do not know what a lot of these types do. Most of them seem pointless, so
 /// I have not bothered to see what they do ingame. Send a PR if you know how
 /// this should work.
+#[derive(Debug, Clone, PartialEq)]
 pub enum Arg {
   /// A parsed literal.
   Literal(String),
