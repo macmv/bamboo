@@ -73,7 +73,7 @@ impl Parser {
         }
       }
       Self::Double { min, max } => {
-        let section = &text[..text.find(' ').unwrap_or(0)];
+        let section = &text[..text.find(' ').unwrap_or(text.len())];
         match section.parse() {
           Ok(v) => {
             let mut invalid = false;
@@ -158,7 +158,7 @@ mod tests {
     assert_eq!(Parser::Double { min: None, max: None }.parse("3.0000")?, (Arg::Double(3.0), 6));
     assert_eq!(
       Parser::Double { min: Some(1.0), max: None }.parse("-5"),
-      Err(ParseError::Range(-5.0, Some(-1.0), None))
+      Err(ParseError::Range(-5.0, Some(1.0), None))
     );
     // Parser::Double { min, max } => {
     // Parser::Float { min, max } => (),
