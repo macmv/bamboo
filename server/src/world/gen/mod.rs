@@ -129,7 +129,7 @@ pub trait BiomeGen {
   fn layers(&self) -> BiomeLayers {
     let mut layers = BiomeLayers::new(block::Kind::Stone);
     layers.add(block::Kind::Dirt, 4);
-    layers.add(block::Kind::Grass, 4);
+    layers.add(block::Kind::GrassBlock, 1);
     layers
   }
   /// Returns this biome's height at the given position. By default, this just
