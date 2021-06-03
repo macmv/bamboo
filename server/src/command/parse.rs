@@ -1,7 +1,7 @@
 use super::{Arg, Parser};
 use std::{error::Error, fmt};
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub enum ParseError {
   /// Used when a literal does not match
   InvalidLiteral(String),
@@ -65,9 +65,9 @@ impl Parser {
     match self {
       Self::Bool => {
         if text.starts_with("true") {
-          Ok((Arg::Bool(true), 5))
+          Ok((Arg::Bool(true), 4))
         } else if text.starts_with("false") {
-          Ok((Arg::Bool(false), 6))
+          Ok((Arg::Bool(false), 5))
         } else {
           Err(ParseError::InvalidText(text.into(), "true or false".into()))
         }
@@ -96,51 +96,116 @@ impl Parser {
           Err(e) => Err(ParseError::InvalidText(text.into(), "a double".into())),
         }
       }
-      Self::Float { min, max } => (),
-      Self::Int { min, max } => (),
-      Self::String(StringType) => (),
-      Self::Entity { single, players } => (),
-      Self::ScoreHolder { multiple } => (),
-      Self::GameProfile => (),
-      Self::BlockPos => (),
-      Self::ColumnPos => (),
-      Self::Vec3 => (),
-      Self::Vec2 => (),
-      Self::BlockState => (),
-      Self::BlockPredicate => (),
-      Self::ItemStack => (),
-      Self::ItemPredicate => (),
-      Self::Color => (),
-      Self::Component => (),
-      Self::Message => (),
-      Self::Nbt => (),
-      Self::NbtPath => (),
-      Self::Objective => (),
-      Self::ObjectiveCriteria => (),
-      Self::Operation => (),
-      Self::Particle => (),
-      Self::Rotation => (),
-      Self::Angle => (),
-      Self::ScoreboardSlot => (),
-      Self::Swizzle => (),
-      Self::Team => (),
-      Self::ItemSlot => (),
-      Self::ResourceLocation => (),
-      Self::MobEffect => (),
-      Self::Function => (),
-      Self::EntityAnchor => (),
-      Self::Range { decimals: bool } => (),
-      Self::IntRange => (),
-      Self::FloatRange => (),
-      Self::ItemEnchantment => (),
-      Self::EntitySummon => (),
-      Self::Dimension => (),
-      Self::Uuid => (),
-      Self::NbtTag => (),
-      Self::NbtCompoundTag => (),
-      Self::Time => (),
-      Self::Modid => (),
-      Self::Enum => (),
+      Self::Float { min, max } => Ok((Arg::Int(5), 1)),
+      Self::Int { min, max } => Ok((Arg::Int(5), 1)),
+      Self::String(StringType) => Ok((Arg::Int(5), 1)),
+      Self::Entity { single, players } => Ok((Arg::Int(5), 1)),
+      Self::ScoreHolder { multiple } => Ok((Arg::Int(5), 1)),
+      Self::GameProfile => Ok((Arg::Int(5), 1)),
+      Self::BlockPos => Ok((Arg::Int(5), 1)),
+      Self::ColumnPos => Ok((Arg::Int(5), 1)),
+      Self::Vec3 => Ok((Arg::Int(5), 1)),
+      Self::Vec2 => Ok((Arg::Int(5), 1)),
+      Self::BlockState => Ok((Arg::Int(5), 1)),
+      Self::BlockPredicate => Ok((Arg::Int(5), 1)),
+      Self::ItemStack => Ok((Arg::Int(5), 1)),
+      Self::ItemPredicate => Ok((Arg::Int(5), 1)),
+      Self::Color => Ok((Arg::Int(5), 1)),
+      Self::Component => Ok((Arg::Int(5), 1)),
+      Self::Message => Ok((Arg::Int(5), 1)),
+      Self::Nbt => Ok((Arg::Int(5), 1)),
+      Self::NbtPath => Ok((Arg::Int(5), 1)),
+      Self::Objective => Ok((Arg::Int(5), 1)),
+      Self::ObjectiveCriteria => Ok((Arg::Int(5), 1)),
+      Self::Operation => Ok((Arg::Int(5), 1)),
+      Self::Particle => Ok((Arg::Int(5), 1)),
+      Self::Rotation => Ok((Arg::Int(5), 1)),
+      Self::Angle => Ok((Arg::Int(5), 1)),
+      Self::ScoreboardSlot => Ok((Arg::Int(5), 1)),
+      Self::Swizzle => Ok((Arg::Int(5), 1)),
+      Self::Team => Ok((Arg::Int(5), 1)),
+      Self::ItemSlot => Ok((Arg::Int(5), 1)),
+      Self::ResourceLocation => Ok((Arg::Int(5), 1)),
+      Self::MobEffect => Ok((Arg::Int(5), 1)),
+      Self::Function => Ok((Arg::Int(5), 1)),
+      Self::EntityAnchor => Ok((Arg::Int(5), 1)),
+      Self::Range { decimals: bool } => Ok((Arg::Int(5), 1)),
+      Self::IntRange => Ok((Arg::Int(5), 1)),
+      Self::FloatRange => Ok((Arg::Int(5), 1)),
+      Self::ItemEnchantment => Ok((Arg::Int(5), 1)),
+      Self::EntitySummon => Ok((Arg::Int(5), 1)),
+      Self::Dimension => Ok((Arg::Int(5), 1)),
+      Self::Uuid => Ok((Arg::Int(5), 1)),
+      Self::NbtTag => Ok((Arg::Int(5), 1)),
+      Self::NbtCompoundTag => Ok((Arg::Int(5), 1)),
+      Self::Time => Ok((Arg::Int(5), 1)),
+      Self::Modid => Ok((Arg::Int(5), 1)),
+      Self::Enum => Ok((Arg::Int(5), 1)),
     }
+  }
+}
+
+#[cfg(test)]
+mod tests {
+  use super::*;
+
+  #[test]
+  fn parse_types() -> Result<(), ParseError> {
+    assert_eq!(Parser::Bool.parse("true")?, (Arg::Bool(true), 4));
+    assert_eq!(Parser::Bool.parse("false")?, (Arg::Bool(false), 5));
+
+    assert_eq!(Parser::Double { min: None, max: None }.parse("5.3")?, (Arg::Double(5.3), 3));
+    assert_eq!(Parser::Double { min: None, max: None }.parse("3.0000")?, (Arg::Double(3.0), 6));
+    assert_eq!(
+      Parser::Double { min: Some(1.0), max: None }.parse("-5"),
+      Err(ParseError::Range(-5.0, Some(-1.0), None))
+    );
+    // Parser::Double { min, max } => {
+    // Parser::Float { min, max } => (),
+    // Parser::Int { min, max } => (),
+    // Parser::String(StringType) => (),
+    // Parser::Entity { single, players } => (),
+    // Parser::ScoreHolder { multiple } => (),
+    // Parser::GameProfile => (),
+    // Parser::BlockPos => (),
+    // Parser::ColumnPos => (),
+    // Parser::Vec3 => (),
+    // Parser::Vec2 => (),
+    // Parser::BlockState => (),
+    // Parser::BlockPredicate => (),
+    // Parser::ItemStack => (),
+    // Parser::ItemPredicate => (),
+    // Parser::Color => (),
+    // Parser::Component => (),
+    // Parser::Message => (),
+    // Parser::Nbt => (),
+    // Parser::NbtPath => (),
+    // Parser::Objective => (),
+    // Parser::ObjectiveCriteria => (),
+    // Parser::Operation => (),
+    // Parser::Particle => (),
+    // Parser::Rotation => (),
+    // Parser::Angle => (),
+    // Parser::ScoreboardSlot => (),
+    // Parser::Swizzle => (),
+    // Parser::Team => (),
+    // Parser::ItemSlot => (),
+    // Parser::ResourceLocation => (),
+    // Parser::MobEffect => (),
+    // Parser::Function => (),
+    // Parser::EntityAnchor => (),
+    // Parser::Range { decimals: bool } => (),
+    // Parser::IntRange => (),
+    // Parser::FloatRange => (),
+    // Parser::ItemEnchantment => (),
+    // Parser::EntitySummon => (),
+    // Parser::Dimension => (),
+    // Parser::Uuid => (),
+    // Parser::NbtTag => (),
+    // Parser::NbtCompoundTag => (),
+    // Parser::Time => (),
+    // Parser::Modid => (),
+    // Parser::Enum => (),
+    Ok(())
   }
 }
