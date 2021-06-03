@@ -35,7 +35,7 @@ pub enum Parser {
   /// A float, with optional min and max values.
   Float { min: Option<f32>, max: Option<f32> },
   /// An int, with optional min and max values.
-  Integer { min: Option<i32>, max: Option<i32> },
+  Int { min: Option<i32>, max: Option<i32> },
   /// A string. See [`StringType`] for details on how this is parsed.
   String(StringType),
   /// An entity. If `single` is set, then this can only match one entity (things
@@ -158,7 +158,7 @@ pub enum Arg {
   Bool(bool),
   Double(f64),
   Float(f32),
-  Integer(i32),
+  Int(i32),
   String(String),
   Entity(EntitySelector),
   ScoreHolder(String),

@@ -16,9 +16,11 @@
 //! seperated by spaces. However, they also support relative coordinates: `~10`
 //! means 10 blocks up/right/forward of your current position. See the
 //! [`Parser`] type for details on the various parsers.
-mod parser;
+mod enums;
+mod parse;
 
-pub use parser::Parser;
+pub use enums::{Arg, Parser};
+pub use parse::ParseError;
 
 /// A single command. This can be used to construct an entire command. However,
 /// it is also used to represent an argument of a command. When you call
@@ -106,12 +108,12 @@ impl Command {
   /// a slash at the start. If anything went wrong during parsing, a ParseError
   /// will be returned. Otherwise, a list of fields will be returned.
   pub fn parse(&self, text: &str) -> Result<Vec<Arg>, ParseError> {
-    let mut out = vec![];
-    if let Some(index) = self.matches(text) {
-      for c in self.children {
-        out.extend(c.parse(text[index..])?);
-      }
+    let (arg, index) = self.parse_arg(text)?;
+    let mut out = vec![arg];
+    for c in &self.children {
+      out.extend(c.parse(&text[index..])?);
     }
+    Ok(out)
   }
   /// Tries to parse the current argument with the given text. This will ignore
   /// any children that this command may have. If successful, this will return
@@ -119,16 +121,16 @@ impl Command {
   ///
   /// This can be used with top level commands to check if they match some text.
   pub fn parse_arg(&self, text: &str) -> Result<(Arg, usize), ParseError> {
-    match self.ty {
+    match &self.ty {
       NodeType::Root => panic!("cannot call matches on root node!"),
       NodeType::Literal => {
-        if text.starts_with(&self.name + " ") {
+        if text.starts_with(&(self.name.clone() + " ")) {
           Ok((Arg::Literal(self.name.clone()), self.name.len() + 1))
         } else {
-          Err(ParseError(LiteralNonMatch))
+          Err(ParseError::InvalidLiteral(self.name.clone()))
         }
       }
-      NodeType::Argument(p) => p.matches(text),
+      NodeType::Argument(p) => p.parse(text),
     }
   }
 }
