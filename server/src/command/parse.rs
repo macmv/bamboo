@@ -309,6 +309,7 @@ mod tests {
       Err(ParseError::InvalidText("10 12".into(), "a block position".into())),
     );
     assert_eq!(Parser::BlockPos.parse("10 12 15")?, (Arg::BlockPos(Pos::new(10, 12, 15)), 8));
+    assert_eq!(Parser::BlockPos.parse("10 12 15 20")?, (Arg::BlockPos(Pos::new(10, 12, 15)), 8));
     // Parser::Double { min, max } => {
     // Parser::Float { min, max } => (),
     // Parser::Int { min, max } => (),
