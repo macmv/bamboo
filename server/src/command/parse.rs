@@ -56,7 +56,12 @@ impl fmt::Display for ParseError {
 
 impl Error for ParseError {}
 
-fn parse_num<T>(text: &str, min: Option<T>, max: Option<T>) -> Result<(T, usize), ParseError>
+fn parse_num<T>(
+  text: &str,
+  min: Option<T>,
+  max: Option<T>,
+  expected: &str,
+) -> Result<(T, usize), ParseError>
 where
   T: PartialOrd + FromStr + Into<f64> + Copy,
 {
@@ -80,7 +85,7 @@ where
         Ok((v, section.len()))
       }
     }
-    Err(_) => Err(ParseError::InvalidText(text.into(), "a number".into())),
+    Err(_) => Err(ParseError::InvalidText(text.into(), expected.into())),
   }
 }
 
@@ -97,12 +102,14 @@ impl Parser {
         }
       }
       Self::Double { min, max } => {
-        parse_num(text, *min, *max).map(|(num, len)| (Arg::Double(num), len))
+        parse_num(text, *min, *max, "a double").map(|(num, len)| (Arg::Double(num), len))
       }
       Self::Float { min, max } => {
-        parse_num(text, *min, *max).map(|(num, len)| (Arg::Float(num), len))
+        parse_num(text, *min, *max, "a float").map(|(num, len)| (Arg::Float(num), len))
       }
-      Self::Int { min, max } => parse_num(text, *min, *max).map(|(num, len)| (Arg::Int(num), len)),
+      Self::Int { min, max } => {
+        parse_num(text, *min, *max, "an int").map(|(num, len)| (Arg::Int(num), len))
+      }
       Self::String(StringType) => Ok((Arg::Int(5), 1)),
       Self::Entity { single, players } => Ok((Arg::Int(5), 1)),
       Self::ScoreHolder { multiple } => Ok((Arg::Int(5), 1)),
@@ -177,7 +184,7 @@ mod tests {
     assert_eq!(Parser::Int { min: None, max: None }.parse("03")?, (Arg::Int(3), 2));
     assert_eq!(
       Parser::Int { min: None, max: None }.parse("3.2"),
-      Err(ParseError::InvalidText("3.2".into(), "a number".into()))
+      Err(ParseError::InvalidText("3.2".into(), "an int".into()))
     );
     assert_eq!(
       Parser::Int { min: Some(1), max: None }.parse("-5"),
