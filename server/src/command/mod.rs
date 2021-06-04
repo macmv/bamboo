@@ -108,9 +108,12 @@ impl Command {
   /// a slash at the start. If anything went wrong during parsing, a ParseError
   /// will be returned. Otherwise, a list of fields will be returned.
   pub fn parse(&self, text: &str) -> Result<Vec<Arg>, ParseError> {
-    let (arg, index) = self.parse_arg(text)?;
+    let (arg, mut index) = self.parse_arg(text)?;
     if self.children.is_empty() && index < text.len() {
       return Err(ParseError::Trailing(text[index..].into()));
+    }
+    if text.chars().nth(index) == Some(' ') {
+      index += 1;
     }
     let mut out = vec![arg];
     let mut errors = vec![];
@@ -141,7 +144,7 @@ impl Command {
       NodeType::Root => panic!("cannot call matches on root node!"),
       NodeType::Literal => {
         if text.starts_with(&(self.name.clone() + " ")) {
-          Ok((Arg::Literal(self.name.clone()), self.name.len() + 1))
+          Ok((Arg::Literal(self.name.clone()), self.name.len()))
         } else {
           Err(ParseError::InvalidLiteral(self.name.clone()))
         }
@@ -182,7 +185,7 @@ mod tests {
     c.add_arg("min", Parser::BlockPos)
       .add_arg("max", Parser::BlockPos)
       .add_arg("block", Parser::BlockState);
-    let v = match c.parse("fill 20 20 20 10 30 10 minecraft:stone") {
+    let v = match c.parse("fill 20 20 20 10 30 10 stone") {
       Ok(v) => v,
       Err(e) => panic!("{}", e),
     };
