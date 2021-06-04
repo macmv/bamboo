@@ -11,7 +11,8 @@ pub enum ParseError {
   Trailing(String),
   /// Used when the string ends early.
   EOF(Parser),
-  /// Used whenever a field does not match the given text
+  /// Used whenever a field does not match the given text.
+  /// Values are the text, and the expected value.
   InvalidText(String, String),
   /// Used when a value is out of range
   Range(f64, Option<f64>, Option<f64>),
@@ -125,26 +126,44 @@ impl Parser {
           if text.is_empty() {
             return Err(ParseError::EOF(self.clone()));
           }
-          let mut prev = 'a';
-          let mut index = 0;
           let mut iter = text.chars();
           if iter.next().unwrap() == '"' {
+            let mut prev = 'a';
+            let mut index = 1;
+            let mut out = String::new();
             for c in iter {
-              if c == '"' && prev != '\\' {
-                break;
+              if prev == '\\' {
+                if c == '"' || c == '\\' {
+                  out.push(c);
+                } else {
+                  return Err(ParseError::InvalidText(
+                    text.into(),
+                    "a valid escape character".into(),
+                  ));
+                }
+              } else {
+                if c == '"' {
+                  break;
+                } else if c != '\\' {
+                  // Make sure we don't put '\' in the string
+                  out.push(c);
+                }
               }
               prev = c;
               index += 1;
             }
+            // Add 1 so that the ending quote is removed
+            Ok((Arg::String(out), index + 1))
           } else {
+            let mut index = 1;
             for c in iter {
               if c == ' ' {
                 break;
               }
               index += 1;
             }
+            Ok((Arg::String(text[0..index].into()), index))
           }
-          Ok((Arg::String(text[..index].into()), index))
         }
         StringType::GreedyPhrase => Ok((Arg::String(text.into()), text.len())),
       },
@@ -231,6 +250,26 @@ mod tests {
     assert_eq!(
       Parser::String(StringType::SingleWord).parse("big gaming")?,
       (Arg::String("big".into()), 3)
+    );
+    assert_eq!(
+      Parser::String(StringType::SingleWord).parse("word")?,
+      (Arg::String("word".into()), 4)
+    );
+    assert_eq!(
+      Parser::String(StringType::SingleWord).parse(""),
+      Err(ParseError::EOF(Parser::String(StringType::SingleWord))),
+    );
+    assert_eq!(
+      Parser::String(StringType::QuotablePhrase).parse("big gaming")?,
+      (Arg::String("big".into()), 3)
+    );
+    assert_eq!(
+      Parser::String(StringType::QuotablePhrase).parse("\"big gaming\" things")?,
+      (Arg::String("big gaming".into()), 12) // 10 + 2 because of the quotes
+    );
+    assert_eq!(
+      Parser::String(StringType::QuotablePhrase).parse(r#""big gam\"ing" things"#)?,
+      (Arg::String(r#"big gam"ing"#.into()), 14) // 11 + 2 + 1 because of the quotes and \
     );
     // Parser::Double { min, max } => {
     // Parser::Float { min, max } => (),
