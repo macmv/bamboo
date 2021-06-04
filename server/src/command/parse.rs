@@ -280,6 +280,10 @@ mod tests {
       Parser::String(StringType::QuotablePhrase).parse(r#""big gam\\"ing" things"#)?,
       (Arg::String(r#"big gam\"#.into()), 11)
     );
+    assert_eq!(
+      Parser::String(StringType::GreedyPhrase).parse(r#""big gam\\"ing" things"#)?,
+      (Arg::String(r#""big gam\\"ing" things"#.into()), 22)
+    );
     // Parser::Double { min, max } => {
     // Parser::Float { min, max } => (),
     // Parser::Int { min, max } => (),
