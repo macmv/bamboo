@@ -22,16 +22,16 @@ struct Entity {
 pub fn generate(dir: &Path) -> Result<(), Box<dyn Error>> {
   let dir = Path::new(dir).join("entity");
 
-  let versions = vec![
-    load_data(include_str!("../../minecraft-data/data/pc/1.16.2/entities.json"))?,
-    load_data(include_str!("../../minecraft-data/data/pc/1.15.2/entities.json"))?,
-    load_data(include_str!("../../minecraft-data/data/pc/1.14.4/entities.json"))?,
-    load_data(include_str!("../../minecraft-data/data/pc/1.13.2/entities.json"))?,
-    load_data(include_str!("../../minecraft-data/data/pc/1.12/entities.json"))?,
-    load_data(include_str!("../../minecraft-data/data/pc/1.11/entities.json"))?,
-    load_data(include_str!("../../minecraft-data/data/pc/1.10/entities.json"))?,
-    load_data(include_str!("../../minecraft-data/data/pc/1.9/entities.json"))?,
-    load_data(include_str!("../../minecraft-data/data/pc/1.8/entities.json"))?,
+  let versions: Vec<Vec<Entity>> = vec![
+    // load_data(include_str!("../../minecraft-data/data/pc/1.16.2/entities.json"))?,
+    // load_data(include_str!("../../minecraft-data/data/pc/1.15.2/entities.json"))?,
+    // load_data(include_str!("../../minecraft-data/data/pc/1.14.4/entities.json"))?,
+    // load_data(include_str!("../../minecraft-data/data/pc/1.13.2/entities.json"))?,
+    // load_data(include_str!("../../minecraft-data/data/pc/1.12/entities.json"))?,
+    // load_data(include_str!("../../minecraft-data/data/pc/1.11/entities.json"))?,
+    // load_data(include_str!("../../minecraft-data/data/pc/1.10/entities.json"))?,
+    // load_data(include_str!("../../minecraft-data/data/pc/1.9/entities.json"))?,
+    // load_data(include_str!("../../minecraft-data/data/pc/1.8/entities.json"))?,
   ];
   let latest = &versions[0];
 

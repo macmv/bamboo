@@ -1,7 +1,9 @@
-pub mod block;
-pub mod entity;
-pub mod item;
-pub mod protocol;
+mod block;
+mod entity;
+mod item;
+mod prismarine;
+mod protocol;
+mod util;
 
 use std::{env, path::Path};
 
@@ -10,6 +12,7 @@ use std::{env, path::Path};
 pub fn generate_server() {
   let out = env::var_os("OUT_DIR").unwrap();
   let dir = Path::new(&out);
+  prismarine::clone(&dir).unwrap();
 
   let kinds = block::generate(&dir).unwrap();
   item::generate(&dir, kinds).unwrap();
@@ -22,6 +25,7 @@ pub fn generate_server() {
 pub fn generate_protocol() {
   let out = env::var_os("OUT_DIR").unwrap();
   let dir = Path::new(&out);
+  prismarine::clone(&dir).unwrap();
 
   protocol::store(&dir).unwrap();
 }

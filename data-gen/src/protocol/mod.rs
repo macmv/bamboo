@@ -131,11 +131,12 @@ pub struct Version {
 }
 
 pub fn store(dir: &Path) -> Result<(), Box<dyn Error>> {
-  let dir = Path::new(dir).join("protocol");
+  let prismarine_path = dir.join("prismarine-data");
+  let dir = dir.join("protocol");
 
   // This is done at runtime of the buildscript, so this path must be relative to
   // where the buildscript is.
-  let versions = parse::load_all(Path::new("../data-gen/minecraft-data/data/pc"))?;
+  let versions = parse::load_all(&prismarine_path.join("data/pc"))?;
 
   fs::create_dir_all(&dir)?;
   {
