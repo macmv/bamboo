@@ -128,11 +128,11 @@ impl Parser {
           }
           let mut iter = text.chars();
           if iter.next().unwrap() == '"' {
-            let mut prev = 'a';
+            let mut escaping = false;
             let mut index = 1;
             let mut out = String::new();
             for c in iter {
-              if prev == '\\' {
+              if escaping {
                 if c == '"' || c == '\\' {
                   out.push(c);
                 } else {
@@ -141,15 +141,16 @@ impl Parser {
                     "a valid escape character".into(),
                   ));
                 }
+                escaping = false;
               } else {
                 if c == '"' {
                   break;
-                } else if c != '\\' {
-                  // Make sure we don't put '\' in the string
+                } else if c == '\\' {
+                  escaping = true;
+                } else {
                   out.push(c);
                 }
               }
-              prev = c;
               index += 1;
             }
             // Add 1 so that the ending quote is removed
@@ -270,6 +271,14 @@ mod tests {
     assert_eq!(
       Parser::String(StringType::QuotablePhrase).parse(r#""big gam\"ing" things"#)?,
       (Arg::String(r#"big gam"ing"#.into()), 14) // 11 + 2 + 1 because of the quotes and \
+    );
+    assert_eq!(
+      Parser::String(StringType::QuotablePhrase).parse(r#""big gam\\\"ing" things"#)?,
+      (Arg::String(r#"big gam\"ing"#.into()), 16)
+    );
+    assert_eq!(
+      Parser::String(StringType::QuotablePhrase).parse(r#""big gam\\"ing" things"#)?,
+      (Arg::String(r#"big gam\"#.into()), 11)
     );
     // Parser::Double { min, max } => {
     // Parser::Float { min, max } => (),
