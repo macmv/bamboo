@@ -1,17 +1,18 @@
-extern crate serde;
-extern crate serde_derive;
-extern crate serde_json;
-
-pub mod block;
-pub mod entity;
-pub mod item;
+mod block;
+mod entity;
+mod item;
+mod prismarine;
 pub mod protocol;
+mod util;
 
 use std::{env, path::Path};
 
+/// Generates block, item, and entity data. Should only be called from the
+/// data crate.
 pub fn generate_server() {
   let out = env::var_os("OUT_DIR").unwrap();
   let dir = Path::new(&out);
+  prismarine::clone(&dir).unwrap();
 
   let kinds = block::generate(&dir).unwrap();
   item::generate(&dir, kinds).unwrap();
@@ -24,6 +25,7 @@ pub fn generate_server() {
 pub fn generate_protocol() {
   let out = env::var_os("OUT_DIR").unwrap();
   let dir = Path::new(&out);
+  prismarine::clone(&dir).unwrap();
 
   protocol::store(&dir).unwrap();
 }

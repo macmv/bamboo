@@ -8,7 +8,7 @@ pub(super) fn load_all(path: &Path) -> Result<HashMap<String, Version>, Box<dyn 
   let mut versions = HashMap::new();
 
   dbg!(path);
-  for p in fs::read_dir(path).unwrap() {
+  for p in fs::read_dir(path)? {
     let p = p.unwrap().path();
     let name = p.file_name().unwrap().to_str().unwrap();
     // If it contains any letters, then it is not a full release

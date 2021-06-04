@@ -1,3 +1,5 @@
+extern crate data;
+
 use std::env;
 use std::path::PathBuf;
 

@@ -1,3 +1,4 @@
+use crate::util;
 use convert_case::{Case, Casing};
 use serde_derive::Deserialize;
 use std::{
@@ -22,19 +23,13 @@ struct Item {
 // Generates all item data. Uses the set of valid block enum names to generate
 // the block to place for each item.
 pub fn generate(dir: &Path, blocks: HashSet<String>) -> Result<(), Box<dyn Error>> {
+  let files = util::load_versions(dir, "items.json")?;
   let dir = Path::new(dir).join("item");
 
-  let versions = vec![
-    load_data(include_str!("../../minecraft-data/data/pc/1.16.2/items.json"))?,
-    load_data(include_str!("../../minecraft-data/data/pc/1.15.2/items.json"))?,
-    load_data(include_str!("../../minecraft-data/data/pc/1.14.4/items.json"))?,
-    load_data(include_str!("../../minecraft-data/data/pc/1.13.2/items.json"))?,
-    load_data(include_str!("../../minecraft-data/data/pc/1.12/items.json"))?,
-    load_data(include_str!("../../minecraft-data/data/pc/1.11/items.json"))?,
-    load_data(include_str!("../../minecraft-data/data/pc/1.10/items.json"))?,
-    load_data(include_str!("../../minecraft-data/data/pc/1.9/items.json"))?,
-    load_data(include_str!("../../minecraft-data/data/pc/1.8/items.json"))?,
-  ];
+  let mut versions = vec![];
+  for f in files {
+    versions.push(load_data(&fs::read_to_string(f)?)?);
+  }
   let latest = &versions[0];
 
   fs::create_dir_all(&dir)?;

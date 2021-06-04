@@ -2,6 +2,7 @@ mod fixed;
 mod paletted;
 mod versions;
 
+use crate::util;
 use convert_case::{Case, Casing};
 use std::{
   collections::{HashMap, HashSet},
@@ -69,21 +70,19 @@ struct BlockVersion {
 }
 
 pub fn generate(dir: &Path) -> Result<HashSet<String>, Box<dyn Error>> {
-  let dir = Path::new(dir).join("block");
+  let files = util::load_versions(dir, "blocks.json")?;
+  let dir = dir.join("block");
 
-  let versions = vec![
-    paletted::load_data(include_str!("../../minecraft-data/data/pc/1.16.2/blocks.json"))?,
-    paletted::load_data(include_str!("../../minecraft-data/data/pc/1.15.2/blocks.json"))?,
-    paletted::load_data(include_str!("../../minecraft-data/data/pc/1.14.4/blocks.json"))?,
-    // 1.13 is a seperate version, but the json is malformatted. So we only support
-    // 1.13.2.
-    paletted::load_data(include_str!("../../minecraft-data/data/pc/1.13.2/blocks.json"))?,
-    fixed::load_data(include_str!("../../minecraft-data/data/pc/1.12/blocks.json"))?,
-    fixed::load_data(include_str!("../../minecraft-data/data/pc/1.11/blocks.json"))?,
-    fixed::load_data(include_str!("../../minecraft-data/data/pc/1.10/blocks.json"))?,
-    fixed::load_data(include_str!("../../minecraft-data/data/pc/1.9/blocks.json"))?,
-    fixed::load_data(include_str!("../../minecraft-data/data/pc/1.8/blocks.json"))?,
-  ];
+  let mut versions = vec![];
+  for f in files {
+    let fname = f.parent().unwrap().file_name().unwrap().to_str().unwrap();
+    let version_id = fname.split('.').nth(1).unwrap().parse::<i32>()?;
+    if version_id < 13 {
+      versions.push(fixed::load_data(&fs::read_to_string(f)?)?);
+    } else {
+      versions.push(paletted::load_data(&fs::read_to_string(f)?)?);
+    }
+  }
   let latest = &versions[0];
 
   fs::create_dir_all(&dir)?;
