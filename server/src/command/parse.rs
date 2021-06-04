@@ -1,4 +1,5 @@
 use super::{enums::StringType, Arg, Parser};
+use common::math::Pos;
 use std::{error::Error, fmt, str::FromStr};
 
 #[derive(Debug, PartialEq)]
@@ -171,7 +172,25 @@ impl Parser {
       Self::Entity { single, players } => Ok((Arg::Int(5), 1)),
       Self::ScoreHolder { multiple } => Ok((Arg::Int(5), 1)),
       Self::GameProfile => Ok((Arg::Int(5), 1)),
-      Self::BlockPos => Ok((Arg::Int(5), 1)),
+      Self::BlockPos => {
+        let sections: Vec<&str> = text.split(' ').collect();
+        if sections.len() < 3 {
+          return Err(ParseError::InvalidText(text.into(), "a block position".into()));
+        }
+        let x = sections[0].parse().map_err(|_| {
+          ParseError::InvalidText(text.into(), "a valid block position coordinate".into())
+        })?;
+        let y = sections[1].parse().map_err(|_| {
+          ParseError::InvalidText(text.into(), "a valid block position coordinate".into())
+        })?;
+        let z = sections[2].parse().map_err(|_| {
+          ParseError::InvalidText(text.into(), "a valid block position coordinate".into())
+        })?;
+        Ok((
+          Arg::BlockPos(Pos::new(x, y, z)),
+          sections[0].len() + sections[1].len() + sections[2].len() + 2,
+        ))
+      }
       Self::ColumnPos => Ok((Arg::Int(5), 1)),
       Self::Vec3 => Ok((Arg::Int(5), 1)),
       Self::Vec2 => Ok((Arg::Int(5), 1)),
@@ -284,6 +303,12 @@ mod tests {
       Parser::String(StringType::GreedyPhrase).parse(r#""big gam\\"ing" things"#)?,
       (Arg::String(r#""big gam\\"ing" things"#.into()), 22)
     );
+
+    assert_eq!(
+      Parser::BlockPos.parse("10 12"),
+      Err(ParseError::InvalidText("10 12".into(), "a block position".into())),
+    );
+    assert_eq!(Parser::BlockPos.parse("10 12 15")?, (Arg::BlockPos(Pos::new(10, 12, 15)), 8));
     // Parser::Double { min, max } => {
     // Parser::Float { min, max } => (),
     // Parser::Int { min, max } => (),
