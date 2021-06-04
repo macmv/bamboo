@@ -1,4 +1,4 @@
-use super::{Arg, Parser};
+use super::{enums::StringType, Arg, Parser};
 use std::{error::Error, fmt, str::FromStr};
 
 #[derive(Debug, PartialEq)]
@@ -9,6 +9,8 @@ pub enum ParseError {
   NoChildren(Vec<ParseError>),
   /// Used when there are trailing characters after the command
   Trailing(String),
+  /// Used when the string ends early.
+  EOF(Parser),
   /// Used whenever a field does not match the given text
   InvalidText(String, String),
   /// Used when a value is out of range
@@ -36,6 +38,7 @@ impl fmt::Display for ParseError {
         }
       }
       Self::Trailing(v) => write!(f, "trailing characters: {}", v),
+      Self::EOF(v) => write!(f, "string ended early while parsing: {:?}", v),
       Self::InvalidText(text, expected) => {
         write!(f, "invalid text: {}. expected {}", text, expected)
       }
@@ -110,7 +113,41 @@ impl Parser {
       Self::Int { min, max } => {
         parse_num(text, *min, *max, "an int").map(|(num, len)| (Arg::Int(num), len))
       }
-      Self::String(StringType) => Ok((Arg::Int(5), 1)),
+      Self::String(ty) => match ty {
+        StringType::SingleWord => {
+          if text.is_empty() {
+            return Err(ParseError::EOF(self.clone()));
+          }
+          let section = &text[..text.find(' ').unwrap_or(text.len())];
+          Ok((Arg::String(section.into()), section.len()))
+        }
+        StringType::QuotablePhrase => {
+          if text.is_empty() {
+            return Err(ParseError::EOF(self.clone()));
+          }
+          let mut prev = 'a';
+          let mut index = 0;
+          let mut iter = text.chars();
+          if iter.next().unwrap() == '"' {
+            for c in iter {
+              if c == '"' && prev != '\\' {
+                break;
+              }
+              prev = c;
+              index += 1;
+            }
+          } else {
+            for c in iter {
+              if c == ' ' {
+                break;
+              }
+              index += 1;
+            }
+          }
+          Ok((Arg::String(text[..index].into()), index))
+        }
+        StringType::GreedyPhrase => Ok((Arg::String(text.into()), text.len())),
+      },
       Self::Entity { single, players } => Ok((Arg::Int(5), 1)),
       Self::ScoreHolder { multiple } => Ok((Arg::Int(5), 1)),
       Self::GameProfile => Ok((Arg::Int(5), 1)),
@@ -189,6 +226,11 @@ mod tests {
     assert_eq!(
       Parser::Int { min: Some(1), max: None }.parse("-5"),
       Err(ParseError::Range(-5.0, Some(1.0), None))
+    );
+
+    assert_eq!(
+      Parser::String(StringType::SingleWord).parse("big gaming")?,
+      (Arg::String("big".into()), 3)
     );
     // Parser::Double { min, max } => {
     // Parser::Float { min, max } => (),

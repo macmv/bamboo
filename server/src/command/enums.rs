@@ -10,7 +10,7 @@ use common::{
 use std::collections::HashMap;
 
 /// A string parsing type. Used only in [`Parser::String`].
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum StringType {
   /// Matches a single word.
   SingleWord,
@@ -25,7 +25,7 @@ pub enum StringType {
 /// from [wiki.vg](https://wiki.vg/Command_Data). They have a great collection
 /// of data for all of this stuff, and this entire server wouldn't be possible
 /// without them.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum Parser {
   // Simple types:
   /// True or false.
