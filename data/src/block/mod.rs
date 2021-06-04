@@ -101,6 +101,19 @@ pub fn generate(dir: &Path) -> Result<HashSet<String>, Box<dyn Error>> {
       out.insert(name);
     }
     writeln!(f, "}}")?;
+    writeln!(f)?;
+    writeln!(f, "impl FromStr for Kind {{")?;
+    writeln!(f, "  type Err = InvalidBlock;")?;
+    writeln!(f)?;
+    writeln!(f, "  fn from_str(s: &str) -> Result<Self, Self::Err> {{")?;
+    writeln!(f, "    match s {{")?;
+    for b in &latest.blocks {
+      writeln!(f, "      \"{}\" => Ok(Self::{}),", b.name, b.name.to_case(Case::Pascal))?;
+    }
+    writeln!(f, "      _ => Err(InvalidBlock(s.into())),")?;
+    writeln!(f, "    }}")?;
+    writeln!(f, "  }}")?;
+    writeln!(f, "}}")?;
   }
   {
     // Generates the block data

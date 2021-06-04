@@ -182,19 +182,19 @@ mod tests {
     c.add_arg("min", Parser::BlockPos)
       .add_arg("max", Parser::BlockPos)
       .add_arg("block", Parser::BlockState);
-    // let v = match c.parse("fill 20 20 20 10 30 10 minecraft:stone") {
-    //   Ok(v) => v,
-    //   Err(e) => panic!("{}", e),
-    // };
-    // assert_eq!(
-    //   v,
-    //   vec![
-    //     Arg::Literal("fill".into()),
-    //     Arg::BlockPos(Pos::new(20, 20, 20)),
-    //     Arg::BlockPos(Pos::new(10, 30, 10)),
-    //     Arg::BlockState(block::Kind::Stone, HashMap::new(), None),
-    //   ]
-    // );
+    let v = match c.parse("fill 20 20 20 10 30 10 minecraft:stone") {
+      Ok(v) => v,
+      Err(e) => panic!("{}", e),
+    };
+    assert_eq!(
+      v,
+      vec![
+        Arg::Literal("fill".into()),
+        Arg::BlockPos(Pos::new(20, 20, 20)),
+        Arg::BlockPos(Pos::new(10, 30, 10)),
+        Arg::BlockState(block::Kind::Stone, HashMap::new(), None),
+      ]
+    );
     Ok(())
   }
 }

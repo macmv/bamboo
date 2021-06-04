@@ -1,6 +1,7 @@
 use super::{enums::StringType, Arg, Parser};
+use crate::block;
 use common::math::Pos;
-use std::{error::Error, fmt, str::FromStr};
+use std::{collections::HashMap, error::Error, fmt, str::FromStr};
 
 #[derive(Debug, PartialEq)]
 pub enum ParseError {
@@ -94,6 +95,10 @@ where
   }
 }
 
+fn parse_word(text: &str) -> String {
+  text[..text.find(' ').unwrap_or(text.len())].into()
+}
+
 impl Parser {
   pub fn parse(&self, text: &str) -> Result<(Arg, usize), ParseError> {
     match self {
@@ -120,8 +125,9 @@ impl Parser {
           if text.is_empty() {
             return Err(ParseError::EOF(self.clone()));
           }
-          let section = &text[..text.find(' ').unwrap_or(text.len())];
-          Ok((Arg::String(section.into()), section.len()))
+          let word = parse_word(text);
+          let len = word.len();
+          Ok((Arg::String(word), len))
         }
         StringType::QuotablePhrase => {
           if text.is_empty() {
@@ -177,15 +183,15 @@ impl Parser {
         if sections.len() < 3 {
           return Err(ParseError::InvalidText(text.into(), "a block position".into()));
         }
-        let x = sections[0].parse().map_err(|_| {
-          ParseError::InvalidText(text.into(), "a valid block position coordinate".into())
-        })?;
-        let y = sections[1].parse().map_err(|_| {
-          ParseError::InvalidText(text.into(), "a valid block position coordinate".into())
-        })?;
-        let z = sections[2].parse().map_err(|_| {
-          ParseError::InvalidText(text.into(), "a valid block position coordinate".into())
-        })?;
+        let x = sections[0]
+          .parse()
+          .map_err(|_| ParseError::InvalidText(text.into(), "a valid block position".into()))?;
+        let y = sections[1]
+          .parse()
+          .map_err(|_| ParseError::InvalidText(text.into(), "a valid block position".into()))?;
+        let z = sections[2]
+          .parse()
+          .map_err(|_| ParseError::InvalidText(text.into(), "a valid block position".into()))?;
         Ok((
           Arg::BlockPos(Pos::new(x, y, z)),
           sections[0].len() + sections[1].len() + sections[2].len() + 2,
@@ -194,7 +200,18 @@ impl Parser {
       Self::ColumnPos => Ok((Arg::Int(5), 1)),
       Self::Vec3 => Ok((Arg::Int(5), 1)),
       Self::Vec2 => Ok((Arg::Int(5), 1)),
-      Self::BlockState => Ok((Arg::Int(5), 1)),
+      Self::BlockState => {
+        let word = parse_word(text);
+        Ok((
+          Arg::BlockState(
+            block::Kind::from_str(&word)
+              .map_err(|_| ParseError::InvalidText(text.into(), "a valid block name".into()))?,
+            HashMap::new(),
+            None,
+          ),
+          word.len(),
+        ))
+      }
       Self::BlockPredicate => Ok((Arg::Int(5), 1)),
       Self::ItemStack => Ok((Arg::Int(5), 1)),
       Self::ItemPredicate => Ok((Arg::Int(5), 1)),
@@ -310,10 +327,7 @@ mod tests {
     );
     assert_eq!(Parser::BlockPos.parse("10 12 15")?, (Arg::BlockPos(Pos::new(10, 12, 15)), 8));
     assert_eq!(Parser::BlockPos.parse("10 12 15 20")?, (Arg::BlockPos(Pos::new(10, 12, 15)), 8));
-    // Parser::Double { min, max } => {
-    // Parser::Float { min, max } => (),
-    // Parser::Int { min, max } => (),
-    // Parser::String(StringType) => (),
+
     // Parser::Entity { single, players } => (),
     // Parser::ScoreHolder { multiple } => (),
     // Parser::GameProfile => (),

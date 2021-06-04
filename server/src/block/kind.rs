@@ -1,4 +1,16 @@
 use num_derive::ToPrimitive;
+use std::{error::Error, fmt, str::FromStr};
+
+#[derive(Debug)]
+pub struct InvalidBlock(String);
+
+impl fmt::Display for InvalidBlock {
+  fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    write!(f, "invalid block name: {}", self.0)
+  }
+}
+
+impl Error for InvalidBlock {}
 
 // Generated from the latest version of minecraft's output. See build.rs for
 // more.
