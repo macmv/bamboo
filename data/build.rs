@@ -1,6 +1,6 @@
-extern crate data;
+extern crate data_gen;
 
 fn main() {
   println!("cargo:rerun-if-changed=data");
-  data::generate_server();
+  data_gen::generate_server();
 }

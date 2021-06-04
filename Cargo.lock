@@ -196,7 +196,7 @@ version = "0.1.0"
 dependencies = [
  "byteorder",
  "bytes",
- "data",
+ "data-gen",
  "flate2",
  "flexi_logger",
  "futures",
@@ -306,6 +306,22 @@ dependencies = [
 
 [[package]]
 name = "data"
+version = "0.1.0"
+dependencies = [
+ "common",
+ "convert_case",
+ "data-gen",
+ "itertools 0.10.0",
+ "num",
+ "num-derive",
+ "num-traits",
+ "serde",
+ "serde_derive",
+ "serde_json",
+]
+
+[[package]]
+name = "data-gen"
 version = "0.1.0"
 dependencies = [
  "convert_case",

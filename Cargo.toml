@@ -3,6 +3,7 @@ members = [
   "server",
   "proxy",
   "data",
+  "data-gen",
 ]
 
 # Using cargo flamegraph, this is needed.

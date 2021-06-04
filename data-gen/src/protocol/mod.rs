@@ -135,7 +135,7 @@ pub fn store(dir: &Path) -> Result<(), Box<dyn Error>> {
 
   // This is done at runtime of the buildscript, so this path must be relative to
   // where the buildscript is.
-  let versions = parse::load_all(Path::new("../data/minecraft-data/data/pc"))?;
+  let versions = parse::load_all(Path::new("../data-gen/minecraft-data/data/pc"))?;
 
   fs::create_dir_all(&dir)?;
   {

@@ -1,3 +1,5 @@
+extern crate data_gen;
+
 use std::env;
 use std::path::PathBuf;
 
@@ -10,7 +12,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     .compile(&["proto/connection.proto"], &["proto"])
     .unwrap();
 
-  data::generate_protocol();
+  data_gen::generate_protocol();
 
   Ok(())
 }
