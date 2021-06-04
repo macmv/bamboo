@@ -157,8 +157,8 @@ impl Command {
 #[cfg(test)]
 mod tests {
   use super::*;
-  use crate::block;
   use common::math::Pos;
+  use data::block;
   use std::collections::HashMap;
 
   #[test]

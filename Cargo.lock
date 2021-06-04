@@ -1266,7 +1266,7 @@ dependencies = [
  "async-stream",
  "cfb8",
  "common",
- "data",
+ "data-gen",
  "futures",
  "log",
  "md5",

@@ -1,4 +1,3 @@
-use crate::{block, item};
 use common::{
   math::{ChunkPos, Pos},
   util::{
@@ -7,6 +6,7 @@ use common::{
     UUID,
   },
 };
+use data::{block, item};
 use std::collections::HashMap;
 
 /// A string parsing type. Used only in [`Parser::String`].

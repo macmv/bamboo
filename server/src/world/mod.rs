@@ -28,8 +28,9 @@ use common::{
   version::{BlockVersion, ProtocolVersion},
 };
 
-use crate::{block, entity, item, net::Connection, player::Player};
+use crate::{net::Connection, player::Player};
 use chunk::MultiChunk;
+use data::{block, entity, item};
 use gen::WorldGen;
 
 // pub struct ChunkRef<'a> {

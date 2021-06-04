@@ -7,7 +7,7 @@ use common::{
 };
 
 use super::{Chunk, ChunkKind};
-use crate::block;
+use data::block;
 
 pub struct MultiChunk {
   fixed:    Chunk,

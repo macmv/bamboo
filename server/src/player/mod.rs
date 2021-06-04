@@ -12,11 +12,10 @@ use common::{
   version::ProtocolVersion,
 };
 
-use crate::{
+use crate::{net::Connection, world::World};
+use data::{
   entity::Metadata,
   item::{Inventory, Stack},
-  net::Connection,
-  world::World,
 };
 
 #[derive(Debug)]

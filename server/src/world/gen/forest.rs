@@ -1,7 +1,7 @@
 use super::{BiomeGen, WorldGen};
-use crate::block;
 use crate::world::chunk::MultiChunk;
 use common::math::{ChunkPos, PointGrid, Pos, Voronoi};
+use data::block;
 use noise::{NoiseFn, Perlin};
 use std::cmp::Ordering;
 

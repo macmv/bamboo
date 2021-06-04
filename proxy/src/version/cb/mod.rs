@@ -1,5 +1,5 @@
 use common::{net::cb, version::ProtocolVersion};
-use data::protocol::{CountType, FloatType, IntType, PacketField};
+use data_gen::protocol::{CountType, FloatType, IntType, PacketField};
 use std::{collections::HashMap, io};
 
 use crate::packet::Packet;

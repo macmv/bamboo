@@ -1,6 +1,6 @@
 use super::{BiomeGen, BiomeLayers};
-use crate::block;
 use common::math::PointGrid;
+use data::block;
 
 pub struct Gen {
   cacti: PointGrid,

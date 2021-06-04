@@ -7,7 +7,7 @@ edition = "2018"
 
 [dependencies]
 common = { path = "../common" }
-data = { path = "../data" }
+data-gen = { path = "../data-gen" }
 log = "0.4"
 ringbuf = "0.2.4"
 tonic = "0.4"
@@ -31,4 +31,4 @@ sha-1 = "0.9.6"
 reqwest = { version = "0.11.3", features = ["json"] }
 
 [build-dependencies]
-data = { path = "../data" }
+data-gen = { path = "../data-gen" }

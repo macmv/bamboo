@@ -2,7 +2,7 @@ mod block;
 mod entity;
 mod item;
 mod prismarine;
-mod protocol;
+pub mod protocol;
 mod util;
 
 use std::{env, path::Path};

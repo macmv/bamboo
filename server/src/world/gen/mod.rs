@@ -1,6 +1,6 @@
 use super::chunk::MultiChunk;
-use crate::block;
 use common::math::{ChunkPos, Pos, Voronoi};
+use data::block;
 use noise::{BasicMulti, NoiseFn};
 use std::{cmp::Ordering, collections::HashSet};
 

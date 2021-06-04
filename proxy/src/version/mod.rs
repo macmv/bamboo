@@ -23,8 +23,8 @@ struct PacketVersion {
   // None, meaning they do not exist in that version. The proxy should silently ignore packets that
   // don't exist for that client.
   ids:     Vec<Option<usize>>,
-  packets: Vec<data::protocol::Packet>,
-  types:   HashMap<String, data::protocol::PacketField>,
+  packets: Vec<data_gen::protocol::Packet>,
+  types:   HashMap<String, data_gen::protocol::PacketField>,
 }
 
 impl Default for Generator {
@@ -35,10 +35,10 @@ impl Default for Generator {
 
 impl Generator {
   pub fn new() -> Generator {
-    let v: HashMap<String, data::protocol::Version> =
+    let v: HashMap<String, data_gen::protocol::Version> =
       serde_json::from_str(include_str!(concat!(env!("OUT_DIR"), "/protocol/versions.json")))
         .unwrap();
-    let v: HashMap<ProtocolVersion, data::protocol::Version> =
+    let v: HashMap<ProtocolVersion, data_gen::protocol::Version> =
       v.into_iter().map(|(k, v)| (ProtocolVersion::parse_str(&k), v)).collect();
     let mut to_client = HashMap::new();
     let mut to_server = HashMap::new();
@@ -85,7 +85,7 @@ impl Generator {
   }
 }
 
-fn generate_ids<F>(packets: &[data::protocol::Packet], f: F) -> Vec<Option<usize>>
+fn generate_ids<F>(packets: &[data_gen::protocol::Packet], f: F) -> Vec<Option<usize>>
 where
   F: Fn(&str) -> i32,
 {
