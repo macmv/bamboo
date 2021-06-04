@@ -1,5 +1,5 @@
 use super::{Arg, Parser};
-use std::{error::Error, fmt};
+use std::{error::Error, fmt, str::FromStr};
 
 #[derive(Debug, PartialEq)]
 pub enum ParseError {
@@ -40,18 +40,14 @@ impl fmt::Display for ParseError {
         write!(f, "invalid text: {}. expected {}", text, expected)
       }
       Self::Range(v, min, max) => {
-        if let Some(min) = min {
-          if let Some(max) = max {
-            write!(f, "{} is out of range {}..{}", v, min, max)
-          } else {
-            write!(f, "{} is less than min {}", v, min)
-          }
+        if let (Some(min), Some(max)) = (min, max) {
+          write!(f, "{} is out of range {}..{}", v, min, max)
+        } else if let Some(min) = min {
+          write!(f, "{} is less than min {}", v, min)
+        } else if let Some(max) = max {
+          write!(f, "{} is greater than max {}", v, max)
         } else {
-          if let Some(max) = max {
-            write!(f, "{} is greater than max {}", v, max)
-          } else {
-            write!(f, "{} is out of range none (should never happen)", v)
-          }
+          write!(f, "{} is out of range none (should never happen)", v)
         }
       }
     }
@@ -59,6 +55,34 @@ impl fmt::Display for ParseError {
 }
 
 impl Error for ParseError {}
+
+fn parse_num<T>(text: &str, min: Option<T>, max: Option<T>) -> Result<(T, usize), ParseError>
+where
+  T: PartialOrd + FromStr + Into<f64> + Copy,
+{
+  let section = &text[..text.find(' ').unwrap_or(text.len())];
+  match section.parse::<T>() {
+    Ok(v) => {
+      let mut invalid = false;
+      if let Some(min) = min {
+        if v < min {
+          invalid = true;
+        }
+      }
+      if let Some(max) = max {
+        if v > max {
+          invalid = true;
+        }
+      }
+      if invalid {
+        Err(ParseError::Range(v.into(), min.map(|v| v.into()), max.map(|v| v.into())))
+      } else {
+        Ok((v, section.len()))
+      }
+    }
+    Err(_) => Err(ParseError::InvalidText(text.into(), "a number".into())),
+  }
+}
 
 impl Parser {
   pub fn parse(&self, text: &str) -> Result<(Arg, usize), ParseError> {
@@ -73,31 +97,12 @@ impl Parser {
         }
       }
       Self::Double { min, max } => {
-        let section = &text[..text.find(' ').unwrap_or(text.len())];
-        match section.parse() {
-          Ok(v) => {
-            let mut invalid = false;
-            if let Some(min) = min {
-              if v < *min {
-                invalid = true;
-              }
-            }
-            if let Some(max) = max {
-              if v > *max {
-                invalid = true;
-              }
-            }
-            if invalid {
-              Err(ParseError::Range(v, *min, *max))
-            } else {
-              Ok((Arg::Double(v), section.len()))
-            }
-          }
-          Err(e) => Err(ParseError::InvalidText(text.into(), "a double".into())),
-        }
+        parse_num(text, *min, *max).map(|(num, len)| (Arg::Double(num), len))
       }
-      Self::Float { min, max } => Ok((Arg::Int(5), 1)),
-      Self::Int { min, max } => Ok((Arg::Int(5), 1)),
+      Self::Float { min, max } => {
+        parse_num(text, *min, *max).map(|(num, len)| (Arg::Float(num), len))
+      }
+      Self::Int { min, max } => parse_num(text, *min, *max).map(|(num, len)| (Arg::Int(num), len)),
       Self::String(StringType) => Ok((Arg::Int(5), 1)),
       Self::Entity { single, players } => Ok((Arg::Int(5), 1)),
       Self::ScoreHolder { multiple } => Ok((Arg::Int(5), 1)),
@@ -158,6 +163,24 @@ mod tests {
     assert_eq!(Parser::Double { min: None, max: None }.parse("3.0000")?, (Arg::Double(3.0), 6));
     assert_eq!(
       Parser::Double { min: Some(1.0), max: None }.parse("-5"),
+      Err(ParseError::Range(-5.0, Some(1.0), None))
+    );
+
+    assert_eq!(Parser::Float { min: None, max: None }.parse("5.3")?, (Arg::Float(5.3), 3));
+    assert_eq!(Parser::Float { min: None, max: None }.parse("3.0000")?, (Arg::Float(3.0), 6));
+    assert_eq!(
+      Parser::Float { min: Some(1.0), max: None }.parse("-5"),
+      Err(ParseError::Range(-5.0, Some(1.0), None))
+    );
+
+    assert_eq!(Parser::Int { min: None, max: None }.parse("5")?, (Arg::Int(5), 1));
+    assert_eq!(Parser::Int { min: None, max: None }.parse("03")?, (Arg::Int(3), 2));
+    assert_eq!(
+      Parser::Int { min: None, max: None }.parse("3.2"),
+      Err(ParseError::InvalidText("3.2".into(), "a number".into()))
+    );
+    assert_eq!(
+      Parser::Int { min: Some(1), max: None }.parse("-5"),
       Err(ParseError::Range(-5.0, Some(1.0), None))
     );
     // Parser::Double { min, max } => {
