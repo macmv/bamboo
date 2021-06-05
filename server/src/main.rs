@@ -7,15 +7,13 @@ pub mod entity;
 pub mod item;
 pub mod net;
 pub mod player;
+pub mod plugin;
 pub mod world;
 
 use std::{error::Error, sync::Arc};
 use tokio::sync::mpsc;
 use tokio_stream::wrappers::ReceiverStream;
 use tonic::{transport::Server, Request, Response, Status, Streaming};
-
-use pyo3::prelude::*;
-use pyo3::wrap_pyfunction;
 
 use common::proto::{
   minecraft_server::{Minecraft, MinecraftServer},
@@ -65,42 +63,9 @@ impl Minecraft for ServerImpl {
   }
 }
 
-#[pyfunction]
-fn get_world(v: bool) -> i32 {
-  if v {
-    5
-  } else {
-    20
-  }
-}
-
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn Error>> {
   common::init();
-
-  let gil = Python::acquire_gil();
-  let py = gil.python();
-
-  let code = PyModule::from_code(
-    py,
-    r#"
-print("Hello world!")
-def gaming():
-  print("big")
-  print(sugarcane.get_world(False))
-  "#,
-    "main.py",
-    "main",
-  )?;
-
-  let sugarcane = PyModule::new(py, "sugarcane")?;
-  sugarcane.add_function(wrap_pyfunction!(get_world, sugarcane)?)?;
-
-  code.add_submodule(sugarcane)?;
-
-  info!("done reading code");
-
-  code.call0("gaming")?;
 
   let addr = "0.0.0.0:8483".parse().unwrap();
 
