@@ -131,6 +131,9 @@ methods!(
 /// classes/methods for all types that are defined in Ruby.
 pub fn create_module() {
   Module::new("Sugarcane").define(|c| {
+    c.define_nested_class("Player", None).define(|c| {
+      c.def("username", player_username);
+    });
     c.define_nested_class("Pos", None).define(|c| {
       c.def_self("new", pos_new);
 
