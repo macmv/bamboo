@@ -88,8 +88,24 @@ module!(SugarcaneMod);
 methods!(
   SugarcaneMod,
   rself,
+  fn trace(msg: RString) -> NilClass {
+    trace!("{}", msg.unwrap().to_str());
+    NilClass::new()
+  },
+  fn debug(msg: RString) -> NilClass {
+    debug!("{}", msg.unwrap().to_str());
+    NilClass::new()
+  },
   fn info(msg: RString) -> NilClass {
     info!("{}", msg.unwrap().to_str());
+    NilClass::new()
+  },
+  fn warn(msg: RString) -> NilClass {
+    warn!("{}", msg.unwrap().to_str());
+    NilClass::new()
+  },
+  fn error(msg: RString) -> NilClass {
+    error!("{}", msg.unwrap().to_str());
     NilClass::new()
   }
 );
@@ -115,6 +131,10 @@ pub fn create_module() {
     c.define_nested_class("Sugarcane", None).define(|c| {
       c.def("broadcast", sc_broadcast);
     });
+    c.def_self("trace", trace);
+    c.def_self("debug", debug);
     c.def_self("info", info);
+    c.def_self("warn", warn);
+    c.def_self("error", error);
   });
 }
