@@ -120,6 +120,7 @@ impl Connection {
             };
             let kind = data.block_to_place();
             pos += Pos::dir_from_byte(dir.try_into().unwrap());
+            player.world().get_plugins().on_block_place(player, pos, kind);
             match player.world().set_kind(pos, kind).await {
               Ok(_) => (),
               Err(e) => player.send_hotbar(&Chat::new(e.to_string())).await,

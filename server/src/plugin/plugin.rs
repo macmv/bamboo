@@ -1,4 +1,5 @@
-use super::SugarcaneRb;
+use super::wrapper::SugarcaneRb;
+use common::math::Pos;
 use rutie::{AnyObject, Exception, Module, Object, RString};
 
 /// A wrapper struct for a Ruby plugin. This is used to execute Ruby code
@@ -20,6 +21,12 @@ impl Plugin {
   /// clients to be joining when this function is called.
   pub fn init(&self, sc: SugarcaneRb) {
     self.call("init", &[sc.try_convert_to().unwrap()]);
+  }
+
+  /// Calls on_block_place on the plugin. This can be called whenever, but will
+  /// always be called after init.
+  pub fn on_block_place(&self, pos: Pos) {
+    self.call("init", &[pos.try_convert_to().unwrap()]);
   }
 
   /// Calls the given function with the given args. This will verify that the
