@@ -10,7 +10,7 @@ module Hello
   def self.on_block_place(pos)
     puts "HELLO I AM ON BLOCK PLACE"
     puts pos.x
-    # @sc.broadcast("someone just placed a block at #{pos}")
+    @sc.broadcast("someone just placed a block at #{pos}")
   end
 end
 
