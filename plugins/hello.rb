@@ -15,6 +15,3 @@ module Hello
     end
   end
 end
-
-# p Hello::public_methods - Module::public_methods
-# Hello
