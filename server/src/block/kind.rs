@@ -1,4 +1,4 @@
-use num_derive::ToPrimitive;
+use num_derive::{FromPrimitive, ToPrimitive};
 use std::{error::Error, fmt, str::FromStr};
 
 #[derive(Debug)]
@@ -17,9 +17,14 @@ impl Error for InvalidBlock {}
 include!(concat!(env!("OUT_DIR"), "/block/kind.rs"));
 
 impl Kind {
-  /// Returns the kind as an i32. Should only be used to index into the
-  /// converter's internal table of block kinds.
+  /// Returns the kind as an u32. This is used in the versioning arrays, and in
+  /// plugin code, so that ints can be passed around instead of enums.
   pub fn id(self) -> u32 {
     num::ToPrimitive::to_u32(&self).unwrap()
+  }
+  /// Converts the given number to a block kind. If the number is invalid, this
+  /// returns Kind::Air.
+  pub fn from_u32(id: u32) -> Self {
+    num::FromPrimitive::from_u32(id).unwrap_or(Kind::Air)
   }
 }

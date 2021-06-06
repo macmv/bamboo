@@ -92,7 +92,7 @@ pub fn generate(dir: &Path) -> Result<HashSet<String>, Box<dyn Error>> {
     let mut f = File::create(&dir.join("kind.rs"))?;
     writeln!(f, "/// Auto generated block kind. This is directly generated")?;
     writeln!(f, "/// from prismarine data.")?;
-    writeln!(f, "#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, ToPrimitive)]")?;
+    writeln!(f, "#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, ToPrimitive, FromPrimitive)]")?;
     writeln!(f, "pub enum Kind {{")?;
     for b in &latest.blocks {
       let name = b.name.to_case(Case::Pascal);
