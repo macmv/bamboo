@@ -4,10 +4,13 @@ module Hello
   def self.init(sc)
     puts "Loaded hello plugin"
     sc.broadcast("big gaming")
+    @sc = sc
   end
 
-  def self.on_block_place(player, pos)
-    Sugarcane::broadcast("#{player.username} just placed a block at #{pos}")
+  def self.on_block_place(pos)
+    puts "HELLO I AM ON BLOCK PLACE"
+    puts pos.x
+    # @sc.broadcast("someone just placed a block at #{pos}")
   end
 end
 

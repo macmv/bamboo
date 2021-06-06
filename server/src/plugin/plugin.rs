@@ -1,4 +1,4 @@
-use super::wrapper::SugarcaneRb;
+use super::wrapper::*;
 use common::math::Pos;
 use rutie::{AnyObject, Exception, Module, Object, RString};
 
@@ -26,13 +26,16 @@ impl Plugin {
   /// Calls on_block_place on the plugin. This can be called whenever, but will
   /// always be called after init.
   pub fn on_block_place(&self, pos: Pos) {
-    self.call("init", &[pos.try_convert_to().unwrap()]);
+    self.call("on_block_place", &[PosRb::new(pos).value().into()]);
   }
 
   /// Calls the given function with the given args. This will verify that the
   /// function exists, and will handle errors in the log.
   fn call(&self, name: &str, args: &[AnyObject]) {
     if self.m.respond_to(name) {
+      if name == "on_block_place" {
+        info!("{}", args[0].try_convert_to::<PosRb>().unwrap());
+      }
       if let Err(e) = self.m.protect_send(name, args) {
         error!("Error while calling {} on plugin {}: {}", name, self.name, e.inspect());
         for l in e.backtrace().unwrap() {

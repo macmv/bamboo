@@ -3,7 +3,8 @@ mod wrapper;
 
 pub use plugin::Plugin;
 
-use crate::world::WorldManager;
+use crate::{block, player::Player, world::WorldManager};
+use common::math::Pos;
 use rutie::{Module, VM};
 use std::{
   fs,
@@ -57,6 +58,12 @@ impl PluginManager {
     }
     for p in plugins.iter() {
       p.init(sc.clone());
+    }
+  }
+
+  pub fn on_block_place(&self, player: &Player, pos: Pos, kind: block::Kind) {
+    for p in self.plugins.lock().unwrap().iter() {
+      p.on_block_place(pos);
     }
   }
 }

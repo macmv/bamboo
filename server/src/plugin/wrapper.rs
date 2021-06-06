@@ -1,7 +1,7 @@
 use crate::world::WorldManager;
-use common::util::Chat;
-use rutie::{types::Value, Module, NilClass, Object, RString};
-use std::sync::Arc;
+use common::{math::Pos, util::Chat};
+use rutie::{types::Value, AnyObject, Fixnum, Module, NilClass, Object, RString, VerifiedObject};
+use std::{fmt, sync::Arc};
 
 #[repr(C)]
 #[derive(Clone)]
@@ -46,19 +46,57 @@ methods!(
   },
 );
 
+class!(PosRb);
+wrappable_struct!(Pos, PosWrapper, POS_WRAPPER);
+
+impl fmt::Display for PosRb {
+  fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    write!(f, "pos: {}", self.get_data(&*POS_WRAPPER))
+  }
+}
+
+impl VerifiedObject for PosRb {
+  fn is_correct_type<T: Object>(o: &T) -> bool {
+    o.class() == Module::from_existing("Sugarcane").get_nested_class("Pos")
+  }
+
+  fn error_message() -> &'static str {
+    "Error converting to Pos"
+  }
+}
+
+impl PosRb {
+  pub fn new(pos: Pos) -> Self {
+    Module::from_existing("Sugarcane").get_nested_class("Pos").wrap_data(pos, &*POS_WRAPPER)
+  }
+}
+
+methods!(
+  PosRb,
+  rtself,
+  fn pos_new(x: Fixnum, y: Fixnum, z: Fixnum) -> AnyObject {
+    let pos = Pos::new(x.unwrap().to_i32(), y.unwrap().to_i32(), z.unwrap().to_i32());
+    Module::from_existing("Sugarcane").get_nested_class("Pos").wrap_data(pos, &*POS_WRAPPER)
+  },
+  fn pos_x() -> Fixnum {
+    info!("running ruby x method");
+    Fixnum::new(rtself.get_data(&*POS_WRAPPER).x().into())
+  },
+);
+
 /// Creates the Sugarcane ruby module. This file handles all wrapper
 /// classes/methods for all types that are defined in Ruby.
 pub fn create_module() -> Module {
   let mut sc = Module::new("Sugarcane");
   sc.define(|c| {
-    // c.define_nested_class("Pos", None).define(|c| {
-    //   c.def_self("new", pos_new);
-    //   c.attr_accessor("x");
-    //   c.attr_accessor("y");
-    //   c.attr_accessor("z");
-    // });
+    c.define_nested_class("Pos", None).define(|c| {
+      c.def_self("new", pos_new);
+
+      c.def("x", pos_x);
+    });
     c.define_nested_class("Sugarcane", None).define(|c| {
       c.define_method("broadcast", sc_broadcast);
     });
   });
+  sc
 }

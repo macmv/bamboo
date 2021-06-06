@@ -1606,6 +1606,7 @@ dependencies = [
  "common",
  "data",
  "futures",
+ "lazy_static",
  "log",
  "noise",
  "num",
