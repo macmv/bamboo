@@ -1,7 +1,7 @@
 use super::wrapper::*;
 use crate::{block, player::Player};
 use common::math::Pos;
-use rutie::{AnyObject, Exception, Fixnum, Module, Object, RString};
+use rutie::{AnyObject, Fixnum, Module, Object};
 
 /// A wrapper struct for a Ruby plugin. This is used to execute Ruby code
 /// whenever an event happens.
@@ -38,10 +38,7 @@ impl Plugin {
   fn call(&self, name: &str, args: &[AnyObject]) {
     if self.m.respond_to(name) {
       if let Err(e) = self.m.protect_send(name, args) {
-        error!("while calling {} on plugin {}: {}", name, self.name, e.inspect());
-        for l in e.backtrace().unwrap() {
-          error!("{}", l.try_convert_to::<RString>().unwrap().to_str());
-        }
+        super::log_err(&format!("while calling {} on {}", name, self.name), e);
       }
     }
   }

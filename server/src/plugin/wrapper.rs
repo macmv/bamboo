@@ -88,9 +88,31 @@ module!(SugarcaneMod);
 variadic_methods!(
   SugarcaneMod,
   rself,
-  fn info(args: &[AnyObject]) -> Fixnum {
-    info!("{:?}", args);
-    Fixnum::new(5)
+  fn info(args: &[AnyObject]) -> NilClass {
+    let mut out = String::new();
+    for a in args {
+      let mut v = a;
+      loop {
+        let res = v.try_convert_to::<RString>();
+        if let Ok(v) = res {
+          if !out.is_empty() {
+            out += " ";
+          }
+          out += v.to_str();
+          break;
+        } else {
+          v = match v.protect_send("to_s", &[]) {
+            Ok(v) => v,
+            Err(e) => {
+              super::log_err(&format!("while trying to log"), e);
+              break;
+            }
+          }
+        }
+      }
+    }
+    info!("{}", out);
+    NilClass::new()
   }
 );
 

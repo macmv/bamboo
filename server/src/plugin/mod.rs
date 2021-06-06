@@ -5,7 +5,7 @@ pub use plugin::Plugin;
 
 use crate::{block, player::Player, world::WorldManager};
 use common::math::Pos;
-use rutie::{Module, VM};
+use rutie::{AnyException, Exception, Module, Object, RString, VM};
 use std::{
   fs,
   sync::{Arc, Mutex},
@@ -61,5 +61,12 @@ impl PluginManager {
     for p in self.plugins.lock().unwrap().iter() {
       p.on_block_place(player, pos, kind);
     }
+  }
+}
+
+pub fn log_err(msg: &str, e: AnyException) {
+  error!("{}: {}", msg, e.inspect());
+  for l in e.backtrace().unwrap() {
+    error!("{}", l.try_convert_to::<RString>().unwrap().to_str());
   }
 }
