@@ -1,4 +1,4 @@
-use rutie::{Exception, Module, Object, RString};
+use rutie::{AnyObject, Exception, Module, Object, RString};
 
 pub struct Plugin {
   name: String,
@@ -10,9 +10,13 @@ impl Plugin {
     Plugin { name, m }
   }
 
-  pub fn call(&self, name: &str) {
+  pub fn init(&self) {
+    self.call("init", &[]);
+  }
+
+  fn call(&self, name: &str, args: &[AnyObject]) {
     if self.m.respond_to(name) {
-      if let Err(e) = self.m.protect_send(name, &[]) {
+      if let Err(e) = self.m.protect_send(name, args) {
         error!("Error while calling {} on plugin {}: {}", name, self.name, e.inspect());
         for l in e.backtrace().unwrap() {
           error!("{}", l.try_convert_to::<RString>().unwrap().to_str());

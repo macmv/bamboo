@@ -34,6 +34,7 @@ impl PluginManager {
     m
   }
   fn load(&mut self) {
+    self.plugins.clear();
     for f in fs::read_dir("plugins").unwrap() {
       let f = f.unwrap();
       let m = fs::metadata(f.path()).unwrap();
@@ -46,11 +47,11 @@ impl PluginManager {
         let name = name[..1].to_ascii_uppercase() + &name[1..];
         let module = Module::from_existing(&name);
 
-        let p = Plugin::new(name, module);
-        p.call("init");
-
-        self.plugins.push(p);
+        self.plugins.push(Plugin::new(name, module));
       }
+    }
+    for p in &self.plugins {
+      p.init();
     }
   }
   // /// Creates the `sugarcane` ruby module. Used whenever plugins are
