@@ -1,4 +1,4 @@
-use super::Sugarcane;
+use super::SugarcaneRb;
 use rutie::{AnyObject, Exception, Module, Object, RString};
 
 /// A wrapper struct for a Ruby plugin. This is used to execute Ruby code
@@ -18,7 +18,7 @@ impl Plugin {
   /// Calls init on the plugin. This is called right after all plugins are
   /// loaded. The world will have been initialized, and it is possible for
   /// clients to be joining when this function is called.
-  pub fn init(&self, sc: Sugarcane) {
+  pub fn init(&self, sc: SugarcaneRb) {
     self.call("init", &[sc.try_convert_to().unwrap()]);
   }
 

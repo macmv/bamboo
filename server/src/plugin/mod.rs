@@ -20,24 +20,24 @@ pub struct PluginManager {
 
 #[repr(C)]
 #[derive(Clone)]
-pub struct Sugarcane {
+pub struct SugarcaneRb {
   value: Value,
   wm:    Option<Arc<WorldManager>>,
 }
 
-impl Sugarcane {
+impl SugarcaneRb {
   pub fn new(value: Value, wm: Arc<WorldManager>) -> Self {
-    Sugarcane { value, wm: Some(wm) }
+    SugarcaneRb { value, wm: Some(wm) }
   }
 }
 
-impl From<Value> for Sugarcane {
+impl From<Value> for SugarcaneRb {
   fn from(value: Value) -> Self {
-    Sugarcane { value, wm: None }
+    SugarcaneRb { value, wm: None }
   }
 }
 
-impl Object for Sugarcane {
+impl Object for SugarcaneRb {
   #[inline]
   fn value(&self) -> Value {
     self.value
@@ -45,7 +45,7 @@ impl Object for Sugarcane {
 }
 
 methods!(
-  Sugarcane,
+  SugarcaneRb,
   rtself,
   fn broadcast(v: RString) -> NilClass {
     let msg = Chat::new(v.unwrap().to_string());
@@ -79,13 +79,13 @@ impl PluginManager {
     });
 
     let c = sc.get_nested_class("Sugarcane").new_instance(&[]);
-    let sc = Sugarcane::new(c.into(), wm);
+    let sc = SugarcaneRb::new(c.into(), wm);
 
     self.load(sc);
   }
 
   /// Loads all plugins from disk. Call this to reload all plugins.
-  fn load(&self, sc: Sugarcane) {
+  fn load(&self, sc: SugarcaneRb) {
     let mut plugins = self.plugins.lock().unwrap();
     plugins.clear();
     for f in fs::read_dir("plugins").unwrap() {
