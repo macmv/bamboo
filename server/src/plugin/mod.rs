@@ -2,17 +2,22 @@ mod plugin;
 
 pub use plugin::Plugin;
 
-use rutie::{Module, Object, RString, VM};
+use rutie::{Module, NilClass, Object, RString, VM};
+use std::fs;
 
-pub struct PluginManager {}
+pub struct PluginManager {
+  // Vector of module names
+  plugins: Vec<Module>,
+}
 
 module!(Sugarcane);
 
 methods!(
   Sugarcane,
   rtself,
-  fn say_hello() -> RString {
-    RString::new_utf8("Big rust callback energy")
+  fn broadcast(v: RString) -> NilClass {
+    info!("Brodcasting message: {}", v.unwrap().to_str());
+    NilClass::new()
   },
 );
 
@@ -21,14 +26,31 @@ impl PluginManager {
     VM::init();
 
     Module::new("Sugarcane").define(|c| {
-      c.def_self("hello", say_hello);
+      c.def_self("broadcast", broadcast);
     });
 
-    VM::eval("puts Sugarcane::hello").unwrap();
+    let mut m = PluginManager { plugins: vec![] };
+    m.load();
+    m
+  }
+  fn load(&mut self) {
+    for f in fs::read_dir("plugins").unwrap() {
+      let f = f.unwrap();
+      let m = fs::metadata(f.path()).unwrap();
+      if m.is_file() {
+        let source = fs::read_to_string(f.path()).unwrap();
 
-    VM::exit(0);
+        let module = VM::eval(&source).unwrap();
+        let module = module.try_convert_to::<Module>().unwrap();
+        let big = module.const_get("BIG");
+        dbg!(&big.try_convert_to::<RString>().unwrap().to_str());
 
-    PluginManager {}
+        // TODO: Don't do this
+        VM::eval("Hello.init").unwrap();
+
+        self.plugins.push(module);
+      }
+    }
   }
   // /// Creates the `sugarcane` ruby module. Used whenever plugins are
   // /// re-loaded.
@@ -42,23 +64,6 @@ impl PluginManager {
   //   let mut plugins = self.plugins.lock().unwrap();
   //   plugins.clear();
   //
-  //   for f in fs::read_dir("plugins").unwrap() {
-  //     let f = f.unwrap();
-  //     let m = fs::metadata(f.path()).unwrap();
-  //     if m.is_file() {
-  //       let source = fs::read_to_string(f.path()).unwrap();
-  //       let fname = f.file_name();
-  //       let fname = fname.to_str().unwrap();
-  //       // The file name without the extension
-  //       let name = &fname[..fname.len() - f.path().extension().unwrap().len()];
-  //       dbg!(&fname, &name);
-  //
-  //       let plug = PyModule::from_code(self.gil.python(), &source, fname,
-  // name)?;       plug.add_submodule(&sugarcane)?;
-  //       plug.call0("init")?;
-  //       plugins.push(Plugin::new(plug));
-  //     }
-  //   }
   //
   //   Ok(())
   // }
