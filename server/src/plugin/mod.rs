@@ -2,12 +2,12 @@ mod plugin;
 
 pub use plugin::Plugin;
 
-use rutie::{Exception, Module, NilClass, Object, RString, VM};
+use rutie::{Module, NilClass, Object, RString, VM};
 use std::fs;
 
 pub struct PluginManager {
   // Vector of module names
-  plugins: Vec<Module>,
+  plugins: Vec<Plugin>,
 }
 
 module!(Sugarcane);
@@ -46,19 +46,10 @@ impl PluginManager {
         let name = name[..1].to_ascii_uppercase() + &name[1..];
         let module = Module::from_existing(&name);
 
-        let big = module.const_get("BIG");
-        dbg!(&big.try_convert_to::<RString>().unwrap().to_str());
+        let p = Plugin::new(name, module);
+        p.call("init");
 
-        if module.respond_to("init") {
-          if let Err(e) = module.protect_send("init", &[]) {
-            error!("Error while calling {} on plugin {}: {}", "init", "Hello", e.inspect());
-            for l in e.backtrace().unwrap() {
-              error!("{}", l.try_convert_to::<RString>().unwrap().to_str());
-            }
-          }
-        }
-
-        self.plugins.push(module);
+        self.plugins.push(p);
       }
     }
   }
