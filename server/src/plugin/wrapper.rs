@@ -1,6 +1,6 @@
 use crate::{block, world::WorldManager};
 use common::{math::Pos, util::Chat};
-use rutie::{AnyObject, Fixnum, Module, NilClass, Object, RString};
+use rutie::{types::Argc, AnyObject, Fixnum, Module, NilClass, Object, RString};
 use std::sync::Arc;
 
 class!(SugarcaneRb);
@@ -59,6 +59,41 @@ methods!(
   },
 );
 
+macro_rules! variadic_methods {
+  (
+    $rself_class: ty,
+    $rself_name: ident,
+    $(
+      fn $method_name: ident
+      ($args_name: ident: &[AnyObject]) -> $return_type: ident $body: block
+      $(,)?
+    )*
+  ) => {
+    $(
+      #[allow(unused_mut, improper_ctypes_definitions)]
+      pub extern fn $method_name(
+        argc: Argc,
+        argv: *const AnyObject,
+        mut $rself_name: $rself_class,
+      ) -> $return_type {
+        let $args_name = rutie::util::parse_arguments(argc, argv);
+
+        $body
+      }
+    )*
+  };
+}
+
+module!(SugarcaneMod);
+variadic_methods!(
+  SugarcaneMod,
+  rself,
+  fn info(args: &[AnyObject]) -> Fixnum {
+    info!("{:?}", args);
+    Fixnum::new(5)
+  }
+);
+
 /// Creates the Sugarcane ruby module. This file handles all wrapper
 /// classes/methods for all types that are defined in Ruby.
 pub fn create_module() {
@@ -78,7 +113,8 @@ pub fn create_module() {
       }
     });
     c.define_nested_class("Sugarcane", None).define(|c| {
-      c.define_method("broadcast", sc_broadcast);
+      c.def("broadcast", sc_broadcast);
     });
+    c.def_self("info", info);
   });
 }
