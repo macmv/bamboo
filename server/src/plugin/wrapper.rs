@@ -48,6 +48,15 @@ methods!(
   fn pos_x() -> Fixnum {
     Fixnum::new(rself.get_data(&*POS).x().into())
   },
+  fn pos_y() -> Fixnum {
+    Fixnum::new(rself.get_data(&*POS).y().into())
+  },
+  fn pos_z() -> Fixnum {
+    Fixnum::new(rself.get_data(&*POS).z().into())
+  },
+  fn pos_to_s() -> RString {
+    RString::new_utf8(&format!("{}", rself.get_data(&*POS)))
+  },
 );
 
 /// Creates the Sugarcane ruby module. This file handles all wrapper
@@ -58,6 +67,10 @@ pub fn create_module() {
       c.def_self("new", pos_new);
 
       c.def("x", pos_x);
+      c.def("y", pos_y);
+      c.def("z", pos_z);
+
+      c.def("to_s", pos_to_s);
     });
     c.define_nested_class("Sugarcane", None).define(|c| {
       c.define_method("broadcast", sc_broadcast);
