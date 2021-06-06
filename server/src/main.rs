@@ -72,7 +72,9 @@ async fn main() -> Result<(), Box<dyn Error>> {
 
   let addr = "0.0.0.0:8483".parse().unwrap();
 
-  let svc = MinecraftServer::new(ServerImpl { worlds: Arc::new(WorldManager::new()) });
+  let worlds = Arc::new(WorldManager::new());
+  worlds.init(worlds.clone());
+  let svc = MinecraftServer::new(ServerImpl { worlds });
 
   // This is the code needed for reflection. It is disabled for now, as
   // tonic-reflection does not allow you to disable rustfmt. For docker builds,

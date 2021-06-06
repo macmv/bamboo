@@ -469,6 +469,12 @@ impl WorldManager {
     w
   }
 
+  pub fn init(&self, wm: Arc<WorldManager>) {
+    self.plugins.init(wm);
+  }
+
+  /// Adds a new world. Currently, this requires a mutable reference, which
+  /// cannot be obtained outside of initialization.
   pub fn add_world(&mut self) {
     self.worlds.push(World::new(
       self.block_converter.clone(),
@@ -489,6 +495,14 @@ impl WorldManager {
   /// ids to new ones, and vice versa.
   pub fn get_item_converter(&self) -> &item::TypeConverter {
     &self.item_converter
+  }
+
+  /// Broadcasts a message to everyone one the server.
+  pub async fn broadcast(&self, msg: &Chat) {
+    info!("BROADCASTING");
+    for w in &self.worlds {
+      w.broadcast(msg).await;
+    }
   }
 
   /// Adds a new player into the game. This should be called when a new grpc
