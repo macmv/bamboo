@@ -34,7 +34,7 @@ impl Plugin {
   fn call(&self, name: &str, args: &[AnyObject]) {
     if self.m.respond_to(name) {
       if let Err(e) = self.m.protect_send(name, args) {
-        error!("Error while calling {} on plugin {}: {}", name, self.name, e.inspect());
+        error!("while calling {} on plugin {}: {}", name, self.name, e.inspect());
         for l in e.backtrace().unwrap() {
           error!("{}", l.try_convert_to::<RString>().unwrap().to_str());
         }

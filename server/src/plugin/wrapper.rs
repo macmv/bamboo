@@ -47,24 +47,24 @@ methods!(
 );
 
 class!(PosRb);
-wrappable_struct!(Pos, PosWrapper, POS_WRAPPER);
+wrappable_struct!(Pos, PosW, POS);
 
 impl PosRb {
   pub fn new(pos: Pos) -> Self {
-    Module::from_existing("Sugarcane").get_nested_class("Pos").wrap_data(pos, &*POS_WRAPPER)
+    Module::from_existing("Sugarcane").get_nested_class("Pos").wrap_data(pos, &*POS)
   }
 }
 
 methods!(
   PosRb,
-  rtself,
+  rself,
   fn pos_new(x: Fixnum, y: Fixnum, z: Fixnum) -> AnyObject {
-    let pos = Pos::new(x.unwrap().to_i32(), y.unwrap().to_i32(), z.unwrap().to_i32());
-    Module::from_existing("Sugarcane").get_nested_class("Pos").wrap_data(pos, &*POS_WRAPPER)
+    PosRb::new(Pos::new(x.unwrap().to_i32(), y.unwrap().to_i32(), z.unwrap().to_i32()))
+      .value()
+      .into()
   },
   fn pos_x() -> Fixnum {
-    info!("running ruby x method");
-    Fixnum::new(rtself.get_data(&*POS_WRAPPER).x().into())
+    Fixnum::new(rself.get_data(&*POS).x().into())
   },
 );
 
