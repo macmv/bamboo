@@ -8,7 +8,7 @@ module Hello
   end
 
   def self.on_block_place(pos, kind)
-    Sugarcane::info("Hello World!", pos)
+    Sugarcane::info("Hello World! #{pos}")
     @sc.broadcast("someone just placed a block at #{pos}")
     if kind == Sugarcane::Block::DIRT
       @sc.broadcast("placed dirt!")

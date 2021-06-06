@@ -59,59 +59,37 @@ methods!(
   },
 );
 
-macro_rules! variadic_methods {
-  (
-    $rself_class: ty,
-    $rself_name: ident,
-    $(
-      fn $method_name: ident
-      ($args_name: ident: &[AnyObject]) -> $return_type: ident $body: block
-      $(,)?
-    )*
-  ) => {
-    $(
-      #[allow(unused_mut, improper_ctypes_definitions)]
-      pub extern fn $method_name(
-        argc: Argc,
-        argv: *const AnyObject,
-        mut $rself_name: $rself_class,
-      ) -> $return_type {
-        let $args_name = rutie::util::parse_arguments(argc, argv);
-
-        $body
-      }
-    )*
-  };
-}
+// macro_rules! variadic_methods {
+//   (
+//     $rself_class: ty,
+//     $rself_name: ident,
+//     $(
+//       fn $method_name: ident
+//       ($args_name: ident: &[AnyObject]) -> $return_type: ident $body: block
+//       $(,)?
+//     )*
+//   ) => {
+//     $(
+//       #[allow(unused_mut, improper_ctypes_definitions)]
+//       pub extern fn $method_name(
+//         argc: Argc,
+//         argv: *const AnyObject,
+//         mut $rself_name: $rself_class,
+//       ) -> $return_type {
+//         let $args_name = rutie::util::parse_arguments(argc, argv);
+//
+//         $body
+//       }
+//     )*
+//   };
+// }
 
 module!(SugarcaneMod);
-variadic_methods!(
+methods!(
   SugarcaneMod,
   rself,
-  fn info(args: &[AnyObject]) -> NilClass {
-    let mut out = String::new();
-    for a in args {
-      let mut v = a;
-      loop {
-        let res = v.try_convert_to::<RString>();
-        if let Ok(v) = res {
-          if !out.is_empty() {
-            out += " ";
-          }
-          out += v.to_str();
-          break;
-        } else {
-          v = match v.protect_send("to_s", &[]) {
-            Ok(v) => v,
-            Err(e) => {
-              super::log_err(&format!("while trying to log"), e);
-              break;
-            }
-          }
-        }
-      }
-    }
-    info!("{}", out);
+  fn info(msg: RString) -> NilClass {
+    info!("{}", msg.unwrap().to_str());
     NilClass::new()
   }
 );
