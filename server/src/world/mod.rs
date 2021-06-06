@@ -499,7 +499,7 @@ impl WorldManager {
 
   /// Broadcasts a message to everyone one the server.
   pub async fn broadcast(&self, msg: &Chat) {
-    info!("BROADCASTING");
+    // info!("BROADCASTING");
     for w in &self.worlds {
       w.broadcast(msg).await;
     }

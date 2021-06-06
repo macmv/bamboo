@@ -29,16 +29,12 @@ impl PluginManager {
 
   pub fn init(&self, wm: Arc<WorldManager>) {
     VM::init();
-
-    let sc = wrapper::create_module();
-    let c = sc.get_nested_class("Sugarcane").new_instance(&[]);
-    let sc = SugarcaneRb::new(c.into(), wm);
-
-    self.load(sc);
+    wrapper::create_module();
+    self.load(wm);
   }
 
   /// Loads all plugins from disk. Call this to reload all plugins.
-  fn load(&self, sc: SugarcaneRb) {
+  fn load(&self, wm: Arc<WorldManager>) {
     let mut plugins = self.plugins.lock().unwrap();
     plugins.clear();
     for f in fs::read_dir("plugins").unwrap() {
@@ -57,7 +53,7 @@ impl PluginManager {
       }
     }
     for p in plugins.iter() {
-      p.init(sc.clone());
+      p.init(SugarcaneRb::new(wm.clone()));
     }
   }
 
