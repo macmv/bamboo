@@ -19,9 +19,16 @@ pub struct PluginManager {
 }
 
 #[repr(C)]
+#[derive(Clone)]
 pub struct Sugarcane {
   value: Value,
   wm:    Option<Arc<WorldManager>>,
+}
+
+impl Sugarcane {
+  pub fn new(value: Value, wm: Arc<WorldManager>) -> Self {
+    Sugarcane { value, wm: Some(wm) }
+  }
 }
 
 impl From<Value> for Sugarcane {
@@ -64,17 +71,21 @@ impl PluginManager {
   pub fn init(&self, wm: Arc<WorldManager>) {
     VM::init();
 
-    let sc = Module::new("Sugarcane").define(|c| {
+    let mut sc = Module::new("Sugarcane");
+    sc.define(|c| {
       c.define_nested_class("Sugarcane", None).define(|c| {
         c.define_method("broadcast", broadcast);
       });
     });
 
-    self.load();
+    let c = sc.get_nested_class("Sugarcane").new_instance(&[]);
+    let sc = Sugarcane::new(c.into(), wm);
+
+    self.load(sc);
   }
 
   /// Loads all plugins from disk. Call this to reload all plugins.
-  fn load(&self) {
+  fn load(&self, sc: Sugarcane) {
     let mut plugins = self.plugins.lock().unwrap();
     plugins.clear();
     for f in fs::read_dir("plugins").unwrap() {
@@ -93,7 +104,7 @@ impl PluginManager {
       }
     }
     for p in plugins.iter() {
-      p.init();
+      p.init(sc.clone());
     }
   }
 }

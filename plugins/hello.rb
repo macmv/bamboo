@@ -1,14 +1,9 @@
 module Hello
   BIG = "gaming"
 
-  def self.init
+  def self.init(sc)
     puts "Loaded hello plugin"
-    Sugarcane::broadcast("big gaming")
-    other
-  end
-
-  def self.other
-    asdasd
+    sc.broadcast("big gaming")
   end
 
   def self.on_block_place(player, pos)
