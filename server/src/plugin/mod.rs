@@ -57,9 +57,9 @@ impl PluginManager {
     }
   }
 
-  pub fn on_block_place(&self, player: &Player, pos: Pos, kind: block::Kind) {
+  pub fn on_block_place(&self, player: Arc<Player>, pos: Pos, kind: block::Kind) {
     for p in self.plugins.lock().unwrap().iter() {
-      p.on_block_place(player, pos, kind);
+      p.on_block_place(player.clone(), pos, kind);
     }
   }
 }

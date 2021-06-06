@@ -132,7 +132,7 @@ impl World {
     let c = conn.clone();
     let p = player.clone();
     tokio::spawn(async move {
-      c.run(&p).await.unwrap();
+      c.run(p).await.unwrap();
     });
 
     // Player tick loop

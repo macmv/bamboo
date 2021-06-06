@@ -1,4 +1,4 @@
-use crate::{block, world::WorldManager};
+use crate::{block, player::Player, world::WorldManager};
 use common::{math::Pos, util::Chat};
 use rutie::{types::Argc, AnyObject, Fixnum, Module, NilClass, Object, RString};
 use std::sync::Arc;
@@ -56,6 +56,23 @@ methods!(
   },
   fn pos_to_s() -> RString {
     RString::new_utf8(&format!("{}", rself.get_data(&*POS)))
+  },
+);
+
+class!(PlayerRb);
+wrappable_struct!(Arc<Player>, PlayerW, PLAYER);
+
+impl PlayerRb {
+  pub fn new(player: Arc<Player>) -> Self {
+    Module::from_existing("Sugarcane").get_nested_class("Player").wrap_data(player, &*PLAYER)
+  }
+}
+
+methods!(
+  PlayerRb,
+  rself,
+  fn player_username() -> RString {
+    RString::new_utf8(rself.get_data(&*PLAYER).username())
   },
 );
 

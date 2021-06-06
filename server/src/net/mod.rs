@@ -1,6 +1,9 @@
 use std::{
   convert::TryInto,
-  sync::atomic::{AtomicBool, Ordering},
+  sync::{
+    atomic::{AtomicBool, Ordering},
+    Arc,
+  },
 };
 use tokio::sync::{mpsc::Sender, Mutex};
 use tonic::{Status, Streaming};
@@ -51,7 +54,7 @@ impl Connection {
 
   /// This starts up the recieving loop for this connection. Do not call this
   /// more than once.
-  pub(crate) async fn run(&self, player: &Player) -> Result<(), Status> {
+  pub(crate) async fn run(&self, player: Arc<Player>) -> Result<(), Status> {
     'running: loop {
       let p = match self.rx.lock().await.message().await {
         Ok(Some(p)) => sb::Packet::from_proto(p),
@@ -120,7 +123,8 @@ impl Connection {
             };
             let kind = data.block_to_place();
             pos += Pos::dir_from_byte(dir.try_into().unwrap());
-            player.world().get_plugins().on_block_place(player, pos, kind);
+            player.world().get_plugins().on_block_place(player.clone(), pos, kind);
+
             match player.world().set_kind(pos, kind).await {
               Ok(_) => (),
               Err(e) => player.send_hotbar(&Chat::new(e.to_string())).await,
