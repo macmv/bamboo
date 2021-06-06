@@ -8,9 +8,8 @@ module Hello
   end
 
   def self.on_block_place(player, pos, kind)
-    Sugarcane::info("Hello World! #{pos}")
-    Sugarcane::error("mmmmmmmmm error")
     @sc.broadcast("#{player.username} just placed a block at #{pos}")
+    player.world.set_block(pos, Sugarcane::Block::STONE)
     if kind == Sugarcane::Block::DIRT
       @sc.broadcast("placed dirt!")
     end

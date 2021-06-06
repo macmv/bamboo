@@ -39,13 +39,17 @@ impl WorldRb {
   pub fn new(world: Arc<World>) -> Self {
     Module::from_existing("Sugarcane").get_nested_class("World").wrap_data(world, &*WORLD)
   }
+  pub fn to_world(&self) -> &Arc<World> {
+    &self.get_data(&*WORLD)
+  }
 }
 
 methods!(
   WorldRb,
   rself,
   fn world_set_block(pos: PosRb, kind: Fixnum) -> NilClass {
-    let w = rself.get_data(&*WORLD);
+    info!("setting block");
+    let w = rself.to_world();
     tokio::task::block_in_place(|| {
       tokio::runtime::Handle::current().block_on(async move {
         w.set_kind(pos.unwrap().to_pos(), block::Kind::from_u32(kind.unwrap().to_u64() as u32))
@@ -180,6 +184,12 @@ methods!(
 /// classes/methods for all types that are defined in Ruby.
 pub fn create_module() {
   Module::new("Sugarcane").define(|c| {
+    c.define_nested_class("Sugarcane", None).define(|c| {
+      c.def("broadcast", sc_broadcast);
+    });
+    c.define_nested_class("World", None).define(|c| {
+      c.def("set_block", world_set_block);
+    });
     c.define_nested_class("Player", None).define(|c| {
       c.def("username", player_username);
       c.def("world", player_world);
@@ -197,9 +207,6 @@ pub fn create_module() {
       for (i, name) in block::names().iter().enumerate() {
         c.const_set(&name.to_string().to_ascii_uppercase(), &Fixnum::new(i as i64));
       }
-    });
-    c.define_nested_class("Sugarcane", None).define(|c| {
-      c.def("broadcast", sc_broadcast);
     });
     c.def_self("trace", trace);
     c.def_self("debug", debug);
