@@ -28,7 +28,7 @@ use common::{
   version::{BlockVersion, ProtocolVersion},
 };
 
-use crate::{block, entity, item};
+use crate::{block, entity, item, plugin};
 use crate::{net::Connection, player::Player};
 use chunk::MultiChunk;
 use gen::WorldGen;
@@ -52,6 +52,7 @@ pub struct World {
   block_converter:  Arc<block::TypeConverter>,
   item_converter:   Arc<item::TypeConverter>,
   entity_converter: Arc<entity::TypeConverter>,
+  plugins:          Arc<plugin::PluginManager>,
   generator:        StdMutex<WorldGen>,
   mspt:             AtomicU32,
 }
@@ -63,6 +64,7 @@ pub struct WorldManager {
   block_converter:  Arc<block::TypeConverter>,
   item_converter:   Arc<item::TypeConverter>,
   entity_converter: Arc<entity::TypeConverter>,
+  plugins:          Arc<plugin::PluginManager>,
 }
 
 impl World {
@@ -70,6 +72,7 @@ impl World {
     block_converter: Arc<block::TypeConverter>,
     item_converter: Arc<item::TypeConverter>,
     entity_converter: Arc<entity::TypeConverter>,
+    plugins: Arc<plugin::PluginManager>,
   ) -> Arc<Self> {
     let world = Arc::new(World {
       chunks: RwLock::new(HashMap::new()),
@@ -78,6 +81,7 @@ impl World {
       block_converter,
       item_converter,
       entity_converter,
+      plugins,
       generator: StdMutex::new(WorldGen::new()),
       mspt: 0.into(),
     });
@@ -343,6 +347,11 @@ impl World {
     &self.entity_converter
   }
 
+  /// Returns the plugin manager. This is how events can be sent to plugins.
+  pub fn get_plugins(&self) -> &plugin::PluginManager {
+    &self.plugins
+  }
+
   /// This calls f(), and passes it a locked chunk. This will also generate a
   /// new chunk if there is not one stored there.
   ///
@@ -453,6 +462,7 @@ impl WorldManager {
       block_converter:  Arc::new(block::TypeConverter::new()),
       item_converter:   Arc::new(item::TypeConverter::new()),
       entity_converter: Arc::new(entity::TypeConverter::new()),
+      plugins:          Arc::new(plugin::PluginManager::new()),
       worlds:           vec![],
     };
     w.add_world();
@@ -464,6 +474,7 @@ impl WorldManager {
       self.block_converter.clone(),
       self.item_converter.clone(),
       self.entity_converter.clone(),
+      self.plugins.clone(),
     ));
   }
 

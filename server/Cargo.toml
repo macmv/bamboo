@@ -20,9 +20,7 @@ num-derive = "0.3"
 
 noise = "0.7.0"
 
-[dependencies.pyo3]
-version = "0.13.2"
-features = ["auto-initialize"]
+rutie = "0.8.2"
 
 [build-dependencies]
 data = { path = "../data" }
