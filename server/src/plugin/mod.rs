@@ -38,14 +38,14 @@ impl PluginManager {
       let f = f.unwrap();
       let m = fs::metadata(f.path()).unwrap();
       if m.is_file() {
-        dbg!(f.path().to_str());
-        // let source = fs::read_to_string(f.path()).unwrap();
+        let path = f.path();
+        VM::require(&format!("./{}", path.to_str().unwrap()));
 
-        // let module = VM::eval(&source).unwrap();
-        VM::require(&format!("./{}", f.path().to_str().unwrap()));
+        // This converts plug.rb to Plug
+        let name = path.file_stem().unwrap().to_str().unwrap();
+        let name = name[..1].to_ascii_uppercase() + &name[1..];
+        let module = Module::from_existing(&name);
 
-        let module = Module::from_existing("Hello");
-        // let module = module.try_convert_to::<Module>().unwrap();
         let big = module.const_get("BIG");
         dbg!(&big.try_convert_to::<RString>().unwrap().to_str());
 
