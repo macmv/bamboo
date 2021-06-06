@@ -48,7 +48,9 @@ methods!(
     let w = rself.get_data(&*WORLD);
     tokio::task::block_in_place(|| {
       tokio::runtime::Handle::current().block_on(async move {
-        w.set_kind(pos.unwrap().to_pos(), block::Kind::from_u32(kind.unwrap())).await;
+        w.set_kind(pos.unwrap().to_pos(), block::Kind::from_u32(kind.unwrap().to_u64() as u32))
+          .await
+          .unwrap();
       })
     });
 
@@ -63,13 +65,19 @@ impl PlayerRb {
   pub fn new(player: Arc<Player>) -> Self {
     Module::from_existing("Sugarcane").get_nested_class("Player").wrap_data(player, &*PLAYER)
   }
+  pub fn to_player(&self) -> &Arc<Player> {
+    &self.get_data(&*PLAYER)
+  }
 }
 
 methods!(
   PlayerRb,
   rself,
   fn player_username() -> RString {
-    RString::new_utf8(rself.get_data(&*PLAYER).username())
+    RString::new_utf8(rself.to_player().username())
+  },
+  fn player_world() -> WorldRb {
+    WorldRb::new(rself.to_player().clone_world())
   },
 );
 
