@@ -11,6 +11,7 @@ module Hello
     puts "HELLO I AM ON BLOCK PLACE"
     puts pos.x
     @sc.broadcast("someone just placed a block at #{pos}")
+    puts Sugarcane::Block::DIRT
   end
 end
 

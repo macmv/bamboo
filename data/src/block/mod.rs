@@ -113,6 +113,14 @@ pub fn generate(dir: &Path) -> Result<HashSet<String>, Box<dyn Error>> {
     writeln!(f, "    }}")?;
     writeln!(f, "  }}")?;
     writeln!(f, "}}")?;
+    writeln!(f)?;
+    writeln!(f, "pub fn names() -> &'static [&'static str; {}] {{", latest.blocks.len())?;
+    writeln!(f, "  &[")?;
+    for b in &latest.blocks {
+      writeln!(f, "    \"{}\",", b.name)?;
+    }
+    writeln!(f, "  ]")?;
+    writeln!(f, "}}")?;
   }
   {
     // Generates the block data

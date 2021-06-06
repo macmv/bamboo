@@ -1,4 +1,4 @@
-use crate::world::WorldManager;
+use crate::{block, world::WorldManager};
 use common::{math::Pos, util::Chat};
 use rutie::{AnyObject, Fixnum, Module, NilClass, Object, RString};
 use std::sync::Arc;
@@ -71,6 +71,11 @@ pub fn create_module() {
       c.def("z", pos_z);
 
       c.def("to_s", pos_to_s);
+    });
+    c.define_nested_module("Block").define(|c| {
+      for (i, name) in block::names().iter().enumerate() {
+        c.const_set(&name.to_string().to_ascii_uppercase(), &Fixnum::new(i as i64));
+      }
     });
     c.define_nested_class("Sugarcane", None).define(|c| {
       c.define_method("broadcast", sc_broadcast);
