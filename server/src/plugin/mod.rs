@@ -38,10 +38,14 @@ impl PluginManager {
       let f = f.unwrap();
       let m = fs::metadata(f.path()).unwrap();
       if m.is_file() {
-        let source = fs::read_to_string(f.path()).unwrap();
+        dbg!(f.path().to_str());
+        // let source = fs::read_to_string(f.path()).unwrap();
 
-        let module = VM::eval(&source).unwrap();
-        let module = module.try_convert_to::<Module>().unwrap();
+        // let module = VM::eval(&source).unwrap();
+        VM::require(&format!("./{}", f.path().to_str().unwrap()));
+
+        let module = Module::from_existing("Hello");
+        // let module = module.try_convert_to::<Module>().unwrap();
         let big = module.const_get("BIG");
         dbg!(&big.try_convert_to::<RString>().unwrap().to_str());
 
