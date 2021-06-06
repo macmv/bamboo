@@ -1,6 +1,7 @@
 use super::wrapper::*;
+use crate::{block, player::Player};
 use common::math::Pos;
-use rutie::{AnyObject, Exception, Module, Object, RString};
+use rutie::{AnyObject, Exception, Fixnum, Module, Object, RString};
 
 /// A wrapper struct for a Ruby plugin. This is used to execute Ruby code
 /// whenever an event happens.
@@ -25,8 +26,11 @@ impl Plugin {
 
   /// Calls on_block_place on the plugin. This can be called whenever, but will
   /// always be called after init.
-  pub fn on_block_place(&self, pos: Pos) {
-    self.call("on_block_place", &[PosRb::new(pos).value().into()]);
+  pub fn on_block_place(&self, player: &Player, pos: Pos, kind: block::Kind) {
+    self.call(
+      "on_block_place",
+      &[PosRb::new(pos).value().into(), Fixnum::new(kind.id().into()).value().into()],
+    );
   }
 
   /// Calls the given function with the given args. This will verify that the

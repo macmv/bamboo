@@ -7,11 +7,13 @@ module Hello
     @sc = sc
   end
 
-  def self.on_block_place(pos)
+  def self.on_block_place(pos, kind)
     puts "HELLO I AM ON BLOCK PLACE"
     puts pos.x
     @sc.broadcast("someone just placed a block at #{pos}")
-    puts Sugarcane::Block::DIRT
+    if kind == Sugarcane::Block::DIRT
+      @sc.broadcast("placed dirt!")
+    end
   end
 end
 

@@ -61,7 +61,7 @@ impl TypeConverter {
   /// Gets all the data for a given block kind. This includes all the types, the
   /// default type, and state ids.
   pub fn get(&self, k: Kind) -> &Data {
-    &self.kinds[k.to_u32() as usize]
+    &self.kinds[k.id() as usize]
   }
 }
 

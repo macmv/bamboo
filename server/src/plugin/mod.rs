@@ -59,7 +59,7 @@ impl PluginManager {
 
   pub fn on_block_place(&self, player: &Player, pos: Pos, kind: block::Kind) {
     for p in self.plugins.lock().unwrap().iter() {
-      p.on_block_place(pos);
+      p.on_block_place(player, pos, kind);
     }
   }
 }
