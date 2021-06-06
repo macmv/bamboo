@@ -1,6 +1,10 @@
-use crate::{block, player::Player, world::WorldManager};
+use crate::{
+  block,
+  player::Player,
+  world::{World, WorldManager},
+};
 use common::{math::Pos, util::Chat};
-use rutie::{types::Argc, AnyObject, Fixnum, Module, NilClass, Object, RString};
+use rutie::{AnyObject, Fixnum, Module, NilClass, Object, RString, VerifiedObject};
 use std::sync::Arc;
 
 class!(SugarcaneRb);
@@ -28,34 +32,27 @@ methods!(
   },
 );
 
-class!(PosRb);
-wrappable_struct!(Pos, PosW, POS);
+class!(WorldRb);
+wrappable_struct!(Arc<World>, WorldW, WORLD);
 
-impl PosRb {
-  pub fn new(pos: Pos) -> Self {
-    Module::from_existing("Sugarcane").get_nested_class("Pos").wrap_data(pos, &*POS)
+impl WorldRb {
+  pub fn new(world: Arc<World>) -> Self {
+    Module::from_existing("Sugarcane").get_nested_class("World").wrap_data(world, &*WORLD)
   }
 }
 
 methods!(
-  PosRb,
+  WorldRb,
   rself,
-  fn pos_new(x: Fixnum, y: Fixnum, z: Fixnum) -> AnyObject {
-    PosRb::new(Pos::new(x.unwrap().to_i32(), y.unwrap().to_i32(), z.unwrap().to_i32()))
-      .value()
-      .into()
-  },
-  fn pos_x() -> Fixnum {
-    Fixnum::new(rself.get_data(&*POS).x().into())
-  },
-  fn pos_y() -> Fixnum {
-    Fixnum::new(rself.get_data(&*POS).y().into())
-  },
-  fn pos_z() -> Fixnum {
-    Fixnum::new(rself.get_data(&*POS).z().into())
-  },
-  fn pos_to_s() -> RString {
-    RString::new_utf8(&format!("{}", rself.get_data(&*POS)))
+  fn world_set_block(pos: PosRb, kind: Fixnum) -> NilClass {
+    let w = rself.get_data(&*WORLD);
+    tokio::task::block_in_place(|| {
+      tokio::runtime::Handle::current().block_on(async move {
+        w.set_kind(pos.unwrap().to_pos(), block::Kind::from_u32(kind.unwrap())).await;
+      })
+    });
+
+    NilClass::new()
   },
 );
 
@@ -73,6 +70,50 @@ methods!(
   rself,
   fn player_username() -> RString {
     RString::new_utf8(rself.get_data(&*PLAYER).username())
+  },
+);
+
+class!(PosRb);
+wrappable_struct!(Pos, PosW, POS);
+
+impl PosRb {
+  pub fn new(pos: Pos) -> Self {
+    Module::from_existing("Sugarcane").get_nested_class("Pos").wrap_data(pos, &*POS)
+  }
+  pub fn to_pos(&self) -> Pos {
+    *self.get_data(&*POS)
+  }
+}
+
+impl VerifiedObject for PosRb {
+  fn is_correct_type<T: Object>(object: &T) -> bool {
+    object.class() == Module::from_existing("Sugarcane").get_nested_class("Pos")
+  }
+
+  fn error_message() -> &'static str {
+    "Error converting to PosRb"
+  }
+}
+
+methods!(
+  PosRb,
+  rself,
+  fn pos_new(x: Fixnum, y: Fixnum, z: Fixnum) -> AnyObject {
+    PosRb::new(Pos::new(x.unwrap().to_i32(), y.unwrap().to_i32(), z.unwrap().to_i32()))
+      .value()
+      .into()
+  },
+  fn pos_x() -> Fixnum {
+    Fixnum::new(rself.to_pos().x().into())
+  },
+  fn pos_y() -> Fixnum {
+    Fixnum::new(rself.to_pos().y().into())
+  },
+  fn pos_z() -> Fixnum {
+    Fixnum::new(rself.to_pos().z().into())
+  },
+  fn pos_to_s() -> RString {
+    RString::new_utf8(&format!("{}", rself.to_pos()))
   },
 );
 
@@ -133,6 +174,7 @@ pub fn create_module() {
   Module::new("Sugarcane").define(|c| {
     c.define_nested_class("Player", None).define(|c| {
       c.def("username", player_username);
+      c.def("world", player_world);
     });
     c.define_nested_class("Pos", None).define(|c| {
       c.def_self("new", pos_new);
