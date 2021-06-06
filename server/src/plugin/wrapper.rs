@@ -49,22 +49,6 @@ methods!(
 class!(PosRb);
 wrappable_struct!(Pos, PosWrapper, POS_WRAPPER);
 
-impl fmt::Display for PosRb {
-  fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-    write!(f, "pos: {}", self.get_data(&*POS_WRAPPER))
-  }
-}
-
-impl VerifiedObject for PosRb {
-  fn is_correct_type<T: Object>(o: &T) -> bool {
-    o.class() == Module::from_existing("Sugarcane").get_nested_class("Pos")
-  }
-
-  fn error_message() -> &'static str {
-    "Error converting to Pos"
-  }
-}
-
 impl PosRb {
   pub fn new(pos: Pos) -> Self {
     Module::from_existing("Sugarcane").get_nested_class("Pos").wrap_data(pos, &*POS_WRAPPER)

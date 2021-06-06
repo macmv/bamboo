@@ -33,9 +33,6 @@ impl Plugin {
   /// function exists, and will handle errors in the log.
   fn call(&self, name: &str, args: &[AnyObject]) {
     if self.m.respond_to(name) {
-      if name == "on_block_place" {
-        info!("{}", args[0].try_convert_to::<PosRb>().unwrap());
-      }
       if let Err(e) = self.m.protect_send(name, args) {
         error!("Error while calling {} on plugin {}: {}", name, self.name, e.inspect());
         for l in e.backtrace().unwrap() {
