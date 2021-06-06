@@ -5,6 +5,9 @@ pub use plugin::Plugin;
 use rutie::{Module, NilClass, Object, RString, VM};
 use std::fs;
 
+/// A struct that manages all Ruby plugins. This will handle re-loading all the
+/// source files on `/reload`, and will also send events to all the plugins when
+/// needed.
 pub struct PluginManager {
   // Vector of module names
   plugins: Vec<Plugin>,
@@ -22,6 +25,8 @@ methods!(
 );
 
 impl PluginManager {
+  /// Creates a new plugin manager. This will initialize the Ruby interpreter,
+  /// and load all plugins from disk. Do not call this multiple times.
   pub fn new() -> Self {
     VM::init();
 
@@ -33,6 +38,8 @@ impl PluginManager {
     m.load();
     m
   }
+
+  /// Loads all plugins from disk. Call this to reload all plugins.
   fn load(&mut self) {
     self.plugins.clear();
     for f in fs::read_dir("plugins").unwrap() {
@@ -54,19 +61,4 @@ impl PluginManager {
       p.init();
     }
   }
-  // /// Creates the `sugarcane` ruby module. Used whenever plugins are
-  // /// re-loaded.
-  // fn create_module(&self) -> PyResult<&PyModule> {
-  //   let sugarcane = PyModule::new(self.gil.python(), "sugarcane")?;
-  //   sugarcane.add_function(wrap_pyfunction!(get_world, sugarcane)?)?;
-  //   Ok(sugarcane)
-  // }
-  // fn init(&self) -> Result<(), PyErr> {
-  //   let sugarcane = PluginManager::create_module(self.py)?;
-  //   let mut plugins = self.plugins.lock().unwrap();
-  //   plugins.clear();
-  //
-  //
-  //   Ok(())
-  // }
 }
