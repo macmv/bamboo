@@ -2,7 +2,7 @@ mod plugin;
 
 pub use plugin::Plugin;
 
-use rutie::{Module, NilClass, Object, RString, VM};
+use rutie::{Exception, Module, NilClass, Object, RString, VM};
 use std::fs;
 
 pub struct PluginManager {
@@ -46,7 +46,12 @@ impl PluginManager {
         dbg!(&big.try_convert_to::<RString>().unwrap().to_str());
 
         if module.respond_to("init") {
-          module.protect_send("init", &[]).unwrap();
+          if let Err(e) = module.protect_send("init", &[]) {
+            error!("Error while calling {} on plugin {}: {}", "init", "Hello", e.inspect());
+            for l in e.backtrace().unwrap() {
+              error!("{}", l.try_convert_to::<RString>().unwrap().to_str());
+            }
+          }
         }
 
         self.plugins.push(module);

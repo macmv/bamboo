@@ -4,6 +4,8 @@ module Hello
   def self.init
     puts "Loaded hello plugin"
     Sugarcane::broadcast("big gaming")
+    glhkasdfhlaskdf
+    raise "hello"
   end
 
   def self.on_block_place(player, pos)
