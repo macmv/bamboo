@@ -45,8 +45,9 @@ impl PluginManager {
         let big = module.const_get("BIG");
         dbg!(&big.try_convert_to::<RString>().unwrap().to_str());
 
-        // TODO: Don't do this
-        VM::eval("Hello.init").unwrap();
+        if module.respond_to("init") {
+          module.protect_send("init", &[]).unwrap();
+        }
 
         self.plugins.push(module);
       }
