@@ -9,6 +9,7 @@ module Hello
 
   def self.on_block_place(player, pos, kind)
     @sc.broadcast("#{player.username} just placed a block at #{pos}")
+    agdfsag
     player.world.set_block(pos, Sugarcane::Block::STONE)
     if kind == Sugarcane::Block::DIRT
       @sc.broadcast("placed dirt!")

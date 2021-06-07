@@ -1,7 +1,7 @@
 use super::wrapper::*;
 use crate::{block, player::Player};
 use common::math::Pos;
-use rutie::{AnyObject, Fixnum, Module, Object};
+use rutie::{AnyObject, Fixnum, Module, Object, VM};
 use std::sync::Arc;
 
 /// A wrapper struct for a Ruby plugin. This is used to execute Ruby code
@@ -30,11 +30,7 @@ impl Plugin {
   pub fn on_block_place(&self, player: Arc<Player>, pos: Pos, kind: block::Kind) {
     self.call(
       "on_block_place",
-      &[
-        PlayerRb::new(player).value().into(),
-        PosRb::new(pos).value().into(),
-        Fixnum::new(kind.id().into()).value().into(),
-      ],
+      &[PlayerRb::new(player).into(), PosRb::new(pos).into(), Fixnum::new(kind.id().into()).into()],
     );
   }
 

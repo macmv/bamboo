@@ -4,7 +4,7 @@ use crate::{
   world::{World, WorldManager},
 };
 use common::{math::Pos, util::Chat};
-use rutie::{AnyObject, Fixnum, Module, NilClass, Object, RString, VerifiedObject};
+use rutie::{AnyObject, Fixnum, Module, NilClass, Object, RString, VerifiedObject, VM};
 use std::sync::Arc;
 
 class!(SugarcaneRb);
@@ -74,6 +74,12 @@ impl PlayerRb {
   }
 }
 
+impl Into<AnyObject> for PlayerRb {
+  fn into(self) -> AnyObject {
+    AnyObject::from(self.value)
+  }
+}
+
 methods!(
   PlayerRb,
   rself,
@@ -107,13 +113,17 @@ impl VerifiedObject for PosRb {
   }
 }
 
+impl Into<AnyObject> for PosRb {
+  fn into(self) -> AnyObject {
+    AnyObject::from(self.value)
+  }
+}
+
 methods!(
   PosRb,
   rself,
-  fn pos_new(x: Fixnum, y: Fixnum, z: Fixnum) -> AnyObject {
+  fn pos_new(x: Fixnum, y: Fixnum, z: Fixnum) -> PosRb {
     PosRb::new(Pos::new(x.unwrap().to_i32(), y.unwrap().to_i32(), z.unwrap().to_i32()))
-      .value()
-      .into()
   },
   fn pos_x() -> Fixnum {
     Fixnum::new(rself.to_pos().x().into())
