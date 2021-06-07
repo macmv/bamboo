@@ -75,7 +75,10 @@ async fn main() -> Result<(), Box<dyn Error>> {
   let addr = "0.0.0.0:8483".parse().unwrap();
 
   let worlds = Arc::new(WorldManager::new());
-  worlds.init(worlds.clone());
+  let w = worlds.clone();
+  tokio::spawn(async move {
+    w.run(w.clone()).await;
+  });
   let svc = MinecraftServer::new(ServerImpl { worlds });
 
   // This is the code needed for reflection. It is disabled for now, as

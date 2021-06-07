@@ -8,7 +8,7 @@ use common::math::Pos;
 use rutie::{AnyException, Exception, Module, Object, RString, VM};
 use std::{
   fs,
-  sync::{Arc, Mutex},
+  sync::{mpsc, Arc, Mutex},
 };
 use wrapper::SugarcaneRb;
 
@@ -18,24 +18,39 @@ use wrapper::SugarcaneRb;
 pub struct PluginManager {
   // Vector of module names
   plugins: Mutex<Vec<Plugin>>,
+  tx:      Mutex<mpsc::Sender<()>>,
+  rx:      Mutex<mpsc::Receiver<()>>,
 }
 
 impl PluginManager {
   /// Creates a new plugin manager. This will initialize the Ruby interpreter,
   /// and load all plugins from disk. Do not call this multiple times.
   pub fn new() -> Self {
-    PluginManager { plugins: Mutex::new(vec![]) }
+    let (tx, rx) = mpsc::channel();
+    PluginManager { plugins: Mutex::new(vec![]), tx: Mutex::new(tx), rx: Mutex::new(rx) }
   }
 
-  pub fn init(&self, wm: Arc<WorldManager>) {
+  pub async fn run(&self, wm: Arc<WorldManager>) {
     VM::init();
     wrapper::create_module();
     self.load(wm);
+    let rx = self.rx.lock().unwrap();
+    loop {
+      if let Ok(_) = rx.recv() {
+        if let Ok(e) = VM::error_pop() {
+          error!("{}", e.inspect());
+          for l in e.backtrace().unwrap() {
+            error!("{}", l.try_convert_to::<RString>().unwrap().to_str());
+          }
+        }
+      }
+    }
   }
 
   /// Loads all plugins from disk. Call this to reload all plugins.
   fn load(&self, wm: Arc<WorldManager>) {
     let mut plugins = self.plugins.lock().unwrap();
+    let tx = self.tx.lock().unwrap();
     plugins.clear();
     for f in fs::read_dir("plugins").unwrap() {
       let f = f.unwrap();
@@ -49,7 +64,7 @@ impl PluginManager {
         let name = name[..1].to_ascii_uppercase() + &name[1..];
         let module = Module::from_existing(&name);
 
-        plugins.push(Plugin::new(name, module));
+        plugins.push(Plugin::new(name, module, tx.clone()));
       }
     }
     for p in plugins.iter() {
@@ -61,12 +76,5 @@ impl PluginManager {
     for p in self.plugins.lock().unwrap().iter() {
       p.on_block_place(player.clone(), pos, kind);
     }
-  }
-}
-
-pub fn log_err(msg: &str, e: AnyException) {
-  error!("{}: {}", msg, e.inspect());
-  for l in e.backtrace().unwrap() {
-    error!("{}", l.try_convert_to::<RString>().unwrap().to_str());
   }
 }

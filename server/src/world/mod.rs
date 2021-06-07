@@ -469,8 +469,8 @@ impl WorldManager {
     w
   }
 
-  pub fn init(&self, wm: Arc<WorldManager>) {
-    self.plugins.init(wm);
+  pub async fn run(&self, wm: Arc<WorldManager>) {
+    self.plugins.clone().run(wm).await;
   }
 
   /// Adds a new world. Currently, this requires a mutable reference, which

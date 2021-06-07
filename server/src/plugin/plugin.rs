@@ -2,20 +2,21 @@ use super::wrapper::*;
 use crate::{block, player::Player};
 use common::math::Pos;
 use rutie::{AnyObject, Fixnum, Module, Object, VM};
-use std::sync::Arc;
+use std::sync::{mpsc, Arc};
 
 /// A wrapper struct for a Ruby plugin. This is used to execute Ruby code
 /// whenever an event happens.
 pub struct Plugin {
   name: String,
   m:    Module,
+  err:  mpsc::Sender<()>,
 }
 
 impl Plugin {
   /// Creates a new plugin. The name should be the name of the module (for
   /// debugging) and the Module should be the ruby module for this plugin.
-  pub fn new(name: String, m: Module) -> Self {
-    Plugin { name, m }
+  pub fn new(name: String, m: Module, err: mpsc::Sender<()>) -> Self {
+    Plugin { name, m, err }
   }
 
   /// Calls init on the plugin. This is called right after all plugins are
@@ -38,8 +39,8 @@ impl Plugin {
   /// function exists, and will handle errors in the log.
   fn call(&self, name: &str, args: &[AnyObject]) {
     if self.m.respond_to(name) {
-      if let Err(e) = self.m.protect_send(name, args) {
-        super::log_err(&format!("while calling {} on {}", name, self.name), e);
+      if let Err(_) = VM::protect(|| unsafe { self.m.send(name, args) }) {
+        self.err.send(()).unwrap();
       }
     }
   }
