@@ -1,11 +1,6 @@
 #[macro_use]
 extern crate log;
 
-#[macro_use]
-extern crate rutie;
-#[macro_use]
-extern crate lazy_static;
-
 pub mod block;
 pub mod command;
 pub mod entity;
