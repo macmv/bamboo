@@ -11,7 +11,7 @@ dependencies = [
  "bitflags",
  "boa_unicode",
  "chrono",
- "gc",
+ "gc 0.3.6",
  "indexmap",
  "num-bigint 0.3.2",
  "num-integer",
@@ -567,7 +567,16 @@ version = "0.3.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c94b8d46989f31474299e1483db243a9ed1f8a7d8508a78c91449e76e9ef6756"
 dependencies = [
- "gc_derive",
+ "gc_derive 0.3.6",
+]
+
+[[package]]
+name = "gc"
+version = "0.4.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "3edaac0f5832202ebc99520cb77c932248010c4645d20be1dc62d6579f5b3752"
+dependencies = [
+ "gc_derive 0.4.1",
 ]
 
 [[package]]
@@ -575,6 +584,18 @@ name = "gc_derive"
 version = "0.3.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "52c734b94d1d53fcc70e42c83cd7c6e108c9a4f6da8e78098a7d212805e86151"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn",
+ "synstructure",
+]
+
+[[package]]
+name = "gc_derive"
+version = "0.4.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "60df8444f094ff7885631d80e78eb7d88c3c2361a98daaabb06256e4500db941"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -1734,6 +1755,7 @@ dependencies = [
  "common",
  "data",
  "futures",
+ "gc 0.4.1",
  "log",
  "noise",
  "num",
