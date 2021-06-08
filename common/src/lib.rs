@@ -7,12 +7,16 @@
 use log::LevelFilter;
 use log4rs::append::console::ConsoleAppender;
 use log4rs::append::rolling_file::{
-  policy::compound::{trigger::Trigger, CompoundPolicy},
-  LogFile, RollingFileAppender,
+  policy::compound::{roll::Roll, trigger::size::SizeTrigger, CompoundPolicy},
+  RollingFileAppender,
 };
 use log4rs::config::{Appender, Config, Logger, Root};
 use log4rs::encode::pattern::PatternEncoder;
-use std::time::{Duration, Instant};
+use std::{
+  fs,
+  path::Path,
+  time::{Duration, Instant},
+};
 
 pub mod math;
 pub mod net;
@@ -28,32 +32,25 @@ pub mod proto {
   pub const FILE_DESCRIPTOR_SET: &[u8] = tonic::include_file_descriptor_set!("connection");
 }
 
+/// Deletes old files older than age any time they are found in the log
+/// directory.
 #[derive(Debug)]
-struct SizeOrTimeTrigger {
-  size: u64,
-  time: Duration,
-  last: Instant,
+struct DeleteWindowRoller {
+  age: Duration,
 }
-struct Roller {}
 
-impl SizeOrTimeTrigger {
-  pub fn new(size: u64, time: Duration) -> Self {
-    SizeOrTimeTrigger { size, time, last: Instant::now() }
+impl Roll for DeleteWindowRoller {
+  fn roll(&self, file: &Path) -> anyhow::Result<()> {
+    fs::remove_file(file).map_err(Into::into)
   }
 }
 
-impl Trigger for SizeOrTimeTrigger {
-  fn trigger(&self, file: &LogFile) -> anyhow::Result<bool> {
-    if file.len_estimate() > self.size || self.last.elapsed() > self.time {
-      self.last = Instant::now();
-      Ok(true)
-    } else {
-      Ok(false)
-    }
+impl DeleteWindowRoller {
+  /// Returns a new `DeleteRoller`.
+  pub fn new(age: Duration) -> Self {
+    DeleteWindowRoller { age }
   }
 }
-
-impl Roller {}
 
 /// Initializes logger. Might do more things in the future.
 pub fn init(name: &str) {
@@ -68,7 +65,10 @@ pub fn init(name: &str) {
     .encoder(Box::new(pat))
     .build(
       format!("log/{}.log", name),
-      Box::new(CompoundPolicy::new(Box::new(Trigger::new()), Box::new(Roller::new()))),
+      Box::new(CompoundPolicy::new(
+        Box::new(SizeTrigger::new(100 * 1024)),
+        Box::new(DeleteWindowRoller::new(Duration::from_secs(60 * 60 * 24 * 7))),
+      )),
     )
     .unwrap();
 
