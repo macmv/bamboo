@@ -6,12 +6,13 @@ use crate::{block, player::Player, world::WorldManager};
 use boa::{
   class::{Class, ClassBuilder},
   gc::{Finalize, Trace},
-  property::PropertyKey,
+  object::{Object, ObjectData},
+  property::Attribute,
   Context, Result, Value,
 };
 use common::math::Pos;
 use std::{
-  fs,
+  fmt, fs,
   sync::{mpsc, Arc, Mutex},
 };
 
@@ -31,13 +32,30 @@ pub struct PluginManager {
   rx:      Mutex<mpsc::Receiver<Event>>,
 }
 
-#[derive(Debug)]
 pub struct Sugarcane {
-  val: String,
+  wm: Arc<WorldManager>,
+}
+
+impl fmt::Debug for Sugarcane {
+  fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    write!(f, "Sugarcane {{}}")
+  }
 }
 
 impl Sugarcane {
+  fn new(wm: Arc<WorldManager>) -> Self {
+    Sugarcane { wm }
+  }
   fn info(_this: &Value, args: &[Value], ctx: &mut Context) -> Result<Value> {
+    info!("{}", args[0].to_string(ctx).unwrap());
+    Ok(Value::Null)
+  }
+  fn add_plugin(this: &Value, args: &[Value], ctx: &mut Context) -> Result<Value> {
+    if let ObjectData::NativeObject(s) = &this.to_object(ctx)?.borrow().data {
+      info!("got self: {:?}", s);
+    } else {
+      error!("gaming?");
+    }
     info!("{}", args[0].to_string(ctx).unwrap());
     Ok(Value::Null)
   }
@@ -54,15 +72,14 @@ unsafe impl Trace for Sugarcane {
 
 impl Class for Sugarcane {
   const NAME: &'static str = "Sugarcane";
-  const LENGTH: usize = 1;
 
-  fn constructor(_this: &Value, args: &[Value], ctx: &mut Context) -> Result<Self> {
-    let val = args.get(0).cloned().unwrap_or_default().to_string(ctx)?;
-    Ok(Sugarcane { val: val.to_string() })
+  fn constructor(_this: &Value, _args: &[Value], _ctx: &mut Context) -> Result<Self> {
+    Err(Value::String("cannot construct Sugarcane from JS".into()))
   }
 
   fn init(class: &mut ClassBuilder) -> Result<()> {
     class.static_method("info", 0, Self::info);
+    class.method("add_plugin", 0, Self::add_plugin);
 
     Ok(())
   }
@@ -79,6 +96,12 @@ impl PluginManager {
   pub async fn run(&self, wm: Arc<WorldManager>) {
     let mut ctx = Context::new();
     ctx.register_global_class::<Sugarcane>().unwrap();
+    let o = ctx.construct_object();
+    ctx.register_global_property(
+      "sc",
+      Object::native_object(Box::new(Sugarcane::new(wm.clone()))),
+      Attribute::all(),
+    );
     self.load(&mut ctx, wm);
 
     let rx = self.rx.lock().unwrap();
@@ -105,12 +128,21 @@ impl PluginManager {
       if m.is_file() {
         let path = f.path();
         let source = fs::read_to_string(path).unwrap();
-        let res = ctx.eval(&source).unwrap();
-        dbg!(res.get_field("init", &mut ctx).unwrap().to_object(&mut ctx).unwrap().call(
-          &Value::Null,
-          &[],
-          &mut ctx
-        ));
+        // let res = match ctx.eval(&source) {
+        //   Ok(v) => v,
+        //   Err(e) => {
+        //     dbg!(&e);
+        //     info!("{}", e.to_string(&mut ctx).unwrap());
+        //     panic!()
+        //   }
+        // };
+        // dbg!(v
+        //   .get_field("init", &mut ctx)
+        //   .unwrap()
+        //   .to_object(&mut ctx)
+        //   .unwrap()
+        //   .call(&Value::Null, &[], &mut ctx)
+        //   .unwrap());
       }
     }
   }
