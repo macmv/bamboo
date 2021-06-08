@@ -20,8 +20,8 @@ num-derive = "0.3"
 
 noise = "0.7.0"
 
-rutie = "0.8.2"
-lazy_static = "1.4.0"
+Boa = "0.11.0"
+gc = { version = "0.4.1", features = ["derive"] }
 
 [build-dependencies]
 data = { path = "../data" }

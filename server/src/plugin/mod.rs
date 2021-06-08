@@ -1,16 +1,26 @@
 mod plugin;
-mod wrapper;
 
 pub use plugin::Plugin;
 
 use crate::{block, player::Player, world::WorldManager};
+use boa::{
+  class::{Class, ClassBuilder},
+  gc::{Finalize, Trace},
+  object::{Object, ObjectData},
+  property::Attribute,
+  Context, Result, Value,
+};
 use common::math::Pos;
-use rutie::{AnyException, Exception, Module, Object, RString, VM};
 use std::{
-  fs,
+  fmt, fs,
   sync::{mpsc, Arc, Mutex},
 };
-use wrapper::SugarcaneRb;
+
+#[derive(Debug)]
+pub enum Event {
+  Init,
+  OnBlockPlace(Arc<Player>, Pos, block::Kind),
+}
 
 /// A struct that manages all Ruby plugins. This will handle re-loading all the
 /// source files on `/reload`, and will also send events to all the plugins when
@@ -18,8 +28,61 @@ use wrapper::SugarcaneRb;
 pub struct PluginManager {
   // Vector of module names
   plugins: Mutex<Vec<Plugin>>,
-  tx:      Mutex<mpsc::Sender<()>>,
-  rx:      Mutex<mpsc::Receiver<()>>,
+  tx:      Mutex<mpsc::Sender<Event>>,
+  rx:      Mutex<mpsc::Receiver<Event>>,
+}
+
+pub struct Sugarcane {
+  wm: Arc<WorldManager>,
+}
+
+impl fmt::Debug for Sugarcane {
+  fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    write!(f, "Sugarcane {{}}")
+  }
+}
+
+impl Sugarcane {
+  fn new(wm: Arc<WorldManager>) -> Self {
+    Sugarcane { wm }
+  }
+  fn info(_this: &Value, args: &[Value], ctx: &mut Context) -> Result<Value> {
+    info!("{}", args[0].to_string(ctx).unwrap());
+    Ok(Value::Null)
+  }
+  fn add_plugin(this: &Value, args: &[Value], ctx: &mut Context) -> Result<Value> {
+    if let ObjectData::NativeObject(s) = &this.to_object(ctx)?.borrow().data {
+      info!("got self: {:?}", s);
+    } else {
+      error!("gaming?");
+    }
+    info!("{}", args[0].to_string(ctx).unwrap());
+    Ok(Value::Null)
+  }
+}
+
+impl Finalize for Sugarcane {}
+unsafe impl Trace for Sugarcane {
+  unsafe fn trace(&self) {}
+  unsafe fn root(&self) {}
+  unsafe fn unroot(&self) {}
+
+  fn finalize_glue(&self) {}
+}
+
+impl Class for Sugarcane {
+  const NAME: &'static str = "Sugarcane";
+
+  fn constructor(_this: &Value, _args: &[Value], _ctx: &mut Context) -> Result<Self> {
+    Err(Value::String("cannot construct Sugarcane from JS".into()))
+  }
+
+  fn init(class: &mut ClassBuilder) -> Result<()> {
+    class.static_method("info", 0, Self::info);
+    class.method("add_plugin", 0, Self::add_plugin);
+
+    Ok(())
+  }
 }
 
 impl PluginManager {
@@ -31,24 +94,31 @@ impl PluginManager {
   }
 
   pub async fn run(&self, wm: Arc<WorldManager>) {
-    VM::init();
-    wrapper::create_module();
-    self.load(wm);
+    let mut ctx = Context::new();
+    ctx.register_global_class::<Sugarcane>().unwrap();
+    let o = ctx.construct_object();
+    ctx.register_global_property(
+      "sc",
+      Object::native_object(Box::new(Sugarcane::new(wm.clone()))),
+      Attribute::all(),
+    );
+    self.load(&mut ctx, wm);
+
     let rx = self.rx.lock().unwrap();
+    self.handle_event(Event::Init);
     loop {
-      if let Ok(_) = rx.recv() {
-        if let Ok(e) = VM::error_pop() {
-          error!("{}", e.inspect());
-          for l in e.backtrace().unwrap() {
-            error!("{}", l.try_convert_to::<RString>().unwrap().to_str());
-          }
-        }
+      if let Ok(e) = rx.recv() {
+        self.handle_event(e);
       }
     }
   }
 
+  fn handle_event(&self, e: Event) {
+    info!("got event: {:?}", e);
+  }
+
   /// Loads all plugins from disk. Call this to reload all plugins.
-  fn load(&self, wm: Arc<WorldManager>) {
+  fn load(&self, mut ctx: &mut Context, wm: Arc<WorldManager>) {
     let mut plugins = self.plugins.lock().unwrap();
     let tx = self.tx.lock().unwrap();
     plugins.clear();
@@ -57,24 +127,27 @@ impl PluginManager {
       let m = fs::metadata(f.path()).unwrap();
       if m.is_file() {
         let path = f.path();
-        VM::require(&format!("./{}", path.to_str().unwrap()));
-
-        // This converts plug.rb to Plug
-        let name = path.file_stem().unwrap().to_str().unwrap();
-        let name = name[..1].to_ascii_uppercase() + &name[1..];
-        let module = Module::from_existing(&name);
-
-        plugins.push(Plugin::new(name, module, tx.clone()));
+        let source = fs::read_to_string(path).unwrap();
+        // let res = match ctx.eval(&source) {
+        //   Ok(v) => v,
+        //   Err(e) => {
+        //     dbg!(&e);
+        //     info!("{}", e.to_string(&mut ctx).unwrap());
+        //     panic!()
+        //   }
+        // };
+        // dbg!(v
+        //   .get_field("init", &mut ctx)
+        //   .unwrap()
+        //   .to_object(&mut ctx)
+        //   .unwrap()
+        //   .call(&Value::Null, &[], &mut ctx)
+        //   .unwrap());
       }
-    }
-    for p in plugins.iter() {
-      p.init(SugarcaneRb::new(wm.clone()));
     }
   }
 
   pub fn on_block_place(&self, player: Arc<Player>, pos: Pos, kind: block::Kind) {
-    for p in self.plugins.lock().unwrap().iter() {
-      p.on_block_place(player.clone(), pos, kind);
-    }
+    self.tx.lock().unwrap().send(Event::OnBlockPlace(player, pos, kind)).unwrap();
   }
 }
