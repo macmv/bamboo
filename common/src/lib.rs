@@ -6,9 +6,13 @@
 // use flexi_logger::{Duplicate, LogTarget, Logger};
 use log::LevelFilter;
 use log4rs::append::console::ConsoleAppender;
-use log4rs::append::file::FileAppender;
+use log4rs::append::rolling_file::{
+  policy::compound::{trigger::Trigger, CompoundPolicy},
+  LogFile, RollingFileAppender,
+};
 use log4rs::config::{Appender, Config, Logger, Root};
 use log4rs::encode::pattern::PatternEncoder;
+use std::time::{Duration, Instant};
 
 pub mod math;
 pub mod net;
@@ -24,6 +28,33 @@ pub mod proto {
   pub const FILE_DESCRIPTOR_SET: &[u8] = tonic::include_file_descriptor_set!("connection");
 }
 
+#[derive(Debug)]
+struct SizeOrTimeTrigger {
+  size: u64,
+  time: Duration,
+  last: Instant,
+}
+struct Roller {}
+
+impl SizeOrTimeTrigger {
+  pub fn new(size: u64, time: Duration) -> Self {
+    SizeOrTimeTrigger { size, time, last: Instant::now() }
+  }
+}
+
+impl Trigger for SizeOrTimeTrigger {
+  fn trigger(&self, file: &LogFile) -> anyhow::Result<bool> {
+    if file.len_estimate() > self.size || self.last.elapsed() > self.time {
+      self.last = Instant::now();
+      Ok(true)
+    } else {
+      Ok(false)
+    }
+  }
+}
+
+impl Roller {}
+
 /// Initializes logger. Might do more things in the future.
 pub fn init(name: &str) {
   // Put line numbers in debug builds, but not in release builds.
@@ -33,8 +64,13 @@ pub fn init(name: &str) {
   let pat = PatternEncoder::new("{d(%Y-%m-%d %H:%M:%S:%f)} [{h({l})}] {m}{n}");
 
   let stdout = ConsoleAppender::builder().encoder(Box::new(pat.clone())).build();
-  let disk =
-    FileAppender::builder().encoder(Box::new(pat)).build(format!("log/{}.log", name)).unwrap();
+  let disk = RollingFileAppender::builder()
+    .encoder(Box::new(pat))
+    .build(
+      format!("log/{}.log", name),
+      Box::new(CompoundPolicy::new(Box::new(Trigger::new()), Box::new(Roller::new()))),
+    )
+    .unwrap();
 
   let config = Config::builder()
     .appender(Appender::builder().build("stdout", Box::new(stdout)))
