@@ -70,7 +70,7 @@ impl Minecraft for ServerImpl {
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn Error>> {
-  common::init();
+  common::init("server");
 
   let addr = "0.0.0.0:8483".parse().unwrap();
 

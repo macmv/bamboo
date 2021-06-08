@@ -25,7 +25,7 @@ pub mod proto {
 }
 
 /// Initializes logger. Might do more things in the future.
-pub fn init() {
+pub fn init(name: &str) {
   // Put line numbers in debug builds, but not in release builds.
   #[cfg(debug_assertions)]
   let pat = PatternEncoder::new("{d(%Y-%m-%d %H:%M:%S:%f)} {f}:{L} [{h({l})}] {m}{n}");
@@ -33,7 +33,8 @@ pub fn init() {
   let pat = PatternEncoder::new("{d(%Y-%m-%d %H:%M:%S:%f)} [{h({l})}] {m}{n}");
 
   let stdout = ConsoleAppender::builder().encoder(Box::new(pat.clone())).build();
-  let disk = FileAppender::builder().encoder(Box::new(pat)).build("log/latest.log").unwrap();
+  let disk =
+    FileAppender::builder().encoder(Box::new(pat)).build(format!("log/{}.log", name)).unwrap();
 
   let config = Config::builder()
     .appender(Appender::builder().build("stdout", Box::new(stdout)))

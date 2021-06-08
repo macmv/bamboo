@@ -21,7 +21,7 @@ use version::Generator;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn Error>> {
-  common::init();
+  common::init("proxy");
 
   let addr = "0.0.0.0:25565";
   info!("listening for clients on {}", addr);
