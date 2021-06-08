@@ -6,7 +6,8 @@ edition = "2018"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-flexi_logger = "0.17"
+# flexi_logger = "0.17"
+log4rs = "1.0.0"
 log = "0.4"
 
 tonic = "0.4"
