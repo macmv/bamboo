@@ -5,13 +5,15 @@
 
 // use flexi_logger::{Duplicate, LogTarget, Logger};
 use log::LevelFilter;
-use log4rs::append::console::ConsoleAppender;
-use log4rs::append::rolling_file::{
-  policy::compound::{roll::Roll, trigger::size::SizeTrigger, CompoundPolicy},
-  RollingFileAppender,
+use log4rs::{
+  append::{
+    console::ConsoleAppender,
+    file::FileAppender,
+    // rolling_file::{policy::Policy, LogFile, RollingFileAppender},
+  },
+  config::{Appender, Config, Logger, Root},
+  encode::pattern::PatternEncoder,
 };
-use log4rs::config::{Appender, Config, Logger, Root};
-use log4rs::encode::pattern::PatternEncoder;
 use std::{
   fs,
   path::Path,
@@ -32,25 +34,27 @@ pub mod proto {
   pub const FILE_DESCRIPTOR_SET: &[u8] = tonic::include_file_descriptor_set!("connection");
 }
 
-/// Deletes old files older than age any time they are found in the log
-/// directory.
-#[derive(Debug)]
-struct DeleteWindowRoller {
-  age: Duration,
-}
-
-impl Roll for DeleteWindowRoller {
-  fn roll(&self, file: &Path) -> anyhow::Result<()> {
-    fs::remove_file(file).map_err(Into::into)
-  }
-}
-
-impl DeleteWindowRoller {
-  /// Returns a new `DeleteRoller`.
-  pub fn new(age: Duration) -> Self {
-    DeleteWindowRoller { age }
-  }
-}
+// #[derive(Debug)]
+// pub struct KeepAlivePolicy {
+//   age: Duration,
+// }
+//
+// impl KeepAlivePolicy {
+//   pub fn new(age: Durationn) -> Self {
+//     KeepAlivePolicy { age }
+//   }
+// }
+//
+// impl Policy for KeepAlivePolicy {
+//   fn process(&self, log: &mut LogFile) -> anyhow::Result<()> {
+//     if self.trigger.trigger(log)? {
+//       log.roll();
+//       fs::remove_file(file).map_err(Into::into);
+//       self.roller.roll(log.path())?;
+//     }
+//     Ok(())
+//   }
+// }
 
 /// Initializes logger. Might do more things in the future.
 pub fn init(name: &str) {
@@ -61,14 +65,11 @@ pub fn init(name: &str) {
   let pat = PatternEncoder::new("{d(%Y-%m-%d %H:%M:%S:%f)} [{h({l})}] {m}{n}");
 
   let stdout = ConsoleAppender::builder().encoder(Box::new(pat.clone())).build();
-  let disk = RollingFileAppender::builder()
+  let disk = FileAppender::builder()
     .encoder(Box::new(pat))
     .build(
       format!("log/{}.log", name),
-      Box::new(CompoundPolicy::new(
-        Box::new(SizeTrigger::new(100 * 1024)),
-        Box::new(DeleteWindowRoller::new(Duration::from_secs(60 * 60 * 24 * 7))),
-      )),
+      // Box::new(KeepAlivePolicy::new(Duration::from_secs(60 * 60 * 24 * 7))),
     )
     .unwrap();
 
