@@ -5,9 +5,11 @@ pub use plugin::Plugin;
 use crate::{block, player::Player, world::WorldManager};
 use boa::{
   class::{Class, ClassBuilder},
+  exec::Executable,
   gc::{Finalize, Trace},
   object::{Object, ObjectData},
   property::Attribute,
+  syntax::parser::Parser,
   Context, Result, Value,
 };
 use common::math::Pos;
@@ -47,7 +49,7 @@ impl Sugarcane {
     Sugarcane { wm }
   }
   fn info(_this: &Value, args: &[Value], ctx: &mut Context) -> Result<Value> {
-    info!("{}", args[0].to_string(ctx).unwrap());
+    info!("{}", args.get(0).cloned().unwrap_or_default().to_string(ctx)?);
     Ok(Value::Null)
   }
   fn add_plugin(this: &Value, args: &[Value], ctx: &mut Context) -> Result<Value> {
@@ -127,12 +129,35 @@ impl PluginManager {
       let m = fs::metadata(f.path()).unwrap();
       if m.is_file() {
         let path = f.path();
-        let source = fs::read_to_string(path).unwrap();
+        let src = fs::read_to_string(path).unwrap();
+        let src_bytes = src.as_bytes();
+
+        let parsing_result = Parser::new(src_bytes, false).parse_all().map_err(|e| e.to_string());
+
+        let execution_result = match parsing_result {
+          Ok(statements) => {
+            println!("{}", statements);
+            match statements.run(ctx) {
+              Ok(v) => v,
+              Err(e) => {
+                dbg!(&e);
+                panic!()
+              }
+            }
+          }
+          Err(e) => {
+            info!("{:?}", &e);
+            ctx.throw_syntax_error(e);
+            panic!()
+          }
+        };
+
         // let res = match ctx.eval(&source) {
         //   Ok(v) => v,
         //   Err(e) => {
-        //     dbg!(&e);
-        //     info!("{}", e.to_string(&mut ctx).unwrap());
+        //     // dbg!(&e);
+        //     info!("{:?}", e.get_type());
+        //     info!("{:?}", e.to_object(ctx).unwrap().borrow().keys());
         //     panic!()
         //   }
         // };
