@@ -172,6 +172,13 @@ impl Buffer {
   add_read!(read_f32, f32, 0.0);
   add_read!(read_f64, f64, 0.0);
 
+  pub fn expect(&mut self, expected: &[u8]) {
+    let got = self.read_buf(expected.len() as i32);
+    if got != expected {
+      panic!("expected {:?}, got {:?}", expected, got);
+    }
+  }
+
   pub fn write_bool(&mut self, v: bool) {
     if v {
       self.write_u8(1);
