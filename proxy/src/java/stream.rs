@@ -131,8 +131,11 @@ impl JavaStreamWriter {
     self.stream.write(data).await?;
     Ok(())
   }
+}
 
-  pub async fn write(&mut self, p: Packet) -> Result<()> {
+#[async_trait]
+impl StreamWriter for JavaStreamWriter {
+  async fn write(&mut self, p: Packet) -> Result<()> {
     // This is the packet, including it's id
     let mut bytes = p.serialize();
 

@@ -1,8 +1,4 @@
-use crate::{
-  packet::Packet,
-  packet_stream::{StreamReader, StreamWriter},
-  version::Generator,
-};
+use crate::{packet::Packet, version::Generator, StreamReader, StreamWriter};
 
 use common::{
   net::{cb, sb},
@@ -41,24 +37,24 @@ impl State {
   }
 }
 
-pub struct Conn {
-  client_reader: StreamReader,
-  client_writer: StreamWriter,
-  server:        MinecraftClient<Channel>,
-  state:         State,
-  gen:           Arc<Generator>,
-  ver:           ProtocolVersion,
+pub struct Conn<R, W> {
+  reader: R,
+  writer: W,
+  server: MinecraftClient<Channel>,
+  state:  State,
+  gen:    Arc<Generator>,
+  ver:    ProtocolVersion,
 }
 
-pub struct ClientListener {
-  client: StreamReader,
+pub struct ClientListener<R> {
+  client: R,
   server: mpsc::Sender<proto::Packet>,
   gen:    Arc<Generator>,
   ver:    ProtocolVersion,
 }
 
-pub struct ServerListener {
-  client: StreamWriter,
+pub struct ServerListener<W> {
+  client: W,
   server: Streaming<proto::Packet>,
   gen:    Arc<Generator>,
   ver:    ProtocolVersion,
@@ -83,7 +79,7 @@ pub struct LoginProperty {
   pub signature: Option<String>,
 }
 
-impl ClientListener {
+impl<R> ClientListener<R> {
   /// This starts listening for packets from the server. The rx and tx are used
   /// to close the ServerListener. Specifically, the tx will send a value once
   /// this listener has been closed, and this listener will close once the rx
@@ -150,7 +146,7 @@ impl ClientListener {
   }
 }
 
-impl ServerListener {
+impl<W> ServerListener<W> {
   /// This starts listening for packets from the server. The rx and tx are used
   /// to close the ClientListener. Specifically, the tx will send a value once
   /// this listener has been closed, and this listener will close once the rx
@@ -210,16 +206,16 @@ struct JsonPlayer {
   id:   String,
 }
 
-impl Conn {
+impl<R: StreamReader, W: StreamWriter> Conn<R, W> {
   pub async fn new(
     gen: Arc<Generator>,
-    client_reader: StreamReader,
-    client_writer: StreamWriter,
+    reader: R,
+    writer: W,
     ip: String,
   ) -> Result<Self, tonic::transport::Error> {
     Ok(Conn {
-      client_reader,
-      client_writer,
+      reader,
+      writer,
       server: MinecraftClient::connect(ip).await?,
       state: State::Handshake,
       gen,
@@ -230,7 +226,7 @@ impl Conn {
     self.ver
   }
 
-  pub async fn split(mut self) -> Result<(ClientListener, ServerListener), Status> {
+  pub async fn split(mut self) -> Result<(ClientListener<R>, ServerListener<W>), Status> {
     let (tx, rx) = mpsc::channel(1);
 
     let response = self.server.connection(Request::new(ReceiverStream::new(rx))).await?;
@@ -240,15 +236,10 @@ impl Conn {
       ClientListener {
         ver:    self.ver,
         gen:    self.gen.clone(),
-        client: self.client_reader,
+        client: self.reader,
         server: tx,
       },
-      ServerListener {
-        ver:    self.ver,
-        gen:    self.gen,
-        client: self.client_writer,
-        server: inbound,
-      },
+      ServerListener { ver: self.ver, gen: self.gen, client: self.writer, server: inbound },
     ))
   }
 
@@ -258,10 +249,10 @@ impl Conn {
     if compression != 0 {
       let mut out = Packet::new(3, self.ver);
       out.write_varint(compression);
-      self.client_writer.write(out).await?;
+      self.writer.write(out).await?;
       // Must happen after the packet has been sent
-      self.client_writer.set_compression(compression);
-      self.client_reader.set_compression(compression);
+      self.writer.set_compression(compression);
+      self.reader.set_compression(compression);
     }
     Ok(())
   }

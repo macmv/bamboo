@@ -33,8 +33,9 @@ pub trait StreamReader {
   }
   fn read(&mut self, ver: ProtocolVersion) -> io::Result<Option<Packet>>;
 }
+#[async_trait]
 pub trait StreamWriter {
-  fn write(&mut self, buf: &[u8]);
+  async fn write(&mut self, packet: Packet) -> io::Result<()>;
 }
 
 #[tokio::main]
