@@ -13,13 +13,8 @@ pub mod version;
 use common::version::ProtocolVersion;
 use rand::rngs::OsRng;
 use rsa::{PublicKeyParts, RSAPrivateKey};
-use std::{
-  error::Error,
-  io,
-  net::{TcpListener, TcpStream},
-  sync::Arc,
-};
-use tokio::sync::oneshot;
+use std::{error::Error, io, net::TcpStream, sync::Arc};
+use tokio::{net::TcpListener, sync::oneshot};
 
 use crate::conn::Conn;
 use common::net::sb;
@@ -50,7 +45,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
 
   let addr = "0.0.0.0:25565";
   info!("listening for java clients on {}", addr);
-  let tcp_listener = TcpListener::bind(addr)?;
+  let tcp_listener = TcpListener::bind(addr).await?;
 
   let addr = "0.0.0.0:19132";
   info!("listening for bedrock clients on {}", addr);
@@ -66,7 +61,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
   let key2 = key.clone();
   let tcp_handle = tokio::spawn(async move {
     loop {
-      let (sock, _) = tcp_listener.accept().unwrap();
+      let (sock, _) = tcp_listener.accept().await.unwrap();
       let (reader, writer) = java::stream::new(sock).unwrap();
       let gen = gen.clone();
       let k = key.clone();

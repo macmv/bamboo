@@ -11,7 +11,6 @@ use ringbuf::{Consumer, Producer, RingBuffer};
 use std::{
   io,
   io::{ErrorKind, Result},
-  net::TcpStream as StdTcpStream,
 };
 use tokio::{
   io::{AsyncReadExt, AsyncWriteExt},
@@ -38,10 +37,10 @@ pub struct JavaStreamWriter {
   cipher:      Option<Cfb8<Aes128>>,
 }
 
-pub fn new(stream: StdTcpStream) -> Result<(JavaStreamReader, JavaStreamWriter)> {
+pub fn new(stream: TcpStream) -> Result<(JavaStreamReader, JavaStreamWriter)> {
   // We want to block on read calls
   // stream.set_nonblocking(true)?;
-  let (read, write) = TcpStream::from_std(stream)?.into_split();
+  let (read, write) = stream.into_split();
   Ok((JavaStreamReader::new(read), JavaStreamWriter::new(write)))
 }
 
