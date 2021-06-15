@@ -21,14 +21,15 @@ pub fn clone(dir: &Path) -> io::Result<()> {
   }
   let out = Command::new("git")
     .current_dir(&path)
-    .args(&["status", "--short"])
+    .args(&["rev-parse", "--show-toplevel"])
     .output()
     .expect("failed to execute git");
+  dbg!(&out);
   assert_eq!(0, out.status.code().unwrap()); // Make sure this dodn't fail
   let out = str::from_utf8(&out.stdout).unwrap();
-  println!("status: {}", out);
-  if out.contains("..") {
-    // Means that the status was on the root repo, so we need to clone
+  println!("top level: {}", out);
+  if !out.ends_with("prismarine-data") {
+    // Means that the root repo is not prismarine data, so we need to clone
     if fs::read_dir(&path)?.next().is_some() {
       fs::remove_dir_all(&path)?;
       fs::create_dir_all(&path)?;
