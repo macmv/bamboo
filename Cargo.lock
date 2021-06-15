@@ -1481,6 +1481,7 @@ version = "0.1.0"
 dependencies = [
  "aes",
  "async-stream",
+ "async-trait",
  "cfb8",
  "common",
  "data",

@@ -1,12 +1,16 @@
 #[macro_use]
 extern crate log;
 
+#[macro_use]
+extern crate async_trait;
+
 pub mod bedrock;
 pub mod conn;
 pub mod java;
 pub mod packet;
 pub mod version;
 
+use common::version::ProtocolVersion;
 use rand::rngs::OsRng;
 use rsa::{PublicKeyParts, RSAPrivateKey};
 use std::{
@@ -19,13 +23,18 @@ use tokio::sync::oneshot;
 
 use crate::conn::Conn;
 use common::net::sb;
+use packet::Packet;
 use version::Generator;
 
+#[async_trait]
 pub trait StreamReader {
-  fn read(&self, buf: &mut [u8]) -> io::Result<usize>;
+  async fn poll(&mut self) -> io::Result<()> {
+    Ok(())
+  }
+  fn read(&mut self, ver: ProtocolVersion) -> io::Result<Option<Packet>>;
 }
 pub trait StreamWriter {
-  fn write(&self, buf: &[u8]);
+  fn write(&mut self, buf: &[u8]);
 }
 
 #[tokio::main]

@@ -1,4 +1,4 @@
-use crate::packet::Packet;
+use crate::{packet::Packet, StreamReader, StreamWriter};
 
 use aes::{
   cipher::{AsyncStreamCipher, NewCipher},
@@ -21,7 +21,7 @@ use tokio::{
   },
 };
 
-pub struct StreamReader {
+pub struct JavaStreamReader {
   stream:      OwnedReadHalf,
   prod:        Producer<u8>,
   cons:        Consumer<u8>,
@@ -30,7 +30,7 @@ pub struct StreamReader {
   // If this is none, then encryption is disabled.
   cipher:      Option<Cfb8<Aes128>>,
 }
-pub struct StreamWriter {
+pub struct JavaStreamWriter {
   stream:      OwnedWriteHalf,
   // If this is zero, compression is disabled.
   compression: usize,
@@ -38,14 +38,14 @@ pub struct StreamWriter {
   cipher:      Option<Cfb8<Aes128>>,
 }
 
-pub fn new(stream: StdTcpStream) -> Result<(StreamReader, StreamWriter)> {
+pub fn new(stream: StdTcpStream) -> Result<(JavaStreamReader, JavaStreamWriter)> {
   // We want to block on read calls
   // stream.set_nonblocking(true)?;
   let (read, write) = TcpStream::from_std(stream)?.into_split();
-  Ok((StreamReader::new(read), StreamWriter::new(write)))
+  Ok((JavaStreamReader::new(read), JavaStreamWriter::new(write)))
 }
 
-impl StreamReader {
+impl JavaStreamReader {
   pub fn new(stream: OwnedReadHalf) -> Self {
     let buf = RingBuffer::new(1024);
     let (prod, cons) = buf.split();
@@ -57,8 +57,11 @@ impl StreamReader {
   pub fn enable_encryption(&mut self, secret: &[u8; 16]) {
     self.cipher = Some(Cfb8::new_from_slices(secret, secret).unwrap());
   }
+}
 
-  pub async fn poll(&mut self) -> Result<()> {
+#[async_trait]
+impl StreamReader for JavaStreamReader {
+  async fn poll(&mut self) -> Result<()> {
     let mut msg = vec![];
 
     // This appends to msg, so we don't need to truncate
@@ -72,7 +75,7 @@ impl StreamReader {
     self.prod.push_slice(&msg);
     Ok(())
   }
-  pub fn read(&mut self, ver: ProtocolVersion) -> Result<Option<Packet>> {
+  fn read(&mut self, ver: ProtocolVersion) -> Result<Option<Packet>> {
     let mut len = 0;
     let mut read = -1;
     self.cons.access(|a, _| {
@@ -110,9 +113,9 @@ impl StreamReader {
   }
 }
 
-impl StreamWriter {
+impl JavaStreamWriter {
   pub fn new(stream: OwnedWriteHalf) -> Self {
-    StreamWriter { stream, compression: 0, cipher: None }
+    JavaStreamWriter { stream, compression: 0, cipher: None }
   }
   pub fn set_compression(&mut self, compression: i32) {
     self.compression = compression as usize;

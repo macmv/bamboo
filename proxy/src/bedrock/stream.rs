@@ -1,21 +1,21 @@
 use std::{io, net::UdpSocket, sync::Arc};
 
-pub struct StreamReader {
+pub struct BedrockStreamReader {
   sock: Arc<UdpSocket>,
 }
 
-pub struct StreamWriter {
+pub struct BedrockStreamWriter {
   sock: Arc<UdpSocket>,
 }
 
-impl StreamReader {
+impl BedrockStreamReader {
   pub fn new(sock: Arc<UdpSocket>) -> Self {
-    StreamReader { sock }
+    BedrockStreamReader { sock }
   }
 }
 
-impl StreamWriter {
+impl BedrockStreamWriter {
   pub fn new(sock: Arc<UdpSocket>) -> Self {
-    StreamWriter { sock }
+    BedrockStreamWriter { sock }
   }
 }
