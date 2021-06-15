@@ -49,7 +49,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
 
   let addr = "0.0.0.0:19132";
   info!("listening for bedrock clients on {}", addr);
-  let bedrock_listener = bedrock::Listener::bind(addr)?;
+  let mut bedrock_listener = bedrock::Listener::bind(addr)?;
 
   let gen = Arc::new(Generator::new());
 

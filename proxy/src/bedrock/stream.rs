@@ -3,12 +3,11 @@ use common::version::ProtocolVersion;
 use std::{
   io,
   net::{SocketAddr, UdpSocket},
-  sync::Arc,
+  sync::{mpsc::Receiver, Arc},
 };
 
 pub struct BedrockStreamReader {
-  sock: Arc<UdpSocket>,
-  addr: SocketAddr,
+  rx: Receiver<Vec<u8>>,
 }
 
 pub struct BedrockStreamWriter {
@@ -17,8 +16,8 @@ pub struct BedrockStreamWriter {
 }
 
 impl BedrockStreamReader {
-  pub fn new(sock: Arc<UdpSocket>, addr: SocketAddr) -> Self {
-    BedrockStreamReader { sock, addr }
+  pub fn new(rx: Receiver<Vec<u8>>) -> Self {
+    BedrockStreamReader { rx }
   }
 }
 
