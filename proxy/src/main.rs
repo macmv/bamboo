@@ -4,6 +4,7 @@ extern crate log;
 pub mod conn;
 pub mod packet;
 pub mod packet_stream;
+pub mod raknet;
 pub mod version;
 
 use rand::rngs::OsRng;
@@ -15,7 +16,7 @@ use std::{
 };
 use tokio::sync::oneshot;
 
-use crate::conn::Conn;
+use crate::{conn::Conn, raknet::RakNetListener};
 use common::net::sb;
 use version::Generator;
 
@@ -24,8 +25,13 @@ async fn main() -> Result<(), Box<dyn Error>> {
   common::init("proxy");
 
   let addr = "0.0.0.0:25565";
-  info!("listening for clients on {}", addr);
-  let listener = TcpListener::bind(addr)?;
+  info!("listening for java clients on {}", addr);
+  let tcp_listener = TcpListener::bind(addr)?;
+
+  let addr = "0.0.0.0:19132";
+  info!("listening for bedrock clients on {}", addr);
+  let raknet_listener = RakNetListener::bind(addr);
+
   let gen = Arc::new(Generator::new());
 
   // Minecraft uses 1024 bits for this.

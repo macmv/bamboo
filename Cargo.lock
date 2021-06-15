@@ -1503,33 +1503,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "proxy_bedrock"
-version = "0.1.0"
-dependencies = [
- "aes",
- "async-stream",
- "cfb8",
- "common",
- "data",
- "futures",
- "log",
- "md5",
- "miniz_oxide 0.4.4",
- "rand 0.8.3",
- "reqwest",
- "ringbuf",
- "rsa",
- "rsa-der",
- "serde",
- "serde_derive",
- "serde_json",
- "sha-1",
- "tokio",
- "tokio-stream",
- "tonic",
-]
-
-[[package]]
 name = "quote"
 version = "1.0.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
