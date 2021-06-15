@@ -36,6 +36,7 @@ impl StreamWriter for BedrockStreamWriter {
 #[async_trait]
 impl StreamReader for BedrockStreamReader {
   fn read(&mut self, ver: ProtocolVersion) -> io::Result<Option<Packet>> {
+    dbg!("{:?}", self.rx.recv().unwrap());
     Ok(None)
   }
 }

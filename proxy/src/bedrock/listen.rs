@@ -23,7 +23,7 @@ impl Listener {
     let (len, src) = self.sock.recv_from(&mut buf)?;
     if let Some(tx) = self.clients.get(&src) {
       // Got data from a client that already exists
-      tx.send(buf[..len].to_vec());
+      tx.send(buf[..len].to_vec()).unwrap();
       Ok(None)
     } else {
       // New client
@@ -31,6 +31,7 @@ impl Listener {
       let reader = BedrockStreamReader::new(rx);
       let writer = BedrockStreamWriter::new(self.sock.clone(), src);
       self.clients.insert(src, tx);
+      info!("got new client {}", src);
       Ok(Some((reader, writer)))
     }
   }
