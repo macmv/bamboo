@@ -2,6 +2,7 @@
 members = [
   "server",
   "proxy",
+  "proxy_bedrock",
   "data",
 ]
 
