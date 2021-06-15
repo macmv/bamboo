@@ -32,10 +32,16 @@ pub trait StreamReader {
     Ok(())
   }
   fn read(&mut self, ver: ProtocolVersion) -> io::Result<Option<Packet>>;
+
+  fn enable_encryption(&mut self, secret: &[u8; 16]) {}
+  fn set_compression(&mut self, level: i32) {}
 }
 #[async_trait]
 pub trait StreamWriter {
   async fn write(&mut self, packet: Packet) -> io::Result<()>;
+
+  fn enable_encryption(&mut self, secret: &[u8; 16]) {}
+  fn set_compression(&mut self, level: i32) {}
 }
 
 #[tokio::main]
@@ -56,6 +62,8 @@ async fn main() -> Result<(), Box<dyn Error>> {
   let key = RSAPrivateKey::new(&mut OsRng, 1024).expect("failed to generate a key");
   let der_key = Some(rsa_der::public_key_to_der(&key.n().to_bytes_be(), &key.e().to_bytes_be()));
 
+  let gen2 = gen.clone();
+  let key2 = key.clone();
   let tcp_handle = tokio::spawn(async move {
     loop {
       let (sock, _) = tcp_listener.accept().unwrap();
@@ -76,8 +84,8 @@ async fn main() -> Result<(), Box<dyn Error>> {
   let raknet_handle = tokio::spawn(async move {
     loop {
       let (reader, writer) = raknet_listener.accept().unwrap();
-      let gen = gen.clone();
-      let k = key.clone();
+      let gen = gen2.clone();
+      let k = key2.clone();
       tokio::spawn(async move {
         match handle_client(gen, reader, writer, k, None).await {
           Ok(_) => {}
@@ -92,7 +100,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
   Ok(())
 }
 
-async fn handle_client<R: StreamReader, W: StreamWriter>(
+async fn handle_client<R: StreamReader + Send + 'static, W: StreamWriter + Send + 'static>(
   gen: Arc<Generator>,
   reader: R,
   writer: W,

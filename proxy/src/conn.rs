@@ -79,7 +79,7 @@ pub struct LoginProperty {
   pub signature: Option<String>,
 }
 
-impl<R> ClientListener<R> {
+impl<R: StreamReader + Send> ClientListener<R> {
   /// This starts listening for packets from the server. The rx and tx are used
   /// to close the ServerListener. Specifically, the tx will send a value once
   /// this listener has been closed, and this listener will close once the rx
@@ -146,7 +146,7 @@ impl<R> ClientListener<R> {
   }
 }
 
-impl<W> ServerListener<W> {
+impl<W: StreamWriter + Send> ServerListener<W> {
   /// This starts listening for packets from the server. The rx and tx are used
   /// to close the ClientListener. Specifically, the tx will send a value once
   /// this listener has been closed, and this listener will close once the rx
@@ -206,7 +206,7 @@ struct JsonPlayer {
   id:   String,
 }
 
-impl<R: StreamReader, W: StreamWriter> Conn<R, W> {
+impl<R: StreamReader + Send, W: StreamWriter + Send> Conn<R, W> {
   pub async fn new(
     gen: Arc<Generator>,
     reader: R,
@@ -267,7 +267,7 @@ impl<R: StreamReader, W: StreamWriter> Conn<R, W> {
       out.write_str(&info.id.as_dashed_str());
     }
     out.write_str(&info.name);
-    self.client_writer.write(out).await?;
+    self.writer.write(out).await?;
 
     self.state = State::Play;
     Ok(())
@@ -320,9 +320,9 @@ impl<R: StreamReader, W: StreamWriter> Conn<R, W> {
     // The four byte verify token, used by the client in encryption.
     let mut token = [0u8; 4];
     'login: loop {
-      self.client_reader.poll().await.unwrap();
+      self.reader.poll().await.unwrap();
       loop {
-        let p = self.client_reader.read(self.ver).unwrap();
+        let p = self.reader.read(self.ver).unwrap();
         if p.is_none() {
           break;
         }
@@ -363,7 +363,7 @@ impl<R: StreamReader, W: StreamWriter> Conn<R, W> {
                 let status = self.build_status();
                 let mut out = Packet::new(0, self.ver);
                 out.write_str(&serde_json::to_string(&status).unwrap());
-                self.client_writer.write(out).await?;
+                self.writer.write(out).await?;
               }
               // Ping
               1 => {
@@ -371,7 +371,7 @@ impl<R: StreamReader, W: StreamWriter> Conn<R, W> {
                 // Send pong
                 let mut out = Packet::new(1, self.ver);
                 out.write_u64(id);
-                self.client_writer.write(out).await?;
+                self.writer.write(out).await?;
                 // Client is done sending packets, we can close now.
                 return Ok(None);
               }
@@ -416,7 +416,7 @@ impl<R: StreamReader, W: StreamWriter> Conn<R, W> {
                     out.write_buf(key); // DER encoded RSA key
                     out.write_varint(4); // Token len
                     out.write_buf(&token); // Verify token
-                    self.client_writer.write(out).await?;
+                    self.writer.write(out).await?;
                     // Wait for encryption response to enable encryption
                   }
                   None => {
@@ -491,8 +491,8 @@ impl<R: StreamReader, W: StreamWriter> Conn<R, W> {
                   ))
                 };
 
-                self.client_writer.enable_encryption(&secret);
-                self.client_reader.enable_encryption(&secret);
+                self.writer.enable_encryption(&secret);
+                self.reader.enable_encryption(&secret);
 
                 self.send_compression(compression).await?;
                 self.send_success(info.as_ref().unwrap()).await?;

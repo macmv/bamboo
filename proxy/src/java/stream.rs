@@ -49,13 +49,7 @@ impl JavaStreamReader {
   pub fn new(stream: OwnedReadHalf) -> Self {
     let buf = RingBuffer::new(1024);
     let (prod, cons) = buf.split();
-    StreamReader { stream, prod, cons, compression: 0, cipher: None }
-  }
-  pub fn set_compression(&mut self, compression: i32) {
-    self.compression = compression as usize;
-  }
-  pub fn enable_encryption(&mut self, secret: &[u8; 16]) {
-    self.cipher = Some(Cfb8::new_from_slices(secret, secret).unwrap());
+    JavaStreamReader { stream, prod, cons, compression: 0, cipher: None }
   }
 }
 
@@ -111,17 +105,18 @@ impl StreamReader for JavaStreamReader {
       Ok(Some(Packet::from_buf(vec, ver)))
     }
   }
+
+  fn set_compression(&mut self, compression: i32) {
+    self.compression = compression as usize;
+  }
+  fn enable_encryption(&mut self, secret: &[u8; 16]) {
+    self.cipher = Some(Cfb8::new_from_slices(secret, secret).unwrap());
+  }
 }
 
 impl JavaStreamWriter {
   pub fn new(stream: OwnedWriteHalf) -> Self {
     JavaStreamWriter { stream, compression: 0, cipher: None }
-  }
-  pub fn set_compression(&mut self, compression: i32) {
-    self.compression = compression as usize;
-  }
-  pub fn enable_encryption(&mut self, secret: &[u8; 16]) {
-    self.cipher = Some(Cfb8::new_from_slices(secret, secret).unwrap());
   }
 
   async fn write_data(&mut self, data: &mut [u8]) -> Result<()> {
@@ -172,5 +167,12 @@ impl StreamWriter for JavaStreamWriter {
     }
 
     Ok(())
+  }
+
+  fn set_compression(&mut self, compression: i32) {
+    self.compression = compression as usize;
+  }
+  fn enable_encryption(&mut self, secret: &[u8; 16]) {
+    self.cipher = Some(Cfb8::new_from_slices(secret, secret).unwrap());
   }
 }
