@@ -38,20 +38,39 @@ async fn main() -> Result<(), Box<dyn Error>> {
   let key = RSAPrivateKey::new(&mut OsRng, 1024).expect("failed to generate a key");
   let der_key = Some(rsa_der::public_key_to_der(&key.n().to_bytes_be(), &key.e().to_bytes_be()));
 
-  loop {
-    let (socket, _) = listener.accept()?;
-    let gen = gen.clone();
-    let k = key.clone();
-    let d = der_key.clone();
-    tokio::spawn(async move {
-      match handle_client(gen, socket, k, None).await {
-        Ok(_) => {}
-        Err(e) => {
-          error!("error in connection: {}", e);
-        }
-      };
-    });
-  }
+  let tcp_handle = tokio::spawn(async move {
+    loop {
+      let (socket, _) = tcp_listener.accept().unwrap();
+      let gen = gen.clone();
+      let k = key.clone();
+      let d = der_key.clone();
+      tokio::spawn(async move {
+        match handle_client(gen, socket, k, None).await {
+          Ok(_) => {}
+          Err(e) => {
+            error!("error in connection: {}", e);
+          }
+        };
+      });
+    }
+  });
+  let raknet_handle = tokio::spawn(async move {
+    loop {
+      let socket = raknet_listener.accept().unwrap();
+      let gen = gen.clone();
+      let k = key.clone();
+      tokio::spawn(async move {
+        match handle_client(gen, socket, k, None).await {
+          Ok(_) => {}
+          Err(e) => {
+            error!("error in connection: {}", e);
+          }
+        };
+      });
+    }
+  });
+  futures::future::join_all(vec![tcp_handle, raknet_handle]).await;
+  Ok(())
 }
 
 async fn handle_client(
