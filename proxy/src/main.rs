@@ -24,7 +24,6 @@ use version::Generator;
 #[async_trait]
 pub trait StreamReader {
   async fn poll(&mut self) -> io::Result<()> {
-    info!("calling poll");
     Ok(())
   }
   fn read(&mut self, ver: ProtocolVersion) -> io::Result<Option<Packet>>;
@@ -50,7 +49,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
 
   let addr = "0.0.0.0:19132";
   info!("listening for bedrock clients on {}", addr);
-  let mut bedrock_listener = bedrock::Listener::bind(addr)?;
+  let mut bedrock_listener = bedrock::Listener::bind(addr).await?;
 
   let gen = Arc::new(Generator::new());
 
@@ -82,9 +81,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
       if let Some((reader, writer)) = bedrock_listener.poll().await.unwrap() {
         let gen = gen2.clone();
         let k = key2.clone();
-        info!("about to spawn new thread for client");
         tokio::spawn(async move {
-          info!("spawned new thread for client");
           match handle_client(gen, reader, writer, k, None).await {
             Ok(_) => {}
             Err(e) => {

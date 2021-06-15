@@ -2,9 +2,10 @@ use crate::{packet::Packet, StreamReader, StreamWriter};
 use common::version::ProtocolVersion;
 use std::{
   io,
-  net::{SocketAddr, UdpSocket},
+  net::SocketAddr,
   sync::{mpsc::Receiver, Arc},
 };
+use tokio::net::UdpSocket;
 
 pub struct BedrockStreamReader {
   rx: Receiver<Vec<u8>>,
@@ -35,8 +36,13 @@ impl StreamWriter for BedrockStreamWriter {
 }
 #[async_trait]
 impl StreamReader for BedrockStreamReader {
+  async fn poll(&mut self) -> io::Result<()> {
+    Ok(())
+  }
   fn read(&mut self, ver: ProtocolVersion) -> io::Result<Option<Packet>> {
-    dbg!("{:?}", self.rx.recv().unwrap());
+    info!("waiting for data...");
+    let data = self.rx.recv().unwrap();
+    info!("got data: {:?}", data);
     Ok(None)
   }
 }
