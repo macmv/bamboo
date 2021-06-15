@@ -1,24 +1,32 @@
 #[macro_use]
 extern crate log;
 
+pub mod bedrock;
 pub mod conn;
+pub mod java;
 pub mod packet;
-pub mod packet_stream;
-pub mod raknet;
 pub mod version;
 
 use rand::rngs::OsRng;
 use rsa::{PublicKeyParts, RSAPrivateKey};
 use std::{
   error::Error,
+  io,
   net::{TcpListener, TcpStream},
   sync::Arc,
 };
 use tokio::sync::oneshot;
 
-use crate::{conn::Conn, raknet::RakNetListener};
+use crate::conn::Conn;
 use common::net::sb;
 use version::Generator;
+
+pub trait StreamReader {
+  fn read(&self, buf: &mut [u8]) -> io::Result<usize>;
+}
+pub trait StreamWriter {
+  fn write(&self, buf: &[u8]);
+}
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn Error>> {
@@ -30,7 +38,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
 
   let addr = "0.0.0.0:19132";
   info!("listening for bedrock clients on {}", addr);
-  let raknet_listener = RakNetListener::bind(addr);
+  let raknet_listener = bedrock::Listener::bind(addr)?;
 
   let gen = Arc::new(Generator::new());
 
@@ -40,12 +48,13 @@ async fn main() -> Result<(), Box<dyn Error>> {
 
   let tcp_handle = tokio::spawn(async move {
     loop {
-      let (socket, _) = tcp_listener.accept().unwrap();
+      let (sock, _) = tcp_listener.accept().unwrap();
+      let (reader, writer) = java::stream::new(sock).unwrap();
       let gen = gen.clone();
       let k = key.clone();
       let d = der_key.clone();
       tokio::spawn(async move {
-        match handle_client(gen, socket, k, None).await {
+        match handle_client(gen, reader, writer, k, None).await {
           Ok(_) => {}
           Err(e) => {
             error!("error in connection: {}", e);
@@ -56,11 +65,11 @@ async fn main() -> Result<(), Box<dyn Error>> {
   });
   let raknet_handle = tokio::spawn(async move {
     loop {
-      let socket = raknet_listener.accept().unwrap();
+      let (reader, writer) = raknet_listener.accept().unwrap();
       let gen = gen.clone();
       let k = key.clone();
       tokio::spawn(async move {
-        match handle_client(gen, socket, k, None).await {
+        match handle_client(gen, reader, writer, k, None).await {
           Ok(_) => {}
           Err(e) => {
             error!("error in connection: {}", e);
@@ -73,16 +82,16 @@ async fn main() -> Result<(), Box<dyn Error>> {
   Ok(())
 }
 
-async fn handle_client(
+async fn handle_client<R: StreamReader, W: StreamWriter>(
   gen: Arc<Generator>,
-  sock: TcpStream,
+  reader: R,
+  writer: W,
   key: RSAPrivateKey,
   der_key: Option<Vec<u8>>,
 ) -> Result<(), Box<dyn Error>> {
   // let mut client = MinecraftClient::connect().await?;
   // let req = tonic::Request::new(StatusRequest {});
 
-  let (reader, writer) = packet_stream::new(sock)?;
   let mut conn = Conn::new(gen, reader, writer, "http://0.0.0.0:8483".into()).await?;
 
   let compression = 256;
