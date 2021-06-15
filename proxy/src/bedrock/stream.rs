@@ -36,9 +36,6 @@ impl StreamWriter for BedrockStreamWriter {
 }
 #[async_trait]
 impl StreamReader for BedrockStreamReader {
-  async fn poll(&mut self) -> io::Result<()> {
-    Ok(())
-  }
   fn read(&mut self, ver: ProtocolVersion) -> io::Result<Option<Packet>> {
     Ok(None)
   }

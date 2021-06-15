@@ -45,11 +45,11 @@ async fn main() -> Result<(), Box<dyn Error>> {
 
   let addr = "0.0.0.0:25565";
   info!("listening for java clients on {}", addr);
-  let tcp_listener = TcpListener::bind(addr).await?;
+  let java_listener = TcpListener::bind(addr).await?;
 
   let addr = "0.0.0.0:19132";
   info!("listening for bedrock clients on {}", addr);
-  let raknet_listener = bedrock::Listener::bind(addr)?;
+  let bedrock_listener = bedrock::Listener::bind(addr)?;
 
   let gen = Arc::new(Generator::new());
 
@@ -59,9 +59,9 @@ async fn main() -> Result<(), Box<dyn Error>> {
 
   let gen2 = gen.clone();
   let key2 = key.clone();
-  let tcp_handle = tokio::spawn(async move {
+  let java_handle = tokio::spawn(async move {
     loop {
-      let (sock, _) = tcp_listener.accept().await.unwrap();
+      let (sock, _) = java_listener.accept().await.unwrap();
       let (reader, writer) = java::stream::new(sock).unwrap();
       let gen = gen.clone();
       let k = key.clone();
@@ -76,22 +76,23 @@ async fn main() -> Result<(), Box<dyn Error>> {
       });
     }
   });
-  let raknet_handle = tokio::spawn(async move {
+  let bedrock_handle = tokio::spawn(async move {
     loop {
-      let (reader, writer) = raknet_listener.accept().unwrap();
-      let gen = gen2.clone();
-      let k = key2.clone();
-      tokio::spawn(async move {
-        match handle_client(gen, reader, writer, k, None).await {
-          Ok(_) => {}
-          Err(e) => {
-            error!("error in connection: {}", e);
-          }
-        };
-      });
+      if let Some((reader, writer)) = bedrock_listener.poll().await.unwrap() {
+        let gen = gen2.clone();
+        let k = key2.clone();
+        tokio::spawn(async move {
+          match handle_client(gen, reader, writer, k, None).await {
+            Ok(_) => {}
+            Err(e) => {
+              error!("error in connection: {}", e);
+            }
+          };
+        });
+      }
     }
   });
-  futures::future::join_all(vec![tcp_handle, raknet_handle]).await;
+  futures::future::join_all(vec![java_handle, bedrock_handle]).await;
   Ok(())
 }
 
