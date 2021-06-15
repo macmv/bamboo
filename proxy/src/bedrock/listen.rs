@@ -11,7 +11,10 @@ impl Listener {
   }
   pub fn accept(&self) -> io::Result<(BedrockStreamReader, BedrockStreamWriter)> {
     // Wait for a client to
-    self.sock.peek_from(&mut vec![0])?;
-    Ok((BedrockStreamReader::new(self.sock.clone()), BedrockStreamWriter::new(self.sock.clone())))
+    let (len, src) = self.sock.peek_from(&mut vec![0])?;
+    Ok((
+      BedrockStreamReader::new(self.sock.clone(), src),
+      BedrockStreamWriter::new(self.sock.clone(), src),
+    ))
   }
 }
