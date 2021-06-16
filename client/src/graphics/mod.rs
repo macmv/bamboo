@@ -6,9 +6,14 @@ use vulkano::{
   instance::{Instance, InstanceExtensions, PhysicalDevice},
   pipeline::GraphicsPipeline,
   render_pass::{Framebuffer, Subpass},
+  swapchain::Surface,
 };
 use vulkano_win::VkSurfaceBuild;
-use winit::{event_loop::EventLoop, window::WindowBuilder};
+use winit::{
+  event::{Event, WindowEvent},
+  event_loop::{ControlFlow, EventLoop},
+  window::{Window, WindowBuilder},
+};
 
 #[derive(Debug)]
 pub struct InitError(String);
@@ -26,6 +31,11 @@ impl fmt::Display for InitError {
 }
 
 impl Error for InitError {}
+
+pub struct GameWindow {
+  event_loop: EventLoop<()>,
+  surface:    Arc<Surface<Window>>,
+}
 
 #[derive(Default, Copy, Clone)]
 struct Vertex {
@@ -60,7 +70,7 @@ void main() {
   }
 }
 
-pub fn init() -> Result<(), InitError> {
+pub fn init() -> Result<GameWindow, InitError> {
   let inst = {
     let extensions = vulkano_win::required_extensions();
     Instance::new(None, &extensions, None)
@@ -140,8 +150,20 @@ pub fn init() -> Result<(), InitError> {
   );
 
   let event_loop = EventLoop::new();
-  let surface = VkSurfaceBuild::build_vk_surface(WindowBuilder::new(), &event_loop, inst.clone());
+  let surface =
+    VkSurfaceBuild::build_vk_surface(WindowBuilder::new(), &event_loop, inst.clone())
+      .map_err(|e| InitError::new(format!("error while creating window surface: {}", e)))?;
 
-  loop {}
-  Ok(())
+  Ok(GameWindow { event_loop, surface })
+}
+
+impl GameWindow {
+  pub fn run(self) -> ! {
+    self.event_loop.run(|event, _, control_flow| match event {
+      Event::WindowEvent { event: WindowEvent::CloseRequested, .. } => {
+        *control_flow = ControlFlow::Exit;
+      }
+      _ => (),
+    });
+  }
 }

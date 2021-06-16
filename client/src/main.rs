@@ -6,7 +6,16 @@ mod graphics;
 fn main() {
   common::init("client");
 
-  if let Err(e) = graphics::init() {
-    error!("{}", e);
-  }
+  info!("initializing graphics");
+  let game_win = match graphics::init() {
+    Ok(v) => v,
+    Err(e) => {
+      error!("{}", e);
+      info!("closing");
+      return;
+    }
+  };
+
+  info!("starting game");
+  game_win.run();
 }
