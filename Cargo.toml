@@ -1,6 +1,7 @@
 [workspace]
 members = [
   "server",
+  "client",
   "proxy",
   "data",
 ]
