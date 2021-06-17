@@ -1,12 +1,15 @@
 use std::{error::Error, fmt, sync::Arc};
 use vulkano::{
   buffer::{BufferUsage, CpuAccessibleBuffer},
-  device::{Device, DeviceExtensions, Features},
+  command_buffer::{AutoCommandBufferBuilder, CommandBufferUsage, DynamicState, SubpassContents},
+  descriptor::pipeline_layout::PipelineLayoutAbstract,
+  device::{Device, Features, Queue},
   format::Format,
-  instance::{Instance, InstanceExtensions, PhysicalDevice},
-  pipeline::GraphicsPipeline,
-  render_pass::{Framebuffer, Subpass},
-  swapchain::Surface,
+  image::ImageUsage,
+  instance::{Instance, PhysicalDevice},
+  pipeline::{vertex::SingleBufferDefinition, GraphicsPipeline},
+  render_pass::{Framebuffer, FramebufferAbstract, Subpass},
+  swapchain::{self, FullscreenExclusive, PresentMode, Surface, SurfaceTransform, Swapchain},
 };
 use vulkano_win::VkSurfaceBuild;
 use winit::{
@@ -33,8 +36,15 @@ impl fmt::Display for InitError {
 impl Error for InitError {}
 
 pub struct GameWindow {
+  device:     Arc<Device>,
+  queue:      Arc<Queue>,
+  pipeline: Arc<
+    GraphicsPipeline<SingleBufferDefinition<Vertex>, Box<dyn PipelineLayoutAbstract + Send + Sync>>,
+  >,
+  buffers:    Vec<Arc<dyn FramebufferAbstract + Send + Sync>>,
   event_loop: EventLoop<()>,
-  surface:    Arc<Surface<Window>>,
+  dyn_state:  DynamicState,
+  swapchain:  Arc<Swapchain<Window>>,
 }
 
 #[derive(Default, Copy, Clone)]
@@ -77,19 +87,21 @@ pub fn init() -> Result<GameWindow, InitError> {
       .map_err(|e| InitError::new(format!("failed to create vulkan instance: {}", e)))?
   };
 
-  let physical = PhysicalDevice::enumerate(&inst).next().expect("no vulkan devices available");
+  let physical =
+    PhysicalDevice::enumerate(&inst).next().ok_or(InitError::new("no vulkan devices available"))?;
   let queue_family = physical
     .queue_families()
     .find(|q| q.supports_graphics())
     .ok_or(InitError::new("no vulkan queue families support graphics"))?;
 
-  let (device, mut queues) = Device::new(
-    physical,
-    &Features::none(),
-    &DeviceExtensions::none(),
-    [(queue_family, 0.5)].iter().cloned(),
-  )
-  .map_err(|e| InitError::new(format!("failed to create a vulkan device: {}", e)))?;
+  let (device, mut queues) = {
+    let device_ext = vulkano::device::DeviceExtensions {
+      khr_swapchain: true,
+      ..vulkano::device::DeviceExtensions::none()
+    };
+    Device::new(physical, &Features::none(), &device_ext, [(queue_family, 0.5)].iter().cloned())
+      .map_err(|e| InitError::new(format!("failed to create a vulkan device: {}", e)))?
+  };
 
   let queue = queues.next().unwrap();
 
@@ -154,14 +166,110 @@ pub fn init() -> Result<GameWindow, InitError> {
     VkSurfaceBuild::build_vk_surface(WindowBuilder::new(), &event_loop, inst.clone())
       .map_err(|e| InitError::new(format!("error while creating window surface: {}", e)))?;
 
-  Ok(GameWindow { event_loop, surface })
+  let caps = surface
+    .capabilities(physical)
+    .map_err(|e| InitError::new(format!("failed to get surface capabilities: {}", e)))?;
+
+  let dims = caps.current_extent.unwrap_or([1920, 1080]);
+  let alpha = caps.supported_composite_alpha.iter().next().unwrap();
+  let format = caps.supported_formats[0].0;
+
+  let mut dyn_state = DynamicState {
+    line_width:   None,
+    viewports:    None,
+    scissors:     None,
+    compare_mask: None,
+    write_mask:   None,
+    reference:    None,
+  };
+
+  let (swapchain, images) = Swapchain::start(device.clone(), surface.clone())
+    .num_images(caps.min_image_count)
+    .format(format)
+    .dimensions(dims)
+    .usage(ImageUsage::color_attachment())
+    .transform(SurfaceTransform::Identity)
+    .composite_alpha(alpha)
+    .present_mode(PresentMode::Fifo)
+    .fullscreen_exclusive(FullscreenExclusive::Default)
+    .build()
+    .map_err(|e| InitError::new(format!("failed to create swapchain: {}", e)))?;
+
+  let buffers = images
+    .iter()
+    .map(|img| {
+      Arc::new(Framebuffer::start(render_pass.clone()).add(img.clone()).unwrap().build().unwrap())
+        as Arc<dyn FramebufferAbstract + Send + Sync>
+    })
+    .collect::<Vec<_>>();
+
+  Ok(GameWindow { buffers, device, queue, pipeline, swapchain, dyn_state, event_loop })
 }
 
 impl GameWindow {
   pub fn run(self) -> ! {
-    self.event_loop.run(|event, _, control_flow| match event {
+    let swapchain = self.swapchain;
+    let device = self.device;
+    let queue = self.queue;
+    let pipeline = self.pipeline;
+    let buffers = self.buffers;
+    let dyn_state = self.dyn_state;
+
+    let vertex_buffer = {
+      CpuAccessibleBuffer::from_iter(
+        device.clone(),
+        BufferUsage::all(),
+        false,
+        [
+          Vertex { position: [-0.5, -0.25] },
+          Vertex { position: [0.0, 0.5] },
+          Vertex { position: [0.25, -0.1] },
+        ]
+        .iter()
+        .cloned(),
+      )
+      .unwrap()
+    };
+
+    let clear_values = vec![[0.0, 0.0, 1.0, 1.0].into()];
+
+    self.event_loop.run(move |event, _, control_flow| match event {
       Event::WindowEvent { event: WindowEvent::CloseRequested, .. } => {
         *control_flow = ControlFlow::Exit;
+      }
+      Event::RedrawRequested(_) => {
+        let (img_num, ok, fut) = swapchain::acquire_next_image(swapchain.clone(), None).unwrap();
+
+        let mut builder = AutoCommandBufferBuilder::primary(
+          device.clone(),
+          queue.family(),
+          CommandBufferUsage::OneTimeSubmit,
+        )
+        .unwrap();
+
+        builder
+          // Before we can draw, we have to *enter a render pass*. There are two methods to do
+          // this: `draw_inline` and `draw_secondary`. The latter is a bit more advanced and is
+          // not covered here.
+          //
+          // The third parameter builds the list of values to clear the attachments with. The API
+          // is similar to the list of attachments when building the framebuffers, except that
+          // only the attachments that use `load: Clear` appear in the list.
+          .begin_render_pass(buffers[img_num].clone(), SubpassContents::Inline, clear_values)
+          .unwrap()
+          // We are now inside the first subpass of the render pass. We add a draw command.
+          //
+          // The last two parameters contain the list of resources to pass to the shaders.
+          // Since we used an `EmptyPipeline` object, the objects have to be `()`.
+          .draw(pipeline.clone(), &dyn_state, vertex_buffer.clone(), (), (), &[0])
+          .unwrap()
+          // We leave the render pass by calling `draw_end`. Note that if we had multiple
+          // subpasses we could have called `next_inline` (or `next_secondary`) to jump to the
+          // next subpass.
+          .end_render_pass()
+          .unwrap();
+
+        info!("got ok: {}", ok);
       }
       _ => (),
     });
