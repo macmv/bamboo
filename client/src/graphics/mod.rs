@@ -168,28 +168,6 @@ pub fn init() -> Result<GameWindow, InitError> {
   //   Arc::new(Framebuffer::start(render_pass.clone()).add(image.clone()).
   // unwrap().build().unwrap());
 
-  let pipeline = Arc::new(
-    GraphicsPipeline::start()
-      // Defines what kind of vertex input is expected.
-      .vertex_input_single_buffer::<Vertex>()
-      // The vertex shader.
-      .vertex_shader(vs.main_entry_point(), ())
-      // Defines the viewport (explanations below).
-      .viewports_dynamic_scissors_irrelevant(1)
-      // The fragment shader.
-      .fragment_shader(fs.main_entry_point(), ())
-      // This graphics pipeline object concerns the first pass of the render pass.
-      .render_pass(Subpass::from(render_pass.clone(), 0).unwrap())
-      // Now that everything is specified, we call `build`.
-      .build(device.clone())
-      .unwrap(),
-  );
-
-  let viewport = Viewport {
-    origin:      [0.0, 0.0],
-    dimensions:  [dims[0] as f32, dims[1] as f32],
-    depth_range: 0.0..1.0,
-  };
   let dyn_state = DynamicState {
     line_width:   None,
     viewports:    None,
@@ -212,6 +190,17 @@ pub fn init() -> Result<GameWindow, InitError> {
     .fullscreen_exclusive(FullscreenExclusive::Default)
     .build()
     .map_err(|e| InitError::new(format!("failed to create swapchain: {}", e)))?;
+
+  let pipeline = Arc::new(
+    GraphicsPipeline::start()
+      .vertex_input_single_buffer::<Vertex>()
+      .vertex_shader(vs.main_entry_point(), ())
+      .viewports_dynamic_scissors_irrelevant(1)
+      .fragment_shader(fs.main_entry_point(), ())
+      .render_pass(Subpass::from(render_pass.clone(), 0).unwrap())
+      .build(device.clone())
+      .unwrap(),
+  );
 
   let mut data =
     WindowData { render_pass, buffers: vec![], device, queue, pipeline, swapchain, dyn_state };
@@ -250,13 +239,12 @@ impl GameWindow {
       Event::RedrawEventsCleared => {
         previous_frame_end.as_mut().unwrap().cleanup_finished();
 
-        if true {
-          info!("resizing");
-          data.recreate_swapchain();
+        if resize {
+          // TODO: Recreate swapchain here, without freezing my computer
           resize = false;
         }
+        data.recreate_swapchain();
 
-        info!("acquiring frame...");
         let (img_num, suboptimal, acquire_fut) =
           match swapchain::acquire_next_image(data.swapchain.clone(), None) {
             Ok(v) => v,
@@ -267,7 +255,6 @@ impl GameWindow {
             }
             Err(e) => panic!("error acquiring frame: {}", e),
           };
-        info!("done acquiring");
         if suboptimal {
           info!("suboptimal");
           resize = true;
@@ -307,7 +294,6 @@ impl GameWindow {
           }
           Err(FlushError::OutOfDate) => {
             resize = true;
-            info!("replacing prev frame end");
             previous_frame_end = Some(sync::now(data.device.clone()).boxed());
           }
           Err(e) => {
@@ -336,7 +322,7 @@ impl WindowData {
     self.resize(new_images);
   }
   fn resize(&mut self, images: Vec<Arc<SwapchainImage<Window>>>) {
-    let dims: [u32; 2] = self.swapchain.surface().window().inner_size().into();
+    let dims: [u32; 2] = images[0].dimensions();
 
     let viewport = Viewport {
       origin:      [0.0, 0.0],
