@@ -4,11 +4,14 @@ use vulkano::{
   command_buffer::{AutoCommandBufferBuilder, CommandBufferUsage, DynamicState, SubpassContents},
   descriptor::pipeline_layout::PipelineLayoutAbstract,
   device::{Device, Features, Queue},
-  image::{view::ImageView, ImageAccess, ImageUsage},
+  image::{view::ImageView, ImageUsage, SwapchainImage},
   instance::{Instance, PhysicalDevice},
   pipeline::{vertex::SingleBufferDefinition, viewport::Viewport, GraphicsPipeline},
-  render_pass::{Framebuffer, FramebufferAbstract, Subpass},
-  swapchain::{self, FullscreenExclusive, PresentMode, SurfaceTransform, Swapchain},
+  render_pass::{Framebuffer, FramebufferAbstract, RenderPass, Subpass},
+  swapchain::{
+    self, AcquireError, FullscreenExclusive, PresentMode, SurfaceTransform, Swapchain,
+    SwapchainCreationError,
+  },
   sync::{self, FlushError, GpuFuture},
 };
 use vulkano_win::VkSurfaceBuild;
@@ -41,14 +44,15 @@ pub struct GameWindow {
 }
 
 struct WindowData {
-  device:    Arc<Device>,
-  queue:     Arc<Queue>,
+  render_pass: Arc<RenderPass>,
+  device:      Arc<Device>,
+  queue:       Arc<Queue>,
   pipeline: Arc<
     GraphicsPipeline<SingleBufferDefinition<Vertex>, Box<dyn PipelineLayoutAbstract + Send + Sync>>,
   >,
-  buffers:   Vec<Arc<dyn FramebufferAbstract + Send + Sync>>,
-  dyn_state: DynamicState,
-  swapchain: Arc<Swapchain<Window>>,
+  buffers:     Vec<Arc<dyn FramebufferAbstract + Send + Sync>>,
+  dyn_state:   DynamicState,
+  swapchain:   Arc<Swapchain<Window>>,
 }
 
 #[derive(Default, Copy, Clone)]
@@ -188,7 +192,7 @@ pub fn init() -> Result<GameWindow, InitError> {
   };
   let dyn_state = DynamicState {
     line_width:   None,
-    viewports:    Some(vec![viewport]),
+    viewports:    None,
     scissors:     None,
     compare_mask: None,
     write_mask:   None,
@@ -209,28 +213,16 @@ pub fn init() -> Result<GameWindow, InitError> {
     .build()
     .map_err(|e| InitError::new(format!("failed to create swapchain: {}", e)))?;
 
-  let buffers = images
-    .into_iter()
-    .map(|img| {
-      Arc::new(
-        Framebuffer::start(render_pass.clone())
-          .add(ImageView::new(img).unwrap())
-          .unwrap()
-          .build()
-          .unwrap(),
-      ) as Arc<dyn FramebufferAbstract + Send + Sync>
-    })
-    .collect::<Vec<_>>();
+  let mut data =
+    WindowData { render_pass, buffers: vec![], device, queue, pipeline, swapchain, dyn_state };
+  data.resize(images);
 
-  Ok(GameWindow {
-    event_loop,
-    data: WindowData { buffers, device, queue, pipeline, swapchain, dyn_state },
-  })
+  Ok(GameWindow { event_loop, data })
 }
 
 impl GameWindow {
   pub fn run(self) -> ! {
-    let data = self.data;
+    let mut data = self.data;
 
     let vertex_buffer = {
       CpuAccessibleBuffer::from_iter(
@@ -255,12 +247,31 @@ impl GameWindow {
       Event::WindowEvent { event: WindowEvent::CloseRequested, .. } => {
         *control_flow = ControlFlow::Exit;
       }
-      Event::RedrawRequested(_) => {
+      Event::RedrawEventsCleared => {
         previous_frame_end.as_mut().unwrap().cleanup_finished();
 
-        let (img_num, ok, fut) =
-          swapchain::acquire_next_image(data.swapchain.clone(), None).unwrap();
-        info!("got ok: {}", ok);
+        if true {
+          info!("resizing");
+          data.recreate_swapchain();
+          resize = false;
+        }
+
+        info!("acquiring frame...");
+        let (img_num, suboptimal, acquire_fut) =
+          match swapchain::acquire_next_image(data.swapchain.clone(), None) {
+            Ok(v) => v,
+            Err(AcquireError::OutOfDate) => {
+              // We just want to re-try the render of this happens
+              resize = true;
+              return;
+            }
+            Err(e) => panic!("error acquiring frame: {}", e),
+          };
+        info!("done acquiring");
+        if suboptimal {
+          info!("suboptimal");
+          resize = true;
+        }
 
         let clear_values = vec![[0.0, 0.0, 1.0, 1.0].into()];
 
@@ -272,48 +283,31 @@ impl GameWindow {
         .unwrap();
 
         builder
-          // Before we can draw, we have to *enter a render pass*. There aretwo methods to do this:
-          // `draw_inline` and `draw_secondary`. The latter is a bit more advanced and is
-          // not covered here.
-          //
-          // The third parameter builds the list of values to clear the attachments with. The API
-          // is similar to the list of attachments when building the framebuffers, except that only
-          // the attachments that use `load: Clear` appear in the list.
           .begin_render_pass(data.buffers[img_num].clone(), SubpassContents::Inline, clear_values)
           .unwrap()
-          // We are now inside the first subpass of the render pass. We add a draw command. The last
-          // two parameters contain the list of resources to pass to the shaders. Since we used an
-          // `EmptyPipeline` object, the objects have to be `()`.
           .draw(data.pipeline.clone(), &data.dyn_state, vertex_buffer.clone(), (), (), [])
           .unwrap()
-          // We leave the render pass by calling `draw_end`. Note that if we had multiple subpasses
-          // we could have called `next_inline` (or `next_secondary`) to jump to the next subpass.
           .end_render_pass()
           .unwrap();
 
         let command_buffer = builder.build().unwrap();
 
-        let future = previous_frame_end
+        let fut = previous_frame_end
           .take()
           .unwrap()
-          .join(fut)
+          .join(acquire_fut)
           .then_execute(data.queue.clone(), command_buffer)
           .unwrap()
-          // The color output is now expected to contain our triangle. But in order to show it on
-          // the screen, we have to *present* the image by calling `present`.
-          //
-          // This function does not actually present the image immediately. Instead it submits a
-          // present command at the end of the queue. This means that it will only be presented once
-          // the GPU has finished executing the command buffer that draws the triangle.
           .then_swapchain_present(data.queue.clone(), data.swapchain.clone(), img_num)
           .then_signal_fence_and_flush();
 
-        match future {
-          Ok(future) => {
-            previous_frame_end = Some(future.boxed());
+        match fut {
+          Ok(fut) => {
+            previous_frame_end = Some(fut.boxed());
           }
           Err(FlushError::OutOfDate) => {
-            // recreate_swapchain = true;
+            resize = true;
+            info!("replacing prev frame end");
             previous_frame_end = Some(sync::now(data.device.clone()).boxed());
           }
           Err(e) => {
@@ -325,6 +319,43 @@ impl GameWindow {
       _ => (),
     });
   }
+}
 
-  fn rebuild_swapchain(&mut self) {}
+impl WindowData {
+  fn recreate_swapchain(&mut self) {
+    let dims: [u32; 2] = self.swapchain.surface().window().inner_size().into();
+
+    let (new_swapchain, new_images) = match self.swapchain.recreate().dimensions(dims).build() {
+      Ok(r) => r,
+      // This error tends to happen when the user is manually resizing the window.
+      // Simply restarting the loop is the easiest way to fix this issue.
+      Err(SwapchainCreationError::UnsupportedDimensions) => return,
+      Err(e) => panic!("failed to recreate swapchain: {}", e),
+    };
+    self.swapchain = new_swapchain;
+    self.resize(new_images);
+  }
+  fn resize(&mut self, images: Vec<Arc<SwapchainImage<Window>>>) {
+    let dims: [u32; 2] = self.swapchain.surface().window().inner_size().into();
+
+    let viewport = Viewport {
+      origin:      [0.0, 0.0],
+      dimensions:  [dims[0] as f32, dims[1] as f32],
+      depth_range: 0.0..1.0,
+    };
+    self.dyn_state.viewports = Some(vec![viewport]);
+
+    self.buffers = images
+      .into_iter()
+      .map(|img| {
+        Arc::new(
+          Framebuffer::start(self.render_pass.clone())
+            .add(ImageView::new(img).unwrap())
+            .unwrap()
+            .build()
+            .unwrap(),
+        ) as Arc<dyn FramebufferAbstract + Send + Sync>
+      })
+      .collect::<Vec<_>>()
+  }
 }
