@@ -4,8 +4,10 @@ use vulkano::{
   command_buffer::{AutoCommandBufferBuilder, CommandBufferUsage, DynamicState, SubpassContents},
   descriptor::pipeline_layout::PipelineLayoutAbstract,
   device::{Device, Features, Queue},
-  format::Format,
-  image::{view::ImageView, ImageUsage},
+  image::{
+    view::{ComponentMapping, ComponentSwizzle, ImageView},
+    ImageAccess, ImageUsage,
+  },
   instance::{Instance, PhysicalDevice},
   pipeline::{vertex::SingleBufferDefinition, GraphicsPipeline},
   render_pass::{Framebuffer, FramebufferAbstract, Subpass},
@@ -125,13 +127,27 @@ pub fn init() -> Result<GameWindow, InitError> {
   let fs = fs::Shader::load(device.clone())
     .map_err(|e| InitError::new(format!("failed to create fragment shader: {}", e)))?;
 
+  let event_loop = EventLoop::new();
+  let surface =
+    VkSurfaceBuild::build_vk_surface(WindowBuilder::new(), &event_loop, inst.clone())
+      .map_err(|e| InitError::new(format!("error while creating window surface: {}", e)))?;
+
+  let caps = surface
+    .capabilities(physical)
+    .map_err(|e| InitError::new(format!("failed to get surface capabilities: {}", e)))?;
+
+  let dims = caps.current_extent.unwrap_or([1920, 1080]);
+  // let dims = [800, 600];
+  let alpha = caps.supported_composite_alpha.iter().next().unwrap();
+  let format = caps.supported_formats[0].0;
+
   let render_pass = Arc::new(
     vulkano::single_pass_renderpass!(device.clone(),
     attachments: {
       color: {
         load: Clear,
         store: Store,
-        format: Format::R8G8B8A8Unorm,
+        format: format,
         samples: 1,
       }
     },
@@ -164,19 +180,6 @@ pub fn init() -> Result<GameWindow, InitError> {
       .unwrap(),
   );
 
-  let event_loop = EventLoop::new();
-  let surface =
-    VkSurfaceBuild::build_vk_surface(WindowBuilder::new(), &event_loop, inst.clone())
-      .map_err(|e| InitError::new(format!("error while creating window surface: {}", e)))?;
-
-  let caps = surface
-    .capabilities(physical)
-    .map_err(|e| InitError::new(format!("failed to get surface capabilities: {}", e)))?;
-
-  let dims = caps.current_extent.unwrap_or([1920, 1080]);
-  let alpha = caps.supported_composite_alpha.iter().next().unwrap();
-  let format = caps.supported_formats[0].0;
-
   let dyn_state = DynamicState {
     line_width:   None,
     viewports:    None,
@@ -190,13 +193,17 @@ pub fn init() -> Result<GameWindow, InitError> {
     .num_images(caps.min_image_count)
     .format(format)
     .dimensions(dims)
+    .layers(1)
     .usage(ImageUsage::color_attachment())
+    .sharing_mode(&queue)
     .transform(SurfaceTransform::Identity)
     .composite_alpha(alpha)
     .present_mode(PresentMode::Fifo)
     .fullscreen_exclusive(FullscreenExclusive::Default)
     .build()
     .map_err(|e| InitError::new(format!("failed to create swapchain: {}", e)))?;
+
+  dbg!(images[0].format());
 
   let buffers = images
     .into_iter()
@@ -249,6 +256,7 @@ impl GameWindow {
         previous_frame_end.as_mut().unwrap().cleanup_finished();
 
         let (img_num, ok, fut) = swapchain::acquire_next_image(swapchain.clone(), None).unwrap();
+        info!("got ok: {}", ok);
 
         let clear_values = vec![[0.0, 0.0, 1.0, 1.0].into()];
 
@@ -309,8 +317,6 @@ impl GameWindow {
             previous_frame_end = Some(sync::now(device.clone()).boxed());
           }
         }
-
-        info!("got ok: {}", ok);
       }
       _ => (),
     });
