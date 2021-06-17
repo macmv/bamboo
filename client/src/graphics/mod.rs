@@ -5,11 +5,12 @@ use vulkano::{
   descriptor::pipeline_layout::PipelineLayoutAbstract,
   device::{Device, Features, Queue},
   format::Format,
-  image::ImageUsage,
+  image::{view::ImageView, ImageUsage},
   instance::{Instance, PhysicalDevice},
   pipeline::{vertex::SingleBufferDefinition, GraphicsPipeline},
   render_pass::{Framebuffer, FramebufferAbstract, Subpass},
-  swapchain::{self, FullscreenExclusive, PresentMode, Surface, SurfaceTransform, Swapchain},
+  swapchain::{self, FullscreenExclusive, PresentMode, SurfaceTransform, Swapchain},
+  sync::{self, FlushError, GpuFuture},
 };
 use vulkano_win::VkSurfaceBuild;
 use winit::{
@@ -94,6 +95,8 @@ pub fn init() -> Result<GameWindow, InitError> {
     .find(|q| q.supports_graphics())
     .ok_or(InitError::new("no vulkan queue families support graphics"))?;
 
+  info!("using device: {} (type: {:?})", physical.name(), physical.ty());
+
   let (device, mut queues) = {
     let device_ext = vulkano::device::DeviceExtensions {
       khr_swapchain: true,
@@ -174,7 +177,7 @@ pub fn init() -> Result<GameWindow, InitError> {
   let alpha = caps.supported_composite_alpha.iter().next().unwrap();
   let format = caps.supported_formats[0].0;
 
-  let mut dyn_state = DynamicState {
+  let dyn_state = DynamicState {
     line_width:   None,
     viewports:    None,
     scissors:     None,
@@ -196,10 +199,15 @@ pub fn init() -> Result<GameWindow, InitError> {
     .map_err(|e| InitError::new(format!("failed to create swapchain: {}", e)))?;
 
   let buffers = images
-    .iter()
+    .into_iter()
     .map(|img| {
-      Arc::new(Framebuffer::start(render_pass.clone()).add(img.clone()).unwrap().build().unwrap())
-        as Arc<dyn FramebufferAbstract + Send + Sync>
+      Arc::new(
+        Framebuffer::start(render_pass.clone())
+          .add(ImageView::new(img).unwrap())
+          .unwrap()
+          .build()
+          .unwrap(),
+      ) as Arc<dyn FramebufferAbstract + Send + Sync>
     })
     .collect::<Vec<_>>();
 
@@ -231,14 +239,18 @@ impl GameWindow {
       .unwrap()
     };
 
-    let clear_values = vec![[0.0, 0.0, 1.0, 1.0].into()];
+    let mut previous_frame_end = Some(sync::now(device.clone()).boxed());
 
     self.event_loop.run(move |event, _, control_flow| match event {
       Event::WindowEvent { event: WindowEvent::CloseRequested, .. } => {
         *control_flow = ControlFlow::Exit;
       }
       Event::RedrawRequested(_) => {
+        previous_frame_end.as_mut().unwrap().cleanup_finished();
+
         let (img_num, ok, fut) = swapchain::acquire_next_image(swapchain.clone(), None).unwrap();
+
+        let clear_values = vec![[0.0, 0.0, 1.0, 1.0].into()];
 
         let mut builder = AutoCommandBufferBuilder::primary(
           device.clone(),
@@ -248,26 +260,55 @@ impl GameWindow {
         .unwrap();
 
         builder
-          // Before we can draw, we have to *enter a render pass*. There are two methods to do
-          // this: `draw_inline` and `draw_secondary`. The latter is a bit more advanced and is
+          // Before we can draw, we have to *enter a render pass*. There aretwo methods to do this:
+          // `draw_inline` and `draw_secondary`. The latter is a bit more advanced and is
           // not covered here.
           //
           // The third parameter builds the list of values to clear the attachments with. The API
-          // is similar to the list of attachments when building the framebuffers, except that
-          // only the attachments that use `load: Clear` appear in the list.
+          // is similar to the list of attachments when building the framebuffers, except that only
+          // the attachments that use `load: Clear` appear in the list.
           .begin_render_pass(buffers[img_num].clone(), SubpassContents::Inline, clear_values)
           .unwrap()
-          // We are now inside the first subpass of the render pass. We add a draw command.
-          //
-          // The last two parameters contain the list of resources to pass to the shaders.
-          // Since we used an `EmptyPipeline` object, the objects have to be `()`.
-          .draw(pipeline.clone(), &dyn_state, vertex_buffer.clone(), (), (), &[0])
+          // We are now inside the first subpass of the render pass. We add a draw command. The last
+          // two parameters contain the list of resources to pass to the shaders. Since we used an
+          // `EmptyPipeline` object, the objects have to be `()`.
+          .draw(pipeline.clone(), &dyn_state, vertex_buffer.clone(), (), (), [])
           .unwrap()
-          // We leave the render pass by calling `draw_end`. Note that if we had multiple
-          // subpasses we could have called `next_inline` (or `next_secondary`) to jump to the
-          // next subpass.
+          // We leave the render pass by calling `draw_end`. Note that if we had multiple subpasses
+          // we could have called `next_inline` (or `next_secondary`) to jump to the next subpass.
           .end_render_pass()
           .unwrap();
+
+        let command_buffer = builder.build().unwrap();
+
+        let future = previous_frame_end
+          .take()
+          .unwrap()
+          .join(fut)
+          .then_execute(queue.clone(), command_buffer)
+          .unwrap()
+          // The color output is now expected to contain our triangle. But in order to show it on
+          // the screen, we have to *present* the image by calling `present`.
+          //
+          // This function does not actually present the image immediately. Instead it submits a
+          // present command at the end of the queue. This means that it will only be presented once
+          // the GPU has finished executing the command buffer that draws the triangle.
+          .then_swapchain_present(queue.clone(), swapchain.clone(), img_num)
+          .then_signal_fence_and_flush();
+
+        match future {
+          Ok(future) => {
+            previous_frame_end = Some(future.boxed());
+          }
+          Err(FlushError::OutOfDate) => {
+            // recreate_swapchain = true;
+            previous_frame_end = Some(sync::now(device.clone()).boxed());
+          }
+          Err(e) => {
+            error!("failed to flush future: {:?}", e);
+            previous_frame_end = Some(sync::now(device.clone()).boxed());
+          }
+        }
 
         info!("got ok: {}", ok);
       }
