@@ -4,12 +4,9 @@ use vulkano::{
   command_buffer::{AutoCommandBufferBuilder, CommandBufferUsage, DynamicState, SubpassContents},
   descriptor::pipeline_layout::PipelineLayoutAbstract,
   device::{Device, Features, Queue},
-  image::{
-    view::{ComponentMapping, ComponentSwizzle, ImageView},
-    ImageAccess, ImageUsage,
-  },
+  image::{view::ImageView, ImageAccess, ImageUsage},
   instance::{Instance, PhysicalDevice},
-  pipeline::{vertex::SingleBufferDefinition, GraphicsPipeline},
+  pipeline::{vertex::SingleBufferDefinition, viewport::Viewport, GraphicsPipeline},
   render_pass::{Framebuffer, FramebufferAbstract, Subpass},
   swapchain::{self, FullscreenExclusive, PresentMode, SurfaceTransform, Swapchain},
   sync::{self, FlushError, GpuFuture},
@@ -180,9 +177,14 @@ pub fn init() -> Result<GameWindow, InitError> {
       .unwrap(),
   );
 
+  let viewport = Viewport {
+    origin:      [0.0, 0.0],
+    dimensions:  [dims[0] as f32, dims[1] as f32],
+    depth_range: 0.0..1.0,
+  };
   let dyn_state = DynamicState {
     line_width:   None,
-    viewports:    None,
+    viewports:    Some(vec![viewport]),
     scissors:     None,
     compare_mask: None,
     write_mask:   None,
@@ -202,8 +204,6 @@ pub fn init() -> Result<GameWindow, InitError> {
     .fullscreen_exclusive(FullscreenExclusive::Default)
     .build()
     .map_err(|e| InitError::new(format!("failed to create swapchain: {}", e)))?;
-
-  dbg!(images[0].format());
 
   let buffers = images
     .into_iter()
