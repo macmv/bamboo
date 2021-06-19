@@ -1,10 +1,11 @@
 use crate::ui::UI;
-use std::{error::Error, fmt, sync::Arc, time::Instant};
+use std::{error::Error, fmt, ops::Deref, sync::Arc, time::Instant};
 use vulkano::{
   buffer::{BufferUsage, CpuAccessibleBuffer},
   command_buffer::{AutoCommandBufferBuilder, CommandBufferUsage, DynamicState, SubpassContents},
   descriptor::pipeline_layout::PipelineLayoutAbstract,
   device::{Device, Features, Queue},
+  format::Format,
   image::{view::ImageView, ImageUsage, SwapchainImage},
   instance::{Instance, PhysicalDevice},
   pipeline::{vertex::SingleBufferDefinition, viewport::Viewport, GraphicsPipeline},
@@ -47,7 +48,7 @@ pub struct GameWindow {
   data:       WindowData,
 }
 
-struct WindowData {
+pub struct WindowData {
   render_pass: Arc<RenderPass>,
   device:      Arc<Device>,
   queue:       Arc<Queue>,
@@ -57,6 +58,7 @@ struct WindowData {
   buffers:     Vec<Arc<dyn FramebufferAbstract + Send + Sync>>,
   dyn_state:   DynamicState,
   swapchain:   Arc<Swapchain<Window>>,
+  format:      Format,
 }
 
 #[derive(Default, Copy, Clone)]
@@ -210,8 +212,16 @@ pub fn init() -> Result<GameWindow, InitError> {
       .unwrap(),
   );
 
-  let mut data =
-    WindowData { render_pass, buffers: vec![], device, queue, pipeline, swapchain, dyn_state };
+  let mut data = WindowData {
+    render_pass,
+    buffers: vec![],
+    device,
+    queue,
+    pipeline,
+    swapchain,
+    dyn_state,
+    format,
+  };
   data.resize(images);
 
   Ok(GameWindow { event_loop, data })
@@ -366,5 +376,29 @@ impl WindowData {
         ) as Arc<dyn FramebufferAbstract + Send + Sync>
       })
       .collect::<Vec<_>>()
+  }
+  pub fn pipeline(
+    &self,
+  ) -> &Arc<
+    GraphicsPipeline<SingleBufferDefinition<Vertex>, Box<dyn PipelineLayoutAbstract + Send + Sync>>,
+  > {
+    &self.pipeline
+  }
+  pub fn queue(&self) -> &Arc<Queue> {
+    &self.queue
+  }
+  pub fn device(&self) -> &Arc<Device> {
+    &self.device
+  }
+  pub fn format(&self) -> Format {
+    self.format
+  }
+}
+
+impl Deref for GameWindow {
+  type Target = WindowData;
+
+  fn deref(&self) -> &Self::Target {
+    &self.data
   }
 }

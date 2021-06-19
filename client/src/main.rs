@@ -14,7 +14,7 @@ fn main() {
   common::init("client");
 
   info!("initializing graphics");
-  let game_win = match graphics::init() {
+  let win = match graphics::init() {
     Ok(v) => v,
     Err(e) => {
       error!("{}", e);
@@ -24,8 +24,8 @@ fn main() {
   };
 
   let world = World::new();
-  let ui = Arc::new(UI::new());
+  let ui = Arc::new(UI::new(&win));
 
   info!("starting game");
-  game_win.run(ui);
+  win.run(ui);
 }
