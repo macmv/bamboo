@@ -21,6 +21,9 @@ use winit::{
   window::{Window, WindowBuilder},
 };
 
+mod chunk;
+pub use chunk::MeshChunk;
+
 #[derive(Debug)]
 pub struct InitError(String);
 

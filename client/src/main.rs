@@ -2,6 +2,7 @@
 extern crate log;
 
 mod graphics;
+mod world;
 
 fn main() {
   common::init("client");
