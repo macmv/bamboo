@@ -4,6 +4,8 @@ extern crate log;
 mod graphics;
 mod world;
 
+use world::World;
+
 fn main() {
   common::init("client");
 
@@ -16,6 +18,8 @@ fn main() {
       return;
     }
   };
+
+  let world = World::new();
 
   info!("starting game");
   game_win.run();

@@ -1,3 +1,4 @@
+use crate::graphics::MeshChunk;
 use common::math::ChunkPos;
 use std::{collections::HashMap, sync::RwLock};
 
