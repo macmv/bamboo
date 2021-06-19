@@ -1,4 +1,4 @@
-use std::{error::Error, fmt, sync::Arc};
+use std::{error::Error, fmt, sync::Arc, time::Instant};
 use vulkano::{
   buffer::{BufferUsage, CpuAccessibleBuffer},
   command_buffer::{AutoCommandBufferBuilder, CommandBufferUsage, DynamicState, SubpassContents},
@@ -233,7 +233,8 @@ impl GameWindow {
       .unwrap()
     };
 
-    let push_constants = vs::ty::PushData { offset: [0.0, 0.5] };
+    let mut push_constants = vs::ty::PushData { offset: [0.0, 0.0] };
+    let start = Instant::now();
 
     let mut previous_frame_end = Some(sync::now(data.device.clone()).boxed());
     let mut resize = false;
@@ -265,6 +266,8 @@ impl GameWindow {
           info!("suboptimal");
           resize = true;
         }
+
+        push_constants.offset[1] = Instant::now().duration_since(start).as_secs_f32() % 1.0 - 0.5;
 
         let clear_values = vec![[0.0, 0.0, 1.0, 1.0].into()];
 
