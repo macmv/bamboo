@@ -1,7 +1,7 @@
 use std::convert::TryFrom;
 
 use super::section::Section as ChunkSection;
-use common::{
+use crate::{
   math::{Pos, PosError},
   proto,
 };

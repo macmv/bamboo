@@ -20,6 +20,7 @@ use std::{
   time::{Duration, Instant},
 };
 
+pub mod chunk;
 pub mod math;
 pub mod net;
 pub mod registry;

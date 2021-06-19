@@ -1,147 +1,120 @@
-mod fixed;
-mod multi;
-mod paletted;
-mod section;
-
-pub use multi::MultiChunk;
-
-use std::{cmp, collections::HashMap};
-
-use section::Section;
+use std::sync::Arc;
 
 use common::{
+  chunk::{Chunk, ChunkKind},
   math::{Pos, PosError},
   proto,
+  version::BlockVersion,
 };
 
-#[derive(Debug)]
-pub enum ChunkKind {
-  Fixed,
-  Paletted,
+use crate::block;
+
+pub struct MultiChunk {
+  fixed:    Chunk,
+  paletted: Chunk,
+  types:    Arc<block::TypeConverter>,
 }
 
-/// A chunk column. This is not clone, because that would mean duplicating an
-/// entire chunk, which you probably don't want to do. If you do need to clone a
-/// chunk, use [`Chunk::duplicate()`].
-///
-/// If you want to create a cross-versioned chunk, use [`MultiChunk`] instead.
-pub struct Chunk {
-  sections: Vec<Option<Box<dyn Section + Send>>>,
-  kind:     ChunkKind,
-}
+impl MultiChunk {
+  /// Creates an empty chunk. Currently, it just creates a seperate chunk for
+  /// every supported version. In the future, it will take a list of versions as
+  /// parameters. If it is fast enough, I might generate a mapping of all new
+  /// block ids and how they can be transformed into old block ids. Then, this
+  /// would only store one chunk, and would perform all conversions when you
+  /// actually tried to get an old id.
+  pub fn new(types: Arc<block::TypeConverter>) -> MultiChunk {
+    MultiChunk {
+      fixed: Chunk::new(ChunkKind::Fixed),
+      paletted: Chunk::new(ChunkKind::Paletted),
+      types,
+    }
+  }
 
-impl Chunk {
-  pub fn new(kind: ChunkKind) -> Self {
-    Chunk { sections: Vec::new(), kind }
-  }
-  /// This updates the internal data to contain a block at the given position.
-  /// In release mode, the position is not checked. In any other mode, a
-  /// PosError will be returned if any of the x, y, or z are outside of 0..16
-  fn set_block(&mut self, pos: Pos, ty: u32) -> Result<(), PosError> {
-    let index = pos.chunk_y() as usize;
-    if !(0..16).contains(&index) {
-      return Err(pos.err("Y coordinate is outside of chunk".into()));
-    }
-    if index >= self.sections.len() {
-      self.sections.resize_with(index + 1, || None);
-    }
-    if self.sections[index].is_none() {
-      self.sections[index] = Some(match &self.kind {
-        ChunkKind::Paletted => paletted::Section::new(),
-        ChunkKind::Fixed => fixed::Section::new(),
-      });
-    }
-    match &mut self.sections[index] {
-      Some(s) => s.set_block(Pos::new(pos.x(), pos.chunk_rel_y(), pos.z()), ty),
-      None => unreachable!(),
-    }
-  }
-  /// This fills the given region with the given block. See
-  /// [`set_block`](Self::set_block) for details about the bounds of min and
-  /// max.
-  fn fill(&mut self, min: Pos, max: Pos, ty: u32) -> Result<(), PosError> {
-    let min_index = min.chunk_y() as usize;
-    let max_index = max.chunk_y() as usize;
-    if !(0..16).contains(&min_index) {
-      return Err(min.err("Y coordinate is outside of chunk".into()));
-    }
-    if !(0..16).contains(&max_index) {
-      return Err(max.err("Y coordinate is outside of chunk".into()));
-    }
-    if max_index < min_index {
-      return Err(max.err("max is less than min".into()));
-    }
-    if max_index >= self.sections.len() {
-      self.sections.resize_with(max_index + 1, || None);
-    }
-    for index in min_index..=max_index {
-      if self.sections[index].is_none() {
-        self.sections[index] = Some(match &self.kind {
-          ChunkKind::Paletted => paletted::Section::new(),
-          ChunkKind::Fixed => fixed::Section::new(),
-        });
-      }
-      match &mut self.sections[index] {
-        Some(s) => {
-          let min = Pos::new(min.x(), cmp::max(min.y(), index as i32 * 16), min.z());
-          let max = Pos::new(max.x(), cmp::min(max.y(), index as i32 * 16 + 15), max.z());
-          s.fill(
-            Pos::new(min.x(), min.chunk_rel_y(), min.z()),
-            Pos::new(max.x(), max.chunk_rel_y(), max.z()),
-            ty,
-          )?;
-        }
-        None => unreachable!(),
-      }
-    }
+  /// Sets a block within this chunk. p.x and p.z must be within 0..16. If the
+  /// server is only running on 1.17, then p.y needs to be within the world
+  /// height (whatever that may be). Otherwise, p.y must be within 0..256.
+  pub fn set_type(&mut self, p: Pos, ty: &block::Type) -> Result<(), PosError> {
+    self.fixed.set_block(p, self.types.to_old(ty.id(), BlockVersion::V1_8))?;
+    self.paletted.set_block(p, ty.id())?;
     Ok(())
   }
-  /// This updates the internal data to contain a block at the given position.
-  /// In release mode, the position is not checked. In any other mode, a
-  /// PosError will be returned if any of the x, y, or z are outside of 0..16
-  fn get_block(&self, pos: Pos) -> Result<u32, PosError> {
-    let index = pos.chunk_y();
-    if !(0..16).contains(&index) {
-      return Err(pos.err("Y coordinate is outside of chunk".into()));
-    }
-    let index = index as usize;
-    if index >= self.sections.len() || self.sections[index].is_none() {
-      return Ok(0);
-    }
-    match &self.sections[index] {
-      Some(s) => s.get_block(pos),
-      None => unreachable!(),
-    }
+
+  /// Fills the region within this chunk. Min and max must be within the chunk
+  /// column (see [`set_type`](Self::set_type)), and min must be less than or
+  /// equal to max.
+  ///
+  /// Since multi chunks always store a fixed chunk and a paletted chunk, this
+  /// will always be faster than calling set_type in a loop.
+  pub fn fill(&mut self, min: Pos, max: Pos, ty: &block::Type) -> Result<(), PosError> {
+    self.fixed.fill(min, max, self.types.to_old(ty.id(), BlockVersion::V1_8))?;
+    self.paletted.fill(min, max, ty.id())?;
+    Ok(())
   }
-  /// Generates a protobuf containing all of the chunk data. X and Z will both
-  /// be 0.
-  pub fn to_latest_proto(&self) -> proto::Chunk {
-    let mut sections = HashMap::new();
-    for (i, s) in self.sections.iter().enumerate() {
-      match s {
-        Some(s) => {
-          sections.insert(i as i32, s.to_latest_proto());
+
+  /// This is the same as [`fill`](Self::fill), but it converts the block kind
+  /// to it's default type.
+  pub fn fill_kind(&mut self, min: Pos, max: Pos, kind: block::Kind) -> Result<(), PosError> {
+    self.fixed.fill(
+      min,
+      max,
+      self.types.to_old(self.types.get(kind).default_type().id(), BlockVersion::V1_8),
+    )?;
+    self.paletted.fill(min, max, self.types.get(kind).default_type().id())?;
+    Ok(())
+  }
+
+  /// Sets a block within this chunk. This is the same as
+  /// [`set_type`](Self::set_type), but it uses a kind instead of a type. This
+  /// will use the default type of the given kind.
+  pub fn set_kind(&mut self, p: Pos, kind: block::Kind) -> Result<(), PosError> {
+    self.fixed.set_block(
+      p,
+      self.types.to_old(self.types.get(kind).default_type().id(), BlockVersion::V1_8),
+    )?;
+    self.paletted.set_block(p, self.types.get(kind).default_type().id())?;
+    Ok(())
+  }
+
+  /// Gets the type of a block within this chunk. Pos must be within the chunk.
+  /// See [`set_block`](Self::set_block) for more.
+  ///
+  /// This will return a blockid. This block id is from the primary version of
+  /// this chunk. That can be known by calling [`primary`](Self::primary). It
+  /// will usually be the latest version that this server supports. Regardless
+  /// of what it is, this should be handled within the World.
+  pub fn get_block(&self, p: Pos) -> Result<u32, PosError> {
+    self.paletted.get_block(p)
+  }
+
+  /// Generates a protobuf for the given version. The proto's X and Z
+  /// coordinates are 0.
+  pub fn to_proto(&self, v: BlockVersion) -> proto::Chunk {
+    let mut chunk = if v == BlockVersion::latest() {
+      self.paletted.to_latest_proto()
+    } else if v >= BlockVersion::V1_9 {
+      self.paletted.to_old_proto(|id| self.types.to_old(id, v))
+    } else {
+      self.fixed.to_latest_proto()
+    };
+    chunk.heightmap = vec![0; 256 * 9 / 64];
+    let mut shift = 0;
+    let mut index = 0;
+    for _ in 0..16 {
+      for _ in 0..16 {
+        let v = 0_u64;
+        if shift > 64 - 9 {
+          chunk.heightmap[index] |= (v.overflowing_shl(shift).0 & 0b111111111 << (64 - 9)) as i64;
+          chunk.heightmap[index + 1] |= (v >> (64 - shift)) as i64;
+        } else {
+          chunk.heightmap[index] |= (v.overflowing_shl(shift).0) as i64;
         }
-        None => {}
+        shift += 9;
+        if shift > 64 {
+          shift -= 64;
+          index += 1;
+        }
       }
     }
-    proto::Chunk { sections, ..Default::default() }
-  }
-  /// Generates a protobuf containing all of the chunk data. X and Z will both
-  /// be 0. This will call the given function for every block id it encounters.
-  pub fn to_old_proto<F>(&self, f: F) -> proto::Chunk
-  where
-    F: Fn(u32) -> u32,
-  {
-    let mut sections = HashMap::new();
-    for (i, s) in self.sections.iter().enumerate() {
-      match s {
-        Some(s) => {
-          sections.insert(i as i32, s.to_old_proto(&f));
-        }
-        None => {}
-      }
-    }
-    proto::Chunk { sections, ..Default::default() }
+    chunk
   }
 }
