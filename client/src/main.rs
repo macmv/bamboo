@@ -1,9 +1,13 @@
+use std::sync::Arc;
+
 #[macro_use]
 extern crate log;
 
 mod graphics;
+mod ui;
 mod world;
 
+use ui::UI;
 use world::World;
 
 fn main() {
@@ -20,7 +24,8 @@ fn main() {
   };
 
   let world = World::new();
+  let ui = Arc::new(UI::new());
 
   info!("starting game");
-  game_win.run();
+  game_win.run(ui);
 }

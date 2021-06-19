@@ -1,3 +1,4 @@
+use crate::ui::UI;
 use std::{error::Error, fmt, sync::Arc, time::Instant};
 use vulkano::{
   buffer::{BufferUsage, CpuAccessibleBuffer},
@@ -217,7 +218,7 @@ pub fn init() -> Result<GameWindow, InitError> {
 }
 
 impl GameWindow {
-  pub fn run(self) -> ! {
+  pub fn run(self, ui: Arc<UI>) -> ! {
     let mut data = self.data;
 
     let vertex_buffer = {
@@ -283,7 +284,10 @@ impl GameWindow {
 
         builder
           .begin_render_pass(data.buffers[img_num].clone(), SubpassContents::Inline, clear_values)
-          .unwrap()
+          .unwrap();
+
+        ui.draw(&mut builder);
+        builder
           .draw(
             data.pipeline.clone(),
             &data.dyn_state,
@@ -292,9 +296,9 @@ impl GameWindow {
             push_constants,
             [],
           )
-          .unwrap()
-          .end_render_pass()
           .unwrap();
+
+        builder.end_render_pass().unwrap();
 
         let command_buffer = builder.build().unwrap();
 
