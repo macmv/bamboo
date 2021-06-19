@@ -69,8 +69,12 @@ mod vs {
 
 layout(location = 0) in vec2 position;
 
+layout(push_constant) uniform PushData {
+  vec2 offset;
+} pc;
+
 void main() {
-  gl_Position = vec4(position, 0.0, 1.0);
+  gl_Position = vec4(position + pc.offset, 0.0, 1.0);
 }"
   }
 }
@@ -229,6 +233,8 @@ impl GameWindow {
       .unwrap()
     };
 
+    let push_constants = vs::ty::PushData { offset: [0.0, 0.5] };
+
     let mut previous_frame_end = Some(sync::now(data.device.clone()).boxed());
     let mut resize = false;
 
@@ -272,7 +278,14 @@ impl GameWindow {
         builder
           .begin_render_pass(data.buffers[img_num].clone(), SubpassContents::Inline, clear_values)
           .unwrap()
-          .draw(data.pipeline.clone(), &data.dyn_state, vertex_buffer.clone(), (), (), [])
+          .draw(
+            data.pipeline.clone(),
+            &data.dyn_state,
+            vertex_buffer.clone(),
+            (),
+            push_constants,
+            [],
+          )
           .unwrap()
           .end_render_pass()
           .unwrap();
