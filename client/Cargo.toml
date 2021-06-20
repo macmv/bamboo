@@ -23,6 +23,7 @@ vulkano-win = "0.23"
 vulkano-shaders = "0.23"
 imgui = "0.7.0"
 imgui-vulkano-renderer = "0.7.0"
+imgui-winit-support = "0.7.0"
 
 [build-dependencies]
 data = { path = "../data" }

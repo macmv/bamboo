@@ -9,7 +9,7 @@ use vulkano::{
   image::{view::ImageView, ImageUsage, SwapchainImage},
   instance::{Instance, PhysicalDevice},
   pipeline::{vertex::SingleBufferDefinition, viewport::Viewport, GraphicsPipeline},
-  render_pass::{Framebuffer, FramebufferAbstract, RenderPass, Subpass},
+  render_pass::{Framebuffer, RenderPass, Subpass},
   swapchain::{
     self, AcquireError, FullscreenExclusive, PresentMode, SurfaceTransform, Swapchain,
     SwapchainCreationError,
@@ -55,7 +55,8 @@ pub struct WindowData {
   pipeline: Arc<
     GraphicsPipeline<SingleBufferDefinition<Vertex>, Box<dyn PipelineLayoutAbstract + Send + Sync>>,
   >,
-  buffers:     Vec<Arc<dyn FramebufferAbstract + Send + Sync>>,
+  buffers:     Vec<Arc<Framebuffer<((), Arc<ImageView<Arc<SwapchainImage<Window>>>>)>>>,
+  images:      Vec<Arc<SwapchainImage<Window>>>,
   dyn_state:   DynamicState,
   swapchain:   Arc<Swapchain<Window>>,
   format:      Format,
@@ -215,6 +216,7 @@ pub fn init() -> Result<GameWindow, InitError> {
   let mut data = WindowData {
     render_pass,
     buffers: vec![],
+    images: vec![],
     device,
     queue,
     pipeline,
@@ -294,10 +296,7 @@ impl GameWindow {
 
         builder
           .begin_render_pass(data.buffers[img_num].clone(), SubpassContents::Inline, clear_values)
-          .unwrap();
-
-        ui.draw(&mut builder);
-        builder
+          .unwrap()
           .draw(
             data.pipeline.clone(),
             &data.dyn_state,
@@ -306,9 +305,15 @@ impl GameWindow {
             push_constants,
             [],
           )
+          .unwrap()
+          .end_render_pass()
           .unwrap();
 
-        builder.end_render_pass().unwrap();
+        ui.draw(
+          &mut builder,
+          data.queue.clone(),
+          ImageView::new(data.images[img_num].clone()).unwrap(),
+        );
 
         let command_buffer = builder.build().unwrap();
 
@@ -364,6 +369,7 @@ impl WindowData {
     };
     self.dyn_state.viewports = Some(vec![viewport]);
 
+    self.images = images.clone();
     self.buffers = images
       .into_iter()
       .map(|img| {
@@ -373,7 +379,7 @@ impl WindowData {
             .unwrap()
             .build()
             .unwrap(),
-        ) as Arc<dyn FramebufferAbstract + Send + Sync>
+        )
       })
       .collect::<Vec<_>>()
   }
@@ -383,6 +389,9 @@ impl WindowData {
     GraphicsPipeline<SingleBufferDefinition<Vertex>, Box<dyn PipelineLayoutAbstract + Send + Sync>>,
   > {
     &self.pipeline
+  }
+  pub fn swapchain(&self) -> &Arc<Swapchain<Window>> {
+    &self.swapchain
   }
   pub fn queue(&self) -> &Arc<Queue> {
     &self.queue
