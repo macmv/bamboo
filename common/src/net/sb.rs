@@ -247,7 +247,7 @@ macro_rules! id_init {
 // }
 
 #[rustfmt::skip]
-fn create_empty(id: ID) -> proto::Packet {
+fn create_empty(_id: ID) -> proto::Packet {
   // See https://wiki.vg/Protocol for more.
   // In general, I list out each field in the order that it is used in the packet.
   // If a packet has fields that look like this:

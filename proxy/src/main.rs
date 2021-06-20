@@ -13,7 +13,7 @@ pub mod version;
 use common::version::ProtocolVersion;
 use rand::rngs::OsRng;
 use rsa::{PublicKeyParts, RSAPrivateKey};
-use std::{error::Error, io, net::TcpStream, sync::Arc};
+use std::{error::Error, io, sync::Arc};
 use tokio::{net::TcpListener, sync::oneshot};
 
 use crate::conn::Conn;
@@ -28,15 +28,15 @@ pub trait StreamReader {
   }
   fn read(&mut self, ver: ProtocolVersion) -> io::Result<Option<Packet>>;
 
-  fn enable_encryption(&mut self, secret: &[u8; 16]) {}
-  fn set_compression(&mut self, level: i32) {}
+  fn enable_encryption(&mut self, _secret: &[u8; 16]) {}
+  fn set_compression(&mut self, _level: i32) {}
 }
 #[async_trait]
 pub trait StreamWriter {
   async fn write(&mut self, packet: Packet) -> io::Result<()>;
 
-  fn enable_encryption(&mut self, secret: &[u8; 16]) {}
-  fn set_compression(&mut self, level: i32) {}
+  fn enable_encryption(&mut self, _secret: &[u8; 16]) {}
+  fn set_compression(&mut self, _level: i32) {}
 }
 
 #[tokio::main]
@@ -65,7 +65,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
       let (reader, writer) = java::stream::new(sock).unwrap();
       let gen = gen.clone();
       let k = key.clone();
-      let d = der_key.clone();
+      let _d = der_key.clone();
       tokio::spawn(async move {
         match handle_client(gen, reader, writer, k, None).await {
           Ok(_) => {}

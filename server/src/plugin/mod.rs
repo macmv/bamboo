@@ -98,7 +98,7 @@ impl PluginManager {
   pub async fn run(&self, wm: Arc<WorldManager>) {
     let mut ctx = Context::new();
     ctx.register_global_class::<Sugarcane>().unwrap();
-    let o = ctx.construct_object();
+    let _o = ctx.construct_object();
     ctx.register_global_property(
       "sc",
       Object::native_object(Box::new(Sugarcane::new(wm.clone()))),
@@ -120,9 +120,9 @@ impl PluginManager {
   }
 
   /// Loads all plugins from disk. Call this to reload all plugins.
-  fn load(&self, mut ctx: &mut Context, wm: Arc<WorldManager>) {
+  fn load(&self, ctx: &mut Context, _wm: Arc<WorldManager>) {
     let mut plugins = self.plugins.lock().unwrap();
-    let tx = self.tx.lock().unwrap();
+    let _tx = self.tx.lock().unwrap();
     plugins.clear();
     for f in fs::read_dir("plugins").unwrap() {
       let f = f.unwrap();
@@ -134,7 +134,7 @@ impl PluginManager {
 
         let parsing_result = Parser::new(src_bytes, false).parse_all().map_err(|e| e.to_string());
 
-        let execution_result = match parsing_result {
+        let _execution_result = match parsing_result {
           Ok(statements) => {
             println!("{}", statements);
             match statements.run(ctx) {

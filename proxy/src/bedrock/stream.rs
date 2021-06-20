@@ -34,13 +34,13 @@ impl BedrockStreamWriter {
 
 #[async_trait]
 impl StreamWriter for BedrockStreamWriter {
-  async fn write(&mut self, packet: Packet) -> io::Result<()> {
+  async fn write(&mut self, _packet: Packet) -> io::Result<()> {
     Ok(())
   }
 }
 #[async_trait]
 impl StreamReader for BedrockStreamReader {
-  fn read(&mut self, ver: ProtocolVersion) -> io::Result<Option<Packet>> {
+  fn read(&mut self, _ver: ProtocolVersion) -> io::Result<Option<Packet>> {
     info!("waiting for data...");
     let mut id = 0;
     self.cons.access(|a, _| {

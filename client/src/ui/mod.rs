@@ -7,7 +7,6 @@ use vulkano::{
   command_buffer::{AutoCommandBufferBuilder, PrimaryAutoCommandBuffer},
   device::Queue,
   image::ImageViewAbstract,
-  render_pass::FramebufferAbstract,
 };
 
 pub struct UI {

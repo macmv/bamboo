@@ -1,5 +1,3 @@
-use crate::block;
-
 /// Any data specific to an entity.
 #[derive(Debug)]
 pub struct Data {

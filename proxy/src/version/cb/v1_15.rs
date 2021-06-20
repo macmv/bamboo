@@ -32,7 +32,7 @@ pub(super) fn gen_spec() -> PacketSpec {
     out.write_bool(true); // Always a new chunk
 
     let biomes = true; // Always true with new chunk set
-    let skylight = true; // Assume overworld
+    let _skylight = true; // Assume overworld
 
     let mut bitmask = 0;
     for y in chunk.sections.keys() {

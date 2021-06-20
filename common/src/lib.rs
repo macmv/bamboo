@@ -11,13 +11,8 @@ use log4rs::{
     file::FileAppender,
     // rolling_file::{policy::Policy, LogFile, RollingFileAppender},
   },
-  config::{Appender, Config, Logger, Root},
+  config::{Appender, Config, Root},
   encode::pattern::PatternEncoder,
-};
-use std::{
-  fs,
-  path::Path,
-  time::{Duration, Instant},
 };
 
 pub mod chunk;

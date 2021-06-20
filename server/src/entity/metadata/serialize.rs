@@ -300,7 +300,7 @@ impl Metadata {
               out.write_str(&v.to_json());
             }
           }
-          Field::Item(v) => {} // TODO: Slot data
+          Field::Item(_v) => {} // TODO: Slot data
           Field::Bool(v) => out.write_bool(*v),
           Field::Rotation(x, y, z) => {
             out.write_f32(*x);

@@ -220,7 +220,7 @@ impl Buffer {
     // TODO: Possibly change this limit
     let mut buf = vec![0; len as usize];
     match self.data.read(&mut buf) {
-      Ok(len) => buf.to_vec(),
+      Ok(_len) => buf.to_vec(),
       Err(e) => {
         self.set_err(BufferErrorKind::IO(e), true);
         vec![]

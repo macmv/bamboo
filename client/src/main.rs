@@ -23,7 +23,7 @@ fn main() {
     }
   };
 
-  let world = World::new();
+  let _world = World::new();
   let ui = Arc::new(UI::new(&win));
 
   info!("starting game");

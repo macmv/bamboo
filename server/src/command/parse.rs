@@ -175,8 +175,8 @@ impl Parser {
         }
         StringType::GreedyPhrase => Ok((Arg::String(text.into()), text.len())),
       },
-      Self::Entity { single, players } => Ok((Arg::Int(5), 1)),
-      Self::ScoreHolder { multiple } => Ok((Arg::Int(5), 1)),
+      Self::Entity { single: _, players: _ } => Ok((Arg::Int(5), 1)),
+      Self::ScoreHolder { multiple: _ } => Ok((Arg::Int(5), 1)),
       Self::GameProfile => Ok((Arg::Int(5), 1)),
       Self::BlockPos => {
         let sections: Vec<&str> = text.split(' ').collect();
@@ -234,7 +234,7 @@ impl Parser {
       Self::MobEffect => Ok((Arg::Int(5), 1)),
       Self::Function => Ok((Arg::Int(5), 1)),
       Self::EntityAnchor => Ok((Arg::Int(5), 1)),
-      Self::Range { decimals: bool } => Ok((Arg::Int(5), 1)),
+      Self::Range { decimals: _bool } => Ok((Arg::Int(5), 1)),
       Self::IntRange => Ok((Arg::Int(5), 1)),
       Self::FloatRange => Ok((Arg::Int(5), 1)),
       Self::ItemEnchantment => Ok((Arg::Int(5), 1)),

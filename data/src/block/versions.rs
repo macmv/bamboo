@@ -1,5 +1,5 @@
 use super::{Block, BlockVersion};
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 
 // Called on 1.13+
 pub(super) fn generate(latest: &BlockVersion, old: &BlockVersion) -> Vec<u32> {
