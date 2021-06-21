@@ -10,10 +10,7 @@ use vulkano::{
   instance::{Instance, PhysicalDevice},
   pipeline::{vertex::SingleBufferDefinition, viewport::Viewport, GraphicsPipeline},
   render_pass::{Framebuffer, RenderPass, Subpass},
-  swapchain::{
-    self, AcquireError, FullscreenExclusive, PresentMode, SurfaceTransform, Swapchain,
-    SwapchainCreationError,
-  },
+  swapchain::{self, AcquireError, Swapchain, SwapchainCreationError},
   sync::{self, FlushError, GpuFuture},
 };
 use vulkano_win::VkSurfaceBuild;
@@ -157,6 +154,16 @@ pub fn init() -> Result<GameWindow, InitError> {
   let alpha = caps.supported_composite_alpha.iter().next().unwrap();
   let format = caps.supported_formats[0].0;
 
+  let (swapchain, images) = Swapchain::start(device.clone(), surface.clone())
+    .num_images(caps.min_image_count)
+    .format(format)
+    .dimensions(dims)
+    .usage(ImageUsage::color_attachment())
+    .sharing_mode(&queue)
+    .composite_alpha(alpha)
+    .build()
+    .map_err(|e| InitError::new(format!("failed to create swapchain: {}", e)))?;
+
   let render_pass = Arc::new(
     vulkano::single_pass_renderpass!(device.clone(),
     attachments: {
@@ -188,24 +195,11 @@ pub fn init() -> Result<GameWindow, InitError> {
     reference:    None,
   };
 
-  let (swapchain, images) = Swapchain::start(device.clone(), surface.clone())
-    .num_images(caps.min_image_count)
-    .format(format)
-    .dimensions(dims)
-    .layers(1)
-    .usage(ImageUsage::color_attachment())
-    .sharing_mode(&queue)
-    .transform(SurfaceTransform::Identity)
-    .composite_alpha(alpha)
-    .present_mode(PresentMode::Fifo)
-    .fullscreen_exclusive(FullscreenExclusive::Default)
-    .build()
-    .map_err(|e| InitError::new(format!("failed to create swapchain: {}", e)))?;
-
   let pipeline = Arc::new(
     GraphicsPipeline::start()
       .vertex_input_single_buffer::<Vertex>()
       .vertex_shader(vs.main_entry_point(), ())
+      .triangle_list()
       .viewports_dynamic_scissors_irrelevant(1)
       .fragment_shader(fs.main_entry_point(), ())
       .render_pass(Subpass::from(render_pass.clone(), 0).unwrap())
@@ -259,14 +253,23 @@ impl GameWindow {
       Event::WindowEvent { event: WindowEvent::CloseRequested, .. } => {
         *control_flow = ControlFlow::Exit;
       }
+      Event::WindowEvent { event: WindowEvent::Resized(_), .. } => {
+        resize = true;
+      }
       Event::RedrawEventsCleared => {
         previous_frame_end.as_mut().unwrap().cleanup_finished();
 
+        let c = Arc::strong_count(&data.swapchain);
+        if c > 100 {
+          panic!("Too large strong count: {}", c);
+        }
+
         if resize {
-          // TODO: Recreate swapchain here, without freezing my computer
+          if data.recreate_swapchain() {
+            return;
+          }
           resize = false;
         }
-        data.recreate_swapchain();
 
         let (img_num, suboptimal, acquire_fut) =
           match swapchain::acquire_next_image(data.swapchain.clone(), None) {
@@ -328,6 +331,8 @@ impl GameWindow {
 
         match fut {
           Ok(fut) => {
+            // Fixes dumb nvidia big mode
+            fut.wait(None).unwrap();
             previous_frame_end = Some(fut.boxed());
           }
           Err(FlushError::OutOfDate) => {
@@ -346,19 +351,25 @@ impl GameWindow {
 }
 
 impl WindowData {
-  fn recreate_swapchain(&mut self) {
+  /// Recreates the swapchain. Returns true if this needs to try again.
+  fn recreate_swapchain(&mut self) -> bool {
     let dims: [u32; 2] = self.swapchain.surface().window().inner_size().into();
+    info!("resizing to {:?}", dims);
 
     let (new_swapchain, new_images) = match self.swapchain.recreate().dimensions(dims).build() {
       Ok(r) => r,
       // This error tends to happen when the user is manually resizing the window.
       // Simply restarting the loop is the easiest way to fix this issue.
-      Err(SwapchainCreationError::UnsupportedDimensions) => return,
+      Err(SwapchainCreationError::UnsupportedDimensions) => return true,
       Err(e) => panic!("failed to recreate swapchain: {}", e),
     };
     self.swapchain = new_swapchain;
     self.resize(new_images);
+    false
   }
+  /// Updates the internal framebuffers and viewport with the given images.
+  /// Should be called when the swapchain is created. Otherwise, this will be
+  /// called by recreate_swapchain when needed.
   fn resize(&mut self, images: Vec<Arc<SwapchainImage<Window>>>) {
     let dims: [u32; 2] = images[0].dimensions();
 
@@ -382,13 +393,6 @@ impl WindowData {
         )
       })
       .collect::<Vec<_>>()
-  }
-  pub fn pipeline(
-    &self,
-  ) -> &Arc<
-    GraphicsPipeline<SingleBufferDefinition<Vertex>, Box<dyn PipelineLayoutAbstract + Send + Sync>>,
-  > {
-    &self.pipeline
   }
   pub fn swapchain(&self) -> &Arc<Swapchain<Window>> {
     &self.swapchain
