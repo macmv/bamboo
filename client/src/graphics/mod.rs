@@ -312,11 +312,7 @@ impl GameWindow {
           .end_render_pass()
           .unwrap();
 
-        ui.draw(
-          &mut builder,
-          data.queue.clone(),
-          ImageView::new(data.images[img_num].clone()).unwrap(),
-        );
+        ui.draw(&mut builder, data.queue.clone(), data.buffers[img_num].clone());
 
         let command_buffer = builder.build().unwrap();
 
