@@ -50,7 +50,7 @@ pub struct WindowData {
   device:      Arc<Device>,
   queue:       Arc<Queue>,
   pipeline: Arc<
-    GraphicsPipeline<SingleBufferDefinition<Vertex>, Box<dyn PipelineLayoutAbstract + Send + Sync>>,
+    GraphicsPipeline<SingleBufferDefinition<Vert>, Box<dyn PipelineLayoutAbstract + Send + Sync>>,
   >,
   buffers:     Vec<Arc<Framebuffer<((), Arc<ImageView<Arc<SwapchainImage<Window>>>>)>>>,
   images:      Vec<Arc<SwapchainImage<Window>>>,
@@ -60,10 +60,16 @@ pub struct WindowData {
 }
 
 #[derive(Default, Copy, Clone)]
-struct Vertex {
+pub struct Vert {
   position: [f32; 2],
 }
-vulkano::impl_vertex!(Vertex, position);
+vulkano::impl_vertex!(Vert, position);
+
+impl Vert {
+  pub fn new(x: f32, y: f32) -> Self {
+    Vert { position: [x, y] }
+  }
+}
 
 mod vs {
   vulkano_shaders::shader! {
@@ -123,9 +129,9 @@ pub fn init() -> Result<GameWindow, InitError> {
 
   let queue = queues.next().unwrap();
 
-  let v1 = Vertex { position: [-0.5, -0.5] };
-  let v2 = Vertex { position: [0.0, 0.5] };
-  let v3 = Vertex { position: [0.5, -0.25] };
+  let v1 = Vert::new(-0.5, -0.5);
+  let v2 = Vert::new(0.0, 0.5);
+  let v3 = Vert::new(0.5, -0.25);
 
   CpuAccessibleBuffer::from_iter(
     device.clone(),
@@ -197,7 +203,7 @@ pub fn init() -> Result<GameWindow, InitError> {
 
   let pipeline = Arc::new(
     GraphicsPipeline::start()
-      .vertex_input_single_buffer::<Vertex>()
+      .vertex_input_single_buffer::<Vert>()
       .vertex_shader(vs.main_entry_point(), ())
       .triangle_list()
       .viewports_dynamic_scissors_irrelevant(1)
@@ -232,18 +238,12 @@ impl GameWindow {
         data.device.clone(),
         BufferUsage::all(),
         false,
-        [
-          Vertex { position: [-0.5, -0.25] },
-          Vertex { position: [0.0, 0.5] },
-          Vertex { position: [0.25, -0.1] },
-        ]
-        .iter()
-        .cloned(),
+        [Vert::new(-0.5, -0.25), Vert::new(0.0, 0.5), Vert::new(0.25, -0.1)].iter().cloned(),
       )
       .unwrap()
     };
 
-    let mut push_constants = vs::ty::PushData { offset: [0.0, 0.0] };
+    let mut pc = vs::ty::PushData { offset: [0.0, 0.0] };
     let start = Instant::now();
 
     let mut previous_frame_end = Some(sync::now(data.device.clone()).boxed());
@@ -286,9 +286,7 @@ impl GameWindow {
           resize = true;
         }
 
-        push_constants.offset[1] = Instant::now().duration_since(start).as_secs_f32() % 1.0 - 0.5;
-
-        let clear_values = vec![[0.0, 0.0, 1.0, 1.0].into()];
+        pc.offset[1] = Instant::now().duration_since(start).as_secs_f32() % 1.0 - 0.5;
 
         let mut builder = AutoCommandBufferBuilder::primary(
           data.device.clone(),
@@ -298,21 +296,19 @@ impl GameWindow {
         .unwrap();
 
         builder
-          .begin_render_pass(data.buffers[img_num].clone(), SubpassContents::Inline, clear_values)
-          .unwrap()
-          .draw(
-            data.pipeline.clone(),
-            &data.dyn_state,
-            vertex_buffer.clone(),
-            (),
-            push_constants,
-            [],
+          .begin_render_pass(
+            data.buffers[img_num].clone(),
+            SubpassContents::Inline,
+            vec![[0.0, 0.0, 0.0, 0.0].into()],
           )
-          .unwrap()
-          .end_render_pass()
           .unwrap();
 
-        ui.draw(&mut builder, data.queue.clone(), data.buffers[img_num].clone());
+        builder
+          .draw(data.pipeline.clone(), &data.dyn_state, vertex_buffer.clone(), (), pc, [])
+          .unwrap();
+        ui.draw(&mut builder, data.pipeline.clone(), &data.dyn_state);
+
+        builder.end_render_pass().unwrap();
 
         let command_buffer = builder.build().unwrap();
 
