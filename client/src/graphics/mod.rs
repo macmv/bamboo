@@ -46,17 +46,20 @@ pub struct GameWindow {
 }
 
 pub struct WindowData {
-  render_pass: Arc<RenderPass>,
-  device:      Arc<Device>,
-  queue:       Arc<Queue>,
-  pipeline: Arc<
+  render_pass:   Arc<RenderPass>,
+  device:        Arc<Device>,
+  queue:         Arc<Queue>,
+  game_pipeline: Arc<
     GraphicsPipeline<SingleBufferDefinition<Vert>, Box<dyn PipelineLayoutAbstract + Send + Sync>>,
   >,
-  buffers:     Vec<Arc<Framebuffer<((), Arc<ImageView<Arc<SwapchainImage<Window>>>>)>>>,
-  images:      Vec<Arc<SwapchainImage<Window>>>,
-  dyn_state:   DynamicState,
-  swapchain:   Arc<Swapchain<Window>>,
-  format:      Format,
+  ui_pipeline: Arc<
+    GraphicsPipeline<SingleBufferDefinition<Vert>, Box<dyn PipelineLayoutAbstract + Send + Sync>>,
+  >,
+  buffers:       Vec<Arc<Framebuffer<((), Arc<ImageView<Arc<SwapchainImage<Window>>>>)>>>,
+  images:        Vec<Arc<SwapchainImage<Window>>>,
+  dyn_state:     DynamicState,
+  swapchain:     Arc<Swapchain<Window>>,
+  format:        Format,
 }
 
 #[derive(Default, Copy, Clone)]
@@ -71,7 +74,7 @@ impl Vert {
   }
 }
 
-mod vs {
+mod game_vs {
   vulkano_shaders::shader! {
     ty: "vertex",
     src: "
@@ -90,7 +93,7 @@ void main() {
 }"
   }
 }
-mod fs {
+mod game_fs {
   vulkano_shaders::shader! {
     ty: "fragment",
     src: "
@@ -101,6 +104,40 @@ layout(location = 0) out vec4 f_color;
 
 void main() {
   f_color = vec4(pos.x / 2 + 0.5, pos.y / 2 + 0.5, 1.0, 1.0);
+}"
+  }
+}
+
+mod ui_vs {
+  vulkano_shaders::shader! {
+    ty: "vertex",
+    src: "
+#version 450
+
+layout(location = 0) in vec2 position;
+layout(location = 0) out vec2 pos;
+
+layout(push_constant) uniform PushData {
+  vec2 offset;
+} pc;
+
+void main() {
+  pos = position + pc.offset;
+  gl_Position = vec4(pos, 0.0, 1.0);
+}"
+  }
+}
+mod ui_fs {
+  vulkano_shaders::shader! {
+    ty: "fragment",
+    src: "
+#version 450
+
+layout(location = 0) in vec2 pos;
+layout(location = 0) out vec4 f_color;
+
+void main() {
+  f_color = vec4(1.0, pos.x / 2 + 0.5, pos.y / 2 + 0.5, 1.0);
 }"
   }
 }
@@ -146,9 +183,14 @@ pub fn init() -> Result<GameWindow, InitError> {
   )
   .unwrap();
 
-  let vs = vs::Shader::load(device.clone())
+  let game_vs = game_vs::Shader::load(device.clone())
     .map_err(|e| InitError::new(format!("failed to create vertex shader: {}", e)))?;
-  let fs = fs::Shader::load(device.clone())
+  let game_fs = game_fs::Shader::load(device.clone())
+    .map_err(|e| InitError::new(format!("failed to create fragment shader: {}", e)))?;
+
+  let ui_vs = ui_vs::Shader::load(device.clone())
+    .map_err(|e| InitError::new(format!("failed to create vertex shader: {}", e)))?;
+  let ui_fs = ui_fs::Shader::load(device.clone())
     .map_err(|e| InitError::new(format!("failed to create fragment shader: {}", e)))?;
 
   let event_loop = EventLoop::new();
@@ -184,18 +226,18 @@ pub fn init() -> Result<GameWindow, InitError> {
 
   let render_pass = Arc::new(
     vulkano::single_pass_renderpass!(device.clone(),
-    attachments: {
-      color: {
-        load: Clear,
-        store: Store,
-        format: format,
-        samples: 1,
+      attachments: {
+        color: {
+          load: Clear,
+          store: Store,
+          format: format,
+          samples: 1,
+        }
+      },
+      pass: {
+        color: [color],
+        depth_stencil: {}
       }
-    },
-    pass: {
-      color: [color],
-      depth_stencil: {}
-    }
     )
     .unwrap(),
   );
@@ -213,13 +255,24 @@ pub fn init() -> Result<GameWindow, InitError> {
     reference:    None,
   };
 
-  let pipeline = Arc::new(
+  let game_pipeline = Arc::new(
     GraphicsPipeline::start()
       .vertex_input_single_buffer::<Vert>()
-      .vertex_shader(vs.main_entry_point(), ())
+      .vertex_shader(game_vs.main_entry_point(), ())
       .triangle_list()
       .viewports_dynamic_scissors_irrelevant(1)
-      .fragment_shader(fs.main_entry_point(), ())
+      .fragment_shader(game_fs.main_entry_point(), ())
+      .render_pass(Subpass::from(render_pass.clone(), 0).unwrap())
+      .build(device.clone())
+      .unwrap(),
+  );
+  let ui_pipeline = Arc::new(
+    GraphicsPipeline::start()
+      .vertex_input_single_buffer::<Vert>()
+      .vertex_shader(ui_vs.main_entry_point(), ())
+      .triangle_list()
+      .viewports_dynamic_scissors_irrelevant(1)
+      .fragment_shader(ui_fs.main_entry_point(), ())
       .render_pass(Subpass::from(render_pass.clone(), 0).unwrap())
       .build(device.clone())
       .unwrap(),
@@ -231,7 +284,8 @@ pub fn init() -> Result<GameWindow, InitError> {
     images: vec![],
     device,
     queue,
-    pipeline,
+    game_pipeline,
+    ui_pipeline,
     swapchain,
     dyn_state,
     format,
@@ -255,7 +309,7 @@ impl GameWindow {
       .unwrap()
     };
 
-    let mut pc = vs::ty::PushData { offset: [0.0, 0.0] };
+    let mut pc = game_vs::ty::PushData { offset: [0.0, 0.0] };
     let start = Instant::now();
 
     let mut previous_frame_end = Some(sync::now(data.device.clone()).boxed());
@@ -316,9 +370,9 @@ impl GameWindow {
           .unwrap();
 
         builder
-          .draw(data.pipeline.clone(), &data.dyn_state, vertex_buffer.clone(), (), pc, [])
+          .draw(data.game_pipeline.clone(), &data.dyn_state, vertex_buffer.clone(), (), pc, [])
           .unwrap();
-        ui.draw(&mut builder, data.pipeline.clone(), &data.dyn_state);
+        ui.draw(&mut builder, data.ui_pipeline.clone(), &data.dyn_state);
 
         builder.end_render_pass().unwrap();
 

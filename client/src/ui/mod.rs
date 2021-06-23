@@ -28,16 +28,7 @@ impl UI {
       win.device().clone(),
       BufferUsage::all(),
       false,
-      [
-        Vert::new(-1.0, -1.0),
-        Vert::new(1.0, -1.0),
-        Vert::new(1.0, 1.0),
-        Vert::new(-1.0, -1.0),
-        Vert::new(1.0, 1.0),
-        Vert::new(-1.0, 1.0),
-      ]
-      .iter()
-      .cloned(),
+      [Vert::new(-0.5, -0.25), Vert::new(0.0, 0.5), Vert::new(0.25, -0.1)].iter().cloned(),
     )
     .unwrap();
     UI { img, vbuf }
