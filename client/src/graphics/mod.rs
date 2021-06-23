@@ -78,13 +78,15 @@ mod vs {
 #version 450
 
 layout(location = 0) in vec2 position;
+layout(location = 0) out vec2 pos;
 
 layout(push_constant) uniform PushData {
   vec2 offset;
 } pc;
 
 void main() {
-  gl_Position = vec4(position + pc.offset, 0.0, 1.0);
+  pos = position + pc.offset;
+  gl_Position = vec4(pos, 0.0, 1.0);
 }"
   }
 }
@@ -94,18 +96,21 @@ mod fs {
     src: "
 #version 450
 
+layout(location = 0) in vec2 pos;
 layout(location = 0) out vec4 f_color;
 
 void main() {
-  f_color = vec4(1.0, 0.0, 0.0, 1.0);
+  f_color = vec4(pos.x / 2 + 0.5, pos.y / 2 + 0.5, 1.0, 1.0);
 }"
   }
 }
 
 pub fn init() -> Result<GameWindow, InitError> {
   let inst = {
+    let layers = vec!["VK_LAYER_KHRONOS_validation"];
+
     let extensions = vulkano_win::required_extensions();
-    Instance::new(None, &extensions, None)
+    Instance::new(None, &extensions, layers)
       .map_err(|e| InitError::new(format!("failed to create vulkan instance: {}", e)))?
   };
 
@@ -150,6 +155,13 @@ pub fn init() -> Result<GameWindow, InitError> {
   let surface =
     VkSurfaceBuild::build_vk_surface(WindowBuilder::new(), &event_loop, inst.clone())
       .map_err(|e| InitError::new(format!("error while creating window surface: {}", e)))?;
+
+  if !surface
+    .is_supported(queue.family())
+    .map_err(|e| InitError::new(format!("failed to get surface support: {}", e)))?
+  {
+    return Err(InitError::new("swapchain surface does not support this queue family"));
+  }
 
   let caps = surface
     .capabilities(physical)
