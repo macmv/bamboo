@@ -56,7 +56,6 @@ pub struct WindowData {
     GraphicsPipeline<SingleBufferDefinition<Vert>, Box<dyn PipelineLayoutAbstract + Send + Sync>>,
   >,
   buffers:       Vec<Arc<Framebuffer<((), Arc<ImageView<Arc<SwapchainImage<Window>>>>)>>>,
-  images:        Vec<Arc<SwapchainImage<Window>>>,
   dyn_state:     DynamicState,
   swapchain:     Arc<Swapchain<Window>>,
   format:        Format,
@@ -281,7 +280,6 @@ pub fn init() -> Result<GameWindow, InitError> {
   let mut data = WindowData {
     render_pass,
     buffers: vec![],
-    images: vec![],
     device,
     queue,
     game_pipeline,
@@ -324,11 +322,6 @@ impl GameWindow {
       }
       Event::RedrawEventsCleared => {
         previous_frame_end.as_mut().unwrap().cleanup_finished();
-
-        let c = Arc::strong_count(&data.swapchain);
-        if c > 100 {
-          panic!("Too large strong count: {}", c);
-        }
 
         if resize {
           if data.recreate_swapchain() {
@@ -438,7 +431,6 @@ impl WindowData {
     };
     self.dyn_state.viewports = Some(vec![viewport]);
 
-    self.images = images.clone();
     self.buffers = images
       .into_iter()
       .map(|img| {
