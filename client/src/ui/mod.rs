@@ -86,7 +86,8 @@ impl UI {
     >,
     dyn_state: &DynamicState,
   ) {
-    let pc = ui_vs::ty::PushData { pos: [0.3, 0.4], size: [0.2, 0.5] };
+    let pc =
+      ui_vs::ty::PushData { pos: [0.3, 0.4], size: [0.4, 0.05], corner_size: 0.1 };
     builder.draw(pipeline, dyn_state, self.vbuf.clone(), self.set.clone(), pc, []).unwrap();
   }
 }
