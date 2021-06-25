@@ -1,5 +1,5 @@
 use png as png_mod;
-use std::{fs::File, sync::Arc};
+use std::{error::Error, fmt, fs::File, io, sync::Arc};
 use vulkano::{
   command_buffer::{CommandBufferExecFuture, PrimaryAutoCommandBuffer},
   device::Queue,
@@ -8,6 +8,25 @@ use vulkano::{
   sync::NowFuture,
 };
 
+#[derive(Debug)]
+pub enum PngError {
+  IO(io::Error),
+  InvalidFormat(png::ColorType),
+  Decoding(png::DecodingError),
+}
+
+impl fmt::Display for PngError {
+  fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    match self {
+      Self::IO(e) => write!(f, "{}", e),
+      Self::InvalidFormat(e) => write!(f, "invalid format: {:?} (format must be RGBA)", e),
+      Self::Decoding(e) => write!(f, "decoder error: {}", e),
+    }
+  }
+}
+
+impl Error for PngError {}
+
 pub fn png(
   path: &str,
   queue: Arc<Queue>,
@@ -15,35 +34,35 @@ pub fn png(
   Arc<ImageView<Arc<ImmutableImage>>>,
   CommandBufferExecFuture<NowFuture, PrimaryAutoCommandBuffer>,
 )> {
-  let f = match File::open(path) {
+  match png_err(path, queue) {
+    Ok(v) => Some(v),
     Err(e) => {
-      error!("error while loading {}: {}", path, e);
-      return None;
+      info!("error while loading {}: {}", path, e);
+      None
     }
-    Ok(f) => f,
-  };
+  }
+}
+
+pub fn png_err(
+  path: &str,
+  queue: Arc<Queue>,
+) -> Result<
+  (
+    Arc<ImageView<Arc<ImmutableImage>>>,
+    CommandBufferExecFuture<NowFuture, PrimaryAutoCommandBuffer>,
+  ),
+  PngError,
+> {
+  let f = File::open(path).map_err(|e| PngError::IO(e))?;
   let decoder = png_mod::Decoder::new(f);
-  let (info, mut reader) = match decoder.read_info() {
-    Err(e) => {
-      error!("error while loading {}: {}", path, e);
-      return None;
-    }
-    Ok(f) => f,
-  };
+  let (info, mut reader) = decoder.read_info().map_err(|e| PngError::Decoding(e))?;
   let dimensions =
     ImageDimensions::Dim2d { width: info.width, height: info.height, array_layers: 1 };
   if info.color_type != png::ColorType::RGBA {
-    error!(
-      "error while loading {}: invalid color format {:?} (format must be RGBA)",
-      path, info.color_type
-    );
-    return None;
+    return Err(PngError::InvalidFormat(info.color_type));
   }
   let mut image_data = vec![0; (info.width * info.height * 4) as usize];
-  if let Err(e) = reader.next_frame(&mut image_data) {
-    error!("error while loading {}: {}", path, e);
-    return None;
-  }
+  reader.next_frame(&mut image_data).map_err(|e| PngError::Decoding(e))?;
 
   let (image, future) = ImmutableImage::from_iter(
     image_data.iter().cloned(),
@@ -53,5 +72,5 @@ pub fn png(
     queue,
   )
   .unwrap();
-  Some((ImageView::new(image).unwrap(), future))
+  Ok((ImageView::new(image).unwrap(), future))
 }
