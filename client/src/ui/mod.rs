@@ -2,7 +2,7 @@ use crate::{
   graphics::{ui_vs, GameWindow, Vert},
   util::load,
 };
-use std::sync::Arc;
+use std::{sync::Arc, time::Instant};
 use vulkano::{
   buffer::{BufferUsage, CpuAccessibleBuffer},
   command_buffer::{AutoCommandBufferBuilder, DynamicState, PrimaryAutoCommandBuffer},
@@ -24,7 +24,8 @@ pub struct UI {
       PersistentDescriptorSetSampler,
     )>,
   >,
-  vbuf: Arc<CpuAccessibleBuffer<[Vert]>>,
+  vbuf:  Arc<CpuAccessibleBuffer<[Vert]>>,
+  start: Instant,
 }
 
 impl UI {
@@ -75,7 +76,7 @@ impl UI {
     )
     .unwrap();
 
-    UI { set, vbuf }
+    UI { set, vbuf, start: Instant::now() }
   }
 
   pub fn draw(
@@ -86,8 +87,12 @@ impl UI {
     >,
     dyn_state: &DynamicState,
   ) {
-    let pc =
-      ui_vs::ty::PushData { pos: [0.3, 0.4], size: [0.4, 0.05], corner_size: 0.1 };
+    let t = Instant::now().duration_since(self.start).as_secs_f32() / 10.0 % 1.0;
+    let pc = ui_vs::ty::PushData {
+      pos:         [0.3, 0.4],
+      size:        [0.1 + t / 3.0, 0.4 - t / 3.0],
+      corner_size: 0.05,
+    };
     builder.draw(pipeline, dyn_state, self.vbuf.clone(), self.set.clone(), pc, []).unwrap();
   }
 }
