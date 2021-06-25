@@ -1,4 +1,7 @@
-use crate::graphics::{GameWindow, Vert};
+use crate::{
+  graphics,
+  graphics::{GameWindow, Vert},
+};
 use png;
 use std::{fs::File, sync::Arc};
 use vulkano::{
@@ -17,12 +20,12 @@ use vulkano::{
 };
 
 pub struct UI {
-  set: Arc<
-    PersistentDescriptorSet<(
-      ((), PersistentDescriptorSetImg<Arc<ImageView<Arc<ImmutableImage>>>>),
-      PersistentDescriptorSetSampler,
-    )>,
-  >,
+  // set: Arc<
+  //   PersistentDescriptorSet<(
+  //     ((), PersistentDescriptorSetImg<Arc<ImageView<Arc<ImmutableImage>>>>),
+  //     PersistentDescriptorSetSampler,
+  //   )>,
+  // >,
   vbuf: Arc<CpuAccessibleBuffer<[Vert]>>,
 }
 
@@ -58,7 +61,7 @@ impl UI {
       win.device().clone(),
       Filter::Linear,
       Filter::Linear,
-      MipmapMode::Nearest,
+      MipmapMode::Linear,
       SamplerAddressMode::Repeat,
       SamplerAddressMode::Repeat,
       SamplerAddressMode::Repeat,
@@ -69,24 +72,25 @@ impl UI {
     )
     .unwrap();
 
-    let layout = win.ui_pipeline().layout().descriptor_set_layout(0).unwrap();
-    let set = Arc::new(
-      PersistentDescriptorSet::start(layout.clone())
-        .add_sampled_image(tex.clone(), sampler.clone())
-        .unwrap()
-        .build()
-        .unwrap(),
-    );
+    // let layout = win.ui_pipeline().layout().descriptor_set_layout(0).unwrap();
+    // let set = Arc::new(
+    //   PersistentDescriptorSet::start(layout.clone())
+    //     .add_sampled_image(tex, sampler)
+    //     .unwrap()
+    //     .build()
+    //     .unwrap(),
+    // );
 
     let vbuf = CpuAccessibleBuffer::from_iter(
       win.device().clone(),
       BufferUsage::all(),
       false,
-      [Vert::new(-0.5, -0.25), Vert::new(0.0, 0.5), Vert::new(0.25, -0.1)].iter().cloned(),
+      [Vert::new(-1.0, -1.0), Vert::new(0.0, 1.0), Vert::new(0.25, -1.0)].iter().cloned(),
     )
     .unwrap();
 
-    UI { set, vbuf }
+    // UI { set, vbuf }
+    UI { vbuf }
   }
 
   pub fn draw(
@@ -97,6 +101,9 @@ impl UI {
     >,
     dyn_state: &DynamicState,
   ) {
-    builder.draw(pipeline, dyn_state, self.vbuf.clone(), self.set.clone(), (), []).unwrap();
+    let pc = graphics::ui_vs::ty::PushData { pos: [0.3, 0.4], size: [0.2, 0.5] };
+    // builder.draw(pipeline, dyn_state, self.vbuf.clone(), self.set.clone(), (),
+    // []).unwrap();
+    builder.draw(pipeline, dyn_state, self.vbuf.clone(), (), pc, []).unwrap();
   }
 }

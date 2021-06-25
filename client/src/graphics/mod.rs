@@ -89,8 +89,8 @@ layout(push_constant) uniform PushData {
 } pc;
 
 void main() {
-  uv = pos + pc.offset;
-  gl_Position = vec4(uv, 0.0, 1.0);
+  uv = pos;
+  gl_Position = vec4(pos + pc.offset, 0.0, 1.0);
 }"
   }
 }
@@ -109,7 +109,7 @@ void main() {
   }
 }
 
-mod ui_vs {
+pub mod ui_vs {
   vulkano_shaders::shader! {
     ty: "vertex",
     src: "
@@ -119,12 +119,13 @@ layout(location = 0) in vec2 pos;
 layout(location = 0) out vec2 uv;
 
 layout(push_constant) uniform PushData {
-  vec2 offset;
+  vec2 pos;
+  vec2 size;
 } pc;
 
 void main() {
-  uv = pos + pc.offset;
-  gl_Position = vec4(uv, 0.0, 1.0);
+  uv = pos;
+  gl_Position = vec4(pos * pc.size + pc.pos, 0.0, 1.0);
 }"
   }
 }
@@ -137,10 +138,11 @@ mod ui_fs {
 layout(location = 0) in vec2 uv;
 layout(location = 0) out vec4 f_color;
 
-layout(set = 0, binding = 0) uniform sampler2D img;
+// layout(set = 0, binding = 0) uniform sampler2D img;
 
 void main() {
-  vec4 col = texture(img, uv);
+  // vec4 col = texture(img, uv);
+  vec4 col = vec4(1.0, 0, 0, 0);
   f_color = vec4(col.r, uv.x / 2 + 0.5, uv.y / 2 + 0.5, 1.0);
 }"
   }
@@ -368,9 +370,9 @@ impl GameWindow {
           )
           .unwrap();
 
-        builder
-          .draw(data.game_pipeline.clone(), &data.dyn_state, vertex_buffer.clone(), (), pc, [])
-          .unwrap();
+        // builder
+        //   .draw(data.game_pipeline.clone(), &data.dyn_state, vertex_buffer.clone(),
+        // (), pc, [])   .unwrap();
         ui.draw(&mut builder, data.ui_pipeline.clone(), &data.dyn_state);
 
         builder.end_render_pass().unwrap();
