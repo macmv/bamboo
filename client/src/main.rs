@@ -5,6 +5,7 @@ extern crate log;
 
 mod graphics;
 mod ui;
+pub mod util;
 mod world;
 
 use ui::UI;

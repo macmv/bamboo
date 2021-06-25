@@ -1,9 +1,8 @@
 use crate::{
-  graphics,
-  graphics::{GameWindow, Vert},
+  graphics::{ui_vs, GameWindow, Vert},
+  util::load,
 };
-use png;
-use std::{fs::File, sync::Arc};
+use std::sync::Arc;
 use vulkano::{
   buffer::{BufferUsage, CpuAccessibleBuffer},
   command_buffer::{AutoCommandBufferBuilder, DynamicState, PrimaryAutoCommandBuffer},
@@ -13,8 +12,7 @@ use vulkano::{
     },
     PipelineLayoutAbstract,
   },
-  format::Format,
-  image::{view::ImageView, ImageDimensions, ImmutableImage, MipmapsCount},
+  image::{view::ImageView, ImmutableImage},
   pipeline::{vertex::SingleBufferDefinition, GraphicsPipeline},
   sampler::{Filter, MipmapMode, Sampler, SamplerAddressMode},
 };
@@ -31,35 +29,8 @@ pub struct UI {
 
 impl UI {
   pub fn new(win: &mut GameWindow) -> Self {
-    let (tex, tex_fut) = {
-      let path = "client/assets/textures/ui/button-down.png";
-      let f = File::open(path).unwrap();
-      let decoder = png::Decoder::new(f);
-      let (info, mut reader) = decoder.read_info().unwrap();
-      let dimensions = ImageDimensions::Dim2d {
-        width:        info.width,
-        height:       info.height,
-        array_layers: 1,
-      };
-      if info.color_type != png::ColorType::RGBA {
-        panic!(
-          "invalid format {:?} when loading image {}. images must be saved with an alpha layer",
-          info.color_type, path
-        );
-      }
-      let mut image_data = vec![0; (info.width * info.height * 4) as usize];
-      reader.next_frame(&mut image_data).unwrap();
-
-      let (image, future) = ImmutableImage::from_iter(
-        image_data.iter().cloned(),
-        dimensions,
-        MipmapsCount::One,
-        Format::R8G8B8A8Srgb,
-        win.queue().clone(),
-      )
-      .unwrap();
-      (ImageView::new(image).unwrap(), future)
-    };
+    let (tex, tex_fut) =
+      load::png("client/assets/textures/ui/button-down.png", win.queue().clone()).unwrap();
 
     win.add_initial_future(tex_fut);
 
@@ -115,7 +86,7 @@ impl UI {
     >,
     dyn_state: &DynamicState,
   ) {
-    let pc = graphics::ui_vs::ty::PushData { pos: [0.3, 0.4], size: [0.2, 0.5] };
+    let pc = ui_vs::ty::PushData { pos: [0.3, 0.4], size: [0.2, 0.5] };
     builder.draw(pipeline, dyn_state, self.vbuf.clone(), self.set.clone(), pc, []).unwrap();
   }
 }
