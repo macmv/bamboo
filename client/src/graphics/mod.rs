@@ -61,6 +61,8 @@ pub struct WindowData {
   dyn_state:     DynamicState,
   swapchain:     Arc<Swapchain<Window>>,
   format:        Format,
+  width:         u32,
+  height:        u32,
 }
 
 #[derive(Default, Copy, Clone)]
@@ -248,6 +250,8 @@ pub fn init() -> Result<GameWindow, InitError> {
     swapchain,
     dyn_state,
     format,
+    width: 0,
+    height: 0,
   };
   data.resize(images);
 
@@ -326,7 +330,7 @@ impl GameWindow {
         builder
           .draw(data.game_pipeline.clone(), &data.dyn_state, vertex_buffer.clone(), (), pc, [])
           .unwrap();
-        ui.draw(&mut builder, data.ui_pipeline.clone(), &data.dyn_state);
+        ui.draw(&mut builder, data.ui_pipeline.clone(), &data.dyn_state, &data);
 
         builder.end_render_pass().unwrap();
 
@@ -394,10 +398,12 @@ impl WindowData {
   /// called by recreate_swapchain when needed.
   fn resize(&mut self, images: Vec<Arc<SwapchainImage<Window>>>) {
     let dims: [u32; 2] = images[0].dimensions();
+    self.width = dims[0];
+    self.height = dims[1];
 
     let viewport = Viewport {
       origin:      [0.0, 0.0],
-      dimensions:  [dims[0] as f32, dims[1] as f32],
+      dimensions:  [self.width as f32, self.height as f32],
       depth_range: 0.0..1.0,
     };
     self.dyn_state.viewports = Some(vec![viewport]);
@@ -416,6 +422,7 @@ impl WindowData {
       .collect::<Vec<_>>()
   }
 
+  #[inline(always)]
   pub fn ui_pipeline(
     &self,
   ) -> &Arc<
@@ -423,17 +430,29 @@ impl WindowData {
   > {
     &self.ui_pipeline
   }
+  #[inline(always)]
   pub fn swapchain(&self) -> &Arc<Swapchain<Window>> {
     &self.swapchain
   }
+  #[inline(always)]
   pub fn queue(&self) -> &Arc<Queue> {
     &self.queue
   }
+  #[inline(always)]
   pub fn device(&self) -> &Arc<Device> {
     &self.device
   }
+  #[inline(always)]
   pub fn format(&self) -> Format {
     self.format
+  }
+  #[inline(always)]
+  pub fn width(&self) -> u32 {
+    self.width
+  }
+  #[inline(always)]
+  pub fn height(&self) -> u32 {
+    self.height
   }
 }
 

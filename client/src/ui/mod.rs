@@ -1,5 +1,5 @@
 use crate::{
-  graphics::{ui_vs, GameWindow, Vert},
+  graphics::{ui_vs, GameWindow, Vert, WindowData},
   util::load,
 };
 use std::{sync::Arc, time::Instant};
@@ -86,12 +86,14 @@ impl UI {
       GraphicsPipeline<SingleBufferDefinition<Vert>, Box<dyn PipelineLayoutAbstract + Send + Sync>>,
     >,
     dyn_state: &DynamicState,
+    win: &WindowData,
   ) {
     let t = Instant::now().duration_since(self.start).as_secs_f32() / 10.0 % 1.0;
     let pc = ui_vs::ty::PushData {
       pos:         [0.3, 0.4],
       size:        [0.1 + t / 3.0, 0.4 - t / 3.0],
       corner_size: 0.05,
+      ratio:       win.width() as f32 / win.height() as f32,
     };
     builder.draw(pipeline, dyn_state, self.vbuf.clone(), self.set.clone(), pc, []).unwrap();
   }
