@@ -124,7 +124,7 @@ layout(push_constant) uniform PushData {
 } pc;
 
 void main() {
-  uv = pos;
+  uv = (pos + 1) / 2;
   gl_Position = vec4(pos * pc.size + pc.pos, 0.0, 1.0);
 }"
   }

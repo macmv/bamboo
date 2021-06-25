@@ -32,7 +32,8 @@ pub struct UI {
 impl UI {
   pub fn new(win: &mut GameWindow) -> Self {
     let (tex, tex_fut) = {
-      let f = File::open("client/assets/textures/ui/button-down.png").unwrap();
+      let path = "client/assets/textures/ui/button-down.png";
+      let f = File::open(path).unwrap();
       let decoder = png::Decoder::new(f);
       let (info, mut reader) = decoder.read_info().unwrap();
       let dimensions = ImageDimensions::Dim2d {
@@ -40,8 +41,13 @@ impl UI {
         height:       info.height,
         array_layers: 1,
       };
-      let mut image_data = Vec::new();
-      image_data.resize((info.width * info.height * 4) as usize, 0);
+      if info.color_type != png::ColorType::RGBA {
+        panic!(
+          "invalid format {:?} when loading image {}. images must be saved with an alpha layer",
+          info.color_type, path
+        );
+      }
+      let mut image_data = vec![0; (info.width * info.height * 4) as usize];
       reader.next_frame(&mut image_data).unwrap();
 
       let (image, future) = ImmutableImage::from_iter(
@@ -59,8 +65,8 @@ impl UI {
 
     let sampler = Sampler::new(
       win.device().clone(),
-      Filter::Linear,
-      Filter::Linear,
+      Filter::Nearest,
+      Filter::Nearest,
       MipmapMode::Linear,
       SamplerAddressMode::Repeat,
       SamplerAddressMode::Repeat,
