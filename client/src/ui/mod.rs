@@ -85,7 +85,16 @@ impl UI {
       win.device().clone(),
       BufferUsage::all(),
       false,
-      [Vert::new(-1.0, -1.0), Vert::new(0.0, 1.0), Vert::new(0.25, -1.0)].iter().cloned(),
+      [
+        Vert::new(-1.0, -1.0),
+        Vert::new(1.0, 1.0),
+        Vert::new(1.0, -1.0),
+        Vert::new(-1.0, -1.0),
+        Vert::new(-1.0, 1.0),
+        Vert::new(1.0, 1.0),
+      ]
+      .iter()
+      .cloned(),
     )
     .unwrap();
 

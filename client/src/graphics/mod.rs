@@ -142,7 +142,7 @@ layout(set = 0, binding = 0) uniform sampler2D img;
 
 void main() {
   vec4 col = texture(img, uv);
-  f_color = vec4(col.r, uv.x / 2 + 0.5, uv.y / 2 + 0.5, 1.0);
+  f_color = col;
 }"
   }
 }
