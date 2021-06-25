@@ -1,6 +1,6 @@
 use crate::graphics::{GameWindow, Vert};
 use png;
-use std::{fs::File, io::Cursor, sync::Arc};
+use std::{fs::File, sync::Arc};
 use vulkano::{
   buffer::{BufferUsage, CpuAccessibleBuffer},
   command_buffer::{AutoCommandBufferBuilder, DynamicState, PrimaryAutoCommandBuffer},
@@ -11,7 +11,7 @@ use vulkano::{
     PipelineLayoutAbstract,
   },
   format::Format,
-  image::{view::ImageView, ImageDimensions, ImmutableImage, MipmapsCount, StorageImage},
+  image::{view::ImageView, ImageDimensions, ImmutableImage, MipmapsCount},
   pipeline::{vertex::SingleBufferDefinition, GraphicsPipeline},
   sampler::{Filter, MipmapMode, Sampler, SamplerAddressMode},
 };
