@@ -78,118 +78,26 @@ impl Vert {
 mod game_vs {
   vulkano_shaders::shader! {
     ty: "vertex",
-    src: "
-#version 450
-
-layout(location = 0) in vec2 pos;
-layout(location = 0) out vec2 uv;
-
-layout(push_constant) uniform PushData {
-  vec2 offset;
-} pc;
-
-void main() {
-  uv = pos;
-  gl_Position = vec4(pos + pc.offset, 0.0, 1.0);
-}"
+    path: "src/shader/game.vs"
   }
 }
 mod game_fs {
   vulkano_shaders::shader! {
     ty: "fragment",
-    src: "
-#version 450
-
-layout(location = 0) in vec2 uv;
-layout(location = 0) out vec4 f_color;
-
-void main() {
-  f_color = vec4(uv.x / 2 + 0.5, uv.y / 2 + 0.5, 1.0, 1.0);
-}"
+    path: "src/shader/game.fs"
   }
 }
 
 pub mod ui_vs {
   vulkano_shaders::shader! {
     ty: "vertex",
-    src: "
-#version 450
-
-layout(location = 0) in vec2 pos;
-layout(location = 0) out vec2 uv;
-layout(location = 1) out float corner_size;
-layout(location = 2) out float ratio;
-
-layout(push_constant) uniform PushData {
-  vec2 pos;
-  vec2 size;
-  float corner_size;
-} pc;
-
-void main() {
-  uv = (pos + 1) / 2;
-  corner_size = pc.corner_size;
-  ratio = pc.size.y / pc.size.x;
-  gl_Position = vec4(pos * pc.size + pc.pos, 0.0, 1.0);
-}"
+    path: "src/shader/ui.vs"
   }
 }
 mod ui_fs {
   vulkano_shaders::shader! {
     ty: "fragment",
-    src: "
-#version 450
-
-layout(location = 0) in vec2 uv;
-layout(location = 1) in float cs;
-layout(location = 2) in float ratio;
-layout(location = 0) out vec4 f_color;
-
-layout(set = 0, binding = 0) uniform sampler2D img;
-
-void main() {
-  vec2 mapped = uv;
-  float cs_x = cs * ratio;
-  float cs_y = cs / ratio;
-  if (uv.x < cs_x) {
-    // mapped.x is within 0 - cs. We want it at 0 to 0.333
-    mapped.x /= cs_x;
-    mapped.x /= 3;
-  } else if (uv.x > 1 - cs_x) {
-    // mapped.x is within (1-cs) - 1. We want it at 0.666 to 1.
-    mapped.x -= 1 - cs_x;
-    mapped.x /= cs_x;
-    // It is now within the range 0-1
-    mapped.x /= 3;
-    mapped.x += 0.666;
-  } else {
-    mapped.x -= cs_x;
-    mapped.x /= (1 - cs_x * 2);
-    // mapped.x is now within the range 0-1. We want it to be within 0.333 to 0.666
-    mapped.x /= 3;
-    mapped.x += 0.333;
-  }
-  if (uv.y < cs_y) {
-    // mapped.y is within 0 - cs. We want it at 0 to 0.333
-    mapped.y /= cs_y;
-    mapped.y /= 3;
-  } else if (uv.y > 1 - cs_y) {
-    // mapped.y is within (1-cs) - 1. We want it at 0.666 to 1.
-    mapped.y -= 1 - cs_y;
-    mapped.y /= cs_y;
-    // It is now within the range 0-1
-    mapped.y /= 3;
-    mapped.y += 0.666;
-  } else {
-    mapped.y -= cs_y;
-    mapped.y /= (1 - cs_y * 2);
-    // mapped.y is now within the range 0-1. We want it to be within 0.333 to 0.666
-    mapped.y /= 3;
-    mapped.y += 0.333;
-  }
-  vec4 col = texture(img, mapped);
-  f_color = col;
-}"
+    path: "src/shader/ui.fs"
   }
 }
 
