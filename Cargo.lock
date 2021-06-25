@@ -294,6 +294,7 @@ dependencies = [
  "data",
  "futures",
  "log",
+ "png",
  "serde",
  "serde_derive",
  "serde_json",

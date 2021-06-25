@@ -22,5 +22,7 @@ vulkano = "0.23"
 vulkano-win = "0.23"
 vulkano-shaders = "0.23"
 
+png = "0.16.8"
+
 [build-dependencies]
 data = { path = "../data" }

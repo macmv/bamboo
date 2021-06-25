@@ -43,6 +43,8 @@ impl Error for InitError {}
 pub struct GameWindow {
   event_loop: EventLoop<()>,
   data:       WindowData,
+
+  initial_future: Option<Box<dyn GpuFuture>>,
 }
 
 pub struct WindowData {
@@ -63,13 +65,13 @@ pub struct WindowData {
 
 #[derive(Default, Copy, Clone)]
 pub struct Vert {
-  position: [f32; 2],
+  pos: [f32; 2],
 }
-vulkano::impl_vertex!(Vert, position);
+vulkano::impl_vertex!(Vert, pos);
 
 impl Vert {
   pub fn new(x: f32, y: f32) -> Self {
-    Vert { position: [x, y] }
+    Vert { pos: [x, y] }
   }
 }
 
@@ -79,16 +81,16 @@ mod game_vs {
     src: "
 #version 450
 
-layout(location = 0) in vec2 position;
-layout(location = 0) out vec2 pos;
+layout(location = 0) in vec2 pos;
+layout(location = 0) out vec2 uv;
 
 layout(push_constant) uniform PushData {
   vec2 offset;
 } pc;
 
 void main() {
-  pos = position + pc.offset;
-  gl_Position = vec4(pos, 0.0, 1.0);
+  uv = pos + pc.offset;
+  gl_Position = vec4(uv, 0.0, 1.0);
 }"
   }
 }
@@ -98,11 +100,11 @@ mod game_fs {
     src: "
 #version 450
 
-layout(location = 0) in vec2 pos;
+layout(location = 0) in vec2 uv;
 layout(location = 0) out vec4 f_color;
 
 void main() {
-  f_color = vec4(pos.x / 2 + 0.5, pos.y / 2 + 0.5, 1.0, 1.0);
+  f_color = vec4(uv.x / 2 + 0.5, uv.y / 2 + 0.5, 1.0, 1.0);
 }"
   }
 }
@@ -113,16 +115,16 @@ mod ui_vs {
     src: "
 #version 450
 
-layout(location = 0) in vec2 position;
-layout(location = 0) out vec2 pos;
+layout(location = 0) in vec2 pos;
+layout(location = 0) out vec2 uv;
 
 layout(push_constant) uniform PushData {
   vec2 offset;
 } pc;
 
 void main() {
-  pos = position + pc.offset;
-  gl_Position = vec4(pos, 0.0, 1.0);
+  uv = pos + pc.offset;
+  gl_Position = vec4(uv, 0.0, 1.0);
 }"
   }
 }
@@ -132,11 +134,14 @@ mod ui_fs {
     src: "
 #version 450
 
-layout(location = 0) in vec2 pos;
+layout(location = 0) in vec2 uv;
 layout(location = 0) out vec4 f_color;
 
+layout(set = 0, binding = 0) uniform sampler2D img;
+
 void main() {
-  f_color = vec4(1.0, pos.x / 2 + 0.5, pos.y / 2 + 0.5, 1.0);
+  vec4 col = texture(img, uv);
+  f_color = vec4(col.r, uv.x / 2 + 0.5, uv.y / 2 + 0.5, 1.0);
 }"
   }
 }
@@ -277,6 +282,7 @@ pub fn init() -> Result<GameWindow, InitError> {
       .unwrap(),
   );
 
+  let initial_future = Some(sync::now(device.clone()).boxed());
   let mut data = WindowData {
     render_pass,
     buffers: vec![],
@@ -290,7 +296,7 @@ pub fn init() -> Result<GameWindow, InitError> {
   };
   data.resize(images);
 
-  Ok(GameWindow { event_loop, data })
+  Ok(GameWindow { event_loop, data, initial_future })
 }
 
 impl GameWindow {
@@ -310,7 +316,7 @@ impl GameWindow {
     let mut pc = game_vs::ty::PushData { offset: [0.0, 0.0] };
     let start = Instant::now();
 
-    let mut previous_frame_end = Some(sync::now(data.device.clone()).boxed());
+    let mut previous_frame_fut = self.initial_future;
     let mut resize = false;
 
     self.event_loop.run(move |event, _, control_flow| match event {
@@ -321,7 +327,7 @@ impl GameWindow {
         resize = true;
       }
       Event::RedrawEventsCleared => {
-        previous_frame_end.as_mut().unwrap().cleanup_finished();
+        previous_frame_fut.as_mut().unwrap().cleanup_finished();
 
         if resize {
           if data.recreate_swapchain() {
@@ -371,7 +377,7 @@ impl GameWindow {
 
         let command_buffer = builder.build().unwrap();
 
-        let fut = previous_frame_end
+        let fut = previous_frame_fut
           .take()
           .unwrap()
           .join(acquire_fut)
@@ -384,20 +390,30 @@ impl GameWindow {
           Ok(fut) => {
             // Fixes dumb nvidia big mode
             fut.wait(None).unwrap();
-            previous_frame_end = Some(fut.boxed());
+            previous_frame_fut = Some(fut.boxed());
           }
           Err(FlushError::OutOfDate) => {
             resize = true;
-            previous_frame_end = Some(sync::now(data.device.clone()).boxed());
+            previous_frame_fut = Some(sync::now(data.device.clone()).boxed());
           }
           Err(e) => {
             error!("failed to flush future: {:?}", e);
-            previous_frame_end = Some(sync::now(data.device.clone()).boxed());
+            previous_frame_fut = Some(sync::now(data.device.clone()).boxed());
           }
         }
       }
       _ => (),
     });
+  }
+
+  pub fn add_initial_future<F>(&mut self, f: F)
+  where
+    F: GpuFuture + 'static,
+  {
+    match self.initial_future.take() {
+      Some(fut) => self.initial_future = Some(fut.join(f).boxed()),
+      None => self.initial_future = Some(f.boxed()),
+    }
   }
 }
 
@@ -443,6 +459,14 @@ impl WindowData {
         )
       })
       .collect::<Vec<_>>()
+  }
+
+  pub fn ui_pipeline(
+    &self,
+  ) -> &Arc<
+    GraphicsPipeline<SingleBufferDefinition<Vert>, Box<dyn PipelineLayoutAbstract + Send + Sync>>,
+  > {
+    &self.ui_pipeline
   }
   pub fn swapchain(&self) -> &Arc<Swapchain<Window>> {
     &self.swapchain
