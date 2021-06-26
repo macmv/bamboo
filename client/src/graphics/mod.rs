@@ -78,6 +78,21 @@ impl Vert {
   pub fn new(x: f32, y: f32) -> Self {
     Vert { pos: [x, y] }
   }
+
+  #[inline(always)]
+  pub fn x(&self) -> f32 {
+    self.pos[0]
+  }
+  #[inline(always)]
+  pub fn y(&self) -> f32 {
+    self.pos[1]
+  }
+}
+
+impl Into<[f32; 2]> for Vert {
+  fn into(self) -> [f32; 2] {
+    self.pos
+  }
 }
 
 mod game_vs {
