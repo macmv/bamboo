@@ -1,4 +1,4 @@
-use std::sync::Arc;
+use std::{process, sync::Arc};
 
 #[macro_use]
 extern crate log;
@@ -33,7 +33,10 @@ fn main() {
     ui::Layout::new()
       .button(Vert::new(-0.2, -0.14), Vert::new(0.4, 0.08), || info!("play"))
       .button(Vert::new(-0.2, -0.04), Vert::new(0.4, 0.08), || info!("options"))
-      .button(Vert::new(-0.2, 0.06), Vert::new(0.4, 0.08), || info!("closing")),
+      .button(Vert::new(-0.2, 0.06), Vert::new(0.4, 0.08), || {
+        info!("closing");
+        process::exit(0)
+      }),
   );
 
   info!("starting game");
