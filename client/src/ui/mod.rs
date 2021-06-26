@@ -114,11 +114,11 @@ impl UI {
       BufferUsage::all(),
       false,
       [
-        Vert::new(-1.0, -1.0),
+        Vert::new(0.0, 0.0),
         Vert::new(1.0, 1.0),
-        Vert::new(1.0, -1.0),
-        Vert::new(-1.0, -1.0),
-        Vert::new(-1.0, 1.0),
+        Vert::new(1.0, 0.0),
+        Vert::new(0.0, 0.0),
+        Vert::new(0.0, 1.0),
         Vert::new(1.0, 1.0),
       ]
       .iter()
@@ -159,7 +159,7 @@ impl UI {
           let pc = ui_vs::ty::PushData {
             pos:         pos.into(),
             size:        size.into(),
-            corner_size: 0.05,
+            corner_size: 0.03,
             ratio:       win.width() as f32 / win.height() as f32,
           };
           match self.sets.get(&name) {
@@ -168,7 +168,7 @@ impl UI {
                 .draw(pipeline.clone(), dyn_state, self.vbuf.clone(), set.clone(), pc, [])
                 .unwrap();
             }
-            None => error!("unknown image {}", name),
+            None => error!("unknown UI image {}", name),
           }
         }
         DrawOp::Text(pos, text) => {}

@@ -12,8 +12,8 @@ layout(push_constant) uniform PushData {
 } pc;
 
 void main() {
-  uv = (pos + 1) / 2;
+  uv = pos;
   // pc.corner_size is in absolute coordinates, and we want it to be within uv coordinates.
   corner_size = vec2(pc.corner_size / pc.size.x, pc.corner_size / pc.size.y * pc.ratio);
-  gl_Position = vec4(pos * pc.size / 2 + pc.pos, 0.0, 1.0);
+  gl_Position = vec4(pos * pc.size + pc.pos, 0.0, 1.0);
 }
