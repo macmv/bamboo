@@ -1,5 +1,12 @@
 use crate::ui::UI;
-use std::{error::Error, fmt, ops::Deref, sync::Arc, time::Instant};
+use atomic_float::AtomicF64;
+use std::{
+  error::Error,
+  fmt,
+  ops::Deref,
+  sync::{atomic::Ordering, Arc},
+  time::Instant,
+};
 use vulkano::{
   buffer::{BufferUsage, CpuAccessibleBuffer},
   command_buffer::{AutoCommandBufferBuilder, CommandBufferUsage, DynamicState, SubpassContents},
@@ -61,8 +68,11 @@ pub struct WindowData {
   dyn_state:     DynamicState,
   swapchain:     Arc<Swapchain<Window>>,
   format:        Format,
-  width:         u32,
-  height:        u32,
+
+  width:   u32,
+  height:  u32,
+  mouse_x: AtomicF64,
+  mouse_y: AtomicF64,
 }
 
 #[derive(Default, Copy, Clone)]
@@ -252,6 +262,8 @@ pub fn init() -> Result<GameWindow, InitError> {
     format,
     width: 0,
     height: 0,
+    mouse_x: 0.0.into(),
+    mouse_y: 0.0.into(),
   };
   data.resize(images);
 
@@ -284,6 +296,9 @@ impl GameWindow {
       }
       Event::WindowEvent { event: WindowEvent::Resized(_), .. } => {
         resize = true;
+      }
+      Event::WindowEvent { event: WindowEvent::CursorMoved { position, .. }, .. } => {
+        data.mouse_moved(position.x, position.y);
       }
       Event::RedrawEventsCleared => {
         previous_frame_fut.as_mut().unwrap().cleanup_finished();
@@ -420,6 +435,12 @@ impl WindowData {
         )
       })
       .collect::<Vec<_>>()
+  }
+
+  fn mouse_moved(&self, x: f64, y: f64) {
+    self.mouse_x.store(x, Ordering::SeqCst);
+    self.mouse_y.store(y, Ordering::SeqCst);
+    info!("mouse pos: ({}, {})", x, y);
   }
 
   #[inline(always)]

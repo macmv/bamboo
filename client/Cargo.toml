@@ -24,5 +24,7 @@ vulkano-shaders = "0.23"
 
 png = "0.16.8"
 
+atomic_float = "0.1.0"
+
 [build-dependencies]
 data = { path = "../data" }
