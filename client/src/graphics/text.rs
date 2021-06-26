@@ -1,19 +1,16 @@
-use rusttype::{gpu_cache::Cache, point, Font, PositionedGlyph, Rect, Scale};
-
-use std::sync::Arc;
+use rusttype::{point, Font, Point, PositionedGlyph, Rect, Scale};
+use std::{cmp::max, collections::HashMap, sync::Arc};
 use vulkano::{
   buffer::{BufferUsage, CpuAccessibleBuffer},
-  command_buffer::{
-    AutoCommandBufferBuilder, DynamicState, PrimaryAutoCommandBuffer, SubpassContents,
-  },
-  descriptor::{descriptor_set::PersistentDescriptorSet, pipeline_layout::PipelineLayoutAbstract},
+  command_buffer::{AutoCommandBufferBuilder, DynamicState, PrimaryAutoCommandBuffer},
+  descriptor::descriptor_set::PersistentDescriptorSet,
   device::{Device, Queue},
-  format::{ClearValue, Format},
+  format::Format,
   image::{
     view::ImageView, ImageCreateFlags, ImageDimensions, ImageLayout, ImageUsage, ImmutableImage,
     SwapchainImage,
   },
-  pipeline::{vertex::SingleBufferDefinition, GraphicsPipeline},
+  pipeline::GraphicsPipeline,
   render_pass::{Framebuffer, FramebufferAbstract, RenderPass, Subpass},
   sampler::{Filter, MipmapMode, Sampler, SamplerAddressMode},
   swapchain::Swapchain,
@@ -48,22 +45,30 @@ struct TextData {
 }
 
 pub struct TextRender {
-  device:             Arc<Device>,
-  queue:              Arc<Queue>,
-  font:               Font<'static>,
-  cache:              Cache<'static>,
-  cache_pixel_buffer: Vec<u8>,
-  pipeline: Arc<
-    GraphicsPipeline<SingleBufferDefinition<Vert>, Box<dyn PipelineLayoutAbstract + Send + Sync>>,
-  >,
-  texts:              Vec<TextData>,
+  device: Arc<Device>,
+  queue:  Arc<Queue>,
+  font:   Font<'static>,
+  // If the rect is none, then it is something like a space, and will never be given to us by
+  // layout().
+  cache:  HashMap<char, Option<Rect<i32>>>,
+  size:   Scale,
+  /* cache_pixel_buffer: Vec<u8>,
+   * pipeline: Arc<
+   *   GraphicsPipeline<SingleBufferDefinition<Vert>, Box<dyn PipelineLayoutAbstract + Send +
+   * Sync>>, >,
+   * texts:              Vec<TextData>, */
 }
 
-const CACHE_WIDTH: usize = 1000;
-const CACHE_HEIGHT: usize = 1000;
+const CACHE_WIDTH: usize = 1024;
+const CACHE_HEIGHT: usize = 1024;
 
 impl TextRender {
-  pub fn new<W>(device: Arc<Device>, queue: Arc<Queue>, swapchain: Arc<Swapchain<W>>) -> Self
+  pub fn new<W>(
+    size: f32,
+    device: Arc<Device>,
+    queue: Arc<Queue>,
+    swapchain: Arc<Swapchain<W>>,
+  ) -> Self
   where
     W: Send + Sync + 'static,
   {
@@ -73,7 +78,6 @@ impl TextRender {
     let vs = vs::Shader::load(device.clone()).unwrap();
     let fs = fs::Shader::load(device.clone()).unwrap();
 
-    let cache = Cache::builder().dimensions(CACHE_WIDTH as u32, CACHE_HEIGHT as u32).build();
     let cache_pixel_buffer = vec![0; CACHE_WIDTH * CACHE_HEIGHT];
 
     let render_pass = Arc::new(
@@ -107,46 +111,85 @@ impl TextRender {
         .unwrap(),
     );
 
-    TextRender { device, queue, font, cache, cache_pixel_buffer, pipeline, texts: vec![] }
+    TextRender { device, queue, font, cache: HashMap::new(), size: Scale::uniform(size) }
   }
 
-  pub fn queue_text(&mut self, x: f32, y: f32, size: f32, color: [f32; 4], text: &str) {
-    let glyphs: Vec<PositionedGlyph> =
-      self.font.layout(text, Scale::uniform(size), point(x, y)).map(|g| g.clone()).collect();
-    for glyph in &glyphs.clone() {
-      self.cache.queue_glyph(0, glyph.clone());
+  // pub fn queue_text(&mut self, x: f32, y: f32, size: f32, color: [f32; 4],
+  // text: &str) {   let glyphs: Vec<PositionedGlyph> =
+  //     self.font.layout(text, Scale::uniform(size), point(x, y)).map(|g|
+  // g.clone()).collect();   for glyph in &glyphs.clone() {
+  //     self.cache.queue_glyph(0, glyph.clone());
+  //   }
+  //   self.texts.push(TextData { glyphs: glyphs.clone(), color });
+  // }
+
+  fn update_cache(&mut self, text: &str) {
+    let mut new_chars = vec![];
+    for c in text.chars() {
+      if self.cache.contains_key(&c) {
+        continue;
+      }
+      let g = self.font.glyph(c).scaled(self.size).positioned(Point { x: 0.0, y: 0.0 });
+      let bounds = g.pixel_bounding_box();
+      self.cache.insert(c, bounds);
+      if let Some(b) = bounds {
+        let mut buf = Vec::with_capacity(b.width() as usize * b.height() as usize);
+        g.draw(|x, y, v| {
+          let v = (v * 255.0).round() as u8;
+          buf[y as usize * b.width() as usize + x as usize] = v;
+        });
+        new_chars.push((bounds, buf));
+      }
     }
-    self.texts.push(TextData { glyphs: glyphs.clone(), color });
+    for (bounds, buf) in new_chars {
+      self.add_char(bounds, &buf);
+    }
   }
+
+  fn add_char(&mut self, bounds: Rect<i32>, buf: &[u8]) {
+    let double_x = self.new_glyph_x + bounds.width() > self.cache_size.width();
+    let double_y = bounds.height() > self.cache_size.height();
+    if double_x && double_y {
+      let new_width = max(bounds.height(), self.cache_size.height());
+      let new_height = max(self.new_glyph_x + bounds.width(), self.cache_size.width() * 2);
+      self.resize(new_width, new_height);
+    } else if double_x {
+      let new_width = max(bounds.height(), self.cache_size.height());
+      self.resize(new_width, self.cache_size.height());
+    } else if double_y {
+      let new_height = max(self.new_glyph_x + bounds.width(), self.cache_size.width() * 2);
+      self.resize(self.cache_size.width(), new_height);
+    }
+  }
+
+  fn resize(&mut self, width: i32, height: i32) {}
 
   pub fn draw_text<'a>(
     &mut self,
     mut command_buffer: &'a mut AutoCommandBufferBuilder<PrimaryAutoCommandBuffer>,
     framebuf: Arc<Framebuffer<((), Arc<ImageView<Arc<SwapchainImage<Window>>>>)>>,
+    pos: (f32, f32),
+    text: &str,
   ) -> &'a mut AutoCommandBufferBuilder<PrimaryAutoCommandBuffer> {
-    let screen_width = framebuf.dimensions()[0];
-    let screen_height = framebuf.dimensions()[1];
-    let cache_pixel_buffer = &mut self.cache_pixel_buffer;
-    let cache = &mut self.cache;
-
+    self.update_cache(text);
     // update texture cache
-    cache
-      .cache_queued(|rect, src_data| {
-        let width = (rect.max.x - rect.min.x) as usize;
-        let height = (rect.max.y - rect.min.y) as usize;
-        let mut dst_index = rect.min.y as usize * CACHE_WIDTH + rect.min.x as usize;
-        let mut src_index = 0;
-
-        for _ in 0..height {
-          let dst_slice = &mut cache_pixel_buffer[dst_index..dst_index + width];
-          let src_slice = &src_data[src_index..src_index + width];
-          dst_slice.copy_from_slice(src_slice);
-
-          dst_index += CACHE_WIDTH;
-          src_index += width;
-        }
-      })
-      .unwrap();
+    // cache
+    //   .cache_queued(|rect, src_data| {
+    //     let width = (rect.max.x - rect.min.x) as usize;
+    //     let height = (rect.max.y - rect.min.y) as usize;
+    //     let mut dst_index = rect.min.y as usize * CACHE_WIDTH + rect.min.x as
+    // usize;     let mut src_index = 0;
+    //
+    //     for _ in 0..height {
+    //       let dst_slice = &mut cache_pixel_buffer[dst_index..dst_index + width];
+    //       let src_slice = &src_data[src_index..src_index + width];
+    //       dst_slice.copy_from_slice(src_slice);
+    //
+    //       dst_index += CACHE_WIDTH;
+    //       src_index += width;
+    //     }
+    //   })
+    //   .unwrap();
 
     let buffer = CpuAccessibleBuffer::<[u8]>::from_iter(
       self.device.clone(),
