@@ -1,5 +1,6 @@
 use crate::ui::UI;
 use std::{error::Error, fmt, ops::Deref, sync::Arc, time::Instant};
+use text::TextRender;
 use vulkano::{
   buffer::{BufferUsage, CpuAccessibleBuffer},
   command_buffer::{AutoCommandBufferBuilder, CommandBufferUsage, DynamicState, SubpassContents},
@@ -21,6 +22,7 @@ use winit::{
 };
 
 mod chunk;
+mod text;
 pub use chunk::MeshChunk;
 
 #[derive(Debug)]
@@ -298,6 +300,9 @@ impl GameWindow {
     let mut previous_frame_fut = self.initial_future;
     let mut resize = false;
 
+    let mut text = TextRender::new(data.device.clone(), data.queue.clone(), data.swapchain.clone());
+    text.queue_text(0.0, 0.0, 12.0, [0.0, 1.0, 0.0, 0.0], "Hello world!");
+
     self.event_loop.run(move |event, _, control_flow| match event {
       Event::WindowEvent { event: WindowEvent::CloseRequested, .. } => {
         *control_flow = ControlFlow::Exit;
@@ -359,6 +364,8 @@ impl GameWindow {
           .draw(data.game_pipeline.clone(), &data.dyn_state, vertex_buffer.clone(), (), pc, [])
           .unwrap();
         ui.draw(&mut builder, data.ui_pipeline.clone(), &data.dyn_state, &data);
+
+        text.draw_text(&mut builder, data.buffers[img_num].clone());
 
         builder.end_render_pass().unwrap();
 

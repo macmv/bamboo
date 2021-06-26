@@ -23,6 +23,7 @@ vulkano-win = "0.23"
 vulkano-shaders = "0.23"
 
 png = "0.16.8"
+rusttype = { version = "0.9", features = ["gpu_cache"] }
 
 [build-dependencies]
 data = { path = "../data" }
