@@ -30,8 +30,9 @@ pub struct Layout {
 }
 
 pub struct Button {
-  pos:  Vert,
-  size: Vert,
+  pos:      Vert,
+  size:     Vert,
+  on_click: Box<dyn Fn()>,
 }
 
 /// A drawing operator. Used to easily pass draw calls to a [`UI`].
@@ -182,15 +183,21 @@ impl Layout {
     Layout { buttons: vec![], background: None }
   }
 
-  pub fn button(mut self, pos: Vert, size: Vert) -> Self {
-    self.buttons.push(Button::new(pos, size));
+  pub fn button<F>(mut self, pos: Vert, size: Vert, on_click: F) -> Self
+  where
+    F: Fn() + 'static,
+  {
+    self.buttons.push(Button::new(pos, size, on_click));
     self
   }
 }
 
 impl Button {
-  fn new(pos: Vert, size: Vert) -> Self {
-    Button { pos, size }
+  fn new<F>(pos: Vert, size: Vert, on_click: F) -> Self
+  where
+    F: Fn() + 'static,
+  {
+    Button { pos, size, on_click: Box::new(on_click) }
   }
   fn draw(&self, win: &WindowData) -> Vec<DrawOp> {
     let (mx, my) = win.mouse_screen_pos();

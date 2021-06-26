@@ -31,9 +31,9 @@ fn main() {
   ui.set_layout(
     ui::LayoutKind::Menu,
     ui::Layout::new()
-      .button(Vert::new(-0.2, -0.14), Vert::new(0.4, 0.08))
-      .button(Vert::new(-0.2, -0.04), Vert::new(0.4, 0.08))
-      .button(Vert::new(-0.2, 0.06), Vert::new(0.4, 0.08)),
+      .button(Vert::new(-0.2, -0.14), Vert::new(0.4, 0.08), || info!("play"))
+      .button(Vert::new(-0.2, -0.04), Vert::new(0.4, 0.08), || info!("options"))
+      .button(Vert::new(-0.2, 0.06), Vert::new(0.4, 0.08), || info!("closing")),
   );
 
   info!("starting game");
