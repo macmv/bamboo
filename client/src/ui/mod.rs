@@ -2,7 +2,7 @@ use crate::{
   graphics::{ui_vs, GameWindow, Vert, WindowData},
   util::load,
 };
-use std::{collections::HashMap, sync::Arc, time::Instant};
+use std::{collections::HashMap, fs, sync::Arc, time::Instant};
 use vulkano::{
   buffer::{BufferUsage, CpuAccessibleBuffer},
   command_buffer::{AutoCommandBufferBuilder, DynamicState, PrimaryAutoCommandBuffer},
@@ -46,20 +46,17 @@ pub enum DrawOp {
 }
 
 pub struct UI {
-  set_hover: Arc<
-    PersistentDescriptorSet<(
-      ((), PersistentDescriptorSetImg<Arc<ImageView<Arc<ImmutableImage>>>>),
-      PersistentDescriptorSetSampler,
-    )>,
+  sets: HashMap<
+    String,
+    Arc<
+      PersistentDescriptorSet<(
+        ((), PersistentDescriptorSetImg<Arc<ImageView<Arc<ImmutableImage>>>>),
+        PersistentDescriptorSetSampler,
+      )>,
+    >,
   >,
-  set_down: Arc<
-    PersistentDescriptorSet<(
-      ((), PersistentDescriptorSetImg<Arc<ImageView<Arc<ImmutableImage>>>>),
-      PersistentDescriptorSetSampler,
-    )>,
-  >,
-  vbuf:      Arc<CpuAccessibleBuffer<[Vert]>>,
-  start:     Instant,
+  vbuf:  Arc<CpuAccessibleBuffer<[Vert]>>,
+  start: Instant,
 
   layouts: HashMap<LayoutKind, Layout>,
   current: LayoutKind,
@@ -67,14 +64,6 @@ pub struct UI {
 
 impl UI {
   pub fn new(win: &mut GameWindow) -> Self {
-    let (down, down_fut) =
-      load::png("client/assets/textures/ui/button-down.png", win.queue().clone()).unwrap();
-    let (hover, hover_fut) =
-      load::png("client/assets/textures/ui/button-hover.png", win.queue().clone()).unwrap();
-
-    win.add_initial_future(down_fut);
-    win.add_initial_future(hover_fut);
-
     let sampler = Sampler::new(
       win.device().clone(),
       Filter::Nearest,
@@ -90,21 +79,35 @@ impl UI {
     )
     .unwrap();
 
+    let mut futures = vec![];
+    let mut sets = HashMap::new();
     let layout = win.ui_pipeline().layout().descriptor_set_layout(0).unwrap();
-    let set_down = Arc::new(
-      PersistentDescriptorSet::start(layout.clone())
-        .add_sampled_image(down, sampler.clone())
-        .unwrap()
-        .build()
-        .unwrap(),
-    );
-    let set_hover = Arc::new(
-      PersistentDescriptorSet::start(layout.clone())
-        .add_sampled_image(hover, sampler)
-        .unwrap()
-        .build()
-        .unwrap(),
-    );
+    for p in fs::read_dir("client/assets/textures/ui").unwrap().map(|res| res.unwrap().path()) {
+      if let Some(ext) = p.extension() {
+        if ext != "png" {
+          continue;
+        }
+      } else {
+        continue;
+      }
+
+      info!("{:?}", p);
+      let (img, fut) = load::png(p.to_str().unwrap(), win.queue().clone()).unwrap();
+      sets.insert(
+        p.file_stem().unwrap().to_str().unwrap().into(),
+        Arc::new(
+          PersistentDescriptorSet::start(layout.clone())
+            .add_sampled_image(img, sampler.clone())
+            .unwrap()
+            .build()
+            .unwrap(),
+        ),
+      );
+      futures.push(fut);
+    }
+    for f in futures {
+      win.add_initial_future(f);
+    }
 
     let vbuf = CpuAccessibleBuffer::from_iter(
       win.device().clone(),
@@ -123,14 +126,7 @@ impl UI {
     )
     .unwrap();
 
-    UI {
-      set_hover,
-      set_down,
-      vbuf,
-      start: Instant::now(),
-      layouts: HashMap::new(),
-      current: LayoutKind::Menu,
-    }
+    UI { sets, vbuf, start: Instant::now(), layouts: HashMap::new(), current: LayoutKind::Menu }
   }
 
   /// Creates a layout. This should only be used in initialization.
@@ -166,9 +162,14 @@ impl UI {
             corner_size: 0.05,
             ratio:       win.width() as f32 / win.height() as f32,
           };
-          builder
-            .draw(pipeline.clone(), dyn_state, self.vbuf.clone(), self.set_hover.clone(), pc, [])
-            .unwrap();
+          match self.sets.get(&name) {
+            Some(set) => {
+              builder
+                .draw(pipeline.clone(), dyn_state, self.vbuf.clone(), set.clone(), pc, [])
+                .unwrap();
+            }
+            None => error!("unknown image {}", name),
+          }
         }
         DrawOp::Text(pos, text) => {}
       }
@@ -176,14 +177,28 @@ impl UI {
   }
 }
 
+impl Layout {
+  pub fn new() -> Self {
+    Layout { buttons: vec![], background: None }
+  }
+
+  pub fn button(mut self, pos: Vert, size: Vert) -> Self {
+    self.buttons.push(Button::new(pos, size));
+    self
+  }
+}
+
 impl Button {
+  fn new(pos: Vert, size: Vert) -> Self {
+    Button { pos, size }
+  }
   fn draw(&self, win: &WindowData) -> Vec<DrawOp> {
     let (mx, my) = win.mouse_screen_pos();
     let (mx, my) = (mx as f32, my as f32);
-    let hovering = mx > self.pos.x() - self.size.x() / 2.0
-      && mx < self.pos.x() + self.size.x() / 2.0
-      && my > self.pos.y() - self.size.y() / 2.0
-      && my < self.pos.y() + self.pos.y() / 2.0;
+    let hovering = mx > self.pos.x()
+      && mx < self.pos.x() + self.size.x()
+      && my > self.pos.y()
+      && my < self.pos.y() + self.size.y();
     if hovering {
       vec![DrawOp::Image(self.pos, self.size, "button-hover".into())]
     } else {

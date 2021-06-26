@@ -8,6 +8,7 @@ mod ui;
 pub mod util;
 mod world;
 
+use graphics::Vert;
 use ui::UI;
 use world::World;
 
@@ -25,8 +26,16 @@ fn main() {
   };
 
   let _world = World::new();
-  let ui = Arc::new(UI::new(&mut win));
+  let mut ui = UI::new(&mut win);
+
+  ui.set_layout(
+    ui::LayoutKind::Menu,
+    ui::Layout::new()
+      .button(Vert::new(-0.1, -0.08), Vert::new(0.2, 0.04))
+      .button(Vert::new(-0.1, 0.02), Vert::new(0.2, 0.04))
+      .button(Vert::new(-0.1, 0.12), Vert::new(0.2, 0.04)),
+  );
 
   info!("starting game");
-  win.run(ui);
+  win.run(Arc::new(ui));
 }

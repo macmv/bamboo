@@ -37,7 +37,7 @@ pub fn png(
   match png_err(path, queue) {
     Ok(v) => Some(v),
     Err(e) => {
-      info!("error while loading {}: {}", path, e);
+      error!("error while loading {}: {}", path, e);
       None
     }
   }
