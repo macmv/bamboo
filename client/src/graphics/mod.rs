@@ -15,7 +15,7 @@ use vulkano::{
 };
 use vulkano_win::VkSurfaceBuild;
 use winit::{
-  event::{Event, WindowEvent},
+  event::{ElementState, Event, MouseButton, WindowEvent},
   event_loop::{ControlFlow, EventLoop},
   window::{Window, WindowBuilder},
 };
@@ -307,6 +307,11 @@ impl GameWindow {
       }
       Event::WindowEvent { event: WindowEvent::CursorMoved { position, .. }, .. } => {
         data.mouse_moved(position.x, position.y);
+      }
+      Event::WindowEvent { event: WindowEvent::MouseInput { state, button, .. }, .. } => {
+        if state == ElementState::Pressed && button == MouseButton::Left {
+          ui.on_click(&data);
+        }
       }
       Event::RedrawEventsCleared => {
         previous_frame_fut.as_mut().unwrap().cleanup_finished();

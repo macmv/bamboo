@@ -176,6 +176,13 @@ impl UI {
       }
     }
   }
+
+  pub fn on_click(&self, win: &WindowData) {
+    let l = &self.layouts[&self.current];
+    for b in &l.buttons {
+      b.on_click(win);
+    }
+  }
 }
 
 impl Layout {
@@ -210,6 +217,17 @@ impl Button {
       vec![DrawOp::Image(self.pos, self.size, "button-hover".into())]
     } else {
       vec![DrawOp::Image(self.pos, self.size, "button-up".into())]
+    }
+  }
+  fn on_click(&self, win: &WindowData) {
+    let (mx, my) = win.mouse_screen_pos();
+    let (mx, my) = (mx as f32, my as f32);
+    let hovering = mx > self.pos.x()
+      && mx < self.pos.x() + self.size.x()
+      && my > self.pos.y()
+      && my < self.pos.y() + self.size.y();
+    if hovering {
+      (self.on_click)();
     }
   }
 }
