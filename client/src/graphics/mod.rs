@@ -1,12 +1,5 @@
 use crate::ui::UI;
-use atomic_float::AtomicF64;
-use std::{
-  error::Error,
-  fmt,
-  ops::Deref,
-  sync::{atomic::Ordering, Arc},
-  time::Instant,
-};
+use std::{error::Error, fmt, ops::Deref, sync::Arc, time::Instant};
 use vulkano::{
   buffer::{BufferUsage, CpuAccessibleBuffer},
   command_buffer::{AutoCommandBufferBuilder, CommandBufferUsage, DynamicState, SubpassContents},
@@ -71,8 +64,8 @@ pub struct WindowData {
 
   width:   u32,
   height:  u32,
-  mouse_x: AtomicF64,
-  mouse_y: AtomicF64,
+  mouse_x: f64,
+  mouse_y: f64,
 }
 
 #[derive(Default, Copy, Clone)]
@@ -437,10 +430,20 @@ impl WindowData {
       .collect::<Vec<_>>()
   }
 
-  fn mouse_moved(&self, x: f64, y: f64) {
-    self.mouse_x.store(x, Ordering::SeqCst);
-    self.mouse_y.store(y, Ordering::SeqCst);
-    info!("mouse pos: ({}, {})", x, y);
+  fn mouse_moved(&mut self, x: f64, y: f64) {
+    self.mouse_x = x;
+    self.mouse_y = y;
+  }
+
+  /// Returns the mouse position in pixels.
+  pub fn mouse_pos(&self) -> (f64, f64) {
+    (self.mouse_x, self.mouse_y)
+  }
+  /// Returns the mouse position in screen space (each coordinate is within -1.0
+  /// to 1.0).
+  pub fn mouse_screen_pos(&self) -> (f64, f64) {
+    let (x, y) = self.mouse_pos();
+    (x / (self.width as f64) * 2.0 - 1.0, y / (self.height as f64) * 2.0 - 1.0)
   }
 
   #[inline(always)]
