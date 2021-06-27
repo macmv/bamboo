@@ -1,3 +1,4 @@
+use super::TextRender;
 use crate::graphics::{Vert, WindowData};
 use rusttype::{Font, GlyphId, Point, Rect, Scale};
 use std::{cmp::max, collections::HashMap, mem, sync::Arc};
@@ -234,15 +235,18 @@ impl TTFRender {
     .unwrap();
     self.cache_size = Point { x: width, y: height };
   }
+}
 
+impl TextRender for TTFRender {
   /// This text will be rendered on the next draw call. Because of how render
   /// passes work, this call will rasterize any new characters, and add them to
   /// the cache. This updated cache is then used during the draw call.
-  pub fn queue_text(
+  fn queue_text(
     &mut self,
-    buf: &mut AutoCommandBufferBuilder<PrimaryAutoCommandBuffer>,
-    pos: (f32, f32),
     text: &str,
+    pos: (f32, f32),
+    scale: f32,
+    buf: &mut AutoCommandBufferBuilder<PrimaryAutoCommandBuffer>,
   ) {
     if self.update_cache(text) {
       buf.copy_buffer_to_image(self.buffer.clone(), self.tex.clone()).unwrap();
@@ -250,7 +254,7 @@ impl TTFRender {
     self.texts.push((pos, text.into()));
   }
 
-  pub fn draw(
+  fn draw(
     &mut self,
     command_buffer: &mut AutoCommandBufferBuilder<PrimaryAutoCommandBuffer>,
     win: &WindowData,
@@ -315,90 +319,5 @@ impl TTFRender {
           .unwrap();
       }
     }
-
-    // let mut command_buffer = command_buffer
-    //   .copy_buffer_to_image(buffer, cache_texture_write)
-    //   .unwrap()
-    //   .begin_render_pass(
-    //     framebuf.clone(),
-    //     SubpassContents::Inline,
-    //     vec![ClearValue::Float([0.0, 0.0, 0.2, 1.0])],
-    //   )
-    //   .unwrap();
-    //
-    // draw
-    // for text in &mut self.texts.drain(..) {
-    //   let vertices: Vec<Vert> = text
-    //     .glyphs
-    //     .iter()
-    //     .flat_map(|g| {
-    //       if let Ok(Some((uv_rect, screen_rect))) = cache.rect_for(0, g) {
-    //         let gl_rect = Rect {
-    //           min: point(
-    //             (screen_rect.min.x as f32 / screen_width as f32 - 0.5) * 2.0,
-    //             (screen_rect.min.y as f32 / screen_height as f32 - 0.5) *
-    // 2.0,           ),
-    //           max: point(
-    //             (screen_rect.max.x as f32 / screen_width as f32 - 0.5) * 2.0,
-    //             (screen_rect.max.y as f32 / screen_height as f32 - 0.5) *
-    // 2.0,           ),
-    //         };
-    //         vec![
-    //           Vert {
-    //             pos: [gl_rect.min.x, gl_rect.max.y],
-    //             uv:  [uv_rect.min.x, uv_rect.max.y],
-    //             col: text.color,
-    //           },
-    //           Vert {
-    //             pos: [gl_rect.min.x, gl_rect.min.y],
-    //             uv:  [uv_rect.min.x, uv_rect.min.y],
-    //             col: text.color,
-    //           },
-    //           Vert {
-    //             pos: [gl_rect.max.x, gl_rect.min.y],
-    //             uv:  [uv_rect.max.x, uv_rect.min.y],
-    //             col: text.color,
-    //           },
-    //           Vert {
-    //             pos: [gl_rect.max.x, gl_rect.min.y],
-    //             uv:  [uv_rect.max.x, uv_rect.min.y],
-    //             col: text.color,
-    //           },
-    //           Vert {
-    //             pos: [gl_rect.max.x, gl_rect.max.y],
-    //             uv:  [uv_rect.max.x, uv_rect.max.y],
-    //             col: text.color,
-    //           },
-    //           Vert {
-    //             pos: [gl_rect.min.x, gl_rect.max.y],
-    //             uv:  [uv_rect.min.x, uv_rect.max.y],
-    //             col: text.color,
-    //           },
-    //         ]
-    //         .into_iter()
-    //       } else {
-    //         vec![].into_iter()
-    //       }
-    //     })
-    //     .collect();
-    //
-    //   let vertex_buffer = CpuAccessibleBuffer::from_iter(
-    //     self.device.clone(),
-    //     BufferUsage::all(),
-    //     false,
-    //     vertices.into_iter(),
-    //   )
-    //   .unwrap();
-    //   command_buffer = command_buffer
-    //     .draw(
-    //       self.pipeline.clone(),
-    //       &DynamicState::none(),
-    //       vertex_buffer.clone(),
-    //       set.clone(),
-    //       (),
-    //       vec![],
-    //     )
-    //     .unwrap();
-    // }
   }
 }

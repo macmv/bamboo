@@ -1,6 +1,6 @@
 use crate::ui::UI;
 use std::{error::Error, fmt, ops::Deref, sync::Arc, time::Instant};
-use text::TTFRender;
+use text::{TTFRender, TextRender};
 use vulkano::{
   buffer::{BufferUsage, CpuAccessibleBuffer},
   command_buffer::{AutoCommandBufferBuilder, CommandBufferUsage, DynamicState, SubpassContents},
@@ -300,7 +300,8 @@ impl GameWindow {
     let mut previous_frame_fut = self.initial_future;
     let mut resize = false;
 
-    let mut text = TTFRender::new(64.0, data.device.clone(), data.swapchain.clone());
+    let mut text: Box<dyn TextRender> =
+      Box::new(TTFRender::new(64.0, data.device.clone(), data.swapchain.clone()));
     // .minecraft/resourcepacks/ocd/assets/minecraft/textures/font
 
     self.event_loop.run(move |event, _, control_flow| match event {
@@ -352,7 +353,7 @@ impl GameWindow {
         )
         .unwrap();
 
-        text.queue_text(&mut builder, (0.0, 0.0), "Hello world!");
+        text.queue_text("Hello world!", (0.0, 0.0), 1.0, &mut builder);
 
         builder
           .begin_render_pass(
