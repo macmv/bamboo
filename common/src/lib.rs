@@ -3,14 +3,16 @@
   test(no_crate_inject, attr(deny(warnings)))
 )]
 
+#[macro_use]
+extern crate log;
+
+#[macro_use]
+extern crate async_trait;
+
 // use flexi_logger::{Duplicate, LogTarget, Logger};
 use log::LevelFilter;
 use log4rs::{
-  append::{
-    console::ConsoleAppender,
-    file::FileAppender,
-    // rolling_file::{policy::Policy, LogFile, RollingFileAppender},
-  },
+  append::{console::ConsoleAppender, file::FileAppender},
   config::{Appender, Config, Root},
   encode::pattern::PatternEncoder,
 };
@@ -19,6 +21,7 @@ pub mod chunk;
 pub mod math;
 pub mod net;
 pub mod registry;
+pub mod stream;
 pub mod util;
 pub mod version;
 

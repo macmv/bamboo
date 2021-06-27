@@ -1,9 +1,10 @@
-use crate::{version::Generator, StreamReader, StreamWriter};
+use crate::version::Generator;
 
 use common::{
   net::{cb, sb, tcp},
   proto,
   proto::minecraft_client::MinecraftClient,
+  stream::{StreamReader, StreamWriter},
   util::{chat::Color, Chat, UUID},
   version::ProtocolVersion,
 };

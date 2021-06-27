@@ -1,11 +1,15 @@
-use crate::{StreamReader, StreamWriter};
-
+use crate::{
+  net::tcp,
+  stream::{StreamReader, StreamWriter},
+  util,
+  util::Buffer,
+  version::ProtocolVersion,
+};
 use aes::{
   cipher::{AsyncStreamCipher, NewCipher},
   Aes128,
 };
 use cfb8::Cfb8;
-use common::{net::tcp, util, util::Buffer, version::ProtocolVersion};
 use miniz_oxide::{deflate::compress_to_vec_zlib, inflate::decompress_to_vec_zlib};
 use ringbuf::{Consumer, Producer, RingBuffer};
 use std::{

@@ -1,5 +1,9 @@
-use crate::{StreamReader, StreamWriter};
-use common::{net::tcp, util::Buffer, version::ProtocolVersion};
+use crate::{
+  net::tcp,
+  stream::{StreamReader, StreamWriter},
+  util::Buffer,
+  version::ProtocolVersion,
+};
 use ringbuf::Consumer;
 use std::{
   io::{self, ErrorKind},

@@ -1,41 +1,20 @@
 #[macro_use]
 extern crate log;
 
-#[macro_use]
-extern crate async_trait;
-
-pub mod bedrock;
 pub mod conn;
-pub mod java;
 pub mod version;
 
-use common::version::ProtocolVersion;
 use rand::rngs::OsRng;
 use rsa::{PublicKeyParts, RSAPrivateKey};
-use std::{error::Error, io, sync::Arc};
+use std::{error::Error, sync::Arc};
 use tokio::{net::TcpListener, sync::oneshot};
 
 use crate::conn::Conn;
-use common::net::{sb, tcp};
+use common::{
+  net::sb,
+  stream::{bedrock, java, StreamReader, StreamWriter},
+};
 use version::Generator;
-
-#[async_trait]
-pub trait StreamReader {
-  async fn poll(&mut self) -> io::Result<()> {
-    Ok(())
-  }
-  fn read(&mut self, ver: ProtocolVersion) -> io::Result<Option<tcp::Packet>>;
-
-  fn enable_encryption(&mut self, _secret: &[u8; 16]) {}
-  fn set_compression(&mut self, _level: i32) {}
-}
-#[async_trait]
-pub trait StreamWriter {
-  async fn write(&mut self, packet: tcp::Packet) -> io::Result<()>;
-
-  fn enable_encryption(&mut self, _secret: &[u8; 16]) {}
-  fn set_compression(&mut self, _level: i32) {}
-}
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn Error>> {
