@@ -199,14 +199,14 @@ impl TextRender {
     let double_x = self.new_glyph_x + bw > cw;
     let double_y = bh > ch;
     if double_x && double_y {
-      let new_width = max(bh, ch * 2);
-      let new_height = max(self.new_glyph_x + bw, cw * 2);
+      let new_width = max(self.new_glyph_x + bw, cw * 2);
+      let new_height = max(bh, ch * 2);
       self.resize(new_width, new_height);
     } else if double_x {
-      let new_width = max(bh, ch * 2);
+      let new_width = max(self.new_glyph_x + bw, cw * 2);
       self.resize(new_width, ch);
     } else if double_y {
-      let new_height = max(self.new_glyph_x + bw, cw * 2);
+      let new_height = max(bh, ch * 2);
       self.resize(cw, new_height);
     }
 
@@ -218,6 +218,7 @@ impl TextRender {
         gpu_buf[cache_index] = buf[buf_index];
       }
     }
+    self.new_glyph_x += bounds.width() as usize;
   }
 
   fn resize(&mut self, width: usize, height: usize) {
@@ -283,7 +284,7 @@ impl TextRender {
 
     for (pos, text) in self.texts.drain(..) {
       for g in self.font.layout(&text, self.size, Point { x: 0.0, y: 0.0 }) {
-        const SCALE: f32 = 0.01;
+        const SCALE: f32 = 0.1;
         let uv_offset = match self.cache[&g.id()] {
           Some(v) => Rect {
             min: Point { x: v.min.x as f32 * SCALE, y: v.min.y as f32 * SCALE },
@@ -296,9 +297,10 @@ impl TextRender {
           _dummy0: [0, 0, 0, 0, 0, 0, 0, 0],
           offset,
           uv_offset: [uv_offset.min.x, uv_offset.min.y],
-          col: [0.0, 1.0, 1.0, 0.0],
+          col: [0.0, 1.0, 1.0, 0.1],
           size: [uv_offset.width(), uv_offset.height()],
         };
+        info!("offset: {:?} size: {:?}", pc.offset, pc.size);
         command_buffer
           .draw(self.pipeline.clone(), dyn_state, self.vbuf.clone(), set.clone(), pc, [])
           .unwrap();
