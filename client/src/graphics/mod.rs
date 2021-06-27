@@ -352,7 +352,7 @@ impl GameWindow {
         )
         .unwrap();
 
-        text.queue_text(&mut builder, (0.0, 0.0), "b");
+        text.queue_text(&mut builder, (0.0, 0.0), "Hello world!");
 
         builder
           .begin_render_pass(

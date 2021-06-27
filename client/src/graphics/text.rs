@@ -153,15 +153,6 @@ impl TextRender {
     }
   }
 
-  // pub fn queue_text(&mut self, x: f32, y: f32, size: f32, color: [f32; 4],
-  // text: &str) {   let glyphs: Vec<PositionedGlyph> =
-  //     self.font.layout(text, Scale::uniform(size), point(x, y)).map(|g|
-  // g.clone()).collect();   for glyph in &glyphs.clone() {
-  //     self.cache.queue_glyph(0, glyph.clone());
-  //   }
-  //   self.texts.push(TextData { glyphs: glyphs.clone(), color });
-  // }
-
   /// Updates the texture cache to include all chars of the given text. Returns
   /// true of the cache was updated.
   fn update_cache(&mut self, text: &str) -> bool {
@@ -184,17 +175,6 @@ impl TextRender {
           let v = (v * 255.0).round() as u8;
           buf[y as usize * b.width() as usize + x as usize] = v;
         });
-        for (i, v) in buf.iter().enumerate() {
-          if i % b.width() as usize == 0 {
-            println!();
-          }
-          if v > &128 {
-            print!("##");
-          } else {
-            print!("..");
-          }
-        }
-        println!();
         b = self.add_char(b, &buf);
         self.cache.insert(g.id(), Some(b));
         changed = true;
@@ -262,6 +242,9 @@ impl TextRender {
     self.cache_size = Point { x: width, y: height };
   }
 
+  /// This text will be rendered on the next draw call. Because of how render
+  /// passes work, this call will rasterize any new characters, and add them to
+  /// the cache. This updated cache is then used during the draw call.
   pub fn queue_text(
     &mut self,
     buf: &mut AutoCommandBufferBuilder<PrimaryAutoCommandBuffer>,
