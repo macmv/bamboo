@@ -4,6 +4,7 @@ use std::{process, sync::Arc};
 extern crate log;
 
 mod graphics;
+mod net;
 mod ui;
 pub mod util;
 mod world;
@@ -25,13 +26,15 @@ fn main() {
     }
   };
 
-  let _world = World::new();
+  let world = World::new();
   let mut ui = UI::new(&mut win);
 
   ui.set_layout(
     ui::LayoutKind::Menu,
     ui::Layout::new()
-      .button(Vert::new(-0.2, -0.14), Vert::new(0.4, 0.08), || info!("play"))
+      .button(Vert::new(-0.2, -0.14), Vert::new(0.4, 0.08), move || {
+        world.connect("127.0.0.1:25565");
+      })
       .button(Vert::new(-0.2, -0.04), Vert::new(0.4, 0.08), || info!("options"))
       .button(Vert::new(-0.2, 0.06), Vert::new(0.4, 0.08), || {
         info!("closing");
