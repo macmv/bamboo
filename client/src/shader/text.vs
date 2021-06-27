@@ -18,6 +18,5 @@ layout(push_constant) uniform PushData {
 void main() {
   col = pc.col;
   uv = pos * pc.size + pc.uv_offset;
-  // gl_Position = vec4(pos * pc.size + pc.offset, 0.0, 1.0);
-  gl_Position = vec4(pos * 0.5, 0.0, 1.0);
+  gl_Position = vec4(pos * pc.size + pc.offset, 0.0, 1.0);
 }
