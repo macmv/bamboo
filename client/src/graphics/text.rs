@@ -287,28 +287,32 @@ impl TextRender {
 
     for (pos, text) in self.texts.drain(..) {
       for g in self.font.layout(&text, self.size, Point { x: 0.0, y: 0.0 }) {
-        let uv_offset = match self.cache[&g.id()] {
+        let uv_bounds = match self.cache[&g.id()] {
           Some(v) => Rect {
             min: Point { x: v.min.x as f32, y: v.min.y as f32 },
             max: Point { x: v.max.x as f32, y: v.max.y as f32 },
           },
           None => continue,
         };
+        let bounds = g.pixel_bounding_box().unwrap();
         let offset = [
-          g.position().x / win.width() as f32 + pos.0,
-          g.position().y / win.height() as f32 + pos.1,
+          bounds.min.x as f32 / win.width() as f32 + pos.0,
+          bounds.min.y as f32 / win.height() as f32 + pos.1,
         ];
         let pc = vs::ty::PushData {
           offset,
           uv_offset: [
-            uv_offset.min.x / self.cache_size.x as f32,
-            uv_offset.min.y / self.cache_size.y as f32,
+            uv_bounds.min.x / self.cache_size.x as f32,
+            uv_bounds.min.y / self.cache_size.y as f32,
           ],
           col: [0.0, 1.0, 1.0, 1.0],
-          size: [uv_offset.width() / win.width() as f32, uv_offset.height() / win.height() as f32],
+          size: [
+            bounds.width() as f32 / win.width() as f32,
+            bounds.height() as f32 / win.height() as f32,
+          ],
           uv_size: [
-            uv_offset.width() / self.cache_size.x as f32,
-            uv_offset.height() / self.cache_size.y as f32,
+            uv_bounds.width() / self.cache_size.x as f32,
+            uv_bounds.height() / self.cache_size.y as f32,
           ],
         };
         command_buffer
