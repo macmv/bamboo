@@ -132,7 +132,7 @@ impl TextRender {
       cache: HashMap::new(),
       size: Scale::uniform(size),
       cache_size: Point { x: 1, y: 1 },
-      new_glyph_x: 0,
+      new_glyph_x: 1,
       pipeline,
     }
   }
@@ -203,7 +203,7 @@ impl TextRender {
     // Return the bounds of the cached glyph
     bounds.min.x += self.new_glyph_x as i32;
     bounds.max.x += self.new_glyph_x as i32;
-    self.new_glyph_x += bounds.width() as usize;
+    self.new_glyph_x += bounds.width() as usize + 1;
     bounds
   }
 
