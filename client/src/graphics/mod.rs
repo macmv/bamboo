@@ -366,7 +366,7 @@ impl GameWindow {
           .draw(data.game_pipeline.clone(), &data.dyn_state, vertex_buffer.clone(), (), pc, [])
           .unwrap();
         ui.draw(&mut builder, data.ui_pipeline.clone(), &data.dyn_state, &data);
-        text.draw(&mut builder, data.buffers[img_num].clone());
+        text.draw(&mut builder, &data.dyn_state);
 
         builder.end_render_pass().unwrap();
 

@@ -1,3 +1,4 @@
+use super::Vert;
 use rusttype::{point, Font, GlyphId, Point, PositionedGlyph, Rect, Scale};
 use std::{cmp::max, collections::HashMap, sync::Arc};
 use vulkano::{
@@ -18,12 +19,6 @@ use vulkano::{
   swapchain::Swapchain,
 };
 use winit::window::Window;
-
-#[derive(Default, Debug, Clone)]
-struct Vert {
-  pos: [f32; 2],
-}
-vulkano::impl_vertex!(Vert, pos);
 
 mod vs {
   vulkano_shaders::shader! {
@@ -59,6 +54,7 @@ pub struct TextRender {
   cache_size:  Point<usize>,
   new_glyph_x: usize,
 
+  vbuf:     Arc<CpuAccessibleBuffer<[Vert]>>,
   pipeline: Arc<
     GraphicsPipeline<SingleBufferDefinition<Vert>, Box<dyn PipelineLayoutAbstract + Send + Sync>>,
   >,
@@ -130,6 +126,22 @@ impl TextRender {
         [1, 1],
         Format::R8Unorm,
         ImageUsage { transfer_destination: true, sampled: true, ..ImageUsage::none() },
+      )
+      .unwrap(),
+      vbuf: CpuAccessibleBuffer::from_iter(
+        device.clone(),
+        BufferUsage::all(),
+        false,
+        [
+          Vert::new(0.0, 0.0),
+          Vert::new(1.0, 1.0),
+          Vert::new(1.0, 0.0),
+          Vert::new(0.0, 0.0),
+          Vert::new(0.0, 1.0),
+          Vert::new(1.0, 1.0),
+        ]
+        .iter()
+        .cloned(),
       )
       .unwrap(),
       device,
@@ -209,11 +221,12 @@ impl TextRender {
   }
 
   fn resize(&mut self, width: usize, height: usize) {
+    info!("resizing to {} {}", width, height);
     self.buffer = CpuAccessibleBuffer::<[u8]>::from_iter(
       self.device.clone(),
       BufferUsage::all(),
       false,
-      vec![0; width * height].iter().cloned(),
+      vec![200; width * height].iter().cloned(),
     )
     .unwrap();
     self.tex = AttachmentImage::with_usage(
@@ -223,6 +236,7 @@ impl TextRender {
       ImageUsage { transfer_destination: true, sampled: true, ..ImageUsage::none() },
     )
     .unwrap();
+    self.cache_size = Point { x: width, y: height };
   }
 
   pub fn queue_text(
@@ -240,7 +254,7 @@ impl TextRender {
   pub fn draw(
     &mut self,
     command_buffer: &mut AutoCommandBufferBuilder<PrimaryAutoCommandBuffer>,
-    framebuf: Arc<Framebuffer<((), Arc<ImageView<Arc<SwapchainImage<Window>>>>)>>,
+    dyn_state: &DynamicState,
   ) {
     let sampler = Sampler::new(
       self.device.clone(),
@@ -269,11 +283,25 @@ impl TextRender {
 
     for (pos, text) in self.texts.drain(..) {
       for g in self.font.layout(&text, self.size, Point { x: 0.0, y: 0.0 }) {
+        const SCALE: f32 = 0.01;
         let uv_offset = match self.cache[&g.id()] {
-          Some(v) => v,
+          Some(v) => Rect {
+            min: Point { x: v.min.x as f32 * SCALE, y: v.min.y as f32 * SCALE },
+            max: Point { x: v.max.x as f32 * SCALE, y: v.max.y as f32 * SCALE },
+          },
           None => continue,
         };
-        let offset = Point { x: g.position().x / 100.0 + pos.0, y: g.position().y / 100.0 + pos.1 };
+        let offset = [g.position().x * SCALE + pos.0, g.position().y * SCALE + pos.1];
+        let pc = vs::ty::PushData {
+          _dummy0: [0, 0, 0, 0, 0, 0, 0, 0],
+          offset,
+          uv_offset: [uv_offset.min.x, uv_offset.min.y],
+          col: [0.0, 1.0, 1.0, 0.0],
+          size: [uv_offset.width(), uv_offset.height()],
+        };
+        command_buffer
+          .draw(self.pipeline.clone(), dyn_state, self.vbuf.clone(), set.clone(), pc, [])
+          .unwrap();
       }
     }
 
