@@ -282,11 +282,12 @@ pub fn init() -> Result<GameWindow, InitError> {
 
 impl GameWindow {
   pub fn run(mut self, ui: Arc<UI>) -> ! {
-    let mut text: Box<dyn TextRender> = Box::new(PNGRender::new(
-      "/home/macmv/.minecraft/resourcepacks/ocd/assets/minecraft/textures/font/ascii.png",
-      64.0,
-      &mut self,
-    ));
+    // let mut text: Box<dyn TextRender> = Box::new(PNGRender::new(
+    //   "/home/macmv/.minecraft/resourcepacks/ocd/assets/minecraft/textures/font/
+    // ascii.png",
+    //   32.0,
+    //   &mut self,
+    // ));
 
     let mut data = self.data;
 
@@ -305,7 +306,6 @@ impl GameWindow {
 
     let mut previous_frame_fut = self.initial_future;
     let mut resize = false;
-    // .minecraft/resourcepacks/ocd/assets/minecraft/textures/font
 
     self.event_loop.run(move |event, _, control_flow| match event {
       Event::WindowEvent { event: WindowEvent::CloseRequested, .. } => {
@@ -356,7 +356,7 @@ impl GameWindow {
         )
         .unwrap();
 
-        text.queue_text("bi]g", (0.0, 0.0), 1.0, &mut builder);
+        // text.queue_text("big", (0.0, 0.0), 1.0, &mut builder);
 
         builder
           .begin_render_pass(
@@ -370,7 +370,7 @@ impl GameWindow {
           .draw(data.game_pipeline.clone(), &data.dyn_state, vertex_buffer.clone(), (), pc, [])
           .unwrap();
         ui.draw(&mut builder, data.ui_pipeline.clone(), &data.dyn_state, &data);
-        text.draw(&mut builder, &data);
+        // text.draw(&mut builder, &data);
 
         builder.end_render_pass().unwrap();
 
