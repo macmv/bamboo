@@ -2,15 +2,10 @@ mod cb;
 mod sb;
 
 use common::{
-  net::{
-    cb::{Packet as CbPacket, ID as CbID},
-    sb::{Packet as SbPacket, ID as SbID},
-  },
+  net::{cb as common_cb, sb as common_sb, tcp},
   version::ProtocolVersion,
 };
 use std::{collections::HashMap, io};
-
-use crate::packet::Packet;
 
 pub struct Generator {
   cb: cb::Generator,
@@ -46,7 +41,7 @@ impl Generator {
       to_client.insert(
         k,
         PacketVersion {
-          ids:     generate_ids(&v.to_client, |name| CbID::parse_str(name).to_i32()),
+          ids:     generate_ids(&v.to_client, |name| common_cb::ID::parse_str(name).to_i32()),
           types:   v.types.clone(),
           packets: v.to_client,
         },
@@ -54,7 +49,7 @@ impl Generator {
       to_server.insert(
         k,
         PacketVersion {
-          ids:     generate_ids(&v.to_server, |name| SbID::parse_str(name).to_i32()),
+          ids:     generate_ids(&v.to_server, |name| common_sb::ID::parse_str(name).to_i32()),
           types:   v.types,
           packets: v.to_server,
         },
@@ -71,7 +66,11 @@ impl Generator {
       sb: sb::Generator::new(to_server, same_versions),
     }
   }
-  pub fn clientbound(&self, v: ProtocolVersion, p: CbPacket) -> io::Result<Vec<Packet>> {
+  pub fn clientbound(
+    &self,
+    v: ProtocolVersion,
+    p: common_cb::Packet,
+  ) -> io::Result<Vec<tcp::Packet>> {
     match self.cb.convert(v, &p) {
       Ok(v) => Ok(v),
       Err(e) => Err(io::Error::new(
@@ -80,7 +79,7 @@ impl Generator {
       )),
     }
   }
-  pub fn serverbound(&self, v: ProtocolVersion, p: Packet) -> io::Result<SbPacket> {
+  pub fn serverbound(&self, v: ProtocolVersion, p: tcp::Packet) -> io::Result<common_sb::Packet> {
     self.sb.convert(v, p)
   }
 }

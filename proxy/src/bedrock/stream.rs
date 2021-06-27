@@ -1,5 +1,5 @@
-use crate::{packet::Packet, StreamReader, StreamWriter};
-use common::{util::Buffer, version::ProtocolVersion};
+use crate::{StreamReader, StreamWriter};
+use common::{net::tcp, util::Buffer, version::ProtocolVersion};
 use ringbuf::Consumer;
 use std::{
   io::{self, ErrorKind},
@@ -34,13 +34,13 @@ impl BedrockStreamWriter {
 
 #[async_trait]
 impl StreamWriter for BedrockStreamWriter {
-  async fn write(&mut self, _packet: Packet) -> io::Result<()> {
+  async fn write(&mut self, _packet: tcp::Packet) -> io::Result<()> {
     Ok(())
   }
 }
 #[async_trait]
 impl StreamReader for BedrockStreamReader {
-  fn read(&mut self, _ver: ProtocolVersion) -> io::Result<Option<Packet>> {
+  fn read(&mut self, _ver: ProtocolVersion) -> io::Result<Option<tcp::Packet>> {
     info!("waiting for data...");
     let mut id = 0;
     self.cons.access(|a, _| {

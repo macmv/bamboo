@@ -1,4 +1,4 @@
-use common::{
+use crate::{
   math::Pos,
   util::{Buffer, BufferError, UUID},
   version::ProtocolVersion,

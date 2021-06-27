@@ -2,10 +2,8 @@ use super::Generator;
 
 use std::io::{Error, ErrorKind, Result};
 
-use crate::packet::Packet;
-
 use common::{
-  net::{cb, Other},
+  net::{cb, tcp, Other},
   proto::player_list,
   util::{Buffer, UUID},
   version::ProtocolVersion,
@@ -16,8 +14,8 @@ pub(super) fn generate_player_info(
   gen: &Generator,
   v: ProtocolVersion,
   p: &cb::Packet,
-) -> Result<Vec<Packet>> {
-  let mut out = Packet::new(gen.convert_id(v, p.id()), v);
+) -> Result<Vec<tcp::Packet>> {
+  let mut out = tcp::Packet::new(gen.convert_id(v, p.id()), v);
   let info = match p.read_other().unwrap() {
     Other::PlayerList(c) => c,
     o => {
@@ -75,9 +73,9 @@ pub(super) fn generate_1_9_chunk(
   gen: &Generator,
   v: ProtocolVersion,
   p: &cb::Packet,
-) -> Result<Vec<Packet>> {
+) -> Result<Vec<tcp::Packet>> {
   // TODO: Error handling should be done within the packet.
-  let mut out = Packet::new(gen.convert_id(v, p.id()), v);
+  let mut out = tcp::Packet::new(gen.convert_id(v, p.id()), v);
   let chunk = match p.read_other().unwrap() {
     Other::Chunk(c) => c,
     o => return Err(Error::new(ErrorKind::InvalidData, format!("expected chunk, got {:?}", o))),

@@ -1,8 +1,9 @@
-use common::{net::sb, version::ProtocolVersion};
+use common::{
+  net::{sb, tcp},
+  version::ProtocolVersion,
+};
 use data::protocol::{FloatType, IntType, PacketField};
 use std::{collections::HashMap, io};
-
-use crate::packet::Packet;
 
 use super::PacketVersion;
 
@@ -26,7 +27,7 @@ impl Generator {
     }
   }
 
-  pub fn convert(&self, v: ProtocolVersion, mut p: Packet) -> io::Result<sb::Packet> {
+  pub fn convert(&self, v: ProtocolVersion, mut p: tcp::Packet) -> io::Result<sb::Packet> {
     let ver = &self.get_ver(v);
     // let types = &ver.types;
     let spec = &ver.packets[p.id() as usize];

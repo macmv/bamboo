@@ -1,11 +1,11 @@
-use crate::{packet::Packet, StreamReader, StreamWriter};
+use crate::{StreamReader, StreamWriter};
 
 use aes::{
   cipher::{AsyncStreamCipher, NewCipher},
   Aes128,
 };
 use cfb8::Cfb8;
-use common::{util, util::Buffer, version::ProtocolVersion};
+use common::{net::tcp, util, util::Buffer, version::ProtocolVersion};
 use miniz_oxide::{deflate::compress_to_vec_zlib, inflate::decompress_to_vec_zlib};
 use ringbuf::{Consumer, Producer, RingBuffer};
 use std::{
@@ -68,7 +68,7 @@ impl StreamReader for JavaStreamReader {
     self.prod.push_slice(&msg);
     Ok(())
   }
-  fn read(&mut self, ver: ProtocolVersion) -> Result<Option<Packet>> {
+  fn read(&mut self, ver: ProtocolVersion) -> Result<Option<tcp::Packet>> {
     let mut len = 0;
     let mut read = -1;
     self.cons.access(|a, _| {
@@ -93,15 +93,15 @@ impl StreamReader for JavaStreamReader {
       let mut buf = Buffer::new(vec);
       let uncompressed_length = buf.read_varint();
       if uncompressed_length == 0 {
-        Ok(Some(Packet::from_buf(buf.read_all(), ver)))
+        Ok(Some(tcp::Packet::from_buf(buf.read_all(), ver)))
       } else {
         let decompressed = decompress_to_vec_zlib(&buf.read_all()).map_err(|e| {
           io::Error::new(ErrorKind::InvalidData, format!("invalid zlib data: {:?}", e))
         })?;
-        Ok(Some(Packet::from_buf(decompressed, ver)))
+        Ok(Some(tcp::Packet::from_buf(decompressed, ver)))
       }
     } else {
-      Ok(Some(Packet::from_buf(vec, ver)))
+      Ok(Some(tcp::Packet::from_buf(vec, ver)))
     }
   }
 
@@ -129,7 +129,7 @@ impl JavaStreamWriter {
 
 #[async_trait]
 impl StreamWriter for JavaStreamWriter {
-  async fn write(&mut self, p: Packet) -> Result<()> {
+  async fn write(&mut self, p: tcp::Packet) -> Result<()> {
     // This is the packet, including it's id
     let mut bytes = p.serialize();
 

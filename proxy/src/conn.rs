@@ -1,7 +1,7 @@
-use crate::{packet::Packet, version::Generator, StreamReader, StreamWriter};
+use crate::{version::Generator, StreamReader, StreamWriter};
 
 use common::{
-  net::{cb, sb},
+  net::{cb, sb, tcp},
   proto,
   proto::minecraft_client::MinecraftClient,
   util::{chat::Color, Chat, UUID},
@@ -247,7 +247,7 @@ impl<R: StreamReader + Send, W: StreamWriter + Send> Conn<R, W> {
   async fn send_compression(&mut self, compression: i32) -> io::Result<()> {
     // Set compression, only if the thresh hold is non-zero
     if compression != 0 {
-      let mut out = Packet::new(3, self.ver);
+      let mut out = tcp::Packet::new(3, self.ver);
       out.write_varint(compression);
       self.writer.write(out).await?;
       // Must happen after the packet has been sent
@@ -260,7 +260,7 @@ impl<R: StreamReader + Send, W: StreamWriter + Send> Conn<R, W> {
   /// Sends the login success packet, and sets the state to Play.
   async fn send_success(&mut self, info: &LoginInfo) -> io::Result<()> {
     // Login success
-    let mut out = Packet::new(2, self.ver);
+    let mut out = tcp::Packet::new(2, self.ver);
     if self.ver >= ProtocolVersion::V1_16 {
       out.write_uuid(info.id);
     } else {
@@ -361,7 +361,7 @@ impl<R: StreamReader + Send, W: StreamWriter + Send> Conn<R, W> {
               // Server status
               0 => {
                 let status = self.build_status();
-                let mut out = Packet::new(0, self.ver);
+                let mut out = tcp::Packet::new(0, self.ver);
                 out.write_str(&serde_json::to_string(&status).unwrap());
                 self.writer.write(out).await?;
               }
@@ -369,7 +369,7 @@ impl<R: StreamReader + Send, W: StreamWriter + Send> Conn<R, W> {
               1 => {
                 let id = p.read_u64();
                 // Send pong
-                let mut out = Packet::new(1, self.ver);
+                let mut out = tcp::Packet::new(1, self.ver);
                 out.write_u64(id);
                 self.writer.write(out).await?;
                 // Client is done sending packets, we can close now.
@@ -410,7 +410,7 @@ impl<R: StreamReader + Send, W: StreamWriter + Send> Conn<R, W> {
                     OsRng.fill_bytes(&mut token);
 
                     // Encryption request
-                    let mut out = Packet::new(1, self.ver);
+                    let mut out = tcp::Packet::new(1, self.ver);
                     out.write_str(""); // Server id, should be empty
                     out.write_varint(key.len() as i32); // Key len
                     out.write_buf(key); // DER encoded RSA key

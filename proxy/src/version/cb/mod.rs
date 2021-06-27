@@ -1,8 +1,9 @@
-use common::{net::cb, version::ProtocolVersion};
+use common::{
+  net::{cb, tcp},
+  version::ProtocolVersion,
+};
 use data::protocol::{CountType, FloatType, IntType, PacketField};
 use std::{collections::HashMap, io};
-
-use crate::packet::Packet;
 
 use super::PacketVersion;
 
@@ -17,8 +18,9 @@ mod v1_17;
 mod v1_8;
 mod v1_9;
 
-type BoxedPacketFn =
-  Box<dyn Fn(&Generator, ProtocolVersion, &cb::Packet) -> io::Result<Vec<Packet>> + Send + Sync>;
+type BoxedPacketFn = Box<
+  dyn Fn(&Generator, ProtocolVersion, &cb::Packet) -> io::Result<Vec<tcp::Packet>> + Send + Sync,
+>;
 
 struct PacketSpec {
   gens: HashMap<cb::ID, BoxedPacketFn>,
@@ -28,7 +30,7 @@ impl PacketSpec {
   fn add(
     &mut self,
     id: cb::ID,
-    f: impl Fn(&Generator, ProtocolVersion, &cb::Packet) -> io::Result<Vec<Packet>>
+    f: impl Fn(&Generator, ProtocolVersion, &cb::Packet) -> io::Result<Vec<tcp::Packet>>
       + Send
       + Sync
       + 'static,
@@ -90,7 +92,7 @@ impl Generator {
     }
   }
 
-  pub fn convert(&self, v: ProtocolVersion, p: &cb::Packet) -> io::Result<Vec<Packet>> {
+  pub fn convert(&self, v: ProtocolVersion, p: &cb::Packet) -> io::Result<Vec<tcp::Packet>> {
     let new_id = p.id();
     // Check for a generator
     let gen = self.get_gen(v);
@@ -116,7 +118,7 @@ impl Generator {
         }
         // Here, we must have a valid packet id, or we would have returned already.
         let spec = &self.get_ver(v).packets[id as usize];
-        let mut out = Packet::new(id, v);
+        let mut out = tcp::Packet::new(id, v);
         for (n, f) in &spec.fields {
           match f {
             PacketField::Int(v) => match v {

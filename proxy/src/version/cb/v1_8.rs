@@ -4,10 +4,9 @@ use std::{
 };
 
 use super::{utils, PacketSpec};
-use crate::packet::Packet;
 
 use common::{
-  net::{cb, Other},
+  net::{cb, tcp, Other},
   util::Buffer,
 };
 
@@ -15,7 +14,7 @@ pub(super) fn gen_spec() -> PacketSpec {
   let mut spec = PacketSpec { gens: HashMap::new() };
   spec.add(cb::ID::PlayerInfo, utils::generate_player_info);
   spec.add(cb::ID::UnloadChunk, |gen, v, p| {
-    let mut out = Packet::new(gen.convert_id(v, cb::ID::MapChunk), v);
+    let mut out = tcp::Packet::new(gen.convert_id(v, cb::ID::MapChunk), v);
     out.write_i32(p.get_int("chunk_x")?);
     out.write_i32(p.get_int("chunk_z")?);
     out.write_bool(true); // Must be true to unload
@@ -24,7 +23,7 @@ pub(super) fn gen_spec() -> PacketSpec {
     Ok(vec![out])
   });
   spec.add(cb::ID::MapChunk, |gen, v, p| {
-    let mut out = Packet::new(gen.convert_id(v, cb::ID::MapChunk), v);
+    let mut out = tcp::Packet::new(gen.convert_id(v, cb::ID::MapChunk), v);
     // TODO: Error handling should be done within the packet.
     let chunk = match p.read_other().unwrap() {
       Other::Chunk(c) => c,
