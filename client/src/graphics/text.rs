@@ -7,8 +7,8 @@ use vulkano::{
   device::{Device, Queue},
   format::Format,
   image::{
-    view::ImageView, ImageCreateFlags, ImageDimensions, ImageLayout, ImageUsage, ImmutableImage,
-    SwapchainImage,
+    view::ImageView, AttachmentImage, ImageCreateFlags, ImageDimensions, ImageLayout, ImageUsage,
+    ImmutableImage, SwapchainImage,
   },
   pipeline::GraphicsPipeline,
   render_pass::{Framebuffer, FramebufferAbstract, RenderPass, Subpass},
@@ -54,7 +54,7 @@ pub struct TextRender {
   size:   Scale,
 
   buffer:      Arc<CpuAccessibleBuffer<[u8]>>,
-  text:        Texture,
+  tex:         Arc<AttachmentImage>,
   cache_size:  Point<usize>,
   new_glyph_x: usize,
   /* cache_pixel_buffer: Vec<u8>,
@@ -116,37 +116,21 @@ impl TextRender {
         .unwrap(),
     );
 
-    let (tex, tex_write) = ImmutableImage::uninitialized(
-      device.clone(),
-      ImageDimensions::Dim2d {
-        width:        CACHE_WIDTH as u32,
-        height:       CACHE_HEIGHT as u32,
-        array_layers: 1,
-      },
-      Format::R8Unorm,
-      1,
-      ImageUsage { sampled: true, transfer_destination: true, ..ImageUsage::none() },
-      ImageCreateFlags::none(),
-      ImageLayout::General,
-      Some(queue.family()),
-    )
-    .unwrap();
-
     TextRender {
       buffer: CpuAccessibleBuffer::<[u8]>::from_iter(
         device.clone(),
         BufferUsage::all(),
         false,
-        [].iter().cloned(),
+        [0].iter().cloned(),
       )
       .unwrap(),
+      tex: AttachmentImage::new(device.clone(), [1, 1], Format::R8Unorm).unwrap(),
       device,
       queue,
       font,
-      tex,
       cache: HashMap::new(),
       size: Scale::uniform(size),
-      cache_size: Point { x: 0, y: 0 },
+      cache_size: Point { x: 1, y: 1 },
       new_glyph_x: 0,
     }
   }
@@ -180,8 +164,8 @@ impl TextRender {
         new_chars.push((b, buf));
       }
     }
-    for (bounds, buf) in new_chars {
-      self.add_char(bounds, &buf);
+    for (bounds, buf) in &new_chars {
+      self.add_char(*bounds, buf);
     }
     new_chars.len() > 0
   }
@@ -205,7 +189,7 @@ impl TextRender {
       self.resize(cw, new_height);
     }
 
-    let gpu_buf = self.buffer.write().unwrap();
+    let mut gpu_buf = self.buffer.write().unwrap();
     for y in 0..bounds.height() as usize {
       for x in 0..bounds.width() as usize {
         let buf_index = y * bounds.width() as usize + x;
@@ -225,7 +209,7 @@ impl TextRender {
     text: &str,
   ) {
     if self.update_cache(text) {
-      command_buffer.copy_buffer_to_image(self.buffer, self.texture).unwrap();
+      command_buffer.copy_buffer_to_image(self.buffer.clone(), self.tex.clone()).unwrap();
     }
     // update texture cache
     // cache
@@ -260,8 +244,6 @@ impl TextRender {
       0.0,
     )
     .unwrap();
-
-    let cache_texture_view = ImageView::new(cache_texture).unwrap();
 
     // let set = Arc::new(
     //   PersistentDescriptorSet::start(self.pipeline.descriptor_set_layout(0).
