@@ -1,11 +1,13 @@
-use rusttype::{point, Font, Point, PositionedGlyph, Rect, Scale};
+use rusttype::{point, Font, GlyphId, Point, PositionedGlyph, Rect, Scale};
 use std::{cmp::max, collections::HashMap, sync::Arc};
 use vulkano::{
   buffer::{BufferUsage, CpuAccessibleBuffer},
-  command_buffer::{AutoCommandBufferBuilder, DynamicState, PrimaryAutoCommandBuffer},
+  command_buffer::{
+    AutoCommandBufferBuilder, DynamicState, PrimaryAutoCommandBuffer, SubpassContents,
+  },
   descriptor::{descriptor_set::PersistentDescriptorSet, PipelineLayoutAbstract},
   device::{Device, Queue},
-  format::Format,
+  format::{ClearValue, Format},
   image::{
     view::ImageView, AttachmentImage, ImageCreateFlags, ImageDimensions, ImageLayout, ImageUsage,
     ImmutableImage, SwapchainImage,
@@ -20,10 +22,8 @@ use winit::window::Window;
 #[derive(Default, Debug, Clone)]
 struct Vert {
   pos: [f32; 2],
-  uv:  [f32; 2],
-  col: [f32; 4],
 }
-vulkano::impl_vertex!(Vert, pos, uv, col);
+vulkano::impl_vertex!(Vert, pos);
 
 mod vs {
   vulkano_shaders::shader! {
@@ -49,10 +49,11 @@ pub struct TextRender {
   queue:  Arc<Queue>,
   font:   Font<'static>,
   // If the rect is none, then it is something like a space, and will never be given to us by
-  // layout().
-  cache:  HashMap<char, Option<Rect<i32>>>,
+  // layout(). The none is stored so that we don't try to add it to the cache every time we render.
+  cache:  HashMap<GlyphId, Option<Rect<i32>>>,
   size:   Scale,
 
+  texts:       Vec<((f32, f32), String)>,
   buffer:      Arc<CpuAccessibleBuffer<[u8]>>,
   tex:         Arc<AttachmentImage>,
   cache_size:  Point<usize>,
@@ -134,6 +135,7 @@ impl TextRender {
       device,
       queue,
       font,
+      texts: vec![],
       cache: HashMap::new(),
       size: Scale::uniform(size),
       cache_size: Point { x: 1, y: 1 },
@@ -156,12 +158,12 @@ impl TextRender {
   fn update_cache(&mut self, text: &str) -> bool {
     let mut new_chars = vec![];
     for c in text.chars() {
-      if self.cache.contains_key(&c) {
+      if self.cache.contains_key(&self.font.glyph(c).id()) {
         continue;
       }
       let g = self.font.glyph(c).scaled(self.size).positioned(Point { x: 0.0, y: 0.0 });
       let bounds = g.pixel_bounding_box();
-      self.cache.insert(c, bounds);
+      self.cache.insert(g.id(), bounds);
       if let Some(b) = bounds {
         let mut buf = vec![0; b.width() as usize * b.height() as usize];
         g.draw(|x, y, v| {
@@ -223,16 +225,23 @@ impl TextRender {
     .unwrap();
   }
 
-  pub fn draw_text<'a>(
+  pub fn queue_text(
     &mut self,
-    command_buffer: &'a mut AutoCommandBufferBuilder<PrimaryAutoCommandBuffer>,
-    framebuf: Arc<Framebuffer<((), Arc<ImageView<Arc<SwapchainImage<Window>>>>)>>,
+    buf: &mut AutoCommandBufferBuilder<PrimaryAutoCommandBuffer>,
     pos: (f32, f32),
     text: &str,
   ) {
     if self.update_cache(text) {
-      command_buffer.copy_buffer_to_image(self.buffer.clone(), self.tex.clone()).unwrap();
+      buf.copy_buffer_to_image(self.buffer.clone(), self.tex.clone()).unwrap();
     }
+    self.texts.push((pos, text.into()));
+  }
+
+  pub fn draw(
+    &mut self,
+    command_buffer: &mut AutoCommandBufferBuilder<PrimaryAutoCommandBuffer>,
+    framebuf: Arc<Framebuffer<((), Arc<ImageView<Arc<SwapchainImage<Window>>>>)>>,
+  ) {
     let sampler = Sampler::new(
       self.device.clone(),
       Filter::Linear,
@@ -258,6 +267,16 @@ impl TextRender {
         .unwrap(),
     );
 
+    for (pos, text) in self.texts.drain(..) {
+      for g in self.font.layout(&text, self.size, Point { x: 0.0, y: 0.0 }) {
+        let uv_offset = match self.cache[&g.id()] {
+          Some(v) => v,
+          None => continue,
+        };
+        let offset = Point { x: g.position().x / 100.0 + pos.0, y: g.position().y / 100.0 + pos.1 };
+      }
+    }
+
     // let mut command_buffer = command_buffer
     //   .copy_buffer_to_image(buffer, cache_texture_write)
     //   .unwrap()
@@ -267,7 +286,7 @@ impl TextRender {
     //     vec![ClearValue::Float([0.0, 0.0, 0.2, 1.0])],
     //   )
     //   .unwrap();
-
+    //
     // draw
     // for text in &mut self.texts.drain(..) {
     //   let vertices: Vec<Vert> = text

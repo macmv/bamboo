@@ -352,6 +352,8 @@ impl GameWindow {
         )
         .unwrap();
 
+        text.queue_text(&mut builder, (0.0, 0.0), "Hello, world!");
+
         builder
           .begin_render_pass(
             data.buffers[img_num].clone(),
@@ -364,10 +366,9 @@ impl GameWindow {
           .draw(data.game_pipeline.clone(), &data.dyn_state, vertex_buffer.clone(), (), pc, [])
           .unwrap();
         ui.draw(&mut builder, data.ui_pipeline.clone(), &data.dyn_state, &data);
+        text.draw(&mut builder, data.buffers[img_num].clone());
 
         builder.end_render_pass().unwrap();
-
-        text.draw_text(&mut builder, data.buffers[img_num].clone(), (0.0, 0.0), "Hello, world!");
 
         let command_buffer = builder.build().unwrap();
 
