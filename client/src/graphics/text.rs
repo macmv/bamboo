@@ -3,14 +3,14 @@ use std::{cmp::max, collections::HashMap, sync::Arc};
 use vulkano::{
   buffer::{BufferUsage, CpuAccessibleBuffer},
   command_buffer::{AutoCommandBufferBuilder, DynamicState, PrimaryAutoCommandBuffer},
-  descriptor::descriptor_set::PersistentDescriptorSet,
+  descriptor::{descriptor_set::PersistentDescriptorSet, PipelineLayoutAbstract},
   device::{Device, Queue},
   format::Format,
   image::{
     view::ImageView, AttachmentImage, ImageCreateFlags, ImageDimensions, ImageLayout, ImageUsage,
     ImmutableImage, SwapchainImage,
   },
-  pipeline::GraphicsPipeline,
+  pipeline::{vertex::SingleBufferDefinition, GraphicsPipeline},
   render_pass::{Framebuffer, FramebufferAbstract, RenderPass, Subpass},
   sampler::{Filter, MipmapMode, Sampler, SamplerAddressMode},
   swapchain::Swapchain,
@@ -57,10 +57,12 @@ pub struct TextRender {
   tex:         Arc<AttachmentImage>,
   cache_size:  Point<usize>,
   new_glyph_x: usize,
+
+  pipeline: Arc<
+    GraphicsPipeline<SingleBufferDefinition<Vert>, Box<dyn PipelineLayoutAbstract + Send + Sync>>,
+  >,
   /* cache_pixel_buffer: Vec<u8>,
-   * pipeline: Arc<
-   *   GraphicsPipeline<SingleBufferDefinition<Vert>, Box<dyn PipelineLayoutAbstract + Send +
-   * Sync>>, >,
+   *
    * texts:              Vec<TextData>, */
 }
 
@@ -122,7 +124,13 @@ impl TextRender {
         [0].iter().cloned(),
       )
       .unwrap(),
-      tex: AttachmentImage::new(device.clone(), [1, 1], Format::R8Unorm).unwrap(),
+      tex: AttachmentImage::with_usage(
+        device.clone(),
+        [1, 1],
+        Format::R8Unorm,
+        ImageUsage { transfer_destination: true, sampled: true, ..ImageUsage::none() },
+      )
+      .unwrap(),
       device,
       queue,
       font,
@@ -130,6 +138,7 @@ impl TextRender {
       size: Scale::uniform(size),
       cache_size: Point { x: 1, y: 1 },
       new_glyph_x: 0,
+      pipeline,
     }
   }
 
@@ -205,14 +214,18 @@ impl TextRender {
       vec![0; width * height].iter().cloned(),
     )
     .unwrap();
-    self.tex =
-      AttachmentImage::new(self.device.clone(), [width as u32, height as u32], Format::R8Unorm)
-        .unwrap();
+    self.tex = AttachmentImage::with_usage(
+      self.device.clone(),
+      [width as u32, height as u32],
+      Format::R8Unorm,
+      ImageUsage { transfer_destination: true, sampled: true, ..ImageUsage::none() },
+    )
+    .unwrap();
   }
 
   pub fn draw_text<'a>(
     &mut self,
-    mut command_buffer: &'a mut AutoCommandBufferBuilder<PrimaryAutoCommandBuffer>,
+    command_buffer: &'a mut AutoCommandBufferBuilder<PrimaryAutoCommandBuffer>,
     framebuf: Arc<Framebuffer<((), Arc<ImageView<Arc<SwapchainImage<Window>>>>)>>,
     pos: (f32, f32),
     text: &str,
@@ -220,25 +233,6 @@ impl TextRender {
     if self.update_cache(text) {
       command_buffer.copy_buffer_to_image(self.buffer.clone(), self.tex.clone()).unwrap();
     }
-    // update texture cache
-    // cache
-    //   .cache_queued(|rect, src_data| {
-    //     let width = (rect.max.x - rect.min.x) as usize;
-    //     let height = (rect.max.y - rect.min.y) as usize;
-    //     let mut dst_index = rect.min.y as usize * CACHE_WIDTH + rect.min.x as
-    // usize;     let mut src_index = 0;
-    //
-    //     for _ in 0..height {
-    //       let dst_slice = &mut cache_pixel_buffer[dst_index..dst_index + width];
-    //       let src_slice = &src_data[src_index..src_index + width];
-    //       dst_slice.copy_from_slice(src_slice);
-    //
-    //       dst_index += CACHE_WIDTH;
-    //       src_index += width;
-    //     }
-    //   })
-    //   .unwrap();
-
     let sampler = Sampler::new(
       self.device.clone(),
       Filter::Linear,
@@ -254,13 +248,15 @@ impl TextRender {
     )
     .unwrap();
 
-    // let set = Arc::new(
-    //   PersistentDescriptorSet::start(self.pipeline.descriptor_set_layout(0).
-    // unwrap().clone())     .add_sampled_image(cache_texture_view, sampler)
-    //     .unwrap()
-    //     .build()
-    //     .unwrap(),
-    // );
+    let tex_view = ImageView::new(self.tex.clone()).unwrap();
+
+    let set = Arc::new(
+      PersistentDescriptorSet::start(self.pipeline.descriptor_set_layout(0).unwrap().clone())
+        .add_sampled_image(tex_view, sampler)
+        .unwrap()
+        .build()
+        .unwrap(),
+    );
 
     // let mut command_buffer = command_buffer
     //   .copy_buffer_to_image(buffer, cache_texture_write)

@@ -365,9 +365,9 @@ impl GameWindow {
           .unwrap();
         ui.draw(&mut builder, data.ui_pipeline.clone(), &data.dyn_state, &data);
 
-        text.draw_text(&mut builder, data.buffers[img_num].clone(), (0.0, 0.0), "Hello, world!");
-
         builder.end_render_pass().unwrap();
+
+        text.draw_text(&mut builder, data.buffers[img_num].clone(), (0.0, 0.0), "Hello, world!");
 
         let command_buffer = builder.build().unwrap();
 
