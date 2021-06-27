@@ -53,6 +53,19 @@ pub fn png_err(
   ),
   PngError,
 > {
+  let (data, dimensions) = png_data(path)?;
+  let (image, future) = ImmutableImage::from_iter(
+    data.iter().cloned(),
+    dimensions,
+    MipmapsCount::One,
+    Format::R8G8B8A8Srgb,
+    queue,
+  )
+  .unwrap();
+  Ok((ImageView::new(image).unwrap(), future))
+}
+
+pub fn png_data(path: &str) -> Result<(Vec<u8>, ImageDimensions), PngError> {
   let f = File::open(path).map_err(|e| PngError::IO(e))?;
   let decoder = png_mod::Decoder::new(f);
   let (info, mut reader) = decoder.read_info().map_err(|e| PngError::Decoding(e))?;
@@ -63,14 +76,5 @@ pub fn png_err(
   }
   let mut image_data = vec![0; (info.width * info.height * 4) as usize];
   reader.next_frame(&mut image_data).map_err(|e| PngError::Decoding(e))?;
-
-  let (image, future) = ImmutableImage::from_iter(
-    image_data.iter().cloned(),
-    dimensions,
-    MipmapsCount::One,
-    Format::R8G8B8A8Srgb,
-    queue,
-  )
-  .unwrap();
-  Ok((ImageView::new(image).unwrap(), future))
+  Ok((image_data, dimensions))
 }
