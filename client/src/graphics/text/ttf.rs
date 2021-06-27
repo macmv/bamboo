@@ -1,5 +1,5 @@
-use super::{Vert, WindowData};
-use rusttype::{Font, GlyphId, Point, PositionedGlyph, Rect, Scale};
+use crate::graphics::{Vert, WindowData};
+use rusttype::{Font, GlyphId, Point, Rect, Scale};
 use std::{cmp::max, collections::HashMap, mem, sync::Arc};
 use vulkano::{
   buffer::{BufferUsage, CpuAccessibleBuffer},
@@ -28,12 +28,7 @@ mod fs {
   }
 }
 
-struct TextData {
-  glyphs: Vec<PositionedGlyph<'static>>,
-  color:  [f32; 4],
-}
-
-pub struct TextRender {
+pub struct TTFRender {
   device: Arc<Device>,
   font:   Font<'static>,
   // If the rect is none, then it is something like a space, and will never be given to us by
@@ -53,7 +48,7 @@ pub struct TextRender {
   >,
 }
 
-impl TextRender {
+impl TTFRender {
   pub fn new<W>(size: f32, device: Arc<Device>, swapchain: Arc<Swapchain<W>>) -> Self
   where
     W: Send + Sync + 'static,
@@ -95,7 +90,7 @@ impl TextRender {
         .unwrap(),
     );
 
-    TextRender {
+    TTFRender {
       buffer: CpuAccessibleBuffer::<[u8]>::from_iter(
         device.clone(),
         BufferUsage::all(),
