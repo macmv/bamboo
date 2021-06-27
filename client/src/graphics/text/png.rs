@@ -83,9 +83,9 @@ impl PNGRender {
           break;
         }
       }
-      chars.insert(c, (width as f32, 7.0));
+      chars.insert(c, (width as f32, 8.0));
       x += 1;
-      if x > 16 {
+      if x >= 16 {
         x = 0;
         y += 1;
       }
@@ -186,7 +186,7 @@ impl TextRender for PNGRender {
               size.0 * self.size / win.width() as f32,
               size.1 * self.size / win.height() as f32,
             ],
-            uv_size:   [1.0 / 16.0, 1.0 / 16.0],
+            uv_size:   [size.0 / 128.0, size.1 / 128.0],
           };
           command_buffer
             .draw(
@@ -198,7 +198,7 @@ impl TextRender for PNGRender {
               [],
             )
             .unwrap();
-          x += (size.0) * self.size / win.width() as f32;
+          x += (size.0 + 1.0) * self.size / win.width() as f32;
         }
       }
     }
