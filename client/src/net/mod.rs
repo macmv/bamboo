@@ -1,11 +1,20 @@
-use std::net::TcpStream;
+use tokio::net::TcpStream;
 
-pub struct Connection {}
+mod reader;
+mod writer;
+
+use reader::TCPReader;
+use writer::TCPWriter;
+
+pub struct Connection {
+  reader: TCPReader,
+  writer: TCPWriter,
+}
 
 impl Connection {
-  pub fn new(ip: &str) -> Option<Self> {
+  pub async fn new(ip: &str) -> Option<Self> {
     info!("connecting to {}...", ip);
-    let stream = match TcpStream::connect(ip) {
+    let stream = match TcpStream::connect(ip).await {
       Ok(s) => s,
       Err(e) => {
         error!("could not connect to {}: {}", ip, e);
@@ -13,6 +22,12 @@ impl Connection {
       }
     };
 
-    Some(Connection {})
+    let (read, write) = stream.into_split();
+    let conn = Connection { reader: TCPReader::new(read), writer: TCPWriter::new(write) };
+    conn.handshake("macmv");
+
+    Some(conn)
   }
+
+  async fn handshake(&self, name: &str) {}
 }

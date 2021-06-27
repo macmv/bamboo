@@ -33,7 +33,9 @@ fn main() {
     ui::LayoutKind::Menu,
     ui::Layout::new()
       .button(Vert::new(-0.2, -0.14), Vert::new(0.4, 0.08), move || {
-        world.connect("127.0.0.1:25565");
+        tokio::runtime::Builder::new_multi_thread().enable_all().build().unwrap().block_on(async {
+          world.connect("127.0.0.1:25565").await;
+        });
       })
       .button(Vert::new(-0.2, -0.04), Vert::new(0.4, 0.08), || info!("options"))
       .button(Vert::new(-0.2, 0.06), Vert::new(0.4, 0.08), || {

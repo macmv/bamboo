@@ -11,8 +11,8 @@ impl World {
     Self { chunks: RwLock::new(HashMap::new()) }
   }
 
-  pub fn connect(&self, ip: &str) {
-    let conn = match Connection::new(ip) {
+  pub async fn connect(&self, ip: &str) {
+    let conn = match Connection::new(ip).await {
       Some(c) => c,
       None => return,
     };
