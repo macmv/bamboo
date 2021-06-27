@@ -83,8 +83,6 @@ impl TextRender {
     let vs = vs::Shader::load(device.clone()).unwrap();
     let fs = fs::Shader::load(device.clone()).unwrap();
 
-    let cache_pixel_buffer = vec![0; CACHE_WIDTH * CACHE_HEIGHT];
-
     let render_pass = Arc::new(
       vulkano::single_pass_renderpass!(device.clone(),
         attachments: {
@@ -156,7 +154,7 @@ impl TextRender {
       let bounds = g.pixel_bounding_box();
       self.cache.insert(c, bounds);
       if let Some(b) = bounds {
-        let mut buf = Vec::with_capacity(b.width() as usize * b.height() as usize);
+        let mut buf = vec![0; b.width() as usize * b.height() as usize];
         g.draw(|x, y, v| {
           let v = (v * 255.0).round() as u8;
           buf[y as usize * b.width() as usize + x as usize] = v;
@@ -199,7 +197,18 @@ impl TextRender {
     }
   }
 
-  fn resize(&mut self, width: usize, height: usize) {}
+  fn resize(&mut self, width: usize, height: usize) {
+    self.buffer = CpuAccessibleBuffer::<[u8]>::from_iter(
+      self.device.clone(),
+      BufferUsage::all(),
+      false,
+      vec![0; width * height].iter().cloned(),
+    )
+    .unwrap();
+    self.tex =
+      AttachmentImage::new(self.device.clone(), [width as u32, height as u32], Format::R8Unorm)
+        .unwrap();
+  }
 
   pub fn draw_text<'a>(
     &mut self,
