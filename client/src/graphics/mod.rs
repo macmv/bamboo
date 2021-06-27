@@ -1,6 +1,6 @@
 use crate::ui::UI;
 use std::{error::Error, fmt, ops::Deref, sync::Arc, time::Instant};
-use text::{TTFRender, TextRender};
+use text::{PNGRender, TTFRender, TextRender};
 use vulkano::{
   buffer::{BufferUsage, CpuAccessibleBuffer},
   command_buffer::{AutoCommandBufferBuilder, CommandBufferUsage, DynamicState, SubpassContents},
@@ -281,7 +281,13 @@ pub fn init() -> Result<GameWindow, InitError> {
 }
 
 impl GameWindow {
-  pub fn run(self, ui: Arc<UI>) -> ! {
+  pub fn run(mut self, ui: Arc<UI>) -> ! {
+    let mut text: Box<dyn TextRender> = Box::new(PNGRender::new(
+      "/home/macmv/.minecraft/resourcepacks/faithful/assets/minecraft/textures/font/ascii.png",
+      64.0,
+      &mut self,
+    ));
+
     let mut data = self.data;
 
     let vertex_buffer = {
@@ -299,9 +305,6 @@ impl GameWindow {
 
     let mut previous_frame_fut = self.initial_future;
     let mut resize = false;
-
-    let mut text: Box<dyn TextRender> =
-      Box::new(TTFRender::new(64.0, data.device.clone(), data.swapchain.clone()));
     // .minecraft/resourcepacks/ocd/assets/minecraft/textures/font
 
     self.event_loop.run(move |event, _, control_flow| match event {

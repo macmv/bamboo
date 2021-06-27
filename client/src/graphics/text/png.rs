@@ -20,6 +20,7 @@ use vulkano::{
 
 pub struct PNGRender {
   texts: Vec<((f32, f32), String)>,
+  size:  f32,
 
   vbuf:     Arc<CpuAccessibleBuffer<[Vert]>>,
   set: Arc<
@@ -37,13 +38,13 @@ impl PNGRender {
   /// Creates a new png text renderer. This function should be used during init,
   /// and a different function should be called if you need to reload a png
   /// render.
-  pub fn new_init(path: &str, size: f32, win: &mut GameWindow) -> Self {
+  pub fn new(path: &str, size: f32, win: &mut GameWindow) -> Self {
     let (tex, fut) = load::png(path, win.queue().clone()).unwrap();
     win.add_initial_future(fut);
     let sampler = Sampler::new(
       win.device().clone(),
-      Filter::Linear,
-      Filter::Linear,
+      Filter::Nearest,
+      Filter::Nearest,
       MipmapMode::Nearest,
       SamplerAddressMode::Repeat,
       SamplerAddressMode::Repeat,
@@ -66,6 +67,7 @@ impl PNGRender {
     );
 
     PNGRender {
+      size,
       texts: vec![],
       vbuf: CpuAccessibleBuffer::from_iter(
         win.device().clone(),
@@ -105,16 +107,20 @@ impl TextRender for PNGRender {
     win: &WindowData,
   ) {
     for (pos, text) in &self.texts {
+      let mut x = pos.0;
       for c in text.chars() {
         if (' '..'~').contains(&c) {
           let index = c as u32 - ' ' as u32;
           let uv_x = (index % 16) as f32 / 16.0;
           let uv_y = (index / 16 + 2) as f32 / 16.0;
           let pc = vs::ty::PushData {
-            offset:    [pos.0, pos.1],
+            offset:    [x, pos.1],
             uv_offset: [uv_x, uv_y],
             col:       [0.0, 1.0, 1.0, 1.0],
-            size:      [5.0 as f32 / win.width() as f32, 7.0 as f32 / win.height() as f32],
+            size:      [
+              5.0 * self.size / win.width() as f32,
+              7.0 * self.size / win.height() as f32,
+            ],
             uv_size:   [1.0 / 16.0, 1.0 / 16.0],
           };
           command_buffer
@@ -127,6 +133,7 @@ impl TextRender for PNGRender {
               [],
             )
             .unwrap();
+          x += 6.0 * self.size / win.width() as f32;
         }
       }
     }
