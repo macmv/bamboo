@@ -1,4 +1,4 @@
-use super::TextRender;
+use super::{vs, TextRender};
 use crate::graphics::{Vert, WindowData};
 use rusttype::{Font, GlyphId, Point, Rect, Scale};
 use std::{cmp::max, collections::HashMap, mem, sync::Arc};
@@ -10,24 +10,9 @@ use vulkano::{
   format::Format,
   image::{view::ImageView, AttachmentImage, ImageUsage},
   pipeline::{vertex::SingleBufferDefinition, GraphicsPipeline},
-  render_pass::{RenderPass, Subpass},
   sampler::{Filter, MipmapMode, Sampler, SamplerAddressMode},
   swapchain::Swapchain,
 };
-
-mod vs {
-  vulkano_shaders::shader! {
-    ty: "vertex",
-    path: "src/shader/text.vs",
-  }
-}
-
-mod fs {
-  vulkano_shaders::shader! {
-    ty: "fragment",
-    path: "src/shader/text.fs",
-  }
-}
 
 pub struct TTFRender {
   device: Arc<Device>,
@@ -56,40 +41,6 @@ impl TTFRender {
   {
     let font_data = include_bytes!("/usr/share/fonts/TTF/DejaVuSans.ttf");
     let font = Font::try_from_bytes(font_data as &[u8]).unwrap();
-
-    let vs = vs::Shader::load(device.clone()).unwrap();
-    let fs = fs::Shader::load(device.clone()).unwrap();
-
-    let render_pass = Arc::new(
-      vulkano::single_pass_renderpass!(device.clone(),
-        attachments: {
-          color: {
-            load: Load,
-            store: Store,
-            format: swapchain.format(),
-            samples: 1,
-          }
-        },
-        pass: {
-          color: [color],
-          depth_stencil: {}
-        }
-      )
-      .unwrap(),
-    ) as Arc<RenderPass>;
-
-    let pipeline = Arc::new(
-      GraphicsPipeline::start()
-        .vertex_input_single_buffer::<Vert>()
-        .vertex_shader(vs.main_entry_point(), ())
-        .triangle_list()
-        .viewports_dynamic_scissors_irrelevant(1)
-        .fragment_shader(fs.main_entry_point(), ())
-        .blend_alpha_blending()
-        .render_pass(Subpass::from(render_pass.clone(), 0).unwrap())
-        .build(device.clone())
-        .unwrap(),
-    );
 
     TTFRender {
       buffer: CpuAccessibleBuffer::<[u8]>::from_iter(
@@ -122,6 +73,7 @@ impl TTFRender {
         .cloned(),
       )
       .unwrap(),
+      pipeline: super::create_pipeline(device.clone(), swapchain.clone()),
       device,
       font,
       texts: vec![],
@@ -129,7 +81,6 @@ impl TTFRender {
       size: Scale::uniform(size),
       cache_size: Point { x: 1, y: 1 },
       new_glyph_x: 1,
-      pipeline,
     }
   }
 
