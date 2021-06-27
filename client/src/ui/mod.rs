@@ -172,7 +172,7 @@ impl UI {
             None => error!("unknown UI image {}", name),
           }
         }
-        DrawOp::Text(pos, text) => {}
+        DrawOp::Text(_pos, _text) => {}
       }
     }
   }

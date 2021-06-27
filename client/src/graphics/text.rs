@@ -1,24 +1,18 @@
 use super::{Vert, WindowData};
-use rusttype::{point, Font, GlyphId, Point, PositionedGlyph, Rect, Scale};
+use rusttype::{Font, GlyphId, Point, PositionedGlyph, Rect, Scale};
 use std::{cmp::max, collections::HashMap, sync::Arc};
 use vulkano::{
   buffer::{BufferUsage, CpuAccessibleBuffer},
-  command_buffer::{
-    AutoCommandBufferBuilder, DynamicState, PrimaryAutoCommandBuffer, SubpassContents,
-  },
+  command_buffer::{AutoCommandBufferBuilder, PrimaryAutoCommandBuffer},
   descriptor::{descriptor_set::PersistentDescriptorSet, PipelineLayoutAbstract},
   device::{Device, Queue},
-  format::{ClearValue, Format},
-  image::{
-    view::ImageView, AttachmentImage, ImageCreateFlags, ImageDimensions, ImageLayout, ImageUsage,
-    ImmutableImage, SwapchainImage,
-  },
+  format::Format,
+  image::{view::ImageView, AttachmentImage, ImageUsage},
   pipeline::{vertex::SingleBufferDefinition, GraphicsPipeline},
-  render_pass::{Framebuffer, FramebufferAbstract, RenderPass, Subpass},
+  render_pass::{RenderPass, Subpass},
   sampler::{Filter, MipmapMode, Sampler, SamplerAddressMode},
   swapchain::Swapchain,
 };
-use winit::window::Window;
 
 mod vs {
   vulkano_shaders::shader! {
@@ -41,7 +35,6 @@ struct TextData {
 
 pub struct TextRender {
   device: Arc<Device>,
-  queue:  Arc<Queue>,
   font:   Font<'static>,
   // If the rect is none, then it is something like a space, and will never be given to us by
   // layout(). The none is stored so that we don't try to add it to the cache every time we render.
@@ -58,18 +51,10 @@ pub struct TextRender {
   pipeline: Arc<
     GraphicsPipeline<SingleBufferDefinition<Vert>, Box<dyn PipelineLayoutAbstract + Send + Sync>>,
   >,
-  /* cache_pixel_buffer: Vec<u8>,
-   *
-   * texts:              Vec<TextData>, */
 }
 
 impl TextRender {
-  pub fn new<W>(
-    size: f32,
-    device: Arc<Device>,
-    queue: Arc<Queue>,
-    swapchain: Arc<Swapchain<W>>,
-  ) -> Self
+  pub fn new<W>(size: f32, device: Arc<Device>, swapchain: Arc<Swapchain<W>>) -> Self
   where
     W: Send + Sync + 'static,
   {
@@ -142,7 +127,6 @@ impl TextRender {
       )
       .unwrap(),
       device,
-      queue,
       font,
       texts: vec![],
       cache: HashMap::new(),

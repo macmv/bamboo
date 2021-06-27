@@ -300,8 +300,7 @@ impl GameWindow {
     let mut previous_frame_fut = self.initial_future;
     let mut resize = false;
 
-    let mut text =
-      TextRender::new(64.0, data.device.clone(), data.queue.clone(), data.swapchain.clone());
+    let mut text = TextRender::new(64.0, data.device.clone(), data.swapchain.clone());
 
     self.event_loop.run(move |event, _, control_flow| match event {
       Event::WindowEvent { event: WindowEvent::CloseRequested, .. } => {
