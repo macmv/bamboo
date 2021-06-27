@@ -300,8 +300,8 @@ impl GameWindow {
     let mut previous_frame_fut = self.initial_future;
     let mut resize = false;
 
-    let mut text = TextRender::new(data.device.clone(), data.queue.clone(), data.swapchain.clone());
-    text.queue_text(0.0, 0.0, 12.0, [0.0, 1.0, 0.0, 0.0], "Hello world!");
+    let mut text =
+      TextRender::new(12.0, data.device.clone(), data.queue.clone(), data.swapchain.clone());
 
     self.event_loop.run(move |event, _, control_flow| match event {
       Event::WindowEvent { event: WindowEvent::CloseRequested, .. } => {
@@ -365,7 +365,7 @@ impl GameWindow {
           .unwrap();
         ui.draw(&mut builder, data.ui_pipeline.clone(), &data.dyn_state, &data);
 
-        text.draw_text(&mut builder, data.buffers[img_num].clone());
+        text.draw_text(&mut builder, data.buffers[img_num].clone(), (0.0, 0.0), "Hello, world!");
 
         builder.end_render_pass().unwrap();
 
