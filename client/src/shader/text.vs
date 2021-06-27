@@ -9,14 +9,16 @@ layout(push_constant) uniform PushData {
   vec2 offset;
   // The offset within the texture
   vec2 uv_offset;
-  // The size onscreen and on texture
+  // The size onscreen
   vec2 size;
+  // The size on texture
+  vec2 uv_size;
   // The color to render with
   vec4 col;
 } pc;
 
 void main() {
   col = pc.col;
-  uv = pos * pc.size + pc.uv_offset;
+  uv = pos * pc.uv_size + pc.uv_offset;
   gl_Position = vec4(pos * pc.size + pc.offset, 0.0, 1.0);
 }

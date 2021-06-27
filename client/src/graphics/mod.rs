@@ -301,7 +301,7 @@ impl GameWindow {
     let mut resize = false;
 
     let mut text =
-      TextRender::new(12.0, data.device.clone(), data.queue.clone(), data.swapchain.clone());
+      TextRender::new(64.0, data.device.clone(), data.queue.clone(), data.swapchain.clone());
 
     self.event_loop.run(move |event, _, control_flow| match event {
       Event::WindowEvent { event: WindowEvent::CloseRequested, .. } => {
@@ -352,7 +352,7 @@ impl GameWindow {
         )
         .unwrap();
 
-        text.queue_text(&mut builder, (0.0, 0.0), "Hello, world!");
+        text.queue_text(&mut builder, (0.0, 0.0), "b");
 
         builder
           .begin_render_pass(

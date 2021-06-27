@@ -63,9 +63,6 @@ pub struct TextRender {
    * texts:              Vec<TextData>, */
 }
 
-const CACHE_WIDTH: usize = 1024;
-const CACHE_HEIGHT: usize = 1024;
-
 impl TextRender {
   pub fn new<W>(
     size: f32,
@@ -168,30 +165,47 @@ impl TextRender {
   /// Updates the texture cache to include all chars of the given text. Returns
   /// true of the cache was updated.
   fn update_cache(&mut self, text: &str) -> bool {
-    let mut new_chars = vec![];
+    let mut changed = false;
     for c in text.chars() {
       if self.cache.contains_key(&self.font.glyph(c).id()) {
         continue;
       }
       let g = self.font.glyph(c).scaled(self.size).positioned(Point { x: 0.0, y: 0.0 });
       let bounds = g.pixel_bounding_box();
-      self.cache.insert(g.id(), bounds);
-      if let Some(b) = bounds {
+      if let Some(mut b) = bounds {
+        // We want bounds.min to be 0, 0, so that add_char can set the min to be the
+        // correct top left of the cached character.
+        b.max.x -= b.min.x;
+        b.max.y -= b.min.y;
+        b.min.x = 0;
+        b.min.y = 0;
         let mut buf = vec![0; b.width() as usize * b.height() as usize];
         g.draw(|x, y, v| {
           let v = (v * 255.0).round() as u8;
           buf[y as usize * b.width() as usize + x as usize] = v;
         });
-        new_chars.push((b, buf));
+        for (i, v) in buf.iter().enumerate() {
+          if i % b.width() as usize == 0 {
+            println!();
+          }
+          if v > &128 {
+            print!("##");
+          } else {
+            print!("..");
+          }
+        }
+        println!();
+        b = self.add_char(b, &buf);
+        self.cache.insert(g.id(), Some(b));
+        changed = true;
+      } else {
+        self.cache.insert(g.id(), None);
       }
     }
-    for (bounds, buf) in &new_chars {
-      self.add_char(*bounds, buf);
-    }
-    new_chars.len() > 0
+    changed
   }
 
-  fn add_char(&mut self, bounds: Rect<i32>, buf: &[u8]) {
+  fn add_char(&mut self, mut bounds: Rect<i32>, buf: &[u8]) -> Rect<i32> {
     let bw = bounds.width() as usize;
     let bh = bounds.height() as usize;
     let cw = self.cache_size.x as usize;
@@ -210,15 +224,23 @@ impl TextRender {
       self.resize(cw, new_height);
     }
 
-    let mut gpu_buf = self.buffer.write().unwrap();
-    for y in 0..bounds.height() as usize {
-      for x in 0..bounds.width() as usize {
-        let buf_index = y * bounds.width() as usize + x;
-        let cache_index = y * cw as usize + x + self.new_glyph_x;
-        gpu_buf[cache_index] = buf[buf_index];
+    {
+      // cache_size may have been changed by resize()
+      let cw = self.cache_size.x as usize;
+      let mut gpu_buf = self.buffer.write().unwrap();
+      for y in 0..bounds.height() as usize {
+        for x in 0..bounds.width() as usize {
+          let buf_index = y * bounds.width() as usize + x;
+          let cache_index = y * cw as usize + x + self.new_glyph_x;
+          gpu_buf[cache_index] = buf[buf_index];
+        }
       }
     }
+    // Return the bounds of the cached glyph
+    bounds.min.x += self.new_glyph_x as i32;
+    bounds.max.x += self.new_glyph_x as i32;
     self.new_glyph_x += bounds.width() as usize;
+    bounds
   }
 
   fn resize(&mut self, width: usize, height: usize) {
@@ -227,7 +249,7 @@ impl TextRender {
       self.device.clone(),
       BufferUsage::all(),
       false,
-      vec![200; width * height].iter().cloned(),
+      vec![0; width * height].iter().cloned(),
     )
     .unwrap();
     self.tex = AttachmentImage::with_usage(
@@ -284,21 +306,27 @@ impl TextRender {
 
     for (pos, text) in self.texts.drain(..) {
       for g in self.font.layout(&text, self.size, Point { x: 0.0, y: 0.0 }) {
-        const SCALE: f32 = 0.01;
+        const SCALE: f32 = 0.001;
         let uv_offset = match self.cache[&g.id()] {
           Some(v) => Rect {
-            min: Point { x: v.min.x as f32 * SCALE, y: v.min.y as f32 * SCALE },
-            max: Point { x: v.max.x as f32 * SCALE, y: v.max.y as f32 * SCALE },
+            min: Point { x: v.min.x as f32, y: v.min.y as f32 },
+            max: Point { x: v.max.x as f32, y: v.max.y as f32 },
           },
           None => continue,
         };
         let offset = [g.position().x * SCALE + pos.0, g.position().y * SCALE + pos.1];
         let pc = vs::ty::PushData {
-          _dummy0: [0, 0, 0, 0, 0, 0, 0, 0],
           offset,
-          uv_offset: [uv_offset.min.x, uv_offset.min.y],
+          uv_offset: [
+            uv_offset.min.x / self.cache_size.x as f32,
+            uv_offset.min.y / self.cache_size.y as f32,
+          ],
           col: [0.0, 1.0, 1.0, 0.5],
-          size: [uv_offset.width(), uv_offset.height()],
+          size: [uv_offset.width() * SCALE, uv_offset.height() * SCALE],
+          uv_size: [
+            uv_offset.width() / self.cache_size.x as f32,
+            uv_offset.height() / self.cache_size.y as f32,
+          ],
         };
         command_buffer
           .draw(self.pipeline.clone(), dyn_state, self.vbuf.clone(), set.clone(), pc, [])
