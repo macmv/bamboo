@@ -1,11 +1,11 @@
 use super::{Vert, WindowData};
 use rusttype::{Font, GlyphId, Point, PositionedGlyph, Rect, Scale};
-use std::{cmp::max, collections::HashMap, sync::Arc};
+use std::{cmp::max, collections::HashMap, mem, sync::Arc};
 use vulkano::{
   buffer::{BufferUsage, CpuAccessibleBuffer},
   command_buffer::{AutoCommandBufferBuilder, PrimaryAutoCommandBuffer},
   descriptor::{descriptor_set::PersistentDescriptorSet, PipelineLayoutAbstract},
-  device::{Device, Queue},
+  device::Device,
   format::Format,
   image::{view::ImageView, AttachmentImage, ImageUsage},
   pipeline::{vertex::SingleBufferDefinition, GraphicsPipeline},
@@ -209,13 +209,27 @@ impl TextRender {
 
   fn resize(&mut self, width: usize, height: usize) {
     info!("resizing to {} {}", width, height);
-    self.buffer = CpuAccessibleBuffer::<[u8]>::from_iter(
-      self.device.clone(),
-      BufferUsage::all(),
-      false,
-      vec![0; width * height].iter().cloned(),
-    )
-    .unwrap();
+    let old_buf = mem::replace(
+      &mut self.buffer,
+      CpuAccessibleBuffer::<[u8]>::from_iter(
+        self.device.clone(),
+        BufferUsage::all(),
+        false,
+        vec![0; width * height].iter().cloned(),
+      )
+      .unwrap(),
+    );
+    {
+      let mut gpu_buf = self.buffer.write().unwrap();
+      let old_gpu_buf = old_buf.read().unwrap();
+      for y in 0..self.cache_size.y {
+        for x in 0..self.cache_size.x {
+          let old_index = y * self.cache_size.x + x;
+          let new_index = y * width + x;
+          gpu_buf[new_index] = old_gpu_buf[old_index];
+        }
+      }
+    }
     self.tex = AttachmentImage::with_usage(
       self.device.clone(),
       [width as u32, height as u32],
