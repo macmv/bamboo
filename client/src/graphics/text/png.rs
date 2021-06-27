@@ -178,6 +178,31 @@ impl TextRender for PNGRender {
           let uv_x = (index % 16) as f32 / 16.0;
           let uv_y = (index / 16 + 2) as f32 / 16.0;
           let size = self.chars[&c];
+          // Shadow
+          let pc = vs::ty::PushData {
+            offset:    [
+              x + 1.0 * self.size / win.width() as f32,
+              pos.1 + 1.0 * self.size / win.height() as f32,
+            ],
+            uv_offset: [uv_x, uv_y],
+            col:       [0.3, 0.3, 0.3, 1.0],
+            size:      [
+              size.0 * self.size / win.width() as f32,
+              size.1 * self.size / win.height() as f32,
+            ],
+            uv_size:   [size.0 / 128.0, size.1 / 128.0],
+          };
+          command_buffer
+            .draw(
+              self.pipeline.clone(),
+              win.dyn_state(),
+              self.vbuf.clone(),
+              self.set.clone(),
+              pc,
+              [],
+            )
+            .unwrap();
+          // Main layer
           let pc = vs::ty::PushData {
             offset:    [x, pos.1],
             uv_offset: [uv_x, uv_y],
