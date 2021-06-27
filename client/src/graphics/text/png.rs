@@ -3,7 +3,7 @@ use crate::{
   graphics::{GameWindow, Vert, WindowData},
   util::load,
 };
-use std::sync::Arc;
+use std::{collections::HashMap, sync::Arc};
 use vulkano::{
   buffer::{BufferUsage, CpuAccessibleBuffer},
   command_buffer::{AutoCommandBufferBuilder, PrimaryAutoCommandBuffer},
@@ -13,7 +13,8 @@ use vulkano::{
     },
     PipelineLayoutAbstract,
   },
-  image::{view::ImageView, ImmutableImage},
+  format::Format,
+  image::{view::ImageView, ImmutableImage, MipmapsCount},
   pipeline::{vertex::SingleBufferDefinition, GraphicsPipeline},
   sampler::{Filter, MipmapMode, Sampler, SamplerAddressMode},
 };
@@ -21,6 +22,8 @@ use vulkano::{
 pub struct PNGRender {
   texts: Vec<((f32, f32), String)>,
   size:  f32,
+
+  chars: HashMap<char, (f32, f32)>,
 
   vbuf:     Arc<CpuAccessibleBuffer<[Vert]>>,
   set: Arc<
@@ -39,8 +42,65 @@ impl PNGRender {
   /// and a different function should be called if you need to reload a png
   /// render.
   pub fn new(path: &str, size: f32, win: &mut GameWindow) -> Self {
-    let (tex, fut) = load::png(path, win.queue().clone()).unwrap();
+    let (img_data, dims) = load::png_data(path).unwrap();
+    let mut chars = HashMap::new();
+
+    let char_width = dims.width() as usize / 16;
+    let char_height = dims.height() as usize / 16;
+    {
+      let x = 13;
+      let y = 5;
+      for row in 0..char_height {
+        for col in 0..char_width {
+          let index =
+            (((y * char_height + row) * dims.width() as usize) + (x * char_width + col)) * 4;
+          if img_data[index] > 128 {
+            print!("#");
+          } else {
+            print!(".");
+          }
+        }
+        println!();
+      }
+    }
+
+    let mut x = 0;
+    let mut y = 2;
+    for c in ' '..'~' {
+      let mut width = char_width;
+      for col in 0..char_width {
+        let mut end = true;
+        for row in 0..char_height {
+          let index =
+            (((y * char_height + row) * dims.width() as usize) + (x * char_width + col)) * 4;
+          if img_data[index] > 0 {
+            end = false;
+            break;
+          }
+        }
+        if end {
+          width = col;
+          break;
+        }
+      }
+      chars.insert(c, (width as f32, 7.0));
+      x += 1;
+      if x > 16 {
+        x = 0;
+        y += 1;
+      }
+    }
+
+    let (tex, fut) = ImmutableImage::from_iter(
+      img_data.iter().cloned(),
+      dims,
+      MipmapsCount::One,
+      Format::R8G8B8A8Srgb,
+      win.queue().clone(),
+    )
+    .unwrap();
     win.add_initial_future(fut);
+
     let sampler = Sampler::new(
       win.device().clone(),
       Filter::Nearest,
@@ -60,7 +120,7 @@ impl PNGRender {
 
     let set = Arc::new(
       PersistentDescriptorSet::start(pipeline.descriptor_set_layout(0).unwrap().clone())
-        .add_sampled_image(tex, sampler)
+        .add_sampled_image(ImageView::new(tex).unwrap(), sampler)
         .unwrap()
         .build()
         .unwrap(),
@@ -68,6 +128,7 @@ impl PNGRender {
 
     PNGRender {
       size,
+      chars,
       texts: vec![],
       vbuf: CpuAccessibleBuffer::from_iter(
         win.device().clone(),
@@ -106,6 +167,9 @@ impl TextRender for PNGRender {
     command_buffer: &mut AutoCommandBufferBuilder<PrimaryAutoCommandBuffer>,
     win: &WindowData,
   ) {
+    // The image is 16x16 characters. Within that image, every character is 5x7
+    // pixels. It does not matter if the image is double the size, because images
+    // are accessed from 0-1.
     for (pos, text) in &self.texts {
       let mut x = pos.0;
       for c in text.chars() {
@@ -113,13 +177,14 @@ impl TextRender for PNGRender {
           let index = c as u32 - ' ' as u32;
           let uv_x = (index % 16) as f32 / 16.0;
           let uv_y = (index / 16 + 2) as f32 / 16.0;
+          let size = self.chars[&c];
           let pc = vs::ty::PushData {
             offset:    [x, pos.1],
             uv_offset: [uv_x, uv_y],
             col:       [0.0, 1.0, 1.0, 1.0],
             size:      [
-              5.0 * self.size / win.width() as f32,
-              7.0 * self.size / win.height() as f32,
+              size.0 * self.size / win.width() as f32,
+              size.1 * self.size / win.height() as f32,
             ],
             uv_size:   [1.0 / 16.0, 1.0 / 16.0],
           };
@@ -133,7 +198,7 @@ impl TextRender for PNGRender {
               [],
             )
             .unwrap();
-          x += 6.0 * self.size / win.width() as f32;
+          x += (size.0) * self.size / win.width() as f32;
         }
       }
     }

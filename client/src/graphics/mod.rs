@@ -283,7 +283,7 @@ pub fn init() -> Result<GameWindow, InitError> {
 impl GameWindow {
   pub fn run(mut self, ui: Arc<UI>) -> ! {
     let mut text: Box<dyn TextRender> = Box::new(PNGRender::new(
-      "/home/macmv/.minecraft/resourcepacks/faithful/assets/minecraft/textures/font/ascii.png",
+      "/home/macmv/.minecraft/resourcepacks/ocd/assets/minecraft/textures/font/ascii.png",
       64.0,
       &mut self,
     ));
@@ -356,7 +356,7 @@ impl GameWindow {
         )
         .unwrap();
 
-        text.queue_text("Hello world!", (0.0, 0.0), 1.0, &mut builder);
+        text.queue_text("bi]g", (0.0, 0.0), 1.0, &mut builder);
 
         builder
           .begin_render_pass(
