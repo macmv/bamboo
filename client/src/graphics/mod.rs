@@ -366,7 +366,7 @@ impl GameWindow {
           .draw(data.game_pipeline.clone(), &data.dyn_state, vertex_buffer.clone(), (), pc, [])
           .unwrap();
         ui.draw(&mut builder, data.ui_pipeline.clone(), &data.dyn_state, &data);
-        text.draw(&mut builder, &data.dyn_state);
+        text.draw(&mut builder, &data);
 
         builder.end_render_pass().unwrap();
 
@@ -485,6 +485,10 @@ impl WindowData {
   #[inline(always)]
   pub fn swapchain(&self) -> &Arc<Swapchain<Window>> {
     &self.swapchain
+  }
+  #[inline(always)]
+  pub fn dyn_state(&self) -> &DynamicState {
+    &self.dyn_state
   }
   #[inline(always)]
   pub fn queue(&self) -> &Arc<Queue> {

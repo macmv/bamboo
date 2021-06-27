@@ -1,4 +1,4 @@
-use super::Vert;
+use super::{Vert, WindowData};
 use rusttype::{point, Font, GlyphId, Point, PositionedGlyph, Rect, Scale};
 use std::{cmp::max, collections::HashMap, sync::Arc};
 use vulkano::{
@@ -277,10 +277,10 @@ impl TextRender {
   pub fn draw(
     &mut self,
     command_buffer: &mut AutoCommandBufferBuilder<PrimaryAutoCommandBuffer>,
-    dyn_state: &DynamicState,
+    win: &WindowData,
   ) {
     let sampler = Sampler::new(
-      self.device.clone(),
+      win.device().clone(),
       Filter::Linear,
       Filter::Linear,
       MipmapMode::Nearest,
@@ -306,7 +306,6 @@ impl TextRender {
 
     for (pos, text) in self.texts.drain(..) {
       for g in self.font.layout(&text, self.size, Point { x: 0.0, y: 0.0 }) {
-        const SCALE: f32 = 0.001;
         let uv_offset = match self.cache[&g.id()] {
           Some(v) => Rect {
             min: Point { x: v.min.x as f32, y: v.min.y as f32 },
@@ -314,22 +313,25 @@ impl TextRender {
           },
           None => continue,
         };
-        let offset = [g.position().x * SCALE + pos.0, g.position().y * SCALE + pos.1];
+        let offset = [
+          g.position().x / win.width() as f32 + pos.0,
+          g.position().y / win.height() as f32 + pos.1,
+        ];
         let pc = vs::ty::PushData {
           offset,
           uv_offset: [
             uv_offset.min.x / self.cache_size.x as f32,
             uv_offset.min.y / self.cache_size.y as f32,
           ],
-          col: [0.0, 1.0, 1.0, 0.5],
-          size: [uv_offset.width() * SCALE, uv_offset.height() * SCALE],
+          col: [0.0, 1.0, 1.0, 1.0],
+          size: [uv_offset.width() / win.width() as f32, uv_offset.height() / win.height() as f32],
           uv_size: [
             uv_offset.width() / self.cache_size.x as f32,
             uv_offset.height() / self.cache_size.y as f32,
           ],
         };
         command_buffer
-          .draw(self.pipeline.clone(), dyn_state, self.vbuf.clone(), set.clone(), pc, [])
+          .draw(self.pipeline.clone(), win.dyn_state(), self.vbuf.clone(), set.clone(), pc, [])
           .unwrap();
       }
     }
