@@ -5,7 +5,7 @@ pub mod conn;
 pub mod version;
 
 use rand::rngs::OsRng;
-use rsa::{PublicKeyParts, RSAPrivateKey};
+use rsa::RSAPrivateKey;
 use std::{error::Error, sync::Arc};
 use tokio::{net::TcpListener, sync::oneshot};
 

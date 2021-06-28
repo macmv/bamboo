@@ -18,13 +18,24 @@ pub fn decode(bytes: &[u8]) -> Option<RSAPublicKey> {
     });
   });
 
-  info!("{:?}", result);
+  dbg!(result);
 
   None
 }
 
 pub fn encode(key: &RSAPublicKey) -> Vec<u8> {
-  vec![]
+  asn1::write(|w| {
+    w.write_element(&asn1::SequenceWriter::new(&|w| {
+      // asn1 BigUint requires the first byte to be a 0, to disambiguate from negative
+      // values
+      let mut n = vec![0];
+      n.append(&mut key.n().to_bytes_be());
+      w.write_element(&BigUint::new(&n).unwrap());
+      let mut e = vec![0];
+      e.append(&mut key.e().to_bytes_be());
+      w.write_element(&BigUint::new(&n).unwrap());
+    }));
+  })
 }
 
 #[cfg(test)]
