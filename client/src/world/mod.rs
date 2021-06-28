@@ -17,6 +17,6 @@ impl World {
       Some(c) => c,
       None => return,
     };
-    conn.run().await;
+    conn.run().await.unwrap();
   }
 }

@@ -1,11 +1,11 @@
 use super::Generator;
 
-use std::io::{Error, ErrorKind, Result};
+use std::io::Result;
 
 use common::{
   net::{cb, tcp, Other},
+  proto,
   proto::player_list,
-  util::{Buffer, UUID},
   version::ProtocolVersion,
 };
 
@@ -15,46 +15,53 @@ pub(super) fn generate_player_info(
   v: ProtocolVersion,
   p: &mut tcp::Packet,
 ) -> Result<Vec<cb::Packet>> {
-  let mut out = cb::Packet::new(gen.convert_id(v, p.id()));
-  let action = p.read_varint();
-  let len = p.read_varint();
-  for _ in 0..len {
-    let uuid = p.read_uuid();
-    match player_list::Action::from_i32(action).unwrap() {
+  let mut player_list = proto::PlayerList::default();
+  player_list.action = p.read_varint();
+  for _ in 0..p.read_varint() {
+    let mut player =
+      proto::player_list::Player { uuid: Some(p.read_uuid().as_proto()), ..Default::default() };
+    match player_list::Action::from_i32(player_list.action).unwrap() {
       player_list::Action::AddPlayer => {
-        let name = p.read_str();
+        player.name = p.read_str();
         for _ in 0..p.read_varint() {
-          let prop_name = p.read_str();
-          let prop_value = p.read_str();
-          let signed = p.read_bool();
-          if signed {
-            let signature = p.read_str();
+          let mut prop = proto::player_list::Property {
+            name:      p.read_str(),
+            value:     p.read_str(),
+            signed:    p.read_bool(),
+            signature: "".into(),
+          };
+          if prop.signed {
+            prop.signature = p.read_str();
           }
+          player.properties.push(prop);
         }
-        let gamemode = p.read_varint();
-        let ping = p.read_varint();
-        let has_display_name = p.read_bool();
-        if has_display_name {
-          let display_name = p.read_str();
+        player.gamemode = p.read_varint();
+        player.ping = p.read_varint();
+        player.has_display_name = p.read_bool();
+        if player.has_display_name {
+          player.display_name = p.read_str();
         }
       }
       player_list::Action::UpdateGamemode => {
-        let gamemode = p.read_varint();
+        player.gamemode = p.read_varint();
       }
       player_list::Action::UpdateLatency => {
-        let ping = p.read_varint();
+        player.ping = p.read_varint();
       }
       player_list::Action::UpdateDisplayName => {
-        let has_display_name = p.read_bool();
-        if has_display_name {
-          let display_name = p.read_str();
+        player.has_display_name = p.read_bool();
+        if player.has_display_name {
+          player.display_name = p.read_str();
         }
       }
       player_list::Action::RemovePlayer => {
         // No fields
       }
     }
+    player_list.players.push(player);
   }
+  let mut out = cb::Packet::new(gen.convert_id(v, p.id()));
+  out.set_other(Other::PlayerList(player_list)).unwrap();
   Ok(vec![out])
 }
 
