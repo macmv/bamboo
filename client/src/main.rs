@@ -29,7 +29,7 @@ fn main() {
     }
   };
 
-  let world = World::new();
+  let mut world = World::new();
   let mut ui = UI::new(&mut win);
 
   ui.set_layout(

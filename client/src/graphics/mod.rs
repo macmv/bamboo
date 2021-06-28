@@ -281,7 +281,7 @@ pub fn init() -> Result<GameWindow, InitError> {
 }
 
 impl GameWindow {
-  pub fn run(mut self, ui: Arc<UI>) -> ! {
+  pub fn run(self, ui: Arc<UI>) -> ! {
     // let mut text: Box<dyn TextRender> = Box::new(PNGRender::new(
     //   "/home/macmv/.minecraft/resourcepacks/ocd/assets/minecraft/textures/font/
     // ascii.png",

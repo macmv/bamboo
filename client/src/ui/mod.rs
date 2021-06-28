@@ -2,7 +2,12 @@ use crate::{
   graphics::{ui_vs, GameWindow, Vert, WindowData},
   util::load,
 };
-use std::{collections::HashMap, fs, sync::Arc, time::Instant};
+use std::{
+  collections::HashMap,
+  fs,
+  sync::{Arc, Mutex},
+  time::Instant,
+};
 use vulkano::{
   buffer::{BufferUsage, CpuAccessibleBuffer},
   command_buffer::{AutoCommandBufferBuilder, DynamicState, PrimaryAutoCommandBuffer},
@@ -25,14 +30,14 @@ pub enum LayoutKind {
 }
 
 pub struct Layout {
-  buttons:    Vec<Button>,
+  buttons:    Vec<Mutex<Button>>,
   background: Option<Arc<ImmutableImage>>,
 }
 
 pub struct Button {
   pos:      Vert,
   size:     Vert,
-  on_click: Box<dyn Fn()>,
+  on_click: Box<dyn FnMut()>,
 }
 
 /// A drawing operator. Used to easily pass draw calls to a [`UI`].
@@ -152,7 +157,7 @@ impl UI {
     let l = &self.layouts[&self.current];
     let mut ops = vec![];
     for b in &l.buttons {
-      ops.append(&mut b.draw(win));
+      ops.append(&mut b.lock().unwrap().draw(win));
     }
     for o in ops {
       match o {
@@ -180,7 +185,7 @@ impl UI {
   pub fn on_click(&self, win: &WindowData) {
     let l = &self.layouts[&self.current];
     for b in &l.buttons {
-      b.on_click(win);
+      b.lock().unwrap().on_click(win);
     }
   }
 }
@@ -192,9 +197,9 @@ impl Layout {
 
   pub fn button<F>(mut self, pos: Vert, size: Vert, on_click: F) -> Self
   where
-    F: Fn() + 'static,
+    F: FnMut() + 'static,
   {
-    self.buttons.push(Button::new(pos, size, on_click));
+    self.buttons.push(Mutex::new(Button::new(pos, size, on_click)));
     self
   }
 }
@@ -202,7 +207,7 @@ impl Layout {
 impl Button {
   fn new<F>(pos: Vert, size: Vert, on_click: F) -> Self
   where
-    F: Fn() + 'static,
+    F: FnMut() + 'static,
   {
     Button { pos, size, on_click: Box::new(on_click) }
   }
@@ -219,7 +224,7 @@ impl Button {
       vec![DrawOp::Image(self.pos, self.size, "button-up".into())]
     }
   }
-  fn on_click(&self, win: &WindowData) {
+  fn on_click(&mut self, win: &WindowData) {
     let (mx, my) = win.mouse_screen_pos();
     let (mx, my) = (mx as f32, my as f32);
     let hovering = mx > self.pos.x()

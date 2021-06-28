@@ -16,8 +16,8 @@ use reqwest::StatusCode;
 use rsa::{PaddingScheme, PublicKey};
 use serde_derive::Serialize;
 use sha1::{Digest, Sha1};
-use std::{error::Error, io, io::ErrorKind, sync::Mutex};
-use tokio::net::TcpStream;
+use std::{error::Error, io, io::ErrorKind};
+use tokio::{net::TcpStream, sync::Mutex};
 use version::Generator;
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
@@ -80,9 +80,9 @@ impl Connection {
   /// have an affect on the world.
   pub async fn run(&self) -> Result<(), Box<dyn Error>> {
     loop {
-      self.reader.lock().unwrap().poll().await?;
+      self.reader.lock().await.poll().await?;
       loop {
-        let p = self.reader.lock().unwrap().read(self.ver).unwrap();
+        let p = self.reader.lock().await.read(self.ver).unwrap();
         let p = if let Some(v) = p { v } else { break };
         // Make sure there were no errors set within the packet during parsing
         match p.err() {
@@ -132,7 +132,7 @@ impl Connection {
         return;
       }
     };
-    self.writer.lock().unwrap().write(out).await.unwrap();
+    self.writer.lock().await.write(out).await.unwrap();
   }
 
   /// Performs a handshake with the server. The ip is send during the handshake,
@@ -143,8 +143,8 @@ impl Connection {
   /// means that it is ready to be used, and run() should be called to start
   /// listening for packets.
   async fn handshake(&mut self, ip: &str, info: &AccountInfo) -> Result<(), io::Error> {
-    let reader = self.reader.get_mut().unwrap();
-    let writer = self.writer.get_mut().unwrap();
+    let reader = self.reader.get_mut();
+    let writer = self.writer.get_mut();
 
     let mut out = tcp::Packet::new(0, self.ver); // Handshake
     out.write_varint(self.ver.id() as i32); // Protocol version
