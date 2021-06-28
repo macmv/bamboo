@@ -6,6 +6,8 @@ use common::{
   },
   version::ProtocolVersion,
 };
+use rand::{rngs::OsRng, RngCore};
+use rsa::{BigUint, PaddingScheme, PublicKey, RSAPublicKey};
 use std::{io, io::ErrorKind};
 use tokio::net::TcpStream;
 
@@ -97,7 +99,45 @@ impl Connection {
                 let token_len = p.read_varint();
                 let token = p.read_buf(token_len);
 
-                let pub_key = rsa_der::public_key_from_der(&der_key);
+                let (n, e) = rsa_der::public_key_from_der(&der_key).map_err(|e| {
+                  io::Error::new(ErrorKind::InvalidInput, format!("invalid der key: {}", e))
+                })?;
+                let key = RSAPublicKey::new(BigUint::from_bytes_be(&n), BigUint::from_bytes_be(&e))
+                  .map_err(|e| {
+                    io::Error::new(
+                      ErrorKind::InvalidInput,
+                      format!("could not create public key: {}", e),
+                    )
+                  })?;
+
+                let mut rng = OsRng;
+                let mut secret = [0; 16];
+                rng.fill_bytes(&mut secret);
+
+                let encrypted_secret =
+                  key.encrypt(&mut rng, PaddingScheme::PKCS1v15Encrypt, &secret).map_err(|e| {
+                    io::Error::new(
+                      ErrorKind::InvalidInput,
+                      format!("could not encrypt secret: {}", e),
+                    )
+                  })?;
+                let encrypted_token =
+                  key.encrypt(&mut rng, PaddingScheme::PKCS1v15Encrypt, &token).map_err(|e| {
+                    io::Error::new(
+                      ErrorKind::InvalidInput,
+                      format!("could not encrypt token: {}", e),
+                    )
+                  })?;
+
+                let mut out = tcp::Packet::new(1, self.ver); // Encryption response
+                out.write_varint(encrypted_secret.len() as i32);
+                out.write_buf(&encrypted_secret);
+                out.write_varint(encrypted_token.len() as i32);
+                out.write_buf(&encrypted_token);
+                self.writer.write(out).await?;
+
+                self.writer.enable_encryption(&secret);
+                self.reader.enable_encryption(&secret);
 
                 // if username.is_some() {
                 //   return Err(io::Error::new(

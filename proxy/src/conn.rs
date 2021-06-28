@@ -9,7 +9,9 @@ use common::{
   version::ProtocolVersion,
 };
 use rand::{rngs::OsRng, RngCore};
-use rsa::{padding::PaddingScheme, RSAPrivateKey};
+use rsa::{
+  padding::PaddingScheme, BigUint, PublicKey, PublicKeyParts, RSAPrivateKey, RSAPublicKey,
+};
 use serde_derive::{Deserialize, Serialize};
 use sha1::{Digest, Sha1};
 use std::{convert::TryInto, error::Error, io, io::ErrorKind, sync::Arc};
@@ -441,10 +443,47 @@ impl<R: StreamReader + Send, W: StreamWriter + Send> Conn<R, W> {
                 let len = p.read_varint();
                 let recieved_token = p.read_buf(len);
 
+                let mut rng = OsRng;
+                // let mut secret = [0; 16];
+                // rng.fill_bytes(&mut secret);
+
+                let secret = "Big Gaming".as_bytes();
+
+                let pub_key_der =
+                  rsa_der::public_key_to_der(&key.n().to_bytes_be(), &key.e().to_bytes_be());
+                let (n, e) = rsa_der::public_key_from_der(&pub_key_der).unwrap();
+
+                assert_eq!(n, key.n().to_bytes_be());
+                assert_eq!(e, key.e().to_bytes_be());
+
+                let pub_key =
+                  RSAPublicKey::new(BigUint::from_bytes_be(&n), BigUint::from_bytes_be(&e))
+                    .unwrap();
+
+                println!(
+                  "{:02x?}",
+                  pub_key.encrypt(&mut rng, PaddingScheme::PKCS1v15Encrypt, secret)
+                );
+
+                let recieved_secret =
+                  pub_key.encrypt(&mut rng, PaddingScheme::PKCS1v15Encrypt, &secret).unwrap();
+
                 let decrypted_secret =
-                  key.decrypt(PaddingScheme::PKCS1v15Encrypt, &recieved_secret).unwrap();
+                  key.decrypt(PaddingScheme::PKCS1v15Encrypt, &recieved_secret).map_err(|e| {
+                    io::Error::new(
+                      ErrorKind::InvalidInput,
+                      format!("unable to decrypt secret: {}", e),
+                    )
+                  })?;
+                assert_eq!(decrypted_secret, secret);
+
                 let decrypted_token =
-                  key.decrypt(PaddingScheme::PKCS1v15Encrypt, &recieved_token).unwrap();
+                  key.decrypt(PaddingScheme::PKCS1v15Encrypt, &recieved_token).map_err(|e| {
+                    io::Error::new(
+                      ErrorKind::InvalidInput,
+                      format!("unable to decrypt token: {}", e),
+                    )
+                  })?;
 
                 // Make sure the client sent the correct verify token back
                 if decrypted_token != token {

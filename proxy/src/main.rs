@@ -42,9 +42,9 @@ async fn main() -> Result<(), Box<dyn Error>> {
       let (reader, writer) = java::stream::new(sock).unwrap();
       let gen = gen.clone();
       let k = key.clone();
-      let _d = der_key.clone();
+      let d = der_key.clone();
       tokio::spawn(async move {
-        match handle_client(gen, reader, writer, k, None).await {
+        match handle_client(gen, reader, writer, k, d).await {
           Ok(_) => {}
           Err(e) => {
             error!("error in connection: {}", e);
