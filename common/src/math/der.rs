@@ -33,24 +33,22 @@ pub fn decode(bytes: &[u8]) -> Option<RSAPublicKey> {
   let result: asn1::ParseResult<_> = asn1::parse(bytes, |d| {
     return d.read_element::<asn1::Sequence>()?.parse(|d| {
       d.read_element::<asn1::Sequence>()?.parse(|d| {
-        let alg = d.read_element::<asn1::ObjectIdentifier>()?;
-        let params = d.read_element::<asn1::Tlv>()?;
-        info!("alg: {}", alg);
-        info!("params: {:?}", params);
+        // Not sure what I should do with these. Going to ignore for now (read:
+        // forever).
+        let _alg = d.read_element::<asn1::ObjectIdentifier>()?;
+        // Alg is always 1.2.840.113549.1.1.1
+        let _params = d.read_element::<asn1::Tlv>()?;
+        // Params are always NULL
         Ok(())
       })?;
       let pub_key = d.read_element::<asn1::BitString>()?;
-      info!("parsed key");
       let (n, e) = asn1::parse(pub_key.as_bytes(), |d| {
         d.read_element::<asn1::Sequence>()?.parse(|d| {
-          info!("reading n...");
           let n = d.read_element::<asn1::BigUint>()?;
-          info!("reading e...");
           let e = d.read_element::<asn1::BigUint>()?;
           Ok((n, e))
         })
       })?;
-      info!("got n, e: {:?} {:?}", n, e);
       Ok((n, e))
     });
   });
