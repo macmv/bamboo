@@ -1,5 +1,6 @@
+use common::util::UUID;
 use serde_derive::Deserialize;
-use std::{collections::HashMap, fs::File};
+use std::{collections::HashMap, fs::File, str::FromStr};
 
 #[derive(Deserialize)]
 pub struct Settings {
@@ -10,8 +11,9 @@ pub struct Settings {
 #[derive(Deserialize)]
 pub struct Account {
   access_token: String,
+  // Keyed by account UUID
   profiles:     HashMap<String, AccountProfile>,
-  username:     String,
+  username:     String, // This is your email
 }
 
 #[derive(Deserialize)]
@@ -25,14 +27,27 @@ pub struct Selected {
   profile: String,
 }
 
+/// An easier to use version of the account data.
+pub struct AccountInfo {
+  uuid:         UUID,
+  username:     String,
+  access_token: String,
+}
+
 impl Settings {
   /// Creates a new Settings struct, by loading all settings from disk.
   pub fn new() -> Self {
     serde_json::from_reader(File::open("~/.minecraft/launcher_profiles.json").unwrap()).unwrap()
   }
 
-  /// Returns the current selected account's access token. Used to authenticate.
-  pub fn get_token(&self) -> &str {
-    &self.accounts[&self.selected.account].access_token
+  /// Returns the selected account info.
+  pub fn get_info(&self) -> AccountInfo {
+    let account = &self.accounts[&self.selected.account];
+    let (uuid, profile) = account.profiles.iter().next().unwrap();
+    AccountInfo {
+      uuid:         UUID::from_str(uuid).unwrap(),
+      username:     profile.display_name.clone(),
+      access_token: account.access_token.clone(),
+    }
   }
 }
