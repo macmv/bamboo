@@ -9,7 +9,9 @@ use common::{
   version::ProtocolVersion,
 };
 use rand::{rngs::OsRng, RngCore};
-use rsa::{BigUint, PaddingScheme, PublicKey, RSAPublicKey};
+use reqwest::StatusCode;
+use rsa::{PaddingScheme, PublicKey};
+use serde_derive::{Deserialize, Serialize};
 use sha1::{Digest, Sha1};
 use std::{io, io::ErrorKind};
 use tokio::net::TcpStream;
@@ -30,6 +32,7 @@ pub struct Connection {
   state:  State,
 }
 
+#[derive(Serialize, Debug)]
 struct JoinInfo {
   access_token:     String,
   selected_profile: String, // UUID without dashes
@@ -136,8 +139,8 @@ impl Connection {
                 hash.update(secret);
                 hash.update(der_key);
                 let info = JoinInfo {
-                  access_token:     "",
-                  selected_profile: "",
+                  access_token:     "".into(),
+                  selected_profile: "".into(),
                   server_id:        math::hexdigest(hash),
                 };
                 let client = reqwest::Client::new();
@@ -147,7 +150,14 @@ impl Connection {
                   .send()
                   .await
                 {
-                  Ok(v) => {}
+                  Ok(res) => {
+                    if res.status() != StatusCode::OK {
+                      return Err(io::Error::new(
+                        ErrorKind::Other,
+                        format!("failed to authenticate client: \n{}", res.text().await.unwrap()),
+                      ));
+                    }
+                  }
                   Err(e) => {
                     return Err(io::Error::new(
                       ErrorKind::Other,
