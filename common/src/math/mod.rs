@@ -69,4 +69,15 @@ mod tests {
     hash.update(b"simon");
     assert_eq!(hexdigest(hash), "88e16a1019277b15d58faf0541e11910eb756f6");
   }
+
+  #[test]
+  fn test_overflow() {
+    for c1 in ' '..'~' {
+      for c2 in ' '..'~' {
+        let mut hash = Sha1::new();
+        hash.update([c1 as u8, c2 as u8]);
+        hexdigest(hash);
+      }
+    }
+  }
 }
