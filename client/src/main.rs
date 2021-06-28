@@ -5,6 +5,7 @@ extern crate log;
 
 mod graphics;
 mod net;
+pub mod settings;
 mod ui;
 pub mod util;
 mod world;

@@ -1,3 +1,4 @@
+use crate::settings::Settings;
 use common::{
   math,
   math::der,
@@ -40,7 +41,7 @@ struct JoinInfo {
 }
 
 impl Connection {
-  pub async fn new(ip: &str) -> Option<Self> {
+  pub async fn new(ip: &str, settings: &Settings) -> Option<Self> {
     info!("connecting to {}...", ip);
     let tcp_stream = match TcpStream::connect(ip).await {
       Ok(s) => s,

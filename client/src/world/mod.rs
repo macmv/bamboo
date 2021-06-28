@@ -1,4 +1,4 @@
-use crate::{graphics::MeshChunk, net::Connection};
+use crate::{graphics::MeshChunk, net::Connection, settings::Settings};
 use common::math::ChunkPos;
 use std::{collections::HashMap, sync::RwLock};
 
@@ -12,7 +12,8 @@ impl World {
   }
 
   pub async fn connect(&self, ip: &str) {
-    let conn = match Connection::new(ip).await {
+    let settings = Settings::new();
+    let conn = match Connection::new(ip, &settings).await {
       Some(c) => c,
       None => return,
     };
