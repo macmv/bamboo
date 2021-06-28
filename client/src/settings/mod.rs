@@ -1,6 +1,7 @@
 use common::util::UUID;
+use directories::BaseDirs;
 use serde_derive::Deserialize;
-use std::{collections::HashMap, fs::File, str::FromStr};
+use std::{collections::HashMap, fs::File, path::PathBuf, str::FromStr};
 
 #[derive(Deserialize)]
 pub struct Settings {
@@ -13,7 +14,8 @@ pub struct Account {
   access_token: String,
   // Keyed by account UUID
   profiles:     HashMap<String, AccountProfile>,
-  username:     String, // This is your email
+  // Email address (not username)
+  username:     String,
 }
 
 #[derive(Deserialize)]
@@ -23,7 +25,9 @@ pub struct AccountProfile {
 
 #[derive(Deserialize)]
 pub struct Selected {
+  // The selcted account
   account: String,
+  // The selected profile (an installation)
   profile: String,
 }
 
@@ -37,6 +41,19 @@ pub struct AccountInfo {
 impl Settings {
   /// Creates a new Settings struct, by loading all settings from disk.
   pub fn new() -> Self {
+    let dirs = BaseDirs::new().unwrap();
+    let mut dir = dirs.config_dir().to_path_buf();
+    if dir.ends_with(".config") {
+      // Mojang has never used linux before (they use ~/.minecraft instead of
+      // ~/.config/.minecraft)
+      dir = dir.parent().unwrap().join(".minecraft");
+    } else if dir.ends_with("Application Support") {
+      // On macos there is no '.' at the start
+      dir = dir.join("minecraft");
+    } else {
+      dir = dir.join(".minecraft");
+    }
+    info!("got dir {:?}", dir);
     serde_json::from_reader(File::open("~/.minecraft/launcher_profiles.json").unwrap()).unwrap()
   }
 
