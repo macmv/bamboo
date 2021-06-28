@@ -44,8 +44,8 @@ pub struct AccountInfo {
 }
 
 impl AccountInfo {
-  pub fn uuid(&self) -> &UUID {
-    &self.uuid
+  pub fn uuid(&self) -> UUID {
+    self.uuid
   }
   pub fn username(&self) -> &str {
     &self.username

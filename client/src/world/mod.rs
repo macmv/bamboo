@@ -13,6 +13,7 @@ impl World {
 
   pub async fn connect(&self, ip: &str) {
     let settings = Settings::new();
+    let player = Player::new(&settings);
     let mut conn = match Connection::new(ip, &settings).await {
       Some(c) => c,
       None => return,

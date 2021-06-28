@@ -5,14 +5,16 @@ extern crate log;
 
 mod graphics;
 mod net;
-pub mod settings;
+pub mod player;
+mod settings;
 mod ui;
 pub mod util;
 mod world;
 
-use graphics::Vert;
-use ui::UI;
-use world::World;
+pub use graphics::Vert;
+pub use settings::Settings;
+pub use ui::UI;
+pub use world::World;
 
 fn main() {
   common::init("client");
