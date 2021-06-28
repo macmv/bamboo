@@ -23,7 +23,8 @@ struct CbPacketVersion {
 }
 
 struct SbPacketVersion {
-  ids:     Vec<common_sb::ID>,
+  // A list of old ids. The index is the serverbound packet id, and the value is the old packet id.
+  ids:     Vec<Option<i32>>,
   packets: Vec<data::protocol::Packet>,
   types:   HashMap<String, data::protocol::PacketField>,
 }
@@ -55,7 +56,7 @@ impl Generator {
       to_server.insert(
         k,
         SbPacketVersion {
-          ids:     v.to_server.iter().map(|p| common_sb::ID::parse_str(&p.name)).collect(),
+          ids:     generate_ids(&v.to_server, |name| common_sb::ID::parse_str(name)),
           types:   v.types,
           packets: v.to_server,
         },
@@ -73,7 +74,7 @@ impl Generator {
     }
   }
   pub fn serverbound(&self, v: ProtocolVersion, p: common_sb::Packet) -> io::Result<tcp::Packet> {
-    match self.sb.convert(v, p) {
+    match self.sb.convert(v, &p) {
       Ok(v) => Ok(v),
       Err(e) => Err(io::Error::new(
         io::ErrorKind::InvalidData,
@@ -84,8 +85,23 @@ impl Generator {
   pub fn clientbound(
     &self,
     v: ProtocolVersion,
-    p: tcp::Packet,
+    mut p: tcp::Packet,
   ) -> io::Result<Vec<common_cb::Packet>> {
-    self.cb.convert(v, p)
+    self.cb.convert(v, &mut p)
   }
+}
+
+fn generate_ids<F>(packets: &[data::protocol::Packet], f: F) -> Vec<Option<i32>>
+where
+  F: Fn(&str) -> common_sb::ID,
+{
+  let mut ids = vec![];
+  for (id, p) in packets.iter().enumerate() {
+    let new_id = f(&p.name).to_i32() as usize;
+    if new_id >= ids.len() {
+      ids.resize(new_id + 1, None);
+    }
+    ids[new_id] = Some(id as i32);
+  }
+  ids
 }

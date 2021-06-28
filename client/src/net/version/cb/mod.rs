@@ -19,7 +19,9 @@ mod v1_8;
 // mod v1_9;
 
 type BoxedPacketFn = Box<
-  dyn Fn(&Generator, ProtocolVersion, &tcp::Packet) -> io::Result<Vec<cb::Packet>> + Send + Sync,
+  dyn Fn(&Generator, ProtocolVersion, &mut tcp::Packet) -> io::Result<Vec<cb::Packet>>
+    + Send
+    + Sync,
 >;
 
 struct PacketSpec {
@@ -30,7 +32,7 @@ impl PacketSpec {
   fn add(
     &mut self,
     id: cb::ID,
-    f: impl Fn(&Generator, ProtocolVersion, &tcp::Packet) -> io::Result<Vec<cb::Packet>>
+    f: impl Fn(&Generator, ProtocolVersion, &mut tcp::Packet) -> io::Result<Vec<cb::Packet>>
       + Send
       + Sync
       + 'static,
@@ -89,7 +91,7 @@ impl Generator {
     self.get_ver(v).ids[id as usize]
   }
 
-  pub fn convert(&self, v: ProtocolVersion, p: tcp::Packet) -> io::Result<Vec<cb::Packet>> {
+  pub fn convert(&self, v: ProtocolVersion, p: &mut tcp::Packet) -> io::Result<Vec<cb::Packet>> {
     let id = self.convert_id(v, p.id());
     // Check for a generator
     let gen = self.get_gen(v);
@@ -99,7 +101,7 @@ impl Generator {
       // manually.
       Some(g) => {
         // If we have a generator, we just want to use that
-        g(self, v, &p)?
+        g(self, v, p)?
       }
       None => {
         if id == cb::ID::None {
@@ -132,7 +134,7 @@ impl Generator {
               if **value == PacketField::String {
                 if *count == CountType::Typed(IntType::VarInt) {
                   let len = p.read_varint();
-                  let out = Vec::with_capacity(len as usize);
+                  let mut out = Vec::with_capacity(len as usize);
                   for _ in 0..len {
                     out.push(p.read_str());
                   }

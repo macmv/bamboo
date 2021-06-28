@@ -13,9 +13,10 @@ impl World {
 
   pub async fn connect(&self, ip: &str) {
     let settings = Settings::new();
-    let conn = match Connection::new(ip, &settings).await {
+    let mut conn = match Connection::new(ip, &settings).await {
       Some(c) => c,
       None => return,
     };
+    conn.run().await;
   }
 }

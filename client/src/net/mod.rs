@@ -74,7 +74,7 @@ impl Connection {
     Some(conn)
   }
 
-  async fn run(&mut self) -> Result<(), Box<dyn Error>> {
+  pub async fn run(&mut self) -> Result<(), Box<dyn Error>> {
     loop {
       self.reader.poll().await?;
       loop {
@@ -91,7 +91,7 @@ impl Connection {
           }
           None => {}
         }
-        let cb = match self.gen.clientbound(self.ver, p) {
+        let packets = match self.gen.clientbound(self.ver, p) {
           Ok(p) => p,
           Err(e) => match e.kind() {
             ErrorKind::Other => {
@@ -103,8 +103,10 @@ impl Connection {
             }
           },
         };
-        match cb.id() {
-          id => warn!("unknown packet recieved from server: {}", id),
+        for p in packets {
+          match p.id() {
+            id => warn!("unknown packet recieved from server: {:?}", id),
+          }
         }
       }
     }
