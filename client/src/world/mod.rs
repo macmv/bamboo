@@ -28,14 +28,15 @@ impl World {
     }
   }
 
-  pub fn connect(world: Arc<Self>, ip: String, win: &WindowData, ui: &UI) {
+  pub fn connect(self: Arc<Self>, ip: String, win: Arc<Mutex<WindowData>>, ui: &UI) {
     tokio::spawn(async move {
       let settings = Settings::new();
       let conn = match Connection::new(&ip, &settings).await {
         Some(c) => Arc::new(c),
         None => return,
       };
-      world.set_main_player(Some(MainPlayer::new(&settings, conn.clone())));
+      self.set_main_player(Some(MainPlayer::new(&settings, conn.clone())));
+      win.lock().unwrap().start_ingame(self);
       conn.run().await.unwrap();
     });
   }

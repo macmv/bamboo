@@ -36,7 +36,7 @@ fn main() {
     ui::LayoutKind::Menu,
     ui::Layout::new()
       .button(Vert::new(-0.2, -0.14), Vert::new(0.4, 0.08), move |win, ui| {
-        World::connect(world.clone(), "127.0.0.1:25565".into(), win, ui);
+        world.clone().connect("127.0.0.1:25565".into(), win.clone(), ui);
       })
       .button(Vert::new(-0.2, -0.04), Vert::new(0.4, 0.08), |_, _| info!("options"))
       .button(Vert::new(-0.2, 0.06), Vert::new(0.4, 0.08), |_, _| {

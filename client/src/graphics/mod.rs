@@ -1,6 +1,11 @@
-use crate::ui::UI;
-use std::{error::Error, fmt, ops::Deref, sync::Arc, time::Instant};
-use text::{PNGRender, TTFRender, TextRender};
+use crate::{World, UI};
+use std::{
+  error::Error,
+  fmt,
+  ops::Deref,
+  sync::{Arc, Mutex},
+  time::Instant,
+};
 use vulkano::{
   buffer::{BufferUsage, CpuAccessibleBuffer},
   command_buffer::{AutoCommandBufferBuilder, CommandBufferUsage, DynamicState, SubpassContents},
@@ -68,6 +73,9 @@ pub struct WindowData {
   height:  u32,
   mouse_x: f64,
   mouse_y: f64,
+
+  // If this is Some, then we are ingame, and should call render() on this.
+  world: Mutex<Option<Arc<World>>>,
 }
 
 #[derive(Default, Copy, Clone)]
@@ -274,6 +282,7 @@ pub fn init() -> Result<GameWindow, InitError> {
     height: 0,
     mouse_x: 0.0.into(),
     mouse_y: 0.0.into(),
+    world: Mutex::new(None),
   };
   data.resize(images);
 
@@ -289,17 +298,17 @@ impl GameWindow {
     //   &mut self,
     // ));
 
-    let mut data = self.data;
-
     let vertex_buffer = {
       CpuAccessibleBuffer::from_iter(
-        data.device.clone(),
+        self.data.device.clone(),
         BufferUsage::all(),
         false,
         [Vert::new(-0.5, -0.25), Vert::new(0.0, 0.5), Vert::new(0.25, -0.1)].iter().cloned(),
       )
       .unwrap()
     };
+
+    let data = Arc::new(Mutex::new(self.data));
 
     let mut pc = game_vs::ty::PushData { offset: [0.0, 0.0] };
     let start = Instant::now();
@@ -315,7 +324,7 @@ impl GameWindow {
         resize = true;
       }
       Event::WindowEvent { event: WindowEvent::CursorMoved { position, .. }, .. } => {
-        data.mouse_moved(position.x, position.y);
+        data.lock().unwrap().mouse_moved(position.x, position.y);
       }
       Event::WindowEvent { event: WindowEvent::MouseInput { state, button, .. }, .. } => {
         if state == ElementState::Pressed && button == MouseButton::Left {
@@ -324,6 +333,7 @@ impl GameWindow {
       }
       Event::RedrawEventsCleared => {
         previous_frame_fut.as_mut().unwrap().cleanup_finished();
+        let mut data = data.lock().unwrap();
 
         if resize {
           if data.recreate_swapchain() {
@@ -513,6 +523,12 @@ impl WindowData {
   #[inline(always)]
   pub fn height(&self) -> u32 {
     self.height
+  }
+
+  /// Starts rendering a game from first person. This is how the application
+  /// moves from the main menu into a game.
+  pub fn start_ingame(&self, world: Arc<World>) {
+    *self.world.lock().unwrap() = Some(world)
   }
 }
 
