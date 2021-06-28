@@ -35,8 +35,11 @@ pub struct Connection {
 
 #[derive(Serialize, Debug)]
 struct JoinInfo {
+  #[serde(rename = "accessToken")]
   access_token:     String,
+  #[serde(rename = "selectedProfile")]
   selected_profile: String, // UUID without dashes
+  #[serde(rename = "serverId")]
   server_id:        String,
 }
 
@@ -153,7 +156,7 @@ impl Connection {
                   .await
                 {
                   Ok(res) => {
-                    if res.status() != StatusCode::OK {
+                    if res.status() != StatusCode::NO_CONTENT {
                       return Err(io::Error::new(
                         ErrorKind::Other,
                         format!("failed to authenticate client: \n{}", res.text().await.unwrap()),
