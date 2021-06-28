@@ -4,7 +4,7 @@ use crate::settings::{AccountInfo, Settings};
 use common::{
   math,
   math::der,
-  net::tcp,
+  net::{sb, tcp},
   stream::{
     java::{self, JavaStreamReader, JavaStreamWriter},
     StreamReader, StreamWriter,
@@ -16,7 +16,7 @@ use reqwest::StatusCode;
 use rsa::{PaddingScheme, PublicKey};
 use serde_derive::Serialize;
 use sha1::{Digest, Sha1};
-use std::{error::Error, io, io::ErrorKind};
+use std::{error::Error, io, io::ErrorKind, sync::Mutex};
 use tokio::net::TcpStream;
 use version::Generator;
 
@@ -26,12 +26,11 @@ pub enum State {
   Status,
   Login,
   Play,
-  Invalid,
 }
 
 pub struct Connection {
-  reader: JavaStreamReader,
-  writer: JavaStreamWriter,
+  reader: Mutex<JavaStreamReader>,
+  writer: Mutex<JavaStreamWriter>,
   ver:    ProtocolVersion,
   state:  State,
   gen:    Generator,
@@ -60,11 +59,11 @@ impl Connection {
 
     let (reader, writer) = java::stream::new(tcp_stream).unwrap();
     let mut conn = Connection {
-      reader,
-      writer,
-      ver: ProtocolVersion::V1_8,
-      state: State::Handshake,
-      gen: Generator::new(),
+      reader: Mutex::new(reader),
+      writer: Mutex::new(writer),
+      ver:    ProtocolVersion::V1_8,
+      state:  State::Handshake,
+      gen:    Generator::new(),
     };
     if let Err(e) = conn.handshake(ip, &settings.get_info()).await {
       error!("could not finish handshake with {}: {}", ip, e);
@@ -74,11 +73,11 @@ impl Connection {
     Some(conn)
   }
 
-  pub async fn run(&mut self) -> Result<(), Box<dyn Error>> {
+  pub async fn run(&self) -> Result<(), Box<dyn Error>> {
     loop {
-      self.reader.poll().await?;
+      self.reader.lock().unwrap().poll().await?;
       loop {
-        let p = self.reader.read(self.ver).unwrap();
+        let p = self.reader.lock().unwrap().read(self.ver).unwrap();
         let p = if let Some(v) = p { v } else { break };
         // Make sure there were no errors set within the packet during parsing
         match p.err() {
@@ -112,23 +111,28 @@ impl Connection {
     }
   }
 
+  pub async fn send(&self, p: sb::Packet) {}
+
   async fn handshake(&mut self, ip: &str, info: &AccountInfo) -> Result<(), io::Error> {
+    let reader = self.reader.get_mut().unwrap();
+    let writer = self.writer.get_mut().unwrap();
+
     let mut out = tcp::Packet::new(0, self.ver); // Handshake
     out.write_varint(self.ver.id() as i32); // Protocol version
     out.write_str(ip); // Ip
     out.write_u16(25565); // Port
     out.write_varint(2); // Going to login
-    self.writer.write(out).await?;
+    writer.write(out).await?;
     self.state = State::Login;
 
     let mut out = tcp::Packet::new(0, self.ver); // Login start
     out.write_str(info.username());
-    self.writer.write(out).await?;
+    writer.write(out).await?;
 
     'login: loop {
-      self.reader.poll().await.unwrap();
+      reader.poll().await.unwrap();
       loop {
-        let p = self.reader.read(self.ver).unwrap();
+        let p = reader.read(self.ver).unwrap();
         if p.is_none() {
           break;
         }
@@ -223,21 +227,22 @@ impl Connection {
                 out.write_buf(&encrypted_secret);
                 out.write_varint(encrypted_token.len() as i32);
                 out.write_buf(&encrypted_token);
-                self.writer.write(out).await?;
+                writer.write(out).await?;
 
-                self.writer.enable_encryption(&secret);
-                self.reader.enable_encryption(&secret);
+                writer.enable_encryption(&secret);
+                reader.enable_encryption(&secret);
               }
               // Login success
               2 => {
+                self.state = State::Play;
                 info!("successful login");
                 break 'login;
               }
               // Set compression
               3 => {
                 let level = p.read_varint();
-                self.reader.set_compression(level);
-                self.writer.set_compression(level);
+                reader.set_compression(level);
+                writer.set_compression(level);
               }
               _ => {
                 return Err(io::Error::new(

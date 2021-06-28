@@ -1,6 +1,9 @@
-use crate::{graphics::MeshChunk, net::Connection, settings::Settings};
+use crate::{graphics::MeshChunk, net::Connection, player::MainPlayer, Settings};
 use common::math::ChunkPos;
-use std::{collections::HashMap, sync::RwLock};
+use std::{
+  collections::HashMap,
+  sync::{Arc, RwLock},
+};
 
 pub struct World {
   chunks: RwLock<HashMap<ChunkPos, MeshChunk>>,
@@ -13,11 +16,11 @@ impl World {
 
   pub async fn connect(&self, ip: &str) {
     let settings = Settings::new();
-    let player = Player::new(&settings);
-    let mut conn = match Connection::new(ip, &settings).await {
-      Some(c) => c,
+    let conn = match Connection::new(ip, &settings).await {
+      Some(c) => Arc::new(c),
       None => return,
     };
+    let player = MainPlayer::new(&settings, conn.clone());
     conn.run().await.unwrap();
   }
 }
