@@ -1,7 +1,7 @@
 use common::util::UUID;
 use directories::BaseDirs;
 use serde_derive::Deserialize;
-use std::{collections::HashMap, fs::File, path::PathBuf, str::FromStr};
+use std::{collections::HashMap, fs::File, str::FromStr};
 
 #[derive(Deserialize)]
 pub struct Settings {
@@ -53,8 +53,8 @@ impl Settings {
     } else {
       dir = dir.join(".minecraft");
     }
-    info!("got dir {:?}", dir);
-    serde_json::from_reader(File::open("~/.minecraft/launcher_profiles.json").unwrap()).unwrap()
+    info!("using data directory {:?}", dir);
+    serde_json::from_reader(File::open(dir.join("launcher_profiles.json")).unwrap()).unwrap()
   }
 
   /// Returns the selected account info.
