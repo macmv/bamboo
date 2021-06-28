@@ -19,8 +19,7 @@ use common::{
   version::ProtocolVersion,
 };
 
-use crate::player::Player;
-use crate::{block, item};
+use crate::{block, item, player::Player};
 
 pub struct Connection {
   rx:     Mutex<Streaming<proto::Packet>>,

@@ -28,8 +28,7 @@ use common::{
   version::{BlockVersion, ProtocolVersion},
 };
 
-use crate::{block, entity, item, plugin};
-use crate::{net::Connection, player::Player};
+use crate::{block, entity, item, net::Connection, player::Player, plugin};
 use chunk::MultiChunk;
 use gen::WorldGen;
 

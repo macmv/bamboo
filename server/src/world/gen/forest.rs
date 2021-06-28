@@ -1,6 +1,5 @@
 use super::{BiomeGen, WorldGen};
-use crate::block;
-use crate::world::chunk::MultiChunk;
+use crate::{block, world::chunk::MultiChunk};
 use common::math::{ChunkPos, PointGrid, Pos};
 
 pub struct Gen {

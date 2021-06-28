@@ -26,8 +26,8 @@ pub enum BlockDirection {
   East,
 }
 
-/// The minecraft hex digest. This is slightly different from a normal hex digest; see
-/// [the wiki](https://wiki.vg/Protocol_Encryption) for more information.
+/// The minecraft hex digest. This is slightly different from a normal hex
+/// digest; see [the wiki](https://wiki.vg/Protocol_Encryption) for more information.
 pub fn hexdigest(hash: Sha1) -> String {
   let mut hex = hash.finalize();
 

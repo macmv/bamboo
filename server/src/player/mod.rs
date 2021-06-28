@@ -15,8 +15,9 @@ use common::{
 use crate::{
   entity::Metadata,
   item::{Inventory, Stack},
+  net::Connection,
+  world::World,
 };
-use crate::{net::Connection, world::World};
 
 #[derive(Debug)]
 struct PlayerPosition {
