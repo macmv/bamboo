@@ -11,7 +11,7 @@ mod ui;
 pub mod util;
 mod world;
 
-pub use graphics::Vert;
+use graphics::Vert;
 pub use settings::Settings;
 pub use ui::UI;
 pub use world::World;
@@ -29,24 +29,24 @@ fn main() {
     }
   };
 
-  let mut world = World::new();
+  let world = Arc::new(World::new());
   let mut ui = UI::new(&mut win);
 
   ui.set_layout(
     ui::LayoutKind::Menu,
     ui::Layout::new()
-      .button(Vert::new(-0.2, -0.14), Vert::new(0.4, 0.08), move || {
-        tokio::runtime::Builder::new_multi_thread().enable_all().build().unwrap().block_on(async {
-          world.connect("127.0.0.1:25565").await;
-        });
+      .button(Vert::new(-0.2, -0.14), Vert::new(0.4, 0.08), move |win, ui| {
+        World::connect(world.clone(), "127.0.0.1:25565".into(), win, ui);
       })
-      .button(Vert::new(-0.2, -0.04), Vert::new(0.4, 0.08), || info!("options"))
-      .button(Vert::new(-0.2, 0.06), Vert::new(0.4, 0.08), || {
+      .button(Vert::new(-0.2, -0.04), Vert::new(0.4, 0.08), |_, _| info!("options"))
+      .button(Vert::new(-0.2, 0.06), Vert::new(0.4, 0.08), |_, _| {
         info!("closing");
         process::exit(0)
       }),
   );
 
   info!("starting game");
-  win.run(Arc::new(ui));
+  tokio::runtime::Builder::new_multi_thread().enable_all().build().unwrap().block_on(async {
+    win.run(Arc::new(ui));
+  });
 }

@@ -37,7 +37,7 @@ pub struct Layout {
 pub struct Button {
   pos:      Vert,
   size:     Vert,
-  on_click: Box<dyn FnMut()>,
+  on_click: Box<dyn FnMut(&WindowData, &UI) + Send>,
 }
 
 /// A drawing operator. Used to easily pass draw calls to a [`UI`].
@@ -185,7 +185,7 @@ impl UI {
   pub fn on_click(&self, win: &WindowData) {
     let l = &self.layouts[&self.current];
     for b in &l.buttons {
-      b.lock().unwrap().on_click(win);
+      b.lock().unwrap().on_click(win, self);
     }
   }
 }
@@ -197,7 +197,7 @@ impl Layout {
 
   pub fn button<F>(mut self, pos: Vert, size: Vert, on_click: F) -> Self
   where
-    F: FnMut() + 'static,
+    F: FnMut(&WindowData, &UI) + Send + 'static,
   {
     self.buttons.push(Mutex::new(Button::new(pos, size, on_click)));
     self
@@ -207,7 +207,7 @@ impl Layout {
 impl Button {
   fn new<F>(pos: Vert, size: Vert, on_click: F) -> Self
   where
-    F: FnMut() + 'static,
+    F: FnMut(&WindowData, &UI) + Send + 'static,
   {
     Button { pos, size, on_click: Box::new(on_click) }
   }
@@ -224,7 +224,7 @@ impl Button {
       vec![DrawOp::Image(self.pos, self.size, "button-up".into())]
     }
   }
-  fn on_click(&mut self, win: &WindowData) {
+  fn on_click(&mut self, win: &WindowData, ui: &UI) {
     let (mx, my) = win.mouse_screen_pos();
     let (mx, my) = (mx as f32, my as f32);
     let hovering = mx > self.pos.x()
@@ -232,7 +232,7 @@ impl Button {
       && my > self.pos.y()
       && my < self.pos.y() + self.size.y();
     if hovering {
-      (self.on_click)();
+      (self.on_click)(win, ui);
     }
   }
 }
