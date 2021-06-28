@@ -20,7 +20,7 @@ use std::{error::Error, io, io::ErrorKind, sync::Mutex};
 use tokio::net::TcpStream;
 use version::Generator;
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub enum State {
   Handshake,
   Status,
@@ -73,6 +73,11 @@ impl Connection {
     Some(conn)
   }
 
+  /// Starts listening for packets from the server. The only time this function
+  /// will exit is if the client has been disconnected.
+  ///
+  /// This requires access to the world so that recieved packets can actually
+  /// have an affect on the world.
   pub async fn run(&self) -> Result<(), Box<dyn Error>> {
     loop {
       self.reader.lock().unwrap().poll().await?;
@@ -111,8 +116,32 @@ impl Connection {
     }
   }
 
-  pub async fn send(&self, p: sb::Packet) {}
+  /// Sends the given packet to the server.
+  ///
+  /// # Panics
+  /// - If the connection state is not Play. This can only happen if the
+  ///   handshake did not complete successfully.
+  pub async fn send(&self, p: sb::Packet) {
+    if self.state != State::Play {
+      panic!("cannot send packet when connection state is {:?}", self.state);
+    }
+    let out = match self.gen.serverbound(self.ver, p) {
+      Ok(v) => v,
+      Err(e) => {
+        error!("error while generating serverbound packet: {}", e);
+        return;
+      }
+    };
+    self.writer.lock().unwrap().write(out).await.unwrap();
+  }
 
+  /// Performs a handshake with the server. The ip is send during the handshake,
+  /// and is often ignored. The account info is used to authenticate the client
+  /// with the mojang session servers.
+  ///
+  /// If this returns `Ok(())`, then this connection is in the Playe state. This
+  /// means that it is ready to be used, and run() should be called to start
+  /// listening for packets.
   async fn handshake(&mut self, ip: &str, info: &AccountInfo) -> Result<(), io::Error> {
     let reader = self.reader.get_mut().unwrap();
     let writer = self.writer.get_mut().unwrap();
@@ -130,9 +159,9 @@ impl Connection {
     writer.write(out).await?;
 
     'login: loop {
-      reader.poll().await.unwrap();
+      reader.poll().await?;
       loop {
-        let p = reader.read(self.ver).unwrap();
+        let p = reader.read(self.ver)?;
         if p.is_none() {
           break;
         }
