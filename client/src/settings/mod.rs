@@ -5,12 +5,15 @@ use std::{collections::HashMap, fs::File, str::FromStr};
 
 #[derive(Deserialize)]
 pub struct Settings {
+  #[serde(rename = "authenticationDatabase")]
   accounts: HashMap<String, Account>,
+  #[serde(rename = "selectedUser")]
   selected: Selected,
 }
 
 #[derive(Deserialize)]
 pub struct Account {
+  #[serde(rename = "accessToken")]
   access_token: String,
   // Keyed by account UUID
   profiles:     HashMap<String, AccountProfile>,
@@ -20,6 +23,7 @@ pub struct Account {
 
 #[derive(Deserialize)]
 pub struct AccountProfile {
+  #[serde(rename = "displayName")]
   display_name: String,
 }
 
