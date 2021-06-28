@@ -301,6 +301,7 @@ dependencies = [
  "futures",
  "log",
  "png",
+ "rsa-der",
  "rusttype",
  "serde",
  "serde_derive",
