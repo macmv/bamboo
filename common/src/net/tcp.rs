@@ -3,6 +3,7 @@ use crate::{
   util::{Buffer, BufferError, UUID},
   version::ProtocolVersion,
 };
+use std::convert::TryInto;
 
 #[derive(Debug)]
 pub struct Packet {
@@ -137,5 +138,9 @@ impl Packet {
 
   pub fn write_uuid(&mut self, v: UUID) {
     self.write_buf(&v.as_be_bytes());
+  }
+
+  pub fn read_uuid(&mut self) -> UUID {
+    UUID::from_bytes(self.read_buf(16).try_into().unwrap())
   }
 }

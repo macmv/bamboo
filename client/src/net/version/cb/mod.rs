@@ -8,28 +8,28 @@ use std::{collections::HashMap, io};
 use super::CbPacketVersion;
 
 mod utils;
-mod v1_10;
-mod v1_12;
-mod v1_13;
-mod v1_14;
-mod v1_15;
-mod v1_16;
-mod v1_17;
+// mod v1_10;
+// mod v1_12;
+// mod v1_13;
+// mod v1_14;
+// mod v1_15;
+// mod v1_16;
+// mod v1_17;
 mod v1_8;
-mod v1_9;
+// mod v1_9;
 
 type BoxedPacketFn = Box<
   dyn Fn(&Generator, ProtocolVersion, &tcp::Packet) -> io::Result<Vec<cb::Packet>> + Send + Sync,
 >;
 
 struct PacketSpec {
-  gens: HashMap<i32, BoxedPacketFn>,
+  gens: HashMap<cb::ID, BoxedPacketFn>,
 }
 
 impl PacketSpec {
   fn add(
     &mut self,
-    id: i32,
+    id: cb::ID,
     f: impl Fn(&Generator, ProtocolVersion, &tcp::Packet) -> io::Result<Vec<cb::Packet>>
       + Send
       + Sync
@@ -52,14 +52,14 @@ impl Generator {
   ) -> Generator {
     let mut gens = HashMap::new();
     gens.insert(ProtocolVersion::V1_8, v1_8::gen_spec());
-    gens.insert(ProtocolVersion::V1_9_4, v1_9::gen_spec());
-    gens.insert(ProtocolVersion::V1_10, v1_10::gen_spec());
-    gens.insert(ProtocolVersion::V1_12_2, v1_12::gen_spec());
-    gens.insert(ProtocolVersion::V1_13_2, v1_13::gen_spec());
-    gens.insert(ProtocolVersion::V1_14_4, v1_14::gen_spec());
-    gens.insert(ProtocolVersion::V1_15_2, v1_15::gen_spec());
-    gens.insert(ProtocolVersion::V1_16_2, v1_16::gen_spec());
-    gens.insert(ProtocolVersion::V1_17, v1_17::gen_spec());
+    // gens.insert(ProtocolVersion::V1_9_4, v1_9::gen_spec());
+    // gens.insert(ProtocolVersion::V1_10, v1_10::gen_spec());
+    // gens.insert(ProtocolVersion::V1_12_2, v1_12::gen_spec());
+    // gens.insert(ProtocolVersion::V1_13_2, v1_13::gen_spec());
+    // gens.insert(ProtocolVersion::V1_14_4, v1_14::gen_spec());
+    // gens.insert(ProtocolVersion::V1_15_2, v1_15::gen_spec());
+    // gens.insert(ProtocolVersion::V1_16_2, v1_16::gen_spec());
+    // gens.insert(ProtocolVersion::V1_17, v1_17::gen_spec());
     Generator { gens, versions, same_versions }
   }
 
@@ -90,15 +90,10 @@ impl Generator {
   }
 
   pub fn convert(&self, v: ProtocolVersion, p: tcp::Packet) -> io::Result<Vec<cb::Packet>> {
+    let id = self.convert_id(v, p.id());
     // Check for a generator
     let gen = self.get_gen(v);
-    // if gen.is_none() {
-    //   return Err(io::Error::new(
-    //     io::ErrorKind::InvalidInput,
-    //     format!("unimplemented version {:?}", v),
-    //   ));
-    // }
-    let out = match gen.gens.get(&p.id()) {
+    let out = match gen.gens.get(&id) {
       // If we have a generator for this packet, we use that instead. Generators are
       // used for things like chunk packets, which are just simpler to deserialize
       // manually.
@@ -107,9 +102,8 @@ impl Generator {
         g(self, v, &p)?
       }
       None => {
-        let id = self.convert_id(v, p.id());
         if id == cb::ID::None {
-          warn!("got packet that has no generator and does not exist for ver {:?}: {}", v, p.id());
+          warn!("got packet that has no generator and does not exist for ver {:?}: {:?}", v, id);
           return Ok(vec![]);
         }
         // Here, we must have a valid packet id, or we would have returned already.
@@ -145,20 +139,18 @@ impl Generator {
                 } else {
                   error!(
                     "while parsing spec for {:?} packet, got invalid array count type {:?}",
-                    p.id(),
-                    count
+                    id, count
                   )
                 };
               } else {
                 error!(
                   "while parsing spec for {:?} packet, got invalid array value type {:?}",
-                  p.id(),
-                  value
+                  id, value
                 )
               }
             }
             v => {
-              error!("while parsing spec for {:?} packet, got invalid packet field {:?}", p.id(), v)
+              error!("while parsing spec for {:?} packet, got invalid packet field {:?}", id, v)
             }
           }
         }

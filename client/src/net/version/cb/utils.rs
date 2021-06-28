@@ -13,51 +13,41 @@ use common::{
 pub(super) fn generate_player_info(
   gen: &Generator,
   v: ProtocolVersion,
-  p: &cb::Packet,
-) -> Result<Vec<tcp::Packet>> {
-  let mut out = tcp::Packet::new(gen.convert_id(v, p.id()), v);
-  let info = match p.read_other().unwrap() {
-    Other::PlayerList(c) => c,
-    o => {
-      return Err(Error::new(ErrorKind::InvalidData, format!("expected player list, got {:?}", o)))
-    }
-  };
-  out.write_varint(info.action);
-  out.write_varint(info.players.len() as i32);
-  for p in info.players {
-    out.write_uuid(match p.uuid {
-      Some(v) => UUID::from_proto(v),
-      None => return Err(Error::new(ErrorKind::InvalidData, "empty player uuid in player list")),
-    });
-    match player_list::Action::from_i32(info.action).unwrap() {
+  p: &tcp::Packet,
+) -> Result<cb::Packet> {
+  let mut out = cb::Packet::new(gen.convert_id(v, p.id()));
+  let action = p.read_varint();
+  let len = p.read_varint();
+  for _ in 0..len {
+    let uuid = p.read_uuid();
+    match player_list::Action::from_i32(action).unwrap() {
       player_list::Action::AddPlayer => {
-        out.write_str(&p.name);
-        out.write_varint(p.properties.len() as i32);
-        for p in p.properties {
-          out.write_str(&p.name);
-          out.write_str(&p.value);
-          out.write_bool(p.signed);
-          if p.signed {
-            out.write_str(&p.signature);
+        let name = p.read_str();
+        for _ in 0..p.read_varint() {
+          let prop_name = p.read_str();
+          let prop_value = p.read_str();
+          let signed = p.read_bool();
+          if signed {
+            let signature = p.read_str();
           }
         }
-        out.write_varint(p.gamemode);
-        out.write_varint(p.ping);
-        out.write_bool(p.has_display_name);
-        if p.has_display_name {
-          out.write_str(&p.display_name);
+        let gamemode = p.read_varint();
+        let ping = p.read_varint();
+        let has_display_name = p.read_bool();
+        if has_display_name {
+          let display_name = p.read_str();
         }
       }
       player_list::Action::UpdateGamemode => {
-        out.write_varint(p.gamemode);
+        let gamemode = p.read_varint();
       }
       player_list::Action::UpdateLatency => {
-        out.write_varint(p.ping);
+        let ping = p.read_varint();
       }
       player_list::Action::UpdateDisplayName => {
-        out.write_bool(p.has_display_name);
-        if p.has_display_name {
-          out.write_str(&p.display_name);
+        let has_display_name = p.read_bool();
+        if has_display_name {
+          let display_name = p.read_str();
         }
       }
       player_list::Action::RemovePlayer => {
@@ -65,7 +55,7 @@ pub(super) fn generate_player_info(
       }
     }
   }
-  Ok(vec![out])
+  Ok(out)
 }
 
 // Applies to 1.9 - 1.12, but 1.10 doesn't work, so idk
