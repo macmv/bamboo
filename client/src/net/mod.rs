@@ -1,4 +1,5 @@
 use common::{
+  math,
   math::der,
   net::tcp,
   stream::{
@@ -9,6 +10,7 @@ use common::{
 };
 use rand::{rngs::OsRng, RngCore};
 use rsa::{BigUint, PaddingScheme, PublicKey, RSAPublicKey};
+use sha1::{Digest, Sha1};
 use std::{io, io::ErrorKind};
 use tokio::net::TcpStream;
 
@@ -26,6 +28,12 @@ pub struct Connection {
   writer: JavaStreamWriter,
   ver:    ProtocolVersion,
   state:  State,
+}
+
+struct JoinInfo {
+  access_token:     String,
+  selected_profile: String, // UUID without dashes
+  server_id:        String,
 }
 
 impl Connection {
@@ -122,6 +130,31 @@ impl Connection {
                       format!("could not encrypt token: {}", e),
                     )
                   })?;
+
+                let mut hash = Sha1::new();
+                hash.update("");
+                hash.update(secret);
+                hash.update(der_key);
+                let info = JoinInfo {
+                  access_token:     "",
+                  selected_profile: "",
+                  server_id:        math::hexdigest(hash),
+                };
+                let client = reqwest::Client::new();
+                match client
+                  .post("https://sessionserver.mojang.com/session/minecraft/join")
+                  .json(&info)
+                  .send()
+                  .await
+                {
+                  Ok(v) => {}
+                  Err(e) => {
+                    return Err(io::Error::new(
+                      ErrorKind::Other,
+                      format!("failed to authenticate client: {}", e),
+                    ))
+                  }
+                }
 
                 let mut out = tcp::Packet::new(1, self.ver); // Encryption response
                 out.write_varint(encrypted_secret.len() as i32);
