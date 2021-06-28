@@ -1,4 +1,5 @@
 use crate::{World, UI};
+use rand::Rng;
 use std::{
   error::Error,
   fmt,
@@ -7,7 +8,7 @@ use std::{
   time::Instant,
 };
 use vulkano::{
-  buffer::{BufferUsage, CpuAccessibleBuffer},
+  buffer::{BufferUsage, CpuAccessibleBuffer, TypedBufferAccess},
   command_buffer::{AutoCommandBufferBuilder, CommandBufferUsage, DynamicState, SubpassContents},
   descriptor::pipeline_layout::PipelineLayoutAbstract,
   device::{Device, Features, Queue},
@@ -96,6 +97,15 @@ impl Vert {
   #[inline(always)]
   pub fn y(&self) -> f32 {
     self.pos[1]
+  }
+
+  #[inline(always)]
+  pub fn set_x(&mut self, v: f32) {
+    self.pos[0] = v;
+  }
+  #[inline(always)]
+  pub fn set_y(&mut self, v: f32) {
+    self.pos[1] = v;
   }
 }
 
@@ -298,7 +308,7 @@ impl GameWindow {
     //   &mut self,
     // ));
 
-    let vertex_buffer = {
+    let vbuf = {
       CpuAccessibleBuffer::from_iter(
         self.data.device.clone(),
         BufferUsage::all(),
@@ -307,6 +317,8 @@ impl GameWindow {
       )
       .unwrap()
     };
+    let mut vels = [Vert::new(0.0, 0.0); 3];
+    let mut rng = rand::thread_rng();
 
     let data = Arc::new(Mutex::new(self.data));
 
@@ -378,10 +390,43 @@ impl GameWindow {
           world.clone().render(&mut data, &mut builder);
         } else {
           // In a menu
-          pc.offset[1] = (Instant::now().duration_since(start).as_secs_f32() % 5.0) / 5.0 - 0.5;
+          {
+            let mut buf = vbuf.write().unwrap();
+            // Center of all the points
+            let mut avg = Vert::new(0.0, 0.0);
+            for p in buf.iter() {
+              avg.set_x(avg.x() + p.x());
+              avg.set_y(avg.y() + p.y());
+            }
+            avg.set_x(avg.x() / vbuf.len() as f32);
+            avg.set_x(avg.x() / vbuf.len() as f32);
+
+            for (i, p) in buf.iter_mut().enumerate() {
+              let v = vels.get_mut(i).unwrap();
+              // Push in a random direction
+              let mut accel_x = (rng.gen::<f32>() - 0.5) / 1000.0;
+              let mut accel_y = (rng.gen::<f32>() - 0.5) / 1000.0;
+              // Push away from the edges of the screen
+              accel_x -= p.x() / 2000.0;
+              accel_y -= p.y() / 2000.0;
+              // Push towards the average of the points
+              accel_x += (p.x() - avg.x()) / 10000.0;
+              accel_y += (p.y() - avg.y()) / 10000.0;
+
+              // Apply the acceleration
+              v.set_x(v.x() + accel_x);
+              v.set_y(v.y() + accel_y);
+              // Add a bit of damping
+              v.set_x(v.x() * 0.9995);
+              v.set_y(v.y() * 0.9995);
+              // Apply the velocity
+              p.set_x(p.x() + v.x());
+              p.set_y(p.y() + v.y());
+            }
+          }
 
           builder
-            .draw(data.game_pipeline.clone(), &data.dyn_state, vertex_buffer.clone(), (), pc, [])
+            .draw(data.game_pipeline.clone(), &data.dyn_state, vbuf.clone(), (), pc, [])
             .unwrap();
         }
         ui.draw(&mut builder, data.ui_pipeline.clone(), &data.dyn_state, &data);
