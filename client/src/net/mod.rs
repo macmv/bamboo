@@ -82,7 +82,7 @@ impl Connection {
     loop {
       self.reader.lock().await.poll().await?;
       loop {
-        let p = self.reader.lock().await.read(self.ver).unwrap();
+        let p = self.reader.lock().await.read(self.ver)?;
         let p = if let Some(v) = p { v } else { break };
         // Make sure there were no errors set within the packet during parsing
         match p.err() {

@@ -36,7 +36,8 @@ impl World {
     self.main_player = Some(MainPlayer::new(&settings, conn.clone()));
     tokio::spawn(async move {
       conn.run().await.unwrap();
-    })
-    .await;
+    });
+    // Render loop
+    loop {}
   }
 }
