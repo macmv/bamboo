@@ -31,15 +31,28 @@ pub struct AccountProfile {
 pub struct Selected {
   // The selcted account
   account: String,
-  // The selected profile (an installation)
+  // The selected profile (account uuid)
   profile: String,
 }
 
 /// An easier to use version of the account data.
+#[derive(Debug)]
 pub struct AccountInfo {
   uuid:         UUID,
   username:     String,
   access_token: String,
+}
+
+impl AccountInfo {
+  pub fn uuid(&self) -> &UUID {
+    &self.uuid
+  }
+  pub fn username(&self) -> &str {
+    &self.username
+  }
+  pub fn access_token(&self) -> &str {
+    &self.access_token
+  }
 }
 
 impl Settings {
@@ -64,9 +77,9 @@ impl Settings {
   /// Returns the selected account info.
   pub fn get_info(&self) -> AccountInfo {
     let account = &self.accounts[&self.selected.account];
-    let (uuid, profile) = account.profiles.iter().next().unwrap();
+    let profile = &account.profiles[&self.selected.profile];
     AccountInfo {
-      uuid:         UUID::from_str(uuid).unwrap(),
+      uuid:         UUID::from_str(&self.selected.profile).unwrap(),
       username:     profile.display_name.clone(),
       access_token: account.access_token.clone(),
     }

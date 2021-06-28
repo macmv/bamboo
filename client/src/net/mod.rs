@@ -1,4 +1,4 @@
-use crate::settings::Settings;
+use crate::settings::{AccountInfo, Settings};
 use common::{
   math,
   math::der,
@@ -12,7 +12,7 @@ use common::{
 use rand::{rngs::OsRng, RngCore};
 use reqwest::StatusCode;
 use rsa::{PaddingScheme, PublicKey};
-use serde_derive::{Deserialize, Serialize};
+use serde_derive::Serialize;
 use sha1::{Digest, Sha1};
 use std::{io, io::ErrorKind};
 use tokio::net::TcpStream;
@@ -54,7 +54,7 @@ impl Connection {
     let (reader, writer) = java::stream::new(tcp_stream).unwrap();
     let mut conn =
       Connection { reader, writer, ver: ProtocolVersion::V1_8, state: State::Handshake };
-    if let Err(e) = conn.handshake(ip, "macmv").await {
+    if let Err(e) = conn.handshake(ip, &settings.get_info()).await {
       error!("could not finish handshake with {}: {}", ip, e);
       return None;
     }
@@ -62,7 +62,7 @@ impl Connection {
     Some(conn)
   }
 
-  async fn handshake(&mut self, ip: &str, name: &str) -> Result<(), io::Error> {
+  async fn handshake(&mut self, ip: &str, info: &AccountInfo) -> Result<(), io::Error> {
     let mut out = tcp::Packet::new(0, self.ver); // Handshake
     out.write_varint(self.ver.id() as i32); // Protocol version
     out.write_str(ip); // Ip
@@ -72,7 +72,7 @@ impl Connection {
     self.state = State::Login;
 
     let mut out = tcp::Packet::new(0, self.ver); // Login start
-    out.write_str(name); // Username
+    out.write_str(info.username());
     self.writer.write(out).await?;
 
     'login: loop {
@@ -139,9 +139,10 @@ impl Connection {
                 hash.update("");
                 hash.update(secret);
                 hash.update(der_key);
+                info!("{:?} {}", &info, info.uuid().as_str());
                 let info = JoinInfo {
-                  access_token:     "".into(),
-                  selected_profile: "".into(),
+                  access_token:     info.access_token().into(),
+                  selected_profile: info.uuid().as_str(),
                   server_id:        math::hexdigest(hash),
                 };
                 let client = reqwest::Client::new();
