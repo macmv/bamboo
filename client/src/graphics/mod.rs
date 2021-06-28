@@ -75,7 +75,7 @@ pub struct WindowData {
   mouse_y: f64,
 
   // If this is Some, then we are ingame, and should call render() on this.
-  world: Mutex<Option<Arc<World>>>,
+  world: Option<Arc<World>>,
 }
 
 #[derive(Default, Copy, Clone)]
@@ -282,7 +282,7 @@ pub fn init() -> Result<GameWindow, InitError> {
     height: 0,
     mouse_x: 0.0.into(),
     mouse_y: 0.0.into(),
-    world: Mutex::new(None),
+    world: None,
   };
   data.resize(images);
 
@@ -357,8 +357,6 @@ impl GameWindow {
           resize = true;
         }
 
-        pc.offset[1] = Instant::now().duration_since(start).as_secs_f32() % 1.0 - 0.5;
-
         let mut builder = AutoCommandBufferBuilder::primary(
           data.device.clone(),
           data.queue.family(),
@@ -376,9 +374,16 @@ impl GameWindow {
           )
           .unwrap();
 
-        builder
-          .draw(data.game_pipeline.clone(), &data.dyn_state, vertex_buffer.clone(), (), pc, [])
-          .unwrap();
+        if let Some(ref world) = data.world {
+          world.clone().render(&mut data, &mut builder);
+        } else {
+          // In a menu
+          pc.offset[1] = (Instant::now().duration_since(start).as_secs_f32() % 5.0) / 5.0 - 0.5;
+
+          builder
+            .draw(data.game_pipeline.clone(), &data.dyn_state, vertex_buffer.clone(), (), pc, [])
+            .unwrap();
+        }
         ui.draw(&mut builder, data.ui_pipeline.clone(), &data.dyn_state, &data);
         // text.draw(&mut builder, &data);
 
@@ -527,8 +532,8 @@ impl WindowData {
 
   /// Starts rendering a game from first person. This is how the application
   /// moves from the main menu into a game.
-  pub fn start_ingame(&self, world: Arc<World>) {
-    *self.world.lock().unwrap() = Some(world)
+  pub fn start_ingame(&mut self, world: Arc<World>) {
+    self.world = Some(world)
   }
 }
 

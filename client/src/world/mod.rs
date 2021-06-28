@@ -11,6 +11,8 @@ use std::{
   sync::{Arc, Mutex, RwLock},
 };
 
+use vulkano::command_buffer::{AutoCommandBufferBuilder, PrimaryAutoCommandBuffer};
+
 pub struct World {
   chunks:      RwLock<HashMap<ChunkPos, Mutex<MeshChunk>>>,
   // This will be set whenever the player is in a game.
@@ -26,6 +28,15 @@ impl World {
       main_player: Mutex::new(None),
       players:     HashMap::new(),
     }
+  }
+
+  /// Renders the entire game (without the UI), from the main player's
+  /// perspective. This will panic if `main_player` is `None`.
+  pub fn render(
+    &self,
+    win: &mut WindowData,
+    builder: &mut AutoCommandBufferBuilder<PrimaryAutoCommandBuffer>,
+  ) {
   }
 
   pub fn connect(self: Arc<Self>, ip: String, win: Arc<Mutex<WindowData>>, ui: &UI) {
