@@ -1,6 +1,7 @@
 use crate::version::Generator;
 
 use common::{
+  math::der,
   net::{cb, sb, tcp},
   proto,
   proto::minecraft_client::MinecraftClient,
@@ -449,16 +450,11 @@ impl<R: StreamReader + Send, W: StreamWriter + Send> Conn<R, W> {
 
                 let secret = "Big Gaming".as_bytes();
 
-                let pub_key_der =
-                  rsa_der::public_key_to_der(&key.n().to_bytes_be(), &key.e().to_bytes_be());
-                let (n, e) = rsa_der::public_key_from_der(&pub_key_der).unwrap();
+                let pub_key_der = der::encode(&key);
+                let pub_key = der::decode(&pub_key_der).unwrap();
 
-                assert_eq!(n, key.n().to_bytes_be());
-                assert_eq!(e, key.e().to_bytes_be());
-
-                let pub_key =
-                  RSAPublicKey::new(BigUint::from_bytes_be(&n), BigUint::from_bytes_be(&e))
-                    .unwrap();
+                assert_eq!(pub_key.n(), key.n());
+                assert_eq!(pub_key.e(), key.e());
 
                 println!(
                   "{:02x?}",

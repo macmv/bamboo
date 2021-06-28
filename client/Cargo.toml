@@ -27,7 +27,6 @@ rusttype = { version = "0.9" }
 
 rand = "0.8.3"
 rsa = "0.4.0"
-rsa-der = "0.2.1"
 
 [build-dependencies]
 data = { path = "../data" }

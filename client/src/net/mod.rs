@@ -1,4 +1,5 @@
 use common::{
+  math::der,
   net::tcp,
   stream::{
     java::{self, JavaStreamReader, JavaStreamWriter},
@@ -99,16 +100,9 @@ impl Connection {
                 let token_len = p.read_varint();
                 let token = p.read_buf(token_len);
 
-                let (n, e) = rsa_der::public_key_from_der(&der_key).map_err(|e| {
-                  io::Error::new(ErrorKind::InvalidInput, format!("invalid der key: {}", e))
+                let key = der::decode(&der_key).ok_or_else(|| {
+                  io::Error::new(ErrorKind::InvalidInput, format!("invalid der key"))
                 })?;
-                let key = RSAPublicKey::new(BigUint::from_bytes_be(&n), BigUint::from_bytes_be(&e))
-                  .map_err(|e| {
-                    io::Error::new(
-                      ErrorKind::InvalidInput,
-                      format!("could not create public key: {}", e),
-                    )
-                  })?;
 
                 let mut rng = OsRng;
                 let mut secret = [0; 16];

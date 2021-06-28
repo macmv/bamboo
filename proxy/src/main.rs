@@ -11,6 +11,7 @@ use tokio::{net::TcpListener, sync::oneshot};
 
 use crate::conn::Conn;
 use common::{
+  math::der,
   net::sb,
   stream::{bedrock, java, StreamReader, StreamWriter},
 };
@@ -32,7 +33,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
 
   // Minecraft uses 1024 bits for this.
   let key = RSAPrivateKey::new(&mut OsRng, 1024).expect("failed to generate a key");
-  let der_key = Some(rsa_der::public_key_to_der(&key.n().to_bytes_be(), &key.e().to_bytes_be()));
+  let der_key = Some(der::encode(&key));
 
   let gen2 = gen.clone();
   let key2 = key.clone();
