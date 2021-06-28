@@ -1,3 +1,5 @@
+mod version;
+
 use crate::settings::{AccountInfo, Settings};
 use common::{
   math,
@@ -14,8 +16,9 @@ use reqwest::StatusCode;
 use rsa::{PaddingScheme, PublicKey};
 use serde_derive::Serialize;
 use sha1::{Digest, Sha1};
-use std::{io, io::ErrorKind};
+use std::{error::Error, io, io::ErrorKind};
 use tokio::net::TcpStream;
+use version::Generator;
 
 #[derive(Debug, Copy, Clone)]
 pub enum State {
@@ -31,6 +34,7 @@ pub struct Connection {
   writer: JavaStreamWriter,
   ver:    ProtocolVersion,
   state:  State,
+  gen:    Generator,
 }
 
 #[derive(Serialize, Debug)]
@@ -55,14 +59,55 @@ impl Connection {
     };
 
     let (reader, writer) = java::stream::new(tcp_stream).unwrap();
-    let mut conn =
-      Connection { reader, writer, ver: ProtocolVersion::V1_8, state: State::Handshake };
+    let mut conn = Connection {
+      reader,
+      writer,
+      ver: ProtocolVersion::V1_8,
+      state: State::Handshake,
+      gen: Generator::new(),
+    };
     if let Err(e) = conn.handshake(ip, &settings.get_info()).await {
       error!("could not finish handshake with {}: {}", ip, e);
       return None;
     }
 
     Some(conn)
+  }
+
+  async fn run(&mut self) -> Result<(), Box<dyn Error>> {
+    loop {
+      self.reader.poll().await?;
+      loop {
+        let p = self.reader.read(self.ver).unwrap();
+        let p = if let Some(v) = p { v } else { break };
+        // Make sure there were no errors set within the packet during parsing
+        match p.err() {
+          Some(e) => {
+            error!("error while parsing packet: {}", e);
+            return Err(Box::new(io::Error::new(
+              ErrorKind::InvalidData,
+              "failed to parse packet, closing connection",
+            )));
+          }
+          None => {}
+        }
+        let cb = match self.gen.clientbound(self.ver, p) {
+          Ok(p) => p,
+          Err(e) => match e.kind() {
+            ErrorKind::Other => {
+              return Err(Box::new(e));
+            }
+            _ => {
+              warn!("{}", e);
+              continue;
+            }
+          },
+        };
+        match cb.id() {
+          id => warn!("unknown packet recieved from server: {}", id),
+        }
+      }
+    }
   }
 
   async fn handshake(&mut self, ip: &str, info: &AccountInfo) -> Result<(), io::Error> {
