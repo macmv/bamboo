@@ -1,5 +1,4 @@
-use asn1::BigUint;
-use rsa::{PaddingScheme, PublicKey, PublicKeyParts, RSAPrivateKey, RSAPublicKey};
+use rsa::{PublicKeyParts, RSAPublicKey};
 
 /// Represents an ASN.1 `BIT STRING`. Need this because the constructor is
 /// private in the asn1 crate.
@@ -45,9 +44,9 @@ pub fn decode(bytes: &[u8]) -> Option<RSAPublicKey> {
       let (n, e) = asn1::parse(pub_key.as_bytes(), |d| {
         d.read_element::<asn1::Sequence>()?.parse(|d| {
           info!("reading n...");
-          let n = d.read_element::<BigUint>()?;
+          let n = d.read_element::<asn1::BigUint>()?;
           info!("reading e...");
-          let e = d.read_element::<BigUint>()?;
+          let e = d.read_element::<asn1::BigUint>()?;
           Ok((n, e))
         })
       })?;
@@ -76,9 +75,9 @@ fn write_big_uint(w: &mut asn1::Writer, int: &rsa::BigUint) {
   if bytes[0] & 0x80 != 0 {
     tmp.push(0);
     tmp.append(&mut bytes);
-    out = BigUint::new(tmp.as_ref()).unwrap()
+    out = asn1::BigUint::new(tmp.as_ref()).unwrap()
   } else {
-    out = BigUint::new(&bytes).unwrap()
+    out = asn1::BigUint::new(&bytes).unwrap()
   }
   w.write_element(&out);
 }
@@ -112,6 +111,7 @@ pub fn encode(key: &RSAPublicKey) -> Vec<u8> {
 mod tests {
   use super::*;
   use rand::rngs::OsRng;
+  use rsa::RSAPrivateKey;
 
   #[test]
   fn encode_decode() {
