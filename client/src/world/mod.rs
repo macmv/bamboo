@@ -75,13 +75,14 @@ impl World {
     win: &mut WindowData,
     builder: &mut AutoCommandBufferBuilder<PrimaryAutoCommandBuffer>,
   ) {
-    let p = self.main_player.lock().unwrap();
-    let p = p.as_ref().unwrap();
+    let mut p = self.main_player.lock().unwrap();
+    let p = p.as_mut().unwrap();
     p.render(win);
 
     let proj =
       cgmath::perspective(Deg(70.0), win.width() as f32 / win.height() as f32, 0.1, 1000.0);
-    let view = Matrix4::from_angle_y(Deg((Instant::now() - self.start).as_secs_f32() * 120.0))
+    let view = Matrix4::from_angle_y(Deg(p.yaw()))
+      * Matrix4::from_angle_x(Deg(p.pitch()))
       * Matrix4::from_translation(Vector3::new(0.0, 0.0, 0.0));
     let model = Matrix4::from_translation(Vector3::new(0.0, 0.0, 5.0));
 

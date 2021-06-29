@@ -412,17 +412,16 @@ impl WindowData {
   pub fn mouse_delta(&mut self) -> (f64, f64) {
     let dx = self.mouse_x - self.prev_mouse_x;
     let dy = self.mouse_y - self.prev_mouse_y;
-    self.prev_mouse_x = self.mouse_x;
-    self.prev_mouse_y = self.mouse_y;
     let win = self.swapchain.surface().window();
     let size = win.inner_size();
     // Set cursor to the middle of the screen. If this fails, it means we are on
     // wayland, web, ios, or android. We ignore these failures, as the cursor is
     // already grabbed.
-    let _ = win.set_cursor_position(PhysicalPosition {
-      x: size.width as f32 / 2.0,
-      y: size.height as f32 / 2.0,
-    });
+    let x = size.width as f64 / 2.0;
+    let y = size.height as f64 / 2.0;
+    let _ = win.set_cursor_position(PhysicalPosition { x: x as f32, y: y as f32 });
+    self.prev_mouse_x = x;
+    self.prev_mouse_y = y;
     (dx, dy)
   }
 

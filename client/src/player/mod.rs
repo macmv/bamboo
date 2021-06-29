@@ -1,7 +1,10 @@
 use crate::{graphics::WindowData, net::Connection, Settings};
 use cgmath::Vector3;
 use common::util::UUID;
-use std::{ops::Deref, sync::Arc};
+use std::{
+  ops::{Deref, DerefMut},
+  sync::Arc,
+};
 
 /// The player that the client is using. This include information about
 /// rendering, the camera position, and anything else that is client specific.
@@ -31,9 +34,11 @@ impl MainPlayer {
   }
 
   /// Called every frame. This updates the player's view direction and position.
-  pub fn render(&self, win: &mut WindowData) {
+  pub fn render(&mut self, win: &mut WindowData) {
     let (dx, dy) = win.mouse_delta();
-    info!("mouse delta: {} {}", dx, dy);
+    let sensitivity = 0.5;
+    self.pitch -= (dy as f32) * sensitivity;
+    self.yaw += (dx as f32) * sensitivity;
   }
 }
 
@@ -42,6 +47,12 @@ impl Deref for MainPlayer {
 
   fn deref(&self) -> &Self::Target {
     &self.player
+  }
+}
+
+impl DerefMut for MainPlayer {
+  fn deref_mut(&mut self) -> &mut Self::Target {
+    &mut self.player
   }
 }
 
