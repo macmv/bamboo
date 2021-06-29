@@ -484,7 +484,7 @@ impl WindowData {
     // We probably got a weird value if this is above 256
     if let Ok(code) = input.scancode.try_into() {
       self.key_states.set(code, input.state == ElementState::Pressed);
-      for c in 0..128 {
+      for c in 0..=255 {
         if self.key_states.get(c) {
           match KeyCode::from_u8(c) {
             Some(v) => print!("{:?}({}) ", v, c),

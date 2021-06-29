@@ -60,7 +60,7 @@ pub enum KeyCode {
   B,
   N,
   M,
-  Comman,
+  Comma,
   Period,
   Slash,
 
@@ -98,4 +98,23 @@ pub enum KeyCode {
   Numpad3,
   Numpad0,
   NumpadPeriod,
+
+  F11         = 87,
+  F12,
+
+  NumpadEnter = 96,
+  NumpadSlash = 98,
+
+  Home        = 102,
+  Up,
+  PgUp,
+  Left,
+  Right,
+  End,
+  Down,
+  PgDown,
+  Ins,
+  Del,
+
+  Super       = 125,
 }
