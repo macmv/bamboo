@@ -342,6 +342,8 @@ dependencies = [
  "directories",
  "futures",
  "log",
+ "num-derive",
+ "num-traits",
  "png",
  "rand 0.8.3",
  "reqwest",

@@ -1,5 +1,6 @@
 use crate::{World, UI};
 use common::math::Pos;
+use num_traits::FromPrimitive;
 use rand::Rng;
 use std::{
   convert::TryInto,
@@ -27,10 +28,12 @@ use winit::{
 
 mod chunk;
 mod init;
+mod key;
 mod text;
 
 pub use chunk::MeshChunk;
 pub use init::init;
+pub use key::KeyCode;
 
 pub struct GameWindow {
   event_loop: EventLoop<()>,
@@ -58,7 +61,7 @@ impl KeyStates {
     }
   }
 
-  pub fn get(&mut self, code: u8) -> bool {
+  pub fn get(&self, code: u8) -> bool {
     self.state[(code / 8) as usize] & 1 << (code % 8) != 0
   }
 }
@@ -481,6 +484,15 @@ impl WindowData {
     // We probably got a weird value if this is above 256
     if let Ok(code) = input.scancode.try_into() {
       self.key_states.set(code, input.state == ElementState::Pressed);
+      for c in 0..128 {
+        if self.key_states.get(c) {
+          match KeyCode::from_u8(c) {
+            Some(v) => print!("{:?}({}) ", v, c),
+            None => print!("Unknown({}) ", c),
+          }
+        }
+      }
+      println!();
     }
   }
   /// Updates the internal mouse position
@@ -508,6 +520,10 @@ impl WindowData {
     (dx, dy)
   }
 
+  /// Returns the mouse position in pixels.
+  pub fn key_down(&self, code: KeyCode) -> bool {
+    self.key_states.get(code as u8)
+  }
   /// Returns the mouse position in pixels.
   pub fn mouse_pos(&self) -> (f64, f64) {
     (self.mouse_x, self.mouse_y)
