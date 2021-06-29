@@ -5,8 +5,8 @@ use crate::{
   ui::{LayoutKind, UI},
   Settings,
 };
-use cgmath::{Deg, Matrix4, Vector3, Vector4};
-use common::{math::ChunkPos, util::UUID};
+use cgmath::{Deg, Matrix4, Vector3};
+use common::{math::ChunkPos, proto, util::UUID};
 use std::{
   collections::HashMap,
   sync::{Arc, Mutex, RwLock},
@@ -55,6 +55,13 @@ impl World {
     }
   }
 
+  /// Adds the given chunk to the world. Should only be called after receiving a
+  /// MapChunk packet.
+  pub fn add_chunk(&self, pb: proto::Chunk) {
+    let mut chunks = self.chunks.write().unwrap();
+    chunks.insert(ChunkPos::new(pb.x, pb.z), Mutex::new(MeshChunk::from_proto(pb)));
+  }
+
   /// Renders the entire game (without the UI), from the main player's
   /// perspective. This will panic if `main_player` is `None`.
   pub fn render(
@@ -87,9 +94,9 @@ impl World {
         None => return,
       };
       self.set_main_player(Some(MainPlayer::new(&settings, conn.clone())));
-      win.lock().unwrap().start_ingame(self);
+      win.lock().unwrap().start_ingame(self.clone());
       ui.switch_to(LayoutKind::Game);
-      conn.run().await.unwrap();
+      conn.run(&self).await.unwrap();
     });
   }
 

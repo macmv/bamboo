@@ -1,10 +1,13 @@
 mod version;
 
-use crate::settings::{AccountInfo, Settings};
+use crate::{
+  settings::{AccountInfo, Settings},
+  World,
+};
 use common::{
   math,
   math::der,
-  net::{sb, tcp},
+  net::{cb, sb, tcp, Other},
   stream::{
     java::{self, JavaStreamReader, JavaStreamWriter},
     StreamReader, StreamWriter,
@@ -78,7 +81,7 @@ impl Connection {
   ///
   /// This requires access to the world so that recieved packets can actually
   /// have an affect on the world.
-  pub async fn run(&self) -> Result<(), Box<dyn Error>> {
+  pub async fn run(&self, world: &World) -> Result<(), Box<dyn Error>> {
     loop {
       self.reader.lock().await.poll().await?;
       loop {
@@ -108,11 +111,22 @@ impl Connection {
           },
         };
         for p in packets {
-          match p.id() {
-            id => warn!("unknown packet recieved from server: {:?}", id),
-          }
+          self.handle_packet(p, world);
         }
       }
+    }
+  }
+
+  fn handle_packet(&self, p: cb::Packet, world: &World) {
+    match p.id() {
+      cb::ID::MapChunk => {
+        let pb = match p.read_other().unwrap() {
+          Other::Chunk(c) => c,
+          v => panic!("expecting Other::Chunk(), got {:?}", v),
+        };
+        world.add_chunk(pb);
+      }
+      id => warn!("unknown packet recieved from server: {:?}", id),
     }
   }
 
