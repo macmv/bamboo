@@ -35,7 +35,12 @@ impl Error for InitError {}
 
 pub fn init() -> Result<GameWindow, InitError> {
   let inst = {
+    // Wine does not allow validation layers, so for debugging windows builds, this
+    // is the easiest option for me.
+    #[cfg(not(windows))]
     let layers = vec!["VK_LAYER_KHRONOS_validation"];
+    #[cfg(windows)]
+    let layers = None;
 
     let extensions = vulkano_win::required_extensions();
     Instance::new(None, &extensions, layers)
