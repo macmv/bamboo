@@ -108,8 +108,13 @@ impl Generator {
           warn!("got packet that has no generator and does not exist for ver {:?}: {:?}", v, id);
           return Ok(vec![]);
         }
+        let ver = self.get_ver(v);
+        if id as usize > ver.packets.len() {
+          warn!("got unknown packet id {:?}", id);
+          return Ok(vec![]);
+        }
         // Here, we must have a valid packet id, or we would have returned already.
-        let spec = &self.get_ver(v).packets[id as usize];
+        let spec = &ver.packets[id as usize];
         let mut out = cb::Packet::new(id);
         for (n, f) in &spec.fields {
           match f {

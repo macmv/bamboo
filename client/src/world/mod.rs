@@ -62,6 +62,7 @@ impl World {
   /// MapChunk packet.
   pub fn add_chunk(&self, pb: proto::Chunk) {
     let mut chunks = self.chunks.write().unwrap();
+    info!("adding chunk at {} {}", pb.x, pb.z);
     chunks.insert(
       ChunkPos::new(pb.x, pb.z),
       Mutex::new(MeshChunk::from_proto(pb, self.device.clone())),
