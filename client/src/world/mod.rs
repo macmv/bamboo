@@ -5,7 +5,7 @@ use crate::{
   ui::{LayoutKind, UI},
   Settings,
 };
-use cgmath::{Deg, Matrix4, Vector3};
+use cgmath::{Angle, Deg, Matrix4, Point3, Vector3};
 use common::{math::ChunkPos, proto, util::UUID};
 use std::{
   collections::HashMap,
@@ -82,9 +82,13 @@ impl World {
 
     let proj =
       cgmath::perspective(Deg(70.0), win.width() as f32 / win.height() as f32, 0.1, 1000.0);
-    let view = Matrix4::from_angle_y(Deg(p.yaw()))
-      * Matrix4::from_angle_x(Deg(p.pitch()))
-      * Matrix4::from_translation(Vector3::new(0.0, 0.0, 0.0));
+    let yaw = Deg(-p.yaw());
+    let pitch = Deg(p.pitch());
+    let view = Matrix4::look_to_rh(
+      Point3::new(0.0, 0.0, 0.0),
+      Vector3::new(yaw.sin() * pitch.cos(), pitch.sin(), yaw.cos() * pitch.cos()),
+      Vector3::unit_y(),
+    );
     let model = Matrix4::from_translation(Vector3::new(0.0, 0.0, 5.0));
 
     let mut pc =
