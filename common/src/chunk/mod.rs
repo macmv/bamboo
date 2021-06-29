@@ -115,6 +115,19 @@ impl Chunk {
       None => unreachable!(),
     }
   }
+  /// Returns true if there is a chunk section at the given Y coordinate. The Y
+  /// coordinate is not a block coordinate, but a section index (Y = 0
+  /// corresponds to the section from 0..15, Y = 1 corresponds to the section
+  /// from 16..31, etc)
+  pub fn has_section(&self, y: u32) -> bool {
+    // None              => out of bounds            => false
+    // Some(None)        => in array, but no section => false
+    // Some(Some(chunk)) => in array, valid section  => true
+    match self.sections.get(y as usize) {
+      Some(Some(_)) => true,
+      _ => false,
+    }
+  }
   /// Generates a protobuf containing all of the chunk data. X and Z will both
   /// be 0.
   pub fn to_latest_proto(&self) -> proto::Chunk {
