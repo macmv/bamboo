@@ -4,7 +4,7 @@ mod ttf;
 pub use self::png::PNGRender;
 pub use ttf::TTFRender;
 
-use super::{Vert, WindowData};
+use super::{Vert2, WindowData};
 use std::sync::Arc;
 use vulkano::{
   command_buffer::{AutoCommandBufferBuilder, PrimaryAutoCommandBuffer},
@@ -33,7 +33,7 @@ fn create_pipeline<W>(
   device: Arc<Device>,
   swapchain: Arc<Swapchain<W>>,
 ) -> Arc<
-  GraphicsPipeline<SingleBufferDefinition<Vert>, Box<dyn PipelineLayoutAbstract + Send + Sync>>,
+  GraphicsPipeline<SingleBufferDefinition<Vert2>, Box<dyn PipelineLayoutAbstract + Send + Sync>>,
 >
 where
   W: Send + Sync + 'static,
@@ -61,7 +61,7 @@ where
 
   Arc::new(
     GraphicsPipeline::start()
-      .vertex_input_single_buffer::<Vert>()
+      .vertex_input_single_buffer::<Vert2>()
       .vertex_shader(vs.main_entry_point(), ())
       .triangle_list()
       .viewports_dynamic_scissors_irrelevant(1)

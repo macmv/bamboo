@@ -1,5 +1,5 @@
 use super::{vs, TextRender};
-use crate::graphics::{Vert, WindowData};
+use crate::graphics::{Vert2, WindowData};
 use rusttype::{Font, GlyphId, Point, Rect, Scale};
 use std::{cmp::max, collections::HashMap, mem, sync::Arc};
 use vulkano::{
@@ -28,9 +28,9 @@ pub struct TTFRender {
   cache_size:  Point<usize>,
   new_glyph_x: usize,
 
-  vbuf:     Arc<CpuAccessibleBuffer<[Vert]>>,
+  vbuf:     Arc<CpuAccessibleBuffer<[Vert2]>>,
   pipeline: Arc<
-    GraphicsPipeline<SingleBufferDefinition<Vert>, Box<dyn PipelineLayoutAbstract + Send + Sync>>,
+    GraphicsPipeline<SingleBufferDefinition<Vert2>, Box<dyn PipelineLayoutAbstract + Send + Sync>>,
   >,
 }
 
@@ -62,12 +62,12 @@ impl TTFRender {
         BufferUsage::all(),
         false,
         [
-          Vert::new(0.0, 0.0),
-          Vert::new(1.0, 1.0),
-          Vert::new(1.0, 0.0),
-          Vert::new(0.0, 0.0),
-          Vert::new(0.0, 1.0),
-          Vert::new(1.0, 1.0),
+          Vert2::new(0.0, 0.0),
+          Vert2::new(1.0, 1.0),
+          Vert2::new(1.0, 0.0),
+          Vert2::new(0.0, 0.0),
+          Vert2::new(0.0, 1.0),
+          Vert2::new(1.0, 1.0),
         ]
         .iter()
         .cloned(),

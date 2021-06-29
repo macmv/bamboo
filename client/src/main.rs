@@ -11,7 +11,7 @@ mod ui;
 pub mod util;
 mod world;
 
-use graphics::Vert;
+use graphics::Vert2;
 pub use settings::Settings;
 pub use ui::UI;
 pub use world::World;
@@ -35,11 +35,11 @@ fn main() {
   ui.set_layout(
     ui::LayoutKind::Menu,
     ui::Layout::new()
-      .button(Vert::new(-0.2, -0.14), Vert::new(0.4, 0.08), move |win, ui| {
+      .button(Vert2::new(-0.2, -0.14), Vert2::new(0.4, 0.08), move |win, ui| {
         world.clone().connect("127.0.0.1:25565".into(), win.clone(), ui.clone());
       })
-      .button(Vert::new(-0.2, -0.04), Vert::new(0.4, 0.08), |_, _| info!("options"))
-      .button(Vert::new(-0.2, 0.06), Vert::new(0.4, 0.08), |_, _| {
+      .button(Vert2::new(-0.2, -0.04), Vert2::new(0.4, 0.08), |_, _| info!("options"))
+      .button(Vert2::new(-0.2, 0.06), Vert2::new(0.4, 0.08), |_, _| {
         info!("closing");
         process::exit(0)
       }),

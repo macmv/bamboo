@@ -59,10 +59,13 @@ pub struct WindowData {
   device:        Arc<Device>,
   queue:         Arc<Queue>,
   game_pipeline: Arc<
-    GraphicsPipeline<SingleBufferDefinition<Vert>, Box<dyn PipelineLayoutAbstract + Send + Sync>>,
+    GraphicsPipeline<SingleBufferDefinition<Vert3>, Box<dyn PipelineLayoutAbstract + Send + Sync>>,
   >,
   ui_pipeline: Arc<
-    GraphicsPipeline<SingleBufferDefinition<Vert>, Box<dyn PipelineLayoutAbstract + Send + Sync>>,
+    GraphicsPipeline<SingleBufferDefinition<Vert2>, Box<dyn PipelineLayoutAbstract + Send + Sync>>,
+  >,
+  menu_pipeline: Arc<
+    GraphicsPipeline<SingleBufferDefinition<Vert2>, Box<dyn PipelineLayoutAbstract + Send + Sync>>,
   >,
   buffers:       Vec<Arc<Framebuffer<((), Arc<ImageView<Arc<SwapchainImage<Window>>>>)>>>,
   dyn_state:     DynamicState,
@@ -79,14 +82,21 @@ pub struct WindowData {
 }
 
 #[derive(Default, Copy, Clone)]
-pub struct Vert {
+pub struct Vert2 {
   pos: [f32; 2],
 }
-vulkano::impl_vertex!(Vert, pos);
+vulkano::impl_vertex!(Vert2, pos);
 
-impl Vert {
+#[derive(Default, Copy, Clone)]
+pub struct Vert3 {
+  pos: [f32; 3],
+  uv:  [f32; 2],
+}
+vulkano::impl_vertex!(Vert3, pos, uv);
+
+impl Vert2 {
   pub fn new(x: f32, y: f32) -> Self {
-    Vert { pos: [x, y] }
+    Vert2 { pos: [x, y] }
   }
 
   #[inline(always)]
@@ -108,13 +118,45 @@ impl Vert {
   }
 }
 
-impl Into<[f32; 2]> for Vert {
+impl Vert3 {
+  pub fn new(x: f32, y: f32, z: f32, u: f32, v: f32) -> Self {
+    Vert3 { pos: [x, y, z], uv: [u, v] }
+  }
+
+  #[inline(always)]
+  pub fn x(&self) -> f32 {
+    self.pos[0]
+  }
+  #[inline(always)]
+  pub fn y(&self) -> f32 {
+    self.pos[1]
+  }
+  #[inline(always)]
+  pub fn z(&self) -> f32 {
+    self.pos[2]
+  }
+  #[inline(always)]
+  pub fn u(&self) -> f32 {
+    self.uv[0]
+  }
+  #[inline(always)]
+  pub fn v(&self) -> f32 {
+    self.uv[1]
+  }
+}
+
+impl Into<[f32; 2]> for Vert2 {
   fn into(self) -> [f32; 2] {
     self.pos
   }
 }
+impl Into<[f32; 3]> for Vert3 {
+  fn into(self) -> [f32; 3] {
+    self.pos
+  }
+}
 
-mod game_vs {
+pub mod game_vs {
   vulkano_shaders::shader! {
     ty: "vertex",
     path: "src/shader/game.vs"
@@ -137,6 +179,19 @@ mod ui_fs {
   vulkano_shaders::shader! {
     ty: "fragment",
     path: "src/shader/ui.fs"
+  }
+}
+
+mod menu_vs {
+  vulkano_shaders::shader! {
+    ty: "vertex",
+    path: "src/shader/menu.vs"
+  }
+}
+mod menu_fs {
+  vulkano_shaders::shader! {
+    ty: "fragment",
+    path: "src/shader/menu.fs"
   }
 }
 
@@ -169,18 +224,6 @@ pub fn init() -> Result<GameWindow, InitError> {
 
   let queue = queues.next().unwrap();
 
-  let v1 = Vert::new(-0.5, -0.5);
-  let v2 = Vert::new(0.0, 0.5);
-  let v3 = Vert::new(0.5, -0.25);
-
-  CpuAccessibleBuffer::from_iter(
-    device.clone(),
-    BufferUsage::all(),
-    false,
-    vec![v1, v2, v3].into_iter(),
-  )
-  .unwrap();
-
   let game_vs = game_vs::Shader::load(device.clone())
     .map_err(|e| InitError::new(format!("failed to create vertex shader: {}", e)))?;
   let game_fs = game_fs::Shader::load(device.clone())
@@ -189,6 +232,11 @@ pub fn init() -> Result<GameWindow, InitError> {
   let ui_vs = ui_vs::Shader::load(device.clone())
     .map_err(|e| InitError::new(format!("failed to create vertex shader: {}", e)))?;
   let ui_fs = ui_fs::Shader::load(device.clone())
+    .map_err(|e| InitError::new(format!("failed to create fragment shader: {}", e)))?;
+
+  let menu_vs = menu_vs::Shader::load(device.clone())
+    .map_err(|e| InitError::new(format!("failed to create vertex shader: {}", e)))?;
+  let menu_fs = menu_fs::Shader::load(device.clone())
     .map_err(|e| InitError::new(format!("failed to create fragment shader: {}", e)))?;
 
   let event_loop = EventLoop::new();
@@ -255,7 +303,7 @@ pub fn init() -> Result<GameWindow, InitError> {
 
   let game_pipeline = Arc::new(
     GraphicsPipeline::start()
-      .vertex_input_single_buffer::<Vert>()
+      .vertex_input_single_buffer::<Vert3>()
       .vertex_shader(game_vs.main_entry_point(), ())
       .triangle_list()
       .viewports_dynamic_scissors_irrelevant(1)
@@ -266,11 +314,22 @@ pub fn init() -> Result<GameWindow, InitError> {
   );
   let ui_pipeline = Arc::new(
     GraphicsPipeline::start()
-      .vertex_input_single_buffer::<Vert>()
+      .vertex_input_single_buffer::<Vert2>()
       .vertex_shader(ui_vs.main_entry_point(), ())
       .triangle_list()
       .viewports_dynamic_scissors_irrelevant(1)
       .fragment_shader(ui_fs.main_entry_point(), ())
+      .render_pass(Subpass::from(render_pass.clone(), 0).unwrap())
+      .build(device.clone())
+      .unwrap(),
+  );
+  let menu_pipeline = Arc::new(
+    GraphicsPipeline::start()
+      .vertex_input_single_buffer::<Vert2>()
+      .vertex_shader(menu_vs.main_entry_point(), ())
+      .triangle_list()
+      .viewports_dynamic_scissors_irrelevant(1)
+      .fragment_shader(menu_fs.main_entry_point(), ())
       .render_pass(Subpass::from(render_pass.clone(), 0).unwrap())
       .build(device.clone())
       .unwrap(),
@@ -284,6 +343,7 @@ pub fn init() -> Result<GameWindow, InitError> {
     queue,
     game_pipeline,
     ui_pipeline,
+    menu_pipeline,
     swapchain,
     dyn_state,
     format,
@@ -312,16 +372,14 @@ impl GameWindow {
         self.data.device.clone(),
         BufferUsage::all(),
         false,
-        [Vert::new(-0.5, -0.25), Vert::new(0.0, 0.5), Vert::new(0.25, -0.1)].iter().cloned(),
+        [Vert2::new(-0.5, -0.25), Vert2::new(0.0, 0.5), Vert2::new(0.25, -0.1)].iter().cloned(),
       )
       .unwrap()
     };
-    let mut vels = [Vert::new(0.0, 0.0); 3];
+    let mut vels = [Vert2::new(0.0, 0.0); 3];
     let mut rng = rand::thread_rng();
 
     let data = Arc::new(Mutex::new(self.data));
-
-    let pc = game_vs::ty::PushData { offset: [0.0, 0.0] };
 
     let mut previous_frame_fut = self.initial_future;
     let mut resize = false;
@@ -391,7 +449,7 @@ impl GameWindow {
           {
             let mut buf = vbuf.write().unwrap();
             // Center of all the points
-            let mut avg = Vert::new(0.0, 0.0);
+            let mut avg = Vert2::new(0.0, 0.0);
             for p in buf.iter() {
               avg.set_x(avg.x() + p.x());
               avg.set_y(avg.y() + p.y());
@@ -424,7 +482,7 @@ impl GameWindow {
           }
 
           builder
-            .draw(data.game_pipeline.clone(), &data.dyn_state, vbuf.clone(), (), pc, [])
+            .draw(data.menu_pipeline.clone(), &data.dyn_state, vbuf.clone(), (), (), [])
             .unwrap();
         }
         ui.draw(&mut builder, data.ui_pipeline.clone(), &data.dyn_state, &data);
@@ -540,7 +598,7 @@ impl WindowData {
   pub fn ui_pipeline(
     &self,
   ) -> &Arc<
-    GraphicsPipeline<SingleBufferDefinition<Vert>, Box<dyn PipelineLayoutAbstract + Send + Sync>>,
+    GraphicsPipeline<SingleBufferDefinition<Vert2>, Box<dyn PipelineLayoutAbstract + Send + Sync>>,
   > {
     &self.ui_pipeline
   }

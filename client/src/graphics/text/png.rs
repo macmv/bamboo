@@ -1,6 +1,6 @@
 use super::{vs, TextRender};
 use crate::{
-  graphics::{GameWindow, Vert, WindowData},
+  graphics::{GameWindow, Vert2, WindowData},
   util::load,
 };
 use std::{collections::HashMap, sync::Arc};
@@ -25,7 +25,7 @@ pub struct PNGRender {
 
   chars: HashMap<char, (f32, f32)>,
 
-  vbuf:     Arc<CpuAccessibleBuffer<[Vert]>>,
+  vbuf:     Arc<CpuAccessibleBuffer<[Vert2]>>,
   set: Arc<
     PersistentDescriptorSet<(
       ((), PersistentDescriptorSetImg<Arc<ImageView<Arc<ImmutableImage>>>>),
@@ -33,7 +33,7 @@ pub struct PNGRender {
     )>,
   >,
   pipeline: Arc<
-    GraphicsPipeline<SingleBufferDefinition<Vert>, Box<dyn PipelineLayoutAbstract + Send + Sync>>,
+    GraphicsPipeline<SingleBufferDefinition<Vert2>, Box<dyn PipelineLayoutAbstract + Send + Sync>>,
   >,
 }
 
@@ -135,12 +135,12 @@ impl PNGRender {
         BufferUsage::all(),
         false,
         [
-          Vert::new(0.0, 0.0),
-          Vert::new(1.0, 1.0),
-          Vert::new(1.0, 0.0),
-          Vert::new(0.0, 0.0),
-          Vert::new(0.0, 1.0),
-          Vert::new(1.0, 1.0),
+          Vert2::new(0.0, 0.0),
+          Vert2::new(1.0, 1.0),
+          Vert2::new(1.0, 0.0),
+          Vert2::new(0.0, 0.0),
+          Vert2::new(0.0, 1.0),
+          Vert2::new(1.0, 1.0),
         ]
         .iter()
         .cloned(),

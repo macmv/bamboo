@@ -1,5 +1,5 @@
 use crate::{
-  graphics::{MeshChunk, WindowData},
+  graphics::{game_vs, MeshChunk, WindowData},
   net::Connection,
   player::{MainPlayer, OtherPlayer},
   ui::{LayoutKind, UI},
@@ -37,6 +37,7 @@ impl World {
     win: &mut WindowData,
     builder: &mut AutoCommandBufferBuilder<PrimaryAutoCommandBuffer>,
   ) {
+    let pc = game_vs::ty::PushData { offset: [0.0, 0.0] };
   }
 
   pub fn connect(self: Arc<Self>, ip: String, win: Arc<Mutex<WindowData>>, ui: Arc<UI>) {

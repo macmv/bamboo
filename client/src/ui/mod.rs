@@ -1,5 +1,5 @@
 use crate::{
-  graphics::{ui_vs, GameWindow, Vert, WindowData},
+  graphics::{ui_vs, GameWindow, Vert2, WindowData},
   util::load,
 };
 use std::{
@@ -35,8 +35,8 @@ pub struct Layout {
 }
 
 pub struct Button {
-  pos:      Vert,
-  size:     Vert,
+  pos:      Vert2,
+  size:     Vert2,
   on_click: Box<dyn FnMut(&Arc<Mutex<WindowData>>, &Arc<UI>) + Send>,
 }
 
@@ -46,9 +46,9 @@ pub enum DrawOp {
   /// second vertex is the size of the image. Both vertices are in scree-space
   /// coordinates. The string is an image name (the filename of an image within
   /// textures/ui, without the .png extension).
-  Image(Vert, Vert, String),
+  Image(Vert2, Vert2, String),
   /// Draws some text to the screen. The vertex is the top-left of the text.
-  Text(Vert, String),
+  Text(Vert2, String),
 }
 
 pub struct UI {
@@ -61,7 +61,7 @@ pub struct UI {
       )>,
     >,
   >,
-  vbuf:  Arc<CpuAccessibleBuffer<[Vert]>>,
+  vbuf:  Arc<CpuAccessibleBuffer<[Vert2]>>,
   start: Instant,
 
   layouts: HashMap<LayoutKind, Layout>,
@@ -120,12 +120,12 @@ impl UI {
       BufferUsage::all(),
       false,
       [
-        Vert::new(0.0, 0.0),
-        Vert::new(1.0, 1.0),
-        Vert::new(1.0, 0.0),
-        Vert::new(0.0, 0.0),
-        Vert::new(0.0, 1.0),
-        Vert::new(1.0, 1.0),
+        Vert2::new(0.0, 0.0),
+        Vert2::new(1.0, 1.0),
+        Vert2::new(1.0, 0.0),
+        Vert2::new(0.0, 0.0),
+        Vert2::new(0.0, 1.0),
+        Vert2::new(1.0, 1.0),
       ]
       .iter()
       .cloned(),
@@ -155,7 +155,10 @@ impl UI {
     &self,
     builder: &mut AutoCommandBufferBuilder<PrimaryAutoCommandBuffer>,
     pipeline: Arc<
-      GraphicsPipeline<SingleBufferDefinition<Vert>, Box<dyn PipelineLayoutAbstract + Send + Sync>>,
+      GraphicsPipeline<
+        SingleBufferDefinition<Vert2>,
+        Box<dyn PipelineLayoutAbstract + Send + Sync>,
+      >,
     >,
     dyn_state: &DynamicState,
     win: &WindowData,
@@ -201,7 +204,7 @@ impl Layout {
     Layout { buttons: vec![], background: None }
   }
 
-  pub fn button<F>(mut self, pos: Vert, size: Vert, on_click: F) -> Self
+  pub fn button<F>(mut self, pos: Vert2, size: Vert2, on_click: F) -> Self
   where
     F: FnMut(&Arc<Mutex<WindowData>>, &Arc<UI>) + Send + 'static,
   {
@@ -211,7 +214,7 @@ impl Layout {
 }
 
 impl Button {
-  fn new<F>(pos: Vert, size: Vert, on_click: F) -> Self
+  fn new<F>(pos: Vert2, size: Vert2, on_click: F) -> Self
   where
     F: FnMut(&Arc<Mutex<WindowData>>, &Arc<UI>) + Send + 'static,
   {
