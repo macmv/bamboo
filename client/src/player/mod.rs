@@ -1,5 +1,5 @@
 use crate::{graphics::WindowData, net::Connection, Settings};
-use cgmath::Vector3;
+use cgmath::Point3;
 use common::util::UUID;
 use std::{
   ops::{Deref, DerefMut},
@@ -19,7 +19,7 @@ pub struct OtherPlayer {
   name: String,
   uuid: UUID,
 
-  pos:   Vector3<f32>,
+  pos:   Point3<f32>,
   pitch: f32,
   yaw:   f32,
 }
@@ -28,7 +28,7 @@ impl MainPlayer {
   pub fn new(settings: &Settings, conn: Arc<Connection>) -> Self {
     let info = settings.get_info();
     MainPlayer {
-      player: OtherPlayer::new(info.username(), info.uuid(), Vector3::new(0.0, 0.0, 0.0)),
+      player: OtherPlayer::new(info.username(), info.uuid(), Point3::new(0.0, 0.0, 0.0)),
       conn,
     }
   }
@@ -57,12 +57,12 @@ impl DerefMut for MainPlayer {
 }
 
 impl OtherPlayer {
-  pub fn new(name: &str, uuid: UUID, pos: Vector3<f32>) -> Self {
+  pub fn new(name: &str, uuid: UUID, pos: Point3<f32>) -> Self {
     OtherPlayer { name: name.into(), uuid, pos, pitch: 0.0, yaw: 0.0 }
   }
 
   #[inline(always)]
-  pub fn pos(&self) -> Vector3<f32> {
+  pub fn pos(&self) -> Point3<f32> {
     self.pos
   }
   #[inline(always)]

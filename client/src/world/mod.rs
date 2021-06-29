@@ -85,7 +85,7 @@ impl World {
     let yaw = Deg(-p.yaw());
     let pitch = Deg(p.pitch());
     let view = Matrix4::look_to_rh(
-      Point3::new(0.0, 0.0, 0.0),
+      p.pos(),
       Vector3::new(yaw.sin() * pitch.cos(), pitch.sin(), yaw.cos() * pitch.cos()),
       Vector3::unit_y(),
     );
