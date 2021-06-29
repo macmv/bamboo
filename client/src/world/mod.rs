@@ -16,6 +16,7 @@ use std::{
 use vulkano::{
   buffer::{BufferUsage, CpuAccessibleBuffer},
   command_buffer::{AutoCommandBufferBuilder, PrimaryAutoCommandBuffer},
+  device::Device,
 };
 
 pub struct World {
@@ -26,6 +27,7 @@ pub struct World {
   players:     HashMap<UUID, OtherPlayer>,
   vbuf:        Arc<CpuAccessibleBuffer<[Vert3]>>,
   start:       Instant,
+  device:      Arc<Device>,
 }
 
 impl World {
@@ -52,6 +54,7 @@ impl World {
       )
       .unwrap(),
       start:       Instant::now(),
+      device:      win.device().clone(),
     }
   }
 
@@ -59,7 +62,10 @@ impl World {
   /// MapChunk packet.
   pub fn add_chunk(&self, pb: proto::Chunk) {
     let mut chunks = self.chunks.write().unwrap();
-    chunks.insert(ChunkPos::new(pb.x, pb.z), Mutex::new(MeshChunk::from_proto(pb)));
+    chunks.insert(
+      ChunkPos::new(pb.x, pb.z),
+      Mutex::new(MeshChunk::from_proto(pb, self.device.clone())),
+    );
   }
 
   /// Renders the entire game (without the UI), from the main player's
