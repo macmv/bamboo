@@ -66,9 +66,9 @@ impl World {
     let p = p.as_ref().unwrap();
     let proj =
       cgmath::perspective(Deg(70.0), win.width() as f32 / win.height() as f32, 0.1, 1000.0);
-    let view = Matrix4::from_translation(Vector3::new(0.0, 0.0, -5.0))
-      * Matrix4::from_angle_y(Deg((Instant::now() - self.start).as_secs_f32() * 60.0));
-    let model = Matrix4::from_translation(Vector3::new(0.0, 0.0, 0.0));
+    let view = Matrix4::from_angle_y(Deg((Instant::now() - self.start).as_secs_f32() * 120.0))
+      * Matrix4::from_translation(Vector3::new(0.0, 0.0, 0.0));
+    let model = Matrix4::from_translation(Vector3::new(0.0, 0.0, 5.0));
 
     let pc = game_vs::ty::PushData { proj: proj.into(), model: model.into(), view: view.into() };
 
