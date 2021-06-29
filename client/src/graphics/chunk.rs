@@ -39,7 +39,6 @@ impl MeshChunk {
     if self.outdated {
       self.update_mesh();
     }
-    // TODO: Generate mesh
     &self.vbuf
   }
 
@@ -53,41 +52,44 @@ impl MeshChunk {
           let y = chunk_y * 16 + section_y;
           for z in 0..16 {
             for x in 0..16 {
-              if self.chunk.get_block(Pos::new(x, y, z)) != Ok(0) {
-                // We are finding blocks where there is a solid next to air, not the other way
-                // around
+              let p = Pos::new(x, y, z);
+              // We want p to be solid, and an air block next to it. This makes it easiest to
+              // lookup the texture we want.
+              if self.chunk.get_block(p) == Ok(0) {
                 continue;
               }
+              // TODO: Textures
               let u = 0.0;
               let v = 0.0;
-              if self.chunk.get_block(Pos::new(x, y + 1, z)) != Ok(0) {
-                MeshChunk::add_face(&mut buf, Pos::new(x, y + 1, z), Face::Up, u, v);
+              if self.chunk.get_block(Pos::new(x, y + 1, z)) == Ok(0) {
+                MeshChunk::add_face(&mut buf, p, Face::Up, u, v);
               }
-              if self.chunk.get_block(Pos::new(x, y - 1, z)) != Ok(0) {
-                MeshChunk::add_face(&mut buf, Pos::new(x, y, z), Face::Down, u, v);
+              if self.chunk.get_block(Pos::new(x, y - 1, z)) == Ok(0) {
+                MeshChunk::add_face(&mut buf, p, Face::Down, u, v);
               }
-              if self.chunk.get_block(Pos::new(x, y, z + 1)) != Ok(0) {
-                MeshChunk::add_face(&mut buf, Pos::new(x, y, z + 1), Face::South, u, v);
+              if self.chunk.get_block(Pos::new(x, y, z + 1)) == Ok(0) {
+                MeshChunk::add_face(&mut buf, p, Face::South, u, v);
               }
-              if self.chunk.get_block(Pos::new(x, y, z - 1)) != Ok(0) {
-                MeshChunk::add_face(&mut buf, Pos::new(x, y, z), Face::North, u, v);
+              if self.chunk.get_block(Pos::new(x, y, z - 1)) == Ok(0) {
+                MeshChunk::add_face(&mut buf, p, Face::North, u, v);
               }
-              if self.chunk.get_block(Pos::new(x + 1, y, z)) != Ok(0) {
-                MeshChunk::add_face(&mut buf, Pos::new(x + 1, y, z), Face::East, u, v);
+              if self.chunk.get_block(Pos::new(x + 1, y, z)) == Ok(0) {
+                MeshChunk::add_face(&mut buf, p, Face::East, u, v);
               }
-              if self.chunk.get_block(Pos::new(x - 1, y, z)) != Ok(0) {
-                MeshChunk::add_face(&mut buf, Pos::new(x, y, z), Face::West, u, v);
+              if self.chunk.get_block(Pos::new(x - 1, y, z)) == Ok(0) {
+                MeshChunk::add_face(&mut buf, p, Face::West, u, v);
               }
             }
           }
         }
       }
     }
+    info!("len: {}", buf.len());
     self.vbuf = CpuAccessibleBuffer::from_iter(
       self.device.clone(),
       BufferUsage::all(),
       false,
-      buf.iter().cloned(),
+      buf.into_iter(),
     )
     .unwrap();
     self.outdated = false;

@@ -87,7 +87,18 @@ impl World {
       * Matrix4::from_translation(Vector3::new(0.0, 0.0, 0.0));
     let model = Matrix4::from_translation(Vector3::new(0.0, 0.0, 5.0));
 
-    let pc = game_vs::ty::PushData { proj: proj.into(), model: model.into(), view: view.into() };
+    let mut pc =
+      game_vs::ty::PushData { proj: proj.into(), model: model.into(), view: view.into() };
+
+    for (pos, c) in self.chunks.read().unwrap().iter() {
+      pc.model =
+        Matrix4::from_translation(Vector3::new((pos.x() * 16) as f32, 0.0, (pos.z() * 16) as f32))
+          .into();
+      let mut chunk = c.lock().unwrap();
+      builder
+        .draw(win.game_pipeline().clone(), win.dyn_state(), chunk.get_vbuf().clone(), (), pc, [])
+        .unwrap();
+    }
 
     builder
       .draw(win.game_pipeline().clone(), win.dyn_state(), self.vbuf.clone(), (), pc, [])
