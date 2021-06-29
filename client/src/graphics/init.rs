@@ -1,5 +1,5 @@
 use super::{
-  game_fs, game_vs, menu_fs, menu_vs, ui_fs, ui_vs, GameWindow, Vert2, Vert3, WindowData,
+  game_fs, game_vs, menu_fs, menu_vs, ui_fs, ui_vs, GameWindow, KeyStates, Vert2, Vert3, WindowData,
 };
 use std::{error::Error, fmt, sync::Arc};
 use vulkano::{
@@ -191,6 +191,7 @@ pub fn init() -> Result<GameWindow, InitError> {
     mouse_y: 0.0,
     prev_mouse_x: 0.0,
     prev_mouse_y: 0.0,
+    key_states: KeyStates::new(),
     world: None,
   };
   data.resize(images);

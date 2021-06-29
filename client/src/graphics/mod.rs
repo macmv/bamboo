@@ -2,6 +2,7 @@ use crate::{World, UI};
 use common::math::Pos;
 use rand::Rng;
 use std::{
+  convert::TryInto,
   ops::{Add, AddAssign, Deref},
   sync::{Arc, Mutex},
 };
@@ -19,7 +20,7 @@ use vulkano::{
 };
 use winit::{
   dpi::PhysicalPosition,
-  event::{ElementState, Event, MouseButton, WindowEvent},
+  event::{ElementState, Event, KeyboardInput, MouseButton, WindowEvent},
   event_loop::{ControlFlow, EventLoop},
   window::Window,
 };
@@ -36,6 +37,30 @@ pub struct GameWindow {
   data:       WindowData,
 
   initial_future: Option<Box<dyn GpuFuture>>,
+}
+
+struct KeyStates {
+  // 256 bits, for the state of 256 scancodes.
+  state: [u8; 32],
+  // modifiers: something
+}
+
+impl KeyStates {
+  pub fn new() -> Self {
+    KeyStates { state: [0; 32] }
+  }
+
+  pub fn set(&mut self, code: u8, value: bool) {
+    if value {
+      self.state[(code / 8) as usize] |= 1 << (code % 8);
+    } else {
+      self.state[(code / 8) as usize] &= !(1 << (code % 8));
+    }
+  }
+
+  pub fn get(&mut self, code: u8) -> bool {
+    self.state[(code / 8) as usize] & 1 << (code % 8) != 0
+  }
 }
 
 pub struct WindowData {
@@ -62,6 +87,7 @@ pub struct WindowData {
   mouse_y:      f64,
   prev_mouse_x: f64,
   prev_mouse_y: f64,
+  key_states:   KeyStates,
 
   // If this is Some, then we are ingame, and should call render() on this.
   world: Option<Arc<World>>,
@@ -260,6 +286,9 @@ impl GameWindow {
       Event::WindowEvent { event: WindowEvent::Resized(_), .. } => {
         resize = true;
       }
+      Event::WindowEvent { event: WindowEvent::KeyboardInput { input, .. }, .. } => {
+        data.lock().unwrap().keyboard_input(input);
+      }
       Event::WindowEvent { event: WindowEvent::CursorMoved { position, .. }, .. } => {
         data.lock().unwrap().mouse_moved(position.x, position.y);
       }
@@ -447,6 +476,13 @@ impl WindowData {
       .collect::<Vec<_>>()
   }
 
+  /// Updates the internal keyboard state
+  fn keyboard_input(&mut self, input: KeyboardInput) {
+    // We probably got a weird value if this is above 256
+    if let Ok(code) = input.scancode.try_into() {
+      self.key_states.set(code, input.state == ElementState::Pressed);
+    }
+  }
   /// Updates the internal mouse position
   fn mouse_moved(&mut self, x: f64, y: f64) {
     self.mouse_x = x;
