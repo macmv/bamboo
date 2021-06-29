@@ -97,6 +97,7 @@ impl MeshChunk {
   /// the block. So if face is up, then all of the points added would be above
   /// the pos passed in.
   fn add_face(buf: &mut Vec<Vert3>, pos: Pos, face: Face, u: f32, v: f32) {
+    // TODO: Make faces one-sided, and fix the direction of some of these triangles.
     match face {
       Face::Up => {
         buf.push(Vert3::new(1.0, 1.0, 1.0, u, v) + pos);
@@ -106,11 +107,46 @@ impl MeshChunk {
         buf.push(Vert3::new(0.0, 1.0, 1.0, u, v) + pos);
         buf.push(Vert3::new(1.0, 1.0, 1.0, u, v) + pos);
       }
-      Face::Down => {}
-      Face::South => {}
-      Face::North => {}
-      Face::East => {}
-      Face::West => {}
+      Face::Down => {
+        buf.push(Vert3::new(1.0, 0.0, 1.0, u, v) + pos);
+        buf.push(Vert3::new(1.0, 0.0, 0.0, u, v) + pos);
+        buf.push(Vert3::new(0.0, 0.0, 0.0, u, v) + pos);
+        buf.push(Vert3::new(0.0, 0.0, 0.0, u, v) + pos);
+        buf.push(Vert3::new(0.0, 0.0, 1.0, u, v) + pos);
+        buf.push(Vert3::new(1.0, 0.0, 1.0, u, v) + pos);
+      }
+      Face::South => {
+        buf.push(Vert3::new(1.0, 1.0, 1.0, u, v) + pos);
+        buf.push(Vert3::new(1.0, 0.0, 1.0, u, v) + pos);
+        buf.push(Vert3::new(0.0, 0.0, 1.0, u, v) + pos);
+        buf.push(Vert3::new(0.0, 0.0, 1.0, u, v) + pos);
+        buf.push(Vert3::new(0.0, 1.0, 1.0, u, v) + pos);
+        buf.push(Vert3::new(1.0, 1.0, 1.0, u, v) + pos);
+      }
+      Face::North => {
+        buf.push(Vert3::new(1.0, 1.0, 0.0, u, v) + pos);
+        buf.push(Vert3::new(1.0, 0.0, 0.0, u, v) + pos);
+        buf.push(Vert3::new(0.0, 0.0, 0.0, u, v) + pos);
+        buf.push(Vert3::new(0.0, 0.0, 0.0, u, v) + pos);
+        buf.push(Vert3::new(0.0, 1.0, 0.0, u, v) + pos);
+        buf.push(Vert3::new(1.0, 1.0, 0.0, u, v) + pos);
+      }
+      Face::East => {
+        buf.push(Vert3::new(1.0, 1.0, 1.0, u, v) + pos);
+        buf.push(Vert3::new(1.0, 1.0, 0.0, u, v) + pos);
+        buf.push(Vert3::new(1.0, 0.0, 0.0, u, v) + pos);
+        buf.push(Vert3::new(1.0, 0.0, 0.0, u, v) + pos);
+        buf.push(Vert3::new(1.0, 0.0, 1.0, u, v) + pos);
+        buf.push(Vert3::new(1.0, 1.0, 1.0, u, v) + pos);
+      }
+      Face::West => {
+        buf.push(Vert3::new(0.0, 1.0, 1.0, u, v) + pos);
+        buf.push(Vert3::new(0.0, 1.0, 0.0, u, v) + pos);
+        buf.push(Vert3::new(0.0, 0.0, 0.0, u, v) + pos);
+        buf.push(Vert3::new(0.0, 0.0, 0.0, u, v) + pos);
+        buf.push(Vert3::new(0.0, 0.0, 1.0, u, v) + pos);
+        buf.push(Vert3::new(0.0, 1.0, 1.0, u, v) + pos);
+      }
     }
   }
 
