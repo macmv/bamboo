@@ -29,7 +29,7 @@ fn main() {
     }
   };
 
-  let world = Arc::new(World::new());
+  let world = Arc::new(World::new(&win));
   let mut ui = UI::new(&mut win);
 
   ui.set_layout(
