@@ -36,7 +36,7 @@ fn main() {
     ui::LayoutKind::Menu,
     ui::Layout::new()
       .button(Vert::new(-0.2, -0.14), Vert::new(0.4, 0.08), move |win, ui| {
-        world.clone().connect("127.0.0.1:25565".into(), win.clone(), ui);
+        world.clone().connect("127.0.0.1:25565".into(), win.clone(), ui.clone());
       })
       .button(Vert::new(-0.2, -0.04), Vert::new(0.4, 0.08), |_, _| info!("options"))
       .button(Vert::new(-0.2, 0.06), Vert::new(0.4, 0.08), |_, _| {
@@ -44,6 +44,7 @@ fn main() {
         process::exit(0)
       }),
   );
+  ui.set_layout(ui::LayoutKind::Game, ui::Layout::new());
 
   info!("starting game");
   tokio::runtime::Builder::new_multi_thread().enable_all().build().unwrap().block_on(async {

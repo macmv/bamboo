@@ -2,7 +2,7 @@ use crate::{
   graphics::{MeshChunk, WindowData},
   net::Connection,
   player::{MainPlayer, OtherPlayer},
-  ui::UI,
+  ui::{LayoutKind, UI},
   Settings,
 };
 use common::{math::ChunkPos, util::UUID};
@@ -39,7 +39,7 @@ impl World {
   ) {
   }
 
-  pub fn connect(self: Arc<Self>, ip: String, win: Arc<Mutex<WindowData>>, ui: &UI) {
+  pub fn connect(self: Arc<Self>, ip: String, win: Arc<Mutex<WindowData>>, ui: Arc<UI>) {
     tokio::spawn(async move {
       let settings = Settings::new();
       let conn = match Connection::new(&ip, &settings).await {
@@ -48,6 +48,7 @@ impl World {
       };
       self.set_main_player(Some(MainPlayer::new(&settings, conn.clone())));
       win.lock().unwrap().start_ingame(self);
+      ui.switch_to(LayoutKind::Game);
       conn.run().await.unwrap();
     });
   }

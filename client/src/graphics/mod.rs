@@ -5,7 +5,6 @@ use std::{
   fmt,
   ops::Deref,
   sync::{Arc, Mutex},
-  time::Instant,
 };
 use vulkano::{
   buffer::{BufferUsage, CpuAccessibleBuffer, TypedBufferAccess},
@@ -322,8 +321,7 @@ impl GameWindow {
 
     let data = Arc::new(Mutex::new(self.data));
 
-    let mut pc = game_vs::ty::PushData { offset: [0.0, 0.0] };
-    let start = Instant::now();
+    let pc = game_vs::ty::PushData { offset: [0.0, 0.0] };
 
     let mut previous_frame_fut = self.initial_future;
     let mut resize = false;
