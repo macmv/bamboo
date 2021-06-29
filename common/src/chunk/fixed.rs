@@ -1,4 +1,4 @@
-use std::convert::TryFrom;
+use std::convert::{TryFrom, TryInto};
 
 use super::section::Section as ChunkSection;
 use crate::{
@@ -14,6 +14,30 @@ pub struct Section {
 impl Section {
   pub(super) fn new() -> Box<Self> {
     Box::new(Section { data: [0; 16 * 16 * 16] })
+  }
+  pub(super) fn from_latest_proto(pb: proto::chunk::Section) -> Box<Self> {
+    assert_eq!(pb.data.len(), 4096 / 4, "chunk data is the wrong length");
+    let mut section = Section { data: [0; 4096] };
+    // Using map() and collect() would cause more allocations than this
+    for (i, v) in pb.data.iter().enumerate() {
+      section.data[i * 4 + 0] = (v >> 0) as u16;
+      section.data[i * 4 + 1] = (v >> 16) as u16;
+      section.data[i * 4 + 2] = (v >> 32) as u16;
+      section.data[i * 4 + 3] = (v >> 48) as u16;
+    }
+    Box::new(section)
+  }
+  pub(super) fn from_old_proto(pb: proto::chunk::Section, f: &dyn Fn(u32) -> u32) -> Box<Self> {
+    assert_eq!(pb.data.len(), 4096 / 4, "chunk data is the wrong length");
+    let mut section = Section { data: [0; 4096] };
+    // Using map() and collect() would cause more allocations than this
+    for (i, v) in pb.data.iter().enumerate() {
+      section.data[i * 4 + 0] = f(((v >> 0) as u16).into()).try_into().unwrap();
+      section.data[i * 4 + 1] = f(((v >> 16) as u16).into()).try_into().unwrap();
+      section.data[i * 4 + 2] = f(((v >> 32) as u16).into()).try_into().unwrap();
+      section.data[i * 4 + 3] = f(((v >> 48) as u16).into()).try_into().unwrap();
+    }
+    Box::new(section)
   }
 }
 
