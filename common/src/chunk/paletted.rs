@@ -37,7 +37,7 @@ impl Section {
   pub(super) fn new() -> Box<Self> {
     Box::new(Self::default())
   }
-  pub(super) fn from_latest_proto(pb: proto::chunk::Section) -> Box<Self> {
+  fn validate_proto(pb: &proto::chunk::Section) {
     if pb.bits_per_block < 4 || pb.bits_per_block > 64 {
       panic!("invalid bits per block recieved from proto: {}", pb.bits_per_block);
     }
@@ -56,6 +56,9 @@ impl Section {
         16 * 16 * 16 * pb.bits_per_block as usize / 64
       );
     }
+  }
+  pub(super) fn from_latest_proto(pb: proto::chunk::Section) -> Box<Self> {
+    Section::validate_proto(&pb);
     let mut chunk = Section {
       bits_per_block:  pb.bits_per_block as u8,
       data:            pb.data,
@@ -76,8 +79,33 @@ impl Section {
     }
     Box::new(chunk)
   }
+  /// Creates a chunk section from the given protobuf. The function `f` will be
+  /// used to convert the block ids within the protobuf section into the block
+  /// ids that should be used within the new chunk section.
+  ///
+  /// Currently, we assume that after converting ids, the new ids will be in the
+  /// same order as the old ones.
   pub(super) fn from_old_proto(pb: proto::chunk::Section, f: &dyn Fn(u32) -> u32) -> Box<Self> {
-    Self::new()
+    Section::validate_proto(&pb);
+    let mut chunk = Section {
+      bits_per_block:  pb.bits_per_block as u8,
+      data:            pb.data,
+      block_amounts:   vec![0; pb.palette.len()],
+      palette:         pb.palette.into_iter().map(f).collect(),
+      reverse_palette: HashMap::new(),
+    };
+    for (i, &v) in chunk.palette.iter().enumerate() {
+      chunk.reverse_palette.insert(v, i as u32);
+    }
+    for y in 0..16 {
+      for z in 0..16 {
+        for x in 0..16 {
+          let val = chunk.get_palette(Pos::new(x, y, z));
+          chunk.block_amounts[val as usize] += 1;
+        }
+      }
+    }
+    Box::new(chunk)
   }
   #[inline(always)]
   fn index(&self, pos: Pos) -> (usize, usize, usize) {
@@ -733,9 +761,14 @@ mod tests {
     pb.palette.push(0);
     pb.palette.push(5);
 
-    let s = Section::from_latest_proto(pb);
+    let s = Section::from_latest_proto(pb.clone());
     assert_eq!(s.data, vec![0x1111111111111111; 16 * 16 * 16 * 4 / 64]);
     assert_eq!(s.palette, vec![0, 5]);
+    assert_eq!(s.block_amounts, vec![0, 4096]);
+
+    let s = Section::from_old_proto(pb, &|val| val + 5);
+    assert_eq!(s.data, vec![0x1111111111111111; 16 * 16 * 16 * 4 / 64]);
+    assert_eq!(s.palette, vec![5, 10]);
     assert_eq!(s.block_amounts, vec![0, 4096]);
   }
 }
