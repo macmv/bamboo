@@ -81,13 +81,13 @@ pub struct WindowData {
   world: Option<Arc<World>>,
 }
 
-#[derive(Default, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone)]
 pub struct Vert2 {
   pos: [f32; 2],
 }
 vulkano::impl_vertex!(Vert2, pos);
 
-#[derive(Default, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone)]
 pub struct Vert3 {
   pos: [f32; 3],
   uv:  [f32; 2],
@@ -594,6 +594,14 @@ impl WindowData {
     (x / (self.width as f64) * 2.0 - 1.0, y / (self.height as f64) * 2.0 - 1.0)
   }
 
+  #[inline(always)]
+  pub fn game_pipeline(
+    &self,
+  ) -> &Arc<
+    GraphicsPipeline<SingleBufferDefinition<Vert3>, Box<dyn PipelineLayoutAbstract + Send + Sync>>,
+  > {
+    &self.game_pipeline
+  }
   #[inline(always)]
   pub fn ui_pipeline(
     &self,

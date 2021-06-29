@@ -5,11 +5,12 @@ use crate::{
   ui::{LayoutKind, UI},
   Settings,
 };
-use cgmath::{Matrix4, SquareMatrix};
+use cgmath::{Deg, Matrix4, Vector3, Vector4};
 use common::{math::ChunkPos, util::UUID};
 use std::{
   collections::HashMap,
   sync::{Arc, Mutex, RwLock},
+  time::Instant,
 };
 
 use vulkano::{
@@ -24,6 +25,7 @@ pub struct World {
   // List of other players. Does not include the main player.
   players:     HashMap<UUID, OtherPlayer>,
   vbuf:        Arc<CpuAccessibleBuffer<[Vert3]>>,
+  start:       Instant,
 }
 
 impl World {
@@ -38,17 +40,18 @@ impl World {
         false,
         [
           // Bottom face
-          Vert3::new(1.0, 0.0, 1.0, 0.0, 0.0),
+          Vert3::new(1.0, 1.0, 0.0, 0.0, 0.0),
           Vert3::new(1.0, 0.0, 0.0, 0.0, 0.0),
           Vert3::new(0.0, 0.0, 0.0, 0.0, 0.0),
           Vert3::new(0.0, 0.0, 0.0, 0.0, 0.0),
-          Vert3::new(0.0, 0.0, 1.0, 0.0, 0.0),
-          Vert3::new(1.0, 0.0, 1.0, 0.0, 0.0),
+          Vert3::new(0.0, 1.0, 0.0, 0.0, 0.0),
+          Vert3::new(1.0, 1.0, 0.0, 0.0, 0.0),
         ]
         .iter()
         .cloned(),
       )
       .unwrap(),
+      start:       Instant::now(),
     }
   }
 
@@ -61,18 +64,17 @@ impl World {
   ) {
     let p = self.main_player.lock().unwrap();
     let p = p.as_ref().unwrap();
-    let pc = game_vs::ty::PushData {
-      proj:  cgmath::perspective(
-        cgmath::Deg(70.0),
-        win.width() as f32 / win.height() as f32,
-        0.1,
-        1000.0,
-      )
-      .into(),
-      model: Matrix4::identity().into(),
-      view:  Matrix4::identity().into(),
-    };
-    // p.render(pc, win, builder);
+    let proj =
+      cgmath::perspective(Deg(70.0), win.width() as f32 / win.height() as f32, 0.1, 1000.0);
+    let view = Matrix4::from_translation(Vector3::new(0.0, 0.0, -5.0))
+      * Matrix4::from_angle_y(Deg((Instant::now() - self.start).as_secs_f32() * 60.0));
+    let model = Matrix4::from_translation(Vector3::new(0.0, 0.0, 0.0));
+
+    let pc = game_vs::ty::PushData { proj: proj.into(), model: model.into(), view: view.into() };
+
+    builder
+      .draw(win.game_pipeline().clone(), win.dyn_state(), self.vbuf.clone(), (), pc, [])
+      .unwrap();
   }
 
   pub fn connect(self: Arc<Self>, ip: String, win: Arc<Mutex<WindowData>>, ui: Arc<UI>) {
