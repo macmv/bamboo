@@ -1,7 +1,7 @@
 use common::util::UUID;
 use directories::BaseDirs;
 use serde_derive::Deserialize;
-use std::{collections::HashMap, fs::File, str::FromStr};
+use std::{collections::HashMap, fs::File, process, str::FromStr};
 
 #[derive(Deserialize)]
 pub struct Settings {
@@ -62,7 +62,7 @@ impl Settings {
     let mut dir = dirs.config_dir().to_path_buf();
     if dir.ends_with(".config") {
       // Mojang has never used linux before (they use ~/.minecraft instead of
-      // ~/.config/.minecraft)
+      // ~/.config/minecraft)
       dir = dir.parent().unwrap().join(".minecraft");
     } else if dir.ends_with("Application Support") {
       // On macos there is no '.' at the start
@@ -70,8 +70,28 @@ impl Settings {
     } else {
       dir = dir.join(".minecraft");
     }
+    if !dir.exists() {
+      error!(
+        "{} does not exist! please create it with the vanilla launcher",
+        dir.to_str().unwrap()
+      );
+      process::exit(1);
+    }
     info!("using data directory {:?}", dir);
-    serde_json::from_reader(File::open(dir.join("launcher_profiles.json")).unwrap()).unwrap()
+    let path = dir.join("launcher_profiles.json");
+    match serde_json::from_reader(match File::open(&path) {
+      Ok(f) => f,
+      Err(e) => {
+        error!("error while reading from {}: {}", &path.to_str().unwrap(), e);
+        process::exit(1);
+      }
+    }) {
+      Ok(v) => v,
+      Err(e) => {
+        error!("error while parsing json in {}: {}", path.to_str().unwrap(), e);
+        process::exit(1);
+      }
+    }
   }
 
   /// Returns the selected account info.
