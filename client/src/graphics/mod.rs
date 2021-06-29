@@ -21,6 +21,7 @@ use vulkano::{
 };
 use vulkano_win::VkSurfaceBuild;
 use winit::{
+  dpi::PhysicalPosition,
   event::{ElementState, Event, MouseButton, WindowEvent},
   event_loop::{ControlFlow, EventLoop},
   window::{Window, WindowBuilder},
@@ -596,6 +597,15 @@ impl WindowData {
     let dy = self.mouse_y - self.prev_mouse_y;
     self.prev_mouse_x = self.mouse_x;
     self.prev_mouse_y = self.mouse_y;
+    let win = self.swapchain.surface().window();
+    let size = win.inner_size();
+    // Set cursor to the middle of the screen. If this fails, it means we are on
+    // wayland, web, ios, or android. We ignore these failures, as the cursor is
+    // already grabbed.
+    let _ = win.set_cursor_position(PhysicalPosition {
+      x: size.width as f32 / 2.0,
+      y: size.height as f32 / 2.0,
+    });
     (dx, dy)
   }
 
@@ -658,7 +668,10 @@ impl WindowData {
   /// Starts rendering a game from first person. This is how the application
   /// moves from the main menu into a game.
   pub fn start_ingame(&mut self, world: Arc<World>) {
-    self.world = Some(world)
+    self.world = Some(world);
+    let win = self.swapchain.surface().window();
+    win.set_cursor_visible(false);
+    win.set_cursor_grab(true).unwrap();
   }
 }
 
