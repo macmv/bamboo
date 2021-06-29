@@ -37,6 +37,48 @@ impl Section {
   pub(super) fn new() -> Box<Self> {
     Box::new(Self::default())
   }
+  pub(super) fn from_latest_proto(pb: proto::chunk::Section) -> Box<Self> {
+    if pb.bits_per_block < 4 || pb.bits_per_block > 64 {
+      panic!("invalid bits per block recieved from proto: {}", pb.bits_per_block);
+    }
+    if pb.palette.len() > 256 {
+      panic!("got a palette that was too long: {} > 256", pb.palette.len());
+    }
+    if let Some(&v) = pb.palette.get(0) {
+      if v != 0 {
+        panic!("the first element of the palette must be 0, got {}", v);
+      }
+    }
+    if pb.data.len() != 16 * 16 * 16 * pb.bits_per_block as usize / 64 {
+      panic!(
+        "protobuf data length is incorrect. got {} longs, expected {} longs",
+        pb.data.len(),
+        16 * 16 * 16 * pb.bits_per_block as usize / 64
+      );
+    }
+    let mut chunk = Section {
+      bits_per_block:  pb.bits_per_block as u8,
+      data:            pb.data,
+      block_amounts:   vec![0; pb.palette.len()],
+      palette:         pb.palette,
+      reverse_palette: HashMap::new(),
+    };
+    for (i, &v) in chunk.palette.iter().enumerate() {
+      chunk.reverse_palette.insert(v, i as u32);
+    }
+    for y in 0..16 {
+      for z in 0..16 {
+        for x in 0..16 {
+          let val = chunk.get_palette(Pos::new(x, y, z));
+          chunk.block_amounts[val as usize] += 1;
+        }
+      }
+    }
+    Box::new(chunk)
+  }
+  pub(super) fn from_old_proto(pb: proto::chunk::Section, f: &dyn Fn(u32) -> u32) -> Box<Self> {
+    Self::new()
+  }
   #[inline(always)]
   fn index(&self, pos: Pos) -> (usize, usize, usize) {
     let index = (pos.y() << 8 | pos.z() << 4 | pos.x()) as usize;
@@ -681,5 +723,19 @@ mod tests {
     assert_eq!(s.block_amounts[0] + s.block_amounts[1], 4096);
 
     Ok(())
+  }
+
+  #[test]
+  fn test_from_proto() {
+    let mut pb = proto::chunk::Section::default();
+    pb.bits_per_block = 4;
+    pb.data = vec![0x1111111111111111; 16 * 16 * 16 * 4 / 64];
+    pb.palette.push(0);
+    pb.palette.push(5);
+
+    let s = Section::from_latest_proto(pb);
+    assert_eq!(s.data, vec![0x1111111111111111; 16 * 16 * 16 * 4 / 64]);
+    assert_eq!(s.palette, vec![0, 5]);
+    assert_eq!(s.block_amounts, vec![0, 4096]);
   }
 }
