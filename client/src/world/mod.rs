@@ -64,6 +64,8 @@ impl World {
   ) {
     let p = self.main_player.lock().unwrap();
     let p = p.as_ref().unwrap();
+    p.render(win);
+
     let proj =
       cgmath::perspective(Deg(70.0), win.width() as f32 / win.height() as f32, 0.1, 1000.0);
     let view = Matrix4::from_angle_y(Deg((Instant::now() - self.start).as_secs_f32() * 120.0))

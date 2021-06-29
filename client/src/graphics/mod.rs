@@ -72,10 +72,12 @@ pub struct WindowData {
   swapchain:     Arc<Swapchain<Window>>,
   format:        Format,
 
-  width:   u32,
-  height:  u32,
-  mouse_x: f64,
-  mouse_y: f64,
+  width:        u32,
+  height:       u32,
+  mouse_x:      f64,
+  mouse_y:      f64,
+  prev_mouse_x: f64,
+  prev_mouse_y: f64,
 
   // If this is Some, then we are ingame, and should call render() on this.
   world: Option<Arc<World>>,
@@ -349,8 +351,10 @@ pub fn init() -> Result<GameWindow, InitError> {
     format,
     width: 0,
     height: 0,
-    mouse_x: 0.0.into(),
-    mouse_y: 0.0.into(),
+    mouse_x: 0.0,
+    mouse_y: 0.0,
+    prev_mouse_x: 0.0,
+    prev_mouse_y: 0.0,
     world: None,
   };
   data.resize(images);
@@ -578,9 +582,21 @@ impl WindowData {
       .collect::<Vec<_>>()
   }
 
+  /// Updates the internal mouse position
   fn mouse_moved(&mut self, x: f64, y: f64) {
     self.mouse_x = x;
     self.mouse_y = y;
+  }
+
+  /// Returns the mouse delta since the last time this function was called. This
+  /// will update an internal value, so calling it multiple times will only
+  /// return a useful value the first time.
+  pub fn mouse_delta(&mut self) -> (f64, f64) {
+    let dx = self.mouse_x - self.prev_mouse_x;
+    let dy = self.mouse_y - self.prev_mouse_y;
+    self.prev_mouse_x = self.mouse_x;
+    self.prev_mouse_y = self.mouse_y;
+    (dx, dy)
   }
 
   /// Returns the mouse position in pixels.
