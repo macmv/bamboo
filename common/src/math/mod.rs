@@ -15,14 +15,21 @@ pub use voronoi::Voronoi;
 
 use sha1::{Digest, Sha1};
 
+/// A block face. This is used to represent a face that a user clicked on.
 #[derive(Debug, Clone, Copy, Hash, PartialEq, Eq)]
 pub enum Face {
   // Order matters here
+  /// Negative Y
   Down,
+  /// Positive Y
   Up,
+  /// Negative Z
   North,
+  /// Positive Z
   South,
+  /// Negative X
   West,
+  /// Positive X
   East,
 }
 

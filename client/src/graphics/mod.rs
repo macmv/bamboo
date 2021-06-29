@@ -1,7 +1,8 @@
 use crate::{World, UI};
+use common::math::Pos;
 use rand::Rng;
 use std::{
-  ops::Deref,
+  ops::{Add, AddAssign, Deref},
   sync::{Arc, Mutex},
 };
 use vulkano::{
@@ -100,6 +101,52 @@ impl Vert2 {
   #[inline(always)]
   pub fn set_y(&mut self, v: f32) {
     self.pos[1] = v;
+  }
+}
+
+impl Add<Pos> for Vert3 {
+  type Output = Vert3;
+
+  fn add(self, o: Pos) -> Vert3 {
+    Vert3::new(
+      self.x() + o.x() as f32,
+      self.y() + o.y() as f32,
+      self.z() + o.z() as f32,
+      self.u(),
+      self.v(),
+    )
+  }
+}
+
+impl AddAssign<Pos> for Vert3 {
+  fn add_assign(&mut self, o: Pos) {
+    self.pos[0] += o.x() as f32;
+    self.pos[1] += o.y() as f32;
+    self.pos[2] += o.z() as f32;
+  }
+}
+
+impl Add for Vert3 {
+  type Output = Vert3;
+
+  fn add(self, o: Vert3) -> Vert3 {
+    Vert3::new(
+      self.x() + o.x(),
+      self.y() + o.y(),
+      self.z() + o.z(),
+      self.u() + o.y(),
+      self.v() + o.v(),
+    )
+  }
+}
+
+impl AddAssign for Vert3 {
+  fn add_assign(&mut self, o: Vert3) {
+    self.pos[0] += o.x();
+    self.pos[1] += o.y();
+    self.pos[2] += o.z();
+    self.uv[0] += o.u();
+    self.uv[1] += o.v();
   }
 }
 
