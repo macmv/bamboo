@@ -157,7 +157,7 @@ impl Chunk {
       }
       chunk.sections[y as usize] = Some(match kind {
         ChunkKind::Fixed => fixed::Section::from_latest_proto(section),
-        ChunkKind::Paletted => unimplemented!(), // paletted::Section::from_latest_proto(section),
+        ChunkKind::Paletted => paletted::Section::from_latest_proto(section),
       });
     }
     chunk
@@ -177,7 +177,7 @@ impl Chunk {
       }
       chunk.sections[y as usize] = Some(match kind {
         ChunkKind::Fixed => fixed::Section::from_old_proto(section, &f),
-        ChunkKind::Paletted => unimplemented!(), // paletted::Section::from_old_proto(section, f),
+        ChunkKind::Paletted => paletted::Section::from_old_proto(section, &f),
       });
     }
     chunk
