@@ -1,7 +1,7 @@
 use super::{Field, Metadata, Pose};
 use crate::item;
 use common::{
-  math::{BlockDirection, Pos},
+  math::{Face, Pos},
   util::{Buffer, Chat, UUID},
   version::ProtocolVersion,
 };
@@ -99,7 +99,7 @@ impl Metadata {
     self.set_field(index, Field::OptPosition(value))
   }
   /// Adds the given block direction to the metadata. Valid for 1.9+.
-  pub fn set_dir(&mut self, index: u8, value: BlockDirection) -> Result<(), MetadataError> {
+  pub fn set_dir(&mut self, index: u8, value: Face) -> Result<(), MetadataError> {
     if self.ver < ProtocolVersion::V1_9 {
       return Err(MetadataError::Version(self.ver));
     }
@@ -321,12 +321,12 @@ impl Metadata {
             }
           }
           Field::Direction(v) => match v {
-            BlockDirection::Down => out.write_varint(0),
-            BlockDirection::Up => out.write_varint(1),
-            BlockDirection::North => out.write_varint(2),
-            BlockDirection::South => out.write_varint(3),
-            BlockDirection::West => out.write_varint(4),
-            BlockDirection::East => out.write_varint(5),
+            Face::Down => out.write_varint(0),
+            Face::Up => out.write_varint(1),
+            Face::North => out.write_varint(2),
+            Face::South => out.write_varint(3),
+            Face::West => out.write_varint(4),
+            Face::East => out.write_varint(5),
           },
           Field::OptUUID(v) => {
             out.write_bool(v.is_some());

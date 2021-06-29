@@ -5,7 +5,7 @@ use std::{
   ops::{Add, AddAssign, Sub, SubAssign},
 };
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub struct PosError {
   pos: Pos,
   msg: String,

@@ -16,7 +16,7 @@ pub use voronoi::Voronoi;
 use sha1::{Digest, Sha1};
 
 #[derive(Debug, Clone, Copy, Hash, PartialEq, Eq)]
-pub enum BlockDirection {
+pub enum Face {
   // Order matters here
   Down,
   Up,

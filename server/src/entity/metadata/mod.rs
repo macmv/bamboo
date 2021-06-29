@@ -2,7 +2,7 @@ mod serialize;
 
 use crate::item;
 use common::{
-  math::{BlockDirection, Pos},
+  math::{Face, Pos},
   util::{Chat, UUID},
   version::ProtocolVersion,
 };
@@ -38,7 +38,7 @@ pub enum Field {
   Chat(Chat),
   Bool(bool),
   OptPosition(Option<Pos>),
-  Direction(BlockDirection),
+  Direction(Face),
   OptUUID(Option<UUID>),
   BlockID(i32),
 
