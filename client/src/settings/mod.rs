@@ -3,10 +3,12 @@ use directories::BaseDirs;
 use serde_derive::Deserialize;
 use std::{collections::HashMap, fs::File, process, str::FromStr};
 
+mod auth;
+
 #[derive(Deserialize)]
 pub struct Settings {
   #[serde(rename = "authenticationDatabase")]
-  accounts: HashMap<String, Account>,
+  accounts: Option<HashMap<String, Account>>,
   #[serde(rename = "selectedUser")]
   selected: Selected,
 }
@@ -56,7 +58,10 @@ impl AccountInfo {
 }
 
 impl Settings {
-  /// Creates a new Settings struct, by loading all settings from disk.
+  /// Creates a new Settings struct, by loading all settings from disk. The
+  /// second field is if the client needs to be logged in. If this returns true,
+  /// then the UI should bring up a login screen, and disallow joining any
+  /// servers.
   pub fn new() -> Self {
     let dirs = BaseDirs::new().unwrap();
     let mut dir = dirs.config_dir().to_path_buf();
@@ -94,9 +99,38 @@ impl Settings {
     }
   }
 
+  /// Returns true if there is a valid auth token in the launcher profiles. If
+  /// this returns false, then [`get_info`](Self::get_info) will panic when you
+  /// call this. If this contains an out-of-date token, then this function will
+  /// update that token. It will not write to disk, but it will change the
+  /// stored access token.
+  pub async fn login(&mut self) -> bool {
+    let account = match &mut self.accounts {
+      Some(v) => v.get_mut(&self.selected.account).unwrap(),
+      None => return false,
+    };
+
+    let (new_token, valid) =
+      match auth::refresh_token(&account.access_token, &self.selected.account).await {
+        Ok(v) => v,
+        Err(e) => {
+          error!("could not refresh auth token: {}", e);
+          return false;
+        }
+      };
+    if let Some(new_token) = new_token {
+      account.access_token = new_token;
+    }
+
+    valid
+  }
+
   /// Returns the selected account info.
   pub fn get_info(&self) -> AccountInfo {
-    let account = &self.accounts[&self.selected.account];
+    let account = match &self.accounts {
+      Some(v) => v.get(&self.selected.account).unwrap(),
+      None => panic!("no valid account stored!"),
+    };
     let profile = &account.profiles[&self.selected.profile];
     AccountInfo {
       uuid:         UUID::from_str(&self.selected.profile).unwrap(),
