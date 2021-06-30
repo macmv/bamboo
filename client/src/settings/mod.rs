@@ -76,6 +76,17 @@ impl Settings {
     }
   }
 
+  /// This creates a new access token. It will panic if there is already a valid
+  /// access token. Returns true if the login was successful, false if
+  /// otherwise.
+  pub async fn login(&mut self, username: &str, password: &str) -> bool {
+    if self.login.is_some() {
+      panic!("called login with valid login info");
+    }
+    self.login = LoginInfo::new(username, password).await;
+    self.login.is_some()
+  }
+
   /// Returns the selected account info.
   pub fn get_login(&self) -> &LoginInfo {
     self.login.as_ref().unwrap()
@@ -83,6 +94,15 @@ impl Settings {
 }
 
 impl LoginInfo {
+  async fn new(username: &str, password: &str) -> Option<Self> {
+    match auth::login(username, password).await {
+      Ok(v) => v,
+      Err(e) => {
+        error!("failed to login: {}", e);
+        None
+      }
+    }
+  }
   async fn refresh_token(&mut self) -> bool {
     let (new_token, valid) = match auth::refresh_token(&self.access_token, &self.client_token).await
     {

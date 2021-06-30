@@ -67,8 +67,10 @@ impl World {
   pub async fn login(&self) {
     let mut settings = self.settings.lock().await;
     if !settings.refresh_token().await {
-      error!("not logged in!");
-      process::exit(1);
+      if !settings.login("username", "password").await {
+        error!("invalid username/password");
+        process::exit(1);
+      }
     }
   }
 
