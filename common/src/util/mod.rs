@@ -3,6 +3,7 @@ pub mod chat;
 pub mod nbt;
 
 use crate::proto;
+use rand::{rngs::OsRng, RngCore};
 use serde::de::{self, Deserialize, Deserializer, Unexpected, Visitor};
 use std::{convert::TryInto, error::Error, fmt, num::ParseIntError, str::FromStr};
 
@@ -78,6 +79,12 @@ impl fmt::Display for UUIDParseError {
 impl Error for UUIDParseError {}
 
 impl UUID {
+  /// Generates a random UUID. This uses rand::OsRng, so it will be secure.
+  pub fn random() -> Self {
+    let mut arr = [0; 16];
+    OsRng.fill_bytes(&mut arr);
+    UUID::from_bytes(arr)
+  }
   pub fn from_bytes(v: [u8; 16]) -> Self {
     UUID(u128::from_be_bytes(v))
   }
