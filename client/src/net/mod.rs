@@ -1,7 +1,7 @@
 mod version;
 
 use crate::{
-  settings::{AccountInfo, Settings},
+  settings::{LoginInfo, Settings},
   World,
 };
 use common::{
@@ -68,7 +68,7 @@ impl Connection {
       state:  State::Handshake,
       gen:    Generator::new(),
     };
-    if let Err(e) = conn.handshake(ip, &settings.get_info()).await {
+    if let Err(e) = conn.handshake(ip, &settings.get_login()).await {
       error!("could not finish handshake with {}: {}", ip, e);
       return None;
     }
@@ -156,7 +156,7 @@ impl Connection {
   /// If this returns `Ok(())`, then this connection is in the Playe state. This
   /// means that it is ready to be used, and run() should be called to start
   /// listening for packets.
-  async fn handshake(&mut self, ip: &str, info: &AccountInfo) -> Result<(), io::Error> {
+  async fn handshake(&mut self, ip: &str, info: &LoginInfo) -> Result<(), io::Error> {
     let reader = self.reader.get_mut();
     let writer = self.writer.get_mut();
 

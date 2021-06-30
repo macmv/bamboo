@@ -1,51 +1,26 @@
 use common::util::UUID;
 use directories::BaseDirs;
 use serde_derive::Deserialize;
-use std::{collections::HashMap, fs::File, process, str::FromStr};
+use std::{fs::File, process, str::FromStr};
 
 mod auth;
+mod vanilla;
 
 #[derive(Deserialize)]
 pub struct Settings {
-  #[serde(rename = "authenticationDatabase")]
-  accounts: Option<HashMap<String, Account>>,
-  #[serde(rename = "selectedUser")]
-  selected: Selected,
+  login: Option<LoginInfo>,
 }
 
-#[derive(Deserialize)]
-pub struct Account {
-  #[serde(rename = "accessToken")]
-  access_token: String,
-  // Keyed by account UUID
-  profiles:     HashMap<String, AccountProfile>,
-  // Email address (not username)
-  username:     String,
-}
-
-#[derive(Deserialize)]
-pub struct AccountProfile {
-  #[serde(rename = "displayName")]
-  display_name: String,
-}
-
-#[derive(Deserialize)]
-pub struct Selected {
-  // The selcted account
-  account: String,
-  // The selected profile (account uuid)
-  profile: String,
-}
-
-/// An easier to use version of the account data.
-#[derive(Debug)]
-pub struct AccountInfo {
+/// Stores all of the info needed to login to a server.
+#[derive(Debug, Deserialize)]
+pub struct LoginInfo {
   uuid:         UUID,
   username:     String,
   access_token: String,
+  client_token: String,
 }
 
-impl AccountInfo {
+impl LoginInfo {
   pub fn uuid(&self) -> UUID {
     self.uuid
   }
@@ -54,6 +29,9 @@ impl AccountInfo {
   }
   pub fn access_token(&self) -> &str {
     &self.access_token
+  }
+  pub fn client_token(&self) -> &str {
+    &self.client_token
   }
 }
 
@@ -64,78 +42,60 @@ impl Settings {
   /// servers.
   pub fn new() -> Self {
     let dirs = BaseDirs::new().unwrap();
-    let mut dir = dirs.config_dir().to_path_buf();
-    if dir.ends_with(".config") {
-      // Mojang has never used linux before (they use ~/.minecraft instead of
-      // ~/.config/minecraft)
-      dir = dir.parent().unwrap().join(".minecraft");
-    } else if dir.ends_with("Application Support") {
-      // On macos there is no '.' at the start
-      dir = dir.join("minecraft");
-    } else {
-      dir = dir.join(".minecraft");
-    }
-    if !dir.exists() {
-      error!(
-        "{} does not exist! please create it with the vanilla launcher",
-        dir.to_str().unwrap()
-      );
-      process::exit(1);
-    }
+    let mut dir = dirs.config_dir().join("sugarcane").to_path_buf();
     info!("using data directory {:?}", dir);
-    let path = dir.join("launcher_profiles.json");
-    match serde_json::from_reader(match File::open(&path) {
-      Ok(f) => f,
-      Err(e) => {
-        error!("error while reading from {}: {}", &path.to_str().unwrap(), e);
-        process::exit(1);
+    let path = dir.join("settings.json");
+    if path.exists() {
+      match serde_json::from_reader(match File::open(&path) {
+        Ok(f) => f,
+        Err(e) => {
+          error!("error while reading from {}: {}", &path.to_str().unwrap(), e);
+          process::exit(1);
+        }
+      }) {
+        Ok(v) => v,
+        Err(e) => {
+          error!("error while parsing json in {}: {}", path.to_str().unwrap(), e);
+          process::exit(1);
+        }
       }
-    }) {
-      Ok(v) => v,
-      Err(e) => {
-        error!("error while parsing json in {}: {}", path.to_str().unwrap(), e);
-        process::exit(1);
-      }
+    } else {
+      Settings { login: vanilla::get_login_info() }
     }
   }
 
   /// Returns true if there is a valid auth token in the launcher profiles. If
-  /// this returns false, then [`get_info`](Self::get_info) will panic when you
-  /// call this. If this contains an out-of-date token, then this function will
-  /// update that token. It will not write to disk, but it will change the
-  /// stored access token.
+  /// this returns false, then [`get_login`](Self::get_login) will panic when
+  /// callled. If this contains an out-of-date token, then this function will
+  /// update that token. It will not write to disk, but it will change
+  /// the stored access token.
   pub async fn login(&mut self) -> bool {
-    let account = match &mut self.accounts {
-      Some(v) => v.get_mut(&self.selected.account).unwrap(),
-      None => return false,
-    };
-
-    let (new_token, valid) =
-      match auth::refresh_token(&account.access_token, &self.selected.account).await {
-        Ok(v) => v,
-        Err(e) => {
-          error!("could not refresh auth token: {}", e);
-          return false;
-        }
-      };
-    if let Some(new_token) = new_token {
-      account.access_token = new_token;
+    match self.login {
+      Some(ref mut info) => info.refresh_token().await,
+      None => false,
     }
-
-    valid
   }
 
   /// Returns the selected account info.
-  pub fn get_info(&self) -> AccountInfo {
-    let account = match &self.accounts {
-      Some(v) => v.get(&self.selected.account).unwrap(),
-      None => panic!("no valid account stored!"),
+  pub fn get_login(&self) -> &LoginInfo {
+    self.login.as_ref().unwrap()
+  }
+}
+
+impl LoginInfo {
+  async fn refresh_token(&mut self) -> bool {
+    let (new_token, valid) = match auth::refresh_token(&self.access_token, &self.client_token).await
+    {
+      Ok(v) => v,
+      Err(e) => {
+        error!("could not refresh auth token: {}", e);
+        return false;
+      }
     };
-    let profile = &account.profiles[&self.selected.profile];
-    AccountInfo {
-      uuid:         UUID::from_str(&self.selected.profile).unwrap(),
-      username:     profile.display_name.clone(),
-      access_token: account.access_token.clone(),
+    if let Some(new_token) = new_token {
+      self.access_token = new_token;
     }
+
+    valid
   }
 }

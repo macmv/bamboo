@@ -26,7 +26,7 @@ pub struct OtherPlayer {
 
 impl MainPlayer {
   pub fn new(settings: &Settings, conn: Arc<Connection>) -> Self {
-    let info = settings.get_info();
+    let info = settings.get_login();
     MainPlayer {
       player: OtherPlayer::new(info.username(), info.uuid(), Point3::new(0.0, 0.0, 0.0)),
       conn,
