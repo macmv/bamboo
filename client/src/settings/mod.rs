@@ -104,6 +104,14 @@ impl LoginInfo {
     }
   }
   async fn refresh_token(&mut self) -> bool {
+    match auth::validate_token(&self.access_token, &self.client_token).await {
+      Ok(true) => return true,
+      Err(e) => {
+        error!("could not validate auth token: {}", e);
+        return false;
+      }
+      _ => {}
+    }
     let (new_token, valid) = match auth::refresh_token(&self.access_token, &self.client_token).await
     {
       Ok(v) => v,

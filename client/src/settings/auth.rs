@@ -94,6 +94,12 @@ struct RefreshResp {
   selected_profile: Profile,
 }
 
+#[derive(Debug, Serialize)]
+struct Validate {
+  access_token: String,
+  client_token: String,
+}
+
 /// Creates a new access and client token for the given user.
 ///
 /// # Return values
@@ -151,6 +157,34 @@ pub async fn login(username: &str, password: &str) -> Result<Option<LoginInfo>, 
   }
 }
 
+/// Checks if the given auth token is valid. If not, then [`refresh_token`]
+/// should be called.
+///
+/// # Return values
+///
+/// - `Er(_)` The auth server gave a bad response.
+/// - `Ok(false)` Invalid token. Need to call [`refresh_token`]. the new token.
+/// - `Ok(true)` The auth token is up to date.
+pub async fn validate_token(access_token: &str, client_token: &str) -> Result<bool, io::Error> {
+  let client = Client::new();
+  match client
+    .post("https://authserver.mojang.com/validate")
+    .json(&Validate { access_token: access_token.into(), client_token: client_token.into() })
+    .send()
+    .await
+  {
+    Ok(res) => {
+      if res.status() == StatusCode::NO_CONTENT {
+        return Ok(true);
+      } else if res.status() == StatusCode::FORBIDDEN {
+        return Ok(false);
+      } else {
+        return Err(io::Error::new(ErrorKind::Other, res.text().await.unwrap()));
+      }
+    }
+    Err(e) => return Err(io::Error::new(ErrorKind::Other, e)),
+  }
+}
 /// Updates the given auth token. The returned string is a new auth token, as
 /// the client token never changes.
 ///
