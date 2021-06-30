@@ -1,4 +1,5 @@
 use common::util::UUID;
+use rand::rngs::OsRng;
 use reqwest::{Client, StatusCode};
 use serde_derive::{Deserialize, Serialize};
 use std::{
@@ -21,7 +22,12 @@ struct Authenticate {
   agent:        Agent,
   username:     String,
   password:     String,
+  // Must be generated on the client. If not, this will invalidate all other tokens.
+  #[serde(rename = "clientToken")]
   client_token: String,
+  // Should always be true
+  #[serde(rename = "requestUser")]
+  request_user: bool,
 }
 
 #[derive(Debug, Deserialize)]
@@ -44,19 +50,32 @@ struct Prop {
 struct User {
   // Email
   username: String,
-  props:    Vec<Prop>,
+  #[serde(rename = "properties")]
+  props:    Option<Vec<Prop>>,
   // UUID
   id:       String,
 }
 
 #[derive(Debug, Deserialize)]
 struct AuthenticateResp {
-  user:         User,
+  user:         Option<User>,
   // Identical to the sent client token
+  #[serde(rename = "clientToken")]
   client_token: String,
+  #[serde(rename = "accessToken")]
   access_token: String,
+  #[serde(rename = "availableProfiles")]
   available:    Vec<Profile>,
-  selected:     Profile,
+  #[serde(rename = "selectedProfile")]
+  selected:     Option<Profile>,
+}
+
+#[derive(Debug, Deserialize)]
+struct AuthenticateError {
+  #[serde(rename = "error")]
+  err:         String,
+  #[serde(rename = "errorMessage")]
+  err_message: String,
 }
 
 #[derive(Debug, Serialize)]
@@ -90,28 +109,43 @@ pub async fn login(username: &str, password: &str) -> Result<Option<LoginInfo>, 
       agent:        Agent { name: "Mojang".into(), version: 1 },
       username:     username.into(),
       password:     password.into(),
-      client_token: "".into(),
+      client_token: UUID::random().as_str(),
+      request_user: false,
     })
     .send()
     .await
   {
     Ok(res) => {
+      if res.status() == StatusCode::FORBIDDEN {
+        let err: AuthenticateError = match res.json().await {
+          Ok(v) => v,
+          Err(e) => {
+            return Err(io::Error::new(ErrorKind::Other, e));
+          }
+        };
+        return Err(io::Error::new(ErrorKind::Other, err.err_message));
+      }
       if res.status() != StatusCode::OK {
         return Err(io::Error::new(ErrorKind::Other, res.text().await.unwrap()));
       }
-      let out: AuthenticateResp = match res.json().await {
-        Ok(v) => v,
-        Err(e) => {
-          return Err(io::Error::new(ErrorKind::Other, e));
-        }
-      };
-      dbg!(&out);
-      Ok(Some(LoginInfo {
-        access_token: out.access_token,
-        client_token: out.client_token,
-        username:     out.selected.name,
-        uuid:         UUID::from_str(&out.selected.id).unwrap(),
-      }))
+      dbg!(res.text().await);
+      // let out: AuthenticateResp = match res.json().await {
+      //   Ok(v) => v,
+      //   Err(e) => {
+      //     return Err(io::Error::new(ErrorKind::Other, e));
+      //   }
+      // };
+      // dbg!(&out);
+      // match out.selected {
+      //   Some(selected) => Ok(Some(LoginInfo {
+      //     access_token: out.access_token,
+      //     client_token: out.client_token,
+      //     username:     selected.name,
+      //     uuid:         UUID::from_str(&selected.id).unwrap(),
+      //   })),
+      //   None => Ok(None),
+      // }
+      Ok(None)
     }
     Err(e) => return Err(io::Error::new(ErrorKind::Other, e)),
   }
