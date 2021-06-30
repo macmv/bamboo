@@ -5,15 +5,17 @@ use std::{collections::HashMap, fs::File, str::FromStr};
 
 use super::LoginInfo;
 
-#[derive(Deserialize)]
+#[derive(Debug, Deserialize)]
 struct Profile {
   #[serde(rename = "authenticationDatabase")]
-  accounts: HashMap<String, Account>,
+  accounts:     HashMap<String, Account>,
   #[serde(rename = "selectedUser")]
-  selected: Selected,
+  selected:     Selected,
+  #[serde(rename = "clientToken")]
+  client_token: String,
 }
 
-#[derive(Deserialize)]
+#[derive(Debug, Deserialize)]
 struct Account {
   #[serde(rename = "accessToken")]
   access_token: String,
@@ -23,13 +25,13 @@ struct Account {
   username:     String,
 }
 
-#[derive(Deserialize)]
+#[derive(Debug, Deserialize)]
 struct AccountProfile {
   #[serde(rename = "displayName")]
   display_name: String,
 }
 
-#[derive(Deserialize)]
+#[derive(Debug, Deserialize)]
 struct Selected {
   // The selcted account
   account: String,
@@ -69,13 +71,14 @@ pub fn get_login_info() -> Option<LoginInfo> {
         return None;
       }
     };
+    info!("got valid infor from vanilla client: {:?}", &launcher);
     let account = launcher.accounts.get(&launcher.selected.account).unwrap();
     let selected_profile = &account.profiles[&launcher.selected.profile];
     Some(LoginInfo {
       uuid:         UUID::from_str(&launcher.selected.profile).unwrap(),
       username:     selected_profile.display_name.clone(),
       access_token: account.access_token.clone(),
-      client_token: launcher.selected.account,
+      client_token: launcher.client_token,
     })
   } else {
     None

@@ -42,7 +42,7 @@ impl Settings {
   /// servers.
   pub fn new() -> Self {
     let dirs = BaseDirs::new().unwrap();
-    let mut dir = dirs.config_dir().join("sugarcane").to_path_buf();
+    let dir = dirs.config_dir().join("sugarcane").to_path_buf();
     info!("using data directory {:?}", dir);
     let path = dir.join("settings.json");
     if path.exists() {
