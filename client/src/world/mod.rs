@@ -5,13 +5,15 @@ use crate::{
   ui::{LayoutKind, UI},
   Settings,
 };
-use cgmath::{Angle, Deg, Matrix4, Point3, Vector3};
+use cgmath::{Angle, Deg, Matrix4, Vector3};
 use common::{math::ChunkPos, proto, util::UUID};
 use std::{
   collections::HashMap,
+  process,
   sync::{Arc, Mutex, RwLock},
   time::Instant,
 };
+use tokio::sync::Mutex as TokioMutex;
 
 use vulkano::{
   buffer::{BufferUsage, CpuAccessibleBuffer},
@@ -28,6 +30,7 @@ pub struct World {
   vbuf:        Arc<CpuAccessibleBuffer<[Vert3]>>,
   start:       Instant,
   device:      Arc<Device>,
+  settings:    TokioMutex<Settings>,
 }
 
 impl World {
@@ -55,6 +58,17 @@ impl World {
       .unwrap(),
       start:       Instant::now(),
       device:      win.device().clone(),
+      settings:    TokioMutex::new(Settings::new()),
+    }
+  }
+
+  /// This goes to the authentication servers, and makes sure that the user is
+  /// logged in. If not, it will set the UI to the login screen.
+  pub async fn login(&self) {
+    let mut settings = self.settings.lock().await;
+    if !settings.refresh_token().await {
+      error!("not logged in!");
+      process::exit(1);
     }
   }
 
@@ -111,12 +125,15 @@ impl World {
 
   pub fn connect(self: Arc<Self>, ip: String, win: Arc<Mutex<WindowData>>, ui: Arc<UI>) {
     tokio::spawn(async move {
-      let settings = Settings::new();
-      let conn = match Connection::new(&ip, &settings).await {
-        Some(c) => Arc::new(c),
-        None => return,
-      };
-      self.set_main_player(Some(MainPlayer::new(&settings, conn.clone())));
+      let conn;
+      {
+        let settings = self.settings.lock().await;
+        conn = match Connection::new(&ip, &settings).await {
+          Some(c) => Arc::new(c),
+          None => return,
+        };
+        self.set_main_player(Some(MainPlayer::new(&settings, conn.clone())));
+      }
       win.lock().unwrap().start_ingame(self.clone());
       ui.switch_to(LayoutKind::Game);
       conn.run(&self).await.unwrap();

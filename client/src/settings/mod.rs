@@ -1,7 +1,7 @@
 use common::util::UUID;
 use directories::BaseDirs;
 use serde_derive::Deserialize;
-use std::{fs::File, process, str::FromStr};
+use std::{fs::File, process};
 
 mod auth;
 mod vanilla;
@@ -69,7 +69,7 @@ impl Settings {
   /// callled. If this contains an out-of-date token, then this function will
   /// update that token. It will not write to disk, but it will change
   /// the stored access token.
-  pub async fn login(&mut self) -> bool {
+  pub async fn refresh_token(&mut self) -> bool {
     match self.login {
       Some(ref mut info) => info.refresh_token().await,
       None => false,

@@ -32,11 +32,12 @@ fn main() {
   let world = Arc::new(World::new(&win));
   let mut ui = UI::new(&mut win);
 
+  let w = world.clone();
   ui.set_layout(
     ui::LayoutKind::Menu,
     ui::Layout::new()
       .button(Vert2::new(-0.2, -0.14), Vert2::new(0.4, 0.08), move |win, ui| {
-        world.clone().connect("127.0.0.1:25565".into(), win.clone(), ui.clone());
+        w.clone().connect("127.0.0.1:25565".into(), win.clone(), ui.clone());
       })
       .button(Vert2::new(-0.2, -0.04), Vert2::new(0.4, 0.08), |_, _| info!("options"))
       .button(Vert2::new(-0.2, 0.06), Vert2::new(0.4, 0.08), |_, _| {
@@ -48,6 +49,7 @@ fn main() {
 
   info!("starting game");
   tokio::runtime::Builder::new_multi_thread().enable_all().build().unwrap().block_on(async {
+    world.login().await;
     win.run(Arc::new(ui));
   });
 }
