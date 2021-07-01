@@ -39,6 +39,18 @@ impl Section {
     }
     Box::new(section)
   }
+  /// Sets the block at the given position within the internal block data.
+  ///
+  /// # Safety
+  ///
+  /// - pos must be within `Pos(0, 0, 0)..Pos(16, 16, 16)`.
+  unsafe fn set_block_unchecked(&mut self, pos: Pos, ty: u32) -> Result<(), PosError> {
+    *self
+      .data
+      .get_unchecked_mut(pos.y() as usize * 16 * 16 + pos.z() as usize * 16 + pos.x() as usize) =
+      ty as u16;
+    Ok(())
+  }
 }
 
 impl ChunkSection for Section {
@@ -46,23 +58,33 @@ impl ChunkSection for Section {
   /// In release mode, the position is not checked. In any other mode, a
   /// PosError will be returned if any of the x, y, or z are outside of 0..16
   fn set_block(&mut self, pos: Pos, ty: u32) -> Result<(), PosError> {
-    #[cfg(debug_assertions)]
     if pos.x() >= 16 || pos.x() < 0 || pos.y() >= 16 || pos.y() < 0 || pos.z() >= 16 || pos.z() < 0
     {
       return Err(pos.err("expected a pos within 0 <= x, y, z < 16".into()));
     }
-    #[cfg(not(debug_assertions))]
-    let v = ty as u16;
-    #[cfg(debug_assertions)]
-    let v = u16::try_from(ty).unwrap();
-    self.data[pos.y() as usize * 16 * 16 + pos.z() as usize * 16 + pos.x() as usize] = v;
-    Ok(())
+    unsafe {
+      // SAFETY: We just checked that x, y, and z are all within 0..16, so the
+      // position passed to set_block_unchecked is safe
+      self.set_block_unchecked(pos, ty)
+    }
   }
   fn fill(&mut self, min: Pos, max: Pos, ty: u32) -> Result<(), PosError> {
+    if min.x() >= 16 || min.x() < 0 || min.y() >= 16 || min.y() < 0 || min.z() >= 16 || min.z() < 0
+    {
+      return Err(min.err("expected min to be within 0 <= x, y, z < 16".into()));
+    }
+    if max.x() >= 16 || max.x() < 0 || max.y() >= 16 || max.y() < 0 || max.z() >= 16 || max.z() < 0
+    {
+      return Err(max.err("expected max to be within 0 <= x, y, z < 16".into()));
+    }
     for y in min.y()..=max.y() {
       for z in min.z()..=max.z() {
         for x in min.x()..=max.x() {
-          self.set_block(Pos::new(x, y, z), ty)?;
+          unsafe {
+            // SAFETY: We just checked that min/max x, y, and z are all within 0..16, so x,
+            // y, and z will all be within 0..16.
+            self.set_block_unchecked(Pos::new(x, y, z), ty)?;
+          }
         }
       }
     }
@@ -76,7 +98,14 @@ impl ChunkSection for Section {
     {
       return Err(pos.err("expected a pos within 0 <= x, y, z < 16".into()));
     }
-    Ok(self.data[pos.y() as usize * 16 * 16 + pos.z() as usize * 16 + pos.x() as usize].into())
+    unsafe {
+      // SAFETY: We just checked pos, so this will always be valid
+      Ok(u32::from(
+        *self
+          .data
+          .get_unchecked(pos.y() as usize * 16 * 16 + pos.z() as usize * 16 + pos.x() as usize),
+      ))
+    }
   }
   fn duplicate(&self) -> Box<dyn ChunkSection + Send> {
     Box::new(Section { data: self.data })
@@ -86,7 +115,12 @@ impl ChunkSection for Section {
   fn to_latest_proto(&self) -> proto::chunk::Section {
     let mut data = vec![0; self.data.len() / 4]; // 8 bytes per u64, 2 bytes per u16
     for (i, id) in self.data.iter().enumerate() {
-      data[i / 4] |= u64::from(*id) << (i % 4 * 16);
+      unsafe {
+        // SAFETY: self.data.len() = 4096 (which is 8192 bytes), and data.len() = 2048
+        // (8192 / sizeof(u64)). So, i / 4 is always within data
+        let v = data.get_unchecked_mut(i / 4);
+        *v |= u64::from(*id) << (i % 4 * 16);
+      }
     }
     proto::chunk::Section { data, ..Default::default() }
   }
@@ -94,7 +128,12 @@ impl ChunkSection for Section {
   fn to_old_proto(&self, f: &dyn Fn(u32) -> u32) -> proto::chunk::Section {
     let mut data = vec![0; self.data.len() / 4]; // 8 bytes per u64, 2 bytes per u16
     for (i, id) in self.data.iter().enumerate() {
-      data[i / 4] |= u64::from(f(u32::from(*id))) << (i % 4 * 16);
+      unsafe {
+        // SAFETY: self.data.len() = 4096 (which is 8192 bytes), and data.len() = 2048
+        // (8192 / sizeof(u64)). So, i / 4 is always within data
+        let v = data.get_unchecked_mut(i / 4);
+        *v |= u64::from(f(u32::from(*id))) << (i % 4 * 16);
+      }
     }
     proto::chunk::Section { data, ..Default::default() }
   }
