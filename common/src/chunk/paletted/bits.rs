@@ -53,7 +53,50 @@ impl BitArray {
   pub unsafe fn get(&self, index: usize) -> u32 {
     #[cfg(debug_assertions)]
     assert!(index < 4096, "index {} is too large (must be less than {})", index, 4096);
-    0
+    let bpe: usize = self.bpe.into();
+    let lo: usize = (index * bpe) / 64;
+    let hi: usize = (index * bpe + bpe - 1) / 64;
+    // The bit offset of the smallest bit of lo into the long
+    let shift = (index * bpe) as u32 % 64;
+    let mask = (1 << bpe) - 1;
+    let res = if lo == hi {
+      // The value only spans one long
+      self.data.get_unchecked(lo).wrapping_shr(shift) & mask
+    } else {
+      // We have a situation where we want to get a number, but it is split between
+      // two longs.
+      //
+      // In this situation, we are working with a Vec<u8>, instead of a Vec<u64>, so
+      // I'm going to use 8 where 64 should be.
+      //
+      // shift = 6 (used to right shift L)
+      // 8 - shift = 2 (used to left shift H, and to make the lo mask)
+      // bpe - 8 - shift = 3 (this is used to make the hi mask)
+      //
+      // L = v << shift;
+      // H = v >> (8 - shift);
+      //
+      // value ->       H H H | L L
+      // long  -> 2 2 2 2 2 2 | 1 1 1 1 1 1
+      //
+      // After the move:
+      //
+      // lo -> H H 0 0 0
+      // hi -> 0 0 L L L
+      //
+      // So we need to shift L to the right by `shift`, and shift H to the left by
+      // `64 - shift`.
+
+      // This mask will match 0 0 L L L
+      let lo_mask = 1_u64.wrapping_shl(64 - shift) - 1;
+      // This mask will match H H 0 0 0
+      let hi_mask = (1_u64.wrapping_shl(bpe as u32 - (64 - shift)) - 1) << (64 - shift);
+
+      let lo = self.data.get_unchecked(lo).wrapping_shr(shift) & lo_mask;
+      let hi = self.data.get_unchecked(hi).wrapping_shl(64 - shift) & hi_mask;
+      lo | hi
+    };
+    res as u32
   }
   /// Utility function. This will find all values within the array that are
   /// above `sep`, and add the give `shift_amount` to them. This is commonly
@@ -121,5 +164,22 @@ impl BitArray {
     }
     self.data = new.data;
     self.bpe = new.bpe;
+  }
+}
+
+#[cfg(test)]
+mod tests {
+  use super::*;
+
+  #[test]
+  fn test_get() {
+    let data: Vec<u64> = vec![u64::MAX; 4096 * 5 / 64];
+    let arr = BitArray { bpe: 5, data };
+
+    for i in 0..4096 {
+      unsafe {
+        assert_eq!(arr.get(i), 31, "expected 31 at {}", i);
+      }
+    }
   }
 }
