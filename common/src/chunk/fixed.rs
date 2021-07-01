@@ -141,7 +141,10 @@ impl ChunkSection for Section {
 
 #[cfg(test)]
 mod tests {
+  extern crate test;
+
   use super::*;
+  use test::Bencher;
 
   #[test]
   fn set_block_id() {
@@ -167,5 +170,43 @@ mod tests {
     assert_eq!(s.get_block(Pos::new(1, 0, 0)).unwrap(), 5);
     assert_eq!(s.get_block(Pos::new(0, 1, 0)).unwrap(), 10);
     assert_eq!(s.get_block(Pos::new(0, 0, 1)).unwrap(), 20);
+  }
+
+  /// # Test results
+  ///
+  /// Opt level 3 did not change the results much. After using
+  /// https://rust.godbolt.org/, I realized that without any optimizations,
+  /// iterating over anything is very, very slow. So I am no longer going to
+  /// work on optimizing the unsafe calls, as those checks will get compiled
+  /// out any time speed actually matters.
+  ///
+  /// Optlevel:          0    |     1     |    2
+  /// Fill:        ~200,000ns   ~78,000ns   ~5,000ns
+  /// Fill manual: ~200,000ns   ~76,000ns   ~7,500ns
+
+  #[bench]
+  fn fill_manual(b: &mut Bencher) {
+    let mut s = Section::new();
+    let mut block = 0u8;
+    b.iter(|| {
+      for y in 0..16 {
+        for z in 0..16 {
+          for x in 0..16 {
+            s.set_block(Pos::new(x, y, z), block.into()).unwrap();
+          }
+        }
+      }
+      block = block.wrapping_add(1);
+    });
+  }
+
+  #[bench]
+  fn fill(b: &mut Bencher) {
+    let mut s = Section::new();
+    let mut block = 0u8;
+    b.iter(|| {
+      s.fill(Pos::new(0, 0, 0), Pos::new(15, 15, 15), block.into()).unwrap();
+      block = block.wrapping_add(1);
+    });
   }
 }

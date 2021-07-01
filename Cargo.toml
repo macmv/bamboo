@@ -10,3 +10,6 @@ members = [
 # See more: https://github.com/flamegraph-rs/flamegraph
 [profile.release]
 debug = true
+
+[profile.bench]
+opt-level = 3
