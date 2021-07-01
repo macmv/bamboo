@@ -270,7 +270,7 @@ impl World {
       let mut info =
         PlayerList { action: player_list::Action::AddPlayer.into(), ..Default::default() };
       let mut spawn_packets = vec![];
-      for other in self.players().await.in_range(ChunkPos::new(0, 0)) {
+      for other in self.players().await.iter().in_view(ChunkPos::new(0, 0)).not(player.id()) {
         // Add player to the list of players that other knows about
         let mut out = cb::Packet::new(cb::ID::PlayerInfo);
         out

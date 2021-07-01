@@ -15,8 +15,8 @@ impl PlayersMap {
   pub fn new() -> Self {
     PlayersMap { inner: HashMap::new() }
   }
-  pub fn in_range(&self, pos: ChunkPos) -> PlayersIter<'_> {
-    PlayersIter { values: self.inner.values(), pos: Some(pos), uuid: None }
+  pub fn iter(&self) -> PlayersIter<'_> {
+    PlayersIter { values: self.inner.values(), pos: None, uuid: None }
   }
 }
 
@@ -40,6 +40,17 @@ pub struct PlayersIter<'a> {
   pos:    Option<ChunkPos>,
   // The uuid that must be skipped
   uuid:   Option<UUID>,
+}
+
+impl PlayersIter<'_> {
+  pub fn in_view(mut self, pos: ChunkPos) -> Self {
+    self.pos = Some(pos);
+    self
+  }
+  pub fn not(mut self, uuid: UUID) -> Self {
+    self.uuid = Some(uuid);
+    self
+  }
 }
 
 impl<'a> Iterator for PlayersIter<'a> {
