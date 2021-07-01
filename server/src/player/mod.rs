@@ -234,15 +234,46 @@ impl Player {
       // Make player move for other
       let mut out = cb::Packet::new(cb::ID::RelEntityMove);
       out.set_int("entity_id", self.eid);
-      if other.ver() == ProtocolVersion::V1_8 {
-        // As truncates any negative floats to 0, but just copies the bits for i8 -> u8
-        out.set_byte("d_x", ((pos.curr.x() - pos.prev.x()) * 32.0).round() as i8 as u8);
-        out.set_byte("d_y", ((pos.curr.y() - pos.prev.y()) * 32.0).round() as i8 as u8);
-        out.set_byte("d_z", ((pos.curr.z() - pos.prev.z()) * 32.0).round() as i8 as u8);
+      let mut dx = pos.curr.x() - pos.prev.x();
+      let mut dy = pos.curr.y() - pos.prev.y();
+      let mut dz = pos.curr.z() - pos.prev.z();
+      let abs_pos = if other.ver() == ProtocolVersion::V1_8 {
+        dx *= 32.0;
+        dy *= 32.0;
+        dz *= 32.0;
+        if dx.abs() > i8::MAX.into() || dy.abs() > i8::MAX.into() || dz.abs() > i8::MAX.into() {
+          true
+        } else {
+          // As truncates any negative floats to 0, but just copies the bits for i8 -> u8
+          out.set_byte("d_x", dx.round() as i8 as u8);
+          out.set_byte("d_y", dy.round() as i8 as u8);
+          out.set_byte("d_z", dz.round() as i8 as u8);
+          false
+        }
       } else {
-        out.set_short("d_x", ((pos.curr.x() * 32.0 - pos.prev.x() * 32.0) * 128.0).round() as i16);
-        out.set_short("d_y", ((pos.curr.y() * 32.0 - pos.prev.y() * 32.0) * 128.0).round() as i16);
-        out.set_short("d_z", ((pos.curr.z() * 32.0 - pos.prev.z() * 32.0) * 128.0).round() as i16);
+        dx *= 4096.0;
+        dy *= 4096.0;
+        dz *= 4096.0;
+        // 32 * 128 * 8 = 16384, which is the max value of an i16. So if we have more
+        // than an 8 block delta, we cannot send a relative movement packet.
+        if dx.abs() > i16::MAX.into() || dy.abs() > i16::MAX.into() || dz.abs() > i16::MAX.into() {
+          true
+        } else {
+          out.set_short("d_x", dx.round() as i16);
+          out.set_short("d_y", dy.round() as i16);
+          out.set_short("d_z", dz.round() as i16);
+          false
+        }
+      };
+      if abs_pos {
+        out = cb::Packet::new(cb::ID::EntityTeleport);
+        out.set_int("entity_id", self.eid);
+        out.set_double("x", pos.curr.x());
+        out.set_double("y", pos.curr.y());
+        out.set_double("z", pos.curr.z());
+        out.set_float("yaw", pos.yaw);
+        out.set_float("pitch", pos.pitch);
+        out.set_byte("flags", 0); // All positions are absolute
       }
       out.set_bool("on_ground", true);
       other.conn().send(out).await;
