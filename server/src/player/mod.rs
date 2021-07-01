@@ -260,7 +260,12 @@ impl Player {
         }
         out.set_int("entity_id", self.eid);
         if look_changed {
-          info!("yaw: {}", pos.yaw);
+          {
+            let mut out = cb::Packet::new(cb::ID::EntityHeadRotation);
+            out.set_int("entity_id", self.eid);
+            out.set_byte("head_yaw", (pos.yaw / 360.0 * 256.0).round() as i8 as u8);
+            other.conn().send(out).await;
+          }
           out.set_byte("yaw", (pos.yaw / 360.0 * 256.0).round() as u8);
           out.set_byte("pitch", (pos.pitch / 360.0 * 256.0).round() as i8 as u8);
         }
