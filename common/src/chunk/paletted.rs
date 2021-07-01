@@ -431,7 +431,45 @@ impl ChunkSection for Section {
 
 #[cfg(test)]
 mod tests {
+  extern crate test;
+
   use super::*;
+  use test::Bencher;
+
+  /// # Initial results
+  ///
+  /// These are very different results. I think the numbers speak for
+  /// themselves.
+  ///
+  /// Opt level:        0        |       1      |      2     |
+  /// Fill manual: ~2,000,000 ns  ~1,200,000 ns   ~100,000ns
+  /// Fill:        ~9,000 ns      ~5,000 ns       ~300ns
+
+  #[bench]
+  fn fill_manual(b: &mut Bencher) {
+    let mut s = Section::new();
+    let mut block = 0u8;
+    b.iter(|| {
+      for y in 0..16 {
+        for z in 0..16 {
+          for x in 0..16 {
+            s.set_block(Pos::new(x, y, z), block.into()).unwrap();
+          }
+        }
+      }
+      block = block.wrapping_add(1);
+    });
+  }
+
+  #[bench]
+  fn fill(b: &mut Bencher) {
+    let mut s = Section::new();
+    let mut block = 0u8;
+    b.iter(|| {
+      s.fill(Pos::new(0, 0, 0), Pos::new(15, 15, 15), block.into()).unwrap();
+      block = block.wrapping_add(1);
+    });
+  }
 
   #[test]
   fn test_index() {
