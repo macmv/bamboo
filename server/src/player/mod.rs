@@ -19,7 +19,7 @@ use crate::{
   world::World,
 };
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 struct PlayerPosition {
   // This is the current position of the player. It is only updated once per tick.
   curr: FPos,
@@ -217,7 +217,7 @@ impl Player {
   pub(crate) async fn tick(&self) {
     let old_chunk;
     let new_chunk;
-    {
+    let pos = {
       let mut pos = self.pos.lock().unwrap();
       pos.prev = pos.curr;
       // TODO: Movement checks
@@ -228,6 +228,19 @@ impl Player {
       // vector; from prev to curr.
       old_chunk = pos.prev.block().chunk();
       new_chunk = pos.curr.block().chunk();
+      pos.clone()
+    };
+    for other in self.world.players().await.iter().in_view(pos.curr.chunk()).not(self.uuid) {
+      // Make player move for other
+      let mut out = cb::Packet::new(cb::ID::RelEntityMove);
+      out.set_int("entity_id", self.eid);
+      // TODO: Implement for 1.9+
+      // As truncates any negative floats to 0, but just copies the bits for i8 -> u8
+      out.set_byte("d_x", ((pos.curr.x() - pos.prev.x()) * 32.0).round() as i8 as u8);
+      out.set_byte("d_y", ((pos.curr.y() - pos.prev.y()) * 32.0).round() as i8 as u8);
+      out.set_byte("d_z", ((pos.curr.z() - pos.prev.z()) * 32.0).round() as i8 as u8);
+      out.set_bool("on_ground", true);
+      other.conn().send(out).await;
     }
     if old_chunk != new_chunk {
       let view_distance = 10; // TODO: Listen for client settings on this
