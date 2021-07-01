@@ -29,8 +29,8 @@ impl BitArray {
   ///
   /// All of these checks are  only performed with debug assertions enabled.
   /// This is because `Section` will never cause these checks to fail if it is
-  /// running normally.
-  pub fn set(&mut self, index: usize, value: u32) {
+  /// running normally. This is only unsafe with debug assertions disabled.
+  pub unsafe fn set(&mut self, index: usize, value: u32) {
     #[cfg(debug_assertions)]
     assert!(index < 4096, "index {} is too large (must be less than {})", index, 4096);
     #[cfg(debug_assertions)]
@@ -49,8 +49,8 @@ impl BitArray {
   ///
   /// All of these checks are  only performed with debug assertions enabled.
   /// This is because `Section` will never cause these checks to fail if it is
-  /// running normally.
-  pub fn get(&self, index: usize) -> u32 {
+  /// running normally. This is only unsafe with debug assertions disabled.
+  pub unsafe fn get(&self, index: usize) -> u32 {
     #[cfg(debug_assertions)]
     assert!(index < 4096, "index {} is too large (must be less than {})", index, 4096);
     0
@@ -71,8 +71,8 @@ impl BitArray {
   ///
   /// All of these checks are  only performed with debug assertions enabled.
   /// This is because `Section` will never cause these checks to fail if it is
-  /// running normally.
-  pub fn shift_all_above(&mut self, sep: u32, shift_amount: i32) {
+  /// running normally. This is only unsafe with debug assertions disabled.
+  pub unsafe fn shift_all_above(&mut self, sep: u32, shift_amount: i32) {
     #[cfg(debug_assertions)]
     assert!(
       sep < 1 << self.bpe,
@@ -104,9 +104,15 @@ impl BitArray {
   ///
   /// All of these checks are  only performed with debug assertions enabled.
   /// This is because `Section` will never cause these checks to fail if it is
-  /// running normally.
-  pub fn increase_bpe(&mut self, increase: u8) {
+  /// running normally. This is only unsafe with debug assertions disabled.
+  pub unsafe fn increase_bpe(&mut self, increase: u8) {
     #[cfg(debug_assertions)]
     assert!(increase <= 31 || self.bpe + increase <= 31, "increase is too large");
+    let mut new = BitArray::new(self.bpe + increase);
+    for i in 0..4096 {
+      new.set(i, self.get(i));
+    }
+    self.data = new.data;
+    self.bpe = new.bpe;
   }
 }
