@@ -3,18 +3,20 @@
 /// 4096, will always go evenly into 64, which means we never have excess space
 /// at the end of the internal vector.
 ///
-/// This is used to seperate out some of the nasty bitwise operations, and make
-/// the [`Section`] code a lot cleaner.
+/// This is used to separate out some of the nasty bitwise operations, and make
+/// the [`Section`](super::Section) code a lot cleaner.
 pub struct BitArray {
-  // Bits per entry
+  /// Bits per entry
   bpe:  u8,
+  /// The actual data
   data: Vec<u64>,
 }
 
 impl BitArray {
-  /// Creates a new bit array, with all of the data set to 0. BPE is the number
-  /// of bits per element in the array. The length of this array will always be
-  /// 4096.
+  /// Creates a new bit array, with all of the data set to 0. `bpe` is the
+  /// number of bits per element in the array. The length of this array will
+  /// always be 4096. For normal operation of a chunk, `bpe` should always start
+  /// at 4.
   pub fn new(bpe: u8) -> Self {
     BitArray { bpe, data: vec![0; 16 * 16 * 16 * bpe as usize / 64] }
   }
@@ -24,13 +26,33 @@ impl BitArray {
   /// # Panics
   /// - If `index` is outside of `0..4096`
   /// - If `value` is outside of `0..1 << self.bpe`
-  pub fn set(&mut self, index: usize, value: u32) {}
+  ///
+  /// All of these checks are  only performed with debug assertions enabled.
+  /// This is because `Section` will never cause these checks to fail if it is
+  /// running normally.
+  pub fn set(&mut self, index: usize, value: u32) {
+    #[cfg(debug_assertions)]
+    assert!(index < 4096, "index {} is too large (must be less than {})", index, 4096);
+    #[cfg(debug_assertions)]
+    assert!(
+      value < 1 << self.bpe,
+      "value {} is too large (must be less than {})",
+      value,
+      1 << self.bpe
+    );
+  }
   /// Reads an element from the array. The returned value will always be within
   /// `0..1 << self.bpe`
   ///
   /// # Panics
   /// - If `index` is outside of `0..4096`
+  ///
+  /// All of these checks are  only performed with debug assertions enabled.
+  /// This is because `Section` will never cause these checks to fail if it is
+  /// running normally.
   pub fn get(&self, index: usize) -> u32 {
+    #[cfg(debug_assertions)]
+    assert!(index < 4096, "index {} is too large (must be less than {})", index, 4096);
     0
   }
   /// Utility function. This will find all values within the array that are
@@ -45,19 +67,44 @@ impl BitArray {
   /// - If `shift_amount` is outside of `-(1 << self.bpe) + 1..1 << self.bpe`.
   ///   If `bpe` is 4, then the only valid shift amounts are -15 through 15
   ///   (inclusive).
-  /// - If any modified elments go outside of `0..1 << self.bpe`. This is only
-  ///   checked with debug assertions enabled.
-  pub fn shift_all_above(&mut self, sep: u32, shit_amount: i32) {}
-  /// Increases the number of bits per entry by `amount`. This will copy all of
-  /// the internal data, and is generally a very slow operation.
+  /// - If any modified elements go outside of `0..1 << self.bpe`.
+  ///
+  /// All of these checks are  only performed with debug assertions enabled.
+  /// This is because `Section` will never cause these checks to fail if it is
+  /// running normally.
+  pub fn shift_all_above(&mut self, sep: u32, shift_amount: i32) {
+    #[cfg(debug_assertions)]
+    assert!(
+      sep < 1 << self.bpe,
+      "separator {} is too large (must be less than {})",
+      sep,
+      1 << self.bpe
+    );
+    #[cfg(debug_assertions)]
+    assert!(
+      shift_amount > -(1 << self.bpe) && shift_amount < 1 << self.bpe,
+      "shift amount {} is outside of bounds {}..{} (exclusive)",
+      shift_amount,
+      -(1 << self.bpe),
+      1 << self.bpe
+    );
+  }
+  /// Increases the number of bits per entry by `increase`. This will copy all
+  /// of the internal data, and is generally a very slow operation.
+  ///
+  /// This is only an increase, because making a chunk section smaller is a very
+  /// rare situation. If the bpe is going up, then players are most likely
+  /// building there. If they remove a bunch of stuff, it will be very likely to
+  /// come back. So decreasing `bpe` is almost never worthwhile.
   ///
   /// # Panics
   /// - If `increase` or `self.bpe + increase` is larger than 31. We could go to
   ///   64, but [`shift_all_above`](Self::shift_all_above) takes an `i32`, so I
-  ///   have choosen to cap `bpe` at 31. This is only checked with debug
-  ///   assertions enabled. This is because in any normal situation, the Section
-  ///   storing this bit array will never try to go above 14 bits per element
-  ///   (that number will change in the future, but it will stay small).
+  ///   have chosen to cap `bpe` at 31.
+  ///
+  /// All of these checks are  only performed with debug assertions enabled.
+  /// This is because `Section` will never cause these checks to fail if it is
+  /// running normally.
   pub fn increase_bpe(&mut self, increase: u8) {
     #[cfg(debug_assertions)]
     assert!(increase <= 31 || self.bpe + increase <= 31, "increase is too large");
