@@ -263,37 +263,67 @@ impl Section {
   /// self.bits_per_block, and update the long array. It does not affect the
   /// palette at all.
   fn increase_bits_per_block(&mut self) {
-    let bpb = (self.bits_per_block + 1) as usize;
-    let mut new_data = vec![0; 16 * 16 * 16 * bpb / 64];
-    let mut bit_index = 0;
-    let mask = (1 << bpb) - 1;
-    for y in 0..16 {
-      for z in 0..16 {
-        for x in 0..16 {
-          let first = bit_index / 64;
-          let second = (bit_index + bpb - 1) / 64;
-          let shift = bit_index % 64;
-          let id = self.get_palette(Pos::new(x, y, z));
-          if first == second {
-            // Clear the bits of the new id
-            new_data[first] &= !(mask << shift);
-            // Set the new id
-            new_data[first] |= (id as u64) << shift;
-          } else {
-            let second_shift = 64 - shift;
-            // Clear the bits of the new id
-            new_data[first] &= !(mask << shift);
-            new_data[second] &= !(mask >> second_shift);
-            // Set the new id
-            new_data[first] |= (id as u64) << shift;
-            new_data[second] |= (id as u64) >> second_shift;
+    // Very Bad Things can happen here, lets just call it all unsafe
+    unsafe {
+      let bpb = (self.bits_per_block + 1) as usize;
+      let mut new_data = vec![0; 16 * 16 * 16 * bpb / 64];
+      let mut bit_index = 0;
+      let mask = (1 << bpb) - 1;
+      for y in 0..16 {
+        for z in 0..16 {
+          for x in 0..16 {
+            // SAFETY: We know that new_data will have enugh bits to fit 4096
+            // numbers that are `bpb` bits long. So, diving bit_index by 64
+            // will always give us a valid index into the vector.
+            let first = bit_index / 64;
+            // SAFETY: Again, we know that bit_index will always fit into the vector.
+            // This number will always point to the last bit of the new value.
+            let second = (bit_index + bpb - 1) / 64;
+            let shift = bit_index % 64;
+            let id = self.get_palette(Pos::new(x, y, z));
+            if first == second {
+              // Clear the bits of the new id
+              let f = new_data.get_unchecked_mut(first);
+              *f &= !(mask << shift);
+              // Set the new id
+              let s = new_data.get_unchecked_mut(second);
+              *s |= (id as u64) << shift;
+            } else {
+              // We have a situation where we want to place a number, but it is
+              // going to be split between two longs.
+              //
+              // A = v << shift;
+              // B = v >> (64 - shift);
+              //
+              //         B B | A A A
+              // 2 2 2 2 2 2 | 1 1 1 1 1 1
+              // (higher bits are on the left, lower bits are on the right)
+              //
+              // So shift will move the number to the left, leaving us with the
+              // lower bits. `64 - shift` will give us a small number, which we
+              // can use to/ shift the number to the right. This resulting number
+              // will only have the higher bits, which is what we want.
+
+              // Clear the low bits of the new id
+              let f = new_data.get_unchecked_mut(first);
+              *f &= !(mask << shift);
+              // Set the new id
+              *f |= (id as u64) << shift;
+
+              let second_shift = 64 - shift;
+              // Clear the high bits of the new id
+              let s = new_data.get_unchecked_mut(second);
+              *s &= !(mask >> second_shift);
+              // Set the new id
+              *s |= (id as u64) >> second_shift;
+            }
+            bit_index += bpb;
           }
-          bit_index += bpb;
         }
       }
+      self.data = new_data;
+      self.bits_per_block += 1;
     }
-    self.data = new_data;
-    self.bits_per_block += 1;
   }
 }
 
@@ -441,9 +471,11 @@ mod tests {
   /// These are very different results. I think the numbers speak for
   /// themselves.
   ///
+  /// ```
   /// Opt level:        0        |       1      |      2     |
   /// Fill manual: ~2,000,000 ns  ~1,200,000 ns   ~100,000ns
   /// Fill:        ~9,000 ns      ~5,000 ns       ~300ns
+  /// ```
 
   #[bench]
   fn fill_manual(b: &mut Bencher) {
