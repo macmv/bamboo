@@ -44,12 +44,12 @@ impl Section {
   /// # Safety
   ///
   /// - pos must be within `Pos(0, 0, 0)..Pos(16, 16, 16)`.
-  unsafe fn set_block_unchecked(&mut self, pos: Pos, ty: u32) -> Result<(), PosError> {
+  #[inline(always)]
+  unsafe fn set_block_unchecked(&mut self, pos: Pos, ty: u32) {
     *self
       .data
       .get_unchecked_mut(pos.y() as usize * 16 * 16 + pos.z() as usize * 16 + pos.x() as usize) =
       ty as u16;
-    Ok(())
   }
 }
 
@@ -63,10 +63,11 @@ impl ChunkSection for Section {
       return Err(pos.err("expected a pos within 0 <= x, y, z < 16".into()));
     }
     unsafe {
-      // SAFETY: We just checked that x, y, and z are all within 0..16, so the
-      // position passed to set_block_unchecked is safe
-      self.set_block_unchecked(pos, ty)
+      // SAFETY: We just checked that x, y, and z are all within 0..16, so
+      // the position passed to set_block_unchecked is safe
+      self.set_block_unchecked(pos, ty);
     }
+    Ok(())
   }
   fn fill(&mut self, min: Pos, max: Pos, ty: u32) -> Result<(), PosError> {
     if min.x() >= 16 || min.x() < 0 || min.y() >= 16 || min.y() < 0 || min.z() >= 16 || min.z() < 0
@@ -83,7 +84,7 @@ impl ChunkSection for Section {
           unsafe {
             // SAFETY: We just checked that min/max x, y, and z are all within 0..16, so x,
             // y, and z will all be within 0..16.
-            self.set_block_unchecked(Pos::new(x, y, z), ty)?;
+            self.set_block_unchecked(Pos::new(x, y, z), ty);
           }
         }
       }
@@ -176,13 +177,19 @@ mod tests {
   ///
   /// Opt level 3 did not change the results much. After using
   /// https://rust.godbolt.org/, I realized that without any optimizations,
-  /// iterating over anything is very, very slow. So I am no longer going to
-  /// work on optimizing the unsafe calls, as those checks will get compiled
-  /// out any time speed actually matters.
+  /// iterating over anything is very, very slow.
   ///
+  /// Original results:
+  /// ```
   /// Optlevel:          0    |     1     |    2
   /// Fill:        ~200,000ns   ~78,000ns   ~5,000ns
   /// Fill manual: ~200,000ns   ~76,000ns   ~7,500ns
+  /// ```
+  ///
+  /// After some optimizations, I was able to get fill down to ~130,000ns, and
+  /// fill manual to ~160,000ns. Because I run debug builds a lot, I am going to
+  /// keep the unsafe code, as it is very hard to make this amount of code
+  /// unsound.
 
   #[bench]
   fn fill_manual(b: &mut Bencher) {

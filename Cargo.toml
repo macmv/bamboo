@@ -12,4 +12,4 @@ members = [
 debug = true
 
 [profile.bench]
-opt-level = 3
+opt-level = 0
