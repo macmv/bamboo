@@ -267,7 +267,7 @@ impl World {
       let mut info =
         PlayerList { action: player_list::Action::AddPlayer.into(), ..Default::default() };
       let spawn_packets = self
-        .for_players(ChunkPos::new(0, 0), |other| {
+        .for_players_not(player.id(), ChunkPos::new(0, 0), |other| {
           // Add other to the list of players that player knows about
           info.players.push(player_list::Player {
             uuid:             Some(other.id().as_proto()),
@@ -438,8 +438,28 @@ impl World {
   {
     let mut out = vec![];
     for p in self.players.lock().await.values() {
-      // Only call f in p is in view of pos
+      // Only call f if p is in view of pos
       if p.in_view(pos) {
+        let v = f(p);
+        match v {
+          Some(v) => out.push(v),
+          None => break,
+        }
+      }
+    }
+    out
+  }
+
+  // Runs f for all players within render distance of the chunk, and whose id is
+  // not the given UUID.
+  pub async fn for_players_not<F, R>(&self, id: UUID, pos: ChunkPos, mut f: F) -> Vec<R>
+  where
+    F: FnMut(&Player) -> Option<R>,
+  {
+    let mut out = vec![];
+    for p in self.players.lock().await.values() {
+      // Only call f if p has a different id, and if p is in view of pos
+      if p.id() != id && p.in_view(pos) {
         let v = f(p);
         match v {
           Some(v) => out.push(v),
