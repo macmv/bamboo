@@ -234,11 +234,16 @@ impl Player {
       // Make player move for other
       let mut out = cb::Packet::new(cb::ID::RelEntityMove);
       out.set_int("entity_id", self.eid);
-      // TODO: Implement for 1.9+
-      // As truncates any negative floats to 0, but just copies the bits for i8 -> u8
-      out.set_byte("d_x", ((pos.curr.x() - pos.prev.x()) * 32.0).round() as i8 as u8);
-      out.set_byte("d_y", ((pos.curr.y() - pos.prev.y()) * 32.0).round() as i8 as u8);
-      out.set_byte("d_z", ((pos.curr.z() - pos.prev.z()) * 32.0).round() as i8 as u8);
+      if other.ver() == ProtocolVersion::V1_8 {
+        // As truncates any negative floats to 0, but just copies the bits for i8 -> u8
+        out.set_byte("d_x", ((pos.curr.x() - pos.prev.x()) * 32.0).round() as i8 as u8);
+        out.set_byte("d_y", ((pos.curr.y() - pos.prev.y()) * 32.0).round() as i8 as u8);
+        out.set_byte("d_z", ((pos.curr.z() - pos.prev.z()) * 32.0).round() as i8 as u8);
+      } else {
+        out.set_short("d_x", ((pos.curr.x() * 32.0 - pos.prev.x() * 32.0) * 128.0).round() as i16);
+        out.set_short("d_y", ((pos.curr.y() * 32.0 - pos.prev.y() * 32.0) * 128.0).round() as i16);
+        out.set_short("d_z", ((pos.curr.z() * 32.0 - pos.prev.z() * 32.0) * 128.0).round() as i16);
+      }
       out.set_bool("on_ground", true);
       other.conn().send(out).await;
     }
