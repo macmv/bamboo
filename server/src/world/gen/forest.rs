@@ -19,7 +19,7 @@ impl BiomeGen for Gen {
         let p = pos.block() + Pos::new(x, 0, z);
         let height = self.height_at(world, p);
         if self.trees.contains(p.x(), p.z()) {
-          c.fill_kind(Pos::new(x, height + 1, z), Pos::new(x, height + 4, z), block::Kind::Stone)
+          c.fill_kind(Pos::new(x, height + 1, z), Pos::new(x, height + 4, z), block::Kind::OakLog)
             .unwrap();
         }
       }
