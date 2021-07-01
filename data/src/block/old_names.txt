@@ -180,3 +180,36 @@ piston_head[facing=north,short=false,type=sticky]: piston 10
 piston_head[facing=south,short=false,type=sticky]: piston 11
 piston_head[facing=west,short=false,type=sticky]:  piston 12
 piston_head[facing=east,short=false,type=sticky]:  piston 13
+
+white_wool:      wool 0
+orange_wool:     wool 1
+magenta_wool:    wool 2
+light_blue_wool: wool 3
+yellow_wool:     wool 4
+lime_wool:       wool 5
+pink_wool:       wool 6
+gray_wool:       wool 7
+light_gray_wool: wool 8
+cyan_wool:       wool 9
+purple_wool:     wool 10
+blue_wool:       wool 11
+brown_wool:      wool 12
+green_wool:      wool 13
+red_wool:        wool 14
+black_wool:      wool 15
+
+dandelion:    yellow_flower
+poppy:        red_flower 0
+blue_orchid:  red_flower 1
+allium:       red_flower 2
+azure_bluet:  red_flower 3
+red_tulip:    red_flower 4
+orange_tulip: red_flower 5
+white_tulip:  red_flower 6
+pink_tulip:   red_flower 7
+oxeye_daisy:  red_flower 8
+
+wall_torch[facing=east]:  torch 1
+wall_torch[facing=west]:  torch 2
+wall_torch[facing=south]: torch 3
+wall_torch[facing=north]: torch 4
