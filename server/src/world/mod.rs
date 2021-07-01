@@ -266,37 +266,39 @@ impl World {
 
       let mut info =
         PlayerList { action: player_list::Action::AddPlayer.into(), ..Default::default() };
-      for out in self
-        .for_players(ChunkPos::new(0, 0), |p| {
-          let mut out = cb::Packet::new(cb::ID::NamedEntitySpawn);
-          out.set_int("entity_id", p.eid());
-          out.set_uuid("player_uuid", p.id());
-          let (pos, pitch, yaw) = p.pos_look();
-          out.set_double("x", pos.x());
-          out.set_double("y", pos.y());
-          out.set_double("z", pos.z());
-          out.set_float("yaw", yaw);
-          out.set_float("pitch", pitch);
-          out.set_short("current_item", 0);
-          out.set_byte_arr("metadata", p.metadata(player.ver()).serialize());
+      let spawn_packets = self
+        .for_players(ChunkPos::new(0, 0), |other| {
+          // Add other to the list of players that player knows about
           info.players.push(player_list::Player {
-            uuid:             Some(p.id().as_proto()),
-            name:             p.username().into(),
+            uuid:             Some(other.id().as_proto()),
+            name:             other.username().into(),
             properties:       vec![],
             gamemode:         1,
             ping:             300,
             has_display_name: false,
             display_name:     "".into(),
           });
+          // Create a packet that will spawn other for player
+          let mut out = cb::Packet::new(cb::ID::NamedEntitySpawn);
+          out.set_int("entity_id", other.eid());
+          out.set_uuid("player_uuid", other.id());
+          let (pos, pitch, yaw) = other.pos_look();
+          out.set_double("x", pos.x());
+          out.set_double("y", pos.y());
+          out.set_double("z", pos.z());
+          out.set_float("yaw", yaw);
+          out.set_float("pitch", pitch);
+          out.set_short("current_item", 0);
+          out.set_byte_arr("metadata", other.metadata(player.ver()).serialize());
           Some(out)
         })
-        .await
-      {
-        conn.send(out).await;
-      }
+        .await;
       let mut out = cb::Packet::new(cb::ID::PlayerInfo);
       out.set_other(Other::PlayerList(info)).unwrap();
       conn.send(out).await;
+      for p in spawn_packets {
+        conn.send(p).await;
+      }
     }
     // Player tick loop
     let mut tick = 0;
