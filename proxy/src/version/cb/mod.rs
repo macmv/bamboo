@@ -14,7 +14,7 @@ mod v1_13;
 mod v1_14;
 mod v1_15;
 mod v1_16;
-mod v1_17;
+// mod v1_17;
 mod v1_8;
 mod v1_9;
 
@@ -59,7 +59,7 @@ impl Generator {
     gens.insert(ProtocolVersion::V1_14_4, v1_14::gen_spec());
     gens.insert(ProtocolVersion::V1_15_2, v1_15::gen_spec());
     gens.insert(ProtocolVersion::V1_16_2, v1_16::gen_spec());
-    gens.insert(ProtocolVersion::V1_17, v1_17::gen_spec());
+    // gens.insert(ProtocolVersion::V1_17, v1_17::gen_spec());
     Generator { gens, versions, same_versions }
   }
 
