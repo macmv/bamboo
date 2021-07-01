@@ -263,7 +263,7 @@ impl Player {
           {
             let mut out = cb::Packet::new(cb::ID::EntityHeadRotation);
             out.set_int("entity_id", self.eid);
-            out.set_byte("head_yaw", (pos.yaw / 360.0 * 256.0).round() as i8 as u8);
+            out.set_byte("head_yaw", (pos.yaw / 360.0 * 256.0).round() as u8);
             other.conn().send(out).await;
           }
           out.set_byte("yaw", (pos.yaw / 360.0 * 256.0).round() as u8);
@@ -410,8 +410,8 @@ impl Player {
   /// all fields possible about the player. This should only be called when
   /// spawning in a new player.
   pub fn metadata(&self, ver: ProtocolVersion) -> Metadata {
-    let mut meta = Metadata::new(ver);
-    meta.set_byte(0, 0b11111111).unwrap();
+    let meta = Metadata::new(ver);
+    // meta.set_byte(0, 0b00000000).unwrap();
     meta
   }
 
