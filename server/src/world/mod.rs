@@ -288,6 +288,19 @@ impl World {
           }))
           .unwrap();
         other.conn().send(out).await;
+        // Create a packet that will spawn player for other
+        let mut out = cb::Packet::new(cb::ID::NamedEntitySpawn);
+        out.set_int("entity_id", player.eid());
+        out.set_uuid("player_uuid", player.id());
+        let (pos, pitch, yaw) = player.pos_look();
+        out.set_double("x", pos.x());
+        out.set_double("y", pos.y());
+        out.set_double("z", pos.z());
+        out.set_float("yaw", yaw);
+        out.set_float("pitch", pitch);
+        out.set_short("current_item", 0);
+        out.set_byte_arr("metadata", player.metadata(other.ver()).serialize());
+        other.conn().send(out).await;
 
         // Add other to the list of players that player knows about
         info.players.push(player_list::Player {
