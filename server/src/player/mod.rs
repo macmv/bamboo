@@ -217,10 +217,14 @@ impl Player {
   pub(crate) async fn tick(&self) {
     let old_chunk;
     let new_chunk;
+    let look_changed;
+    let pos_changed;
     let pos = {
       let mut pos = self.pos.lock().unwrap();
       pos.prev = pos.curr;
-      // TODO: Movement checks
+      look_changed = pos.yaw != pos.next_yaw || pos.pitch != pos.next_pitch;
+      pos_changed = pos.curr != pos.next;
+      // TODO: Movement checks here
       pos.curr = pos.next;
       pos.yaw = pos.next_yaw;
       pos.pitch = pos.next_pitch;
@@ -230,53 +234,79 @@ impl Player {
       new_chunk = pos.curr.block().chunk();
       pos.clone()
     };
-    for other in self.world.players().await.iter().in_view(pos.curr.chunk()).not(self.uuid) {
-      // Make player move for other
-      let mut out = cb::Packet::new(cb::ID::RelEntityMove);
-      out.set_int("entity_id", self.eid);
-      let mut dx = pos.curr.x() - pos.prev.x();
-      let mut dy = pos.curr.y() - pos.prev.y();
-      let mut dz = pos.curr.z() - pos.prev.z();
-      let abs_pos = if other.ver() == ProtocolVersion::V1_8 {
-        dx *= 32.0;
-        dy *= 32.0;
-        dz *= 32.0;
-        if dx.abs() > i8::MAX.into() || dy.abs() > i8::MAX.into() || dz.abs() > i8::MAX.into() {
-          true
+    if pos_changed || look_changed {
+      for other in self.world.players().await.iter().in_view(pos.curr.chunk()).not(self.uuid) {
+        // Make player move for other
+        let mut out;
+        if pos_changed && look_changed {
+          out = cb::Packet::new(cb::ID::EntityMoveLook);
+        } else if pos_changed {
+          out = cb::Packet::new(cb::ID::RelEntityMove);
+        } else if look_changed {
+          out = cb::Packet::new(cb::ID::EntityLook);
         } else {
-          // As truncates any negative floats to 0, but just copies the bits for i8 -> u8
-          out.set_byte("d_x", dx.round() as i8 as u8);
-          out.set_byte("d_y", dy.round() as i8 as u8);
-          out.set_byte("d_z", dz.round() as i8 as u8);
-          false
+          unreachable!();
         }
-      } else {
-        dx *= 4096.0;
-        dy *= 4096.0;
-        dz *= 4096.0;
-        // 32 * 128 * 8 = 16384, which is the max value of an i16. So if we have more
-        // than an 8 block delta, we cannot send a relative movement packet.
-        if dx.abs() > i16::MAX.into() || dy.abs() > i16::MAX.into() || dz.abs() > i16::MAX.into() {
-          true
-        } else {
-          out.set_short("d_x", dx.round() as i16);
-          out.set_short("d_y", dy.round() as i16);
-          out.set_short("d_z", dz.round() as i16);
-          false
-        }
-      };
-      if abs_pos {
-        out = cb::Packet::new(cb::ID::EntityTeleport);
         out.set_int("entity_id", self.eid);
-        out.set_double("x", pos.curr.x());
-        out.set_double("y", pos.curr.y());
-        out.set_double("z", pos.curr.z());
-        out.set_float("yaw", pos.yaw);
-        out.set_float("pitch", pos.pitch);
-        out.set_byte("flags", 0); // All positions are absolute
+        if look_changed {
+          out.set_byte("yaw", (pos.yaw / 360.0 * 256.0).round() as i8 as u8);
+          out.set_byte("pitch", (pos.pitch / 360.0 * 256.0).round() as i8 as u8);
+        }
+        if pos_changed {
+          let mut dx = pos.curr.x() - pos.prev.x();
+          let mut dy = pos.curr.y() - pos.prev.y();
+          let mut dz = pos.curr.z() - pos.prev.z();
+          let abs_pos = if other.ver() == ProtocolVersion::V1_8 {
+            dx *= 32.0;
+            dy *= 32.0;
+            dz *= 32.0;
+            if dx.abs() > i8::MAX.into() || dy.abs() > i8::MAX.into() || dz.abs() > i8::MAX.into() {
+              true
+            } else {
+              // As truncates any negative floats to 0, but just copies the bits for i8 -> u8
+              out.set_byte("d_x", dx.round() as i8 as u8);
+              out.set_byte("d_y", dy.round() as i8 as u8);
+              out.set_byte("d_z", dz.round() as i8 as u8);
+              false
+            }
+          } else {
+            dx *= 4096.0;
+            dy *= 4096.0;
+            dz *= 4096.0;
+            // 32 * 128 * 8 = 16384, which is the max value of an i16. So if we have more
+            // than an 8 block delta, we cannot send a relative movement packet.
+            if dx.abs() > i16::MAX.into()
+              || dy.abs() > i16::MAX.into()
+              || dz.abs() > i16::MAX.into()
+            {
+              true
+            } else {
+              out.set_short("d_x", dx.round() as i16);
+              out.set_short("d_y", dy.round() as i16);
+              out.set_short("d_z", dz.round() as i16);
+              false
+            }
+          };
+          if abs_pos {
+            out = cb::Packet::new(cb::ID::EntityTeleport);
+            out.set_int("entity_id", self.eid);
+            out.set_double("x", pos.curr.x());
+            out.set_double("y", pos.curr.y());
+            out.set_double("z", pos.curr.z());
+            if other.ver() == ProtocolVersion::V1_8 {
+              out.set_byte("yaw", (pos.yaw / 360.0 * 256.0).round() as i8 as u8);
+              out.set_byte("pitch", (pos.pitch / 360.0 * 256.0).round() as i8 as u8);
+            } else {
+              out.set_float("yaw", pos.yaw);
+              out.set_float("pitch", pos.pitch);
+            }
+            out.set_byte("flags", 0); // All positions are absolute
+          }
+        }
+        out.set_bool("on_ground", true);
+        info!("sending that {} is at {}", self.username(), out);
+        other.conn().send(out).await;
       }
-      out.set_bool("on_ground", true);
-      other.conn().send(out).await;
     }
     if old_chunk != new_chunk {
       let view_distance = 10; // TODO: Listen for client settings on this
