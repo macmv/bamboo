@@ -10,6 +10,7 @@ use common::{
   version::ProtocolVersion,
 };
 use rand::{rngs::OsRng, RngCore};
+use reqwest::StatusCode;
 use rsa::{padding::PaddingScheme, RSAPrivateKey};
 use serde_derive::{Deserialize, Serialize};
 use sha1::{Digest, Sha1};
@@ -275,6 +276,15 @@ impl<R: StreamReader + Send, W: StreamWriter + Send> Conn<R, W> {
     Ok(())
   }
 
+  // Disconnects the client during authentication
+  async fn send_disconnect(&mut self, reason: &Chat) -> io::Result<()> {
+    // Disconnect
+    let mut out = tcp::Packet::new(0, self.ver);
+    out.write_str(&reason.to_json());
+    self.writer.write(out).await?;
+    Ok(())
+  }
+
   /// Generates the json status for the server
   fn build_status(&self) -> JsonStatus {
     let mut description = Chat::empty();
@@ -481,6 +491,11 @@ impl<R: StreamReader + Send, W: StreamWriter + Send> Conn<R, W> {
                   }
                 };
 
+                // If we need to disconnect the client, the client is expecting encrypted
+                // packets from now on, so we need to enable encryption here.
+                self.writer.enable_encryption(&secret);
+                self.reader.enable_encryption(&secret);
+
                 let mut hash = Sha1::new();
                 hash.update("");
                 hash.update(secret);
@@ -490,21 +505,26 @@ impl<R: StreamReader + Send, W: StreamWriter + Send> Conn<R, W> {
                   username.as_ref().unwrap(),
                   math::hexdigest(hash)
                 )).await {
-                  Ok(v) => match v.json().await {
-                    Ok(v) => Some(v),
-                    Err(e) => return Err(io::Error::new(
-                      ErrorKind::InvalidData,
-                      format!("invalid json data recieved from session server: {}", e),
-                    ))
+                  Ok(v) => {
+                    info!("got status code: {}", v.status());
+                    if v.status() == StatusCode::NO_CONTENT {
+                      self.send_disconnect(&Chat::new("Invalid auth token! Please relogin (restart your game and launcher if you are running vanilla)".into())).await?;
+                      // Disconnect client; they are not authenticated
+                      return Ok(None);
+                    }
+                    match v.json().await {
+                      Ok(v) => Some(v),
+                      Err(e) => return Err(io::Error::new(
+                          ErrorKind::InvalidData,
+                          format!("invalid json data recieved from session server: {}", e),
+                      ))
+                    }
                   },
                   Err(e) => return Err(io::Error::new(
                     ErrorKind::Other,
                     format!("failed to authenticate client: {}", e),
                   ))
                 };
-
-                self.writer.enable_encryption(&secret);
-                self.reader.enable_encryption(&secret);
 
                 self.send_compression(compression).await?;
                 self.send_success(info.as_ref().unwrap()).await?;
