@@ -227,7 +227,18 @@ impl Player {
       // TODO: Movement checks here
       pos.curr = pos.next;
       pos.yaw = pos.next_yaw;
+      // We want to keep yaw within 0..=360
+      pos.yaw = pos.yaw % 360.0;
+      if pos.yaw < 0.0 {
+        pos.yaw += 360.0;
+      }
       pos.pitch = pos.next_pitch;
+      // We want to clamp pitch between -90..=90
+      if pos.pitch > 90.0 {
+        pos.pitch = 90.0;
+      } else if pos.pitch < -90.0 {
+        pos.pitch = -90.0;
+      }
       // Whether or not the collision checks passes, we now have a movement
       // vector; from prev to curr.
       old_chunk = pos.prev.block().chunk();
@@ -249,7 +260,8 @@ impl Player {
         }
         out.set_int("entity_id", self.eid);
         if look_changed {
-          out.set_byte("yaw", (pos.yaw / 360.0 * 256.0).round() as i8 as u8);
+          info!("yaw: {}", pos.yaw);
+          out.set_byte("yaw", (pos.yaw / 360.0 * 256.0).round() as u8);
           out.set_byte("pitch", (pos.pitch / 360.0 * 256.0).round() as i8 as u8);
         }
         if pos_changed {
@@ -304,7 +316,6 @@ impl Player {
           }
         }
         out.set_bool("on_ground", true);
-        info!("sending that {} is at {}", self.username(), out);
         other.conn().send(out).await;
       }
     }
