@@ -88,6 +88,13 @@ impl BitArray {
       -(1 << self.bpe),
       1 << self.bpe
     );
+    for i in 0..4096 {
+      // self.get() will always return a positive `i32`.
+      let v = self.get(i) as i32;
+      if v > sep as i32 {
+        self.set(i, (v + shift_amount) as u32);
+      }
+    }
   }
   /// Increases the number of bits per entry by `increase`. This will copy all
   /// of the internal data, and is generally a very slow operation.
