@@ -42,20 +42,39 @@ pub(super) fn generate_old(latest: &BlockVersion, old: &BlockVersion) -> Vec<u32
     .split('\n')
     .map(|l| {
       if l.is_empty() {
-        return None;
+        return vec![];
       }
       // This is the new block and old block
       let sections: Vec<&str> = l.split(':').map(|s| s.trim()).collect();
       // This is the old block name and optional metadata
       let right_sections: Vec<&str> = sections[1].split(' ').collect();
-      Some((
-        sections[0].into(),
-        if right_sections.len() == 1 {
-          (right_sections[0], 0)
-        } else {
-          (right_sections[0], right_sections[1].parse().unwrap())
-        },
-      ))
+      let mut values = vec![];
+      let old_name = if right_sections.len() == 1 {
+        (right_sections[0], 0)
+      } else {
+        (right_sections[0], right_sections[1].parse().unwrap())
+      };
+      if sections[0].contains("{color}") {
+        values.push((sections[0].replace("{color}", "white"), old_name));
+        values.push((sections[0].replace("{color}", "orange"), old_name));
+        values.push((sections[0].replace("{color}", "magenta"), old_name));
+        values.push((sections[0].replace("{color}", "light_blue"), old_name));
+        values.push((sections[0].replace("{color}", "yellow"), old_name));
+        values.push((sections[0].replace("{color}", "lime"), old_name));
+        values.push((sections[0].replace("{color}", "pink"), old_name));
+        values.push((sections[0].replace("{color}", "gray"), old_name));
+        values.push((sections[0].replace("{color}", "light_gray"), old_name));
+        values.push((sections[0].replace("{color}", "cyan"), old_name));
+        values.push((sections[0].replace("{color}", "purple"), old_name));
+        values.push((sections[0].replace("{color}", "blue"), old_name));
+        values.push((sections[0].replace("{color}", "brown"), old_name));
+        values.push((sections[0].replace("{color}", "green"), old_name));
+        values.push((sections[0].replace("{color}", "red"), old_name));
+        values.push((sections[0].replace("{color}", "black"), old_name));
+      } else {
+        values.push((sections[0].into(), old_name))
+      }
+      values
     })
     .flatten()
     .collect();

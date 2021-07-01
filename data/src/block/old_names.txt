@@ -85,3 +85,33 @@ birch_leaves: leaves 2
 jungle_leaves: leaves 3
 acacia_leaves: leaves2 0
 dark_oak_leaves: leaves2 1
+
+dispenser[facing=down,triggered=false]: dispenser 0
+dispenser[facing=up,triggered=false]: dispenser 1
+dispenser[facing=north,triggered=false]: dispenser 2
+dispenser[facing=south,triggered=false]: dispenser 3
+dispenser[facing=west,triggered=false]: dispenser 4
+dispenser[facing=east,triggered=false]: dispenser 5
+dispenser[facing=down,triggered=true]: dispenser 0
+dispenser[facing=up,triggered=true]: dispenser 1
+dispenser[facing=north,triggered=true]: dispenser 2
+dispenser[facing=south,triggered=true]: dispenser 3
+dispenser[facing=west,triggered=true]: dispenser 4
+dispenser[facing=east,triggered=true]: dispenser 5
+
+{color}_bed[facing=south,occupied=false,part=foot]: bed 0
+{color}_bed[facing=west,occupied=false,part=foot]:  bed 1
+{color}_bed[facing=north,occupied=false,part=foot]: bed 2
+{color}_bed[facing=east,occupied=false,part=foot]:  bed 3
+{color}_bed[facing=south,occupied=true,part=foot]:  bed 4
+{color}_bed[facing=west,occupied=true,part=foot]:   bed 5
+{color}_bed[facing=north,occupied=true,part=foot]:  bed 6
+{color}_bed[facing=east,occupied=true,part=foot]:   bed 7
+{color}_bed[facing=south,occupied=false,part=head]: bed 8
+{color}_bed[facing=west,occupied=false,part=head]:  bed 9
+{color}_bed[facing=north,occupied=false,part=head]: bed 10
+{color}_bed[facing=east,occupied=false,part=head]:  bed 11
+{color}_bed[facing=south,occupied=true,part=head]:  bed 12
+{color}_bed[facing=west,occupied=true,part=head]:   bed 13
+{color}_bed[facing=north,occupied=true,part=head]:  bed 14
+{color}_bed[facing=east,occupied=true,part=head]:   bed 15
