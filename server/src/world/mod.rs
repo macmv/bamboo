@@ -11,7 +11,7 @@ use std::{
   time::{Duration, Instant},
 };
 use tokio::{
-  sync::{mpsc::Sender, Mutex},
+  sync::{mpsc::Sender, Mutex, MutexGuard},
   time,
 };
 use tonic::{Status, Streaming};
@@ -23,7 +23,6 @@ use common::{
   util::{
     chat::{Chat, Color},
     nbt::{Tag, NBT},
-    UUID,
   },
   version::{BlockVersion, ProtocolVersion},
 };
@@ -31,6 +30,10 @@ use common::{
 use crate::{block, entity, item, net::Connection, player::Player, plugin};
 use chunk::MultiChunk;
 use gen::WorldGen;
+
+mod players;
+
+pub use players::{PlayersIter, PlayersMap};
 
 // pub struct ChunkRef<'a> {
 //   pos:    ChunkPos,
@@ -46,7 +49,7 @@ use gen::WorldGen;
 
 pub struct World {
   chunks:           RwLock<HashMap<ChunkPos, Arc<StdMutex<MultiChunk>>>>,
-  players:          Mutex<HashMap<UUID, Arc<Player>>>,
+  players:          Mutex<PlayersMap>,
   eid:              AtomicI32,
   block_converter:  Arc<block::TypeConverter>,
   item_converter:   Arc<item::TypeConverter>,
@@ -75,7 +78,7 @@ impl World {
   ) -> Arc<Self> {
     let world = Arc::new(World {
       chunks: RwLock::new(HashMap::new()),
-      players: Mutex::new(HashMap::new()),
+      players: Mutex::new(PlayersMap::new()),
       eid: 1.into(),
       block_converter,
       item_converter,
@@ -266,33 +269,51 @@ impl World {
 
       let mut info =
         PlayerList { action: player_list::Action::AddPlayer.into(), ..Default::default() };
-      let spawn_packets = self
-        .for_players_not(player.id(), ChunkPos::new(0, 0), |other| {
-          // Add other to the list of players that player knows about
-          info.players.push(player_list::Player {
-            uuid:             Some(other.id().as_proto()),
-            name:             other.username().into(),
-            properties:       vec![],
-            gamemode:         1,
-            ping:             300,
-            has_display_name: false,
-            display_name:     "".into(),
-          });
-          // Create a packet that will spawn other for player
-          let mut out = cb::Packet::new(cb::ID::NamedEntitySpawn);
-          out.set_int("entity_id", other.eid());
-          out.set_uuid("player_uuid", other.id());
-          let (pos, pitch, yaw) = other.pos_look();
-          out.set_double("x", pos.x());
-          out.set_double("y", pos.y());
-          out.set_double("z", pos.z());
-          out.set_float("yaw", yaw);
-          out.set_float("pitch", pitch);
-          out.set_short("current_item", 0);
-          out.set_byte_arr("metadata", other.metadata(player.ver()).serialize());
-          Some(out)
-        })
-        .await;
+      let mut spawn_packets = vec![];
+      for other in self.players().await.in_range(ChunkPos::new(0, 0)) {
+        // Add player to the list of players that other knows about
+        let mut out = cb::Packet::new(cb::ID::PlayerInfo);
+        out
+          .set_other(Other::PlayerList(PlayerList {
+            action:  player_list::Action::AddPlayer.into(),
+            players: vec![player_list::Player {
+              uuid:             Some(player.id().as_proto()),
+              name:             player.username().into(),
+              properties:       vec![],
+              gamemode:         1,
+              ping:             300,
+              has_display_name: false,
+              display_name:     "".into(),
+            }],
+          }))
+          .unwrap();
+        other.conn().send(out).await;
+
+        // Add other to the list of players that player knows about
+        info.players.push(player_list::Player {
+          uuid:             Some(other.id().as_proto()),
+          name:             other.username().into(),
+          properties:       vec![],
+          gamemode:         1,
+          ping:             300,
+          has_display_name: false,
+          display_name:     "".into(),
+        });
+        // Create a packet that will spawn other for player
+        let mut out = cb::Packet::new(cb::ID::NamedEntitySpawn);
+        out.set_int("entity_id", other.eid());
+        out.set_uuid("player_uuid", other.id());
+        let (pos, pitch, yaw) = other.pos_look();
+        out.set_double("x", pos.x());
+        out.set_double("y", pos.y());
+        out.set_double("z", pos.z());
+        out.set_float("yaw", yaw);
+        out.set_float("pitch", pitch);
+        out.set_short("current_item", 0);
+        out.set_byte_arr("metadata", other.metadata(player.ver()).serialize());
+        spawn_packets.push(out);
+      }
+      // Need to send the player info before the spawn packets
       let mut out = cb::Packet::new(cb::ID::PlayerInfo);
       out.set_other(Other::PlayerList(info)).unwrap();
       conn.send(out).await;
@@ -432,42 +453,8 @@ impl World {
   }
 
   // Runs f for all players within render distance of the chunk.
-  pub async fn for_players<F, R>(&self, pos: ChunkPos, mut f: F) -> Vec<R>
-  where
-    F: FnMut(&Player) -> Option<R>,
-  {
-    let mut out = vec![];
-    for p in self.players.lock().await.values() {
-      // Only call f if p is in view of pos
-      if p.in_view(pos) {
-        let v = f(p);
-        match v {
-          Some(v) => out.push(v),
-          None => break,
-        }
-      }
-    }
-    out
-  }
-
-  // Runs f for all players within render distance of the chunk, and whose id is
-  // not the given UUID.
-  pub async fn for_players_not<F, R>(&self, id: UUID, pos: ChunkPos, mut f: F) -> Vec<R>
-  where
-    F: FnMut(&Player) -> Option<R>,
-  {
-    let mut out = vec![];
-    for p in self.players.lock().await.values() {
-      // Only call f if p has a different id, and if p is in view of pos
-      if p.id() != id && p.in_view(pos) {
-        let v = f(p);
-        match v {
-          Some(v) => out.push(v),
-          None => break,
-        }
-      }
-    }
-    out
+  pub async fn players(&self) -> MutexGuard<'_, PlayersMap> {
+    self.players.lock().await
   }
 }
 
