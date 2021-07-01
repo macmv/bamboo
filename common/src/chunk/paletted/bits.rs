@@ -48,4 +48,18 @@ impl BitArray {
   /// - If any modified elments go outside of `0..1 << self.bpe`. This is only
   ///   checked with debug assertions enabled.
   pub fn shift_all_above(&mut self, sep: u32, shit_amount: i32) {}
+  /// Increases the number of bits per entry by `amount`. This will copy all of
+  /// the internal data, and is generally a very slow operation.
+  ///
+  /// # Panics
+  /// - If `increase` or `self.bpe + increase` is larger than 31. We could go to
+  ///   64, but [`shift_all_above`](Self::shift_all_above) takes an `i32`, so I
+  ///   have choosen to cap `bpe` at 31. This is only checked with debug
+  ///   assertions enabled. This is because in any normal situation, the Section
+  ///   storing this bit array will never try to go above 14 bits per element
+  ///   (that number will change in the future, but it will stay small).
+  pub fn increase_bpe(&mut self, increase: u8) {
+    #[cfg(debug_assertions)]
+    assert!(increase <= 31 || self.bpe + increase <= 31, "increase is too large");
+  }
 }
