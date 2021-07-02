@@ -21,6 +21,23 @@ impl BitArray {
     BitArray { bpe, data: vec![0; 16 * 16 * 16 * bpe as usize / 64] }
   }
 
+  /// This is useful for debugging internal data; it will print out the number
+  /// in binary format, with spaces inserted between every element.
+  fn dbg_binary(&self, name: &str, val: u64) {
+    println!(
+      "{}: {}",
+      name,
+      format!("{:064b}", val)
+        .chars()
+        .collect::<Vec<char>>()
+        .rchunks(self.bpe.into())
+        .map(|arr| arr.into_iter().collect::<String>())
+        .rev()
+        .collect::<Vec<String>>()
+        .join(" ")
+    );
+  }
+
   /// Writes an element into the bit array.
   ///
   /// # Panics
@@ -40,6 +57,58 @@ impl BitArray {
       value,
       1 << self.bpe
     );
+    let bpe: usize = self.bpe.into();
+    let lo: usize = (index * bpe) / 64;
+    let hi: usize = (index * bpe + bpe - 1) / 64;
+    // The bit offset of the smallest bit of lo into the long
+    let shift = (index * bpe) as u32 % 64;
+    let mask = (1 << bpe) - 1;
+    if lo == hi {
+      // The value only spans one long
+      let l = self.data.get_unchecked_mut(lo);
+      *l &= !(mask << shift);
+      *l |= u64::from(value) << shift;
+    } else {
+      // We have a situation where we want to set a number, and we need to split it
+      // into two.
+      //
+      // In this situation, we are working with a Vec<u8>, instead of a Vec<u64>, so
+      // I'm going to use 8 where 64 should be.
+      //
+      // shift = 6 (used to left shift L)
+      // 8 - shift = 2 (used to right shift H, and to make the lo mask)
+      // bpe - (8 - shift) = 3 (this is used to make the hi mask)
+      //
+      // L = v << shift;
+      // H = v >> (8 - shift);
+      //
+      // value ->       H H H | L L
+      // long  -> 2 2 2 2 2 2 | 1 1 1 1 1 1
+      //
+      // After the move:
+      //
+      // lo -> H H 0 0 0
+      // hi -> 0 0 L L L
+      //
+      // So we need to shift L to the right by `shift`, and shift H to the left by
+      // `64 - shift`.
+
+      // This mask will match L L 0 0 0
+      let lo_mask = 1_u64.wrapping_shl(64 - shift) - 1 << (bpe as u32 - (64 - shift));
+      // This mask will match 0 0 H H H
+      let hi_mask = 1_u64.wrapping_shl(bpe as u32 - (64 - shift)) - 1;
+
+      {
+        let l = self.data.get_unchecked_mut(lo);
+        *l &= !lo_mask;
+        *l |= value.wrapping_shl(shift) as u64;
+      }
+      {
+        let h = self.data.get_unchecked_mut(hi);
+        *h &= !hi_mask;
+        *h |= value.wrapping_shr(64 - shift) as u64;
+      }
+    }
   }
   /// Reads an element from the array. The returned value will always be within
   /// `0..1 << self.bpe`
@@ -178,7 +247,38 @@ mod tests {
 
     for i in 0..4096 {
       unsafe {
-        assert_eq!(arr.get(i), 31, "expected 31 at {}", i);
+        assert_eq!(arr.get(i), 31, "failed at {}", i);
+      }
+    }
+
+    let data: Vec<u64> = vec![u64::MAX; 4096 * 4 / 64];
+    let arr = BitArray { bpe: 4, data };
+
+    for i in 0..4096 {
+      unsafe {
+        assert_eq!(arr.get(i), 15, "failed at {}", i);
+      }
+    }
+
+    let data: Vec<u64> = vec![0x7777777777777777; 4096 * 4 / 64];
+    let arr = BitArray { bpe: 4, data };
+
+    for i in 0..4096 {
+      unsafe {
+        assert_eq!(arr.get(i), 7, "failed at {}", i);
+      }
+    }
+  }
+
+  // This test assumes that get has passed
+  #[test]
+  fn test_set() {
+    let mut arr = BitArray::new(5);
+
+    for i in 0..4096 {
+      unsafe {
+        arr.set(i, i as u32 % 32);
+        assert_eq!(arr.get(i), i as u32 % 32, "failed at index {}", i);
       }
     }
   }
