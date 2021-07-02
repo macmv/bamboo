@@ -5,6 +5,13 @@ use common::{
 use criterion::{criterion_group, criterion_main, Criterion};
 
 pub fn paletted(c: &mut Criterion) {
+  // # Test results
+  //
+  // Initial results (with libtest):
+  // Opt level:        0        |       1      |      2     |
+  // Fill manual: ~2,000,000 ns  ~1,200,000 ns   ~100,000ns
+  // Fill:        ~9,000 ns      ~5,000 ns       ~300ns
+  //
   c.bench_function("paletted fill auto", |b| {
     let mut s = paletted::Section::new();
     let mut i = 0_u8;
@@ -29,6 +36,13 @@ pub fn paletted(c: &mut Criterion) {
   });
 }
 pub fn fixed(c: &mut Criterion) {
+  // # Test results
+  //
+  // Original results (using libtest):
+  // Optlevel:          0    |     1     |    2
+  // Fill:        ~200,000ns   ~78,000ns   ~5,000ns
+  // Fill manual: ~200,000ns   ~76,000ns   ~7,500ns
+  //
   c.bench_function("fixed fill auto", |b| {
     let mut s = fixed::Section::new();
     let mut i = 0_u8;
