@@ -1,10 +1,10 @@
-mod fixed;
-mod paletted;
+pub mod fixed;
+pub mod paletted;
 mod section;
 
 use std::{cmp, collections::HashMap};
 
-use section::Section;
+pub use section::Section;
 
 use crate::{
   math::{Pos, PosError},
@@ -49,8 +49,8 @@ impl Chunk {
     }
     if self.sections[index].is_none() {
       self.sections[index] = Some(match &self.kind {
-        ChunkKind::Paletted => paletted::Section::new(),
-        ChunkKind::Fixed => fixed::Section::new(),
+        ChunkKind::Paletted => Box::new(paletted::Section::new()),
+        ChunkKind::Fixed => Box::new(fixed::Section::new()),
       });
     }
     match &mut self.sections[index] {
@@ -79,8 +79,8 @@ impl Chunk {
     for index in min_index..=max_index {
       if self.sections[index].is_none() {
         self.sections[index] = Some(match &self.kind {
-          ChunkKind::Paletted => paletted::Section::new(),
-          ChunkKind::Fixed => fixed::Section::new(),
+          ChunkKind::Paletted => Box::new(paletted::Section::new()),
+          ChunkKind::Fixed => Box::new(fixed::Section::new()),
         });
       }
       match &mut self.sections[index] {

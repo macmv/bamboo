@@ -32,8 +32,8 @@ impl Default for Section {
 }
 
 impl Section {
-  pub(super) fn new() -> Box<Self> {
-    Box::new(Self::default())
+  pub fn new() -> Self {
+    Self::default()
   }
   fn validate_proto(pb: &proto::chunk::Section) {
     if pb.bits_per_block < 4 || pb.bits_per_block > 64 {
@@ -110,11 +110,13 @@ impl Section {
     (pos.y() << 8 | pos.z() << 4 | pos.x()) as usize
   }
   /// Writes a single palette id into self.data.
+  #[inline(always)]
   unsafe fn set_palette(&mut self, pos: Pos, id: u32) {
     self.data.set(self.index(pos), id);
   }
   /// Returns the palette id at the given position. This only reads from
   /// `self.data`.
+  #[inline(always)]
   unsafe fn get_palette(&self, pos: Pos) -> u32 {
     self.data.get(self.index(pos))
   }

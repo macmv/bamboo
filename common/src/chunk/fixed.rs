@@ -12,8 +12,8 @@ pub struct Section {
 }
 
 impl Section {
-  pub(super) fn new() -> Box<Self> {
-    Box::new(Section { data: [0; 16 * 16 * 16] })
+  pub fn new() -> Self {
+    Section { data: [0; 16 * 16 * 16] }
   }
   pub(super) fn from_latest_proto(pb: proto::chunk::Section) -> Box<Self> {
     assert_eq!(pb.data.len(), 4096 / 4, "chunk data is the wrong length");
@@ -173,47 +173,47 @@ mod tests {
     assert_eq!(s.get_block(Pos::new(0, 0, 1)).unwrap(), 20);
   }
 
-  /// # Test results
-  ///
-  /// Opt level 3 did not change the results much. After using
-  /// https://rust.godbolt.org/, I realized that without any optimizations,
-  /// iterating over anything is very, very slow.
-  ///
-  /// Original results:
-  /// ```
-  /// Optlevel:          0    |     1     |    2
-  /// Fill:        ~200,000ns   ~78,000ns   ~5,000ns
-  /// Fill manual: ~200,000ns   ~76,000ns   ~7,500ns
-  /// ```
-  ///
-  /// After some optimizations, I was able to get fill down to ~130,000ns, and
-  /// fill manual to ~160,000ns. Because I run debug builds a lot, I am going to
-  /// keep the unsafe code, as it is very hard to make this amount of code
-  /// unsound.
+  // # Test results
+  //
+  // Opt level 3 did not change the results much. After using
+  // https://rust.godbolt.org/, I realized that without any optimizations,
+  // iterating over anything is very, very slow.
+  //
+  // Original results:
+  // ```
+  // Optlevel:          0    |     1     |    2
+  // Fill:        ~200,000ns   ~78,000ns   ~5,000ns
+  // Fill manual: ~200,000ns   ~76,000ns   ~7,500ns
+  // ```
+  //
+  // After some optimizations, I was able to get fill down to ~130,000ns, and
+  // fill manual to ~160,000ns. Because I run debug builds a lot, I am going to
+  // keep the unsafe code, as it is very hard to make this amount of code
+  // unsound.
 
-  #[bench]
-  fn fill_manual(b: &mut Bencher) {
-    let mut s = Section::new();
-    let mut block = 0u8;
-    b.iter(|| {
-      for y in 0..16 {
-        for z in 0..16 {
-          for x in 0..16 {
-            s.set_block(Pos::new(x, y, z), block.into()).unwrap();
-          }
-        }
-      }
-      block = block.wrapping_add(1);
-    });
-  }
+  // #[bench]
+  // fn fill_manual(b: &mut Bencher) {
+  //   let mut s = Section::new();
+  //   let mut block = 0u8;
+  //   b.iter(|| {
+  //     for y in 0..16 {
+  //       for z in 0..16 {
+  //         for x in 0..16 {
+  //           s.set_block(Pos::new(x, y, z), block.into()).unwrap();
+  //         }
+  //       }
+  //     }
+  //     block = block.wrapping_add(1);
+  //   });
+  // }
 
-  #[bench]
-  fn fill(b: &mut Bencher) {
-    let mut s = Section::new();
-    let mut block = 0u8;
-    b.iter(|| {
-      s.fill(Pos::new(0, 0, 0), Pos::new(15, 15, 15), block.into()).unwrap();
-      block = block.wrapping_add(1);
-    });
-  }
+  // #[bench]
+  // fn fill(b: &mut Bencher) {
+  //   let mut s = Section::new();
+  //   let mut block = 0u8;
+  //   b.iter(|| {
+  //     s.fill(Pos::new(0, 0, 0), Pos::new(15, 15, 15), block.into()).unwrap();
+  //     block = block.wrapping_add(1);
+  //   });
+  // }
 }
