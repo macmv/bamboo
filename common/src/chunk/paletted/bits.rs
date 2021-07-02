@@ -205,6 +205,12 @@ impl BitArray {
       // self.get() will always return a positive `i32`.
       let v = self.get(i) as i32;
       if v > sep as i32 {
+        #[cfg(debug_assertions)]
+        match v.checked_add(shift_amount) {
+          Some(res) => self.set(i, res as u32),
+          None => panic!("while shifting, tried to add {} to {} (got overflow)", shift_amount, v),
+        }
+        #[cfg(not(debug_assertions))]
         self.set(i, (v + shift_amount) as u32);
       }
     }
