@@ -247,6 +247,10 @@ impl BitArray {
     self.data = new.data;
     self.bpe = new.bpe;
   }
+  /// Clones the internal data. Used for generating protobufs.
+  pub fn clone_data(&self) -> Vec<u64> {
+    self.data.clone()
+  }
 }
 
 #[cfg(test)]
