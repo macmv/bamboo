@@ -17,7 +17,13 @@ impl BitArray {
   /// number of bits per element in the array. The length of this array will
   /// always be 4096. For normal operation of a chunk, `bpe` should always start
   /// at 4.
+  ///
+  /// # Panics
+  /// - If `bpe` is larger than 31. We could go to 64, but
+  ///   [`shift_all_above`](Self::shift_all_above) takes an `i32`, so I have
+  ///   chosen to cap `bpe` at 31.
   pub fn new(bpe: u8) -> Self {
+    assert!(bpe < 32, "bpe of {} is too large (must be less than 32)", bpe);
     BitArray { bpe, data: vec![0; 16 * 16 * 16 * bpe as usize / 64] }
   }
 
@@ -280,12 +286,15 @@ mod tests {
   // This test assumes that get has passed
   #[test]
   fn test_set() {
-    let mut arr = BitArray::new(5);
+    for bpe in 2..32 {
+      let mut arr = BitArray::new(bpe);
+      let max = 1 << bpe;
 
-    for i in 0..4096 {
-      unsafe {
-        arr.set(i, i as u32 % 32);
-        assert_eq!(arr.get(i), i as u32 % 32, "failed at index {}", i);
+      for i in 0..4096 {
+        unsafe {
+          arr.set(i, i as u32 % max);
+          assert_eq!(arr.get(i), i as u32 % max, "failed at index {}", i);
+        }
       }
     }
   }
