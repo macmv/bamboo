@@ -1,3 +1,5 @@
+use std::fmt;
+
 /// A resizable element vector. It is always 4096 items long, as that is the
 /// safest way to go about things. Any value of bits per block, multiplied by
 /// 4096, will always go evenly into 64, which means we never have excess space
@@ -5,11 +7,23 @@
 ///
 /// This is used to separate out some of the nasty bitwise operations, and make
 /// the [`Section`](super::Section) code a lot cleaner.
+#[derive(Clone)]
 pub struct BitArray {
   /// Bits per entry
   bpe:  u8,
   /// The actual data
   data: Vec<u64>,
+}
+
+impl fmt::Debug for BitArray {
+  fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+    writeln!(f, "BitArray {{")?;
+    for v in &self.data {
+      self.dbg_binary(f, *v);
+    }
+    writeln!(f, "}}")?;
+    Ok(())
+  }
 }
 
 impl BitArray {
@@ -29,11 +43,10 @@ impl BitArray {
 
   /// This is useful for debugging internal data; it will print out the number
   /// in binary format, with spaces inserted between every element.
-  #[cfg(debug_assertions)]
-  fn dbg_binary(&self, name: &str, val: u64) {
-    println!(
-      "{}: {}",
-      name,
+  fn dbg_binary(&self, f: &mut fmt::Formatter, val: u64) {
+    writeln!(
+      f,
+      "  {}",
       format!("{:064b}", val)
         .chars()
         .collect::<Vec<char>>()
@@ -248,8 +261,12 @@ impl BitArray {
     self.bpe = new.bpe;
   }
   /// Clones the internal data. Used for generating protobufs.
-  pub fn clone_data(&self) -> Vec<u64> {
+  pub fn clone_inner(&self) -> Vec<u64> {
     self.data.clone()
+  }
+  /// Returns the number of bits that every element in this array uses.
+  pub fn bpe(&self) -> u8 {
+    self.bpe
   }
 }
 
