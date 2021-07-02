@@ -43,98 +43,34 @@ fn fill(b: &mut Bencher) {
 #[test]
 fn test_index() {
   let s = Section::default();
-  assert_eq!(s.index(Pos::new(0, 0, 0)), (0, 0, 0));
-  assert_eq!(s.index(Pos::new(1, 0, 0)), (0, 0, 4));
-  assert_eq!(s.index(Pos::new(2, 0, 0)), (0, 0, 8));
-  assert_eq!(s.index(Pos::new(0, 0, 1)), (1, 1, 0));
-  assert_eq!(s.index(Pos::new(15, 15, 15)), (255, 255, 60));
-
-  let s = Section { bits_per_block: 5, ..Default::default() };
-  assert_eq!(s.index(Pos::new(0, 0, 0)), (0, 0, 0));
-  assert_eq!(s.index(Pos::new(1, 0, 0)), (0, 0, 5));
-  // The id will be split between two longs
-  assert_eq!(s.index(Pos::new(12, 0, 0)), (0, 1, 60));
-  assert_eq!(s.index(Pos::new(13, 0, 0)), (1, 1, 1));
-}
-#[test]
-fn test_set_palette() {
-  let mut s = Section::default();
-  // Sanity check
-  s.set_palette(Pos::new(0, 0, 0), 0xf);
-  assert_eq!(s.data[0], 0xf);
-  // Sanity check
-  s.set_palette(Pos::new(2, 0, 0), 0xf);
-  assert_eq!(s.data[0], 0xf0f);
-  // Should work up to the edge of the long
-  s.set_palette(Pos::new(15, 0, 0), 0xf);
-  assert_eq!(s.data[0], 0xf000000000000f0f);
-  // Clearing bits should work
-  s.set_palette(Pos::new(15, 0, 0), 0x3);
-  assert_eq!(s.data[0], 0x3000000000000f0f);
-
-  let mut s = Section { bits_per_block: 5, ..Default::default() };
-  // Sanity check
-  s.set_palette(Pos::new(0, 0, 0), 0x1f);
-  assert_eq!(s.data[0], 0x1f);
-  // Sanity check
-  s.set_palette(Pos::new(2, 0, 0), 0x1f);
-  assert_eq!(s.data[0], 0x1f << 10 | 0x1f);
-  // Should split the id correctly
-  s.set_palette(Pos::new(12, 0, 0), 0x1f);
-  assert_eq!(s.data[0], 0x1f << 60 | 0x1f << 10 | 0x1f);
-  assert_eq!(s.data[1], 0x1f >> 4);
-  s.set_palette(Pos::new(25, 0, 0), 0x1f);
-  assert_eq!(s.data[1], 0x1f << 61 | 0x1f >> 4);
-  assert_eq!(s.data[2], 0x1f >> 3);
-  // Clearing bits should work
-  s.set_palette(Pos::new(0, 0, 0), 0x3);
-  assert_eq!(s.data[0], 0x1f << 60 | 0x1f << 10 | 0x03);
-}
-#[test]
-fn test_get_palette() {
-  let mut data = vec![0; 16 * 16 * 16 * 4 / 64];
-  data[0] = 0xfaf;
-  let s = Section { data, ..Default::default() };
-  // Sanity check
-  assert_eq!(s.get_palette(Pos::new(0, 0, 0)), 0xf);
-  assert_eq!(s.get_palette(Pos::new(1, 0, 0)), 0xa);
-  assert_eq!(s.get_palette(Pos::new(2, 0, 0)), 0xf);
-  assert_eq!(s.get_palette(Pos::new(3, 0, 0)), 0x0);
-
-  let mut data = vec![0; 16 * 16 * 16 * 4 / 64];
-  data[0] = 0x1f << 60 | 0x1f << 10 | 0x1f;
-  data[1] = 0x1f >> 4;
-  let s = Section { bits_per_block: 5, data, ..Default::default() };
-  // Make sure it works with split values
-  assert_eq!(s.get_palette(Pos::new(0, 0, 0)), 0x1f);
-  assert_eq!(s.get_palette(Pos::new(1, 0, 0)), 0x0);
-  assert_eq!(s.get_palette(Pos::new(2, 0, 0)), 0x1f);
-  assert_eq!(s.get_palette(Pos::new(12, 0, 0)), 0x1f);
+  assert_eq!(s.index(Pos::new(0, 0, 0)), 0);
+  assert_eq!(s.index(Pos::new(1, 0, 0)), 1);
+  assert_eq!(s.index(Pos::new(2, 0, 0)), 2);
+  assert_eq!(s.index(Pos::new(0, 0, 1)), 16);
+  assert_eq!(s.index(Pos::new(15, 15, 15)), 4095);
 }
 #[test]
 fn test_increase_bits_per_block() {
-  let mut s = Section::default();
-  // Place some blocks
-  s.set_palette(Pos::new(0, 0, 0), 0xf);
-  s.set_palette(Pos::new(1, 0, 0), 0x0);
-  s.set_palette(Pos::new(2, 0, 0), 0xf);
-  s.set_palette(Pos::new(3, 0, 0), 0xa);
-  // We want a split value
-  s.set_palette(Pos::new(25, 0, 0), 0xf);
+  unsafe {
+    let mut s = Section::default();
+    // Place some blocks
+    s.set_palette(Pos::new(0, 0, 0), 0xf);
+    s.set_palette(Pos::new(1, 0, 0), 0x0);
+    s.set_palette(Pos::new(2, 0, 0), 0xf);
+    s.set_palette(Pos::new(3, 0, 0), 0xa);
+    // We want a split value
+    s.set_palette(Pos::new(25, 0, 0), 0xf);
 
-  s.increase_bits_per_block();
-  // Sanity check
-  assert_eq!(s.bits_per_block, 5);
-  // Get blocks should work
-  assert_eq!(s.get_palette(Pos::new(0, 0, 0)), 0xf);
-  assert_eq!(s.get_palette(Pos::new(1, 0, 0)), 0x0);
-  assert_eq!(s.get_palette(Pos::new(2, 0, 0)), 0xf);
-  assert_eq!(s.get_palette(Pos::new(3, 0, 0)), 0xa);
-  assert_eq!(s.get_palette(Pos::new(25, 0, 0)), 0xf);
-  // Make sure the data is correct
-  assert_eq!(s.data[0], 0xa << 15 | 0xf << 10 | 0xf);
-  assert_eq!(s.data[1], 0xf << 61);
-  assert_eq!(s.data[2], 0xf >> 3);
+    s.data.increase_bpe(1);
+    // Sanity check
+    assert_eq!(s.data.bpe(), 5);
+    // Get blocks should work
+    assert_eq!(s.get_palette(Pos::new(0, 0, 0)), 0xf);
+    assert_eq!(s.get_palette(Pos::new(1, 0, 0)), 0x0);
+    assert_eq!(s.get_palette(Pos::new(2, 0, 0)), 0xf);
+    assert_eq!(s.get_palette(Pos::new(3, 0, 0)), 0xa);
+    assert_eq!(s.get_palette(Pos::new(25, 0, 0)), 0xf);
+  }
 }
 #[test]
 fn test_insert() {
@@ -165,21 +101,21 @@ fn test_shift_data_up() -> Result<(), PosError> {
   // Tests shifting all of the block data (this should happen during insert())
 
   // This section has two blocks placed, one with id 5, and the other with id 10.
-  let mut data = vec![0; 4096];
+  let mut data = vec![0; 4096 * 4 / 64];
   data[0] = 0x1002;
   let mut s = Section {
     palette: vec![0, 5, 10],
     block_amounts: vec![4096, 0, 0],
     reverse_palette: vec![(0, 0), (5, 1), (10, 2)].into_iter().collect(),
-    data,
+    data: BitArray::from_data(4, data),
     ..Default::default()
   };
   // Should shift the block data up.
   s.insert(3);
-  assert_eq!(s.data[0], 0x2003);
+  assert_eq!(s.data.clone_inner()[0], 0x2003);
   // Should shift some of the block data up.
   s.insert(7);
-  assert_eq!(s.data[0], 0x2004);
+  assert_eq!(s.data.clone_inner()[0], 0x2004);
   Ok(())
 }
 #[test]
@@ -219,18 +155,18 @@ fn test_shift_data_down() -> Result<(), PosError> {
   // This section has one blocks placed with id 10. This is the situation where
   // data has just been modified to no longer contain 5, and we want to remove it
   // from the palette now.
-  let mut data = vec![0; 4096];
+  let mut data = vec![0; 4096 * 4 / 64];
   data[0] = 0x2;
   let mut s = Section {
     palette: vec![0, 5, 10],
     block_amounts: vec![4096, 0, 0],
     reverse_palette: vec![(0, 0), (5, 1), (10, 2)].into_iter().collect(),
-    data,
+    data: BitArray::from_data(4, data),
     ..Default::default()
   };
   // Should shift the block data down.
   s.remove(1);
-  assert_eq!(s.data[0], 0x1);
+  assert_eq!(s.data.clone_inner()[0], 0x1);
   // Removing 1 again undefined behavior, as 1 is in the block data now. remove()
   // should never be called with the given palette id present.
   Ok(())
@@ -312,7 +248,7 @@ fn test_set_all() -> Result<(), PosError> {
       }
     }
   }
-  assert_eq!(s.data, vec![0x1111111111111111; 16 * 16 * 16 * 4 / 64]);
+  assert_eq!(s.data.clone_inner(), vec![0x1111111111111111; 16 * 16 * 16 * 4 / 64]);
   assert_eq!(s.palette, vec![0, 20]);
   assert_eq!(s.block_amounts, vec![0, 4096]);
 
@@ -320,7 +256,7 @@ fn test_set_all() -> Result<(), PosError> {
 
   let mut data = vec![0x2222222222222222; 16 * 16 * 16 * 4 / 64];
   data[0] = 0x2222222222222221;
-  assert_eq!(s.data, data);
+  assert_eq!(s.data.clone_inner(), data);
   assert_eq!(s.palette, vec![0, 5, 20]);
   assert_eq!(s.block_amounts, vec![0, 1, 4095]);
 
@@ -330,7 +266,7 @@ fn test_set_all() -> Result<(), PosError> {
 fn test_fill() -> Result<(), PosError> {
   let mut s = Section::default();
   s.fill(Pos::new(0, 0, 0), Pos::new(15, 15, 15), 20)?;
-  assert_eq!(s.data, vec![0x1111111111111111; 16 * 16 * 16 * 4 / 64]);
+  assert_eq!(s.data.clone_inner(), vec![0x1111111111111111; 16 * 16 * 16 * 4 / 64]);
   assert_eq!(s.palette, vec![0, 20]);
   assert_eq!(s.block_amounts, vec![0, 4096]);
 
@@ -338,7 +274,7 @@ fn test_fill() -> Result<(), PosError> {
 
   let mut data = vec![0x2222222222222222; 16 * 16 * 16 * 4 / 64];
   data[0] = 0x2222222222222221;
-  assert_eq!(s.data, data);
+  assert_eq!(s.data.clone_inner(), data);
   assert_eq!(s.palette, vec![0, 5, 20]);
   assert_eq!(s.block_amounts, vec![0, 1, 4095]);
 
@@ -369,12 +305,12 @@ fn test_from_proto() {
   pb.palette.push(5);
 
   let s = Section::from_latest_proto(pb.clone());
-  assert_eq!(s.data, vec![0x1111111111111111; 16 * 16 * 16 * 4 / 64]);
+  assert_eq!(s.data.clone_inner(), vec![0x1111111111111111; 16 * 16 * 16 * 4 / 64]);
   assert_eq!(s.palette, vec![0, 5]);
   assert_eq!(s.block_amounts, vec![0, 4096]);
 
   let s = Section::from_old_proto(pb, &|val| val + 5);
-  assert_eq!(s.data, vec![0x1111111111111111; 16 * 16 * 16 * 4 / 64]);
+  assert_eq!(s.data.clone_inner(), vec![0x1111111111111111; 16 * 16 * 16 * 4 / 64]);
   assert_eq!(s.palette, vec![5, 10]);
   assert_eq!(s.block_amounts, vec![0, 4096]);
 }

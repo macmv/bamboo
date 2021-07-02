@@ -19,7 +19,7 @@ impl fmt::Debug for BitArray {
   fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
     writeln!(f, "BitArray {{")?;
     for v in &self.data {
-      self.dbg_binary(f, *v);
+      self.dbg_binary(f, *v)?;
     }
     writeln!(f, "}}")?;
     Ok(())
@@ -65,7 +65,7 @@ impl BitArray {
 
   /// This is useful for debugging internal data; it will print out the number
   /// in binary format, with spaces inserted between every element.
-  fn dbg_binary(&self, f: &mut fmt::Formatter, val: u64) {
+  fn dbg_binary(&self, f: &mut fmt::Formatter, val: u64) -> fmt::Result {
     writeln!(
       f,
       "  {}",
@@ -77,7 +77,7 @@ impl BitArray {
         .rev()
         .collect::<Vec<String>>()
         .join(" ")
-    );
+    )
   }
 
   /// Writes an element into the bit array.
@@ -226,6 +226,9 @@ impl BitArray {
   /// neither of these arguments are indices. Both of these parameters operate
   /// on the values within the array, not where they are.
   ///
+  /// Note: `sep` is not inclusive. Only values that are greater than sep will
+  /// be changed.
+  ///
   /// # Panics
   /// - If `sep` is outside of `0..1 << self.bpe`
   /// - If `shift_amount` is outside of `-(1 << self.bpe) + 1..1 << self.bpe`.
@@ -359,6 +362,68 @@ mod tests {
           assert_eq!(arr.get(i), i as u32 % max, "failed at index {}", i);
         }
       }
+    }
+  }
+
+  // Below are old Section tests that fit better here now.
+
+  #[test]
+  fn test_set_palette() {
+    unsafe {
+      let mut a = BitArray::new(4);
+      // Sanity check
+      a.set(0, 0xf);
+      assert_eq!(a.data[0], 0xf);
+      // Sanity check
+      a.set(2, 0xf);
+      assert_eq!(a.data[0], 0xf0f);
+      // Should work up to the edge of the long
+      a.set(15, 0xf);
+      assert_eq!(a.data[0], 0xf000000000000f0f);
+      // Clearing bits should work
+      a.set(15, 0x3);
+      assert_eq!(a.data[0], 0x3000000000000f0f);
+
+      let mut a = BitArray::new(5);
+      // Sanity check
+      a.set(0, 0x1f);
+      assert_eq!(a.data[0], 0x1f);
+      // Sanity check
+      a.set(2, 0x1f);
+      assert_eq!(a.data[0], 0x1f << 10 | 0x1f);
+      // Should split the id correctly
+      a.set(12, 0x1f);
+      assert_eq!(a.data[0], 0x1f << 60 | 0x1f << 10 | 0x1f);
+      assert_eq!(a.data[1], 0x1f >> 4);
+      a.set(25, 0x1f);
+      assert_eq!(a.data[1], 0x1f << 61 | 0x1f >> 4);
+      assert_eq!(a.data[2], 0x1f >> 3);
+      // Clearing bits should work
+      a.set(0, 0x3);
+      assert_eq!(a.data[0], 0x1f << 60 | 0x1f << 10 | 0x03);
+    }
+  }
+  #[test]
+  fn test_get_palette() {
+    unsafe {
+      let mut data = vec![0; 16 * 16 * 16 * 4 / 64];
+      data[0] = 0xfaf;
+      let a = BitArray::from_data(4, data);
+      // Sanity check
+      assert_eq!(a.get(0), 0xf);
+      assert_eq!(a.get(1), 0xa);
+      assert_eq!(a.get(2), 0xf);
+      assert_eq!(a.get(3), 0x0);
+
+      let mut data = vec![0; 16 * 16 * 16 * 5 / 64];
+      data[0] = 0x1f << 60 | 0x1f << 10 | 0x1f;
+      data[1] = 0x1f >> 4;
+      let a = BitArray::from_data(5, data);
+      // Make sure it works with split values
+      assert_eq!(a.get(0), 0x1f);
+      assert_eq!(a.get(1), 0x0);
+      assert_eq!(a.get(2), 0x1f);
+      assert_eq!(a.get(12), 0x1f);
     }
   }
 }
