@@ -225,8 +225,10 @@ impl BitArray {
   ///
   /// All of these checks are  only performed with debug assertions enabled.
   /// This is because `Section` will never cause these checks to fail if it is
-  /// running normally. This is only unsafe with debug assertions disabled.
-  pub unsafe fn shift_all_above(&mut self, sep: u32, shift_amount: i32) {
+  /// running normally. This is not considered unsafe, because giving invalid
+  /// values for this will only cause bad data, but no undefined behavior or
+  /// invalid memory access.
+  pub fn shift_all_above(&mut self, sep: u32, shift_amount: i32) {
     #[cfg(debug_assertions)]
     assert!(
       sep < 1 << self.bpe,
@@ -243,16 +245,20 @@ impl BitArray {
       1 << self.bpe
     );
     for i in 0..4096 {
-      // self.get() will always return a positive `i32`.
-      let v = self.get(i) as i32;
+      // SAFETY: `i` is within 0..4096, so this is safe
+      let v = unsafe { self.get(i) as i32 };
       if v > sep as i32 {
         #[cfg(debug_assertions)]
         match v.checked_add(shift_amount) {
-          Some(res) => self.set(i, res as u32),
+          // SAFETY: `i` is within 0..4096, so this is safe
+          Some(res) => unsafe { self.set(i, res as u32) },
           None => panic!("while shifting, tried to add {} to {} (got overflow)", shift_amount, v),
         }
         #[cfg(not(debug_assertions))]
-        self.set(i, (v + shift_amount) as u32);
+        // SAFETY: `i` is within 0..4096, so this is safe
+        unsafe {
+          self.set(i, (v + shift_amount) as u32)
+        }
       }
     }
   }
@@ -272,6 +278,10 @@ impl BitArray {
   /// All of these checks are  only performed with debug assertions enabled.
   /// This is because `Section` will never cause these checks to fail if it is
   /// running normally. This is only unsafe with debug assertions disabled.
+  ///
+  /// # Safety
+  /// - This will cause undefined behavior if `self.bpe + increase` > 31. With
+  ///   debug assertions, this will fail with a panic.
   pub unsafe fn increase_bpe(&mut self, increase: u8) {
     #[cfg(debug_assertions)]
     assert!(increase <= 31 || self.bpe + increase <= 31, "increase is too large");
