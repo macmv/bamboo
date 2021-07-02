@@ -89,6 +89,11 @@ impl BitArray {
   /// All of these checks are  only performed with debug assertions enabled.
   /// This is because `Section` will never cause these checks to fail if it is
   /// running normally. This is only unsafe with debug assertions disabled.
+  ///
+  /// # Safety
+  /// - Passing in an index outside of `0..4096` will cause this to access
+  ///   invalid memory. This is checked with an assert when debug assertions are
+  ///   enabled.
   pub unsafe fn set(&mut self, index: usize, value: u32) {
     #[cfg(debug_assertions)]
     assert!(index < 4096, "index {} is too large (must be less than {})", index, 4096);
@@ -161,6 +166,11 @@ impl BitArray {
   /// All of these checks are  only performed with debug assertions enabled.
   /// This is because `Section` will never cause these checks to fail if it is
   /// running normally. This is only unsafe with debug assertions disabled.
+  ///
+  /// # Safety
+  /// - Passing in an index outside of `0..4096` will cause this to access
+  ///   invalid memory. This is checked with an assert when debug assertions are
+  ///   enabled.
   pub unsafe fn get(&self, index: usize) -> u32 {
     #[cfg(debug_assertions)]
     assert!(index < 4096, "index {} is too large (must be less than {})", index, 4096);
