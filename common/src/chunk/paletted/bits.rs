@@ -36,9 +36,31 @@ impl BitArray {
   /// - If `bpe` is larger than 31. We could go to 64, but
   ///   [`shift_all_above`](Self::shift_all_above) takes an `i32`, so I have
   ///   chosen to cap `bpe` at 31.
+  ///
+  /// This is checked all of the time, as invalid bpe will cause a lot of
+  /// problems.
   pub fn new(bpe: u8) -> Self {
     assert!(bpe < 32, "bpe of {} is too large (must be less than 32)", bpe);
-    BitArray { bpe, data: vec![0; 16 * 16 * 16 * bpe as usize / 64] }
+    BitArray { bpe, data: vec![0; 4096 * bpe as usize / 64] }
+  }
+
+  /// Creates a new bit array from the given data.
+  ///
+  /// # Panics
+  /// - If `bpe` is larger than 31.
+  /// - If the data length is not the expected length given the `bpe`. The
+  ///   expected length is `4096 * bpe / 64`.
+  ///
+  /// These are both checked all the time, as this function is typically used to
+  /// convert data from protobufs, which can have any data in them.
+  pub fn from_data(bpe: u8, data: Vec<u64>) -> Self {
+    assert!(bpe < 32, "bpe of {} is too large (must be less than 32)", bpe);
+    assert_eq!(
+      data.len(),
+      4096 * bpe as usize / 64,
+      "while creating a bit array from existing data, got incorrect len"
+    );
+    BitArray { bpe, data }
   }
 
   /// This is useful for debugging internal data; it will print out the number
