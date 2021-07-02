@@ -23,6 +23,7 @@ impl BitArray {
 
   /// This is useful for debugging internal data; it will print out the number
   /// in binary format, with spaces inserted between every element.
+  #[cfg(debug_assertions)]
   fn dbg_binary(&self, name: &str, val: u64) {
     println!(
       "{}: {}",
@@ -63,11 +64,12 @@ impl BitArray {
     // The bit offset of the smallest bit of lo into the long
     let shift = (index * bpe) as u32 % 64;
     let mask = (1 << bpe) - 1;
+    let value = u64::from(value);
     if lo == hi {
       // The value only spans one long
       let l = self.data.get_unchecked_mut(lo);
       *l &= !(mask << shift);
-      *l |= u64::from(value) << shift;
+      *l |= value << shift;
     } else {
       // We have a situation where we want to set a number, and we need to split it
       // into two.
@@ -79,34 +81,33 @@ impl BitArray {
       // 8 - shift = 2 (used to right shift H, and to make the lo mask)
       // bpe - (8 - shift) = 3 (this is used to make the hi mask)
       //
-      // L = v << shift;
-      // H = v >> (8 - shift);
+      // Before the move:
+      //
+      // v -> 0 0 0 H H L L L
+      //
+      // L = v << shift;       L L L 0 0 0 0 0
+      // H = v >> (8 - shift); 0 0 0 0 0 0 H H
       //
       // value ->       H H H | L L
       // long  -> 2 2 2 2 2 2 | 1 1 1 1 1 1
       //
-      // After the move:
-      //
-      // lo -> H H 0 0 0
-      // hi -> 0 0 L L L
-      //
-      // So we need to shift L to the right by `shift`, and shift H to the left by
+      // So we need to shift L to the left by `shift`, and shift H to the right by
       // `64 - shift`.
 
       // This mask will match L L 0 0 0
-      let lo_mask = 1_u64.wrapping_shl(64 - shift) - 1 << (bpe as u32 - (64 - shift));
+      let lo_mask = 1_u64.wrapping_shl(64 - shift) - 1 << shift;
       // This mask will match 0 0 H H H
       let hi_mask = 1_u64.wrapping_shl(bpe as u32 - (64 - shift)) - 1;
 
       {
         let l = self.data.get_unchecked_mut(lo);
         *l &= !lo_mask;
-        *l |= value.wrapping_shl(shift) as u64;
+        *l |= value.wrapping_shl(shift);
       }
       {
         let h = self.data.get_unchecked_mut(hi);
         *h &= !hi_mask;
-        *h |= value.wrapping_shr(64 - shift) as u64;
+        *h |= value.wrapping_shr(64 - shift);
       }
     }
   }
