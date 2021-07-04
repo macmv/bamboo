@@ -277,10 +277,10 @@ impl<R: StreamReader + Send, W: StreamWriter + Send> Conn<R, W> {
   }
 
   // Disconnects the client during authentication
-  async fn send_disconnect(&mut self, reason: &Chat) -> io::Result<()> {
+  async fn send_disconnect<C: Into<Chat>>(&mut self, reason: C) -> io::Result<()> {
     // Disconnect
     let mut out = tcp::Packet::new(0, self.ver);
-    out.write_str(&reason.to_json());
+    out.write_str(&reason.into().to_json());
     self.writer.write(out).await?;
     Ok(())
   }
@@ -288,9 +288,9 @@ impl<R: StreamReader + Send, W: StreamWriter + Send> Conn<R, W> {
   /// Generates the json status for the server
   fn build_status(&self) -> JsonStatus {
     let mut description = Chat::empty();
-    description.add("Sugarcane".into()).color(Color::BrightGreen);
-    description.add(" -- ".into()).color(Color::Gray);
-    description.add("Development mode".into()).color(Color::Blue);
+    description.add("Sugarcane").color(Color::BrightGreen);
+    description.add(" -- ").color(Color::Gray);
+    description.add("Development mode").color(Color::Blue);
     JsonStatus {
       version: JsonVersion { name: "1.8".into(), protocol: self.ver.id() as i32 },
       players: JsonPlayers {
@@ -508,7 +508,7 @@ impl<R: StreamReader + Send, W: StreamWriter + Send> Conn<R, W> {
                   Ok(v) => {
                     info!("got status code: {}", v.status());
                     if v.status() == StatusCode::NO_CONTENT {
-                      self.send_disconnect(&Chat::new("Invalid auth token! Please relogin (restart your game and launcher if you are running vanilla)".into())).await?;
+                      self.send_disconnect("Invalid auth token! Please relogin (restart your game and launcher if you are running vanilla)").await?;
                       // Disconnect client; they are not authenticated
                       return Ok(None);
                     }

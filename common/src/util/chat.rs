@@ -55,8 +55,8 @@ impl Chat {
   /// Adds a new chat section, with the given string. The returned reference is
   /// a reference into self, so it must be dropped before adding another
   /// section.
-  pub fn add(&mut self, msg: String) -> &mut Section {
-    let s = Section { text: msg, ..Default::default() };
+  pub fn add<M: Into<String>>(&mut self, msg: M) -> &mut Section {
+    let s = Section { text: msg.into(), ..Default::default() };
     let idx = self.sections.len();
     self.sections.push(s);
     self.sections.get_mut(idx).unwrap()
@@ -257,8 +257,8 @@ impl Section {
   }
   /// If a client shift-right-clicks on this section, the given text will be
   /// inserted into the chat box.
-  pub fn insertion(&mut self, text: String) -> &mut Self {
-    self.insertion = Some(text);
+  pub fn insertion<M: Into<String>>(&mut self, text: M) -> &mut Self {
+    self.insertion = Some(text.into());
     self
   }
   /// When the client clicks on this section, something will happen.
@@ -276,8 +276,8 @@ impl Section {
   /// chat sections in a row, you probably want to use [`Chat::add`] instead.
   /// This is instead useful for something like a hyperlink, where part of it
   /// should be a different color.
-  pub fn add_child(&mut self, msg: String) -> &mut Section {
-    let s = Section { text: msg, ..Default::default() };
+  pub fn add_child<M: Into<String>>(&mut self, msg: M) -> &mut Section {
+    let s = Section { text: msg.into(), ..Default::default() };
     let idx = self.extra.len();
     self.extra.push(s);
     self.extra.get_mut(idx).unwrap()

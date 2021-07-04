@@ -71,15 +71,12 @@ impl Connection {
           let message = p.get_str("message");
 
           let mut msg = Chat::empty();
-          msg.add("<".into());
-          msg.add(player.username().into()).color(Color::BrightGreen).on_hover(
-            HoverEvent::ShowText(format!(
-              "wow it is almost like {} sent this message",
-              player.username()
-            )),
-          );
-          msg.add("> ".into());
-          msg.add(message.into());
+          msg.add("<");
+          msg.add(player.username()).color(Color::BrightGreen).on_hover(HoverEvent::ShowText(
+            format!("wow it is almost like {} sent this message", player.username()),
+          ));
+          msg.add("> ");
+          msg.add(message);
           player.world().broadcast(&msg).await;
         }
         sb::ID::SetCreativeSlot => {

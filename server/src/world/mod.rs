@@ -102,8 +102,8 @@ impl World {
         let mut header = Chat::empty();
         let mut footer = Chat::empty();
 
-        header.add("big gaming".into()).color(Color::Blue);
-        footer.add("mspt: ".into());
+        header.add("big gaming\n").color(Color::Blue);
+        footer.add("\nmspt: ");
         let mspt = self.mspt.swap(0, Ordering::SeqCst) / 20;
         footer.add(format!("{}", mspt)).color(if mspt > 50 {
           Color::Red
