@@ -22,6 +22,7 @@ mod parse;
 pub use enums::{Arg, Parser, StringType};
 pub use parse::ParseError;
 
+use common::net::cb;
 use std::{collections::HashMap, sync::Mutex};
 
 /// All of the commands on a server. This is a table of all the commands that
@@ -33,11 +34,23 @@ pub struct CommandTree {
 }
 
 impl CommandTree {
+  /// Creates an empty command tree. This is called whenever a `World` is
+  /// created.
   pub fn new() -> CommandTree {
     CommandTree { commands: Mutex::new(HashMap::new()) }
   }
+  /// Adds a new command to the tree. Any new players that join will be able to
+  /// execute this command. This will also update the `/help` output, and
+  /// include the command syntax/description.
   pub fn add(&self, c: Command) {
     self.commands.lock().unwrap().insert(c.name().into(), c);
+  }
+  /// Serializes the entire command tree. This will be called any time a player
+  /// joins.
+  pub fn serialize(&self) -> cb::Packet {
+    let mut out = cb::Packet::new(cb::ID::DeclareCommands);
+    // TODO: Serialize commands
+    out
   }
 }
 
