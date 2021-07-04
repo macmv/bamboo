@@ -44,8 +44,8 @@ pub struct Chat {
 impl Chat {
   /// Creates a new Chat message. This will contain a single section, with the
   /// given text set. No formatting will be applied.
-  pub fn new(msg: String) -> Self {
-    Chat { sections: vec![Section { text: msg, ..Default::default() }] }
+  pub fn new<M: Into<String>>(msg: M) -> Self {
+    Chat { sections: vec![Section { text: msg.into(), ..Default::default() }] }
   }
   /// Creates a new Chat message, with no sections.
   pub fn empty() -> Self {
