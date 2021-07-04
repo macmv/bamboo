@@ -131,9 +131,7 @@ impl World {
     {
       let mut p = self.players.lock().await;
       if p.contains_key(&player.id()) {
-        player
-          .disconnect(&Chat::new("Another player with the same id is already connected!"))
-          .await;
+        player.disconnect("Another player with the same id is already connected!").await;
         return;
       }
       p.insert(player.id(), player.clone());

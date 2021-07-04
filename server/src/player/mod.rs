@@ -212,9 +212,9 @@ impl Player {
   }
   /// Disconnects the player. The given chat message will be shown on the
   /// loading screen.
-  pub async fn disconnect(&self, msg: &Chat) {
+  pub async fn disconnect<C: Into<Chat>>(&self, msg: C) {
     let mut out = cb::Packet::new(cb::ID::KickDisconnect);
-    out.set_str("reason", msg.to_json());
+    out.set_str("reason", msg.into().to_json());
     self.conn().send(out).await;
   }
 
