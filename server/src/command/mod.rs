@@ -18,11 +18,11 @@
 //! [`Parser`] type for details on the various parsers.
 mod enums;
 mod parse;
+mod serialize;
 
 pub use enums::{Arg, Parser, StringType};
 pub use parse::ParseError;
 
-use common::net::cb;
 use std::{collections::HashMap, sync::Mutex};
 
 /// All of the commands on a server. This is a table of all the commands that
@@ -44,13 +44,6 @@ impl CommandTree {
   /// include the command syntax/description.
   pub fn add(&self, c: Command) {
     self.commands.lock().unwrap().insert(c.name().into(), c);
-  }
-  /// Serializes the entire command tree. This will be called any time a player
-  /// joins.
-  pub fn serialize(&self) -> cb::Packet {
-    let mut out = cb::Packet::new(cb::ID::DeclareCommands);
-    // TODO: Serialize commands
-    out
   }
 }
 
