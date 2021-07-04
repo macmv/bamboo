@@ -210,6 +210,13 @@ impl Player {
     out.set_byte("position", 2); // Hotbar, not chat box or system message
     self.conn().send(out).await;
   }
+  /// Disconnects the player. The given chat message will be shown on the
+  /// loading screen.
+  pub async fn disconnect(&self, msg: &Chat) {
+    let mut out = cb::Packet::new(cb::ID::KickDisconnect);
+    out.set_str("reason", msg.to_json());
+    self.conn().send(out).await;
+  }
 
   /// Updates the player's position/velocity. This will apply gravity, and do
   /// collision checks. Should never be called at a different rate than the

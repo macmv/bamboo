@@ -128,7 +128,16 @@ impl World {
   async fn new_player(self: Arc<Self>, player: Player) {
     let conn = player.clone_conn();
     let player = Arc::new(player);
-    self.players.lock().await.insert(player.id(), player.clone());
+    {
+      let mut p = self.players.lock().await;
+      if p.contains_key(&player.id()) {
+        player
+          .disconnect(&Chat::new("Another player with the same id is already connected!".into()))
+          .await;
+        return;
+      }
+      p.insert(player.id(), player.clone());
+    }
 
     // Network recieving task
     let c = conn.clone();
