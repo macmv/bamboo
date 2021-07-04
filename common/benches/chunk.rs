@@ -3,6 +3,7 @@ use common::{
   math::Pos,
 };
 use criterion::{criterion_group, criterion_main, Criterion};
+use pprof::criterion::{Output, PProfProfiler};
 
 pub fn paletted(c: &mut Criterion) {
   // # Test results
@@ -67,5 +68,9 @@ pub fn fixed(c: &mut Criterion) {
   });
 }
 
-criterion_group!(benches, paletted, fixed);
+criterion_group! {
+  name = benches;
+  config = Criterion::default().with_profiler(PProfProfiler::new(100, Output::Flamegraph(None)));
+  targets = paletted, fixed
+}
 criterion_main!(benches);

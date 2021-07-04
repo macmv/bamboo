@@ -50,7 +50,8 @@ tonic-build = { version = "0.4", default-features = false, features = ["transpor
 data = { path = "../data" }
 
 [dev-dependencies]
-criterion = "0.3"
+pprof = { version = "0.4.3", features = ["criterion", "flamegraph"] }
+criterion = "0.3.4"
 
 [[bench]]
 name = "chunk"
