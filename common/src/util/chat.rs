@@ -353,10 +353,10 @@ mod tests {
   fn serialize() {
     // Test the basics of serialization
     {
-      let mut msg = Chat::new("Hello!".into());
+      let mut msg = Chat::new("Hello!");
       assert_eq!(msg.to_json(), r#"{"text":"Hello!"}"#);
 
-      msg.add(" more text".into()).bold().italic();
+      msg.add(" more text").bold().italic();
       assert_eq!(
         msg.to_json(),
         r#"[{"text":"Hello!"},{"text":" more text","bold":true,"italic":true}]"#
@@ -369,15 +369,15 @@ mod tests {
       assert_eq!(msg.to_json(), r#"{}"#);
 
       let mut m = msg.clone();
-      m.add("colored".into()).color(Color::BrightGreen);
+      m.add("colored").color(Color::BrightGreen);
       assert_eq!(m.to_json(), r#"{"text":"colored","color":"green"}"#);
 
       let mut m = msg.clone();
-      m.add("another color".into()).color(Color::Black);
+      m.add("another color").color(Color::Black);
       assert_eq!(m.to_json(), r#"{"text":"another color","color":"black"}"#);
 
       let mut m = msg.clone();
-      m.add("custom color".into()).color(Color::rgb(0, 127, 255));
+      m.add("custom color").color(Color::rgb(0, 127, 255));
       assert_eq!(m.to_json(), r##"{"text":"custom color","color":"#007fff"}"##);
     }
 
@@ -385,12 +385,12 @@ mod tests {
     {
       // Insertion text
       let mut msg = Chat::empty();
-      msg.add("click me!".into()).insertion("I am text".into());
+      msg.add("click me!").insertion("I am text");
       assert_eq!(msg.to_json(), r#"{"text":"click me!","insertion":"I am text"}"#);
 
       // Click event
       let mut msg = Chat::empty();
-      msg.add("click me!".into()).on_click(ClickEvent::OpenURL("https://google.com".into()));
+      msg.add("click me!").on_click(ClickEvent::OpenURL("https://google.com".into()));
       assert_eq!(
         msg.to_json(),
         r#"{"text":"click me!","clickEvent":{"action":"open_url","value":"https://google.com"}}"#
@@ -398,7 +398,7 @@ mod tests {
 
       // Hover event
       let mut msg = Chat::empty();
-      msg.add("hover time".into()).on_hover(HoverEvent::ShowText("big gaming".into()));
+      msg.add("hover time").on_hover(HoverEvent::ShowText("big gaming".into()));
       assert_eq!(
         msg.to_json(),
         r#"{"text":"hover time","hoverEvent":{"action":"show_text","value":"big gaming"}}"#
@@ -408,7 +408,7 @@ mod tests {
       let mut msg = Chat::empty();
       // This adds a child section to this first section. This child will be rendered
       // in bold and italics, even though `bold` is not set to true on the child.
-      msg.add("main section ".into()).bold().add_child("hello".into()).italic();
+      msg.add("main section ").bold().add_child("hello").italic();
       assert_eq!(
         msg.to_json(),
         r#"{"text":"main section ","bold":true,"extra":[{"text":"hello","italic":true}]}"#

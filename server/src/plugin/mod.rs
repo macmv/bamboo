@@ -115,10 +115,10 @@ impl PluginManager {
     }
   }
 
-  fn handle_event(&self, e: Event) {}
+  fn handle_event(&self, _e: Event) {}
 
   /// Loads all plugins from disk. Call this to reload all plugins.
-  fn load(&self, ctx: &mut Context, _wm: Arc<WorldManager>) {
+  fn load(&self, _ctx: &mut Context, _wm: Arc<WorldManager>) {
     let mut plugins = self.plugins.lock().unwrap();
     let _tx = self.tx.lock().unwrap();
     plugins.clear();
