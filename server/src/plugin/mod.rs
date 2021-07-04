@@ -115,9 +115,7 @@ impl PluginManager {
     }
   }
 
-  fn handle_event(&self, e: Event) {
-    info!("got event: {:?}", e);
-  }
+  fn handle_event(&self, e: Event) {}
 
   /// Loads all plugins from disk. Call this to reload all plugins.
   fn load(&self, ctx: &mut Context, _wm: Arc<WorldManager>) {
@@ -129,28 +127,30 @@ impl PluginManager {
       let m = fs::metadata(f.path()).unwrap();
       if m.is_file() {
         let path = f.path();
-        let src = fs::read_to_string(path).unwrap();
-        let src_bytes = src.as_bytes();
-
-        let parsing_result = Parser::new(src_bytes, false).parse_all().map_err(|e| e.to_string());
-
-        let _execution_result = match parsing_result {
-          Ok(statements) => {
-            println!("{}", statements);
-            match statements.run(ctx) {
-              Ok(v) => v,
-              Err(e) => {
-                dbg!(&e);
-                panic!()
-              }
-            }
-          }
-          Err(e) => {
-            info!("{:?}", &e);
-            ctx.throw_syntax_error(e);
-            panic!()
-          }
-        };
+        info!("found plugin at {}", path.to_str().unwrap());
+        // let src = fs::read_to_string(path).unwrap();
+        // let src_bytes = src.as_bytes();
+        //
+        // let parsing_result = Parser::new(src_bytes,
+        // false).parse_all().map_err(|e| e.to_string());
+        //
+        // let _execution_result = match parsing_result {
+        //   Ok(statements) => {
+        //     println!("{}", statements);
+        //     match statements.run(ctx) {
+        //       Ok(v) => v,
+        //       Err(e) => {
+        //         dbg!(&e);
+        //         panic!()
+        //       }
+        //     }
+        //   }
+        //   Err(e) => {
+        //     info!("{:?}", &e);
+        //     ctx.throw_syntax_error(e);
+        //     panic!()
+        //   }
+        // };
 
         // let res = match ctx.eval(&source) {
         //   Ok(v) => v,
