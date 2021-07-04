@@ -19,7 +19,9 @@ struct PacketVersion {
   // don't exist for that client.
   ids:     Vec<Option<usize>>,
   packets: Vec<data::protocol::Packet>,
-  types:   HashMap<String, data::protocol::PacketField>,
+  /* We might want to implement this field. This is a table of all complex types
+   * defined in the json. For now, it is unused.
+   * types:   HashMap<String, data::protocol::PacketField> */
 }
 
 impl Default for Generator {
@@ -42,7 +44,7 @@ impl Generator {
         k,
         PacketVersion {
           ids:     generate_ids(&v.to_client, |name| common_cb::ID::parse_str(name).to_i32()),
-          types:   v.types.clone(),
+          // types:   v.types.clone(),
           packets: v.to_client,
         },
       );
@@ -50,7 +52,7 @@ impl Generator {
         k,
         PacketVersion {
           ids:     generate_ids(&v.to_server, |name| common_sb::ID::parse_str(name).to_i32()),
-          types:   v.types,
+          // types:   v.types,
           packets: v.to_server,
         },
       );
