@@ -508,15 +508,15 @@ impl<R: StreamReader + Send, W: StreamWriter + Send> Conn<R, W> {
                   Ok(v) => {
                     info!("got status code: {}", v.status());
                     if v.status() == StatusCode::NO_CONTENT {
-                      self.send_disconnect("Invalid auth token! Please relogin (restart your game and launcher if you are running vanilla)").await?;
+                      self.send_disconnect("Invalid auth token! Please re-login (restart your game and launcher)").await?;
                       // Disconnect client; they are not authenticated
                       return Ok(None);
                     }
                     match v.json().await {
                       Ok(v) => Some(v),
                       Err(e) => return Err(io::Error::new(
-                          ErrorKind::InvalidData,
-                          format!("invalid json data recieved from session server: {}", e),
+                        ErrorKind::InvalidData,
+                        format!("invalid json data recieved from session server: {}", e),
                       ))
                     }
                   },
