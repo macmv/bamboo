@@ -49,7 +49,10 @@ pub fn hexdigest(hash: Sha1) -> String {
       hex[i] = !hex[i];
       if carry {
         carry = hex[i] == 0xff;
-        hex[i] += 1;
+        // Unclear if wrapping add is expected here, but I cannot find an example of
+        // this online. Assuming that this was implemented in the same way in java, then
+        // this should be a wrapping add.
+        hex[i] = hex[i].wrapping_add(1);
       }
     }
   }
