@@ -274,8 +274,19 @@ impl World {
       out.set_int("teleport_id", 1234); // TP id
       conn.send(out).await;
 
-      let mut info =
-        PlayerList { action: player_list::Action::AddPlayer.into(), ..Default::default() };
+      let mut info = PlayerList {
+        action: player_list::Action::AddPlayer.into(),
+        players: vec![player_list::Player {
+          uuid:             Some(player.id().as_proto()),
+          name:             player.username().into(),
+          properties:       vec![],
+          gamemode:         1,
+          ping:             300, // TODO: Ping
+          has_display_name: false,
+          display_name:     "".into(),
+        }],
+        ..Default::default()
+      };
       let mut spawn_packets = vec![];
       for other in self.players().await.iter().in_view(ChunkPos::new(0, 0)).not(player.id()) {
         // Add player to the list of players that other knows about
@@ -288,7 +299,7 @@ impl World {
               name:             player.username().into(),
               properties:       vec![],
               gamemode:         1,
-              ping:             300,
+              ping:             300, // TODO: Ping
               has_display_name: false,
               display_name:     "".into(),
             }],
