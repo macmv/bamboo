@@ -5,11 +5,9 @@ pub use plugin::Plugin;
 use crate::{block, player::Player, world::WorldManager};
 use boa::{
   class::{Class, ClassBuilder},
-  exec::Executable,
   gc::{Finalize, Trace},
   object::{Object, ObjectData},
   property::Attribute,
-  syntax::parser::Parser,
   Context, Result, Value,
 };
 use common::math::Pos;
@@ -35,7 +33,7 @@ pub struct PluginManager {
 }
 
 pub struct Sugarcane {
-  wm: Arc<WorldManager>,
+  _wm: Arc<WorldManager>,
 }
 
 impl fmt::Debug for Sugarcane {
@@ -46,7 +44,7 @@ impl fmt::Debug for Sugarcane {
 
 impl Sugarcane {
   fn new(wm: Arc<WorldManager>) -> Self {
-    Sugarcane { wm }
+    Sugarcane { _wm: wm }
   }
   fn info(_this: &Value, args: &[Value], ctx: &mut Context) -> Result<Value> {
     info!("{}", args.get(0).cloned().unwrap_or_default().to_string(ctx)?);

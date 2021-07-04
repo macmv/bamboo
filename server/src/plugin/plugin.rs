@@ -7,7 +7,7 @@
 /// A wrapper struct for a Ruby plugin. This is used to execute Ruby code
 /// whenever an event happens.
 pub struct Plugin {
-  name: String,
+  _name: String,
   /* m:    Module,
    * err:  mpsc::Sender<()>, */
 }
@@ -16,7 +16,7 @@ impl Plugin {
   //   /// Creates a new plugin. The name should be the name of the module (for
   //   /// debugging) and the Module should be the ruby module for this plugin.
   pub fn new(name: String) -> Self {
-    Plugin { name }
+    Plugin { _name: name }
   }
   //
   //  /// Calls init on the plugin. This is called right after all plugins are

@@ -13,7 +13,6 @@ pub use pos::{Pos, PosError};
 pub use rng::WyhashRng;
 pub use voronoi::Voronoi;
 
-use rand::{rngs::OsRng, RngCore};
 use sha1::{Digest, Sha1};
 use std::hash::BuildHasher;
 use wyhash::WyHash;

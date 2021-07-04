@@ -38,14 +38,14 @@ impl BiomeLayers {
     self.total_height += height;
   }
 
-  /// Returns the layer at a given index.
-  pub fn get(&self, i: usize) -> Option<&(block::Kind, u32)> {
-    self.layers.get(i)
-  }
-
   /// Returns the total height of all defined layers.
   pub fn total_height(&self) -> u32 {
     self.total_height
+  }
+
+  /// Returns the internal layers list
+  pub fn layers(&self) -> &[(block::Kind, u32)] {
+    &self.layers
   }
 }
 
@@ -105,7 +105,7 @@ pub trait BiomeGen {
     let min_height = height - layers.total_height() as i32;
     c.fill_kind(pos, pos + Pos::new(0, min_height, 0), layers.main_area).unwrap();
     let mut level = min_height as u32;
-    for (k, depth) in &layers.layers {
+    for (k, depth) in layers.layers() {
       c.fill_kind(
         pos + Pos::new(0, level as i32, 0),
         pos + Pos::new(0, (level + depth) as i32, 0),

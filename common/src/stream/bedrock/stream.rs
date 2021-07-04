@@ -20,8 +20,8 @@ pub struct BedrockStreamReader {
 }
 
 pub struct BedrockStreamWriter {
-  sock: Arc<UdpSocket>,
-  addr: SocketAddr,
+  _sock: Arc<UdpSocket>,
+  _addr: SocketAddr,
 }
 
 impl BedrockStreamReader {
@@ -32,7 +32,7 @@ impl BedrockStreamReader {
 
 impl BedrockStreamWriter {
   pub fn new(sock: Arc<UdpSocket>, addr: SocketAddr) -> Self {
-    BedrockStreamWriter { sock, addr }
+    BedrockStreamWriter { _sock: sock, _addr: addr }
   }
 }
 
