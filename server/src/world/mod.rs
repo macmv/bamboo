@@ -89,6 +89,13 @@ impl World {
     });
     let w = world.clone();
     tokio::spawn(async move {
+      info!("generating terrain...");
+      for x in -10..=10 {
+        for z in -10..=10 {
+          w.chunk(ChunkPos::new(x, z), |_| {});
+        }
+      }
+      info!("done generating terrain");
       w.global_tick_loop().await;
     });
     world
