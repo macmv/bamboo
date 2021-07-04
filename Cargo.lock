@@ -525,6 +525,7 @@ dependencies = [
  "tokio-stream",
  "tonic",
  "tonic-build",
+ "wyhash",
 ]
 
 [[package]]
@@ -3877,6 +3878,15 @@ checksum = "d59cefebd0c892fa2dd6de581e937301d8552cb44489cdff035c6187cb63fa5e"
 dependencies = [
  "winapi 0.2.8",
  "winapi-build",
+]
+
+[[package]]
+name = "wyhash"
+version = "0.5.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "baf6e163c25e3fac820b4b453185ea2dea3b6a3e0a721d4d23d75bd33734c295"
+dependencies = [
+ "rand_core 0.6.2",
 ]
 
 [[package]]

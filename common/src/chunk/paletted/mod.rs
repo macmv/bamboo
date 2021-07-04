@@ -1,7 +1,7 @@
 use super::section::Section as ChunkSection;
 
 use crate::{
-  math::{Pos, PosError},
+  math::{Pos, PosError, WyHashBuilder},
   proto,
 };
 use std::collections::HashMap;
@@ -20,12 +20,12 @@ pub struct Section {
   // Each index is a palette id, and the sum of this array must always be 4096 (16 * 16 * 16).
   block_amounts:   Vec<u32>,
   // This maps global ids to palette ids.
-  reverse_palette: HashMap<u32, u32>,
+  reverse_palette: HashMap<u32, u32, WyHashBuilder>,
 }
 
 impl Default for Section {
   fn default() -> Self {
-    let mut reverse_palette = HashMap::new();
+    let mut reverse_palette = HashMap::with_hasher(WyHashBuilder);
     reverse_palette.insert(0, 0);
     Section { data: BitArray::new(4), palette: vec![0], block_amounts: vec![4096], reverse_palette }
   }
@@ -61,7 +61,7 @@ impl Section {
       data:            BitArray::from_data(pb.bits_per_block as u8, pb.data),
       block_amounts:   vec![0; pb.palette.len()],
       palette:         pb.palette,
-      reverse_palette: HashMap::new(),
+      reverse_palette: HashMap::with_hasher(WyHashBuilder),
     };
     for (i, &v) in chunk.palette.iter().enumerate() {
       chunk.reverse_palette.insert(v, i as u32);
@@ -89,7 +89,7 @@ impl Section {
       data:            BitArray::from_data(pb.bits_per_block as u8, pb.data),
       block_amounts:   vec![0; pb.palette.len()],
       palette:         pb.palette.into_iter().map(f).collect(),
-      reverse_palette: HashMap::new(),
+      reverse_palette: HashMap::with_hasher(WyHashBuilder),
     };
     for (i, &v) in chunk.palette.iter().enumerate() {
       chunk.reverse_palette.insert(v, i as u32);

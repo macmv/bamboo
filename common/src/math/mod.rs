@@ -13,7 +13,10 @@ pub use pos::{Pos, PosError};
 pub use rng::WyhashRng;
 pub use voronoi::Voronoi;
 
+use rand::{rngs::OsRng, RngCore};
 use sha1::{Digest, Sha1};
+use std::hash::BuildHasher;
+use wyhash::WyHash;
 
 /// A block face. This is used to represent a face that a user clicked on.
 #[derive(Debug, Clone, Copy, Hash, PartialEq, Eq)]
@@ -86,5 +89,18 @@ mod tests {
         hexdigest(hash);
       }
     }
+  }
+}
+
+#[derive(Debug, Default, Clone)]
+pub struct WyHashBuilder;
+
+impl BuildHasher for WyHashBuilder {
+  type Hasher = WyHash;
+
+  fn build_hasher(&self) -> Self::Hasher {
+    // Random number. This hashser should only be used when we don't care about DOS
+    // situations.
+    WyHash::with_seed(0xe6cc56f1f7550d95)
   }
 }
