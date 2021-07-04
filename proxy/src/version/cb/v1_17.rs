@@ -16,6 +16,7 @@ use common::{
 pub(super) fn gen_spec() -> PacketSpec {
   let mut spec = PacketSpec { gens: HashMap::new() };
   spec.add(cb::ID::PlayerInfo, utils::generate_player_info);
+  spec.add(cb::ID::DeclareCommands, utils::generate_declare_commands);
   spec.add(cb::ID::MapChunk, |gen, v, p| {
     let mut out = tcp::Packet::new(gen.convert_id(v, cb::ID::MapChunk), v);
     let mut light = tcp::Packet::new(gen.convert_id(v, cb::ID::UpdateLight), v);

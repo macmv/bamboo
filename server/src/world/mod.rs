@@ -261,6 +261,9 @@ impl World {
       }
 
       conn.send(out).await;
+      if player.ver() >= ProtocolVersion::V1_13 {
+        conn.send(self.get_commands().serialize()).await;
+      }
 
       for x in -10..=10 {
         for z in -10..=10 {

@@ -142,3 +142,15 @@ pub(super) fn generate_1_9_chunk(
 
   Ok(vec![out])
 }
+
+pub(super) fn generate_declare_commands(
+  gen: &Generator,
+  v: ProtocolVersion,
+  p: &cb::Packet,
+) -> Result<Vec<tcp::Packet>> {
+  let mut out = tcp::Packet::new(gen.convert_id(v, p.id()), v);
+  // Command data is always the same, so we generate and cache it on the server.
+  out.write_buf(p.get_byte_arr("data")?);
+  out.write_varint(p.get_int("root")?);
+  Ok(vec![out])
+}
