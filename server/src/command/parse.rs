@@ -121,7 +121,7 @@ impl Parser {
         parse_num(text, *min, *max, "an int").map(|(num, len)| (Arg::Int(num), len))
       }
       Self::String(ty) => match ty {
-        StringType::SingleWord => {
+        StringType::Word => {
           if text.is_empty() {
             return Err(ParseError::EOF(self.clone()));
           }
@@ -129,7 +129,7 @@ impl Parser {
           let len = word.len();
           Ok((Arg::String(word), len))
         }
-        StringType::QuotablePhrase => {
+        StringType::Quotable => {
           if text.is_empty() {
             return Err(ParseError::EOF(self.clone()));
           }
@@ -173,7 +173,7 @@ impl Parser {
             Ok((Arg::String(text[0..index].into()), index))
           }
         }
-        StringType::GreedyPhrase => Ok((Arg::String(text.into()), text.len())),
+        StringType::Greedy => Ok((Arg::String(text.into()), text.len())),
       },
       Self::Entity { single: _, players: _ } => Ok((Arg::Int(5), 1)),
       Self::ScoreHolder { multiple: _ } => Ok((Arg::Int(5), 1)),

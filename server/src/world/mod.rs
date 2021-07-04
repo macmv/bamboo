@@ -27,10 +27,11 @@ use common::{
   version::{BlockVersion, ProtocolVersion},
 };
 
-use crate::{block, entity, item, net::Connection, player::Player, plugin};
+use crate::{block, command::CommandTree, entity, item, net::Connection, player::Player, plugin};
 use chunk::MultiChunk;
 use gen::WorldGen;
 
+mod init;
 mod players;
 
 pub use players::{PlayersIter, PlayersMap};
@@ -55,6 +56,7 @@ pub struct World {
   item_converter:   Arc<item::TypeConverter>,
   entity_converter: Arc<entity::TypeConverter>,
   plugins:          Arc<plugin::PluginManager>,
+  commands:         CommandTree,
   generator:        StdMutex<WorldGen>,
   mspt:             AtomicU32,
 }
@@ -84,18 +86,13 @@ impl World {
       item_converter,
       entity_converter,
       plugins,
+      commands: CommandTree::new(),
       generator: StdMutex::new(WorldGen::new()),
       mspt: 0.into(),
     });
     let w = world.clone();
     tokio::spawn(async move {
-      info!("generating terrain...");
-      for x in -10..=10 {
-        for z in -10..=10 {
-          w.chunk(ChunkPos::new(x, z), |_| {});
-        }
-      }
-      info!("done generating terrain");
+      w.init();
       w.global_tick_loop().await;
     });
     world
@@ -394,22 +391,24 @@ impl World {
   pub fn get_block_converter(&self) -> &block::TypeConverter {
     &self.block_converter
   }
-
   /// Returns the current item converter. This can be used to convert old item
   /// ids to new ones, and vice versa.
   pub fn get_item_converter(&self) -> &item::TypeConverter {
     &self.item_converter
   }
-
   /// Returns the current entity converter. This can be used to convert old
   /// entity ids to new ones, and vice versa.
   pub fn get_entity_converter(&self) -> &entity::TypeConverter {
     &self.entity_converter
   }
-
   /// Returns the plugin manager. This is how events can be sent to plugins.
   pub fn get_plugins(&self) -> &plugin::PluginManager {
     &self.plugins
+  }
+  /// Returns the command tree that the server uses. This can be used to add
+  /// custom commands to the server.
+  pub fn get_commands(&self) -> &CommandTree {
+    &self.commands
   }
 
   /// This calls f(), and passes it a locked chunk. This will also generate a

@@ -19,8 +19,27 @@
 mod enums;
 mod parse;
 
-pub use enums::{Arg, Parser};
+pub use enums::{Arg, Parser, StringType};
 pub use parse::ParseError;
+
+use std::{collections::HashMap, sync::Mutex};
+
+/// All of the commands on a server. This is a table of all the commands that
+/// the clients can run. It handles serializing these commands to packets, and
+/// callbacks for when a command is run. It also delegates all of the command
+/// parsing that needs to be done for callbacks to work.
+pub struct CommandTree {
+  commands: Mutex<HashMap<String, Command>>,
+}
+
+impl CommandTree {
+  pub fn new() -> CommandTree {
+    CommandTree { commands: Mutex::new(HashMap::new()) }
+  }
+  pub fn add(&self, c: Command) {
+    self.commands.lock().unwrap().insert(c.name().into(), c);
+  }
+}
 
 /// A single command. This can be used to construct an entire command. However,
 /// it is also used to represent an argument of a command. When you call
@@ -45,7 +64,7 @@ enum NodeType {
 impl Command {
   /// Creates a new command. This should be used when you want an entirely new
   /// command (not an argument of another command).
-  pub fn new(name: &str) -> Self {
+  pub fn new<N: Into<String>>(name: N) -> Self {
     Self::lit(name.into())
   }
   /// Creates a new literal node. Use [`add_lit`](Self::add_lit) if you want to
@@ -151,6 +170,12 @@ impl Command {
       }
       NodeType::Argument(p) => p.parse(text),
     }
+  }
+
+  /// Returns the name of the command. This does not contain a slash at the
+  /// start.
+  pub fn name(&self) -> &str {
+    &self.name
   }
 }
 

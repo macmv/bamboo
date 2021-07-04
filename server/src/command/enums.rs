@@ -13,12 +13,12 @@ use std::collections::HashMap;
 #[derive(Debug, Clone, PartialEq)]
 pub enum StringType {
   /// Matches a single word.
-  SingleWord,
+  Word,
   /// Matches either a single word, or a phrase in double quotes. Quotes can be
   /// inserted in the string with `\"`.
-  QuotablePhrase,
+  Quotable,
   /// Matches all remaining text in the command. Quotes are not interpreted.
-  GreedyPhrase,
+  Greedy,
 }
 
 /// This is a command argument parser. All of the information for this comes
