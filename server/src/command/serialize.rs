@@ -1,4 +1,4 @@
-use super::{Command, CommandTree, NodeType, Parser};
+use super::{Command, CommandTree, NodeType, Parser, StringType};
 use common::{net::cb, util::Buffer};
 
 impl NodeType {
@@ -46,7 +46,7 @@ impl CommandTree {
       match &node.ty {
         NodeType::Argument(parser) => {
           data.write_str(&node.name);
-          data.write_str(&parser.name);
+          data.write_str(&parser.name());
           parser.write_data(&mut data);
         }
         NodeType::Literal => {
@@ -80,11 +80,11 @@ impl Parser {
   #[rustfmt::skip]
   pub fn name(&self) -> &'static str {
     match self {
-      Self::Bool               => "minecraft:bool",
-      Self::Double { .. }      => "minecraft:double",
-      Self::Float { .. }       => "minecraft:float",
-      Self::Int { .. }         => "minecraft:int",
-      Self::String(_)          => "minecraft:string",
+      Self::Bool               => "brigadier:bool",
+      Self::Double { .. }      => "brigadier:double",
+      Self::Float { .. }       => "brigadier:float",
+      Self::Int { .. }         => "brigadier:int",
+      Self::String(_)          => "brigadier:string",
       Self::Entity { .. }      => "minecraft:entity",
       Self::ScoreHolder { .. } => "minecraft:score_holder",
       Self::GameProfile        => "minecraft:game_profile",
@@ -127,6 +127,89 @@ impl Parser {
       Self::Time               => "minecraft:time",
       Self::Modid              => "forge:modid",
       Self::Enum               => "forge:enum",
+    }
+  }
+
+  /// If this parser stores any extra data, that will be written to the buffer.
+  /// Most nodes will not write any extra data.
+  pub fn write_data(&self, buf: &mut Buffer) {
+    match self {
+      Self::Double { min, max } => {
+        let mut bitmask = 0;
+        if min.is_some() {
+          bitmask |= 0x01;
+        }
+        if max.is_some() {
+          bitmask |= 0x02;
+        }
+        buf.write_u8(bitmask);
+        if let Some(min) = min {
+          buf.write_f64(*min);
+        }
+        if let Some(max) = max {
+          buf.write_f64(*max);
+        }
+      }
+      Self::Float { min, max } => {
+        let mut bitmask = 0;
+        if min.is_some() {
+          bitmask |= 0x01;
+        }
+        if max.is_some() {
+          bitmask |= 0x02;
+        }
+        buf.write_u8(bitmask);
+        if let Some(min) = min {
+          buf.write_f32(*min);
+        }
+        if let Some(max) = max {
+          buf.write_f32(*max);
+        }
+      }
+      Self::Int { min, max } => {
+        let mut bitmask = 0;
+        if min.is_some() {
+          bitmask |= 0x01;
+        }
+        if max.is_some() {
+          bitmask |= 0x02;
+        }
+        buf.write_u8(bitmask);
+        if let Some(min) = min {
+          buf.write_i32(*min);
+        }
+        if let Some(max) = max {
+          buf.write_i32(*max);
+        }
+      }
+      Self::String(ty) => {
+        buf.write_varint(match ty {
+          StringType::Word => 0,
+          StringType::Quotable => 1,
+          StringType::Greedy => 2,
+        });
+      }
+      Self::Entity { single, players } => {
+        let mut bitmask = 0;
+        if *single {
+          bitmask |= 0x01;
+        }
+        if *players {
+          bitmask |= 0x02;
+        }
+        buf.write_u8(bitmask);
+      }
+      Self::ScoreHolder { multiple } => {
+        let mut bitmask = 0;
+        if *multiple {
+          bitmask |= 0x01;
+        }
+        buf.write_u8(bitmask);
+      }
+      Self::Range { decimals } => {
+        buf.write_bool(*decimals);
+      }
+      _ => {}
     }
   }
 }
