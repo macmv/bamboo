@@ -34,6 +34,7 @@ impl CommandTree {
     c.write_nodes(&mut nodes);
 
     let mut data = Buffer::new(vec![]);
+    data.write_varint(nodes.len() as i32);
 
     for node in &nodes {
       let mask = node.ty.mask();
