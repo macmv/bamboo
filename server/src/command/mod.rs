@@ -57,11 +57,12 @@ impl CommandTree {
     self.commands.lock().await.insert(c.name().into(), (c, handler));
   }
   /// Called whenever a command should be executed. This can also be used to act
-  /// like a player sent a command, even if they didn't.
+  /// like a player sent a command, even if they didn't. The text passed in
+  /// should not contain a `\` at the start.
   pub async fn execute(&self, world: &WorldManager, player: &Player, text: &str) {
-    let read = CommandReader::new(text);
+    let mut reader = CommandReader::new(text);
     let commands = self.commands.lock().await;
-    let (command, handler) = match &commands.get(text) {
+    let (command, handler) = match &commands.get(&reader.word(StringType::Word).unwrap()) {
       Some(v) => v,
       None => {
         let mut msg = Chat::empty();

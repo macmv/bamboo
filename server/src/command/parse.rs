@@ -285,39 +285,36 @@ mod tests {
     );
 
     assert_eq!(
-      Parser::String(StringType::SingleWord).parse("big gaming")?,
+      Parser::String(StringType::Word).parse("big gaming")?,
+      (Arg::String("big".into()), 3)
+    );
+    assert_eq!(Parser::String(StringType::Word).parse("word")?, (Arg::String("word".into()), 4));
+    assert_eq!(
+      Parser::String(StringType::Word).parse(""),
+      Err(ParseError::EOF(Parser::String(StringType::Word))),
+    );
+    assert_eq!(
+      Parser::String(StringType::Quotable).parse("big gaming")?,
       (Arg::String("big".into()), 3)
     );
     assert_eq!(
-      Parser::String(StringType::SingleWord).parse("word")?,
-      (Arg::String("word".into()), 4)
-    );
-    assert_eq!(
-      Parser::String(StringType::SingleWord).parse(""),
-      Err(ParseError::EOF(Parser::String(StringType::SingleWord))),
-    );
-    assert_eq!(
-      Parser::String(StringType::QuotablePhrase).parse("big gaming")?,
-      (Arg::String("big".into()), 3)
-    );
-    assert_eq!(
-      Parser::String(StringType::QuotablePhrase).parse("\"big gaming\" things")?,
+      Parser::String(StringType::Quotable).parse("\"big gaming\" things")?,
       (Arg::String("big gaming".into()), 12) // 10 + 2 because of the quotes
     );
     assert_eq!(
-      Parser::String(StringType::QuotablePhrase).parse(r#""big gam\"ing" things"#)?,
+      Parser::String(StringType::Quotable).parse(r#""big gam\"ing" things"#)?,
       (Arg::String(r#"big gam"ing"#.into()), 14) // 11 + 2 + 1 because of the quotes and \
     );
     assert_eq!(
-      Parser::String(StringType::QuotablePhrase).parse(r#""big gam\\\"ing" things"#)?,
+      Parser::String(StringType::Quotable).parse(r#""big gam\\\"ing" things"#)?,
       (Arg::String(r#"big gam\"ing"#.into()), 16)
     );
     assert_eq!(
-      Parser::String(StringType::QuotablePhrase).parse(r#""big gam\\"ing" things"#)?,
+      Parser::String(StringType::Quotable).parse(r#""big gam\\"ing" things"#)?,
       (Arg::String(r#"big gam\"#.into()), 11)
     );
     assert_eq!(
-      Parser::String(StringType::GreedyPhrase).parse(r#""big gam\\"ing" things"#)?,
+      Parser::String(StringType::Greedy).parse(r#""big gam\\"ing" things"#)?,
       (Arg::String(r#""big gam\\"ing" things"#.into()), 22)
     );
 

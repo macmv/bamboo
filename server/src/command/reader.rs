@@ -1,13 +1,39 @@
+use super::StringType;
 use std::{
+  error::Error,
+  fmt,
   io::{self, BufReader, Read},
   slice::Iter,
 };
 
+#[derive(Debug, PartialEq)]
 pub enum ReadError {
-  EOF,
-  Unexpected(usize, char),
-  Invalid(usize, char),
+  EOF(String),
+  Unexpected(String, usize, char),
+  Invalid(String, usize, char),
 }
+
+impl fmt::Display for ReadError {
+  fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    match self {
+      Self::EOF(text) => writeln!(f, "Unexpected EOF while reading {}", text),
+      Self::Unexpected(text, index, c) => {
+        let s = format!("Unexpected '{}' while reading {}", c, text);
+        let index = s.len() - text.len() + index;
+        writeln!(f, "{}", s)?;
+        writeln!(f, "{}^ here", " ".repeat(index - 1))
+      }
+      Self::Invalid(text, index, c) => {
+        let s = format!("Invalid '{}' while reading {}", c, text);
+        let index = s.len() - text.len() + index;
+        writeln!(f, "{}", s);
+        writeln!(f, "{}^ here", " ".repeat(index - 1))
+      }
+    }
+  }
+}
+
+impl Error for ReadError {}
 
 pub struct CommandReader<'a> {
   buf: BufReader<StringReader<'a>>,
@@ -48,12 +74,34 @@ impl<'a> CommandReader<'a> {
   ///   first character is a double quote, then this will read to the next
   ///   double quote. Quotes can be escaped with a `\`.
   /// - `StringType::Greedy` will parse the rest of the string.
-  pub fn read_str(&mut self) -> Result<i32, ReadError> {
-    Ok(5)
+  pub fn word(&mut self, ty: StringType) -> Result<String, ReadError> {
+    Ok("".into())
   }
 
   /// Reads a word, and parses it as an int.
-  pub fn read_int(&mut self) -> Result<i32, ReadError> {
+  pub fn int(&mut self) -> Result<i32, ReadError> {
     Ok(5)
+  }
+}
+
+#[cfg(test)]
+mod tests {
+  use super::*;
+
+  #[test]
+  fn read_word() -> Result<(), ReadError> {
+    // Single words
+    let mut reader = CommandReader::new("hello world i am big  space");
+
+    assert_eq!("hello", reader.word(StringType::Word)?);
+    assert_eq!("world", reader.word(StringType::Word)?);
+    assert_eq!("i", reader.word(StringType::Word)?);
+    assert_eq!("am", reader.word(StringType::Word)?);
+    assert_eq!("big", reader.word(StringType::Word)?);
+    assert_eq!("", reader.word(StringType::Word)?);
+    assert_eq!("space", reader.word(StringType::Word)?);
+    matches!(reader.word(StringType::Word).unwrap_err(), EOF);
+
+    Ok(())
   }
 }
