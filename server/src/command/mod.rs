@@ -24,14 +24,14 @@ mod serialize;
 pub use enums::{Arg, Parser, StringType};
 pub use parse::ParseError;
 
-use crate::{player::Player, world::World};
+use crate::{player::Player, world::WorldManager};
 use common::util::chat::{Chat, Color};
 use reader::CommandReader;
 use std::{collections::HashMap, future::Future, pin::Pin};
 use tokio::sync::Mutex;
 
 type Handler = Box<
-  dyn for<'a> Fn(&'a World, &'a Command) -> Pin<Box<dyn Future<Output = ()> + Send + 'a>>
+  dyn for<'a> Fn(&'a WorldManager, &'a Command) -> Pin<Box<dyn Future<Output = ()> + Send + 'a>>
     + Send
     + Sync,
 >;
@@ -58,7 +58,7 @@ impl CommandTree {
   }
   /// Called whenever a command should be executed. This can also be used to act
   /// like a player sent a command, even if they didn't.
-  pub async fn execute(&self, world: &World, player: &Player, text: &str) {
+  pub async fn execute(&self, world: &WorldManager, player: &Player, text: &str) {
     let read = CommandReader::new(text);
     let commands = self.commands.lock().await;
     let (command, handler) = match &commands.get(text) {

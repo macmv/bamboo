@@ -70,9 +70,11 @@ async fn main() -> Result<(), Box<dyn Error>> {
   let addr = "0.0.0.0:8483".parse().unwrap();
 
   let worlds = Arc::new(WorldManager::new());
+  worlds.add_world().await;
+
   let w = worlds.clone();
   tokio::spawn(async move {
-    w.run(w.clone()).await;
+    w.run().await;
   });
   let svc = MinecraftServer::new(ServerImpl { worlds });
 

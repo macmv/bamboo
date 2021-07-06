@@ -19,7 +19,7 @@ use common::{
   version::ProtocolVersion,
 };
 
-use crate::{block, item, player::Player};
+use crate::{block, item, player::Player, world::WorldManager};
 
 pub struct Connection {
   rx:     Mutex<Streaming<proto::Packet>>,
@@ -53,7 +53,7 @@ impl Connection {
 
   /// This starts up the recieving loop for this connection. Do not call this
   /// more than once.
-  pub(crate) async fn run(&self, player: Arc<Player>) -> Result<(), Status> {
+  pub(crate) async fn run(&self, player: Arc<Player>, wm: Arc<WorldManager>) -> Result<(), Status> {
     'running: loop {
       let p = match self.rx.lock().await.message().await {
         Ok(Some(p)) => sb::Packet::from_proto(p),
@@ -73,7 +73,7 @@ impl Connection {
           if message.chars().next() == Some('/') {
             let mut chars = message.chars();
             chars.next().unwrap();
-            player.world().get_commands().execute(player.world(), &player, chars.as_str()).await;
+            player.world().get_commands().execute(&wm, &player, chars.as_str()).await;
           } else {
             let mut msg = Chat::empty();
             msg.add("<");
