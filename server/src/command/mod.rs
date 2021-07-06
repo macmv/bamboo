@@ -24,14 +24,14 @@ mod serialize;
 pub use enums::{Arg, Parser, StringType};
 pub use parse::ParseError;
 
-use crate::{player::Player, world::WorldManager};
+use crate::{player::Player, world::World};
 use common::util::chat::{Chat, Color};
 use reader::CommandReader;
-use std::{collections::HashMap, future::Future};
+use std::{collections::HashMap, future::Future, pin::Pin};
 use tokio::sync::Mutex;
 
 type Handler = Box<
-  dyn for<'a> Fn(&'a WorldManager, &'a Command) -> Box<dyn Future<Output = ()> + Send + 'a>
+  dyn for<'a> Fn(&'a World, &'a Command) -> Pin<Box<dyn Future<Output = ()> + Send + 'a>>
     + Send
     + Sync,
 >;
@@ -58,18 +58,21 @@ impl CommandTree {
   }
   /// Called whenever a command should be executed. This can also be used to act
   /// like a player sent a command, even if they didn't.
-  pub async fn execute(&self, player: &Player, text: &str) {
+  pub async fn execute(&self, world: &World, player: &Player, text: &str) {
     let read = CommandReader::new(text);
-    let (command, handler) = match &self.commands.lock().await.get(text) {
+    let commands = self.commands.lock().await;
+    let (command, handler) = match &commands.get(text) {
       Some(v) => v,
       None => {
         let mut msg = Chat::empty();
+        msg.add(""); // Makes the default color white
         msg.add("Unknown command: ").color(Color::Red);
-        msg.add(text).color(Color::Red);
+        msg.add(text);
         player.send_message(&msg).await;
         return;
       }
     };
+    handler(world, command).await;
   }
 }
 

@@ -11,7 +11,7 @@ impl World {
       .add(
         c,
         Box::new(|world, _| {
-          Box::new(async move {
+          Box::pin(async move {
             world.broadcast(&Chat::new("[Server] big announce")).await;
           })
         }),
@@ -32,7 +32,7 @@ impl World {
       .add(
         c,
         Box::new(|world, _| {
-          Box::new(async move {
+          Box::pin(async move {
             world.broadcast(&Chat::new("called /fill")).await;
           })
         }),
