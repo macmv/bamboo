@@ -18,12 +18,14 @@
 //! [`Parser`] type for details on the various parsers.
 mod enums;
 mod parse;
+mod reader;
 mod serialize;
 
 pub use enums::{Arg, Parser, StringType};
 pub use parse::ParseError;
 
 use crate::world::WorldManager;
+use reader::CommandReader;
 use std::{collections::HashMap, future::Future, sync::Mutex};
 
 type Handler = Box<
@@ -49,6 +51,11 @@ impl CommandTree {
   /// include the command syntax/description.
   pub fn add(&self, c: Command, handler: Handler) {
     self.commands.lock().unwrap().insert(c.name().into(), (c, handler));
+  }
+  /// Called whenever a command should be executed. This can also be used to act
+  /// like a player sent a command, even if they didn't.
+  pub fn execute(&self, text: &str) {
+    let read = CommandReader::new(text);
   }
 }
 
