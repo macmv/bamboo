@@ -24,7 +24,8 @@ mod serialize;
 pub use enums::{Arg, Parser, StringType};
 pub use parse::ParseError;
 
-use crate::world::WorldManager;
+use crate::{player::Player, world::WorldManager};
+use common::util::chat::{Chat, Color};
 use reader::CommandReader;
 use std::{collections::HashMap, future::Future, sync::Mutex};
 
@@ -54,8 +55,18 @@ impl CommandTree {
   }
   /// Called whenever a command should be executed. This can also be used to act
   /// like a player sent a command, even if they didn't.
-  pub fn execute(&self, text: &str) {
+  pub fn execute(&self, player: &Player, text: &str) {
     let read = CommandReader::new(text);
+    let (command, handler) = match &self.commands.lock().unwrap().get(text) {
+      Some(v) => v,
+      None => {
+        let mut msg = Chat::empty();
+        msg.add("Unknown command: ").color(Color::Red);
+        msg.add(text).color(Color::Red);
+        player.send_message(&msg);
+        return;
+      }
+    };
   }
 }
 
