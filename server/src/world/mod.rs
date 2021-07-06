@@ -287,9 +287,9 @@ impl World {
   }
 
   /// This broadcasts a chat message to everybody in the world.
-  pub async fn broadcast(&self, msg: &Chat) {
+  pub async fn broadcast<M: Into<Chat>>(&self, msg: M) {
     let mut out = cb::Packet::new(cb::ID::Chat);
-    out.set_str("message", msg.to_json());
+    out.set_str("message", msg.into().to_json());
     out.set_byte("position", 0); // Chat box, not over hotbar
 
     for p in self.players.lock().await.values() {
@@ -350,10 +350,16 @@ impl WorldManager {
   }
 
   /// Broadcasts a message to everyone one the server.
-  pub async fn broadcast(&self, msg: &Chat) {
+  pub async fn broadcast<M: Into<Chat>>(&self, msg: M) {
+    let mut out = cb::Packet::new(cb::ID::Chat);
+    out.set_str("message", msg.into().to_json());
+    out.set_byte("position", 0); // Chat box, not over hotbar
+
     let worlds = self.worlds.lock().await;
     for w in worlds.iter() {
-      w.broadcast(msg).await;
+      for p in w.players.lock().await.values() {
+        p.conn().send(out.clone()).await;
+      }
     }
   }
 

@@ -82,7 +82,7 @@ impl Connection {
             ));
             msg.add("> ");
             msg.add(message);
-            player.world().broadcast(&msg).await;
+            player.world().broadcast(msg).await;
           }
         }
         sb::ID::SetCreativeSlot => {
