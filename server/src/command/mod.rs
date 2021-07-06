@@ -27,10 +27,13 @@ pub use parse::ParseError;
 use crate::{player::Player, world::WorldManager};
 use common::util::chat::{Chat, Color};
 use reader::CommandReader;
-use std::{collections::HashMap, future::Future, sync::Mutex};
+use std::{collections::HashMap, future::Future};
+use tokio::sync::Mutex;
 
 type Handler = Box<
-  dyn for<'a> Fn(&'a WorldManager, &'a Command) -> Box<dyn Future<Output = ()> + Send + 'a> + Send,
+  dyn for<'a> Fn(&'a WorldManager, &'a Command) -> Box<dyn Future<Output = ()> + Send + 'a>
+    + Send
+    + Sync,
 >;
 
 /// All of the commands on a server. This is a table of all the commands that
@@ -50,20 +53,20 @@ impl CommandTree {
   /// Adds a new command to the tree. Any new players that join will be able to
   /// execute this command. This will also update the `/help` output, and
   /// include the command syntax/description.
-  pub fn add(&self, c: Command, handler: Handler) {
-    self.commands.lock().unwrap().insert(c.name().into(), (c, handler));
+  pub async fn add(&self, c: Command, handler: Handler) {
+    self.commands.lock().await.insert(c.name().into(), (c, handler));
   }
   /// Called whenever a command should be executed. This can also be used to act
   /// like a player sent a command, even if they didn't.
-  pub fn execute(&self, player: &Player, text: &str) {
+  pub async fn execute(&self, player: &Player, text: &str) {
     let read = CommandReader::new(text);
-    let (command, handler) = match &self.commands.lock().unwrap().get(text) {
+    let (command, handler) = match &self.commands.lock().await.get(text) {
       Some(v) => v,
       None => {
         let mut msg = Chat::empty();
         msg.add("Unknown command: ").color(Color::Red);
         msg.add(text).color(Color::Red);
-        player.send_message(&msg);
+        player.send_message(&msg).await;
         return;
       }
     };

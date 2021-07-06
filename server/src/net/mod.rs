@@ -70,14 +70,20 @@ impl Connection {
         sb::ID::Chat => {
           let message = p.get_str("message");
 
-          let mut msg = Chat::empty();
-          msg.add("<");
-          msg.add(player.username()).color(Color::BrightGreen).on_hover(HoverEvent::ShowText(
-            format!("wow it is almost like {} sent this message", player.username()),
-          ));
-          msg.add("> ");
-          msg.add(message);
-          player.world().broadcast(&msg).await;
+          if message.chars().next() == Some('/') {
+            let mut chars = message.chars();
+            chars.next().unwrap();
+            player.world().get_commands().execute(&player, chars.as_str()).await;
+          } else {
+            let mut msg = Chat::empty();
+            msg.add("<");
+            msg.add(player.username()).color(Color::BrightGreen).on_hover(HoverEvent::ShowText(
+              format!("wow it is almost like {} sent this message", player.username()),
+            ));
+            msg.add("> ");
+            msg.add(message);
+            player.world().broadcast(&msg).await;
+          }
         }
         sb::ID::SetCreativeSlot => {
           let slot = p.get_short("slot");

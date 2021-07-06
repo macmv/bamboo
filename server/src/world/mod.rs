@@ -92,7 +92,7 @@ impl World {
     });
     let w = world.clone();
     tokio::spawn(async move {
-      w.init();
+      w.init().await;
       w.global_tick_loop().await;
     });
     world
@@ -262,7 +262,7 @@ impl World {
 
       conn.send(out).await;
       if player.ver() >= ProtocolVersion::V1_13 {
-        conn.send(self.get_commands().serialize()).await;
+        conn.send(self.get_commands().serialize().await).await;
       }
 
       for x in -10..=10 {

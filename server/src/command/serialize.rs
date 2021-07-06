@@ -20,12 +20,12 @@ struct IndexNode {
 impl CommandTree {
   /// Serializes the entire command tree. This will be called any time a player
   /// joins.
-  pub fn serialize(&self) -> cb::Packet {
+  pub async fn serialize(&self) -> cb::Packet {
     // This is a reverse-order list of all the nodes. The highest level node (the
     // root node) will be last.
     let mut nodes = vec![];
 
-    let commands = self.commands.lock().unwrap();
+    let commands = self.commands.lock().await;
     let c = Command {
       name:     "".into(),
       ty:       NodeType::Root,
