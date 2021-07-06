@@ -2,28 +2,46 @@ use super::StringType;
 use std::{
   error::Error,
   fmt,
-  io::{self, BufReader, Read},
+  io::{self, BufRead, BufReader, Read},
   slice::Iter,
+  str::Utf8Error,
 };
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug)]
 pub enum ReadError {
-  EOF(String),
-  Unexpected(String, usize, char),
-  Invalid(String, usize, char),
+  EOF,
+  IO(io::Error),
+  Unexpected(usize, char),
+  Invalid(usize, char),
 }
 
 impl fmt::Display for ReadError {
   fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
     match self {
-      Self::EOF(text) => writeln!(f, "Unexpected EOF while reading {}", text),
-      Self::Unexpected(text, index, c) => {
+      Self::EOF => write!(f, "Unexpected EOF while reading command"),
+      Self::IO(e) => writeln!(f, "{} while reading command", e),
+      Self::Unexpected(index, c) => {
+        write!(f, "Unexpected '{}' while reading command", c)
+      }
+      Self::Invalid(index, c) => {
+        write!(f, "Invalid '{}' while reading command", c)
+      }
+    }
+  }
+}
+
+impl ReadError {
+  pub fn pretty_print(&self, text: &str, f: &mut fmt::Formatter) -> fmt::Result {
+    match self {
+      Self::EOF => writeln!(f, "Unexpected EOF while reading {}", text),
+      Self::IO(e) => writeln!(f, "{} while reading {}", e, text),
+      Self::Unexpected(index, c) => {
         let s = format!("Unexpected '{}' while reading {}", c, text);
         let index = s.len() - text.len() + index;
         writeln!(f, "{}", s)?;
         writeln!(f, "{}^ here", " ".repeat(index - 1))
       }
-      Self::Invalid(text, index, c) => {
+      Self::Invalid(index, c) => {
         let s = format!("Invalid '{}' while reading {}", c, text);
         let index = s.len() - text.len() + index;
         writeln!(f, "{}", s);
@@ -34,6 +52,16 @@ impl fmt::Display for ReadError {
 }
 
 impl Error for ReadError {}
+
+impl From<io::Error> for ReadError {
+  fn from(e: io::Error) -> ReadError {
+    if e.kind() == io::ErrorKind::UnexpectedEof {
+      ReadError::EOF
+    } else {
+      ReadError::IO(e)
+    }
+  }
+}
 
 pub struct CommandReader<'a> {
   buf: BufReader<StringReader<'a>>,
@@ -75,7 +103,15 @@ impl<'a> CommandReader<'a> {
   ///   double quote. Quotes can be escaped with a `\`.
   /// - `StringType::Greedy` will parse the rest of the string.
   pub fn word(&mut self, ty: StringType) -> Result<String, ReadError> {
-    Ok("".into())
+    let mut out = vec![];
+    if self.buf.read_until(b' ', &mut out)? == 0 {
+      return Err(ReadError::EOF);
+    }
+    if out.last() == Some(&b' ') {
+      out.resize(out.len() - 1, 0);
+    }
+    // StringIter is iterating over a str, which is always valid utf8
+    Ok(String::from_utf8(out).unwrap())
   }
 
   /// Reads a word, and parses it as an int.
@@ -100,7 +136,7 @@ mod tests {
     assert_eq!("big", reader.word(StringType::Word)?);
     assert_eq!("", reader.word(StringType::Word)?);
     assert_eq!("space", reader.word(StringType::Word)?);
-    matches!(reader.word(StringType::Word).unwrap_err(), EOF);
+    matches!(reader.word(StringType::Word).unwrap_err(), ReadError::EOF);
 
     Ok(())
   }
