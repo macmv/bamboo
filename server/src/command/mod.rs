@@ -23,14 +23,19 @@ mod serialize;
 pub use enums::{Arg, Parser, StringType};
 pub use parse::ParseError;
 
-use std::{collections::HashMap, sync::Mutex};
+use crate::world::WorldManager;
+use std::{collections::HashMap, future::Future, sync::Mutex};
+
+type Handler = Box<
+  dyn for<'a> Fn(&'a WorldManager, &'a Command) -> Box<dyn Future<Output = ()> + Send + 'a> + Send,
+>;
 
 /// All of the commands on a server. This is a table of all the commands that
 /// the clients can run. It handles serializing these commands to packets, and
 /// callbacks for when a command is run. It also delegates all of the command
 /// parsing that needs to be done for callbacks to work.
 pub struct CommandTree {
-  commands: Mutex<HashMap<String, Command>>,
+  commands: Mutex<HashMap<String, (Command, Handler)>>,
 }
 
 impl CommandTree {
@@ -42,8 +47,8 @@ impl CommandTree {
   /// Adds a new command to the tree. Any new players that join will be able to
   /// execute this command. This will also update the `/help` output, and
   /// include the command syntax/description.
-  pub fn add(&self, c: Command) {
-    self.commands.lock().unwrap().insert(c.name().into(), c);
+  pub fn add(&self, c: Command, handler: Handler) {
+    self.commands.lock().unwrap().insert(c.name().into(), (c, handler));
   }
 }
 

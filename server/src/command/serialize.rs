@@ -29,7 +29,7 @@ impl CommandTree {
     let c = Command {
       name:     "".into(),
       ty:       NodeType::Root,
-      children: commands.values().cloned().collect(),
+      children: commands.values().map(|(command, _)| command.clone()).collect(),
     };
     c.write_nodes(&mut nodes);
 
