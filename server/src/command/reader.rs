@@ -127,15 +127,21 @@ mod tests {
   #[test]
   fn read_word() -> Result<(), ReadError> {
     // Single words
-    let mut reader = CommandReader::new("hello world i am big  space");
+    let mut reader = CommandReader::new("i am big  space");
 
-    assert_eq!("hello", reader.word(StringType::Word)?);
-    assert_eq!("world", reader.word(StringType::Word)?);
     assert_eq!("i", reader.word(StringType::Word)?);
     assert_eq!("am", reader.word(StringType::Word)?);
     assert_eq!("big", reader.word(StringType::Word)?);
     assert_eq!("", reader.word(StringType::Word)?);
     assert_eq!("space", reader.word(StringType::Word)?);
+    matches!(reader.word(StringType::Word).unwrap_err(), ReadError::EOF);
+
+    // UTF8 tests
+    let mut reader = CommandReader::new("weird 🍔∈🌏 characters");
+
+    assert_eq!("weird", reader.word(StringType::Word)?);
+    assert_eq!("🍔∈🌏", reader.word(StringType::Word)?);
+    assert_eq!("characters", reader.word(StringType::Word)?);
     matches!(reader.word(StringType::Word).unwrap_err(), ReadError::EOF);
 
     Ok(())
