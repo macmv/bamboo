@@ -20,7 +20,5 @@ num-derive = "0.3"
 
 noise = "0.7.0"
 
-Boa = "0.11.0"
-
 [build-dependencies]
 data = { path = "../data" }
