@@ -4,7 +4,6 @@ use std::{
   fmt,
   io::{self, BufRead, BufReader, Read},
   slice::Iter,
-  str::Utf8Error,
 };
 
 #[derive(Debug)]
@@ -20,10 +19,10 @@ impl fmt::Display for ReadError {
     match self {
       Self::EOF => write!(f, "Unexpected EOF while reading command"),
       Self::IO(e) => writeln!(f, "{} while reading command", e),
-      Self::Unexpected(index, c) => {
+      Self::Unexpected(_index, c) => {
         write!(f, "Unexpected '{}' while reading command", c)
       }
-      Self::Invalid(index, c) => {
+      Self::Invalid(_index, c) => {
         write!(f, "Invalid '{}' while reading command", c)
       }
     }
@@ -102,7 +101,7 @@ impl<'a> CommandReader<'a> {
   ///   first character is a double quote, then this will read to the next
   ///   double quote. Quotes can be escaped with a `\`.
   /// - `StringType::Greedy` will parse the rest of the string.
-  pub fn word(&mut self, ty: StringType) -> Result<String, ReadError> {
+  pub fn word(&mut self, _ty: StringType) -> Result<String, ReadError> {
     let mut out = vec![];
     if self.buf.read_until(b' ', &mut out)? == 0 {
       return Err(ReadError::EOF);

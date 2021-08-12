@@ -184,10 +184,10 @@ impl Packet {
 
 macro_rules! value_non_empty {
   ($field: ident, $f: expr, $var: ident, $fmt: expr) => {
-    writeln!($f, concat!("  {}: ", $fmt), $field.0, $field.1.$var)?;
+    writeln!($f, concat!("  {}: ", $fmt), $field.0, $field.1.$var)?
   };
   ($field: ident, $f: expr, $var: ident, $fmt: expr, $extra: expr) => {
-    writeln!($f, concat!("  {}: ", $fmt), $field.0, $field.1.$var, $extra)?;
+    writeln!($f, concat!("  {}: ", $fmt), $field.0, $field.1.$var, $extra)?
   };
 }
 

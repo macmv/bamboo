@@ -6,7 +6,7 @@ use crate::{block, player::Player, world::WorldManager};
 use common::math::Pos;
 use std::{
   fmt, fs,
-  sync::{mpsc, Arc, Mutex},
+  sync::{Arc, Mutex},
 };
 use sugarlang::{define_ty, Sugarlang};
 
@@ -161,7 +161,7 @@ impl PluginManager {
     }
   }
 
-  pub fn on_block_place(&self, player: Arc<Player>, pos: Pos, kind: block::Kind) {
+  pub fn on_block_place(&self, _player: Arc<Player>, _pos: Pos, _kind: block::Kind) {
     // self.tx.lock().unwrap().send(Event::OnBlockPlace(player, pos,
     // kind)).unwrap();
   }

@@ -1,7 +1,6 @@
 extern crate test;
 
 use super::*;
-use test::Bencher;
 
 #[test]
 fn test_index() {

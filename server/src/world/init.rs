@@ -8,10 +8,7 @@ use common::{
   math::ChunkPos,
   net::{cb, Other},
   proto::{player_list, PlayerList},
-  util::{
-    nbt::{Tag, NBT},
-    Chat,
-  },
+  util::nbt::{Tag, NBT},
   version::ProtocolVersion,
 };
 
