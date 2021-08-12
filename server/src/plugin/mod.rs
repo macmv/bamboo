@@ -8,7 +8,7 @@ use std::{
   fmt, fs,
   sync::{Arc, Mutex},
 };
-use sugarlang::{define_ty, Sugarlang};
+use sugarlang::{define_ty, runtime::Var, Sugarlang};
 
 #[derive(Debug)]
 pub enum Event {
@@ -32,6 +32,17 @@ pub struct Sugarcane {
 impl Sugarcane {
   pub fn init() {
     info!("INIT TIME");
+  }
+  pub fn info(args: Variadic<&Var>) {
+    let mut msg = String::new();
+    let mut iter = args.iter();
+    if let Some(a) = iter.next() {
+      msg += &format!("{}", a);
+    }
+    for a in iter {
+      msg += &format!(" {}", a);
+    }
+    info!("plugin message: {}", msg);
   }
 }
 
