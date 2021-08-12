@@ -3,21 +3,43 @@
 // use common::math::Pos;
 // use rutie::{AnyObject, Fixnum, Module, Object, VM};
 // use std::sync::{mpsc, Arc};
+use super::PluginManager;
+use std::{fs, path::Path};
+use sugarlang::{path, Sugarlang};
 
 /// A wrapper struct for a Ruby plugin. This is used to execute Ruby code
 /// whenever an event happens.
 pub struct Plugin {
-  _name: String,
-  /* m:    Module,
-   * err:  mpsc::Sender<()>, */
+  name:          String,
+  pub(super) sl: Sugarlang,
 }
 
 impl Plugin {
   //   /// Creates a new plugin. The name should be the name of the module (for
   //   /// debugging) and the Module should be the ruby module for this plugin.
   pub fn new(name: String) -> Self {
-    Plugin { _name: name }
+    Plugin { name, sl: Sugarlang::new() }
   }
+
+  /// This replaces the plugins envrionment with a new one, and then parses the
+  /// given file as a sugarlang source file.
+  pub fn load_from_file(&mut self, path: &Path, manager: &PluginManager) {
+    let mut sl = Sugarlang::new();
+    sl.set_color(self.sl.use_color());
+    PluginManager::add_builtins(&mut sl);
+    match fs::read_to_string(path) {
+      Ok(src) => match sl.parse_file(src.as_bytes(), &path!(main)) {
+        Ok(_) => {}
+        Err(err) => err.print(&src, sl.use_color()),
+      },
+      Err(err) => warn!("{}", err),
+    }
+    self.sl = sl;
+  }
+
+  /// This replaces the plugin envrionment with a new one, and then parses all
+  /// of the files ending in `.sug` in the given directory.
+  pub fn load_from_dir(path: &Path) {}
   //
   //  /// Calls init on the plugin. This is called right after all plugins are
   //  /// loaded. The world will have been initialized, and it is possible for

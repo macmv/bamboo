@@ -80,6 +80,10 @@ impl PluginManager {
     PluginManager { plugins: Mutex::new(vec![]) }
   }
 
+  pub fn add_builtins(sl: &mut Sugarlang) {
+    sl.add_builtin_ty::<Sugarcane>();
+  }
+
   pub async fn run(&self, wm: Arc<WorldManager>) {
     self.load(wm);
     // let mut ctx = Context::new();
@@ -113,9 +117,15 @@ impl PluginManager {
       if m.is_file() {
         let path = f.path();
         info!("found plugin at {}", path.to_str().unwrap());
-        let mut sl = Sugarlang::new();
-        sl.add_builtin_ty::<Sugarcane>();
-        sl.exec_statement("sugarcane::Sugarcane::init()");
+        let name = path.file_stem().unwrap().to_str().unwrap().to_string();
+        // let mut sl = Sugarlang::new();
+        // sl.add_builtin_ty::<Sugarcane>();
+        // sl.exec_statement("sugarcane::Sugarcane::init()");
+
+        let mut p = Plugin::new(name);
+        p.load_from_file(&path, self);
+
+        p.sl.exec_statement("main::init()");
 
         // let src = fs::read_to_string(path).unwrap();
         // let src_bytes = src.as_bytes();
