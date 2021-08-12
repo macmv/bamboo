@@ -8,6 +8,7 @@ use std::{
   fmt, fs,
   sync::{mpsc, Arc, Mutex},
 };
+use sugarlang::{define_ty, Sugarlang};
 
 #[derive(Debug)]
 pub enum Event {
@@ -22,8 +23,16 @@ pub struct PluginManager {
   plugins: Mutex<Vec<Plugin>>,
 }
 
+#[derive(Clone)]
 pub struct Sugarcane {
   _wm: Arc<WorldManager>,
+}
+
+#[define_ty(path = "sugarcane::Sugarcane")]
+impl Sugarcane {
+  pub fn init() {
+    info!("INIT TIME");
+  }
 }
 
 impl fmt::Debug for Sugarcane {
@@ -72,6 +81,7 @@ impl PluginManager {
   }
 
   pub async fn run(&self, wm: Arc<WorldManager>) {
+    self.load(wm);
     // let mut ctx = Context::new();
     // ctx.register_global_class::<Sugarcane>().unwrap();
     // let _o = ctx.construct_object();
@@ -103,6 +113,10 @@ impl PluginManager {
       if m.is_file() {
         let path = f.path();
         info!("found plugin at {}", path.to_str().unwrap());
+        let mut sl = Sugarlang::new();
+        sl.add_builtin_ty::<Sugarcane>();
+        sl.exec_statement("sugarcane::Sugarcane::init()");
+
         // let src = fs::read_to_string(path).unwrap();
         // let src_bytes = src.as_bytes();
         //

@@ -1,0 +1,4 @@
+
+fn init() {
+  sugarcane::Sugarcane::info("hello world");
+}
