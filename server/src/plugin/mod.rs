@@ -8,7 +8,7 @@ use std::{
   fmt, fs,
   sync::{Arc, Mutex},
 };
-use sugarlang::{define_ty, path, runtime::Var, Sugarlang};
+use sugarlang::{define_ty, runtime::Var, Sugarlang};
 
 #[derive(Debug)]
 pub enum Event {
@@ -138,12 +138,10 @@ impl PluginManager {
         // sl.exec_statement("sugarcane::Sugarcane::init()");
 
         let n = name.clone();
-        let mut p = Plugin::new(name);
+        let mut p = Plugin::new(name, wm.clone());
         p.load_from_file(&path, self);
 
-        p.sl
-          .call_args(path!(main), "init", vec![Var::from(Sugarcane::new(n, wm.clone())).into_ref()])
-          .unwrap();
+        p.call_init();
 
         // let src = fs::read_to_string(path).unwrap();
         // let src_bytes = src.as_bytes();

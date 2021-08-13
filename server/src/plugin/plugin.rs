@@ -3,22 +3,28 @@
 // use common::math::Pos;
 // use rutie::{AnyObject, Fixnum, Module, Object, VM};
 // use std::sync::{mpsc, Arc};
-use super::PluginManager;
-use std::{fs, path::Path};
-use sugarlang::{path, Sugarlang};
+use super::{PluginManager, Sugarcane};
+use crate::world::WorldManager;
+use std::{fs, path::Path, sync::Arc};
+use sugarlang::{
+  path,
+  runtime::{Path as TyPath, Var},
+  Sugarlang,
+};
 
 /// A wrapper struct for a Ruby plugin. This is used to execute Ruby code
 /// whenever an event happens.
 pub struct Plugin {
-  name:          String,
-  pub(super) sl: Sugarlang,
+  name: String,
+  sl:   Sugarlang,
+  sc:   Sugarcane,
 }
 
 impl Plugin {
   //   /// Creates a new plugin. The name should be the name of the module (for
   //   /// debugging) and the Module should be the ruby module for this plugin.
-  pub fn new(name: String) -> Self {
-    Plugin { name, sl: Sugarlang::new() }
+  pub fn new(name: String, wm: Arc<WorldManager>) -> Self {
+    Plugin { sc: Sugarcane::new(name.clone(), wm), name, sl: Sugarlang::new() }
   }
 
   /// This replaces the plugins envrionment with a new one, and then parses the
@@ -35,6 +41,19 @@ impl Plugin {
       Err(err) => warn!("{}", err),
     }
     self.sl = sl;
+  }
+
+  pub fn call_init(&self) {
+    self.call(path!(main), "init", vec![self.sc.clone().into()]);
+  }
+
+  pub fn call(&self, path: TyPath, name: &str, args: Vec<Var>) {
+    match self.sl.call_args(path, name, args.into_iter().map(|v| v.into_ref()).collect()) {
+      Ok(_) => {}
+      Err(e) => {
+        warn!("{}", e);
+      }
+    }
   }
 
   /// This replaces the plugin envrionment with a new one, and then parses all
