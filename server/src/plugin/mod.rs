@@ -8,7 +8,7 @@ use std::{
   fmt, fs,
   sync::{Arc, Mutex},
 };
-use sugarlang::{define_ty, runtime::Var, Sugarlang};
+use sugarlang::{define_ty, path, runtime::Var, Sugarlang};
 
 #[derive(Debug)]
 pub enum Event {
@@ -25,15 +25,19 @@ pub struct PluginManager {
 
 #[derive(Clone)]
 pub struct Sugarcane {
-  _wm: Arc<WorldManager>,
+  plugin: String,
+  wm:     Arc<WorldManager>,
+}
+
+impl Sugarcane {
+  pub fn new(plugin: String, wm: Arc<WorldManager>) -> Self {
+    Sugarcane { plugin, wm }
+  }
 }
 
 #[define_ty(path = "sugarcane::Sugarcane")]
 impl Sugarcane {
-  pub fn init() {
-    info!("INIT TIME");
-  }
-  pub fn info(args: Variadic<&Var>) {
+  pub fn info(&self, args: Variadic<Var>) {
     let mut msg = String::new();
     let mut iter = args.iter();
     if let Some(a) = iter.next() {
@@ -42,7 +46,7 @@ impl Sugarcane {
     for a in iter {
       msg += &format!(" {}", a);
     }
-    info!("plugin message: {}", msg);
+    info!("plugin `{}`: {}", self.plugin, msg);
   }
 }
 
@@ -119,7 +123,7 @@ impl PluginManager {
   fn handle_event(&self, _e: Event) {}
 
   /// Loads all plugins from disk. Call this to reload all plugins.
-  fn load(&self, _wm: Arc<WorldManager>) {
+  fn load(&self, wm: Arc<WorldManager>) {
     let mut plugins = self.plugins.lock().unwrap();
     plugins.clear();
     for f in fs::read_dir("plugins").unwrap() {
@@ -133,10 +137,13 @@ impl PluginManager {
         // sl.add_builtin_ty::<Sugarcane>();
         // sl.exec_statement("sugarcane::Sugarcane::init()");
 
+        let n = name.clone();
         let mut p = Plugin::new(name);
         p.load_from_file(&path, self);
 
-        p.sl.exec_statement("main::init()");
+        p.sl
+          .call_args(path!(main), "init", vec![Var::from(Sugarcane::new(n, wm.clone())).into_ref()])
+          .unwrap();
 
         // let src = fs::read_to_string(path).unwrap();
         // let src_bytes = src.as_bytes();

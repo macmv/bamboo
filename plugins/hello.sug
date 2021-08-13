@@ -1,5 +1,3 @@
-use sugarcane::Sugarcane::info
-
-fn init() {
-  info("hello world")
+fn init(sc) {
+  sc.info("hello world")
 }
