@@ -34,9 +34,9 @@ impl Plugin {
     sl.set_color(self.sl.use_color());
     PluginManager::add_builtins(&mut sl);
     match fs::read_to_string(path) {
-      Ok(src) => match sl.parse_file(src.as_bytes(), &path!(main)) {
+      Ok(src) => match sl.parse_file(&path!(main), path, src) {
         Ok(_) => {}
-        Err(err) => err.print(&src, sl.use_color()),
+        Err(err) => sl.print_err(err),
       },
       Err(err) => warn!("{}", err),
     }
