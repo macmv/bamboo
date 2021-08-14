@@ -9,14 +9,14 @@ use std::{fs, path::Path, sync::Arc};
 use sugarlang::{
   path,
   runtime::{Path as TyPath, Var},
-  Sugarlang,
+  SlError, Sugarlang,
 };
 
 /// A wrapper struct for a Ruby plugin. This is used to execute Ruby code
 /// whenever an event happens.
 pub struct Plugin {
   name: String,
-  sl:   Sugarlang,
+  sl:   Option<Sugarlang>,
   sc:   Sugarcane,
 }
 
@@ -24,23 +24,31 @@ impl Plugin {
   //   /// Creates a new plugin. The name should be the name of the module (for
   //   /// debugging) and the Module should be the ruby module for this plugin.
   pub fn new(name: String, wm: Arc<WorldManager>) -> Self {
-    Plugin { sc: Sugarcane::new(name.clone(), wm), name, sl: Sugarlang::new() }
+    Plugin { sc: Sugarcane::new(name.clone(), wm), name, sl: None }
   }
 
   /// This replaces the plugins envrionment with a new one, and then parses the
   /// given file as a sugarlang source file.
   pub fn load_from_file(&mut self, path: &Path, manager: &PluginManager) {
+    self.sl = None;
     let mut sl = Sugarlang::new();
-    sl.set_color(self.sl.use_color());
+    sl.set_color(manager.use_color());
     PluginManager::add_builtins(&mut sl);
     match fs::read_to_string(path) {
       Ok(src) => match sl.parse_file(&path!(main), path, src) {
-        Ok(_) => {}
-        Err(err) => sl.print_err(err),
+        Ok(_) => {
+          self.sl = Some(sl);
+        }
+        Err(err) => {
+          self.sl = Some(sl);
+          self.print_err(err);
+          self.sl = None;
+        }
       },
-      Err(err) => warn!("{}", err),
+      Err(err) => {
+        warn!("{}", err);
+      }
     }
-    self.sl = sl;
   }
 
   pub fn call_init(&self) {
@@ -48,11 +56,23 @@ impl Plugin {
   }
 
   pub fn call(&self, path: TyPath, name: &str, args: Vec<Var>) {
-    match self.sl.call_args(path, name, args.into_iter().map(|v| v.into_ref()).collect()) {
-      Ok(_) => {}
-      Err(e) => {
-        warn!("{}", e);
+    match &self.sl {
+      Some(sl) => {
+        match sl.call_args(path, name, args.into_iter().map(|v| v.into_ref()).collect()) {
+          Ok(_) => {}
+          Err(e) => {
+            warn!("{}", e);
+          }
+        }
       }
+      None => {}
+    }
+  }
+
+  pub fn print_err<E: SlError>(&self, err: E) {
+    match &self.sl {
+      Some(sl) => warn!("error in plugin {}:\n{}", self.name, sl.gen_err(err)),
+      None => {}
     }
   }
 

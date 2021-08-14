@@ -99,6 +99,11 @@ impl PluginManager {
     sl.add_builtin_ty::<Sugarcane>();
   }
 
+  /// Returns true if plugins should print error messages with colors.
+  pub fn use_color(&self) -> bool {
+    true
+  }
+
   pub async fn run(&self, wm: Arc<WorldManager>) {
     self.load(wm);
     // let mut ctx = Context::new();
@@ -137,7 +142,6 @@ impl PluginManager {
         // sl.add_builtin_ty::<Sugarcane>();
         // sl.exec_statement("sugarcane::Sugarcane::init()");
 
-        let n = name.clone();
         let mut p = Plugin::new(name, wm.clone());
         p.load_from_file(&path, self);
 

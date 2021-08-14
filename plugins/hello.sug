@@ -1,3 +1,4 @@
 fn init(sc) {
   sc.info("hello world")
+  asdfg
 }
