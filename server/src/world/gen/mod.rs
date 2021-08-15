@@ -52,6 +52,14 @@ impl BiomeLayers {
 }
 
 pub trait BiomeGen {
+  /// Creates a new biome generator, with the given id. This id must be returned
+  /// by [`id`](Self::id).
+  fn new(id: usize) -> Self
+  where
+    Self: Sized;
+  /// Returns this biome's id. This is used to check if a type is the correct
+  /// biome, so returning the wrong thing here will break things.
+  fn id(&self) -> usize;
   /// This fills an entire chunk with the given biome. This will fill the chunk
   /// with stone, up to the height at the middle. It will then carve/add blocks
   /// to the other columns of the chunk. Finally, it will call [`fill_column`]
@@ -151,18 +159,21 @@ impl WorldGen {
   pub fn new() -> Self {
     let mut height = BasicMulti::new();
     height.octaves = 5;
-    Self {
-      biome_map: WarpedVoronoi::new(3210471203948712039),
-      biomes: vec![desert::Gen::new(), forest::Gen::new()],
-      height,
-    }
+    let mut gen =
+      WorldGen { biome_map: WarpedVoronoi::new(3210471203948712039), biomes: vec![], height };
+    gen.add_biome::<desert::Gen>();
+    gen.add_biome::<forest::Gen>();
+    gen
+  }
+  pub fn add_biome<B: BiomeGen + Send + 'static>(&mut self) {
+    let id = self.biomes.len();
+    self.biomes.push(Box::new(B::new(id)));
   }
   pub fn generate(&self, pos: ChunkPos, c: &mut MultiChunk) {
     let mut biomes = HashSet::new();
     for x in 0..16 {
       for z in 0..16 {
-        let biome =
-          self.biome_map.get(pos.block().x() + x, pos.block().z() + z) as usize % self.biomes.len();
+        let biome = self.biome_id_at(Pos::new(pos.block().x() + x, 0, pos.block().z() + z));
         biomes.insert(biome);
       }
     }
@@ -185,5 +196,12 @@ impl WorldGen {
   }
   pub fn height_at(&self, pos: Pos) -> f64 {
     self.height.get([pos.x() as f64 / 512.0, pos.z() as f64 / 512.0]) * 20.0 + 60.0
+  }
+  pub fn biome_id_at(&self, pos: Pos) -> usize {
+    self.biome_map.get(pos.x(), pos.z()) as usize % self.biomes.len()
+  }
+  pub fn is_biome<B: BiomeGen>(&self, b: &B, pos: Pos) -> bool {
+    let actual = self.biome_id_at(pos);
+    b.id() == actual
   }
 }
