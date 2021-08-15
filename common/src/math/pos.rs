@@ -176,6 +176,7 @@ impl Pos {
   /// Creates a new iterator from the current position to the other position.
   /// This will iterate through every block within a cube where `self` is the
   /// minimum corner, and `end` is the maximum corner.
+  #[inline(always)]
   pub fn to(&self, end: Pos) -> PosIter {
     PosIter::new(*self, end)
   }
@@ -228,6 +229,7 @@ impl PosIter {
   /// the chunk data in order. It also makes sense to do this externally,
   /// simply because going row by row, then layer by layer usually makes the
   /// most sense.
+  #[inline(always)]
   pub fn new(mut start: Pos, mut end: Pos) -> Self {
     if start.x > end.x {
       mem::swap(&mut start.x, &mut end.x);

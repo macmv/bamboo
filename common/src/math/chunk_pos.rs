@@ -3,7 +3,7 @@ use std::{
   ops::{Add, AddAssign, Sub, SubAssign},
 };
 
-use super::Pos;
+use super::{Pos, PosIter};
 
 #[derive(Debug, Clone, Copy, Hash, PartialEq, Eq)]
 pub struct ChunkPos {
@@ -48,6 +48,13 @@ impl ChunkPos {
   pub fn block(&self) -> Pos {
     Pos::new(self.block_x(), 0, self.block_z())
   }
+
+  /// Creates an iterator that will return every column in the chunk. The Y
+  /// coordinate in the position will always be 0.
+  #[inline(always)]
+  pub fn columns(&self) -> PosIter {
+    self.block().to(self.block() + Pos::new(15, 0, 15))
+  }
 }
 
 impl Add for ChunkPos {
@@ -75,5 +82,38 @@ impl SubAssign for ChunkPos {
   fn sub_assign(&mut self, other: Self) {
     self.x -= other.x;
     self.z -= other.z;
+  }
+}
+
+#[cfg(test)]
+mod tests {
+  use super::*;
+
+  #[test]
+  fn iter() {
+    let mut total = 0;
+    for (i, p) in ChunkPos::new(2, 3).columns().enumerate() {
+      total += 1;
+      let x = i % 16;
+      let z = i / 16;
+      dbg!(p);
+      assert_eq!(p, Pos::new(x as i32 + 32, 0, z as i32 + 48));
+      if i > 256 {
+        panic!("invalid index {}", i);
+      }
+    }
+    assert_eq!(total, 256);
+    total = 0;
+    for (i, p) in ChunkPos::new(-1, -3).columns().enumerate() {
+      total += 1;
+      let x = i % 16;
+      let z = i / 16;
+      dbg!(p);
+      assert_eq!(p, Pos::new(x as i32 - 16, 0, z as i32 - 48));
+      if i > 256 {
+        panic!("invalid index {}", i);
+      }
+    }
+    assert_eq!(total, 256);
   }
 }
