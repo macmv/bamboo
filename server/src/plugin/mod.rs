@@ -1,4 +1,5 @@
 mod plugin;
+mod types;
 
 pub use plugin::Plugin;
 
@@ -191,7 +192,10 @@ impl PluginManager {
     }
   }
 
-  pub fn on_block_place(&self, _player: Arc<Player>, _pos: Pos, _kind: block::Kind) {
+  pub fn on_block_place(&self, player: Arc<Player>, pos: Pos, kind: block::Kind) {
+    for p in self.plugins.lock().unwrap().iter() {
+      p.call_on_block_place(player.clone(), pos, kind);
+    }
     // self.tx.lock().unwrap().send(Event::OnBlockPlace(player, pos,
     // kind)).unwrap();
   }

@@ -3,8 +3,12 @@
 // use common::math::Pos;
 // use rutie::{AnyObject, Fixnum, Module, Object, VM};
 // use std::sync::{mpsc, Arc};
-use super::{PluginManager, Sugarcane};
-use crate::world::WorldManager;
+use super::{
+  types::{SlBlockKind, SlPlayer, SlPos},
+  PluginManager, Sugarcane,
+};
+use crate::{block, player::Player, world::WorldManager};
+use common::math::Pos;
 use std::{fs, path::Path, sync::Arc};
 use sugarlang::{
   path,
@@ -54,15 +58,20 @@ impl Plugin {
   pub fn call_init(&self) {
     self.call(path!(main), "init", vec![self.sc.clone().into()]);
   }
+  pub fn call_on_block_place(&self, player: Arc<Player>, pos: Pos, kind: block::Kind) {
+    self.call(
+      path!(main),
+      "init",
+      vec![SlPlayer::new(player).into(), SlPos::new(pos).into(), SlBlockKind::new(kind).into()],
+    );
+  }
 
   pub fn call(&self, path: TyPath, name: &str, args: Vec<Var>) {
     match &self.sl {
       Some(sl) => {
         match sl.call_args(path, name, args.into_iter().map(|v| v.into_ref()).collect()) {
           Ok(_) => {}
-          Err(e) => {
-            warn!("{}", e);
-          }
+          Err(e) => self.print_err(e),
         }
       }
       None => {}
