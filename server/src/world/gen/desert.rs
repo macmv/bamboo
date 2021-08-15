@@ -34,10 +34,15 @@ impl BiomeGen for Gen {
     layers
   }
   fn decorate(&self, world: &WorldGen, chunk_pos: ChunkPos, c: &mut MultiChunk) {
-    for p in chunk_pos.columns() {
-      if world.is_biome(self, p) && self.cacti.contains(p.x(), p.z()) {
+    for mut p in chunk_pos.columns() {
+      if world.is_biome(self, p) {
         let height = self.height_at(world, p);
-        self.place_cactus(world, c, p.with_y(height + 1));
+        p = p.with_y(height + 1);
+        if self.cacti.contains(p.x(), p.z()) {
+          self.place_cactus(world, c, p);
+        } else if world.chance(p, 0.05) {
+          c.set_kind(p, block::Kind::DeadBush);
+        }
       }
     }
   }
