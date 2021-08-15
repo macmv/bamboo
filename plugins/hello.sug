@@ -3,5 +3,5 @@ fn init(sc) {
 }
 
 fn on_block_place(sc, player, pos, kind) {
-  sc.info("block place:", pos, kind)
+  sc.info("block x:", pos.x())
 }
