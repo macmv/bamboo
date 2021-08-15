@@ -1,8 +1,8 @@
 use super::ChunkPos;
 use std::{
   error::Error,
-  fmt,
-  ops::{Add, AddAssign, Sub, SubAssign},
+  fmt, mem,
+  ops::{Add, AddAssign, Range, Sub, SubAssign},
 };
 
 #[derive(Debug, PartialEq)]
@@ -172,6 +172,13 @@ impl Pos {
   pub fn err(&self, msg: String) -> PosError {
     PosError { pos: *self, msg }
   }
+
+  /// Creates a new iterator from the current position to the other position.
+  /// This will iterate through every block within a cube where `self` is the
+  /// minimum corner, and `end` is the maximum corner.
+  pub fn to(&self, end: Pos) -> PosIter {
+    PosIter::new(*self, end)
+  }
 }
 
 impl Add for Pos {
@@ -204,9 +211,111 @@ impl SubAssign for Pos {
   }
 }
 
+pub struct PosIter {
+  curr:  Pos,
+  start: Pos,
+  end:   Pos,
+}
+
+impl PosIter {
+  /// Creates a new inclusive iterator. This will swap around the values in
+  /// start and end so that it will always iterate from least to most on x,
+  /// then z, then y.
+  ///
+  /// This might sound like nonsense at first, but this is the order in which
+  /// block data is stored. So internally it makes the most sense to do this,
+  /// as we can iterate between positions, and then in turn iterate through
+  /// the chunk data in order. It also makes sense to do this externally,
+  /// simply because going row by row, then layer by layer usually makes the
+  /// most sense.
+  pub fn new(mut start: Pos, mut end: Pos) -> Self {
+    if start.x > end.x {
+      mem::swap(&mut start.x, &mut end.x);
+    }
+    if start.y > end.y {
+      mem::swap(&mut start.y, &mut end.y);
+    }
+    if start.z > end.z {
+      mem::swap(&mut start.z, &mut end.z);
+    }
+    PosIter { curr: start, start, end }
+  }
+}
+
+impl From<Range<Pos>> for PosIter {
+  fn from(r: Range<Pos>) -> PosIter {
+    PosIter::new(r.start, r.end)
+  }
+}
+
+impl Iterator for PosIter {
+  type Item = Pos;
+
+  fn next(&mut self) -> Option<Pos> {
+    if self.curr.y > self.end.y {
+      return None;
+    }
+    let ret = self.curr;
+    self.curr.x += 1;
+    if self.curr.x > self.end.x {
+      self.curr.x = self.start.x;
+      self.curr.z += 1;
+      if self.curr.z > self.end.z {
+        self.curr.z = self.start.z;
+        self.curr.y += 1;
+      }
+    }
+    Some(ret)
+  }
+}
+
 #[cfg(test)]
 mod tests {
   use super::*;
+
+  #[test]
+  fn iter() {
+    let mut total = 0;
+    for (i, p) in Pos::new(1, 2, 3).to(Pos::new(1, 2, 3)).enumerate() {
+      total += 1;
+      match i {
+        0 => assert_eq!(p, Pos::new(1, 2, 3)),
+        _ => panic!("invalid index {}", i),
+      }
+    }
+    assert_eq!(total, 1);
+    total = 0;
+    for (i, p) in Pos::new(0, 0, 0).to(Pos::new(1, 1, 1)).enumerate() {
+      total += 1;
+      match i {
+        0 => assert_eq!(p, Pos::new(0, 0, 0)),
+        1 => assert_eq!(p, Pos::new(1, 0, 0)),
+        2 => assert_eq!(p, Pos::new(0, 0, 1)),
+        3 => assert_eq!(p, Pos::new(1, 0, 1)),
+        4 => assert_eq!(p, Pos::new(0, 1, 0)),
+        5 => assert_eq!(p, Pos::new(1, 1, 0)),
+        6 => assert_eq!(p, Pos::new(0, 1, 1)),
+        7 => assert_eq!(p, Pos::new(1, 1, 1)),
+        _ => panic!("invalid index {}", i),
+      }
+    }
+    total = 0;
+    for (i, p) in Pos::new(1, 1, 1).to(Pos::new(0, 0, 0)).enumerate() {
+      total += 1;
+      match i {
+        0 => assert_eq!(p, Pos::new(0, 0, 0)),
+        1 => assert_eq!(p, Pos::new(1, 0, 0)),
+        2 => assert_eq!(p, Pos::new(0, 0, 1)),
+        3 => assert_eq!(p, Pos::new(1, 0, 1)),
+        4 => assert_eq!(p, Pos::new(0, 1, 0)),
+        5 => assert_eq!(p, Pos::new(1, 1, 0)),
+        6 => assert_eq!(p, Pos::new(0, 1, 1)),
+        7 => assert_eq!(p, Pos::new(1, 1, 1)),
+        _ => panic!("invalid index {}", i),
+      }
+    }
+    assert_eq!(total, 8);
+  }
 
   #[test]
   fn pos_decode() {
