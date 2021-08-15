@@ -1,10 +1,23 @@
-use super::{BiomeGen, BiomeLayers};
-use crate::block;
-use common::math::PointGrid;
+use super::{BiomeGen, BiomeLayers, WorldGen};
+use crate::{block, world::chunk::MultiChunk};
+use common::math::{ChunkPos, PointGrid, Pos};
 
 pub struct Gen {
   id:    usize,
   cacti: PointGrid,
+}
+
+impl Gen {
+  pub fn place_cactus(&self, world: &WorldGen, c: &mut MultiChunk, pos: Pos) {
+    let height;
+    if world.chance(pos, 0.50) {
+      height = 3
+    } else {
+      height = 2
+    }
+    let rel = pos.chunk_rel();
+    c.fill_kind(rel, rel.add_y(height), block::Kind::Cactus).unwrap();
+  }
 }
 
 impl BiomeGen for Gen {
@@ -19,5 +32,13 @@ impl BiomeGen for Gen {
     layers.add(block::Kind::Sandstone, 5);
     layers.add(block::Kind::Sand, 2);
     layers
+  }
+  fn decorate(&self, world: &WorldGen, chunk_pos: ChunkPos, c: &mut MultiChunk) {
+    for p in chunk_pos.columns() {
+      if world.is_biome(self, p) && self.cacti.contains(p.x(), p.z()) {
+        let height = self.height_at(world, p);
+        self.place_cactus(world, c, p.with_y(height + 1));
+      }
+    }
   }
 }
