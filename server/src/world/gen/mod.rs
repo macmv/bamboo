@@ -171,23 +171,17 @@ impl WorldGen {
   }
   pub fn generate(&self, pos: ChunkPos, c: &mut MultiChunk) {
     let mut biomes = HashSet::new();
-    for x in 0..16 {
-      for z in 0..16 {
-        let biome = self.biome_id_at(Pos::new(pos.block().x() + x, 0, pos.block().z() + z));
-        biomes.insert(biome);
-      }
+    for p in pos.columns() {
+      biomes.insert(self.biome_id_at(p));
     }
     if biomes.len() == 1 {
       for b in &biomes {
         self.biomes[*b].fill_chunk(self, pos, c);
       }
     } else {
-      for x in 0..16 {
-        for z in 0..16 {
-          let biome = self.biome_map.get(pos.block().x() + x, pos.block().z() + z) as usize
-            % self.biomes.len();
-          self.biomes[biome].fill_column(self, pos.block() + Pos::new(x, 0, z), c);
-        }
+      for p in pos.columns() {
+        let biome = self.biome_map.get(p.x(), p.z()) as usize % self.biomes.len();
+        self.biomes[biome].fill_column(self, p, c);
       }
     }
     for b in &biomes {
