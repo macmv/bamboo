@@ -105,6 +105,42 @@ impl Pos {
   pub fn z(&self) -> i32 {
     self.z
   }
+  /// Returns self, with x set to the given value.
+  #[inline(always)]
+  pub fn with_x(mut self, x: i32) -> Self {
+    self.x = x;
+    self
+  }
+  /// Returns self, with y set to the given value.
+  #[inline(always)]
+  pub fn with_y(mut self, y: i32) -> Self {
+    self.y = y;
+    self
+  }
+  /// Returns self, with z set to the given value.
+  #[inline(always)]
+  pub fn with_z(mut self, z: i32) -> Self {
+    self.z = z;
+    self
+  }
+  /// Returns self, with x set to self.x plus the given value.
+  #[inline(always)]
+  pub fn add_x(mut self, x: i32) -> Self {
+    self.x += x;
+    self
+  }
+  /// Returns self, with y set to self.x plus the given value.
+  #[inline(always)]
+  pub fn add_y(mut self, y: i32) -> Self {
+    self.y += y;
+    self
+  }
+  /// Returns self, with z set to self.x plus the given value.
+  #[inline(always)]
+  pub fn add_z(mut self, z: i32) -> Self {
+    self.z += z;
+    self
+  }
   /// Returns the chunk that this block position is in.
   #[inline(always)]
   pub fn chunk(&self) -> ChunkPos {
