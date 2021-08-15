@@ -61,8 +61,13 @@ impl Plugin {
   pub fn call_on_block_place(&self, player: Arc<Player>, pos: Pos, kind: block::Kind) {
     self.call(
       path!(main),
-      "init",
-      vec![SlPlayer::new(player).into(), SlPos::new(pos).into(), SlBlockKind::new(kind).into()],
+      "on_block_place",
+      vec![
+        self.sc.clone().into(),
+        SlPlayer::new(player).into(),
+        SlPos::new(pos).into(),
+        SlBlockKind::new(kind).into(),
+      ],
     );
   }
 
@@ -88,30 +93,4 @@ impl Plugin {
   /// This replaces the plugin envrionment with a new one, and then parses all
   /// of the files ending in `.sug` in the given directory.
   pub fn load_from_dir(path: &Path) {}
-  //
-  //  /// Calls init on the plugin. This is called right after all plugins are
-  //  /// loaded. The world will have been initialized, and it is possible for
-  //  /// clients to be joining when this function is called.
-  //  pub fn init(&self, sc: SugarcaneRb) {
-  //    self.call("init", &[sc.try_convert_to().unwrap()]);
-  //  }
-  //
-  //  /// Calls on_block_place on the plugin. This can be called whenever, but
-  // will  /// always be called after init.
-  //  pub fn on_block_place(&self, player: Arc<Player>, pos: Pos, kind:
-  // block::Kind) {    self.call(
-  //      "on_block_place",
-  //      &[PlayerRb::new(player).into(), PosRb::new(pos).into(),
-  // Fixnum::new(kind.id().into()).into()],    );
-  //  }
-  //
-  //  /// Calls the given function with the given args. This will verify that the
-  //  /// function exists, and will handle errors in the log.
-  //  fn call(&self, name: &str, args: &[AnyObject]) {
-  //    if self.m.respond_to(name) {
-  //      if let Err(_) = VM::protect(|| unsafe { self.m.send(name, args) }) {
-  //        self.err.send(()).unwrap();
-  //      }
-  //    }
-  //  }
 }

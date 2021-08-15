@@ -148,46 +148,7 @@ impl PluginManager {
 
         p.call_init();
 
-        // let src = fs::read_to_string(path).unwrap();
-        // let src_bytes = src.as_bytes();
-        //
-        // let parsing_result = Parser::new(src_bytes,
-        // false).parse_all().map_err(|e| e.to_string());
-        //
-        // let _execution_result = match parsing_result {
-        //   Ok(statements) => {
-        //     println!("{}", statements);
-        //     match statements.run(ctx) {
-        //       Ok(v) => v,
-        //       Err(e) => {
-        //         dbg!(&e);
-        //         panic!()
-        //       }
-        //     }
-        //   }
-        //   Err(e) => {
-        //     info!("{:?}", &e);
-        //     ctx.throw_syntax_error(e);
-        //     panic!()
-        //   }
-        // };
-
-        // let res = match ctx.eval(&source) {
-        //   Ok(v) => v,
-        //   Err(e) => {
-        //     // dbg!(&e);
-        //     info!("{:?}", e.get_type());
-        //     info!("{:?}", e.to_object(ctx).unwrap().borrow().keys());
-        //     panic!()
-        //   }
-        // };
-        // dbg!(v
-        //   .get_field("init", &mut ctx)
-        //   .unwrap()
-        //   .to_object(&mut ctx)
-        //   .unwrap()
-        //   .call(&Value::Null, &[], &mut ctx)
-        //   .unwrap());
+        plugins.push(p);
       }
     }
   }
@@ -196,7 +157,5 @@ impl PluginManager {
     for p in self.plugins.lock().unwrap().iter() {
       p.call_on_block_place(player.clone(), pos, kind);
     }
-    // self.tx.lock().unwrap().send(Event::OnBlockPlace(player, pos,
-    // kind)).unwrap();
   }
 }
