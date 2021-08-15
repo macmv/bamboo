@@ -1,11 +1,13 @@
 use super::chunk::MultiChunk;
 use crate::block;
-use common::math::{ChunkPos, Pos, Voronoi};
+use common::math::{ChunkPos, Pos};
+use math::WarpedVoronoi;
 use noise::{BasicMulti, NoiseFn};
 use std::{cmp::Ordering, collections::HashSet};
 
 mod desert;
 mod forest;
+mod math;
 
 pub struct BiomeLayers {
   layers:       Vec<(block::Kind, u32)>,
@@ -140,7 +142,7 @@ pub trait BiomeGen {
 }
 
 pub struct WorldGen {
-  biome_map: Voronoi,
+  biome_map: WarpedVoronoi,
   biomes:    Vec<Box<dyn BiomeGen + Send>>,
   height:    BasicMulti,
 }
@@ -150,7 +152,7 @@ impl WorldGen {
     let mut height = BasicMulti::new();
     height.octaves = 5;
     Self {
-      biome_map: Voronoi::new(1231451),
+      biome_map: WarpedVoronoi::new(3210471203948712039),
       biomes: vec![desert::Gen::new(), forest::Gen::new()],
       height,
     }
