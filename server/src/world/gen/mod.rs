@@ -1,6 +1,6 @@
 use super::chunk::MultiChunk;
 use crate::block;
-use common::math::{ChunkPos, Pos};
+use common::math::{ChunkPos, Pos, RngCore, WyhashRng};
 use math::WarpedVoronoi;
 use noise::{BasicMulti, NoiseFn};
 use std::{cmp::Ordering, collections::HashSet};
@@ -197,5 +197,14 @@ impl WorldGen {
   pub fn is_biome<B: BiomeGen>(&self, b: &B, pos: Pos) -> bool {
     let actual = self.biome_id_at(pos);
     b.id() == actual
+  }
+
+  /// Seeds a RNG with the position, then returns a true `percent` amount of the
+  /// time. This should be used to place grass, randomize trees, etc. It is
+  /// position dependant, so that chunks can generate in any order, and they
+  /// will still be the same.
+  pub fn chance(&self, pos: Pos, percent: f32) -> bool {
+    let mut rng = WyhashRng::new(pos.x() as u64 ^ pos.y() as u64 ^ pos.z() as u64);
+    rng.next_u64() % 1000 < (percent * 1000.0) as u64
   }
 }
