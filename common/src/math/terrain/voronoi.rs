@@ -71,17 +71,26 @@ impl Voronoi {
       // This is the slope between C and N, which is also the slope between P and T
       // (which is what we are looking for).
       let s = (center - neighbor).slope();
-      // This is the slope between B and T.
-      let i = s.perp().val();
-      let s = s.val();
+      if s.val() == 0.0 {
+        // In this situation, we have a vertical border between regions (with an
+        // infinite slope).
+        let x = p.x;
+        let y = center.avg(neighbor).y;
+        out.push(Vector::new(x.into(), y));
+      } else {
+        // This is the slope between B and T, and we know it will not be NAN from the
+        // check above.
+        let i = s.perp().val();
+        let s = s.val();
 
-      let p = p.to_vec();
-      let b = center.avg(neighbor);
+        let p = p.to_vec();
+        let b = center.avg(neighbor);
 
-      let x = (s * p.x - p.y - i * b.x + b.y) / (s - i);
-      let y = s * (x - p.x) + p.y;
+        let x = (s * p.x - p.y - i * b.x + b.y) / (s - i);
+        let y = s * (x - p.x) + p.y;
 
-      out.push(Vector::new(x, y));
+        out.push(Vector::new(x, y));
+      }
     }
     out
   }
