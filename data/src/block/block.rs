@@ -1,3 +1,5 @@
+use std::collections::HashSet;
+
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct State {
   // In fixed data, this is block id << 4 | meta
@@ -74,11 +76,26 @@ impl State {
     &self.props
   }
   pub fn matches(&self, props: &[(String, String)]) -> bool {
+    let mut found_keys = HashSet::new();
     for (key, val) in &self.props {
       for (other_key, other_val) in props {
-        if key == other_key && val != other_val {
-          return false;
+        if key == other_key {
+          found_keys.insert(other_key);
+          if val != other_val {
+            return false;
+          }
+          break;
         }
+      }
+    }
+    for (k, _) in props {
+      if !found_keys.contains(k) {
+        eprintln!("INVALID property key `{}`. valid keys are:", k);
+        for (k, _) in &self.props {
+          eprintln!("{}", k);
+        }
+        eprintln!();
+        panic!();
       }
     }
     true
