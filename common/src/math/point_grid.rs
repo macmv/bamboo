@@ -37,8 +37,14 @@ impl PointGrid {
 
   /// Returns the closest point to the given point.
   pub fn closest_point(&self, x: i32, y: i32) -> (i32, i32) {
+    self.neighbors(x, y)[0]
+  }
+
+  /// Returns the neighbors of the given point. This list is sorted by distance
+  /// to (x, y).
+  pub fn neighbors(&self, x: i32, y: i32) -> Vec<(i32, i32)> {
     let s = self.square_size as i32;
-    let points = vec![
+    let mut points = vec![
       self.get(x - s, y - s),
       self.get(x, y - s),
       self.get(x + s, y - s),
@@ -49,16 +55,12 @@ impl PointGrid {
       self.get(x, y + s),
       self.get(x + s, y + s),
     ];
-    let mut min_dist = s as f64 * 3.0;
-    let mut out = (0, 0);
-    for (px, py) in points {
-      let dist = ((px - x).pow(2) as f64 + (py - y).pow(2) as f64).sqrt();
-      if dist < min_dist {
-        out = (px, py);
-        min_dist = dist;
-      }
-    }
-    out
+    points.sort_by(|(ax, ay), (bx, by)| {
+      let dist_a = ((ax - x).pow(2) as f64 + (ay - y).pow(2) as f64).sqrt();
+      let dist_b = ((bx - x).pow(2) as f64 + (by - y).pow(2) as f64).sqrt();
+      dist_a.partial_cmp(&dist_b).unwrap()
+    });
+    points
   }
 
   // Takes two absolute coordinates for a point, and retrieves the point in

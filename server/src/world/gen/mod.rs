@@ -198,12 +198,8 @@ impl WorldGen {
   pub fn biome_id_at(&self, pos: Pos) -> usize {
     self.biome_map.get(pos.x(), pos.z()) as usize % self.biomes.len()
   }
-  /// Returns the distance to the center of the voronoi region at the given
-  /// position. Since biomes can span multiple voronoi regions, this is not
-  /// always accurate, but it is a good indicator of how far away the edge of
-  /// the biome is.
-  pub fn dist_to_center(&self, pos: Pos) -> f64 {
-    self.biome_map.dist_to_center(pos.x(), pos.z())
+  pub fn dist_to_border(&self, pos: Pos) -> f64 {
+    self.biome_map.dist_to_border(pos.x(), pos.z())
   }
   pub fn is_biome<B: BiomeGen>(&self, b: &B, pos: Pos) -> bool {
     let actual = self.biome_id_at(pos);

@@ -17,9 +17,9 @@ impl BiomeGen for Gen {
     layers
   }
   fn height_at(&self, world: &WorldGen, pos: Pos) -> i32 {
-    let dist = world.dist_to_center(pos);
-    if dist < 20.0 {
-      world.height_at(pos) as i32 + ((20.0 - dist) * 2.0) as i32
+    let dist = world.dist_to_border(pos);
+    if dist > 50.0 {
+      world.height_at(pos) as i32 + ((dist - 50.0) * 0.5) as i32
     } else {
       world.height_at(pos) as i32
     }

@@ -18,6 +18,17 @@ impl Voronoi {
   }
   pub fn dist_to_center(&self, x: i32, y: i32) -> f64 {
     let (px, py) = self.grid.closest_point(x, y);
-    (((px - x).pow(2) + (py - y).pow(2)) as f64).sqrt()
+    ((px - x).pow(2) as f64 + (py - y).pow(2) as f64).sqrt()
+  }
+  /// Returns the closest neighbor of the given point. This is the second
+  /// closest point to (x, y).
+  pub fn closest_neighbor(&self, x: i32, y: i32) -> (i32, i32) {
+    self.grid.neighbors(x, y)[1]
+  }
+  /// Returns the distance to the border of the region that (x, y) is in.
+  pub fn dist_to_border(&self, x: i32, y: i32) -> f64 {
+    let (nx, ny) = self.closest_neighbor(x, y);
+    // TODO: Fix this to actually use borders
+    ((nx - x).pow(2) as f64 + (ny - y).pow(2) as f64).sqrt()
   }
 }

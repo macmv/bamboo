@@ -32,4 +32,8 @@ impl WarpedVoronoi {
     let (x, y) = self.warp(x, y);
     self.map.dist_to_center(x, y)
   }
+  pub fn dist_to_border(&self, x: i32, y: i32) -> f64 {
+    let (x, y) = self.warp(x, y);
+    self.map.dist_to_border(x, y)
+  }
 }
