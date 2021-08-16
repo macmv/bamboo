@@ -30,9 +30,9 @@ impl PointGrid {
   /// Returns true if there is a point at that position. The coordinates will be
   /// wrapped around the grid.
   pub fn contains(&self, p: Point) -> bool {
-    let (rx, ry, x, y) = self.normalize(p);
-    let p = self.points[y as usize][x as usize];
-    p.0 == rx && p.1 == ry
+    let (rel, lookup) = self.normalize(p);
+    let p = self.points[lookup.y as usize][lookup.x as usize];
+    p.0 == rel.x as u32 && p.1 == rel.y as u32
   }
 
   /// Returns the closest point to the given point.
@@ -64,8 +64,8 @@ impl PointGrid {
   // Takes two absolute coordinates for a point, and retrieves the point in
   // that square in absolute coordinate form.
   fn get(&self, p: Point) -> Point {
-    let (_, _, px, py) = self.normalize(p);
-    let inner = self.points[py as usize][px as usize];
+    let (_, lookup) = self.normalize(p);
+    let inner = self.points[lookup.y as usize][lookup.x as usize];
     let x = p.x / self.square_size as i32;
     let y = p.y / self.square_size as i32;
     Point::new(
@@ -74,16 +74,15 @@ impl PointGrid {
     )
   }
 
-  /// Takes a user-passed coordinate, and returns the relative x and y, along
+  /// Takes a user-passed coordinate, and returns the relative point, along
   /// with the x and y indicies to use to lookup the point.
-  fn normalize(&self, p: Point) -> (u32, u32, u32, u32) {
-    let s = self.square_size as i32;
-    let rx = ((p.x % s) + s) as u32 % self.square_size;
-    let ry = ((p.y % s) + s) as u32 % self.square_size;
+  ///
+  /// Both points will always have positive x and y values.
+  fn normalize(&self, p: Point) -> (Point, Point) {
+    let rel = p.pos_mod(self.square_size as i32);
     let len = self.points.len() as i32;
-    let x = (((p.x / self.square_size as i32) % len) + len) as u32 % self.points.len() as u32;
-    let y = (((p.y / self.square_size as i32) % len) + len) as u32 % self.points.len() as u32;
-    (rx, ry, x, y)
+    let lookup = p.pos_div(self.square_size as i32).pos_mod(len);
+    (rel, lookup)
   }
 }
 
@@ -94,8 +93,10 @@ mod tests {
   #[test]
   fn test_normalize() {
     let g = PointGrid { square_size: 5, points: vec![vec![], vec![], vec![], vec![]] };
-    assert_eq!(g.normalize(Point::new(1, 3)), (1, 3, 0, 0));
-    assert_eq!(g.normalize(Point::new(7, 2)), (2, 2, 1, 0));
+    assert_eq!(g.normalize(Point::new(1, 3)), (Point::new(1, 3), Point::new(0, 0)));
+    assert_eq!(g.normalize(Point::new(7, 2)), (Point::new(2, 2), Point::new(1, 0)));
+    assert_eq!(g.normalize(Point::new(4, 3)), (Point::new(4, 3), Point::new(0, 0)));
+    assert_eq!(g.normalize(Point::new(-1, 3)), (Point::new(4, 3), Point::new(3, 0)));
   }
   #[test]
   fn test_contains() {
