@@ -22,7 +22,7 @@ impl Voronoi {
   /// Returns the closest neighbor of the given point. This is the second
   /// closest point to (x, y).
   pub fn closest_neighbor(&self, p: Point) -> Point {
-    self.grid.neighbors(p)[1]
+    self.grid.neighbors(p, 2)[1]
   }
   pub fn dist_to_border(&self, p: Point) -> f64 {
     let mut min_dist = 1000.0;
@@ -37,7 +37,7 @@ impl Voronoi {
   /// Returns all the possible border points of the region that p is in. Some of
   /// the points may not be valid.
   pub fn borders(&self, p: Point) -> Vec<Vector> {
-    let neighbors = self.grid.neighbors(p);
+    let neighbors = self.grid.neighbors(p, 2);
     let center = neighbors[0];
     let mut out = vec![];
     for neighbor in neighbors {

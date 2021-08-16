@@ -37,24 +37,22 @@ impl PointGrid {
 
   /// Returns the closest point to the given point.
   pub fn closest_point(&self, p: Point) -> Point {
-    self.neighbors(p)[0]
+    self.neighbors(p, 1)[0]
   }
 
   /// Returns the neighbors of the given point. This list is sorted by distance
   /// to `p`.
-  pub fn neighbors(&self, p: Point) -> Vec<Point> {
+  ///
+  /// The radius is a distance in grid squares. So a value of 1 will give 9
+  /// points, a value of 2 will give 25 points, etc.
+  pub fn neighbors(&self, p: Point, radius: i32) -> Vec<Point> {
     let s = self.square_size as i32;
-    let mut points = vec![
-      self.get(p + Point::new(-s, -s)),
-      self.get(p + Point::new(0, -s)),
-      self.get(p + Point::new(s, -s)),
-      self.get(p + Point::new(-s, 0)),
-      self.get(p + Point::new(0, 0)),
-      self.get(p + Point::new(s, 0)),
-      self.get(p + Point::new(-s, s)),
-      self.get(p + Point::new(0, s)),
-      self.get(p + Point::new(s, s)),
-    ];
+    let mut points = vec![];
+    for x in -radius..=radius {
+      for y in -radius..=radius {
+        points.push(self.get(p + Point::new(s * x, s * y)));
+      }
+    }
     points.sort_by(|a, b| {
       let dist_a = p.dist(*a);
       let dist_b = p.dist(*b);
