@@ -37,7 +37,7 @@ impl PointGrid {
 
   /// Returns the closest point to the given point.
   pub fn closest_point(&self, p: Point) -> Point {
-    self.neighbors(p, 1)[0]
+    self.neighbors(p, 2)[0]
   }
 
   /// Returns the neighbors of the given point. This list is sorted by distance
