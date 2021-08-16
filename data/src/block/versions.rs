@@ -1,4 +1,4 @@
-use super::{Block, BlockVersion};
+use super::{Block, BlockVersion, State};
 use std::collections::HashMap;
 
 // Called on 1.13+
@@ -87,8 +87,8 @@ pub(super) fn generate_old(latest: &BlockVersion, old: &BlockVersion) -> Vec<u32
       prop_str = prop_str.split(']').next().unwrap();
       for pair in prop_str.split(',') {
         let mut iter = pair.split('=');
-        let key = iter.next().unwrap();
-        let val = iter.next().unwrap();
+        let key = iter.next().unwrap().trim();
+        let val = iter.next().unwrap().trim();
 
         props.insert(key.to_string(), val.to_string());
       }
@@ -111,7 +111,15 @@ pub(super) fn generate_old(latest: &BlockVersion, old: &BlockVersion) -> Vec<u32
     match state_maps.get(b.name()) {
       Some(old_values) => {
         if b.states().is_empty() {
-          to_old.push(0);
+          if let Some((_, old_name, old_meta)) = old_values.first() {
+            if old_values.len() != 1 {
+              eprintln!("FOUND MULTIPLE OLD ID for block {}", b.name());
+              eprintln!("this block only has one state: {}", b.name());
+            }
+            to_old.push(old.get(old_name).unwrap().id() | old_meta);
+          } else {
+            to_old.push(0);
+          }
         } else {
           for state in b.states() {
             let mut old_id = 0;
@@ -119,7 +127,7 @@ pub(super) fn generate_old(latest: &BlockVersion, old: &BlockVersion) -> Vec<u32
               if state.matches(&props) {
                 if old_id != 0 {
                   eprintln!(
-                    "FOUND MULTIPLE OLD ID {} for block {}",
+                    "FOUND MULTIPLE OLD ID {} for state {}",
                     old_id,
                     state.prop_str(b.name())
                   );
@@ -130,6 +138,11 @@ pub(super) fn generate_old(latest: &BlockVersion, old: &BlockVersion) -> Vec<u32
             }
             if old_id == 0 {
               eprintln!("DID NOT FIND old id for block {}", state.prop_str(b.name()));
+              eprintln!("given states:");
+              for (props, old_name, old_meta) in old_values {
+                let s = State::new(0, props.clone());
+                eprintln!("{} -> {} {}", s.prop_str(b.name()), old_name, old_meta);
+              }
               eprintln!("possible states:");
               for s in b.states() {
                 eprintln!("{}", s.prop_str(b.name()));

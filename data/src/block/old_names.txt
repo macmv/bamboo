@@ -86,100 +86,94 @@ jungle_leaves: leaves 3
 acacia_leaves: leaves2 0
 dark_oak_leaves: leaves2 1
 
-dispenser[facing=down,triggered=false]: dispenser 0
-dispenser[facing=up,triggered=false]: dispenser 1
-dispenser[facing=north,triggered=false]: dispenser 2
-dispenser[facing=south,triggered=false]: dispenser 3
-dispenser[facing=west,triggered=false]: dispenser 4
-dispenser[facing=east,triggered=false]: dispenser 5
-dispenser[facing=down,triggered=true]: dispenser 0
-dispenser[facing=up,triggered=true]: dispenser 1
-dispenser[facing=north,triggered=true]: dispenser 2
-dispenser[facing=south,triggered=true]: dispenser 3
-dispenser[facing=west,triggered=true]: dispenser 4
-dispenser[facing=east,triggered=true]: dispenser 5
+dispenser[facing=down ]: dispenser 0
+dispenser[facing=up   ]: dispenser 1
+dispenser[facing=north]: dispenser 2
+dispenser[facing=south]: dispenser 3
+dispenser[facing=west ]: dispenser 4
+dispenser[facing=east ]: dispenser 5
 
-{color}_bed[facing=south,occupied=false,part=foot]: bed 0
-{color}_bed[facing=west,occupied=false,part=foot]:  bed 1
-{color}_bed[facing=north,occupied=false,part=foot]: bed 2
-{color}_bed[facing=east,occupied=false,part=foot]:  bed 3
-{color}_bed[facing=south,occupied=true,part=foot]:  bed 4
-{color}_bed[facing=west,occupied=true,part=foot]:   bed 5
-{color}_bed[facing=north,occupied=true,part=foot]:  bed 6
-{color}_bed[facing=east,occupied=true,part=foot]:   bed 7
-{color}_bed[facing=south,occupied=false,part=head]: bed 8
-{color}_bed[facing=west,occupied=false,part=head]:  bed 9
-{color}_bed[facing=north,occupied=false,part=head]: bed 10
-{color}_bed[facing=east,occupied=false,part=head]:  bed 11
-{color}_bed[facing=south,occupied=true,part=head]:  bed 12
-{color}_bed[facing=west,occupied=true,part=head]:   bed 13
-{color}_bed[facing=north,occupied=true,part=head]:  bed 14
-{color}_bed[facing=east,occupied=true,part=head]:   bed 15
+{color}_bed[part=foot,occupied=false,facing=south]: bed 0
+{color}_bed[part=foot,occupied=false,facing=west ]: bed 1
+{color}_bed[part=foot,occupied=false,facing=north]: bed 2
+{color}_bed[part=foot,occupied=false,facing=east ]: bed 3
+{color}_bed[part=foot,occupied=true, facing=south]: bed 4
+{color}_bed[part=foot,occupied=true, facing=west ]: bed 5
+{color}_bed[part=foot,occupied=true, facing=north]: bed 6
+{color}_bed[part=foot,occupied=true, facing=east ]: bed 7
+{color}_bed[part=head,occupied=false,facing=south]: bed 8
+{color}_bed[part=head,occupied=false,facing=west ]: bed 9
+{color}_bed[part=head,occupied=false,facing=north]: bed 10
+{color}_bed[part=head,occupied=false,facing=east ]: bed 11
+{color}_bed[part=head,occupied=true, facing=south]: bed 12
+{color}_bed[part=head,occupied=true, facing=west ]: bed 13
+{color}_bed[part=head,occupied=true, facing=north]: bed 14
+{color}_bed[part=head,occupied=true, facing=east ]: bed 15
 
-powered_rail[powered=false,shape=north_south]:     golden_rail 0
-powered_rail[powered=false,shape=east_west]:       golden_rail 1
-powered_rail[powered=false,shape=ascending_east]:  golden_rail 2
-powered_rail[powered=false,shape=ascending_west]:  golden_rail 3
+powered_rail[powered=false,shape=north_south    ]: golden_rail 0
+powered_rail[powered=false,shape=east_west      ]: golden_rail 1
+powered_rail[powered=false,shape=ascending_east ]: golden_rail 2
+powered_rail[powered=false,shape=ascending_west ]: golden_rail 3
 powered_rail[powered=false,shape=ascending_north]: golden_rail 4
 powered_rail[powered=false,shape=ascending_south]: golden_rail 5
-powered_rail[powered=true,shape=north_south]:      golden_rail 8
-powered_rail[powered=true,shape=east_west]:        golden_rail 9
-powered_rail[powered=true,shape=ascending_east]:   golden_rail 10
-powered_rail[powered=true,shape=ascending_west]:   golden_rail 11
-powered_rail[powered=true,shape=ascending_north]:  golden_rail 12
-powered_rail[powered=true,shape=ascending_south]:  golden_rail 13
+powered_rail[powered=true, shape=north_south    ]: golden_rail 8
+powered_rail[powered=true, shape=east_west      ]: golden_rail 9
+powered_rail[powered=true, shape=ascending_east ]: golden_rail 10
+powered_rail[powered=true, shape=ascending_west ]: golden_rail 11
+powered_rail[powered=true, shape=ascending_north]: golden_rail 12
+powered_rail[powered=true, shape=ascending_south]: golden_rail 13
 
-detector_rail[powered=false,shape=north_south]:     detector_rail 0
-detector_rail[powered=false,shape=east_west]:       detector_rail 1
-detector_rail[powered=false,shape=ascending_east]:  detector_rail 2
-detector_rail[powered=false,shape=ascending_west]:  detector_rail 3
+detector_rail[powered=false,shape=north_south    ]: detector_rail 0
+detector_rail[powered=false,shape=east_west      ]: detector_rail 1
+detector_rail[powered=false,shape=ascending_east ]: detector_rail 2
+detector_rail[powered=false,shape=ascending_west ]: detector_rail 3
 detector_rail[powered=false,shape=ascending_north]: detector_rail 4
 detector_rail[powered=false,shape=ascending_south]: detector_rail 5
-detector_rail[powered=true,shape=north_south]:      detector_rail 8
-detector_rail[powered=true,shape=east_west]:        detector_rail 9
-detector_rail[powered=true,shape=ascending_east]:   detector_rail 10
-detector_rail[powered=true,shape=ascending_west]:   detector_rail 11
-detector_rail[powered=true,shape=ascending_north]:  detector_rail 12
-detector_rail[powered=true,shape=ascending_south]:  detector_rail 13
+detector_rail[powered=true, shape=north_south    ]: detector_rail 8
+detector_rail[powered=true, shape=east_west      ]: detector_rail 9
+detector_rail[powered=true, shape=ascending_east ]: detector_rail 10
+detector_rail[powered=true, shape=ascending_west ]: detector_rail 11
+detector_rail[powered=true, shape=ascending_north]: detector_rail 12
+detector_rail[powered=true, shape=ascending_south]: detector_rail 13
 
-sticky_piston[extended=false,facing=down]:  sticky_piston 0
-sticky_piston[extended=false,facing=up]:    sticky_piston 1
+sticky_piston[extended=false,facing=down ]: sticky_piston 0
+sticky_piston[extended=false,facing=up   ]: sticky_piston 1
 sticky_piston[extended=false,facing=north]: sticky_piston 2
 sticky_piston[extended=false,facing=south]: sticky_piston 3
-sticky_piston[extended=false,facing=west]:  sticky_piston 4
-sticky_piston[extended=false,facing=east]:  sticky_piston 5
-sticky_piston[extended=true,facing=down]:   sticky_piston 8
-sticky_piston[extended=true,facing=up]:     sticky_piston 9
-sticky_piston[extended=true,facing=north]:  sticky_piston 10
-sticky_piston[extended=true,facing=south]:  sticky_piston 11
-sticky_piston[extended=true,facing=west]:   sticky_piston 12
-sticky_piston[extended=true,facing=east]:   sticky_piston 13
+sticky_piston[extended=false,facing=west ]: sticky_piston 4
+sticky_piston[extended=false,facing=east ]: sticky_piston 5
+sticky_piston[extended=true, facing=down ]: sticky_piston 8
+sticky_piston[extended=true, facing=up   ]: sticky_piston 9
+sticky_piston[extended=true, facing=north]: sticky_piston 10
+sticky_piston[extended=true, facing=south]: sticky_piston 11
+sticky_piston[extended=true, facing=west ]: sticky_piston 12
+sticky_piston[extended=true, facing=east ]: sticky_piston 13
 
-piston[extended=false,facing=down]:  piston 0
-piston[extended=false,facing=up]:    piston 1
+piston[extended=false,facing=down ]: piston 0
+piston[extended=false,facing=up   ]: piston 1
 piston[extended=false,facing=north]: piston 2
 piston[extended=false,facing=south]: piston 3
-piston[extended=false,facing=west]:  piston 4
-piston[extended=false,facing=east]:  piston 5
-piston[extended=true,facing=down]:   piston 8
-piston[extended=true,facing=up]:     piston 9
-piston[extended=true,facing=north]:  piston 10
-piston[extended=true,facing=south]:  piston 11
-piston[extended=true,facing=west]:   piston 12
-piston[extended=true,facing=east]:   piston 13
+piston[extended=false,facing=west ]: piston 4
+piston[extended=false,facing=east ]: piston 5
+piston[extended=true, facing=down ]: piston 8
+piston[extended=true, facing=up   ]: piston 9
+piston[extended=true, facing=north]: piston 10
+piston[extended=true, facing=south]: piston 11
+piston[extended=true, facing=west ]: piston 12
+piston[extended=true, facing=east ]: piston 13
 
-piston_head[facing=down,type=normal]:  piston 0
-piston_head[facing=up,type=normal]:    piston 1
-piston_head[facing=north,type=normal]: piston 2
-piston_head[facing=south,type=normal]: piston 3
-piston_head[facing=west,type=normal]:  piston 4
-piston_head[facing=east,type=normal]:  piston 5
-piston_head[facing=down,type=sticky]:  piston 8
-piston_head[facing=up,type=sticky]:    piston 9
-piston_head[facing=north,type=sticky]: piston 10
-piston_head[facing=south,type=sticky]: piston 11
-piston_head[facing=west,type=sticky]:  piston 12
-piston_head[facing=east,type=sticky]:  piston 13
+piston_head[type=normal,facing=down ]: piston 0
+piston_head[type=normal,facing=up   ]: piston 1
+piston_head[type=normal,facing=north]: piston 2
+piston_head[type=normal,facing=south]: piston 3
+piston_head[type=normal,facing=west ]: piston 4
+piston_head[type=normal,facing=east ]: piston 5
+piston_head[type=sticky,facing=down ]: piston 8
+piston_head[type=sticky,facing=up   ]: piston 9
+piston_head[type=sticky,facing=north]: piston 10
+piston_head[type=sticky,facing=south]: piston 11
+piston_head[type=sticky,facing=west ]: piston 12
+piston_head[type=sticky,facing=east ]: piston 13
 
 white_wool:      wool 0
 orange_wool:     wool 1
@@ -217,4 +211,11 @@ wall_torch[facing=north]: torch 4
 soul_fire: fire
 spawner: mob_spawner
 
-oak_stairs[facing=east,half=bottom]: oak_stairs 0
+oak_stairs[half=bottom,facing=east ]: oak_stairs 0
+oak_stairs[half=bottom,facing=west ]: oak_stairs 1
+oak_stairs[half=bottom,facing=south]: oak_stairs 2
+oak_stairs[half=bottom,facing=north]: oak_stairs 3
+oak_stairs[half=top,   facing=east ]: oak_stairs 4
+oak_stairs[half=top,   facing=west ]: oak_stairs 5
+oak_stairs[half=top,   facing=south]: oak_stairs 6
+oak_stairs[half=top,   facing=north]: oak_stairs 7
