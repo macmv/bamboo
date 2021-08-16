@@ -204,7 +204,12 @@ impl WorldGen {
   /// position dependant, so that chunks can generate in any order, and they
   /// will still be the same.
   pub fn chance(&self, pos: Pos, percent: f32) -> bool {
-    let mut rng = WyhashRng::new(pos.x() as u64 ^ pos.y() as u64 ^ pos.z() as u64);
+    let mut rng = WyhashRng::new(
+      0xe6cc56f1f7550d95_u64
+        .wrapping_mul(pos.x() as u64)
+        .wrapping_mul((pos.z() as u64) << 32)
+        .wrapping_mul(pos.y() as u64),
+    );
     rng.next_u64() % 1000 < (percent * 1000.0) as u64
   }
 }
