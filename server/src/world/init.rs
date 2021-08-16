@@ -254,5 +254,11 @@ impl World {
     for p in spawn_packets {
       conn.send(p).await;
     }
+
+    let mut out = cb::Packet::new(cb::ID::Abilities);
+    out.set_byte("flags", 0x04 | 0x08);
+    out.set_float("flying_speed", 10.0 * 0.05);
+    out.set_float("walking_speed", 0.1);
+    conn.send(out).await;
   }
 }
