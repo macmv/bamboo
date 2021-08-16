@@ -6,12 +6,12 @@ mod pos;
 mod rng;
 mod voronoi;
 
+pub mod terrain;
+
 pub use chunk_pos::ChunkPos;
 pub use fpos::{FPos, FPosError};
-pub use point_grid::PointGrid;
 pub use pos::{Pos, PosError, PosIter};
 pub use rng::WyhashRng;
-pub use voronoi::Voronoi;
 
 pub use rand_core::RngCore;
 

@@ -1,4 +1,4 @@
-use super::WyhashRng;
+use super::super::WyhashRng;
 use rand_core::RngCore;
 
 /// This is a randomized point grid. It is built in such a way that the points
