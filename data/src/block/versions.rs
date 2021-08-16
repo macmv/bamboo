@@ -39,7 +39,7 @@ pub(super) fn generate_old(latest: &BlockVersion, old: &BlockVersion) -> Vec<u32
     .trim()
     .split('\n')
     .map(|l| {
-      if l.is_empty() {
+      if l.is_empty() || l.starts_with('#') {
         return vec![];
       }
       // This is the new block and old block
@@ -158,7 +158,7 @@ pub(super) fn generate_old(latest: &BlockVersion, old: &BlockVersion) -> Vec<u32
         if let Some(old) = old.get(b.name()) {
           old_id = old.id();
         } else {
-          println!("missing old id for {}", b.name());
+          eprintln!("missing old id for {} ({})", b.name(), b.id());
         }
         if b.states().is_empty() {
           to_old.push(old_id);
