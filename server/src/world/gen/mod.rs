@@ -193,7 +193,8 @@ impl WorldGen {
     }
   }
   pub fn height_at(&self, pos: Pos) -> f64 {
-    self.height.get([pos.x() as f64 / 512.0, pos.z() as f64 / 512.0]) * 20.0 + 60.0
+    let v = self.height.get([pos.x() as f64 / 512.0, pos.z() as f64 / 512.0]) * 20.0 + 60.0;
+    v + self.dist_to_border(pos)
   }
   pub fn biome_id_at(&self, pos: Pos) -> usize {
     self.biome_map.get(pos.to_point()) as usize % self.biomes.len()
