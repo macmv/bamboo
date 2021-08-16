@@ -40,8 +40,8 @@ impl BiomeGen for Gen {
         p = p.with_y(height + 1);
         if self.cacti.contains(p.x(), p.z()) {
           self.place_cactus(world, c, p);
-        } else if world.chance(p, 0.05) {
-          c.set_kind(p, block::Kind::DeadBush);
+        } else if world.chance(p, 1.0) {
+          c.set_kind(p.chunk_rel(), block::Kind::DeadBush).unwrap();
         }
       }
     }
