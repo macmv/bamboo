@@ -184,7 +184,7 @@ impl WorldGen {
       }
     } else {
       for p in pos.columns() {
-        let biome = self.biome_map.get(p.x(), p.z()) as usize % self.biomes.len();
+        let biome = self.biome_map.get(p.to_point()) as usize % self.biomes.len();
         self.biomes[biome].fill_column(self, p, c);
       }
     }
@@ -196,10 +196,10 @@ impl WorldGen {
     self.height.get([pos.x() as f64 / 512.0, pos.z() as f64 / 512.0]) * 20.0 + 60.0
   }
   pub fn biome_id_at(&self, pos: Pos) -> usize {
-    self.biome_map.get(pos.x(), pos.z()) as usize % self.biomes.len()
+    self.biome_map.get(pos.to_point()) as usize % self.biomes.len()
   }
   pub fn dist_to_border(&self, pos: Pos) -> f64 {
-    self.biome_map.dist_to_border(pos.x(), pos.z())
+    self.biome_map.dist_to_border(pos.to_point())
   }
   pub fn is_biome<B: BiomeGen>(&self, b: &B, pos: Pos) -> bool {
     let actual = self.biome_id_at(pos);

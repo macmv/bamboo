@@ -1,4 +1,4 @@
-use super::ChunkPos;
+use super::{terrain::Point, ChunkPos};
 use std::{
   error::Error,
   fmt, mem,
@@ -215,6 +215,12 @@ impl Pos {
   #[inline(always)]
   pub fn to(&self, end: Pos) -> PosIter {
     PosIter::new(*self, end)
+  }
+
+  /// Uses the `x` and `z` values of self to create a Point. This is mostly used
+  /// in terrain generation.
+  pub fn to_point(self) -> Point {
+    Point::new(self.x, self.z)
   }
 }
 

@@ -1,10 +1,8 @@
 mod chunk_pos;
 pub mod der;
 mod fpos;
-mod point_grid;
 mod pos;
 mod rng;
-mod voronoi;
 
 pub mod terrain;
 

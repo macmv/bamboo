@@ -1,4 +1,4 @@
-use super::super::WyhashRng;
+use super::{super::WyhashRng, Point};
 use rand_core::RngCore;
 
 /// This is a randomized point grid. It is built in such a way that the points
@@ -29,35 +29,35 @@ impl PointGrid {
 
   /// Returns true if there is a point at that position. The coordinates will be
   /// wrapped around the grid.
-  pub fn contains(&self, x: i32, y: i32) -> bool {
-    let (rx, ry, x, y) = self.normalize(x, y);
+  pub fn contains(&self, p: Point) -> bool {
+    let (rx, ry, x, y) = self.normalize(p);
     let p = self.points[y as usize][x as usize];
     p.0 == rx && p.1 == ry
   }
 
   /// Returns the closest point to the given point.
-  pub fn closest_point(&self, x: i32, y: i32) -> (i32, i32) {
-    self.neighbors(x, y)[0]
+  pub fn closest_point(&self, p: Point) -> Point {
+    self.neighbors(p)[0]
   }
 
   /// Returns the neighbors of the given point. This list is sorted by distance
-  /// to (x, y).
-  pub fn neighbors(&self, x: i32, y: i32) -> Vec<(i32, i32)> {
+  /// to `p`.
+  pub fn neighbors(&self, p: Point) -> Vec<Point> {
     let s = self.square_size as i32;
     let mut points = vec![
-      self.get(x - s, y - s),
-      self.get(x, y - s),
-      self.get(x + s, y - s),
-      self.get(x - s, y),
-      self.get(x, y),
-      self.get(x + s, y),
-      self.get(x - s, y + s),
-      self.get(x, y + s),
-      self.get(x + s, y + s),
+      self.get(p + Point::new(-s, -s)),
+      self.get(p + Point::new(0, -s)),
+      self.get(p + Point::new(s, -s)),
+      self.get(p + Point::new(-s, 0)),
+      self.get(p + Point::new(0, 0)),
+      self.get(p + Point::new(s, 0)),
+      self.get(p + Point::new(-s, s)),
+      self.get(p + Point::new(0, s)),
+      self.get(p + Point::new(s, s)),
     ];
-    points.sort_by(|(ax, ay), (bx, by)| {
-      let dist_a = ((ax - x).pow(2) as f64 + (ay - y).pow(2) as f64).sqrt();
-      let dist_b = ((bx - x).pow(2) as f64 + (by - y).pow(2) as f64).sqrt();
+    points.sort_by(|a, b| {
+      let dist_a = p.dist(*a);
+      let dist_b = p.dist(*b);
       dist_a.partial_cmp(&dist_b).unwrap()
     });
     points
@@ -65,23 +65,26 @@ impl PointGrid {
 
   // Takes two absolute coordinates for a point, and retrieves the point in
   // that square in absolute coordinate form.
-  fn get(&self, x: i32, y: i32) -> (i32, i32) {
-    let (_, _, px, py) = self.normalize(x, y);
-    let p = self.points[py as usize][px as usize];
-    let x = x / self.square_size as i32;
-    let y = y / self.square_size as i32;
-    (p.0 as i32 + x * self.square_size as i32, p.1 as i32 + y * self.square_size as i32)
+  fn get(&self, p: Point) -> Point {
+    let (_, _, px, py) = self.normalize(p);
+    let inner = self.points[py as usize][px as usize];
+    let x = p.x / self.square_size as i32;
+    let y = p.y / self.square_size as i32;
+    Point::new(
+      inner.0 as i32 + x * self.square_size as i32,
+      inner.1 as i32 + y * self.square_size as i32,
+    )
   }
 
   /// Takes a user-passed coordinate, and returns the relative x and y, along
   /// with the x and y indicies to use to lookup the point.
-  fn normalize(&self, x: i32, y: i32) -> (u32, u32, u32, u32) {
+  fn normalize(&self, p: Point) -> (u32, u32, u32, u32) {
     let s = self.square_size as i32;
-    let rx = ((x % s) + s) as u32 % self.square_size;
-    let ry = ((y % s) + s) as u32 % self.square_size;
+    let rx = ((p.x % s) + s) as u32 % self.square_size;
+    let ry = ((p.y % s) + s) as u32 % self.square_size;
     let len = self.points.len() as i32;
-    let x = (((x / self.square_size as i32) % len) + len) as u32 % self.points.len() as u32;
-    let y = (((y / self.square_size as i32) % len) + len) as u32 % self.points.len() as u32;
+    let x = (((p.x / self.square_size as i32) % len) + len) as u32 % self.points.len() as u32;
+    let y = (((p.y / self.square_size as i32) % len) + len) as u32 % self.points.len() as u32;
     (rx, ry, x, y)
   }
 }
@@ -93,8 +96,8 @@ mod tests {
   #[test]
   fn test_normalize() {
     let g = PointGrid { square_size: 5, points: vec![vec![], vec![], vec![], vec![]] };
-    assert_eq!(g.normalize(1, 3), (1, 3, 0, 0));
-    assert_eq!(g.normalize(7, 2), (2, 2, 1, 0));
+    assert_eq!(g.normalize(Point::new(1, 3)), (1, 3, 0, 0));
+    assert_eq!(g.normalize(Point::new(7, 2)), (2, 2, 1, 0));
   }
   #[test]
   fn test_contains() {
@@ -106,9 +109,9 @@ mod tests {
         vec![(0, 0), (0, 0), (0, 0)],
       ],
     };
-    dbg!(g.normalize(1, 1));
-    assert!(g.contains(1, 1));
-    dbg!(g.normalize(3, 9));
-    assert!(g.contains(3, 9));
+    dbg!(g.normalize(Point::new(1, 1)));
+    assert!(g.contains(Point::new(1, 1)));
+    dbg!(g.normalize(Point::new(3, 9)));
+    assert!(g.contains(Point::new(3, 9)));
   }
 }
