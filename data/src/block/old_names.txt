@@ -32,6 +32,8 @@ dark_oak_sapling: sapling 5
 sand:     sand 0
 red_sand: sand 1
 
+nether_gold_ore: gold_ore
+
 oak_log[axis=x]: log 4
 oak_log[axis=y]: log 0
 oak_log[axis=z]: log 8
@@ -89,12 +91,19 @@ jungle_leaves: leaves 3
 acacia_leaves: leaves2 0
 dark_oak_leaves: leaves2 1
 
+wet_sponge: sponge 1
+
 dispenser[facing=down ]: dispenser 0
 dispenser[facing=up   ]: dispenser 1
 dispenser[facing=north]: dispenser 2
 dispenser[facing=south]: dispenser 3
 dispenser[facing=west ]: dispenser 4
 dispenser[facing=east ]: dispenser 5
+
+chiseled_sandstone: sandstone 1
+cut_sandstone: sandstone 2
+
+note_block: noteblock
 
 {color}_bed[part=foot,occupied=false,facing=south]: bed 0
 {color}_bed[part=foot,occupied=false,facing=west ]: bed 1
@@ -151,6 +160,15 @@ sticky_piston[extended=true, facing=north]: sticky_piston 10
 sticky_piston[extended=true, facing=south]: sticky_piston 11
 sticky_piston[extended=true, facing=west ]: sticky_piston 12
 sticky_piston[extended=true, facing=east ]: sticky_piston 13
+
+cobweb: web
+grass: tallgrass 1
+fern: tallgrass 2
+dead_bush: tallgrass 0
+
+# This ends up looking the best underwater
+seagrass: water
+tall_seagrass: water
 
 piston[extended=false,facing=down ]: piston 0
 piston[extended=false,facing=up   ]: piston 1
@@ -228,16 +246,6 @@ chest[facing=south]: chest 3
 chest[facing=west ]: chest 4
 chest[facing=east ]: chest 5
 
-# missing old id for nether_gold_ore (72)
-# missing old id for wet_sponge (230)
-# missing old id for chiseled_sandstone (247)
-# missing old id for cut_sandstone (248)
-# missing old id for note_block (249)
-# missing old id for cobweb (1341)
-# missing old id for fern (1343)
-# missing old id for dead_bush (1344)
-# missing old id for seagrass (1345)
-# missing old id for tall_seagrass (1346)
 # missing old id for moving_piston (1400)
 # missing old id for cornflower (1422)
 # missing old id for wither_rose (1423)
