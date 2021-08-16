@@ -213,6 +213,8 @@ green_wool:      wool 13
 red_wool:        wool 14
 black_wool:      wool 15
 
+moving_piston: piston_extension
+
 dandelion:    yellow_flower
 poppy:        red_flower 0
 blue_orchid:  red_flower 1
@@ -223,6 +225,13 @@ orange_tulip: red_flower 5
 white_tulip:  red_flower 6
 pink_tulip:   red_flower 7
 oxeye_daisy:  red_flower 8
+
+# These don't exist, but look similar
+cornflower:   red_flower 1
+wither_rose:  red_flower 0
+lily_of_the_valley: red_flower 3
+
+bricks: brick_block
 
 wall_torch[facing=east]:  torch 1
 wall_torch[facing=west]:  torch 2
@@ -246,11 +255,15 @@ chest[facing=south]: chest 3
 chest[facing=west ]: chest 4
 chest[facing=east ]: chest 5
 
-# missing old id for moving_piston (1400)
-# missing old id for cornflower (1422)
-# missing old id for wither_rose (1423)
-# missing old id for lily_of_the_valley (1424)
-# missing old id for bricks (1429)
+wheat[age=0]: wheat 0
+wheat[age=1]: wheat 1
+wheat[age=2]: wheat 2
+wheat[age=3]: wheat 3
+wheat[age=4]: wheat 4
+wheat[age=5]: wheat 5
+wheat[age=6]: wheat 6
+wheat[age=7]: wheat 7
+
 # missing old id for oak_sign (3381)
 # missing old id for spruce_sign (3413)
 # missing old id for birch_sign (3445)
