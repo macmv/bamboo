@@ -59,22 +59,19 @@ struct JsonBlock {
 
 pub(super) fn load_data(file: &str) -> io::Result<BlockVersion> {
   let data: Vec<JsonBlock> = serde_json::from_str(file)?;
-  let mut ver = BlockVersion { blocks: vec![] };
+  let mut ver = BlockVersion::new();
   for b in data {
     let state = b.id << 4;
-    ver.blocks.push(Block {
-      states:        b
-        .variations
+    ver.add_block(Block::new(
+      b.name,
+      state,
+      b.variations
         .unwrap_or_else(Vec::new)
         .iter()
-        .map(|s| State { id: state | s.metadata, properties: HashMap::new() })
+        .map(|s| State::new(state | s.metadata, vec![]))
         .collect(),
-      name:          b.name,
-      // Need a state id. In old versions, this is always the block id << 4 (the 4 bits are used
-      // for metadata)
-      id:            state,
-      default_index: 0,
-    });
+      0,
+    ));
   }
   Ok(ver)
 }

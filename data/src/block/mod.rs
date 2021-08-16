@@ -1,8 +1,10 @@
+mod block;
 mod fixed;
 mod paletted;
 mod versions;
 
 use crate::util;
+pub use block::{Block, State};
 use convert_case::{Case, Casing};
 use std::{
   collections::{HashMap, HashSet},
@@ -13,60 +15,24 @@ use std::{
   path::Path,
 };
 
-#[derive(Debug, PartialEq, Eq, Clone)]
-struct State {
-  // In fixed data, this is block id << 4 | meta
-  // In paletted data, this is a global state id
-  id:         u32,
-  // All properties for this state. Empty on fixed states.
-  properties: HashMap<String, String>,
-}
-
-#[derive(Debug, Clone)]
-struct Block {
-  // In fixed data, id is the block id << 4
-  // In paletted data, this is the min state id
-  id:            u32,
-  // In fixed data, this is an array of all variations
-  // In paletted data, this is an array of all states
-  states:        Vec<State>,
-  // Is 0 in fixed data
-  // In paletted data, this is an index into states
-  default_index: u32,
-  // Always the full name of the block (for example, grass_block)
-  name:          String,
-}
-
-impl Block {
-  pub fn prop_strs(&self) -> Vec<String> {
-    if self.states.is_empty() {
-      return vec![self.name.clone()];
-    }
-    self.states.iter().map(|s| s.prop_str(&self.name)).collect()
-  }
-}
-
-impl State {
-  fn prop_str(&self, name: &str) -> String {
-    let mut out = format!("{}[", name);
-    let mut sorted_properties: Vec<(String, String)> =
-      self.properties.iter().map(|(k, v)| (k.clone(), v.clone())).collect();
-    sorted_properties.sort();
-    for (k, v) in sorted_properties {
-      if !out.ends_with('[') {
-        out += ",";
-      }
-      out += &k;
-      out += "=";
-      out += &v;
-    }
-    out + "]"
-  }
-}
-
 #[derive(Debug)]
 struct BlockVersion {
   blocks: Vec<Block>,
+  // Used to lookup block by name
+  names:  HashMap<String, usize>,
+}
+
+impl BlockVersion {
+  pub fn new() -> Self {
+    BlockVersion { blocks: vec![], names: HashMap::new() }
+  }
+  pub fn add_block(&mut self, block: Block) {
+    self.names.insert(block.name().to_string(), self.blocks.len());
+    self.blocks.push(block);
+  }
+  pub fn get(&self, name: &str) -> &Block {
+    &self.blocks[self.names[name]]
+  }
 }
 
 pub fn generate(dir: &Path) -> Result<HashSet<String>, Box<dyn Error>> {
@@ -95,7 +61,7 @@ pub fn generate(dir: &Path) -> Result<HashSet<String>, Box<dyn Error>> {
     writeln!(f, "#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, ToPrimitive, FromPrimitive)]")?;
     writeln!(f, "pub enum Kind {{")?;
     for b in &latest.blocks {
-      let name = b.name.to_case(Case::Pascal);
+      let name = b.name().to_case(Case::Pascal);
       writeln!(f, "  {},", name)?;
       out.insert(name);
     }
@@ -107,7 +73,7 @@ pub fn generate(dir: &Path) -> Result<HashSet<String>, Box<dyn Error>> {
     writeln!(f, "  fn from_str(s: &str) -> Result<Self, Self::Err> {{")?;
     writeln!(f, "    match s {{")?;
     for b in &latest.blocks {
-      writeln!(f, "      \"{}\" => Ok(Self::{}),", b.name, b.name.to_case(Case::Pascal))?;
+      writeln!(f, "      \"{}\" => Ok(Self::{}),", b.name(), b.name().to_case(Case::Pascal))?;
     }
     writeln!(f, "      _ => Err(InvalidBlock(s.into())),")?;
     writeln!(f, "    }}")?;
@@ -117,7 +83,7 @@ pub fn generate(dir: &Path) -> Result<HashSet<String>, Box<dyn Error>> {
     writeln!(f, "pub fn names() -> &'static [&'static str; {}] {{", latest.blocks.len())?;
     writeln!(f, "  &[")?;
     for b in &latest.blocks {
-      writeln!(f, "    \"{}\",", b.name)?;
+      writeln!(f, "    \"{}\",", b.name())?;
     }
     writeln!(f, "  ]")?;
     writeln!(f, "}}")?;
@@ -129,22 +95,22 @@ pub fn generate(dir: &Path) -> Result<HashSet<String>, Box<dyn Error>> {
     // Include macro must be one statement
     writeln!(f, "{{")?;
     for b in &latest.blocks {
-      let name = b.name.to_case(Case::Pascal);
+      let name = b.name().to_case(Case::Pascal);
 
       writeln!(f, "blocks.push(Data{{")?;
-      writeln!(f, "  state: {},", b.id)?;
-      writeln!(f, "  default_index: {},", b.default_index)?;
+      writeln!(f, "  state: {},", b.id())?;
+      writeln!(f, "  default_index: {},", b.default_index())?;
       writeln!(f, "  types: vec![")?;
-      if b.states.is_empty() {
+      if b.states().is_empty() {
         writeln!(f, "    Type{{")?;
         writeln!(f, "      kind: Kind::{},", name)?;
-        writeln!(f, "      state: {},", b.id)?;
+        writeln!(f, "      state: {},", b.id())?;
         writeln!(f, "    }},")?;
       } else {
-        for s in &b.states {
+        for s in b.states() {
           writeln!(f, "    Type{{")?;
           writeln!(f, "      kind: Kind::{},", name)?;
-          writeln!(f, "      state: {},", s.id)?;
+          writeln!(f, "      state: {},", s.id())?;
           writeln!(f, "    }},")?;
         }
       }

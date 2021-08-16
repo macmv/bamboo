@@ -213,3 +213,8 @@ wall_torch[facing=east]:  torch 1
 wall_torch[facing=west]:  torch 2
 wall_torch[facing=south]: torch 3
 wall_torch[facing=north]: torch 4
+
+soul_fire: fire
+spawner: mob_spawner
+
+oak_stairs[facing=east,half=bottom]: oak_stairs 0

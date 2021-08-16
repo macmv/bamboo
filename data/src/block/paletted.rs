@@ -51,14 +51,14 @@ struct JsonBlock {
 
 pub(super) fn load_data(file: &str) -> io::Result<BlockVersion> {
   let data: Vec<JsonBlock> = serde_json::from_str(file)?;
-  let mut ver = BlockVersion { blocks: vec![] };
+  let mut ver = BlockVersion::new();
   for b in data {
-    ver.blocks.push(Block {
-      states:        generate_states(&b),
-      name:          b.name,
-      id:            b.min_state_id,
-      default_index: b.default_state - b.min_state_id,
-    });
+    ver.add_block(Block::new(
+      b.name.clone(),
+      b.min_state_id,
+      generate_states(&b),
+      b.default_state - b.min_state_id,
+    ));
   }
   Ok(ver)
 }
@@ -72,11 +72,11 @@ fn generate_states(b: &JsonBlock) -> Vec<State> {
   let mut i = 0;
   let mut finished = false;
   while !finished {
-    let mut props = HashMap::new();
+    let mut props = vec![];
     for (k, v) in indicies.iter().enumerate() {
-      props.insert(b.states[k].name.clone(), state_value(&b.states[k], *v));
+      props.push((b.states[k].name.clone(), state_value(&b.states[k], *v)));
     }
-    states.push(State { id: b.min_state_id + i as u32, properties: props });
+    states.push(State::new(b.min_state_id + i as u32, props));
     i += 1;
 
     finished = true;
@@ -134,62 +134,62 @@ mod tests {
   #[test]
   fn test_generate_states() {
     let expected = vec![
-      State {
-        id:         20,
-        properties: [("small", "false"), ("big", "0")]
+      State::new(
+        20,
+        [("small", "false"), ("big", "0")]
           .iter()
           .map(|(key, val)| ((*key).into(), (*val).into()))
           .collect(),
-      },
-      State {
-        id:         21,
-        properties: [("small", "true"), ("big", "0")]
+      ),
+      State::new(
+        21,
+        [("small", "true"), ("big", "0")]
           .iter()
           .map(|(key, val)| ((*key).into(), (*val).into()))
           .collect(),
-      },
-      State {
-        id:         22,
-        properties: [("small", "false"), ("big", "1")]
+      ),
+      State::new(
+        22,
+        [("small", "false"), ("big", "1")]
           .iter()
           .map(|(key, val)| ((*key).into(), (*val).into()))
           .collect(),
-      },
-      State {
-        id:         23,
-        properties: [("small", "true"), ("big", "1")]
+      ),
+      State::new(
+        23,
+        [("small", "true"), ("big", "1")]
           .iter()
           .map(|(key, val)| ((*key).into(), (*val).into()))
           .collect(),
-      },
-      State {
-        id:         24,
-        properties: [("small", "false"), ("big", "2")]
+      ),
+      State::new(
+        24,
+        [("small", "false"), ("big", "2")]
           .iter()
           .map(|(key, val)| ((*key).into(), (*val).into()))
           .collect(),
-      },
-      State {
-        id:         25,
-        properties: [("small", "true"), ("big", "2")]
+      ),
+      State::new(
+        25,
+        [("small", "true"), ("big", "2")]
           .iter()
           .map(|(key, val)| ((*key).into(), (*val).into()))
           .collect(),
-      },
-      State {
-        id:         26,
-        properties: [("small", "false"), ("big", "3")]
+      ),
+      State::new(
+        26,
+        [("small", "false"), ("big", "3")]
           .iter()
           .map(|(key, val)| ((*key).into(), (*val).into()))
           .collect(),
-      },
-      State {
-        id:         27,
-        properties: [("small", "true"), ("big", "3")]
+      ),
+      State::new(
+        27,
+        [("small", "true"), ("big", "3")]
           .iter()
           .map(|(key, val)| ((*key).into(), (*val).into()))
           .collect(),
-      },
+      ),
     ];
     let got = generate_states(&JsonBlock {
       states: vec![
