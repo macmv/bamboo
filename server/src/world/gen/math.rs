@@ -19,12 +19,9 @@ impl WarpedVoronoi {
   }
 
   pub fn warp(&self, p: Point) -> Point {
-    // ```
-    // let new_x = p.x + (self.x.get([p.x as f64 / 100.0, p.y as f64 / 100.0]) * 20.0) as i32;
-    // let new_y = p.y + (self.y.get([p.x as f64 / 100.0, p.y as f64 / 100.0]) * 20.0) as i32;
-    // Point::new(new_x, new_y)
-    // ```
-    Point::new(p.x, p.y)
+    let new_x = p.x + (self.x.get([p.x as f64 / 100.0, p.y as f64 / 100.0]) * 20.0) as i32;
+    let new_y = p.y + (self.y.get([p.x as f64 / 100.0, p.y as f64 / 100.0]) * 20.0) as i32;
+    Point::new(new_x, new_y)
   }
 
   pub fn get(&self, p: Point) -> u32 {
@@ -34,10 +31,6 @@ impl WarpedVoronoi {
     self.map.dist_to_center(self.warp(p))
   }
   pub fn dist_to_border(&self, p: Point) -> f64 {
-    if self.map.dist_to_center(self.warp(p)) < 2.0 {
-      100.0
-    } else {
-      self.map.dist_to_border(self.warp(p))
-    }
+    self.map.dist_to_border(self.warp(p))
   }
 }
