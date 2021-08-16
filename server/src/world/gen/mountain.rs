@@ -18,10 +18,6 @@ impl BiomeGen for Gen {
   }
   fn height_at(&self, world: &WorldGen, pos: Pos) -> i32 {
     let dist = world.dist_to_border(pos);
-    if dist > 50.0 {
-      world.height_at(pos) as i32 + ((dist - 50.0) * 0.5) as i32
-    } else {
-      world.height_at(pos) as i32
-    }
+    world.height_at(pos) as i32 + (dist * 0.5) as i32
   }
 }

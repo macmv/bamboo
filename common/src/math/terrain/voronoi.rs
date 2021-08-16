@@ -25,55 +25,64 @@ impl Voronoi {
     self.grid.neighbors(p)[1]
   }
   pub fn dist_to_border(&self, p: Point) -> f64 {
-    let b = self.border(p);
-    p.to_vec().dist(b)
+    let mut min_dist = 1000.0;
+    for b in self.borders(p) {
+      let dist = p.to_vec().dist(b);
+      if dist < min_dist {
+        min_dist = dist;
+      }
+    }
+    min_dist
   }
-  /// Returns the closest point on the border of the region that (x, y) is in.
-  pub fn border(&self, p: Point) -> Vector {
+  /// Returns all the possible border points of the region that p is in. Some of
+  /// the points may not be valid.
+  pub fn borders(&self, p: Point) -> Vec<Vector> {
     let neighbors = self.grid.neighbors(p);
     let center = neighbors[0];
-    let neighbor = neighbors[1];
+    let mut out = vec![];
+    for neighbor in neighbors {
+      // We have something like this:
+      //
+      // `C` - Center
+      // `N` - Neighbor
+      // `|` - Border
+      // B - A point on the border, specifically the average between C and N
+      // T - The target point, that will be returned.
+      //
+      //        |
+      //        |
+      //  C --- B --- N
+      //        |
+      //        |
+      //    P - T
+      //        |
+      //
+      // To solve for the intersection between lines, desmos is very helpful, and I
+      // solved for this:
+      //
+      // x = (S * a.x - a.y - I * b.x + b.y) / (S - I)
+      // y = S(x - a.x) + a.y
+      //
+      // where S -> slope, I -> inverted slope, and a and b are the two points (in our
+      // case they will be P and B).
+      //
+      // See: https://www.desmos.com/calculator/z2fjrcbb12
 
-    // We have something like this:
-    //
-    // `C` - Center
-    // `N` - Neighbor
-    // `|` - Border
-    // B - A point on the border, specifically the average between C and N
-    // T - The target point, that will be returned.
-    //
-    //        |
-    //        |
-    //  C --- B --- N
-    //        |
-    //        |
-    //    P - T
-    //        |
-    //
-    // To solve for the intersection between lines, desmos is very helpful, and I
-    // solved for this:
-    //
-    // x = (S * a.x - a.y - I * b.x + b.y) / (S - I)
-    // y = S(x - a.x) + a.y
-    //
-    // where S -> slope, I -> inverted slope, and a and b are the two points (in our
-    // case they will be P and B).
-    //
-    // See: https://www.desmos.com/calculator/z2fjrcbb12
+      // This is the slope between C and N, which is also the slope between P and T
+      // (which is what we are looking for).
+      let s = (center - neighbor).slope();
+      // This is the slope between B and T.
+      let i = s.perp().val();
+      let s = s.val();
 
-    // This is the slope between C and N, which is also the slope between P and T
-    // (which is what we are looking for).
-    let s = (center - neighbor).slope();
-    // This is the slope between B and T.
-    let i = s.perp().val();
-    let s = s.val();
+      let p = p.to_vec();
+      let b = center.avg(neighbor);
 
-    let p = p.to_vec();
-    let b = center.avg(neighbor);
+      let x = (s * p.x - p.y - i * b.x + b.y) / (s - i);
+      let y = s * (x - p.x) + p.y;
 
-    let x = (s * p.x - p.y - i * b.x + b.y) / (s - i);
-    let y = s * (x - p.x) + p.y;
-
-    Vector::new(x, y)
+      out.push(Vector::new(x, y));
+    }
+    out
   }
 }
