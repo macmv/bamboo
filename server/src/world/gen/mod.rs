@@ -8,6 +8,7 @@ use std::{cmp::Ordering, collections::HashSet};
 mod desert;
 mod forest;
 mod math;
+mod plains;
 
 pub struct BiomeLayers {
   layers:       Vec<(block::Kind, u32)>,
@@ -163,6 +164,7 @@ impl WorldGen {
       WorldGen { biome_map: WarpedVoronoi::new(3210471203948712039), biomes: vec![], height };
     gen.add_biome::<desert::Gen>();
     gen.add_biome::<forest::Gen>();
+    gen.add_biome::<plains::Gen>();
     gen
   }
   pub fn add_biome<B: BiomeGen + Send + 'static>(&mut self) {
