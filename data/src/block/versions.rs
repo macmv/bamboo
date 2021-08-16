@@ -117,9 +117,24 @@ pub(super) fn generate_old(latest: &BlockVersion, old: &BlockVersion) -> Vec<u32
             let mut old_id = 0;
             for (props, old_name, old_meta) in old_values {
               if state.matches(&props) {
+                if old_id != 0 {
+                  eprintln!(
+                    "FOUND MULTIPLE OLD ID {} for block {}",
+                    old_id,
+                    state.prop_str(b.name())
+                  );
+                  panic!();
+                }
                 old_id = old.get(old_name).unwrap().id() | old_meta;
-                break;
               }
+            }
+            if old_id == 0 {
+              eprintln!("DID NOT FIND old id for block {}", state.prop_str(b.name()));
+              eprintln!("possible states:");
+              for s in b.states() {
+                eprintln!("{}", s.prop_str(b.name()));
+              }
+              panic!();
             }
             to_old.push(old_id);
           }

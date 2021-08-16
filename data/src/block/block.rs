@@ -53,8 +53,8 @@ impl State {
   pub fn new(id: u32, props: Vec<(String, String)>) -> Self {
     State { id, props }
   }
-  pub fn prop_str(&self, name: &str) -> String {
-    let mut out = format!("{}[", name);
+  pub fn prop_str(&self, block_name: &str) -> String {
+    let mut out = format!("{}[", block_name);
     let mut sorted_properties: Vec<(String, String)> = self.props.clone();
     sorted_properties.sort();
     for (k, v) in sorted_properties {
@@ -76,11 +76,11 @@ impl State {
   pub fn matches(&self, props: &[(String, String)]) -> bool {
     for (key, val) in &self.props {
       for (other_key, other_val) in props {
-        if key == other_key && val == other_val {
-          return true;
+        if key == other_key && val != other_val {
+          return false;
         }
       }
     }
-    false
+    true
   }
 }

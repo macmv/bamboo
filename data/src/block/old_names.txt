@@ -168,18 +168,18 @@ piston[extended=true,facing=south]:  piston 11
 piston[extended=true,facing=west]:   piston 12
 piston[extended=true,facing=east]:   piston 13
 
-piston_head[facing=down,short=false,type=normal]:  piston 0
-piston_head[facing=up,short=false,type=normal]:    piston 1
-piston_head[facing=north,short=false,type=normal]: piston 2
-piston_head[facing=south,short=false,type=normal]: piston 3
-piston_head[facing=west,short=false,type=normal]:  piston 4
-piston_head[facing=east,short=false,type=normal]:  piston 5
-piston_head[facing=down,short=false,type=sticky]:  piston 8
-piston_head[facing=up,short=false,type=sticky]:    piston 9
-piston_head[facing=north,short=false,type=sticky]: piston 10
-piston_head[facing=south,short=false,type=sticky]: piston 11
-piston_head[facing=west,short=false,type=sticky]:  piston 12
-piston_head[facing=east,short=false,type=sticky]:  piston 13
+piston_head[facing=down,type=normal]:  piston 0
+piston_head[facing=up,type=normal]:    piston 1
+piston_head[facing=north,type=normal]: piston 2
+piston_head[facing=south,type=normal]: piston 3
+piston_head[facing=west,type=normal]:  piston 4
+piston_head[facing=east,type=normal]:  piston 5
+piston_head[facing=down,type=sticky]:  piston 8
+piston_head[facing=up,type=sticky]:    piston 9
+piston_head[facing=north,type=sticky]: piston 10
+piston_head[facing=south,type=sticky]: piston 11
+piston_head[facing=west,type=sticky]:  piston 12
+piston_head[facing=east,type=sticky]:  piston 13
 
 white_wool:      wool 0
 orange_wool:     wool 1
