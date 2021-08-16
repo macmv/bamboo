@@ -18,9 +18,18 @@ impl WarpedVoronoi {
     }
   }
 
-  pub fn get(&self, x: i32, y: i32) -> u32 {
+  pub fn warp(&self, x: i32, y: i32) -> (i32, i32) {
     let new_x = x + (self.x.get([x as f64 / 100.0, y as f64 / 100.0]) * 20.0) as i32;
     let new_y = y + (self.y.get([x as f64 / 100.0, y as f64 / 100.0]) * 20.0) as i32;
-    self.map.get(new_x, new_y)
+    (new_x, new_y)
+  }
+
+  pub fn get(&self, x: i32, y: i32) -> u32 {
+    let (x, y) = self.warp(x, y);
+    self.map.get(x, y)
+  }
+  pub fn dist_to_center(&self, x: i32, y: i32) -> f64 {
+    let (x, y) = self.warp(x, y);
+    self.map.dist_to_center(x, y)
   }
 }

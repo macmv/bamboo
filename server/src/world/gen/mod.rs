@@ -8,6 +8,7 @@ use std::{cmp::Ordering, collections::HashSet};
 mod desert;
 mod forest;
 mod math;
+mod mountain;
 mod plains;
 
 pub struct BiomeLayers {
@@ -76,7 +77,7 @@ pub trait BiomeGen {
     c.fill_kind(Pos::new(0, 0, 0), Pos::new(15, average_min_height, 15), layers.main_area).unwrap();
     for x in 0..16 {
       for z in 0..16 {
-        let height = world.height_at(pos.block() + Pos::new(x, 0, z)) as i32;
+        let height = self.height_at(world, pos.block() + Pos::new(x, 0, z)) as i32;
         let min_height = height - layers.total_height() as i32;
         match min_height.cmp(&average_min_height) {
           Ordering::Less => {
@@ -165,6 +166,7 @@ impl WorldGen {
     gen.add_biome::<desert::Gen>();
     gen.add_biome::<forest::Gen>();
     gen.add_biome::<plains::Gen>();
+    gen.add_biome::<mountain::Gen>();
     gen
   }
   pub fn add_biome<B: BiomeGen + Send + 'static>(&mut self) {
@@ -195,6 +197,13 @@ impl WorldGen {
   }
   pub fn biome_id_at(&self, pos: Pos) -> usize {
     self.biome_map.get(pos.x(), pos.z()) as usize % self.biomes.len()
+  }
+  /// Returns the distance to the center of the voronoi region at the given
+  /// position. Since biomes can span multiple voronoi regions, this is not
+  /// always accurate, but it is a good indicator of how far away the edge of
+  /// the biome is.
+  pub fn dist_to_center(&self, pos: Pos) -> f64 {
+    self.biome_map.dist_to_center(pos.x(), pos.z())
   }
   pub fn is_biome<B: BiomeGen>(&self, b: &B, pos: Pos) -> bool {
     let actual = self.biome_id_at(pos);
