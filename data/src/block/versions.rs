@@ -34,8 +34,6 @@ pub(super) fn generate(latest: &BlockVersion, old: &BlockVersion) -> Vec<u32> {
 
 // Called on 1.8-1.12
 pub(super) fn generate_old(latest: &BlockVersion, old: &BlockVersion) -> Vec<u32> {
-  let mut to_old = vec![];
-
   // Map of new block names to old block names and metadata values
   let names: HashMap<String, (&str, u32)> = include_str!("old_names.txt")
     .trim()
@@ -106,6 +104,8 @@ pub(super) fn generate_old(latest: &BlockVersion, old: &BlockVersion) -> Vec<u32
     }
   }
 
+  let mut to_old = vec![];
+
   // Need to iterate in order
   for b in &latest.blocks {
     match state_maps.get(b.name()) {
@@ -117,90 +117,31 @@ pub(super) fn generate_old(latest: &BlockVersion, old: &BlockVersion) -> Vec<u32
             let mut old_id = 0;
             for (props, old_name, old_meta) in old_values {
               if state.matches(&props) {
-                old_id = old.get(old_name).id() | old_meta;
+                old_id = old.get(old_name).unwrap().id() | old_meta;
                 break;
               }
             }
             to_old.push(old_id);
           }
         }
-        // for (state, matches) in b.matching_states(props) {}
-        // for state in &b.states {
-        //   let mut matched = false;
-        //   'outer: for (key, val) in &state.properties {
-        //     for (other_key, other_val) in props {
-        //       if key == other_key && val == other_val {
-        //         // We want to convert `state` into an old block
-        //         to_old.push(old.get(old_name).id | old_meta);
-        //         matched = true;
-        //         break 'outer;
-        //       }
-        //     }
-        //   }
-        //   if !matched {
-        //     to_old.push(0);
-        //   }
-        // }
       }
       None => {
+        let mut old_id = 0;
+        if let Some(old) = old.get(b.name()) {
+          old_id = old.id();
+        } else {
+          println!("missing old id for {}", b.name());
+        }
         if b.states().is_empty() {
-          to_old.push(0);
+          to_old.push(old_id);
         } else {
           for _ in b.states() {
-            to_old.push(0);
+            to_old.push(old_id);
           }
         }
       }
     }
   }
 
-  // let mut all_blocks: HashMap<String, &Block> = HashMap::new();
-  // for (names, b) in latest.blocks.iter().map(|b| (b.prop_strs(), b)) {
-  //   for n in names {
-  //     all_blocks.insert(n, b);
-  //   }
-  // }
-  // all_blocks
-  //   .extend(latest.blocks.iter().map(|b| (b.name.clone(),
-  // b)).collect::<HashMap<String, &Block>>()); for n in names.keys() {
-  //   if !all_blocks.contains_key(n) {
-  //     let sections: Vec<&str> = n.split('[').collect();
-  //     if sections.len() == 1 {
-  //       panic!("invalid modern block name: {}", n);
-  //     }
-  //     match all_blocks.get(sections[0]) {
-  //       Some(b) => {
-  //         panic!("invalid modern block name: {}. block strs are: {:?}", n,
-  // b.prop_strs())       }
-  //       None => panic!("invalid modern block name: {}", n),
-  //     }
-  //   }
-  // }
-
-  // let old_blocks: HashMap<String, Block> =
-  //   old.blocks.iter().cloned().map(|b| (b.name.clone(), b)).collect();
-  //
-  // for b in &latest.blocks {
-  //   // First lookup by prop string. If it fails, then lookup by block name.
-  //   // Otherwise, just use this block name.
-  //   for s in b.prop_strs() {
-  //     let (old_name, old_meta) = match names.get(&s) {
-  //       Some(v) => *v,
-  //       None => match names.get(&b.name) {
-  //         Some(v) => *v,
-  //         None => (b.name.as_ref(), 0),
-  //       },
-  //     };
-  //     let old_block = match old_blocks.get(old_name) {
-  //       Some(v) => v,
-  //       None => {
-  //         println!("warning: missing block {}", old_name);
-  //         &old.blocks[0] // Use air when we there is a missing block
-  //       }
-  //     };
-  //     to_old.push(old_block.id | old_meta);
-  //   }
-  // }
-  //
   to_old
 }

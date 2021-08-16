@@ -30,8 +30,8 @@ impl BlockVersion {
     self.names.insert(block.name().to_string(), self.blocks.len());
     self.blocks.push(block);
   }
-  pub fn get(&self, name: &str) -> &Block {
-    &self.blocks[self.names[name]]
+  pub fn get(&self, name: &str) -> Option<&Block> {
+    Some(&self.blocks[*self.names.get(name)?])
   }
 }
 
