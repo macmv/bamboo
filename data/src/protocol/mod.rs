@@ -131,7 +131,7 @@ pub struct Version {
   pub to_server: Vec<Packet>,
 }
 
-pub fn store(dir: &Path) -> Result<(), Box<dyn Error>> {
+pub fn generate(dir: &Path, is_client: bool) -> Result<TokenStream, Box<dyn Error>> {
   let prismarine_path = dir.join("prismarine-data");
   let dir = dir.join("protocol");
 
@@ -147,39 +147,35 @@ pub fn store(dir: &Path) -> Result<(), Box<dyn Error>> {
     writeln!(f, "{}", serde_json::to_string(&versions)?)?;
   }
   {
-    // Generates the packet id enum, for clientbound and serverbound packets
-    let mut to_client = HashSet::new();
-    let mut to_server = HashSet::new();
+    // Generates the packet id enum, for one type of packets
+    let mut packets = HashSet::new();
 
     for (_, v) in versions {
-      for p in v.to_client {
-        to_client.insert(p.name);
-      }
-      for p in v.to_server {
-        to_server.insert(p.name);
+      if is_client {
+        for p in v.to_client {
+          packets.insert(p.name);
+        }
+      } else {
+        for p in v.to_server {
+          packets.insert(p.name);
+        }
       }
     }
     // This is a custom packet. It is a packet sent from the proxy to the server,
     // which is used to authenticate the player.
-    to_server.insert("Login".into());
+    if !is_client {
+      packets.insert("Login".into());
+    }
 
-    let to_client: Vec<String> = to_client.into_iter().sorted().collect();
-    let to_server: Vec<String> = to_server.into_iter().sorted().collect();
+    let packets: Vec<String> = packets.into_iter().sorted().collect();
 
-    let mut f = File::create(&dir.join("cb.rs"))?;
-    generate_ids(&mut f, &to_client)?;
-
-    let mut f = File::create(&dir.join("sb.rs"))?;
-    generate_ids(&mut f, &to_server)?;
+    Ok(generate_packets(&packets)?)
   }
-  Ok(())
 }
 
-pub fn generate_cb(path: &Path) -> Result<TokenStream, Box<dyn Error>> {
-  let packets = vec!["hello_world", "big_gaming"];
-
+pub fn generate_packets(packets: &[String]) -> Result<TokenStream, Box<dyn Error>> {
   let mut kinds = vec![];
-  for n in &packets {
+  for n in packets {
     kinds.push(Ident::new(&n.to_case(Case::Pascal), Span::call_site()));
   }
   let mut names = vec![];
@@ -208,32 +204,4 @@ pub fn generate_cb(path: &Path) -> Result<TokenStream, Box<dyn Error>> {
   };
   println!("{}", out.to_string());
   Ok(out)
-}
-
-fn generate_ids(f: &mut File, packets: &[String]) -> io::Result<()> {
-  writeln!(f, "/// Auto generated packet ids. This is a combination of all packet")?;
-  writeln!(f, "/// names for all versions. Some of these packets are never used.")?;
-  writeln!(f, "#[derive(Clone, Copy, Debug, FromPrimitive, ToPrimitive, PartialEq, Eq, Hash)]")?;
-  writeln!(f, "pub enum ID {{")?;
-  // We always want a None type, to signify an invalid packet
-  writeln!(f, "  None,")?;
-  for n in packets {
-    let name = n.to_case(Case::Pascal);
-    writeln!(f, "  {},", name)?;
-  }
-  writeln!(f, "}}")?;
-  writeln!(f, "impl ID {{")?;
-  writeln!(f, "  /// Parses the given string as a packet id. The string should be in")?;
-  writeln!(f, "  /// snake case.")?;
-  writeln!(f, "  pub fn parse_str(s: &str) -> Self {{")?;
-  writeln!(f, "    match s {{")?;
-  for n in packets {
-    let name = n.to_case(Case::Pascal);
-    writeln!(f, "      \"{}\" => ID::{},", n, name)?;
-  }
-  writeln!(f, "      _ => ID::None,")?;
-  writeln!(f, "    }}")?;
-  writeln!(f, "  }}")?;
-  writeln!(f, "}}")?;
-  Ok(())
 }
