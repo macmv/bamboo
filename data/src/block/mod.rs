@@ -6,14 +6,12 @@ mod versions;
 use crate::util;
 pub use block::{Block, State};
 use convert_case::{Case, Casing};
-use proc_macro2::TokenStream;
+use proc_macro2::{Ident, Span, TokenStream};
 use quote::quote;
 use std::{
   collections::{HashMap, HashSet},
   error::Error,
   fs,
-  fs::File,
-  io::Write,
   path::Path,
 };
 
@@ -77,7 +75,7 @@ pub fn generate(dir: &Path) -> Result<TokenStream, Box<dyn Error>> {
 
   let mut kinds = vec![];
   for b in &latest.blocks {
-    kinds.push(b.name().to_case(Case::Pascal));
+    kinds.push(Ident::new(&b.name().to_case(Case::Pascal), Span::call_site()));
   }
   let mut names = vec![];
   for b in &latest.blocks {
@@ -89,19 +87,19 @@ pub fn generate(dir: &Path) -> Result<TokenStream, Box<dyn Error>> {
   for b in &latest.blocks {
     let state = b.id();
     let default_index = b.default_index();
-    let name = b.name().to_case(Case::Pascal);
+    let kind = Ident::new(&b.name().to_case(Case::Pascal), Span::call_site());
 
     let mut types = vec![];
     if b.states().is_empty() {
       types.push(quote!(Type{
-        kind: Kind::#name,
+        kind: Kind::#kind,
         state: #state,
       }));
     } else {
       for s in b.states() {
         let sid = s.id();
         types.push(quote!(Type{
-          kind: Kind::#name,
+          kind: Kind::#kind,
           state: #sid,
         }));
       }
