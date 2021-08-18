@@ -1,3 +1,4 @@
+use data::generate_blocks;
 use num_derive::{FromPrimitive, ToPrimitive};
 use std::{error::Error, fmt, str::FromStr};
 
@@ -12,9 +13,7 @@ impl fmt::Display for InvalidBlock {
 
 impl Error for InvalidBlock {}
 
-// Generated from the latest version of minecraft's output. See build.rs for
-// more.
-include!(concat!(env!("OUT_DIR"), "/block/kind.rs"));
+generate_blocks!();
 
 impl Kind {
   /// Returns the kind as an u32. This is used in the versioning arrays, and in

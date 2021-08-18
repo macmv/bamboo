@@ -7,6 +7,7 @@ edition = "2018"
 
 [dependencies]
 # flexi_logger = "0.17"
+data = { path = "../data" }
 log4rs = "1.0.0"
 anyhow = "1.0.0"
 log = "0.4"
@@ -48,7 +49,6 @@ ringbuf = "0.2.4"
 [build-dependencies]
 # We need to disable default features, as that uses rustfmt, which is not installed in Docker containers.
 tonic-build = { version = "0.4", default-features = false, features = ["transport", "prost"] }
-data = { path = "../data" }
 
 [dev-dependencies]
 pprof = { version = "0.4.3", features = ["criterion", "flamegraph"] }

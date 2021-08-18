@@ -7,6 +7,7 @@ edition = "2018"
 
 [dependencies]
 common = { path = "../common" }
+data = { path = "../data" }
 log = "0.4"
 
 tonic = "0.4"
@@ -23,6 +24,3 @@ num-derive = "0.3"
 noise = "0.7.0"
 
 sugarlang = { git = "https://gitlab.com/macmv/sugarlang" }
-
-[build-dependencies]
-data = { path = "../data" }
