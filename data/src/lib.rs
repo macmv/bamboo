@@ -1,4 +1,5 @@
 use proc_macro::TokenStream;
+use std::{env, path::Path};
 
 mod block;
 mod entity;
@@ -32,7 +33,10 @@ mod util;
 
 #[proc_macro]
 pub fn generate_blocks(input: TokenStream) -> TokenStream {
-  "fn answer() -> u32 { 42 }".parse().unwrap()
+  let out = env::var_os("OUT_DIR").unwrap();
+  let dir = Path::new(&out);
+  prismarine::clone(&dir).unwrap();
+  block::generate(&dir).unwrap().into()
 }
 
 #[proc_macro]

@@ -6,6 +6,8 @@ mod versions;
 use crate::util;
 pub use block::{Block, State};
 use convert_case::{Case, Casing};
+use proc_macro2::TokenStream;
+use quote::quote;
 use std::{
   collections::{HashMap, HashSet},
   error::Error,
@@ -35,7 +37,7 @@ impl BlockVersion {
   }
 }
 
-pub fn generate(dir: &Path) -> Result<HashSet<String>, Box<dyn Error>> {
+pub fn generate(dir: &Path) -> Result<TokenStream, Box<dyn Error>> {
   let files = util::load_versions(dir, "blocks.json")?;
   let dir = dir.join("block");
 
@@ -51,103 +53,98 @@ pub fn generate(dir: &Path) -> Result<HashSet<String>, Box<dyn Error>> {
   }
   let latest = &versions[0];
 
+  let mut kinds = vec![];
+  for b in &latest.blocks {
+    kinds.push(b.name().to_case(Case::Pascal));
+  }
+  let mut names = vec![];
+  for b in &latest.blocks {
+    names.push(b.name());
+  }
+  let name_len = latest.blocks.len();
+
   fs::create_dir_all(&dir)?;
-  let mut out = HashSet::new();
-  {
-    // Generates the block kinds enum
-    let mut f = File::create(&dir.join("kind.rs"))?;
-    writeln!(f, "/// Auto generated block kind. This is directly generated")?;
-    writeln!(f, "/// from prismarine data.")?;
-    writeln!(f, "#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, ToPrimitive, FromPrimitive)]")?;
-    writeln!(f, "pub enum Kind {{")?;
-    for b in &latest.blocks {
-      let name = b.name().to_case(Case::Pascal);
-      writeln!(f, "  {},", name)?;
-      out.insert(name);
+  let out = quote! {
+    /// Auto generated block kind. This is directly generated
+    /// from prismarine data.
+    #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, ToPrimitive, FromPrimitive)]
+    pub enum Kind {
+      #(#kinds),*
     }
-    writeln!(f, "}}")?;
-    writeln!(f)?;
-    writeln!(f, "impl FromStr for Kind {{")?;
-    writeln!(f, "  type Err = InvalidBlock;")?;
-    writeln!(f)?;
-    writeln!(f, "  fn from_str(s: &str) -> Result<Self, Self::Err> {{")?;
-    writeln!(f, "    match s {{")?;
-    for b in &latest.blocks {
-      writeln!(f, "      \"{}\" => Ok(Self::{}),", b.name(), b.name().to_case(Case::Pascal))?;
-    }
-    writeln!(f, "      _ => Err(InvalidBlock(s.into())),")?;
-    writeln!(f, "    }}")?;
-    writeln!(f, "  }}")?;
-    writeln!(f, "}}")?;
-    writeln!(f)?;
-    writeln!(f, "pub fn names() -> &'static [&'static str; {}] {{", latest.blocks.len())?;
-    writeln!(f, "  &[")?;
-    for b in &latest.blocks {
-      writeln!(f, "    \"{}\",", b.name())?;
-    }
-    writeln!(f, "  ]")?;
-    writeln!(f, "}}")?;
-  }
-  {
-    // Generates the block data
-    let mut f = File::create(&dir.join("data.rs"))?;
 
-    // Include macro must be one statement
-    writeln!(f, "{{")?;
-    for b in &latest.blocks {
-      let name = b.name().to_case(Case::Pascal);
-
-      writeln!(f, "blocks.push(Data{{")?;
-      writeln!(f, "  state: {},", b.id())?;
-      writeln!(f, "  default_index: {},", b.default_index())?;
-      writeln!(f, "  types: vec![")?;
-      if b.states().is_empty() {
-        writeln!(f, "    Type{{")?;
-        writeln!(f, "      kind: Kind::{},", name)?;
-        writeln!(f, "      state: {},", b.id())?;
-        writeln!(f, "    }},")?;
-      } else {
-        for s in b.states() {
-          writeln!(f, "    Type{{")?;
-          writeln!(f, "      kind: Kind::{},", name)?;
-          writeln!(f, "      state: {},", s.id())?;
-          writeln!(f, "    }},")?;
+    impl FromStr for Kind {
+      type Err = InvalidBlock;
+      fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+          #(#names => Ok(Self::#kinds)),*
+          _ => Err(InvalidBlock(s.into())),
         }
       }
-      writeln!(f, "  ],")?;
-      writeln!(f, "}});")?;
     }
-    writeln!(f, "}}")?;
-  }
-  {
-    // Generates the cross-versioning data
-    //
-    // This cannot be in a source file, as that would take multiple minutes (and
-    // 10gb of ram) to compile. So we do a bit of pre-processing on load.
-    let mut f = File::create(&dir.join("versions.csv"))?;
-
-    let mut to_old = vec![];
-    for (i, v) in versions.iter().enumerate() {
-      if i == 0 {
-        continue;
-      }
-      if i >= versions.len() - 5 {
-        // 1.8-1.12
-        to_old.push(versions::generate_old(latest, v));
-      } else {
-        to_old.push(versions::generate(latest, v));
-      }
+    pub fn names() -> &'static [&'static str; #name_len] {
+      &[#(#names),*]
     }
-    for i in 0..to_old[0].len() {
-      write!(f, "{},", i)?;
-      for (j, arr) in to_old.iter().enumerate() {
-        write!(f, "{}", arr[i])?;
-        if j != to_old.len() - 1 {
-          write!(f, ",")?;
-        }
-      }
-      writeln!(f)?;
-    }
-  }
+  };
+  // {
+  //   // Generates the block data
+  //   let mut f = File::create(&dir.join("data.rs"))?;
+  //
+  //   // Include macro must be one statement
+  //   writeln!(f, "{{")?;
+  //   for b in &latest.blocks {
+  //     let name = b.name().to_case(Case::Pascal);
+  //
+  //     writeln!(f, "blocks.push(Data{{")?;
+  //     writeln!(f, "  state: {},", b.id())?;
+  //     writeln!(f, "  default_index: {},", b.default_index())?;
+  //     writeln!(f, "  types: vec![")?;
+  //     if b.states().is_empty() {
+  //       writeln!(f, "    Type{{")?;
+  //       writeln!(f, "      kind: Kind::{},", name)?;
+  //       writeln!(f, "      state: {},", b.id())?;
+  //       writeln!(f, "    }},")?;
+  //     } else {
+  //       for s in b.states() {
+  //         writeln!(f, "    Type{{")?;
+  //         writeln!(f, "      kind: Kind::{},", name)?;
+  //         writeln!(f, "      state: {},", s.id())?;
+  //         writeln!(f, "    }},")?;
+  //       }
+  //     }
+  //     writeln!(f, "  ],")?;
+  //     writeln!(f, "}});")?;
+  //   }
+  //   writeln!(f, "}}")?;
+  // }
+  // {
+  //   // Generates the cross-versioning data
+  //   //
+  //   // This cannot be in a source file, as that would take multiple minutes
+  // (and   // 10gb of ram) to compile. So we do a bit of pre-processing on
+  // load.   let mut f = File::create(&dir.join("versions.csv"))?;
+  //
+  //   let mut to_old = vec![];
+  //   for (i, v) in versions.iter().enumerate() {
+  //     if i == 0 {
+  //       continue;
+  //     }
+  //     if i >= versions.len() - 5 {
+  //       // 1.8-1.12
+  //       to_old.push(versions::generate_old(latest, v));
+  //     } else {
+  //       to_old.push(versions::generate(latest, v));
+  //     }
+  //   }
+  //   for i in 0..to_old[0].len() {
+  //     write!(f, "{},", i)?;
+  //     for (j, arr) in to_old.iter().enumerate() {
+  //       write!(f, "{}", arr[i])?;
+  //       if j != to_old.len() - 1 {
+  //         write!(f, ",")?;
+  //       }
+  //     }
+  //     writeln!(f)?;
+  //   }
+  // }
   Ok(out)
 }

@@ -270,8 +270,7 @@ impl ID {
   }
 }
 
-// Is the ID enum
-include!(concat!(env!("OUT_DIR"), "/protocol/cb.rs"));
+data::generate_cb_protocol!();
 
 macro_rules! id_init {
   ($($ty: ident: $num: expr),*) => {

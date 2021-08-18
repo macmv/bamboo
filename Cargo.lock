@@ -512,6 +512,8 @@ version = "0.1.0"
 dependencies = [
  "convert_case",
  "itertools 0.10.1",
+ "proc-macro2",
+ "quote",
  "serde",
  "serde_derive",
  "serde_json",
