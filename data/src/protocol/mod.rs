@@ -3,6 +3,8 @@ mod parse;
 
 use convert_case::{Case, Casing};
 use itertools::Itertools;
+use proc_macro2::{Ident, Span, TokenStream};
+use quote::quote;
 use serde_derive::{Deserialize, Serialize};
 use std::{
   collections::{HashMap, HashSet},
@@ -171,6 +173,41 @@ pub fn store(dir: &Path) -> Result<(), Box<dyn Error>> {
     generate_ids(&mut f, &to_server)?;
   }
   Ok(())
+}
+
+pub fn generate_cb(path: &Path) -> Result<TokenStream, Box<dyn Error>> {
+  let packets = vec!["hello_world", "big_gaming"];
+
+  let mut kinds = vec![];
+  for n in &packets {
+    kinds.push(Ident::new(&n.to_case(Case::Pascal), Span::call_site()));
+  }
+  let mut names = vec![];
+  for n in packets {
+    names.push(n);
+  }
+  let out = quote! {
+    /// Auto generated packet ids. This is a combination of all packet
+    /// names for all versions. Some of these packets are never used.
+    #[derive(Clone, Copy, Debug, FromPrimitive, ToPrimitive, PartialEq, Eq, Hash)]
+    pub enum ID {
+      // We always want a None type, to signify an invalid packet
+      None,
+      #(#kinds,)*
+    }
+    impl ID {
+      /// Parses the given string as a packet id. The string should be in
+      /// snake case.
+      pub fn parse_str(s: &str) -> Self {
+        match s {
+          #(#names => ID::#kinds,)*
+          _ => ID::None,
+        }
+      }
+    }
+  };
+  println!("{}", out.to_string());
+  Ok(out)
 }
 
 fn generate_ids(f: &mut File, packets: &[String]) -> io::Result<()> {

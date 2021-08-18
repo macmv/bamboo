@@ -45,6 +45,17 @@ pub fn generate_items(input: TokenStream) -> TokenStream {
 }
 
 #[proc_macro]
-pub fn generate_protocol(input: TokenStream) -> TokenStream {
-  "fn answer() -> u32 { 42 }".parse().unwrap()
+pub fn generate_cb_protocol(input: TokenStream) -> TokenStream {
+  let out = env::var_os("OUT_DIR").unwrap();
+  let dir = Path::new(&out);
+  prismarine::clone(&dir).unwrap();
+  protocol::generate_cb(&dir).unwrap().into()
+}
+
+#[proc_macro]
+pub fn generate_sb_protocol(input: TokenStream) -> TokenStream {
+  let out = env::var_os("OUT_DIR").unwrap();
+  let dir = Path::new(&out);
+  prismarine::clone(&dir).unwrap();
+  protocol::generate_cb(&dir).unwrap().into()
 }
