@@ -10,6 +10,9 @@ mod forest;
 mod math;
 mod mountain;
 mod plains;
+mod underground;
+
+use underground::Underground;
 
 pub struct BiomeLayers {
   layers:       Vec<(block::Kind, u32)>,
@@ -152,17 +155,23 @@ pub trait BiomeGen {
 }
 
 pub struct WorldGen {
-  biome_map: WarpedVoronoi,
-  biomes:    Vec<Box<dyn BiomeGen + Send>>,
-  height:    BasicMulti,
+  biome_map:   WarpedVoronoi,
+  biomes:      Vec<Box<dyn BiomeGen + Send>>,
+  height:      BasicMulti,
+  underground: Underground,
 }
 
 impl WorldGen {
   pub fn new() -> Self {
     let mut height = BasicMulti::new();
     height.octaves = 5;
-    let mut gen =
-      WorldGen { biome_map: WarpedVoronoi::new(3210471203948712039), biomes: vec![], height };
+    let seed = 3210471203948712039;
+    let mut gen = WorldGen {
+      biome_map: WarpedVoronoi::new(seed),
+      biomes: vec![],
+      height,
+      underground: Underground::new(seed),
+    };
     gen.add_biome::<desert::Gen>();
     gen.add_biome::<forest::Gen>();
     gen.add_biome::<plains::Gen>();
@@ -188,6 +197,7 @@ impl WorldGen {
         self.biomes[biome].fill_column(self, p, c);
       }
     }
+    self.underground.process(pos, c);
     for b in &biomes {
       self.biomes[*b].decorate(self, pos, c);
     }
