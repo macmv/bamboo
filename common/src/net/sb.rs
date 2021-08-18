@@ -9,8 +9,6 @@ pub struct Packet {
   pb: proto::Packet,
 }
 
-data::generate_sb_protocol!();
-
 /// A grpc packet ID. This is roughly the same as the latest packet version, but
 /// in any order.
 impl ID {

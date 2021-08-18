@@ -1,5 +1,9 @@
 use proc_macro::TokenStream;
-use std::{env, path::Path};
+use quote::quote;
+use std::{
+  env,
+  path::{Path, PathBuf},
+};
 
 mod block;
 mod entity;
@@ -31,31 +35,30 @@ mod util;
 //   protocol::store(&dir).unwrap();
 // }
 
+fn out_dir() -> PathBuf {
+  let out = env::var_os("OUT_DIR").unwrap();
+  Path::new(&out).into()
+}
+
+#[proc_macro]
+pub fn clone_prismarine_data(input: TokenStream) -> TokenStream {
+  prismarine::clone(&out_dir()).unwrap();
+  quote!().into()
+}
+
 #[proc_macro]
 pub fn generate_blocks(input: TokenStream) -> TokenStream {
-  let out = env::var_os("OUT_DIR").unwrap();
-  let dir = Path::new(&out);
-  prismarine::clone(&dir).unwrap();
-  block::generate(&dir).unwrap().into()
+  block::generate(&out_dir()).unwrap().into()
 }
 
 #[proc_macro]
 pub fn generate_items(input: TokenStream) -> TokenStream {
-  "fn answer() -> u32 { 42 }".parse().unwrap()
+  // item::generate(&out_dir()).unwrap().into()
+  "".parse().unwrap()
 }
 
 #[proc_macro]
-pub fn generate_cb_protocol(input: TokenStream) -> TokenStream {
-  let out = env::var_os("OUT_DIR").unwrap();
-  let dir = Path::new(&out);
-  prismarine::clone(&dir).unwrap();
-  protocol::generate(&dir, true).unwrap().into()
-}
-
-#[proc_macro]
-pub fn generate_sb_protocol(input: TokenStream) -> TokenStream {
-  let out = env::var_os("OUT_DIR").unwrap();
-  let dir = Path::new(&out);
-  prismarine::clone(&dir).unwrap();
-  protocol::generate(&dir, false).unwrap().into()
+pub fn generate_protocol(input: TokenStream) -> TokenStream {
+  prismarine::clone(&out_dir()).unwrap();
+  protocol::generate(&out_dir()).unwrap().into()
 }

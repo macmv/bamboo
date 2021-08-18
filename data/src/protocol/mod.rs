@@ -131,7 +131,7 @@ pub struct Version {
   pub to_server: Vec<Packet>,
 }
 
-pub fn generate(dir: &Path, is_client: bool) -> Result<TokenStream, Box<dyn Error>> {
+pub fn generate(dir: &Path) -> Result<TokenStream, Box<dyn Error>> {
   let prismarine_path = dir.join("prismarine-data");
   let dir = dir.join("protocol");
 
@@ -147,29 +147,44 @@ pub fn generate(dir: &Path, is_client: bool) -> Result<TokenStream, Box<dyn Erro
     writeln!(f, "{}", serde_json::to_string(&versions)?)?;
   }
   {
-    // Generates the packet id enum, for one type of packets
-    let mut packets = HashSet::new();
+    // Generates the packet id enum, for clientbound and serverbound packets
+    let mut to_client = HashSet::new();
+    let mut to_server = HashSet::new();
 
     for (_, v) in versions {
-      if is_client {
-        for p in v.to_client {
-          packets.insert(p.name);
-        }
-      } else {
-        for p in v.to_server {
-          packets.insert(p.name);
-        }
+      for p in v.to_client {
+        to_client.insert(p.name);
+      }
+      for p in v.to_server {
+        to_server.insert(p.name);
       }
     }
     // This is a custom packet. It is a packet sent from the proxy to the server,
     // which is used to authenticate the player.
-    if !is_client {
-      packets.insert("Login".into());
-    }
+    to_server.insert("Login".into());
 
-    let packets: Vec<String> = packets.into_iter().sorted().collect();
+    let to_client: Vec<String> = to_client.into_iter().sorted().collect();
+    let to_server: Vec<String> = to_server.into_iter().sorted().collect();
 
-    Ok(generate_packets(&packets)?)
+    let to_client = generate_packets(&to_client)?;
+    let to_server = generate_packets(&to_server)?;
+
+    // The include! trick is a terrible hack. It just lets met define both the enums
+    // in one macro call, which allows for faster compilation.
+    //
+    // These files are going to be removed in the future, as I am going to move to
+    // generating every packet as its own struct, so that fields are no longer
+    // defined with strings.
+    Ok(quote! {
+      pub mod cb {
+        #to_client
+        include!("cb.rs");
+      }
+      pub mod sb {
+        #to_server
+        include!("sb.rs");
+      }
+    })
   }
 }
 

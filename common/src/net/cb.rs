@@ -270,8 +270,6 @@ impl ID {
   }
 }
 
-data::generate_cb_protocol!();
-
 macro_rules! id_init {
   ($($ty: ident: $num: expr),*) => {
     proto::Packet {

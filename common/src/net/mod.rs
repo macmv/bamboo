@@ -1,6 +1,6 @@
-pub mod cb;
+data::generate_protocol!();
+
 mod other;
-pub mod sb;
 pub mod tcp;
 
 pub use other::Other;
