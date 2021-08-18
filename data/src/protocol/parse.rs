@@ -7,7 +7,6 @@ use std::{collections::HashMap, error::Error, fs, io, io::ErrorKind, path::Path}
 pub(super) fn load_all(path: &Path) -> Result<HashMap<String, Version>, Box<dyn Error>> {
   let mut versions = HashMap::new();
 
-  dbg!(path);
   for p in fs::read_dir(path)? {
     let p = p.unwrap().path();
     let name = p.file_name().unwrap().to_str().unwrap();

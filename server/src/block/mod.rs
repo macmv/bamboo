@@ -1,5 +1,3 @@
-mod data;
-mod kind;
 mod ty;
 mod version;
 

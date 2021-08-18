@@ -217,6 +217,5 @@ pub fn generate_packets(packets: &[String]) -> Result<TokenStream, Box<dyn Error
       }
     }
   };
-  println!("{}", out.to_string());
   Ok(out)
 }

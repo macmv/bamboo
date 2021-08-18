@@ -36,7 +36,7 @@ mod util;
 // }
 
 fn out_dir() -> PathBuf {
-  let out = env::var_os("OUT_DIR").unwrap();
+  let out = env::var_os("OUT_DIR").expect("could not get out dir");
   Path::new(&out).into()
 }
 
@@ -53,8 +53,7 @@ pub fn generate_blocks(input: TokenStream) -> TokenStream {
 
 #[proc_macro]
 pub fn generate_items(input: TokenStream) -> TokenStream {
-  // item::generate(&out_dir()).unwrap().into()
-  "".parse().unwrap()
+  item::generate(&out_dir(), block::generate_kinds(&out_dir()).unwrap()).unwrap().into()
 }
 
 #[proc_macro]

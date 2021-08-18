@@ -1,5 +1,7 @@
 use crate::util;
 use convert_case::{Case, Casing};
+use proc_macro2::{Ident, Span, TokenStream};
+use quote::quote;
 use serde_derive::Deserialize;
 use std::{
   collections::{HashMap, HashSet},
@@ -22,7 +24,7 @@ struct Item {
 
 // Generates all item data. Uses the set of valid block enum names to generate
 // the block to place for each item.
-pub fn generate(dir: &Path, blocks: HashSet<String>) -> Result<(), Box<dyn Error>> {
+pub fn generate(dir: &Path, blocks: HashSet<String>) -> Result<TokenStream, Box<dyn Error>> {
   let files = util::load_versions(dir, "items.json")?;
   let dir = Path::new(dir).join("item");
 
@@ -32,39 +34,45 @@ pub fn generate(dir: &Path, blocks: HashSet<String>) -> Result<(), Box<dyn Error
   }
   let latest = &versions[0];
 
-  fs::create_dir_all(&dir)?;
-  {
-    // Generates the block kinds enum
-    let mut f = File::create(&dir.join("type.rs"))?;
-    writeln!(f, "/// Auto generated item type. This is directly generated")?;
-    writeln!(f, "/// from prismarine data.")?;
-    writeln!(f, "#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, FromPrimitive, ToPrimitive)]")?;
-    writeln!(f, "pub enum Type {{")?;
-    for i in latest {
-      let name = i.name.to_case(Case::Pascal);
-      writeln!(f, "  {},", name)?;
-    }
-    writeln!(f, "}}")?;
+  let mut kinds = vec![];
+  for i in latest {
+    kinds.push(i.name.to_case(Case::Pascal));
   }
-  {
-    // Generates the item data (things like stack size, display name)
-    let mut f = File::create(&dir.join("data.rs"))?;
 
-    // Include macro must be one statement
-    writeln!(f, "{{")?;
-    for i in latest {
-      let mut block = i.name.to_case(Case::Pascal);
-      if !blocks.contains(&block) {
-        block = "Air".into();
-      }
-      writeln!(f, "items.push(Data{{")?;
-      writeln!(f, "  display_name: \"{}\",", i.display_name)?;
-      writeln!(f, "  stack_size: {},", i.stack_size)?;
-      writeln!(f, "  block_to_place: block::Kind::{},", block)?;
-      writeln!(f, "}});")?;
+  let mut add_items = vec![];
+  for i in latest {
+    let name = i.name.to_case(Case::Pascal);
+    let mut block = Ident::new(&name, Span::call_site());
+    if !blocks.contains(&name) {
+      block = Ident::new("Air".into(), Span::call_site());
     }
-    writeln!(f, "}}")?;
+    let display_name = i.display_name.clone();
+    let stack_size = i.stack_size;
+    add_items.push(quote! {
+      items.push(Data{
+        display_name: #display_name,
+        stack_size: #stack_size,
+        block_to_place: block::Kind::#block,
+      });
+    });
   }
+
+  let out = quote! {
+    /// Auto generated item type. This is directly generated
+    /// from prismarine data.
+    #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, FromPrimitive, ToPrimitive)]
+    pub enum Type {
+      #(#kinds),*
+    }
+
+    /// Generates a table from all items to any metadata that type has. This
+    /// includes things like the display name, stack size, etc.
+    pub fn generate_items() -> Vec<Data> {
+      let mut items = vec![];
+      #(#add_items)*
+      items
+    }
+  };
   {
     // Generates the cross-versioning data
     //
@@ -88,7 +96,7 @@ pub fn generate(dir: &Path, blocks: HashSet<String>) -> Result<(), Box<dyn Error
       )?;
     }
   }
-  Ok(())
+  Ok(out)
 }
 
 fn load_data(data: &str) -> Result<Vec<Item>, Box<dyn Error>> {
