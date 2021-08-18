@@ -26,7 +26,6 @@ struct Item {
 // the block to place for each item.
 pub fn generate(dir: &Path, blocks: HashSet<String>) -> Result<TokenStream, Box<dyn Error>> {
   let files = util::load_versions(dir, "items.json")?;
-  let dir = Path::new(dir).join("item");
 
   let mut versions = vec![];
   for f in files {
@@ -36,7 +35,7 @@ pub fn generate(dir: &Path, blocks: HashSet<String>) -> Result<TokenStream, Box<
 
   let mut kinds = vec![];
   for i in latest {
-    kinds.push(i.name.to_case(Case::Pascal));
+    kinds.push(Ident::new(&i.name.to_case(Case::Pascal), Span::call_site()));
   }
 
   let mut add_items = vec![];
@@ -44,17 +43,15 @@ pub fn generate(dir: &Path, blocks: HashSet<String>) -> Result<TokenStream, Box<
     let name = i.name.to_case(Case::Pascal);
     let mut block = Ident::new(&name, Span::call_site());
     if !blocks.contains(&name) {
-      block = Ident::new("Air".into(), Span::call_site());
+      block = Ident::new("Air", Span::call_site());
     }
     let display_name = i.display_name.clone();
     let stack_size = i.stack_size;
-    add_items.push(quote! {
-      items.push(Data{
-        display_name: #display_name,
-        stack_size: #stack_size,
-        block_to_place: block::Kind::#block,
-      });
-    });
+    add_items.push(quote!(Data{
+      display_name: #display_name,
+      stack_size: #stack_size,
+      block_to_place: block::Kind::#block,
+    }));
   }
 
   let out = quote! {
@@ -68,34 +65,32 @@ pub fn generate(dir: &Path, blocks: HashSet<String>) -> Result<TokenStream, Box<
     /// Generates a table from all items to any metadata that type has. This
     /// includes things like the display name, stack size, etc.
     pub fn generate_items() -> Vec<Data> {
-      let mut items = vec![];
-      #(#add_items)*
-      items
+      vec![#(#add_items),*]
     }
   };
-  {
-    // Generates the cross-versioning data
-    //
-    // This cannot be in a source file, as that would take multiple minutes (and
-    // 10gb of ram) to compile. So we do a bit of pre-processing on load.
-    let mut f = File::create(&dir.join("versions.csv"))?;
-
-    let mut to_old = vec![];
-    for (i, v) in versions.iter().enumerate() {
-      if i == 0 {
-        continue;
-      }
-      to_old.push(generate_conversion(latest, v));
-    }
-    for i in 0..latest.len() {
-      writeln!(
-        f,
-        "{},{}",
-        i,
-        to_old.iter().map(|arr| arr[i].to_string()).collect::<Vec<String>>().join(",")
-      )?;
-    }
-  }
+  // {
+  //   // Generates the cross-versioning data
+  //   //
+  //   // This cannot be in a source file, as that would take multiple minutes
+  // (and   // 10gb of ram) to compile. So we do a bit of pre-processing on
+  // load.   let mut f = File::create(&dir.join("versions.csv"))?;
+  //
+  //   let mut to_old = vec![];
+  //   for (i, v) in versions.iter().enumerate() {
+  //     if i == 0 {
+  //       continue;
+  //     }
+  //     to_old.push(generate_conversion(latest, v));
+  //   }
+  //   for i in 0..latest.len() {
+  //     writeln!(
+  //       f,
+  //       "{},{}",
+  //       i,
+  //       to_old.iter().map(|arr|
+  // arr[i].to_string()).collect::<Vec<String>>().join(",")     )?;
+  //   }
+  // }
   Ok(out)
 }
 

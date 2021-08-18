@@ -128,7 +128,7 @@ pub fn generate(dir: &Path) -> Result<TokenStream, Box<dyn Error>> {
       type Err = InvalidBlock;
       fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s {
-          #(#names => Ok(Self::#kinds)),*
+          #(#names => Ok(Self::#kinds),)*
           _ => Err(InvalidBlock(s.into())),
         }
       }

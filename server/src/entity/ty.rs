@@ -1,8 +1,21 @@
 use num_derive::{FromPrimitive, ToPrimitive};
 
-// Generated from the latest version of minecraft's output. See build.rs for
-// more.
-include!(concat!(env!("OUT_DIR"), "/entity/type.rs"));
+// Creates the Type enum, and the generate_entities function.
+data::generate_entities!();
+
+/// Any data specific to an entity.
+#[derive(Debug)]
+pub struct Data {
+  display_name: &'static str,
+  width:        f32,
+  height:       f32,
+}
+
+impl Data {
+  pub fn display_name(&self) -> &str {
+    &self.display_name
+  }
+}
 
 impl Type {
   /// Returns the kind as a u32. Should only be used to index into the

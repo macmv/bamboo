@@ -1,5 +1,7 @@
 use crate::util;
 use convert_case::{Case, Casing};
+use proc_macro2::{Ident, Span, TokenStream};
+use quote::quote;
 use serde_derive::Deserialize;
 use std::{collections::HashMap, error::Error, fs, fs::File, io::Write, path::Path};
 
@@ -20,7 +22,7 @@ struct Entity {
 }
 
 // Generates all entity data.
-pub fn generate(dir: &Path) -> Result<(), Box<dyn Error>> {
+pub fn generate(dir: &Path) -> Result<TokenStream, Box<dyn Error>> {
   let files = util::load_versions(dir, "entities.json")?;
   let dir = Path::new(dir).join("entity");
 
@@ -30,61 +32,66 @@ pub fn generate(dir: &Path) -> Result<(), Box<dyn Error>> {
   }
   let latest = &versions[0];
 
-  fs::create_dir_all(&dir)?;
-  {
-    // Generates the entity types enum
-    let mut f = File::create(&dir.join("type.rs"))?;
-    writeln!(f, "/// Auto generated entity type. This is directly generated")?;
-    writeln!(f, "/// from prismarine data.")?;
-    writeln!(f, "#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, FromPrimitive, ToPrimitive)]")?;
-    writeln!(f, "pub enum Type {{")?;
-    for e in latest {
-      let name = e.name.to_case(Case::Pascal);
-      writeln!(f, "  {},", name)?;
-    }
-    // Must be last, so that ToPrimitive and FromPrimitive work correctly
-    writeln!(f, "  None,")?;
-    writeln!(f, "}}")?;
+  let mut kinds = vec![];
+  for e in latest {
+    kinds.push(Ident::new(&e.name.to_case(Case::Pascal), Span::call_site()));
   }
-  {
-    // Generates the entity data (things like display name, hitbox, category)
-    let mut f = File::create(&dir.join("data.rs"))?;
 
-    // Include macro must be one statement
-    writeln!(f, "{{")?;
-    for e in latest {
-      writeln!(f, "entities.push(Data{{")?;
-      writeln!(f, "  display_name: \"{}\",", e.display_name)?;
-      writeln!(f, "  width: {:.1},", e.width.unwrap_or(0.0))?;
-      writeln!(f, "  height: {:.1},", e.height.unwrap_or(0.0))?;
-      writeln!(f, "}});")?;
-    }
-    writeln!(f, "}}")?;
-  }
-  {
-    // Generates the cross-versioning data
-    //
-    // This cannot be in a source file, as that would take multiple minutes (and
-    // 10gb of ram) to compile. So we do a bit of pre-processing on load.
-    let mut f = File::create(&dir.join("versions.csv"))?;
-
-    let mut to_old = vec![];
-    for (i, v) in versions.iter().enumerate() {
-      if i == 0 {
-        continue;
+  let mut entity_gen = vec![];
+  for e in latest {
+    let display_name = &e.display_name;
+    let width = e.width.unwrap_or(0.0);
+    let height = e.height.unwrap_or(0.0);
+    entity_gen.push(quote!(
+      Data{
+        display_name: #display_name,
+        width: #width,
+        height: #height,
       }
-      to_old.push(generate_conversion(latest, v));
-    }
-    for i in 0..latest.len() {
-      writeln!(
-        f,
-        "{},{}",
-        i,
-        to_old.iter().map(|arr| arr[i].to_string()).collect::<Vec<String>>().join(",")
-      )?;
-    }
+    ));
   }
-  Ok(())
+
+  let out = quote! {
+
+    /// Auto generated entity type. This is directly generated
+    /// from prismarine data.
+    #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, FromPrimitive, ToPrimitive)]
+    pub enum Type {
+      #(#kinds,)*
+      // Must be last, so that ToPrimitive and FromPrimitive work correctly
+      None,
+    }
+
+    /// Generates a table from all items to any metadata that type has. This
+    /// includes things like the display name, stack size, etc.
+    pub fn generate_entities() -> Vec<Data> {
+      vec![#(#entity_gen),*]
+    }
+  };
+  // {
+  //   // Generates the cross-versioning data
+  //   //
+  //   // This cannot be in a source file, as that would take multiple minutes
+  // (and   // 10gb of ram) to compile. So we do a bit of pre-processing on
+  // load.   let mut f = File::create(&dir.join("versions.csv"))?;
+  //
+  //   let mut to_old = vec![];
+  //   for (i, v) in versions.iter().enumerate() {
+  //     if i == 0 {
+  //       continue;
+  //     }
+  //     to_old.push(generate_conversion(latest, v));
+  //   }
+  //   for i in 0..latest.len() {
+  //     writeln!(
+  //       f,
+  //       "{},{}",
+  //       i,
+  //       to_old.iter().map(|arr|
+  // arr[i].to_string()).collect::<Vec<String>>().join(",")     )?;
+  //   }
+  // }
+  Ok(out)
 }
 
 fn load_data(data: &str) -> Result<Vec<Entity>, Box<dyn Error>> {

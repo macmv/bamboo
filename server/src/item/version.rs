@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use super::{data, data::Data, Type};
+use super::{ty, Data, Type};
 
 use common::version::BlockVersion;
 
@@ -20,7 +20,7 @@ impl TypeConverter {
   /// get_item_converter).
   #[allow(clippy::new_without_default)]
   pub fn new() -> Self {
-    Self { types: data::generate_items(), versions: generate_versions() }
+    Self { types: ty::generate_items(), versions: generate_versions() }
   }
 
   /// Takes the given old item id, which is part of `ver`, and returns the new

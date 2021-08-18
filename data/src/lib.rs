@@ -56,6 +56,11 @@ pub fn generate_items(input: TokenStream) -> TokenStream {
 }
 
 #[proc_macro]
+pub fn generate_entities(input: TokenStream) -> TokenStream {
+  entity::generate(&out_dir()).unwrap().into()
+}
+
+#[proc_macro]
 pub fn generate_protocol(input: TokenStream) -> TokenStream {
   prismarine::clone(&out_dir()).unwrap();
   protocol::generate(&out_dir()).unwrap().into()

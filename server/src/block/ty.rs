@@ -1,4 +1,3 @@
-use super::{Kind, Type};
 use num_derive::{FromPrimitive, ToPrimitive};
 use std::{error::Error, fmt, str::FromStr};
 

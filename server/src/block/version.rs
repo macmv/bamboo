@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use super::{data, data::Data, Kind};
+use super::{ty, Data, Kind};
 
 use common::version::BlockVersion;
 
@@ -34,7 +34,7 @@ impl TypeConverter {
   /// get_converter).
   #[allow(clippy::new_without_default)]
   pub fn new() -> Self {
-    Self { kinds: data::generate_kinds(), versions: generate_versions() }
+    Self { kinds: ty::generate_kinds(), versions: generate_versions() }
   }
 
   /// Takes the given old block id, which is part of `ver`, and returns the new
