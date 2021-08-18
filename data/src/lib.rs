@@ -36,8 +36,7 @@ mod util;
 // }
 
 fn out_dir() -> PathBuf {
-  let out = env::var_os("OUT_DIR").expect("could not get out dir");
-  Path::new(&out).into()
+  Path::new("target/sugarcane-build").into()
 }
 
 #[proc_macro]
