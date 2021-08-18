@@ -1,3 +1,4 @@
+use super::super::WorldGen;
 use crate::world::chunk::MultiChunk;
 use common::math::ChunkPos;
 
@@ -8,5 +9,5 @@ impl CaveGen {
     CaveGen {}
   }
 
-  pub fn carve(&self, pos: ChunkPos, c: &mut MultiChunk) {}
+  pub fn carve(&self, world: &WorldGen, pos: ChunkPos, c: &mut MultiChunk) {}
 }

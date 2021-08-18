@@ -1,3 +1,4 @@
+use super::WorldGen;
 use crate::world::chunk::MultiChunk;
 use common::math::ChunkPos;
 
@@ -17,8 +18,8 @@ impl Underground {
     Underground { caves: CaveGen::new(seed), ores: OreGen::new(seed) }
   }
 
-  pub fn process(&self, pos: ChunkPos, c: &mut MultiChunk) {
-    self.ores.place(pos, c);
-    self.caves.carve(pos, c);
+  pub fn process(&self, world: &WorldGen, pos: ChunkPos, c: &mut MultiChunk) {
+    self.ores.place(world, pos, c);
+    self.caves.carve(world, pos, c);
   }
 }

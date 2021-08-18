@@ -199,7 +199,7 @@ impl WorldGen {
         self.biomes[biome].fill_column(self, p, c);
       }
     }
-    self.underground.process(pos, c);
+    self.underground.process(self, pos, c);
     for b in &biomes {
       self.biomes[*b].decorate(self, pos, c);
     }
