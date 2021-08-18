@@ -155,6 +155,7 @@ pub trait BiomeGen {
 }
 
 pub struct WorldGen {
+  seed:        u64,
   biome_map:   WarpedVoronoi,
   biomes:      Vec<Box<dyn BiomeGen + Send>>,
   height:      BasicMulti,
@@ -167,6 +168,7 @@ impl WorldGen {
     height.octaves = 5;
     let seed = 3210471203948712039;
     let mut gen = WorldGen {
+      seed,
       biome_map: WarpedVoronoi::new(seed),
       biomes: vec![],
       height,
@@ -223,6 +225,7 @@ impl WorldGen {
   pub fn chance(&self, pos: Pos, percent: f32) -> bool {
     let mut rng = WyhashRng::new(
       0xe6cc56f1f7550d95_u64
+        .wrapping_mul(self.seed)
         .wrapping_mul(pos.x() as u64)
         .wrapping_mul((pos.z() as u64) << 32)
         .wrapping_mul(pos.y() as u64),
