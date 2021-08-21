@@ -15,8 +15,9 @@ fn run_git(path: &Path, args: &[&str]) -> String {
 
 pub fn clone(dir: &Path) -> io::Result<()> {
   let path = dir.join("prismarine-data");
-  dbg!(&path);
-  if !path.exists() {
+  if path.exists() {
+    return Ok(());
+  } else {
     fs::create_dir_all(&path)?;
   }
   let out = run_git(&path, &["rev-parse", "--show-toplevel"]);
