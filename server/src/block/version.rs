@@ -40,7 +40,15 @@ impl TypeConverter {
   /// Takes the given old block id, which is part of `ver`, and returns the new
   /// id that it maps to. If the id is invalid, this will return 0 (air).
   pub fn to_latest(&self, id: u32, ver: BlockVersion) -> u32 {
-    match self.versions[ver.to_index() as usize].to_new.get(id as usize) {
+    // Air always maps to air. Since multiple latest blocks convert to air, we need
+    // this check
+    if id == 0 {
+      return 0;
+    }
+    if ver == BlockVersion::latest() {
+      return id;
+    }
+    match self.versions[self.versions.len() - ver.to_index() as usize].to_new.get(id as usize) {
       Some(v) => *v,
       None => 0,
     }
@@ -52,7 +60,7 @@ impl TypeConverter {
     if ver == BlockVersion::latest() {
       return id;
     }
-    match self.versions[ver.to_index() as usize - 1].to_old.get(id as usize) {
+    match self.versions[self.versions.len() - ver.to_index() as usize].to_old.get(id as usize) {
       Some(v) => *v,
       None => 0,
     }
@@ -73,6 +81,11 @@ mod tests {
   fn test_convert() {
     let conv = TypeConverter::new();
 
+    dbg!(BlockVersion::V1_15.to_index());
+    for (i, v) in conv.versions.iter().enumerate() {
+      dbg!(i, v.ver);
+    }
+
     // This line makes it easy to test each version
     // 15743,11268,11252,8595,4080,4080,4080,4080,0
 
@@ -85,6 +98,16 @@ mod tests {
     assert_eq!(conv.to_old(15743, BlockVersion::V1_10), 4080);
     assert_eq!(conv.to_old(15743, BlockVersion::V1_9), 4080);
     assert_eq!(conv.to_old(15743, BlockVersion::V1_8), 0);
+
+    assert_eq!(conv.to_latest(15743, BlockVersion::V1_16), 15743);
+    assert_eq!(conv.to_latest(11268, BlockVersion::V1_15), 15743);
+    assert_eq!(conv.to_latest(11252, BlockVersion::V1_14), 15743);
+    assert_eq!(conv.to_latest(8595, BlockVersion::V1_13), 15743);
+    assert_eq!(conv.to_latest(4080, BlockVersion::V1_12), 15743);
+    assert_eq!(conv.to_latest(4080, BlockVersion::V1_11), 15743);
+    assert_eq!(conv.to_latest(4080, BlockVersion::V1_10), 15743);
+    assert_eq!(conv.to_latest(4080, BlockVersion::V1_9), 15743);
+    assert_eq!(conv.to_latest(0, BlockVersion::V1_8), 0);
 
     // Used to show debug output.
     // assert!(false);

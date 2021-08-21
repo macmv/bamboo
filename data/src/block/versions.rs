@@ -10,7 +10,12 @@ fn generate_version_lit(to_old: Vec<u32>, ver: &str) -> TokenStream {
     if old >= to_new.len() {
       to_new.resize(old + 1, 0);
     }
-    to_new[old] = new.try_into().unwrap();
+    // Sometimes, multiple new blocks map to a single old block. In these
+    // situations, we want to just use the first state that was mapped. So we never
+    // override anything that has a value != 0.
+    if to_new[old] == 0 {
+      to_new[old] = new.try_into().unwrap();
+    }
   }
   let ver = Ident::new(ver, Span::call_site());
   quote! {
@@ -179,7 +184,7 @@ pub(super) fn generate_old(latest: &BlockVersion, old: &BlockVersion) -> TokenSt
         if let Some(old) = old.get(b.name()) {
           old_id = old.id();
         } else {
-          eprintln!("missing old id for {} ({})", b.name(), b.id());
+          // eprintln!("missing old id for {} ({})", b.name(), b.id());
         }
         if b.states().is_empty() {
           to_old.push(old_id);
