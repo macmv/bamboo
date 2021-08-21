@@ -202,6 +202,80 @@ pub fn generate(dir: &Path) -> Result<TokenStream, Box<dyn Error>> {
   }
 }
 
+impl PacketField {
+  fn to_tokens(&self) -> TokenStream {
+    // // Simple fields
+    // Native, // Should never exist
+    // Bool,
+    // Int(IntType),
+    // Float(FloatType),
+    // UUID,
+    // String,
+    // Position,
+
+    // // Sizable fields
+    // NBT,
+    // OptionalNBT,
+    // RestBuffer, // The rest of the buffer
+    // EntityMetadata,
+
+    // // Complicated fields
+    // Option(Box<PacketField>),
+    // Array { count: CountType, value: Box<PacketField> },
+    // Buffer(CountType),
+    // BitField(Vec<BitField>),
+    // Container(Container),
+    // Switch { compare_to: String, fields: HashMap<String, PacketField> },
+    // Mappings(HashMap<String, u32>), // Mapping of packet names to ids
+
+    // // Logical fields
+    // CompareTo(String),
+    // DefinedType(String), // Another type, defined within either the types map or
+    // the packets map
+    match self {
+      Self::Bool => quote!(bool),
+      Self::Int(ity) => match ity {
+        IntType::I8 => quote!(i8),
+        IntType::U8 => quote!(u8),
+        IntType::I16 => quote!(i16),
+        IntType::U16 => quote!(u16),
+        IntType::I32 => quote!(i32),
+        IntType::I64 => quote!(i64),
+        IntType::VarInt => quote!(i32),
+        IntType::OptVarInt => quote!(i32), // TODO: Might want to change this to Option<i32>
+      },
+      Self::Float(fty) => match fty {
+        FloatType::F32 => quote!(f32),
+        FloatType::F64 => quote!(f64),
+      },
+      Self::UUID => quote!(UUID),
+      Self::String => quote!(String),
+      Self::Position => quote!(Pos),
+
+      Self::NBT => quote!(NBT),
+      Self::OptionalNBT => quote!(Option<NBT>),
+      Self::RestBuffer => quote!(Vec<u8>),
+      Self::EntityMetadata => quote!(Vec<u8>), // Implemented on the server
+
+      Self::Option(field) => {
+        let inner = field.to_tokens();
+        quote!(Option<#inner>)
+      }
+      Self::Array { count, value } => match count {
+        CountType::Typed(_) | CountType::Named(_) => {
+          let value = value.to_tokens();
+          quote!(Vec<#value>)
+        }
+        CountType::Fixed(val) => {
+          let value = value.to_tokens();
+          quote!([#value; #val])
+        }
+      },
+      _ => quote!(Vec<u8>),
+    }
+  }
+}
+
 pub fn generate_packets(
   packets: &[(String, HashMap<String, PacketField>)],
 ) -> Result<TokenStream, Box<dyn Error>> {
@@ -212,11 +286,7 @@ pub fn generate_packets(
     let mut field_tys = vec![];
     for (field_name, field_val) in fields {
       field_names.push(Ident::new(field_name, Span::call_site()));
-      let ty = match field_val {
-        PacketField::String => quote!(String),
-        f => unimplemented!("packet field {:?}", f),
-      };
-      field_tys.push(ty);
+      field_tys.push(field_val.to_tokens());
     }
     kinds.push(quote! {
       #name {
