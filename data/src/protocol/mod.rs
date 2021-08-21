@@ -192,11 +192,9 @@ pub fn generate(dir: &Path) -> Result<TokenStream, Box<dyn Error>> {
     Ok(quote! {
       pub mod cb {
         #to_client
-        include!("cb.rs");
       }
       pub mod sb {
         #to_server
-        include!("sb.rs");
       }
     })
   }
@@ -280,12 +278,19 @@ pub fn generate_packets(
   packets: &[(String, HashMap<String, PacketField>)],
 ) -> Result<TokenStream, Box<dyn Error>> {
   let mut kinds = vec![];
-  for (n, fields) in packets {
+  let mut to_proto_opts = vec![];
+  let mut id_opts = vec![];
+  for (id, (n, fields)) in packets.into_iter().enumerate() {
     let name = Ident::new(&n.to_case(Case::Pascal), Span::call_site());
     let mut field_names = vec![];
     let mut field_tys = vec![];
     for (field_name, field_val) in fields {
-      field_names.push(Ident::new(field_name, Span::call_site()));
+      let mut field_name = field_name.to_string();
+      // Avoid keyword conflicts
+      if field_name == "type" {
+        field_name = "type_".to_string();
+      }
+      field_names.push(Ident::new(&field_name, Span::call_site()));
       field_tys.push(field_val.to_tokens());
     }
     kinds.push(quote! {
@@ -293,30 +298,54 @@ pub fn generate_packets(
         #(#field_names: #field_tys),*
       }
     });
+    to_proto_opts.push(quote! {
+      Self::#name {
+        #(#field_names),*
+      } => {
+        // TODO: Fill in fields
+        proto::Packet {}
+      }
+    });
+    id_opts.push(quote! {
+      Self::#name { .. } => { #id }
+    });
   }
   let mut names = vec![];
   for (n, _) in packets {
     names.push(n);
   }
   let out = quote! {
+    use num_derive::ToPrimitive;
+    use crate::{
+      math::Pos,
+      proto,
+      util::{nbt::NBT, UUID},
+    };
     /// Auto generated packet ids. This is a combination of all packet
     /// names for all versions. Some of these packets are never used.
-    #[derive(Clone, Copy, Debug, FromPrimitive, ToPrimitive, PartialEq, Eq, Hash)]
-    pub enum ID {
+    #[derive(Clone, Debug, PartialEq)]
+    pub enum Packet {
       // We always want a None type, to signify an invalid packet
       None,
       #(#kinds,)*
     }
-    impl ID {
-      /// Parses the given string as a packet id. The string should be in
-      /// snake case.
-      pub fn parse_str(s: &str) -> Self {
-        match s {
-          #(#names => ID::#kinds,)*
-          _ => ID::None,
+    impl Packet {
+      /// Returns a GRPC specific id for this packet.
+      pub fn id(&self) -> i32 {
+        match self {
+          None => panic!("cannot get packet id of None packet"),
+          #(#id_opts)*,
+        }
+      }
+      /// Converts self into a protobuf
+      pub fn to_proto(&self) -> proto::Packet {
+        match self {
+          None => panic!("cannot convert None packet to protobuf"),
+          #(#to_proto_opts)*,
         }
       }
     }
   };
+  println!("{}", out.to_string());
   Ok(out)
 }
