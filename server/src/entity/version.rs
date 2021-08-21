@@ -64,6 +64,7 @@ pub struct Version {
   ver:    BlockVersion,
 }
 
+/*
 /// Generates a table from all block kinds to any block data that kind has. This
 /// does not include cross-versioning data. This includes information like the
 /// block states, the properties it might have, and custom handlers for when the
@@ -108,4 +109,9 @@ pub fn generate_versions() -> Vec<Version> {
   // enum is built, this is backwards. So we reverse it here, so that the types
   // using this list can just call BlockVersion::to_index().
   versions.into_iter().rev().collect()
+}
+*/
+
+fn generate_versions() -> Vec<Version> {
+  vec![]
 }

@@ -36,7 +36,13 @@ mod util;
 // }
 
 fn out_dir() -> PathBuf {
-  Path::new("target/sugarcane-build").into()
+  PathBuf::new()
+    .join(
+      Path::new(&env::var("CARGO_MANIFEST_DIR").expect("could not get manifest dir"))
+        .parent()
+        .unwrap(),
+    )
+    .join("target/sugarcane-build")
 }
 
 #[proc_macro]
