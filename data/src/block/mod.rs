@@ -17,14 +17,17 @@ use std::{
 
 #[derive(Debug)]
 struct BlockVersion {
-  blocks: Vec<Block>,
+  blocks:    Vec<Block>,
   // Used to lookup block by name
-  names:  HashMap<String, usize>,
+  names:     HashMap<String, usize>,
+  // The name of this version, used to lookup in common::version::BlockVersion.
+  // This is in the format V1_15_2
+  enum_name: String,
 }
 
 impl BlockVersion {
-  pub fn new() -> Self {
-    BlockVersion { blocks: vec![], names: HashMap::new() }
+  pub fn new(name: String) -> Self {
+    BlockVersion { blocks: vec![], names: HashMap::new(), enum_name: name }
   }
   pub fn add_block(&mut self, block: Block) {
     self.names.insert(block.name().to_string(), self.blocks.len());
@@ -35,19 +38,26 @@ impl BlockVersion {
   }
 }
 
-pub fn generate_kinds(dir: &Path) -> Result<HashSet<String>, Box<dyn Error>> {
-  let files = util::load_versions(dir, "blocks.json")?;
+fn generate_versions(dir: &Path) -> Vec<BlockVersion> {
+  let files = util::load_versions(dir, "blocks.json").unwrap();
 
   let mut versions = vec![];
   for f in files {
     let fname = f.parent().unwrap().file_name().unwrap().to_str().unwrap();
-    let version_id = fname.split('.').nth(1).unwrap().parse::<i32>()?;
+    let version_id = fname.split('.').nth(1).unwrap().parse::<i32>().unwrap();
+    let ver_str = format!("V1_{}", version_id);
+
     if version_id < 13 {
-      versions.push(fixed::load_data(&fs::read_to_string(f)?)?);
+      versions.push(fixed::load_data(ver_str, &fs::read_to_string(f).unwrap()).unwrap());
     } else {
-      versions.push(paletted::load_data(&fs::read_to_string(f)?)?);
+      versions.push(paletted::load_data(ver_str, &fs::read_to_string(f).unwrap()).unwrap());
     }
   }
+  versions
+}
+
+pub fn generate_kinds(dir: &Path) -> Result<HashSet<String>, Box<dyn Error>> {
+  let versions = generate_versions(dir);
   let latest = &versions[0];
 
   let mut kinds = HashSet::new();
@@ -58,19 +68,8 @@ pub fn generate_kinds(dir: &Path) -> Result<HashSet<String>, Box<dyn Error>> {
 }
 
 pub fn generate(dir: &Path) -> Result<TokenStream, Box<dyn Error>> {
-  let files = util::load_versions(dir, "blocks.json")?;
+  let versions = generate_versions(dir);
   let dir = dir.join("block");
-
-  let mut versions = vec![];
-  for f in files {
-    let fname = f.parent().unwrap().file_name().unwrap().to_str().unwrap();
-    let version_id = fname.split('.').nth(1).unwrap().parse::<i32>()?;
-    if version_id < 13 {
-      versions.push(fixed::load_data(&fs::read_to_string(f)?)?);
-    } else {
-      versions.push(paletted::load_data(&fs::read_to_string(f)?)?);
-    }
-  }
   let latest = &versions[0];
 
   let mut kinds = vec![];
@@ -115,6 +114,19 @@ pub fn generate(dir: &Path) -> Result<TokenStream, Box<dyn Error>> {
     block_data.push(out);
   }
 
+  let mut version_data = vec![];
+  for (i, v) in versions.iter().enumerate() {
+    if i == 0 {
+      continue;
+    }
+    if i >= versions.len() - 5 {
+      // 1.8-1.12
+      version_data.push(versions::generate_old(latest, v));
+    } else {
+      version_data.push(versions::generate(latest, v));
+    }
+  }
+
   fs::create_dir_all(&dir)?;
   let out = quote! {
     /// Auto generated block kind. This is directly generated
@@ -154,6 +166,40 @@ pub fn generate(dir: &Path) -> Result<TokenStream, Box<dyn Error>> {
       let mut blocks = vec![];
       #(#block_data)*
       blocks
+    }
+
+    /// This is the conversion table for a single old version of the game and the
+    /// latest version. This includes a list of old ids, whose index is the new
+    /// block id. It also contains a HashMap, which is used to convert old ids into
+    /// new ones. This might not be fastest or most memory efficient way, but it is
+    /// certainly the easiest. Especially before 1.13, block ids are very sparse,
+    /// and a HashMap will be the best option.
+    #[derive(Debug)]
+    pub struct Version {
+      pub(super) to_old: &'static [u32],
+      pub(super) to_new: &'static [u32],
+      pub(super) ver:    common::version::BlockVersion,
+    }
+
+    /// Generates a table from all block kinds to any block data that kind has. This
+    /// does not include cross-versioning data. This includes information like the
+    /// block states, the properties it might have, and custom handlers for when the
+    /// block is place (things like making fences connect, or making stairs rotate
+    /// correctly).
+    ///
+    /// This should only be called once, and will be done internally in the
+    /// [`WorldManager`](crate::world::WorldManager). This is left public as it may
+    /// be moved to a seperate crate in the future, as it takes a long time to
+    /// generate the source files for this.
+    ///
+    /// Most of this function is generated at compile time. See
+    /// `gens/src/block/mod.rs` and `build.rs` for more.
+    ///
+    /// This Vec<Version> is in order of block versions. Use
+    /// BlockVersion::from_index() and BlockVersion::to_index() to convert between
+    /// indicies and block versions.
+    pub fn generate_versions() -> &'static [Version] {
+      &[#(#version_data),*]
     }
   };
   // {

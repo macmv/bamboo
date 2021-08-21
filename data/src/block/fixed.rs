@@ -57,9 +57,9 @@ struct JsonBlock {
   harvest_tools: Option<HashMap<String, bool>>,
 }
 
-pub(super) fn load_data(file: &str) -> io::Result<BlockVersion> {
+pub(super) fn load_data(name: String, file: &str) -> io::Result<BlockVersion> {
   let data: Vec<JsonBlock> = serde_json::from_str(file)?;
-  let mut ver = BlockVersion::new();
+  let mut ver = BlockVersion::new(name);
   for b in data {
     let state = b.id << 4;
     ver.add_block(Block::new(

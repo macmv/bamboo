@@ -1,8 +1,29 @@
 use super::{Block, BlockVersion, State};
-use std::collections::HashMap;
+use proc_macro2::{Ident, Span, TokenStream};
+use quote::quote;
+use std::{collections::HashMap, convert::TryInto};
+
+fn generate_version_lit(to_old: Vec<u32>, ver: &str) -> TokenStream {
+  let mut to_new: Vec<u32> = vec![];
+  for (new, &old) in to_old.iter().enumerate() {
+    let old: usize = old.try_into().unwrap();
+    if old >= to_new.len() {
+      to_new.resize(old + 1, 0);
+    }
+    to_new[old] = new.try_into().unwrap();
+  }
+  let ver = Ident::new(ver, Span::call_site());
+  quote! {
+    Version {
+      to_old: &[#(#to_old),*],
+      to_new: &[#(#to_new),*],
+      ver: common::version::BlockVersion::#ver,
+    }
+  }
+}
 
 // Called on 1.13+
-pub(super) fn generate(latest: &BlockVersion, old: &BlockVersion) -> Vec<u32> {
+pub(super) fn generate(latest: &BlockVersion, old: &BlockVersion) -> TokenStream {
   let mut to_old = vec![];
 
   let old_blocks: HashMap<String, Block> =
@@ -29,11 +50,11 @@ pub(super) fn generate(latest: &BlockVersion, old: &BlockVersion) -> Vec<u32> {
     }
   }
 
-  to_old
+  generate_version_lit(to_old, &old.enum_name)
 }
 
 // Called on 1.8-1.12
-pub(super) fn generate_old(latest: &BlockVersion, old: &BlockVersion) -> Vec<u32> {
+pub(super) fn generate_old(latest: &BlockVersion, old: &BlockVersion) -> TokenStream {
   // Map of new block names to old block names and metadata values
   let names: HashMap<String, (&str, u32)> = include_str!("old_names.txt")
     .trim()
@@ -171,5 +192,5 @@ pub(super) fn generate_old(latest: &BlockVersion, old: &BlockVersion) -> Vec<u32
     }
   }
 
-  to_old
+  generate_version_lit(to_old, &old.enum_name)
 }
