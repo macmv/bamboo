@@ -148,23 +148,37 @@ pub fn generate(dir: &Path) -> Result<TokenStream, Box<dyn Error>> {
   }
   {
     // Generates the packet id enum, for clientbound and serverbound packets
-    let mut to_client = HashSet::new();
-    let mut to_server = HashSet::new();
+    let mut to_client = HashMap::new();
+    let mut to_server = HashMap::new();
 
     for (_, v) in versions {
       for p in v.to_client {
-        to_client.insert(p.name);
+        if !to_client.contains_key(&p.name) {
+          to_client.insert(p.name.clone(), HashMap::new());
+        }
+        let fields = to_client.get_mut(&p.name).unwrap();
+        for (name, field) in &p.fields {
+          fields.insert(name.to_string(), field.clone());
+        }
       }
       for p in v.to_server {
-        to_server.insert(p.name);
+        if !to_server.contains_key(&p.name) {
+          to_server.insert(p.name.clone(), HashMap::new());
+        }
+        let fields = to_server.get_mut(&p.name).unwrap();
+        for (name, field) in &p.fields {
+          fields.insert(name.to_string(), field.clone());
+        }
       }
     }
     // This is a custom packet. It is a packet sent from the proxy to the server,
     // which is used to authenticate the player.
-    to_server.insert("Login".into());
+    to_server.insert("Login".into(), HashMap::new());
 
-    let to_client: Vec<String> = to_client.into_iter().sorted().collect();
-    let to_server: Vec<String> = to_server.into_iter().sorted().collect();
+    let to_client: Vec<(String, HashMap<String, PacketField>)> =
+      to_client.into_iter().sorted_by(|(name_a, _), (name_b, _)| name_a.cmp(name_b)).collect();
+    let to_server: Vec<(String, HashMap<String, PacketField>)> =
+      to_server.into_iter().sorted_by(|(name_a, _), (name_b, _)| name_a.cmp(name_b)).collect();
 
     let to_client = generate_packets(&to_client)?;
     let to_server = generate_packets(&to_server)?;
@@ -188,13 +202,30 @@ pub fn generate(dir: &Path) -> Result<TokenStream, Box<dyn Error>> {
   }
 }
 
-pub fn generate_packets(packets: &[String]) -> Result<TokenStream, Box<dyn Error>> {
+pub fn generate_packets(
+  packets: &[(String, HashMap<String, PacketField>)],
+) -> Result<TokenStream, Box<dyn Error>> {
   let mut kinds = vec![];
-  for n in packets {
-    kinds.push(Ident::new(&n.to_case(Case::Pascal), Span::call_site()));
+  for (n, fields) in packets {
+    let name = Ident::new(&n.to_case(Case::Pascal), Span::call_site());
+    let mut field_names = vec![];
+    let mut field_tys = vec![];
+    for (field_name, field_val) in fields {
+      field_names.push(Ident::new(field_name, Span::call_site()));
+      let ty = match field_val {
+        PacketField::String => quote!(String),
+        f => unimplemented!("packet field {:?}", f),
+      };
+      field_tys.push(ty);
+    }
+    kinds.push(quote! {
+      #name {
+        #(#field_names: #field_tys),*
+      }
+    });
   }
   let mut names = vec![];
-  for n in packets {
+  for (n, _) in packets {
     names.push(n);
   }
   let out = quote! {
