@@ -132,46 +132,106 @@ pub struct Version {
 }
 
 struct VersionedPacket {
-  name:     String,
-  versions: Vec<Option<Packet>>,
+  name:        String,
+  field_names: HashMap<String, usize>,
+  fields:      Vec<(String, PacketField)>,
 }
 
 impl VersionedPacket {
   fn new(name: String) -> Self {
-    VersionedPacket { name, versions: vec![] }
+    VersionedPacket { name, field_names: HashMap::new(), fields: vec![] }
   }
 
-  fn add_version(&mut self, ver: &str, packet: Packet) {}
+  fn add_version(&mut self, ver: &str, packet: Packet) {
+    for (name, mut field) in packet.fields {
+      if let Some(&idx) = self.field_names.get(&name) {
+        let existing = &mut self.fields[idx].1;
+        if existing != &field {
+          existing.extend_to_fit(&packet.name, &name, &mut field);
+        }
+      } else {
+        self.field_names.insert(name.clone(), self.fields.len());
+        self.fields.push((name, field));
+      }
+    }
+  }
 
   fn field_names(&self) -> Vec<String> {
     let mut names = vec![];
-    for p in &self.versions {
-      if let Some(p) = p {
-        for (name, _) in &p.fields {
-          let mut name = name.to_string();
-          // Avoid keyword conflicts
-          if name == "type" {
-            name = "type_".to_string();
-          }
-          names.push(name);
-        }
-      }
+    for (name, _) in &self.fields {
+      names.push(self.convert_name(name).to_string());
     }
     names
   }
   fn field_tys(&self) -> Vec<TokenStream> {
     let mut tys = vec![];
-    for p in &self.versions {
-      if let Some(p) = p {
-        for (_, val) in &p.fields {
-          tys.push(val.to_tokens());
-        }
-      }
+    for (_, field) in &self.fields {
+      tys.push(field.ty_lit());
     }
     tys
   }
+  fn field_ty_enums(&self) -> Vec<TokenStream> {
+    let mut tys = vec![];
+    for (_, field) in &self.fields {
+      tys.push(field.ty_enum());
+    }
+    tys
+  }
+  fn field_ty_keys(&self) -> Vec<TokenStream> {
+    let mut tys = vec![];
+    for (_, field) in &self.fields {
+      tys.push(field.ty_key());
+    }
+    tys
+  }
+  fn field_values(&self) -> Vec<TokenStream> {
+    let mut vals = vec![];
+    for (name, field) in &self.fields {
+      vals.push(field.generate_conversion(self.convert_name(name)));
+    }
+    vals
+  }
   fn name(&self) -> &str {
     &self.name
+  }
+
+  fn convert_name<'a>(&self, name: &'a str) -> &'a str {
+    // Avoid keyword conflicts
+    if name == "type" {
+      "type_"
+    } else {
+      name
+    }
+  }
+}
+
+impl PacketField {
+  fn extend_to_fit(&mut self, packet_name: &str, field_name: &str, other: &mut PacketField) {
+    let valid_a = self.extend_to_fit_inner(other);
+    let valid_b = other.extend_to_fit_inner(self);
+    if !valid_a && !valid_b {
+      eprintln!(
+        "differing field types on packet `{}`, with field `{}` (got {:?} and {:?})",
+        packet_name, field_name, self, other
+      );
+    }
+  }
+
+  fn extend_to_fit_inner(&mut self, other: &mut PacketField) -> bool {
+    match self {
+      Self::Bool if other == &PacketField::Int(IntType::U8) => *other = PacketField::Bool,
+      Self::Int(IntType::VarInt) if other == &PacketField::Int(IntType::U8) => {
+        *other = PacketField::Int(IntType::VarInt)
+      }
+      Self::Int(IntType::VarInt) if other == &PacketField::Int(IntType::I8) => {
+        *other = PacketField::Int(IntType::VarInt)
+      }
+      Self::Int(IntType::I32) if other == &PacketField::Int(IntType::I8) => {
+        *other = PacketField::Int(IntType::I32)
+      }
+      _ => return false,
+    }
+    true
   }
 }
 
@@ -258,7 +318,7 @@ pub fn generate(dir: &Path) -> Result<TokenStream, Box<dyn Error>> {
 }
 
 impl PacketField {
-  fn to_tokens(&self) -> TokenStream {
+  fn ty_lit(&self) -> TokenStream {
     // // Simple fields
     // Native, // Should never exist
     // Bool,
@@ -313,20 +373,140 @@ impl PacketField {
       Self::EntityMetadata => quote!(Vec<u8>), // Implemented on the server
 
       Self::Option(field) => {
-        let inner = field.to_tokens();
+        let inner = field.ty_lit();
         quote!(Option<#inner>)
       }
       Self::Array { count, value } => match count {
         CountType::Typed(_) | CountType::Named(_) => {
-          let value = value.to_tokens();
+          let value = value.ty_lit();
           quote!(Vec<#value>)
         }
         CountType::Fixed(len) => {
-          let value = value.to_tokens();
+          let value = value.ty_lit();
           quote!([#value; #len])
         }
       },
       _ => quote!(Vec<u8>),
+    }
+  }
+  fn ty_enum(&self) -> TokenStream {
+    // enum Type {
+    //   Bool    = 0;
+    //   Byte    = 1;
+    //   Short   = 2;
+    //   Int     = 3;
+    //   Long    = 4;
+    //   Float   = 5;
+    //   Double  = 6;
+    //   Str     = 7;
+    //   UUID    = 8;
+    //   Pos     = 9;
+    //   ByteArr = 10;
+    //   IntArr  = 11;
+    //   LongArr = 12;
+    //   StrArr  = 13;
+    // }
+    match self {
+      Self::Bool => quote!(Bool),
+      Self::Int(ity) => match ity {
+        IntType::I8 => quote!(Byte),
+        IntType::U8 => quote!(Byte),
+        IntType::I16 => quote!(Short),
+        IntType::U16 => quote!(Short),
+        IntType::I32 => quote!(Int),
+        IntType::I64 => quote!(Long),
+        IntType::VarInt => quote!(Int),
+        IntType::OptVarInt => quote!(Int),
+      },
+      Self::Float(fty) => match fty {
+        FloatType::F32 => quote!(Float),
+        FloatType::F64 => quote!(Double),
+      },
+      Self::UUID => quote!(UUID),
+      Self::String => quote!(Str),
+      Self::Position => quote!(Pos),
+
+      Self::NBT => quote!(ByteArr),
+      Self::OptionalNBT => quote!(ByteArr),
+      Self::RestBuffer => quote!(ByteArr),
+      Self::EntityMetadata => quote!(ByteArr), // Implemented on the server
+
+      _ => quote!(ByteArr),
+    }
+  }
+  fn ty_key(&self) -> TokenStream {
+    // enum Type {
+    //   Bool    = 0;
+    //   Byte    = 1;
+    //   Short   = 2;
+    //   Int     = 3;
+    //   Long    = 4;
+    //   Float   = 5;
+    //   Double  = 6;
+    //   Str     = 7;
+    //   UUID    = 8;
+    //   Pos     = 9;
+    //   ByteArr = 10;
+    //   IntArr  = 11;
+    //   LongArr = 12;
+    //   StrArr  = 13;
+    // }
+    match self {
+      Self::Bool => quote!(bool),
+      Self::Int(ity) => match ity {
+        IntType::I8 => quote!(byte),
+        IntType::U8 => quote!(byte),
+        IntType::I16 => quote!(short),
+        IntType::U16 => quote!(short),
+        IntType::I32 => quote!(int),
+        IntType::I64 => quote!(long),
+        IntType::VarInt => quote!(int),
+        IntType::OptVarInt => quote!(int),
+      },
+      Self::Float(fty) => match fty {
+        FloatType::F32 => quote!(float),
+        FloatType::F64 => quote!(double),
+      },
+      Self::UUID => quote!(uuid),
+      Self::String => quote!(str),
+      Self::Position => quote!(pos),
+
+      Self::NBT => quote!(byte_arr),
+      Self::OptionalNBT => quote!(byte_arr),
+      Self::RestBuffer => quote!(byte_arr),
+      Self::EntityMetadata => quote!(byte_arr), // Implemented on the server
+
+      _ => quote!(byte_arr),
+    }
+  }
+  fn generate_conversion(&self, name: &str) -> TokenStream {
+    let name = Ident::new(name, Span::call_site());
+    match self {
+      Self::Bool => quote!(*#name),
+      Self::Int(ity) => match ity {
+        IntType::I8 => quote!(*#name as u8),
+        IntType::U8 => quote!(*#name as u8),
+        IntType::I16 => quote!(#name.into()),
+        IntType::U16 => quote!(#name.into()),
+        IntType::I32 => quote!(*#name),
+        IntType::I64 => quote!(*#name),
+        IntType::VarInt => quote!(*#name),
+        IntType::OptVarInt => quote!(#name.unwrap_or(0)),
+      },
+      Self::Float(fty) => match fty {
+        FloatType::F32 => quote!(*#name),
+        FloatType::F64 => quote!(*#name),
+      },
+      Self::UUID => quote!(*#name),
+      Self::String => quote!(#name.to_string()),
+      Self::Position => quote!(#name.to_proto()),
+
+      Self::NBT => quote!(#name.clone()),
+      Self::OptionalNBT => quote!(#name.clone()),
+      Self::RestBuffer => quote!(#name.clone()),
+      Self::EntityMetadata => quote!(#name.clone()), // Implemented on the server
+
+      _ => quote!(#name.clone()),
     }
   }
 }
@@ -342,6 +522,9 @@ fn generate_packets(packets: Vec<VersionedPacket>) -> Result<TokenStream, Box<dy
     let field_names: Vec<Ident> =
       field_name_strs.iter().map(|name| Ident::new(name, Span::call_site())).collect();
     let field_tys = packet.field_tys();
+    let field_ty_enums = packet.field_ty_enums();
+    let field_ty_keys = packet.field_ty_keys();
+    let field_values = packet.field_values();
     kinds.push(quote! {
       #name {
         #(#field_names: #field_tys),*
@@ -352,7 +535,13 @@ fn generate_packets(packets: Vec<VersionedPacket>) -> Result<TokenStream, Box<dy
         #(#field_names),*
       } => {
         let mut fields = HashMap::new();
-        #(fields.insert(#field_name_strs, #field_names))*
+        #(
+          fields.insert(#field_name_strs, proto::PacketField {
+            ty: Type::#field_ty_enums.into(),
+            #field_ty_keys: #field_values,
+            ..Default::default()
+          });
+        )*
         proto::Packet {
           id: #id,
           fields: fields,
@@ -369,6 +558,7 @@ fn generate_packets(packets: Vec<VersionedPacket>) -> Result<TokenStream, Box<dy
     use crate::{
       math::Pos,
       proto,
+      proto::packet_field::Type,
       util::{nbt::NBT, UUID},
     };
     use std::collections::HashMap;
