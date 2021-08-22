@@ -508,19 +508,19 @@ impl PacketField {
 
 fn generate_packets(packets: Vec<VersionedPacket>) -> Result<String, Box<dyn Error>> {
   let mut kinds = vec![];
-  // let mut to_proto_opts = vec![];
-  // let mut id_opts = vec![];
+  let mut id_opts = vec![];
+  let mut to_proto_opts = vec![];
   for (id, packet) in packets.into_iter().enumerate() {
     let id = id as i32;
     let name = packet.name().to_case(Case::Pascal);
+    let field_names = packet.field_name_tys();
     let field_ty_enums = packet.field_ty_enums();
     let field_ty_keys = packet.field_ty_keys();
     let field_values = packet.field_values();
     let mut kind = String::new();
-    kind.push_str("  ");
     kind.push_str(&name);
     kind.push_str(" {\n");
-    for (name, ty) in packet.field_name_tys() {
+    for (name, ty) in &field_names {
       kind.push_str("    ");
       kind.push_str(&name);
       kind.push_str(": ");
@@ -529,28 +529,57 @@ fn generate_packets(packets: Vec<VersionedPacket>) -> Result<String, Box<dyn Err
     }
     kind.push_str("  },\n");
     kinds.push(kind);
-    // to_proto_opts.push(quote! {
-    //   Self::#name {
-    //     #(#field_names),*
-    //   } => {
-    //     let mut fields = HashMap::new();
-    //     #(
-    //       fields.insert(#field_name_strs.to_string(), proto::PacketField {
-    //         ty: Type::#field_ty_enums.into(),
-    //         #field_ty_keys: #field_values,
-    //         ..Default::default()
-    //       });
-    //     )*
-    //     proto::Packet {
-    //       id: #id,
-    //       fields,
-    //       other: None,
-    //     }
-    //   }
-    // });
-    // id_opts.push(quote! {
-    //   Self::#name { .. } => { #id }
-    // });
+    let mut id_opt = String::new();
+    id_opt.push_str("Self::");
+    id_opt.push_str(&name);
+    id_opt.push_str(" { .. } => ");
+    id_opt.push_str(&format!("{}", id));
+    id_opt.push_str(",\n");
+    id_opts.push(id_opt);
+    let mut proto_opt = String::new();
+    proto_opt.push_str("Self::");
+    proto_opt.push_str(&name);
+    proto_opt.push_str(" { ");
+    for (i, (name, _)) in field_names.iter().enumerate() {
+      proto_opt.push_str(&name);
+      if i != field_names.len() - 1 {
+        proto_opt.push_str(", ");
+      }
+    }
+    proto_opt.push_str(" } => {\n");
+    proto_opt.push_str("        let mut fields = HashMap::new();\n");
+    for (i, (name, _)) in field_names.iter().enumerate() {
+      let ty_enum = &field_ty_enums[i];
+      let ty_key = &field_ty_keys[i];
+      let val = &field_values[i];
+      proto_opt.push_str("        fields.insert(\"");
+      proto_opt.push_str(name);
+      proto_opt.push_str("\".to_string(), proto::PacketField {\n");
+
+      proto_opt.push_str("          ty: Type::");
+      proto_opt.push_str(&ty_enum.to_string());
+      proto_opt.push_str(".into(),\n");
+
+      proto_opt.push_str("          ");
+      proto_opt.push_str(&ty_key.to_string());
+      proto_opt.push_str(": ");
+      proto_opt.push_str(&val.to_string());
+      proto_opt.push_str(",\n");
+
+      proto_opt.push_str("          ..Default::default()\n");
+      proto_opt.push_str("        });\n");
+    }
+    proto_opt.push_str("        proto::Packet {\n");
+
+    proto_opt.push_str("          id: ");
+    proto_opt.push_str(&format!("{}", id));
+    proto_opt.push_str(",\n");
+
+    proto_opt.push_str("          fields,\n");
+    proto_opt.push_str("          other: None,\n");
+    proto_opt.push_str("        }\n");
+    proto_opt.push_str("      }\n");
+    to_proto_opts.push(proto_opt);
   }
   let mut out = String::new();
   out.push_str("use crate::{\n");
@@ -567,59 +596,34 @@ fn generate_packets(packets: Vec<VersionedPacket>) -> Result<String, Box<dyn Err
   out.push_str("pub enum Packet {\n");
   out.push_str("  None,\n");
   for k in kinds {
+    out.push_str("  ");
     out.push_str(&k);
   }
   out.push_str("}\n");
-
-  // let out = quote! {
-  //   use crate::{
-  //     math::Pos,
-  //     proto,
-  //     proto::packet_field::Type,
-  //     util::{nbt::NBT, UUID},
-  //   };
-  //   use std::collections::HashMap;
-  //   /// Auto generated packet ids. This is a combination of all packet
-  //   /// names for all versions. Some of these packets are never used.
-  //   #[derive(Clone, Debug, PartialEq)]
-  //   pub enum Packet {
-  //     // We always want a None type, to signify an invalid packet
-  //     None,
-  //     #(#kinds,)*
-  //   }
-  //   impl Packet {
-  //     /// Returns a GRPC specific id for this packet.
-  //     pub fn id(&self) -> i32 {
-  //       match self {
-  //         Self::None => panic!("cannot get packet id of None packet"),
-  //         #(#id_opts)*,
-  //       }
-  //     }
-  //     /// Converts self into a protobuf
-  //     pub fn to_proto(&self) -> proto::Packet {
-  //       match self {
-  //         Self::None => panic!("cannot convert None packet to protobuf"),
-  //         #(#to_proto_opts)*,
-  //       }
-  //     }
-  //   }
-  // };
-  // Will save the output to disk
-  // let mut p = std::process::Command::new("rustfmt")
-  //   .stdin(std::process::Stdio::piped())
-  //   .stdout(
-  //     std::fs::File::create("/home/macmv/Desktop/Programming/rust/sugarcane/
-  // common/src/net/cb.rs")       .unwrap(),
-  //   )
-  //   .spawn()
-  //   .unwrap();
-  // std::io::Write::write_all(p.stdin.as_mut().unwrap(),
-  // out.to_string().as_bytes()).unwrap(); p.wait_with_output().unwrap();
-  // Will print the output
-  // let mut p =
-  //   std::process::Command::new("rustfmt").stdin(std::process::Stdio::piped()).
-  // spawn().unwrap(); std::io::Write::write_all(p.stdin.as_mut().unwrap(),
-  // out.to_string().as_bytes()).unwrap(); p.wait_with_output().unwrap();
+  out.push_str("\n");
+  out.push_str("impl Packet {\n");
+  out.push_str("  /// Returns a GRPC specific id for this packet.\n");
+  out.push_str("  pub fn id(&self) -> i32 {\n");
+  out.push_str("    match self {\n");
+  out.push_str("      Self::None => panic!(\"cannot get packet id of None packet\"),\n");
+  for opt in id_opts {
+    out.push_str("      ");
+    out.push_str(&opt);
+  }
+  out.push_str("    }\n");
+  out.push_str("  }\n");
+  out.push_str("\n");
+  out.push_str("  /// Converts self into a protobuf\n");
+  out.push_str("  pub fn to_proto(&self) -> proto::Packet {\n");
+  out.push_str("    match self {\n");
+  out.push_str("      Self::None => panic!(\"cannot convert None packet to protobuf\"),\n");
+  for opt in to_proto_opts {
+    out.push_str("      ");
+    out.push_str(&opt);
+  }
+  out.push_str("    }\n");
+  out.push_str("  }\n");
+  out.push_str("}\n");
 
   Ok(out)
 }
