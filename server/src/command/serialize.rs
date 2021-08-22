@@ -57,10 +57,10 @@ impl CommandTree {
       }
     }
 
-    let mut out = cb::Packet::new(cb::ID::DeclareCommands);
-    out.set_int("root", (nodes.len() - 1) as i32); // The root index is always last
-    out.set_byte_arr("data", data.into_inner());
-    out
+    cb::Packet::DeclareCommands {
+      nodes:      data.into_inner(),
+      root_index: (nodes.len() - 1) as i32,
+    }
   }
 }
 

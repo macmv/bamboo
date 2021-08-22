@@ -1,6 +1,9 @@
-use std::sync::{
-  atomic::{AtomicBool, Ordering},
-  Arc,
+use std::{
+  convert::TryInto,
+  sync::{
+    atomic::{AtomicBool, Ordering},
+    Arc,
+  },
 };
 use tokio::sync::{mpsc::Sender, Mutex};
 use tonic::{Status, Streaming};
@@ -16,7 +19,7 @@ use common::{
   version::ProtocolVersion,
 };
 
-use crate::{block, item, player::Player, world::WorldManager};
+use crate::{block, player::Player, world::WorldManager};
 
 pub struct Connection {
   rx:     Mutex<Streaming<proto::Packet>>,
@@ -61,10 +64,8 @@ impl Connection {
           }
         }
       };
-      match p.id() {
-        sb::ID::Chat => {
-          let message = p.get_str("message");
-
+      match p {
+        sb::Packet::Chat { message } => {
           if message.chars().next() == Some('/') {
             let mut chars = message.chars();
             chars.next().unwrap();
@@ -80,37 +81,42 @@ impl Connection {
             player.world().broadcast(msg).await;
           }
         }
-        sb::ID::SetCreativeSlot => {
-          let slot = p.get_short("slot");
-          let id = p.get_int("item-id");
-          let count = p.get_byte("item-count");
-          let _nbt = p.get_byte_arr("item-nbt");
+        sb::Packet::SetCreativeSlot { slot, item } => {
+          // TODO: Parse the item
+          // let id = p.get_int("item-id");
+          // let count = p.get_byte("item-count");
+          // let _nbt = p.get_byte_arr("item-nbt");
 
-          if slot > 0 {
-            let id = player.world().get_item_converter().to_latest(id as u32, player.ver().block());
-            player
-              .lock_inventory()
-              .set(slot as u32, item::Stack::new(item::Type::from_u32(id)).with_amount(count));
-          }
+          // if slot > 0 {
+          //   let id = player.world().get_item_converter().to_latest(id as u32,
+          // player.ver().block());   player
+          //     .lock_inventory()
+          //     .set(slot as u32,
+          // item::Stack::new(item::Type::from_u32(id)).with_amount(count));
+          // }
         }
-        sb::ID::BlockDig => {
-          let pos = p.get_pos("location");
-          player.world().set_kind(pos, block::Kind::Air).await.unwrap();
+        sb::Packet::BlockDig { location, status, face } => {
+          player.world().set_kind(location, block::Kind::Air).await.unwrap();
         }
-        sb::ID::HeldItemSlot => {
-          let slot = p.get_short("slot_id");
-          player.lock_inventory().set_selected(slot.try_into().unwrap());
+        sb::Packet::HeldItemSlot { slot_id } => {
+          player.lock_inventory().set_selected(slot_id.try_into().unwrap());
         }
-        sb::ID::BlockPlace => {
-          let mut pos = p.get_pos("location");
-          let mut dir = p.get_int("direction");
-
+        sb::Packet::BlockPlace {
+          location,
+          direction,
+          hand,
+          cursor_x,
+          cursor_y,
+          cursor_z,
+          inside_block,
+          held_item,
+        } => {
           if player.ver() == ProtocolVersion::V1_8 {
             // 1.8 clients send this as a byte, and it needs to stay signed correctly
-            dir = (dir as i8).into()
+            direction = (direction as i8).into()
           }
 
-          if pos == Pos::new(-1, -1, -1) && dir == -1 {
+          if location == Pos::new(-1, -1, -1) && direction == -1 {
             // Client is eating, or head is inside block
           } else {
             let data = {
@@ -119,23 +125,23 @@ impl Connection {
               player.world().get_item_converter().get_data(stack.item())
             };
             let kind = data.block_to_place();
-            pos += Pos::dir_from_byte(dir.try_into().unwrap());
-            match player.world().set_kind(pos, kind).await {
+            location += Pos::dir_from_byte(direction.try_into().unwrap());
+            match player.world().set_kind(location, kind).await {
               Ok(_) => (),
               Err(e) => player.send_hotbar(&Chat::new(e.to_string())).await,
             }
-            player.world().get_plugins().on_block_place(player.clone(), pos, kind);
+            player.world().get_plugins().on_block_place(player.clone(), location, kind);
           }
         }
-        sb::ID::Position => {
-          player.set_next_pos(p.get_double("x"), p.get_double("y"), p.get_double("z"));
+        sb::Packet::Position { x, y, z, on_ground } => {
+          player.set_next_pos(x, y, z);
         }
-        sb::ID::PositionLook => {
-          player.set_next_pos(p.get_double("x"), p.get_double("y"), p.get_double("z"));
-          player.set_next_look(p.get_float("yaw"), p.get_float("pitch"));
+        sb::Packet::PositionLook { x, y, z, yaw, pitch, on_ground } => {
+          player.set_next_pos(x, y, z);
+          player.set_next_look(yaw, pitch);
         }
-        sb::ID::Look => {
-          player.set_next_look(p.get_float("yaw"), p.get_float("pitch"));
+        sb::Packet::Look { yaw, pitch, on_ground } => {
+          player.set_next_look(yaw, pitch);
         }
         // _ => warn!("got unknown packet from client: {:?}", p),
         _ => (),
@@ -148,7 +154,7 @@ impl Connection {
 
   /// Sends a packet to the proxy, which will then get sent to the client.
   pub async fn send(&self, p: cb::Packet) {
-    match self.tx.send(Ok(p.into_proto())).await {
+    match self.tx.send(Ok(p.to_proto())).await {
       Ok(_) => (),
       Err(_) => {
         self.closed.store(true, Ordering::SeqCst);
