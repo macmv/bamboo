@@ -1,9 +1,6 @@
-use std::{
-  convert::TryInto,
-  sync::{
-    atomic::{AtomicBool, Ordering},
-    Arc,
-  },
+use std::sync::{
+  atomic::{AtomicBool, Ordering},
+  Arc,
 };
 use tokio::sync::{mpsc::Sender, Mutex};
 use tonic::{Status, Streaming};
@@ -43,11 +40,9 @@ impl Connection {
       Some(p) => sb::Packet::from_proto(p),
       None => panic!("connection was closed while listening for a login packet"),
     };
-    match p.id() {
-      sb::ID::Login => {
-        (p.get_str("username").into(), p.get_uuid("uuid"), ProtocolVersion::from(p.get_int("ver")))
-      }
-      _ => panic!("expecting login packet, got: {}", p),
+    match p {
+      sb::Packet::Login { username, uuid, ver } => (username, uuid, ProtocolVersion::from(ver)),
+      _ => panic!("expecting login packet, got: {:?}", p),
     }
   }
 

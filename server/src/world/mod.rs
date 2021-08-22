@@ -19,7 +19,6 @@ use tonic::{Status, Streaming};
 use common::{
   math::{ChunkPos, FPos, Pos, PosError},
   net::cb,
-  proto::Packet,
   util::{
     chat::{Chat, Color},
     nbt::NBT,
@@ -263,7 +262,7 @@ impl World {
       bit_map:         0,
       chunk_data:      vec![],
       block_entities:  vec![],
-      heightmaps:      NBT::empty(""),
+      heightmaps:      NBT::empty("").serialize(),
       biomes:          vec![],
       ignore_old_data: false,
     };

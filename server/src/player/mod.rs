@@ -198,24 +198,30 @@ impl Player {
 
   /// Sends the player a chat message.
   pub async fn send_message(&self, msg: &Chat) {
-    let mut out = cb::Packet::new(cb::ID::Chat);
-    out.set_str("message", msg.to_json());
-    out.set_byte("position", 0); // Chat box, not system message or over hotbar
-    self.conn().send(out).await;
+    self
+      .conn()
+      .send(cb::Packet::Chat {
+        message:  msg.to_json(),
+        position: 0, // Chat box, not system message or over hotbar
+        sender:   self.id(),
+      })
+      .await;
   }
   /// Sends the player a chat message, which will appear over their hotbar.
   pub async fn send_hotbar(&self, msg: &Chat) {
-    let mut out = cb::Packet::new(cb::ID::Chat);
-    out.set_str("message", msg.to_json());
-    out.set_byte("position", 2); // Hotbar, not chat box or system message
-    self.conn().send(out).await;
+    self
+      .conn()
+      .send(cb::Packet::Chat {
+        message:  msg.to_json(),
+        position: 2, // Hotbar, not chat box or system message
+        sender:   self.id(),
+      })
+      .await;
   }
   /// Disconnects the player. The given chat message will be shown on the
   /// loading screen.
   pub async fn disconnect<C: Into<Chat>>(&self, msg: C) {
-    let mut out = cb::Packet::new(cb::ID::KickDisconnect);
-    out.set_str("reason", msg.into().to_json());
-    self.conn().send(out).await;
+    self.conn().send(cb::Packet::KickDisconnect { reason: msg.into().to_json() }).await;
   }
 
   /// Updates the player's position/velocity. This will apply gravity, and do
@@ -255,28 +261,27 @@ impl Player {
     if pos_changed || look_changed {
       for other in self.world.players().await.iter().in_view(pos.curr.chunk()).not(self.uuid) {
         // Make player move for other
-        let mut out;
-        if pos_changed && look_changed {
-          out = cb::Packet::new(cb::ID::EntityMoveLook);
-        } else if pos_changed {
-          out = cb::Packet::new(cb::ID::RelEntityMove);
-        } else if look_changed {
-          out = cb::Packet::new(cb::ID::EntityLook);
-        } else {
-          unreachable!();
-        }
-        out.set_int("entity_id", self.eid);
+        let yaw;
+        let pitch;
+        let on_ground = true;
         if look_changed {
-          {
-            let mut out = cb::Packet::new(cb::ID::EntityHeadRotation);
-            out.set_int("entity_id", self.eid);
-            out.set_byte("head_yaw", (pos.yaw / 360.0 * 256.0).round() as u8);
-            other.conn().send(out).await;
-          }
-          out.set_byte("yaw", (pos.yaw / 360.0 * 256.0).round() as u8);
-          out.set_byte("pitch", (pos.pitch / 360.0 * 256.0).round() as i8 as u8);
+          other
+            .conn()
+            .send(cb::Packet::EntityHeadRotation {
+              entity_id: self.eid,
+              head_yaw:  (pos.yaw / 360.0 * 256.0).round() as i8,
+            })
+            .await;
+          yaw = (pos.yaw / 360.0 * 256.0).round() as i8;
+          pitch = (pos.pitch / 360.0 * 256.0).round() as i8;
+        } else {
+          yaw = 0;
+          pitch = 0;
         }
         if pos_changed {
+          let d_x;
+          let d_y;
+          let d_z;
           let mut dx = pos.curr.x() - pos.prev.x();
           let mut dy = pos.curr.y() - pos.prev.y();
           let mut dz = pos.curr.z() - pos.prev.z();
@@ -285,12 +290,16 @@ impl Player {
             dy *= 32.0;
             dz *= 32.0;
             if dx.abs() > i8::MAX.into() || dy.abs() > i8::MAX.into() || dz.abs() > i8::MAX.into() {
+              // Compiler cannot figure out that we will never use these
+              d_x = 0;
+              d_y = 0;
+              d_z = 0;
               true
             } else {
               // As truncates any negative floats to 0, but just copies the bits for i8 -> u8
-              out.set_byte("d_x", dx.round() as i8 as u8);
-              out.set_byte("d_y", dy.round() as i8 as u8);
-              out.set_byte("d_z", dz.round() as i8 as u8);
+              d_x = (dx.round() as i8 as u8).into();
+              d_y = (dy.round() as i8 as u8).into();
+              d_z = (dz.round() as i8 as u8).into();
               false
             }
           } else {
@@ -303,32 +312,70 @@ impl Player {
               || dy.abs() > i16::MAX.into()
               || dz.abs() > i16::MAX.into()
             {
+              // Compiler cannot figure out that we will never use these
+              d_x = 0;
+              d_y = 0;
+              d_z = 0;
               true
             } else {
-              out.set_short("d_x", dx.round() as i16);
-              out.set_short("d_y", dy.round() as i16);
-              out.set_short("d_z", dz.round() as i16);
+              d_x = dx.round() as i16;
+              d_y = dy.round() as i16;
+              d_z = dz.round() as i16;
               false
             }
           };
           if abs_pos {
-            out = cb::Packet::new(cb::ID::EntityTeleport);
-            out.set_int("entity_id", self.eid);
-            out.set_double("x", pos.curr.x());
-            out.set_double("y", pos.curr.y());
-            out.set_double("z", pos.curr.z());
+            let yaw;
+            let pitch;
             if other.ver() == ProtocolVersion::V1_8 {
-              out.set_byte("yaw", (pos.yaw / 360.0 * 256.0).round() as i8 as u8);
-              out.set_byte("pitch", (pos.pitch / 360.0 * 256.0).round() as i8 as u8);
+              yaw = (pos.yaw / 360.0 * 256.0).round() as i8;
+              pitch = (pos.pitch / 360.0 * 256.0).round() as i8;
             } else {
-              out.set_float("yaw", pos.yaw);
-              out.set_float("pitch", pos.pitch);
+              yaw = pos.yaw as i8;
+              pitch = pos.pitch as i8;
             }
-            out.set_byte("flags", 0); // All positions are absolute
+            // Cannot use relative move
+            other
+              .conn()
+              .send(cb::Packet::EntityTeleport {
+                entity_id: self.eid,
+                x: pos.curr.x(),
+                y: pos.curr.y(),
+                z: pos.curr.z(),
+                yaw,
+                pitch,
+                on_ground,
+              })
+              .await;
+          } else {
+            // Can use relative move, and we know that pos_changed is true
+            if look_changed {
+              other
+                .conn()
+                .send(cb::Packet::EntityMoveLook {
+                  entity_id: self.eid,
+                  d_x,
+                  d_y,
+                  d_z,
+                  yaw,
+                  pitch,
+                  on_ground,
+                })
+                .await;
+            } else {
+              other.conn().send(cb::Packet::RelEntityMove {
+                entity_id: self.eid,
+                d_x,
+                d_y,
+                d_z,
+                on_ground,
+              });
+            }
           }
+        } else {
+          // Pos changed is false, so look_changed must be true
+          other.conn().send(cb::Packet::EntityLook { entity_id: self.eid, yaw, pitch, on_ground });
         }
-        out.set_bool("on_ground", true);
-        other.conn().send(out).await;
       }
     }
     if old_chunk != new_chunk {
@@ -405,10 +452,7 @@ impl Player {
   async fn unload_chunks(&self, min: ChunkPos, max: ChunkPos) {
     for x in min.x()..max.x() {
       for z in min.z()..max.z() {
-        let mut out = cb::Packet::new(cb::ID::UnloadChunk);
-        out.set_int("chunk_x", x);
-        out.set_int("chunk_z", z);
-        self.conn.send(out).await;
+        self.conn.send(cb::Packet::UnloadChunk { chunk_x: x, chunk_z: z }).await;
       }
     }
   }

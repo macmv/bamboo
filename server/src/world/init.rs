@@ -6,8 +6,7 @@ use crate::{
 };
 use common::{
   math::ChunkPos,
-  net::{cb, Other},
-  proto::{player_list, PlayerList},
+  net::cb,
   util::nbt::{Tag, NBT},
   version::ProtocolVersion,
 };
@@ -153,7 +152,8 @@ impl World {
                                   * a debug world */
       dimension_codec:    codec.serialize(),
       // dimension: NBT::new("", dimension).serialize(),
-      world_names:        vec!["minecraft:overworld".into()],
+      // world_names:        vec!["minecraft:overworld".into()],
+      world_names:        vec![],
     };
 
     conn.send(out).await;
@@ -220,15 +220,15 @@ impl World {
       other
         .conn()
         .send(cb::Packet::NamedEntitySpawn {
-          entity_id: player.eid(),
-          player_uuid: player.id(),
-          x: pos.x(),
-          y: pos.y(),
-          z: pos.z(),
-          yaw,
-          pitch,
+          entity_id:    player.eid(),
+          player_uuid:  player.id(),
+          x:            pos.x(),
+          y:            pos.y(),
+          z:            pos.z(),
+          yaw:          yaw as i8, // TODO: Fix doubles/bytes on 1.8
+          pitch:        pitch as i8,
           current_item: 0,
-          metadata: player.metadata(other.ver()).serialize(),
+          metadata:     player.metadata(other.ver()).serialize(),
         })
         .await;
 
@@ -243,31 +243,33 @@ impl World {
       //   display_name:     "".into(),
       // });
       // Create a packet that will spawn other for player
-      let mut out = cb::Packet::new(cb::ID::NamedEntitySpawn);
-      out.set_int("entity_id", other.eid());
-      out.set_uuid("player_uuid", other.id());
       let (pos, pitch, yaw) = other.pos_look();
-      out.set_double("x", pos.x());
-      out.set_double("y", pos.y());
-      out.set_double("z", pos.z());
-      out.set_float("yaw", yaw);
-      out.set_float("pitch", pitch);
-      out.set_short("current_item", 0);
-      out.set_byte_arr("metadata", other.metadata(player.ver()).serialize());
-      spawn_packets.push(out);
+      spawn_packets.push(cb::Packet::NamedEntitySpawn {
+        entity_id:    other.eid(),
+        player_uuid:  other.id(),
+        x:            pos.x(),
+        y:            pos.y(),
+        z:            pos.z(),
+        yaw:          yaw as i8,
+        pitch:        pitch as i8,
+        current_item: 0,
+        metadata:     other.metadata(player.ver()).serialize(),
+      });
     }
     // Need to send the player info before the spawn packets
-    let mut out = cb::Packet::new(cb::ID::PlayerInfo);
-    out.set_other(Other::PlayerList(info)).unwrap();
-    conn.send(out).await;
-    for p in spawn_packets {
-      conn.send(p).await;
-    }
+    // let mut out = cb::Packet::new(cb::ID::PlayerInfo);
+    // out.set_other(Other::PlayerList(info)).unwrap();
+    // conn.send(out).await;
+    // for p in spawn_packets {
+    //   conn.send(p).await;
+    // }
 
-    let mut out = cb::Packet::new(cb::ID::Abilities);
-    out.set_byte("flags", 0x04 | 0x08);
-    out.set_float("flying_speed", 10.0 * 0.05);
-    out.set_float("walking_speed", 0.1);
-    conn.send(out).await;
+    conn
+      .send(cb::Packet::Abilities {
+        flags:         0x04 | 0x08,
+        flying_speed:  10.0 * 0.05,
+        walking_speed: 0.1,
+      })
+      .await;
   }
 }
