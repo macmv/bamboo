@@ -6,15 +6,7 @@ use itertools::Itertools;
 use proc_macro2::{Ident, Span, TokenStream};
 use quote::quote;
 use serde_derive::{Deserialize, Serialize};
-use std::{
-  collections::{HashMap, HashSet},
-  error::Error,
-  fs,
-  fs::File,
-  io,
-  io::Write,
-  path::Path,
-};
+use std::{collections::HashMap, error::Error, fs, fs::File, io::Write, path::Path};
 
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq)]
 pub enum IntType {
@@ -367,25 +359,25 @@ impl PacketField {
       Self::String => quote!(String),
       Self::Position => quote!(Pos),
 
-      Self::NBT => quote!(NBT),
-      Self::OptionalNBT => quote!(Option<NBT>),
-      Self::RestBuffer => quote!(Vec<u8>),
-      Self::EntityMetadata => quote!(Vec<u8>), // Implemented on the server
+      // Self::NBT => quote!(NBT),
+      // Self::OptionalNBT => quote!(Option<NBT>),
+      // Self::RestBuffer => quote!(Vec<u8>),
+      // Self::EntityMetadata => quote!(Vec<u8>), // Implemented on the server
 
-      Self::Option(field) => {
-        let inner = field.ty_lit();
-        quote!(Option<#inner>)
-      }
-      Self::Array { count, value } => match count {
-        CountType::Typed(_) | CountType::Named(_) => {
-          let value = value.ty_lit();
-          quote!(Vec<#value>)
-        }
-        CountType::Fixed(len) => {
-          let value = value.ty_lit();
-          quote!([#value; #len])
-        }
-      },
+      // Self::Option(field) => {
+      //   let inner = field.ty_lit();
+      //   quote!(Option<#inner>)
+      // }
+      // Self::Array { count, value } => match count {
+      //   CountType::Typed(_) | CountType::Named(_) => {
+      //     let value = value.ty_lit();
+      //     quote!(Vec<#value>)
+      //   }
+      //   CountType::Fixed(len) => {
+      //     let value = value.ty_lit();
+      //     quote!([#value; #len])
+      //   }
+      // },
       _ => quote!(Vec<u8>),
     }
   }
@@ -422,15 +414,16 @@ impl PacketField {
         FloatType::F32 => quote!(Float),
         FloatType::F64 => quote!(Double),
       },
-      Self::UUID => quote!(UUID),
+      Self::UUID => quote!(Uuid),
       Self::String => quote!(Str),
       Self::Position => quote!(Pos),
 
-      Self::NBT => quote!(ByteArr),
-      Self::OptionalNBT => quote!(ByteArr),
-      Self::RestBuffer => quote!(ByteArr),
-      Self::EntityMetadata => quote!(ByteArr), // Implemented on the server
+      // Self::NBT => quote!(ByteArr),
+      // Self::OptionalNBT => quote!(ByteArr),
+      // Self::RestBuffer => quote!(ByteArr),
+      // Self::EntityMetadata => quote!(ByteArr), // Implemented on the server
 
+      // Self::Option(field) => field.ty_lit(),
       _ => quote!(ByteArr),
     }
   }
@@ -471,11 +464,12 @@ impl PacketField {
       Self::String => quote!(str),
       Self::Position => quote!(pos),
 
-      Self::NBT => quote!(byte_arr),
-      Self::OptionalNBT => quote!(byte_arr),
-      Self::RestBuffer => quote!(byte_arr),
-      Self::EntityMetadata => quote!(byte_arr), // Implemented on the server
+      // Self::NBT => quote!(byte_arr),
+      // Self::OptionalNBT => quote!(byte_arr),
+      // Self::RestBuffer => quote!(byte_arr),
+      // Self::EntityMetadata => quote!(byte_arr), // Implemented on the server
 
+      // Self::Option(field) => field.ty_key(),
       _ => quote!(byte_arr),
     }
   }
@@ -484,12 +478,12 @@ impl PacketField {
     match self {
       Self::Bool => quote!(*#name),
       Self::Int(ity) => match ity {
-        IntType::I8 => quote!(*#name as u8),
-        IntType::U8 => quote!(*#name as u8),
-        IntType::I16 => quote!(#name.into()),
-        IntType::U16 => quote!(#name.into()),
+        IntType::I8 => quote!((*#name as u8).into()),
+        IntType::U8 => quote!((*#name).into()),
+        IntType::I16 => quote!((*#name as u16).into()),
+        IntType::U16 => quote!((*#name).into()),
         IntType::I32 => quote!(*#name),
-        IntType::I64 => quote!(*#name),
+        IntType::I64 => quote!(*#name as u64),
         IntType::VarInt => quote!(*#name),
         IntType::OptVarInt => quote!(#name.unwrap_or(0)),
       },
@@ -497,15 +491,16 @@ impl PacketField {
         FloatType::F32 => quote!(*#name),
         FloatType::F64 => quote!(*#name),
       },
-      Self::UUID => quote!(*#name),
+      Self::UUID => quote!(Some(#name.as_proto())),
       Self::String => quote!(#name.to_string()),
-      Self::Position => quote!(#name.to_proto()),
+      Self::Position => quote!(#name.to_u64()),
 
-      Self::NBT => quote!(#name.clone()),
-      Self::OptionalNBT => quote!(#name.clone()),
-      Self::RestBuffer => quote!(#name.clone()),
-      Self::EntityMetadata => quote!(#name.clone()), // Implemented on the server
+      // Self::NBT => quote!(#name.clone()),
+      // Self::OptionalNBT => quote!(#name.clone()),
+      // Self::RestBuffer => quote!(#name.clone()),
+      // Self::EntityMetadata => quote!(#name.clone()), // Implemented on the server
 
+      // Self::Option(field) => quote!(#name.unwrap()),
       _ => quote!(#name.clone()),
     }
   }
@@ -536,7 +531,7 @@ fn generate_packets(packets: Vec<VersionedPacket>) -> Result<TokenStream, Box<dy
       } => {
         let mut fields = HashMap::new();
         #(
-          fields.insert(#field_name_strs, proto::PacketField {
+          fields.insert(#field_name_strs.to_string(), proto::PacketField {
             ty: Type::#field_ty_enums.into(),
             #field_ty_keys: #field_values,
             ..Default::default()
@@ -544,7 +539,7 @@ fn generate_packets(packets: Vec<VersionedPacket>) -> Result<TokenStream, Box<dy
         )*
         proto::Packet {
           id: #id,
-          fields: fields,
+          fields,
           other: None,
         }
       }
@@ -554,7 +549,6 @@ fn generate_packets(packets: Vec<VersionedPacket>) -> Result<TokenStream, Box<dy
     });
   }
   let out = quote! {
-    use num_derive::ToPrimitive;
     use crate::{
       math::Pos,
       proto,
@@ -587,11 +581,22 @@ fn generate_packets(packets: Vec<VersionedPacket>) -> Result<TokenStream, Box<dy
       }
     }
   };
-  // Will print the result of this proc macro
-  let mut p =
-    std::process::Command::new("rustfmt").stdin(std::process::Stdio::piped()).spawn().unwrap();
-  std::io::Write::write_all(p.stdin.as_mut().unwrap(), out.to_string().as_bytes()).unwrap();
-  p.wait_with_output().unwrap();
+  // Will save the output to disk
+  // let mut p = std::process::Command::new("rustfmt")
+  //   .stdin(std::process::Stdio::piped())
+  //   .stdout(
+  //     std::fs::File::create("/home/macmv/Desktop/Programming/rust/sugarcane/
+  // common/src/net/cb.rs")       .unwrap(),
+  //   )
+  //   .spawn()
+  //   .unwrap();
+  // std::io::Write::write_all(p.stdin.as_mut().unwrap(),
+  // out.to_string().as_bytes()).unwrap(); p.wait_with_output().unwrap();
+  // Will print the output
+  // let mut p =
+  //   std::process::Command::new("rustfmt").stdin(std::process::Stdio::piped()).
+  // spawn().unwrap(); std::io::Write::write_all(p.stdin.as_mut().unwrap(),
+  // out.to_string().as_bytes()).unwrap(); p.wait_with_output().unwrap();
 
   Ok(out)
 }
