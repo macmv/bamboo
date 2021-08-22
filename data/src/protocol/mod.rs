@@ -143,7 +143,7 @@ impl VersionedPacket {
 
   fn add_version(&mut self, ver: &str, packet: Packet) {}
 
-  fn field_names(&self) -> Vec<Ident> {
+  fn field_names(&self) -> Vec<String> {
     let mut names = vec![];
     for p in &self.versions {
       if let Some(p) = p {
@@ -153,7 +153,7 @@ impl VersionedPacket {
           if name == "type" {
             name = "type_".to_string();
           }
-          names.push(Ident::new(&name, Span::call_site()));
+          names.push(name);
         }
       }
     }
@@ -321,9 +321,9 @@ impl PacketField {
           let value = value.to_tokens();
           quote!(Vec<#value>)
         }
-        CountType::Fixed(val) => {
+        CountType::Fixed(len) => {
           let value = value.to_tokens();
-          quote!([#value; #val])
+          quote!([#value; #len])
         }
       },
       _ => quote!(Vec<u8>),
@@ -336,8 +336,11 @@ fn generate_packets(packets: Vec<VersionedPacket>) -> Result<TokenStream, Box<dy
   let mut to_proto_opts = vec![];
   let mut id_opts = vec![];
   for (id, packet) in packets.into_iter().enumerate() {
+    let id = id as i32;
     let name = Ident::new(&packet.name().to_case(Case::Pascal), Span::call_site());
-    let field_names = packet.field_names();
+    let field_name_strs = packet.field_names();
+    let field_names: Vec<Ident> =
+      field_name_strs.iter().map(|name| Ident::new(name, Span::call_site())).collect();
     let field_tys = packet.field_tys();
     kinds.push(quote! {
       #name {
@@ -348,18 +351,19 @@ fn generate_packets(packets: Vec<VersionedPacket>) -> Result<TokenStream, Box<dy
       Self::#name {
         #(#field_names),*
       } => {
-        // TODO: Fill in fields
-        proto::Packet {}
+        let mut fields = HashMap::new();
+        #(fields.insert(#field_name_strs, #field_names))*
+        proto::Packet {
+          id: #id,
+          fields: fields,
+          other: None,
+        }
       }
     });
     id_opts.push(quote! {
       Self::#name { .. } => { #id }
     });
   }
-  // let mut names = vec![];
-  // for (n, _) in packets {
-  //   names.push(n);
-  // }
   let out = quote! {
     use num_derive::ToPrimitive;
     use crate::{
@@ -367,6 +371,7 @@ fn generate_packets(packets: Vec<VersionedPacket>) -> Result<TokenStream, Box<dy
       proto,
       util::{nbt::NBT, UUID},
     };
+    use std::collections::HashMap;
     /// Auto generated packet ids. This is a combination of all packet
     /// names for all versions. Some of these packets are never used.
     #[derive(Clone, Debug, PartialEq)]
@@ -379,19 +384,24 @@ fn generate_packets(packets: Vec<VersionedPacket>) -> Result<TokenStream, Box<dy
       /// Returns a GRPC specific id for this packet.
       pub fn id(&self) -> i32 {
         match self {
-          None => panic!("cannot get packet id of None packet"),
+          Self::None => panic!("cannot get packet id of None packet"),
           #(#id_opts)*,
         }
       }
       /// Converts self into a protobuf
       pub fn to_proto(&self) -> proto::Packet {
         match self {
-          None => panic!("cannot convert None packet to protobuf"),
+          Self::None => panic!("cannot convert None packet to protobuf"),
           #(#to_proto_opts)*,
         }
       }
     }
   };
-  println!("{}", out.to_string());
+  // Will print the result of this proc macro
+  let mut p =
+    std::process::Command::new("rustfmt").stdin(std::process::Stdio::piped()).spawn().unwrap();
+  std::io::Write::write_all(p.stdin.as_mut().unwrap(), out.to_string().as_bytes()).unwrap();
+  p.wait_with_output().unwrap();
+
   Ok(out)
 }
