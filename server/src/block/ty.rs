@@ -33,7 +33,7 @@ impl fmt::Display for InvalidBlock {
 
 impl Error for InvalidBlock {}
 
-data::generate_blocks!();
+include!(concat!(env!("OUT_DIR"), "/block/ty.rs"));
 
 impl Kind {
   /// Returns the kind as an u32. This is used in the versioning arrays, and in

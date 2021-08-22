@@ -19,6 +19,7 @@ use tonic::{Status, Streaming};
 use common::{
   math::{ChunkPos, FPos, Pos, PosError},
   net::cb,
+  proto::Packet,
   util::{
     chat::{Chat, Color},
     nbt::NBT,

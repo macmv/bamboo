@@ -22,7 +22,7 @@ pub struct TypeConverter {
   // Each index into the outer vec is a kind id. Indexing into the inner vec is each variant of the
   // given kind. These are in such an order that iterating through both of them will get all block
   // types in the same order as the global palette of the latest version.
-  kinds:    Vec<Data>,
+  kinds:    &'static [Data],
   versions: &'static [Version],
 }
 
