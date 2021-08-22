@@ -24,3 +24,6 @@ num-derive = "0.3"
 noise = "0.7.0"
 
 sugarlang = { git = "https://gitlab.com/macmv/sugarlang" }
+
+[build-dependencies]
+data = { path = "../data" }

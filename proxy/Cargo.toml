@@ -7,7 +7,6 @@ edition = "2018"
 
 [dependencies]
 common = { path = "../common" }
-data = { path = "../data" }
 log = "0.4"
 tonic = "0.4"
 serde = "1.0"
@@ -25,3 +24,6 @@ tokio = { version = "1.5", features = ["rt-multi-thread"] }
 tokio-stream = "0.1"
 futures = "0.3"
 async-stream = "0.3"
+
+[build-dependencies]
+data = { path = "../data" }
