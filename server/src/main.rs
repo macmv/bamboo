@@ -1,8 +1,6 @@
 #[macro_use]
 extern crate log;
 
-data::clone_prismarine_data!();
-
 pub mod block;
 pub mod command;
 pub mod entity;

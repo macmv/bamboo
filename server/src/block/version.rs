@@ -1,8 +1,23 @@
 use std::collections::HashMap;
 
-use super::{ty, ty::Version, Data, Kind};
+use super::{ty, Data, Kind};
 
 use common::version::BlockVersion;
+
+/// This is the conversion table for a single old version of the game and the
+/// latest version. This includes a list of old ids, whose index is the new
+/// block id. It also contains a HashMap, which is used to convert old ids into
+/// new ones. This might not be fastest or most memory efficient way, but it is
+/// certainly the easiest. Especially before 1.13, block ids are very sparse,
+/// and a HashMap will be the best option.
+#[derive(Debug)]
+pub struct Version {
+  to_old: &'static [u32],
+  to_new: &'static [u32],
+  ver:    BlockVersion,
+}
+
+include!(concat!(env!("OUT_DIR"), "/block/version.rs"));
 
 /// This is a version converter. It is how all block ids are converter between
 /// versions. At compile time, all of the vanilla Minecraft versions that are
@@ -34,7 +49,7 @@ impl TypeConverter {
   /// get_converter).
   #[allow(clippy::new_without_default)]
   pub fn new() -> Self {
-    Self { kinds: ty::generate_kinds(), versions: ty::generate_versions() }
+    Self { kinds: ty::generate_kinds(), versions: generate_versions() }
   }
 
   /// Takes the given old block id, which is part of `ver`, and returns the new

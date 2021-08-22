@@ -131,7 +131,7 @@ impl World {
       // if player.ver() < ProtocolVersion::V1_16 {
       //   out.set_byte("dimension", 0); // Overworld
       // }
-      dimension:          0, // Overworld
+      // dimension:          0, // Overworld
       level_type:         "default".into(),
       max_players:        0,     // Ignored
       reduced_debug_info: false, // Don't reduce debug info
@@ -151,6 +151,7 @@ impl World {
       is_debug:           false, /* This is not reduced_debug_info, this is for the world being
                                   * a debug world */
       dimension_codec:    codec.serialize(),
+      dimension:          "".to_string(),
       // dimension: NBT::new("", dimension).serialize(),
       // world_names:        vec!["minecraft:overworld".into()],
       world_names:        vec![],

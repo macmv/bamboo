@@ -163,7 +163,7 @@ pub fn generate(dir: &Path) -> Result<(), Box<dyn Error>> {
     out.push_str(&name);
     out.push_str("\",");
   }
-  out.push_str("]\n");
+  out.push_str("  ]\n");
   out.push_str("}\n");
   out.push_str("/// Generates a table from all block kinds to any block data that kind has.\n");
   out.push_str("/// This does not include cross-versioning data. This includes information like\n");
@@ -189,6 +189,21 @@ pub fn generate(dir: &Path) -> Result<(), Box<dyn Error>> {
   out.push_str("}\n");
 
   fs::write(dir.join("ty.rs"), out)?;
+
+  let mut out = String::new();
+  out.push_str("/// Generates the cross-versioning data for blocks. This is how old clients\n");
+  out.push_str("/// can see the same world as new clients.\n");
+  out.push_str("pub fn generate_versions() -> &'static [Version] {\n");
+  out.push_str("  &[\n");
+  for ver in version_data {
+    out.push_str("    ");
+    out.push_str(&ver.to_string());
+    out.push_str(",\n");
+  }
+  out.push_str("  ]\n");
+  out.push_str("}\n");
+
+  fs::write(dir.join("version.rs"), out)?;
 
   // let out = quote! {
   //   /// Auto generated block kind. This is directly generated

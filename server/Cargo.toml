@@ -7,7 +7,6 @@ edition = "2018"
 
 [dependencies]
 common = { path = "../common" }
-data = { path = "../data" }
 log = "0.4"
 
 tonic = "0.4"
