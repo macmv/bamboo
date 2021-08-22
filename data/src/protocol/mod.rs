@@ -6,7 +6,9 @@ use itertools::Itertools;
 use proc_macro2::{Ident, Span, TokenStream};
 use quote::quote;
 use serde_derive::{Deserialize, Serialize};
-use std::{collections::HashMap, error::Error, fs, fs::File, io::Write, path::Path};
+use std::{
+  collections::HashMap, error::Error, fmt::Write, fs, fs::File, io::Write as _, path::Path,
+};
 
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq)]
 pub enum IntType {
@@ -148,12 +150,12 @@ impl VersionedPacket {
     }
   }
 
-  fn field_names(&self) -> Vec<String> {
-    let mut names = vec![];
-    for (name, _) in &self.fields {
-      names.push(self.convert_name(name).to_string());
+  fn field_name_tys(&self) -> Vec<(String, String)> {
+    let mut vals = vec![];
+    for (name, field) in &self.fields {
+      vals.push((self.convert_name(name).to_string(), field.ty_lit().to_string()));
     }
-    names
+    vals
   }
   fn field_tys(&self) -> Vec<TokenStream> {
     let mut tys = vec![];
@@ -272,7 +274,7 @@ fn to_versioned(
   (to_client, to_server)
 }
 
-pub fn generate(dir: &Path) -> Result<TokenStream, Box<dyn Error>> {
+pub fn generate(dir: &Path) -> Result<(), Box<dyn Error>> {
   let prismarine_path = dir.join("prismarine-data");
   let dir = dir.join("protocol");
 
@@ -292,21 +294,19 @@ pub fn generate(dir: &Path) -> Result<TokenStream, Box<dyn Error>> {
     let to_client = generate_packets(to_client)?;
     let to_server = generate_packets(to_server)?;
 
-    // The include! trick is a terrible hack. It just lets met define both the enums
-    // in one macro call, which allows for faster compilation.
-    //
-    // These files are going to be removed in the future, as I am going to move to
-    // generating every packet as its own struct, so that fields are no longer
-    // defined with strings.
-    Ok(quote! {
-      pub mod cb {
-        #to_client
-      }
-      pub mod sb {
-        #to_server
-      }
-    })
+    fs::write(dir.join("cb.rs"), to_client)?;
+    fs::write(dir.join("sb.rs"), to_server)?;
+
+    // Ok(quote! {
+    //   pub mod cb {
+    //     #to_client
+    //   }
+    //   pub mod sb {
+    //     #to_server
+    //   }
+    // })
   }
+  Ok(())
 }
 
 impl PacketField {
@@ -506,81 +506,104 @@ impl PacketField {
   }
 }
 
-fn generate_packets(packets: Vec<VersionedPacket>) -> Result<TokenStream, Box<dyn Error>> {
+fn generate_packets(packets: Vec<VersionedPacket>) -> Result<String, Box<dyn Error>> {
   let mut kinds = vec![];
-  let mut to_proto_opts = vec![];
-  let mut id_opts = vec![];
+  // let mut to_proto_opts = vec![];
+  // let mut id_opts = vec![];
   for (id, packet) in packets.into_iter().enumerate() {
     let id = id as i32;
-    let name = Ident::new(&packet.name().to_case(Case::Pascal), Span::call_site());
-    let field_name_strs = packet.field_names();
-    let field_names: Vec<Ident> =
-      field_name_strs.iter().map(|name| Ident::new(name, Span::call_site())).collect();
-    let field_tys = packet.field_tys();
+    let name = packet.name().to_case(Case::Pascal);
     let field_ty_enums = packet.field_ty_enums();
     let field_ty_keys = packet.field_ty_keys();
     let field_values = packet.field_values();
-    kinds.push(quote! {
-      #name {
-        #(#field_names: #field_tys),*
-      }
-    });
-    to_proto_opts.push(quote! {
-      Self::#name {
-        #(#field_names),*
-      } => {
-        let mut fields = HashMap::new();
-        #(
-          fields.insert(#field_name_strs.to_string(), proto::PacketField {
-            ty: Type::#field_ty_enums.into(),
-            #field_ty_keys: #field_values,
-            ..Default::default()
-          });
-        )*
-        proto::Packet {
-          id: #id,
-          fields,
-          other: None,
-        }
-      }
-    });
-    id_opts.push(quote! {
-      Self::#name { .. } => { #id }
-    });
+    let mut kind = String::new();
+    kind.push_str("  ");
+    kind.push_str(&name);
+    kind.push_str(" {\n");
+    for (name, ty) in packet.field_name_tys() {
+      kind.push_str("    ");
+      kind.push_str(&name);
+      kind.push_str(": ");
+      kind.push_str(&ty);
+      kind.push_str(",\n");
+    }
+    kind.push_str("  },\n");
+    kinds.push(kind);
+    // to_proto_opts.push(quote! {
+    //   Self::#name {
+    //     #(#field_names),*
+    //   } => {
+    //     let mut fields = HashMap::new();
+    //     #(
+    //       fields.insert(#field_name_strs.to_string(), proto::PacketField {
+    //         ty: Type::#field_ty_enums.into(),
+    //         #field_ty_keys: #field_values,
+    //         ..Default::default()
+    //       });
+    //     )*
+    //     proto::Packet {
+    //       id: #id,
+    //       fields,
+    //       other: None,
+    //     }
+    //   }
+    // });
+    // id_opts.push(quote! {
+    //   Self::#name { .. } => { #id }
+    // });
   }
-  let out = quote! {
-    use crate::{
-      math::Pos,
-      proto,
-      proto::packet_field::Type,
-      util::{nbt::NBT, UUID},
-    };
-    use std::collections::HashMap;
-    /// Auto generated packet ids. This is a combination of all packet
-    /// names for all versions. Some of these packets are never used.
-    #[derive(Clone, Debug, PartialEq)]
-    pub enum Packet {
-      // We always want a None type, to signify an invalid packet
-      None,
-      #(#kinds,)*
-    }
-    impl Packet {
-      /// Returns a GRPC specific id for this packet.
-      pub fn id(&self) -> i32 {
-        match self {
-          Self::None => panic!("cannot get packet id of None packet"),
-          #(#id_opts)*,
-        }
-      }
-      /// Converts self into a protobuf
-      pub fn to_proto(&self) -> proto::Packet {
-        match self {
-          Self::None => panic!("cannot convert None packet to protobuf"),
-          #(#to_proto_opts)*,
-        }
-      }
-    }
-  };
+  let mut out = String::new();
+  out.push_str("use crate::{\n");
+  out.push_str("  math::Pos,\n");
+  out.push_str("  proto,\n");
+  out.push_str("  proto::packet_field::Type,\n");
+  out.push_str("  util::{nbt::NBT, UUID}\n");
+  out.push_str("};\n");
+  out.push_str("use std::collections::HashMap;\n");
+  out.push_str("\n");
+  out.push_str("/// Auto generated packet ids. This is a combination of all packet\n");
+  out.push_str("/// names for all versions. Some of these packets are never used.\n");
+  out.push_str("#[derive(Clone, Debug, PartialEq)]\n");
+  out.push_str("pub enum Packet {\n");
+  out.push_str("  None,\n");
+  for k in kinds {
+    out.push_str(&k);
+  }
+  out.push_str("}\n");
+
+  // let out = quote! {
+  //   use crate::{
+  //     math::Pos,
+  //     proto,
+  //     proto::packet_field::Type,
+  //     util::{nbt::NBT, UUID},
+  //   };
+  //   use std::collections::HashMap;
+  //   /// Auto generated packet ids. This is a combination of all packet
+  //   /// names for all versions. Some of these packets are never used.
+  //   #[derive(Clone, Debug, PartialEq)]
+  //   pub enum Packet {
+  //     // We always want a None type, to signify an invalid packet
+  //     None,
+  //     #(#kinds,)*
+  //   }
+  //   impl Packet {
+  //     /// Returns a GRPC specific id for this packet.
+  //     pub fn id(&self) -> i32 {
+  //       match self {
+  //         Self::None => panic!("cannot get packet id of None packet"),
+  //         #(#id_opts)*,
+  //       }
+  //     }
+  //     /// Converts self into a protobuf
+  //     pub fn to_proto(&self) -> proto::Packet {
+  //       match self {
+  //         Self::None => panic!("cannot convert None packet to protobuf"),
+  //         #(#to_proto_opts)*,
+  //       }
+  //     }
+  //   }
+  // };
   // Will save the output to disk
   // let mut p = std::process::Command::new("rustfmt")
   //   .stdin(std::process::Stdio::piped())

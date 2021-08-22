@@ -1,5 +1,3 @@
-use proc_macro::TokenStream;
-use quote::quote;
 use std::{
   env,
   path::{Path, PathBuf},
@@ -36,38 +34,26 @@ mod util;
 // }
 
 fn out_dir() -> PathBuf {
-  PathBuf::new()
-    .join(
-      Path::new(&env::var("CARGO_MANIFEST_DIR").expect("could not get manifest dir"))
-        .parent()
-        .unwrap(),
-    )
-    .join("target/sugarcane-build")
+  PathBuf::new().join(&env::var("OUT_DIR").expect("could not get out dir"))
 }
 
-#[proc_macro]
-pub fn clone_prismarine_data(input: TokenStream) -> TokenStream {
+pub fn clone_prismarine_data() {
   prismarine::clone(&out_dir()).unwrap();
-  quote!().into()
 }
 
-#[proc_macro]
-pub fn generate_blocks(input: TokenStream) -> TokenStream {
-  block::generate(&out_dir()).unwrap().into()
+pub fn generate_blocks() {
+  block::generate(&out_dir()).unwrap();
 }
 
-#[proc_macro]
-pub fn generate_items(input: TokenStream) -> TokenStream {
-  item::generate(&out_dir(), block::generate_kinds(&out_dir()).unwrap()).unwrap().into()
+pub fn generate_items() {
+  item::generate(&out_dir(), block::generate_kinds(&out_dir()).unwrap()).unwrap();
 }
 
-#[proc_macro]
-pub fn generate_entities(input: TokenStream) -> TokenStream {
-  entity::generate(&out_dir()).unwrap().into()
+pub fn generate_entities() {
+  entity::generate(&out_dir()).unwrap();
 }
 
-#[proc_macro]
-pub fn generate_protocol(input: TokenStream) -> TokenStream {
+pub fn generate_protocol() {
   prismarine::clone(&out_dir()).unwrap();
-  protocol::generate(&out_dir()).unwrap().into()
+  protocol::generate(&out_dir()).unwrap();
 }
