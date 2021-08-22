@@ -107,7 +107,7 @@ pub fn generate(dir: &Path) -> Result<(), Box<dyn Error>> {
       Data {
         state: #state,
         default_index: #default_index,
-        types: vec![#(#types),*],
+        types: &[#(#types),*],
       }
     };
     block_data.push(out);

@@ -55,7 +55,7 @@ impl Kind {
 pub struct Data {
   state:         u32,
   // A list of types in order. This will always be at least one element long.
-  types:         Vec<Type>,
+  types:         &'static [Type],
   // The default type. This is an index into types.
   default_index: u32,
 }
