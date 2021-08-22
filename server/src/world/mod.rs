@@ -18,9 +18,13 @@ use tonic::{Status, Streaming};
 
 use common::{
   math::{ChunkPos, FPos, Pos, PosError},
-  net::{cb, Other},
+  net::cb,
   proto::Packet,
-  util::chat::{Chat, Color},
+  util::{
+    chat::{Chat, Color},
+    nbt::NBT,
+    UUID,
+  },
   version::BlockVersion,
 };
 
@@ -119,9 +123,8 @@ impl World {
           Color::BrightGreen
         });
 
-        let mut out = cb::Packet::new(cb::ID::PlayerlistHeader);
-        out.set_str("header", header.to_json());
-        out.set_str("footer", footer.to_json());
+        let out =
+          cb::Packet::PlayerlistHeader { header: header.to_json(), footer: footer.to_json() };
         for p in self.players.lock().await.values() {
           p.conn().send(out.clone()).await;
         }
@@ -179,9 +182,7 @@ impl World {
       // Do player collision and packets and stuff
       // Once per second, send keep alive packet
       if tick % 20 == 0 {
-        let mut out = cb::Packet::new(cb::ID::KeepAlive);
-        out.set_int("keep_alive_id", 1234556);
-        conn.send(out).await;
+        conn.send(cb::Packet::KeepAlive { keep_alive_id: 1234556 }).await;
       }
       tick += 1;
       self.mspt.fetch_add(start.elapsed().as_millis().try_into().unwrap(), Ordering::SeqCst);
@@ -255,13 +256,23 @@ impl World {
   /// trying to re-send an entire chunk to a player, make sure to send them an
   /// unload chunk packet first. Use at your own risk!
   pub fn serialize_chunk(&self, pos: ChunkPos, ver: BlockVersion) -> cb::Packet {
-    let mut out = cb::Packet::new(cb::ID::MapChunk);
-    self.chunk(pos, |c| {
-      let mut pb = c.to_proto(ver);
-      pb.x = pos.x();
-      pb.z = pos.z();
-      out.set_other(Other::Chunk(pb)).unwrap();
-    });
+    let out = cb::Packet::MapChunk {
+      x:               pos.x(),
+      z:               pos.z(),
+      ground_up:       true,
+      bit_map:         0,
+      chunk_data:      vec![],
+      block_entities:  vec![],
+      heightmaps:      NBT::empty(""),
+      biomes:          vec![],
+      ignore_old_data: false,
+    };
+    // self.chunk(pos, |c| {
+    //   let mut pb = c.to_proto(ver);
+    //   pb.x = pos.x();
+    //   pb.z = pos.z();
+    //   out.set_other(Other::Chunk(pb)).unwrap();
+    // });
     out
   }
 
@@ -271,10 +282,12 @@ impl World {
     self.chunk(pos.chunk(), |mut c| c.set_type(pos.chunk_rel(), ty))?;
 
     for p in self.players.lock().await.values() {
-      let mut out = cb::Packet::new(cb::ID::BlockChange);
-      out.set_pos("location", pos);
-      out.set_int("type", self.block_converter.to_old(ty.id(), p.ver().block()) as i32);
-      p.conn().send(out).await;
+      p.conn()
+        .send(cb::Packet::BlockChange {
+          location: pos,
+          type_:    self.block_converter.to_old(ty.id(), p.ver().block()) as i32,
+        })
+        .await;
     }
     Ok(())
   }
@@ -288,9 +301,11 @@ impl World {
 
   /// This broadcasts a chat message to everybody in the world.
   pub async fn broadcast<M: Into<Chat>>(&self, msg: M) {
-    let mut out = cb::Packet::new(cb::ID::Chat);
-    out.set_str("message", msg.into().to_json());
-    out.set_byte("position", 0); // Chat box, not over hotbar
+    let out = cb::Packet::Chat {
+      message:  msg.into().to_json(),
+      position: 0, // Chat box, not above hotbar
+      sender:   UUID::from_u128(0),
+    };
 
     for p in self.players.lock().await.values() {
       p.conn().send(out.clone()).await;
@@ -351,9 +366,11 @@ impl WorldManager {
 
   /// Broadcasts a message to everyone one the server.
   pub async fn broadcast<M: Into<Chat>>(&self, msg: M) {
-    let mut out = cb::Packet::new(cb::ID::Chat);
-    out.set_str("message", msg.into().to_json());
-    out.set_byte("position", 0); // Chat box, not over hotbar
+    let out = cb::Packet::Chat {
+      message:  msg.into().to_json(),
+      position: 0, // Chat box, not above hotbar
+      sender:   UUID::from_u128(0),
+    };
 
     let worlds = self.worlds.lock().await;
     for w in worlds.iter() {

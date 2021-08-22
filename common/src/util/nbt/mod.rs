@@ -51,6 +51,11 @@ impl NBT {
     NBT { tag, name: name.into() }
   }
 
+  /// Creates an empty nbt tag.
+  pub fn empty(name: &str) -> Self {
+    NBT { tag: Tag::End, name: name.into() }
+  }
+
   /// Appends the given element to the list. This will panic if self is not a
   /// list, or if tag does not match the type of the existing elements.
   pub fn list_add(&mut self, tag: Tag) {
