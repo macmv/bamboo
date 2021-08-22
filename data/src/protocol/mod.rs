@@ -123,10 +123,54 @@ pub struct Version {
   pub to_server: Vec<Packet>,
 }
 
+struct NamedPacketField {
+  name:  String,
+  field: PacketField,
+}
+
+struct VersionedField {
+  name:          String,
+  version_names: HashMap<String, usize>,
+  versions:      Vec<(String, PacketField)>,
+}
+
 struct VersionedPacket {
   name:        String,
   field_names: HashMap<String, usize>,
-  fields:      Vec<(String, PacketField)>,
+  // Map of versions to fields
+  fields:      Vec<VersionedField>,
+}
+
+impl VersionedField {
+  fn new(ver: &str, name: String, field: PacketField) -> Self {
+    let mut version_names = HashMap::new();
+    version_names.insert(ver.to_string(), 0);
+    VersionedField { name, version_names, versions: vec![(ver.to_string(), field)] }
+  }
+  fn add_ver(&mut self, ver: &str, field: PacketField) {
+    self.version_names.insert(ver.to_string(), self.versions.len());
+    self.versions.push((ver.to_string(), field));
+  }
+  fn latest(&self) -> &PacketField {
+    &self.versions.last().unwrap().1
+  }
+  fn add_all(&self, out: &mut Vec<NamedPacketField>) {
+    if self.versions.len() == 1 {
+      let mut name = self.name.clone();
+      // Avoid keyword conflicts
+      if name == "type" {
+        name = "type_".to_string();
+      }
+      out.push(NamedPacketField { name, field: self.versions.first().unwrap().1.clone() });
+    } else {
+      for (ver, field) in &self.versions {
+        let mut name = self.name.clone();
+        name.push_str("_");
+        name.push_str(&ver.to_lowercase());
+        out.push(NamedPacketField { name, field: field.clone() });
+      }
+    }
+  }
 }
 
 impl VersionedPacket {
@@ -135,102 +179,71 @@ impl VersionedPacket {
   }
 
   fn add_version(&mut self, ver: &str, packet: Packet) {
-    for (name, mut field) in packet.fields {
+    for (name, field) in packet.fields {
       if let Some(&idx) = self.field_names.get(&name) {
-        let existing = &mut self.fields[idx].1;
-        if existing != &field {
-          existing.extend_to_fit(&packet.name, &name, &mut field);
+        let existing = &mut self.fields[idx];
+        if existing.latest() != &field {
+          existing.add_ver(ver, field);
         }
       } else {
         self.field_names.insert(name.clone(), self.fields.len());
-        self.fields.push((name, field));
+        self.fields.push(VersionedField::new(ver, name, field));
       }
     }
   }
 
+  fn fields(&self) -> Vec<NamedPacketField> {
+    let mut out = vec![];
+    for field in &self.fields {
+      field.add_all(&mut out);
+    }
+    out
+  }
+
   fn field_name_tys(&self) -> Vec<(String, String)> {
     let mut vals = vec![];
-    for (name, field) in &self.fields {
-      vals.push((self.convert_name(name).to_string(), field.ty_lit().to_string()));
+    for field in self.fields() {
+      vals.push((field.name.clone(), field.field.ty_lit().to_string()));
     }
     vals
   }
   fn field_tys(&self) -> Vec<TokenStream> {
     let mut tys = vec![];
-    for (_, field) in &self.fields {
-      tys.push(field.ty_lit());
+    for field in self.fields() {
+      tys.push(field.field.ty_lit());
     }
     tys
   }
   fn field_ty_enums(&self) -> Vec<TokenStream> {
     let mut tys = vec![];
-    for (_, field) in &self.fields {
-      tys.push(field.ty_enum());
+    for field in self.fields() {
+      tys.push(field.field.ty_enum());
     }
     tys
   }
   fn field_ty_keys(&self) -> Vec<TokenStream> {
     let mut tys = vec![];
-    for (_, field) in &self.fields {
-      tys.push(field.ty_key());
+    for field in self.fields() {
+      tys.push(field.field.ty_key());
     }
     tys
   }
   fn field_to_protos(&self) -> Vec<TokenStream> {
     let mut vals = vec![];
-    for (name, field) in &self.fields {
-      vals.push(field.generate_to_proto(self.convert_name(name)));
+    for field in self.fields() {
+      vals.push(field.field.generate_to_proto(&field.name));
     }
     vals
   }
   fn field_from_protos(&self) -> Vec<TokenStream> {
     let mut vals = vec![];
-    for (name, field) in &self.fields {
-      vals.push(field.generate_from_proto(self.convert_name(name)));
+    for field in self.fields() {
+      vals.push(field.field.generate_from_proto(&field.name));
     }
     vals
   }
   fn name(&self) -> &str {
     &self.name
-  }
-
-  fn convert_name<'a>(&self, name: &'a str) -> &'a str {
-    // Avoid keyword conflicts
-    if name == "type" {
-      "type_"
-    } else {
-      name
-    }
-  }
-}
-
-impl PacketField {
-  fn extend_to_fit(&mut self, packet_name: &str, field_name: &str, other: &mut PacketField) {
-    let valid_a = self.extend_to_fit_inner(other);
-    let valid_b = other.extend_to_fit_inner(self);
-    if !valid_a && !valid_b {
-      eprintln!(
-        "differing field types on packet `{}`, with field `{}` (got {:?} and {:?})",
-        packet_name, field_name, self, other
-      );
-    }
-  }
-
-  fn extend_to_fit_inner(&mut self, other: &mut PacketField) -> bool {
-    match self {
-      Self::Bool if other == &PacketField::Int(IntType::U8) => *other = PacketField::Bool,
-      Self::Int(IntType::VarInt) if other == &PacketField::Int(IntType::U8) => {
-        *other = PacketField::Int(IntType::VarInt)
-      }
-      Self::Int(IntType::VarInt) if other == &PacketField::Int(IntType::I8) => {
-        *other = PacketField::Int(IntType::VarInt)
-      }
-      Self::Int(IntType::I32) if other == &PacketField::Int(IntType::I8) => {
-        *other = PacketField::Int(IntType::I32)
-      }
-      _ => return false,
-    }
-    true
   }
 }
 
@@ -241,7 +254,17 @@ fn to_versioned(
   let mut to_client = HashMap::new();
   let mut to_server = HashMap::new();
 
-  for (version, v) in versions {
+  for (version, v) in versions.into_iter().sorted_by(|(ver_a, _), (ver_b, _)| {
+    let major_a: i32 = ver_a.split("_").nth(1).unwrap().parse().unwrap();
+    let major_b: i32 = ver_b.split("_").nth(1).unwrap().parse().unwrap();
+    if major_a == major_b {
+      let minor_a = ver_a.split("_").nth(2).map(|v| v.parse().unwrap()).unwrap_or(0); // for example, 1.15 is the same as 1.15.0
+      let minor_b = ver_b.split("_").nth(2).map(|v| v.parse().unwrap()).unwrap_or(0);
+      minor_a.cmp(&minor_b)
+    } else {
+      major_a.cmp(&major_b)
+    }
+  }) {
     for p in v.to_client {
       if !to_client.contains_key(&p.name) {
         to_client.insert(p.name.clone(), VersionedPacket::new(p.name.clone()));
