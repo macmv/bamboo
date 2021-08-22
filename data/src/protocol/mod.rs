@@ -259,7 +259,19 @@ fn to_versioned(
     }
     to_server.get_mut("Login").unwrap().add_version(
       &version,
-      Packet { name: "Login".into(), field_names: HashMap::new(), fields: vec![] },
+      Packet {
+        name:        "Login".into(),
+        field_names: [("username", 0), ("uuid", 1), ("ver", 2)]
+          .iter()
+          .cloned()
+          .map(|(k, v)| (k.to_string(), v))
+          .collect(),
+        fields:      vec![
+          ("username".into(), PacketField::String),
+          ("uuid".into(), PacketField::UUID),
+          ("ver".into(), PacketField::Int(IntType::I32)),
+        ],
+      },
     );
   }
   // This is a custom packet. It is a packet sent from the proxy to the server,
