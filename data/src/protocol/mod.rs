@@ -6,9 +6,7 @@ use itertools::Itertools;
 use proc_macro2::{Ident, Span, TokenStream};
 use quote::quote;
 use serde_derive::{Deserialize, Serialize};
-use std::{
-  collections::HashMap, error::Error, fmt::Write, fs, fs::File, io::Write as _, path::Path,
-};
+use std::{collections::HashMap, error::Error, fs, fs::File, io::Write, path::Path};
 
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq)]
 pub enum IntType {
@@ -178,10 +176,17 @@ impl VersionedPacket {
     }
     tys
   }
-  fn field_values(&self) -> Vec<TokenStream> {
+  fn field_to_protos(&self) -> Vec<TokenStream> {
     let mut vals = vec![];
     for (name, field) in &self.fields {
-      vals.push(field.generate_conversion(self.convert_name(name)));
+      vals.push(field.generate_to_proto(self.convert_name(name)));
+    }
+    vals
+  }
+  fn field_from_protos(&self) -> Vec<TokenStream> {
+    let mut vals = vec![];
+    for (name, field) in &self.fields {
+      vals.push(field.generate_from_proto(self.convert_name(name)));
     }
     vals
   }
@@ -473,7 +478,7 @@ impl PacketField {
       _ => quote!(byte_arr),
     }
   }
-  fn generate_conversion(&self, name: &str) -> TokenStream {
+  fn generate_to_proto(&self, name: &str) -> TokenStream {
     let name = Ident::new(name, Span::call_site());
     match self {
       Self::Bool => quote!(*#name),
@@ -504,19 +509,52 @@ impl PacketField {
       _ => quote!(#name.clone()),
     }
   }
+  fn generate_from_proto(&self, name: &str) -> TokenStream {
+    // let name = Ident::new(name, Span::call_site());
+    match self {
+      Self::Bool => quote!(pb.fields[#name].bool),
+      Self::Int(ity) => match ity {
+        IntType::I8 => quote!(pb.fields[#name].byte as i8),
+        IntType::U8 => quote!(pb.fields[#name].byte as u8),
+        IntType::I16 => quote!(pb.fields[#name].short as i16),
+        IntType::U16 => quote!(pb.fields[#name].short as u16),
+        IntType::I32 => quote!(pb.fields[#name].int),
+        IntType::I64 => quote!(pb.fields[#name].long as i64),
+        IntType::VarInt => quote!(pb.fields[#name].int),
+        IntType::OptVarInt => quote!(Some(pb.fields[#name].int)),
+      },
+      Self::Float(fty) => match fty {
+        FloatType::F32 => quote!(pb.fields[#name].float),
+        FloatType::F64 => quote!(pb.fields[#name].double),
+      },
+      Self::UUID => quote!(UUID::from_proto(pb.fields.remove(#name).unwrap().uuid.unwrap())),
+      Self::String => quote!(pb.fields.remove(#name).unwrap().str),
+      Self::Position => quote!(Pos::from_u64(pb.fields[#name].pos)),
+
+      // Self::NBT => quote!(#name.clone()),
+      // Self::OptionalNBT => quote!(#name.clone()),
+      // Self::RestBuffer => quote!(#name.clone()),
+      // Self::EntityMetadata => quote!(#name.clone()), // Implemented on the server
+
+      // Self::Option(field) => quote!(#name.unwrap()),
+      _ => quote!(pb.fields.remove(#name).unwrap().byte_arr),
+    }
+  }
 }
 
 fn generate_packets(packets: Vec<VersionedPacket>) -> Result<String, Box<dyn Error>> {
   let mut kinds = vec![];
   let mut id_opts = vec![];
   let mut to_proto_opts = vec![];
+  let mut from_proto_opts = vec![];
   for (id, packet) in packets.into_iter().enumerate() {
     let id = id as i32;
     let name = packet.name().to_case(Case::Pascal);
     let field_names = packet.field_name_tys();
     let field_ty_enums = packet.field_ty_enums();
     let field_ty_keys = packet.field_ty_keys();
-    let field_values = packet.field_values();
+    let field_to_protos = packet.field_to_protos();
+    let field_from_protos = packet.field_from_protos();
     let mut kind = String::new();
     kind.push_str(&name);
     kind.push_str(" {\n");
@@ -548,12 +586,12 @@ fn generate_packets(packets: Vec<VersionedPacket>) -> Result<String, Box<dyn Err
     }
     proto_opt.push_str(" } => {\n");
     proto_opt.push_str("        let mut fields = HashMap::new();\n");
-    for (i, (name, _)) in field_names.iter().enumerate() {
+    for (i, (field_name, _)) in field_names.iter().enumerate() {
       let ty_enum = &field_ty_enums[i];
       let ty_key = &field_ty_keys[i];
-      let val = &field_values[i];
+      let to_proto = &field_to_protos[i];
       proto_opt.push_str("        fields.insert(\"");
-      proto_opt.push_str(name);
+      proto_opt.push_str(field_name);
       proto_opt.push_str("\".to_string(), proto::PacketField {\n");
 
       proto_opt.push_str("          ty: Type::");
@@ -563,7 +601,7 @@ fn generate_packets(packets: Vec<VersionedPacket>) -> Result<String, Box<dyn Err
       proto_opt.push_str("          ");
       proto_opt.push_str(&ty_key.to_string());
       proto_opt.push_str(": ");
-      proto_opt.push_str(&val.to_string());
+      proto_opt.push_str(&to_proto.to_string());
       proto_opt.push_str(",\n");
 
       proto_opt.push_str("          ..Default::default()\n");
@@ -580,6 +618,26 @@ fn generate_packets(packets: Vec<VersionedPacket>) -> Result<String, Box<dyn Err
     proto_opt.push_str("        }\n");
     proto_opt.push_str("      }\n");
     to_proto_opts.push(proto_opt);
+
+    let mut proto_opt = String::new();
+    proto_opt.push_str(id.to_string().as_str());
+    proto_opt.push_str(" => Self::");
+    proto_opt.push_str(&name);
+    proto_opt.push_str(" {\n");
+    for (i, (field_name, _)) in field_names.iter().enumerate() {
+      let from_proto = &field_from_protos[i];
+      proto_opt.push_str("        ");
+      proto_opt.push_str(field_name);
+      proto_opt.push_str(": ");
+      proto_opt.push_str(&from_proto.to_string());
+      // proto_opt.push_str(": pb.fields[\"");
+      // proto_opt.push_str(field_name);
+      // proto_opt.push_str("\"].");
+      // proto_opt.push_str(&ty_key.to_string());
+      proto_opt.push_str(",\n");
+    }
+    proto_opt.push_str("      },\n");
+    from_proto_opts.push(proto_opt);
   }
   let mut out = String::new();
   out.push_str("use crate::{\n");
@@ -621,6 +679,16 @@ fn generate_packets(packets: Vec<VersionedPacket>) -> Result<String, Box<dyn Err
     out.push_str("      ");
     out.push_str(&opt);
   }
+  out.push_str("    }\n");
+  out.push_str("  }\n");
+  out.push_str("  /// Converts the given protobuf into a packet\n");
+  out.push_str("  pub fn from_proto(mut pb: proto::Packet) -> Self {\n");
+  out.push_str("    match pb.id {\n");
+  for opt in from_proto_opts {
+    out.push_str("      ");
+    out.push_str(&opt);
+  }
+  out.push_str("      _ => Self::None\n");
   out.push_str("    }\n");
   out.push_str("  }\n");
   out.push_str("}\n");
