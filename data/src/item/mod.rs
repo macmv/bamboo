@@ -7,8 +7,6 @@ use std::{
   collections::{HashMap, HashSet},
   error::Error,
   fs,
-  fs::File,
-  io::Write,
   path::Path,
 };
 
@@ -24,8 +22,9 @@ struct Item {
 
 // Generates all item data. Uses the set of valid block enum names to generate
 // the block to place for each item.
-pub fn generate(dir: &Path, blocks: HashSet<String>) -> Result<TokenStream, Box<dyn Error>> {
+pub fn generate(dir: &Path, blocks: HashSet<String>) -> Result<(), Box<dyn Error>> {
   let files = util::load_versions(dir, "items.json")?;
+  let dir = Path::new(dir).join("item");
 
   let mut versions = vec![];
   for f in files {
@@ -35,10 +34,10 @@ pub fn generate(dir: &Path, blocks: HashSet<String>) -> Result<TokenStream, Box<
 
   let mut kinds = vec![];
   for i in latest {
-    kinds.push(Ident::new(&i.name.to_case(Case::Pascal), Span::call_site()));
+    kinds.push(i.name.to_case(Case::Pascal));
   }
 
-  let mut add_items = vec![];
+  let mut item_gens = vec![];
   for i in latest {
     let name = i.name.to_case(Case::Pascal);
     let mut block = Ident::new(&name, Span::call_site());
@@ -47,27 +46,40 @@ pub fn generate(dir: &Path, blocks: HashSet<String>) -> Result<TokenStream, Box<
     }
     let display_name = i.display_name.clone();
     let stack_size = i.stack_size;
-    add_items.push(quote!(Data{
+    item_gens.push(quote!(Data{
       display_name: #display_name,
       stack_size: #stack_size,
       block_to_place: block::Kind::#block,
     }));
   }
 
-  let out = quote! {
-    /// Auto generated item type. This is directly generated
-    /// from prismarine data.
-    #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, FromPrimitive, ToPrimitive)]
-    pub enum Type {
-      #(#kinds),*
-    }
+  fs::create_dir_all(&dir)?;
 
-    /// Generates a table from all items to any metadata that type has. This
-    /// includes things like the display name, stack size, etc.
-    pub fn generate_items() -> Vec<Data> {
-      vec![#(#add_items),*]
-    }
-  };
+  let mut out = String::new();
+  out.push_str("/// Auto generated item type. This is directly generated\n");
+  out.push_str("/// from prismarine data.\n");
+  out.push_str("#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, FromPrimitive, ToPrimitive)]\n");
+  out.push_str("pub enum Type {\n");
+  for kind in &kinds {
+    out.push_str("  ");
+    out.push_str(kind);
+    out.push_str(",\n");
+  }
+  out.push_str("}\n");
+  out.push_str("\n");
+  out.push_str("/// Generates a table from all items to any metadata that type has. This\n");
+  out.push_str("/// includes things like the display name, stack size, etc.\n");
+  out.push_str("pub fn generate_items() -> &'static [Data] {\n");
+  out.push_str("  &[\n");
+  for gen in &item_gens {
+    out.push_str("    ");
+    out.push_str(&gen.to_string());
+    out.push_str(",\n");
+  }
+  out.push_str("  ]\n");
+  out.push_str("}\n");
+
+  fs::write(dir.join("ty.rs"), out)?;
   // {
   //   // Generates the cross-versioning data
   //   //
@@ -91,7 +103,7 @@ pub fn generate(dir: &Path, blocks: HashSet<String>) -> Result<TokenStream, Box<
   // arr[i].to_string()).collect::<Vec<String>>().join(",")     )?;
   //   }
   // }
-  Ok(out)
+  Ok(())
 }
 
 fn load_data(data: &str) -> Result<Vec<Item>, Box<dyn Error>> {

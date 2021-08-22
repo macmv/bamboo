@@ -102,8 +102,8 @@ impl Connection {
           player.lock_inventory().set_selected(slot_id.try_into().unwrap());
         }
         sb::Packet::BlockPlace {
-          location,
-          direction,
+          mut location,
+          mut direction,
           hand,
           cursor_x,
           cursor_y,

@@ -22,7 +22,7 @@ struct Entity {
 }
 
 // Generates all entity data.
-pub fn generate(dir: &Path) -> Result<TokenStream, Box<dyn Error>> {
+pub fn generate(dir: &Path) -> Result<(), Box<dyn Error>> {
   let files = util::load_versions(dir, "entities.json")?;
   let dir = Path::new(dir).join("entity");
 
@@ -34,7 +34,7 @@ pub fn generate(dir: &Path) -> Result<TokenStream, Box<dyn Error>> {
 
   let mut kinds = vec![];
   for e in latest {
-    kinds.push(Ident::new(&e.name.to_case(Case::Pascal), Span::call_site()));
+    kinds.push(e.name.to_case(Case::Pascal));
   }
 
   let mut entity_gen = vec![];
@@ -51,23 +51,36 @@ pub fn generate(dir: &Path) -> Result<TokenStream, Box<dyn Error>> {
     ));
   }
 
-  let out = quote! {
+  fs::create_dir_all(&dir)?;
 
-    /// Auto generated entity type. This is directly generated
-    /// from prismarine data.
-    #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, FromPrimitive, ToPrimitive)]
-    pub enum Type {
-      #(#kinds,)*
-      // Must be last, so that ToPrimitive and FromPrimitive work correctly
-      None,
-    }
+  let mut out = String::new();
 
-    /// Generates a table from all items to any metadata that type has. This
-    /// includes things like the display name, stack size, etc.
-    pub fn generate_entities() -> Vec<Data> {
-      vec![#(#entity_gen),*]
-    }
-  };
+  out.push_str("/// Auto generated entity type. This is directly generated\n");
+  out.push_str("/// from prismarine data.\n");
+  out.push_str("#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, FromPrimitive, ToPrimitive)]\n");
+  out.push_str("pub enum Type {\n");
+  for kind in &kinds {
+    out.push_str("  ");
+    out.push_str(kind);
+    out.push_str(",\n");
+  }
+  out.push_str("  // Must be last, so that ToPrimitive and FromPrimitive work correctly\n");
+  out.push_str("  None,\n");
+  out.push_str("}\n");
+  out.push_str("\n");
+  out.push_str("/// Generates a table from all items to any metadata that type has. This\n");
+  out.push_str("/// includes things like the display name, stack size, etc.\n");
+  out.push_str("pub fn generate_entities() -> &'static [Data] {\n");
+  out.push_str("  &[\n");
+  for gen in &entity_gen {
+    out.push_str("    ");
+    out.push_str(&gen.to_string());
+    out.push_str(",\n");
+  }
+  out.push_str("  ]\n");
+  out.push_str("}\n");
+
+  fs::write(dir.join("ty.rs"), out)?;
   // {
   //   // Generates the cross-versioning data
   //   //
@@ -91,7 +104,7 @@ pub fn generate(dir: &Path) -> Result<TokenStream, Box<dyn Error>> {
   // arr[i].to_string()).collect::<Vec<String>>().join(",")     )?;
   //   }
   // }
-  Ok(out)
+  Ok(())
 }
 
 fn load_data(data: &str) -> Result<Vec<Entity>, Box<dyn Error>> {

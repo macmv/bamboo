@@ -23,7 +23,7 @@ impl Data {
 }
 
 // Creates the type enum, and the generate_data function
-data::generate_items!();
+include!(concat!(env!("OUT_DIR"), "/item/ty.rs"));
 
 impl Type {
   /// Returns the kind as a u32. Should only be used to index into the

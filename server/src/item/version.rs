@@ -8,7 +8,7 @@ use common::version::BlockVersion;
 /// versions. This is much simpler than block conversion, as there are not
 /// multiple states.
 pub struct TypeConverter {
-  types:    Vec<Data>,
+  types:    &'static [Data],
   versions: Vec<Version>,
 }
 

@@ -1,7 +1,7 @@
 use num_derive::{FromPrimitive, ToPrimitive};
 
 // Creates the Type enum, and the generate_entities function.
-data::generate_entities!();
+include!(concat!(env!("OUT_DIR"), "/entity/ty.rs"));
 
 /// Any data specific to an entity.
 #[derive(Debug)]
