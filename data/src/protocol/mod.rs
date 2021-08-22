@@ -131,6 +131,95 @@ pub struct Version {
   pub to_server: Vec<Packet>,
 }
 
+struct VersionedPacket {
+  name:     String,
+  versions: Vec<Option<Packet>>,
+}
+
+impl VersionedPacket {
+  fn new(name: String) -> Self {
+    VersionedPacket { name, versions: vec![] }
+  }
+
+  fn add_version(&mut self, ver: &str, packet: Packet) {}
+
+  fn field_names(&self) -> Vec<Ident> {
+    let mut names = vec![];
+    for p in &self.versions {
+      if let Some(p) = p {
+        for (name, _) in &p.fields {
+          let mut name = name.to_string();
+          // Avoid keyword conflicts
+          if name == "type" {
+            name = "type_".to_string();
+          }
+          names.push(Ident::new(&name, Span::call_site()));
+        }
+      }
+    }
+    names
+  }
+  fn field_tys(&self) -> Vec<TokenStream> {
+    let mut tys = vec![];
+    for p in &self.versions {
+      if let Some(p) = p {
+        for (_, val) in &p.fields {
+          tys.push(val.to_tokens());
+        }
+      }
+    }
+    tys
+  }
+  fn name(&self) -> &str {
+    &self.name
+  }
+}
+
+fn to_versioned(
+  versions: HashMap<String, Version>,
+) -> (Vec<VersionedPacket>, Vec<VersionedPacket>) {
+  // Generates the packet id enum, for clientbound and serverbound packets
+  let mut to_client = HashMap::new();
+  let mut to_server = HashMap::new();
+
+  for (version, v) in versions {
+    for p in v.to_client {
+      if !to_client.contains_key(&p.name) {
+        to_client.insert(p.name.clone(), VersionedPacket::new(p.name.clone()));
+      }
+      to_client.get_mut(&p.name).unwrap().add_version(&version, p);
+    }
+    for p in v.to_server {
+      if !to_server.contains_key(&p.name) {
+        to_server.insert(p.name.clone(), VersionedPacket::new(p.name.clone()));
+      }
+      to_server.get_mut(&p.name).unwrap().add_version(&version, p);
+    }
+    if !to_server.contains_key("Login") {
+      to_server.insert("Login".into(), VersionedPacket::new("Login".into()));
+    }
+    to_server.get_mut("Login").unwrap().add_version(
+      &version,
+      Packet { name: "Login".into(), field_names: HashMap::new(), fields: vec![] },
+    );
+  }
+  // This is a custom packet. It is a packet sent from the proxy to the server,
+  // which is used to authenticate the player.
+
+  let to_client: Vec<VersionedPacket> = to_client
+    .into_iter()
+    .sorted_by(|(name_a, _), (name_b, _)| name_a.cmp(name_b))
+    .map(|(_, packet)| packet)
+    .collect();
+  let to_server: Vec<VersionedPacket> = to_server
+    .into_iter()
+    .sorted_by(|(name_a, _), (name_b, _)| name_a.cmp(name_b))
+    .map(|(_, packet)| packet)
+    .collect();
+
+  (to_client, to_server)
+}
+
 pub fn generate(dir: &Path) -> Result<TokenStream, Box<dyn Error>> {
   let prismarine_path = dir.join("prismarine-data");
   let dir = dir.join("protocol");
@@ -147,41 +236,9 @@ pub fn generate(dir: &Path) -> Result<TokenStream, Box<dyn Error>> {
     writeln!(f, "{}", serde_json::to_string(&versions)?)?;
   }
   {
-    // Generates the packet id enum, for clientbound and serverbound packets
-    let mut to_client = HashMap::new();
-    let mut to_server = HashMap::new();
-
-    for (_, v) in versions {
-      for p in v.to_client {
-        if !to_client.contains_key(&p.name) {
-          to_client.insert(p.name.clone(), HashMap::new());
-        }
-        let fields = to_client.get_mut(&p.name).unwrap();
-        for (name, field) in &p.fields {
-          fields.insert(name.to_string(), field.clone());
-        }
-      }
-      for p in v.to_server {
-        if !to_server.contains_key(&p.name) {
-          to_server.insert(p.name.clone(), HashMap::new());
-        }
-        let fields = to_server.get_mut(&p.name).unwrap();
-        for (name, field) in &p.fields {
-          fields.insert(name.to_string(), field.clone());
-        }
-      }
-    }
-    // This is a custom packet. It is a packet sent from the proxy to the server,
-    // which is used to authenticate the player.
-    to_server.insert("Login".into(), HashMap::new());
-
-    let to_client: Vec<(String, HashMap<String, PacketField>)> =
-      to_client.into_iter().sorted_by(|(name_a, _), (name_b, _)| name_a.cmp(name_b)).collect();
-    let to_server: Vec<(String, HashMap<String, PacketField>)> =
-      to_server.into_iter().sorted_by(|(name_a, _), (name_b, _)| name_a.cmp(name_b)).collect();
-
-    let to_client = generate_packets(&to_client)?;
-    let to_server = generate_packets(&to_server)?;
+    let (to_client, to_server) = to_versioned(versions);
+    let to_client = generate_packets(to_client)?;
+    let to_server = generate_packets(to_server)?;
 
     // The include! trick is a terrible hack. It just lets met define both the enums
     // in one macro call, which allows for faster compilation.
@@ -274,25 +331,14 @@ impl PacketField {
   }
 }
 
-pub fn generate_packets(
-  packets: &[(String, HashMap<String, PacketField>)],
-) -> Result<TokenStream, Box<dyn Error>> {
+fn generate_packets(packets: Vec<VersionedPacket>) -> Result<TokenStream, Box<dyn Error>> {
   let mut kinds = vec![];
   let mut to_proto_opts = vec![];
   let mut id_opts = vec![];
-  for (id, (n, fields)) in packets.into_iter().enumerate() {
-    let name = Ident::new(&n.to_case(Case::Pascal), Span::call_site());
-    let mut field_names = vec![];
-    let mut field_tys = vec![];
-    for (field_name, field_val) in fields {
-      let mut field_name = field_name.to_string();
-      // Avoid keyword conflicts
-      if field_name == "type" {
-        field_name = "type_".to_string();
-      }
-      field_names.push(Ident::new(&field_name, Span::call_site()));
-      field_tys.push(field_val.to_tokens());
-    }
+  for (id, packet) in packets.into_iter().enumerate() {
+    let name = Ident::new(&packet.name().to_case(Case::Pascal), Span::call_site());
+    let field_names = packet.field_names();
+    let field_tys = packet.field_tys();
     kinds.push(quote! {
       #name {
         #(#field_names: #field_tys),*
@@ -310,10 +356,10 @@ pub fn generate_packets(
       Self::#name { .. } => { #id }
     });
   }
-  let mut names = vec![];
-  for (n, _) in packets {
-    names.push(n);
-  }
+  // let mut names = vec![];
+  // for (n, _) in packets {
+  //   names.push(n);
+  // }
   let out = quote! {
     use num_derive::ToPrimitive;
     use crate::{
