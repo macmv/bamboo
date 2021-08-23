@@ -5,7 +5,7 @@ use common::{
 // use data::protocol::{CountType, FloatType, IntType, PacketField};
 use std::{collections::HashMap, io};
 
-use super::PacketVersion;
+// use super::PacketVersion;
 
 // mod utils;
 // mod v1_10;
@@ -43,14 +43,13 @@ impl PacketSpec {
 
 pub(super) struct Generator {
   // gens:          HashMap<ProtocolVersion, PacketSpec>,
-  versions:      HashMap<ProtocolVersion, PacketVersion>,
-  same_versions: HashMap<ProtocolVersion, ProtocolVersion>,
+// versions:      HashMap<ProtocolVersion, PacketVersion>,
+// same_versions: HashMap<ProtocolVersion, ProtocolVersion>,
 }
 
 impl Generator {
-  pub fn new(
-    versions: HashMap<ProtocolVersion, PacketVersion>,
-    same_versions: HashMap<ProtocolVersion, ProtocolVersion>,
+  pub fn new(// versions: HashMap<ProtocolVersion, PacketVersion>,
+    // same_versions: HashMap<ProtocolVersion, ProtocolVersion>,
   ) -> Generator {
     // let mut gens = HashMap::new();
     // gens.insert(ProtocolVersion::V1_8, v1_8::gen_spec());
@@ -63,7 +62,7 @@ impl Generator {
     // gens.insert(ProtocolVersion::V1_16_2, v1_16::gen_spec());
     // gens.insert(ProtocolVersion::V1_17, v1_17::gen_spec());
     // Generator { gens, versions, same_versions }
-    Generator { versions, same_versions }
+    Generator {}
   }
 
   // fn get_ver(&self, v: ProtocolVersion) -> &PacketVersion {

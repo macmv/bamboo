@@ -5,19 +5,19 @@ use common::{
 // use data::protocol::{FloatType, IntType, PacketField};
 use std::{collections::HashMap, io};
 
-use super::PacketVersion;
+// use super::PacketVersion;
 
 pub(super) struct Generator {
-  versions:      HashMap<ProtocolVersion, PacketVersion>,
-  same_versions: HashMap<ProtocolVersion, ProtocolVersion>,
+  // versions:      HashMap<ProtocolVersion, PacketVersion>,
+// same_versions: HashMap<ProtocolVersion, ProtocolVersion>,
 }
 
 impl Generator {
-  pub fn new(
-    versions: HashMap<ProtocolVersion, PacketVersion>,
-    same_versions: HashMap<ProtocolVersion, ProtocolVersion>,
+  pub fn new(// versions: HashMap<ProtocolVersion, PacketVersion>,
+    // same_versions: HashMap<ProtocolVersion, ProtocolVersion>,
   ) -> Generator {
-    Generator { versions, same_versions }
+    // Generator { versions, same_versions }
+    Generator {}
   }
 
   // fn get_ver(&self, v: ProtocolVersion) -> &PacketVersion {
@@ -28,6 +28,7 @@ impl Generator {
   // }
 
   pub fn convert(&self, v: ProtocolVersion, mut p: tcp::Packet) -> io::Result<sb::Packet> {
+    Ok(sb::Packet::from_tcp(p, v))
     /*
     let ver = &self.get_ver(v);
     // let types = &ver.types;
