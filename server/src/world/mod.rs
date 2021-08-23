@@ -182,7 +182,12 @@ impl World {
       // Do player collision and packets and stuff
       // Once per second, send keep alive packet
       if tick % 20 == 0 {
-        conn.send(cb::Packet::KeepAlive { keep_alive_id: 1234556 }).await;
+        conn
+          .send(cb::Packet::KeepAlive {
+            keep_alive_id_v1_8:    1234556,
+            keep_alive_id_v1_12_2: 1234556,
+          })
+          .await;
       }
       tick += 1;
       self.mspt.fetch_add(start.elapsed().as_millis().try_into().unwrap(), Ordering::SeqCst);
@@ -260,11 +265,13 @@ impl World {
       x:               pos.x(),
       z:               pos.z(),
       ground_up:       true,
-      bit_map:         0,
+      bit_map_v1_8:    0,
+      bit_map_v1_9:    0,
       chunk_data:      vec![],
       block_entities:  vec![],
       heightmaps:      NBT::empty("").serialize(),
-      biomes:          vec![],
+      biomes_v1_15:    vec![],
+      biomes_v1_16_2:  vec![],
       ignore_old_data: false,
     };
     // self.chunk(pos, |c| {

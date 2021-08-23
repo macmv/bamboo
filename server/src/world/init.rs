@@ -125,16 +125,18 @@ impl World {
       ]),
     );
     let out = cb::Packet::Login {
-      entity_id:          self.eid(),
-      game_mode:          1, // Creative
-      difficulty:         1, // Normal
+      entity_id:           self.eid(),
+      game_mode:           1, // Creative
+      difficulty:          1, // Normal
       // if player.ver() < ProtocolVersion::V1_16 {
       //   out.set_byte("dimension", 0); // Overworld
       // }
-      dimension:          0, // Overworld
-      level_type:         "default".into(),
-      max_players:        0,     // Ignored
-      reduced_debug_info: false, // Don't reduce debug info
+      dimension_v1_8:      0, // Overworld
+      dimension_v1_9_2:    0, // Overworld
+      level_type:          "default".into(),
+      max_players_v1_8:    0,     // Ignored
+      max_players_v1_16_2: 0,     // Not sure if ignored
+      reduced_debug_info:  false, // Don't reduce debug info
 
       // 1.13+
       view_distance: 10, // 10 chunk view distance TODO: Per player view distance
@@ -151,7 +153,8 @@ impl World {
       is_debug:           false, /* This is not reduced_debug_info, this is for the world being
                                   * a debug world */
       dimension_codec:    codec.serialize(),
-      // dimension:          "".to_string(),
+      dimension_v1_16:    "".into(),
+      dimension_v1_16_2:  vec![],
       // dimension: NBT::new("", dimension).serialize(),
       // world_names:        vec!["minecraft:overworld".into()],
       world_names:        vec![],
@@ -223,9 +226,12 @@ impl World {
         .send(cb::Packet::NamedEntitySpawn {
           entity_id:    player.eid(),
           player_uuid:  player.id(),
-          x:            pos.x(),
-          y:            pos.y(),
-          z:            pos.z(),
+          x_v1_8:       pos.fixed_x(),
+          x_v1_9:       pos.x(),
+          y_v1_8:       pos.fixed_y(),
+          y_v1_9:       pos.y(),
+          z_v1_8:       pos.fixed_z(),
+          z_v1_9:       pos.z(),
           yaw:          yaw as i8, // TODO: Fix doubles/bytes on 1.8
           pitch:        pitch as i8,
           current_item: 0,
@@ -248,9 +254,12 @@ impl World {
       spawn_packets.push(cb::Packet::NamedEntitySpawn {
         entity_id:    other.eid(),
         player_uuid:  other.id(),
-        x:            pos.x(),
-        y:            pos.y(),
-        z:            pos.z(),
+        x_v1_8:       pos.fixed_x(),
+        x_v1_9:       pos.x(),
+        y_v1_8:       pos.fixed_y(),
+        y_v1_9:       pos.y(),
+        z_v1_8:       pos.fixed_z(),
+        z_v1_9:       pos.z(),
         yaw:          yaw as i8,
         pitch:        pitch as i8,
         current_item: 0,

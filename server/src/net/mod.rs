@@ -103,18 +103,24 @@ impl Connection {
         }
         sb::Packet::BlockPlace {
           mut location,
-          mut direction,
+          direction_v1_8,
+          direction_v1_9,
           hand,
-          cursor_x,
-          cursor_y,
-          cursor_z,
+          cursor_x_v1_8,
+          cursor_x_v1_11,
+          cursor_y_v1_8,
+          cursor_y_v1_11,
+          cursor_z_v1_8,
+          cursor_z_v1_11,
           inside_block,
           held_item,
         } => {
-          if player.ver() == ProtocolVersion::V1_8 {
-            // 1.8 clients send this as a byte, and it needs to stay signed correctly
-            direction = (direction as i8).into()
-          }
+          let direction: i32 = if player.ver() == ProtocolVersion::V1_8 {
+            // direction_v1_8 is an i8 (not a u8), so the sign stays correct
+            direction_v1_8.into()
+          } else {
+            direction_v1_9
+          };
 
           if location == Pos::new(-1, -1, -1) && direction == -1 {
             // Client is eating, or head is inside block

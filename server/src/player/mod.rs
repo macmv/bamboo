@@ -279,28 +279,28 @@ impl Player {
           pitch = 0;
         }
         if pos_changed {
-          let d_x;
-          let d_y;
-          let d_z;
+          let mut d_x_v1_8 = 0;
+          let mut d_x_v1_9 = 0;
+          let mut d_y_v1_8 = 0;
+          let mut d_y_v1_9 = 0;
+          let mut d_z_v1_8 = 0;
+          let mut d_z_v1_9 = 0;
           let mut dx = pos.curr.x() - pos.prev.x();
           let mut dy = pos.curr.y() - pos.prev.y();
           let mut dz = pos.curr.z() - pos.prev.z();
-          let abs_pos = if other.ver() == ProtocolVersion::V1_8 {
+          let abs_pos;
+          if other.ver() == ProtocolVersion::V1_8 {
             dx *= 32.0;
             dy *= 32.0;
             dz *= 32.0;
             if dx.abs() > i8::MAX.into() || dy.abs() > i8::MAX.into() || dz.abs() > i8::MAX.into() {
-              // Compiler cannot figure out that we will never use these
-              d_x = 0;
-              d_y = 0;
-              d_z = 0;
-              true
+              abs_pos = true;
             } else {
               // As truncates any negative floats to 0, but just copies the bits for i8 -> u8
-              d_x = (dx.round() as i8 as u8).into();
-              d_y = (dy.round() as i8 as u8).into();
-              d_z = (dz.round() as i8 as u8).into();
-              false
+              d_x_v1_8 = dx.round() as i8;
+              d_y_v1_8 = dy.round() as i8;
+              d_z_v1_8 = dz.round() as i8;
+              abs_pos = false;
             }
           } else {
             dx *= 4096.0;
@@ -312,16 +312,12 @@ impl Player {
               || dy.abs() > i16::MAX.into()
               || dz.abs() > i16::MAX.into()
             {
-              // Compiler cannot figure out that we will never use these
-              d_x = 0;
-              d_y = 0;
-              d_z = 0;
-              true
+              abs_pos = true;
             } else {
-              d_x = dx.round() as i16;
-              d_y = dy.round() as i16;
-              d_z = dz.round() as i16;
-              false
+              d_x_v1_9 = dx.round() as i16;
+              d_y_v1_9 = dy.round() as i16;
+              d_z_v1_9 = dz.round() as i16;
+              abs_pos = false;
             }
           };
           if abs_pos {
@@ -339,9 +335,12 @@ impl Player {
               .conn()
               .send(cb::Packet::EntityTeleport {
                 entity_id: self.eid,
-                x: pos.curr.x(),
-                y: pos.curr.y(),
-                z: pos.curr.z(),
+                x_v1_8: pos.curr.fixed_x(),
+                x_v1_9: pos.curr.x(),
+                y_v1_8: pos.curr.fixed_y(),
+                y_v1_9: pos.curr.y(),
+                z_v1_8: pos.curr.fixed_z(),
+                z_v1_9: pos.curr.z(),
                 yaw,
                 pitch,
                 on_ground,
@@ -354,9 +353,12 @@ impl Player {
                 .conn()
                 .send(cb::Packet::EntityMoveLook {
                   entity_id: self.eid,
-                  d_x,
-                  d_y,
-                  d_z,
+                  d_x_v1_8,
+                  d_x_v1_9,
+                  d_y_v1_8,
+                  d_y_v1_9,
+                  d_z_v1_8,
+                  d_z_v1_9,
                   yaw,
                   pitch,
                   on_ground,
@@ -365,9 +367,12 @@ impl Player {
             } else {
               other.conn().send(cb::Packet::RelEntityMove {
                 entity_id: self.eid,
-                d_x,
-                d_y,
-                d_z,
+                d_x_v1_8,
+                d_x_v1_9,
+                d_y_v1_8,
+                d_y_v1_9,
+                d_z_v1_8,
+                d_z_v1_9,
                 on_ground,
               });
             }

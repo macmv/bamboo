@@ -59,6 +59,27 @@ impl FPos {
   pub fn z(&self) -> f64 {
     self.z
   }
+  /// Returns the X value of the position, as a fixed precision float. This is
+  /// the X position multiplied by 32. It is how position packets are sent on
+  /// 1.8.
+  #[inline(always)]
+  pub fn fixed_x(&self) -> i32 {
+    (self.x * 32.0) as i32
+  }
+  /// Returns the Y value of the position, as a fixed precision float. This is
+  /// the Y position multiplied by 32. It is how position packets are sent on
+  /// 1.8.
+  #[inline(always)]
+  pub fn fixed_y(&self) -> i32 {
+    (self.y * 32.0) as i32
+  }
+  /// Returns the Z value of the position, as a fixed precision float. This is
+  /// the Z position multiplied by 32. It is how position packets are sent on
+  /// 1.8.
+  #[inline(always)]
+  pub fn fixed_z(&self) -> i32 {
+    (self.z * 32.0) as i32
+  }
   /// Returns the block that this position is in.
   #[inline(always)]
   pub fn block(&self) -> Pos {
