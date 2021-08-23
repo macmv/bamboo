@@ -907,20 +907,54 @@ fn generate_packets(
 
     let mut proto_opt = String::new();
     proto_opt.push_str(id.to_string().as_str());
-    proto_opt.push_str(" => Self::");
-    proto_opt.push_str(&name);
-    proto_opt.push_str(" {\n");
-    for (i, (field_name, _)) in field_names.iter().enumerate() {
-      let from_proto = &field_from_protos[i];
-      proto_opt.push_str("        ");
-      proto_opt.push_str(field_name);
-      proto_opt.push_str(": ");
-      proto_opt.push_str(&from_proto.to_string());
-      // proto_opt.push_str(": pb.fields[\"");
-      // proto_opt.push_str(field_name);
-      // proto_opt.push_str("\"].");
-      // proto_opt.push_str(&ty_key.to_string());
-      proto_opt.push_str(",\n");
+    proto_opt.push_str(" => ");
+    if packet.has_multiple_versions() {
+      for ver in packet.all_versions() {
+        proto_opt.push_str("if version >= ProtocolVersion::");
+        proto_opt.push_str(&ver.to_string().to_uppercase());
+        proto_opt.push_str(" {\n");
+        proto_opt.push_str("        Self::");
+        proto_opt.push_str(&name);
+        proto_opt.push_str(" {\n");
+        for (i, (is_ver, multi_versioned, field_name, _)) in
+          packet.all_field_names_ver(ver).iter().enumerate()
+        {
+          proto_opt.push_str("          ");
+          proto_opt.push_str(field_name);
+          proto_opt.push_str(": ");
+          if *is_ver {
+            let from_proto = &field_from_protos[i];
+            if *multi_versioned {
+              proto_opt.push_str("Some(");
+              proto_opt.push_str(&from_proto.to_string());
+              proto_opt.push_str(")");
+            } else {
+              proto_opt.push_str(&from_proto.to_string());
+            }
+          } else {
+            proto_opt.push_str("None");
+          }
+          proto_opt.push_str(",\n");
+        }
+        proto_opt.push_str("        }\n");
+        proto_opt.push_str("      } else ");
+      }
+      proto_opt.push_str("{\n");
+      proto_opt.push_str("        unreachable!(\"failed to parse proto for packet ");
+      proto_opt.push_str(&packet.name);
+      proto_opt.push_str(" with version {:?}\", version)\n");
+    } else {
+      proto_opt.push_str("Self::");
+      proto_opt.push_str(&name);
+      proto_opt.push_str(" {\n");
+      for (i, (field_name, _)) in field_names.iter().enumerate() {
+        let from_proto = &field_from_protos[i];
+        proto_opt.push_str("        ");
+        proto_opt.push_str(field_name);
+        proto_opt.push_str(": ");
+        proto_opt.push_str(&from_proto.to_string());
+        proto_opt.push_str(",\n");
+      }
     }
     proto_opt.push_str("      },\n");
     from_proto_opts.push(proto_opt);
@@ -1065,7 +1099,7 @@ fn generate_packets(
   out.push_str("\n");
 
   out.push_str("  /// Converts self into a protobuf\n");
-  out.push_str("  pub fn to_proto(&self) -> proto::Packet {\n");
+  out.push_str("  pub fn to_proto(&self, version: ProtocolVersion) -> proto::Packet {\n");
   out.push_str("    match self {\n");
   out.push_str("      Self::None => panic!(\"cannot convert None packet to protobuf\"),\n");
   for opt in to_proto_opts {
@@ -1075,7 +1109,7 @@ fn generate_packets(
   out.push_str("    }\n");
   out.push_str("  }\n");
   out.push_str("  /// Converts the given protobuf into a packet\n");
-  out.push_str("  pub fn from_proto(mut pb: proto::Packet) -> Self {\n");
+  out.push_str("  pub fn from_proto(mut pb: proto::Packet, version: ProtocolVersion) -> Self {\n");
   out.push_str("    match pb.id {\n");
   for opt in from_proto_opts {
     out.push_str("      ");
