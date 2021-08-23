@@ -184,8 +184,8 @@ impl World {
       if tick % 20 == 0 {
         conn
           .send(cb::Packet::KeepAlive {
-            keep_alive_id_v1_8:    1234556,
-            keep_alive_id_v1_12_2: 1234556,
+            keep_alive_id_v1_8:    Some(1234556),
+            keep_alive_id_v1_12_2: Some(1234556),
           })
           .await;
       }
@@ -265,13 +265,13 @@ impl World {
       x:               pos.x(),
       z:               pos.z(),
       ground_up:       true,
-      bit_map_v1_8:    0,
-      bit_map_v1_9:    0,
+      bit_map_v1_8:    Some(0),
+      bit_map_v1_9:    Some(0),
       chunk_data:      vec![],
       block_entities:  vec![],
       heightmaps:      NBT::empty("").serialize(),
-      biomes_v1_15:    vec![],
-      biomes_v1_16_2:  vec![],
+      biomes_v1_15:    Some(vec![]),
+      biomes_v1_16_2:  Some(vec![]),
       ignore_old_data: false,
     };
     // self.chunk(pos, |c| {
@@ -390,11 +390,18 @@ impl WorldManager {
   /// Adds a new player into the game. This should be called when a new grpc
   /// proxy connects.
   pub async fn new_player(&self, req: Streaming<Packet>, tx: Sender<Result<Packet, Status>>) {
-    let conn = Arc::new(Connection::new(req, tx));
+    let mut conn = Connection::new(req, tx);
     let (username, uuid, ver) = conn.wait_for_login().await;
     let w = self.worlds.lock().await[0].clone();
-    let player =
-      Player::new(w.eid(), username, uuid, conn, ver, w.clone(), FPos::new(0.0, 60.0, 0.0));
+    let player = Player::new(
+      w.eid(),
+      username,
+      uuid,
+      Arc::new(conn),
+      ver,
+      w.clone(),
+      FPos::new(0.0, 60.0, 0.0),
+    );
     w.new_player(player).await;
   }
 }

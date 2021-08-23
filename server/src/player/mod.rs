@@ -335,12 +335,12 @@ impl Player {
               .conn()
               .send(cb::Packet::EntityTeleport {
                 entity_id: self.eid,
-                x_v1_8: pos.curr.fixed_x(),
-                x_v1_9: pos.curr.x(),
-                y_v1_8: pos.curr.fixed_y(),
-                y_v1_9: pos.curr.y(),
-                z_v1_8: pos.curr.fixed_z(),
-                z_v1_9: pos.curr.z(),
+                x_v1_8: Some(pos.curr.fixed_x()),
+                x_v1_9: Some(pos.curr.x()),
+                y_v1_8: Some(pos.curr.fixed_y()),
+                y_v1_9: Some(pos.curr.y()),
+                z_v1_8: Some(pos.curr.fixed_z()),
+                z_v1_9: Some(pos.curr.z()),
                 yaw,
                 pitch,
                 on_ground,
@@ -353,33 +353,39 @@ impl Player {
                 .conn()
                 .send(cb::Packet::EntityMoveLook {
                   entity_id: self.eid,
-                  d_x_v1_8,
-                  d_x_v1_9,
-                  d_y_v1_8,
-                  d_y_v1_9,
-                  d_z_v1_8,
-                  d_z_v1_9,
+                  d_x_v1_8: Some(d_x_v1_8),
+                  d_x_v1_9: Some(d_x_v1_9),
+                  d_y_v1_8: Some(d_y_v1_8),
+                  d_y_v1_9: Some(d_y_v1_9),
+                  d_z_v1_8: Some(d_z_v1_8),
+                  d_z_v1_9: Some(d_z_v1_9),
                   yaw,
                   pitch,
                   on_ground,
                 })
                 .await;
             } else {
-              other.conn().send(cb::Packet::RelEntityMove {
-                entity_id: self.eid,
-                d_x_v1_8,
-                d_x_v1_9,
-                d_y_v1_8,
-                d_y_v1_9,
-                d_z_v1_8,
-                d_z_v1_9,
-                on_ground,
-              });
+              other
+                .conn()
+                .send(cb::Packet::RelEntityMove {
+                  entity_id: self.eid,
+                  d_x_v1_8: Some(d_x_v1_8),
+                  d_x_v1_9: Some(d_x_v1_9),
+                  d_y_v1_8: Some(d_y_v1_8),
+                  d_y_v1_9: Some(d_y_v1_9),
+                  d_z_v1_8: Some(d_z_v1_8),
+                  d_z_v1_9: Some(d_z_v1_9),
+                  on_ground,
+                })
+                .await;
             }
           }
         } else {
           // Pos changed is false, so look_changed must be true
-          other.conn().send(cb::Packet::EntityLook { entity_id: self.eid, yaw, pitch, on_ground });
+          other
+            .conn()
+            .send(cb::Packet::EntityLook { entity_id: self.eid, yaw, pitch, on_ground })
+            .await;
         }
       }
     }

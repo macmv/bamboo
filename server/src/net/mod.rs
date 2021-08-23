@@ -24,6 +24,7 @@ use crate::{block, player::Player, world::WorldManager};
 pub struct Connection {
   rx:     Mutex<Streaming<proto::Packet>>,
   tx:     Sender<Result<proto::Packet, Status>>,
+  ver:    Option<ProtocolVersion>,
   closed: AtomicBool,
 }
 
@@ -32,19 +33,24 @@ impl Connection {
     rx: Streaming<proto::Packet>,
     tx: Sender<Result<proto::Packet, Status>>,
   ) -> Self {
-    Connection { rx: Mutex::new(rx), tx, closed: false.into() }
+    Connection { rx: Mutex::new(rx), tx, ver: None, closed: false.into() }
   }
 
   /// This waits for the a login packet from the proxy. If any other packet is
   /// recieved, this will panic. This should only be called right after a
   /// connection is created.
-  pub(crate) async fn wait_for_login(&self) -> (String, UUID, ProtocolVersion) {
+  pub(crate) async fn wait_for_login(&mut self) -> (String, UUID, ProtocolVersion) {
     let p = match self.rx.lock().await.message().await.unwrap() {
-      Some(p) => sb::Packet::from_proto(p),
+      // This version doesn't matter, as the proxy will always send the same data for every version
+      Some(p) => sb::Packet::from_proto(p, ProtocolVersion::V1_8),
       None => panic!("connection was closed while listening for a login packet"),
     };
     match p {
-      sb::Packet::Login { username, uuid, ver } => (username, uuid, ProtocolVersion::from(ver)),
+      sb::Packet::Login { username, uuid, ver } => {
+        let ver = ProtocolVersion::from(ver);
+        self.ver = Some(ver);
+        (username, uuid, ver)
+      }
       _ => panic!("expecting login packet, got: {:?}", p),
     }
   }
@@ -54,7 +60,7 @@ impl Connection {
   pub(crate) async fn run(&self, player: Arc<Player>, wm: Arc<WorldManager>) -> Result<(), Status> {
     'running: loop {
       let p = match self.rx.lock().await.message().await {
-        Ok(Some(p)) => sb::Packet::from_proto(p),
+        Ok(Some(p)) => sb::Packet::from_proto(p, player.ver()),
         Ok(None) => break 'running,
         Err(e) => {
           if e.code() != tonic::Code::Cancelled {
@@ -117,9 +123,9 @@ impl Connection {
         } => {
           let direction: i32 = if player.ver() == ProtocolVersion::V1_8 {
             // direction_v1_8 is an i8 (not a u8), so the sign stays correct
-            direction_v1_8.into()
+            direction_v1_8.unwrap().into()
           } else {
-            direction_v1_9
+            direction_v1_9.unwrap()
           };
 
           if location == Pos::new(-1, -1, -1) && direction == -1 {
@@ -160,7 +166,7 @@ impl Connection {
 
   /// Sends a packet to the proxy, which will then get sent to the client.
   pub async fn send(&self, p: cb::Packet) {
-    match self.tx.send(Ok(p.to_proto())).await {
+    match self.tx.send(Ok(p.to_proto(self.ver.unwrap()))).await {
       Ok(_) => (),
       Err(_) => {
         self.closed.store(true, Ordering::SeqCst);
