@@ -135,7 +135,7 @@ impl<R: StreamReader + Send> ClientListener<R> {
           Ok(v) => v,
         };
         trace!("sending proto: {:?}", &sb);
-        self.server.send(sb.to_proto()).await?;
+        self.server.send(sb.to_proto(self.ver)).await?;
       }
     }
     Ok(())
@@ -144,7 +144,7 @@ impl<R: StreamReader + Send> ClientListener<R> {
   /// Sends a packet to the server. Should only be used for things like login
   /// packets.
   pub async fn send_to_server(&mut self, p: sb::Packet) -> Result<(), Box<dyn Error>> {
-    self.server.send(p.to_proto()).await?;
+    self.server.send(p.to_proto(self.ver)).await?;
     Ok(())
   }
 }
@@ -173,7 +173,7 @@ impl<W: StreamWriter + Send> ServerListener<W> {
         _ = &mut rx => break,
       }
       let p = p.unwrap();
-      let cb = self.gen.clientbound(self.ver, cb::Packet::from_proto(p))?;
+      let cb = self.gen.clientbound(self.ver, cb::Packet::from_proto(p, self.ver))?;
       for p in cb {
         self.client.write(p).await?;
       }
