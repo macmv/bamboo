@@ -10,10 +10,11 @@ use std::{
   cmp,
   collections::{HashMap, HashSet},
   error::Error,
-  fs,
+  fmt, fs,
   fs::File,
   io::Write,
   path::Path,
+  str::FromStr,
 };
 
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq)]
@@ -124,7 +125,7 @@ pub struct Packet {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct Version {
+pub struct PacketVersion {
   // The index is the packet's id. The names should be mapped to the indicies as well.
   pub types:     HashMap<String, PacketField>,
   pub to_client: Vec<Packet>,
@@ -138,8 +139,8 @@ struct NamedPacketField {
 
 struct VersionedField {
   name:          String,
-  version_names: HashMap<String, usize>,
-  versions:      Vec<(String, PacketField)>,
+  version_names: HashMap<Version, usize>,
+  versions:      Vec<(Version, PacketField)>,
 }
 
 struct VersionedPacket {
@@ -149,15 +150,84 @@ struct VersionedPacket {
   fields:      Vec<VersionedField>,
 }
 
-impl VersionedField {
-  fn new(ver: &str, name: String, field: PacketField) -> Self {
-    let mut version_names = HashMap::new();
-    version_names.insert(ver.to_string(), 0);
-    VersionedField { name, version_names, versions: vec![(ver.to_string(), field)] }
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct Version {
+  major: i32,
+  minor: i32,
+}
+
+impl cmp::PartialOrd for Version {
+  fn partial_cmp(&self, other: &Version) -> Option<cmp::Ordering> {
+    Some(self.cmp(other))
   }
-  fn add_ver(&mut self, ver: &str, field: PacketField) {
-    self.version_names.insert(ver.to_string(), self.versions.len());
-    self.versions.push((ver.to_string(), field));
+}
+impl cmp::Ord for Version {
+  // fn cmp(&self, other: &Version) -> cmp::Ordering {
+  //   let major_a: i32 = ver_a.split("_").nth(1).unwrap().parse().unwrap();
+  //   let major_b: i32 = ver_b.split("_").nth(1).unwrap().parse().unwrap();
+  //   if major_a == major_b {
+  //     let minor_a = ver_a.split("_").nth(2).map(|v|
+  // v.parse().unwrap()).unwrap_or(0); // for example, 1.15 is the same as 1.15.0
+  //     let minor_b = ver_b.split("_").nth(2).map(|v|
+  // v.parse().unwrap()).unwrap_or(0);     minor_a.cmp(&minor_b)
+  //   } else {
+  //     major_a.cmp(&major_b)
+  //   }
+  // }
+  fn cmp(&self, other: &Version) -> cmp::Ordering {
+    if self.major == other.major {
+      self.minor.cmp(&other.minor)
+    } else {
+      self.major.cmp(&other.minor)
+    }
+  }
+}
+impl fmt::Display for Version {
+  fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    if self.minor == 0 {
+      write!(f, "v1_{}", self.major)
+    } else {
+      write!(f, "v1_{}_{}", self.major, self.minor)
+    }
+  }
+}
+#[derive(Debug)]
+pub struct VersionErr(String);
+impl fmt::Display for VersionErr {
+  fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    write!(f, "invalid version {}", self.0)
+  }
+}
+impl Error for VersionErr {}
+
+impl FromStr for Version {
+  type Err = VersionErr;
+  fn from_str(s: &str) -> Result<Self, Self::Err> {
+    let mut sections = s.split("_");
+    let first = sections.next().ok_or_else(|| VersionErr(s.to_string()))?;
+    let major = sections.next().ok_or_else(|| VersionErr(s.to_string()))?;
+    let minor = sections.next();
+    if sections.next() != None {
+      return Err(VersionErr(s.to_string()));
+    }
+    if first != "V1" {
+      return Err(VersionErr(s.to_string()));
+    }
+    let major = major.parse().map_err(|_| VersionErr(s.to_string()))?;
+    let minor = minor.map(|s| s.parse()).unwrap_or(Ok(0)).map_err(|_| VersionErr(s.to_string()))?;
+    Ok(Version { major, minor })
+  }
+}
+
+impl VersionedField {
+  fn new(ver: Version, name: String, field: PacketField) -> Self {
+    let mut version_names = HashMap::new();
+    version_names.insert(ver, 0);
+    VersionedField { name, version_names, versions: vec![(ver, field)] }
+  }
+  fn add_ver(&mut self, ver: Version, field: PacketField) {
+    self.version_names.insert(ver, self.versions.len());
+    self.versions.push((ver, field));
   }
   fn latest(&self) -> &PacketField {
     &self.versions.last().unwrap().1
@@ -174,12 +244,12 @@ impl VersionedField {
       for (ver, field) in &self.versions {
         let mut name = self.name.clone();
         name.push_str("_");
-        name.push_str(&ver.to_lowercase());
+        name.push_str(&ver.to_string());
         out.push(NamedPacketField { name, field: field.clone() });
       }
     }
   }
-  fn add_all_ver(&self, out: &mut Vec<(bool, bool, NamedPacketField)>, matching_ver: &str) {
+  fn add_all_ver(&self, out: &mut Vec<(bool, bool, NamedPacketField)>, matching_ver: Version) {
     if self.versions.len() == 1 {
       let mut name = self.name.clone();
       // Avoid keyword conflicts
@@ -195,28 +265,16 @@ impl VersionedField {
       let mut found_ver = false;
       for (ver, field) in &self.versions {
         let mut is_ver = false;
-        if !found_ver && ver == matching_ver {
+        if !found_ver && ver == &matching_ver {
           found_ver = true;
           is_ver = true;
         }
         let mut name = self.name.clone();
         name.push_str("_");
-        name.push_str(&ver.to_lowercase());
+        name.push_str(&ver.to_string());
         out.push((is_ver, true, NamedPacketField { name, field: field.clone() }));
       }
     }
-  }
-}
-
-fn cmp_versions(ver_a: &String, ver_b: &String) -> cmp::Ordering {
-  let major_a: i32 = ver_a.split("_").nth(1).unwrap().parse().unwrap();
-  let major_b: i32 = ver_b.split("_").nth(1).unwrap().parse().unwrap();
-  if major_a == major_b {
-    let minor_a = ver_a.split("_").nth(2).map(|v| v.parse().unwrap()).unwrap_or(0); // for example, 1.15 is the same as 1.15.0
-    let minor_b = ver_b.split("_").nth(2).map(|v| v.parse().unwrap()).unwrap_or(0);
-    minor_a.cmp(&minor_b)
-  } else {
-    major_a.cmp(&major_b)
   }
 }
 
@@ -225,7 +283,7 @@ impl VersionedPacket {
     VersionedPacket { name, field_names: HashMap::new(), fields: vec![] }
   }
 
-  fn add_version(&mut self, ver: &str, packet: Packet) {
+  fn add_version(&mut self, ver: Version, packet: Packet) {
     for (name, field) in packet.fields {
       if let Some(&idx) = self.field_names.get(&name) {
         let existing = &mut self.fields[idx];
@@ -247,7 +305,7 @@ impl VersionedPacket {
     out
   }
 
-  fn fields_ver(&self, ver: &str) -> Vec<(bool, bool, NamedPacketField)> {
+  fn fields_ver(&self, ver: Version) -> Vec<(bool, bool, NamedPacketField)> {
     let mut out = vec![];
     for field in &self.fields {
       field.add_all_ver(&mut out, ver);
@@ -263,7 +321,7 @@ impl VersionedPacket {
     }
     false
   }
-  fn all_versions(&self) -> Vec<String> {
+  fn all_versions(&self) -> Vec<Version> {
     let mut versions = HashSet::new();
     for field in &self.fields {
       if field.versions.len() > 1 {
@@ -272,9 +330,9 @@ impl VersionedPacket {
         }
       }
     }
-    versions.into_iter().sorted_by(cmp_versions).collect()
+    versions.into_iter().sorted().collect()
   }
-  fn all_field_names_ver(&self, ver: &str) -> Vec<(bool, bool, String, String)> {
+  fn all_field_names_ver(&self, ver: Version) -> Vec<(bool, bool, String, String)> {
     let mut vals = vec![];
     for (for_ver, multi_versioned, field) in self.fields_ver(ver) {
       vals.push((for_ver, multi_versioned, field.name.clone(), field.field.ty_lit().to_string()));
@@ -343,31 +401,36 @@ impl VersionedPacket {
 }
 
 fn to_versioned(
-  versions: &HashMap<String, Version>,
+  versions: &HashMap<String, PacketVersion>,
 ) -> (Vec<VersionedPacket>, Vec<VersionedPacket>) {
   // Generates the packet id enum, for clientbound and serverbound packets
   let mut to_client = HashMap::new();
   let mut to_server = HashMap::new();
 
-  for (version, v) in versions.iter().sorted_by(|(ver_a, _), (ver_b, _)| cmp_versions(ver_a, ver_b))
-  {
+  for (version, v) in versions.iter().sorted_by(|(ver_a, _), (ver_b, _)| ver_a.cmp(ver_b)) {
     for p in &v.to_client {
       if !to_client.contains_key(&p.name) {
         to_client.insert(p.name.clone(), VersionedPacket::new(p.name.clone()));
       }
-      to_client.get_mut(&p.name).unwrap().add_version(&version, p.clone());
+      to_client
+        .get_mut(&p.name)
+        .unwrap()
+        .add_version(Version::from_str(version).unwrap(), p.clone());
     }
     for p in &v.to_server {
       if !to_server.contains_key(&p.name) {
         to_server.insert(p.name.clone(), VersionedPacket::new(p.name.clone()));
       }
-      to_server.get_mut(&p.name).unwrap().add_version(&version, p.clone());
+      to_server
+        .get_mut(&p.name)
+        .unwrap()
+        .add_version(Version::from_str(version).unwrap(), p.clone());
     }
     if !to_server.contains_key("Login") {
       to_server.insert("Login".into(), VersionedPacket::new("Login".into()));
     }
     to_server.get_mut("Login").unwrap().add_version(
-      &version,
+      Version::from_str(version).unwrap(),
       Packet {
         name:        "Login".into(),
         field_names: [("username", 0), ("uuid", 1), ("ver", 2)]
@@ -730,7 +793,7 @@ impl PacketField {
 
 fn generate_packets(
   packets: Vec<VersionedPacket>,
-  versions: &HashMap<String, Version>,
+  versions: &HashMap<String, PacketVersion>,
   to_client: bool,
 ) -> Result<String, Box<dyn Error>> {
   let mut kinds = vec![];
@@ -862,13 +925,13 @@ fn generate_packets(
       tcp_opt.push_str(" => ");
       for ver in packet.all_versions() {
         tcp_opt.push_str("if version > ProtocolVersion::");
-        tcp_opt.push_str(&ver);
+        tcp_opt.push_str(&ver.to_string());
         tcp_opt.push_str(" {\n");
         tcp_opt.push_str("        Self::");
         tcp_opt.push_str(&name);
         tcp_opt.push_str(" {\n");
         for (i, (is_ver, multi_versioned, field_name, _)) in
-          packet.all_field_names_ver(&ver).iter().enumerate()
+          packet.all_field_names_ver(ver).iter().enumerate()
         {
           tcp_opt.push_str("          ");
           tcp_opt.push_str(field_name);

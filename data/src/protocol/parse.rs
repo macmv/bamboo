@@ -1,10 +1,10 @@
 use super::{
-  json, BitField, Container, CountType, FloatType, IntType, Packet, PacketField, Version,
+  json, BitField, Container, CountType, FloatType, IntType, Packet, PacketField, PacketVersion,
 };
 use convert_case::{Case, Casing};
 use std::{collections::HashMap, error::Error, fs, io, io::ErrorKind, path::Path};
 
-pub(super) fn load_all(path: &Path) -> Result<HashMap<String, Version>, Box<dyn Error>> {
+pub(super) fn load_all(path: &Path) -> Result<HashMap<String, PacketVersion>, Box<dyn Error>> {
   let mut versions = HashMap::new();
 
   for p in fs::read_dir(path)? {
@@ -44,7 +44,7 @@ pub(super) fn load_all(path: &Path) -> Result<HashMap<String, Version>, Box<dyn 
     generate_types(json.types, &mut types)?;
     versions.insert(
       ver_str,
-      Version {
+      PacketVersion {
         to_client: match generate_packets(json.play.to_client.types, types.clone()) {
           Ok(v) => v.into_iter().map(|v| v.unwrap()).collect(),
           Err(e) => panic!("error while parsing clientbound packets for version {}: {}", &name, e),
