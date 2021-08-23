@@ -6,7 +6,15 @@ use itertools::Itertools;
 use proc_macro2::{Ident, Span, TokenStream};
 use quote::quote;
 use serde_derive::{Deserialize, Serialize};
-use std::{collections::HashMap, error::Error, fs, fs::File, io::Write, path::Path};
+use std::{
+  cmp,
+  collections::{HashMap, HashSet},
+  error::Error,
+  fs,
+  fs::File,
+  io::Write,
+  path::Path,
+};
 
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq)]
 pub enum IntType {
@@ -173,6 +181,18 @@ impl VersionedField {
   }
 }
 
+fn cmp_versions(ver_a: &String, ver_b: &String) -> cmp::Ordering {
+  let major_a: i32 = ver_a.split("_").nth(1).unwrap().parse().unwrap();
+  let major_b: i32 = ver_b.split("_").nth(1).unwrap().parse().unwrap();
+  if major_a == major_b {
+    let minor_a = ver_a.split("_").nth(2).map(|v| v.parse().unwrap()).unwrap_or(0); // for example, 1.15 is the same as 1.15.0
+    let minor_b = ver_b.split("_").nth(2).map(|v| v.parse().unwrap()).unwrap_or(0);
+    minor_a.cmp(&minor_b)
+  } else {
+    major_a.cmp(&major_b)
+  }
+}
+
 impl VersionedPacket {
   fn new(name: String) -> Self {
     VersionedPacket { name, field_names: HashMap::new(), fields: vec![] }
@@ -200,6 +220,25 @@ impl VersionedPacket {
     out
   }
 
+  fn has_multiple_versions(&self) -> bool {
+    for field in &self.fields {
+      if field.versions.len() > 1 {
+        return true;
+      }
+    }
+    false
+  }
+  fn all_versions(&self) -> Vec<String> {
+    let mut versions = HashSet::new();
+    for field in &self.fields {
+      if field.versions.len() > 1 {
+        for (ver, _) in &field.versions {
+          versions.insert(ver.clone());
+        }
+      }
+    }
+    versions.into_iter().sorted_by(cmp_versions).collect()
+  }
   fn field_name_tys(&self) -> Vec<(String, String)> {
     let mut vals = vec![];
     for field in self.fields() {
@@ -268,17 +307,8 @@ fn to_versioned(
   let mut to_client = HashMap::new();
   let mut to_server = HashMap::new();
 
-  for (version, v) in versions.iter().sorted_by(|(ver_a, _), (ver_b, _)| {
-    let major_a: i32 = ver_a.split("_").nth(1).unwrap().parse().unwrap();
-    let major_b: i32 = ver_b.split("_").nth(1).unwrap().parse().unwrap();
-    if major_a == major_b {
-      let minor_a = ver_a.split("_").nth(2).map(|v| v.parse().unwrap()).unwrap_or(0); // for example, 1.15 is the same as 1.15.0
-      let minor_b = ver_b.split("_").nth(2).map(|v| v.parse().unwrap()).unwrap_or(0);
-      minor_a.cmp(&minor_b)
-    } else {
-      major_a.cmp(&major_b)
-    }
-  }) {
+  for (version, v) in versions.iter().sorted_by(|(ver_a, _), (ver_b, _)| cmp_versions(ver_a, ver_b))
+  {
     for p in &v.to_client {
       if !to_client.contains_key(&p.name) {
         to_client.insert(p.name.clone(), VersionedPacket::new(p.name.clone()));
@@ -785,19 +815,46 @@ fn generate_packets(
     to_tcp_opts.push(tcp_opt);
 
     let mut tcp_opt = String::new();
-    tcp_opt.push_str(&id.to_string());
-    tcp_opt.push_str(" => Self::");
-    tcp_opt.push_str(&name);
-    tcp_opt.push_str(" {\n");
-    for (i, (field_name, _)) in field_names.iter().enumerate() {
-      let from_tcp = &field_from_tcps[i];
-      tcp_opt.push_str("        ");
-      tcp_opt.push_str(field_name);
-      tcp_opt.push_str(": ");
-      tcp_opt.push_str(&from_tcp.to_string());
-      tcp_opt.push_str(",\n");
+    if packet.has_multiple_versions() {
+      tcp_opt.push_str(&id.to_string());
+      tcp_opt.push_str(" => ");
+      for ver in packet.all_versions() {
+        tcp_opt.push_str("if version > ProtocolVersion::");
+        tcp_opt.push_str(&ver);
+        tcp_opt.push_str(" {\n");
+        tcp_opt.push_str("      } else ");
+        // tcp_opt.push_str(&name);
+        // tcp_opt.push_str(" {\n");
+        // for (i, (field_name, _)) in field_names.iter().enumerate() {
+        //   let from_tcp = &field_from_tcps[i];
+        //   tcp_opt.push_str("        ");
+        //   tcp_opt.push_str(field_name);
+        //   tcp_opt.push_str(": ");
+        //   tcp_opt.push_str(&from_tcp.to_string());
+        //   tcp_opt.push_str(",\n");
+        // }
+        // tcp_opt.push_str("      },\n");
+      }
+      tcp_opt.push_str("{\n");
+      tcp_opt.push_str("        unreachable!(\"failed to parse packet ");
+      tcp_opt.push_str(&packet.name);
+      tcp_opt.push_str(" with version {}\", version)\n");
+      tcp_opt.push_str("      }\n");
+    } else {
+      tcp_opt.push_str(&id.to_string());
+      tcp_opt.push_str(" => Self::");
+      tcp_opt.push_str(&name);
+      tcp_opt.push_str(" {\n");
+      for (i, (field_name, _)) in field_names.iter().enumerate() {
+        let from_tcp = &field_from_tcps[i];
+        tcp_opt.push_str("        ");
+        tcp_opt.push_str(field_name);
+        tcp_opt.push_str(": ");
+        tcp_opt.push_str(&from_tcp.to_string());
+        tcp_opt.push_str(",\n");
+      }
+      tcp_opt.push_str("      },\n");
     }
-    tcp_opt.push_str("      },\n");
     from_tcp_opts.push(tcp_opt);
   }
   let mut out = String::new();
