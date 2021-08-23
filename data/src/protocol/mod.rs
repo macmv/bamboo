@@ -179,6 +179,33 @@ impl VersionedField {
       }
     }
   }
+  fn add_all_ver(&self, out: &mut Vec<(bool, bool, NamedPacketField)>, matching_ver: &str) {
+    if self.versions.len() == 1 {
+      let mut name = self.name.clone();
+      // Avoid keyword conflicts
+      if name == "type" {
+        name = "type_".to_string();
+      }
+      out.push((
+        true,
+        false,
+        NamedPacketField { name, field: self.versions.first().unwrap().1.clone() },
+      ));
+    } else {
+      let mut found_ver = false;
+      for (ver, field) in &self.versions {
+        let mut is_ver = false;
+        if !found_ver && ver == matching_ver {
+          found_ver = true;
+          is_ver = true;
+        }
+        let mut name = self.name.clone();
+        name.push_str("_");
+        name.push_str(&ver.to_lowercase());
+        out.push((is_ver, true, NamedPacketField { name, field: field.clone() }));
+      }
+    }
+  }
 }
 
 fn cmp_versions(ver_a: &String, ver_b: &String) -> cmp::Ordering {
@@ -220,6 +247,14 @@ impl VersionedPacket {
     out
   }
 
+  fn fields_ver(&self, ver: &str) -> Vec<(bool, bool, NamedPacketField)> {
+    let mut out = vec![];
+    for field in &self.fields {
+      field.add_all_ver(&mut out, ver);
+    }
+    out
+  }
+
   fn has_multiple_versions(&self) -> bool {
     for field in &self.fields {
       if field.versions.len() > 1 {
@@ -238,6 +273,13 @@ impl VersionedPacket {
       }
     }
     versions.into_iter().sorted_by(cmp_versions).collect()
+  }
+  fn all_field_names_ver(&self, ver: &str) -> Vec<(bool, bool, String, String)> {
+    let mut vals = vec![];
+    for (for_ver, multi_versioned, field) in self.fields_ver(ver) {
+      vals.push((for_ver, multi_versioned, field.name.clone(), field.field.ty_lit().to_string()));
+    }
+    vals
   }
   fn field_name_tys(&self) -> Vec<(String, String)> {
     let mut vals = vec![];
@@ -822,23 +864,36 @@ fn generate_packets(
         tcp_opt.push_str("if version > ProtocolVersion::");
         tcp_opt.push_str(&ver);
         tcp_opt.push_str(" {\n");
+        tcp_opt.push_str("        Self::");
+        tcp_opt.push_str(&name);
+        tcp_opt.push_str(" {\n");
+        for (i, (is_ver, multi_versioned, field_name, _)) in
+          packet.all_field_names_ver(&ver).iter().enumerate()
+        {
+          tcp_opt.push_str("          ");
+          tcp_opt.push_str(field_name);
+          tcp_opt.push_str(": ");
+          if *is_ver {
+            let from_tcp = &field_from_tcps[i];
+            if *multi_versioned {
+              tcp_opt.push_str("Some(");
+              tcp_opt.push_str(&from_tcp.to_string());
+              tcp_opt.push_str(")");
+            } else {
+              tcp_opt.push_str(&from_tcp.to_string());
+            }
+          } else {
+            tcp_opt.push_str("None");
+          }
+          tcp_opt.push_str(",\n");
+        }
+        tcp_opt.push_str("        }\n");
         tcp_opt.push_str("      } else ");
-        // tcp_opt.push_str(&name);
-        // tcp_opt.push_str(" {\n");
-        // for (i, (field_name, _)) in field_names.iter().enumerate() {
-        //   let from_tcp = &field_from_tcps[i];
-        //   tcp_opt.push_str("        ");
-        //   tcp_opt.push_str(field_name);
-        //   tcp_opt.push_str(": ");
-        //   tcp_opt.push_str(&from_tcp.to_string());
-        //   tcp_opt.push_str(",\n");
-        // }
-        // tcp_opt.push_str("      },\n");
       }
       tcp_opt.push_str("{\n");
       tcp_opt.push_str("        unreachable!(\"failed to parse packet ");
       tcp_opt.push_str(&packet.name);
-      tcp_opt.push_str(" with version {}\", version)\n");
+      tcp_opt.push_str(" with version {:?}\", version)\n");
       tcp_opt.push_str("      }\n");
     } else {
       tcp_opt.push_str(&id.to_string());
