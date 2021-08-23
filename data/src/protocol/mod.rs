@@ -100,12 +100,6 @@ impl PacketField {
       _ => None,
     }
   }
-  pub fn into_compare(self) -> Option<String> {
-    match self {
-      Self::CompareTo(v) => Some(v),
-      _ => None,
-    }
-  }
   pub fn into_defined(self) -> Option<String> {
     match self {
       Self::DefinedType(v) => Some(v),
@@ -160,18 +154,6 @@ impl cmp::PartialOrd for Version {
   }
 }
 impl cmp::Ord for Version {
-  // fn cmp(&self, other: &Version) -> cmp::Ordering {
-  //   let major_a: i32 = ver_a.split("_").nth(1).unwrap().parse().unwrap();
-  //   let major_b: i32 = ver_b.split("_").nth(1).unwrap().parse().unwrap();
-  //   if major_a == major_b {
-  //     let minor_a = ver_a.split("_").nth(2).map(|v|
-  // v.parse().unwrap()).unwrap_or(0); // for example, 1.15 is the same as 1.15.0
-  //     let minor_b = ver_b.split("_").nth(2).map(|v|
-  // v.parse().unwrap()).unwrap_or(0);     minor_a.cmp(&minor_b)
-  //   } else {
-  //     major_a.cmp(&major_b)
-  //   }
-  // }
   fn cmp(&self, other: &Version) -> cmp::Ordering {
     if self.major == other.major {
       self.minor.cmp(&other.minor)
@@ -359,13 +341,6 @@ impl VersionedPacket {
     }
     vals
   }
-  fn field_tys(&self) -> Vec<TokenStream> {
-    let mut tys = vec![];
-    for (_multi_versioned, field) in self.fields() {
-      tys.push(field.field.ty_lit());
-    }
-    tys
-  }
   fn field_ty_enums(&self) -> Vec<TokenStream> {
     let mut tys = vec![];
     for (_multi_versioned, field) in self.fields() {
@@ -394,10 +369,14 @@ impl VersionedPacket {
     }
     vals
   }
-  fn field_to_tcps(&self) -> Vec<TokenStream> {
+  fn field_to_tcps(&self) -> Vec<String> {
     let mut vals = vec![];
-    for (_multi_versioned, field) in self.fields() {
-      vals.push(field.field.generate_to_tcp(&field.name));
+    for (multi_versioned, field) in self.fields() {
+      if multi_versioned {
+        vals.push(field.field.generate_to_tcp(&format!("{}.as_ref().unwrap()", field.name)));
+      } else {
+        vals.push(field.field.generate_to_tcp(&field.name));
+      }
     }
     vals
   }
@@ -728,39 +707,37 @@ impl PacketField {
       _ => quote!(pb.fields.remove(#name).unwrap().byte_arr),
     }
   }
-  fn generate_to_tcp(&self, name: &str) -> TokenStream {
-    let name = Ident::new(name, Span::call_site());
+  fn generate_to_tcp(&self, val: &str) -> String {
     match self {
-      Self::Bool => quote!(out.write_bool(*#name)),
+      Self::Bool => format!("out.write_bool(*{})", val),
       Self::Int(ity) => match ity {
-        IntType::I8 => quote!(out.write_i8(*#name)),
-        IntType::U8 => quote!(out.write_u8(*#name)),
-        IntType::I16 => quote!(out.write_i16(*#name)),
-        IntType::U16 => quote!(out.write_u16(*#name)),
-        IntType::I32 => quote!(out.write_i32(*#name)),
-        IntType::I64 => quote!(out.write_i64(*#name)),
-        IntType::VarInt => quote!(out.write_varint(*#name)),
-        IntType::OptVarInt => quote!(out.write_varint(*#name.unwrap_or(0))),
+        IntType::I8 => format!("out.write_i8(*{})", val),
+        IntType::U8 => format!("out.write_u8(*{})", val),
+        IntType::I16 => format!("out.write_i16(*{})", val),
+        IntType::U16 => format!("out.write_u16(*{})", val),
+        IntType::I32 => format!("out.write_i32(*{})", val),
+        IntType::I64 => format!("out.write_i64(*{})", val),
+        IntType::VarInt => format!("out.write_varint(*{})", val),
+        IntType::OptVarInt => format!("out.write_varint(*{}.unwrap_or(0))", val),
       },
       Self::Float(fty) => match fty {
-        FloatType::F32 => quote!(out.write_f32(*#name)),
-        FloatType::F64 => quote!(out.write_f64(*#name)),
+        FloatType::F32 => format!("out.write_f32(*{})", val),
+        FloatType::F64 => format!("out.write_f64(*{})", val),
       },
-      Self::UUID => quote!(out.write_uuid(*#name)),
-      Self::String => quote!(out.write_str(#name)),
-      Self::Position => quote!(out.write_pos(*#name)),
+      Self::UUID => format!("out.write_uuid(*{})", val),
+      Self::String => format!("out.write_str({})", val),
+      Self::Position => format!("out.write_pos(*{})", val),
 
-      // Self::NBT => quote!(#name.clone()),
-      // Self::OptionalNBT => quote!(#name.clone()),
-      // Self::RestBuffer => quote!(#name.clone()),
-      // Self::EntityMetadata => quote!(#name.clone()), // Implemented on the server
+      // Self::NBT => quote!(#val.clone()),
+      // Self::OptionalNBT => quote!(#val.clone()),
+      // Self::RestBuffer => quote!(#val.clone()),
+      // Self::EntityMetadata => quote!(#val.clone()), // Implemented on the server
 
-      // Self::Option(field) => quote!(#name.unwrap()),
-      _ => quote!(out.write_buf(#name)),
+      // Self::Option(field) => quote!(#val.unwrap()),
+      _ => format!("out.write_buf({})", val),
     }
   }
   fn generate_from_tcp(&self) -> TokenStream {
-    // let name = Ident::new(name, Span::call_site());
     match self {
       Self::Bool => quote!(p.read_bool()),
       Self::Int(ity) => match ity {
@@ -914,10 +891,35 @@ fn generate_packets(
     tcp_opt.push_str("        let mut out = tcp::Packet::new(from_grpc_id(");
     tcp_opt.push_str(&id.to_string());
     tcp_opt.push_str(", version), version);\n");
-    for gen in &field_to_tcps {
+    if packet.has_multiple_versions() {
       tcp_opt.push_str("        ");
-      tcp_opt.push_str(&gen.to_string());
-      tcp_opt.push_str(";\n");
+      for ver in packet.all_versions() {
+        tcp_opt.push_str("if version >= ProtocolVersion::");
+        tcp_opt.push_str(&ver.to_string().to_uppercase());
+        tcp_opt.push_str(" {\n");
+        for (i, (is_ver, _multi_versioned, _, _)) in
+          packet.all_field_names_ver(ver).iter().enumerate()
+        {
+          if *is_ver {
+            tcp_opt.push_str("          ");
+            let to_tcp = &field_to_tcps[i];
+            tcp_opt.push_str(&to_tcp.to_string());
+            tcp_opt.push_str(";\n");
+          }
+        }
+        tcp_opt.push_str("        } else ");
+      }
+      tcp_opt.push_str("{\n");
+      tcp_opt.push_str("          unreachable!(\"failed to generate packet ");
+      tcp_opt.push_str(&packet.name);
+      tcp_opt.push_str(" with version {:?}\", version)\n");
+      tcp_opt.push_str("        }\n");
+    } else {
+      for gen in &field_to_tcps {
+        tcp_opt.push_str("        ");
+        tcp_opt.push_str(&gen.to_string());
+        tcp_opt.push_str(";\n");
+      }
     }
     tcp_opt.push_str("        out\n");
     tcp_opt.push_str("      }\n");
