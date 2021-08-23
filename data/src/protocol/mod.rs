@@ -11,8 +11,6 @@ use std::{
   collections::{HashMap, HashSet},
   error::Error,
   fmt, fs,
-  fs::File,
-  io::Write,
   path::Path,
   str::FromStr,
 };
@@ -178,7 +176,7 @@ impl cmp::Ord for Version {
     if self.major == other.major {
       self.minor.cmp(&other.minor)
     } else {
-      self.major.cmp(&other.minor)
+      self.major.cmp(&other.major)
     }
   }
 }
@@ -263,15 +261,23 @@ impl VersionedField {
       ));
     } else {
       let mut found_ver = false;
-      for (ver, field) in &self.versions {
+      for (i, (_, field)) in self.versions.iter().enumerate() {
+        let this_ver = self.versions[i].0;
         let mut is_ver = false;
-        if !found_ver && ver == &matching_ver {
-          found_ver = true;
-          is_ver = true;
+        if !found_ver {
+          if let Some((next_ver, _)) = self.versions.get(i + 1) {
+            if matching_ver >= this_ver && matching_ver < *next_ver {
+              found_ver = true;
+              is_ver = true;
+            }
+          } else {
+            found_ver = true;
+            is_ver = true;
+          }
         }
         let mut name = self.name.clone();
         name.push_str("_");
-        name.push_str(&ver.to_string());
+        name.push_str(&this_ver.to_string());
         out.push((is_ver, true, NamedPacketField { name, field: field.clone() }));
       }
     }
@@ -401,7 +407,7 @@ impl VersionedPacket {
 }
 
 fn to_versioned(
-  versions: &HashMap<String, PacketVersion>,
+  versions: &HashMap<Version, PacketVersion>,
 ) -> (Vec<VersionedPacket>, Vec<VersionedPacket>) {
   // Generates the packet id enum, for clientbound and serverbound packets
   let mut to_client = HashMap::new();
@@ -412,25 +418,19 @@ fn to_versioned(
       if !to_client.contains_key(&p.name) {
         to_client.insert(p.name.clone(), VersionedPacket::new(p.name.clone()));
       }
-      to_client
-        .get_mut(&p.name)
-        .unwrap()
-        .add_version(Version::from_str(version).unwrap(), p.clone());
+      to_client.get_mut(&p.name).unwrap().add_version(*version, p.clone());
     }
     for p in &v.to_server {
       if !to_server.contains_key(&p.name) {
         to_server.insert(p.name.clone(), VersionedPacket::new(p.name.clone()));
       }
-      to_server
-        .get_mut(&p.name)
-        .unwrap()
-        .add_version(Version::from_str(version).unwrap(), p.clone());
+      to_server.get_mut(&p.name).unwrap().add_version(*version, p.clone());
     }
     if !to_server.contains_key("Login") {
       to_server.insert("Login".into(), VersionedPacket::new("Login".into()));
     }
     to_server.get_mut("Login").unwrap().add_version(
-      Version::from_str(version).unwrap(),
+      *version,
       Packet {
         name:        "Login".into(),
         field_names: [("username", 0), ("uuid", 1), ("ver", 2)]
@@ -469,15 +469,12 @@ pub fn generate(dir: &Path) -> Result<(), Box<dyn Error>> {
 
   // This is done at runtime of the buildscript, so this path must be relative to
   // where the buildscript is.
-  let versions = parse::load_all(&prismarine_path.join("data/pc"))?;
+  let versions = parse::load_all(&prismarine_path.join("data/pc"))?
+    .into_iter()
+    .map(|(ver, val)| (Version::from_str(&ver).unwrap(), val))
+    .collect();
 
   fs::create_dir_all(&dir)?;
-  {
-    // Generates the version json in a much more easily read format. This is much
-    // faster to compile than generating source code.
-    let mut f = File::create(&dir.join("versions.json"))?;
-    writeln!(f, "{}", serde_json::to_string(&versions)?)?;
-  }
   {
     let (to_client, to_server) = to_versioned(&versions);
     let to_client = generate_packets(to_client, &versions, true)?;
@@ -793,7 +790,7 @@ impl PacketField {
 
 fn generate_packets(
   packets: Vec<VersionedPacket>,
-  versions: &HashMap<String, PacketVersion>,
+  versions: &HashMap<Version, PacketVersion>,
   to_client: bool,
 ) -> Result<String, Box<dyn Error>> {
   let mut kinds = vec![];
@@ -924,8 +921,8 @@ fn generate_packets(
       tcp_opt.push_str(&id.to_string());
       tcp_opt.push_str(" => ");
       for ver in packet.all_versions() {
-        tcp_opt.push_str("if version > ProtocolVersion::");
-        tcp_opt.push_str(&ver.to_string());
+        tcp_opt.push_str("if version >= ProtocolVersion::");
+        tcp_opt.push_str(&ver.to_string().to_uppercase());
         tcp_opt.push_str(" {\n");
         tcp_opt.push_str("        Self::");
         tcp_opt.push_str(&name);
@@ -1064,22 +1061,12 @@ fn generate_packets(
   to_grpc_id.push_str("/// Converts a tcp packet id into a grpc packet id\n");
   to_grpc_id.push_str("pub fn to_grpc_id(id: i32, ver: ProtocolVersion) -> i32 {\n");
   to_grpc_id.push_str("  match ver {\n");
-  for (ver_name, ver) in versions.iter().sorted_by(|(ver_a, _), (ver_b, _)| {
-    let major_a: i32 = ver_a.split("_").nth(1).unwrap().parse().unwrap();
-    let major_b: i32 = ver_b.split("_").nth(1).unwrap().parse().unwrap();
-    if major_a == major_b {
-      let minor_a = ver_a.split("_").nth(2).map(|v| v.parse().unwrap()).unwrap_or(0); // for example, 1.15 is the same as 1.15.0
-      let minor_b = ver_b.split("_").nth(2).map(|v| v.parse().unwrap()).unwrap_or(0);
-      minor_a.cmp(&minor_b)
-    } else {
-      major_a.cmp(&major_b)
-    }
-  }) {
+  for (ver_name, ver) in versions.iter().sorted_by(|(ver_a, _), (ver_b, _)| ver_a.cmp(ver_b)) {
     from_grpc_id.push_str("    ProtocolVersion::");
-    from_grpc_id.push_str(ver_name);
+    from_grpc_id.push_str(&ver_name.to_string().to_uppercase());
     from_grpc_id.push_str(" => match id {\n");
     to_grpc_id.push_str("    ProtocolVersion::");
-    to_grpc_id.push_str(ver_name);
+    to_grpc_id.push_str(&ver_name.to_string().to_uppercase());
     to_grpc_id.push_str(" => match id {\n");
     let tcp_packets = if to_client { &ver.to_client } else { &ver.to_server };
     for (tcp_id, tcp_packet) in tcp_packets.iter().enumerate() {
