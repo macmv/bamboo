@@ -107,7 +107,7 @@ impl PacketField {
   }
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Packet {
   pub name:        String,
   // Can be used to lookup a field by name
@@ -115,7 +115,7 @@ pub struct Packet {
   pub fields:      Vec<(String, PacketField)>,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Version {
   // The index is the packet's id. The names should be mapped to the indicies as well.
   pub types:     HashMap<String, PacketField>,
@@ -262,13 +262,13 @@ impl VersionedPacket {
 }
 
 fn to_versioned(
-  versions: HashMap<String, Version>,
+  versions: &HashMap<String, Version>,
 ) -> (Vec<VersionedPacket>, Vec<VersionedPacket>) {
   // Generates the packet id enum, for clientbound and serverbound packets
   let mut to_client = HashMap::new();
   let mut to_server = HashMap::new();
 
-  for (version, v) in versions.into_iter().sorted_by(|(ver_a, _), (ver_b, _)| {
+  for (version, v) in versions.iter().sorted_by(|(ver_a, _), (ver_b, _)| {
     let major_a: i32 = ver_a.split("_").nth(1).unwrap().parse().unwrap();
     let major_b: i32 = ver_b.split("_").nth(1).unwrap().parse().unwrap();
     if major_a == major_b {
@@ -279,17 +279,17 @@ fn to_versioned(
       major_a.cmp(&major_b)
     }
   }) {
-    for p in v.to_client {
+    for p in &v.to_client {
       if !to_client.contains_key(&p.name) {
         to_client.insert(p.name.clone(), VersionedPacket::new(p.name.clone()));
       }
-      to_client.get_mut(&p.name).unwrap().add_version(&version, p);
+      to_client.get_mut(&p.name).unwrap().add_version(&version, p.clone());
     }
-    for p in v.to_server {
+    for p in &v.to_server {
       if !to_server.contains_key(&p.name) {
         to_server.insert(p.name.clone(), VersionedPacket::new(p.name.clone()));
       }
-      to_server.get_mut(&p.name).unwrap().add_version(&version, p);
+      to_server.get_mut(&p.name).unwrap().add_version(&version, p.clone());
     }
     if !to_server.contains_key("Login") {
       to_server.insert("Login".into(), VersionedPacket::new("Login".into()));
@@ -344,9 +344,9 @@ pub fn generate(dir: &Path) -> Result<(), Box<dyn Error>> {
     writeln!(f, "{}", serde_json::to_string(&versions)?)?;
   }
   {
-    let (to_client, to_server) = to_versioned(versions);
-    let to_client = generate_packets(to_client)?;
-    let to_server = generate_packets(to_server)?;
+    let (to_client, to_server) = to_versioned(&versions);
+    let to_client = generate_packets(to_client, &versions, true)?;
+    let to_server = generate_packets(to_server, &versions, false)?;
 
     fs::write(dir.join("cb.rs"), to_client)?;
     fs::write(dir.join("sb.rs"), to_server)?;
@@ -656,14 +656,18 @@ impl PacketField {
   }
 }
 
-fn generate_packets(packets: Vec<VersionedPacket>) -> Result<String, Box<dyn Error>> {
+fn generate_packets(
+  packets: Vec<VersionedPacket>,
+  versions: &HashMap<String, Version>,
+  to_client: bool,
+) -> Result<String, Box<dyn Error>> {
   let mut kinds = vec![];
   let mut id_opts = vec![];
   let mut to_proto_opts = vec![];
   let mut from_proto_opts = vec![];
   let mut to_tcp_opts = vec![];
   let mut from_tcp_opts = vec![];
-  for (id, packet) in packets.into_iter().enumerate() {
+  for (id, packet) in packets.iter().enumerate() {
     let id = id as i32;
     let name = packet.name().to_case(Case::Pascal);
     let field_names = packet.field_name_tys();
@@ -768,9 +772,9 @@ fn generate_packets(packets: Vec<VersionedPacket>) -> Result<String, Box<dyn Err
       }
     }
     tcp_opt.push_str(" } => {\n");
-    tcp_opt.push_str("        let mut out = tcp::Packet::new(");
+    tcp_opt.push_str("        let mut out = tcp::Packet::new(from_grpc_id(");
     tcp_opt.push_str(&id.to_string());
-    tcp_opt.push_str(", version);\n");
+    tcp_opt.push_str(", version), version);\n");
     for gen in &field_to_tcps {
       tcp_opt.push_str("        ");
       tcp_opt.push_str(&gen.to_string());
@@ -867,7 +871,7 @@ fn generate_packets(packets: Vec<VersionedPacket>) -> Result<String, Box<dyn Err
 
   out.push_str("  /// Converts the given tcp packet into a grpc packet. This is used on the proxy to parse incoming packets.\n");
   out.push_str("  pub fn from_tcp(mut p: tcp::Packet, version: ProtocolVersion) -> Self {\n");
-  out.push_str("    match p.id() {\n");
+  out.push_str("    match to_grpc_id(p.id(), version) {\n");
   for opt in from_tcp_opts {
     out.push_str("      ");
     out.push_str(&opt);
@@ -876,6 +880,60 @@ fn generate_packets(packets: Vec<VersionedPacket>) -> Result<String, Box<dyn Err
   out.push_str("    }\n");
   out.push_str("  }\n");
   out.push_str("}\n");
+
+  let mut from_grpc_id = String::new();
+  let mut to_grpc_id = String::new();
+  from_grpc_id.push_str("/// Converts a grpc packet id into a tcp packet id\n");
+  from_grpc_id.push_str("pub fn from_grpc_id(id: i32, ver: ProtocolVersion) -> i32 {\n");
+  from_grpc_id.push_str("  match ver {\n");
+  to_grpc_id.push_str("/// Converts a tcp packet id into a grpc packet id\n");
+  to_grpc_id.push_str("pub fn to_grpc_id(id: i32, ver: ProtocolVersion) -> i32 {\n");
+  to_grpc_id.push_str("  match ver {\n");
+  for (ver_name, ver) in versions.iter().sorted_by(|(ver_a, _), (ver_b, _)| {
+    let major_a: i32 = ver_a.split("_").nth(1).unwrap().parse().unwrap();
+    let major_b: i32 = ver_b.split("_").nth(1).unwrap().parse().unwrap();
+    if major_a == major_b {
+      let minor_a = ver_a.split("_").nth(2).map(|v| v.parse().unwrap()).unwrap_or(0); // for example, 1.15 is the same as 1.15.0
+      let minor_b = ver_b.split("_").nth(2).map(|v| v.parse().unwrap()).unwrap_or(0);
+      minor_a.cmp(&minor_b)
+    } else {
+      major_a.cmp(&major_b)
+    }
+  }) {
+    from_grpc_id.push_str("    ProtocolVersion::");
+    from_grpc_id.push_str(ver_name);
+    from_grpc_id.push_str(" => match id {\n");
+    to_grpc_id.push_str("    ProtocolVersion::");
+    to_grpc_id.push_str(ver_name);
+    to_grpc_id.push_str(" => match id {\n");
+    let tcp_packets = if to_client { &ver.to_client } else { &ver.to_server };
+    for (tcp_id, tcp_packet) in tcp_packets.iter().enumerate() {
+      let grpc_id =
+        packets.binary_search_by(|grpc_packet| grpc_packet.name.cmp(&tcp_packet.name)).unwrap();
+      from_grpc_id.push_str("      ");
+      from_grpc_id.push_str(&grpc_id.to_string());
+      from_grpc_id.push_str(" => ");
+      from_grpc_id.push_str(&tcp_id.to_string());
+      from_grpc_id.push_str(",\n");
+      to_grpc_id.push_str("      ");
+      to_grpc_id.push_str(&tcp_id.to_string());
+      to_grpc_id.push_str(" => ");
+      to_grpc_id.push_str(&grpc_id.to_string());
+      to_grpc_id.push_str(",\n");
+    }
+    from_grpc_id.push_str("      _ => panic!(\"unknown grpc id {}\", id),\n");
+    from_grpc_id.push_str("    }\n");
+    to_grpc_id.push_str("      _ => panic!(\"unknown tcp id {}\", id),\n");
+    to_grpc_id.push_str("    }\n");
+  }
+  from_grpc_id.push_str("    ver => panic!(\"invalid version {:?}\", ver),\n");
+  from_grpc_id.push_str("  }\n");
+  from_grpc_id.push_str("}\n");
+  to_grpc_id.push_str("    ver => panic!(\"invalid version {:?}\", ver),\n");
+  to_grpc_id.push_str("  }\n");
+  to_grpc_id.push_str("}\n");
+  out.push_str(&from_grpc_id);
+  out.push_str(&to_grpc_id);
 
   Ok(out)
 }
