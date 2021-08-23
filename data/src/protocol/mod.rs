@@ -252,7 +252,7 @@ impl VersionedPacket {
   fn field_from_tcps(&self) -> Vec<TokenStream> {
     let mut vals = vec![];
     for field in self.fields() {
-      vals.push(field.field.generate_from_tcp(&field.name));
+      vals.push(field.field.generate_from_tcp());
     }
     vals
   }
@@ -620,27 +620,27 @@ impl PacketField {
       _ => quote!(out.write_buf(#name)),
     }
   }
-  fn generate_from_tcp(&self, name: &str) -> TokenStream {
+  fn generate_from_tcp(&self) -> TokenStream {
     // let name = Ident::new(name, Span::call_site());
     match self {
-      Self::Bool => quote!(pb.fields[#name].bool),
+      Self::Bool => quote!(p.read_bool()),
       Self::Int(ity) => match ity {
-        IntType::I8 => quote!(pb.fields[#name].byte as i8),
-        IntType::U8 => quote!(pb.fields[#name].byte as u8),
-        IntType::I16 => quote!(pb.fields[#name].short as i16),
-        IntType::U16 => quote!(pb.fields[#name].short as u16),
-        IntType::I32 => quote!(pb.fields[#name].int),
-        IntType::I64 => quote!(pb.fields[#name].long as i64),
-        IntType::VarInt => quote!(pb.fields[#name].int),
-        IntType::OptVarInt => quote!(Some(pb.fields[#name].int)),
+        IntType::I8 => quote!(p.read_i8()),
+        IntType::U8 => quote!(p.read_u8()),
+        IntType::I16 => quote!(p.read_i16()),
+        IntType::U16 => quote!(p.read_u16()),
+        IntType::I32 => quote!(p.read_i32()),
+        IntType::I64 => quote!(p.read_i64()),
+        IntType::VarInt => quote!(p.read_varint()),
+        IntType::OptVarInt => quote!(Some(p.read_varint())),
       },
       Self::Float(fty) => match fty {
-        FloatType::F32 => quote!(pb.fields[#name].float),
-        FloatType::F64 => quote!(pb.fields[#name].double),
+        FloatType::F32 => quote!(p.read_f32()),
+        FloatType::F64 => quote!(p.read_f64()),
       },
-      Self::UUID => quote!(UUID::from_proto(pb.fields.remove(#name).unwrap().uuid.unwrap())),
-      Self::String => quote!(pb.fields.remove(#name).unwrap().str),
-      Self::Position => quote!(Pos::from_u64(pb.fields[#name].pos)),
+      Self::UUID => quote!(p.read_uuid()),
+      Self::String => quote!(p.read_str()),
+      Self::Position => quote!(p.read_pos()),
 
       // Self::NBT => quote!(#name.clone()),
       // Self::OptionalNBT => quote!(#name.clone()),
@@ -648,7 +648,10 @@ impl PacketField {
       // Self::EntityMetadata => quote!(#name.clone()), // Implemented on the server
 
       // Self::Option(field) => quote!(#name.unwrap()),
-      _ => quote!(pb.fields.remove(#name).unwrap().byte_arr),
+      _ => quote!({
+        let len = p.read_varint();
+        p.read_buf(len)
+      }),
     }
   }
 }
@@ -659,7 +662,7 @@ fn generate_packets(packets: Vec<VersionedPacket>) -> Result<String, Box<dyn Err
   let mut to_proto_opts = vec![];
   let mut from_proto_opts = vec![];
   let mut to_tcp_opts = vec![];
-  // let mut from_tcp_opts = vec![];
+  let mut from_tcp_opts = vec![];
   for (id, packet) in packets.into_iter().enumerate() {
     let id = id as i32;
     let name = packet.name().to_case(Case::Pascal);
@@ -669,6 +672,7 @@ fn generate_packets(packets: Vec<VersionedPacket>) -> Result<String, Box<dyn Err
     let field_to_protos = packet.field_to_protos();
     let field_from_protos = packet.field_from_protos();
     let field_to_tcps = packet.field_to_tcps();
+    let field_from_tcps = packet.field_from_tcps();
     let mut kind = String::new();
     kind.push_str(&name);
     kind.push_str(" {\n");
@@ -775,6 +779,22 @@ fn generate_packets(packets: Vec<VersionedPacket>) -> Result<String, Box<dyn Err
     tcp_opt.push_str("        out\n");
     tcp_opt.push_str("      }\n");
     to_tcp_opts.push(tcp_opt);
+
+    let mut tcp_opt = String::new();
+    tcp_opt.push_str(&id.to_string());
+    tcp_opt.push_str(" => Self::");
+    tcp_opt.push_str(&name);
+    tcp_opt.push_str(" {\n");
+    for (i, (field_name, _)) in field_names.iter().enumerate() {
+      let from_tcp = &field_from_tcps[i];
+      tcp_opt.push_str("        ");
+      tcp_opt.push_str(field_name);
+      tcp_opt.push_str(": ");
+      tcp_opt.push_str(&from_tcp.to_string());
+      tcp_opt.push_str(",\n");
+    }
+    tcp_opt.push_str("      },\n");
+    from_tcp_opts.push(tcp_opt);
   }
   let mut out = String::new();
   out.push_str("use crate::{\n");
@@ -841,6 +861,18 @@ fn generate_packets(packets: Vec<VersionedPacket>) -> Result<String, Box<dyn Err
     out.push_str("      ");
     out.push_str(&opt);
   }
+  out.push_str("    }\n");
+  out.push_str("  }\n");
+  out.push_str("\n");
+
+  out.push_str("  /// Converts the given tcp packet into a grpc packet. This is used on the proxy to parse incoming packets.\n");
+  out.push_str("  pub fn from_tcp(mut p: tcp::Packet, version: ProtocolVersion) -> Self {\n");
+  out.push_str("    match p.id() {\n");
+  for opt in from_tcp_opts {
+    out.push_str("      ");
+    out.push_str(&opt);
+  }
+  out.push_str("      _ => Self::None,\n");
   out.push_str("    }\n");
   out.push_str("  }\n");
   out.push_str("}\n");
