@@ -2,7 +2,7 @@ use common::{
   net::{sb, tcp},
   version::ProtocolVersion,
 };
-use data::protocol::{FloatType, IntType, PacketField};
+// use data::protocol::{FloatType, IntType, PacketField};
 use std::{collections::HashMap, io};
 
 use super::PacketVersion;
@@ -20,14 +20,15 @@ impl Generator {
     Generator { versions, same_versions }
   }
 
-  fn get_ver(&self, v: ProtocolVersion) -> &PacketVersion {
-    match self.versions.get(&v) {
-      Some(v) => v,
-      None => &self.versions[&self.same_versions[&v]],
-    }
-  }
+  // fn get_ver(&self, v: ProtocolVersion) -> &PacketVersion {
+  //   match self.versions.get(&v) {
+  //     Some(v) => v,
+  //     None => &self.versions[&self.same_versions[&v]],
+  //   }
+  // }
 
   pub fn convert(&self, v: ProtocolVersion, mut p: tcp::Packet) -> io::Result<sb::Packet> {
+    /*
     let ver = &self.get_ver(v);
     // let types = &ver.types;
     let spec = &ver.packets[p.id() as usize];
@@ -64,5 +65,6 @@ impl Generator {
       }
     }
     Ok(out)
+    */
   }
 }

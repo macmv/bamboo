@@ -242,6 +242,20 @@ impl VersionedPacket {
     }
     vals
   }
+  fn field_to_tcps(&self) -> Vec<TokenStream> {
+    let mut vals = vec![];
+    for field in self.fields() {
+      vals.push(field.field.generate_to_tcp(&field.name));
+    }
+    vals
+  }
+  fn field_from_tcps(&self) -> Vec<TokenStream> {
+    let mut vals = vec![];
+    for field in self.fields() {
+      vals.push(field.field.generate_from_tcp(&field.name));
+    }
+    vals
+  }
   fn name(&self) -> &str {
     &self.name
   }
@@ -575,6 +589,68 @@ impl PacketField {
       _ => quote!(pb.fields.remove(#name).unwrap().byte_arr),
     }
   }
+  fn generate_to_tcp(&self, name: &str) -> TokenStream {
+    let name = Ident::new(name, Span::call_site());
+    match self {
+      Self::Bool => quote!(out.write_bool(*#name)),
+      Self::Int(ity) => match ity {
+        IntType::I8 => quote!(out.write_i8(*#name)),
+        IntType::U8 => quote!(out.write_u8(*#name)),
+        IntType::I16 => quote!(out.write_i16(*#name)),
+        IntType::U16 => quote!(out.write_u16(*#name)),
+        IntType::I32 => quote!(out.write_i32(*#name)),
+        IntType::I64 => quote!(out.write_i64(*#name)),
+        IntType::VarInt => quote!(out.write_varint(*#name)),
+        IntType::OptVarInt => quote!(out.write_varint(*#name.unwrap_or(0))),
+      },
+      Self::Float(fty) => match fty {
+        FloatType::F32 => quote!(out.write_f32(*#name)),
+        FloatType::F64 => quote!(out.write_f64(*#name)),
+      },
+      Self::UUID => quote!(out.write_uuid(*#name)),
+      Self::String => quote!(out.write_str(#name)),
+      Self::Position => quote!(out.write_pos(*#name)),
+
+      // Self::NBT => quote!(#name.clone()),
+      // Self::OptionalNBT => quote!(#name.clone()),
+      // Self::RestBuffer => quote!(#name.clone()),
+      // Self::EntityMetadata => quote!(#name.clone()), // Implemented on the server
+
+      // Self::Option(field) => quote!(#name.unwrap()),
+      _ => quote!(out.write_buf(#name)),
+    }
+  }
+  fn generate_from_tcp(&self, name: &str) -> TokenStream {
+    // let name = Ident::new(name, Span::call_site());
+    match self {
+      Self::Bool => quote!(pb.fields[#name].bool),
+      Self::Int(ity) => match ity {
+        IntType::I8 => quote!(pb.fields[#name].byte as i8),
+        IntType::U8 => quote!(pb.fields[#name].byte as u8),
+        IntType::I16 => quote!(pb.fields[#name].short as i16),
+        IntType::U16 => quote!(pb.fields[#name].short as u16),
+        IntType::I32 => quote!(pb.fields[#name].int),
+        IntType::I64 => quote!(pb.fields[#name].long as i64),
+        IntType::VarInt => quote!(pb.fields[#name].int),
+        IntType::OptVarInt => quote!(Some(pb.fields[#name].int)),
+      },
+      Self::Float(fty) => match fty {
+        FloatType::F32 => quote!(pb.fields[#name].float),
+        FloatType::F64 => quote!(pb.fields[#name].double),
+      },
+      Self::UUID => quote!(UUID::from_proto(pb.fields.remove(#name).unwrap().uuid.unwrap())),
+      Self::String => quote!(pb.fields.remove(#name).unwrap().str),
+      Self::Position => quote!(Pos::from_u64(pb.fields[#name].pos)),
+
+      // Self::NBT => quote!(#name.clone()),
+      // Self::OptionalNBT => quote!(#name.clone()),
+      // Self::RestBuffer => quote!(#name.clone()),
+      // Self::EntityMetadata => quote!(#name.clone()), // Implemented on the server
+
+      // Self::Option(field) => quote!(#name.unwrap()),
+      _ => quote!(pb.fields.remove(#name).unwrap().byte_arr),
+    }
+  }
 }
 
 fn generate_packets(packets: Vec<VersionedPacket>) -> Result<String, Box<dyn Error>> {
@@ -582,6 +658,8 @@ fn generate_packets(packets: Vec<VersionedPacket>) -> Result<String, Box<dyn Err
   let mut id_opts = vec![];
   let mut to_proto_opts = vec![];
   let mut from_proto_opts = vec![];
+  let mut to_tcp_opts = vec![];
+  // let mut from_tcp_opts = vec![];
   for (id, packet) in packets.into_iter().enumerate() {
     let id = id as i32;
     let name = packet.name().to_case(Case::Pascal);
@@ -590,6 +668,7 @@ fn generate_packets(packets: Vec<VersionedPacket>) -> Result<String, Box<dyn Err
     let field_ty_keys = packet.field_ty_keys();
     let field_to_protos = packet.field_to_protos();
     let field_from_protos = packet.field_from_protos();
+    let field_to_tcps = packet.field_to_tcps();
     let mut kind = String::new();
     kind.push_str(&name);
     kind.push_str(" {\n");
@@ -673,12 +752,37 @@ fn generate_packets(packets: Vec<VersionedPacket>) -> Result<String, Box<dyn Err
     }
     proto_opt.push_str("      },\n");
     from_proto_opts.push(proto_opt);
+
+    let mut tcp_opt = String::new();
+    tcp_opt.push_str("Self::");
+    tcp_opt.push_str(&name);
+    tcp_opt.push_str(" { ");
+    for (i, (name, _)) in field_names.iter().enumerate() {
+      tcp_opt.push_str(&name);
+      if i != field_names.len() - 1 {
+        tcp_opt.push_str(", ");
+      }
+    }
+    tcp_opt.push_str(" } => {\n");
+    tcp_opt.push_str("        let mut out = tcp::Packet::new(");
+    tcp_opt.push_str(&id.to_string());
+    tcp_opt.push_str(", version);\n");
+    for gen in &field_to_tcps {
+      tcp_opt.push_str("        ");
+      tcp_opt.push_str(&gen.to_string());
+      tcp_opt.push_str(";\n");
+    }
+    tcp_opt.push_str("        out\n");
+    tcp_opt.push_str("      }\n");
+    to_tcp_opts.push(tcp_opt);
   }
   let mut out = String::new();
   out.push_str("use crate::{\n");
   out.push_str("  math::Pos,\n");
+  out.push_str("  net::tcp,\n");
   out.push_str("  proto,\n");
   out.push_str("  proto::packet_field::Type,\n");
+  out.push_str("  version::ProtocolVersion,\n");
   out.push_str("  util::{nbt::NBT, UUID}\n");
   out.push_str("};\n");
   out.push_str("use std::collections::HashMap;\n");
@@ -706,6 +810,7 @@ fn generate_packets(packets: Vec<VersionedPacket>) -> Result<String, Box<dyn Err
   out.push_str("    }\n");
   out.push_str("  }\n");
   out.push_str("\n");
+
   out.push_str("  /// Converts self into a protobuf\n");
   out.push_str("  pub fn to_proto(&self) -> proto::Packet {\n");
   out.push_str("    match self {\n");
@@ -724,6 +829,18 @@ fn generate_packets(packets: Vec<VersionedPacket>) -> Result<String, Box<dyn Err
     out.push_str(&opt);
   }
   out.push_str("      _ => Self::None\n");
+  out.push_str("    }\n");
+  out.push_str("  }\n");
+  out.push_str("\n");
+
+  out.push_str("  /// Converts self into a tcp packet. This is used on the proxy to send packets to the client.\n");
+  out.push_str("  pub fn to_tcp(&self, version: ProtocolVersion) -> tcp::Packet {\n");
+  out.push_str("    match self {\n");
+  out.push_str("      Self::None => panic!(\"cannot convert None packet to tcp\"),\n");
+  for opt in to_tcp_opts {
+    out.push_str("      ");
+    out.push_str(&opt);
+  }
   out.push_str("    }\n");
   out.push_str("  }\n");
   out.push_str("}\n");

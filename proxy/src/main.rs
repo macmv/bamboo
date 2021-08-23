@@ -104,12 +104,10 @@ async fn handle_client<R: StreamReader + Send + 'static, W: StreamWriter + Send 
   let (mut client_listener, mut server_listener) = conn.split().await?;
 
   // Tells the server who this client is
-  let mut out = sb::Packet::new(sb::ID::Login);
-  out.set_str("username".into(), info.name);
-  out.set_uuid("uuid".into(), info.id);
-  out.set_int("ver".into(), ver);
   // TODO: Send texture data
-  client_listener.send_to_server(out).await?;
+  client_listener
+    .send_to_server(sb::Packet::Login { username: info.name, uuid: info.id, ver })
+    .await?;
 
   let mut handles = vec![];
   handles.push(tokio::spawn(async move {

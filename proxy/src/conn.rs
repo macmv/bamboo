@@ -134,8 +134,8 @@ impl<R: StreamReader + Send> ClientListener<R> {
           },
           Ok(v) => v,
         };
-        trace!("sending proto: {}", &sb);
-        self.server.send(sb.into_proto()).await?;
+        trace!("sending proto: {:?}", &sb);
+        self.server.send(sb.to_proto()).await?;
       }
     }
     Ok(())
@@ -144,7 +144,7 @@ impl<R: StreamReader + Send> ClientListener<R> {
   /// Sends a packet to the server. Should only be used for things like login
   /// packets.
   pub async fn send_to_server(&mut self, p: sb::Packet) -> Result<(), Box<dyn Error>> {
-    self.server.send(p.into_proto()).await?;
+    self.server.send(p.to_proto()).await?;
     Ok(())
   }
 }

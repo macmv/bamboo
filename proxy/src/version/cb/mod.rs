@@ -2,22 +2,23 @@ use common::{
   net::{cb, tcp},
   version::ProtocolVersion,
 };
-use data::protocol::{CountType, FloatType, IntType, PacketField};
+// use data::protocol::{CountType, FloatType, IntType, PacketField};
 use std::{collections::HashMap, io};
 
 use super::PacketVersion;
 
-mod utils;
-mod v1_10;
-mod v1_12;
-mod v1_13;
-mod v1_14;
-mod v1_15;
-mod v1_16;
-// mod v1_17;
-mod v1_8;
-mod v1_9;
+// mod utils;
+// mod v1_10;
+// mod v1_12;
+// mod v1_13;
+// mod v1_14;
+// mod v1_15;
+// mod v1_16;
+// // mod v1_17;
+// mod v1_8;
+// mod v1_9;
 
+/*
 type BoxedPacketFn = Box<
   dyn Fn(&Generator, ProtocolVersion, &cb::Packet) -> io::Result<Vec<tcp::Packet>> + Send + Sync,
 >;
@@ -38,9 +39,10 @@ impl PacketSpec {
     self.gens.insert(id, Box::new(f));
   }
 }
+*/
 
 pub(super) struct Generator {
-  gens:          HashMap<ProtocolVersion, PacketSpec>,
+  // gens:          HashMap<ProtocolVersion, PacketSpec>,
   versions:      HashMap<ProtocolVersion, PacketVersion>,
   same_versions: HashMap<ProtocolVersion, ProtocolVersion>,
 }
@@ -50,49 +52,52 @@ impl Generator {
     versions: HashMap<ProtocolVersion, PacketVersion>,
     same_versions: HashMap<ProtocolVersion, ProtocolVersion>,
   ) -> Generator {
-    let mut gens = HashMap::new();
-    gens.insert(ProtocolVersion::V1_8, v1_8::gen_spec());
-    gens.insert(ProtocolVersion::V1_9_4, v1_9::gen_spec());
-    gens.insert(ProtocolVersion::V1_10, v1_10::gen_spec());
-    gens.insert(ProtocolVersion::V1_12_2, v1_12::gen_spec());
-    gens.insert(ProtocolVersion::V1_13_2, v1_13::gen_spec());
-    gens.insert(ProtocolVersion::V1_14_4, v1_14::gen_spec());
-    gens.insert(ProtocolVersion::V1_15_2, v1_15::gen_spec());
-    gens.insert(ProtocolVersion::V1_16_2, v1_16::gen_spec());
+    // let mut gens = HashMap::new();
+    // gens.insert(ProtocolVersion::V1_8, v1_8::gen_spec());
+    // gens.insert(ProtocolVersion::V1_9_4, v1_9::gen_spec());
+    // gens.insert(ProtocolVersion::V1_10, v1_10::gen_spec());
+    // gens.insert(ProtocolVersion::V1_12_2, v1_12::gen_spec());
+    // gens.insert(ProtocolVersion::V1_13_2, v1_13::gen_spec());
+    // gens.insert(ProtocolVersion::V1_14_4, v1_14::gen_spec());
+    // gens.insert(ProtocolVersion::V1_15_2, v1_15::gen_spec());
+    // gens.insert(ProtocolVersion::V1_16_2, v1_16::gen_spec());
     // gens.insert(ProtocolVersion::V1_17, v1_17::gen_spec());
-    Generator { gens, versions, same_versions }
+    // Generator { gens, versions, same_versions }
+    Generator { versions, same_versions }
   }
 
-  fn get_ver(&self, v: ProtocolVersion) -> &PacketVersion {
-    match self.versions.get(&v) {
-      Some(v) => v,
-      None => {
-        &self.versions[match &self.same_versions.get(&v) {
-          Some(v) => v,
-          None => {
-            error!("undefined protocol vesion: {:?}", v);
-            panic!()
-          }
-        }]
-      }
-    }
-  }
+  // fn get_ver(&self, v: ProtocolVersion) -> &PacketVersion {
+  //   match self.versions.get(&v) {
+  //     Some(v) => v,
+  //     None => {
+  //       &self.versions[match &self.same_versions.get(&v) {
+  //         Some(v) => v,
+  //         None => {
+  //           error!("undefined protocol vesion: {:?}", v);
+  //           panic!()
+  //         }
+  //       }]
+  //     }
+  //   }
+  // }
 
-  fn get_gen(&self, v: ProtocolVersion) -> &PacketSpec {
-    match self.gens.get(&v) {
-      Some(v) => v,
-      None => &self.gens[&self.same_versions[&v]],
-    }
-  }
-
-  pub fn convert_id(&self, v: ProtocolVersion, id: cb::ID) -> i32 {
-    match self.get_ver(v).ids[id.to_i32() as usize] {
-      Some(v) => v as i32,
-      None => -1,
-    }
-  }
+  // fn get_gen(&self, v: ProtocolVersion) -> &PacketSpec {
+  //   match self.gens.get(&v) {
+  //     Some(v) => v,
+  //     None => &self.gens[&self.same_versions[&v]],
+  //   }
+  // }
+  //
+  // pub fn convert_id(&self, v: ProtocolVersion, id: cb::ID) -> i32 {
+  //   match self.get_ver(v).ids[id.to_i32() as usize] {
+  //     Some(v) => v as i32,
+  //     None => -1,
+  //   }
+  // }
 
   pub fn convert(&self, v: ProtocolVersion, p: &cb::Packet) -> io::Result<Vec<tcp::Packet>> {
+    Ok(vec![p.to_tcp(v)])
+    /*
     let new_id = p.id();
     // Check for a generator
     let gen = self.get_gen(v);
@@ -169,5 +174,6 @@ impl Generator {
     };
     // println!("writing packet {:?}: {:?}", new_id, &out);
     Ok(out)
+    */
   }
 }
