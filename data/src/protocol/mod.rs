@@ -355,10 +355,14 @@ impl VersionedPacket {
     }
     tys
   }
-  fn field_to_protos(&self) -> Vec<TokenStream> {
+  fn field_to_protos(&self) -> Vec<String> {
     let mut vals = vec![];
-    for (_multi_versioned, field) in self.fields() {
-      vals.push(field.field.generate_to_proto(&field.name));
+    for (multi_versioned, field) in self.fields() {
+      if multi_versioned {
+        vals.push(field.field.generate_to_proto(&format!("{}.as_ref().unwrap()", field.name)));
+      } else {
+        vals.push(field.field.generate_to_proto(&field.name));
+      }
     }
     vals
   }
@@ -645,35 +649,34 @@ impl PacketField {
       _ => quote!(byte_arr),
     }
   }
-  fn generate_to_proto(&self, name: &str) -> TokenStream {
-    let name = Ident::new(name, Span::call_site());
+  fn generate_to_proto(&self, val: &str) -> String {
     match self {
-      Self::Bool => quote!(*#name),
+      Self::Bool => format!("*{}", val),
       Self::Int(ity) => match ity {
-        IntType::I8 => quote!((*#name as u8).into()),
-        IntType::U8 => quote!((*#name).into()),
-        IntType::I16 => quote!((*#name as u16).into()),
-        IntType::U16 => quote!((*#name).into()),
-        IntType::I32 => quote!(*#name),
-        IntType::I64 => quote!(*#name as u64),
-        IntType::VarInt => quote!(*#name),
-        IntType::OptVarInt => quote!(#name.unwrap_or(0)),
+        IntType::I8 => format!("(*{} as u8).into()", val),
+        IntType::U8 => format!("(*{}).into()", val),
+        IntType::I16 => format!("(*{} as u16).into()", val),
+        IntType::U16 => format!("(*{}).into()", val),
+        IntType::I32 => format!("*{}", val),
+        IntType::I64 => format!("*{} as u64", val),
+        IntType::VarInt => format!("*{}", val),
+        IntType::OptVarInt => format!("{}.unwrap_or(0)", val),
       },
       Self::Float(fty) => match fty {
-        FloatType::F32 => quote!(*#name),
-        FloatType::F64 => quote!(*#name),
+        FloatType::F32 => format!("*{}", val),
+        FloatType::F64 => format!("*{}", val),
       },
-      Self::UUID => quote!(Some(#name.as_proto())),
-      Self::String => quote!(#name.to_string()),
-      Self::Position => quote!(#name.to_u64()),
+      Self::UUID => format!("Some({}.as_proto())", val),
+      Self::String => format!("{}.to_string()", val),
+      Self::Position => format!("{}.to_u64()", val),
 
-      // Self::NBT => quote!(#name.clone()),
-      // Self::OptionalNBT => quote!(#name.clone()),
-      // Self::RestBuffer => quote!(#name.clone()),
-      // Self::EntityMetadata => quote!(#name.clone()), // Implemented on the server
+      // Self::NBT => format!(#name.clone()),
+      // Self::OptionalNBT => format!(#name.clone()),
+      // Self::RestBuffer => format!(#name.clone()),
+      // Self::EntityMetadata => format!(#name.clone()), // Implemented on the server
 
-      // Self::Option(field) => quote!(#name.unwrap()),
-      _ => quote!(#name.clone()),
+      // Self::Option(field) => format!(#name.unwrap()),
+      _ => format!("{}.clone()", val),
     }
   }
   fn generate_from_proto(&self, name: &str) -> TokenStream {
@@ -824,26 +827,71 @@ fn generate_packets(
     }
     proto_opt.push_str(" } => {\n");
     proto_opt.push_str("        let mut fields = HashMap::new();\n");
-    for (i, (field_name, _)) in field_names.iter().enumerate() {
-      let ty_enum = &field_ty_enums[i];
-      let ty_key = &field_ty_keys[i];
-      let to_proto = &field_to_protos[i];
-      proto_opt.push_str("        fields.insert(\"");
-      proto_opt.push_str(field_name);
-      proto_opt.push_str("\".to_string(), proto::PacketField {\n");
+    if packet.has_multiple_versions() {
+      proto_opt.push_str("        ");
+      for ver in packet.all_versions() {
+        proto_opt.push_str("if version >= ProtocolVersion::");
+        proto_opt.push_str(&ver.to_string().to_uppercase());
+        proto_opt.push_str(" {\n");
+        for (i, (is_ver, _multi_versioned, field_name, _)) in
+          packet.all_field_names_ver(ver).iter().enumerate()
+        {
+          if *is_ver {
+            let ty_enum = &field_ty_enums[i];
+            let ty_key = &field_ty_keys[i];
+            let to_proto = &field_to_protos[i];
+            proto_opt.push_str("          fields.insert(\"");
+            proto_opt.push_str(field_name);
+            proto_opt.push_str("\".to_string(), proto::PacketField {\n");
 
-      proto_opt.push_str("          ty: Type::");
-      proto_opt.push_str(&ty_enum.to_string());
-      proto_opt.push_str(".into(),\n");
+            proto_opt.push_str("            ty: Type::");
+            proto_opt.push_str(&ty_enum.to_string());
+            proto_opt.push_str(".into(),\n");
 
-      proto_opt.push_str("          ");
-      proto_opt.push_str(&ty_key.to_string());
-      proto_opt.push_str(": ");
-      proto_opt.push_str(&to_proto.to_string());
-      proto_opt.push_str(",\n");
+            proto_opt.push_str("            ");
+            proto_opt.push_str(&ty_key.to_string());
+            proto_opt.push_str(": ");
+            proto_opt.push_str(&to_proto.to_string());
+            proto_opt.push_str(",\n");
 
-      proto_opt.push_str("          ..Default::default()\n");
-      proto_opt.push_str("        });\n");
+            proto_opt.push_str("            ..Default::default()\n");
+            proto_opt.push_str("          });\n");
+
+            // tcp_opt.push_str("          ");
+            // let to_tcp = &field_to_tcps[i];
+            // tcp_opt.push_str(&to_tcp.to_string());
+            // tcp_opt.push_str(";\n");
+          }
+        }
+        proto_opt.push_str("        } else ");
+      }
+      proto_opt.push_str("{\n");
+      proto_opt.push_str("          unreachable!(\"failed to generate proto for packet ");
+      proto_opt.push_str(&packet.name);
+      proto_opt.push_str(" with version {:?}\", version)\n");
+      proto_opt.push_str("        }\n");
+    } else {
+      for (i, (field_name, _)) in field_names.iter().enumerate() {
+        let ty_enum = &field_ty_enums[i];
+        let ty_key = &field_ty_keys[i];
+        let to_proto = &field_to_protos[i];
+        proto_opt.push_str("        fields.insert(\"");
+        proto_opt.push_str(field_name);
+        proto_opt.push_str("\".to_string(), proto::PacketField {\n");
+
+        proto_opt.push_str("          ty: Type::");
+        proto_opt.push_str(&ty_enum.to_string());
+        proto_opt.push_str(".into(),\n");
+
+        proto_opt.push_str("          ");
+        proto_opt.push_str(&ty_key.to_string());
+        proto_opt.push_str(": ");
+        proto_opt.push_str(&to_proto.to_string());
+        proto_opt.push_str(",\n");
+
+        proto_opt.push_str("          ..Default::default()\n");
+        proto_opt.push_str("        });\n");
+      }
     }
     proto_opt.push_str("        proto::Packet {\n");
 
