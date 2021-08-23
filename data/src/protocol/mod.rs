@@ -230,20 +230,20 @@ impl VersionedField {
   fn latest(&self) -> &PacketField {
     &self.versions.last().unwrap().1
   }
-  fn add_all(&self, out: &mut Vec<NamedPacketField>) {
+  fn add_all(&self, out: &mut Vec<(bool, NamedPacketField)>) {
     if self.versions.len() == 1 {
       let mut name = self.name.clone();
       // Avoid keyword conflicts
       if name == "type" {
         name = "type_".to_string();
       }
-      out.push(NamedPacketField { name, field: self.versions.first().unwrap().1.clone() });
+      out.push((false, NamedPacketField { name, field: self.versions.first().unwrap().1.clone() }));
     } else {
       for (ver, field) in &self.versions {
         let mut name = self.name.clone();
         name.push_str("_");
         name.push_str(&ver.to_string());
-        out.push(NamedPacketField { name, field: field.clone() });
+        out.push((true, NamedPacketField { name, field: field.clone() }));
       }
     }
   }
@@ -303,7 +303,7 @@ impl VersionedPacket {
     }
   }
 
-  fn fields(&self) -> Vec<NamedPacketField> {
+  fn fields(&self) -> Vec<(bool, NamedPacketField)> {
     let mut out = vec![];
     for field in &self.fields {
       field.add_all(&mut out);
@@ -347,56 +347,63 @@ impl VersionedPacket {
   }
   fn field_name_tys(&self) -> Vec<(String, String)> {
     let mut vals = vec![];
-    for field in self.fields() {
-      vals.push((field.name.clone(), field.field.ty_lit().to_string()));
+    for (multi_versioned, field) in self.fields() {
+      vals.push((
+        field.name.clone(),
+        if multi_versioned {
+          format!("Option<{}>", field.field.ty_lit().to_string())
+        } else {
+          field.field.ty_lit().to_string()
+        },
+      ));
     }
     vals
   }
   fn field_tys(&self) -> Vec<TokenStream> {
     let mut tys = vec![];
-    for field in self.fields() {
+    for (_multi_versioned, field) in self.fields() {
       tys.push(field.field.ty_lit());
     }
     tys
   }
   fn field_ty_enums(&self) -> Vec<TokenStream> {
     let mut tys = vec![];
-    for field in self.fields() {
+    for (_multi_versioned, field) in self.fields() {
       tys.push(field.field.ty_enum());
     }
     tys
   }
   fn field_ty_keys(&self) -> Vec<TokenStream> {
     let mut tys = vec![];
-    for field in self.fields() {
+    for (_multi_versioned, field) in self.fields() {
       tys.push(field.field.ty_key());
     }
     tys
   }
   fn field_to_protos(&self) -> Vec<TokenStream> {
     let mut vals = vec![];
-    for field in self.fields() {
+    for (_multi_versioned, field) in self.fields() {
       vals.push(field.field.generate_to_proto(&field.name));
     }
     vals
   }
   fn field_from_protos(&self) -> Vec<TokenStream> {
     let mut vals = vec![];
-    for field in self.fields() {
+    for (_multi_versioned, field) in self.fields() {
       vals.push(field.field.generate_from_proto(&field.name));
     }
     vals
   }
   fn field_to_tcps(&self) -> Vec<TokenStream> {
     let mut vals = vec![];
-    for field in self.fields() {
+    for (_multi_versioned, field) in self.fields() {
       vals.push(field.field.generate_to_tcp(&field.name));
     }
     vals
   }
   fn field_from_tcps(&self) -> Vec<TokenStream> {
     let mut vals = vec![];
-    for field in self.fields() {
+    for (_multi_versioned, field) in self.fields() {
       vals.push(field.field.generate_from_tcp());
     }
     vals
