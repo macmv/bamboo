@@ -138,26 +138,26 @@ impl World {
       max_players_v1_16_2: Some(0), // Not sure if ignored
       reduced_debug_info:  false,   // Don't reduce debug info
 
-      // 1.13+
-      view_distance: 10, // 10 chunk view distance TODO: Per player view distance
+      // 1.14+
+      view_distance_v1_14: Some(10), // 10 chunk view distance TODO: Per player view distance
 
       // 1.15+
-      hashed_seed:           0,
-      enable_respawn_screen: true,
+      hashed_seed_v1_15:           Some(0),
+      enable_respawn_screen_v1_15: Some(true),
 
       // 1.16+
-      is_hardcore:        false,
-      is_flat:            false, // Changes the horizon line
-      previous_game_mode: 1,
-      world_name:         "overworld".into(),
-      is_debug:           false, /* This is not reduced_debug_info, this is for the world being
-                                  * a debug world */
-      dimension_codec:    codec.serialize(),
-      dimension_v1_16:    Some("".into()),
-      dimension_v1_16_2:  Some(vec![]),
+      is_hardcore_v1_16_2:      Some(false),
+      is_flat_v1_16:            Some(false), // Changes the horizon line
+      previous_game_mode_v1_16: Some(1),
+      world_name_v1_16:         Some("overworld".into()),
+      is_debug_v1_16:           Some(false), /* This is not reduced_debug_info, this is for the
+                                              * world being a debug world */
+      dimension_codec_v1_16:    Some(codec.serialize()),
+      dimension_v1_16:          Some("".into()),
+      dimension_v1_16_2:        Some(vec![]),
       // dimension: NBT::new("", dimension).serialize(),
       // world_names:        vec!["minecraft:overworld".into()],
-      world_names:        vec![],
+      world_names_v1_16:        Some(vec![]),
     };
 
     conn.send(out).await;
@@ -173,13 +173,13 @@ impl World {
 
     conn
       .send(cb::Packet::Position {
-        x:           0.0,  // X
-        y:           60.0, // Y
-        z:           0.0,  // Z
-        yaw:         0.0,  // Yaw
-        pitch:       0.0,  // Pitch
-        flags:       0,    // Flags
-        teleport_id: 1234, // TP id
+        x:                0.0,        // X
+        y:                60.0,       // Y
+        z:                0.0,        // Z
+        yaw:              0.0,        // Yaw
+        pitch:            0.0,        // Pitch
+        flags:            0,          // Flags
+        teleport_id_v1_9: Some(1234), // TP id
       })
       .await;
 

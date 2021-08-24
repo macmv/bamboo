@@ -262,17 +262,17 @@ impl World {
   /// unload chunk packet first. Use at your own risk!
   pub fn serialize_chunk(&self, pos: ChunkPos, ver: BlockVersion) -> cb::Packet {
     let out = cb::Packet::MapChunk {
-      x:               pos.x(),
-      z:               pos.z(),
-      ground_up:       true,
-      bit_map_v1_8:    Some(0),
-      bit_map_v1_9:    Some(0),
-      chunk_data:      vec![],
-      block_entities:  vec![],
-      heightmaps:      NBT::empty("").serialize(),
-      biomes_v1_15:    Some(vec![]),
-      biomes_v1_16_2:  Some(vec![]),
-      ignore_old_data: false,
+      x:                     pos.x(),
+      z:                     pos.z(),
+      ground_up:             true,
+      bit_map_v1_8:          Some(0),
+      bit_map_v1_9:          Some(0),
+      chunk_data:            vec![],
+      block_entities_v1_9_4: Some(vec![]),
+      heightmaps_v1_14:      Some(NBT::empty("").serialize()),
+      biomes_v1_15:          Some(vec![]),
+      biomes_v1_16_2:        Some(vec![]),
+      ignore_old_data_v1_16: Some(false),
     };
     // self.chunk(pos, |c| {
     //   let mut pb = c.to_proto(ver);
@@ -309,9 +309,9 @@ impl World {
   /// This broadcasts a chat message to everybody in the world.
   pub async fn broadcast<M: Into<Chat>>(&self, msg: M) {
     let out = cb::Packet::Chat {
-      message:  msg.into().to_json(),
-      position: 0, // Chat box, not above hotbar
-      sender:   UUID::from_u128(0),
+      message:      msg.into().to_json(),
+      position:     0, // Chat box, not above hotbar
+      sender_v1_16: Some(UUID::from_u128(0)),
     };
 
     for p in self.players.lock().await.values() {
@@ -374,9 +374,9 @@ impl WorldManager {
   /// Broadcasts a message to everyone one the server.
   pub async fn broadcast<M: Into<Chat>>(&self, msg: M) {
     let out = cb::Packet::Chat {
-      message:  msg.into().to_json(),
-      position: 0, // Chat box, not above hotbar
-      sender:   UUID::from_u128(0),
+      message:      msg.into().to_json(),
+      position:     0, // Chat box, not above hotbar
+      sender_v1_16: Some(UUID::from_u128(0)),
     };
 
     let worlds = self.worlds.lock().await;

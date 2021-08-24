@@ -111,14 +111,14 @@ impl Connection {
           mut location,
           direction_v1_8,
           direction_v1_9,
-          hand,
+          hand_v1_9,
           cursor_x_v1_8,
           cursor_x_v1_11,
           cursor_y_v1_8,
           cursor_y_v1_11,
           cursor_z_v1_8,
           cursor_z_v1_11,
-          inside_block,
+          inside_block_v1_14,
           held_item,
         } => {
           let direction: i32 = if player.ver() == ProtocolVersion::V1_8 {

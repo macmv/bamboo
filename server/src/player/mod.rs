@@ -201,9 +201,9 @@ impl Player {
     self
       .conn()
       .send(cb::Packet::Chat {
-        message:  msg.to_json(),
-        position: 0, // Chat box, not system message or over hotbar
-        sender:   self.id(),
+        message:      msg.to_json(),
+        position:     0, // Chat box, not system message or over hotbar
+        sender_v1_16: Some(self.id()),
       })
       .await;
   }
@@ -212,9 +212,9 @@ impl Player {
     self
       .conn()
       .send(cb::Packet::Chat {
-        message:  msg.to_json(),
-        position: 2, // Hotbar, not chat box or system message
-        sender:   self.id(),
+        message:      msg.to_json(),
+        position:     2, // Hotbar, not chat box or system message
+        sender_v1_16: Some(self.id()),
       })
       .await;
   }
@@ -463,7 +463,11 @@ impl Player {
   async fn unload_chunks(&self, min: ChunkPos, max: ChunkPos) {
     for x in min.x()..max.x() {
       for z in min.z()..max.z() {
-        self.conn.send(cb::Packet::UnloadChunk { chunk_x: x, chunk_z: z }).await;
+        // TODO: Unload chunks correctly for 1.8
+        self
+          .conn
+          .send(cb::Packet::UnloadChunk { chunk_x_v1_9: Some(x), chunk_z_v1_9: Some(z) })
+          .await;
       }
     }
   }
