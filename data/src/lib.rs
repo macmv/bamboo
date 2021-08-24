@@ -5,6 +5,7 @@ use std::{
 
 mod block;
 mod entity;
+mod gen;
 mod item;
 mod prismarine;
 mod protocol;
