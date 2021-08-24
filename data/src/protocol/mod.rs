@@ -975,12 +975,38 @@ fn generate_packets(
     tcp_opt.push_str(", version), version);\n");
     if packet.has_multiple_versions() {
       tcp_opt.push_str("        ");
-      for ver in packet.all_versions() {
-        tcp_opt.push_str("if version >= ProtocolVersion::");
-        tcp_opt.push_str(&ver.to_string().to_uppercase());
-        tcp_opt.push_str(" {\n");
+      let all_versions = packet.all_versions();
+      for (i, ver) in all_versions.iter().enumerate() {
+        if i == 0 && *ver != (Version { major: 8, minor: 0 }) {
+          tcp_opt.push_str("if version < ProtocolVersion::");
+          tcp_opt.push_str(&ver.to_string().to_uppercase());
+          tcp_opt.push_str(" {\n");
+          tcp_opt.push_str("          // v1_8 generator\n");
+          for (i, (_is_ver, multi_versioned, _, _)) in
+            packet.all_field_names_ver(*ver).iter().enumerate()
+          {
+            if !multi_versioned {
+              tcp_opt.push_str("          ");
+              let to_tcp = &field_to_tcps[i];
+              tcp_opt.push_str(&to_tcp.to_string());
+              tcp_opt.push_str(";\n");
+            }
+          }
+          tcp_opt.push_str("        } else ");
+        } else if i != 0 {
+          tcp_opt.push_str(" else ");
+        }
+        if let Some(next_ver) = all_versions.get(i + 1) {
+          tcp_opt.push_str("if version < ProtocolVersion::");
+          tcp_opt.push_str(&next_ver.to_string().to_uppercase());
+          tcp_opt.push_str(" ");
+        }
+        tcp_opt.push_str("{\n");
+        tcp_opt.push_str("          // ");
+        tcp_opt.push_str(&ver.to_string());
+        tcp_opt.push_str(" generator\n");
         for (i, (is_ver, _multi_versioned, _, _)) in
-          packet.all_field_names_ver(ver).iter().enumerate()
+          packet.all_field_names_ver(*ver).iter().enumerate()
         {
           if *is_ver {
             tcp_opt.push_str("          ");
@@ -989,13 +1015,9 @@ fn generate_packets(
             tcp_opt.push_str(";\n");
           }
         }
-        tcp_opt.push_str("        } else ");
+        tcp_opt.push_str("        }");
       }
-      tcp_opt.push_str("{\n");
-      tcp_opt.push_str("          unreachable!(\"failed to generate packet ");
-      tcp_opt.push_str(&packet.name);
-      tcp_opt.push_str(" with version {:?}\", version)\n");
-      tcp_opt.push_str("        }\n");
+      tcp_opt.push_str("\n");
     } else {
       for gen in &field_to_tcps {
         tcp_opt.push_str("        ");
