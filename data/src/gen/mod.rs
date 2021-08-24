@@ -6,33 +6,33 @@ pub struct CodeGen {
   // Indent is added when we write a new line, not on write_line
   needs_indent: bool,
 }
-pub enum EnumVariant {
-  Named(String),
-  Tuple(String, Vec<String>),
-  Struct(String, Vec<(String, String)>),
+pub enum EnumVariant<'a> {
+  Named(&'a str),
+  Tuple(&'a str, &'a [&'a str]),
+  Struct(&'a str, &'a [(&'a str, &'a str)]),
 }
-pub enum MatchBranch {
+pub enum MatchBranch<'a> {
   /// A unit variant. Example:
   /// ```ignore
   /// match var {
   ///   Self::#name => /* ... */
   /// }
   /// ```
-  Unit(String),
+  Unit(&'a str),
   /// A tuple variant. Example:
   /// ```ignore
   /// match var {
   ///   Self::#name(#val1, #val2) => /* ... */
   /// }
   /// ```
-  Tuple(String, Vec<String>),
+  Tuple(&'a str, &'a [&'a str]),
   /// A struct variant. Example:
   /// ```ignore
   /// match var {
   ///   Self::#name { #field1, #field2 } => /* ... */
   /// }
   /// ```
-  Struct(String, Vec<String>),
+  Struct(&'a str, &'a [&'a str]),
   /// Anything else variant. Example:
   /// ```ignore
   /// match var {
@@ -42,8 +42,8 @@ pub enum MatchBranch {
   Other,
 }
 pub struct FuncArg<'a> {
-  name: &'a str,
-  ty:   &'a str,
+  pub name: &'a str,
+  pub ty:   &'a str,
 }
 
 impl CodeGen {
@@ -56,9 +56,17 @@ impl CodeGen {
   /// # let mut gen = CodeGen::new();
   /// gen.write_enum("Hello", &[
   ///   EnumVariant::Named("Nothing"),
-  ///   EnumVariant::Tuple("Something", vec!["String", "i32"]),
-  ///   EnumVariant::Struct("Complex", vec![("name", "String"), ("amount", "i32")]),
+  ///   EnumVariant::Tuple("Something", &["String", "i32"]),
+  ///   EnumVariant::Struct("Complex", &[("name", "String"), ("amount", "i32")]),
   /// ])
+  /// # let out = gen.into_output();
+  /// # eprintln!("OUTPUT: {}", out);
+  /// # assert_eq!(out,
+  /// # r#"pub enum Hello {
+  /// #   Nothing,
+  /// #   Something(String, i32),
+  /// #   Complex { name: String, amount: i32 },
+  /// # }"#);
   /// ```
   /// That will produce:
   /// ```ignore
@@ -95,6 +103,15 @@ impl CodeGen {
   /// ], Some("i32"), |gen| {
   ///   gen.write_line("value + 2");
   /// });
+  /// # let out = gen.into_output();
+  /// # eprintln!("OUTPUT: {}", out);
+  /// # assert_eq!(out,
+  /// # r#"pub fn my_func(name: String, amount: i32) {
+  /// #   println!("hello world!");
+  /// # }
+  /// # pub fn plus_two(value: i32) -> i32 {
+  /// #   value + 2
+  /// # }"#);
   /// ```
   /// That will produce:
   /// ```ignore
@@ -128,14 +145,14 @@ impl CodeGen {
   }
   /// Writes a match statement. Example:
   /// ```
-  /// # use data::gen::{CodeGen, MatchBranch};
+  /// # use data::gen::{CodeGen, FuncArg, MatchBranch};
   /// # let mut gen = CodeGen::new();
   /// gen.write_match("var", "Option", &[
   ///   MatchBranch::Unit("None"),
   ///   MatchBranch::Tuple("Some", &["value"]),
   /// ], |gen, i| {
   ///   gen.write("println!(\"got index ");
-  ///   gen.write(i.to_string());
+  ///   gen.write(&i.to_string());
   ///   gen.write("\"),");
   /// });
   ///
@@ -144,11 +161,13 @@ impl CodeGen {
   /// ], Some("i32"), |gen| {
   ///   gen.write_line("value + 2");
   /// });
-  /// # assert_eq!(gen.into_output(),
+  /// # let out = gen.into_output();
+  /// # eprintln!("OUTPUT: {}", out);
+  /// # assert_eq!(out,
   /// # r#"match var {
   /// #   Option::None => println!("got index 0"),
   /// #   Option::Some(value) => println!("got index 1"),
-  /// # }"#;
+  /// # }"#);
   /// ```
   /// That will produce:
   /// ```ignore
@@ -207,9 +226,13 @@ impl CodeGen {
   pub fn clear_indent(&mut self) {
     self.indent = 0;
   }
+  /// Returns the code that was generated with this generator.
+  pub fn into_output(self) -> String {
+    self.current
+  }
 }
 
-impl EnumVariant {
+impl EnumVariant<'_> {
   pub fn write(&self, gen: &mut CodeGen) {
     match self {
       Self::Named(name) => {
@@ -231,7 +254,7 @@ impl EnumVariant {
         gen.write(&name);
         gen.write("(");
         gen.add_indent();
-        for (name, ty) in fields {
+        for (name, ty) in *fields {
           gen.write(name);
           gen.write(": ");
           gen.write(ty);
@@ -243,7 +266,7 @@ impl EnumVariant {
     }
   }
 }
-impl MatchBranch {
+impl MatchBranch<'_> {
   pub fn write(&self, gen: &mut CodeGen) {
     match self {
       Self::Unit(name) => {
@@ -264,7 +287,7 @@ impl MatchBranch {
         gen.write(&name);
         gen.write(" { ");
         gen.add_indent();
-        for name in fields {
+        for name in *fields {
           gen.write(name);
           gen.write_line(",");
         }
