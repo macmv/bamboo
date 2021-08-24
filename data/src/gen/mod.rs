@@ -94,6 +94,39 @@ impl CodeGen {
     self.remove_indent();
     self.write_line("}");
   }
+  /// Writes an impl block. Example:
+  /// ```
+  /// # use data::gen::{CodeGen, EnumVariant};
+  /// # let mut gen = CodeGen::new();
+  /// gen.write_impl("Hello", |gen| {
+  ///   gen.write_line("pub fn hello_world() {}");
+  /// });
+  /// # let out = gen.into_output();
+  /// # eprintln!("OUTPUT: {}", out);
+  /// # assert_eq!(out,
+  /// # r#"impl Hello {
+  /// #   pub fn hello_world() {}
+  /// # }
+  /// # "#);
+  /// ```
+  /// That will produce:
+  /// ```ignore
+  /// impl Hello {
+  ///   pub fn hello_world() {}
+  /// }
+  /// ```
+  pub fn write_impl<F>(&mut self, name: &str, write_body: F)
+  where
+    F: FnOnce(&mut CodeGen),
+  {
+    self.write("impl ");
+    self.write(name);
+    self.write_line(" {");
+    self.add_indent();
+    write_body(self);
+    self.remove_indent();
+    self.write_line("}");
+  }
   /// Writes a function. Example:
   /// ```
   /// # use data::gen::{CodeGen, FuncArg};

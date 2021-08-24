@@ -801,7 +801,6 @@ fn generate_packets(
   versions: &HashMap<Version, PacketVersion>,
   to_client: bool,
 ) -> Result<String, Box<dyn Error>> {
-  let mut kinds = vec![];
   let mut id_opts = vec![];
   let mut to_proto_opts = vec![];
   let mut from_proto_opts = vec![];
@@ -830,6 +829,7 @@ fn generate_packets(
       })
       .append_start([EnumVariant::Named("None".into())]),
   );
+  gen.write_impl("Packet", |gen| {});
   for (id, packet) in packets.iter().enumerate() {
     let id = id as i32;
     let name = packet.name().to_case(Case::Pascal);
@@ -840,18 +840,6 @@ fn generate_packets(
     let field_from_protos = packet.field_from_protos();
     let field_to_tcps = packet.field_to_tcps();
     let field_from_tcps = packet.field_from_tcps();
-    let mut kind = String::new();
-    kind.push_str(&name);
-    kind.push_str(" {\n");
-    for (name, ty) in &field_names {
-      kind.push_str("    ");
-      kind.push_str(&name);
-      kind.push_str(": ");
-      kind.push_str(&ty);
-      kind.push_str(",\n");
-    }
-    kind.push_str("  },\n");
-    kinds.push(kind);
     let mut id_opt = String::new();
     id_opt.push_str("Self::");
     id_opt.push_str(&name);
