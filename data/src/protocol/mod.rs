@@ -126,8 +126,9 @@ pub struct PacketVersion {
 }
 
 struct NamedPacketField {
-  name:  String,
-  field: PacketField,
+  multi_versioned: bool,
+  name:            String,
+  field:           PacketField,
 }
 
 struct VersionedField {
@@ -213,7 +214,7 @@ impl VersionedField {
   fn latest(&self) -> &PacketField {
     &self.versions.last().unwrap().1
   }
-  fn add_all(&self, out: &mut Vec<(bool, NamedPacketField)>) {
+  fn add_all(&self, out: &mut Vec<NamedPacketField>) {
     if self.versions.len() == 1 {
       // If the first version is not 1.8, we need this to be a multi versioned field
       let multi_versioned = self.versions.first().unwrap().0 != Version { major: 8, minor: 0 };
@@ -226,23 +227,24 @@ impl VersionedField {
       if name == "type" {
         name = "type_".to_string();
       }
-      out.push((
+      out.push(NamedPacketField {
         multi_versioned,
-        NamedPacketField { name, field: self.versions.first().unwrap().1.clone() },
-      ));
+        name,
+        field: self.versions.first().unwrap().1.clone(),
+      });
     } else {
       for (ver, field) in &self.versions {
         let mut name = self.name.clone();
         name.push_str("_");
         name.push_str(&ver.to_string());
-        out.push((true, NamedPacketField { name, field: field.clone() }));
+        out.push(NamedPacketField { multi_versioned: true, name, field: field.clone() });
       }
     }
   }
   fn multi_versioned(&self) -> bool {
     self.versions.len() > 1 || self.versions.first().unwrap().0 != Version { major: 8, minor: 0 }
   }
-  fn add_all_ver(&self, out: &mut Vec<(bool, bool, NamedPacketField)>, matching_ver: Version) {
+  fn add_all_ver(&self, out: &mut Vec<(bool, NamedPacketField)>, matching_ver: Version) {
     if self.versions.len() == 1 {
       // If the first version is not 1.8, we need this to be a multi versioned field
       let multi_versioned = self.versions.first().unwrap().0 != Version { major: 8, minor: 0 };
@@ -259,8 +261,7 @@ impl VersionedField {
         // Make sure that we don't set is_ver to true for a field that hasn't been added to this
         // packet yet.
         matching_ver >= self.versions.first().unwrap().0,
-        multi_versioned,
-        NamedPacketField { name, field: self.versions.first().unwrap().1.clone() },
+        NamedPacketField { multi_versioned, name, field: self.versions.first().unwrap().1.clone() },
       ));
     } else {
       let mut found_ver = false;
@@ -281,7 +282,7 @@ impl VersionedField {
         let mut name = self.name.clone();
         name.push_str("_");
         name.push_str(&this_ver.to_string());
-        out.push((is_ver, true, NamedPacketField { name, field: field.clone() }));
+        out.push((is_ver, NamedPacketField { multi_versioned: true, name, field: field.clone() }));
       }
     }
   }
@@ -306,7 +307,7 @@ impl VersionedPacket {
     }
   }
 
-  fn fields(&self) -> Vec<(bool, NamedPacketField)> {
+  fn fields(&self) -> Vec<NamedPacketField> {
     let mut out = vec![];
     for field in &self.fields {
       field.add_all(&mut out);
@@ -314,7 +315,7 @@ impl VersionedPacket {
     out
   }
 
-  fn fields_ver(&self, ver: Version) -> Vec<(bool, bool, NamedPacketField)> {
+  fn fields_ver(&self, ver: Version) -> Vec<(bool, NamedPacketField)> {
     let mut out = vec![];
     for field in &self.fields {
       field.add_all_ver(&mut out, ver);
@@ -341,72 +342,41 @@ impl VersionedPacket {
     }
     versions.into_iter().sorted().collect()
   }
-  fn field_name_tys(&self) -> Vec<(String, String)> {
-    let mut vals = vec![];
-    for (multi_versioned, field) in self.fields() {
-      vals.push((
-        field.name.clone(),
-        if multi_versioned {
-          format!("Option<{}>", field.field.ty_lit().to_string())
-        } else {
-          field.field.ty_lit().to_string()
-        },
-      ));
-    }
-    vals
-  }
-  fn field_ty_enums(&self) -> Vec<TokenStream> {
-    let mut tys = vec![];
-    for (_multi_versioned, field) in self.fields() {
-      tys.push(field.field.ty_enum());
-    }
-    tys
-  }
-  fn field_ty_keys(&self) -> Vec<TokenStream> {
-    let mut tys = vec![];
-    for (_multi_versioned, field) in self.fields() {
-      tys.push(field.field.ty_key());
-    }
-    tys
-  }
-  fn field_to_protos(&self) -> Vec<String> {
-    let mut vals = vec![];
-    for (multi_versioned, field) in self.fields() {
-      if multi_versioned {
-        vals.push(field.field.generate_to_proto(&format!("{}.as_ref().unwrap()", field.name)));
-      } else {
-        vals.push(field.field.generate_to_proto(&field.name));
-      }
-    }
-    vals
-  }
-  fn field_from_protos(&self) -> Vec<TokenStream> {
-    let mut vals = vec![];
-    for (_multi_versioned, field) in self.fields() {
-      vals.push(field.field.generate_from_proto(&field.name));
-    }
-    vals
-  }
-  fn field_to_tcps(&self) -> Vec<String> {
-    let mut vals = vec![];
-    for (multi_versioned, field) in self.fields() {
-      if multi_versioned {
-        vals.push(field.field.generate_to_tcp(&format!("{}.as_ref().unwrap()", field.name)));
-      } else {
-        vals.push(field.field.generate_to_tcp(&field.name));
-      }
-    }
-    vals
-  }
-  fn field_from_tcps(&self) -> Vec<TokenStream> {
-    let mut vals = vec![];
-    for (_multi_versioned, field) in self.fields() {
-      vals.push(field.field.generate_from_tcp());
-    }
-    vals
-  }
   fn name(&self) -> &str {
     &self.name
+  }
+}
+
+impl NamedPacketField {
+  fn name(&self) -> String {
+    self.name.clone()
+  }
+  fn ty(&self) -> String {
+    if self.multi_versioned {
+      format!("Option<{}>", self.field.ty_lit().to_string())
+    } else {
+      self.field.ty_lit().to_string()
+    }
+  }
+  fn generate_to_proto(&self) -> String {
+    if self.multi_versioned {
+      self.field.generate_to_proto(&format!("{}.as_ref().unwrap()", self.name))
+    } else {
+      self.field.generate_to_proto(&self.name)
+    }
+  }
+  fn generate_from_proto(&self) -> String {
+    self.field.generate_from_proto(&self.name).to_string()
+  }
+  fn generate_to_tcp(&self) -> String {
+    if self.multi_versioned {
+      self.field.generate_to_tcp(&format!("{}.as_ref().unwrap()", self.name))
+    } else {
+      self.field.generate_to_tcp(&self.name)
+    }
+  }
+  fn generate_from_tcp(&self) -> String {
+    self.field.generate_from_tcp().to_string()
   }
 }
 
@@ -794,7 +764,6 @@ fn generate_packets(
   versions: &HashMap<Version, PacketVersion>,
   to_client: bool,
 ) -> Result<String, Box<dyn Error>> {
-  let mut to_proto_opts = vec![];
   let mut gen = CodeGen::new();
   gen.write_line("use crate::{");
   gen.write_line("  math::Pos,");
@@ -814,7 +783,10 @@ fn generate_packets(
     packets
       .iter()
       .map(|packet| {
-        EnumVariant::Struct(packet.name().to_case(Case::Pascal), packet.field_name_tys())
+        EnumVariant::Struct(
+          packet.name().to_case(Case::Pascal),
+          packet.fields().into_iter().map(|field| (field.name(), field.ty())).collect(),
+        )
       })
       .append_start([EnumVariant::Named("None".into())]),
   );
@@ -834,8 +806,8 @@ fn generate_packets(
     });
     gen.write_func(
       "to_tcp",
-      &[FuncArg::slf_ref(), FuncArg { name: "out", ty: "tcp::Packet" }],
-      Some("proto::Packet"),
+      &[FuncArg::slf_ref(), FuncArg { name: "version", ty: "ProtocolVersion" }],
+      Some("tcp::Packet"),
       |gen| {
         gen.write_match("self", |gen| {
           gen.write_match_branch("Self", MatchBranch::Unit("None"));
@@ -845,10 +817,13 @@ fn generate_packets(
               "Self",
               MatchBranch::Struct(
                 &p.name().to_case(Case::Pascal),
-                p.field_name_tys().into_iter().map(|(name, _ty)| name).collect(),
+                p.fields().into_iter().map(|field| field.name()).collect(),
               ),
             );
             gen.write_block(|gen| {
+              gen.write("let mut out = tcp::Packet::new(from_grpc_id(");
+              gen.write(&id.to_string());
+              gen.write_line(", version), version);");
               if p.has_multiple_versions() {
                 let all_versions = p.all_versions();
                 for (i, ver) in all_versions.iter().enumerate() {
@@ -858,11 +833,9 @@ fn generate_packets(
                     gen.write_line(" {");
                     gen.add_indent();
                     gen.write_comment("1.8 generator");
-                    for (i, (is_ver, _multi_versioned, field)) in
-                      p.fields_ver(*ver).iter().enumerate()
-                    {
+                    for (i, (is_ver, field)) in p.fields_ver(*ver).iter().enumerate() {
                       if *is_ver {
-                        gen.write(&field.field.generate_to_tcp(&field.name).to_string());
+                        gen.write(&field.generate_to_tcp().to_string());
                         gen.write_line(";");
                       }
                     }
@@ -872,30 +845,30 @@ fn generate_packets(
                     gen.write(" else ");
                   }
                   if let Some(next_ver) = all_versions.get(i + 1) {
-                    gen.write_line("if version < ProtocolVersion::");
-                    gen.write_line(&next_ver.to_string().to_uppercase());
-                    gen.write_line(" ");
+                    gen.write("if version < ProtocolVersion::");
+                    gen.write(&next_ver.to_string().to_uppercase());
+                    gen.write(" ");
                   }
                   gen.write_line("{");
                   gen.add_indent();
                   gen.write_comment(&ver.to_string());
-                  for (i, (is_ver, _multi_versioned, field)) in
-                    p.fields_ver(*ver).iter().enumerate()
-                  {
+                  for (i, (is_ver, field)) in p.fields_ver(*ver).iter().enumerate() {
                     if *is_ver {
-                      gen.write(&field.field.generate_to_tcp(&field.name).to_string());
+                      gen.write(&field.generate_to_tcp().to_string());
                       gen.write_line(";");
                     }
                   }
                   gen.remove_indent();
-                  gen.write_line("}");
+                  gen.write("}");
                 }
+                gen.write_line("");
               } else {
-                for (i, (_, field)) in p.fields().iter().enumerate() {
-                  gen.write(&field.field.generate_to_tcp(&field.name));
+                for (i, field) in p.fields().iter().enumerate() {
+                  gen.write(&field.generate_to_tcp());
                   gen.write_line(";");
                 }
               }
+              gen.write_line("out");
             });
           }
         });
@@ -903,38 +876,38 @@ fn generate_packets(
     );
   });
   for (id, packet) in packets.iter().enumerate() {
-    let id = id as i32;
-    let name = packet.name().to_case(Case::Pascal);
-    let field_names = packet.field_name_tys();
-    let field_ty_enums = packet.field_ty_enums();
-    let field_ty_keys = packet.field_ty_keys();
-    let field_to_protos = packet.field_to_protos();
-    let field_from_protos = packet.field_from_protos();
-    let field_to_tcps = packet.field_to_tcps();
-    let field_from_tcps = packet.field_from_tcps();
-    let mut proto_opt = String::new();
-    proto_opt.push_str("Self::");
-    proto_opt.push_str(&name);
-    proto_opt.push_str(" { ");
-    for (i, (name, _)) in field_names.iter().enumerate() {
-      proto_opt.push_str(&name);
-      if i != field_names.len() - 1 {
-        proto_opt.push_str(", ");
-      }
-    }
-    proto_opt.push_str(" } => {\n");
-    proto_opt.push_str("        let mut fields = HashMap::new();\n");
-    proto_opt.push_str("        proto::Packet {\n");
-
-    proto_opt.push_str("          id: ");
-    proto_opt.push_str(&format!("{}", id));
-    proto_opt.push_str(",\n");
-
-    proto_opt.push_str("          fields,\n");
-    proto_opt.push_str("          other: None,\n");
-    proto_opt.push_str("        }\n");
-    proto_opt.push_str("      }\n");
-    to_proto_opts.push(proto_opt);
+    // let id = id as i32;
+    // let name = packet.name().to_case(Case::Pascal);
+    // let field_names = packet.field_name_tys();
+    // let field_ty_enums = packet.field_ty_enums();
+    // let field_ty_keys = packet.field_ty_keys();
+    // let field_to_protos = packet.field_to_protos();
+    // let field_from_protos = packet.field_from_protos();
+    // let field_to_tcps = packet.field_to_tcps();
+    // let field_from_tcps = packet.field_from_tcps();
+    // let mut proto_opt = String::new();
+    // proto_opt.push_str("Self::");
+    // proto_opt.push_str(&name);
+    // proto_opt.push_str(" { ");
+    // for (i, (name, _)) in field_names.iter().enumerate() {
+    //   proto_opt.push_str(&name);
+    //   if i != field_names.len() - 1 {
+    //     proto_opt.push_str(", ");
+    //   }
+    // }
+    // proto_opt.push_str(" } => {\n");
+    // proto_opt.push_str("        let mut fields = HashMap::new();\n");
+    // proto_opt.push_str("        proto::Packet {\n");
+    //
+    // proto_opt.push_str("          id: ");
+    // proto_opt.push_str(&format!("{}", id));
+    // proto_opt.push_str(",\n");
+    //
+    // proto_opt.push_str("          fields,\n");
+    // proto_opt.push_str("          other: None,\n");
+    // proto_opt.push_str("        }\n");
+    // proto_opt.push_str("      }\n");
+    // to_proto_opts.push(proto_opt);
 
     // let mut proto_opt = String::new();
     // proto_opt.push_str(id.to_string().as_str());
