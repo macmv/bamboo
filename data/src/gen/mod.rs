@@ -58,15 +58,19 @@ impl CodeGen {
   ///   EnumVariant::Named("Nothing"),
   ///   EnumVariant::Tuple("Something", &["String", "i32"]),
   ///   EnumVariant::Struct("Complex", &[("name", "String"), ("amount", "i32")]),
-  /// ])
+  /// ]);
   /// # let out = gen.into_output();
   /// # eprintln!("OUTPUT: {}", out);
   /// # assert_eq!(out,
   /// # r#"pub enum Hello {
   /// #   Nothing,
   /// #   Something(String, i32),
-  /// #   Complex { name: String, amount: i32 },
-  /// # }"#);
+  /// #   Complex {
+  /// #     name: String,
+  /// #     amount: i32,
+  /// #   },
+  /// # }
+  /// # "#);
   /// ```
   /// That will produce:
   /// ```ignore
@@ -111,7 +115,8 @@ impl CodeGen {
   /// # }
   /// # pub fn plus_two(value: i32) -> i32 {
   /// #   value + 2
-  /// # }"#);
+  /// # }
+  /// # "#);
   /// ```
   /// That will produce:
   /// ```ignore
@@ -129,12 +134,15 @@ impl CodeGen {
     self.write("pub fn ");
     self.write(name);
     self.write("(");
-    for arg in args {
+    for (i, arg) in args.iter().enumerate() {
       arg.write(self);
+      if i != args.len() - 1 {
+        self.write(", ");
+      }
     }
-    self.write(") ");
+    self.write(")");
     if let Some(ret) = ret {
-      self.write("-> ");
+      self.write(" -> ");
       self.write(ret);
     }
     self.write_line(" {");
@@ -153,13 +161,7 @@ impl CodeGen {
   /// ], |gen, i| {
   ///   gen.write("println!(\"got index ");
   ///   gen.write(&i.to_string());
-  ///   gen.write("\"),");
-  /// });
-  ///
-  /// gen.write_func("plus_two", &[
-  ///   FuncArg { name: "value", ty: "i32" },
-  /// ], Some("i32"), |gen| {
-  ///   gen.write_line("value + 2");
+  ///   gen.write_line("\"),");
   /// });
   /// # let out = gen.into_output();
   /// # eprintln!("OUTPUT: {}", out);
@@ -167,7 +169,8 @@ impl CodeGen {
   /// # r#"match var {
   /// #   Option::None => println!("got index 0"),
   /// #   Option::Some(value) => println!("got index 1"),
-  /// # }"#);
+  /// # }
+  /// # "#);
   /// ```
   /// That will produce:
   /// ```ignore
@@ -193,9 +196,9 @@ impl CodeGen {
       if let MatchBranch::Other = branch {
         branch.write(self);
       } else {
-        branch.write(self);
         self.write(type_name);
-        self.write_line("::");
+        self.write("::");
+        branch.write(self);
       }
       write_block(self, i);
     }
@@ -204,6 +207,10 @@ impl CodeGen {
   }
 
   pub fn write(&mut self, src: &str) {
+    // Make sure not to indent when we aren't writing anything
+    if src == "" {
+      return;
+    }
     if self.needs_indent {
       self.current.push_str(&"  ".repeat(self.indent));
       self.needs_indent = false;
@@ -211,8 +218,15 @@ impl CodeGen {
     self.current.push_str(src);
   }
   pub fn write_line(&mut self, src: &str) {
-    self.current.push_str(src);
-    self.current.push_str("\n");
+    // If we want a blank line, don't add indents
+    if src == "" {
+      self.current.push_str("\n");
+      self.needs_indent = true;
+    } else {
+      self.write(src);
+      self.current.push_str("\n");
+      self.needs_indent = true;
+    }
   }
   /// Adds a new indent level to the generator.
   pub fn add_indent(&mut self) {
@@ -252,7 +266,7 @@ impl EnumVariant<'_> {
       }
       Self::Struct(name, fields) => {
         gen.write(&name);
-        gen.write("(");
+        gen.write_line(" {");
         gen.add_indent();
         for (name, ty) in *fields {
           gen.write(name);
@@ -261,7 +275,7 @@ impl EnumVariant<'_> {
           gen.write_line(",");
         }
         gen.remove_indent();
-        gen.write_line("),");
+        gen.write_line("},");
       }
     }
   }
@@ -281,7 +295,7 @@ impl MatchBranch<'_> {
             gen.write(", ");
           }
         }
-        gen.write_line(")");
+        gen.write(")");
       }
       Self::Struct(name, fields) => {
         gen.write(&name);
@@ -292,13 +306,13 @@ impl MatchBranch<'_> {
           gen.write_line(",");
         }
         gen.remove_indent();
-        gen.write_line(" }");
+        gen.write(" }");
       }
       Self::Other => {
-        gen.write("_ =>");
+        gen.write("_");
       }
     }
-    gen.write_line(" => ");
+    gen.write(" => ");
   }
 }
 impl FuncArg<'_> {
