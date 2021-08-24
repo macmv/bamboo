@@ -11,6 +11,30 @@ pub enum EnumVariant {
   Tuple(String, Vec<String>),
   Struct(String, Vec<(String, String)>),
 }
+pub enum MatchBranch {
+  /// A unit variant. Example:
+  /// ```
+  /// match var {
+  ///   Self::#name => /* ... */
+  /// }
+  /// ```
+  Unit(String),
+  /// A tuple variant. Example:
+  /// ```
+  /// match var {
+  ///   Self::#name(#val1, #val2) => /* ... */
+  /// }
+  /// ```
+  Tuple(String, Vec<String>),
+  /// A struct variant. Example:
+  /// ```
+  /// match var {
+  ///   Self::#name { #field1, #field2 } => /* ... */
+  /// }
+  /// ```
+  Struct(String, Vec<String>),
+  Other,
+}
 
 impl CodeGen {
   pub fn new() -> Self {
@@ -27,6 +51,33 @@ impl CodeGen {
     self.remove_indent();
     self.write_line("}");
   }
+  pub fn write_match<F>(
+    &mut self,
+    variable: &str,
+    type_name: &str,
+    branches: &[MatchBranch],
+    mut write_block: F,
+  ) where
+    F: FnMut(&mut CodeGen, usize),
+  {
+    self.write("match ");
+    self.write(variable);
+    self.write_line(" {");
+    self.add_indent();
+    for (i, branch) in branches.iter().enumerate() {
+      if let MatchBranch::Other = branch {
+        branch.write(self);
+      } else {
+        branch.write(self);
+        self.write(type_name);
+        self.write_line("::");
+      }
+      write_block(self, i);
+    }
+    self.remove_indent();
+    self.write_line("}");
+  }
+
   pub fn write(&mut self, src: &str) {
     if self.needs_indent {
       self.current.push_str(&"  ".repeat(self.indent));
@@ -84,5 +135,40 @@ impl EnumVariant {
         gen.write_line("),");
       }
     }
+  }
+}
+impl MatchBranch {
+  pub fn write(&self, gen: &mut CodeGen) {
+    match self {
+      Self::Unit(name) => {
+        gen.write(&name);
+      }
+      Self::Tuple(name, fields) => {
+        gen.write(&name);
+        gen.write("(");
+        for (i, f) in fields.iter().enumerate() {
+          gen.write(f);
+          if i != fields.len() - 1 {
+            gen.write(", ");
+          }
+        }
+        gen.write_line(")");
+      }
+      Self::Struct(name, fields) => {
+        gen.write(&name);
+        gen.write(" { ");
+        gen.add_indent();
+        for name in fields {
+          gen.write(name);
+          gen.write_line(",");
+        }
+        gen.remove_indent();
+        gen.write_line(" }");
+      }
+      Self::Other => {
+        gen.write("_ =>");
+      }
+    }
+    gen.write_line(" => ");
   }
 }
