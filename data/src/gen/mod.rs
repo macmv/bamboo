@@ -13,28 +13,28 @@ pub enum EnumVariant {
 }
 pub enum MatchBranch {
   /// A unit variant. Example:
-  /// ```
+  /// ```ignore
   /// match var {
   ///   Self::#name => /* ... */
   /// }
   /// ```
   Unit(String),
   /// A tuple variant. Example:
-  /// ```
+  /// ```ignore
   /// match var {
   ///   Self::#name(#val1, #val2) => /* ... */
   /// }
   /// ```
   Tuple(String, Vec<String>),
   /// A struct variant. Example:
-  /// ```
+  /// ```ignore
   /// match var {
   ///   Self::#name { #field1, #field2 } => /* ... */
   /// }
   /// ```
   Struct(String, Vec<String>),
   /// Anything else variant. Example:
-  /// ```
+  /// ```ignore
   /// match var {
   ///   _ => /* ... */
   /// }
@@ -50,6 +50,24 @@ impl CodeGen {
   pub fn new() -> Self {
     CodeGen { current: String::new(), indent: 0, needs_indent: true }
   }
+  /// Writes an enum literal. Example:
+  /// ```
+  /// # use data::gen::{CodeGen, EnumVariant};
+  /// # let mut gen = CodeGen::new();
+  /// gen.write_enum("Hello", &[
+  ///   EnumVariant::Named("Nothing"),
+  ///   EnumVariant::Tuple("Something", vec!["String", "i32"]),
+  ///   EnumVariant::Struct("Complex", vec![("name", "String"), ("amount", "i32")]),
+  /// ])
+  /// ```
+  /// That will produce:
+  /// ```ignore
+  /// pub enum Hello {
+  ///   Nothing,
+  ///   Something(String, i32),
+  ///   Complex { name: String, amount: i32 },
+  /// }
+  /// ```
   pub fn write_enum(&mut self, name: &str, variants: &[EnumVariant]) {
     self.write("pub enum ");
     self.write(name);
@@ -61,7 +79,33 @@ impl CodeGen {
     self.remove_indent();
     self.write_line("}");
   }
-  pub fn write_func<F>(&mut self, name: &str, args: &[FuncArg], ret: &str, write_body: F)
+  /// Writes a function. Example:
+  /// ```
+  /// # use data::gen::{CodeGen, FuncArg};
+  /// # let mut gen = CodeGen::new();
+  /// gen.write_func("my_func", &[
+  ///   FuncArg { name: "name", ty: "String" },
+  ///   FuncArg { name: "amount", ty: "i32" },
+  /// ], None, |gen| {
+  ///   gen.write_line("println!(\"hello world!\");");
+  /// });
+  ///
+  /// gen.write_func("plus_two", &[
+  ///   FuncArg { name: "value", ty: "i32" },
+  /// ], Some("i32"), |gen| {
+  ///   gen.write_line("value + 2");
+  /// });
+  /// ```
+  /// That will produce:
+  /// ```ignore
+  /// pub fn my_func(name: String, amount: i32) {
+  ///   println!("hello world!");
+  /// }
+  /// pub fn plus_two(value: i32) -> i32 {
+  ///   value + 2
+  /// }
+  /// ```
+  pub fn write_func<F>(&mut self, name: &str, args: &[FuncArg], ret: Option<&str>, write_body: F)
   where
     F: FnOnce(&mut CodeGen),
   {
@@ -72,7 +116,7 @@ impl CodeGen {
       arg.write(self);
     }
     self.write(") ");
-    if ret != "" {
+    if let Some(ret) = ret {
       self.write("-> ");
       self.write(ret);
     }
@@ -82,6 +126,37 @@ impl CodeGen {
     self.remove_indent();
     self.write_line("}");
   }
+  /// Writes a match statement. Example:
+  /// ```
+  /// # use data::gen::{CodeGen, MatchBranch};
+  /// # let mut gen = CodeGen::new();
+  /// gen.write_match("var", "Option", &[
+  ///   MatchBranch::Unit("None"),
+  ///   MatchBranch::Tuple("Some", &["value"]),
+  /// ], |gen, i| {
+  ///   gen.write("println!(\"got index ");
+  ///   gen.write(i.to_string());
+  ///   gen.write("\"),");
+  /// });
+  ///
+  /// gen.write_func("plus_two", &[
+  ///   FuncArg { name: "value", ty: "i32" },
+  /// ], Some("i32"), |gen| {
+  ///   gen.write_line("value + 2");
+  /// });
+  /// # assert_eq!(gen.into_output(),
+  /// # r#"match var {
+  /// #   Option::None => println!("got index 0"),
+  /// #   Option::Some(value) => println!("got index 1"),
+  /// # }"#;
+  /// ```
+  /// That will produce:
+  /// ```ignore
+  /// match var {
+  ///   Option::None => println!("got index 0"),
+  ///   Option::Some(value) => println!("got index 1"),
+  /// }
+  /// ```
   pub fn write_match<F>(
     &mut self,
     variable: &str,
