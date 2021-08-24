@@ -358,6 +358,22 @@ impl NamedPacketField {
       self.field.ty_lit().to_string()
     }
   }
+  fn write_to_proto(&self, gen: &mut CodeGen) {
+    gen.write("fields.insert(\"");
+    gen.add_indent();
+    gen.write(&self.name());
+    gen.write_line("\".to_string(), proto::PacketField {");
+    gen.write("ty: proto::PacketType::");
+    gen.write(&self.field.ty_enum().to_string());
+    gen.write_line(".into(),");
+    gen.write(&self.field.ty_key().to_string());
+    gen.write(": ");
+    gen.write(&self.generate_to_proto().to_string());
+    gen.write_line(",");
+    gen.write_line("..Default::default()");
+    gen.remove_indent();
+    gen.write_line("});");
+  }
   fn generate_to_proto(&self) -> String {
     if self.multi_versioned {
       self.field.generate_to_proto(&format!("{}.as_ref().unwrap()", self.name))
@@ -793,11 +809,11 @@ fn generate_packets(
   gen.write_impl("Packet", |gen| {
     gen.write_func("id", &[FuncArg::slf_ref()], Some("i32"), |gen| {
       gen.write_match("self", |gen| {
-        gen.write_match_branch("Self", MatchBranch::Unit("None"));
+        gen.write_match_branch(Some("Self"), MatchBranch::Unit("None"));
         gen.write_line("unreachable!(\"cannot get id of None packet\"),");
         for (id, p) in packets.iter().enumerate() {
           gen.write_match_branch(
-            "Self",
+            Some("Self"),
             MatchBranch::Struct(&p.name().to_case(Case::Pascal), vec![]),
           );
           gen.write_line(&format!("{},", id));
@@ -805,16 +821,90 @@ fn generate_packets(
       });
     });
     gen.write_func(
+      "to_proto",
+      &[FuncArg::slf_ref(), FuncArg { name: "version", ty: "ProtocolVersion" }],
+      Some("proto::Packet"),
+      |gen| {
+        gen.write_match("self", |gen| {
+          for (id, p) in packets.iter().enumerate() {
+            gen.write_match_branch(
+              Some("Self"),
+              MatchBranch::Struct(
+                &p.name().to_case(Case::Pascal),
+                p.fields().into_iter().map(|field| field.name()).collect(),
+              ),
+            );
+            gen.write_block(|gen| {
+              gen.write_line("let mut fields = HashMap::new();");
+              if p.has_multiple_versions() {
+                let all_versions = p.all_versions();
+                for (i, ver) in all_versions.iter().enumerate() {
+                  if i == 0 && *ver != (Version { major: 8, minor: 0 }) {
+                    gen.write("if version < ProtocolVersion::");
+                    gen.write(&ver.to_string().to_uppercase());
+                    gen.write_line(" {");
+                    gen.add_indent();
+                    gen.write_comment("1.8 generator");
+                    for (is_ver, field) in p.fields_ver(*ver).iter() {
+                      if *is_ver {
+                        field.write_to_proto(gen);
+                      }
+                    }
+                    gen.remove_indent();
+                    gen.write("} else ");
+                  } else if i != 0 {
+                    gen.write(" else ");
+                  }
+                  if let Some(next_ver) = all_versions.get(i + 1) {
+                    gen.write("if version < ProtocolVersion::");
+                    gen.write(&next_ver.to_string().to_uppercase());
+                    gen.write(" ");
+                  }
+                  gen.write_line("{");
+                  gen.add_indent();
+                  gen.write_comment(&ver.to_string());
+                  for (is_ver, field) in p.fields_ver(*ver).iter() {
+                    if *is_ver {
+                      field.write_to_proto(gen);
+                    }
+                  }
+                  gen.remove_indent();
+                  gen.write("}");
+                }
+                gen.write_line("");
+              } else {
+                for field in p.fields().iter() {
+                  field.write_to_proto(gen);
+                }
+              }
+              gen.write_line("proto::Packet{");
+              gen.add_indent();
+              gen.write("id: ");
+              gen.write(&id.to_string());
+              gen.write_line(",");
+              gen.write_line("fields,");
+              gen.write_line("other: None,");
+              gen.remove_indent();
+              gen.write_line("}");
+            });
+          }
+          // Use this is from_proto
+          // gen.write_match_branch(None, MatchBranch::Other);
+          // gen.write_line("unreachable!(\"invalid packet id {}\", pb.ty),");
+        });
+      },
+    );
+    gen.write_func(
       "to_tcp",
       &[FuncArg::slf_ref(), FuncArg { name: "version", ty: "ProtocolVersion" }],
       Some("tcp::Packet"),
       |gen| {
         gen.write_match("self", |gen| {
-          gen.write_match_branch("Self", MatchBranch::Unit("None"));
+          gen.write_match_branch(Some("Self"), MatchBranch::Unit("None"));
           gen.write_line("unreachable!(\"cannot convert None packet to tcp\"),");
           for (id, p) in packets.iter().enumerate() {
             gen.write_match_branch(
-              "Self",
+              Some("Self"),
               MatchBranch::Struct(
                 &p.name().to_case(Case::Pascal),
                 p.fields().into_iter().map(|field| field.name()).collect(),

@@ -192,9 +192,9 @@ impl CodeGen {
   /// # use data::gen::{CodeGen, FuncArg, MatchBranch};
   /// # let mut gen = CodeGen::new();
   /// gen.write_match("var", |gen| {
-  ///   gen.write_match_branch("Option", MatchBranch::Unit("None"));
+  ///   gen.write_match_branch(Some("Option"), MatchBranch::Unit("None"));
   ///   gen.write_line("println!(\"got nothing!\"),");
-  ///   gen.write_match_branch("Option", MatchBranch::Tuple("Some", &["value"]));
+  ///   gen.write_match_branch(None, MatchBranch::Tuple("Some", &["value"]));
   ///   gen.write_line("println!(\"got something: {}!\", value),");
   /// });
   /// # let out = gen.into_output();
@@ -202,7 +202,7 @@ impl CodeGen {
   /// # assert_eq!(out,
   /// # r#"match var {
   /// #   Option::None => println!("got nothing"),
-  /// #   Option::Some(value) => println!("got something: {}", value),
+  /// #   Some(value) => println!("got something: {}", value),
   /// # }
   /// # "#);
   /// ```
@@ -226,14 +226,12 @@ impl CodeGen {
     self.write_line("}");
   }
   /// See the docs for [`write_match`](Self::write_match).
-  pub fn write_match_branch(&mut self, ty: &str, branch: MatchBranch) {
-    if let MatchBranch::Other = branch {
-      branch.write(self);
-    } else {
+  pub fn write_match_branch(&mut self, ty: Option<&str>, branch: MatchBranch) {
+    if let Some(ty) = ty {
       self.write(ty);
       self.write("::");
-      branch.write(self);
     }
+    branch.write(self);
   }
   /// Writes a block of code. Example:
   /// ```
