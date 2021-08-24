@@ -3,7 +3,7 @@ mod parse;
 
 use convert_case::{Case, Casing};
 use itertools::Itertools;
-use proc_macro2::{Ident, Span, TokenStream};
+use proc_macro2::TokenStream;
 use quote::quote;
 use serde_derive::{Deserialize, Serialize};
 use std::{
@@ -214,12 +214,21 @@ impl VersionedField {
   }
   fn add_all(&self, out: &mut Vec<(bool, NamedPacketField)>) {
     if self.versions.len() == 1 {
+      // If the first version is not 1.8, we need this to be a multi versioned field
+      let multi_versioned = self.versions.first().unwrap().0 != Version { major: 8, minor: 0 };
       let mut name = self.name.clone();
+      if multi_versioned {
+        name.push_str("_");
+        name.push_str(&self.versions.first().unwrap().0.to_string());
+      }
       // Avoid keyword conflicts
       if name == "type" {
         name = "type_".to_string();
       }
-      out.push((false, NamedPacketField { name, field: self.versions.first().unwrap().1.clone() }));
+      out.push((
+        multi_versioned,
+        NamedPacketField { name, field: self.versions.first().unwrap().1.clone() },
+      ));
     } else {
       for (ver, field) in &self.versions {
         let mut name = self.name.clone();
@@ -229,16 +238,27 @@ impl VersionedField {
       }
     }
   }
+  fn multi_versioned(&self) -> bool {
+    self.versions.len() > 1 || self.versions.first().unwrap().0 != Version { major: 8, minor: 0 }
+  }
   fn add_all_ver(&self, out: &mut Vec<(bool, bool, NamedPacketField)>, matching_ver: Version) {
     if self.versions.len() == 1 {
+      // If the first version is not 1.8, we need this to be a multi versioned field
+      let multi_versioned = self.versions.first().unwrap().0 != Version { major: 8, minor: 0 };
       let mut name = self.name.clone();
+      if multi_versioned {
+        name.push_str("_");
+        name.push_str(&self.versions.first().unwrap().0.to_string());
+      }
       // Avoid keyword conflicts
       if name == "type" {
         name = "type_".to_string();
       }
       out.push((
-        true,
-        false,
+        // Make sure that we don't set is_ver to true for a field that hasn't been added to this
+        // packet yet.
+        matching_ver >= self.versions.first().unwrap().0,
+        multi_versioned,
         NamedPacketField { name, field: self.versions.first().unwrap().1.clone() },
       ));
     } else {
@@ -303,7 +323,7 @@ impl VersionedPacket {
 
   fn has_multiple_versions(&self) -> bool {
     for field in &self.fields {
-      if field.versions.len() > 1 {
+      if field.multi_versioned() {
         return true;
       }
     }
@@ -312,7 +332,7 @@ impl VersionedPacket {
   fn all_versions(&self) -> Vec<Version> {
     let mut versions = HashSet::new();
     for field in &self.fields {
-      if field.versions.len() > 1 {
+      if field.multi_versioned() {
         for (ver, _) in &field.versions {
           versions.insert(ver.clone());
         }
@@ -982,10 +1002,10 @@ fn generate_packets(
           tcp_opt.push_str(&ver.to_string().to_uppercase());
           tcp_opt.push_str(" {\n");
           tcp_opt.push_str("          // v1_8 generator\n");
-          for (i, (_is_ver, multi_versioned, _, _)) in
+          for (i, (is_ver, _multi_versioned, _, _)) in
             packet.all_field_names_ver(*ver).iter().enumerate()
           {
-            if !multi_versioned {
+            if *is_ver {
               tcp_opt.push_str("          ");
               let to_tcp = &field_to_tcps[i];
               tcp_opt.push_str(&to_tcp.to_string());
