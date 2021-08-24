@@ -9,10 +9,10 @@ pub struct CodeGen {
   // Indent is added when we write a new line, not on write_line
   needs_indent: bool,
 }
-pub enum EnumVariant<'a> {
-  Named(&'a str),
-  Tuple(&'a str, &'a [&'a str]),
-  Struct(&'a str, &'a [(&'a str, &'a str)]),
+pub enum EnumVariant {
+  Named(String),
+  Tuple(String, Vec<String>),
+  Struct(String, Vec<(String, String)>),
 }
 pub enum MatchBranch<'a> {
   /// A unit variant. Example:
@@ -83,7 +83,7 @@ impl CodeGen {
   ///   Complex { name: String, amount: i32 },
   /// }
   /// ```
-  pub fn write_enum(&mut self, name: &str, variants: &[EnumVariant]) {
+  pub fn write_enum(&mut self, name: &str, variants: impl Iterator<Item = EnumVariant>) {
     self.write("pub enum ");
     self.write(name);
     self.write_line(" {");
@@ -249,7 +249,7 @@ impl CodeGen {
   }
 }
 
-impl EnumVariant<'_> {
+impl EnumVariant {
   pub fn write(&self, gen: &mut CodeGen) {
     match self {
       Self::Named(name) => {
@@ -271,10 +271,10 @@ impl EnumVariant<'_> {
         gen.write(&name);
         gen.write_line(" {");
         gen.add_indent();
-        for (name, ty) in *fields {
-          gen.write(name);
+        for (name, ty) in fields {
+          gen.write(&name);
           gen.write(": ");
-          gen.write(ty);
+          gen.write(&ty);
           gen.write_line(",");
         }
         gen.remove_indent();

@@ -1,6 +1,7 @@
 mod json;
 mod parse;
 
+use crate::gen::{AppendIters, CodeGen, EnumVariant, FuncArg, MatchBranch};
 use convert_case::{Case, Casing};
 use itertools::Itertools;
 use proc_macro2::TokenStream;
@@ -806,6 +807,29 @@ fn generate_packets(
   let mut from_proto_opts = vec![];
   let mut to_tcp_opts = vec![];
   let mut from_tcp_opts = vec![];
+  let mut gen = CodeGen::new();
+  gen.write_line("use crate::{");
+  gen.write_line("  math::Pos,");
+  gen.write_line("  net::tcp,");
+  gen.write_line("  proto,");
+  gen.write_line("  proto::packet_field::Type,");
+  gen.write_line("  version::ProtocolVersion,");
+  gen.write_line("  util::{nbt::NBT, UUID}");
+  gen.write_line("};");
+  gen.write_line("use std::collections::HashMap;\n");
+  gen.write_line("");
+  gen.write_line("/// Auto generated packet ids. This is a combination of all packet");
+  gen.write_line("/// names for all versions. Some of these packets are never used.");
+  gen.write_line("#[derive(Clone, Debug, PartialEq)]");
+  gen.write_enum(
+    "Packet",
+    packets
+      .iter()
+      .map(|packet| {
+        EnumVariant::Struct(packet.name().to_case(Case::Pascal), packet.field_name_tys())
+      })
+      .append_start([EnumVariant::Named("None".into())]),
+  );
   for (id, packet) in packets.iter().enumerate() {
     let id = id as i32;
     let name = packet.name().to_case(Case::Pascal);
@@ -1105,27 +1129,7 @@ fn generate_packets(
     }
     from_tcp_opts.push(tcp_opt);
   }
-  let mut out = String::new();
-  out.push_str("use crate::{\n");
-  out.push_str("  math::Pos,\n");
-  out.push_str("  net::tcp,\n");
-  out.push_str("  proto,\n");
-  out.push_str("  proto::packet_field::Type,\n");
-  out.push_str("  version::ProtocolVersion,\n");
-  out.push_str("  util::{nbt::NBT, UUID}\n");
-  out.push_str("};\n");
-  out.push_str("use std::collections::HashMap;\n");
-  out.push_str("\n");
-  out.push_str("/// Auto generated packet ids. This is a combination of all packet\n");
-  out.push_str("/// names for all versions. Some of these packets are never used.\n");
-  out.push_str("#[derive(Clone, Debug, PartialEq)]\n");
-  out.push_str("pub enum Packet {\n");
-  out.push_str("  None,\n");
-  for k in kinds {
-    out.push_str("  ");
-    out.push_str(&k);
-  }
-  out.push_str("}\n");
+  let mut out = gen.into_output();
   out.push_str("\n");
   out.push_str("impl Packet {\n");
   out.push_str("  /// Returns a GRPC specific id for this packet.\n");
