@@ -341,13 +341,6 @@ impl VersionedPacket {
     }
     versions.into_iter().sorted().collect()
   }
-  fn all_field_names_ver(&self, ver: Version) -> Vec<(bool, bool, String, String)> {
-    let mut vals = vec![];
-    for (for_ver, multi_versioned, field) in self.fields_ver(ver) {
-      vals.push((for_ver, multi_versioned, field.name.clone(), field.field.ty_lit().to_string()));
-    }
-    vals
-  }
   fn field_name_tys(&self) -> Vec<(String, String)> {
     let mut vals = vec![];
     for (multi_versioned, field) in self.fields() {
@@ -801,11 +794,7 @@ fn generate_packets(
   versions: &HashMap<Version, PacketVersion>,
   to_client: bool,
 ) -> Result<String, Box<dyn Error>> {
-  let mut id_opts = vec![];
   let mut to_proto_opts = vec![];
-  let mut from_proto_opts = vec![];
-  let mut to_tcp_opts = vec![];
-  let mut from_tcp_opts = vec![];
   let mut gen = CodeGen::new();
   gen.write_line("use crate::{");
   gen.write_line("  math::Pos,");
@@ -834,14 +823,84 @@ fn generate_packets(
       gen.write_match("self", |gen| {
         gen.write_match_branch("Self", MatchBranch::Unit("None"));
         gen.write_line("unreachable!(\"cannot get id of None packet\"),");
-        gen.remove_indent();
         for (id, p) in packets.iter().enumerate() {
-          gen.write_match_branch("Self", MatchBranch::Struct(&p.name().to_case(Case::Pascal), &[]));
+          gen.write_match_branch(
+            "Self",
+            MatchBranch::Struct(&p.name().to_case(Case::Pascal), vec![]),
+          );
           gen.write_line(&format!("{},", id));
-          gen.remove_indent();
         }
       });
     });
+    gen.write_func(
+      "to_tcp",
+      &[FuncArg::slf_ref(), FuncArg { name: "out", ty: "tcp::Packet" }],
+      Some("proto::Packet"),
+      |gen| {
+        gen.write_match("self", |gen| {
+          gen.write_match_branch("Self", MatchBranch::Unit("None"));
+          gen.write_line("unreachable!(\"cannot convert None packet to tcp\"),");
+          for (id, p) in packets.iter().enumerate() {
+            gen.write_match_branch(
+              "Self",
+              MatchBranch::Struct(
+                &p.name().to_case(Case::Pascal),
+                p.field_name_tys().into_iter().map(|(name, _ty)| name).collect(),
+              ),
+            );
+            gen.write_block(|gen| {
+              if p.has_multiple_versions() {
+                let all_versions = p.all_versions();
+                for (i, ver) in all_versions.iter().enumerate() {
+                  if i == 0 && *ver != (Version { major: 8, minor: 0 }) {
+                    gen.write("if version < ProtocolVersion::");
+                    gen.write(&ver.to_string().to_uppercase());
+                    gen.write_line(" {");
+                    gen.add_indent();
+                    gen.write_comment("1.8 generator");
+                    for (i, (is_ver, _multi_versioned, field)) in
+                      p.fields_ver(*ver).iter().enumerate()
+                    {
+                      if *is_ver {
+                        gen.write(&field.field.generate_to_tcp(&field.name).to_string());
+                        gen.write_line(";");
+                      }
+                    }
+                    gen.remove_indent();
+                    gen.write("} else ");
+                  } else if i != 0 {
+                    gen.write(" else ");
+                  }
+                  if let Some(next_ver) = all_versions.get(i + 1) {
+                    gen.write_line("if version < ProtocolVersion::");
+                    gen.write_line(&next_ver.to_string().to_uppercase());
+                    gen.write_line(" ");
+                  }
+                  gen.write_line("{");
+                  gen.add_indent();
+                  gen.write_comment(&ver.to_string());
+                  for (i, (is_ver, _multi_versioned, field)) in
+                    p.fields_ver(*ver).iter().enumerate()
+                  {
+                    if *is_ver {
+                      gen.write(&field.field.generate_to_tcp(&field.name).to_string());
+                      gen.write_line(";");
+                    }
+                  }
+                  gen.remove_indent();
+                  gen.write_line("}");
+                }
+              } else {
+                for (i, (_, field)) in p.fields().iter().enumerate() {
+                  gen.write(&field.field.generate_to_tcp(&field.name));
+                  gen.write_line(";");
+                }
+              }
+            });
+          }
+        });
+      },
+    );
   });
   for (id, packet) in packets.iter().enumerate() {
     let id = id as i32;
@@ -853,13 +912,6 @@ fn generate_packets(
     let field_from_protos = packet.field_from_protos();
     let field_to_tcps = packet.field_to_tcps();
     let field_from_tcps = packet.field_from_tcps();
-    let mut id_opt = String::new();
-    id_opt.push_str("Self::");
-    id_opt.push_str(&name);
-    id_opt.push_str(" { .. } => ");
-    id_opt.push_str(&format!("{}", id));
-    id_opt.push_str(",\n");
-    id_opts.push(id_opt);
     let mut proto_opt = String::new();
     proto_opt.push_str("Self::");
     proto_opt.push_str(&name);
@@ -872,72 +924,6 @@ fn generate_packets(
     }
     proto_opt.push_str(" } => {\n");
     proto_opt.push_str("        let mut fields = HashMap::new();\n");
-    if packet.has_multiple_versions() {
-      proto_opt.push_str("        ");
-      for ver in packet.all_versions() {
-        proto_opt.push_str("if version >= ProtocolVersion::");
-        proto_opt.push_str(&ver.to_string().to_uppercase());
-        proto_opt.push_str(" {\n");
-        for (i, (is_ver, _multi_versioned, field_name, _)) in
-          packet.all_field_names_ver(ver).iter().enumerate()
-        {
-          if *is_ver {
-            let ty_enum = &field_ty_enums[i];
-            let ty_key = &field_ty_keys[i];
-            let to_proto = &field_to_protos[i];
-            proto_opt.push_str("          fields.insert(\"");
-            proto_opt.push_str(field_name);
-            proto_opt.push_str("\".to_string(), proto::PacketField {\n");
-
-            proto_opt.push_str("            ty: Type::");
-            proto_opt.push_str(&ty_enum.to_string());
-            proto_opt.push_str(".into(),\n");
-
-            proto_opt.push_str("            ");
-            proto_opt.push_str(&ty_key.to_string());
-            proto_opt.push_str(": ");
-            proto_opt.push_str(&to_proto.to_string());
-            proto_opt.push_str(",\n");
-
-            proto_opt.push_str("            ..Default::default()\n");
-            proto_opt.push_str("          });\n");
-
-            // tcp_opt.push_str("          ");
-            // let to_tcp = &field_to_tcps[i];
-            // tcp_opt.push_str(&to_tcp.to_string());
-            // tcp_opt.push_str(";\n");
-          }
-        }
-        proto_opt.push_str("        } else ");
-      }
-      proto_opt.push_str("{\n");
-      proto_opt.push_str("          unreachable!(\"failed to generate proto for packet ");
-      proto_opt.push_str(&packet.name);
-      proto_opt.push_str(" with version {:?}\", version)\n");
-      proto_opt.push_str("        }\n");
-    } else {
-      for (i, (field_name, _)) in field_names.iter().enumerate() {
-        let ty_enum = &field_ty_enums[i];
-        let ty_key = &field_ty_keys[i];
-        let to_proto = &field_to_protos[i];
-        proto_opt.push_str("        fields.insert(\"");
-        proto_opt.push_str(field_name);
-        proto_opt.push_str("\".to_string(), proto::PacketField {\n");
-
-        proto_opt.push_str("          ty: Type::");
-        proto_opt.push_str(&ty_enum.to_string());
-        proto_opt.push_str(".into(),\n");
-
-        proto_opt.push_str("          ");
-        proto_opt.push_str(&ty_key.to_string());
-        proto_opt.push_str(": ");
-        proto_opt.push_str(&to_proto.to_string());
-        proto_opt.push_str(",\n");
-
-        proto_opt.push_str("          ..Default::default()\n");
-        proto_opt.push_str("        });\n");
-      }
-    }
     proto_opt.push_str("        proto::Packet {\n");
 
     proto_opt.push_str("          id: ");
@@ -950,185 +936,185 @@ fn generate_packets(
     proto_opt.push_str("      }\n");
     to_proto_opts.push(proto_opt);
 
-    let mut proto_opt = String::new();
-    proto_opt.push_str(id.to_string().as_str());
-    proto_opt.push_str(" => ");
-    if packet.has_multiple_versions() {
-      for ver in packet.all_versions() {
-        proto_opt.push_str("if version >= ProtocolVersion::");
-        proto_opt.push_str(&ver.to_string().to_uppercase());
-        proto_opt.push_str(" {\n");
-        proto_opt.push_str("        Self::");
-        proto_opt.push_str(&name);
-        proto_opt.push_str(" {\n");
-        for (i, (is_ver, multi_versioned, field_name, _)) in
-          packet.all_field_names_ver(ver).iter().enumerate()
-        {
-          proto_opt.push_str("          ");
-          proto_opt.push_str(field_name);
-          proto_opt.push_str(": ");
-          if *is_ver {
-            let from_proto = &field_from_protos[i];
-            if *multi_versioned {
-              proto_opt.push_str("Some(");
-              proto_opt.push_str(&from_proto.to_string());
-              proto_opt.push_str(")");
-            } else {
-              proto_opt.push_str(&from_proto.to_string());
-            }
-          } else {
-            proto_opt.push_str("None");
-          }
-          proto_opt.push_str(",\n");
-        }
-        proto_opt.push_str("        }\n");
-        proto_opt.push_str("      } else ");
-      }
-      proto_opt.push_str("{\n");
-      proto_opt.push_str("        unreachable!(\"failed to parse proto for packet ");
-      proto_opt.push_str(&packet.name);
-      proto_opt.push_str(" with version {:?}\", version)\n");
-    } else {
-      proto_opt.push_str("Self::");
-      proto_opt.push_str(&name);
-      proto_opt.push_str(" {\n");
-      for (i, (field_name, _)) in field_names.iter().enumerate() {
-        let from_proto = &field_from_protos[i];
-        proto_opt.push_str("        ");
-        proto_opt.push_str(field_name);
-        proto_opt.push_str(": ");
-        proto_opt.push_str(&from_proto.to_string());
-        proto_opt.push_str(",\n");
-      }
-    }
-    proto_opt.push_str("      },\n");
-    from_proto_opts.push(proto_opt);
-
-    let mut tcp_opt = String::new();
-    tcp_opt.push_str("Self::");
-    tcp_opt.push_str(&name);
-    tcp_opt.push_str(" { ");
-    for (i, (name, _)) in field_names.iter().enumerate() {
-      tcp_opt.push_str(&name);
-      if i != field_names.len() - 1 {
-        tcp_opt.push_str(", ");
-      }
-    }
-    tcp_opt.push_str(" } => {\n");
-    tcp_opt.push_str("        let mut out = tcp::Packet::new(from_grpc_id(");
-    tcp_opt.push_str(&id.to_string());
-    tcp_opt.push_str(", version), version);\n");
-    if packet.has_multiple_versions() {
-      tcp_opt.push_str("        ");
-      let all_versions = packet.all_versions();
-      for (i, ver) in all_versions.iter().enumerate() {
-        if i == 0 && *ver != (Version { major: 8, minor: 0 }) {
-          tcp_opt.push_str("if version < ProtocolVersion::");
-          tcp_opt.push_str(&ver.to_string().to_uppercase());
-          tcp_opt.push_str(" {\n");
-          tcp_opt.push_str("          // v1_8 generator\n");
-          for (i, (is_ver, _multi_versioned, _, _)) in
-            packet.all_field_names_ver(*ver).iter().enumerate()
-          {
-            if *is_ver {
-              tcp_opt.push_str("          ");
-              let to_tcp = &field_to_tcps[i];
-              tcp_opt.push_str(&to_tcp.to_string());
-              tcp_opt.push_str(";\n");
-            }
-          }
-          tcp_opt.push_str("        } else ");
-        } else if i != 0 {
-          tcp_opt.push_str(" else ");
-        }
-        if let Some(next_ver) = all_versions.get(i + 1) {
-          tcp_opt.push_str("if version < ProtocolVersion::");
-          tcp_opt.push_str(&next_ver.to_string().to_uppercase());
-          tcp_opt.push_str(" ");
-        }
-        tcp_opt.push_str("{\n");
-        tcp_opt.push_str("          // ");
-        tcp_opt.push_str(&ver.to_string());
-        tcp_opt.push_str(" generator\n");
-        for (i, (is_ver, _multi_versioned, _, _)) in
-          packet.all_field_names_ver(*ver).iter().enumerate()
-        {
-          if *is_ver {
-            tcp_opt.push_str("          ");
-            let to_tcp = &field_to_tcps[i];
-            tcp_opt.push_str(&to_tcp.to_string());
-            tcp_opt.push_str(";\n");
-          }
-        }
-        tcp_opt.push_str("        }");
-      }
-      tcp_opt.push_str("\n");
-    } else {
-      for gen in &field_to_tcps {
-        tcp_opt.push_str("        ");
-        tcp_opt.push_str(&gen.to_string());
-        tcp_opt.push_str(";\n");
-      }
-    }
-    tcp_opt.push_str("        out\n");
-    tcp_opt.push_str("      }\n");
-    to_tcp_opts.push(tcp_opt);
-
-    let mut tcp_opt = String::new();
-    if packet.has_multiple_versions() {
-      tcp_opt.push_str(&id.to_string());
-      tcp_opt.push_str(" => ");
-      for ver in packet.all_versions() {
-        tcp_opt.push_str("if version >= ProtocolVersion::");
-        tcp_opt.push_str(&ver.to_string().to_uppercase());
-        tcp_opt.push_str(" {\n");
-        tcp_opt.push_str("        Self::");
-        tcp_opt.push_str(&name);
-        tcp_opt.push_str(" {\n");
-        for (i, (is_ver, multi_versioned, field_name, _)) in
-          packet.all_field_names_ver(ver).iter().enumerate()
-        {
-          tcp_opt.push_str("          ");
-          tcp_opt.push_str(field_name);
-          tcp_opt.push_str(": ");
-          if *is_ver {
-            let from_tcp = &field_from_tcps[i];
-            if *multi_versioned {
-              tcp_opt.push_str("Some(");
-              tcp_opt.push_str(&from_tcp.to_string());
-              tcp_opt.push_str(")");
-            } else {
-              tcp_opt.push_str(&from_tcp.to_string());
-            }
-          } else {
-            tcp_opt.push_str("None");
-          }
-          tcp_opt.push_str(",\n");
-        }
-        tcp_opt.push_str("        }\n");
-        tcp_opt.push_str("      } else ");
-      }
-      tcp_opt.push_str("{\n");
-      tcp_opt.push_str("        unreachable!(\"failed to parse packet ");
-      tcp_opt.push_str(&packet.name);
-      tcp_opt.push_str(" with version {:?}\", version)\n");
-      tcp_opt.push_str("      }\n");
-    } else {
-      tcp_opt.push_str(&id.to_string());
-      tcp_opt.push_str(" => Self::");
-      tcp_opt.push_str(&name);
-      tcp_opt.push_str(" {\n");
-      for (i, (field_name, _)) in field_names.iter().enumerate() {
-        let from_tcp = &field_from_tcps[i];
-        tcp_opt.push_str("        ");
-        tcp_opt.push_str(field_name);
-        tcp_opt.push_str(": ");
-        tcp_opt.push_str(&from_tcp.to_string());
-        tcp_opt.push_str(",\n");
-      }
-      tcp_opt.push_str("      },\n");
-    }
-    from_tcp_opts.push(tcp_opt);
+    // let mut proto_opt = String::new();
+    // proto_opt.push_str(id.to_string().as_str());
+    // proto_opt.push_str(" => ");
+    // if packet.has_multiple_versions() {
+    //   for ver in packet.all_versions() {
+    //     proto_opt.push_str("if version >= ProtocolVersion::");
+    //     proto_opt.push_str(&ver.to_string().to_uppercase());
+    //     proto_opt.push_str(" {\n");
+    //     proto_opt.push_str("        Self::");
+    //     proto_opt.push_str(&name);
+    //     proto_opt.push_str(" {\n");
+    //     for (i, (is_ver, multi_versioned, field_name, _)) in
+    //       packet.all_field_names_ver(ver).iter().enumerate()
+    //     {
+    //       proto_opt.push_str("          ");
+    //       proto_opt.push_str(field_name);
+    //       proto_opt.push_str(": ");
+    //       if *is_ver {
+    //         let from_proto = &field_from_protos[i];
+    //         if *multi_versioned {
+    //           proto_opt.push_str("Some(");
+    //           proto_opt.push_str(&from_proto.to_string());
+    //           proto_opt.push_str(")");
+    //         } else {
+    //           proto_opt.push_str(&from_proto.to_string());
+    //         }
+    //       } else {
+    //         proto_opt.push_str("None");
+    //       }
+    //       proto_opt.push_str(",\n");
+    //     }
+    //     proto_opt.push_str("        }\n");
+    //     proto_opt.push_str("      } else ");
+    //   }
+    //   proto_opt.push_str("{\n");
+    //   proto_opt.push_str("        unreachable!(\"failed to parse proto for
+    // packet ");   proto_opt.push_str(&packet.name);
+    //   proto_opt.push_str(" with version {:?}\", version)\n");
+    // } else {
+    //   proto_opt.push_str("Self::");
+    //   proto_opt.push_str(&name);
+    //   proto_opt.push_str(" {\n");
+    //   for (i, (field_name, _)) in field_names.iter().enumerate() {
+    //     let from_proto = &field_from_protos[i];
+    //     proto_opt.push_str("        ");
+    //     proto_opt.push_str(field_name);
+    //     proto_opt.push_str(": ");
+    //     proto_opt.push_str(&from_proto.to_string());
+    //     proto_opt.push_str(",\n");
+    //   }
+    // }
+    // proto_opt.push_str("      },\n");
+    // from_proto_opts.push(proto_opt);
+    //
+    // let mut tcp_opt = String::new();
+    // tcp_opt.push_str("Self::");
+    // tcp_opt.push_str(&name);
+    // tcp_opt.push_str(" { ");
+    // for (i, (name, _)) in field_names.iter().enumerate() {
+    //   tcp_opt.push_str(&name);
+    //   if i != field_names.len() - 1 {
+    //     tcp_opt.push_str(", ");
+    //   }
+    // }
+    // tcp_opt.push_str(" } => {\n");
+    // tcp_opt.push_str("        let mut out = tcp::Packet::new(from_grpc_id(");
+    // tcp_opt.push_str(&id.to_string());
+    // tcp_opt.push_str(", version), version);\n");
+    // if packet.has_multiple_versions() {
+    //   tcp_opt.push_str("        ");
+    //   let all_versions = packet.all_versions();
+    //   for (i, ver) in all_versions.iter().enumerate() {
+    //     if i == 0 && *ver != (Version { major: 8, minor: 0 }) {
+    //       tcp_opt.push_str("if version < ProtocolVersion::");
+    //       tcp_opt.push_str(&ver.to_string().to_uppercase());
+    //       tcp_opt.push_str(" {\n");
+    //       tcp_opt.push_str("          // v1_8 generator\n");
+    //       for (i, (is_ver, _multi_versioned, _, _)) in
+    //         packet.all_field_names_ver(*ver).iter().enumerate()
+    //       {
+    //         if *is_ver {
+    //           tcp_opt.push_str("          ");
+    //           let to_tcp = &field_to_tcps[i];
+    //           tcp_opt.push_str(&to_tcp.to_string());
+    //           tcp_opt.push_str(";\n");
+    //         }
+    //       }
+    //       tcp_opt.push_str("        } else ");
+    //     } else if i != 0 {
+    //       tcp_opt.push_str(" else ");
+    //     }
+    //     if let Some(next_ver) = all_versions.get(i + 1) {
+    //       tcp_opt.push_str("if version < ProtocolVersion::");
+    //       tcp_opt.push_str(&next_ver.to_string().to_uppercase());
+    //       tcp_opt.push_str(" ");
+    //     }
+    //     tcp_opt.push_str("{\n");
+    //     tcp_opt.push_str("          // ");
+    //     tcp_opt.push_str(&ver.to_string());
+    //     tcp_opt.push_str(" generator\n");
+    //     for (i, (is_ver, _multi_versioned, _, _)) in
+    //       packet.all_field_names_ver(*ver).iter().enumerate()
+    //     {
+    //       if *is_ver {
+    //         tcp_opt.push_str("          ");
+    //         let to_tcp = &field_to_tcps[i];
+    //         tcp_opt.push_str(&to_tcp.to_string());
+    //         tcp_opt.push_str(";\n");
+    //       }
+    //     }
+    //     tcp_opt.push_str("        }");
+    //   }
+    //   tcp_opt.push_str("\n");
+    // } else {
+    //   for gen in &field_to_tcps {
+    //     tcp_opt.push_str("        ");
+    //     tcp_opt.push_str(&gen.to_string());
+    //     tcp_opt.push_str(";\n");
+    //   }
+    // }
+    // tcp_opt.push_str("        out\n");
+    // tcp_opt.push_str("      }\n");
+    // to_tcp_opts.push(tcp_opt);
+    //
+    // let mut tcp_opt = String::new();
+    // if packet.has_multiple_versions() {
+    //   tcp_opt.push_str(&id.to_string());
+    //   tcp_opt.push_str(" => ");
+    //   for ver in packet.all_versions() {
+    //     tcp_opt.push_str("if version >= ProtocolVersion::");
+    //     tcp_opt.push_str(&ver.to_string().to_uppercase());
+    //     tcp_opt.push_str(" {\n");
+    //     tcp_opt.push_str("        Self::");
+    //     tcp_opt.push_str(&name);
+    //     tcp_opt.push_str(" {\n");
+    //     for (i, (is_ver, multi_versioned, field_name, _)) in
+    //       packet.all_field_names_ver(ver).iter().enumerate()
+    //     {
+    //       tcp_opt.push_str("          ");
+    //       tcp_opt.push_str(field_name);
+    //       tcp_opt.push_str(": ");
+    //       if *is_ver {
+    //         let from_tcp = &field_from_tcps[i];
+    //         if *multi_versioned {
+    //           tcp_opt.push_str("Some(");
+    //           tcp_opt.push_str(&from_tcp.to_string());
+    //           tcp_opt.push_str(")");
+    //         } else {
+    //           tcp_opt.push_str(&from_tcp.to_string());
+    //         }
+    //       } else {
+    //         tcp_opt.push_str("None");
+    //       }
+    //       tcp_opt.push_str(",\n");
+    //     }
+    //     tcp_opt.push_str("        }\n");
+    //     tcp_opt.push_str("      } else ");
+    //   }
+    //   tcp_opt.push_str("{\n");
+    //   tcp_opt.push_str("        unreachable!(\"failed to parse packet ");
+    //   tcp_opt.push_str(&packet.name);
+    //   tcp_opt.push_str(" with version {:?}\", version)\n");
+    //   tcp_opt.push_str("      }\n");
+    // } else {
+    //   tcp_opt.push_str(&id.to_string());
+    //   tcp_opt.push_str(" => Self::");
+    //   tcp_opt.push_str(&name);
+    //   tcp_opt.push_str(" {\n");
+    //   for (i, (field_name, _)) in field_names.iter().enumerate() {
+    //     let from_tcp = &field_from_tcps[i];
+    //     tcp_opt.push_str("        ");
+    //     tcp_opt.push_str(field_name);
+    //     tcp_opt.push_str(": ");
+    //     tcp_opt.push_str(&from_tcp.to_string());
+    //     tcp_opt.push_str(",\n");
+    //   }
+    //   tcp_opt.push_str("      },\n");
+    // }
+    // from_tcp_opts.push(tcp_opt);
   }
   let mut out = gen.into_output();
   // out.push_str("\n");
@@ -1145,51 +1131,53 @@ fn generate_packets(
   // out.push_str("  }\n");
   // out.push_str("\n");
 
-  out.push_str("  /// Converts self into a protobuf\n");
-  out.push_str("  pub fn to_proto(&self, version: ProtocolVersion) -> proto::Packet {\n");
-  out.push_str("    match self {\n");
-  out.push_str("      Self::None => panic!(\"cannot convert None packet to protobuf\"),\n");
-  for opt in to_proto_opts {
-    out.push_str("      ");
-    out.push_str(&opt);
-  }
-  out.push_str("    }\n");
-  out.push_str("  }\n");
-  out.push_str("  /// Converts the given protobuf into a packet\n");
-  out.push_str("  pub fn from_proto(mut pb: proto::Packet, version: ProtocolVersion) -> Self {\n");
-  out.push_str("    match pb.id {\n");
-  for opt in from_proto_opts {
-    out.push_str("      ");
-    out.push_str(&opt);
-  }
-  out.push_str("      _ => Self::None\n");
-  out.push_str("    }\n");
-  out.push_str("  }\n");
-  out.push_str("\n");
-
-  out.push_str("  /// Converts self into a tcp packet. This is used on the proxy to send packets to the client.\n");
-  out.push_str("  pub fn to_tcp(&self, version: ProtocolVersion) -> tcp::Packet {\n");
-  out.push_str("    match self {\n");
-  out.push_str("      Self::None => panic!(\"cannot convert None packet to tcp\"),\n");
-  for opt in to_tcp_opts {
-    out.push_str("      ");
-    out.push_str(&opt);
-  }
-  out.push_str("    }\n");
-  out.push_str("  }\n");
-  out.push_str("\n");
-
-  out.push_str("  /// Converts the given tcp packet into a grpc packet. This is used on the proxy to parse incoming packets.\n");
-  out.push_str("  pub fn from_tcp(mut p: tcp::Packet, version: ProtocolVersion) -> Self {\n");
-  out.push_str("    match to_grpc_id(p.id(), version) {\n");
-  for opt in from_tcp_opts {
-    out.push_str("      ");
-    out.push_str(&opt);
-  }
-  out.push_str("      _ => Self::None,\n");
-  out.push_str("    }\n");
-  out.push_str("  }\n");
-  out.push_str("}\n");
+  // out.push_str("  /// Converts self into a protobuf\n");
+  // out.push_str("  pub fn to_proto(&self, version: ProtocolVersion) ->
+  // proto::Packet {\n"); out.push_str("    match self {\n");
+  // out.push_str("      Self::None => panic!(\"cannot convert None packet to
+  // protobuf\"),\n"); for opt in to_proto_opts {
+  //   out.push_str("      ");
+  //   out.push_str(&opt);
+  // }
+  // out.push_str("    }\n");
+  // out.push_str("  }\n");
+  // out.push_str("  /// Converts the given protobuf into a packet\n");
+  // out.push_str("  pub fn from_proto(mut pb: proto::Packet, version:
+  // ProtocolVersion) -> Self {\n"); out.push_str("    match pb.id {\n");
+  // for opt in from_proto_opts {
+  //   out.push_str("      ");
+  //   out.push_str(&opt);
+  // }
+  // out.push_str("      _ => Self::None\n");
+  // out.push_str("    }\n");
+  // out.push_str("  }\n");
+  // out.push_str("\n");
+  //
+  // out.push_str("  /// Converts self into a tcp packet. This is used on the
+  // proxy to send packets to the client.\n"); out.push_str("  pub fn
+  // to_tcp(&self, version: ProtocolVersion) -> tcp::Packet {\n");
+  // out.push_str("    match self {\n");
+  // out.push_str("      Self::None => panic!(\"cannot convert None packet to
+  // tcp\"),\n"); for opt in to_tcp_opts {
+  //   out.push_str("      ");
+  //   out.push_str(&opt);
+  // }
+  // out.push_str("    }\n");
+  // out.push_str("  }\n");
+  // out.push_str("\n");
+  //
+  // out.push_str("  /// Converts the given tcp packet into a grpc packet. This is
+  // used on the proxy to parse incoming packets.\n"); out.push_str("  pub fn
+  // from_tcp(mut p: tcp::Packet, version: ProtocolVersion) -> Self {\n");
+  // out.push_str("    match to_grpc_id(p.id(), version) {\n");
+  // for opt in from_tcp_opts {
+  //   out.push_str("      ");
+  //   out.push_str(&opt);
+  // }
+  // out.push_str("      _ => Self::None,\n");
+  // out.push_str("    }\n");
+  // out.push_str("  }\n");
+  // out.push_str("}\n");
 
   let mut from_grpc_id = String::new();
   let mut to_grpc_id = String::new();

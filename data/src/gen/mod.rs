@@ -266,6 +266,25 @@ impl CodeGen {
     self.remove_indent();
     self.write_line("}");
   }
+  /// Writes a line comment. Example:
+  /// ```
+  /// # use data::gen::CodeGen;
+  /// # let mut gen = CodeGen::new();
+  /// gen.write_comment("Hello world!");
+  /// # let out = gen.into_output();
+  /// # eprintln!("OUTPUT: {}", out);
+  /// # assert_eq!(out,
+  /// # r#"// Hello world!
+  /// # "#);
+  /// ```
+  /// That will produce:
+  /// ```ignore
+  /// // Hello world!
+  /// ```
+  pub fn write_comment(&mut self, text: &str) {
+    self.write("// ");
+    self.write_line(text);
+  }
 
   pub fn write(&mut self, src: &str) {
     // Make sure not to indent when we aren't writing anything
