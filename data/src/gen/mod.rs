@@ -35,7 +35,7 @@ pub enum MatchBranch<'a> {
   ///   Self::#name { #field1, #field2 } => /* ... */
   /// }
   /// ```
-  Struct(&'a str, &'a [&'a str]),
+  Struct(&'a str, Vec<String>),
   /// Anything else variant. Example:
   /// ```ignore
   /// match var {
@@ -191,20 +191,18 @@ impl CodeGen {
   /// ```
   /// # use data::gen::{CodeGen, FuncArg, MatchBranch};
   /// # let mut gen = CodeGen::new();
-  /// gen.write_match("var", "Option", &[
-  ///   MatchBranch::Unit("None"),
-  ///   MatchBranch::Tuple("Some", &["value"]),
-  /// ], |gen, i| {
-  ///   gen.write("println!(\"got index ");
-  ///   gen.write(&i.to_string());
-  ///   gen.write_line("\"),");
+  /// gen.write_match("var", |gen| {
+  ///   gen.write_match_branch("Option", MatchBranch::Unit("None"));
+  ///   gen.write_line("println!(\"got nothing!\"),");
+  ///   gen.write_match_branch("Option", MatchBranch::Tuple("Some", &["value"]));
+  ///   gen.write_line("println!(\"got something: {}!\", value),");
   /// });
   /// # let out = gen.into_output();
   /// # eprintln!("OUTPUT: {}", out);
   /// # assert_eq!(out,
   /// # r#"match var {
-  /// #   Option::None => println!("got index 0"),
-  /// #   Option::Some(value) => println!("got index 1"),
+  /// #   Option::None => println!("got nothing"),
+  /// #   Option::Some(value) => println!("got something: {}", value),
   /// # }
   /// # "#);
   /// ```
@@ -227,6 +225,7 @@ impl CodeGen {
     self.remove_indent();
     self.write_line("}");
   }
+  /// See the docs for [`write_match`](Self::write_match).
   pub fn write_match_branch(&mut self, ty: &str, branch: MatchBranch) {
     if let MatchBranch::Other = branch {
       branch.write(self);
@@ -235,7 +234,37 @@ impl CodeGen {
       self.write("::");
       branch.write(self);
     }
+  }
+  /// Writes a block of code. Example:
+  /// ```
+  /// # use data::gen::{CodeGen, FuncArg};
+  /// # let mut gen = CodeGen::new();
+  /// gen.write_block(|gen| {
+  ///   gen.write_line("5 + 6");
+  /// });
+  /// # let out = gen.into_output();
+  /// # eprintln!("OUTPUT: {}", out);
+  /// # assert_eq!(out,
+  /// # r#"{
+  /// #   5 + 6
+  /// # }
+  /// # "#);
+  /// ```
+  /// That will produce:
+  /// ```ignore
+  /// {
+  ///   5 + 6
+  /// }
+  /// ```
+  pub fn write_block<F>(&mut self, write_block: F)
+  where
+    F: FnOnce(&mut CodeGen),
+  {
+    self.write_line("{");
     self.add_indent();
+    write_block(self);
+    self.remove_indent();
+    self.write_line("}");
   }
 
   pub fn write(&mut self, src: &str) {
@@ -331,14 +360,18 @@ impl MatchBranch<'_> {
       }
       Self::Struct(name, fields) => {
         gen.write(&name);
-        gen.write(" { ");
-        gen.add_indent();
-        for name in *fields {
-          gen.write(name);
-          gen.write_line(",");
+        if fields.len() == 0 {
+          gen.write(" { .. }");
+        } else {
+          gen.write_line(" {");
+          gen.add_indent();
+          for name in fields {
+            gen.write(name);
+            gen.write_line(",");
+          }
+          gen.remove_indent();
+          gen.write("}");
         }
-        gen.remove_indent();
-        gen.write(" }");
       }
       Self::Other => {
         gen.write("_");
