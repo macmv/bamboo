@@ -33,7 +33,17 @@ pub enum MatchBranch {
   /// }
   /// ```
   Struct(String, Vec<String>),
+  /// Anything else variant. Example:
+  /// ```
+  /// match var {
+  ///   _ => /* ... */
+  /// }
+  /// ```
   Other,
+}
+pub struct FuncArg<'a> {
+  name: &'a str,
+  ty:   &'a str,
 }
 
 impl CodeGen {
@@ -48,6 +58,27 @@ impl CodeGen {
     for variant in variants {
       variant.write(self);
     }
+    self.remove_indent();
+    self.write_line("}");
+  }
+  pub fn write_func<F>(&mut self, name: &str, args: &[FuncArg], ret: &str, write_body: F)
+  where
+    F: FnOnce(&mut CodeGen),
+  {
+    self.write("pub fn ");
+    self.write(name);
+    self.write("(");
+    for arg in args {
+      arg.write(self);
+    }
+    self.write(") ");
+    if ret != "" {
+      self.write("-> ");
+      self.write(ret);
+    }
+    self.write_line(" {");
+    self.add_indent();
+    write_body(self);
     self.remove_indent();
     self.write_line("}");
   }
@@ -170,5 +201,12 @@ impl MatchBranch {
       }
     }
     gen.write_line(" => ");
+  }
+}
+impl FuncArg<'_> {
+  pub fn write(&self, gen: &mut CodeGen) {
+    gen.write(self.name);
+    gen.write(": ");
+    gen.write(self.ty);
   }
 }
