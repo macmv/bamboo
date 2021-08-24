@@ -215,31 +215,27 @@ impl CodeGen {
   ///   Option::Some(value) => println!("got index 1"),
   /// }
   /// ```
-  pub fn write_match<F>(
-    &mut self,
-    variable: &str,
-    type_name: &str,
-    branches: &[MatchBranch],
-    mut write_block: F,
-  ) where
-    F: FnMut(&mut CodeGen, usize),
+  pub fn write_match<F>(&mut self, variable: &str, mut write_body: F)
+  where
+    F: FnMut(&mut CodeGen),
   {
     self.write("match ");
     self.write(variable);
     self.write_line(" {");
     self.add_indent();
-    for (i, branch) in branches.iter().enumerate() {
-      if let MatchBranch::Other = branch {
-        branch.write(self);
-      } else {
-        self.write(type_name);
-        self.write("::");
-        branch.write(self);
-      }
-      write_block(self, i);
-    }
+    write_body(self);
     self.remove_indent();
     self.write_line("}");
+  }
+  pub fn write_match_branch(&mut self, ty: &str, branch: MatchBranch) {
+    if let MatchBranch::Other = branch {
+      branch.write(self);
+    } else {
+      self.write(ty);
+      self.write("::");
+      branch.write(self);
+    }
+    self.add_indent();
   }
 
   pub fn write(&mut self, src: &str) {

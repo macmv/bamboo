@@ -831,7 +831,16 @@ fn generate_packets(
   );
   gen.write_impl("Packet", |gen| {
     gen.write_func("id", &[FuncArg::slf_ref()], Some("i32"), |gen| {
-      gen.write_match("self", packets.iter(), |p, gen| {});
+      gen.write_match("self", |gen| {
+        gen.write_match_branch("Self", MatchBranch::Unit("None"));
+        gen.write_line("unreachable!(\"cannot get id of None packet\"),");
+        gen.remove_indent();
+        for (id, p) in packets.iter().enumerate() {
+          gen.write_match_branch("Self", MatchBranch::Struct(&p.name().to_case(Case::Pascal), &[]));
+          gen.write_line(&format!("{},", id));
+          gen.remove_indent();
+        }
+      });
     });
   });
   for (id, packet) in packets.iter().enumerate() {
@@ -1122,19 +1131,19 @@ fn generate_packets(
     from_tcp_opts.push(tcp_opt);
   }
   let mut out = gen.into_output();
-  out.push_str("\n");
-  out.push_str("impl Packet {\n");
-  out.push_str("  /// Returns a GRPC specific id for this packet.\n");
-  out.push_str("  pub fn id(&self) -> i32 {\n");
-  out.push_str("    match self {\n");
-  out.push_str("      Self::None => panic!(\"cannot get packet id of None packet\"),\n");
-  for opt in id_opts {
-    out.push_str("      ");
-    out.push_str(&opt);
-  }
-  out.push_str("    }\n");
-  out.push_str("  }\n");
-  out.push_str("\n");
+  // out.push_str("\n");
+  // out.push_str("impl Packet {\n");
+  // out.push_str("  /// Returns a GRPC specific id for this packet.\n");
+  // out.push_str("  pub fn id(&self) -> i32 {\n");
+  // out.push_str("    match self {\n");
+  // out.push_str("      Self::None => panic!(\"cannot get packet id of None
+  // packet\"),\n"); for opt in id_opts {
+  //   out.push_str("      ");
+  //   out.push_str(&opt);
+  // }
+  // out.push_str("    }\n");
+  // out.push_str("  }\n");
+  // out.push_str("\n");
 
   out.push_str("  /// Converts self into a protobuf\n");
   out.push_str("  pub fn to_proto(&self, version: ProtocolVersion) -> proto::Packet {\n");
