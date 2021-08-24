@@ -829,7 +829,11 @@ fn generate_packets(
       })
       .append_start([EnumVariant::Named("None".into())]),
   );
-  gen.write_impl("Packet", |gen| {});
+  gen.write_impl("Packet", |gen| {
+    gen.write_func("id", &[FuncArg::slf_ref()], Some("i32"), |gen| {
+      gen.write_match("self", packets.iter(), |p, gen| {});
+    });
+  });
   for (id, packet) in packets.iter().enumerate() {
     let id = id as i32;
     let name = packet.name().to_case(Case::Pascal);

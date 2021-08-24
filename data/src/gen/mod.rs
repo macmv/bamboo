@@ -352,9 +352,14 @@ impl MatchBranch<'_> {
   }
 }
 impl FuncArg<'_> {
+  pub fn slf_ref() -> Self {
+    FuncArg { name: "&self", ty: "" }
+  }
   pub fn write(&self, gen: &mut CodeGen) {
     gen.write(self.name);
-    gen.write(": ");
-    gen.write(self.ty);
+    if self.ty != "" {
+      gen.write(": ");
+      gen.write(self.ty);
+    }
   }
 }
