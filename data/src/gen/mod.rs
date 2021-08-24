@@ -1,3 +1,6 @@
+mod iter;
+pub use iter::AppendIters;
+
 /// A code generator. It is used to generate the source files in build.rs
 pub struct CodeGen {
   current:      String,
