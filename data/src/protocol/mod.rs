@@ -962,9 +962,7 @@ fn generate_packets(
                     gen.write_line(" {");
                     gen.add_indent();
                     gen.write_comment("1.8 generator");
-                    for (i, (is_ver, field)) in
-                      p.fields_ver(Version { major: 8, minor: 0 }).iter().enumerate()
-                    {
+                    for (is_ver, field) in p.fields_ver(Version { major: 8, minor: 0 }).iter() {
                       if *is_ver {
                         gen.write(&field.generate_to_tcp().to_string());
                         gen.write_line(";");
@@ -983,7 +981,7 @@ fn generate_packets(
                   gen.write_line("{");
                   gen.add_indent();
                   gen.write_comment(&ver.to_string());
-                  for (i, (is_ver, field)) in p.fields_ver(*ver).iter().enumerate() {
+                  for (is_ver, field) in p.fields_ver(*ver).iter() {
                     if *is_ver {
                       gen.write(&field.generate_to_tcp().to_string());
                       gen.write_line(";");
@@ -994,7 +992,7 @@ fn generate_packets(
                 }
                 gen.write_line("");
               } else {
-                for (i, field) in p.fields().iter().enumerate() {
+                for field in p.fields().iter() {
                   gen.write(&field.generate_to_tcp());
                   gen.write_line(";");
                 }
@@ -1029,9 +1027,7 @@ fn generate_packets(
                   gen.write(&p.name().to_case(Case::Pascal));
                   gen.write(" ");
                   gen.write_block(|gen| {
-                    for (i, (is_ver, field)) in
-                      p.fields_ver(Version { major: 8, minor: 0 }).iter().enumerate()
-                    {
+                    for (is_ver, field) in p.fields_ver(Version { major: 8, minor: 0 }).iter() {
                       field.write_from_tcp(gen, *is_ver);
                     }
                   });
@@ -1052,7 +1048,7 @@ fn generate_packets(
                 gen.write(&p.name().to_case(Case::Pascal));
                 gen.write(" ");
                 gen.write_block(|gen| {
-                  for (i, (is_ver, field)) in p.fields_ver(*ver).iter().enumerate() {
+                  for (is_ver, field) in p.fields_ver(*ver).iter() {
                     field.write_from_tcp(gen, *is_ver);
                   }
                 });
@@ -1065,7 +1061,7 @@ fn generate_packets(
               gen.write(&p.name().to_case(Case::Pascal));
               gen.write_line(" {");
               gen.add_indent();
-              for (i, field) in p.fields().iter().enumerate() {
+              for field in p.fields().iter() {
                 field.write_from_tcp(gen, true);
               }
               gen.remove_indent();
