@@ -182,6 +182,12 @@ impl Section {
   pub fn palette(&self) -> &[u32] {
     &self.palette
   }
+  // Returns the number of non air blocks in this chunk. Because paletted chunks
+  // track all the amounts of blocks within the chunk, this is a single Vec
+  // lookup.
+  pub fn non_air_blocks(&self) -> u32 {
+    4096 - self.block_amounts[0]
+  }
 }
 
 impl ChunkSection for Section {

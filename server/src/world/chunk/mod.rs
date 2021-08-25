@@ -118,6 +118,37 @@ impl MultiChunk {
     chunk
   }
 
+  /// Builds a heightmap of this chunk. Each long contains 9 bit entries, where
+  /// each entry is the height of the world at the given X, Z coordinate. This
+  /// is used within 1.14+ protocol data, and is a needlessly complicated format
+  /// that you shouldn't waste any time thinking about.
+  ///
+  /// The only reason these are signed is because of NBT long arrays. In
+  /// reality, they should be read as unsigned longs.
+  pub fn build_heightmap(&self) -> Vec<i64> {
+    let mut heightmap = vec![0; 256 * 9 / 64];
+    let mut shift = 0;
+    let mut index = 0;
+    for _ in 0..16 {
+      for _ in 0..16 {
+        // TODO: Set this to the height at the given coordinate, not just 0
+        let v = 0_u64;
+        if shift > 64 - 9 {
+          heightmap[index] |= (v.overflowing_shl(shift).0 & 0b111111111 << (64 - 9)) as i64;
+          heightmap[index + 1] |= (v >> (64 - shift)) as i64;
+        } else {
+          heightmap[index] |= (v.overflowing_shl(shift).0) as i64;
+        }
+        shift += 9;
+        if shift > 64 {
+          shift -= 64;
+          index += 1;
+        }
+      }
+    }
+    heightmap
+  }
+
   /// Returns the fixed chunk in this MultiChunk. This is used for 1.8, as the
   /// data is in a different shape than 1.9+.
   pub fn get_fixed(&self) -> &Chunk {
