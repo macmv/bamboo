@@ -222,6 +222,12 @@ impl Pos {
   pub fn to_point(self) -> Point {
     Point::new(self.x, self.z)
   }
+
+  /// Returns the distance to the other position.
+  pub fn dist(&self, other: Pos) -> f64 {
+    (((self.x - other.x).pow(2) + (self.y - other.y).pow(2) + (self.z - other.z).pow(2)) as f64)
+      .sqrt()
+  }
 }
 
 impl Add for Pos {
