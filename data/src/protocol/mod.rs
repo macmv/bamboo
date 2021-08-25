@@ -4,8 +4,6 @@ mod parse;
 use crate::gen::{AppendIters, CodeGen, EnumVariant, FuncArg, MatchBranch};
 use convert_case::{Case, Casing};
 use itertools::Itertools;
-use proc_macro2::TokenStream;
-use quote::quote;
 use serde_derive::{Deserialize, Serialize};
 use std::{
   cmp,
@@ -355,7 +353,7 @@ impl NamedPacketField {
   }
   fn ty(&self) -> String {
     if self.multi_versioned {
-      format!("Option<{}>", self.field.ty_lit().to_string())
+      format!("Option<{}>", self.field.ty_lit())
     } else {
       self.field.ty_lit().to_string()
     }
@@ -363,7 +361,7 @@ impl NamedPacketField {
   fn write_to_proto(&self, gen: &mut CodeGen) {
     gen.write_line("fields.push(proto::PacketField {");
     gen.add_indent();
-    gen.write(&self.field.ty_key().to_string());
+    gen.write(self.field.ty_key());
     gen.write(": ");
     gen.write(&self.generate_to_proto().to_string());
     gen.write_line(",");
@@ -377,13 +375,13 @@ impl NamedPacketField {
     if self.multi_versioned {
       if is_ver {
         gen.write("Some(");
-        gen.write(&self.generate_from_proto().to_string());
+        gen.write(self.generate_from_proto());
         gen.write(")");
       } else {
         gen.write("None");
       }
     } else {
-      gen.write(&self.generate_from_proto().to_string());
+      gen.write(self.generate_from_proto());
     }
     gen.write_line(",");
   }
@@ -393,13 +391,13 @@ impl NamedPacketField {
     if self.multi_versioned {
       if is_ver {
         gen.write("Some(");
-        gen.write(&self.generate_from_tcp().to_string());
+        gen.write(self.generate_from_tcp());
         gen.write(")");
       } else {
         gen.write("None");
       }
     } else {
-      gen.write(&self.generate_from_tcp().to_string());
+      gen.write(self.generate_from_tcp());
     }
     gen.write_line(",");
   }
@@ -410,8 +408,8 @@ impl NamedPacketField {
       self.field.generate_to_proto(&self.name)
     }
   }
-  fn generate_from_proto(&self) -> String {
-    self.field.generate_from_proto().to_string()
+  fn generate_from_proto(&self) -> &'static str {
+    self.field.generate_from_proto()
   }
   fn generate_to_tcp(&self) -> String {
     if self.multi_versioned {
@@ -420,8 +418,8 @@ impl NamedPacketField {
       self.field.generate_to_tcp(&self.name)
     }
   }
-  fn generate_from_tcp(&self) -> String {
-    self.field.generate_from_tcp().to_string()
+  fn generate_from_tcp(&self) -> &'static str {
+    self.field.generate_from_tcp()
   }
 }
 
@@ -515,7 +513,7 @@ pub fn generate(dir: &Path) -> Result<(), Box<dyn Error>> {
 }
 
 impl PacketField {
-  fn ty_lit(&self) -> TokenStream {
+  fn ty_lit(&self) -> &'static str {
     // // Simple fields
     // Native, // Should never exist
     // Bool,
@@ -545,48 +543,48 @@ impl PacketField {
     // DefinedType(String), // Another type, defined within either the types map or
     // the packets map
     match self {
-      Self::Bool => quote!(bool),
+      Self::Bool => "bool",
       Self::Int(ity) => match ity {
-        IntType::I8 => quote!(i8),
-        IntType::U8 => quote!(u8),
-        IntType::I16 => quote!(i16),
-        IntType::U16 => quote!(u16),
-        IntType::I32 => quote!(i32),
-        IntType::I64 => quote!(i64),
-        IntType::VarInt => quote!(i32),
-        IntType::OptVarInt => quote!(i32), // TODO: Might want to change this to Option<i32>
+        IntType::I8 => "i8",
+        IntType::U8 => "u8",
+        IntType::I16 => "i16",
+        IntType::U16 => "u16",
+        IntType::I32 => "i32",
+        IntType::I64 => "i64",
+        IntType::VarInt => "i32",
+        IntType::OptVarInt => "i32", // TODO: Might want to change this to Option<i32>
       },
       Self::Float(fty) => match fty {
-        FloatType::F32 => quote!(f32),
-        FloatType::F64 => quote!(f64),
+        FloatType::F32 => "f32",
+        FloatType::F64 => "f64",
       },
-      Self::UUID => quote!(UUID),
-      Self::String => quote!(String),
-      Self::Position => quote!(Pos),
+      Self::UUID => "UUID",
+      Self::String => "String",
+      Self::Position => "Pos",
 
-      // Self::NBT => quote!(NBT),
-      // Self::OptionalNBT => quote!(Option<NBT>),
-      // Self::RestBuffer => quote!(Vec<u8>),
-      // Self::EntityMetadata => quote!(Vec<u8>), // Implemented on the server
+      // Self::NBT => "NBT",
+      // Self::OptionalNBT => "Option<NBT>",
+      // Self::RestBuffer => "Vec<u8>",
+      // Self::EntityMetadata => "Vec<u8>", // Implemented on the server
 
       // Self::Option(field) => {
-      //   let inner = field.ty_lit();
-      //   quote!(Option<#inner>)
+      //   let inner = field.ty_lit;
+      //   "Option<#inner>"
       // }
       // Self::Array { count, value } => match count {
-      //   CountType::Typed(_) | CountType::Named(_) => {
-      //     let value = value.ty_lit();
-      //     quote!(Vec<#value>)
+      //   CountType::Typed"_) | CountType::Named"_) => {
+      //     let value = value.ty_lit");
+      //     "Vec<#value>)
       //   }
-      //   CountType::Fixed(len) => {
-      //     let value = value.ty_lit();
-      //     quote!([#value; #len])
+      //   CountType::Fixed"len) => {
+      //     let value = value.ty_lit");
+      //     "[#value; #len])
       //   }
       // },
-      _ => quote!(Vec<u8>),
+      _ => "Vec<u8>",
     }
   }
-  fn ty_key(&self) -> TokenStream {
+  fn ty_key(&self) -> &'static str {
     // The int types are:
     // `sint` -> Signed, variable length encoded
     // `uint` -> Unsigned, variable length encoded
@@ -597,32 +595,32 @@ impl PacketField {
     // `uint` -> Any unsigned int
     // `int` -> i32
     match self {
-      Self::Bool => quote!(bool),
+      Self::Bool => "bool",
       Self::Int(ity) => match ity {
-        IntType::I8 => quote!(sint),
-        IntType::U8 => quote!(uint),
-        IntType::I16 => quote!(sint),
-        IntType::U16 => quote!(uint),
-        IntType::I32 => quote!(int),
-        IntType::I64 => quote!(long),
-        IntType::VarInt => quote!(sint),
-        IntType::OptVarInt => quote!(sint),
+        IntType::I8 => "sint",
+        IntType::U8 => "uint",
+        IntType::I16 => "sint",
+        IntType::U16 => "uint",
+        IntType::I32 => "int",
+        IntType::I64 => "long",
+        IntType::VarInt => "sint",
+        IntType::OptVarInt => "sint",
       },
       Self::Float(fty) => match fty {
-        FloatType::F32 => quote!(float),
-        FloatType::F64 => quote!(double),
+        FloatType::F32 => "float",
+        FloatType::F64 => "double",
       },
-      Self::UUID => quote!(uuid),
-      Self::String => quote!(str),
-      Self::Position => quote!(pos),
+      Self::UUID => "uuid",
+      Self::String => "str",
+      Self::Position => "pos",
 
-      // Self::NBT => quote!(byte_arr),
-      // Self::OptionalNBT => quote!(byte_arr),
-      // Self::RestBuffer => quote!(byte_arr),
-      // Self::EntityMetadata => quote!(byte_arr), // Implemented on the server
+      // Self::NBT => "byte_arr",
+      // Self::OptionalNBT => "byte_arr",
+      // Self::RestBuffer => "byte_arr",
+      // Self::EntityMetadata => "byte_arr", // Implemented on the server
 
       // Self::Option(field) => field.ty_key(),
-      _ => quote!(byte_arr),
+      _ => "byte_arr",
     }
   }
   fn generate_to_proto(&self, val: &str) -> String {
@@ -655,34 +653,34 @@ impl PacketField {
       _ => format!("{}.clone()", val),
     }
   }
-  fn generate_from_proto(&self) -> TokenStream {
+  fn generate_from_proto(&self) -> &'static str {
     match self {
-      Self::Bool => quote!(pb.fields.pop().unwrap().bool),
+      Self::Bool => "pb.fields.pop().unwrap().bool",
       Self::Int(ity) => match ity {
-        IntType::I8 => quote!(pb.fields.pop().unwrap().sint as i8),
-        IntType::U8 => quote!(pb.fields.pop().unwrap().uint as u8),
-        IntType::I16 => quote!(pb.fields.pop().unwrap().sint as i16),
-        IntType::U16 => quote!(pb.fields.pop().unwrap().uint as u16),
-        IntType::I32 => quote!(pb.fields.pop().unwrap().int),
-        IntType::I64 => quote!(pb.fields.pop().unwrap().long as i64),
-        IntType::VarInt => quote!(pb.fields.pop().unwrap().sint),
-        IntType::OptVarInt => quote!(Some(pb.fields.pop().unwrap().sint)),
+        IntType::I8 => "pb.fields.pop().unwrap().sint as i8",
+        IntType::U8 => "pb.fields.pop().unwrap().uint as u8",
+        IntType::I16 => "pb.fields.pop().unwrap().sint as i16",
+        IntType::U16 => "pb.fields.pop().unwrap().uint as u16",
+        IntType::I32 => "pb.fields.pop().unwrap().int",
+        IntType::I64 => "pb.fields.pop().unwrap().long as i64",
+        IntType::VarInt => "pb.fields.pop().unwrap().sint",
+        IntType::OptVarInt => "Some(pb.fields.pop().unwrap().sint)",
       },
       Self::Float(fty) => match fty {
-        FloatType::F32 => quote!(pb.fields.pop().unwrap().float),
-        FloatType::F64 => quote!(pb.fields.pop().unwrap().double),
+        FloatType::F32 => "pb.fields.pop().unwrap().float",
+        FloatType::F64 => "pb.fields.pop().unwrap().double",
       },
-      Self::UUID => quote!(UUID::from_proto(pb.fields.pop().unwrap().uuid.unwrap())),
-      Self::String => quote!(pb.fields.pop().unwrap().str),
-      Self::Position => quote!(Pos::from_u64(pb.fields.pop().unwrap().pos)),
+      Self::UUID => "UUID::from_proto(pb.fields.pop().unwrap().uuid.unwrap())",
+      Self::String => "pb.fields.pop().unwrap().str",
+      Self::Position => "Pos::from_u64(pb.fields.pop().unwrap().pos)",
 
-      // Self::NBT => quote!(#name.clone()),
-      // Self::OptionalNBT => quote!(#name.clone()),
-      // Self::RestBuffer => quote!(#name.clone()),
-      // Self::EntityMetadata => quote!(#name.clone()), // Implemented on the server
+      // Self::NBT => (#name.clone()),
+      // Self::OptionalNBT => (#name.clone()),
+      // Self::RestBuffer => (#name.clone()),
+      // Self::EntityMetadata => (#name.clone()), // Implemented on the server
 
-      // Self::Option(field) => quote!(#name.unwrap()),
-      _ => quote!(pb.fields.pop().unwrap().byte_arr),
+      // Self::Option(field) => (#name.unwrap()),
+      _ => "pb.fields.pop().unwrap().byte_arr",
     }
   }
   fn generate_to_tcp(&self, val: &str) -> String {
@@ -715,37 +713,34 @@ impl PacketField {
       _ => format!("out.write_buf({})", val),
     }
   }
-  fn generate_from_tcp(&self) -> TokenStream {
+  fn generate_from_tcp(&self) -> &'static str {
     match self {
-      Self::Bool => quote!(p.read_bool()),
+      Self::Bool => "p.read_bool()",
       Self::Int(ity) => match ity {
-        IntType::I8 => quote!(p.read_i8()),
-        IntType::U8 => quote!(p.read_u8()),
-        IntType::I16 => quote!(p.read_i16()),
-        IntType::U16 => quote!(p.read_u16()),
-        IntType::I32 => quote!(p.read_i32()),
-        IntType::I64 => quote!(p.read_i64()),
-        IntType::VarInt => quote!(p.read_varint()),
-        IntType::OptVarInt => quote!(Some(p.read_varint())),
+        IntType::I8 => "p.read_i8()",
+        IntType::U8 => "p.read_u8()",
+        IntType::I16 => "p.read_i16()",
+        IntType::U16 => "p.read_u16()",
+        IntType::I32 => "p.read_i32()",
+        IntType::I64 => "p.read_i64()",
+        IntType::VarInt => "p.read_varint()",
+        IntType::OptVarInt => "Some(p.read_varint())",
       },
       Self::Float(fty) => match fty {
-        FloatType::F32 => quote!(p.read_f32()),
-        FloatType::F64 => quote!(p.read_f64()),
+        FloatType::F32 => "p.read_f32()",
+        FloatType::F64 => "p.read_f64()",
       },
-      Self::UUID => quote!(p.read_uuid()),
-      Self::String => quote!(p.read_str()),
-      Self::Position => quote!(p.read_pos()),
+      Self::UUID => "p.read_uuid()",
+      Self::String => "p.read_str()",
+      Self::Position => "p.read_pos()",
 
-      // Self::NBT => quote!(#name.clone()),
-      // Self::OptionalNBT => quote!(#name.clone()),
-      // Self::RestBuffer => quote!(#name.clone()),
-      // Self::EntityMetadata => quote!(#name.clone()), // Implemented on the server
+      // Self::NBT => (#name.clone()),
+      // Self::OptionalNBT => (#name.clone()),
+      // Self::RestBuffer => (#name.clone()),
+      // Self::EntityMetadata => (#name.clone()), // Implemented on the server
 
-      // Self::Option(field) => quote!(#name.unwrap()),
-      _ => quote!({
-        let len = p.read_varint();
-        p.read_buf(len)
-      }),
+      // Self::Option(field) => (#name.unwrap()),
+      _ => "{ let len = p.read_varint(); p.read_buf(len) }",
     }
   }
 }
