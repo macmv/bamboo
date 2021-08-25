@@ -1351,7 +1351,6 @@ fn generate_packets(
     // }
     // from_tcp_opts.push(tcp_opt);
   }
-  let mut out = gen.into_output();
   // out.push_str("\n");
   // out.push_str("impl Packet {\n");
   // out.push_str("  /// Returns a GRPC specific id for this packet.\n");
@@ -1414,49 +1413,68 @@ fn generate_packets(
   // out.push_str("  }\n");
   // out.push_str("}\n");
 
-  let mut from_grpc_id = String::new();
-  let mut to_grpc_id = String::new();
-  from_grpc_id.push_str("/// Converts a grpc packet id into a tcp packet id\n");
-  from_grpc_id.push_str("pub fn from_grpc_id(id: i32, ver: ProtocolVersion) -> i32 {\n");
-  from_grpc_id.push_str("  match ver {\n");
-  to_grpc_id.push_str("/// Converts a tcp packet id into a grpc packet id\n");
-  to_grpc_id.push_str("pub fn to_grpc_id(id: i32, ver: ProtocolVersion) -> i32 {\n");
-  to_grpc_id.push_str("  match ver {\n");
-  for (ver_name, ver) in versions.iter().sorted_by(|(ver_a, _), (ver_b, _)| ver_a.cmp(ver_b)) {
-    from_grpc_id.push_str("    ProtocolVersion::");
-    from_grpc_id.push_str(&ver_name.to_string().to_uppercase());
-    from_grpc_id.push_str(" => match id {\n");
-    to_grpc_id.push_str("    ProtocolVersion::");
-    to_grpc_id.push_str(&ver_name.to_string().to_uppercase());
-    to_grpc_id.push_str(" => match id {\n");
-    let tcp_packets = if to_client { &ver.to_client } else { &ver.to_server };
-    for (tcp_id, tcp_packet) in tcp_packets.iter().enumerate() {
-      let grpc_id =
-        packets.binary_search_by(|grpc_packet| grpc_packet.name.cmp(&tcp_packet.name)).unwrap();
-      from_grpc_id.push_str("      ");
-      from_grpc_id.push_str(&grpc_id.to_string());
-      from_grpc_id.push_str(" => ");
-      from_grpc_id.push_str(&tcp_id.to_string());
-      from_grpc_id.push_str(",\n");
-      to_grpc_id.push_str("      ");
-      to_grpc_id.push_str(&tcp_id.to_string());
-      to_grpc_id.push_str(" => ");
-      to_grpc_id.push_str(&grpc_id.to_string());
-      to_grpc_id.push_str(",\n");
-    }
-    from_grpc_id.push_str("      _ => panic!(\"unknown grpc id {}\", id),\n");
-    from_grpc_id.push_str("    }\n");
-    to_grpc_id.push_str("      _ => panic!(\"unknown tcp id {}\", id),\n");
-    to_grpc_id.push_str("    }\n");
-  }
-  from_grpc_id.push_str("    ver => panic!(\"invalid version {:?}\", ver),\n");
-  from_grpc_id.push_str("  }\n");
-  from_grpc_id.push_str("}\n");
-  to_grpc_id.push_str("    ver => panic!(\"invalid version {:?}\", ver),\n");
-  to_grpc_id.push_str("  }\n");
-  to_grpc_id.push_str("}\n");
-  out.push_str(&from_grpc_id);
-  out.push_str(&to_grpc_id);
+  gen.write_line("/// Converts a grpc packet id into a tcp packet id");
+  gen.write_func(
+    "from_grpc_id",
+    &[FuncArg { name: "id", ty: "i32" }, FuncArg { name: "ver", ty: "ProtocolVersion" }],
+    Some("i32"),
+    |gen| {
+      gen.write_match("ver", |gen| {
+        for (ver_name, ver) in versions.iter().sorted_by(|(ver_a, _), (ver_b, _)| ver_a.cmp(ver_b))
+        {
+          gen.write_match_branch(
+            Some("ProtocolVersion"),
+            MatchBranch::Unit(&ver_name.to_string().to_uppercase()),
+          );
+          gen.write_match("id", |gen| {
+            let tcp_packets = if to_client { &ver.to_client } else { &ver.to_server };
+            for (tcp_id, tcp_packet) in tcp_packets.iter().enumerate() {
+              let grpc_id = packets
+                .binary_search_by(|grpc_packet| grpc_packet.name.cmp(&tcp_packet.name))
+                .unwrap();
+              gen.write_match_branch(None, MatchBranch::Unit(&grpc_id.to_string()));
+              gen.write(&tcp_id.to_string());
+              gen.write_line(",");
+            }
+            gen.write_line("_ => panic!(\"unknown grpc id {}\", id),");
+          });
+          gen.write_line(",");
+        }
+        gen.write_line("ver => panic!(\"invalid version {:?}\", ver),");
+      });
+    },
+  );
+  gen.write_line("/// Converts a grpc packet id into a tcp packet id");
+  gen.write_func(
+    "to_grpc_id",
+    &[FuncArg { name: "id", ty: "i32" }, FuncArg { name: "ver", ty: "ProtocolVersion" }],
+    Some("i32"),
+    |gen| {
+      gen.write_match("ver", |gen| {
+        for (ver_name, ver) in versions.iter().sorted_by(|(ver_a, _), (ver_b, _)| ver_a.cmp(ver_b))
+        {
+          gen.write_match_branch(
+            Some("ProtocolVersion"),
+            MatchBranch::Unit(&ver_name.to_string().to_uppercase()),
+          );
+          gen.write_match("id", |gen| {
+            let tcp_packets = if to_client { &ver.to_client } else { &ver.to_server };
+            for (tcp_id, tcp_packet) in tcp_packets.iter().enumerate() {
+              let grpc_id = packets
+                .binary_search_by(|grpc_packet| grpc_packet.name.cmp(&tcp_packet.name))
+                .unwrap();
+              gen.write_match_branch(None, MatchBranch::Unit(&tcp_id.to_string()));
+              gen.write(&grpc_id.to_string());
+              gen.write_line(",");
+            }
+            gen.write_line("_ => panic!(\"unknown tcp id {}\", id),");
+          });
+          gen.write_line(",");
+        }
+        gen.write_line("ver => panic!(\"invalid version {:?}\", ver),");
+      });
+    },
+  );
 
-  Ok(out)
+  Ok(gen.into_output())
 }
