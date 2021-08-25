@@ -1,4 +1,4 @@
-use common::math::{Pos, RngCore, WyhashRng};
+use common::math::{terrain::Point, ChunkPos, Pos, RngCore, WyhashRng};
 
 #[derive(Clone, Copy, Debug)]
 pub struct Line {
@@ -8,8 +8,11 @@ pub struct Line {
 
 #[derive(Debug)]
 pub struct Traverse {
-  line:    Line,
-  current: Pos,
+  line:          Line,
+  current:       Pos,
+  entered_chunk: bool,
+  offset:        Point,
+  chunk:         ChunkPos,
 }
 
 #[derive(Clone)]
@@ -71,8 +74,8 @@ impl Line {
   pub fn end(&self) -> Pos {
     self.end
   }
-  pub fn traverse(&self) -> Traverse {
-    Traverse { line: *self, current: self.start }
+  pub fn traverse(&self, offset: Point, chunk: ChunkPos) -> Traverse {
+    Traverse { line: *self, current: self.start, entered_chunk: false, offset, chunk }
   }
 
   /// Returns the squared distance to the line, as if the line were infinitely
@@ -108,29 +111,6 @@ impl Iterator for Traverse {
       return None;
     }
     let ret = self.current;
-    // This is an accurate traversal, which is far too slow for caves.
-    // let prev_total_dist = self.line.end().dist_squared(self.current);
-    // let mut min_line_dist = 10.0;
-    // let mut min_pos = self.current;
-    // for offset in [
-    //   Pos::new(1, 0, 0),
-    //   Pos::new(0, 1, 0),
-    //   Pos::new(0, 0, 1),
-    //   Pos::new(-1, 0, 0),
-    //   Pos::new(0, -1, 0),
-    //   Pos::new(0, 0, -1),
-    // ] {
-    //   let total_dist = self.line.end().dist_squared(self.current + offset);
-    //   if total_dist > prev_total_dist {
-    //     continue;
-    //   }
-    //   let line_dist = self.line.dist_squared(self.current + offset);
-    //   if line_dist < min_line_dist {
-    //     min_line_dist = line_dist;
-    //     min_pos = self.current + offset;
-    //   }
-    // }
-    // self.current = min_pos;
     let dx = self.line.end().x() - self.current.x();
     let dy = self.line.end().y() - self.current.y();
     let dz = self.line.end().z() - self.current.z();
@@ -146,7 +126,18 @@ impl Iterator for Traverse {
       "couldn't update postition in traverse! line: {} to {}, current: {}",
       self.line.start, self.line.end, self.current
     );
-    Some(ret)
+    let ret = Pos::new(ret.x() + self.offset.x, ret.y(), ret.z() + self.offset.y);
+    // A straight line will always enter a chunk a most one time. So we can use that
+    // to skip all the extra iterating after we leave.
+    if !self.entered_chunk && ret.chunk() == self.chunk {
+      self.entered_chunk = true;
+      Some(ret)
+    } else if self.entered_chunk && ret.chunk() != self.chunk {
+      self.current = self.line.end();
+      None
+    } else {
+      Some(ret)
+    }
   }
 }
 
@@ -168,30 +159,23 @@ mod tests {
   #[test]
   fn test_traverse() {
     let line = Line::new(Pos::new(0, 0, 0), Pos::new(5, 6, 7));
-    for (i, p) in line.traverse().enumerate() {
+    for (i, p) in line.traverse(Point::new(0, 0), ChunkPos::new(0, 0)).enumerate() {
       dbg!(p);
       if i > 20 {
         panic!("shouldn't take this long!");
       }
     }
     let line = Line::new(Pos::new(1, 2, 6), Pos::new(-5, -6, -7));
-    for (i, p) in line.traverse().enumerate() {
+    for (i, p) in line.traverse(Point::new(0, 0), ChunkPos::new(0, 0)).enumerate() {
       dbg!(p);
       if i > 30 {
         panic!("shouldn't take this long!");
       }
     }
     let line = Line::new(Pos::new(3, 0, 1), Pos::new(6, 0, 2));
-    for (i, p) in line.traverse().enumerate() {
+    for (i, p) in line.traverse(Point::new(0, 0), ChunkPos::new(0, 0)).enumerate() {
       dbg!(p);
       if i > 10 {
-        panic!("shouldn't take this long!");
-      }
-    }
-    let line = Line::new(Pos::new(-35, 100, -34), Pos::new(-54, 99, -53));
-    for (i, p) in line.traverse().enumerate() {
-      dbg!(p);
-      if i > 100 {
         panic!("shouldn't take this long!");
       }
     }

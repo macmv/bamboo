@@ -34,8 +34,7 @@ impl CaveGen {
   fn carve_cave(&self, origin: Point, chunk_pos: ChunkPos, c: &mut MultiChunk) {
     let tree = CaveTree::new(self.seed ^ ((origin.x as u64) << 32) ^ origin.y as u64);
     for line in tree.lines() {
-      for pos in line.traverse() {
-        let p = Pos::new(pos.x() + origin.x, pos.y(), pos.z() + origin.y);
+      for p in line.traverse(origin, chunk_pos) {
         if p.chunk() == chunk_pos {
           c.set_kind(p.chunk_rel(), block::Kind::BlueWool).unwrap();
         }
