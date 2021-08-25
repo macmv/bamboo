@@ -371,19 +371,19 @@ impl NamedPacketField {
     gen.remove_indent();
     gen.write_line("});");
   }
-  fn write_from_proto(&self, gen: &mut CodeGen, is_ver: bool, index: usize) {
+  fn write_from_proto(&self, gen: &mut CodeGen, is_ver: bool) {
     gen.write(&self.name());
     gen.write(": ");
     if self.multi_versioned {
       if is_ver {
         gen.write("Some(");
-        gen.write(&self.generate_from_proto(index).to_string());
+        gen.write(&self.generate_from_proto().to_string());
         gen.write(")");
       } else {
         gen.write("None");
       }
     } else {
-      gen.write(&self.generate_from_proto(index).to_string());
+      gen.write(&self.generate_from_proto().to_string());
     }
     gen.write_line(",");
   }
@@ -410,8 +410,8 @@ impl NamedPacketField {
       self.field.generate_to_proto(&self.name)
     }
   }
-  fn generate_from_proto(&self, index: usize) -> String {
-    self.field.generate_from_proto(index).to_string()
+  fn generate_from_proto(&self) -> String {
+    self.field.generate_from_proto().to_string()
   }
   fn generate_to_tcp(&self) -> String {
     if self.multi_versioned {
@@ -655,27 +655,26 @@ impl PacketField {
       _ => format!("{}.clone()", val),
     }
   }
-  fn generate_from_proto(&self, index: usize) -> TokenStream {
-    // let name = Ident::new(name, Span::call_site());
+  fn generate_from_proto(&self) -> TokenStream {
     match self {
-      Self::Bool => quote!(pb.fields[#index].bool),
+      Self::Bool => quote!(pb.fields.pop().unwrap().bool),
       Self::Int(ity) => match ity {
-        IntType::I8 => quote!(pb.fields[#index].sint as i8),
-        IntType::U8 => quote!(pb.fields[#index].uint as u8),
-        IntType::I16 => quote!(pb.fields[#index].sint as i16),
-        IntType::U16 => quote!(pb.fields[#index].uint as u16),
-        IntType::I32 => quote!(pb.fields[#index].int),
-        IntType::I64 => quote!(pb.fields[#index].long as i64),
-        IntType::VarInt => quote!(pb.fields[#index].sint),
-        IntType::OptVarInt => quote!(Some(pb.fields[#index].sint)),
+        IntType::I8 => quote!(pb.fields.pop().unwrap().sint as i8),
+        IntType::U8 => quote!(pb.fields.pop().unwrap().uint as u8),
+        IntType::I16 => quote!(pb.fields.pop().unwrap().sint as i16),
+        IntType::U16 => quote!(pb.fields.pop().unwrap().uint as u16),
+        IntType::I32 => quote!(pb.fields.pop().unwrap().int),
+        IntType::I64 => quote!(pb.fields.pop().unwrap().long as i64),
+        IntType::VarInt => quote!(pb.fields.pop().unwrap().sint),
+        IntType::OptVarInt => quote!(Some(pb.fields.pop().unwrap().sint)),
       },
       Self::Float(fty) => match fty {
-        FloatType::F32 => quote!(pb.fields[#index].float),
-        FloatType::F64 => quote!(pb.fields[#index].double),
+        FloatType::F32 => quote!(pb.fields.pop().unwrap().float),
+        FloatType::F64 => quote!(pb.fields.pop().unwrap().double),
       },
-      Self::UUID => quote!(UUID::from_proto(pb.fields.remove(#index).uuid.unwrap())),
-      Self::String => quote!(pb.fields.remove(#index).str),
-      Self::Position => quote!(Pos::from_u64(pb.fields[#index].pos)),
+      Self::UUID => quote!(UUID::from_proto(pb.fields.pop().unwrap().uuid.unwrap())),
+      Self::String => quote!(pb.fields.pop().unwrap().str),
+      Self::Position => quote!(Pos::from_u64(pb.fields.pop().unwrap().pos)),
 
       // Self::NBT => quote!(#name.clone()),
       // Self::OptionalNBT => quote!(#name.clone()),
@@ -683,7 +682,7 @@ impl PacketField {
       // Self::EntityMetadata => quote!(#name.clone()), // Implemented on the server
 
       // Self::Option(field) => quote!(#name.unwrap()),
-      _ => quote!(pb.fields.remove(#index).byte_arr),
+      _ => quote!(pb.fields.pop().unwrap().byte_arr),
     }
   }
   fn generate_to_tcp(&self, val: &str) -> String {
@@ -892,12 +891,9 @@ fn generate_packets(
                   gen.write(&p.name().to_case(Case::Pascal));
                   gen.write(" ");
                   gen.write_block(|gen| {
-                    let mut index = 0;
-                    for (is_ver, field) in p.fields_ver(Version { major: 8, minor: 0 }).iter() {
-                      field.write_from_proto(gen, *is_ver, index);
-                      if *is_ver {
-                        index += 1;
-                      }
+                    for (is_ver, field) in p.fields_ver(Version { major: 8, minor: 0 }).iter().rev()
+                    {
+                      field.write_from_proto(gen, *is_ver);
                     }
                   });
                   gen.remove_indent();
@@ -917,12 +913,8 @@ fn generate_packets(
                 gen.write(&p.name().to_case(Case::Pascal));
                 gen.write(" ");
                 gen.write_block(|gen| {
-                  let mut index = 0;
-                  for (is_ver, field) in p.fields_ver(*ver).iter() {
-                    field.write_from_proto(gen, *is_ver, index);
-                    if *is_ver {
-                      index += 1;
-                    }
+                  for (is_ver, field) in p.fields_ver(*ver).iter().rev() {
+                    field.write_from_proto(gen, *is_ver);
                   }
                 });
                 gen.remove_indent();
@@ -934,8 +926,8 @@ fn generate_packets(
               gen.write(&p.name().to_case(Case::Pascal));
               gen.write_line(" {");
               gen.add_indent();
-              for (index, field) in p.fields().iter().enumerate() {
-                field.write_from_proto(gen, true, index);
+              for field in p.fields().iter().rev() {
+                field.write_from_proto(gen, true);
               }
               gen.remove_indent();
               gen.write_line("},");
