@@ -361,7 +361,7 @@ impl NamedPacketField {
     }
   }
   fn write_to_proto(&self, gen: &mut CodeGen) {
-    gen.write("fields.push(proto::PacketField {");
+    gen.write_line("fields.push(proto::PacketField {");
     gen.add_indent();
     gen.write(&self.field.ty_key().to_string());
     gen.write(": ");
@@ -586,80 +586,27 @@ impl PacketField {
       _ => quote!(Vec<u8>),
     }
   }
-  fn ty_enum(&self) -> TokenStream {
-    // enum Type {
-    //   Bool    = 0;
-    //   Byte    = 1;
-    //   Short   = 2;
-    //   Int     = 3;
-    //   Long    = 4;
-    //   Float   = 5;
-    //   Double  = 6;
-    //   Str     = 7;
-    //   UUID    = 8;
-    //   Pos     = 9;
-    //   ByteArr = 10;
-    //   IntArr  = 11;
-    //   LongArr = 12;
-    //   StrArr  = 13;
-    // }
-    match self {
-      Self::Bool => quote!(Bool),
-      Self::Int(ity) => match ity {
-        IntType::I8 => quote!(Byte),
-        IntType::U8 => quote!(Byte),
-        IntType::I16 => quote!(Short),
-        IntType::U16 => quote!(Short),
-        IntType::I32 => quote!(Int),
-        IntType::I64 => quote!(Long),
-        IntType::VarInt => quote!(Int),
-        IntType::OptVarInt => quote!(Int),
-      },
-      Self::Float(fty) => match fty {
-        FloatType::F32 => quote!(Float),
-        FloatType::F64 => quote!(Double),
-      },
-      Self::UUID => quote!(Uuid),
-      Self::String => quote!(Str),
-      Self::Position => quote!(Pos),
-
-      // Self::NBT => quote!(ByteArr),
-      // Self::OptionalNBT => quote!(ByteArr),
-      // Self::RestBuffer => quote!(ByteArr),
-      // Self::EntityMetadata => quote!(ByteArr), // Implemented on the server
-
-      // Self::Option(field) => field.ty_lit(),
-      _ => quote!(ByteArr),
-    }
-  }
   fn ty_key(&self) -> TokenStream {
-    // enum Type {
-    //   Bool    = 0;
-    //   Byte    = 1;
-    //   Short   = 2;
-    //   Int     = 3;
-    //   Long    = 4;
-    //   Float   = 5;
-    //   Double  = 6;
-    //   Str     = 7;
-    //   UUID    = 8;
-    //   Pos     = 9;
-    //   ByteArr = 10;
-    //   IntArr  = 11;
-    //   LongArr = 12;
-    //   StrArr  = 13;
-    // }
+    // The int types are:
+    // `sint` -> Signed, variable length encoded
+    // `uint` -> Unsigned, variable length encoded
+    // `int` -> Signed, fixed length encoded
+    //
+    // So:
+    // `sint` -> i8, i16, varint
+    // `uint` -> Any unsigned int
+    // `int` -> i32
     match self {
       Self::Bool => quote!(bool),
       Self::Int(ity) => match ity {
-        IntType::I8 => quote!(byte),
-        IntType::U8 => quote!(byte),
-        IntType::I16 => quote!(short),
-        IntType::U16 => quote!(short),
+        IntType::I8 => quote!(sint),
+        IntType::U8 => quote!(uint),
+        IntType::I16 => quote!(sint),
+        IntType::U16 => quote!(uint),
         IntType::I32 => quote!(int),
         IntType::I64 => quote!(long),
-        IntType::VarInt => quote!(int),
-        IntType::OptVarInt => quote!(int),
+        IntType::VarInt => quote!(sint),
+        IntType::OptVarInt => quote!(sint),
       },
       Self::Float(fty) => match fty {
         FloatType::F32 => quote!(float),
@@ -682,9 +629,9 @@ impl PacketField {
     match self {
       Self::Bool => format!("*{}", val),
       Self::Int(ity) => match ity {
-        IntType::I8 => format!("(*{} as u8).into()", val),
+        IntType::I8 => format!("(*{}).into()", val),
         IntType::U8 => format!("(*{}).into()", val),
-        IntType::I16 => format!("(*{} as u16).into()", val),
+        IntType::I16 => format!("(*{}).into()", val),
         IntType::U16 => format!("(*{}).into()", val),
         IntType::I32 => format!("*{}", val),
         IntType::I64 => format!("*{} as u64", val),
@@ -713,21 +660,21 @@ impl PacketField {
     match self {
       Self::Bool => quote!(pb.fields[#index].bool),
       Self::Int(ity) => match ity {
-        IntType::I8 => quote!(pb.fields[#index].byte as i8),
-        IntType::U8 => quote!(pb.fields[#index].byte as u8),
-        IntType::I16 => quote!(pb.fields[#index].short as i16),
-        IntType::U16 => quote!(pb.fields[#index].short as u16),
+        IntType::I8 => quote!(pb.fields[#index].sint as i8),
+        IntType::U8 => quote!(pb.fields[#index].uint as u8),
+        IntType::I16 => quote!(pb.fields[#index].sint as i16),
+        IntType::U16 => quote!(pb.fields[#index].uint as u16),
         IntType::I32 => quote!(pb.fields[#index].int),
         IntType::I64 => quote!(pb.fields[#index].long as i64),
-        IntType::VarInt => quote!(pb.fields[#index].int),
-        IntType::OptVarInt => quote!(Some(pb.fields[#index].int)),
+        IntType::VarInt => quote!(pb.fields[#index].sint),
+        IntType::OptVarInt => quote!(Some(pb.fields[#index].sint)),
       },
       Self::Float(fty) => match fty {
         FloatType::F32 => quote!(pb.fields[#index].float),
         FloatType::F64 => quote!(pb.fields[#index].double),
       },
-      Self::UUID => quote!(UUID::from_proto(pb.fields.remove(#index).unwrap().uuid.unwrap())),
-      Self::String => quote!(pb.fields.remove(#index).unwrap().str),
+      Self::UUID => quote!(UUID::from_proto(pb.fields.remove(#index).uuid.unwrap())),
+      Self::String => quote!(pb.fields.remove(#index).str),
       Self::Position => quote!(Pos::from_u64(pb.fields[#index].pos)),
 
       // Self::NBT => quote!(#name.clone()),
@@ -736,7 +683,7 @@ impl PacketField {
       // Self::EntityMetadata => quote!(#name.clone()), // Implemented on the server
 
       // Self::Option(field) => quote!(#name.unwrap()),
-      _ => quote!(pb.fields.remove(#index).unwrap().byte_arr),
+      _ => quote!(pb.fields.remove(#index).byte_arr),
     }
   }
   fn generate_to_tcp(&self, val: &str) -> String {
@@ -814,11 +761,9 @@ fn generate_packets(
   gen.write_line("  math::Pos,");
   gen.write_line("  net::tcp,");
   gen.write_line("  proto,");
-  gen.write_line("  proto::packet_field::Type,");
   gen.write_line("  version::ProtocolVersion,");
-  gen.write_line("  util::{nbt::NBT, UUID}");
+  gen.write_line("  util::UUID");
   gen.write_line("};");
-  gen.write_line("use std::collections::HashMap;\n");
   gen.write_line("");
   gen.write_line("/// Auto generated packet ids. This is a combination of all packet");
   gen.write_line("/// names for all versions. Some of these packets are never used.");
@@ -913,7 +858,6 @@ fn generate_packets(
               gen.write(&id.to_string());
               gen.write_line(",");
               gen.write_line("fields,");
-              gen.write_line("other: None,");
               gen.remove_indent();
               gen.write_line("}");
             });
