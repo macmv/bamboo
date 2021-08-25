@@ -390,6 +390,22 @@ impl NamedPacketField {
     }
     gen.write_line(",");
   }
+  fn write_from_tcp(&self, gen: &mut CodeGen, is_ver: bool) {
+    gen.write(&self.name());
+    gen.write(": ");
+    if self.multi_versioned {
+      if is_ver {
+        gen.write("Some(");
+        gen.write(&self.generate_from_tcp().to_string());
+        gen.write(")");
+      } else {
+        gen.write("None");
+      }
+    } else {
+      gen.write(&self.generate_from_tcp().to_string());
+    }
+    gen.write_line(",");
+  }
   fn generate_to_proto(&self) -> String {
     if self.multi_versioned {
       self.field.generate_to_proto(&format!("{}.as_ref().unwrap()", self.name))
@@ -1047,6 +1063,76 @@ fn generate_packets(
               gen.write_line("out");
             });
           }
+        });
+      },
+    );
+    gen.write_func(
+      "from_tcp",
+      &[
+        FuncArg { name: "mut p", ty: "tcp::Packet" },
+        FuncArg { name: "version", ty: "ProtocolVersion" },
+      ],
+      Some("Self"),
+      |gen| {
+        gen.write_match("to_grpc_id(p.id(), version)", |gen| {
+          for (id, p) in packets.iter().enumerate() {
+            gen.write_match_branch(None, MatchBranch::Unit(&id.to_string()));
+            if p.has_multiple_versions() {
+              let all_versions = p.all_versions();
+              for (i, ver) in all_versions.iter().enumerate() {
+                if i == 0 && *ver != (Version { major: 8, minor: 0 }) {
+                  gen.write("if version < ProtocolVersion::");
+                  gen.write(&ver.to_string().to_uppercase());
+                  gen.write_line(" {");
+                  gen.add_indent();
+                  gen.write_comment("1.8 generator");
+                  gen.write("Packet::");
+                  gen.write(&p.name().to_case(Case::Pascal));
+                  gen.write(" ");
+                  gen.write_block(|gen| {
+                    for (i, (is_ver, field)) in p.fields_ver(*ver).iter().enumerate() {
+                      field.write_from_tcp(gen, *is_ver);
+                    }
+                  });
+                  gen.remove_indent();
+                  gen.write("} else ");
+                } else if i != 0 {
+                  gen.write(" else ");
+                }
+                if let Some(next_ver) = all_versions.get(i + 1) {
+                  gen.write("if version < ProtocolVersion::");
+                  gen.write(&next_ver.to_string().to_uppercase());
+                  gen.write(" ");
+                }
+                gen.write_line("{");
+                gen.add_indent();
+                gen.write_comment(&ver.to_string());
+                gen.write("Packet::");
+                gen.write(&p.name().to_case(Case::Pascal));
+                gen.write(" ");
+                gen.write_block(|gen| {
+                  for (i, (is_ver, field)) in p.fields_ver(*ver).iter().enumerate() {
+                    field.write_from_tcp(gen, *is_ver);
+                  }
+                });
+                gen.remove_indent();
+                gen.write("}");
+              }
+              gen.write_line(",");
+            } else {
+              gen.write("Packet::");
+              gen.write(&p.name().to_case(Case::Pascal));
+              gen.write_line(" {");
+              gen.add_indent();
+              for (i, field) in p.fields().iter().enumerate() {
+                field.write_from_tcp(gen, true);
+              }
+              gen.remove_indent();
+              gen.write_line("},");
+            }
+          }
+          gen.write_match_branch(None, MatchBranch::Other);
+          gen.write_line("unreachable!(\"invalid packet id {}\", p.id()),");
         });
       },
     );
