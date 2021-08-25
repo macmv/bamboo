@@ -129,4 +129,10 @@ impl MultiChunk {
   pub fn get_paletted(&self) -> &Chunk {
     &self.paletted
   }
+
+  /// Returns a reference to the global type converter. Used to convert a block
+  /// id to/from any version.
+  pub fn type_converter(&self) -> &block::TypeConverter {
+    &self.types
+  }
 }
