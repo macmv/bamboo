@@ -36,7 +36,27 @@ impl CaveGen {
     for line in tree.lines() {
       for p in line.traverse(origin, chunk_pos) {
         if p.chunk() == chunk_pos {
-          c.set_kind(p.chunk_rel(), block::Kind::BlueWool).unwrap();
+          let mut min = p.chunk_rel() - Pos::new(1, 1, 1);
+          let mut max = p.chunk_rel() + Pos::new(1, 1, 1);
+          if min.x() < 0 {
+            min = min.with_x(0);
+          }
+          if min.y() < 0 {
+            min = min.with_y(0);
+          }
+          if min.z() < 0 {
+            min = min.with_z(0);
+          }
+          if max.x() > 15 {
+            max = max.with_x(15);
+          }
+          if max.y() < 0 {
+            max = max.with_y(0);
+          }
+          if max.z() > 15 {
+            max = max.with_z(15);
+          }
+          c.fill_kind(min, max, block::Kind::Air).unwrap();
         }
       }
     }

@@ -26,8 +26,8 @@ impl CaveTree {
     let mut rng = WyhashRng::new(seed);
     tree.recursive_add(&mut rng, Pos::new(0, 0, 0), 1, 8);
     for line in tree.lines.iter_mut() {
-      line.start = line.start.add_y(100);
-      line.end = line.end.add_y(100);
+      line.start = line.start.add_y(50);
+      line.end = line.end.add_y(50);
     }
     tree
   }
