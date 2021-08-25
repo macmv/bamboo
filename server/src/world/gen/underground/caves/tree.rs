@@ -1,11 +1,12 @@
 use common::math::{Pos, RngCore, WyhashRng};
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug)]
 pub struct Line {
   start: Pos,
   end:   Pos,
 }
 
+#[derive(Debug)]
 pub struct Traverse {
   line:    Line,
   current: Pos,
@@ -32,7 +33,7 @@ impl CaveTree {
     if level > rng.next_u32() % total {
       return;
     }
-    let mut range_xz = (total - level) * 4;
+    let mut range_xz = (total - level) * 8;
     let mut range_y = (total - level) / 3;
     if range_xz == 0 {
       range_xz = 1
@@ -107,28 +108,44 @@ impl Iterator for Traverse {
       return None;
     }
     let ret = self.current;
-    let prev_total_dist = self.line.end().dist_squared(self.current);
-    let mut min_line_dist = 1.0;
-    let mut min_pos = self.current;
-    for offset in [
-      Pos::new(1, 0, 0),
-      Pos::new(0, 1, 0),
-      Pos::new(0, 0, 1),
-      Pos::new(-1, 0, 0),
-      Pos::new(0, -1, 0),
-      Pos::new(0, 0, -1),
-    ] {
-      let total_dist = self.line.end().dist_squared(self.current + offset);
-      if total_dist > prev_total_dist {
-        continue;
-      }
-      let line_dist = self.line.dist_squared(self.current + offset);
-      if line_dist < min_line_dist {
-        min_line_dist = line_dist;
-        min_pos = self.current + offset;
-      }
-    }
-    self.current = min_pos;
+    // This is an accurate traversal, which is far too slow for caves.
+    // let prev_total_dist = self.line.end().dist_squared(self.current);
+    // let mut min_line_dist = 10.0;
+    // let mut min_pos = self.current;
+    // for offset in [
+    //   Pos::new(1, 0, 0),
+    //   Pos::new(0, 1, 0),
+    //   Pos::new(0, 0, 1),
+    //   Pos::new(-1, 0, 0),
+    //   Pos::new(0, -1, 0),
+    //   Pos::new(0, 0, -1),
+    // ] {
+    //   let total_dist = self.line.end().dist_squared(self.current + offset);
+    //   if total_dist > prev_total_dist {
+    //     continue;
+    //   }
+    //   let line_dist = self.line.dist_squared(self.current + offset);
+    //   if line_dist < min_line_dist {
+    //     min_line_dist = line_dist;
+    //     min_pos = self.current + offset;
+    //   }
+    // }
+    // self.current = min_pos;
+    let dx = self.line.end().x() - self.current.x();
+    let dy = self.line.end().y() - self.current.y();
+    let dz = self.line.end().z() - self.current.z();
+    let len = ((dx.pow(2) + dy.pow(2) + dz.pow(2)) as f64).sqrt();
+    let dx = dx as f64 / len * 2.0;
+    let dy = dy as f64 / len * 2.0;
+    let dz = dz as f64 / len * 2.0;
+    self.current = self.current + Pos::new(dx as i32, dy as i32, dz as i32);
+    // This function is error prone, this helps debug the server freezing on this
+    // function.
+    debug_assert_ne!(
+      self.current, ret,
+      "couldn't update postition in traverse! line: {} to {}, current: {}",
+      self.line.start, self.line.end, self.current
+    );
     Some(ret)
   }
 }
@@ -140,12 +157,12 @@ mod tests {
   #[test]
   fn test_dist() {
     let line = Line::new(Pos::new(0, 0, 0), Pos::new(5, 0, 0));
-    assert_eq!(line.dist(Pos::new(0, 0, 0)), 0.0);
-    assert_eq!(line.dist(Pos::new(1, 0, 0)), 0.0);
-    assert_eq!(line.dist(Pos::new(0, 1, 0)), 1.0);
-    assert_eq!(line.dist(Pos::new(0, 2, 0)), 2.0);
-    assert_eq!(line.dist(Pos::new(1, 1, 0)), 1.0);
-    assert_eq!(line.dist(Pos::new(3, 1, 0)), 1.0);
+    assert_eq!(line.dist_squared(Pos::new(0, 0, 0)), 0.0_f64.powi(2));
+    assert_eq!(line.dist_squared(Pos::new(1, 0, 0)), 0.0_f64.powi(2));
+    assert_eq!(line.dist_squared(Pos::new(0, 1, 0)), 1.0_f64.powi(2));
+    assert_eq!(line.dist_squared(Pos::new(0, 2, 0)), 2.0_f64.powi(2));
+    assert_eq!(line.dist_squared(Pos::new(1, 1, 0)), 1.0_f64.powi(2));
+    assert_eq!(line.dist_squared(Pos::new(3, 1, 0)), 1.0_f64.powi(2));
   }
 
   #[test]
@@ -168,6 +185,13 @@ mod tests {
     for (i, p) in line.traverse().enumerate() {
       dbg!(p);
       if i > 10 {
+        panic!("shouldn't take this long!");
+      }
+    }
+    let line = Line::new(Pos::new(-35, 100, -34), Pos::new(-54, 99, -53));
+    for (i, p) in line.traverse().enumerate() {
+      dbg!(p);
+      if i > 100 {
         panic!("shouldn't take this long!");
       }
     }
