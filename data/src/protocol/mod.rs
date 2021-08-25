@@ -879,7 +879,7 @@ fn generate_packets(
                     gen.write_line(" {");
                     gen.add_indent();
                     gen.write_comment("1.8 generator");
-                    for (is_ver, field) in p.fields_ver(*ver).iter() {
+                    for (is_ver, field) in p.fields_ver(Version { major: 8, minor: 0 }).iter() {
                       if *is_ver {
                         field.write_to_proto(gen);
                       }
@@ -952,7 +952,7 @@ fn generate_packets(
                   gen.write(&p.name().to_case(Case::Pascal));
                   gen.write(" ");
                   gen.write_block(|gen| {
-                    for (is_ver, field) in p.fields_ver(*ver).iter() {
+                    for (is_ver, field) in p.fields_ver(Version { major: 8, minor: 0 }).iter() {
                       field.write_from_proto(gen, *is_ver);
                     }
                   });
@@ -1027,7 +1027,9 @@ fn generate_packets(
                     gen.write_line(" {");
                     gen.add_indent();
                     gen.write_comment("1.8 generator");
-                    for (i, (is_ver, field)) in p.fields_ver(*ver).iter().enumerate() {
+                    for (i, (is_ver, field)) in
+                      p.fields_ver(Version { major: 8, minor: 0 }).iter().enumerate()
+                    {
                       if *is_ver {
                         gen.write(&field.generate_to_tcp().to_string());
                         gen.write_line(";");
@@ -1092,7 +1094,9 @@ fn generate_packets(
                   gen.write(&p.name().to_case(Case::Pascal));
                   gen.write(" ");
                   gen.write_block(|gen| {
-                    for (i, (is_ver, field)) in p.fields_ver(*ver).iter().enumerate() {
+                    for (i, (is_ver, field)) in
+                      p.fields_ver(Version { major: 8, minor: 0 }).iter().enumerate()
+                    {
                       field.write_from_tcp(gen, *is_ver);
                     }
                   });
