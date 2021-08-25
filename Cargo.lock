@@ -316,7 +316,7 @@ checksum = "3d7b894f5411737b7867f4827955924d7c254fc9f4d91a6aad6b097804b1018b"
 
 [[package]]
 name = "common"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "aes",
  "anyhow",
@@ -508,7 +508,7 @@ dependencies = [
 
 [[package]]
 name = "data"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "convert_case",
  "itertools 0.10.1",
@@ -1695,7 +1695,7 @@ dependencies = [
 
 [[package]]
 name = "proxy"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "async-stream",
  "common",
@@ -2126,7 +2126,7 @@ dependencies = [
 
 [[package]]
 name = "server"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "common",
  "data",
