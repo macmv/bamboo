@@ -107,36 +107,42 @@ impl Pos {
   }
   /// Returns self, with x set to the given value.
   #[inline(always)]
+  #[must_use = "with_x returns a modified version of self"]
   pub fn with_x(mut self, x: i32) -> Self {
     self.x = x;
     self
   }
   /// Returns self, with y set to the given value.
   #[inline(always)]
+  #[must_use = "with_y returns a modified version of self"]
   pub fn with_y(mut self, y: i32) -> Self {
     self.y = y;
     self
   }
   /// Returns self, with z set to the given value.
   #[inline(always)]
+  #[must_use = "with_z returns a modified version of self"]
   pub fn with_z(mut self, z: i32) -> Self {
     self.z = z;
     self
   }
   /// Returns self, with x set to self.x plus the given value.
   #[inline(always)]
+  #[must_use = "add_x returns a modified version of self"]
   pub fn add_x(mut self, x: i32) -> Self {
     self.x += x;
     self
   }
   /// Returns self, with y set to self.x plus the given value.
   #[inline(always)]
+  #[must_use = "add_y returns a modified version of self"]
   pub fn add_y(mut self, y: i32) -> Self {
     self.y += y;
     self
   }
   /// Returns self, with z set to self.x plus the given value.
   #[inline(always)]
+  #[must_use = "add_z returns a modified version of self"]
   pub fn add_z(mut self, z: i32) -> Self {
     self.z += z;
     self
