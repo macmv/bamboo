@@ -16,8 +16,7 @@ pub fn serialize_chunk(pos: ChunkPos, c: &MultiChunk, ver: BlockVersion) -> cb::
     }
   }
 
-  // 5 blank bytes to write the length
-  let mut chunk_data = Buffer::new(vec![0, 0, 0, 0, 0]);
+  let mut chunk_data = Buffer::new(vec![]);
   // Iterates through chunks in order, from ground up. Flatten removes None
   // sections.
   for s in c.sections().flatten() {
