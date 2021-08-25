@@ -131,6 +131,7 @@ struct NamedPacketField {
 
 struct VersionedField {
   name:          String,
+  removed_in:    Option<Version>,
   version_names: HashMap<Version, usize>,
   versions:      Vec<(Version, PacketField)>,
 }
@@ -203,7 +204,7 @@ impl VersionedField {
   fn new(ver: Version, name: String, field: PacketField) -> Self {
     let mut version_names = HashMap::new();
     version_names.insert(ver, 0);
-    VersionedField { name, version_names, versions: vec![(ver, field)] }
+    VersionedField { name, version_names, versions: vec![(ver, field)], removed_in: None }
   }
   fn add_ver(&mut self, ver: Version, field: PacketField) {
     self.version_names.insert(ver, self.versions.len());
@@ -212,14 +213,24 @@ impl VersionedField {
   fn latest(&self) -> &PacketField {
     &self.versions.last().unwrap().1
   }
+  fn set_removed_version(&mut self, ver: Version) {
+    if self.removed_in.is_none() {
+      self.removed_in = Some(ver);
+    }
+  }
   fn add_all(&self, out: &mut Vec<NamedPacketField>) {
     if self.versions.len() == 1 {
       // If the first version is not 1.8, we need this to be a multi versioned field
-      let multi_versioned = self.versions.first().unwrap().0 != Version { major: 8, minor: 0 };
+      let mut multi_versioned = self.versions.first().unwrap().0 != Version { major: 8, minor: 0 };
       let mut name = self.name.clone();
       if multi_versioned {
         name.push_str("_");
         name.push_str(&self.versions.first().unwrap().0.to_string());
+      }
+      if let Some(ver) = self.removed_in {
+        multi_versioned = true;
+        name.push_str("_removed_");
+        name.push_str(&ver.to_string());
       }
       // Avoid keyword conflicts
       if name == "type" {
@@ -240,25 +251,36 @@ impl VersionedField {
     }
   }
   fn multi_versioned(&self) -> bool {
-    self.versions.len() > 1 || self.versions.first().unwrap().0 != Version { major: 8, minor: 0 }
+    self.versions.len() > 1
+      || self.versions.first().unwrap().0 != Version { major: 8, minor: 0 }
+      || self.removed_in.is_some()
   }
   fn add_all_ver(&self, out: &mut Vec<(bool, NamedPacketField)>, matching_ver: Version) {
     if self.versions.len() == 1 {
       // If the first version is not 1.8, we need this to be a multi versioned field
-      let multi_versioned = self.versions.first().unwrap().0 != Version { major: 8, minor: 0 };
+      let mut multi_versioned = self.versions.first().unwrap().0 != Version { major: 8, minor: 0 };
       let mut name = self.name.clone();
       if multi_versioned {
         name.push_str("_");
         name.push_str(&self.versions.first().unwrap().0.to_string());
+      }
+      // Make sure that we don't set is_ver to true for a field that hasn't been added
+      // to this packet yet.
+      let mut is_ver = matching_ver >= self.versions.first().unwrap().0;
+      if let Some(ver) = self.removed_in {
+        multi_versioned = true;
+        if matching_ver >= ver {
+          is_ver = false;
+        }
+        name.push_str("_removed_");
+        name.push_str(&ver.to_string());
       }
       // Avoid keyword conflicts
       if name == "type" {
         name = "type_".to_string();
       }
       out.push((
-        // Make sure that we don't set is_ver to true for a field that hasn't been added to this
-        // packet yet.
-        matching_ver >= self.versions.first().unwrap().0,
+        is_ver,
         NamedPacketField { multi_versioned, name, field: self.versions.first().unwrap().1.clone() },
       ));
     } else {
@@ -294,8 +316,10 @@ impl VersionedPacket {
   }
 
   fn add_version(&mut self, ver: Version, packet: Packet) {
+    let mut missing_fields: HashSet<String> = self.field_names.keys().cloned().collect();
     for (idx, (name, field)) in packet.fields.into_iter().enumerate() {
       if let Some(&idx) = self.field_names.get(&name) {
+        missing_fields.remove(&name);
         let existing = &mut self.fields[idx];
         if existing.latest() != &field {
           existing.add_ver(ver, field);
@@ -312,6 +336,10 @@ impl VersionedPacket {
         // in order
         self.fields.insert(idx, VersionedField::new(ver, name, field));
       }
+    }
+    for name in missing_fields {
+      let idx = self.field_names[&name];
+      self.fields[idx].set_removed_version(ver);
     }
   }
 
