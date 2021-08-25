@@ -10,7 +10,9 @@ use common::{
 };
 
 // CHANGES:
-// Added a u16 for non air blocks at the start of each section
+// Added the MOTION_BLOCKING field. This is a heightmap, stored in NBT.
+// Added a u16 for non air blocks at the start of each section.
+// Moved lighting data into another packet, so it is no longer included.
 pub fn serialize_chunk(pos: ChunkPos, c: &MultiChunk) -> cb::Packet {
   let types = c.type_converter();
   let heightmap = c.build_heightmap();
@@ -43,17 +45,6 @@ pub fn serialize_chunk(pos: ChunkPos, c: &MultiChunk) -> cb::Packet {
     let longs = s.data().long_array();
     chunk_data.write_varint(longs.len() as i32);
     chunk_data.write_buf(&longs.iter().map(|v| v.to_be_bytes()).flatten().collect::<Vec<u8>>());
-    // Light data
-    for _ in 0..16 * 16 * 16 / 2 {
-      // Each lighting value is 1/2 byte
-      chunk_data.write_u8(0xff);
-    }
-    if skylight {
-      for _ in 0..16 * 16 * 16 / 2 {
-        // Each lighting value is 1/2 byte
-        chunk_data.write_u8(0xff);
-      }
-    }
   }
 
   if biomes {
