@@ -463,11 +463,29 @@ impl Player {
   async fn unload_chunks(&self, min: ChunkPos, max: ChunkPos) {
     for x in min.x()..max.x() {
       for z in min.z()..max.z() {
-        // TODO: Unload chunks correctly for 1.8
-        self
-          .conn
-          .send(cb::Packet::UnloadChunk { chunk_x_v1_9: Some(x), chunk_z_v1_9: Some(z) })
-          .await;
+        if self.ver() == ProtocolVersion::V1_8 {
+          self
+            .conn
+            .send(cb::Packet::MapChunk {
+              x:                     x.into(),
+              z:                     z.into(),
+              ground_up:             true,
+              bit_map_v1_8:          Some(0),
+              bit_map_v1_9:          None,
+              chunk_data:            vec![0], // Need a length prefix. 0 varint is a single 0 byte
+              biomes_v1_15:          None,
+              biomes_v1_16_2:        None,
+              block_entities_v1_9_4: None,
+              heightmaps_v1_14:      None,
+              ignore_old_data_v1_16: None,
+            })
+            .await;
+        } else {
+          self
+            .conn
+            .send(cb::Packet::UnloadChunk { chunk_x_v1_9: Some(x), chunk_z_v1_9: Some(z) })
+            .await;
+        }
       }
     }
   }
