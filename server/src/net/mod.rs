@@ -121,7 +121,7 @@ impl Connection {
           cursor_z_v1_8,
           cursor_z_v1_11,
           inside_block_v1_14,
-          held_item,
+          held_item_removed_v1_9,
         } => {
           let direction: i32 = if player.ver() == ProtocolVersion::V1_8 {
             // direction_v1_8 is an i8 (not a u8), so the sign stays correct

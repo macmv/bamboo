@@ -57,18 +57,18 @@ pub fn serialize_chunk(pos: ChunkPos, c: &MultiChunk) -> cb::Packet {
   data.write_varint(chunk_data.len() as i32);
   data.write_buf(&chunk_data.into_inner());
   cb::Packet::MapChunk {
-    x:                     pos.x(),
-    z:                     pos.z(),
-    ground_up:             true,
-    bit_map_v1_8:          None,
-    bit_map_v1_9:          Some(bitmask),
-    chunk_data:            data.into_inner(),
-    block_entities_v1_9_4: Some(vec![0]), // 0 len
-    heightmaps_v1_14:      Some(
+    x:                                     pos.x(),
+    z:                                     pos.z(),
+    ground_up:                             true,
+    bit_map_v1_8:                          None,
+    bit_map_v1_9:                          Some(bitmask),
+    chunk_data:                            data.into_inner(),
+    block_entities_v1_9_4:                 Some(vec![0]), // 0 len
+    heightmaps_v1_14:                      Some(
       NBT::new("", Tag::compound(&[("MOTION_BLOCKING", Tag::LongArray(heightmap))])).serialize(),
     ),
-    biomes_v1_15:          None,
-    biomes_v1_16_2:        None,
-    ignore_old_data_v1_16: None,
+    biomes_v1_15:                          None,
+    biomes_v1_16_2:                        None,
+    ignore_old_data_v1_16_removed_v1_16_2: None,
   }
 }

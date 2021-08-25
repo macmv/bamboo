@@ -125,18 +125,15 @@ impl World {
       ]),
     );
     let out = cb::Packet::Login {
-      entity_id:           self.eid(),
-      game_mode:           1, // Creative
-      difficulty:          1, // Normal
-      // if player.ver() < ProtocolVersion::V1_16 {
-      //   out.set_byte("dimension", 0); // Overworld
-      // }
-      dimension_v1_8:      Some(0), // Overworld
-      dimension_v1_9_2:    Some(0), // Overworld
-      level_type:          "default".into(),
-      max_players_v1_8:    Some(0), // Ignored
-      max_players_v1_16_2: Some(0), // Not sure if ignored
-      reduced_debug_info:  false,   // Don't reduce debug info
+      entity_id:                self.eid(),
+      game_mode:                1,       // Creative
+      difficulty_removed_v1_14: Some(1), // Normal
+      dimension_v1_8:           Some(0), // Overworld
+      dimension_v1_9_2:         Some(0), // Overworld
+      level_type_removed_v1_16: Some("default".into()),
+      max_players_v1_8:         Some(0), // Ignored
+      max_players_v1_16_2:      Some(0), // Not sure if ignored
+      reduced_debug_info:       false,   // Don't reduce debug info
 
       // 1.14+
       view_distance_v1_14: Some(10), // 10 chunk view distance TODO: Per player view distance
@@ -224,18 +221,18 @@ impl World {
       other
         .conn()
         .send(cb::Packet::NamedEntitySpawn {
-          entity_id:    player.eid(),
-          player_uuid:  player.id(),
-          x_v1_8:       Some(pos.fixed_x()),
-          x_v1_9:       Some(pos.x()),
-          y_v1_8:       Some(pos.fixed_y()),
-          y_v1_9:       Some(pos.y()),
-          z_v1_8:       Some(pos.fixed_z()),
-          z_v1_9:       Some(pos.z()),
-          yaw:          yaw as i8, // TODO: Fix doubles/bytes on 1.8
-          pitch:        pitch as i8,
-          current_item: 0,
-          metadata:     player.metadata(other.ver()).serialize(),
+          entity_id:                 player.eid(),
+          player_uuid:               player.id(),
+          x_v1_8:                    Some(pos.fixed_x()),
+          x_v1_9:                    Some(pos.x()),
+          y_v1_8:                    Some(pos.fixed_y()),
+          y_v1_9:                    Some(pos.y()),
+          z_v1_8:                    Some(pos.fixed_z()),
+          z_v1_9:                    Some(pos.z()),
+          yaw:                       yaw as i8, // TODO: Fix doubles/bytes on 1.8
+          pitch:                     pitch as i8,
+          current_item_removed_v1_9: Some(0),
+          metadata_removed_v1_15:    Some(player.metadata(other.ver()).serialize()),
         })
         .await;
 
@@ -252,18 +249,18 @@ impl World {
       // Create a packet that will spawn other for player
       let (pos, pitch, yaw) = other.pos_look();
       spawn_packets.push(cb::Packet::NamedEntitySpawn {
-        entity_id:    other.eid(),
-        player_uuid:  other.id(),
-        x_v1_8:       Some(pos.fixed_x()),
-        x_v1_9:       Some(pos.x()),
-        y_v1_8:       Some(pos.fixed_y()),
-        y_v1_9:       Some(pos.y()),
-        z_v1_8:       Some(pos.fixed_z()),
-        z_v1_9:       Some(pos.z()),
-        yaw:          yaw as i8,
-        pitch:        pitch as i8,
-        current_item: 0,
-        metadata:     other.metadata(player.ver()).serialize(),
+        entity_id:                 other.eid(),
+        player_uuid:               other.id(),
+        x_v1_8:                    Some(pos.fixed_x()),
+        x_v1_9:                    Some(pos.x()),
+        y_v1_8:                    Some(pos.fixed_y()),
+        y_v1_9:                    Some(pos.y()),
+        z_v1_8:                    Some(pos.fixed_z()),
+        z_v1_9:                    Some(pos.z()),
+        yaw:                       yaw as i8,
+        pitch:                     pitch as i8,
+        current_item_removed_v1_9: Some(0),
+        metadata_removed_v1_15:    Some(other.metadata(player.ver()).serialize()),
       });
     }
     // Need to send the player info before the spawn packets
