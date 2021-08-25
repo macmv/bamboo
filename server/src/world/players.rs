@@ -2,7 +2,6 @@ use crate::player::Player;
 use common::{math::ChunkPos, util::UUID};
 use std::{
   collections::{hash_map::Values, HashMap},
-  iter::Iterator,
   ops::{Deref, DerefMut},
   sync::Arc,
 };

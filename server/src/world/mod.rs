@@ -263,11 +263,13 @@ impl World {
   }
 
   /// This sets a block within the world. It will return an error if the
-  /// position is outside of the world.
+  /// position is outside of the world. Unlike
+  /// [`MultiChunk::set_type`](chunk::MultiChunk::set_type), this will send
+  /// packets to anyone within render distance of the given chunk.
   pub async fn set_block(&self, pos: Pos, ty: &block::Type) -> Result<(), PosError> {
     self.chunk(pos.chunk(), |mut c| c.set_type(pos.chunk_rel(), ty))?;
 
-    for p in self.players.lock().await.values() {
+    for p in self.players().await.iter().in_view(pos.chunk()) {
       p.conn()
         .send(cb::Packet::BlockChange {
           location: pos,
