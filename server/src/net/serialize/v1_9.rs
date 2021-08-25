@@ -2,7 +2,7 @@ use crate::world::chunk::MultiChunk;
 use common::{math::ChunkPos, net::cb, util::Buffer, version::BlockVersion};
 
 // Applies to 1.9 - 1.12, but 1.10 doesn't work, so idk
-pub fn serialize_chunk(pos: ChunkPos, c: &MultiChunk) -> cb::Packet {
+pub fn serialize_chunk(pos: ChunkPos, c: &MultiChunk, ver: BlockVersion) -> cb::Packet {
   let types = c.type_converter();
   let c = c.get_paletted();
 
@@ -25,7 +25,7 @@ pub fn serialize_chunk(pos: ChunkPos, c: &MultiChunk) -> cb::Packet {
     chunk_data.write_u8(s.data().bpe() as u8);
     chunk_data.write_varint(s.palette().len() as i32);
     for g in s.palette() {
-      chunk_data.write_varint(types.to_old(*g as u32, BlockVersion::V1_9) as i32);
+      chunk_data.write_varint(types.to_old(*g as u32, ver) as i32);
     }
     let longs = s.data().long_array();
     chunk_data.write_varint(longs.len() as i32);
