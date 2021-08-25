@@ -37,7 +37,7 @@ impl CaveTree {
       return;
     }
     let mut range_xz = (total - level) * 8;
-    let mut range_y = (total - level) / 3;
+    let mut range_y = (total - level) * 2;
     if range_xz == 0 {
       range_xz = 1
     }
@@ -48,7 +48,7 @@ impl CaveTree {
       + Pos::new(
         // Adding some of the root makes the caves spread outwards more
         ((rng.next_u32() % (range_xz * 2)) as i32 - range_xz as i32) + root.x() / 10,
-        ((rng.next_u32() % (range_y * 2)) as i32 - range_y as i32) + root.y() / 10 - 1,
+        ((rng.next_u32() % (range_y * 2)) as i32 - range_y as i32) + root.y() / 10 - 3,
         ((rng.next_u32() % (range_xz * 2)) as i32 - range_xz as i32) + root.z() / 10,
       );
     self.lines.push(Line::new(root, next));
@@ -115,9 +115,9 @@ impl Iterator for Traverse {
     let dy = self.line.end().y() - self.current.y();
     let dz = self.line.end().z() - self.current.z();
     let len = ((dx.pow(2) + dy.pow(2) + dz.pow(2)) as f64).sqrt();
-    let dx = dx as f64 / len * 2.0;
-    let dy = dy as f64 / len * 2.0;
-    let dz = dz as f64 / len * 2.0;
+    let dx = dx as f64 / len * 1.8;
+    let dy = dy as f64 / len * 1.8;
+    let dz = dz as f64 / len * 1.8;
     self.current = self.current + Pos::new(dx as i32, dy as i32, dz as i32);
     // This function is error prone, this helps debug the server freezing on this
     // function.
