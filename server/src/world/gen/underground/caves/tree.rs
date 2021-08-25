@@ -1,4 +1,4 @@
-use common::math::Pos;
+use common::math::{Pos, RngCore, WyhashRng};
 
 #[derive(Clone, Copy)]
 pub struct Line {
@@ -18,13 +18,38 @@ pub struct CaveTree {
 
 impl CaveTree {
   pub fn new(seed: u64) -> Self {
-    CaveTree {
-      lines: vec![
-        Line::new(Pos::new(0, 80, 0), Pos::new(5, 80, 10)),
-        Line::new(Pos::new(5, 80, 10), Pos::new(15, 80, 5)),
-        Line::new(Pos::new(0, 80, 0), Pos::new(-5, 80, 10)),
-        Line::new(Pos::new(0, 80, 0), Pos::new(5, 80, 10)),
-      ],
+    let mut tree = CaveTree { lines: vec![] };
+    let mut rng = WyhashRng::new(seed);
+    tree.recursive_add(&mut rng, Pos::new(0, 0, 0), 1, 8);
+    for line in tree.lines.iter_mut() {
+      line.start = line.start.add_y(100);
+      line.end = line.end.add_y(100);
+    }
+    tree
+  }
+
+  fn recursive_add(&mut self, rng: &mut WyhashRng, root: Pos, level: u32, total: u32) {
+    if level > rng.next_u32() % total {
+      return;
+    }
+    let mut range_xz = (total - level) * 4;
+    let mut range_y = (total - level) / 3;
+    if range_xz == 0 {
+      range_xz = 1
+    }
+    if range_y == 0 {
+      range_y = 1
+    }
+    let next = root
+      + Pos::new(
+        // Adding some of the root makes the caves spread outwards more
+        ((rng.next_u32() % (range_xz * 2)) as i32 - range_xz as i32) + root.x() / 10,
+        ((rng.next_u32() % (range_y * 2)) as i32 - range_y as i32) + root.y() / 10 - 1,
+        ((rng.next_u32() % (range_xz * 2)) as i32 - range_xz as i32) + root.z() / 10,
+      );
+    self.lines.push(Line::new(root, next));
+    for _ in 0..(rng.next_u32() % (total - level)) {
+      self.recursive_add(rng, next, level + 1, total);
     }
   }
 
@@ -49,8 +74,9 @@ impl Line {
     Traverse { line: *self, current: self.start }
   }
 
-  /// Returns the distance to the line, as if the line were infinitely long.
-  pub fn dist(&self, pos: Pos) -> f64 {
+  /// Returns the squared distance to the line, as if the line were infinitely
+  /// long.
+  pub fn dist_squared(&self, pos: Pos) -> f64 {
     let dist = self.start().dist(self.end());
     // Line direction, normalized
     let dir_x = (self.start().x() - self.end().x()) as f64 / dist;
@@ -67,10 +93,9 @@ impl Line {
     let nearest_y = self.start().y() as f64 + dir_y * dot;
     let nearest_z = self.start().z() as f64 + dir_z * dot;
 
-    (((pos.x() as f64 - nearest_x).powi(2)
+    (pos.x() as f64 - nearest_x).powi(2)
       + (pos.y() as f64 - nearest_y).powi(2)
-      + (pos.z() as f64 - nearest_z).powi(2)) as f64)
-      .sqrt()
+      + (pos.z() as f64 - nearest_z).powi(2)
   }
 }
 
@@ -82,7 +107,7 @@ impl Iterator for Traverse {
       return None;
     }
     let ret = self.current;
-    let prev_total_dist = self.line.end().dist(self.current);
+    let prev_total_dist = self.line.end().dist_squared(self.current);
     let mut min_line_dist = 1.0;
     let mut min_pos = self.current;
     for offset in [
@@ -93,11 +118,11 @@ impl Iterator for Traverse {
       Pos::new(0, -1, 0),
       Pos::new(0, 0, -1),
     ] {
-      let total_dist = self.line.end().dist(self.current + offset);
+      let total_dist = self.line.end().dist_squared(self.current + offset);
       if total_dist > prev_total_dist {
         continue;
       }
-      let line_dist = self.line.dist(self.current + offset);
+      let line_dist = self.line.dist_squared(self.current + offset);
       if line_dist < min_line_dist {
         min_line_dist = line_dist;
         min_pos = self.current + offset;
