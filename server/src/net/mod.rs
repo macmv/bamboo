@@ -21,6 +21,8 @@ use common::{
 
 use crate::{block, player::Player, world::WorldManager};
 
+pub(crate) mod serialize;
+
 pub struct Connection {
   rx:     Mutex<Streaming<proto::Packet>>,
   tx:     Sender<Result<proto::Packet, Status>>,

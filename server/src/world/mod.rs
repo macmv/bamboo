@@ -1,5 +1,7 @@
-mod chunk;
+pub mod chunk;
 mod gen;
+mod init;
+mod players;
 
 use std::{
   collections::HashMap,
@@ -22,7 +24,6 @@ use common::{
   proto::Packet,
   util::{
     chat::{Chat, Color},
-    nbt::NBT,
     UUID,
   },
   version::BlockVersion,
@@ -31,9 +32,6 @@ use common::{
 use crate::{block, command::CommandTree, entity, item, net::Connection, player::Player, plugin};
 use chunk::MultiChunk;
 use gen::WorldGen;
-
-mod init;
-mod players;
 
 pub use players::{PlayersIter, PlayersMap};
 
@@ -261,26 +259,7 @@ impl World {
   /// trying to re-send an entire chunk to a player, make sure to send them an
   /// unload chunk packet first. Use at your own risk!
   pub fn serialize_chunk(&self, pos: ChunkPos, ver: BlockVersion) -> cb::Packet {
-    let out = cb::Packet::MapChunk {
-      x:                     pos.x(),
-      z:                     pos.z(),
-      ground_up:             true,
-      bit_map_v1_8:          Some(0),
-      bit_map_v1_9:          Some(0),
-      chunk_data:            vec![],
-      block_entities_v1_9_4: Some(vec![]),
-      heightmaps_v1_14:      Some(NBT::empty("").serialize()),
-      biomes_v1_15:          Some(vec![]),
-      biomes_v1_16_2:        Some(vec![]),
-      ignore_old_data_v1_16: Some(false),
-    };
-    // self.chunk(pos, |c| {
-    //   let mut pb = c.to_proto(ver);
-    //   pb.x = pos.x();
-    //   pb.z = pos.z();
-    //   out.set_other(Other::Chunk(pb)).unwrap();
-    // });
-    out
+    self.chunk(pos, |c| crate::net::serialize::serialize_chunk(pos, &c, ver))
   }
 
   /// This sets a block within the world. It will return an error if the
