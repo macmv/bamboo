@@ -294,15 +294,23 @@ impl VersionedPacket {
   }
 
   fn add_version(&mut self, ver: Version, packet: Packet) {
-    for (name, field) in packet.fields {
+    for (idx, (name, field)) in packet.fields.into_iter().enumerate() {
       if let Some(&idx) = self.field_names.get(&name) {
         let existing = &mut self.fields[idx];
         if existing.latest() != &field {
           existing.add_ver(ver, field);
         }
       } else {
-        self.field_names.insert(name.clone(), self.fields.len());
-        self.fields.push(VersionedField::new(ver, name, field));
+        // We need to update all the field_names mappings before hand.
+        for (_, val) in self.field_names.iter_mut() {
+          if *val >= idx {
+            *val += 1;
+          }
+        }
+        self.field_names.insert(name.clone(), idx);
+        // If we add a field from a later version, we need to make sure the fields stay
+        // in order
+        self.fields.insert(idx, VersionedField::new(ver, name, field));
       }
     }
   }
