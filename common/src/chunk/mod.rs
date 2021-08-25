@@ -128,6 +128,10 @@ impl Chunk {
       _ => false,
     }
   }
+  /// Returns an iterator through all the internal chunk sections.
+  pub fn sections(&self) -> impl Iterator<Item = &Option<Box<dyn Section + Send>>> {
+    self.sections.iter()
+  }
   /// Generates a protobuf containing all of the chunk data. X and Z will both
   /// be 0.
   pub fn to_latest_proto(&self) -> proto::Chunk {

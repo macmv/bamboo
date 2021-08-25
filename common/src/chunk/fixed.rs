@@ -15,6 +15,10 @@ impl Section {
   pub fn new() -> Self {
     Section { data: [0; 16 * 16 * 16] }
   }
+  /// Returns the internal data of this section.
+  pub fn data(&self) -> &[u16; 16 * 16 * 16] {
+    &self.data
+  }
   pub(super) fn from_latest_proto(pb: proto::chunk::Section) -> Box<Self> {
     assert_eq!(pb.data.len(), 4096 / 4, "chunk data is the wrong length");
     let mut section = Section { data: [0; 4096] };
@@ -137,6 +141,10 @@ impl ChunkSection for Section {
       }
     }
     proto::chunk::Section { data, ..Default::default() }
+  }
+
+  fn unwrap_fixed(&self) -> &Self {
+    self
   }
 }
 

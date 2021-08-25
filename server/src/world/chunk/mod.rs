@@ -117,4 +117,10 @@ impl MultiChunk {
     }
     chunk
   }
+
+  /// Returns the fixed chunk in this MultiChunk. This is used for 1.8, as the
+  /// data is in a different shape than 1.9+.
+  pub fn get_fixed(&self) -> &Chunk {
+    &self.fixed
+  }
 }

@@ -35,6 +35,10 @@ impl Section {
   pub fn new() -> Self {
     Self::default()
   }
+  /// Returns the internal data of this section.
+  pub fn data(&self) -> &BitArray {
+    &self.data
+  }
   fn validate_proto(pb: &proto::chunk::Section) {
     if pb.bits_per_block < 4 || pb.bits_per_block > 64 {
       panic!("invalid bits per block recieved from proto: {}", pb.bits_per_block);
@@ -316,5 +320,8 @@ impl ChunkSection for Section {
       non_air_blocks: (4096 - self.block_amounts[0]) as i32,
       data:           self.data.clone_inner(),
     }
+  }
+  fn unwrap_paletted(&self) -> &Self {
+    self
   }
 }

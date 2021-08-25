@@ -1,10 +1,12 @@
+use super::{fixed, paletted};
 use crate::{
   math::{Pos, PosError},
   proto,
 };
+use std::any::Any;
 
 /// A chunk section.
-pub trait Section {
+pub trait Section: Any {
   /// Sets a block within this chunk column. if the position is outside of the
   /// chunk column, it will return a PosError (even in release). The id is
   /// either a blockstate id (see [`block::Type`](crate::block::Type)) or a
@@ -35,4 +37,16 @@ pub trait Section {
   /// `Chunk::to_proto`. This should have no effect on the chunk itself. This
   /// will call f for every block id it encounters.
   fn to_old_proto(&self, f: &dyn Fn(u32) -> u32) -> proto::chunk::Section;
+  /// Unwraps self as a fixed chunk. This will panic if self is a paletted
+  /// chunk.
+  #[track_caller]
+  fn unwrap_fixed(&self) -> &fixed::Section {
+    panic!("not a fixed chunk!");
+  }
+  /// Unwraps self as a paletted chunk. This will panic if self is a fixed
+  /// chunk.
+  #[track_caller]
+  fn unwrap_paletted(&self) -> &paletted::Section {
+    panic!("not a paletted chunk!");
+  }
 }
