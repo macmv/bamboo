@@ -21,6 +21,18 @@ impl CaveGen {
           c.set_kind(p.with_y(y).chunk_rel(), block::Kind::RedWool).unwrap();
         }
       }
+      for origin in self.origins.neighbors(Point::new(p.x(), p.z()), 3) {
+        self.carve_cave(origin, pos, c);
+      }
     }
   }
+
+  fn carve_cave(&self, origin: Point, pos: ChunkPos, c: &mut MultiChunk) {
+    let tree = CaveTree::new(self.seed ^ (origin.x << 32) ^ origin.z);
+    for line in tree.lines() {}
+  }
 }
+
+pub struct CaveTree {}
+
+impl CaveTree {}
