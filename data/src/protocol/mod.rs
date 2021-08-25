@@ -275,8 +275,10 @@ impl VersionedField {
               is_ver = true;
             }
           } else {
-            found_ver = true;
-            is_ver = true;
+            if matching_ver >= this_ver {
+              found_ver = true;
+              is_ver = true;
+            }
           }
         }
         let mut name = self.name.clone();
