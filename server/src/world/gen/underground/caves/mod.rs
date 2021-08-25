@@ -5,13 +5,17 @@ use common::math::{
   ChunkPos, Pos,
 };
 
+mod tree;
+use tree::CaveTree;
+
 pub struct CaveGen {
+  seed:    u64,
   origins: PointGrid,
 }
 
 impl CaveGen {
   pub fn new(seed: u64) -> Self {
-    CaveGen { origins: PointGrid::new(seed, 256, 64) }
+    CaveGen { seed, origins: PointGrid::new(seed, 256, 64) }
   }
 
   pub fn carve(&self, world: &WorldGen, pos: ChunkPos, c: &mut MultiChunk) {
@@ -28,11 +32,12 @@ impl CaveGen {
   }
 
   fn carve_cave(&self, origin: Point, pos: ChunkPos, c: &mut MultiChunk) {
-    let tree = CaveTree::new(self.seed ^ (origin.x << 32) ^ origin.z);
-    for line in tree.lines() {}
+    let tree = CaveTree::new(self.seed ^ ((origin.x as u64) << 32) ^ origin.y as u64);
+    for line in tree.lines() {
+      for pos in line.traverse() {
+        let p = Pos::new(pos.x() + origin.x, pos.y(), pos.z() + origin.y);
+        c.set_kind(p.chunk_rel(), block::Kind::BlueWool).unwrap();
+      }
+    }
   }
 }
-
-pub struct CaveTree {}
-
-impl CaveTree {}
