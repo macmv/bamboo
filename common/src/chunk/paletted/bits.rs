@@ -315,6 +315,10 @@ impl BitArray {
   pub fn bpe(&self) -> u8 {
     self.bpe
   }
+  /// Returns the inner long array.
+  pub fn long_array(&self) -> &[u64] {
+    &self.data
+  }
 }
 
 #[cfg(test)]

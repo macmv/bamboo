@@ -123,4 +123,10 @@ impl MultiChunk {
   pub fn get_fixed(&self) -> &Chunk {
     &self.fixed
   }
+
+  /// Returns the paletted chunk in this MultiChunk. This is used for 1.9+, as
+  /// the data is in a different shape than in 1.8.
+  pub fn get_paletted(&self) -> &Chunk {
+    &self.paletted
+  }
 }

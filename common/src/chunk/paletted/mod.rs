@@ -178,6 +178,10 @@ impl Section {
     self.reverse_palette.remove(&ty);
     self.data.shift_all_above(id, -1);
   }
+  /// Returns the palette of this chunk.
+  pub fn palette(&self) -> &[u32] {
+    &self.palette
+  }
 }
 
 impl ChunkSection for Section {
