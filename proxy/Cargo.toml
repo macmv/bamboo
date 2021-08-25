@@ -25,5 +25,9 @@ tokio-stream = "0.1"
 futures = "0.3"
 async-stream = "0.3"
 
+# For icon.png
+image = "0.23.14"
+base64 = "0.13.0"
+
 [build-dependencies]
 data = { path = "../data" }

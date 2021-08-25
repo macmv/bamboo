@@ -1698,9 +1698,11 @@ name = "proxy"
 version = "0.1.1"
 dependencies = [
  "async-stream",
+ "base64",
  "common",
  "data",
  "futures",
+ "image",
  "log",
  "md5",
  "rand 0.8.4",

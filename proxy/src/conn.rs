@@ -14,7 +14,7 @@ use reqwest::StatusCode;
 use rsa::{padding::PaddingScheme, RSAPrivateKey};
 use serde_derive::{Deserialize, Serialize};
 use sha1::{Digest, Sha1};
-use std::{convert::TryInto, error::Error, io, io::ErrorKind, sync::Arc};
+use std::{convert::TryInto, error::Error, io, io::ErrorKind, path::Path, sync::Arc};
 use tokio::sync::{mpsc, oneshot};
 use tokio_stream::wrappers::ReceiverStream;
 use tonic::{transport::channel::Channel, Request, Status, Streaming};
@@ -47,6 +47,7 @@ pub struct Conn<R, W> {
   state:  State,
   gen:    Arc<Generator>,
   ver:    ProtocolVersion,
+  icon:   String,
 }
 
 pub struct ClientListener<R> {
@@ -215,6 +216,7 @@ impl<R: StreamReader + Send, W: StreamWriter + Send> Conn<R, W> {
     reader: R,
     writer: W,
     ip: String,
+    icon: String,
   ) -> Result<Self, tonic::transport::Error> {
     Ok(Conn {
       reader,
@@ -223,6 +225,7 @@ impl<R: StreamReader + Send, W: StreamWriter + Send> Conn<R, W> {
       state: State::Handshake,
       gen,
       ver: ProtocolVersion::Invalid,
+      icon,
     })
   }
   pub fn ver(&self) -> ProtocolVersion {
@@ -302,7 +305,7 @@ impl<R: StreamReader + Send, W: StreamWriter + Send> Conn<R, W> {
         }],
       },
       description,
-      favicon: "".into(),
+      favicon: self.icon.clone(),
     }
   }
 
