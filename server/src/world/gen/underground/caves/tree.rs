@@ -48,6 +48,30 @@ impl Line {
   pub fn traverse(&self) -> Traverse {
     Traverse { line: *self, current: self.start }
   }
+
+  /// Returns the distance to the line, as if the line were infinitely long.
+  pub fn dist(&self, pos: Pos) -> f64 {
+    let dist = self.start().dist(self.end());
+    // Line direction, normalized
+    let dir_x = (self.start().x() - self.end().x()) as f64 / dist;
+    let dir_y = (self.start().y() - self.end().y()) as f64 / dist;
+    let dir_z = (self.start().z() - self.end().z()) as f64 / dist;
+    // Difference between pos and start
+    let v_x = (pos.x() - self.start().x()) as f64;
+    let v_y = (pos.y() - self.start().y()) as f64;
+    let v_z = (pos.z() - self.start().z()) as f64;
+    // Dot product
+    let dot = v_x * dir_x + v_y * dir_y + v_z * dir_z;
+    // This is the closest point on the line
+    let nearest_x = self.start().x() as f64 + dir_x * dot;
+    let nearest_y = self.start().y() as f64 + dir_y * dot;
+    let nearest_z = self.start().z() as f64 + dir_z * dot;
+
+    (((pos.x() as f64 - nearest_x).powi(2)
+      + (pos.y() as f64 - nearest_y).powi(2)
+      + (pos.z() as f64 - nearest_z).powi(2)) as f64)
+      .sqrt()
+  }
 }
 
 impl Iterator for Traverse {
@@ -58,17 +82,28 @@ impl Iterator for Traverse {
       return None;
     }
     let ret = self.current;
-    let dist = self.line.end().dist(self.current);
-    let dx = (self.line.end().x() - self.current.x()) as f64 / dist;
-    let dy = (self.line.end().y() - self.current.y()) as f64 / dist;
-    let dz = (self.line.end().z() - self.current.z()) as f64 / dist;
-    if dx.abs() >= dy.abs() && dx.abs() >= dz.abs() {
-      self.current = self.current.add_x(dx.signum() as i32);
-    } else if dy.abs() >= dx.abs() && dy.abs() >= dz.abs() {
-      self.current = self.current.add_y(dy.signum() as i32);
-    } else {
-      self.current = self.current.add_z(dz.signum() as i32);
+    let prev_total_dist = self.line.end().dist(self.current);
+    let mut min_line_dist = 1.0;
+    let mut min_pos = self.current;
+    for offset in [
+      Pos::new(1, 0, 0),
+      Pos::new(0, 1, 0),
+      Pos::new(0, 0, 1),
+      Pos::new(-1, 0, 0),
+      Pos::new(0, -1, 0),
+      Pos::new(0, 0, -1),
+    ] {
+      let total_dist = self.line.end().dist(self.current + offset);
+      if total_dist > prev_total_dist {
+        continue;
+      }
+      let line_dist = self.line.dist(self.current + offset);
+      if line_dist < min_line_dist {
+        min_line_dist = line_dist;
+        min_pos = self.current + offset;
+      }
     }
+    self.current = min_pos;
     Some(ret)
   }
 }
@@ -76,6 +111,17 @@ impl Iterator for Traverse {
 #[cfg(test)]
 mod tests {
   use super::*;
+
+  #[test]
+  fn test_dist() {
+    let line = Line::new(Pos::new(0, 0, 0), Pos::new(5, 0, 0));
+    assert_eq!(line.dist(Pos::new(0, 0, 0)), 0.0);
+    assert_eq!(line.dist(Pos::new(1, 0, 0)), 0.0);
+    assert_eq!(line.dist(Pos::new(0, 1, 0)), 1.0);
+    assert_eq!(line.dist(Pos::new(0, 2, 0)), 2.0);
+    assert_eq!(line.dist(Pos::new(1, 1, 0)), 1.0);
+    assert_eq!(line.dist(Pos::new(3, 1, 0)), 1.0);
+  }
 
   #[test]
   fn test_traverse() {
