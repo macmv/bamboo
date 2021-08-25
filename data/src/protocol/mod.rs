@@ -933,7 +933,7 @@ fn generate_packets(
       ],
       Some("Self"),
       |gen| {
-        gen.write_match("to_grpc_id(pb.id, version)", |gen| {
+        gen.write_match("pb.id", |gen| {
           for (id, p) in packets.iter().enumerate() {
             gen.write_match_branch(None, MatchBranch::Unit(&id.to_string()));
             if p.has_multiple_versions() {
