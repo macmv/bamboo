@@ -93,5 +93,12 @@ mod tests {
         panic!("shouldn't take this long!");
       }
     }
+    let line = Line::new(Pos::new(3, 0, 1), Pos::new(6, 0, 2));
+    for (i, p) in line.traverse().enumerate() {
+      dbg!(p);
+      if i > 10 {
+        panic!("shouldn't take this long!");
+      }
+    }
   }
 }
