@@ -35,9 +35,11 @@ impl CaveGen {
   }
 
   fn carve_cave_worm(&self, origin: Point, chunk_pos: ChunkPos, c: &mut MultiChunk) {
-    let start = Pos::new(origin.x, 80, origin.y);
-    let mut worm = CaveWorm::new(self.seed ^ ((origin.x as u64) << 32) ^ origin.y as u64, start);
-    worm.carve(chunk_pos, c);
+    let start = Pos::new(origin.x, 60, origin.y);
+    CaveWorm::new(self.seed ^ ((origin.x as u64) << 32) ^ origin.y as u64, start)
+      .carve(chunk_pos, c, 0);
+    CaveWorm::new(self.seed ^ ((origin.y as u64) << 32) ^ origin.x as u64, start)
+      .carve(chunk_pos, c, 0);
   }
 
   fn carve_cave_tree(&self, origin: Point, chunk_pos: ChunkPos, c: &mut MultiChunk) {
