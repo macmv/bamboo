@@ -6,7 +6,9 @@ use common::math::{
 };
 
 mod tree;
-use tree::CaveTree;
+mod worm;
+pub use tree::CaveTree;
+pub use worm::CaveWorm;
 
 pub struct CaveGen {
   seed:    u64,
@@ -26,12 +28,19 @@ impl CaveGen {
         }
       }
       for origin in self.origins.neighbors(Point::new(p.x(), p.z()), 1) {
-        self.carve_cave(origin, pos, c);
+        self.carve_cave_worm(origin, pos, c);
+        // self.carve_cave_tree(origin, pos, c);
       }
     }
   }
 
-  fn carve_cave(&self, origin: Point, chunk_pos: ChunkPos, c: &mut MultiChunk) {
+  fn carve_cave_worm(&self, origin: Point, chunk_pos: ChunkPos, c: &mut MultiChunk) {
+    let start = Pos::new(origin.x, 80, origin.y);
+    let mut worm = CaveWorm::new(self.seed ^ ((origin.x as u64) << 32) ^ origin.y as u64, start);
+    worm.carve(chunk_pos, c);
+  }
+
+  fn carve_cave_tree(&self, origin: Point, chunk_pos: ChunkPos, c: &mut MultiChunk) {
     let tree = CaveTree::new(self.seed ^ ((origin.x as u64) << 32) ^ origin.y as u64);
     for line in tree.lines() {
       for p in line.traverse(origin, chunk_pos) {
