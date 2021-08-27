@@ -11,6 +11,7 @@ mod math;
 mod mountain;
 mod plains;
 mod underground;
+pub mod util;
 
 use underground::Underground;
 
