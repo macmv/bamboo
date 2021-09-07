@@ -31,16 +31,16 @@ const MAX_SIZE: usize = 127;
 /// assert_eq!(cache.get(5), 15);
 /// assert_eq!(cache.get(5), 15); // This will not call builder
 /// ```
-pub struct Cache<K, V, F: ?Sized> {
+pub struct Cache<K, V> {
   data:    HashMap<K, (V, usize)>,
   age:     VecDeque<K>,
-  builder: Box<F>,
+  builder: Box<dyn Fn(K) -> V + Send>,
 }
 
-impl<K, V, F> Cache<K, V, F> {
+impl<K, V> Cache<K, V> {
   /// Creates an empty cache. This will allocate all the required elements in
   /// the cache, so that all future calls will never allocate anything.
-  pub fn new(builder: F) -> Self {
+  pub fn new<F: Fn(K) -> V + Send + 'static>(builder: F) -> Self {
     Cache {
       data:    HashMap::with_capacity(MAX_SIZE),
       age:     VecDeque::with_capacity(MAX_SIZE),
@@ -49,11 +49,10 @@ impl<K, V, F> Cache<K, V, F> {
   }
 }
 
-impl<K, V, F> Cache<K, V, F>
+impl<K, V> Cache<K, V>
 where
   K: Eq + Hash + Debug + Copy,
   V: Debug,
-  F: Fn(K) -> V,
 {
   /// If the key is present within the map, then the value is returned.
   /// Otherwise, the internal builder is used to create a new value for this

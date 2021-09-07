@@ -13,19 +13,21 @@ pub use worm::CaveWorm;
 pub struct CaveGen {
   seed:    u64,
   origins: PointGrid,
-  worms:   Cache<Point, CaveWorm, fn(Point) -> CaveWorm>,
+  worms:   Cache<Point, CaveWorm>,
 }
 
 impl CaveGen {
   pub fn new(seed: u64) -> Self {
-    CaveGen { seed, origins: PointGrid::new(seed, 256, 64), worms: Cache::new(CaveGen::new_worm) }
-  }
-
-  fn new_worm(origin: Point) -> CaveWorm {
-    CaveWorm::new(
-      1238725930 ^ ((origin.x as u64) << 32) ^ origin.y as u64,
-      Pos::new(origin.x, 60, origin.y),
-    )
+    CaveGen {
+      seed,
+      origins: PointGrid::new(seed, 256, 64),
+      worms: Cache::new(move |origin: Point| {
+        CaveWorm::new(
+          seed ^ ((origin.x as u64) << 32) ^ origin.y as u64,
+          Pos::new(origin.x, 60, origin.y),
+        )
+      }),
+    }
   }
 
   pub fn carve(&mut self, world: &WorldGen, pos: ChunkPos, c: &mut MultiChunk) {
