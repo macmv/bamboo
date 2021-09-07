@@ -3,6 +3,7 @@ members = [
   "server",
   "proxy",
   "data",
+  "sc_macros",
 ]
 
 # Using cargo flamegraph, this is needed.
