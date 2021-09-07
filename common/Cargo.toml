@@ -11,9 +11,9 @@ log4rs = "1.0.0"
 anyhow = "1.0.0"
 log = "0.4"
 
-tonic = "0.4"
-prost = "0.7"
-prost-types = "0.7"
+tonic = "0.5"
+prost = "0.8"
+prost-types = "0.8"
 
 byteorder = "1.4"
 futures = "0.3.14"
@@ -47,7 +47,7 @@ ringbuf = "0.2.4"
 
 [build-dependencies]
 # We need to disable default features, as that uses rustfmt, which is not installed in Docker containers.
-tonic-build = { version = "0.4", default-features = false, features = ["transport", "prost"] }
+tonic-build = { version = "0.5", default-features = false, features = ["transport", "prost"] }
 data = { path = "../data" }
 
 [dev-dependencies]
