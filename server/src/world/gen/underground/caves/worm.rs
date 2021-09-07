@@ -1,5 +1,5 @@
 use crate::{block, world::chunk::MultiChunk};
-use common::math::{ChunkPos, FPos, Pos, RngCore, WyhashRng};
+use common::math::{ChunkPos, Pos, RngCore, WyhashRng};
 
 #[derive(Debug)]
 struct Vec3 {
@@ -10,20 +10,19 @@ struct Vec3 {
 
 #[derive(Debug)]
 pub struct CaveWorm {
-  rng:       WyhashRng,
-  pos:       Pos,
-  steps:     Vec<Pos>,
-  direction: Vec3,
+  rng:        WyhashRng,
+  pos:        Pos,
+  steps:      Vec<Pos>,
+  // direction: Vec3,
+  angle_vert: f64,
+  angle_horz: f64,
 }
 
 impl CaveWorm {
   pub fn new(seed: u64, pos: Pos) -> Self {
     let mut rng = WyhashRng::new(seed);
-    let angle_y = ((rng.next_u32() % 1000) as f64 / 1000.0 - 0.5) * std::f64::consts::PI; // -PI to PI
-    let mut direction = Vec3 { x: 0.0, y: 0.0, z: 0.0 };
-    direction.x = angle_y.cos();
-    direction.z = angle_y.sin();
-    let mut worm = CaveWorm { rng, pos, steps: vec![], direction };
+    let angle_horz = ((rng.next_u32() % 1000) as f64 / 1000.0 - 0.5) * std::f64::consts::PI; // -PI to PI
+    let mut worm = CaveWorm { rng, pos, steps: vec![], angle_vert: 0.0, angle_horz };
     worm.carve(0);
     worm
   }
@@ -31,26 +30,8 @@ impl CaveWorm {
     for pos in &self.steps {
       if pos.chunk() == chunk_pos {
         // c.set_kind(self.pos.chunk_rel(), block::Kind::LimeWool).unwrap();
-        let mut min = pos.chunk_rel() - Pos::new(1, 1, 1);
-        let mut max = pos.chunk_rel() + Pos::new(1, 1, 1);
-        if min.x() < 0 {
-          min = min.with_x(0);
-        }
-        if min.y() < 0 {
-          min = min.with_y(0);
-        }
-        if min.z() < 0 {
-          min = min.with_z(0);
-        }
-        if max.x() > 15 {
-          max = max.with_x(15);
-        }
-        if max.y() < 0 {
-          max = max.with_y(0);
-        }
-        if max.z() > 15 {
-          max = max.with_z(15);
-        }
+        let min = (pos.chunk_rel() - Pos::new(1, 1, 1)).max(Pos::new(0, 0, 0));
+        let max = (pos.chunk_rel() + Pos::new(1, 1, 1)).min(Pos::new(15, 255, 15));
         c.fill_kind(min, max, block::Kind::Air).unwrap();
       }
     }
@@ -71,25 +52,21 @@ impl CaveWorm {
   }
 
   fn advance(&mut self) {
-    self.pos += Pos::new(
-      (self.direction.x * 3.0) as i32,
-      (self.direction.y * 3.0) as i32,
-      (self.direction.z * 3.0) as i32,
-    );
+    let angle_vert_cos = self.angle_vert.cos();
+    let direction_x = self.angle_horz.cos() / angle_vert_cos;
+    let direction_y = self.angle_vert.sin();
+    let direction_z = self.angle_horz.sin() / angle_vert_cos;
+    self.pos +=
+      Pos::new((direction_x * 3.0) as i32, (direction_y * 3.0) as i32, (direction_z * 3.0) as i32);
     if self.pos.y() > 255 {
       self.pos = self.pos.with_y(255);
     }
     if self.pos.y() < 0 {
       self.pos = self.pos.with_y(0);
     }
-    let angle_vert = ((self.rng.next_u32() % 1024) as f64 / 1024.0) * 0.6 - 0.5; // -0.5 to 0.1
-    self.direction.y = angle_vert.sin();
-
-    let mut angle_y = (self.direction.z / self.direction.x).atan();
-    angle_y += ((self.rng.next_u32() % 1024) as f64 / 1024.0 - 0.5) * 0.8; // -0.8 to 0.8
-
-    // Need to divide, to keep the vector normalized
-    self.direction.x = angle_y.cos() / angle_vert.cos();
-    self.direction.z = angle_y.sin() / angle_vert.cos();
+    // -0.5 to 0.1
+    self.angle_vert = ((self.rng.next_u32() % 1024) as f64 / 1024.0) * 0.6 - 0.5;
+    // -0.8 to 0.8
+    self.angle_horz += ((self.rng.next_u32() % 1024) as f64 / 1024.0 - 0.5) * 0.8;
   }
 }

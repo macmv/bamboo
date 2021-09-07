@@ -239,6 +239,42 @@ impl Pos {
   pub fn dist_squared(&self, other: Pos) -> i32 {
     (self.x - other.x).pow(2) + (self.y - other.y).pow(2) + (self.z - other.z).pow(2)
   }
+
+  /// Returns the min of each element in self and other.
+  ///
+  /// # Example
+  ///
+  /// ```
+  /// // Basic usage
+  /// assert_eq!(Pos::new(1, 5, 6).min(Pos::new(3, 3, 3)), Pos::new(1, 3, 3));
+  ///
+  /// // Keep a position within a chunk relative range (this would be useful for
+  /// // filling a cube, for example).
+  /// let pos = Pos::new(16 + 2, 34, 32 + 14);
+  /// assert_eq!(pos.chunk_rel(), Pos::new(5, 34, 14));
+  /// assert_eq!((pos.chunk_rel() + Pos::new(3, 3, 3)).min(15, 255, 15), Pos::new(8, 34, 15));
+  /// ```
+  pub fn min(&self, other: Pos) -> Pos {
+    Pos::new(self.x.min(other.x), self.y.min(other.y), self.z.min(other.z))
+  }
+
+  /// Returns the max of each element in self and other.
+  ///
+  /// # Example
+  ///
+  /// ```
+  /// // Basic usage
+  /// assert_eq!(Pos::new(1, 5, 6).max(Pos::new(3, 3, 3)), Pos::new(3, 5, 6));
+  ///
+  /// // Keep a position within a chunk relative range (this would be useful for
+  /// // filling a cube, for example).
+  /// let pos = Pos::new(16 + 2, 34, 32 + 14);
+  /// assert_eq!(pos.chunk_rel(), Pos::new(2, 34, 14));
+  /// assert_eq!((pos.chunk_rel() - Pos::new(3, 3, 3)).max(0, 0, 0), Pos::new(0, 34, 11));
+  /// ```
+  pub fn max(&self, other: Pos) -> Pos {
+    Pos::new(self.x.max(other.x), self.y.max(other.y), self.z.max(other.z))
+  }
 }
 
 impl Add for Pos {
