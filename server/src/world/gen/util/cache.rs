@@ -30,10 +30,10 @@ const MAX_SIZE: usize = 127;
 /// assert_eq!(cache.get(5), 15);
 /// assert_eq!(cache.get(5), 15); // This will not call builder
 /// ```
-pub struct Cache<K, V, F> {
+pub struct Cache<K, V, F: ?Sized> {
   data:    HashMap<K, (V, usize)>,
   age:     VecDeque<K>,
-  builder: F,
+  builder: Box<F>,
 }
 
 impl<K, V, F> Cache<K, V, F> {
@@ -41,9 +41,9 @@ impl<K, V, F> Cache<K, V, F> {
   /// the cache, so that all future calls will never allocate anything.
   pub fn new(builder: F) -> Self {
     Cache {
-      data: HashMap::with_capacity(MAX_SIZE),
-      age: VecDeque::with_capacity(MAX_SIZE),
-      builder,
+      data:    HashMap::with_capacity(MAX_SIZE),
+      age:     VecDeque::with_capacity(MAX_SIZE),
+      builder: Box::new(builder),
     }
   }
 }

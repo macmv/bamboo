@@ -1,4 +1,4 @@
-use super::super::WorldGen;
+use super::super::{util::Cache, WorldGen};
 use crate::{block, world::chunk::MultiChunk};
 use common::math::{
   terrain::{Point, PointGrid},
@@ -13,11 +13,21 @@ pub use worm::CaveWorm;
 pub struct CaveGen {
   seed:    u64,
   origins: PointGrid,
+  worms:   Cache<Point, CaveWorm, dyn Fn(usize) -> CaveWorm + Send>,
 }
 
 impl CaveGen {
   pub fn new(seed: u64) -> Self {
-    CaveGen { seed, origins: PointGrid::new(seed, 256, 64) }
+    CaveGen {
+      seed,
+      origins: PointGrid::new(seed, 256, 64),
+      worms: Cache::new(|origin| {
+        CaveWorm::new(
+          seed ^ ((origin.x as u64) << 32) ^ origin.y as u64,
+          Pos::new(origin.x, 60, origin.z),
+        )
+      }),
+    }
   }
 
   pub fn carve(&self, world: &WorldGen, pos: ChunkPos, c: &mut MultiChunk) {
@@ -35,11 +45,8 @@ impl CaveGen {
   }
 
   fn carve_cave_worm(&self, origin: Point, chunk_pos: ChunkPos, c: &mut MultiChunk) {
-    let start = Pos::new(origin.x, 60, origin.y);
-    CaveWorm::new(self.seed ^ ((origin.x as u64) << 32) ^ origin.y as u64, start)
-      .carve(chunk_pos, c, 0);
-    CaveWorm::new(self.seed ^ ((origin.y as u64) << 32) ^ origin.x as u64, start)
-      .carve(chunk_pos, c, 0);
+    let worm = self.worms.get(origin);
+    worm.carve(chunk_pos, c, 0);
   }
 
   fn carve_cave_tree(&self, origin: Point, chunk_pos: ChunkPos, c: &mut MultiChunk) {
