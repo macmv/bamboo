@@ -1,5 +1,5 @@
 use crate::{block, world::chunk::MultiChunk};
-use common::math::{ChunkPos, Pos, RngCore, WyhashRng};
+use common::math::{ChunkPos, FastMath, Pos, RngCore, WyhashRng};
 
 #[derive(Debug)]
 struct Vec3 {
@@ -52,10 +52,10 @@ impl CaveWorm {
   }
 
   fn advance(&mut self) {
-    let angle_vert_cos = self.angle_vert.cos();
-    let direction_x = self.angle_horz.cos() / angle_vert_cos;
-    let direction_y = self.angle_vert.sin();
-    let direction_z = self.angle_horz.sin() / angle_vert_cos;
+    let angle_vert_cos = self.angle_vert.fast_cos();
+    let direction_x = self.angle_horz.fast_cos() / angle_vert_cos;
+    let direction_y = self.angle_vert.fast_sin();
+    let direction_z = self.angle_horz.fast_sin() / angle_vert_cos;
     self.pos +=
       Pos::new((direction_x * 3.0) as i32, (direction_y * 3.0) as i32, (direction_z * 3.0) as i32);
     if self.pos.y() > 255 {

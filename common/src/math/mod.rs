@@ -1,5 +1,6 @@
 mod chunk_pos;
 pub mod der;
+mod fast;
 mod fpos;
 mod pos;
 mod rng;
@@ -7,6 +8,7 @@ mod rng;
 pub mod terrain;
 
 pub use chunk_pos::ChunkPos;
+pub use fast::FastMath;
 pub use fpos::{FPos, FPosError};
 pub use pos::{Pos, PosError, PosIter};
 pub use rng::WyhashRng;
