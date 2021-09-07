@@ -10,6 +10,7 @@ struct Vec3 {
 pub struct CaveWorm {
   rng:       WyhashRng,
   pos:       Pos,
+  steps:     Vec<Pos>,
   direction: Vec3,
 }
 
@@ -20,18 +21,16 @@ impl CaveWorm {
     let mut direction = Vec3 { x: 0.0, y: 0.0, z: 0.0 };
     direction.x = angle_y.cos();
     direction.z = angle_y.sin();
-    CaveWorm { rng, pos, direction }
+    let mut worm = CaveWorm { rng, pos, steps: vec![], direction };
+    worm.carve(0);
+    worm
   }
-  pub fn carve(&mut self, chunk_pos: ChunkPos, c: &mut MultiChunk, offset: u32) {
-    let steps = self.rng.next_u32() % 10 + 20;
-    if steps < offset {
-      return;
-    }
-    for step in offset..steps {
-      if self.pos.chunk() == chunk_pos {
+  pub fn process(&self, chunk_pos: ChunkPos, c: &mut MultiChunk) {
+    for pos in &self.steps {
+      if pos.chunk() == chunk_pos {
         // c.set_kind(self.pos.chunk_rel(), block::Kind::LimeWool).unwrap();
-        let mut min = self.pos.chunk_rel() - Pos::new(1, 1, 1);
-        let mut max = self.pos.chunk_rel() + Pos::new(1, 1, 1);
+        let mut min = pos.chunk_rel() - Pos::new(1, 1, 1);
+        let mut max = pos.chunk_rel() + Pos::new(1, 1, 1);
         if min.x() < 0 {
           min = min.with_x(0);
         }
@@ -52,10 +51,20 @@ impl CaveWorm {
         }
         c.fill_kind(min, max, block::Kind::Air).unwrap();
       }
+    }
+  }
+
+  fn carve(&mut self, offset: u32) {
+    let steps = self.rng.next_u32() % 10 + 20;
+    if steps < offset {
+      return;
+    }
+    for step in offset..steps {
+      self.steps.push(self.pos);
       self.advance();
-      if self.rng.next_u32() % 16 == 0 {
-        CaveWorm::new(self.rng.next_u64(), self.pos).carve(chunk_pos, c, step);
-      }
+      // if self.rng.next_u32() % 16 == 0 {
+      //   CaveWorm::new(self.rng.next_u64(), self.pos).carve(step);
+      // }
     }
   }
 

@@ -44,7 +44,7 @@ impl CaveGen {
 
   fn carve_cave_worm(&mut self, origin: Point, chunk_pos: ChunkPos, c: &mut MultiChunk) {
     let worm = self.worms.get(origin);
-    worm.carve(chunk_pos, c, 0);
+    worm.process(chunk_pos, c);
   }
 
   fn carve_cave_tree(&self, origin: Point, chunk_pos: ChunkPos, c: &mut MultiChunk) {
