@@ -63,6 +63,7 @@ where
       self.age.remove(*index);
       self.age.push_back(key);
       self.data.insert(key, ((self.builder)(key), self.age.len() - 1));
+      self.fix_indices();
     } else {
       self.clean();
       self.age.push_back(key);
@@ -85,13 +86,20 @@ where
   /// Cleans up the map. This will remove any entries if there are more than
   /// MAX_SIZE - 1 items. This should be called right before inserting an item.
   fn clean(&mut self) {
-    while self.data.len() >= MAX_SIZE {
-      let key = self.age.pop_front().unwrap();
-      self.data.remove(&key).unwrap();
+    if self.data.len() >= MAX_SIZE {
+      while self.data.len() >= MAX_SIZE {
+        let key = self.age.pop_front().unwrap();
+        self.data.remove(&key).unwrap();
+      }
+      self.validate();
+      // self.age just got a bunch of items removed, so we need to fix all the
+      // indices in self.data.
+      self.fix_indices();
     }
-    self.validate();
-    // self.age just got a bunch of items removed, so we need to fix all the indices
-    // in self.data.
+  }
+
+  fn fix_indices(&mut self) {
+    // TODO: Make this faster
     for (idx, key) in self.age.iter().enumerate() {
       self.data.get_mut(key).unwrap().1 = idx;
     }
@@ -100,7 +108,10 @@ where
   fn validate(&self) {
     for key in self.age.iter() {
       // dbg!(&self.age);
-      self.data.get(key).expect(&format!("invalid key: {:?}", key));
+      if !self.data.contains_key(key) {
+        dbg!(&self.age);
+        panic!("invalid key: {:?}", key);
+      }
     }
   }
 }
@@ -132,16 +143,24 @@ mod tests {
     // 10010).
     assert_eq!(cache.data.len(), MAX_SIZE);
     assert_eq!(cache.age.len(), MAX_SIZE);
+
+    // Re-order the age list
+    assert_eq!(*cache.get(31), 41);
+    assert_eq!(cache.data.len(), MAX_SIZE);
+    assert_eq!(cache.age.len(), MAX_SIZE);
+
     println!("data: {:?}, age: {:?}", cache.data, cache.age);
 
-    for i in 0..(MAX_SIZE - 1) {
-      let key = i + 31;
-      let val = i + 41;
+    for i in 0..(MAX_SIZE - 2) {
+      let key = i + 32;
+      let val = i + 42;
       assert_eq!(cache.age[i], key);
       assert_eq!(cache.data[&key], (val, i));
     }
-    assert_eq!(cache.age[MAX_SIZE - 1], 1000);
-    assert_eq!(cache.data[&1000], (1010, MAX_SIZE - 1));
+    assert_eq!(cache.age[MAX_SIZE - 2], 1000);
+    assert_eq!(cache.data[&1000], (1010, MAX_SIZE - 2));
+    assert_eq!(cache.age[MAX_SIZE - 1], 31);
+    assert_eq!(cache.data[&31], (41, MAX_SIZE - 1));
 
     assert_eq!(cache.age.capacity(), MAX_SIZE);
     assert!(cache.data.capacity() >= MAX_SIZE, "{}", cache.data.capacity());
