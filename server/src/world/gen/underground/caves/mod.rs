@@ -13,24 +13,22 @@ pub use worm::CaveWorm;
 pub struct CaveGen {
   seed:    u64,
   origins: PointGrid,
-  worms:   Cache<Point, CaveWorm, dyn Fn(usize) -> CaveWorm + Send>,
+  worms:   Cache<Point, CaveWorm, fn(Point) -> CaveWorm>,
 }
 
 impl CaveGen {
   pub fn new(seed: u64) -> Self {
-    CaveGen {
-      seed,
-      origins: PointGrid::new(seed, 256, 64),
-      worms: Cache::new(|origin| {
-        CaveWorm::new(
-          seed ^ ((origin.x as u64) << 32) ^ origin.y as u64,
-          Pos::new(origin.x, 60, origin.z),
-        )
-      }),
-    }
+    CaveGen { seed, origins: PointGrid::new(seed, 256, 64), worms: Cache::new(CaveGen::new_worm) }
   }
 
-  pub fn carve(&self, world: &WorldGen, pos: ChunkPos, c: &mut MultiChunk) {
+  fn new_worm(origin: Point) -> CaveWorm {
+    CaveWorm::new(
+      1238725930 ^ ((origin.x as u64) << 32) ^ origin.y as u64,
+      Pos::new(origin.x, 60, origin.y),
+    )
+  }
+
+  pub fn carve(&mut self, world: &WorldGen, pos: ChunkPos, c: &mut MultiChunk) {
     for p in pos.columns() {
       if self.origins.contains(Point::new(p.x(), p.z())) {
         for y in 0..80 {
@@ -44,7 +42,7 @@ impl CaveGen {
     }
   }
 
-  fn carve_cave_worm(&self, origin: Point, chunk_pos: ChunkPos, c: &mut MultiChunk) {
+  fn carve_cave_worm(&mut self, origin: Point, chunk_pos: ChunkPos, c: &mut MultiChunk) {
     let worm = self.worms.get(origin);
     worm.carve(chunk_pos, c, 0);
   }
