@@ -14,10 +14,10 @@ use reqwest::StatusCode;
 use rsa::{padding::PaddingScheme, RSAPrivateKey};
 use serde_derive::{Deserialize, Serialize};
 use sha1::{Digest, Sha1};
-use std::{convert::TryInto, error::Error, io, io::ErrorKind, path::Path, sync::Arc};
+use std::{convert::TryInto, error::Error, io, io::ErrorKind, sync::Arc};
 use tokio::sync::{mpsc, oneshot};
 use tokio_stream::wrappers::ReceiverStream;
-use tonic::{transport::channel::Channel, Request, Status, Streaming};
+use tonic::{Request, Status, Streaming};
 
 #[derive(Debug, Copy, Clone)]
 pub enum State {
@@ -43,7 +43,6 @@ impl State {
 pub struct Conn<R, W> {
   reader: R,
   writer: W,
-  server: MinecraftClient<Channel>,
   state:  State,
   gen:    Arc<Generator>,
   ver:    ProtocolVersion,
@@ -215,27 +214,21 @@ impl<R: StreamReader + Send, W: StreamWriter + Send> Conn<R, W> {
     gen: Arc<Generator>,
     reader: R,
     writer: W,
-    ip: String,
     icon: String,
   ) -> Result<Self, tonic::transport::Error> {
-    Ok(Conn {
-      reader,
-      writer,
-      server: MinecraftClient::connect(ip).await?,
-      state: State::Handshake,
-      gen,
-      ver: ProtocolVersion::Invalid,
-      icon,
-    })
+    Ok(Conn { reader, writer, state: State::Handshake, gen, ver: ProtocolVersion::Invalid, icon })
   }
   pub fn ver(&self) -> ProtocolVersion {
     self.ver
   }
 
-  pub async fn split(mut self) -> Result<(ClientListener<R>, ServerListener<W>), Status> {
+  pub async fn split(self, ip: String) -> Result<(ClientListener<R>, ServerListener<W>), Status> {
     let (tx, rx) = mpsc::channel(1);
 
-    let response = self.server.connection(Request::new(ReceiverStream::new(rx))).await?;
+    let mut server = MinecraftClient::connect(ip)
+      .await
+      .map_err(|e| io::Error::new(io::ErrorKind::Other, e.to_string()))?;
+    let response = server.connection(Request::new(ReceiverStream::new(rx))).await?;
     let inbound = response.into_inner();
 
     Ok((

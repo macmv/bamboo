@@ -100,10 +100,10 @@ async fn handle_client<R: StreamReader + Send + 'static, W: StreamWriter + Send 
   // let mut client = MinecraftClient::connect().await?;
   // let req = tonic::Request::new(StatusRequest {});
 
-  let mut conn = Conn::new(gen, reader, writer, "http://0.0.0.0:8483".into(), icon).await?;
-
+  let ip = "http://0.0.0.0:8483".to_string();
   let compression = 256;
 
+  let mut conn = Conn::new(gen, reader, writer, icon).await?;
   let info = match conn.handshake(compression, key, der_key).await? {
     Some(v) => v,
     // Means the client was either not allowed to join, or was just sending a status request.
@@ -117,7 +117,7 @@ async fn handle_client<R: StreamReader + Send + 'static, W: StreamWriter + Send 
   let (client_tx, server_rx) = oneshot::channel();
 
   let ver = conn.ver().id() as i32;
-  let (mut client_listener, mut server_listener) = conn.split().await?;
+  let (mut client_listener, mut server_listener) = conn.split(ip).await?;
 
   // Tells the server who this client is
   // TODO: Send texture data
