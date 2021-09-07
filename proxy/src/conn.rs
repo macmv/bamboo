@@ -1,5 +1,3 @@
-use crate::version::Generator;
-
 use common::{
   math,
   net::{cb, sb, tcp},
@@ -14,7 +12,7 @@ use reqwest::StatusCode;
 use rsa::{padding::PaddingScheme, RSAPrivateKey};
 use serde_derive::{Deserialize, Serialize};
 use sha1::{Digest, Sha1};
-use std::{convert::TryInto, error::Error, io, io::ErrorKind, sync::Arc};
+use std::{convert::TryInto, error::Error, io, io::ErrorKind};
 use tokio::sync::{mpsc, oneshot};
 use tokio_stream::wrappers::ReceiverStream;
 use tonic::{Request, Status, Streaming};
@@ -44,7 +42,6 @@ pub struct Conn<R, W> {
   reader: R,
   writer: W,
   state:  State,
-  gen:    Arc<Generator>,
   ver:    ProtocolVersion,
   icon:   String,
 }
@@ -52,14 +49,12 @@ pub struct Conn<R, W> {
 pub struct ClientListener<R> {
   client: R,
   server: mpsc::Sender<proto::Packet>,
-  gen:    Arc<Generator>,
   ver:    ProtocolVersion,
 }
 
 pub struct ServerListener<W> {
   client: W,
   server: Streaming<proto::Packet>,
-  gen:    Arc<Generator>,
   ver:    ProtocolVersion,
 }
 
@@ -119,21 +114,22 @@ impl<R: StreamReader + Send> ClientListener<R> {
           }
           None => {}
         }
-        // Converting a tcp packet to a grpc packet should always work. If it fails,
-        // then it is either an invalid version, an unknown packet, or a parsing error.
-        // If it is a parsing error, we want to close the connection.
-        let sb = match self.gen.serverbound(self.ver, p) {
-          Err(e) => match e.kind() {
-            ErrorKind::Other => {
-              return Err(Box::new(e));
-            }
-            _ => {
-              warn!("{}", e);
-              continue;
-            }
-          },
-          Ok(v) => v,
-        };
+        // If this fails, then we are on an invalid version, have an unknown packet,
+        // or have a parsing error. If it is a parsing error, we want to close the
+        // connection.
+        let sb = sb::Packet::from_tcp(p, self.ver);
+        // let sb = match self.gen.serverbound(self.ver, p) {
+        //   Err(e) => match e.kind() {
+        //     ErrorKind::Other => {
+        //       return Err(Box::new(e));
+        //     }
+        //     _ => {
+        //       warn!("{}", e);
+        //       continue;
+        //     }
+        //   },
+        //   Ok(v) => v,
+        // };
         trace!("sending proto: {:?}", &sb);
         self.server.send(sb.to_proto(self.ver)).await?;
       }
@@ -173,10 +169,13 @@ impl<W: StreamWriter + Send> ServerListener<W> {
         _ = &mut rx => break,
       }
       let p = p.unwrap();
-      let cb = self.gen.clientbound(self.ver, cb::Packet::from_proto(p, self.ver))?;
-      for p in cb {
-        self.client.write(p).await?;
-      }
+      let cb = cb::Packet::from_proto(p, self.ver).to_tcp(self.ver);
+      // let cb = self.gen.clientbound(self.ver, cb::Packet::from_proto(p,
+      // self.ver))?;
+      // for p in cb {
+      //   self.client.write(p).await?;
+      // }
+      self.client.write(cb).await?;
     }
     Ok(())
   }
@@ -210,13 +209,8 @@ struct JsonPlayer {
 }
 
 impl<R: StreamReader + Send, W: StreamWriter + Send> Conn<R, W> {
-  pub async fn new(
-    gen: Arc<Generator>,
-    reader: R,
-    writer: W,
-    icon: String,
-  ) -> Result<Self, tonic::transport::Error> {
-    Ok(Conn { reader, writer, state: State::Handshake, gen, ver: ProtocolVersion::Invalid, icon })
+  pub async fn new(reader: R, writer: W, icon: String) -> Result<Self, tonic::transport::Error> {
+    Ok(Conn { reader, writer, state: State::Handshake, ver: ProtocolVersion::Invalid, icon })
   }
   pub fn ver(&self) -> ProtocolVersion {
     self.ver
@@ -232,13 +226,8 @@ impl<R: StreamReader + Send, W: StreamWriter + Send> Conn<R, W> {
     let inbound = response.into_inner();
 
     Ok((
-      ClientListener {
-        ver:    self.ver,
-        gen:    self.gen.clone(),
-        client: self.reader,
-        server: tx,
-      },
-      ServerListener { ver: self.ver, gen: self.gen, client: self.writer, server: inbound },
+      ClientListener { ver: self.ver, client: self.reader, server: tx },
+      ServerListener { ver: self.ver, client: self.writer, server: inbound },
     ))
   }
 
