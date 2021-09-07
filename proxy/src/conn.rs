@@ -12,7 +12,7 @@ use reqwest::StatusCode;
 use rsa::{padding::PaddingScheme, RSAPrivateKey};
 use serde_derive::{Deserialize, Serialize};
 use sha1::{Digest, Sha1};
-use std::{convert::TryInto, error::Error, io, io::ErrorKind};
+use std::{convert::TryInto, error::Error, io, io::ErrorKind, sync::Arc};
 use tokio::sync::{mpsc, oneshot};
 use tokio_stream::wrappers::ReceiverStream;
 use tonic::{Request, Status, Streaming};
@@ -38,12 +38,12 @@ impl State {
   }
 }
 
-pub struct Conn<R, W> {
+pub struct Conn<'a, R, W> {
   reader: R,
   writer: W,
   state:  State,
   ver:    ProtocolVersion,
-  icon:   String,
+  icon:   &'a str,
 }
 
 pub struct ClientListener<R> {
@@ -182,11 +182,11 @@ impl<W: StreamWriter + Send> ServerListener<W> {
 }
 
 #[derive(Serialize)]
-struct JsonStatus {
+struct JsonStatus<'a> {
   version:     JsonVersion,
   players:     JsonPlayers,
   description: Chat,
-  favicon:     String,
+  favicon:     &'a str,
 }
 
 #[derive(Serialize)]
@@ -208,8 +208,12 @@ struct JsonPlayer {
   id:   String,
 }
 
-impl<R: StreamReader + Send, W: StreamWriter + Send> Conn<R, W> {
-  pub async fn new(reader: R, writer: W, icon: String) -> Result<Self, tonic::transport::Error> {
+impl<'a, R: StreamReader + Send, W: StreamWriter + Send> Conn<'a, R, W> {
+  pub async fn new(
+    reader: R,
+    writer: W,
+    icon: &'a str,
+  ) -> Result<Conn<'a, R, W>, tonic::transport::Error> {
     Ok(Conn { reader, writer, state: State::Handshake, ver: ProtocolVersion::Invalid, icon })
   }
   pub fn ver(&self) -> ProtocolVersion {
@@ -287,7 +291,7 @@ impl<R: StreamReader + Send, W: StreamWriter + Send> Conn<R, W> {
         }],
       },
       description,
-      favicon: self.icon.clone(),
+      favicon: self.icon,
     }
   }
 
@@ -307,7 +311,7 @@ impl<R: StreamReader + Send, W: StreamWriter + Send> Conn<R, W> {
   pub async fn handshake(
     &mut self,
     compression: i32,
-    key: RSAPrivateKey,
+    key: Arc<RSAPrivateKey>,
     der_key: Option<Vec<u8>>,
   ) -> io::Result<Option<LoginInfo>> {
     // The name sent from the client. The mojang auth server also sends us a

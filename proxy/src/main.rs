@@ -6,7 +6,7 @@ pub mod conn;
 
 use rand::rngs::OsRng;
 use rsa::RSAPrivateKey;
-use std::error::Error;
+use std::{error::Error, sync::Arc};
 use tokio::{net::TcpListener, sync::oneshot};
 
 use crate::conn::Conn;
@@ -40,9 +40,9 @@ async fn main() -> Result<(), Box<dyn Error>> {
   let mut bedrock_listener = bedrock::Listener::bind(addr).await?;
 
   // Minecraft uses 1024 bits for this.
-  let key = RSAPrivateKey::new(&mut OsRng, 1024).expect("failed to generate a key");
-  let der_key = Some(der::encode(&key));
-  let icon = load_icon("icon.png");
+  let key = Arc::new(RSAPrivateKey::new(&mut OsRng, 1024).expect("failed to generate a key"));
+  let der_key = Some(Arc::new(der::encode(&key)));
+  let icon = Arc::new(load_icon("icon.png"));
 
   let key2 = key.clone();
   let icon2 = icon.clone();
@@ -54,7 +54,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
       let i = icon.clone();
       let _d = der_key.clone();
       tokio::spawn(async move {
-        match handle_client(reader, writer, k, None, i).await {
+        match handle_client(reader, writer, k, None, &i).await {
           Ok(_) => {}
           Err(e) => {
             error!("error in connection: {}", e);
@@ -69,7 +69,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
         let k = key2.clone();
         let i = icon2.clone();
         tokio::spawn(async move {
-          match handle_client(reader, writer, k, None, i).await {
+          match handle_client(reader, writer, k, None, &i).await {
             Ok(_) => {}
             Err(e) => {
               error!("error in connection: {}", e);
@@ -83,12 +83,12 @@ async fn main() -> Result<(), Box<dyn Error>> {
   Ok(())
 }
 
-async fn handle_client<R: StreamReader + Send + 'static, W: StreamWriter + Send + 'static>(
+async fn handle_client<'a, R: StreamReader + Send + 'static, W: StreamWriter + Send + 'static>(
   reader: R,
   writer: W,
-  key: RSAPrivateKey,
+  key: Arc<RSAPrivateKey>,
   der_key: Option<Vec<u8>>,
-  icon: String,
+  icon: &'a str,
 ) -> Result<(), Box<dyn Error>> {
   // let mut client = MinecraftClient::connect().await?;
   // let req = tonic::Request::new(StatusRequest {});
