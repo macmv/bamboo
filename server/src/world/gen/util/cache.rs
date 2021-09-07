@@ -1,6 +1,7 @@
 use std::{
   borrow::Borrow,
   collections::{HashMap, VecDeque},
+  fmt::Debug,
   hash::Hash,
 };
 
@@ -50,7 +51,8 @@ impl<K, V, F> Cache<K, V, F> {
 
 impl<K, V, F> Cache<K, V, F>
 where
-  K: Eq + Hash + Copy,
+  K: Eq + Hash + Debug + Copy,
+  V: Debug,
   F: Fn(K) -> V,
 {
   /// If the key is present within the map, then the value is returned.
@@ -88,10 +90,18 @@ where
       let key = self.age.pop_front().unwrap();
       self.data.remove(&key).unwrap();
     }
+    self.validate();
     // self.age just got a bunch of items removed, so we need to fix all the indices
     // in self.data.
     for (idx, key) in self.age.iter().enumerate() {
       self.data.get_mut(key).unwrap().1 = idx;
+    }
+  }
+
+  fn validate(&self) {
+    for key in self.age.iter() {
+      // dbg!(&self.age);
+      self.data.get(key).expect(&format!("invalid key: {:?}", key));
     }
   }
 }

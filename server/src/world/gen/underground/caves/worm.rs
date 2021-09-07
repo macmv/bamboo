@@ -1,12 +1,14 @@
 use crate::{block, world::chunk::MultiChunk};
 use common::math::{ChunkPos, FPos, Pos, RngCore, WyhashRng};
 
+#[derive(Debug)]
 struct Vec3 {
   x: f64,
   y: f64,
   z: f64,
 }
 
+#[derive(Debug)]
 pub struct CaveWorm {
   rng:       WyhashRng,
   pos:       Pos,
