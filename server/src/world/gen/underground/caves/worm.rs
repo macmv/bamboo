@@ -56,14 +56,12 @@ impl CaveWorm {
 
   fn advance(&mut self) {
     let angle_vert_cos = self.angle_vert.fast_cos();
-    let direction_x = self.angle_horz.fast_cos() / angle_vert_cos;
+    let direction_x = self.angle_horz.fast_cos() * angle_vert_cos;
     let direction_y = self.angle_vert.fast_sin();
-    let direction_z = self.angle_horz.fast_sin() / angle_vert_cos;
-    self.pos += Pos::new(
-      (direction_x * 3.0) as i32,
-      ((direction_y * 3.0) as i32).max(0).min(255),
-      (direction_z * 3.0) as i32,
-    );
+    let direction_z = self.angle_horz.fast_sin() * angle_vert_cos;
+    self.pos +=
+      Pos::new((direction_x * 3.0) as i32, (direction_y * 3.0) as i32, (direction_z * 3.0) as i32);
+    self.pos = self.pos.with_y(self.pos.y().max(0).min(255));
     // -0.8 to 0.2
     self.angle_vert = ((self.rng.next_u32() % 1024) as f64 / 512.0 - 1.0) * 0.5 - 0.3;
     // -0.8 to 0.8
