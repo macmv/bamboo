@@ -31,7 +31,12 @@ pub trait FastMath {
 ///   assert!(a < b + EPSILON, "values differ: {} {}", a, b);
 /// }
 /// ```
-pub const EPSILON: f64 = 0.008;
+///
+/// This value could be decreased down to `0.004`, if the `fast_cos` and
+/// `fast_sin` functions were improved. Currently, they do most of the math with
+/// longs, which speeds things up a lot. However, this reduces the accuracy by a
+/// lot.
+pub const EPSILON: f64 = 0.005;
 // pub const EPSILON: f64 = 0.004;
 
 // Number of elements between 0 and pi/2
@@ -50,12 +55,15 @@ macro_rules! fast_math_impl {
       use super::{$lookup, FastMath, TABLE_SIZE};
       use std::$ty::consts::PI;
 
-      const EXP: $ty = (1_u64 << 32) as $ty;
+      // This is what we are going to multiply the float by. After multiplying the
+      // float, we convert it to a long, then do all out logic with that. It improves
+      // performance by >50%.
+      const EXP: $ty = (1_u64 << 11) as $ty;
+      const EXPI: i64 = 1_i64 << 11;
       const PI_2_0: i64 = (PI * 2.0 * EXP) as i64;
       const PI_1_5: i64 = (PI * 1.5 * EXP) as i64;
       const PI_1_0: i64 = (PI * 1.0 * EXP) as i64;
       const PI_0_5: i64 = (PI * 0.5 * EXP) as i64;
-      const TO_INDEX: $ty = ((2.0 / PI) * (TABLE_SIZE as $ty));
 
       impl FastMath for $ty {
         fn fast_cos(&self) -> $ty {
@@ -71,15 +79,20 @@ macro_rules! fast_math_impl {
           // case.
           let int = (self * EXP) as i64;
           let m = int.rem_euclid(PI_2_0);
-          // let m = self.rem_euclid(PI_2_0);
-          let mut idx = ((m as $ty * TO_INDEX) / EXP) as usize;
+          // We are calculating this: (m / 0.5pi) * TABLE_SIZE
+          //
+          // We multiple M by EXPI a second time, which is removed by / PI_0_5. The
+          // remaining EXPI is removed at the end. This means we will have problems with
+          // floats above 1 << 42, but at that point this function is probbaly innacurate
+          // anyways.
+          let mut idx = ((((m * EXPI) / PI_0_5) * TABLE_SIZE as i64 + (EXPI / 2)) / EXPI) as usize;
           // Quadrants:
           //   ---------
           //  /  2 | 1  \
           // |-----------|
           //  \  3 | 4  /
           //   ---------
-          if m < PI_0_5 {
+          if m <= PI_0_5 {
             // 1st quadrant
             if idx == TABLE_SIZE {
               // If we checked >=, we wouldn't find logic errors in this function. Anything
@@ -88,7 +101,7 @@ macro_rules! fast_math_impl {
             } else {
               $lookup[idx]
             }
-          } else if m < PI_1_0 {
+          } else if m <= PI_1_0 {
             // 2nd quadrant
             idx -= TABLE_SIZE;
             if idx == 0 {
@@ -96,7 +109,7 @@ macro_rules! fast_math_impl {
             } else {
               -$lookup[TABLE_SIZE - idx]
             }
-          } else if m < PI_1_5 {
+          } else if m <= PI_1_5 {
             // 3rd quadrant
             idx -= TABLE_SIZE * 2;
             if idx == TABLE_SIZE {
@@ -120,25 +133,23 @@ macro_rules! fast_math_impl {
           if self.is_nan() {
             return *self;
           }
-          // let m = self.rem_euclid(PI_2_0);
-          // let mut idx = (m * TO_INDEX).round() as usize;
           let int = (self * EXP) as i64;
           let m = int.rem_euclid(PI_2_0);
-          let mut idx = ((m as $ty * TO_INDEX) / EXP) as usize;
+          let mut idx = ((((m * EXPI) / PI_0_5) * TABLE_SIZE as i64 + (EXPI / 2)) / EXPI) as usize;
           // Quadrants:
           //   ---------
           //  /  2 | 1  \
           // |-----------|
           //  \  3 | 4  /
           //   ---------
-          if m < PI_0_5 {
+          if m <= PI_0_5 {
             // 1st quadrant
             if idx == 0 {
               0.0
             } else {
               $lookup[TABLE_SIZE - idx]
             }
-          } else if m < PI_1_0 {
+          } else if m <= PI_1_0 {
             // 2nd quadrant
             idx -= TABLE_SIZE;
             if idx == TABLE_SIZE {
@@ -146,7 +157,7 @@ macro_rules! fast_math_impl {
             } else {
               $lookup[idx]
             }
-          } else if m < PI_1_5 {
+          } else if m <= PI_1_5 {
             // 3rd quadrant
             idx -= TABLE_SIZE * 2;
             if idx == 0 {
