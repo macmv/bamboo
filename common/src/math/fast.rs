@@ -59,7 +59,7 @@ macro_rules! fast_math_impl {
           if self.is_nan() {
             return *self;
           }
-          let m = self % PI_2_0;
+          let m = self.rem_euclid(PI_2_0);
           let mut idx = (m * TO_INDEX).round() as usize;
           // Quadrants:
           //   ---------
@@ -108,7 +108,7 @@ macro_rules! fast_math_impl {
           if self.is_nan() {
             return *self;
           }
-          let m = self % PI_2_0;
+          let m = self.rem_euclid(PI_2_0);
           let mut idx = (m * TO_INDEX).round() as usize;
           // Quadrants:
           //   ---------
@@ -163,7 +163,7 @@ mod tests {
 
   #[test]
   fn f64_fast_cos() {
-    for i in 0..10000 {
+    for i in -10000..10000 {
       let val = i as f64 / 1000.0;
       assert_close_f64(val.cos(), val.fast_cos());
     }
@@ -173,7 +173,7 @@ mod tests {
 
   #[test]
   fn f64_fast_sin() {
-    for i in 0..10000 {
+    for i in -10000..10000 {
       let val = i as f64 / 1000.0;
       assert_close_f64(val.sin(), val.fast_sin());
     }
@@ -183,7 +183,7 @@ mod tests {
 
   #[test]
   fn f32_fast_cos() {
-    for i in 0..10000 {
+    for i in -10000..10000 {
       let val = i as f32 / 1000.0;
       assert_close_f32(val.cos(), val.fast_cos());
     }
@@ -193,7 +193,7 @@ mod tests {
 
   #[test]
   fn f32_fast_sin() {
-    for i in 0..10000 {
+    for i in -10000..10000 {
       let val = i as f32 / 1000.0;
       assert_close_f32(val.sin(), val.fast_sin());
     }
