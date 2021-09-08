@@ -59,3 +59,7 @@ criterion = "0.3.4"
 [[bench]]
 name = "chunk"
 harness = false
+
+[[bench]]
+name = "fast_math"
+harness = false
