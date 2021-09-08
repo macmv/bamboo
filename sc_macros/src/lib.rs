@@ -1,5 +1,5 @@
 use proc_macro::TokenStream;
-use proc_macro2::{Ident, Span};
+use proc_macro2::{Ident, Span, TokenStream as TokenStream2};
 use proc_macro_error::abort;
 use quote::{quote, ToTokens};
 use std::collections::HashMap;
@@ -94,21 +94,41 @@ impl Parse for LookupArgs {
   }
 }
 
+impl LookupArgs {
+  fn convert(&self, v: f64) -> Result<TokenStream2> {
+    let res = if self.func == "cos" {
+      v.cos()
+    } else if self.func == "sin" {
+      v.sin()
+    } else {
+      return Err(Error::new(self.func.span(), "invalid funcion"));
+    };
+    if self.ty == "f32" {
+      let res = res as f32;
+      Ok(quote!(#res))
+    } else if self.ty == "f64" {
+      Ok(quote!(#res))
+    } else {
+      Err(Error::new(self.func.span(), "invalid type"))
+    }
+  }
+}
+
 #[proc_macro_error::proc_macro_error]
 #[proc_macro]
 pub fn lookup_table(input: TokenStream) -> TokenStream {
   let args = parse_macro_input!(input as LookupArgs);
 
-  let mut out = vec![];
+  let mut out: Vec<TokenStream2> = vec![];
 
   for step in 0..args.steps {
     let percent = step as f64 / args.steps as f64;
     let val = ((args.max - args.min) * percent) + args.min;
-    let num = val.cos();
-    out.push(quote!(#num));
+    match args.convert(val) {
+      Ok(v) => out.push(v),
+      Err(e) => return e.into_compile_error().into(),
+    }
   }
-
-  dbg!(&out);
 
   let out = quote!([#(#out),*]);
   out.into()
