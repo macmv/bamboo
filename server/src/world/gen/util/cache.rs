@@ -42,6 +42,7 @@ impl<K, V> Cache<K, V> {
   /// the cache, so that all future calls will never allocate anything.
   pub fn new<F: Fn(K) -> V + Send + 'static>(builder: F) -> Self {
     Cache {
+      // NOTE: Use a WyHashBuilder here to speed up the cache by a lot.
       data:    HashMap::with_capacity(MAX_SIZE),
       age:     VecDeque::with_capacity(MAX_SIZE),
       builder: Box::new(builder),
