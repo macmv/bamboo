@@ -3,7 +3,7 @@ use crate::block;
 use common::math::{ChunkPos, Pos, RngCore, WyhashRng};
 use math::WarpedVoronoi;
 use noise::{BasicMulti, NoiseFn};
-use std::{cmp::Ordering, collections::HashSet, sync::Mutex};
+use std::{cmp::Ordering, collections::HashSet};
 
 mod desert;
 mod forest;
@@ -160,7 +160,7 @@ pub struct WorldGen {
   biome_map:   WarpedVoronoi,
   biomes:      Vec<Box<dyn BiomeGen + Send + Sync>>,
   height:      BasicMulti,
-  underground: Mutex<Underground>,
+  underground: Underground,
 }
 
 impl WorldGen {
@@ -173,7 +173,7 @@ impl WorldGen {
       biome_map: WarpedVoronoi::new(seed),
       biomes: vec![],
       height,
-      underground: Mutex::new(Underground::new(seed)),
+      underground: Underground::new(seed),
     };
     gen.add_biome::<desert::Gen>();
     gen.add_biome::<forest::Gen>();
@@ -200,7 +200,7 @@ impl WorldGen {
         self.biomes[biome].fill_column(self, p, c);
       }
     }
-    self.underground.lock().unwrap().process(self, pos, c);
+    self.underground.process(self, pos, c);
     for b in &biomes {
       self.biomes[*b].decorate(self, pos, c);
     }
