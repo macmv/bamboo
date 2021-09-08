@@ -31,7 +31,8 @@ pub trait FastMath {
 ///   assert!(a < b + EPSILON, "values differ: {} {}", a, b);
 /// }
 /// ```
-pub const EPSILON: f64 = 0.004;
+pub const EPSILON: f64 = 0.008;
+// pub const EPSILON: f64 = 0.004;
 
 // Number of elements between 0 and pi/2
 const TABLE_SIZE: usize = 256;
@@ -49,18 +50,29 @@ macro_rules! fast_math_impl {
       use super::{$lookup, FastMath, TABLE_SIZE};
       use std::$ty::consts::PI;
 
-      const PI_2_0: $ty = PI * 2.0;
-      const PI_1_5: $ty = PI * 1.5;
-      const PI_0_5: $ty = PI * 0.5;
-      const TO_INDEX: $ty = (2.0 / PI) * (TABLE_SIZE as $ty);
+      const EXP: $ty = (1_u64 << 32) as $ty;
+      const PI_2_0: i64 = (PI * 2.0 * EXP) as i64;
+      const PI_1_5: i64 = (PI * 1.5 * EXP) as i64;
+      const PI_1_0: i64 = (PI * 1.0 * EXP) as i64;
+      const PI_0_5: i64 = (PI * 0.5 * EXP) as i64;
+      const TO_INDEX: $ty = ((2.0 / PI) * (TABLE_SIZE as $ty));
 
       impl FastMath for $ty {
         fn fast_cos(&self) -> $ty {
           if self.is_nan() {
             return *self;
           }
-          let m = self.rem_euclid(PI_2_0);
-          let mut idx = (m * TO_INDEX).round() as usize;
+          // Float remainder is slow. The value if a f64 can be stored in 53 bits
+          // (ignoring the exponent). So we can multiply this value by 1 ^ 11, and do the
+          // rest of the math with integer logic.
+          //
+          // For large floating point values, this may overflow. However, the accuracy of
+          // those floats would already be less than one, so I am going to ignore that
+          // case.
+          let int = (self * EXP) as i64;
+          let m = int.rem_euclid(PI_2_0);
+          // let m = self.rem_euclid(PI_2_0);
+          let mut idx = ((m as $ty * TO_INDEX) / EXP) as usize;
           // Quadrants:
           //   ---------
           //  /  2 | 1  \
@@ -76,7 +88,7 @@ macro_rules! fast_math_impl {
             } else {
               $lookup[idx]
             }
-          } else if m < PI {
+          } else if m < PI_1_0 {
             // 2nd quadrant
             idx -= TABLE_SIZE;
             if idx == 0 {
@@ -108,8 +120,11 @@ macro_rules! fast_math_impl {
           if self.is_nan() {
             return *self;
           }
-          let m = self.rem_euclid(PI_2_0);
-          let mut idx = (m * TO_INDEX).round() as usize;
+          // let m = self.rem_euclid(PI_2_0);
+          // let mut idx = (m * TO_INDEX).round() as usize;
+          let int = (self * EXP) as i64;
+          let m = int.rem_euclid(PI_2_0);
+          let mut idx = ((m as $ty * TO_INDEX) / EXP) as usize;
           // Quadrants:
           //   ---------
           //  /  2 | 1  \
@@ -123,7 +138,7 @@ macro_rules! fast_math_impl {
             } else {
               $lookup[TABLE_SIZE - idx]
             }
-          } else if m < PI {
+          } else if m < PI_1_0 {
             // 2nd quadrant
             idx -= TABLE_SIZE;
             if idx == TABLE_SIZE {
