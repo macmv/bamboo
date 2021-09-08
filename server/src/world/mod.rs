@@ -223,6 +223,30 @@ impl World {
     &self.commands
   }
 
+  /// Generates a chunk for the given chunk position. This will not store the
+  /// chunk, or even look in the chunks table at all. It should be used if you
+  /// have a list of chunks to generate, and you would like to generate them in
+  /// parallel.
+  pub fn pre_generate_chunk(&self, pos: ChunkPos) -> MultiChunk {
+    let mut c = MultiChunk::new(self.block_converter.clone());
+    self.generator.lock().unwrap().generate(pos, &mut c);
+    c
+  }
+
+  /// Stores a list of chunks in the internal map. This should be used after
+  /// calling [`pre_generate_chunk`](Self::pre_generate_chunk) a number of
+  /// times.
+  ///
+  /// NOTE: This will override pre-existing chunks! This should not be a problem
+  /// with multiple threads generating the same chunks, as they have already
+  /// done most of the work by the time the override check occurs.
+  pub fn store_chunks(&self, chunks: Vec<(ChunkPos, MultiChunk)>) {
+    let mut lock = self.chunks.write().unwrap();
+    for (pos, c) in chunks {
+      lock.insert(pos, Arc::new(StdMutex::new(c)));
+    }
+  }
+
   /// This calls f(), and passes it a locked chunk. This will also generate a
   /// new chunk if there is not one stored there.
   ///

@@ -10,6 +10,7 @@ use common::{
   util::nbt::{Tag, NBT},
   version::ProtocolVersion,
 };
+use rayon::prelude::*;
 
 impl World {
   pub async fn init(&self) {
@@ -49,11 +50,11 @@ impl World {
       .await;
 
     info!("generating terrain...");
-    for x in -10..=10 {
+    (-10..=10).into_par_iter().for_each(|x| {
       for z in -10..=10 {
         self.chunk(ChunkPos::new(x, z), |_| {});
       }
-    }
+    });
     info!("done generating terrain");
   }
 

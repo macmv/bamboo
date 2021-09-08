@@ -1,3 +1,4 @@
+use rayon::prelude::*;
 use std::{
   cmp,
   cmp::Ordering,
@@ -454,6 +455,26 @@ impl Player {
   }
 
   async fn load_chunks(&self, min: ChunkPos, max: ChunkPos) {
+    // Generate the chunks on multiple threads
+    let chunks = Mutex::new(vec![]);
+    if (min.x() - max.x()).abs() > (min.z() - max.z()).abs() {
+      (min.x()..max.x()).into_par_iter().for_each(|x| {
+        for z in min.z()..max.z() {
+          let pos = ChunkPos::new(x, z);
+          let c = self.world.pre_generate_chunk(pos);
+          chunks.lock().unwrap().push((pos, c));
+        }
+      });
+    } else {
+      (min.z()..max.z()).into_par_iter().for_each(|z| {
+        for x in min.x()..max.x() {
+          let pos = ChunkPos::new(x, z);
+          let c = self.world.pre_generate_chunk(pos);
+          chunks.lock().unwrap().push((pos, c));
+        }
+      });
+    }
+    self.world.store_chunks(chunks.into_inner().unwrap());
     for x in min.x()..max.x() {
       for z in min.z()..max.z() {
         self.conn.send(self.world.serialize_chunk(ChunkPos::new(x, z), self.ver().block())).await;

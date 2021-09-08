@@ -2157,6 +2157,7 @@ dependencies = [
  "pprof",
  "prost",
  "prost-types",
+ "rayon",
  "sugarlang",
  "tokio",
  "tokio-stream",
