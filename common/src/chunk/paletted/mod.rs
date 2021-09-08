@@ -278,6 +278,9 @@ impl ChunkSection for Section {
           ids_to_remove.push(id as u32);
         }
       }
+      // Since removing an id changes the indices of the ids below it, we need to
+      // iterate through this in reverse.
+      ids_to_remove.reverse();
       for id in ids_to_remove {
         self.remove(id);
       }
