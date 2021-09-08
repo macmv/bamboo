@@ -43,7 +43,7 @@ const PI_0_5: f64 = PI * 0.5;
 const TO_INDEX: f64 = (2.0 / PI) * (TABLE_SIZE as f64);
 
 const LOOKUP: [f64; TABLE_SIZE] =
-  sc_macros::lookup_table!(min: 0.0, max: 1.57079632679, steps: 256, ty: f64, func: cos);
+  sc_macros::lookup_table!(min: 0.0, max: 1.57079632679, steps: 256, ty: f64);
 
 impl FastMath for f64 {
   fn fast_cos(&self) -> f64 {

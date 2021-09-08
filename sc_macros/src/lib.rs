@@ -1,16 +1,14 @@
 use proc_macro::TokenStream;
-use proc_macro2::{Ident, Span, TokenStream as TokenStream2};
-use proc_macro_error::abort;
-use quote::{quote, ToTokens};
+use proc_macro2::{Ident, TokenStream as TokenStream2};
+use quote::quote;
 use std::collections::HashMap;
 
 use syn::{
   parse::{Parse, ParseStream, Result},
   parse_macro_input,
-  punctuated::Punctuated,
   spanned::Spanned,
   token::{Colon, Comma},
-  AttributeArgs, Error, Expr, FnArg, Lit,
+  Error, Expr, Lit,
 };
 
 struct KeyedArgs {
@@ -29,7 +27,6 @@ struct LookupArgs {
   max:   f64,
   steps: usize,
   ty:    Ident,
-  func:  Ident,
 }
 
 impl Parse for KeyedArgs {
@@ -85,31 +82,21 @@ impl Parse for LookupArgs {
       Expr::Path(path) => path.path.segments.first().unwrap().ident.clone(),
       v => return Err(Error::new(v.span(), "expected a type name (like f64)")),
     };
-    let func = match args.remove("func").ok_or(input.error("expected a `func` argument"))?.val {
-      Expr::Path(path) => path.path.segments.first().unwrap().ident.clone(),
-      v => return Err(Error::new(v.span(), "expected a function name (like cos)")),
-    };
 
-    Ok(LookupArgs { min, max, steps, ty, func })
+    Ok(LookupArgs { min, max, steps, ty })
   }
 }
 
 impl LookupArgs {
   fn convert(&self, v: f64) -> Result<TokenStream2> {
-    let res = if self.func == "cos" {
-      v.cos()
-    } else if self.func == "sin" {
-      v.sin()
-    } else {
-      return Err(Error::new(self.func.span(), "invalid funcion"));
-    };
+    let res = v.cos();
     if self.ty == "f32" {
       let res = res as f32;
       Ok(quote!(#res))
     } else if self.ty == "f64" {
       Ok(quote!(#res))
     } else {
-      Err(Error::new(self.func.span(), "invalid type"))
+      Err(Error::new(self.ty.span(), "invalid type"))
     }
   }
 }
