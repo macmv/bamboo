@@ -8,7 +8,7 @@ mod rng;
 pub mod terrain;
 
 pub use chunk_pos::ChunkPos;
-pub use fast::FastMath;
+pub use fast::{FastMath, EPSILON};
 pub use fpos::{FPos, FPosError};
 pub use pos::{Pos, PosError, PosIter};
 pub use rng::WyhashRng;
