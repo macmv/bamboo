@@ -22,10 +22,12 @@ impl CaveGen {
       seed,
       origins: PointGrid::new(seed, 256, 64),
       worms: Cache::new(move |origin: Point| {
-        CaveWorm::new(
+        let mut worm = CaveWorm::new(
           seed ^ ((origin.x as u64) << 32) ^ origin.y as u64,
           Pos::new(origin.x, 60, origin.y),
-        )
+        );
+        worm.carve(0);
+        worm
       }),
     }
   }
