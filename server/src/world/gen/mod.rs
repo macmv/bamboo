@@ -185,7 +185,7 @@ impl WorldGen {
     let id = self.biomes.len();
     self.biomes.push(Box::new(B::new(id)));
   }
-  pub fn generate(&self, pos: ChunkPos, c: &mut MultiChunk) {
+  pub fn generate(&mut self, pos: ChunkPos, c: &mut MultiChunk) {
     let mut biomes = HashSet::new();
     for p in pos.columns() {
       biomes.insert(self.biome_id_at(p));
@@ -200,7 +200,7 @@ impl WorldGen {
         self.biomes[biome].fill_column(self, p, c);
       }
     }
-    self.underground.process(self, pos, c);
+    self.underground.process(&WorldGen::new(), pos, c);
     for b in &biomes {
       self.biomes[*b].decorate(self, pos, c);
     }

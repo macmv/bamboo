@@ -4,6 +4,7 @@ mod init;
 mod players;
 
 use std::{
+  cell::RefCell,
   collections::HashMap,
   convert::TryInto,
   sync::{
@@ -56,7 +57,6 @@ pub struct World {
   entity_converter: Arc<entity::TypeConverter>,
   plugins:          Arc<plugin::PluginManager>,
   commands:         CommandTree,
-  generator:        WorldGen,
   mspt:             AtomicU32,
   wm:               Arc<WorldManager>,
 }
@@ -70,6 +70,11 @@ pub struct WorldManager {
   entity_converter: Arc<entity::TypeConverter>,
   plugins:          Arc<plugin::PluginManager>,
 }
+
+// This is a fast way to multithread world generation. If you need to generate
+// multiple worlds, then you can create a new WorldGen manually, or do a
+// similar setup like this.
+thread_local!(static GEN: RefCell<Option<WorldGen>> = RefCell::new(None));
 
 impl World {
   pub fn new(
@@ -88,7 +93,6 @@ impl World {
       entity_converter,
       plugins,
       commands: CommandTree::new(),
-      generator: WorldGen::new(),
       mspt: 0.into(),
       wm,
     });
@@ -229,7 +233,17 @@ impl World {
   /// parallel.
   pub fn pre_generate_chunk(&self, pos: ChunkPos) -> MultiChunk {
     let mut c = MultiChunk::new(self.block_converter.clone());
-    self.generator.generate(pos, &mut c);
+    GEN.with(|gen| {
+      let mut gen = gen.borrow_mut();
+      if gen.is_none() {
+        *gen = Some(WorldGen::new());
+      }
+      if let Some(g) = gen.as_mut() {
+        g.generate(pos, &mut c);
+      } else {
+        unreachable!();
+      }
+    });
     c
   }
 
@@ -265,11 +279,7 @@ impl World {
       // If we do, we lock it for writing
       let mut chunks = self.chunks.write().unwrap();
       // Make sure that the chunk was not written in between locking this chunk
-      chunks.entry(pos).or_insert_with(|| {
-        let mut c = MultiChunk::new(self.block_converter.clone());
-        self.generator.generate(pos, &mut c);
-        Arc::new(StdMutex::new(c))
-      });
+      chunks.entry(pos).or_insert_with(|| Arc::new(StdMutex::new(self.pre_generate_chunk(pos))));
     }
     let chunks = self.chunks.read().unwrap();
     let c = chunks[&pos].lock().unwrap();
