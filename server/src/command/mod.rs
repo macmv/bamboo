@@ -31,7 +31,7 @@ use std::{collections::HashMap, future::Future, pin::Pin};
 use tokio::sync::Mutex;
 
 type Handler = Box<
-  dyn for<'a> Fn(&'a WorldManager, &'a Command) -> Pin<Box<dyn Future<Output = ()> + Send + 'a>>
+  dyn Fn(&WorldManager, &Command) -> Pin<Box<dyn Future<Output = ()> + Send + 'static>>
     + Send
     + Sync,
 >;
@@ -53,12 +53,19 @@ impl CommandTree {
   /// Adds a new command to the tree. Any new players that join will be able to
   /// execute this command. This will also update the `/help` output, and
   /// include the command syntax/description.
-  pub async fn add(&self, c: Command, handler: Handler) {
-    self.commands.lock().await.insert(c.name().into(), (c, handler));
+  pub async fn add<F, Fut>(&self, c: Command, handler: F)
+  where
+    F: (Fn(&WorldManager, &Command) -> Fut) + Send + Sync + 'static,
+    Fut: Future<Output = ()> + Send + 'static,
+  {
+    self.commands.lock().await.insert(
+      c.name().into(),
+      (c, Box::new(move |world, command| Box::pin((handler)(world, command)))),
+    );
   }
   /// Called whenever a command should be executed. This can also be used to act
   /// like a player sent a command, even if they didn't. The text passed in
-  /// should not contain a `\` at the start.
+  /// should not contain a `/` at the start.
   pub async fn execute(&self, world: &WorldManager, player: &Player, text: &str) {
     let mut reader = CommandReader::new(text);
     let commands = self.commands.lock().await;

@@ -18,14 +18,9 @@ impl World {
     c.add_arg("text", Parser::String(StringType::Greedy));
     self
       .get_commands()
-      .add(
-        c,
-        Box::new(|world, _| {
-          Box::pin(async move {
-            world.broadcast("[Server] big announce").await;
-          })
-        }),
-      )
+      .add(c, |world, _| async {
+        world.broadcast("[Server] big announce").await;
+      })
       .await;
 
     let mut c = Command::new("fill");
@@ -39,14 +34,9 @@ impl World {
       .add_arg("block", Parser::BlockState);
     self
       .get_commands()
-      .add(
-        c,
-        Box::new(|world, _| {
-          Box::pin(async move {
-            world.broadcast("called /fill").await;
-          })
-        }),
-      )
+      .add(c, |world, _| async {
+        world.broadcast("called /fill").await;
+      })
       .await;
 
     info!("generating terrain...");
