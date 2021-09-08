@@ -3,6 +3,14 @@ name = "server"
 version = "0.1.1"
 edition = "2018"
 
+[lib]
+name = "server"
+path = "src/lib.rs"
+
+[[bin]]
+name = "server"
+path = "src/main.rs"
+
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
@@ -26,3 +34,11 @@ sugarlang = { git = "https://gitlab.com/macmv/sugarlang" }
 
 [build-dependencies]
 data = { path = "../data" }
+
+[dev-dependencies]
+pprof = { version = "0.4.3", features = ["criterion", "flamegraph"] }
+criterion = "0.3.4"
+
+[[bench]]
+name = "terrain"
+harness = false

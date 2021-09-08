@@ -1,17 +1,26 @@
 #[macro_use]
 extern crate log;
 
-use std::{error::Error, sync::Arc};
+pub mod block;
+pub mod command;
+pub mod entity;
+pub mod item;
+pub mod net;
+pub mod player;
+pub mod plugin;
+pub mod world;
+
+use std::sync::Arc;
 use tokio::sync::mpsc;
 use tokio_stream::wrappers::ReceiverStream;
-use tonic::{transport::Server, Request, Response, Status, Streaming};
+use tonic::{Request, Response, Status, Streaming};
 
 use common::proto::{
-  minecraft_server::{Minecraft, MinecraftServer},
-  Packet, ReserveSlotsRequest, ReserveSlotsResponse, StatusRequest, StatusResponse,
+  minecraft_server::Minecraft, Packet, ReserveSlotsRequest, ReserveSlotsResponse, StatusRequest,
+  StatusResponse,
 };
 
-use server::world::WorldManager;
+use world::WorldManager;
 
 #[derive(Clone)]
 pub struct ServerImpl {
@@ -52,37 +61,4 @@ impl Minecraft for ServerImpl {
     dbg!(req);
     Ok(Response::new(ReserveSlotsResponse::default()))
   }
-}
-
-#[tokio::main]
-async fn main() -> Result<(), Box<dyn Error>> {
-  common::init("server");
-
-  let addr = "0.0.0.0:8483".parse().unwrap();
-
-  let worlds = Arc::new(WorldManager::new());
-  worlds.add_world().await;
-
-  let w = worlds.clone();
-  tokio::spawn(async move {
-    w.run().await;
-  });
-  let svc = MinecraftServer::new(ServerImpl { worlds });
-
-  // This is the code needed for reflection. It is disabled for now, as
-  // tonic-reflection does not allow you to disable rustfmt. For docker builds,
-  // rustfmt is not installed.
-  //
-  // let desc = tonic_reflection::server::Builder::configure()
-  //   .register_encoded_file_descriptor_set(common::proto::FILE_DESCRIPTOR_SET)
-  //   .build()?;
-  //
-  // Server::builder()
-  //   .add_service(svc)
-  //   .add_service(desc)
-  //   .serve(addr).await?;
-
-  info!("listening on {}", addr);
-  Server::builder().add_service(svc).serve(addr).await?;
-  Ok(())
 }

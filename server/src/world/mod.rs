@@ -1,5 +1,5 @@
 pub mod chunk;
-mod gen;
+pub mod gen;
 mod init;
 mod players;
 
