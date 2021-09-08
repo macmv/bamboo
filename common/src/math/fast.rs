@@ -42,7 +42,7 @@ const PI_1_5: f64 = PI * 1.5;
 const PI_0_5: f64 = PI * 0.5;
 const TO_INDEX: f64 = (2.0 / PI) * (TABLE_SIZE as f64);
 
-const COS_LOOKUP: [f64; TABLE_SIZE] =
+const LOOKUP: [f64; TABLE_SIZE] =
   sc_macros::lookup_table!(min: 0.0, max: 1.57079632679, steps: 256, ty: f64, func: cos);
 
 impl FastMath for f64 {
@@ -65,7 +65,7 @@ impl FastMath for f64 {
         // above TABLE_SIZE is invalid.
         0.0
       } else {
-        COS_LOOKUP[idx]
+        LOOKUP[idx]
       }
     } else if m < PI {
       // 2nd quadrant
@@ -73,7 +73,7 @@ impl FastMath for f64 {
       if idx == 0 {
         0.0
       } else {
-        -COS_LOOKUP[TABLE_SIZE - idx]
+        -LOOKUP[TABLE_SIZE - idx]
       }
     } else if m < PI_1_5 {
       // 3rd quadrant
@@ -83,7 +83,7 @@ impl FastMath for f64 {
         // above TABLE_SIZE is invalid.
         0.0
       } else {
-        -COS_LOOKUP[idx]
+        -LOOKUP[idx]
       }
     } else {
       // 4th quadrant
@@ -91,12 +91,54 @@ impl FastMath for f64 {
       if idx == 0 {
         0.0
       } else {
-        COS_LOOKUP[TABLE_SIZE - idx]
+        LOOKUP[TABLE_SIZE - idx]
       }
     }
   }
   fn fast_sin(&self) -> f64 {
-    self.sin()
+    if self.is_nan() {
+      return *self;
+    }
+    let m = self % PI_2_0;
+    let mut idx = (m * TO_INDEX).round() as usize;
+    // Quadrants:
+    //   ---------
+    //  /  2 | 1  \
+    // |-----------|
+    //  \  3 | 4  /
+    //   ---------
+    if m < PI_0_5 {
+      // 1st quadrant
+      if idx == 0 {
+        0.0
+      } else {
+        LOOKUP[TABLE_SIZE - idx]
+      }
+    } else if m < PI {
+      // 2nd quadrant
+      idx -= TABLE_SIZE;
+      if idx == TABLE_SIZE {
+        0.0
+      } else {
+        LOOKUP[idx]
+      }
+    } else if m < PI_1_5 {
+      // 3rd quadrant
+      idx -= TABLE_SIZE * 2;
+      if idx == 0 {
+        0.0
+      } else {
+        -LOOKUP[TABLE_SIZE - idx]
+      }
+    } else {
+      // 4th quadrant
+      idx -= TABLE_SIZE * 3;
+      if idx == TABLE_SIZE {
+        0.0
+      } else {
+        -LOOKUP[idx]
+      }
+    }
   }
 }
 
@@ -109,6 +151,16 @@ mod tests {
     for i in 0..10000 {
       let val = i as f64 / 1000.0;
       assert_close(val.cos(), val.fast_cos());
+    }
+
+    assert!(f64::NAN.fast_cos().is_nan(), "fast_cos of nan is not nan");
+  }
+
+  #[test]
+  fn f64_fast_sin() {
+    for i in 0..10000 {
+      let val = i as f64 / 1000.0;
+      assert_close(val.sin(), val.fast_sin());
     }
 
     assert!(f64::NAN.fast_cos().is_nan(), "fast_cos of nan is not nan");
