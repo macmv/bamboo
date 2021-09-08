@@ -56,7 +56,7 @@ pub struct World {
   entity_converter: Arc<entity::TypeConverter>,
   plugins:          Arc<plugin::PluginManager>,
   commands:         CommandTree,
-  generator:        StdMutex<WorldGen>,
+  generator:        WorldGen,
   mspt:             AtomicU32,
   wm:               Arc<WorldManager>,
 }
@@ -88,7 +88,7 @@ impl World {
       entity_converter,
       plugins,
       commands: CommandTree::new(),
-      generator: StdMutex::new(WorldGen::new()),
+      generator: WorldGen::new(),
       mspt: 0.into(),
       wm,
     });
@@ -229,7 +229,7 @@ impl World {
   /// parallel.
   pub fn pre_generate_chunk(&self, pos: ChunkPos) -> MultiChunk {
     let mut c = MultiChunk::new(self.block_converter.clone());
-    self.generator.lock().unwrap().generate(pos, &mut c);
+    self.generator.generate(pos, &mut c);
     c
   }
 
@@ -267,7 +267,7 @@ impl World {
       // Make sure that the chunk was not written in between locking this chunk
       chunks.entry(pos).or_insert_with(|| {
         let mut c = MultiChunk::new(self.block_converter.clone());
-        self.generator.lock().unwrap().generate(pos, &mut c);
+        self.generator.generate(pos, &mut c);
         Arc::new(StdMutex::new(c))
       });
     }

@@ -158,7 +158,7 @@ pub trait BiomeGen {
 pub struct WorldGen {
   seed:        u64,
   biome_map:   WarpedVoronoi,
-  biomes:      Vec<Box<dyn BiomeGen + Send>>,
+  biomes:      Vec<Box<dyn BiomeGen + Send + Sync>>,
   height:      BasicMulti,
   underground: Mutex<Underground>,
 }
@@ -181,7 +181,7 @@ impl WorldGen {
     gen.add_biome::<mountain::Gen>();
     gen
   }
-  pub fn add_biome<B: BiomeGen + Send + 'static>(&mut self) {
+  pub fn add_biome<B: BiomeGen + Send + Sync + 'static>(&mut self) {
     let id = self.biomes.len();
     self.biomes.push(Box::new(B::new(id)));
   }
