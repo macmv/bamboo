@@ -59,11 +59,17 @@ where
   /// key. Either way, a reference into the map is returned.
   pub fn get<'a>(&mut self, key: K) -> &V {
     if let Some((_, index)) = self.data.get(&key) {
+      let index = *index;
       // We just looked up the item at key, so it should be at the back of age.
-      self.age.remove(*index);
+      self.age.remove(index);
       self.age.push_back(key);
       self.data.insert(key, ((self.builder)(key), self.age.len() - 1));
-      self.fix_indices();
+      // All indices between index and self.age.len() - 1 need to be decreased by one.
+      // We just created the item at self.age.len() - 1, so that doesn't need to be
+      // changed.
+      for i in index..(self.age.len() - 1) {
+        self.data.get_mut(&self.age[i]).unwrap().1 -= 1;
+      }
     } else {
       self.clean();
       self.age.push_back(key);
