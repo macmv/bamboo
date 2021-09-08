@@ -4,13 +4,14 @@ mod init;
 mod players;
 
 use std::{
-  cell::RefCell,
   collections::HashMap,
   convert::TryInto,
   sync::{
     atomic::{AtomicI32, AtomicU32, Ordering},
     Arc, Mutex as StdMutex, MutexGuard as StdMutexGuard, RwLock,
   },
+  thread,
+  thread::ThreadId,
   time::{Duration, Instant},
 };
 use tokio::{
@@ -50,6 +51,7 @@ pub use players::{PlayersIter, PlayersMap};
 
 pub struct World {
   chunks:           RwLock<HashMap<ChunkPos, Arc<StdMutex<MultiChunk>>>>,
+  generators:       RwLock<HashMap<ThreadId, StdMutex<WorldGen>>>,
   players:          Mutex<PlayersMap>,
   eid:              AtomicI32,
   block_converter:  Arc<block::TypeConverter>,
@@ -71,11 +73,6 @@ pub struct WorldManager {
   plugins:          Arc<plugin::PluginManager>,
 }
 
-// This is a fast way to multithread world generation. If you need to generate
-// multiple worlds, then you can create a new WorldGen manually, or do a
-// similar setup like this.
-thread_local!(static GEN: RefCell<Option<WorldGen>> = RefCell::new(None));
-
 impl World {
   pub fn new(
     block_converter: Arc<block::TypeConverter>,
@@ -86,6 +83,7 @@ impl World {
   ) -> Arc<Self> {
     let world = Arc::new(World {
       chunks: RwLock::new(HashMap::new()),
+      generators: RwLock::new(HashMap::new()),
       players: Mutex::new(PlayersMap::new()),
       eid: 1.into(),
       block_converter,
@@ -232,18 +230,21 @@ impl World {
   /// have a list of chunks to generate, and you would like to generate them in
   /// parallel.
   pub fn pre_generate_chunk(&self, pos: ChunkPos) -> MultiChunk {
+    let tid = thread::current().id();
+    // We first check (read-only) if we need a world generator for this thread
+    if !self.generators.read().unwrap().contains_key(&tid) {
+      // If we do, we lock it for writing
+      let mut generators = self.generators.write().unwrap();
+      // Make sure that the chunk was not written in between locking this chunk
+      // Even though we only use this generator on this thread, Rust safety says we
+      // need a Mutex here. I could do away with the mutex in unsafe code, but that
+      // seems like a pre-mature optimization.
+      generators.entry(tid).or_insert_with(|| StdMutex::new(WorldGen::new()));
+    }
+    let generators = self.generators.read().unwrap();
+    let mut lock = generators[&tid].lock().unwrap();
     let mut c = MultiChunk::new(self.block_converter.clone());
-    GEN.with(|gen| {
-      let mut gen = gen.borrow_mut();
-      if gen.is_none() {
-        *gen = Some(WorldGen::new());
-      }
-      if let Some(g) = gen.as_mut() {
-        g.generate(pos, &mut c);
-      } else {
-        unreachable!();
-      }
-    });
+    lock.generate(pos, &mut c);
     c
   }
 
