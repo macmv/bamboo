@@ -48,15 +48,10 @@ impl ParseError {
     let mut out = Chat::new("");
     let prefix = "Invalid command: ";
     out.add(prefix).color(Color::Red);
-    out.add(text).color(Color::White);
-    out
-      .add(format!(
-        "\n{}{} ",
-        " ".repeat(prefix.len() + self.pos.start),
-        "^".repeat(self.pos.end - self.pos.start)
-      ))
-      .color(Color::Red);
-    out.add(self.kind.to_string()).color(Color::White);
+    out.add(&text[..self.pos.start]).color(Color::White);
+    out.add(&text[self.pos.start..self.pos.end]).color(Color::Red).underlined();
+    out.add(&text[self.pos.end..]).color(Color::White);
+    out.add(format!("\n  -> {}", self.kind.to_string())).color(Color::White);
 
     out
   }

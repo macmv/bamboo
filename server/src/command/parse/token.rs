@@ -2,14 +2,15 @@ use super::{ErrorKind, ParseError, Result};
 use std::{iter::Peekable, str::Chars};
 
 pub struct Tokenizer<'a> {
-  text:     &'a str,
-  chars:    Peekable<Chars<'a>>,
-  char_pos: usize,
-  byte_pos: usize,
+  text:  &'a str,
+  chars: Peekable<Chars<'a>>,
+  // Pos in bytes
+  pos:   usize,
 }
 
 /// A region of text in a commmand. The start is inclusive, and the end is
-/// exclusive. Both indices are in chars, not bytes.
+/// exclusive. Both indices are in bytes, not chars. It is considered invalid
+/// state for a Span's start or end to not be on a utf8 boundry.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct Span {
   pub start: usize,
@@ -24,7 +25,7 @@ pub struct Word {
 
 impl<'a> Tokenizer<'a> {
   pub fn new(text: &'a str) -> Self {
-    Tokenizer { text, chars: text.chars().peekable(), char_pos: 0, byte_pos: 0 }
+    Tokenizer { text, chars: text.chars().peekable(), pos: 0 }
   }
 
   fn peek_char(&mut self) -> Option<char> {
@@ -33,8 +34,7 @@ impl<'a> Tokenizer<'a> {
 
   fn next_char(&mut self) -> Option<char> {
     self.chars.next().map(|v| {
-      self.char_pos += 1;
-      self.byte_pos += v.len_utf8();
+      self.pos += v.len_utf8();
       v
     })
   }
@@ -43,19 +43,19 @@ impl<'a> Tokenizer<'a> {
   /// non-alphabet character.
   pub fn read_word(&mut self) -> Result<Word> {
     let mut text = String::new();
-    let start = self.char_pos;
+    let start = self.pos;
     let mut end = 0;
     if let Some(c) = self.peek_char() {
       if !c.is_ascii_alphabetic() {
         return Err(ParseError::new(Span::single(start), ErrorKind::Expected("a letter".into())));
       }
     } else {
-      return Err(ParseError::new(Span::single(self.char_pos), ErrorKind::EOF));
+      return Err(ParseError::new(Span::single(self.pos), ErrorKind::EOF));
     }
     while let Some(c) = self.peek_char() {
       if !c.is_ascii_alphabetic() {
         // Skip whitespace
-        end = self.char_pos;
+        end = self.pos;
         if c.is_whitespace() {
           self.next_char().unwrap();
         }
@@ -64,7 +64,7 @@ impl<'a> Tokenizer<'a> {
       text.push(self.next_char().unwrap());
     }
     if end == 0 {
-      Ok(Word { text, pos: Span { start, end: self.char_pos } })
+      Ok(Word { text, pos: Span { start, end: self.pos } })
     } else {
       Ok(Word { text, pos: Span { start, end } })
     }
@@ -74,15 +74,15 @@ impl<'a> Tokenizer<'a> {
   /// characters are considered invalid.
   pub fn read_spaced_word(&mut self) -> Result<Word> {
     let mut text = String::new();
-    let start = self.char_pos;
+    let start = self.pos;
     let mut end = 0;
     if self.peek_char().is_none() {
-      return Err(ParseError::new(Span::single(self.char_pos - 1), ErrorKind::EOF));
+      return Err(ParseError::new(Span::single(self.pos - 1), ErrorKind::EOF));
     }
     let mut valid = true;
     while let Some(c) = self.peek_char() {
       if c.is_whitespace() {
-        end = self.char_pos;
+        end = self.pos;
         self.next_char().unwrap();
         break;
       }
@@ -93,7 +93,7 @@ impl<'a> Tokenizer<'a> {
     }
     let pos = if end == 0 {
       // Happens when we reach the end of the string
-      Span::new(start, self.char_pos)
+      Span::new(start, self.pos)
     } else {
       Span::new(start, end)
     };
@@ -108,11 +108,8 @@ impl<'a> Tokenizer<'a> {
   /// will return an error.
   pub fn check_trailing(&mut self) -> Result<()> {
     if let Some(_) = self.peek_char() {
-      let s = self.text[self.byte_pos..].to_string();
-      Err(ParseError::new(
-        Span::new(self.char_pos, self.char_pos + s.chars().count()),
-        ErrorKind::Expected(s),
-      ))
+      let s = self.text[self.pos..].to_string();
+      Err(ParseError::new(Span::new(self.pos, self.pos + s.len()), ErrorKind::Expected(s)))
     } else {
       Ok(())
     }
