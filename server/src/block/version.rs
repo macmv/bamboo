@@ -97,7 +97,7 @@ impl TypeConverter {
     let kind = self.kind_from_id(id, ver);
     let data = self.get(kind);
     let first_id = data.types[0].state;
-    let offset = first_id - id;
+    let offset = id - first_id;
     data.types[offset as usize]
   }
 
