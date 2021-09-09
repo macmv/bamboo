@@ -82,6 +82,7 @@ pub fn generate(dir: &Path) -> Result<(), Box<dyn Error>> {
   }
 
   let mut block_data = vec![];
+  let mut all_kinds = vec![];
   for b in &latest.blocks {
     let state = b.id();
     let default_index = b.default_index();
@@ -93,9 +94,11 @@ pub fn generate(dir: &Path) -> Result<(), Box<dyn Error>> {
         kind: Kind::#kind,
         state: #state,
       }));
+      all_kinds.push(quote!(Kind::#kind).to_string());
     } else {
       for s in b.states() {
         let sid = s.id();
+        all_kinds.push(quote!(Kind::#kind).to_string());
         types.push(quote!(Type{
           kind: Kind::#kind,
           state: #sid,
@@ -171,6 +174,9 @@ pub fn generate(dir: &Path) -> Result<(), Box<dyn Error>> {
   out.push_str("/// when the block is placed (things like making fences connect, or making\n");
   out.push_str("/// stairs rotate correctly).\n");
   out.push_str("///\n");
+  out.push_str("/// The second item returned is a lookup table for a latest block id to a block\n");
+  out.push_str("/// kind. It is the only way to convert a block id back into a Kind.\n");
+  out.push_str("///\n");
   out.push_str("/// This should only be called once, and will be done internally in the\n");
   out.push_str("/// [`WorldManager`](crate::world::WorldManager). This is left public as it may\n");
   out.push_str("/// be moved to a seperate crate in the future, as it takes a long time to\n");
@@ -178,14 +184,21 @@ pub fn generate(dir: &Path) -> Result<(), Box<dyn Error>> {
   out.push_str("///\n");
   out.push_str("/// This function is generated at compile time. See\n");
   out.push_str("/// `data/src/block/mod.rs` and `build.rs` for more.\n");
-  out.push_str("pub fn generate_kinds() -> &'static [Data] {\n");
-  out.push_str("  &[\n");
+  out.push_str("pub fn generate_kinds() -> (&'static [Data], &'static [Kind]) {\n");
+  out.push_str("  (&[\n");
   for b in block_data {
     out.push_str("    ");
     out.push_str(&b.to_string());
     out.push_str(",\n");
   }
-  out.push_str("  ]\n");
+  out.push_str("  ],\n");
+  out.push_str("  &[\n");
+  for b in all_kinds {
+    out.push_str("    ");
+    out.push_str(&b);
+    out.push_str(",\n");
+  }
+  out.push_str("  ])\n");
   out.push_str("}\n");
 
   fs::write(dir.join("ty.rs"), out)?;

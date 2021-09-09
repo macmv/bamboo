@@ -1,6 +1,4 @@
-use std::collections::HashMap;
-
-use super::{ty, Data, Kind};
+use super::{ty, Data, Kind, Type};
 
 use common::version::BlockVersion;
 
@@ -37,8 +35,10 @@ pub struct TypeConverter {
   // Each index into the outer vec is a kind id. Indexing into the inner vec is each variant of the
   // given kind. These are in such an order that iterating through both of them will get all block
   // types in the same order as the global palette of the latest version.
-  kinds:    &'static [Data],
-  versions: &'static [Version],
+  kinds:        &'static [Data],
+  versions:     &'static [Version],
+  // A list of all latest block states, and which kind they map to.
+  block_states: &'static [Kind],
 }
 
 impl TypeConverter {
@@ -49,7 +49,8 @@ impl TypeConverter {
   /// get_converter).
   #[allow(clippy::new_without_default)]
   pub fn new() -> Self {
-    Self { kinds: ty::generate_kinds(), versions: generate_versions() }
+    let (kinds, block_states) = ty::generate_kinds();
+    Self { kinds, versions: generate_versions(), block_states }
   }
 
   /// Takes the given old block id, which is part of `ver`, and returns the new
@@ -85,6 +86,27 @@ impl TypeConverter {
   /// default type, and state ids.
   pub fn get(&self, k: Kind) -> &Data {
     &self.kinds[k.id() as usize]
+  }
+
+  /// Gets a block type from the given id.
+  pub fn type_from_id(&self, mut id: u32, ver: BlockVersion) -> &Type {
+    if ver != BlockVersion::latest() {
+      id = self.to_latest(id, ver);
+    }
+
+    let kind = self.kind_from_id(id, ver);
+    let data = self.get(kind);
+    // TODO: Return the correct type here
+    data.default_type()
+  }
+
+  /// Gets a block kind from the given id.
+  pub fn kind_from_id(&self, mut id: u32, ver: BlockVersion) -> Kind {
+    if ver != BlockVersion::latest() {
+      id = self.to_latest(id, ver);
+    }
+
+    self.block_states[id as usize]
   }
 }
 
