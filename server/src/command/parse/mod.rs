@@ -1,7 +1,9 @@
 mod err;
+mod token;
 mod util;
 
 pub use err::ParseError;
+use token::Tokenizer;
 use util::{parse_num, parse_word};
 
 use super::{enums::StringType, Arg, Parser};
@@ -10,15 +12,16 @@ use common::math::Pos;
 use std::{collections::HashMap, str::FromStr};
 
 impl Parser {
-  pub fn parse(&self, text: &str) -> Result<(Arg, usize), ParseError> {
+  pub fn parse(&self, tokens: &mut Tokenizer) -> Result<Arg, ParseError> {
     match self {
       Self::Bool => {
-        if text.starts_with("true") {
-          Ok((Arg::Bool(true), 4))
-        } else if text.starts_with("false") {
-          Ok((Arg::Bool(false), 5))
+        let w = tokens.read_word()?;
+        if w == "true" {
+          Ok(Arg::Bool(true))
+        } else if w == "false" {
+          Ok(Arg::Bool(false))
         } else {
-          Err(ParseError::InvalidText(text.into(), "true or false".into()))
+          Err(w.invalid("true or false"))
         }
       }
       Self::Double { min, max } => {
