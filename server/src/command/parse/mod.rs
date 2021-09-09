@@ -162,79 +162,85 @@ impl Parser {
 
 #[cfg(test)]
 mod tests {
-  use super::{super::StringType, *};
-  use common::math::Pos;
+  use super::*;
 
   #[test]
   fn parse_types() -> Result<()> {
-    assert_eq!(Parser::Bool.parse("true")?, (Arg::Bool(true), 4));
-    assert_eq!(Parser::Bool.parse("false")?, (Arg::Bool(false), 5));
+    assert_eq!(Parser::Bool.parse(&mut Tokenizer::new("true"))?, Arg::Bool(true));
+    assert_eq!(Parser::Bool.parse(&mut Tokenizer::new("false"))?, Arg::Bool(false));
 
-    assert_eq!(Parser::Double { min: None, max: None }.parse("5.3")?, (Arg::Double(5.3), 3));
-    assert_eq!(Parser::Double { min: None, max: None }.parse("3.0000")?, (Arg::Double(3.0), 6));
-    assert_eq!(
-      Parser::Double { min: Some(1.0), max: None }.parse("-5"),
-      Err(ParseError::Range(-5.0, Some(1.0), None))
-    );
+    let mut tok = Tokenizer::new("false true");
+    assert_eq!(Parser::Bool.parse(&mut tok), Ok(Arg::Bool(false)));
+    assert_eq!(Parser::Bool.parse(&mut tok), Ok(Arg::Bool(true)));
+    assert_eq!(Parser::Bool.parse(&mut tok), Err(ParseError::EOF));
+    assert_eq!(Parser::Bool.parse(&mut tok), Err(ParseError::EOF));
 
-    assert_eq!(Parser::Float { min: None, max: None }.parse("5.3")?, (Arg::Float(5.3), 3));
-    assert_eq!(Parser::Float { min: None, max: None }.parse("3.0000")?, (Arg::Float(3.0), 6));
-    assert_eq!(
-      Parser::Float { min: Some(1.0), max: None }.parse("-5"),
-      Err(ParseError::Range(-5.0, Some(1.0), None))
-    );
-
-    assert_eq!(Parser::Int { min: None, max: None }.parse("5")?, (Arg::Int(5), 1));
-    assert_eq!(Parser::Int { min: None, max: None }.parse("03")?, (Arg::Int(3), 2));
-    assert_eq!(
-      Parser::Int { min: None, max: None }.parse("3.2"),
-      Err(ParseError::InvalidText("3.2".into(), "an int".into()))
-    );
-    assert_eq!(
-      Parser::Int { min: Some(1), max: None }.parse("-5"),
-      Err(ParseError::Range(-5.0, Some(1.0), None))
-    );
-
-    assert_eq!(
-      Parser::String(StringType::Word).parse("big gaming")?,
-      (Arg::String("big".into()), 3)
-    );
-    assert_eq!(Parser::String(StringType::Word).parse("word")?, (Arg::String("word".into()), 4));
-    assert_eq!(
-      Parser::String(StringType::Word).parse(""),
-      Err(ParseError::EOF(Parser::String(StringType::Word))),
-    );
-    assert_eq!(
-      Parser::String(StringType::Quotable).parse("big gaming")?,
-      (Arg::String("big".into()), 3)
-    );
-    assert_eq!(
-      Parser::String(StringType::Quotable).parse("\"big gaming\" things")?,
-      (Arg::String("big gaming".into()), 12) // 10 + 2 because of the quotes
-    );
-    assert_eq!(
-      Parser::String(StringType::Quotable).parse(r#""big gam\"ing" things"#)?,
-      (Arg::String(r#"big gam"ing"#.into()), 14) // 11 + 2 + 1 because of the quotes and \
-    );
-    assert_eq!(
-      Parser::String(StringType::Quotable).parse(r#""big gam\\\"ing" things"#)?,
-      (Arg::String(r#"big gam\"ing"#.into()), 16)
-    );
-    assert_eq!(
-      Parser::String(StringType::Quotable).parse(r#""big gam\\"ing" things"#)?,
-      (Arg::String(r#"big gam\"#.into()), 11)
-    );
-    assert_eq!(
-      Parser::String(StringType::Greedy).parse(r#""big gam\\"ing" things"#)?,
-      (Arg::String(r#""big gam\\"ing" things"#.into()), 22)
-    );
-
-    assert_eq!(
-      Parser::BlockPos.parse("10 12"),
-      Err(ParseError::InvalidText("10 12".into(), "a block position".into())),
-    );
-    assert_eq!(Parser::BlockPos.parse("10 12 15")?, (Arg::BlockPos(Pos::new(10, 12, 15)), 8));
-    assert_eq!(Parser::BlockPos.parse("10 12 15 20")?, (Arg::BlockPos(Pos::new(10, 12, 15)), 8));
+    // assert_eq!(Parser::Double { min: None, max: None }.parse("5.3")?,
+    // (Arg::Double(5.3), 3)); assert_eq!(Parser::Double { min: None, max: None
+    // }.parse("3.0000")?, (Arg::Double(3.0), 6)); assert_eq!(
+    //   Parser::Double { min: Some(1.0), max: None }.parse("-5"),
+    //   Err(ParseError::Range(-5.0, Some(1.0), None))
+    // );
+    //
+    // assert_eq!(Parser::Float { min: None, max: None }.parse("5.3")?,
+    // (Arg::Float(5.3), 3)); assert_eq!(Parser::Float { min: None, max: None
+    // }.parse("3.0000")?, (Arg::Float(3.0), 6)); assert_eq!(
+    //   Parser::Float { min: Some(1.0), max: None }.parse("-5"),
+    //   Err(ParseError::Range(-5.0, Some(1.0), None))
+    // );
+    //
+    // assert_eq!(Parser::Int { min: None, max: None }.parse("5")?, (Arg::Int(5),
+    // 1)); assert_eq!(Parser::Int { min: None, max: None }.parse("03")?,
+    // (Arg::Int(3), 2)); assert_eq!(
+    //   Parser::Int { min: None, max: None }.parse("3.2"),
+    //   Err(ParseError::InvalidText("3.2".into(), "an int".into()))
+    // );
+    // assert_eq!(
+    //   Parser::Int { min: Some(1), max: None }.parse("-5"),
+    //   Err(ParseError::Range(-5.0, Some(1.0), None))
+    // );
+    //
+    // assert_eq!(
+    //   Parser::String(StringType::Word).parse("big gaming")?,
+    //   (Arg::String("big".into()), 3)
+    // );
+    // assert_eq!(Parser::String(StringType::Word).parse("word")?,
+    // (Arg::String("word".into()), 4)); assert_eq!(
+    //   Parser::String(StringType::Word).parse(""),
+    //   Err(ParseError::EOF(Parser::String(StringType::Word))),
+    // );
+    // assert_eq!(
+    //   Parser::String(StringType::Quotable).parse("big gaming")?,
+    //   (Arg::String("big".into()), 3)
+    // );
+    // assert_eq!(
+    //   Parser::String(StringType::Quotable).parse("\"big gaming\" things")?,
+    //   (Arg::String("big gaming".into()), 12) // 10 + 2 because of the quotes
+    // );
+    // assert_eq!(
+    //   Parser::String(StringType::Quotable).parse(r#""big gam\"ing" things"#)?,
+    //   (Arg::String(r#"big gam"ing"#.into()), 14) // 11 + 2 + 1 because of the
+    // quotes and \ );
+    // assert_eq!(
+    //   Parser::String(StringType::Quotable).parse(r#""big gam\\\"ing" things"#)?,
+    //   (Arg::String(r#"big gam\"ing"#.into()), 16)
+    // );
+    // assert_eq!(
+    //   Parser::String(StringType::Quotable).parse(r#""big gam\\"ing" things"#)?,
+    //   (Arg::String(r#"big gam\"#.into()), 11)
+    // );
+    // assert_eq!(
+    //   Parser::String(StringType::Greedy).parse(r#""big gam\\"ing" things"#)?,
+    //   (Arg::String(r#""big gam\\"ing" things"#.into()), 22)
+    // );
+    //
+    // assert_eq!(
+    //   Parser::BlockPos.parse("10 12"),
+    //   Err(ParseError::InvalidText("10 12".into(), "a block position".into())),
+    // );
+    // assert_eq!(Parser::BlockPos.parse("10 12 15")?, (Arg::BlockPos(Pos::new(10,
+    // 12, 15)), 8)); assert_eq!(Parser::BlockPos.parse("10 12 15 20")?,
+    // (Arg::BlockPos(Pos::new(10, 12, 15)), 8));
 
     // Parser::Entity { single, players } => (),
     // Parser::ScoreHolder { multiple } => (),

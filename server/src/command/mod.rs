@@ -218,7 +218,7 @@ impl Command {
       NodeType::Root => panic!("cannot call matches on root node!"),
       NodeType::Literal => {
         let w = tokens.read_spaced_word()?;
-        if w == &self.name {
+        if w == self.name.as_ref() {
           Ok(Arg::Literal(self.name.clone()))
         } else {
           Err(ParseError::InvalidLiteral(self.name.clone()))
