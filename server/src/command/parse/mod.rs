@@ -4,7 +4,7 @@ mod token;
 pub use err::{ChildError, ErrorKind, ParseError, Result};
 pub use token::{Span, Tokenizer, Word};
 
-use super::{Arg, Parser, StringType};
+use super::{Arg, CommandSender, Parser, StringType};
 use crate::block;
 use common::math::Pos;
 use std::{collections::HashMap, fmt::Display, str::FromStr};
@@ -13,34 +13,33 @@ pub fn parse_num<T>(w: &Word, min: &Option<T>, max: &Option<T>) -> Result<T>
 where
   T: PartialOrd + FromStr + Copy + Display,
 {
-  match w.parse::<T>() {
-    Ok(num) => {
-      if let Some(min) = min {
-        if num < *min {
-          if let Some(max) = max {
-            return Err(w.expected(format!("a number between {} and {}", min, max)));
-          } else {
-            return Err(w.expected(format!("a number above {}", min)));
-          }
-        }
-      }
+  let num = w.parse::<T>().map_err(|_| w.expected("a number"))?;
+  if let Some(min) = min {
+    if num < *min {
       if let Some(max) = max {
-        if num > *max {
-          if let Some(min) = min {
-            return Err(w.expected(format!("a number between {} and {}", min, max)));
-          } else {
-            return Err(w.expected(format!("a number below {}", max)));
-          }
-        }
+        return Err(w.expected(format!("a number between {} and {}", min, max)));
+      } else {
+        return Err(w.expected(format!("a number above {}", min)));
       }
-      Ok(num)
     }
-    Err(_) => Err(w.invalid()),
   }
+  if let Some(max) = max {
+    if num > *max {
+      if let Some(min) = min {
+        return Err(w.expected(format!("a number between {} and {}", min, max)));
+      } else {
+        return Err(w.expected(format!("a number below {}", max)));
+      }
+    }
+  }
+  Ok(num)
 }
 
 impl Parser {
-  pub fn parse(&self, tokens: &mut Tokenizer) -> Result<Arg> {
+  pub fn parse<S>(&self, tokens: &mut Tokenizer, sender: &S) -> Result<Arg>
+  where
+    S: CommandSender,
+  {
     match self {
       Self::Bool => {
         let w = tokens.read_spaced_word()?;
@@ -68,26 +67,41 @@ impl Parser {
         Ok(Arg::Int(num))
       }
       Self::BlockPos => {
-        let mut w = tokens.read_spaced_text()?;
-        let x_rel = w.starts_with("~");
-        if x_rel {
-          w.set_text(w[1..].to_string());
-        }
-        let x = parse_num(&w, &None, &None)?;
-        let mut w = tokens.read_spaced_text()?;
-        let y_rel = w.starts_with("~");
-        if y_rel {
-          w.set_text(w[1..].to_string());
-        }
-        let y = parse_num(&w, &None, &None)?;
-        let mut w = tokens.read_spaced_text()?;
-        let z_rel = w.starts_with("~");
-        if z_rel {
-          w.set_text(w[1..].to_string());
-        }
-        let z = parse_num(&w, &None, &None)?;
+        if let Some(pos) = sender.block_pos() {
+          let mut w = tokens.read_spaced_text()?;
+          let x_rel = w.starts_with("~");
+          if x_rel {
+            w.set_text(w[1..].to_string());
+          }
+          let x = parse_num(&w, &None, &None)?;
+          let mut w = tokens.read_spaced_text()?;
+          let y_rel = w.starts_with("~");
+          if y_rel {
+            w.set_text(w[1..].to_string());
+          }
+          let y = parse_num(&w, &None, &None)?;
+          let mut w = tokens.read_spaced_text()?;
+          let z_rel = w.starts_with("~");
+          if z_rel {
+            w.set_text(w[1..].to_string());
+          }
+          let z = parse_num(&w, &None, &None)?;
 
-        Ok(Arg::BlockPos(Pos::new(x, y, z)))
+          Ok(Arg::BlockPos(Pos::new(
+            if x_rel { pos.x() + x } else { x },
+            if y_rel { pos.y() + y } else { y },
+            if z_rel { pos.z() + z } else { z },
+          )))
+        } else {
+          let w = tokens.read_spaced_text()?;
+          let x = parse_num(&w, &None, &None)?;
+          let w = tokens.read_spaced_text()?;
+          let y = parse_num(&w, &None, &None)?;
+          let w = tokens.read_spaced_text()?;
+          let z = parse_num(&w, &None, &None)?;
+
+          Ok(Arg::BlockPos(Pos::new(x, y, z)))
+        }
       }
       Self::BlockState => {
         let w = tokens.read_spaced_word()?;

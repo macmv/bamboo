@@ -19,11 +19,13 @@
 mod enums;
 mod parse;
 mod reader;
+mod sender;
 mod serialize;
 
 pub use enums::{Arg, Parser, StringType};
 use parse::{ChildError, Span};
 pub use parse::{ErrorKind, ParseError, Tokenizer};
+pub use sender::CommandSender;
 
 use crate::{player::Player, world::WorldManager};
 use common::util::chat::{Chat, Color};
@@ -81,7 +83,7 @@ impl CommandTree {
         return;
       }
     };
-    let args = match command.parse(text) {
+    let args = match command.parse(text, player.as_ref()) {
       Ok(v) => v,
       Err(e) => {
         player.send_message(&e.to_chat(text)).await;
@@ -177,15 +179,25 @@ impl Command {
   /// Parses the given text. The given text should be the entire command without
   /// a slash at the start. If anything went wrong during parsing, a ParseError
   /// will be returned. Otherwise, a list of fields will be returned.
-  pub fn parse(&self, text: &str) -> Result<Vec<Arg>, ParseError> {
-    self.parse_inner(&mut Tokenizer::new(text)).map_err(|(err, _)| err)
+  pub fn parse<S>(&self, text: &str, sender: &S) -> Result<Vec<Arg>, ParseError>
+  where
+    S: CommandSender,
+  {
+    self.parse_inner(&mut Tokenizer::new(text), sender).map_err(|(err, _)| err)
   }
 
   /// If this fails, it returns the number of levels deep it was. This is so
   /// that branching commands can choose the deepest error to provide feedback
   /// for.
-  fn parse_inner(&self, tokens: &mut Tokenizer) -> Result<Vec<Arg>, (ParseError, usize)> {
-    let arg = self.parse_arg(tokens).map_err(|e| (e, 1))?;
+  fn parse_inner<S>(
+    &self,
+    tokens: &mut Tokenizer,
+    sender: &S,
+  ) -> Result<Vec<Arg>, (ParseError, usize)>
+  where
+    S: CommandSender,
+  {
+    let arg = self.parse_arg(tokens, sender).map_err(|e| (e, 1))?;
     // if self.children.is_empty() && index < text.len() {
     //   return Err(ParseError::Trailing(text[index..].into()));
     // }
@@ -193,7 +205,7 @@ impl Command {
     let mut deepest_error = 0;
     let mut errors = vec![];
     for c in &self.children {
-      match c.parse_inner(&mut tokens.clone()) {
+      match c.parse_inner(&mut tokens.clone(), sender) {
         Ok(v) => {
           out.extend(v);
           break;
@@ -259,7 +271,10 @@ impl Command {
   /// the argument, and the starting index of the next argument.
   ///
   /// This can be used with top level commands to check if they match some text.
-  fn parse_arg(&self, tokens: &mut Tokenizer) -> Result<Arg, ParseError> {
+  fn parse_arg<S>(&self, tokens: &mut Tokenizer, sender: &S) -> Result<Arg, ParseError>
+  where
+    S: CommandSender,
+  {
     match &self.ty {
       NodeType::Root => panic!("cannot call matches on root node!"),
       NodeType::Literal => {
@@ -270,7 +285,7 @@ impl Command {
           Err(ParseError::new(w.pos(), ErrorKind::Invalid))
         }
       }
-      NodeType::Argument(p) => p.parse(tokens),
+      NodeType::Argument(p) => p.parse(tokens, sender),
     }
   }
 
@@ -287,6 +302,14 @@ mod tests {
   use crate::block;
   use common::math::Pos;
   use std::collections::HashMap;
+
+  struct NoneSender {}
+
+  impl CommandSender for NoneSender {
+    fn block_pos(&self) -> Option<Pos> {
+      None
+    }
+  }
 
   #[test]
   fn construction() {
@@ -312,7 +335,7 @@ mod tests {
     c.add_arg("min", Parser::BlockPos)
       .add_arg("max", Parser::BlockPos)
       .add_arg("block", Parser::BlockState);
-    let v = match c.parse("fill 20 20 20 10 30 10 stone") {
+    let v = match c.parse("fill 20 20 20 10 30 10 stone", &NoneSender {}) {
       Ok(v) => v,
       Err(e) => panic!("{}", e),
     };

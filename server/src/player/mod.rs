@@ -7,13 +7,14 @@ use std::{
 };
 
 use common::{
-  math::{ChunkPos, FPos},
+  math::{ChunkPos, FPos, Pos},
   net::cb,
   util::{Chat, UUID},
   version::ProtocolVersion,
 };
 
 use crate::{
+  command::CommandSender,
   entity::Metadata,
   item::{Inventory, Stack},
   net::Connection,
@@ -527,6 +528,11 @@ impl Player {
     let pos = self.pos.lock().unwrap();
     pos.curr
   }
+  /// Returns the player's block position. This is the block that their feet are
+  /// in. This is the same thing as calling [`p.pos().block()`](Self::pos).
+  fn block_pos(&self) -> Pos {
+    self.pos().block()
+  }
   /// Returns the player's position and looking direction. This is only updated
   /// once per tick. This also locks a mutex, so you should not call it very
   /// often.
@@ -560,8 +566,14 @@ impl Player {
   }
 }
 
+impl CommandSender for Player {
+  fn block_pos(&self) -> Option<Pos> {
+    Some(self.block_pos())
+  }
+}
+
 #[test]
 fn assert_sync() {
   fn is_sync<T: Send + Sync>() {}
-  is_sync::<Player>(); // only compiles is player is Sync
+  is_sync::<Player>(); // only compiles if player is Sync
 }
