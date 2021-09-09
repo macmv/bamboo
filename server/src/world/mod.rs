@@ -330,36 +330,48 @@ impl World {
     if min == max {
       return self.set_block(min, ty).await;
     }
+    let mut blocks_changed = HashMap::new();
     for x in min.chunk_x()..=max.chunk_x() {
       for z in min.chunk_z()..=max.chunk_z() {
-        self.chunk(ChunkPos::new(x, z), |mut c| {
-          let mut min_x = 0;
-          let mut min_z = 0;
-          if min.chunk_x() == x {
-            min_x = min.chunk_rel_x();
-          }
-          if min.chunk_z() == z {
-            min_z = min.chunk_rel_z();
-          }
-          let mut max_x = 15;
-          let mut max_z = 15;
-          if max.chunk_x() == x {
-            max_x = max.chunk_rel_x();
-          }
-          if max.chunk_z() == z {
-            max_z = max.chunk_rel_z();
-          }
+        let mut min_x = 0;
+        let mut min_z = 0;
+        if min.chunk_x() == x {
+          min_x = min.chunk_rel_x();
+        }
+        if min.chunk_z() == z {
+          min_z = min.chunk_rel_z();
+        }
+        let mut max_x = 15;
+        let mut max_z = 15;
+        if max.chunk_x() == x {
+          max_x = max.chunk_rel_x();
+        }
+        if max.chunk_z() == z {
+          max_z = max.chunk_rel_z();
+        }
 
+        self.chunk(ChunkPos::new(x, z), |mut c| {
+          let mut changes = vec![];
+          for x in min_x..=max_x {
+            for y in min.y..=max.y {
+              for z in min_z..=max_z {
+                changes.push(c.get_block(Pos::new(x, y, z)));
+              }
+            }
+          }
+          blocks_changed.insert(ChunkPos::new(x, z), changes);
           c.fill(Pos::new(min_x, min.y, min_z), Pos::new(max_x, max.y, max_z), ty)
         })?;
       }
     }
 
-    for p in self.players().await.iter().in_view(pos.chunk()) {
-      for x in min.chunk_x()..=max.chunk_x() {
-        for z in min.chunk_z()..=max.chunk_z() {
+    for x in min.chunk_x()..=max.chunk_x() {
+      for z in min.chunk_z()..=max.chunk_z() {
+        let pos = ChunkPos::new(x, z);
+        let records_v1_8 = vec![];
+        let records_v1_16_2 = vec![];
+        for p in self.players().await.iter().in_view(pos) {
           if p.ver() >= ProtocolVersion::V1_16_2 {
-            let records = vec![];
             p.conn()
               .send(cb::Packet::MultiBlockChange {
                 chunk_x_removed_v1_16_2:   None,
@@ -370,18 +382,17 @@ impl World {
                 not_trust_edges_v1_16_2:   Some(false),
                 records_v1_8:              None,
                 // TODO: 1.16 multi block change records
-                records_v1_16_2:           Some(records),
+                records_v1_16_2:           Some(records_v1_16_2.clone()),
               })
               .await;
           } else {
-            let mut records = vec![];
             p.conn()
               .send(cb::Packet::MultiBlockChange {
                 chunk_x_removed_v1_16_2:   Some(x),
                 chunk_z_removed_v1_16_2:   Some(z),
                 chunk_coordinates_v1_16_2: None,
                 not_trust_edges_v1_16_2:   None,
-                records_v1_8:              Some(records),
+                records_v1_8:              Some(records_v1_8.clone()),
                 records_v1_16_2:           None,
               })
               .await;
