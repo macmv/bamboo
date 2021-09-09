@@ -1,6 +1,7 @@
 use super::{ErrorKind, ParseError, Result};
 use std::{iter::Peekable, str::Chars};
 
+#[derive(Clone)]
 pub struct Tokenizer<'a> {
   text:  &'a str,
   chars: Peekable<Chars<'a>>,
@@ -26,6 +27,12 @@ pub struct Word {
 impl<'a> Tokenizer<'a> {
   pub fn new(text: &'a str) -> Self {
     Tokenizer { text, chars: text.chars().peekable(), pos: 0 }
+  }
+
+  /// Returns the current index into the command of this tokenizer. This will
+  /// always be at the start of a valid utf8 character.
+  pub fn pos(&self) -> usize {
+    self.pos
   }
 
   fn peek_char(&mut self) -> Option<char> {

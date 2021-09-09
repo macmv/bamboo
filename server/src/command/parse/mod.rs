@@ -4,7 +4,8 @@ mod token;
 pub use err::{ErrorKind, ParseError, Result};
 pub use token::{Span, Tokenizer};
 
-use super::{Arg, Parser};
+use super::{Arg, Parser, StringType};
+use std::fmt;
 
 impl Parser {
   pub fn parse(&self, tokens: &mut Tokenizer) -> Result<Arg> {
@@ -155,6 +156,70 @@ impl Parser {
       // Self::Time => Ok((Arg::Int(5), 1)),
       // Self::Modid => Ok((Arg::Int(5), 1)),
       // Self::Enum => Ok((Arg::Int(5), 1)),
+    }
+  }
+
+  pub fn write_desc(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    match self {
+      Self::Literal(v) => write!(f, "{}", v),
+      _ => write!(f, "{}", self.desc()),
+    }
+  }
+
+  fn desc(&self) -> &'static str {
+    match self {
+      Self::Literal(_) => unreachable!(),
+      Self::Bool => "true or false",
+      Self::Double { .. } => "a double",
+      Self::Float { .. } => "a float",
+      Self::Int { .. } => "an int",
+      Self::String(ty) => match ty {
+        StringType::Word => "a word",
+        StringType::Quotable => "a quotable phrase",
+        StringType::Greedy => "any text",
+      },
+      Self::Entity { .. } => "an entity",
+      Self::ScoreHolder { .. } => "a score holder",
+      Self::GameProfile { .. } => "a username",
+      Self::BlockPos { .. } => "a block position",
+      Self::ColumnPos => "a block column position",
+      Self::Vec3 => "a 3 value vector",
+      Self::Vec2 => "a 2 value vector",
+      Self::BlockState => "a block id",
+      Self::BlockPredicate => "a block id or tag",
+      Self::ItemStack => "an item stack",
+      Self::ItemPredicate => "an item id or tag",
+      Self::Color => "a chat color",
+      Self::Component => "a JSON chat message",
+      Self::Message => "a message",
+      Self::Nbt => "a JSON NBT tag",
+      Self::NbtPath => "a path within an NBT tag",
+      Self::Objective => "a scoreboard objective",
+      Self::ObjectiveCriteria => "a single score criterion",
+      Self::Operation => "a scoreboard operator",
+      Self::Particle => "a particle id",
+      Self::Rotation => "yaw and pitch values",
+      Self::Angle => "an angle",
+      Self::ScoreboardSlot => "a scoreboard slot (list, sidebar, etc.)",
+      Self::Swizzle => "a collection of up to 3 axis (x, xy, zyx, etc.)",
+      Self::Team => "a team name",
+      Self::ItemSlot => "a name for an inventory slot",
+      Self::ResourceLocation => "a resource path (stone, minecraft:dirt, my_mod::foo, etc.)",
+      Self::MobEffect => "a potion effect",
+      Self::Function => "a function",
+      Self::EntityAnchor => "an entity anchor",
+      Self::Range { .. } => "a range of numbers (0..5, 2.3..5.6)",
+      Self::IntRange => "a range of ints (0..5)",
+      Self::FloatRange => "a range of floats (2.3..5.6)",
+      Self::ItemEnchantment => "an item enchantment",
+      Self::EntitySummon => "an entity id",
+      Self::Dimension => "a dimension",
+      Self::Uuid => "a UUID",
+      Self::NbtTag => "a partial NBT tag",
+      Self::NbtCompoundTag => "a complete NBT tag",
+      Self::Time => "a time duration (10 (ticks), 0.5d (days), 3s (seconds))",
+      Self::Modid => "a mod id",
+      Self::Enum => "an enum added by Forge",
     }
   }
 }

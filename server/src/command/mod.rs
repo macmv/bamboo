@@ -187,30 +187,22 @@ impl Command {
     //   return Err(ParseError::Trailing(text[index..].into()));
     // }
     let mut out = vec![arg];
-    let mut errors = vec![];
-    let mut is_eof = true;
+    let mut parsers = vec![];
     for c in &self.children {
-      match c.parse_inner(tokens) {
+      match c.parse_inner(&mut tokens.clone()) {
         Ok(v) => {
           out.extend(v);
           break;
         }
-        Err(e) => {
-          match e.kind() {
-            ErrorKind::EOF => {}
-            _ => is_eof = false,
-          }
-          errors.push(e);
-        }
+        Err(_) => match &c.ty {
+          NodeType::Root => unreachable!(),
+          NodeType::Literal => parsers.push(Parser::Literal(self.name.clone())),
+          NodeType::Argument(p) => parsers.push(p.clone()),
+        },
       }
     }
     if !self.children.is_empty() && out.len() == 1 {
-      // All errors are EOF errors, so none of the children matched a valid command
-      if is_eof {
-        Err(errors.pop().unwrap())
-      } else {
-        Err(ParseError::new(Span::single(0), ErrorKind::NoChildren(errors)))
-      }
+      Err(ParseError::new(Span::single(tokens.pos()), ErrorKind::NoChildren(parsers)))
     } else {
       Ok(out)
     }

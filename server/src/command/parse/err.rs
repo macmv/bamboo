@@ -1,4 +1,4 @@
-use super::Span;
+use super::{Parser, Span};
 use common::util::{chat::Color, Chat};
 use std::{error::Error, fmt};
 
@@ -11,7 +11,7 @@ pub struct ParseError {
 #[derive(Debug, PartialEq)]
 pub enum ErrorKind {
   /// Used when no children of the node matched
-  NoChildren(Vec<ParseError>),
+  NoChildren(Vec<Parser>),
   /// Used when a literal does not match
   InvalidLiteral,
   /// Used when there are trailing characters after the command
@@ -65,20 +65,26 @@ impl fmt::Display for ParseError {
 impl fmt::Display for ErrorKind {
   fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
     match self {
-      Self::NoChildren(errors) => {
-        if errors.is_empty() {
+      Self::NoChildren(parsers) => {
+        if parsers.is_empty() {
           // No errors means print another error about no errors
-          write!(f, "no errors in no children error (should never happen)")
-        } else if errors.len() == 1 {
-          // A single error should just be printed as that error
-          write!(f, "{}", errors[0])
+          write!(f, "no parsers in no children error (should never happen)")
+        } else if parsers.len() == 1 {
+          // A single parser failed, also invalid
+          write!(f, "only one parser failed, not valid")
         } else {
           // Write all of the children in a row
-          writeln!(f, "no children matched: [")?;
-          for e in errors {
-            write!(f, "  {}", e)?;
+          writeln!(f, "expected ")?;
+          for (i, p) in parsers.iter().enumerate() {
+            if i == parsers.len() - 1 {
+              write!(f, "or ")?;
+              p.write_desc(f)?;
+            } else {
+              p.write_desc(f)?;
+              write!(f, ", ")?;
+            }
           }
-          write!(f, "]")
+          Ok(())
         }
       }
       Self::InvalidLiteral => write!(f, "invalid literal"),
