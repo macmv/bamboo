@@ -2,9 +2,10 @@ use super::{ParseError, Result};
 use std::{iter::Peekable, str::Chars};
 
 pub struct Tokenizer<'a> {
-  text: Peekable<Chars<'a>>,
-  // Index in chars
-  pos:  usize,
+  text:     &'a str,
+  chars:    Peekable<Chars<'a>>,
+  char_pos: usize,
+  byte_pos: usize,
 }
 
 /// A region of text in a commmand. The start is inclusive, and the end is
@@ -23,16 +24,17 @@ pub struct Word {
 
 impl<'a> Tokenizer<'a> {
   pub fn new(text: &'a str) -> Self {
-    Tokenizer { text: text.chars().peekable(), pos: 0 }
+    Tokenizer { text, chars: text.chars().peekable(), char_pos: 0, byte_pos: 0 }
   }
 
   fn peek_char(&mut self) -> Option<char> {
-    self.text.peek().map(|v| *v)
+    self.chars.peek().map(|v| *v)
   }
 
   fn next_char(&mut self) -> Option<char> {
-    self.text.next().map(|v| {
-      self.pos += 1;
+    self.chars.next().map(|v| {
+      self.char_pos += 1;
+      self.byte_pos += v.len_utf8();
       v
     })
   }
@@ -41,7 +43,7 @@ impl<'a> Tokenizer<'a> {
   /// non-alphabet character.
   pub fn read_word(&mut self) -> Result<Word> {
     let mut text = String::new();
-    let start = self.pos;
+    let start = self.char_pos;
     let mut end = 0;
     if let Some(c) = self.peek_char() {
       if !c.is_ascii_alphabetic() {
@@ -53,7 +55,7 @@ impl<'a> Tokenizer<'a> {
     while let Some(c) = self.peek_char() {
       if !c.is_ascii_alphabetic() {
         // Skip whitespace
-        end = self.pos;
+        end = self.char_pos;
         if c.is_whitespace() {
           self.next_char().unwrap();
         }
@@ -62,7 +64,7 @@ impl<'a> Tokenizer<'a> {
       text.push(self.next_char().unwrap());
     }
     if end == 0 {
-      Ok(Word { text, pos: Span { start, end: self.pos } })
+      Ok(Word { text, pos: Span { start, end: self.char_pos } })
     } else {
       Ok(Word { text, pos: Span { start, end } })
     }
@@ -72,7 +74,7 @@ impl<'a> Tokenizer<'a> {
   /// characters are considered invalid.
   pub fn read_spaced_word(&mut self) -> Result<Word> {
     let mut text = String::new();
-    let start = self.pos;
+    let start = self.char_pos;
     let mut end = 0;
     if let Some(c) = self.peek_char() {
       if !c.is_ascii_alphabetic() {
@@ -83,7 +85,7 @@ impl<'a> Tokenizer<'a> {
     }
     while let Some(c) = self.peek_char() {
       if c.is_whitespace() {
-        end = self.pos;
+        end = self.char_pos;
         self.next_char().unwrap();
         break;
       }
@@ -94,9 +96,19 @@ impl<'a> Tokenizer<'a> {
     }
     if end == 0 {
       // Happens when we reach the end of the string
-      Ok(Word { text, pos: Span { start, end: self.pos } })
+      Ok(Word { text, pos: Span { start, end: self.char_pos } })
     } else {
       Ok(Word { text, pos: Span { start, end } })
+    }
+  }
+
+  /// Checks for trailing characters. If there are any unread characters, this
+  /// will return an error.
+  pub fn check_trailing(&mut self) -> Result<()> {
+    if let Some(c) = self.peek_char() {
+      Err(ParseError::Trailing(self.text[self.byte_pos..].to_string()))
+    } else {
+      Ok(())
     }
   }
 }
@@ -124,13 +136,20 @@ mod tests {
       tok.read_spaced_word(),
       Ok(Word { text: "i".into(), pos: Span { start: 0, end: 1 } })
     );
+    assert!(tok.check_trailing().is_err());
     assert_eq!(
       tok.read_spaced_word(),
       Ok(Word { text: "am".into(), pos: Span { start: 2, end: 4 } })
     );
+    assert!(tok.check_trailing().is_err());
     assert_eq!(
       tok.read_spaced_word(),
       Ok(Word { text: "spaced".into(), pos: Span { start: 5, end: 11 } })
     );
+    assert!(tok.check_trailing().is_ok());
+    assert_eq!(tok.read_spaced_word(), Err(ParseError::EOF));
+    assert!(tok.check_trailing().is_ok());
+    assert_eq!(tok.read_spaced_word(), Err(ParseError::EOF));
+    assert!(tok.check_trailing().is_ok());
   }
 }
