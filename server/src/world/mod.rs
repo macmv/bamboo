@@ -248,17 +248,56 @@ impl World {
     c
   }
 
-  /// Stores a list of chunks in the internal map. This should be used after
-  /// calling [`pre_generate_chunk`](Self::pre_generate_chunk) a number of
-  /// times.
+  /// Checks if the given chunk position is loaded. This will not check for any
+  /// data saved on disk, it only checks if the given chunk is in memory.
+  pub fn has_loaded_chunk(&self, pos: ChunkPos) -> bool {
+    self.chunks.read().unwrap().contains_key(&pos)
+  }
+
+  /// Stores a list of chunks in the internal map. This should be used if you
+  /// have manually built a chunk, and need to store it in the world. This
+  /// should not be used after calling `pre_generate_chunk`, as the world may
+  /// have loaded something from disk since that call. See also
+  /// [`store_chunks_no_overwrite`](Self::store_chunks_no_overwrite).
   ///
-  /// NOTE: This will override pre-existing chunks! This should not be a problem
-  /// with multiple threads generating the same chunks, as they have already
-  /// done most of the work by the time the override check occurs.
+  /// WARNING: This will override pre-existing chunks! This should not be a
+  /// problem with multiple threads generating the same chunks, as they have
+  /// already done most of the work by the time the override check occurs.
   pub fn store_chunks(&self, chunks: Vec<(ChunkPos, MultiChunk)>) {
     let mut lock = self.chunks.write().unwrap();
     for (pos, c) in chunks {
       lock.insert(pos, Arc::new(StdMutex::new(c)));
+    }
+  }
+
+  /// Stores a list of chunks in the internal map. This should be used after
+  /// calling [`pre_generate_chunk`](Self::pre_generate_chunk) a number of
+  /// times.
+  ///
+  /// This will not overwrite any chunks that are already loaded. This is best
+  /// for having another thread do terrain generation, then storing that terrain
+  /// in the world. While that other thread was running, the world could have
+  /// loaded something from disk, which you don't want to overwrite.
+  pub fn store_chunks_no_overwrite(&self, chunks: Vec<(ChunkPos, MultiChunk)>) {
+    // Only locks for reading if all the chunks are already in the world.
+    let mut needs_write = false;
+    {
+      let read = self.chunks.read().unwrap();
+      for (pos, _) in &chunks {
+        if !read.contains_key(pos) {
+          needs_write = true;
+          break;
+        }
+      }
+    }
+    if needs_write {
+      let mut write = self.chunks.write().unwrap();
+      for (pos, c) in chunks {
+        // Make sure to call or_insert_with. Someone could have changed the chunks
+        // between the read unlock and the write lock. So the needs_write bool is mostly
+        // an approximation.
+        write.entry(pos).or_insert_with(|| Arc::new(StdMutex::new(c)));
+      }
     }
   }
 

@@ -462,6 +462,9 @@ impl Player {
       (min.x()..max.x()).into_par_iter().for_each(|x| {
         for z in min.z()..max.z() {
           let pos = ChunkPos::new(x, z);
+          if self.world.has_loaded_chunk(pos) {
+            continue;
+          }
           let c = self.world.pre_generate_chunk(pos);
           chunks.lock().unwrap().push((pos, c));
         }
@@ -470,12 +473,18 @@ impl Player {
       (min.z()..max.z()).into_par_iter().for_each(|z| {
         for x in min.x()..max.x() {
           let pos = ChunkPos::new(x, z);
+          if self.world.has_loaded_chunk(pos) {
+            continue;
+          }
           let c = self.world.pre_generate_chunk(pos);
           chunks.lock().unwrap().push((pos, c));
         }
       });
     }
-    self.world.store_chunks(chunks.into_inner().unwrap());
+    // Calling store_chunks is a race condition! We check for has_loaded_chunk
+    // above, but the chunks could have been changed between that call and now.
+    // Calling store_chunks could potentially make us loose data.
+    self.world.store_chunks_no_overwrite(chunks.into_inner().unwrap());
     for x in min.x()..max.x() {
       for z in min.z()..max.z() {
         self.conn.send(self.world.serialize_chunk(ChunkPos::new(x, z), self.ver().block())).await;
