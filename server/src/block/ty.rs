@@ -53,11 +53,11 @@ impl Kind {
 /// have.
 #[derive(Debug)]
 pub struct Data {
-  state:         u32,
+  state:            u32,
   // A list of types in order. This will always be at least one element long.
-  types:         &'static [Type],
+  pub(super) types: &'static [Type],
   // The default type. This is an index into types.
-  default_index: u32,
+  default_index:    u32,
 }
 
 impl Data {

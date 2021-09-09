@@ -302,12 +302,20 @@ impl Parser {
 mod tests {
   use super::*;
 
+  struct NoneSender {}
+
+  impl CommandSender for NoneSender {
+    fn block_pos(&self) -> Option<Pos> {
+      None
+    }
+  }
+
   #[test]
   fn parse_types() -> Result<()> {
-    assert_eq!(Parser::Bool.parse(&mut Tokenizer::new("true"))?, Arg::Bool(true));
-    assert_eq!(Parser::Bool.parse(&mut Tokenizer::new("false"))?, Arg::Bool(false));
+    assert_eq!(Parser::Bool.parse(&mut Tokenizer::new("true"), &NoneSender {})?, Arg::Bool(true));
+    assert_eq!(Parser::Bool.parse(&mut Tokenizer::new("false"), &NoneSender {})?, Arg::Bool(false));
     assert_eq!(
-      Parser::Bool.parse(&mut Tokenizer::new("invalid")).unwrap_err().kind(),
+      Parser::Bool.parse(&mut Tokenizer::new("invalid"), &NoneSender {}).unwrap_err().kind(),
       &ErrorKind::Expected("true or false".into())
     );
 
