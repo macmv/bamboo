@@ -399,62 +399,79 @@ impl World {
     for x in min.chunk_x()..=max.chunk_x() {
       for z in min.chunk_z()..=max.chunk_z() {
         let pos = ChunkPos::new(x, z);
-        // We generate the multi block change records once for each version that we send
-        // it to. This map stores versions to records arrays.
-        let mut records = HashMap::new();
-        for p in self.players().await.iter().in_view(pos) {
-          if p.ver() >= ProtocolVersion::V1_16_2 {
+        let (min, max) = &blocks_changed[&pos];
+        let num_blocks_changed = (max.x - min.x + 1) * (max.y - min.y + 1) * (max.z - min.z + 1);
+        // If we changed more than half the blocks in the chunk, we just resend
+        // everything. This is fastsest on average. Multi block changes use varints, so
+        // calculating which packet would be smaller is a pain.
+        if num_blocks_changed > 2048 {
+          // Map of block version to packets. This server is optimized at many players
+          // being online, so we only generate the chunk once for each versions.
+          let mut serialized_chunks = HashMap::new();
+          for p in self.players().await.iter().in_view(pos) {
             p.conn()
-              .send(cb::Packet::MultiBlockChange {
-                chunk_x_removed_v1_16_2:   None,
-                chunk_z_removed_v1_16_2:   None,
-                // TODO: Section encoding. Looks like this: ((sectionX & 0x3FFFFF) << 42) |
-                // (sectionY & 0xFFFFF) | ((sectionZ & 0x3FFFFF) << 20);
-                chunk_coordinates_v1_16_2: Some(vec![]),
-                not_trust_edges_v1_16_2:   Some(false),
-                records_v1_8:              None,
-                // TODO: 1.16 multi block change records
-                records_v1_16_2:           Some(
-                  records
-                    .entry(p.ver().block())
-                    .or_insert_with(|| {
-                      // let changes = blocks_changed[pos];
-                      vec![]
-                    })
-                    .clone(),
-                ),
-              })
+              .send(
+                serialized_chunks
+                  .entry(pos)
+                  .or_insert_with(|| self.serialize_chunk(pos, p.ver().block()))
+                  .clone(),
+              )
               .await;
-          } else {
-            p.conn()
-              .send(cb::Packet::MultiBlockChange {
-                chunk_x_removed_v1_16_2:   Some(x),
-                chunk_z_removed_v1_16_2:   Some(z),
-                chunk_coordinates_v1_16_2: None,
-                not_trust_edges_v1_16_2:   None,
-                records_v1_8:              Some(
-                  records
-                    .entry(p.ver().block())
-                    .or_insert_with(|| {
-                      let (min, max) = &blocks_changed[&pos];
-                      let mut out = Buffer::new(vec![]);
-                      out.write_varint(
-                        (max.x - min.x + 1) * (max.y - min.y + 1) * (max.z - min.z + 1),
-                      );
-                      for pos in min.to(*max) {
-                        out.write_u8((pos.chunk_rel_x() as u8) << 4 | pos.chunk_rel_z() as u8);
-                        out.write_u8(pos.y as u8);
-                        out.write_varint(
-                          self.block_converter.to_old(ty.id(), p.ver().block()) as i32
-                        );
-                      }
-                      out.into_inner()
-                    })
-                    .clone(),
-                ),
-                records_v1_16_2:           None,
-              })
-              .await;
+          }
+        } else {
+          // Map of block versions to multi block change records.
+          let mut records = HashMap::new();
+          for p in self.players().await.iter().in_view(pos) {
+            if p.ver() >= ProtocolVersion::V1_16_2 {
+              p.conn()
+                .send(cb::Packet::MultiBlockChange {
+                  chunk_x_removed_v1_16_2:   None,
+                  chunk_z_removed_v1_16_2:   None,
+                  // TODO: Section encoding. Looks like this: ((sectionX & 0x3FFFFF) << 42) |
+                  // (sectionY & 0xFFFFF) | ((sectionZ & 0x3FFFFF) << 20);
+                  chunk_coordinates_v1_16_2: Some(vec![]),
+                  not_trust_edges_v1_16_2:   Some(false),
+                  records_v1_8:              None,
+                  // TODO: 1.16 multi block change records
+                  records_v1_16_2:           Some(
+                    records
+                      .entry(p.ver().block())
+                      .or_insert_with(|| {
+                        // let changes = blocks_changed[pos];
+                        vec![]
+                      })
+                      .clone(),
+                  ),
+                })
+                .await;
+            } else {
+              p.conn()
+                .send(cb::Packet::MultiBlockChange {
+                  chunk_x_removed_v1_16_2:   Some(x),
+                  chunk_z_removed_v1_16_2:   Some(z),
+                  chunk_coordinates_v1_16_2: None,
+                  not_trust_edges_v1_16_2:   None,
+                  records_v1_8:              Some(
+                    records
+                      .entry(p.ver().block())
+                      .or_insert_with(|| {
+                        let mut out = Buffer::new(vec![]);
+                        out.write_varint(num_blocks_changed);
+                        for pos in min.to(*max) {
+                          out.write_u8((pos.chunk_rel_x() as u8) << 4 | pos.chunk_rel_z() as u8);
+                          out.write_u8(pos.y as u8);
+                          out.write_varint(
+                            self.block_converter.to_old(ty.id(), p.ver().block()) as i32
+                          );
+                        }
+                        out.into_inner()
+                      })
+                      .clone(),
+                  ),
+                  records_v1_16_2:           None,
+                })
+                .await;
+            }
           }
         }
       }
