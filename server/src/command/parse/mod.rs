@@ -1,9 +1,8 @@
 mod err;
 mod token;
-mod util;
 
-pub use err::{ParseError, Result};
-pub use token::Tokenizer;
+pub use err::{ErrorKind, ParseError, Result};
+pub use token::{Span, Tokenizer};
 
 use super::{Arg, Parser};
 
@@ -17,7 +16,7 @@ impl Parser {
         } else if w == "false" {
           Ok(Arg::Bool(false))
         } else {
-          Err(w.invalid("true or false"))
+          Err(w.expected("true or false"))
         }
       }
       _ => unimplemented!(),
@@ -170,10 +169,10 @@ mod tests {
     assert_eq!(Parser::Bool.parse(&mut Tokenizer::new("false"))?, Arg::Bool(false));
 
     let mut tok = Tokenizer::new("false true");
-    assert_eq!(Parser::Bool.parse(&mut tok), Ok(Arg::Bool(false)));
-    assert_eq!(Parser::Bool.parse(&mut tok), Ok(Arg::Bool(true)));
-    assert_eq!(Parser::Bool.parse(&mut tok), Err(ParseError::EOF));
-    assert_eq!(Parser::Bool.parse(&mut tok), Err(ParseError::EOF));
+    assert_eq!(Parser::Bool.parse(&mut tok).unwrap(), Arg::Bool(false));
+    assert_eq!(Parser::Bool.parse(&mut tok).unwrap(), Arg::Bool(true));
+    assert_eq!(Parser::Bool.parse(&mut tok).unwrap_err().kind(), &ErrorKind::EOF);
+    assert_eq!(Parser::Bool.parse(&mut tok).unwrap_err().kind(), &ErrorKind::EOF);
 
     // assert_eq!(Parser::Double { min: None, max: None }.parse("5.3")?,
     // (Arg::Double(5.3), 3)); assert_eq!(Parser::Double { min: None, max: None

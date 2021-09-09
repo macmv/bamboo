@@ -1,4 +1,4 @@
-use super::{ParseError, Result};
+use super::{ErrorKind, ParseError, Result};
 use std::{iter::Peekable, str::Chars};
 
 pub struct Tokenizer<'a> {
@@ -47,10 +47,10 @@ impl<'a> Tokenizer<'a> {
     let mut end = 0;
     if let Some(c) = self.peek_char() {
       if !c.is_ascii_alphabetic() {
-        return Err(ParseError::InvalidText(c.to_string(), "a letter".into()));
+        return Err(ParseError::new(Span::single(start), ErrorKind::Expected("a letter".into())));
       }
     } else {
-      return Err(ParseError::EOF);
+      return Err(ParseError::new(Span::single(self.char_pos), ErrorKind::EOF));
     }
     while let Some(c) = self.peek_char() {
       if !c.is_ascii_alphabetic() {
@@ -76,13 +76,10 @@ impl<'a> Tokenizer<'a> {
     let mut text = String::new();
     let start = self.char_pos;
     let mut end = 0;
-    if let Some(c) = self.peek_char() {
-      if !c.is_ascii_alphabetic() {
-        return Err(ParseError::InvalidText(c.to_string(), "a letter".into()));
-      }
-    } else {
-      return Err(ParseError::EOF);
+    if self.peek_char().is_none() {
+      return Err(ParseError::new(Span::single(self.char_pos - 1), ErrorKind::EOF));
     }
+    let mut valid = true;
     while let Some(c) = self.peek_char() {
       if c.is_whitespace() {
         end = self.char_pos;
@@ -90,23 +87,32 @@ impl<'a> Tokenizer<'a> {
         break;
       }
       if !c.is_ascii_alphabetic() {
-        return Err(ParseError::InvalidText(c.to_string(), "a letter".into()));
+        valid = false;
       }
       text.push(self.next_char().unwrap());
     }
-    if end == 0 {
+    let pos = if end == 0 {
       // Happens when we reach the end of the string
-      Ok(Word { text, pos: Span { start, end: self.char_pos } })
+      Span::new(start, self.char_pos)
     } else {
-      Ok(Word { text, pos: Span { start, end } })
+      Span::new(start, end)
+    };
+    if valid {
+      Ok(Word { pos, text })
+    } else {
+      Err(ParseError::new(pos, ErrorKind::Expected("a letter".into())))
     }
   }
 
   /// Checks for trailing characters. If there are any unread characters, this
   /// will return an error.
   pub fn check_trailing(&mut self) -> Result<()> {
-    if let Some(c) = self.peek_char() {
-      Err(ParseError::Trailing(self.text[self.byte_pos..].to_string()))
+    if let Some(_) = self.peek_char() {
+      let s = self.text[self.byte_pos..].to_string();
+      Err(ParseError::new(
+        Span::new(self.char_pos, self.char_pos + s.chars().count()),
+        ErrorKind::Expected(s),
+      ))
     } else {
       Ok(())
     }
@@ -120,8 +126,27 @@ impl PartialEq<&str> for Word {
 }
 
 impl Word {
-  pub fn invalid<R: Into<String>>(&self, reason: R) -> ParseError {
-    ParseError::InvalidText(self.text.clone(), reason.into())
+  /// Returns an error with the span covering this word. Use this when you get
+  /// an invalid keyword (such as a word that is isn't true or false).
+  pub fn expected<R: Into<String>>(&self, reason: R) -> ParseError {
+    ParseError::new(self.pos, ErrorKind::Expected(reason.into()))
+  }
+
+  /// Returns the position of this word.
+  pub fn pos(&self) -> Span {
+    self.pos
+  }
+}
+
+impl Span {
+  /// Creates a new span that wraps the text between the two indices. The
+  /// `start` is inclusive, and the `end` is exlusive.
+  pub fn new(start: usize, end: usize) -> Self {
+    Span { start, end }
+  }
+  /// Creates a span that wraps a single char at index `char_index`.
+  pub fn single(char_index: usize) -> Self {
+    Span { start: char_index, end: char_index + 1 }
   }
 }
 
@@ -147,9 +172,9 @@ mod tests {
       Ok(Word { text: "spaced".into(), pos: Span { start: 5, end: 11 } })
     );
     assert!(tok.check_trailing().is_ok());
-    assert_eq!(tok.read_spaced_word(), Err(ParseError::EOF));
+    assert_eq!(tok.read_spaced_word().unwrap_err().kind(), &ErrorKind::EOF);
     assert!(tok.check_trailing().is_ok());
-    assert_eq!(tok.read_spaced_word(), Err(ParseError::EOF));
+    assert_eq!(tok.read_spaced_word().unwrap_err().kind(), &ErrorKind::EOF);
     assert!(tok.check_trailing().is_ok());
   }
 }

@@ -22,7 +22,8 @@ mod reader;
 mod serialize;
 
 pub use enums::{Arg, Parser, StringType};
-pub use parse::{ParseError, Tokenizer};
+use parse::Span;
+pub use parse::{ErrorKind, ParseError, Tokenizer};
 
 use crate::{player::Player, world::WorldManager};
 use common::util::chat::{Chat, Color};
@@ -203,7 +204,7 @@ impl Command {
       }
     }
     if !self.children.is_empty() && out.len() == 1 {
-      Err(ParseError::NoChildren(errors))
+      Err(ParseError::new(Span::single(0), ErrorKind::NoChildren(errors)))
     } else {
       Ok(out)
     }
@@ -221,7 +222,7 @@ impl Command {
         if w == self.name.as_ref() {
           Ok(Arg::Literal(self.name.clone()))
         } else {
-          Err(ParseError::InvalidLiteral(self.name.clone()))
+          Err(ParseError::new(w.pos(), ErrorKind::InvalidLiteral))
         }
       }
       NodeType::Argument(p) => p.parse(tokens),

@@ -1,28 +1,55 @@
+use super::Span;
 use std::{error::Error, fmt};
 
 #[derive(Debug, PartialEq)]
-pub enum ParseError {
-  /// Used when a literal does not match
-  InvalidLiteral(String),
+pub struct ParseError {
+  kind: ErrorKind,
+  pos:  Span,
+}
+
+#[derive(Debug, PartialEq)]
+pub enum ErrorKind {
   /// Used when no children of the node matched
   NoChildren(Vec<ParseError>),
+  /// Used when a literal does not match
+  InvalidLiteral,
   /// Used when there are trailing characters after the command
-  Trailing(String),
+  Trailing,
   /// Used when the string ends early.
   EOF,
-  /// Used whenever a field does not match the given text.
-  /// Values are the text, and the expected value.
-  InvalidText(String, String),
+  /// Value is what was actually expected.
+  Expected(String),
   /// Used when a value is out of range
   Range(f64, Option<f64>, Option<f64>),
 }
 
 pub type Result<T> = std::result::Result<T, ParseError>;
 
+impl ParseError {
+  /// Creates a new pos error. This error will cover all the characters in
+  /// `pos`, and have the error message of the given `kind`.
+  pub fn new(pos: Span, kind: ErrorKind) -> Self {
+    ParseError { pos, kind }
+  }
+
+  /// Returns the error kind for this error.
+  pub fn kind(&self) -> &ErrorKind {
+    &self.kind
+  }
+  /// Returns the position of this this error.
+  pub fn pos(&self) -> Span {
+    self.pos
+  }
+}
+
 impl fmt::Display for ParseError {
   fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+    write!(f, "error at {}:{}: {}", self.pos.start, self.pos.end, self.kind)
+  }
+}
+impl fmt::Display for ErrorKind {
+  fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
     match self {
-      Self::InvalidLiteral(v) => write!(f, "invalid literal: {}", v),
       Self::NoChildren(errors) => {
         if errors.is_empty() {
           // No errors means print another error about no errors
@@ -39,10 +66,11 @@ impl fmt::Display for ParseError {
           write!(f, "]")
         }
       }
-      Self::Trailing(v) => write!(f, "trailing characters: {}", v),
-      Self::EOF => write!(f, "string ended early"),
-      Self::InvalidText(text, expected) => {
-        write!(f, "invalid text: {}. expected {}", text, expected)
+      Self::InvalidLiteral => write!(f, "invalid literal"),
+      Self::Trailing => write!(f, "trailing characters"),
+      Self::EOF => write!(f, "command ended early"),
+      Self::Expected(expected) => {
+        write!(f, "expected {}", expected)
       }
       Self::Range(v, min, max) => {
         if let (Some(min), Some(max)) = (min, max) {
