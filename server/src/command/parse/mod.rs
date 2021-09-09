@@ -2,16 +2,47 @@ mod err;
 mod token;
 
 pub use err::{ChildError, ErrorKind, ParseError, Result};
-pub use token::{Span, Tokenizer};
+pub use token::{Span, Tokenizer, Word};
 
 use super::{Arg, Parser, StringType};
-use std::fmt;
+use std::{fmt::Display, str::FromStr};
+
+pub fn parse_num<T>(w: &Word, min: &Option<T>, max: &Option<T>) -> Result<T>
+where
+  T: PartialOrd + FromStr + Copy + Display,
+{
+  match w.parse::<T>() {
+    Ok(num) => {
+      let mut invalid = false;
+      if let Some(min) = min {
+        if num < *min {
+          if let Some(max) = max {
+            return Err(w.expected(format!("a number between {} and {}", min, max)));
+          } else {
+            return Err(w.expected(format!("a number above {}", min)));
+          }
+        }
+      }
+      if let Some(max) = max {
+        if num > *max {
+          if let Some(min) = min {
+            return Err(w.expected(format!("a number between {} and {}", min, max)));
+          } else {
+            return Err(w.expected(format!("a number below {}", max)));
+          }
+        }
+      }
+      Ok(num)
+    }
+    Err(_) => Err(w.invalid()),
+  }
+}
 
 impl Parser {
   pub fn parse(&self, tokens: &mut Tokenizer) -> Result<Arg> {
     match self {
       Self::Bool => {
-        let w = tokens.read_word()?;
+        let w = tokens.read_spaced_word()?;
         if w == "true" {
           Ok(Arg::Bool(true))
         } else if w == "false" {
@@ -19,6 +50,21 @@ impl Parser {
         } else {
           Err(w.invalid())
         }
+      }
+      Self::Double { min, max } => {
+        let w = tokens.read_spaced_text()?;
+        let num = parse_num(&w, min, max)?;
+        Ok(Arg::Double(num))
+      }
+      Self::Float { min, max } => {
+        let w = tokens.read_spaced_text()?;
+        let num = parse_num(&w, min, max)?;
+        Ok(Arg::Float(num))
+      }
+      Self::Int { min, max } => {
+        let w = tokens.read_spaced_text()?;
+        let num = parse_num(&w, min, max)?;
+        Ok(Arg::Int(num))
       }
       _ => unimplemented!(),
       // Self::Double { min, max } => {

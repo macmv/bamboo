@@ -1,5 +1,5 @@
 use super::{ErrorKind, ParseError, Result};
-use std::{iter::Peekable, str::Chars};
+use std::{iter::Peekable, ops::Deref, str::Chars};
 
 #[derive(Clone)]
 pub struct Tokenizer<'a> {
@@ -110,6 +110,32 @@ impl<'a> Tokenizer<'a> {
       Err(ParseError::new(pos, ErrorKind::Expected("a letter".into())))
     }
   }
+  /// Reads a single non-alphabetic word. This must be terminated by a space.
+  /// There are no restrictions on what letters are valid in this region of
+  /// text.
+  pub fn read_spaced_text(&mut self) -> Result<Word> {
+    let mut text = String::new();
+    let start = self.pos;
+    let mut end = 0;
+    if self.peek_char().is_none() {
+      return Err(ParseError::new(Span::single(self.pos - 1), ErrorKind::EOF));
+    }
+    while let Some(c) = self.peek_char() {
+      if c.is_whitespace() {
+        end = self.pos;
+        self.next_char().unwrap();
+        break;
+      }
+      text.push(self.next_char().unwrap());
+    }
+    let pos = if end == 0 {
+      // Happens when we reach the end of the string
+      Span::new(start, self.pos)
+    } else {
+      Span::new(start, end)
+    };
+    Ok(Word { pos, text })
+  }
 
   /// Checks for trailing characters. If there are any unread characters, this
   /// will return an error.
@@ -126,6 +152,13 @@ impl<'a> Tokenizer<'a> {
 impl PartialEq<&str> for Word {
   fn eq(&self, text: &&str) -> bool {
     self.text == *text
+  }
+}
+impl Deref for Word {
+  type Target = str;
+
+  fn deref(&self) -> &Self::Target {
+    &self.text
   }
 }
 
