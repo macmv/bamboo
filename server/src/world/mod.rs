@@ -403,6 +403,12 @@ impl WorldManager {
     }
   }
 
+  /// Returns the default world. This can be used to easily get a world without
+  /// any other context.
+  pub async fn default_world(&self) -> Arc<World> {
+    self.worlds.lock().await[0].clone()
+  }
+
   /// Adds a new player into the game. This should be called when a new grpc
   /// proxy connects.
   pub async fn new_player(&self, req: Streaming<Packet>, tx: Sender<Result<Packet, Status>>) {

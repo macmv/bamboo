@@ -21,9 +21,9 @@ impl Error for PosError {}
 
 #[derive(Debug, Clone, Copy, Hash, PartialEq, Eq)]
 pub struct Pos {
-  x: i32,
-  y: i32,
-  z: i32,
+  pub x: i32,
+  pub y: i32,
+  pub z: i32,
 }
 
 impl fmt::Display for Pos {
@@ -274,6 +274,25 @@ impl Pos {
   /// ```
   pub fn max(&self, other: Pos) -> Pos {
     Pos::new(self.x.max(other.x), self.y.max(other.y), self.z.max(other.z))
+  }
+
+  /// Returns the minimum and maximum of each value of the three positions. The
+  /// first argument returned is the min, and the second argument returned is
+  /// the max.
+  ///
+  /// # Example
+  ///
+  /// ```
+  /// assert_eq!(
+  ///   Pos::new(1, 5, 6).min_max(Pos::new(3, 3, 3)),
+  ///   (Pos::new(1, 3, 3), Pos::new(3, 5, 6))
+  /// );
+  /// ```
+  pub fn min_max(&self, other: Pos) -> (Pos, Pos) {
+    (
+      Pos::new(self.x.min(other.x), self.y.min(other.y), self.z.min(other.z)),
+      Pos::new(self.x.max(other.x), self.y.max(other.y), self.z.max(other.z)),
+    )
   }
 }
 
