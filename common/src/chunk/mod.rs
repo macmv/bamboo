@@ -111,7 +111,7 @@ impl Chunk {
       return Ok(0);
     }
     match &self.sections[index] {
-      Some(s) => s.get_block(pos),
+      Some(s) => s.get_block(Pos::new(pos.x(), pos.chunk_rel_y(), pos.z())),
       None => unreachable!(),
     }
   }
