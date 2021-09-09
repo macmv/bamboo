@@ -84,7 +84,9 @@ impl<'a> Tokenizer<'a> {
     let start = self.pos;
     let mut end = 0;
     if self.peek_char().is_none() {
-      return Err(ParseError::new(Span::single(self.pos - 1), ErrorKind::EOF));
+      // We want EOF errors to be one letter past the last one, to make invalid last
+      // characters and EOFs underline different things.
+      return Err(ParseError::new(Span::single(self.pos), ErrorKind::EOF));
     }
     let mut valid = true;
     while let Some(c) = self.peek_char() {
@@ -118,7 +120,9 @@ impl<'a> Tokenizer<'a> {
     let start = self.pos;
     let mut end = 0;
     if self.peek_char().is_none() {
-      return Err(ParseError::new(Span::single(self.pos - 1), ErrorKind::EOF));
+      // We want EOF errors to be one letter past the last one, to make invalid last
+      // characters and EOFs underline different things.
+      return Err(ParseError::new(Span::single(self.pos), ErrorKind::EOF));
     }
     while let Some(c) = self.peek_char() {
       if c.is_whitespace() {
