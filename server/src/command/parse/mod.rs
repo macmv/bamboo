@@ -1,103 +1,13 @@
+mod err;
+mod util;
+
+pub use err::ParseError;
+use util::{parse_num, parse_word};
+
 use super::{enums::StringType, Arg, Parser};
 use crate::block;
 use common::math::Pos;
-use std::{collections::HashMap, error::Error, fmt, str::FromStr};
-
-#[derive(Debug, PartialEq)]
-pub enum ParseError {
-  /// Used when a literal does not match
-  InvalidLiteral(String),
-  /// Used when no children of the node matched
-  NoChildren(Vec<ParseError>),
-  /// Used when there are trailing characters after the command
-  Trailing(String),
-  /// Used when the string ends early.
-  EOF(Parser),
-  /// Used whenever a field does not match the given text.
-  /// Values are the text, and the expected value.
-  InvalidText(String, String),
-  /// Used when a value is out of range
-  Range(f64, Option<f64>, Option<f64>),
-}
-
-impl fmt::Display for ParseError {
-  fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-    match self {
-      Self::InvalidLiteral(v) => write!(f, "invalid literal: {}", v),
-      Self::NoChildren(errors) => {
-        if errors.is_empty() {
-          // No errors means print another error about no errors
-          write!(f, "no errors in no children error (should never happen)")
-        } else if errors.len() == 1 {
-          // A single error should just be printed as that error
-          write!(f, "{}", errors[0])
-        } else {
-          // Write all of the children in a row
-          writeln!(f, "no children matched: [")?;
-          for e in errors {
-            write!(f, "  {}", e)?;
-          }
-          write!(f, "]")
-        }
-      }
-      Self::Trailing(v) => write!(f, "trailing characters: {}", v),
-      Self::EOF(v) => write!(f, "string ended early while parsing: {:?}", v),
-      Self::InvalidText(text, expected) => {
-        write!(f, "invalid text: {}. expected {}", text, expected)
-      }
-      Self::Range(v, min, max) => {
-        if let (Some(min), Some(max)) = (min, max) {
-          write!(f, "{} is out of range {}..{}", v, min, max)
-        } else if let Some(min) = min {
-          write!(f, "{} is less than min {}", v, min)
-        } else if let Some(max) = max {
-          write!(f, "{} is greater than max {}", v, max)
-        } else {
-          write!(f, "{} is out of range none (should never happen)", v)
-        }
-      }
-    }
-  }
-}
-
-impl Error for ParseError {}
-
-fn parse_num<T>(
-  text: &str,
-  min: Option<T>,
-  max: Option<T>,
-  expected: &str,
-) -> Result<(T, usize), ParseError>
-where
-  T: PartialOrd + FromStr + Into<f64> + Copy,
-{
-  let section = &text[..text.find(' ').unwrap_or(text.len())];
-  match section.parse::<T>() {
-    Ok(v) => {
-      let mut invalid = false;
-      if let Some(min) = min {
-        if v < min {
-          invalid = true;
-        }
-      }
-      if let Some(max) = max {
-        if v > max {
-          invalid = true;
-        }
-      }
-      if invalid {
-        Err(ParseError::Range(v.into(), min.map(|v| v.into()), max.map(|v| v.into())))
-      } else {
-        Ok((v, section.len()))
-      }
-    }
-    Err(_) => Err(ParseError::InvalidText(text.into(), expected.into())),
-  }
-}
-
-fn parse_word(text: &str) -> String {
-  text[..text.find(' ').unwrap_or(text.len())].into()
-}
+use std::{collections::HashMap, str::FromStr};
 
 impl Parser {
   pub fn parse(&self, text: &str) -> Result<(Arg, usize), ParseError> {
@@ -123,7 +33,7 @@ impl Parser {
       Self::String(ty) => match ty {
         StringType::Word => {
           if text.is_empty() {
-            return Err(ParseError::EOF(self.clone()));
+            return Err(ParseError::EOF);
           }
           let word = parse_word(text);
           let len = word.len();
@@ -131,7 +41,7 @@ impl Parser {
         }
         StringType::Quotable => {
           if text.is_empty() {
-            return Err(ParseError::EOF(self.clone()));
+            return Err(ParseError::EOF);
           }
           let mut iter = text.chars();
           if iter.next().unwrap() == '"' {
