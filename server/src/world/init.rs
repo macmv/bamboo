@@ -43,31 +43,7 @@ impl World {
             let block = args[4].block();
             let (min, max) = min.min_max(max);
             let w = world.default_world().await;
-            for x in min.chunk_x()..=max.chunk_x() {
-              for z in min.chunk_z()..=max.chunk_z() {
-                w.chunk(ChunkPos::new(x, z), |mut c| {
-                  let mut min_x = 0;
-                  let mut min_z = 0;
-                  if min.chunk_x() == x {
-                    min_x = min.chunk_rel_x();
-                  }
-                  if min.chunk_z() == z {
-                    min_z = min.chunk_rel_z();
-                  }
-                  let mut max_x = 15;
-                  let mut max_z = 15;
-                  if max.chunk_x() == x {
-                    max_x = max.chunk_rel_x();
-                  }
-                  if max.chunk_z() == z {
-                    max_z = max.chunk_rel_z();
-                  }
-
-                  c.fill_kind(Pos::new(min_x, min.y, min_z), Pos::new(max_x, max.y, max_z), block)
-                    .unwrap();
-                });
-              }
-            }
+            w.fill_kind(min, max, block);
           }
           "circle" => {
             let pos = args[2].pos();

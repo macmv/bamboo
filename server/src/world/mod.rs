@@ -28,7 +28,7 @@ use common::{
     chat::{Chat, Color},
     UUID,
   },
-  version::BlockVersion,
+  version::{BlockVersion, ProtocolVersion},
 };
 
 use crate::{block, command::CommandTree, entity, item, net::Connection, player::Player, plugin};
@@ -320,6 +320,84 @@ impl World {
   /// world.
   pub async fn set_kind(&self, pos: Pos, kind: block::Kind) -> Result<(), PosError> {
     self.set_block(pos, self.block_converter.get(kind).default_type()).await
+  }
+
+  /// Fills the given region with the given block type. Min must be less than or
+  /// equal to max. Use [`min_max`](Pos::min_max) to convert two corners of a
+  /// cube into a min and max.
+  pub async fn fill(&self, min: Pos, max: Pos, ty: &block::Type) -> Result<(), PosError> {
+    // Small fills should just send a block update, instead of a multi block change.
+    if min == max {
+      return self.set_block(min, ty).await;
+    }
+    for x in min.chunk_x()..=max.chunk_x() {
+      for z in min.chunk_z()..=max.chunk_z() {
+        self.chunk(ChunkPos::new(x, z), |mut c| {
+          let mut min_x = 0;
+          let mut min_z = 0;
+          if min.chunk_x() == x {
+            min_x = min.chunk_rel_x();
+          }
+          if min.chunk_z() == z {
+            min_z = min.chunk_rel_z();
+          }
+          let mut max_x = 15;
+          let mut max_z = 15;
+          if max.chunk_x() == x {
+            max_x = max.chunk_rel_x();
+          }
+          if max.chunk_z() == z {
+            max_z = max.chunk_rel_z();
+          }
+
+          c.fill(Pos::new(min_x, min.y, min_z), Pos::new(max_x, max.y, max_z), ty)
+        })?;
+      }
+    }
+
+    for p in self.players().await.iter().in_view(pos.chunk()) {
+      for x in min.chunk_x()..=max.chunk_x() {
+        for z in min.chunk_z()..=max.chunk_z() {
+          if p.ver() >= ProtocolVersion::V1_16_2 {
+            let records = vec![];
+            p.conn()
+              .send(cb::Packet::MultiBlockChange {
+                chunk_x_removed_v1_16_2:   None,
+                chunk_z_removed_v1_16_2:   None,
+                // TODO: Section encoding. Looks like this: ((sectionX & 0x3FFFFF) << 42) |
+                // (sectionY & 0xFFFFF) | ((sectionZ & 0x3FFFFF) << 20);
+                chunk_coordinates_v1_16_2: Some(vec![]),
+                not_trust_edges_v1_16_2:   Some(false),
+                records_v1_8:              None,
+                // TODO: 1.16 multi block change records
+                records_v1_16_2:           Some(records),
+              })
+              .await;
+          } else {
+            let mut records = vec![];
+            p.conn()
+              .send(cb::Packet::MultiBlockChange {
+                chunk_x_removed_v1_16_2:   Some(x),
+                chunk_z_removed_v1_16_2:   Some(z),
+                chunk_coordinates_v1_16_2: None,
+                not_trust_edges_v1_16_2:   None,
+                records_v1_8:              Some(records),
+                records_v1_16_2:           None,
+              })
+              .await;
+          }
+        }
+      }
+    }
+
+    Ok(())
+  }
+
+  /// Fills the given region with the default type for the block kind. Min must
+  /// be less than or equal to max. Use [`min_max`](Pos::min_max) to convert two
+  /// corners of a cube into a min and max.
+  pub async fn fill_kind(&self, min: Pos, max: Pos, kind: block::Kind) -> Result<(), PosError> {
+    self.fill(min, max, self.block_converter.get(kind).default_type()).await
   }
 
   /// This broadcasts a chat message to everybody in the world.

@@ -45,6 +45,11 @@ impl MultiChunk {
   ///
   /// Since multi chunks always store a fixed chunk and a paletted chunk, this
   /// will always be faster than calling set_type in a loop.
+  ///
+  /// WARNING: This will not send any packets to players! This function is meant
+  /// for use by the world directly, or during use terrain generation. If you
+  /// call this function without sending any updates yourself, no one in render
+  /// distance will see any of these changes!
   pub fn fill(&mut self, min: Pos, max: Pos, ty: &block::Type) -> Result<(), PosError> {
     self.fixed.fill(min, max, self.types.to_old(ty.id(), BlockVersion::V1_8))?;
     self.paletted.fill(min, max, ty.id())?;
@@ -53,6 +58,11 @@ impl MultiChunk {
 
   /// This is the same as [`fill`](Self::fill), but it converts the block kind
   /// to it's default type.
+  ///
+  /// WARNING: This will not send any packets to players! This function is meant
+  /// for use by the world directly, or during use terrain generation. If you
+  /// call this function without sending any updates yourself, no one in render
+  /// distance will see any of these changes!
   pub fn fill_kind(&mut self, min: Pos, max: Pos, kind: block::Kind) -> Result<(), PosError> {
     self.fixed.fill(
       min,
