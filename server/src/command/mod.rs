@@ -188,6 +188,7 @@ impl Command {
     // }
     let mut out = vec![arg];
     let mut errors = vec![];
+    let mut is_eof = true;
     for c in &self.children {
       match c.parse_inner(tokens) {
         Ok(v) => {
@@ -195,12 +196,21 @@ impl Command {
           break;
         }
         Err(e) => {
+          match e.kind() {
+            ErrorKind::EOF => {}
+            _ => is_eof = false,
+          }
           errors.push(e);
         }
       }
     }
     if !self.children.is_empty() && out.len() == 1 {
-      Err(ParseError::new(Span::single(0), ErrorKind::NoChildren(errors)))
+      // All errors are EOF errors, so none of the children matched a valid command
+      if is_eof {
+        Err(errors.pop().unwrap())
+      } else {
+        Err(ParseError::new(Span::single(0), ErrorKind::NoChildren(errors)))
+      }
     } else {
       Ok(out)
     }
