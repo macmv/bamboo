@@ -89,7 +89,7 @@ impl TypeConverter {
   }
 
   /// Gets a block type from the given id.
-  pub fn type_from_id(&self, mut id: u32, ver: BlockVersion) -> &Type {
+  pub fn type_from_id(&self, mut id: u32, ver: BlockVersion) -> Type {
     if ver != BlockVersion::latest() {
       id = self.to_latest(id, ver);
     }
@@ -98,7 +98,7 @@ impl TypeConverter {
     let data = self.get(kind);
     let first_id = data.types[0].state;
     let offset = first_id - id;
-    &data.types[offset as usize]
+    data.types[offset as usize]
   }
 
   /// Gets a block kind from the given id.

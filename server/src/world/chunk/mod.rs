@@ -33,9 +33,21 @@ impl MultiChunk {
   /// Sets a block within this chunk. p.x and p.z must be within 0..16. If the
   /// server is only running on 1.17, then p.y needs to be within the world
   /// height (whatever that may be). Otherwise, p.y must be within 0..256.
-  pub fn set_type(&mut self, p: Pos, ty: &block::Type) -> Result<(), PosError> {
+  pub fn set_type(&mut self, p: Pos, ty: block::Type) -> Result<(), PosError> {
     self.fixed.set_block(p, self.types.to_old(ty.id(), BlockVersion::V1_8))?;
     self.paletted.set_block(p, ty.id())?;
+    Ok(())
+  }
+
+  /// Sets a block within this chunk. This is the same as
+  /// [`set_type`](Self::set_type), but it uses a kind instead of a type. This
+  /// will use the default type of the given kind.
+  pub fn set_kind(&mut self, p: Pos, kind: block::Kind) -> Result<(), PosError> {
+    self.fixed.set_block(
+      p,
+      self.types.to_old(self.types.get(kind).default_type().id(), BlockVersion::V1_8),
+    )?;
+    self.paletted.set_block(p, self.types.get(kind).default_type().id())?;
     Ok(())
   }
 
@@ -50,7 +62,7 @@ impl MultiChunk {
   /// for use by the world directly, or during use terrain generation. If you
   /// call this function without sending any updates yourself, no one in render
   /// distance will see any of these changes!
-  pub fn fill(&mut self, min: Pos, max: Pos, ty: &block::Type) -> Result<(), PosError> {
+  pub fn fill(&mut self, min: Pos, max: Pos, ty: block::Type) -> Result<(), PosError> {
     self.fixed.fill(min, max, self.types.to_old(ty.id(), BlockVersion::V1_8))?;
     self.paletted.fill(min, max, ty.id())?;
     Ok(())
@@ -73,27 +85,19 @@ impl MultiChunk {
     Ok(())
   }
 
-  /// Sets a block within this chunk. This is the same as
-  /// [`set_type`](Self::set_type), but it uses a kind instead of a type. This
-  /// will use the default type of the given kind.
-  pub fn set_kind(&mut self, p: Pos, kind: block::Kind) -> Result<(), PosError> {
-    self.fixed.set_block(
-      p,
-      self.types.to_old(self.types.get(kind).default_type().id(), BlockVersion::V1_8),
-    )?;
-    self.paletted.set_block(p, self.types.get(kind).default_type().id())?;
-    Ok(())
+  /// Gets the type of a block within this chunk. Pos must be within the chunk.
+  /// See [`set_kind`](Self::set_kind) for more.
+  ///
+  /// This returns a specific block type. If you only need to block kind, prefer
+  /// [`get_kind`](Self::get_kind)
+  pub fn get_type(&self, p: Pos) -> Result<block::Type, PosError> {
+    Ok(self.types.type_from_id(self.paletted.get_block(p)?, BlockVersion::V1_16))
   }
 
   /// Gets the type of a block within this chunk. Pos must be within the chunk.
   /// See [`set_block`](Self::set_block) for more.
-  ///
-  /// This will return a blockid. This block id is from the primary version of
-  /// this chunk. That can be known by calling [`primary`](Self::primary). It
-  /// will usually be the latest version that this server supports. Regardless
-  /// of what it is, this should be handled within the World.
-  pub fn get_block(&self, p: Pos) -> Result<u32, PosError> {
-    self.paletted.get_block(p)
+  pub fn get_kind(&self, p: Pos) -> Result<block::Kind, PosError> {
+    Ok(self.types.kind_from_id(self.paletted.get_block(p)?, BlockVersion::V1_16))
   }
 
   /// Generates a protobuf for the given version. The proto's X and Z

@@ -301,7 +301,7 @@ impl World {
   /// position is outside of the world. Unlike
   /// [`MultiChunk::set_type`](chunk::MultiChunk::set_type), this will send
   /// packets to anyone within render distance of the given chunk.
-  pub async fn set_block(&self, pos: Pos, ty: &block::Type) -> Result<(), PosError> {
+  pub async fn set_block(&self, pos: Pos, ty: block::Type) -> Result<(), PosError> {
     self.chunk(pos.chunk(), |mut c| c.set_type(pos.chunk_rel(), ty))?;
 
     for p in self.players().await.iter().in_view(pos.chunk()) {
@@ -325,7 +325,7 @@ impl World {
   /// Fills the given region with the given block type. Min must be less than or
   /// equal to max. Use [`min_max`](Pos::min_max) to convert two corners of a
   /// cube into a min and max.
-  pub async fn fill(&self, min: Pos, max: Pos, ty: &block::Type) -> Result<(), PosError> {
+  pub async fn fill(&self, min: Pos, max: Pos, ty: block::Type) -> Result<(), PosError> {
     // Small fills should just send a block update, instead of a multi block change.
     if min == max {
       return self.set_block(min, ty).await;
@@ -355,7 +355,7 @@ impl World {
           for x in min_x..=max_x {
             for y in min.y..=max.y {
               for z in min_z..=max_z {
-                changes.push(c.get_block(Pos::new(x, y, z)));
+                changes.push(c.get_type(Pos::new(x, y, z)));
               }
             }
           }

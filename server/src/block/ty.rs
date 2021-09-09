@@ -4,7 +4,7 @@ use std::{error::Error, fmt, str::FromStr};
 /// A single block type. This is different from a block kind, which is more
 /// general. For example, there is one block kind for oak stairs. However, there
 /// are 32 types for an oak stair, based on it's state (rotation, in this case).
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Type {
   pub(super) kind:  Kind,
   pub(super) state: u32,
@@ -15,8 +15,8 @@ impl Type {
   pub fn kind(&self) -> &Kind {
     &self.kind
   }
-  /// Gets the block id for the given version. This will always be the latest
-  /// blockstate id.
+  /// Gets the block id of this type. This id is for the latest version of the
+  /// game.
   pub fn id(&self) -> u32 {
     self.state
   }
@@ -66,8 +66,8 @@ impl Data {
   /// like stairs or doors, the type that should be placed must be computed when
   /// they place the block, as things like their position/rotation affect which
   /// block gets placed.
-  pub fn default_type(&self) -> &Type {
-    &self.types[self.default_index as usize]
+  pub fn default_type(&self) -> Type {
+    self.types[self.default_index as usize]
   }
 }
 
