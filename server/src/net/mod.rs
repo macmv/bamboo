@@ -77,7 +77,7 @@ impl Connection {
           if message.chars().next() == Some('/') {
             let mut chars = message.chars();
             chars.next().unwrap();
-            player.world().get_commands().execute(&wm, &player, chars.as_str()).await;
+            player.world().get_commands().execute(wm.clone(), player.clone(), chars.as_str()).await;
           } else {
             let mut msg = Chat::empty();
             msg.add("<");

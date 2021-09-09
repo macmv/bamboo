@@ -27,11 +27,11 @@ pub use parse::ParseError;
 use crate::{player::Player, world::WorldManager};
 use common::util::chat::{Chat, Color};
 use reader::CommandReader;
-use std::{collections::HashMap, future::Future, pin::Pin};
+use std::{collections::HashMap, future::Future, pin::Pin, sync::Arc};
 use tokio::sync::Mutex;
 
 type Handler = Box<
-  dyn Fn(&WorldManager, &Command) -> Pin<Box<dyn Future<Output = ()> + Send + 'static>>
+  dyn Fn(Arc<WorldManager>, Vec<Arg>) -> Pin<Box<dyn Future<Output = ()> + Send + 'static>>
     + Send
     + Sync,
 >;
@@ -55,7 +55,7 @@ impl CommandTree {
   /// include the command syntax/description.
   pub async fn add<F, Fut>(&self, c: Command, handler: F)
   where
-    F: (Fn(&WorldManager, &Command) -> Fut) + Send + Sync + 'static,
+    F: (Fn(Arc<WorldManager>, Vec<Arg>) -> Fut) + Send + Sync + 'static,
     Fut: Future<Output = ()> + Send + 'static,
   {
     self.commands.lock().await.insert(
@@ -66,7 +66,7 @@ impl CommandTree {
   /// Called whenever a command should be executed. This can also be used to act
   /// like a player sent a command, even if they didn't. The text passed in
   /// should not contain a `/` at the start.
-  pub async fn execute(&self, world: &WorldManager, player: &Player, text: &str) {
+  pub async fn execute(&self, world: Arc<WorldManager>, player: Arc<Player>, text: &str) {
     let mut reader = CommandReader::new(text);
     let commands = self.commands.lock().await;
     let (command, handler) = match &commands.get(&reader.word(StringType::Word).unwrap()) {
@@ -80,7 +80,18 @@ impl CommandTree {
         return;
       }
     };
-    handler(world, command).await;
+    let args = match command.parse(text) {
+      Ok(v) => v,
+      Err(e) => {
+        let mut msg = Chat::empty();
+        msg.add(""); // Makes the default color white
+        msg.add("Invalid command: ").color(Color::Red);
+        msg.add(e.to_string());
+        player.send_message(&msg).await;
+        return;
+      }
+    };
+    handler(world, args).await;
   }
 }
 

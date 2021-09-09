@@ -18,7 +18,7 @@ impl World {
     c.add_arg("text", Parser::String(StringType::Greedy));
     self
       .get_commands()
-      .add(c, |world, _| async {
+      .add(c, |world, _| async move {
         world.broadcast("[Server] big announce").await;
       })
       .await;
@@ -34,7 +34,7 @@ impl World {
       .add_arg("block", Parser::BlockState);
     self
       .get_commands()
-      .add(c, |world, _| async {
+      .add(c, |world, _| async move {
         world.broadcast("called /fill").await;
       })
       .await;
