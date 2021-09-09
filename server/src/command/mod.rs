@@ -209,16 +209,22 @@ impl Command {
             errors.push((e.clone(), c.clone()));
             // match
           }
-          dbg!(e, depth);
-          dbg!(deepest_error);
         }
       }
     }
-    dbg!(&errors);
     if !self.children.is_empty() && out.len() == 1 {
       if errors.len() == 1 {
-        let (err, _) = errors.pop().unwrap();
-        Err((err, deepest_error + 1))
+        let (err, node) = errors.pop().unwrap();
+        match err.kind() {
+          ErrorKind::EOF => Err((
+            ParseError::new(
+              err.pos(),
+              ErrorKind::Expected(format!("expected {}", node.to_child_error())),
+            ),
+            deepest_error + 1,
+          )),
+          _ => Err((err, deepest_error + 1)),
+        }
       } else {
         let mut err_span = None;
         for (e, _) in &errors {
@@ -234,22 +240,21 @@ impl Command {
         Err((
           ParseError::new(
             err_span.unwrap(),
-            ErrorKind::NoChildren(
-              errors
-                .iter()
-                .map(|(_, node)| match &node.ty {
-                  NodeType::Root => unreachable!(),
-                  NodeType::Literal => ChildError::Expected(node.name.clone()),
-                  NodeType::Argument(p) => ChildError::Invalid(p.clone()),
-                })
-                .collect(),
-            ),
+            ErrorKind::NoChildren(errors.iter().map(|(_, node)| node.to_child_error()).collect()),
           ),
           deepest_error + 1,
         ))
       }
     } else {
       Ok(out)
+    }
+  }
+
+  fn to_child_error(&self) -> ChildError {
+    match &self.ty {
+      NodeType::Root => unreachable!(),
+      NodeType::Literal => ChildError::Expected(self.name.clone()),
+      NodeType::Argument(p) => ChildError::Invalid(p.clone()),
     }
   }
   /// Tries to parse the current argument with the given text. This will ignore

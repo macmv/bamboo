@@ -25,7 +25,6 @@ impl World {
 
     let mut c = Command::new("fill");
     c.add_lit("rect")
-      .add_arg("arg", Parser::Double { min: None, max: Some(5.0) })
       .add_arg("min", Parser::BlockPos)
       .add_arg("max", Parser::BlockPos)
       .add_arg("block", Parser::BlockState);

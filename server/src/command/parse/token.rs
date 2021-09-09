@@ -181,6 +181,11 @@ impl Word {
   pub fn pos(&self) -> Span {
     self.pos
   }
+
+  /// Upates the internal text of this word, without changing the span.
+  pub fn set_text(&mut self, new_text: String) {
+    self.text = new_text;
+  }
 }
 
 impl Span {

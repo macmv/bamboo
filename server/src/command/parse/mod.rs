@@ -5,6 +5,7 @@ pub use err::{ChildError, ErrorKind, ParseError, Result};
 pub use token::{Span, Tokenizer, Word};
 
 use super::{Arg, Parser, StringType};
+use common::math::Pos;
 use std::{fmt::Display, str::FromStr};
 
 pub fn parse_num<T>(w: &Word, min: &Option<T>, max: &Option<T>) -> Result<T>
@@ -66,142 +67,155 @@ impl Parser {
         let num = parse_num(&w, min, max)?;
         Ok(Arg::Int(num))
       }
+      Self::BlockPos => {
+        let mut w = tokens.read_spaced_text()?;
+        let x_rel = w.starts_with("~");
+        if x_rel {
+          w.set_text(w[1..].to_string());
+        }
+        let x = parse_num(&w, &None, &None)?;
+        let mut w = tokens.read_spaced_text()?;
+        let y_rel = w.starts_with("~");
+        if y_rel {
+          w.set_text(w[1..].to_string());
+        }
+        let y = parse_num(&w, &None, &None)?;
+        let mut w = tokens.read_spaced_text()?;
+        let z_rel = w.starts_with("~");
+        if z_rel {
+          w.set_text(w[1..].to_string());
+        }
+        let z = parse_num(&w, &None, &None)?;
+
+        Ok(Arg::BlockPos(Pos::new(x, y, z)))
+      }
       _ => unimplemented!(),
-      // Self::Double { min, max } => {
-      //   parse_num(text, *min, *max, "a double").map(|(num, len)| (Arg::Double(num), len))
-      // }
-      // Self::Float { min, max } => {
-      //   parse_num(text, *min, *max, "a float").map(|(num, len)| (Arg::Float(num), len))
-      // }
-      // Self::Int { min, max } => {
-      //   parse_num(text, *min, *max, "an int").map(|(num, len)| (Arg::Int(num), len))
-      // }
-      // Self::String(ty) => match ty {
-      //   StringType::Word => {
-      //     if text.is_empty() {
-      //       return Err(ParseError::EOF);
-      //     }
-      //     let word = parse_word(text);
-      //     let len = word.len();
-      //     Ok((Arg::String(word), len))
-      //   }
-      //   StringType::Quotable => {
-      //     if text.is_empty() {
-      //       return Err(ParseError::EOF);
-      //     }
-      //     let mut iter = text.chars();
-      //     if iter.next().unwrap() == '"' {
-      //       let mut escaping = false;
-      //       let mut index = 1;
-      //       let mut out = String::new();
-      //       for c in iter {
-      //         if escaping {
-      //           if c == '"' || c == '\\' {
-      //             out.push(c);
-      //           } else {
-      //             return Err(ParseError::InvalidText(
-      //               text.into(),
-      //               "a valid escape character".into(),
-      //             ));
-      //           }
-      //           escaping = false;
-      //         } else {
-      //           if c == '"' {
-      //             break;
-      //           } else if c == '\\' {
-      //             escaping = true;
-      //           } else {
-      //             out.push(c);
-      //           }
-      //         }
-      //         index += 1;
-      //       }
-      //       // Add 1 so that the ending quote is removed
-      //       Ok((Arg::String(out), index + 1))
-      //     } else {
-      //       let mut index = 1;
-      //       for c in iter {
-      //         if c == ' ' {
-      //           break;
-      //         }
-      //         index += 1;
-      //       }
-      //       Ok((Arg::String(text[0..index].into()), index))
-      //     }
-      //   }
-      //   StringType::Greedy => Ok((Arg::String(text.into()), text.len())),
-      // },
-      // Self::Entity { single: _, players: _ } => Ok((Arg::Int(5), 1)),
-      // Self::ScoreHolder { multiple: _ } => Ok((Arg::Int(5), 1)),
-      // Self::GameProfile => Ok((Arg::Int(5), 1)),
-      // Self::BlockPos => {
-      //   let sections: Vec<&str> = text.split(' ').collect();
-      //   if sections.len() < 3 {
-      //     return Err(ParseError::InvalidText(text.into(), "a block position".into()));
-      //   }
-      //   let x = sections[0]
-      //     .parse()
-      //     .map_err(|_| ParseError::InvalidText(text.into(), "a valid block position".into()))?;
-      //   let y = sections[1]
-      //     .parse()
-      //     .map_err(|_| ParseError::InvalidText(text.into(), "a valid block position".into()))?;
-      //   let z = sections[2]
-      //     .parse()
-      //     .map_err(|_| ParseError::InvalidText(text.into(), "a valid block position".into()))?;
-      //   Ok((
-      //     Arg::BlockPos(Pos::new(x, y, z)),
-      //     sections[0].len() + sections[1].len() + sections[2].len() + 2,
-      //   ))
-      // }
-      // Self::ColumnPos => Ok((Arg::Int(5), 1)),
-      // Self::Vec3 => Ok((Arg::Int(5), 1)),
-      // Self::Vec2 => Ok((Arg::Int(5), 1)),
-      // Self::BlockState => {
-      //   let word = parse_word(text);
-      //   Ok((
-      //     Arg::BlockState(
-      //       block::Kind::from_str(&word)
-      //         .map_err(|_| ParseError::InvalidText(text.into(), "a valid block name".into()))?,
-      //       HashMap::new(),
-      //       None,
-      //     ),
-      //     word.len(),
-      //   ))
-      // }
-      // Self::BlockPredicate => Ok((Arg::Int(5), 1)),
-      // Self::ItemStack => Ok((Arg::Int(5), 1)),
-      // Self::ItemPredicate => Ok((Arg::Int(5), 1)),
-      // Self::Color => Ok((Arg::Int(5), 1)),
-      // Self::Component => Ok((Arg::Int(5), 1)),
-      // Self::Message => Ok((Arg::Int(5), 1)),
-      // Self::Nbt => Ok((Arg::Int(5), 1)),
-      // Self::NbtPath => Ok((Arg::Int(5), 1)),
-      // Self::Objective => Ok((Arg::Int(5), 1)),
-      // Self::ObjectiveCriteria => Ok((Arg::Int(5), 1)),
-      // Self::Operation => Ok((Arg::Int(5), 1)),
-      // Self::Particle => Ok((Arg::Int(5), 1)),
-      // Self::Rotation => Ok((Arg::Int(5), 1)),
-      // Self::Angle => Ok((Arg::Int(5), 1)),
-      // Self::ScoreboardSlot => Ok((Arg::Int(5), 1)),
-      // Self::Swizzle => Ok((Arg::Int(5), 1)),
-      // Self::Team => Ok((Arg::Int(5), 1)),
-      // Self::ItemSlot => Ok((Arg::Int(5), 1)),
-      // Self::ResourceLocation => Ok((Arg::Int(5), 1)),
-      // Self::MobEffect => Ok((Arg::Int(5), 1)),
-      // Self::Function => Ok((Arg::Int(5), 1)),
-      // Self::EntityAnchor => Ok((Arg::Int(5), 1)),
-      // Self::Range { decimals: _bool } => Ok((Arg::Int(5), 1)),
-      // Self::IntRange => Ok((Arg::Int(5), 1)),
-      // Self::FloatRange => Ok((Arg::Int(5), 1)),
-      // Self::ItemEnchantment => Ok((Arg::Int(5), 1)),
-      // Self::EntitySummon => Ok((Arg::Int(5), 1)),
-      // Self::Dimension => Ok((Arg::Int(5), 1)),
-      // Self::Uuid => Ok((Arg::Int(5), 1)),
-      // Self::NbtTag => Ok((Arg::Int(5), 1)),
-      // Self::NbtCompoundTag => Ok((Arg::Int(5), 1)),
-      // Self::Time => Ok((Arg::Int(5), 1)),
-      // Self::Modid => Ok((Arg::Int(5), 1)),
-      // Self::Enum => Ok((Arg::Int(5), 1)),
+      /* Self::String(ty) => match ty {
+       *   StringType::Word => {
+       *     if text.is_empty() {
+       *       return Err(ParseError::EOF);
+       *     }
+       *     let word = parse_word(text);
+       *     let len = word.len();
+       *     Ok((Arg::String(word), len))
+       *   }
+       *   StringType::Quotable => {
+       *     if text.is_empty() {
+       *       return Err(ParseError::EOF);
+       *     }
+       *     let mut iter = text.chars();
+       *     if iter.next().unwrap() == '"' {
+       *       let mut escaping = false;
+       *       let mut index = 1;
+       *       let mut out = String::new();
+       *       for c in iter {
+       *         if escaping {
+       *           if c == '"' || c == '\\' {
+       *             out.push(c);
+       *           } else {
+       *             return Err(ParseError::InvalidText(
+       *               text.into(),
+       *               "a valid escape character".into(),
+       *             ));
+       *           }
+       *           escaping = false;
+       *         } else {
+       *           if c == '"' {
+       *             break;
+       *           } else if c == '\\' {
+       *             escaping = true;
+       *           } else {
+       *             out.push(c);
+       *           }
+       *         }
+       *         index += 1;
+       *       }
+       *       // Add 1 so that the ending quote is removed
+       *       Ok((Arg::String(out), index + 1))
+       *     } else {
+       *       let mut index = 1;
+       *       for c in iter {
+       *         if c == ' ' {
+       *           break;
+       *         }
+       *         index += 1;
+       *       }
+       *       Ok((Arg::String(text[0..index].into()), index))
+       *     }
+       *   }
+       *   StringType::Greedy => Ok((Arg::String(text.into()), text.len())),
+       * },
+       * Self::Entity { single: _, players: _ } => Ok((Arg::Int(5), 1)),
+       * Self::ScoreHolder { multiple: _ } => Ok((Arg::Int(5), 1)),
+       * Self::GameProfile => Ok((Arg::Int(5), 1)),
+       * Self::BlockPos => {
+       *   let sections: Vec<&str> = text.split(' ').collect();
+       *   if sections.len() < 3 {
+       *     return Err(ParseError::InvalidText(text.into(), "a block position".into()));
+       *   }
+       *   let x = sections[0]
+       *     .parse()
+       *     .map_err(|_| ParseError::InvalidText(text.into(), "a valid block
+       * position".into()))?;   let y = sections[1]
+       *     .parse()
+       *     .map_err(|_| ParseError::InvalidText(text.into(), "a valid block
+       * position".into()))?;   let z = sections[2]
+       *     .parse()
+       *     .map_err(|_| ParseError::InvalidText(text.into(), "a valid block
+       * position".into()))?;   Ok((
+       *     Arg::BlockPos(Pos::new(x, y, z)),
+       *     sections[0].len() + sections[1].len() + sections[2].len() + 2,
+       *   ))
+       * }
+       * Self::ColumnPos => Ok((Arg::Int(5), 1)),
+       * Self::Vec3 => Ok((Arg::Int(5), 1)),
+       * Self::Vec2 => Ok((Arg::Int(5), 1)),
+       * Self::BlockState => {
+       *   let word = parse_word(text);
+       *   Ok((
+       *     Arg::BlockState(
+       *       block::Kind::from_str(&word)
+       *         .map_err(|_| ParseError::InvalidText(text.into(), "a valid block
+       * name".into()))?,       HashMap::new(),
+       *       None,
+       *     ),
+       *     word.len(),
+       *   ))
+       * }
+       * Self::BlockPredicate => Ok((Arg::Int(5), 1)),
+       * Self::ItemStack => Ok((Arg::Int(5), 1)),
+       * Self::ItemPredicate => Ok((Arg::Int(5), 1)),
+       * Self::Color => Ok((Arg::Int(5), 1)),
+       * Self::Component => Ok((Arg::Int(5), 1)),
+       * Self::Message => Ok((Arg::Int(5), 1)),
+       * Self::Nbt => Ok((Arg::Int(5), 1)),
+       * Self::NbtPath => Ok((Arg::Int(5), 1)),
+       * Self::Objective => Ok((Arg::Int(5), 1)),
+       * Self::ObjectiveCriteria => Ok((Arg::Int(5), 1)),
+       * Self::Operation => Ok((Arg::Int(5), 1)),
+       * Self::Particle => Ok((Arg::Int(5), 1)),
+       * Self::Rotation => Ok((Arg::Int(5), 1)),
+       * Self::Angle => Ok((Arg::Int(5), 1)),
+       * Self::ScoreboardSlot => Ok((Arg::Int(5), 1)),
+       * Self::Swizzle => Ok((Arg::Int(5), 1)),
+       * Self::Team => Ok((Arg::Int(5), 1)),
+       * Self::ItemSlot => Ok((Arg::Int(5), 1)),
+       * Self::ResourceLocation => Ok((Arg::Int(5), 1)),
+       * Self::MobEffect => Ok((Arg::Int(5), 1)),
+       * Self::Function => Ok((Arg::Int(5), 1)),
+       * Self::EntityAnchor => Ok((Arg::Int(5), 1)),
+       * Self::Range { decimals: _bool } => Ok((Arg::Int(5), 1)),
+       * Self::IntRange => Ok((Arg::Int(5), 1)),
+       * Self::FloatRange => Ok((Arg::Int(5), 1)),
+       * Self::ItemEnchantment => Ok((Arg::Int(5), 1)),
+       * Self::EntitySummon => Ok((Arg::Int(5), 1)),
+       * Self::Dimension => Ok((Arg::Int(5), 1)),
+       * Self::Uuid => Ok((Arg::Int(5), 1)),
+       * Self::NbtTag => Ok((Arg::Int(5), 1)),
+       * Self::NbtCompoundTag => Ok((Arg::Int(5), 1)),
+       * Self::Time => Ok((Arg::Int(5), 1)),
+       * Self::Modid => Ok((Arg::Int(5), 1)),
+       * Self::Enum => Ok((Arg::Int(5), 1)), */
     }
   }
 
