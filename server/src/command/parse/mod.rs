@@ -167,12 +167,10 @@ mod tests {
   fn parse_types() -> Result<()> {
     assert_eq!(Parser::Bool.parse(&mut Tokenizer::new("true"))?, Arg::Bool(true));
     assert_eq!(Parser::Bool.parse(&mut Tokenizer::new("false"))?, Arg::Bool(false));
-
-    let mut tok = Tokenizer::new("false true");
-    assert_eq!(Parser::Bool.parse(&mut tok).unwrap(), Arg::Bool(false));
-    assert_eq!(Parser::Bool.parse(&mut tok).unwrap(), Arg::Bool(true));
-    assert_eq!(Parser::Bool.parse(&mut tok).unwrap_err().kind(), &ErrorKind::EOF);
-    assert_eq!(Parser::Bool.parse(&mut tok).unwrap_err().kind(), &ErrorKind::EOF);
+    assert_eq!(
+      Parser::Bool.parse(&mut Tokenizer::new("invalid")).unwrap_err().kind(),
+      &ErrorKind::Expected("true or false".into())
+    );
 
     // assert_eq!(Parser::Double { min: None, max: None }.parse("5.3")?,
     // (Arg::Double(5.3), 3)); assert_eq!(Parser::Double { min: None, max: None

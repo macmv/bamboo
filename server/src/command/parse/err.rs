@@ -1,4 +1,5 @@
 use super::Span;
+use common::util::{chat::Color, Chat};
 use std::{error::Error, fmt};
 
 #[derive(Debug, PartialEq)]
@@ -39,6 +40,14 @@ impl ParseError {
   /// Returns the position of this this error.
   pub fn pos(&self) -> Span {
     self.pos
+  }
+
+  /// Generates a chat message from the error. This should be sent directly to
+  /// the client without any additional formatting.
+  pub fn to_chat(&self, text: &str) -> Chat {
+    let mut out = Chat::new("");
+    out.add("Invalid command: ").color(Color::Red);
+    out
   }
 }
 

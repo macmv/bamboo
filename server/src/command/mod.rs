@@ -84,11 +84,7 @@ impl CommandTree {
     let args = match command.parse(text) {
       Ok(v) => v,
       Err(e) => {
-        let mut msg = Chat::empty();
-        msg.add(""); // Makes the default color white
-        msg.add("Invalid command: ").color(Color::Red);
-        msg.add(e.to_string());
-        player.send_message(&msg).await;
+        player.send_message(&e.to_chat(text)).await;
         return;
       }
     };

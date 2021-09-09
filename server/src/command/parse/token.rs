@@ -155,7 +155,7 @@ mod tests {
   use super::*;
 
   #[test]
-  fn parse_types() {
+  fn tokenizer() {
     let mut tok = Tokenizer::new("i am spaced");
     assert_eq!(
       tok.read_spaced_word(),
