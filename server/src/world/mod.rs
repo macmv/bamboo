@@ -406,8 +406,10 @@ impl World {
                   records
                     .entry(p.ver())
                     .or_insert_with(|| {
+                      let changes = &blocks_changed[&pos];
                       let mut out = Buffer::new(vec![]);
-                      for (pos, ty) in &blocks_changed[&pos] {
+                      out.write_varint(changes.len() as i32);
+                      for (pos, ty) in changes {
                         out.write_u8((pos.chunk_rel_x() as u8) << 4 | pos.chunk_rel_z() as u8);
                         out.write_u8(pos.y as u8);
                         out.write_varint(ty.id() as i32);
