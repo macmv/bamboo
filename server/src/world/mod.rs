@@ -349,20 +349,11 @@ impl World {
         if max.chunk_z() == z {
           max_z = max.chunk_rel_z();
         }
+        let min = Pos::new(min_x, min.y, min_z);
+        let max = Pos::new(max_x, max.y, max_z);
+        blocks_changed.insert(ChunkPos::new(x, z), (min, max));
 
-        self.chunk(ChunkPos::new(x, z), |mut c| {
-          let mut changes = vec![];
-          for x in min_x..=max_x {
-            for y in min.y..=max.y {
-              for z in min_z..=max_z {
-                let p = Pos::new(x, y, z);
-                changes.push((p, c.get_type(p).unwrap()));
-              }
-            }
-          }
-          blocks_changed.insert(ChunkPos::new(x, z), changes);
-          c.fill(Pos::new(min_x, min.y, min_z), Pos::new(max_x, max.y, max_z), ty)
-        })?;
+        self.chunk(ChunkPos::new(x, z), |mut c| c.fill(min, max, ty))?;
       }
     }
 
@@ -386,7 +377,7 @@ impl World {
                 // TODO: 1.16 multi block change records
                 records_v1_16_2:           Some(
                   records
-                    .entry(p.ver())
+                    .entry(p.ver().block())
                     .or_insert_with(|| {
                       // let changes = blocks_changed[pos];
                       vec![]
@@ -404,15 +395,19 @@ impl World {
                 not_trust_edges_v1_16_2:   None,
                 records_v1_8:              Some(
                   records
-                    .entry(p.ver())
+                    .entry(p.ver().block())
                     .or_insert_with(|| {
-                      let changes = &blocks_changed[&pos];
+                      let (min, max) = &blocks_changed[&pos];
                       let mut out = Buffer::new(vec![]);
-                      out.write_varint(changes.len() as i32);
-                      for (pos, ty) in changes {
+                      out.write_varint(
+                        (max.x - min.x + 1) * (max.y - min.y + 1) * (max.z - min.z + 1),
+                      );
+                      for pos in min.to(*max) {
                         out.write_u8((pos.chunk_rel_x() as u8) << 4 | pos.chunk_rel_z() as u8);
                         out.write_u8(pos.y as u8);
-                        out.write_varint(ty.id() as i32);
+                        out.write_varint(
+                          self.block_converter.to_old(ty.id(), p.ver().block()) as i32
+                        );
                       }
                       out.into_inner()
                     })
