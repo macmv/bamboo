@@ -230,3 +230,33 @@ pub enum Arg {
   /// A enum class to use for suggestion. Added by Minecraft Forge.
   Enum(String),
 }
+
+macro_rules! unwrapper_copy {
+  ($name:ident, $enum:ident, $ty:ty) => {
+    pub fn $name(&self) -> $ty {
+      match self {
+        Arg::$enum(v) => *v,
+        _ => unreachable!("arg is a {:?}, not a position", self),
+      }
+    }
+  };
+}
+
+impl Arg {
+  unwrapper_copy!(double, Double, f64);
+  unwrapper_copy!(float, Float, f32);
+  unwrapper_copy!(int, Int, i32);
+  unwrapper_copy!(pos, BlockPos, Pos);
+  pub fn lit(&self) -> &str {
+    match self {
+      Arg::Literal(v) => v,
+      _ => unreachable!("arg is a {:?}, not a position", self),
+    }
+  }
+  pub fn block(&self) -> block::Kind {
+    match self {
+      Arg::BlockState(kind, _, _) => *kind,
+      _ => unreachable!("arg is a {:?}, not a position", self),
+    }
+  }
+}

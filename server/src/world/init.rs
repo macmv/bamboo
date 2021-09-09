@@ -1,6 +1,6 @@
 use super::World;
 use crate::{
-  command::{Command, Parser, StringType},
+  command::{Arg, Command, Parser, StringType},
   net::Connection,
   player::Player,
 };
@@ -34,7 +34,21 @@ impl World {
       .add_arg("block", Parser::BlockState);
     self
       .get_commands()
-      .add(c, |world, _| async move {
+      .add(c, |world, args| async move {
+        // args[0] is `fill`
+        match args[1].lit() {
+          "rect" => {
+            let min = args[2].pos();
+            let max = args[3].pos();
+            let block = args[4].block();
+          }
+          "circle" => {
+            let pos = args[2].pos();
+            let radius = args[3].float();
+            let block = args[4].block();
+          }
+          _ => unreachable!(),
+        }
         world.broadcast("called /fill").await;
       })
       .await;
