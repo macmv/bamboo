@@ -43,7 +43,7 @@ impl World {
             let block = args[4].block();
             let (min, max) = min.min_max(max);
             let w = world.default_world().await;
-            w.fill_kind(min, max, block);
+            w.fill_kind(min, max, block).await.unwrap();
           }
           "circle" => {
             let pos = args[2].pos();

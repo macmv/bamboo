@@ -43,7 +43,7 @@ impl ReadError {
       Self::Invalid(index, c) => {
         let s = format!("Invalid '{}' while reading {}", c, text);
         let index = s.len() - text.len() + index;
-        writeln!(f, "{}", s);
+        writeln!(f, "{}", s)?;
         writeln!(f, "{}^ here", " ".repeat(index - 1))
       }
     }

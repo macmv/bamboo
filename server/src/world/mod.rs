@@ -26,7 +26,7 @@ use common::{
   proto::Packet,
   util::{
     chat::{Chat, Color},
-    UUID,
+    Buffer, UUID,
   },
   version::{BlockVersion, ProtocolVersion},
 };
@@ -355,7 +355,8 @@ impl World {
           for x in min_x..=max_x {
             for y in min.y..=max.y {
               for z in min_z..=max_z {
-                changes.push(c.get_type(Pos::new(x, y, z)));
+                let p = Pos::new(x, y, z);
+                changes.push((p, c.get_type(p).unwrap()));
               }
             }
           }
@@ -368,8 +369,9 @@ impl World {
     for x in min.chunk_x()..=max.chunk_x() {
       for z in min.chunk_z()..=max.chunk_z() {
         let pos = ChunkPos::new(x, z);
-        let records_v1_8 = vec![];
-        let records_v1_16_2 = vec![];
+        // We generate the multi block change records once for each version that we send
+        // it to. This map stores versions to records arrays.
+        let mut records = HashMap::new();
         for p in self.players().await.iter().in_view(pos) {
           if p.ver() >= ProtocolVersion::V1_16_2 {
             p.conn()
@@ -382,7 +384,15 @@ impl World {
                 not_trust_edges_v1_16_2:   Some(false),
                 records_v1_8:              None,
                 // TODO: 1.16 multi block change records
-                records_v1_16_2:           Some(records_v1_16_2.clone()),
+                records_v1_16_2:           Some(
+                  records
+                    .entry(p.ver())
+                    .or_insert_with(|| {
+                      // let changes = blocks_changed[pos];
+                      vec![]
+                    })
+                    .clone(),
+                ),
               })
               .await;
           } else {
@@ -392,7 +402,20 @@ impl World {
                 chunk_z_removed_v1_16_2:   Some(z),
                 chunk_coordinates_v1_16_2: None,
                 not_trust_edges_v1_16_2:   None,
-                records_v1_8:              Some(records_v1_8.clone()),
+                records_v1_8:              Some(
+                  records
+                    .entry(p.ver())
+                    .or_insert_with(|| {
+                      let mut out = Buffer::new(vec![]);
+                      for (pos, ty) in &blocks_changed[&pos] {
+                        out.write_u8((pos.chunk_rel_x() as u8) << 4 | pos.chunk_rel_z() as u8);
+                        out.write_u8(pos.y as u8);
+                        out.write_varint(ty.id() as i32);
+                      }
+                      out.into_inner()
+                    })
+                    .clone(),
+                ),
                 records_v1_16_2:           None,
               })
               .await;
