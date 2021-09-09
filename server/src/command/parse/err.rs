@@ -17,6 +17,8 @@ pub enum ParseError {
   Range(f64, Option<f64>, Option<f64>),
 }
 
+pub type Result<T> = std::result::Result<T, ParseError>;
+
 impl fmt::Display for ParseError {
   fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
     match self {

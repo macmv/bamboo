@@ -22,7 +22,7 @@ mod reader;
 mod serialize;
 
 pub use enums::{Arg, Parser, StringType};
-pub use parse::ParseError;
+pub use parse::{ParseError, Tokenizer};
 
 use crate::{player::Player, world::WorldManager};
 use common::util::chat::{Chat, Color};
@@ -181,17 +181,18 @@ impl Command {
   /// a slash at the start. If anything went wrong during parsing, a ParseError
   /// will be returned. Otherwise, a list of fields will be returned.
   pub fn parse(&self, text: &str) -> Result<Vec<Arg>, ParseError> {
-    let (arg, mut index) = self.parse_arg(text)?;
-    if self.children.is_empty() && index < text.len() {
-      return Err(ParseError::Trailing(text[index..].into()));
-    }
-    if text.chars().nth(index) == Some(' ') {
-      index += 1;
-    }
+    self.parse_inner(&mut Tokenizer::new(text))
+  }
+
+  fn parse_inner(&self, tokens: &mut Tokenizer) -> Result<Vec<Arg>, ParseError> {
+    let arg = self.parse_arg(tokens)?;
+    // if self.children.is_empty() && index < text.len() {
+    //   return Err(ParseError::Trailing(text[index..].into()));
+    // }
     let mut out = vec![arg];
     let mut errors = vec![];
     for c in &self.children {
-      match c.parse(&text[index..]) {
+      match c.parse_inner(tokens) {
         Ok(v) => {
           out.extend(v);
           break;
@@ -212,17 +213,18 @@ impl Command {
   /// the argument, and the starting index of the next argument.
   ///
   /// This can be used with top level commands to check if they match some text.
-  pub fn parse_arg(&self, text: &str) -> Result<(Arg, usize), ParseError> {
+  fn parse_arg(&self, tokens: &mut Tokenizer) -> Result<Arg, ParseError> {
     match &self.ty {
       NodeType::Root => panic!("cannot call matches on root node!"),
       NodeType::Literal => {
-        if text.starts_with(&(self.name.clone() + " ")) {
-          Ok((Arg::Literal(self.name.clone()), self.name.len()))
+        let w = tokens.read_spaced_word()?;
+        if w == &self.name {
+          Ok(Arg::Literal(self.name.clone()))
         } else {
           Err(ParseError::InvalidLiteral(self.name.clone()))
         }
       }
-      NodeType::Argument(p) => p.parse(text),
+      NodeType::Argument(p) => p.parse(tokens),
     }
   }
 
