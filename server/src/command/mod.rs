@@ -188,21 +188,33 @@ impl Command {
     // }
     let mut out = vec![arg];
     let mut parsers = vec![];
+    let mut err_span = None;
     for c in &self.children {
       match c.parse_inner(&mut tokens.clone()) {
         Ok(v) => {
           out.extend(v);
           break;
         }
-        Err(_) => match &c.ty {
-          NodeType::Root => unreachable!(),
-          NodeType::Literal => parsers.push(Parser::Literal(self.name.clone())),
-          NodeType::Argument(p) => parsers.push(p.clone()),
-        },
+        Err(e) => {
+          // If all the errors have the same span, use that, otherwise just use the
+          // token's position.
+          if let Some(span) = err_span {
+            if span != e.pos() {
+              err_span = Some(Span::single(tokens.pos()));
+            }
+          } else {
+            err_span = Some(e.pos());
+          }
+          match &c.ty {
+            NodeType::Root => unreachable!(),
+            NodeType::Literal => parsers.push(Parser::Literal(c.name.clone())),
+            NodeType::Argument(p) => parsers.push(p.clone()),
+          }
+        }
       }
     }
     if !self.children.is_empty() && out.len() == 1 {
-      Err(ParseError::new(Span::single(tokens.pos()), ErrorKind::NoChildren(parsers)))
+      Err(ParseError::new(err_span.unwrap(), ErrorKind::NoChildren(parsers)))
     } else {
       Ok(out)
     }

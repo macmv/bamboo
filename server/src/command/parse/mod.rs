@@ -161,7 +161,7 @@ impl Parser {
 
   pub fn write_desc(&self, f: &mut fmt::Formatter) -> fmt::Result {
     match self {
-      Self::Literal(v) => write!(f, "{}", v),
+      Self::Literal(v) => write!(f, "`{}`", v),
       _ => write!(f, "{}", self.desc()),
     }
   }

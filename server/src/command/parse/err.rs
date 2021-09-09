@@ -74,11 +74,14 @@ impl fmt::Display for ErrorKind {
           write!(f, "only one parser failed, not valid")
         } else {
           // Write all of the children in a row
-          writeln!(f, "expected ")?;
+          write!(f, "expected ")?;
           for (i, p) in parsers.iter().enumerate() {
             if i == parsers.len() - 1 {
               write!(f, "or ")?;
               p.write_desc(f)?;
+            } else if i == parsers.len() - 2 {
+              p.write_desc(f)?;
+              write!(f, " ")?;
             } else {
               p.write_desc(f)?;
               write!(f, ", ")?;
