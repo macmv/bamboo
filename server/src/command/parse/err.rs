@@ -46,7 +46,18 @@ impl ParseError {
   /// the client without any additional formatting.
   pub fn to_chat(&self, text: &str) -> Chat {
     let mut out = Chat::new("");
-    out.add("Invalid command: ").color(Color::Red);
+    let prefix = "Invalid command: ";
+    out.add(prefix).color(Color::Red);
+    out.add(text).color(Color::White);
+    out
+      .add(format!(
+        "\n{}{} ",
+        " ".repeat(prefix.len() + self.pos.start),
+        "^".repeat(self.pos.end - self.pos.start)
+      ))
+      .color(Color::Red);
+    out.add(self.kind.to_string()).color(Color::White);
+
     out
   }
 }
