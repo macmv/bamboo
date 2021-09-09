@@ -178,43 +178,76 @@ impl Command {
   /// a slash at the start. If anything went wrong during parsing, a ParseError
   /// will be returned. Otherwise, a list of fields will be returned.
   pub fn parse(&self, text: &str) -> Result<Vec<Arg>, ParseError> {
-    self.parse_inner(&mut Tokenizer::new(text))
+    self.parse_inner(&mut Tokenizer::new(text)).map_err(|(err, _)| err)
   }
 
-  fn parse_inner(&self, tokens: &mut Tokenizer) -> Result<Vec<Arg>, ParseError> {
-    let arg = self.parse_arg(tokens)?;
+  /// If this fails, it returns the number of levels deep it was. This is so
+  /// that branching commands can choose the deepest error to provide feedback
+  /// for.
+  fn parse_inner(&self, tokens: &mut Tokenizer) -> Result<Vec<Arg>, (ParseError, usize)> {
+    let arg = self.parse_arg(tokens).map_err(|e| (e, 1))?;
     // if self.children.is_empty() && index < text.len() {
     //   return Err(ParseError::Trailing(text[index..].into()));
     // }
     let mut out = vec![arg];
+    let mut deepest_error = 0;
     let mut errors = vec![];
-    let mut err_span = None;
     for c in &self.children {
       match c.parse_inner(&mut tokens.clone()) {
         Ok(v) => {
           out.extend(v);
           break;
         }
-        Err(e) => {
+        Err((e, depth)) => {
           // If all the errors have the same span, use that, otherwise just use the
           // token's position.
+          if depth > deepest_error {
+            errors.clear();
+            deepest_error = depth;
+          }
+          if depth >= deepest_error {
+            errors.push((e.clone(), c.clone()));
+            // match
+          }
+          dbg!(e, depth);
+          dbg!(deepest_error);
+        }
+      }
+    }
+    dbg!(&errors);
+    if !self.children.is_empty() && out.len() == 1 {
+      if errors.len() == 1 {
+        let (err, _) = errors.pop().unwrap();
+        Err((err, deepest_error + 1))
+      } else {
+        let mut err_span = None;
+        for (e, _) in &errors {
           if let Some(span) = err_span {
-            if span != e.pos() {
+            if e.pos() != span {
               err_span = Some(Span::single(tokens.pos()));
+              break;
             }
           } else {
             err_span = Some(e.pos());
           }
-          match &c.ty {
-            NodeType::Root => unreachable!(),
-            NodeType::Literal => errors.push(ChildError::Expected(c.name.clone())),
-            NodeType::Argument(p) => errors.push(ChildError::Invalid(p.clone())),
-          }
         }
+        Err((
+          ParseError::new(
+            err_span.unwrap(),
+            ErrorKind::NoChildren(
+              errors
+                .iter()
+                .map(|(_, node)| match &node.ty {
+                  NodeType::Root => unreachable!(),
+                  NodeType::Literal => ChildError::Expected(node.name.clone()),
+                  NodeType::Argument(p) => ChildError::Invalid(p.clone()),
+                })
+                .collect(),
+            ),
+          ),
+          deepest_error + 1,
+        ))
       }
-    }
-    if !self.children.is_empty() && out.len() == 1 {
-      Err(ParseError::new(err_span.unwrap(), ErrorKind::NoChildren(errors)))
     } else {
       Ok(out)
     }

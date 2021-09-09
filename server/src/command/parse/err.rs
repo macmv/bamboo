@@ -2,13 +2,13 @@ use super::{Parser, Span};
 use common::util::{chat::Color, Chat};
 use std::{error::Error, fmt};
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct ParseError {
   kind: ErrorKind,
   pos:  Span,
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum ChildError {
   /// Used for a general error. The parser's desc will will be used in the
   /// `expected` message.
@@ -18,7 +18,7 @@ pub enum ChildError {
   Expected(String),
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum ErrorKind {
   /// Used when no children of the node matched
   NoChildren(Vec<ChildError>),
