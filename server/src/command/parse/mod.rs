@@ -5,8 +5,9 @@ pub use err::{ChildError, ErrorKind, ParseError, Result};
 pub use token::{Span, Tokenizer, Word};
 
 use super::{Arg, Parser, StringType};
+use crate::block;
 use common::math::Pos;
-use std::{fmt::Display, str::FromStr};
+use std::{collections::HashMap, fmt::Display, str::FromStr};
 
 pub fn parse_num<T>(w: &Word, min: &Option<T>, max: &Option<T>) -> Result<T>
 where
@@ -14,7 +15,6 @@ where
 {
   match w.parse::<T>() {
     Ok(num) => {
-      let mut invalid = false;
       if let Some(min) = min {
         if num < *min {
           if let Some(max) = max {
@@ -88,6 +88,14 @@ impl Parser {
         let z = parse_num(&w, &None, &None)?;
 
         Ok(Arg::BlockPos(Pos::new(x, y, z)))
+      }
+      Self::BlockState => {
+        let w = tokens.read_spaced_word()?;
+        Ok(Arg::BlockState(
+          block::Kind::from_str(&w).map_err(|_| w.invalid())?,
+          HashMap::new(),
+          None,
+        ))
       }
       _ => unimplemented!(),
       /* Self::String(ty) => match ty {

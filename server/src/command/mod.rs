@@ -216,11 +216,8 @@ impl Command {
       if errors.len() == 1 {
         let (err, node) = errors.pop().unwrap();
         match err.kind() {
-          ErrorKind::EOF => Err((
-            ParseError::new(
-              err.pos(),
-              ErrorKind::Expected(format!("expected {}", node.to_child_error())),
-            ),
+          ErrorKind::EOF | ErrorKind::Invalid => Err((
+            ParseError::new(err.pos(), ErrorKind::Expected(node.to_child_error().to_string())),
             deepest_error + 1,
           )),
           _ => Err((err, deepest_error + 1)),
