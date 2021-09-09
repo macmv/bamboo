@@ -27,8 +27,6 @@ pub enum StringType {
 /// without them.
 #[derive(Debug, Clone, PartialEq)]
 pub enum Parser {
-  /// Parses the given literal
-  Literal(String),
   // Simple types:
   /// True or false.
   Bool,

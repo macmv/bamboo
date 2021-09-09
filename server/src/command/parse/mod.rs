@@ -1,7 +1,7 @@
 mod err;
 mod token;
 
-pub use err::{ErrorKind, ParseError, Result};
+pub use err::{ChildError, ErrorKind, ParseError, Result};
 pub use token::{Span, Tokenizer};
 
 use super::{Arg, Parser, StringType};
@@ -17,7 +17,7 @@ impl Parser {
         } else if w == "false" {
           Ok(Arg::Bool(false))
         } else {
-          Err(w.expected("true or false"))
+          Err(w.invalid())
         }
       }
       _ => unimplemented!(),
@@ -159,16 +159,8 @@ impl Parser {
     }
   }
 
-  pub fn write_desc(&self, f: &mut fmt::Formatter) -> fmt::Result {
+  pub fn desc(&self) -> &'static str {
     match self {
-      Self::Literal(v) => write!(f, "`{}`", v),
-      _ => write!(f, "{}", self.desc()),
-    }
-  }
-
-  fn desc(&self) -> &'static str {
-    match self {
-      Self::Literal(_) => unreachable!(),
       Self::Bool => "true or false",
       Self::Double { .. } => "a double",
       Self::Float { .. } => "a float",

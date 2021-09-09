@@ -81,7 +81,6 @@ impl Parser {
   #[rustfmt::skip]
   pub fn name(&self) -> &'static str {
     match self {
-      Self::Literal(_)         => unreachable!(),
       Self::Bool               => "brigadier:bool",
       Self::Double { .. }      => "brigadier:double",
       Self::Float { .. }       => "brigadier:float",

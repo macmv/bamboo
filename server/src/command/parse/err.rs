@@ -9,11 +9,22 @@ pub struct ParseError {
 }
 
 #[derive(Debug, PartialEq)]
+pub enum ChildError {
+  /// Used for a general error. The parser's desc will will be used in the
+  /// `expected` message.
+  Invalid(Parser),
+  // Used for a specific error. This string will be directly used in the
+  // `expected` message.
+  Expected(String),
+}
+
+#[derive(Debug, PartialEq)]
 pub enum ErrorKind {
   /// Used when no children of the node matched
-  NoChildren(Vec<Parser>),
-  /// Used when a literal does not match
-  InvalidLiteral,
+  NoChildren(Vec<ChildError>),
+  /// Used when a literal does not match, or a parser fails. If more detail is
+  /// needed, use [`expected`](super::Word::expected).
+  Invalid,
   /// Used when there are trailing characters after the command
   Trailing,
   /// Used when the string ends early.
@@ -62,35 +73,41 @@ impl fmt::Display for ParseError {
     write!(f, "error at {}:{}: {}", self.pos.start, self.pos.end, self.kind)
   }
 }
+impl fmt::Display for ChildError {
+  fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+    match self {
+      Self::Invalid(p) => write!(f, "{}", p.desc()),
+      Self::Expected(s) => write!(f, "`{}`", s),
+    }
+  }
+}
 impl fmt::Display for ErrorKind {
   fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
     match self {
-      Self::NoChildren(parsers) => {
-        if parsers.is_empty() {
+      Self::NoChildren(errors) => {
+        if errors.is_empty() {
           // No errors means print another error about no errors
           write!(f, "no parsers in no children error (should never happen)")
-        } else if parsers.len() == 1 {
+        } else if errors.len() == 1 {
           // A single parser failed, also invalid
           write!(f, "only one parser failed, not valid")
         } else {
           // Write all of the children in a row
           write!(f, "expected ")?;
-          for (i, p) in parsers.iter().enumerate() {
-            if i == parsers.len() - 1 {
-              write!(f, "or ")?;
-              p.write_desc(f)?;
-            } else if i == parsers.len() - 2 {
-              p.write_desc(f)?;
-              write!(f, " ")?;
+          for (i, e) in errors.iter().enumerate() {
+            if i == errors.len() - 1 {
+              write!(f, "or {}", e)?;
+            } else if i == errors.len() - 2 {
+              write!(f, "{} ", e)?;
             } else {
-              p.write_desc(f)?;
-              write!(f, ", ")?;
+              write!(f, "{}, ", e)?;
             }
           }
           Ok(())
         }
       }
-      Self::InvalidLiteral => write!(f, "invalid literal"),
+      // Not really used. Parser::desc overrides these
+      Self::Invalid => write!(f, "invalid"),
       Self::Trailing => write!(f, "trailing characters"),
       Self::EOF => write!(f, "command ended early"),
       Self::Expected(expected) => {

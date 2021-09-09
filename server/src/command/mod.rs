@@ -22,7 +22,7 @@ mod reader;
 mod serialize;
 
 pub use enums::{Arg, Parser, StringType};
-use parse::Span;
+use parse::{ChildError, Span};
 pub use parse::{ErrorKind, ParseError, Tokenizer};
 
 use crate::{player::Player, world::WorldManager};
@@ -187,7 +187,7 @@ impl Command {
     //   return Err(ParseError::Trailing(text[index..].into()));
     // }
     let mut out = vec![arg];
-    let mut parsers = vec![];
+    let mut errors = vec![];
     let mut err_span = None;
     for c in &self.children {
       match c.parse_inner(&mut tokens.clone()) {
@@ -207,14 +207,14 @@ impl Command {
           }
           match &c.ty {
             NodeType::Root => unreachable!(),
-            NodeType::Literal => parsers.push(Parser::Literal(c.name.clone())),
-            NodeType::Argument(p) => parsers.push(p.clone()),
+            NodeType::Literal => errors.push(ChildError::Expected(c.name.clone())),
+            NodeType::Argument(p) => errors.push(ChildError::Invalid(p.clone())),
           }
         }
       }
     }
     if !self.children.is_empty() && out.len() == 1 {
-      Err(ParseError::new(err_span.unwrap(), ErrorKind::NoChildren(parsers)))
+      Err(ParseError::new(err_span.unwrap(), ErrorKind::NoChildren(errors)))
     } else {
       Ok(out)
     }
@@ -232,7 +232,7 @@ impl Command {
         if w == self.name.as_ref() {
           Ok(Arg::Literal(self.name.clone()))
         } else {
-          Err(ParseError::new(w.pos(), ErrorKind::InvalidLiteral))
+          Err(ParseError::new(w.pos(), ErrorKind::Invalid))
         }
       }
       NodeType::Argument(p) => p.parse(tokens),

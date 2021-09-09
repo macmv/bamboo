@@ -131,9 +131,17 @@ impl PartialEq<&str> for Word {
 
 impl Word {
   /// Returns an error with the span covering this word. Use this when you get
-  /// an invalid keyword (such as a word that is isn't true or false).
+  /// a complex error. For things like a keyword mismatch, prefer
+  /// [`invalid`](Self::invalid). This is mostly useful for a rotation being out
+  /// of range, or similar.
   pub fn expected<R: Into<String>>(&self, reason: R) -> ParseError {
     ParseError::new(self.pos, ErrorKind::Expected(reason.into()))
+  }
+
+  /// Returns an invalid error. This will use the `Parser::desc` function later
+  /// to produce an error spanned over this word.
+  pub fn invalid(&self) -> ParseError {
+    ParseError::new(self.pos, ErrorKind::Invalid)
   }
 
   /// Returns the position of this word.
