@@ -96,13 +96,6 @@ impl PluginManager {
     PluginManager { plugins: Mutex::new(vec![]) }
   }
 
-  pub fn add_builtins(sl: &mut Sugarlang) {
-    sl.add_builtin_ty::<Sugarcane>();
-    sl.add_builtin_ty::<types::SlPlayer>();
-    sl.add_builtin_ty::<types::SlPos>();
-    sl.add_builtin_ty::<types::SlBlockKind>();
-  }
-
   /// Returns true if plugins should print error messages with colors.
   pub fn use_color(&self) -> bool {
     true

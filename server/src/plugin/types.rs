@@ -1,7 +1,8 @@
-use crate::{block, player::Player};
+use super::{PluginManager, Sugarcane};
+use crate::{block, command::Command, player::Player};
 use common::math::Pos;
 use std::sync::Arc;
-use sugarlang::define_ty;
+use sugarlang::{define_ty, Sugarlang};
 
 macro_rules! wrap {
   ( $ty:ty, $new_ty:ident ) => {
@@ -21,6 +22,7 @@ macro_rules! wrap {
 wrap!(Arc<Player>, SlPlayer);
 wrap!(Pos, SlPos);
 wrap!(block::Kind, SlBlockKind);
+wrap!(Command, SlCommand);
 
 #[define_ty(path = "sugarcane::Player")]
 impl SlPlayer {
@@ -40,5 +42,22 @@ impl SlPos {
 impl SlBlockKind {
   pub fn to_s(&self) -> String {
     format!("{:?}", self.inner)
+  }
+}
+
+#[define_ty(path = "sugarcane::Command")]
+impl SlCommand {
+  pub fn add_arg(&self) -> String {
+    format!("{:?}", self.inner)
+  }
+}
+
+impl PluginManager {
+  pub fn add_builtins(sl: &mut Sugarlang) {
+    sl.add_builtin_ty::<Sugarcane>();
+    sl.add_builtin_ty::<SlPlayer>();
+    sl.add_builtin_ty::<SlPos>();
+    sl.add_builtin_ty::<SlBlockKind>();
+    sl.add_builtin_ty::<SlCommand>();
   }
 }

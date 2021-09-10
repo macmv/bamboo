@@ -1,5 +1,15 @@
+use sugarcane::Command
+
 fn init(sc) {
   sc.info("hello world")
+
+  c = Command::new("setblock")
+  c.add_arg_block_pos("pos")
+  sc.add_command(c, handle_setblock)
+}
+
+fn handle_setblock(sc, world, player) {
+  sc.info("SETBLOCK")
 }
 
 fn on_block_place(sc, player, pos, kind) {
