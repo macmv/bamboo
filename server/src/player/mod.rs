@@ -392,12 +392,15 @@ impl Player {
       }
     }
     if old_chunk != new_chunk {
-      let view_distance = 10; // TODO: Listen for client settings on this
+      let view_distance = 1; // TODO: Listen for client settings on this
       let delta = new_chunk - old_chunk;
-      let new_tl = new_chunk - ChunkPos::new(view_distance, view_distance);
-      let new_br = new_chunk + ChunkPos::new(view_distance, view_distance);
-      let old_tl = old_chunk - ChunkPos::new(view_distance, view_distance);
-      let old_br = old_chunk + ChunkPos::new(view_distance, view_distance);
+      let new_max = new_chunk + ChunkPos::new(view_distance, view_distance);
+      let new_min = new_chunk - ChunkPos::new(view_distance, view_distance);
+      let old_max = old_chunk + ChunkPos::new(view_distance, view_distance);
+      let old_min = old_chunk - ChunkPos::new(view_distance, view_distance);
+      info!("delta: {}", delta);
+      info!("new_max: {}, new_min: {}", new_max, new_min);
+      info!("old_max: {}, old_min: {}", old_max, old_min);
       // Sides (including corners)
       let load_min;
       let load_max;
@@ -405,16 +408,17 @@ impl Player {
       let unload_max;
       match delta.x().cmp(&0) {
         Ordering::Greater => {
-          load_min = ChunkPos::new(old_br.x(), new_tl.z());
-          load_max = new_br;
-          unload_min = old_tl;
-          unload_max = ChunkPos::new(new_tl.x(), old_br.z());
+          load_min = ChunkPos::new(new_max.x(), new_min.z());
+          load_max = new_max;
+          unload_min = old_min;
+          unload_max = ChunkPos::new(old_min.x(), old_max.z());
         }
         Ordering::Less => {
-          load_min = new_tl;
-          load_max = ChunkPos::new(old_tl.x(), new_br.z());
-          unload_min = ChunkPos::new(new_br.x(), old_tl.z());
-          unload_max = old_br;
+          unimplemented!();
+          // load_min = new_tl;
+          // load_max = ChunkPos::new(old_tl.x(), new_br.z());
+          // unload_min = ChunkPos::new(new_br.x(), old_tl.z());
+          // unload_max = old_br;
         }
         _ => {
           load_min = ChunkPos::new(0, 0);
@@ -432,16 +436,18 @@ impl Player {
       let unload_max;
       match delta.z().cmp(&0) {
         Ordering::Greater => {
-          load_min = ChunkPos::new(new_tl.x(), old_br.z());
-          load_max = ChunkPos::new(cmp::min(new_br.x(), old_br.x()), new_br.z());
-          unload_min = ChunkPos::new(cmp::max(new_tl.x(), old_tl.x()), old_tl.z());
-          unload_max = ChunkPos::new(old_br.x(), new_tl.z());
+          load_min = ChunkPos::new(new_min.x(), new_max.z());
+          load_max = ChunkPos::new(new_max.x().min(old_max.x()), new_max.z());
+          unload_min = ChunkPos::new(new_min.x().max(old_min.x()), old_min.z());
+          unload_max = ChunkPos::new(old_max.x(), old_min.z());
         }
         Ordering::Less => {
-          load_min = ChunkPos::new(cmp::max(old_tl.x(), new_tl.x()), new_tl.z());
-          load_max = ChunkPos::new(new_br.x(), old_tl.z());
-          unload_min = ChunkPos::new(old_tl.x(), new_br.z());
-          unload_max = ChunkPos::new(cmp::min(old_br.x(), new_br.x()), old_br.z());
+          unimplemented!();
+          // load_min = ChunkPos::new(cmp::max(old_tl.x(), new_tl.x()),
+          // new_tl.z()); load_max = ChunkPos::new(new_br.x(),
+          // old_tl.z()); unload_min = ChunkPos::new(old_tl.x(),
+          // new_br.z()); unload_max =
+          // ChunkPos::new(cmp::min(old_br.x(), new_br.x()), old_br.z());
         }
         _ => {
           load_min = ChunkPos::new(0, 0);
@@ -455,12 +461,18 @@ impl Player {
     }
   }
 
+  /// Loads the chunks between min and max, inclusive.
   async fn load_chunks(&self, min: ChunkPos, max: ChunkPos) {
+    if min == max {
+      info!("not loading");
+      return;
+    }
+    info!("loading from {} to {}", min, max);
     // Generate the chunks on multiple threads
     let chunks = Mutex::new(vec![]);
     if (min.x() - max.x()).abs() > (min.z() - max.z()).abs() {
-      (min.x()..max.x()).into_par_iter().for_each(|x| {
-        for z in min.z()..max.z() {
+      (min.x()..=max.x()).into_par_iter().for_each(|x| {
+        for z in min.z()..=max.z() {
           let pos = ChunkPos::new(x, z);
           if self.world.has_loaded_chunk(pos) {
             continue;
@@ -470,8 +482,8 @@ impl Player {
         }
       });
     } else {
-      (min.z()..max.z()).into_par_iter().for_each(|z| {
-        for x in min.x()..max.x() {
+      (min.z()..=max.z()).into_par_iter().for_each(|z| {
+        for x in min.x()..=max.x() {
           let pos = ChunkPos::new(x, z);
           if self.world.has_loaded_chunk(pos) {
             continue;
@@ -485,15 +497,20 @@ impl Player {
     // above, but the chunks could have been changed between that call and now.
     // Calling store_chunks could potentially make us loose data.
     self.world.store_chunks_no_overwrite(chunks.into_inner().unwrap());
-    for x in min.x()..max.x() {
-      for z in min.z()..max.z() {
+    for x in min.x()..=max.x() {
+      for z in min.z()..=max.z() {
         self.conn.send(self.world.serialize_chunk(ChunkPos::new(x, z), self.ver().block())).await;
       }
     }
   }
   async fn unload_chunks(&self, min: ChunkPos, max: ChunkPos) {
-    for x in min.x()..max.x() {
-      for z in min.z()..max.z() {
+    if min == max {
+      info!("not unloading");
+      return;
+    }
+    info!("unloading from {} to {}", min, max);
+    for x in min.x()..=max.x() {
+      for z in min.z()..=max.z() {
         if self.ver() == ProtocolVersion::V1_8 {
           self
             .conn

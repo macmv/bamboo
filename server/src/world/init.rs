@@ -170,8 +170,9 @@ impl World {
       conn.send(self.get_commands().serialize().await).await;
     }
 
-    for x in -10..=10 {
-      for z in -10..=10 {
+    let view_distance = 1;
+    for x in -view_distance..=view_distance {
+      for z in -view_distance..=view_distance {
         conn.send(self.serialize_chunk(ChunkPos::new(x, z), player.ver().block())).await;
       }
     }
