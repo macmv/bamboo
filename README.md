@@ -2,6 +2,44 @@
 
 A safe, fast, and secure Minecraft server optimized for minigames.
 
+### How to run
+
+Install [rust](https://www.rust-lang.org/learn/get-started), and then clone
+this repository:
+
+```
+git clone https://gitlab.com/macmv/sugarcane.git
+cd sugarcane
+```
+
+Now you need to build the server and proxy. You can run the server with this
+command:
+
+```
+cargo run --bin server --release
+```
+
+And you can run the proxy with this command:
+
+```
+cargo run --bin proxy --release
+```
+
+You need the server and proxy to be running at the same time in order to connect!
+The port for the server is `25565`, and the proxy/server combo talk on the
+`8483` port. So if you get errors when starting the server, make sure nothing
+else is using that port.
+
+The `--release` flag will make the server/proxy faster at runtime, but take
+longer to compile. I recommend it for both, unless you are developing the
+server/proxy.
+
+Because of some compiler flags I hav esetup in `Cargo.toml`, I recommend setting
+your IDE to use a different profile. Any time my IDE builds, I pass the flag
+`--profile rust-analyzer` to cargo. This makes code validation much faster, as
+the dev profile uses opt-level 2 (instead of the default 0). This is because
+terrain generation is terribly slow with opt-level set to 0.
+
 ### Architecture
 
 Sugarcane uses a proxy-server model. The proxy talks to a Minecraft client over
