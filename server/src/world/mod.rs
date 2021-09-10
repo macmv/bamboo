@@ -332,8 +332,32 @@ impl World {
   /// Unloading a chunk multiple times will not cause a memory leak. If you are
   /// trying to re-send an entire chunk to a player, make sure to send them an
   /// unload chunk packet first. Use at your own risk!
+  ///
+  /// If you are trying to produce a large block change packet, use
+  /// [`serialize_partial_chunk`](Self::serialize_partial_chunk).
   pub fn serialize_chunk(&self, pos: ChunkPos, ver: BlockVersion) -> cb::Packet {
     self.chunk(pos, |c| crate::net::serialize::serialize_chunk(pos, &c, ver))
+  }
+
+  /// This serializes a chunk for the given version. This packet can be sent
+  /// directly to a client. Unlock [`serialize_chunk`](Self::serialize_chunk),
+  /// this will not cause a memory leak. In fact, sending this in an unloaded
+  /// chunk is undefined behavior! This should be used like a large multi block
+  /// change packet.
+  ///
+  /// The `min` and `max` are section indices. These can be obtained through
+  /// [`Pos::chunk_y`]. Every section between `min` and `max` (inclusive) will
+  /// be sent to the client. If that second does not exist, this function will
+  /// panic. `min` and `max` should not be outside of 0..15, unless you are
+  /// sending this to a 1.17+ client.
+  pub fn serialize_partial_chunk(
+    &self,
+    pos: ChunkPos,
+    ver: BlockVersion,
+    min: u32,
+    max: u32,
+  ) -> cb::Packet {
+    self.chunk(pos, |c| crate::net::serialize::serialize_partial_chunk(pos, &c, ver, min, max))
   }
 
   /// This sets a block within the world. It will return an error if the
@@ -413,7 +437,14 @@ impl World {
               .send(
                 serialized_chunks
                   .entry(pos)
-                  .or_insert_with(|| self.serialize_chunk(pos, p.ver().block()))
+                  .or_insert_with(|| {
+                    self.serialize_partial_chunk(
+                      pos,
+                      p.ver().block(),
+                      min.chunk_y() as u32,
+                      max.chunk_y() as u32,
+                    )
+                  })
                   .clone(),
               )
               .await;

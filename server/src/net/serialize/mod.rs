@@ -15,3 +15,16 @@ pub fn serialize_chunk(pos: ChunkPos, c: &MultiChunk, ver: BlockVersion) -> cb::
     ver => unimplemented!("cannot serialize chunks for version {:?}", ver),
   }
 }
+
+pub fn serialize_partial_chunk(
+  pos: ChunkPos,
+  c: &MultiChunk,
+  ver: BlockVersion,
+  min: u32,
+  max: u32,
+) -> cb::Packet {
+  match ver {
+    BlockVersion::V1_8 => v1_8::serialize_partial_chunk(pos, c, min, max),
+    ver => unimplemented!("cannot serialize chunks for version {:?}", ver),
+  }
+}
