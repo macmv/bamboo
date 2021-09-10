@@ -414,11 +414,10 @@ impl Player {
           unload_max = ChunkPos::new(old_min.x(), old_max.z());
         }
         Ordering::Less => {
-          unimplemented!();
-          // load_min = new_tl;
-          // load_max = ChunkPos::new(old_tl.x(), new_br.z());
-          // unload_min = ChunkPos::new(new_br.x(), old_tl.z());
-          // unload_max = old_br;
+          load_min = new_min;
+          load_max = ChunkPos::new(new_min.x(), new_max.z());
+          unload_min = ChunkPos::new(old_max.x(), old_min.z());
+          unload_max = old_max;
         }
         _ => {
           load_min = ChunkPos::new(0, 0);
@@ -436,18 +435,16 @@ impl Player {
       let unload_max;
       match delta.z().cmp(&0) {
         Ordering::Greater => {
-          load_min = ChunkPos::new(new_min.x(), new_max.z());
+          load_min = ChunkPos::new(new_min.x().max(old_min.x()), new_max.z());
           load_max = ChunkPos::new(new_max.x().min(old_max.x()), new_max.z());
           unload_min = ChunkPos::new(new_min.x().max(old_min.x()), old_min.z());
-          unload_max = ChunkPos::new(old_max.x(), old_min.z());
+          unload_max = ChunkPos::new(new_max.x().min(old_max.x()), old_min.z());
         }
         Ordering::Less => {
-          unimplemented!();
-          // load_min = ChunkPos::new(cmp::max(old_tl.x(), new_tl.x()),
-          // new_tl.z()); load_max = ChunkPos::new(new_br.x(),
-          // old_tl.z()); unload_min = ChunkPos::new(old_tl.x(),
-          // new_br.z()); unload_max =
-          // ChunkPos::new(cmp::min(old_br.x(), new_br.x()), old_br.z());
+          load_min = ChunkPos::new(new_min.x().max(old_min.x()), new_min.z());
+          load_max = ChunkPos::new(new_max.x().min(old_max.x()), new_min.z());
+          unload_min = ChunkPos::new(new_min.x().max(old_min.x()), old_max.z());
+          unload_max = ChunkPos::new(new_max.x().min(old_max.x()), old_max.z());
         }
         _ => {
           load_min = ChunkPos::new(0, 0);
