@@ -392,15 +392,12 @@ impl Player {
       }
     }
     if old_chunk != new_chunk {
-      let view_distance = 1; // TODO: Listen for client settings on this
+      let view_distance = 10; // TODO: Listen for client settings on this
       let delta = new_chunk - old_chunk;
       let new_max = new_chunk + ChunkPos::new(view_distance, view_distance);
       let new_min = new_chunk - ChunkPos::new(view_distance, view_distance);
       let old_max = old_chunk + ChunkPos::new(view_distance, view_distance);
       let old_min = old_chunk - ChunkPos::new(view_distance, view_distance);
-      info!("delta: {}", delta);
-      info!("new_max: {}, new_min: {}", new_max, new_min);
-      info!("old_max: {}, old_min: {}", old_max, old_min);
       // Sides (including corners)
       let load_min;
       let load_max;
@@ -461,10 +458,8 @@ impl Player {
   /// Loads the chunks between min and max, inclusive.
   async fn load_chunks(&self, min: ChunkPos, max: ChunkPos) {
     if min == max {
-      info!("not loading");
       return;
     }
-    info!("loading from {} to {}", min, max);
     // Generate the chunks on multiple threads
     let chunks = Mutex::new(vec![]);
     if (min.x() - max.x()).abs() > (min.z() - max.z()).abs() {
@@ -502,10 +497,8 @@ impl Player {
   }
   async fn unload_chunks(&self, min: ChunkPos, max: ChunkPos) {
     if min == max {
-      info!("not unloading");
       return;
     }
-    info!("unloading from {} to {}", min, max);
     for x in min.x()..=max.x() {
       for z in min.z()..=max.z() {
         if self.ver() == ProtocolVersion::V1_8 {
