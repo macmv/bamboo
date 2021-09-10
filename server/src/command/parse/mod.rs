@@ -68,30 +68,35 @@ impl Parser {
       }
       Self::BlockPos => {
         if let Some(pos) = sender.block_pos() {
-          let mut w = tokens.read_spaced_text()?;
-          let x_rel = w.starts_with("~");
+          let mut w_x = tokens.read_spaced_text()?;
+          let x_rel = w_x.starts_with("~");
           if x_rel {
-            w.set_text(w[1..].to_string());
+            w_x.set_text(w_x[1..].to_string());
           }
-          let x = parse_num(&w, &None, &None)?;
-          let mut w = tokens.read_spaced_text()?;
-          let y_rel = w.starts_with("~");
+          let x = parse_num(&w_x, &None, &None)?;
+          let mut w_y = tokens.read_spaced_text()?;
+          let y_rel = w_y.starts_with("~");
           if y_rel {
-            w.set_text(w[1..].to_string());
+            w_y.set_text(w_y[1..].to_string());
           }
-          let y = parse_num(&w, &None, &None)?;
-          let mut w = tokens.read_spaced_text()?;
-          let z_rel = w.starts_with("~");
+          let y = parse_num(&w_y, &None, &None)?;
+          let mut w_z = tokens.read_spaced_text()?;
+          let z_rel = w_z.starts_with("~");
           if z_rel {
-            w.set_text(w[1..].to_string());
+            w_z.set_text(w_z[1..].to_string());
           }
-          let z = parse_num(&w, &None, &None)?;
+          let z = parse_num(&w_z, &None, &None)?;
 
-          Ok(Arg::BlockPos(Pos::new(
+          let out = Pos::new(
             if x_rel { pos.x() + x } else { x },
             if y_rel { pos.y() + y } else { y },
             if z_rel { pos.z() + z } else { z },
-          )))
+          );
+          if out.y < 0 || out.y > 255 {
+            Err(w_y.expected("a position inside the world"))
+          } else {
+            Ok(Arg::BlockPos(out))
+          }
         } else {
           let w = tokens.read_spaced_text()?;
           let x = parse_num(&w, &None, &None)?;
