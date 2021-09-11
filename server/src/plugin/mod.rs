@@ -36,21 +36,6 @@ impl Sugarcane {
   }
 }
 
-#[define_ty(path = "sugarcane::Sugarcane")]
-impl Sugarcane {
-  pub fn info(&self, args: Variadic<&Var>) {
-    let mut msg = String::new();
-    let mut iter = args.iter();
-    if let Some(a) = iter.next() {
-      msg += &format!("{}", a);
-    }
-    for a in iter {
-      msg += &format!(" {}", a);
-    }
-    info!("plugin `{}`: {}", self.plugin, msg);
-  }
-}
-
 impl fmt::Debug for Sugarcane {
   fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
     write!(f, "Sugarcane {{}}")

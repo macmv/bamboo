@@ -64,9 +64,9 @@ impl Plugin {
       "on_block_place",
       vec![
         self.sc.clone().into(),
-        SlPlayer::new(player).into(),
-        SlPos::new(pos).into(),
-        SlBlockKind::new(kind).into(),
+        SlPlayer::from(player).into(),
+        SlPos::from(pos).into(),
+        SlBlockKind::from(kind).into(),
       ],
     );
   }
