@@ -26,13 +26,15 @@ pub struct PluginManager {
 
 #[derive(Clone)]
 pub struct Sugarcane {
+  // Index into plugins array
+  idx:    usize,
   plugin: String,
   wm:     Arc<WorldManager>,
 }
 
 impl Sugarcane {
-  pub fn new(plugin: String, wm: Arc<WorldManager>) -> Self {
-    Sugarcane { plugin, wm }
+  pub fn new(idx: usize, plugin: String, wm: Arc<WorldManager>) -> Self {
+    Sugarcane { idx, plugin, wm }
   }
 }
 
@@ -124,7 +126,7 @@ impl PluginManager {
         // sl.add_builtin_ty::<Sugarcane>();
         // sl.exec_statement("sugarcane::Sugarcane::init()");
 
-        let mut p = Plugin::new(name, wm.clone());
+        let mut p = Plugin::new(plugins.len(), name, wm.clone());
         p.load_from_file(&path, self);
 
         p.call_init();

@@ -12,7 +12,7 @@ use common::math::Pos;
 use std::{fs, path::Path, sync::Arc};
 use sugarlang::{
   path,
-  runtime::{Path as TyPath, Var},
+  runtime::{LockedEnv, Path as TyPath, Var},
   SlError, Sugarlang,
 };
 
@@ -27,8 +27,8 @@ pub struct Plugin {
 impl Plugin {
   //   /// Creates a new plugin. The name should be the name of the module (for
   //   /// debugging) and the Module should be the ruby module for this plugin.
-  pub fn new(name: String, wm: Arc<WorldManager>) -> Self {
-    Plugin { sc: Sugarcane::new(name.clone(), wm), name, sl: None }
+  pub fn new(idx: usize, name: String, wm: Arc<WorldManager>) -> Self {
+    Plugin { sc: Sugarcane::new(idx, name.clone(), wm), name, sl: None }
   }
 
   /// This replaces the plugins envrionment with a new one, and then parses the
@@ -53,6 +53,17 @@ impl Plugin {
         warn!("{}", err);
       }
     }
+  }
+
+  pub fn lock_env(&mut self) -> LockedEnv {
+    let sl = self.sl.as_mut().unwrap();
+    let (env, files) = sl.env_files();
+    env.lock(files)
+  }
+  /// Returns a cloned Sugarcane struct. This should be used to call Sugarlang
+  /// functions.
+  pub fn sc(&self) -> Sugarcane {
+    self.sc.clone()
   }
 
   pub fn call_init(&self) {

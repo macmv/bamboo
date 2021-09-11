@@ -3,9 +3,9 @@ use sugarcane::Command
 fn init(sc) {
   sc.info("hello world")
 
-  c = Command::new("setblock")
+  c = Command::new("setblock", handle_setblock)
   c.add_arg_block_pos("pos")
-  sc.add_command(c, handle_setblock)
+  sc.add_command(c)
 }
 
 fn handle_setblock(sc, world, player) {
