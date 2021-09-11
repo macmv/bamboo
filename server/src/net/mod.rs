@@ -61,14 +61,19 @@ impl Connection {
   /// more than once.
   pub(crate) async fn run(&self, player: Arc<Player>, wm: Arc<WorldManager>) -> Result<(), Status> {
     'running: loop {
+      if self.closed() {
+        break 'running;
+      }
       let p = match self.rx.lock().await.message().await {
         Ok(Some(p)) => sb::Packet::from_proto(p, player.ver()),
         Ok(None) => break 'running,
         Err(e) => {
-          if e.code() != tonic::Code::Cancelled {
-            return Err(e);
-          } else {
+          // For whatever reason, we get this unknown error every now and then. It's ugly,
+          // but this is the only way to check for it.
+          if e.code() == tonic::Code::Cancelled {
             break 'running;
+          } else {
+            return Err(e);
           }
         }
       };
@@ -170,7 +175,8 @@ impl Connection {
   pub async fn send(&self, p: cb::Packet) {
     match self.tx.send(Ok(p.to_proto(self.ver.unwrap()))).await {
       Ok(_) => (),
-      Err(_) => {
+      Err(e) => {
+        error!("error while sending packet: {}", e);
         self.closed.store(true, Ordering::SeqCst);
       }
     }

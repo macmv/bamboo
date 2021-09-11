@@ -149,7 +149,13 @@ impl World {
     let p = player.clone();
     let wm = self.wm.clone();
     tokio::spawn(async move {
-      c.run(p, wm).await.unwrap();
+      let name = p.username().to_string();
+      match c.run(p, wm).await {
+        Ok(_) => {}
+        Err(e) => {
+          error!("error in connection for {}: {}", name, e);
+        }
+      }
     });
 
     // Player tick loop
