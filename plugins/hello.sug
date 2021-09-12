@@ -8,7 +8,7 @@ fn init(sc) {
   sc.add_command(c)
 }
 
-fn handle_setblock(sc, world, player) {
+fn handle_setblock(sc, player, args) {
   sc.info("SETBLOCK")
 }
 

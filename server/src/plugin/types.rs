@@ -48,8 +48,21 @@ wrap!(Pos, SlPos);
 wrap!(block::Kind, SlBlockKind);
 wrap!(Command, SlCommand, callback: Callback);
 
+/// This is a handle into the Sugarcane server. It allows you to modify the
+/// world, add commands, lookup players, and more. It will be passed to every
+/// callback, so you should not store this in a global (although you can if you
+/// need to).
 #[define_ty(path = "sugarcane::Sugarcane")]
 impl Sugarcane {
+  /// Prints out the given arguments as an information message.
+  ///
+  /// # Example
+  ///
+  /// ```
+  /// sc.info("some information")
+  /// sc.info(5, 6)
+  /// sc.info(my_vars, other, info)
+  /// ```
   pub fn info(&self, args: Variadic<&Var>) {
     let mut msg = String::new();
     let mut iter = args.iter();
@@ -62,6 +75,20 @@ impl Sugarcane {
     info!("plugin `{}`: {}", self.plugin, msg);
   }
 
+  /// Adds a command to the server.
+  ///
+  /// # Example
+  ///
+  /// ```
+  /// fn main() {
+  ///   c = Command::new("setblock", handle_setblock)
+  ///   sc.add_command(c)
+  /// }
+  ///
+  /// fn handle_setblock(sc, player, args) {
+  ///   sc.info("ran setblock!")
+  /// }
+  /// ```
   pub fn add_command(&self, command: &SlCommand) {
     let wm = self.wm.clone();
     let cb = command.callback.clone();
@@ -87,8 +114,13 @@ impl Sugarcane {
   }
 }
 
+/// A Player. This struct is for online players. If anyone has disconnected,
+/// this struct will still exist, but the functions will return outdated
+/// information. There is currently no way to lookup an offline player.
 #[define_ty(path = "sugarcane::Player")]
 impl SlPlayer {
+  /// Returns the username of the player. This will never change, as long as the
+  /// user stays online.
   pub fn username(&self) -> String {
     self.inner.username().into()
   }
@@ -134,6 +166,7 @@ impl SlPos {
   }
 }
 
+/// A block kind. This is how you get/set blocks in the world.
 #[define_ty(path = "sugarcane::BlockKind")]
 impl SlBlockKind {
   pub fn to_s(&self) -> String {
@@ -141,11 +174,32 @@ impl SlBlockKind {
   }
 }
 
+/// A command. This is how to setup the arguments for a custom commands that
+/// users can run.
 #[define_ty(path = "sugarcane::Command")]
 impl SlCommand {
+  /// Creates a new command. The callback must be a function, which takes 3
+  /// arguments. See the example for details.
+  ///
+  /// # Example
+  ///
+  /// ```
+  /// fn main() {
+  ///   c = Command::new("setblock", handle_setblock)
+  /// }
+  ///
+  /// fn handle_setblock(sc, player, args) {
+  ///   sc.info("ran setblock!")
+  /// }
+  /// ```
   pub fn new(name: &str, callback: Callback) -> Self {
     SlCommand { inner: Command::new(name), callback }
   }
+  /// Adds a new block position argument to the command.
+  ///
+  /// This will be parsed as three numbers in a row. If you use a `~` before the
+  /// block coordinates, they will be parsed as relative coordinates. So if you
+  /// are standing at X: 50, then `~10` will be converted into X: 60.
   pub fn add_arg_block_pos(&mut self, name: &str) {
     self.inner.add_arg(name, Parser::BlockPos);
   }
@@ -163,14 +217,21 @@ impl PluginManager {
       path!(sugarcane),
       markdown!(
         /// The sugarcane API. This is how all sugarlang code can interact
-        /// with the sugarcane minecraft server. To get started with
-        /// a variable called
-        ///
-        /// # Examples
+        /// with the sugarcane minecraft server. To get started with writing
+        /// a plugin, create a directory called `plugins` next to the server.
+        /// Inside that dirctory, create a file named something like `hello.sug`.
+        /// In that file, put the following code:
         ///
         /// ```
-        /// Type::asdhglas()
+        /// fn init(sc) {
+        ///   sc.info("hello world")
+        /// }
         /// ```
+        ///
+        /// The given variable (`sc`) is a `Sugarcane` builtin. It is how you
+        /// interact with the entire server. You can lookup worlds and players,
+        /// add commands, and more. To start doing more things with your plugin,
+        /// check out the docs for the `Sugarcane` type.
       ),
     )]);
     docs.save("target/sl_docs");
