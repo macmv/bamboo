@@ -8,6 +8,8 @@ use common::math::Pos;
 use std::sync::Arc;
 use sugarlang::{
   define_ty,
+  docs::{markdown, MarkdownSection},
+  path,
   runtime::{Callback, Var, VarRef},
   Sugarlang,
 };
@@ -124,7 +126,12 @@ impl PluginManager {
     sl.add_builtin_ty::<SlBlockKind>();
     sl.add_builtin_ty::<SlCommand>();
 
-    let docs = sl.generate_docs();
+    let docs = sl.generate_docs(&[(
+      path!(sugarcane),
+      markdown!(
+        /// The sugarcane API. This is how all sugarlang code can interact with the sugarcane minecraft server.
+      ),
+    )]);
     docs.save("target/sl_docs");
   }
 }
