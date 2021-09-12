@@ -1,11 +1,11 @@
 use super::World;
 use crate::{
-  command::{Arg, Command, Parser, StringType},
+  command::{Command, Parser, StringType},
   net::Connection,
   player::Player,
 };
 use common::{
-  math::{ChunkPos, Pos},
+  math::ChunkPos,
   net::cb,
   util::nbt::{Tag, NBT},
   version::ProtocolVersion,
@@ -18,8 +18,8 @@ impl World {
     c.add_arg("text", Parser::String(StringType::Greedy));
     self
       .get_commands()
-      .add(c, |world, _| async move {
-        world.broadcast("[Server] big announce").await;
+      .add(c, |world, _, args| async move {
+        world.broadcast(format!("[Server] {}", args[1].str()).as_str()).await;
       })
       .await;
 
@@ -34,7 +34,7 @@ impl World {
       .add_arg("block", Parser::BlockState);
     self
       .get_commands()
-      .add(c, |world, args| async move {
+      .add(c, |world, _, args| async move {
         // args[0] is `fill`
         match args[1].lit() {
           "rect" => {
@@ -46,13 +46,24 @@ impl World {
             w.fill_kind(min, max, block).await.unwrap();
           }
           "circle" => {
-            let pos = args[2].pos();
-            let radius = args[3].float();
-            let block = args[4].block();
+            let _pos = args[2].pos();
+            let _radius = args[3].float();
+            let _block = args[4].block();
           }
           _ => unreachable!(),
         }
-        world.broadcast("called /fill").await;
+      })
+      .await;
+    let mut c = Command::new("flyspeed");
+    c.add_arg("multiplier", Parser::Float { min: Some(0.0), max: None });
+    self
+      .get_commands()
+      .add(c, |_, player, args| async move {
+        // args[0] is `flyspeed`
+        let v = args[1].float();
+        if let Some(p) = player {
+          p.set_flyspeed(v).await;
+        }
       })
       .await;
 
@@ -279,13 +290,5 @@ impl World {
     // for p in spawn_packets {
     //   conn.send(p).await;
     // }
-
-    conn
-      .send(cb::Packet::Abilities {
-        flags:         0x04 | 0x08,
-        flying_speed:  10.0 * 0.05,
-        walking_speed: 0.1,
-      })
-      .await;
   }
 }

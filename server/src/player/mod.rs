@@ -1,6 +1,5 @@
 use rayon::prelude::*;
 use std::{
-  cmp,
   cmp::Ordering,
   fmt,
   sync::{Arc, Mutex, MutexGuard},
@@ -579,6 +578,23 @@ impl Player {
     let delta = pos - self.pos().block().chunk();
     // TODO: Store view distance
     delta.x().abs() <= 10 && delta.z().abs() <= 10
+  }
+
+  /// Sets the player's fly speed. Unlike the packet, this is a multipler. So
+  /// setting their flyspeed to 1.0 is the default speed.
+  pub async fn set_flyspeed(&self, speed: f32) {
+    self
+      .conn
+      .send(cb::Packet::Abilities {
+        // 0x01: No damage
+        // 0x02: Flying
+        // 0x04: Can fly
+        // 0x08: Can instant break
+        flags:         0x02 | 0x04 | 0x08,
+        flying_speed:  speed * 0.05,
+        walking_speed: 0.1,
+      })
+      .await;
   }
 }
 

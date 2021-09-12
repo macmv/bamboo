@@ -99,7 +99,7 @@ impl Sugarcane {
       wm.default_world()
         .await
         .get_commands()
-        .add(command, move |_, _| {
+        .add(command, move |_, _, _| {
           let wm = wm.clone();
           let mut cb = cb.clone();
           async move {

@@ -259,4 +259,10 @@ impl Arg {
       _ => unreachable!("arg is a {:?}, not a position", self),
     }
   }
+  pub fn str(&self) -> &str {
+    match self {
+      Arg::String(v) => v,
+      _ => unreachable!("arg is a {:?}, not a position", self),
+    }
+  }
 }

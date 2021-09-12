@@ -34,7 +34,11 @@ use std::{collections::HashMap, future::Future, pin::Pin, sync::Arc};
 use tokio::sync::Mutex;
 
 type Handler = Box<
-  dyn Fn(Arc<WorldManager>, Vec<Arg>) -> Pin<Box<dyn Future<Output = ()> + Send + 'static>>
+  dyn Fn(
+      Arc<WorldManager>,
+      Option<Arc<Player>>,
+      Vec<Arg>,
+    ) -> Pin<Box<dyn Future<Output = ()> + Send + 'static>>
     + Send
     + Sync,
 >;
@@ -58,12 +62,12 @@ impl CommandTree {
   /// include the command syntax/description.
   pub async fn add<F, Fut>(&self, c: Command, handler: F)
   where
-    F: (Fn(Arc<WorldManager>, Vec<Arg>) -> Fut) + Send + Sync + 'static,
+    F: (Fn(Arc<WorldManager>, Option<Arc<Player>>, Vec<Arg>) -> Fut) + Send + Sync + 'static,
     Fut: Future<Output = ()> + Send + 'static,
   {
     self.commands.lock().await.insert(
       c.name().into(),
-      (c, Box::new(move |world, command| Box::pin((handler)(world, command)))),
+      (c, Box::new(move |world, player, command| Box::pin((handler)(world, player, command)))),
     );
   }
   /// Called whenever a command should be executed. This can also be used to act
@@ -90,7 +94,7 @@ impl CommandTree {
         return;
       }
     };
-    handler(world, args).await;
+    handler(world, Some(player), args).await;
   }
 }
 
