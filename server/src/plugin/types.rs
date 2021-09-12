@@ -94,10 +94,43 @@ impl SlPlayer {
   }
 }
 
-#[define_ty(path = "sugarcane::Pos")]
+/// A block position. This stores an X, Y, and Z coordinates.
+///
+/// If you need a player position, use
+#[define_ty(path = "sugarcane::BPos")]
 impl SlPos {
+  /// Returns the X position of this block position.
+  ///
+  /// # Example
+  ///
+  /// ```
+  /// pos = Pos::new(5, 6, 7)
+  /// pos.x() // returns 5
+  /// ```
   pub fn x(&self) -> i32 {
     self.inner.x()
+  }
+  /// Returns the Y position of this block position.
+  ///
+  /// # Example
+  ///
+  /// ```
+  /// pos = Pos::new(5, 6, 7)
+  /// pos.y() // returns 6
+  /// ```
+  pub fn y(&self) -> i32 {
+    self.inner.y()
+  }
+  /// Returns the Z position of this block position.
+  ///
+  /// # Example
+  ///
+  /// ```
+  /// pos = Pos::new(5, 6, 7)
+  /// pos.z() // returns 7
+  /// ```
+  pub fn z(&self) -> i32 {
+    self.inner.z()
   }
 }
 
@@ -129,7 +162,15 @@ impl PluginManager {
     let docs = sl.generate_docs(&[(
       path!(sugarcane),
       markdown!(
-        /// The sugarcane API. This is how all sugarlang code can interact with the sugarcane minecraft server.
+        /// The sugarcane API. This is how all sugarlang code can interact
+        /// with the sugarcane minecraft server. To get started with
+        /// a variable called
+        ///
+        /// # Examples
+        ///
+        /// ```
+        /// Type::asdhglas()
+        /// ```
       ),
     )]);
     docs.save("target/sl_docs");
