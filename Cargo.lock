@@ -821,6 +821,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "html-builder"
+version = "0.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f9eeaf0c6018366bd18892177b648114fb95ea36022a29cd448c64f350b1bcb4"
+
+[[package]]
 name = "http"
 version = "0.2.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2256,22 +2262,31 @@ checksum = "6bdef32e8150c2a081110b42772ffe7d7c9032b606bc226c8260fd97e0976601"
 [[package]]
 name = "sugarlang"
 version = "0.1.0"
-source = "git+https://gitlab.com/macmv/sugarlang#4c3c2f9af6ed531db3555a9aae86ef0fa53317a8"
+source = "git+https://gitlab.com/macmv/sugarlang#f3764a7b9e5815fb2c480e5b552c832a46babc4e"
 dependencies = [
  "ansi_term",
  "sugarlang_derive",
+ "sugarlang_docs",
  "utf8-chars",
 ]
 
 [[package]]
 name = "sugarlang_derive"
 version = "0.1.0"
-source = "git+https://gitlab.com/macmv/sugarlang#4c3c2f9af6ed531db3555a9aae86ef0fa53317a8"
+source = "git+https://gitlab.com/macmv/sugarlang#f3764a7b9e5815fb2c480e5b552c832a46babc4e"
 dependencies = [
  "proc-macro-error",
  "proc-macro2",
  "quote",
  "syn",
+]
+
+[[package]]
+name = "sugarlang_docs"
+version = "0.1.0"
+source = "git+https://gitlab.com/macmv/sugarlang#f3764a7b9e5815fb2c480e5b552c832a46babc4e"
+dependencies = [
+ "html-builder",
 ]
 
 [[package]]

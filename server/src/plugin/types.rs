@@ -123,5 +123,8 @@ impl PluginManager {
     sl.add_builtin_ty::<SlPos>();
     sl.add_builtin_ty::<SlBlockKind>();
     sl.add_builtin_ty::<SlCommand>();
+
+    let docs = sl.generate_docs();
+    docs.save("target/sl_docs");
   }
 }
