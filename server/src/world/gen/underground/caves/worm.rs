@@ -39,7 +39,7 @@ impl CaveWorm {
   /// carve shorter paths. All children's paths will be appended to
   /// `self.steps`.
   pub fn carve(&mut self, offset: u32) {
-    let steps = self.rng.next_u32() % 10 + 20;
+    let steps = self.rng.next_u32() % 20 + 100;
     if steps < offset {
       return;
     }
