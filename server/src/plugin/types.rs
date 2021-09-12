@@ -4,7 +4,7 @@ use crate::{
   command::{Command, Parser},
   player::Player,
 };
-use common::math::Pos;
+use common::math::{FPos, Pos};
 use std::sync::Arc;
 use sugarlang::{
   define_ty,
@@ -45,6 +45,7 @@ macro_rules! wrap {
 
 wrap!(Arc<Player>, SlPlayer);
 wrap!(Pos, SlPos);
+wrap!(FPos, SlFPos);
 wrap!(block::Kind, SlBlockKind);
 wrap!(Command, SlCommand, callback: Callback);
 
@@ -126,12 +127,12 @@ impl SlPlayer {
   }
 }
 
-/// A block position. This stores an X, Y, and Z coordinates.
+/// A block position. This stores X, Y, and Z coordinates.
 ///
-/// If you need a player position, use
-#[define_ty(path = "sugarcane::BPos")]
+/// If you need a player position, use `FPos` instead.
+#[define_ty(path = "sugarcane::Pos")]
 impl SlPos {
-  /// Returns the X position of this block position.
+  /// Returns the X position of this block.
   ///
   /// # Example
   ///
@@ -142,7 +143,7 @@ impl SlPos {
   pub fn x(&self) -> i32 {
     self.inner.x()
   }
-  /// Returns the Y position of this block position.
+  /// Returns the Y position of this block.
   ///
   /// # Example
   ///
@@ -153,7 +154,7 @@ impl SlPos {
   pub fn y(&self) -> i32 {
     self.inner.y()
   }
-  /// Returns the Z position of this block position.
+  /// Returns the Z position of this block.
   ///
   /// # Example
   ///
@@ -162,6 +163,46 @@ impl SlPos {
   /// pos.z() // returns 7
   /// ```
   pub fn z(&self) -> i32 {
+    self.inner.z()
+  }
+}
+
+/// An entity position. This stores X, Y, and Z coordinates as floats.
+///
+/// If you need a block position, use `Pos` instead.
+#[define_ty(path = "sugarcane::FPos")]
+impl SlFPos {
+  /// Returns the X position of this entity.
+  ///
+  /// # Example
+  ///
+  /// ```
+  /// pos = FPos::new(5.5, 6.0, 7.2)
+  /// pos.x() // returns 5.5
+  /// ```
+  pub fn x(&self) -> f64 {
+    self.inner.x()
+  }
+  /// Returns the Y position of this entity.
+  ///
+  /// # Example
+  ///
+  /// ```
+  /// pos = FPos::new(5.5, 6.0, 7.2)
+  /// pos.y() // returns 6.0
+  /// ```
+  pub fn y(&self) -> f64 {
+    self.inner.y()
+  }
+  /// Returns the Z position of this entity.
+  ///
+  /// # Example
+  ///
+  /// ```
+  /// pos = FPos::new(5.5, 6.0, 7.2)
+  /// pos.z() // returns 7.2
+  /// ```
+  pub fn z(&self) -> f64 {
     self.inner.z()
   }
 }
@@ -210,6 +251,7 @@ impl PluginManager {
     sl.add_builtin_ty::<Sugarcane>();
     sl.add_builtin_ty::<SlPlayer>();
     sl.add_builtin_ty::<SlPos>();
+    sl.add_builtin_ty::<SlFPos>();
     sl.add_builtin_ty::<SlBlockKind>();
     sl.add_builtin_ty::<SlCommand>();
 
