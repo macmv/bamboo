@@ -1,3 +1,6 @@
 /target
 /log
 /tmp
+
+# a script to upload release builds to my dev server
+upload.sh
