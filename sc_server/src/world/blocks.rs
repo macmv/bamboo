@@ -3,7 +3,7 @@ use sc_common::{
   math::{ChunkPos, Pos, PosError},
   net::cb,
 };
-use std::collections::HashMap;
+use std::{collections::HashMap, f32::consts::PI};
 
 /// General block manipulation functions
 impl World {
@@ -120,5 +120,36 @@ impl World {
     kind: block::Kind,
   ) -> Result<(), PosError> {
     self.fill_rect(min, max, self.block_converter.get(kind).default_type()).await
+  }
+
+  /// Fills a flat circle. The center will be the middle of the circle. The
+  /// radius is how far the circle extends from the center. The center will act
+  /// like it is at (0.5, 0.5, 0.5) within the block. So the circle should not
+  /// be offset from the center at all.
+  pub async fn fill_circle(
+    &self,
+    center: Pos,
+    radius: f32,
+    ty: block::Type,
+  ) -> Result<(), PosError> {
+    let main_rect = ((PI / 4.0).cos() * radius) as i32;
+    self
+      .fill_rect(
+        center - Pos::new(main_rect, 0, main_rect),
+        center + Pos::new(main_rect, 0, main_rect),
+        ty,
+      )
+      .await?;
+    Ok(())
+  }
+
+  /// Fills the given circle with the default type for the block kind.
+  pub async fn fill_circle_kind(
+    &self,
+    center: Pos,
+    radius: f32,
+    kind: block::Kind,
+  ) -> Result<(), PosError> {
+    self.fill_circle(center, radius, self.block_converter.get(kind).default_type()).await
   }
 }

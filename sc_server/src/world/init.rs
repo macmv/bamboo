@@ -46,9 +46,11 @@ impl World {
             w.fill_rect_kind(min, max, block).await.unwrap();
           }
           "circle" => {
-            let _pos = args[2].pos();
-            let _radius = args[3].float();
-            let _block = args[4].block();
+            let pos = args[2].pos();
+            let radius = args[3].float();
+            let block = args[4].block();
+            let w = world.default_world().await;
+            w.fill_circle_kind(pos, radius, block).await.unwrap();
           }
           _ => unreachable!(),
         }
