@@ -22,7 +22,7 @@ fn generate_version_lit(to_old: Vec<u32>, ver: &str) -> TokenStream {
     Version {
       to_old: &[#(#to_old),*],
       to_new: &[#(#to_new),*],
-      ver: common::version::BlockVersion::#ver,
+      ver: sc_common::version::BlockVersion::#ver,
     }
   }
 }

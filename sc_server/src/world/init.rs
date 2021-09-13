@@ -4,13 +4,13 @@ use crate::{
   net::Connection,
   player::Player,
 };
-use common::{
+use rayon::prelude::*;
+use sc_common::{
   math::ChunkPos,
   net::cb,
   util::nbt::{Tag, NBT},
   version::ProtocolVersion,
 };
-use rayon::prelude::*;
 
 impl World {
   pub async fn init(&self) {

@@ -1,5 +1,5 @@
 use crate::world::chunk::MultiChunk;
-use common::{math::ChunkPos, net::cb, version::BlockVersion};
+use sc_common::{math::ChunkPos, net::cb, version::BlockVersion};
 
 mod v1_13;
 mod v1_14;

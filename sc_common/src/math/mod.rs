@@ -19,7 +19,7 @@ use sha1::{Digest, Sha1};
 use std::hash::BuildHasher;
 use wyhash::WyHash;
 
-pub use generated::{ChunkPos, Pos, PosError, PosIter};
+pub use sc_generated::{ChunkPos, Pos, PosError, PosIter};
 
 /// A block face. This is used to represent a face that a user clicked on.
 #[derive(Debug, Clone, Copy, Hash, PartialEq, Eq)]

@@ -1,4 +1,7 @@
-use common::{
+use rand::{rngs::OsRng, RngCore};
+use reqwest::StatusCode;
+use rsa::{padding::PaddingScheme, RSAPrivateKey};
+use sc_common::{
   math,
   net::{cb, sb, tcp},
   proto,
@@ -7,9 +10,6 @@ use common::{
   util::{chat::Color, Chat, UUID},
   version::ProtocolVersion,
 };
-use rand::{rngs::OsRng, RngCore};
-use reqwest::StatusCode;
-use rsa::{padding::PaddingScheme, RSAPrivateKey};
 use serde_derive::{Deserialize, Serialize};
 use sha1::{Digest, Sha1};
 use std::{convert::TryInto, error::Error, io, io::ErrorKind, sync::Arc};

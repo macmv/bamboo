@@ -10,7 +10,7 @@ use std::{error::Error, sync::Arc};
 use tokio::{net::TcpListener, sync::oneshot};
 
 use crate::conn::Conn;
-use common::{
+use sc_common::{
   math::der,
   net::sb,
   stream::{bedrock, java, StreamReader, StreamWriter},
@@ -29,7 +29,7 @@ pub fn load_icon(path: &str) -> String {
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn Error>> {
-  common::init("proxy");
+  sc_common::init("proxy");
 
   let addr = "0.0.0.0:25565";
   info!("listening for java clients on {}", addr);

@@ -5,7 +5,7 @@ use std::{
   sync::{Arc, Mutex, MutexGuard},
 };
 
-use common::{
+use sc_common::{
   math::{ChunkPos, FPos, Pos},
   net::cb,
   util::{Chat, UUID},

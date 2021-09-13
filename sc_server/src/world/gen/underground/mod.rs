@@ -1,6 +1,6 @@
 use super::WorldGen;
 use crate::world::chunk::MultiChunk;
-use common::math::ChunkPos;
+use sc_common::math::ChunkPos;
 
 mod caves;
 mod ores;

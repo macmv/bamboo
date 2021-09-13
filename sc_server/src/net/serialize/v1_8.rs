@@ -1,5 +1,5 @@
 use crate::world::chunk::MultiChunk;
-use common::{math::ChunkPos, net::cb, util::Buffer};
+use sc_common::{math::ChunkPos, net::cb, util::Buffer};
 use std::convert::TryInto;
 
 pub fn serialize_chunk(pos: ChunkPos, c: &MultiChunk) -> cb::Packet {

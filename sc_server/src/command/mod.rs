@@ -28,8 +28,8 @@ pub use parse::{ErrorKind, ParseError, Tokenizer};
 pub use sender::CommandSender;
 
 use crate::{player::Player, world::WorldManager};
-use common::util::chat::{Chat, Color};
 use reader::CommandReader;
+use sc_common::util::chat::{Chat, Color};
 use std::{collections::HashMap, future::Future, pin::Pin, sync::Arc};
 use tokio::sync::Mutex;
 

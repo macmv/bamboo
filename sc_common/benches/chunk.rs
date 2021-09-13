@@ -1,9 +1,9 @@
-use common::{
+use criterion::{criterion_group, criterion_main, Criterion};
+use pprof::criterion::{Output, PProfProfiler};
+use sc_common::{
   chunk::{fixed, paletted, Section},
   math::Pos,
 };
-use criterion::{criterion_group, criterion_main, Criterion};
-use pprof::criterion::{Output, PProfProfiler};
 
 pub fn paletted(c: &mut Criterion) {
   // # Test results

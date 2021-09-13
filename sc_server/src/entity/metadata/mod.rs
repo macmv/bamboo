@@ -1,7 +1,7 @@
 mod serialize;
 
 use crate::item;
-use common::{
+use sc_common::{
   math::{Face, Pos},
   util::{Chat, UUID},
   version::ProtocolVersion,

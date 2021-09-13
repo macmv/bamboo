@@ -1,6 +1,6 @@
 use super::super::{util::Cache, WorldGen};
 use crate::{block, world::chunk::MultiChunk};
-use common::math::{
+use sc_common::math::{
   terrain::{Point, PointGrid},
   ChunkPos, Pos,
 };

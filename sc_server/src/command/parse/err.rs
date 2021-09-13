@@ -1,5 +1,5 @@
 use super::{Parser, Span};
-use common::util::{chat::Color, Chat};
+use sc_common::util::{chat::Color, Chat};
 use std::{error::Error, fmt};
 
 #[derive(Debug, Clone, PartialEq)]

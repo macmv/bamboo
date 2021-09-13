@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use super::{ty, Data, Type};
 
-use common::version::BlockVersion;
+use sc_common::version::BlockVersion;
 
 /// This is a version converter. It is how all item ids are converter between
 /// versions. This is much simpler than block conversion, as there are not

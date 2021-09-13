@@ -1,5 +1,5 @@
 use crate::world::chunk::MultiChunk;
-use common::{math::ChunkPos, net::cb, util::Buffer, version::BlockVersion};
+use sc_common::{math::ChunkPos, net::cb, util::Buffer, version::BlockVersion};
 
 // CHANGES:
 // No length is written for >8 bpb

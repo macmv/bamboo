@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use common::{
+use sc_common::{
   chunk::{Chunk, ChunkKind},
   math::{Pos, PosError},
   proto,

@@ -1,6 +1,6 @@
 use super::{BiomeGen, BiomeLayers, WorldGen};
 use crate::block;
-use common::math::Pos;
+use sc_common::math::Pos;
 use std::cmp;
 
 pub struct Gen {

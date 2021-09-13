@@ -8,7 +8,7 @@ use std::{
 use tokio::sync::{mpsc::Sender, Mutex};
 use tonic::{Status, Streaming};
 
-use common::{
+use sc_common::{
   math::Pos,
   net::{cb, sb},
   proto,

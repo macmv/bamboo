@@ -1,5 +1,5 @@
-use common::math::terrain::{Point, Voronoi};
 use noise::{BasicMulti, MultiFractal, NoiseFn, Seedable};
+use sc_common::math::terrain::{Point, Voronoi};
 
 /// This is a voronoi map, but all the input coordinates are shifted by two
 /// noise maps.

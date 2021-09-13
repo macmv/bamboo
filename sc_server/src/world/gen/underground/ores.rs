@@ -1,6 +1,6 @@
 use super::super::WorldGen;
 use crate::{block, world::chunk::MultiChunk};
-use common::math::ChunkPos;
+use sc_common::math::ChunkPos;
 
 pub struct OreGen {}
 

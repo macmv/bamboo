@@ -4,7 +4,7 @@ mod types;
 pub use plugin::Plugin;
 
 use crate::{block, player::Player, world::WorldManager};
-use common::math::Pos;
+use sc_common::math::Pos;
 use std::{
   fmt, fs,
   sync::{Arc, Mutex},

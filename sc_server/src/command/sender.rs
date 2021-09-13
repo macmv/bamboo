@@ -1,4 +1,4 @@
-use common::math::Pos;
+use sc_common::math::Pos;
 
 /// Anyone who can send commands. This could be the server console, a player, a
 /// command block, a sugarlang plugin, etc.

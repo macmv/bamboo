@@ -1,6 +1,6 @@
 use super::{Field, Metadata, Pose};
 use crate::item;
-use common::{
+use sc_common::{
   math::{Face, Pos},
   util::{Buffer, Chat, UUID},
   version::ProtocolVersion,

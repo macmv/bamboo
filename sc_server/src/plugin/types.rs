@@ -4,7 +4,7 @@ use crate::{
   command::{Command, Parser},
   player::Player,
 };
-use common::math::{FPos, Pos};
+use sc_common::math::{FPos, Pos};
 use std::sync::Arc;
 use sugarlang::{
   define_ty,

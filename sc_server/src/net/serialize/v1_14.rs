@@ -1,5 +1,5 @@
 use crate::world::chunk::MultiChunk;
-use common::{
+use sc_common::{
   math::ChunkPos,
   net::cb,
   util::{

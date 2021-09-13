@@ -1,6 +1,6 @@
 use super::{ty, Data, Kind, Type};
 
-use common::version::BlockVersion;
+use sc_common::version::BlockVersion;
 
 /// This is the conversion table for a single old version of the game and the
 /// latest version. This includes a list of old ids, whose index is the new

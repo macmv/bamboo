@@ -6,7 +6,7 @@ pub use token::{Span, Tokenizer, Word};
 
 use super::{Arg, CommandSender, Parser, StringType};
 use crate::block;
-use common::math::Pos;
+use sc_common::math::Pos;
 use std::{collections::HashMap, fmt::Display, str::FromStr};
 
 pub fn parse_num<T>(w: &Word, min: &Option<T>, max: &Option<T>) -> Result<T>

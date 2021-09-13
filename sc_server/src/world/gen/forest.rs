@@ -1,6 +1,6 @@
 use super::{BiomeGen, WorldGen};
 use crate::{block, world::chunk::MultiChunk};
-use common::math::{terrain::PointGrid, ChunkPos, Pos};
+use sc_common::math::{terrain::PointGrid, ChunkPos, Pos};
 
 pub struct Gen {
   id:    usize,

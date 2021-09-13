@@ -1,5 +1,5 @@
 use crate::{block, world::chunk::MultiChunk};
-use common::math::{ChunkPos, FastMath, Pos, RngCore, WyhashRng};
+use sc_common::math::{ChunkPos, FastMath, Pos, RngCore, WyhashRng};
 
 #[derive(Debug)]
 struct Vec3 {

@@ -1,4 +1,4 @@
-use common::math::{terrain::Point, ChunkPos, Pos, RngCore, WyhashRng};
+use sc_common::math::{terrain::Point, ChunkPos, Pos, RngCore, WyhashRng};
 
 #[derive(Clone, Copy, Debug)]
 pub struct Line {

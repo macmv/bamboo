@@ -1,8 +1,8 @@
 use super::chunk::MultiChunk;
 use crate::block;
-use common::math::{ChunkPos, Pos, RngCore, WyhashRng};
 use math::WarpedVoronoi;
 use noise::{BasicMulti, NoiseFn};
+use sc_common::math::{ChunkPos, Pos, RngCore, WyhashRng};
 use std::{cmp::Ordering, collections::HashSet};
 
 mod desert;

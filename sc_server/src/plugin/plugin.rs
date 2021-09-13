@@ -8,7 +8,7 @@ use super::{
   PluginManager, Sugarcane,
 };
 use crate::{block, player::Player, world::WorldManager};
-use common::math::Pos;
+use sc_common::math::Pos;
 use std::{fs, path::Path, sync::Arc};
 use sugarlang::{
   path,

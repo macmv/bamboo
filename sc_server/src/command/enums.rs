@@ -1,5 +1,5 @@
 use crate::{block, item};
-use common::{
+use sc_common::{
   math::{ChunkPos, Pos},
   util::{
     chat::{Chat, Color},

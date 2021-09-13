@@ -1,5 +1,5 @@
 use super::{Command, CommandTree, NodeType, Parser, StringType};
-use common::{net::cb, util::Buffer};
+use sc_common::{net::cb, util::Buffer};
 
 impl NodeType {
   fn mask(&self) -> u8 {

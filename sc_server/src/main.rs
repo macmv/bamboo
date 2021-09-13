@@ -6,12 +6,12 @@ use tokio::sync::mpsc;
 use tokio_stream::wrappers::ReceiverStream;
 use tonic::{transport::Server, Request, Response, Status, Streaming};
 
-use common::proto::{
+use sc_common::proto::{
   minecraft_server::{Minecraft, MinecraftServer},
   Packet, ReserveSlotsRequest, ReserveSlotsResponse, StatusRequest, StatusResponse,
 };
 
-use server::world::WorldManager;
+use sc_server::world::WorldManager;
 
 #[derive(Clone)]
 pub struct ServerImpl {
@@ -56,7 +56,7 @@ impl Minecraft for ServerImpl {
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn Error>> {
-  common::init("server");
+  sc_common::init("server");
 
   let addr = "0.0.0.0:8483".parse().unwrap();
 

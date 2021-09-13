@@ -20,7 +20,7 @@ use tokio::{
 };
 use tonic::{Status, Streaming};
 
-use common::{
+use sc_common::{
   math::{ChunkPos, FPos, Pos, PosError},
   net::cb,
   proto::Packet,

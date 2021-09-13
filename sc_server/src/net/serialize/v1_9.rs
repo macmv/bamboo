@@ -1,5 +1,5 @@
 use crate::world::chunk::MultiChunk;
-use common::{math::ChunkPos, net::cb, util::Buffer, version::BlockVersion};
+use sc_common::{math::ChunkPos, net::cb, util::Buffer, version::BlockVersion};
 
 // Applies to 1.9 - 1.12, but 1.10 doesn't work, so idk
 pub fn serialize_chunk(pos: ChunkPos, c: &MultiChunk, ver: BlockVersion) -> cb::Packet {

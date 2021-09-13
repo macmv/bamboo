@@ -9,10 +9,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     .compile(&["proto/connection.proto"], &["proto"])
     .unwrap();
 
-  println!("cargo:rerun-if-changed=../data/src");
+  println!("cargo:rerun-if-changed=../sc_data/src");
 
-  data::clone_prismarine_data();
-  data::generate_protocol();
+  sc_data::clone_prismarine_data();
+  sc_data::generate_protocol();
 
   Ok(())
 }

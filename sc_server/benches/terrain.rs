@@ -1,7 +1,7 @@
-use common::math::ChunkPos;
 use criterion::{criterion_group, criterion_main, Criterion};
 use pprof::criterion::{Output, PProfProfiler};
-use server::{
+use sc_common::math::ChunkPos;
+use sc_server::{
   block,
   world::{chunk::MultiChunk, gen::WorldGen},
 };

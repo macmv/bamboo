@@ -15,7 +15,7 @@ use tokio::sync::mpsc;
 use tokio_stream::wrappers::ReceiverStream;
 use tonic::{Request, Response, Status, Streaming};
 
-use common::proto::{
+use sc_common::proto::{
   minecraft_server::Minecraft, Packet, ReserveSlotsRequest, ReserveSlotsResponse, StatusRequest,
   StatusResponse,
 };
