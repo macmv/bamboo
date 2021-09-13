@@ -32,7 +32,7 @@ impl CaveGen {
     }
   }
 
-  pub fn carve(&mut self, world: &WorldGen, pos: ChunkPos, c: &mut MultiChunk) {
+  pub fn carve(&mut self, _world: &WorldGen, pos: ChunkPos, c: &mut MultiChunk) {
     for origin in self.origins.neighbors(Point::new(pos.block_x(), pos.block_z()), 1) {
       self.carve_cave_worm(origin, pos, c);
       // self.carve_cave_tree(origin, pos, c);

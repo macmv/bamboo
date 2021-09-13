@@ -12,13 +12,7 @@ use syn::{
 };
 
 struct KeyedArgs {
-  keys: HashMap<String, KeyedArg>,
-}
-
-struct KeyedArg {
-  key: Ident,
-  sep: Colon,
-  val: Expr,
+  keys: HashMap<String, Expr>,
 }
 
 #[derive(Debug)]
@@ -39,9 +33,9 @@ impl Parse for KeyedArgs {
       }
 
       let key: Ident = input.parse()?;
-      let sep: Colon = input.parse()?;
+      let _sep: Colon = input.parse()?;
       let val: Expr = input.parse()?;
-      keys.insert(key.to_string(), KeyedArg { key, sep, val });
+      keys.insert(key.to_string(), val);
 
       if input.is_empty() {
         break;
@@ -57,28 +51,28 @@ impl Parse for LookupArgs {
   fn parse(input: ParseStream) -> Result<Self> {
     let mut args = KeyedArgs::parse(input)?.keys;
 
-    let min = match args.remove("min").ok_or(input.error("expected a `min` argument"))?.val {
+    let min = match args.remove("min").ok_or(input.error("expected a `min` argument"))? {
       Expr::Lit(lit) => match lit.lit {
         Lit::Float(f) => f.base10_parse::<f64>()?,
         v => return Err(Error::new(v.span(), "expected an f64")),
       },
       v => return Err(Error::new(v.span(), "expected an f64")),
     };
-    let max = match args.remove("max").ok_or(input.error("expected a `max` argument"))?.val {
+    let max = match args.remove("max").ok_or(input.error("expected a `max` argument"))? {
       Expr::Lit(lit) => match lit.lit {
         Lit::Float(f) => f.base10_parse::<f64>()?,
         v => return Err(Error::new(v.span(), "expected an f64")),
       },
       v => return Err(Error::new(v.span(), "expected an f64")),
     };
-    let steps = match args.remove("steps").ok_or(input.error("expected a `steps` argument"))?.val {
+    let steps = match args.remove("steps").ok_or(input.error("expected a `steps` argument"))? {
       Expr::Lit(lit) => match lit.lit {
         Lit::Int(v) => v.base10_parse::<usize>()?,
         v => return Err(Error::new(v.span(), "expected a usize")),
       },
       v => return Err(Error::new(v.span(), "expected a usize")),
     };
-    let ty = match args.remove("ty").ok_or(input.error("expected a `ty` argument"))?.val {
+    let ty = match args.remove("ty").ok_or(input.error("expected a `ty` argument"))? {
       Expr::Path(path) => path.path.segments.first().unwrap().ident.clone(),
       v => return Err(Error::new(v.span(), "expected a type name (like f64)")),
     };

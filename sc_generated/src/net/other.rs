@@ -1,7 +1,3 @@
-use crate::proto;
-use prost::{DecodeError, EncodeError, Message};
-use prost_types::Any;
-
 // /// Creates a type url from the given keyword. This should be used to
 // /// endcode/decode Any types.
 // macro_rules! create_type_url {

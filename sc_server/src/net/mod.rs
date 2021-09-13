@@ -94,7 +94,7 @@ impl Connection {
             player.world().broadcast(msg).await;
           }
         }
-        sb::Packet::SetCreativeSlot { slot, item } => {
+        sb::Packet::SetCreativeSlot { slot: _, item: _ } => {
           // TODO: Parse the item
           // let id = p.get_int("item-id");
           // let count = p.get_byte("item-count");
@@ -108,7 +108,7 @@ impl Connection {
           // item::Stack::new(item::Type::from_u32(id)).with_amount(count));
           // }
         }
-        sb::Packet::BlockDig { location, status, face } => {
+        sb::Packet::BlockDig { location, status: _, face: _ } => {
           player.world().set_kind(location, block::Kind::Air).await.unwrap();
         }
         sb::Packet::HeldItemSlot { slot_id } => {
@@ -118,15 +118,15 @@ impl Connection {
           mut location,
           direction_v1_8,
           direction_v1_9,
-          hand_v1_9,
-          cursor_x_v1_8,
-          cursor_x_v1_11,
-          cursor_y_v1_8,
-          cursor_y_v1_11,
-          cursor_z_v1_8,
-          cursor_z_v1_11,
-          inside_block_v1_14,
-          held_item_removed_v1_9,
+          hand_v1_9: _,
+          cursor_x_v1_8: _,
+          cursor_x_v1_11: _,
+          cursor_y_v1_8: _,
+          cursor_y_v1_11: _,
+          cursor_z_v1_8: _,
+          cursor_z_v1_11: _,
+          inside_block_v1_14: _,
+          held_item_removed_v1_9: _,
         } => {
           let direction: i32 = if player.ver() == ProtocolVersion::V1_8 {
             // direction_v1_8 is an i8 (not a u8), so the sign stays correct
@@ -152,14 +152,14 @@ impl Connection {
             player.world().get_plugins().on_block_place(player.clone(), location, kind);
           }
         }
-        sb::Packet::Position { x, y, z, on_ground } => {
+        sb::Packet::Position { x, y, z, on_ground: _ } => {
           player.set_next_pos(x, y, z);
         }
-        sb::Packet::PositionLook { x, y, z, yaw, pitch, on_ground } => {
+        sb::Packet::PositionLook { x, y, z, yaw, pitch, on_ground: _ } => {
           player.set_next_pos(x, y, z);
           player.set_next_look(yaw, pitch);
         }
-        sb::Packet::Look { yaw, pitch, on_ground } => {
+        sb::Packet::Look { yaw, pitch, on_ground: _ } => {
           player.set_next_look(yaw, pitch);
         }
         // _ => warn!("got unknown packet from client: {:?}", p),

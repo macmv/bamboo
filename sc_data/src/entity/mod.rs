@@ -1,9 +1,9 @@
 use crate::util;
 use convert_case::{Case, Casing};
-use proc_macro2::{Ident, Span, TokenStream};
+
 use quote::quote;
 use serde_derive::Deserialize;
-use std::{collections::HashMap, error::Error, fs, fs::File, io::Write, path::Path};
+use std::{collections::HashMap, error::Error, fs, path::Path};
 
 #[derive(Debug, Clone, Deserialize)]
 struct Entity {

@@ -103,5 +103,5 @@ impl Plugin {
 
   /// This replaces the plugin envrionment with a new one, and then parses all
   /// of the files ending in `.sug` in the given directory.
-  pub fn load_from_dir(path: &Path) {}
+  pub fn load_from_dir(_path: &Path) {}
 }

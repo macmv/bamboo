@@ -5,7 +5,7 @@ use sc_common::math::ChunkPos;
 pub struct OreGen {}
 
 impl OreGen {
-  pub fn new(seed: u64) -> Self {
+  pub fn new(_seed: u64) -> Self {
     OreGen {}
   }
 

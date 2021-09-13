@@ -9,7 +9,6 @@ use std::{
   fmt, fs,
   sync::{Arc, Mutex},
 };
-use sugarlang::{define_ty, runtime::Var, Sugarlang};
 
 #[derive(Debug)]
 pub enum Event {

@@ -4,11 +4,7 @@
 )]
 #![feature(test)]
 
-#[macro_use]
-extern crate log;
-
 // use flexi_logger::{Duplicate, LogTarget, Logger};
-use log::LevelFilter;
 
 mod chunk_pos;
 pub mod net;

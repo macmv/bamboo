@@ -19,7 +19,7 @@ pub fn serialize_chunk(pos: ChunkPos, c: &MultiChunk) -> cb::Packet {
   let c = c.get_paletted();
 
   let biomes = true; // Always true with new chunk set
-  let skylight = true; // Assume overworld
+  let _skylight = true; // Assume overworld
 
   let mut bitmask = 0;
   for (y, section) in c.sections().enumerate() {
