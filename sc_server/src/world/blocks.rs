@@ -55,10 +55,14 @@ impl World {
         self.chunk(pos, |mut c| c.fill(min, max, ty))?;
 
         let num_blocks_changed = min.to(max).len();
-        // If we changed more than half the blocks in the chunk, we just resend
-        // everything. This is fastsest on average. Multi block changes use varints, so
-        // calculating which packet would be smaller is a pain.
-        if num_blocks_changed > 2048 {
+        // 2048 block is where chunk data packets are smaller. Multi block change
+        // packets use varints, so this is not an exact value, but it would be ideal
+        // (for packet size) to just compare with 2048 here.
+        //
+        // However, the minecraft client is terrible, and does things very slowly. So
+        // any time there is a large multi block change, the client will freeze up. That
+        // is why this check is against such a low number.
+        if num_blocks_changed > 128 {
           // Map of block version to packets. This server is optimized at many players
           // being online, so we only generate the chunk once for each versions.
           let mut serialized_chunks = HashMap::new();
@@ -155,8 +159,8 @@ impl World {
         ty,
       )
       .await?;
-    // Edges
-    for y in main_rect..radius as i32 {
+    // Edges. This is off by one because fills are always inclusive.
+    for y in main_rect + 1..radius as i32 {
       let start = (radius.powi(2) - y.pow(2) as f32).sqrt() as i32;
       // Top
       self
