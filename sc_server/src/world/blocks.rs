@@ -40,38 +40,21 @@ impl World {
     if min == max {
       return self.set_block(min, ty).await;
     }
-    let mut blocks_changed = HashMap::new();
-    for x in min.chunk_x()..=max.chunk_x() {
-      for z in min.chunk_z()..=max.chunk_z() {
-        let mut min_x = 0;
-        let mut min_z = 0;
-        if min.chunk_x() == x {
-          min_x = min.chunk_rel_x();
-        }
-        if min.chunk_z() == z {
-          min_z = min.chunk_rel_z();
-        }
-        let mut max_x = 15;
-        let mut max_z = 15;
-        if max.chunk_x() == x {
-          max_x = max.chunk_rel_x();
-        }
-        if max.chunk_z() == z {
-          max_z = max.chunk_rel_z();
-        }
-        let min = Pos::new(min_x, min.y, min_z);
-        let max = Pos::new(max_x, max.y, max_z);
-        blocks_changed.insert(ChunkPos::new(x, z), (min, max));
-
-        self.chunk(ChunkPos::new(x, z), |mut c| c.fill(min, max, ty))?;
-      }
-    }
-
     for x in min.chunk_x()..=max.chunk_x() {
       for z in min.chunk_z()..=max.chunk_z() {
         let pos = ChunkPos::new(x, z);
-        let (min, max) = &blocks_changed[&pos];
-        let num_blocks_changed = (max.x - min.x + 1) * (max.y - min.y + 1) * (max.z - min.z + 1);
+
+        let min_x = if min.chunk_x() == x { min.chunk_rel_x() } else { 0 };
+        let min_z = if min.chunk_z() == z { min.chunk_rel_z() } else { 0 };
+        let max_x = if max.chunk_x() == x { max.chunk_rel_x() } else { 15 };
+        let max_z = if max.chunk_z() == z { max.chunk_rel_z() } else { 15 };
+
+        let min = Pos::new(min_x, min.y, min_z);
+        let max = Pos::new(max_x, max.y, max_z);
+
+        self.chunk(pos, |mut c| c.fill(min, max, ty))?;
+
+        let num_blocks_changed = min.to(max).len();
         // If we changed more than half the blocks in the chunk, we just resend
         // everything. This is fastsest on average. Multi block changes use varints, so
         // calculating which packet would be smaller is a pain.
@@ -108,7 +91,7 @@ impl World {
                     net::serialize::serialize_multi_block_change(
                       pos,
                       p.ver().block(),
-                      min.to(*max).map(|pos| {
+                      min.to(max).map(|pos| {
                         (
                           pos.chunk_rel(),
                           self.block_converter.to_old(ty.id(), p.ver().block()) as i32,
