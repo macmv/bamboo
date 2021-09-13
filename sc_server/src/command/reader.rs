@@ -10,8 +10,6 @@ use std::{
 pub enum ReadError {
   EOF,
   IO(io::Error),
-  Unexpected(usize, char),
-  Invalid(usize, char),
 }
 
 impl fmt::Display for ReadError {
@@ -19,12 +17,6 @@ impl fmt::Display for ReadError {
     match self {
       Self::EOF => write!(f, "Unexpected EOF while reading command"),
       Self::IO(e) => writeln!(f, "{} while reading command", e),
-      Self::Unexpected(_index, c) => {
-        write!(f, "Unexpected '{}' while reading command", c)
-      }
-      Self::Invalid(_index, c) => {
-        write!(f, "Invalid '{}' while reading command", c)
-      }
     }
   }
 }
@@ -34,18 +26,6 @@ impl ReadError {
     match self {
       Self::EOF => writeln!(f, "Unexpected EOF while reading {}", text),
       Self::IO(e) => writeln!(f, "{} while reading {}", e, text),
-      Self::Unexpected(index, c) => {
-        let s = format!("Unexpected '{}' while reading {}", c, text);
-        let index = s.len() - text.len() + index;
-        writeln!(f, "{}", s)?;
-        writeln!(f, "{}^ here", " ".repeat(index - 1))
-      }
-      Self::Invalid(index, c) => {
-        let s = format!("Invalid '{}' while reading {}", c, text);
-        let index = s.len() - text.len() + index;
-        writeln!(f, "{}", s)?;
-        writeln!(f, "{}^ here", " ".repeat(index - 1))
-      }
     }
   }
 }

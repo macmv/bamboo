@@ -18,7 +18,7 @@
 //! [`Parser`] type for details on the various parsers.
 mod enums;
 mod parse;
-mod reader;
+pub mod reader;
 mod sender;
 mod serialize;
 

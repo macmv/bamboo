@@ -27,9 +27,9 @@ impl WarpedVoronoi {
   pub fn get(&self, p: Point) -> u32 {
     self.map.get(self.warp(p))
   }
-  pub fn dist_to_center(&self, p: Point) -> f64 {
-    self.map.dist_to_center(self.warp(p))
-  }
+  // pub fn dist_to_center(&self, p: Point) -> f64 {
+  //   self.map.dist_to_center(self.warp(p))
+  // }
   pub fn dist_to_border(&self, p: Point) -> f64 {
     self.map.dist_to_border(self.warp(p))
   }
