@@ -22,7 +22,11 @@ use tokio::{
     tcp::{OwnedReadHalf, OwnedWriteHalf},
     TcpStream,
   },
+  time::{Duration, Instant},
 };
+
+const FLUSH_SIZE: usize = 1024;
+const FLUSH_TIME: Duration = Duration::from_millis(50);
 
 pub struct JavaStreamReader {
   stream:      OwnedReadHalf,
@@ -35,6 +39,8 @@ pub struct JavaStreamReader {
 }
 pub struct JavaStreamWriter {
   stream:      OwnedWriteHalf,
+  outgoing:    Vec<u8>,
+  last_flush:  Instant,
   // If this is zero, compression is disabled.
   compression: usize,
   // If this is none, then encryption is disabled.
@@ -119,14 +125,24 @@ impl StreamReader for JavaStreamReader {
 
 impl JavaStreamWriter {
   pub fn new(stream: OwnedWriteHalf) -> Self {
-    JavaStreamWriter { stream, compression: 0, cipher: None }
+    JavaStreamWriter {
+      stream,
+      outgoing: Vec::with_capacity(1024),
+      last_flush: Instant::now(),
+      compression: 0,
+      cipher: None,
+    }
   }
 
   async fn write_data(&mut self, data: &mut [u8]) -> Result<()> {
     if let Some(c) = &mut self.cipher {
       c.encrypt(data);
     }
-    self.stream.write(data).await?;
+    if self.outgoing.len() + data.len() > FLUSH_SIZE {
+      self.flush().await?;
+    }
+
+    self.outgoing.extend(data.iter());
     Ok(())
   }
 }
@@ -177,5 +193,24 @@ impl StreamWriter for JavaStreamWriter {
   }
   fn enable_encryption(&mut self, secret: &[u8; 16]) {
     self.cipher = Some(Cfb8::new_from_slices(secret, secret).unwrap());
+  }
+
+  fn flush_time(&self) -> Option<Duration> {
+    if self.outgoing.is_empty() {
+      None
+    } else {
+      Some(
+        FLUSH_TIME
+          .checked_sub(Instant::now().duration_since(self.last_flush))
+          .unwrap_or(Duration::from_millis(0)),
+      )
+    }
+  }
+
+  async fn flush(&mut self) -> Result<()> {
+    self.stream.write(&self.outgoing).await?;
+    self.outgoing.clear();
+    self.last_flush = Instant::now();
+    Ok(())
   }
 }

@@ -13,7 +13,10 @@ use rsa::{padding::PaddingScheme, RSAPrivateKey};
 use serde_derive::{Deserialize, Serialize};
 use sha1::{Digest, Sha1};
 use std::{convert::TryInto, error::Error, io, io::ErrorKind, sync::Arc};
-use tokio::sync::{mpsc, oneshot};
+use tokio::{
+  sync::{mpsc, oneshot},
+  time,
+};
 use tokio_stream::wrappers::ReceiverStream;
 use tonic::{Request, Status, Streaming};
 
@@ -145,7 +148,7 @@ impl<R: StreamReader + Send> ClientListener<R> {
   }
 }
 
-impl<W: StreamWriter + Send> ServerListener<W> {
+impl<W: StreamWriter + Send + Sync> ServerListener<W> {
   /// This starts listening for packets from the server. The rx and tx are used
   /// to close the ClientListener. Specifically, the tx will send a value once
   /// this listener has been closed, and this listener will close once the rx
@@ -154,19 +157,32 @@ impl<W: StreamWriter + Send> ServerListener<W> {
     &mut self,
     tx: oneshot::Sender<()>,
     rx: oneshot::Receiver<()>,
-  ) -> Result<(), Box<dyn Error>> {
+  ) -> io::Result<()> {
     let res = self.run_inner(rx).await;
     let _ = tx.send(());
+    self.client.flush().await?;
     res
   }
-  async fn run_inner(&mut self, mut rx: oneshot::Receiver<()>) -> Result<(), Box<dyn Error>> {
+  async fn run_inner(&mut self, mut rx: oneshot::Receiver<()>) -> io::Result<()> {
     loop {
-      let pb = self.server.message();
       let p;
 
-      tokio::select! {
-        v = pb => p = v?,
-        _ = &mut rx => break,
+      if let Some(time) = self.client.flush_time() {
+        tokio::select! {
+          biased;
+          v = self.server.message() => p = v.map_err(|e| io::Error::new(ErrorKind::Other, e.to_string()))?,
+          _ = time::sleep(time) => {
+            self.client.flush().await?;
+            continue
+          },
+          _ = &mut rx => break,
+        }
+      } else {
+        tokio::select! {
+          biased;
+          v = self.server.message() => p = v.map_err(|e| io::Error::new(ErrorKind::Other, e.to_string()))?,
+          _ = &mut rx => break,
+        }
       }
       let p = p.unwrap();
       let cb = cb::Packet::from_proto(p, self.ver).to_tcp(self.ver);
@@ -208,7 +224,7 @@ struct JsonPlayer {
   id:   String,
 }
 
-impl<'a, R: StreamReader + Send, W: StreamWriter + Send> Conn<'a, R, W> {
+impl<'a, R: StreamReader + Send, W: StreamWriter + Send + Sync> Conn<'a, R, W> {
   pub async fn new(
     reader: R,
     writer: W,
@@ -321,6 +337,9 @@ impl<'a, R: StreamReader + Send, W: StreamWriter + Send> Conn<'a, R, W> {
     // The four byte verify token, used by the client in encryption.
     let mut token = [0u8; 4];
     'login: loop {
+      // Flush everything in the handshake (there are a bunch of back-and-forths that
+      // we want to be fast).
+      self.writer.flush().await?;
       self.reader.poll().await.unwrap();
       loop {
         let p = self.reader.read(self.ver).unwrap();
@@ -537,6 +556,7 @@ impl<'a, R: StreamReader + Send, W: StreamWriter + Send> Conn<'a, R, W> {
         }
       }
     }
+    self.writer.flush().await?;
     Ok(info)
   }
 }

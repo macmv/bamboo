@@ -83,7 +83,11 @@ async fn main() -> Result<(), Box<dyn Error>> {
   Ok(())
 }
 
-async fn handle_client<'a, R: StreamReader + Send + 'static, W: StreamWriter + Send + 'static>(
+async fn handle_client<
+  'a,
+  R: StreamReader + Send + 'static,
+  W: StreamWriter + Send + Sync + 'static,
+>(
   reader: R,
   writer: W,
   key: Arc<RSAPrivateKey>,
