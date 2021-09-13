@@ -1,9 +1,7 @@
-use crate::{block, world::World};
+use crate::{block, net, world::World};
 use sc_common::{
   math::{ChunkPos, Pos, PosError},
   net::cb,
-  util::Buffer,
-  version::ProtocolVersion,
 };
 use std::collections::HashMap;
 
@@ -100,58 +98,27 @@ impl World {
           }
         } else {
           // Map of block versions to multi block change records.
-          let mut records = HashMap::new();
+          let mut versions = HashMap::new();
           for p in self.players().await.iter().in_view(pos) {
-            if p.ver() >= ProtocolVersion::V1_16_2 {
-              p.conn()
-                .send(cb::Packet::MultiBlockChange {
-                  chunk_x_removed_v1_16_2:   None,
-                  chunk_z_removed_v1_16_2:   None,
-                  // TODO: Section encoding. Looks like this: ((sectionX & 0x3FFFFF) << 42) |
-                  // (sectionY & 0xFFFFF) | ((sectionZ & 0x3FFFFF) << 20);
-                  chunk_coordinates_v1_16_2: Some(vec![]),
-                  not_trust_edges_v1_16_2:   Some(false),
-                  records_v1_8:              None,
-                  // TODO: 1.16 multi block change records
-                  records_v1_16_2:           Some(
-                    records
-                      .entry(p.ver().block())
-                      .or_insert_with(|| {
-                        // let changes = blocks_changed[pos];
-                        vec![]
-                      })
-                      .clone(),
-                  ),
-                })
-                .await;
-            } else {
-              p.conn()
-                .send(cb::Packet::MultiBlockChange {
-                  chunk_x_removed_v1_16_2:   Some(x),
-                  chunk_z_removed_v1_16_2:   Some(z),
-                  chunk_coordinates_v1_16_2: None,
-                  not_trust_edges_v1_16_2:   None,
-                  records_v1_8:              Some(
-                    records
-                      .entry(p.ver().block())
-                      .or_insert_with(|| {
-                        let mut out = Buffer::new(vec![]);
-                        out.write_varint(num_blocks_changed);
-                        for pos in min.to(*max) {
-                          out.write_u8((pos.chunk_rel_x() as u8) << 4 | pos.chunk_rel_z() as u8);
-                          out.write_u8(pos.y as u8);
-                          out.write_varint(
-                            self.block_converter.to_old(ty.id(), p.ver().block()) as i32
-                          );
-                        }
-                        out.into_inner()
-                      })
-                      .clone(),
-                  ),
-                  records_v1_16_2:           None,
-                })
-                .await;
-            }
+            p.conn()
+              .send(
+                versions
+                  .entry(p.ver().block())
+                  .or_insert_with(|| {
+                    net::serialize::serialize_multi_block_change(
+                      pos,
+                      p.ver().block(),
+                      min.to(*max).map(|pos| {
+                        (
+                          pos.chunk_rel(),
+                          self.block_converter.to_old(ty.id(), p.ver().block()) as i32,
+                        )
+                      }),
+                    )
+                  })
+                  .clone(),
+              )
+              .await;
           }
         }
       }

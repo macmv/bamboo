@@ -377,6 +377,21 @@ impl Iterator for PosIter {
     }
     Some(ret)
   }
+
+  fn size_hint(&self) -> (usize, Option<usize>) {
+    let len = ((self.end.x - self.start.x + 1)
+      * (self.end.y - self.start.y + 1)
+      * (self.end.z - self.start.z + 1)) as usize;
+    (len, Some(len))
+  }
+}
+
+impl ExactSizeIterator for PosIter {
+  fn len(&self) -> usize {
+    ((self.end.x - self.start.x + 1)
+      * (self.end.y - self.start.y + 1)
+      * (self.end.z - self.start.z + 1)) as usize
+  }
 }
 
 #[cfg(test)]

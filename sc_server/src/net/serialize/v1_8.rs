@@ -1,5 +1,9 @@
 use crate::world::chunk::MultiChunk;
-use sc_common::{math::ChunkPos, net::cb, util::Buffer};
+use sc_common::{
+  math::{ChunkPos, Pos},
+  net::cb,
+  util::Buffer,
+};
 use std::convert::TryInto;
 
 pub fn serialize_chunk(pos: ChunkPos, c: &MultiChunk) -> cb::Packet {
@@ -131,5 +135,26 @@ pub fn serialize_partial_chunk(pos: ChunkPos, c: &MultiChunk, min: u32, max: u32
     biomes_v1_15:                          None,
     biomes_v1_16_2:                        None,
     ignore_old_data_v1_16_removed_v1_16_2: None,
+  }
+}
+
+pub fn serialize_multi_block_change<I>(pos: ChunkPos, changes: I) -> cb::Packet
+where
+  I: ExactSizeIterator<Item = (Pos, i32)>,
+{
+  let mut out = Buffer::new(vec![]);
+  out.write_varint(changes.len() as i32);
+  for (pos, id) in changes {
+    out.write_u8((pos.x as u8) << 4 | pos.z as u8);
+    out.write_u8(pos.y as u8);
+    out.write_varint(id);
+  }
+  cb::Packet::MultiBlockChange {
+    chunk_x_removed_v1_16_2:   Some(pos.x()),
+    chunk_z_removed_v1_16_2:   Some(pos.z()),
+    chunk_coordinates_v1_16_2: None,
+    not_trust_edges_v1_16_2:   None,
+    records_v1_8:              Some(out.into_inner()),
+    records_v1_16_2:           None,
   }
 }

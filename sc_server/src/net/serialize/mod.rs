@@ -1,5 +1,9 @@
-use crate::{block, world::chunk::MultiChunk};
-use sc_common::{math::ChunkPos, net::cb, version::BlockVersion};
+use crate::world::chunk::MultiChunk;
+use sc_common::{
+  math::{ChunkPos, Pos},
+  net::cb,
+  version::BlockVersion,
+};
 
 mod v1_13;
 mod v1_14;
@@ -17,10 +21,10 @@ pub fn serialize_chunk(pos: ChunkPos, c: &MultiChunk, ver: BlockVersion) -> cb::
 }
 pub fn serialize_multi_block_change<I>(pos: ChunkPos, ver: BlockVersion, changes: I) -> cb::Packet
 where
-  I: Iterator<Item = ((u8, u8), block::Type)>,
+  I: ExactSizeIterator<Item = (Pos, i32)>,
 {
   match ver {
-    // BlockVersion::V1_8 => v1_8::serialize_multi_block_change(pos, changes),
+    BlockVersion::V1_8 => v1_8::serialize_multi_block_change(pos, changes),
     // BlockVersion::V1_9 | BlockVersion::V1_12 => v1_9::serialize_multi_block_change(pos, c, ver),
     // BlockVersion::V1_13 => v1_13::serialize_multi_block_change(pos, c),
     // BlockVersion::V1_14 => v1_14::serialize_multi_block_change(pos, c),
