@@ -132,6 +132,21 @@ impl World {
     radius: f32,
     ty: block::Type,
   ) -> Result<(), PosError> {
+    // This is a naive implementation. It could not be bothered to integrate these
+    // circle functions, so I went with an algorithm like so:
+    //
+    //     //-------\\
+    //   //   edge    \\
+    // // |-----------| \\
+    // |  | main_rect |  | <- edge
+    // |  |           |  |
+    // \\ |-----------| //
+    //   \\   edge    //
+    //     \\-------//
+    //
+    // The main rect is the largest rectangle that will fit in this circle. It is
+    // filled at the start. All the edges are then filled row-by-row, going from the
+    // center to the outside.
     let main_rect = ((PI / 4.0).cos() * radius) as i32;
     self
       .fill_rect(
@@ -140,6 +155,18 @@ impl World {
         ty,
       )
       .await?;
+    // Edges
+    for y in main_rect..radius as i32 {
+      let start = (radius.powi(2) - y.pow(2) as f32).sqrt() as i32;
+      // Top
+      self
+        .fill_rect(
+          center + Pos::new(-start, 0, y),
+          center + Pos::new(start, 0, y),
+          self.block_converter.get(block::Kind::Dirt).default_type(),
+        )
+        .await?;
+    }
     Ok(())
   }
 
