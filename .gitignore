@@ -4,3 +4,8 @@
 
 # a script to upload release builds to my dev server
 upload.sh
+
+# cargo flamegraph
+flamegraph.svg
+perf.data
+perf.data.old
