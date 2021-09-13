@@ -162,14 +162,11 @@ impl World {
     // Edges. This is off by one because fills are always inclusive.
     for y in main_rect + 1..radius as i32 {
       let start = (radius.powi(2) - y.pow(2) as f32).sqrt() as i32;
-      // Top
-      self
-        .fill_rect(
-          center + Pos::new(-start, 0, y),
-          center + Pos::new(start, 0, y),
-          self.block_converter.get(block::Kind::Dirt).default_type(),
-        )
-        .await?;
+      // Top, bottom, right, and left
+      self.fill_rect(center + Pos::new(-start, 0, y), center + Pos::new(start, 0, y), ty).await?;
+      self.fill_rect(center + Pos::new(-start, 0, -y), center + Pos::new(start, 0, -y), ty).await?;
+      self.fill_rect(center + Pos::new(y, 0, -start), center + Pos::new(y, 0, start), ty).await?;
+      self.fill_rect(center + Pos::new(-y, 0, -start), center + Pos::new(-y, 0, start), ty).await?;
     }
     Ok(())
   }
