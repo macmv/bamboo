@@ -1,16 +1,16 @@
-mod chunk_pos;
+// mod chunk_pos;
 pub mod der;
 mod fast;
 mod fpos;
-mod pos;
+// mod pos;
 mod rng;
 
 pub mod terrain;
 
-pub use chunk_pos::ChunkPos;
+// pub use chunk_pos::ChunkPos;
 pub use fast::{FastMath, EPSILON};
 pub use fpos::{FPos, FPosError};
-pub use pos::{Pos, PosError, PosIter};
+// pub use pos::{Pos, PosError, PosIter};
 pub use rng::WyhashRng;
 
 pub use rand_core::RngCore;
@@ -18,6 +18,8 @@ pub use rand_core::RngCore;
 use sha1::{Digest, Sha1};
 use std::hash::BuildHasher;
 use wyhash::WyHash;
+
+pub use generated::{ChunkPos, Pos, PosError, PosIter};
 
 /// A block face. This is used to represent a face that a user clicked on.
 #[derive(Debug, Clone, Copy, Hash, PartialEq, Eq)]

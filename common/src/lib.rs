@@ -24,15 +24,10 @@ pub mod net;
 pub mod registry;
 pub mod stream;
 pub mod util;
-pub mod version;
 
 pub use registry::Registry;
 
-pub mod proto {
-  tonic::include_proto!("connection");
-
-  pub const FILE_DESCRIPTOR_SET: &[u8] = tonic::include_file_descriptor_set!("connection");
-}
+pub use generated::{proto, version};
 
 // #[derive(Debug)]
 // pub struct KeepAlivePolicy {

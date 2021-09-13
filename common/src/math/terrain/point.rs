@@ -1,3 +1,4 @@
+use super::super::Pos;
 use std::ops::{Add, Div, Sub};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -63,6 +64,12 @@ impl Point {
   }
   pub fn to_vec(&self) -> Vector {
     Vector::new(self.x as f64, self.y as f64)
+  }
+}
+
+impl From<Pos> for Point {
+  fn from(p: Pos) -> Point {
+    Point::new(p.x, p.z)
   }
 }
 

@@ -1,17 +1,15 @@
 [package]
-name = "common"
+name = "generated"
 version = "0.1.1"
 edition = "2018"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-sc_macros = { path = "../sc_macros" }
-generated = { path = "../generated" }
 
 # flexi_logger = "0.17"
-log4rs = "1.0.0"
-anyhow = "1.0.0"
+# log4rs = "1.0.0"
+# anyhow = "1.0.0"
 log = "0.4"
 
 tonic = "0.5"
@@ -19,34 +17,34 @@ prost = "0.8"
 prost-types = "0.8"
 
 byteorder = "1.4"
-futures = "0.3.14"
-tokio = { version = "1.5", features = ["rt-multi-thread"] }
-tokio-stream = "0.1.5"
+# futures = "0.3.14"
+# tokio = { version = "1.5", features = ["rt-multi-thread"] }
+# tokio-stream = "0.1.5"
 
-asn1 = "0.5.3"
-rsa = "0.4.0"
-sha-1 = "0.9.6"
+# asn1 = "0.5.3"
+# rsa = "0.4.0"
+# sha-1 = "0.9.6"
 
 num = "0.4"
 num-traits = "0.2"
 num-derive = "0.3"
 strum = "0.20"
 strum_macros = "0.20"
-bytes = "1.0.1"
+# bytes = "1.0.1"
 rand = "0.8.3"
-rand_core = "0.6.3"
-wyhash = "0.5.0"
+# rand_core = "0.6.3"
+# wyhash = "0.5.0"
 
 serde = "1.0"
-serde_derive = "1.0"
-serde_json = "1.0"
+# serde_derive = "1.0"
+# serde_json = "1.0"
 
-async-trait = "0.1.50"
-cfb8 = "0.7.1"
-aes = "0.7.2"
-miniz_oxide = "0.4.4"
-flate2 = "1.0"
-ringbuf = "0.2.4"
+# async-trait = "0.1.50"
+# cfb8 = "0.7.1"
+# aes = "0.7.2"
+# miniz_oxide = "0.4.4"
+# flate2 = "1.0"
+# ringbuf = "0.2.4"
 
 [build-dependencies]
 # We need to disable default features, as that uses rustfmt, which is not installed in Docker containers.

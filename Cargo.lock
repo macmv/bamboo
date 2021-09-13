@@ -329,6 +329,7 @@ dependencies = [
  "data",
  "flate2",
  "futures",
+ "generated",
  "log",
  "log4rs",
  "miniz_oxide 0.4.4",
@@ -721,6 +722,28 @@ dependencies = [
  "proc-macro-hack",
  "proc-macro-nested",
  "slab",
+]
+
+[[package]]
+name = "generated"
+version = "0.1.1"
+dependencies = [
+ "byteorder",
+ "criterion",
+ "data",
+ "log",
+ "num",
+ "num-derive",
+ "num-traits",
+ "pprof",
+ "prost",
+ "prost-types",
+ "rand 0.8.4",
+ "serde",
+ "strum",
+ "strum_macros",
+ "tonic",
+ "tonic-build",
 ]
 
 [[package]]
@@ -2155,6 +2178,7 @@ dependencies = [
  "criterion",
  "data",
  "futures",
+ "generated",
  "log",
  "noise",
  "num",

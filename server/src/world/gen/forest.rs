@@ -71,7 +71,7 @@ impl BiomeGen for Gen {
     for p in
       (chunk_pos.block() - Pos::new(2, 0, 2)).to(chunk_pos.block() + Pos::new(15 + 2, 0, 15 + 2))
     {
-      if world.is_biome(self, p) && self.trees.contains(p.to_point()) {
+      if world.is_biome(self, p) && self.trees.contains(p.into()) {
         let height = self.height_at(world, p);
         self.place_tree(world, c, p.with_y(height + 1), chunk_pos);
       }

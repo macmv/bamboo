@@ -3,6 +3,7 @@ members = [
   "server",
   "proxy",
   "data",
+  "generated",
   "sc_macros",
 ]
 

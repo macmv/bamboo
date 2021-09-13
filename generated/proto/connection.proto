@@ -1,0 +1,173 @@
+syntax = "proto3";
+
+package connection;
+
+import "google/protobuf/any.proto";
+
+service Minecraft {
+  rpc Connection(stream Packet) returns (stream Packet) {}
+  rpc Status(StatusRequest) returns (StatusResponse) {}
+  rpc Reserve_slots(ReserveSlotsRequest) returns (ReserveSlotsResponse) {}
+}
+
+message StatusRequest {
+}
+
+message StatusResponse {
+  bytes id = 1;
+  int32 num_players = 2;
+  string server_type = 3;
+}
+
+message ReserveSlotsRequest {
+  repeated UUID players = 1;
+}
+
+message ReserveSlotsResponse {
+  bool can_join = 1;
+  string msg = 2;
+}
+
+message Packet {
+  int32 id                    = 1;
+  repeated PacketField fields = 2;
+}
+
+message PacketField {
+  bool bool                 = 1;
+  uint32 uint               = 2;
+  int32 int                 = 3;
+  sint32 sint               = 4;
+  uint64 long               = 5;
+  float float               = 6;
+  double double             = 7;
+  string str                = 8;
+  UUID uuid                 = 9;
+  fixed64 pos               = 10;
+  bytes byte_arr            = 11;
+  repeated int32 int_arr    = 12;
+  repeated uint64 long_arr  = 13;
+  repeated string str_arr   = 14;
+}
+
+message UUID {
+  bytes be_data = 1;
+}
+
+message Item {
+  bool present = 1;
+  int32 ID = 2;
+  int32 count = 3; // minecraft stores this as a byte, so it should never by higher than 255
+  bytes NBT = 4;
+}
+
+message Node {
+  int32 flags = 1;
+  repeated int32 children = 2;
+  int32 redirect = 3;
+  string name = 4;
+  string parser = 5;
+  bytes properties = 6;
+  string suggestion = 7;
+}
+
+message TabCompleteSection {
+  string match = 1;
+  bool hasTooltip = 2; // true if the following is present
+  string tooltip = 3; // json chat tooltip to display above where the user is typing
+}
+
+message BossBar {
+  UUID uuid = 1;
+  string title = 2;
+  float value = 3;
+  int32 color = 4;
+  int32 division = 5;
+  int32 flags = 6;
+}
+
+message MultiBlockChange {
+  int32 blockState = 1;
+  int32 x = 2;
+  int32 y = 3;
+  int32 z = 4;
+}
+
+message Chunk {
+  int32 x = 1;
+  int32 z = 2;
+  map<int32, Section> sections = 3;
+  repeated bytes blockEntities = 4; // repeated nbt tags
+  repeated int64 heightmap = 5;
+
+  message Section {
+    repeated uint32 palette = 1;
+    int32 bitsPerBlock = 2;
+    int32 nonAirBlocks = 3;
+    repeated uint64 data = 4;
+  }
+}
+
+message Map {
+  int32 id = 1;
+  int32 scale = 2;
+  bool showPlayer = 3;
+  bool locked = 4;
+  repeated Icon icons = 5;
+  int32 columns = 6;
+  int32 rows = 7;
+  int32 xOffset = 8;
+  int32 zOffset = 9;
+  bytes data = 10; // the image data of the map
+
+  message Icon {
+    int32 type = 1;
+    int32 x = 2;
+    int32 z = 3;
+    int32 direction = 4;
+    bool hasName = 5;
+    string name = 6;
+  }
+}
+
+message PlayerList {
+  enum Action {
+    AddPlayer         = 0;
+    UpdateGamemode    = 1;
+    UpdateLatency     = 2;
+    UpdateDisplayName = 3;
+    RemovePlayer      = 4;
+  }
+  Action action = 1;
+  repeated Player players = 2;
+  message Player {
+    UUID uuid = 1;
+    string name = 2;
+    repeated Property properties = 3;
+    int32 gamemode = 4;
+    int32 ping = 5; // Ping in ms. Affects the green bars next to their name.
+    bool has_display_name = 6;
+    string display_name = 7; // Json chat message
+  }
+  message Property {
+    string name = 1;
+    string value = 2;
+    bool signed = 3;
+    string signature = 4;
+  }
+}
+
+message EntityMetadata {
+  map<int32, EntityMetadataField> values = 1;
+}
+
+message EntityMetadataField {
+  int32 index = 1;
+  int32 type = 2;
+  bytes data = 3;
+}
+
+message EntityProperty {
+  string name = 1;
+  double value = 2;
+}

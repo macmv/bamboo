@@ -788,8 +788,8 @@ fn generate_packets(
 ) -> Result<String, Box<dyn Error>> {
   let mut gen = CodeGen::new();
   gen.write_line("use crate::{");
-  gen.write_line("  math::Pos,");
   gen.write_line("  net::tcp,");
+  gen.write_line("  Pos,");
   gen.write_line("  proto,");
   gen.write_line("  version::ProtocolVersion,");
   gen.write_line("  util::UUID");

@@ -38,7 +38,7 @@ impl BiomeGen for Gen {
       if world.is_biome(self, p) {
         let height = self.height_at(world, p);
         p = p.with_y(height + 1);
-        if self.cacti.contains(p.to_point()) {
+        if self.cacti.contains(p.into()) {
           self.place_cactus(world, c, p);
         } else if world.chance(p, 0.01) {
           c.set_kind(p.chunk_rel(), block::Kind::DeadBush).unwrap();

@@ -15,6 +15,7 @@ path = "src/main.rs"
 
 [dependencies]
 common = { path = "../common" }
+generated = { path = "../generated" }
 log = "0.4"
 
 tonic = "0.5"
