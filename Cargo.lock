@@ -315,49 +315,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3d7b894f5411737b7867f4827955924d7c254fc9f4d91a6aad6b097804b1018b"
 
 [[package]]
-name = "common"
-version = "0.1.1"
-dependencies = [
- "aes",
- "anyhow",
- "asn1",
- "async-trait",
- "byteorder",
- "bytes",
- "cfb8",
- "criterion",
- "data",
- "flate2",
- "futures",
- "generated",
- "log",
- "log4rs",
- "miniz_oxide 0.4.4",
- "num",
- "num-derive",
- "num-traits",
- "pprof",
- "prost",
- "prost-types",
- "rand 0.8.4",
- "rand_core 0.6.3",
- "ringbuf",
- "rsa",
- "sc_macros",
- "serde",
- "serde_derive",
- "serde_json",
- "sha-1",
- "strum",
- "strum_macros",
- "tokio",
- "tokio-stream",
- "tonic",
- "tonic-build",
- "wyhash",
-]
-
-[[package]]
 name = "convert_case"
 version = "0.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -506,19 +463,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "2b2466559f260f48ad25fe6317b3c8dac77b5bdb5763ac7d9d6103530663bc90"
 dependencies = [
  "memchr",
-]
-
-[[package]]
-name = "data"
-version = "0.1.1"
-dependencies = [
- "convert_case",
- "itertools",
- "proc-macro2",
- "quote",
- "serde",
- "serde_derive",
- "serde_json",
 ]
 
 [[package]]
@@ -722,28 +666,6 @@ dependencies = [
  "proc-macro-hack",
  "proc-macro-nested",
  "slab",
-]
-
-[[package]]
-name = "generated"
-version = "0.1.1"
-dependencies = [
- "byteorder",
- "criterion",
- "data",
- "log",
- "num",
- "num-derive",
- "num-traits",
- "pprof",
- "prost",
- "prost-types",
- "rand 0.8.4",
- "serde",
- "strum",
- "strum_macros",
- "tonic",
- "tonic-build",
 ]
 
 [[package]]
@@ -1728,30 +1650,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "proxy"
-version = "0.1.1"
-dependencies = [
- "async-stream",
- "base64",
- "common",
- "data",
- "futures",
- "image",
- "log",
- "md5",
- "rand 0.8.4",
- "reqwest",
- "rsa",
- "serde",
- "serde_derive",
- "serde_json",
- "sha-1",
- "tokio",
- "tokio-stream",
- "tonic",
-]
-
-[[package]]
 name = "quick-xml"
 version = "0.22.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2035,6 +1933,84 @@ dependencies = [
 ]
 
 [[package]]
+name = "sc_common"
+version = "0.1.1"
+dependencies = [
+ "aes",
+ "anyhow",
+ "asn1",
+ "async-trait",
+ "byteorder",
+ "bytes",
+ "cfb8",
+ "criterion",
+ "flate2",
+ "futures",
+ "log",
+ "log4rs",
+ "miniz_oxide 0.4.4",
+ "num",
+ "num-derive",
+ "num-traits",
+ "pprof",
+ "prost",
+ "prost-types",
+ "rand 0.8.4",
+ "rand_core 0.6.3",
+ "ringbuf",
+ "rsa",
+ "sc_data",
+ "sc_generated",
+ "sc_macros",
+ "serde",
+ "serde_derive",
+ "serde_json",
+ "sha-1",
+ "strum",
+ "strum_macros",
+ "tokio",
+ "tokio-stream",
+ "tonic",
+ "tonic-build",
+ "wyhash",
+]
+
+[[package]]
+name = "sc_data"
+version = "0.1.1"
+dependencies = [
+ "convert_case",
+ "itertools",
+ "proc-macro2",
+ "quote",
+ "serde",
+ "serde_derive",
+ "serde_json",
+]
+
+[[package]]
+name = "sc_generated"
+version = "0.1.1"
+dependencies = [
+ "byteorder",
+ "criterion",
+ "log",
+ "num",
+ "num-derive",
+ "num-traits",
+ "pprof",
+ "prost",
+ "prost-types",
+ "rand 0.8.4",
+ "sc_data",
+ "serde",
+ "strum",
+ "strum_macros",
+ "tonic",
+ "tonic-build",
+]
+
+[[package]]
 name = "sc_macros"
 version = "0.1.1"
 dependencies = [
@@ -2042,6 +2018,52 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn",
+]
+
+[[package]]
+name = "sc_proxy"
+version = "0.1.1"
+dependencies = [
+ "async-stream",
+ "base64",
+ "futures",
+ "image",
+ "log",
+ "md5",
+ "rand 0.8.4",
+ "reqwest",
+ "rsa",
+ "sc_common",
+ "serde",
+ "serde_derive",
+ "serde_json",
+ "sha-1",
+ "tokio",
+ "tokio-stream",
+ "tonic",
+]
+
+[[package]]
+name = "sc_server"
+version = "0.1.1"
+dependencies = [
+ "criterion",
+ "futures",
+ "log",
+ "noise",
+ "num",
+ "num-derive",
+ "num-traits",
+ "pprof",
+ "prost",
+ "prost-types",
+ "rayon",
+ "sc_common",
+ "sc_data",
+ "sugarlang",
+ "tokio",
+ "tokio-stream",
+ "tonic",
 ]
 
 [[package]]
@@ -2168,30 +2190,6 @@ dependencies = [
  "indexmap",
  "serde",
  "yaml-rust",
-]
-
-[[package]]
-name = "server"
-version = "0.1.1"
-dependencies = [
- "common",
- "criterion",
- "data",
- "futures",
- "generated",
- "log",
- "noise",
- "num",
- "num-derive",
- "num-traits",
- "pprof",
- "prost",
- "prost-types",
- "rayon",
- "sugarlang",
- "tokio",
- "tokio-stream",
- "tonic",
 ]
 
 [[package]]

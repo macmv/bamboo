@@ -1,21 +1,20 @@
 [package]
-name = "server"
+name = "sc_server"
 version = "0.1.1"
 edition = "2018"
 
 [lib]
-name = "server"
+name = "sc_server"
 path = "src/lib.rs"
 
 [[bin]]
-name = "server"
+name = "sc_server"
 path = "src/main.rs"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-common = { path = "../common" }
-generated = { path = "../generated" }
+sc_common = { path = "../sc_common" }
 log = "0.4"
 
 tonic = "0.5"
@@ -35,7 +34,7 @@ noise = "0.7.0"
 sugarlang = { git = "https://gitlab.com/macmv/sugarlang", features = ["docs"] }
 
 [build-dependencies]
-data = { path = "../data" }
+sc_data = { path = "../sc_data" }
 
 [dev-dependencies]
 pprof = { version = "0.4.3", features = ["criterion", "flamegraph"] }

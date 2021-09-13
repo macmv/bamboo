@@ -1,10 +1,11 @@
 [workspace]
 members = [
-  "server",
-  "proxy",
-  "data",
-  "generated",
   "sc_macros",
+  "sc_data",
+  "sc_generated",
+  "sc_common",
+  "sc_server",
+  "sc_proxy",
 ]
 
 # Using cargo flamegraph, this is needed.

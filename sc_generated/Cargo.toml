@@ -1,5 +1,5 @@
 [package]
-name = "generated"
+name = "sc_generated"
 version = "0.1.1"
 edition = "2018"
 
@@ -49,7 +49,7 @@ serde = "1.0"
 [build-dependencies]
 # We need to disable default features, as that uses rustfmt, which is not installed in Docker containers.
 tonic-build = { version = "0.5", default-features = false, features = ["transport", "prost"] }
-data = { path = "../data" }
+sc_data = { path = "../sc_data" }
 
 [dev-dependencies]
 pprof = { version = "0.4.3", features = ["criterion", "flamegraph"] }
