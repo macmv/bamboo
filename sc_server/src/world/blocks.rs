@@ -209,11 +209,7 @@ impl World {
                 Ordering::Equal => center.x + width,
               };
               self
-                .fill_rect_kind(
-                  Pos::new(min_x, center.y, z),
-                  Pos::new(max_x, center.y, z),
-                  block::Kind::GrassBlock,
-                )
+                .fill_rect(Pos::new(min_x, center.y, z), Pos::new(max_x, center.y, z), ty)
                 .await?;
             }
           }
@@ -232,5 +228,114 @@ impl World {
     kind: block::Kind,
   ) -> Result<(), PosError> {
     self.fill_circle(center, radius, self.block_converter.get(kind).default_type()).await
+  }
+
+  /// Fills a sphere. The center will be the middle of this sphere. The radius
+  /// is how far the sphere's edge extends from the center. The center will act
+  /// like it is at (0.5, 0.5, 0.5) within the block. So the circle should not
+  /// be offset from the center at all.
+  pub async fn fill_sphere(
+    &self,
+    center: Pos,
+    radius: f32,
+    ty: block::Type,
+  ) -> Result<(), PosError> {
+    // Small spheres case. We would run into issues with the corner check if all the
+    // corners are outside the circle (and the circle is inside the chunk).
+    if radius < 16.0 {
+      for y in -radius as i32..=radius as i32 {
+        for z in -radius as i32..=radius as i32 {
+          let v = radius.powi(2) - (y.pow(2) + z.pow(2)) as f32;
+          // Check for this row containing no blocks
+          let width = if v < 0.0 { continue } else { v.sqrt() as i32 };
+          self
+            .fill_rect(center + Pos::new(-width, y, z), center + Pos::new(width, y, z), ty)
+            .await?;
+        }
+      }
+      return Ok(());
+    }
+
+    // This is the same filling strategy as `fill_circle`, but in 3D. Instead of 4
+    // corners, we have 8. We still only have 3 options (full, partial, and empty
+    // chunk sections).
+
+    let radius_squared = radius.powi(2);
+
+    let min = center - Pos::new(radius as i32, radius as i32, radius as i32);
+    let max = center + Pos::new(radius as i32, radius as i32, radius as i32);
+
+    for chunk_y in min.chunk_y()..=max.chunk_y() {
+      for chunk_x in min.chunk_x()..=max.chunk_x() {
+        for chunk_z in min.chunk_z()..=max.chunk_z() {
+          let min = Pos::new(chunk_x * 16, chunk_y * 16, chunk_z * 16);
+          let max = Pos::new(chunk_x * 16 + 15, chunk_y * 16 + 15, chunk_z * 16 + 15);
+          let mut corners = 0;
+          if (min.dist_squared(center) as f32) < radius_squared {
+            corners += 1;
+          };
+          if (min.with_x(max.x).dist_squared(center) as f32) < radius_squared {
+            corners += 1;
+          };
+          if (min.with_y(max.y).dist_squared(center) as f32) < radius_squared {
+            corners += 1;
+          };
+          if (min.with_z(max.z).dist_squared(center) as f32) < radius_squared {
+            corners += 1;
+          };
+          if (max.with_x(min.x).dist_squared(center) as f32) < radius_squared {
+            corners += 1;
+          };
+          if (max.with_y(min.y).dist_squared(center) as f32) < radius_squared {
+            corners += 1;
+          };
+          if (max.with_z(min.z).dist_squared(center) as f32) < radius_squared {
+            corners += 1;
+          };
+          if (max.dist_squared(center) as f32) < radius_squared {
+            corners += 1;
+          };
+
+          match corners {
+            // Empty case
+            0 => {}
+            // Full case
+            8 => self.fill_rect(min, max, ty).await?,
+            // Partial case
+            _ => {
+              for y in min.y..=max.y {
+                for z in min.z..=max.z {
+                  let v = radius.powi(2) - ((center.y - y).pow(2) + (center.z - z).pow(2)) as f32;
+                  // Check for this row containing now blocks.
+                  let width = if v < 0.0 { continue } else { v.sqrt() as i32 };
+                  let min_x = match Pos::new(center.x - width, 0, 0).chunk_x().cmp(&chunk_x) {
+                    Ordering::Less => min.x,
+                    Ordering::Greater => continue,
+                    Ordering::Equal => center.x - width,
+                  };
+                  let max_x = match Pos::new(center.x + width, 0, 0).chunk_x().cmp(&chunk_x) {
+                    Ordering::Less => continue,
+                    Ordering::Greater => max.x,
+                    Ordering::Equal => center.x + width,
+                  };
+                  self.fill_rect(Pos::new(min_x, y, z), Pos::new(max_x, y, z), ty).await?;
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+
+    Ok(())
+  }
+  /// Fills the given sphere with the default type for the block kind.
+  pub async fn fill_sphere_kind(
+    &self,
+    center: Pos,
+    radius: f32,
+    kind: block::Kind,
+  ) -> Result<(), PosError> {
+    self.fill_sphere(center, radius, self.block_converter.get(kind).default_type()).await
   }
 }

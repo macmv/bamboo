@@ -32,6 +32,10 @@ impl World {
       .add_arg("center", Parser::BlockPos)
       .add_arg("radius", Parser::Float { min: Some(0.0), max: None })
       .add_arg("block", Parser::BlockState);
+    c.add_lit("sphere")
+      .add_arg("center", Parser::BlockPos)
+      .add_arg("radius", Parser::Float { min: Some(0.0), max: None })
+      .add_arg("block", Parser::BlockState);
     self
       .get_commands()
       .add(c, |world, _, args| async move {
@@ -51,6 +55,13 @@ impl World {
             let block = args[4].block();
             let w = world.default_world().await;
             w.fill_circle_kind(pos, radius, block).await.unwrap();
+          }
+          "sphere" => {
+            let pos = args[2].pos();
+            let radius = args[3].float();
+            let block = args[4].block();
+            let w = world.default_world().await;
+            w.fill_sphere_kind(pos, radius, block).await.unwrap();
           }
           _ => unreachable!(),
         }
