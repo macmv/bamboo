@@ -3,7 +3,7 @@ use sc_common::{
   math::{ChunkPos, Pos, PosError},
   net::cb,
 };
-use std::{collections::HashMap, f32::consts::PI};
+use std::{cmp::Ordering, collections::HashMap};
 
 /// General block manipulation functions
 impl World {
@@ -190,15 +190,32 @@ impl World {
         };
 
         match corners {
-          0 => {
-            // Empty case
-          }
-          4 => {
-            // Full case
-            self.fill_rect(min, max, ty).await?;
-          }
+          // Empty case
+          0 => {}
+          // Full case
+          4 => self.fill_rect(min, max, ty).await?,
+          // Partial case
           _ => {
-            // Partial case
+            for z in min.z..=max.z {
+              let width = (radius.powi(2) - (center.z - z).pow(2) as f32).sqrt() as i32;
+              let min_x = match Pos::new(center.x - width, 0, 0).chunk_x().cmp(&chunk_x) {
+                Ordering::Less => min.x,
+                Ordering::Greater => continue,
+                Ordering::Equal => center.x - width,
+              };
+              let max_x = match Pos::new(center.x + width, 0, 0).chunk_x().cmp(&chunk_x) {
+                Ordering::Less => continue,
+                Ordering::Greater => max.x,
+                Ordering::Equal => center.x + width,
+              };
+              self
+                .fill_rect_kind(
+                  Pos::new(min_x, center.y, z),
+                  Pos::new(max_x, center.y, z),
+                  block::Kind::GrassBlock,
+                )
+                .await?;
+            }
           }
         }
       }
