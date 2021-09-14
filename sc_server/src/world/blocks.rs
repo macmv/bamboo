@@ -136,84 +136,74 @@ impl World {
     radius: f32,
     ty: block::Type,
   ) -> Result<(), PosError> {
-    // This is a naive implementation. It could not be bothered to integrate these
-    // circle functions, so I went with an algorithm like so:
+    // Small circles case. We would run into issues with the corner check if all the
+    // corners are outside the circle (and the circle is inside the chunk).
+    if radius < 16.0 {
+      for z in -radius as i32..=radius as i32 {
+        let width = (radius.powi(2) - z.pow(2) as f32).sqrt() as i32;
+        self.fill_rect(center + Pos::new(-width, 0, z), center + Pos::new(width, 0, z), ty).await?;
+      }
+      return Ok(());
+    }
+
+    // This implementation of filling a circle has two sections. The first section
+    // is a loop through all the chunks this circle may touch. Depending on the
+    // corners of the chunk, it will then do one of three things:
     //
-    //     //-------\\
-    //   //   edge    \\
-    // // |-----------| \\
-    // |  | main_rect |  | <- edge
-    // |  |           |  |
-    // \\ |-----------| //
-    //   \\   edge    //
-    //     \\-------//
+    // - Empty chunks: This is where the circle covers nothing in this chunk. These
+    //   are skipped.
+    // - Full chunks: This is where the circle is inside all corners of the chunk.
+    //   These are filled with a single `fill_rect` call.
+    // - Partial chunks: This is where the circle covers some (not all) of the
+    //   corners of the chunk. These are iterated through by row, and each row is
+    //   then filled with a `fill_rect` call.
     //
-    // The main rect corners are at (cos(pi/4), sin(pi/4)) (note cos(pi/4) ==
-    // sin(pi/4)). This is the maximum area a single rectangle can take up in a
-    // circle.
-    //
-    // The main rect is the largest rectangle that will fit in this circle. It is
-    // filled at the start. If we have a small circle, we just fill all the edges
-    // row-by-row.
-    //
-    // For larger circles, we check for edges which cover entire chunk columns. If
-    // there are any, we fill those with a single operation, which help clientside
-    // performance. For the chunks that are not entirely covered, we just fill by
-    // rows.
-    //
-    // The radius ends up needing to be around 55 blocks or more before the large
-    // circle case is used.
-    let main_rect = ((PI / 4.0).cos() * radius) as i32;
-    self
-      .fill_rect(
-        center - Pos::new(main_rect, 0, main_rect),
-        center + Pos::new(main_rect, 0, main_rect),
-        ty,
-      )
-      .await?;
-    if (1.0 - (PI / 4.0).cos()) * radius >= 16.0 {
-      // Large circle case. This check just makes sure that a single edge can
-      // cover a chunk column.
-      for y in main_rect + 1..radius as i32 {
-        if center.z + y % 16 == 15 {
-          // We are on the outside edge of the top chunk border.
-          let s = (radius.powi(2) - y.pow(2) as f32).sqrt() as i32;
-          let min = center + Pos::new(-s, 0, y);
-          let max = center + Pos::new(s, 0, y);
-          // More than a two chunk distance, so we have at least one chunk in the middle
-          // that can be filled
-          if max.chunk_x() - min.chunk_x() >= 2 {
-            for chunk_x in min.chunk_x() + 1..max.chunk_x() {
-              self
-                .fill_rect(
-                  Pos::new(chunk_x * 16, center.y, min.chunk_z() * 16),
-                  Pos::new(chunk_x * 16 + 15, center.y, min.chunk_z() * 16 + 15),
-                  self.block_converter.get(block::Kind::GrassBlock).default_type(),
-                )
-                .await?;
-            }
+    //   //---------\\
+    // //             \\ <- partial chunk
+    // |               |
+    // |  full chunks  |
+    // |               |
+    // \\             //
+    //   \\---------//     <- empty chunk
+
+    let radius_squared = radius.powi(2);
+
+    let min = center - Pos::new(radius as i32, 0, radius as i32);
+    let max = center + Pos::new(radius as i32, 0, radius as i32);
+
+    for chunk_x in min.chunk_x()..=max.chunk_x() {
+      for chunk_z in min.chunk_z()..=max.chunk_z() {
+        let min = Pos::new(chunk_x * 16, center.y, chunk_z * 16);
+        let max = Pos::new(chunk_x * 16 + 15, center.y, chunk_z * 16 + 15);
+        let mut corners = 0;
+        if (min.dist_squared(center) as f32) < radius_squared {
+          corners += 1;
+        };
+        if (min.with_x(max.x).dist_squared(center) as f32) < radius_squared {
+          corners += 1;
+        };
+        if (min.with_z(max.z).dist_squared(center) as f32) < radius_squared {
+          corners += 1;
+        };
+        if (max.dist_squared(center) as f32) < radius_squared {
+          corners += 1;
+        };
+
+        match corners {
+          0 => {
+            // Empty case
+          }
+          4 => {
+            // Full case
+            self.fill_rect(min, max, ty).await?;
+          }
+          _ => {
+            // Partial case
           }
         }
-        // Top, bottom, right, and left
-        /*
-        self.fill_rect(center + Pos::new(-s, 0, y), center + Pos::new(s, 0, y), ty).await?;
-        self.fill_rect(center + Pos::new(-s, 0, -y), center + Pos::new(s, 0, -y), ty).await?;
-        self.fill_rect(center + Pos::new(y, 0, -s), center + Pos::new(y, 0, s), ty).await?;
-        self.fill_rect(center + Pos::new(-y, 0, -s), center + Pos::new(-y, 0, s), ty).await?;
-        */
-      }
-    } else {
-      // Small circle case (edges row-by-row). This is off by one because fills are
-      // always inclusive.
-      for y in main_rect + 1..radius as i32 {
-        let s = (radius.powi(2) - y.pow(2) as f32).sqrt() as i32;
-        // Top, bottom, right, and left
-        self.fill_rect(center + Pos::new(-s, 0, y), center + Pos::new(s, 0, y), ty).await?;
-        self.fill_rect(center + Pos::new(-s, 0, -y), center + Pos::new(s, 0, -y), ty).await?;
-        self.fill_rect(center + Pos::new(y, 0, -s), center + Pos::new(y, 0, s), ty).await?;
-        self.fill_rect(center + Pos::new(-y, 0, -s), center + Pos::new(-y, 0, s), ty).await?;
       }
     }
+
     Ok(())
   }
 
