@@ -191,6 +191,7 @@ impl<W: StreamWriter + Send + Sync> ServerListener<W> {
       // for p in cb {
       //   self.client.write(p).await?;
       // }
+      std::thread::sleep(std::time::Duration::from_millis(5));
       self.client.write(cb).await?;
     }
     Ok(())
@@ -295,7 +296,10 @@ impl<'a, R: StreamReader + Send, W: StreamWriter + Send + Sync> Conn<'a, R, W> {
     let mut description = Chat::empty();
     description.add("Sugarcane").color(Color::BrightGreen);
     description.add(" -- ").color(Color::Gray);
+    #[cfg(debug_assertions)]
     description.add("Development mode").color(Color::Blue);
+    #[cfg(not(debug_assertions))]
+    description.add("Release mode").color(Color::Red);
     JsonStatus {
       version: JsonVersion { name: "1.8".into(), protocol: self.ver.id() as i32 },
       players: JsonPlayers {
@@ -328,7 +332,7 @@ impl<'a, R: StreamReader + Send, W: StreamWriter + Send + Sync> Conn<'a, R, W> {
     &mut self,
     compression: i32,
     key: Arc<RSAPrivateKey>,
-    der_key: Option<Vec<u8>>,
+    der_key: Option<Arc<Vec<u8>>>,
   ) -> io::Result<Option<LoginInfo>> {
     // The name sent from the client. The mojang auth server also sends us a
     // username; we use this to validate the client info with the mojang auth info.
@@ -392,6 +396,7 @@ impl<'a, R: StreamReader + Send, W: StreamWriter + Send + Sync> Conn<'a, R, W> {
                 let mut out = tcp::Packet::new(1, self.ver);
                 out.write_u64(id);
                 self.writer.write(out).await?;
+                self.writer.flush().await?;
                 // Client is done sending packets, we can close now.
                 return Ok(None);
               }
@@ -507,7 +512,7 @@ impl<'a, R: StreamReader + Send, W: StreamWriter + Send + Sync> Conn<'a, R, W> {
                 let mut hash = Sha1::new();
                 hash.update("");
                 hash.update(secret);
-                hash.update(der_key.unwrap());
+                hash.update(der_key.unwrap().as_ref());
                 info = match reqwest::get(format!(
                   "https://sessionserver.mojang.com/session/minecraft/hasJoined?username={}&serverId={}",
                   username.as_ref().unwrap(),
@@ -517,6 +522,7 @@ impl<'a, R: StreamReader + Send, W: StreamWriter + Send + Sync> Conn<'a, R, W> {
                     info!("got status code: {}", v.status());
                     if v.status() == StatusCode::NO_CONTENT {
                       self.send_disconnect("Invalid auth token! Please re-login (restart your game and launcher)").await?;
+                      self.writer.flush().await?;
                       // Disconnect client; they are not authenticated
                       return Ok(None);
                     }

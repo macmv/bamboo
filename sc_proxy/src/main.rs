@@ -52,9 +52,9 @@ async fn main() -> Result<(), Box<dyn Error>> {
       let (reader, writer) = java::stream::new(sock).unwrap();
       let k = key.clone();
       let i = icon.clone();
-      let _d = der_key.clone();
+      let d = der_key.clone();
       tokio::spawn(async move {
-        match handle_client(reader, writer, k, None, &i).await {
+        match handle_client(reader, writer, k, d, &i).await {
           Ok(_) => {}
           Err(e) => {
             error!("error in connection: {}", e);
@@ -91,7 +91,7 @@ async fn handle_client<
   reader: R,
   writer: W,
   key: Arc<RSAPrivateKey>,
-  der_key: Option<Vec<u8>>,
+  der_key: Option<Arc<Vec<u8>>>,
   icon: &'a str,
 ) -> Result<(), Box<dyn Error>> {
   // let mut client = MinecraftClient::connect().await?;
