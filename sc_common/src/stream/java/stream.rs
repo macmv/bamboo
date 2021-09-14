@@ -25,7 +25,7 @@ use tokio::{
   time::{Duration, Instant},
 };
 
-const FLUSH_SIZE: usize = 1024;
+const FLUSH_SIZE: usize = 8 * 1024;
 const FLUSH_TIME: Duration = Duration::from_millis(50);
 
 pub struct JavaStreamReader {
@@ -208,6 +208,10 @@ impl StreamWriter for JavaStreamWriter {
   }
 
   async fn flush(&mut self) -> Result<()> {
+    info!("writing {} bytes", self.outgoing.len());
+    if self.outgoing.is_empty() {
+      return Ok(());
+    }
     self.stream.write(&self.outgoing).await?;
     self.outgoing.clear();
     self.last_flush = Instant::now();
