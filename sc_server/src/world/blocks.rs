@@ -148,9 +148,21 @@ impl World {
     //   \\   edge    //
     //     \\-------//
     //
+    // The main rect corners are at (cos(pi/4), sin(pi/4)) (note cos(pi/4) ==
+    // sin(pi/4)). This is the maximum area a single rectangle can take up in a
+    // circle.
+    //
     // The main rect is the largest rectangle that will fit in this circle. It is
-    // filled at the start. All the edges are then filled row-by-row, going from the
-    // center to the outside.
+    // filled at the start. If we have a small circle, we just fill all the edges
+    // row-by-row.
+    //
+    // For larger circles, we check for edges which cover entire chunk columns. If
+    // there are any, we fill those with a single operation, which help clientside
+    // performance. For the chunks that are not entirely covered, we just fill by
+    // rows.
+    //
+    // The radius ends up needing to be around 55 blocks or more before the large
+    // circle case is used.
     let main_rect = ((PI / 4.0).cos() * radius) as i32;
     self
       .fill_rect(
@@ -159,14 +171,48 @@ impl World {
         ty,
       )
       .await?;
-    // Edges. This is off by one because fills are always inclusive.
-    for y in main_rect + 1..radius as i32 {
-      let start = (radius.powi(2) - y.pow(2) as f32).sqrt() as i32;
-      // Top, bottom, right, and left
-      self.fill_rect(center + Pos::new(-start, 0, y), center + Pos::new(start, 0, y), ty).await?;
-      self.fill_rect(center + Pos::new(-start, 0, -y), center + Pos::new(start, 0, -y), ty).await?;
-      self.fill_rect(center + Pos::new(y, 0, -start), center + Pos::new(y, 0, start), ty).await?;
-      self.fill_rect(center + Pos::new(-y, 0, -start), center + Pos::new(-y, 0, start), ty).await?;
+    if (1.0 - (PI / 4.0).cos()) * radius >= 16.0 {
+      // Large circle case. This check just makes sure that a single edge can
+      // cover a chunk column.
+      for y in main_rect + 1..radius as i32 {
+        if center.z + y % 16 == 15 {
+          // We are on the outside edge of the top chunk border.
+          let s = (radius.powi(2) - y.pow(2) as f32).sqrt() as i32;
+          let min = center + Pos::new(-s, 0, y);
+          let max = center + Pos::new(s, 0, y);
+          // More than a two chunk distance, so we have at least one chunk in the middle
+          // that can be filled
+          if max.chunk_x() - min.chunk_x() >= 2 {
+            for chunk_x in min.chunk_x() + 1..max.chunk_x() {
+              self
+                .fill_rect(
+                  Pos::new(chunk_x * 16, center.y, min.chunk_z() * 16),
+                  Pos::new(chunk_x * 16 + 15, center.y, min.chunk_z() * 16 + 15),
+                  self.block_converter.get(block::Kind::GrassBlock).default_type(),
+                )
+                .await?;
+            }
+          }
+        }
+        // Top, bottom, right, and left
+        /*
+        self.fill_rect(center + Pos::new(-s, 0, y), center + Pos::new(s, 0, y), ty).await?;
+        self.fill_rect(center + Pos::new(-s, 0, -y), center + Pos::new(s, 0, -y), ty).await?;
+        self.fill_rect(center + Pos::new(y, 0, -s), center + Pos::new(y, 0, s), ty).await?;
+        self.fill_rect(center + Pos::new(-y, 0, -s), center + Pos::new(-y, 0, s), ty).await?;
+        */
+      }
+    } else {
+      // Small circle case (edges row-by-row). This is off by one because fills are
+      // always inclusive.
+      for y in main_rect + 1..radius as i32 {
+        let s = (radius.powi(2) - y.pow(2) as f32).sqrt() as i32;
+        // Top, bottom, right, and left
+        self.fill_rect(center + Pos::new(-s, 0, y), center + Pos::new(s, 0, y), ty).await?;
+        self.fill_rect(center + Pos::new(-s, 0, -y), center + Pos::new(s, 0, -y), ty).await?;
+        self.fill_rect(center + Pos::new(y, 0, -s), center + Pos::new(y, 0, s), ty).await?;
+        self.fill_rect(center + Pos::new(-y, 0, -s), center + Pos::new(-y, 0, s), ty).await?;
+      }
     }
     Ok(())
   }
