@@ -24,8 +24,7 @@ where
   I: ExactSizeIterator<Item = (Pos, i32)>,
 {
   match ver {
-    BlockVersion::V1_8 => v1_8::serialize_multi_block_change(pos, changes),
-    // BlockVersion::V1_9 | BlockVersion::V1_12 => v1_9::serialize_multi_block_change(pos, c, ver),
+    BlockVersion::V1_8 | BlockVersion::V1_12 => v1_8::serialize_multi_block_change(pos, changes),
     // BlockVersion::V1_13 => v1_13::serialize_multi_block_change(pos, c),
     // BlockVersion::V1_14 => v1_14::serialize_multi_block_change(pos, c),
     ver => unimplemented!("cannot serialize multi block change for version {:?}", ver),
@@ -41,6 +40,9 @@ pub fn serialize_partial_chunk(
 ) -> cb::Packet {
   match ver {
     BlockVersion::V1_8 => v1_8::serialize_partial_chunk(pos, c, min, max),
+    BlockVersion::V1_9 | BlockVersion::V1_12 => {
+      v1_9::serialize_partial_chunk(pos, c, min, max, ver)
+    }
     ver => unimplemented!("cannot serialize chunks for version {:?}", ver),
   }
 }
