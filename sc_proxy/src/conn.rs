@@ -191,7 +191,7 @@ impl<W: StreamWriter + Send + Sync> ServerListener<W> {
       // for p in cb {
       //   self.client.write(p).await?;
       // }
-      std::thread::sleep(std::time::Duration::from_millis(5));
+      std::thread::sleep(std::time::Duration::from_millis(3));
       self.client.write(cb).await?;
     }
     Ok(())
