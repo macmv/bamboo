@@ -22,10 +22,11 @@ use tokio::{
     tcp::{OwnedReadHalf, OwnedWriteHalf},
     TcpStream,
   },
+  time,
   time::{Duration, Instant},
 };
 
-const FLUSH_SIZE: usize = 8 * 1024;
+const FLUSH_SIZE: usize = 16 * 1024;
 const FLUSH_TIME: Duration = Duration::from_millis(50);
 
 pub struct JavaStreamReader {
@@ -213,6 +214,11 @@ impl StreamWriter for JavaStreamWriter {
       return Ok(());
     }
     self.stream.write(&self.outgoing).await?;
+    // Older clients cannot handle too much data at once. So we literally just slow
+    // down their connection when a bunch of data is coming through.
+    if self.outgoing.len() > FLUSH_SIZE / 2 {
+      time::sleep(Duration::from_millis(16)).await;
+    }
     self.outgoing.clear();
     self.last_flush = Instant::now();
     Ok(())
