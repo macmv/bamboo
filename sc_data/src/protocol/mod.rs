@@ -123,12 +123,14 @@ pub struct PacketVersion {
   pub to_server: Vec<Packet>,
 }
 
+#[derive(Debug)]
 struct NamedPacketField {
   multi_versioned: bool,
   name:            String,
   field:           PacketField,
 }
 
+#[derive(Debug)]
 struct VersionedField {
   name:          String,
   removed_in:    Option<Version>,
@@ -136,6 +138,7 @@ struct VersionedField {
   versions:      Vec<(Version, PacketField)>,
 }
 
+#[derive(Debug)]
 struct VersionedPacket {
   name:        String,
   field_names: HashMap<String, usize>,
@@ -317,13 +320,34 @@ impl VersionedPacket {
 
   fn add_version(&mut self, ver: Version, packet: Packet) {
     let mut missing_fields: HashSet<String> = self.field_names.keys().cloned().collect();
-    for (idx, (name, field)) in packet.fields.into_iter().enumerate() {
-      if let Some(&idx) = self.field_names.get(&name) {
+    // This is the index into `self.fields`. It is updated whenever we find a valid
+    // packet field in the new packet. This ensures that removed fields will not
+    // offset indices of fields later in the set.
+    //
+    // For example, if we have 3 fields:
+    //
+    // - A
+    // - B
+    // - C
+    //
+    // Then add another version which removes A, and addes D:
+    //
+    // - B
+    // - C
+    // - D
+    //
+    // If we used enumerate(), the index for D would be wrong. This is because we
+    // still need to hold onto A, so D ends up being the fourth item, not the third
+    // item.
+    let mut idx = 0;
+    for (name, field) in packet.fields.into_iter() {
+      if let Some(&i) = self.field_names.get(&name) {
         missing_fields.remove(&name);
-        let existing = &mut self.fields[idx];
+        let existing = &mut self.fields[i];
         if existing.latest() != &field {
           existing.add_ver(ver, field);
         }
+        idx = i;
       } else {
         // We need to update all the field_names mappings before hand.
         for (_, val) in self.field_names.iter_mut() {
@@ -336,6 +360,7 @@ impl VersionedPacket {
         // in order
         self.fields.insert(idx, VersionedField::new(ver, name, field));
       }
+      idx += 1;
     }
     for name in missing_fields {
       let idx = self.field_names[&name];
