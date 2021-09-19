@@ -1,5 +1,5 @@
 fn main() {
-  println!("cargo:rerun-if-changed=../data/src");
+  println!("cargo:rerun-if-changed=../sc_data/src");
 
   sc_data::clone_prismarine_data();
 
