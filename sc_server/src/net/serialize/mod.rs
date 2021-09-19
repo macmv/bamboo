@@ -8,6 +8,7 @@ use sc_common::{
 mod v1_13;
 mod v1_14;
 mod v1_15;
+mod v1_16;
 mod v1_8;
 mod v1_9;
 
@@ -18,6 +19,7 @@ pub fn serialize_chunk(pos: ChunkPos, c: &MultiChunk, ver: BlockVersion) -> cb::
     BlockVersion::V1_13 => v1_13::serialize_chunk(pos, c),
     BlockVersion::V1_14 => v1_14::serialize_chunk(pos, c),
     BlockVersion::V1_15 => v1_15::serialize_chunk(pos, c),
+    BlockVersion::V1_16 => v1_16::serialize_chunk(pos, c),
     ver => unimplemented!("cannot serialize chunks for version {:?}", ver),
   }
 }
