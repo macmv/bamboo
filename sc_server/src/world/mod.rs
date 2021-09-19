@@ -59,7 +59,7 @@ pub struct World {
   item_converter:   Arc<item::TypeConverter>,
   entity_converter: Arc<entity::TypeConverter>,
   plugins:          Arc<plugin::PluginManager>,
-  commands:         CommandTree,
+  commands:         Arc<CommandTree>,
   mspt:             AtomicU32,
   wm:               Arc<WorldManager>,
 }
@@ -72,6 +72,7 @@ pub struct WorldManager {
   item_converter:   Arc<item::TypeConverter>,
   entity_converter: Arc<entity::TypeConverter>,
   plugins:          Arc<plugin::PluginManager>,
+  commands:         Arc<CommandTree>,
 }
 
 impl World {
@@ -80,6 +81,7 @@ impl World {
     item_converter: Arc<item::TypeConverter>,
     entity_converter: Arc<entity::TypeConverter>,
     plugins: Arc<plugin::PluginManager>,
+    commands: Arc<CommandTree>,
     wm: Arc<WorldManager>,
   ) -> Arc<Self> {
     let world = Arc::new(World {
@@ -91,7 +93,7 @@ impl World {
       item_converter,
       entity_converter,
       plugins,
-      commands: CommandTree::new(),
+      commands,
       mspt: 0.into(),
       wm,
     });
@@ -223,6 +225,8 @@ impl World {
     &self.entity_converter
   }
   /// Returns the plugin manager. This is how events can be sent to plugins.
+  /// This is the same plugin manager returned by the [`WorldManager`], and by
+  /// other worlds.
   pub fn get_plugins(&self) -> &plugin::PluginManager {
     &self.plugins
   }
@@ -399,6 +403,7 @@ impl WorldManager {
       item_converter:   Arc::new(item::TypeConverter::new()),
       entity_converter: Arc::new(entity::TypeConverter::new()),
       plugins:          Arc::new(plugin::PluginManager::new()),
+      commands:         Arc::new(CommandTree::new()),
       worlds:           Mutex::new(vec![]),
     }
   }
@@ -415,6 +420,7 @@ impl WorldManager {
       self.item_converter.clone(),
       self.entity_converter.clone(),
       self.plugins.clone(),
+      self.commands.clone(),
       self.clone(),
     ));
   }
@@ -430,6 +436,14 @@ impl WorldManager {
   /// ids to new ones, and vice versa.
   pub fn get_item_converter(&self) -> &item::TypeConverter {
     &self.item_converter
+  }
+  /// Returns the plugins used for the whole server.
+  pub fn get_plugins(&self) -> &plugin::PluginManager {
+    &self.plugins
+  }
+  /// Returns the commands used for the whole server.
+  pub fn get_commands(&self) -> &CommandTree {
+    &self.commands
   }
 
   /// Broadcasts a message to everyone one the server.
