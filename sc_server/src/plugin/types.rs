@@ -4,7 +4,10 @@ use crate::{
   command::{Command, Parser},
   player::Player,
 };
-use sc_common::math::{FPos, Pos};
+use sc_common::{
+  math::{FPos, Pos},
+  util::{chat::Color, Chat},
+};
 use std::sync::Arc;
 use sugarlang::{
   define_ty,
@@ -99,15 +102,35 @@ impl Sugarcane {
       wm.default_world()
         .await
         .get_commands()
-        .add(command, move |_, _, _| {
+        .add(command, move |_, player, args| {
           let wm = wm.clone();
           let mut cb = cb.clone();
           async move {
             let world = wm.default_world().await;
-            let mut lock = world.get_plugins().plugins.lock().unwrap();
-            let plugin = &mut lock[idx];
-            let sc = plugin.sc();
-            cb.call(&mut plugin.lock_env(), vec![VarRef::Owned(sc.into())]).unwrap();
+            // We need this awkward scoping setup to avoid borrowing errors, and to make
+            // sure `lock` doesn't get sent between threads.
+            let mut err = None;
+            let mut has_err = false;
+            {
+              let mut lock = world.get_plugins().plugins.lock().unwrap();
+              let plugin = &mut lock[idx];
+              let sc = plugin.sc();
+              if let Err(e) = cb.call(&mut plugin.lock_env(), vec![VarRef::Owned(sc.into())]) {
+                err = Some(e);
+                has_err = true;
+              }
+              if let Some(e) = err {
+                plugin.print_err(e);
+              }
+            }
+            if has_err {
+              if let Some(p) = player {
+                let mut out = Chat::new("");
+                out.add("Error executing command: ").color(Color::Red);
+                out.add(format!("`{}` encountered an internal error", args[0].lit()));
+                p.send_message(&out).await;
+              }
+            }
           }
         })
         .await;

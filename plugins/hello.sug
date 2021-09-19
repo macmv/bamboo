@@ -10,6 +10,7 @@ fn init(sc) {
 
 fn handle_setblock(sc, player, args) {
   sc.info("SETBLOCK")
+  player.send_message("hello!")
 }
 
 fn on_block_place(sc, player, pos, kind) {

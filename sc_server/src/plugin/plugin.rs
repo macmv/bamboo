@@ -96,8 +96,8 @@ impl Plugin {
 
   pub fn print_err<E: SlError>(&self, err: E) {
     match &self.sl {
-      Some(sl) => warn!("error in plugin {}:\n{}", self.name, sl.gen_err(err)),
-      None => {}
+      Some(sl) => warn!("error in plugin `{}`:\n{}", self.name, sl.gen_err(err)),
+      None => panic!("cannot print error without a sugarlang envrionment present!"),
     }
   }
 
