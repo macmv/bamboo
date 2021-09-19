@@ -95,24 +95,22 @@ impl Sugarcane {
   /// ```
   pub fn add_command(&self, command: &SlCommand) {
     let wm = self.wm.clone();
+    let wm2 = self.wm.clone();
     let cb = command.callback.clone();
     let command = command.inner.clone();
     let idx = self.idx;
     tokio::spawn(async move {
-      wm.default_world()
-        .await
-        .get_commands()
+      wm.get_commands()
         .add(command, move |_, player, args| {
-          let wm = wm.clone();
+          let wm = wm2.clone();
           let mut cb = cb.clone();
           async move {
-            let world = wm.default_world().await;
             // We need this awkward scoping setup to avoid borrowing errors, and to make
             // sure `lock` doesn't get sent between threads.
             let mut err = None;
             let mut has_err = false;
             {
-              let mut lock = world.get_plugins().plugins.lock().unwrap();
+              let mut lock = wm.get_plugins().plugins.lock().unwrap();
               let plugin = &mut lock[idx];
               let sc = plugin.sc();
               if let Err(e) = cb.call(&mut plugin.lock_env(), vec![VarRef::Owned(sc.into())]) {
