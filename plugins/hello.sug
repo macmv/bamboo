@@ -1,4 +1,4 @@
-use sugarcane::Command
+use sugarcane::{Chat, Command}
 
 fn init(sc) {
   sc.info("hello world")
@@ -10,7 +10,12 @@ fn init(sc) {
 
 fn handle_setblock(sc, player, args) {
   sc.info("SETBLOCK")
-  player.send_message("hello!")
+
+  c = Chat::empty()
+  c.add("I").color("red")
+  c.add(" am").color("yellow")
+  c.add(" colors").color("green")
+  player.send_message(c)
 }
 
 fn on_block_place(sc, player, pos, kind) {
