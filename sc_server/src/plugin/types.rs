@@ -1,7 +1,7 @@
 use super::{PluginManager, Sugarcane};
 use crate::{
   block,
-  command::{Command, Parser},
+  command::{Arg, Command, Parser},
   player::Player,
 };
 use sc_common::{
@@ -51,6 +51,7 @@ wrap!(Pos, SlPos);
 wrap!(FPos, SlFPos);
 wrap!(block::Kind, SlBlockKind);
 wrap!(Command, SlCommand, callback: Callback);
+wrap!(Arg, SlArg);
 
 /// This is a handle into the Sugarcane server. It allows you to modify the
 /// world, add commands, lookup players, and more. It will be passed to every
@@ -113,7 +114,23 @@ impl Sugarcane {
               let mut lock = wm.get_plugins().plugins.lock().unwrap();
               let plugin = &mut lock[idx];
               let sc = plugin.sc();
-              if let Err(e) = cb.call(&mut plugin.lock_env(), vec![VarRef::Owned(sc.into())]) {
+              if let Err(e) = cb.call(
+                &mut plugin.lock_env(),
+                vec![
+                  VarRef::Owned(sc.into()),
+                  player
+                    .as_ref()
+                    .map(|p| VarRef::Owned(SlPlayer::from(p.clone()).into()))
+                    .unwrap_or(VarRef::Owned(Var::None)),
+                  VarRef::Owned(
+                    args
+                      .iter()
+                      .map(|arg| SlArg::from(arg.clone()).into())
+                      .collect::<Vec<Var>>()
+                      .into(),
+                  ),
+                ],
+              ) {
                 err = Some(e);
                 has_err = true;
               }
@@ -267,6 +284,17 @@ impl SlCommand {
   }
 }
 
+/// A command argument. This is how you read back the arguments that a user
+/// passed to your command.
+#[define_ty(path = "sugarcane::Arg")]
+impl SlArg {
+  /// If this argument is a literal, then this returns the value of that
+  /// literal. Otherwise, this will return an error.
+  pub fn lit(&self) -> String {
+    self.inner.lit().to_string()
+  }
+}
+
 impl PluginManager {
   pub fn add_builtins(sl: &mut Sugarlang) {
     sl.add_builtin_ty::<Sugarcane>();
@@ -275,6 +303,7 @@ impl PluginManager {
     sl.add_builtin_ty::<SlFPos>();
     sl.add_builtin_ty::<SlBlockKind>();
     sl.add_builtin_ty::<SlCommand>();
+    sl.add_builtin_ty::<SlArg>();
 
     let docs = sl.generate_docs(&[(
       path!(sugarcane),
