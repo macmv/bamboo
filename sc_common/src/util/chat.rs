@@ -74,6 +74,13 @@ impl Chat {
     //   serde_json::to_string(&self.sections).unwrap()
     // }
   }
+
+  pub fn sections_len(&self) -> usize {
+    self.sections.len()
+  }
+  pub fn get_section(&mut self, idx: usize) -> Option<&mut Section> {
+    self.sections.get_mut(idx)
+  }
 }
 
 impl Serialize for Chat {
