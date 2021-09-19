@@ -8,7 +8,10 @@ use rayon::prelude::*;
 use sc_common::{
   math::ChunkPos,
   net::cb,
-  util::nbt::{Tag, NBT},
+  util::{
+    nbt::{Tag, NBT},
+    Buffer,
+  },
   version::ProtocolVersion,
 };
 
@@ -156,6 +159,9 @@ impl World {
         ),
       ]),
     );
+    let mut world_names = Buffer::new(vec![]);
+    world_names.write_varint(1);
+    world_names.write_str("minecraft:overworld");
     let out = cb::Packet::Login {
       entity_id:                self.eid(),
       game_mode:                1,       // Creative
@@ -183,10 +189,8 @@ impl World {
                                               * world being a debug world */
       dimension_codec_v1_16:    Some(codec.serialize()),
       dimension_v1_16:          Some("".into()),
-      dimension_v1_16_2:        Some(vec![]),
-      // dimension: NBT::new("", dimension).serialize(),
-      // world_names:        vec!["minecraft:overworld".into()],
-      world_names_v1_16:        Some(vec![]),
+      dimension_v1_16_2:        Some(NBT::new("", dimension).serialize()),
+      world_names_v1_16:        Some(world_names.into_inner()),
     };
 
     conn.send(out).await;
