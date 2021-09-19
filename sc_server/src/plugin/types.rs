@@ -13,7 +13,7 @@ use sugarlang::{
   define_ty,
   docs::{markdown, MarkdownSection},
   path,
-  runtime::{Callback, Var, VarRef},
+  runtime::{Callback, RuntimeError, Var, VarRef},
   Sugarlang,
 };
 
@@ -47,6 +47,7 @@ macro_rules! wrap {
 }
 
 wrap!(Arc<Player>, SlPlayer);
+wrap!(Chat, SlChat);
 wrap!(Pos, SlPos);
 wrap!(FPos, SlFPos);
 wrap!(block::Kind, SlBlockKind);
@@ -163,7 +164,47 @@ impl SlPlayer {
   pub fn username(&self) -> String {
     self.inner.username().into()
   }
+
+  /// Sends the given chat message to a player. This accepts exactly one
+  /// argument, which can be any type. If it is a `SlChat`, then it will be
+  /// formatted correctly. Anything else will show up with debug formatting.
+  ///
+  /// # Example
+  ///
+  /// ```
+  /// // The text `Hello!` will show up the the user's chat box.
+  /// p.send_message("Hello!")
+  ///
+  /// chat = Chat::new()
+  /// chat.add("I").color("red")
+  /// chat.add(" am").color("orange")
+  /// chat.add(" colors!").color("yellow")
+  /// // The text `I am colors!` will show up in the user's chat box, colored
+  /// // in red, then orange, then yellow.
+  /// p.send_message(chat)
+  /// ```
+  pub fn send_message(&self, msg: &Var) {
+    let p = self.inner.clone();
+    let out = match msg {
+      Var::Builtin(_, data) => {
+        let chat = data.as_any().downcast_ref::<SlChat>();
+        if let Some(chat) = chat {
+          chat.inner.clone()
+        } else {
+          Chat::new(msg.to_string())
+        }
+      }
+      _ => Chat::new(msg.to_string()),
+    };
+    tokio::spawn(async move {
+      p.send_message(&out).await;
+    });
+  }
 }
+
+/// A chat message. This is how you can send formatted chat message to players.
+#[define_ty(path = "sugarcane::Chat")]
+impl SlChat {}
 
 /// A block position. This stores X, Y, and Z coordinates.
 ///
