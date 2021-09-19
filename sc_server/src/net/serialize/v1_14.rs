@@ -38,7 +38,7 @@ pub fn serialize_chunk(pos: ChunkPos, c: &MultiChunk) -> cb::Packet {
     if s.data().bpe() <= 8 {
       chunk_data.write_varint(s.palette().len() as i32);
       for g in s.palette() {
-        chunk_data.write_varint(types.to_old(*g as u32, BlockVersion::V1_13) as i32);
+        chunk_data.write_varint(types.to_old(*g as u32, BlockVersion::V1_14) as i32);
       }
     }
     let longs = s.data().long_array();
