@@ -73,19 +73,21 @@ impl Parser {
           if x_rel {
             w_x.set_text(w_x[1..].to_string());
           }
-          let x = parse_num(&w_x, &None, &None)?;
+          let x = if x_rel && w_x.is_empty() { 0 } else { parse_num(&w_x, &None, &None)? };
+
           let mut w_y = tokens.read_spaced_text()?;
           let y_rel = w_y.starts_with("~");
           if y_rel {
             w_y.set_text(w_y[1..].to_string());
           }
-          let y = parse_num(&w_y, &None, &None)?;
+          let y = if y_rel && w_y.is_empty() { 0 } else { parse_num(&w_y, &None, &None)? };
+
           let mut w_z = tokens.read_spaced_text()?;
           let z_rel = w_z.starts_with("~");
           if z_rel {
             w_z.set_text(w_z[1..].to_string());
           }
-          let z = parse_num(&w_z, &None, &None)?;
+          let z = if z_rel && w_z.is_empty() { 0 } else { parse_num(&w_z, &None, &None)? };
 
           let out = Pos::new(
             if x_rel { pos.x() + x } else { x },
