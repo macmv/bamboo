@@ -49,7 +49,8 @@ pub fn serialize_chunk(pos: ChunkPos, c: &MultiChunk) -> cb::Packet {
   if has_biomes {
     biomes.write_varint(1024);
     for _ in 0..1024 {
-      biomes.write_varint(127); // Void biome
+      // The first biome in the list of biomes in the dimension codec
+      biomes.write_varint(0);
     }
   }
 
