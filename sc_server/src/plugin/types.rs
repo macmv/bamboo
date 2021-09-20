@@ -14,7 +14,7 @@ use sugarlang::{
   docs::{markdown, MarkdownSection},
   parse::token::Span,
   path,
-  runtime::{Callback, RuntimeError, Var, VarRef},
+  runtime::{Callback, RuntimeError, Var, VarData, VarRef},
   Sugarlang,
 };
 
@@ -208,7 +208,7 @@ impl SlPlayer {
 #[define_ty(path = "sugarcane::Chat")]
 impl SlChat {
   /// Creates an empty chat message. This can have sections added using `add`.
-  pub fn empty() -> Self {
+  pub fn empty() -> SlChat {
     SlChat { inner: Arc::new(Mutex::new(Chat::empty())) }
   }
   /// Adds a new chat section. This will return the section that was just added,
@@ -366,7 +366,7 @@ impl SlCommand {
   ///   sc.info("ran setblock!")
   /// }
   /// ```
-  pub fn new(name: &str, callback: Callback) -> Self {
+  pub fn new(name: &str, callback: Callback) -> SlCommand {
     SlCommand { inner: Command::new(name), callback }
   }
   /// Adds a new block position argument to the command.
