@@ -5,7 +5,7 @@ use sugarlang::{
   docs::{markdown, MarkdownSection},
   parse::token::Span,
   path,
-  runtime::{RuntimeError, Var, VarRef},
+  runtime::{RuntimeError, Var, VarData, VarRef},
   Sugarlang,
 };
 
