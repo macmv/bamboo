@@ -2284,7 +2284,7 @@ checksum = "6bdef32e8150c2a081110b42772ffe7d7c9032b606bc226c8260fd97e0976601"
 [[package]]
 name = "sugarlang"
 version = "0.1.0"
-source = "git+https://gitlab.com/macmv/sugarlang#1ff530b63f60086ce2d485e9d91cb3932acd1a26"
+source = "git+https://gitlab.com/macmv/sugarlang#ada33d484487a7fd17fa05c3a85ebdbbe0d7509e"
 dependencies = [
  "ansi_term",
  "sugarlang_derive",
@@ -2295,7 +2295,7 @@ dependencies = [
 [[package]]
 name = "sugarlang_derive"
 version = "0.1.0"
-source = "git+https://gitlab.com/macmv/sugarlang#1ff530b63f60086ce2d485e9d91cb3932acd1a26"
+source = "git+https://gitlab.com/macmv/sugarlang#ada33d484487a7fd17fa05c3a85ebdbbe0d7509e"
 dependencies = [
  "proc-macro-error",
  "proc-macro2",
@@ -2306,7 +2306,7 @@ dependencies = [
 [[package]]
 name = "sugarlang_docs"
 version = "0.1.0"
-source = "git+https://gitlab.com/macmv/sugarlang#1ff530b63f60086ce2d485e9d91cb3932acd1a26"
+source = "git+https://gitlab.com/macmv/sugarlang#ada33d484487a7fd17fa05c3a85ebdbbe0d7509e"
 dependencies = [
  "html-builder",
 ]
