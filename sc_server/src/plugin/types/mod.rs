@@ -280,6 +280,14 @@ impl PluginManager {
           /// byte buffers, things like UUID, and more.
         ),
       ),
+      (
+        path!(sugarcane::world),
+        markdown!(
+          /// This module includes a World and WorldManager. The World allows you to spawn
+          /// in entities, change blocks, mess with players, etc. The WorldManager allows
+          /// you to teleport people between worlds, create new worlds, etc.
+        ),
+      ),
     ]);
     docs.save("target/sl_docs");
   }

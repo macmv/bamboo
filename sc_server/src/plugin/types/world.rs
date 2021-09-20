@@ -1,7 +1,8 @@
 use super::{add_from, block::SlBlockKind, util::SlPos};
 use crate::world::World;
+use sc_common::math::Pos;
 use std::{fmt, sync::Arc};
-use sugarlang::define_ty;
+use sugarlang::{define_ty, parse::token::Span, runtime::RuntimeError};
 
 #[derive(Clone)]
 pub struct SlWorld {
@@ -13,6 +14,14 @@ add_from!(Arc<World>, SlWorld);
 impl fmt::Debug for SlWorld {
   fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
     f.debug_struct("SlWorld").finish()
+  }
+}
+
+impl SlWorld {
+  pub fn check_pos(&self, pos: Pos) -> Result<Pos, RuntimeError> {
+    self.inner.check_pos(pos).map_err(|p| {
+      RuntimeError::custom(format!("invalid position {}: {}", p.pos, p.msg), Span::default())
+    })
   }
 }
 
@@ -30,13 +39,14 @@ impl SlWorld {
   /// This function will do everything you want in a block place. It will update
   /// the blocks stored in the world, and send block updates to all clients in
   /// render distance.
-  pub fn set_kind(&self, pos: &SlPos, kind: &SlBlockKind) {
+  pub fn set_kind(&self, pos: &SlPos, kind: &SlBlockKind) -> Result<(), RuntimeError> {
     let w = self.inner.clone();
-    let p = pos.inner;
+    let p = self.check_pos(pos.inner)?;
     let k = kind.inner;
     tokio::spawn(async move {
       w.set_kind(p, k).await.unwrap();
     });
+    Ok(())
   }
   /// Fills a rectangle of blocks in the world. This will return an error if the
   /// min or max are outside of the world.
@@ -44,13 +54,19 @@ impl SlWorld {
   /// This function will do everything you want when filling blocks.. It will
   /// update the blocks stored in the world, and send block updates to all
   /// clients in render distance.
-  pub fn fill_rect_kind(&self, min: &SlPos, max: &SlPos, kind: &SlBlockKind) {
+  pub fn fill_rect_kind(
+    &self,
+    min: &SlPos,
+    max: &SlPos,
+    kind: &SlBlockKind,
+  ) -> Result<(), RuntimeError> {
     let w = self.inner.clone();
-    let min = min.inner;
-    let max = max.inner;
+    let min = self.check_pos(min.inner)?;
+    let max = self.check_pos(max.inner)?;
     let k = kind.inner;
     tokio::spawn(async move {
       w.fill_rect_kind(min, max, k).await.unwrap();
     });
+    Ok(())
   }
 }

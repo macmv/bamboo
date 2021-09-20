@@ -338,4 +338,13 @@ impl World {
   ) -> Result<(), PosError> {
     self.fill_sphere(center, radius, self.block_converter.get(kind).default_type()).await
   }
+
+  /// Validates a given block position.
+  pub fn check_pos(&self, pos: Pos) -> Result<Pos, PosError> {
+    if pos.y < 0 || pos.y >= 256 {
+      Err(PosError { pos, msg: "outside of world".into() })
+    } else {
+      Ok(pos)
+    }
+  }
 }
