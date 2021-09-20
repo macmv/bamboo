@@ -255,11 +255,11 @@ impl PluginManager {
           /// ```
           ///      fill
           ///    /      \
-          /// `rect`  `circle`
+          /// "rect"  "circle"
           ///   |        |
-          /// <pos>    <pos>
+          /// `pos`    `pos`
           ///   |        |
-          /// <pos>   <float>
+          /// `pos`   `float`
           /// ```
         ),
       ),
