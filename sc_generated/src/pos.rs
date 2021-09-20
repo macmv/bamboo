@@ -7,8 +7,8 @@ use std::{
 
 #[derive(Debug, PartialEq)]
 pub struct PosError {
-  pos: Pos,
-  msg: String,
+  pub pos: Pos,
+  pub msg: String,
 }
 
 impl fmt::Display for PosError {
