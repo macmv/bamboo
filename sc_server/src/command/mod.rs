@@ -134,6 +134,15 @@ impl Command {
   fn arg(name: String, parser: Parser) -> Self {
     Command { name, ty: NodeType::Argument(parser), children: vec![] }
   }
+  /// Gets the number of children in this command.
+  pub fn children_len(&self) -> usize {
+    self.children.len()
+  }
+  /// Gets a child at the given index. Used in SlCommand, as we cannot return
+  /// something that borrows self.
+  pub fn get_child(&mut self, idx: usize) -> Option<&mut Command> {
+    self.children.get_mut(idx)
+  }
   /// Adds a new literal argument to the command. Unlike
   /// [`add_arg`](Self::add_arg), the name has a purpose in parsing here.
   /// Literal arguments match the exact text of the name in a command. For

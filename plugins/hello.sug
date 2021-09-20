@@ -5,6 +5,8 @@ fn init(sc) {
 
   c = Command::new("setblock", handle_setblock)
   c.add_arg_block_pos("pos")
+  c.add_lit("word")
+    .add_arg_block_pos("pos")
   sc.add_command(c)
 }
 
