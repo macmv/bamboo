@@ -16,13 +16,13 @@ Now you need to build the server and proxy. You can run the server with this
 command:
 
 ```
-cargo run --bin server --release
+cargo run --bin sc_server --release
 ```
 
 And you can run the proxy with this command:
 
 ```
-cargo run --bin proxy --release
+cargo run --bin sc_proxy --release
 ```
 
 You need the server and proxy to be running at the same time in order to connect!
