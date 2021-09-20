@@ -159,14 +159,17 @@ pub fn generate(dir: &Path) -> Result<(), Box<dyn Error>> {
   out.push_str("    }\n");
   out.push_str("  }\n");
   out.push_str("}\n");
-  out.push_str("pub fn names() -> &'static [&'static str] {\n");
-  out.push_str("  &[");
+  out.push_str("impl Kind {\n");
+  out.push_str("  pub fn to_str(&self) -> &'static str {\n");
+  out.push_str("    [");
   for name in &names {
     out.push_str("\"");
     out.push_str(&name);
     out.push_str("\",");
   }
-  out.push_str("  ]\n");
+  out.push_str("]\n");
+  out.push_str("    [self.id() as usize]\n");
+  out.push_str("  }\n");
   out.push_str("}\n");
   out.push_str("/// Generates a table from all block kinds to any block data that kind has.\n");
   out.push_str("/// This does not include cross-versioning data. This includes information like\n");

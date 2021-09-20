@@ -8,6 +8,6 @@ wrap!(block::Kind, SlBlockKind);
 #[define_ty(path = "sugarcane::block::BlockKind")]
 impl SlBlockKind {
   pub fn to_s(&self) -> String {
-    format!("{:?}", self.inner)
+    format!("{}", self.inner.to_str())
   }
 }
