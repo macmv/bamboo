@@ -14,6 +14,7 @@ pub mod chat;
 pub mod command;
 pub mod player;
 pub mod util;
+pub mod world;
 
 use command::SlCommand;
 
@@ -166,12 +167,13 @@ impl PluginManager {
     sl.add_builtin_ty::<Sugarcane>();
     sl.add_builtin_ty::<util::SlPos>();
     sl.add_builtin_ty::<util::SlFPos>();
+    sl.add_builtin_ty::<block::SlBlockKind>();
     sl.add_builtin_ty::<chat::SlChat>();
     sl.add_builtin_ty::<chat::SlChatSection>();
     sl.add_builtin_ty::<command::SlCommand>();
     sl.add_builtin_ty::<command::SlArg>();
     sl.add_builtin_ty::<player::SlPlayer>();
-    sl.add_builtin_ty::<block::SlBlockKind>();
+    sl.add_builtin_ty::<world::SlWorld>();
 
     let docs = sl.generate_docs(&[
       (
