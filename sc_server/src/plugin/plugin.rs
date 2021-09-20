@@ -3,10 +3,7 @@
 // use common::math::Pos;
 // use rutie::{AnyObject, Fixnum, Module, Object, VM};
 // use std::sync::{mpsc, Arc};
-use super::{
-  types::{SlBlockKind, SlPlayer, SlPos},
-  PluginManager, Sugarcane,
-};
+use super::{types, PluginManager, Sugarcane};
 use crate::{block, player::Player, world::WorldManager};
 use sc_common::math::Pos;
 use std::{fs, path::Path, sync::Arc};
@@ -75,9 +72,9 @@ impl Plugin {
       "on_block_place",
       vec![
         self.sc.clone().into(),
-        SlPlayer::from(player).into(),
-        SlPos::from(pos).into(),
-        SlBlockKind::from(kind).into(),
+        types::player::SlPlayer::from(player).into(),
+        types::util::SlPos::from(pos).into(),
+        types::block::SlBlockKind::from(kind).into(),
       ],
     );
   }
