@@ -8,7 +8,7 @@ wrap!(FPos, SlFPos);
 /// A block position. This stores X, Y, and Z coordinates.
 ///
 /// If you need a player position, use `FPos` instead.
-#[define_ty(path = "sugarcane::Pos")]
+#[define_ty(path = "sugarcane::util::Pos")]
 impl SlPos {
   /// Returns the X position of this block.
   ///
@@ -48,7 +48,7 @@ impl SlPos {
 /// An entity position. This stores X, Y, and Z coordinates as floats.
 ///
 /// If you need a block position, use `Pos` instead.
-#[define_ty(path = "sugarcane::FPos")]
+#[define_ty(path = "sugarcane::util::FPos")]
 impl SlFPos {
   /// Returns the X position of this entity.
   ///

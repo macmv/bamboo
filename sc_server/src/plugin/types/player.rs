@@ -2,17 +2,14 @@ use super::{add_from, chat::SlChat, wrap};
 use crate::player::Player;
 use sc_common::util::Chat;
 use std::sync::Arc;
-use sugarlang::{
-  define_ty,
-  runtime::{Var, VarData},
-};
+use sugarlang::{define_ty, runtime::Var};
 
 wrap!(Arc<Player>, SlPlayer);
 
 /// A Player. This struct is for online players. If anyone has disconnected,
 /// this struct will still exist, but the functions will return outdated
 /// information. There is currently no way to lookup an offline player.
-#[define_ty(path = "sugarcane::Player")]
+#[define_ty(path = "sugarcane::player::Player")]
 impl SlPlayer {
   /// Returns the username of the player. This will never change, as long as the
   /// user stays online.

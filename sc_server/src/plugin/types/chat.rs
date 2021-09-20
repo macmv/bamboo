@@ -11,7 +11,7 @@ wrap!(Arc<Mutex<Chat>>, SlChat);
 wrap!(Arc<Mutex<Chat>>, SlChatSection, idx: usize);
 
 /// A chat message. This is how you can send formatted chat message to players.
-#[define_ty(path = "sugarcane::Chat")]
+#[define_ty(path = "sugarcane::chat::Chat")]
 impl SlChat {
   /// Creates an empty chat message. This can have sections added using `add`.
   pub fn empty() -> SlChat {
@@ -40,7 +40,7 @@ impl SlChat {
 /// A chat message section. This section knows which chat message it came from.
 /// All of the functions on this section will modify the chat message this came
 /// from.
-#[define_ty(path = "sugarcane::ChatSection")]
+#[define_ty(path = "sugarcane::chat::ChatSection")]
 impl SlChatSection {
   /// Sets the color of this chat section. Since Sugarlang does not support
   /// enums, the color is simply a string. An invalid color will result in an

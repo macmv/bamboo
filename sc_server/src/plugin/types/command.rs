@@ -21,7 +21,7 @@ impl SlCommand {
 
 /// A command. This is how to setup the arguments for a custom commands that
 /// users can run.
-#[define_ty(path = "sugarcane::Command")]
+#[define_ty(path = "sugarcane::command::Command")]
 impl SlCommand {
   /// Creates a new command. The callback must be a function, which takes 3
   /// arguments. See the example for details.
@@ -96,7 +96,7 @@ impl SlCommand {
 
 /// A command argument. This is how you read back the arguments that a user
 /// passed to your command.
-#[define_ty(path = "sugarcane::Arg")]
+#[define_ty(path = "sugarcane::command::Arg")]
 impl SlArg {
   /// If this argument is a literal, then this returns the value of that
   /// literal. Otherwise, this will return an error.
