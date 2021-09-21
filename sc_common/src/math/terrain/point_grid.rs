@@ -124,6 +124,40 @@ mod tests {
     }
   }
   #[test]
+  fn test_neighbors() {
+    let g = PointGrid {
+      square_size: 4,
+      points:      vec![
+        vec![(0, 0), (2, 3), (1, 3)],
+        vec![(3, 1), (2, 2), (3, 2)],
+        vec![(2, 1), (1, 2), (1, 1)],
+      ],
+    };
+    // 11 | 21 12
+    // ----------
+    // 13 | 00 23
+    // 32 | 31 22
+    //
+    // So, we should expect these points:
+    // -3-3 | 2-1 5-2
+    // --------------
+    // -1 3 | 0 0 6 3
+    // -3 6 | 3 5 6 6
+    //
+    // But, we don't get those at all, and I have no idea why.
+    for p in g.neighbors(Point::new(0, 0), 1) {
+      dbg!(p);
+      let rel_x = ((p.x % 4) + 4) % 4;
+      let rel_y = ((p.x % 4) + 4) % 4;
+      let lookup_x = if p.x < 0 { 2 } else { p.x / 4 };
+      let lookup_y = if p.y < 0 { 2 } else { p.y / 4 };
+      let expected_rel = g.points[lookup_y as usize][lookup_x as usize];
+      dbg!(rel_x, rel_y, lookup_x, lookup_y);
+      assert_eq!((rel_x as u32, rel_y as u32), expected_rel);
+    }
+    panic!();
+  }
+  #[test]
   fn test_closest_point() {
     let g = PointGrid {
       square_size: 4,
@@ -214,6 +248,8 @@ mod tests {
       }
       y += 1;
     }
+    dbg!(g.neighbors(Point::new(0, 1), 1));
+    panic!();
     for x in 0..2 * 4 {
       for y in 0..2 * 4 {
         let (expected_x, expected_y) = expected[y as usize][x as usize];
