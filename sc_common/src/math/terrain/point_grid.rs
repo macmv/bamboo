@@ -100,6 +100,30 @@ mod tests {
     assert_eq!(g.normalize(Point::new(-1, 3)), (Point::new(4, 3), Point::new(3, 0)));
   }
   #[test]
+  fn test_get() {
+    let g = PointGrid {
+      square_size: 5,
+      points:      vec![
+        vec![(1, 1), (0, 0), (0, 0)],
+        vec![(3, 4), (0, 0), (0, 0)],
+        vec![(0, 0), (0, 0), (0, 0)],
+      ],
+    };
+    for x in 0..3 * 5 {
+      for y in 0..3 * 5 {
+        let lookup_x = x / 5;
+        let lookup_y = y / 5;
+        if lookup_x == 0 && lookup_y == 0 {
+          assert_eq!(g.get(Point::new(x, y)), Point::new(1, 1));
+        } else if lookup_x == 0 && lookup_y == 1 {
+          assert_eq!(g.get(Point::new(x, y)), Point::new(3, 4 + 5));
+        } else {
+          assert_eq!(g.get(Point::new(x, y)), Point::new(lookup_x * 5, lookup_y * 5));
+        }
+      }
+    }
+  }
+  #[test]
   fn test_contains() {
     let g = PointGrid {
       square_size: 5,
