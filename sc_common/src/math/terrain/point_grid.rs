@@ -142,7 +142,7 @@ mod tests {
     // 32 | 31 22
     //
     // So, we should expect these points:
-    // -3-3 | 2-1 5-2
+    // -3-3 | 2-3 5-2
     // --------------
     // -1 3 | 0 0 6 3
     // -3 6 | 3 5 6 6
@@ -151,14 +151,13 @@ mod tests {
     for p in g.neighbors(Point::new(0, 0), 1) {
       dbg!(p);
       let rel_x = ((p.x % 4) + 4) % 4;
-      let rel_y = ((p.x % 4) + 4) % 4;
+      let rel_y = ((p.y % 4) + 4) % 4;
       let lookup_x = if p.x < 0 { 2 } else { p.x / 4 };
       let lookup_y = if p.y < 0 { 2 } else { p.y / 4 };
       let expected_rel = g.points[lookup_y as usize][lookup_x as usize];
       dbg!(rel_x, rel_y, lookup_x, lookup_y);
       assert_eq!((rel_x as u32, rel_y as u32), expected_rel);
     }
-    panic!();
   }
   #[test]
   fn test_closest_point() {
@@ -251,15 +250,12 @@ mod tests {
       }
       y += 1;
     }
-    dbg!(g.neighbors(Point::new(0, 1), 1));
-    panic!();
     for x in 0..2 * 4 {
       for y in 0..2 * 4 {
         let (expected_x, expected_y) = expected[y as usize][x as usize];
         dbg!(x, y, expected_x, expected_y);
         println!("{:?}", g.closest_point(Point::new(x, y)));
-        // assert_eq!(g.closest_point(Point::new(x, y)), Point::new(expected_x,
-        // expected_y));
+        assert_eq!(g.closest_point(Point::new(x, y)), Point::new(expected_x, expected_y));
       }
     }
     panic!();
