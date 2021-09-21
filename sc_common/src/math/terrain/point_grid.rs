@@ -124,6 +124,108 @@ mod tests {
     }
   }
   #[test]
+  fn test_closest_point() {
+    let g = PointGrid {
+      square_size: 4,
+      points:      vec![
+        vec![(0, 0), (0, 0), (0, 0)],
+        vec![(0, 0), (0, 0), (0, 0)],
+        vec![(0, 0), (0, 0), (0, 0)],
+      ],
+    };
+    for x in 0..3 * 4 {
+      for y in 0..3 * 4 {
+        let lookup_x = (x + 1) / 4;
+        let lookup_y = (y + 1) / 4;
+        assert_eq!(g.closest_point(Point::new(x, y)), Point::new(lookup_x * 4, lookup_y * 4));
+      }
+    }
+    for x in 0..3 * 4 {
+      for y in 0..3 * 4 {
+        let lookup_x = (x + 1) / 4;
+        let lookup_y = (y + 1) / 4;
+        assert_eq!(
+          g.closest_point(Point::new(x - 3 * 4, y - 3 * 4)),
+          Point::new((lookup_x - 3) * 4, (lookup_y - 3) * 4)
+        );
+      }
+    }
+
+    let g = PointGrid {
+      square_size: 5,
+      points:      vec![
+        vec![(0, 0), (0, 0), (0, 0)],
+        vec![(0, 0), (0, 0), (0, 0)],
+        vec![(0, 0), (0, 0), (0, 0)],
+      ],
+    };
+    for x in 0..3 * 5 {
+      for y in 0..3 * 5 {
+        let lookup_x = (x + 2) / 5;
+        let lookup_y = (y + 2) / 5;
+        assert_eq!(g.closest_point(Point::new(x, y)), Point::new(lookup_x * 5, lookup_y * 5));
+      }
+    }
+
+    let g = PointGrid {
+      square_size: 8,
+      points:      vec![
+        vec![(0, 0), (0, 0), (0, 0)],
+        vec![(0, 0), (0, 0), (0, 0)],
+        vec![(0, 0), (0, 0), (0, 0)],
+      ],
+    };
+    for x in 0..3 * 8 {
+      for y in 0..3 * 8 {
+        let lookup_x = (x + 3) / 8;
+        let lookup_y = (y + 3) / 8;
+        assert_eq!(g.closest_point(Point::new(x, y)), Point::new(lookup_x * 8, lookup_y * 8));
+      }
+    }
+
+    let g =
+      PointGrid { square_size: 4, points: vec![vec![(2, 2), (1, 1)], vec![(3, 0), (3, 3)]] };
+
+    let expected_str = "
+    ZZ ZZ AA AA BB BB BB BB
+    ZZ AA AA AA BB .. BB BB
+    AA AA .. AA BB BB BB BB
+    AA AA AA CC CC BB BB BB
+    CC CC CC .. CC CC DD DD
+    CC CC CC CC CC DD DD DD
+    CC CC CC CC CC DD DD DD
+    CC CC CC CC DD DD DD ..";
+    let mut expected = vec![vec![(0, 0); 8]; 8];
+    let mut y = 0;
+    for l in expected_str.lines() {
+      if l == "" {
+        continue;
+      }
+      for (x, s) in l.trim().split(" ").enumerate() {
+        match s {
+          "AA" => expected[y][x] = (2 + 0, 2 + 0),
+          "BB" => expected[y][x] = (1 + 4, 1 + 0),
+          "CC" => expected[y][x] = (3 + 0, 0 + 4),
+          "DD" => expected[y][x] = (3 + 4, 3 + 4),
+          "ZZ" => expected[y][x] = (3 - 4, 3 - 4),
+          ".." => expected[y][x] = (x as i32, y as i32),
+          _ => unreachable!(),
+        }
+      }
+      y += 1;
+    }
+    for x in 0..2 * 4 {
+      for y in 0..2 * 4 {
+        let (expected_x, expected_y) = expected[y as usize][x as usize];
+        dbg!(x, y, expected_x, expected_y);
+        println!("{:?}", g.closest_point(Point::new(x, y)));
+        // assert_eq!(g.closest_point(Point::new(x, y)), Point::new(expected_x,
+        // expected_y));
+      }
+    }
+    panic!();
+  }
+  #[test]
   fn test_contains() {
     let g = PointGrid {
       square_size: 5,
