@@ -11,7 +11,7 @@ pub fn generate_chunk(c: &mut Criterion) {
   c.bench_function("single chunk", |b| {
     let mut x = 0_i32;
     let mut z = 0_i32;
-    let g = WorldGen::new();
+    let mut g = WorldGen::new();
     let types = Arc::new(block::TypeConverter::new());
     let mut c = MultiChunk::new(types);
     b.iter(move || {

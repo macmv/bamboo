@@ -69,8 +69,8 @@ pub fn serialize_chunk(pos: ChunkPos, c: &MultiChunk, ver: BlockVersion) -> cb::
 pub fn serialize_partial_chunk(
   pos: ChunkPos,
   c: &MultiChunk,
-  min: u32,
-  max: u32,
+  _min: u32,
+  _max: u32,
   ver: BlockVersion,
 ) -> cb::Packet {
   let types = c.type_converter();

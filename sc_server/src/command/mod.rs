@@ -313,7 +313,7 @@ impl Command {
 mod tests {
   use super::*;
   use crate::block;
-  use common::math::Pos;
+  use sc_common::math::Pos;
   use std::collections::HashMap;
 
   struct NoneSender {}

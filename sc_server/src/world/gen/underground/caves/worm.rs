@@ -2,18 +2,10 @@ use crate::{block, world::chunk::MultiChunk};
 use sc_common::math::{ChunkPos, FastMath, Pos, RngCore, WyhashRng};
 
 #[derive(Debug)]
-struct Vec3 {
-  x: f64,
-  y: f64,
-  z: f64,
-}
-
-#[derive(Debug)]
 pub struct CaveWorm {
   rng:        WyhashRng,
   pos:        Pos,
   steps:      Vec<Pos>,
-  // direction: Vec3,
   angle_vert: f64,
   angle_horz: f64,
 }
