@@ -66,11 +66,10 @@ impl PointGrid {
   fn get(&self, p: Point) -> Point {
     let (_, lookup) = self.normalize(p);
     let inner = self.points[lookup.y as usize][lookup.x as usize];
-    let x = p.x / self.square_size as i32;
-    let y = p.y / self.square_size as i32;
+    let p = p.pos_div(self.square_size as i32);
     Point::new(
-      inner.0 as i32 + x * self.square_size as i32,
-      inner.1 as i32 + y * self.square_size as i32,
+      inner.0 as i32 + p.x * self.square_size as i32,
+      inner.1 as i32 + p.y * self.square_size as i32,
     )
   }
 
@@ -119,6 +118,10 @@ mod tests {
           assert_eq!(g.get(Point::new(x, y)), Point::new(3, 4 + 5));
         } else {
           assert_eq!(g.get(Point::new(x, y)), Point::new(lookup_x * 5, lookup_y * 5));
+          assert_eq!(
+            g.get(Point::new(x - 3 * 5, y - 3 * 5)),
+            Point::new((lookup_x - 3) * 5, (lookup_y - 3) * 5)
+          );
         }
       }
     }
