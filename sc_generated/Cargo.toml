@@ -32,11 +32,3 @@ sc_data = { path = "../sc_data" }
 [dev-dependencies]
 pprof = { version = "0.4.3", features = ["criterion", "flamegraph"] }
 criterion = "0.3.4"
-
-[[bench]]
-name = "chunk"
-harness = false
-
-[[bench]]
-name = "fast_math"
-harness = false
