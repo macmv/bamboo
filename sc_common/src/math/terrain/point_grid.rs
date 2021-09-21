@@ -96,6 +96,7 @@ mod tests {
     assert_eq!(g.normalize(Point::new(1, 3)), (Point::new(1, 3), Point::new(0, 0)));
     assert_eq!(g.normalize(Point::new(7, 2)), (Point::new(2, 2), Point::new(1, 0)));
     assert_eq!(g.normalize(Point::new(4, 3)), (Point::new(4, 3), Point::new(0, 0)));
+    assert_eq!(g.normalize(Point::new(13, 8)), (Point::new(3, 3), Point::new(2, 1)));
     assert_eq!(g.normalize(Point::new(-1, 3)), (Point::new(4, 3), Point::new(3, 0)));
   }
   #[test]

@@ -40,19 +40,20 @@ impl Point {
   /// what the normal division operator would give).
   pub fn pos_div(&self, rem: i32) -> Point {
     // This should work, but causes things to break horribly
-    // let x;
-    // let y;
-    // if self.x < 0 {
-    //   x = (self.x + 1) / rem - 1
-    // } else {
-    //   x = self.x / rem
-    // }
-    // if self.y < 0 {
-    //   y = (self.y + 1) / rem - 1
-    // } else {
-    //   y = self.y / rem
-    // }
-    Point::new(self.x / rem, self.y / rem)
+    let x;
+    let y;
+    if self.x < 0 {
+      x = (self.x + 1) / rem - 1
+    } else {
+      x = self.x / rem
+    }
+    if self.y < 0 {
+      y = (self.y + 1) / rem - 1
+    } else {
+      y = self.y / rem
+    }
+    // Point::new(self.x / rem, self.y / rem)
+    Point::new(x, y)
   }
 
   pub fn slope(&self) -> Slope {
