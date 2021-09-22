@@ -433,15 +433,15 @@ impl Player {
       let unload_max;
       match delta.z().cmp(&0) {
         Ordering::Greater => {
-          load_min = ChunkPos::new(new_min.x().max(old_min.x()), new_max.z());
+          load_min = ChunkPos::new(new_min.x().max(old_min.x()), old_max.z() + 1);
           load_max = ChunkPos::new(new_max.x().min(old_max.x()), new_max.z());
           unload_min = ChunkPos::new(new_min.x().max(old_min.x()), old_min.z());
-          unload_max = ChunkPos::new(new_max.x().min(old_max.x()), old_min.z());
+          unload_max = ChunkPos::new(new_max.x().min(old_max.x()), new_min.z() - 1);
         }
         Ordering::Less => {
           load_min = ChunkPos::new(new_min.x().max(old_min.x()), new_min.z());
-          load_max = ChunkPos::new(new_max.x().min(old_max.x()), new_min.z());
-          unload_min = ChunkPos::new(new_min.x().max(old_min.x()), old_max.z());
+          load_max = ChunkPos::new(new_max.x().min(old_max.x()), old_min.z() - 1);
+          unload_min = ChunkPos::new(new_min.x().max(old_min.x()), new_max.z() + 1);
           unload_max = ChunkPos::new(new_max.x().min(old_max.x()), old_max.z());
         }
         _ => {
