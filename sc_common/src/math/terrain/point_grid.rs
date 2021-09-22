@@ -223,14 +223,14 @@ mod tests {
       PointGrid { square_size: 4, points: vec![vec![(2, 2), (1, 1)], vec![(3, 0), (3, 3)]] };
 
     let expected_str = "
-    ZZ ZZ AA AA BB BB BB BB
-    ZZ AA AA AA BB .. BB BB
+    ZZ ZZ AA AA BB BB WW WW
+    ZZ AA AA AA BB .. BB WW
     AA AA .. AA BB BB BB BB
     AA AA AA CC CC BB BB BB
-    CC CC CC .. CC CC DD DD
-    CC CC CC CC CC DD DD DD
-    CC CC CC CC CC DD DD DD
-    CC CC CC CC DD DD DD ..";
+    AA CC CC .. CC CC CC DD
+    XX CC CC CC CC CC DD DD
+    XX XX CC CC CC DD DD DD
+    XX XX XX YY YY DD DD ..";
     let mut expected = vec![vec![(0, 0); 8]; 8];
     let mut y = 0;
     for l in expected_str.lines() {
@@ -243,7 +243,10 @@ mod tests {
           "BB" => expected[y][x] = (1 + 4, 1 + 0),
           "CC" => expected[y][x] = (3 + 0, 0 + 4),
           "DD" => expected[y][x] = (3 + 4, 3 + 4),
+          "XX" => expected[y][x] = (3 - 4, 3 + 4),
+          "YY" => expected[y][x] = (1 + 4, 1 + 8),
           "ZZ" => expected[y][x] = (3 - 4, 3 - 4),
+          "WW" => expected[y][x] = (3 + 4, 3 - 4),
           ".." => expected[y][x] = (x as i32, y as i32),
           _ => unreachable!(),
         }
@@ -258,7 +261,6 @@ mod tests {
         assert_eq!(g.closest_point(Point::new(x, y)), Point::new(expected_x, expected_y));
       }
     }
-    panic!();
   }
   #[test]
   fn test_contains() {
