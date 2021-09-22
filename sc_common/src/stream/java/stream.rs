@@ -216,9 +216,9 @@ impl StreamWriter for JavaStreamWriter {
     self.stream.write(&self.outgoing).await?;
     // Older clients cannot handle too much data at once. So we literally just slow
     // down their connection when a bunch of data is coming through.
-    if self.outgoing.len() > FLUSH_SIZE / 2 {
-      time::sleep(Duration::from_millis(16)).await;
-    }
+    // if self.outgoing.len() > FLUSH_SIZE / 2 {
+    //   time::sleep(Duration::from_millis(16)).await;
+    // }
     self.outgoing.clear();
     self.last_flush = Instant::now();
     Ok(())
