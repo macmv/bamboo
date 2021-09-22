@@ -84,13 +84,14 @@ impl PlayerInventory {
 
 pub struct Player {
   // The EID of the player. Never changes.
-  eid:      i32,
+  eid:           i32,
   // Player's username
-  username: String,
-  uuid:     UUID,
-  conn:     Arc<Connection>,
-  ver:      ProtocolVersion,
-  world:    Arc<World>,
+  username:      String,
+  uuid:          UUID,
+  conn:          Arc<Connection>,
+  ver:           ProtocolVersion,
+  world:         Arc<World>,
+  view_distance: u32,
 
   inv: Mutex<PlayerInventory>,
 
@@ -103,6 +104,7 @@ impl fmt::Debug for Player {
       .field("username", &self.username)
       .field("uuid", &self.uuid)
       .field("ver", &self.ver)
+      .field("view_distance", &self.view_distance)
       .field("inv", &self.inv)
       .field("pos", &self.pos)
       .finish()
@@ -126,7 +128,7 @@ impl Player {
       conn,
       ver,
       world,
-      // This is 45 on 1.8, because there was no off hand.
+      view_distance: 10,
       inv: Mutex::new(PlayerInventory::new()),
       pos: Mutex::new(PlayerPosition {
         curr:       pos,
@@ -391,12 +393,12 @@ impl Player {
       }
     }
     if old_chunk != new_chunk {
-      let view_distance = 10; // TODO: Listen for client settings on this
       let delta = new_chunk - old_chunk;
-      let new_max = new_chunk + ChunkPos::new(view_distance, view_distance);
-      let new_min = new_chunk - ChunkPos::new(view_distance, view_distance);
-      let old_max = old_chunk + ChunkPos::new(view_distance, view_distance);
-      let old_min = old_chunk - ChunkPos::new(view_distance, view_distance);
+      let v = self.view_distance as i32;
+      let new_max = new_chunk + ChunkPos::new(v, v);
+      let new_min = new_chunk - ChunkPos::new(v, v);
+      let old_max = old_chunk + ChunkPos::new(v, v);
+      let old_min = old_chunk - ChunkPos::new(v, v);
       // Sides (including corners)
       let load_min;
       let load_max;
