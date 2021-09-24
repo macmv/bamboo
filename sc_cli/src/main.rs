@@ -78,12 +78,15 @@ async fn main() -> Result<(), Box<dyn Error>> {
       info!("got packet");
 
       match p {
-        cb::Packet::None => break 'all,
         cb::Packet::Login { .. } => {
           writer.write(sb::Packet::Chat { message: "hello world!".into() }).await?;
           writer.flush().await?;
         }
-        p => warn!("unhandled packet {:?}", p),
+        cb::Packet::KickDisconnect { reason } => {
+          error!("disconnected: {}", reason);
+          break 'all;
+        }
+        p => warn!("unhandled packet {}", p.id()),
       }
     }
   }
