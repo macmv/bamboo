@@ -225,12 +225,8 @@ struct JsonPlayer {
 }
 
 impl<'a, R: StreamReader + Send, W: StreamWriter + Send + Sync> Conn<'a, R, W> {
-  pub async fn new(
-    reader: R,
-    writer: W,
-    icon: &'a str,
-  ) -> Result<Conn<'a, R, W>, tonic::transport::Error> {
-    Ok(Conn { reader, writer, state: State::Handshake, ver: ProtocolVersion::Invalid, icon })
+  pub fn new(reader: R, writer: W, icon: &'a str) -> Conn<'a, R, W> {
+    Conn { reader, writer, state: State::Handshake, ver: ProtocolVersion::Invalid, icon }
   }
   pub fn ver(&self) -> ProtocolVersion {
     self.ver

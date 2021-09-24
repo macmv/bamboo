@@ -42,7 +42,8 @@ pub async fn run() -> Result<(), Box<dyn Error>> {
 
   // Minecraft uses 1024 bits for this.
   let key = Arc::new(RSAPrivateKey::new(&mut OsRng, 1024).expect("failed to generate a key"));
-  let der_key = Some(Arc::new(der::encode(&key)));
+  // let der_key = Some(Arc::new(der::encode(&key)));
+  let der_key = None;
   let icon = Arc::new(load_icon("icon.png"));
 
   let key2 = key.clone();
@@ -101,7 +102,7 @@ pub async fn handle_client<
   let ip = "http://0.0.0.0:8483".to_string();
   let compression = 256;
 
-  let mut conn = Conn::new(reader, writer, icon).await?;
+  let mut conn = Conn::new(reader, writer, icon);
   let info = match conn.handshake(compression, key, der_key).await? {
     Some(v) => v,
     // Means the client was either not allowed to join, or was just sending a status request.
