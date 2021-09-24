@@ -2047,9 +2047,11 @@ dependencies = [
 name = "sc_cli"
 version = "0.1.0"
 dependencies = [
+ "anyhow",
  "async-stream",
  "futures",
  "log",
+ "log4rs",
  "rand 0.8.4",
  "rsa",
  "rustyline",

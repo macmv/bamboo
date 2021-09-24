@@ -9,6 +9,8 @@ edition = "2021"
 sc_proxy = { path = "../sc_proxy" }
 sc_common = { path = "../sc_common" }
 log = "0.4"
+log4rs = "1.0.0"
+anyhow = "1.0.44"
 
 # auth
 rand = "0.8.3"

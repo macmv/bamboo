@@ -1,6 +1,7 @@
 #[macro_use]
 extern crate log;
 
+mod cli;
 mod handle;
 
 use rand::{rngs::OsRng, Rng};
@@ -50,7 +51,7 @@ impl ConnReader {
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn Error>> {
-  sc_common::init("cli");
+  sc_common::init_with_stdout("cli", cli::skip_appender(1));
 
   let ver = ProtocolVersion::V1_8;
 
