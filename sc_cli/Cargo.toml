@@ -1,0 +1,16 @@
+[package]
+name = "sc_cli"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+sc_proxy = { path = "../sc_proxy" }
+sc_common = { path = "../sc_common" }
+log = "0.4"
+
+tokio = { version = "1.5", features = ["rt-multi-thread"] }
+tokio-stream = "0.1"
+futures = "0.3"
+async-stream = "0.3"

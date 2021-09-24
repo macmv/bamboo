@@ -6,6 +6,7 @@ members = [
   "sc_common",
   "sc_server",
   "sc_proxy",
+  "sc_cli",
 ]
 
 # Using cargo flamegraph, this is needed.

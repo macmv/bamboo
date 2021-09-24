@@ -1933,6 +1933,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "sc_cli"
+version = "0.1.0"
+dependencies = [
+ "async-stream",
+ "futures",
+ "log",
+ "sc_common",
+ "sc_proxy",
+ "tokio",
+ "tokio-stream",
+]
+
+[[package]]
 name = "sc_common"
 version = "0.1.1"
 dependencies = [
