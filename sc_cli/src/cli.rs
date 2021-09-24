@@ -47,3 +47,11 @@ pub fn skip_appender(skip: usize) -> Appender {
   Appender::builder()
     .build("stdout", Box::new(SkipConsoleAppender::new(skip, sc_common::make_pattern())))
 }
+
+pub fn setup() -> Result<(), io::Error> {
+  Ok(())
+}
+
+pub fn draw() -> Result<(), io::Error> {
+  Ok(())
+}

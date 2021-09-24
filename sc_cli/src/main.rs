@@ -51,6 +51,7 @@ impl ConnReader {
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn Error>> {
+  cli::setup()?;
   sc_common::init_with_stdout("cli", cli::skip_appender(1));
 
   let ver = ProtocolVersion::V1_8;
@@ -80,7 +81,10 @@ async fn main() -> Result<(), Box<dyn Error>> {
   loop {
     let readline = rl.readline(">> ");
     match readline {
-      Ok(line) => println!("Line: {:?}", line),
+      Ok(line) => {
+        println!("Line: {:?}", line);
+        cli::draw()?;
+      }
       Err(_) => break,
     }
   }
