@@ -1,10 +1,9 @@
 #[macro_use]
 extern crate log;
 
-use sc_common::{
-  net::{cb, sb, tcp},
-  version::ProtocolVersion,
-};
+use rand::{rngs::OsRng, Rng};
+use rsa::PublicKey;
+use sc_common::{math::der, net::tcp, version::ProtocolVersion};
 use sc_proxy::{
   conn::State,
   stream::{
@@ -75,7 +74,25 @@ async fn handshake(
             let pub_key = p.read_buf(pub_key_len);
             let token_len = p.read_varint();
             let token = p.read_buf(token_len);
-            unimplemented!();
+            let key = der::decode(&pub_key).unwrap();
+
+            let mut secret = [0; 16];
+            let mut rng = OsRng;
+            rng.fill(&mut secret);
+
+            let enc_secret = key.encrypt(&mut rng, rsa::PaddingScheme::PKCS1v15Encrypt, &secret)?;
+            let enc_token = key.encrypt(&mut rng, rsa::PaddingScheme::PKCS1v15Encrypt, &token)?;
+
+            let mut out = tcp::Packet::new(1, ProtocolVersion::V1_8);
+            out.write_varint(enc_secret.len() as i32);
+            out.write_buf(&enc_secret);
+            out.write_varint(enc_token.len() as i32);
+            out.write_buf(&enc_token);
+            writer.write(out).await?;
+            writer.flush().await?;
+
+            reader.enable_encryption(&secret);
+            writer.enable_encryption(&secret);
           }
           2 => {
             // login success

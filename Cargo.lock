@@ -1939,6 +1939,8 @@ dependencies = [
  "async-stream",
  "futures",
  "log",
+ "rand 0.8.4",
+ "rsa",
  "sc_common",
  "sc_proxy",
  "tokio",

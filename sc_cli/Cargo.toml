@@ -10,6 +10,9 @@ sc_proxy = { path = "../sc_proxy" }
 sc_common = { path = "../sc_common" }
 log = "0.4"
 
+rand = "0.8.3"
+rsa = "0.4.0"
+
 tokio = { version = "1.5", features = ["rt-multi-thread"] }
 tokio-stream = "0.1"
 futures = "0.3"
