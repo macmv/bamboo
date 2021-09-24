@@ -3,7 +3,11 @@ extern crate log;
 
 use rand::{rngs::OsRng, Rng};
 use rsa::PublicKey;
-use sc_common::{math::der, net::tcp, version::ProtocolVersion};
+use sc_common::{
+  math::der,
+  net::{cb, sb, tcp},
+  version::ProtocolVersion,
+};
 use sc_proxy::{
   conn::State,
   stream::{
@@ -11,12 +15,42 @@ use sc_proxy::{
     StreamReader, StreamWriter,
   },
 };
-use std::error::Error;
+use std::{error::Error, io};
 use tokio::net::TcpStream;
+
+struct ConnWriter {
+  stream: JavaStreamWriter,
+  ver:    ProtocolVersion,
+}
+struct ConnReader {
+  stream: JavaStreamReader,
+  ver:    ProtocolVersion,
+}
+
+impl ConnWriter {
+  pub async fn write(&mut self, p: sb::Packet) -> Result<(), io::Error> {
+    self.stream.write(p.to_tcp(self.ver)).await
+  }
+
+  pub async fn flush(&mut self) -> Result<(), io::Error> {
+    self.stream.flush().await
+  }
+}
+impl ConnReader {
+  pub async fn poll(&mut self) -> Result<(), io::Error> {
+    self.stream.poll().await
+  }
+
+  pub fn read(&mut self) -> Result<Option<cb::Packet>, io::Error> {
+    Ok(self.stream.read(self.ver)?.map(|p| cb::Packet::from_tcp(p, self.ver)))
+  }
+}
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn Error>> {
   sc_common::init("cli");
+
+  let ver = ProtocolVersion::V1_8;
 
   let ip = "127.0.0.1:25565";
   info!("connecting to {}", ip);
@@ -27,16 +61,44 @@ async fn main() -> Result<(), Box<dyn Error>> {
   let mut reader = JavaStreamReader::new(read);
   let mut writer = JavaStreamWriter::new(write);
 
-  handshake(&mut reader, &mut writer).await?;
+  handshake(&mut reader, &mut writer, ver).await?;
+  info!("login complete");
 
-  loop {}
+  let mut reader = ConnReader { stream: reader, ver };
+  let mut writer = ConnWriter { stream: writer, ver };
+
+  'all: loop {
+    reader.poll().await?;
+
+    loop {
+      let p = match reader.read()? {
+        None => break,
+        Some(p) => p,
+      };
+      info!("got packet");
+
+      match p {
+        cb::Packet::None => break 'all,
+        cb::Packet::Login { .. } => {
+          writer.write(sb::Packet::Chat { message: "hello world!".into() }).await?;
+          writer.flush().await?;
+        }
+        p => warn!("unhandled packet {:?}", p),
+      }
+    }
+  }
+
+  info!("closing");
+
+  Ok(())
 }
 
 async fn handshake(
   reader: &mut JavaStreamReader,
   writer: &mut JavaStreamWriter,
+  ver: ProtocolVersion,
 ) -> Result<(), Box<dyn Error>> {
-  let mut out = tcp::Packet::new(0, ProtocolVersion::V1_8);
+  let mut out = tcp::Packet::new(0, ver);
   out.write_varint(ProtocolVersion::V1_8.id() as i32);
   out.write_str("127.0.0.1");
   out.write_u16(25565);
