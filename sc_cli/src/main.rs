@@ -64,11 +64,13 @@ async fn handshake(
           0 => {
             // disconnect
             let reason = p.read_str();
-            warn!("disconnected: {}", reason);
+            error!("disconnected: {}", reason);
             return Ok(());
           }
           1 => {
             // encryption request
+            warn!("got encryption request, but mojang auth is not implemented");
+
             let _server_id = p.read_str();
             let pub_key_len = p.read_varint();
             let pub_key = p.read_buf(pub_key_len);
