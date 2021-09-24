@@ -1,9 +1,10 @@
 pub mod bedrock;
 pub mod java;
 
-use crate::{net::tcp, version::ProtocolVersion};
+use sc_common::{net::tcp, version::ProtocolVersion};
 use std::io;
 use tokio::time::Duration;
+use tonic::async_trait;
 
 #[async_trait]
 pub trait StreamReader {

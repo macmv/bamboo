@@ -28,3 +28,10 @@ async-stream = "0.3"
 # For icon.png
 image = "0.23.14"
 base64 = "0.13.0"
+
+async-trait = "0.1.50"
+cfb8 = "0.7.1"
+aes = "0.7.2"
+miniz_oxide = "0.4.4"
+flate2 = "1.0"
+ringbuf = "0.2.4"

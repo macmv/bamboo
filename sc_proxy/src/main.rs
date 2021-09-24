@@ -1,20 +1,22 @@
 #[macro_use]
 extern crate log;
 
+#[macro_use]
+extern crate async_trait;
+
 pub mod conn;
-// pub mod version;
+pub mod stream;
 
 use rand::rngs::OsRng;
 use rsa::RSAPrivateKey;
 use std::{error::Error, sync::Arc};
 use tokio::{net::TcpListener, sync::oneshot};
 
-use crate::conn::Conn;
-use sc_common::{
-  math::der,
-  net::sb,
+use crate::{
+  conn::Conn,
   stream::{bedrock, java, StreamReader, StreamWriter},
 };
+use sc_common::{math::der, net::sb};
 
 pub fn load_icon(path: &str) -> String {
   let mut icon = match image::open(path).map_err(|e| error!("error loading icon: {}", e)) {

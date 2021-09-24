@@ -4,11 +4,8 @@
 )]
 #![feature(test)]
 
-#[macro_use]
-extern crate log;
-
-#[macro_use]
-extern crate async_trait;
+// #[macro_use]
+// extern crate log;
 
 // use flexi_logger::{Duplicate, LogTarget, Logger};
 use log::LevelFilter;
@@ -21,7 +18,6 @@ use log4rs::{
 pub mod chunk;
 pub mod math;
 pub mod registry;
-pub mod stream;
 pub mod util;
 
 pub use registry::Registry;

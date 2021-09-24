@@ -1,3 +1,4 @@
+use crate::stream::{StreamReader, StreamWriter};
 use rand::{rngs::OsRng, RngCore};
 use reqwest::StatusCode;
 use rsa::{padding::PaddingScheme, RSAPrivateKey};
@@ -6,7 +7,6 @@ use sc_common::{
   net::{cb, sb, tcp},
   proto,
   proto::minecraft_client::MinecraftClient,
-  stream::{StreamReader, StreamWriter},
   util::{chat::Color, Chat, UUID},
   version::ProtocolVersion,
 };

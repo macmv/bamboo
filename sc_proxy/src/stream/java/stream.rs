@@ -1,10 +1,4 @@
-use crate::{
-  net::tcp,
-  stream::{StreamReader, StreamWriter},
-  util,
-  util::Buffer,
-  version::ProtocolVersion,
-};
+use super::super::{StreamReader, StreamWriter};
 use aes::{
   cipher::{AsyncStreamCipher, NewCipher},
   Aes128,
@@ -12,6 +6,7 @@ use aes::{
 use cfb8::Cfb8;
 use miniz_oxide::{deflate::compress_to_vec_zlib, inflate::decompress_to_vec_zlib};
 use ringbuf::{Consumer, Producer, RingBuffer};
+use sc_common::{net::tcp, util, util::Buffer, version::ProtocolVersion};
 use std::{
   io,
   io::{ErrorKind, Result},
@@ -22,7 +17,6 @@ use tokio::{
     tcp::{OwnedReadHalf, OwnedWriteHalf},
     TcpStream,
   },
-  time,
   time::{Duration, Instant},
 };
 

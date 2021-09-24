@@ -1,10 +1,6 @@
-use crate::{
-  net::tcp,
-  stream::{StreamReader, StreamWriter},
-  util::Buffer,
-  version::ProtocolVersion,
-};
+use crate::stream::{StreamReader, StreamWriter};
 use ringbuf::Consumer;
+use sc_common::{net::tcp, util::Buffer, version::ProtocolVersion};
 use std::{
   io::{self, ErrorKind},
   net::SocketAddr,

@@ -1936,19 +1936,14 @@ dependencies = [
 name = "sc_common"
 version = "0.1.1"
 dependencies = [
- "aes",
  "anyhow",
  "asn1",
- "async-trait",
  "byteorder",
  "bytes",
- "cfb8",
  "criterion",
- "flate2",
  "futures",
  "log",
  "log4rs",
- "miniz_oxide 0.4.4",
  "num",
  "num-derive",
  "num-traits",
@@ -1957,7 +1952,6 @@ dependencies = [
  "prost-types",
  "rand 0.8.4",
  "rand_core 0.6.3",
- "ringbuf",
  "rsa",
  "sc_data",
  "sc_generated",
@@ -2024,14 +2018,20 @@ dependencies = [
 name = "sc_proxy"
 version = "0.1.1"
 dependencies = [
+ "aes",
  "async-stream",
+ "async-trait",
  "base64",
+ "cfb8",
+ "flate2",
  "futures",
  "image",
  "log",
  "md5",
+ "miniz_oxide 0.4.4",
  "rand 0.8.4",
  "reqwest",
+ "ringbuf",
  "rsa",
  "sc_common",
  "serde",
