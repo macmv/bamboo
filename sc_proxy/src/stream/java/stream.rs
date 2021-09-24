@@ -51,7 +51,7 @@ pub fn new(stream: TcpStream) -> Result<(JavaStreamReader, JavaStreamWriter)> {
 
 impl JavaStreamReader {
   pub fn new(stream: OwnedReadHalf) -> Self {
-    let buf = RingBuffer::new(1024);
+    let buf = RingBuffer::new(64 * 1024);
     let (prod, cons) = buf.split();
     JavaStreamReader { stream, prod, cons, compression: 0, cipher: None }
   }
