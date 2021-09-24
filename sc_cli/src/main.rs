@@ -17,12 +17,8 @@ use sc_proxy::{
     StreamReader, StreamWriter,
   },
 };
-use std::{
-  error::Error,
-  io,
-  sync::{Arc, Mutex},
-};
-use tokio::net::TcpStream;
+use std::{error::Error, io, sync::Arc};
+use tokio::{net::TcpStream, sync::Mutex};
 
 pub struct ConnWriter {
   stream: JavaStreamWriter,
@@ -73,8 +69,20 @@ async fn main() -> Result<(), Box<dyn Error>> {
   let reader = ConnReader { stream: reader, ver };
   let writer = Arc::new(Mutex::new(ConnWriter { stream: writer, ver }));
 
-  let mut handler = handle::Handler { reader, writer: writer.clone() };
-  handler.run().await?;
+  let w = writer.clone();
+  tokio::spawn(async move {
+    let mut handler = handle::Handler { reader, writer: w };
+    handler.run().await.unwrap();
+  });
+
+  let mut rl = rustyline::Editor::<()>::new();
+  loop {
+    let readline = rl.readline(">> ");
+    match readline {
+      Ok(line) => println!("Line: {:?}", line),
+      Err(_) => break,
+    }
+  }
 
   info!("closing");
 

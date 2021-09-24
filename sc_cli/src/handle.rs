@@ -1,9 +1,7 @@
 use super::{ConnReader, ConnWriter};
 use sc_common::net::{cb, sb};
-use std::{
-  io,
-  sync::{Arc, Mutex},
-};
+use std::{io, sync::Arc};
+use tokio::sync::Mutex;
 
 pub struct Handler {
   pub reader: ConnReader,
@@ -23,7 +21,7 @@ impl Handler {
 
         match p {
           cb::Packet::Login { .. } => {
-            let mut w = self.writer.lock().unwrap();
+            let mut w = self.writer.lock().await;
             w.write(sb::Packet::Chat { message: "hello world!".into() }).await?;
             w.flush().await?;
           }
