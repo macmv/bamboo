@@ -60,24 +60,46 @@ impl JavaStreamReader {
 #[async_trait]
 impl StreamReader for JavaStreamReader {
   async fn poll(&mut self) -> Result<()> {
-    let mut msg = vec![];
+    let mut msg: &mut [u8] = &mut [0; 1024];
 
     // This appends to msg, so we don't need to truncate
-    let n = self.stream.read_buf(&mut msg).await?;
+    let n = self.stream.read(msg).await?;
     if n == 0 {
       return Err(io::Error::new(ErrorKind::ConnectionAborted, "client has disconnected"));
+    } else {
+      msg = &mut msg[..n];
     }
     if let Some(c) = &mut self.cipher {
-      c.decrypt(&mut msg);
+      c.decrypt(msg);
     }
-    self.prod.push_slice(&msg);
+    self.prod.push_slice(msg);
     Ok(())
   }
   fn read(&mut self, ver: ProtocolVersion) -> Result<Option<tcp::Packet>> {
     let mut len = 0;
     let mut read = -1;
-    self.cons.access(|a, _| {
-      let (a, b) = util::read_varint(a);
+    self.cons.access(|left, right| {
+      let mut bytes: &mut [u8] = &mut [0; 5];
+      let mut on_left = true;
+      for i in 0..5 {
+        if on_left {
+          match left.get(i) {
+            Some(b) => bytes[i] = *b,
+            None => on_left = false,
+          }
+        }
+        if !on_left {
+          match right.get(i - left.len()) {
+            Some(b) => bytes[i] = *b,
+            None => {
+              bytes = &mut bytes[..i];
+              break;
+            }
+          }
+        }
+      }
+      info!("left: {}, right: {}", left.len(), right.len());
+      let (a, b) = util::read_varint(bytes);
       len = a as isize;
       read = b;
     });
