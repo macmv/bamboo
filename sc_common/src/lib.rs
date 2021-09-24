@@ -46,15 +46,26 @@ pub use sc_generated::{net, proto, version};
 //   }
 // }
 
-/// Initializes logger. Might do more things in the future.
-pub fn init(name: &str) {
-  // Put line numbers in debug builds, but not in release builds.
+/// Makes a pattern, which adds file names in debug mode.
+pub fn make_pattern() -> PatternEncoder {
   #[cfg(debug_assertions)]
   let pat = PatternEncoder::new("{d(%Y-%m-%d %H:%M:%S:%f)} {f}:{L} [{h({l})}] {m}{n}");
   #[cfg(not(debug_assertions))]
   let pat = PatternEncoder::new("{d(%Y-%m-%d %H:%M:%S:%f)} [{h({l})}] {m}{n}");
+  pat
+}
 
+/// Initializes logger. Might do more things in the future.
+pub fn init(name: &str) {
+  let pat = make_pattern();
   let stdout = ConsoleAppender::builder().encoder(Box::new(pat.clone())).build();
+
+  init_with_stdout(name, Appender::builder().build("stdout", Box::new(stdout)))
+}
+
+pub fn init_with_stdout(name: &str, stdout: Appender) {
+  let pat = make_pattern();
+
   let disk = FileAppender::builder()
     .encoder(Box::new(pat))
     .build(
@@ -64,7 +75,7 @@ pub fn init(name: &str) {
     .unwrap();
 
   let config = Config::builder()
-    .appender(Appender::builder().build("stdout", Box::new(stdout)))
+    .appender(stdout)
     .appender(Appender::builder().build("disk", Box::new(disk)))
     .build(Root::builder().appender("stdout").appender("disk").build(LevelFilter::Info))
     .unwrap();
