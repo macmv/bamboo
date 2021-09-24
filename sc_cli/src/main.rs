@@ -1,6 +1,8 @@
 #[macro_use]
 extern crate log;
 
+mod handle;
+
 use rand::{rngs::OsRng, Rng};
 use rsa::PublicKey;
 use sc_common::{
@@ -18,11 +20,11 @@ use sc_proxy::{
 use std::{error::Error, io};
 use tokio::net::TcpStream;
 
-struct ConnWriter {
+pub struct ConnWriter {
   stream: JavaStreamWriter,
   ver:    ProtocolVersion,
 }
-struct ConnReader {
+pub struct ConnReader {
   stream: JavaStreamReader,
   ver:    ProtocolVersion,
 }
@@ -64,31 +66,11 @@ async fn main() -> Result<(), Box<dyn Error>> {
   handshake(&mut reader, &mut writer, ver).await?;
   info!("login complete");
 
-  let mut reader = ConnReader { stream: reader, ver };
-  let mut writer = ConnWriter { stream: writer, ver };
+  let reader = ConnReader { stream: reader, ver };
+  let writer = ConnWriter { stream: writer, ver };
 
-  'all: loop {
-    reader.poll().await?;
-
-    loop {
-      let p = match reader.read()? {
-        None => break,
-        Some(p) => p,
-      };
-
-      match p {
-        cb::Packet::Login { .. } => {
-          writer.write(sb::Packet::Chat { message: "hello world!".into() }).await?;
-          writer.flush().await?;
-        }
-        cb::Packet::KickDisconnect { reason } => {
-          error!("disconnected: {}", reason);
-          break 'all;
-        }
-        p => warn!("unhandled packet {}", &format!("{:?}", p)[..50]),
-      }
-    }
-  }
+  let mut handler = handle::Handler { reader, writer };
+  handler.run().await?;
 
   info!("closing");
 
