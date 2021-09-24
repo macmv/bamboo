@@ -86,7 +86,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
           error!("disconnected: {}", reason);
           break 'all;
         }
-        p => warn!("unhandled packet {}", p.id()),
+        p => warn!("unhandled packet {}", &format!("{:?}", p)[..50]),
       }
     }
   }
