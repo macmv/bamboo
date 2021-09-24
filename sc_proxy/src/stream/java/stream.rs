@@ -98,7 +98,6 @@ impl StreamReader for JavaStreamReader {
           }
         }
       }
-      info!("left: {}, right: {}", left.len(), right.len());
       let (a, b) = util::read_varint(bytes);
       len = a as isize;
       read = b;
@@ -108,7 +107,7 @@ impl StreamReader for JavaStreamReader {
       return Err(io::Error::new(ErrorKind::InvalidData, "invalid varint"));
     }
     // Incomplete varint, or an incomplete packet
-    if read == 0 || len > self.cons.len() as isize {
+    if read == 0 || (self.cons.len() as isize) < len + read {
       return Ok(None);
     }
     // Now that we know we have a valid packet, we pop the length bytes

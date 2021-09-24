@@ -75,7 +75,6 @@ async fn main() -> Result<(), Box<dyn Error>> {
         None => break,
         Some(p) => p,
       };
-      info!("got packet");
 
       match p {
         cb::Packet::Login { .. } => {
