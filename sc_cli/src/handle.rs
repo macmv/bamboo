@@ -1,10 +1,13 @@
 use super::{ConnReader, ConnWriter};
 use sc_common::net::{cb, sb};
-use std::io;
+use std::{
+  io,
+  sync::{Arc, Mutex},
+};
 
 pub struct Handler {
   pub reader: ConnReader,
-  pub writer: ConnWriter,
+  pub writer: Arc<Mutex<ConnWriter>>,
 }
 
 impl Handler {
@@ -20,8 +23,9 @@ impl Handler {
 
         match p {
           cb::Packet::Login { .. } => {
-            self.writer.write(sb::Packet::Chat { message: "hello world!".into() }).await?;
-            self.writer.flush().await?;
+            let mut w = self.writer.lock().unwrap();
+            w.write(sb::Packet::Chat { message: "hello world!".into() }).await?;
+            w.flush().await?;
           }
           cb::Packet::KickDisconnect { reason } => {
             error!("disconnected: {}", reason);

@@ -17,7 +17,11 @@ use sc_proxy::{
     StreamReader, StreamWriter,
   },
 };
-use std::{error::Error, io};
+use std::{
+  error::Error,
+  io,
+  sync::{Arc, Mutex},
+};
 use tokio::net::TcpStream;
 
 pub struct ConnWriter {
@@ -67,9 +71,9 @@ async fn main() -> Result<(), Box<dyn Error>> {
   info!("login complete");
 
   let reader = ConnReader { stream: reader, ver };
-  let writer = ConnWriter { stream: writer, ver };
+  let writer = Arc::new(Mutex::new(ConnWriter { stream: writer, ver }));
 
-  let mut handler = handle::Handler { reader, writer };
+  let mut handler = handle::Handler { reader, writer: writer.clone() };
   handler.run().await?;
 
   info!("closing");
