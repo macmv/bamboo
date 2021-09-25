@@ -20,6 +20,7 @@ impl SingleLineReader<'_> {
   pub fn read(mut self) -> io::Result<String> {
     self.buf.write(self.prompt.as_bytes())?;
     self.buf.flush()?;
+    let start_index = self.buf.buf().len();
 
     let mut reader = io::stdin();
     let mut in_escape = false;
@@ -62,11 +63,24 @@ impl SingleLineReader<'_> {
           escape.clear();
         }
       } else {
-        self.out.push(c as char);
+        if self.col == self.max_col() {
+          self.out.push(c as char);
+          self.buf.write(&[c])?;
+        } else {
+          let min_col = self.min_col();
+          self.out.insert((self.col - min_col) as usize, c as char);
+          self.buf.buf().insert(start_index + (self.col - min_col) as usize, c);
+        }
         self.col += 1;
 
-        self.buf.write(&[c])?;
         self.buf.flush()?;
+
+        if self.col != self.max_col() {
+          io::stdout().write(
+            format!("\x1b[{}D", (self.out.len() as u16 - (self.col - self.min_col()))).as_bytes(),
+          )?;
+          io::stdout().flush()?;
+        }
       }
     }
     Ok(self.out)

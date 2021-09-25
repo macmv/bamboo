@@ -5,12 +5,7 @@ use log4rs::{
   config::Appender,
   encode::{writer::ansi::AnsiWriter, Encode},
 };
-use std::{
-  collections::VecDeque,
-  io,
-  io::{Read, Write},
-  sync::Mutex,
-};
+use std::{collections::VecDeque, io, io::Write, sync::Mutex};
 
 mod line;
 
@@ -87,6 +82,9 @@ impl ScrollBuf {
     writer.flush()?;
 
     Ok(())
+  }
+  pub fn buf(&mut self) -> &mut VecDeque<u8> {
+    &mut self.buf
   }
 }
 
