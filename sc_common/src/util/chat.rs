@@ -66,13 +66,6 @@ impl Chat {
   /// when serializing chat packets, and when dealing with things like books.
   pub fn to_json(&self) -> String {
     serde_json::to_string(self).unwrap()
-    // if self.sections.is_empty() {
-    //   "{}".into()
-    // } else if self.sections.len() == 1 {
-    //   serde_json::to_string(&self.sections[0]).unwrap()
-    // } else {
-    //   serde_json::to_string(&self.sections).unwrap()
-    // }
   }
 
   /// Parses the given json as a chat message.
@@ -84,6 +77,15 @@ impl Chat {
       let sections: Vec<Section> = serde_json::from_str(&src)?;
       Ok(Chat { sections })
     }
+  }
+
+  /// Generates a string for this chat message in plain text (no formatting).
+  pub fn to_plain(&self) -> String {
+    let mut out = String::new();
+    for s in &self.sections {
+      s.to_plain(&mut out);
+    }
+    out
   }
 
   pub fn sections_len(&self) -> usize {
@@ -299,6 +301,13 @@ impl Section {
     let idx = self.extra.len();
     self.extra.push(s);
     self.extra.get_mut(idx).unwrap()
+  }
+
+  fn to_plain(&self, out: &mut String) {
+    out.push_str(&self.text);
+    for e in &self.extra {
+      e.to_plain(out);
+    }
   }
 }
 

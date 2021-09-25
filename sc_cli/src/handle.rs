@@ -36,7 +36,7 @@ impl Handler {
         match p {
           cb::Packet::Login { .. } => {}
           cb::Packet::Chat { message, .. } => {
-            info!("chat: {:?}", Chat::from_json(message));
+            info!("chat: {:?}", Chat::from_json(message).unwrap().to_plain());
           }
           cb::Packet::KickDisconnect { reason } => {
             error!("disconnected: {}", reason);
