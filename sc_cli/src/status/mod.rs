@@ -1,3 +1,4 @@
+use ansi_term::Colour;
 use lines::Lines;
 use sc_common::{math::ChunkPos, util::UUID};
 use std::{
@@ -33,9 +34,15 @@ impl Status {
   pub fn draw(&self) -> io::Result<()> {
     let mut lines = Lines::new();
     lines.push_left(format!("players (tab list): {}", self.players.len()));
+    let duration = Instant::now().duration_since(self.last_keep_alive).as_millis();
     lines.push_left(format!(
-      "last keep alive: {}",
-      Instant::now().duration_since(self.last_keep_alive).as_millis()
+      "last keep alive: {} ({})",
+      duration,
+      match duration {
+        0..=1999 => Colour::Green.paint("ok"),
+        2000..=29999 => Colour::Yellow.paint("delayed"),
+        30000.. => Colour::Red.paint("timeout"),
+      }
     ));
 
     lines.draw()
