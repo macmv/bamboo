@@ -224,7 +224,6 @@ impl StreamWriter for JavaStreamWriter {
   }
 
   async fn flush(&mut self) -> Result<()> {
-    info!("writing {} bytes", self.outgoing.len());
     if self.outgoing.is_empty() {
       return Ok(());
     }
