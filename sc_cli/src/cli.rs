@@ -56,11 +56,14 @@ impl io::Write for ScrollBuf {
     }
     self.buf.drain(0..idx);
     let mut line = 0;
-    writer.write(format!("\x1b[{};1H", self.min).as_bytes())?; // go to start
-    for &c in &self.buf {
+    writer.write(format!("\x1b[{};1H\x1b[K", self.min).as_bytes())?; // go to start, erase line
+    for (i, &c) in self.buf.iter().enumerate() {
       if c == b'\n' {
-        line += 1;
-        writer.write(format!("\x1b[{};1H", line + self.min).as_bytes())?; // go to start
+        if self.buf.get(i + 1).is_some() {
+          line += 1;
+          writer.write(format!("\x1b[{};1H\x1b[K", line + self.min).as_bytes())?;
+          // go to start, erase line
+        }
       } else {
         writer.write(&[c])?;
       }
@@ -69,6 +72,18 @@ impl io::Write for ScrollBuf {
       writer.write(b"\x1b[u")?; // restore pos
     }
     writer.flush()?;
+    Ok(())
+  }
+}
+
+impl ScrollBuf {
+  pub fn back(&mut self) -> io::Result<()> {
+    self.buf.pop_back();
+    let stdout = io::stdout();
+    let mut writer = stdout.lock();
+    writer.write(b"\x1b[1D \x1b[1D")?; // left 1 char, print space, left 1 char
+    writer.flush()?;
+
     Ok(())
   }
 }
@@ -143,16 +158,27 @@ impl LineReader {
       let mut buf = [0; 1];
       reader.read(&mut buf)?;
       let c = buf[0];
-      if c == b'\r' {
-        self.buf.write(b"\n")?;
-        self.buf.flush()?;
-        break;
-      }
-      // ctrl-c
-      if c == b'\x03' {
-        terminal::disable_raw_mode()?;
-        execute!(io::stdout(), terminal::LeaveAlternateScreen).unwrap();
-        std::process::exit(0);
+      match c {
+        b'\r' => {
+          self.buf.write(b"\n")?;
+          self.buf.flush()?;
+          break;
+        }
+        b'\x03' => {
+          // ctrl-c
+          terminal::disable_raw_mode()?;
+          execute!(io::stdout(), terminal::LeaveAlternateScreen).unwrap();
+          std::process::exit(0);
+        }
+        b'\x7f' => {
+          // backspace
+          if !out.is_empty() {
+            self.buf.back()?;
+            out.pop();
+          }
+          continue;
+        }
+        _ => {}
       }
       out.push(c as char);
 
