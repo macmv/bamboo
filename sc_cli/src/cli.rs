@@ -27,7 +27,8 @@ impl Append for SkipConsoleAppender {
     let mut writer = AnsiWriter(self.writer.lock());
     let mut buf = self.buf.lock().unwrap();
     self.encoder.encode(&mut AnsiWriter(&mut buf as &mut Vec<u8>), record)?;
-    writer.write(b"\x1b[1;1H")?; // go to start
+    writer.write(b"\x1b[s")?; // save pos
+    writer.write(b"\x1b[15;1H")?; // go to start
     let mut line = 0;
     let mut idx = 0;
     for (i, &c) in buf.iter().enumerate().rev() {
@@ -41,6 +42,7 @@ impl Append for SkipConsoleAppender {
     }
     buf.drain(0..idx);
     writer.write(&buf)?; // write buf
+    writer.write(b"\x1b[u")?; // restore pos
     writer.flush()?;
     Ok(())
   }
