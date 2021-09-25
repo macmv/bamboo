@@ -16,6 +16,9 @@ pub struct Status {
   pub loaded_chunks:   HashSet<ChunkPos>,
   pub last_keep_alive: Instant,
   pub render_distance: i32,
+
+  pub header: String,
+  pub footer: String,
 }
 
 pub struct Player {
@@ -30,6 +33,8 @@ impl Status {
       loaded_chunks:   HashSet::new(),
       last_keep_alive: Instant::now(),
       render_distance: 10,
+      header:          String::new(),
+      footer:          String::new(),
     }
   }
 
@@ -59,6 +64,9 @@ impl Status {
         )),
       }
     ));
+
+    lines.push_right(format!("header: {}", self.header));
+    lines.push_right(format!("footer: {}", self.footer));
 
     lines.draw()
   }

@@ -56,6 +56,17 @@ impl Handler {
             }
             lock.loaded_chunks.insert(pos);
           }
+          cb::Packet::PlayerlistHeader { header, footer } => {
+            let mut lock = self.status.lock().await;
+            match Chat::from_json(header) {
+              Ok(m) => lock.header = m.to_plain().replace('\n', ""),
+              Err(e) => warn!("invalid header: {}", e),
+            }
+            match Chat::from_json(footer) {
+              Ok(m) => lock.footer = m.to_plain().replace('\n', ""),
+              Err(e) => warn!("invalid footer: {}", e),
+            }
+          }
           p => warn!("unhandled packet {}...", &format!("{:?}", p)[..40]),
         }
       }
