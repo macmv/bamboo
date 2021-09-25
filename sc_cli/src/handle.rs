@@ -1,4 +1,4 @@
-use super::{ConnReader, ConnWriter};
+use super::{status::Status, ConnReader, ConnWriter};
 use rand::{rngs::OsRng, Rng};
 use rsa::PublicKey;
 use sc_common::{
@@ -20,6 +20,7 @@ use tokio::sync::Mutex;
 pub struct Handler {
   pub reader: ConnReader,
   pub writer: Arc<Mutex<ConnWriter>>,
+  pub status: Arc<Mutex<Status>>,
 }
 
 impl Handler {

@@ -10,12 +10,13 @@ use sc_proxy::stream::{
   java::{JavaStreamReader, JavaStreamWriter},
   StreamReader, StreamWriter,
 };
-use std::{error::Error, io, io::Write, sync::Arc};
+use std::{error::Error, io, sync::Arc};
 use tokio::{net::TcpStream, sync::Mutex};
 
 mod cli;
 mod command;
 mod handle;
+mod status;
 
 pub struct ConnWriter {
   stream: JavaStreamWriter,
@@ -67,10 +68,13 @@ async fn main() -> Result<(), Box<dyn Error>> {
 
   let reader = ConnReader { stream: reader, ver };
   let writer = Arc::new(Mutex::new(ConnWriter { stream: writer, ver }));
+  let status = Arc::new(Mutex::new(status::Status::new()));
+  status::Status::enable_drawing(status.clone());
 
   let w = writer.clone();
+  let s = status.clone();
   tokio::spawn(async move {
-    let mut handler = handle::Handler { reader, writer: w };
+    let mut handler = handle::Handler { reader, writer: w, status: s };
     handler.run().await.unwrap();
   });
 
