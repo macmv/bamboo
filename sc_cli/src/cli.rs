@@ -5,10 +5,54 @@ use log4rs::{
   encode::{writer::ansi::AnsiWriter, Encode},
 };
 use std::{
+  collections::VecDeque,
   io,
   io::{Stdout, Write},
   sync::Mutex,
 };
+
+#[derive(Debug)]
+pub struct ScrollBuf {
+  buf: VecDeque<u8>,
+}
+
+impl ScrollBuf {
+  pub fn new() -> ScrollBuf {
+    ScrollBuf { buf: VecDeque::new() }
+  }
+}
+
+impl io::Write for ScrollBuf {
+  fn write(&mut self, data: &[u8]) -> io::Result<usize> {
+    self.buf.extend(data);
+    if data.contains(&b'\n') {
+      self.flush()?;
+    }
+    Ok(data.len())
+  }
+  fn flush(&mut self) -> io::Result<()> {
+    let stdout = io::stdout();
+    let mut writer = stdout.lock();
+    writer.write(b"\x1b[s")?; // save pos
+    writer.write(b"\x1b[15;1H")?; // go to start
+    let mut line = 0;
+    let mut idx = 0;
+    for (i, &c) in self.buf.iter().enumerate().rev() {
+      if c == b'\n' {
+        line += 1;
+      }
+      if line > 30 {
+        idx = i + 1;
+        break;
+      }
+    }
+    self.buf.drain(0..idx);
+    writer.write(self.buf.make_contiguous())?; // write buf
+    writer.write(b"\x1b[u")?; // restore pos
+    writer.flush()?;
+    Ok(())
+  }
+}
 
 /// An appender which logs to standard out.
 ///
@@ -19,31 +63,13 @@ pub struct SkipConsoleAppender {
   skip:    usize,
   writer:  Stdout,
   encoder: Box<dyn Encode>,
-  buf:     Mutex<Vec<u8>>,
+  buf:     Mutex<ScrollBuf>,
 }
 
 impl Append for SkipConsoleAppender {
   fn append(&self, record: &Record) -> anyhow::Result<()> {
-    let mut writer = AnsiWriter(self.writer.lock());
     let mut buf = self.buf.lock().unwrap();
-    self.encoder.encode(&mut AnsiWriter(&mut buf as &mut Vec<u8>), record)?;
-    writer.write(b"\x1b[s")?; // save pos
-    writer.write(b"\x1b[15;1H")?; // go to start
-    let mut line = 0;
-    let mut idx = 0;
-    for (i, &c) in buf.iter().enumerate().rev() {
-      if c == b'\n' {
-        line += 1;
-      }
-      if line > 30 {
-        idx = i + 1;
-        break;
-      }
-    }
-    buf.drain(0..idx);
-    writer.write(&buf)?; // write buf
-    writer.write(b"\x1b[u")?; // restore pos
-    writer.flush()?;
+    self.encoder.encode(&mut AnsiWriter(&mut buf as &mut ScrollBuf), record)?;
     Ok(())
   }
 
@@ -57,7 +83,7 @@ impl SkipConsoleAppender {
       skip,
       writer: io::stdout(),
       encoder: Box::new(encoder),
-      buf: Vec::new().into(),
+      buf: Mutex::new(ScrollBuf::new()),
     }
   }
 }
