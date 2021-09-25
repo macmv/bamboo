@@ -3,7 +3,7 @@ use rand::{rngs::OsRng, Rng};
 use rsa::PublicKey;
 use sc_common::{
   math::der,
-  net::{cb, tcp},
+  net::{cb, sb, tcp},
   util::Chat,
   version::ProtocolVersion,
 };
@@ -14,7 +14,7 @@ use sc_proxy::{
     StreamReader, StreamWriter,
   },
 };
-use std::{error::Error, io, sync::Arc};
+use std::{error::Error, io, sync::Arc, time::Instant};
 use tokio::sync::Mutex;
 
 pub struct Handler {
@@ -44,10 +44,21 @@ impl Handler {
             error!("disconnected: {}", reason);
             break 'all;
           }
+          cb::Packet::KeepAlive { keep_alive_id_v1_8, keep_alive_id_v1_12_2 } => {
+            self.send(sb::Packet::KeepAlive { keep_alive_id_v1_8, keep_alive_id_v1_12_2 }).await?;
+            self.status.lock().await.last_keep_alive = Instant::now();
+          }
           p => warn!("unhandled packet {}...", &format!("{:?}", p)[..40]),
         }
       }
     }
+    Ok(())
+  }
+
+  async fn send(&self, p: sb::Packet) -> Result<(), io::Error> {
+    let mut lock = self.writer.lock().await;
+    lock.write(p).await?;
+    lock.flush().await?;
     Ok(())
   }
 }
