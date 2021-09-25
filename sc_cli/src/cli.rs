@@ -14,14 +14,18 @@ use std::{
 
 #[derive(Debug)]
 pub struct ScrollBuf {
-  min: u16,
-  len: u16,
-  buf: VecDeque<u8>,
+  min:     u16,
+  len:     u16,
+  buf:     VecDeque<u8>,
+  restore: bool,
 }
 
 impl ScrollBuf {
   pub fn new(min: u16, len: u16) -> ScrollBuf {
-    ScrollBuf { min, len, buf: VecDeque::new() }
+    ScrollBuf { min, len, buf: VecDeque::new(), restore: true }
+  }
+  pub fn new_no_restore(min: u16, len: u16) -> ScrollBuf {
+    ScrollBuf { min, len, buf: VecDeque::new(), restore: false }
   }
 }
 
@@ -36,8 +40,9 @@ impl io::Write for ScrollBuf {
   fn flush(&mut self) -> io::Result<()> {
     let stdout = io::stdout();
     let mut writer = stdout.lock();
-    writer.write(b"\x1b[s")?; // save pos
-    writer.write(format!("\x1b[{};1H", self.min).as_bytes())?; // go to start
+    if self.restore {
+      writer.write(b"\x1b[s")?; // save pos
+    }
     let mut line = 0;
     let mut idx = 0;
     for (i, &c) in self.buf.iter().enumerate().rev() {
@@ -51,6 +56,7 @@ impl io::Write for ScrollBuf {
     }
     self.buf.drain(0..idx);
     let mut line = 0;
+    writer.write(format!("\x1b[{};1H", self.min).as_bytes())?; // go to start
     for &c in &self.buf {
       if c == b'\n' {
         line += 1;
@@ -59,7 +65,9 @@ impl io::Write for ScrollBuf {
         writer.write(&[c])?;
       }
     }
-    writer.write(b"\x1b[u")?; // restore pos
+    if self.restore {
+      writer.write(b"\x1b[u")?; // restore pos
+    }
     writer.flush()?;
     Ok(())
   }
@@ -107,13 +115,6 @@ pub fn setup() -> Result<(), io::Error> {
   terminal::enable_raw_mode()?;
   execute!(io::stdout(), terminal::EnterAlternateScreen)?;
 
-  ctrlc::set_handler(move || {
-    execute!(io::stdout(), terminal::LeaveAlternateScreen).unwrap();
-    println!("CONTROL C");
-    std::process::exit(0);
-  })
-  .expect("Error setting Ctrl-C handler");
-
   w.write(b"\x1b[2J")?; // clear
   Ok(())
 }
@@ -129,7 +130,7 @@ pub struct LineReader {
 
 impl LineReader {
   pub fn new(prompt: &'static str, min: u16, len: u16) -> Self {
-    LineReader { buf: ScrollBuf::new(min, len), prompt }
+    LineReader { buf: ScrollBuf::new_no_restore(min, len), prompt }
   }
 
   pub fn read_line(&mut self) -> Result<String, io::Error> {
@@ -147,7 +148,8 @@ impl LineReader {
         self.buf.flush()?;
         break;
       }
-      if c == b'q' {
+      // ctrl-c
+      if c == b'\x03' {
         terminal::disable_raw_mode()?;
         execute!(io::stdout(), terminal::LeaveAlternateScreen).unwrap();
         std::process::exit(0);
