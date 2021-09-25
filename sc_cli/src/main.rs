@@ -77,10 +77,9 @@ async fn main() -> Result<(), Box<dyn Error>> {
     handler.run().await.unwrap();
   });
 
-  let mut rl = rustyline::Editor::<()>::new();
+  let mut reader = cli::LineReader::new("> ");
   loop {
-    let readline = rl.readline(">> ");
-    match readline {
+    match reader.read_line() {
       Ok(line) => {
         println!("Line: {:?}", line);
         cli::draw()?;

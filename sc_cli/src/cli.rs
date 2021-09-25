@@ -8,7 +8,7 @@ use log4rs::{
 use std::{
   collections::VecDeque,
   io,
-  io::{Stdout, Write},
+  io::{Read, Write},
   sync::Mutex,
 };
 
@@ -100,6 +100,7 @@ pub fn setup() -> Result<(), io::Error> {
   let stdout = io::stdout();
   let mut w = stdout.lock();
 
+  terminal::enable_raw_mode()?;
   execute!(io::stdout(), terminal::EnterAlternateScreen)?;
 
   ctrlc::set_handler(move || {
@@ -115,4 +116,43 @@ pub fn setup() -> Result<(), io::Error> {
 
 pub fn draw() -> Result<(), io::Error> {
   Ok(())
+}
+
+pub struct LineReader {
+  buf:    ScrollBuf,
+  prompt: &'static str,
+}
+
+impl LineReader {
+  pub fn new(prompt: &'static str) -> Self {
+    LineReader { buf: ScrollBuf::new(), prompt }
+  }
+
+  pub fn read_line(&mut self) -> Result<String, io::Error> {
+    self.buf.write(self.prompt.as_bytes())?;
+    self.buf.flush()?;
+
+    let mut out = String::new();
+    let mut reader = io::stdin();
+    loop {
+      let mut buf = [0; 1];
+      reader.read(&mut buf)?;
+      let c = buf[0];
+      if c == b'\r' {
+        self.buf.write(b"\n")?;
+        self.buf.flush()?;
+        break;
+      }
+      if c == b'q' {
+        terminal::disable_raw_mode()?;
+        execute!(io::stdout(), terminal::LeaveAlternateScreen).unwrap();
+        std::process::exit(0);
+      }
+      out.push(c as char);
+
+      self.buf.write(&[c])?;
+      self.buf.flush()?;
+    }
+    Ok(out)
+  }
 }
