@@ -3,7 +3,8 @@ use rand::{rngs::OsRng, Rng};
 use rsa::PublicKey;
 use sc_common::{
   math::der,
-  net::{cb, sb, tcp},
+  net::{cb, tcp},
+  util::Chat,
   version::ProtocolVersion,
 };
 use sc_proxy::{
@@ -33,10 +34,9 @@ impl Handler {
         };
 
         match p {
-          cb::Packet::Login { .. } => {
-            let mut w = self.writer.lock().await;
-            w.write(sb::Packet::Chat { message: "hello world!".into() }).await?;
-            w.flush().await?;
+          cb::Packet::Login { .. } => {}
+          cb::Packet::Chat { message, .. } => {
+            info!("chat: {:?}", Chat::from_json(message));
           }
           cb::Packet::KickDisconnect { reason } => {
             error!("disconnected: {}", reason);

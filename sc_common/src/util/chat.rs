@@ -32,11 +32,11 @@
 //! client parses.
 
 use serde::ser::{Serialize, SerializeMap, SerializeSeq, SerializeStruct, Serializer};
-use serde_derive::Serialize;
+use serde_derive::{Deserialize, Serialize};
 
 /// This is a chat message. It has a list of sections, and can be serialized to
 /// json.
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Deserialize)]
 pub struct Chat {
   sections: Vec<Section>,
 }
@@ -73,6 +73,17 @@ impl Chat {
     // } else {
     //   serde_json::to_string(&self.sections).unwrap()
     // }
+  }
+
+  /// Parses the given json as a chat message.
+  pub fn from_json(src: String) -> Result<Self, serde_json::Error> {
+    if src.starts_with('{') {
+      let s: Section = serde_json::from_str(&src)?;
+      Ok(Chat { sections: vec![s] })
+    } else {
+      let sections: Vec<Section> = serde_json::from_str(&src)?;
+      Ok(Chat { sections })
+    }
   }
 
   pub fn sections_len(&self) -> usize {
@@ -138,34 +149,34 @@ impl From<&str> for Chat {
 /// [`on_click`]: Self::on_click
 /// [`on_hover`]: Self::on_hover
 /// [`add_child`]: Self::add_child
-#[derive(Debug, Default, Clone, Serialize, PartialEq)]
+#[derive(Debug, Default, Clone, Serialize, Deserialize, PartialEq)]
 pub struct Section {
   text:          String,
-  #[serde(skip_serializing_if = "Option::is_none")]
+  #[serde(skip_serializing_if = "Option::is_none", default)]
   bold:          Option<bool>,
-  #[serde(skip_serializing_if = "Option::is_none")]
+  #[serde(skip_serializing_if = "Option::is_none", default)]
   italic:        Option<bool>,
-  #[serde(skip_serializing_if = "Option::is_none")]
+  #[serde(skip_serializing_if = "Option::is_none", default)]
   underlined:    Option<bool>,
-  #[serde(skip_serializing_if = "Option::is_none")]
+  #[serde(skip_serializing_if = "Option::is_none", default)]
   strikethrough: Option<bool>,
-  #[serde(skip_serializing_if = "Option::is_none")]
+  #[serde(skip_serializing_if = "Option::is_none", default)]
   obfuscated:    Option<bool>,
-  #[serde(skip_serializing_if = "Option::is_none")]
+  #[serde(skip_serializing_if = "Option::is_none", skip_deserializing)]
   color:         Option<Color>,
   // Holding shift and clicking on this section will insert this text into the chat box.
-  #[serde(skip_serializing_if = "Option::is_none")]
+  #[serde(skip_serializing_if = "Option::is_none", default)]
   insertion:     Option<String>,
   // Clicking on this section will do something
-  #[serde(skip_serializing_if = "Option::is_none")]
+  #[serde(skip_serializing_if = "Option::is_none", skip_deserializing)]
   #[serde(rename = "clickEvent")]
   click_event:   Option<ClickEvent>,
   // Hovering over this section will do something
-  #[serde(skip_serializing_if = "Option::is_none")]
+  #[serde(skip_serializing_if = "Option::is_none", skip_deserializing)]
   #[serde(rename = "hoverEvent")]
   hover_event:   Option<HoverEvent>,
   // Any child elements. If any of their options are None, then these options should be used.
-  #[serde(skip_serializing_if = "Vec::is_empty")]
+  #[serde(skip_serializing_if = "Vec::is_empty", default)]
   extra:         Vec<Section>,
 }
 
