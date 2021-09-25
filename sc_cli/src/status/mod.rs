@@ -15,6 +15,7 @@ pub struct Status {
   pub players:         HashMap<UUID, Player>,
   pub loaded_chunks:   HashSet<ChunkPos>,
   pub last_keep_alive: Instant,
+  pub render_distance: i32,
 }
 
 pub struct Player {
@@ -28,6 +29,7 @@ impl Status {
       players:         HashMap::new(),
       loaded_chunks:   HashSet::new(),
       last_keep_alive: Instant::now(),
+      render_distance: 10,
     }
   }
 
@@ -42,6 +44,19 @@ impl Status {
         0..=1999 => Colour::Green.paint("ok"),
         2000..=29999 => Colour::Yellow.paint("delayed"),
         30000.. => Colour::Red.paint("timeout"),
+      }
+    ));
+    lines.push_left(format!(
+      "loaded chunks: {} ({})",
+      self.loaded_chunks.len(),
+      match self.loaded_chunks.len() {
+        v if v as i32 == (self.render_distance * 2 + 1).pow(2) => Colour::Green.paint("ok"),
+        _ => Colour::Red.paint(format!(
+          "expected {0} x {0} ({1}), because of {2} chunk render distance",
+          self.render_distance * 2 + 1,
+          (self.render_distance * 2 + 1).pow(2),
+          self.render_distance,
+        )),
       }
     ));
 

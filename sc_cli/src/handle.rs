@@ -2,7 +2,7 @@ use super::{status::Status, ConnReader, ConnWriter};
 use rand::{rngs::OsRng, Rng};
 use rsa::PublicKey;
 use sc_common::{
-  math::der,
+  math::{der, ChunkPos},
   net::{cb, sb, tcp},
   util::Chat,
   version::ProtocolVersion,
@@ -47,6 +47,14 @@ impl Handler {
           cb::Packet::KeepAlive { keep_alive_id_v1_8, keep_alive_id_v1_12_2 } => {
             self.send(sb::Packet::KeepAlive { keep_alive_id_v1_8, keep_alive_id_v1_12_2 }).await?;
             self.status.lock().await.last_keep_alive = Instant::now();
+          }
+          cb::Packet::MapChunk { x, z, .. } => {
+            let mut lock = self.status.lock().await;
+            let pos = ChunkPos::new(x, z);
+            if lock.loaded_chunks.contains(&pos) {
+              warn!("leaking chunk at {:?}", pos);
+            }
+            lock.loaded_chunks.insert(pos);
           }
           p => warn!("unhandled packet {}...", &format!("{:?}", p)[..40]),
         }
