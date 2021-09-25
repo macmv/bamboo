@@ -25,3 +25,4 @@ async-stream = "0.3"
 # for the cli
 rustyline = "8.2.0"
 crossterm = "0.21.0"
+ctrlc = "3.2.0"

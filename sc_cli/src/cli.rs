@@ -1,3 +1,4 @@
+use crossterm::{execute, terminal};
 use log::Record;
 use log4rs::{
   append::Append,
@@ -47,7 +48,15 @@ impl io::Write for ScrollBuf {
       }
     }
     self.buf.drain(0..idx);
-    writer.write(self.buf.make_contiguous())?; // write buf
+    let mut line = 0;
+    for &c in &self.buf {
+      if c == b'\n' {
+        writer.write(format!("\x1b[{};1H", line + 15).as_bytes())?; // go to start
+        line += 1;
+      } else {
+        writer.write(&[c])?;
+      }
+    }
     writer.write(b"\x1b[u")?; // restore pos
     writer.flush()?;
     Ok(())
@@ -61,7 +70,6 @@ impl io::Write for ScrollBuf {
 #[derive(Debug)]
 pub struct SkipConsoleAppender {
   skip:    usize,
-  writer:  Stdout,
   encoder: Box<dyn Encode>,
   buf:     Mutex<ScrollBuf>,
 }
@@ -79,12 +87,7 @@ impl Append for SkipConsoleAppender {
 impl SkipConsoleAppender {
   /// Creates a new `ConsoleAppender` builder.
   pub fn new<E: Encode>(skip: usize, encoder: E) -> SkipConsoleAppender {
-    SkipConsoleAppender {
-      skip,
-      writer: io::stdout(),
-      encoder: Box::new(encoder),
-      buf: Mutex::new(ScrollBuf::new()),
-    }
+    SkipConsoleAppender { skip, encoder: Box::new(encoder), buf: Mutex::new(ScrollBuf::new()) }
   }
 }
 
@@ -96,6 +99,15 @@ pub fn skip_appender(skip: usize) -> Appender {
 pub fn setup() -> Result<(), io::Error> {
   let stdout = io::stdout();
   let mut w = stdout.lock();
+
+  execute!(io::stdout(), terminal::EnterAlternateScreen)?;
+
+  ctrlc::set_handler(move || {
+    execute!(io::stdout(), terminal::LeaveAlternateScreen).unwrap();
+    println!("CONTROL C");
+    std::process::exit(0);
+  })
+  .expect("Error setting Ctrl-C handler");
 
   w.write(b"\x1b[2J")?; // clear
   Ok(())
