@@ -7,6 +7,7 @@ use log4rs::{
 use std::{
   io,
   io::{Stdout, Write},
+  sync::Mutex,
 };
 
 /// An appender which logs to standard out.
@@ -18,17 +19,28 @@ pub struct SkipConsoleAppender {
   skip:    usize,
   writer:  Stdout,
   encoder: Box<dyn Encode>,
+  buf:     Mutex<Vec<u8>>,
 }
 
 impl Append for SkipConsoleAppender {
   fn append(&self, record: &Record) -> anyhow::Result<()> {
     let mut writer = AnsiWriter(self.writer.lock());
-    writer.write(b"\x1b[5A")?; // up a line, then insert a newline
-    self.encoder.encode(&mut writer, record)?;
-    writer.write(b"\n\x1b[5B")?;
-    // writer.write(b"\n")?; // newline
-    // writer.write(b"\x1b[1A")?; // up 1 line
-    // writer.write(b"\x1b[u")?; // restore cursor
+    let mut buf = self.buf.lock().unwrap();
+    self.encoder.encode(&mut AnsiWriter(&mut buf as &mut Vec<u8>), record)?;
+    writer.write(b"\x1b[1;1H")?; // go to start
+    let mut line = 0;
+    let mut idx = 0;
+    for (i, &c) in buf.iter().enumerate().rev() {
+      if c == b'\n' {
+        line += 1;
+      }
+      if line > 30 {
+        idx = i + 1;
+        break;
+      }
+    }
+    buf.drain(0..idx);
+    writer.write(&buf)?; // write buf
     writer.flush()?;
     Ok(())
   }
@@ -39,7 +51,12 @@ impl Append for SkipConsoleAppender {
 impl SkipConsoleAppender {
   /// Creates a new `ConsoleAppender` builder.
   pub fn new<E: Encode>(skip: usize, encoder: E) -> SkipConsoleAppender {
-    SkipConsoleAppender { skip, writer: io::stdout(), encoder: Box::new(encoder) }
+    SkipConsoleAppender {
+      skip,
+      writer: io::stdout(),
+      encoder: Box::new(encoder),
+      buf: Vec::new().into(),
+    }
   }
 }
 
@@ -49,6 +66,10 @@ pub fn skip_appender(skip: usize) -> Appender {
 }
 
 pub fn setup() -> Result<(), io::Error> {
+  let stdout = io::stdout();
+  let mut w = stdout.lock();
+
+  w.write(b"\x1b[2J")?; // clear
   Ok(())
 }
 
