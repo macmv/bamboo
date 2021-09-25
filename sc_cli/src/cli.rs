@@ -14,12 +14,14 @@ use std::{
 
 #[derive(Debug)]
 pub struct ScrollBuf {
+  min: u16,
+  len: u16,
   buf: VecDeque<u8>,
 }
 
 impl ScrollBuf {
-  pub fn new() -> ScrollBuf {
-    ScrollBuf { buf: VecDeque::new() }
+  pub fn new(min: u16, len: u16) -> ScrollBuf {
+    ScrollBuf { min, len, buf: VecDeque::new() }
   }
 }
 
@@ -35,14 +37,14 @@ impl io::Write for ScrollBuf {
     let stdout = io::stdout();
     let mut writer = stdout.lock();
     writer.write(b"\x1b[s")?; // save pos
-    writer.write(b"\x1b[15;1H")?; // go to start
+    writer.write(format!("\x1b[{};1H", self.min).as_bytes())?; // go to start
     let mut line = 0;
     let mut idx = 0;
     for (i, &c) in self.buf.iter().enumerate().rev() {
       if c == b'\n' {
         line += 1;
       }
-      if line > 30 {
+      if line > self.len {
         idx = i + 1;
         break;
       }
@@ -51,8 +53,8 @@ impl io::Write for ScrollBuf {
     let mut line = 0;
     for &c in &self.buf {
       if c == b'\n' {
-        writer.write(format!("\x1b[{};1H", line + 15).as_bytes())?; // go to start
         line += 1;
+        writer.write(format!("\x1b[{};1H", line + self.min).as_bytes())?; // go to start
       } else {
         writer.write(&[c])?;
       }
@@ -87,7 +89,11 @@ impl Append for SkipConsoleAppender {
 impl SkipConsoleAppender {
   /// Creates a new `ConsoleAppender` builder.
   pub fn new<E: Encode>(skip: usize, encoder: E) -> SkipConsoleAppender {
-    SkipConsoleAppender { skip, encoder: Box::new(encoder), buf: Mutex::new(ScrollBuf::new()) }
+    SkipConsoleAppender {
+      skip,
+      encoder: Box::new(encoder),
+      buf: Mutex::new(ScrollBuf::new(15, 30)),
+    }
   }
 }
 
@@ -124,8 +130,8 @@ pub struct LineReader {
 }
 
 impl LineReader {
-  pub fn new(prompt: &'static str) -> Self {
-    LineReader { buf: ScrollBuf::new(), prompt }
+  pub fn new(prompt: &'static str, min: u16, len: u16) -> Self {
+    LineReader { buf: ScrollBuf::new(min, len), prompt }
   }
 
   pub fn read_line(&mut self) -> Result<String, io::Error> {
