@@ -89,7 +89,10 @@ async fn run(rows: u16) -> Result<(), Box<dyn Error>> {
   let s = status.clone();
   tokio::spawn(async move {
     let mut handler = handle::Handler { reader, writer: w, status: s };
-    handler.run().await.unwrap();
+    match handler.run().await {
+      Ok(_) => warn!("handler exited"),
+      Err(e) => error!("handler error: {}", e),
+    }
   });
 
   let mut lr = cli::LineReader::new("> ", rows - 15, 15);
