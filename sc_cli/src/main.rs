@@ -48,7 +48,7 @@ impl ConnReader {
 async fn main() -> Result<(), Box<dyn Error>> {
   let (_cols, rows) = terminal::size()?;
   cli::setup()?;
-  sc_common::init_with_stdout("cli", cli::skip_appender(1));
+  sc_common::init_with_stdout("cli", cli::skip_appender(15, rows - 30));
 
   let ver = ProtocolVersion::V1_8;
 
@@ -73,11 +73,11 @@ async fn main() -> Result<(), Box<dyn Error>> {
     handler.run().await.unwrap();
   });
 
-  let mut reader = cli::LineReader::new("> ", 45, rows - 45);
+  let mut reader = cli::LineReader::new("> ", rows - 15, 15);
   loop {
     match reader.read_line() {
       Ok(line) => {
-        print!("Line: {:?}", line);
+        // print!("Line: {:?}", line);
         cli::draw()?;
       }
       Err(_) => break,

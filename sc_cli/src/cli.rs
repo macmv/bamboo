@@ -71,7 +71,6 @@ impl io::Write for ScrollBuf {
 /// or is a TTY on Unix.
 #[derive(Debug)]
 pub struct SkipConsoleAppender {
-  skip:    usize,
   encoder: Box<dyn Encode>,
   buf:     Mutex<ScrollBuf>,
 }
@@ -88,18 +87,17 @@ impl Append for SkipConsoleAppender {
 
 impl SkipConsoleAppender {
   /// Creates a new `ConsoleAppender` builder.
-  pub fn new<E: Encode>(skip: usize, encoder: E) -> SkipConsoleAppender {
+  pub fn new<E: Encode>(encoder: E, min: u16, len: u16) -> SkipConsoleAppender {
     SkipConsoleAppender {
-      skip,
       encoder: Box::new(encoder),
-      buf: Mutex::new(ScrollBuf::new(15, 30)),
+      buf:     Mutex::new(ScrollBuf::new(min, len)),
     }
   }
 }
 
-pub fn skip_appender(skip: usize) -> Appender {
+pub fn skip_appender(min: u16, len: u16) -> Appender {
   Appender::builder()
-    .build("stdout", Box::new(SkipConsoleAppender::new(skip, sc_common::make_pattern())))
+    .build("stdout", Box::new(SkipConsoleAppender::new(sc_common::make_pattern(), min, len)))
 }
 
 pub fn setup() -> Result<(), io::Error> {
