@@ -134,10 +134,6 @@ pub fn setup() -> Result<(), io::Error> {
   Ok(())
 }
 
-pub fn draw() -> Result<(), io::Error> {
-  Ok(())
-}
-
 pub struct LineReader {
   buf:    ScrollBuf,
   prompt: &'static str,

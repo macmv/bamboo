@@ -1,9 +1,6 @@
 #[macro_use]
 extern crate log;
 
-mod cli;
-mod handle;
-
 use crossterm::terminal;
 use sc_common::{
   net::{cb, sb},
@@ -15,6 +12,10 @@ use sc_proxy::stream::{
 };
 use std::{error::Error, io, io::Write, sync::Arc};
 use tokio::{net::TcpStream, sync::Mutex};
+
+mod cli;
+mod command;
+mod handle;
 
 pub struct ConnWriter {
   stream: JavaStreamWriter,
@@ -77,8 +78,14 @@ async fn main() -> Result<(), Box<dyn Error>> {
   loop {
     match lr.read_line() {
       Ok(line) => {
-        writeln!(lr, "you printed: {}", line)?;
-        cli::draw()?;
+        if line.is_empty() {
+          continue;
+        }
+        let mut sections = line.split(' ');
+        let command = sections.next().unwrap();
+        let args: Vec<_> = sections.collect();
+        let mut w = writer.lock().await;
+        command::handle(command, &args, &mut w, &mut lr).await?;
       }
       Err(_) => break,
     }
