@@ -1,6 +1,8 @@
+use lines::Lines;
 use sc_common::{math::ChunkPos, util::UUID};
 use std::{
   collections::{HashMap, HashSet},
+  io,
   sync::Arc,
   time::{Duration, Instant},
 };
@@ -28,7 +30,12 @@ impl Status {
     }
   }
 
-  pub fn draw(&self) {}
+  pub fn draw(&self) -> io::Result<()> {
+    let mut lines = Lines::new();
+    lines.push_left(format!("players (tab list): {}", self.players.len()));
+
+    lines.draw()
+  }
 
   pub fn enable_drawing(status: Arc<Mutex<Status>>) {
     tokio::spawn(async move {
@@ -36,7 +43,7 @@ impl Status {
       loop {
         int.tick().await;
 
-        status.lock().await.draw();
+        status.lock().await.draw().unwrap();
       }
     });
   }
