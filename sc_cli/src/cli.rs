@@ -188,3 +188,12 @@ impl LineReader {
     Ok(out)
   }
 }
+
+impl io::Write for LineReader {
+  fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
+    self.buf.write(buf)
+  }
+  fn flush(&mut self) -> io::Result<()> {
+    self.buf.flush()
+  }
+}

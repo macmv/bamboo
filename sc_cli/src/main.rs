@@ -13,7 +13,7 @@ use sc_proxy::stream::{
   java::{JavaStreamReader, JavaStreamWriter},
   StreamReader, StreamWriter,
 };
-use std::{error::Error, io, sync::Arc};
+use std::{error::Error, io, io::Write, sync::Arc};
 use tokio::{net::TcpStream, sync::Mutex};
 
 pub struct ConnWriter {
@@ -73,11 +73,11 @@ async fn main() -> Result<(), Box<dyn Error>> {
     handler.run().await.unwrap();
   });
 
-  let mut reader = cli::LineReader::new("> ", rows - 15, 15);
+  let mut lr = cli::LineReader::new("> ", rows - 15, 15);
   loop {
-    match reader.read_line() {
+    match lr.read_line() {
       Ok(line) => {
-        // print!("Line: {:?}", line);
+        writeln!(lr, "you printed: {}", line)?;
         cli::draw()?;
       }
       Err(_) => break,
