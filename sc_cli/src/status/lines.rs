@@ -27,6 +27,7 @@ impl Lines {
       writer.write(l.as_bytes())?;
     }
     writer.write(b"\x1b[u")?; // restore pos
+    writer.flush()?;
     Ok(())
   }
 }

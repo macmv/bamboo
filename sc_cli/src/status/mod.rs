@@ -33,6 +33,10 @@ impl Status {
   pub fn draw(&self) -> io::Result<()> {
     let mut lines = Lines::new();
     lines.push_left(format!("players (tab list): {}", self.players.len()));
+    lines.push_left(format!(
+      "last keep alive: {}",
+      Instant::now().duration_since(self.last_keep_alive).as_millis()
+    ));
 
     lines.draw()
   }
