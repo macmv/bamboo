@@ -62,7 +62,7 @@ impl SingleLineReader<'_> {
         if !in_escape {
           escape.clear();
         }
-      } else {
+      } else if c.is_ascii() {
         if self.col == self.max_col() {
           self.out.push(c as char);
           self.buf.write(&[c])?;
