@@ -8,18 +8,19 @@ use std::{
 pub struct SingleLineReader<'a> {
   buf:    &'a mut ScrollBuf,
   prompt: &'a str,
+  col:    u16,
+  out:    String,
 }
 
 impl SingleLineReader<'_> {
   pub fn new<'a>(buf: &'a mut ScrollBuf, prompt: &'a str) -> SingleLineReader<'a> {
-    SingleLineReader { buf, prompt }
+    SingleLineReader { buf, prompt, col: prompt.len() as u16, out: String::new() }
   }
 
-  pub fn read(&mut self) -> io::Result<String> {
+  pub fn read(mut self) -> io::Result<String> {
     self.buf.write(self.prompt.as_bytes())?;
     self.buf.flush()?;
 
-    let mut out = String::new();
     let mut reader = io::stdin();
     let mut in_escape = false;
     let mut escape = String::new();
@@ -41,9 +42,9 @@ impl SingleLineReader<'_> {
         }
         b'\x7f' => {
           // backspace
-          if !out.is_empty() {
+          if !self.out.is_empty() {
             self.buf.back()?;
-            out.pop();
+            self.out.pop();
           }
           continue;
         }
@@ -61,16 +62,17 @@ impl SingleLineReader<'_> {
           escape.clear();
         }
       } else {
-        out.push(c as char);
+        self.out.push(c as char);
+        self.col += 1;
 
         self.buf.write(&[c])?;
         self.buf.flush()?;
       }
     }
-    Ok(out)
+    Ok(self.out)
   }
 
-  fn parse_escape(&self, code: &str) -> io::Result<bool> {
+  fn parse_escape(&mut self, code: &str) -> io::Result<bool> {
     let bytes = code.as_bytes();
     // incomplete
     if bytes.len() < 2 {
@@ -80,13 +82,36 @@ impl SingleLineReader<'_> {
       return Ok(false);
     }
     match bytes[1] {
-      b'A' => io::stdout().write(b"a")?,       // up
-      b'B' => io::stdout().write(b"b")?,       // down
-      b'C' => io::stdout().write(b"\x1b[1C")?, // left
-      b'D' => io::stdout().write(b"\x1b[1D")?, // right
-      _ => 0,
+      b'A' => {} // up
+      b'B' => {} // down
+      b'C' => {
+        // right
+        if self.col >= self.max_col() {
+          self.col = self.max_col();
+        } else {
+          self.col += 1;
+          io::stdout().write(b"\x1b[1C")?;
+        }
+      }
+      b'D' => {
+        // left
+        if self.col <= self.min_col() {
+          self.col = self.min_col();
+        } else {
+          self.col -= 1;
+          io::stdout().write(b"\x1b[1D")?;
+        }
+      }
+      _ => {}
     };
     io::stdout().flush()?;
     Ok(false)
+  }
+
+  fn max_col(&self) -> u16 {
+    self.prompt.len() as u16 + self.out.len() as u16
+  }
+  fn min_col(&self) -> u16 {
+    self.prompt.len() as u16
   }
 }

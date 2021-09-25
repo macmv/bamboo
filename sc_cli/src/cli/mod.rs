@@ -151,8 +151,7 @@ impl LineReader {
   }
 
   pub fn read_line(&mut self) -> Result<String, io::Error> {
-    let mut line = line::SingleLineReader::new(&mut self.buf, &self.prompt);
-    line.read()
+    line::SingleLineReader::new(&mut self.buf, &self.prompt).read()
   }
 }
 
