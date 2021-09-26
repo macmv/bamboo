@@ -4,13 +4,14 @@ extern crate log;
 pub mod conn;
 pub mod stream;
 
+use crossbeam_channel::{Sender, TryRecvError};
 use mio::{net::TcpListener, Events, Interest, Poll, Token, Waker};
 use rand::rngs::OsRng;
 use rsa::RSAPrivateKey;
 use std::{collections::HashMap, error::Error, io, sync::Arc};
 
 use crate::{
-  conn::{Conn, ServerListener},
+  conn::Conn,
   stream::{java::stream::JavaStream, PacketStream},
 };
 use sc_common::proto::minecraft_client::MinecraftClient;
@@ -49,8 +50,9 @@ pub fn run() -> Result<(), Box<dyn Error>> {
 
   let mut poll = Poll::new()?;
   let mut events = Events::with_capacity(1024);
-  let mut clients = HashMap::new();
   let waker = Arc::new(Waker::new(poll.registry(), WAKE_TOKEN)?);
+  let mut clients = HashMap::new();
+  let (needs_flush_tx, needs_flush_rx) = crossbeam_channel::bounded(1024);
 
   poll.registry().register(&mut java_listener, JAVA_LISTENER, Interest::READABLE)?;
 
@@ -83,7 +85,9 @@ pub fn run() -> Result<(), Box<dyn Error>> {
                     key.clone(),
                     der_key.clone(),
                     waker.clone(),
+                    needs_flush_tx.clone(),
                     &icon,
+                    token,
                   )?,
                 );
               }
@@ -98,40 +102,62 @@ pub fn run() -> Result<(), Box<dyn Error>> {
         BEDROCK_LISTENER => {
           unimplemented!();
         }
-        WAKE_TOKEN => {}
+        WAKE_TOKEN => loop {
+          info!("got wake token");
+          match needs_flush_rx.try_recv() {
+            Ok(token) => {
+              let conn = clients.get_mut(&token).expect("client doesn't exist!");
+              let mut wrote = false;
+              while conn.needs_send() {
+                wrote = true;
+                match conn.write() {
+                  Ok(_) => {}
+                  Err(ref e) if e.kind() == io::ErrorKind::WouldBlock => {
+                    // Happens if the recieving stream is empty.
+                    break;
+                  }
+                  Err(e) => {
+                    error!("error while listening to server {:?}: {}", token, e);
+                    clients.remove(&token);
+                    break;
+                  }
+                }
+              }
+              if wrote {
+                let conn = clients.get_mut(&token).expect("client doesn't exist!");
+                while conn.needs_flush() {
+                  match conn.flush() {
+                    Ok(_) => {}
+                    Err(ref e) if e.kind() == io::ErrorKind::WouldBlock => break,
+                    Err(e) => {
+                      error!("error while flushing packets to the client {:?}: {}", token, e);
+                      clients.remove(&token);
+                      break;
+                    }
+                  }
+                }
+              }
+            }
+            Err(TryRecvError::Empty) => break,
+            Err(TryRecvError::Disconnected) => unreachable!("needs_flush channel closed"),
+          }
+        },
         token => {
-          let conn = clients.get_mut(&token).expect("client doesn't exist!");
-          let mut closed = false;
-          let mut wrote = false;
-          while conn.needs_send() {
-            wrote = true;
-            match conn.write() {
-              Ok(_) => {}
-              Err(ref e) if e.kind() == io::ErrorKind::WouldBlock => {
-                // Happens if the recieving stream is empty.
-                break;
-              }
-              Err(e) => {
-                error!("error while listening to server {:?}: {}", token, e);
-                clients.remove(&token);
-                closed = true;
-                break;
-              }
-            }
-          }
-          if wrote {
+          if event.is_writable() {
             let conn = clients.get_mut(&token).expect("client doesn't exist!");
-            match conn.flush() {
-              Ok(_) => {}
-              Err(ref e) if e.kind() == io::ErrorKind::WouldBlock => {}
-              Err(e) => {
-                error!("error while flushing packets to the client {:?}: {}", token, e);
-                clients.remove(&token);
-                closed = true;
+            while conn.needs_flush() {
+              match conn.flush() {
+                Ok(_) => {}
+                Err(ref e) if e.kind() == io::ErrorKind::WouldBlock => break,
+                Err(e) => {
+                  error!("error while flushing packets to the client {:?}: {}", token, e);
+                  clients.remove(&token);
+                  break;
+                }
               }
             }
           }
-          if !closed {
+          if event.is_readable() {
             let conn = clients.get_mut(&token).expect("client doesn't exist!");
             loop {
               match conn.poll() {
@@ -148,10 +174,7 @@ pub fn run() -> Result<(), Box<dyn Error>> {
                     break;
                   }
                 },
-                Err(ref e) if e.kind() == io::ErrorKind::WouldBlock => {
-                  // Socket is not ready anymore, stop reading
-                  break;
-                }
+                Err(ref e) if e.kind() == io::ErrorKind::WouldBlock => break,
                 Err(e) => {
                   error!("error while listening to client {:?}: {}", token, e);
                   clients.remove(&token);
@@ -171,16 +194,19 @@ pub fn new_conn<'a, S: PacketStream + Send + Sync + 'static>(
   key: Arc<RSAPrivateKey>,
   der_key: Option<Vec<u8>>,
   waker: Arc<Waker>,
+  needs_flush_tx: Sender<Token>,
   icon: &str,
+  token: Token,
 ) -> Result<Conn<S>, Box<dyn Error>> {
   let ip = "http://0.0.0.0:8483".to_string();
   let compression = 256;
 
   let client = futures::executor::block_on(MinecraftClient::connect(ip))?;
-  let (conn, mut server_listener) = Conn::new(stream, client, compression, key, der_key, icon)?;
+  let (conn, mut server_listener) =
+    Conn::new(stream, client, compression, key, der_key, icon, token)?;
 
   tokio::spawn(async move {
-    match server_listener.run(waker).await {
+    match server_listener.run(waker, needs_flush_tx).await {
       Ok(_) => {}
       Err(e) => {
         error!("error while listening to client: {}", e);

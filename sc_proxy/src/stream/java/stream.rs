@@ -14,9 +14,6 @@ use std::{
 };
 use tokio::time::{Duration, Instant};
 
-const FLUSH_SIZE: usize = 16 * 1024;
-const FLUSH_TIME: Duration = Duration::from_millis(50);
-
 pub struct JavaStream {
   stream: TcpStream,
 
@@ -173,18 +170,8 @@ impl PacketStream for JavaStream {
     }
   }
 
-  fn flush_time(&self) -> Option<Duration> {
-    if self.outgoing.is_empty() {
-      None
-    } else if self.outgoing.len() >= FLUSH_SIZE {
-      Some(Duration::from_millis(0))
-    } else {
-      Some(
-        FLUSH_TIME
-          .checked_sub(Instant::now().duration_since(self.last_flush))
-          .unwrap_or(Duration::from_millis(0)),
-      )
-    }
+  fn needs_flush(&self) -> bool {
+    !self.outgoing.is_empty()
   }
 
   fn flush(&mut self) -> Result<()> {

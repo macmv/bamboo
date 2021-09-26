@@ -35,16 +35,9 @@ pub trait PacketStream {
   /// call flush, and in turn will not interact with the tcp stream at all.
   fn write(&mut self, packet: tcp::Packet);
 
-  /// Returns the amount of time needed before a flush should happen. This is
-  /// should be something along the lines of (50 millis - time since last
-  /// flush). If this returns None, then the stream does not have any data to
-  /// flush.
-  ///
-  /// If this returns `Some(0)`, then this stream needs to be flushed, and you
-  /// should call flush immediately.
-  fn flush_time(&self) -> Option<Duration> {
-    None
-  }
+  /// Returns if this stream needs to be flushed. This should simply return true
+  /// if there is any data waiting to be flushed.
+  fn needs_flush(&self) -> bool;
   /// Flushes this writer. This will send all internal data to the client, if
   /// there is any stored.
   ///

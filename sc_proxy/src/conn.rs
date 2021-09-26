@@ -1,6 +1,6 @@
 use crate::stream::PacketStream;
-use crossbeam_channel::TryRecvError;
-use mio::Waker;
+use crossbeam_channel::{Sender, TryRecvError};
+use mio::{Token, Waker};
 use parking_lot::RwLock;
 use rand::{rngs::OsRng, RngCore};
 use reqwest::StatusCode;
@@ -71,6 +71,7 @@ pub struct ServerListener {
   client: crossbeam_channel::Sender<tcp::Packet>,
   server: Streaming<proto::Packet>,
   ver:    Arc<RwLock<ProtocolVersion>>,
+  token:  Token,
 }
 
 #[derive(Deserialize, Debug)]
@@ -97,7 +98,7 @@ impl ServerListener {
   /// to close the ClientListener. Specifically, the tx will send a value once
   /// this listener has been closed, and this listener will close once the rx
   /// gets a message.
-  pub async fn run(&mut self, waker: Arc<Waker>) -> io::Result<()> {
+  pub async fn run(&mut self, waker: Arc<Waker>, needs_flush_tx: Sender<Token>) -> io::Result<()> {
     let res = self.run_inner(waker).await;
     // Close connection here
     res
@@ -160,6 +161,7 @@ impl<'a, S: PacketStream + Send + Sync> Conn<'a, S> {
     key: Arc<RSAPrivateKey>,
     der_key: Option<Vec<u8>>,
     icon: &'a str,
+    token: Token,
   ) -> Result<(Conn<'a, S>, ServerListener), tonic::Status> {
     let (server_send, rx) = mpsc::channel(1);
     let (clientbound_tx, clientbound_rx) = crossbeam_channel::bounded(512);
@@ -185,7 +187,7 @@ impl<'a, S: PacketStream + Send + Sync> Conn<'a, S> {
         compression_target,
         closed: false,
       },
-      ServerListener { client: clientbound_tx, server: server_recv, ver },
+      ServerListener { client: clientbound_tx, server: server_recv, ver, token },
     ))
   }
   pub fn ver(&self) -> ProtocolVersion {
@@ -207,6 +209,9 @@ impl<'a, S: PacketStream + Send + Sync> Conn<'a, S> {
         return Err(io::Error::new(io::ErrorKind::NotConnected, ""))
       }
     }
+  }
+  pub fn needs_flush(&self) -> bool {
+    self.stream.needs_flush()
   }
   pub fn flush(&mut self) -> io::Result<()> {
     self.stream.flush()
