@@ -4,7 +4,7 @@ use reqwest::StatusCode;
 use rsa::{padding::PaddingScheme, RSAPrivateKey};
 use sc_common::{
   math,
-  net::{sb, tcp},
+  net::{cb, sb, tcp},
   proto,
   proto::minecraft_client::MinecraftClient,
   util::{chat::Color, Chat, UUID},
@@ -13,7 +13,7 @@ use sc_common::{
 use serde_derive::{Deserialize, Serialize};
 use sha1::{Digest, Sha1};
 use std::{convert::TryInto, io, io::ErrorKind, sync::Arc};
-use tokio::sync::mpsc;
+use tokio::sync::{mpsc, oneshot};
 use tokio_stream::wrappers::ReceiverStream;
 use tonic::{transport::Channel, Request, Streaming};
 
@@ -42,7 +42,7 @@ pub struct Conn<'a, S> {
   stream:       S,
   state:        State,
   server_send:  mpsc::Sender<proto::Packet>,
-  server_recv:  Streaming<proto::Packet>,
+  server_recv:  crossbeam_channel::Receiver<tcp::Packet>,
   ver:          ProtocolVersion,
   icon:         &'a str,
   /// The name sent from the client. The mojang auth server also sends us a
@@ -64,14 +64,8 @@ pub struct Conn<'a, S> {
   closed: bool,
 }
 
-pub struct ClientListener<R> {
-  client: R,
-  server: mpsc::Sender<proto::Packet>,
-  ver:    ProtocolVersion,
-}
-
-pub struct ServerListener<W> {
-  client: W,
+pub struct ServerListener {
+  client: crossbeam_channel::Sender<tcp::Packet>,
   server: Streaming<proto::Packet>,
   ver:    ProtocolVersion,
 }
@@ -95,124 +89,33 @@ pub struct LoginProperty {
   pub signature: Option<String>,
 }
 
-/*
-impl<R: StreamReader + Send> ClientListener<R> {
-  /// This starts listening for packets from the server. The rx and tx are used
-  /// to close the ServerListener. Specifically, the tx will send a value once
-  /// this listener has been closed, and this listener will close once the rx
-  /// gets a message.
-  pub fn run(
-    &mut self,
-    tx: oneshot::Sender<()>,
-    rx: oneshot::Receiver<()>,
-  ) -> Result<(), Box<dyn Error>> {
-    let res = self.run_inner(rx);
-    // Close the other connection. We ignore the result, as that means the rx has
-    // been dropped. We don't care if the rx has been dropped, because that means
-    // the other listener has already closed.
-    let _ = tx.send(());
-    res
-  }
-  async fn run_inner(&mut self, mut rx: oneshot::Receiver<()>) -> Result<(), Box<dyn Error>> {
-    loop {
-      tokio::select! {
-        v = self.client.poll() => v?,
-        _ = &mut rx => break,
-      }
-      loop {
-        let p = self.client.read(self.ver).unwrap();
-        let p = if let Some(v) = p { v } else { break };
-        // Make sure there were no errors set within the packet during parsing
-        match p.err() {
-          Some(e) => {
-            error!("error while parsing packet: {}", e);
-            return Err(Box::new(io::Error::new(
-              ErrorKind::InvalidData,
-              "failed to parse packet, closing connection",
-            )));
-          }
-          None => {}
-        }
-        // If this fails, then we are on an invalid version, have an unknown packet,
-        // or have a parsing error. If it is a parsing error, we want to close the
-        // connection.
-        let sb = sb::Packet::from_tcp(p, self.ver);
-        // let sb = match self.gen.serverbound(self.ver, p) {
-        //   Err(e) => match e.kind() {
-        //     ErrorKind::Other => {
-        //       return Err(Box::new(e));
-        //     }
-        //     _ => {
-        //       warn!("{}", e);
-        //       continue;
-        //     }
-        //   },
-        //   Ok(v) => v,
-        // };
-        trace!("sending proto: {:?}", &sb);
-        self.server.send(sb.to_proto(self.ver)).await?;
-      }
-    }
-    Ok(())
-  }
-
-  /// Sends a packet to the server. Should only be used for things like login
-  /// packets.
-  pub async fn send_to_server(&mut self, p: sb::Packet) -> Result<(), Box<dyn Error>> {
-    self.server.send(p.to_proto(self.ver)).await?;
-    Ok(())
-  }
-}
-
-impl<W: StreamWriter + Send + Sync> ServerListener<W> {
+impl ServerListener {
   /// This starts listening for packets from the server. The rx and tx are used
   /// to close the ClientListener. Specifically, the tx will send a value once
   /// this listener has been closed, and this listener will close once the rx
   /// gets a message.
-  pub async fn run(
-    &mut self,
-    tx: oneshot::Sender<()>,
-    rx: oneshot::Receiver<()>,
-  ) -> io::Result<()> {
-    let res = self.run_inner(rx).await;
-    let _ = tx.send(());
-    self.client.flush().await?;
+  pub async fn run(&mut self) -> io::Result<()> {
+    let res = self.run_inner().await;
+    // Close connection here
     res
   }
-  async fn run_inner(&mut self, mut rx: oneshot::Receiver<()>) -> io::Result<()> {
+  async fn run_inner(&mut self) -> io::Result<()> {
     loop {
-      let p;
-
-      if let Some(time) = self.client.flush_time() {
-        tokio::select! {
-          biased;
-          v = self.server.message() => p = v.map_err(|e| io::Error::new(ErrorKind::Other, e.to_string()))?,
-          _ = time::sleep(time) => {
-            self.client.flush().await?;
-            continue
-          },
-          _ = &mut rx => break,
+      match self
+        .server
+        .message()
+        .await
+        .map_err(|e| io::Error::new(ErrorKind::Other, e.to_string()))?
+      {
+        Some(p) => {
+          self.client.send(cb::Packet::from_proto(p, self.ver).to_tcp(self.ver));
         }
-      } else {
-        tokio::select! {
-          biased;
-          v = self.server.message() => p = v.map_err(|e| io::Error::new(ErrorKind::Other, e.to_string()))?,
-          _ = &mut rx => break,
-        }
+        None => break,
       }
-      let p = p.unwrap();
-      let cb = cb::Packet::from_proto(p, self.ver).to_tcp(self.ver);
-      // let cb = self.gen.clientbound(self.ver, cb::Packet::from_proto(p,
-      // self.ver))?;
-      // for p in cb {
-      //   self.client.write(p).await?;
-      // }
-      self.client.write(cb).await?;
     }
     Ok(())
   }
 }
-*/
 
 #[derive(Serialize)]
 struct JsonStatus<'a> {
@@ -249,28 +152,36 @@ impl<'a, S: PacketStream + Send + Sync> Conn<'a, S> {
     key: Arc<RSAPrivateKey>,
     der_key: Option<Vec<u8>>,
     icon: &'a str,
-  ) -> Result<Conn<'a, S>, tonic::Status> {
+  ) -> Result<(Conn<'a, S>, ServerListener), tonic::Status> {
     let (server_send, rx) = mpsc::channel(1);
+    let (clientbound_tx, clientbound_rx) = crossbeam_channel::bounded(512);
 
     let response =
       futures::executor::block_on(server.connection(Request::new(ReceiverStream::new(rx))))?;
     let server_recv = response.into_inner();
 
-    Ok(Conn {
-      stream,
-      state: State::Handshake,
-      server_send,
-      server_recv,
-      ver: ProtocolVersion::Invalid,
-      icon,
-      username: None,
-      info: None,
-      verify_token: [0u8; 4],
-      key,
-      der_key,
-      compression_target,
-      closed: false,
-    })
+    Ok((
+      Conn {
+        stream,
+        state: State::Handshake,
+        server_send,
+        server_recv: clientbound_rx,
+        ver: ProtocolVersion::Invalid,
+        icon,
+        username: None,
+        info: None,
+        verify_token: [0u8; 4],
+        key,
+        der_key,
+        compression_target,
+        closed: false,
+      },
+      ServerListener {
+        client: clientbound_tx,
+        server: server_recv,
+        ver:    ProtocolVersion::Invalid,
+      },
+    ))
   }
   pub fn ver(&self) -> ProtocolVersion {
     self.ver

@@ -10,7 +10,7 @@ use rsa::RSAPrivateKey;
 use std::{collections::HashMap, error::Error, io, sync::Arc};
 
 use crate::{
-  conn::Conn,
+  conn::{Conn, ServerListener},
   stream::{java::stream::JavaStream, PacketStream},
 };
 use sc_common::proto::minecraft_client::MinecraftClient;
@@ -122,46 +122,6 @@ pub async fn run() -> Result<(), Box<dyn Error>> {
       }
     }
   }
-
-  // let key2 = key.clone();
-  // let icon2 = icon.clone();
-  // let java_handle = tokio::spawn(async move {
-  //   loop {
-  //     let (sock, _) = java_listener.accept().unwrap();
-  //     let stream = java::stream::JavaStream::new(sock);
-  //     let k = key.clone();
-  //     let i = icon.clone();
-  //     let d = der_key.clone();
-  //     tokio::spawn(async move {
-  //       match handle_client(stream, k, d, &i).await {
-  //         Ok(_) => {}
-  //         Err(e) => {
-  //           error!("error in connection: {}", e);
-  //         }
-  //       };
-  //     })
-  //     .await
-  //     .unwrap();
-  //   }
-  // });
-  // let bedrock_handle = tokio::spawn(async move {
-  //   loop {
-  //     if let Some((reader, writer)) = bedrock_listener.poll().await.unwrap()
-  // {       let k = key2.clone();
-  //       let i = icon2.clone();
-  //       tokio::spawn(async move {
-  //         match handle_client(reader, writer, k, None, &i).await {
-  //           Ok(_) => {}
-  //           Err(e) => {
-  //             error!("error in connection: {}", e);
-  //           }
-  //         };
-  //       });
-  //     }
-  //   }
-  // });
-  // futures::future::join_all(vec![java_handle, bedrock_handle]).await;
-  // Ok(())
 }
 
 pub fn new_conn<'a, S: PacketStream + Send + Sync + 'static>(
@@ -174,7 +134,16 @@ pub fn new_conn<'a, S: PacketStream + Send + Sync + 'static>(
   let compression = 256;
 
   let client = futures::executor::block_on(MinecraftClient::connect(ip))?;
-  Ok(Conn::new(stream, client, compression, key, der_key, icon)?)
+  let (conn, mut server_listener) = Conn::new(stream, client, compression, key, der_key, icon)?;
+  tokio::spawn(async move {
+    match server_listener.run().await {
+      Ok(_) => {}
+      Err(e) => {
+        error!("error while listening to client: {}", e);
+      }
+    };
+  });
+  Ok(conn)
 }
 
 pub fn handle_client<'a, S: PacketStream + Send + Sync + 'static>(

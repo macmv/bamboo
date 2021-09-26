@@ -2180,6 +2180,7 @@ dependencies = [
  "async-trait",
  "base64",
  "cfb8",
+ "crossbeam-channel",
  "flate2",
  "futures",
  "image",
