@@ -9,6 +9,7 @@ use mio::{net::TcpListener, Events, Interest, Poll, Token, Waker};
 use rand::rngs::OsRng;
 use rsa::RSAPrivateKey;
 use std::{collections::HashMap, error::Error, io, sync::Arc};
+use tonic::transport::Endpoint;
 
 use crate::{
   conn::Conn,
@@ -46,6 +47,8 @@ pub fn run() -> Result<(), Box<dyn Error>> {
   // let der_key = Some(Arc::new(der::encode(&key)));
   let der_key = None;
   let icon = Arc::new(load_icon("icon.png"));
+  let server_ip: Endpoint = "http://0.0.0.0:8483".parse().unwrap();
+  let compression = 256;
 
   let mut poll = Poll::new()?;
   let mut events = Events::with_capacity(1024);
@@ -79,14 +82,16 @@ pub fn run() -> Result<(), Box<dyn Error>> {
                 )?;
                 clients.insert(
                   token,
-                  new_conn(
+                  Conn::new(
                     JavaStream::new(client),
+                    server_ip.clone(),
+                    compression,
                     key.clone(),
                     der_key.clone(),
-                    waker.clone(),
-                    needs_flush_tx.clone(),
                     &icon,
                     token,
+                    waker.clone(),
+                    needs_flush_tx.clone(),
                   )?,
                 );
               }
@@ -192,21 +197,4 @@ pub fn run() -> Result<(), Box<dyn Error>> {
       }
     }
   }
-}
-
-pub fn new_conn<'a, S: PacketStream + Send + Sync + 'static>(
-  stream: S,
-  key: Arc<RSAPrivateKey>,
-  der_key: Option<Vec<u8>>,
-  waker: Arc<Waker>,
-  needs_flush_tx: Sender<Token>,
-  icon: &str,
-  token: Token,
-) -> Result<Conn<S>, Box<dyn Error>> {
-  let ip = "http://0.0.0.0:8483".parse().unwrap();
-  let compression = 256;
-
-  let conn = Conn::new(stream, ip, compression, key, der_key, icon, token, waker, needs_flush_tx)?;
-
-  Ok(conn)
 }
