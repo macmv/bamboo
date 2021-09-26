@@ -61,9 +61,7 @@ impl PacketStream for JavaStream {
     let mut msg: &mut [u8] = &mut [0; 1024];
 
     // This appends to msg, so we don't need to truncate
-    info!("reading from stream...");
     let n = self.stream.read(msg)?;
-    info!("read {} bytes", n);
     if n == 0 {
       return Err(io::Error::new(ErrorKind::ConnectionAborted, "client has disconnected"));
     } else {
@@ -193,9 +191,7 @@ impl PacketStream for JavaStream {
     if self.outgoing.is_empty() {
       return Ok(());
     }
-    info!("writing {} bytes", self.outgoing.len());
     self.stream.write(&self.outgoing)?;
-    info!("done writing {} bytes", self.outgoing.len());
     // Older clients cannot handle too much data at once. So we literally just slow
     // down their connection when a bunch of data is coming through.
     // if self.outgoing.len() > FLUSH_SIZE / 2 {
