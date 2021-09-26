@@ -9,22 +9,16 @@ use ringbuf::{Consumer, Producer, RingBuffer};
 use sc_common::{net::tcp, util, util::Buffer, version::ProtocolVersion};
 use std::{
   io,
-  io::{ErrorKind, Result},
+  io::{ErrorKind, Read, Result, Write},
+  net::TcpStream,
 };
-use tokio::{
-  io::{AsyncReadExt, AsyncWriteExt},
-  net::{
-    tcp::{OwnedReadHalf, OwnedWriteHalf},
-    TcpStream,
-  },
-  time::{Duration, Instant},
-};
+use tokio::time::{Duration, Instant};
 
 const FLUSH_SIZE: usize = 16 * 1024;
 const FLUSH_TIME: Duration = Duration::from_millis(50);
 
 pub struct JavaStreamReader {
-  stream:      OwnedReadHalf,
+  stream:      TcpStream,
   prod:        Producer<u8>,
   cons:        Consumer<u8>,
   // If this is zero, compression is disabled.
@@ -33,7 +27,7 @@ pub struct JavaStreamReader {
   cipher:      Option<Cfb8<Aes128>>,
 }
 pub struct JavaStreamWriter {
-  stream:      OwnedWriteHalf,
+  stream:      TcpStream,
   outgoing:    Vec<u8>,
   last_flush:  Instant,
   // If this is zero, compression is disabled.
@@ -45,12 +39,12 @@ pub struct JavaStreamWriter {
 pub fn new(stream: TcpStream) -> Result<(JavaStreamReader, JavaStreamWriter)> {
   // We want to block on read calls
   // stream.set_nonblocking(true)?;
-  let (read, write) = stream.into_split();
-  Ok((JavaStreamReader::new(read), JavaStreamWriter::new(write)))
+  let s = stream.try_clone()?;
+  Ok((JavaStreamReader::new(s), JavaStreamWriter::new(stream)))
 }
 
 impl JavaStreamReader {
-  pub fn new(stream: OwnedReadHalf) -> Self {
+  pub fn new(stream: TcpStream) -> Self {
     let buf = RingBuffer::new(64 * 1024);
     let (prod, cons) = buf.split();
     JavaStreamReader { stream, prod, cons, compression: 0, cipher: None }
@@ -63,7 +57,9 @@ impl StreamReader for JavaStreamReader {
     let mut msg: &mut [u8] = &mut [0; 1024];
 
     // This appends to msg, so we don't need to truncate
-    let n = self.stream.read(msg).await?;
+    info!("reading from stream...");
+    let n = self.stream.read(msg)?;
+    info!("read {} bytes", n);
     if n == 0 {
       return Err(io::Error::new(ErrorKind::ConnectionAborted, "client has disconnected"));
     } else {
@@ -140,7 +136,7 @@ impl StreamReader for JavaStreamReader {
 }
 
 impl JavaStreamWriter {
-  pub fn new(stream: OwnedWriteHalf) -> Self {
+  pub fn new(stream: TcpStream) -> Self {
     JavaStreamWriter {
       stream,
       outgoing: Vec::with_capacity(1024),
@@ -227,7 +223,9 @@ impl StreamWriter for JavaStreamWriter {
     if self.outgoing.is_empty() {
       return Ok(());
     }
-    self.stream.write(&self.outgoing).await?;
+    info!("writing {} bytes", self.outgoing.len());
+    self.stream.write(&self.outgoing)?;
+    info!("done writing {} bytes", self.outgoing.len());
     // Older clients cannot handle too much data at once. So we literally just slow
     // down their connection when a bunch of data is coming through.
     // if self.outgoing.len() > FLUSH_SIZE / 2 {

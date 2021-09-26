@@ -32,6 +32,7 @@ tokio = { version = "1.5", features = ["rt-multi-thread"] }
 tokio-stream = "0.1"
 futures = "0.3"
 async-stream = "0.3"
+parking_lot = "0.11.2"
 
 # For icon.png
 image = "0.23.14"

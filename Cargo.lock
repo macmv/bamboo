@@ -2185,6 +2185,7 @@ dependencies = [
  "log",
  "md5",
  "miniz_oxide 0.4.4",
+ "parking_lot",
  "rand 0.8.4",
  "reqwest",
  "ringbuf",

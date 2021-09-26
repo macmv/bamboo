@@ -9,8 +9,8 @@ pub mod stream;
 
 use rand::rngs::OsRng;
 use rsa::RSAPrivateKey;
-use std::{error::Error, sync::Arc};
-use tokio::{net::TcpListener, sync::oneshot};
+use std::{error::Error, net::TcpListener, sync::Arc};
+use tokio::sync::oneshot;
 
 use crate::{
   conn::Conn,
@@ -34,7 +34,7 @@ pub async fn run() -> Result<(), Box<dyn Error>> {
 
   let addr = "0.0.0.0:25565";
   info!("listening for java clients on {}", addr);
-  let java_listener = TcpListener::bind(addr).await?;
+  let java_listener = TcpListener::bind(addr)?;
 
   let addr = "0.0.0.0:19132";
   info!("listening for bedrock clients on {}", addr);
@@ -50,7 +50,7 @@ pub async fn run() -> Result<(), Box<dyn Error>> {
   let icon2 = icon.clone();
   let java_handle = tokio::spawn(async move {
     loop {
-      let (sock, _) = java_listener.accept().await.unwrap();
+      let (sock, _) = java_listener.accept().unwrap();
       let (reader, writer) = java::stream::new(sock).unwrap();
       let k = key.clone();
       let i = icon.clone();
@@ -62,7 +62,9 @@ pub async fn run() -> Result<(), Box<dyn Error>> {
             error!("error in connection: {}", e);
           }
         };
-      });
+      })
+      .await
+      .unwrap();
     }
   });
   let bedrock_handle = tokio::spawn(async move {
