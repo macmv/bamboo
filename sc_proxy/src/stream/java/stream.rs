@@ -53,7 +53,6 @@ impl JavaStream {
     }
 
     self.outgoing.extend(data.iter());
-    Ok(())
   }
 }
 

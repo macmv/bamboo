@@ -13,6 +13,7 @@ use crate::{
   conn::Conn,
   stream::{java::stream::JavaStream, PacketStream},
 };
+use sc_common::proto::minecraft_client::MinecraftClient;
 
 pub fn load_icon(path: &str) -> String {
   let mut icon = match image::open(path).map_err(|e| error!("error loading icon: {}", e)) {
@@ -33,7 +34,7 @@ pub async fn run() -> Result<(), Box<dyn Error>> {
 
   let addr = "0.0.0.0:25565";
   info!("listening for java clients on {}", addr);
-  let java_listener = TcpListener::bind(addr.parse()?)?;
+  let mut java_listener = TcpListener::bind(addr.parse()?)?;
 
   // let addr = "0.0.0.0:19132";
   // info!("listening for bedrock clients on {}", addr);
@@ -42,7 +43,7 @@ pub async fn run() -> Result<(), Box<dyn Error>> {
   // Minecraft uses 1024 bits for this.
   let key = Arc::new(RSAPrivateKey::new(&mut OsRng, 1024).expect("failed to generate a key"));
   // let der_key = Some(Arc::new(der::encode(&key)));
-  let der_key = None;
+  // let der_key = None;
   let icon = Arc::new(load_icon("icon.png"));
 
   let mut poll = Poll::new()?;
@@ -51,7 +52,6 @@ pub async fn run() -> Result<(), Box<dyn Error>> {
 
   poll.registry().register(&mut java_listener, JAVA_LISTENER, Interest::READABLE);
 
-  let mut buf = [0; 1024];
   let mut next_token = 0;
 
   loop {
@@ -74,7 +74,7 @@ pub async fn run() -> Result<(), Box<dyn Error>> {
                   token,
                   Interest::READABLE | Interest::WRITABLE,
                 )?;
-                clients.insert(token, Conn::new(JavaStream::new(client), &icon));
+                clients.insert(token, new_conn(JavaStream::new(client), &icon)?);
               }
               Err(ref e) if e.kind() == io::ErrorKind::WouldBlock => {
                 // Socket is not ready anymore, stop accepting
@@ -154,24 +154,35 @@ pub async fn run() -> Result<(), Box<dyn Error>> {
   // Ok(())
 }
 
+pub fn new_conn<'a, S: PacketStream + Send + Sync + 'static>(
+  stream: S,
+  icon: &str,
+) -> Result<Conn<S>, Box<dyn Error>> {
+  let ip = "http://0.0.0.0:8483".to_string();
+
+  let client = futures::executor::block_on(MinecraftClient::connect(ip))?;
+  Ok(Conn::new(stream, client, icon)?)
+}
+
 pub fn handle_client<'a, S: PacketStream + Send + Sync + 'static>(
   stream: S,
   key: Arc<RSAPrivateKey>,
   der_key: Option<Arc<Vec<u8>>>,
   icon: &'a str,
 ) -> Result<(), Box<dyn Error>> {
-  // let mut client = MinecraftClient::connect().await?;
   // let req = tonic::Request::new(StatusRequest {});
 
   let ip = "http://0.0.0.0:8483".to_string();
   let compression = 256;
 
-  let mut conn = Conn::new(stream, icon);
-  let info = match conn.handshake(compression, key, der_key)? {
-    Some(v) => v,
-    // Means the client was either not allowed to join, or was just sending a status request.
-    None => return Ok(()),
-  };
+  // let client = futures::executor::block_on(MinecraftClient::connect(ip))?;
+  //
+  // let mut conn = Conn::new(stream, client, icon)?;
+  // let info = match conn.handshake(compression, key, der_key)? {
+  //   Some(v) => v,
+  //   // Means the client was either not allowed to join, or was just sending a
+  // status request.   None => return Ok(()),
+  // };
 
   // These four values are passed to each listener. When one listener closes, it
   // sends a message to the tx. Since the rx is passed to the other listener, that
@@ -179,7 +190,7 @@ pub fn handle_client<'a, S: PacketStream + Send + Sync + 'static>(
   // let (server_tx, client_rx) = oneshot::channel();
   // let (client_tx, server_rx) = oneshot::channel();
 
-  let ver = conn.ver().id() as i32;
+  // let ver = conn.ver().id() as i32;
   // let (mut client_listener, mut server_listener) = conn.split(ip)?;
 
   // Tells the server who this client is

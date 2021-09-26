@@ -4,19 +4,18 @@ use reqwest::StatusCode;
 use rsa::{padding::PaddingScheme, RSAPrivateKey};
 use sc_common::{
   math,
-  net::{cb, sb, tcp},
+  net::{sb, tcp},
   proto,
+  proto::minecraft_client::MinecraftClient,
   util::{chat::Color, Chat, UUID},
   version::ProtocolVersion,
 };
 use serde_derive::{Deserialize, Serialize};
 use sha1::{Digest, Sha1};
-use std::{convert::TryInto, error::Error, io, io::ErrorKind, sync::Arc};
-use tokio::{
-  sync::{mpsc, oneshot},
-  time,
-};
-use tonic::Streaming;
+use std::{convert::TryInto, io, io::ErrorKind, sync::Arc};
+use tokio::sync::mpsc;
+use tokio_stream::wrappers::ReceiverStream;
+use tonic::{transport::Channel, Request, Streaming};
 
 #[derive(Debug, Copy, Clone)]
 pub enum State {
@@ -226,8 +225,25 @@ struct JsonPlayer {
 }
 
 impl<'a, S: PacketStream + Send + Sync> Conn<'a, S> {
-  pub fn new(stream: S, icon: &'a str) -> Conn<'a, S> {
-    Conn { stream, state: State::Handshake, ver: ProtocolVersion::Invalid, icon }
+  pub fn new(
+    stream: S,
+    mut server: MinecraftClient<Channel>,
+    icon: &'a str,
+  ) -> Result<Conn<'a, S>, tonic::Status> {
+    let (server_send, rx) = mpsc::channel(1);
+
+    let response =
+      futures::executor::block_on(server.connection(Request::new(ReceiverStream::new(rx))))?;
+    let server_recv = response.into_inner();
+
+    Ok(Conn {
+      stream,
+      state: State::Handshake,
+      server_send,
+      server_recv,
+      ver: ProtocolVersion::Invalid,
+      icon,
+    })
   }
   pub fn ver(&self) -> ProtocolVersion {
     self.ver
@@ -242,7 +258,8 @@ impl<'a, S: PacketStream + Send + Sync> Conn<'a, S> {
     loop {
       match self.stream.read(self.ver) {
         Ok(Some(p)) => {
-          self.server.send(p);
+          let packet = sb::Packet::from_tcp(p, self.ver);
+          self.server_send.send(packet.to_proto(self.ver));
         }
         Ok(None) => break,
         Err(e) => return Err(e),
