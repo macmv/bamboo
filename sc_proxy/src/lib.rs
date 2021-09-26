@@ -95,20 +95,27 @@ pub async fn run() -> Result<(), Box<dyn Error>> {
           loop {
             match conn.poll() {
               Ok(_) => match conn.read() {
-                // Connection is closed
-                Ok(true) => {
+                Ok(_) => {
+                  if conn.closed() {
+                    clients.remove(&token);
+                    break;
+                  }
+                }
+                Err(e) => {
+                  error!("error while parsing packet from client {:?}: {}", token, e);
                   clients.remove(&token);
                   break;
                 }
-                // Packet was sent to the server
-                Ok(false) => {}
-                Err(e) => error!("error while parsing packet from client {:?}: {}", token, e),
               },
               Err(ref e) if e.kind() == io::ErrorKind::WouldBlock => {
                 // Socket is not ready anymore, stop reading
                 break;
               }
-              Err(e) => error!("error while listening to client {:?}: {}", token, e),
+              Err(e) => {
+                error!("error while listening to client {:?}: {}", token, e);
+                clients.remove(&token);
+                break;
+              }
             }
           }
         }

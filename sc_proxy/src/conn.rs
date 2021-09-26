@@ -59,6 +59,9 @@ pub struct Conn<'a, S> {
   der_key:            Option<Vec<u8>>,
   /// Used in handshake. This is different from `stream.compression`
   compression_target: i32,
+
+  /// Set when the connection is closed.
+  closed: bool,
 }
 
 pub struct ClientListener<R> {
@@ -266,10 +269,14 @@ impl<'a, S: PacketStream + Send + Sync> Conn<'a, S> {
       key,
       der_key,
       compression_target,
+      closed: false,
     })
   }
   pub fn ver(&self) -> ProtocolVersion {
     self.ver
+  }
+  pub fn closed(&self) -> bool {
+    self.closed
   }
 
   pub fn poll(&mut self) -> io::Result<()> {
@@ -277,13 +284,15 @@ impl<'a, S: PacketStream + Send + Sync> Conn<'a, S> {
   }
   /// Returns Ok(false) in normal operation, and Ok(true) if the stream has
   /// closed.
-  pub fn read(&mut self) -> io::Result<bool> {
+  pub fn read(&mut self) -> io::Result<()> {
     loop {
       match self.stream.read(self.ver) {
         Ok(Some(p)) => match self.state {
           State::Play => {
             let packet = sb::Packet::from_tcp(p, self.ver);
-            self.server_send.send(packet.to_proto(self.ver));
+            // TODO: Handle errors!
+            futures::executor::block_on(self.server_send.send(packet.to_proto(self.ver)))
+              .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e.to_string()))?;
           }
           _ => {
             self.handle_handshake(p)?;
@@ -293,7 +302,7 @@ impl<'a, S: PacketStream + Send + Sync> Conn<'a, S> {
         Err(e) => return Err(e),
       }
     }
-    Ok(false)
+    Ok(())
   }
 
   /// Sends the set compression packet, using self.compression_target. The
@@ -408,7 +417,7 @@ impl<'a, S: PacketStream + Send + Sync> Conn<'a, S> {
             self.stream.write(out);
             self.stream.flush()?;
             // Client is done sending packets, we can close now.
-            // TODO: Close connection
+            self.closed = true;
             return Ok(());
           }
           _ => {
@@ -523,7 +532,7 @@ impl<'a, S: PacketStream + Send + Sync> Conn<'a, S> {
                   self.send_disconnect("Invalid auth token! Please re-login (restart your game and launcher)");
                   self.stream.flush()?;
                   // Disconnect client; they are not authenticated
-                  // TODO: Close connection
+                  self.closed = true;
                   return Ok(());
                 }
                 match v.json() {
