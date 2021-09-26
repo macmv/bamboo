@@ -1,4 +1,5 @@
 use crate::stream::PacketStream;
+use mio::Waker;
 use rand::{rngs::OsRng, RngCore};
 use reqwest::StatusCode;
 use rsa::{padding::PaddingScheme, RSAPrivateKey};
@@ -13,7 +14,7 @@ use sc_common::{
 use serde_derive::{Deserialize, Serialize};
 use sha1::{Digest, Sha1};
 use std::{convert::TryInto, io, io::ErrorKind, sync::Arc};
-use tokio::sync::{mpsc, oneshot};
+use tokio::sync::mpsc;
 use tokio_stream::wrappers::ReceiverStream;
 use tonic::{transport::Channel, Request, Streaming};
 
@@ -94,12 +95,12 @@ impl ServerListener {
   /// to close the ClientListener. Specifically, the tx will send a value once
   /// this listener has been closed, and this listener will close once the rx
   /// gets a message.
-  pub async fn run(&mut self) -> io::Result<()> {
-    let res = self.run_inner().await;
+  pub async fn run(&mut self, waker: Waker) -> io::Result<()> {
+    let res = self.run_inner(waker).await;
     // Close connection here
     res
   }
-  async fn run_inner(&mut self) -> io::Result<()> {
+  async fn run_inner(&mut self, waker: Waker) -> io::Result<()> {
     loop {
       match self
         .server
@@ -108,7 +109,8 @@ impl ServerListener {
         .map_err(|e| io::Error::new(ErrorKind::Other, e.to_string()))?
       {
         Some(p) => {
-          self.client.send(cb::Packet::from_proto(p, self.ver).to_tcp(self.ver));
+          self.client.send(cb::Packet::from_proto(p, self.ver).to_tcp(self.ver)).unwrap();
+          waker.wake()?;
         }
         None => break,
       }
@@ -195,7 +197,7 @@ impl<'a, S: PacketStream + Send + Sync> Conn<'a, S> {
   }
   /// Returns Ok(false) in normal operation, and Ok(true) if the stream has
   /// closed.
-  pub fn read(&mut self) -> io::Result<()> {
+  pub async fn read(&mut self) -> io::Result<()> {
     loop {
       match self.stream.read(self.ver) {
         Ok(Some(p)) => match self.state {
@@ -206,7 +208,7 @@ impl<'a, S: PacketStream + Send + Sync> Conn<'a, S> {
               .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e.to_string()))?;
           }
           _ => {
-            self.handle_handshake(p)?;
+            self.handle_handshake(p).await?;
           }
         },
         Ok(None) => break,
@@ -231,7 +233,7 @@ impl<'a, S: PacketStream + Send + Sync> Conn<'a, S> {
 
   /// Sends the login success packet, and sets the state to Play. The stream
   /// will not be flushed.
-  fn send_success(&mut self) {
+  async fn send_success(&mut self) {
     // Login success
     let info = self.info.as_ref().unwrap();
     let mut out = tcp::Packet::new(2, self.ver);
@@ -242,6 +244,19 @@ impl<'a, S: PacketStream + Send + Sync> Conn<'a, S> {
     }
     out.write_str(&info.name);
     self.stream.write(out);
+
+    self
+      .server_send
+      .send(
+        sb::Packet::Login {
+          username: info.name.clone(),
+          uuid:     info.id,
+          ver:      self.ver.id() as i32,
+        }
+        .to_proto(self.ver),
+      )
+      .await
+      .unwrap();
 
     self.state = State::Play;
   }
@@ -291,7 +306,7 @@ impl<'a, S: PacketStream + Send + Sync> Conn<'a, S> {
   /// the client just wants to get the status of the server. If this function
   /// returns Ok(Some(LoginInfo)), then a connection should be initialized with
   /// a grpc server.
-  fn handle_handshake(&mut self, mut p: tcp::Packet) -> io::Result<()> {
+  async fn handle_handshake(&mut self, mut p: tcp::Packet) -> io::Result<()> {
     match self.state {
       State::Handshake => {
         if p.id() != 0 {
@@ -374,7 +389,7 @@ impl<'a, S: PacketStream + Send + Sync> Conn<'a, S> {
               }
               None => {
                 self.send_compression();
-                self.send_success();
+                self.send_success().await;
                 // Successful login, we are in play state now
                 self.state = State::Play;
               }
@@ -461,7 +476,7 @@ impl<'a, S: PacketStream + Send + Sync> Conn<'a, S> {
             };
 
             self.send_compression();
-            self.send_success();
+            self.send_success().await;
             // Successful login, we are in play now
             self.state = State::Play;
           }

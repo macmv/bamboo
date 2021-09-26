@@ -4,7 +4,7 @@ extern crate log;
 pub mod conn;
 pub mod stream;
 
-use mio::{net::TcpListener, Events, Interest, Poll, Token};
+use mio::{net::TcpListener, Events, Interest, Poll, Token, Waker};
 use rand::rngs::OsRng;
 use rsa::RSAPrivateKey;
 use std::{collections::HashMap, error::Error, io, sync::Arc};
@@ -76,7 +76,13 @@ pub async fn run() -> Result<(), Box<dyn Error>> {
                 )?;
                 clients.insert(
                   token,
-                  new_conn(JavaStream::new(client), key.clone(), der_key.clone(), &icon)?,
+                  new_conn(
+                    JavaStream::new(client),
+                    key.clone(),
+                    der_key.clone(),
+                    Waker::new(poll.registry(), token)?,
+                    &icon,
+                  )?,
                 );
               }
               Err(ref e) if e.kind() == io::ErrorKind::WouldBlock => {
@@ -94,7 +100,7 @@ pub async fn run() -> Result<(), Box<dyn Error>> {
           let conn = clients.get_mut(&token).expect("client doesn't exist!");
           loop {
             match conn.poll() {
-              Ok(_) => match conn.read() {
+              Ok(_) => match conn.read().await {
                 Ok(_) => {
                   if conn.closed() {
                     clients.remove(&token);
@@ -128,6 +134,7 @@ pub fn new_conn<'a, S: PacketStream + Send + Sync + 'static>(
   stream: S,
   key: Arc<RSAPrivateKey>,
   der_key: Option<Vec<u8>>,
+  waker: Waker,
   icon: &str,
 ) -> Result<Conn<S>, Box<dyn Error>> {
   let ip = "http://0.0.0.0:8483".to_string();
@@ -135,8 +142,9 @@ pub fn new_conn<'a, S: PacketStream + Send + Sync + 'static>(
 
   let client = futures::executor::block_on(MinecraftClient::connect(ip))?;
   let (conn, mut server_listener) = Conn::new(stream, client, compression, key, der_key, icon)?;
+
   tokio::spawn(async move {
-    match server_listener.run().await {
+    match server_listener.run(waker).await {
       Ok(_) => {}
       Err(e) => {
         error!("error while listening to client: {}", e);
