@@ -9,10 +9,10 @@ use mio::net::TcpStream;
 use ringbuf::{Consumer, Producer, RingBuffer};
 use sc_common::{net::tcp, util, util::Buffer, version::ProtocolVersion};
 use std::{
-  io,
+  fmt, io,
   io::{ErrorKind, Read, Result, Write},
 };
-use tokio::time::{Duration, Instant};
+use tokio::time::Instant;
 
 pub struct JavaStream {
   stream: TcpStream,
@@ -27,6 +27,15 @@ pub struct JavaStream {
   compression: usize,
   // If this is none, then encryption is disabled.
   cipher:      Option<Cfb8<Aes128>>,
+}
+
+impl fmt::Debug for JavaStream {
+  fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    f.debug_struct("JavaStream")
+      .field("outgoing_len", &self.outgoing.len())
+      .field("since_last_flush", &Instant::now().duration_since(self.last_flush))
+      .finish()
+  }
 }
 
 impl JavaStream {

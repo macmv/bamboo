@@ -103,7 +103,6 @@ pub fn run() -> Result<(), Box<dyn Error>> {
           unimplemented!();
         }
         WAKE_TOKEN => loop {
-          info!("got wake token");
           match needs_flush_rx.try_recv() {
             Ok(token) => {
               let conn = clients.get_mut(&token).expect("client doesn't exist!");
@@ -143,20 +142,7 @@ pub fn run() -> Result<(), Box<dyn Error>> {
           }
         },
         token => {
-          if event.is_writable() {
-            let conn = clients.get_mut(&token).expect("client doesn't exist!");
-            while conn.needs_flush() {
-              match conn.flush() {
-                Ok(_) => {}
-                Err(ref e) if e.kind() == io::ErrorKind::WouldBlock => break,
-                Err(e) => {
-                  error!("error while flushing packets to the client {:?}: {}", token, e);
-                  clients.remove(&token);
-                  break;
-                }
-              }
-            }
-          }
+          let mut closed = false;
           if event.is_readable() {
             let conn = clients.get_mut(&token).expect("client doesn't exist!");
             loop {
@@ -165,18 +151,38 @@ pub fn run() -> Result<(), Box<dyn Error>> {
                   Ok(_) => {
                     if conn.closed() {
                       clients.remove(&token);
+                      closed = true;
                       break;
                     }
                   }
                   Err(e) => {
                     error!("error while parsing packet from client {:?}: {}", token, e);
                     clients.remove(&token);
+                    closed = true;
                     break;
                   }
                 },
                 Err(ref e) if e.kind() == io::ErrorKind::WouldBlock => break,
                 Err(e) => {
                   error!("error while listening to client {:?}: {}", token, e);
+                  clients.remove(&token);
+                  closed = true;
+                  break;
+                }
+              }
+            }
+          }
+          // The order here is important. If we are handshaking, then reading a packet
+          // will probably prompt a direct response. In this arrangement, we can send more
+          // packets before going back to poll().
+          if event.is_writable() && !closed {
+            let conn = clients.get_mut(&token).expect("client doesn't exist!");
+            while conn.needs_flush() {
+              match conn.flush() {
+                Ok(_) => {}
+                Err(ref e) if e.kind() == io::ErrorKind::WouldBlock => break,
+                Err(e) => {
+                  error!("error while flushing packets to the client {:?}: {}", token, e);
                   clients.remove(&token);
                   break;
                 }

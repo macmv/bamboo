@@ -15,7 +15,7 @@ use sc_common::{
 };
 use serde_derive::{Deserialize, Serialize};
 use sha1::{Digest, Sha1};
-use std::{convert::TryInto, io, io::ErrorKind, sync::Arc};
+use std::{convert::TryInto, fmt, io, io::ErrorKind, sync::Arc};
 use tokio::sync::mpsc;
 use tokio_stream::wrappers::ReceiverStream;
 use tonic::{transport::Channel, Request, Streaming};
@@ -67,6 +67,19 @@ pub struct Conn<'a, S> {
   closed: bool,
 }
 
+impl<S: fmt::Debug> fmt::Debug for Conn<'_, S> {
+  fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    f.debug_struct("JavaStream")
+      .field("stream", &self.stream)
+      .field("state", &self.state)
+      .field("ver", &self.ver)
+      .field("server_recv", &self.server_recv.len())
+      .field("username", &self.username)
+      .field("closed", &self.closed)
+      .finish()
+  }
+}
+
 pub struct ServerListener {
   client: crossbeam_channel::Sender<tcp::Packet>,
   server: Streaming<proto::Packet>,
@@ -99,14 +112,18 @@ impl ServerListener {
   /// this listener has been closed, and this listener will close once the rx
   /// gets a message.
   pub async fn run(&mut self, waker: Arc<Waker>, needs_flush_tx: Sender<Token>) -> io::Result<()> {
-    let res = self.run_inner(waker).await;
+    let res = self.run_inner(waker, needs_flush_tx).await;
     // Close connection here
     res
   }
   pub fn ver(&self) -> ProtocolVersion {
     *self.ver.read()
   }
-  async fn run_inner(&mut self, waker: Arc<Waker>) -> io::Result<()> {
+  async fn run_inner(
+    &mut self,
+    waker: Arc<Waker>,
+    needs_flush_tx: Sender<Token>,
+  ) -> io::Result<()> {
     loop {
       match self
         .server
@@ -117,6 +134,7 @@ impl ServerListener {
         Some(p) => {
           let ver = self.ver();
           self.client.send(cb::Packet::from_proto(p, ver).to_tcp(ver)).unwrap();
+          needs_flush_tx.send(self.token).unwrap();
           waker.wake()?;
         }
         None => break,
@@ -224,9 +242,7 @@ impl<'a, S: PacketStream + Send + Sync> Conn<'a, S> {
   /// closed.
   pub fn read(&mut self) -> io::Result<()> {
     loop {
-      info!("reading with state {:?}", self.state);
       let ver = self.ver();
-      info!("reading ver: {:?}", ver);
       match self.stream.read(ver) {
         Ok(Some(p)) => match self.state {
           State::Play => {
