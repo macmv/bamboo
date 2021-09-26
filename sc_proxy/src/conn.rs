@@ -102,6 +102,9 @@ impl ServerListener {
     // Close connection here
     res
   }
+  pub fn ver(&self) -> ProtocolVersion {
+    *self.ver.read()
+  }
   async fn run_inner(&mut self, waker: Waker) -> io::Result<()> {
     loop {
       match self
@@ -111,7 +114,7 @@ impl ServerListener {
         .map_err(|e| io::Error::new(ErrorKind::Other, e.to_string()))?
       {
         Some(p) => {
-          let ver = *self.ver.read();
+          let ver = self.ver();
           self.client.send(cb::Packet::from_proto(p, ver).to_tcp(ver)).unwrap();
           waker.wake()?;
         }
@@ -194,7 +197,7 @@ impl<'a, S: PacketStream + Send + Sync> Conn<'a, S> {
 
   /// Checks if there is data to send to the client
   pub fn needs_send(&self) -> bool {
-    self.server_recv.is_empty()
+    !self.server_recv.is_empty()
   }
   pub fn write(&mut self) -> io::Result<()> {
     match self.server_recv.try_recv() {
@@ -214,9 +217,11 @@ impl<'a, S: PacketStream + Send + Sync> Conn<'a, S> {
   }
   /// Returns Ok(false) in normal operation, and Ok(true) if the stream has
   /// closed.
-  pub async fn read(&mut self) -> io::Result<()> {
+  pub fn read(&mut self) -> io::Result<()> {
     loop {
-      let ver = *self.ver.read();
+      info!("reading with state {:?}", self.state);
+      let ver = self.ver();
+      info!("reading ver: {:?}", ver);
       match self.stream.read(ver) {
         Ok(Some(p)) => match self.state {
           State::Play => {
@@ -226,7 +231,7 @@ impl<'a, S: PacketStream + Send + Sync> Conn<'a, S> {
               .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e.to_string()))?;
           }
           _ => {
-            self.handle_handshake(p).await?;
+            futures::executor::block_on(self.handle_handshake(p))?;
           }
         },
         Ok(None) => break,
@@ -241,7 +246,7 @@ impl<'a, S: PacketStream + Send + Sync> Conn<'a, S> {
   fn send_compression(&mut self) {
     // Set compression, only if the thresh hold is non-zero
     if self.compression_target != 0 {
-      let mut out = tcp::Packet::new(3, *self.ver.read());
+      let mut out = tcp::Packet::new(3, self.ver());
       out.write_varint(self.compression_target);
       self.stream.write(out);
       // Must happen after the packet has been sent
@@ -254,7 +259,7 @@ impl<'a, S: PacketStream + Send + Sync> Conn<'a, S> {
   async fn send_success(&mut self) {
     // Login success
     let info = self.info.as_ref().unwrap();
-    let ver = *self.ver.read();
+    let ver = self.ver();
     let mut out = tcp::Packet::new(2, ver);
     if ver >= ProtocolVersion::V1_16 {
       out.write_uuid(info.id);
@@ -283,7 +288,7 @@ impl<'a, S: PacketStream + Send + Sync> Conn<'a, S> {
   // Disconnects the client during authentication. The stream will not be flushed.
   fn send_disconnect<C: Into<Chat>>(&mut self, reason: C) {
     // Disconnect
-    let mut out = tcp::Packet::new(0, *self.ver.read());
+    let mut out = tcp::Packet::new(0, self.ver());
     out.write_str(&reason.into().to_json());
     self.stream.write(out);
   }
@@ -298,7 +303,7 @@ impl<'a, S: PacketStream + Send + Sync> Conn<'a, S> {
     #[cfg(not(debug_assertions))]
     description.add("Release mode").color(Color::Red);
     JsonStatus {
-      version: JsonVersion { name: "1.8".into(), protocol: self.ver.read().id() as i32 },
+      version: JsonVersion { name: "1.8".into(), protocol: self.ver().id() as i32 },
       players: JsonPlayers {
         max:    69,
         online: 420,
@@ -326,7 +331,9 @@ impl<'a, S: PacketStream + Send + Sync> Conn<'a, S> {
   /// returns Ok(Some(LoginInfo)), then a connection should be initialized with
   /// a grpc server.
   async fn handle_handshake(&mut self, mut p: tcp::Packet) -> io::Result<()> {
-    let ver = *self.ver.read();
+    info!("handling handshake state {:?}", self.state);
+    let ver = self.ver();
+    info!("on ver: {:?}", ver);
     match self.state {
       State::Handshake => {
         if p.id() != 0 {

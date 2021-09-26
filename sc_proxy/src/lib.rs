@@ -26,7 +26,7 @@ pub fn load_icon(path: &str) -> String {
   "data:image/png;base64,".to_string() + &enc.into_inner()
 }
 
-pub async fn run() -> Result<(), Box<dyn Error>> {
+pub fn run() -> Result<(), Box<dyn Error>> {
   sc_common::init("proxy");
 
   const JAVA_LISTENER: Token = Token(0xffffffff);
@@ -99,29 +99,32 @@ pub async fn run() -> Result<(), Box<dyn Error>> {
         token => {
           let conn = clients.get_mut(&token).expect("client doesn't exist!");
           let mut closed = false;
-          loop {
-            if conn.needs_send() {
-              match conn.flush() {
-                Ok(_) => {}
-                Err(ref e) if e.kind() == io::ErrorKind::WouldBlock => {
-                  // Socket is not ready anymore, stop reading
-                  conn.flush()?;
-                  break;
-                }
-                Err(e) => {
-                  error!("error while listening to client {:?}: {}", token, e);
-                  clients.remove(&token);
-                  closed = true;
-                  break;
-                }
+          let mut wrote = false;
+          while conn.needs_send() {
+            wrote = true;
+            match conn.write() {
+              Ok(_) => {}
+              Err(ref e) if e.kind() == io::ErrorKind::WouldBlock => {
+                // Happens if the recieving stream is empty.
+                break;
+              }
+              Err(e) => {
+                error!("error while listening to server {:?}: {}", token, e);
+                clients.remove(&token);
+                closed = true;
+                break;
               }
             }
+          }
+          if wrote {
+            let conn = clients.get_mut(&token).expect("client doesn't exist!");
+            conn.flush()?;
           }
           if !closed {
             let conn = clients.get_mut(&token).expect("client doesn't exist!");
             loop {
               match conn.poll() {
-                Ok(_) => match conn.read().await {
+                Ok(_) => match conn.read() {
                   Ok(_) => {
                     if conn.closed() {
                       clients.remove(&token);
