@@ -118,7 +118,15 @@ pub fn run() -> Result<(), Box<dyn Error>> {
           }
           if wrote {
             let conn = clients.get_mut(&token).expect("client doesn't exist!");
-            conn.flush()?;
+            match conn.flush() {
+              Ok(_) => {}
+              Err(ref e) if e.kind() == io::ErrorKind::WouldBlock => {}
+              Err(e) => {
+                error!("error while flushing packets to the client {:?}: {}", token, e);
+                clients.remove(&token);
+                closed = true;
+              }
+            }
           }
           if !closed {
             let conn = clients.get_mut(&token).expect("client doesn't exist!");
