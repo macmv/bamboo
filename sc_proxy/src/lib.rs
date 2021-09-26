@@ -1,9 +1,6 @@
 #[macro_use]
 extern crate log;
 
-#[macro_use]
-extern crate async_trait;
-
 pub mod conn;
 pub mod stream;
 
@@ -11,13 +8,11 @@ use mio::{net::TcpListener, Events, Interest, Poll, Token};
 use rand::rngs::OsRng;
 use rsa::RSAPrivateKey;
 use std::{collections::HashMap, error::Error, io, sync::Arc};
-use tokio::sync::oneshot;
 
 use crate::{
   conn::Conn,
-  stream::{java, PacketStream},
+  stream::{java::stream::JavaStream, PacketStream},
 };
-use sc_common::{math::der, net::sb};
 
 pub fn load_icon(path: &str) -> String {
   let mut icon = match image::open(path).map_err(|e| error!("error loading icon: {}", e)) {
@@ -79,7 +74,7 @@ pub async fn run() -> Result<(), Box<dyn Error>> {
                   token,
                   Interest::READABLE | Interest::WRITABLE,
                 )?;
-                clients.insert(token, client);
+                clients.insert(token, Conn::new(JavaStream::new(client), &icon));
               }
               Err(ref e) if e.kind() == io::ErrorKind::WouldBlock => {
                 // Socket is not ready anymore, stop accepting
@@ -93,24 +88,24 @@ pub async fn run() -> Result<(), Box<dyn Error>> {
           unimplemented!();
         }
         token => {
-          let client = clients.get_mut(&token).expect("client doesn't exist!");
+          let conn = clients.get_mut(&token).expect("client doesn't exist!");
           loop {
-            match client.read(&mut buf) {
-              Ok(0) => {
-                // Socket is closed
-                clients.remove(&token);
-                break;
-              }
-              // Data is not actually sent in this example
-              Ok(n) => {
-                let data = &buf[..n];
-                // TODO: Handle data
-              }
+            match conn.poll() {
+              Ok(_) => match conn.read() {
+                // Connection is closed
+                Ok(true) => {
+                  clients.remove(&token);
+                  break;
+                }
+                // Packet was sent to the server
+                Ok(false) => {}
+                Err(e) => error!("error while parsing packet from client {:?}: {}", token, e),
+              },
               Err(ref e) if e.kind() == io::ErrorKind::WouldBlock => {
                 // Socket is not ready anymore, stop reading
                 break;
               }
-              Err(e) => error!("error while listening to client {}: {}", token, e),
+              Err(e) => error!("error while listening to client {:?}: {}", token, e),
             }
           }
         }
@@ -159,7 +154,7 @@ pub async fn run() -> Result<(), Box<dyn Error>> {
   // Ok(())
 }
 
-pub async fn handle_client<'a, S: PacketStream + Send + 'static>(
+pub fn handle_client<'a, S: PacketStream + Send + Sync + 'static>(
   stream: S,
   key: Arc<RSAPrivateKey>,
   der_key: Option<Arc<Vec<u8>>>,
@@ -172,7 +167,7 @@ pub async fn handle_client<'a, S: PacketStream + Send + 'static>(
   let compression = 256;
 
   let mut conn = Conn::new(stream, icon);
-  let info = match conn.handshake(compression, key, der_key).await? {
+  let info = match conn.handshake(compression, key, der_key)? {
     Some(v) => v,
     // Means the client was either not allowed to join, or was just sending a status request.
     None => return Ok(()),
@@ -181,37 +176,36 @@ pub async fn handle_client<'a, S: PacketStream + Send + 'static>(
   // These four values are passed to each listener. When one listener closes, it
   // sends a message to the tx. Since the rx is passed to the other listener, that
   // listener will then close itself.
-  let (server_tx, client_rx) = oneshot::channel();
-  let (client_tx, server_rx) = oneshot::channel();
+  // let (server_tx, client_rx) = oneshot::channel();
+  // let (client_tx, server_rx) = oneshot::channel();
 
   let ver = conn.ver().id() as i32;
-  let (mut client_listener, mut server_listener) = conn.split(ip).await?;
+  // let (mut client_listener, mut server_listener) = conn.split(ip)?;
 
   // Tells the server who this client is
   // TODO: Send texture data
-  client_listener
-    .send_to_server(sb::Packet::Login { username: info.name, uuid: info.id, ver })
-    .await?;
+  // client_listener.send_to_server(sb::Packet::Login { username: info.name, uuid:
+  // info.id, ver })?;
 
-  let mut handles = vec![];
-  handles.push(tokio::spawn(async move {
-    match client_listener.run(client_tx, client_rx).await {
-      Ok(_) => {}
-      Err(e) => {
-        error!("error while listening to client: {}", e);
-      }
-    };
-  }));
-  handles.push(tokio::spawn(async move {
-    match server_listener.run(server_tx, server_rx).await {
-      Ok(_) => {}
-      Err(e) => {
-        error!("error while listening to server: {}", e);
-      }
-    };
-  }));
-
-  futures::future::join_all(handles).await;
+  // let mut handles = vec![];
+  // handles.push(tokio::spawn(async move {
+  //   match client_listener.run(client_tx, client_rx).await {
+  //     Ok(_) => {}
+  //     Err(e) => {
+  //       error!("error while listening to client: {}", e);
+  //     }
+  //   };
+  // }));
+  // handles.push(tokio::spawn(async move {
+  //   match server_listener.run(server_tx, server_rx).await {
+  //     Ok(_) => {}
+  //     Err(e) => {
+  //       error!("error while listening to server: {}", e);
+  //     }
+  //   };
+  // }));
+  //
+  // futures::future::join_all(handles);
 
   info!("All tasks have closed!");
 

@@ -33,7 +33,7 @@ pub trait PacketStream {
 
   /// Writes the given packet to the internal outgoing buffer. This will never
   /// call flush, and in turn will not interact with the tcp stream at all.
-  fn write(&mut self, packet: tcp::Packet) -> io::Result<()>;
+  fn write(&mut self, packet: tcp::Packet);
 
   /// Returns the amount of time needed before a flush should happen. This is
   /// should be something along the lines of (50 millis - time since last

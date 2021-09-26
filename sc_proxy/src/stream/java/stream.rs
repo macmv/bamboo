@@ -138,7 +138,8 @@ impl PacketStream for JavaStream {
   fn enable_encryption(&mut self, secret: &[u8; 16]) {
     self.cipher = Some(Cfb8::new_from_slices(secret, secret).unwrap());
   }
-  fn write(&mut self, p: tcp::Packet) -> Result<()> {
+
+  fn write(&mut self, p: tcp::Packet) {
     // This is the packet, including it's id
     let mut bytes = p.serialize();
 
@@ -158,30 +159,21 @@ impl PacketStream for JavaStream {
         let total_length = uncompressed_length_buf.len() + compressed.len();
         buf.write_varint(total_length as i32);
         buf.write_varint(uncompressed_length as i32);
-        self.write_data(&mut buf)?;
-        self.write_data(&mut compressed)?;
+        self.write_data(&mut buf);
+        self.write_data(&mut compressed);
       } else {
         // The 1 is for the zero uncompressed_length
         buf.write_varint(bytes.len() as i32 + 1);
         buf.write_varint(0);
-        self.write_data(&mut buf)?;
-        self.write_data(&mut bytes)?;
+        self.write_data(&mut buf);
+        self.write_data(&mut bytes);
       }
     } else {
       // Uncompressed packets just have the length prefixed.
       buf.write_varint(bytes.len() as i32);
-      self.write_data(&mut buf)?;
-      self.write_data(&mut bytes)?;
+      self.write_data(&mut buf);
+      self.write_data(&mut bytes);
     }
-
-    Ok(())
-  }
-
-  fn set_compression(&mut self, compression: i32) {
-    self.compression = compression as usize;
-  }
-  fn enable_encryption(&mut self, secret: &[u8; 16]) {
-    self.cipher = Some(Cfb8::new_from_slices(secret, secret).unwrap());
   }
 
   fn flush_time(&self) -> Option<Duration> {

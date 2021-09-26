@@ -6,7 +6,6 @@ use sc_common::{
   math,
   net::{cb, sb, tcp},
   proto,
-  proto::minecraft_client::MinecraftClient,
   util::{chat::Color, Chat, UUID},
   version::ProtocolVersion,
 };
@@ -17,8 +16,7 @@ use tokio::{
   sync::{mpsc, oneshot},
   time,
 };
-use tokio_stream::wrappers::ReceiverStream;
-use tonic::{Request, Status, Streaming};
+use tonic::Streaming;
 
 #[derive(Debug, Copy, Clone)]
 pub enum State {
@@ -42,10 +40,12 @@ impl State {
 }
 
 pub struct Conn<'a, S> {
-  stream: S,
-  state:  State,
-  ver:    ProtocolVersion,
-  icon:   &'a str,
+  stream:      S,
+  state:       State,
+  server_send: mpsc::Sender<proto::Packet>,
+  server_recv: Streaming<proto::Packet>,
+  ver:         ProtocolVersion,
+  icon:        &'a str,
 }
 
 pub struct ClientListener<R> {
@@ -79,17 +79,18 @@ pub struct LoginProperty {
   pub signature: Option<String>,
 }
 
+/*
 impl<R: StreamReader + Send> ClientListener<R> {
   /// This starts listening for packets from the server. The rx and tx are used
   /// to close the ServerListener. Specifically, the tx will send a value once
   /// this listener has been closed, and this listener will close once the rx
   /// gets a message.
-  pub async fn run(
+  pub fn run(
     &mut self,
     tx: oneshot::Sender<()>,
     rx: oneshot::Receiver<()>,
   ) -> Result<(), Box<dyn Error>> {
-    let res = self.run_inner(rx).await;
+    let res = self.run_inner(rx);
     // Close the other connection. We ignore the result, as that means the rx has
     // been dropped. We don't care if the rx has been dropped, because that means
     // the other listener has already closed.
@@ -195,6 +196,7 @@ impl<W: StreamWriter + Send + Sync> ServerListener<W> {
     Ok(())
   }
 }
+*/
 
 #[derive(Serialize)]
 struct JsonStatus<'a> {
@@ -231,37 +233,40 @@ impl<'a, S: PacketStream + Send + Sync> Conn<'a, S> {
     self.ver
   }
 
-  pub async fn split(self, ip: String) -> Result<(ClientListener<R>, ServerListener<W>), Status> {
-    let (tx, rx) = mpsc::channel(1);
-
-    let mut server = MinecraftClient::connect(ip)
-      .await
-      .map_err(|e| io::Error::new(io::ErrorKind::Other, e.to_string()))?;
-    let response = server.connection(Request::new(ReceiverStream::new(rx))).await?;
-    let inbound = response.into_inner();
-
-    Ok((
-      ClientListener { ver: self.ver, client: self.reader, server: tx },
-      ServerListener { ver: self.ver, client: self.writer, server: inbound },
-    ))
+  pub fn poll(&mut self) -> io::Result<()> {
+    self.stream.poll()
+  }
+  /// Returns Ok(false) in normal operation, and Ok(true) if the stream has
+  /// closed.
+  pub fn read(&mut self) -> io::Result<bool> {
+    loop {
+      match self.stream.read(self.ver) {
+        Ok(Some(p)) => {
+          self.server.send(p);
+        }
+        Ok(None) => break,
+        Err(e) => return Err(e),
+      }
+    }
+    Ok(false)
   }
 
-  /// Sends the set compression packet, if needed.
-  async fn send_compression(&mut self, compression: i32) -> io::Result<()> {
+  /// Sends the set compression packet, if needed. The stream will not be
+  /// flushed.
+  fn send_compression(&mut self, compression: i32) {
     // Set compression, only if the thresh hold is non-zero
     if compression != 0 {
       let mut out = tcp::Packet::new(3, self.ver);
       out.write_varint(compression);
-      self.writer.write(out).await?;
+      self.stream.write(out);
       // Must happen after the packet has been sent
-      self.writer.set_compression(compression);
-      self.reader.set_compression(compression);
+      self.stream.set_compression(compression);
     }
-    Ok(())
   }
 
-  /// Sends the login success packet, and sets the state to Play.
-  async fn send_success(&mut self, info: &LoginInfo) -> io::Result<()> {
+  /// Sends the login success packet, and sets the state to Play. The stream
+  /// will not be flushed.
+  fn send_success(&mut self, info: &LoginInfo) {
     // Login success
     let mut out = tcp::Packet::new(2, self.ver);
     if self.ver >= ProtocolVersion::V1_16 {
@@ -270,19 +275,17 @@ impl<'a, S: PacketStream + Send + Sync> Conn<'a, S> {
       out.write_str(&info.id.as_dashed_str());
     }
     out.write_str(&info.name);
-    self.writer.write(out).await?;
+    self.stream.write(out);
 
     self.state = State::Play;
-    Ok(())
   }
 
-  // Disconnects the client during authentication
-  async fn send_disconnect<C: Into<Chat>>(&mut self, reason: C) -> io::Result<()> {
+  // Disconnects the client during authentication. The stream will not be flushed.
+  async fn send_disconnect<C: Into<Chat>>(&mut self, reason: C) {
     // Disconnect
     let mut out = tcp::Packet::new(0, self.ver);
     out.write_str(&reason.into().to_json());
-    self.writer.write(out).await?;
-    Ok(())
+    self.stream.write(out);
   }
 
   /// Generates the json status for the server
@@ -322,7 +325,7 @@ impl<'a, S: PacketStream + Send + Sync> Conn<'a, S> {
   /// the client just wants to get the status of the server. If this function
   /// returns Ok(Some(LoginInfo)), then a connection should be initialized with
   /// a grpc server.
-  pub async fn handshake(
+  pub fn handshake(
     &mut self,
     compression: i32,
     key: Arc<RSAPrivateKey>,
@@ -337,14 +340,13 @@ impl<'a, S: PacketStream + Send + Sync> Conn<'a, S> {
     'login: loop {
       // Flush everything in the handshake (there are a bunch of back-and-forths that
       // we want to be fast).
-      self.writer.flush().await?;
-      self.reader.poll().await.unwrap();
+      self.stream.flush()?;
+      self.stream.poll()?;
       loop {
-        let p = self.reader.read(self.ver).unwrap();
-        if p.is_none() {
-          break;
-        }
-        let mut p = p.unwrap();
+        let mut p = match self.stream.read(self.ver).unwrap() {
+          Some(p) => p,
+          None => break,
+        };
         let err = p.err();
         match err {
           Some(e) => {
@@ -381,7 +383,7 @@ impl<'a, S: PacketStream + Send + Sync> Conn<'a, S> {
                 let status = self.build_status();
                 let mut out = tcp::Packet::new(0, self.ver);
                 out.write_str(&serde_json::to_string(&status).unwrap());
-                self.writer.write(out).await?;
+                self.stream.write(out);
               }
               // Ping
               1 => {
@@ -389,8 +391,8 @@ impl<'a, S: PacketStream + Send + Sync> Conn<'a, S> {
                 // Send pong
                 let mut out = tcp::Packet::new(1, self.ver);
                 out.write_u64(id);
-                self.writer.write(out).await?;
-                self.writer.flush().await?;
+                self.stream.write(out);
+                self.stream.flush();
                 // Client is done sending packets, we can close now.
                 return Ok(None);
               }
@@ -435,12 +437,12 @@ impl<'a, S: PacketStream + Send + Sync> Conn<'a, S> {
                     out.write_buf(key); // DER encoded RSA key
                     out.write_varint(4); // Token len
                     out.write_buf(&token); // Verify token
-                    self.writer.write(out).await?;
+                    self.stream.write(out);
                     // Wait for encryption response to enable encryption
                   }
                   None => {
-                    self.send_compression(compression).await?;
-                    self.send_success(info.as_ref().unwrap()).await?;
+                    self.send_compression(compression);
+                    self.send_success(info.as_ref().unwrap());
                     // Successful login, we can break now
                     break 'login;
                   }
@@ -500,27 +502,27 @@ impl<'a, S: PacketStream + Send + Sync> Conn<'a, S> {
 
                 // If we need to disconnect the client, the client is expecting encrypted
                 // packets from now on, so we need to enable encryption here.
-                self.writer.enable_encryption(&secret);
-                self.reader.enable_encryption(&secret);
+                self.stream.enable_encryption(&secret);
+                self.stream.enable_encryption(&secret);
 
                 let mut hash = Sha1::new();
                 hash.update("");
                 hash.update(secret);
                 hash.update(der_key.unwrap().as_ref());
-                info = match reqwest::get(format!(
+                info = match reqwest::blocking::get(format!(
                   "https://sessionserver.mojang.com/session/minecraft/hasJoined?username={}&serverId={}",
                   username.as_ref().unwrap(),
                   math::hexdigest(hash)
-                )).await {
+                )) {
                   Ok(v) => {
                     info!("got status code: {}", v.status());
                     if v.status() == StatusCode::NO_CONTENT {
-                      self.send_disconnect("Invalid auth token! Please re-login (restart your game and launcher)").await?;
-                      self.writer.flush().await?;
+                      self.send_disconnect("Invalid auth token! Please re-login (restart your game and launcher)");
+                      self.stream.flush();
                       // Disconnect client; they are not authenticated
                       return Ok(None);
                     }
-                    match v.json().await {
+                    match v.json() {
                       Ok(v) => Some(v),
                       Err(e) => return Err(io::Error::new(
                         ErrorKind::InvalidData,
@@ -534,8 +536,8 @@ impl<'a, S: PacketStream + Send + Sync> Conn<'a, S> {
                   ))
                 };
 
-                self.send_compression(compression).await?;
-                self.send_success(info.as_ref().unwrap()).await?;
+                self.send_compression(compression);
+                self.send_success(info.as_ref().unwrap());
                 // Successful login, we can break now
                 break 'login;
               }
@@ -556,7 +558,7 @@ impl<'a, S: PacketStream + Send + Sync> Conn<'a, S> {
         }
       }
     }
-    self.writer.flush().await?;
+    self.stream.flush()?;
     Ok(info)
   }
 }
