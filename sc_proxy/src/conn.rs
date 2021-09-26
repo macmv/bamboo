@@ -1,5 +1,6 @@
 use crate::stream::PacketStream;
 use mio::Waker;
+use parking_lot::RwLock;
 use rand::{rngs::OsRng, RngCore};
 use reqwest::StatusCode;
 use rsa::{padding::PaddingScheme, RSAPrivateKey};
@@ -44,7 +45,7 @@ pub struct Conn<'a, S> {
   state:        State,
   server_send:  mpsc::Sender<proto::Packet>,
   server_recv:  crossbeam_channel::Receiver<tcp::Packet>,
-  ver:          ProtocolVersion,
+  ver:          Arc<RwLock<ProtocolVersion>>,
   icon:         &'a str,
   /// The name sent from the client. The mojang auth server also sends us a
   /// username; we use this to validate the client info with the mojang auth
@@ -68,7 +69,7 @@ pub struct Conn<'a, S> {
 pub struct ServerListener {
   client: crossbeam_channel::Sender<tcp::Packet>,
   server: Streaming<proto::Packet>,
-  ver:    ProtocolVersion,
+  ver:    Arc<RwLock<ProtocolVersion>>,
 }
 
 #[derive(Deserialize, Debug)]
@@ -109,7 +110,8 @@ impl ServerListener {
         .map_err(|e| io::Error::new(ErrorKind::Other, e.to_string()))?
       {
         Some(p) => {
-          self.client.send(cb::Packet::from_proto(p, self.ver).to_tcp(self.ver)).unwrap();
+          let ver = *self.ver.read();
+          self.client.send(cb::Packet::from_proto(p, ver).to_tcp(ver)).unwrap();
           waker.wake()?;
         }
         None => break,
@@ -162,13 +164,14 @@ impl<'a, S: PacketStream + Send + Sync> Conn<'a, S> {
       futures::executor::block_on(server.connection(Request::new(ReceiverStream::new(rx))))?;
     let server_recv = response.into_inner();
 
+    let ver = Arc::new(RwLock::new(ProtocolVersion::Invalid));
     Ok((
       Conn {
         stream,
         state: State::Handshake,
         server_send,
         server_recv: clientbound_rx,
-        ver: ProtocolVersion::Invalid,
+        ver: ver.clone(),
         icon,
         username: None,
         info: None,
@@ -178,15 +181,11 @@ impl<'a, S: PacketStream + Send + Sync> Conn<'a, S> {
         compression_target,
         closed: false,
       },
-      ServerListener {
-        client: clientbound_tx,
-        server: server_recv,
-        ver:    ProtocolVersion::Invalid,
-      },
+      ServerListener { client: clientbound_tx, server: server_recv, ver },
     ))
   }
   pub fn ver(&self) -> ProtocolVersion {
-    self.ver
+    *self.ver.read()
   }
   pub fn closed(&self) -> bool {
     self.closed
@@ -199,12 +198,13 @@ impl<'a, S: PacketStream + Send + Sync> Conn<'a, S> {
   /// closed.
   pub async fn read(&mut self) -> io::Result<()> {
     loop {
-      match self.stream.read(self.ver) {
+      let ver = *self.ver.read();
+      match self.stream.read(ver) {
         Ok(Some(p)) => match self.state {
           State::Play => {
-            let packet = sb::Packet::from_tcp(p, self.ver);
+            let packet = sb::Packet::from_tcp(p, ver);
             // TODO: Handle errors!
-            futures::executor::block_on(self.server_send.send(packet.to_proto(self.ver)))
+            futures::executor::block_on(self.server_send.send(packet.to_proto(ver)))
               .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e.to_string()))?;
           }
           _ => {
@@ -223,7 +223,7 @@ impl<'a, S: PacketStream + Send + Sync> Conn<'a, S> {
   fn send_compression(&mut self) {
     // Set compression, only if the thresh hold is non-zero
     if self.compression_target != 0 {
-      let mut out = tcp::Packet::new(3, self.ver);
+      let mut out = tcp::Packet::new(3, *self.ver.read());
       out.write_varint(self.compression_target);
       self.stream.write(out);
       // Must happen after the packet has been sent
@@ -236,8 +236,9 @@ impl<'a, S: PacketStream + Send + Sync> Conn<'a, S> {
   async fn send_success(&mut self) {
     // Login success
     let info = self.info.as_ref().unwrap();
-    let mut out = tcp::Packet::new(2, self.ver);
-    if self.ver >= ProtocolVersion::V1_16 {
+    let ver = *self.ver.read();
+    let mut out = tcp::Packet::new(2, ver);
+    if ver >= ProtocolVersion::V1_16 {
       out.write_uuid(info.id);
     } else {
       out.write_str(&info.id.as_dashed_str());
@@ -251,9 +252,9 @@ impl<'a, S: PacketStream + Send + Sync> Conn<'a, S> {
         sb::Packet::Login {
           username: info.name.clone(),
           uuid:     info.id,
-          ver:      self.ver.id() as i32,
+          ver:      ver.id() as i32,
         }
-        .to_proto(self.ver),
+        .to_proto(ver),
       )
       .await
       .unwrap();
@@ -264,7 +265,7 @@ impl<'a, S: PacketStream + Send + Sync> Conn<'a, S> {
   // Disconnects the client during authentication. The stream will not be flushed.
   fn send_disconnect<C: Into<Chat>>(&mut self, reason: C) {
     // Disconnect
-    let mut out = tcp::Packet::new(0, self.ver);
+    let mut out = tcp::Packet::new(0, *self.ver.read());
     out.write_str(&reason.into().to_json());
     self.stream.write(out);
   }
@@ -279,7 +280,7 @@ impl<'a, S: PacketStream + Send + Sync> Conn<'a, S> {
     #[cfg(not(debug_assertions))]
     description.add("Release mode").color(Color::Red);
     JsonStatus {
-      version: JsonVersion { name: "1.8".into(), protocol: self.ver.id() as i32 },
+      version: JsonVersion { name: "1.8".into(), protocol: self.ver.read().id() as i32 },
       players: JsonPlayers {
         max:    69,
         online: 420,
@@ -307,6 +308,7 @@ impl<'a, S: PacketStream + Send + Sync> Conn<'a, S> {
   /// returns Ok(Some(LoginInfo)), then a connection should be initialized with
   /// a grpc server.
   async fn handle_handshake(&mut self, mut p: tcp::Packet) -> io::Result<()> {
+    let ver = *self.ver.read();
     match self.state {
       State::Handshake => {
         if p.id() != 0 {
@@ -315,8 +317,9 @@ impl<'a, S: PacketStream + Send + Sync> Conn<'a, S> {
             format!("unknown handshake packet {}", p.id()),
           ));
         }
-        self.ver = ProtocolVersion::from(p.read_varint());
-        if self.ver == ProtocolVersion::Invalid {
+        let ver = ProtocolVersion::from(p.read_varint());
+        *self.ver.write() = ver;
+        if ver == ProtocolVersion::Invalid {
           return Err(io::Error::new(ErrorKind::InvalidInput, "client sent an invalid version"));
         }
 
@@ -330,7 +333,7 @@ impl<'a, S: PacketStream + Send + Sync> Conn<'a, S> {
           // Server status
           0 => {
             let status = self.build_status();
-            let mut out = tcp::Packet::new(0, self.ver);
+            let mut out = tcp::Packet::new(0, ver);
             out.write_str(&serde_json::to_string(&status).unwrap());
             self.stream.write(out);
           }
@@ -338,7 +341,7 @@ impl<'a, S: PacketStream + Send + Sync> Conn<'a, S> {
           1 => {
             let id = p.read_u64();
             // Send pong
-            let mut out = tcp::Packet::new(1, self.ver);
+            let mut out = tcp::Packet::new(1, ver);
             out.write_u64(id);
             self.stream.write(out);
             self.stream.flush()?;
@@ -378,7 +381,7 @@ impl<'a, S: PacketStream + Send + Sync> Conn<'a, S> {
                 OsRng.fill_bytes(&mut self.verify_token);
 
                 // Encryption request
-                let mut out = tcp::Packet::new(1, self.ver);
+                let mut out = tcp::Packet::new(1, ver);
                 out.write_str(""); // Server id, should be empty
                 out.write_varint(key.len() as i32); // Key len
                 out.write_buf(key); // DER encoded RSA key
