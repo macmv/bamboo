@@ -191,13 +191,8 @@ impl PacketStream for JavaStream {
     if self.outgoing.is_empty() {
       return Ok(());
     }
-    self.stream.write(&self.outgoing)?;
-    // Older clients cannot handle too much data at once. So we literally just slow
-    // down their connection when a bunch of data is coming through.
-    // if self.outgoing.len() > FLUSH_SIZE / 2 {
-    //   time::sleep(Duration::from_millis(16)).await;
-    // }
-    self.outgoing.clear();
+    let n = self.stream.write(&self.outgoing)?;
+    self.outgoing.drain(0..n);
     self.last_flush = Instant::now();
     Ok(())
   }
