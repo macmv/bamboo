@@ -15,7 +15,7 @@ use sc_common::{
 use serde_derive::{Deserialize, Serialize};
 use sha1::{Digest, Sha1};
 use std::{convert::TryInto, fmt, io, io::ErrorKind, sync::Arc};
-use tokio::sync::mpsc;
+use tokio::sync::{mpsc, oneshot};
 use tokio_stream::wrappers::ReceiverStream;
 use tonic::{transport::Endpoint, Request, Streaming};
 
@@ -49,6 +49,9 @@ pub struct Conn<'a, S> {
   /// If this is None, a connection has not been opened with the server yet
   /// (this also means state != Play)
   server_recv:  Option<crossbeam_channel::Receiver<tcp::Packet>>,
+  /// If a connection is open with a server, sending on this will close that
+  /// ServerListener.
+  server_close: Option<oneshot::Sender<()>>,
   ver:          ProtocolVersion,
   icon:         &'a str,
   /// The name sent from the client. The mojang auth server also sends us a
@@ -201,6 +204,7 @@ impl<'a, S: PacketStream + Send + Sync> Conn<'a, S> {
       state: State::Handshake,
       server_send: None,
       server_recv: None,
+      server_close: None,
       ver: ProtocolVersion::Invalid,
       icon,
       username: None,
@@ -230,9 +234,11 @@ impl<'a, S: PacketStream + Send + Sync> Conn<'a, S> {
 
     let (server_send, rx) = mpsc::channel(1);
     let (clientbound_tx, clientbound_rx) = crossbeam_channel::bounded(512);
+    let (server_close_tx, server_close_rx) = oneshot::channel();
 
     self.server_send = Some(server_send);
     self.server_recv = Some(clientbound_rx);
+    self.server_close = Some(server_close_tx);
 
     let response = server
       .connection(Request::new(ReceiverStream::new(rx)))
@@ -249,12 +255,17 @@ impl<'a, S: PacketStream + Send + Sync> Conn<'a, S> {
     let waker = self.waker.take().unwrap();
     let needs_flush_tx = self.needs_flush_tx.take().unwrap();
     tokio::spawn(async move {
-      match server_listener.run(waker, needs_flush_tx).await {
-        Ok(_) => {}
-        Err(e) => {
-          error!("error while listening to client: {}", e);
+      tokio::select!(
+        res = server_listener.run(waker, needs_flush_tx) => {
+          match res {
+            Ok(_) => {}
+            Err(e) => {
+              error!("error while listening to client: {}", e);
+            }
+          };
         }
-      };
+        _ = server_close_rx => {},
+      );
     });
     Ok(())
   }
@@ -278,6 +289,13 @@ impl<'a, S: PacketStream + Send + Sync> Conn<'a, S> {
   }
   pub fn flush(&mut self) -> io::Result<()> {
     self.stream.flush()
+  }
+
+  /// Closes the ServerListener for this connection.
+  pub fn close(&mut self) {
+    if let Some(chan) = self.server_close.take() {
+      chan.send(()).unwrap();
+    }
   }
 
   pub fn poll(&mut self) -> io::Result<()> {
