@@ -1,4 +1,5 @@
 use crate::stream::PacketStream;
+use crossbeam_channel::TryRecvError;
 use mio::Waker;
 use parking_lot::RwLock;
 use rand::{rngs::OsRng, RngCore};
@@ -189,6 +190,23 @@ impl<'a, S: PacketStream + Send + Sync> Conn<'a, S> {
   }
   pub fn closed(&self) -> bool {
     self.closed
+  }
+
+  /// Checks if there is data to send to the client
+  pub fn needs_send(&self) -> bool {
+    self.server_recv.is_empty()
+  }
+  pub fn write(&mut self) -> io::Result<()> {
+    match self.server_recv.try_recv() {
+      Ok(p) => Ok(self.stream.write(p)),
+      Err(TryRecvError::Empty) => return Err(io::Error::new(io::ErrorKind::WouldBlock, "")),
+      Err(TryRecvError::Disconnected) => {
+        return Err(io::Error::new(io::ErrorKind::NotConnected, ""))
+      }
+    }
+  }
+  pub fn flush(&mut self) -> io::Result<()> {
+    self.stream.flush()
   }
 
   pub fn poll(&mut self) -> io::Result<()> {

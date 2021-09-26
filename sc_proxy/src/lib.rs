@@ -98,29 +98,51 @@ pub async fn run() -> Result<(), Box<dyn Error>> {
         }
         token => {
           let conn = clients.get_mut(&token).expect("client doesn't exist!");
+          let mut closed = false;
           loop {
-            match conn.poll() {
-              Ok(_) => match conn.read().await {
-                Ok(_) => {
-                  if conn.closed() {
+            if conn.needs_send() {
+              match conn.flush() {
+                Ok(_) => {}
+                Err(ref e) if e.kind() == io::ErrorKind::WouldBlock => {
+                  // Socket is not ready anymore, stop reading
+                  conn.flush()?;
+                  break;
+                }
+                Err(e) => {
+                  error!("error while listening to client {:?}: {}", token, e);
+                  clients.remove(&token);
+                  closed = true;
+                  break;
+                }
+              }
+            }
+          }
+          if !closed {
+            let conn = clients.get_mut(&token).expect("client doesn't exist!");
+            loop {
+              match conn.poll() {
+                Ok(_) => match conn.read().await {
+                  Ok(_) => {
+                    if conn.closed() {
+                      clients.remove(&token);
+                      break;
+                    }
+                  }
+                  Err(e) => {
+                    error!("error while parsing packet from client {:?}: {}", token, e);
                     clients.remove(&token);
                     break;
                   }
+                },
+                Err(ref e) if e.kind() == io::ErrorKind::WouldBlock => {
+                  // Socket is not ready anymore, stop reading
+                  break;
                 }
                 Err(e) => {
-                  error!("error while parsing packet from client {:?}: {}", token, e);
+                  error!("error while listening to client {:?}: {}", token, e);
                   clients.remove(&token);
                   break;
                 }
-              },
-              Err(ref e) if e.kind() == io::ErrorKind::WouldBlock => {
-                // Socket is not ready anymore, stop reading
-                break;
-              }
-              Err(e) => {
-                error!("error while listening to client {:?}: {}", token, e);
-                clients.remove(&token);
-                break;
               }
             }
           }
