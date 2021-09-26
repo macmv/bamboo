@@ -10,8 +10,8 @@ use sc_proxy::stream::{
   java::{JavaStreamReader, JavaStreamWriter},
   StreamReader, StreamWriter,
 };
-use std::{env, error::Error, io, sync::Arc};
-use tokio::{net::TcpStream, sync::Mutex};
+use std::{env, error::Error, io, net::TcpStream, sync::Arc};
+use tokio::sync::Mutex;
 
 mod cli;
 mod command;
@@ -70,12 +70,11 @@ async fn run(rows: u16) -> Result<(), Box<dyn Error>> {
   let ver = ProtocolVersion::V1_8;
 
   info!("connecting to {}", ip);
-  let stream = TcpStream::connect(ip).await?;
+  let stream = TcpStream::connect(ip)?;
   info!("connection established");
 
-  let (read, write) = stream.into_split();
-  let mut reader = JavaStreamReader::new(read);
-  let mut writer = JavaStreamWriter::new(write);
+  let mut reader = JavaStreamReader::new(stream.try_clone()?);
+  let mut writer = JavaStreamWriter::new(stream);
 
   handle::handshake(&mut reader, &mut writer, ver).await?;
   info!("login complete");
