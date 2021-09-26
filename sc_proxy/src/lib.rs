@@ -14,7 +14,6 @@ use crate::{
   conn::Conn,
   stream::{java::stream::JavaStream, PacketStream},
 };
-use sc_common::proto::minecraft_client::MinecraftClient;
 
 pub fn load_icon(path: &str) -> String {
   let mut icon = match image::open(path).map_err(|e| error!("error loading icon: {}", e)) {
@@ -204,20 +203,10 @@ pub fn new_conn<'a, S: PacketStream + Send + Sync + 'static>(
   icon: &str,
   token: Token,
 ) -> Result<Conn<S>, Box<dyn Error>> {
-  let ip = "http://0.0.0.0:8483".to_string();
+  let ip = "http://0.0.0.0:8483".parse().unwrap();
   let compression = 256;
 
-  let client = futures::executor::block_on(MinecraftClient::connect(ip))?;
-  let (conn, mut server_listener) =
-    Conn::new(stream, client, compression, key, der_key, icon, token)?;
+  let conn = Conn::new(stream, ip, compression, key, der_key, icon, token, waker, needs_flush_tx)?;
 
-  tokio::spawn(async move {
-    match server_listener.run(waker, needs_flush_tx).await {
-      Ok(_) => {}
-      Err(e) => {
-        error!("error while listening to client: {}", e);
-      }
-    };
-  });
   Ok(conn)
 }
