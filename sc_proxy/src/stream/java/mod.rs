@@ -1,3 +1,3 @@
 pub mod stream;
 
-pub use stream::{JavaStreamReader, JavaStreamWriter};
+pub use stream::JavaStream;

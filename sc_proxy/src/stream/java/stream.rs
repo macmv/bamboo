@@ -1,4 +1,4 @@
-use super::super::{StreamReader, StreamWriter};
+use super::super::PacketStream;
 use aes::{
   cipher::{AsyncStreamCipher, NewCipher},
   Aes128,
@@ -11,54 +11,54 @@ use sc_common::{net::tcp, util, util::Buffer, version::ProtocolVersion};
 use std::{
   io,
   io::{ErrorKind, Read, Result, Write},
-  net::TcpStream as StdTcpStream,
 };
 use tokio::time::{Duration, Instant};
 
 const FLUSH_SIZE: usize = 16 * 1024;
 const FLUSH_TIME: Duration = Duration::from_millis(50);
 
-pub struct JavaStreamReader {
-  stream:      TcpStream,
-  prod:        Producer<u8>,
-  cons:        Consumer<u8>,
-  // If this is zero, compression is disabled.
-  compression: usize,
-  // If this is none, then encryption is disabled.
-  cipher:      Option<Cfb8<Aes128>>,
-}
-pub struct JavaStreamWriter {
-  stream:      TcpStream,
-  outgoing:    Vec<u8>,
-  last_flush:  Instant,
+pub struct JavaStream {
+  stream: TcpStream,
+
+  recv_prod: Producer<u8>,
+  recv_cons: Consumer<u8>,
+
+  outgoing:   Vec<u8>,
+  last_flush: Instant,
+
   // If this is zero, compression is disabled.
   compression: usize,
   // If this is none, then encryption is disabled.
   cipher:      Option<Cfb8<Aes128>>,
 }
 
-pub fn new(stream: StdTcpStream) -> Result<(JavaStreamReader, JavaStreamWriter)> {
-  // We want to block on read calls
-  // stream.set_nonblocking(true)?;
-  stream.set_nonblocking(true)?;
-  let s = stream.try_clone()?;
-  Ok((
-    JavaStreamReader::new(TcpStream::from_std(s)),
-    JavaStreamWriter::new(TcpStream::from_std(stream)),
-  ))
-}
-
-impl JavaStreamReader {
+impl JavaStream {
   pub fn new(stream: TcpStream) -> Self {
     let buf = RingBuffer::new(64 * 1024);
-    let (prod, cons) = buf.split();
-    JavaStreamReader { stream, prod, cons, compression: 0, cipher: None }
+    let (recv_prod, recv_cons) = buf.split();
+    JavaStream {
+      stream,
+      recv_prod,
+      recv_cons,
+      outgoing: Vec::with_capacity(1024),
+      last_flush: Instant::now(),
+      compression: 0,
+      cipher: None,
+    }
+  }
+
+  fn write_data(&mut self, data: &mut [u8]) {
+    if let Some(c) = &mut self.cipher {
+      c.encrypt(data);
+    }
+
+    self.outgoing.extend(data.iter());
+    Ok(())
   }
 }
 
-#[async_trait]
-impl StreamReader for JavaStreamReader {
-  async fn poll(&mut self) -> Result<()> {
+impl PacketStream for JavaStream {
+  fn poll(&mut self) -> Result<()> {
     let mut msg: &mut [u8] = &mut [0; 1024];
 
     // This appends to msg, so we don't need to truncate
@@ -73,13 +73,13 @@ impl StreamReader for JavaStreamReader {
     if let Some(c) = &mut self.cipher {
       c.decrypt(msg);
     }
-    self.prod.push_slice(msg);
+    self.recv_prod.push_slice(msg);
     Ok(())
   }
   fn read(&mut self, ver: ProtocolVersion) -> Result<Option<tcp::Packet>> {
     let mut len = 0;
     let mut read = -1;
-    self.cons.access(|left, right| {
+    self.recv_cons.access(|left, right| {
       let mut bytes: &mut [u8] = &mut [0; 5];
       let mut on_left = true;
       for i in 0..5 {
@@ -108,13 +108,13 @@ impl StreamReader for JavaStreamReader {
       return Err(io::Error::new(ErrorKind::InvalidData, "invalid varint"));
     }
     // Incomplete varint, or an incomplete packet
-    if read == 0 || (self.cons.len() as isize) < len + read {
+    if read == 0 || (self.recv_cons.len() as isize) < len + read {
       return Ok(None);
     }
     // Now that we know we have a valid packet, we pop the length bytes
-    self.cons.discard(read as usize);
+    self.recv_cons.discard(read as usize);
     let mut vec = vec![0; len as usize];
-    self.cons.pop_slice(&mut vec);
+    self.recv_cons.pop_slice(&mut vec);
     // And parse it
     if self.compression != 0 {
       let mut buf = Buffer::new(vec);
@@ -138,35 +138,7 @@ impl StreamReader for JavaStreamReader {
   fn enable_encryption(&mut self, secret: &[u8; 16]) {
     self.cipher = Some(Cfb8::new_from_slices(secret, secret).unwrap());
   }
-}
-
-impl JavaStreamWriter {
-  pub fn new(stream: TcpStream) -> Self {
-    JavaStreamWriter {
-      stream,
-      outgoing: Vec::with_capacity(1024),
-      last_flush: Instant::now(),
-      compression: 0,
-      cipher: None,
-    }
-  }
-
-  async fn write_data(&mut self, data: &mut [u8]) -> Result<()> {
-    if let Some(c) = &mut self.cipher {
-      c.encrypt(data);
-    }
-    if self.outgoing.len() + data.len() > FLUSH_SIZE {
-      self.flush().await?;
-    }
-
-    self.outgoing.extend(data.iter());
-    Ok(())
-  }
-}
-
-#[async_trait]
-impl StreamWriter for JavaStreamWriter {
-  async fn write(&mut self, p: tcp::Packet) -> Result<()> {
+  fn write(&mut self, p: tcp::Packet) -> Result<()> {
     // This is the packet, including it's id
     let mut bytes = p.serialize();
 
@@ -186,20 +158,20 @@ impl StreamWriter for JavaStreamWriter {
         let total_length = uncompressed_length_buf.len() + compressed.len();
         buf.write_varint(total_length as i32);
         buf.write_varint(uncompressed_length as i32);
-        self.write_data(&mut buf).await?;
-        self.write_data(&mut compressed).await?;
+        self.write_data(&mut buf)?;
+        self.write_data(&mut compressed)?;
       } else {
         // The 1 is for the zero uncompressed_length
         buf.write_varint(bytes.len() as i32 + 1);
         buf.write_varint(0);
-        self.write_data(&mut buf).await?;
-        self.write_data(&mut bytes).await?;
+        self.write_data(&mut buf)?;
+        self.write_data(&mut bytes)?;
       }
     } else {
       // Uncompressed packets just have the length prefixed.
       buf.write_varint(bytes.len() as i32);
-      self.write_data(&mut buf).await?;
-      self.write_data(&mut bytes).await?;
+      self.write_data(&mut buf)?;
+      self.write_data(&mut bytes)?;
     }
 
     Ok(())
@@ -215,6 +187,8 @@ impl StreamWriter for JavaStreamWriter {
   fn flush_time(&self) -> Option<Duration> {
     if self.outgoing.is_empty() {
       None
+    } else if self.outgoing.len() >= FLUSH_SIZE {
+      Some(Duration::from_millis(0))
     } else {
       Some(
         FLUSH_TIME
@@ -224,7 +198,7 @@ impl StreamWriter for JavaStreamWriter {
     }
   }
 
-  async fn flush(&mut self) -> Result<()> {
+  fn flush(&mut self) -> Result<()> {
     if self.outgoing.is_empty() {
       return Ok(());
     }

@@ -7,14 +7,15 @@ extern crate async_trait;
 pub mod conn;
 pub mod stream;
 
+use mio::{net::TcpListener, Events, Interest, Poll, Token};
 use rand::rngs::OsRng;
 use rsa::RSAPrivateKey;
-use std::{error::Error, net::TcpListener, sync::Arc};
+use std::{collections::HashMap, error::Error, io, sync::Arc};
 use tokio::sync::oneshot;
 
 use crate::{
   conn::Conn,
-  stream::{bedrock, java, StreamReader, StreamWriter},
+  stream::{java, PacketStream},
 };
 use sc_common::{math::der, net::sb};
 
@@ -32,13 +33,16 @@ pub fn load_icon(path: &str) -> String {
 pub async fn run() -> Result<(), Box<dyn Error>> {
   sc_common::init("proxy");
 
+  const JAVA_LISTENER: Token = Token(0xffffffff);
+  const BEDROCK_LISTENER: Token = Token(0xfffffffe);
+
   let addr = "0.0.0.0:25565";
   info!("listening for java clients on {}", addr);
-  let java_listener = TcpListener::bind(addr)?;
+  let java_listener = TcpListener::bind(addr.parse()?)?;
 
-  let addr = "0.0.0.0:19132";
-  info!("listening for bedrock clients on {}", addr);
-  let mut bedrock_listener = bedrock::Listener::bind(addr).await?;
+  // let addr = "0.0.0.0:19132";
+  // info!("listening for bedrock clients on {}", addr);
+  // let mut bedrock_listener = bedrock::Listener::bind(addr).await?;
 
   // Minecraft uses 1024 bits for this.
   let key = Arc::new(RSAPrivateKey::new(&mut OsRng, 1024).expect("failed to generate a key"));
@@ -46,54 +50,117 @@ pub async fn run() -> Result<(), Box<dyn Error>> {
   let der_key = None;
   let icon = Arc::new(load_icon("icon.png"));
 
-  let key2 = key.clone();
-  let icon2 = icon.clone();
-  let java_handle = tokio::spawn(async move {
-    loop {
-      let (sock, _) = java_listener.accept().unwrap();
-      let (reader, writer) = java::stream::new(sock).unwrap();
-      let k = key.clone();
-      let i = icon.clone();
-      let d = der_key.clone();
-      tokio::spawn(async move {
-        match handle_client(reader, writer, k, d, &i).await {
-          Ok(_) => {}
-          Err(e) => {
-            error!("error in connection: {}", e);
-          }
-        };
-      })
-      .await
-      .unwrap();
-    }
-  });
-  let bedrock_handle = tokio::spawn(async move {
-    loop {
-      if let Some((reader, writer)) = bedrock_listener.poll().await.unwrap() {
-        let k = key2.clone();
-        let i = icon2.clone();
-        tokio::spawn(async move {
-          match handle_client(reader, writer, k, None, &i).await {
-            Ok(_) => {}
-            Err(e) => {
-              error!("error in connection: {}", e);
+  let mut poll = Poll::new()?;
+  let mut events = Events::with_capacity(1024);
+  let mut clients = HashMap::new();
+
+  poll.registry().register(&mut java_listener, JAVA_LISTENER, Interest::READABLE);
+
+  let mut buf = [0; 1024];
+  let mut next_token = 0;
+
+  loop {
+    // Wait for events
+    poll.poll(&mut events, None)?;
+
+    for event in &events {
+      match event.token() {
+        JAVA_LISTENER => {
+          loop {
+            match java_listener.accept() {
+              Ok((mut client, _)) => {
+                // New token for this client
+                let token = Token(next_token);
+                next_token += 1;
+
+                // Register this client for events
+                poll.registry().register(
+                  &mut client,
+                  token,
+                  Interest::READABLE | Interest::WRITABLE,
+                )?;
+                clients.insert(token, client);
+              }
+              Err(ref e) if e.kind() == io::ErrorKind::WouldBlock => {
+                // Socket is not ready anymore, stop accepting
+                break;
+              }
+              Err(e) => error!("error while listening: {}", e),
             }
-          };
-        });
+          }
+        }
+        BEDROCK_LISTENER => {
+          unimplemented!();
+        }
+        token => {
+          let client = clients.get_mut(&token).expect("client doesn't exist!");
+          loop {
+            match client.read(&mut buf) {
+              Ok(0) => {
+                // Socket is closed
+                clients.remove(&token);
+                break;
+              }
+              // Data is not actually sent in this example
+              Ok(n) => {
+                let data = &buf[..n];
+                // TODO: Handle data
+              }
+              Err(ref e) if e.kind() == io::ErrorKind::WouldBlock => {
+                // Socket is not ready anymore, stop reading
+                break;
+              }
+              Err(e) => error!("error while listening to client {}: {}", token, e),
+            }
+          }
+        }
       }
     }
-  });
-  futures::future::join_all(vec![java_handle, bedrock_handle]).await;
-  Ok(())
+  }
+
+  // let key2 = key.clone();
+  // let icon2 = icon.clone();
+  // let java_handle = tokio::spawn(async move {
+  //   loop {
+  //     let (sock, _) = java_listener.accept().unwrap();
+  //     let stream = java::stream::JavaStream::new(sock);
+  //     let k = key.clone();
+  //     let i = icon.clone();
+  //     let d = der_key.clone();
+  //     tokio::spawn(async move {
+  //       match handle_client(stream, k, d, &i).await {
+  //         Ok(_) => {}
+  //         Err(e) => {
+  //           error!("error in connection: {}", e);
+  //         }
+  //       };
+  //     })
+  //     .await
+  //     .unwrap();
+  //   }
+  // });
+  // let bedrock_handle = tokio::spawn(async move {
+  //   loop {
+  //     if let Some((reader, writer)) = bedrock_listener.poll().await.unwrap()
+  // {       let k = key2.clone();
+  //       let i = icon2.clone();
+  //       tokio::spawn(async move {
+  //         match handle_client(reader, writer, k, None, &i).await {
+  //           Ok(_) => {}
+  //           Err(e) => {
+  //             error!("error in connection: {}", e);
+  //           }
+  //         };
+  //       });
+  //     }
+  //   }
+  // });
+  // futures::future::join_all(vec![java_handle, bedrock_handle]).await;
+  // Ok(())
 }
 
-pub async fn handle_client<
-  'a,
-  R: StreamReader + Send + 'static,
-  W: StreamWriter + Send + Sync + 'static,
->(
-  reader: R,
-  writer: W,
+pub async fn handle_client<'a, S: PacketStream + Send + 'static>(
+  stream: S,
   key: Arc<RSAPrivateKey>,
   der_key: Option<Arc<Vec<u8>>>,
   icon: &'a str,
@@ -104,7 +171,7 @@ pub async fn handle_client<
   let ip = "http://0.0.0.0:8483".to_string();
   let compression = 256;
 
-  let mut conn = Conn::new(reader, writer, icon);
+  let mut conn = Conn::new(stream, icon);
   let info = match conn.handshake(compression, key, der_key).await? {
     Some(v) => v,
     // Means the client was either not allowed to join, or was just sending a status request.

@@ -1,4 +1,4 @@
-use crate::stream::{StreamReader, StreamWriter};
+use crate::stream::PacketStream;
 use rand::{rngs::OsRng, RngCore};
 use reqwest::StatusCode;
 use rsa::{padding::PaddingScheme, RSAPrivateKey};
@@ -41,9 +41,8 @@ impl State {
   }
 }
 
-pub struct Conn<'a, R, W> {
-  reader: R,
-  writer: W,
+pub struct Conn<'a, S> {
+  stream: S,
   state:  State,
   ver:    ProtocolVersion,
   icon:   &'a str,
@@ -224,9 +223,9 @@ struct JsonPlayer {
   id:   String,
 }
 
-impl<'a, R: StreamReader + Send, W: StreamWriter + Send + Sync> Conn<'a, R, W> {
-  pub fn new(reader: R, writer: W, icon: &'a str) -> Conn<'a, R, W> {
-    Conn { reader, writer, state: State::Handshake, ver: ProtocolVersion::Invalid, icon }
+impl<'a, S: PacketStream + Send + Sync> Conn<'a, S> {
+  pub fn new(stream: S, icon: &'a str) -> Conn<'a, S> {
+    Conn { stream, state: State::Handshake, ver: ProtocolVersion::Invalid, icon }
   }
   pub fn ver(&self) -> ProtocolVersion {
     self.ver
