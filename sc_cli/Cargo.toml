@@ -21,6 +21,7 @@ tokio = { version = "1.5", features = ["rt-multi-thread"] }
 tokio-stream = "0.1"
 futures = "0.3"
 async-stream = "0.3"
+mio = "0.7.13"
 
 # for the cli
 rustyline = "8.2.0"

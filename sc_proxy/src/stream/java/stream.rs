@@ -5,12 +5,13 @@ use aes::{
 };
 use cfb8::Cfb8;
 use miniz_oxide::{deflate::compress_to_vec_zlib, inflate::decompress_to_vec_zlib};
+use mio::net::TcpStream;
 use ringbuf::{Consumer, Producer, RingBuffer};
 use sc_common::{net::tcp, util, util::Buffer, version::ProtocolVersion};
 use std::{
   io,
   io::{ErrorKind, Read, Result, Write},
-  net::TcpStream,
+  net::TcpStream as StdTcpStream,
 };
 use tokio::time::{Duration, Instant};
 
@@ -36,11 +37,15 @@ pub struct JavaStreamWriter {
   cipher:      Option<Cfb8<Aes128>>,
 }
 
-pub fn new(stream: TcpStream) -> Result<(JavaStreamReader, JavaStreamWriter)> {
+pub fn new(stream: StdTcpStream) -> Result<(JavaStreamReader, JavaStreamWriter)> {
   // We want to block on read calls
   // stream.set_nonblocking(true)?;
+  stream.set_nonblocking(true)?;
   let s = stream.try_clone()?;
-  Ok((JavaStreamReader::new(s), JavaStreamWriter::new(stream)))
+  Ok((
+    JavaStreamReader::new(TcpStream::from_std(s)),
+    JavaStreamWriter::new(TcpStream::from_std(stream)),
+  ))
 }
 
 impl JavaStreamReader {
