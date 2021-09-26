@@ -39,12 +39,26 @@ impl State {
 }
 
 pub struct Conn<'a, S> {
-  stream:      S,
-  state:       State,
-  server_send: mpsc::Sender<proto::Packet>,
-  server_recv: Streaming<proto::Packet>,
-  ver:         ProtocolVersion,
-  icon:        &'a str,
+  stream:       S,
+  state:        State,
+  server_send:  mpsc::Sender<proto::Packet>,
+  server_recv:  Streaming<proto::Packet>,
+  ver:          ProtocolVersion,
+  icon:         &'a str,
+  /// The name sent from the client. The mojang auth server also sends us a
+  /// username; we use this to validate the client info with the mojang auth
+  /// info.
+  username:     Option<String>,
+  info:         Option<LoginInfo>,
+  /// The four byte verify token, used by the client in encryption.
+  verify_token: [u8; 4],
+
+  /// The private key. Always present, even if encryption is disabled.
+  key:                Arc<RSAPrivateKey>,
+  /// The der encoded public key. None if we don't want encryption.
+  der_key:            Option<Vec<u8>>,
+  /// Used in handshake. This is different from `stream.compression`
+  compression_target: i32,
 }
 
 pub struct ClientListener<R> {
@@ -228,6 +242,9 @@ impl<'a, S: PacketStream + Send + Sync> Conn<'a, S> {
   pub fn new(
     stream: S,
     mut server: MinecraftClient<Channel>,
+    compression_target: i32,
+    key: Arc<RSAPrivateKey>,
+    der_key: Option<Vec<u8>>,
     icon: &'a str,
   ) -> Result<Conn<'a, S>, tonic::Status> {
     let (server_send, rx) = mpsc::channel(1);
@@ -243,6 +260,12 @@ impl<'a, S: PacketStream + Send + Sync> Conn<'a, S> {
       server_recv,
       ver: ProtocolVersion::Invalid,
       icon,
+      username: None,
+      info: None,
+      verify_token: [0u8; 4],
+      key,
+      der_key,
+      compression_target,
     })
   }
   pub fn ver(&self) -> ProtocolVersion {
@@ -257,10 +280,15 @@ impl<'a, S: PacketStream + Send + Sync> Conn<'a, S> {
   pub fn read(&mut self) -> io::Result<bool> {
     loop {
       match self.stream.read(self.ver) {
-        Ok(Some(p)) => {
-          let packet = sb::Packet::from_tcp(p, self.ver);
-          self.server_send.send(packet.to_proto(self.ver));
-        }
+        Ok(Some(p)) => match self.state {
+          State::Play => {
+            let packet = sb::Packet::from_tcp(p, self.ver);
+            self.server_send.send(packet.to_proto(self.ver));
+          }
+          _ => {
+            self.handle_handshake(p)?;
+          }
+        },
         Ok(None) => break,
         Err(e) => return Err(e),
       }
@@ -268,23 +296,24 @@ impl<'a, S: PacketStream + Send + Sync> Conn<'a, S> {
     Ok(false)
   }
 
-  /// Sends the set compression packet, if needed. The stream will not be
-  /// flushed.
-  fn send_compression(&mut self, compression: i32) {
+  /// Sends the set compression packet, using self.compression_target. The
+  /// stream will not be flushed.
+  fn send_compression(&mut self) {
     // Set compression, only if the thresh hold is non-zero
-    if compression != 0 {
+    if self.compression_target != 0 {
       let mut out = tcp::Packet::new(3, self.ver);
-      out.write_varint(compression);
+      out.write_varint(self.compression_target);
       self.stream.write(out);
       // Must happen after the packet has been sent
-      self.stream.set_compression(compression);
+      self.stream.set_compression(self.compression_target);
     }
   }
 
   /// Sends the login success packet, and sets the state to Play. The stream
   /// will not be flushed.
-  fn send_success(&mut self, info: &LoginInfo) {
+  fn send_success(&mut self) {
     // Login success
+    let info = self.info.as_ref().unwrap();
     let mut out = tcp::Packet::new(2, self.ver);
     if self.ver >= ProtocolVersion::V1_16 {
       out.write_uuid(info.id);
@@ -298,7 +327,7 @@ impl<'a, S: PacketStream + Send + Sync> Conn<'a, S> {
   }
 
   // Disconnects the client during authentication. The stream will not be flushed.
-  async fn send_disconnect<C: Into<Chat>>(&mut self, reason: C) {
+  fn send_disconnect<C: Into<Chat>>(&mut self, reason: C) {
     // Disconnect
     let mut out = tcp::Packet::new(0, self.ver);
     out.write_str(&reason.into().to_json());
@@ -342,240 +371,197 @@ impl<'a, S: PacketStream + Send + Sync> Conn<'a, S> {
   /// the client just wants to get the status of the server. If this function
   /// returns Ok(Some(LoginInfo)), then a connection should be initialized with
   /// a grpc server.
-  pub fn handshake(
-    &mut self,
-    compression: i32,
-    key: Arc<RSAPrivateKey>,
-    der_key: Option<Arc<Vec<u8>>>,
-  ) -> io::Result<Option<LoginInfo>> {
-    // The name sent from the client. The mojang auth server also sends us a
-    // username; we use this to validate the client info with the mojang auth info.
-    let mut username: Option<String> = None;
-    let mut info = None;
-    // The four byte verify token, used by the client in encryption.
-    let mut token = [0u8; 4];
-    'login: loop {
-      // Flush everything in the handshake (there are a bunch of back-and-forths that
-      // we want to be fast).
-      self.stream.flush()?;
-      self.stream.poll()?;
-      loop {
-        let mut p = match self.stream.read(self.ver).unwrap() {
-          Some(p) => p,
-          None => break,
-        };
-        let err = p.err();
-        match err {
-          Some(e) => {
-            error!("error while parsing packet: {}", e);
-            break;
-          }
-          None => {}
+  fn handle_handshake(&mut self, mut p: tcp::Packet) -> io::Result<()> {
+    match self.state {
+      State::Handshake => {
+        if p.id() != 0 {
+          return Err(io::Error::new(
+            ErrorKind::InvalidInput,
+            format!("unknown handshake packet {}", p.id()),
+          ));
         }
-        match self.state {
-          State::Handshake => {
-            if p.id() != 0 {
-              return Err(io::Error::new(
-                ErrorKind::InvalidInput,
-                format!("unknown handshake packet {}", p.id()),
-              ));
-            }
-            self.ver = ProtocolVersion::from(p.read_varint());
-            if self.ver == ProtocolVersion::Invalid {
-              return Err(io::Error::new(
-                ErrorKind::InvalidInput,
-                "client sent an invalid version",
-              ));
-            }
+        self.ver = ProtocolVersion::from(p.read_varint());
+        if self.ver == ProtocolVersion::Invalid {
+          return Err(io::Error::new(ErrorKind::InvalidInput, "client sent an invalid version"));
+        }
 
-            let _addr = p.read_str();
-            let _port = p.read_u16();
-            let next = p.read_varint();
-            self.state = State::from_next(next);
+        let _addr = p.read_str();
+        let _port = p.read_u16();
+        let next = p.read_varint();
+        self.state = State::from_next(next);
+      }
+      State::Status => {
+        match p.id() {
+          // Server status
+          0 => {
+            let status = self.build_status();
+            let mut out = tcp::Packet::new(0, self.ver);
+            out.write_str(&serde_json::to_string(&status).unwrap());
+            self.stream.write(out);
           }
-          State::Status => {
-            match p.id() {
-              // Server status
-              0 => {
-                let status = self.build_status();
-                let mut out = tcp::Packet::new(0, self.ver);
-                out.write_str(&serde_json::to_string(&status).unwrap());
-                self.stream.write(out);
-              }
-              // Ping
-              1 => {
-                let id = p.read_u64();
-                // Send pong
-                let mut out = tcp::Packet::new(1, self.ver);
-                out.write_u64(id);
-                self.stream.write(out);
-                self.stream.flush();
-                // Client is done sending packets, we can close now.
-                return Ok(None);
-              }
-              _ => {
-                return Err(io::Error::new(
-                  ErrorKind::InvalidInput,
-                  format!("unknown status packet {}", p.id()),
-                ));
-              }
-            }
+          // Ping
+          1 => {
+            let id = p.read_u64();
+            // Send pong
+            let mut out = tcp::Packet::new(1, self.ver);
+            out.write_u64(id);
+            self.stream.write(out);
+            self.stream.flush()?;
+            // Client is done sending packets, we can close now.
+            // TODO: Close connection
+            return Ok(());
           }
-          State::Login => {
-            match p.id() {
-              // Login start
-              0 => {
-                if username.is_some() {
-                  return Err(io::Error::new(
-                    ErrorKind::InvalidInput,
-                    "client sent two login packets",
-                  ));
-                }
-                let name = p.read_str();
-                username = Some(name.to_string());
-                if der_key.is_none() {
-                  info = Some(LoginInfo {
-                    // Generate uuid if we are in offline mode
-                    id: UUID::from_bytes(*md5::compute(&name)),
-                    name,
-                    properties: vec![],
-                  });
-                }
-
-                match &der_key {
-                  Some(key) => {
-                    // Make sure to actually generate a token
-                    OsRng.fill_bytes(&mut token);
-
-                    // Encryption request
-                    let mut out = tcp::Packet::new(1, self.ver);
-                    out.write_str(""); // Server id, should be empty
-                    out.write_varint(key.len() as i32); // Key len
-                    out.write_buf(key); // DER encoded RSA key
-                    out.write_varint(4); // Token len
-                    out.write_buf(&token); // Verify token
-                    self.stream.write(out);
-                    // Wait for encryption response to enable encryption
-                  }
-                  None => {
-                    self.send_compression(compression);
-                    self.send_success(info.as_ref().unwrap());
-                    // Successful login, we can break now
-                    break 'login;
-                  }
-                }
-              }
-              // Encryption response
-              1 => {
-                if username.is_none() {
-                  return Err(io::Error::new(
-                    ErrorKind::InvalidInput,
-                    "client did not send login start before sending ecryption response",
-                  ));
-                }
-                let len = p.read_varint();
-                let recieved_secret = p.read_buf(len);
-                let len = p.read_varint();
-                let recieved_token = p.read_buf(len);
-
-                let decrypted_secret =
-                  key.decrypt(PaddingScheme::PKCS1v15Encrypt, &recieved_secret).map_err(|e| {
-                    io::Error::new(
-                      ErrorKind::InvalidInput,
-                      format!("unable to decrypt secret: {}", e),
-                    )
-                  })?;
-                let decrypted_token =
-                  key.decrypt(PaddingScheme::PKCS1v15Encrypt, &recieved_token).map_err(|e| {
-                    io::Error::new(
-                      ErrorKind::InvalidInput,
-                      format!("unable to decrypt token: {}", e),
-                    )
-                  })?;
-
-                // Make sure the client sent the correct verify token back
-                if decrypted_token != token {
-                  return Err(io::Error::new(
-                    ErrorKind::InvalidInput,
-                    format!(
-                      "invalid verify token recieved from client (len: {})",
-                      decrypted_token.len()
-                    ),
-                  ));
-                }
-                let len = decrypted_secret.len();
-                let secret = match decrypted_secret.try_into() {
-                  Ok(v) => v,
-                  Err(_) => {
-                    return Err(io::Error::new(
-                      ErrorKind::InvalidInput,
-                      format!(
-                        "invalid secret recieved from client (len: {}, expected len 16)",
-                        len,
-                      ),
-                    ))
-                  }
-                };
-
-                // If we need to disconnect the client, the client is expecting encrypted
-                // packets from now on, so we need to enable encryption here.
-                self.stream.enable_encryption(&secret);
-                self.stream.enable_encryption(&secret);
-
-                let mut hash = Sha1::new();
-                hash.update("");
-                hash.update(secret);
-                hash.update(der_key.unwrap().as_ref());
-                info = match reqwest::blocking::get(format!(
-                  "https://sessionserver.mojang.com/session/minecraft/hasJoined?username={}&serverId={}",
-                  username.as_ref().unwrap(),
-                  math::hexdigest(hash)
-                )) {
-                  Ok(v) => {
-                    info!("got status code: {}", v.status());
-                    if v.status() == StatusCode::NO_CONTENT {
-                      self.send_disconnect("Invalid auth token! Please re-login (restart your game and launcher)");
-                      self.stream.flush();
-                      // Disconnect client; they are not authenticated
-                      return Ok(None);
-                    }
-                    match v.json() {
-                      Ok(v) => Some(v),
-                      Err(e) => return Err(io::Error::new(
-                        ErrorKind::InvalidData,
-                        format!("invalid json data recieved from session server: {}", e),
-                      ))
-                    }
-                  },
-                  Err(e) => return Err(io::Error::new(
-                    ErrorKind::Other,
-                    format!("failed to authenticate client: {}", e),
-                  ))
-                };
-
-                self.send_compression(compression);
-                self.send_success(info.as_ref().unwrap());
-                // Successful login, we can break now
-                break 'login;
-              }
-              _ => {
-                return Err(io::Error::new(
-                  ErrorKind::InvalidInput,
-                  format!("unknown login packet {}", p.id()),
-                ));
-              }
-            }
-          }
-          v => {
+          _ => {
             return Err(io::Error::new(
               ErrorKind::InvalidInput,
-              format!("invalid connection state {:?}", v),
+              format!("unknown status packet {}", p.id()),
             ));
           }
         }
       }
+      State::Login => {
+        match p.id() {
+          // Login start
+          0 => {
+            if self.username.is_some() {
+              return Err(io::Error::new(ErrorKind::InvalidInput, "client sent two login packets"));
+            }
+            let name = p.read_str();
+            self.username = Some(name.to_string());
+            if self.der_key.is_none() {
+              self.info = Some(LoginInfo {
+                // Generate uuid if we are in offline mode
+                id: UUID::from_bytes(*md5::compute(&name)),
+                name,
+                properties: vec![],
+              });
+            }
+
+            match &self.der_key {
+              Some(key) => {
+                // Make sure to actually generate a token
+                OsRng.fill_bytes(&mut self.verify_token);
+
+                // Encryption request
+                let mut out = tcp::Packet::new(1, self.ver);
+                out.write_str(""); // Server id, should be empty
+                out.write_varint(key.len() as i32); // Key len
+                out.write_buf(key); // DER encoded RSA key
+                out.write_varint(4); // Token len
+                out.write_buf(&self.verify_token); // Verify token
+                self.stream.write(out);
+                // Wait for encryption response to enable encryption
+              }
+              None => {
+                self.send_compression();
+                self.send_success();
+                // Successful login, we are in play state now
+                self.state = State::Play;
+              }
+            }
+          }
+          // Encryption response
+          1 => {
+            if self.username.is_none() {
+              return Err(io::Error::new(
+                ErrorKind::InvalidInput,
+                "client did not send login start before sending ecryption response",
+              ));
+            }
+            let len = p.read_varint();
+            let recieved_secret = p.read_buf(len);
+            let len = p.read_varint();
+            let recieved_token = p.read_buf(len);
+
+            let decrypted_secret =
+              self.key.decrypt(PaddingScheme::PKCS1v15Encrypt, &recieved_secret).map_err(|e| {
+                io::Error::new(ErrorKind::InvalidInput, format!("unable to decrypt secret: {}", e))
+              })?;
+            let decrypted_token =
+              self.key.decrypt(PaddingScheme::PKCS1v15Encrypt, &recieved_token).map_err(|e| {
+                io::Error::new(ErrorKind::InvalidInput, format!("unable to decrypt token: {}", e))
+              })?;
+
+            // Make sure the client sent the correct verify token back
+            if decrypted_token != self.verify_token {
+              return Err(io::Error::new(
+                ErrorKind::InvalidInput,
+                format!(
+                  "invalid verify token recieved from client (len: {})",
+                  decrypted_token.len()
+                ),
+              ));
+            }
+            let len = decrypted_secret.len();
+            let secret = match decrypted_secret.try_into() {
+              Ok(v) => v,
+              Err(_) => {
+                return Err(io::Error::new(
+                  ErrorKind::InvalidInput,
+                  format!("invalid secret recieved from client (len: {}, expected len 16)", len,),
+                ))
+              }
+            };
+
+            // If we need to disconnect the client, the client is expecting encrypted
+            // packets from now on, so we need to enable encryption here.
+            self.stream.enable_encryption(&secret);
+            self.stream.enable_encryption(&secret);
+
+            let mut hash = Sha1::new();
+            hash.update("");
+            hash.update(secret);
+            hash.update(self.der_key.as_ref().unwrap());
+            self.info = match reqwest::blocking::get(format!(
+              "https://sessionserver.mojang.com/session/minecraft/hasJoined?username={}&serverId={}",
+              self.username.as_ref().unwrap(),
+              math::hexdigest(hash)
+            )) {
+              Ok(v) => {
+                info!("got status code: {}", v.status());
+                if v.status() == StatusCode::NO_CONTENT {
+                  self.send_disconnect("Invalid auth token! Please re-login (restart your game and launcher)");
+                  self.stream.flush()?;
+                  // Disconnect client; they are not authenticated
+                  // TODO: Close connection
+                  return Ok(());
+                }
+                match v.json() {
+                  Ok(v) => Some(v),
+                  Err(e) => return Err(io::Error::new(
+                    ErrorKind::InvalidData,
+                    format!("invalid json data recieved from session server: {}", e),
+                  ))
+                }
+              },
+              Err(e) => return Err(io::Error::new(
+                ErrorKind::Other,
+                format!("failed to authenticate client: {}", e),
+              ))
+            };
+
+            self.send_compression();
+            self.send_success();
+            // Successful login, we are in play now
+            self.state = State::Play;
+          }
+          _ => {
+            return Err(io::Error::new(
+              ErrorKind::InvalidInput,
+              format!("unknown login packet {}", p.id()),
+            ));
+          }
+        }
+      }
+      v => {
+        return Err(io::Error::new(
+          ErrorKind::InvalidInput,
+          format!("invalid connection state {:?}", v),
+        ));
+      }
     }
+
     self.stream.flush()?;
-    Ok(info)
+    Ok(())
   }
 }

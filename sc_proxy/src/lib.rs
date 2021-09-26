@@ -43,14 +43,14 @@ pub async fn run() -> Result<(), Box<dyn Error>> {
   // Minecraft uses 1024 bits for this.
   let key = Arc::new(RSAPrivateKey::new(&mut OsRng, 1024).expect("failed to generate a key"));
   // let der_key = Some(Arc::new(der::encode(&key)));
-  // let der_key = None;
+  let der_key = None;
   let icon = Arc::new(load_icon("icon.png"));
 
   let mut poll = Poll::new()?;
   let mut events = Events::with_capacity(1024);
   let mut clients = HashMap::new();
 
-  poll.registry().register(&mut java_listener, JAVA_LISTENER, Interest::READABLE);
+  poll.registry().register(&mut java_listener, JAVA_LISTENER, Interest::READABLE)?;
 
   let mut next_token = 0;
 
@@ -74,7 +74,10 @@ pub async fn run() -> Result<(), Box<dyn Error>> {
                   token,
                   Interest::READABLE | Interest::WRITABLE,
                 )?;
-                clients.insert(token, new_conn(JavaStream::new(client), &icon)?);
+                clients.insert(
+                  token,
+                  new_conn(JavaStream::new(client), key.clone(), der_key.clone(), &icon)?,
+                );
               }
               Err(ref e) if e.kind() == io::ErrorKind::WouldBlock => {
                 // Socket is not ready anymore, stop accepting
@@ -156,12 +159,15 @@ pub async fn run() -> Result<(), Box<dyn Error>> {
 
 pub fn new_conn<'a, S: PacketStream + Send + Sync + 'static>(
   stream: S,
+  key: Arc<RSAPrivateKey>,
+  der_key: Option<Vec<u8>>,
   icon: &str,
 ) -> Result<Conn<S>, Box<dyn Error>> {
   let ip = "http://0.0.0.0:8483".to_string();
+  let compression = 256;
 
   let client = futures::executor::block_on(MinecraftClient::connect(ip))?;
-  Ok(Conn::new(stream, client, icon)?)
+  Ok(Conn::new(stream, client, compression, key, der_key, icon)?)
 }
 
 pub fn handle_client<'a, S: PacketStream + Send + Sync + 'static>(
