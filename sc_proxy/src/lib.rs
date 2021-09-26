@@ -31,6 +31,7 @@ pub fn run() -> Result<(), Box<dyn Error>> {
 
   const JAVA_LISTENER: Token = Token(0xffffffff);
   const BEDROCK_LISTENER: Token = Token(0xfffffffe);
+  const WAKE_TOKEN: Token = Token(0xfffffffd);
 
   let addr = "0.0.0.0:25565";
   info!("listening for java clients on {}", addr);
@@ -49,6 +50,7 @@ pub fn run() -> Result<(), Box<dyn Error>> {
   let mut poll = Poll::new()?;
   let mut events = Events::with_capacity(1024);
   let mut clients = HashMap::new();
+  let waker = Arc::new(Waker::new(poll.registry(), WAKE_TOKEN)?);
 
   poll.registry().register(&mut java_listener, JAVA_LISTENER, Interest::READABLE)?;
 
@@ -80,7 +82,7 @@ pub fn run() -> Result<(), Box<dyn Error>> {
                     JavaStream::new(client),
                     key.clone(),
                     der_key.clone(),
-                    Waker::new(poll.registry(), token)?,
+                    waker.clone(),
                     &icon,
                   )?,
                 );
@@ -96,6 +98,7 @@ pub fn run() -> Result<(), Box<dyn Error>> {
         BEDROCK_LISTENER => {
           unimplemented!();
         }
+        WAKE_TOKEN => {}
         token => {
           let conn = clients.get_mut(&token).expect("client doesn't exist!");
           let mut closed = false;
@@ -167,7 +170,7 @@ pub fn new_conn<'a, S: PacketStream + Send + Sync + 'static>(
   stream: S,
   key: Arc<RSAPrivateKey>,
   der_key: Option<Vec<u8>>,
-  waker: Waker,
+  waker: Arc<Waker>,
   icon: &str,
 ) -> Result<Conn<S>, Box<dyn Error>> {
   let ip = "http://0.0.0.0:8483".to_string();

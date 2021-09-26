@@ -97,7 +97,7 @@ impl ServerListener {
   /// to close the ClientListener. Specifically, the tx will send a value once
   /// this listener has been closed, and this listener will close once the rx
   /// gets a message.
-  pub async fn run(&mut self, waker: Waker) -> io::Result<()> {
+  pub async fn run(&mut self, waker: Arc<Waker>) -> io::Result<()> {
     let res = self.run_inner(waker).await;
     // Close connection here
     res
@@ -105,7 +105,7 @@ impl ServerListener {
   pub fn ver(&self) -> ProtocolVersion {
     *self.ver.read()
   }
-  async fn run_inner(&mut self, waker: Waker) -> io::Result<()> {
+  async fn run_inner(&mut self, waker: Arc<Waker>) -> io::Result<()> {
     loop {
       match self
         .server
