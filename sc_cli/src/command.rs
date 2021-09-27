@@ -3,7 +3,7 @@ use crate::cli::LineReader;
 use sc_common::net::sb;
 use std::{io, io::Write};
 
-pub async fn handle(
+pub fn handle(
   command: &str,
   args: &[&str],
   stream: &mut ConnStream,

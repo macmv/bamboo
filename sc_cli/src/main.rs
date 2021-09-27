@@ -6,7 +6,7 @@ use crossterm::{execute, terminal};
 use mio::{net::TcpStream, Events, Interest, Poll, Token};
 use parking_lot::Mutex;
 use sc_proxy::stream::java::JavaStream;
-use std::{env, error::Error, io, sync::Arc};
+use std::{env, error::Error, io, sync::Arc, thread};
 
 mod cli;
 mod command;
@@ -48,11 +48,37 @@ fn run(rows: u16) -> Result<(), Box<dyn Error>> {
 
   let mut conn = ConnStream::new(JavaStream::new(stream));
   conn.start_handshake();
+  let conn = Arc::new(Mutex::new(conn));
 
   let status = Arc::new(Mutex::new(status::Status::new()));
   status::Status::enable_drawing(status.clone());
 
   // let mut next_token = 0;
+
+  let c = conn.clone();
+  thread::spawn(move || {
+    let mut lr = cli::LineReader::new("> ", rows - 15, 15);
+    loop {
+      match lr.read_line() {
+        Ok(line) => {
+          if line.is_empty() {
+            continue;
+          }
+          let mut sections = line.split(' ');
+          let command = sections.next().unwrap();
+          let args: Vec<_> = sections.collect();
+          let mut conn = c.lock();
+          match command::handle(command, &args, &mut conn, &mut lr) {
+            Ok(_) => {}
+            Err(e) => {
+              error!("error handling command: {}", e);
+            }
+          }
+        }
+        Err(_) => break,
+      }
+    }
+  });
 
   loop {
     // Wait for events
@@ -62,6 +88,7 @@ fn run(rows: u16) -> Result<(), Box<dyn Error>> {
       let tok = event.token();
 
       let mut closed = false;
+      let mut conn = conn.lock();
       if event.is_readable() {
         // let conn = clients.get_mut(&token).expect("client doesn't exist!");
         loop {
@@ -128,23 +155,6 @@ fn run(rows: u16) -> Result<(), Box<dyn Error>> {
   //     Err(e) => error!("handler error: {}", e),
   //   }
   // });
-  //
-  // let mut lr = cli::LineReader::new("> ", rows - 15, 15);
-  // loop {
-  //   match lr.read_line() {
-  //     Ok(line) => {
-  //       if line.is_empty() {
-  //         continue;
-  //       }
-  //       let mut sections = line.split(' ');
-  //       let command = sections.next().unwrap();
-  //       let args: Vec<_> = sections.collect();
-  //       let mut w = writer.lock().await;
-  //       command::handle(command, &args, &mut w, &mut lr).await?;
-  //     }
-  //     Err(_) => break,
-  //   }
-  // }
 
   // info!("closing");
   //
