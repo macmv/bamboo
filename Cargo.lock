@@ -2081,6 +2081,7 @@ dependencies = [
  "log",
  "log4rs",
  "mio",
+ "parking_lot",
  "rand 0.8.4",
  "rsa",
  "rustyline",

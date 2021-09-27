@@ -4,15 +4,15 @@ extern crate log;
 use conn::ConnStream;
 use crossterm::{execute, terminal};
 use mio::{net::TcpStream, Events, Interest, Poll, Token};
-use sc_common::version::ProtocolVersion;
+use parking_lot::Mutex;
 use sc_proxy::stream::java::JavaStream;
-use std::{env, error::Error, io};
+use std::{env, error::Error, io, sync::Arc};
 
 mod cli;
+mod command;
 mod conn;
-// mod command;
-// mod handle;
-// mod status;
+mod handle;
+mod status;
 
 fn main() {
   let (_cols, rows) = terminal::size().unwrap();
@@ -49,6 +49,9 @@ fn run(rows: u16) -> Result<(), Box<dyn Error>> {
   let mut conn = ConnStream::new(JavaStream::new(stream));
   conn.start_handshake();
 
+  let status = Arc::new(Mutex::new(status::Status::new()));
+  status::Status::enable_drawing(status.clone());
+
   // let mut next_token = 0;
 
   loop {
@@ -65,10 +68,12 @@ fn run(rows: u16) -> Result<(), Box<dyn Error>> {
           info!("polling");
           match conn.poll() {
             Ok(_) => match conn.read() {
-              Ok(_) => {
+              Ok(p) => {
                 if conn.closed() {
                   closed = true;
                   break;
+                } else if let Some(p) = p {
+                  handle::handle_packet(&mut conn, &status, p);
                 }
               }
               Err(e) => {

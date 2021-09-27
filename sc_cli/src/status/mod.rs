@@ -1,13 +1,14 @@
 use ansi_term::Colour;
 use lines::Lines;
+use parking_lot::Mutex;
 use sc_common::{math::ChunkPos, util::UUID};
 use std::{
   collections::{HashMap, HashSet},
   io,
   sync::Arc,
+  thread,
   time::{Duration, Instant},
 };
-use tokio::{sync::Mutex, time};
 
 mod lines;
 
@@ -72,12 +73,14 @@ impl Status {
   }
 
   pub fn enable_drawing(status: Arc<Mutex<Status>>) {
-    tokio::spawn(async move {
-      let mut int = time::interval(Duration::from_millis(50));
+    thread::spawn(move || {
+      let tick = Duration::from_millis(50);
+      let mut last_tick = Instant::now();
       loop {
-        int.tick().await;
+        thread::sleep(tick - last_tick.elapsed());
+        last_tick = Instant::now();
 
-        status.lock().await.draw().unwrap();
+        status.lock().draw().unwrap();
       }
     });
   }
