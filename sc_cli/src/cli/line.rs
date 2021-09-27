@@ -8,6 +8,9 @@ use std::{
 pub struct SingleLineReader<'a> {
   buf:    &'a mut ScrollBuf,
   prompt: &'a str,
+  // Char and byte index. This is where the cursor is on the screen. UTF8 screws this over, so if
+  // UTF8 is going to be correctly implemented, this number should be where the cursor is, not a
+  // byte index or anything.
   col:    u16,
   out:    String,
 }
@@ -26,30 +29,40 @@ impl SingleLineReader<'_> {
     let mut in_escape = false;
     let mut escape = String::new();
     loop {
-      let mut buf = [0; 1];
-      reader.read(&mut buf)?;
-      let c = buf[0];
+      let mut char_buf = [0; 4];
+      reader.read(&mut char_buf)?;
+      let c = match char::from_u32(u32::from_le_bytes(char_buf)) {
+        Some(c) => c,
+        None => continue,
+      };
+      // I couldn't be bothered to deal with unicode characters. The width is super
+      // inconsistent, and messing with char vs byte indices for which column we are
+      // in is not my problem. Someone else solve this.
+      if !c.is_ascii() {
+        continue;
+      }
       match c {
-        b'\r' => {
+        '\r' => {
           self.buf.write(b"\n")?;
           self.buf.flush()?;
           break;
         }
-        b'\x03' => {
+        '\x03' => {
           // ctrl-c
           terminal::disable_raw_mode()?;
           execute!(io::stdout(), terminal::LeaveAlternateScreen).unwrap();
           std::process::exit(0);
         }
-        b'\x7f' => {
+        '\x7f' => {
           // backspace
           if !self.out.is_empty() {
             self.buf.back()?;
             self.out.pop();
+            self.col -= 1;
           }
           continue;
         }
-        b'\x1b' => {
+        '\x1b' => {
           // escape (things like arrows keys)
           in_escape = true;
           continue;
@@ -57,19 +70,19 @@ impl SingleLineReader<'_> {
         _ => {}
       }
       if in_escape {
-        escape.push(c as char);
+        escape.push(c);
         in_escape = self.parse_escape(&escape)?;
         if !in_escape {
           escape.clear();
         }
-      } else if c.is_ascii() {
+      } else {
         if self.col == self.max_col() {
-          self.out.push(c as char);
-          self.buf.write(&[c])?;
+          self.out.push(c);
+          self.buf.write(&[c as u8])?;
         } else {
           let min_col = self.min_col();
-          self.out.insert((self.col - min_col) as usize, c as char);
-          self.buf.buf().insert(start_index + (self.col - min_col) as usize, c);
+          self.out.insert((self.col - min_col) as usize, c);
+          self.buf.buf().insert(start_index + (self.col - min_col) as usize, c as u8);
         }
         self.col += 1;
 
