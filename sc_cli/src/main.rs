@@ -3,7 +3,7 @@ extern crate log;
 
 use conn::ConnStream;
 use crossterm::{execute, terminal};
-use mio::{net::TcpStream, Events, Interest, Poll, Token};
+use mio::{net::TcpStream, Events, Interest, Poll, Token, Waker};
 use parking_lot::Mutex;
 use sc_proxy::stream::java::JavaStream;
 use std::{env, error::Error, io, sync::Arc, thread};
@@ -40,9 +40,13 @@ fn run(rows: u16) -> Result<(), Box<dyn Error>> {
   let mut stream = TcpStream::connect(ip.parse()?)?;
   info!("connection established");
 
+  const WAKE_TOKEN: Token = Token(0xfffffffd);
+
   let mut poll = Poll::new()?;
   let mut events = Events::with_capacity(1024);
   // let (needs_flush_tx, needs_flush_rx) = crossbeam_channel::bounded(1024);
+
+  let waker = Arc::new(Waker::new(poll.registry(), WAKE_TOKEN)?);
 
   poll.registry().register(&mut stream, Token(0), Interest::READABLE | Interest::WRITABLE)?;
 
@@ -56,6 +60,7 @@ fn run(rows: u16) -> Result<(), Box<dyn Error>> {
   // let mut next_token = 0;
 
   let c = conn.clone();
+  let w = waker.clone();
   thread::spawn(move || {
     let mut lr = cli::LineReader::new("> ", rows - 15, 15);
     loop {
@@ -74,6 +79,7 @@ fn run(rows: u16) -> Result<(), Box<dyn Error>> {
               error!("error handling command: {}", e);
             }
           }
+          w.wake().unwrap();
         }
         Err(_) => break,
       }
@@ -89,7 +95,7 @@ fn run(rows: u16) -> Result<(), Box<dyn Error>> {
 
       let mut closed = false;
       let mut conn = conn.lock();
-      if event.is_readable() {
+      if event.is_readable() && event.token() != WAKE_TOKEN {
         // let conn = clients.get_mut(&token).expect("client doesn't exist!");
         loop {
           match conn.poll() {
@@ -120,7 +126,7 @@ fn run(rows: u16) -> Result<(), Box<dyn Error>> {
       // The order here is important. If we are handshaking, then reading a packet
       // will probably prompt a direct response. In this arrangement, we can send more
       // packets before going back to poll().
-      if event.is_writable() && !closed {
+      if (event.is_writable() || event.token() == WAKE_TOKEN) && !closed {
         // let conn = clients.get_mut(&token).expect("client doesn't exist!");
         while conn.needs_flush() {
           match conn.flush() {
