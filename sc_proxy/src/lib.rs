@@ -106,7 +106,11 @@ pub fn run() -> Result<(), Box<dyn Error>> {
         WAKE_TOKEN => loop {
           match needs_flush_rx.try_recv() {
             Ok(token) => {
-              let conn = clients.get_mut(&token).expect("client doesn't exist!");
+              let conn = match clients.get_mut(&token) {
+                Some(conn) => conn,
+                // Old message, before the connection was closed, so we ignore it.
+                None => continue,
+              };
               let mut wrote = false;
               while conn.needs_send() {
                 wrote = true;
