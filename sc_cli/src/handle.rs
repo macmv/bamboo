@@ -7,13 +7,7 @@ use sc_common::{
   util::Chat,
   version::ProtocolVersion,
 };
-use sc_proxy::{
-  conn::State,
-  stream::{
-    java::{JavaStreamReader, JavaStreamWriter},
-    StreamReader, StreamWriter,
-  },
-};
+use sc_proxy::{self, conn::State};
 use std::{error::Error, io, sync::Arc, time::Instant};
 use tokio::sync::Mutex;
 

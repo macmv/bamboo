@@ -2075,6 +2075,7 @@ dependencies = [
  "ansi_term",
  "anyhow",
  "async-stream",
+ "crossbeam-channel",
  "crossterm",
  "futures",
  "log",

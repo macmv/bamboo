@@ -4,17 +4,14 @@ extern crate log;
 pub mod conn;
 pub mod stream;
 
-use crossbeam_channel::{Sender, TryRecvError};
+use crossbeam_channel::TryRecvError;
 use mio::{net::TcpListener, Events, Interest, Poll, Token, Waker};
 use rand::rngs::OsRng;
 use rsa::RSAPrivateKey;
 use std::{collections::HashMap, error::Error, io, sync::Arc};
 use tonic::transport::Endpoint;
 
-use crate::{
-  conn::Conn,
-  stream::{java::stream::JavaStream, PacketStream},
-};
+use crate::{conn::Conn, stream::java::stream::JavaStream};
 
 pub fn load_icon(path: &str) -> String {
   let mut icon = match image::open(path).map_err(|e| error!("error loading icon: {}", e)) {

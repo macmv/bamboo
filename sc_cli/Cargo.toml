@@ -20,8 +20,11 @@ rsa = "0.4.0"
 tokio = { version = "1.5", features = ["rt-multi-thread"] }
 tokio-stream = "0.1"
 futures = "0.3"
+
+# networking
 async-stream = "0.3"
 mio = "0.7.13"
+crossbeam-channel = "0.5.1"
 
 # for the cli
 rustyline = "8.2.0"
