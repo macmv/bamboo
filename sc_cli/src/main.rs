@@ -92,7 +92,6 @@ fn run(rows: u16) -> Result<(), Box<dyn Error>> {
       if event.is_readable() {
         // let conn = clients.get_mut(&token).expect("client doesn't exist!");
         loop {
-          info!("polling");
           match conn.poll() {
             Ok(_) => match conn.read() {
               Ok(p) => {
@@ -124,7 +123,6 @@ fn run(rows: u16) -> Result<(), Box<dyn Error>> {
       if event.is_writable() && !closed {
         // let conn = clients.get_mut(&token).expect("client doesn't exist!");
         while conn.needs_flush() {
-          info!("flushing");
           match conn.flush() {
             Ok(_) => {}
             Err(ref e) if e.kind() == io::ErrorKind::WouldBlock => break,
