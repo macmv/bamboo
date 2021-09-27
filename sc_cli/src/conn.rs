@@ -112,7 +112,7 @@ impl ConnStream {
           // login success
           let _uuid = p.read_uuid();
           let _username = p.read_str();
-          return Ok(());
+          self.state = State::Play;
         }
         3 => {
           // set compression
