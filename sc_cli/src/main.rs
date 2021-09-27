@@ -1,55 +1,18 @@
 #[macro_use]
 extern crate log;
 
-use crossbeam_channel::{Sender, TryRecvError};
+use conn::ConnStream;
 use crossterm::{execute, terminal};
-use mio::{
-  net::{TcpListener, TcpStream},
-  Events, Interest, Poll, Token, Waker,
-};
-use sc_common::{
-  net::{cb, sb},
-  version::ProtocolVersion,
-};
-use sc_proxy::stream::{java::JavaStream, PacketStream};
-use std::{collections::HashMap, env, error::Error, io, net::TcpStream as StdTcpStream, sync::Arc};
-use tokio::sync::Mutex;
+use mio::{net::TcpStream, Events, Poll};
+use sc_common::version::ProtocolVersion;
+use sc_proxy::stream::java::JavaStream;
+use std::{env, error::Error, io};
 
 mod cli;
+mod conn;
 // mod command;
 // mod handle;
 // mod status;
-
-pub struct ConnStream {
-  stream: JavaStream,
-  ver:    ProtocolVersion,
-  closed: bool,
-}
-
-impl ConnStream {
-  pub fn new(stream: JavaStream) -> Self {
-    ConnStream { stream, ver: ProtocolVersion::Invalid, closed: false }
-  }
-  pub fn write(&mut self, p: sb::Packet) {
-    self.stream.write(p.to_tcp(self.ver))
-  }
-  pub fn needs_flush(&self) -> bool {
-    self.stream.needs_flush()
-  }
-  pub fn flush(&mut self) -> Result<(), io::Error> {
-    self.stream.flush()
-  }
-  pub fn closed(&self) -> bool {
-    self.closed
-  }
-
-  pub fn poll(&mut self) -> Result<(), io::Error> {
-    self.stream.poll()
-  }
-  pub fn read(&mut self) -> Result<Option<cb::Packet>, io::Error> {
-    Ok(self.stream.read(self.ver)?.map(|p| cb::Packet::from_tcp(p, self.ver)))
-  }
-}
 
 fn main() {
   let (_cols, rows) = terminal::size().unwrap();
@@ -78,6 +41,7 @@ fn run(rows: u16) -> Result<(), Box<dyn Error>> {
   info!("connection established");
 
   let mut conn = ConnStream::new(JavaStream::new(stream));
+  conn.start_handshake();
 
   let mut poll = Poll::new()?;
   let mut events = Events::with_capacity(1024);
