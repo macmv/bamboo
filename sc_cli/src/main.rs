@@ -3,7 +3,7 @@ extern crate log;
 
 use conn::ConnStream;
 use crossterm::{execute, terminal};
-use mio::{net::TcpStream, Events, Poll};
+use mio::{net::TcpStream, Events, Interest, Poll, Token};
 use sc_common::version::ProtocolVersion;
 use sc_proxy::stream::java::JavaStream;
 use std::{env, error::Error, io};
@@ -34,20 +34,22 @@ fn run(rows: u16) -> Result<(), Box<dyn Error>> {
   args.next(); // current process
   let ip = args.next().unwrap_or("127.0.0.1:25565".into());
 
-  let ver = ProtocolVersion::V1_8;
+  // let ver = ProtocolVersion::V1_8;
 
   info!("connecting to {}", ip);
-  let stream = TcpStream::connect(ip.parse()?)?;
+  let mut stream = TcpStream::connect(ip.parse()?)?;
   info!("connection established");
-
-  let mut conn = ConnStream::new(JavaStream::new(stream));
-  conn.start_handshake();
 
   let mut poll = Poll::new()?;
   let mut events = Events::with_capacity(1024);
   // let (needs_flush_tx, needs_flush_rx) = crossbeam_channel::bounded(1024);
 
-  let mut next_token = 0;
+  poll.registry().register(&mut stream, Token(0), Interest::READABLE | Interest::WRITABLE)?;
+
+  let mut conn = ConnStream::new(JavaStream::new(stream));
+  conn.start_handshake();
+
+  // let mut next_token = 0;
 
   loop {
     // Wait for events
@@ -60,6 +62,7 @@ fn run(rows: u16) -> Result<(), Box<dyn Error>> {
       if event.is_readable() {
         // let conn = clients.get_mut(&token).expect("client doesn't exist!");
         loop {
+          info!("polling");
           match conn.poll() {
             Ok(_) => match conn.read() {
               Ok(_) => {
@@ -89,6 +92,7 @@ fn run(rows: u16) -> Result<(), Box<dyn Error>> {
       if event.is_writable() && !closed {
         // let conn = clients.get_mut(&token).expect("client doesn't exist!");
         while conn.needs_flush() {
+          info!("flushing");
           match conn.flush() {
             Ok(_) => {}
             Err(ref e) if e.kind() == io::ErrorKind::WouldBlock => break,
