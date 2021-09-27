@@ -99,21 +99,33 @@ fn run(rows: u16) -> Result<(), Box<dyn Error>> {
         // let conn = clients.get_mut(&token).expect("client doesn't exist!");
         loop {
           match conn.poll() {
-            Ok(_) => match conn.read() {
-              Ok(p) => {
-                if conn.closed() {
-                  closed = true;
-                  break;
-                } else if let Some(p) = p {
-                  handle::handle_packet(&mut conn, &status, p);
+            Ok(_) => {
+              // If we got a good poll result, then there can be any number of packets in the
+              // internal buffer.
+              loop {
+                match conn.read() {
+                  Ok(p) => {
+                    if conn.closed() {
+                      closed = true;
+                      break;
+                    } else if let Some(p) = p {
+                      handle::handle_packet(&mut conn, &status, p);
+                    } else {
+                      // We are done reading packet from the internal buffer
+                      break;
+                    }
+                  }
+                  Err(e) => {
+                    error!("error while parsing packet from client {:?}: {}", tok, e);
+                    closed = true;
+                    break;
+                  }
                 }
               }
-              Err(e) => {
-                error!("error while parsing packet from client {:?}: {}", tok, e);
-                closed = true;
+              if closed {
                 break;
               }
-            },
+            }
             Err(ref e) if e.kind() == io::ErrorKind::WouldBlock => break,
             Err(e) => {
               error!("error while listening to client {:?}: {}", tok, e);
