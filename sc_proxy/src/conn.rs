@@ -191,7 +191,8 @@ impl<S> Drop for Conn<'_, S> {
   fn drop(&mut self) {
     // Closes the ServerListener for this connection.
     if let Some(chan) = self.server_close.take() {
-      chan.send(()).unwrap();
+      // If we have an error, it means the server listener is already closed.
+      let _ = chan.send(());
     }
   }
 }
@@ -269,7 +270,7 @@ impl<'a, S: PacketStream + Send + Sync> Conn<'a, S> {
           match res {
             Ok(_) => {}
             Err(e) => {
-              error!("error while listening to client: {}", e);
+              error!("error while listening to server: {}", e);
             }
           };
         }
