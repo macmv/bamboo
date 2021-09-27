@@ -5,11 +5,7 @@ use sc_common::{
   net::{cb, sb},
   util::Chat,
 };
-use std::{sync::Arc, time::Instant};
-
-pub struct Handler {
-  pub status: Arc<Mutex<Status>>,
-}
+use std::time::Instant;
 
 pub fn handle_packet(stream: &mut ConnStream, status: &Mutex<Status>, p: cb::Packet) {
   match p {

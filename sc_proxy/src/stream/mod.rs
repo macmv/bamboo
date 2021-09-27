@@ -3,7 +3,6 @@ pub mod java;
 
 use sc_common::{net::tcp, version::ProtocolVersion};
 use std::io;
-use tokio::time::Duration;
 
 pub trait PacketStream {
   // Config functions
