@@ -187,6 +187,15 @@ struct JsonPlayer {
   id:   String,
 }
 
+impl<S> Drop for Conn<'_, S> {
+  fn drop(&mut self) {
+    // Closes the ServerListener for this connection.
+    if let Some(chan) = self.server_close.take() {
+      chan.send(()).unwrap();
+    }
+  }
+}
+
 impl<'a, S: PacketStream + Send + Sync> Conn<'a, S> {
   pub fn new(
     stream: S,
@@ -289,13 +298,6 @@ impl<'a, S: PacketStream + Send + Sync> Conn<'a, S> {
   }
   pub fn flush(&mut self) -> io::Result<()> {
     self.stream.flush()
-  }
-
-  /// Closes the ServerListener for this connection.
-  pub fn close(&mut self) {
-    if let Some(chan) = self.server_close.take() {
-      chan.send(()).unwrap();
-    }
   }
 
   pub fn poll(&mut self) -> io::Result<()> {

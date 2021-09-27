@@ -121,7 +121,6 @@ pub fn run() -> Result<(), Box<dyn Error>> {
                   }
                   Err(e) => {
                     error!("error while listening to server {:?}: {}", token, e);
-                    conn.close();
                     clients.remove(&token);
                     break;
                   }
@@ -135,7 +134,6 @@ pub fn run() -> Result<(), Box<dyn Error>> {
                     Err(ref e) if e.kind() == io::ErrorKind::WouldBlock => break,
                     Err(e) => {
                       error!("error while flushing packets to the client {:?}: {}", token, e);
-                      conn.close();
                       clients.remove(&token);
                       break;
                     }
@@ -156,7 +154,6 @@ pub fn run() -> Result<(), Box<dyn Error>> {
                 Ok(_) => match conn.read() {
                   Ok(_) => {
                     if conn.closed() {
-                      conn.close();
                       clients.remove(&token);
                       closed = true;
                       break;
@@ -164,7 +161,6 @@ pub fn run() -> Result<(), Box<dyn Error>> {
                   }
                   Err(e) => {
                     error!("error while parsing packet from client {:?}: {}", token, e);
-                    conn.close();
                     clients.remove(&token);
                     closed = true;
                     break;
@@ -173,7 +169,6 @@ pub fn run() -> Result<(), Box<dyn Error>> {
                 Err(ref e) if e.kind() == io::ErrorKind::WouldBlock => break,
                 Err(e) => {
                   error!("error while listening to client {:?}: {}", token, e);
-                  conn.close();
                   clients.remove(&token);
                   closed = true;
                   break;
@@ -192,7 +187,6 @@ pub fn run() -> Result<(), Box<dyn Error>> {
                 Err(ref e) if e.kind() == io::ErrorKind::WouldBlock => break,
                 Err(e) => {
                   error!("error while flushing packets to the client {:?}: {}", token, e);
-                  conn.close();
                   clients.remove(&token);
                   break;
                 }
