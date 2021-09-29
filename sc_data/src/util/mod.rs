@@ -36,3 +36,9 @@ pub fn load_versions(p: &Path, name: &str) -> Result<Vec<PathBuf>, Box<dyn Error
   });
   Ok(versions)
 }
+
+pub fn ver_str(p: &Path) -> (String, i32) {
+  let fname = p.parent().unwrap().file_name().unwrap().to_str().unwrap();
+  let version_id = fname.split('.').nth(1).unwrap().parse::<i32>().unwrap();
+  (format!("V1_{}", version_id), version_id)
+}

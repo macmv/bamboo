@@ -32,9 +32,11 @@ pub fn generate(dir: &Path, blocks: HashSet<String>) -> Result<(), Box<dyn Error
 
   let mut versions = vec![];
   for f in files {
-    versions.push(load_data(&fs::read_to_string(f)?)?);
+    let (ver_str, _) = util::ver_str(&f);
+
+    versions.push((load_data(&fs::read_to_string(f)?)?, ver_str));
   }
-  let latest = &versions[0];
+  let latest = &versions[0].0;
 
   let mut kinds = vec![];
   for i in latest {
@@ -55,6 +57,14 @@ pub fn generate(dir: &Path, blocks: HashSet<String>) -> Result<(), Box<dyn Error
       stack_size: #stack_size,
       block_to_place: block::Kind::#block,
     }));
+  }
+
+  let mut version_data = vec![];
+  for (i, v) in versions.iter().enumerate() {
+    if i == 0 {
+      continue;
+    }
+    version_data.push(generate_version_lit(generate_conversion(latest, &v.0), &v.1));
   }
 
   fs::create_dir_all(&dir)?;
@@ -84,6 +94,22 @@ pub fn generate(dir: &Path, blocks: HashSet<String>) -> Result<(), Box<dyn Error
   out.push_str("}\n");
 
   fs::write(dir.join("ty.rs"), out)?;
+
+  let mut out = String::new();
+  out.push_str("/// Generates the cross-versioning data for items. This is how old clients\n");
+  out.push_str("/// can see the same items and place the same blocks as new clients.\n");
+  out.push_str("pub fn generate_versions() -> &'static [Version] {\n");
+  out.push_str("  &[\n");
+  for ver in version_data {
+    out.push_str("    ");
+    out.push_str(&ver);
+    out.push_str(",\n");
+  }
+  out.push_str("  ]\n");
+  out.push_str("}\n");
+
+  fs::write(dir.join("version.rs"), out)?;
+
   // {
   //   // Generates the cross-versioning data
   //   //
@@ -126,5 +152,37 @@ fn generate_conversion(latest: &[Item], old: &[Item]) -> Vec<u32> {
   for i in latest {
     out.push(*m.get(&i.name).unwrap_or(&0));
   }
+  out
+}
+
+fn generate_version_lit(to_old: Vec<u32>, ver: &str) -> String {
+  let mut to_new: Vec<u32> = vec![];
+  for (new, &old) in to_old.iter().enumerate() {
+    let old: usize = old.try_into().unwrap();
+    if old >= to_new.len() {
+      to_new.resize(old + 1, 0);
+    }
+    // Sometimes, multiple new blocks map to a single old block. In these
+    // situations, we want to just use the first state that was mapped. So we never
+    // override anything that has a value != 0.
+    if to_new[old] == 0 {
+      to_new[old] = new.try_into().unwrap();
+    }
+  }
+  let mut out = String::new();
+  out.push_str("Version {\n");
+  out.push_str("      to_old: &[");
+  for v in to_old {
+    out.push_str(&v.to_string());
+    out.push_str(",");
+  }
+  out.push_str("],\n      to_new: &[");
+  for v in to_new {
+    out.push_str(&v.to_string());
+    out.push_str(",");
+  }
+  out.push_str("],\n      ver: sc_common::version::BlockVersion::");
+  out.push_str(ver);
+  out.push_str("\n    }");
   out
 }

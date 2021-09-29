@@ -43,9 +43,7 @@ fn generate_versions(dir: &Path) -> Vec<BlockVersion> {
 
   let mut versions = vec![];
   for f in files {
-    let fname = f.parent().unwrap().file_name().unwrap().to_str().unwrap();
-    let version_id = fname.split('.').nth(1).unwrap().parse::<i32>().unwrap();
-    let ver_str = format!("V1_{}", version_id);
+    let (ver_str, version_id) = util::ver_str(&f);
 
     if version_id < 13 {
       versions.push(fixed::load_data(ver_str, &fs::read_to_string(f).unwrap()).unwrap());

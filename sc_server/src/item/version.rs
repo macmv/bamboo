@@ -64,6 +64,8 @@ pub struct Version {
   ver:    BlockVersion,
 }
 
+include!(concat!(env!("OUT_DIR"), "/item/version.rs"));
+
 /*
 /// Generates a table from all block kinds to any block data that kind has. This
 /// does not include cross-versioning data. This includes information like the
