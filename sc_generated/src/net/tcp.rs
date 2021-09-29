@@ -1,5 +1,5 @@
 use crate::{
-  util::{Buffer, BufferError, Item, UUID},
+  util::{nbt::NBT, Buffer, BufferError, Item, UUID},
   version::ProtocolVersion,
   Pos,
 };
@@ -129,7 +129,7 @@ impl Packet {
         self.read_i16(); // Item damage
         self.read_u8(); // TODO: Actually parse NBT data
       }
-      Item::new(id.into(), count, vec![])
+      Item::new(id.into(), count, NBT::empty(""))
     } else {
       unreachable!("invalid version: {:?}", self.ver);
     }
