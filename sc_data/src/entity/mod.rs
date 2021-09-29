@@ -1,3 +1,6 @@
+//! This uses `#[allow(dead_code)]` on some structs because it is parsing things
+//! from json, and we want to error if the keys don't exist.
+
 use crate::util;
 use convert_case::{Case, Casing};
 
@@ -6,6 +9,7 @@ use serde_derive::Deserialize;
 use std::{collections::HashMap, error::Error, fs, path::Path};
 
 #[derive(Debug, Clone, Deserialize)]
+#[allow(dead_code)]
 struct Entity {
   id:           u32,
   #[serde(rename = "internalId")]

@@ -1,4 +1,8 @@
-// This handles loading all block versions 1.13 and up
+//! This handles loading all block versions 1.13 and up.
+//!
+//! This has `#[allow(dead_code)]` on some structs to ensure that the json has
+//! all of those keys.
+
 use serde_derive::Deserialize;
 use std::{collections::HashMap, io};
 
@@ -16,6 +20,7 @@ struct JsonBlockState {
 }
 
 #[derive(Default, Debug, Deserialize)]
+#[allow(dead_code)]
 struct JsonBlock {
   id:            u32,
   #[serde(alias = "displayName")]

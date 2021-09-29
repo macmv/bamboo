@@ -1,3 +1,9 @@
+//! This is the module that handles parsing the prismarine protocol json data.
+//! This uses serde, and has a bunch of structs that match up with the json.
+//! This has `#[allow(dead_code)]` used every now and then, as this should be
+//! read from json, and we want to error out of the json doesn't contain certain
+//! keys.
+
 use serde::de::{self, Deserialize, Deserializer, MapAccess, SeqAccess, Visitor};
 use serde_derive::Deserialize;
 use std::collections::HashMap;
@@ -111,6 +117,7 @@ pub(crate) enum TypeValue {
 }
 
 #[derive(Debug, Clone)]
+#[allow(dead_code)]
 pub(crate) struct TopBitSetTerminatedArray {
   pub(crate) ty: Type,
 }
@@ -155,6 +162,7 @@ impl<'de> Deserialize<'de> for TopBitSetTerminatedArray {
 }
 
 #[derive(Debug, Deserialize, Clone)]
+#[allow(dead_code)]
 pub(crate) struct EntityMetadataLoop {
   #[serde(alias = "endVal")]
   pub(crate) end: u32,
@@ -323,6 +331,7 @@ impl<'de> Deserialize<'de> for Array {
 }
 
 #[derive(Debug, Deserialize, Clone)]
+#[allow(dead_code)]
 pub(crate) struct Mapper {
   pub(crate) mappings: HashMap<String, String>,
   #[serde(alias = "type")]
@@ -330,6 +339,7 @@ pub(crate) struct Mapper {
 }
 
 #[derive(Debug, Deserialize, Clone)]
+#[allow(dead_code)]
 pub(crate) struct Switch {
   // Another field name to be compared with
   #[serde(alias = "compareTo")]
@@ -354,6 +364,7 @@ pub struct ClientServerMap {
 }
 
 #[derive(Debug, Deserialize)]
+#[allow(dead_code)]
 pub struct ProtocolVersion {
   pub(crate) types:       HashMap<String, Type>,
   pub(crate) handshaking: ClientServerMap,

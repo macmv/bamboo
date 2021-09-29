@@ -1,3 +1,6 @@
+//! This uses `#[allow(dead_code)]` on some structs because it is parsing things
+//! from json, and we want to error if the keys don't exist.
+
 use crate::util;
 use convert_case::{Case, Casing};
 use proc_macro2::{Ident, Span};
@@ -11,6 +14,7 @@ use std::{
 };
 
 #[derive(Debug, Clone, Deserialize)]
+#[allow(dead_code)]
 struct Item {
   id:           u32,
   name:         String,

@@ -1,10 +1,15 @@
-// This handles loading all block versions 1.8-1.12
+//! This handles loading all block versions 1.8-1.12
+//!
+//! This has `#[allow(dead_code)]` on some structs to ensure that the json has
+//! all of those keys.
+
 use serde_derive::Deserialize;
 use std::{collections::HashMap, io};
 
 use super::{Block, BlockVersion, State};
 
 #[derive(Default, Debug, Deserialize)]
+#[allow(dead_code)]
 struct JsonVariation {
   metadata:     u32,
   #[serde(alias = "displayName")]
@@ -13,12 +18,14 @@ struct JsonVariation {
 
 #[derive(Debug, Deserialize)]
 #[serde(untagged)]
+#[allow(dead_code)]
 enum JsonDropId {
   ID(u32),
   Meta { id: u32, metadata: u32 },
 }
 
 #[derive(Debug, Deserialize)]
+#[allow(dead_code)]
 struct JsonDrop {
   drop: JsonDropId,
 
@@ -30,6 +37,7 @@ struct JsonDrop {
 }
 
 #[derive(Default, Debug, Deserialize)]
+#[allow(dead_code)]
 struct JsonBlock {
   id:           u32,
   #[serde(alias = "displayName")]
