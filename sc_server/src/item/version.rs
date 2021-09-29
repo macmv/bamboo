@@ -1,5 +1,3 @@
-use std::collections::HashMap;
-
 use super::{ty, Data, Type};
 
 use sc_common::version::BlockVersion;
@@ -9,7 +7,7 @@ use sc_common::version::BlockVersion;
 /// multiple states.
 pub struct TypeConverter {
   types:    &'static [Data],
-  versions: Vec<Version>,
+  versions: &'static [Version],
 }
 
 impl TypeConverter {
@@ -26,7 +24,7 @@ impl TypeConverter {
   /// Takes the given old item id, which is part of `ver`, and returns the new
   /// id that it maps to. If the id is invalid, this will return 0 (empty).
   pub fn to_latest(&self, id: u32, ver: BlockVersion) -> u32 {
-    match self.versions[ver.to_index() as usize].to_new.get(&id) {
+    match self.versions[ver.to_index() as usize].to_new.get(id as usize) {
       Some(v) => *v,
       None => 0,
     }
@@ -59,8 +57,10 @@ impl TypeConverter {
 /// and a HashMap will be the best option.
 #[derive(Debug)]
 pub struct Version {
-  to_old: Vec<u32>,
-  to_new: HashMap<u32, u32>,
+  // Index is the new id, value is the old id
+  to_old: &'static [u32],
+  // Index is the old id, value is the new id (0 for invalid)
+  to_new: &'static [u32],
   ver:    BlockVersion,
 }
 
@@ -113,10 +113,6 @@ pub fn generate_versions() -> Vec<Version> {
   versions.into_iter().rev().collect()
 }
 */
-
-fn generate_versions() -> Vec<Version> {
-  vec![]
-}
 
 #[cfg(test)]
 mod tests {
