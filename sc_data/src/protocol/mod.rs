@@ -642,6 +642,11 @@ impl PacketField {
       //     "[#value; #len])
       //   }
       // },
+      Self::DefinedType(name) => match name.as_str() {
+        "slot" => "Item",
+        "tags" => "Vec<u8>",
+        _ => panic!("undefined field type {}", name),
+      },
       _ => "Vec<u8>",
     }
   }
@@ -681,6 +686,11 @@ impl PacketField {
       // Self::EntityMetadata => "byte_arr", // Implemented on the server
 
       // Self::Option(field) => field.ty_key(),
+      Self::DefinedType(name) => match name.as_str() {
+        "slot" => "item",
+        "tags" => "byte_arr",
+        _ => panic!("undefined field type {}", name),
+      },
       _ => "byte_arr",
     }
   }
@@ -711,6 +721,11 @@ impl PacketField {
       // Self::EntityMetadata => format!(#name.clone()), // Implemented on the server
 
       // Self::Option(field) => format!(#name.unwrap()),
+      Self::DefinedType(name) => match name.as_str() {
+        "slot" => format!("Some({}.to_proto())", val),
+        "tags" => format!("{}.clone()", val),
+        _ => panic!("undefined field type {}", name),
+      },
       _ => format!("{}.clone()", val),
     }
   }
@@ -741,6 +756,11 @@ impl PacketField {
       // Self::EntityMetadata => (#name.clone()), // Implemented on the server
 
       // Self::Option(field) => (#name.unwrap()),
+      Self::DefinedType(name) => match name.as_str() {
+        "slot" => "Item::from_proto(pb.fields.pop().unwrap().item.unwrap())",
+        "tags" => "pb.fields.pop().unwrap().byte_arr",
+        _ => panic!("undefined field type {}", name),
+      },
       _ => "pb.fields.pop().unwrap().byte_arr",
     }
   }
@@ -771,6 +791,11 @@ impl PacketField {
       // Self::EntityMetadata => quote!(#val.clone()), // Implemented on the server
 
       // Self::Option(field) => quote!(#val.unwrap()),
+      Self::DefinedType(name) => match name.as_str() {
+        "slot" => format!("out.write_item({})", val),
+        "tags" => format!("out.write_buf({})", val),
+        _ => panic!("undefined field type {}", name),
+      },
       _ => format!("out.write_buf({})", val),
     }
   }
@@ -801,6 +826,11 @@ impl PacketField {
       // Self::EntityMetadata => (#name.clone()), // Implemented on the server
 
       // Self::Option(field) => (#name.unwrap()),
+      Self::DefinedType(name) => match name.as_str() {
+        "slot" => "p.read_item()",
+        "tags" => "{ let len = p.read_varint(); p.read_buf(len) }",
+        _ => panic!("undefined field type {}", name),
+      },
       _ => "{ let len = p.read_varint(); p.read_buf(len) }",
     }
   }
@@ -817,7 +847,7 @@ fn generate_packets(
   gen.write_line("  Pos,");
   gen.write_line("  proto,");
   gen.write_line("  version::ProtocolVersion,");
-  gen.write_line("  util::UUID");
+  gen.write_line("  util::{Item, UUID}");
   gen.write_line("};");
   gen.write_line("");
   gen.write_line("/// Auto generated packet ids. This is a combination of all packet");

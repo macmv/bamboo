@@ -1,4 +1,5 @@
 mod buffer;
+mod item;
 
 use crate::proto;
 use rand::{rngs::OsRng, RngCore};
@@ -6,6 +7,7 @@ use serde::de::{self, Deserialize, Deserializer, Unexpected, Visitor};
 use std::{convert::TryInto, error::Error, fmt, num::ParseIntError, str::FromStr};
 
 pub use buffer::{Buffer, BufferError};
+pub use item::Item;
 
 pub fn serialize_varint(v: i32) -> Vec<u8> {
   // Need to work with u32, as >> acts differently on i32 vs u32.

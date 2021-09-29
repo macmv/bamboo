@@ -1,5 +1,5 @@
 use crate::{
-  util::{Buffer, BufferError, UUID},
+  util::{Buffer, BufferError, Item, UUID},
   version::ProtocolVersion,
   Pos,
 };
@@ -118,19 +118,33 @@ impl Packet {
     }
   }
 
-  /// This parses a postition from the internal buffer (format depends on the
-  /// version), and then returns that as a Pos struct.
-  pub fn read_item(&mut self) -> (i32, u8, Vec<u8>) {
+  /// This parses an item from the internal buffer (format depends on the
+  /// version).
+  pub fn read_item(&mut self) -> Item {
     if self.ver < ProtocolVersion::V1_13 {
       let id = self.read_i16();
       let mut count = 0;
-      let nbt = vec![];
       if id != -1 {
         count = self.read_u8();
         self.read_i16(); // Item damage
         self.read_u8(); // TODO: Actually parse NBT data
       }
-      (id.into(), count, nbt)
+      Item::new(id.into(), count, vec![])
+    } else {
+      unreachable!("invalid version: {:?}", self.ver);
+    }
+  }
+
+  /// This writes the given item to the internal buffer (format depends on the
+  /// version).
+  pub fn write_item(&mut self, item: &Item) {
+    if self.ver < ProtocolVersion::V1_13 {
+      self.write_i16(item.id() as i16);
+      if item.id() != -1 {
+        self.write_u8(item.count());
+        self.write_i16(0); // Item damage
+        self.write_u8(0); // TODO: Write nbt data
+      }
     } else {
       unreachable!("invalid version: {:?}", self.ver);
     }

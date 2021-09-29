@@ -34,20 +34,18 @@ message Packet {
 }
 
 message PacketField {
-  bool bool                 = 1;
-  uint32 uint               = 2;
-  int32 int                 = 3;
-  sint32 sint               = 4;
-  uint64 long               = 5;
-  float float               = 6;
-  double double             = 7;
-  string str                = 8;
-  UUID uuid                 = 9;
-  fixed64 pos               = 10;
-  bytes byte_arr            = 11;
-  repeated int32 int_arr    = 12;
-  repeated uint64 long_arr  = 13;
-  repeated string str_arr   = 14;
+  bool bool      = 1;
+  uint32 uint    = 2;
+  int32 int      = 3;
+  sint32 sint    = 4;
+  uint64 long    = 5;
+  float float    = 6;
+  double double  = 7;
+  string str     = 8;
+  UUID uuid      = 9;
+  fixed64 pos    = 10;
+  bytes byte_arr = 11;
+  Item item      = 12;
 }
 
 message UUID {
