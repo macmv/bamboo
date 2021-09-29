@@ -94,7 +94,8 @@ impl Connection {
             player.world().broadcast(msg).await;
           }
         }
-        sb::Packet::SetCreativeSlot { slot: _, item: _ } => {
+        sb::Packet::SetCreativeSlot { slot, item } => {
+          info!("got set creative slot at slot {} with item {:?}", slot, item);
           // TODO: Parse the item
           // let id = p.get_int("item-id");
           // let count = p.get_byte("item-count");
