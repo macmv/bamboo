@@ -124,12 +124,14 @@ impl Packet {
     if self.ver < ProtocolVersion::V1_13 {
       let id = self.read_i16();
       let mut count = 0;
+      let mut damage = 0;
+      let mut nbt = NBT::empty("");
       if id != -1 {
         count = self.read_u8();
-        self.read_i16(); // Item damage
-        self.read_u8(); // TODO: Actually parse NBT data
+        damage = self.read_i16();
+        nbt = NBT::deserialize_buf(&mut self.buf).unwrap();
       }
-      Item::new(id.into(), count, NBT::empty(""))
+      Item::new(id.into(), count, damage, nbt)
     } else {
       unreachable!("invalid version: {:?}", self.ver);
     }

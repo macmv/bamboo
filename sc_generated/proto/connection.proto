@@ -55,8 +55,11 @@ message UUID {
 message Item {
   bool present = 1;
   int32 ID = 2;
-  int32 count = 3; // minecraft stores this as a byte, so it should never by higher than 255
-  bytes NBT = 4;
+  // interpreted as a u8
+  int32 count = 3;
+  // interpreted as a i16
+  int32 damage = 4;
+  bytes NBT = 5;
 }
 
 message Node {

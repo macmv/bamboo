@@ -21,10 +21,16 @@ impl fmt::Display for ParseError {
 impl Error for ParseError {}
 
 impl NBT {
+  /// Deserializes the given byte array as nbt data.
   pub fn deserialize(buf: Vec<u8>) -> Result<Self, ParseError> {
     Self::deserialize_buf(&mut Buffer::new(buf))
   }
-  fn deserialize_buf(buf: &mut Buffer) -> Result<Self, ParseError> {
+  /// Deserializes the given buffer as nbt data. This will continue reading
+  /// where this buffer is currently placed, and will advance the reader to be
+  /// right after the nbt data. If this function returns an error, then the
+  /// buffer will be in an undefined state (it will still be safe, but there are
+  /// no gauruntees as too how far ahead the buffer will have been advanced).
+  pub fn deserialize_buf(buf: &mut Buffer) -> Result<Self, ParseError> {
     let ty = buf.read_u8();
     let len = buf.read_u16();
     let name = String::from_utf8(buf.read(len as usize)).unwrap();
