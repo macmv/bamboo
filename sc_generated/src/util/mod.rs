@@ -1,5 +1,6 @@
 mod buffer;
 mod item;
+pub mod nbt;
 
 use crate::proto;
 use rand::{rngs::OsRng, RngCore};
