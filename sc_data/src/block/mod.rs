@@ -112,7 +112,11 @@ pub fn generate(dir: &Path) -> Result<(), Box<dyn Error>> {
     let emit_light = paletted.emit_light as u8;
     let bounding_box = Ident::new(&paletted.bounding_box.to_case(Case::Pascal), Span::call_site());
     let material = Ident::new(
-      &paletted.material.unwrap_or("air".to_string()).to_case(Case::Pascal),
+      &if paletted.material == Some("UNKNOWN_MATERIAL".to_string()) {
+        "Unknown".to_string()
+      } else {
+        paletted.material.unwrap_or("air".to_string()).to_case(Case::Pascal)
+      },
       Span::call_site(),
     );
 
