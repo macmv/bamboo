@@ -140,17 +140,23 @@ impl Connection {
               player.world().item_converter().get_data(stack.item())
             };
             let kind = item_data.block_to_place();
-            let block_data = player.world().block_converter().get(kind);
 
-            if block_data.is_replaceable {}
+            match player.world().get_block(location) {
+              Ok(looking_at) => {
+                let block_data = player.world().block_converter().get(looking_at.kind());
+                if !block_data.transparent {
+                  let _ = player.sync_block_at(location).await;
+                  location += Pos::dir_from_byte(direction.try_into().unwrap());
+                }
 
-            let _ = player.sync_block_at(location).await;
-            location += Pos::dir_from_byte(direction.try_into().unwrap());
-            match player.world().set_kind(location, kind).await {
-              Ok(_) => (),
+                match player.world().set_kind(location, kind).await {
+                  Ok(_) => (),
+                  Err(e) => player.send_hotbar(&Chat::new(e.to_string())).await,
+                }
+                player.world().plugins().on_block_place(player.clone(), location, kind);
+              }
               Err(e) => player.send_hotbar(&Chat::new(e.to_string())).await,
-            }
-            player.world().plugins().on_block_place(player.clone(), location, kind);
+            };
           }
         }
         sb::Packet::Position { x, y, z, on_ground: _ } => {

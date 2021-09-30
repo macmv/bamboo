@@ -12,8 +12,8 @@ pub struct Type {
 
 impl Type {
   /// Returns the block kind that this state comes from.
-  pub fn kind(&self) -> &Kind {
-    &self.kind
+  pub fn kind(&self) -> Kind {
+    self.kind
   }
   /// Gets the block id of this type. This id is for the latest version of the
   /// game.
