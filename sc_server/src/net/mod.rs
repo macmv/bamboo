@@ -95,11 +95,9 @@ impl Connection {
           }
         }
         sb::Packet::SetCreativeSlot { slot, item } => {
-          info!("got set creative slot at slot {} with item {:?}", slot, item);
-          // TODO: Parse the item
-          // let id = p.get_int("item-id");
-          // let count = p.get_byte("item-count");
-          // let _nbt = p.get_byte_arr("item-nbt");
+          let id =
+            player.world().get_item_converter().to_latest(item.id() as u32, player.ver().block());
+          info!("old: {}, new: {}", item.id(), id);
 
           // if slot > 0 {
           //   let id = player.world().get_item_converter().to_latest(id as u32,
