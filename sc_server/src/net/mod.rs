@@ -19,7 +19,7 @@ use sc_common::{
   version::ProtocolVersion,
 };
 
-use crate::{block, player::Player, world::WorldManager};
+use crate::{block, item, player::Player, world::WorldManager};
 
 pub(crate) mod serialize;
 
@@ -95,17 +95,14 @@ impl Connection {
           }
         }
         sb::Packet::SetCreativeSlot { slot, item } => {
-          let id =
-            player.world().item_converter().to_latest(item.id() as u32, player.ver().block());
-          info!("old: {}, new: {}", item.id(), id);
-
-          // if slot > 0 {
-          //   let id = player.world().item_converter().to_latest(id as u32,
-          // player.ver().block());   player
-          //     .lock_inventory()
-          //     .set(slot as u32,
-          // item::Stack::new(item::Type::from_u32(id)).with_amount(count));
-          // }
+          if slot > 0 {
+            let id =
+              player.world().item_converter().to_latest(item.id() as u32, player.ver().block());
+            player.lock_inventory().set(
+              slot as u32,
+              item::Stack::new(item::Type::from_u32(id)).with_amount(item.count()),
+            );
+          }
         }
         sb::Packet::BlockDig { location, status: _, face: _ } => {
           player.world().set_kind(location, block::Kind::Air).await.unwrap();
