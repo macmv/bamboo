@@ -24,7 +24,15 @@ impl TypeConverter {
   /// Takes the given old item id, which is part of `ver`, and returns the new
   /// id that it maps to. If the id is invalid, this will return 0 (empty).
   pub fn to_latest(&self, id: u32, ver: BlockVersion) -> u32 {
-    match self.versions[ver.to_index() as usize].to_new.get(id as usize) {
+    // Air always maps to air. Since multiple latest blocks convert to air, we need
+    // this check
+    if id == 0 {
+      return 0;
+    }
+    if ver == BlockVersion::latest() {
+      return id;
+    }
+    match self.versions[self.versions.len() - ver.to_index() as usize].to_new.get(id as usize) {
       Some(v) => *v,
       None => 0,
     }
@@ -36,7 +44,7 @@ impl TypeConverter {
     if ver == BlockVersion::latest() {
       return id;
     }
-    match self.versions[ver.to_index() as usize - 1].to_old.get(id as usize) {
+    match self.versions[self.versions.len() - ver.to_index() as usize].to_old.get(id as usize) {
       Some(v) => *v,
       None => 0,
     }
