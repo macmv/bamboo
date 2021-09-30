@@ -1,3 +1,4 @@
+use super::Material;
 use num_derive::{FromPrimitive, ToPrimitive};
 use std::{error::Error, fmt, str::FromStr};
 
@@ -55,22 +56,6 @@ impl Kind {
 pub enum BoundingBoxKind {
   Empty,
   Block,
-}
-
-/// A block material. In vanilla, there are around 50 of these. However, the
-/// prismarine data limits it to these options. This will be updated in the
-/// future.
-#[derive(Debug)]
-#[non_exhaustive]
-pub enum Material {
-  Air,
-  Rock,
-  Dirt,
-  Plant,
-  Wood,
-  Web,
-  Wool,
-  UnknownMaterial,
 }
 
 /// Any data specific to a block kind. This includes all function handlers for
