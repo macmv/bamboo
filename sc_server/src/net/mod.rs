@@ -144,7 +144,7 @@ impl Connection {
             match player.world().get_block(location) {
               Ok(looking_at) => {
                 let block_data = player.world().block_converter().get(looking_at.kind());
-                if !block_data.transparent {
+                if !block_data.material.is_replaceable() {
                   let _ = player.sync_block_at(location).await;
                   location += Pos::dir_from_byte(direction.try_into().unwrap());
                 }
