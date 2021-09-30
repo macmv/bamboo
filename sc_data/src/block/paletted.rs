@@ -34,7 +34,7 @@ pub struct JsonBlock {
   max_state_id:     u32,
   states:           Vec<JsonBlockState>,
   // Vec of item ids
-  drops:            Vec<u32>,
+  pub drops:        Vec<u32>,
   pub diggable:     bool,
   pub transparent:  bool,
   #[serde(alias = "filterLight")]

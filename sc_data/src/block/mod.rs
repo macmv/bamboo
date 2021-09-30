@@ -105,24 +105,29 @@ pub fn generate(dir: &Path) -> Result<(), Box<dyn Error>> {
     }
 
     let paletted = b.paletted.clone().unwrap();
+    let drops = paletted.drops;
     let diggable = paletted.diggable;
     let transparent = paletted.transparent;
-    let filter_light = paletted.filter_light;
-    let emit_light = paletted.emit_light;
-    let bounding_box = paletted.bounding_box;
-    let material = paletted.material.unwrap_or("air".to_string());
+    let filter_light = paletted.filter_light as u8;
+    let emit_light = paletted.emit_light as u8;
+    let bounding_box = Ident::new(&paletted.bounding_box.to_case(Case::Pascal), Span::call_site());
+    let material = Ident::new(
+      &paletted.material.unwrap_or("air".to_string()).to_case(Case::Pascal),
+      Span::call_site(),
+    );
 
     let out = quote! {
       Data {
         kind: Kind::#kind,
         state: #state,
 
+        drops:        &[#(#drops),*],
         diggable:     #diggable,
         transparent:  #transparent,
         filter_light: #filter_light,
         emit_light:   #emit_light,
-        bounding_box: BoundingBoxKind::from_str(#bounding_box).unwrap(),
-        material:     Material::from_str(#material).unwrap(),
+        bounding_box: BoundingBoxKind::#bounding_box,
+        material:     Material::#material,
 
         default_index: #default_index,
         types: &[#(#types),*],

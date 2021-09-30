@@ -53,7 +53,7 @@ impl Kind {
 #[derive(Debug)]
 #[non_exhaustive]
 pub enum BoundingBoxKind {
-  None,
+  Empty,
   Block,
 }
 
@@ -63,13 +63,14 @@ pub enum BoundingBoxKind {
 #[derive(Debug)]
 #[non_exhaustive]
 pub enum Material {
+  Air,
   Rock,
   Dirt,
   Plant,
   Wood,
   Web,
   Wool,
-  Unknown,
+  UnknownMaterial,
 }
 
 /// Any data specific to a block kind. This includes all function handlers for
@@ -81,6 +82,8 @@ pub struct Data {
   pub kind:         Kind,
   /// The latest version state id (a block id that can be sent to a client)
   pub state:        u32,
+  /// A list of item ids this block can drop.
+  pub drops:        &'static [u32],
   /// If this is false, then this is something like bedrock (unbreakable)
   pub diggable:     bool,
   /// If this is true, then clients can (at least partially) see through this
