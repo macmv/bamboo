@@ -1,46 +1,70 @@
-/// A block material. In vanilla, there are around 50 of these. However, the
-/// prismarine data limits it to these options. This will be updated in the
-/// future.
+#[rustfmt::skip]
+/// A block material. In vanilla, there are a bunch of these. However, the
+/// prismarine data limits us to just a few options. This will be updated in the
+/// future, to match a simpler version of the 1.8 materials.
 ///
 /// Here are the 1.8 materials:
-/// - air = MaterialTransparent(air);
-/// - grass = Material(grass);
-/// - ground = Material(dirt);
-/// - wood = (Material(wood)).setBurning();
-/// - rock = (Material(stone)).setRequiresTool();
-/// - iron = (Material(iron)).setRequiresTool();
-/// - anvil = (Material(iron)).setRequiresTool().setImmovableMobility();
-/// - water = (MaterialLiquid(water)).setNoPushMobility();
-/// - lava = (MaterialLiquid(tnt)).setNoPushMobility();
-/// - leaves = (Material(foliage)).setBurning().setTranslucent().
-///   setNoPushMobility();
-/// - plants = (MaterialLogic(foliage)).setNoPushMobility();
-/// - vine = (MaterialLogic(foliage)).setBurning().setNoPushMobility().
-///   setReplaceable();
-/// - sponge = Material(yellow);
-/// - cloth = (Material(cloth)).setBurning();
-/// - fire = (MaterialTransparent(air)).setNoPushMobility();
-/// - sand = Material(sand);
-/// - circuits = (MaterialLogic(air)).setNoPushMobility();
-/// - carpet = (MaterialLogic(cloth)).setBurning();
-/// - glass = (Material(air)).setTranslucent().setAdventureModeExempt();
-/// - redstoneLight = (Material(air)).setAdventureModeExempt();
-/// - tnt = (Material(tnt)).setBurning().setTranslucent();
-/// - coral = (Material(foliage)).setNoPushMobility();
-/// - ice = (Material(ice)).setTranslucent().setAdventureModeExempt();
-/// - packedIce = (Material(ice)).setAdventureModeExempt();
-/// - snow = (MaterialLogic(snow)).setReplaceable().setTranslucent().
-///   setRequiresTool().setNoPushMobility();
-/// - craftedSnow = (Material(snow)).setRequiresTool();
-/// - cactus = (Material(foliage)).setTranslucent().setNoPushMobility();
-/// - clay = Material(clay);
-/// - gourd = (Material(foliage)).setNoPushMobility();
-/// - dragonEgg = (Material(foliage)).setNoPushMobility();
-/// - portal = (MaterialPortal(air)).setImmovableMobility();
-/// - cake = (Material(air)).setNoPushMobility();
-/// - web = (Material(cloth)).setRequiresTool().setNoPushMobility();
-/// - piston = (Material(stone)).setImmovableMobility();
-/// - barrier = (Material(air)).setRequiresTool().setImmovableMobility();
+///
+/// Key:
+/// - Mat: The named material, according to MCP 1.8
+/// - Color: The color name, according to MCP 1.8. This is what will show up on
+///   maps
+/// - Burn: If there is an `x` in this column, then this type of block can be
+///   lit on fire.
+/// - Requires Tool: If there is an `x` in this column, then the block will only
+///   drop items if broken by the correct tool.
+/// - Piston Behavior: This is what happens when the block is pushed by a piston.
+///   The block will either behave like normal (get pushed to the side), or it
+///   will be immovable (the piston will not extend), or it will be destroyed (the
+///   piston will extend, and the block will drop as an item).
+/// - Translucent: If there is an `x` in this column, then this block is considered
+///   transparent by the game. This means the clients can see through it, mobs
+///   cannot spawn ontop of it, etc.
+/// - Replaceable: If there is an `x` in this column, then the block will be
+///   replaced when right-clicked on. The normal operation is to have the new block
+///   be placed next to the block you click on. If the block is replaceable (for
+///   example, tall grass) then right clicking on it will just place a new block
+///   in the place of the block you clicked on.
+/// - Adventure Mode Exempt: This will allow you to modify these blocks in adventure
+///   mode.
+///
+/// | Material     | Color   | Burn | Requires Tool | Piston Behavior | Translucent | Replaceable | Adventure Mode Exempt |
+/// |--------------|---------|------|---------------|-----------------|-------------|-------------|-----------------------|
+/// | air          | air     |      |               |                 |             |             |                       |
+/// | grass        | grass   |      |               |                 |             |             |                       |
+/// | ground       | dirt    |      |               |                 |             |             |                       |
+/// | wood         | wood    | x    |               |                 |             |             |                       |
+/// | rock         | stone   |      | x             |                 |             |             |                       |
+/// | iron         | iron    |      | x             |                 |             |             |                       |
+/// | anvil        | iron    |      | x             | immovable       |             |             |                       |
+/// | water        | water   |      |               | destroy         |             |             |                       |
+/// | lava         | tnt     |      |               | destroy         |             |             |                       |
+/// | leaves       | foliage | x    |               | destroy         | x           |             |                       |
+/// | plants       | foliage |      |               | destroy         |             |             |                       |
+/// | vine         | foliage | x    |               | destroy         |             | x           |                       |
+/// | sponge       | yellow  |      |               |                 |             |             |                       |
+/// | cloth        | cloth   | x    |               |                 |             |             |                       |
+/// | fire         | air     |      |               | destroy         |             |             |                       |
+/// | sand         | sand    |      |               |                 |             |             |                       |
+/// | circuits     | air     |      |               | destroy         |             |             |                       |
+/// | carpet       | cloth   | x    |               |                 |             |             |                       |
+/// | glass        | air     |      |               |                 | x           |             | x                     |
+/// | redstone     | air     |      |               |                 |             |             | x                     |
+/// | tnt          | tnt     | x    |               |                 | x           |             |                       |
+/// | coral        | foliage |      |               | destroy         |             |             |                       |
+/// | ice          | ice     |      |               |                 | x           |             | x                     |
+/// | packedIce    | ice     |      |               |                 |             |             | x                     |
+/// | snow         | snow    |      |               |                 | x           | x           |                       |
+/// | crafted snow | snow    |      | x             |                 |             |             |                       |
+/// | cactus       | foliage |      |               | destroy         | x           |             |                       |
+/// | clay         | clay    |      |               |                 |             |             |                       |
+/// | gourd        | foliage |      |               | destroy         |             |             |                       |
+/// | dragon egg   | foliage |      |               | destroy         |             |             |                       |
+/// | portal       | air     |      |               | immovable       |             |             |                       |
+/// | cake         | air     |      |               | destroy         |             |             |                       |
+/// | web          | cloth   |      | x             | destroy         |             |             |                       |
+/// | piston       | stone   |      |               | immovable       |             |             |                       |
+/// | barrier      | air     |      | x             | destroy         |             |             |                       |
 #[derive(Debug)]
 #[non_exhaustive]
 pub enum Material {
