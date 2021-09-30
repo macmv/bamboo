@@ -134,13 +134,17 @@ impl Connection {
           if location == Pos::new(-1, -1, -1) && direction == -1 {
             // Client is eating, or head is inside block
           } else {
-            let data = {
+            let item_data = {
               let inv = player.lock_inventory();
               let stack = inv.main_hand();
               player.world().item_converter().get_data(stack.item())
             };
-            let kind = data.block_to_place();
-            player.sync_block_at(location).await;
+            let kind = item_data.block_to_place();
+            let block_data = player.world().block_converter().get(kind);
+
+            if block_data.is_replaceable {}
+
+            let _ = player.sync_block_at(location).await;
             location += Pos::dir_from_byte(direction.try_into().unwrap());
             match player.world().set_kind(location, kind).await {
               Ok(_) => (),

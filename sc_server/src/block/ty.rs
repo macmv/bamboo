@@ -48,15 +48,59 @@ impl Kind {
   }
 }
 
+/// A kind of bounding box. This is from prismarine data. It is not very
+/// helpful, and will be replaced when I have a better data source.
+#[derive(Debug)]
+#[non_exhaustive]
+pub enum BoundingBoxKind {
+  None,
+  Block,
+}
+
+/// A block material. In vanilla, there are around 50 of these. However, the
+/// prismarine data limits it to these options. This will be updated in the
+/// future.
+#[derive(Debug)]
+#[non_exhaustive]
+pub enum Material {
+  Rock,
+  Dirt,
+  Plant,
+  Wood,
+  Web,
+  Wool,
+  Unknown,
+}
+
 /// Any data specific to a block kind. This includes all function handlers for
 /// when a block gets placed/broken, and any custom functionality a block might
 /// have.
 #[derive(Debug)]
 pub struct Data {
-  state:            u32,
-  // A list of types in order. This will always be at least one element long.
+  /// The kind for this data.
+  pub kind:         Kind,
+  /// The latest version state id (a block id that can be sent to a client)
+  pub state:        u32,
+  /// If this is false, then this is something like bedrock (unbreakable)
+  pub diggable:     bool,
+  /// If this is true, then clients can (at least partially) see through this
+  /// block.
+  pub transparent:  bool,
+  /// This is how much light this block removes. A value of 15 means it blocks
+  /// all light, and a value of 0 means it blocks no light.
+  pub filter_light: u8,
+  /// The amount of light this block emits (0-15).
+  pub emit_light:   u8,
+  /// The kind of bounding box this block has.
+  pub bounding_box: BoundingBoxKind,
+  /// The material used to make this block. This controls things like map color,
+  /// sound, what tool breaks the block, etc. Prismarine doesn't have a very
+  /// good material value, so this needs to be updated to more complete data.
+  pub material:     Material,
+
+  /// A list of types in order. This will always be at least one element long.
   pub(super) types: &'static [Type],
-  // The default type. This is an index into types.
+  /// The default type. This is an index into types.
   default_index:    u32,
 }
 
