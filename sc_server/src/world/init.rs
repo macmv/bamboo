@@ -20,7 +20,7 @@ impl World {
     let mut c = Command::new("say");
     c.add_arg("text", Parser::String(StringType::Greedy));
     self
-      .get_commands()
+      .commands()
       .add(c, |world, _, args| async move {
         world.broadcast(format!("[Server] {}", args[1].str()).as_str()).await;
       })
@@ -40,7 +40,7 @@ impl World {
       .add_arg("radius", Parser::Float { min: Some(0.0), max: None })
       .add_arg("block", Parser::BlockState);
     self
-      .get_commands()
+      .commands()
       .add(c, |world, _, args| async move {
         // args[0] is `fill`
         match args[1].lit() {
@@ -73,7 +73,7 @@ impl World {
     let mut c = Command::new("flyspeed");
     c.add_arg("multiplier", Parser::Float { min: Some(0.0), max: None });
     self
-      .get_commands()
+      .commands()
       .add(c, |_, player, args| async move {
         // args[0] is `flyspeed`
         let v = args[1].float();
@@ -195,7 +195,7 @@ impl World {
 
     conn.send(out).await;
     if player.ver() >= ProtocolVersion::V1_13 {
-      conn.send(self.get_commands().serialize().await).await;
+      conn.send(self.commands().serialize().await).await;
     }
 
     let view_distance = 10;

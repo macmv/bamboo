@@ -109,7 +109,7 @@ impl Sugarcane {
     let command = command.inner.lock().unwrap().clone();
     let idx = self.idx;
     tokio::spawn(async move {
-      wm.get_commands()
+      wm.commands()
         .add(command, move |_, player, args| {
           let wm = wm2.clone();
           let mut cb = cb.clone();
@@ -119,7 +119,7 @@ impl Sugarcane {
             let mut err = None;
             let mut has_err = false;
             {
-              let mut lock = wm.get_plugins().plugins.lock().unwrap();
+              let mut lock = wm.plugins().plugins.lock().unwrap();
               let plugin = &mut lock[idx];
               let sc = plugin.sc();
               if let Err(e) = cb.call(

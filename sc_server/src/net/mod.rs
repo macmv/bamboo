@@ -82,7 +82,7 @@ impl Connection {
           if message.chars().next() == Some('/') {
             let mut chars = message.chars();
             chars.next().unwrap();
-            player.world().get_commands().execute(wm.clone(), player.clone(), chars.as_str()).await;
+            player.world().commands().execute(wm.clone(), player.clone(), chars.as_str()).await;
           } else {
             let mut msg = Chat::empty();
             msg.add("<");
@@ -96,11 +96,11 @@ impl Connection {
         }
         sb::Packet::SetCreativeSlot { slot, item } => {
           let id =
-            player.world().get_item_converter().to_latest(item.id() as u32, player.ver().block());
+            player.world().item_converter().to_latest(item.id() as u32, player.ver().block());
           info!("old: {}, new: {}", item.id(), id);
 
           // if slot > 0 {
-          //   let id = player.world().get_item_converter().to_latest(id as u32,
+          //   let id = player.world().item_converter().to_latest(id as u32,
           // player.ver().block());   player
           //     .lock_inventory()
           //     .set(slot as u32,
@@ -140,7 +140,7 @@ impl Connection {
             let data = {
               let inv = player.lock_inventory();
               let stack = inv.main_hand();
-              player.world().get_item_converter().get_data(stack.item())
+              player.world().item_converter().get_data(stack.item())
             };
             let kind = data.block_to_place();
             location += Pos::dir_from_byte(direction.try_into().unwrap());
@@ -148,7 +148,7 @@ impl Connection {
               Ok(_) => (),
               Err(e) => player.send_hotbar(&Chat::new(e.to_string())).await,
             }
-            player.world().get_plugins().on_block_place(player.clone(), location, kind);
+            player.world().plugins().on_block_place(player.clone(), location, kind);
           }
         }
         sb::Packet::Position { x, y, z, on_ground: _ } => {
