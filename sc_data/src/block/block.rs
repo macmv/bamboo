@@ -1,5 +1,7 @@
 use std::collections::HashSet;
 
+use super::paletted;
+
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct State {
   // In fixed data, this is block id << 4 | meta
@@ -12,7 +14,7 @@ pub struct State {
   props: Vec<(String, String)>,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct Block {
   // In fixed data, id is the block id << 4
   // In paletted data, this is the min state id
@@ -25,6 +27,8 @@ pub struct Block {
   default_index: u32,
   // Always the full name of the block (for example, grass_block)
   name:          String,
+
+  pub paletted: Option<paletted::JsonBlock>,
 }
 
 impl Block {
@@ -34,8 +38,14 @@ impl Block {
   //   }
   //   self.states.iter().map(|s| s.prop_str(&self.name)).collect()
   // }
-  pub fn new(name: String, id: u32, states: Vec<State>, default_index: u32) -> Self {
-    Block { id, states, default_index, name }
+  pub fn new(
+    name: String,
+    id: u32,
+    states: Vec<State>,
+    default_index: u32,
+    paletted: Option<paletted::JsonBlock>,
+  ) -> Self {
+    Block { id, states, default_index, name, paletted }
   }
   pub fn id(&self) -> u32 {
     self.id

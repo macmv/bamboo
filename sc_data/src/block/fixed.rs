@@ -79,6 +79,7 @@ pub(super) fn load_data(name: String, file: &str) -> io::Result<BlockVersion> {
         .map(|s| State::new(state | s.metadata, vec![]))
         .collect(),
       0,
+      None,
     ));
   }
   Ok(ver)

@@ -8,7 +8,7 @@ use std::{collections::HashMap, io};
 
 use super::{Block, BlockVersion, State};
 
-#[derive(Default, Debug, Deserialize)]
+#[derive(Default, Debug, Clone, Deserialize, PartialEq)]
 struct JsonBlockState {
   name:       String,
   // One of 'int', 'bool', or 'enum'
@@ -19,37 +19,37 @@ struct JsonBlockState {
   values:     Option<Vec<String>>,
 }
 
-#[derive(Default, Debug, Deserialize)]
+#[derive(Default, Debug, Clone, Deserialize, PartialEq)]
 #[allow(dead_code)]
-struct JsonBlock {
-  id:            u32,
+pub struct JsonBlock {
+  id:               u32,
   #[serde(alias = "displayName")]
-  display_name:  String,
-  name:          String,
+  display_name:     String,
+  name:             String,
   // If this is None or 0, then it is unbreakable
-  hardness:      Option<f32>,
+  hardness:         Option<f32>,
   #[serde(alias = "minStateId")]
-  min_state_id:  u32,
+  min_state_id:     u32,
   #[serde(alias = "maxStateId")]
-  max_state_id:  u32,
-  states:        Vec<JsonBlockState>,
+  max_state_id:     u32,
+  states:           Vec<JsonBlockState>,
   // Vec of item ids
-  drops:         Vec<u32>,
-  diggable:      bool,
-  transparent:   bool,
+  drops:            Vec<u32>,
+  pub diggable:     bool,
+  pub transparent:  bool,
   #[serde(alias = "filterLight")]
-  filter_light:  u32,
+  pub filter_light: u32,
   #[serde(alias = "emitLight")]
-  emit_light:    u32,
+  pub emit_light:   u32,
   #[serde(alias = "boundingBox")]
-  bounding_box:  String,
+  pub bounding_box: String,
   #[serde(alias = "stackSize")]
-  stack_size:    u32,
+  stack_size:       u32,
   #[serde(alias = "defaultState")]
-  default_state: u32,
-  resistance:    f32,
+  default_state:    u32,
+  resistance:       f32,
 
-  material:      Option<String>,
+  pub material:  Option<String>,
   #[serde(alias = "harvestTools")]
   harvest_tools: Option<HashMap<String, bool>>,
 }
@@ -63,6 +63,7 @@ pub(super) fn load_data(name: String, file: &str) -> io::Result<BlockVersion> {
       b.min_state_id,
       generate_states(&b),
       b.default_state - b.min_state_id,
+      Some(b.clone()),
     ));
   }
   Ok(ver)
