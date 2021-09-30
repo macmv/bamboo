@@ -7,6 +7,9 @@ use std::{cmp::Ordering, collections::HashMap};
 
 /// General block manipulation functions
 impl World {
+  pub fn get_block(&self, pos: Pos) -> Result<block::Type, PosError> {
+    self.chunk(pos.chunk(), |c| c.get_type(pos.chunk_rel()))
+  }
   /// This sets a block within the world. It will return an error if the
   /// position is outside of the world. Unlike
   /// [`MultiChunk::set_type`](chunk::MultiChunk::set_type), this will send

@@ -140,6 +140,7 @@ impl Connection {
               player.world().item_converter().get_data(stack.item())
             };
             let kind = data.block_to_place();
+            player.sync_block_at(location).await;
             location += Pos::dir_from_byte(direction.try_into().unwrap());
             match player.world().set_kind(location, kind).await {
               Ok(_) => (),

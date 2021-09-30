@@ -6,7 +6,7 @@ use std::{
 };
 
 use sc_common::{
-  math::{ChunkPos, FPos, Pos},
+  math::{ChunkPos, FPos, Pos, PosError},
   net::cb,
   util::{Chat, UUID},
   version::ProtocolVersion,
@@ -597,6 +597,28 @@ impl Player {
         walking_speed: 0.1,
       })
       .await;
+  }
+
+  /// Sends a block update packet for the block at the given position. This
+  /// ensures that the client sees what the server sees at that position.
+  ///
+  /// This is mostly used for placing blocks. If you place a block on a stone
+  /// block, then the position you clicked on is not the same as the position
+  /// where the new block is. However, if you click on tall grass, then the tall
+  /// grass will be replaced by the new block. The client assumes this, and it
+  /// ends up becoming desyncronized from the server. So this function is called
+  /// on that tall grass block, to prevent the client from showing the wrong
+  /// block.
+  pub async fn sync_block_at(&self, pos: Pos) -> Result<(), PosError> {
+    let ty = self.world().get_block(pos)?;
+    self
+      .conn
+      .send(cb::Packet::BlockChange {
+        location: pos,
+        type_:    self.world().block_converter().to_old(ty.id(), self.ver().block()) as i32,
+      })
+      .await;
+    Ok(())
   }
 }
 
