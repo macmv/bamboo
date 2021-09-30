@@ -150,10 +150,9 @@ impl Connection {
                 }
 
                 match player.world().set_kind(location, kind).await {
-                  Ok(_) => (),
+                  Ok(_) => player.world().plugins().on_block_place(player.clone(), location, kind),
                   Err(e) => player.send_hotbar(&Chat::new(e.to_string())).await,
                 }
-                player.world().plugins().on_block_place(player.clone(), location, kind);
               }
               Err(e) => player.send_hotbar(&Chat::new(e.to_string())).await,
             };
