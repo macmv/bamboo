@@ -1,5 +1,6 @@
 use super::nbt::NBT;
 use crate::proto;
+use sc_transfer::{MessageRead, MessageWrite, ReadError, WriteError};
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct Item {
@@ -14,22 +15,20 @@ impl Item {
   pub fn new(id: i32, count: u8, damage: i16, nbt: NBT) -> Self {
     Item { id, count, damage, nbt }
   }
-  pub fn from_proto(p: proto::Item) -> Self {
-    Item {
-      id:     p.id,
-      count:  p.count as u8,
-      damage: p.damage as i16,
-      nbt:    NBT::deserialize(p.nbt).unwrap(),
-    }
+  pub fn from_sc(m: &mut MessageRead) -> Result<Self, ReadError> {
+    Ok(Item {
+      id:     m.read_i32()?,
+      count:  m.read_u8()?,
+      damage: m.read_i16()?,
+      nbt:    NBT::deserialize(m.read_buf()?).unwrap(),
+    })
   }
-  pub fn to_proto(&self) -> proto::Item {
-    proto::Item {
-      present: self.id != -1,
-      id:      self.id,
-      count:   self.count.into(),
-      damage:  self.damage.into(),
-      nbt:     self.nbt.serialize(),
-    }
+  pub fn to_sc(&self, m: &mut MessageWrite) -> Result<(), WriteError> {
+    m.write_i32(self.id)?;
+    m.write_u8(self.count)?;
+    m.write_i16(self.damage)?;
+    m.write_buf(&self.nbt.serialize())?;
+    Ok(())
   }
 
   pub fn id(&self) -> i32 {

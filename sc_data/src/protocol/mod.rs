@@ -474,7 +474,7 @@ fn generate_packets(
       &[FuncArg { name: "version", ty: "ProtocolVersion" }, FuncArg { name: "buf", ty: "&[u8]" }],
       Some("Result<(Self, usize), ReadError>"),
       |gen| {
-        gen.write_line("let mut m = MessageWrite::new(buf);");
+        gen.write_line("let mut m = MessageRead::new(buf);");
         gen.write("let out = ");
         gen.write_match("pb.id", |gen| {
           for (id, p) in packets.iter().enumerate() {

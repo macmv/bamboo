@@ -142,7 +142,7 @@ impl PacketField {
         FloatType::F32 => format!("m.write_f32(*{})", val),
         FloatType::F64 => format!("m.write_f64(*{})", val),
       },
-      Self::UUID => format!("m.write_bytes(*{}.as_bytes())", val),
+      Self::UUID => format!("m.write_bytes({}.as_bytes())", val),
       Self::String => format!("m.write_str({})", val),
       Self::Position => format!("m.write_u64({}.to_u64())", val),
 
@@ -153,7 +153,7 @@ impl PacketField {
 
       // Self::Option(field) => format!(#name.unwrap()),
       Self::DefinedType(name) => match name.as_str() {
-        "slot" => format!("{}.write(&mut m)", val),
+        "slot" => format!("{}.to_sc(&mut m)", val),
         "tags" => format!("m.write_buf({})", val),
         _ => panic!("undefined field type {}", name),
       },
@@ -177,7 +177,7 @@ impl PacketField {
         FloatType::F32 => "m.read_f32()?",
         FloatType::F64 => "m.read_f64()?",
       },
-      Self::UUID => "UUID::from_u64(m.read_u64()?)",
+      Self::UUID => "UUID::from_bytes(m.read_bytes(16)?.try_into().unwrap())",
       Self::String => "m.read_str()?",
       Self::Position => "Pos::from_u64(m.read_u64()?)",
 
@@ -188,7 +188,7 @@ impl PacketField {
 
       // Self::Option(field) => (#name.unwrap()),
       Self::DefinedType(name) => match name.as_str() {
-        "slot" => "Item::read(&mut m)",
+        "slot" => "Item::from_sc(&mut m)?",
         "tags" => "m.read_buf()?",
         _ => panic!("undefined field type {}", name),
       },
