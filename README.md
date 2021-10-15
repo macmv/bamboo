@@ -67,6 +67,30 @@ exponentially difficult problem, but it mostly comes down to data transfer. So
 if all of the proxies are running on separate machines, and if the main server
 is on a fast enough machine, it should be possible.
 
+#### Modules
+
+Any module on this list depends on at least one of the modules before it in the
+list.
+
+ - `sc_macros`: Contains some small utilities used in sc_server.
+ - `sc_transfer`: The server-proxy communication protocol. These
+   packets describe nothing about there format, so it is up the
+   other side to know the protocol spec.
+ - `sc_data`: The code generator. This takes prismarine data and
+   generates Rust source.
+ - `sc_generated`: The output of `sc_data`. This is a seperate
+   crate to improve rebuild times.
+ - `sc_common`: Common utilities. These are things like item
+   parsers, UUIDs, etc. This is changed often, so `sc_generated`
+   copies some of the code from here.
+ - `sc_server`: The Minecraft server. This is the first binary
+   target.
+ - `sc_proxy`: The proxy. This is required for any clients to
+   connection to the server.
+ - `sc_cli`: A cli tool, used to connect to a Minecraft server and
+   validate that it is sending good data (things like making sure
+   the client won't leak chunks, checks for keep alive packets, etc).
+
 ### Features
 
 All of these are planned! I have no time frame for doing these things, but here
