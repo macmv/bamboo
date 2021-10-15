@@ -2229,6 +2229,10 @@ dependencies = [
 ]
 
 [[package]]
+name = "sc_transfer"
+version = "0.1.0"
+
+[[package]]
 name = "schannel"
 version = "0.1.19"
 source = "registry+https://github.com/rust-lang/crates.io-index"

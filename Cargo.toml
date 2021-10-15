@@ -1,6 +1,7 @@
 [workspace]
 members = [
   "sc_macros",
+  "sc_transfer",
   "sc_data",
   "sc_generated",
   "sc_common",
