@@ -130,6 +130,16 @@ impl MessageWrite<'_> {
   pub fn read_i64(&mut self, v: i64) -> Result {
     self.write_u64(zig(v))
   }
+  /// Writes a length prefixed buffer.
+  pub fn write_buf(&mut self, v: &[u8]) -> Result {
+    self.write_u32(v.len().try_into().expect("capacity overflow"))?;
+    self.data[self.idx..self.idx + v.len()].clone_from_slice(v);
+    Ok(())
+  }
+  /// Writes a length prefixed string.
+  pub fn read_str(&mut self, v: &str) -> Result {
+    self.write_buf(v.as_bytes())
+  }
 }
 
 #[cfg(test)]
