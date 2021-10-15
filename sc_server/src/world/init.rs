@@ -19,7 +19,7 @@ impl World {
   pub fn init(&self) {
     let mut c = Command::new("say");
     c.add_arg("text", Parser::String(StringType::Greedy));
-    self.commands().add(c, |world, _, args| async move {
+    self.commands().add(c, |world, _, args| {
       world.broadcast(format!("[Server] {}", args[1].str()).as_str());
     });
 
@@ -36,7 +36,7 @@ impl World {
       .add_arg("center", Parser::BlockPos)
       .add_arg("radius", Parser::Float { min: Some(0.0), max: None })
       .add_arg("block", Parser::BlockState);
-    self.commands().add(c, |world, _, args| async move {
+    self.commands().add(c, |world, _, args| {
       // args[0] is `fill`
       match args[1].lit() {
         "rect" => {

@@ -4,21 +4,20 @@ pub mod gen;
 mod init;
 mod players;
 
+use crossbeam_channel::Sender;
+use parking_lot::{Mutex, MutexGuard, RwLock};
 use std::{
   collections::HashMap,
   convert::TryInto,
   sync::{
     atomic::{AtomicI32, AtomicU32, Ordering},
-    Arc, Mutex as StdMutex, MutexGuard as StdMutexGuard, RwLock,
+    Arc,
   },
   thread,
   thread::ThreadId,
   time::{Duration, Instant},
 };
-use tokio::{
-  sync::{mpsc::Sender, Mutex, MutexGuard},
-  time,
-};
+use tokio::time;
 
 use sc_common::{
   math::{ChunkPos, FPos},
@@ -39,18 +38,18 @@ pub use players::{PlayersIter, PlayersMap};
 // pub struct ChunkRef<'a> {
 //   pos:    ChunkPos,
 //   // Need to keep this is scope while we mess with the chunk
-//   chunks: RwLockReadGuard<'a, HashMap<ChunkPos, Arc<StdMutex<MultiChunk>>>>,
+//   chunks: RwLockReadGuard<'a, HashMap<ChunkPos, Arc<Mutex<MultiChunk>>>>,
 // }
 //
 // impl ChunkRef<'_> {
-//   fn lock<'a>(&'a self) -> StdMutexGuard<'a, MultiChunk> {
+//   fn lock<'a>(&'a self) -> MutexGuard<'a, MultiChunk> {
 //     self.chunks.get(&self.pos).unwrap().lock().unwrap()
 //   }
 // }
 
 pub struct World {
-  chunks:           RwLock<HashMap<ChunkPos, Arc<StdMutex<MultiChunk>>>>,
-  generators:       RwLock<HashMap<ThreadId, StdMutex<WorldGen>>>,
+  chunks:           RwLock<HashMap<ChunkPos, Arc<Mutex<MultiChunk>>>>,
+  generators:       RwLock<HashMap<ThreadId, Mutex<WorldGen>>>,
   players:          Mutex<PlayersMap>,
   eid:              AtomicI32,
   block_converter:  Arc<block::TypeConverter>,
@@ -97,8 +96,8 @@ impl World {
     });
     let w = world.clone();
     tokio::spawn(async move {
-      w.init().await;
-      w.global_tick_loop().await;
+      w.init();
+      w.global_tick_loop();
     });
     world
   }
@@ -106,7 +105,7 @@ impl World {
     let mut int = time::interval(Duration::from_millis(50));
     let mut tick = 0;
     loop {
-      int.tick().await;
+      int.tick();
       if tick % 20 == 0 {
         let mut header = Chat::empty();
         let mut footer = Chat::empty();
@@ -126,38 +125,23 @@ impl World {
 
         let out =
           cb::Packet::PlayerlistHeader { header: header.to_json(), footer: footer.to_json() };
-        for p in self.players.lock().await.values() {
-          p.conn().send(out.clone()).await;
+        for p in self.players.lock().values() {
+          p.send(out.clone());
         }
       }
       tick += 1;
     }
   }
-  fn new_player(self: Arc<Self>, player: Player) {
-    let conn = player.clone_conn();
+  fn new_player(self: Arc<Self>, player: Player) -> Arc<Player> {
     let player = Arc::new(player);
     {
-      let mut p = self.players.lock().await;
+      let mut p = self.players.lock();
       if p.contains_key(&player.id()) {
-        player.disconnect("Another player with the same id is already connected!").await;
+        player.disconnect("Another player with the same id is already connected!");
         return;
       }
       p.insert(player.id(), player.clone());
     }
-
-    // Network recieving task
-    let c = conn.clone();
-    let p = player.clone();
-    let wm = self.wm.clone();
-    tokio::spawn(async move {
-      let name = p.username().to_string();
-      match c.run(p, wm) {
-        Ok(_) => {}
-        Err(e) => {
-          error!("error in connection for {}: {}", name, e);
-        }
-      }
-    });
 
     // Player tick loop
     tokio::spawn(async move {
@@ -168,6 +152,7 @@ impl World {
       info!("{} has logged out", name);
       self.players.lock().remove(&id);
     });
+    player
   }
 
   fn player_loop(&self, player: Arc<Player>) {
@@ -246,7 +231,7 @@ impl World {
       // Even though we only use this generator on this thread, Rust safety says we
       // need a Mutex here. I could do away with the mutex in unsafe code, but that
       // seems like a pre-mature optimization.
-      generators.entry(tid).or_insert_with(|| StdMutex::new(WorldGen::new()));
+      generators.entry(tid).or_insert_with(|| Mutex::new(WorldGen::new()));
     }
     let generators = self.generators.read().unwrap();
     let mut lock = generators[&tid].lock().unwrap();
@@ -273,7 +258,7 @@ impl World {
   pub fn store_chunks(&self, chunks: Vec<(ChunkPos, MultiChunk)>) {
     let mut lock = self.chunks.write().unwrap();
     for (pos, c) in chunks {
-      lock.insert(pos, Arc::new(StdMutex::new(c)));
+      lock.insert(pos, Arc::new(Mutex::new(c)));
     }
   }
 
@@ -303,7 +288,7 @@ impl World {
         // Make sure to call or_insert_with. Someone could have changed the chunks
         // between the read unlock and the write lock. So the needs_write bool is mostly
         // an approximation.
-        write.entry(pos).or_insert_with(|| Arc::new(StdMutex::new(c)));
+        write.entry(pos).or_insert_with(|| Arc::new(Mutex::new(c)));
       }
     }
   }
@@ -319,14 +304,14 @@ impl World {
   /// the way I liked.
   pub fn chunk<F, R>(&self, pos: ChunkPos, f: F) -> R
   where
-    F: FnOnce(StdMutexGuard<MultiChunk>) -> R,
+    F: FnOnce(MutexGuard<MultiChunk>) -> R,
   {
     // We first check (read-only) if we need to generate a new chunk
     if !self.chunks.read().unwrap().contains_key(&pos) {
       // If we do, we lock it for writing
       let mut chunks = self.chunks.write().unwrap();
       // Make sure that the chunk was not written in between locking this chunk
-      chunks.entry(pos).or_insert_with(|| Arc::new(StdMutex::new(self.pre_generate_chunk(pos))));
+      chunks.entry(pos).or_insert_with(|| Arc::new(Mutex::new(self.pre_generate_chunk(pos))));
     }
     let chunks = self.chunks.read().unwrap();
     let c = chunks[&pos].lock().unwrap();
@@ -468,8 +453,8 @@ impl WorldManager {
   // /// proxy connects.
   // pub async fn new_player(&self, req: Streaming<Packet>, tx:
   // Sender<Result<Packet, Status>>) {   let mut conn = Connection::new(req,
-  // tx);   let (username, uuid, ver) = conn.wait_for_login().await;
-  //   let w = self.worlds.lock().await[0].clone();
+  // tx);   let (username, uuid, ver) = conn.wait_for_login();
+  //   let w = self.worlds.lock()[0].clone();
   //   let player = Player::new(
   //     w.eid(),
   //     username,
@@ -479,7 +464,7 @@ impl WorldManager {
   //     w.clone(),
   //     FPos::new(0.0, 60.0, 0.0),
   //   );
-  //   w.new_player(player).await;
+  //   w.new_player(player);
   // }
   /// Adds a new player into the game. This should be called when a new grpc
   /// proxy connects.

@@ -1,4 +1,5 @@
 use crate::{block, item, player::Player, world::WorldManager};
+use crossbeam_channel::{Receiver, Sender};
 use mio::{
   event::Event,
   net::{TcpListener, TcpStream},
@@ -32,11 +33,18 @@ pub struct Connection {
   stream: TcpStream,
   ver:    Option<ProtocolVersion>,
   closed: AtomicBool,
+
+  /// Sending on this will send a packet to the client.
+  tx: Sender<cb::Packet>,
+  rx: Receiver<cb::Packet>,
 }
 
 impl Connection {
   pub(crate) fn new(stream: TcpStream) -> Self {
-    Connection { stream, ver: None, closed: false.into() }
+    // For a 10 chunk render distance, we need to send 441 packets at once. So a
+    // limit of 512 means we don't block very much.
+    let (tx, rx) = crossbeam_channel::bounded(512);
+    Connection { stream, ver: None, closed: false.into(), tx, rx }
   }
 
   /// This will return ErrorKind::WouldBlock once its done reading. If it
@@ -51,7 +59,7 @@ impl Connection {
       let data = &buf[..n];
       match self.handle_data(wm, player, data) {
         Ok(_) => {}
-        Err(e) => return e,
+        Err(e) => return io::Error::new(io::ErrorKind::InvalidData, e.to_string()),
       };
     }
   }
@@ -75,7 +83,7 @@ impl Connection {
         let ver = ProtocolVersion::from(m.read_i32()?);
         data = &data[..m.index()];
         self.ver = Some(ver);
-        *player = Some(wm.new_player(self.tx, username, uuid, ver));
+        *player = Some(wm.new_player(self.tx.clone(), username, uuid, ver));
       }
     }
     Ok(())
@@ -110,7 +118,7 @@ impl Connection {
         if message.chars().next() == Some('/') {
           let mut chars = message.chars();
           chars.next().unwrap();
-          player.world().commands().execute(wm.clone(), player.clone(), chars.as_str());
+          player.world().commands().execute(wm, player, chars.as_str());
         } else {
           let mut msg = Chat::empty();
           msg.add("<");

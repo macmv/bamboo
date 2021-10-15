@@ -193,26 +193,20 @@ impl Player {
   }
 
   /// Sends the player a chat message.
-  pub async fn send_message(&self, msg: &Chat) {
-    self
-      .conn()
-      .send(cb::Packet::Chat {
-        message:      msg.to_json(),
-        position:     0, // Chat box, not system message or over hotbar
-        sender_v1_16: Some(self.id()),
-      })
-      .await;
+  pub fn send_message(&self, msg: &Chat) {
+    self.send(cb::Packet::Chat {
+      message:      msg.to_json(),
+      position:     0, // Chat box, not system message or over hotbar
+      sender_v1_16: Some(self.id()),
+    });
   }
   /// Sends the player a chat message, which will appear over their hotbar.
-  pub async fn send_hotbar(&self, msg: &Chat) {
-    self
-      .conn()
-      .send(cb::Packet::Chat {
-        message:      msg.to_json(),
-        position:     2, // Hotbar, not chat box or system message
-        sender_v1_16: Some(self.id()),
-      })
-      .await;
+  pub fn send_hotbar(&self, msg: &Chat) {
+    self.send(cb::Packet::Chat {
+      message:      msg.to_json(),
+      position:     2, // Hotbar, not chat box or system message
+      sender_v1_16: Some(self.id()),
+    });
   }
   /// Disconnects the player. The given chat message will be shown on the
   /// loading screen.
@@ -224,7 +218,7 @@ impl Player {
   /// TODO: This should terminate the connection after this packet is sent.
   /// Closing the channel will drop the packet before it can be sent, so we need
   /// some other way of closing it later.
-  pub async fn disconnect<C: Into<Chat>>(&self, msg: C) {
+  pub fn disconnect<C: Into<Chat>>(&self, msg: C) {
     self.send(cb::Packet::KickDisconnect { reason: msg.into().to_json() });
   }
 
@@ -564,7 +558,7 @@ impl Player {
 
   /// Sets the player's fly speed. Unlike the packet, this is a multipler. So
   /// setting their flyspeed to 1.0 is the default speed.
-  pub async fn set_flyspeed(&self, speed: f32) {
+  pub fn set_flyspeed(&self, speed: f32) {
     self.send(cb::Packet::Abilities {
       // 0x01: No damage
       // 0x02: Flying
@@ -586,7 +580,7 @@ impl Player {
   /// ends up becoming desyncronized from the server. So this function is called
   /// on that tall grass block, to prevent the client from showing the wrong
   /// block.
-  pub async fn sync_block_at(&self, pos: Pos) -> Result<(), PosError> {
+  pub fn sync_block_at(&self, pos: Pos) -> Result<(), PosError> {
     let ty = self.world().get_block(pos)?;
     self.send(cb::Packet::BlockChange {
       location: pos,
@@ -607,7 +601,8 @@ impl Player {
 
   /// Returns true if the player's connection is closed.
   pub fn closed(&self) -> bool {
-    self.tx.closed()
+    // TODO: Hold onto an Arc<AtomicBool>
+    false
   }
 }
 
