@@ -39,7 +39,6 @@ impl SlPlayer {
   /// p.send_message(chat)
   /// ```
   pub fn send_message(&self, msg: &Var) {
-    let p = self.inner.clone();
     let out = match msg {
       Var::Builtin(_, data) => {
         let chat = data.as_any().downcast_ref::<SlChat>();
@@ -51,8 +50,6 @@ impl SlPlayer {
       }
       _ => Chat::new(msg.to_string()),
     };
-    tokio::spawn(async move {
-      p.send_message(&out).await;
-    });
+    self.inner.send_message(&out);
   }
 }

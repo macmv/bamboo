@@ -49,7 +49,7 @@ impl Connection {
 
   /// This will return ErrorKind::WouldBlock once its done reading. If it
   /// returns any other error, the connection should be closed.
-  pub fn read(&self, wm: &Arc<WorldManager>, player: &mut Option<Arc<Player>>) -> io::Error {
+  pub fn read(&mut self, wm: &Arc<WorldManager>, player: &mut Option<Arc<Player>>) -> io::Error {
     let mut buf = [0; 16 * 1024];
     loop {
       let n = match self.stream.read(&mut buf) {
@@ -65,10 +65,10 @@ impl Connection {
   }
 
   fn handle_data(
-    &self,
+    &mut self,
     wm: &Arc<WorldManager>,
     player: &mut Option<Arc<Player>>,
-    data: &[u8],
+    mut data: &[u8],
   ) -> Result<(), ReadError> {
     while !data.is_empty() {
       if let Some(ver) = self.ver {
@@ -77,7 +77,7 @@ impl Connection {
         self.handle_packet(wm, player.as_ref().unwrap(), p);
       } else {
         // This is the first packet, so it must be a login packet.
-        let m = MessageRead::new(data);
+        let mut m = MessageRead::new(data);
         let username = m.read_str()?;
         let uuid = UUID::from_bytes(m.read_bytes(16)?.try_into().unwrap());
         let ver = ProtocolVersion::from(m.read_i32()?);
@@ -279,7 +279,7 @@ impl ConnectionManager {
           token => {
             // We got an even for a tcp connection. If the token is invalid, we ignore it.
             let done = if let Some((conn, player)) = self.connections.get_mut(&token) {
-              self.handle(poll.registry(), conn, player, event)
+              Self::handle(&self.wm, poll.registry(), conn, player, event)
             } else {
               false
             };
@@ -299,14 +299,14 @@ impl ConnectionManager {
   }
 
   fn handle(
-    &self,
+    wm: &Arc<WorldManager>,
     reg: &Registry,
-    conn: &Connection,
+    conn: &mut Connection,
     player: &mut Option<Arc<Player>>,
     ev: &Event,
   ) -> bool {
     if ev.is_readable() {
-      let err = conn.read(&self.wm, player);
+      let err = conn.read(&wm, player);
       match err.kind() {
         io::ErrorKind::WouldBlock => {}
         _ => {

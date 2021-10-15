@@ -44,12 +44,8 @@ impl SlWorld {
   /// the blocks stored in the world, and send block updates to all clients in
   /// render distance.
   pub fn set_kind(&self, pos: &SlPos, kind: &SlBlockKind) -> Result<(), RuntimeError> {
-    let w = self.inner.clone();
-    let p = self.check_pos(pos.inner)?;
-    let k = kind.inner;
-    tokio::spawn(async move {
-      w.set_kind(p, k).await.unwrap();
-    });
+    self.check_pos(pos.inner)?;
+    self.inner.set_kind(pos.inner, kind.inner).unwrap();
     Ok(())
   }
   /// Fills a rectangle of blocks in the world. This will return an error if the
@@ -64,13 +60,9 @@ impl SlWorld {
     max: &SlPos,
     kind: &SlBlockKind,
   ) -> Result<(), RuntimeError> {
-    let w = self.inner.clone();
-    let min = self.check_pos(min.inner)?;
-    let max = self.check_pos(max.inner)?;
-    let k = kind.inner;
-    tokio::spawn(async move {
-      w.fill_rect_kind(min, max, k).await.unwrap();
-    });
+    self.check_pos(min.inner)?;
+    self.check_pos(max.inner)?;
+    self.inner.fill_rect_kind(min.inner, max.inner, kind.inner).unwrap();
     Ok(())
   }
 }

@@ -66,7 +66,7 @@ impl World {
     });
     let mut c = Command::new("flyspeed");
     c.add_arg("multiplier", Parser::Float { min: Some(0.0), max: None });
-    self.commands().add(c, |_, player, args| async move {
+    self.commands().add(c, |_, player, args| {
       // args[0] is `flyspeed`
       let v = args[1].float();
       if let Some(p) = player {

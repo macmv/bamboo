@@ -109,54 +109,51 @@ impl Sugarcane {
     let command = command.inner.lock().unwrap().clone();
     let idx = self.idx;
     tokio::spawn(async move {
-      wm.commands()
-        .add(command, move |_, player, args| {
-          let wm = wm2.clone();
-          let mut cb = cb.clone();
-          async move {
-            // We need this awkward scoping setup to avoid borrowing errors, and to make
-            // sure `lock` doesn't get sent between threads.
-            let mut err = None;
-            let mut has_err = false;
-            {
-              let mut lock = wm.plugins().plugins.lock().unwrap();
-              let plugin = &mut lock[idx];
-              let sc = plugin.sc();
-              if let Err(e) = cb.call(
-                &mut plugin.lock_env(),
-                vec![
-                  VarRef::Owned(sc.into()),
-                  player
-                    .as_ref()
-                    .map(|p| VarRef::Owned(player::SlPlayer::from(p.clone()).into()))
-                    .unwrap_or(VarRef::Owned(Var::None)),
-                  VarRef::Owned(
-                    args
-                      .iter()
-                      .map(|arg| command::SlArg::from(arg.clone()).into())
-                      .collect::<Vec<Var>>()
-                      .into(),
-                  ),
-                ],
-              ) {
-                err = Some(e);
-                has_err = true;
-              }
-              if let Some(e) = err {
-                plugin.print_err(e);
-              }
+      wm.commands().add(command, move |_, player, args| {
+        let wm = wm2.clone();
+        let mut cb = cb.clone();
+        {
+          // We need this awkward scoping setup to avoid borrowing errors, and to make
+          // sure `lock` doesn't get sent between threads.
+          let mut err = None;
+          let mut has_err = false;
+          {
+            let mut lock = wm.plugins().plugins.lock().unwrap();
+            let plugin = &mut lock[idx];
+            let sc = plugin.sc();
+            if let Err(e) = cb.call(
+              &mut plugin.lock_env(),
+              vec![
+                VarRef::Owned(sc.into()),
+                player
+                  .map(|p| VarRef::Owned(player::SlPlayer::from(p.clone()).into()))
+                  .unwrap_or(VarRef::Owned(Var::None)),
+                VarRef::Owned(
+                  args
+                    .iter()
+                    .map(|arg| command::SlArg::from(arg.clone()).into())
+                    .collect::<Vec<Var>>()
+                    .into(),
+                ),
+              ],
+            ) {
+              err = Some(e);
+              has_err = true;
             }
-            if has_err {
-              if let Some(p) = player {
-                let mut out = Chat::new("");
-                out.add("Error executing command: ").color(Color::Red);
-                out.add(format!("`{}` encountered an internal error", args[0].lit()));
-                p.send_message(&out).await;
-              }
+            if let Some(e) = err {
+              plugin.print_err(e);
             }
           }
-        })
-        .await;
+          if has_err {
+            if let Some(p) = player {
+              let mut out = Chat::new("");
+              out.add("Error executing command: ").color(Color::Red);
+              out.add(format!("`{}` encountered an internal error", args[0].lit()));
+              p.send_message(&out);
+            }
+          }
+        }
+      });
     });
     Ok(())
   }

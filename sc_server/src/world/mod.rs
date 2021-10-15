@@ -29,7 +29,7 @@ use sc_common::{
   version::{BlockVersion, ProtocolVersion},
 };
 
-use crate::{block, command::CommandTree, entity, item, net::Connection, player::Player, plugin};
+use crate::{block, command::CommandTree, entity, item, player::Player, plugin};
 use chunk::MultiChunk;
 use gen::WorldGen;
 
@@ -138,17 +138,18 @@ impl World {
       let mut p = self.players.lock();
       if p.contains_key(&player.id()) {
         player.disconnect("Another player with the same id is already connected!");
-        return;
+        return player;
       }
       p.insert(player.id(), player.clone());
     }
 
     // Player tick loop
+    let p = player.clone();
     tokio::spawn(async move {
-      let name = player.username().to_string();
-      let id = player.id();
+      let name = p.username().to_string();
+      let id = p.id();
       info!("{} has logged in", name);
-      self.player_loop(player);
+      self.player_loop(p);
       info!("{} has logged out", name);
       self.players.lock().remove(&id);
     });
@@ -224,17 +225,17 @@ impl World {
   pub fn pre_generate_chunk(&self, pos: ChunkPos) -> MultiChunk {
     let tid = thread::current().id();
     // We first check (read-only) if we need a world generator for this thread
-    if !self.generators.read().unwrap().contains_key(&tid) {
+    if !self.generators.read().contains_key(&tid) {
       // If we do, we lock it for writing
-      let mut generators = self.generators.write().unwrap();
+      let mut generators = self.generators.write();
       // Make sure that the chunk was not written in between locking this chunk
       // Even though we only use this generator on this thread, Rust safety says we
       // need a Mutex here. I could do away with the mutex in unsafe code, but that
       // seems like a pre-mature optimization.
       generators.entry(tid).or_insert_with(|| Mutex::new(WorldGen::new()));
     }
-    let generators = self.generators.read().unwrap();
-    let mut lock = generators[&tid].lock().unwrap();
+    let generators = self.generators.read();
+    let mut lock = generators[&tid].lock();
     let mut c = MultiChunk::new(self.block_converter.clone());
     lock.generate(pos, &mut c);
     c
@@ -243,7 +244,7 @@ impl World {
   /// Checks if the given chunk position is loaded. This will not check for any
   /// data saved on disk, it only checks if the given chunk is in memory.
   pub fn has_loaded_chunk(&self, pos: ChunkPos) -> bool {
-    self.chunks.read().unwrap().contains_key(&pos)
+    self.chunks.read().contains_key(&pos)
   }
 
   /// Stores a list of chunks in the internal map. This should be used if you
@@ -256,7 +257,7 @@ impl World {
   /// problem with multiple threads generating the same chunks, as they have
   /// already done most of the work by the time the override check occurs.
   pub fn store_chunks(&self, chunks: Vec<(ChunkPos, MultiChunk)>) {
-    let mut lock = self.chunks.write().unwrap();
+    let mut lock = self.chunks.write();
     for (pos, c) in chunks {
       lock.insert(pos, Arc::new(Mutex::new(c)));
     }
@@ -274,7 +275,7 @@ impl World {
     // Only locks for reading if all the chunks are already in the world.
     let mut needs_write = false;
     {
-      let read = self.chunks.read().unwrap();
+      let read = self.chunks.read();
       for (pos, _) in &chunks {
         if !read.contains_key(pos) {
           needs_write = true;
@@ -283,7 +284,7 @@ impl World {
       }
     }
     if needs_write {
-      let mut write = self.chunks.write().unwrap();
+      let mut write = self.chunks.write();
       for (pos, c) in chunks {
         // Make sure to call or_insert_with. Someone could have changed the chunks
         // between the read unlock and the write lock. So the needs_write bool is mostly
@@ -307,14 +308,14 @@ impl World {
     F: FnOnce(MutexGuard<MultiChunk>) -> R,
   {
     // We first check (read-only) if we need to generate a new chunk
-    if !self.chunks.read().unwrap().contains_key(&pos) {
+    if !self.chunks.read().contains_key(&pos) {
       // If we do, we lock it for writing
-      let mut chunks = self.chunks.write().unwrap();
+      let mut chunks = self.chunks.write();
       // Make sure that the chunk was not written in between locking this chunk
       chunks.entry(pos).or_insert_with(|| Arc::new(Mutex::new(self.pre_generate_chunk(pos))));
     }
-    let chunks = self.chunks.read().unwrap();
-    let c = chunks[&pos].lock().unwrap();
+    let chunks = self.chunks.read();
+    let c = chunks[&pos].lock();
     f(c)
   }
 
