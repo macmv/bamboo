@@ -125,26 +125,26 @@ impl PacketField {
       _ => "byte_arr",
     }
   }
-  pub fn generate_to_proto(&self, val: &str) -> String {
+  pub fn generate_to_sc(&self, val: &str) -> String {
     match self {
-      Self::Bool => format!("*{}", val),
+      Self::Bool => format!("m.write_bool(*{})", val),
       Self::Int(ity) => match ity {
-        IntType::I8 => format!("(*{}).into()", val),
-        IntType::U8 => format!("(*{}).into()", val),
-        IntType::I16 => format!("(*{}).into()", val),
-        IntType::U16 => format!("(*{}).into()", val),
-        IntType::I32 => format!("*{}", val),
-        IntType::I64 => format!("*{} as u64", val),
-        IntType::VarInt => format!("*{}", val),
-        IntType::OptVarInt => format!("{}.unwrap_or(0)", val),
+        IntType::I8 => format!("m.wrire_i8(*{})", val),
+        IntType::U8 => format!("m.write_u8(*{})", val),
+        IntType::I16 => format!("m.write_i16(*{})", val),
+        IntType::U16 => format!("m.write_u16(*{})", val),
+        IntType::I32 => format!("m.write_i32(*{})", val),
+        IntType::I64 => format!("m.write_i64(*{})", val),
+        IntType::VarInt => format!("m.write_i32(*{})", val),
+        IntType::OptVarInt => format!("m.write_i32({}.unwrap_or(0))", val),
       },
       Self::Float(fty) => match fty {
-        FloatType::F32 => format!("*{}", val),
-        FloatType::F64 => format!("*{}", val),
+        FloatType::F32 => format!("m.write_f32(*{})", val),
+        FloatType::F64 => format!("m.write_f64(*{})", val),
       },
-      Self::UUID => format!("Some({}.as_proto())", val),
-      Self::String => format!("{}.to_string()", val),
-      Self::Position => format!("{}.to_u64()", val),
+      Self::UUID => format!("m.write_u64(*{})", val),
+      Self::String => format!("m.write_str({})", val),
+      Self::Position => format!("m.write_u64({}.to_u64())", val),
 
       // Self::NBT => format!(#name.clone()),
       // Self::OptionalNBT => format!(#name.clone()),
@@ -153,33 +153,33 @@ impl PacketField {
 
       // Self::Option(field) => format!(#name.unwrap()),
       Self::DefinedType(name) => match name.as_str() {
-        "slot" => format!("Some({}.to_proto())", val),
-        "tags" => format!("{}.clone()", val),
+        "slot" => format!("{}.write(&mut m)", val),
+        "tags" => format!("m.write_buf({})", val),
         _ => panic!("undefined field type {}", name),
       },
-      _ => format!("{}.clone()", val),
+      _ => format!("m.write_buf({})", val),
     }
   }
-  pub fn generate_from_proto(&self) -> &'static str {
+  pub fn generate_from_sc(&self) -> &'static str {
     match self {
-      Self::Bool => "pb.fields.pop().unwrap().bool",
+      Self::Bool => "m.read_bool()?",
       Self::Int(ity) => match ity {
-        IntType::I8 => "pb.fields.pop().unwrap().sint as i8",
-        IntType::U8 => "pb.fields.pop().unwrap().uint as u8",
-        IntType::I16 => "pb.fields.pop().unwrap().sint as i16",
-        IntType::U16 => "pb.fields.pop().unwrap().uint as u16",
-        IntType::I32 => "pb.fields.pop().unwrap().int",
-        IntType::I64 => "pb.fields.pop().unwrap().long as i64",
-        IntType::VarInt => "pb.fields.pop().unwrap().sint",
-        IntType::OptVarInt => "Some(pb.fields.pop().unwrap().sint)",
+        IntType::I8 => "m.read_i8()?",
+        IntType::U8 => "m.read_u8()?",
+        IntType::I16 => "m.read_i16()?",
+        IntType::U16 => "m.read_u16()?",
+        IntType::I32 => "m.read_i32()?",
+        IntType::I64 => "m.read_i64()?",
+        IntType::VarInt => "m.read_i32()?",
+        IntType::OptVarInt => "Some(m.read_i32()?)",
       },
       Self::Float(fty) => match fty {
-        FloatType::F32 => "pb.fields.pop().unwrap().float",
-        FloatType::F64 => "pb.fields.pop().unwrap().double",
+        FloatType::F32 => "m.read_f32()?",
+        FloatType::F64 => "m.read_f64()?",
       },
-      Self::UUID => "UUID::from_proto(pb.fields.pop().unwrap().uuid.unwrap())",
-      Self::String => "pb.fields.pop().unwrap().str",
-      Self::Position => "Pos::from_u64(pb.fields.pop().unwrap().pos)",
+      Self::UUID => "UUID::from_u64(m.read_u64()?)",
+      Self::String => "m.read_str()?",
+      Self::Position => "Pos::from_u64(m.read_u64()?)",
 
       // Self::NBT => (#name.clone()),
       // Self::OptionalNBT => (#name.clone()),
@@ -188,11 +188,11 @@ impl PacketField {
 
       // Self::Option(field) => (#name.unwrap()),
       Self::DefinedType(name) => match name.as_str() {
-        "slot" => "Item::from_proto(pb.fields.pop().unwrap().item.unwrap())",
-        "tags" => "pb.fields.pop().unwrap().byte_arr",
+        "slot" => "Item::read(&mut m)",
+        "tags" => "m.read_buf()?",
         _ => panic!("undefined field type {}", name),
       },
-      _ => "pb.fields.pop().unwrap().byte_arr",
+      _ => "m.read_buf()?",
     }
   }
   pub fn generate_to_tcp(&self, val: &str) -> String {

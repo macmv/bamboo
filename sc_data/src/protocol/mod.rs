@@ -208,15 +208,7 @@ impl NamedPacketField {
     }
   }
   fn write_to_proto(&self, gen: &mut CodeGen) {
-    gen.write_line("fields.push(proto::PacketField {");
-    gen.add_indent();
-    gen.write(self.field.ty_key());
-    gen.write(": ");
-    gen.write(&self.generate_to_proto().to_string());
-    gen.write_line(",");
-    gen.write_line("..Default::default()");
-    gen.remove_indent();
-    gen.write_line("});");
+    gen.write_line(&format!("{}?;", self.generate_to_proto()));
   }
   fn write_from_proto(&self, gen: &mut CodeGen, is_ver: bool) {
     gen.write(&self.name());
@@ -252,13 +244,13 @@ impl NamedPacketField {
   }
   fn generate_to_proto(&self) -> String {
     if self.multi_versioned {
-      self.field.generate_to_proto(&format!("{}.as_ref().unwrap()", self.name))
+      self.field.generate_to_sc(&format!("{}.as_ref().unwrap()", self.name))
     } else {
-      self.field.generate_to_proto(&self.name)
+      self.field.generate_to_sc(&self.name)
     }
   }
   fn generate_from_proto(&self) -> &'static str {
-    self.field.generate_from_proto()
+    self.field.generate_from_sc()
   }
   fn generate_to_tcp(&self) -> String {
     if self.multi_versioned {
@@ -367,6 +359,7 @@ fn generate_packets(
   to_client: bool,
 ) -> Result<String, Box<dyn Error>> {
   let mut gen = CodeGen::new();
+  gen.write_line("use sc_transfer::{MessageRead, MessageWrite, ReadError, WriteError};");
   gen.write_line("use crate::{");
   gen.write_line("  net::tcp,");
   gen.write_line("  Pos,");
@@ -406,8 +399,12 @@ fn generate_packets(
     });
     gen.write_func(
       "to_proto",
-      &[FuncArg::slf_ref(), FuncArg { name: "version", ty: "ProtocolVersion" }],
-      Some("proto::Packet"),
+      &[
+        FuncArg::slf_ref(),
+        FuncArg { name: "version", ty: "ProtocolVersion" },
+        FuncArg { name: "gargage", ty: "&mut [u8]" },
+      ],
+      Some("Result<usize, WriteError>"),
       |gen| {
         gen.write_match("self", |gen| {
           for (id, p) in packets.iter().enumerate() {
@@ -419,8 +416,7 @@ fn generate_packets(
               ),
             );
             gen.write_block(|gen| {
-              // TODO: Use with_capacity here
-              gen.write_line("let mut fields = Vec::new();");
+              gen.write_line("let mut m = MessageWrite::new(&mut garbage);");
               if p.has_multiple_versions() {
                 let all_versions = p.all_versions();
                 for (i, ver) in all_versions.iter().enumerate() {
@@ -462,14 +458,7 @@ fn generate_packets(
                   field.write_to_proto(gen);
                 }
               }
-              gen.write_line("proto::Packet{");
-              gen.add_indent();
-              gen.write("id: ");
-              gen.write(&id.to_string());
-              gen.write_line(",");
-              gen.write_line("fields,");
-              gen.remove_indent();
-              gen.write_line("}");
+              gen.write_line("Ok(m.index())");
             });
           }
           gen.write_match_branch(Some("Self"), MatchBranch::Unit("None"));
