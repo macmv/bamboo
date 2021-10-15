@@ -1,21 +1,24 @@
-use mio::{net::TcpListener, Event, Events, Interest, Poll, Token};
+use mio::{
+  event::Event,
+  net::{TcpListener, TcpStream},
+  Events, Interest, Poll, Registry, Token,
+};
 use std::{
   collections::HashMap,
   convert::TryInto,
   io,
+  io::Read,
   net::SocketAddr,
   sync::{
     atomic::{AtomicBool, Ordering},
     Arc,
   },
 };
-use tokio::sync::{mpsc::Sender, Mutex};
-use tonic::{Status, Streaming};
+use tonic::Status;
 
 use sc_common::{
   math::Pos,
   net::{cb, sb},
-  proto,
   util::{
     chat::{Chat, Color, HoverEvent},
     UUID,
@@ -28,18 +31,36 @@ use crate::{block, item, player::Player, world::WorldManager};
 pub(crate) mod serialize;
 
 pub struct Connection {
-  rx:     Mutex<Streaming<proto::Packet>>,
-  tx:     Sender<Result<proto::Packet, Status>>,
+  stream: TcpStream,
   ver:    Option<ProtocolVersion>,
   closed: AtomicBool,
 }
 
 impl Connection {
-  pub(crate) fn new(
-    rx: Streaming<proto::Packet>,
-    tx: Sender<Result<proto::Packet, Status>>,
-  ) -> Self {
-    Connection { rx: Mutex::new(rx), tx, ver: None, closed: false.into() }
+  pub(crate) fn new(stream: TcpStream) -> Self {
+    Connection { stream, ver: None, closed: false.into() }
+  }
+
+  /// This will return ErrorKind::WouldBlock once its done reading. If it
+  /// returns any other error, the connection should be closed.
+  pub fn read(&self) -> io::Error {
+    let mut buf = [0; 16 * 1024];
+    loop {
+      let n = match self.stream.read(&mut buf) {
+        Ok(v) => v,
+        Err(e) => return e,
+      };
+      let out = &buf[..n];
+      match self.handle_data(out) {
+        Ok(_) => {}
+        Err(e) => return e,
+      };
+    }
+  }
+
+  fn handle_data(&self, data: &[u8]) -> io::Result<()> {
+    // TODO: Parse packets
+    Ok(())
   }
 
   /// This waits for the a login packet from the proxy. If any other packet is
@@ -208,17 +229,13 @@ impl ConnectionManager {
     ConnectionManager { connections: HashMap::new(), new_tok: Token(0) }
   }
 
-  pub fn run(&mut self, ip: SocketAddr) -> io::Result<()> {
+  pub fn run(&mut self, addr: SocketAddr) -> io::Result<()> {
     const LISTEN: Token = Token(0);
 
     let mut poll = Poll::new()?;
     let mut events = Events::with_capacity(128);
-
-    // Setup the TCP server socket.
-    let addr = "127.0.0.1:9000".parse().unwrap();
     let mut listen = TcpListener::bind(addr)?;
 
-    // Register the server with poll we can receive events for it.
     poll.registry().register(&mut listen, LISTEN, Interest::READABLE)?;
 
     self.new_tok = Token(LISTEN.0 + 1);
@@ -253,11 +270,10 @@ impl ConnectionManager {
             self.connections.insert(tok, Connection::new(conn));
           },
           token => {
-            // Maybe received an event for a TCP connection.
+            // We got an even for a tcp connection. If the token is invalid, we ignore it.
             let done = if let Some(conn) = self.connections.get_mut(&token) {
-              self.handle(poll.registry(), conn, event)?
+              self.handle(poll.registry(), conn, event)
             } else {
-              // Sporadic events happen, we can safely ignore them.
               false
             };
             if done {
@@ -275,7 +291,17 @@ impl ConnectionManager {
     v
   }
 
-  fn handle(&self, conn: &Connection, ev: Event) -> io::Result<bool> {
-    Ok(false)
+  fn handle(&self, reg: &Registry, conn: &Connection, ev: &Event) -> bool {
+    if ev.is_readable() {
+      let err = conn.read();
+      match err.kind() {
+        io::ErrorKind::WouldBlock => {}
+        _ => {
+          error!("error in connection: {}", err);
+          return true;
+        }
+      }
+    }
+    false
   }
 }
