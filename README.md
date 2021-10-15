@@ -123,11 +123,24 @@ is what I would like to see in a 1.0 release:
 - [ ] (Maybe) support 1000 players on one server
   - Everything is be very multithreaded. This is a very general goal, and is put
     here as a reminder that things like tick loops are separate for each player.
-- [ ] (Maybe) Plugin loading in Rust
+- [ ] (Unlikely) Plugin loading in Rust
   - This is a dynamic linking problem. It shouldn't be very difficult, and will
     allow pluggable functionality from multiple plugins, all without
     re-compiling the server. This would act very similar to something like
     Spigot.
+  - This is not a feature I am very interested in. Sugarlang is turning out to
+    be very powerful, and I would like to focus on that. If anyone wants to implement
+    this, feel free to do so. Just note that it must be compatable with Sugarlang
+    plugins. You need to be able to load both Rust and Sugarlang plugins at the
+    same time.
+- [ ] Drop GRPC. I think GRPC is great. It's the perfect balance of speed and
+  cross-versioning safe, and I think it should be used in place of REST in almost
+  all situations. However, I have generated code. This means that I know the exact
+  protocol on the sender and receiver. This means that I don't really care about
+  how easy the procol is to debug, because its all generated code reading/writing
+  to the wire. I also dispise async. It gives you unsized `impl` traits everywhere,
+  and makes it very difficult to work with closures. Dropping GRPC means dropping
+  async, which I really want to do.
 - [x] Plugin loading in Sugarlang
   - I really tried to use another language for plugins. It would have been so
     much simpler to just deal with Python or JavaScript, but I couldn't stand
