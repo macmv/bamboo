@@ -2156,6 +2156,7 @@ dependencies = [
  "prost-types",
  "rand 0.8.4",
  "sc_data",
+ "sc_transfer",
  "serde",
  "strum",
  "strum_macros",

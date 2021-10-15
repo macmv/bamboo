@@ -417,6 +417,9 @@ fn generate_packets(
             );
             gen.write_block(|gen| {
               gen.write_line("let mut m = MessageWrite::new(&mut garbage);");
+              gen.write("m.write_varint(");
+              gen.write(&id.to_string());
+              gen.write_line(")?; // sc id");
               if p.has_multiple_versions() {
                 let all_versions = p.all_versions();
                 for (i, ver) in all_versions.iter().enumerate() {
