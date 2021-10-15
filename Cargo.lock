@@ -2219,6 +2219,7 @@ dependencies = [
  "num",
  "num-derive",
  "num-traits",
+ "parking_lot",
  "pprof",
  "prost",
  "prost-types",

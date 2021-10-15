@@ -28,20 +28,12 @@ pub use parse::{ErrorKind, ParseError, Tokenizer};
 pub use sender::CommandSender;
 
 use crate::{player::Player, world::WorldManager};
+use parking_lot::Mutex;
 use reader::CommandReader;
 use sc_common::util::chat::{Chat, Color};
-use std::{collections::HashMap, future::Future, pin::Pin, sync::Arc};
-use tokio::sync::Mutex;
+use std::{collections::HashMap, sync::Arc};
 
-type Handler = Box<
-  dyn Fn(
-      Arc<WorldManager>,
-      Option<Arc<Player>>,
-      Vec<Arg>,
-    ) -> Pin<Box<dyn Future<Output = ()> + Send + 'static>>
-    + Send
-    + Sync,
->;
+type Handler = Box<dyn Fn(&Arc<WorldManager>, Option<&Arc<Player>>, Vec<Arg>) + Send + Sync>;
 
 /// All of the commands on a server. This is a table of all the commands that
 /// the clients can run. It handles serializing these commands to packets, and
@@ -60,22 +52,18 @@ impl CommandTree {
   /// Adds a new command to the tree. Any new players that join will be able to
   /// execute this command. This will also update the `/help` output, and
   /// include the command syntax/description.
-  pub async fn add<F, Fut>(&self, c: Command, handler: F)
+  pub fn add<F>(&self, c: Command, handler: F)
   where
-    F: (Fn(Arc<WorldManager>, Option<Arc<Player>>, Vec<Arg>) -> Fut) + Send + Sync + 'static,
-    Fut: Future<Output = ()> + Send + 'static,
+    F: (Fn(&Arc<WorldManager>, Option<&Arc<Player>>, Vec<Arg>)) + Send + Sync + 'static,
   {
-    self.commands.lock().await.insert(
-      c.name().into(),
-      (c, Box::new(move |world, player, command| Box::pin((handler)(world, player, command)))),
-    );
+    self.commands.lock().insert(c.name().into(), (c, Box::new(handler)));
   }
   /// Called whenever a command should be executed. This can also be used to act
   /// like a player sent a command, even if they didn't. The text passed in
   /// should not contain a `/` at the start.
-  pub async fn execute(&self, world: Arc<WorldManager>, player: Arc<Player>, text: &str) {
+  pub fn execute(&self, world: &Arc<WorldManager>, player: &Arc<Player>, text: &str) {
     let mut reader = CommandReader::new(text);
-    let commands = self.commands.lock().await;
+    let commands = self.commands.lock();
     let (command, handler) = match &commands.get(&reader.word(StringType::Word).unwrap()) {
       Some(v) => v,
       None => {
@@ -83,18 +71,18 @@ impl CommandTree {
         msg.add(""); // Makes the default color white
         msg.add("Unknown command: ").color(Color::Red);
         msg.add(text);
-        player.send_message(&msg).await;
+        player.send_message(&msg);
         return;
       }
     };
     let args = match command.parse(text, player.as_ref()) {
       Ok(v) => v,
       Err(e) => {
-        player.send_message(&e.to_chat(text)).await;
+        player.send_message(&e.to_chat(text));
         return;
       }
     };
-    handler(world, Some(player), args).await;
+    handler(world, Some(player), args);
   }
 }
 
