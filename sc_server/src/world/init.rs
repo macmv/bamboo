@@ -1,7 +1,6 @@
 use super::World;
 use crate::{
   command::{Command, Parser, StringType},
-  net::Connection,
   player::Player,
 };
 use rayon::prelude::*;
@@ -83,7 +82,7 @@ impl World {
     info!("done generating terrain");
   }
 
-  pub(super) async fn player_init(&self, player: &Player) {
+  pub(super) fn player_init(&self, player: &Player) {
     let dimension = Tag::compound(&[
       ("piglin_safe", Tag::Byte(0)),
       ("natural", Tag::Byte(1)),
