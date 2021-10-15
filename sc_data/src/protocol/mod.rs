@@ -402,10 +402,11 @@ fn generate_packets(
       &[
         FuncArg::slf_ref(),
         FuncArg { name: "version", ty: "ProtocolVersion" },
-        FuncArg { name: "gargage", ty: "&mut [u8]" },
+        FuncArg { name: "out", ty: "&mut [u8]" },
       ],
       Some("Result<usize, WriteError>"),
       |gen| {
+        gen.write_line("let mut m = MessageWrite::new(out);");
         gen.write_match("self", |gen| {
           for (id, p) in packets.iter().enumerate() {
             gen.write_match_branch(
@@ -416,7 +417,6 @@ fn generate_packets(
               ),
             );
             gen.write_block(|gen| {
-              gen.write_line("let mut m = MessageWrite::new(&mut garbage);");
               gen.write("m.write_varint(");
               gen.write(&id.to_string());
               gen.write_line(")?; // sc id");
@@ -461,22 +461,21 @@ fn generate_packets(
                   field.write_to_proto(gen);
                 }
               }
-              gen.write_line("Ok(m.index())");
             });
           }
           gen.write_match_branch(Some("Self"), MatchBranch::Unit("None"));
           gen.write_line("unreachable!(\"cannot convert None packet to proto\"),");
         });
+        gen.write_line("Ok(m.index())");
       },
     );
     gen.write_func(
-      "from_proto",
-      &[
-        FuncArg { name: "mut pb", ty: "proto::Packet" },
-        FuncArg { name: "version", ty: "ProtocolVersion" },
-      ],
-      Some("Self"),
+      "from_sc",
+      &[FuncArg { name: "version", ty: "ProtocolVersion" }, FuncArg { name: "buf", ty: "&[u8]" }],
+      Some("Result<(Self, usize), ReadError>"),
       |gen| {
+        gen.write_line("let mut m = MessageWrite::new(buf);");
+        gen.write("len out = ");
         gen.write_match("pb.id", |gen| {
           for (id, p) in packets.iter().enumerate() {
             gen.write_match_branch(None, MatchBranch::Unit(&id.to_string()));
@@ -539,6 +538,8 @@ fn generate_packets(
           gen.write_match_branch(None, MatchBranch::Other);
           gen.write_line("unreachable!(\"invalid packet id {}\", pb.id),");
         });
+        gen.write_line(";");
+        gen.write_line("Ok((out, m.index()))");
       },
     );
     gen.write_func(
