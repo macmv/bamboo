@@ -173,15 +173,19 @@ impl MessageRead<'_> {
       | (self.read_u8()? as u64) << 56;
     Ok(f64::from_bits(n))
   }
-  /// Reads a length prefixed buffer.
-  pub fn read_buf(&mut self) -> Result<Vec<u8>> {
-    let len = self.read_u32()? as usize;
+  /// Reads the given number of bytes. This does not write a length prefix.
+  pub fn read_bytes(&mut self, len: usize) -> Result<Vec<u8>> {
     if self.idx + len >= self.data.len() {
       return Err(ReadError::InvalidBufLength);
     }
     let out = self.data[self.idx..self.idx + len].to_vec();
     self.idx += len;
     Ok(out)
+  }
+  /// Reads a length prefixed buffer.
+  pub fn read_buf(&mut self) -> Result<Vec<u8>> {
+    let len = self.read_u32()? as usize;
+    self.read_bytes(len)
   }
   /// Reads a length prefixed string.
   pub fn read_str(&mut self) -> Result<String> {

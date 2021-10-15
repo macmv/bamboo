@@ -10,12 +10,16 @@ type Result = std::result::Result<(), WriteError>;
 #[non_exhaustive]
 pub enum WriteError {
   EOF,
+  BufTooLong,
 }
 
 impl fmt::Display for WriteError {
   fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
     match self {
       Self::EOF => write!(f, "failed to write field: eof reached"),
+      Self::BufTooLong => {
+        write!(f, "failed to write field: tried to write a buffer that was too large")
+      }
     }
   }
 }
@@ -154,10 +158,18 @@ impl MessageWrite<'_> {
     self.write_u8((n >> 56) as u8)?;
     Ok(())
   }
+  /// Writes the given bytes. This does not write a length prefix.
+  pub fn write_bytes(&mut self, v: &[u8]) -> Result {
+    if self.idx + v.len() >= self.data.len() {
+      return Err(WriteError::BufTooLong);
+    }
+    self.data[self.idx..self.idx + v.len()].clone_from_slice(v);
+    Ok(())
+  }
   /// Writes a length prefixed buffer.
   pub fn write_buf(&mut self, v: &[u8]) -> Result {
     self.write_u32(v.len().try_into().expect("capacity overflow"))?;
-    self.data[self.idx..self.idx + v.len()].clone_from_slice(v);
+    self.write_bytes(v)?;
     Ok(())
   }
   /// Writes a length prefixed string.

@@ -129,7 +129,7 @@ impl PacketField {
     match self {
       Self::Bool => format!("m.write_bool(*{})", val),
       Self::Int(ity) => match ity {
-        IntType::I8 => format!("m.wrire_i8(*{})", val),
+        IntType::I8 => format!("m.write_i8(*{})", val),
         IntType::U8 => format!("m.write_u8(*{})", val),
         IntType::I16 => format!("m.write_i16(*{})", val),
         IntType::U16 => format!("m.write_u16(*{})", val),
@@ -142,7 +142,7 @@ impl PacketField {
         FloatType::F32 => format!("m.write_f32(*{})", val),
         FloatType::F64 => format!("m.write_f64(*{})", val),
       },
-      Self::UUID => format!("m.write_u64(*{})", val),
+      Self::UUID => format!("m.write_bytes(*{}.as_bytes())", val),
       Self::String => format!("m.write_str({})", val),
       Self::Position => format!("m.write_u64({}.to_u64())", val),
 
