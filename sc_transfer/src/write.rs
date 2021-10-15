@@ -127,8 +127,32 @@ impl MessageWrite<'_> {
   }
   /// Writes a signed 64 bit integer to the internal buffer. This encodes the
   /// value with zig zag encoding, and then writes that as a u64.
-  pub fn read_i64(&mut self, v: i64) -> Result {
+  pub fn write_i64(&mut self, v: i64) -> Result {
     self.write_u64(zig(v))
+  }
+  /// Writes a 32 bit float to the internal buffer. This will always write 4
+  /// bytes.
+  pub fn write_f32(&mut self, v: f32) -> Result {
+    let n = v.to_bits();
+    self.write_u8(n as u8)?;
+    self.write_u8((n >> 8) as u8)?;
+    self.write_u8((n >> 16) as u8)?;
+    self.write_u8((n >> 24) as u8)?;
+    Ok(())
+  }
+  /// Reads a 64 bit float from the internal buffer. This will always read 8
+  /// bytes.
+  pub fn write_f64(&mut self, v: f64) -> Result {
+    let n = v.to_bits();
+    self.write_u8(n as u8)?;
+    self.write_u8((n >> 8) as u8)?;
+    self.write_u8((n >> 16) as u8)?;
+    self.write_u8((n >> 24) as u8)?;
+    self.write_u8((n >> 32) as u8)?;
+    self.write_u8((n >> 40) as u8)?;
+    self.write_u8((n >> 48) as u8)?;
+    self.write_u8((n >> 56) as u8)?;
+    Ok(())
   }
   /// Writes a length prefixed buffer.
   pub fn write_buf(&mut self, v: &[u8]) -> Result {

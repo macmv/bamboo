@@ -151,6 +151,28 @@ impl MessageRead<'_> {
   pub fn read_i64(&mut self) -> Result<i64> {
     Ok(zag(self.read_u64()?))
   }
+  /// Reads a 32 bit float from the internal buffer. This will always read 4
+  /// bytes.
+  pub fn read_f32(&mut self) -> Result<f32> {
+    let n = self.read_u8()? as u32
+      | (self.read_u8()? as u32) << 8
+      | (self.read_u8()? as u32) << 16
+      | (self.read_u8()? as u32) << 24;
+    Ok(f32::from_bits(n))
+  }
+  /// Reads a 64 bit float from the internal buffer. This will always read 8
+  /// bytes.
+  pub fn read_f64(&mut self) -> Result<f64> {
+    let n = self.read_u8()? as u64
+      | (self.read_u8()? as u64) << 8
+      | (self.read_u8()? as u64) << 16
+      | (self.read_u8()? as u64) << 24
+      | (self.read_u8()? as u64) << 32
+      | (self.read_u8()? as u64) << 40
+      | (self.read_u8()? as u64) << 48
+      | (self.read_u8()? as u64) << 56;
+    Ok(f64::from_bits(n))
+  }
   /// Reads a length prefixed buffer.
   pub fn read_buf(&mut self) -> Result<Vec<u8>> {
     let len = self.read_u32()? as usize;
