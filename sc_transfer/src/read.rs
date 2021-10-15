@@ -7,8 +7,20 @@ type Result<T> = std::result::Result<T, ReadError>;
 /// An error while reading a field. This can happen if the end of the internal
 /// buffer is reached, or if a varint has too many bytes.
 #[derive(Debug)]
+#[non_exhaustive]
 pub enum ReadError {
+  /// Varints are encoded such that the highest bit is set to 1 if there is a
+  /// byte following, and 0 if the varint has ended. An i32 can only take up to
+  /// 5 bytes of space. So, if the highest bit is set on the 5th byte, then we
+  /// have an invalid varint, and this error is produced.
   VarIntTooLong,
+  /// This happens when reading a buffer (byte array or string) and the length
+  /// prefix extends beyond the internal data. This is likely because we aren't
+  /// reading the right field, so we should fail.
+  InvalidBufLength,
+  /// This happens if we read a string, and its not valid UTF8.
+  InvalidUTF8,
+  /// This happens if we try to read something and there are no bytes left.
   EOF,
 }
 
@@ -16,6 +28,8 @@ impl fmt::Display for ReadError {
   fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
     match self {
       Self::VarIntTooLong => write!(f, "failed to read field: varint was too long"),
+      Self::InvalidBufLength => write!(f, "failed to read field: buffer was too long"),
+      Self::InvalidUTF8 => write!(f, "failed to read field: invalid utf8 string"),
       Self::EOF => write!(f, "failed to read field: eof reached"),
     }
   }
@@ -136,6 +150,21 @@ impl MessageRead<'_> {
   /// and then decodes it with zig zag encoding.
   pub fn read_i64(&mut self) -> Result<i64> {
     Ok(zag(self.read_u64()?))
+  }
+  /// Reads a length prefixed buffer.
+  pub fn read_buf(&mut self) -> Result<Vec<u8>> {
+    let len = self.read_u32()? as usize;
+    if self.idx + len >= self.data.len() {
+      return Err(ReadError::InvalidBufLength);
+    }
+    let out = self.data[self.idx..self.idx + len].to_vec();
+    self.idx += len;
+    Ok(out)
+  }
+  /// Reads a length prefixed string.
+  pub fn read_str(&mut self) -> Result<String> {
+    let buf = self.read_buf()?;
+    Ok(String::from_utf8(buf).map_err(|_| ReadError::InvalidUTF8)?)
   }
 }
 
