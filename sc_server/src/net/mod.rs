@@ -14,15 +14,11 @@ use std::{
     Arc,
   },
 };
-use tonic::Status;
 
 use sc_common::{
   math::Pos,
   net::{cb, sb},
-  util::{
-    chat::{Chat, Color, HoverEvent},
-    UUID,
-  },
+  util::chat::{Chat, Color, HoverEvent},
   version::ProtocolVersion,
 };
 
@@ -43,174 +39,172 @@ impl Connection {
 
   /// This will return ErrorKind::WouldBlock once its done reading. If it
   /// returns any other error, the connection should be closed.
-  pub fn read(&self) -> io::Error {
+  pub fn read(&self, wm: &Arc<WorldManager>, player: &Arc<Player>) -> io::Error {
     let mut buf = [0; 16 * 1024];
     loop {
       let n = match self.stream.read(&mut buf) {
         Ok(v) => v,
         Err(e) => return e,
       };
-      let out = &buf[..n];
-      match self.handle_data(out) {
+      let data = &buf[..n];
+      match self.handle_data(wm, player, data) {
         Ok(_) => {}
         Err(e) => return e,
       };
     }
   }
 
-  fn handle_data(&self, data: &[u8]) -> io::Result<()> {
+  fn handle_data(
+    &self,
+    wm: &Arc<WorldManager>,
+    player: &Arc<Player>,
+    data: &[u8],
+  ) -> io::Result<()> {
     // TODO: Parse packets
+    if let Some(ver) = self.ver {
+      self.handle_packet(
+        wm,
+        player,
+        sb::Packet::from_sc(ver, data)
+          .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e.to_string()))?,
+      );
+    }
     Ok(())
   }
 
-  /// This waits for the a login packet from the proxy. If any other packet is
-  /// recieved, this will panic. This should only be called right after a
-  /// connection is created.
-  pub(crate) async fn wait_for_login(&mut self) -> (String, UUID, ProtocolVersion) {
-    let p = match self.rx.lock().await.message().await.unwrap() {
-      // This version doesn't matter, as the proxy will always send the same data for every version
-      Some(p) => sb::Packet::from_proto(p, ProtocolVersion::V1_8),
-      None => panic!("connection was closed while listening for a login packet"),
-    };
-    match p {
-      sb::Packet::Login { username, uuid, ver } => {
-        let ver = ProtocolVersion::from(ver);
-        self.ver = Some(ver);
-        (username, uuid, ver)
-      }
-      _ => panic!("expecting login packet, got: {:?}", p),
-    }
-  }
+  // This waits for the a login packet from the proxy. If any other packet is
+  // recieved, this will panic. This should only be called right after a
+  // connection is created.
+  //
+  // pub(crate) async fn wait_for_login(&mut self) -> (String, UUID,
+  // ProtocolVersion) {   let p = match
+  // self.rx.lock().await.message().await.unwrap() {     // This version
+  // doesn't matter, as the proxy will always send the same data for every
+  // version     Some(p) => sb::Packet::from_proto(p, ProtocolVersion::V1_8),
+  //     None => panic!("connection was closed while listening for a login
+  // packet"),   };
+  //   match p {
+  //     sb::Packet::Login { username, uuid, ver } => {
+  //       let ver = ProtocolVersion::from(ver);
+  //       self.ver = Some(ver);
+  //       (username, uuid, ver)
+  //     }
+  //     _ => panic!("expecting login packet, got: {:?}", p),
+  //   }
+  // }
 
   /// This starts up the recieving loop for this connection. Do not call this
   /// more than once.
-  pub(crate) async fn run(&self, player: Arc<Player>, wm: Arc<WorldManager>) -> Result<(), Status> {
-    'running: loop {
-      if self.closed() {
-        break 'running;
+  pub(crate) async fn handle_packet(
+    &self,
+    wm: &Arc<WorldManager>,
+    player: &Arc<Player>,
+    p: sb::Packet,
+  ) {
+    match p {
+      sb::Packet::Chat { message } => {
+        if message.chars().next() == Some('/') {
+          let mut chars = message.chars();
+          chars.next().unwrap();
+          player.world().commands().execute(wm.clone(), player.clone(), chars.as_str()).await;
+        } else {
+          let mut msg = Chat::empty();
+          msg.add("<");
+          msg.add(player.username()).color(Color::BrightGreen).on_hover(HoverEvent::ShowText(
+            format!("wow it is almost like {} sent this message", player.username()),
+          ));
+          msg.add("> ");
+          msg.add(message);
+          player.world().broadcast(msg).await;
+        }
       }
-      let p = match self.rx.lock().await.message().await {
-        Ok(Some(p)) => sb::Packet::from_proto(p, player.ver()),
-        Ok(None) => break 'running,
-        Err(e) => {
-          // For whatever reason, we get this unknown error every now and then. It's ugly,
-          // but this is the only way to check for it.
-          if e.code() == tonic::Code::Cancelled {
-            break 'running;
-          } else {
-            return Err(e);
-          }
+      sb::Packet::SetCreativeSlot { slot, item } => {
+        if slot > 0 {
+          let id =
+            player.world().item_converter().to_latest(item.id() as u32, player.ver().block());
+          player
+            .lock_inventory()
+            .set(slot as u32, item::Stack::new(item::Type::from_u32(id)).with_amount(item.count()));
         }
-      };
-      match p {
-        sb::Packet::Chat { message } => {
-          if message.chars().next() == Some('/') {
-            let mut chars = message.chars();
-            chars.next().unwrap();
-            player.world().commands().execute(wm.clone(), player.clone(), chars.as_str()).await;
-          } else {
-            let mut msg = Chat::empty();
-            msg.add("<");
-            msg.add(player.username()).color(Color::BrightGreen).on_hover(HoverEvent::ShowText(
-              format!("wow it is almost like {} sent this message", player.username()),
-            ));
-            msg.add("> ");
-            msg.add(message);
-            player.world().broadcast(msg).await;
-          }
-        }
-        sb::Packet::SetCreativeSlot { slot, item } => {
-          if slot > 0 {
-            let id =
-              player.world().item_converter().to_latest(item.id() as u32, player.ver().block());
-            player.lock_inventory().set(
-              slot as u32,
-              item::Stack::new(item::Type::from_u32(id)).with_amount(item.count()),
-            );
-          }
-        }
-        sb::Packet::BlockDig { location, status: _, face: _ } => {
-          player.world().set_kind(location, block::Kind::Air).await.unwrap();
-        }
-        sb::Packet::HeldItemSlot { slot_id } => {
-          player.lock_inventory().set_selected(slot_id.try_into().unwrap());
-        }
-        sb::Packet::BlockPlace {
-          mut location,
-          direction_v1_8,
-          direction_v1_9,
-          hand_v1_9: _,
-          cursor_x_v1_8: _,
-          cursor_x_v1_11: _,
-          cursor_y_v1_8: _,
-          cursor_y_v1_11: _,
-          cursor_z_v1_8: _,
-          cursor_z_v1_11: _,
-          inside_block_v1_14: _,
-          held_item_removed_v1_9: _,
-        } => {
-          let direction: i32 = if player.ver() == ProtocolVersion::V1_8 {
-            // direction_v1_8 is an i8 (not a u8), so the sign stays correct
-            direction_v1_8.unwrap().into()
-          } else {
-            direction_v1_9.unwrap()
+      }
+      sb::Packet::BlockDig { location, status: _, face: _ } => {
+        player.world().set_kind(location, block::Kind::Air).await.unwrap();
+      }
+      sb::Packet::HeldItemSlot { slot_id } => {
+        player.lock_inventory().set_selected(slot_id.try_into().unwrap());
+      }
+      sb::Packet::BlockPlace {
+        mut location,
+        direction_v1_8,
+        direction_v1_9,
+        hand_v1_9: _,
+        cursor_x_v1_8: _,
+        cursor_x_v1_11: _,
+        cursor_y_v1_8: _,
+        cursor_y_v1_11: _,
+        cursor_z_v1_8: _,
+        cursor_z_v1_11: _,
+        inside_block_v1_14: _,
+        held_item_removed_v1_9: _,
+      } => {
+        let direction: i32 = if player.ver() == ProtocolVersion::V1_8 {
+          // direction_v1_8 is an i8 (not a u8), so the sign stays correct
+          direction_v1_8.unwrap().into()
+        } else {
+          direction_v1_9.unwrap()
+        };
+
+        if location == Pos::new(-1, -1, -1) && direction == -1 {
+          // Client is eating, or head is inside block
+        } else {
+          let item_data = {
+            let inv = player.lock_inventory();
+            let stack = inv.main_hand();
+            player.world().item_converter().get_data(stack.item())
           };
+          let kind = item_data.block_to_place();
 
-          if location == Pos::new(-1, -1, -1) && direction == -1 {
-            // Client is eating, or head is inside block
-          } else {
-            let item_data = {
-              let inv = player.lock_inventory();
-              let stack = inv.main_hand();
-              player.world().item_converter().get_data(stack.item())
-            };
-            let kind = item_data.block_to_place();
-
-            match player.world().get_block(location) {
-              Ok(looking_at) => {
-                let block_data = player.world().block_converter().get(looking_at.kind());
-                if !block_data.material.is_replaceable() {
-                  let _ = player.sync_block_at(location).await;
-                  location += Pos::dir_from_byte(direction.try_into().unwrap());
-                }
-
-                match player.world().set_kind(location, kind).await {
-                  Ok(_) => player.world().plugins().on_block_place(player.clone(), location, kind),
-                  Err(e) => player.send_hotbar(&Chat::new(e.to_string())).await,
-                }
+          match player.world().get_block(location) {
+            Ok(looking_at) => {
+              let block_data = player.world().block_converter().get(looking_at.kind());
+              if !block_data.material.is_replaceable() {
+                let _ = player.sync_block_at(location).await;
+                location += Pos::dir_from_byte(direction.try_into().unwrap());
               }
-              Err(e) => player.send_hotbar(&Chat::new(e.to_string())).await,
-            };
-          }
+
+              match player.world().set_kind(location, kind).await {
+                Ok(_) => player.world().plugins().on_block_place(player.clone(), location, kind),
+                Err(e) => player.send_hotbar(&Chat::new(e.to_string())).await,
+              }
+            }
+            Err(e) => player.send_hotbar(&Chat::new(e.to_string())).await,
+          };
         }
-        sb::Packet::Position { x, y, z, on_ground: _ } => {
-          player.set_next_pos(x, y, z);
-        }
-        sb::Packet::PositionLook { x, y, z, yaw, pitch, on_ground: _ } => {
-          player.set_next_pos(x, y, z);
-          player.set_next_look(yaw, pitch);
-        }
-        sb::Packet::Look { yaw, pitch, on_ground: _ } => {
-          player.set_next_look(yaw, pitch);
-        }
-        // _ => warn!("got unknown packet from client: {:?}", p),
-        _ => (),
       }
-      // info!("got packet from client {:?}", p);
+      sb::Packet::Position { x, y, z, on_ground: _ } => {
+        player.set_next_pos(x, y, z);
+      }
+      sb::Packet::PositionLook { x, y, z, yaw, pitch, on_ground: _ } => {
+        player.set_next_pos(x, y, z);
+        player.set_next_look(yaw, pitch);
+      }
+      sb::Packet::Look { yaw, pitch, on_ground: _ } => {
+        player.set_next_look(yaw, pitch);
+      }
+      // _ => warn!("got unknown packet from client: {:?}", p),
+      _ => (),
     }
-    self.closed.store(true, Ordering::SeqCst);
-    Ok(())
   }
 
   /// Sends a packet to the proxy, which will then get sent to the client.
   pub async fn send(&self, p: cb::Packet) {
-    match self.tx.send(Ok(p.to_proto(self.ver.unwrap()))).await {
-      Ok(_) => (),
-      Err(e) => {
-        error!("error while sending packet: {}", e);
-        self.closed.store(true, Ordering::SeqCst);
-      }
-    }
+    // match self.tx.send(Ok(p.to_proto(self.ver.unwrap()))).await {
+    //   Ok(_) => (),
+    //   Err(e) => {
+    //     error!("error while sending packet: {}", e);
+    //     self.closed.store(true, Ordering::SeqCst);
+    //   }
+    // }
   }
 
   // Returns true if the connection has been closed.
@@ -220,13 +214,14 @@ impl Connection {
 }
 
 pub struct ConnectionManager {
-  connections: HashMap<Token, Connection>,
+  connections: HashMap<Token, (Connection, Arc<Player>)>,
   new_tok:     Token,
+  wm:          Arc<WorldManager>,
 }
 
 impl ConnectionManager {
-  pub fn new() -> ConnectionManager {
-    ConnectionManager { connections: HashMap::new(), new_tok: Token(0) }
+  pub fn new(wm: Arc<WorldManager>) -> ConnectionManager {
+    ConnectionManager { connections: HashMap::new(), new_tok: Token(0), wm }
   }
 
   pub fn run(&mut self, addr: SocketAddr) -> io::Result<()> {
@@ -267,12 +262,14 @@ impl ConnectionManager {
             let tok = self.new_token();
             poll.registry().register(&mut conn, tok, Interest::READABLE.add(Interest::WRITABLE))?;
 
-            self.connections.insert(tok, Connection::new(conn));
+            let conn = Connection::new(conn);
+            let player = self.wm.new_player(conn);
+            self.connections.insert(tok, (conn, player));
           },
           token => {
             // We got an even for a tcp connection. If the token is invalid, we ignore it.
-            let done = if let Some(conn) = self.connections.get_mut(&token) {
-              self.handle(poll.registry(), conn, event)
+            let done = if let Some((conn, player)) = self.connections.get_mut(&token) {
+              self.handle(poll.registry(), conn, player, event)
             } else {
               false
             };
@@ -291,9 +288,9 @@ impl ConnectionManager {
     v
   }
 
-  fn handle(&self, reg: &Registry, conn: &Connection, ev: &Event) -> bool {
+  fn handle(&self, reg: &Registry, conn: &Connection, player: &Arc<Player>, ev: &Event) -> bool {
     if ev.is_readable() {
-      let err = conn.read();
+      let err = conn.read(&self.wm, player);
       match err.kind() {
         io::ErrorKind::WouldBlock => {}
         _ => {
