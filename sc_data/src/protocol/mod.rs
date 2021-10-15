@@ -417,7 +417,7 @@ fn generate_packets(
               ),
             );
             gen.write_block(|gen| {
-              gen.write("m.write_varint(");
+              gen.write("m.write_i32(");
               gen.write(&id.to_string());
               gen.write_line(")?; // sc id");
               if p.has_multiple_versions() {
@@ -475,7 +475,7 @@ fn generate_packets(
       Some("Result<(Self, usize), ReadError>"),
       |gen| {
         gen.write_line("let mut m = MessageWrite::new(buf);");
-        gen.write("len out = ");
+        gen.write("let out = ");
         gen.write_match("pb.id", |gen| {
           for (id, p) in packets.iter().enumerate() {
             gen.write_match_branch(None, MatchBranch::Unit(&id.to_string()));
