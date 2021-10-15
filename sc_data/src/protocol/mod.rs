@@ -398,7 +398,7 @@ fn generate_packets(
       });
     });
     gen.write_func(
-      "to_proto",
+      "to_sc",
       &[
         FuncArg::slf_ref(),
         FuncArg { name: "version", ty: "ProtocolVersion" },
