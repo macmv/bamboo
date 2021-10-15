@@ -475,8 +475,9 @@ fn generate_packets(
       Some("Result<(Self, usize), ReadError>"),
       |gen| {
         gen.write_line("let mut m = MessageRead::new(buf);");
+        gen.write_line("let id = m.read_i32()?;");
         gen.write("let out = ");
-        gen.write_match("pb.id", |gen| {
+        gen.write_match("id", |gen| {
           for (id, p) in packets.iter().enumerate() {
             gen.write_match_branch(None, MatchBranch::Unit(&id.to_string()));
             if p.has_multiple_versions() {
@@ -536,7 +537,7 @@ fn generate_packets(
             }
           }
           gen.write_match_branch(None, MatchBranch::Other);
-          gen.write_line("unreachable!(\"invalid packet id {}\", pb.id),");
+          gen.write_line("unreachable!(\"invalid packet id {}\", id),");
         });
         gen.write_line(";");
         gen.write_line("Ok((out, m.index()))");

@@ -142,7 +142,7 @@ impl PacketField {
         FloatType::F32 => format!("m.write_f32(*{})", val),
         FloatType::F64 => format!("m.write_f64(*{})", val),
       },
-      Self::UUID => format!("m.write_bytes({}.as_bytes())", val),
+      Self::UUID => format!("m.write_bytes(&{}.as_be_bytes())", val),
       Self::String => format!("m.write_str({})", val),
       Self::Position => format!("m.write_u64({}.to_u64())", val),
 
