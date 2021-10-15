@@ -1,8 +1,19 @@
+use crate::{block, item, player::Player, world::WorldManager};
 use mio::{
   event::Event,
   net::{TcpListener, TcpStream},
   Events, Interest, Poll, Registry, Token,
 };
+use sc_common::{
+  math::Pos,
+  net::{cb, sb},
+  util::{
+    chat::{Chat, Color, HoverEvent},
+    UUID,
+  },
+  version::ProtocolVersion,
+};
+use sc_transfer::{MessageRead, ReadError};
 use std::{
   collections::HashMap,
   convert::TryInto,
@@ -14,15 +25,6 @@ use std::{
     Arc,
   },
 };
-
-use sc_common::{
-  math::Pos,
-  net::{cb, sb},
-  util::chat::{Chat, Color, HoverEvent},
-  version::ProtocolVersion,
-};
-
-use crate::{block, item, player::Player, world::WorldManager};
 
 pub(crate) mod serialize;
 
@@ -39,7 +41,7 @@ impl Connection {
 
   /// This will return ErrorKind::WouldBlock once its done reading. If it
   /// returns any other error, the connection should be closed.
-  pub fn read(&self, wm: &Arc<WorldManager>, player: &Arc<Player>) -> io::Error {
+  pub fn read(&self, wm: &Arc<WorldManager>, player: &mut Option<Arc<Player>>) -> io::Error {
     let mut buf = [0; 16 * 1024];
     loop {
       let n = match self.stream.read(&mut buf) {
@@ -57,17 +59,24 @@ impl Connection {
   fn handle_data(
     &self,
     wm: &Arc<WorldManager>,
-    player: &Arc<Player>,
+    player: &mut Option<Arc<Player>>,
     data: &[u8],
-  ) -> io::Result<()> {
-    // TODO: Parse packets
-    if let Some(ver) = self.ver {
-      self.handle_packet(
-        wm,
-        player,
-        sb::Packet::from_sc(ver, data)
-          .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e.to_string()))?,
-      );
+  ) -> Result<(), ReadError> {
+    while !data.is_empty() {
+      if let Some(ver) = self.ver {
+        let (p, n) = sb::Packet::from_sc(ver, data)?;
+        data = &data[..n];
+        self.handle_packet(wm, player.as_ref().unwrap(), p);
+      } else {
+        // This is the first packet, so it must be a login packet.
+        let m = MessageRead::new(data);
+        let username = m.read_str()?;
+        let uuid = UUID::from_bytes(m.read_bytes(16)?.try_into().unwrap());
+        let ver = ProtocolVersion::from(m.read_i32()?);
+        data = &data[..m.index()];
+        self.ver = Some(ver);
+        *player = Some(wm.new_player(self.tx, username, uuid, ver));
+      }
     }
     Ok(())
   }
@@ -214,7 +223,7 @@ impl Connection {
 }
 
 pub struct ConnectionManager {
-  connections: HashMap<Token, (Connection, Arc<Player>)>,
+  connections: HashMap<Token, (Connection, Option<Arc<Player>>)>,
   new_tok:     Token,
   wm:          Arc<WorldManager>,
 }
@@ -262,9 +271,7 @@ impl ConnectionManager {
             let tok = self.new_token();
             poll.registry().register(&mut conn, tok, Interest::READABLE.add(Interest::WRITABLE))?;
 
-            let conn = Connection::new(conn);
-            let player = self.wm.new_player(conn);
-            self.connections.insert(tok, (conn, player));
+            self.connections.insert(tok, (Connection::new(conn), None));
           },
           token => {
             // We got an even for a tcp connection. If the token is invalid, we ignore it.
@@ -288,7 +295,13 @@ impl ConnectionManager {
     v
   }
 
-  fn handle(&self, reg: &Registry, conn: &Connection, player: &Arc<Player>, ev: &Event) -> bool {
+  fn handle(
+    &self,
+    reg: &Registry,
+    conn: &Connection,
+    player: &mut Option<Arc<Player>>,
+    ev: &Event,
+  ) -> bool {
     if ev.is_readable() {
       let err = conn.read(&self.wm, player);
       match err.kind() {

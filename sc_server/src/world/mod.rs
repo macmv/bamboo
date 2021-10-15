@@ -19,17 +19,15 @@ use tokio::{
   sync::{mpsc::Sender, Mutex, MutexGuard},
   time,
 };
-use tonic::{Status, Streaming};
 
 use sc_common::{
   math::{ChunkPos, FPos},
   net::cb,
-  proto::Packet,
   util::{
     chat::{Chat, Color},
     UUID,
   },
-  version::BlockVersion,
+  version::{BlockVersion, ProtocolVersion},
 };
 
 use crate::{block, command::CommandTree, entity, item, net::Connection, player::Player, plugin};
@@ -468,21 +466,35 @@ impl WorldManager {
     self.worlds.lock().await[0].clone()
   }
 
+  // /// Adds a new player into the game. This should be called when a new grpc
+  // /// proxy connects.
+  // pub async fn new_player(&self, req: Streaming<Packet>, tx:
+  // Sender<Result<Packet, Status>>) {   let mut conn = Connection::new(req,
+  // tx);   let (username, uuid, ver) = conn.wait_for_login().await;
+  //   let w = self.worlds.lock().await[0].clone();
+  //   let player = Player::new(
+  //     w.eid(),
+  //     username,
+  //     uuid,
+  //     Arc::new(conn),
+  //     ver,
+  //     w.clone(),
+  //     FPos::new(0.0, 60.0, 0.0),
+  //   );
+  //   w.new_player(player).await;
+  // }
   /// Adds a new player into the game. This should be called when a new grpc
   /// proxy connects.
-  pub async fn new_player(&self, req: Streaming<Packet>, tx: Sender<Result<Packet, Status>>) {
-    let mut conn = Connection::new(req, tx);
-    let (username, uuid, ver) = conn.wait_for_login().await;
-    let w = self.worlds.lock().await[0].clone();
-    let player = Player::new(
-      w.eid(),
-      username,
-      uuid,
-      Arc::new(conn),
-      ver,
-      w.clone(),
-      FPos::new(0.0, 60.0, 0.0),
-    );
-    w.new_player(player).await;
+  pub fn new_player(
+    &self,
+    tx: Sender<cb::Packet>,
+    username: String,
+    uuid: UUID,
+    ver: ProtocolVersion,
+  ) -> Arc<Player> {
+    let w = self.worlds.lock()[0].clone();
+    let player =
+      Player::new(w.eid(), username, uuid, tx, ver, w.clone(), FPos::new(0.0, 60.0, 0.0));
+    w.new_player(player)
   }
 }

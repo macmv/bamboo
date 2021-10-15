@@ -2224,6 +2224,7 @@ dependencies = [
  "rayon",
  "sc_common",
  "sc_data",
+ "sc_transfer",
  "sugarlang",
  "tokio",
  "tokio-stream",
