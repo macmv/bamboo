@@ -16,15 +16,12 @@ use sc_common::{
 };
 
 impl World {
-  pub async fn init(&self) {
+  pub fn init(&self) {
     let mut c = Command::new("say");
     c.add_arg("text", Parser::String(StringType::Greedy));
-    self
-      .commands()
-      .add(c, |world, _, args| async move {
-        world.broadcast(format!("[Server] {}", args[1].str()).as_str()).await;
-      })
-      .await;
+    self.commands().add(c, |world, _, args| async move {
+      world.broadcast(format!("[Server] {}", args[1].str()).as_str());
+    });
 
     let mut c = Command::new("fill");
     c.add_lit("rect")
@@ -39,49 +36,43 @@ impl World {
       .add_arg("center", Parser::BlockPos)
       .add_arg("radius", Parser::Float { min: Some(0.0), max: None })
       .add_arg("block", Parser::BlockState);
-    self
-      .commands()
-      .add(c, |world, _, args| async move {
-        // args[0] is `fill`
-        match args[1].lit() {
-          "rect" => {
-            let min = args[2].pos();
-            let max = args[3].pos();
-            let block = args[4].block();
-            let (min, max) = min.min_max(max);
-            let w = world.default_world().await;
-            w.fill_rect_kind(min, max, block).await.unwrap();
-          }
-          "circle" => {
-            let pos = args[2].pos();
-            let radius = args[3].float();
-            let block = args[4].block();
-            let w = world.default_world().await;
-            w.fill_circle_kind(pos, radius, block).await.unwrap();
-          }
-          "sphere" => {
-            let pos = args[2].pos();
-            let radius = args[3].float();
-            let block = args[4].block();
-            let w = world.default_world().await;
-            w.fill_sphere_kind(pos, radius, block).await.unwrap();
-          }
-          _ => unreachable!(),
+    self.commands().add(c, |world, _, args| async move {
+      // args[0] is `fill`
+      match args[1].lit() {
+        "rect" => {
+          let min = args[2].pos();
+          let max = args[3].pos();
+          let block = args[4].block();
+          let (min, max) = min.min_max(max);
+          let w = world.default_world();
+          w.fill_rect_kind(min, max, block).unwrap();
         }
-      })
-      .await;
+        "circle" => {
+          let pos = args[2].pos();
+          let radius = args[3].float();
+          let block = args[4].block();
+          let w = world.default_world();
+          w.fill_circle_kind(pos, radius, block).unwrap();
+        }
+        "sphere" => {
+          let pos = args[2].pos();
+          let radius = args[3].float();
+          let block = args[4].block();
+          let w = world.default_world();
+          w.fill_sphere_kind(pos, radius, block).unwrap();
+        }
+        _ => unreachable!(),
+      }
+    });
     let mut c = Command::new("flyspeed");
     c.add_arg("multiplier", Parser::Float { min: Some(0.0), max: None });
-    self
-      .commands()
-      .add(c, |_, player, args| async move {
-        // args[0] is `flyspeed`
-        let v = args[1].float();
-        if let Some(p) = player {
-          p.set_flyspeed(v).await;
-        }
-      })
-      .await;
+    self.commands().add(c, |_, player, args| async move {
+      // args[0] is `flyspeed`
+      let v = args[1].float();
+      if let Some(p) = player {
+        p.set_flyspeed(v);
+      }
+    });
 
     info!("generating terrain...");
     (-10..=10).into_par_iter().for_each(|x| {
@@ -250,7 +241,7 @@ impl World {
       //     }],
       //   }))
       //   .unwrap();
-      // other.conn().send(out).await;
+      // other.conn().send(out);
       // Create a packet that will spawn player for other
       let (pos, pitch, yaw) = player.pos_look();
       other.send(cb::Packet::NamedEntitySpawn {
@@ -298,9 +289,9 @@ impl World {
     // Need to send the player info before the spawn packets
     // let mut out = cb::Packet::new(cb::ID::PlayerInfo);
     // out.set_other(Other::PlayerList(info)).unwrap();
-    // conn.send(out).await;
+    // conn.send(out);
     // for p in spawn_packets {
-    //   conn.send(p).await;
+    //   conn.send(p);
     // }
   }
 }

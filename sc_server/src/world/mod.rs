@@ -102,7 +102,7 @@ impl World {
     });
     world
   }
-  async fn global_tick_loop(self: Arc<Self>) {
+  fn global_tick_loop(self: Arc<Self>) {
     let mut int = time::interval(Duration::from_millis(50));
     let mut tick = 0;
     loop {
@@ -133,7 +133,7 @@ impl World {
       tick += 1;
     }
   }
-  async fn new_player(self: Arc<Self>, player: Player) {
+  fn new_player(self: Arc<Self>, player: Player) {
     let conn = player.clone_conn();
     let player = Arc::new(player);
     {
@@ -151,7 +151,7 @@ impl World {
     let wm = self.wm.clone();
     tokio::spawn(async move {
       let name = p.username().to_string();
-      match c.run(p, wm).await {
+      match c.run(p, wm) {
         Ok(_) => {}
         Err(e) => {
           error!("error in connection for {}: {}", name, e);
@@ -368,7 +368,7 @@ impl World {
   }
 
   /// This broadcasts a chat message to everybody in the world.
-  pub async fn broadcast<M: Into<Chat>>(&self, msg: M) {
+  pub fn broadcast<M: Into<Chat>>(&self, msg: M) {
     let out = cb::Packet::Chat {
       message:      msg.into().to_json(),
       position:     0, // Chat box, not above hotbar
@@ -381,8 +381,8 @@ impl World {
   }
 
   // Runs f for all players within render distance of the chunk.
-  pub async fn players(&self) -> MutexGuard<'_, PlayersMap> {
-    self.players.lock().await
+  pub fn players(&self) -> MutexGuard<'_, PlayersMap> {
+    self.players.lock()
   }
 }
 
@@ -404,14 +404,14 @@ impl WorldManager {
     }
   }
 
-  pub async fn run(self: Arc<Self>) {
-    self.plugins.clone().run(self).await;
+  pub fn run(self: Arc<Self>) {
+    self.plugins.clone().run(self);
   }
 
   /// Adds a new world. Currently, this requires a mutable reference, which
   /// cannot be obtained outside of initialization.
-  pub async fn add_world(self: &Arc<Self>) {
-    self.worlds.lock().await.push(World::new(
+  pub fn add_world(self: &Arc<Self>) {
+    self.worlds.lock().push(World::new(
       self.block_converter.clone(),
       self.item_converter.clone(),
       self.entity_converter.clone(),
@@ -443,7 +443,7 @@ impl WorldManager {
   }
 
   /// Broadcasts a message to everyone one the server.
-  pub async fn broadcast<M: Into<Chat>>(&self, msg: M) {
+  pub fn broadcast<M: Into<Chat>>(&self, msg: M) {
     let out = cb::Packet::Chat {
       message:      msg.into().to_json(),
       position:     0, // Chat box, not above hotbar
@@ -460,8 +460,8 @@ impl WorldManager {
 
   /// Returns the default world. This can be used to easily get a world without
   /// any other context.
-  pub async fn default_world(&self) -> Arc<World> {
-    self.worlds.lock().await[0].clone()
+  pub fn default_world(&self) -> Arc<World> {
+    self.worlds.lock()[0].clone()
   }
 
   // /// Adds a new player into the game. This should be called when a new grpc

@@ -87,7 +87,7 @@ impl Connection {
   //
   // pub(crate) async fn wait_for_login(&mut self) -> (String, UUID,
   // ProtocolVersion) {   let p = match
-  // self.rx.lock().await.message().await.unwrap() {     // This version
+  // self.rx.lock().message().unwrap() {     // This version
   // doesn't matter, as the proxy will always send the same data for every
   // version     Some(p) => sb::Packet::from_proto(p, ProtocolVersion::V1_8),
   //     None => panic!("connection was closed while listening for a login
@@ -104,18 +104,13 @@ impl Connection {
 
   /// This starts up the recieving loop for this connection. Do not call this
   /// more than once.
-  pub(crate) async fn handle_packet(
-    &self,
-    wm: &Arc<WorldManager>,
-    player: &Arc<Player>,
-    p: sb::Packet,
-  ) {
+  pub(crate) fn handle_packet(&self, wm: &Arc<WorldManager>, player: &Arc<Player>, p: sb::Packet) {
     match p {
       sb::Packet::Chat { message } => {
         if message.chars().next() == Some('/') {
           let mut chars = message.chars();
           chars.next().unwrap();
-          player.world().commands().execute(wm.clone(), player.clone(), chars.as_str()).await;
+          player.world().commands().execute(wm.clone(), player.clone(), chars.as_str());
         } else {
           let mut msg = Chat::empty();
           msg.add("<");
@@ -124,7 +119,7 @@ impl Connection {
           ));
           msg.add("> ");
           msg.add(message);
-          player.world().broadcast(msg).await;
+          player.world().broadcast(msg);
         }
       }
       sb::Packet::SetCreativeSlot { slot, item } => {
@@ -137,7 +132,7 @@ impl Connection {
         }
       }
       sb::Packet::BlockDig { location, status: _, face: _ } => {
-        player.world().set_kind(location, block::Kind::Air).await.unwrap();
+        player.world().set_kind(location, block::Kind::Air).unwrap();
       }
       sb::Packet::HeldItemSlot { slot_id } => {
         player.lock_inventory().set_selected(slot_id.try_into().unwrap());
@@ -177,16 +172,16 @@ impl Connection {
             Ok(looking_at) => {
               let block_data = player.world().block_converter().get(looking_at.kind());
               if !block_data.material.is_replaceable() {
-                let _ = player.sync_block_at(location).await;
+                let _ = player.sync_block_at(location);
                 location += Pos::dir_from_byte(direction.try_into().unwrap());
               }
 
-              match player.world().set_kind(location, kind).await {
+              match player.world().set_kind(location, kind) {
                 Ok(_) => player.world().plugins().on_block_place(player.clone(), location, kind),
-                Err(e) => player.send_hotbar(&Chat::new(e.to_string())).await,
+                Err(e) => player.send_hotbar(&Chat::new(e.to_string())),
               }
             }
-            Err(e) => player.send_hotbar(&Chat::new(e.to_string())).await,
+            Err(e) => player.send_hotbar(&Chat::new(e.to_string())),
           };
         }
       }
@@ -206,8 +201,8 @@ impl Connection {
   }
 
   /// Sends a packet to the proxy, which will then get sent to the client.
-  pub async fn send(&self, p: cb::Packet) {
-    // match self.tx.send(Ok(p.to_proto(self.ver.unwrap()))).await {
+  pub fn send(&self, p: cb::Packet) {
+    // match self.tx.send(Ok(p.to_proto(self.ver.unwrap()))) {
     //   Ok(_) => (),
     //   Err(e) => {
     //     error!("error while sending packet: {}", e);

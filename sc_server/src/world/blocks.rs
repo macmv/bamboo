@@ -14,16 +14,14 @@ impl World {
   /// position is outside of the world. Unlike
   /// [`MultiChunk::set_type`](chunk::MultiChunk::set_type), this will send
   /// packets to anyone within render distance of the given chunk.
-  pub async fn set_block(&self, pos: Pos, ty: block::Type) -> Result<(), PosError> {
+  pub fn set_block(&self, pos: Pos, ty: block::Type) -> Result<(), PosError> {
     self.chunk(pos.chunk(), |mut c| c.set_type(pos.chunk_rel(), ty))?;
 
-    for p in self.players().await.iter().in_view(pos.chunk()) {
-      p.conn()
-        .send(cb::Packet::BlockChange {
-          location: pos,
-          type_:    self.block_converter.to_old(ty.id(), p.ver().block()) as i32,
-        })
-        .await;
+    for p in self.players().iter().in_view(pos.chunk()) {
+      p.send(cb::Packet::BlockChange {
+        location: pos,
+        type_:    self.block_converter.to_old(ty.id(), p.ver().block()) as i32,
+      });
     }
     Ok(())
   }
@@ -31,17 +29,17 @@ impl World {
   /// This sets a block within the world. This will use the default type of the
   /// given kind. It will return an error if the position is outside of the
   /// world.
-  pub async fn set_kind(&self, pos: Pos, kind: block::Kind) -> Result<(), PosError> {
-    self.set_block(pos, self.block_converter.get(kind).default_type()).await
+  pub fn set_kind(&self, pos: Pos, kind: block::Kind) -> Result<(), PosError> {
+    self.set_block(pos, self.block_converter.get(kind).default_type())
   }
 
   /// Fills the given region with the given block type. Min must be less than or
   /// equal to max. Use [`min_max`](Pos::min_max) to convert two corners of a
   /// cube into a min and max.
-  pub async fn fill_rect(&self, min: Pos, max: Pos, ty: block::Type) -> Result<(), PosError> {
+  pub fn fill_rect(&self, min: Pos, max: Pos, ty: block::Type) -> Result<(), PosError> {
     // Small fills should just send a block update, instead of a multi block change.
     if min == max {
-      return self.set_block(min, ty).await;
+      return self.set_block(min, ty);
     }
     for x in min.chunk_x()..=max.chunk_x() {
       for z in min.chunk_z()..=max.chunk_z() {
@@ -69,46 +67,42 @@ impl World {
           // Map of block version to packets. This server is optimized at many players
           // being online, so we only generate the chunk once for each versions.
           let mut serialized_chunks = HashMap::new();
-          for p in self.players().await.iter().in_view(pos) {
-            p.conn()
-              .send(
-                serialized_chunks
-                  .entry(pos)
-                  .or_insert_with(|| {
-                    self.serialize_partial_chunk(
-                      pos,
-                      p.ver().block(),
-                      min.chunk_y() as u32,
-                      max.chunk_y() as u32,
-                    )
-                  })
-                  .clone(),
-              )
-              .await;
+          for p in self.players().iter().in_view(pos) {
+            p.send(
+              serialized_chunks
+                .entry(pos)
+                .or_insert_with(|| {
+                  self.serialize_partial_chunk(
+                    pos,
+                    p.ver().block(),
+                    min.chunk_y() as u32,
+                    max.chunk_y() as u32,
+                  )
+                })
+                .clone(),
+            );
           }
         } else {
           // Map of block versions to multi block change records.
           let mut versions = HashMap::new();
-          for p in self.players().await.iter().in_view(pos) {
-            p.conn()
-              .send(
-                versions
-                  .entry(p.ver().block())
-                  .or_insert_with(|| {
-                    net::serialize::serialize_multi_block_change(
-                      pos,
-                      p.ver().block(),
-                      min.to(max).map(|pos| {
-                        (
-                          pos.chunk_rel(),
-                          self.block_converter.to_old(ty.id(), p.ver().block()) as i32,
-                        )
-                      }),
-                    )
-                  })
-                  .clone(),
-              )
-              .await;
+          for p in self.players().iter().in_view(pos) {
+            p.send(
+              versions
+                .entry(p.ver().block())
+                .or_insert_with(|| {
+                  net::serialize::serialize_multi_block_change(
+                    pos,
+                    p.ver().block(),
+                    min.to(max).map(|pos| {
+                      (
+                        pos.chunk_rel(),
+                        self.block_converter.to_old(ty.id(), p.ver().block()) as i32,
+                      )
+                    }),
+                  )
+                })
+                .clone(),
+            );
           }
         }
       }
@@ -120,31 +114,21 @@ impl World {
   /// Fills the given region with the default type for the block kind. Min must
   /// be less than or equal to max. Use [`min_max`](Pos::min_max) to convert two
   /// corners of a cube into a min and max.
-  pub async fn fill_rect_kind(
-    &self,
-    min: Pos,
-    max: Pos,
-    kind: block::Kind,
-  ) -> Result<(), PosError> {
-    self.fill_rect(min, max, self.block_converter.get(kind).default_type()).await
+  pub fn fill_rect_kind(&self, min: Pos, max: Pos, kind: block::Kind) -> Result<(), PosError> {
+    self.fill_rect(min, max, self.block_converter.get(kind).default_type())
   }
 
   /// Fills a flat circle. The center will be the middle of the circle. The
   /// radius is how far the circle extends from the center. The center will act
   /// like it is at (0.5, 0.5, 0.5) within the block. So the circle should not
   /// be offset from the center at all.
-  pub async fn fill_circle(
-    &self,
-    center: Pos,
-    radius: f32,
-    ty: block::Type,
-  ) -> Result<(), PosError> {
+  pub fn fill_circle(&self, center: Pos, radius: f32, ty: block::Type) -> Result<(), PosError> {
     // Small circles case. We would run into issues with the corner check if all the
     // corners are outside the circle (and the circle is inside the chunk).
     if radius < 16.0 {
       for z in -radius as i32..=radius as i32 {
         let width = (radius.powi(2) - z.pow(2) as f32).sqrt() as i32;
-        self.fill_rect(center + Pos::new(-width, 0, z), center + Pos::new(width, 0, z), ty).await?;
+        self.fill_rect(center + Pos::new(-width, 0, z), center + Pos::new(width, 0, z), ty)?;
       }
       return Ok(());
     }
@@ -196,7 +180,7 @@ impl World {
           // Empty case
           0 => {}
           // Full case
-          4 => self.fill_rect(min, max, ty).await?,
+          4 => self.fill_rect(min, max, ty)?,
           // Partial case
           _ => {
             for z in min.z..=max.z {
@@ -211,9 +195,7 @@ impl World {
                 Ordering::Greater => max.x,
                 Ordering::Equal => center.x + width,
               };
-              self
-                .fill_rect(Pos::new(min_x, center.y, z), Pos::new(max_x, center.y, z), ty)
-                .await?;
+              self.fill_rect(Pos::new(min_x, center.y, z), Pos::new(max_x, center.y, z), ty)?;
             }
           }
         }
@@ -224,25 +206,20 @@ impl World {
   }
 
   /// Fills the given circle with the default type for the block kind.
-  pub async fn fill_circle_kind(
+  pub fn fill_circle_kind(
     &self,
     center: Pos,
     radius: f32,
     kind: block::Kind,
   ) -> Result<(), PosError> {
-    self.fill_circle(center, radius, self.block_converter.get(kind).default_type()).await
+    self.fill_circle(center, radius, self.block_converter.get(kind).default_type())
   }
 
   /// Fills a sphere. The center will be the middle of this sphere. The radius
   /// is how far the sphere's edge extends from the center. The center will act
   /// like it is at (0.5, 0.5, 0.5) within the block. So the circle should not
   /// be offset from the center at all.
-  pub async fn fill_sphere(
-    &self,
-    center: Pos,
-    radius: f32,
-    ty: block::Type,
-  ) -> Result<(), PosError> {
+  pub fn fill_sphere(&self, center: Pos, radius: f32, ty: block::Type) -> Result<(), PosError> {
     // Small spheres case. We would run into issues with the corner check if all the
     // corners are outside the circle (and the circle is inside the chunk).
     if radius < 16.0 {
@@ -251,9 +228,7 @@ impl World {
           let v = radius.powi(2) - (y.pow(2) + z.pow(2)) as f32;
           // Check for this row containing no blocks
           let width = if v < 0.0 { continue } else { v.sqrt() as i32 };
-          self
-            .fill_rect(center + Pos::new(-width, y, z), center + Pos::new(width, y, z), ty)
-            .await?;
+          self.fill_rect(center + Pos::new(-width, y, z), center + Pos::new(width, y, z), ty)?;
         }
       }
       return Ok(());
@@ -303,7 +278,7 @@ impl World {
             // Empty case
             0 => {}
             // Full case
-            8 => self.fill_rect(min, max, ty).await?,
+            8 => self.fill_rect(min, max, ty)?,
             // Partial case
             _ => {
               for y in min.y..=max.y {
@@ -321,7 +296,7 @@ impl World {
                     Ordering::Greater => max.x,
                     Ordering::Equal => center.x + width,
                   };
-                  self.fill_rect(Pos::new(min_x, y, z), Pos::new(max_x, y, z), ty).await?;
+                  self.fill_rect(Pos::new(min_x, y, z), Pos::new(max_x, y, z), ty)?;
                 }
               }
             }
@@ -333,13 +308,13 @@ impl World {
     Ok(())
   }
   /// Fills the given sphere with the default type for the block kind.
-  pub async fn fill_sphere_kind(
+  pub fn fill_sphere_kind(
     &self,
     center: Pos,
     radius: f32,
     kind: block::Kind,
   ) -> Result<(), PosError> {
-    self.fill_sphere(center, radius, self.block_converter.get(kind).default_type()).await
+    self.fill_sphere(center, radius, self.block_converter.get(kind).default_type())
   }
 
   /// Validates a given block position.
