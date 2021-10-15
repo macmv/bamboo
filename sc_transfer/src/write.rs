@@ -161,7 +161,7 @@ impl MessageWrite<'_> {
     Ok(())
   }
   /// Writes a length prefixed string.
-  pub fn read_str(&mut self, v: &str) -> Result {
+  pub fn write_str(&mut self, v: &str) -> Result {
     self.write_buf(v.as_bytes())
   }
 }
