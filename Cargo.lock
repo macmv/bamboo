@@ -2212,6 +2212,7 @@ dependencies = [
  "criterion",
  "futures",
  "log",
+ "mio",
  "noise",
  "num",
  "num-derive",

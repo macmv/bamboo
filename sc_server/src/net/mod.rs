@@ -1,5 +1,9 @@
+use mio::{net::TcpListener, Event, Events, Interest, Poll, Token};
 use std::{
+  collections::HashMap,
   convert::TryInto,
+  io,
+  net::SocketAddr,
   sync::{
     atomic::{AtomicBool, Ordering},
     Arc,
@@ -191,5 +195,87 @@ impl Connection {
   // Returns true if the connection has been closed.
   pub fn closed(&self) -> bool {
     self.closed.load(Ordering::SeqCst)
+  }
+}
+
+pub struct ConnectionManager {
+  connections: HashMap<Token, Connection>,
+  new_tok:     Token,
+}
+
+impl ConnectionManager {
+  pub fn new() -> ConnectionManager {
+    ConnectionManager { connections: HashMap::new(), new_tok: Token(0) }
+  }
+
+  pub fn run(&mut self, ip: SocketAddr) -> io::Result<()> {
+    const LISTEN: Token = Token(0);
+
+    let mut poll = Poll::new()?;
+    let mut events = Events::with_capacity(128);
+
+    // Setup the TCP server socket.
+    let addr = "127.0.0.1:9000".parse().unwrap();
+    let mut listen = TcpListener::bind(addr)?;
+
+    // Register the server with poll we can receive events for it.
+    poll.registry().register(&mut listen, LISTEN, Interest::READABLE)?;
+
+    self.new_tok = Token(LISTEN.0 + 1);
+
+    loop {
+      poll.poll(&mut events, None)?;
+
+      for event in events.iter() {
+        match event.token() {
+          LISTEN => loop {
+            // Received an event for the TCP server socket, which
+            // indicates we can accept an connection.
+            let (mut conn, addr) = match listen.accept() {
+              Ok(v) => v,
+              Err(e) if e.kind() == io::ErrorKind::WouldBlock => {
+                // If we get a `WouldBlock` error we know our
+                // listener has no more incoming connections queued,
+                // so we can return to polling and wait for some
+                // more.
+                break;
+              }
+              Err(e) => {
+                // If it was any other kind of error, something went
+                // wrong and we terminate with an error.
+                return Err(e);
+              }
+            };
+
+            let tok = self.new_token();
+            poll.registry().register(&mut conn, tok, Interest::READABLE.add(Interest::WRITABLE))?;
+
+            self.connections.insert(tok, Connection::new(conn));
+          },
+          token => {
+            // Maybe received an event for a TCP connection.
+            let done = if let Some(conn) = self.connections.get_mut(&token) {
+              self.handle(poll.registry(), conn, event)?
+            } else {
+              // Sporadic events happen, we can safely ignore them.
+              false
+            };
+            if done {
+              self.connections.remove(&token);
+            }
+          }
+        }
+      }
+    }
+  }
+
+  fn new_token(&mut self) -> Token {
+    let v = self.new_tok;
+    self.new_tok = Token(self.new_tok.0 + 1);
+    v
+  }
+
+  fn handle(&self, conn: &Connection, ev: Event) -> io::Result<bool> {
+    Ok(false)
   }
 }
