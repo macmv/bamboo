@@ -25,7 +25,9 @@ futures = "0.3.14"
 tokio = { version = "1.5", features = ["rt-multi-thread"] }
 tokio-stream = "0.1.5"
 rayon = "1.5.1"
+
 mio = "0.7.13"
+crossbeam-channel = "0.5.1"
 
 num = "0.4"
 num-traits = "0.2"

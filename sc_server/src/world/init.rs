@@ -92,7 +92,7 @@ impl World {
     info!("done generating terrain");
   }
 
-  pub(super) async fn player_init(&self, player: &Player, conn: &Connection) {
+  pub(super) async fn player_init(&self, player: &Player) {
     let dimension = Tag::compound(&[
       ("piglin_safe", Tag::Byte(0)),
       ("natural", Tag::Byte(1)),
@@ -193,29 +193,27 @@ impl World {
       world_names_v1_16:        Some(world_names.into_inner()),
     };
 
-    conn.send(out).await;
+    player.send(out);
     if player.ver() >= ProtocolVersion::V1_13 {
-      conn.send(self.commands().serialize().await).await;
+      player.send(self.commands().serialize());
     }
 
     let view_distance = 10;
     for x in -view_distance..=view_distance {
       for z in -view_distance..=view_distance {
-        conn.send(self.serialize_chunk(ChunkPos::new(x, z), player.ver().block())).await;
+        player.send(self.serialize_chunk(ChunkPos::new(x, z), player.ver().block()));
       }
     }
 
-    conn
-      .send(cb::Packet::Position {
-        x:                0.0,        // X
-        y:                60.0,       // Y
-        z:                0.0,        // Z
-        yaw:              0.0,        // Yaw
-        pitch:            0.0,        // Pitch
-        flags:            0,          // Flags
-        teleport_id_v1_9: Some(1234), // TP id
-      })
-      .await;
+    player.send(cb::Packet::Position {
+      x:                0.0,        // X
+      y:                60.0,       // Y
+      z:                0.0,        // Z
+      yaw:              0.0,        // Yaw
+      pitch:            0.0,        // Pitch
+      flags:            0,          // Flags
+      teleport_id_v1_9: Some(1234), // TP id
+    });
 
     // let mut info = PlayerList {
     //   action: player_list::Action::AddPlayer.into(),
@@ -231,7 +229,7 @@ impl World {
     //   ..Default::default()
     // };
     let mut spawn_packets = vec![];
-    for other in self.players().await.iter().in_view(ChunkPos::new(0, 0)).not(player.id()) {
+    for other in self.players().iter().in_view(ChunkPos::new(0, 0)).not(player.id()) {
       // Add player to the list of players that other knows about
       // let mut out = cb::Packet::PlayerInfo {
       //   action: player_list::Action::AddPlayer.into(),
@@ -255,23 +253,20 @@ impl World {
       // other.conn().send(out).await;
       // Create a packet that will spawn player for other
       let (pos, pitch, yaw) = player.pos_look();
-      other
-        .conn()
-        .send(cb::Packet::NamedEntitySpawn {
-          entity_id:                 player.eid(),
-          player_uuid:               player.id(),
-          x_v1_8:                    Some(pos.fixed_x()),
-          x_v1_9:                    Some(pos.x()),
-          y_v1_8:                    Some(pos.fixed_y()),
-          y_v1_9:                    Some(pos.y()),
-          z_v1_8:                    Some(pos.fixed_z()),
-          z_v1_9:                    Some(pos.z()),
-          yaw:                       yaw as i8, // TODO: Fix doubles/bytes on 1.8
-          pitch:                     pitch as i8,
-          current_item_removed_v1_9: Some(0),
-          metadata_removed_v1_15:    Some(player.metadata(other.ver()).serialize()),
-        })
-        .await;
+      other.send(cb::Packet::NamedEntitySpawn {
+        entity_id:                 player.eid(),
+        player_uuid:               player.id(),
+        x_v1_8:                    Some(pos.fixed_x()),
+        x_v1_9:                    Some(pos.x()),
+        y_v1_8:                    Some(pos.fixed_y()),
+        y_v1_9:                    Some(pos.y()),
+        z_v1_8:                    Some(pos.fixed_z()),
+        z_v1_9:                    Some(pos.z()),
+        yaw:                       yaw as i8, // TODO: Fix doubles/bytes on 1.8
+        pitch:                     pitch as i8,
+        current_item_removed_v1_9: Some(0),
+        metadata_removed_v1_15:    Some(player.metadata(other.ver()).serialize()),
+      });
 
       // Add other to the list of players that player knows about
       // info.players.push(player_list::Player {

@@ -164,37 +164,35 @@ impl World {
       let name = player.username().to_string();
       let id = player.id();
       info!("{} has logged in", name);
-      self.player_loop(player, conn).await;
+      self.player_loop(player);
       info!("{} has logged out", name);
-      self.players.lock().await.remove(&id);
+      self.players.lock().remove(&id);
     });
   }
 
-  async fn player_loop(&self, player: Arc<Player>, conn: Arc<Connection>) {
+  fn player_loop(&self, player: Arc<Player>) {
     let mut int = time::interval(Duration::from_millis(50));
     // Player init
-    self.player_init(&player, &conn).await;
+    self.player_init(&player);
     // Player tick loop
     let mut tick = 0;
     loop {
-      int.tick().await;
-      if conn.closed() {
+      int.tick();
+      if player.closed() {
         // TODO: Close any other tasks for this player
         break;
       }
       let start = Instant::now();
       // Updates the player correctly, and performs collision checks. This also
       // handles new chunks.
-      player.tick().await;
+      player.tick();
       // Do player collision and packets and stuff
       // Once per second, send keep alive packet
       if tick % 20 == 0 {
-        conn
-          .send(cb::Packet::KeepAlive {
-            keep_alive_id_v1_8:    Some(1234556),
-            keep_alive_id_v1_12_2: Some(1234556),
-          })
-          .await;
+        player.send(cb::Packet::KeepAlive {
+          keep_alive_id_v1_8:    Some(1234556),
+          keep_alive_id_v1_12_2: Some(1234556),
+        });
       }
       tick += 1;
       self.mspt.fetch_add(start.elapsed().as_millis().try_into().unwrap(), Ordering::SeqCst);
@@ -377,8 +375,8 @@ impl World {
       sender_v1_16: Some(UUID::from_u128(0)),
     };
 
-    for p in self.players.lock().await.values() {
-      p.conn().send(out.clone()).await;
+    for p in self.players.lock().values() {
+      p.send(out.clone());
     }
   }
 
@@ -452,10 +450,10 @@ impl WorldManager {
       sender_v1_16: Some(UUID::from_u128(0)),
     };
 
-    let worlds = self.worlds.lock().await;
+    let worlds = self.worlds.lock();
     for w in worlds.iter() {
-      for p in w.players.lock().await.values() {
-        p.conn().send(out.clone()).await;
+      for p in w.players.lock().values() {
+        p.send(out.clone());
       }
     }
   }

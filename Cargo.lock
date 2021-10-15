@@ -2211,6 +2211,7 @@ name = "sc_server"
 version = "0.1.1"
 dependencies = [
  "criterion",
+ "crossbeam-channel",
  "futures",
  "log",
  "mio",

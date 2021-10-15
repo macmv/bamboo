@@ -5,6 +5,7 @@ use std::{
   sync::{Arc, Mutex, MutexGuard},
 };
 
+use crossbeam_channel::Sender;
 use sc_common::{
   math::{ChunkPos, FPos, Pos, PosError},
   net::cb,
@@ -88,7 +89,7 @@ pub struct Player {
   // Player's username
   username:      String,
   uuid:          UUID,
-  conn:          Arc<Connection>,
+  tx:            Sender<cb::Packet>,
   ver:           ProtocolVersion,
   world:         Arc<World>,
   view_distance: u32,
@@ -116,7 +117,7 @@ impl Player {
     eid: i32,
     username: String,
     uuid: UUID,
-    conn: Arc<Connection>,
+    tx: Sender<cb::Packet>,
     ver: ProtocolVersion,
     world: Arc<World>,
     pos: FPos,
@@ -125,7 +126,7 @@ impl Player {
       eid,
       username,
       uuid,
-      conn,
+      tx,
       ver,
       world,
       view_distance: 10,
@@ -146,16 +147,7 @@ impl Player {
   pub fn username(&self) -> &str {
     &self.username
   }
-  /// Returns the connection that this player is using. This can be used to
-  /// check if the player has disconnected.
-  pub fn conn(&self) -> &Connection {
-    &self.conn
-  }
-  /// Returns the connection that this player is using. This will clone the
-  /// internal Arc that is used to store the connection.
-  pub(crate) fn clone_conn(&self) -> Arc<Connection> {
-    self.conn.clone()
-  }
+
   /// Returns the player's entity id. Used to send packets about entities.
   pub fn eid(&self) -> i32 {
     self.eid
@@ -165,7 +157,8 @@ impl Player {
     self.uuid
   }
 
-  /// Returns the version that this player is on.
+  /// Returns the version that this client connected with. This will only change
+  /// if the player disconnects and logs in with another client.
   pub fn ver(&self) -> ProtocolVersion {
     self.ver
   }
@@ -223,14 +216,22 @@ impl Player {
   }
   /// Disconnects the player. The given chat message will be shown on the
   /// loading screen.
+  ///
+  /// This may not have an effect immediately. This only sends a disconnect
+  /// packet. Assuming normal operation, the client will then disconnect after
+  /// they have recieved this packet.
+  ///
+  /// TODO: This should terminate the connection after this packet is sent.
+  /// Closing the channel will drop the packet before it can be sent, so we need
+  /// some other way of closing it later.
   pub async fn disconnect<C: Into<Chat>>(&self, msg: C) {
-    self.conn().send(cb::Packet::KickDisconnect { reason: msg.into().to_json() }).await;
+    self.send(cb::Packet::KickDisconnect { reason: msg.into().to_json() });
   }
 
   /// Updates the player's position/velocity. This will apply gravity, and do
   /// collision checks. Should never be called at a different rate than the
   /// global tick rate.
-  pub(crate) async fn tick(&self) {
+  pub(crate) fn tick(&self) {
     let old_chunk;
     let new_chunk;
     let look_changed;
@@ -262,19 +263,16 @@ impl Player {
       pos.clone()
     };
     if pos_changed || look_changed {
-      for other in self.world.players().await.iter().in_view(pos.curr.chunk()).not(self.uuid) {
+      for other in self.world.players().iter().in_view(pos.curr.chunk()).not(self.uuid) {
         // Make player move for other
         let yaw;
         let pitch;
         let on_ground = true;
         if look_changed {
-          other
-            .conn()
-            .send(cb::Packet::EntityHeadRotation {
-              entity_id: self.eid,
-              head_yaw:  (pos.yaw / 360.0 * 256.0).round() as i8,
-            })
-            .await;
+          other.send(cb::Packet::EntityHeadRotation {
+            entity_id: self.eid,
+            head_yaw:  (pos.yaw / 360.0 * 256.0).round() as i8,
+          });
           yaw = (pos.yaw / 360.0 * 256.0).round() as i8;
           pitch = (pos.pitch / 360.0 * 256.0).round() as i8;
         } else {
@@ -334,61 +332,49 @@ impl Player {
               pitch = pos.pitch as i8;
             }
             // Cannot use relative move
-            other
-              .conn()
-              .send(cb::Packet::EntityTeleport {
-                entity_id: self.eid,
-                x_v1_8: Some(pos.curr.fixed_x()),
-                x_v1_9: Some(pos.curr.x()),
-                y_v1_8: Some(pos.curr.fixed_y()),
-                y_v1_9: Some(pos.curr.y()),
-                z_v1_8: Some(pos.curr.fixed_z()),
-                z_v1_9: Some(pos.curr.z()),
-                yaw,
-                pitch,
-                on_ground,
-              })
-              .await;
+            other.send(cb::Packet::EntityTeleport {
+              entity_id: self.eid,
+              x_v1_8: Some(pos.curr.fixed_x()),
+              x_v1_9: Some(pos.curr.x()),
+              y_v1_8: Some(pos.curr.fixed_y()),
+              y_v1_9: Some(pos.curr.y()),
+              z_v1_8: Some(pos.curr.fixed_z()),
+              z_v1_9: Some(pos.curr.z()),
+              yaw,
+              pitch,
+              on_ground,
+            });
           } else {
             // Can use relative move, and we know that pos_changed is true
             if look_changed {
-              other
-                .conn()
-                .send(cb::Packet::EntityMoveLook {
-                  entity_id: self.eid,
-                  d_x_v1_8: Some(d_x_v1_8),
-                  d_x_v1_9: Some(d_x_v1_9),
-                  d_y_v1_8: Some(d_y_v1_8),
-                  d_y_v1_9: Some(d_y_v1_9),
-                  d_z_v1_8: Some(d_z_v1_8),
-                  d_z_v1_9: Some(d_z_v1_9),
-                  yaw,
-                  pitch,
-                  on_ground,
-                })
-                .await;
+              other.send(cb::Packet::EntityMoveLook {
+                entity_id: self.eid,
+                d_x_v1_8: Some(d_x_v1_8),
+                d_x_v1_9: Some(d_x_v1_9),
+                d_y_v1_8: Some(d_y_v1_8),
+                d_y_v1_9: Some(d_y_v1_9),
+                d_z_v1_8: Some(d_z_v1_8),
+                d_z_v1_9: Some(d_z_v1_9),
+                yaw,
+                pitch,
+                on_ground,
+              });
             } else {
-              other
-                .conn()
-                .send(cb::Packet::RelEntityMove {
-                  entity_id: self.eid,
-                  d_x_v1_8: Some(d_x_v1_8),
-                  d_x_v1_9: Some(d_x_v1_9),
-                  d_y_v1_8: Some(d_y_v1_8),
-                  d_y_v1_9: Some(d_y_v1_9),
-                  d_z_v1_8: Some(d_z_v1_8),
-                  d_z_v1_9: Some(d_z_v1_9),
-                  on_ground,
-                })
-                .await;
+              other.send(cb::Packet::RelEntityMove {
+                entity_id: self.eid,
+                d_x_v1_8: Some(d_x_v1_8),
+                d_x_v1_9: Some(d_x_v1_9),
+                d_y_v1_8: Some(d_y_v1_8),
+                d_y_v1_9: Some(d_y_v1_9),
+                d_z_v1_8: Some(d_z_v1_8),
+                d_z_v1_9: Some(d_z_v1_9),
+                on_ground,
+              });
             }
           }
         } else {
           // Pos changed is false, so look_changed must be true
-          other
-            .conn()
-            .send(cb::Packet::EntityLook { entity_id: self.eid, yaw, pitch, on_ground })
-            .await;
+          other.send(cb::Packet::EntityLook { entity_id: self.eid, yaw, pitch, on_ground });
         }
       }
     }
@@ -424,8 +410,8 @@ impl Player {
           unload_max = ChunkPos::new(0, 0);
         }
       };
-      self.load_chunks(load_min, load_max).await;
-      self.unload_chunks(unload_min, unload_max).await;
+      self.load_chunks(load_min, load_max);
+      self.unload_chunks(unload_min, unload_max);
       // Top/Bottom (excluding corners)
       let load_min;
       let load_max;
@@ -451,13 +437,13 @@ impl Player {
           unload_max = ChunkPos::new(0, 0);
         }
       };
-      self.load_chunks(load_min, load_max).await;
-      self.unload_chunks(unload_min, unload_max).await;
+      self.load_chunks(load_min, load_max);
+      self.unload_chunks(unload_min, unload_max);
     }
   }
 
   /// Loads the chunks between min and max, inclusive.
-  async fn load_chunks(&self, min: ChunkPos, max: ChunkPos) {
+  fn load_chunks(&self, min: ChunkPos, max: ChunkPos) {
     if min == max {
       return;
     }
@@ -492,39 +478,33 @@ impl Player {
     self.world.store_chunks_no_overwrite(chunks.into_inner().unwrap());
     for x in min.x()..=max.x() {
       for z in min.z()..=max.z() {
-        self.conn.send(self.world.serialize_chunk(ChunkPos::new(x, z), self.ver().block())).await;
+        self.send(self.world.serialize_chunk(ChunkPos::new(x, z), self.ver().block()));
       }
     }
   }
-  async fn unload_chunks(&self, min: ChunkPos, max: ChunkPos) {
+  fn unload_chunks(&self, min: ChunkPos, max: ChunkPos) {
     if min == max {
       return;
     }
     for x in min.x()..=max.x() {
       for z in min.z()..=max.z() {
         if self.ver() == ProtocolVersion::V1_8 {
-          self
-            .conn
-            .send(cb::Packet::MapChunk {
-              x:                                     x.into(),
-              z:                                     z.into(),
-              ground_up:                             true,
-              bit_map_v1_8:                          Some(0),
-              bit_map_v1_9:                          None,
-              chunk_data:                            vec![0], /* Need a length prefix. 0 varint
-                                                               * is a single 0 byte */
-              biomes_v1_15:                          None,
-              biomes_v1_16_2:                        None,
-              block_entities_v1_9_4:                 None,
-              heightmaps_v1_14:                      None,
-              ignore_old_data_v1_16_removed_v1_16_2: None,
-            })
-            .await;
+          self.send(cb::Packet::MapChunk {
+            x:                                     x.into(),
+            z:                                     z.into(),
+            ground_up:                             true,
+            bit_map_v1_8:                          Some(0),
+            bit_map_v1_9:                          None,
+            chunk_data:                            vec![0], /* Need a length prefix. 0 varint
+                                                             * is a single 0 byte */
+            biomes_v1_15:                          None,
+            biomes_v1_16_2:                        None,
+            block_entities_v1_9_4:                 None,
+            heightmaps_v1_14:                      None,
+            ignore_old_data_v1_16_removed_v1_16_2: None,
+          });
         } else {
-          self
-            .conn
-            .send(cb::Packet::UnloadChunk { chunk_x_v1_9: Some(x), chunk_z_v1_9: Some(z) })
-            .await;
+          self.send(cb::Packet::UnloadChunk { chunk_x_v1_9: Some(x), chunk_z_v1_9: Some(z) });
         }
       }
     }
@@ -585,18 +565,15 @@ impl Player {
   /// Sets the player's fly speed. Unlike the packet, this is a multipler. So
   /// setting their flyspeed to 1.0 is the default speed.
   pub async fn set_flyspeed(&self, speed: f32) {
-    self
-      .conn
-      .send(cb::Packet::Abilities {
-        // 0x01: No damage
-        // 0x02: Flying
-        // 0x04: Can fly
-        // 0x08: Can instant break
-        flags:         0x02 | 0x04 | 0x08,
-        flying_speed:  speed * 0.05,
-        walking_speed: 0.1,
-      })
-      .await;
+    self.send(cb::Packet::Abilities {
+      // 0x01: No damage
+      // 0x02: Flying
+      // 0x04: Can fly
+      // 0x08: Can instant break
+      flags:         0x02 | 0x04 | 0x08,
+      flying_speed:  speed * 0.05,
+      walking_speed: 0.1,
+    });
   }
 
   /// Sends a block update packet for the block at the given position. This
@@ -611,14 +588,26 @@ impl Player {
   /// block.
   pub async fn sync_block_at(&self, pos: Pos) -> Result<(), PosError> {
     let ty = self.world().get_block(pos)?;
-    self
-      .conn
-      .send(cb::Packet::BlockChange {
-        location: pos,
-        type_:    self.world().block_converter().to_old(ty.id(), self.ver().block()) as i32,
-      })
-      .await;
+    self.send(cb::Packet::BlockChange {
+      location: pos,
+      type_:    self.world().block_converter().to_old(ty.id(), self.ver().block()) as i32,
+    });
     Ok(())
+  }
+
+  /// Sends the given packet to this player. This will be flushed as soon as the
+  /// outgoing buffer as space, which is immediately in most situations. If a
+  /// bunch of data is being sent at once, this function can block. So this
+  /// technically can result in deadlocks, but the way the threads are setup
+  /// right now mean that no channel will block another channel, so in practice
+  /// this will only produce slow downs, never deadlocks.
+  pub fn send(&self, p: cb::Packet) {
+    self.tx.send(p).unwrap();
+  }
+
+  /// Returns true if the player's connection is closed.
+  pub fn closed(&self) -> bool {
+    self.tx.closed()
   }
 }
 
