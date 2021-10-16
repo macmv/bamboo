@@ -326,9 +326,15 @@ impl<'a, S: PacketStream + Send + Sync> Conn<'a, S> {
   fn send_to_server(&mut self, p: sb::Packet) -> io::Result<()> {
     // The only error here is EOF, which means 64k was not enough space for this
     // packet.
-    let n = p.to_sc(self.ver, &mut self.garbage).unwrap();
-    let buf = &self.garbage[..n];
-    self.to_server.extend_from_slice(buf);
+    let len = p.to_sc(self.ver, &mut self.garbage).unwrap();
+
+    let mut prefix = [0; 5];
+    let mut m = MessageWrite::new(&mut prefix);
+    m.write_i32(len as i32).unwrap();
+    let prefix_len = m.index();
+    self.to_server.extend_from_slice(&prefix[..prefix_len]);
+    self.to_server.extend_from_slice(&self.garbage[..len]);
+
     self.write_server()
   }
 
