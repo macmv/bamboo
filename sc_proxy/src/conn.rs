@@ -210,13 +210,15 @@ impl<'a, S: PacketStream + Send + Sync> Conn<'a, S> {
   pub fn read_server(&mut self) -> io::Result<bool> {
     loop {
       match self.poll_server() {
-        Ok(_) => match self.read_server_packet() {
-          Ok(_) => {
-            if self.closed() {
-              return Ok(true);
-            }
+        Ok(_) => loop {
+          match self.read_server_packet() {
+            Ok(true) => {}
+            Ok(false) => break,
+            Err(e) => return Err(e),
+          };
+          if self.closed() {
+            return Ok(true);
           }
-          Err(e) => return Err(e),
         },
         Err(ref e) if e.kind() == io::ErrorKind::WouldBlock => return Ok(false),
         Err(e) => return Err(e),
@@ -230,7 +232,9 @@ impl<'a, S: PacketStream + Send + Sync> Conn<'a, S> {
     Ok(())
   }
 
-  fn read_server_packet(&mut self) -> io::Result<()> {
+  /// Returns true if there are more packets, false if there is an empty or
+  /// partial packet.
+  fn read_server_packet(&mut self) -> io::Result<bool> {
     let mut m = MessageRead::new(&self.from_server);
     match m.read_i32() {
       Ok(len) => {
@@ -250,16 +254,20 @@ impl<'a, S: PacketStream + Send + Sync> Conn<'a, S> {
           }
           self.from_server.drain(0..parsed);
           self.send_to_client(p)?;
+          Ok(true)
+        } else {
+          Ok(false)
         }
       }
       // There are no bytes waiting for us, or an invalid varint.
       Err(e) => {
-        if !matches!(e, ReadError::EOF) {
+        if matches!(e, ReadError::EOF) {
+          Ok(false)
+        } else {
           return Err(io::Error::new(ErrorKind::InvalidData, e.to_string()));
         }
       }
     }
-    Ok(())
   }
 
   /// Writes all the data possible to the client. Returns Err(WouldBlock) or

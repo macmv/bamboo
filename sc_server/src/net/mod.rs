@@ -460,6 +460,16 @@ impl ConnectionManager {
         }
       }
     }
+    if ev.is_writable() {
+      match conn.try_flush() {
+        Ok(()) => {}
+        Err(e) if e.kind() == io::ErrorKind::WouldBlock => {}
+        Err(e) => {
+          error!("error in connection: {}", e);
+          return true;
+        }
+      }
+    }
     false
   }
 }
