@@ -4,7 +4,6 @@ pub mod gen;
 mod init;
 mod players;
 
-use crossbeam_channel::Sender;
 use parking_lot::{Mutex, MutexGuard, RwLock};
 use std::{
   collections::HashMap,
@@ -28,7 +27,7 @@ use sc_common::{
   version::{BlockVersion, ProtocolVersion},
 };
 
-use crate::{block, command::CommandTree, entity, item, player::Player, plugin};
+use crate::{block, command::CommandTree, entity, item, net::ConnSender, player::Player, plugin};
 use chunk::MultiChunk;
 use gen::WorldGen;
 
@@ -454,14 +453,14 @@ impl WorldManager {
   /// proxy connects.
   pub fn new_player(
     &self,
-    tx: Sender<cb::Packet>,
+    conn: ConnSender,
     username: String,
     uuid: UUID,
     ver: ProtocolVersion,
   ) -> Arc<Player> {
     let w = self.worlds.lock()[0].clone();
     let player =
-      Player::new(w.eid(), username, uuid, tx, ver, w.clone(), FPos::new(0.0, 60.0, 0.0));
+      Player::new(w.eid(), username, uuid, conn, ver, w.clone(), FPos::new(0.0, 60.0, 0.0));
     w.new_player(player)
   }
 }

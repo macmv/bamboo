@@ -39,14 +39,39 @@ pub struct Connection {
   rx:    Receiver<cb::Packet>,
   wake:  Sender<WakeEvent>,
   waker: Arc<Waker>,
+  tok:   Token,
 
   incoming: Vec<u8>,
   outgoing: Vec<u8>,
   garbage:  Vec<u8>,
 }
 
+pub struct ConnSender {
+  tx:    Sender<cb::Packet>,
+  wake:  Sender<WakeEvent>,
+  waker: Arc<Waker>,
+  tok:   Token,
+}
+
+impl ConnSender {
+  /// Sends the given packet to the client. Assuming there aren't too many
+  /// packets in the queue, this is a non-blocking operation. This will block if
+  /// there are too many packets queued. The limit is 512 packets before this
+  /// will block, so this should very rarely happen.
+  pub fn send(&self, p: cb::Packet) {
+    self.tx.send(p);
+    self.wake.send(WakeEvent::Clientbound(self.tok));
+    self.waker.wake();
+  }
+}
+
 impl Connection {
-  pub(crate) fn new(stream: TcpStream, wake: Sender<WakeEvent>, waker: Arc<Waker>) -> Self {
+  pub(crate) fn new(
+    stream: TcpStream,
+    wake: Sender<WakeEvent>,
+    waker: Arc<Waker>,
+    tok: Token,
+  ) -> Self {
     // For a 10 chunk render distance, we need to send 441 packets at once. So a
     // limit of 512 means we don't block very much.
     let (tx, rx) = crossbeam_channel::bounded(512);
@@ -58,10 +83,32 @@ impl Connection {
       rx,
       wake,
       waker,
+      tok,
       incoming: Vec::with_capacity(1024),
       outgoing: Vec::with_capacity(1024),
       garbage: vec![0; 64 * 1024],
     }
+  }
+
+  /// Creates a sender that will send packets to the client on this connection.
+  /// This needs to clone a few arcs, so it should not be used frequently.
+  pub fn sender(&self) -> ConnSender {
+    ConnSender {
+      tx:    self.tx.clone(),
+      wake:  self.wake.clone(),
+      waker: self.waker.clone(),
+      tok:   self.tok,
+    }
+  }
+
+  /// Sends the given packet to the client. Assuming there aren't too many
+  /// packets in the queue, this is a non-blocking operation. This will block if
+  /// there are too many packets queued. The limit is 512 packets before this
+  /// will block, so this should very rarely happen.
+  pub fn send(&self, p: cb::Packet) {
+    self.tx.send(p);
+    self.wake.send(WakeEvent::Clientbound(self.tok));
+    self.waker.wake();
   }
 
   /// This will return ErrorKind::WouldBlock once its done reading. If it
@@ -142,7 +189,7 @@ impl Connection {
               let idx = m.index();
               self.incoming.drain(0..idx);
               self.ver = Some(ver);
-              *player = Some(wm.new_player(self.tx.clone(), username, uuid, ver));
+              *player = Some(wm.new_player(self.sender(), username, uuid, ver));
             }
           }
         }
@@ -345,7 +392,7 @@ impl ConnectionManager {
 
             self
               .connections
-              .insert(token, (Connection::new(conn, tx.clone(), waker.clone()), None));
+              .insert(token, (Connection::new(conn, tx.clone(), waker.clone(), token), None));
           },
           WAKE => loop {
             match rx.try_recv() {

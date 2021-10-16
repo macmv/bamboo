@@ -5,7 +5,6 @@ use std::{
   sync::{Arc, Mutex, MutexGuard},
 };
 
-use crossbeam_channel::Sender;
 use sc_common::{
   math::{ChunkPos, FPos, Pos, PosError},
   net::cb,
@@ -17,7 +16,7 @@ use crate::{
   command::CommandSender,
   entity::Metadata,
   item::{Inventory, Stack},
-  net::Connection,
+  net::ConnSender,
   world::World,
 };
 
@@ -89,7 +88,7 @@ pub struct Player {
   // Player's username
   username:      String,
   uuid:          UUID,
-  tx:            Sender<cb::Packet>,
+  conn:          ConnSender,
   ver:           ProtocolVersion,
   world:         Arc<World>,
   view_distance: u32,
@@ -117,7 +116,7 @@ impl Player {
     eid: i32,
     username: String,
     uuid: UUID,
-    tx: Sender<cb::Packet>,
+    conn: ConnSender,
     ver: ProtocolVersion,
     world: Arc<World>,
     pos: FPos,
@@ -126,7 +125,7 @@ impl Player {
       eid,
       username,
       uuid,
-      tx,
+      conn,
       ver,
       world,
       view_distance: 10,
@@ -596,7 +595,7 @@ impl Player {
   /// right now mean that no channel will block another channel, so in practice
   /// this will only produce slow downs, never deadlocks.
   pub fn send(&self, p: cb::Packet) {
-    self.tx.send(p).unwrap();
+    self.conn.send(p);
   }
 
   /// Returns true if the player's connection is closed.
