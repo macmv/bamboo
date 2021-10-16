@@ -210,19 +210,19 @@ impl NamedPacketField {
   fn write_to_proto(&self, gen: &mut CodeGen) {
     gen.write_line(&format!("{}?;", self.generate_to_proto()));
   }
-  fn write_from_sc(&self, gen: &mut CodeGen, is_ver: bool) {
+  fn write_from_sc(&self, gen: &mut CodeGen, is_ver: bool, packet: &str) {
     gen.write(&self.name());
     gen.write(": ");
     if self.multi_versioned {
       if is_ver {
         gen.write("Some(");
-        gen.write(self.generate_from_sc());
+        gen.write(&self.generate_from_sc(packet));
         gen.write(")");
       } else {
         gen.write("None");
       }
     } else {
-      gen.write(self.generate_from_sc());
+      gen.write(&self.generate_from_sc(packet));
     }
     gen.write_line(",");
   }
@@ -249,8 +249,8 @@ impl NamedPacketField {
       self.field.generate_to_sc(&self.name)
     }
   }
-  fn generate_from_sc(&self) -> &'static str {
-    self.field.generate_from_sc()
+  fn generate_from_sc(&self, packet: &str) -> String {
+    self.field.generate_from_sc(&self.name(), packet)
   }
   fn generate_to_tcp(&self) -> String {
     if self.multi_versioned {
@@ -471,10 +471,10 @@ fn generate_packets(
     gen.write_func(
       "from_sc",
       &[FuncArg { name: "version", ty: "ProtocolVersion" }, FuncArg { name: "buf", ty: "&[u8]" }],
-      Some("Result<(Self, usize), ReadError>"),
+      Some("Result<(Self, usize), (&'static str, &'static str, ReadError)>"),
       |gen| {
         gen.write_line("let mut m = MessageRead::new(buf);");
-        gen.write_line("let id = m.read_i32()?;");
+        gen.write_line(r#"let id = m.read_i32().map_err(|e| ("", "", e))?;"#);
         gen.write("let out = ");
         gen.write_match("id", |gen| {
           for (id, p) in packets.iter().enumerate() {
@@ -494,7 +494,7 @@ fn generate_packets(
                   gen.write(" ");
                   gen.write_block(|gen| {
                     for (is_ver, field) in p.fields_ver(Version { major: 8, minor: 0 }).iter() {
-                      field.write_from_sc(gen, *is_ver);
+                      field.write_from_sc(gen, *is_ver, p.name());
                     }
                   });
                   gen.remove_indent();
@@ -515,7 +515,7 @@ fn generate_packets(
                 gen.write(" ");
                 gen.write_block(|gen| {
                   for (is_ver, field) in p.fields_ver(*ver).iter() {
-                    field.write_from_sc(gen, *is_ver);
+                    field.write_from_sc(gen, *is_ver, p.name());
                   }
                 });
                 gen.remove_indent();
@@ -528,7 +528,7 @@ fn generate_packets(
               gen.write_line(" {");
               gen.add_indent();
               for field in p.fields().iter() {
-                field.write_from_sc(gen, true);
+                field.write_from_sc(gen, true, p.name());
               }
               gen.remove_indent();
               gen.write_line("},");

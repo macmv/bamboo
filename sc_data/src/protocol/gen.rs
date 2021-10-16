@@ -160,26 +160,28 @@ impl PacketField {
       _ => format!("m.write_buf({})", val),
     }
   }
-  pub fn generate_from_sc(&self) -> &'static str {
+  /// Takes a field name and packet name, in order to generate errors.
+  pub fn generate_from_sc(&self, field: &str, packet: &str) -> String {
+    let err = &format!(".map_err(|e| (\"{}\", \"{}\", e))?", packet, field);
     match self {
-      Self::Bool => "m.read_bool()?",
+      Self::Bool => format!("m.read_bool(){}", err),
       Self::Int(ity) => match ity {
-        IntType::I8 => "m.read_i8()?",
-        IntType::U8 => "m.read_u8()?",
-        IntType::I16 => "m.read_i16()?",
-        IntType::U16 => "m.read_u16()?",
-        IntType::I32 => "m.read_i32()?",
-        IntType::I64 => "m.read_i64()?",
-        IntType::VarInt => "m.read_i32()?",
-        IntType::OptVarInt => "Some(m.read_i32()?)",
+        IntType::I8 => format!("m.read_i8(){}", err),
+        IntType::U8 => format!("m.read_u8(){}", err),
+        IntType::I16 => format!("m.read_i16(){}", err),
+        IntType::U16 => format!("m.read_u16(){}", err),
+        IntType::I32 => format!("m.read_i32(){}", err),
+        IntType::I64 => format!("m.read_i64(){}", err),
+        IntType::VarInt => format!("m.read_i32(){}", err),
+        IntType::OptVarInt => format!("Some(m.read_i32(){})", err),
       },
       Self::Float(fty) => match fty {
-        FloatType::F32 => "m.read_f32()?",
-        FloatType::F64 => "m.read_f64()?",
+        FloatType::F32 => format!("m.read_f32(){}", err),
+        FloatType::F64 => format!("m.read_f64(){}", err),
       },
-      Self::UUID => "UUID::from_bytes(m.read_bytes(16)?.try_into().unwrap())",
-      Self::String => "m.read_str()?",
-      Self::Position => "Pos::from_u64(m.read_u64()?)",
+      Self::UUID => format!("UUID::from_bytes(m.read_bytes(16){}.try_into().unwrap())", err),
+      Self::String => format!("m.read_str(){}", err),
+      Self::Position => format!("Pos::from_u64(m.read_u64(){})", err),
 
       // Self::NBT => (#name.clone()),
       // Self::OptionalNBT => (#name.clone()),
@@ -188,11 +190,11 @@ impl PacketField {
 
       // Self::Option(field) => (#name.unwrap()),
       Self::DefinedType(name) => match name.as_str() {
-        "slot" => "Item::from_sc(&mut m)?",
-        "tags" => "m.read_buf()?",
+        "slot" => format!("Item::from_sc(&mut m){}", err),
+        "tags" => format!("m.read_buf(){}", err),
         _ => panic!("undefined field type {}", name),
       },
-      _ => "m.read_buf()?",
+      _ => format!("m.read_buf(){}", err),
     }
   }
   pub fn generate_to_tcp(&self, val: &str) -> String {
