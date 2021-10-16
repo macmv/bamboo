@@ -247,24 +247,15 @@ impl World {
         metadata_removed_v1_15:    Some(player.metadata(other.ver()).serialize()),
       });
 
+      // Add other to the list of players that player knows about
       num_info += 1;
       info.write_buf(&other.id().as_be_bytes());
       info.write_str(other.username());
       info.write_varint(0); // no properties
       info.write_varint(1); // creative
       info.write_varint(50); // ping
-      info.write_bool(true); // no display name follows
+      info.write_bool(false); // no display name follows
 
-      // Add other to the list of players that player knows about
-      // info.players.push(player_list::Player {
-      //   uuid:             Some(other.id().as_proto()),
-      //   name:             other.username().into(),
-      //   properties:       vec![],
-      //   gamemode:         1,
-      //   ping:             300,
-      //   has_display_name: false,
-      //   display_name:     "".into(),
-      // });
       // Create a packet that will spawn other for player
       let (pos, pitch, yaw) = other.pos_look();
       spawn_packets.push(cb::Packet::NamedEntitySpawn {
@@ -287,11 +278,8 @@ impl World {
     data.write_buf(&info.into_inner());
     player.send(cb::Packet::PlayerInfo { action: 0, data: data.into_inner() });
     // Need to send the player info before the spawn packets
-    // let mut out = cb::Packet::new(cb::ID::PlayerInfo);
-    // out.set_other(Other::PlayerList(info)).unwrap();
-    // conn.send(out);
-    // for p in spawn_packets {
-    //   conn.send(p);
-    // }
+    for p in spawn_packets {
+      player.send(p);
+    }
   }
 }
