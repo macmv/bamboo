@@ -109,6 +109,7 @@ pub fn run() -> Result<(), Box<dyn Error>> {
               let conn = clients.get_mut(&token).expect("client doesn't exist!");
               match conn.read_server() {
                 Ok(_) => {}
+                Err(ref e) if e.kind() == io::ErrorKind::WouldBlock => {}
                 Err(e) => {
                   error!("error while parsing packet from server {:?}: {}", token, e);
                   clients.remove(&token);
