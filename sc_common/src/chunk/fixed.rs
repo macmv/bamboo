@@ -1,10 +1,7 @@
 use std::convert::TryInto;
 
 use super::section::Section as ChunkSection;
-use crate::{
-  math::{Pos, PosError},
-  proto,
-};
+use crate::math::{Pos, PosError};
 
 /// Only used for 1.8. This is a chunk section that does not contain a palette.
 pub struct Section {
@@ -18,30 +15,6 @@ impl Section {
   /// Returns the internal data of this section.
   pub fn data(&self) -> &[u16; 16 * 16 * 16] {
     &self.data
-  }
-  pub(super) fn from_latest_proto(pb: proto::chunk::Section) -> Box<Self> {
-    assert_eq!(pb.data.len(), 4096 / 4, "chunk data is the wrong length");
-    let mut section = Section { data: [0; 4096] };
-    // Using map() and collect() would cause more allocations than this
-    for (i, v) in pb.data.iter().enumerate() {
-      section.data[i * 4 + 0] = (v >> 0) as u16;
-      section.data[i * 4 + 1] = (v >> 16) as u16;
-      section.data[i * 4 + 2] = (v >> 32) as u16;
-      section.data[i * 4 + 3] = (v >> 48) as u16;
-    }
-    Box::new(section)
-  }
-  pub(super) fn from_old_proto(pb: proto::chunk::Section, f: &dyn Fn(u32) -> u32) -> Box<Self> {
-    assert_eq!(pb.data.len(), 4096 / 4, "chunk data is the wrong length");
-    let mut section = Section { data: [0; 4096] };
-    // Using map() and collect() would cause more allocations than this
-    for (i, v) in pb.data.iter().enumerate() {
-      section.data[i * 4 + 0] = f(((v >> 0) as u16).into()).try_into().unwrap();
-      section.data[i * 4 + 1] = f(((v >> 16) as u16).into()).try_into().unwrap();
-      section.data[i * 4 + 2] = f(((v >> 32) as u16).into()).try_into().unwrap();
-      section.data[i * 4 + 3] = f(((v >> 48) as u16).into()).try_into().unwrap();
-    }
-    Box::new(section)
   }
   /// Sets the block at the given position within the internal block data.
   ///
@@ -114,33 +87,6 @@ impl ChunkSection for Section {
   }
   fn duplicate(&self) -> Box<dyn ChunkSection + Send> {
     Box::new(Section { data: self.data })
-  }
-  /// This is always called, because this type of chunk section is only used for
-  /// one version.
-  fn to_latest_proto(&self) -> proto::chunk::Section {
-    let mut data = vec![0; self.data.len() / 4]; // 8 bytes per u64, 2 bytes per u16
-    for (i, id) in self.data.iter().enumerate() {
-      unsafe {
-        // SAFETY: self.data.len() = 4096 (which is 8192 bytes), and data.len() = 2048
-        // (8192 / sizeof(u64)). So, i / 4 is always within data
-        let v = data.get_unchecked_mut(i / 4);
-        *v |= u64::from(*id) << (i % 4 * 16);
-      }
-    }
-    proto::chunk::Section { data, ..Default::default() }
-  }
-  /// Never called, as fixed chunks only are used on one version.
-  fn to_old_proto(&self, f: &dyn Fn(u32) -> u32) -> proto::chunk::Section {
-    let mut data = vec![0; self.data.len() / 4]; // 8 bytes per u64, 2 bytes per u16
-    for (i, id) in self.data.iter().enumerate() {
-      unsafe {
-        // SAFETY: self.data.len() = 4096 (which is 8192 bytes), and data.len() = 2048
-        // (8192 / sizeof(u64)). So, i / 4 is always within data
-        let v = data.get_unchecked_mut(i / 4);
-        *v |= u64::from(f(u32::from(*id))) << (i % 4 * 16);
-      }
-    }
-    proto::chunk::Section { data, ..Default::default() }
   }
 
   fn unwrap_fixed(&self) -> &Self {

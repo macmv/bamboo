@@ -257,22 +257,3 @@ fn test_fill() -> Result<(), PosError> {
 
   Ok(())
 }
-
-#[test]
-fn test_from_proto() {
-  let mut pb = proto::chunk::Section::default();
-  pb.bits_per_block = 4;
-  pb.data = vec![0x1111111111111111; 16 * 16 * 16 * 4 / 64];
-  pb.palette.push(0);
-  pb.palette.push(5);
-
-  let s = Section::from_latest_proto(pb.clone());
-  assert_eq!(s.data.clone_inner(), vec![0x1111111111111111; 16 * 16 * 16 * 4 / 64]);
-  assert_eq!(s.palette, vec![0, 5]);
-  assert_eq!(s.block_amounts, vec![0, 4096]);
-
-  let s = Section::from_old_proto(pb, &|val| val + 5);
-  assert_eq!(s.data.clone_inner(), vec![0x1111111111111111; 16 * 16 * 16 * 4 / 64]);
-  assert_eq!(s.palette, vec![5, 10]);
-  assert_eq!(s.block_amounts, vec![0, 4096]);
-}

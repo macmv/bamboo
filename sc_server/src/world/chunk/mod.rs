@@ -3,7 +3,6 @@ use std::sync::Arc;
 use sc_common::{
   chunk::{Chunk, ChunkKind},
   math::{Pos, PosError},
-  proto,
   version::BlockVersion,
 };
 
@@ -98,38 +97,6 @@ impl MultiChunk {
   /// See [`set_block`](Self::set_block) for more.
   pub fn get_kind(&self, p: Pos) -> Result<block::Kind, PosError> {
     Ok(self.types.kind_from_id(self.paletted.get_block(p)?, BlockVersion::V1_16))
-  }
-
-  /// Generates a protobuf for the given version. The proto's X and Z
-  /// coordinates are 0.
-  pub fn to_proto(&self, v: BlockVersion) -> proto::Chunk {
-    let mut chunk = if v == BlockVersion::latest() {
-      self.paletted.to_latest_proto()
-    } else if v >= BlockVersion::V1_9 {
-      self.paletted.to_old_proto(|id| self.types.to_old(id, v))
-    } else {
-      self.fixed.to_latest_proto()
-    };
-    chunk.heightmap = vec![0; 256 * 9 / 64];
-    let mut shift = 0;
-    let mut index = 0;
-    for _ in 0..16 {
-      for _ in 0..16 {
-        let v = 0_u64;
-        if shift > 64 - 9 {
-          chunk.heightmap[index] |= (v.overflowing_shl(shift).0 & 0b111111111 << (64 - 9)) as i64;
-          chunk.heightmap[index + 1] |= (v >> (64 - shift)) as i64;
-        } else {
-          chunk.heightmap[index] |= (v.overflowing_shl(shift).0) as i64;
-        }
-        shift += 9;
-        if shift > 64 {
-          shift -= 64;
-          index += 1;
-        }
-      }
-    }
-    chunk
   }
 
   /// Builds a heightmap of this chunk. Each long contains 9 bit entries, where

@@ -22,7 +22,7 @@ pub mod util;
 
 pub use registry::Registry;
 
-pub use sc_generated::{net, proto, version};
+pub use sc_generated::{net, version};
 
 // #[derive(Debug)]
 // pub struct KeepAlivePolicy {

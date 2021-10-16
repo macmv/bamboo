@@ -2,7 +2,6 @@ mod buffer;
 mod item;
 pub mod nbt;
 
-use crate::proto;
 use rand::{rngs::OsRng, RngCore};
 use serde::de::{self, Deserialize, Deserializer, Unexpected, Visitor};
 use std::{convert::TryInto, error::Error, fmt, num::ParseIntError, str::FromStr};
@@ -91,9 +90,6 @@ impl UUID {
   pub fn from_u128(v: u128) -> Self {
     UUID(v)
   }
-  pub fn from_proto(v: proto::Uuid) -> Self {
-    Self(u128::from_be_bytes(v.be_data.try_into().unwrap()))
-  }
   /// Parses the string as a uuid with dashes in between. This is the same
   /// format returned from [`as_dashed_str`](Self::as_dashed_str).
   pub fn from_dashed_str(s: &str) -> Result<Self, UUIDParseError> {
@@ -101,9 +97,6 @@ impl UUID {
       return Err(UUIDParseError::Length(s.len()));
     }
     Self::from_str(&s.split('-').collect::<Vec<&str>>().join(""))
-  }
-  pub fn as_proto(&self) -> proto::Uuid {
-    proto::Uuid { be_data: self.as_be_bytes().to_vec() }
   }
   /// Returns the uuid represented as a hex string, with no dashes or other
   /// characters.

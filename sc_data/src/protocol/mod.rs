@@ -363,7 +363,6 @@ fn generate_packets(
   gen.write_line("use crate::{");
   gen.write_line("  net::tcp,");
   gen.write_line("  Pos,");
-  gen.write_line("  proto,");
   gen.write_line("  version::ProtocolVersion,");
   gen.write_line("  util::{Item, UUID}");
   gen.write_line("};");

@@ -18,14 +18,7 @@ sc_common = { path = "../sc_common" }
 sc_transfer = { path = "../sc_transfer" }
 log = "0.4"
 
-tonic = "0.5"
-prost = "0.8"
-prost-types = "0.8"
-futures = "0.3.14"
-tokio = { version = "1.5", features = ["rt-multi-thread"] }
-tokio-stream = "0.1.5"
 rayon = "1.5.1"
-
 mio = "0.7.13"
 crossbeam-channel = "0.5.1"
 parking_lot = "0.11.2"
@@ -34,7 +27,7 @@ num = "0.4"
 num-traits = "0.2"
 num-derive = "0.3"
 
-noise = "0.7.0"
+noise = { version = "0.7.0", default-features = false }
 
 sugarlang = { git = "https://gitlab.com/macmv/sugarlang", features = ["docs"] }
 

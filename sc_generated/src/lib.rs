@@ -15,8 +15,8 @@ pub mod version;
 pub use chunk_pos::ChunkPos;
 pub use pos::{Pos, PosError, PosIter};
 
-pub mod proto {
-  tonic::include_proto!("connection");
-
-  pub const FILE_DESCRIPTOR_SET: &[u8] = tonic::include_file_descriptor_set!("connection");
-}
+// pub mod proto {
+//   tonic::include_proto!("connection");
+//
+//   pub const FILE_DESCRIPTOR_SET: &[u8] =
+// tonic::include_file_descriptor_set!("connection"); }

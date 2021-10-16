@@ -45,8 +45,7 @@ use std::{error::Error, sync::Arc, thread};
 //   }
 // }
 
-#[tokio::main]
-async fn main() -> Result<(), Box<dyn Error>> {
+fn main() -> Result<(), Box<dyn Error>> {
   sc_common::init("server");
 
   let addr = "0.0.0.0:8483".parse().unwrap();

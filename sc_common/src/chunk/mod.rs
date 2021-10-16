@@ -6,10 +6,7 @@ use std::{cmp, collections::HashMap};
 
 pub use section::Section;
 
-use crate::{
-  math::{Pos, PosError},
-  proto,
-};
+use crate::math::{Pos, PosError};
 
 #[derive(Debug, Clone, Copy)]
 pub enum ChunkKind {
@@ -131,72 +128,5 @@ impl Chunk {
   /// Returns an iterator through all the internal chunk sections.
   pub fn sections(&self) -> impl Iterator<Item = &Option<Box<dyn Section + Send>>> {
     self.sections.iter()
-  }
-  /// Generates a protobuf containing all of the chunk data. X and Z will both
-  /// be 0.
-  pub fn to_latest_proto(&self) -> proto::Chunk {
-    let mut sections = HashMap::new();
-    for (i, s) in self.sections.iter().enumerate() {
-      match s {
-        Some(s) => {
-          sections.insert(i as i32, s.to_latest_proto());
-        }
-        None => {}
-      }
-    }
-    proto::Chunk { sections, ..Default::default() }
-  }
-  /// Generates a protobuf containing all of the chunk data. X and Z will both
-  /// be 0. This will call the given function for every block id it encounters.
-  pub fn to_old_proto<F>(&self, f: F) -> proto::Chunk
-  where
-    F: Fn(u32) -> u32,
-  {
-    let mut sections = HashMap::new();
-    for (i, s) in self.sections.iter().enumerate() {
-      match s {
-        Some(s) => {
-          sections.insert(i as i32, s.to_old_proto(&f));
-        }
-        None => {}
-      }
-    }
-    proto::Chunk { sections, ..Default::default() }
-  }
-  /// Generates a chunk from the given protobuf. The X and Z values will be
-  /// ignored.
-  pub fn from_latest_proto(pb: proto::Chunk, kind: ChunkKind) -> Self {
-    let mut chunk = Chunk::new(kind);
-    for (y, section) in pb.sections {
-      // pb.sections is a HashMap, so the order is random
-      if y as usize >= chunk.sections.len() {
-        chunk.sections.resize_with(y as usize + 1, || None);
-      }
-      chunk.sections[y as usize] = Some(match kind {
-        ChunkKind::Fixed => fixed::Section::from_latest_proto(section),
-        ChunkKind::Paletted => paletted::Section::from_latest_proto(section),
-      });
-    }
-    chunk
-  }
-  /// Generates a chunk from the given protobuf. The X and Z values will be
-  /// ignored. The given function `f` will be called for block id that this
-  /// function encounters.
-  pub fn from_old_proto<F>(pb: proto::Chunk, kind: ChunkKind, f: F) -> Self
-  where
-    F: Fn(u32) -> u32,
-  {
-    let mut chunk = Chunk::new(kind);
-    for (y, section) in pb.sections {
-      // pb.sections is a HashMap, so the order is random
-      if y as usize >= chunk.sections.len() {
-        chunk.sections.resize_with(y as usize + 1, || None);
-      }
-      chunk.sections[y as usize] = Some(match kind {
-        ChunkKind::Fixed => fixed::Section::from_old_proto(section, &f),
-        ChunkKind::Paletted => paletted::Section::from_old_proto(section, &f),
-      });
-    }
-    chunk
   }
 }

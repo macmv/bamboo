@@ -1,5 +1,4 @@
 use super::nbt::NBT;
-use crate::proto;
 use sc_transfer::{MessageRead, MessageWrite, ReadError, WriteError};
 
 #[derive(Debug, Clone, PartialEq)]

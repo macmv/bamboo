@@ -1,9 +1,6 @@
 use super::section::Section as ChunkSection;
 
-use crate::{
-  math::{Pos, PosError, WyHashBuilder},
-  proto,
-};
+use crate::math::{Pos, PosError, WyHashBuilder};
 use std::collections::HashMap;
 
 mod bits;
@@ -38,76 +35,6 @@ impl Section {
   /// Returns the internal data of this section.
   pub fn data(&self) -> &BitArray {
     &self.data
-  }
-  fn validate_proto(pb: &proto::chunk::Section) {
-    if pb.bits_per_block < 4 || pb.bits_per_block > 64 {
-      panic!("invalid bits per block recieved from proto: {}", pb.bits_per_block);
-    }
-    if pb.palette.len() > 256 {
-      panic!("got a palette that was too long: {} > 256", pb.palette.len());
-    }
-    if let Some(&v) = pb.palette.get(0) {
-      if v != 0 {
-        panic!("the first element of the palette must be 0, got {}", v);
-      }
-    }
-    if pb.data.len() != 16 * 16 * 16 * pb.bits_per_block as usize / 64 {
-      panic!(
-        "protobuf data length is incorrect. got {} longs, expected {} longs",
-        pb.data.len(),
-        16 * 16 * 16 * pb.bits_per_block as usize / 64
-      );
-    }
-  }
-  pub(super) fn from_latest_proto(pb: proto::chunk::Section) -> Box<Self> {
-    Section::validate_proto(&pb);
-    let mut chunk = Section {
-      data:            BitArray::from_data(pb.bits_per_block as u8, pb.data),
-      block_amounts:   vec![0; pb.palette.len()],
-      palette:         pb.palette,
-      reverse_palette: HashMap::with_hasher(WyHashBuilder),
-    };
-    for (i, &v) in chunk.palette.iter().enumerate() {
-      chunk.reverse_palette.insert(v, i as u32);
-    }
-    for y in 0..16 {
-      for z in 0..16 {
-        for x in 0..16 {
-          // SAFETY: x, y, z must all be within 0..16, so this is safe
-          let val = unsafe { chunk.get_palette(Pos::new(x, y, z)) };
-          chunk.block_amounts[val as usize] += 1;
-        }
-      }
-    }
-    Box::new(chunk)
-  }
-  /// Creates a chunk section from the given protobuf. The function `f` will be
-  /// used to convert the block ids within the protobuf section into the block
-  /// ids that should be used within the new chunk section.
-  ///
-  /// Currently, we assume that after converting ids, the new ids will be in the
-  /// same order as the old ones.
-  pub(super) fn from_old_proto(pb: proto::chunk::Section, f: &dyn Fn(u32) -> u32) -> Box<Self> {
-    Section::validate_proto(&pb);
-    let mut chunk = Section {
-      data:            BitArray::from_data(pb.bits_per_block as u8, pb.data),
-      block_amounts:   vec![0; pb.palette.len()],
-      palette:         pb.palette.into_iter().map(f).collect(),
-      reverse_palette: HashMap::with_hasher(WyHashBuilder),
-    };
-    for (i, &v) in chunk.palette.iter().enumerate() {
-      chunk.reverse_palette.insert(v, i as u32);
-    }
-    for y in 0..16 {
-      for z in 0..16 {
-        for x in 0..16 {
-          // SAFETY: x, y, z must all be within 0..16, so this is safe
-          let val = unsafe { chunk.get_palette(Pos::new(x, y, z)) };
-          chunk.block_amounts[val as usize] += 1;
-        }
-      }
-    }
-    Box::new(chunk)
   }
   #[inline(always)]
   fn index(&self, pos: Pos) -> usize {
@@ -317,22 +244,6 @@ impl ChunkSection for Section {
       block_amounts:   self.block_amounts.clone(),
       reverse_palette: self.reverse_palette.clone(),
     })
-  }
-  fn to_latest_proto(&self) -> proto::chunk::Section {
-    proto::chunk::Section {
-      palette:        self.palette.clone(),
-      bits_per_block: self.data.bpe().into(),
-      non_air_blocks: (4096 - self.block_amounts[0]) as i32,
-      data:           self.data.clone_inner(),
-    }
-  }
-  fn to_old_proto(&self, f: &dyn Fn(u32) -> u32) -> proto::chunk::Section {
-    proto::chunk::Section {
-      palette:        self.palette.iter().map(|v| f(*v)).collect(),
-      bits_per_block: self.data.bpe().into(),
-      non_air_blocks: (4096 - self.block_amounts[0]) as i32,
-      data:           self.data.clone_inner(),
-    }
   }
   fn unwrap_paletted(&self) -> &Self {
     self
