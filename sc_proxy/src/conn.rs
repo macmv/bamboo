@@ -192,10 +192,9 @@ impl<'a, S: PacketStream + Send + Sync> Conn<'a, S> {
     let mut m = MessageWrite::new(&mut prefix);
     m.write_i32(len as i32).unwrap();
     let prefix_len = m.index();
-    self.server_stream.as_mut().unwrap().write(&prefix[..prefix_len])?;
-    self.server_stream.as_mut().unwrap().write(&buf[..len])?;
-
-    Ok(())
+    self.to_server.extend_from_slice(&prefix[..prefix_len]);
+    self.to_server.extend_from_slice(&buf[..len]);
+    self.write_server()
   }
 
   pub fn write_server(&mut self) -> io::Result<()> {
