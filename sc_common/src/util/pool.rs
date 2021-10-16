@@ -41,8 +41,10 @@ impl ThreadPool {
       threads.push(tx);
 
       thread::spawn(move || loop {
-        let f = rx.recv().unwrap();
-        f();
+        match rx.recv() {
+          Ok(f) => f(),
+          Err(_) => break,
+        }
       });
     }
     ThreadPool { threads, id: 0.into() }
