@@ -175,7 +175,7 @@ impl MessageRead<'_> {
   }
   /// Reads the given number of bytes. This does not write a length prefix.
   pub fn read_bytes(&mut self, len: usize) -> Result<Vec<u8>> {
-    if self.idx + len >= self.data.len() {
+    if self.idx + len > self.data.len() {
       return Err(ReadError::InvalidBufLength);
     }
     let out = self.data[self.idx..self.idx + len].to_vec();
@@ -242,5 +242,13 @@ mod tests {
     assert_eq!(m.read_u32().unwrap(), 0);
     assert!(matches!(m.read_u32().unwrap_err(), ReadError::VarIntTooLong));
     assert!(matches!(m.read_u32().unwrap_err(), ReadError::EOF));
+  }
+
+  #[test]
+  fn bytes() {
+    let mut m = MessageRead::new(b"hello");
+    assert_eq!(m.index(), 0);
+    assert_eq!(&m.read_bytes(5).unwrap(), b"hello");
+    assert_eq!(m.index(), 5);
   }
 }

@@ -234,7 +234,7 @@ impl<'a, S: PacketStream + Send + Sync> Conn<'a, S> {
     let mut m = MessageRead::new(&self.from_server);
     match m.read_i32() {
       Ok(len) => {
-        if len <= self.from_server.len() as i32 {
+        if len as usize + m.index() <= self.from_server.len() {
           let idx = m.index();
           self.from_server.drain(0..idx);
           let (p, parsed) = cb::Packet::from_sc(self.ver, &self.from_server[..len as usize])
