@@ -237,10 +237,13 @@ impl Player {
       // TODO: Movement checks here
       pos.curr = pos.next;
       pos.yaw = pos.next_yaw;
-      // We want to keep yaw within 0..=360
+      // We want to keep yaw within -180..=180
       pos.yaw = pos.yaw % 360.0;
-      if pos.yaw < 0.0 {
+      if pos.yaw < -180.0 {
         pos.yaw += 360.0;
+      }
+      if pos.yaw > 180.0 {
+        pos.yaw -= 360.0;
       }
       pos.pitch = pos.next_pitch;
       // We want to clamp pitch between -90..=90
@@ -541,7 +544,7 @@ impl Player {
   }
 
   /// Returns the player's pitch and yaw angle. This is the amount that they are
-  /// looking to the side. It is in the range -180-180. This is only updated
+  /// looking to the side. It is in the range -180..180. This is only updated
   /// once per tick.
   pub fn look(&self) -> (f32, f32) {
     let pos = self.pos.lock().unwrap();
