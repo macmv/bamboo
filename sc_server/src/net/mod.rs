@@ -111,19 +111,22 @@ impl Connection {
     self.waker.wake();
   }
 
-  /// This will return ErrorKind::WouldBlock once its done reading. If it
-  /// returns any other error, the connection should be closed.
-  pub fn read(&mut self, wm: &Arc<WorldManager>, player: &mut Option<Arc<Player>>) -> io::Error {
+  /// If this returns Ok(true) or an error, the connection should be closed.
+  /// Ok(false) or Err(ErrorKind::WouldBlock) is normal operation.
+  pub fn read(
+    &mut self,
+    wm: &Arc<WorldManager>,
+    player: &mut Option<Arc<Player>>,
+  ) -> io::Result<bool> {
     loop {
-      let n = match self.stream.read(&mut self.garbage) {
-        Ok(v) => v,
-        Err(e) => return e,
-      };
+      let n = self.stream.read(&mut self.garbage)?;
+      if n == 0 {
+        return Ok(true);
+      }
       self.incoming.extend_from_slice(&self.garbage[..n]);
-      match self.read_incoming(wm, player) {
-        Ok(_) => {}
-        Err(e) => return io::Error::new(io::ErrorKind::InvalidData, e.to_string()),
-      };
+      self
+        .read_incoming(wm, player)
+        .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e.to_string()))?;
     }
   }
 
@@ -407,14 +410,10 @@ impl ConnectionManager {
             }
           },
           token => {
-            // We got an even for a tcp connection. If the token is invalid, we ignore it.
-            let done = if let Some((conn, player)) = self.connections.get_mut(&token) {
-              Self::handle(&self.wm, poll.registry(), conn, player, event)
-            } else {
-              false
-            };
-            if done {
-              self.connections.remove(&token);
+            let (conn, player) =
+              self.connections.get_mut(&token).expect("got event for a client that does not exist");
+            if Self::handle(&self.wm, poll.registry(), conn, player, event) {
+              self.wm.remove_player(player.as_ref().unwrap().id());
             }
           }
         }
@@ -447,11 +446,12 @@ impl ConnectionManager {
     ev: &Event,
   ) -> bool {
     if ev.is_readable() {
-      let err = conn.read(&wm, player);
-      match err.kind() {
-        io::ErrorKind::WouldBlock => {}
-        _ => {
-          error!("error in connection: {}", err);
+      match conn.read(&wm, player) {
+        Ok(false) => {}
+        Ok(true) => return true,
+        Err(e) if e.kind() == io::ErrorKind::WouldBlock => {}
+        Err(e) => {
+          error!("error in connection: {}", e);
           return true;
         }
       }

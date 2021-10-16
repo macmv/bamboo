@@ -63,6 +63,8 @@ pub struct WorldManager {
   // This will always have at least 1 entry. The world at index 0 is considered the "default"
   // world.
   worlds:           Mutex<Vec<Arc<World>>>,
+  // Player id to world index
+  players:          Mutex<HashMap<UUID, usize>>,
   block_converter:  Arc<block::TypeConverter>,
   item_converter:   Arc<item::TypeConverter>,
   entity_converter: Arc<entity::TypeConverter>,
@@ -355,6 +357,10 @@ impl World {
   pub fn players(&self) -> MutexGuard<'_, PlayersMap> {
     self.players.lock()
   }
+
+  pub fn remove_player(&self, id: UUID) {
+    self.players.lock().remove(&id);
+  }
 }
 
 impl Default for WorldManager {
@@ -372,6 +378,7 @@ impl WorldManager {
       plugins:          Arc::new(plugin::PluginManager::new()),
       commands:         Arc::new(CommandTree::new()),
       worlds:           Mutex::new(vec![]),
+      players:          Mutex::new(HashMap::new()),
     }
   }
 
@@ -464,6 +471,15 @@ impl WorldManager {
     let w = self.worlds.lock()[0].clone();
     let player =
       Player::new(w.eid(), username, uuid, conn, ver, w.clone(), FPos::new(0.0, 60.0, 0.0));
+    self.players.lock().insert(uuid, 0);
     w.new_player(player)
+  }
+
+  /// Removes the player. This is not part of the public API because it does not
+  /// terminate their connection. This is called after their connection is
+  /// terminated.
+  pub(crate) fn remove_player(&self, id: UUID) {
+    let idx = *self.players.lock().get(&id).unwrap();
+    self.worlds.lock()[idx].remove_player(id);
   }
 }
