@@ -186,16 +186,23 @@ mod tests {
   fn simple() {
     let mut data = [0; 3];
     let mut m = MessageWrite::new(&mut data);
+    assert_eq!(m.index(), 0);
     m.write_u8(0).unwrap();
+    assert_eq!(m.index(), 1);
     m.write_u8(0).unwrap();
+    assert_eq!(m.index(), 2);
     m.write_u8(2).unwrap();
+    assert_eq!(m.index(), 3);
     assert!(matches!(m.write_u8(5).unwrap_err(), WriteError::EOF));
     assert_eq!(data, [0, 0, 2]);
 
     let mut data = [0; 4];
     let mut m = MessageWrite::new(&mut data);
+    assert_eq!(m.index(), 0);
     m.write_u16(127).unwrap();
+    assert_eq!(m.index(), 2);
     m.write_u16(256).unwrap();
+    assert_eq!(m.index(), 4);
     assert!(matches!(m.write_u8(5).unwrap_err(), WriteError::EOF));
     assert_eq!(data, [127, 0, 0, 1]);
   }
@@ -212,12 +219,27 @@ mod tests {
     ];
     let mut data = [0; EXPECTED.len()];
     let mut m = MessageWrite::new(&mut data);
+    assert_eq!(m.index(), 0);
     m.write_u32(0).unwrap();
+    assert_eq!(m.index(), 1);
     m.write_u32(1).unwrap();
+    assert_eq!(m.index(), 2);
     m.write_u32(127).unwrap();
+    assert_eq!(m.index(), 3);
     m.write_u32(53 | 77 << 7).unwrap();
+    assert_eq!(m.index(), 5);
     m.write_u32(0).unwrap();
+    assert_eq!(m.index(), 6);
     assert!(matches!(m.write_u8(5).unwrap_err(), WriteError::EOF));
     assert_eq!(data, EXPECTED);
+  }
+
+  #[test]
+  fn buf() {
+    let mut data = [0; 64];
+    let mut m = MessageWrite::new(&mut data);
+    assert_eq!(m.index(), 0);
+    m.write_str("hello").unwrap();
+    assert_eq!(m.index(), 5);
   }
 }
