@@ -239,6 +239,7 @@ impl<'a, S: PacketStream + Send + Sync> Conn<'a, S> {
           self.from_server.drain(0..idx);
           let (p, parsed) = cb::Packet::from_sc(self.ver, &self.from_server[..len as usize])
             .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e.to_string()))?;
+          info!("got packet from server: {:?}", p);
           if len as usize != parsed {
             return Err(io::Error::new(
               io::ErrorKind::InvalidData,
@@ -301,6 +302,7 @@ impl<'a, S: PacketStream + Send + Sync> Conn<'a, S> {
         Ok(Some(p)) => match self.state {
           State::Play => {
             let packet = sb::Packet::from_tcp(p, self.ver);
+            info!("got packet from client: {:?}", packet);
             self.send_to_server(packet)?;
           }
           _ => {
