@@ -1,5 +1,5 @@
 use crate::stream::PacketStream;
-use mio::{net::TcpStream, Token};
+use mio::{net::TcpStream, Interest, Registry, Token};
 use rand::{rngs::OsRng, RngCore};
 use reqwest::StatusCode;
 use rsa::{padding::PaddingScheme, RSAPrivateKey};
@@ -177,8 +177,10 @@ impl<'a, S: PacketStream + Send + Sync> Conn<'a, S> {
     self.closed
   }
 
-  fn connect_to_server(&mut self) -> Result<(), io::Error> {
-    self.server_stream = Some(TcpStream::connect(self.addr)?);
+  fn connect_to_server(&mut self, reg: &Registry) -> Result<(), io::Error> {
+    let mut stream = TcpStream::connect(self.addr)?;
+    reg.register(&mut stream, self.server_token, Interest::READABLE | Interest::WRITABLE).unwrap();
+    self.server_stream = Some(stream);
 
     let mut buf = [0; 1024];
     let mut m = MessageWrite::new(&mut buf);
@@ -227,7 +229,8 @@ impl<'a, S: PacketStream + Send + Sync> Conn<'a, S> {
     match m.read_i32() {
       Ok(len) => {
         if len <= self.from_server.len() as i32 {
-          self.from_server.drain(0..m.index());
+          let idx = m.index();
+          self.from_server.drain(0..idx);
           let (p, parsed) = cb::Packet::from_sc(self.ver, &self.from_server[..len as usize])
             .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e.to_string()))?;
           if len as usize != parsed {
@@ -260,13 +263,13 @@ impl<'a, S: PacketStream + Send + Sync> Conn<'a, S> {
 
   /// Reads as much data as possible, without blocking. Returns Ok(true) or
   /// Err(_) if the connection should be closed.
-  pub fn read_client(&mut self) -> io::Result<bool> {
+  pub fn read_client(&mut self, reg: &Registry) -> io::Result<bool> {
     // Poll, then read, then try and poll again. If we have no data left, we return
     // Ok(false). If we have closed the connection, we return Ok(true). If we error
     // at all, we close the connection.
     loop {
       match self.poll_client() {
-        Ok(_) => match self.read_client_packet() {
+        Ok(_) => match self.read_client_packet(reg) {
           Ok(_) => {
             if self.closed() {
               return Ok(true);
@@ -286,7 +289,7 @@ impl<'a, S: PacketStream + Send + Sync> Conn<'a, S> {
   }
   /// Reads a packet from the internal buffer from the client. Does not interact
   /// with the tcp connection at all.
-  fn read_client_packet(&mut self) -> io::Result<()> {
+  fn read_client_packet(&mut self, reg: &Registry) -> io::Result<()> {
     loop {
       match self.client_stream.read(self.ver) {
         Ok(Some(p)) => match self.state {
@@ -295,7 +298,7 @@ impl<'a, S: PacketStream + Send + Sync> Conn<'a, S> {
             self.send_to_server(packet)?;
           }
           _ => {
-            self.handle_handshake(p)?;
+            self.handle_handshake(p, reg)?;
           }
         },
         Ok(None) => break,
@@ -338,7 +341,7 @@ impl<'a, S: PacketStream + Send + Sync> Conn<'a, S> {
 
   /// Sends the login success packet, and sets the state to Play. The stream
   /// will not be flushed.
-  fn finish_login(&mut self) -> Result<(), io::Error> {
+  fn finish_login(&mut self, reg: &Registry) -> Result<(), io::Error> {
     // Login success
     let info = self.info.as_ref().unwrap();
     let ver = self.ver();
@@ -352,7 +355,7 @@ impl<'a, S: PacketStream + Send + Sync> Conn<'a, S> {
     self.client_stream.write(out);
 
     self.state = State::Play;
-    self.connect_to_server()?;
+    self.connect_to_server(reg)?;
 
     Ok(())
   }
@@ -402,7 +405,7 @@ impl<'a, S: PacketStream + Send + Sync> Conn<'a, S> {
   /// the client just wants to get the status of the server. If this function
   /// returns Ok(Some(LoginInfo)), then a connection should be initialized with
   /// a grpc server.
-  fn handle_handshake(&mut self, mut p: tcp::Packet) -> io::Result<()> {
+  fn handle_handshake(&mut self, mut p: tcp::Packet, reg: &Registry) -> io::Result<()> {
     match self.state {
       State::Handshake => {
         if p.id() != 0 {
@@ -485,7 +488,7 @@ impl<'a, S: PacketStream + Send + Sync> Conn<'a, S> {
               }
               None => {
                 self.send_compression();
-                self.finish_login()?;
+                self.finish_login(reg)?;
               }
             }
           }
@@ -570,7 +573,7 @@ impl<'a, S: PacketStream + Send + Sync> Conn<'a, S> {
             };
 
             self.send_compression();
-            self.finish_login()?;
+            self.finish_login(reg)?;
           }
           _ => {
             return Err(io::Error::new(

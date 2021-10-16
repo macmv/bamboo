@@ -131,7 +131,7 @@ pub fn run() -> Result<(), Box<dyn Error>> {
           } else {
             if event.is_readable() {
               let conn = clients.get_mut(&token).expect("client doesn't exist!");
-              match conn.read_client() {
+              match conn.read_client(&poll.registry()) {
                 Ok(false) => {}
                 Ok(true) => {
                   clients.remove(&token);
