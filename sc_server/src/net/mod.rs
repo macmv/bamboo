@@ -86,7 +86,7 @@ impl Connection {
       tok,
       incoming: Vec::with_capacity(1024),
       outgoing: Vec::with_capacity(1024),
-      garbage: vec![0; 64 * 1024],
+      garbage: vec![0; 256 * 1024],
     }
   }
 
@@ -171,8 +171,8 @@ impl Connection {
       let mut m = MessageRead::new(&self.incoming);
       match m.read_i32() {
         Ok(len) => {
-          info!("got packet with length {}", len);
           if len as usize + m.index() >= self.incoming.len() {
+            info!("got packet with length {}", len);
             // Remove the length varint at the start
             let idx = m.index();
             self.incoming.drain(0..idx);
@@ -198,6 +198,8 @@ impl Connection {
               self.ver = Some(ver);
               *player = Some(wm.new_player(self.sender(), username, uuid, ver));
             }
+          } else {
+            break;
           }
         }
         // If this is an EOF, then we have a partial varint, so we are done reading.
