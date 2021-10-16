@@ -76,7 +76,9 @@ pub struct Conn<'a, S> {
   /// server.
   ip:             Endpoint,
   /// Used when we make a server listener.
-  token:          Token,
+  client_token:   Token,
+  /// Used when we create the tcp stream connected to the server.
+  server_token:   Token,
   /// Used when creating the server listener. Is none after the server listener
   /// is created.
   waker:          Option<Arc<Waker>>,
@@ -205,7 +207,8 @@ impl<'a, S: PacketStream + Send + Sync> Conn<'a, S> {
     key: Arc<RSAPrivateKey>,
     der_key: Option<Vec<u8>>,
     icon: &'a str,
-    token: Token,
+    client_token: Token,
+    server_token: Token,
     waker: Arc<Waker>,
     needs_flush_tx: Sender<Token>,
   ) -> Result<Conn<'a, S>, tonic::Status> {
@@ -225,7 +228,8 @@ impl<'a, S: PacketStream + Send + Sync> Conn<'a, S> {
       compression_target,
       closed: false,
       ip,
-      token,
+      client_token,
+      server_token,
       waker: Some(waker),
       needs_flush_tx: Some(needs_flush_tx),
     })
@@ -301,6 +305,27 @@ impl<'a, S: PacketStream + Send + Sync> Conn<'a, S> {
     self.stream.flush()
   }
 
+  /// Reads as much data as possible, without blocking. Returns Ok(true) or
+  /// Err(_) if the connection should be closed.
+  pub fn read_all(&mut self) -> io::Result<bool> {
+    // Poll, then read, then try and poll again. If we have no data left, we return
+    // Ok(false). If we have closed the connection, we return Ok(true). If we error
+    // at all, we close the connection.
+    loop {
+      match self.poll() {
+        Ok(_) => match self.read() {
+          Ok(_) => {
+            if self.closed() {
+              return Ok(true);
+            }
+          }
+          Err(e) => return Err(e),
+        },
+        Err(ref e) if e.kind() == io::ErrorKind::WouldBlock => return Ok(false),
+        Err(e) => return Err(e),
+      }
+    }
+  }
   pub fn poll(&mut self) -> io::Result<()> {
     self.stream.poll()
   }
