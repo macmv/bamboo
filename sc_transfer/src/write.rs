@@ -160,7 +160,7 @@ impl MessageWrite<'_> {
   }
   /// Writes the given bytes. This does not write a length prefix.
   pub fn write_bytes(&mut self, v: &[u8]) -> Result {
-    if self.idx + v.len() >= self.data.len() {
+    if self.idx + v.len() > self.data.len() {
       return Err(WriteError::BufTooLong);
     }
     self.data[self.idx..self.idx + v.len()].clone_from_slice(v);
@@ -245,5 +245,12 @@ mod tests {
     m.write_bytes(b" world").unwrap();
     assert_eq!(m.index(), 11);
     assert_eq!(&data[..11], b"hello world");
+
+    let mut data = [0; 5];
+    let mut m = MessageWrite::new(&mut data);
+    assert_eq!(m.index(), 0);
+    m.write_bytes(b"hello").unwrap();
+    assert_eq!(m.index(), 5);
+    assert!(matches!(m.write_bytes(b"a").unwrap_err(), WriteError::BufTooLong));
   }
 }
