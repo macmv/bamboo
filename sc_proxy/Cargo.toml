@@ -26,14 +26,15 @@ rand = "0.8.3"
 rsa = "0.4.0"
 sha-1 = "0.9.6"
 
-reqwest = { version = "0.11.3", features = ["json", "blocking"] }
+# for mojang auth
+ureq = "2.2.0"
 
 parking_lot = "0.11.2"
 mio = "0.7.13"
 crossbeam-channel = "0.5.1"
 
 # For icon.png
-image = "0.23.14"
+image = { version = "0.23.14", default-features = false, features = ["png"] }
 base64 = "0.13.0"
 
 cfb8 = "0.7.1"

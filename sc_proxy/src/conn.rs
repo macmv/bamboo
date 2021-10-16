@@ -1,7 +1,6 @@
 use crate::stream::PacketStream;
 use mio::{net::TcpStream, Interest, Registry, Token};
 use rand::{rngs::OsRng, RngCore};
-use reqwest::StatusCode;
 use rsa::{padding::PaddingScheme, RSAPrivateKey};
 use sc_common::{
   math,
@@ -573,21 +572,22 @@ impl<'a, S: PacketStream + Send + Sync> Conn<'a, S> {
             hash.update("");
             hash.update(secret);
             hash.update(self.der_key.as_ref().unwrap());
-            self.info = match reqwest::blocking::get(format!(
+            self.info = match ureq::get(&format!(
               "https://sessionserver.mojang.com/session/minecraft/hasJoined?username={}&serverId={}",
               self.username.as_ref().unwrap(),
               math::hexdigest(hash)
-            )) {
+            )).call() {
               Ok(v) => {
                 info!("got status code: {}", v.status());
-                if v.status() == StatusCode::NO_CONTENT {
+                // No content
+                if v.status() == 204 {
                   self.send_disconnect("Invalid auth token! Please re-login (restart your game and launcher)");
                   self.client_stream.flush()?;
                   // Disconnect client; they are not authenticated
                   self.closed = true;
                   return Ok(());
                 }
-                match v.json() {
+                match serde_json::from_reader(v.into_reader()) {
                   Ok(v) => Some(v),
                   Err(e) => return Err(io::Error::new(
                     ErrorKind::InvalidData,
