@@ -210,19 +210,19 @@ impl NamedPacketField {
   fn write_to_proto(&self, gen: &mut CodeGen) {
     gen.write_line(&format!("{}?;", self.generate_to_proto()));
   }
-  fn write_from_proto(&self, gen: &mut CodeGen, is_ver: bool) {
+  fn write_from_sc(&self, gen: &mut CodeGen, is_ver: bool) {
     gen.write(&self.name());
     gen.write(": ");
     if self.multi_versioned {
       if is_ver {
         gen.write("Some(");
-        gen.write(self.generate_from_proto());
+        gen.write(self.generate_from_sc());
         gen.write(")");
       } else {
         gen.write("None");
       }
     } else {
-      gen.write(self.generate_from_proto());
+      gen.write(self.generate_from_sc());
     }
     gen.write_line(",");
   }
@@ -249,7 +249,7 @@ impl NamedPacketField {
       self.field.generate_to_sc(&self.name)
     }
   }
-  fn generate_from_proto(&self) -> &'static str {
+  fn generate_from_sc(&self) -> &'static str {
     self.field.generate_from_sc()
   }
   fn generate_to_tcp(&self) -> String {
@@ -494,9 +494,8 @@ fn generate_packets(
                   gen.write(&p.name().to_case(Case::Pascal));
                   gen.write(" ");
                   gen.write_block(|gen| {
-                    for (is_ver, field) in p.fields_ver(Version { major: 8, minor: 0 }).iter().rev()
-                    {
-                      field.write_from_proto(gen, *is_ver);
+                    for (is_ver, field) in p.fields_ver(Version { major: 8, minor: 0 }).iter() {
+                      field.write_from_sc(gen, *is_ver);
                     }
                   });
                   gen.remove_indent();
@@ -516,8 +515,8 @@ fn generate_packets(
                 gen.write(&p.name().to_case(Case::Pascal));
                 gen.write(" ");
                 gen.write_block(|gen| {
-                  for (is_ver, field) in p.fields_ver(*ver).iter().rev() {
-                    field.write_from_proto(gen, *is_ver);
+                  for (is_ver, field) in p.fields_ver(*ver).iter() {
+                    field.write_from_sc(gen, *is_ver);
                   }
                 });
                 gen.remove_indent();
@@ -530,7 +529,7 @@ fn generate_packets(
               gen.write_line(" {");
               gen.add_indent();
               for field in p.fields().iter().rev() {
-                field.write_from_proto(gen, true);
+                field.write_from_sc(gen, true);
               }
               gen.remove_indent();
               gen.write_line("},");
