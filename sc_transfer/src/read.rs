@@ -105,13 +105,14 @@ impl MessageRead<'_> {
         break;
       }
       i += 1;
-      if i > 4 {
+      // This is only 5 bytes because 32 / 7 = 4.57
+      if i >= 5 {
         return Err(ReadError::VarIntTooLong);
       }
     }
     Ok(out)
   }
-  /// Reads an unsigned 64 bit integer from the internal buffer. 9 bytes is not
+  /// Reads an unsigned 64 bit integer from the internal buffer. 10 bytes is not
   /// much more than 8, so this is encoded as a variable length integer.
   pub fn read_u64(&mut self) -> Result<u64> {
     let mut out = 0;
@@ -125,7 +126,8 @@ impl MessageRead<'_> {
         break;
       }
       i += 1;
-      if i > 8 {
+      // This is not 9 bytes, because 64 / 7 = 9.14, so we need 10 bytes of space
+      if i >= 10 {
         return Err(ReadError::VarIntTooLong);
       }
     }
