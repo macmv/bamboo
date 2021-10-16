@@ -528,7 +528,7 @@ fn generate_packets(
               gen.write(&p.name().to_case(Case::Pascal));
               gen.write_line(" {");
               gen.add_indent();
-              for field in p.fields().iter().rev() {
+              for field in p.fields().iter() {
                 field.write_from_sc(gen, true);
               }
               gen.remove_indent();

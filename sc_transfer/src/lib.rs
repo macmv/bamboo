@@ -145,4 +145,19 @@ mod tests {
       assert_eq!(i, zag(zig(i)));
     }
   }
+
+  #[test]
+  fn floats() {
+    let mut buf = [0; 4];
+    let mut m = MessageWrite::new(&mut buf);
+    m.write_f32(3.456).unwrap();
+    let mut m = MessageRead::new(&buf);
+    assert_eq!(m.read_f32().unwrap(), 3.456);
+
+    let mut buf = [0; 8];
+    let mut m = MessageWrite::new(&mut buf);
+    m.write_f64(3.456).unwrap();
+    let mut m = MessageRead::new(&buf);
+    assert_eq!(m.read_f64().unwrap(), 3.456);
+  }
 }

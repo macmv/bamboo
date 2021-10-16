@@ -184,11 +184,9 @@ impl Connection {
               self.incoming.drain(0..n);
               self.handle_packet(wm, player.as_ref().unwrap(), p);
             } else {
-              info!("reading start info");
               // This is the first packet, so it must be a login packet.
               let mut m = MessageRead::new(&self.incoming);
               let username = m.read_str()?;
-              info!("read str: {}", username);
               let uuid = UUID::from_bytes(m.read_bytes(16)?.try_into().unwrap());
               let ver = ProtocolVersion::from(m.read_i32()?);
               let idx = m.index();

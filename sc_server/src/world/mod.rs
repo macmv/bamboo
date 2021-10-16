@@ -123,24 +123,23 @@ impl World {
 
         let out =
           cb::Packet::PlayerlistHeader { header: header.to_json(), footer: footer.to_json() };
-        for p in self.players.lock().values() {
+        for p in self.players().values() {
           p.send(out.clone());
         }
       }
-      for id in self.players().keys() {
-        let wm = Arc::clone(&self);
+      for p in self.players().iter() {
+        let wm = &self.clone();
         let mspt = self.mspt.clone();
+        let p = p.clone();
         pool.execute(move || {
           let start = Instant::now();
-          let players = wm.players();
-          let player = players.get(id).unwrap();
           // Updates the player correctly, and performs collision checks. This also
           // handles new chunks.
-          player.tick();
+          p.tick();
           // Do player collision and packets and stuff
           // Once per second, send keep alive packet
           if tick % 20 == 0 {
-            player.send(cb::Packet::KeepAlive {
+            p.send(cb::Packet::KeepAlive {
               keep_alive_id_v1_8:    Some(1234556),
               keep_alive_id_v1_12_2: Some(1234556),
             });
