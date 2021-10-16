@@ -4,12 +4,10 @@ extern crate log;
 pub mod conn;
 pub mod stream;
 
-use crossbeam_channel::TryRecvError;
-use mio::{net::TcpListener, Events, Interest, Poll, Token, Waker};
+use mio::{net::TcpListener, Events, Interest, Poll, Token};
 use rand::rngs::OsRng;
 use rsa::RSAPrivateKey;
-use std::{collections::HashMap, error::Error, io, sync::Arc};
-use tonic::transport::Endpoint;
+use std::{collections::HashMap, error::Error, io, net::SocketAddr, sync::Arc};
 
 use crate::{conn::Conn, stream::java::stream::JavaStream};
 
@@ -29,7 +27,6 @@ pub fn run() -> Result<(), Box<dyn Error>> {
 
   const JAVA_LISTENER: Token = Token(0xffffffff);
   const BEDROCK_LISTENER: Token = Token(0xfffffffe);
-  const WAKE_TOKEN: Token = Token(0xfffffffd);
 
   let addr = "0.0.0.0:25565";
   info!("listening for java clients on {}", addr);
@@ -44,14 +41,12 @@ pub fn run() -> Result<(), Box<dyn Error>> {
   // let der_key = Some(Arc::new(der::encode(&key)));
   let der_key = None;
   let icon = Arc::new(load_icon("icon.png"));
-  let server_ip: Endpoint = "http://0.0.0.0:8483".parse().unwrap();
+  let server_ip: SocketAddr = "0.0.0.0:8483".parse().unwrap();
   let compression = 256;
 
   let mut poll = Poll::new()?;
   let mut events = Events::with_capacity(1024);
-  let waker = Arc::new(Waker::new(poll.registry(), WAKE_TOKEN)?);
   let mut clients = HashMap::new();
-  let (needs_flush_tx, needs_flush_rx) = crossbeam_channel::bounded(1024);
 
   poll.registry().register(&mut java_listener, JAVA_LISTENER, Interest::READABLE)?;
 
@@ -92,8 +87,6 @@ pub fn run() -> Result<(), Box<dyn Error>> {
                     &icon,
                     client_token,
                     server_token,
-                    waker.clone(),
-                    needs_flush_tx.clone(),
                   )?,
                 );
               }
@@ -108,54 +101,10 @@ pub fn run() -> Result<(), Box<dyn Error>> {
         BEDROCK_LISTENER => {
           unimplemented!();
         }
-        WAKE_TOKEN => loop {
-          match needs_flush_rx.try_recv() {
-            Ok(token) => {
-              let conn = match clients.get_mut(&token) {
-                Some(conn) => conn,
-                // Old message, before the connection was closed, so we ignore it.
-                None => continue,
-              };
-              let mut wrote = false;
-              while conn.needs_send() {
-                wrote = true;
-                match conn.write() {
-                  Ok(_) => {}
-                  Err(ref e) if e.kind() == io::ErrorKind::WouldBlock => {
-                    // Happens if the recieving stream is empty.
-                    break;
-                  }
-                  Err(e) => {
-                    error!("error while listening to server {:?}: {}", token, e);
-                    clients.remove(&token);
-                    break;
-                  }
-                }
-              }
-              if wrote {
-                let conn = clients.get_mut(&token).expect("client doesn't exist!");
-                while conn.needs_flush() {
-                  match conn.flush() {
-                    Ok(_) => {}
-                    Err(ref e) if e.kind() == io::ErrorKind::WouldBlock => break,
-                    Err(e) => {
-                      error!("error while flushing packets to the client {:?}: {}", token, e);
-                      clients.remove(&token);
-                      break;
-                    }
-                  }
-                }
-              }
-            }
-            Err(TryRecvError::Empty) => break,
-            Err(TryRecvError::Disconnected) => unreachable!("needs_flush channel closed"),
-          }
-        },
         token => {
           let is_server = token.0 % 2 != 0;
           let token = Token(token.0 / 2 * 2);
 
-          let mut closed = false;
           if is_server {
             if event.is_readable() {
               let conn = clients.get_mut(&token).expect("client doesn't exist!");
@@ -163,7 +112,7 @@ pub fn run() -> Result<(), Box<dyn Error>> {
           } else {
             if event.is_readable() {
               let conn = clients.get_mut(&token).expect("client doesn't exist!");
-              match conn.read_all() {
+              match conn.read_client() {
                 Ok(false) => {}
                 Ok(true) => {
                   clients.remove(&token);
@@ -177,16 +126,14 @@ pub fn run() -> Result<(), Box<dyn Error>> {
             // The order here is important. If we are handshaking, then reading a packet
             // will probably prompt a direct response. In this arrangement, we can send more
             // packets before going back to poll().
-            if event.is_writable() && !closed {
-              let conn = clients.get_mut(&token).expect("client doesn't exist!");
-              while conn.needs_flush() {
-                match conn.flush() {
+            if event.is_writable() {
+              if let Some(conn) = clients.get_mut(&token) {
+                match conn.write_client() {
                   Ok(_) => {}
-                  Err(ref e) if e.kind() == io::ErrorKind::WouldBlock => break,
+                  Err(ref e) if e.kind() == io::ErrorKind::WouldBlock => {}
                   Err(e) => {
                     error!("error while flushing packets to the client {:?}: {}", token, e);
                     clients.remove(&token);
-                    break;
                   }
                 }
               }

@@ -1,6 +1,6 @@
 use crate::stream::PacketStream;
 use crossbeam_channel::{Sender, TryRecvError};
-use mio::{Token, Waker};
+use mio::{net::TcpStream, Token, Waker};
 use rand::{rngs::OsRng, RngCore};
 use reqwest::StatusCode;
 use rsa::{padding::PaddingScheme, RSAPrivateKey};
@@ -8,16 +8,21 @@ use sc_common::{
   math,
   net::{cb, sb, tcp},
   proto,
-  proto::minecraft_client::MinecraftClient,
   util::{chat::Color, Chat, UUID},
   version::ProtocolVersion,
 };
+use sc_transfer::MessageWrite;
 use serde_derive::{Deserialize, Serialize};
 use sha1::{Digest, Sha1};
-use std::{convert::TryInto, fmt, io, io::ErrorKind, sync::Arc};
-use tokio::sync::{mpsc, oneshot};
-use tokio_stream::wrappers::ReceiverStream;
-use tonic::{transport::Endpoint, Request, Streaming};
+use std::{
+  collections::VecDeque,
+  convert::TryInto,
+  fmt, io,
+  io::{ErrorKind, Write},
+  net::SocketAddr,
+  sync::Arc,
+};
+use tonic::Streaming;
 
 #[derive(Debug, Copy, Clone)]
 pub enum State {
@@ -43,15 +48,6 @@ impl State {
 pub struct Conn<'a, S> {
   stream:       S,
   state:        State,
-  /// If this is None, a connection has not been opened with the server yet
-  /// (this also means state != Play)
-  server_send:  Option<mpsc::Sender<proto::Packet>>,
-  /// If this is None, a connection has not been opened with the server yet
-  /// (this also means state != Play)
-  server_recv:  Option<crossbeam_channel::Receiver<tcp::Packet>>,
-  /// If a connection is open with a server, sending on this will close that
-  /// ServerListener.
-  server_close: Option<oneshot::Sender<()>>,
   ver:          ProtocolVersion,
   icon:         &'a str,
   /// The name sent from the client. The mojang auth server also sends us a
@@ -72,19 +68,21 @@ pub struct Conn<'a, S> {
   /// Set when the connection is closed.
   closed: bool,
 
-  /// Server ip. Used when we are done handshaking, and need to connect to a
-  /// server.
-  ip:             Endpoint,
+  /// Server address. Used when we are done handshaking, and need to connect to
+  /// a server.
+  addr:         SocketAddr,
   /// Used when we make a server listener.
-  client_token:   Token,
+  client_token: Token,
   /// Used when we create the tcp stream connected to the server.
-  server_token:   Token,
-  /// Used when creating the server listener. Is none after the server listener
-  /// is created.
-  waker:          Option<Arc<Waker>>,
-  /// Used when creating the server listener. Is none after the server listener
-  /// is created.
-  needs_flush_tx: Option<Sender<Token>>,
+  server_token: Token,
+  /// A connection to the server. If none, then we haven't finished handshaking.
+  server:       Option<TcpStream>,
+  /// Bytes that need to be written to the server. Will be empty if we have
+  /// written everything.
+  serverbound:  Vec<u8>,
+  /// Used to encode packets. The data in here is undefined, but the length will
+  /// be constant.
+  garbage:      Vec<u8>,
 }
 
 impl<S: fmt::Debug> fmt::Debug for Conn<'_, S> {
@@ -143,21 +141,21 @@ impl ServerListener {
     waker: Arc<Waker>,
     needs_flush_tx: Sender<Token>,
   ) -> io::Result<()> {
-    loop {
-      match self
-        .server
-        .message()
-        .await
-        .map_err(|e| io::Error::new(ErrorKind::Other, e.to_string()))?
-      {
-        Some(p) => {
-          self.client.send(cb::Packet::from_proto(p, self.ver).to_tcp(self.ver)).unwrap();
-          needs_flush_tx.send(self.token).unwrap();
-          waker.wake()?;
-        }
-        None => break,
-      }
-    }
+    // loop {
+    //   match self
+    //     .server
+    //     .message()
+    //     .await
+    //     .map_err(|e| io::Error::new(ErrorKind::Other, e.to_string()))?
+    //   {
+    //     Some(p) => {
+    //       self.client.send(cb::Packet::from_proto(p,
+    // self.ver).to_tcp(self.ver)).unwrap();       needs_flush_tx.send(self.
+    // token).unwrap();       waker.wake()?;
+    //     }
+    //     None => break,
+    //   }
+    // }
     Ok(())
   }
 }
@@ -189,35 +187,20 @@ struct JsonPlayer {
   id:   String,
 }
 
-impl<S> Drop for Conn<'_, S> {
-  fn drop(&mut self) {
-    // Closes the ServerListener for this connection.
-    if let Some(chan) = self.server_close.take() {
-      // If we have an error, it means the server listener is already closed.
-      let _ = chan.send(());
-    }
-  }
-}
-
 impl<'a, S: PacketStream + Send + Sync> Conn<'a, S> {
   pub fn new(
     stream: S,
-    ip: Endpoint,
+    addr: SocketAddr,
     compression_target: i32,
     key: Arc<RSAPrivateKey>,
     der_key: Option<Vec<u8>>,
     icon: &'a str,
     client_token: Token,
     server_token: Token,
-    waker: Arc<Waker>,
-    needs_flush_tx: Sender<Token>,
   ) -> Result<Conn<'a, S>, tonic::Status> {
     Ok(Conn {
       stream,
       state: State::Handshake,
-      server_send: None,
-      server_recv: None,
-      server_close: None,
       ver: ProtocolVersion::Invalid,
       icon,
       username: None,
@@ -227,11 +210,12 @@ impl<'a, S: PacketStream + Send + Sync> Conn<'a, S> {
       der_key,
       compression_target,
       closed: false,
-      ip,
+      addr,
       client_token,
       server_token,
-      waker: Some(waker),
-      needs_flush_tx: Some(needs_flush_tx),
+      server: None,
+      serverbound: Vec::with_capacity(16 * 1024),
+      garbage: vec![0; 64 * 1024],
     })
   }
   pub fn ver(&self) -> ProtocolVersion {
@@ -242,72 +226,31 @@ impl<'a, S: PacketStream + Send + Sync> Conn<'a, S> {
   }
 
   async fn connect_to_server(&mut self) -> Result<(), io::Error> {
-    let mut server = MinecraftClient::connect(self.ip.clone())
-      .await
-      .map_err(|e| io::Error::new(io::ErrorKind::InvalidInput, e.to_string()))?;
+    self.server = Some(TcpStream::connect(self.addr)?);
 
-    let (server_send, rx) = mpsc::channel(1);
-    let (clientbound_tx, clientbound_rx) = crossbeam_channel::bounded(512);
-    let (server_close_tx, server_close_rx) = oneshot::channel();
+    let mut buf = [0; 1024];
+    let mut m = MessageWrite::new(&mut buf);
+    m.write_str(self.username.as_ref().unwrap()).unwrap();
+    m.write_bytes(&self.info.as_ref().unwrap().id.as_be_bytes()).unwrap();
+    m.write_i32(self.ver.id() as i32).unwrap();
+    let idx = m.index();
+    self.server.as_mut().unwrap().write(&buf[..idx])?;
 
-    self.server_send = Some(server_send);
-    self.server_recv = Some(clientbound_rx);
-    self.server_close = Some(server_close_tx);
-
-    let response = server
-      .connection(Request::new(ReceiverStream::new(rx)))
-      .await
-      .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e.to_string()))?;
-    let server_recv = response.into_inner();
-
-    let mut server_listener = ServerListener {
-      client: clientbound_tx,
-      server: server_recv,
-      ver:    self.ver(),
-      token:  self.token,
-    };
-    let waker = self.waker.take().unwrap();
-    let needs_flush_tx = self.needs_flush_tx.take().unwrap();
-    tokio::spawn(async move {
-      tokio::select!(
-        res = server_listener.run(waker, needs_flush_tx) => {
-          match res {
-            Ok(_) => {}
-            Err(e) => {
-              error!("error while listening to server: {}", e);
-            }
-          };
-        }
-        _ = server_close_rx => {},
-      );
-    });
     Ok(())
   }
 
-  /// Checks if there are packets from the server that must be sent to the
-  /// client. Panics if handshaking is incomplete.
-  pub fn needs_send(&self) -> bool {
-    !self.server_recv.as_ref().unwrap().is_empty()
-  }
-  pub fn write(&mut self) -> io::Result<()> {
-    match self.server_recv.as_ref().unwrap().try_recv() {
-      Ok(p) => Ok(self.stream.write(p)),
-      Err(TryRecvError::Empty) => return Err(io::Error::new(io::ErrorKind::WouldBlock, "")),
-      Err(TryRecvError::Disconnected) => {
-        return Err(io::Error::new(io::ErrorKind::NotConnected, ""))
-      }
+  /// Writes all the data possible to the client. Returns Err(WouldBlock) or
+  /// Ok(()) if everything worked as expected.
+  pub fn write_client(&mut self) -> io::Result<()> {
+    while self.stream.needs_flush() {
+      self.stream.flush()?;
     }
-  }
-  pub fn needs_flush(&self) -> bool {
-    self.stream.needs_flush()
-  }
-  pub fn flush(&mut self) -> io::Result<()> {
-    self.stream.flush()
+    Ok(())
   }
 
   /// Reads as much data as possible, without blocking. Returns Ok(true) or
   /// Err(_) if the connection should be closed.
-  pub fn read_all(&mut self) -> io::Result<bool> {
+  pub fn read_client(&mut self) -> io::Result<bool> {
     // Poll, then read, then try and poll again. If we have no data left, we return
     // Ok(false). If we have closed the connection, we return Ok(true). If we error
     // at all, we close the connection.
@@ -326,22 +269,18 @@ impl<'a, S: PacketStream + Send + Sync> Conn<'a, S> {
       }
     }
   }
-  pub fn poll(&mut self) -> io::Result<()> {
+  fn poll(&mut self) -> io::Result<()> {
     self.stream.poll()
   }
   /// Reads a packet from the internal buffer from the client. Does not interact
   /// with the tcp connection at all.
-  pub fn read(&mut self) -> io::Result<()> {
+  fn read(&mut self) -> io::Result<()> {
     loop {
       match self.stream.read(self.ver) {
         Ok(Some(p)) => match self.state {
           State::Play => {
             let packet = sb::Packet::from_tcp(p, self.ver);
-            // If we are in Play, server_send must be Some(_)
-            futures::executor::block_on(
-              self.server_send.as_ref().unwrap().send(packet.to_proto(self.ver)),
-            )
-            .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e.to_string()))?;
+            self.send_to_server(packet);
           }
           _ => {
             futures::executor::block_on(self.handle_handshake(p))?;
@@ -351,6 +290,23 @@ impl<'a, S: PacketStream + Send + Sync> Conn<'a, S> {
         Err(e) => return Err(e),
       }
     }
+    Ok(())
+  }
+
+  /// Tries to send the packet to the server, and buffers it if that is not
+  /// possible.
+  fn send_to_server(&mut self, p: sb::Packet) -> io::Result<()> {
+    // The only error here is EOF, which means 64k was not enough space for this
+    // packet.
+    let n = p.to_sc(self.ver, &mut self.garbage).unwrap();
+    let buf = &self.garbage[..n];
+    self.serverbound.extend_from_slice(buf);
+    self.server_flush()
+  }
+
+  fn server_flush(&mut self) -> io::Result<()> {
+    let n = self.server.as_mut().unwrap().write(&self.serverbound)?;
+    self.serverbound.drain(0..n);
     Ok(())
   }
 
@@ -383,24 +339,7 @@ impl<'a, S: PacketStream + Send + Sync> Conn<'a, S> {
     self.stream.write(out);
 
     self.state = State::Play;
-
     self.connect_to_server().await?;
-
-    let info = self.info.as_ref().unwrap();
-    self
-      .server_send
-      .as_ref()
-      .unwrap()
-      .send(
-        sb::Packet::Login {
-          username: info.name.clone(),
-          uuid:     info.id,
-          ver:      ver.id() as i32,
-        }
-        .to_proto(ver),
-      )
-      .await
-      .unwrap();
 
     Ok(())
   }

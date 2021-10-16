@@ -15,6 +15,7 @@ path = "src/main.rs"
 
 [dependencies]
 sc_common = { path = "../sc_common" }
+sc_transfer = { path = "../sc_transfer" }
 log = "0.4"
 tonic = "0.5"
 serde = "1.0"

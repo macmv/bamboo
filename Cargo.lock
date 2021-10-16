@@ -2199,6 +2199,7 @@ dependencies = [
  "ringbuf",
  "rsa",
  "sc_common",
+ "sc_transfer",
  "serde",
  "serde_derive",
  "serde_json",
