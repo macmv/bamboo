@@ -158,12 +158,16 @@ impl World {
   }
   fn new_player(self: Arc<Self>, player: Player) -> Arc<Player> {
     let player = Arc::new(player);
-    let mut players = self.players.lock();
-    if players.contains_key(&player.id()) {
-      player.disconnect("Another player with the same id is already connected!");
-      return player;
+    // We need to unlock players so that player_init() will work.
+    {
+      let mut players = self.players.lock();
+      if players.contains_key(&player.id()) {
+        player.disconnect("Another player with the same id is already connected!");
+        return player;
+      }
+      players.insert(player.id(), player.clone());
     }
-    players.insert(player.id(), player.clone());
+    self.player_init(&player);
     player
   }
 
