@@ -17,7 +17,6 @@ use std::{
   thread::ThreadId,
   time::{Duration, Instant},
 };
-use tokio::time;
 
 use sc_common::{
   math::{ChunkPos, FPos},
@@ -160,55 +159,13 @@ impl World {
   }
   fn new_player(self: Arc<Self>, player: Player) -> Arc<Player> {
     let player = Arc::new(player);
-    {
-      let mut p = self.players.lock();
-      if p.contains_key(&player.id()) {
-        player.disconnect("Another player with the same id is already connected!");
-        return player;
-      }
-      p.insert(player.id(), player.clone());
+    let mut players = self.players.lock();
+    if players.contains_key(&player.id()) {
+      player.disconnect("Another player with the same id is already connected!");
+      return player;
     }
-
-    // Player tick loop
-    let p = player.clone();
-    tokio::spawn(async move {
-      let name = p.username().to_string();
-      let id = p.id();
-      info!("{} has logged in", name);
-      self.player_loop(p);
-      info!("{} has logged out", name);
-      self.players.lock().remove(&id);
-    });
+    players.insert(player.id(), player.clone());
     player
-  }
-
-  fn player_loop(&self, player: Arc<Player>) {
-    let mut int = time::interval(Duration::from_millis(50));
-    // Player init
-    self.player_init(&player);
-    // Player tick loop
-    let mut tick = 0;
-    loop {
-      int.tick();
-      if player.closed() {
-        // TODO: Close any other tasks for this player
-        break;
-      }
-      let start = Instant::now();
-      // Updates the player correctly, and performs collision checks. This also
-      // handles new chunks.
-      player.tick();
-      // Do player collision and packets and stuff
-      // Once per second, send keep alive packet
-      if tick % 20 == 0 {
-        player.send(cb::Packet::KeepAlive {
-          keep_alive_id_v1_8:    Some(1234556),
-          keep_alive_id_v1_12_2: Some(1234556),
-        });
-      }
-      tick += 1;
-      self.mspt.fetch_add(start.elapsed().as_millis().try_into().unwrap(), Ordering::SeqCst);
-    }
   }
 
   /// Returns a new, unique EID.
