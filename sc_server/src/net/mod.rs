@@ -14,7 +14,7 @@ use sc_common::{
   },
   version::ProtocolVersion,
 };
-use sc_transfer::{MessageRead, ReadError};
+use sc_transfer::{MessageRead, MessageWrite, ReadError};
 use std::{
   collections::HashMap,
   convert::TryInto,
@@ -139,8 +139,15 @@ impl Connection {
   }
 
   fn send_to_client(&mut self, p: cb::Packet) -> io::Result<()> {
-    let n = p.to_sc(self.ver.unwrap(), &mut self.garbage).unwrap();
-    self.outgoing.extend_from_slice(&self.garbage[..n]);
+    let len = p.to_sc(self.ver.unwrap(), &mut self.garbage).unwrap();
+
+    let mut prefix = [0; 5];
+    let mut m = MessageWrite::new(&mut prefix);
+    m.write_i32(len as i32).unwrap();
+    let prefix_len = m.index();
+
+    self.outgoing.extend_from_slice(&prefix[..prefix_len]);
+    self.outgoing.extend_from_slice(&self.garbage[..len]);
     self.try_flush()
   }
 
