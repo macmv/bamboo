@@ -80,12 +80,17 @@ impl Connection {
     wm: &Arc<WorldManager>,
     player: &mut Option<Arc<Player>>,
   ) -> Result<(), ReadError> {
-    if let Some(ver) = self.ver {
-      while !self.incoming.is_empty() {
-        let mut m = MessageRead::new(&self.incoming);
-        match m.read_i32() {
-          Ok(len) => {
-            if len >= self.incoming.len() as i32 {
+    while !self.incoming.is_empty() {
+      let mut m = MessageRead::new(&self.incoming);
+      match m.read_i32() {
+        Ok(len) => {
+          info!("got packet with length {}", len);
+          if len as usize + m.index() >= self.incoming.len() {
+            // Remove the length varint at the start
+            let idx = m.index();
+            self.incoming.drain(0..idx);
+            // We already handshaked
+            if let Some(ver) = self.ver {
               info!("READING PACKET");
               let (p, n) = sb::Packet::from_sc(ver, &self.incoming)?;
               if n != len as usize {
@@ -93,30 +98,30 @@ impl Connection {
               }
               self.incoming.drain(0..n);
               self.handle_packet(wm, player.as_ref().unwrap(), p);
-            }
-          }
-          // If this is an EOF, then we have a partial varint, so we are done reading.
-          Err(e) => {
-            if !matches!(e, ReadError::EOF) {
-              return Ok(());
             } else {
-              return Err(e);
+              info!("reading start info");
+              // This is the first packet, so it must be a login packet.
+              let mut m = MessageRead::new(&self.incoming);
+              let username = m.read_str()?;
+              info!("read str: {}", username);
+              let uuid = UUID::from_bytes(m.read_bytes(16)?.try_into().unwrap());
+              let ver = ProtocolVersion::from(m.read_i32()?);
+              let idx = m.index();
+              self.incoming.drain(0..idx);
+              self.ver = Some(ver);
+              *player = Some(wm.new_player(self.tx.clone(), username, uuid, ver));
             }
           }
         }
+        // If this is an EOF, then we have a partial varint, so we are done reading.
+        Err(e) => {
+          if !matches!(e, ReadError::EOF) {
+            return Ok(());
+          } else {
+            return Err(e);
+          }
+        }
       }
-    } else {
-      info!("reading start info");
-      // This is the first packet, so it must be a login packet.
-      let mut m = MessageRead::new(&self.incoming);
-      let username = m.read_str()?;
-      info!("read str: {}", username);
-      let uuid = UUID::from_bytes(m.read_bytes(16)?.try_into().unwrap());
-      let ver = ProtocolVersion::from(m.read_i32()?);
-      let idx = m.index();
-      self.incoming.drain(0..idx);
-      self.ver = Some(ver);
-      *player = Some(wm.new_player(self.tx.clone(), username, uuid, ver));
     }
     Ok(())
   }
@@ -287,7 +292,7 @@ impl ConnectionManager {
           LISTEN => loop {
             // Received an event for the TCP server socket, which
             // indicates we can accept an connection.
-            let (mut conn, addr) = match listen.accept() {
+            let (mut conn, _addr) = match listen.accept() {
               Ok(v) => v,
               Err(e) if e.kind() == io::ErrorKind::WouldBlock => {
                 // If we get a `WouldBlock` error we know our
@@ -304,17 +309,20 @@ impl ConnectionManager {
             };
 
             let tok = self.new_token();
-            poll.registry().register(&mut conn, tok, Interest::READABLE.add(Interest::WRITABLE))?;
+            poll.registry().register(&mut conn, tok, Interest::READABLE | Interest::WRITABLE)?;
 
+            info!("made a connection");
             self.connections.insert(tok, (Connection::new(conn), None));
           },
           token => {
             // We got an even for a tcp connection. If the token is invalid, we ignore it.
+            info!("got an event");
             let done = if let Some((conn, player)) = self.connections.get_mut(&token) {
               Self::handle(&self.wm, poll.registry(), conn, player, event)
             } else {
               false
             };
+            info!("done: {}", done);
             if done {
               self.connections.remove(&token);
             }

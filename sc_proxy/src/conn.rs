@@ -178,6 +178,7 @@ impl<'a, S: PacketStream + Send + Sync> Conn<'a, S> {
   }
 
   fn connect_to_server(&mut self, reg: &Registry) -> Result<(), io::Error> {
+    info!("connecting to server at {:?}", self.addr);
     let mut stream = TcpStream::connect(self.addr)?;
     reg.register(&mut stream, self.server_token, Interest::READABLE | Interest::WRITABLE).unwrap();
     self.server_stream = Some(stream);
@@ -187,8 +188,13 @@ impl<'a, S: PacketStream + Send + Sync> Conn<'a, S> {
     m.write_str(self.username.as_ref().unwrap()).unwrap();
     m.write_bytes(&self.info.as_ref().unwrap().id.as_be_bytes()).unwrap();
     m.write_i32(self.ver.id() as i32).unwrap();
-    let idx = m.index();
-    self.server_stream.as_mut().unwrap().write(&buf[..idx])?;
+    let len = m.index();
+    let mut prefix = [0; 5];
+    let mut m = MessageWrite::new(&mut prefix);
+    m.write_i32(len as i32).unwrap();
+    let prefix_len = m.index();
+    self.server_stream.as_mut().unwrap().write(&prefix[..prefix_len])?;
+    self.server_stream.as_mut().unwrap().write(&buf[..len])?;
 
     Ok(())
   }
