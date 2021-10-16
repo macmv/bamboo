@@ -19,7 +19,7 @@ use std::{
   collections::HashMap,
   convert::TryInto,
   io,
-  io::Read,
+  io::{Read, Write},
   net::SocketAddr,
   sync::{
     atomic::{AtomicBool, Ordering},
@@ -41,6 +41,8 @@ pub struct Connection {
   waker: Arc<Waker>,
 
   incoming: Vec<u8>,
+  outgoing: Vec<u8>,
+  garbage:  Vec<u8>,
 }
 
 impl Connection {
@@ -56,27 +58,54 @@ impl Connection {
       rx,
       wake,
       waker,
-      // This is created any time we have a client, so making it too large would make us very
-      // vunerable to ddos attacks.
       incoming: Vec::with_capacity(1024),
+      outgoing: Vec::with_capacity(1024),
+      garbage: vec![0; 64 * 1024],
     }
   }
 
   /// This will return ErrorKind::WouldBlock once its done reading. If it
   /// returns any other error, the connection should be closed.
   pub fn read(&mut self, wm: &Arc<WorldManager>, player: &mut Option<Arc<Player>>) -> io::Error {
-    let mut buf = [0; 16 * 1024];
     loop {
-      let n = match self.stream.read(&mut buf) {
+      let n = match self.stream.read(&mut self.garbage) {
         Ok(v) => v,
         Err(e) => return e,
       };
-      self.incoming.extend_from_slice(&buf[..n]);
+      self.incoming.extend_from_slice(&self.garbage[..n]);
       match self.read_incoming(wm, player) {
         Ok(_) => {}
         Err(e) => return io::Error::new(io::ErrorKind::InvalidData, e.to_string()),
       };
     }
+  }
+
+  fn try_send(&mut self) -> io::Result<()> {
+    loop {
+      match self.rx.try_recv() {
+        Ok(p) => self.send_to_client(p)?,
+        Err(TryRecvError::Empty) => break,
+        Err(e) => unreachable!(),
+      }
+    }
+    Ok(())
+  }
+
+  fn send_to_client(&mut self, p: cb::Packet) -> io::Result<()> {
+    let n = p.to_sc(self.ver.unwrap(), &mut self.garbage).unwrap();
+    self.outgoing.extend_from_slice(&self.garbage[..n]);
+    self.try_flush()
+  }
+
+  fn try_flush(&mut self) -> io::Result<()> {
+    while !self.outgoing.is_empty() {
+      let n = match self.stream.write(&mut self.outgoing) {
+        Ok(v) => v,
+        Err(e) => return Err(e),
+      };
+      self.outgoing.drain(0..n);
+    }
+    Ok(())
   }
 
   fn read_incoming(
