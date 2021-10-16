@@ -205,42 +205,31 @@ impl World {
       teleport_id_v1_9: Some(1234), // TP id
     });
 
-    // let mut info = PlayerList {
-    //   action: player_list::Action::AddPlayer.into(),
-    //   players: vec![player_list::Player {
-    //     uuid:             Some(player.id().as_proto()),
-    //     name:             player.username().into(),
-    //     properties:       vec![],
-    //     gamemode:         1,
-    //     ping:             300, // TODO: Ping
-    //     has_display_name: false,
-    //     display_name:     "".into(),
-    //   }],
-    //   ..Default::default()
-    // };
+    let mut info = Buffer::new(vec![]);
+    let mut num_info = 1;
+
+    info.write_buf(&player.id().as_be_bytes());
+    info.write_str(player.username());
+    info.write_varint(0); // no properties
+    info.write_varint(1); // creative
+    info.write_varint(50); // ping
+    info.write_bool(false); // no display name follows
+
+    let mut my_info = Buffer::new(vec![]);
+    my_info.write_varint(1); // just 1 player (me)
+    my_info.write_buf(&player.id().as_be_bytes());
+    my_info.write_str(player.username());
+    my_info.write_varint(0); // no properties
+    my_info.write_varint(1); // creative
+    my_info.write_varint(50); // ping
+    my_info.write_bool(false); // no display name follows
+    let my_info = cb::Packet::PlayerInfo { action: 0, data: my_info.into_inner() };
+
     let mut spawn_packets = vec![];
     for other in self.players().iter().in_view(ChunkPos::new(0, 0)).not(player.id()) {
-      // Add player to the list of players that other knows about
-      // let mut out = cb::Packet::PlayerInfo {
-      //   action: player_list::Action::AddPlayer.into(),
-      //   // TODO: Fill data
-      //   data:   vec![],
-      // };
-      // out
-      //   .set_other(Other::PlayerList(PlayerList {
-      //     action:  player_list::Action::AddPlayer.into(),
-      //     players: vec![player_list::Player {
-      //       uuid:             Some(player.id().as_proto()),
-      //       name:             player.username().into(),
-      //       properties:       vec![],
-      //       gamemode:         1,
-      //       ping:             300, // TODO: Ping
-      //       has_display_name: false,
-      //       display_name:     "".into(),
-      //     }],
-      //   }))
-      //   .unwrap();
-      // other.conn().send(out);
+      // Lets the other players know that I exist
+      other.send(my_info.clone());
+
       // Create a packet that will spawn player for other
       let (pos, pitch, yaw) = player.pos_look();
       other.send(cb::Packet::NamedEntitySpawn {
@@ -257,6 +246,14 @@ impl World {
         current_item_removed_v1_9: Some(0),
         metadata_removed_v1_15:    Some(player.metadata(other.ver()).serialize()),
       });
+
+      num_info += 1;
+      info.write_buf(&other.id().as_be_bytes());
+      info.write_str(other.username());
+      info.write_varint(0); // no properties
+      info.write_varint(1); // creative
+      info.write_varint(50); // ping
+      info.write_bool(true); // no display name follows
 
       // Add other to the list of players that player knows about
       // info.players.push(player_list::Player {
@@ -285,6 +282,10 @@ impl World {
         metadata_removed_v1_15:    Some(other.metadata(player.ver()).serialize()),
       });
     }
+    let mut data = Buffer::new(Vec::with_capacity(info.len()));
+    data.write_varint(num_info);
+    data.write_buf(&info.into_inner());
+    player.send(cb::Packet::PlayerInfo { action: 0, data: data.into_inner() });
     // Need to send the player info before the spawn packets
     // let mut out = cb::Packet::new(cb::ID::PlayerInfo);
     // out.set_other(Other::PlayerList(info)).unwrap();
