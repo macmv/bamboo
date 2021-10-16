@@ -386,8 +386,7 @@ impl WorldManager {
     self.plugins.clone().run(self);
   }
 
-  /// Adds a new world. Currently, this requires a mutable reference, which
-  /// cannot be obtained outside of initialization.
+  /// Adds a new world.
   pub fn add_world(self: &Arc<Self>) {
     self.worlds.lock().push(World::new(
       self.block_converter.clone(),

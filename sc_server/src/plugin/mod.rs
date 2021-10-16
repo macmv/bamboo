@@ -87,7 +87,7 @@ impl PluginManager {
     true
   }
 
-  pub async fn run(&self, wm: Arc<WorldManager>) {
+  pub fn run(&self, wm: Arc<WorldManager>) {
     self.load(wm);
     // let mut ctx = Context::new();
     // ctx.register_global_class::<Sugarcane>().unwrap();

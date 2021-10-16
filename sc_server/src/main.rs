@@ -1,10 +1,8 @@
 #[macro_use]
 extern crate log;
 
-use std::{error::Error, sync::Arc, thread};
-use tonic::transport::Server;
-
 use sc_server::{net::ConnectionManager, world::WorldManager};
+use std::{error::Error, sync::Arc, thread};
 
 // #[derive(Clone)]
 // pub struct ServerImpl {

@@ -58,10 +58,16 @@ impl ConnSender {
   /// packets in the queue, this is a non-blocking operation. This will block if
   /// there are too many packets queued. The limit is 512 packets before this
   /// will block, so this should very rarely happen.
+  ///
+  /// # Panics
+  ///
+  /// This has the possibility to panic if any of the channels this uses are
+  /// disconnected. This will not happen unless the connection has been closed,
+  /// or the connection manager has been stopped.
   pub fn send(&self, p: cb::Packet) {
-    self.tx.send(p);
-    self.wake.send(WakeEvent::Clientbound(self.tok));
-    self.waker.wake();
+    self.tx.send(p).unwrap();
+    self.wake.send(WakeEvent::Clientbound(self.tok)).unwrap();
+    self.waker.wake().unwrap();
   }
 }
 
@@ -105,10 +111,16 @@ impl Connection {
   /// packets in the queue, this is a non-blocking operation. This will block if
   /// there are too many packets queued. The limit is 512 packets before this
   /// will block, so this should very rarely happen.
+  ///
+  /// # Panics
+  ///
+  /// This has the possibility to panic if any of the channels this uses are
+  /// disconnected. This will not happen unless the connection has been closed,
+  /// or the connection manager has been stopped.
   pub fn send(&self, p: cb::Packet) {
-    self.tx.send(p);
-    self.wake.send(WakeEvent::Clientbound(self.tok));
-    self.waker.wake();
+    self.tx.send(p).unwrap();
+    self.wake.send(WakeEvent::Clientbound(self.tok)).unwrap();
+    self.waker.wake().unwrap();
   }
 
   /// If this returns Ok(true) or an error, the connection should be closed.
@@ -341,7 +353,6 @@ impl Connection {
 
 pub struct ConnectionManager {
   connections: HashMap<Token, (Connection, Option<Arc<Player>>)>,
-  new_tok:     Token,
   wm:          Arc<WorldManager>,
 }
 
@@ -351,7 +362,7 @@ pub enum WakeEvent {
 
 impl ConnectionManager {
   pub fn new(wm: Arc<WorldManager>) -> ConnectionManager {
-    ConnectionManager { connections: HashMap::new(), new_tok: Token(0), wm }
+    ConnectionManager { connections: HashMap::new(), wm }
   }
 
   pub fn run(&mut self, addr: SocketAddr) -> io::Result<()> {
