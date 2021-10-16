@@ -1,9 +1,9 @@
 use crate::{block, item, player::Player, world::WorldManager};
-use crossbeam_channel::{Receiver, Sender};
+use crossbeam_channel::{Receiver, Sender, TryRecvError};
 use mio::{
   event::Event,
   net::{TcpListener, TcpStream},
-  Events, Interest, Poll, Registry, Token,
+  Events, Interest, Poll, Registry, Token, Waker,
 };
 use sc_common::{
   math::Pos,
@@ -35,14 +35,16 @@ pub struct Connection {
   closed: AtomicBool,
 
   /// Sending on this will send a packet to the client.
-  tx: Sender<cb::Packet>,
-  rx: Receiver<cb::Packet>,
+  tx:    Sender<cb::Packet>,
+  rx:    Receiver<cb::Packet>,
+  wake:  Sender<WakeEvent>,
+  waker: Arc<Waker>,
 
   incoming: Vec<u8>,
 }
 
 impl Connection {
-  pub(crate) fn new(stream: TcpStream) -> Self {
+  pub(crate) fn new(stream: TcpStream, wake: Sender<WakeEvent>, waker: Arc<Waker>) -> Self {
     // For a 10 chunk render distance, we need to send 441 packets at once. So a
     // limit of 512 means we don't block very much.
     let (tx, rx) = crossbeam_channel::bounded(512);
@@ -52,6 +54,8 @@ impl Connection {
       closed: false.into(),
       tx,
       rx,
+      wake,
+      waker,
       // This is created any time we have a client, so making it too large would make us very
       // vunerable to ddos attacks.
       incoming: Vec::with_capacity(1024),
@@ -245,17 +249,6 @@ impl Connection {
     }
   }
 
-  /// Sends a packet to the proxy, which will then get sent to the client.
-  pub fn send(&self, p: cb::Packet) {
-    // match self.tx.send(Ok(p.to_proto(self.ver.unwrap()))) {
-    //   Ok(_) => (),
-    //   Err(e) => {
-    //     error!("error while sending packet: {}", e);
-    //     self.closed.store(true, Ordering::SeqCst);
-    //   }
-    // }
-  }
-
   // Returns true if the connection has been closed.
   pub fn closed(&self) -> bool {
     self.closed.load(Ordering::SeqCst)
@@ -268,21 +261,30 @@ pub struct ConnectionManager {
   wm:          Arc<WorldManager>,
 }
 
+pub enum WakeEvent {
+  Clientbound(Token),
+}
+
 impl ConnectionManager {
   pub fn new(wm: Arc<WorldManager>) -> ConnectionManager {
     ConnectionManager { connections: HashMap::new(), new_tok: Token(0), wm }
   }
 
   pub fn run(&mut self, addr: SocketAddr) -> io::Result<()> {
-    const LISTEN: Token = Token(0);
+    const LISTEN: Token = Token(0xffffffff);
+    const WAKE: Token = Token(0xfffffffe);
 
     let mut poll = Poll::new()?;
     let mut events = Events::with_capacity(128);
     let mut listen = TcpListener::bind(addr)?;
 
+    let waker = Arc::new(Waker::new(poll.registry(), WAKE)?);
+
     poll.registry().register(&mut listen, LISTEN, Interest::READABLE)?;
 
-    self.new_tok = Token(LISTEN.0 + 1);
+    let mut next_token = 0;
+
+    let (tx, rx) = crossbeam_channel::bounded(1024);
 
     loop {
       poll.poll(&mut events, None)?;
@@ -308,21 +310,28 @@ impl ConnectionManager {
               }
             };
 
-            let tok = self.new_token();
-            poll.registry().register(&mut conn, tok, Interest::READABLE | Interest::WRITABLE)?;
+            let token = Token(next_token);
+            next_token += 1;
+            poll.registry().register(&mut conn, token, Interest::READABLE | Interest::WRITABLE)?;
 
-            info!("made a connection");
-            self.connections.insert(tok, (Connection::new(conn), None));
+            self
+              .connections
+              .insert(token, (Connection::new(conn, tx.clone(), waker.clone()), None));
+          },
+          WAKE => loop {
+            match rx.try_recv() {
+              Ok(ev) => self.wake_event(ev),
+              Err(TryRecvError::Empty) => break,
+              Err(_) => unreachable!(),
+            }
           },
           token => {
             // We got an even for a tcp connection. If the token is invalid, we ignore it.
-            info!("got an event");
             let done = if let Some((conn, player)) = self.connections.get_mut(&token) {
               Self::handle(&self.wm, poll.registry(), conn, player, event)
             } else {
               false
             };
-            info!("done: {}", done);
             if done {
               self.connections.remove(&token);
             }
@@ -332,10 +341,14 @@ impl ConnectionManager {
     }
   }
 
-  fn new_token(&mut self) -> Token {
-    let v = self.new_tok;
-    self.new_tok = Token(self.new_tok.0 + 1);
-    v
+  fn wake_event(&mut self, ev: WakeEvent) {
+    match ev {
+      WakeEvent::Clientbound(tok) => {
+        if let Some(conn) = self.connections.get_mut(&tok) {
+          // TODO: Send packet
+        }
+      }
+    }
   }
 
   fn handle(
