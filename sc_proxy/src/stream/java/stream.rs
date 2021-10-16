@@ -12,7 +12,6 @@ use std::{
   fmt, io,
   io::{ErrorKind, Read, Result, Write},
 };
-use tokio::time::Instant;
 
 pub struct JavaStream {
   stream: TcpStream,
@@ -20,8 +19,7 @@ pub struct JavaStream {
   recv_prod: Producer<u8>,
   recv_cons: Consumer<u8>,
 
-  outgoing:   Vec<u8>,
-  last_flush: Instant,
+  outgoing: Vec<u8>,
 
   // If this is zero, compression is disabled.
   compression: usize,
@@ -31,10 +29,7 @@ pub struct JavaStream {
 
 impl fmt::Debug for JavaStream {
   fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-    f.debug_struct("JavaStream")
-      .field("outgoing_len", &self.outgoing.len())
-      .field("since_last_flush", &Instant::now().duration_since(self.last_flush))
-      .finish()
+    f.debug_struct("JavaStream").field("outgoing_len", &self.outgoing.len()).finish()
   }
 }
 
@@ -47,7 +42,6 @@ impl JavaStream {
       recv_prod,
       recv_cons,
       outgoing: Vec::with_capacity(1024),
-      last_flush: Instant::now(),
       compression: 0,
       cipher: None,
     }
@@ -189,7 +183,6 @@ impl PacketStream for JavaStream {
     }
     let n = self.stream.write(&self.outgoing)?;
     self.outgoing.drain(0..n);
-    self.last_flush = Instant::now();
     Ok(())
   }
 }

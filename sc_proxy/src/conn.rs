@@ -1,12 +1,12 @@
 use crate::stream::PacketStream;
-use crossbeam_channel::{Sender, TryRecvError};
+use crossbeam_channel::Sender;
 use mio::{net::TcpStream, Token, Waker};
 use rand::{rngs::OsRng, RngCore};
 use reqwest::StatusCode;
 use rsa::{padding::PaddingScheme, RSAPrivateKey};
 use sc_common::{
   math,
-  net::{cb, sb, tcp},
+  net::{sb, tcp},
   proto,
   util::{chat::Color, Chat, UUID},
   version::ProtocolVersion,
@@ -15,14 +15,12 @@ use sc_transfer::MessageWrite;
 use serde_derive::{Deserialize, Serialize};
 use sha1::{Digest, Sha1};
 use std::{
-  collections::VecDeque,
   convert::TryInto,
   fmt, io,
   io::{ErrorKind, Write},
   net::SocketAddr,
   sync::Arc,
 };
-use tonic::Streaming;
 
 #[derive(Debug, Copy, Clone)]
 pub enum State {
@@ -97,13 +95,6 @@ impl<S: fmt::Debug> fmt::Debug for Conn<'_, S> {
   }
 }
 
-pub struct ServerListener {
-  client: crossbeam_channel::Sender<tcp::Packet>,
-  server: Streaming<proto::Packet>,
-  ver:    ProtocolVersion,
-  token:  Token,
-}
-
 #[derive(Deserialize, Debug)]
 pub struct LoginInfo {
   pub id:         UUID,
@@ -121,43 +112,6 @@ pub struct LoginProperty {
   pub value:     String,
   // Example: base64 signature, signed with Yggdrasil's private key
   pub signature: Option<String>,
-}
-
-impl ServerListener {
-  /// This starts listening for packets from the server. The rx and tx are used
-  /// to close the ClientListener. Specifically, the tx will send a value once
-  /// this listener has been closed, and this listener will close once the rx
-  /// gets a message.
-  pub async fn run(&mut self, waker: Arc<Waker>, needs_flush_tx: Sender<Token>) -> io::Result<()> {
-    let res = self.run_inner(waker, needs_flush_tx).await;
-    // Close connection here
-    res
-  }
-  pub fn ver(&self) -> ProtocolVersion {
-    self.ver
-  }
-  async fn run_inner(
-    &mut self,
-    waker: Arc<Waker>,
-    needs_flush_tx: Sender<Token>,
-  ) -> io::Result<()> {
-    // loop {
-    //   match self
-    //     .server
-    //     .message()
-    //     .await
-    //     .map_err(|e| io::Error::new(ErrorKind::Other, e.to_string()))?
-    //   {
-    //     Some(p) => {
-    //       self.client.send(cb::Packet::from_proto(p,
-    // self.ver).to_tcp(self.ver)).unwrap();       needs_flush_tx.send(self.
-    // token).unwrap();       waker.wake()?;
-    //     }
-    //     None => break,
-    //   }
-    // }
-    Ok(())
-  }
 }
 
 #[derive(Serialize)]
@@ -197,8 +151,8 @@ impl<'a, S: PacketStream + Send + Sync> Conn<'a, S> {
     icon: &'a str,
     client_token: Token,
     server_token: Token,
-  ) -> Result<Conn<'a, S>, tonic::Status> {
-    Ok(Conn {
+  ) -> Conn<'a, S> {
+    Conn {
       stream,
       state: State::Handshake,
       ver: ProtocolVersion::Invalid,
@@ -216,7 +170,7 @@ impl<'a, S: PacketStream + Send + Sync> Conn<'a, S> {
       server: None,
       serverbound: Vec::with_capacity(16 * 1024),
       garbage: vec![0; 64 * 1024],
-    })
+    }
   }
   pub fn ver(&self) -> ProtocolVersion {
     self.ver
@@ -225,7 +179,7 @@ impl<'a, S: PacketStream + Send + Sync> Conn<'a, S> {
     self.closed
   }
 
-  async fn connect_to_server(&mut self) -> Result<(), io::Error> {
+  fn connect_to_server(&mut self) -> Result<(), io::Error> {
     self.server = Some(TcpStream::connect(self.addr)?);
 
     let mut buf = [0; 1024];
@@ -283,7 +237,7 @@ impl<'a, S: PacketStream + Send + Sync> Conn<'a, S> {
             self.send_to_server(packet);
           }
           _ => {
-            futures::executor::block_on(self.handle_handshake(p))?;
+            self.handle_handshake(p)?;
           }
         },
         Ok(None) => break,
@@ -325,7 +279,7 @@ impl<'a, S: PacketStream + Send + Sync> Conn<'a, S> {
 
   /// Sends the login success packet, and sets the state to Play. The stream
   /// will not be flushed.
-  async fn finish_login(&mut self) -> Result<(), io::Error> {
+  fn finish_login(&mut self) -> Result<(), io::Error> {
     // Login success
     let info = self.info.as_ref().unwrap();
     let ver = self.ver();
@@ -339,7 +293,7 @@ impl<'a, S: PacketStream + Send + Sync> Conn<'a, S> {
     self.stream.write(out);
 
     self.state = State::Play;
-    self.connect_to_server().await?;
+    self.connect_to_server()?;
 
     Ok(())
   }
@@ -389,7 +343,7 @@ impl<'a, S: PacketStream + Send + Sync> Conn<'a, S> {
   /// the client just wants to get the status of the server. If this function
   /// returns Ok(Some(LoginInfo)), then a connection should be initialized with
   /// a grpc server.
-  async fn handle_handshake(&mut self, mut p: tcp::Packet) -> io::Result<()> {
+  fn handle_handshake(&mut self, mut p: tcp::Packet) -> io::Result<()> {
     match self.state {
       State::Handshake => {
         if p.id() != 0 {
@@ -472,7 +426,7 @@ impl<'a, S: PacketStream + Send + Sync> Conn<'a, S> {
               }
               None => {
                 self.send_compression();
-                self.finish_login().await?;
+                self.finish_login()?;
               }
             }
           }
@@ -557,7 +511,7 @@ impl<'a, S: PacketStream + Send + Sync> Conn<'a, S> {
             };
 
             self.send_compression();
-            self.finish_login().await?;
+            self.finish_login()?;
           }
           _ => {
             return Err(io::Error::new(

@@ -87,7 +87,7 @@ pub fn run() -> Result<(), Box<dyn Error>> {
                     &icon,
                     client_token,
                     server_token,
-                  )?,
+                  ),
                 );
               }
               Err(ref e) if e.kind() == io::ErrorKind::WouldBlock => {

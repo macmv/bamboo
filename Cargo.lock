@@ -2181,13 +2181,10 @@ name = "sc_proxy"
 version = "0.1.1"
 dependencies = [
  "aes",
- "async-stream",
- "async-trait",
  "base64",
  "cfb8",
  "crossbeam-channel",
  "flate2",
- "futures",
  "image",
  "log",
  "md5",
@@ -2204,9 +2201,6 @@ dependencies = [
  "serde_derive",
  "serde_json",
  "sha-1",
- "tokio",
- "tokio-stream",
- "tonic",
 ]
 
 [[package]]
