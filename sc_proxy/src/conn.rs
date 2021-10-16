@@ -1,23 +1,21 @@
 use crate::stream::PacketStream;
-use crossbeam_channel::Sender;
-use mio::{net::TcpStream, Token, Waker};
+use mio::{net::TcpStream, Token};
 use rand::{rngs::OsRng, RngCore};
 use reqwest::StatusCode;
 use rsa::{padding::PaddingScheme, RSAPrivateKey};
 use sc_common::{
   math,
-  net::{sb, tcp},
-  proto,
+  net::{cb, sb, tcp},
   util::{chat::Color, Chat, UUID},
   version::ProtocolVersion,
 };
-use sc_transfer::MessageWrite;
+use sc_transfer::{MessageRead, MessageWrite, ReadError};
 use serde_derive::{Deserialize, Serialize};
 use sha1::{Digest, Sha1};
 use std::{
   convert::TryInto,
   fmt, io,
-  io::{ErrorKind, Write},
+  io::{ErrorKind, Read, Write},
   net::SocketAddr,
   sync::Arc,
 };
@@ -44,17 +42,17 @@ impl State {
 }
 
 pub struct Conn<'a, S> {
-  stream:       S,
-  state:        State,
-  ver:          ProtocolVersion,
-  icon:         &'a str,
+  client_stream: S,
+  state:         State,
+  ver:           ProtocolVersion,
+  icon:          &'a str,
   /// The name sent from the client. The mojang auth server also sends us a
   /// username; we use this to validate the client info with the mojang auth
   /// info.
-  username:     Option<String>,
-  info:         Option<LoginInfo>,
+  username:      Option<String>,
+  info:          Option<LoginInfo>,
   /// The four byte verify token, used by the client in encryption.
-  verify_token: [u8; 4],
+  verify_token:  [u8; 4],
 
   /// The private key. Always present, even if encryption is disabled.
   key:                Arc<RSAPrivateKey>,
@@ -68,25 +66,26 @@ pub struct Conn<'a, S> {
 
   /// Server address. Used when we are done handshaking, and need to connect to
   /// a server.
-  addr:         SocketAddr,
-  /// Used when we make a server listener.
-  client_token: Token,
+  addr:          SocketAddr,
   /// Used when we create the tcp stream connected to the server.
-  server_token: Token,
+  server_token:  Token,
   /// A connection to the server. If none, then we haven't finished handshaking.
-  server:       Option<TcpStream>,
+  server_stream: Option<TcpStream>,
   /// Bytes that need to be written to the server. Will be empty if we have
   /// written everything.
-  serverbound:  Vec<u8>,
+  to_server:     Vec<u8>,
+  /// Bytes that have been read from the server, but don't form a complete
+  /// packet yet.
+  from_server:   Vec<u8>,
   /// Used to encode packets. The data in here is undefined, but the length will
   /// be constant.
-  garbage:      Vec<u8>,
+  garbage:       Vec<u8>,
 }
 
 impl<S: fmt::Debug> fmt::Debug for Conn<'_, S> {
   fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
     f.debug_struct("JavaStream")
-      .field("stream", &self.stream)
+      .field("client_stream", &self.client_stream)
       .field("state", &self.state)
       .field("ver", &self.ver)
       .field("username", &self.username)
@@ -143,17 +142,16 @@ struct JsonPlayer {
 
 impl<'a, S: PacketStream + Send + Sync> Conn<'a, S> {
   pub fn new(
-    stream: S,
+    client_stream: S,
     addr: SocketAddr,
     compression_target: i32,
     key: Arc<RSAPrivateKey>,
     der_key: Option<Vec<u8>>,
     icon: &'a str,
-    client_token: Token,
     server_token: Token,
   ) -> Conn<'a, S> {
     Conn {
-      stream,
+      client_stream,
       state: State::Handshake,
       ver: ProtocolVersion::Invalid,
       icon,
@@ -165,10 +163,10 @@ impl<'a, S: PacketStream + Send + Sync> Conn<'a, S> {
       compression_target,
       closed: false,
       addr,
-      client_token,
+      server_stream: None,
       server_token,
-      server: None,
-      serverbound: Vec::with_capacity(16 * 1024),
+      to_server: Vec::with_capacity(16 * 1024),
+      from_server: Vec::with_capacity(16 * 1024),
       garbage: vec![0; 64 * 1024],
     }
   }
@@ -180,7 +178,7 @@ impl<'a, S: PacketStream + Send + Sync> Conn<'a, S> {
   }
 
   fn connect_to_server(&mut self) -> Result<(), io::Error> {
-    self.server = Some(TcpStream::connect(self.addr)?);
+    self.server_stream = Some(TcpStream::connect(self.addr)?);
 
     let mut buf = [0; 1024];
     let mut m = MessageWrite::new(&mut buf);
@@ -188,29 +186,23 @@ impl<'a, S: PacketStream + Send + Sync> Conn<'a, S> {
     m.write_bytes(&self.info.as_ref().unwrap().id.as_be_bytes()).unwrap();
     m.write_i32(self.ver.id() as i32).unwrap();
     let idx = m.index();
-    self.server.as_mut().unwrap().write(&buf[..idx])?;
+    self.server_stream.as_mut().unwrap().write(&buf[..idx])?;
 
     Ok(())
   }
 
-  /// Writes all the data possible to the client. Returns Err(WouldBlock) or
-  /// Ok(()) if everything worked as expected.
-  pub fn write_client(&mut self) -> io::Result<()> {
-    while self.stream.needs_flush() {
-      self.stream.flush()?;
-    }
+  pub fn write_server(&mut self) -> io::Result<()> {
+    let n = self.server_stream.as_mut().unwrap().write(&self.to_server)?;
+    self.to_server.drain(0..n);
     Ok(())
   }
 
-  /// Reads as much data as possible, without blocking. Returns Ok(true) or
-  /// Err(_) if the connection should be closed.
-  pub fn read_client(&mut self) -> io::Result<bool> {
-    // Poll, then read, then try and poll again. If we have no data left, we return
-    // Ok(false). If we have closed the connection, we return Ok(true). If we error
-    // at all, we close the connection.
+  /// Reads as much data as possible from the server. Returns Ok(true) or Err(_)
+  /// if the connection should be terminated.
+  pub fn read_server(&mut self) -> io::Result<bool> {
     loop {
-      match self.poll() {
-        Ok(_) => match self.read() {
+      match self.poll_server() {
+        Ok(_) => match self.read_server_packet() {
           Ok(_) => {
             if self.closed() {
               return Ok(true);
@@ -223,18 +215,84 @@ impl<'a, S: PacketStream + Send + Sync> Conn<'a, S> {
       }
     }
   }
-  fn poll(&mut self) -> io::Result<()> {
-    self.stream.poll()
+
+  fn poll_server(&mut self) -> io::Result<()> {
+    let n = self.server_stream.as_mut().unwrap().read(&mut self.garbage)?;
+    self.from_server.extend_from_slice(&self.garbage[..n]);
+    Ok(())
+  }
+
+  fn read_server_packet(&mut self) -> io::Result<()> {
+    let mut m = MessageRead::new(&self.from_server);
+    match m.read_i32() {
+      Ok(len) => {
+        if len <= self.from_server.len() as i32 {
+          self.from_server.drain(0..m.index());
+          let (p, parsed) = cb::Packet::from_sc(self.ver, &self.from_server[..len as usize])
+            .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e.to_string()))?;
+          if len as usize != parsed {
+            return Err(io::Error::new(
+              io::ErrorKind::InvalidData,
+              "did not read all the packet data",
+            ));
+          }
+          self.send_to_client(p)?;
+        }
+      }
+      // There are no bytes waiting for us, or an invalid varint.
+      Err(e) => {
+        if !matches!(e, ReadError::EOF) {
+          return Err(io::Error::new(ErrorKind::InvalidData, e.to_string()));
+        }
+      }
+    }
+    Ok(())
+  }
+
+  /// Writes all the data possible to the client. Returns Err(WouldBlock) or
+  /// Ok(()) if everything worked as expected.
+  pub fn write_client(&mut self) -> io::Result<()> {
+    while self.client_stream.needs_flush() {
+      self.client_stream.flush()?;
+    }
+    Ok(())
+  }
+
+  /// Reads as much data as possible, without blocking. Returns Ok(true) or
+  /// Err(_) if the connection should be closed.
+  pub fn read_client(&mut self) -> io::Result<bool> {
+    // Poll, then read, then try and poll again. If we have no data left, we return
+    // Ok(false). If we have closed the connection, we return Ok(true). If we error
+    // at all, we close the connection.
+    loop {
+      match self.poll_client() {
+        Ok(_) => match self.read_client_packet() {
+          Ok(_) => {
+            if self.closed() {
+              return Ok(true);
+            }
+          }
+          Err(e) => return Err(e),
+        },
+        Err(ref e) if e.kind() == io::ErrorKind::WouldBlock => return Ok(false),
+        Err(e) => return Err(e),
+      }
+    }
+  }
+  /// Reads data from the client tcp connection, and buffers that to be read in
+  /// `read_client_packet`.
+  fn poll_client(&mut self) -> io::Result<()> {
+    self.client_stream.poll()
   }
   /// Reads a packet from the internal buffer from the client. Does not interact
   /// with the tcp connection at all.
-  fn read(&mut self) -> io::Result<()> {
+  fn read_client_packet(&mut self) -> io::Result<()> {
     loop {
-      match self.stream.read(self.ver) {
+      match self.client_stream.read(self.ver) {
         Ok(Some(p)) => match self.state {
           State::Play => {
             let packet = sb::Packet::from_tcp(p, self.ver);
-            self.send_to_server(packet);
+            self.send_to_server(packet)?;
           }
           _ => {
             self.handle_handshake(p)?;
@@ -247,6 +305,13 @@ impl<'a, S: PacketStream + Send + Sync> Conn<'a, S> {
     Ok(())
   }
 
+  /// Tries to send the packet to the client, and buffers it if that is not
+  /// possible.
+  fn send_to_client(&mut self, p: cb::Packet) -> io::Result<()> {
+    self.client_stream.write(p.to_tcp(self.ver));
+    self.write_client()
+  }
+
   /// Tries to send the packet to the server, and buffers it if that is not
   /// possible.
   fn send_to_server(&mut self, p: sb::Packet) -> io::Result<()> {
@@ -254,14 +319,8 @@ impl<'a, S: PacketStream + Send + Sync> Conn<'a, S> {
     // packet.
     let n = p.to_sc(self.ver, &mut self.garbage).unwrap();
     let buf = &self.garbage[..n];
-    self.serverbound.extend_from_slice(buf);
-    self.server_flush()
-  }
-
-  fn server_flush(&mut self) -> io::Result<()> {
-    let n = self.server.as_mut().unwrap().write(&self.serverbound)?;
-    self.serverbound.drain(0..n);
-    Ok(())
+    self.to_server.extend_from_slice(buf);
+    self.write_server()
   }
 
   /// Sends the set compression packet, using self.compression_target. The
@@ -271,9 +330,9 @@ impl<'a, S: PacketStream + Send + Sync> Conn<'a, S> {
     if self.compression_target != 0 {
       let mut out = tcp::Packet::new(3, self.ver());
       out.write_varint(self.compression_target);
-      self.stream.write(out);
+      self.client_stream.write(out);
       // Must happen after the packet has been sent
-      self.stream.set_compression(self.compression_target);
+      self.client_stream.set_compression(self.compression_target);
     }
   }
 
@@ -290,7 +349,7 @@ impl<'a, S: PacketStream + Send + Sync> Conn<'a, S> {
       out.write_str(&info.id.as_dashed_str());
     }
     out.write_str(&info.name);
-    self.stream.write(out);
+    self.client_stream.write(out);
 
     self.state = State::Play;
     self.connect_to_server()?;
@@ -303,7 +362,7 @@ impl<'a, S: PacketStream + Send + Sync> Conn<'a, S> {
     // Disconnect
     let mut out = tcp::Packet::new(0, self.ver);
     out.write_str(&reason.into().to_json());
-    self.stream.write(out);
+    self.client_stream.write(out);
   }
 
   /// Generates the json status for the server
@@ -369,7 +428,7 @@ impl<'a, S: PacketStream + Send + Sync> Conn<'a, S> {
             let status = self.build_status();
             let mut out = tcp::Packet::new(0, self.ver);
             out.write_str(&serde_json::to_string(&status).unwrap());
-            self.stream.write(out);
+            self.client_stream.write(out);
           }
           // Ping
           1 => {
@@ -377,8 +436,8 @@ impl<'a, S: PacketStream + Send + Sync> Conn<'a, S> {
             // Send pong
             let mut out = tcp::Packet::new(1, self.ver);
             out.write_u64(id);
-            self.stream.write(out);
-            self.stream.flush()?;
+            self.client_stream.write(out);
+            self.client_stream.flush()?;
             // Client is done sending packets, we can close now.
             self.closed = true;
             return Ok(());
@@ -421,7 +480,7 @@ impl<'a, S: PacketStream + Send + Sync> Conn<'a, S> {
                 out.write_buf(key); // DER encoded RSA key
                 out.write_varint(4); // Token len
                 out.write_buf(&self.verify_token); // Verify token
-                self.stream.write(out);
+                self.client_stream.write(out);
                 // Wait for encryption response to enable encryption
               }
               None => {
@@ -475,8 +534,8 @@ impl<'a, S: PacketStream + Send + Sync> Conn<'a, S> {
 
             // If we need to disconnect the client, the client is expecting encrypted
             // packets from now on, so we need to enable encryption here.
-            self.stream.enable_encryption(&secret);
-            self.stream.enable_encryption(&secret);
+            self.client_stream.enable_encryption(&secret);
+            self.client_stream.enable_encryption(&secret);
 
             let mut hash = Sha1::new();
             hash.update("");
@@ -491,7 +550,7 @@ impl<'a, S: PacketStream + Send + Sync> Conn<'a, S> {
                 info!("got status code: {}", v.status());
                 if v.status() == StatusCode::NO_CONTENT {
                   self.send_disconnect("Invalid auth token! Please re-login (restart your game and launcher)");
-                  self.stream.flush()?;
+                  self.client_stream.flush()?;
                   // Disconnect client; they are not authenticated
                   self.closed = true;
                   return Ok(());
@@ -529,7 +588,7 @@ impl<'a, S: PacketStream + Send + Sync> Conn<'a, S> {
       }
     }
 
-    self.stream.flush()?;
+    self.client_stream.flush()?;
     Ok(())
   }
 }

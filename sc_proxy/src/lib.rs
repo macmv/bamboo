@@ -85,7 +85,6 @@ pub fn run() -> Result<(), Box<dyn Error>> {
                     key.clone(),
                     der_key.clone(),
                     &icon,
-                    client_token,
                     server_token,
                   ),
                 );
@@ -108,6 +107,26 @@ pub fn run() -> Result<(), Box<dyn Error>> {
           if is_server {
             if event.is_readable() {
               let conn = clients.get_mut(&token).expect("client doesn't exist!");
+              match conn.read_server() {
+                Ok(_) => {}
+                Err(e) => {
+                  error!("error while parsing packet from client {:?}: {}", token, e);
+                  clients.remove(&token);
+                }
+              }
+            }
+
+            if event.is_writable() {
+              if let Some(conn) = clients.get_mut(&token) {
+                match conn.write_server() {
+                  Ok(_) => {}
+                  Err(ref e) if e.kind() == io::ErrorKind::WouldBlock => {}
+                  Err(e) => {
+                    error!("error while flushing packets to the client {:?}: {}", token, e);
+                    clients.remove(&token);
+                  }
+                }
+              }
             }
           } else {
             if event.is_readable() {
