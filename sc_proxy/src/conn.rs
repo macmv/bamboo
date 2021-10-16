@@ -336,8 +336,8 @@ impl<'a, S: PacketStream + Send + Sync> Conn<'a, S> {
   /// Tries to send the packet to the server, and buffers it if that is not
   /// possible.
   fn send_to_server(&mut self, p: sb::Packet) -> io::Result<()> {
-    // The only error here is EOF, which means 64k was not enough space for this
-    // packet.
+    // The only error here is EOF, which means the garbage buffer was not enough
+    // space for this packet.
     let len = p.to_sc(self.ver, &mut self.garbage).unwrap();
 
     let mut prefix = [0; 5];

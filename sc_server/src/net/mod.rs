@@ -171,14 +171,12 @@ impl Connection {
       let mut m = MessageRead::new(&self.incoming);
       match m.read_i32() {
         Ok(len) => {
-          if len as usize + m.index() >= self.incoming.len() {
-            info!("got packet with length {}", len);
+          if len as usize + m.index() <= self.incoming.len() {
             // Remove the length varint at the start
             let idx = m.index();
             self.incoming.drain(0..idx);
             // We already handshaked
             if let Some(ver) = self.ver {
-              info!("READING PACKET");
               let (p, n) = sb::Packet::from_sc(ver, &self.incoming)?;
               if n != len as usize {
                 return Err(ReadError::EOF);
