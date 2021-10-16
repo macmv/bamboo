@@ -164,6 +164,7 @@ impl MessageWrite<'_> {
       return Err(WriteError::BufTooLong);
     }
     self.data[self.idx..self.idx + v.len()].clone_from_slice(v);
+    self.idx += v.len();
     Ok(())
   }
   /// Writes a length prefixed buffer.
@@ -235,11 +236,14 @@ mod tests {
   }
 
   #[test]
-  fn buf() {
+  fn bytes() {
     let mut data = [0; 64];
     let mut m = MessageWrite::new(&mut data);
     assert_eq!(m.index(), 0);
-    m.write_str("hello").unwrap();
+    m.write_bytes(b"hello").unwrap();
     assert_eq!(m.index(), 5);
+    m.write_bytes(b" world").unwrap();
+    assert_eq!(m.index(), 11);
+    assert_eq!(&data[..11], b"hello world");
   }
 }
