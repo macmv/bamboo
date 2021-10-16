@@ -242,7 +242,12 @@ impl<'a, S: PacketStream + Send + Sync> Conn<'a, S> {
           let idx = m.index();
           self.from_server.drain(0..idx);
           let (p, parsed) = cb::Packet::from_sc(self.ver, &self.from_server[..len as usize])
-            .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e.to_string()))?;
+            .map_err(|(packet, field, err)| {
+              io::Error::new(
+                io::ErrorKind::InvalidData,
+                format!("while reading field {} of packet {} got error: {}", field, packet, err),
+              )
+            })?;
           if len as usize != parsed {
             return Err(io::Error::new(
               io::ErrorKind::InvalidData,

@@ -136,9 +136,7 @@ impl Connection {
         return Ok(true);
       }
       self.incoming.extend_from_slice(&self.garbage[..n]);
-      self
-        .read_incoming(wm, player)
-        .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e.to_string()))?;
+      self.read_incoming(wm, player)?;
     }
   }
 
@@ -181,7 +179,7 @@ impl Connection {
     &mut self,
     wm: &Arc<WorldManager>,
     player: &mut Option<Arc<Player>>,
-  ) -> Result<(), ReadError> {
+  ) -> io::Result<()> {
     while !self.incoming.is_empty() {
       let mut m = MessageRead::new(&self.incoming);
       match m.read_i32() {
@@ -192,18 +190,50 @@ impl Connection {
             self.incoming.drain(0..idx);
             // We already handshaked
             if let Some(ver) = self.ver {
-              let (p, n) = sb::Packet::from_sc(ver, &self.incoming)?;
+              let (p, n) =
+                sb::Packet::from_sc(ver, &self.incoming).map_err(|(packet, field, err)| {
+                  io::Error::new(
+                    io::ErrorKind::InvalidData,
+                    format!("while reading field {} of packet {}, got err: {}", field, packet, err),
+                  )
+                })?;
               if n != len as usize {
-                return Err(ReadError::EOF);
+                return Err(io::Error::new(
+                  io::ErrorKind::InvalidData,
+                  format!(
+                    "packet did not parse enough bytes (expected {}, only parsed {})",
+                    len, n
+                  ),
+                ));
               }
               self.incoming.drain(0..n);
               self.handle_packet(wm, player.as_ref().unwrap(), p);
             } else {
               // This is the first packet, so it must be a login packet.
               let mut m = MessageRead::new(&self.incoming);
-              let username = m.read_str()?;
-              let uuid = UUID::from_bytes(m.read_bytes(16)?.try_into().unwrap());
-              let ver = ProtocolVersion::from(m.read_i32()?);
+              let username = m.read_str().map_err(|e| {
+                io::Error::new(
+                  io::ErrorKind::InvalidData,
+                  format!("error reading handshake: {}", e),
+                )
+              })?;
+              let uuid = UUID::from_bytes(
+                m.read_bytes(16)
+                  .map_err(|e| {
+                    io::Error::new(
+                      io::ErrorKind::InvalidData,
+                      format!("error reading handshake: {}", e),
+                    )
+                  })?
+                  .try_into()
+                  .unwrap(),
+              );
+              let ver = ProtocolVersion::from(m.read_i32().map_err(|e| {
+                io::Error::new(
+                  io::ErrorKind::InvalidData,
+                  format!("error reading handshake: {}", e),
+                )
+              })?);
               let idx = m.index();
               self.incoming.drain(0..idx);
               self.ver = Some(ver);
@@ -218,7 +248,10 @@ impl Connection {
           if !matches!(e, ReadError::EOF) {
             return Ok(());
           } else {
-            return Err(e);
+            return Err(io::Error::new(
+              io::ErrorKind::InvalidData,
+              format!("error reading packet id: {}", e),
+            ));
           }
         }
       }
