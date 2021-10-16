@@ -38,6 +38,7 @@ bytes = "1.0.1"
 rand = "0.8.3"
 rand_core = "0.6.3"
 wyhash = "0.5.0"
+num_cpus = "1.13.0"
 
 serde = "1.0"
 serde_derive = "1.0"
