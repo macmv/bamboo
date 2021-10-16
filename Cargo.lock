@@ -2100,6 +2100,7 @@ dependencies = [
  "byteorder",
  "bytes",
  "criterion",
+ "crossbeam-channel",
  "futures",
  "log",
  "log4rs",
