@@ -37,6 +37,8 @@ pub struct Connection {
   /// Sending on this will send a packet to the client.
   tx: Sender<cb::Packet>,
   rx: Receiver<cb::Packet>,
+
+  incoming: Vec<u8>,
 }
 
 impl Connection {
@@ -44,7 +46,16 @@ impl Connection {
     // For a 10 chunk render distance, we need to send 441 packets at once. So a
     // limit of 512 means we don't block very much.
     let (tx, rx) = crossbeam_channel::bounded(512);
-    Connection { stream, ver: None, closed: false.into(), tx, rx }
+    Connection {
+      stream,
+      ver: None,
+      closed: false.into(),
+      tx,
+      rx,
+      // This is created any time we have a client, so making it too large would make us very
+      // vunerable to ddos attacks.
+      incoming: Vec::with_capacity(1024),
+    }
   }
 
   /// This will return ErrorKind::WouldBlock once its done reading. If it
@@ -56,35 +67,56 @@ impl Connection {
         Ok(v) => v,
         Err(e) => return e,
       };
-      let data = &buf[..n];
-      match self.handle_data(wm, player, data) {
+      self.incoming.extend_from_slice(&buf[..n]);
+      match self.read_incoming(wm, player) {
         Ok(_) => {}
         Err(e) => return io::Error::new(io::ErrorKind::InvalidData, e.to_string()),
       };
     }
   }
 
-  fn handle_data(
+  fn read_incoming(
     &mut self,
     wm: &Arc<WorldManager>,
     player: &mut Option<Arc<Player>>,
-    mut data: &[u8],
   ) -> Result<(), ReadError> {
-    while !data.is_empty() {
-      if let Some(ver) = self.ver {
-        let (p, n) = sb::Packet::from_sc(ver, data)?;
-        data = &data[..n];
-        self.handle_packet(wm, player.as_ref().unwrap(), p);
-      } else {
-        // This is the first packet, so it must be a login packet.
-        let mut m = MessageRead::new(data);
-        let username = m.read_str()?;
-        let uuid = UUID::from_bytes(m.read_bytes(16)?.try_into().unwrap());
-        let ver = ProtocolVersion::from(m.read_i32()?);
-        data = &data[..m.index()];
-        self.ver = Some(ver);
-        *player = Some(wm.new_player(self.tx.clone(), username, uuid, ver));
+    if let Some(ver) = self.ver {
+      while !self.incoming.is_empty() {
+        let mut m = MessageRead::new(&self.incoming);
+        match m.read_i32() {
+          Ok(len) => {
+            if len >= self.incoming.len() as i32 {
+              info!("READING PACKET");
+              let (p, n) = sb::Packet::from_sc(ver, &self.incoming)?;
+              if n != len as usize {
+                return Err(ReadError::EOF);
+              }
+              self.incoming.drain(0..n);
+              self.handle_packet(wm, player.as_ref().unwrap(), p);
+            }
+          }
+          // If this is an EOF, then we have a partial varint, so we are done reading.
+          Err(e) => {
+            if !matches!(e, ReadError::EOF) {
+              return Ok(());
+            } else {
+              return Err(e);
+            }
+          }
+        }
       }
+    } else {
+      info!("reading start info");
+      // This is the first packet, so it must be a login packet.
+      let mut m = MessageRead::new(&self.incoming);
+      let username = m.read_str()?;
+      info!("read str: {}", username);
+      let uuid = UUID::from_bytes(m.read_bytes(16)?.try_into().unwrap());
+      let ver = ProtocolVersion::from(m.read_i32()?);
+      let idx = m.index();
+      self.incoming.drain(0..idx);
+      self.ver = Some(ver);
+      *player = Some(wm.new_player(self.tx.clone(), username, uuid, ver));
     }
     Ok(())
   }
