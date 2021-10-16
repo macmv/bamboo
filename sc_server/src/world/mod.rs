@@ -24,7 +24,7 @@ use sc_common::{
   net::cb,
   util::{
     chat::{Chat, Color},
-    UUID,
+    ThreadPool, UUID,
   },
   version::{BlockVersion, ProtocolVersion},
 };
@@ -57,7 +57,7 @@ pub struct World {
   entity_converter: Arc<entity::TypeConverter>,
   plugins:          Arc<plugin::PluginManager>,
   commands:         Arc<CommandTree>,
-  mspt:             AtomicU32,
+  mspt:             Arc<AtomicU32>,
   wm:               Arc<WorldManager>,
 }
 
@@ -91,21 +91,21 @@ impl World {
       entity_converter,
       plugins,
       commands,
-      mspt: 0.into(),
+      mspt: Arc::new(0.into()),
       wm,
     });
     let w = world.clone();
-    tokio::spawn(async move {
+    thread::spawn(|| {
       w.init();
       w.global_tick_loop();
     });
     world
   }
   fn global_tick_loop(self: Arc<Self>) {
-    let mut int = time::interval(Duration::from_millis(50));
+    let pool = ThreadPool::auto();
     let mut tick = 0;
     loop {
-      int.tick();
+      let start = Instant::now();
       if tick % 20 == 0 {
         let mut header = Chat::empty();
         let mut footer = Chat::empty();
@@ -129,7 +129,33 @@ impl World {
           p.send(out.clone());
         }
       }
+      for id in self.players().keys() {
+        let wm = Arc::clone(&self);
+        let mspt = self.mspt.clone();
+        pool.execute(move || {
+          let start = Instant::now();
+          let players = wm.players();
+          let player = players.get(id).unwrap();
+          // Updates the player correctly, and performs collision checks. This also
+          // handles new chunks.
+          player.tick();
+          // Do player collision and packets and stuff
+          // Once per second, send keep alive packet
+          if tick % 20 == 0 {
+            player.send(cb::Packet::KeepAlive {
+              keep_alive_id_v1_8:    Some(1234556),
+              keep_alive_id_v1_12_2: Some(1234556),
+            });
+          }
+          mspt.fetch_add(start.elapsed().as_millis().try_into().unwrap(), Ordering::SeqCst);
+        });
+      }
       tick += 1;
+      let time = Instant::now().duration_since(start);
+      match Duration::from_millis(50).checked_sub(time) {
+        Some(t) => thread::sleep(t),
+        None => warn!("tick took more than 50 milliseconds: {}", time.as_millis()),
+      }
     }
   }
   fn new_player(self: Arc<Self>, player: Player) -> Arc<Player> {
