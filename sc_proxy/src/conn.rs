@@ -243,9 +243,13 @@ impl<'a, S: PacketStream + Send + Sync> Conn<'a, S> {
           if len as usize != parsed {
             return Err(io::Error::new(
               io::ErrorKind::InvalidData,
-              "did not read all the packet data",
+              format!(
+                "did not read all the packet data (expected to read {} bytes, but only read {} bytes)",
+                len, parsed
+              ),
             ));
           }
+          self.from_server.drain(0..parsed);
           self.send_to_client(p)?;
         }
       }

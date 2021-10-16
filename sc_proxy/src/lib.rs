@@ -110,7 +110,7 @@ pub fn run() -> Result<(), Box<dyn Error>> {
               match conn.read_server() {
                 Ok(_) => {}
                 Err(e) => {
-                  error!("error while parsing packet from client {:?}: {}", token, e);
+                  error!("error while parsing packet from server {:?}: {}", token, e);
                   clients.remove(&token);
                 }
               }
