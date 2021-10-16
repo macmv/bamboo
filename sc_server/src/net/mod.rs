@@ -373,8 +373,15 @@ impl ConnectionManager {
   fn wake_event(&mut self, ev: WakeEvent) {
     match ev {
       WakeEvent::Clientbound(tok) => {
-        if let Some(conn) = self.connections.get_mut(&tok) {
-          // TODO: Send packet
+        if let Some((conn, _)) = self.connections.get_mut(&tok) {
+          match conn.try_send() {
+            Ok(()) => {}
+            Err(e) if e.kind() == io::ErrorKind::WouldBlock => {}
+            Err(e) => {
+              error!("error in connection: {}", e);
+              self.connections.remove(&tok);
+            }
+          }
         }
       }
     }
