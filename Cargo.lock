@@ -1728,6 +1728,7 @@ dependencies = [
  "sc_data",
  "sc_transfer",
  "sugarlang",
+ "yaml-rust",
 ]
 
 [[package]]

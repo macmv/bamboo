@@ -3,6 +3,7 @@ extern crate log;
 
 pub mod block;
 pub mod command;
+pub mod config;
 pub mod entity;
 pub mod item;
 pub mod net;
