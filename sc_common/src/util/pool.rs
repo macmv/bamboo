@@ -4,7 +4,7 @@ use std::{
   thread,
 };
 
-type BoxFn = Box<dyn Fn() + Send>;
+type BoxFn = Box<dyn FnOnce() + Send>;
 
 pub struct ThreadPool {
   threads: Vec<Sender<BoxFn>>,
@@ -51,7 +51,7 @@ impl ThreadPool {
   }
 
   /// Executes the given task on the next worker thread.
-  pub fn execute<F: Fn() + Send + 'static>(&self, f: F) {
+  pub fn execute<F: FnOnce() + Send + 'static>(&self, f: F) {
     let id = self.id.fetch_add(1, Ordering::Relaxed) % self.threads.len() as u32;
     self.threads[id as usize].send(Box::new(f)).expect("thread unexpectedly closed");
   }

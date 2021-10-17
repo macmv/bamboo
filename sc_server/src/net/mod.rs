@@ -5,12 +5,13 @@ use mio::{
   net::{TcpListener, TcpStream},
   Events, Interest, Poll, Registry, Token, Waker,
 };
+use parking_lot::{Mutex, RwLock};
 use sc_common::{
   math::Pos,
   net::{cb, sb},
   util::{
     chat::{Chat, Color, HoverEvent},
-    UUID,
+    ThreadPool, UUID,
   },
   version::ProtocolVersion,
 };
@@ -124,19 +125,28 @@ impl Connection {
   }
 
   /// If this returns Ok(true) or an error, the connection should be closed.
-  /// Ok(false) or Err(ErrorKind::WouldBlock) is normal operation.
+  /// Ok(false) is normal operation. This will never return Err(WouldBlock).
+  ///
+  /// The second value in the tuple is for initialization. If a Some(player) is
+  /// returned, then the next time this functions is called, that same player
+  /// should be passed in. This function should be called again after
+  /// Some(player) is returned, as it may not have read all availible data.
   pub fn read(
     &mut self,
     wm: &Arc<WorldManager>,
-    player: &mut Option<Arc<Player>>,
-  ) -> io::Result<bool> {
+    player: &Option<Arc<Player>>,
+  ) -> io::Result<(bool, Option<Arc<Player>>)> {
     loop {
-      let n = self.stream.read(&mut self.garbage)?;
-      if n == 0 {
-        return Ok(true);
-      }
+      let n = match self.stream.read(&mut self.garbage) {
+        Ok(0) => return Ok((true, None)),
+        Ok(n) => n,
+        Err(e) if e.kind() == io::ErrorKind::WouldBlock => return Ok((false, None)),
+        Err(e) => return Err(e),
+      };
       self.incoming.extend_from_slice(&self.garbage[..n]);
-      self.read_incoming(wm, player)?;
+      if let Some(p) = self.read_incoming(wm, player)? {
+        return Ok((false, Some(p)));
+      }
     }
   }
 
@@ -178,8 +188,8 @@ impl Connection {
   fn read_incoming(
     &mut self,
     wm: &Arc<WorldManager>,
-    player: &mut Option<Arc<Player>>,
-  ) -> io::Result<()> {
+    player: &Option<Arc<Player>>,
+  ) -> io::Result<Option<Arc<Player>>> {
     while !self.incoming.is_empty() {
       let mut m = MessageRead::new(&self.incoming);
       match m.read_i32() {
@@ -237,7 +247,8 @@ impl Connection {
               let idx = m.index();
               self.incoming.drain(0..idx);
               self.ver = Some(ver);
-              *player = Some(wm.new_player(self.sender(), username, uuid, ver));
+              // We rely on the caller to set the player using this value.
+              return Ok(Some(wm.new_player(self.sender(), username, uuid, ver)));
             }
           } else {
             break;
@@ -245,8 +256,8 @@ impl Connection {
         }
         // If this is an EOF, then we have a partial varint, so we are done reading.
         Err(e) => {
-          if !matches!(e, ReadError::EOF) {
-            return Ok(());
+          if matches!(e, ReadError::EOF) {
+            return Ok(None);
           } else {
             return Err(io::Error::new(
               io::ErrorKind::InvalidData,
@@ -256,7 +267,7 @@ impl Connection {
         }
       }
     }
-    Ok(())
+    Ok(None)
   }
 
   // This waits for the a login packet from the proxy. If any other packet is
@@ -385,8 +396,9 @@ impl Connection {
 }
 
 pub struct ConnectionManager {
-  connections: HashMap<Token, (Connection, Option<Arc<Player>>)>,
+  connections: Arc<RwLock<HashMap<Token, (Mutex<Connection>, Option<Arc<Player>>)>>>,
   wm:          Arc<WorldManager>,
+  pool:        ThreadPool,
 }
 
 pub enum WakeEvent {
@@ -395,7 +407,11 @@ pub enum WakeEvent {
 
 impl ConnectionManager {
   pub fn new(wm: Arc<WorldManager>) -> ConnectionManager {
-    ConnectionManager { connections: HashMap::new(), wm }
+    ConnectionManager {
+      connections: Arc::new(RwLock::new(HashMap::new())),
+      wm,
+      pool: ThreadPool::auto(),
+    }
   }
 
   pub fn run(&mut self, addr: SocketAddr) -> io::Result<()> {
@@ -442,9 +458,10 @@ impl ConnectionManager {
             next_token += 1;
             poll.registry().register(&mut conn, token, Interest::READABLE | Interest::WRITABLE)?;
 
-            self
-              .connections
-              .insert(token, (Connection::new(conn, tx.clone(), waker.clone(), token), None));
+            self.connections.write().insert(
+              token,
+              (Mutex::new(Connection::new(conn, tx.clone(), waker.clone(), token)), None),
+            );
           },
           WAKE => loop {
             match rx.try_recv() {
@@ -454,11 +471,16 @@ impl ConnectionManager {
             }
           },
           token => {
-            let (conn, player) =
-              self.connections.get_mut(&token).expect("got event for a client that does not exist");
-            if Self::handle(&self.wm, poll.registry(), conn, player, event) {
-              self.wm.remove_player(player.as_ref().unwrap().id());
-            }
+            let wm = self.wm.clone();
+            let c = self.connections.clone();
+            let e = event.clone();
+            self.pool.execute(move || {
+              if Self::handle(&wm, &c, token, e) {
+                let mut c = c.write();
+                let (_, p) = c.remove(&token).expect("got event for a client that does not exist");
+                wm.remove_player(p.as_ref().unwrap().id());
+              }
+            });
           }
         }
       }
@@ -468,13 +490,13 @@ impl ConnectionManager {
   fn wake_event(&mut self, ev: WakeEvent) {
     match ev {
       WakeEvent::Clientbound(tok) => {
-        if let Some((conn, _)) = self.connections.get_mut(&tok) {
-          match conn.try_send() {
+        if let Some((conn, _)) = self.connections.read().get(&tok) {
+          match conn.lock().try_send() {
             Ok(()) => {}
             Err(e) if e.kind() == io::ErrorKind::WouldBlock => {}
             Err(e) => {
               error!("error in connection: {}", e);
-              self.connections.remove(&tok);
+              self.connections.write().remove(&tok);
             }
           }
         }
@@ -484,23 +506,43 @@ impl ConnectionManager {
 
   fn handle(
     wm: &Arc<WorldManager>,
-    reg: &Registry,
-    conn: &mut Connection,
-    player: &mut Option<Arc<Player>>,
-    ev: &Event,
+    c: &RwLock<HashMap<Token, (Mutex<Connection>, Option<Arc<Player>>)>>,
+    token: Token,
+    ev: Event,
   ) -> bool {
     if ev.is_readable() {
-      match conn.read(&wm, player) {
-        Ok(false) => {}
-        Ok(true) => return true,
-        Err(e) if e.kind() == io::ErrorKind::WouldBlock => {}
-        Err(e) => {
-          error!("error in connection: {}", e);
-          return true;
+      loop {
+        let rl = c.read();
+        let (conn, player) = rl.get(&token).expect("got event for a client that does not exist");
+        let mut conn = conn.lock();
+        match conn.read(&wm, player) {
+          Ok((false, Some(p))) => {
+            // The handshake was just completed, so now we need to add the player into the
+            // main hashmap. So we drop the read lock, and then lock the map for writing.
+            // This is the only situation where we don't break, as conn.read() will return
+            // early if it gets a player.
+            drop(conn);
+            drop(rl);
+            let mut wl = c.write();
+            let (_, player) = wl.get_mut(&token).unwrap();
+            *player = Some(p);
+          }
+          // Normal operation. We are done reading all the data.
+          Ok((false, None)) => break,
+          // Connection is closed without an error.
+          Ok((true, _)) => return true,
+          // Something else went wrong.
+          Err(e) => {
+            error!("error in connection: {}", e);
+            return true;
+          }
         }
       }
     }
     if ev.is_writable() {
+      let rl = c.read();
+      let (conn, _) = rl.get(&token).expect("got event for a client that does not exist");
+      let mut conn = conn.lock();
       match conn.try_flush() {
         Ok(()) => {}
         Err(e) if e.kind() == io::ErrorKind::WouldBlock => {}
