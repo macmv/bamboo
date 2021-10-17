@@ -57,10 +57,6 @@ impl CountedChunk {
   pub fn new(c: MultiChunk) -> CountedChunk {
     CountedChunk { count: 0.into(), chunk: Mutex::new(c) }
   }
-
-  pub fn count(&self) -> u32 {
-    self.count.load(Ordering::Acquire)
-  }
 }
 
 pub struct World {
@@ -154,6 +150,7 @@ impl World {
         for p in self.players().values() {
           p.send(out.clone());
         }
+        info!("loaded chunks: {}", self.chunks.read().len());
       }
       for p in self.players().iter() {
         let p = p.clone();
@@ -414,8 +411,29 @@ impl World {
     self.players.lock()
   }
 
-  pub fn remove_player(&self, id: UUID) {
-    self.players.lock().remove(&id);
+  /// Removes the given player from this world. This should be called from
+  /// WorldManagger, so that the world managger's table of players to worlds
+  /// stays synced.
+  fn remove_player(&self, id: UUID) {
+    let mut lock = self.players.lock();
+    let p = lock.remove(&id).unwrap();
+    p.unload_all();
+    if lock.is_empty() {
+      self.unload_chunks();
+      drop(lock);
+      let len = self.chunks.read().len();
+      if len != 0 {
+        warn!("chunks remaining after last player logged off: {}", len);
+      }
+    }
+  }
+
+  // Unloads all the chunks that are cached for unloading.
+  pub fn unload_chunks(&self) {
+    let mut wl = self.chunks.write();
+    for pos in self.unloadable_chunks.lock().drain() {
+      wl.remove(&pos);
+    }
   }
 }
 

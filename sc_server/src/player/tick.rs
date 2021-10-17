@@ -264,6 +264,24 @@ impl Player {
       }
     }
   }
+  /// Unloads all the chunks that this player can see from the world. This will
+  /// call dec_view for all the chunks this player can see. This does not send
+  /// any packets! It should only be used internally when a player is being
+  /// removed.
+  pub(crate) fn unload_all(&self) {
+    let chunk = {
+      let pos = self.pos.lock().unwrap();
+      pos.curr.block().chunk()
+    };
+    let v = self.view_distance as i32;
+    let max = chunk + ChunkPos::new(v, v);
+    let min = chunk - ChunkPos::new(v, v);
+    for x in min.x()..=max.x() {
+      for z in min.z()..=max.z() {
+        self.world.dec_view(ChunkPos::new(x, z));
+      }
+    }
+  }
   fn unload_chunks(&self, min: ChunkPos, max: ChunkPos) {
     if min == max {
       return;
