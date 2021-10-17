@@ -72,6 +72,10 @@ pub struct WorldManager {
   commands:         Arc<CommandTree>,
 }
 
+struct State {
+  mspt: Arc<AtomicU32>,
+}
+
 impl World {
   pub fn new(
     block_converter: Arc<block::TypeConverter>,
@@ -102,7 +106,7 @@ impl World {
     world
   }
   fn global_tick_loop(self: Arc<Self>) {
-    let pool = ThreadPool::auto();
+    let pool = ThreadPool::auto(|| State { mspt: self.mspt.clone() });
     let mut tick = 0;
     loop {
       let start = Instant::now();
@@ -130,10 +134,8 @@ impl World {
         }
       }
       for p in self.players().iter() {
-        let wm = &self.clone();
-        let mspt = self.mspt.clone();
         let p = p.clone();
-        pool.execute(move || {
+        pool.execute(move |s| {
           let start = Instant::now();
           // Updates the player correctly, and performs collision checks. This also
           // handles new chunks.
@@ -146,7 +148,7 @@ impl World {
               keep_alive_id_v1_12_2: Some(1234556),
             });
           }
-          mspt.fetch_add(start.elapsed().as_millis().try_into().unwrap(), Ordering::SeqCst);
+          s.mspt.fetch_add(start.elapsed().as_millis().try_into().unwrap(), Ordering::SeqCst);
         });
       }
       tick += 1;

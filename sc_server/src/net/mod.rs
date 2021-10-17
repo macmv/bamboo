@@ -3,7 +3,7 @@ use crossbeam_channel::{Receiver, Sender, TryRecvError};
 use mio::{
   event::Event,
   net::{TcpListener, TcpStream},
-  Events, Interest, Poll, Registry, Token, Waker,
+  Events, Interest, Poll, Token, Waker,
 };
 use parking_lot::{Mutex, RwLock};
 use sc_common::{
@@ -398,20 +398,20 @@ impl Connection {
 pub struct ConnectionManager {
   connections: Arc<RwLock<HashMap<Token, (Mutex<Connection>, Option<Arc<Player>>)>>>,
   wm:          Arc<WorldManager>,
-  pool:        ThreadPool,
 }
 
 pub enum WakeEvent {
   Clientbound(Token),
 }
 
+struct State {
+  wm:    Arc<WorldManager>,
+  conns: Arc<RwLock<HashMap<Token, (Mutex<Connection>, Option<Arc<Player>>)>>>,
+}
+
 impl ConnectionManager {
   pub fn new(wm: Arc<WorldManager>) -> ConnectionManager {
-    ConnectionManager {
-      connections: Arc::new(RwLock::new(HashMap::new())),
-      wm,
-      pool: ThreadPool::auto(),
-    }
+    ConnectionManager { connections: Arc::new(RwLock::new(HashMap::new())), wm }
   }
 
   pub fn run(&mut self, addr: SocketAddr) -> io::Result<()> {
@@ -429,6 +429,9 @@ impl ConnectionManager {
     let mut next_token = 0;
 
     let (tx, rx) = crossbeam_channel::bounded(1024);
+
+    let pool =
+      ThreadPool::auto(|| State { wm: self.wm.clone(), conns: self.connections.clone() });
 
     loop {
       poll.poll(&mut events, None)?;
@@ -471,14 +474,12 @@ impl ConnectionManager {
             }
           },
           token => {
-            let wm = self.wm.clone();
-            let c = self.connections.clone();
             let e = event.clone();
-            self.pool.execute(move || {
-              if Self::handle(&wm, &c, token, e) {
-                let mut c = c.write();
+            pool.execute(move |s| {
+              if Self::handle(&s.wm, &s.conns, token, e) {
+                let mut c = s.conns.write();
                 let (_, p) = c.remove(&token).expect("got event for a client that does not exist");
-                wm.remove_player(p.as_ref().unwrap().id());
+                s.wm.remove_player(p.as_ref().unwrap().id());
               }
             });
           }
