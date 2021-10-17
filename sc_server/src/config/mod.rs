@@ -78,3 +78,33 @@ impl<'a> YamlValue<'a> for &'a str {
     "string"
   }
 }
+
+impl YamlValue<'_> for String {
+  fn from_yaml(v: &Yaml) -> Option<Self> {
+    v.as_str().map(|v| v.into())
+  }
+
+  fn name() -> &'static str {
+    "string"
+  }
+}
+
+impl YamlValue<'_> for f32 {
+  fn from_yaml(v: &Yaml) -> Option<Self> {
+    v.as_f64().map(|v| v as f32)
+  }
+
+  fn name() -> &'static str {
+    "float"
+  }
+}
+
+impl YamlValue<'_> for f64 {
+  fn from_yaml(v: &Yaml) -> Option<Self> {
+    v.as_f64()
+  }
+
+  fn name() -> &'static str {
+    "float"
+  }
+}
