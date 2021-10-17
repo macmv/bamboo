@@ -2,7 +2,7 @@ use std::fs;
 use yaml_rust::{yaml::Yaml, YamlLoader};
 
 pub struct Config {
-  yaml:    Yaml,
+  primary: Yaml,
   default: Yaml,
 }
 
@@ -24,8 +24,15 @@ impl Config {
   /// also be loaded. This will never be written to, and will be used as a
   /// fallback if the key doesn't exist in the file.
   pub fn new(path: &str, default: &str) -> Self {
-    Config { yaml: Self::load_yaml(path), default: Self::load_yaml(default) }
+    Config { primary: Self::load_yaml(path), default: Self::load_yaml(default) }
   }
+  /// Creates a new config file, but with source strings, instead of paths. This
+  /// is used in the proxy, which stores its default config in the binary, and
+  /// will run without any errors when the config isn't present.
+  pub fn new_src(primary: &str, default: &str) -> Self {
+    Config { primary: Self::load_yaml_src(primary), default: Self::load_yaml_src(default) }
+  }
+
   fn load_yaml(path: &str) -> Yaml {
     YamlLoader::load_from_str(&fs::read_to_string(path).unwrap_or_else(|e| {
       error!("error loading yaml at `{}`: {}", path, e);
@@ -33,11 +40,21 @@ impl Config {
     }))
     .unwrap_or_else(|e| {
       error!("error loading yaml at `{}`: {}", path, e);
-      vec![Yaml::Null]
+      vec![]
     })
     .into_iter()
     .next()
-    .unwrap()
+    .unwrap_or(Yaml::Null)
+  }
+  fn load_yaml_src(src: &str) -> Yaml {
+    YamlLoader::load_from_str(src)
+      .unwrap_or_else(|e| {
+        error!("error loading yaml: {}", e);
+        vec![]
+      })
+      .into_iter()
+      .next()
+      .unwrap_or(Yaml::Null)
   }
 
   /// Reads the yaml value at the given key. This will always return a value. If
@@ -60,7 +77,7 @@ impl Config {
   where
     T: YamlValue<'a>,
   {
-    let val = &self.yaml["hello"];
+    let val = &self.primary["hello"];
     match T::from_yaml(val) {
       Some(v) => v,
       None => {

@@ -1638,6 +1638,7 @@ dependencies = [
  "strum",
  "strum_macros",
  "wyhash",
+ "yaml-rust",
 ]
 
 [[package]]
@@ -1728,7 +1729,6 @@ dependencies = [
  "sc_data",
  "sc_transfer",
  "sugarlang",
- "yaml-rust",
 ]
 
 [[package]]

@@ -6,6 +6,7 @@ mod players;
 
 use parking_lot::{Mutex, MutexGuard, RwLock};
 use sc_common::{
+  config::Config,
   math::{ChunkPos, FPos},
   net::cb,
   util::{
@@ -87,6 +88,7 @@ pub struct WorldManager {
   entity_converter: Arc<entity::TypeConverter>,
   plugins:          Arc<plugin::PluginManager>,
   commands:         Arc<CommandTree>,
+  config:           Arc<Config>,
 }
 
 struct State {
@@ -123,6 +125,12 @@ impl World {
     });
     world
   }
+
+  /// Returns the config used in the whole server.
+  pub fn config(&self) -> &Arc<Config> {
+    self.wm.config()
+  }
+
   fn global_tick_loop(self: Arc<Self>) {
     let pool = ThreadPool::auto(|| State { mspt: self.mspt.clone() });
     let mut tick = 0;
@@ -453,7 +461,13 @@ impl WorldManager {
       commands:         Arc::new(CommandTree::new()),
       worlds:           Mutex::new(vec![]),
       players:          Mutex::new(HashMap::new()),
+      config:           Arc::new(Config::new("config.yml", "default.yml")),
     }
+  }
+
+  /// Returns the config used in the whole server.
+  pub fn config(&self) -> &Arc<Config> {
+    &self.config
   }
 
   pub fn run(self: Arc<Self>) {

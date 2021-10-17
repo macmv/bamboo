@@ -4,8 +4,8 @@
 )]
 #![feature(test)]
 
-// #[macro_use]
-// extern crate log;
+#[macro_use]
+extern crate log;
 
 // use flexi_logger::{Duplicate, LogTarget, Logger};
 use log::LevelFilter;

@@ -31,9 +31,6 @@ noise = { version = "0.7.0", default-features = false }
 
 sugarlang = { git = "https://gitlab.com/macmv/sugarlang", features = ["docs"] }
 
-# config file
-yaml-rust = "0.4.5"
-
 [build-dependencies]
 sc_data = { path = "../sc_data" }
 
