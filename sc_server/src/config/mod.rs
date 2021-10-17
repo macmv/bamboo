@@ -43,8 +43,19 @@ impl Config {
   /// Reads the yaml value at the given key. This will always return a value. If
   /// the value doesn't exist in the primary config (or the value is the wrong
   /// type), then it will use the default config. If it doesn't exist there (or
-  /// if it's the wrong type), this function will panic. See get_opt() for an
-  /// alternative that will not panic.
+  /// if it's the wrong type), this function will panic.
+  ///
+  /// In my opinion, a key should always exist when you try to load it. If there
+  /// was a function like `get_opt`, which would only return a value when
+  /// present, that would make it much more difficult for users to find out what
+  /// that key was. All the keys that can be loaded should be present in the
+  /// default config, so that it is easy for users to edit the config
+  /// themselves.
+  ///
+  /// If you really need to get around this, you can implement YamlValue for
+  /// your own type. I hightly recommend against this, as that will just cause
+  /// confusion for your users. I will not be adding any more implementations
+  /// than the ones present in this file.
   pub fn get<'a, T>(&'a self, key: &str) -> T
   where
     T: YamlValue<'a>,
