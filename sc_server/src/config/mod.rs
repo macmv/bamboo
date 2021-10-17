@@ -56,8 +56,24 @@ impl YamlValue<'_> for bool {
   }
 }
 
+macro_rules! yaml_array {
+  ($name:expr, $($ty:ty),*) => {
+    $(
+      impl YamlValue<'_> for Vec<$ty> {
+        fn from_yaml(v: &Yaml) -> Option<Self> {
+          v.as_vec().and_then(|v| v.iter().map(|v| <$ty>::from_yaml(&v)).collect::<Option<Vec<$ty>>>())
+        }
+
+        fn name() -> &'static str {
+          concat!("array of ", $name)
+        }
+      }
+    )*
+  };
+}
+
 macro_rules! yaml_number {
-  ($($ty:ty),*) => {
+  ($name:expr, $($ty:ty),*) => {
     $(
       impl YamlValue<'_> for $ty {
         fn from_yaml(v: &Yaml) -> Option<Self> {
@@ -65,24 +81,18 @@ macro_rules! yaml_number {
         }
 
         fn name() -> &'static str {
-          stringify!($ty)
+          $name
         }
       }
 
-      impl YamlValue<'_> for Vec<$ty> {
-        fn from_yaml(v: &Yaml) -> Option<Self> {
-          v.as_vec().and_then(|v| v.iter().map(|v| <$ty>::from_yaml(&v)).collect::<Option<Vec<$ty>>>())
-        }
-
-        fn name() -> &'static str {
-          concat!("array of ", stringify!($ty))
-        }
-      }
+      yaml_array!($name, $ty);
     )*
   };
 }
 
-yaml_number!(u8, u16, u32, u64, i8, i16, i32, i64);
+yaml_number!("integer", u8, u16, u32, u64, i8, i16, i32, i64);
+yaml_array!("float", f32, f64);
+yaml_array!("string", String);
 
 impl<'a> YamlValue<'a> for &'a str {
   fn from_yaml(v: &'a Yaml) -> Option<Self> {
@@ -131,5 +141,15 @@ impl<'a> YamlValue<'a> for &'a Vec<Yaml> {
 
   fn name() -> &'static str {
     "array"
+  }
+}
+
+impl<'a> YamlValue<'a> for Vec<&'a str> {
+  fn from_yaml(v: &'a Yaml) -> Option<Self> {
+    v.as_vec().and_then(|v| v.iter().map(|v| <&str>::from_yaml(&v)).collect::<Option<Vec<&str>>>())
+  }
+
+  fn name() -> &'static str {
+    "array of string"
   }
 }
