@@ -1,3 +1,4 @@
+use std::fs;
 use yaml_rust::{yaml::Yaml, YamlLoader};
 
 pub struct Config {
@@ -18,6 +19,32 @@ pub trait YamlValue<'a> {
 }
 
 impl Config {
+  /// Creates a new config for the given path. The path is a runtime path to
+  /// load the config file. The default path is a secondary path, which will
+  /// also be loaded. This will never be written to, and will be used as a
+  /// fallback if the key doesn't exist in the file.
+  pub fn new(path: &str, default: &str) -> Self {
+    Config { yaml: Self::load_yaml(path), default: Self::load_yaml(default) }
+  }
+  fn load_yaml(path: &str) -> Yaml {
+    YamlLoader::load_from_str(&fs::read_to_string(path).unwrap_or_else(|e| {
+      error!("error loading yaml at `{}`: {}", path, e);
+      "".into()
+    }))
+    .unwrap_or_else(|e| {
+      error!("error loading yaml at `{}`: {}", path, e);
+      vec![Yaml::Null]
+    })
+    .into_iter()
+    .next()
+    .unwrap()
+  }
+
+  /// Reads the yaml value at the given key. This will always return a value. If
+  /// the value doesn't exist in the primary config (or the value is the wrong
+  /// type), then it will use the default config. If it doesn't exist there (or
+  /// if it's the wrong type), this function will panic. See get_opt() for an
+  /// alternative that will not panic.
   pub fn get<'a, T>(&'a self, key: &str) -> T
   where
     T: YamlValue<'a>,
@@ -32,6 +59,8 @@ impl Config {
     }
   }
 
+  /// Gets the default value at the given key. This will panic if the key does
+  /// not exist, or if it was the wrong type.
   pub fn get_default<'a, T>(&'a self, key: &str) -> T
   where
     T: YamlValue<'a>,
