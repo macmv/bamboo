@@ -258,7 +258,9 @@ impl Player {
     self.world.store_chunks_no_overwrite(chunks.into_inner());
     for x in min.x()..=max.x() {
       for z in min.z()..=max.z() {
-        self.send(self.world.serialize_chunk(ChunkPos::new(x, z), self.ver().block()));
+        let pos = ChunkPos::new(x, z);
+        self.world.inc_view(pos);
+        self.send(self.world.serialize_chunk(pos, self.ver().block()));
       }
     }
   }
@@ -268,6 +270,7 @@ impl Player {
     }
     for x in min.x()..=max.x() {
       for z in min.z()..=max.z() {
+        self.world.dec_view(ChunkPos::new(x, z));
         if self.ver() == ProtocolVersion::V1_8 {
           self.send(cb::Packet::MapChunk {
             x:                                     x.into(),

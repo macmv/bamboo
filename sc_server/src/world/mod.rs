@@ -5,18 +5,6 @@ mod init;
 mod players;
 
 use parking_lot::{Mutex, MutexGuard, RwLock};
-use std::{
-  collections::HashMap,
-  convert::TryInto,
-  sync::{
-    atomic::{AtomicI32, AtomicU32, Ordering},
-    Arc,
-  },
-  thread,
-  thread::ThreadId,
-  time::{Duration, Instant},
-};
-
 use sc_common::{
   math::{ChunkPos, FPos},
   net::cb,
@@ -25,6 +13,17 @@ use sc_common::{
     ThreadPool, UUID,
   },
   version::{BlockVersion, ProtocolVersion},
+};
+use std::{
+  collections::{HashMap, HashSet},
+  convert::TryInto,
+  sync::{
+    atomic::{AtomicI32, AtomicU32, Ordering},
+    Arc,
+  },
+  thread,
+  thread::ThreadId,
+  time::{Duration, Instant},
 };
 
 use crate::{block, command::CommandTree, entity, item, net::ConnSender, player::Player, plugin};
@@ -45,18 +44,40 @@ pub use players::{PlayersIter, PlayersMap};
 //   }
 // }
 
+/// A chunk in the world with a number of people viewing it. If the count is at
+/// 0, then this chunk is essentially flagged for unloading. Chunks are unloaded
+/// lazily, so this chunk will just end up being cleaned up in the future.
+struct CountedChunk {
+  count: AtomicU32,
+  chunk: Mutex<MultiChunk>,
+}
+
+impl CountedChunk {
+  /// Creates a new counted chunk with the counter at 0.
+  pub fn new(c: MultiChunk) -> CountedChunk {
+    CountedChunk { count: 0.into(), chunk: Mutex::new(c) }
+  }
+
+  pub fn count(&self) -> u32 {
+    self.count.load(Ordering::Acquire)
+  }
+}
+
 pub struct World {
-  chunks:           RwLock<HashMap<ChunkPos, Arc<Mutex<MultiChunk>>>>,
-  generators:       RwLock<HashMap<ThreadId, Mutex<WorldGen>>>,
-  players:          Mutex<PlayersMap>,
-  eid:              AtomicI32,
-  block_converter:  Arc<block::TypeConverter>,
-  item_converter:   Arc<item::TypeConverter>,
-  entity_converter: Arc<entity::TypeConverter>,
-  plugins:          Arc<plugin::PluginManager>,
-  commands:         Arc<CommandTree>,
-  mspt:             Arc<AtomicU32>,
-  wm:               Arc<WorldManager>,
+  chunks:            RwLock<HashMap<ChunkPos, CountedChunk>>,
+  // Whenever we want to unload chunks, we will clear out this map. So there is no situation where
+  // a rwlock is more useful than a normal mutex.
+  unloadable_chunks: Mutex<HashSet<ChunkPos>>,
+  generators:        RwLock<HashMap<ThreadId, Mutex<WorldGen>>>,
+  players:           Mutex<PlayersMap>,
+  eid:               AtomicI32,
+  block_converter:   Arc<block::TypeConverter>,
+  item_converter:    Arc<item::TypeConverter>,
+  entity_converter:  Arc<entity::TypeConverter>,
+  plugins:           Arc<plugin::PluginManager>,
+  commands:          Arc<CommandTree>,
+  mspt:              Arc<AtomicU32>,
+  wm:                Arc<WorldManager>,
 }
 
 pub struct WorldManager {
@@ -87,6 +108,7 @@ impl World {
   ) -> Arc<Self> {
     let world = Arc::new(World {
       chunks: RwLock::new(HashMap::new()),
+      unloadable_chunks: Mutex::new(HashSet::new()),
       generators: RwLock::new(HashMap::new()),
       players: Mutex::new(PlayersMap::new()),
       eid: 1.into(),
@@ -236,22 +258,6 @@ impl World {
     self.chunks.read().contains_key(&pos)
   }
 
-  /// Stores a list of chunks in the internal map. This should be used if you
-  /// have manually built a chunk, and need to store it in the world. This
-  /// should not be used after calling `pre_generate_chunk`, as the world may
-  /// have loaded something from disk since that call. See also
-  /// [`store_chunks_no_overwrite`](Self::store_chunks_no_overwrite).
-  ///
-  /// WARNING: This will override pre-existing chunks! This should not be a
-  /// problem with multiple threads generating the same chunks, as they have
-  /// already done most of the work by the time the override check occurs.
-  pub fn store_chunks(&self, chunks: Vec<(ChunkPos, MultiChunk)>) {
-    let mut lock = self.chunks.write();
-    for (pos, c) in chunks {
-      lock.insert(pos, Arc::new(Mutex::new(c)));
-    }
-  }
-
   /// Stores a list of chunks in the internal map. This should be used after
   /// calling [`pre_generate_chunk`](Self::pre_generate_chunk) a number of
   /// times.
@@ -278,13 +284,16 @@ impl World {
         // Make sure to call or_insert_with. Someone could have changed the chunks
         // between the read unlock and the write lock. So the needs_write bool is mostly
         // an approximation.
-        write.entry(pos).or_insert_with(|| Arc::new(Mutex::new(c)));
+        let ent = write.entry(pos).or_insert_with(|| CountedChunk::new(c));
+        // If the chunk was already present, it might not have a count of 0.
+        if ent.count.load(Ordering::Acquire) == 0 {
+          self.unloadable_chunks.lock().insert(pos);
+        }
       }
     }
   }
 
-  /// This calls f(), and passes it a locked chunk. This will also generate a
-  /// new chunk if there is not one stored there.
+  /// This calls f(), and passes it a locked chunk.
   ///
   /// I tried to make the chunk a returned value, but that ended up being too
   /// difficult. Since the entire chunks map must be locked for reading, that
@@ -301,10 +310,15 @@ impl World {
       // If we do, we lock it for writing
       let mut chunks = self.chunks.write();
       // Make sure that the chunk was not written in between locking this chunk
-      chunks.entry(pos).or_insert_with(|| Arc::new(Mutex::new(self.pre_generate_chunk(pos))));
+      let ent =
+        chunks.entry(pos).or_insert_with(|| CountedChunk::new(self.pre_generate_chunk(pos)));
+      // If the chunk was already present, it might not have a count of 0.
+      if ent.count.load(Ordering::Acquire) == 0 {
+        self.unloadable_chunks.lock().insert(pos);
+      }
     }
     let chunks = self.chunks.read();
-    let c = chunks[&pos].lock();
+    let c = chunks[&pos].chunk.lock();
     f(c)
   }
 
@@ -340,6 +354,46 @@ impl World {
     max: u32,
   ) -> cb::Packet {
     self.chunk(pos, |c| crate::net::serialize::serialize_partial_chunk(pos, &c, ver, min, max))
+  }
+
+  /// Increments how many people are viewing the given chunk. This counter is
+  /// used to track when a chunk should be loaded/unloaded. This will load the
+  /// given chunk if it is not loaded already.
+  pub fn inc_view(&self, pos: ChunkPos) {
+    // We first check (read-only) if we need to generate a new chunk
+    if !self.chunks.read().contains_key(&pos) {
+      // If we do, we lock it for writing
+      let mut chunks = self.chunks.write();
+      // Make sure that the chunk was not written in between locking this chunk
+      chunks.entry(pos).or_insert_with(|| CountedChunk::new(self.pre_generate_chunk(pos)));
+    }
+    let chunks = self.chunks.read();
+    let c = &chunks[&pos];
+    // If the count was 0, the chunk might not have been present in
+    // unloadable_chunks, as it might be the one we just added above. We know this
+    // chunk should not be unloaded, so if an unloading task starts between adding
+    // the chunk above and updating this value, we don't want the chunk to be in the
+    // unloadable_chunks at all.
+    if c.count.fetch_add(1, Ordering::Acquire) == 0 {
+      self.unloadable_chunks.lock().remove(&pos);
+    }
+  }
+
+  /// Decrements how many people are viewing the given chunk. This counter is
+  /// used to track when a chunk should be loaded/unloaded. If this chunk does
+  /// not exist, this will do nothing.
+  pub fn dec_view(&self, pos: ChunkPos) {
+    // We first check (read-only) if the chunk is present.
+    if !self.chunks.read().contains_key(&pos) {
+      return;
+    }
+    let chunks = self.chunks.read();
+    let c = &chunks[&pos];
+    // If the count was 1, then the chunk should be added to the list of chunks to
+    // be unloaded. We don't unload it now, as we only want to lazily unload chunks.
+    if c.count.fetch_sub(1, Ordering::Acquire) == 1 {
+      self.unloadable_chunks.lock().insert(pos);
+    }
   }
 
   /// This broadcasts a chat message to everybody in the world.
