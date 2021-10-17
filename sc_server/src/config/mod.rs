@@ -46,28 +46,43 @@ impl Config {
   }
 }
 
+impl YamlValue<'_> for bool {
+  fn from_yaml(v: &Yaml) -> Option<Self> {
+    v.as_bool()
+  }
+
+  fn name() -> &'static str {
+    "bool"
+  }
+}
+
 macro_rules! yaml_number {
-  ($ty:ty, $name:expr) => {
-    impl YamlValue<'_> for $ty {
-      fn from_yaml(v: &Yaml) -> Option<Self> {
-        v.as_i64().and_then(|v| v.try_into().ok())
+  ($($ty:ty),*) => {
+    $(
+      impl YamlValue<'_> for $ty {
+        fn from_yaml(v: &Yaml) -> Option<Self> {
+          v.as_i64().and_then(|v| v.try_into().ok())
+        }
+
+        fn name() -> &'static str {
+          stringify!($ty)
+        }
       }
 
-      fn name() -> &'static str {
-        $name
+      impl YamlValue<'_> for Vec<$ty> {
+        fn from_yaml(v: &Yaml) -> Option<Self> {
+          v.as_vec().and_then(|v| v.iter().map(|v| <$ty>::from_yaml(&v)).collect::<Option<Vec<$ty>>>())
+        }
+
+        fn name() -> &'static str {
+          concat!("array of ", stringify!($ty))
+        }
       }
-    }
+    )*
   };
 }
 
-yaml_number!(u8, "u8");
-yaml_number!(u16, "u16");
-yaml_number!(u32, "u32");
-yaml_number!(u64, "u64");
-yaml_number!(i8, "i8");
-yaml_number!(i16, "i16");
-yaml_number!(i32, "i32");
-yaml_number!(i64, "i64");
+yaml_number!(u8, u16, u32, u64, i8, i16, i32, i64);
 
 impl<'a> YamlValue<'a> for &'a str {
   fn from_yaml(v: &'a Yaml) -> Option<Self> {
@@ -106,5 +121,15 @@ impl YamlValue<'_> for f64 {
 
   fn name() -> &'static str {
     "float"
+  }
+}
+
+impl<'a> YamlValue<'a> for &'a Vec<Yaml> {
+  fn from_yaml(v: &'a Yaml) -> Option<Self> {
+    v.as_vec()
+  }
+
+  fn name() -> &'static str {
+    "array"
   }
 }
