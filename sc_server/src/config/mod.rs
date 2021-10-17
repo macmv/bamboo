@@ -1,14 +1,13 @@
 use yaml_rust::{yaml::Yaml, YamlLoader};
 
 pub struct Config {
-  yaml:    YamlLoader,
-  default: YamlLoader,
+  yaml:    Yaml,
+  default: Yaml,
 }
 
-pub trait YamlValue {
-  /// If this current type matches the yaml value, this returns Ok(v).
-  /// Otherwise, this returns the original yaml object.
-  fn from_yaml(yaml: Yaml) -> Result<Self, Yaml>
+pub trait YamlValue<'a> {
+  /// If this current type matches the yaml value, this returns Some(v).
+  fn from_yaml(v: &'a Yaml) -> Option<Self>
   where
     Self: Sized;
 
@@ -19,30 +18,63 @@ pub trait YamlValue {
 }
 
 impl Config {
-  pub fn get<T>(&self, key: &str) -> T
+  pub fn get<'a, T>(&'a self, key: &str) -> T
   where
-    T: YamlValue,
+    T: YamlValue<'a>,
   {
-    let val = Yaml::Integer(0);
+    let val = &self.yaml["hello"];
     match T::from_yaml(val) {
-      Ok(v) => v,
-      Err(val) => {
+      Some(v) => v,
+      None => {
         warn!("invalid yaml value at `{}`: {:?}, expected a {}", key, val, T::name());
         self.get_default(key)
       }
     }
   }
 
-  pub fn get_default<T>(&self, key: &str) -> T
+  pub fn get_default<'a, T>(&'a self, key: &str) -> T
   where
-    T: YamlValue,
+    T: YamlValue<'a>,
   {
-    let val = Yaml::Integer(0);
+    let val = &self.default["hello"];
     match T::from_yaml(val) {
-      Ok(v) => v,
-      Err(val) => {
+      Some(v) => v,
+      None => {
         panic!("default had wrong type for key `{}`: {:?}, expected a {}", key, val, key);
       }
     }
+  }
+}
+
+macro_rules! yaml_number {
+  ($ty:ty, $name:expr) => {
+    impl YamlValue<'_> for $ty {
+      fn from_yaml(v: &Yaml) -> Option<Self> {
+        v.as_i64().and_then(|v| v.try_into().ok())
+      }
+
+      fn name() -> &'static str {
+        $name
+      }
+    }
+  };
+}
+
+yaml_number!(u8, "u8");
+yaml_number!(u16, "u16");
+yaml_number!(u32, "u32");
+yaml_number!(u64, "u64");
+yaml_number!(i8, "i8");
+yaml_number!(i16, "i16");
+yaml_number!(i32, "i32");
+yaml_number!(i64, "i64");
+
+impl<'a> YamlValue<'a> for &'a str {
+  fn from_yaml(v: &'a Yaml) -> Option<Self> {
+    v.as_str()
+  }
+
+  fn name() -> &'static str {
+    "string"
   }
 }
