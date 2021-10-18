@@ -1,4 +1,4 @@
-use super::{ChunkPos, Pos};
+use super::{ChunkPos, Pos, Vec3};
 use std::{
   error::Error,
   fmt,
@@ -104,9 +104,22 @@ impl Add for FPos {
     Self { x: self.x + other.x, y: self.y + other.y, z: self.z + other.z }
   }
 }
-
 impl AddAssign for FPos {
   fn add_assign(&mut self, other: Self) {
+    self.x += other.x;
+    self.y += other.y;
+    self.z += other.z;
+  }
+}
+
+impl Add<Vec3> for FPos {
+  type Output = Self;
+  fn add(self, other: Vec3) -> Self {
+    Self { x: self.x + other.x, y: self.y + other.y, z: self.z + other.z }
+  }
+}
+impl AddAssign<Vec3> for FPos {
+  fn add_assign(&mut self, other: Vec3) {
     self.x += other.x;
     self.y += other.y;
     self.z += other.z;

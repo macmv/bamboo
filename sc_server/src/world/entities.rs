@@ -5,6 +5,7 @@ use sc_common::{
   math::{ChunkPos, FPos, Vec3},
   net::cb,
   util::UUID,
+  version::ProtocolVersion,
 };
 use std::{collections::HashMap, sync::Arc};
 
@@ -29,6 +30,60 @@ impl World {
         velocity_x: vel.fixed_x(),
         velocity_y: vel.fixed_y(),
         velocity_z: vel.fixed_z(),
+      });
+    }
+  }
+
+  /// Sends entity position packets to everyone in view of `old`.
+  pub(crate) fn send_entity_pos(&self, eid: i32, old: FPos, new: FPos, on_ground: bool) {
+    for p in self.players().iter().in_view(old.chunk()) {
+      let mut d_x_v1_8 = 0;
+      let mut d_x_v1_9 = 0;
+      let mut d_y_v1_8 = 0;
+      let mut d_y_v1_9 = 0;
+      let mut d_z_v1_8 = 0;
+      let mut d_z_v1_9 = 0;
+      let mut dx = new.x() - old.x();
+      let mut dy = new.y() - old.y();
+      let mut dz = new.z() - old.z();
+      let abs_pos;
+      if p.ver() == ProtocolVersion::V1_8 {
+        dx *= 32.0;
+        dy *= 32.0;
+        dz *= 32.0;
+        if dx.abs() > i8::MAX.into() || dy.abs() > i8::MAX.into() || dz.abs() > i8::MAX.into() {
+          abs_pos = true;
+        } else {
+          // As truncates any negative floats to 0, but just copies the bits for i8 -> u8
+          d_x_v1_8 = dx.round() as i8;
+          d_y_v1_8 = dy.round() as i8;
+          d_z_v1_8 = dz.round() as i8;
+          abs_pos = false;
+        }
+      } else {
+        dx *= 4096.0;
+        dy *= 4096.0;
+        dz *= 4096.0;
+        // 32 * 128 * 8 = 16384, which is the max value of an i16. So if we have more
+        // than an 8 block delta, we cannot send a relative movement packet.
+        if dx.abs() > i16::MAX.into() || dy.abs() > i16::MAX.into() || dz.abs() > i16::MAX.into() {
+          abs_pos = true;
+        } else {
+          d_x_v1_9 = dx.round() as i16;
+          d_y_v1_9 = dy.round() as i16;
+          d_z_v1_9 = dz.round() as i16;
+          abs_pos = false;
+        }
+      };
+      p.send(cb::Packet::RelEntityMove {
+        entity_id: eid,
+        d_x_v1_8: Some(d_x_v1_8),
+        d_x_v1_9: Some(d_x_v1_9),
+        d_y_v1_8: Some(d_y_v1_8),
+        d_y_v1_9: Some(d_y_v1_9),
+        d_z_v1_8: Some(d_z_v1_8),
+        d_z_v1_9: Some(d_z_v1_9),
+        on_ground,
       });
     }
   }

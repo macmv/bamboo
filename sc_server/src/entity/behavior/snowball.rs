@@ -1,4 +1,8 @@
-use super::Behavior;
+use super::{Behavior, Entity};
 
-struct SnowballBehavior;
-impl Behavior for SnowballBehavior {}
+pub struct SnowballBehavior;
+impl Behavior for SnowballBehavior {
+  fn tick(&self, ent: &Entity) {
+    info!("SNOWBALL TICK");
+  }
+}

@@ -2,7 +2,7 @@ mod snowball;
 
 pub use snowball::SnowballBehavior;
 
-use super::Type;
+use super::{Entity, Type};
 
 pub trait Behavior {
   /// The maximum health of this entity.
@@ -22,6 +22,12 @@ pub trait Behavior {
   fn exp_count(&self) -> i32 {
     1
   }
+
+  /// Any extra functionality needed. Called every tick, after movement and
+  /// collision checks have been completed.
+  fn tick(&self, ent: &Entity) {
+    let _ = ent;
+  }
 }
 
 /// Default functionality for entities. Mostly used when an entity hasn't been
@@ -30,8 +36,8 @@ struct DefaultBehavior;
 impl Behavior for DefaultBehavior {}
 
 pub fn for_entity(ty: Type) -> Box<dyn Behavior + Send> {
-  Box::new(match ty {
-    Type::Snowball => SnowballBehavior,
-    _ => DefaultBehavior,
-  })
+  match ty {
+    Type::Snowball => Box::new(SnowballBehavior),
+    _ => Box::new(DefaultBehavior),
+  }
 }

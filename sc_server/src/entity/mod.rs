@@ -15,12 +15,27 @@ pub mod behavior;
 
 use behavior::Behavior;
 
+#[derive(Debug, Clone)]
+struct EntityPos {
+  pos: FPos,
+  vel: Vec3,
+
+  yaw:   f32,
+  pitch: f32,
+}
+
+impl EntityPos {
+  pub fn new(pos: FPos) -> Self {
+    EntityPos { pos, vel: Vec3::new(0.0, 0.0, 0.0), yaw: 0.0, pitch: 0.0 }
+  }
+}
+
 pub struct Entity {
   /// The unique id for this entity. This is the key used to store entities in
   /// the World.
   eid:    i32,
   /// The position of this entity. Must be valid for all entities.
-  pos:    Mutex<(FPos, Vec3)>,
+  pos:    Mutex<EntityPos>,
   /// The type of this entity.
   ty:     Type,
   /// For some entities, such as projectiles, this field is ignored. To make the
@@ -41,7 +56,7 @@ impl Entity {
     let behavior = behavior::for_entity(ty);
     Entity {
       eid,
-      pos: Mutex::new((pos, Vec3::new(0.0, 0.0, 0.0))),
+      pos: Mutex::new(EntityPos::new(pos)),
       ty,
       health: Mutex::new(behavior.max_health()),
       world: RwLock::new(world),
@@ -60,7 +75,7 @@ impl Entity {
   ) -> Self {
     Entity {
       eid,
-      pos: Mutex::new((pos, Vec3::new(0.0, 0.0, 0.0))),
+      pos: Mutex::new(EntityPos::new(pos)),
       ty,
       health: Mutex::new(behavior.max_health()),
       world: RwLock::new(world),
@@ -72,7 +87,7 @@ impl Entity {
   /// server's known position of this entity. Some clients may be behind this
   /// position (by up to 1/20 of a second).
   pub fn pos(&self) -> FPos {
-    self.pos.lock().0
+    self.pos.lock().pos
   }
 
   /// Returns the unique id for this entity.
@@ -106,7 +121,18 @@ impl Entity {
   /// Sets this entity's velocity. This will send velocity updates to nearby
   /// players, and will affect how the entity moves on the next tick.
   pub fn set_vel(&self, vel: Vec3) {
-    self.pos.lock().1 = vel;
+    self.pos.lock().vel = vel;
     self.world.read().send_entity_vel(self.pos().chunk(), self.eid, vel);
+  }
+
+  /// Called 20 times a second. Calling this more/less frequently will break
+  /// things.
+  pub(crate) fn tick(&self) {
+    let mut p = self.pos.lock();
+    let old = p.pos;
+    let vel = p.vel;
+    p.pos += vel;
+    p.vel.y -= 0.5; // 9.8 m/s ~= 0.5 m/tick
+    self.world.read().send_entity_pos(self.eid, old, p.pos, false);
   }
 }
