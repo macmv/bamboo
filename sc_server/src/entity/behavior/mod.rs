@@ -1,3 +1,7 @@
+mod snowball;
+
+pub use snowball::SnowballBehavior;
+
 use super::Type;
 
 pub trait Behavior {
@@ -27,6 +31,7 @@ impl Behavior for DefaultBehavior {}
 
 pub fn for_entity(ty: Type) -> Box<dyn Behavior + Send> {
   Box::new(match ty {
+    Type::Snowball => SnowballBehavior,
     _ => DefaultBehavior,
   })
 }
