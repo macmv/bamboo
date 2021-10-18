@@ -78,7 +78,7 @@ impl World {
       // args[0] is `summon`
       let v = args[1].entity_summon();
       if let Some(p) = player {
-        p.send_message(&Chat::new(format!("summoning {}", v)));
+        p.send_message(&Chat::new(format!("summoning {:?}", v)));
       }
     });
 

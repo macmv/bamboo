@@ -1,4 +1,4 @@
-use crate::{block, item};
+use crate::{block, entity, item};
 use sc_common::{
   math::{ChunkPos, Pos},
   util::{
@@ -214,8 +214,8 @@ pub enum Arg {
   },
   /// Represents a item enchantment. Parsed as a string.
   ItemEnchantment(String),
-  /// Represents an entity summon. Once again, a string.
-  EntitySummon(String),
+  /// Represents an entity summon. This will be a parsed entity type.
+  EntitySummon(entity::Type),
   /// Represents a dimension. MORE STRINGS
   Dimension(String),
   Uuid(UUID),
@@ -265,9 +265,9 @@ impl Arg {
       _ => panic!("arg is a {:?}, not a string", self),
     }
   }
-  pub fn entity_summon(&self) -> &str {
+  pub fn entity_summon(&self) -> entity::Type {
     match self {
-      Arg::EntitySummon(v) => v,
+      Arg::EntitySummon(v) => *v,
       _ => panic!("arg is a {:?}, not an entity summon", self),
     }
   }
