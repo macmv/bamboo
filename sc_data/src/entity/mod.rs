@@ -42,6 +42,10 @@ pub fn generate(dir: &Path) -> Result<(), Box<dyn Error>> {
   for e in latest {
     kinds.push(e.name.to_case(Case::Pascal));
   }
+  let mut names = vec![];
+  for b in latest {
+    names.push(&b.name);
+  }
 
   let mut entity_gen = vec![];
   for e in latest {
@@ -91,6 +95,22 @@ pub fn generate(dir: &Path) -> Result<(), Box<dyn Error>> {
     out.push_str(",\n");
   }
   out.push_str("  ]\n");
+  out.push_str("}\n");
+
+  out.push_str("impl FromStr for Type {\n");
+  out.push_str("  type Err = InvalidEntity;\n");
+  out.push_str("  fn from_str(s: &str) -> Result<Self, Self::Err> {\n");
+  out.push_str("    match s {\n");
+  for (i, name) in names.iter().enumerate() {
+    out.push_str("      \"");
+    out.push_str(&name);
+    out.push_str("\" => Ok(Self::");
+    out.push_str(&kinds[i]);
+    out.push_str("),\n");
+  }
+  out.push_str("      _ => Err(InvalidEntity(s.into())),\n");
+  out.push_str("    }\n");
+  out.push_str("  }\n");
   out.push_str("}\n");
 
   fs::write(dir.join("ty.rs"), out)?;

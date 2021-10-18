@@ -1,4 +1,5 @@
 use num_derive::{FromPrimitive, ToPrimitive};
+use std::{error::Error, fmt, str::FromStr};
 
 // Creates the Type enum, and the generate_entities function.
 include!(concat!(env!("OUT_DIR"), "/entity/ty.rs"));
@@ -29,3 +30,14 @@ impl Type {
     num::FromPrimitive::from_u32(v).unwrap_or(Type::None)
   }
 }
+
+#[derive(Debug)]
+pub struct InvalidEntity(String);
+
+impl fmt::Display for InvalidEntity {
+  fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    write!(f, "invalid entity name: {}", self.0)
+  }
+}
+
+impl Error for InvalidEntity {}
