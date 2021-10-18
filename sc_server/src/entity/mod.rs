@@ -11,30 +11,9 @@ use parking_lot::{Mutex, RwLock};
 use sc_common::math::{FPos, Vec3};
 use std::sync::Arc;
 
-pub trait Behavior {
-  /// The maximum health of this entity.
-  fn max_health(&self) -> f32 {
-    20.0
-  }
+pub mod behavior;
 
-  /// Returns true if the entity should despawn. Called whenever the entity's
-  /// health changes, or when `check_despawn` is called.
-  fn should_despawn(&self, health: f32) -> bool {
-    health <= 0.0
-  }
-
-  /// Returns the amount of exp in this entity. For exp orbs, this is used when
-  /// spawning them. For entities, this is how much exp will drop when they are
-  /// killed.
-  fn exp_count(&self) -> i32 {
-    1
-  }
-}
-
-/// Default functionality for entities. Mostly used when an entity hasn't been
-/// implemented.
-struct DefaultBehavior;
-impl Behavior for DefaultBehavior {}
+use behavior::Behavior;
 
 pub struct Entity {
   /// The unique id for this entity. This is the key used to store entities in
@@ -59,25 +38,33 @@ impl Entity {
   /// damage, and despawn if their health hits 0. If you want custom
   /// functionality of any kind, call [`new_custom`].
   pub fn new(eid: i32, ty: Type, world: Arc<World>, pos: FPos) -> Self {
-    Self::new_custom(eid, ty, pos, world, DefaultBehavior)
+    let behavior = behavior::for_entity(ty);
+    Entity {
+      eid,
+      pos: Mutex::new((pos, Vec3::new(0.0, 0.0, 0.0))),
+      ty,
+      health: Mutex::new(behavior.max_health()),
+      world: RwLock::new(world),
+      data: Mutex::new(behavior),
+    }
   }
 
   /// Creates a new entity, with the given functionality. This value will be
   /// store within the entity until it despawns.
-  pub fn new_custom<D: Behavior + Send + 'static>(
+  pub fn new_custom<B: Behavior + Send + 'static>(
     eid: i32,
     ty: Type,
     pos: FPos,
     world: Arc<World>,
-    data: D,
+    behavior: B,
   ) -> Self {
     Entity {
       eid,
       pos: Mutex::new((pos, Vec3::new(0.0, 0.0, 0.0))),
       ty,
-      health: Mutex::new(data.max_health()),
+      health: Mutex::new(behavior.max_health()),
       world: RwLock::new(world),
-      data: Mutex::new(Box::new(data)),
+      data: Mutex::new(Box::new(behavior)),
     }
   }
 
