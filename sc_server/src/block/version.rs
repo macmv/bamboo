@@ -1,5 +1,4 @@
 use super::{ty, Data, Kind, Type};
-
 use sc_common::version::BlockVersion;
 
 /// This is the conversion table for a single old version of the game and the
