@@ -22,6 +22,11 @@ pub trait EntityData {
   }
 }
 
+/// Default functionality for entities. Mostly used when an entity hasn't been
+/// implemented.
+struct DefaultEntity;
+impl EntityData for DefaultEntity {}
+
 pub struct Entity {
   /// The position of this entity. Must be valid for all entities.
   pos:    Mutex<FPos>,
@@ -56,5 +61,23 @@ impl Entity {
   /// Returns true if this entity should despawn.
   pub fn should_despawn(&self) -> bool {
     self.data.lock().should_despawn(self.health())
+  }
+
+  /// Creates a new entity, with default functionality. They will take normal
+  /// damage, and despawn if their health hits 0. If you want custom
+  /// functionality of any kind, call [`new_custom`].
+  pub fn new(ty: Type, pos: FPos) -> Self {
+    Self::new_custom(ty, pos, DefaultEntity)
+  }
+
+  /// Creates a new entity, with the given functionality. This value will be
+  /// store within the entity until it despawns.
+  pub fn new_custom<D: EntityData + Send + 'static>(ty: Type, pos: FPos, data: D) -> Self {
+    Entity {
+      pos: Mutex::new(pos),
+      ty,
+      health: Mutex::new(data.max_health()),
+      data: Mutex::new(Box::new(data)),
+    }
   }
 }
