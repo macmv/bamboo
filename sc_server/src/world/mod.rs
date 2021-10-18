@@ -158,7 +158,6 @@ impl World {
         for p in self.players().values() {
           p.send(out.clone());
         }
-        info!("loaded chunks: {}", self.chunks.read().len());
       }
       for p in self.players().iter() {
         let p = p.clone();
