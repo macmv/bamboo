@@ -20,6 +20,13 @@ pub trait EntityData {
   fn should_despawn(&self, health: f32) -> bool {
     health <= 0.0
   }
+
+  /// Returns the amount of exp in this entity. For exp orbs, this is used when
+  /// spawning them. For entities, this is how much exp will drop when they are
+  /// killed.
+  fn exp_count(&self) -> i32 {
+    1
+  }
 }
 
 /// Default functionality for entities. Mostly used when an entity hasn't been
@@ -43,6 +50,30 @@ pub struct Entity {
 }
 
 impl Entity {
+  /// Creates a new entity, with default functionality. They will take normal
+  /// damage, and despawn if their health hits 0. If you want custom
+  /// functionality of any kind, call [`new_custom`].
+  pub fn new(eid: i32, ty: Type, pos: FPos) -> Self {
+    Self::new_custom(eid, ty, pos, DefaultEntity)
+  }
+
+  /// Creates a new entity, with the given functionality. This value will be
+  /// store within the entity until it despawns.
+  pub fn new_custom<D: EntityData + Send + 'static>(
+    eid: i32,
+    ty: Type,
+    pos: FPos,
+    data: D,
+  ) -> Self {
+    Entity {
+      eid,
+      pos: Mutex::new(pos),
+      ty,
+      health: Mutex::new(data.max_health()),
+      data: Mutex::new(Box::new(data)),
+    }
+  }
+
   /// Reads this entity's position. This will always be up to date with the
   /// server's known position of this entity. Some clients may be behind this
   /// position (by up to 1/20 of a second).
@@ -71,27 +102,10 @@ impl Entity {
     self.data.lock().should_despawn(self.health())
   }
 
-  /// Creates a new entity, with default functionality. They will take normal
-  /// damage, and despawn if their health hits 0. If you want custom
-  /// functionality of any kind, call [`new_custom`].
-  pub fn new(eid: i32, ty: Type, pos: FPos) -> Self {
-    Self::new_custom(eid, ty, pos, DefaultEntity)
-  }
-
-  /// Creates a new entity, with the given functionality. This value will be
-  /// store within the entity until it despawns.
-  pub fn new_custom<D: EntityData + Send + 'static>(
-    eid: i32,
-    ty: Type,
-    pos: FPos,
-    data: D,
-  ) -> Self {
-    Entity {
-      eid,
-      pos: Mutex::new(pos),
-      ty,
-      health: Mutex::new(data.max_health()),
-      data: Mutex::new(Box::new(data)),
-    }
+  /// Returns the amount of exp stored in this entity. This is just the amount
+  /// for an exp orb, but it is also used to find out how much exp an entity
+  /// will drop when killed.
+  pub fn exp_count(&self) -> i32 {
+    self.data.lock().exp_count()
   }
 }
