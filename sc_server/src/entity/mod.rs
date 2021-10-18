@@ -41,7 +41,7 @@ pub struct Entity {
   /// the World.
   eid:    i32,
   /// The position of this entity. Must be valid for all entities.
-  pos:    Mutex<FPos>,
+  pos:    Mutex<(FPos, Vec3)>,
   /// The type of this entity.
   ty:     Type,
   /// For some entities, such as projectiles, this field is ignored. To make the
@@ -73,7 +73,7 @@ impl Entity {
   ) -> Self {
     Entity {
       eid,
-      pos: Mutex::new(pos),
+      pos: Mutex::new((pos, Vec3::new(0.0, 0.0, 0.0))),
       ty,
       health: Mutex::new(data.max_health()),
       world: RwLock::new(world),
@@ -85,7 +85,7 @@ impl Entity {
   /// server's known position of this entity. Some clients may be behind this
   /// position (by up to 1/20 of a second).
   pub fn pos(&self) -> FPos {
-    *self.pos.lock()
+    self.pos.lock().0
   }
 
   /// Returns the unique id for this entity.
@@ -119,7 +119,7 @@ impl Entity {
   /// Sets this entity's velocity. This will send velocity updates to nearby
   /// players, and will affect how the entity moves on the next tick.
   pub fn set_vel(&self, vel: Vec3) {
-    *self.vel.lock() = vel;
-    self.world.read().send_entity_vel(self.eid, vel);
+    self.pos.lock().1 = vel;
+    self.world.read().send_entity_vel(self.pos().chunk(), self.eid, vel);
   }
 }

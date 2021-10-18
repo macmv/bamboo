@@ -1,6 +1,10 @@
 use super::World;
 use crate::{entity, entity::Entity, player::Player};
-use sc_common::{math::FPos, net::cb, util::UUID};
+use sc_common::{
+  math::{ChunkPos, FPos, Vec3},
+  net::cb,
+  util::UUID,
+};
 use std::sync::Arc;
 
 impl World {
@@ -14,6 +18,18 @@ impl World {
 
     self.add_entity(eid, ent);
     eid
+  }
+
+  /// Sends entity velocity packets to everyone in view of `pos`.
+  pub(crate) fn send_entity_vel(&self, pos: ChunkPos, eid: i32, vel: Vec3) {
+    for p in self.players().iter().in_view(pos) {
+      p.send(cb::Packet::EntityVelocity {
+        entity_id:  eid,
+        velocity_x: vel.fixed_x(),
+        velocity_y: vel.fixed_y(),
+        velocity_z: vel.fixed_z(),
+      });
+    }
   }
 
   pub fn get_entity(&self, eid: i32) -> Option<&Entity> {
