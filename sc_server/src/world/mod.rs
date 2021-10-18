@@ -28,7 +28,10 @@ use std::{
   time::{Duration, Instant},
 };
 
-use crate::{block, command::CommandTree, entity, item, net::ConnSender, player::Player, plugin};
+use crate::{
+  block, command::CommandTree, entity, entity::Entity, item, net::ConnSender, player::Player,
+  plugin,
+};
 use chunk::MultiChunk;
 use gen::WorldGen;
 
@@ -68,6 +71,7 @@ pub struct World {
   unloadable_chunks: Mutex<HashSet<ChunkPos>>,
   generators:        RwLock<HashMap<ThreadId, Mutex<WorldGen>>>,
   players:           RwLock<PlayersMap>,
+  entities:          RwLock<HashMap<i32, Entity>>,
   eid:               AtomicI32,
   block_converter:   Arc<block::TypeConverter>,
   item_converter:    Arc<item::TypeConverter>,
@@ -110,6 +114,7 @@ impl World {
       unloadable_chunks: Mutex::new(HashSet::new()),
       generators: RwLock::new(HashMap::new()),
       players: RwLock::new(PlayersMap::new()),
+      entities: RwLock::new(HashMap::new()),
       eid: 1.into(),
       block_converter,
       item_converter,
