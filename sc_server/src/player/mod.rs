@@ -12,6 +12,7 @@ use sc_common::{
   version::ProtocolVersion,
 };
 use std::{
+  f64::consts,
   fmt,
   sync::{Arc, Mutex, MutexGuard},
 };
@@ -263,10 +264,12 @@ impl Player {
   /// Returns a unit vector which is the direction this player is facing.
   pub fn look_as_vec(&self) -> Vec3 {
     let (pitch, yaw) = self.look();
-    let pitch = pitch as f64;
-    let yaw = yaw as f64;
+    let pitch = (pitch as f64) / 180.0 * consts::PI;
+    let yaw = (yaw as f64) / 180.0 * consts::PI;
     let m = pitch.cos();
-    Vec3::new(yaw.cos() * m, yaw.sin() * m, pitch.sin())
+    // The coordinate system of minecraft means that we need to do this hell to get
+    // the axis to line up correctly.
+    Vec3::new(-yaw.sin() * m, -pitch.sin(), yaw.cos() * m)
   }
 
   /// Returns true if the player is within render distance of the given chunk
