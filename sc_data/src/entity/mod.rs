@@ -178,10 +178,11 @@ fn load_data(data: &str) -> Result<Vec<Entity>, Box<dyn Error>> {
 
 fn generate_conversion(latest: &[Entity], old: &[Entity]) -> Vec<u32> {
   let mut m = HashMap::new();
-  for item in old {
-    // Old versions of minecraft suck. Item id 26 is just missing from 1.8.
-    // WHYYYYYYYY
-    m.insert(&item.name, item.id);
+  for ent in old {
+    // 1.8-1.11 use PascalCase names, while versions above that use snake_case. We
+    // don't know what version we're working with, so we should always convert to
+    // snake_case.
+    m.insert(ent.name.to_case(Case::Snake), ent.id);
   }
   let mut out = Vec::with_capacity(latest.len());
   for i in latest {
