@@ -71,7 +71,7 @@ pub struct World {
   unloadable_chunks: Mutex<HashSet<ChunkPos>>,
   generators:        RwLock<HashMap<ThreadId, Mutex<WorldGen>>>,
   players:           RwLock<PlayersMap>,
-  entities:          RwLock<HashMap<i32, Entity>>,
+  entities:          RwLock<HashMap<i32, Arc<Entity>>>,
   eid:               AtomicI32,
   block_converter:   Arc<block::TypeConverter>,
   item_converter:    Arc<item::TypeConverter>,
@@ -180,6 +180,14 @@ impl World {
               keep_alive_id_v1_12_2: Some(1234556),
             });
           }
+          s.mspt.fetch_add(start.elapsed().as_millis().try_into().unwrap(), Ordering::SeqCst);
+        });
+      }
+      for (eid, ent) in self.entities().iter() {
+        let ent = ent.clone();
+        pool.execute(move |s| {
+          let start = Instant::now();
+          ent.tick();
           s.mspt.fetch_add(start.elapsed().as_millis().try_into().unwrap(), Ordering::SeqCst);
         });
       }

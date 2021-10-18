@@ -88,12 +88,12 @@ impl World {
     }
   }
 
-  pub fn entities(&self) -> RwLockReadGuard<'_, HashMap<i32, Entity>> {
+  pub fn entities(&self) -> RwLockReadGuard<'_, HashMap<i32, Arc<Entity>>> {
     self.entities.read()
   }
 
   fn add_entity(&self, eid: i32, entity: Entity) {
-    self.entities.write().insert(eid, entity);
+    self.entities.write().insert(eid, Arc::new(entity));
   }
 
   fn send_entity_spawn(&self, player: &Player, ent: &Entity) {
