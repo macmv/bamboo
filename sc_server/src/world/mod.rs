@@ -1,5 +1,6 @@
 mod blocks;
 pub mod chunk;
+mod entities;
 pub mod gen;
 mod init;
 mod players;

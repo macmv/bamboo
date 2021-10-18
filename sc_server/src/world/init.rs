@@ -76,9 +76,11 @@ impl World {
     c.add_arg("entity", Parser::EntitySummon);
     self.commands().add(c, |_, player, args| {
       // args[0] is `summon`
-      let v = args[1].entity_summon();
+      let ty = args[1].entity_summon();
       if let Some(p) = player {
-        p.send_message(&Chat::new(format!("summoning {:?}", v)));
+        let eid = p.world().summon(ty, p.pos());
+        info!("eid of mob: {}", eid);
+        p.send_message(&Chat::new(format!("summoned {:?}", ty)));
       }
     });
 
