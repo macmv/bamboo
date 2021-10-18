@@ -1,11 +1,12 @@
 use super::World;
 use crate::{entity, entity::Entity, player::Player};
+use parking_lot::RwLockReadGuard;
 use sc_common::{
   math::{ChunkPos, FPos, Vec3},
   net::cb,
   util::UUID,
 };
-use std::sync::Arc;
+use std::{collections::HashMap, sync::Arc};
 
 impl World {
   pub fn summon(self: &Arc<Self>, ty: entity::Type, pos: FPos) -> i32 {
@@ -32,8 +33,8 @@ impl World {
     }
   }
 
-  pub fn get_entity(&self, eid: i32) -> Option<&Entity> {
-    self.entities.read().get(&eid)
+  pub fn entities(&self) -> RwLockReadGuard<'_, HashMap<i32, Entity>> {
+    self.entities.read()
   }
 
   fn add_entity(&self, eid: i32, entity: Entity) {

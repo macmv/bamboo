@@ -5,15 +5,13 @@ use crate::{
   net::ConnSender,
   world::World,
 };
-use rayon::prelude::*;
 use sc_common::{
-  math::{ChunkPos, FPos, Pos, PosError},
+  math::{ChunkPos, FPos, Pos, PosError, Vec3},
   net::cb,
   util::{Chat, UUID},
   version::ProtocolVersion,
 };
 use std::{
-  cmp::Ordering,
   fmt,
   sync::{Arc, Mutex, MutexGuard},
 };
@@ -260,6 +258,15 @@ impl Player {
   pub fn look(&self) -> (f32, f32) {
     let pos = self.pos.lock().unwrap();
     (pos.pitch, pos.yaw)
+  }
+
+  /// Returns a unit vector which is the direction this player is facing.
+  pub fn look_as_vec(&self) -> Vec3 {
+    let (pitch, yaw) = self.look();
+    let pitch = pitch as f64;
+    let yaw = yaw as f64;
+    let m = pitch.cos();
+    Vec3::new(yaw.cos() * m, yaw.sin() * m, pitch.sin())
   }
 
   /// Returns true if the player is within render distance of the given chunk
