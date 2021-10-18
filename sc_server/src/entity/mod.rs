@@ -6,8 +6,10 @@ pub use metadata::Metadata;
 pub use ty::{Data, Type};
 pub use version::TypeConverter;
 
-use parking_lot::Mutex;
+use crate::world::World;
+use parking_lot::{Mutex, RwLock};
 use sc_common::math::FPos;
+use std::sync::Arc;
 
 pub trait EntityData {
   /// The maximum health of this entity.
@@ -46,6 +48,9 @@ pub struct Entity {
   /// entity not disappear when it hits 0 health, overwrite the
   /// `should_despawn` function in `EntityData`.
   health: Mutex<f32>,
+  /// The world this entity is in. Used whenever something changes, and nearby
+  /// players need to be notified. This can change if the entity is teleported.
+  world:  RwLock<Arc<World>>,
   data:   Mutex<Box<dyn EntityData + Send>>,
 }
 
@@ -53,8 +58,8 @@ impl Entity {
   /// Creates a new entity, with default functionality. They will take normal
   /// damage, and despawn if their health hits 0. If you want custom
   /// functionality of any kind, call [`new_custom`].
-  pub fn new(eid: i32, ty: Type, pos: FPos) -> Self {
-    Self::new_custom(eid, ty, pos, DefaultEntity)
+  pub fn new(eid: i32, ty: Type, world: Arc<World>, pos: FPos) -> Self {
+    Self::new_custom(eid, ty, pos, world, DefaultEntity)
   }
 
   /// Creates a new entity, with the given functionality. This value will be
@@ -63,6 +68,7 @@ impl Entity {
     eid: i32,
     ty: Type,
     pos: FPos,
+    world: Arc<World>,
     data: D,
   ) -> Self {
     Entity {
@@ -70,6 +76,7 @@ impl Entity {
       pos: Mutex::new(pos),
       ty,
       health: Mutex::new(data.max_health()),
+      world: RwLock::new(world),
       data: Mutex::new(Box::new(data)),
     }
   }

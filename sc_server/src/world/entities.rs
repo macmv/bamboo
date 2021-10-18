@@ -1,11 +1,12 @@
 use super::World;
 use crate::{entity, entity::Entity, player::Player};
 use sc_common::{math::FPos, net::cb, util::UUID};
+use std::sync::Arc;
 
 impl World {
-  pub fn summon(&self, ty: entity::Type, pos: FPos) -> i32 {
+  pub fn summon(self: &Arc<Self>, ty: entity::Type, pos: FPos) -> i32 {
     let eid = self.eid();
-    let ent = Entity::new(eid, ty, pos);
+    let ent = Entity::new(eid, ty, self.clone(), pos);
 
     for p in self.players().iter().in_view(pos.chunk()) {
       self.send_entity_spawn(p, &ent);
@@ -13,6 +14,10 @@ impl World {
 
     self.add_entity(eid, ent);
     eid
+  }
+
+  pub fn get_entity(&self, eid: i32) -> Option<&Entity> {
+    self.entities.read().get(&eid)
   }
 
   fn add_entity(&self, eid: i32, entity: Entity) {

@@ -168,12 +168,8 @@ impl Player {
   }
 
   /// Returns a reference to the world the player is in.
-  pub fn world(&self) -> &World {
+  pub fn world(&self) -> &Arc<World> {
     &self.world
-  }
-  /// Returns a cloned reference to the world that the player is in.
-  pub fn clone_world(&self) -> Arc<World> {
-    self.world.clone()
   }
 
   /// This will move the player on the next player tick. Used whenever a
