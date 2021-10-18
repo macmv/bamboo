@@ -113,6 +113,21 @@ pub fn generate(dir: &Path) -> Result<(), Box<dyn Error>> {
   out.push_str("  }\n");
   out.push_str("}\n");
 
+  out.push_str("impl Type {\n");
+  out.push_str("  pub fn id(&self) -> u32 {\n");
+  out.push_str("    match self {\n");
+  for (i, ent) in latest.iter().enumerate() {
+    out.push_str("      Self::");
+    out.push_str(&kinds[i]);
+    out.push_str(" => \n");
+    out.push_str(&ent.id.to_string());
+    out.push_str(",\n");
+  }
+  out.push_str("      Self::None => 0,");
+  out.push_str("    }\n");
+  out.push_str("  }\n");
+  out.push_str("}\n");
+
   fs::write(dir.join("ty.rs"), out)?;
 
   let mut out = String::new();
