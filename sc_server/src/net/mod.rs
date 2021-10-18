@@ -1,4 +1,4 @@
-use crate::{block, item, player::Player, world::WorldManager};
+use crate::{block, entity, item, player::Player, world::WorldManager};
 use crossbeam_channel::{Receiver, Sender, TryRecvError};
 use mio::{
   event::Event,
@@ -397,8 +397,13 @@ impl Connection {
     }
   }
 
-  fn use_item(&self, player: &Arc<Player>, hand: i32) {
-    info!("got use item {:?} with hand {}", player.lock_inventory().main_hand(), hand);
+  fn use_item(&self, player: &Arc<Player>, _hand: i32) {
+    // TODO: Offhand
+    let inv = player.lock_inventory();
+    let main = inv.main_hand();
+    if main.item() == item::Type::Snowball {
+      player.world().summon(entity::Type::Snowball, player.pos());
+    }
   }
 
   // Returns true if the connection has been closed.
