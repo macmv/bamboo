@@ -28,6 +28,9 @@ struct DefaultEntity;
 impl EntityData for DefaultEntity {}
 
 pub struct Entity {
+  /// The unique id for this entity. This is the key used to store entities in
+  /// the World.
+  eid:    i32,
   /// The position of this entity. Must be valid for all entities.
   pos:    Mutex<FPos>,
   /// The type of this entity.
@@ -45,6 +48,11 @@ impl Entity {
   /// position (by up to 1/20 of a second).
   pub fn pos(&self) -> FPos {
     *self.pos.lock()
+  }
+
+  /// Returns the unique id for this entity.
+  pub fn eid(&self) -> i32 {
+    self.eid
   }
 
   /// Returns this entity's type. This can be used to send spawn packets to
@@ -66,14 +74,20 @@ impl Entity {
   /// Creates a new entity, with default functionality. They will take normal
   /// damage, and despawn if their health hits 0. If you want custom
   /// functionality of any kind, call [`new_custom`].
-  pub fn new(ty: Type, pos: FPos) -> Self {
-    Self::new_custom(ty, pos, DefaultEntity)
+  pub fn new(eid: i32, ty: Type, pos: FPos) -> Self {
+    Self::new_custom(eid, ty, pos, DefaultEntity)
   }
 
   /// Creates a new entity, with the given functionality. This value will be
   /// store within the entity until it despawns.
-  pub fn new_custom<D: EntityData + Send + 'static>(ty: Type, pos: FPos, data: D) -> Self {
+  pub fn new_custom<D: EntityData + Send + 'static>(
+    eid: i32,
+    ty: Type,
+    pos: FPos,
+    data: D,
+  ) -> Self {
     Entity {
+      eid,
       pos: Mutex::new(pos),
       ty,
       health: Mutex::new(data.max_health()),
