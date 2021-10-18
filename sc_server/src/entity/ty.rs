@@ -20,7 +20,7 @@ impl Data {
 
 impl Type {
   /// Returns the kind as a u32. Should only be used to index into the
-  /// converter's internal table of block kinds.
+  /// converter's internal table of entity types.
   pub fn to_u32(self) -> u32 {
     num::ToPrimitive::to_u32(&self).unwrap()
   }

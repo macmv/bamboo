@@ -21,8 +21,8 @@ impl World {
 
   fn send_entity_spawn(&self, player: &Player, ent: &Entity) {
     let p = ent.pos();
-    dbg!(p);
-    let id = ent.ty().to_u32();
+    let id = ent.ty().id();
+    info!("modern id: {}", id);
     let ty_8;
     let ty_11;
     if player.ver() > ProtocolVersion::V1_11 {
@@ -32,6 +32,7 @@ impl World {
       ty_8 = Some(self.entity_converter().to_old(id, player.ver().block()) as u8);
       ty_11 = None;
     }
+    info!("old id: {:?}", ty_8);
     player.send(cb::Packet::SpawnEntityLiving {
       entity_id:              ent.eid(),
       entity_uuid_v1_9:       Some(UUID::from_u128(0)),
