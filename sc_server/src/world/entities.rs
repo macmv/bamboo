@@ -1,6 +1,6 @@
 use super::World;
 use crate::{entity, entity::Entity, player::Player};
-use sc_common::{math::FPos, net::cb, util::UUID, version::ProtocolVersion};
+use sc_common::{math::FPos, net::cb, util::UUID};
 
 impl World {
   pub fn summon(&self, ty: entity::Type, pos: FPos) -> i32 {
@@ -35,6 +35,16 @@ impl World {
         z_v1_8:    Some(p.fixed_z()),
         z_v1_9:    Some(p.z()),
         count:     ent.exp_count() as i16,
+      });
+    } else if ent.ty() == entity::Type::Painting {
+      player.send(cb::Packet::SpawnEntityPainting {
+        entity_id:        ent.eid(),
+        entity_uuid_v1_9: Some(UUID::from_u128(0)),
+        title_v1_8:       Some("hello".into()),
+        title_v1_13:      Some(0),
+        location:         p.block(),
+        // TODO: Infer this from the entity yaw
+        direction:        0,
       });
     } else if ent.ty().is_living() {
       player.send(cb::Packet::SpawnEntityLiving {
