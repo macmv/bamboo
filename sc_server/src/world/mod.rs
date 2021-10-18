@@ -5,7 +5,7 @@ pub mod gen;
 mod init;
 mod players;
 
-use parking_lot::{Mutex, MutexGuard, RwLock};
+use parking_lot::{Mutex, MutexGuard, RwLock, RwLockReadGuard};
 use sc_common::{
   config::Config,
   math::{ChunkPos, FPos},
@@ -67,7 +67,7 @@ pub struct World {
   // a rwlock is more useful than a normal mutex.
   unloadable_chunks: Mutex<HashSet<ChunkPos>>,
   generators:        RwLock<HashMap<ThreadId, Mutex<WorldGen>>>,
-  players:           Mutex<PlayersMap>,
+  players:           RwLock<PlayersMap>,
   eid:               AtomicI32,
   block_converter:   Arc<block::TypeConverter>,
   item_converter:    Arc<item::TypeConverter>,
@@ -109,7 +109,7 @@ impl World {
       chunks: RwLock::new(HashMap::new()),
       unloadable_chunks: Mutex::new(HashSet::new()),
       generators: RwLock::new(HashMap::new()),
-      players: Mutex::new(PlayersMap::new()),
+      players: RwLock::new(PlayersMap::new()),
       eid: 1.into(),
       block_converter,
       item_converter,
@@ -190,11 +190,15 @@ impl World {
     let player = Arc::new(player);
     // We need to unlock players so that player_init() will work.
     {
-      let mut players = self.players.lock();
+      // If a bunch of people connect at the same time, we don't want a bunch of lock
+      // contention.
+      let players = self.players.read();
       if players.contains_key(&player.id()) {
         player.disconnect("Another player with the same id is already connected!");
         return player;
       }
+      drop(players);
+      let mut players = self.players.write();
       players.insert(player.id(), player.clone());
     }
     self.player_init(&player);
@@ -401,7 +405,12 @@ impl World {
     }
   }
 
-  /// This broadcasts a chat message to everybody in the world.
+  /// This broadcasts a chat message to everybody in the world. Note that this
+  /// does not lock the players map exclusively. So, if this is called twice,
+  /// both operations will execute in parallel. This might cause some packets to
+  /// arrive out of order between clients (one client would see one broadcast
+  /// before the other). This is only possible if you call broadcast from
+  /// multiple threads, as this blocks until all the packets are queued.
   pub fn broadcast<M: Into<Chat>>(&self, msg: M) {
     let out = cb::Packet::Chat {
       message:      msg.into().to_json(),
@@ -409,26 +418,26 @@ impl World {
       sender_v1_16: Some(UUID::from_u128(0)),
     };
 
-    for p in self.players.lock().values() {
+    for p in self.players.read().values() {
       p.send(out.clone());
     }
   }
 
-  // Runs f for all players within render distance of the chunk.
-  pub fn players(&self) -> MutexGuard<'_, PlayersMap> {
-    self.players.lock()
+  /// Returns a read lock on the players map.
+  pub fn players(&self) -> RwLockReadGuard<'_, PlayersMap> {
+    self.players.read()
   }
 
   /// Removes the given player from this world. This should be called from
   /// WorldManagger, so that the world managger's table of players to worlds
   /// stays synced.
   fn remove_player(&self, id: UUID) {
-    let mut lock = self.players.lock();
+    let mut lock = self.players.write();
     let p = lock.remove(&id).unwrap();
     p.unload_all();
     if lock.is_empty() {
-      self.unload_chunks();
       drop(lock);
+      self.unload_chunks();
       let len = self.chunks.read().len();
       if len != 0 {
         warn!("chunks remaining after last player logged off: {}", len);
@@ -517,7 +526,7 @@ impl WorldManager {
 
     let worlds = self.worlds.lock();
     for w in worlds.iter() {
-      for p in w.players.lock().values() {
+      for p in w.players.read().values() {
         p.send(out.clone());
       }
     }
