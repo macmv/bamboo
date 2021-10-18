@@ -53,14 +53,14 @@ impl<'a> Tokenizer<'a> {
     let start = self.pos;
     let mut end = 0;
     if let Some(c) = self.peek_char() {
-      if !c.is_ascii_alphabetic() {
+      if !(c.is_ascii_alphabetic() || c == '_') {
         return Err(ParseError::new(Span::single(start), ErrorKind::Expected("a letter".into())));
       }
     } else {
       return Err(ParseError::new(Span::single(self.pos), ErrorKind::EOF));
     }
     while let Some(c) = self.peek_char() {
-      if !c.is_ascii_alphabetic() {
+      if !(c.is_ascii_alphabetic() || c == '_') {
         // Skip whitespace
         end = self.pos;
         if c.is_whitespace() {
@@ -95,7 +95,7 @@ impl<'a> Tokenizer<'a> {
         self.next_char().unwrap();
         break;
       }
-      if !c.is_ascii_alphabetic() {
+      if !(c.is_ascii_alphabetic() || c == '_') {
         valid = false;
       }
       text.push(self.next_char().unwrap());
