@@ -1,0 +1,11 @@
+foo: bar
+hello:
+  name: world
+  times: 1
+items:
+  - 3
+  - 4
+  - a: 1
+    lot: 10
+    more: 100
+    things: 1000
