@@ -131,13 +131,14 @@ impl Config {
     K: YamlKey,
     T: YamlValue<'a>,
   {
-    let val = &self.primary["hello"];
-    match T::from_yaml(val) {
+    let sections = key.sections();
+    let val = Self::get_val(&self.primary, &sections);
+    match T::from_yaml(&val) {
       Some(v) => v,
       None => {
         warn!(
           "invalid yaml value at `{}`: {:?}, expected a {}",
-          key.sections().join("."),
+          sections.join("."),
           val,
           T::name()
         );
@@ -153,18 +154,34 @@ impl Config {
     K: YamlKey,
     T: YamlValue<'a>,
   {
-    let val = &self.default["hello"];
+    let sections = key.sections();
+    let val = Self::get_val(&self.default, &sections);
     match T::from_yaml(val) {
       Some(v) => v,
       None => {
         panic!(
           "default had wrong type for key `{}`: {:?}, expected a {}",
-          key.sections().join("."),
+          sections.join("."),
           val,
           T::name(),
         );
       }
     }
+  }
+
+  fn get_val<'a>(yaml: &'a Yaml, sections: &[&str]) -> &'a Yaml {
+    let mut val = yaml;
+    for s in sections {
+      match val {
+        Yaml::Hash(map) => val = &map[&Yaml::String(s.to_string())],
+        Yaml::Array(arr) => match s.parse::<usize>() {
+          Ok(idx) => val = &arr[idx],
+          Err(_) => return &Yaml::BadValue,
+        },
+        _ => return &Yaml::BadValue,
+      }
+    }
+    val
   }
 }
 
