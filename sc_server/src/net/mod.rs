@@ -326,11 +326,16 @@ impl Connection {
       sb::Packet::HeldItemSlot { slot_id } => {
         player.lock_inventory().set_selected(slot_id.try_into().unwrap());
       }
+      sb::Packet::UseItem { hand_v1_9 } => {
+        // 0 = main hand on 1.8
+        let hand = hand_v1_9.unwrap_or(0);
+        self.use_item(player, hand);
+      }
       sb::Packet::BlockPlace {
         mut location,
         direction_v1_8,
         direction_v1_9,
-        hand_v1_9: _,
+        hand_v1_9,
         cursor_x_v1_8: _,
         cursor_x_v1_11: _,
         cursor_y_v1_8: _,
@@ -340,6 +345,9 @@ impl Connection {
         inside_block_v1_14: _,
         held_item_removed_v1_9: _,
       } => {
+        // 0 = main hand on 1.8
+        let hand = hand_v1_9.unwrap_or(0);
+
         let direction: i32 = if player.ver() == ProtocolVersion::V1_8 {
           // direction_v1_8 is an i8 (not a u8), so the sign stays correct
           direction_v1_8.unwrap().into()
@@ -348,7 +356,7 @@ impl Connection {
         };
 
         if location == Pos::new(-1, -1, -1) && direction == -1 {
-          // Client is eating, or head is inside block
+          self.use_item(player, hand);
         } else {
           let item_data = {
             let inv = player.lock_inventory();
@@ -387,6 +395,10 @@ impl Connection {
       // _ => warn!("got unknown packet from client: {:?}", p),
       _ => (),
     }
+  }
+
+  fn use_item(&self, player: &Arc<Player>, hand: i32) {
+    info!("got use item {:?} with hand {}", player.lock_inventory().main_hand(), hand);
   }
 
   // Returns true if the connection has been closed.
