@@ -2,6 +2,7 @@
 pub mod der;
 mod fast;
 mod fpos;
+mod vec;
 // mod pos;
 mod rng;
 
@@ -10,6 +11,7 @@ pub mod terrain;
 // pub use chunk_pos::ChunkPos;
 pub use fast::{FastMath, EPSILON};
 pub use fpos::{FPos, FPosError};
+pub use vec::{Vec2, Vec3};
 // pub use pos::{Pos, PosError, PosIter};
 pub use rng::WyhashRng;
 

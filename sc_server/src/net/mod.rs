@@ -405,7 +405,7 @@ impl Connection {
       let eid = player.world().summon(entity::Type::Snowball, player.pos());
       // If the entity doesn't exist, it already despawned, so we do nothing if it
       // isn't in the world.
-      player.world().get_entity(eid).map(|ent| ent.set_velocity(player.look_as_vel() * 100.0));
+      player.world().get_entity(eid).map(|ent| ent.set_vel(player.look_as_vel() * 100.0));
     }
   }
 

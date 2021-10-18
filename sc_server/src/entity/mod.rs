@@ -8,7 +8,7 @@ pub use version::TypeConverter;
 
 use crate::world::World;
 use parking_lot::{Mutex, RwLock};
-use sc_common::math::FPos;
+use sc_common::math::{FPos, Vec3};
 use std::sync::Arc;
 
 pub trait EntityData {
@@ -114,5 +114,12 @@ impl Entity {
   /// will drop when killed.
   pub fn exp_count(&self) -> i32 {
     self.data.lock().exp_count()
+  }
+
+  /// Sets this entity's velocity. This will send velocity updates to nearby
+  /// players, and will affect how the entity moves on the next tick.
+  pub fn set_vel(&self, vel: Vec3) {
+    *self.vel.lock() = vel;
+    self.world.read().send_entity_vel(self.eid, vel);
   }
 }
