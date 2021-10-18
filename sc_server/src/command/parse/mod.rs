@@ -118,6 +118,10 @@ impl Parser {
           None,
         ))
       }
+      Self::EntitySummon => {
+        let w = tokens.read_spaced_word()?;
+        Ok(Arg::EntitySummon(w.into()))
+      }
       _ => unimplemented!(),
       /* Self::String(ty) => match ty {
        *   StringType::Word => {

@@ -165,6 +165,11 @@ impl Deref for Word {
     &self.text
   }
 }
+impl From<Word> for String {
+  fn from(w: Word) -> String {
+    w.text
+  }
+}
 
 impl Word {
   /// Returns an error with the span covering this word. Use this when you get

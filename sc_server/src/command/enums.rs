@@ -236,7 +236,7 @@ macro_rules! unwrapper_copy {
     pub fn $name(&self) -> $ty {
       match self {
         Arg::$enum(v) => *v,
-        _ => unreachable!("arg is a {:?}, not a position", self),
+        _ => panic!(concat!("arg is a {:?}, not a ", stringify!($name)), self),
       }
     }
   };
@@ -250,19 +250,25 @@ impl Arg {
   pub fn lit(&self) -> &str {
     match self {
       Arg::Literal(v) => v,
-      _ => unreachable!("arg is a {:?}, not a position", self),
+      _ => panic!("arg is a {:?}, not a literal", self),
     }
   }
   pub fn block(&self) -> block::Kind {
     match self {
       Arg::BlockState(kind, _, _) => *kind,
-      _ => unreachable!("arg is a {:?}, not a position", self),
+      _ => panic!("arg is a {:?}, not a block", self),
     }
   }
   pub fn str(&self) -> &str {
     match self {
       Arg::String(v) => v,
-      _ => unreachable!("arg is a {:?}, not a position", self),
+      _ => panic!("arg is a {:?}, not a string", self),
+    }
+  }
+  pub fn entity_summon(&self) -> &str {
+    match self {
+      Arg::EntitySummon(v) => v,
+      _ => panic!("arg is a {:?}, not an entity summon", self),
     }
   }
 }

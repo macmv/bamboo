@@ -9,7 +9,7 @@ use sc_common::{
   net::cb,
   util::{
     nbt::{Tag, NBT},
-    Buffer,
+    Buffer, Chat,
   },
   version::ProtocolVersion,
 };
@@ -70,6 +70,15 @@ impl World {
       let v = args[1].float();
       if let Some(p) = player {
         p.set_flyspeed(v);
+      }
+    });
+    let mut c = Command::new("summon");
+    c.add_arg("entity", Parser::EntitySummon);
+    self.commands().add(c, |_, player, args| {
+      // args[0] is `summon`
+      let v = args[1].entity_summon();
+      if let Some(p) = player {
+        p.send_message(&Chat::new(format!("summoning {}", v)));
       }
     });
 
