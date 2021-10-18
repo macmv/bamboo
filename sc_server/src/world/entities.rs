@@ -29,7 +29,10 @@ impl World {
       ty_11 = Some(self.entity_converter().to_old(id, player.ver().block()) as i32);
       ty_8 = None;
     } else {
-      ty_8 = Some(self.entity_converter().to_old(id, player.ver().block()) as u8);
+      // ty_8 = Some(self.entity_converter().to_old(id, player.ver().block()) as u8);
+      //
+      // Hardcode creeper until I get entity id conversions working.
+      ty_8 = Some(50);
       ty_11 = None;
     }
     info!("old id: {:?}", ty_8);
