@@ -11,7 +11,7 @@ use parking_lot::{Mutex, RwLock};
 use sc_common::math::{FPos, Vec3};
 use std::sync::Arc;
 
-pub trait EntityData {
+pub trait Behavior {
   /// The maximum health of this entity.
   fn max_health(&self) -> f32 {
     20.0
@@ -33,8 +33,8 @@ pub trait EntityData {
 
 /// Default functionality for entities. Mostly used when an entity hasn't been
 /// implemented.
-struct DefaultEntity;
-impl EntityData for DefaultEntity {}
+struct DefaultBehavior;
+impl Behavior for DefaultBehavior {}
 
 pub struct Entity {
   /// The unique id for this entity. This is the key used to store entities in
@@ -51,7 +51,7 @@ pub struct Entity {
   /// The world this entity is in. Used whenever something changes, and nearby
   /// players need to be notified. This can change if the entity is teleported.
   world:  RwLock<Arc<World>>,
-  data:   Mutex<Box<dyn EntityData + Send>>,
+  data:   Mutex<Box<dyn Behavior + Send>>,
 }
 
 impl Entity {
@@ -59,12 +59,12 @@ impl Entity {
   /// damage, and despawn if their health hits 0. If you want custom
   /// functionality of any kind, call [`new_custom`].
   pub fn new(eid: i32, ty: Type, world: Arc<World>, pos: FPos) -> Self {
-    Self::new_custom(eid, ty, pos, world, DefaultEntity)
+    Self::new_custom(eid, ty, pos, world, DefaultBehavior)
   }
 
   /// Creates a new entity, with the given functionality. This value will be
   /// store within the entity until it despawns.
-  pub fn new_custom<D: EntityData + Send + 'static>(
+  pub fn new_custom<D: Behavior + Send + 'static>(
     eid: i32,
     ty: Type,
     pos: FPos,
