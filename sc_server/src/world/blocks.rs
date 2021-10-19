@@ -367,7 +367,7 @@ impl World {
                 let pos = Pos::new(x, y, z);
                 if c.get_kind(pos).unwrap() != block::Kind::Air {
                   out.push(AABB::new(
-                    FPos::from(pos) + FPos::new(0.5, 0.0, 0.5),
+                    FPos::from(pos + chunk.block()) + FPos::new(0.5, 0.0, 0.5),
                     Vec3::new(1.0, 1.0, 1.0),
                   ));
                 }
