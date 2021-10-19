@@ -19,7 +19,9 @@ impl Behavior for SnowballBehavior {
     p.vel.x *= 0.99;
     p.vel.y *= 0.99;
     p.vel.z *= 0.99;
-    p.vel.y -= 0.03;
+    if !p.grounded {
+      p.vel.y -= 0.03;
+    }
     false
   }
 }

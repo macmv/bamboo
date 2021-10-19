@@ -175,10 +175,10 @@ impl Entity {
         }
         p.aabb = tmp;
       }
-      *self.pos.lock() = p.clone();
+      *self.pos.lock() = p;
       self.world.read().send_entity_pos(self.eid, old.pos, p.aabb.pos, false);
     } else {
-      *self.pos.lock() = p.clone();
+      *self.pos.lock() = p;
     }
     if p.vel != old_vel {
       self.world.read().send_entity_vel(old.pos.chunk(), self.eid, p.vel);
