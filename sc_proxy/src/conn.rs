@@ -208,7 +208,8 @@ impl<'a, S: PacketStream + Send + Sync> Conn<'a, S> {
   pub fn read_server(&mut self) -> io::Result<bool> {
     loop {
       match self.poll_server() {
-        Ok(_) => loop {
+        Ok(true) => return Ok(true),
+        Ok(false) => loop {
           match self.read_server_packet() {
             Ok(true) => {}
             Ok(false) => break,
@@ -224,10 +225,14 @@ impl<'a, S: PacketStream + Send + Sync> Conn<'a, S> {
     }
   }
 
-  fn poll_server(&mut self) -> io::Result<()> {
+  /// Returns true if the connection should close.
+  fn poll_server(&mut self) -> io::Result<bool> {
     let n = self.server_stream.as_mut().unwrap().read(&mut self.garbage)?;
+    if n == 0 {
+      return Ok(true);
+    }
     self.from_server.extend_from_slice(&self.garbage[..n]);
-    Ok(())
+    Ok(false)
   }
 
   /// Returns true if there are more packets, false if there is an empty or
