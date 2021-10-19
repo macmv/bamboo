@@ -2,9 +2,12 @@ use super::{FPos, Vec3};
 
 #[derive(Debug, Clone, Copy)]
 pub struct AABB {
-  pos:  FPos,
-  // Never negative
-  size: Vec3,
+  /// The position at the middle center of this AABB. This is the feet position
+  /// of the entity, and is the value that should be sent in entity position
+  /// packets.
+  pub pos: FPos,
+  /// Never negative
+  size:    Vec3,
 }
 
 impl AABB {
@@ -38,7 +41,9 @@ impl AABB {
       || (self.max_z() > other.min_z() && self.max_z() < other.max_z())
   }
 
-  /// Returns the distance from the other AABB in all axis.
+  /// Returns the distance from the other AABB in all axis. If the bounding
+  /// boxes collide, then the value on that axis will be some negative value.
+  /// The value should be ignored if it is less than zero.
   pub fn distance_from(&self, other: AABB) -> Vec3 {
     Vec3::new(
       if self.pos.x() > other.pos.x() {
@@ -60,22 +65,22 @@ impl AABB {
   }
 
   pub fn min_x(&self) -> f64 {
-    self.pos.x()
+    self.pos.x() - self.size.x / 2.0
   }
   pub fn min_y(&self) -> f64 {
     self.pos.y()
   }
   pub fn min_z(&self) -> f64 {
-    self.pos.z()
+    self.pos.z() - self.size.z / 2.0
   }
   pub fn max_x(&self) -> f64 {
-    self.pos.x() + self.size.x
+    self.pos.x() + self.size.x / 2.0
   }
   pub fn max_y(&self) -> f64 {
     self.pos.y() + self.size.y
   }
   pub fn max_z(&self) -> f64 {
-    self.pos.z() + self.size.z
+    self.pos.z() + self.size.z / 2.0
   }
 
   /// Returns the minimum position of this bounding box. Can be used to move the

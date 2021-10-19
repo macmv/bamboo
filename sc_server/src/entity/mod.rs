@@ -8,7 +8,7 @@ pub use version::TypeConverter;
 
 use crate::world::World;
 use parking_lot::{Mutex, RwLock};
-use sc_common::math::{FPos, Vec3};
+use sc_common::math::{FPos, Vec3, AABB};
 use std::sync::Arc;
 
 pub mod behavior;
@@ -17,16 +17,21 @@ use behavior::Behavior;
 
 #[derive(Debug, Clone)]
 pub struct EntityPos {
-  pos: FPos,
-  vel: Vec3,
+  aabb: AABB,
+  vel:  Vec3,
 
   yaw:   f32,
   pitch: f32,
 }
 
 impl EntityPos {
-  pub fn new(pos: FPos) -> Self {
-    EntityPos { pos, vel: Vec3::new(0.0, 0.0, 0.0), yaw: 0.0, pitch: 0.0 }
+  pub fn new(pos: FPos, size: Vec3) -> Self {
+    EntityPos {
+      aabb:  AABB::new(pos, size),
+      vel:   Vec3::new(0.0, 0.0, 0.0),
+      yaw:   0.0,
+      pitch: 0.0,
+    }
   }
 }
 
@@ -56,7 +61,7 @@ impl Entity {
     let behavior = behavior::for_entity(ty);
     Entity {
       eid,
-      pos: Mutex::new(EntityPos::new(pos)),
+      pos: Mutex::new(EntityPos::new(pos, world.entity_converter().get_data(ty).size())),
       ty,
       health: Mutex::new(behavior.max_health()),
       world: RwLock::new(world),
@@ -75,7 +80,7 @@ impl Entity {
   ) -> Self {
     Entity {
       eid,
-      pos: Mutex::new(EntityPos::new(pos)),
+      pos: Mutex::new(EntityPos::new(pos, world.entity_converter().get_data(ty).size())),
       ty,
       health: Mutex::new(behavior.max_health()),
       world: RwLock::new(world),
@@ -87,7 +92,7 @@ impl Entity {
   /// server's known position of this entity. Some clients may be behind this
   /// position (by up to 1/20 of a second).
   pub fn pos(&self) -> FPos {
-    self.pos.lock().pos
+    self.pos.lock().aabb.pos
   }
 
   /// Returns the unique id for this entity.
@@ -134,14 +139,14 @@ impl Entity {
     // exist), then we won't overwrite changed data by unlocking and re-locking this
     // mutex.
     let mut p = self.pos.lock().clone();
-    let old = p.pos;
+    let old = p.aabb.pos;
     let old_vel = p.vel;
     if self.behavior.lock().tick(self, &mut p) {
       return true;
     }
     *self.pos.lock() = p.clone();
-    if p.pos != old {
-      self.world.read().send_entity_pos(self.eid, old, p.pos, false);
+    if p.aabb.pos != old {
+      self.world.read().send_entity_pos(self.eid, old, p.aabb.pos, false);
     }
     if p.vel != old_vel {
       self.world.read().send_entity_vel(old.chunk(), self.eid, p.vel);

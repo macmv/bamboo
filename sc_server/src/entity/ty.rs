@@ -1,4 +1,5 @@
 use num_derive::{FromPrimitive, ToPrimitive};
+use sc_common::math::Vec3;
 use std::{error::Error, fmt, str::FromStr};
 
 // Creates the Type enum, and the generate_entities function.
@@ -13,8 +14,14 @@ pub struct Data {
 }
 
 impl Data {
+  /// Returns the display name of this entity.
   pub fn display_name(&self) -> &str {
     &self.display_name
+  }
+
+  /// Returns the size of the hitbox of this entity.
+  pub fn size(&self) -> Vec3 {
+    Vec3::new(self.width as f64 * 2.0, self.height as f64, self.width as f64 * 2.0)
   }
 }
 

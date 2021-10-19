@@ -28,7 +28,7 @@ pub trait Behavior {
   fn tick(&self, ent: &Entity, p: &mut EntityPos) -> bool {
     let _ = ent;
     let vel = p.vel;
-    p.pos += vel;
+    p.aabb.pos += vel;
     // 9.8 m/s ~= 0.5 m/tick. However, minecraft go brrr, and gravity is actually
     // 0.03 b/tick for projectiles, and 0.08 b/tick for living entities.
     p.vel.y -= 0.08;
