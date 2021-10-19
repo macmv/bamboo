@@ -402,11 +402,10 @@ impl Connection {
     let inv = player.lock_inventory();
     let main = inv.main_hand();
     if main.item() == item::Type::Snowball {
-      let eid =
-        player.world().summon(entity::Type::Snowball, player.pos() + FPos::new(0.0, 1.0, 0.0));
+      let eid = player.world().summon(entity::Type::Slime, player.pos() + FPos::new(0.0, 1.0, 0.0));
       // If the entity doesn't exist, it already despawned, so we do nothing if it
       // isn't in the world.
-      player.world().entities().get(&eid).map(|ent| ent.set_vel(player.look_as_vec() * 2.0));
+      player.world().entities().get(&eid).map(|ent| ent.set_vel(player.look_as_vec() * 0.5));
     }
   }
 
