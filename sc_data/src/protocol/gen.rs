@@ -81,50 +81,6 @@ impl PacketField {
       _ => "Vec<u8>",
     }
   }
-  pub fn ty_key(&self) -> &'static str {
-    // The int types are:
-    // `sint` -> Signed, variable length encoded
-    // `uint` -> Unsigned, variable length encoded
-    // `int` -> Signed, fixed length encoded
-    //
-    // So:
-    // `sint` -> i8, i16, varint
-    // `uint` -> Any unsigned int
-    // `int` -> i32
-    match self {
-      Self::Bool => "bool",
-      Self::Int(ity) => match ity {
-        IntType::I8 => "sint",
-        IntType::U8 => "uint",
-        IntType::I16 => "sint",
-        IntType::U16 => "uint",
-        IntType::I32 => "int",
-        IntType::I64 => "long",
-        IntType::VarInt => "sint",
-        IntType::OptVarInt => "sint",
-      },
-      Self::Float(fty) => match fty {
-        FloatType::F32 => "float",
-        FloatType::F64 => "double",
-      },
-      Self::UUID => "uuid",
-      Self::String => "str",
-      Self::Position => "pos",
-
-      // Self::NBT => "byte_arr",
-      // Self::OptionalNBT => "byte_arr",
-      // Self::RestBuffer => "byte_arr",
-      // Self::EntityMetadata => "byte_arr", // Implemented on the server
-
-      // Self::Option(field) => field.ty_key(),
-      Self::DefinedType(name) => match name.as_str() {
-        "slot" => "item",
-        "tags" => "byte_arr",
-        _ => panic!("undefined field type {}", name),
-      },
-      _ => "byte_arr",
-    }
-  }
   pub fn generate_to_sc(&self, val: &str) -> String {
     match self {
       Self::Bool => format!("m.write_bool(*{})", val),
@@ -232,26 +188,26 @@ impl PacketField {
       _ => format!("out.write_buf({})", val),
     }
   }
-  pub fn generate_from_tcp(&self) -> &'static str {
+  pub fn generate_from_tcp(&self, packet: &str) -> String {
     match self {
-      Self::Bool => "p.read_bool()",
+      Self::Bool => "p.read_bool()".into(),
       Self::Int(ity) => match ity {
-        IntType::I8 => "p.read_i8()",
-        IntType::U8 => "p.read_u8()",
-        IntType::I16 => "p.read_i16()",
-        IntType::U16 => "p.read_u16()",
-        IntType::I32 => "p.read_i32()",
-        IntType::I64 => "p.read_i64()",
-        IntType::VarInt => "p.read_varint()",
-        IntType::OptVarInt => "Some(p.read_varint())",
+        IntType::I8 => "p.read_i8()".into(),
+        IntType::U8 => "p.read_u8()".into(),
+        IntType::I16 => "p.read_i16()".into(),
+        IntType::U16 => "p.read_u16()".into(),
+        IntType::I32 => "p.read_i32()".into(),
+        IntType::I64 => "p.read_i64()".into(),
+        IntType::VarInt => "p.read_varint()".into(),
+        IntType::OptVarInt => "Some(p.read_varint())".into(),
       },
       Self::Float(fty) => match fty {
-        FloatType::F32 => "p.read_f32()",
-        FloatType::F64 => "p.read_f64()",
+        FloatType::F32 => "p.read_f32()".into(),
+        FloatType::F64 => "p.read_f64()".into(),
       },
-      Self::UUID => "p.read_uuid()",
-      Self::String => "p.read_str()",
-      Self::Position => "p.read_pos()",
+      Self::UUID => "p.read_uuid()".into(),
+      Self::String => "p.read_str()".into(),
+      Self::Position => "p.read_pos()".into(),
 
       // Self::NBT => (#name.clone()),
       // Self::OptionalNBT => (#name.clone()),
@@ -260,11 +216,25 @@ impl PacketField {
 
       // Self::Option(field) => (#name.unwrap()),
       Self::DefinedType(name) => match name.as_str() {
-        "slot" => "p.read_item()",
-        "tags" => "{ let len = p.read_varint(); p.read_buf(len) }",
+        "slot" => "p.read_item()".into(),
+        "tags" => "{ let len = p.read_varint(); p.read_buf(len) }".into(),
+        "void" => "None".into(),
         _ => panic!("undefined field type {}", name),
       },
-      _ => "{ let len = p.read_varint(); p.read_buf(len) }",
+      Self::Switch { compare_to, fields, default } => {
+        if packet == "use_entity" {
+          let mut out = format!("match {} {{\n", compare_to);
+          for (k, v) in fields {
+            out += &format!("            {} => Some({}),\n", k, v.generate_from_tcp(packet));
+          }
+          out += &format!("            _ => {}\n", default.generate_from_tcp(packet));
+          out += "          }";
+          out
+        } else {
+          "{ let len = p.read_varint(); p.read_buf(len) }".into()
+        }
+      }
+      _ => "{ let len = p.read_varint(); p.read_buf(len) }".into(),
     }
   }
 }

@@ -96,7 +96,7 @@ fn generate_packets(
         }
       };
       let params = match &values.get("params") {
-        PacketField::Switch { compare_to: _, fields } => fields,
+        PacketField::Switch { fields, .. } => fields,
         _ => {
           return Err(io::Error::new(
             ErrorKind::InvalidData,
@@ -192,7 +192,15 @@ fn parse_type(v: json::Type, types: &HashMap<String, PacketField>) -> PacketFiel
       for (k, v) in v.fields {
         fields.insert(k, parse_type(v, types));
       }
-      PacketField::Switch { compare_to: v.compare_to, fields }
+      PacketField::Switch {
+        compare_to: v.compare_to,
+        fields,
+        default: Box::new(
+          v.default
+            .map(|v| parse_type(v, types))
+            .unwrap_or(PacketField::DefinedType("void".into())),
+        ),
+      }
     }
     json::TypeValue::Option(v) => PacketField::Option(Box::new(parse_type(v, types))),
     json::TypeValue::Container(v) => {

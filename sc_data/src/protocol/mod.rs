@@ -226,19 +226,19 @@ impl NamedPacketField {
     }
     gen.write_line(",");
   }
-  fn write_from_tcp(&self, gen: &mut CodeGen, is_ver: bool) {
+  fn write_from_tcp(&self, gen: &mut CodeGen, is_ver: bool, packet: &str) {
     gen.write(&self.name());
     gen.write(": ");
     if self.multi_versioned {
       if is_ver {
         gen.write("Some(");
-        gen.write(self.generate_from_tcp());
+        gen.write(&self.generate_from_tcp(packet));
         gen.write(")");
       } else {
         gen.write("None");
       }
     } else {
-      gen.write(self.generate_from_tcp());
+      gen.write(&self.generate_from_tcp(packet));
     }
     gen.write_line(",");
   }
@@ -259,8 +259,8 @@ impl NamedPacketField {
       self.field.generate_to_tcp(&self.name)
     }
   }
-  fn generate_from_tcp(&self) -> &'static str {
-    self.field.generate_from_tcp()
+  fn generate_from_tcp(&self, packet: &str) -> String {
+    self.field.generate_from_tcp(packet)
   }
 }
 
@@ -636,7 +636,7 @@ fn generate_packets(
                   gen.write(" ");
                   gen.write_block(|gen| {
                     for (is_ver, field) in p.fields_ver(Version { major: 8, minor: 0 }).iter() {
-                      field.write_from_tcp(gen, *is_ver);
+                      field.write_from_tcp(gen, *is_ver, p.name());
                     }
                   });
                   gen.remove_indent();
@@ -657,7 +657,7 @@ fn generate_packets(
                 gen.write(" ");
                 gen.write_block(|gen| {
                   for (is_ver, field) in p.fields_ver(*ver).iter() {
-                    field.write_from_tcp(gen, *is_ver);
+                    field.write_from_tcp(gen, *is_ver, p.name());
                   }
                 });
                 gen.remove_indent();
@@ -670,7 +670,7 @@ fn generate_packets(
               gen.write_line(" {");
               gen.add_indent();
               for field in p.fields().iter() {
-                field.write_from_tcp(gen, true);
+                field.write_from_tcp(gen, true, p.name());
               }
               gen.remove_indent();
               gen.write_line("},");

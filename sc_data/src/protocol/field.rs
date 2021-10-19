@@ -56,11 +56,18 @@ pub enum PacketField {
 
   // Complicated fields
   Option(Box<PacketField>),
-  Array { count: CountType, value: Box<PacketField> },
+  Array {
+    count: CountType,
+    value: Box<PacketField>,
+  },
   Buffer(CountType),
   BitField(Vec<BitField>),
   Container(Container),
-  Switch { compare_to: String, fields: HashMap<String, PacketField> },
+  Switch {
+    compare_to: String,
+    fields:     HashMap<String, PacketField>,
+    default:    Box<PacketField>,
+  },
   Mappings(HashMap<String, u32>), // Mapping of packet names to ids
 
   // Logical fields
