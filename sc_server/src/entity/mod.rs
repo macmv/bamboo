@@ -16,7 +16,7 @@ pub mod behavior;
 use behavior::Behavior;
 
 #[derive(Debug, Clone)]
-struct EntityPos {
+pub struct EntityPos {
   pos: FPos,
   vel: Vec3,
 
@@ -33,19 +33,19 @@ impl EntityPos {
 pub struct Entity {
   /// The unique id for this entity. This is the key used to store entities in
   /// the World.
-  eid:    i32,
+  eid:      i32,
   /// The position of this entity. Must be valid for all entities.
-  pos:    Mutex<EntityPos>,
+  pos:      Mutex<EntityPos>,
   /// The type of this entity.
-  ty:     Type,
+  ty:       Type,
   /// For some entities, such as projectiles, this field is ignored. To make the
   /// entity not disappear when it hits 0 health, overwrite the
   /// `should_despawn` function in `EntityData`.
-  health: Mutex<f32>,
+  health:   Mutex<f32>,
   /// The world this entity is in. Used whenever something changes, and nearby
   /// players need to be notified. This can change if the entity is teleported.
-  world:  RwLock<Arc<World>>,
-  data:   Mutex<Box<dyn Behavior + Send>>,
+  world:    RwLock<Arc<World>>,
+  behavior: Mutex<Box<dyn Behavior + Send>>,
 }
 
 impl Entity {
@@ -60,7 +60,7 @@ impl Entity {
       ty,
       health: Mutex::new(behavior.max_health()),
       world: RwLock::new(world),
-      data: Mutex::new(behavior),
+      behavior: Mutex::new(behavior),
     }
   }
 
@@ -79,7 +79,7 @@ impl Entity {
       ty,
       health: Mutex::new(behavior.max_health()),
       world: RwLock::new(world),
-      data: Mutex::new(Box::new(behavior)),
+      behavior: Mutex::new(Box::new(behavior)),
     }
   }
 
@@ -108,14 +108,14 @@ impl Entity {
 
   /// Returns true if this entity should despawn.
   pub fn should_despawn(&self) -> bool {
-    self.data.lock().should_despawn(self.health())
+    self.behavior.lock().should_despawn(self.health())
   }
 
   /// Returns the amount of exp stored in this entity. This is just the amount
   /// for an exp orb, but it is also used to find out how much exp an entity
   /// will drop when killed.
   pub fn exp_count(&self) -> i32 {
-    self.data.lock().exp_count()
+    self.behavior.lock().exp_count()
   }
 
   /// Sets this entity's velocity. This will send velocity updates to nearby
@@ -127,16 +127,25 @@ impl Entity {
 
   /// Called 20 times a second. Calling this more/less frequently will break
   /// things.
-  pub(crate) fn tick(&self) {
-    let mut p = self.pos.lock();
+  pub(crate) fn tick(&self) -> bool {
+    // We don't actually have a race condition here, unless tick() is called at the
+    // same time from multiple places (which would be a Bad Thing). Because we can't
+    // modify `self.pos` from anywhere else (simply because the functions don't
+    // exist), then we won't overwrite changed data by unlocking and re-locking this
+    // mutex.
+    let mut p = self.pos.lock().clone();
     let old = p.pos;
-    let vel = p.vel;
-    p.pos += vel;
-    // 9.8 m/s ~= 0.5 m/tick. However, minecraft go brrr, and gravity is actually
-    // 0.03 b/tick for projectiles, and 0.08 b/tick for living entities.
-    p.vel.y -= 0.08;
-    p.vel.y *= 0.98;
-    self.world.read().send_entity_vel(old.chunk(), self.eid, p.vel);
-    self.world.read().send_entity_pos(self.eid, old, p.pos, false);
+    let old_vel = p.vel;
+    if self.behavior.lock().tick(self, &mut p) {
+      return true;
+    }
+    *self.pos.lock() = p.clone();
+    if p.pos != old {
+      self.world.read().send_entity_pos(self.eid, old, p.pos, false);
+    }
+    if p.vel != old_vel {
+      self.world.read().send_entity_vel(old.chunk(), self.eid, p.vel);
+    }
+    false
   }
 }

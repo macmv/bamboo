@@ -2,7 +2,7 @@ mod snowball;
 
 pub use snowball::SnowballBehavior;
 
-use super::{Entity, Type};
+use super::{Entity, EntityPos, Type};
 
 pub trait Behavior {
   /// The maximum health of this entity.
@@ -25,8 +25,20 @@ pub trait Behavior {
 
   /// Any extra functionality needed. Called every tick, after movement and
   /// collision checks have been completed.
-  fn tick(&self, ent: &Entity) {
+  fn tick(&self, ent: &Entity, p: &mut EntityPos) -> bool {
     let _ = ent;
+    let vel = p.vel;
+    p.pos += vel;
+    // 9.8 m/s ~= 0.5 m/tick. However, minecraft go brrr, and gravity is actually
+    // 0.03 b/tick for projectiles, and 0.08 b/tick for living entities.
+    p.vel.y -= 0.08;
+    p.vel.y *= 0.98;
+
+    // This is multiplied by the 'sliperiness' of the block the entity is standing
+    // on.
+    p.vel.x *= 0.91;
+    p.vel.z *= 0.91;
+    false
   }
 }
 
