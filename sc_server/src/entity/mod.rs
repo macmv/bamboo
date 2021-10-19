@@ -132,7 +132,11 @@ impl Entity {
     let old = p.pos;
     let vel = p.vel;
     p.pos += vel;
-    p.vel.y -= 0.5; // 9.8 m/s ~= 0.5 m/tick
+    // 9.8 m/s ~= 0.5 m/tick. However, minecraft go brrr, and gravity is actually
+    // 0.03 b/tick for projectiles, and 0.08 b/tick for living entities.
+    p.vel.y -= 0.08;
+    p.vel.y *= 0.98;
+    self.world.read().send_entity_vel(old.chunk(), self.eid, p.vel);
     self.world.read().send_entity_pos(self.eid, old, p.pos, false);
   }
 }
