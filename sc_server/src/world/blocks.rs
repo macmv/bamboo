@@ -331,13 +331,23 @@ impl World {
   ///
   /// For things like stairs, multiple items will be added to the output vector.
   pub fn nearby_colliders(&self, aabb: AABB) -> Vec<AABB> {
-    let min = Pos::new(
+    let mut min = Pos::new(
       aabb.min_x().floor() as i32,
       aabb.min_y().floor() as i32,
       aabb.min_z().floor() as i32,
     );
-    let max =
+    let mut max =
       Pos::new(aabb.max_x().ceil() as i32, aabb.max_y().ceil() as i32, aabb.max_z().ceil() as i32);
+
+    if max.y < 0 || min.y > 255 {
+      return vec![];
+    }
+    if min.y < 0 {
+      min.y = 0
+    }
+    if max.y > 255 {
+      max.y = 255
+    }
 
     let mut out = vec![];
     for x in min.chunk_x()..=max.chunk_x() {
