@@ -44,12 +44,13 @@ pub trait Behavior {
 
 /// Default functionality for entities. Mostly used when an entity hasn't been
 /// implemented.
+#[derive(Default)]
 struct DefaultBehavior;
 impl Behavior for DefaultBehavior {}
 
 pub fn for_entity(ty: Type) -> Box<dyn Behavior + Send> {
   match ty {
-    Type::Snowball => Box::new(SnowballBehavior),
-    _ => Box::new(DefaultBehavior),
+    Type::Snowball => Box::new(SnowballBehavior::default()),
+    _ => Box::new(DefaultBehavior::default()),
   }
 }
