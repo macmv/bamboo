@@ -22,15 +22,27 @@ impl AABB {
   ///
   /// Returns true if this collided with anything.
   pub fn move_towards(&mut self, delta: Vec3, nearby: &[AABB]) -> bool {
+    let mut collided = false;
+    if !nearby.is_empty() {
+      info!("collision time: we are {:?}, and are moving with delta {:?}", self, delta);
+    }
     for &o in nearby {
+      info!("handling collision with {:?}", o);
       let d = self.distance_from(o);
+      info!("got distance {:?}", d);
       if d.x.abs() >= delta.x.abs() && d.y.abs() >= delta.y.abs() && d.z.abs() >= delta.z.abs() {
         continue;
       }
+      info!("COLLISION TIME LADS");
+      // If we get here, then moving self.pos by delta will cause us to
+      // intersect `o`.
+      collided = true;
     }
 
-    self.pos += delta;
-    false
+    if !collided {
+      self.pos += delta;
+    }
+    collided
   }
 
   /// Returns true if self and other are intersecting. Being next to other
