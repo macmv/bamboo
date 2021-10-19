@@ -225,10 +225,10 @@ impl PacketField {
         if packet == "use_entity" {
           let mut out = format!("match {} {{\n", compare_to);
           for (k, v) in fields {
-            out += &format!("            {} => Some({}),\n", k, v.generate_from_tcp(packet));
+            out += &format!("          {} => Some({}),\n", k, v.generate_from_tcp(packet));
           }
-          out += &format!("            _ => {}\n", default.generate_from_tcp(packet));
-          out += "          }";
+          out += &format!("          _ => {}\n", default.generate_from_tcp(packet));
+          out += "        }";
           out
         } else {
           "{ let len = p.read_varint(); p.read_buf(len) }".into()
