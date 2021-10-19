@@ -15,22 +15,26 @@ pub mod behavior;
 
 use behavior::Behavior;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Copy)]
 pub struct EntityPos {
-  aabb: AABB,
-  vel:  Vec3,
+  pub aabb:     AABB,
+  pub vel:      Vec3,
+  /// This is determined by the server, so it will always be accurate, unlike
+  /// the player grounded field, which is sent to use from the client.
+  pub grounded: bool,
 
-  yaw:   f32,
-  pitch: f32,
+  pub yaw:   f32,
+  pub pitch: f32,
 }
 
 impl EntityPos {
   pub fn new(pos: FPos, size: Vec3) -> Self {
     EntityPos {
-      aabb:  AABB::new(pos, size),
-      vel:   Vec3::new(0.0, 0.0, 0.0),
-      yaw:   0.0,
-      pitch: 0.0,
+      aabb:     AABB::new(pos, size),
+      vel:      Vec3::new(0.0, 0.0, 0.0),
+      grounded: false,
+      yaw:      0.0,
+      pitch:    0.0,
     }
   }
 }
@@ -91,8 +95,17 @@ impl Entity {
   /// Reads this entity's position. This will always be up to date with the
   /// server's known position of this entity. Some clients may be behind this
   /// position (by up to 1/20 of a second).
-  pub fn pos(&self) -> FPos {
-    self.pos.lock().aabb.pos
+  ///
+  /// This returns everything about the entity's position, including its
+  /// velocity, pitch, yaw, etc. If you just need the position, then
+  /// [`fpos`](Self::fpos) will be easier to use.
+  pub fn pos(&self) -> EntityPos {
+    *self.pos.lock()
+  }
+
+  /// Returns this entity's position.
+  pub fn fpos(&self) -> FPos {
+    self.pos().aabb.pos
   }
 
   /// Returns the unique id for this entity.
@@ -127,7 +140,7 @@ impl Entity {
   /// players, and will affect how the entity moves on the next tick.
   pub fn set_vel(&self, vel: Vec3) {
     self.pos.lock().vel = vel;
-    self.world.read().send_entity_vel(self.pos().chunk(), self.eid, vel);
+    self.world.read().send_entity_vel(self.fpos().chunk(), self.eid, vel);
   }
 
   /// Called 20 times a second. Calling this more/less frequently will break
@@ -156,6 +169,9 @@ impl Entity {
           p.vel.y = 0.0
         } else if res.axis.z != 0.0 {
           p.vel.z = 0.0
+        }
+        if res.axis.y == -1.0 {
+          p.grounded = true;
         }
         p.aabb = tmp;
       }
