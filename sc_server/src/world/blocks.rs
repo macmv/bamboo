@@ -1,6 +1,6 @@
 use crate::{block, net, world::World};
 use sc_common::{
-  math::{ChunkPos, Pos, PosError},
+  math::{ChunkPos, FPos, Pos, PosError, Vec3, AABB},
   net::cb,
 };
 use std::{cmp::Ordering, collections::HashMap};
@@ -324,5 +324,49 @@ impl World {
     } else {
       Ok(pos)
     }
+  }
+
+  /// Returns all the colliders next to the given AABB. This should be used to
+  /// perform collision checks.
+  ///
+  /// For things like stairs, multiple items will be added to the output vector.
+  pub fn nearby_colliders(&self, aabb: AABB) -> Vec<AABB> {
+    let min = Pos::new(
+      aabb.min_x().floor() as i32,
+      aabb.min_y().floor() as i32,
+      aabb.min_z().floor() as i32,
+    );
+    let max =
+      Pos::new(aabb.max_x().ceil() as i32, aabb.max_y().ceil() as i32, aabb.max_z().ceil() as i32);
+
+    let mut out = vec![];
+    for x in min.chunk_x()..=max.chunk_x() {
+      for z in min.chunk_z()..=max.chunk_z() {
+        let chunk = ChunkPos::new(x, z);
+        let min_x = if min.chunk_x() == x { min.chunk_rel_x() } else { 0 };
+        let min_z = if min.chunk_z() == z { min.chunk_rel_z() } else { 0 };
+        let max_x = if max.chunk_x() == x { max.chunk_rel_x() } else { 15 };
+        let max_z = if max.chunk_z() == z { max.chunk_rel_z() } else { 15 };
+
+        let min = Pos::new(min_x, min.y, min_z);
+        let max = Pos::new(max_x, max.y, max_z);
+        self.chunk(chunk, |c| {
+          for y in min.y..=max.y {
+            for z in min.z..=max.z {
+              for x in min.x..=max.x {
+                let pos = Pos::new(x, y, z);
+                if c.get_kind(pos).unwrap() != block::Kind::Air {
+                  out.push(AABB::new(
+                    FPos::from(pos) + FPos::new(0.5, 0.0, 0.5),
+                    Vec3::new(1.0, 1.0, 1.0),
+                  ));
+                }
+              }
+            }
+          }
+        });
+      }
+    }
+    out
   }
 }

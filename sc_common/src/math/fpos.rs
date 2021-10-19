@@ -38,6 +38,12 @@ impl Default for FPos {
   }
 }
 
+impl From<Pos> for FPos {
+  fn from(p: Pos) -> FPos {
+    FPos { x: p.x.into(), y: p.y.into(), z: p.z.into() }
+  }
+}
+
 impl FPos {
   /// Creates a new block position. This can be used to find chunk coordinates,
   /// place blocks, or send a position in a packet.
