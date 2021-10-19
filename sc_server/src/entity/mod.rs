@@ -139,17 +139,22 @@ impl Entity {
     // exist), then we won't overwrite changed data by unlocking and re-locking this
     // mutex.
     let mut p = self.pos.lock().clone();
-    let old = p.aabb.pos;
+    let mut old = p.aabb;
     let old_vel = p.vel;
     if self.behavior.lock().tick(self, &mut p) {
       return true;
     }
     *self.pos.lock() = p.clone();
-    if p.aabb.pos != old {
-      self.world.read().send_entity_pos(self.eid, old, p.aabb.pos, false);
+    let w = self.world.read();
+    if p.aabb.pos != old.pos {
+      let nearby = w.nearby_colliders(p.aabb);
+      if old.move_towards((old.pos - p.aabb.pos).into(), &nearby) {
+        p.aabb = old;
+      }
+      self.world.read().send_entity_pos(self.eid, old.pos, p.aabb.pos, false);
     }
     if p.vel != old_vel {
-      self.world.read().send_entity_vel(old.chunk(), self.eid, p.vel);
+      self.world.read().send_entity_vel(old.pos.chunk(), self.eid, p.vel);
     }
     false
   }

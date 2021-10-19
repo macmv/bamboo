@@ -19,7 +19,9 @@ impl AABB {
 
   /// Moves this box in the given direction, and make sure that it doesn't
   /// intersect with any of the given collision boxes.
-  pub fn move_towards(&mut self, delta: Vec3, nearby: &[AABB]) {
+  ///
+  /// Returns true if this collided with anything.
+  pub fn move_towards(&mut self, delta: Vec3, nearby: &[AABB]) -> bool {
     for &o in nearby {
       let d = self.distance_from(o);
       if d.x.abs() >= delta.x.abs() && d.y.abs() >= delta.y.abs() && d.z.abs() >= delta.z.abs() {
@@ -28,6 +30,7 @@ impl AABB {
     }
 
     self.pos += delta;
+    false
   }
 
   /// Returns true if self and other are intersecting. Being next to other

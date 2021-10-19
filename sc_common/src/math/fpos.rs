@@ -43,6 +43,16 @@ impl From<Pos> for FPos {
     FPos { x: p.x.into(), y: p.y.into(), z: p.z.into() }
   }
 }
+impl From<Vec3> for FPos {
+  fn from(v: Vec3) -> FPos {
+    FPos::new(v.x, v.y, v.z)
+  }
+}
+impl From<FPos> for Vec3 {
+  fn from(v: FPos) -> Vec3 {
+    Vec3::new(v.x, v.y, v.z)
+  }
+}
 
 impl FPos {
   /// Creates a new block position. This can be used to find chunk coordinates,
