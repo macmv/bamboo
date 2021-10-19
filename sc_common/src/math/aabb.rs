@@ -1,4 +1,5 @@
 use super::{FPos, Vec3};
+use std::mem;
 
 #[derive(Debug, Clone, Copy)]
 pub struct AABB {
@@ -22,24 +23,71 @@ impl AABB {
   ///
   /// Returns true if this collided with anything.
   pub fn move_towards(&mut self, delta: Vec3, nearby: &[AABB]) -> bool {
+    fn time_factor(val: f64, mut start: f64, mut end: f64) -> f64 {
+      (val - start) / (end - start)
+    }
+
     let mut collided = false;
     if !nearby.is_empty() {
       info!("collision time: we are {:?}, and are moving with delta {:?}", self, delta);
     }
-    for &o in nearby {
-      info!("handling collision with {:?}", o);
+    let after_move = AABB::new(self.pos + delta, self.size);
+    let mut time = 1.0;
+    for &o in nearby.iter().filter(|&&o| after_move.is_colliding_with(o)) {
+      info!("we are about to collide with {:?}", o);
       let d = self.distance_from(o);
-      info!("got distance {:?}", d);
-      if d.x.abs() >= delta.x.abs() && d.y.abs() >= delta.y.abs() && d.z.abs() >= delta.z.abs() {
-        continue;
+      // Time to collide with the object, in each axis. We use this to find out which
+      // axis will collide first.
+      let t = Vec3::new(d.x / delta.x, d.y / delta.y, d.z / delta.z);
+
+      if t.x <= t.y && t.x <= t.z {
+        // Collided on the X axis
+        let pos_x;
+        if delta.x > 0.0 {
+          pos_x = o.min_x() - self.size.x / 2.0;
+        } else {
+          pos_x = o.max_x() + self.size.x / 2.0;
+        }
+        let fac = time_factor(pos_x, self.pos.x, after_move.pos.x);
+        if fac < time {
+          time = fac
+        }
+      } else if t.y <= t.x && t.y <= t.z {
+        // Collided on the Y axis
+        let pos_y;
+        // Y is different, because self.pos is the bottom, not middle.
+        if delta.y > 0.0 {
+          pos_y = o.min_y() - self.size.y;
+        } else {
+          pos_y = o.max_y();
+        }
+        let fac = time_factor(pos_y, self.pos.y, after_move.pos.y);
+        info!("pos_y: {}, self.pos_y: {}, after_move_y: {}", pos_y, self.pos.y, after_move.pos.y);
+        info!("fac: {}", fac);
+        if fac < time {
+          time = fac
+        }
+      } else {
+        // Collided on the Z axis
+        let pos_z;
+        if delta.z > 0.0 {
+          pos_z = o.min_z() - self.size.z / 2.0;
+        } else {
+          pos_z = o.max_z() + self.size.z / 2.0;
+        }
+        let fac = time_factor(pos_z, self.pos.z, after_move.pos.z);
+        info!("fac: {}", fac);
+        if fac < time {
+          time = fac
+        }
       }
-      info!("COLLISION TIME LADS");
-      // If we get here, then moving self.pos by delta will cause us to
-      // intersect `o`.
       collided = true;
     }
 
-    if !collided {
+    if collided {
+      self.pos += delta * time;
+      info!("RESULTING POSITION: {:?}, time: {}", self.pos, time);
+    } else {
       self.pos += delta;
     }
     collided
