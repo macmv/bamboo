@@ -5,54 +5,26 @@ use super::{FloatType, IntType, NamedPacketField, PacketField, Version, Versione
 use std::collections::HashMap;
 
 impl PacketField {
-  pub fn ty_lit(&self) -> &'static str {
-    // // Simple fields
-    // Native, // Should never exist
-    // Bool,
-    // Int(IntType),
-    // Float(FloatType),
-    // UUID,
-    // String,
-    // Position,
-
-    // // Sizable fields
-    // NBT,
-    // OptionalNBT,
-    // RestBuffer, // The rest of the buffer
-    // EntityMetadata,
-
-    // // Complicated fields
-    // Option(Box<PacketField>),
-    // Array { count: CountType, value: Box<PacketField> },
-    // Buffer(CountType),
-    // BitField(Vec<BitField>),
-    // Container(Container),
-    // Switch { compare_to: String, fields: HashMap<String, PacketField> },
-    // Mappings(HashMap<String, u32>), // Mapping of packet names to ids
-
-    // // Logical fields
-    // CompareTo(String),
-    // DefinedType(String), // Another type, defined within either the types map or
-    // the packets map
+  pub fn ty_lit(&self, packet: &str) -> String {
     match self {
-      Self::Bool => "bool",
+      Self::Bool => "bool".into(),
       Self::Int(ity) => match ity {
-        IntType::I8 => "i8",
-        IntType::U8 => "u8",
-        IntType::I16 => "i16",
-        IntType::U16 => "u16",
-        IntType::I32 => "i32",
-        IntType::I64 => "i64",
-        IntType::VarInt => "i32",
-        IntType::OptVarInt => "i32", // TODO: Might want to change this to Option<i32>
+        IntType::I8 => "i8".into(),
+        IntType::U8 => "u8".into(),
+        IntType::I16 => "i16".into(),
+        IntType::U16 => "u16".into(),
+        IntType::I32 => "i32".into(),
+        IntType::I64 => "i64".into(),
+        IntType::VarInt => "i32".into(),
+        IntType::OptVarInt => "i32".into(), // TODO: Might want to change this to Option<i32>
       },
       Self::Float(fty) => match fty {
-        FloatType::F32 => "f32",
-        FloatType::F64 => "f64",
+        FloatType::F32 => "f32".into(),
+        FloatType::F64 => "f64".into(),
       },
-      Self::UUID => "UUID",
-      Self::String => "String",
-      Self::Position => "Pos",
+      Self::UUID => "UUID".into(),
+      Self::String => "String".into(),
+      Self::Position => "Pos".into(),
 
       // Self::NBT => "NBT",
       // Self::OptionalNBT => "Option<NBT>",
@@ -74,11 +46,18 @@ impl PacketField {
       //   }
       // },
       Self::DefinedType(name) => match name.as_str() {
-        "slot" => "Item",
-        "tags" => "Vec<u8>",
+        "slot" => "Item".into(),
+        "tags" => "Vec<u8>".into(),
         _ => panic!("undefined field type {}", name),
       },
-      _ => "Vec<u8>",
+      Self::Switch { compare_to: _, fields, default: _ } => {
+        if packet == "use_entity" {
+          format!("Option<{}>", fields.iter().next().unwrap().1.ty_lit(packet))
+        } else {
+          "Vec<u8>".into()
+        }
+      }
+      _ => "Vec<u8>".into(),
     }
   }
   pub fn generate_to_sc(&self, val: &str) -> String {

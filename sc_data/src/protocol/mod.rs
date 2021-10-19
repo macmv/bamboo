@@ -200,11 +200,11 @@ impl NamedPacketField {
   fn name(&self) -> String {
     self.name.clone()
   }
-  fn ty(&self) -> String {
+  fn ty(&self, packet: &str) -> String {
     if self.multi_versioned {
-      format!("Option<{}>", self.field.ty_lit())
+      format!("Option<{}>", self.field.ty_lit(packet))
     } else {
-      self.field.ty_lit().to_string()
+      self.field.ty_lit(packet).to_string()
     }
   }
   fn write_to_proto(&self, gen: &mut CodeGen) {
@@ -378,7 +378,11 @@ fn generate_packets(
       .map(|packet| {
         EnumVariant::Struct(
           packet.name().to_case(Case::Pascal),
-          packet.fields().into_iter().map(|field| (field.name(), field.ty())).collect(),
+          packet
+            .fields()
+            .into_iter()
+            .map(|field| (field.name(), field.ty(packet.name())))
+            .collect(),
         )
       })
       .append_start([EnumVariant::Named("None".into())]),
