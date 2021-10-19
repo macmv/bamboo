@@ -150,9 +150,12 @@ impl Entity {
       // Make tmp so that old can be used in world.send_entity_pos.
       let mut tmp = old;
       if let Some(res) = tmp.move_towards((p.aabb.pos - old.pos).into(), &nearby) {
-        if res.axis == Vec3::new(0.0, -1.0, 0.0) {
-          // We are grounded now
-          p.vel.y = 0.0;
+        if res.axis.x != 0.0 {
+          p.vel.x = 0.0
+        } else if res.axis.y != 0.0 {
+          p.vel.y = 0.0
+        } else if res.axis.z != 0.0 {
+          p.vel.z = 0.0
         }
         p.aabb = tmp;
       }
