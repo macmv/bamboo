@@ -1,5 +1,4 @@
 use super::{FPos, Vec3};
-use std::mem;
 
 #[derive(Debug, Clone, Copy)]
 pub struct AABB {
@@ -9,6 +8,16 @@ pub struct AABB {
   pub pos: FPos,
   /// Never negative
   size:    Vec3,
+}
+
+#[derive(Debug, Clone)]
+pub struct CollisionResult {
+  /// A unit vector in one direction, representing which direction the collision
+  /// was in. This can be negative, so there are 6 possible values here.
+  pub axis:   Vec3,
+  /// How much of the delta was completed. If this is 1, then we didn't collide
+  /// with anything. If this was 0, then we didn't move at all.
+  pub factor: f64,
 }
 
 impl AABB {
@@ -22,24 +31,21 @@ impl AABB {
   /// intersect with any of the given collision boxes.
   ///
   /// Returns true if this collided with anything.
-  pub fn move_towards(&mut self, delta: Vec3, nearby: &[AABB]) -> bool {
-    fn time_factor(val: f64, mut start: f64, mut end: f64) -> f64 {
+  pub fn move_towards(&mut self, delta: Vec3, nearby: &[AABB]) -> Option<CollisionResult> {
+    fn time_factor(val: f64, start: f64, end: f64) -> f64 {
       (val - start) / (end - start)
     }
 
-    let mut collided = false;
-    if !nearby.is_empty() {
-      info!("collision time: we are {:?}, and are moving with delta {:?}", self, delta);
-    }
+    let mut result = None;
     let after_move = AABB::new(self.pos + delta, self.size);
     let mut time = 1.0;
     for &o in nearby.iter().filter(|&&o| after_move.is_colliding_with(o)) {
-      info!("we are about to collide with {:?}", o);
       let d = self.distance_from(o);
       // Time to collide with the object, in each axis. We use this to find out which
       // axis will collide first.
       let t = Vec3::new(d.x / delta.x, d.y / delta.y, d.z / delta.z);
 
+      let mut axis = None;
       if t.x <= t.y && t.x <= t.z {
         // Collided on the X axis
         let pos_x;
@@ -50,7 +56,8 @@ impl AABB {
         }
         let fac = time_factor(pos_x, self.pos.x, after_move.pos.x);
         if fac < time {
-          time = fac
+          time = fac;
+          axis = Some(Vec3::new(delta.x.signum(), 0.0, 0.0));
         }
       } else if t.y <= t.x && t.y <= t.z {
         // Collided on the Y axis
@@ -62,10 +69,9 @@ impl AABB {
           pos_y = o.max_y();
         }
         let fac = time_factor(pos_y, self.pos.y, after_move.pos.y);
-        info!("pos_y: {}, self.pos_y: {}, after_move_y: {}", pos_y, self.pos.y, after_move.pos.y);
-        info!("fac: {}", fac);
         if fac < time {
-          time = fac
+          time = fac;
+          axis = Some(Vec3::new(0.0, delta.y.signum(), 0.0));
         }
       } else {
         // Collided on the Z axis
@@ -76,21 +82,22 @@ impl AABB {
           pos_z = o.max_z() + self.size.z / 2.0;
         }
         let fac = time_factor(pos_z, self.pos.z, after_move.pos.z);
-        info!("fac: {}", fac);
         if fac < time {
-          time = fac
+          time = fac;
+          axis = Some(Vec3::new(0.0, 0.0, delta.z.signum()));
         }
       }
-      collided = true;
+      if let Some(axis) = axis {
+        result = Some(CollisionResult { axis, factor: time })
+      }
     }
 
-    if collided {
+    if result.is_some() {
       self.pos += delta * time;
-      info!("RESULTING POSITION: {:?}, time: {}", self.pos, time);
     } else {
       self.pos += delta;
     }
-    collided
+    result
   }
 
   /// Returns true if self and other are intersecting. Being next to other

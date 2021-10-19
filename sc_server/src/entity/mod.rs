@@ -149,10 +149,12 @@ impl Entity {
       let nearby = w.nearby_colliders(p.aabb);
       // Make tmp so that old can be used in world.send_entity_pos.
       let mut tmp = old;
-      if tmp.move_towards((p.aabb.pos - old.pos).into(), &nearby) {
+      if let Some(res) = tmp.move_towards((p.aabb.pos - old.pos).into(), &nearby) {
+        if res.axis == Vec3::new(0.0, -1.0, 0.0) {
+          // We are grounded now
+          p.vel.y = 0.0;
+        }
         p.aabb = tmp;
-        // Send the entity away so we don't spam the log.
-        p.vel.y = 1000.0;
       }
       *self.pos.lock() = p.clone();
       self.world.read().send_entity_pos(self.eid, old.pos, p.aabb.pos, false);
