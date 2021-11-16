@@ -2,7 +2,9 @@ use std::{env, fmt, path::PathBuf};
 
 mod block;
 mod dl;
+mod entity;
 pub mod gen;
+mod item;
 mod protocol;
 
 #[derive(Debug, Clone, Copy)]
@@ -36,15 +38,11 @@ pub fn generate_blocks() {
 }
 
 pub fn generate_items() {
-  /*
-  item::generate(&out_dir(), block::generate_kinds(&out_dir()).unwrap()).unwrap();
-  */
+  item::generate(&out_dir()).unwrap();
 }
 
 pub fn generate_entities() {
-  /*
   entity::generate(&out_dir()).unwrap();
-  */
 }
 
 pub fn generate_protocol() {

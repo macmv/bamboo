@@ -1,6 +1,17 @@
 use crate::dl;
 use serde::Deserialize;
-use std::{io, path::Path};
+use std::{fs, io, path::Path};
+
+mod gen;
+
+pub fn generate(out_dir: &Path) -> io::Result<()> {
+  fs::create_dir_all(out_dir.join("block"))?;
+  for &ver in crate::VERSIONS {
+    let def: BlockDef = dl::get("blocks", ver);
+    gen::generate(def, &out_dir.join("block"))?;
+  }
+  Ok(())
+}
 
 #[derive(Debug, Clone, Deserialize)]
 pub struct BlockDef {
@@ -70,11 +81,4 @@ pub enum PropKind {
   /// the inclusive end of the range. The start is normally zero, but can
   /// sometimes be one.
   Int { min: u32, max: u32 },
-}
-
-pub fn generate(out_dir: &Path) -> io::Result<()> {
-  for &ver in crate::VERSIONS {
-    let def: BlockDef = dl::get("blocks", ver);
-  }
-  Ok(())
 }
