@@ -226,3 +226,24 @@ pub enum Op {
   /// expr.
   If(Cond, Expr),
 }
+
+impl Type {
+  pub fn to_rust(&self) -> String {
+    match self {
+      Self::Void => unreachable!(),
+      Self::Bool => "bool",
+      Self::Byte => "u8",
+      Self::Short => "i16",
+      Self::Int => "i32",
+      Self::Long => "i64",
+      Self::Float => "f32",
+      Self::Double => "f64",
+      Self::Char => "char",
+      Self::Class(name) => match name {
+        _ => panic!("unknown class {}", name),
+      },
+      Self::Array(ty) => return format!("Vec<{}>", ty.to_rust()),
+    }
+    .into()
+  }
+}

@@ -8,15 +8,12 @@ pub fn generate(def: Vec<(Version, PacketDef)>, dir: &Path) -> io::Result<()> {
 
   for (ver, def) in def {
     for p in def.clientbound {
-      dbg!(&p);
       all_cb_packets.insert(p.name.clone(), (ver, p));
     }
     for p in def.serverbound {
-      dbg!(&p);
       all_sb_packets.insert(p.name.clone(), (ver, p));
     }
   }
-  panic!();
 
   let mut all_cb_packets: Vec<_> = all_cb_packets.into_iter().collect();
   all_cb_packets.sort_unstable_by(|(a, _), (b, _)| a.cmp(b));
@@ -36,7 +33,17 @@ fn process(packets: Vec<(String, (Version, Packet))>) -> String {
   gen.write("pub enum Packet ");
   gen.write_block(|gen| {
     for (name, (ver, p)) in &packets {
-      gen.write_line(&format!("{},", name));
+      gen.write(name);
+      gen.write_line(" {");
+      gen.add_indent();
+      for f in &p.fields {
+        gen.write(&f.name);
+        gen.write(": ");
+        gen.write(&f.ty.to_rust());
+        gen.write_line(",");
+      }
+      gen.remove_indent();
+      gen.write_line("},");
     }
   });
 
