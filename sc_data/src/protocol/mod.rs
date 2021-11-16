@@ -5,11 +5,12 @@ use std::{fs, io, path::Path};
 mod gen;
 
 pub fn generate(out_dir: &Path) -> io::Result<()> {
-  fs::create_dir_all(out_dir.join("protocol"))?;
+  let mut versions = vec![];
   for &ver in crate::VERSIONS {
     let def: PacketDef = dl::get("protocol", ver);
-    gen::generate(def, &out_dir.join("protocol"))?;
+    versions.push((ver, def));
   }
+  gen::generate(versions, &out_dir.join("protocol"))?;
   Ok(())
 }
 
