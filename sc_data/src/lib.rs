@@ -5,13 +5,14 @@ mod dl;
 pub mod gen;
 mod protocol;
 
+#[derive(Debug, Clone, Copy)]
 pub struct Version {
   maj: u32,
   min: u32,
 }
 
 impl Version {
-  pub fn new(maj: u32, min: u32) -> Version {
+  pub const fn new(maj: u32, min: u32) -> Version {
     Version { maj, min }
   }
 }
@@ -49,3 +50,15 @@ pub fn generate_entities() {
 pub fn generate_protocol() {
   protocol::generate(&out_dir()).unwrap();
 }
+
+pub static VERSIONS: &'static [Version] = &[
+  Version::new(8, 9),
+  Version::new(9, 4),
+  Version::new(10, 2),
+  Version::new(11, 2),
+  Version::new(12, 2),
+  Version::new(14, 4),
+  Version::new(15, 2),
+  Version::new(16, 5),
+  Version::new(17, 1),
+];
