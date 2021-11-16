@@ -10,7 +10,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
   println!("cargo:rerun-if-changed=../sc_data/src");
   println!("cargo:rerun-if-changed=proto/connection.proto");
 
-  sc_data::clone_prismarine_data();
   sc_data::generate_protocol();
 
   Ok(())
