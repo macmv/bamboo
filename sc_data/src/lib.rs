@@ -1,12 +1,7 @@
 use std::{env, path::PathBuf};
 
-mod block;
-mod entity;
+mod dl;
 pub mod gen;
-mod item;
-mod prismarine;
-mod protocol;
-mod util;
 
 // /// Generates block, item, and entity data. Should only be called from the
 // /// data crate.
