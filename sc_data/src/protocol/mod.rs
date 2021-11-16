@@ -239,8 +239,12 @@ impl Type {
       Self::Float => "f32",
       Self::Double => "f64",
       Self::Char => "char",
-      Self::Class(name) => match name {
-        _ => panic!("unknown class {}", name),
+      Self::Class(name) => match name.as_str() {
+        // TODO: Generics
+        "java/util/Map" => "HashMap<u8, u8>",
+        "java/util/Set" => "HashSet<u8>",
+        "net/minecraft/util/math/BlockPos" => "Pos",
+        _ => "u8",
       },
       Self::Array(ty) => return format!("Vec<{}>", ty.to_rust()),
     }

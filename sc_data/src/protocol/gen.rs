@@ -37,7 +37,11 @@ fn process(packets: Vec<(String, (Version, Packet))>) -> String {
       gen.write_line(" {");
       gen.add_indent();
       for f in &p.fields {
-        gen.write(&f.name);
+        if f.name == "type" {
+          gen.write("ty");
+        } else {
+          gen.write(&f.name);
+        }
         gen.write(": ");
         gen.write(&f.ty.to_rust());
         gen.write_line(",");
