@@ -81,6 +81,8 @@ pub enum Value {
   /// A packet field. Similar to a local variable, but may require `self.` or
   /// `this.` depending on the language.
   Field(String),
+  /// A static field `1` on classs `0`.
+  Static(String, String),
   /// An array, with a pre-determined length.
   Array(Box<Expr>),
   /// A function call, on the given variable. If none, this is a static function
@@ -158,7 +160,7 @@ pub enum Instr {
   /// So, when writing, we should also verify the length. Making this a
   /// seperate instruction makes it easy to, for example, remove all the
   /// length checks in release mode.
-  CheckStrLen(Expr, u32),
+  CheckStrLen(Expr, Value),
 }
 
 /// A range, used in a for loop.

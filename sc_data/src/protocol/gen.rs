@@ -1,5 +1,6 @@
 use super::{Cond, Expr, Instr, Lit, Op, Packet, PacketDef, Value, Var};
 use crate::{gen::CodeGen, Version};
+use convert_case::{Case, Casing};
 use std::{collections::HashMap, fs, fs::File, io, io::Write, path::Path};
 
 pub fn generate(def: Vec<(Version, PacketDef)>, dir: &Path) -> io::Result<()> {
@@ -29,7 +30,8 @@ impl PacketCollection {
   pub fn new() -> Self {
     PacketCollection { packets: HashMap::new() }
   }
-  pub fn add(&mut self, ver: Version, p: Packet) {
+  pub fn add(&mut self, ver: Version, mut p: Packet) {
+    sanitize(&mut p);
     let list = self.packets.entry(p.name.clone()).or_insert_with(|| vec![]);
     if let Some((_, last)) = list.last() {
       if *last == p {
@@ -75,20 +77,20 @@ impl PacketCollection {
                 });
               }
               if versions.len() == 1 {
-                write_from_tcp(gen, first);
+                write_from_tcp(gen, first, *ver);
               } else {
-                for (i, (_, p)) in versions.iter().enumerate() {
+                for (i, (ver, p)) in versions.iter().enumerate() {
                   if let Some(next_ver) = versions.get(i + 1) {
                     gen.write("if ver < ");
                     gen.write(&next_ver.0.maj.to_string());
                     gen.write_line(" {");
                     gen.add_indent();
-                    write_from_tcp(gen, p);
+                    write_from_tcp(gen, p, *ver);
                     gen.remove_indent();
                     gen.write("} else ");
                   } else {
                     gen.write_block(|gen| {
-                      write_from_tcp(gen, p);
+                      write_from_tcp(gen, p, *ver);
                     });
                   }
                 }
@@ -103,16 +105,25 @@ impl PacketCollection {
   }
 }
 
+fn sanitize(p: &mut Packet) {
+  for f in &mut p.fields {
+    simplify_name(&mut f.name);
+  }
+}
+fn simplify_name(name: &mut String) {
+  if name == "type" {
+    *name = "ty".into();
+  } else {
+    *name = name.to_case(Case::Snake);
+  }
+}
+
 fn write_packet(gen: &mut CodeGen, name: &str, p: &Packet) {
   gen.write(name);
   gen.write_line(" {");
   gen.add_indent();
   for f in &p.fields {
-    if f.name == "type" {
-      gen.write("ty");
-    } else {
-      gen.write(&f.name);
-    }
+    gen.write(&f.name);
     gen.write(": ");
     gen.write(&f.ty.to_rust());
     gen.write_line(",");
@@ -121,18 +132,33 @@ fn write_packet(gen: &mut CodeGen, name: &str, p: &Packet) {
   gen.write_line("},");
 }
 
-fn write_from_tcp(gen: &mut CodeGen, p: &Packet) {
+fn write_from_tcp(gen: &mut CodeGen, p: &Packet, ver: Version) {
   for i in &p.reader {
     write_instr(gen, i);
   }
+  gen.write(&p.name);
+  gen.write("V");
+  gen.write(&ver.maj.to_string());
+  gen.write_line(" {");
+  gen.add_indent();
+  for f in &p.fields {
+    gen.write(&f.name);
+    gen.write(": f_");
+    gen.write(&f.name);
+    gen.write_line(",");
+  }
+  gen.remove_indent();
+  gen.write_line("}");
 }
 
 fn write_instr(gen: &mut CodeGen, i: &Instr) {
   match i {
     Instr::Super => {}
     Instr::Set(name, val) => {
+      let mut name = name.clone();
       gen.write("let f_");
-      gen.write(name);
+      simplify_name(&mut name);
+      gen.write(&name);
       gen.write(" = ");
       write_expr(gen, val);
       gen.write_line(";");
@@ -234,7 +260,17 @@ fn write_val(gen: &mut CodeGen, val: &Value) {
         gen.write(&v.to_string())
       }
     },
-    Value::Field(name) => gen.write(&format!("f_{}", name)),
+    Value::Static(class, name) => {
+      for s in class.split('/').last().unwrap().split('$') {
+        gen.write(s);
+      }
+      gen.write(".");
+      gen.write(name);
+    }
+    Value::Field(name) => {
+      gen.write("f_");
+      gen.write(name);
+    }
     Value::Array(len) => {
       gen.write("Vec::with_capacity(");
       write_expr(gen, len);
