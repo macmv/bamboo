@@ -238,10 +238,86 @@ fn write_instr(gen: &mut CodeGen, i: &Instr) {
 }
 
 fn write_expr(gen: &mut CodeGen, e: &Expr) {
-  write_val(gen, &e.initial);
-  for op in &e.ops {
-    write_op(gen, op);
+  let mut g = CodeGen::new();
+  write_val(&mut g, &e.initial);
+  let mut val = g.into_output();
+  for (i, op) in e.ops.iter().enumerate() {
+    let needs_paren = i
+      .checked_sub(1)
+      .map(|i| {
+        let prev = &e.ops[i];
+        prev.precedence() > op.precedence()
+      })
+      .unwrap_or(false);
+    let mut g = CodeGen::new();
+    if needs_paren {
+      g.write("(");
+    }
+    match op {
+      Op::BitAnd(rhs) => {
+        g.write(&val);
+        g.write(" & ");
+        write_expr(&mut g, rhs);
+      }
+      Op::Shr(rhs) => {
+        g.write(&val);
+        g.write(" >> ");
+        write_expr(&mut g, rhs);
+      }
+      Op::UShr(rhs) => {
+        g.write(&val);
+        g.write(" >> ");
+        write_expr(&mut g, rhs);
+      }
+      Op::Shl(rhs) => {
+        g.write(&val);
+        g.write(" << ");
+        write_expr(&mut g, rhs);
+      }
+
+      Op::Add(rhs) => {
+        g.write(&val);
+        g.write(" + ");
+        write_expr(&mut g, rhs);
+      }
+      Op::Div(rhs) => {
+        g.write(&val);
+        g.write(" / ");
+        write_expr(&mut g, rhs);
+      }
+
+      Op::Len => {
+        g.write(&val);
+        g.write(".len()");
+      }
+      Op::Idx(rhs) => {
+        g.write(&val);
+        g.write("[");
+        write_expr(&mut g, rhs);
+        g.write("]");
+      }
+      Op::CollectionIdx(idx) => {
+        g.write(&val);
+        g.write(".");
+        g.write(&idx.to_string());
+      }
+
+      Op::If(cond, new) => {
+        g.write("if ");
+        write_cond(&mut g, cond);
+        g.write(" { ");
+        write_expr(&mut g, new);
+        g.write(" } else { ");
+        g.write(&val);
+        g.write(" }");
+      }
+    }
+    if needs_paren {
+      g.write(")");
+    }
+    val = g.into_output();
   }
+  gen.write(&val);
 }
 
 fn write_val(gen: &mut CodeGen, val: &Value) {
@@ -330,5 +406,3 @@ fn write_cond(gen: &mut CodeGen, cond: &Cond) {
     }
   }
 }
-
-fn write_op(gen: &mut CodeGen, op: &Op) {}

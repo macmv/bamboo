@@ -253,3 +253,23 @@ impl Type {
     .into()
   }
 }
+
+impl Op {
+  pub fn precedence(&self) -> i32 {
+    match self {
+      Op::BitAnd(_) => 4,
+      Op::Shr(_) => 3,
+      Op::UShr(_) => 3,
+      Op::Shl(_) => 3,
+
+      Op::Add(_) => 2,
+      Op::Div(_) => 1,
+
+      Op::Len => 0,
+      Op::Idx(_) => 0,
+      Op::CollectionIdx(_) => 0,
+
+      Op::If(..) => 0,
+    }
+  }
+}
