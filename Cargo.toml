@@ -26,6 +26,10 @@ members = [
   "sc_cli",
 ]
 
+[profile.rust-analyzer]
+inherits = "dev"
+opt-level = 0
+
 # Using cargo flamegraph, this is needed.
 # See more: https://github.com/flamegraph-rs/flamegraph
 [profile.release]
