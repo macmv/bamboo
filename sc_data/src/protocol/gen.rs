@@ -1,4 +1,4 @@
-use super::{Cond, Expr, Instr, Lit, Op, Packet, PacketDef, Type, Value, Var};
+use super::{convert, Cond, Expr, Instr, Lit, Op, Packet, PacketDef, Type, Value, Var};
 use crate::{gen::CodeGen, Version};
 use convert_case::{Case, Casing};
 use std::{collections::HashMap, fs, fs::File, io, io::Write, path::Path};
@@ -228,8 +228,10 @@ fn write_instr(gen: &mut CodeGen, instr: &Instr, p: &Packet) {
       if v.initial != Value::Null {
         write_expr(gen, v);
         gen.write(".");
+        gen.write(convert::member_call(&name));
+      } else {
+        gen.write(convert::static_call(&name));
       }
-      gen.write(name);
       gen.write("(");
       for (i, a) in args.iter().enumerate() {
         write_expr(gen, a);
@@ -406,8 +408,10 @@ fn write_val(gen: &mut CodeGen, val: &Value) {
       if let Some(e) = val {
         write_expr(gen, e);
         gen.write(".");
+        gen.write(convert::member_call(&name));
+      } else {
+        gen.write(convert::static_call(&name));
       }
-      gen.write(name);
       gen.write("(");
       for (i, a) in args.iter().enumerate() {
         write_expr(gen, a);

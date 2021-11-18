@@ -165,3 +165,25 @@ pub fn class(name: &str) -> String {
   }
   .into()
 }
+
+pub fn static_call(name: &str) -> &str {
+  match name {
+    "newHashMap" => "HashMap::new",
+    "newLinkedHashSet" => "HashSet::new",
+    _ => {
+      println!("unknown static call {}", name);
+      name
+    }
+  }
+}
+
+pub fn member_call(name: &str) -> &str {
+  match name {
+    "add" => "insert",
+    "put" => "insert",
+    _ => {
+      println!("unknown member call {}", name);
+      name
+    }
+  }
+}
