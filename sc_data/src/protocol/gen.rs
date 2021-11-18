@@ -122,6 +122,14 @@ fn sanitize_instr(instr: &mut [Instr]) {
         sanitize_instr(when_true);
         sanitize_instr(when_false);
       }
+      Instr::For(_, _, block) => {
+        sanitize_instr(block);
+      }
+      Instr::Switch(_, items) => {
+        for (_, instr) in items {
+          sanitize_instr(instr);
+        }
+      }
       _ => {}
     }
   }
@@ -180,17 +188,25 @@ fn write_from_tcp(gen: &mut CodeGen, p: &Packet, ver: Version) {
     gen.write(&f.name);
     gen.write(": f_");
     gen.write(&f.name);
-    if f.ty == Type::Bool {
-      if f.option {
-        gen.write(".map(|v| v != 0)");
-      } else {
-        gen.write(" != 0");
-      }
+    if f.option {
+      gen.write(".map(|v| v");
+      convert_ty(gen, &f.ty);
+      gen.write(")");
+    } else {
+      convert_ty(gen, &f.ty);
     }
     gen.write_line(",");
   }
   gen.remove_indent();
   gen.write_line("}");
+}
+
+fn convert_ty(gen: &mut CodeGen, ty: &Type) {
+  match ty {
+    Type::Bool => gen.write(" != 0"),
+    Type::Float => gen.write(" as f32"),
+    _ => {}
+  }
 }
 
 fn write_instr(gen: &mut CodeGen, instr: &Instr, p: &Packet) {
@@ -280,7 +296,22 @@ fn write_instr(gen: &mut CodeGen, instr: &Instr, p: &Packet) {
       gen.remove_indent();
       gen.write_line("}");
     }
-    Instr::Switch(_v, _items) => {}
+    Instr::Switch(v, items) => {
+      gen.write("match ");
+      write_expr(gen, v);
+      gen.write(" ");
+      gen.write_block(|gen| {
+        for (key, instr) in items {
+          gen.write(&key.to_string());
+          gen.write(" => ");
+          gen.write_block(|gen| {
+            for i in instr {
+              write_instr(gen, i, p);
+            }
+          });
+        }
+      });
+    }
     Instr::CheckStrLen(_, _) => {}
   }
 }
