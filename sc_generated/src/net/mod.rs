@@ -1,12 +1,12 @@
 // data::generate_protocol!();
 
 pub mod cb {
-  use super::clamp;
+  use super::*;
 
   include!(concat!(env!("OUT_DIR"), "/protocol/cb.rs"));
 }
 pub mod sb {
-  use super::clamp;
+  use super::*;
 
   include!(concat!(env!("OUT_DIR"), "/protocol/sb.rs"));
 }
@@ -22,6 +22,11 @@ pub fn clamp<T: Ord + Copy>(mut a: T, min: T, max: T) -> T {
     a = max
   }
   a
+}
+
+pub enum Hand {
+  Main,
+  Off,
 }
 
 // pub use other::Other;

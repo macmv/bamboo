@@ -325,7 +325,19 @@ fn write_instr(gen: &mut CodeGen, instr: &Instr, p: &Packet) {
       if v.initial != Value::Null {
         write_expr(gen, v);
         gen.write(".");
-        gen.write(convert::member_call(&name));
+        let (new_name, arg) = convert::member_call(&name);
+        gen.write(new_name);
+        if let Some(args) = arg {
+          gen.write("(");
+          for (i, a) in args.iter().enumerate() {
+            gen.write(a);
+            if i != args.len() - 1 {
+              gen.write(", ");
+            }
+          }
+          gen.write(")");
+          return;
+        }
       } else {
         gen.write(convert::static_call(&name));
       }
@@ -520,7 +532,19 @@ fn write_val(gen: &mut CodeGen, val: &Value) {
       if let Some(e) = val {
         write_expr(gen, e);
         gen.write(".");
-        gen.write(convert::member_call(&name));
+        let (new_name, arg) = convert::member_call(&name);
+        gen.write(new_name);
+        if let Some(args) = arg {
+          gen.write("(");
+          for (i, a) in args.iter().enumerate() {
+            gen.write(a);
+            if i != args.len() - 1 {
+              gen.write(", ");
+            }
+          }
+          gen.write(")");
+          return;
+        }
       } else {
         gen.write(convert::static_call(&name));
       }
