@@ -65,6 +65,9 @@ pub struct Field {
   pub name: String,
   /// The java type of this field.
   pub ty:   Type,
+
+  #[serde(skip_deserializing)]
+  pub option: bool,
 }
 
 /// A value. Can be a variable reference, a literal, or a function call.
@@ -271,5 +274,16 @@ impl Op {
 
       Op::If(..) => 0,
     }
+  }
+}
+
+impl Packet {
+  pub fn get_field(&self, name: &str) -> Option<&Field> {
+    for f in &self.fields {
+      if f.name == name {
+        return Some(f);
+      }
+    }
+    None
   }
 }

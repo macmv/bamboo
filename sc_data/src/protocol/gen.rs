@@ -1,4 +1,4 @@
-use super::{Cond, Expr, Instr, Lit, Op, Packet, PacketDef, Value, Var};
+use super::{Cond, Expr, Instr, Lit, Op, Packet, PacketDef, Type, Value, Var};
 use crate::{gen::CodeGen, Version};
 use convert_case::{Case, Casing};
 use std::{collections::HashMap, fs, fs::File, io, io::Write, path::Path};
@@ -106,8 +106,22 @@ impl PacketCollection {
 }
 
 fn sanitize(p: &mut Packet) {
+  sanitize_instr(&mut p.reader);
   for f in &mut p.fields {
     simplify_name(&mut f.name);
+    f.option = check_option(&p.reader, &f.name);
+  }
+}
+fn sanitize_instr(instr: &mut [Instr]) {
+  for i in instr {
+    match i {
+      Instr::Set(name, _) => simplify_name(name),
+      Instr::If(_, when_true, when_false) => {
+        sanitize_instr(when_true);
+        sanitize_instr(when_false);
+      }
+      _ => {}
+    }
   }
 }
 fn simplify_name(name: &mut String) {
@@ -125,7 +139,13 @@ fn write_packet(gen: &mut CodeGen, name: &str, p: &Packet) {
   for f in &p.fields {
     gen.write(&f.name);
     gen.write(": ");
-    gen.write(&f.ty.to_rust());
+    if f.option {
+      gen.write("Option<");
+      gen.write(&f.ty.to_rust());
+      gen.write(">");
+    } else {
+      gen.write(&f.ty.to_rust());
+    }
     gen.write_line(",");
   }
   gen.remove_indent();
@@ -133,9 +153,22 @@ fn write_packet(gen: &mut CodeGen, name: &str, p: &Packet) {
 }
 
 fn write_from_tcp(gen: &mut CodeGen, p: &Packet, ver: Version) {
-  for i in &p.reader {
-    write_instr(gen, i);
+  for f in &p.fields {
+    gen.write("let");
+    if f.option {
+      gen.write(" mut");
+    }
+    gen.write(" f_");
+    gen.write(&f.name);
+    if f.option {
+      gen.write(" = None");
+    }
+    gen.write_line(";");
   }
+  for i in &p.reader {
+    write_instr(gen, i, p);
+  }
+  gen.write("Packet::");
   gen.write(&p.name);
   gen.write("V");
   gen.write(&ver.maj.to_string());
@@ -145,22 +178,33 @@ fn write_from_tcp(gen: &mut CodeGen, p: &Packet, ver: Version) {
     gen.write(&f.name);
     gen.write(": f_");
     gen.write(&f.name);
+    if f.ty == Type::Bool {
+      if f.option {
+        gen.write(".map(|v| v != 0)");
+      } else {
+        gen.write(" != 0");
+      }
+    }
     gen.write_line(",");
   }
   gen.remove_indent();
   gen.write_line("}");
 }
 
-fn write_instr(gen: &mut CodeGen, i: &Instr) {
-  match i {
+fn write_instr(gen: &mut CodeGen, instr: &Instr, p: &Packet) {
+  match instr {
     Instr::Super => {}
     Instr::Set(name, val) => {
-      let mut name = name.clone();
-      gen.write("let f_");
-      simplify_name(&mut name);
+      gen.write("f_");
       gen.write(&name);
       gen.write(" = ");
-      write_expr(gen, val);
+      if p.get_field(&name).map(|f| f.option).unwrap_or(false) {
+        gen.write("Some(");
+        write_expr(gen, val);
+        gen.write(")");
+      } else {
+        write_expr(gen, val);
+      }
       gen.write_line(";");
     }
     Instr::SetArr(arr, idx, val) => {
@@ -199,14 +243,14 @@ fn write_instr(gen: &mut CodeGen, i: &Instr) {
       gen.write_line(" {");
       gen.add_indent();
       for i in true_block {
-        write_instr(gen, i);
+        write_instr(gen, i, p);
       }
       gen.remove_indent();
       if !false_block.is_empty() {
         gen.write_line("} else {");
         gen.add_indent();
         for i in false_block {
-          write_instr(gen, i);
+          write_instr(gen, i, p);
         }
         gen.remove_indent();
       }
@@ -227,12 +271,12 @@ fn write_instr(gen: &mut CodeGen, i: &Instr) {
       gen.write_line(" {");
       gen.add_indent();
       for i in block {
-        write_instr(gen, i);
+        write_instr(gen, i, p);
       }
       gen.remove_indent();
       gen.write_line("}");
     }
-    Instr::Switch(v, items) => {}
+    Instr::Switch(_v, _items) => {}
     Instr::CheckStrLen(_, _) => {}
   }
 }
@@ -306,9 +350,9 @@ fn write_expr(gen: &mut CodeGen, e: &Expr) {
         g.write("if ");
         write_cond(&mut g, cond);
         g.write(" { ");
-        write_expr(&mut g, new);
-        g.write(" } else { ");
         g.write(&val);
+        g.write(" } else { ");
+        write_expr(&mut g, new);
         g.write(" }");
       }
     }
@@ -326,7 +370,11 @@ fn write_val(gen: &mut CodeGen, val: &Value) {
     Value::Lit(lit) => match lit {
       Lit::Int(v) => gen.write(&v.to_string()),
       Lit::Float(v) => gen.write(&v.to_string()),
-      Lit::String(v) => gen.write(&v),
+      Lit::String(v) => {
+        gen.write("\"");
+        gen.write(&v);
+        gen.write("\"");
+      }
     },
     Value::Var(v) => match v {
       Var::This => gen.write("self"),
@@ -405,4 +453,50 @@ fn write_cond(gen: &mut CodeGen, cond: &Cond) {
       gen.write(")");
     }
   }
+}
+
+fn check_option(instr: &[Instr], field: &str) -> bool {
+  for i in instr {
+    match i {
+      Instr::Set(f, _) => {
+        if field == f {
+          return false;
+        }
+      }
+      Instr::If(_, when_true, when_false) => {
+        let mut assigned_true = false;
+        let mut assigned_false = false;
+        for i in when_true {
+          match i {
+            Instr::Set(f, _) => {
+              if field == f {
+                assigned_true = true;
+                break;
+              }
+            }
+            _ => {}
+          }
+        }
+        for i in when_false {
+          match i {
+            Instr::Set(f, _) => {
+              if field == f {
+                assigned_false = true;
+                break;
+              }
+            }
+            _ => {}
+          }
+        }
+        match (assigned_true, assigned_false) {
+          (true, true) => return false,
+          (false, true) => return true,
+          (true, false) => return true,
+          (false, false) => continue,
+        }
+      }
+      _ => {}
+    }
+  }
+  true
 }
