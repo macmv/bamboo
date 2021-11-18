@@ -106,7 +106,7 @@ impl PacketCollection {
 }
 
 fn sanitize(p: &mut Packet) {
-  sanitize_instr(&mut p.reader);
+  simplify_instr(&mut p.reader);
   for f in &mut p.fields {
     simplify_name(&mut f.name);
     let (initialized, option) = check_option(&p.reader, &f.name);
@@ -114,23 +114,104 @@ fn sanitize(p: &mut Packet) {
     f.option = option;
   }
 }
-fn sanitize_instr(instr: &mut [Instr]) {
+fn simplify_instr(instr: &mut [Instr]) {
   for i in instr {
     match i {
-      Instr::Set(name, _) => simplify_name(name),
-      Instr::If(_, when_true, when_false) => {
-        sanitize_instr(when_true);
-        sanitize_instr(when_false);
+      Instr::Super => {}
+      Instr::Set(name, v) => {
+        simplify_name(name);
+        simplify_expr(v);
       }
-      Instr::For(_, _, block) => {
-        sanitize_instr(block);
+      Instr::SetArr(arr, idx, val) => {
+        simplify_val(arr);
+        simplify_val(idx);
+        simplify_expr(val);
       }
-      Instr::Switch(_, items) => {
+      Instr::Let(_, val) => simplify_expr(val),
+      Instr::Call(val, name, args) => {
+        simplify_expr(val);
+        simplify_name(name);
+        args.iter_mut().for_each(|a| simplify_expr(a))
+      }
+      Instr::If(cond, when_true, when_false) => {
+        simplify_cond(cond);
+        simplify_instr(when_true);
+        simplify_instr(when_false);
+      }
+      Instr::For(_, range, block) => {
+        simplify_expr(&mut range.min);
+        simplify_expr(&mut range.max);
+        simplify_instr(block);
+      }
+      Instr::Switch(val, items) => {
+        simplify_expr(val);
         for (_, instr) in items {
-          sanitize_instr(instr);
+          simplify_instr(instr);
         }
       }
-      _ => {}
+      Instr::CheckStrLen(s, len) => {
+        simplify_expr(s);
+        simplify_val(len);
+      }
+    }
+  }
+}
+fn simplify_cond(cond: &mut Cond) {
+  match cond {
+    Cond::Eq(lhs, rhs)
+    | Cond::Neq(lhs, rhs)
+    | Cond::Less(lhs, rhs)
+    | Cond::Greater(lhs, rhs)
+    | Cond::Lte(lhs, rhs)
+    | Cond::Gte(lhs, rhs) => {
+      simplify_expr(lhs);
+      simplify_expr(rhs);
+    }
+    Cond::Or(lhs, rhs) => {
+      simplify_cond(lhs);
+      simplify_cond(rhs);
+    }
+  }
+}
+fn simplify_expr(expr: &mut Expr) {
+  simplify_val(&mut expr.initial);
+  expr.ops.iter_mut().for_each(|op| simplify_op(op))
+}
+fn simplify_val(val: &mut Value) {
+  match val {
+    Value::Null | Value::Lit(_) | Value::Var(_) => {}
+    Value::Field(name) => simplify_name(name),
+    Value::Static(..) => {}
+    Value::Array(len) => simplify_expr(len),
+    Value::Call(val, name, args) => {
+      if let Some(v) = val {
+        simplify_expr(v);
+      }
+      simplify_name(name);
+      args.iter_mut().for_each(|a| simplify_expr(a));
+    }
+    Value::Collection(_, args) => {
+      args.iter_mut().for_each(|a| simplify_expr(a));
+    }
+  }
+}
+fn simplify_op(op: &mut Op) {
+  match op {
+    Op::BitAnd(rhs) => simplify_expr(rhs),
+    Op::Shr(rhs) => simplify_expr(rhs),
+    Op::UShr(rhs) => simplify_expr(rhs),
+    Op::Shl(rhs) => simplify_expr(rhs),
+
+    Op::Add(rhs) => simplify_expr(rhs),
+    Op::Div(rhs) => simplify_expr(rhs),
+
+    Op::Len => {}
+    Op::Idx(idx) => simplify_expr(idx),
+    Op::CollectionIdx(_) => {}
+
+    Op::If(cond, val) => {
+      simplify_cond(cond);
+      simplify_expr(val)
     }
   }
 }
