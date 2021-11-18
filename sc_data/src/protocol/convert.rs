@@ -181,6 +181,13 @@ pub fn member_call(name: &str) -> &str {
   match name {
     "add" => "insert",
     "put" => "insert",
+    "read_byte" => "read_u8",
+    // Booleans are always converted with `!= 0`, so it is best to read them as bytes.
+    "read_boolean" => "read_u8",
+    "read_int" => "read_i32",
+    "read_long" => "read_i64",
+    "read_float" => "read_f32",
+    "read_double" => "read_f64",
     _ => {
       println!("unknown member call {}", name);
       name
