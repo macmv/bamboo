@@ -2,6 +2,7 @@ use crate::dl;
 use serde::Deserialize;
 use std::{io, path::Path};
 
+pub mod convert;
 mod gen;
 
 pub fn generate(out_dir: &Path) -> io::Result<()> {
@@ -246,16 +247,7 @@ impl Type {
       Self::Float => "f32",
       Self::Double => "f64",
       Self::Char => "char",
-      Self::Class(name) => match name.as_str() {
-        // TODO: Generics
-        "java/util/Map" => "HashMap<u8, u8>",
-        "java/util/Set" => "HashSet<u8>",
-        "net/minecraft/util/math/BlockPos" => "Pos",
-        "net/minecraft/util/BlockPos" => "Pos",
-        "net/minecraft/block/Block" => "u32",
-        "net/minecraft/block/state/IBlockState" => "(u32, String)",
-        _ => panic!("unknown type {}", name),
-      },
+      Self::Class(name) => return convert::class(name),
       Self::Array(ty) => return format!("Vec<{}>", ty.to_rust()),
     }
     .into()
