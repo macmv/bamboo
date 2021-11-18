@@ -251,7 +251,10 @@ impl Type {
         "java/util/Map" => "HashMap<u8, u8>",
         "java/util/Set" => "HashSet<u8>",
         "net/minecraft/util/math/BlockPos" => "Pos",
-        _ => "u8",
+        "net/minecraft/util/BlockPos" => "Pos",
+        "net/minecraft/block/Block" => "u32",
+        "net/minecraft/block/state/IBlockState" => "(u32, String)",
+        _ => panic!("unknown type {}", name),
       },
       Self::Array(ty) => return format!("Vec<{}>", ty.to_rust()),
     }
