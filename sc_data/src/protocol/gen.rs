@@ -109,7 +109,9 @@ fn sanitize(p: &mut Packet) {
   sanitize_instr(&mut p.reader);
   for f in &mut p.fields {
     simplify_name(&mut f.name);
-    f.option = check_option(&p.reader, &f.name);
+    let (initialized, option) = check_option(&p.reader, &f.name);
+    f.initialized = initialized;
+    f.option = option;
   }
 }
 fn sanitize_instr(instr: &mut [Instr]) {
@@ -155,12 +157,12 @@ fn write_packet(gen: &mut CodeGen, name: &str, p: &Packet) {
 fn write_from_tcp(gen: &mut CodeGen, p: &Packet, ver: Version) {
   for f in &p.fields {
     gen.write("let");
-    if f.option {
+    if !f.initialized {
       gen.write(" mut");
     }
     gen.write(" f_");
     gen.write(&f.name);
-    if f.option {
+    if !f.initialized {
       gen.write(" = None");
     }
     gen.write_line(";");
@@ -198,7 +200,7 @@ fn write_instr(gen: &mut CodeGen, instr: &Instr, p: &Packet) {
       gen.write("f_");
       gen.write(&name);
       gen.write(" = ");
-      if p.get_field(&name).map(|f| f.option).unwrap_or(false) {
+      if p.get_field(&name).map(|f| f.option).unwrap_or(false) && val.initial != Value::Null {
         gen.write("Some(");
         write_expr(gen, val);
         gen.write(")");
@@ -455,20 +457,29 @@ fn write_cond(gen: &mut CodeGen, cond: &Cond) {
   }
 }
 
-fn check_option(instr: &[Instr], field: &str) -> bool {
+/// Returns `(initialized, option)`. The first bool will be false when the field
+/// needs a default value.
+fn check_option(instr: &[Instr], field: &str) -> (bool, bool) {
   for i in instr {
     match i {
-      Instr::Set(f, _) => {
+      Instr::Set(f, val) => {
+        if val.initial == Value::Null {
+          return (true, true);
+        }
         if field == f {
-          return false;
+          return (true, false);
         }
       }
       Instr::If(_, when_true, when_false) => {
         let mut assigned_true = false;
         let mut assigned_false = false;
+        let mut needs_option = false;
         for i in when_true {
           match i {
-            Instr::Set(f, _) => {
+            Instr::Set(f, val) => {
+              if val.initial == Value::Null {
+                needs_option = true;
+              }
               if field == f {
                 assigned_true = true;
                 break;
@@ -479,7 +490,10 @@ fn check_option(instr: &[Instr], field: &str) -> bool {
         }
         for i in when_false {
           match i {
-            Instr::Set(f, _) => {
+            Instr::Set(f, val) => {
+              if val.initial == Value::Null {
+                needs_option = true;
+              }
               if field == f {
                 assigned_false = true;
                 break;
@@ -489,14 +503,14 @@ fn check_option(instr: &[Instr], field: &str) -> bool {
           }
         }
         match (assigned_true, assigned_false) {
-          (true, true) => return false,
-          (false, true) => return true,
-          (true, false) => return true,
+          (true, true) => return (true, needs_option),
+          (false, true) => return (false, true),
+          (true, false) => return (false, true),
           (false, false) => continue,
         }
       }
       _ => {}
     }
   }
-  true
+  (false, true)
 }

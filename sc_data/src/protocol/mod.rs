@@ -1,6 +1,6 @@
 use crate::dl;
 use serde::Deserialize;
-use std::{fs, io, path::Path};
+use std::{io, path::Path};
 
 mod gen;
 
@@ -67,7 +67,9 @@ pub struct Field {
   pub ty:   Type,
 
   #[serde(skip_deserializing)]
-  pub option: bool,
+  pub option:      bool,
+  #[serde(skip_deserializing)]
+  pub initialized: bool,
 }
 
 /// A value. Can be a variable reference, a literal, or a function call.
