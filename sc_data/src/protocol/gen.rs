@@ -639,15 +639,19 @@ fn write_val(gen: &mut CodeGen, val: &Value) {
         write_expr(gen, e);
         gen.write(".");
       }
-      gen.write(&name);
-      gen.write("(");
-      for (i, a) in args.iter().enumerate() {
-        write_expr(gen, a);
-        if i != args.len() - 1 {
-          gen.write(", ");
+      if name == "read_str" && args.is_empty() {
+        gen.write("read_str(32767)");
+      } else {
+        gen.write(&name);
+        gen.write("(");
+        for (i, a) in args.iter().enumerate() {
+          write_expr(gen, a);
+          if i != args.len() - 1 {
+            gen.write(", ");
+          }
         }
+        gen.write(")");
       }
-      gen.write(")");
     }
     Value::Collection(name, args) => {
       gen.write(name.split('/').last().unwrap().split('$').last().unwrap());
