@@ -164,6 +164,26 @@ pub fn member_call(name: &str) -> (&str, Option<Vec<Expr>>) {
       | "func_192575_l" => return ("read_str", Some(vec![Expr::new(Value::Lit(32767.into()))])),
       "read_item_stack_from_buffer" | "read_item_stack" => "read_item",
       "read_nbt_tag_compound_from_buffer" | "read_compound_tag" => "read_nbt",
+      // This is the `read_block_hit` function in 1.17:
+      // ```java
+      // BlockPos pos = this.readBlockPos();
+      // Direction dir = (Direction)this.readEnumConstant(Direction.class);
+      // float x = this.readFloat();
+      // float y = this.readFloat();
+      // float z = this.readFloat();
+      // boolean bl = this.readBoolean();
+      // return new BlockHitResult(
+      //   new Vec3d(
+      //     (double)pos.getX() + (double)x,
+      //     (double)pos.getY() + (double)y,
+      //     (double)pos.getZ() + (double)z,
+      //   ),
+      //   dir,
+      //   pos,
+      //   bl,
+      // );
+      // ```
+      "read_block_hit_result" => "read_block_hit",
       _ => {
         println!("unknown member call {}", name);
         name

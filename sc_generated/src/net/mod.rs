@@ -14,7 +14,7 @@ pub mod sb {
 mod other;
 pub mod tcp;
 
-pub fn clamp<T: Ord + Copy>(mut a: T, min: T, max: T) -> T {
+pub fn clamp<T: PartialOrd + Copy>(mut a: T, min: T, max: T) -> T {
   if a < min {
     a = min
   }

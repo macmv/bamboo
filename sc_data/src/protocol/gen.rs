@@ -336,6 +336,7 @@ fn write_instr(gen: &mut CodeGen, instr: &Instr, p: &mut Packet) {
               "read_u8" => "u8",
               "read_i16" => "i16",
               "read_i32" => "i32",
+              "read_optional" => "i32", // Literally used once in the entire 1.17 codebase.
               "read_i64" => "i64",
               "read_f32" => "f32",
               "read_f64" => "f64",
@@ -348,6 +349,7 @@ fn write_instr(gen: &mut CodeGen, instr: &Instr, p: &mut Packet) {
               "read_i32_arr" => "Vec<i32>",
               "read_varint_arr" => "Vec<i32>",
               "read_bit_set" => "BitSet",
+              "read_block_hit" => "BlockHit",
 
               "read_map" => "u8",
               "read_list" => "u8",
