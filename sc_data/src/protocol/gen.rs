@@ -374,12 +374,12 @@ fn write_instr(gen: &mut CodeGen, instr: &Instr, p: &mut Packet) {
               "read_i64" => "i64",
               "read_f32" => "f32",
               "read_f64" => "f64",
-              "read_block_pos" => "Pos",
+              "read_pos" => "Pos",
               "read_item" => "Stack",
               "read_uuid" => "UUID",
               "read_str" => "String",
               "read_nbt" => "NBT",
-              "read_bytes" => "Vec<u8>",
+              "read_buf" => "Vec<u8>",
               "read_i32_arr" => "Vec<i32>",
               "read_varint_arr" => "Vec<i32>",
               "read_bit_set" => "BitSet",
@@ -388,8 +388,6 @@ fn write_instr(gen: &mut CodeGen, instr: &Instr, p: &mut Packet) {
               "read_map" => "u8",
               "read_list" => "u8",
               "read_collection" => "u8",
-
-              "decode" => "u8",
               _ => panic!("unknown reader function {}", func),
             };
             if let Some(ref reader) = field.reader_type {
@@ -401,7 +399,7 @@ fn write_instr(gen: &mut CodeGen, instr: &Instr, p: &mut Packet) {
           // Conditionals as ops are always something like `if cond { 1 } else { 0 }`, which we can
           // convert with `v != 0`. So, in order to recognize that, we need to the reader type to be
           // a number.
-          _ if matches!(dbg!(&val).ops.last(), Some(Op::If(_, _))) => {
+          _ if matches!(&val.ops.last(), Some(Op::If(_, _))) => {
             if let Some(ref reader) = field.reader_type {
               assert_eq!(reader, "u8");
             } else {
@@ -675,11 +673,27 @@ fn write_cond(gen: &mut CodeGen, cond: &Cond) {
   }
   match cond {
     Cond::Eq(lhs, rhs) => cond!(gen, lhs == rhs),
-    Cond::Neq(lhs, rhs) => cond!(gen, lhs != rhs),
     Cond::Less(lhs, rhs) => cond!(gen, lhs < rhs),
     Cond::Greater(lhs, rhs) => cond!(gen, lhs > rhs),
     Cond::Lte(lhs, rhs) => cond!(gen, lhs <= rhs),
     Cond::Gte(lhs, rhs) => cond!(gen, lhs >= rhs),
+
+    Cond::Neq(lhs, rhs) => match &lhs.initial {
+      // Matching `foo.equals("name") != 0`
+      Value::Call(val, name, args) if name == "equals" && val.is_some() => {
+        // dbg!(&lhs);
+        assert_eq!(rhs, &Expr::new(Value::Lit(0.into())));
+        assert_eq!(args.len(), 1);
+        assert!(val.as_ref().unwrap().ops.is_empty());
+        assert!(args[0].ops.is_empty());
+        write_expr(gen, val.as_ref().unwrap());
+        gen.write(" == ");
+        write_val(gen, &args[0].initial);
+      }
+      _ => {
+        cond!(gen, lhs != rhs)
+      }
+    },
 
     Cond::Or(lhs, rhs) => {
       gen.write("(");

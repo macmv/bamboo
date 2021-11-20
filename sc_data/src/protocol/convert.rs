@@ -96,7 +96,7 @@ pub fn member_call(name: &str) -> (&str, Option<Vec<Expr>>) {
       "read_string" | "read_string_from_buffer" => "read_str",
       "read_var_int_array" => "read_varint_arr",
       "read_int_array" | "read_int_list" => "read_i32_arr",
-      "read_byte_array" => "read_bytes",
+      "read_byte_array" => "read_buf",
       "read_enum_constant" | "read_enum_value" => return ("read_varint", Some(vec![])),
       "read_text_component"
       | "read_text"
@@ -125,6 +125,10 @@ pub fn member_call(name: &str) -> (&str, Option<Vec<Expr>>) {
       // );
       // ```
       "read_block_hit_result" => "read_block_hit",
+      "read_block_pos" => "read_pos",
+
+      // TODO: What is this??
+      "decode" => "read_u8",
       _ => {
         println!("unknown member call {}", name);
         name
