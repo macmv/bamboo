@@ -14,7 +14,9 @@ pub mod sb {
 mod other;
 pub mod tcp;
 
-pub fn clamp<T: PartialOrd + Copy>(mut a: T, min: T, max: T) -> T {
+pub fn clamp<T: PartialOrd + Copy, N: Into<T>>(mut a: T, min: N, max: N) -> T {
+  let min = min.into();
+  let max = max.into();
   if a < min {
     a = min
   }
