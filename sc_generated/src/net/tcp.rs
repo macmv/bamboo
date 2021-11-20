@@ -78,10 +78,12 @@ impl Packet {
   add_reader!(read_f32, f32);
   add_reader!(read_f64, f64);
   add_reader!(read_varint, i32);
-  add_reader!(read_str, String);
   add_reader!(read_bool, bool);
   add_reader!(read_all, Vec<u8>);
 
+  pub fn read_str(&mut self, max_len: u64) -> String {
+    self.buf.read_str(max_len)
+  }
   pub fn read_buf(&mut self, len: i32) -> Vec<u8> {
     self.buf.read_buf(len)
   }
@@ -118,6 +120,21 @@ impl Packet {
     }
   }
 
+  /// Reads an nbt tag from self.
+  pub fn read_nbt(&mut self) -> NBT {
+    NBT::deserialize_buf(&mut self.buf).unwrap()
+  }
+
+  /// Reads a length prefixed array of integers.
+  pub fn read_i32_arr(&mut self) -> Vec<i32> {
+    let len = self.read_varint().try_into().unwrap();
+    let mut out = Vec::with_capacity(len);
+    for i in 0..len {
+      out.push(self.read_i32());
+    }
+    out
+  }
+
   /// This parses an item from the internal buffer (format depends on the
   /// version).
   pub fn read_item(&mut self) -> Item {
@@ -129,7 +146,7 @@ impl Packet {
       if id != -1 {
         count = self.read_u8();
         damage = self.read_i16();
-        nbt = NBT::deserialize_buf(&mut self.buf).unwrap();
+        nbt = self.read_nbt();
       }
       Item::new(id.into(), count, damage, nbt)
     } else {

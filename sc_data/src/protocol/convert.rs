@@ -1,3 +1,5 @@
+use super::{Expr, Value};
+
 pub fn class(name: &str) -> String {
   match name.split('/').last().unwrap() {
     // TODO: Generics
@@ -23,13 +25,12 @@ pub fn class(name: &str) -> String {
     "Item" => "u32",  // item id
     "Block" => "u32", // block id
     "EntityType" => "u32",
-    "World" => "u32",
+    "World" => "i32",
     "Vibration" => "u8",
     "EnumFacing" => "Face",
     "Direction" => "Face",
-    "SoundCategory" => "u32",
-    "SoundCategory" => "u32",
-    "IRecipe" => "u32",
+    "SoundCategory" => "i32",
+    "IRecipe" => "i32",
     "IBlockState" | "BlockState" => "(u32, String)",
     "Text" | "Identifier" | "Formatting" | "IChatComponent" | "ResourceLocation"
     | "ITextComponent" => "String",
@@ -63,7 +64,7 @@ pub fn class(name: &str) -> String {
     "S22PacketMultiBlockChange$BlockUpdateData"
     | "SPacketMultiBlockChange$BlockUpdateData"
     | "ChunkDeltaUpdateS2CPacket$ChunkDeltaRecord" => "MultiBlockChange",
-    "Hand" | "EnumHand" | "EnumHandSide" | "Arm" => "Hand",
+    "Hand" | "EnumHand" | "EnumHandSide" | "Arm" => "i32",
     "EnumParticleTypes" => "u32",
     "ParticleEffect" => "u32",
     "SoundEvent" => "u32",
@@ -73,8 +74,8 @@ pub fn class(name: &str) -> String {
     "SPacketPlayerListItem$Action" => "PlayerListAction",
     "PlayerListS2CPacket$Action" => "PlayerListAction",
     "SPacketRecipeBook$State" => "RecipeBookState",
-    "Potion" => "u32",
-    "StatusEffect" => "u32",
+    "Potion" => "i32",
+    "StatusEffect" => "i32",
     "IScoreObjectiveCriteria$EnumRenderType"
     | "IScoreCriteria$EnumRenderType"
     | "ScoreboardCriterion$RenderType" => "ScoreboardDisplayType",
@@ -111,7 +112,7 @@ pub fn class(name: &str) -> String {
     "JigsawBlockEntity$Joint" => "JigsawBlockType",
     "StructureBlockBlockEntity$Action" => "StructureBlockType",
     "StructureBlockMode" => "StructureBlockMode",
-    "BlockMirror" => "u32",
+    "BlockMirror" => "i32",
     "BlockRotation" => "Face",
     "C02PacketUseEntity$Action" | "CPacketUseEntity$Action" => "UseEntity",
 
@@ -134,22 +135,34 @@ pub fn static_call(name: &str) -> &str {
   }
 }
 
-pub fn member_call(name: &str) -> (&str, Option<Vec<&str>>) {
+pub fn member_call(name: &str) -> (&str, Option<Vec<Expr>>) {
   (
     match name {
       "add" => "insert",
       "put" => "insert",
-      "read_var_int" => "read_varint",
+      "read_var_int" | "read_var_int_from_buffer" => "read_varint",
+      // TODO: Might want to implement varlongs.
+      "read_var_long" => "read_varint",
       // Booleans are always converted with `!= 0`, so it is best to read them as bytes.
       "read_boolean" => "read_u8",
-      "read_byte" => "read_i8",
+      "read_unsigned_byte" => "read_u8",
+      "read_byte" => "read_u8",
       "read_short" => "read_i16",
       "read_int" => "read_i32",
       "read_long" => "read_i64",
       "read_float" => "read_f32",
       "read_double" => "read_f64",
-      "read_enum_constant" => return ("read_varint", Some(vec![])),
-      "read_text_component" => return ("read_string", Some(vec!["32767"])),
+      "read_string" | "read_string_from_buffer" => "read_str",
+      "read_var_int_array" => "read_varint_arr",
+      "read_int_array" | "read_int_list" => "read_i32_arr",
+      "read_byte_array" => "read_bytes",
+      "read_enum_constant" | "read_enum_value" => return ("read_varint", Some(vec![])),
+      "read_text_component"
+      | "read_text"
+      | "read_identifier"
+      | "read_chat_component"
+      | "func_192575_l" => return ("read_str", Some(vec![Expr::new(Value::Lit(32767.into()))])),
+      "read_item_stack_from_buffer" | "read_item_stack" => "read_item",
       "read_nbt_tag_compound_from_buffer" | "read_compound_tag" => "read_nbt",
       _ => {
         println!("unknown member call {}", name);

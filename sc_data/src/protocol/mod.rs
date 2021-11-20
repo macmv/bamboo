@@ -67,8 +67,13 @@ pub struct Field {
   /// The java type of this field.
   pub ty:   Type,
 
+  /// Assigned once we found a reader function that assigns to this field.
+  #[serde(skip_deserializing)]
+  pub reader_type: Option<String>,
+  /// Set to true if this field is only set in certain conditionals.
   #[serde(skip_deserializing)]
   pub option:      bool,
+  /// Set to true if this field is always initialized in all branches.
   #[serde(skip_deserializing)]
   pub initialized: bool,
 }
@@ -282,5 +287,25 @@ impl Packet {
       }
     }
     None
+  }
+  pub fn get_field_mut(&mut self, name: &str) -> Option<&mut Field> {
+    for f in &mut self.fields {
+      if f.name == name {
+        return Some(f);
+      }
+    }
+    None
+  }
+}
+
+impl Expr {
+  pub fn new(initial: Value) -> Expr {
+    Expr { initial, ops: vec![] }
+  }
+}
+
+impl From<i32> for Lit {
+  fn from(v: i32) -> Self {
+    Lit::Int(v)
   }
 }

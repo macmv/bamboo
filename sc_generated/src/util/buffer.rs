@@ -30,6 +30,7 @@ impl fmt::Display for BufferError {
 pub enum BufferErrorKind {
   IO(io::Error),
   FromUtf8Error(FromUtf8Error),
+  StringTooLong(u64, u64),
   VarInt(),
 }
 
@@ -38,6 +39,9 @@ impl fmt::Display for BufferErrorKind {
     match self {
       Self::IO(e) => write!(f, "{}", e),
       Self::FromUtf8Error(e) => write!(f, "{}", e),
+      Self::StringTooLong(len, max) => {
+        write!(f, "string is {} characters, longer than max {}", len, max)
+      }
       Self::VarInt() => write!(f, "varint is too long"),
     }
   }
@@ -238,14 +242,27 @@ impl Buffer {
     self.write_i32((v * 32.0) as i32);
   }
 
-  pub fn read_str(&mut self) -> String {
+  /// Reads a string. If the length is longer than the given maximum, this will
+  /// fail, and return an empty string.
+  pub fn read_str(&mut self, max_len: u64) -> String {
     if self.err.is_some() {
       return "".into();
     }
     let len = self.read_varint();
+    if len > max_len * 4 {
+      self.set_err(BufferErrorKind::StringTooLong(len, max_len), true);
+      return "".into();
+    }
     let vec = self.read(len as usize);
     match String::from_utf8(vec) {
-      Ok(v) => v,
+      Ok(v) => {
+        if v.len() > max_len {
+          self.set_err(BufferErrorKind::StringTooLong(len, max_len), true);
+          "".into();
+        } else {
+          v
+        }
+      }
       Err(e) => {
         self.set_err(BufferErrorKind::FromUtf8Error(e), true);
         "".into()

@@ -131,7 +131,19 @@ fn simplify_instr(instr: &mut [Instr]) {
       Instr::Call(val, name, args) => {
         simplify_expr(val);
         simplify_name(name);
-        args.iter_mut().for_each(|a| simplify_expr(a))
+        if val.initial != Value::Null {
+          let (new_name, arg) = convert::member_call(&name);
+          *name = new_name.into();
+          if let Some(a) = arg {
+            *args = a;
+          } else {
+            args.iter_mut().for_each(|a| simplify_expr(a))
+          }
+        } else {
+          let new_name = convert::static_call(&name);
+          *name = new_name.into();
+          args.iter_mut().for_each(|a| simplify_expr(a))
+        }
       }
       Instr::If(cond, when_true, when_false) => {
         simplify_cond(cond);
@@ -188,7 +200,19 @@ fn simplify_val(val: &mut Value) {
         simplify_expr(v);
       }
       simplify_name(name);
-      args.iter_mut().for_each(|a| simplify_expr(a));
+      if val.is_some() {
+        let (new_name, arg) = convert::member_call(&name);
+        *name = new_name.into();
+        if let Some(a) = arg {
+          *args = a;
+        } else {
+          args.iter_mut().for_each(|a| simplify_expr(a))
+        }
+      } else {
+        let new_name = convert::static_call(&name);
+        *name = new_name.into();
+        args.iter_mut().for_each(|a| simplify_expr(a))
+      }
     }
     Value::Collection(_, args) => {
       args.iter_mut().for_each(|a| simplify_expr(a));
@@ -256,9 +280,11 @@ fn write_from_tcp(gen: &mut CodeGen, p: &Packet, ver: Version) {
     }
     gen.write_line(";");
   }
+  let mut p2 = p.clone();
   for i in &p.reader {
-    write_instr(gen, i, p);
+    write_instr(gen, i, &mut p2);
   }
+  let p = p2;
   gen.write("Packet::");
   gen.write(&p.name);
   gen.write("V");
@@ -290,13 +316,51 @@ fn convert_ty(gen: &mut CodeGen, ty: &Type) {
   }
 }
 
-fn write_instr(gen: &mut CodeGen, instr: &Instr, p: &Packet) {
+fn write_instr(gen: &mut CodeGen, instr: &Instr, p: &mut Packet) {
   match instr {
-    Instr::Super => {}
+    Instr::Super => {
+      gen.write_comment("call super here");
+    }
     Instr::Set(name, val) => {
       gen.write("f_");
       gen.write(&name);
       gen.write(" = ");
+      match &val.initial {
+        Value::Call(var, func, _)
+          if var.as_ref().map(|v| v.initial == Value::Var(Var::Buf)).unwrap_or(false) =>
+        {
+          if let Some(field) = p.get_field_mut(&name) {
+            let ty = match func.as_str() {
+              "read_boolean" => "bool",
+              "read_varint" => "i32",
+              "read_u8" => "u8",
+              "read_i16" => "i16",
+              "read_i32" => "i32",
+              "read_i64" => "i64",
+              "read_f32" => "f32",
+              "read_f64" => "f64",
+              "read_block_pos" => "Pos",
+              "read_item" => "Item",
+              "read_uuid" => "UUID",
+              "read_str" => "String",
+              "read_nbt" => "NBT",
+              "read_bytes" => "Vec<u8>",
+              "read_i32_arr" => "Vec<i32>",
+              "read_varint_arr" => "Vec<i32>",
+              "read_bit_set" => "BitSet",
+
+              "read_map" => "u8",
+              "read_list" => "u8",
+              "read_collection" => "u8",
+
+              "decode" => "u8",
+              _ => panic!("unknown reader function {}", func),
+            };
+            field.reader_type = Some(ty.into());
+          }
+        }
+        _ => {}
+      }
       if p.get_field(&name).map(|f| f.option).unwrap_or(false) && val.initial != Value::Null {
         gen.write("Some(");
         write_expr(gen, val);
@@ -325,22 +389,8 @@ fn write_instr(gen: &mut CodeGen, instr: &Instr, p: &Packet) {
       if v.initial != Value::Null {
         write_expr(gen, v);
         gen.write(".");
-        let (new_name, arg) = convert::member_call(&name);
-        gen.write(new_name);
-        if let Some(args) = arg {
-          gen.write("(");
-          for (i, a) in args.iter().enumerate() {
-            gen.write(a);
-            if i != args.len() - 1 {
-              gen.write(", ");
-            }
-          }
-          gen.write(")");
-          return;
-        }
-      } else {
-        gen.write(convert::static_call(&name));
       }
+      gen.write(&name);
       gen.write("(");
       for (i, a) in args.iter().enumerate() {
         write_expr(gen, a);
@@ -405,7 +455,15 @@ fn write_instr(gen: &mut CodeGen, instr: &Instr, p: &Packet) {
         }
       });
     }
-    Instr::CheckStrLen(_, _) => {}
+    Instr::CheckStrLen(val, len) => {
+      gen.write("assert!(");
+      write_expr(gen, val);
+      gen.write(".len() < ");
+      write_val(gen, len);
+      gen.write(", \"string is too long (len greater than `");
+      write_val(gen, len);
+      gen.write("`)\");");
+    }
   }
 }
 
@@ -466,7 +524,7 @@ fn write_expr(gen: &mut CodeGen, e: &Expr) {
         g.write(&val);
         g.write("[");
         write_expr(&mut g, rhs);
-        g.write("]");
+        g.write(".try_into().unwrap()]");
       }
       Op::CollectionIdx(idx) => {
         g.write(&val);
@@ -526,28 +584,14 @@ fn write_val(gen: &mut CodeGen, val: &Value) {
     Value::Array(len) => {
       gen.write("Vec::with_capacity(");
       write_expr(gen, len);
-      gen.write(")");
+      gen.write(".try_into().unwrap())");
     }
     Value::Call(val, name, args) => {
       if let Some(e) = val {
         write_expr(gen, e);
         gen.write(".");
-        let (new_name, arg) = convert::member_call(&name);
-        gen.write(new_name);
-        if let Some(args) = arg {
-          gen.write("(");
-          for (i, a) in args.iter().enumerate() {
-            gen.write(a);
-            if i != args.len() - 1 {
-              gen.write(", ");
-            }
-          }
-          gen.write(")");
-          return;
-        }
-      } else {
-        gen.write(convert::static_call(&name));
       }
+      gen.write(&name);
       gen.write("(");
       for (i, a) in args.iter().enumerate() {
         write_expr(gen, a);
