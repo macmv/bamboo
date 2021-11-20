@@ -359,11 +359,11 @@ fn write_instr(gen: &mut CodeGen, instr: &Instr, p: &mut Packet) {
       gen.write("f_");
       gen.write(&name);
       gen.write(" = ");
-      match &val.initial {
-        Value::Call(var, func, _)
-          if var.as_ref().map(|v| v.initial == Value::Var(Var::Buf)).unwrap_or(false) =>
-        {
-          if let Some(field) = p.get_field_mut(&name) {
+      if let Some(field) = p.get_field_mut(&name) {
+        match &val.initial {
+          Value::Call(var, func, _)
+            if var.as_ref().map(|v| v.initial == Value::Var(Var::Buf)).unwrap_or(false) =>
+          {
             let ty = match func.as_str() {
               "read_boolean" => "bool",
               "read_varint" => "i32",
@@ -392,10 +392,24 @@ fn write_instr(gen: &mut CodeGen, instr: &Instr, p: &mut Packet) {
               "decode" => "u8",
               _ => panic!("unknown reader function {}", func),
             };
-            field.reader_type = Some(ty.into());
+            if let Some(ref reader) = field.reader_type {
+              assert_eq!(reader, ty);
+            } else {
+              field.reader_type = Some(ty.into());
+            }
           }
+          // Conditionals as ops are always something like `if cond { 1 } else { 0 }`, which we can
+          // convert with `v != 0`. So, in order to recognize that, we need to the reader type to be
+          // a number.
+          _ if matches!(dbg!(&val).ops.last(), Some(Op::If(_, _))) => {
+            if let Some(ref reader) = field.reader_type {
+              assert_eq!(reader, "u8");
+            } else {
+              field.reader_type = Some("u8".into());
+            }
+          }
+          _ => {}
         }
-        _ => {}
       }
       if p.get_field(&name).map(|f| f.option).unwrap_or(false) && val.initial != Value::Null {
         gen.write("Some(");
