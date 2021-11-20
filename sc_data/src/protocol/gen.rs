@@ -1,4 +1,4 @@
-use super::{convert, Cond, Expr, Instr, Lit, Op, Packet, PacketDef, Type, Value, Var};
+use super::{convert, Cond, Expr, Instr, Lit, Op, Packet, PacketDef, Value, Var};
 use crate::{gen::CodeGen, Version};
 use convert_case::{Case, Casing};
 use std::{collections::HashMap, fs, fs::File, io, io::Write, path::Path};
@@ -295,12 +295,17 @@ fn write_from_tcp(gen: &mut CodeGen, p: &Packet, ver: Version) {
     gen.write(&f.name);
     gen.write(": f_");
     gen.write(&f.name);
-    if f.option {
-      gen.write(".map(|v| v");
-      convert_ty(gen, &f.ty);
-      gen.write(")");
-    } else {
-      convert_ty(gen, &f.ty);
+    if let Some(read) = f.reader_type.as_ref() {
+      let rs = f.ty.to_rust();
+      if &rs != read {
+        if f.option {
+          gen.write(".map(|v| v");
+          convert_ty(gen, read, &rs);
+          gen.write(")");
+        } else {
+          convert_ty(gen, read, &rs);
+        }
+      }
     }
     gen.write_line(",");
   }
@@ -308,12 +313,41 @@ fn write_from_tcp(gen: &mut CodeGen, p: &Packet, ver: Version) {
   gen.write_line("}");
 }
 
-fn convert_ty(gen: &mut CodeGen, ty: &Type) {
-  match ty {
-    Type::Bool => gen.write(" != 0"),
-    Type::Float => gen.write(" as f32"),
-    _ => {}
-  }
+fn convert_ty(gen: &mut CodeGen, from: &str, to: &str) {
+  gen.write(match to {
+    "bool" => " != 0",
+    "f32" => " as f32",
+    "f64" => " as f64",
+    "u8" => match from {
+      "i16" | "i32" | "i64" => ".try_into().unwrap()",
+      _ => panic!("cannot convert `{}` into `{}`", from, to),
+    },
+    "i16" => match from {
+      "u8" => ".into()",
+      "i32" | "i64" => ".try_into().unwrap()",
+      _ => panic!("cannot convert `{}` into `{}`", from, to),
+    },
+    "i32" => match from {
+      "f32" => " as i32",
+      "u8" | "i16" => ".into()",
+      "i64" => ".try_into().unwrap()",
+      _ => panic!("cannot convert `{}` into `{}`", from, to),
+    },
+    "i64" => match from {
+      "f32" => " as i64",
+      "u8" | "i16" | "i32" => ".into()",
+      _ => panic!("cannot convert `{}` into `{}`", from, to),
+    },
+    "HashMap<u8, u8>" | "HashMap<u8, i32>" | "HashSet<u8>" | "Vec<u8>" => return,
+    "String" => match from {
+      _ => return,
+    },
+    "Option<u8>" => match from {
+      "i32" => ".unwrap_or(0).into()",
+      _ => panic!("cannot convert `{}` into `{}`", from, to),
+    },
+    _ => panic!("cannot convert `{}` into `{}`", from, to),
+  })
 }
 
 fn write_instr(gen: &mut CodeGen, instr: &Instr, p: &mut Packet) {
@@ -341,7 +375,7 @@ fn write_instr(gen: &mut CodeGen, instr: &Instr, p: &mut Packet) {
               "read_f32" => "f32",
               "read_f64" => "f64",
               "read_block_pos" => "Pos",
-              "read_item" => "Item",
+              "read_item" => "Stack",
               "read_uuid" => "UUID",
               "read_str" => "String",
               "read_nbt" => "NBT",

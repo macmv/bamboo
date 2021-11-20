@@ -14,7 +14,7 @@ pub fn class(name: &str) -> String {
     "List" => "Vec<u8>",
     "UUID" => "UUID",
     "String" => "String",
-    "BitSet" => "BitArray",
+    "BitSet" => "BitSet",
     "IntList" => "Vec<i32>",
     "Object2IntMap" => "HashMap<u8, i32>",
     "Int2ObjectMap" => "HashMap<i32, u8>",
@@ -25,31 +25,17 @@ pub fn class(name: &str) -> String {
     "Item" => "u32",  // item id
     "Block" => "u32", // block id
     "EntityType" => "u32",
-    "World" => "i32",
     "Vibration" => "u8",
-    "EnumFacing" => "Face",
-    "Direction" => "Face",
-    "SoundCategory" => "i32",
-    "IRecipe" => "i32",
     "IBlockState" | "BlockState" => "(u32, String)",
     "Text" | "Identifier" | "Formatting" | "IChatComponent" | "ResourceLocation"
     | "ITextComponent" => "String",
     "Difficulty" | "EnumDifficulty" => "u32",
     "ItemStack" => "Stack",
-    "EquipmentSlot" | "EntityEquipmentSlot" => "Stack",
-    "SPacketUpdateBossInfo$Operation" => "BossType",
-    "BossBarS2CPacket$Type" | "BossBarS2CPacket$Action" => "BossAction",
-    "BossInfo$Color" | "BossBar$Color" => "BossColor",
-    "BossInfo$Overlay" => "BossOverlay",
-    "BossBar$Style" => "BossStyle",
     "GameStateChangeS2CPacket$Reason" => "StateChangeReason",
     "S21PacketChunkData$Extracted" => "ExtractedChunkData",
     "CompoundTag" | "NbtCompound" | "NBTTagCompound" => "NBT",
     "DataWatcher" | "EntityDataManager" | "DataTracker" => "EntityMetadata",
     "BiomeArray" => "Vec<u32>",
-    "SPacketCombatEvent$Event" => "CombatEvent",
-    "CombatEventS2CPacket$Type" => "CombatEvent",
-    "S42PacketCombatEvent$Event" => "CombatEvent",
     "Suggestions" => "CommandSuggestions",
     "RootCommandNode" => "CommandNode",
     "PacketBuffer" | "PacketByteBuf" => "Vec<u8>",
@@ -57,69 +43,24 @@ pub fn class(name: &str) -> String {
     "GameMode" => "GameMode",
     "DimensionType" => "WorldType",
     "LevelGeneratorType" => "LevelType",
-    "EntityAnchorArgumentType$EntityAnchor" => "EntityAnchor",
     "MapDecoration" => "MapIcon",
     "MapState$UpdateData" => "MapUpdate",
     "ChunkCoordIntPair" | "ChunkSectionPos" => "ChunkPos",
     "S22PacketMultiBlockChange$BlockUpdateData"
     | "SPacketMultiBlockChange$BlockUpdateData"
     | "ChunkDeltaUpdateS2CPacket$ChunkDeltaRecord" => "MultiBlockChange",
-    "Hand" | "EnumHand" | "EnumHandSide" | "Arm" => "i32",
     "EnumParticleTypes" => "u32",
     "ParticleEffect" => "u32",
     "SoundEvent" => "u32",
     "Logger" => "Log",
-    "PlayerActionC2SPacket$Action" => "PlayerAction",
-    "S38PacketPlayerListItem$Action" => "PlayerListAction",
-    "SPacketPlayerListItem$Action" => "PlayerListAction",
-    "PlayerListS2CPacket$Action" => "PlayerListAction",
-    "SPacketRecipeBook$State" => "RecipeBookState",
-    "Potion" => "i32",
-    "StatusEffect" => "i32",
-    "IScoreObjectiveCriteria$EnumRenderType"
-    | "IScoreCriteria$EnumRenderType"
-    | "ScoreboardCriterion$RenderType" => "ScoreboardDisplayType",
     "TradeOfferList" => "TradeList",
     "RegistryTagManager" => "TagManager",
     "TagManager" => "TagManager",
-    "S45PacketTitle$Type" | "SPacketTitle$Type" | "TitleS2CPacket$Action" => "TitleType",
-    "UnlockRecipesS2CPacket$Action" => "UnlockRecipeType",
     "RecipeBookOptions" => "RecipeBookOption",
-    "S3CPacketUpdateScore$Action" | "SPacketUpdateScore$Action" | "ServerScoreboard$UpdateMode" => {
-      "ScoreboardUpdateType"
-    }
-    "S44PacketWorldBorder$Action" | "SPacketWorldBorder$Action" | "WorldBorderS2CPacket$Type" => {
-      "WorldBorderType"
-    }
-    "AdvancementTabC2SPacket$Action" => "AdvancementTabType",
-    "SlotActionType" => "SlotAction",
-    "ClientCommandC2SPacket$Mode" => "CommandMode",
-    "EntityPlayer$EnumChatVisibility" | "ChatVisibility" | "ChatVisibility" => "ChatVisibility",
-    "C16PacketClientStatus$EnumState"
-    | "CPacketClientStatus$State"
-    | "ClientStatusC2SPacket$Mode" => "ClientState",
-    "C0BPacketEntityAction$Action" | "CPacketEntityAction$Action" => "EntityAction",
-    "C07PacketPlayerDigging$Action" | "CPacketPlayerDigging$Action" => "DiggingAction",
     "BlockHitResult" => "BlockHit",
-    "RecipeBookDataC2SPacket$Mode" => "RecipeBookMode",
-    "RecipeBookCategory" => "RecipeBookCategory",
-    "CPacketRecipeInfo$Purpose" => "RecipePurpose",
-    "C19PacketResourcePackStatus$Action"
-    | "CPacketResourcePackStatus$Action"
-    | "ResourcePackStatusC2SPacket$Status" => "ResourcePacketAction",
-    "CPacketSeenAdvancements$Action" => "SeenAdvancements",
-    "CommandBlockBlockEntity$Type" => "CommandBlockType",
     "JigsawBlockEntity$Joint" => "JigsawBlockType",
-    "StructureBlockBlockEntity$Action" => "StructureBlockType",
-    "StructureBlockMode" => "StructureBlockMode",
-    "BlockMirror" => "i32",
-    "BlockRotation" => "Face",
-    "C02PacketUseEntity$Action" | "CPacketUseEntity$Action" => "UseEntity",
 
-    v => {
-      println!("unknown type {}", v);
-      v.split('$').next().unwrap()
-    }
+    _ => "i32",
   }
   .into()
 }
