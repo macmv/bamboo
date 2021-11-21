@@ -664,10 +664,10 @@ fn check_option(instr: &[Instr], field: &str) -> (bool, bool) {
   for i in instr {
     match i {
       Instr::Set(f, val) => {
-        if val.initial == Value::Null {
-          return (true, true);
-        }
         if field == f {
+          if val.initial == Value::Null {
+            return (true, true);
+          }
           return (true, false);
         }
       }
@@ -678,10 +678,10 @@ fn check_option(instr: &[Instr], field: &str) -> (bool, bool) {
         for i in when_true {
           match i {
             Instr::Set(f, val) => {
-              if val.initial == Value::Null {
-                needs_option = true;
-              }
               if field == f {
+                if val.initial == Value::Null {
+                  needs_option = true;
+                }
                 assigned_true = true;
                 break;
               }
@@ -692,10 +692,10 @@ fn check_option(instr: &[Instr], field: &str) -> (bool, bool) {
         for i in when_false {
           match i {
             Instr::Set(f, val) => {
-              if val.initial == Value::Null {
-                needs_option = true;
-              }
               if field == f {
+                if val.initial == Value::Null {
+                  needs_option = true;
+                }
                 assigned_false = true;
                 break;
               }
