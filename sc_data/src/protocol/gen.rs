@@ -524,7 +524,13 @@ fn write_expr(gen: &mut CodeGen, e: &Expr) {
         g.write(" { ");
         g.write(&val);
         g.write(" } else { ");
-        write_expr(&mut g, new);
+        if e.initial == Value::Null {
+          g.write("Some(");
+          write_expr(&mut g, new);
+          g.write(")");
+        } else {
+          write_expr(&mut g, new);
+        }
         g.write(" }");
       }
     }
