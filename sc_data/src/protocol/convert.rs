@@ -67,8 +67,8 @@ pub fn class(name: &str) -> String {
 
 pub fn static_call(name: &str) -> &str {
   match name {
-    "newHashMap" => "HashMap::new",
-    "newLinkedHashSet" => "HashSet::new",
+    "new_hash_map" => "HashMap::new",
+    "new_linked_hash_set" | "new_hash_set" => "HashSet::new",
     _ => {
       println!("unknown static call {}", name);
       name
@@ -93,10 +93,12 @@ pub fn member_call(name: &str) -> (&str, Option<Vec<Expr>>) {
       "read_long" => "read_i64",
       "read_float" => "read_f32",
       "read_double" => "read_f64",
+      "read_uuid" => "read_uuid",
       "read_string" | "read_string_from_buffer" => "read_str",
       "read_var_int_array" => "read_varint_arr",
       "read_int_array" | "read_int_list" => "read_i32_arr",
-      "read_byte_array" => "read_buf",
+      "read_byte_array" | "read_bytes" => "read_buf",
+      "read_bit_set" => "read_bits",
       "read_enum_constant" | "read_enum_value" => return ("read_varint", Some(vec![])),
       "read_text_component"
       | "read_text"
@@ -105,27 +107,9 @@ pub fn member_call(name: &str) -> (&str, Option<Vec<Expr>>) {
       | "func_192575_l" => return ("read_str", Some(vec![Expr::new(Value::Lit(32767.into()))])),
       "read_item_stack_from_buffer" | "read_item_stack" => "read_item",
       "read_nbt_tag_compound_from_buffer" | "read_compound_tag" => "read_nbt",
-      // This is the `read_block_hit` function in 1.17:
-      // ```java
-      // BlockPos pos = this.readBlockPos();
-      // Direction dir = (Direction)this.readEnumConstant(Direction.class);
-      // float x = this.readFloat();
-      // float y = this.readFloat();
-      // float z = this.readFloat();
-      // boolean bl = this.readBoolean();
-      // return new BlockHitResult(
-      //   new Vec3d(
-      //     (double)pos.getX() + (double)x,
-      //     (double)pos.getY() + (double)y,
-      //     (double)pos.getZ() + (double)z,
-      //   ),
-      //   dir,
-      //   pos,
-      //   bl,
-      // );
-      // ```
       "read_block_hit_result" => "read_block_hit",
       "read_block_pos" => "read_pos",
+      "readable_bytes" => "remaining",
 
       // TODO: What is this??
       "decode" => "read_u8",

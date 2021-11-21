@@ -169,13 +169,26 @@ impl Packet {
     }
   }
 
+  /// Reads 16 bytes from the buffer, and returns that as a big endian UUID.
+  pub fn read_uuid(&mut self) -> UUID {
+    UUID::from_bytes(self.read_buf(16).try_into().unwrap())
+  }
+
   /// This writes a UUID into the buffer (in big endian format).
   pub fn write_uuid(&mut self, v: UUID) {
     self.write_buf(&v.as_be_bytes());
   }
 
-  /// Reads 16 bytes from the buffer, and returns that as a big endian UUID.
-  pub fn read_uuid(&mut self) -> UUID {
-    UUID::from_bytes(self.read_buf(16).try_into().unwrap())
+  /// Reads a block hit result. This (for whatever dumb reason) is part of the
+  /// packet buffer in 1.17, and is literally called ONCE. So, because reasons,
+  /// I need to implement it as well.
+  pub fn read_block_hit(&mut self) -> BlockHit {
+    let pos = this.read_pos();
+    let dir = this.read_varint();
+    let x = self.read_f32();
+    let y = self.read_f32();
+    let z = self.read_f32();
+    let hit = self.read_bool();
+    return BlockHit::new(Vec3d::new(pos.x() + x, pos.y() + y, pos.z() + z), dir, pos, hit);
   }
 }

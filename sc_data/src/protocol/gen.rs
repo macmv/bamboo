@@ -382,7 +382,7 @@ fn write_instr(gen: &mut CodeGen, instr: &Instr, p: &mut Packet) {
               "read_buf" => "Vec<u8>",
               "read_i32_arr" => "Vec<i32>",
               "read_varint_arr" => "Vec<i32>",
-              "read_bit_set" => "BitSet",
+              "read_bits" => "BitSet",
               "read_block_hit" => "BlockHit",
 
               "read_map" => "u8",
