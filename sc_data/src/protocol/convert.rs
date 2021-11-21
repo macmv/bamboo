@@ -87,7 +87,7 @@ pub fn member_call(name: &str) -> (&str, Option<Vec<Expr>>) {
       // Booleans are always converted with `!= 0`, so it is best to read them as bytes.
       "read_boolean" => "read_u8",
       "read_unsigned_byte" => "read_u8",
-      "read_byte" => "read_u8",
+      "read_byte" => "read_i8",
       "read_short" => "read_i16",
       "read_int" => "read_i32",
       "read_long" => "read_i64",
@@ -107,12 +107,10 @@ pub fn member_call(name: &str) -> (&str, Option<Vec<Expr>>) {
       | "func_192575_l" => return ("read_str", Some(vec![Expr::new(Value::Lit(32767.into()))])),
       "read_item_stack_from_buffer" | "read_item_stack" => "read_item",
       "read_nbt_tag_compound_from_buffer" | "read_compound_tag" => "read_nbt",
+      "decode" => return ("read_nbt", Some(vec![])),
       "read_block_hit_result" => "read_block_hit",
       "read_block_pos" => "read_pos",
       "readable_bytes" => "remaining",
-
-      // TODO: What is this??
-      "decode" => "read_u8",
       _ => {
         println!("unknown member call {}", name);
         name
@@ -120,4 +118,72 @@ pub fn member_call(name: &str) -> (&str, Option<Vec<Expr>>) {
     },
     None,
   )
+}
+
+pub fn reader_func_to_ty(name: &str) -> &str {
+  match name {
+    "read_boolean" => "bool",
+    "read_varint" => "i32",
+    "read_u8" => "u8",
+    "read_i8" => "i8",
+    "read_i16" => "i16",
+    "read_i32" => "i32",
+    "read_optional" => "i32", // Literally used once in the entire 1.17 codebase.
+    "read_i64" => "i64",
+    "read_f32" => "f32",
+    "read_f64" => "f64",
+    "read_pos" => "Pos",
+    "read_item" => "Stack",
+    "read_uuid" => "UUID",
+    "read_str" => "String",
+    "read_nbt" => "NBT",
+    "read_buf" => "Vec<u8>",
+    "read_i32_arr" => "Vec<i32>",
+    "read_varint_arr" => "Vec<i32>",
+    "read_bits" => "BitSet",
+    "read_block_hit" => "BlockHit",
+
+    "read_map" => "u8",
+    "read_list" => "u8",
+    "read_collection" => "u8",
+    _ => panic!("unknown reader function {}", name),
+  }
+}
+
+pub fn ty(from: &str, to: &str) -> &'static str {
+  match to {
+    "bool" => " != 0",
+    "f32" => " as f32",
+    "f64" => " as f64",
+    "u8" => match from {
+      "i8" | "i16" | "i32" | "i64" => ".try_into().unwrap()",
+      "NBT" => "",
+      _ => panic!("cannot convert `{}` into `{}`", from, to),
+    },
+    "i16" => match from {
+      "u8" | "i8" => ".into()",
+      "i32" | "i64" => ".try_into().unwrap()",
+      _ => panic!("cannot convert `{}` into `{}`", from, to),
+    },
+    "i32" => match from {
+      "f32" => " as i32",
+      "u8" | "i8" | "i16" => ".into()",
+      "i64" => ".try_into().unwrap()",
+      _ => panic!("cannot convert `{}` into `{}`", from, to),
+    },
+    "i64" => match from {
+      "f32" => " as i64",
+      "u8" | "i8" | "i16" | "i32" => ".into()",
+      _ => panic!("cannot convert `{}` into `{}`", from, to),
+    },
+    "HashMap<u8, u8>" | "HashMap<u8, i32>" | "HashSet<u8>" | "Vec<u8>" => return "",
+    "String" => match from {
+      _ => return "",
+    },
+    "Option<u8>" => match from {
+      "i32" => ".unwrap_or(0).into()",
+      _ => panic!("cannot convert `{}` into `{}`", from, to),
+    },
+    _ => panic!("cannot convert `{}` into `{}`", from, to),
+  }
 }

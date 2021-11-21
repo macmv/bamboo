@@ -300,10 +300,10 @@ fn write_from_tcp(gen: &mut CodeGen, p: &Packet, ver: Version) {
       if &rs != read {
         if f.option {
           gen.write(".map(|v| v");
-          convert_ty(gen, read, &rs);
+          gen.write(convert::ty(read, &rs));
           gen.write(")");
         } else {
-          convert_ty(gen, read, &rs);
+          gen.write(convert::ty(read, &rs));
         }
       }
     }
@@ -311,43 +311,6 @@ fn write_from_tcp(gen: &mut CodeGen, p: &Packet, ver: Version) {
   }
   gen.remove_indent();
   gen.write_line("}");
-}
-
-fn convert_ty(gen: &mut CodeGen, from: &str, to: &str) {
-  gen.write(match to {
-    "bool" => " != 0",
-    "f32" => " as f32",
-    "f64" => " as f64",
-    "u8" => match from {
-      "i16" | "i32" | "i64" => ".try_into().unwrap()",
-      _ => panic!("cannot convert `{}` into `{}`", from, to),
-    },
-    "i16" => match from {
-      "u8" => ".into()",
-      "i32" | "i64" => ".try_into().unwrap()",
-      _ => panic!("cannot convert `{}` into `{}`", from, to),
-    },
-    "i32" => match from {
-      "f32" => " as i32",
-      "u8" | "i16" => ".into()",
-      "i64" => ".try_into().unwrap()",
-      _ => panic!("cannot convert `{}` into `{}`", from, to),
-    },
-    "i64" => match from {
-      "f32" => " as i64",
-      "u8" | "i16" | "i32" => ".into()",
-      _ => panic!("cannot convert `{}` into `{}`", from, to),
-    },
-    "HashMap<u8, u8>" | "HashMap<u8, i32>" | "HashSet<u8>" | "Vec<u8>" => return,
-    "String" => match from {
-      _ => return,
-    },
-    "Option<u8>" => match from {
-      "i32" => ".unwrap_or(0).into()",
-      _ => panic!("cannot convert `{}` into `{}`", from, to),
-    },
-    _ => panic!("cannot convert `{}` into `{}`", from, to),
-  })
 }
 
 fn write_instr(gen: &mut CodeGen, instr: &Instr, p: &mut Packet) {
@@ -364,32 +327,7 @@ fn write_instr(gen: &mut CodeGen, instr: &Instr, p: &mut Packet) {
           Value::Call(var, func, _)
             if var.as_ref().map(|v| v.initial == Value::Var(Var::Buf)).unwrap_or(false) =>
           {
-            let ty = match func.as_str() {
-              "read_boolean" => "bool",
-              "read_varint" => "i32",
-              "read_u8" => "u8",
-              "read_i16" => "i16",
-              "read_i32" => "i32",
-              "read_optional" => "i32", // Literally used once in the entire 1.17 codebase.
-              "read_i64" => "i64",
-              "read_f32" => "f32",
-              "read_f64" => "f64",
-              "read_pos" => "Pos",
-              "read_item" => "Stack",
-              "read_uuid" => "UUID",
-              "read_str" => "String",
-              "read_nbt" => "NBT",
-              "read_buf" => "Vec<u8>",
-              "read_i32_arr" => "Vec<i32>",
-              "read_varint_arr" => "Vec<i32>",
-              "read_bits" => "BitSet",
-              "read_block_hit" => "BlockHit",
-
-              "read_map" => "u8",
-              "read_list" => "u8",
-              "read_collection" => "u8",
-              _ => panic!("unknown reader function {}", func),
-            };
+            let ty = convert::reader_func_to_ty(func);
             if let Some(ref reader) = field.reader_type {
               assert_eq!(reader, ty);
             } else {
@@ -693,6 +631,17 @@ fn write_cond(gen: &mut CodeGen, cond: &Cond) {
         write_expr(gen, val.as_ref().unwrap());
         gen.write(" == ");
         write_val(gen, &args[0].initial);
+      }
+      // Matching `equals(var, foo) != 0`
+      Value::Call(val, name, args) if name == "equals" && val.is_none() => {
+        // dbg!(&lhs);
+        assert_eq!(rhs, &Expr::new(Value::Lit(0.into())));
+        assert_eq!(args.len(), 2);
+        assert!(args[0].ops.is_empty());
+        assert!(args[1].ops.is_empty());
+        write_val(gen, &args[0].initial);
+        gen.write(" == ");
+        write_val(gen, &args[1].initial);
       }
       _ => {
         cond!(gen, lhs != rhs)

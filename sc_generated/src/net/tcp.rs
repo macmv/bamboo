@@ -84,7 +84,7 @@ impl Packet {
   pub fn read_str(&mut self, max_len: u64) -> String {
     self.buf.read_str(max_len)
   }
-  pub fn read_buf(&mut self, len: i32) -> Vec<u8> {
+  pub fn read_buf(&mut self, len: usize) -> Vec<u8> {
     self.buf.read_buf(len)
   }
 
@@ -183,8 +183,8 @@ impl Packet {
   /// packet buffer in 1.17, and is literally called ONCE. So, because reasons,
   /// I need to implement it as well.
   pub fn read_block_hit(&mut self) -> BlockHit {
-    let pos = this.read_pos();
-    let dir = this.read_varint();
+    let pos = self.read_pos();
+    let dir = self.read_varint();
     let x = self.read_f32();
     let y = self.read_f32();
     let z = self.read_f32();

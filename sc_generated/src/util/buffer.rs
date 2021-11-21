@@ -177,7 +177,7 @@ impl Buffer {
   add_read!(read_f64, f64, 0.0);
 
   pub fn expect(&mut self, expected: &[u8]) {
-    let got = self.read_buf(expected.len() as i32);
+    let got = self.read_buf(expected.len());
     if got != expected {
       panic!("expected {:?}, got {:?}", expected, got);
     }
@@ -217,12 +217,11 @@ impl Buffer {
     }
   }
 
-  pub fn read_buf(&mut self, len: i32) -> Vec<u8> {
+  pub fn read_buf(&mut self, len: usize) -> Vec<u8> {
     if self.err.is_some() {
       return vec![];
     }
-    // TODO: Possibly change this limit
-    let mut buf = vec![0; len as usize];
+    let mut buf = vec![0; len];
     match self.data.read(&mut buf) {
       Ok(_len) => buf.to_vec(),
       Err(e) => {
