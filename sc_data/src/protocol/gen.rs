@@ -474,6 +474,7 @@ impl<'a> InstrWriter<'a> {
 
   fn write_expr(&mut self, e: &Expr) {
     let mut g = CodeGen::new();
+    g.set_indent(self.gen.indent());
     {
       let mut inner = InstrWriter::new(&mut g, self.p);
       inner.write_val(&e.initial);
@@ -488,6 +489,7 @@ impl<'a> InstrWriter<'a> {
         })
         .unwrap_or(false);
       let mut g = CodeGen::new();
+      g.set_indent(self.gen.indent());
       {
         let mut i = InstrWriter::new(&mut g, self.p);
         if needs_paren {

@@ -51,7 +51,15 @@ pub struct FuncArg<'a> {
 
 impl CodeGen {
   pub fn new() -> Self {
-    CodeGen { current: String::new(), indent: 0, needs_indent: true }
+    CodeGen { current: String::new(), indent: 0, needs_indent: false }
+  }
+  /// Sets the indent of this generator.
+  pub fn set_indent(&mut self, indent: usize) {
+    self.indent = indent;
+  }
+  /// Returns the current indent of this generator.
+  pub fn indent(&self) -> usize {
+    self.indent
   }
   /// Writes an enum literal. Example:
   /// ```
