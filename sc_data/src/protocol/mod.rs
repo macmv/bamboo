@@ -99,6 +99,9 @@ pub enum Value {
   /// A function call, on the given variable. If none, this is a static function
   /// call.
   Call(Option<Box<Expr>>, String, Vec<Expr>),
+  /// A closure call. The first list is a list of arguments for the closure, and
+  /// the second list is the instructions inside the closure.
+  Closure(Vec<Expr>, Vec<Instr>),
   /// This is what happens when we create a class in java. For all intensive
   /// purposes, it is a collection of data, that contains the given constructor
   /// arguments. The arguments must be executed in order.
@@ -141,7 +144,7 @@ pub enum Instr {
   Set(String, Expr),
   /// Sets a value in an array. The first item is the array, the second is the
   /// index, and the last one is the value to set it to.
-  SetArr(Value, Value, Expr),
+  SetArr(Expr, Value, Expr),
 
   /// Declares a new variable, and assigns it to the given value. The index is a
   /// java internal feature, and it represents a unique id for each local

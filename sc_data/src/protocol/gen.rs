@@ -123,7 +123,7 @@ fn simplify_instr(instr: &mut [Instr]) {
         simplify_expr(v);
       }
       Instr::SetArr(arr, idx, val) => {
-        simplify_val(arr);
+        simplify_expr(arr);
         simplify_val(idx);
         simplify_expr(val);
       }
@@ -213,6 +213,12 @@ fn simplify_val(val: &mut Value) {
         *name = new_name.into();
         args.iter_mut().for_each(|a| simplify_expr(a))
       }
+    }
+    Value::Closure(args, instr) => {
+      for a in args.iter_mut() {
+        simplify_expr(a);
+      }
+      simplify_instr(instr);
     }
     Value::Collection(_, args) => {
       args.iter_mut().for_each(|a| simplify_expr(a));
