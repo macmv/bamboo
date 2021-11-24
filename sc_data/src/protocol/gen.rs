@@ -214,9 +214,14 @@ fn simplify_op(op: &mut Op) {
       simplify_cond(cond);
       simplify_expr(val)
     }
-    Op::Call(_name, args) => {
-      for a in args.iter_mut() {
-        simplify_expr(a);
+    Op::Call(name, args) => {
+      simplify_name(name);
+      let (new_name, new_args) = convert::member_call(name);
+      *name = new_name.into();
+      if let Some(a) = new_args {
+        *args = a;
+      } else {
+        args.iter_mut().for_each(|a| simplify_expr(a))
       }
     }
   }
@@ -316,6 +321,21 @@ impl<'a> InstrWriter<'a> {
         self.gen.write(" = ");
         if let Some(field) = self.p.get_field_mut(&name) {
           match &val.initial {
+            Value::Var(Var::Buf)
+              if val.ops.len() == 1
+                && val.ops.first().map(|op| matches!(op, Op::Call(..))).unwrap_or(false) =>
+            {
+              let (name, _args) = match val.ops.first().unwrap() {
+                Op::Call(name, args) => (name, args),
+                _ => unreachable!(),
+              };
+              let ty = convert::reader_func_to_ty(name);
+              if let Some(ref reader) = field.reader_type {
+                assert_eq!(reader, ty);
+              } else {
+                field.reader_type = Some(ty.into());
+              }
+            }
             // Conditionals as ops are always something like `if cond { 1 } else { 0 }`, which we
             // can convert with `v != 0`. So, in order to recognize that, we need to the
             // reader type to be a number.
@@ -515,15 +535,19 @@ impl<'a> InstrWriter<'a> {
           Op::Call(name, args) => {
             i.gen.write(&val);
             i.gen.write(".");
-            i.gen.write(&name);
-            i.gen.write("(");
-            for (idx, a) in args.iter().enumerate() {
-              i.write_expr(a);
-              if idx != args.len() - 1 {
-                i.gen.write(", ");
+            if name == "read_str" && args.is_empty() {
+              i.gen.write("read_str(32767)");
+            } else {
+              i.gen.write(&name);
+              i.gen.write("(");
+              for (idx, a) in args.iter().enumerate() {
+                i.write_expr(a);
+                if idx != args.len() - 1 {
+                  i.gen.write(", ");
+                }
               }
+              i.gen.write(")");
             }
-            i.gen.write(")");
           }
         }
         if needs_paren {
@@ -572,19 +596,15 @@ impl<'a> InstrWriter<'a> {
         self.gen.write(".try_into().unwrap())");
       }
       Value::CallStatic(_class, name, args) => {
-        if name == "read_str" && args.is_empty() {
-          self.gen.write("read_str(32767)");
-        } else {
-          self.gen.write(&name);
-          self.gen.write("(");
-          for (i, a) in args.iter().enumerate() {
-            self.write_expr(a);
-            if i != args.len() - 1 {
-              self.gen.write(", ");
-            }
+        self.gen.write(&name);
+        self.gen.write("(");
+        for (i, a) in args.iter().enumerate() {
+          self.write_expr(a);
+          if i != args.len() - 1 {
+            self.gen.write(", ");
           }
-          self.gen.write(")");
         }
+        self.gen.write(")");
       }
       Value::Closure(args, instr) => {
         self.gen.write("|");
