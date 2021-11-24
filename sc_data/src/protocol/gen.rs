@@ -513,6 +513,7 @@ impl<'a> InstrWriter<'a> {
           }
 
           Op::Call(name, args) => {
+            i.gen.write(&val);
             i.gen.write(".");
             i.gen.write(&name);
             i.gen.write("(");
@@ -570,7 +571,7 @@ impl<'a> InstrWriter<'a> {
         self.write_expr(len);
         self.gen.write(".try_into().unwrap())");
       }
-      Value::CallStatic(class, name, args) => {
+      Value::CallStatic(_class, name, args) => {
         if name == "read_str" && args.is_empty() {
           self.gen.write("read_str(32767)");
         } else {
