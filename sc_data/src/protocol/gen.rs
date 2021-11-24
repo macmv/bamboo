@@ -128,23 +128,7 @@ fn simplify_instr(instr: &mut [Instr]) {
         simplify_expr(val);
       }
       Instr::Let(_, val) => simplify_expr(val),
-      Instr::Call(val, name, args) => {
-        simplify_expr(val);
-        simplify_name(name);
-        if val.initial != Value::Null {
-          let (new_name, arg) = convert::member_call(&name);
-          *name = new_name.into();
-          if let Some(a) = arg {
-            *args = a;
-          } else {
-            args.iter_mut().for_each(|a| simplify_expr(a))
-          }
-        } else {
-          let new_name = convert::static_call(&name);
-          *name = new_name.into();
-          args.iter_mut().for_each(|a| simplify_expr(a))
-        }
-      }
+      Instr::Expr(v) => simplify_expr(v),
       Instr::If(cond, when_true, when_false) => {
         simplify_cond(cond);
         simplify_instr(when_true);
@@ -195,24 +179,11 @@ fn simplify_val(val: &mut Value) {
     Value::Field(name) => simplify_name(name),
     Value::Static(..) => {}
     Value::Array(len) => simplify_expr(len),
-    Value::Call(val, name, args) => {
-      if let Some(v) = val {
-        simplify_expr(v);
-      }
+    Value::CallStatic(_class, name, args) => {
       simplify_name(name);
-      if val.is_some() {
-        let (new_name, arg) = convert::member_call(&name);
-        *name = new_name.into();
-        if let Some(a) = arg {
-          *args = a;
-        } else {
-          args.iter_mut().for_each(|a| simplify_expr(a))
-        }
-      } else {
-        let new_name = convert::static_call(&name);
-        *name = new_name.into();
-        args.iter_mut().for_each(|a| simplify_expr(a))
-      }
+      let new_name = convert::static_call(&name);
+      *name = new_name.into();
+      args.iter_mut().for_each(|a| simplify_expr(a))
     }
     Value::Closure(args, instr) => {
       for a in args.iter_mut() {
@@ -220,7 +191,7 @@ fn simplify_val(val: &mut Value) {
       }
       simplify_instr(instr);
     }
-    Value::Collection(_, args) => {
+    Value::New(_, args) => {
       args.iter_mut().for_each(|a| simplify_expr(a));
     }
   }
@@ -237,11 +208,16 @@ fn simplify_op(op: &mut Op) {
 
     Op::Len => {}
     Op::Idx(idx) => simplify_expr(idx),
-    Op::CollectionIdx(_) => {}
+    Op::Field(_) => {}
 
     Op::If(cond, val) => {
       simplify_cond(cond);
       simplify_expr(val)
+    }
+    Op::Call(_name, args) => {
+      for a in args.iter_mut() {
+        simplify_expr(a);
+      }
     }
   }
 }
@@ -340,16 +316,6 @@ impl<'a> InstrWriter<'a> {
         self.gen.write(" = ");
         if let Some(field) = self.p.get_field_mut(&name) {
           match &val.initial {
-            Value::Call(var, func, _)
-              if var.as_ref().map(|v| v.initial == Value::Var(Var::Buf)).unwrap_or(false) =>
-            {
-              let ty = convert::reader_func_to_ty(func);
-              if let Some(ref reader) = field.reader_type {
-                assert_eq!(reader, ty);
-              } else {
-                field.reader_type = Some(ty.into());
-              }
-            }
             // Conditionals as ops are always something like `if cond { 1 } else { 0 }`, which we
             // can convert with `v != 0`. So, in order to recognize that, we need to the
             // reader type to be a number.
@@ -388,21 +354,7 @@ impl<'a> InstrWriter<'a> {
         self.write_expr(val);
         self.gen.write_line(";");
       }
-      Instr::Call(v, name, args) => {
-        if v.initial != Value::Null {
-          self.write_expr(v);
-          self.gen.write(".");
-        }
-        self.gen.write(&name);
-        self.gen.write("(");
-        for (i, a) in args.iter().enumerate() {
-          self.write_expr(a);
-          if i != args.len() - 1 {
-            self.gen.write(", ");
-          }
-        }
-        self.gen.write_line(");");
-      }
+      Instr::Expr(v) => self.write_expr(v),
       Instr::If(cond, true_block, false_block) => {
         self.gen.write("if ");
         self.write_cond(cond);
@@ -538,10 +490,10 @@ impl<'a> InstrWriter<'a> {
             i.write_expr(rhs);
             i.gen.write(".try_into().unwrap()]");
           }
-          Op::CollectionIdx(idx) => {
+          Op::Field(name) => {
             i.gen.write(&val);
             i.gen.write(".");
-            i.gen.write(&idx.to_string());
+            i.gen.write(&name);
           }
 
           Op::If(cond, new) => {
@@ -558,6 +510,19 @@ impl<'a> InstrWriter<'a> {
               i.write_expr(new);
             }
             i.gen.write(" }");
+          }
+
+          Op::Call(name, args) => {
+            i.gen.write(".");
+            i.gen.write(&name);
+            i.gen.write("(");
+            for (idx, a) in args.iter().enumerate() {
+              i.write_expr(a);
+              if idx != args.len() - 1 {
+                i.gen.write(", ");
+              }
+            }
+            i.gen.write(")");
           }
         }
         if needs_paren {
@@ -605,11 +570,7 @@ impl<'a> InstrWriter<'a> {
         self.write_expr(len);
         self.gen.write(".try_into().unwrap())");
       }
-      Value::Call(val, name, args) => {
-        if let Some(e) = val {
-          self.write_expr(e);
-          self.gen.write(".");
-        }
+      Value::CallStatic(class, name, args) => {
         if name == "read_str" && args.is_empty() {
           self.gen.write("read_str(32767)");
         } else {
@@ -640,7 +601,7 @@ impl<'a> InstrWriter<'a> {
         self.gen.remove_indent();
         self.gen.write("}");
       }
-      Value::Collection(name, args) => {
+      Value::New(name, args) => {
         self.gen.write(name.split('/').last().unwrap().split('$').last().unwrap());
         self.gen.write("::new(");
         for (i, a) in args.iter().enumerate() {
@@ -671,18 +632,18 @@ impl<'a> InstrWriter<'a> {
 
       Cond::Neq(lhs, rhs) => match &lhs.initial {
         // Matching `foo.equals("name") != 0`
-        Value::Call(val, name, args) if name == "equals" && val.is_some() => {
-          // dbg!(&lhs);
-          assert_eq!(rhs, &Expr::new(Value::Lit(0.into())));
-          assert_eq!(args.len(), 1);
-          assert!(val.as_ref().unwrap().ops.is_empty());
-          assert!(args[0].ops.is_empty());
-          self.write_expr(val.as_ref().unwrap());
-          self.gen.write(" == ");
-          self.write_val(&args[0].initial);
-        }
+        // Value::CallStatic(class, name, args) if name == "equals" && val.is_some() => {
+        //   // dbg!(&lhs);
+        //   assert_eq!(rhs, &Expr::new(Value::Lit(0.into())));
+        //   assert_eq!(args.len(), 1);
+        //   assert!(val.as_ref().unwrap().ops.is_empty());
+        //   assert!(args[0].ops.is_empty());
+        //   self.write_expr(val.as_ref().unwrap());
+        //   self.gen.write(" == ");
+        //   self.write_val(&args[0].initial);
+        // }
         // Matching `equals(var, foo) != 0`
-        Value::Call(val, name, args) if name == "equals" && val.is_none() => {
+        Value::CallStatic(_class, name, args) if name == "equals" => {
           // dbg!(&lhs);
           assert_eq!(rhs, &Expr::new(Value::Lit(0.into())));
           assert_eq!(args.len(), 2);

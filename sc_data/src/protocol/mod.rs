@@ -96,9 +96,9 @@ pub enum Value {
   Static(String, String),
   /// An array, with a pre-determined length.
   Array(Box<Expr>),
-  /// A function call, on the given variable. If none, this is a static function
-  /// call.
-  Call(Option<Box<Expr>>, String, Vec<Expr>),
+  /// A static function call. The first item is the class, the second is the
+  /// function, and the third is the arguments.
+  CallStatic(String, String, Vec<Expr>),
   /// A closure call. The first list is a list of arguments for the closure, and
   /// the second list is the instructions inside the closure.
   Closure(Vec<Expr>, Vec<Instr>),
@@ -109,7 +109,7 @@ pub enum Value {
   /// The name is the class name of the item being constructed. The mappings are
   /// usually descriptive enough, so this doesn't include any package
   /// information.
-  Collection(String, Vec<Expr>),
+  New(String, Vec<Expr>),
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Deserialize)]
@@ -152,10 +152,6 @@ pub enum Instr {
   /// `var0`, `var1`, etc.
   Let(usize, Expr),
 
-  /// Calls a function. This is for functions that don't return something, for
-  /// example appending something to a list.
-  Call(Expr, String, Vec<Expr>),
-
   /// If the given conditional is true, then execute the first list of
   /// instructions. Otherwise, execute the second list.
   If(Cond, Vec<Instr>, Vec<Instr>),
@@ -175,6 +171,10 @@ pub enum Instr {
   /// seperate instruction makes it easy to, for example, remove all the
   /// length checks in release mode.
   CheckStrLen(Expr, Value),
+
+  /// Invokes the given expresison, and ignores the result. Used when we do
+  /// things like call a function that returns void.
+  Expr(Expr),
 }
 
 /// A range, used in a for loop.
@@ -232,15 +232,16 @@ pub enum Op {
   Len,
   /// Get the value at the given index in this array.
   Idx(Expr),
-  /// Get the value at the given index in a collection. Collections will be
-  /// implemented as tuples in the Rust implementation, so this is converted
-  /// into something like `.0`, wheras array indices are converted into `[0]`.
-  CollectionIdx(usize),
+  /// Get the field on the value.
+  Field(String),
 
   /// If the conditional is true, replace the current value with the given
   /// value. Otherwise, do not change the current value, or execute the given
   /// expr.
   If(Cond, Expr),
+
+  /// Calls the given function on the value.
+  Call(String, Vec<Expr>),
 }
 
 impl Type {
@@ -275,9 +276,10 @@ impl Op {
 
       Op::Len => 0,
       Op::Idx(_) => 0,
-      Op::CollectionIdx(_) => 0,
+      Op::Field(_) => 0,
 
       Op::If(..) => 0,
+      Op::Call(..) => 0,
     }
   }
 }
