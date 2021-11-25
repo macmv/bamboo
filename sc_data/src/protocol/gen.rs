@@ -222,9 +222,9 @@ fn simplify_op(op: &mut Op) {
       simplify_cond(cond);
       simplify_expr(val)
     }
-    Op::Call(name, args) => {
+    Op::Call(class, name, args) => {
       simplify_name(name);
-      let (new_name, new_args) = convert::member_call(name);
+      let (new_name, new_args) = convert::member_call(class, name);
       *name = new_name.into();
       if let Some(a) = new_args {
         *args = a;
@@ -331,11 +331,11 @@ impl<'a> InstrWriter<'a> {
         if let Some(field) = self.p.get_field_mut(&f_name) {
           match &val.initial {
             Value::Var(Var::Buf)
-              if val.ops.len() == 1
+              if !val.ops.is_empty()
                 && val.ops.first().map(|op| matches!(op, Op::Call(..))).unwrap_or(false) =>
             {
               let (name, _args) = match val.ops.first().unwrap() {
-                Op::Call(name, args) => (name, args),
+                Op::Call(_, name, args) => (name, args),
                 _ => unreachable!(),
               };
               let ty = convert::reader_func_to_ty(&f_name, name);
@@ -567,7 +567,7 @@ impl<'a> InstrWriter<'a> {
             i.gen.write(" }");
           }
 
-          Op::Call(name, args) => {
+          Op::Call(_class, name, args) => {
             i.gen.write(&val);
             i.gen.write(".");
             if name == "read_str" && args.is_empty() {

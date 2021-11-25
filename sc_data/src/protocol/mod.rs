@@ -245,8 +245,9 @@ pub enum Op {
   /// expr.
   If(Cond, Expr),
 
-  /// Calls the given function on the value.
-  Call(String, Vec<Expr>),
+  /// Calls the given function (`1`) on the value. The class this function is on
+  /// is element `0`.
+  Call(String, String, Vec<Expr>),
 }
 
 impl Type {

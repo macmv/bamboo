@@ -9,10 +9,12 @@ pub fn class(field: &str, name: &str) -> String {
     "DynamicRegistryManager$Impl" => "u8",
     "RegistryKey" => "u8",
     "Vec3" => "[u8; 3]",
-    "Optional" => "Option<String>", // Used a single time, for BookUpdate
+    "Optional" => "Option<String>",
 
     "List" => match field {
       "pages" => "Vec<String>",
+      "recipe_ids_to_init" => "Vec<String>",
+      "recipe_ids_to_change" => "Vec<String>",
       _ => "Vec<u8>",
     },
     "UUID" => "UUID",
@@ -30,8 +32,8 @@ pub fn class(field: &str, name: &str) -> String {
     "EntityType" => "u32",
     "Vibration" => "u8",
     "IBlockState" | "BlockState" => "(u32, String)",
-    "Text" | "Identifier" | "Formatting" | "IChatComponent" | "ResourceLocation"
-    | "ITextComponent" => "String",
+    "Formatting" => "i32",
+    "Text" | "Identifier" | "IChatComponent" | "ResourceLocation" | "ITextComponent" => "String",
     "Difficulty" | "EnumDifficulty" => "u32",
     "ItemStack" => "Stack",
     "GameStateChangeS2CPacket$Reason" => "StateChangeReason",
@@ -42,9 +44,9 @@ pub fn class(field: &str, name: &str) -> String {
     "Suggestions" => "CommandSuggestions",
     "RootCommandNode" => "CommandNode",
     "PacketBuffer" | "PacketByteBuf" => "Vec<u8>",
-    "GameType" | "WorldSettings$GameType" => "WorldType",
+    "GameType" | "WorldSettings$GameType" => "NBT",
     "GameMode" => "GameMode",
-    "DimensionType" => "WorldType",
+    "DimensionType" => "NBT",
     "LevelGeneratorType" => "LevelType",
     "MapDecoration" => "MapIcon",
     "MapState$UpdateData" => "MapUpdate",
@@ -80,10 +82,16 @@ pub fn static_call<'a, 'b>(class: &'a str, name: &'b str) -> (&'a str, &'b str) 
   }
 }
 
-pub fn member_call(name: &str) -> (&str, Option<Vec<Expr>>) {
+pub fn member_call<'a>(class: &str, name: &'a str) -> (&'a str, Option<Vec<Expr>>) {
   (
     match name {
-      "add" => "insert",
+      "add" => match class {
+        "java/util/List" => "push",
+        "java/util/Deque" => "push",
+        "java/util/Collection" => "insert",
+        "java/util/Set" => "insert",
+        _ => panic!("unknown class for add {}", class),
+      },
       "put" => "insert",
       "read_var_int" | "read_var_int_from_buffer" => "read_varint",
       // TODO: Might want to implement varlongs.
@@ -116,6 +124,9 @@ pub fn member_call(name: &str) -> (&str, Option<Vec<Expr>>) {
       "read_block_pos" => "read_pos",
       "readable_bytes" => "remaining",
       "read_optional" => "read_option",
+      "read_map" => "read_map",
+      "read_list" => "read_list",
+      "read_nbt" => "read_nbt",
       _ => {
         println!("unknown member call {}", name);
         name
@@ -149,7 +160,11 @@ pub fn reader_func_to_ty(field: &str, name: &str) -> &'static str {
     "read_block_hit" => "BlockHit",
 
     "read_map" => "u8",
-    "read_list" => "Vec<u8>",
+    "read_list" => match field {
+      "recipe_ids_to_init" => "Vec<String>",
+      "recipe_ids_to_change" => "Vec<String>",
+      _ => "Vec<u8>",
+    },
     "read_collection" => match field {
       "pages" => "Vec<String>",
       _ => "Vec<u8>",

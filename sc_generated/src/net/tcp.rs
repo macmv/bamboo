@@ -3,7 +3,11 @@ use crate::{
   version::ProtocolVersion,
   Pos,
 };
-use std::convert::TryInto;
+use std::{
+  collections::{HashMap, HashSet},
+  convert::TryInto,
+  hash::Hash,
+};
 
 #[derive(Debug)]
 pub struct Packet {
@@ -182,14 +186,14 @@ impl Packet {
   /// Reads a block hit result. This (for whatever dumb reason) is part of the
   /// packet buffer in 1.17, and is literally called ONCE. So, because reasons,
   /// I need to implement it as well.
-  pub fn read_block_hit(&mut self) -> BlockHit {
+  pub fn read_block_hit(&mut self) -> ((f32, f32, f32), i32, Pos, bool) {
     let pos = self.read_pos();
     let dir = self.read_varint();
     let x = self.read_f32();
     let y = self.read_f32();
     let z = self.read_f32();
     let hit = self.read_bool();
-    return BlockHit::new(Vec3d::new(pos.x() + x, pos.y() + y, pos.z() + z), dir, pos, hit);
+    return ((pos.x() as f32 + x, pos.y() as f32 + y, pos.z() as f32 + z), dir, pos, hit);
   }
 
   /// Reads a list from the packet. This is new to 1.17, and simplifies a bunch
@@ -219,7 +223,7 @@ impl Packet {
 
   /// Reads a HashMap from the packet. This is new to 1.17, and simplifies a
   /// bunch of small for loops in previous versions.
-  pub fn read_map<K, V>(
+  pub fn read_map<K: Eq + Hash, V>(
     &mut self,
     key: impl Fn(&mut Packet) -> K,
     val: impl Fn(&mut Packet) -> V,
@@ -234,7 +238,7 @@ impl Packet {
 
   /// Reads a HashSet from the packet. This is new to 1.17, and simplifies a
   /// bunch of small for loops in previous versions.
-  pub fn read_set<T>(&mut self, val: impl Fn(&mut Packet) -> T) -> HashMap<T> {
+  pub fn read_set<T: Eq + Hash>(&mut self, val: impl Fn(&mut Packet) -> T) -> HashSet<T> {
     let len = self.read_varint().try_into().unwrap();
     let set = HashSet::with_capacity(len);
     for i in 0..len {
@@ -245,7 +249,11 @@ impl Packet {
   /// Reads a HashSet from the packet. If the length is greater than `max`, this
   /// fails. This is new to 1.17, and simplifies a bunch of small for loops in
   /// previous versions.
-  pub fn read_set_max<T>(&mut self, val: impl Fn(&mut Packet) -> T, max: usize) -> HashSet<T> {
+  pub fn read_set_max<T: Eq + Hash>(
+    &mut self,
+    val: impl Fn(&mut Packet) -> T,
+    max: usize,
+  ) -> HashSet<T> {
     let len = self.read_varint().try_into().unwrap();
     if len > max {
       panic!("length {} greater than max {}", len, max);
@@ -265,5 +273,9 @@ impl Packet {
     } else {
       None
     }
+  }
+
+  pub fn read_varint_arr(&mut self) -> Vec<i32> {
+    self.read_list(Self::read_varint)
   }
 }
