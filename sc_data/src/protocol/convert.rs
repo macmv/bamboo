@@ -8,8 +8,8 @@ pub fn class(name: &str) -> String {
     "Collection" => "HashMap<u8, u8>",
     "DynamicRegistryManager$Impl" => "u8",
     "RegistryKey" => "u8",
-    "Optional" => "Option<u8>",
     "Vec3" => "[u8; 3]",
+    "Optional" => "Option<String>", // Used a single time, for BookUpdate
 
     "List" => "Vec<u8>",
     "UUID" => "UUID",
@@ -112,6 +112,7 @@ pub fn member_call(name: &str) -> (&str, Option<Vec<Expr>>) {
       "read_block_hit_result" => "read_block_hit",
       "read_block_pos" => "read_pos",
       "readable_bytes" => "remaining",
+      "read_optional" => "read_option",
       _ => {
         println!("unknown member call {}", name);
         name
@@ -129,7 +130,7 @@ pub fn reader_func_to_ty(name: &str) -> &str {
     "read_i8" => "i8",
     "read_i16" => "i16",
     "read_i32" => "i32",
-    "read_optional" => "i32", // Literally used once in the entire 1.17 codebase.
+    "read_option" => "Option<String>", // Literally used once in the entire 1.17 codebase.
     "read_i64" => "i64",
     "read_f32" => "f32",
     "read_f64" => "f64",
@@ -180,10 +181,6 @@ pub fn ty(from: &str, to: &str) -> &'static str {
     "HashMap<u8, u8>" | "HashMap<u8, i32>" | "HashSet<u8>" | "Vec<u8>" => return "",
     "String" => match from {
       _ => return "",
-    },
-    "Option<u8>" => match from {
-      "i32" => ".unwrap_or(0).into()",
-      _ => panic!("cannot convert `{}` into `{}`", from, to),
     },
     _ => panic!("cannot convert `{}` into `{}`", from, to),
   }

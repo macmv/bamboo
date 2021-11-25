@@ -228,4 +228,14 @@ impl Packet {
     }
     set
   }
+
+  /// Reads a boolean. If true, the closure is called, and the returned value is
+  /// wrapped in Some. Otherwise, this returns None.
+  pub fn read_option<T>(&mut self, val: impl FnOnce(&mut Packet) -> T) -> Option<T> {
+    if self.read_bool() {
+      Some(val(self))
+    } else {
+      None
+    }
+  }
 }
