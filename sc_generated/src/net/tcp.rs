@@ -191,4 +191,41 @@ impl Packet {
     let hit = self.read_bool();
     return BlockHit::new(Vec3d::new(pos.x() + x, pos.y() + y, pos.z() + z), dir, pos, hit);
   }
+
+  /// Reads a list from the packet. This is new to 1.17, and simplifies a bunch
+  /// of small for loops in previous versions.
+  pub fn read_list<T>(&mut self, val: impl Fn(&mut Packet) -> T) -> Vec<T> {
+    let len = self.read_varint().try_into().unwrap();
+    let list = Vec::with_capacity(len);
+    for i in 0..len {
+      list.push(val(self));
+    }
+    list
+  }
+
+  /// Reads a HashMap from the packet. This is new to 1.17, and simplifies a
+  /// bunch of small for loops in previous versions.
+  pub fn read_map<K, V>(
+    &mut self,
+    key: impl Fn(&mut Packet) -> K,
+    val: impl Fn(&mut Packet) -> V,
+  ) -> HashMap<K, V> {
+    let len = self.read_varint().try_into().unwrap();
+    let map = HashMap::with_capacity(len);
+    for i in 0..len {
+      map.insert(key(self), val(self));
+    }
+    map
+  }
+
+  /// Reads a HashSet from the packet. This is new to 1.17, and simplifies a
+  /// bunch of small for loops in previous versions.
+  pub fn read_set<T>(&mut self, val: impl Fn(&mut Packet) -> T) -> HashMap<T> {
+    let len = self.read_varint().try_into().unwrap();
+    let set = HashSet::with_capacity(len);
+    for i in 0..len {
+      set.insert(val(self));
+    }
+    set
+  }
 }
