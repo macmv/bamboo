@@ -477,6 +477,11 @@ impl<'a> InstrWriter<'a> {
       inner.is_closure = self.is_closure;
       inner.write_val(&e.initial);
     }
+    if !e.ops.is_empty()
+      && matches!(&e.initial, Value::Field(field) if self.p.get_field(&field).map(|v| v.option).unwrap_or(false))
+    {
+      g.write(".as_mut().unwrap()");
+    }
     let mut val = g.into_output();
     for (i, op) in e.ops.iter().enumerate() {
       let needs_paren = i
