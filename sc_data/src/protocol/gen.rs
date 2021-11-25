@@ -463,6 +463,10 @@ impl<'a> InstrWriter<'a> {
   }
 
   fn write_expr(&mut self, e: &Expr) {
+    if e.ops.last() == Some(&Op::Field("type".into())) {
+      self.gen.write("f_ty");
+      return;
+    }
     let mut g = CodeGen::new();
     g.set_indent(self.gen.indent());
     {
@@ -559,6 +563,56 @@ impl<'a> InstrWriter<'a> {
               i.gen.write("read_str(32767)");
             } else if name == "read_map" && args.len() == 3 {
               i.gen.write("read_map(");
+              for (idx, a) in args.iter().enumerate().skip(1) {
+                i.write_expr(a);
+                if idx != args.len() - 1 {
+                  i.gen.write(", ");
+                }
+              }
+              i.gen.write(")");
+            } else if name == "read_collection" && args.len() == 2 {
+              let mut args = args.clone();
+              match &args[0].initial {
+                Value::MethodRef(class, name)
+                  if class == "com/google/common/collect/Sets"
+                    && (name == "new_linked_hash_set_with_expected_size"
+                      || name == "new_hash_set_with_expected_size") =>
+                {
+                  i.gen.write("read_set(");
+                }
+                Value::MethodRef(class, name)
+                  if class == "net/minecraft/util/collection/DefaultedList"
+                    && name == "of_size" =>
+                {
+                  i.gen.write("read_list(");
+                }
+                Value::CallStatic(class, name, inner_args)
+                  if class == "net/minecraft/network/PacketByteBuf"
+                    && name == "get_max_validator" =>
+                {
+                  assert!(inner_args.len() == 2, "{:?}", args);
+                  let len = inner_args[1].clone();
+                  match &inner_args[0].initial {
+                    Value::MethodRef(class, name)
+                      if class == "com/google/common/collect/Sets"
+                        && (name == "new_linked_hash_set_with_expected_size"
+                          || name == "new_hash_set_with_expected_size") =>
+                    {
+                      i.gen.write("read_set_max(");
+                      args.push(len);
+                    }
+                    Value::MethodRef(class, name)
+                      if class == "com/google/common/collect/Lists"
+                        && name == "new_array_list_with_capacity" =>
+                    {
+                      i.gen.write("read_list_max(");
+                      args.push(len);
+                    }
+                    _ => panic!("unexpected read_collection args {:?}", inner_args),
+                  }
+                }
+                _ => panic!("unexpected read_collection args {:?}", args),
+              }
               for (idx, a) in args.iter().enumerate().skip(1) {
                 i.write_expr(a);
                 if idx != args.len() - 1 {
