@@ -345,6 +345,18 @@ impl<'a> InstrWriter<'a> {
                 field.reader_type = Some(ty.into());
               }
             }
+            Value::Lit(lit) => {
+              let ty = match lit {
+                Lit::Int(_) => "i32",
+                Lit::Float(_) => "f32",
+                Lit::String(_) => "String",
+              };
+              if let Some(ref reader) = field.reader_type {
+                assert_eq!(reader, ty);
+              } else {
+                field.reader_type = Some(ty.into());
+              }
+            }
             // Conditionals as ops are always something like `if cond { 1 } else { 0 }`, which we
             // can convert with `v != 0`. So, in order to recognize that, we need to the
             // reader type to be a number.
