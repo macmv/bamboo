@@ -202,6 +202,20 @@ impl Packet {
     }
     list
   }
+  /// Reads a list from the packet. If the length is greater than `max`, this
+  /// fails. This is new to 1.17, and simplifies a bunch of small for loops in
+  /// previous versions.
+  pub fn read_list_max<T>(&mut self, val: impl Fn(&mut Packet) -> T, max: usize) -> Vec<T> {
+    let len = self.read_varint().try_into().unwrap();
+    if len > max {
+      panic!("length {} greater than max {}", len, max);
+    }
+    let list = Vec::with_capacity(len);
+    for i in 0..len {
+      list.push(val(self));
+    }
+    list
+  }
 
   /// Reads a HashMap from the packet. This is new to 1.17, and simplifies a
   /// bunch of small for loops in previous versions.
@@ -222,6 +236,20 @@ impl Packet {
   /// bunch of small for loops in previous versions.
   pub fn read_set<T>(&mut self, val: impl Fn(&mut Packet) -> T) -> HashMap<T> {
     let len = self.read_varint().try_into().unwrap();
+    let set = HashSet::with_capacity(len);
+    for i in 0..len {
+      set.insert(val(self));
+    }
+    set
+  }
+  /// Reads a HashSet from the packet. If the length is greater than `max`, this
+  /// fails. This is new to 1.17, and simplifies a bunch of small for loops in
+  /// previous versions.
+  pub fn read_set_max<T>(&mut self, val: impl Fn(&mut Packet) -> T, max: usize) -> HashSet<T> {
+    let len = self.read_varint().try_into().unwrap();
+    if len > max {
+      panic!("length {} greater than max {}", len, max);
+    }
     let set = HashSet::with_capacity(len);
     for i in 0..len {
       set.insert(val(self));
