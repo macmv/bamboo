@@ -302,13 +302,14 @@ fn write_from_tcp(gen: &mut CodeGen, p: &Packet, ver: Version) {
 }
 
 struct InstrWriter<'a> {
-  gen: &'a mut CodeGen,
-  p:   &'a mut Packet,
+  gen:        &'a mut CodeGen,
+  p:          &'a mut Packet,
+  is_closure: bool,
 }
 
 impl<'a> InstrWriter<'a> {
   pub fn new(gen: &'a mut CodeGen, p: &'a mut Packet) -> Self {
-    InstrWriter { gen, p }
+    InstrWriter { gen, p, is_closure: false }
   }
   pub fn write_instr(&mut self, instr: &Instr) {
     match instr {
@@ -540,6 +541,15 @@ impl<'a> InstrWriter<'a> {
             i.gen.write(".");
             if name == "read_str" && args.is_empty() {
               i.gen.write("read_str(32767)");
+            } else if name == "read_map" {
+              i.gen.write("read_map(");
+              for (idx, a) in args.iter().enumerate().skip(1) {
+                i.write_expr(a);
+                if idx != args.len() - 1 {
+                  i.gen.write(", ");
+                }
+              }
+              i.gen.write(")");
             } else {
               i.gen.write(&name);
               i.gen.write("(");
@@ -575,8 +585,20 @@ impl<'a> InstrWriter<'a> {
         }
       },
       Value::Var(v) => match v {
-        Var::This => self.gen.write("self"),
-        Var::Buf => self.gen.write("p"),
+        Var::This => {
+          if self.is_closure {
+            self.gen.write("buf")
+          } else {
+            self.gen.write("self")
+          }
+        }
+        Var::Buf => {
+          if self.is_closure {
+            self.gen.write("v_1")
+          } else {
+            self.gen.write("p")
+          }
+        }
         Var::Local(v) => {
           self.gen.write("v_");
           self.gen.write(&v.to_string())
@@ -625,8 +647,12 @@ impl<'a> InstrWriter<'a> {
         }
         self.gen.write_line("| {");
         self.gen.add_indent();
-        for i in instr {
-          self.write_instr(i);
+        {
+          let mut inner = InstrWriter::new(&mut self.gen, &mut self.p);
+          inner.is_closure = true;
+          for i in instr {
+            inner.write_instr(i);
+          }
         }
         self.gen.remove_indent();
         self.gen.write("}");
