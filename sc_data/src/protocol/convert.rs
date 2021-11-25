@@ -69,6 +69,7 @@ pub fn static_call(name: &str) -> &str {
   match name {
     "new_hash_map" => "HashMap::new",
     "new_linked_hash_set" | "new_hash_set" => "HashSet::new",
+    "new_array_list" => "Vec::new",
     _ => {
       println!("unknown static call {}", name);
       name

@@ -374,7 +374,10 @@ impl<'a> InstrWriter<'a> {
         self.write_expr(val);
         self.gen.write_line(";");
       }
-      Instr::Expr(v) => self.write_expr(v),
+      Instr::Expr(v) => {
+        self.write_expr(v);
+        self.gen.write_line(";")
+      }
       Instr::If(cond, true_block, false_block) => {
         self.gen.write("if ");
         self.write_cond(cond);
@@ -595,8 +598,14 @@ impl<'a> InstrWriter<'a> {
         self.write_expr(len);
         self.gen.write(".try_into().unwrap())");
       }
-      Value::CallStatic(_class, name, args) => {
-        self.gen.write(&name);
+      Value::CallStatic(class, name, args) => {
+        self.gen.write(class.split('/').last().unwrap().split('$').last().unwrap());
+        self.gen.write("::");
+        if name == "<init>" {
+          self.gen.write("new");
+        } else {
+          self.gen.write(&name);
+        }
         self.gen.write("(");
         for (i, a) in args.iter().enumerate() {
           self.write_expr(a);
