@@ -1,6 +1,6 @@
 use super::{Expr, Value};
 
-pub fn class(name: &str) -> String {
+pub fn class(field: &str, name: &str) -> String {
   match name.split('/').last().unwrap() {
     // TODO: Generics
     "Map" => "HashMap<u8, u8>",
@@ -11,7 +11,10 @@ pub fn class(name: &str) -> String {
     "Vec3" => "[u8; 3]",
     "Optional" => "Option<String>", // Used a single time, for BookUpdate
 
-    "List" => "Vec<u8>",
+    "List" => match field {
+      "pages" => "Vec<String>",
+      _ => "Vec<u8>",
+    },
     "UUID" => "UUID",
     "String" => "String",
     "BitSet" => "BitSet",
@@ -65,14 +68,14 @@ pub fn class(name: &str) -> String {
   .into()
 }
 
-pub fn static_call(name: &str) -> &str {
-  match name {
-    "new_hash_map" => "HashMap::new",
-    "new_linked_hash_set" | "new_hash_set" => "HashSet::new",
-    "new_array_list" => "Vec::new",
+pub fn static_call<'a, 'b>(class: &'a str, name: &'b str) -> (&'a str, &'b str) {
+  match (class, name) {
+    (_, "new_hash_map") => ("HashMap", "new"),
+    (_, "new_linked_hash_set") | (_, "new_hash_set") => ("HashSet", "new"),
+    (_, "new_array_list") => ("Vec", "new"),
     _ => {
-      println!("unknown static call {}", name);
-      name
+      println!("unknown static call {}::{}", class, name);
+      (class, name)
     }
   }
 }
@@ -122,7 +125,7 @@ pub fn member_call(name: &str) -> (&str, Option<Vec<Expr>>) {
   )
 }
 
-pub fn reader_func_to_ty(name: &str) -> &str {
+pub fn reader_func_to_ty(field: &str, name: &str) -> &'static str {
   match name {
     "read_boolean" => "bool",
     "read_varint" => "i32",
@@ -146,8 +149,11 @@ pub fn reader_func_to_ty(name: &str) -> &str {
     "read_block_hit" => "BlockHit",
 
     "read_map" => "u8",
-    "read_list" => "u8",
-    "read_collection" => "u8",
+    "read_list" => "Vec<u8>",
+    "read_collection" => match field {
+      "pages" => "Vec<String>",
+      _ => "Vec<u8>",
+    },
     _ => panic!("unknown reader function {}", name),
   }
 }

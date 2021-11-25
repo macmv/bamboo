@@ -180,15 +180,17 @@ fn simplify_val(val: &mut Value) {
     Value::Field(name) => simplify_name(name),
     Value::Static(..) => {}
     Value::Array(len) => simplify_expr(len),
-    Value::CallStatic(_class, name, args) => {
+    Value::CallStatic(class, name, args) => {
       simplify_name(name);
-      let new_name = convert::static_call(&name);
+      let (new_class, new_name) = convert::static_call(&class, &name);
+      *class = new_class.into();
       *name = new_name.into();
       args.iter_mut().for_each(|a| simplify_expr(a))
     }
-    Value::MethodRef(_class, name) => {
+    Value::MethodRef(class, name) => {
       simplify_name(name);
-      let new_name = convert::static_call(&name);
+      let (new_class, new_name) = convert::static_call(&class, &name);
+      *class = new_class.into();
       *name = new_name.into();
     }
     Value::Closure(args, instr) => {
@@ -249,10 +251,10 @@ fn write_packet(gen: &mut CodeGen, name: &str, p: &Packet) {
     gen.write(": ");
     if f.option {
       gen.write("Option<");
-      gen.write(&f.ty.to_rust());
+      gen.write(&f.ty.to_rust(&f.name));
       gen.write(">");
     } else {
-      gen.write(&f.ty.to_rust());
+      gen.write(&f.ty.to_rust(&f.name));
     }
     gen.write_line(",");
   }
@@ -290,7 +292,7 @@ fn write_from_tcp(gen: &mut CodeGen, p: &Packet, ver: Version) {
     gen.write(": f_");
     gen.write(&f.name);
     if let Some(read) = f.reader_type.as_ref() {
-      let rs = f.ty.to_rust();
+      let rs = f.ty.to_rust(&f.name);
       if &rs != read {
         if f.option {
           gen.write(".map(|v| v");
@@ -322,11 +324,11 @@ impl<'a> InstrWriter<'a> {
       Instr::Super => {
         self.gen.write_comment("call super here");
       }
-      Instr::Set(name, val) => {
+      Instr::Set(f_name, val) => {
         self.gen.write("f_");
-        self.gen.write(&name);
+        self.gen.write(&f_name);
         self.gen.write(" = ");
-        if let Some(field) = self.p.get_field_mut(&name) {
+        if let Some(field) = self.p.get_field_mut(&f_name) {
           match &val.initial {
             Value::Var(Var::Buf)
               if val.ops.len() == 1
@@ -336,7 +338,7 @@ impl<'a> InstrWriter<'a> {
                 Op::Call(name, args) => (name, args),
                 _ => unreachable!(),
               };
-              let ty = convert::reader_func_to_ty(name);
+              let ty = convert::reader_func_to_ty(&f_name, name);
               if let Some(ref reader) = field.reader_type {
                 assert_eq!(reader, ty);
               } else {
@@ -356,7 +358,8 @@ impl<'a> InstrWriter<'a> {
             _ => {}
           }
         }
-        if self.p.get_field(&name).map(|f| f.option).unwrap_or(false) && val.initial != Value::Null
+        if self.p.get_field(&f_name).map(|f| f.option).unwrap_or(false)
+          && val.initial != Value::Null
         {
           self.gen.write("Some(");
           self.write_expr(val);
