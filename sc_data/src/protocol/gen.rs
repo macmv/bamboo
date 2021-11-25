@@ -325,63 +325,74 @@ impl<'a> InstrWriter<'a> {
         self.gen.write_comment("call super here");
       }
       Instr::Set(f_name, val) => {
-        self.gen.write("f_");
-        self.gen.write(&f_name);
-        self.gen.write(" = ");
-        if let Some(field) = self.p.get_field_mut(&f_name) {
-          match &val.initial {
-            Value::Var(Var::Buf)
-              if !val.ops.is_empty()
-                && val.ops.first().map(|op| matches!(op, Op::Call(..))).unwrap_or(false) =>
-            {
-              let (name, _args) = match val.ops.first().unwrap() {
-                Op::Call(_, name, args) => (name, args),
-                _ => unreachable!(),
-              };
-              let ty = convert::reader_func_to_ty(&f_name, name);
-              if let Some(ref reader) = field.reader_type {
-                assert_eq!(reader, ty);
-              } else {
-                field.reader_type = Some(ty.into());
-              }
-            }
-            Value::Lit(lit) => {
-              let ty = match lit {
-                Lit::Int(_) => "i32",
-                Lit::Float(_) => "f32",
-                Lit::String(_) => "String",
-              };
-              if let Some(ref reader) = field.reader_type {
-                assert_eq!(reader, ty);
-              } else {
-                field.reader_type = Some(ty.into());
-              }
-            }
-            // Conditionals as ops are always something like `if cond { 1 } else { 0 }`, which we
-            // can convert with `v != 0`. So, in order to recognize that, we need to the
-            // reader type to be a number.
-            _ if matches!(&val.ops.last(), Some(Op::If(_, _))) => {
-              if let Some(ref reader) = field.reader_type {
-                assert_eq!(reader, "u8");
-              } else {
-                field.reader_type = Some("u8".into());
-              }
-            }
-            _ => {}
-          }
-        }
-        if self.p.get_field(&f_name).map(|f| f.option).unwrap_or(false)
-          && val.initial != Value::Null
-        {
-          self.gen.write("Some(");
-          self.write_expr(val);
-          self.gen.write(")");
+        // Terrible hack. Only applies to 1.8. This was too ugly to implement correctly.
+        if f_name == "chunks_data.data_size" {
+          self.gen.write_line("let len = (p.read_i16() & 65535).try_into().unwrap();");
+        } else if f_name == "chunks_data.data" {
+          self.gen.write_line("f_chunks_data.push(p.read_buf(len));");
         } else {
-          self.write_expr(val);
+          self.gen.write("f_");
+          self.gen.write(&f_name);
+          self.gen.write(" = ");
+          if let Some(field) = self.p.get_field_mut(&f_name) {
+            match &val.initial {
+              Value::Var(Var::Buf)
+                if !val.ops.is_empty()
+                  && val.ops.first().map(|op| matches!(op, Op::Call(..))).unwrap_or(false) =>
+              {
+                let (name, _args) = match val.ops.first().unwrap() {
+                  Op::Call(_, name, args) => (name, args),
+                  _ => unreachable!(),
+                };
+                let ty = convert::reader_func_to_ty(&f_name, name);
+                if let Some(ref reader) = field.reader_type {
+                  assert_eq!(reader, ty);
+                } else {
+                  field.reader_type = Some(ty.into());
+                }
+              }
+              Value::Lit(lit) => {
+                let ty = match lit {
+                  Lit::Int(_) => "i32",
+                  Lit::Float(_) => "f32",
+                  Lit::String(_) => "String",
+                };
+                if let Some(ref reader) = field.reader_type {
+                  assert_eq!(reader, ty);
+                } else {
+                  field.reader_type = Some(ty.into());
+                }
+              }
+              // Conditionals as ops are always something like `if cond { 1 } else { 0 }`, which we
+              // can convert with `v != 0`. So, in order to recognize that, we need to the
+              // reader type to be a number.
+              _ if matches!(&val.ops.last(), Some(Op::If(_, _))) => {
+                if let Some(ref reader) = field.reader_type {
+                  assert_eq!(reader, "u8");
+                } else {
+                  field.reader_type = Some("u8".into());
+                }
+              }
+              _ => {}
+            }
+          }
+          if self.p.get_field(&f_name).map(|f| f.option).unwrap_or(false)
+            && val.initial != Value::Null
+          {
+            self.gen.write("Some(");
+            self.write_expr(val);
+            self.gen.write(")");
+          } else {
+            self.write_expr(val);
+          }
+          self.gen.write_line(";");
         }
-        self.gen.write_line(";");
       }
       Instr::SetArr(arr, _idx, val) => {
+        // 1.8 hack. This is too terrible to implement correctly.
+        if arr.initial == Value::Field("chunks_data".into()) {
+          return;
+        }
         // This might break things. However, everything single SetArr I can find has
         // just used the for loop value in the index. So, I am going to go ahead and
         // assume thats always the case. Modern versions don't use for loops very much

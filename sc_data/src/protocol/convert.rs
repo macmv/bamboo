@@ -37,7 +37,7 @@ pub fn class(field: &str, name: &str) -> String {
     "Difficulty" | "EnumDifficulty" => "u32",
     "ItemStack" => "Stack",
     "GameStateChangeS2CPacket$Reason" => "StateChangeReason",
-    "S21PacketChunkData$Extracted" => "ExtractedChunkData",
+    "S21PacketChunkData$Extracted" => "Vec<u8>",
     "CompoundTag" | "NbtCompound" | "NBTTagCompound" => "NBT",
     "DataWatcher" | "EntityDataManager" | "DataTracker" => "EntityMetadata",
     "BiomeArray" => "Vec<u32>",
