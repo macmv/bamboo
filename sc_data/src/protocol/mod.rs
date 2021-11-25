@@ -99,6 +99,8 @@ pub enum Value {
   /// A static function call. The first item is the class, the second is the
   /// function, and the third is the arguments.
   CallStatic(String, String, Vec<Expr>),
+  /// A refernce to a static method.
+  MethodRef(String, String),
   /// A closure call. The first list is a list of arguments for the closure, and
   /// the second list is the instructions inside the closure.
   Closure(Vec<Expr>, Vec<Instr>),
@@ -175,6 +177,9 @@ pub enum Instr {
   /// Invokes the given expresison, and ignores the result. Used when we do
   /// things like call a function that returns void.
   Expr(Expr),
+
+  /// Returns the given value.
+  Return(Expr),
 }
 
 /// A range, used in a for loop.

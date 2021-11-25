@@ -149,6 +149,7 @@ fn simplify_instr(instr: &mut [Instr]) {
         simplify_expr(s);
         simplify_val(len);
       }
+      Instr::Return(v) => simplify_expr(v),
     }
   }
 }
@@ -184,6 +185,11 @@ fn simplify_val(val: &mut Value) {
       let new_name = convert::static_call(&name);
       *name = new_name.into();
       args.iter_mut().for_each(|a| simplify_expr(a))
+    }
+    Value::MethodRef(_class, name) => {
+      simplify_name(name);
+      let new_name = convert::static_call(&name);
+      *name = new_name.into();
     }
     Value::Closure(args, instr) => {
       for a in args.iter_mut() {
@@ -429,6 +435,7 @@ impl<'a> InstrWriter<'a> {
             gen.write(" => ");
             gen.write_block(|gen| {
               let mut w = InstrWriter::new(gen, p);
+              w.is_closure = self.is_closure;
               for i in instr {
                 w.write_instr(i);
               }
@@ -445,6 +452,13 @@ impl<'a> InstrWriter<'a> {
         self.write_val(len);
         self.gen.write("`)\");");
       }
+      Instr::Return(v) => {
+        if v.initial != Value::Null {
+          self.gen.write("return ");
+          self.write_expr(v);
+          self.gen.write_line(";");
+        }
+      }
     }
   }
 
@@ -453,6 +467,7 @@ impl<'a> InstrWriter<'a> {
     g.set_indent(self.gen.indent());
     {
       let mut inner = InstrWriter::new(&mut g, self.p);
+      inner.is_closure = self.is_closure;
       inner.write_val(&e.initial);
     }
     let mut val = g.into_output();
@@ -468,6 +483,7 @@ impl<'a> InstrWriter<'a> {
       g.set_indent(self.gen.indent());
       {
         let mut i = InstrWriter::new(&mut g, self.p);
+        i.is_closure = self.is_closure;
         if needs_paren {
           i.gen.write("(");
         }
@@ -541,7 +557,7 @@ impl<'a> InstrWriter<'a> {
             i.gen.write(".");
             if name == "read_str" && args.is_empty() {
               i.gen.write("read_str(32767)");
-            } else if name == "read_map" {
+            } else if name == "read_map" && args.len() == 3 {
               i.gen.write("read_map(");
               for (idx, a) in args.iter().enumerate().skip(1) {
                 i.write_expr(a);
@@ -637,15 +653,24 @@ impl<'a> InstrWriter<'a> {
         }
         self.gen.write(")");
       }
-      Value::Closure(args, instr) => {
-        self.gen.write("|");
-        for (i, a) in args.iter().enumerate() {
-          self.write_expr(a);
-          if i != args.len() - 1 {
-            self.gen.write(", ");
-          }
+      Value::MethodRef(class, name) => {
+        self.gen.write(class.split('/').last().unwrap().split('$').last().unwrap());
+        self.gen.write("::");
+        if name == "<init>" {
+          self.gen.write("new");
+        } else {
+          self.gen.write(&name);
         }
-        self.gen.write_line("| {");
+      }
+      Value::Closure(_args, instr) => {
+        // self.gen.write("|");
+        // for (i, a) in args.iter().enumerate() {
+        //   self.write_expr(a);
+        //   if i != args.len() - 1 {
+        //     self.gen.write(", ");
+        //   }
+        // }
+        self.gen.write_line("|buf| {");
         self.gen.add_indent();
         {
           let mut inner = InstrWriter::new(&mut self.gen, &mut self.p);
