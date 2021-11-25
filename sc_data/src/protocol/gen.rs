@@ -650,7 +650,12 @@ impl<'a> InstrWriter<'a> {
       Value::Null => self.gen.write("None"),
       Value::Lit(lit) => match lit {
         Lit::Int(v) => self.gen.write(&v.to_string()),
-        Lit::Float(v) => self.gen.write(&v.to_string()),
+        Lit::Float(v) => {
+          self.gen.write(&v.to_string());
+          if v.fract() == 0.0 {
+            self.gen.write(".0");
+          }
+        }
         Lit::String(v) => {
           self.gen.write("\"");
           self.gen.write(&v);
