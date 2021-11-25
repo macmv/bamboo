@@ -381,13 +381,19 @@ impl<'a> InstrWriter<'a> {
         }
         self.gen.write_line(";");
       }
-      Instr::SetArr(arr, idx, val) => {
+      Instr::SetArr(arr, _idx, val) => {
+        // This might break things. However, everything single SetArr I can find has
+        // just used the for loop value in the index. So, I am going to go ahead and
+        // assume thats always the case. Modern versions don't use for loops very much
+        // at all, and they never use SetArr. So if this works now, it should continue
+        // working in the future.
         self.write_expr(arr);
-        self.gen.write("[");
-        self.write_val(idx);
-        self.gen.write(".try_into().unwrap()] = ");
+        self.gen.write(".push(");
+        // self.gen.write("[");
+        // self.write_val(idx);
+        // self.gen.write(".try_into().unwrap()] = ");
         self.write_expr(val);
-        self.gen.write_line(";");
+        self.gen.write_line(");");
       }
       Instr::Let(var, val) => {
         self.gen.write("let v_");
