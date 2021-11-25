@@ -95,6 +95,13 @@ impl Packet {
     let len = self.read_varint().try_into().unwrap();
     self.buf.read_buf(len)
   }
+  pub fn read_byte_arr_max(&mut self, max: usize) -> Vec<u8> {
+    let len = self.read_varint().try_into().unwrap();
+    if len > max {
+      panic!("byte array is {} bytes, larger than max {}", len, max);
+    }
+    self.buf.read_buf(len)
+  }
 
   pub fn remaining(&self) -> usize {
     self.buf.len() - self.buf.index()

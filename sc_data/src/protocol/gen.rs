@@ -1,4 +1,4 @@
-use super::{convert, Cond, Expr, Instr, Lit, Op, Packet, PacketDef, Value, Var};
+use super::{convert, Cond, Expr, Instr, Lit, Op, Packet, PacketDef, Type, Value, Var};
 use crate::{gen::CodeGen, Version};
 use convert_case::{Case, Casing};
 use std::{collections::HashMap, fs, fs::File, io, io::Write, path::Path};
@@ -110,8 +110,13 @@ fn sanitize(p: &mut Packet) {
   for f in &mut p.fields {
     simplify_name(&mut f.name);
     let (initialized, option) = check_option(&p.reader, &f.name);
-    f.initialized = initialized;
-    f.option = option;
+    if option && matches!(f.ty, Type::Array(_)) {
+      f.option = false;
+      f.initialized = false;
+    } else {
+      f.initialized = initialized;
+      f.option = option;
+    }
   }
 }
 fn simplify_instr(instr: &mut [Instr]) {
@@ -271,7 +276,11 @@ fn write_from_tcp(gen: &mut CodeGen, p: &Packet, ver: Version) {
     gen.write(" f_");
     gen.write(&f.name);
     if !f.initialized {
-      gen.write(" = None");
+      if matches!(f.ty, Type::Array(_)) {
+        gen.write(" = vec![]");
+      } else {
+        gen.write(" = None");
+      }
     }
     gen.write_line(";");
   }
@@ -602,6 +611,12 @@ impl<'a> InstrWriter<'a> {
               i.gen.write(".");
               if name == "read_str" && args.is_empty() {
                 i.gen.write("read_str(32767)");
+              } else if name == "read_byte_arr" && args.len() == 1 {
+                i.gen.write("read_byte_arr_max(");
+                for a in args.iter() {
+                  i.write_expr(a);
+                }
+                i.gen.write(")");
               } else if name == "read_map" && args.len() == 3 {
                 i.gen.write("read_map(");
                 for (idx, a) in args.iter().enumerate().skip(1) {
