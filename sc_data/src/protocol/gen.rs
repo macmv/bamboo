@@ -453,7 +453,7 @@ impl<'a> InstrWriter<'a> {
         self.gen.write("`)\");");
       }
       Instr::Return(v) => {
-        if v.initial != Value::Null {
+        if self.is_closure {
           self.gen.write("return ");
           self.write_expr(v);
           self.gen.write_line(";");
@@ -520,6 +520,9 @@ impl<'a> InstrWriter<'a> {
           }
           Op::Div(rhs) => {
             i.gen.write(&val);
+            if matches!(rhs.initial, Value::Lit(Lit::Float(_))) {
+              i.gen.write(" as f32");
+            }
             i.gen.write(" / ");
             i.write_expr(rhs);
           }
