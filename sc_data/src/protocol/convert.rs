@@ -109,7 +109,8 @@ pub fn member_call<'a>(class: &str, name: &'a str) -> (&'a str, Option<Vec<Expr>
       "read_string" | "read_string_from_buffer" => "read_str",
       "read_var_int_array" => "read_varint_arr",
       "read_int_array" | "read_int_list" => "read_i32_arr",
-      "read_byte_array" | "read_bytes" => "read_buf",
+      "read_bytes" => "read_buf",           // Fixed length
+      "read_byte_array" => "read_byte_arr", // Variable length
       "read_bit_set" => "read_bits",
       "read_enum_constant" | "read_enum_value" => return ("read_varint", Some(vec![])),
       "read_text_component"
@@ -153,7 +154,7 @@ pub fn reader_func_to_ty(field: &str, name: &str) -> &'static str {
     "read_uuid" => "UUID",
     "read_str" => "String",
     "read_nbt" => "NBT",
-    "read_buf" => "Vec<u8>",
+    "read_buf" | "read_byte_arr" => "Vec<u8>",
     "read_i32_arr" => "Vec<i32>",
     "read_varint_arr" => "Vec<i32>",
     "read_bits" => "BitSet",

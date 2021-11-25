@@ -91,6 +91,10 @@ impl Packet {
   pub fn read_buf(&mut self, len: usize) -> Vec<u8> {
     self.buf.read_buf(len)
   }
+  pub fn read_byte_arr(&mut self) -> Vec<u8> {
+    let len = self.read_varint().try_into().unwrap();
+    self.buf.read_buf(len)
+  }
 
   pub fn remaining(&self) -> usize {
     self.buf.len() - self.buf.index()
