@@ -373,7 +373,7 @@ impl<'a> InstrWriter<'a> {
         self.write_expr(arr);
         self.gen.write("[");
         self.write_val(idx);
-        self.gen.write("] = ");
+        self.gen.write(".try_into().unwrap()] = ");
         self.write_expr(val);
         self.gen.write_line(";");
       }
@@ -569,78 +569,80 @@ impl<'a> InstrWriter<'a> {
 
           Op::Call(_class, name, args) => {
             i.gen.write(&val);
-            i.gen.write(".");
-            if name == "read_str" && args.is_empty() {
-              i.gen.write("read_str(32767)");
-            } else if name == "read_map" && args.len() == 3 {
-              i.gen.write("read_map(");
-              for (idx, a) in args.iter().enumerate().skip(1) {
-                i.write_expr(a);
-                if idx != args.len() - 1 {
-                  i.gen.write(", ");
-                }
-              }
-              i.gen.write(")");
-            } else if name == "read_collection" && args.len() == 2 {
-              let mut args = args.clone();
-              match &args[0].initial {
-                Value::MethodRef(class, name)
-                  if class == "com/google/common/collect/Sets"
-                    && (name == "new_linked_hash_set_with_expected_size"
-                      || name == "new_hash_set_with_expected_size") =>
-                {
-                  i.gen.write("read_set(");
-                }
-                Value::MethodRef(class, name)
-                  if class == "net/minecraft/util/collection/DefaultedList"
-                    && name == "of_size" =>
-                {
-                  i.gen.write("read_list(");
-                }
-                Value::CallStatic(class, name, inner_args)
-                  if class == "net/minecraft/network/PacketByteBuf"
-                    && name == "get_max_validator" =>
-                {
-                  assert!(inner_args.len() == 2, "{:?}", args);
-                  let len = inner_args[1].clone();
-                  match &inner_args[0].initial {
-                    Value::MethodRef(class, name)
-                      if class == "com/google/common/collect/Sets"
-                        && (name == "new_linked_hash_set_with_expected_size"
-                          || name == "new_hash_set_with_expected_size") =>
-                    {
-                      i.gen.write("read_set_max(");
-                      args.push(len);
-                    }
-                    Value::MethodRef(class, name)
-                      if class == "com/google/common/collect/Lists"
-                        && name == "new_array_list_with_capacity" =>
-                    {
-                      i.gen.write("read_list_max(");
-                      args.push(len);
-                    }
-                    _ => panic!("unexpected read_collection args {:?}", inner_args),
+            if !(name == "get" && args.len() == 0) {
+              i.gen.write(".");
+              if name == "read_str" && args.is_empty() {
+                i.gen.write("read_str(32767)");
+              } else if name == "read_map" && args.len() == 3 {
+                i.gen.write("read_map(");
+                for (idx, a) in args.iter().enumerate().skip(1) {
+                  i.write_expr(a);
+                  if idx != args.len() - 1 {
+                    i.gen.write(", ");
                   }
                 }
-                _ => panic!("unexpected read_collection args {:?}", args),
-              }
-              for (idx, a) in args.iter().enumerate().skip(1) {
-                i.write_expr(a);
-                if idx != args.len() - 1 {
-                  i.gen.write(", ");
+                i.gen.write(")");
+              } else if name == "read_collection" && args.len() == 2 {
+                let mut args = args.clone();
+                match &args[0].initial {
+                  Value::MethodRef(class, name)
+                    if class == "com/google/common/collect/Sets"
+                      && (name == "new_linked_hash_set_with_expected_size"
+                        || name == "new_hash_set_with_expected_size") =>
+                  {
+                    i.gen.write("read_set(");
+                  }
+                  Value::MethodRef(class, name)
+                    if class == "net/minecraft/util/collection/DefaultedList"
+                      && name == "of_size" =>
+                  {
+                    i.gen.write("read_list(");
+                  }
+                  Value::CallStatic(class, name, inner_args)
+                    if class == "net/minecraft/network/PacketByteBuf"
+                      && name == "get_max_validator" =>
+                  {
+                    assert!(inner_args.len() == 2, "{:?}", args);
+                    let len = inner_args[1].clone();
+                    match &inner_args[0].initial {
+                      Value::MethodRef(class, name)
+                        if class == "com/google/common/collect/Sets"
+                          && (name == "new_linked_hash_set_with_expected_size"
+                            || name == "new_hash_set_with_expected_size") =>
+                      {
+                        i.gen.write("read_set_max(");
+                        args.push(len);
+                      }
+                      Value::MethodRef(class, name)
+                        if class == "com/google/common/collect/Lists"
+                          && name == "new_array_list_with_capacity" =>
+                      {
+                        i.gen.write("read_list_max(");
+                        args.push(len);
+                      }
+                      _ => panic!("unexpected read_collection args {:?}", inner_args),
+                    }
+                  }
+                  _ => panic!("unexpected read_collection args {:?}", args),
                 }
-              }
-              i.gen.write(")");
-            } else {
-              i.gen.write(&name);
-              i.gen.write("(");
-              for (idx, a) in args.iter().enumerate() {
-                i.write_expr(a);
-                if idx != args.len() - 1 {
-                  i.gen.write(", ");
+                for (idx, a) in args.iter().enumerate().skip(1) {
+                  i.write_expr(a);
+                  if idx != args.len() - 1 {
+                    i.gen.write(", ");
+                  }
                 }
+                i.gen.write(")");
+              } else {
+                i.gen.write(&name);
+                i.gen.write("(");
+                for (idx, a) in args.iter().enumerate() {
+                  i.write_expr(a);
+                  if idx != args.len() - 1 {
+                    i.gen.write(", ");
+                  }
+                }
+                i.gen.write(")");
               }
-              i.gen.write(")");
             }
           }
         }
