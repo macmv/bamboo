@@ -785,16 +785,19 @@ impl<'a> InstrWriter<'a> {
 
       Cond::Neq(lhs, rhs) => match &lhs.initial {
         // Matching `foo.equals("name") != 0`
-        // Value::CallStatic(class, name, args) if name == "equals" && val.is_some() => {
-        //   // dbg!(&lhs);
-        //   assert_eq!(rhs, &Expr::new(Value::Lit(0.into())));
-        //   assert_eq!(args.len(), 1);
-        //   assert!(val.as_ref().unwrap().ops.is_empty());
-        //   assert!(args[0].ops.is_empty());
-        //   self.write_expr(val.as_ref().unwrap());
-        //   self.gen.write(" == ");
-        //   self.write_val(&args[0].initial);
-        // }
+        _ if matches!(lhs.ops.get(0), Some(Op::Call(_, name, _)) if name == "equals") => {
+          let args = match &lhs.ops[0] {
+            Op::Call(_, _, args) => args,
+            _ => unreachable!(),
+          };
+          // dbg!(&lhs);
+          assert_eq!(rhs, &Expr::new(Value::Lit(0.into())));
+          assert_eq!(args.len(), 1);
+          assert!(args[0].ops.is_empty());
+          self.write_val(&lhs.initial);
+          self.gen.write(" == ");
+          self.write_val(&args[0].initial);
+        }
         // Matching `equals(var, foo) != 0`
         Value::CallStatic(_class, name, args) if name == "equals" => {
           // dbg!(&lhs);
