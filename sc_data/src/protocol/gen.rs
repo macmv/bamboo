@@ -47,6 +47,9 @@ impl PacketCollection {
     packets.sort_unstable_by(|(a, _), (b, _)| a.cmp(b));
     let packets: Vec<Vec<(_, _)>> = packets.into_iter().map(|(_, v)| v).collect();
 
+    gen.write_line("use crate::Pos;");
+    gen.write_line("");
+
     gen.write("pub enum Packet ");
     gen.write_block(|gen| {
       for versions in &packets {
@@ -237,6 +240,7 @@ fn simplify_op(op: &mut Op) {
         args.iter_mut().for_each(|a| simplify_expr(a))
       }
     }
+    Op::Cast(_) => {}
   }
 }
 fn simplify_name(name: &mut String) {
@@ -522,13 +526,8 @@ impl<'a> InstrWriter<'a> {
     }
     let mut val = g.into_output();
     for (i, op) in e.ops.iter().enumerate() {
-      let needs_paren = i
-        .checked_sub(1)
-        .map(|i| {
-          let prev = &e.ops[i];
-          prev.precedence() > op.precedence()
-        })
-        .unwrap_or(false);
+      let needs_paren =
+        e.ops.get(i + 1).map(|next| next.precedence() < op.precedence()).unwrap_or(false);
       let mut g = CodeGen::new();
       g.set_indent(self.gen.indent());
       {
@@ -688,6 +687,19 @@ impl<'a> InstrWriter<'a> {
                 i.gen.write(")");
               }
             }
+          }
+
+          Op::Cast(ty) => {
+            i.gen.write(&val);
+            i.gen.write(match ty {
+              Type::Byte => " as i8",
+              Type::Short => " as i16",
+              Type::Int => " as i32",
+              Type::Long => " as i64",
+              Type::Float => " as f32",
+              Type::Double => " as f64",
+              _ => unreachable!(),
+            });
           }
         }
         if needs_paren {

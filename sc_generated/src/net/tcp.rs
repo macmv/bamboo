@@ -289,4 +289,13 @@ impl Packet {
   pub fn read_varint_arr(&mut self) -> Vec<i32> {
     self.read_list(Self::read_varint)
   }
+
+  pub fn read_bits(&mut self) -> Vec<u64> {
+    let longs = self.read_varint().try_into().unwrap();
+    let mut out = Vec::with_capacity(longs);
+    for _ in 0..longs {
+      out.push(self.read_u64());
+    }
+    out
+  }
 }

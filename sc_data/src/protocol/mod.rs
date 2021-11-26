@@ -248,6 +248,9 @@ pub enum Op {
   /// Calls the given function (`1`) on the value. The class this function is on
   /// is element `0`.
   Call(String, String, Vec<Expr>),
+
+  /// Casts to the given type.
+  Cast(Type),
 }
 
 impl Type {
@@ -272,13 +275,15 @@ impl Type {
 impl Op {
   pub fn precedence(&self) -> i32 {
     match self {
-      Op::BitAnd(_) => 4,
-      Op::Shr(_) => 3,
-      Op::UShr(_) => 3,
-      Op::Shl(_) => 3,
+      Op::BitAnd(_) => 5,
+      Op::Shr(_) => 4,
+      Op::UShr(_) => 4,
+      Op::Shl(_) => 4,
 
+      Op::Div(_) => 3,
       Op::Add(_) => 2,
-      Op::Div(_) => 1,
+
+      Op::Cast(..) => 1,
 
       Op::Len => 0,
       Op::Idx(_) => 0,
