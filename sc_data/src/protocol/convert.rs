@@ -73,7 +73,7 @@ pub fn class(field: &str, name: &str) -> String {
 pub fn static_call<'a, 'b>(class: &'a str, name: &'b str) -> (&'a str, &'b str) {
   match (class, name) {
     ("net/minecraft/network/PacketByteBuf", _) => (
-      "Packet",
+      "tcp::Packet",
       match name {
         "read_var_int" => "read_varint",
         "read_item_stack" => "read_item",

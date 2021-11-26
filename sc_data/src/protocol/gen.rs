@@ -642,7 +642,7 @@ impl<'a> InstrWriter<'a> {
                     i.gen.write("read_list(");
                   }
                   Value::CallStatic(class, name, inner_args)
-                    if class == "Packet" && name == "get_max_validator" =>
+                    if class == "tcp::Packet" && name == "get_max_validator" =>
                   {
                     assert!(inner_args.len() == 2, "{:?}", args);
                     let len = inner_args[1].clone();
