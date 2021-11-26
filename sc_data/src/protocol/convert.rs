@@ -72,6 +72,18 @@ pub fn class(field: &str, name: &str) -> String {
 
 pub fn static_call<'a, 'b>(class: &'a str, name: &'b str) -> (&'a str, &'b str) {
   match (class, name) {
+    ("net/minecraft/network/PacketByteBuf", _) => (
+      "Packet",
+      match name {
+        "read_var_int" => "read_varint",
+        "read_item_stack" => "read_item",
+        "read_identifier" => "read_ident",
+        "read_nbt" => "read_nbt",
+        "read_string" => "read_str",
+        "get_max_validator" => "get_max_validator", // Parsed out later
+        _ => panic!("unknown packet function {}", name),
+      },
+    ),
     (_, "new_hash_map") => ("HashMap", "new"),
     (_, "new_linked_hash_set") | (_, "new_hash_set") => ("HashSet", "new"),
     (_, "new_array_list") => ("Vec", "new"),
