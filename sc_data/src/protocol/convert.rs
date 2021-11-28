@@ -1,4 +1,4 @@
-use super::{Expr, Value};
+use super::{Expr, Instr, Value};
 
 pub fn class(field: &str, name: &str) -> String {
   match name.split('/').last().unwrap() {
@@ -225,4 +225,22 @@ pub fn ty(from: &str, to: &str) -> &'static str {
     },
     _ => panic!("cannot convert `{}` into `{}`", from, to),
   }
+}
+
+pub fn this_call(name: &str, args: &mut Vec<Expr>) -> Instr {
+  assert_eq!(args.len(), 1);
+  Instr::Set(
+    match name {
+      "setInvulnerable" => "invulnerable",
+      "setFlying" => "flying",
+      "setAllowFlying" => "allow_flying",
+      "setCreativeMode" => "creative_mode",
+      "setFlySpeed" => "fly_speed",
+      "setWalkSpeed" => "walk_speed",
+      "setFovModifier" => "fov_modifier",
+      _ => panic!("unknown `this` call: {}", name),
+    }
+    .into(),
+    args.pop().unwrap(),
+  )
 }

@@ -139,7 +139,18 @@ fn simplify_instr(instr: &mut [Instr]) {
         simplify_expr(val);
       }
       Instr::Let(_, val) => simplify_expr(val),
-      Instr::Expr(v) => simplify_expr(v),
+      Instr::Expr(v) => match v.initial {
+        Value::Var(Var::This) => match v.ops.first_mut().unwrap() {
+          Op::Call(_, name, args) => {
+            let instr = convert::this_call(name, args);
+            let mut arr = vec![instr];
+            simplify_instr(&mut arr);
+            *i = arr.pop().unwrap();
+          }
+          v => panic!("unknown op on self: {:?}", v),
+        },
+        _ => simplify_expr(v),
+      },
       Instr::If(cond, when_true, when_false) => {
         simplify_cond(cond);
         simplify_instr(when_true);
@@ -187,7 +198,6 @@ fn simplify_expr(expr: &mut Expr) {
 }
 fn simplify_val(val: &mut Value) {
   match val {
-    Value::Null | Value::Lit(_) | Value::Var(_) => {}
     Value::Field(name) => simplify_name(name),
     Value::Static(..) => {}
     Value::Array(len) => simplify_expr(len),
@@ -213,6 +223,7 @@ fn simplify_val(val: &mut Value) {
     Value::New(_, args) => {
       args.iter_mut().for_each(|a| simplify_expr(a));
     }
+    Value::Null | Value::Lit(_) | Value::Var(_) => {}
   }
 }
 fn simplify_op(op: &mut Op) {
