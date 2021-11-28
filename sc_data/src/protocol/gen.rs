@@ -48,6 +48,9 @@ impl PacketCollection {
     let packets: Vec<Vec<(_, _)>> = packets.into_iter().map(|(_, v)| v).collect();
 
     gen.write_line("use crate::Pos;");
+    gen.write_line("use std::collections::{HashMap, HashSet};");
+    gen.write_line("");
+    gen.write_line("pub struct U;");
     gen.write_line("");
 
     gen.write("pub enum Packet ");

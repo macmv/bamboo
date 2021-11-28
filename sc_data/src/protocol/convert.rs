@@ -2,27 +2,31 @@ use super::{Expr, Value};
 
 pub fn class(field: &str, name: &str) -> String {
   match name.split('/').last().unwrap() {
-    // TODO: Generics
-    "Map" => "HashMap<u8, u8>",
-    "Set" => "HashSet<u8>",
-    "Collection" => "HashMap<u8, u8>",
-    "DynamicRegistryManager$Impl" => "u8",
-    "RegistryKey" => "u8",
-    "Vec3" => "[u8; 3]",
+    "Map" => "HashMap<U, U>",
+    "Set" => "HashSet<U>",
+    "Collection" => "HashMap<U, U>",
+    "DynamicRegistryManager$Impl" => "U",
+    "RegistryKey" => "U",
+    "Vec3" => "[U; 3]",
     "Optional" => "Option<String>",
 
     "List" => match field {
       "pages" => "Vec<String>",
       "recipe_ids_to_init" => "Vec<String>",
       "recipe_ids_to_change" => "Vec<String>",
-      _ => "Vec<u8>",
+      "field_189557_e" => "Vec<U>",
+      "tile_entity_tags" => "Vec<NBT>",
+      _ => {
+        println!("UNKNOWN FIELD {}", field);
+        "Vec<U>"
+      }
     },
     "UUID" => "UUID",
     "String" => "String",
     "BitSet" => "BitSet",
     "IntList" => "Vec<i32>",
-    "Object2IntMap" => "HashMap<u8, i32>",
-    "Int2ObjectMap" => "HashMap<i32, u8>",
+    "Object2IntMap" => "HashMap<U, i32>",
+    "Int2ObjectMap" => "HashMap<i32, U>",
     "Vec3i" => "[i32; 3]",
     "Vec4b" => "[bool; 4]",
     "Vec3d" => "[f64; 3]",
@@ -30,7 +34,7 @@ pub fn class(field: &str, name: &str) -> String {
     "Item" => "u32",  // item id
     "Block" => "u32", // block id
     "EntityType" => "u32",
-    "Vibration" => "u8",
+    "Vibration" => "U",
     "IBlockState" | "BlockState" => "(u32, String)",
     "Formatting" => "i32",
     "Text" | "Identifier" | "IChatComponent" | "ResourceLocation" | "ITextComponent" => "String",
@@ -193,6 +197,9 @@ pub fn ty(from: &str, to: &str) -> &'static str {
     "f64" => " as f64",
     "u8" => match from {
       "i8" | "i16" | "i32" | "i64" => ".try_into().unwrap()",
+      _ => panic!("cannot convert `{}` into `{}`", from, to),
+    },
+    "U" => match from {
       "NBT" => "",
       _ => panic!("cannot convert `{}` into `{}`", from, to),
     },
@@ -212,7 +219,7 @@ pub fn ty(from: &str, to: &str) -> &'static str {
       "u8" | "i8" | "i16" | "i32" => ".into()",
       _ => panic!("cannot convert `{}` into `{}`", from, to),
     },
-    "HashMap<u8, u8>" | "HashMap<u8, i32>" | "HashSet<u8>" | "Vec<u8>" => return "",
+    "HashMap<U, U>" | "HashMap<U, i32>" | "HashSet<U>" | "Vec<U>" => return "",
     "String" => match from {
       _ => return "",
     },
