@@ -4,6 +4,7 @@ use std::{io, path::Path};
 
 pub mod convert;
 mod gen;
+mod type_analysis;
 
 pub fn generate(out_dir: &Path) -> io::Result<()> {
   let mut versions = vec![];
@@ -67,9 +68,9 @@ pub struct Field {
   /// The java type of this field.
   pub ty:   Type,
 
-  /// Assigned once we found a reader function that assigns to this field.
+  /// The type based on the `reader` function.
   #[serde(skip_deserializing)]
-  pub reader_type: Option<String>,
+  pub reader_type: Option<RType>,
   /// Set to true if this field is only set in certain conditionals.
   #[serde(skip_deserializing)]
   pub option:      bool,
@@ -251,6 +252,13 @@ pub enum Op {
 
   /// Casts to the given type.
   Cast(Type),
+}
+
+/// A rust type.
+#[derive(Debug, Clone, PartialEq)]
+pub struct RType {
+  name:     String,
+  generics: Vec<RType>,
 }
 
 impl Type {

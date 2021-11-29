@@ -45,7 +45,12 @@ impl PacketCollection {
 
     let mut packets: Vec<_> = self.packets.into_iter().collect();
     packets.sort_unstable_by(|(a, _), (b, _)| a.cmp(b));
-    let packets: Vec<Vec<(_, _)>> = packets.into_iter().map(|(_, v)| v).collect();
+    let mut packets: Vec<Vec<(_, _)>> = packets.into_iter().map(|(_, v)| v).collect();
+    for versions in &mut packets {
+      for (_, p) in versions {
+        p.find_reader_types();
+      }
+    }
 
     gen.write_line("use crate::Pos;");
     gen.write_line("use std::collections::{HashMap, HashSet};");
@@ -318,15 +323,15 @@ fn write_from_tcp(gen: &mut CodeGen, p: &Packet, ver: Version) {
     gen.write(&f.name);
     if let Some(read) = f.reader_type.as_ref() {
       let rs = f.ty.to_rust(&f.name);
-      if &rs != read {
-        if f.option {
-          gen.write(".map(|v| v");
-          gen.write(convert::ty(read, &rs));
-          gen.write(")");
-        } else {
-          gen.write(convert::ty(read, &rs));
-        }
-      }
+      // if &rs != read {
+      //   if f.option {
+      //     gen.write(".map(|v| v");
+      //     gen.write(convert::ty(read, &rs));
+      //     gen.write(")");
+      //   } else {
+      //     gen.write(convert::ty(read, &rs));
+      //   }
+      // }
     }
     gen.write_line(",");
   }
@@ -369,12 +374,12 @@ impl<'a> InstrWriter<'a> {
                   Op::Call(_, name, args) => (name, args),
                   _ => unreachable!(),
                 };
-                let ty = convert::reader_func_to_ty(&f_name, name);
-                if let Some(ref reader) = field.reader_type {
-                  assert_eq!(reader, ty);
-                } else {
-                  field.reader_type = Some(ty.into());
-                }
+                // let ty = convert::reader_func_to_ty(&f_name, name);
+                // if let Some(ref reader) = field.reader_type {
+                //   assert_eq!(reader, ty);
+                // } else {
+                //   field.reader_type = Some(ty.into());
+                // }
               }
               Value::Lit(lit) => {
                 let ty = match lit {
@@ -382,21 +387,21 @@ impl<'a> InstrWriter<'a> {
                   Lit::Float(_) => "f32",
                   Lit::String(_) => "String",
                 };
-                if let Some(ref reader) = field.reader_type {
-                  assert_eq!(reader, ty);
-                } else {
-                  field.reader_type = Some(ty.into());
-                }
+                // if let Some(ref reader) = field.reader_type {
+                //   assert_eq!(reader, ty);
+                // } else {
+                //   field.reader_type = Some(ty.into());
+                // }
               }
               // Conditionals as ops are always something like `if cond { 1 } else { 0 }`, which we
               // can convert with `v != 0`. So, in order to recognize that, we need to the
               // reader type to be a number.
               _ if matches!(&val.ops.last(), Some(Op::If(_, _))) => {
-                if let Some(ref reader) = field.reader_type {
-                  assert_eq!(reader, "u8");
-                } else {
-                  field.reader_type = Some("u8".into());
-                }
+                // if let Some(ref reader) = field.reader_type {
+                //   assert_eq!(reader, "u8");
+                // } else {
+                //   field.reader_type = Some("u8".into());
+                // }
               }
               _ => {}
             }
