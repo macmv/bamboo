@@ -98,6 +98,36 @@ pub fn static_call<'a, 'b>(class: &'a str, name: &'b str) -> (&'a str, &'b str) 
   }
 }
 
+pub fn static_ref(class: &str, name: &str) -> Value {
+  let (c, n) = match (class, name) {
+    ("net/minecraft/network/PacketByteBuf", _) => (
+      "tcp::Packet".into(),
+      match name {
+        "read_var_int" => "read_varint",
+        "read_item_stack" => "read_item",
+        "read_identifier" => "read_ident",
+        "read_nbt" => "read_nbt",
+        "read_string" => "read_str",
+        "get_max_validator" => "get_max_validator", // Parsed out later
+        _ => panic!("unknown packet function {}", name),
+      },
+    ),
+    ("it/unimi/dsi/fastutil/objects/Object2IntOpenHashMap", "<init>") => ("HashMap", "new"),
+    ("net/minecraft/util/collection/DefaultedList", "of_size") => ("Vec", "with_capacity"),
+    (_, "new_hash_map") => ("HashMap", "new"),
+    (_, "new_linked_hash_set") | (_, "new_hash_set") => ("HashSet", "new"),
+    (_, "new_hash_set_with_expected_size") | (_, "new_linked_hash_set_with_expected_size") => {
+      ("HashSet", "with_capacity")
+    }
+    (_, "new_array_list") => ("Vec", "new"),
+    _ => {
+      println!("unknown static ref {}::{}", class, name);
+      (class, name)
+    }
+  };
+  Value::MethodRef(c.into(), n.into())
+}
+
 pub fn member_call<'a>(class: &str, name: &'a str) -> (&'a str, Option<Vec<Expr>>) {
   (
     match name {

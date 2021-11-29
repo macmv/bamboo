@@ -210,9 +210,7 @@ fn simplify_val(val: &mut Value) {
     }
     Value::MethodRef(class, name) => {
       simplify_name(name);
-      let (new_class, new_name) = convert::static_call(&class, &name);
-      *class = new_class.into();
-      *name = new_name.into();
+      *val = convert::static_ref(&class, &name);
     }
     Value::Closure(args, instr) => {
       for a in args.iter_mut() {
@@ -643,16 +641,11 @@ impl<'a> InstrWriter<'a> {
                 let mut args = args.clone();
                 match &args[0].initial {
                   Value::MethodRef(class, name)
-                    if class == "com/google/common/collect/Sets"
-                      && (name == "new_linked_hash_set_with_expected_size"
-                        || name == "new_hash_set_with_expected_size") =>
+                    if class == "HashSet" && name == "with_capacity" =>
                   {
                     i.gen.write("read_set(");
                   }
-                  Value::MethodRef(class, name)
-                    if class == "net/minecraft/util/collection/DefaultedList"
-                      && name == "of_size" =>
-                  {
+                  Value::MethodRef(class, name) if class == "Vec" && name == "with_capacity" => {
                     i.gen.write("read_list(");
                   }
                   Value::CallStatic(class, name, inner_args)
