@@ -88,6 +88,9 @@ impl Packet {
   pub fn read_str(&mut self, max_len: u64) -> String {
     self.buf.read_str(max_len)
   }
+  pub fn read_ident(&mut self) -> String {
+    self.read_str(32767)
+  }
   pub fn read_buf(&mut self, len: usize) -> Vec<u8> {
     self.buf.read_buf(len)
   }

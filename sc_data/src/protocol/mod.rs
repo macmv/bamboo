@@ -318,6 +318,10 @@ impl Expr {
   pub fn new(initial: Value) -> Expr {
     Expr { initial, ops: vec![] }
   }
+  pub fn op(mut self, op: Op) -> Self {
+    self.ops.push(op);
+    self
+  }
 }
 
 impl From<i32> for Lit {
