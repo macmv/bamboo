@@ -271,9 +271,15 @@ impl RType {
   pub fn new(name: impl Into<String>) -> Self {
     RType { name: name.into(), generics: vec![] }
   }
-  pub fn generic(mut self, arg: impl Into<String>) -> Self {
-    self.generics.push(RType::new(arg));
+  pub fn generic(mut self, arg: impl Into<RType>) -> Self {
+    self.generics.push(arg.into());
     self
+  }
+}
+
+impl From<&str> for RType {
+  fn from(s: &str) -> RType {
+    RType::new(s)
   }
 }
 

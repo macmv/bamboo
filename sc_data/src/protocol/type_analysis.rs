@@ -1,4 +1,4 @@
-use super::{Expr, Field, Instr, Lit, Packet, RType, Value, VarKind};
+use super::{Expr, Field, Instr, Lit, Op, Packet, RType, Value, VarKind};
 
 #[derive(Debug)]
 struct ReaderTypes<'a> {
@@ -48,8 +48,11 @@ impl ReaderTypes<'_> {
   }
 
   fn expr_type(&self, expr: &Expr) -> RType {
-    let initial = self.val_type(&expr.initial);
-    initial
+    let mut ty = self.val_type(&expr.initial);
+    for op in &expr.ops {
+      ty = self.op_type(ty, op);
+    }
+    ty
   }
 
   fn val_type(&self, val: &Value) -> RType {
@@ -76,11 +79,33 @@ impl ReaderTypes<'_> {
         .unwrap_or(RType::new("U")),
       Value::New(class, args) => RType::new("U"),
       Value::Array(_) => RType::new("Vec"),
+      Value::MethodRef(class, name) => match class.as_str() {
+        "tcp::Packet" => match name.as_str() {
+          "read_ident" => RType::new("String"),
+          _ => todo!(),
+        },
+        _ => todo!(),
+      },
       _ => todo!("value: {:?}", val),
     }
   }
-
   fn var_type(&self, var: usize) -> RType {
     self.var_types[var].clone()
+  }
+
+  fn op_type(&self, initial: RType, op: &Op) -> RType {
+    match op {
+      Op::Call(class, name, args) => match class.as_str() {
+        "tcp::Packet" => match name.as_str() {
+          "read_u8" => RType::new("u8"),
+          "read_map" => RType::new("HashMap")
+            .generic(self.expr_type(&args[0]))
+            .generic(self.expr_type(&args[1])),
+          _ => todo!("call {}", name),
+        },
+        _ => todo!("class {}", class),
+      },
+      _ => todo!(),
+    }
   }
 }

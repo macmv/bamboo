@@ -76,7 +76,12 @@ pub fn class(field: &str, name: &str) -> String {
 
 pub fn static_call<'a, 'b>(class: &'a str, name: &'b str) -> (&'a str, &'b str) {
   match (class, name) {
-    ("net/minecraft/network/PacketByteBuf", _) => (
+    (
+      "net/minecraft/network/PacketByteBuf"
+      | "net/minecraft/util/PacketByteBuf"
+      | "net/minecraft/network/PacketBuffer",
+      _,
+    ) => (
       "tcp::Packet",
       match name {
         "read_var_int" => "read_varint",
@@ -129,6 +134,7 @@ pub fn static_ref(class: &str, name: &str) -> Value {
 }
 
 pub fn member_call<'a>(class: &str, name: &'a str) -> (&'a str, Option<Vec<Expr>>) {
+  // TODO: Update things like PacketBuffer to tcp::Packet here
   (
     match name {
       "add" => match class {
