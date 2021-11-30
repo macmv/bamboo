@@ -261,6 +261,12 @@ pub struct RType {
   generics: Vec<RType>,
 }
 
+impl RType {
+  pub fn new(name: impl Into<String>) -> RType {
+    RType { name: name.into(), generics: vec![] }
+  }
+}
+
 impl Type {
   pub fn to_rust(&self, field: &str) -> String {
     match self {
