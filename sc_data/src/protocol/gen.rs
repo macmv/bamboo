@@ -1,4 +1,6 @@
-use super::{convert, Cond, Expr, Field, Instr, Lit, Op, Packet, PacketDef, Type, Value, VarKind};
+use super::{
+  convert, Cond, Expr, Field, Instr, Lit, Op, Packet, PacketDef, RType, Type, Value, VarKind,
+};
 use crate::{gen::CodeGen, Version};
 use convert_case::{Case, Casing};
 use std::{collections::HashMap, fs, fs::File, io, io::Write, path::Path};
@@ -343,16 +345,16 @@ fn write_from_tcp(gen: &mut CodeGen, p: &Packet, ver: Version) {
 #[derive(Debug)]
 struct InstrWriter<'a> {
   gen:        &'a mut CodeGen,
-  fields:     &'a Vec<Field>,
+  fields:     &'a mut Vec<Field>,
   vars:       &'a Vec<VarKind>,
   is_closure: bool,
 }
 
 impl<'a> InstrWriter<'a> {
   pub fn new(gen: &'a mut CodeGen, p: &'a mut Packet) -> Self {
-    InstrWriter { gen, fields: &p.fields, vars: &p.reader.vars, is_closure: false }
+    InstrWriter { gen, fields: &mut p.fields, vars: &p.reader.vars, is_closure: false }
   }
-  fn new_inner(gen: &'a mut CodeGen, fields: &'a Vec<Field>, vars: &'a Vec<VarKind>) -> Self {
+  fn new_inner(gen: &'a mut CodeGen, fields: &'a mut Vec<Field>, vars: &'a Vec<VarKind>) -> Self {
     InstrWriter { gen, fields, vars, is_closure: false }
   }
   pub fn write_instr(&mut self, instr: &Instr) {
@@ -370,7 +372,7 @@ impl<'a> InstrWriter<'a> {
           self.gen.write("f_");
           self.gen.write(&f_name);
           self.gen.write(" = ");
-          if let Some(field) = self.get_field(&f_name) {
+          if let Some(field) = self.get_field_mut(&f_name) {
             match &val.initial {
               Value::Var(1)
                 if !val.ops.is_empty()
@@ -380,24 +382,24 @@ impl<'a> InstrWriter<'a> {
                   Op::Call(_, name, args) => (name, args),
                   _ => unreachable!(),
                 };
-                // let ty = convert::reader_func_to_ty(&f_name, name);
-                // if let Some(ref reader) = field.reader_type {
-                //   assert_eq!(reader, ty);
-                // } else {
-                //   field.reader_type = Some(ty.into());
-                // }
+                let ty = convert::reader_func_to_ty(&f_name, name);
+                if let Some(ref reader) = field.reader_type {
+                  assert_eq!(reader, &ty);
+                } else {
+                  field.reader_type = Some(ty.into());
+                }
               }
               Value::Lit(lit) => {
                 let ty = match lit {
-                  Lit::Int(_) => "i32",
-                  Lit::Float(_) => "f32",
-                  Lit::String(_) => "String",
+                  Lit::Int(_) => RType::new("i32"),
+                  Lit::Float(_) => RType::new("f32"),
+                  Lit::String(_) => RType::new("String"),
                 };
-                // if let Some(ref reader) = field.reader_type {
-                //   assert_eq!(reader, ty);
-                // } else {
-                //   field.reader_type = Some(ty.into());
-                // }
+                if let Some(ref reader) = field.reader_type {
+                  assert_eq!(reader, &ty);
+                } else {
+                  field.reader_type = Some(ty.into());
+                }
               }
               // Conditionals as ops are always something like `if cond { 1 } else { 0 }`, which we
               // can convert with `v != 0`. So, in order to recognize that, we need to the
@@ -491,7 +493,7 @@ impl<'a> InstrWriter<'a> {
         self.gen.write("match ");
         self.write_expr(v);
         self.gen.write(" ");
-        let fields = &self.fields;
+        let fields = &mut self.fields;
         let vars = &self.vars;
         self.gen.write_block(|gen| {
           for (key, instr) in items {
@@ -534,7 +536,7 @@ impl<'a> InstrWriter<'a> {
     let mut g = CodeGen::new();
     g.set_indent(self.gen.indent());
     {
-      let mut inner = InstrWriter::new_inner(&mut g, &self.fields, &self.vars);
+      let mut inner = InstrWriter::new_inner(&mut g, &mut self.fields, &self.vars);
       inner.is_closure = self.is_closure;
       inner.write_val(&e.initial);
     }
@@ -550,7 +552,7 @@ impl<'a> InstrWriter<'a> {
       let mut g = CodeGen::new();
       g.set_indent(self.gen.indent());
       {
-        let mut i = InstrWriter::new_inner(&mut g, &self.fields, &self.vars);
+        let mut i = InstrWriter::new_inner(&mut g, &mut self.fields, &self.vars);
         i.is_closure = self.is_closure;
         if needs_paren {
           i.gen.write("(");
@@ -795,7 +797,7 @@ impl<'a> InstrWriter<'a> {
         self.gen.write_line("|buf| {");
         self.gen.add_indent();
         {
-          let mut inner = InstrWriter::new_inner(&mut self.gen, &self.fields, &block.vars);
+          let mut inner = InstrWriter::new_inner(&mut self.gen, &mut self.fields, &block.vars);
           inner.is_closure = true;
           for i in &block.block {
             inner.write_instr(i);
@@ -885,21 +887,21 @@ impl<'a> InstrWriter<'a> {
     }
   }
   pub fn get_field(&self, name: &str) -> Option<&Field> {
-    for f in self.fields {
+    for f in self.fields.iter() {
       if f.name == name {
         return Some(f);
       }
     }
     None
   }
-  // pub fn get_field_mut(&mut self, name: &str) -> Option<&mut Field> {
-  //   for f in self.fields {
-  //     if f.name == name {
-  //       return Some(f);
-  //     }
-  //   }
-  //   None
-  // }
+  pub fn get_field_mut(&mut self, name: &str) -> Option<&mut Field> {
+    for f in self.fields.iter_mut() {
+      if f.name == name {
+        return Some(f);
+      }
+    }
+    None
+  }
 }
 
 /// Returns `(initialized, option)`. The first bool will be false when the

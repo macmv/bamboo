@@ -268,8 +268,12 @@ pub struct RType {
 }
 
 impl RType {
-  pub fn new(name: impl Into<String>) -> RType {
+  pub fn new(name: impl Into<String>) -> Self {
     RType { name: name.into(), generics: vec![] }
+  }
+  pub fn generic(mut self, arg: impl Into<String>) -> Self {
+    self.generics.push(RType::new(arg));
+    self
   }
 }
 
@@ -312,25 +316,6 @@ impl Op {
       Op::If(..) => 0,
       Op::Call(..) => 0,
     }
-  }
-}
-
-impl Packet {
-  pub fn get_field(&self, name: &str) -> Option<&Field> {
-    for f in &self.fields {
-      if f.name == name {
-        return Some(f);
-      }
-    }
-    None
-  }
-  pub fn get_field_mut(&mut self, name: &str) -> Option<&mut Field> {
-    for f in &mut self.fields {
-      if f.name == name {
-        return Some(f);
-      }
-    }
-    None
   }
 }
 

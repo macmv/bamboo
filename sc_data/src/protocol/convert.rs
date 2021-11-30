@@ -1,4 +1,4 @@
-use super::{Expr, Instr, Value};
+use super::{Expr, Instr, RType, Value};
 
 pub fn class(field: &str, name: &str) -> String {
   match name.split('/').last().unwrap() {
@@ -183,8 +183,8 @@ pub fn member_call<'a>(class: &str, name: &'a str) -> (&'a str, Option<Vec<Expr>
   )
 }
 
-pub fn reader_func_to_ty(field: &str, name: &str) -> &'static str {
-  match name {
+pub fn reader_func_to_ty(field: &str, name: &str) -> RType {
+  RType::new(match name {
     "read_boolean" => "bool",
     "read_varint" => "i32",
     "read_u8" => "u8",
@@ -200,24 +200,24 @@ pub fn reader_func_to_ty(field: &str, name: &str) -> &'static str {
     "read_uuid" => "UUID",
     "read_str" => "String",
     "read_nbt" => "NBT",
-    "read_buf" | "read_byte_arr" => "Vec<u8>",
-    "read_i32_arr" => "Vec<i32>",
-    "read_varint_arr" => "Vec<i32>",
+    "read_buf" | "read_byte_arr" => return RType::new("Vec").generic("u8"),
+    "read_i32_arr" => return RType::new("Vec").generic("i32"),
+    "read_varint_arr" => return RType::new("Vec").generic("i32"),
     "read_bits" => "BitSet",
     "read_block_hit" => "BlockHit",
 
     "read_map" => "u8",
     "read_list" => match field {
-      "recipe_ids_to_init" => "Vec<String>",
-      "recipe_ids_to_change" => "Vec<String>",
-      _ => "Vec<u8>",
+      "recipe_ids_to_init" => return RType::new("Vec").generic("String"),
+      "recipe_ids_to_change" => return RType::new("Vec").generic("String"),
+      _ => return RType::new("Vec").generic("U"),
     },
     "read_collection" => match field {
       "pages" => "Vec<String>",
-      _ => "Vec<u8>",
+      _ => return RType::new("Vec").generic("U"),
     },
     _ => panic!("unknown reader function {}", name),
-  }
+  })
 }
 
 pub fn ty(from: &str, to: &str) -> &'static str {
