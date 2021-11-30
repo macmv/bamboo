@@ -1,6 +1,6 @@
-use super::{Expr, Instr, RType, Value};
+use super::{Expr, Instr, Op, RType, Value};
 
-pub fn class(field: &str, name: &str) -> String {
+pub fn class(name: &str) -> String {
   match name.split('/').last().unwrap() {
     "Map" => "HashMap<U, U>",
     "Set" => "HashSet<U>",
@@ -10,17 +10,7 @@ pub fn class(field: &str, name: &str) -> String {
     "Vec3" => "[U; 3]",
     "Optional" => "Option<String>",
 
-    "List" => match field {
-      "pages" => "Vec<String>",
-      "recipe_ids_to_init" => "Vec<String>",
-      "recipe_ids_to_change" => "Vec<String>",
-      "field_189557_e" => "Vec<U>",
-      "tile_entity_tags" => "Vec<NBT>",
-      _ => {
-        println!("UNKNOWN FIELD {}", field);
-        "Vec<U>"
-      }
-    },
+    "List" | "Deque" => "Vec<U>",
     "UUID" => "UUID",
     "String" => "String",
     "BitSet" => "BitSet",
@@ -40,6 +30,7 @@ pub fn class(field: &str, name: &str) -> String {
     "Text" | "Identifier" | "IChatComponent" | "ResourceLocation" | "ITextComponent" => "String",
     "Difficulty" | "EnumDifficulty" => "u32",
     "ItemStack" => "Stack",
+    "Advancement$Task" => "AdvancementTask",
     "GameStateChangeS2CPacket$Reason" => "StateChangeReason",
     "S21PacketChunkData$Extracted" => "Vec<u8>",
     "CompoundTag" | "NbtCompound" | "NBTTagCompound" => "NBT",
@@ -47,7 +38,7 @@ pub fn class(field: &str, name: &str) -> String {
     "BiomeArray" => "Vec<u32>",
     "Suggestions" => "CommandSuggestions",
     "RootCommandNode" => "CommandNode",
-    "PacketBuffer" | "PacketByteBuf" => "Vec<u8>",
+    "PacketBuffer" | "PacketByteBuf" => "tcp::Packet",
     "GameType" | "WorldSettings$GameType" => "NBT",
     "GameMode" => "GameMode",
     "DimensionType" => "NBT",
@@ -69,7 +60,7 @@ pub fn class(field: &str, name: &str) -> String {
     "BlockHitResult" => "BlockHit",
     "JigsawBlockEntity$Joint" => "JigsawBlockType",
 
-    _ => "i32",
+    v => v,
   }
   .into()
 }
@@ -105,7 +96,7 @@ pub fn static_call<'a, 'b>(class: &'a str, name: &'b str) -> (&'a str, &'b str) 
 
 pub fn static_ref(class: &str, name: &str) -> Value {
   let (c, n) = match (class, name) {
-    ("net/minecraft/network/PacketByteBuf", _) => (
+    ("tcp::Packet", _) => (
       "tcp::Packet".into(),
       match name {
         "read_var_int" => "read_varint",
@@ -138,10 +129,9 @@ pub fn member_call<'a>(class: &str, name: &'a str) -> (&'a str, Option<Vec<Expr>
   (
     match name {
       "add" => match class {
-        "java/util/List" => "push",
-        "java/util/Deque" => "push",
-        "java/util/Collection" => "insert",
-        "java/util/Set" => "insert",
+        "Vec<U>" => "push",
+        "HashMap<U, U>" => "insert",
+        "HashSet<U>" => "insert",
         _ => panic!("unknown class for add {}", class),
       },
       "put" => "insert",
@@ -177,7 +167,7 @@ pub fn member_call<'a>(class: &str, name: &'a str) -> (&'a str, Option<Vec<Expr>
       "read_block_pos" => "read_pos",
       "readable_bytes" => "remaining",
       "read_optional" => "read_option",
-      "read_map" => "read_map",
+      "read_map" | "read_collection" => "read_map",
       "read_list" => "read_list",
       "read_nbt" => "read_nbt",
       _ => {
@@ -279,4 +269,37 @@ pub fn this_call(name: &str, args: &mut Vec<Expr>) -> Instr {
     .into(),
     args.pop().unwrap(),
   )
+}
+
+pub fn overwrite(expr: &mut Expr) -> Option<Instr> {
+  for op in expr.ops.clone() {
+    match op {
+      Op::Call(class, name, mut args) => {
+        match (class.as_str(), name.as_str()) {
+          // This is for all the Registry.BLOCK.get(buf.read_varint()) calls. We don't
+          // have anything like that in the packet crate, so we just want the varint.
+          ("DefaultedRegistry", "get") | ("IdList", "get") | (_, "get_by_value") => {
+            assert_eq!(args.len(), 1, "{:?}", args);
+            *expr = args.pop().unwrap();
+          }
+          // This is for BossBar on 1.17. They changed the system to parse an enum variant, then
+          // cast that to some type, then dynamically invoke a function on that enum. Long story
+          // short, I can't parse it at all.
+          ("Function", "apply") => {
+            return Some(Instr::Switch(
+              Expr::new(Value::Var(1)).op(Op::Call(
+                "tcp::Packet".into(),
+                "read_varint".into(),
+                vec![],
+              )),
+              vec![],
+            ));
+          }
+          _ => {}
+        }
+      }
+      _ => {}
+    }
+  }
+  None
 }

@@ -50,7 +50,9 @@ impl PacketCollection {
     packets.sort_unstable_by(|(a, _), (b, _)| a.cmp(b));
     let mut packets: Vec<Vec<(_, _)>> = packets.into_iter().map(|(_, v)| v).collect();
     for versions in &mut packets {
-      for (_, p) in versions {
+      for (v, p) in versions {
+        println!("finding reader type of {} for ver {}", p.name, v);
+        dbg!(&p);
         p.find_reader_types();
       }
     }
@@ -139,7 +141,9 @@ fn simplify_instr(instr: &mut [Instr]) {
       Instr::Super => {}
       Instr::Set(name, v) => {
         simplify_name(name);
-        simplify_expr(v);
+        if let Some(new_instr) = simplify_expr_overwrite(v) {
+          *i = new_instr;
+        }
       }
       Instr::SetArr(arr, idx, val) => {
         simplify_expr(arr);
@@ -202,7 +206,13 @@ fn simplify_cond(cond: &mut Cond) {
 }
 fn simplify_expr(expr: &mut Expr) {
   simplify_val(&mut expr.initial);
-  expr.ops.iter_mut().for_each(|op| simplify_op(op))
+  expr.ops.iter_mut().for_each(|op| simplify_op(op));
+  convert::overwrite(expr);
+}
+fn simplify_expr_overwrite(expr: &mut Expr) -> Option<Instr> {
+  simplify_val(&mut expr.initial);
+  expr.ops.iter_mut().for_each(|op| simplify_op(op));
+  convert::overwrite(expr)
 }
 fn simplify_val(val: &mut Value) {
   match val {
@@ -211,6 +221,7 @@ fn simplify_val(val: &mut Value) {
     Value::Array(len) => simplify_expr(len),
     Value::CallStatic(class, name, args) => {
       simplify_name(name);
+      *class = convert::class(class);
       let (new_class, new_name) = convert::static_call(&class, &name);
       *class = new_class.into();
       *name = new_name.into();
@@ -218,6 +229,7 @@ fn simplify_val(val: &mut Value) {
     }
     Value::MethodRef(class, name) => {
       simplify_name(name);
+      *class = convert::class(class);
       *val = convert::static_ref(&class, &name);
     }
     Value::Closure(args, block) => {
@@ -251,6 +263,7 @@ fn simplify_op(op: &mut Op) {
       simplify_expr(val)
     }
     Op::Call(class, name, args) => {
+      *class = convert::class(class);
       simplify_name(name);
       let (new_name, new_args) = convert::member_call(class, name);
       *name = new_name.into();

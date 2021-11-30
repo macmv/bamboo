@@ -295,7 +295,7 @@ impl Type {
       Self::Float => "f32",
       Self::Double => "f64",
       Self::Char => "char",
-      Self::Class(name) => return convert::class(field, name),
+      Self::Class(name) => return convert::class(name),
       Self::Array(ty) => return format!("Vec<{}>", ty.to_rust(field)),
     }
     .into()

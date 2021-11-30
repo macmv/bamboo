@@ -80,11 +80,24 @@ impl ReaderTypes<'_> {
       Value::New(class, args) => RType::new("U"),
       Value::Array(_) => RType::new("Vec"),
       Value::MethodRef(class, name) => match class.as_str() {
-        "tcp::Packet" => match name.as_str() {
-          "read_ident" => RType::new("String"),
-          _ => todo!(),
+        "tcp::Packet" => self.buffer_call(name, &[]),
+        "AdvancementTask" => match name.as_str() {
+          "from_packet" => RType::new("AdvancementTask"),
+          _ => todo!("static ref {}::{}", class, name),
         },
-        _ => todo!(),
+        "AdvancementProgress" => match name.as_str() {
+          "from_packet" => RType::new("AdvancementProgress"),
+          _ => todo!("static ref {}::{}", class, name),
+        },
+        "HashMap" => match name.as_str() {
+          "new" | "with_capacity" => RType::new("HashMap").generic("U").generic("U"),
+          _ => todo!("static ref {}::{}", class, name),
+        },
+        "HashSet" => match name.as_str() {
+          "new" | "with_capacity" => RType::new("HashSet").generic("U"),
+          _ => todo!("static ref {}::{}", class, name),
+        },
+        _ => todo!("static ref {}::{}", class, name),
       },
       _ => todo!("value: {:?}", val),
     }
@@ -96,16 +109,37 @@ impl ReaderTypes<'_> {
   fn op_type(&self, initial: RType, op: &Op) -> RType {
     match op {
       Op::Call(class, name, args) => match class.as_str() {
-        "tcp::Packet" => match name.as_str() {
-          "read_u8" => RType::new("u8"),
-          "read_map" => RType::new("HashMap")
-            .generic(self.expr_type(&args[0]))
-            .generic(self.expr_type(&args[1])),
-          _ => todo!("call {}", name),
+        "tcp::Packet" => {
+          assert_eq!(initial, RType::new("tcp::Packet"));
+          self.buffer_call(name, args)
+        }
+        "HashMap<i32, U>" => match name.as_str() {
+          "get" => RType::new("U"),
+          _ => todo!("call {}::{}({:?})", class, name, args),
         },
-        _ => todo!("class {}", class),
+        _ => todo!("call {}::{}({:?})", class, name, args),
       },
       _ => todo!(),
+    }
+  }
+
+  fn buffer_call(&self, name: &str, args: &[Expr]) -> RType {
+    match name {
+      "read_varint" => RType::new("i32"),
+      "read_u8" => RType::new("u8"),
+      "read_i8" => RType::new("i8"),
+      "read_i16" => RType::new("i16"),
+      "read_i32" => RType::new("i32"),
+      "read_i64" => RType::new("i64"),
+      "read_f32" => RType::new("f32"),
+      "read_f64" => RType::new("f64"),
+      "read_pos" => RType::new("Pos"),
+      "read_str" | "read_ident" => RType::new("String"),
+      "read_uuid" => RType::new("UUID"),
+      "read_map" => {
+        RType::new("HashMap").generic(self.expr_type(&args[0])).generic(self.expr_type(&args[1]))
+      }
+      _ => todo!("call {}", name),
     }
   }
 }
