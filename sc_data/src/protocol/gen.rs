@@ -1,4 +1,4 @@
-use super::{convert, Cond, Expr, Instr, Lit, Op, Packet, PacketDef, Type, Value, VarKind};
+use super::{convert, Cond, Expr, Field, Instr, Lit, Op, Packet, PacketDef, Type, Value, VarKind};
 use crate::{gen::CodeGen, Version};
 use convert_case::{Case, Casing};
 use std::{collections::HashMap, fs, fs::File, io, io::Write, path::Path};
@@ -343,13 +343,17 @@ fn write_from_tcp(gen: &mut CodeGen, p: &Packet, ver: Version) {
 #[derive(Debug)]
 struct InstrWriter<'a> {
   gen:        &'a mut CodeGen,
-  p:          &'a mut Packet,
+  fields:     &'a Vec<Field>,
+  vars:       &'a Vec<VarKind>,
   is_closure: bool,
 }
 
 impl<'a> InstrWriter<'a> {
   pub fn new(gen: &'a mut CodeGen, p: &'a mut Packet) -> Self {
-    InstrWriter { gen, p, is_closure: false }
+    InstrWriter { gen, fields: &p.fields, vars: &p.reader.vars, is_closure: false }
+  }
+  fn new_inner(gen: &'a mut CodeGen, fields: &'a Vec<Field>, vars: &'a Vec<VarKind>) -> Self {
+    InstrWriter { gen, fields, vars, is_closure: false }
   }
   pub fn write_instr(&mut self, instr: &Instr) {
     match instr {
@@ -366,7 +370,7 @@ impl<'a> InstrWriter<'a> {
           self.gen.write("f_");
           self.gen.write(&f_name);
           self.gen.write(" = ");
-          if let Some(field) = self.p.get_field_mut(&f_name) {
+          if let Some(field) = self.get_field(&f_name) {
             match &val.initial {
               Value::Var(1)
                 if !val.ops.is_empty()
@@ -408,7 +412,7 @@ impl<'a> InstrWriter<'a> {
               _ => {}
             }
           }
-          if self.p.get_field(&f_name).map(|f| f.option).unwrap_or(false)
+          if self.get_field(&f_name).map(|f| f.option).unwrap_or(false)
             && val.initial != Value::Null
           {
             self.gen.write("Some(");
@@ -487,13 +491,14 @@ impl<'a> InstrWriter<'a> {
         self.gen.write("match ");
         self.write_expr(v);
         self.gen.write(" ");
-        let p = &mut self.p;
+        let fields = &self.fields;
+        let vars = &self.vars;
         self.gen.write_block(|gen| {
           for (key, instr) in items {
             gen.write(&key.to_string());
             gen.write(" => ");
             gen.write_block(|gen| {
-              let mut w = InstrWriter::new(gen, p);
+              let mut w = InstrWriter::new_inner(gen, fields, vars);
               w.is_closure = self.is_closure;
               for i in instr {
                 w.write_instr(i);
@@ -529,12 +534,12 @@ impl<'a> InstrWriter<'a> {
     let mut g = CodeGen::new();
     g.set_indent(self.gen.indent());
     {
-      let mut inner = InstrWriter::new(&mut g, self.p);
+      let mut inner = InstrWriter::new_inner(&mut g, &self.fields, &self.vars);
       inner.is_closure = self.is_closure;
       inner.write_val(&e.initial);
     }
     if !e.ops.is_empty()
-      && matches!(&e.initial, Value::Field(field) if self.p.get_field(&field).map(|v| v.option).unwrap_or(false))
+      && matches!(&e.initial, Value::Field(field) if self.get_field(&field).map(|v| v.option).unwrap_or(false))
     {
       g.write(".as_mut().unwrap()");
     }
@@ -545,7 +550,7 @@ impl<'a> InstrWriter<'a> {
       let mut g = CodeGen::new();
       g.set_indent(self.gen.indent());
       {
-        let mut i = InstrWriter::new(&mut g, self.p);
+        let mut i = InstrWriter::new_inner(&mut g, &self.fields, &self.vars);
         i.is_closure = self.is_closure;
         if needs_paren {
           i.gen.write("(");
@@ -790,7 +795,7 @@ impl<'a> InstrWriter<'a> {
         self.gen.write_line("|buf| {");
         self.gen.add_indent();
         {
-          let mut inner = InstrWriter::new(&mut self.gen, &mut self.p);
+          let mut inner = InstrWriter::new_inner(&mut self.gen, &self.fields, &block.vars);
           inner.is_closure = true;
           for i in &block.block {
             inner.write_instr(i);
@@ -814,8 +819,7 @@ impl<'a> InstrWriter<'a> {
   }
 
   fn write_var(&mut self, v: usize) {
-    dbg!(&self);
-    match self.p.reader.vars[v] {
+    match self.vars[v] {
       VarKind::This => self.gen.write("self"),
       VarKind::Arg => self.gen.write("buf"),
       VarKind::Local => {
@@ -880,6 +884,22 @@ impl<'a> InstrWriter<'a> {
       }
     }
   }
+  pub fn get_field(&self, name: &str) -> Option<&Field> {
+    for f in self.fields {
+      if f.name == name {
+        return Some(f);
+      }
+    }
+    None
+  }
+  // pub fn get_field_mut(&mut self, name: &str) -> Option<&mut Field> {
+  //   for f in self.fields {
+  //     if f.name == name {
+  //       return Some(f);
+  //     }
+  //   }
+  //   None
+  // }
 }
 
 /// Returns `(initialized, option)`. The first bool will be false when the
