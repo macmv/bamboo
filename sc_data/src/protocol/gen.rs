@@ -22,6 +22,7 @@ pub fn generate(def: Vec<(Version, PacketDef)>, dir: &Path) -> io::Result<()> {
 
   Ok(())
 }
+#[derive(Debug)]
 struct PacketCollection {
   packets: HashMap<String, Vec<(Version, Packet)>>,
 }
@@ -339,6 +340,7 @@ fn write_from_tcp(gen: &mut CodeGen, p: &Packet, ver: Version) {
   gen.write_line("}");
 }
 
+#[derive(Debug)]
 struct InstrWriter<'a> {
   gen:        &'a mut CodeGen,
   p:          &'a mut Packet,
@@ -812,6 +814,7 @@ impl<'a> InstrWriter<'a> {
   }
 
   fn write_var(&mut self, v: usize) {
+    dbg!(&self);
     match self.p.reader.vars[v] {
       VarKind::This => self.gen.write("self"),
       VarKind::Arg => self.gen.write("buf"),

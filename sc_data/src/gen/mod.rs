@@ -417,3 +417,10 @@ impl FuncArg<'_> {
     }
   }
 }
+
+use std::fmt;
+impl fmt::Debug for CodeGen {
+  fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    f.debug_struct("CodeGen").finish()
+  }
+}
