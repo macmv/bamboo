@@ -1,16 +1,23 @@
-use super::{Expr, Field, Instr, Lit, Packet, RType, Value, Var};
-use std::collections::HashMap;
+use super::{Expr, Field, Instr, Lit, Packet, RType, Value, VarKind};
 
 #[derive(Debug)]
 struct ReaderTypes<'a> {
-  locals: HashMap<usize, RType>,
-  fields: &'a mut [Field],
+  var_types: Vec<RType>,
+  fields:    &'a mut [Field],
 }
 
 impl Packet {
   pub fn find_reader_types(&mut self) {
-    let mut r = ReaderTypes { locals: HashMap::new(), fields: &mut self.fields };
-    r.find_instr(&self.reader);
+    let mut var_types = Vec::with_capacity(self.reader.vars.len());
+    for v in &self.reader.vars {
+      match v {
+        VarKind::This => var_types.push(RType::new("Self")),
+        VarKind::Arg => var_types.push(RType::new("tcp::Packet")),
+        VarKind::Local => var_types.push(RType::new("U")),
+      }
+    }
+    let mut r = ReaderTypes { var_types, fields: &mut self.fields };
+    r.find_instr(&self.reader.block);
   }
 }
 impl ReaderTypes<'_> {
@@ -53,11 +60,7 @@ impl ReaderTypes<'_> {
         Lit::Float(_) => RType::new("f32"),
         Lit::String(_) => RType::new("String"),
       },
-      Value::Var(v) => match v {
-        Var::This => RType::new("Self"),
-        Var::Buf => RType::new("tcp::Packet"),
-        Var::Local(idx) => self.locals[idx].clone(),
-      },
+      Value::Var(v) => self.var_type(*v),
       Value::CallStatic(class, name, _args) => match (class.as_str(), name.as_str()) {
         ("HashMap", "new") => RType::new("HashMap"),
         ("HashSet", "new") => RType::new("HashSet"),
@@ -73,5 +76,9 @@ impl ReaderTypes<'_> {
       }
       _ => todo!("value: {:?}", val),
     }
+  }
+
+  fn var_type(&self, var: usize) -> RType {
+    self.var_types[var].clone()
   }
 }

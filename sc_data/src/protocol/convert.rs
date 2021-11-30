@@ -1,4 +1,4 @@
-use super::{Expr, Instr, Lit, Op, Value, Var};
+use super::{Expr, Instr, Value};
 
 pub fn class(field: &str, name: &str) -> String {
   match name.split('/').last().unwrap() {

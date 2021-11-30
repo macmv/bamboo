@@ -1,4 +1,4 @@
-use super::{convert, Cond, Expr, Instr, Lit, Op, Packet, PacketDef, Type, Value, Var};
+use super::{convert, Cond, Expr, Instr, Lit, Op, Packet, PacketDef, Type, Value, VarKind};
 use crate::{gen::CodeGen, Version};
 use convert_case::{Case, Casing};
 use std::{collections::HashMap, fs, fs::File, io, io::Write, path::Path};
@@ -117,10 +117,10 @@ impl PacketCollection {
 }
 
 fn sanitize(p: &mut Packet) {
-  simplify_instr(&mut p.reader);
+  simplify_instr(&mut p.reader.block);
   for f in &mut p.fields {
     simplify_name(&mut f.name);
-    let (initialized, option) = check_option(&p.reader, &f.name);
+    let (initialized, option) = check_option(&p.reader.block, &f.name);
     if option && matches!(f.ty, Type::Array(_)) {
       f.option = false;
       f.initialized = false;
@@ -145,7 +145,7 @@ fn simplify_instr(instr: &mut [Instr]) {
       }
       Instr::Let(_, val) => simplify_expr(val),
       Instr::Expr(v) => match v.initial {
-        Value::Var(Var::This) => match v.ops.first_mut().unwrap() {
+        Value::Var(0) => match v.ops.first_mut().unwrap() {
           Op::Call(_, name, args) => {
             let instr = convert::this_call(name, args);
             let mut arr = vec![instr];
@@ -217,11 +217,11 @@ fn simplify_val(val: &mut Value) {
       simplify_name(name);
       *val = convert::static_ref(&class, &name);
     }
-    Value::Closure(args, instr) => {
+    Value::Closure(args, block) => {
       for a in args.iter_mut() {
         simplify_expr(a);
       }
-      simplify_instr(instr);
+      simplify_instr(&mut block.block);
     }
     Value::New(_, args) => {
       args.iter_mut().for_each(|a| simplify_expr(a));
@@ -307,7 +307,7 @@ fn write_from_tcp(gen: &mut CodeGen, p: &Packet, ver: Version) {
   }
   let mut p2 = p.clone();
   let mut writer = InstrWriter::new(gen, &mut p2);
-  for i in &p.reader {
+  for i in &p.reader.block {
     writer.write_instr(i);
   }
   let p = p2;
@@ -366,7 +366,7 @@ impl<'a> InstrWriter<'a> {
           self.gen.write(" = ");
           if let Some(field) = self.p.get_field_mut(&f_name) {
             match &val.initial {
-              Value::Var(Var::Buf)
+              Value::Var(1)
                 if !val.ops.is_empty()
                   && val.ops.first().map(|op| matches!(op, Op::Call(..))).unwrap_or(false) =>
               {
@@ -467,13 +467,8 @@ impl<'a> InstrWriter<'a> {
         self.gen.write_line("}");
       }
       Instr::For(v, range, block) => {
-        self.gen.write("for ");
-        if let Var::Local(v) = v {
-          self.gen.write("v_");
-          self.gen.write(&v.to_string());
-        } else {
-          panic!("cannot iterate with self or buf as the value");
-        }
+        self.gen.write("for v_");
+        self.gen.write(&v.to_string());
         self.gen.write(" in ");
         self.write_expr(&range.min);
         self.gen.write("..");
@@ -739,26 +734,7 @@ impl<'a> InstrWriter<'a> {
           self.gen.write("\"");
         }
       },
-      Value::Var(v) => match v {
-        Var::This => {
-          if self.is_closure {
-            self.gen.write("buf")
-          } else {
-            self.gen.write("self")
-          }
-        }
-        Var::Buf => {
-          if self.is_closure {
-            self.gen.write("v_1")
-          } else {
-            self.gen.write("p")
-          }
-        }
-        Var::Local(v) => {
-          self.gen.write("v_");
-          self.gen.write(&v.to_string())
-        }
-      },
+      Value::Var(v) => self.write_var(*v),
       Value::Static(class, name) => {
         for s in class.split('/').last().unwrap().split('$') {
           self.gen.write(s);
@@ -801,7 +777,7 @@ impl<'a> InstrWriter<'a> {
           self.gen.write(&name);
         }
       }
-      Value::Closure(_args, instr) => {
+      Value::Closure(_args, block) => {
         // self.gen.write("|");
         // for (i, a) in args.iter().enumerate() {
         //   self.write_expr(a);
@@ -814,7 +790,7 @@ impl<'a> InstrWriter<'a> {
         {
           let mut inner = InstrWriter::new(&mut self.gen, &mut self.p);
           inner.is_closure = true;
-          for i in instr {
+          for i in &block.block {
             inner.write_instr(i);
           }
         }
@@ -831,6 +807,17 @@ impl<'a> InstrWriter<'a> {
           }
         }
         self.gen.write(")");
+      }
+    }
+  }
+
+  fn write_var(&mut self, v: usize) {
+    match self.p.reader.vars[v] {
+      VarKind::This => self.gen.write("self"),
+      VarKind::Arg => self.gen.write("buf"),
+      VarKind::Local => {
+        self.gen.write("v_");
+        self.gen.write(&v.to_string());
       }
     }
   }

@@ -50,15 +50,32 @@ pub struct Packet {
   pub fields:  Vec<Field>,
   /// A list of instructs to read this packet. These are parsed from java
   /// bytecode, and translated into a more rust-like representation.
-  pub reader:  Vec<Instr>,
+  pub reader:  VarBlock,
   /// The same format as the reader, but these instructions should be used for
   /// writing. There are a few differing instructions (like read/writer field),
   /// but the same `Instr` type should be used for both the reader and writer.
-  pub writer:  Vec<Instr>,
+  pub writer:  VarBlock,
 }
 
 fn object_str() -> String {
   "java/lang/Object".into()
+}
+
+/// The body of a function or closure. This includes a table of all variables to
+/// their kind. This is what maps the variable ids to either `this`, an
+/// argument, or a local variable.
+#[derive(Debug, Clone, PartialEq, Deserialize)]
+pub struct VarBlock {
+  vars:  Vec<VarKind>,
+  block: Vec<Instr>,
+}
+
+/// The kind of variable this is.
+#[derive(Debug, Clone, PartialEq, Deserialize)]
+pub enum VarKind {
+  This,
+  Arg,
+  Local,
 }
 
 #[derive(Debug, Clone, PartialEq, Deserialize)]
@@ -89,7 +106,7 @@ pub enum Value {
   /// A literal value.
   Lit(Lit),
   /// A local variable.
-  Var(Var),
+  Var(usize),
   /// A packet field. Similar to a local variable, but may require `self.` or
   /// `this.` depending on the language.
   Field(String),
@@ -104,7 +121,7 @@ pub enum Value {
   MethodRef(String, String),
   /// A closure call. The first list is a list of arguments for the closure, and
   /// the second list is the instructions inside the closure.
-  Closure(Vec<Expr>, Vec<Instr>),
+  Closure(Vec<Expr>, VarBlock),
   /// This is what happens when we create a class in java. For all intensive
   /// purposes, it is a collection of data, that contains the given constructor
   /// arguments. The arguments must be executed in order.
@@ -113,17 +130,6 @@ pub enum Value {
   /// usually descriptive enough, so this doesn't include any package
   /// information.
   New(String, Vec<Expr>),
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Deserialize)]
-pub enum Var {
-  /// The current packet.
-  This,
-  /// The buffer we are reading from.
-  Buf,
-  /// Another local variable. It should have been previously declared with a
-  /// `Let` instruction.
-  Local(usize),
 }
 
 #[derive(Debug, Clone, PartialEq, Deserialize)]
@@ -162,7 +168,7 @@ pub enum Instr {
   /// variable, which is the value that should be used when iterating (for
   /// example, if var was Var(3), then this might be converted into `for var3 in
   /// ...`).
-  For(Var, Range, Vec<Instr>),
+  For(usize, Range, Vec<Instr>),
   /// A switch statement. The list is a list of keys to blocks that should be
   /// executed. We require that every java switch block has a `break` call at
   /// the end of it.
