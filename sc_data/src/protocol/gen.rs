@@ -52,7 +52,7 @@ impl PacketCollection {
     for versions in &mut packets {
       for (v, p) in versions {
         println!("finding reader type of {} for ver {}", p.name, v);
-        dbg!(&p);
+        // dbg!(&p);
         p.find_reader_types();
       }
     }
@@ -293,10 +293,10 @@ fn write_packet(gen: &mut CodeGen, name: &str, p: &Packet) {
     gen.write(": ");
     if f.option {
       gen.write("Option<");
-      gen.write(&f.ty.to_rust(&f.name));
+      gen.write(&f.ty.to_rust().to_string());
       gen.write(">");
     } else {
-      gen.write(&f.ty.to_rust(&f.name));
+      gen.write(&f.ty.to_rust().to_string());
     }
     gen.write_line(",");
   }
@@ -338,7 +338,7 @@ fn write_from_tcp(gen: &mut CodeGen, p: &Packet, ver: Version) {
     gen.write(": f_");
     gen.write(&f.name);
     if let Some(read) = f.reader_type.as_ref() {
-      let rs = f.ty.to_rust(&f.name);
+      let rs = f.ty.to_rust();
       // if &rs != read {
       //   if f.option {
       //     gen.write(".map(|v| v");

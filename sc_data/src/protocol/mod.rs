@@ -1,6 +1,6 @@
 use crate::dl;
 use serde::Deserialize;
-use std::{io, path::Path};
+use std::{fmt, io, path::Path};
 
 pub mod convert;
 mod gen;
@@ -277,6 +277,25 @@ impl RType {
   }
 }
 
+impl fmt::Display for RType {
+  fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    write!(f, "{}", self.name)?;
+    if !self.generics.is_empty() {
+      write!(f, "<")?;
+    }
+    for (i, g) in self.generics.iter().enumerate() {
+      write!(f, "{}", g)?;
+      if i != self.generics.len() - 1 {
+        write!(f, ", ")?;
+      }
+    }
+    if !self.generics.is_empty() {
+      write!(f, ">")?;
+    }
+    Ok(())
+  }
+}
+
 impl From<&str> for RType {
   fn from(s: &str) -> RType {
     RType::new(s)
@@ -284,8 +303,8 @@ impl From<&str> for RType {
 }
 
 impl Type {
-  pub fn to_rust(&self, field: &str) -> String {
-    match self {
+  pub fn to_rust(&self) -> RType {
+    RType::new(match self {
       Self::Void => unreachable!(),
       Self::Bool => "bool",
       Self::Byte => "u8",
@@ -295,10 +314,9 @@ impl Type {
       Self::Float => "f32",
       Self::Double => "f64",
       Self::Char => "char",
-      Self::Class(name) => return convert::class(name),
-      Self::Array(ty) => return format!("Vec<{}>", ty.to_rust(field)),
-    }
-    .into()
+      Self::Class(name) => return RType::new(convert::class(name)),
+      Self::Array(ty) => return RType::new("Vec").generic(ty.to_rust()),
+    })
   }
 }
 

@@ -278,7 +278,9 @@ pub fn overwrite(expr: &mut Expr) -> Option<Instr> {
         match (class.as_str(), name.as_str()) {
           // This is for all the Registry.BLOCK.get(buf.read_varint()) calls. We don't
           // have anything like that in the packet crate, so we just want the varint.
-          ("DefaultedRegistry", "get") | ("IdList", "get") | (_, "get_by_value") => {
+          ("DefaultedRegistry" | "Registry" | "IdList", "get")
+          | (_, "get_by_value")
+          | (_, "get_object_by_id") => {
             assert_eq!(args.len(), 1, "{:?}", args);
             *expr = args.pop().unwrap();
           }

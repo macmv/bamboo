@@ -8,19 +8,22 @@ struct ReaderTypes<'a> {
 
 impl Packet {
   pub fn find_reader_types(&mut self) {
-    let mut var_types = Vec::with_capacity(self.reader.vars.len());
-    for v in &self.reader.vars {
+    let mut r = ReaderTypes::new(&self.reader.vars, &mut self.fields);
+    r.find_instr(&self.reader.block);
+  }
+}
+impl<'a> ReaderTypes<'a> {
+  pub fn new(vars: &[VarKind], fields: &'a mut [Field]) -> Self {
+    let mut var_types = Vec::with_capacity(vars.len());
+    for v in vars {
       match v {
         VarKind::This => var_types.push(RType::new("Self")),
         VarKind::Arg => var_types.push(RType::new("tcp::Packet")),
         VarKind::Local => var_types.push(RType::new("U")),
       }
     }
-    let mut r = ReaderTypes { var_types, fields: &mut self.fields };
-    r.find_instr(&self.reader.block);
+    ReaderTypes { var_types, fields }
   }
-}
-impl ReaderTypes<'_> {
   fn get_field(&self, name: &str) -> Option<&Field> {
     self.fields.iter().find(|field| field.name == name)
   }
@@ -47,7 +50,7 @@ impl ReaderTypes<'_> {
     }
   }
 
-  fn expr_type(&self, expr: &Expr) -> RType {
+  fn expr_type(&mut self, expr: &Expr) -> RType {
     let mut ty = self.val_type(&expr.initial);
     for op in &expr.ops {
       ty = self.op_type(ty, op);
@@ -55,7 +58,7 @@ impl ReaderTypes<'_> {
     ty
   }
 
-  fn val_type(&self, val: &Value) -> RType {
+  fn val_type(&mut self, val: &Value) -> RType {
     match val {
       Value::Lit(v) => match v {
         Lit::Int(_) => RType::new("i32"),
@@ -93,12 +96,27 @@ impl ReaderTypes<'_> {
           "new" | "with_capacity" => RType::new("HashMap").generic("U").generic("U"),
           _ => todo!("static ref {}::{}", class, name),
         },
+        "Object2IntOpenHashMap" => match name.as_str() {
+          "<init>" => RType::new("HashMap").generic("U").generic("i32"),
+          _ => todo!("static ref {}::{}", class, name),
+        },
         "HashSet" => match name.as_str() {
           "new" | "with_capacity" => RType::new("HashSet").generic("U"),
           _ => todo!("static ref {}::{}", class, name),
         },
+        "PlayerListS2CPacket$Action" => RType::new("PlayerListAction"),
+        "SynchronizeRecipesS2CPacket" => RType::new("Recipe"),
+        "TagGroup$Serialized" => RType::new("TabGroup"),
         _ => todo!("static ref {}::{}", class, name),
       },
+      Value::Closure(_, block) => {
+        let mut r = ReaderTypes::new(&block.vars, self.fields);
+        r.find_instr(&block.block);
+        r.expr_type(match block.block.last().unwrap() {
+          Instr::Return(v) => v,
+          _ => unreachable!(),
+        })
+      }
       _ => todo!("value: {:?}", val),
     }
   }
@@ -106,7 +124,7 @@ impl ReaderTypes<'_> {
     self.var_types[var].clone()
   }
 
-  fn op_type(&self, initial: RType, op: &Op) -> RType {
+  fn op_type(&mut self, initial: RType, op: &Op) -> RType {
     match op {
       Op::Call(class, name, args) => match class.as_str() {
         "tcp::Packet" => {
@@ -117,13 +135,22 @@ impl ReaderTypes<'_> {
           "get" => RType::new("U"),
           _ => todo!("call {}::{}({:?})", class, name, args),
         },
+        "Supplier" => initial,
+        "ParticleS2CPacket" => RType::new("ParticleData"),
         _ => todo!("call {}::{}({:?})", class, name, args),
       },
-      _ => todo!(),
+      Op::Cast(ty) => ty.to_rust(),
+      Op::If(_cond, new) => {
+        let new_ty = self.expr_type(new);
+        assert_eq!(initial, new_ty);
+        initial
+      }
+      Op::BitAnd(_) => initial,
+      v => todo!("op {:?}", v),
     }
   }
 
-  fn buffer_call(&self, name: &str, args: &[Expr]) -> RType {
+  fn buffer_call(&mut self, name: &str, args: &[Expr]) -> RType {
     match name {
       "read_varint" => RType::new("i32"),
       "read_u8" => RType::new("u8"),
@@ -136,9 +163,16 @@ impl ReaderTypes<'_> {
       "read_pos" => RType::new("Pos"),
       "read_str" | "read_ident" => RType::new("String"),
       "read_uuid" => RType::new("UUID"),
+      "read_byte_arr" => RType::new("Vec").generic("u8"),
+      "read_i32_arr" => RType::new("Vec").generic("i32"),
+      "read_varint_arr" => RType::new("Vec").generic("i32"),
+      "read_nbt" => RType::new("NBT"),
+      "read_item" => RType::new("Item"),
+      "read_bits" => RType::new("Vec").generic("i64"),
       "read_map" => {
         RType::new("HashMap").generic(self.expr_type(&args[0])).generic(self.expr_type(&args[1]))
       }
+      "read_list" => RType::new("Vec").generic(self.expr_type(&args[0])),
       _ => todo!("call {}", name),
     }
   }
