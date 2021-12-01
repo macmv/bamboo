@@ -65,7 +65,7 @@ impl<'a> ReaderTypes<'a> {
         Lit::Float(_) => RType::new("f32"),
         Lit::String(_) => RType::new("String"),
       },
-      Value::Null => RType::new("Option"),
+      Value::Null => RType::new("Option").generic("U"),
       Value::Var(v) => self.var_type(*v),
       Value::CallStatic(class, name, _args) => match (class.as_str(), name.as_str()) {
         ("HashMap", "new") => RType::new("HashMap"),

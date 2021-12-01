@@ -261,7 +261,7 @@ pub enum Op {
 }
 
 /// A rust type.
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Clone, PartialEq)]
 pub struct RType {
   name:     String,
   generics: Vec<RType>,
@@ -277,6 +277,16 @@ impl RType {
   }
 }
 
+impl fmt::Debug for RType {
+  fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    let mut d = f.debug_tuple("RType");
+    d.field(&self.name);
+    if !self.generics.is_empty() {
+      d.field(&self.generics);
+    }
+    d.finish()
+  }
+}
 impl fmt::Display for RType {
   fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
     write!(f, "{}", self.name)?;
