@@ -63,17 +63,23 @@ fn simplify_instr(instr: &mut [Instr]) -> Option<usize> {
           return Some(idx + 1);
         }
       },
-      Instr::If(cond, when_true, when_false) => {
-        simplify_cond(cond);
-        if simplify_instr(when_true).is_some() {
+      Instr::If(cond, when_true, when_false) => match simplify_cond_overwrite(cond) {
+        (false, Some(new_instr)) => *i = new_instr,
+        (false, None) => {
+          if simplify_instr(when_true).is_some() {
+            *i = set_unknown();
+            return Some(idx + 1);
+          }
+          if simplify_instr(when_false).is_some() {
+            *i = set_unknown();
+            return Some(idx + 1);
+          }
+        }
+        (true, _) => {
           *i = set_unknown();
           return Some(idx + 1);
         }
-        if simplify_instr(when_false).is_some() {
-          *i = set_unknown();
-          return Some(idx + 1);
-        }
-      }
+      },
       Instr::For(_, range, block) => {
         simplify_expr(&mut range.min);
         simplify_expr(&mut range.max);
@@ -101,6 +107,9 @@ fn set_unknown() -> Instr {
   )
 }
 fn simplify_cond(cond: &mut Cond) {
+  simplify_cond_overwrite(cond);
+}
+fn simplify_cond_overwrite(cond: &mut Cond) -> (bool, Option<Instr>) {
   match cond {
     Cond::Eq(lhs, rhs)
     | Cond::Neq(lhs, rhs)
@@ -108,12 +117,32 @@ fn simplify_cond(cond: &mut Cond) {
     | Cond::Greater(lhs, rhs)
     | Cond::Lte(lhs, rhs)
     | Cond::Gte(lhs, rhs) => {
-      simplify_expr(lhs);
-      simplify_expr(rhs);
+      match simplify_expr_overwrite(lhs) {
+        v @ (false, Some(_)) | v @ (true, _) => {
+          simplify_expr(rhs);
+          return v;
+        }
+        _ => {}
+      }
+      match simplify_expr_overwrite(rhs) {
+        v @ (false, Some(_)) | v @ (true, _) => return v,
+        _ => {}
+      }
+      (false, None)
     }
     Cond::Or(lhs, rhs) => {
-      simplify_cond(lhs);
-      simplify_cond(rhs);
+      match simplify_cond_overwrite(lhs) {
+        v @ (false, Some(_)) | v @ (true, _) => {
+          simplify_cond(rhs);
+          return v;
+        }
+        _ => {}
+      }
+      match simplify_cond_overwrite(rhs) {
+        v @ (false, Some(_)) | v @ (true, _) => return v,
+        _ => {}
+      }
+      (false, None)
     }
   }
 }
@@ -123,7 +152,11 @@ fn simplify_expr(expr: &mut Expr) {
 fn simplify_expr_overwrite(expr: &mut Expr) -> (bool, Option<Instr>) {
   fn simplify(expr: &mut Expr) -> (bool, Option<Instr>) {
     simplify_val(&mut expr.initial);
-    expr.ops.iter_mut().for_each(|op| simplify_op(op));
+    for op in expr.ops.iter_mut() {
+      if simplify_op(op) {
+        return (true, None);
+      }
+    }
     (false, convert::overwrite(expr))
   }
   let res = match expr.initial {
@@ -150,9 +183,11 @@ fn simplify_expr_overwrite(expr: &mut Expr) -> (bool, Option<Instr>) {
     Value::Var(1) => match expr.ops.first() {
       Some(Op::Call(_class, name, _args)) => match dbg!(&name).as_str() {
         "readCollection" | "readList" | "readMap" => return (true, None),
-        _ => simplify(expr),
+        // _ => simplify(expr),
+        _ => return (true, None),
       },
-      _ => simplify(expr),
+      // _ => simplify(expr),
+      _ => return (true, None),
     },
     _ => simplify(expr),
   };
@@ -194,7 +229,7 @@ fn simplify_val(val: &mut Value) {
     Value::Null | Value::Lit(_) | Value::Var(_) => {}
   }
 }
-fn simplify_op(op: &mut Op) {
+fn simplify_op(op: &mut Op) -> bool {
   match op {
     Op::BitAnd(rhs) => simplify_expr(rhs),
     Op::Shr(rhs) => simplify_expr(rhs),
@@ -209,8 +244,14 @@ fn simplify_op(op: &mut Op) {
     Op::Field(_) => {}
 
     Op::If(cond, val) => {
-      simplify_cond(cond);
-      simplify_expr(val)
+      match simplify_cond_overwrite(cond) {
+        (false, _) => {}
+        (true, _) => return true,
+      }
+      match simplify_expr_overwrite(val) {
+        (false, _) => {}
+        (true, _) => return true,
+      }
     }
     Op::Call(class, name, args) => {
       *class = convert::class(class);
@@ -225,6 +266,7 @@ fn simplify_op(op: &mut Op) {
     }
     Op::Cast(_) => {}
   }
+  false
 }
 fn simplify_name(name: &mut String) {
   if name == "type" {

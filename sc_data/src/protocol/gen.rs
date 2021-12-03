@@ -51,8 +51,8 @@ impl PacketCollection {
     let mut packets: Vec<Vec<(_, _)>> = packets.into_iter().map(|(_, v)| v).collect();
     for versions in &mut packets {
       for (v, p) in versions {
-        eprintln!("finding reader type of {} for ver {}", p.name, v);
-        dbg!(&p);
+        // eprintln!("finding reader type of {} for ver {}", p.name, v);
+        // dbg!(&p);
         p.find_reader_types();
       }
     }
@@ -146,6 +146,7 @@ fn write_packet(gen: &mut CodeGen, name: &str, p: &Packet) {
 }
 
 fn write_from_tcp(gen: &mut CodeGen, p: &Packet, ver: Version) {
+  dbg!(&p);
   for f in &p.fields {
     gen.write("let");
     if !f.initialized {
