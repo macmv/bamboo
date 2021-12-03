@@ -196,7 +196,7 @@ pub fn reader_func_to_ty(field: &str, name: &str) -> RType {
     "read_uuid" => "UUID",
     "read_str" => "String",
     "read_nbt" => "NBT",
-    "read_buf" | "read_byte_arr" => return RType::new("Vec").generic("u8"),
+    "read_buf" | "read_byte_arr" | "read_all" => return RType::new("Vec").generic("u8"),
     "read_i32_arr" => return RType::new("Vec").generic("i32"),
     "read_varint_arr" => return RType::new("Vec").generic("i32"),
     "read_bits" => "BitSet",

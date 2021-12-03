@@ -1,10 +1,17 @@
-use super::{convert, Cond, Expr, Instr, Op, Packet, Type, Value};
+use super::{convert, Cond, Expr, Field, Instr, Op, Packet, Type, Value};
 use convert_case::{Case, Casing};
 
 pub fn pass(p: &mut Packet) {
   let len = simplify_instr(&mut p.reader.block);
   if len != p.reader.block.len() {
     p.reader.block = p.reader.block[..len].to_vec();
+    p.fields.push(Field {
+      name:        "unknown".into(),
+      ty:          Type::Array(Box::new(Type::Byte)),
+      reader_type: None,
+      option:      false,
+      initialized: false,
+    });
   }
   for f in &mut p.fields {
     simplify_name(&mut f.name);
