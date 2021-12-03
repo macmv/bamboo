@@ -43,7 +43,16 @@ fn simplify_instr(instr: &mut [Instr]) -> Option<usize> {
         simplify_val(idx);
         simplify_expr(val);
       }
-      Instr::Let(_, val) => simplify_expr(val),
+      Instr::Let(_, val) => {
+        simplify_expr(val);
+        match val.initial {
+          Value::Static(_, _) => {
+            *i = set_unknown();
+            return Some(idx + 1);
+          }
+          _ => {}
+        }
+      }
       Instr::Expr(v) => match v.initial {
         Value::Var(0) => match v.ops.first_mut().unwrap() {
           Op::Call(_, name, args) => {
