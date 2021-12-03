@@ -221,7 +221,7 @@ impl ProtocolVersion {
 
 impl fmt::Display for ProtocolVersion {
   fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-    if self == Self::Invalid {
+    if *self == Self::Invalid {
       write!(f, "Invalid version")
     } else if self.min().unwrap() == 0 {
       write!(f, "1.{}", self.maj().unwrap())
