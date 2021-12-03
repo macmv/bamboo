@@ -40,7 +40,7 @@ pub enum Type {
   Array(Box<Type>),
 }
 
-#[derive(Debug, Clone, PartialEq, Deserialize)]
+#[derive(Debug, Clone, Deserialize)]
 pub struct Packet {
   /// The class this packet extends from.
   #[serde(default = "object_str")]
@@ -60,6 +60,12 @@ pub struct Packet {
   /// The index in the data array that comes from sugarcane-data.
   #[serde(skip_deserializing)]
   pub tcp_id: i32,
+}
+
+impl PartialEq for Packet {
+  fn eq(&self, other: &Self) -> bool {
+    self.name == other.name && self.reader == other.reader
+  }
 }
 
 fn object_str() -> String {
@@ -146,7 +152,7 @@ pub enum Lit {
 
 /// A rust-like instruction. This can map one-to-one with a subset of Rust
 /// statements.
-#[derive(Debug, Clone, PartialEq, Deserialize)]
+#[derive(Debug, Clone, Deserialize)]
 pub enum Instr {
   /// This is a very simple call. If this is in the list of instructions, the
   /// entire reader from the superclass of this packet should be inserted here.
@@ -192,6 +198,26 @@ pub enum Instr {
 
   /// Returns the given value.
   Return(Expr),
+}
+
+impl PartialEq for Instr {
+  fn eq(&self, other: &Self) -> bool {
+    match (self, other) {
+      (Self::Super, Self::Super) => true,
+      // Field names change a bunch. If the reader ops are the same, it doesn't matter which field
+      // they are going to.
+      (Self::Set(_, a), Self::Set(_, b)) => a == b,
+      (Self::SetArr(a, a1, a2), Self::SetArr(b, b1, b2)) => a == b && a1 == b1 && a2 == b2,
+      (Self::Let(_, a), Self::Let(_, b)) => a == b,
+      (Self::If(a, a1, a2), Self::If(b, b1, b2)) => a == b && a1 == b1 && a2 == b2,
+      (Self::For(_, a, a1), Self::For(_, b, b1)) => a == b && a1 == b1,
+      (Self::Switch(a, a1), Self::Switch(b, b1)) => a == b && a1 == b1,
+      (Self::CheckStrLen(a, a1), Self::CheckStrLen(b, b1)) => a == b && a1 == b1,
+      (Self::Expr(a), Self::Expr(b)) => a == b,
+      (Self::Return(a), Self::Return(b)) => a == b,
+      _ => false,
+    }
+  }
 }
 
 /// A range, used in a for loop.
