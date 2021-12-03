@@ -163,7 +163,7 @@ impl<'a> ReaderTypes<'a> {
       "read_pos" => RType::new("Pos"),
       "read_str" | "read_ident" => RType::new("String"),
       "read_uuid" => RType::new("UUID"),
-      "read_byte_arr" => RType::new("Vec").generic("u8"),
+      "read_byte_arr" | "read_all" => RType::new("Vec").generic("u8"),
       "read_i32_arr" => RType::new("Vec").generic("i32"),
       "read_varint_arr" => RType::new("Vec").generic("i32"),
       "read_nbt" => RType::new("NBT"),

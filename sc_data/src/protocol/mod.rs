@@ -4,6 +4,7 @@ use std::{fmt, io, path::Path};
 
 pub mod convert;
 mod gen;
+mod simplify;
 mod type_analysis;
 
 pub fn generate(out_dir: &Path) -> io::Result<()> {
