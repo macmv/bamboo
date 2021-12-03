@@ -28,21 +28,27 @@ impl fmt::Display for BufferError {
 
 #[derive(Debug)]
 pub enum BufferErrorKind {
+  VarInt,
   IO(io::Error),
   FromUtf8Error(FromUtf8Error),
   StringTooLong(u64, u64),
-  VarInt(),
+  ArrayTooLong(u64, u64),
+  NegativeLen(i32),
 }
 
 impl fmt::Display for BufferErrorKind {
   fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
     match self {
+      Self::VarInt => write!(f, "varint is too long"),
       Self::IO(e) => write!(f, "{}", e),
       Self::FromUtf8Error(e) => write!(f, "{}", e),
       Self::StringTooLong(len, max) => {
-        write!(f, "string is {} characters, longer than max {}", len, max)
+        write!(f, "string is `{}` characters, longer than max `{}`", len, max)
       }
-      Self::VarInt() => write!(f, "varint is too long"),
+      Self::ArrayTooLong(len, max) => {
+        write!(f, "array is `{}` elements, longer than max `{}`", len, max)
+      }
+      Self::NegativeLen(len) => write!(f, "len `{}` is negative", len),
     }
   }
 }
@@ -248,6 +254,13 @@ impl Buffer {
       return "".into();
     }
     let len = self.read_varint();
+    let len = match len.try_into() {
+      Ok(v) => v,
+      Err(_) => {
+        self.set_err(BufferErrorKind::NegativeLen(len), true);
+        return "".into();
+      }
+    };
     if len > max_len * 4 {
       self.set_err(BufferErrorKind::StringTooLong(len, max_len), true);
       return "".into();
@@ -255,9 +268,9 @@ impl Buffer {
     let vec = self.read(len as usize);
     match String::from_utf8(vec) {
       Ok(v) => {
-        if v.len() > max_len {
+        if v.len() > max_len as usize {
           self.set_err(BufferErrorKind::StringTooLong(len, max_len), true);
-          "".into();
+          "".into()
         } else {
           v
         }
@@ -285,7 +298,7 @@ impl Buffer {
       let read = self.read_u8();
       if i == 4 && read & 0b10000000 != 0 {
         // TODO: Custom error here
-        self.set_err(BufferErrorKind::VarInt(), true);
+        self.set_err(BufferErrorKind::VarInt, true);
         return 0;
       }
 
