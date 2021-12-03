@@ -673,7 +673,7 @@ impl<'a> InstrWriter<'a> {
   fn write_var(&mut self, v: usize) {
     match self.vars[v] {
       VarKind::This => self.gen.write("self"),
-      VarKind::Arg => self.gen.write("buf"),
+      VarKind::Arg => self.gen.write("p"),
       VarKind::Local => {
         self.gen.write("v_");
         self.gen.write(&v.to_string());
