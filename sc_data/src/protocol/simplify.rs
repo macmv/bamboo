@@ -46,7 +46,7 @@ fn simplify_instr(instr: &mut [Instr]) -> Option<usize> {
       Instr::Let(_, val) => {
         simplify_expr(val);
         match val.initial {
-          Value::Static(_, _) => {
+          Value::Static(_, _) | Value::New(_, _) => {
             *i = set_unknown();
             return Some(idx + 1);
           }
