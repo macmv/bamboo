@@ -3,8 +3,8 @@ use convert_case::{Case, Casing};
 
 pub fn pass(p: &mut Packet) {
   let len = simplify_instr(&mut p.reader.block);
-  if len != p.reader.block.len() {
-    p.reader.block = p.reader.block[..len].to_vec();
+  if let Some(l) = len {
+    p.reader.block = p.reader.block[..l].to_vec();
     p.fields.push(Field {
       name:        "unknown".into(),
       ty:          Type::Array(Box::new(Type::Byte)),
@@ -25,7 +25,7 @@ pub fn pass(p: &mut Packet) {
     }
   }
 }
-fn simplify_instr(instr: &mut [Instr]) -> usize {
+fn simplify_instr(instr: &mut [Instr]) -> Option<usize> {
   for (idx, i) in instr.iter_mut().enumerate() {
     match i {
       Instr::Super => {}
@@ -38,7 +38,7 @@ fn simplify_instr(instr: &mut [Instr]) -> usize {
             "unknown".into(),
             Expr::new(Value::Var(1)).op(Op::Call("tcp::Packet".into(), "read_all".into(), vec![])),
           );
-          return idx + 1;
+          return Some(idx + 1);
         }
       }
       Instr::SetArr(arr, idx, val) => {
@@ -52,8 +52,11 @@ fn simplify_instr(instr: &mut [Instr]) -> usize {
           Op::Call(_, name, args) => {
             let instr = convert::this_call(name, args);
             let mut arr = vec![instr];
-            simplify_instr(&mut arr);
+            let res = simplify_instr(&mut arr);
             *i = arr.pop().unwrap();
+            if res.is_some() {
+              return Some(idx + 1);
+            }
           }
           v => panic!("unknown op on self: {:?}", v),
         },
@@ -82,7 +85,7 @@ fn simplify_instr(instr: &mut [Instr]) -> usize {
       Instr::Return(v) => simplify_expr(v),
     }
   }
-  instr.len()
+  None
 }
 fn simplify_cond(cond: &mut Cond) {
   match cond {
