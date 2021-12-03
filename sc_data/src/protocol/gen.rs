@@ -57,7 +57,11 @@ impl PacketCollection {
       }
     }
 
-    gen.write_line("use crate::{Pos, version::ProtocolVersion, util::UUID};");
+    gen.write_line("use crate::{");
+    gen.write_line("  ChunkPos, Pos,");
+    gen.write_line("  version::ProtocolVersion,");
+    gen.write_line("  util::{Item, nbt::NBT, UUID},");
+    gen.write_line("};");
     gen.write_line("use std::collections::{HashMap, HashSet};");
     gen.write_line("");
     gen.write_line("pub struct U;");
