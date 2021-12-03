@@ -34,10 +34,7 @@ fn simplify_instr(instr: &mut [Instr]) -> Option<usize> {
         if let Some(new_instr) = simplify_expr_overwrite(v) {
           *i = new_instr;
         } else {
-          *i = Instr::Set(
-            "unknown".into(),
-            Expr::new(Value::Var(1)).op(Op::Call("tcp::Packet".into(), "read_all".into(), vec![])),
-          );
+          *i = set_unknown();
           return Some(idx + 1);
         }
       }
@@ -64,8 +61,14 @@ fn simplify_instr(instr: &mut [Instr]) -> Option<usize> {
       },
       Instr::If(cond, when_true, when_false) => {
         simplify_cond(cond);
-        simplify_instr(when_true);
-        simplify_instr(when_false);
+        if simplify_instr(when_true).is_some() {
+          *i = set_unknown();
+          return Some(idx + 1);
+        }
+        if simplify_instr(when_false).is_some() {
+          *i = set_unknown();
+          return Some(idx + 1);
+        }
       }
       Instr::For(_, range, block) => {
         simplify_expr(&mut range.min);
@@ -86,6 +89,12 @@ fn simplify_instr(instr: &mut [Instr]) -> Option<usize> {
     }
   }
   None
+}
+fn set_unknown() -> Instr {
+  Instr::Set(
+    "unknown".into(),
+    Expr::new(Value::Var(1)).op(Op::Call("tcp::Packet".into(), "read_all".into(), vec![])),
+  )
 }
 fn simplify_cond(cond: &mut Cond) {
   match cond {
