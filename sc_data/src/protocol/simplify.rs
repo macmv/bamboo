@@ -53,21 +53,14 @@ fn simplify_instr(instr: &mut [Instr]) -> Option<usize> {
           _ => {}
         }
       }
-      Instr::Expr(v) => match v.initial {
-        Value::Var(0) => match v.ops.first_mut().unwrap() {
-          Op::Call(_, name, args) => {
-            let instr = convert::this_call(name, args);
-            let mut arr = vec![instr];
-            let res = simplify_instr(&mut arr);
-            *i = arr.pop().unwrap();
-            if res.is_some() {
-              return Some(idx + 1);
-            }
-          }
-          v => panic!("unknown op on self: {:?}", v),
-        },
-        _ => simplify_expr(v),
-      },
+      Instr::Expr(v) => {
+        if let Some(new_instr) = simplify_expr_overwrite(v) {
+          *i = new_instr;
+        } else {
+          *i = set_unknown();
+          return Some(idx + 1);
+        }
+      }
       Instr::If(cond, when_true, when_false) => {
         simplify_cond(cond);
         if simplify_instr(when_true).is_some() {
@@ -123,14 +116,34 @@ fn simplify_cond(cond: &mut Cond) {
   }
 }
 fn simplify_expr(expr: &mut Expr) {
-  simplify_val(&mut expr.initial);
-  expr.ops.iter_mut().for_each(|op| simplify_op(op));
-  convert::overwrite(expr);
+  simplify_expr_overwrite(expr);
 }
 fn simplify_expr_overwrite(expr: &mut Expr) -> Option<Instr> {
-  simplify_val(&mut expr.initial);
-  expr.ops.iter_mut().for_each(|op| simplify_op(op));
-  convert::overwrite(expr)
+  match expr.initial {
+    Value::Var(0) => match expr.ops.first_mut() {
+      Some(Op::Call(class, name, args))
+        if dbg!(&class).as_str() != "net/minecraft/network/PacketByteBuf" =>
+      {
+        let instr = convert::this_call(name, args);
+        let mut arr = vec![instr];
+        if simplify_instr(&mut arr).is_some() {
+          None
+        } else {
+          Some(arr.pop().unwrap())
+        }
+      }
+      _ => {
+        simplify_val(&mut expr.initial);
+        expr.ops.iter_mut().for_each(|op| simplify_op(op));
+        convert::overwrite(expr)
+      }
+    },
+    _ => {
+      simplify_val(&mut expr.initial);
+      expr.ops.iter_mut().for_each(|op| simplify_op(op));
+      convert::overwrite(expr)
+    }
+  }
 }
 fn simplify_val(val: &mut Value) {
   match val {

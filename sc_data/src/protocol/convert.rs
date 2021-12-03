@@ -252,6 +252,7 @@ pub fn ty(from: &str, to: &str) -> &'static str {
 }
 
 pub fn this_call(name: &str, args: &mut Vec<Expr>) -> Instr {
+  dbg!(&name);
   assert_eq!(args.len(), 1);
   Instr::Set(
     match name {
@@ -262,6 +263,13 @@ pub fn this_call(name: &str, args: &mut Vec<Expr>) -> Instr {
       "setFlySpeed" => "fly_speed",
       "setWalkSpeed" => "walk_speed",
       "setFovModifier" => "fov_modifier",
+      "readCommandNode" => {
+        return Instr::Expr(Expr::new(Value::Var(1)).op(Op::Call(
+          "tcp::Packet".into(),
+          "read_command_node".into(),
+          vec![],
+        )))
+      }
       _ => panic!("unknown `this` call: {}", name),
     }
     .into(),
