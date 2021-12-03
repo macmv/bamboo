@@ -29,14 +29,16 @@ fn simplify_instr(instr: &mut [Instr]) -> Option<usize> {
   for (idx, i) in instr.iter_mut().enumerate() {
     match i {
       Instr::Super => {}
-      Instr::Set(name, v) => {
+      Instr::Set(name, val) => {
         simplify_name(name);
-        if let Some(new_instr) = simplify_expr_overwrite(v) {
-          *i = new_instr;
-        } else {
-          *i = set_unknown();
-          return Some(idx + 1);
-        }
+        match simplify_expr_overwrite(val) {
+          (false, Some(new_instr)) => *i = new_instr,
+          (false, None) => {}
+          (true, _) => {
+            *i = set_unknown();
+            return Some(idx + 1);
+          }
+        };
       }
       Instr::SetArr(arr, idx, val) => {
         simplify_expr(arr);
@@ -44,23 +46,23 @@ fn simplify_instr(instr: &mut [Instr]) -> Option<usize> {
         simplify_expr(val);
       }
       Instr::Let(_, val) => {
-        simplify_expr(val);
-        match val.initial {
-          Value::Static(_, _) | Value::New(_, _) | Value::Array(_) => {
+        match simplify_expr_overwrite(val) {
+          (false, Some(new_instr)) => *i = new_instr,
+          (false, None) => {}
+          (true, _) => {
             *i = set_unknown();
             return Some(idx + 1);
           }
-          _ => {}
-        }
+        };
       }
-      Instr::Expr(v) => {
-        if let Some(new_instr) = simplify_expr_overwrite(v) {
-          *i = new_instr;
-        } else {
+      Instr::Expr(v) => match simplify_expr_overwrite(v) {
+        (false, Some(new_instr)) => *i = new_instr,
+        (false, None) => {}
+        (true, _) => {
           *i = set_unknown();
           return Some(idx + 1);
         }
-      }
+      },
       Instr::If(cond, when_true, when_false) => {
         simplify_cond(cond);
         if simplify_instr(when_true).is_some() {
@@ -118,31 +120,41 @@ fn simplify_cond(cond: &mut Cond) {
 fn simplify_expr(expr: &mut Expr) {
   simplify_expr_overwrite(expr);
 }
-fn simplify_expr_overwrite(expr: &mut Expr) -> Option<Instr> {
+fn simplify_expr_overwrite(expr: &mut Expr) -> (bool, Option<Instr>) {
+  fn simplify(expr: &mut Expr) -> (bool, Option<Instr>) {
+    simplify_val(&mut expr.initial);
+    expr.ops.iter_mut().for_each(|op| simplify_op(op));
+    (false, convert::overwrite(expr))
+  }
   match expr.initial {
+    Value::Static(..)
+    | Value::CallStatic(..)
+    | Value::New(..)
+    | Value::Array(_)
+    | Value::Field(..) => return (true, None),
     Value::Var(0) => match expr.ops.first_mut() {
-      Some(Op::Call(class, name, args))
-        if dbg!(&class).as_str() != "net/minecraft/network/PacketByteBuf" =>
-      {
-        let instr = convert::this_call(name, args);
+      Some(Op::Call(class, name, args)) if class != "net/minecraft/network/PacketByteBuf" => {
+        let instr = match convert::this_call(name, args) {
+          Some(v) => v,
+          None => return (true, None),
+        };
         let mut arr = vec![instr];
         if simplify_instr(&mut arr).is_some() {
-          None
+          (true, None)
         } else {
-          Some(arr.pop().unwrap())
+          (false, Some(arr.pop().unwrap()))
         }
       }
-      _ => {
-        simplify_val(&mut expr.initial);
-        expr.ops.iter_mut().for_each(|op| simplify_op(op));
-        convert::overwrite(expr)
-      }
+      _ => simplify(expr),
     },
-    _ => {
-      simplify_val(&mut expr.initial);
-      expr.ops.iter_mut().for_each(|op| simplify_op(op));
-      convert::overwrite(expr)
-    }
+    Value::Var(1) => match expr.ops.first() {
+      Some(Op::Call(_class, name, _args)) => match dbg!(&name).as_str() {
+        "readList" | "readMap" => (true, None),
+        _ => simplify(expr),
+      },
+      _ => simplify(expr),
+    },
+    _ => simplify(expr),
   }
 }
 fn simplify_val(val: &mut Value) {

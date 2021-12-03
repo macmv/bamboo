@@ -51,8 +51,8 @@ impl PacketCollection {
     let mut packets: Vec<Vec<(_, _)>> = packets.into_iter().map(|(_, v)| v).collect();
     for versions in &mut packets {
       for (v, p) in versions {
-        println!("finding reader type of {} for ver {}", p.name, v);
-        // dbg!(&p);
+        eprintln!("finding reader type of {} for ver {}", p.name, v);
+        dbg!(&p);
         p.find_reader_types();
       }
     }

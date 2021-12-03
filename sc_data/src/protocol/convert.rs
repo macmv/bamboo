@@ -251,10 +251,9 @@ pub fn ty(from: &str, to: &str) -> &'static str {
   }
 }
 
-pub fn this_call(name: &str, args: &mut Vec<Expr>) -> Instr {
-  dbg!(&name);
+pub fn this_call(name: &str, args: &mut Vec<Expr>) -> Option<Instr> {
   assert_eq!(args.len(), 1);
-  Instr::Set(
+  Some(Instr::Set(
     match name {
       "setInvulnerable" => "invulnerable",
       "setFlying" => "flying",
@@ -264,17 +263,17 @@ pub fn this_call(name: &str, args: &mut Vec<Expr>) -> Instr {
       "setWalkSpeed" => "walk_speed",
       "setFovModifier" => "fov_modifier",
       "readCommandNode" => {
-        return Instr::Expr(Expr::new(Value::Var(1)).op(Op::Call(
+        return Some(Instr::Expr(Expr::new(Value::Var(1)).op(Op::Call(
           "tcp::Packet".into(),
           "read_command_node".into(),
           vec![],
-        )))
+        ))))
       }
-      _ => panic!("unknown `this` call: {}", name),
+      _ => return None,
     }
     .into(),
     args.pop().unwrap(),
-  )
+  ))
 }
 
 pub fn overwrite(expr: &mut Expr) -> Option<Instr> {
