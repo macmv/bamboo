@@ -52,7 +52,7 @@ block_version![
   [V1_14, V1_14_4],
   [V1_15, V1_15_2],
   [V1_16, V1_16_5],
-  // [V1_17, V1_17],
+  [V1_17, V1_17_1],
 ];
 
 impl BlockVersion {
@@ -108,11 +108,20 @@ impl BlockVersion {
 /// added to the game.
 #[non_exhaustive]
 #[derive(
-  Clone, Copy, FromPrimitive, ToPrimitive, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, EnumString,
+  Clone,
+  Copy,
+  FromPrimitive,
+  ToPrimitive,
+  Debug,
+  PartialEq,
+  Eq,
+  Hash,
+  PartialOrd,
+  Ord,
+  EnumString,
+  sc_macros::ProtocolVersion,
 )]
 pub enum ProtocolVersion {
-  Invalid = 0,
-
   V1_8    = 47,
 
   V1_9    = 107,
@@ -147,7 +156,9 @@ pub enum ProtocolVersion {
   V1_16_2 = 751,
   V1_16_3 = 753,
   V1_16_5 = 754,
-  // V1_17   = 755,
+
+  V1_17   = 755,
+  V1_17_1 = 756,
 }
 
 impl ProtocolVersion {
@@ -217,3 +228,5 @@ impl ProtocolVersion {
     }
   }
 }
+
+impl fmt::Display for ProtocolVersion {}

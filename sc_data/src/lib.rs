@@ -60,3 +60,9 @@ pub static VERSIONS: &'static [Version] = &[
   Version::new(16, 5),
   Version::new(17, 1),
 ];
+
+impl Version {
+  pub fn to_protocol(&self) -> String {
+    format!("ProtocolVersion::V1_{}_{}", self.maj, self.min)
+  }
+}

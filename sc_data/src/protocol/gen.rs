@@ -57,7 +57,7 @@ impl PacketCollection {
       }
     }
 
-    gen.write_line("use crate::Pos;");
+    gen.write_line("use crate::{Pos, version::ProtocolVersion, util::UUID};");
     gen.write_line("use std::collections::{HashMap, HashSet};");
     gen.write_line("");
     gen.write_line("pub struct U;");
@@ -84,7 +84,7 @@ impl PacketCollection {
               gen.write_comment(&first.name);
               if ver.maj != 8 {
                 gen.write("if ver < ");
-                gen.write(&ver.maj.to_string());
+                gen.write(&ver.to_protocol());
                 gen.write(" ");
                 gen.write_block(|gen| {
                   gen.write(r#"panic!("version {} is below the minimum version for packet "#);
@@ -98,7 +98,7 @@ impl PacketCollection {
                 for (i, (ver, p)) in versions.iter().enumerate() {
                   if let Some(next_ver) = versions.get(i + 1) {
                     gen.write("if ver < ");
-                    gen.write(&next_ver.0.maj.to_string());
+                    gen.write(&next_ver.0.to_protocol());
                     gen.write_line(" {");
                     gen.add_indent();
                     write_from_tcp(gen, p, *ver);

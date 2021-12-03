@@ -4,11 +4,11 @@ use quote::quote;
 use std::collections::HashMap;
 
 use syn::{
+  braced,
   parse::{Parse, ParseStream, Result},
   parse_macro_input,
   spanned::Spanned,
-  token::{Colon, Comma},
-  Error, Expr, Lit,
+  Error, Expr, Lit, LitInt, Token,
 };
 
 struct KeyedArgs {
@@ -33,14 +33,14 @@ impl Parse for KeyedArgs {
       }
 
       let key: Ident = input.parse()?;
-      let _sep: Colon = input.parse()?;
+      let _sep: Token![:] = input.parse()?;
       let val: Expr = input.parse()?;
       keys.insert(key.to_string(), val);
 
       if input.is_empty() {
         break;
       }
-      let _comma: Comma = input.parse()?;
+      let _comma: Token![,] = input.parse()?;
     }
 
     Ok(KeyedArgs { keys })
@@ -112,5 +112,88 @@ pub fn lookup_table(input: TokenStream) -> TokenStream {
   }
 
   let out = quote!([#(#out),*]);
+  out.into()
+}
+
+struct ProtocolVersionArgs {
+  name:     Ident,
+  versions: Vec<(Ident, u32, ProtocolVersion)>,
+}
+
+struct ProtocolVersion {
+  maj: u32,
+  min: u32,
+}
+
+impl Parse for ProtocolVersionArgs {
+  fn parse(input: ParseStream) -> Result<Self> {
+    let mut versions = vec![];
+
+    let _pub: Ident = input.parse()?;
+    let _enum: Ident = input.parse()?;
+    let name: Ident = input.parse()?;
+    let content;
+    let _open = braced!(content in input);
+    loop {
+      if content.is_empty() {
+        break;
+      }
+
+      let key: Ident = content.parse()?;
+      let _sep: Token![=] = content.parse()?;
+      let protocol: LitInt = content.parse()?;
+      let ver = ProtocolVersion {
+        maj: key.to_string().split('_').nth(1).unwrap().parse().unwrap(),
+        min: key.to_string().split('_').nth(2).map(|s| s.parse().unwrap()).unwrap_or(0),
+      };
+      versions.push((key, protocol.base10_parse()?, ver));
+
+      if input.is_empty() {
+        break;
+      }
+      let _comma: Token![,] = input.parse()?;
+    }
+
+    Ok(ProtocolVersionArgs { name, versions })
+  }
+}
+
+#[proc_macro_derive(ProtocolVersion)]
+pub fn versions(input: TokenStream) -> TokenStream {
+  let args = parse_macro_input!(input as ProtocolVersionArgs);
+
+  let name = &args.name;
+  let key = &args.versions.iter().map(|(key, _, _)| key).collect::<Vec<_>>();
+  let val = &args.versions.iter().map(|(_, val, _)| val).collect::<Vec<_>>();
+  let maj = &args.versions.iter().map(|(_, _, ver)| ver.maj).collect::<Vec<_>>();
+  let min = &args.versions.iter().map(|(_, _, ver)| ver.min).collect::<Vec<_>>();
+
+  let out = quote! {
+    pub enum #name {
+      Invalid = 0,
+      #(
+        #key = #val,
+      )*
+    }
+
+    impl #name {
+      pub fn maj(&self) -> Option<u32> {
+        Some(match self {
+          Self::Invalid => return None,
+          #(
+            Self::#key => #maj,
+          )*
+        })
+      }
+      pub fn min(&self) -> Option<u32> {
+        Some(match self {
+          Self::Invalid => return None,
+          #(
+            Self::#key => #min,
+          )*
+        })
+      }
+    }
+  };
   out.into()
 }
