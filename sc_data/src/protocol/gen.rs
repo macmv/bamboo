@@ -82,7 +82,8 @@ impl PacketCollection {
     });
 
     gen.write_impl("Packet", |gen| {
-      gen.write("pub fn from_tcp(p: tcp::Packet, ver: ProtocolVersion) -> Self ");
+      gen.write_line("#[allow(unused_mut)]");
+      gen.write("pub fn from_tcp(mut p: tcp::Packet, ver: ProtocolVersion) -> Self ");
       gen.write_block(|gen| {
         gen.write_match("to_sug_id(p.id(), ver)", |gen| {
           for (id, versions) in packets.iter().enumerate() {
