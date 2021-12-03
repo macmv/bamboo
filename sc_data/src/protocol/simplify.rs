@@ -126,7 +126,7 @@ fn simplify_expr_overwrite(expr: &mut Expr) -> (bool, Option<Instr>) {
     expr.ops.iter_mut().for_each(|op| simplify_op(op));
     (false, convert::overwrite(expr))
   }
-  match expr.initial {
+  let res = match expr.initial {
     Value::Static(..)
     | Value::CallStatic(..)
     | Value::New(..)
@@ -140,22 +140,29 @@ fn simplify_expr_overwrite(expr: &mut Expr) -> (bool, Option<Instr>) {
         };
         let mut arr = vec![instr];
         if simplify_instr(&mut arr).is_some() {
-          (true, None)
+          return (true, None);
         } else {
-          (false, Some(arr.pop().unwrap()))
+          return (false, Some(arr.pop().unwrap()));
         }
       }
       _ => simplify(expr),
     },
     Value::Var(1) => match expr.ops.first() {
       Some(Op::Call(_class, name, _args)) => match dbg!(&name).as_str() {
-        "readList" | "readMap" => (true, None),
+        "readCollection" | "readList" | "readMap" => return (true, None),
         _ => simplify(expr),
       },
       _ => simplify(expr),
     },
     _ => simplify(expr),
+  };
+  for o in &expr.ops {
+    match o {
+      Op::Call(class, _name, _args) if class == "U" => return (true, None),
+      _ => {}
+    }
   }
+  res
 }
 fn simplify_val(val: &mut Value) {
   match val {

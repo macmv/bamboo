@@ -190,7 +190,7 @@ pub fn reader_func_to_ty(field: &str, name: &str) -> RType {
     "read_f32" => "f32",
     "read_f64" => "f64",
     "read_pos" => "Pos",
-    "read_item" => "Stack",
+    "read_item" => "Item",
     "read_uuid" => "UUID",
     "read_str" => "String",
     "read_nbt" => "NBT",

@@ -141,11 +141,14 @@ impl<'a> ReaderTypes<'a> {
       },
       Op::Cast(ty) => ty.to_rust(),
       Op::If(_cond, new) => {
-        let new_ty = self.expr_type(new);
-        assert_eq!(initial, new_ty);
+        // TODO: When we get an Option<T> and T, we need to wrap T in Some().
+        //
+        // let new_ty = self.expr_type(new);
+        // assert_eq!(initial, new_ty);
         initial
       }
-      Op::BitAnd(_) => initial,
+      // TODO: Math ops should coerce types
+      Op::BitAnd(_) | Op::Div(_) => initial,
       v => todo!("op {:?}", v),
     }
   }
@@ -166,9 +169,10 @@ impl<'a> ReaderTypes<'a> {
       "read_byte_arr" | "read_all" => RType::new("Vec").generic("u8"),
       "read_i32_arr" => RType::new("Vec").generic("i32"),
       "read_varint_arr" => RType::new("Vec").generic("i32"),
+      "read_block_hit" => RType::new("BlockHit"),
       "read_nbt" => RType::new("NBT"),
       "read_item" => RType::new("Item"),
-      "read_bits" => RType::new("Vec").generic("i64"),
+      "read_bits" => RType::new("BitSet"),
       "read_map" => {
         RType::new("HashMap").generic(self.expr_type(&args[0])).generic(self.expr_type(&args[1]))
       }
