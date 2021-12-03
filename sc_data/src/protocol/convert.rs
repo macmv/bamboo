@@ -214,6 +214,36 @@ pub fn reader_func_to_ty(field: &str, name: &str) -> RType {
   })
 }
 
+pub fn reader_to_writer(read: &str) -> &'static str {
+  match read {
+    "read_bool" => "write_bool",
+    "read_varint" => "write_varint",
+    "read_u8" => "write_u8",
+    "read_i8" => "write_i8",
+    "read_i16" => "write_i16",
+    "read_i32" => "write_i32",
+    "read_option" => "write_option", // Literally used once in the entire 1.17 codebase.
+    "read_i64" => "write_i64",
+    "read_f32" => "write_f32",
+    "read_f64" => "write_f64",
+    "read_pos" => "write_Pos",
+    "read_item" => "write_item",
+    "read_uuid" => "write_uuid",
+    "read_str" => "write_str",
+    "read_nbt" => "write_nbt",
+    "read_buf" | "read_byte_arr" | "read_all" => "write_buf",
+    "read_i32_arr" => "write_i32_arr",
+    "read_varint_arr" => "write_varint_arr",
+    "read_bits" => "write_bits",
+    "read_block_hit" => "write_block_hit",
+
+    "read_map" => "write_map",
+    "read_list" => "write_list",
+    "read_collection" => "write_map",
+    _ => "write_?",
+  }
+}
+
 pub fn ty(from: &str, to: &str) -> &'static str {
   match to {
     "bool" => " != 0",

@@ -128,6 +128,19 @@ impl PacketCollection {
         });
       });
     });
+    gen.write_impl("Packet", |gen| {
+      gen.write_line("#[allow(unused_mut, unused_variables)]");
+      gen.write("pub fn to_tcp(&self, mut p: tcp::Packet) ");
+      gen.write_block(|gen| {
+        gen.write_match("self", |gen| {
+          for (_id, versions) in packets.iter().enumerate() {
+            for (ver, p) in versions.iter() {
+              write_to_tcp(gen, p, *ver);
+            }
+          }
+        });
+      });
+    });
 
     gen.write_func(
       "to_sug_id",
@@ -186,7 +199,6 @@ fn write_packet(gen: &mut CodeGen, name: &str, p: &Packet) {
 }
 
 fn write_from_tcp(gen: &mut CodeGen, p: &Packet, ver: Version) {
-  dbg!(&p);
   for f in &p.fields {
     gen.write("let");
     if !f.initialized {
@@ -233,6 +245,32 @@ fn write_from_tcp(gen: &mut CodeGen, p: &Packet, ver: Version) {
     }
     gen.write_line(",");
   }
+  gen.remove_indent();
+  gen.write_line("}");
+}
+fn write_to_tcp(gen: &mut CodeGen, p: &Packet, ver: Version) {
+  gen.write("Packet::");
+  gen.write(&p.name);
+  gen.write("V");
+  gen.write(&ver.maj.to_string());
+  gen.write_line(" {");
+  gen.add_indent();
+  for f in &p.fields {
+    gen.write(&f.name);
+    gen.write(": f_");
+    gen.write(&f.name);
+    gen.write_line(",");
+  }
+  gen.remove_indent();
+  gen.write_line("} => {");
+  gen.add_indent();
+
+  let mut p2 = p.clone();
+  let mut writer = InstrWriter::new(gen, &mut p2);
+  for i in &p.writer.block {
+    writer.write_instr(i);
+  }
+
   gen.remove_indent();
   gen.write_line("}");
 }

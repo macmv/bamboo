@@ -34,10 +34,10 @@ impl WriterGen {
     assert_eq!(expr.initial, Value::Var(1), "unknown Set value: {:?}", expr);
     match expr.ops.first().unwrap() {
       Op::Call(class, name, _args) if class == "tcp::Packet" => {
-        let writer_name = name.replace("read", "write");
+        let writer_name = convert::reader_to_writer(name);
         Instr::Expr(Expr::new(Value::Var(1)).op(Op::Call(
           class.clone(),
-          writer_name,
+          writer_name.into(),
           vec![Expr::new(Value::Field(field.into()))],
         )))
       }
