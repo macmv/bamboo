@@ -183,8 +183,7 @@ fn simplify_expr_overwrite(expr: &mut Expr) -> (bool, Option<Instr>) {
     Value::Var(1) => match expr.ops.first() {
       Some(Op::Call(_class, name, _args)) => match dbg!(&name).as_str() {
         "readCollection" | "readList" | "readMap" => return (true, None),
-        // _ => simplify(expr),
-        _ => return (true, None),
+        _ => simplify(expr),
       },
       // _ => simplify(expr),
       _ => return (true, None),
