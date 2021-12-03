@@ -214,7 +214,8 @@ impl ProtocolVersion {
       Self::V1_16_2 => BlockVersion::V1_16,
       Self::V1_16_3 => BlockVersion::V1_16,
       Self::V1_16_5 => BlockVersion::V1_16,
-      // Self::V1_17 => BlockVersion::V1_17,
+      Self::V1_17 => BlockVersion::V1_17,
+      Self::V1_17_1 => BlockVersion::V1_17,
     }
   }
 }
