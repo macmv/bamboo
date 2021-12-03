@@ -9,13 +9,14 @@ mod protocol;
 
 #[derive(Debug, Clone, Copy)]
 pub struct Version {
-  maj: u32,
-  min: u32,
+  maj:      u32,
+  min:      u32,
+  protocol: u32,
 }
 
 impl Version {
-  pub const fn new(maj: u32, min: u32) -> Version {
-    Version { maj, min }
+  pub const fn new(maj: u32, min: u32, protocol: u32) -> Version {
+    Version { maj, min, protocol }
   }
 }
 
@@ -50,19 +51,27 @@ pub fn generate_protocol() {
 }
 
 pub static VERSIONS: &'static [Version] = &[
-  Version::new(8, 9),
-  Version::new(9, 4),
-  Version::new(10, 2),
-  Version::new(11, 2),
-  Version::new(12, 2),
-  Version::new(14, 4),
-  Version::new(15, 2),
-  Version::new(16, 5),
-  Version::new(17, 1),
+  Version::new(8, 9, 47),
+  Version::new(9, 4, 110),
+  Version::new(10, 2, 210),
+  Version::new(11, 2, 316),
+  Version::new(12, 2, 340),
+  Version::new(14, 4, 498),
+  Version::new(15, 2, 578),
+  Version::new(16, 5, 754),
+  Version::new(17, 1, 756),
 ];
 
 impl Version {
   pub fn to_protocol(&self) -> String {
     format!("ProtocolVersion::V1_{}_{}", self.maj, self.min)
+  }
+  pub fn to_index(&self) -> usize {
+    if self.maj <= 12 {
+      self.maj as usize - 8
+    } else {
+      // We are missing 1.13
+      self.maj as usize - 9
+    }
   }
 }

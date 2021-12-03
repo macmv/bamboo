@@ -2,7 +2,10 @@ use super::{
   convert, simplify, Cond, Expr, Field, Instr, Lit, Op, Packet, PacketDef, RType, Type, Value,
   VarKind,
 };
-use crate::{gen::CodeGen, Version};
+use crate::{
+  gen::{CodeGen, FuncArg},
+  Version,
+};
 use std::{collections::HashMap, fs, fs::File, io, io::Write, path::Path};
 
 pub fn generate(def: Vec<(Version, PacketDef)>, dir: &Path) -> io::Result<()> {
@@ -10,10 +13,12 @@ pub fn generate(def: Vec<(Version, PacketDef)>, dir: &Path) -> io::Result<()> {
   let mut all_sb_packets = PacketCollection::new();
 
   for (ver, def) in def {
-    for p in def.clientbound {
+    for (i, mut p) in def.clientbound.into_iter().enumerate() {
+      p.tcp_id = i as i32;
       all_cb_packets.add(ver, p);
     }
-    for p in def.serverbound {
+    for (i, mut p) in def.serverbound.into_iter().enumerate() {
+      p.tcp_id = i as i32;
       all_sb_packets.add(ver, p);
     }
   }
@@ -120,6 +125,36 @@ impl PacketCollection {
         });
       });
     });
+
+    gen.write_func(
+      "to_sug_id",
+      &[FuncArg { name: "id", ty: "i32" }, FuncArg { name: "ver", ty: "ProtocolVersion" }],
+      Some("i32"),
+      |gen| {
+        gen.write_match("ver.id()", |gen| {
+          for v in crate::VERSIONS {
+            gen.write_comment(&v.to_string());
+            gen.write(&v.protocol.to_string());
+            gen.write(" => ");
+            gen.write_match("id", |gen| {
+              for (sug_id, versions) in packets.iter().enumerate() {
+                for (ver, p) in versions {
+                  if ver.maj > v.maj {
+                    break;
+                  }
+                  gen.write(&sug_id.to_string());
+                  gen.write(" => ");
+                  gen.write(&p.tcp_id.to_string());
+                  gen.write(", // ");
+                  gen.write_line(&p.name);
+                  break;
+                }
+              }
+            });
+          }
+        });
+      },
+    );
 
     gen.into_output()
   }
