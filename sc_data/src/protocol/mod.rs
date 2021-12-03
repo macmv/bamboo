@@ -6,6 +6,7 @@ pub mod convert;
 mod gen;
 mod simplify;
 mod type_analysis;
+mod writer;
 
 pub fn generate(out_dir: &Path) -> io::Result<()> {
   let mut versions = vec![];

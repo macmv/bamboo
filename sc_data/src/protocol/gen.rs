@@ -59,6 +59,7 @@ impl PacketCollection {
         // eprintln!("finding reader type of {} for ver {}", p.name, v);
         // dbg!(&p);
         p.find_reader_types();
+        p.generate_writer();
       }
     }
 
