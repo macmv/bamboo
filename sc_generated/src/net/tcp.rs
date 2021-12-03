@@ -214,8 +214,8 @@ impl Packet {
   /// of small for loops in previous versions.
   pub fn read_list<T>(&mut self, val: impl Fn(&mut Packet) -> T) -> Vec<T> {
     let len = self.read_varint().try_into().unwrap();
-    let list = Vec::with_capacity(len);
-    for i in 0..len {
+    let mut list = Vec::with_capacity(len);
+    for _ in 0..len {
       list.push(val(self));
     }
     list
@@ -228,8 +228,8 @@ impl Packet {
     if len > max {
       panic!("length {} greater than max {}", len, max);
     }
-    let list = Vec::with_capacity(len);
-    for i in 0..len {
+    let mut list = Vec::with_capacity(len);
+    for _ in 0..len {
       list.push(val(self));
     }
     list
@@ -243,8 +243,8 @@ impl Packet {
     val: impl Fn(&mut Packet) -> V,
   ) -> HashMap<K, V> {
     let len = self.read_varint().try_into().unwrap();
-    let map = HashMap::with_capacity(len);
-    for i in 0..len {
+    let mut map = HashMap::with_capacity(len);
+    for _ in 0..len {
       map.insert(key(self), val(self));
     }
     map
@@ -254,8 +254,8 @@ impl Packet {
   /// bunch of small for loops in previous versions.
   pub fn read_set<T: Eq + Hash>(&mut self, val: impl Fn(&mut Packet) -> T) -> HashSet<T> {
     let len = self.read_varint().try_into().unwrap();
-    let set = HashSet::with_capacity(len);
-    for i in 0..len {
+    let mut set = HashSet::with_capacity(len);
+    for _ in 0..len {
       set.insert(val(self));
     }
     set
@@ -272,8 +272,8 @@ impl Packet {
     if len > max {
       panic!("length {} greater than max {}", len, max);
     }
-    let set = HashSet::with_capacity(len);
-    for i in 0..len {
+    let mut set = HashSet::with_capacity(len);
+    for _ in 0..len {
       set.insert(val(self));
     }
     set

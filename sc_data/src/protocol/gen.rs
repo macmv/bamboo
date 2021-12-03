@@ -82,7 +82,7 @@ impl PacketCollection {
     });
 
     gen.write_impl("Packet", |gen| {
-      gen.write_line("#[allow(unused_mut)]");
+      gen.write_line("#[allow(unused_mut, unused_variables)]");
       gen.write("pub fn from_tcp(mut p: tcp::Packet, ver: ProtocolVersion) -> Self ");
       gen.write_block(|gen| {
         gen.write_match("to_sug_id(p.id(), ver)", |gen| {
@@ -123,6 +123,7 @@ impl PacketCollection {
               }
             });
           }
+          gen.write_line(r#"v => panic!("invalid protocol version {}", v),"#);
         });
       });
     });
@@ -151,8 +152,10 @@ impl PacketCollection {
                   break;
                 }
               }
+              gen.write_line("_ => 0,");
             });
           }
+          gen.write_line("_ => 0,");
         });
       },
     );
