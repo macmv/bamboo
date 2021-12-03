@@ -1,4 +1,5 @@
 use num_derive::{FromPrimitive, ToPrimitive};
+use std::fmt;
 use strum_macros::EnumString;
 
 macro_rules! ignore {
@@ -45,7 +46,7 @@ macro_rules! block_version {
 block_version![
   [V1_8, V1_8],
   [V1_9, V1_9_4],
-  [V1_10, V1_10],
+  [V1_10, V1_10_2],
   [V1_11, V1_11_2],
   [V1_12, V1_12_2],
   [V1_13, V1_13_2],
@@ -99,27 +100,16 @@ impl BlockVersion {
 /// those. However, 1.9 - 1.11 is always an option, if anyone wants to implement
 /// it.
 ///
-/// If any protocol versions collide, there are two rules to follow: If it is a
-/// major version, keep that one. Otherwise, use the highest major version. This
-/// means that things like 1.10.1 and 1.10.2 are removed in favor of 1.10. It
-/// also means that 1.9.3 is removed in favor of 1.9.4.
+/// If any protocol versions collide, there is always a simple rule to follow:
+/// use the highest minor version. This means that things like 1.10 and 1.10.1
+/// are removed in favor of 1.10.2.
 ///
 /// This will always be non exhaustive, as there will always be new versions
 /// added to the game.
 #[non_exhaustive]
+#[sc_macros::protocol_version]
 #[derive(
-  Clone,
-  Copy,
-  FromPrimitive,
-  ToPrimitive,
-  Debug,
-  PartialEq,
-  Eq,
-  Hash,
-  PartialOrd,
-  Ord,
-  EnumString,
-  sc_macros::ProtocolVersion,
+  Clone, Copy, FromPrimitive, ToPrimitive, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, EnumString,
 )]
 pub enum ProtocolVersion {
   V1_8    = 47,
@@ -128,7 +118,7 @@ pub enum ProtocolVersion {
   V1_9_2  = 109,
   V1_9_4  = 110,
 
-  V1_10   = 210,
+  V1_10_2 = 210,
 
   V1_11   = 315,
   V1_11_2 = 316,
@@ -202,7 +192,7 @@ impl ProtocolVersion {
       Self::V1_9 => BlockVersion::V1_9,
       Self::V1_9_2 => BlockVersion::V1_9,
       Self::V1_9_4 => BlockVersion::V1_9,
-      Self::V1_10 => BlockVersion::V1_10,
+      Self::V1_10_2 => BlockVersion::V1_10,
       Self::V1_11 => BlockVersion::V1_11,
       Self::V1_11_2 => BlockVersion::V1_11,
       Self::V1_12 => BlockVersion::V1_12,
@@ -229,4 +219,14 @@ impl ProtocolVersion {
   }
 }
 
-impl fmt::Display for ProtocolVersion {}
+impl fmt::Display for ProtocolVersion {
+  fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    if self == Self::Invalid {
+      write!(f, "Invalid version")
+    } else if self.min().unwrap() == 0 {
+      write!(f, "1.{}", self.maj().unwrap())
+    } else {
+      write!(f, "1.{}.{}", self.maj().unwrap(), self.min().unwrap())
+    }
+  }
+}

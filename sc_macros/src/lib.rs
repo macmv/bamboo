@@ -1,5 +1,5 @@
 use proc_macro::TokenStream;
-use proc_macro2::{Ident, TokenStream as TokenStream2};
+use proc_macro2::{Ident, Literal, TokenStream as TokenStream2};
 use quote::quote;
 use std::collections::HashMap;
 
@@ -8,7 +8,7 @@ use syn::{
   parse::{Parse, ParseStream, Result},
   parse_macro_input,
   spanned::Spanned,
-  Error, Expr, Lit, LitInt, Token,
+  Attribute, Error, Expr, Lit, LitInt, Token,
 };
 
 struct KeyedArgs {
@@ -116,6 +116,7 @@ pub fn lookup_table(input: TokenStream) -> TokenStream {
 }
 
 struct ProtocolVersionArgs {
+  attrs:    Vec<Attribute>,
   name:     Ident,
   versions: Vec<(Ident, u32, ProtocolVersion)>,
 }
@@ -127,10 +128,11 @@ struct ProtocolVersion {
 
 impl Parse for ProtocolVersionArgs {
   fn parse(input: ParseStream) -> Result<Self> {
+    let attrs = Attribute::parse_outer(input)?;
     let mut versions = vec![];
 
-    let _pub: Ident = input.parse()?;
-    let _enum: Ident = input.parse()?;
+    let _pub: Token![pub] = input.parse()?;
+    let _enum: Token![enum] = input.parse()?;
     let name: Ident = input.parse()?;
     let content;
     let _open = braced!(content in input);
@@ -148,27 +150,31 @@ impl Parse for ProtocolVersionArgs {
       };
       versions.push((key, protocol.base10_parse()?, ver));
 
-      if input.is_empty() {
+      if content.is_empty() {
         break;
       }
-      let _comma: Token![,] = input.parse()?;
+      let _comma: Token![,] = content.parse()?;
     }
 
-    Ok(ProtocolVersionArgs { name, versions })
+    Ok(ProtocolVersionArgs { attrs, name, versions })
   }
 }
 
-#[proc_macro_derive(ProtocolVersion)]
-pub fn versions(input: TokenStream) -> TokenStream {
+#[proc_macro_attribute]
+pub fn protocol_version(_args: TokenStream, input: TokenStream) -> TokenStream {
   let args = parse_macro_input!(input as ProtocolVersionArgs);
 
+  let attrs = &args.attrs;
   let name = &args.name;
   let key = &args.versions.iter().map(|(key, _, _)| key).collect::<Vec<_>>();
-  let val = &args.versions.iter().map(|(_, val, _)| val).collect::<Vec<_>>();
+  // Need unsuffixed for the enum definition
+  let val =
+    &args.versions.iter().map(|(_, val, _)| Literal::u32_unsuffixed(*val)).collect::<Vec<_>>();
   let maj = &args.versions.iter().map(|(_, _, ver)| ver.maj).collect::<Vec<_>>();
   let min = &args.versions.iter().map(|(_, _, ver)| ver.min).collect::<Vec<_>>();
 
   let out = quote! {
+    #(#attrs)*
     pub enum #name {
       Invalid = 0,
       #(
