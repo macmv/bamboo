@@ -32,7 +32,7 @@ pub fn class(name: &str) -> RType {
     "ItemStack" => "Item",
     "Advancement$Task" => "U",
     "GameStateChangeS2CPacket$Reason" => "U",
-    "S21PacketChunkData$Extracted" => return RType::new("Vec").generic("<u8>"),
+    "S21PacketChunkData$Extracted" => return RType::new("Vec").generic("u8"),
     "CompoundTag" | "NbtCompound" | "NBTTagCompound" => "NBT",
     "DataWatcher" | "EntityDataManager" | "DataTracker" => "U", // "EntityMetadata",
     "BiomeArray" => "Vec<u32>",
