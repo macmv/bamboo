@@ -315,47 +315,13 @@ impl<'a> InstrWriter<'a> {
           self.gen.write(&f_name);
           self.gen.write(" = ");
           if let Some(field) = self.get_field_mut(&f_name) {
-            match &val.initial {
-              Value::Var(1)
-                if !val.ops.is_empty()
-                  && val.ops.first().map(|op| matches!(op, Op::Call(..))).unwrap_or(false) =>
-              {
-                let (name, _args) = match val.ops.first().unwrap() {
-                  Op::Call(_, name, args) => (name, args),
-                  _ => unreachable!(),
-                };
-                let ty = field.ty.to_rust();
-                if let Some(ref reader) = field.reader_type {
-                  if *reader != ty {
-                    val.ops.extend(convert::type_cast(reader, &ty));
-                  }
-                } else {
-                  field.reader_type = Some(ty.into());
-                }
+            let ty = field.ty.to_rust();
+            if let Some(ref reader) = field.reader_type {
+              if *reader != ty {
+                val.ops.extend(convert::type_cast(reader, &ty));
               }
-              Value::Lit(lit) => {
-                let ty = match lit {
-                  Lit::Int(_) => RType::new("i32"),
-                  Lit::Float(_) => RType::new("f32"),
-                  Lit::String(_) => RType::new("String"),
-                };
-                if let Some(ref reader) = field.reader_type {
-                  assert_eq!(reader, &ty);
-                } else {
-                  field.reader_type = Some(ty.into());
-                }
-              }
-              // Conditionals as ops are always something like `if cond { 1 } else { 0 }`, which we
-              // can convert with `v != 0`. So, in order to recognize that, we need to the
-              // reader type to be a number.
-              _ if matches!(&val.ops.last(), Some(Op::If(_, _))) => {
-                // if let Some(ref reader) = field.reader_type {
-                //   assert_eq!(reader, "u8");
-                // } else {
-                //   field.reader_type = Some("u8".into());
-                // }
-              }
-              _ => {}
+            } else {
+              field.reader_type = Some(ty.into());
             }
           }
           if self.get_field(&f_name).map(|f| f.option).unwrap_or(false)
