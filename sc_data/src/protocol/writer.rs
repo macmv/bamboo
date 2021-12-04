@@ -1,4 +1,4 @@
-use super::{convert, Cond, Expr, Field, Instr, Op, Packet, Type, Value, VarBlock};
+use super::{convert, Cond, Expr, Field, Instr, Op, Packet, RType, Type, Value, VarBlock};
 
 impl Packet {
   pub fn generate_writer(&mut self) {
@@ -46,10 +46,22 @@ impl WriterGen {
       Some(Op::Call(class, name, _args)) if class == "tcp::Packet" => {
         assert_eq!(expr.initial, Value::Var(1), "unknown Set value: {:?}", expr);
         let writer_name = convert::reader_to_writer(name);
+        let mut val = Expr::new(Value::Field(field.into()));
+        for op in expr.ops.iter().skip(1) {
+          val.ops.push(match op {
+            // Convert the cast `foo = buf.read_u8() as i32` into `buf.write_u8(foo as u8)`
+            Op::Cast(_from) => {
+              // TODO: Find the type of `val`
+              let to = RType::new("f32");
+              Op::As(to)
+            }
+            _ => panic!("cannot convert {:?} into writer (packet {})", expr, self.packet),
+          });
+        }
         Instr::Expr(Expr::new(Value::Var(1)).op(Op::Call(
           class.clone(),
           writer_name.into(),
-          vec![Expr::new(Value::Field(field.into()))],
+          vec![val],
         )))
       }
       Some(Op::If(_cond, _new)) => return None,

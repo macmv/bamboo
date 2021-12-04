@@ -231,18 +231,6 @@ fn write_from_tcp(gen: &mut CodeGen, p: &Packet, ver: Version) {
     gen.write(&f.name);
     gen.write(": f_");
     gen.write(&f.name);
-    if let Some(read) = f.reader_type.as_ref() {
-      let rs = f.ty.to_rust();
-      // if &rs != read {
-      //   if f.option {
-      //     gen.write(".map(|v| v");
-      //     gen.write(convert::ty(read, &rs));
-      //     gen.write(")");
-      //   } else {
-      //     gen.write(convert::ty(read, &rs));
-      //   }
-      // }
-    }
     gen.write_line(",");
   }
   gen.remove_indent();
@@ -314,14 +302,12 @@ impl<'a> InstrWriter<'a> {
           self.gen.write("f_");
           self.gen.write(&f_name);
           self.gen.write(" = ");
-          if let Some(field) = self.get_field_mut(&f_name) {
+          if let Some(field) = self.get_field(&f_name) {
             let ty = field.ty.to_rust();
             if let Some(ref reader) = field.reader_type {
               if *reader != ty {
                 val.ops.extend(convert::type_cast(reader, &ty));
               }
-            } else {
-              field.reader_type = Some(ty.into());
             }
           }
           if self.get_field(&f_name).map(|f| f.option).unwrap_or(false)
@@ -517,7 +503,7 @@ impl<'a> InstrWriter<'a> {
                 i.is_closure = self.is_closure;
                 i.needs_deref = self.needs_deref;
                 match reader_ty.name.as_str() {
-                  "u8" | "i8" | "i16" | "i32" | "i64" => {
+                  "u8" | "i8" | "i16" | "i32" | "i64" | "f32" | "f64" => {
                     if *reader_ty != field_ty {
                       i.gen.write("(");
                     }

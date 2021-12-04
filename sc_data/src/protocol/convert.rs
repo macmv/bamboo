@@ -248,7 +248,7 @@ pub fn type_cast(from: &RType, to: &RType) -> Vec<Op> {
   vec![match to.name.as_str() {
     "bool" => Op::Neq(Expr::new(Value::Lit(0.into()))),
     "f32" => Op::As(RType::new("f32")),
-    "f64" => Op::As(RType::new("f32")),
+    "f64" => Op::As(RType::new("f64")),
     "i8" => match from.name.as_str() {
       "u8" | "i16" | "i32" | "i64" => return try_into(),
       _ => panic!("cannot convert `{}` into `{}`", from, to),
