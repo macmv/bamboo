@@ -205,7 +205,7 @@ fn simplify_val(val: &mut Value) {
     Value::Array(len) => simplify_expr(len),
     Value::CallStatic(class, name, args) => {
       simplify_name(name);
-      *class = convert::class(class);
+      *class = convert::class(class).to_string();
       let (new_class, new_name) = convert::static_call(&class, &name);
       *class = new_class.into();
       *name = new_name.into();
@@ -213,7 +213,7 @@ fn simplify_val(val: &mut Value) {
     }
     Value::MethodRef(class, name) => {
       simplify_name(name);
-      *class = convert::class(class);
+      *class = convert::class(class).to_string();
       *val = convert::static_ref(&class, &name);
     }
     Value::Closure(args, block) => {
@@ -253,7 +253,7 @@ fn simplify_op(op: &mut Op) -> bool {
       }
     }
     Op::Call(class, name, args) => {
-      *class = convert::class(class);
+      *class = convert::class(class).to_string();
       simplify_name(name);
       let (new_name, new_args) = convert::member_call(class, name);
       *name = new_name.into();
@@ -264,6 +264,8 @@ fn simplify_op(op: &mut Op) -> bool {
       }
     }
     Op::Cast(_) => {}
+
+    Op::As(..) | Op::Neq(..) => unreachable!(),
   }
   false
 }

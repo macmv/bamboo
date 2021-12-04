@@ -290,10 +290,16 @@ pub enum Op {
 
   /// Casts to the given type.
   Cast(Type),
+
+  /// Used for int to bool conversions. Not present in json.
+  Neq(Expr),
+
+  /// Used when casting in rust. Not present in json.
+  As(RType),
 }
 
 /// A rust type.
-#[derive(Clone, PartialEq)]
+#[derive(Clone, PartialEq, Deserialize)]
 pub struct RType {
   name:     String,
   generics: Vec<RType>,
@@ -356,7 +362,7 @@ impl Type {
       Self::Float => "f32",
       Self::Double => "f64",
       Self::Char => "char",
-      Self::Class(name) => return RType::new(convert::class(name)),
+      Self::Class(name) => return convert::class(name),
       Self::Array(ty) => return RType::new("Vec").generic(ty.to_rust()),
     })
   }
@@ -374,6 +380,9 @@ impl Op {
       Op::Add(_) => 2,
 
       Op::Cast(..) => 1,
+      Op::As(..) => 1,
+
+      Op::Neq(..) => 0,
 
       Op::Len => 0,
       Op::Idx(_) => 0,

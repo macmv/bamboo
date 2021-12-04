@@ -1,22 +1,22 @@
 use super::{Expr, Instr, Op, RType, Value};
 
-pub fn class(name: &str) -> String {
-  match name.split('/').last().unwrap() {
-    "Map" => "HashMap<U, U>",
-    "Set" => "HashSet<U>",
-    "Collection" => "HashMap<U, U>",
-    "DynamicRegistryManager$Impl" => "U",
-    "RegistryKey" => "U",
+pub fn class(name: &str) -> RType {
+  RType::new(match name.split('/').last().unwrap() {
+    "Map" => return RType::new("HashMap").generic("U").generic("U"),
+    "Set" => return RType::new("HashSet").generic("U"),
+    "Collection" => return RType::new("HashMap").generic("U").generic("U"),
+    "DynamicRegistryManager$Impl" => return RType::new("Vec").generic("U"),
+    "RegistryKey" => return RType::new("Vec").generic("U"),
     "Vec3" => "[U; 3]",
-    "Optional" => "Option<String>",
+    "Optional" => return RType::new("Option").generic("U"),
 
-    "List" | "Deque" => "Vec<U>",
+    "List" | "Deque" => return RType::new("Vec").generic("U"),
     "UUID" => "UUID",
     "String" => "String",
     "BitSet" => "U", // "BitSet",
-    "IntList" => "Vec<i32>",
-    "Object2IntMap" => "HashMap<U, i32>",
-    "Int2ObjectMap" => "HashMap<i32, U>",
+    "IntList" => return RType::new("Vec").generic("<i32>"),
+    "Object2IntMap" => return RType::new("HashMap").generic("U").generic("i32"),
+    "Int2ObjectMap" => return RType::new("HashMap").generic("i32").generic("U"),
     "Vec3i" => "[i32; 3]",
     "Vec4b" => "[bool; 4]",
     "Vec3d" => "[f64; 3]",
@@ -32,7 +32,7 @@ pub fn class(name: &str) -> String {
     "ItemStack" => "Item",
     "Advancement$Task" => "U",
     "GameStateChangeS2CPacket$Reason" => "U",
-    "S21PacketChunkData$Extracted" => "Vec<u8>",
+    "S21PacketChunkData$Extracted" => return RType::new("Vec").generic("<u8>"),
     "CompoundTag" | "NbtCompound" | "NBTTagCompound" => "NBT",
     "DataWatcher" | "EntityDataManager" | "DataTracker" => "U", // "EntityMetadata",
     "BiomeArray" => "Vec<u32>",
@@ -59,7 +59,7 @@ pub fn class(name: &str) -> String {
     "JigsawBlockEntity$Joint" => "U",
 
     _ => "U",
-  }
+  })
   .into()
 }
 
@@ -244,41 +244,47 @@ pub fn reader_to_writer(read: &str) -> &'static str {
   }
 }
 
-pub fn ty(from: &str, to: &str) -> &'static str {
-  match to {
-    "bool" => " != 0",
-    "f32" => " as f32",
-    "f64" => " as f64",
-    "u8" => match from {
-      "i8" | "i16" | "i32" | "i64" => ".try_into().unwrap()",
+pub fn type_cast(from: &RType, to: &RType) -> Vec<Op> {
+  vec![match to.name.as_str() {
+    "bool" => Op::Neq(Expr::new(Value::Lit(0.into()))),
+    "f32" => Op::As(RType::new("f32")),
+    "f64" => Op::As(RType::new("f32")),
+    "u8" => match from.name.as_str() {
+      "f32" => Op::As(RType::new("u8")),
+      "i8" | "i16" | "i32" | "i64" => return try_into(),
       _ => panic!("cannot convert `{}` into `{}`", from, to),
     },
-    "U" => match from {
-      "NBT" => "",
+    "U" => return vec![],
+    "i16" => match from.name.as_str() {
+      "u8" | "i8" => into(),
+      "i32" | "i64" => return try_into(),
       _ => panic!("cannot convert `{}` into `{}`", from, to),
     },
-    "i16" => match from {
-      "u8" | "i8" => ".into()",
-      "i32" | "i64" => ".try_into().unwrap()",
+    "i32" => match from.name.as_str() {
+      "f32" => Op::As(RType::new("i32")),
+      "u8" | "i8" | "i16" => into(),
+      "i64" => return try_into(),
       _ => panic!("cannot convert `{}` into `{}`", from, to),
     },
-    "i32" => match from {
-      "f32" => " as i32",
-      "u8" | "i8" | "i16" => ".into()",
-      "i64" => ".try_into().unwrap()",
+    "i64" => match from.name.as_str() {
+      "f32" => Op::As(RType::new("i32")),
+      "u8" | "i8" | "i16" | "i32" => into(),
       _ => panic!("cannot convert `{}` into `{}`", from, to),
     },
-    "i64" => match from {
-      "f32" => " as i64",
-      "u8" | "i8" | "i16" | "i32" => ".into()",
-      _ => panic!("cannot convert `{}` into `{}`", from, to),
-    },
-    "HashMap<U, U>" | "HashMap<U, i32>" | "HashSet<U>" | "Vec<U>" => return "",
+    "HashMap<U, U>" | "HashMap<U, i32>" | "HashSet<U>" | "Vec<U>" => return vec![],
+    "Vec" => return vec![],
     "String" => match from {
-      _ => return "",
+      _ => return vec![],
     },
     _ => panic!("cannot convert `{}` into `{}`", from, to),
-  }
+  }]
+}
+
+fn into() -> Op {
+  Op::Call("".into(), "into".into(), vec![])
+}
+fn try_into() -> Vec<Op> {
+  vec![Op::Call("".into(), "try_into".into(), vec![]), Op::Call("".into(), "unwrap".into(), vec![])]
 }
 
 pub fn this_call(name: &str, args: &mut Vec<Expr>) -> Option<Instr> {

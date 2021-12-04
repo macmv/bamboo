@@ -296,6 +296,7 @@ impl<'a> InstrWriter<'a> {
         self.gen.write_comment("call super here");
       }
       Instr::Set(f_name, val) => {
+        let mut val = val.clone();
         // Terrible hack. Only applies to 1.8. This was too ugly to implement correctly.
         if f_name == "chunks_data.data_size" {
           self.gen.write_line("let len = (p.read_i16() & 65535).try_into().unwrap();");
@@ -315,9 +316,11 @@ impl<'a> InstrWriter<'a> {
                   Op::Call(_, name, args) => (name, args),
                   _ => unreachable!(),
                 };
-                let ty = convert::reader_func_to_ty(&f_name, name);
+                let ty = field.ty.to_rust();
                 if let Some(ref reader) = field.reader_type {
-                  assert_eq!(reader, &ty);
+                  if *reader != ty {
+                    val.ops.extend(convert::type_cast(reader, &ty));
+                  }
                 } else {
                   field.reader_type = Some(ty.into());
                 }
@@ -351,10 +354,10 @@ impl<'a> InstrWriter<'a> {
             && val.initial != Value::Null
           {
             self.gen.write("Some(");
-            self.write_expr(val);
+            self.write_expr(&val);
             self.gen.write(")");
           } else {
-            self.write_expr(val);
+            self.write_expr(&val);
           }
           self.gen.write_line(";");
         }
@@ -648,6 +651,16 @@ impl<'a> InstrWriter<'a> {
               Type::Double => " as f64",
               _ => unreachable!(),
             });
+          }
+          Op::As(ty) => {
+            i.gen.write(&val);
+            i.gen.write(" as ");
+            i.gen.write(&ty.name);
+          }
+          Op::Neq(v) => {
+            i.gen.write(&val);
+            i.gen.write(" != ");
+            i.write_expr(&v);
           }
         }
         if needs_paren {
