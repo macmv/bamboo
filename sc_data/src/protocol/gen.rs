@@ -267,6 +267,7 @@ fn write_to_tcp(gen: &mut CodeGen, p: &Packet, ver: Version) {
 
   let mut p2 = p.clone();
   let mut writer = InstrWriter::new(gen, &mut p2);
+  writer.needs_deref = true;
   for i in &p.writer.block {
     writer.write_instr(i);
   }
@@ -277,18 +278,25 @@ fn write_to_tcp(gen: &mut CodeGen, p: &Packet, ver: Version) {
 
 #[derive(Debug)]
 struct InstrWriter<'a> {
-  gen:        &'a mut CodeGen,
-  fields:     &'a mut Vec<Field>,
-  vars:       &'a Vec<VarKind>,
-  is_closure: bool,
+  gen:         &'a mut CodeGen,
+  fields:      &'a mut Vec<Field>,
+  vars:        &'a Vec<VarKind>,
+  is_closure:  bool,
+  needs_deref: bool,
 }
 
 impl<'a> InstrWriter<'a> {
   pub fn new(gen: &'a mut CodeGen, p: &'a mut Packet) -> Self {
-    InstrWriter { gen, fields: &mut p.fields, vars: &p.reader.vars, is_closure: false }
+    InstrWriter {
+      gen,
+      fields: &mut p.fields,
+      vars: &p.reader.vars,
+      is_closure: false,
+      needs_deref: false,
+    }
   }
   fn new_inner(gen: &'a mut CodeGen, fields: &'a mut Vec<Field>, vars: &'a Vec<VarKind>) -> Self {
-    InstrWriter { gen, fields, vars, is_closure: false }
+    InstrWriter { gen, fields, vars, is_closure: false, needs_deref: false }
   }
   pub fn write_instr(&mut self, instr: &Instr) {
     match instr {
@@ -438,6 +446,7 @@ impl<'a> InstrWriter<'a> {
             gen.write_block(|gen| {
               let mut w = InstrWriter::new_inner(gen, fields, vars);
               w.is_closure = self.is_closure;
+              w.needs_deref = self.needs_deref;
               for i in instr {
                 w.write_instr(i);
               }
@@ -474,6 +483,7 @@ impl<'a> InstrWriter<'a> {
     {
       let mut inner = InstrWriter::new_inner(&mut g, &mut self.fields, &self.vars);
       inner.is_closure = self.is_closure;
+      inner.needs_deref = self.needs_deref;
       inner.write_val(&e.initial);
     }
     if !e.ops.is_empty()
@@ -490,179 +500,11 @@ impl<'a> InstrWriter<'a> {
       {
         let mut i = InstrWriter::new_inner(&mut g, &mut self.fields, &self.vars);
         i.is_closure = self.is_closure;
+        i.needs_deref = self.needs_deref;
         if needs_paren {
           i.gen.write("(");
         }
-        match op {
-          Op::BitAnd(rhs) => {
-            i.gen.write(&val);
-            i.gen.write(" & ");
-            i.write_expr(rhs);
-          }
-          Op::Shr(rhs) => {
-            i.gen.write(&val);
-            i.gen.write(" >> ");
-            i.write_expr(rhs);
-          }
-          Op::UShr(rhs) => {
-            i.gen.write(&val);
-            i.gen.write(" >> ");
-            i.write_expr(rhs);
-          }
-          Op::Shl(rhs) => {
-            i.gen.write(&val);
-            i.gen.write(" << ");
-            i.write_expr(rhs);
-          }
-
-          Op::Add(rhs) => {
-            i.gen.write(&val);
-            i.gen.write(" + ");
-            i.write_expr(rhs);
-          }
-          Op::Div(rhs) => {
-            i.gen.write(&val);
-            if matches!(rhs.initial, Value::Lit(Lit::Float(_))) {
-              i.gen.write(" as f32");
-            }
-            i.gen.write(" / ");
-            i.write_expr(rhs);
-          }
-
-          Op::Len => {
-            i.gen.write(&val);
-            i.gen.write(".len()");
-          }
-          Op::Idx(rhs) => {
-            i.gen.write(&val);
-            i.gen.write("[");
-            i.write_expr(rhs);
-            i.gen.write(".try_into().unwrap()]");
-          }
-          Op::Field(name) => {
-            i.gen.write(&val);
-            i.gen.write(".");
-            i.gen.write(&name);
-          }
-
-          Op::If(cond, new) => {
-            i.gen.write("if ");
-            i.write_cond(cond);
-            i.gen.write(" { ");
-            i.gen.write(&val);
-            i.gen.write(" } else { ");
-            if e.initial == Value::Null {
-              i.gen.write("Some(");
-              i.write_expr(new);
-              i.gen.write(")");
-            } else {
-              i.write_expr(new);
-            }
-            i.gen.write(" }");
-          }
-
-          Op::Call(_class, name, args) => {
-            i.gen.write(&val);
-            if !(name == "get" && args.len() == 0) {
-              i.gen.write(".");
-              if name == "read_str" && args.is_empty() {
-                i.gen.write("read_str(32767)");
-              } else if name == "read_byte_arr" && args.len() == 1 {
-                i.gen.write("read_byte_arr_max(");
-                for a in args.iter() {
-                  i.write_expr(a);
-                }
-                i.gen.write(")");
-              } else if name == "read_map" && args.len() == 3 {
-                i.gen.write("read_map(");
-                for (idx, a) in args.iter().enumerate().skip(1) {
-                  i.write_expr(a);
-                  if idx != args.len() - 1 {
-                    i.gen.write(", ");
-                  }
-                }
-                i.gen.write(")");
-              } else if name == "read_collection" && args.len() == 2 {
-                let mut args = args.clone();
-                match &args[0].initial {
-                  Value::MethodRef(class, name)
-                    if class == "HashSet" && name == "with_capacity" =>
-                  {
-                    i.gen.write("read_set(");
-                  }
-                  Value::MethodRef(class, name) if class == "Vec" && name == "with_capacity" => {
-                    i.gen.write("read_list(");
-                  }
-                  Value::CallStatic(class, name, inner_args)
-                    if class == "tcp::Packet" && name == "get_max_validator" =>
-                  {
-                    assert!(inner_args.len() == 2, "{:?}", args);
-                    let len = inner_args[1].clone();
-                    match &inner_args[0].initial {
-                      Value::MethodRef(class, name)
-                        if class == "com/google/common/collect/Sets"
-                          && (name == "new_linked_hash_set_with_expected_size"
-                            || name == "new_hash_set_with_expected_size") =>
-                      {
-                        i.gen.write("read_set_max(");
-                        args.push(len);
-                      }
-                      Value::MethodRef(class, name)
-                        if class == "com/google/common/collect/Lists"
-                          && name == "new_array_list_with_capacity" =>
-                      {
-                        i.gen.write("read_list_max(");
-                        args.push(len);
-                      }
-                      _ => panic!("unexpected read_collection args {:?}", inner_args),
-                    }
-                  }
-                  _ => panic!("unexpected read_collection args {:?}", args),
-                }
-                for (idx, a) in args.iter().enumerate().skip(1) {
-                  i.write_expr(a);
-                  if idx != args.len() - 1 {
-                    i.gen.write(", ");
-                  }
-                }
-                i.gen.write(")");
-              } else {
-                i.gen.write(&name);
-                i.gen.write("(");
-                for (idx, a) in args.iter().enumerate() {
-                  i.write_expr(a);
-                  if idx != args.len() - 1 {
-                    i.gen.write(", ");
-                  }
-                }
-                i.gen.write(")");
-              }
-            }
-          }
-
-          Op::Cast(ty) => {
-            i.gen.write(&val);
-            i.gen.write(match ty {
-              Type::Byte => " as i8",
-              Type::Short => " as i16",
-              Type::Int => " as i32",
-              Type::Long => " as i64",
-              Type::Float => " as f32",
-              Type::Double => " as f64",
-              _ => unreachable!(),
-            });
-          }
-          Op::As(ty) => {
-            i.gen.write(&val);
-            i.gen.write(" as ");
-            i.gen.write(&ty.name);
-          }
-          Op::Neq(v) => {
-            i.gen.write(&val);
-            i.gen.write(" != ");
-            i.write_expr(&v);
-          }
-        }
+        i.write_op(&val, op);
         if needs_paren {
           i.gen.write(")");
         }
@@ -698,6 +540,52 @@ impl<'a> InstrWriter<'a> {
         self.gen.write(name);
       }
       Value::Field(name) => {
+        if self.needs_deref {
+          if let Some(field) = self.get_field(name).map(|v| v.clone()) {
+            if let Some(reader_ty) = &field.reader_type {
+              let field_ty = field.ty.to_rust();
+              let mut g = CodeGen::new();
+              g.set_indent(self.gen.indent());
+              {
+                let mut i = InstrWriter::new_inner(&mut g, &mut self.fields, &self.vars);
+                i.is_closure = self.is_closure;
+                i.needs_deref = self.needs_deref;
+                match reader_ty.name.as_str() {
+                  "u8" | "i8" | "i16" | "i32" | "i64" => {
+                    if *reader_ty != field_ty {
+                      i.gen.write("(");
+                    }
+                    i.gen.write("*f_");
+                    i.gen.write(name);
+                    if *reader_ty != field_ty {
+                      i.gen.write(")");
+                    }
+                  }
+                  _ => {
+                    i.gen.write("f_");
+                    i.gen.write(name);
+                  }
+                }
+              }
+              if *reader_ty != field_ty {
+                let mut v = g.into_output();
+                for op in convert::type_cast(&field_ty, reader_ty) {
+                  let mut g = CodeGen::new();
+                  g.set_indent(self.gen.indent());
+                  let mut i = InstrWriter::new_inner(&mut g, &mut self.fields, &self.vars);
+                  i.is_closure = self.is_closure;
+                  i.needs_deref = self.needs_deref;
+                  i.write_op(&v, &op);
+                  v = g.into_output();
+                }
+                self.gen.write(&v);
+              } else {
+                self.gen.write(&g.into_output());
+              }
+              return;
+            }
+          }
+        }
         self.gen.write("f_");
         self.gen.write(name);
       }
@@ -762,6 +650,177 @@ impl<'a> InstrWriter<'a> {
           }
         }
         self.gen.write(")");
+      }
+    }
+  }
+
+  fn write_op(&mut self, val: &str, op: &Op) {
+    match op {
+      Op::BitAnd(rhs) => {
+        self.gen.write(&val);
+        self.gen.write(" & ");
+        self.write_expr(rhs);
+      }
+      Op::Shr(rhs) => {
+        self.gen.write(&val);
+        self.gen.write(" >> ");
+        self.write_expr(rhs);
+      }
+      Op::UShr(rhs) => {
+        self.gen.write(&val);
+        self.gen.write(" >> ");
+        self.write_expr(rhs);
+      }
+      Op::Shl(rhs) => {
+        self.gen.write(&val);
+        self.gen.write(" << ");
+        self.write_expr(rhs);
+      }
+
+      Op::Add(rhs) => {
+        self.gen.write(&val);
+        self.gen.write(" + ");
+        self.write_expr(rhs);
+      }
+      Op::Div(rhs) => {
+        self.gen.write(&val);
+        if matches!(rhs.initial, Value::Lit(Lit::Float(_))) {
+          self.gen.write(" as f32");
+        }
+        self.gen.write(" / ");
+        self.write_expr(rhs);
+      }
+
+      Op::Len => {
+        self.gen.write(&val);
+        self.gen.write(".len()");
+      }
+      Op::Idx(rhs) => {
+        self.gen.write(&val);
+        self.gen.write("[");
+        self.write_expr(rhs);
+        self.gen.write(".try_into().unwrap()]");
+      }
+      Op::Field(name) => {
+        self.gen.write(&val);
+        self.gen.write(".");
+        self.gen.write(&name);
+      }
+
+      Op::If(cond, new) => {
+        self.gen.write("if ");
+        self.write_cond(cond);
+        self.gen.write(" { ");
+        self.gen.write(&val);
+        self.gen.write(" } else { ");
+        if new.initial == Value::Null {
+          self.gen.write("Some(");
+          self.write_expr(new);
+          self.gen.write(")");
+        } else {
+          self.write_expr(new);
+        }
+        self.gen.write(" }");
+      }
+
+      Op::Call(_class, name, args) => {
+        self.gen.write(&val);
+        if !(name == "get" && args.len() == 0) {
+          self.gen.write(".");
+          if name == "read_str" && args.is_empty() {
+            self.gen.write("read_str(32767)");
+          } else if name == "read_byte_arr" && args.len() == 1 {
+            self.gen.write("read_byte_arr_max(");
+            for a in args.iter() {
+              self.write_expr(a);
+            }
+            self.gen.write(")");
+          } else if name == "read_map" && args.len() == 3 {
+            self.gen.write("read_map(");
+            for (idx, a) in args.iter().enumerate().skip(1) {
+              self.write_expr(a);
+              if idx != args.len() - 1 {
+                self.gen.write(", ");
+              }
+            }
+            self.gen.write(")");
+          } else if name == "read_collection" && args.len() == 2 {
+            let mut args = args.clone();
+            match &args[0].initial {
+              Value::MethodRef(class, name) if class == "HashSet" && name == "with_capacity" => {
+                self.gen.write("read_set(");
+              }
+              Value::MethodRef(class, name) if class == "Vec" && name == "with_capacity" => {
+                self.gen.write("read_list(");
+              }
+              Value::CallStatic(class, name, inner_args)
+                if class == "tcp::Packet" && name == "get_max_validator" =>
+              {
+                assert!(inner_args.len() == 2, "{:?}", args);
+                let len = inner_args[1].clone();
+                match &inner_args[0].initial {
+                  Value::MethodRef(class, name)
+                    if class == "com/google/common/collect/Sets"
+                      && (name == "new_linked_hash_set_with_expected_size"
+                        || name == "new_hash_set_with_expected_size") =>
+                  {
+                    self.gen.write("read_set_max(");
+                    args.push(len);
+                  }
+                  Value::MethodRef(class, name)
+                    if class == "com/google/common/collect/Lists"
+                      && name == "new_array_list_with_capacity" =>
+                  {
+                    self.gen.write("read_list_max(");
+                    args.push(len);
+                  }
+                  _ => panic!("unexpected read_collection args {:?}", inner_args),
+                }
+              }
+              _ => panic!("unexpected read_collection args {:?}", args),
+            }
+            for (idx, a) in args.iter().enumerate().skip(1) {
+              self.write_expr(a);
+              if idx != args.len() - 1 {
+                self.gen.write(", ");
+              }
+            }
+            self.gen.write(")");
+          } else {
+            self.gen.write(&name);
+            self.gen.write("(");
+            for (idx, a) in args.iter().enumerate() {
+              self.write_expr(a);
+              if idx != args.len() - 1 {
+                self.gen.write(", ");
+              }
+            }
+            self.gen.write(")");
+          }
+        }
+      }
+
+      Op::Cast(ty) => {
+        self.gen.write(&val);
+        self.gen.write(match ty {
+          Type::Byte => " as i8",
+          Type::Short => " as i16",
+          Type::Int => " as i32",
+          Type::Long => " as i64",
+          Type::Float => " as f32",
+          Type::Double => " as f64",
+          _ => unreachable!(),
+        });
+      }
+      Op::As(ty) => {
+        self.gen.write(&val);
+        self.gen.write(" as ");
+        self.gen.write(&ty.name);
+      }
+      Op::Neq(v) => {
+        self.gen.write(&val);
+        self.gen.write(" != ");
+        self.write_expr(&v);
       }
     }
   }

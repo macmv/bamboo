@@ -142,10 +142,15 @@ impl<'a> ReaderTypes<'a> {
       Op::Cast(ty) => ty.to_rust(),
       Op::If(_cond, new) => {
         // TODO: When we get an Option<T> and T, we need to wrap T in Some().
-        //
-        // let new_ty = self.expr_type(new);
-        // assert_eq!(initial, new_ty);
-        initial
+        let new_ty = self.expr_type(new);
+        if new_ty.name == "Option" {
+          new_ty
+        } else if initial.name == "Option" {
+          initial
+        } else {
+          assert_eq!(initial, new_ty);
+          initial
+        }
       }
       // TODO: Math ops should coerce types
       Op::BitAnd(_) | Op::Div(_) => initial,
