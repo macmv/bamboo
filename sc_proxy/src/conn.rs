@@ -244,13 +244,17 @@ impl<'a, S: PacketStream + Send + Sync> Conn<'a, S> {
         if len as usize + m.index() <= self.from_server.len() {
           let idx = m.index();
           self.from_server.drain(0..idx);
-          let (p, parsed) = cb::Packet::from_sc(self.ver, &self.from_server[..len as usize])
-            .map_err(|(packet, field, err)| {
-              io::Error::new(
-                io::ErrorKind::InvalidData,
-                format!("while reading field {} of packet {} got error: {}", field, packet, err),
-              )
-            })?;
+          // TODO: tcp::Packet and util::Buffer should work by reference
+          let tcp = tcp::Packet::from_buf(self.from_server[..len as usize].to_vec(), self.ver);
+          let p = cb::Packet::from_sc(&mut tcp, self.ver);
+          let parsed = tcp.index();
+          // TODO: from_sc should be fallible
+          // .map_err(|(packet, field, err)| {
+          //   io::Error::new(
+          //     io::ErrorKind::InvalidData,
+          //     format!("while reading field {} of packet {} got error: {}", field,
+          // packet, err),   )
+          // })?;
           if len as usize != parsed {
             return Err(io::Error::new(
               io::ErrorKind::InvalidData,
@@ -320,7 +324,7 @@ impl<'a, S: PacketStream + Send + Sync> Conn<'a, S> {
       match self.client_stream.read(self.ver) {
         Ok(Some(p)) => match self.state {
           State::Play => {
-            let packet = sb::Packet::from_tcp(p, self.ver);
+            let packet = sb::Packet::from_tcp(&mut p, self.ver);
             self.send_to_server(packet)?;
           }
           _ => {
@@ -337,7 +341,9 @@ impl<'a, S: PacketStream + Send + Sync> Conn<'a, S> {
   /// Tries to send the packet to the client, and buffers it if that is not
   /// possible.
   fn send_to_client(&mut self, p: cb::Packet) -> io::Result<()> {
-    self.client_stream.write(p.to_tcp(self.ver));
+    let mut tcp = tcp::Packet::new(p.tcp_id(self.ver), self.ver);
+    p.to_tcp(&mut tcp);
+    self.client_stream.write(tcp);
     self.write_client()
   }
 
@@ -346,7 +352,8 @@ impl<'a, S: PacketStream + Send + Sync> Conn<'a, S> {
   fn send_to_server(&mut self, p: sb::Packet) -> io::Result<()> {
     // The only error here is EOF, which means the garbage buffer was not enough
     // space for this packet.
-    let len = p.to_sc(self.ver, &mut self.garbage).unwrap();
+    let mut tcp = tcp::Packet::new(p.sug_id().try_into().unwrap(), self.ver);
+    let len = p.to_sc(&mut tcp);
 
     let mut prefix = [0; 5];
     let mut m = MessageWrite::new(&mut prefix);

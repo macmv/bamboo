@@ -112,6 +112,7 @@ impl PacketCollection {
     gen.write_line("}");
     gen.write_line("");
 
+    gen.write_line("#[derive(Debug)]");
     gen.write("pub enum Packet ");
     gen.write_block(|gen| {
       for versions in &packets {
@@ -142,8 +143,39 @@ impl PacketCollection {
           }
         });
       });
+      gen.write("pub fn tcp_id(&self, ver: ProtocolVersion) -> u32 ");
+      gen.write_block(|gen| {
+        gen.write_match("ver.id()", |gen| {
+          for v in crate::VERSIONS {
+            gen.write_comment(&v.to_string());
+            gen.write(&v.protocol.to_string());
+            gen.write(" => ");
+            gen.write_match("self", |gen| {
+              for versions in packets.iter() {
+                for (ver, p) in versions {
+                  if ver.maj > v.maj {
+                    break;
+                  }
+                  gen.write("Packet::");
+                  gen.write(&p.name);
+                  gen.write("V");
+                  gen.write(&ver.maj.to_string());
+                  gen.write(" { .. } => ");
+                  gen.write(&p.tcp_id.to_string());
+                  gen.write_line(",");
+                  break;
+                }
+              }
+              gen.write_line(
+                r#"_ => panic!("packet {:?} does not exist on version {}", self, ver)"#,
+              );
+            });
+          }
+          gen.write_line(r#"_ => panic!("unknown version {}", ver),"#);
+        });
+      });
       gen.write_line("#[allow(unused_mut, unused_variables)]");
-      gen.write("pub fn from_tcp(mut p: tcp::Packet, ver: ProtocolVersion) -> Self ");
+      gen.write("pub fn from_tcp(p: &mut tcp::Packet, ver: ProtocolVersion) -> Self ");
       gen.write_block(|gen| {
         gen.write_match("to_sug_id(p.id(), ver)", |gen| {
           for (id, versions) in packets.iter().enumerate() {
@@ -187,7 +219,7 @@ impl PacketCollection {
         });
       });
       gen.write_line("#[allow(unused_mut, unused_variables)]");
-      gen.write("pub fn to_tcp(&self, mut p: tcp::Packet) ");
+      gen.write("pub fn to_tcp(&self, p: &mut tcp::Packet) ");
       gen.write_block(|gen| {
         gen.write_match("self", |gen| {
           for (_id, versions) in packets.iter().enumerate() {
@@ -197,7 +229,7 @@ impl PacketCollection {
           }
         });
       });
-      gen.write("pub fn from_sc(mut p: tcp::Packet, ver: ProtocolVersion) -> Self ");
+      gen.write("pub fn from_sc(p: &mut tcp::Packet, ver: ProtocolVersion) -> Self ");
       gen.write_block(|gen| {
         gen.write_match("p.id()", |gen| {
           for (id, versions) in packets.iter().enumerate() {
@@ -240,7 +272,7 @@ impl PacketCollection {
           gen.write_line(r#"v => panic!("invalid protocol version {}", v),"#);
         });
       });
-      gen.write("pub fn to_sc(&self, mut p: tcp::Packet) ");
+      gen.write("pub fn to_sc(&self, p: &mut tcp::Packet) ");
       gen.write_block(|gen| {
         gen.write_match("self", |gen| {
           for versions in packets.iter() {

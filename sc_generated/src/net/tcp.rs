@@ -108,6 +108,9 @@ impl Packet {
     self.buf.read_buf(len)
   }
 
+  pub fn index(&self) -> usize {
+    self.buf.index()
+  }
   pub fn remaining(&self) -> usize {
     self.buf.len() - self.buf.index()
   }
