@@ -101,6 +101,7 @@ impl PacketCollection {
     gen.write_line("};");
     gen.write_line("use sc_transfer::{");
     gen.write_line("  MessageRead, MessageReader, MessageWrite, MessageWriter, ReadError,");
+    gen.write_line("  WriteError,");
     gen.write_line("};");
     gen.write_line("use std::collections::{HashMap, HashSet};");
     gen.write_line("");
@@ -108,10 +109,10 @@ impl PacketCollection {
     gen.write_line("pub struct U;");
     gen.write_line("");
     gen.write_line("impl MessageRead for U {");
-    gen.write_line("  fn read(_buf: &mut MessageReader) -> Self { U }");
+    gen.write_line("  fn read(_: &mut MessageReader) -> Result<Self, ReadError> { Ok(U) }");
     gen.write_line("}");
     gen.write_line("impl MessageWrite for U {");
-    gen.write_line("  fn write(&self, _buf: &mut MessageWriter) {}");
+    gen.write_line("  fn write(&self, _: &mut MessageWriter) -> Result<(), WriteError> { Ok(()) }");
     gen.write_line("}");
     gen.write_line("");
 
@@ -278,7 +279,7 @@ impl PacketCollection {
           gen.write_line(r#"v => panic!("invalid protocol version {}", v),"#);
         });
       });
-      gen.write("pub fn to_sc(&self, m: &mut MessageWriter) ");
+      gen.write("pub fn to_sc(&self, m: &mut MessageWriter) -> Result<(), WriteError> ");
       gen.write_block(|gen| {
         gen.write_match("self", |gen| {
           for (id, versions) in packets.iter().enumerate() {
@@ -287,6 +288,7 @@ impl PacketCollection {
             }
           }
         });
+        gen.write_line("Ok(())");
       });
     });
 
@@ -449,7 +451,7 @@ fn write_to_sc(gen: &mut CodeGen, p: &Packet, ver: Version, id: usize) {
   for f in &p.fields {
     gen.write("m.write(f_");
     gen.write(&f.name);
-    gen.write_line(");");
+    gen.write_line(")?;");
   }
 
   gen.remove_indent();

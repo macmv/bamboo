@@ -204,7 +204,7 @@ impl Packet {
 
   /// Reads 16 bytes from the buffer, and returns that as a big endian UUID.
   pub fn read_uuid(&mut self) -> UUID {
-    UUID::from_bytes(self.read_buf(16).try_into().unwrap())
+    UUID::from_be_bytes(self.read_buf(16).try_into().unwrap())
   }
 
   /// This writes a UUID into the buffer (in big endian format).
