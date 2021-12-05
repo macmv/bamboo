@@ -1,4 +1,4 @@
-use super::{convert, Expr, Field, Instr, Lit, Op, Packet, RType, Type, Value, VarKind};
+use super::{convert, Cond, Expr, Field, Instr, Lit, Op, Packet, RType, Type, Value, VarKind};
 
 #[derive(Debug)]
 struct ReaderTypes<'a> {
@@ -213,7 +213,7 @@ impl<'a> ReaderTypes<'a> {
     for i in read {
       match i {
         Instr::Set(field, expr) => {
-          if let Some(instr) = self.set_expr(expr, field) {
+          if let Some(instr) = self.set_expr(expr, &Expr::new(Value::Field(field.into()))) {
             writer.push(instr);
           }
         }
@@ -222,23 +222,58 @@ impl<'a> ReaderTypes<'a> {
         Instr::For(_, _range, _) => {}
         Instr::Switch(_, _table) => {}
         Instr::If(cond, when_true, when_false) => {
-          let mut when_t = vec![];
-          let mut when_f = vec![];
-          self.gen_writer(when_true, &mut when_t);
-          self.gen_writer(when_false, &mut when_f);
-          writer.push(Instr::If(cond.clone(), when_t, when_f));
+          // let mut when_t = vec![];
+          // let mut when_f = vec![];
+          // self.gen_writer(when_true, &mut when_t);
+          // self.gen_writer(when_false, &mut when_f);
+
+          let fields_changed: Vec<_> = when_true
+            .iter()
+            .filter_map(|i| match i {
+              Instr::Set(field, _) => Some(field),
+              _ => None,
+            })
+            .collect();
+          assert!(
+            fields_changed.len() > 0,
+            "cannot have a conditional where no fields are modified"
+          );
+
+          match cond {
+            Cond::Neq(lhs, rhs) => {
+              assert_eq!(rhs, &Expr::new(Value::Lit(Lit::Int(0))));
+              let v = self.value_of(lhs);
+              writer.push(
+                self
+                  .set_expr(
+                    &v,
+                    &Expr::new(Value::Field(fields_changed[0].clone())).op(Op::Call(
+                      "Option".into(),
+                      "is_some".into(),
+                      vec![],
+                    )),
+                  )
+                  .unwrap(),
+              );
+            }
+            _ => {
+              writer.push(Instr::If(cond.clone(), when_true.clone(), when_false.clone()));
+            } // _ => todo!("cond {:?}", cond),
+          }
+
+          // writer.push(Instr::If(cond.clone(), when_t, when_f));
         }
         _ => panic!("cannot convert {:?} into writer", i),
       }
     }
   }
 
-  fn set_expr(&mut self, expr: &Expr, field: &str) -> Option<Instr> {
+  fn set_expr(&mut self, expr: &Expr, field: &Expr) -> Option<Instr> {
     Some(match expr.ops.first() {
       Some(Op::Call(class, name, _args)) if class == "tcp::Packet" => {
         assert_eq!(expr.initial, Value::Var(1), "unknown Set value: {:?}", expr);
         let writer_name = convert::reader_to_writer(name);
-        let mut val = Expr::new(Value::Field(field.into()));
+        let mut val = field.clone();
         for op in expr.ops.iter().skip(1).rev() {
           val.ops.push(match op {
             // Convert the cast `foo = buf.read_u8() as i32` into `buf.write_u8(foo as u8)`
@@ -262,5 +297,12 @@ impl<'a> ReaderTypes<'a> {
       None => return None,
       _ => panic!("cannot convert {:?} into writer (packet {})", expr, self.packet),
     })
+  }
+
+  fn value_of(&self, v: &Expr) -> Expr {
+    match v.initial {
+      Value::Var(idx) if idx != 1 => self.vars[idx].clone(),
+      _ => v.clone(),
+    }
   }
 }
