@@ -316,6 +316,13 @@ impl RType {
     self.generics.push(arg.into());
     self
   }
+  pub fn is_copy(&self) -> bool {
+    match self.name.as_str() {
+      "u8" | "i8" | "i16" | "i32" | "i64" | "f32" | "f64" => true,
+      "Option" => self.generics[0].is_copy(),
+      _ => false,
+    }
+  }
 }
 
 impl fmt::Debug for RType {

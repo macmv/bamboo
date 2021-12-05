@@ -5,6 +5,7 @@ use crate::{
   Pos,
 };
 use std::{
+  borrow::Borrow,
   collections::{HashMap, HashSet},
   convert::TryInto,
   hash::Hash,
@@ -257,6 +258,19 @@ impl Packet {
     }
     map
   }
+  /// Writes a HashMap to the packet.
+  pub fn write_map<K: Eq + Hash, V>(
+    &mut self,
+    map: &HashMap<K, V>,
+    key: impl Fn(&mut Packet, &K),
+    val: impl Fn(&mut Packet, &V),
+  ) {
+    self.write_varint(map.len().try_into().unwrap());
+    for (k, v) in map {
+      key(self, k);
+      val(self, v);
+    }
+  }
 
   /// Reads a HashSet from the packet. This is new to 1.17, and simplifies a
   /// bunch of small for loops in previous versions.
@@ -267,6 +281,13 @@ impl Packet {
       set.insert(val(self));
     }
     set
+  }
+  /// Writes a HashSet to the packet.
+  pub fn write_set<T: Eq + Hash>(&mut self, set: &HashSet<T>, val: impl Fn(&mut Packet, &T)) {
+    self.write_varint(set.len().try_into().unwrap());
+    for v in set {
+      val(self, v);
+    }
   }
   /// Reads a HashSet from the packet. If the length is greater than `max`, this
   /// fails. This is new to 1.17, and simplifies a bunch of small for loops in
@@ -326,7 +347,11 @@ impl Packet {
     T::read_sc(self)
   }
 
-  pub fn write_sc<T>(&mut self, v: impl WriteSc) {
-    v.read_sc(self)
+  pub fn write_sc<B, T>(&mut self, v: B)
+  where
+    B: Borrow<T>,
+    T: WriteSc,
+  {
+    v.borrow().write_sc(self)
   }
 }

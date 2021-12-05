@@ -96,6 +96,7 @@ impl PacketCollection {
     gen.write_line("};");
     gen.write_line("use std::collections::{HashMap, HashSet};");
     gen.write_line("");
+    gen.write_line("#[derive(Debug, PartialEq, Eq, Hash)]");
     gen.write_line("pub struct U;");
     gen.write_line("");
     gen.write_line("impl ReadSc for U {");
@@ -381,6 +382,10 @@ fn write_to_sc(gen: &mut CodeGen, p: &Packet, ver: Version) {
 
   for f in &p.fields {
     gen.write("p.write_sc(");
+    if f.ty.to_rust().is_copy() {
+      gen.write("*");
+    }
+    gen.write("f_");
     gen.write(&f.name);
     gen.write_line(");");
   }
@@ -627,21 +632,18 @@ impl<'a> InstrWriter<'a> {
                 let mut i = InstrWriter::new_inner(&mut g, &mut self.fields, &self.vars);
                 i.is_closure = self.is_closure;
                 i.needs_deref = self.needs_deref;
-                match reader_ty.name.as_str() {
-                  "u8" | "i8" | "i16" | "i32" | "i64" | "f32" | "f64" => {
-                    if *reader_ty != field_ty {
-                      i.gen.write("(");
-                    }
-                    i.gen.write("*f_");
-                    i.gen.write(name);
-                    if *reader_ty != field_ty {
-                      i.gen.write(")");
-                    }
+                if reader_ty.is_copy() {
+                  if *reader_ty != field_ty {
+                    i.gen.write("(");
                   }
-                  _ => {
-                    i.gen.write("f_");
-                    i.gen.write(name);
+                  i.gen.write("*f_");
+                  i.gen.write(name);
+                  if *reader_ty != field_ty {
+                    i.gen.write(")");
                   }
+                } else {
+                  i.gen.write("f_");
+                  i.gen.write(name);
                 }
               }
               if *reader_ty != field_ty {
