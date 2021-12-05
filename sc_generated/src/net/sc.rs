@@ -1,7 +1,7 @@
 use super::tcp;
 use crate::{
   util::{nbt::NBT, Item, UUID},
-  Pos,
+  ChunkPos, Pos,
 };
 use std::{
   collections::{HashMap, HashSet},
@@ -46,6 +46,7 @@ sc_simple!(i64, read_i64, write_i64);
 sc_simple!(f32, read_f32, write_f32);
 sc_simple!(f64, read_f64, write_f64);
 sc_simple!(Pos, read_pos, write_pos);
+sc_simple!(ChunkPos, read_chunk_pos, write_chunk_pos);
 sc_simple!(UUID, read_uuid, write_uuid);
 
 impl ReadSc for String {
@@ -163,6 +164,25 @@ where
     buf.write_sc(&self[0]);
     buf.write_sc(&self[1]);
     buf.write_sc(&self[2]);
+  }
+}
+impl<T> ReadSc for [T; 4]
+where
+  T: ReadSc,
+{
+  fn read_sc(buf: &mut tcp::Packet) -> Self {
+    [buf.read_sc(), buf.read_sc(), buf.read_sc(), buf.read_sc()]
+  }
+}
+impl<T> WriteSc for [T; 4]
+where
+  T: WriteSc,
+{
+  fn write_sc(&self, buf: &mut tcp::Packet) {
+    buf.write_sc(&self[0]);
+    buf.write_sc(&self[1]);
+    buf.write_sc(&self[2]);
+    buf.write_sc(&self[3]);
   }
 }
 impl<T, U> ReadSc for (T, U)

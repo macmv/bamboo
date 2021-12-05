@@ -2,7 +2,7 @@ use super::{ReadSc, WriteSc};
 use crate::{
   util::{nbt::NBT, Buffer, BufferError, Item, UUID},
   version::ProtocolVersion,
-  Pos,
+  ChunkPos, Pos,
 };
 use std::{
   borrow::Borrow,
@@ -138,6 +138,16 @@ impl Packet {
     } else {
       Pos::from_u64(num)
     }
+  }
+
+  /// Writes a chunk position, as two i32s.
+  pub fn write_chunk_pos(&mut self, p: ChunkPos) {
+    self.write_i32(p.x());
+    self.write_i32(p.z());
+  }
+  /// Reads a chunk position, as two i32s.
+  pub fn read_chunk_pos(&mut self) -> ChunkPos {
+    ChunkPos::new(self.read_i32(), self.read_i32())
   }
 
   /// Reads an nbt tag from self.
@@ -347,11 +357,9 @@ impl Packet {
     T::read_sc(self)
   }
 
-  pub fn write_sc<B: ?Sized, T>(&mut self, v: &B)
+  pub fn write_sc<T>(&mut self, v: &T)
   where
     T: WriteSc,
-    T: Borrow<B>,
-    B: WriteSc,
   {
     v.borrow().write_sc(self)
   }
