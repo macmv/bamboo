@@ -38,8 +38,8 @@
 mod read;
 mod write;
 
-pub use read::{MessageRead, ReadError};
-pub use write::{MessageWrite, WriteError};
+pub use read::{MessageRead, MessageReader, ReadError};
+pub use write::{MessageWrite, MessageWriter, WriteError};
 
 /// Encodes the number using zig zag encoding. See the [trait](ZigZag) docs
 /// for more.

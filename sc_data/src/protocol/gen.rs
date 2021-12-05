@@ -99,14 +99,16 @@ impl PacketCollection {
     gen.write_line("  version::ProtocolVersion,");
     gen.write_line("  util::{Item, nbt::NBT, UUID},");
     gen.write_line("};");
-    gen.write_line("use sc_transfer::{MessageRead, MessageReader, MessageWrite, MessageWriter};");
+    gen.write_line("use sc_transfer::{");
+    gen.write_line("  MessageRead, MessageReader, MessageWrite, MessageWriter, ReadError,");
+    gen.write_line("};");
     gen.write_line("use std::collections::{HashMap, HashSet};");
     gen.write_line("");
     gen.write_line("#[derive(Debug, PartialEq, Eq, Hash)]");
     gen.write_line("pub struct U;");
     gen.write_line("");
     gen.write_line("impl MessageRead for U {");
-    gen.write_line("  fn read(buf: &mut MessageReadder) -> Self { U }");
+    gen.write_line("  fn read(buf: &mut MessageReader) -> Self { U }");
     gen.write_line("}");
     gen.write_line("impl MessageWrite for U {");
     gen.write_line("  fn write(&self, buf: &mut MessageWriter) {}");
@@ -230,7 +232,9 @@ impl PacketCollection {
           }
         });
       });
-      gen.write("pub fn from_sc(m: &mut MessageReader, ver: ProtocolVersion) -> Self ");
+      gen.write(
+        "pub fn from_sc(m: &mut MessageReader, ver: ProtocolVersion) -> Result<Self, ReadError> ",
+      );
       gen.write_block(|gen| {
         gen.write_line("let id = m.read_i32()");
         gen.write_match("id", |gen| {
@@ -416,8 +420,7 @@ fn write_from_sc(gen: &mut CodeGen, p: &Packet, ver: Version) {
   gen.add_indent();
   for f in &p.fields {
     gen.write(&f.name);
-    gen.write(": m.read()");
-    gen.write_line(",");
+    gen.write_line(": m.read()?,");
   }
   gen.remove_indent();
   gen.write_line("}");

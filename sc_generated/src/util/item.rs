@@ -1,5 +1,5 @@
 use super::nbt::NBT;
-use sc_transfer::{MessageRead, MessageWrite, ReadError, WriteError};
+use sc_transfer::{MessageReader, MessageWriter, ReadError, WriteError};
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct Item {
@@ -14,7 +14,7 @@ impl Item {
   pub fn new(id: i32, count: u8, damage: i16, nbt: NBT) -> Self {
     Item { id, count, damage, nbt }
   }
-  pub fn from_sc(m: &mut MessageRead) -> Result<Self, ReadError> {
+  pub fn from_sc(m: &mut MessageReader) -> Result<Self, ReadError> {
     Ok(Item {
       id:     m.read_i32()?,
       count:  m.read_u8()?,
@@ -22,7 +22,7 @@ impl Item {
       nbt:    NBT::deserialize(m.read_buf()?).unwrap(),
     })
   }
-  pub fn to_sc(&self, m: &mut MessageWrite) -> Result<(), WriteError> {
+  pub fn to_sc(&self, m: &mut MessageWriter) -> Result<(), WriteError> {
     m.write_i32(self.id)?;
     m.write_u8(self.count)?;
     m.write_i16(self.damage)?;
