@@ -1,19 +1,33 @@
-use super::{Expr, Field, Instr, Lit, Op, Packet, RType, Type, Value, VarKind};
+use super::{convert, Expr, Field, Instr, Lit, Op, Packet, RType, Type, Value, VarKind};
 
 #[derive(Debug)]
 struct ReaderTypes<'a> {
   var_types: Vec<RType>,
   fields:    &'a mut [Field],
+  packet:    &'a str,
+
+  // For writer gen.
+  vars: Vec<Expr>,
 }
 
 impl Packet {
-  pub fn find_reader_types(&mut self) {
-    let mut r = ReaderTypes::new(&self.reader.vars, &mut self.fields);
+  /// Finds all the reader types, then generates the `writer` function. This is
+  /// all in the same function because finding the reader types also involves
+  /// finding all the local variable types. The `writer` function is much easier
+  /// to generate if we already know all of that information.
+  pub fn find_reader_types_gen_writer(&mut self) {
+    for f in &mut self.fields {
+      if f.ty.to_rust().name == "tcp::Packet" {
+        f.ty = Type::Class("U".into());
+      }
+    }
+    let mut r = ReaderTypes::new(&self.reader.vars, &mut self.fields, &self.name);
     r.find_instr(&self.reader.block);
+    r.gen_writer(&self.reader.block, &mut self.writer.block);
   }
 }
 impl<'a> ReaderTypes<'a> {
-  pub fn new(vars: &[VarKind], fields: &'a mut [Field]) -> Self {
+  pub fn new(vars: &[VarKind], fields: &'a mut [Field], name: &'a str) -> Self {
     let mut var_types = Vec::with_capacity(vars.len());
     for v in vars {
       match v {
@@ -22,7 +36,12 @@ impl<'a> ReaderTypes<'a> {
         VarKind::Local => var_types.push(RType::new("U")),
       }
     }
-    ReaderTypes { var_types, fields }
+    ReaderTypes {
+      var_types,
+      fields,
+      vars: vars.iter().map(|_| Expr::new(Value::Null)).collect(),
+      packet: name,
+    }
   }
   fn get_field(&self, name: &str) -> Option<&Field> {
     self.fields.iter().find(|field| field.name == name)
@@ -116,14 +135,13 @@ impl<'a> ReaderTypes<'a> {
         _ => todo!("static ref {}::{}", class, name),
       },
       Value::Closure(_, block) => {
-        let mut r = ReaderTypes::new(&block.vars, self.fields);
+        let mut r = ReaderTypes::new(&block.vars, self.fields, self.packet);
         r.find_instr(&block.block);
         r.expr_type(match block.block.last().unwrap() {
           Instr::Return(v) => v,
           _ => unreachable!(),
         })
       }
-      _ => todo!("value: {:?}", val),
     }
   }
   fn var_type(&self, var: usize) -> RType {
@@ -158,8 +176,7 @@ impl<'a> ReaderTypes<'a> {
           initial
         }
       }
-      // TODO: Math ops should coerce types
-      Op::BitAnd(_) | Op::Div(_) => initial,
+      Op::BitAnd(_) | Op::Add(_) | Op::Sub(_) | Op::Div(_) | Op::Mul(_) => initial,
       v => todo!("op {:?}", v),
     }
   }
@@ -190,5 +207,60 @@ impl<'a> ReaderTypes<'a> {
       "read_list" => RType::new("Vec").generic(self.expr_type(&args[0])),
       _ => todo!("call {}", name),
     }
+  }
+
+  fn gen_writer(&mut self, read: &[Instr], writer: &mut Vec<Instr>) {
+    for i in read {
+      match i {
+        Instr::Set(field, expr) => {
+          if let Some(instr) = self.set_expr(expr, field) {
+            writer.push(instr);
+          }
+        }
+        Instr::Let(i, expr) => self.vars[*i] = expr.clone(),
+        Instr::Return(_) => {}
+        Instr::For(_, _range, _) => {}
+        Instr::Switch(_, _table) => {}
+        Instr::If(cond, when_true, when_false) => {
+          let mut when_t = vec![];
+          let mut when_f = vec![];
+          self.gen_writer(when_true, &mut when_t);
+          self.gen_writer(when_false, &mut when_f);
+          writer.push(Instr::If(cond.clone(), when_t, when_f));
+        }
+        _ => panic!("cannot convert {:?} into writer", i),
+      }
+    }
+  }
+
+  fn set_expr(&mut self, expr: &Expr, field: &str) -> Option<Instr> {
+    Some(match expr.ops.first() {
+      Some(Op::Call(class, name, _args)) if class == "tcp::Packet" => {
+        assert_eq!(expr.initial, Value::Var(1), "unknown Set value: {:?}", expr);
+        let writer_name = convert::reader_to_writer(name);
+        let mut val = Expr::new(Value::Field(field.into()));
+        for op in expr.ops.iter().skip(1).rev() {
+          val.ops.push(match op {
+            // Convert the cast `foo = buf.read_u8() as i32` into `buf.write_u8(foo as u8)`
+            Op::Cast(_from) => {
+              let mut e = expr.clone();
+              e.ops.drain(1..val.ops.len() + 1);
+              Op::As(self.expr_type(&e))
+            }
+            Op::BitAnd(v) => Op::BitAnd(v.clone()),
+            Op::Div(v) => Op::Mul(v.clone()),
+            _ => panic!("cannot convert {:?} into writer (packet {})", expr, self.packet),
+          });
+        }
+        Instr::Expr(Expr::new(Value::Var(1)).op(Op::Call(
+          class.clone(),
+          writer_name.into(),
+          vec![val],
+        )))
+      }
+      Some(Op::If(_cond, _new)) => return None,
+      None => return None,
+      _ => panic!("cannot convert {:?} into writer (packet {})", expr, self.packet),
+    })
   }
 }

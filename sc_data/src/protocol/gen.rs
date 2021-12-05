@@ -84,13 +84,7 @@ impl PacketCollection {
       for (_v, p) in versions {
         // eprintln!("finding reader type of {} for ver {}", p.name, v);
         // dbg!(&p);
-        p.find_reader_types();
-        for f in &mut p.fields {
-          if matches!(&f.ty, Type::Class(name) if name == "net/minecraft/network/PacketBuffer") {
-            f.ty = Type::Class("U".into());
-          }
-        }
-        p.generate_writer();
+        p.find_reader_types_gen_writer();
       }
     }
 
@@ -832,9 +826,6 @@ impl<'a> InstrWriter<'a> {
       }
       Op::Div(rhs) => {
         self.gen.write(&val);
-        if matches!(rhs.initial, Value::Lit(Lit::Float(_))) {
-          self.gen.write(" as f32");
-        }
         self.gen.write(" / ");
         self.write_expr(rhs);
       }

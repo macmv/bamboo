@@ -7,7 +7,6 @@ mod extend;
 mod gen;
 mod simplify;
 mod type_analysis;
-mod writer;
 
 pub fn generate(out_dir: &Path) -> io::Result<()> {
   let mut versions = vec![];
@@ -324,7 +323,7 @@ impl RType {
   }
   pub fn is_copy(&self) -> bool {
     match self.name.as_str() {
-      "u8" | "i8" | "i16" | "i32" | "i64" | "f32" | "f64" | "Pos" => true,
+      "u8" | "i8" | "i16" | "i32" | "i64" | "f32" | "f64" | "Pos" | "UUID" => true,
       "Option" => self.generics[0].is_copy(),
       _ => false,
     }
