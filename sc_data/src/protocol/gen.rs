@@ -57,15 +57,10 @@ impl PacketCollection {
     list.push((ver, p));
   }
   pub fn expand_sup(&mut self) {
-    for (ver, packets) in &mut self.classes {
-      let cloned = packets.clone();
-      for (_, p) in packets {
+    for (_name, versions) in &mut self.packets {
+      for (ver, p) in versions {
         if p.extends != "Object" {
-          if !cloned.contains_key(&p.extends) {
-            dbg!(&cloned.keys(), &p.extends);
-            eprintln!("ver: {}", ver);
-          }
-          p.extend_from(&cloned[&p.extends]);
+          p.extend_from(&self.classes[ver][&p.extends]);
         }
       }
     }
