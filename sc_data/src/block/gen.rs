@@ -137,10 +137,26 @@ fn block_data(gen: &mut CodeGen, b: &Block) {
   gen.write_line(",");
 
   write_prop!(name);
+  write_prop!(id: state);
   write_prop!(material);
   write_prop!(hardness);
   write_prop!(resistance);
   write_prop!(properties: props);
+  write_prop!(luminance: emit_light);
+
+  gen.write("default_props: &[");
+  for (i, _) in b.properties.iter().enumerate() {
+    gen.write("0");
+    if i != b.properties.len() - 1 {
+      gen.write(", ");
+    }
+  }
+  gen.write_line("],");
+
+  gen.write_line("filter_light: 0,");
+  gen.write_line("drops: &[],");
+  gen.write_line("bounding_box: BoundingBoxKind::Block,");
+  gen.write_line("transparent: false,");
 
   gen.remove_indent();
   gen.write("}");
@@ -150,6 +166,16 @@ pub trait ToLit {
   fn to_lit(&self, gen: &mut CodeGen);
 }
 
+impl ToLit for u8 {
+  fn to_lit(&self, gen: &mut CodeGen) {
+    gen.write(&self.to_string());
+  }
+}
+impl ToLit for u32 {
+  fn to_lit(&self, gen: &mut CodeGen) {
+    gen.write(&self.to_string());
+  }
+}
 impl ToLit for f32 {
   fn to_lit(&self, gen: &mut CodeGen) {
     if self.fract() == 0.0 {
