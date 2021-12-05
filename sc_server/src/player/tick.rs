@@ -49,10 +49,10 @@ impl Player {
         let pitch;
         let on_ground = true;
         if look_changed {
-          other.send(cb::Packet::EntityHeadRotation {
-            entity_id: self.eid,
-            head_yaw:  (pos.yaw / 360.0 * 256.0).round() as i8,
-          });
+          // other.send(cb::Packet::EntityHeadRotation {
+          //   entity_id: self.eid,
+          //   head_yaw:  (pos.yaw / 360.0 * 256.0).round() as i8,
+          // });
           yaw = (pos.yaw / 360.0 * 256.0).round() as i8;
           pitch = (pos.pitch / 360.0 * 256.0).round() as i8;
         } else {
@@ -111,50 +111,51 @@ impl Player {
               yaw = pos.yaw as i8;
               pitch = pos.pitch as i8;
             }
-            // Cannot use relative move
-            other.send(cb::Packet::EntityTeleport {
-              entity_id: self.eid,
-              x_v1_8: Some(pos.curr.fixed_x()),
-              x_v1_9: Some(pos.curr.x()),
-              y_v1_8: Some(pos.curr.fixed_y()),
-              y_v1_9: Some(pos.curr.y()),
-              z_v1_8: Some(pos.curr.fixed_z()),
-              z_v1_9: Some(pos.curr.z()),
-              yaw,
-              pitch,
-              on_ground,
-            });
+            // // Cannot use relative move
+            // other.send(cb::Packet::EntityTeleport {
+            //   entity_id: self.eid,
+            //   x_v1_8: Some(pos.curr.fixed_x()),
+            //   x_v1_9: Some(pos.curr.x()),
+            //   y_v1_8: Some(pos.curr.fixed_y()),
+            //   y_v1_9: Some(pos.curr.y()),
+            //   z_v1_8: Some(pos.curr.fixed_z()),
+            //   z_v1_9: Some(pos.curr.z()),
+            //   yaw,
+            //   pitch,
+            //   on_ground,
+            // });
           } else {
             // Can use relative move, and we know that pos_changed is true
             if look_changed {
-              other.send(cb::Packet::EntityMoveLook {
-                entity_id: self.eid,
-                d_x_v1_8: Some(d_x_v1_8),
-                d_x_v1_9: Some(d_x_v1_9),
-                d_y_v1_8: Some(d_y_v1_8),
-                d_y_v1_9: Some(d_y_v1_9),
-                d_z_v1_8: Some(d_z_v1_8),
-                d_z_v1_9: Some(d_z_v1_9),
-                yaw,
-                pitch,
-                on_ground,
-              });
+              // other.send(cb::Packet::EntityMoveLook {
+              //   entity_id: self.eid,
+              //   d_x_v1_8: Some(d_x_v1_8),
+              //   d_x_v1_9: Some(d_x_v1_9),
+              //   d_y_v1_8: Some(d_y_v1_8),
+              //   d_y_v1_9: Some(d_y_v1_9),
+              //   d_z_v1_8: Some(d_z_v1_8),
+              //   d_z_v1_9: Some(d_z_v1_9),
+              //   yaw,
+              //   pitch,
+              //   on_ground,
+              // });
             } else {
-              other.send(cb::Packet::RelEntityMove {
-                entity_id: self.eid,
-                d_x_v1_8: Some(d_x_v1_8),
-                d_x_v1_9: Some(d_x_v1_9),
-                d_y_v1_8: Some(d_y_v1_8),
-                d_y_v1_9: Some(d_y_v1_9),
-                d_z_v1_8: Some(d_z_v1_8),
-                d_z_v1_9: Some(d_z_v1_9),
-                on_ground,
-              });
+              // other.send(cb::Packet::RelEntityMove {
+              //   entity_id: self.eid,
+              //   d_x_v1_8: Some(d_x_v1_8),
+              //   d_x_v1_9: Some(d_x_v1_9),
+              //   d_y_v1_8: Some(d_y_v1_8),
+              //   d_y_v1_9: Some(d_y_v1_9),
+              //   d_z_v1_8: Some(d_z_v1_8),
+              //   d_z_v1_9: Some(d_z_v1_9),
+              //   on_ground,
+              // });
             }
           }
         } else {
           // Pos changed is false, so look_changed must be true
-          other.send(cb::Packet::EntityLook { entity_id: self.eid, yaw, pitch, on_ground });
+          // other.send(cb::Packet::EntityLook { entity_id: self.eid, yaw,
+          // pitch, on_ground });
         }
       }
     }
@@ -290,6 +291,7 @@ impl Player {
       for z in min.z()..=max.z() {
         self.world.dec_view(ChunkPos::new(x, z));
         if self.ver() == ProtocolVersion::V1_8 {
+          /*
           self.send(cb::Packet::MapChunk {
             x:                                     x.into(),
             z:                                     z.into(),
@@ -304,8 +306,11 @@ impl Player {
             heightmaps_v1_14:                      None,
             ignore_old_data_v1_16_removed_v1_16_2: None,
           });
+          */
         } else {
+          /*
           self.send(cb::Packet::UnloadChunk { chunk_x_v1_9: Some(x), chunk_z_v1_9: Some(z) });
+          */
         }
       }
     }

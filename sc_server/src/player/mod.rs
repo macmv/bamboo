@@ -188,18 +188,18 @@ impl Player {
 
   /// Sends the player a chat message.
   pub fn send_message(&self, msg: &Chat) {
-    self.send(cb::Packet::Chat {
-      message:      msg.to_json(),
-      position:     0, // Chat box, not system message or over hotbar
-      sender_v1_16: Some(self.id()),
+    self.send(cb::Packet::ChatV8 {
+      chat_component: Some(msg.to_json()),
+      ty:             Some(0), // Chat box, not system message or over hotbar
+      unknown:        vec![],
     });
   }
   /// Sends the player a chat message, which will appear over their hotbar.
   pub fn send_hotbar(&self, msg: &Chat) {
-    self.send(cb::Packet::Chat {
-      message:      msg.to_json(),
-      position:     2, // Hotbar, not chat box or system message
-      sender_v1_16: Some(self.id()),
+    self.send(cb::Packet::ChatV8 {
+      chat_component: Some(msg.to_json()),
+      ty:             Some(2), // Hotbar, not chat box or system message
+      unknown:        vec![],
     });
   }
   /// Disconnects the player. The given chat message will be shown on the
@@ -213,7 +213,7 @@ impl Player {
   /// Closing the channel will drop the packet before it can be sent, so we need
   /// some other way of closing it later.
   pub fn disconnect<C: Into<Chat>>(&self, msg: C) {
-    self.send(cb::Packet::KickDisconnect { reason: msg.into().to_json() });
+    // self.send(cb::Packet::KickDisconnect { reason: msg.into().to_json() });
   }
 
   /// Generates the player's metadata for the given version. This will include
@@ -282,15 +282,15 @@ impl Player {
   /// Sets the player's fly speed. Unlike the packet, this is a multipler. So
   /// setting their flyspeed to 1.0 is the default speed.
   pub fn set_flyspeed(&self, speed: f32) {
-    self.send(cb::Packet::Abilities {
-      // 0x01: No damage
-      // 0x02: Flying
-      // 0x04: Can fly
-      // 0x08: Can instant break
-      flags:         0x02 | 0x04 | 0x08,
-      flying_speed:  speed * 0.05,
-      walking_speed: 0.1,
-    });
+    // self.send(cb::Packet::Abilities {
+    //   // 0x01: No damage
+    //   // 0x02: Flying
+    //   // 0x04: Can fly
+    //   // 0x08: Can instant break
+    //   flags:         0x02 | 0x04 | 0x08,
+    //   flying_speed:  speed * 0.05,
+    //   walking_speed: 0.1,
+    // });
   }
 
   /// Sends a block update packet for the block at the given position. This
@@ -305,9 +305,13 @@ impl Player {
   /// block.
   pub fn sync_block_at(&self, pos: Pos) -> Result<(), PosError> {
     let ty = self.world().get_block(pos)?;
-    self.send(cb::Packet::BlockChange {
-      location: pos,
-      type_:    self.world().block_converter().to_old(ty.id(), self.ver().block()) as i32,
+    self.send(cb::Packet::BlockUpdateV8 {
+      block_position: Some(pos),
+      block_state:    Some((
+        self.world().block_converter().to_old(ty.id(), self.ver().block()),
+        "".into(),
+      )),
+      unknown:        vec![],
     });
     Ok(())
   }

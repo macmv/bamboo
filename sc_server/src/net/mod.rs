@@ -15,7 +15,7 @@ use sc_common::{
   },
   version::ProtocolVersion,
 };
-use sc_transfer::{MessageRead, MessageWrite, ReadError};
+use sc_transfer::{MessageReader, MessageWriter, ReadError};
 use std::{
   collections::HashMap,
   convert::TryInto,
@@ -162,10 +162,12 @@ impl Connection {
   }
 
   fn send_to_client(&mut self, p: cb::Packet) -> io::Result<()> {
-    let len = p.to_sc(self.ver.unwrap(), &mut self.garbage).unwrap();
+    let mut m = MessageWriter::new(&mut self.garbage);
+    p.to_sc(&mut m).unwrap();
+    let len = m.index();
 
     let mut prefix = [0; 5];
-    let mut m = MessageWrite::new(&mut prefix);
+    let mut m = MessageWriter::new(&mut prefix);
     m.write_i32(len as i32).unwrap();
     let prefix_len = m.index();
 
@@ -191,7 +193,7 @@ impl Connection {
     player: &Option<Arc<Player>>,
   ) -> io::Result<Option<Arc<Player>>> {
     while !self.incoming.is_empty() {
-      let mut m = MessageRead::new(&self.incoming);
+      let mut m = MessageReader::new(&self.incoming);
       match m.read_i32() {
         Ok(len) => {
           if len as usize + m.index() <= self.incoming.len() {
@@ -200,13 +202,14 @@ impl Connection {
             self.incoming.drain(0..idx);
             // We already handshaked
             if let Some(ver) = self.ver {
-              let (p, n) =
-                sb::Packet::from_sc(ver, &self.incoming).map_err(|(packet, field, err)| {
-                  io::Error::new(
-                    io::ErrorKind::InvalidData,
-                    format!("while reading field {} of packet {}, got err: {}", field, packet, err),
-                  )
-                })?;
+              let mut m = MessageReader::new(&self.incoming);
+              let p = sb::Packet::from_sc(&mut m, ver).map_err(|err| {
+                io::Error::new(
+                  io::ErrorKind::InvalidData,
+                  format!("while reading packet got err: {}", err),
+                )
+              })?;
+              let n = m.index();
               if n != len as usize {
                 return Err(io::Error::new(
                   io::ErrorKind::InvalidData,
@@ -220,14 +223,14 @@ impl Connection {
               self.handle_packet(wm, player.as_ref().unwrap(), p);
             } else {
               // This is the first packet, so it must be a login packet.
-              let mut m = MessageRead::new(&self.incoming);
+              let mut m = MessageReader::new(&self.incoming);
               let username = m.read_str().map_err(|e| {
                 io::Error::new(
                   io::ErrorKind::InvalidData,
                   format!("error reading handshake: {}", e),
                 )
               })?;
-              let uuid = UUID::from_bytes(
+              let uuid = UUID::from_be_bytes(
                 m.read_bytes(16)
                   .map_err(|e| {
                     io::Error::new(
@@ -295,6 +298,7 @@ impl Connection {
   /// more than once.
   pub(crate) fn handle_packet(&self, wm: &Arc<WorldManager>, player: &Arc<Player>, p: sb::Packet) {
     match p {
+      /*
       sb::Packet::Chat { message } => {
         if message.chars().next() == Some('/') {
           let mut chars = message.chars();
@@ -392,6 +396,7 @@ impl Connection {
       sb::Packet::Look { yaw, pitch, on_ground: _ } => {
         player.set_next_look(yaw, pitch);
       }
+      */
       // _ => warn!("got unknown packet from client: {:?}", p),
       _ => (),
     }

@@ -159,8 +159,11 @@ impl World {
           Color::BrightGreen
         });
 
-        let out =
-          cb::Packet::PlayerlistHeader { header: header.to_json(), footer: footer.to_json() };
+        let out = cb::Packet::PlayerListHeaderV8 {
+          header:  Some(header.to_json()),
+          footer:  Some(footer.to_json()),
+          unknown: vec![],
+        };
         for p in self.players().values() {
           p.send(out.clone());
         }
@@ -175,10 +178,7 @@ impl World {
           // Do player collision and packets and stuff
           // Once per second, send keep alive packet
           if tick % 20 == 0 {
-            p.send(cb::Packet::KeepAlive {
-              keep_alive_id_v1_8:    Some(1234556),
-              keep_alive_id_v1_12_2: Some(1234556),
-            });
+            p.send(cb::Packet::KeepAliveV8 { id: Some(1234556), unknown: vec![] });
           }
           s.mspt.fetch_add(start.elapsed().as_millis().try_into().unwrap(), Ordering::SeqCst);
         });
@@ -424,15 +424,10 @@ impl World {
   /// arrive out of order between clients (one client would see one broadcast
   /// before the other). This is only possible if you call broadcast from
   /// multiple threads, as this blocks until all the packets are queued.
-  pub fn broadcast<M: Into<Chat>>(&self, msg: M) {
-    let out = cb::Packet::Chat {
-      message:      msg.into().to_json(),
-      position:     0, // Chat box, not above hotbar
-      sender_v1_16: Some(UUID::from_u128(0)),
-    };
-
+  pub fn broadcast(&self, msg: impl Into<Chat>) {
+    let m = msg.into();
     for p in self.players.read().values() {
-      p.send(out.clone());
+      p.send_message(&m);
     }
   }
 
@@ -530,17 +525,12 @@ impl WorldManager {
   }
 
   /// Broadcasts a message to everyone one the server.
-  pub fn broadcast<M: Into<Chat>>(&self, msg: M) {
-    let out = cb::Packet::Chat {
-      message:      msg.into().to_json(),
-      position:     0, // Chat box, not above hotbar
-      sender_v1_16: Some(UUID::from_u128(0)),
-    };
-
+  pub fn broadcast(&self, msg: impl Into<Chat>) {
+    let m = msg.into();
     let worlds = self.worlds.lock();
     for w in worlds.iter() {
       for p in w.players.read().values() {
-        p.send(out.clone());
+        p.send_message(&m);
       }
     }
   }

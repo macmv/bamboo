@@ -105,7 +105,7 @@ impl PacketCollection {
     gen.write_line("};");
     gen.write_line("use std::collections::{HashMap, HashSet};");
     gen.write_line("");
-    gen.write_line("#[derive(Debug, PartialEq, Eq, Hash)]");
+    gen.write_line("#[derive(Debug, Clone, PartialEq, Eq, Hash)]");
     gen.write_line("pub struct U;");
     gen.write_line("");
     gen.write_line("impl MessageRead for U {");
@@ -116,7 +116,7 @@ impl PacketCollection {
     gen.write_line("}");
     gen.write_line("");
 
-    gen.write_line("#[derive(Debug)]");
+    gen.write_line("#[derive(Debug, Clone)]");
     gen.write("pub enum Packet ");
     gen.write_block(|gen| {
       for versions in &packets {

@@ -163,35 +163,44 @@ impl World {
     let mut world_names = Buffer::new(vec![]);
     world_names.write_varint(1);
     world_names.write_str("minecraft:overworld");
-    let out = cb::Packet::Login {
-      entity_id:                self.eid(),
-      game_mode:                1,       // Creative
-      difficulty_removed_v1_14: Some(1), // Normal
-      dimension_v1_8:           Some(0), // Overworld
-      dimension_v1_9_2:         Some(0), // Overworld
-      level_type_removed_v1_16: Some("default".into()),
-      max_players_v1_8:         Some(0), // Ignored
-      max_players_v1_16_2:      Some(0), // Not sure if ignored
-      reduced_debug_info:       false,   // Don't reduce debug info
-
-      // 1.14+
-      view_distance_v1_14: Some(10), // 10 chunk view distance TODO: Per player view distance
-
-      // 1.15+
-      hashed_seed_v1_15:           Some(0),
-      enable_respawn_screen_v1_15: Some(true),
-
-      // 1.16+
-      is_hardcore_v1_16_2:      Some(false),
-      is_flat_v1_16:            Some(false), // Changes the horizon line
-      previous_game_mode_v1_16: Some(1),
-      world_name_v1_16:         Some("overworld".into()),
-      is_debug_v1_16:           Some(false), /* This is not reduced_debug_info, this is for the
-                                              * world being a debug world */
-      dimension_codec_v1_16:    Some(codec.serialize()),
-      dimension_v1_16:          Some("".into()),
-      dimension_v1_16_2:        Some(NBT::new("", dimension).serialize()),
-      world_names_v1_16:        Some(world_names.into_inner()),
+    let out = cb::Packet::JoinGameV8 {
+      // entity_id:                self.eid(),
+      // game_mode:                1,       // Creative
+      // difficulty_removed_v1_14: Some(1), // Normal
+      // dimension_v1_8:           Some(0), // Overworld
+      // dimension_v1_9_2:         Some(0), // Overworld
+      // level_type_removed_v1_16: Some("default".into()),
+      // max_players_v1_8:         Some(0), // Ignored
+      // max_players_v1_16_2:      Some(0), // Not sure if ignored
+      // reduced_debug_info:       false,   // Don't reduce debug info
+      //
+      // // 1.14+
+      // view_distance_v1_14: Some(10), // 10 chunk view distance TODO: Per player view distance
+      //
+      // // 1.15+
+      // hashed_seed_v1_15:           Some(0),
+      // enable_respawn_screen_v1_15: Some(true),
+      //
+      // // 1.16+
+      // is_hardcore_v1_16_2:      Some(false),
+      // is_flat_v1_16:            Some(false), // Changes the horizon line
+      // previous_game_mode_v1_16: Some(1),
+      // world_name_v1_16:         Some("overworld".into()),
+      // is_debug_v1_16:           Some(false), /* This is not reduced_debug_info, this is for the
+      //                                         * world being a debug world */
+      // dimension_codec_v1_16:    Some(codec.serialize()),
+      // dimension_v1_16:          Some("".into()),
+      // dimension_v1_16_2:        Some(NBT::new("", dimension).serialize()),
+      // world_names_v1_16:        Some(world_names.into_inner()),
+      entity_id:          self.eid(),
+      hardcore_mode:      None,
+      game_type:          None,
+      dimension:          Some(0), // Overworld
+      difficulty:         Some(1), // Normal
+      max_players:        None,    // Ignored
+      world_type:         None,
+      reduced_debug_info: Some(false),
+      unknown:            vec![],
     };
 
     player.send(out);
@@ -208,16 +217,19 @@ impl World {
       }
     }
 
-    player.send(cb::Packet::Position {
-      x:                0.0,        // X
-      y:                60.0,       // Y
-      z:                0.0,        // Z
-      yaw:              0.0,        // Yaw
-      pitch:            0.0,        // Pitch
-      flags:            0,          // Flags
-      teleport_id_v1_9: Some(1234), // TP id
+    player.send(cb::Packet::SpawnPositionV8 {
+      // x:                0.0,        // X
+      // y:                60.0,       // Y
+      // z:                0.0,        // Z
+      // yaw:              0.0,        // Yaw
+      // pitch:            0.0,        // Pitch
+      // flags:            0,          // Flags
+      // teleport_id_v1_9: Some(1234), // TP id
+      spawn_block_pos: None,
+      unknown:         vec![],
     });
 
+    /*
     let mut info = Buffer::new(vec![]);
     let mut num_info = 1;
 
@@ -289,10 +301,11 @@ impl World {
     let mut data = Buffer::new(Vec::with_capacity(info.len()));
     data.write_varint(num_info);
     data.write_buf(&info.into_inner());
-    player.send(cb::Packet::PlayerInfo { action: 0, data: data.into_inner() });
+    player.send(cb::Packet::PlayerListV8 { action: 0, players: Some(vec![]), unknown: vec![] });
     // Need to send the player info before the spawn packets
     for p in spawn_packets {
       player.send(p);
     }
+    */
   }
 }
