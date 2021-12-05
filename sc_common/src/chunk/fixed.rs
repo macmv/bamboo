@@ -1,5 +1,3 @@
-use std::convert::TryInto;
-
 use super::section::Section as ChunkSection;
 use crate::math::{Pos, PosError};
 

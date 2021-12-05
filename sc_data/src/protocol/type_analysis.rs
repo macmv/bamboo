@@ -37,14 +37,14 @@ impl<'a> ReaderTypes<'a> {
           let ty = self.expr_type(expr);
           self.get_field_mut(field).map(|v| v.reader_type = Some(ty));
         }
-        Instr::SetArr(arr, idx, val) => {}
-        Instr::Let(v, val) => {}
-        Instr::If(cond, when_true, when_false) => {}
-        Instr::For(v, range, block) => {}
-        Instr::Switch(v, tab) => {}
-        Instr::CheckStrLen(val, len) => {}
-        Instr::Expr(v) => {}
-        Instr::Return(v) => {}
+        Instr::SetArr(_arr, _idx, _val) => {}
+        Instr::Let(_v, _val) => {}
+        Instr::If(_cond, _when_true, _when_false) => {}
+        Instr::For(_v, _range, _block) => {}
+        Instr::Switch(_v, _tab) => {}
+        Instr::CheckStrLen(_val, _len) => {}
+        Instr::Expr(_v) => {}
+        Instr::Return(_v) => {}
         _ => todo!(),
       }
     }
@@ -75,12 +75,12 @@ impl<'a> ReaderTypes<'a> {
           RType::new("i32")
         }
       },
-      Value::Static(class, name) => RType::new("U"),
+      Value::Static(_class, _name) => RType::new("U"),
       Value::Field(name) => self
         .get_field(name)
         .map(|v| v.reader_type.clone().unwrap_or(RType::new("U")))
         .unwrap_or(RType::new("U")),
-      Value::New(class, args) => RType::new("U"),
+      Value::New(_class, _args) => RType::new("U"),
       Value::Array(_) => RType::new("Vec"),
       Value::MethodRef(class, name) => match class.as_str() {
         "tcp::Packet" => self.buffer_call(name, &[]),

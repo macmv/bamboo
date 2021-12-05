@@ -4,7 +4,7 @@ pub mod nbt;
 
 use rand::{rngs::OsRng, RngCore};
 use serde::de::{self, Deserialize, Deserializer, Unexpected, Visitor};
-use std::{convert::TryInto, error::Error, fmt, num::ParseIntError, str::FromStr};
+use std::{error::Error, fmt, num::ParseIntError, str::FromStr};
 
 pub use buffer::{Buffer, BufferError};
 pub use item::Item;

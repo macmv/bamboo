@@ -147,7 +147,7 @@ impl Packet {
   pub fn read_i32_arr(&mut self) -> Vec<i32> {
     let len = self.read_varint().try_into().unwrap();
     let mut out = Vec::with_capacity(len);
-    for i in 0..len {
+    for _ in 0..len {
       out.push(self.read_i32());
     }
     out

@@ -2,7 +2,7 @@ pub mod fixed;
 pub mod paletted;
 mod section;
 
-use std::{cmp, collections::HashMap};
+use std::cmp;
 
 pub use section::Section;
 

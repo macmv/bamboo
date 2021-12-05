@@ -1,6 +1,5 @@
 use super::{
-  convert, simplify, Cond, Expr, Field, Instr, Lit, Op, Packet, PacketDef, RType, Type, Value,
-  VarKind,
+  convert, simplify, Cond, Expr, Field, Instr, Lit, Op, Packet, PacketDef, Type, Value, VarKind,
 };
 use crate::{
   gen::{CodeGen, FuncArg},
@@ -70,7 +69,7 @@ impl PacketCollection {
   }
   pub fn finish_simplify(&mut self) {
     for (_name, versions) in &mut self.packets {
-      for (ver, p) in versions {
+      for (_ver, p) in versions {
         simplify::finish(p);
       }
     }
@@ -82,7 +81,7 @@ impl PacketCollection {
     packets.sort_unstable_by(|(a, _), (b, _)| a.cmp(b));
     let mut packets: Vec<Vec<(_, _)>> = packets.into_iter().map(|(_, v)| v).collect();
     for versions in &mut packets {
-      for (v, p) in versions {
+      for (_v, p) in versions {
         // eprintln!("finding reader type of {} for ver {}", p.name, v);
         // dbg!(&p);
         p.find_reader_types();

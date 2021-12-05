@@ -1,4 +1,4 @@
-use std::{fmt, fs};
+use std::fs;
 use yaml_rust::{yaml::Yaml, YamlLoader};
 
 pub struct Config {

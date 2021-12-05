@@ -1,7 +1,4 @@
-use super::{
-  convert, simplify, Cond, Expr, Field, Instr, Lit, Op, Packet, PacketDef, RType, Type, Value,
-  VarKind,
-};
+use super::{Instr, Packet};
 
 impl Packet {
   pub fn extend_from(&mut self, sup: &Packet) {

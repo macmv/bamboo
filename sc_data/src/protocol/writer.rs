@@ -1,4 +1,4 @@
-use super::{convert, Cond, Expr, Field, Instr, Op, Packet, RType, Type, Value, VarBlock};
+use super::{convert, Expr, Instr, Op, Packet, RType, Value, VarBlock};
 
 impl Packet {
   pub fn generate_writer(&mut self) {
