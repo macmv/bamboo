@@ -85,7 +85,8 @@ pub fn generate_ty(def: &BlockDef) -> String {
     gen.write_line("&[");
     gen.add_indent();
     for b in &def.blocks {
-      gen.write(&b.name);
+      gen.write("Kind::");
+      gen.write(&b.name.to_case(Case::Pascal));
       gen.write_line(",");
     }
     gen.remove_indent();
