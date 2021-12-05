@@ -1,6 +1,12 @@
 use crate::block;
 use num_derive::{FromPrimitive, ToPrimitive};
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, FromPrimitive, ToPrimitive)]
+pub enum Type {
+  Air,
+  Snowball,
+}
+
 /// Any data specific to a block kind. This includes all function handlers for
 /// when a block gets placed/broken, and any custom functionality a block might
 /// have.

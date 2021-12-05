@@ -18,7 +18,8 @@ impl TypeConverter {
   /// get_item_converter).
   #[allow(clippy::new_without_default)]
   pub fn new() -> Self {
-    Self { types: ty::generate_items(), versions: generate_versions() }
+    // Self { types: ty::generate_items(), versions: generate_versions() }
+    Self { types: &[], versions: &[] }
   }
 
   /// Takes the given old item id, which is part of `ver`, and returns the new

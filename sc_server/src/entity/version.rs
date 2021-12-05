@@ -17,7 +17,8 @@ impl TypeConverter {
   /// get_entity_converter).
   #[allow(clippy::new_without_default)]
   pub fn new() -> Self {
-    Self { types: ty::generate_entities(), versions: generate_versions() }
+    // Self { types: ty::generate_entities(), versions: generate_versions() }
+    Self { types: &[], versions: &[] }
   }
 
   /// Takes the given old entity id, which is part of `ver`, and returns the new

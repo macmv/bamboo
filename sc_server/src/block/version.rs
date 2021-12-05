@@ -95,9 +95,7 @@ impl TypeConverter {
 
     let kind = self.kind_from_id(id, ver);
     let data = self.get(kind);
-    let first_id = data.types[0].state;
-    let offset = id - first_id;
-    data.types[offset as usize]
+    Type { kind, state: id }
   }
 
   /// Gets a block kind from the given id.
