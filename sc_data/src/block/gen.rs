@@ -1,4 +1,4 @@
-use super::{Block, BlockDef};
+use super::{Block, BlockDef, Material};
 use crate::{gen::CodeGen, Version};
 use convert_case::{Case, Casing};
 
@@ -125,6 +125,7 @@ fn block_data(gen: &mut CodeGen, b: &Block) {
   gen.write_line("Data {");
   gen.add_indent();
 
+  write_prop!(name);
   write_prop!(material);
   write_prop!(hardness);
   write_prop!(resistance);
@@ -149,5 +150,10 @@ impl ToLit for f32 {
 impl ToLit for String {
   fn to_lit(&self) -> String {
     format!(r#""{}""#, self)
+  }
+}
+impl ToLit for Material {
+  fn to_lit(&self) -> String {
+    format!("Material::{:?}", self)
   }
 }

@@ -1,6 +1,6 @@
 use crate::dl;
-use serde::Deserialize;
-use std::{fs, io, path::Path};
+use serde::{de, de::Visitor, Deserialize, Deserializer};
+use std::{fmt, fs, io, path::Path};
 
 mod gen;
 
@@ -34,7 +34,7 @@ pub struct Block {
   class:            String,
 
   /// The enum name of the material.
-  material:  String,
+  material:  Material,
   /// The enum name of the map color. Defaults to the map color of the material.
   map_color: String,
 
@@ -85,4 +85,46 @@ pub enum PropKind {
   /// the inclusive end of the range. The start is normally zero, but can
   /// sometimes be one.
   Int { min: u32, max: u32 },
+}
+
+#[derive(Debug, Clone)]
+pub enum Material {
+  Air,
+  Stone,
+}
+
+impl<'de> Deserialize<'de> for Material {
+  fn deserialize<D>(deserializer: D) -> Result<Material, D::Error>
+  where
+    D: Deserializer<'de>,
+  {
+    struct MatVisitor;
+    impl<'de> Visitor<'de> for MatVisitor {
+      type Value = Material;
+
+      fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+        formatter.write_str("a material string")
+      }
+
+      fn visit_str<E>(self, name: &str) -> Result<Self::Value, E>
+      where
+        E: de::Error,
+      {
+        Ok(Material::from_kind(name))
+      }
+    }
+    deserializer.deserialize_str(MatVisitor)
+  }
+}
+
+impl Material {
+  pub fn from_kind(kind: &str) -> Material {
+    Self::Air
+  }
+}
+
+impl Default for Material {
+  fn default() -> Self {
+    Material::Air
+  }
 }
