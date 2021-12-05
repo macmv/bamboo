@@ -87,12 +87,6 @@ pub enum PropKind {
   Int { min: u32, max: u32 },
 }
 
-#[derive(Debug, Clone)]
-pub enum Material {
-  Air,
-  Stone,
-}
-
 impl<'de> Deserialize<'de> for Material {
   fn deserialize<D>(deserializer: D) -> Result<Material, D::Error>
   where
@@ -117,10 +111,28 @@ impl<'de> Deserialize<'de> for Material {
   }
 }
 
-impl Material {
-  pub fn from_kind(kind: &str) -> Material {
-    Self::Air
+macro_rules! mat {
+  ($($name:expr => $kind:ident,)*) => {
+    #[derive(Debug, Clone)]
+    pub enum Material {
+      Unknown,
+      $($kind,)*
+    }
+
+    impl Material {
+      pub fn from_kind(kind: &str) -> Material {
+        match kind {
+          $($name => Self::$kind,)*
+          _ => Self::Unknown,
+        }
+      }
+    }
   }
+}
+
+mat! {
+  "AIR" => Air,
+  "STONE" => Stone,
 }
 
 impl Default for Material {
