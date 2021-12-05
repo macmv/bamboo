@@ -1,4 +1,5 @@
 use super::Material;
+use num_derive::{FromPrimitive, ToPrimitive};
 use std::{error::Error, fmt, str::FromStr};
 
 /// A single block type. This is different from a block kind, which is more
@@ -94,7 +95,7 @@ pub struct Data {
   /// convert a single property on a block.
   props:         &'static [Prop],
   /// The default type. Each value is an index into that property.
-  default_props: &'static [usize],
+  default_props: &'static [u32],
 }
 
 #[derive(Debug)]
@@ -120,22 +121,22 @@ impl Data {
     Type { kind: self.kind, state: self.resolve_state(self.default_props) }
   }
 
-  fn resolve_state(&self, props: &[usize]) -> u32 {
+  fn resolve_state(&self, props: &[u32]) -> u32 {
     assert_eq!(self.props.len(), props.len());
     let mut id = 0;
-    for (p, idx) in &self.props.zip(props) {
+    for (p, idx) in self.props.iter().zip(props) {
       id += idx;
-      id *= p.len();
+      id *= p.len() as u32;
     }
     id
   }
 }
 
 impl Prop {
-  pub fn len(&self) -> usize {
+  pub fn len(&self) -> u32 {
     match self.kind {
       PropKind::Bool => 2,
-      PropKind::Enum(v) => v.len(),
+      PropKind::Enum(v) => v.len() as u32,
       PropKind::Int { min, max } => max - min + 1,
     }
   }

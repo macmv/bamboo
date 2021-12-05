@@ -14,7 +14,7 @@ pub fn generate_ty(def: &BlockDef) -> String {
   let mut gen = CodeGen::new();
   gen.write_line("/// Auto generated block kind. This is directly generated");
   gen.write_line("/// from prismarine data.");
-  gen.write_line("#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]");
+  gen.write_line("#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, ToPrimitive, FromPrimitive)]");
   gen.write("pub enum Kind ");
   gen.write_block(|gen| {
     for b in &def.blocks {
