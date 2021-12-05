@@ -1,4 +1,4 @@
-use super::{cross::cross_version, Block, BlockDef, Material};
+use super::{cross::cross_version, Block, BlockDef, Material, Prop, PropKind};
 use crate::{gen::CodeGen, Version};
 use convert_case::{Case, Casing};
 
@@ -119,7 +119,12 @@ fn block_data(gen: &mut CodeGen, b: &Block) {
   macro_rules! write_prop {
     ($name:ident) => {
       gen.write(concat!(stringify!($name), ": "));
-      gen.write(&b.$name.to_lit());
+      b.$name.to_lit(gen);
+      gen.write_line(",");
+    };
+    ($name:ident: $new_name:ident) => {
+      gen.write(concat!(stringify!($new_name), ": "));
+      b.$name.to_lit(gen);
       gen.write_line(",");
     };
   }
@@ -127,36 +132,104 @@ fn block_data(gen: &mut CodeGen, b: &Block) {
   gen.write_line("Data {");
   gen.add_indent();
 
+  gen.write("kind: Kind::");
+  gen.write(&b.name.to_case(Case::Pascal));
+  gen.write_line(",");
+
   write_prop!(name);
   write_prop!(material);
   write_prop!(hardness);
   write_prop!(resistance);
-  write_prop!(properties);
+  write_prop!(properties: props);
 
   gen.remove_indent();
   gen.write("}");
 }
 
 pub trait ToLit {
-  fn to_lit(&self) -> String;
+  fn to_lit(&self, gen: &mut CodeGen);
 }
 
 impl ToLit for f32 {
-  fn to_lit(&self) -> String {
+  fn to_lit(&self, gen: &mut CodeGen) {
     if self.fract() == 0.0 {
-      format!("{}.0", self.to_string())
+      gen.write(&self.to_string());
+      gen.write(&".0");
     } else {
-      self.to_string()
+      gen.write(&self.to_string());
     }
   }
 }
 impl ToLit for String {
-  fn to_lit(&self) -> String {
-    format!(r#""{}""#, self)
+  fn to_lit(&self, gen: &mut CodeGen) {
+    gen.write("\"");
+    gen.write(&self);
+    gen.write("\"");
   }
 }
 impl ToLit for Material {
-  fn to_lit(&self) -> String {
-    format!("Material::{:?}", self)
+  fn to_lit(&self, gen: &mut CodeGen) {
+    gen.write("Material::");
+    gen.write(&format!("{:?}", self));
+  }
+}
+impl<T> ToLit for Vec<T>
+where
+  T: ToLit,
+{
+  fn to_lit(&self, gen: &mut CodeGen) {
+    if self.is_empty() {
+      gen.write("&[]");
+      return;
+    }
+    gen.write_line("&[");
+    gen.add_indent();
+    for (i, p) in self.iter().enumerate() {
+      p.to_lit(gen);
+      gen.write_line(",");
+    }
+    gen.remove_indent();
+    gen.write("]");
+  }
+}
+impl ToLit for Prop {
+  fn to_lit(&self, gen: &mut CodeGen) {
+    gen.write_line("Prop {");
+    gen.add_indent();
+
+    gen.write("name: ");
+    self.name.to_lit(gen);
+    gen.write_line(",");
+    gen.write("kind: ");
+    self.kind.to_lit(gen);
+    gen.write_line(",");
+
+    gen.remove_indent();
+    gen.write("}");
+  }
+}
+
+impl ToLit for PropKind {
+  fn to_lit(&self, gen: &mut CodeGen) {
+    match self {
+      Self::Bool => gen.write("PropKind::Bool"),
+      Self::Enum(values) => {
+        gen.write("PropKind::Enum(&[");
+        for (i, v) in values.iter().enumerate() {
+          v.to_lit(gen);
+          if i != values.len() - 1 {
+            gen.write(", ");
+          }
+        }
+        gen.write("])");
+      }
+      Self::Int { min, max } => {
+        gen.write("PropKind::Int { min: ");
+        gen.write(&min.to_string());
+        gen.write(", max: ");
+        gen.write(&max.to_string());
+        gen.write(" }");
+      }
+    }
   }
 }
