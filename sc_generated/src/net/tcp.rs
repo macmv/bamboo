@@ -1,3 +1,4 @@
+use super::{ReadSc, WriteSc};
 use crate::{
   util::{nbt::NBT, Buffer, BufferError, Item, UUID},
   version::ProtocolVersion,
@@ -300,5 +301,16 @@ impl Packet {
       out.push(self.read_u64());
     }
     out
+  }
+
+  pub fn read_sc<T>(&mut self) -> T
+  where
+    T: Sized + ReadSc,
+  {
+    T::read_sc(self)
+  }
+
+  pub fn write_sc<T>(&mut self, v: impl WriteSc) {
+    v.read_sc(self)
   }
 }
