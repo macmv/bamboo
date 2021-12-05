@@ -247,18 +247,18 @@ impl<'a> ReaderTypes<'a> {
                 self
                   .set_expr(
                     &v,
-                    &Expr::new(Value::Field(fields_changed[0].clone())).op(Op::Call(
-                      "Option".into(),
-                      "is_some".into(),
-                      vec![],
-                    )),
+                    &Expr::new(Value::Field(fields_changed[0].clone()))
+                      .op(Op::Call("Option".into(), "is_some".into(), vec![]))
+                      .op(Op::As(RType::new("u8"))),
                   )
                   .unwrap(),
               );
             }
+            // _ => todo!("cond {:?}", cond),
             _ => {
-              writer.push(Instr::If(cond.clone(), when_true.clone(), when_false.clone()));
-            } // _ => todo!("cond {:?}", cond),
+              // writer.push(Instr::If(cond.clone(), when_true.clone(),
+              // when_false.clone()));
+            }
           }
 
           // writer.push(Instr::If(cond.clone(), when_t, when_f));
@@ -279,7 +279,7 @@ impl<'a> ReaderTypes<'a> {
             // Convert the cast `foo = buf.read_u8() as i32` into `buf.write_u8(foo as u8)`
             Op::Cast(_from) => {
               let mut e = expr.clone();
-              e.ops.drain(1..val.ops.len() + 1);
+              e.ops.drain(1..val.ops.len() + 2);
               Op::As(self.expr_type(&e))
             }
             Op::BitAnd(v) => Op::BitAnd(v.clone()),

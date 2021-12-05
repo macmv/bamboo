@@ -626,11 +626,11 @@ impl<'a> InstrWriter<'a> {
       inner.needs_deref = self.needs_deref;
       inner.write_val(&e.initial);
     }
-    if !e.ops.is_empty()
-      && matches!(&e.initial, Value::Field(field) if self.get_field(&field).map(|v| v.option).unwrap_or(false))
-    {
-      g.write(".as_mut().unwrap()");
-    }
+    // if !e.ops.is_empty()
+    //   && matches!(&e.initial, Value::Field(field) if
+    // self.get_field(&field).map(|v| v.option).unwrap_or(false)) {
+    //   g.write(".as_mut().unwrap()");
+    // }
     let mut val = g.into_output();
     for (i, op) in e.ops.iter().enumerate() {
       let needs_paren =
@@ -686,17 +686,23 @@ impl<'a> InstrWriter<'a> {
               let field_ty = field.ty.to_rust();
               let mut g = CodeGen::new();
               g.set_indent(self.gen.indent());
+              let ops = if &field_ty != reader_ty {
+                convert::type_cast(&field_ty, reader_ty)
+              } else {
+                vec![]
+              };
               {
                 let mut i = InstrWriter::new_inner(&mut g, &mut self.fields, &self.vars);
                 i.is_closure = self.is_closure;
                 i.needs_deref = self.needs_deref;
                 if reader_ty.is_copy() {
-                  if *reader_ty != field_ty {
+                  let needs_paren = ops.first().map(|v| v.precedence() < 10).unwrap_or(false);
+                  if needs_paren {
                     i.gen.write("(");
                   }
                   i.gen.write("*f_");
                   i.gen.write(name);
-                  if *reader_ty != field_ty {
+                  if needs_paren {
                     i.gen.write(")");
                   }
                 } else {
@@ -706,7 +712,7 @@ impl<'a> InstrWriter<'a> {
               }
               if *reader_ty != field_ty {
                 let mut v = g.into_output();
-                for op in convert::type_cast(&field_ty, reader_ty) {
+                for op in ops {
                   let mut g = CodeGen::new();
                   g.set_indent(self.gen.indent());
                   let mut i = InstrWriter::new_inner(&mut g, &mut self.fields, &self.vars);
@@ -867,6 +873,23 @@ impl<'a> InstrWriter<'a> {
         self.gen.write(" }");
       }
 
+      Op::WrapCall(class, name, args) => {
+        self.gen.write(&class);
+        self.gen.write("::");
+        self.gen.write(&name);
+        self.gen.write("(");
+        self.gen.write(&val);
+        if !args.is_empty() {
+          self.gen.write(", ");
+        }
+        for (idx, a) in args.iter().enumerate() {
+          self.write_expr(a);
+          if idx != args.len() - 1 {
+            self.gen.write(", ");
+          }
+        }
+        self.gen.write(")");
+      }
       Op::Call(_class, name, args) => {
         self.gen.write(&val);
         if !(name == "get" && args.len() == 0) {

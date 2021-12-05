@@ -251,25 +251,25 @@ pub fn type_cast(from: &RType, to: &RType) -> Vec<Op> {
     "f64" => Op::As(RType::new("f64")),
     "i8" => match from.name.as_str() {
       "bool" => Op::As(RType::new("i8")),
-      "u8" | "i16" | "i32" | "i64" => return try_into(),
+      "u8" | "i16" | "i32" | "i64" => return try_into("i8"),
       _ => panic!("cannot convert `{}` into `{}`", from, to),
     },
     "u8" => match from.name.as_str() {
       "bool" => Op::As(RType::new("u8")),
       "f32" => Op::As(RType::new("u8")),
-      "i8" | "i16" | "i32" | "i64" => return try_into(),
+      "i8" | "i16" | "i32" | "i64" => return try_into("u8"),
       _ => panic!("cannot convert `{}` into `{}`", from, to),
     },
     "U" => return vec![],
     "i16" => match from.name.as_str() {
       "u8" | "i8" => into(),
-      "i32" | "i64" => return try_into(),
+      "i32" | "i64" => return try_into("i16"),
       _ => panic!("cannot convert `{}` into `{}`", from, to),
     },
     "i32" => match from.name.as_str() {
       "f32" => Op::As(RType::new("i32")),
       "u8" | "i8" | "i16" => into(),
-      "i64" => return try_into(),
+      "i64" => return try_into("i32"),
       "U" => return vec![],
       _ => panic!("cannot convert `{}` into `{}`", from, to),
     },
@@ -290,8 +290,11 @@ pub fn type_cast(from: &RType, to: &RType) -> Vec<Op> {
 fn into() -> Op {
   Op::Call("".into(), "into".into(), vec![])
 }
-fn try_into() -> Vec<Op> {
-  vec![Op::Call("".into(), "try_into".into(), vec![]), Op::Call("".into(), "unwrap".into(), vec![])]
+fn try_into(name: &str) -> Vec<Op> {
+  vec![
+    Op::WrapCall(name.into(), "try_from".into(), vec![]),
+    Op::Call("".into(), "unwrap".into(), vec![]),
+  ]
 }
 
 pub fn this_call(name: &str, args: &mut Vec<Expr>) -> Option<Instr> {

@@ -296,6 +296,10 @@ pub enum Op {
   /// is element `0`.
   Call(String, String, Vec<Expr>),
 
+  /// Wraps the current value in this static call. The list of expressions is
+  /// for additional arguments.
+  WrapCall(String, String, Vec<Expr>),
+
   /// Casts to the given type.
   Cast(Type),
 
@@ -410,6 +414,7 @@ impl Op {
 
       Op::If(..) => 0,
       Op::Call(..) => 0,
+      Op::WrapCall(..) => 10,
     }
   }
 }

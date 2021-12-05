@@ -168,6 +168,13 @@ impl Packet {
     out
   }
 
+  pub fn write_i32_arr(&mut self, list: &[i32]) {
+    self.write_varint(v.len().try_into().unwrap());
+    for v in list {
+      self.write_i32(*v);
+    }
+  }
+
   /// This parses an item from the internal buffer (format depends on the
   /// version).
   pub fn read_item(&mut self) -> Item {
@@ -342,6 +349,10 @@ impl Packet {
 
   pub fn read_varint_arr(&mut self) -> Vec<i32> {
     self.read_list(Self::read_varint)
+  }
+
+  pub fn write_varint_arr(&mut self, v: &[i32]) {
+    self.write_list(v, |p, &v| p.write_varint(v))
   }
 
   pub fn read_bits(&mut self) -> Vec<u64> {
