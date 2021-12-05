@@ -69,7 +69,7 @@
 #[non_exhaustive]
 pub enum Material {
   Air,
-  Rock,
+  Stone,
   Dirt,
   Plant,
   Wood,

@@ -131,6 +131,7 @@ fn block_data(gen: &mut CodeGen, b: &Block) {
   write_prop!(material);
   write_prop!(hardness);
   write_prop!(resistance);
+  write_prop!(properties);
 
   gen.remove_indent();
   gen.write("}");

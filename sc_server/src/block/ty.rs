@@ -1,5 +1,4 @@
 use super::Material;
-use num_derive::{FromPrimitive, ToPrimitive};
 use std::{error::Error, fmt, str::FromStr};
 
 /// A single block type. This is different from a block kind, which is more
@@ -65,12 +64,18 @@ pub enum BoundingBoxKind {
 pub struct Data {
   /// The kind for this data.
   pub kind:         Kind,
-  /// The latest version state id (a block id that can be sent to a client)
-  pub state:        u32,
+  /// The name of this block. This is something like `grass_block`.
+  pub name:         &'static str,
+  /// The material used to make this block. This controls things like map color,
+  /// sound, what tool breaks the block, etc. Prismarine doesn't have a very
+  /// good material value, so this needs to be updated to more complete data.
+  pub material:     Material,
+  /// Amount of time it takes to break this block.
+  pub hardness:     f32,
+  /// How difficult this is to break with an explosion.
+  pub resistance:   f32,
   /// A list of item ids this block can drop.
   pub drops:        &'static [u32],
-  /// If this is false, then this is something like bedrock (unbreakable)
-  pub diggable:     bool,
   /// If this is true, then clients can (at least partially) see through this
   /// block.
   pub transparent:  bool,
@@ -81,15 +86,28 @@ pub struct Data {
   pub emit_light:   u8,
   /// The kind of bounding box this block has.
   pub bounding_box: BoundingBoxKind,
-  /// The material used to make this block. This controls things like map color,
-  /// sound, what tool breaks the block, etc. Prismarine doesn't have a very
-  /// good material value, so this needs to be updated to more complete data.
-  pub material:     Material,
 
-  /// A list of types in order. This will always be at least one element long.
-  pub(super) types: &'static [Type],
-  /// The default type. This is an index into types.
-  default_index:    u32,
+  /// The latest version state id. This is the lowest possible state for this
+  /// block. It is used to offset the state calculation for properties.
+  pub state:     u32,
+  /// All the properties on this block. These are stored so that it is easy to
+  /// convert a single property on a block.
+  props:         &'static [Prop],
+  /// The default type. Each value is an index into that property.
+  default_props: &'static [usize],
+}
+
+#[derive(Debug)]
+pub struct Prop {
+  name: &'static str,
+  kind: PropKind,
+}
+
+#[derive(Debug)]
+enum PropKind {
+  Bool,
+  Enum(&'static [&'static str]),
+  Int { min: u32, max: u32 },
 }
 
 impl Data {
@@ -99,7 +117,27 @@ impl Data {
   /// they place the block, as things like their position/rotation affect which
   /// block gets placed.
   pub fn default_type(&self) -> Type {
-    self.types[self.default_index as usize]
+    Type { kind: self.kind, state: self.resolve_state(self.default_props) }
+  }
+
+  fn resolve_state(&self, props: &[usize]) -> u32 {
+    assert_eq!(self.props.len(), props.len());
+    let mut id = 0;
+    for (p, idx) in &self.props.zip(props) {
+      id += idx;
+      id *= p.len();
+    }
+    id
+  }
+}
+
+impl Prop {
+  pub fn len(&self) -> usize {
+    match self.kind {
+      PropKind::Bool => 2,
+      PropKind::Enum(v) => v.len(),
+      PropKind::Int { min, max } => max - min + 1,
+    }
   }
 }
 
