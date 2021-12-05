@@ -140,3 +140,82 @@ where
     Ok(())
   }
 }
+
+// I cannot figure out how to call `m.read()?` multiple times with const
+// generics. So, MessageRead only works for arrays up to 32 elements.
+// MessageWrite works for any length array.
+
+macro_rules! array_impl {
+  { $n:expr, $t:ident $($ts:ident)* } => {
+    impl<T: MessageRead> MessageRead for [T; $n] {
+      fn read(m: &mut MessageReader) -> Result<Self, ReadError> {
+        Ok([$t::read(m)?, $($ts::read(m)?),*])
+      }
+    }
+    array_impl! { ($n - 1), $($ts)* }
+  };
+  { $n:expr, } => {
+    impl<T> MessageRead for [T; $n] {
+      fn read(_m: &mut MessageReader) -> Result<Self, ReadError> { Ok([]) }
+    }
+  };
+}
+
+array_impl! { 32, T T T T T T T T T T T T T T T T T T T T T T T T T T T T T T T T }
+
+impl<T, const N: usize> MessageWrite for [T; N]
+where
+  T: MessageWrite,
+{
+  fn write(&self, m: &mut MessageWriter) -> Result<(), WriteError> {
+    for v in self {
+      v.write(m)?;
+    }
+    Ok(())
+  }
+}
+
+macro_rules! tuple_impls {
+    ($(
+      $Tuple:ident {
+        $(($idx:tt) -> $T:ident)+
+      }
+    )+) => {
+    $(
+      impl<$($T: MessageRead),+> MessageRead for ($($T,)+) {
+        fn read(m: &mut MessageReader) -> Result<Self, ReadError> {
+          Ok(($($T::read(m)?,)+))
+        }
+      }
+      impl<$($T: MessageWrite),+> MessageWrite for ($($T,)+) {
+        fn write(&self, m: &mut MessageWriter) -> Result<(), WriteError> {
+          $(
+            self.$idx.write(m)?;
+          )+
+          Ok(())
+        }
+      }
+    )+
+  };
+}
+
+tuple_impls! {
+  Tuple1 {
+    (0) -> A
+  }
+  Tuple2 {
+    (0) -> A
+    (1) -> B
+  }
+  Tuple3 {
+    (0) -> A
+    (1) -> B
+    (2) -> C
+  }
+  Tuple4 {
+    (0) -> A
+    (1) -> B
+    (2) -> C
+    (3) -> D
+  }
+}
