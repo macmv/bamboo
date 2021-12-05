@@ -99,17 +99,17 @@ impl PacketCollection {
     gen.write_line("  version::ProtocolVersion,");
     gen.write_line("  util::{Item, nbt::NBT, UUID},");
     gen.write_line("};");
-    gen.write_line("use sc_transfer::{MessageRead, MessageWrite};");
+    gen.write_line("use sc_transfer::{MessageRead, MessageReader, MessageWrite, MessageWriter};");
     gen.write_line("use std::collections::{HashMap, HashSet};");
     gen.write_line("");
     gen.write_line("#[derive(Debug, PartialEq, Eq, Hash)]");
     gen.write_line("pub struct U;");
     gen.write_line("");
-    gen.write_line("impl ReadSc for U {");
-    gen.write_line("  fn read_sc(buf: &mut tcp::Packet) -> Self { U }");
+    gen.write_line("impl MessageRead for U {");
+    gen.write_line("  fn read(buf: &mut MessageReadder) -> Self { U }");
     gen.write_line("}");
-    gen.write_line("impl WriteSc for U {");
-    gen.write_line("  fn write_sc(&self, buf: &mut tcp::Packet) {}");
+    gen.write_line("impl MessageWrite for U {");
+    gen.write_line("  fn write(&self, buf: &mut MessageWriter) {}");
     gen.write_line("}");
     gen.write_line("");
 
@@ -230,9 +230,10 @@ impl PacketCollection {
           }
         });
       });
-      gen.write("pub fn from_sc(p: &mut MessageRead, ver: ProtocolVersion) -> Self ");
+      gen.write("pub fn from_sc(m: &mut MessageReader, ver: ProtocolVersion) -> Self ");
       gen.write_block(|gen| {
-        gen.write_match("p.id()", |gen| {
+        gen.write_line("let id = m.read_i32()");
+        gen.write_match("id", |gen| {
           for (id, versions) in packets.iter().enumerate() {
             gen.write(&id.to_string());
             gen.write(" => ");
@@ -273,12 +274,12 @@ impl PacketCollection {
           gen.write_line(r#"v => panic!("invalid protocol version {}", v),"#);
         });
       });
-      gen.write("pub fn to_sc(&self, p: &mut tcp::Packet) ");
+      gen.write("pub fn to_sc(&self, m: &mut MessageWriter) ");
       gen.write_block(|gen| {
         gen.write_match("self", |gen| {
-          for versions in packets.iter() {
+          for (id, versions) in packets.iter().enumerate() {
             for (ver, p) in versions.iter() {
-              write_to_sc(gen, p, *ver);
+              write_to_sc(gen, p, *ver, id);
             }
           }
         });
@@ -415,13 +416,13 @@ fn write_from_sc(gen: &mut CodeGen, p: &Packet, ver: Version) {
   gen.add_indent();
   for f in &p.fields {
     gen.write(&f.name);
-    gen.write(": p.read_sc()");
+    gen.write(": m.read()");
     gen.write_line(",");
   }
   gen.remove_indent();
   gen.write_line("}");
 }
-fn write_to_sc(gen: &mut CodeGen, p: &Packet, ver: Version) {
+fn write_to_sc(gen: &mut CodeGen, p: &Packet, ver: Version, id: usize) {
   gen.write("Packet::");
   gen.write(&p.name);
   gen.write("V");
@@ -438,8 +439,12 @@ fn write_to_sc(gen: &mut CodeGen, p: &Packet, ver: Version) {
   gen.write_line("} => {");
   gen.add_indent();
 
+  gen.write("m.write_i32(");
+  gen.write(&id.to_string());
+  gen.write_line(");");
+
   for f in &p.fields {
-    gen.write("p.write_sc(f_");
+    gen.write("m.write(f_");
     gen.write(&f.name);
     gen.write_line(");");
   }
