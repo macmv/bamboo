@@ -85,6 +85,15 @@ impl PacketCollection {
         // eprintln!("finding reader type of {} for ver {}", p.name, v);
         // dbg!(&p);
         p.find_reader_types();
+        for f in &mut p.fields {
+          if let Some(reader_ty) = &mut f.reader_type {
+            if reader_ty.name == "tcp::Packet" {
+              reader_ty.name = "U".into();
+            } else if reader_ty.name == "Option" && reader_ty.generics[0].name == "tcp::Packet" {
+              reader_ty.generics[0].name = "U".into();
+            }
+          }
+        }
         p.generate_writer();
       }
     }
