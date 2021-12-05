@@ -108,10 +108,10 @@ impl PacketCollection {
     gen.write_line("pub struct U;");
     gen.write_line("");
     gen.write_line("impl MessageRead for U {");
-    gen.write_line("  fn read(buf: &mut MessageReader) -> Self { U }");
+    gen.write_line("  fn read(_buf: &mut MessageReader) -> Self { U }");
     gen.write_line("}");
     gen.write_line("impl MessageWrite for U {");
-    gen.write_line("  fn write(&self, buf: &mut MessageWriter) {}");
+    gen.write_line("  fn write(&self, _buf: &mut MessageWriter) {}");
     gen.write_line("}");
     gen.write_line("");
 
@@ -236,7 +236,7 @@ impl PacketCollection {
         "pub fn from_sc(m: &mut MessageReader, ver: ProtocolVersion) -> Result<Self, ReadError> ",
       );
       gen.write_block(|gen| {
-        gen.write_line("let id = m.read_i32()");
+        gen.write_line("let id = m.read_u32()?;");
         gen.write_match("id", |gen| {
           for (id, versions) in packets.iter().enumerate() {
             gen.write(&id.to_string());
@@ -412,7 +412,7 @@ fn write_to_tcp(gen: &mut CodeGen, p: &Packet, ver: Version) {
   gen.write_line("}");
 }
 fn write_from_sc(gen: &mut CodeGen, p: &Packet, ver: Version) {
-  gen.write("Packet::");
+  gen.write("Ok(Packet::");
   gen.write(&p.name);
   gen.write("V");
   gen.write(&ver.maj.to_string());
@@ -423,7 +423,7 @@ fn write_from_sc(gen: &mut CodeGen, p: &Packet, ver: Version) {
     gen.write_line(": m.read()?,");
   }
   gen.remove_indent();
-  gen.write_line("}");
+  gen.write_line("})");
 }
 fn write_to_sc(gen: &mut CodeGen, p: &Packet, ver: Version, id: usize) {
   gen.write("Packet::");
@@ -442,7 +442,7 @@ fn write_to_sc(gen: &mut CodeGen, p: &Packet, ver: Version, id: usize) {
   gen.write_line("} => {");
   gen.add_indent();
 
-  gen.write("m.write_i32(");
+  gen.write("m.write_u32(");
   gen.write(&id.to_string());
   gen.write_line(");");
 

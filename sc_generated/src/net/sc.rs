@@ -3,6 +3,7 @@ use crate::{
   util::{nbt::NBT, Item, UUID},
   ChunkPos, Pos,
 };
+use sc_transfer::{MessageRead, MessageReader, MessageWrite, MessageWriter, ReadError, WriteError};
 use std::{
   collections::{HashMap, HashSet},
   hash::Hash,
@@ -19,64 +20,62 @@ pub trait WriteSc {
   fn write_sc(&self, buf: &mut tcp::Packet);
 }
 
-macro_rules! sc_simple {
-  ($ty:ty, $read:ident, $write:ident) => {
-    impl ReadSc for $ty {
-      fn read_sc(buf: &mut tcp::Packet) -> Self {
-        buf.$read()
-      }
-    }
-    impl WriteSc for $ty {
-      fn write_sc(&self, buf: &mut tcp::Packet) {
-        buf.$write(*self)
-      }
-    }
-  };
+impl MessageRead for Pos {
+  fn read(m: &mut MessageReader) -> Result<Self, ReadError> {
+    Ok(Pos::new(m.read_i32()?, m.read_i32()?, m.read_i32()?))
+  }
+}
+impl MessageWrite for Pos {
+  fn write(&self, m: &mut MessageWriter) -> Result<(), WriteError> {
+    m.write_i32(self.x)?;
+    m.write_i32(self.y)?;
+    m.write_i32(self.z)?;
+    Ok(())
+  }
+}
+impl MessageRead for ChunkPos {
+  fn read(m: &mut MessageReader) -> Result<Self, ReadError> {
+    Ok(ChunkPos::new(m.read_i32()?, m.read_i32()?))
+  }
+}
+impl MessageWrite for ChunkPos {
+  fn write(&self, m: &mut MessageWriter) -> Result<(), WriteError> {
+    m.write_i32(self.x())?;
+    m.write_i32(self.z())?;
+    Ok(())
+  }
+}
+impl MessageRead for UUID {
+  fn read(m: &mut MessageReader) -> Result<Self, ReadError> {
+    Ok(UUID::from_le_bytes(m.read_bytes(16)?.try_into().unwrap()))
+  }
+}
+impl MessageWrite for UUID {
+  fn write(&self, m: &mut MessageWriter) -> Result<(), WriteError> {
+    m.write_bytes(&self.as_le_bytes())?;
+    Ok(())
+  }
 }
 
-sc_simple!(bool, read_bool, write_bool);
-sc_simple!(u8, read_u8, write_u8);
-sc_simple!(i8, read_i8, write_i8);
-sc_simple!(u16, read_u16, write_u16);
-sc_simple!(i16, read_i16, write_i16);
-sc_simple!(u32, read_u32, write_u32);
-sc_simple!(i32, read_i32, write_i32);
-sc_simple!(u64, read_u64, write_u64);
-sc_simple!(i64, read_i64, write_i64);
-sc_simple!(f32, read_f32, write_f32);
-sc_simple!(f64, read_f64, write_f64);
-sc_simple!(Pos, read_pos, write_pos);
-sc_simple!(ChunkPos, read_chunk_pos, write_chunk_pos);
-sc_simple!(UUID, read_uuid, write_uuid);
-
-impl ReadSc for String {
-  fn read_sc(buf: &mut tcp::Packet) -> Self {
-    buf.read_str(32767)
+impl MessageRead for Item {
+  fn read(m: &mut MessageReader) -> Result<Self, ReadError> {
+    Item::from_sc(m)
   }
 }
-impl WriteSc for String {
-  fn write_sc(&self, buf: &mut tcp::Packet) {
-    buf.write_str(self)
+impl MessageWrite for Item {
+  fn write(&self, m: &mut MessageWriter) -> Result<(), WriteError> {
+    self.to_sc(m)
   }
 }
-impl ReadSc for Item {
-  fn read_sc(buf: &mut tcp::Packet) -> Self {
-    buf.read_item()
+impl MessageRead for NBT {
+  fn read(m: &mut MessageReader) -> Result<Self, ReadError> {
+    // TODO: ParseError into ReadError
+    Ok(NBT::deserialize(m.read_buf()?).unwrap())
   }
 }
-impl WriteSc for Item {
-  fn write_sc(&self, buf: &mut tcp::Packet) {
-    buf.write_item(self)
-  }
-}
-impl ReadSc for NBT {
-  fn read_sc(buf: &mut tcp::Packet) -> Self {
-    buf.read_nbt()
-  }
-}
-impl WriteSc for NBT {
-  fn write_sc(&self, buf: &mut tcp::Packet) {
-    // buf.write_nbt(self)
+impl MessageWrite for NBT {
+  fn write(&self, m: &mut MessageWriter) -> Result<(), WriteError> {
+    m.write_buf(&self.serialize())
   }
 }
 

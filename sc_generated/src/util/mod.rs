@@ -82,9 +82,12 @@ impl UUID {
   pub fn random() -> Self {
     let mut arr = [0; 16];
     OsRng.fill_bytes(&mut arr);
-    UUID::from_bytes(arr)
+    UUID::from_be_bytes(arr)
   }
-  pub fn from_bytes(v: [u8; 16]) -> Self {
+  pub fn from_le_bytes(v: [u8; 16]) -> Self {
+    UUID(u128::from_le_bytes(v))
+  }
+  pub fn from_be_bytes(v: [u8; 16]) -> Self {
     UUID(u128::from_be_bytes(v))
   }
   pub fn from_u128(v: u128) -> Self {
