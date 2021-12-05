@@ -221,6 +221,13 @@ impl Packet {
     }
     list
   }
+  /// Writes a list to the buffer.
+  pub fn write_list<T>(&mut self, list: &[T], write: impl Fn(&mut Packet, &T)) {
+    self.write_varint(list.len().try_into().unwrap());
+    for v in list {
+      write(self, v);
+    }
+  }
   /// Reads a list from the packet. If the length is greater than `max`, this
   /// fails. This is new to 1.17, and simplifies a bunch of small for loops in
   /// previous versions.
@@ -287,6 +294,15 @@ impl Packet {
       Some(val(self))
     } else {
       None
+    }
+  }
+  /// Writes `true` if the option is Some, or `false` if None. If the option is
+  /// some, then it also calls the `write` closure.
+  pub fn write_option<T>(&mut self, val: &Option<T>, write: impl FnOnce(&mut Packet, &T)) {
+    self.write_bool(val.is_some());
+    match val {
+      Some(v) => write(self, &v),
+      None => {}
     }
   }
 

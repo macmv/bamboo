@@ -98,6 +98,13 @@ impl PacketCollection {
     gen.write_line("");
     gen.write_line("pub struct U;");
     gen.write_line("");
+    gen.write_line("impl ReadSc for U {");
+    gen.write_line("  fn read_sc(buf: &mut tcp::Packet) -> Self { U }");
+    gen.write_line("}");
+    gen.write_line("impl WriteSc for U {");
+    gen.write_line("  fn write_sc(&self, buf: &mut tcp::Packet) {}");
+    gen.write_line("}");
+    gen.write_line("");
 
     gen.write("pub enum Packet ");
     gen.write_block(|gen| {
