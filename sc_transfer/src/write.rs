@@ -1,6 +1,6 @@
 use super::zig;
 
-use std::{error::Error, fmt};
+use std::{borrow::Borrow, error::Error, fmt};
 
 type Result = std::result::Result<(), WriteError>;
 
@@ -70,11 +70,12 @@ impl MessageWriter<'_> {
   /// may be easier than calling the individual `write_*` functions. They will
   /// both compile into the same call, so it doesn't matter which function you
   /// use.
-  pub fn write<T>(&mut self, v: T) -> Result
+  pub fn write<T, B>(&mut self, v: B) -> Result
   where
     T: MessageWrite,
+    B: Borrow<T>,
   {
-    v.write(self)
+    v.borrow().write(self)
   }
 
   /// Writes a single boolean to the internal buffer.

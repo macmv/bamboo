@@ -35,6 +35,7 @@
 //! the length of the data as a `u32` into the buffer, and the copy the data in
 //! after that.
 
+mod generics;
 mod read;
 mod write;
 
