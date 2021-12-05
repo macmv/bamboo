@@ -23,6 +23,9 @@ pub fn generate(def: Vec<(Version, PacketDef)>, dir: &Path) -> io::Result<()> {
     }
   }
 
+  all_cb_packets.expand_sup();
+  all_sb_packets.expand_sup();
+
   fs::create_dir_all(dir)?;
   File::create(dir.join("cb.rs"))?.write_all(all_cb_packets.gen().as_bytes())?;
   File::create(dir.join("sb.rs"))?.write_all(all_sb_packets.gen().as_bytes())?;
@@ -32,14 +35,19 @@ pub fn generate(def: Vec<(Version, PacketDef)>, dir: &Path) -> io::Result<()> {
 #[derive(Debug)]
 struct PacketCollection {
   packets: HashMap<String, Vec<(Version, Packet)>>,
+  classes: HashMap<Version, HashMap<String, Packet>>,
 }
 
 impl PacketCollection {
   pub fn new() -> Self {
-    PacketCollection { packets: HashMap::new() }
+    PacketCollection {
+      packets: HashMap::new(),
+      classes: crate::VERSIONS.iter().map(|v| (*v, HashMap::new())).collect(),
+    }
   }
   pub fn add(&mut self, ver: Version, mut p: Packet) {
     simplify::pass(&mut p);
+    self.classes.get_mut(&ver).unwrap().insert(p.class.clone(), p.clone());
     let list = self.packets.entry(p.name.clone()).or_insert_with(|| vec![]);
     if let Some((_, last)) = list.last() {
       if *last == p {
@@ -47,6 +55,20 @@ impl PacketCollection {
       }
     }
     list.push((ver, p));
+  }
+  pub fn expand_sup(&mut self) {
+    for (ver, packets) in &mut self.classes {
+      let cloned = packets.clone();
+      for (_, p) in packets {
+        if p.extends != "Object" {
+          if !cloned.contains_key(&p.extends) {
+            dbg!(&cloned.keys(), &p.extends);
+            eprintln!("ver: {}", ver);
+          }
+          p.extend_from(&cloned[&p.extends]);
+        }
+      }
+    }
   }
   pub fn gen(self) -> String {
     let mut gen = CodeGen::new();

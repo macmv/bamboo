@@ -3,6 +3,7 @@ use serde::Deserialize;
 use std::{fmt, io, path::Path};
 
 pub mod convert;
+mod extend;
 mod gen;
 mod simplify;
 mod type_analysis;
@@ -46,7 +47,9 @@ pub struct Packet {
   /// The class this packet extends from.
   #[serde(default = "object_str")]
   pub extends: String,
-  /// The class name of this packet.
+  /// The class of this packet.
+  pub class:   String,
+  /// The standarized name for this packet.
   pub name:    String,
   /// A list of the fields in this packet.
   pub fields:  Vec<Field>,
