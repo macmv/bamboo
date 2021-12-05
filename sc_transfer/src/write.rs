@@ -70,12 +70,16 @@ impl MessageWriter<'_> {
   /// may be easier than calling the individual `write_*` functions. They will
   /// both compile into the same call, so it doesn't matter which function you
   /// use.
-  pub fn write<T, B>(&mut self, v: B) -> Result
+  ///
+  /// In order to use this is generated code, this needs to use `&T` instead of
+  /// `impl Borrow<T>`. This is why everything needs to be passed by reference.
+  /// So for writing things like booleans, it will probably look nicer to use
+  /// `write_bool(true)` instead of `write(&true)`.
+  pub fn write<T>(&mut self, v: &T) -> Result
   where
     T: MessageWrite,
-    B: Borrow<T>,
   {
-    v.borrow().write(self)
+    v.write(self)
   }
 
   /// Writes a single boolean to the internal buffer.

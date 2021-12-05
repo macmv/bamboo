@@ -55,10 +55,10 @@ where
   T: MessageWrite,
 {
   fn write(&self, m: &mut MessageWriter) -> Result<(), WriteError> {
-    m.write(self.is_some())?;
+    m.write(&self.is_some())?;
     match self {
       Some(v) => v.write(m),
-      None => m.write(false),
+      None => Ok(()),
     }
   }
 }
