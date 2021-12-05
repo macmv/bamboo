@@ -59,21 +59,16 @@ pub fn serialize_chunk(pos: ChunkPos, c: &MultiChunk) -> cb::Packet {
   }
   debug_assert_eq!(chunk_data.len() - prefix_len, data_len, "unexpected chunk data len");
 
-  cb::Packet::MapChunk {
-    x:                                     pos.x(),
-    z:                                     pos.z(),
-    ground_up:                             true,
-    chunk_data:                            chunk_data.into_inner(),
-    bit_map_v1_8:                          Some(bit_map),
-    bit_map_v1_9:                          None,
-    block_entities_v1_9_4:                 None,
-    heightmaps_v1_14:                      None,
-    biomes_v1_15:                          None,
-    biomes_v1_16_2:                        None,
-    ignore_old_data_v1_16_removed_v1_16_2: None,
+  cb::Packet::ChunkDataV8 {
+    chunk_x:        pos.x(),
+    chunk_z:        pos.z(),
+    field_149279_g: true, // ground up
+    extracted_data: None,
+    unknown:        chunk_data.into_inner(),
   }
 }
 
+/*
 pub fn serialize_partial_chunk(pos: ChunkPos, c: &MultiChunk, min: u32, max: u32) -> cb::Packet {
   let mut bit_map = 0;
   let c = c.get_fixed();
@@ -158,3 +153,4 @@ where
     records_v1_16_2:           None,
   }
 }
+*/
