@@ -446,7 +446,7 @@ fn write_to_sc(gen: &mut CodeGen, p: &Packet, ver: Version, id: usize) {
 
   gen.write("m.write_u32(");
   gen.write(&id.to_string());
-  gen.write_line(");");
+  gen.write_line(")?;");
 
   for f in &p.fields {
     gen.write("m.write(f_");
