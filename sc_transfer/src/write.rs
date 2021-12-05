@@ -26,25 +26,31 @@ impl fmt::Display for WriteError {
 
 impl Error for WriteError {}
 
+/// A trait for anything that can be written to a MessageWriter.
+pub trait MessageWrite {
+  /// Writes `self` into the writer.
+  fn write(&self, writer: &mut MessageWriter) -> Result;
+}
+
 /// Wrapper around a byte array for writing fields. Every function on this type
 /// will write a value that can be read using
 /// [`MessageRead`](super::MessageRead).
 ///
 /// See the [crate] level docs for how fields are encoded.
-pub struct MessageWrite<'a> {
+pub struct MessageWriter<'a> {
   data: &'a mut [u8],
   idx:  usize,
 }
 
-impl MessageWrite<'_> {
+impl MessageWriter<'_> {
   /// Creates a new MessageWrite. The given slice will be used to write values.
   /// An internal index is used to know where to write. The MessageWrite will
   /// not modify any data past the index it is at. So after writing, you can
   /// call `index`, and know that none of the data past that index has been
   /// modified.
   #[inline(always)]
-  pub fn new(data: &mut [u8]) -> MessageWrite {
-    MessageWrite { data, idx: 0 }
+  pub fn new(data: &mut [u8]) -> MessageWriter {
+    MessageWriter { data, idx: 0 }
   }
 
   /// Returns the current index the writer is at. This byte in the internal
@@ -58,6 +64,17 @@ impl MessageWrite<'_> {
   /// then any future `write_` calls will failed with `WriteError::EOF`.
   pub fn can_write(&self) -> bool {
     self.idx < self.data.len()
+  }
+
+  /// Writes some generic type T to `self`. Depending on the situation, this
+  /// may be easier than calling the individual `write_*` functions. They will
+  /// both compile into the same call, so it doesn't matter which function you
+  /// use.
+  pub fn write<T>(&mut self, v: T) -> Result
+  where
+    T: MessageWrite,
+  {
+    v.write(self)
   }
 
   /// Writes a single boolean to the internal buffer.
@@ -186,7 +203,7 @@ mod tests {
   #[test]
   fn simple() {
     let mut data = [0; 3];
-    let mut m = MessageWrite::new(&mut data);
+    let mut m = MessageWriter::new(&mut data);
     assert_eq!(m.index(), 0);
     m.write_u8(0).unwrap();
     assert_eq!(m.index(), 1);
@@ -198,7 +215,7 @@ mod tests {
     assert_eq!(data, [0, 0, 2]);
 
     let mut data = [0; 4];
-    let mut m = MessageWrite::new(&mut data);
+    let mut m = MessageWriter::new(&mut data);
     assert_eq!(m.index(), 0);
     m.write_u16(127).unwrap();
     assert_eq!(m.index(), 2);
@@ -219,7 +236,7 @@ mod tests {
       0,
     ];
     let mut data = [0; EXPECTED.len()];
-    let mut m = MessageWrite::new(&mut data);
+    let mut m = MessageWriter::new(&mut data);
     assert_eq!(m.index(), 0);
     m.write_u32(0).unwrap();
     assert_eq!(m.index(), 1);
@@ -238,7 +255,7 @@ mod tests {
   #[test]
   fn bytes() {
     let mut data = [0; 64];
-    let mut m = MessageWrite::new(&mut data);
+    let mut m = MessageWriter::new(&mut data);
     assert_eq!(m.index(), 0);
     m.write_bytes(b"hello").unwrap();
     assert_eq!(m.index(), 5);
@@ -247,7 +264,7 @@ mod tests {
     assert_eq!(&data[..11], b"hello world");
 
     let mut data = [0; 5];
-    let mut m = MessageWrite::new(&mut data);
+    let mut m = MessageWriter::new(&mut data);
     assert_eq!(m.index(), 0);
     m.write_bytes(b"hello").unwrap();
     assert_eq!(m.index(), 5);

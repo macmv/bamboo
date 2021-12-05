@@ -99,6 +99,7 @@ impl PacketCollection {
     gen.write_line("  version::ProtocolVersion,");
     gen.write_line("  util::{Item, nbt::NBT, UUID},");
     gen.write_line("};");
+    gen.write_line("use sc_transfer::{MessageRead, MessageWrite};");
     gen.write_line("use std::collections::{HashMap, HashSet};");
     gen.write_line("");
     gen.write_line("#[derive(Debug, PartialEq, Eq, Hash)]");
@@ -229,7 +230,7 @@ impl PacketCollection {
           }
         });
       });
-      gen.write("pub fn from_sc(p: &mut tcp::Packet, ver: ProtocolVersion) -> Self ");
+      gen.write("pub fn from_sc(p: &mut MessageRead, ver: ProtocolVersion) -> Self ");
       gen.write_block(|gen| {
         gen.write_match("p.id()", |gen| {
           for (id, versions) in packets.iter().enumerate() {

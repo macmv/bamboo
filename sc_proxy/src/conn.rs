@@ -245,7 +245,7 @@ impl<'a, S: PacketStream + Send + Sync> Conn<'a, S> {
           let idx = m.index();
           self.from_server.drain(0..idx);
           // TODO: tcp::Packet and util::Buffer should work by reference
-          let tcp = tcp::Packet::from_buf(self.from_server[..len as usize].to_vec(), self.ver);
+          let mut tcp = tcp::Packet::from_buf(self.from_server[..len as usize].to_vec(), self.ver);
           let p = cb::Packet::from_sc(&mut tcp, self.ver);
           let parsed = tcp.index();
           // TODO: from_sc should be fallible
@@ -322,7 +322,7 @@ impl<'a, S: PacketStream + Send + Sync> Conn<'a, S> {
   fn read_client_packet(&mut self, reg: &Registry) -> io::Result<()> {
     loop {
       match self.client_stream.read(self.ver) {
-        Ok(Some(p)) => match self.state {
+        Ok(Some(mut p)) => match self.state {
           State::Play => {
             let packet = sb::Packet::from_tcp(&mut p, self.ver);
             self.send_to_server(packet)?;
@@ -341,7 +341,7 @@ impl<'a, S: PacketStream + Send + Sync> Conn<'a, S> {
   /// Tries to send the packet to the client, and buffers it if that is not
   /// possible.
   fn send_to_client(&mut self, p: cb::Packet) -> io::Result<()> {
-    let mut tcp = tcp::Packet::new(p.tcp_id(self.ver), self.ver);
+    let mut tcp = tcp::Packet::new(p.tcp_id(self.ver).try_into().unwrap(), self.ver);
     p.to_tcp(&mut tcp);
     self.client_stream.write(tcp);
     self.write_client()
@@ -352,15 +352,17 @@ impl<'a, S: PacketStream + Send + Sync> Conn<'a, S> {
   fn send_to_server(&mut self, p: sb::Packet) -> io::Result<()> {
     // The only error here is EOF, which means the garbage buffer was not enough
     // space for this packet.
+
+    // TODO: Repalce tcp::Packet with MessageWrite
     let mut tcp = tcp::Packet::new(p.sug_id().try_into().unwrap(), self.ver);
-    let len = p.to_sc(&mut tcp);
+    p.to_sc(&mut tcp);
 
     let mut prefix = [0; 5];
     let mut m = MessageWrite::new(&mut prefix);
-    m.write_i32(len as i32).unwrap();
+    m.write_i32(tcp.index() as i32).unwrap();
     let prefix_len = m.index();
     self.to_server.extend_from_slice(&prefix[..prefix_len]);
-    self.to_server.extend_from_slice(&self.garbage[..len]);
+    self.to_server.extend_from_slice(&tcp.serialize());
 
     self.write_server()
   }
@@ -458,7 +460,8 @@ impl<'a, S: PacketStream + Send + Sync> Conn<'a, S> {
           return Err(io::Error::new(ErrorKind::InvalidInput, "client sent an invalid version"));
         }
 
-        let _addr = p.read_str();
+        // Max len according to 1.17.1
+        let _addr = p.read_str(255);
         let _port = p.read_u16();
         let next = p.read_varint();
         self.state = State::from_next(next);
@@ -499,7 +502,8 @@ impl<'a, S: PacketStream + Send + Sync> Conn<'a, S> {
             if self.username.is_some() {
               return Err(io::Error::new(ErrorKind::InvalidInput, "client sent two login packets"));
             }
-            let name = p.read_str();
+            // Max length according to 1.17.1
+            let name = p.read_str(16);
             self.username = Some(name.to_string());
             if self.der_key.is_none() {
               self.info = Some(LoginInfo {
@@ -540,9 +544,9 @@ impl<'a, S: PacketStream + Send + Sync> Conn<'a, S> {
               ));
             }
             let len = p.read_varint();
-            let recieved_secret = p.read_buf(len);
+            let recieved_secret = p.read_buf(len.try_into().unwrap());
             let len = p.read_varint();
-            let recieved_token = p.read_buf(len);
+            let recieved_token = p.read_buf(len.try_into().unwrap());
 
             let decrypted_secret =
               self.key.decrypt(PaddingScheme::PKCS1v15Encrypt, &recieved_secret).map_err(|e| {

@@ -37,24 +37,32 @@ impl fmt::Display for ReadError {
 
 impl Error for ReadError {}
 
+/// A trait for anything that can be read from a MessageReader.
+pub trait MessageRead {
+  /// Reads a value of Self from the reader.
+  fn read(reader: &mut MessageReader) -> Result<Self>
+  where
+    Self: Sized;
+}
+
 /// Wrapper around a byte array for reading fields. Every function on this type
 /// will return the same value that was written in the
 /// [`MessageWrite`](super::MessageWrite).
 ///
 /// See the [crate] level docs for how fields are decoded.
-pub struct MessageRead<'a> {
+pub struct MessageReader<'a> {
   data: &'a [u8],
   idx:  usize,
 }
 
-impl MessageRead<'_> {
-  /// Creates a new MessageRead. This will read data from the given slice, and
+impl MessageReader<'_> {
+  /// Creates a new MessageReader. This will read data from the given slice, and
   /// use an internal index to know what byte to read from. After reading, you
   /// can call `index`, and know that this will not have read any data past that
   /// index.
   #[inline(always)]
-  pub fn new(data: &[u8]) -> MessageRead {
-    MessageRead { data, idx: 0 }
+  pub fn new(data: &[u8]) -> MessageReader {
+    MessageReader { data, idx: 0 }
   }
 
   /// Returns the current index the reader is at. This byte has not been read,
@@ -67,6 +75,17 @@ impl MessageRead<'_> {
   /// then any future `read_` calls will failed with `ReadError::EOF`.
   pub fn can_read(&self) -> bool {
     self.idx < self.data.len()
+  }
+
+  /// Reads some generic type T from `self`. Depending on the situation, this
+  /// may be easier than calling the individual `read_*` functions. They will
+  /// both compile into the same call, so it doesn't matter which function you
+  /// use.
+  pub fn read<T>(&mut self) -> Result<T>
+  where
+    T: MessageRead,
+  {
+    T::read(self)
   }
 
   /// Reads a single boolean from the buffer. Any byte that is non-zero is
@@ -202,13 +221,13 @@ mod tests {
 
   #[test]
   fn simple() {
-    let mut m = MessageRead::new(&[0, 0, 2]);
+    let mut m = MessageReader::new(&[0, 0, 2]);
     assert_eq!(m.read_u8().unwrap(), 0);
     assert_eq!(m.read_u8().unwrap(), 0);
     assert_eq!(m.read_u8().unwrap(), 2);
     assert!(matches!(m.read_u32().unwrap_err(), ReadError::EOF));
 
-    let mut m = MessageRead::new(&[127, 0, 0, 1]);
+    let mut m = MessageReader::new(&[127, 0, 0, 1]);
     assert_eq!(m.read_u16().unwrap(), 127);
     assert_eq!(m.read_u16().unwrap(), 256);
     assert!(matches!(m.read_u32().unwrap_err(), ReadError::EOF));
@@ -216,7 +235,7 @@ mod tests {
 
   #[test]
   fn varints() {
-    let mut m = MessageRead::new(&[
+    let mut m = MessageReader::new(&[
       0,        // 0
       1,        // 1
       127,      // 127
@@ -248,7 +267,7 @@ mod tests {
 
   #[test]
   fn bytes() {
-    let mut m = MessageRead::new(b"hello");
+    let mut m = MessageReader::new(b"hello");
     assert_eq!(m.index(), 0);
     assert_eq!(&m.read_bytes(5).unwrap(), b"hello");
     assert_eq!(m.index(), 5);
