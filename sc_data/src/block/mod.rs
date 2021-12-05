@@ -6,10 +6,14 @@ mod gen;
 
 pub fn generate(out_dir: &Path) -> io::Result<()> {
   fs::create_dir_all(out_dir.join("block"))?;
-  for &ver in crate::VERSIONS {
-    let def: BlockDef = dl::get("blocks", ver);
-    gen::generate(def, &out_dir.join("block"))?;
-  }
+  let versions = crate::VERSIONS
+    .iter()
+    .map(|&ver| {
+      let def: BlockDef = dl::get("blocks", ver);
+      (ver, def)
+    })
+    .collect();
+  gen::generate(versions, &out_dir.join("block"))?;
   Ok(())
 }
 
