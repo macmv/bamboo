@@ -1,4 +1,4 @@
-use super::{Block, BlockDef, Material};
+use super::{cross::cross_version, Block, BlockDef, Material};
 use crate::{gen::CodeGen, Version};
 use convert_case::{Case, Casing};
 
@@ -103,10 +103,12 @@ fn generate_versions(versions: &[(Version, BlockDef)]) -> String {
   gen.write_line("pub fn generate_versions() -> &'static [Version] ");
   gen.write_block(|gen| {
     gen.write_line("&[");
-    for (ver, _) in versions {
-      gen.write(&ver.to_string());
+    gen.add_indent();
+    for v in versions {
+      cross_version(gen, v, versions.last().unwrap());
       gen.write_line(",");
     }
+    gen.remove_indent();
     gen.write_line("]");
   });
 

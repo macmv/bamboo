@@ -2,6 +2,7 @@ use crate::dl;
 use serde::{de, de::Visitor, Deserialize, Deserializer};
 use std::{fmt, fs, io, path::Path};
 
+mod cross;
 mod gen;
 
 pub fn generate(out_dir: &Path) -> io::Result<()> {

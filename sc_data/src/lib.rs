@@ -66,6 +66,9 @@ impl Version {
   pub fn to_protocol(&self) -> String {
     format!("ProtocolVersion::V1_{}_{}", self.maj, self.min)
   }
+  pub fn to_block(&self) -> String {
+    format!("BlockVersion::V1_{}", self.maj)
+  }
   pub fn to_index(&self) -> usize {
     if self.maj <= 12 {
       self.maj as usize - 8
