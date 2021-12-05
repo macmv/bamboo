@@ -8,7 +8,7 @@ use sc_common::{
   util::{chat::Color, Chat, UUID},
   version::ProtocolVersion,
 };
-use sc_transfer::{MessageRead, MessageWrite, ReadError};
+use sc_transfer::{MessageReader, MessageWriter, ReadError};
 use serde_derive::{Deserialize, Serialize};
 use sha1::{Digest, Sha1};
 use std::{
@@ -183,13 +183,13 @@ impl<'a, S: PacketStream + Send + Sync> Conn<'a, S> {
     self.server_stream = Some(stream);
 
     let mut buf = [0; 1024];
-    let mut m = MessageWrite::new(&mut buf);
+    let mut m = MessageWriter::new(&mut buf);
     m.write_str(self.username.as_ref().unwrap()).unwrap();
     m.write_bytes(&self.info.as_ref().unwrap().id.as_be_bytes()).unwrap();
     m.write_i32(self.ver.id() as i32).unwrap();
     let len = m.index();
     let mut prefix = [0; 5];
-    let mut m = MessageWrite::new(&mut prefix);
+    let mut m = MessageWriter::new(&mut prefix);
     m.write_i32(len as i32).unwrap();
     let prefix_len = m.index();
     self.to_server.extend_from_slice(&prefix[..prefix_len]);
@@ -238,23 +238,20 @@ impl<'a, S: PacketStream + Send + Sync> Conn<'a, S> {
   /// Returns true if there are more packets, false if there is an empty or
   /// partial packet.
   fn read_server_packet(&mut self) -> io::Result<bool> {
-    let mut m = MessageRead::new(&self.from_server);
+    let mut m = MessageReader::new(&self.from_server);
     match m.read_i32() {
       Ok(len) => {
         if len as usize + m.index() <= self.from_server.len() {
           let idx = m.index();
           self.from_server.drain(0..idx);
-          // TODO: tcp::Packet and util::Buffer should work by reference
-          let mut tcp = tcp::Packet::from_buf(self.from_server[..len as usize].to_vec(), self.ver);
-          let p = cb::Packet::from_sc(&mut tcp, self.ver);
-          let parsed = tcp.index();
-          // TODO: from_sc should be fallible
-          // .map_err(|(packet, field, err)| {
-          //   io::Error::new(
-          //     io::ErrorKind::InvalidData,
-          //     format!("while reading field {} of packet {} got error: {}", field,
-          // packet, err),   )
-          // })?;
+          let mut m = MessageReader::new(&self.from_server[..len as usize]);
+          let p = cb::Packet::from_sc(&mut m, self.ver).map_err(|err| {
+            io::Error::new(
+              io::ErrorKind::InvalidData,
+              format!("while reading field packet got error: {}", err),
+            )
+          })?;
+          let parsed = m.index();
           if len as usize != parsed {
             return Err(io::Error::new(
               io::ErrorKind::InvalidData,
@@ -354,15 +351,15 @@ impl<'a, S: PacketStream + Send + Sync> Conn<'a, S> {
     // space for this packet.
 
     // TODO: Repalce tcp::Packet with MessageWrite
-    let mut tcp = tcp::Packet::new(p.sug_id().try_into().unwrap(), self.ver);
-    p.to_sc(&mut tcp);
+    let mut m = MessageWriter::new(&mut self.garbage);
+    p.to_sc(&mut m);
 
     let mut prefix = [0; 5];
-    let mut m = MessageWrite::new(&mut prefix);
-    m.write_i32(tcp.index() as i32).unwrap();
+    let mut m = MessageWriter::new(&mut prefix);
+    m.write_u32(m.index() as u32).unwrap();
     let prefix_len = m.index();
     self.to_server.extend_from_slice(&prefix[..prefix_len]);
-    self.to_server.extend_from_slice(&tcp.serialize());
+    self.to_server.extend_from_slice(&self.garbage);
 
     self.write_server()
   }
@@ -508,7 +505,7 @@ impl<'a, S: PacketStream + Send + Sync> Conn<'a, S> {
             if self.der_key.is_none() {
               self.info = Some(LoginInfo {
                 // Generate uuid if we are in offline mode
-                id: UUID::from_bytes(*md5::compute(&name)),
+                id: UUID::from_be_bytes(*md5::compute(&name)),
                 name,
                 properties: vec![],
               });
