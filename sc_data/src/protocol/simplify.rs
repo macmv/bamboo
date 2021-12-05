@@ -84,10 +84,12 @@ fn simplify_instr(instr: &mut [Instr]) -> Option<usize> {
           return Some(idx + 1);
         }
       },
-      Instr::For(_, range, block) => {
-        simplify_expr(&mut range.min);
-        simplify_expr(&mut range.max);
-        simplify_instr(block);
+      Instr::For(_var, _range, _block) => {
+        *i = set_unknown();
+        return Some(idx + 1);
+        // simplify_expr(&mut range.min);
+        // simplify_expr(&mut range.max);
+        // simplify_instr(block);
       }
       Instr::Switch(_val, _items) => {
         *i = set_unknown();

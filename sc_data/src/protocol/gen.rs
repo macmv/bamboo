@@ -680,6 +680,7 @@ impl<'a> InstrWriter<'a> {
         self.gen.write(name);
       }
       Value::Field(name) => {
+        // TODO: Move to a simplify pass
         if self.needs_deref {
           if let Some(field) = self.get_field(name).map(|v| v.clone()) {
             if let Some(reader_ty) = &field.reader_type {
@@ -712,15 +713,15 @@ impl<'a> InstrWriter<'a> {
               }
               if *reader_ty != field_ty {
                 let mut v = g.into_output();
-                for op in ops {
-                  let mut g = CodeGen::new();
-                  g.set_indent(self.gen.indent());
-                  let mut i = InstrWriter::new_inner(&mut g, &mut self.fields, &self.vars);
-                  i.is_closure = self.is_closure;
-                  i.needs_deref = self.needs_deref;
-                  i.write_op(&v, &op);
-                  v = g.into_output();
-                }
+                // for op in ops {
+                //   let mut g = CodeGen::new();
+                //   g.set_indent(self.gen.indent());
+                //   let mut i = InstrWriter::new_inner(&mut g, &mut self.fields, &self.vars);
+                //   i.is_closure = self.is_closure;
+                //   i.needs_deref = self.needs_deref;
+                //   i.write_op(&v, &op);
+                //   v = g.into_output();
+                // }
                 self.gen.write(&v);
               } else {
                 self.gen.write(&g.into_output());

@@ -64,7 +64,10 @@ impl<'a> ReaderTypes<'a> {
         }
         Instr::SetArr(_arr, _idx, _val) => {}
         Instr::Let(_v, _val) => {}
-        Instr::If(_cond, _when_true, _when_false) => {}
+        Instr::If(_cond, when_true, when_false) => {
+          self.find_instr(when_true);
+          self.find_instr(when_false);
+        }
         Instr::For(_v, _range, _block) => {}
         Instr::Switch(_v, _tab) => {}
         Instr::CheckStrLen(_val, _len) => {}
