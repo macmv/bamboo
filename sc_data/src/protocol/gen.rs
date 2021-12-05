@@ -122,6 +122,26 @@ impl PacketCollection {
     });
 
     gen.write_impl("Packet", |gen| {
+      gen.write_line("/// Returns the sugarcane specific id for this packet. This number doesn't");
+      gen.write_line("/// mean anything outside of the server-proxy connection. It needs to be");
+      gen.write_line("/// to construct a [`tcp::Packet`] outside of the [`to_sc`](Self::to_sc)");
+      gen.write_line("/// function.");
+      gen.write("pub fn sug_id(&self) -> u32 ");
+      gen.write_block(|gen| {
+        gen.write_match("self", |gen| {
+          for (id, versions) in packets.iter().enumerate() {
+            for (ver, p) in versions.iter() {
+              gen.write("Packet::");
+              gen.write(&p.name);
+              gen.write("V");
+              gen.write(&ver.maj.to_string());
+              gen.write(" { .. } => ");
+              gen.write(&id.to_string());
+              gen.write_line(",");
+            }
+          }
+        });
+      });
       gen.write_line("#[allow(unused_mut, unused_variables)]");
       gen.write("pub fn from_tcp(mut p: tcp::Packet, ver: ProtocolVersion) -> Self ");
       gen.write_block(|gen| {
@@ -223,7 +243,7 @@ impl PacketCollection {
       gen.write("pub fn to_sc(&self, mut p: tcp::Packet) ");
       gen.write_block(|gen| {
         gen.write_match("self", |gen| {
-          for (_id, versions) in packets.iter().enumerate() {
+          for versions in packets.iter() {
             for (ver, p) in versions.iter() {
               write_to_sc(gen, p, *ver);
             }
