@@ -15,6 +15,10 @@ pub fn pass(p: &mut Packet) {
   }
   for f in &mut p.fields {
     simplify_name(&mut f.name);
+  }
+}
+pub fn finish(p: &mut Packet) {
+  for f in &mut p.fields {
     let (initialized, option) = check_option(&p.reader.block, &f.name);
     if option && matches!(f.ty, Type::Array(_)) {
       f.option = false;

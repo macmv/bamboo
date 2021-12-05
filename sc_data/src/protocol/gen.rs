@@ -26,6 +26,9 @@ pub fn generate(def: Vec<(Version, PacketDef)>, dir: &Path) -> io::Result<()> {
   all_cb_packets.expand_sup();
   all_sb_packets.expand_sup();
 
+  all_cb_packets.finish_simplify();
+  all_sb_packets.finish_simplify();
+
   fs::create_dir_all(dir)?;
   File::create(dir.join("cb.rs"))?.write_all(all_cb_packets.gen().as_bytes())?;
   File::create(dir.join("sb.rs"))?.write_all(all_sb_packets.gen().as_bytes())?;
@@ -62,6 +65,13 @@ impl PacketCollection {
         if p.extends != "Object" {
           p.extend_from(&self.classes[ver][&p.extends]);
         }
+      }
+    }
+  }
+  pub fn finish_simplify(&mut self) {
+    for (_name, versions) in &mut self.packets {
+      for (ver, p) in versions {
+        simplify::finish(p);
       }
     }
   }
