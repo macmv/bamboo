@@ -1,4 +1,4 @@
-use super::{Expr, Field, Instr, Lit, Op, Packet, RType, Value, VarKind};
+use super::{Expr, Field, Instr, Lit, Op, Packet, RType, Type, Value, VarKind};
 
 #[derive(Debug)]
 struct ReaderTypes<'a> {
@@ -35,7 +35,13 @@ impl<'a> ReaderTypes<'a> {
       match i {
         Instr::Set(field, expr) => {
           let ty = self.expr_type(expr);
-          self.get_field_mut(field).map(|v| v.reader_type = Some(ty));
+          self.get_field_mut(field).map(|f| {
+            let rs_ty = f.ty.to_rust();
+            if rs_ty.name == "U" {
+              f.ty = Type::Rust(ty.clone());
+            }
+            f.reader_type = Some(ty);
+          });
         }
         Instr::SetArr(_arr, _idx, _val) => {}
         Instr::Let(_v, _val) => {}

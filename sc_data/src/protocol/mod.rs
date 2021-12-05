@@ -40,6 +40,8 @@ pub enum Type {
   Bool,
   Class(String),
   Array(Box<Type>),
+
+  Rust(RType),
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -322,7 +324,7 @@ impl RType {
   }
   pub fn is_copy(&self) -> bool {
     match self.name.as_str() {
-      "u8" | "i8" | "i16" | "i32" | "i64" | "f32" | "f64" => true,
+      "u8" | "i8" | "i16" | "i32" | "i64" | "f32" | "f64" | "Pos" => true,
       "Option" => self.generics[0].is_copy(),
       _ => false,
     }
@@ -378,6 +380,9 @@ impl Type {
       Self::Char => "char",
       Self::Class(name) => return convert::class(name),
       Self::Array(ty) => return RType::new("Vec").generic(ty.to_rust()),
+
+      // Simplifies a lot of nonsense. Don't worry about it. Nothing could possibly go wrong.
+      Self::Rust(ty) => return ty.clone(),
     })
   }
 }

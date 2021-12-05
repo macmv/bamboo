@@ -226,7 +226,7 @@ pub fn reader_to_writer(read: &str) -> &'static str {
     "read_i64" => "write_i64",
     "read_f32" => "write_f32",
     "read_f64" => "write_f64",
-    "read_pos" => "write_Pos",
+    "read_pos" => "write_pos",
     "read_item" => "write_item",
     "read_uuid" => "write_uuid",
     "read_str" => "write_str",
