@@ -92,7 +92,7 @@ where
   T: WriteSc,
 {
   fn write_sc(&self, buf: &mut tcp::Packet) {
-    buf.write_option(self, |buf, v| v.write_sc(buf))
+    buf.write_option(self, |buf, v| buf.write_sc(v))
   }
 }
 
@@ -109,7 +109,7 @@ where
   T: WriteSc,
 {
   fn write_sc(&self, buf: &mut tcp::Packet) {
-    buf.write_list(self, |buf, v| v.write_sc(buf))
+    buf.write_list(self, |buf, v| buf.write_sc(v))
   }
 }
 impl<K, V> ReadSc for HashMap<K, V>
@@ -127,7 +127,7 @@ where
   V: WriteSc,
 {
   fn write_sc(&self, buf: &mut tcp::Packet) {
-    buf.write_map(self, |buf, k| k.write_sc(buf), |buf, v| v.write_sc(buf))
+    buf.write_map(self, |buf, k| buf.write_sc(k), |buf, v| buf.write_sc(v))
   }
 }
 impl<T> ReadSc for HashSet<T>
@@ -160,9 +160,9 @@ where
   T: WriteSc,
 {
   fn write_sc(&self, buf: &mut tcp::Packet) {
-    buf.write_sc(self[0]);
-    buf.write_sc(self[1]);
-    buf.write_sc(self[2]);
+    buf.write_sc(&self[0]);
+    buf.write_sc(&self[1]);
+    buf.write_sc(&self[2]);
   }
 }
 impl<T, U> ReadSc for (T, U)
@@ -180,7 +180,7 @@ where
   U: WriteSc,
 {
   fn write_sc(&self, buf: &mut tcp::Packet) {
-    buf.write_sc(self.0);
-    buf.write_sc(self.1);
+    buf.write_sc(&self.0);
+    buf.write_sc(&self.1);
   }
 }

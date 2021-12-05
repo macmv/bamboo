@@ -386,11 +386,7 @@ fn write_to_sc(gen: &mut CodeGen, p: &Packet, ver: Version) {
   gen.add_indent();
 
   for f in &p.fields {
-    gen.write("p.write_sc(");
-    if f.ty.to_rust().is_copy() {
-      gen.write("*");
-    }
-    gen.write("f_");
+    gen.write("p.write_sc(f_");
     gen.write(&f.name);
     gen.write_line(");");
   }

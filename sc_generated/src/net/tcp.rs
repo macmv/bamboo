@@ -347,10 +347,11 @@ impl Packet {
     T::read_sc(self)
   }
 
-  pub fn write_sc<B, T>(&mut self, v: B)
+  pub fn write_sc<B: ?Sized, T>(&mut self, v: &B)
   where
-    B: Borrow<T>,
     T: WriteSc,
+    T: Borrow<B>,
+    B: WriteSc,
   {
     v.borrow().write_sc(self)
   }
