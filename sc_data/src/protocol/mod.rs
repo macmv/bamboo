@@ -271,8 +271,12 @@ pub enum Op {
 
   /// Add the given value to the current value.
   Add(Expr),
+  /// Subtract the given value to the current value.
+  Sub(Expr),
   /// Divide the current value by the given amount.
   Div(Expr),
+  /// Multiple the current value by the given amount.
+  Mul(Expr),
 
   /// Get the length of the current value. Only valid if the current value is an
   /// array.
@@ -387,7 +391,9 @@ impl Op {
       Op::Shl(_) => 4,
 
       Op::Div(_) => 3,
+      Op::Mul(_) => 3,
       Op::Add(_) => 2,
+      Op::Sub(_) => 2,
 
       Op::Cast(..) => 1,
       Op::As(..) => 1,

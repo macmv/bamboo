@@ -825,12 +825,22 @@ impl<'a> InstrWriter<'a> {
         self.gen.write(" + ");
         self.write_expr(rhs);
       }
+      Op::Sub(rhs) => {
+        self.gen.write(&val);
+        self.gen.write(" - ");
+        self.write_expr(rhs);
+      }
       Op::Div(rhs) => {
         self.gen.write(&val);
         if matches!(rhs.initial, Value::Lit(Lit::Float(_))) {
           self.gen.write(" as f32");
         }
         self.gen.write(" / ");
+        self.write_expr(rhs);
+      }
+      Op::Mul(rhs) => {
+        self.gen.write(&val);
+        self.gen.write(" * ");
         self.write_expr(rhs);
       }
 

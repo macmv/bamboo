@@ -89,11 +89,13 @@ fn simplify_instr(instr: &mut [Instr]) -> Option<usize> {
         simplify_expr(&mut range.max);
         simplify_instr(block);
       }
-      Instr::Switch(val, items) => {
-        simplify_expr(val);
-        for (_, instr) in items {
-          simplify_instr(instr);
-        }
+      Instr::Switch(_val, _items) => {
+        *i = set_unknown();
+        return Some(idx + 1);
+        // simplify_expr(val);
+        // for (_, instr) in items {
+        //   simplify_instr(instr);
+        // }
       }
       Instr::CheckStrLen(s, len) => {
         simplify_expr(s);
@@ -185,11 +187,22 @@ fn simplify_expr_overwrite(expr: &mut Expr) -> (bool, Option<Instr>) {
       _ => simplify(expr),
     },
     Value::Var(1) => match expr.ops.first() {
-      Some(Op::Call(_class, name, _args)) => match dbg!(&name).as_str() {
+      Some(Op::Call(_class, name, _args)) => match name.as_str() {
         "readCollection" | "readList" | "readMap" => return (true, None),
-        "readBoolean" | "readByte" | "readInt" | "readVarint" | "readFloat" | "readDouble"
-        | "readString" => simplify(expr),
-        _ => return (true, None),
+        _ => {
+          let res = simplify(expr);
+          match expr.ops.first() {
+            Some(Op::Call(_class, name, _args)) => match name.as_str() {
+              "read_varint" | "read_i8" | "read_u8" | "read_i16" | "read_i32" | "read_i64"
+              | "read_f32" | "read_f64" | "read_str" | "read_pos" | "read_uuid" | "read_nbt"
+              | "remaining" | "read_varint_arr" | "read_i32_arr" => res,
+              "read_item" | "read_block_hit" => return (true, None),
+              name => panic!("{}", name),
+              // _ => return (true, None),
+            },
+            _ => return (true, None),
+          }
+        }
       },
       // _ => simplify(expr),
       _ => return (true, None),
@@ -242,7 +255,9 @@ fn simplify_op(op: &mut Op) -> bool {
     Op::Shl(rhs) => simplify_expr(rhs),
 
     Op::Add(rhs) => simplify_expr(rhs),
+    Op::Sub(rhs) => simplify_expr(rhs),
     Op::Div(rhs) => simplify_expr(rhs),
+    Op::Mul(rhs) => simplify_expr(rhs),
 
     Op::Len => {}
     Op::Idx(idx) => simplify_expr(idx),

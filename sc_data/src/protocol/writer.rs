@@ -55,6 +55,8 @@ impl WriterGen {
               let to = RType::new("f32");
               Op::As(to)
             }
+            Op::BitAnd(v) => Op::BitAnd(v.clone()),
+            Op::Div(v) => Op::Mul(v.clone()),
             _ => panic!("cannot convert {:?} into writer (packet {})", expr, self.packet),
           });
         }
