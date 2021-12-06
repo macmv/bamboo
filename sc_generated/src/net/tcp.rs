@@ -169,7 +169,7 @@ impl Packet {
   }
 
   pub fn write_i32_arr(&mut self, list: &[i32]) {
-    self.write_varint(v.len().try_into().unwrap());
+    self.write_varint(list.len().try_into().unwrap());
     for v in list {
       self.write_i32(*v);
     }
