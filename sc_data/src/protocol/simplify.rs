@@ -167,12 +167,19 @@ fn simplify_expr_overwrite(expr: &mut Expr) -> (bool, Option<Instr>) {
     }
     (false, convert::overwrite(expr))
   }
-  let res = match expr.initial {
-    Value::Static(..)
-    | Value::CallStatic(..)
-    | Value::New(..)
-    | Value::Array(_)
-    | Value::Field(..) => return (true, None),
+  let res = match &expr.initial {
+    Value::CallStatic(..) | Value::New(..) | Value::Array(_) | Value::Field(..) => {
+      return (true, None)
+    }
+    Value::Static(class, _name) => {
+      expr.initial = match class.as_str() {
+        "net/minecraft/entity/item/EntityPainting$EnumArt" => {
+          Value::Lit(Lit::Int("SkullAndRoses".len() as i32))
+        }
+        _ => return (true, None),
+      };
+      return (true, None);
+    }
     Value::Var(0) => match expr.ops.first_mut() {
       Some(Op::Call(class, name, args)) if class != "net/minecraft/network/PacketByteBuf" => {
         let instr = match convert::this_call(name, args) {
