@@ -32,14 +32,20 @@ pub enum Packet {
 }
 
 #[derive(Debug, Clone)]
-pub enum ReadError {
+pub struct ReadError {
+  packet: GPacket,
+  kind:   ReadErrorKind,
+}
+
+#[derive(Debug, Clone)]
+pub enum ReadErrorKind {
   UnknownPacket,
 }
 
 impl fmt::Display for ReadError {
   fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-    match self {
-      Self::UnknownPacket => write!(f, "unknown packet"),
+    match self.kind {
+      ReadErrorKind::UnknownPacket => write!(f, "unknown packet {:?}", self.packet),
     }
   }
 }
@@ -50,7 +56,7 @@ impl Packet {
   pub fn from_tcp(p: GPacket, ver: ProtocolVersion) -> Result<Self, ReadError> {
     Ok(match p {
       GPacket::PlayerV8 { on_ground, .. } => Packet::PlayerOnGround { on_ground },
-      _ => return Err(ReadError::UnknownPacket),
+      _ => return Err(ReadError { packet: p, kind: ReadErrorKind::UnknownPacket }),
     })
   }
 }

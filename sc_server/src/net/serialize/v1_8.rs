@@ -71,8 +71,8 @@ pub fn serialize_chunk(pos: ChunkPos, c: &MultiChunk) -> cb::Packet {
     /* chunk_x:        pos.x(),
      * chunk_z:        pos.z(),
      * field_149279_g: true, // ground up
-     * extracted_data: None,
-     * unknown:        chunk_data.into_inner(), */
+     * extracted_data: None, */
+    unknown: chunk_data.into_inner(),
   }
 }
 

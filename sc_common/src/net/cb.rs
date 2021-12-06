@@ -17,6 +17,8 @@ pub enum Packet {
     z:       i32,
     palette: Vec<u32>,
     blocks:  Vec<u32>,
+    /// Temporary. Will be removed once the proxy has block data.
+    unknown: Vec<u8>,
   },
   EntityVelocity {
     eid: i32,
@@ -44,9 +46,9 @@ pub enum Packet {
     x:           f64,
     y:           f64,
     z:           f64,
-    yaw:         f64,
-    pitch:       f64,
-    flags:       u32,
+    yaw:         f32,
+    pitch:       f32,
+    flags:       u16,
     teleport_id: u32,
   },
   UnloadChunk {
@@ -74,7 +76,13 @@ impl Packet {
   pub fn to_tcp(self, ver: ProtocolVersion) -> Result<GPacket, WriteError> {
     Ok(match self {
       // Packet::Chunk { .. } => GPacket::ChunkDataV8 {},
-      Packet::PlayerHeader { header, footer } => GPacket::PlayerListHeaderV8 { header, footer },
+      Packet::Chunk { x, z, palette, blocks, unknown } => GPacket::ChunkDataV8 {
+        chunk_x: x,
+        chunk_z: z,
+        field_149279_g: true,
+        extracted_data: None,
+        unknown,
+      },
       Packet::JoinGame {
         eid,
         hardcore_mode,
@@ -104,6 +112,16 @@ impl Packet {
           unknown: out.into_inner(),
         }
       }
+      Packet::PlayerHeader { header, footer } => GPacket::PlayerListHeaderV8 { header, footer },
+      Packet::SetPosLook { x, y, z, yaw, pitch, flags, teleport_id } => GPacket::PlayerPosLookV8 {
+        x,
+        y,
+        z,
+        yaw,
+        pitch,
+        field_179835_f: None,
+        unknown: flags.to_be_bytes().to_vec(),
+      },
       _ => todo!("convert {:?} into generated packet", self),
     })
   }
