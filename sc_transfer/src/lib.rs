@@ -150,15 +150,15 @@ mod tests {
   #[test]
   fn floats() {
     let mut buf = [0; 4];
-    let mut m = MessageWrite::new(&mut buf);
+    let mut m = MessageWriter::new(&mut buf);
     m.write_f32(3.456).unwrap();
-    let mut m = MessageRead::new(&buf);
+    let mut m = MessageReader::new(&buf);
     assert_eq!(m.read_f32().unwrap(), 3.456);
 
     let mut buf = [0; 8];
-    let mut m = MessageWrite::new(&mut buf);
+    let mut m = MessageWriter::new(&mut buf);
     m.write_f64(3.456).unwrap();
-    let mut m = MessageRead::new(&buf);
+    let mut m = MessageReader::new(&buf);
     assert_eq!(m.read_f64().unwrap(), 3.456);
   }
 }

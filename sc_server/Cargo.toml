@@ -19,7 +19,7 @@ sc_transfer = { path = "../sc_transfer" }
 log = "0.4"
 
 rayon = "1.5.1"
-mio = "0.7.13"
+mio = { version = "0.7.13", default-features = false, features = ["os-poll", "net"] }
 crossbeam-channel = "0.5.1"
 parking_lot = "0.11.2"
 
