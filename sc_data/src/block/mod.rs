@@ -18,6 +18,19 @@ pub fn generate(out_dir: &Path) -> io::Result<()> {
   Ok(())
 }
 
+#[cfg(test)]
+#[test]
+fn test_all() {
+  let versions = crate::VERSIONS
+    .iter()
+    .map(|&ver| {
+      let def: BlockDef = dl::get("blocks", ver);
+      (ver, def)
+    })
+    .collect();
+  gen::test(versions);
+}
+
 #[derive(Debug, Clone, Deserialize)]
 pub struct BlockDef {
   blocks: Vec<Block>,
@@ -155,11 +168,13 @@ pub enum StateProp {
 }
 
 impl Prop {
+  /// Number of states of this property. The state of this should never reach
+  /// the value (it works the same way as an array length).
   pub fn len(&self) -> u32 {
     match &self.kind {
       PropKind::Bool => 2,
       PropKind::Enum(v) => v.len() as u32,
-      PropKind::Int { min, max } => max - min,
+      PropKind::Int { min, max } => (max - min) + 1,
     }
   }
 
@@ -180,6 +195,9 @@ impl Block {
     let mut states = vec![];
     let mut prop_ids = vec![0; self.properties.len()];
     'all: loop {
+      states.push(State {
+        props: prop_ids.iter().enumerate().map(|(i, id)| self.properties[i].state(*id)).collect(),
+      });
       prop_ids[0] += 1;
       for i in 0..prop_ids.len() {
         if prop_ids[i] >= self.properties[i].len() {
@@ -192,10 +210,57 @@ impl Block {
           break;
         }
       }
-      states.push(State {
-        props: prop_ids.iter().enumerate().map(|(i, id)| self.properties[i].state(*id)).collect(),
-      });
     }
     states
+  }
+}
+
+#[cfg(test)]
+mod tests {
+  use super::*;
+
+  #[test]
+  fn test_all_states() {
+    let b = Block { properties: vec![], ..Default::default() };
+    assert_eq!(b.all_states().len(), 1);
+
+    let b = Block {
+      properties: vec![Prop {
+        name: "".into(),
+        kind: PropKind::Enum(vec!["a".into(), "b".into(), "c".into()]),
+      }],
+      ..Default::default()
+    };
+    assert_eq!(b.all_states().len(), 3);
+
+    let b = Block {
+      properties: vec![Prop { name: "".into(), kind: PropKind::Bool }],
+      ..Default::default()
+    };
+    assert_eq!(b.all_states().len(), 2);
+
+    let b = Block {
+      properties: vec![
+        Prop { name: "".into(), kind: PropKind::Bool },
+        Prop { name: "".into(), kind: PropKind::Bool },
+      ],
+      ..Default::default()
+    };
+    assert_eq!(b.all_states().len(), 4);
+
+    let b = Block {
+      properties: vec![
+        Prop { name: "".into(), kind: PropKind::Enum(vec!["a".into(), "b".into(), "c".into()]) },
+        Prop { name: "".into(), kind: PropKind::Bool },
+      ],
+      ..Default::default()
+    };
+    assert_eq!(b.all_states().len(), 6);
+
+    let b = Block {
+      properties: vec![Prop { name: "".into(), kind: PropKind::Int { min: 0, max: 1 } }],
+      ..Default::default()
+    };
+    assert_eq!(b.all_states().len(), 2);
   }
 }

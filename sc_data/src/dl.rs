@@ -1,7 +1,16 @@
 use crate::Version;
 use serde::de::DeserializeOwned;
+#[cfg(not(test))]
 use std::{fs, fs::File, io};
 
+#[cfg(test)]
+pub fn get<T: DeserializeOwned>(name: &str, ver: Version) -> T {
+  let url = format!("https://macmv.gitlab.io/sugarcane-data/{}-{}.json", name, ver);
+  let data = ureq::get(&url).call().unwrap();
+  serde_json::from_reader(data.into_reader()).unwrap()
+}
+
+#[cfg(not(test))]
 pub fn get<T: DeserializeOwned>(name: &str, ver: Version) -> T {
   let dir = crate::out_dir().join("data");
   if !dir.exists() {

@@ -4,6 +4,9 @@ use convert_case::{Case, Casing};
 
 use std::{fs, io, path::Path};
 
+#[cfg(test)]
+use super::cross::cross_test;
+
 pub fn generate(def: Vec<(Version, BlockDef)>, dir: &Path) -> io::Result<()> {
   fs::write(dir.join("ty.rs"), generate_ty(&def.last().unwrap().1))?;
   fs::write(dir.join("version.rs"), generate_versions(&def))?;
@@ -114,6 +117,13 @@ fn generate_versions(versions: &[(Version, BlockDef)]) -> String {
   });
 
   gen.into_output()
+}
+
+#[cfg(test)]
+pub fn test(versions: Vec<(Version, BlockDef)>) {
+  for v in &versions {
+    cross_test(v, versions.last().unwrap());
+  }
 }
 
 fn block_data(gen: &mut CodeGen, b: &Block) {
