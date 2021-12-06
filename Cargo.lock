@@ -1630,6 +1630,7 @@ dependencies = [
  "sc_data",
  "sc_generated",
  "sc_macros",
+ "sc_transfer",
  "serde",
  "serde_derive",
  "serde_json",

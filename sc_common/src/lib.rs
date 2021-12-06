@@ -18,12 +18,13 @@ use log4rs::{
 pub mod chunk;
 pub mod config;
 pub mod math;
+pub mod net;
 pub mod registry;
 pub mod util;
 
 pub use registry::Registry;
 
-pub use sc_generated::{net, version};
+pub use sc_generated::version;
 
 // #[derive(Debug)]
 // pub struct KeepAlivePolicy {
