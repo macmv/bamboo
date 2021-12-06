@@ -150,8 +150,11 @@ pub enum Value {
 
 #[derive(Debug, Clone, PartialEq, Deserialize)]
 pub enum Lit {
+  /// A signed integer.
   Int(i32),
+  /// A floating point number.
   Float(f32),
+  /// A string literal.
   String(String),
 }
 

@@ -1,4 +1,4 @@
-use super::{convert, Cond, Expr, Field, Instr, Op, Packet, Type, Value};
+use super::{convert, Cond, Expr, Field, Instr, Lit, Op, Packet, Type, Value};
 use convert_case::{Case, Casing};
 
 pub fn pass(p: &mut Packet) {
@@ -251,7 +251,13 @@ fn simplify_val(val: &mut Value) {
 }
 fn simplify_op(op: &mut Op) -> bool {
   match op {
-    Op::BitAnd(rhs) => simplify_expr(rhs),
+    Op::BitAnd(rhs) => {
+      simplify_expr(rhs);
+      // For the join game packet.
+      if rhs == &Expr::new(Value::Lit(Lit::Int(-9))) {
+        *rhs = Expr::new(Value::Lit(Lit::Int((-9i8 as u8).into())));
+      }
+    }
     Op::Shr(rhs) => simplify_expr(rhs),
     Op::UShr(rhs) => simplify_expr(rhs),
     Op::Shl(rhs) => simplify_expr(rhs),
