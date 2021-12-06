@@ -194,7 +194,7 @@ impl Connection {
   ) -> io::Result<Option<Arc<Player>>> {
     while !self.incoming.is_empty() {
       let mut m = MessageReader::new(&self.incoming);
-      match m.read_i32() {
+      match m.read_u32() {
         Ok(len) => {
           if len as usize + m.index() <= self.incoming.len() {
             // Remove the length varint at the start

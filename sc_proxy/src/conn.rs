@@ -190,7 +190,7 @@ impl<'a, S: PacketStream + Send + Sync> Conn<'a, S> {
     let len = m.index();
     let mut prefix = [0; 5];
     let mut m = MessageWriter::new(&mut prefix);
-    m.write_i32(len as i32).unwrap();
+    m.write_u32(len as u32).unwrap();
     let prefix_len = m.index();
     self.to_server.extend_from_slice(&prefix[..prefix_len]);
     self.to_server.extend_from_slice(&buf[..len]);
@@ -352,10 +352,11 @@ impl<'a, S: PacketStream + Send + Sync> Conn<'a, S> {
 
     let mut m = MessageWriter::new(&mut self.garbage);
     p.to_sc(&mut m).unwrap();
+    let len = m.index();
 
     let mut prefix = [0; 5];
     let mut m = MessageWriter::new(&mut prefix);
-    m.write_u32(m.index() as u32).unwrap();
+    m.write_u32(len as u32).unwrap();
     let prefix_len = m.index();
     self.to_server.extend_from_slice(&prefix[..prefix_len]);
     self.to_server.extend_from_slice(&self.garbage);
