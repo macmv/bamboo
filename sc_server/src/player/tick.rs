@@ -291,22 +291,14 @@ impl Player {
       for z in min.z()..=max.z() {
         self.world.dec_view(ChunkPos::new(x, z));
         if self.ver() == ProtocolVersion::V1_8 {
-          /*
-          self.send(cb::Packet::MapChunk {
-            x:                                     x.into(),
-            z:                                     z.into(),
-            ground_up:                             true,
-            bit_map_v1_8:                          Some(0),
-            bit_map_v1_9:                          None,
-            chunk_data:                            vec![0], /* Need a length prefix. 0 varint
-                                                             * is a single 0 byte */
-            biomes_v1_15:                          None,
-            biomes_v1_16_2:                        None,
-            block_entities_v1_9_4:                 None,
-            heightmaps_v1_14:                      None,
-            ignore_old_data_v1_16_removed_v1_16_2: None,
+          self.send(cb::Packet::ChunkDataV8 {
+            chunk_x:        x.into(),
+            chunk_z:        z.into(),
+            field_149279_g: true,
+            extracted_data: None,
+            // Bit mask is 0, length varint is 0
+            unknown:        vec![0, 0, 0],
           });
-          */
         } else {
           /*
           self.send(cb::Packet::UnloadChunk { chunk_x_v1_9: Some(x), chunk_z_v1_9: Some(z) });
