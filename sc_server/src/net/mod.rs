@@ -209,6 +209,7 @@ impl Connection {
                   format!("while reading packet got err: {}", err),
                 )
               })?;
+              info!("got packet: {:?}", p);
               let n = m.index();
               if n != len as usize {
                 return Err(io::Error::new(

@@ -359,7 +359,7 @@ impl<'a, S: PacketStream + Send + Sync> Conn<'a, S> {
     m.write_u32(len as u32).unwrap();
     let prefix_len = m.index();
     self.to_server.extend_from_slice(&prefix[..prefix_len]);
-    self.to_server.extend_from_slice(&self.garbage);
+    self.to_server.extend_from_slice(&self.garbage[..len]);
 
     self.write_server()
   }
