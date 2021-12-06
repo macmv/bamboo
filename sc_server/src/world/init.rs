@@ -5,7 +5,7 @@ use crate::{
 };
 use rayon::prelude::*;
 use sc_common::{
-  math::ChunkPos,
+  math::{ChunkPos, Pos},
   net::cb,
   util::{
     nbt::{Tag, NBT},
@@ -193,7 +193,7 @@ impl World {
       // dimension_v1_16_2:        Some(NBT::new("", dimension).serialize()),
       // world_names_v1_16:        Some(world_names.into_inner()),
       entity_id:          self.eid(),
-      hardcore_mode:      None,
+      hardcore_mode:      false,
       game_type:          None,
       dimension:          Some(0), // Overworld
       difficulty:         Some(1), // Normal
@@ -217,6 +217,7 @@ impl World {
       }
     }
 
+    // This is the compass packet. TODO: Find the right spawn position packet.
     player.send(cb::Packet::SpawnPositionV8 {
       // x:                0.0,        // X
       // y:                60.0,       // Y
@@ -225,8 +226,7 @@ impl World {
       // pitch:            0.0,        // Pitch
       // flags:            0,          // Flags
       // teleport_id_v1_9: Some(1234), // TP id
-      spawn_block_pos: None,
-      unknown:         vec![],
+      spawn_block_pos: Pos::new(0, 60, 0),
     });
 
     /*

@@ -19,7 +19,7 @@ impl World {
 
     for p in self.players().iter().in_view(pos.chunk()) {
       p.send(cb::Packet::BlockUpdateV8 {
-        block_position: Some(pos),
+        block_position: pos,
         block_state:    Some((self.block_converter.to_old(ty.id(), p.ver().block()), "".into())),
         unknown:        vec![],
       });

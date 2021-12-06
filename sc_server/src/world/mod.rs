@@ -159,11 +159,8 @@ impl World {
           Color::BrightGreen
         });
 
-        let out = cb::Packet::PlayerListHeaderV8 {
-          header:  Some(header.to_json()),
-          footer:  Some(footer.to_json()),
-          unknown: vec![],
-        };
+        let out =
+          cb::Packet::PlayerListHeaderV8 { header: header.to_json(), footer: footer.to_json() };
         for p in self.players().values() {
           p.send(out.clone());
         }
@@ -178,7 +175,7 @@ impl World {
           // Do player collision and packets and stuff
           // Once per second, send keep alive packet
           if tick % 20 == 0 {
-            p.send(cb::Packet::KeepAliveV8 { id: Some(1234556), unknown: vec![] });
+            p.send(cb::Packet::KeepAliveV8 { id: 1234556 });
           }
           s.mspt.fetch_add(start.elapsed().as_millis().try_into().unwrap(), Ordering::SeqCst);
         });

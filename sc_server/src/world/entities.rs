@@ -25,11 +25,10 @@ impl World {
   pub(crate) fn send_entity_vel(&self, pos: ChunkPos, eid: i32, vel: Vec3) {
     for p in self.players().iter().in_view(pos) {
       p.send(cb::Packet::EntityVelocityV8 {
-        entity_id: Some(eid),
-        motion_x:  Some(vel.fixed_x().into()),
-        motion_y:  Some(vel.fixed_y().into()),
-        motion_z:  Some(vel.fixed_z().into()),
-        unknown:   vec![],
+        entity_id: eid,
+        motion_x:  vel.fixed_x().into(),
+        motion_y:  vel.fixed_y().into(),
+        motion_z:  vel.fixed_z().into(),
       });
     }
   }
