@@ -125,26 +125,6 @@ impl PacketCollection {
     });
 
     gen.write_impl("Packet", |gen| {
-      gen.write_line("/// Returns the sugarcane specific id for this packet. This number doesn't");
-      gen.write_line("/// mean anything outside of the server-proxy connection. It needs to be");
-      gen.write_line("/// to construct a [`tcp::Packet`] outside of the [`to_sc`](Self::to_sc)");
-      gen.write_line("/// function.");
-      gen.write("pub fn sug_id(&self) -> u32 ");
-      gen.write_block(|gen| {
-        gen.write_match("self", |gen| {
-          for (id, versions) in packets.iter().enumerate() {
-            for (ver, p) in versions.iter() {
-              gen.write("Packet::");
-              gen.write(&p.name);
-              gen.write("V");
-              gen.write(&ver.maj.to_string());
-              gen.write(" { .. } => ");
-              gen.write(&id.to_string());
-              gen.write_line(",");
-            }
-          }
-        });
-      });
       gen.write("pub fn tcp_id(&self, ver: ProtocolVersion) -> u32 ");
       gen.write_block(|gen| {
         gen.write_match("ver.id()", |gen| {
@@ -232,63 +212,6 @@ impl PacketCollection {
             }
           }
         });
-      });
-      gen.write(
-        "pub fn from_sc(m: &mut MessageReader, ver: ProtocolVersion) -> Result<Self, ReadError> ",
-      );
-      gen.write_block(|gen| {
-        gen.write_line("let id = m.read_u32()?;");
-        gen.write_match("id", |gen| {
-          for (id, versions) in packets.iter().enumerate() {
-            gen.write(&id.to_string());
-            gen.write(" => ");
-            gen.write_block(|gen| {
-              let (ver, first) = versions.first().unwrap();
-              gen.write_comment(&first.name);
-              if ver.maj != 8 {
-                gen.write("if ver < ");
-                gen.write(&ver.to_protocol());
-                gen.write(" ");
-                gen.write_block(|gen| {
-                  gen.write(r#"panic!("version {} is below the minimum version for packet "#);
-                  gen.write(&first.name);
-                  gen.write_line(r#"", ver);"#);
-                });
-              }
-              if versions.len() == 1 {
-                write_from_sc(gen, first, *ver);
-              } else {
-                for (i, (ver, p)) in versions.iter().enumerate() {
-                  if let Some(next_ver) = versions.get(i + 1) {
-                    gen.write("if ver < ");
-                    gen.write(&next_ver.0.to_protocol());
-                    gen.write_line(" {");
-                    gen.add_indent();
-                    write_from_sc(gen, p, *ver);
-                    gen.remove_indent();
-                    gen.write("} else ");
-                  } else {
-                    gen.write_block(|gen| {
-                      write_from_sc(gen, p, *ver);
-                    });
-                  }
-                }
-              }
-            });
-          }
-          gen.write_line(r#"v => panic!("invalid protocol version {}", v),"#);
-        });
-      });
-      gen.write("pub fn to_sc(&self, m: &mut MessageWriter) -> Result<(), WriteError> ");
-      gen.write_block(|gen| {
-        gen.write_match("self", |gen| {
-          for (id, versions) in packets.iter().enumerate() {
-            for (ver, p) in versions.iter() {
-              write_to_sc(gen, p, *ver, id);
-            }
-          }
-        });
-        gen.write_line("Ok(())");
       });
     });
 
@@ -410,50 +333,6 @@ fn write_to_tcp(gen: &mut CodeGen, p: &Packet, ver: Version) {
   writer.needs_deref = true;
   for i in &p.writer.block {
     writer.write_instr(i);
-  }
-
-  gen.remove_indent();
-  gen.write_line("}");
-}
-fn write_from_sc(gen: &mut CodeGen, p: &Packet, ver: Version) {
-  gen.write("Ok(Packet::");
-  gen.write(&p.name);
-  gen.write("V");
-  gen.write(&ver.maj.to_string());
-  gen.write_line(" {");
-  gen.add_indent();
-  for f in &p.fields {
-    gen.write(&f.name);
-    gen.write_line(": m.read()?,");
-  }
-  gen.remove_indent();
-  gen.write_line("})");
-}
-fn write_to_sc(gen: &mut CodeGen, p: &Packet, ver: Version, id: usize) {
-  gen.write("Packet::");
-  gen.write(&p.name);
-  gen.write("V");
-  gen.write(&ver.maj.to_string());
-  gen.write_line(" {");
-  gen.add_indent();
-  for f in &p.fields {
-    gen.write(&f.name);
-    gen.write(": f_");
-    gen.write(&f.name);
-    gen.write_line(",");
-  }
-  gen.remove_indent();
-  gen.write_line("} => {");
-  gen.add_indent();
-
-  gen.write("m.write_u32(");
-  gen.write(&id.to_string());
-  gen.write_line(")?;");
-
-  for f in &p.fields {
-    gen.write("m.write(f_");
-    gen.write(&f.name);
-    gen.write_line(")?;");
   }
 
   gen.remove_indent();
