@@ -41,9 +41,6 @@ pub fn serialize_chunk(pos: ChunkPos, c: &MultiChunk) -> cb::Packet {
   for s in c.sections().into_iter() {
     if let Some(s) = s {
       let s = s.unwrap_fixed();
-      // These are little endian. I'm assuming that the person who wrote the
-      // networking for Minecraft and the person who wrote chunk decoding were not
-      // consistent.
       chunk_data
         .write_buf(&s.data().iter().map(|v| v.to_le_bytes()).flatten().collect::<Vec<u8>>());
     }

@@ -128,7 +128,7 @@ impl Data {
       id += idx;
       id *= p.len() as u32;
     }
-    id
+    self.state + id
   }
 }
 
