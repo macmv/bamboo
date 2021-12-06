@@ -40,8 +40,6 @@ pub fn chunk(
         }
       }
     }
-    // chunk_data.write_buf(&s.data().iter().map(|v|
-    // v.to_le_bytes()).flatten().collect::<Vec<u8>>());
   }
   // Light data
   for _ in 0..total_sections * 16 * 16 * 16 / 2 {

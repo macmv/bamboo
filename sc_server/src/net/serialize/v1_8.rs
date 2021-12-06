@@ -8,75 +8,22 @@ use std::convert::TryInto;
 
 pub fn serialize_chunk(pos: ChunkPos, c: &MultiChunk) -> cb::Packet {
   let mut bit_map = 0;
-  let paletted = c.get_paletted();
-  let c = c.get_fixed();
+  let c = c.get_paletted();
 
-  let skylight = true;
-  let biomes = true;
-
-  let mut total_sections = 0;
-  for s in c.sections().into_iter() {
-    if s.is_some() {
-      total_sections += 1;
-    }
-  }
-
-  let data_len = total_sections * 16 * 16 * 16 * 2 // Chunk data
-    + (total_sections * 16 * 16 * 16 / 2) // Block light
-    + if skylight { total_sections * 16 * 16 * 16 / 2 } else { 0 } // Sky light
-    + if biomes { 256 } else { 0 }; // Biomes
-
-  // The most it will be is data_len + max varint len
-  let mut chunk_data = Buffer::new(Vec::with_capacity(data_len + 5));
-
-  for (y, s) in c.sections().into_iter().enumerate() {
+  for (y, s) in c.sections().enumerate() {
     if s.is_some() {
       bit_map |= 1 << y;
     }
   }
 
-  chunk_data.write_u16(bit_map);
-  chunk_data.write_varint(data_len.try_into().unwrap());
-  let prefix_len = chunk_data.len();
-
-  for s in c.sections().into_iter() {
-    if let Some(s) = s {
-      let s = s.unwrap_fixed();
-      chunk_data
-        .write_buf(&s.data().iter().map(|v| v.to_le_bytes()).flatten().collect::<Vec<u8>>());
-    }
-  }
-  // Light data
-  for _ in 0..total_sections * 16 * 16 * 16 / 2 {
-    // Each lighting value is 1/2 byte
-    chunk_data.write_u8(0xff);
-  }
-  if skylight {
-    for _ in 0..total_sections * 16 * 16 * 16 / 2 {
-      // Each lighting value is 1/2 byte
-      chunk_data.write_u8(0xff);
-    }
-  }
-  if biomes {
-    for _ in 0..256 {
-      chunk_data.write_u8(127); // Void biome
-    }
-  }
-  debug_assert_eq!(chunk_data.len() - prefix_len, data_len, "unexpected chunk data len");
-
   cb::Packet::Chunk {
     x: pos.x(),
     z: pos.z(),
     bit_map,
-    sections: paletted
+    sections: c
       .sections()
       .filter_map(|c| c.as_ref().map(|c| c.unwrap_paletted().clone()))
       .collect(),
-    /* chunk_x:        pos.x(),
-     * chunk_z:        pos.z(),
-     * field_149279_g: true, // ground up
-     * extracted_data: None, */
-    unknown: chunk_data.into_inner(),
   }
 }
 

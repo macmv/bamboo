@@ -18,8 +18,6 @@ pub enum Packet {
     z:        i32,
     bit_map:  u16,
     sections: Vec<Section>,
-    /// Temporary. Will be removed once the proxy has block data.
-    unknown:  Vec<u8>,
   },
   EntityVelocity {
     eid: i32,
@@ -81,9 +79,7 @@ impl Packet {
   ) -> Result<GPacket, WriteError> {
     Ok(match self {
       // Packet::Chunk { .. } => GPacket::ChunkDataV8 {},
-      Packet::Chunk { x, z, bit_map, sections, unknown } => {
-        ser::chunk(x, z, bit_map, sections, ver, conv)
-      }
+      Packet::Chunk { x, z, bit_map, sections } => ser::chunk(x, z, bit_map, sections, ver, conv),
       Packet::JoinGame {
         eid,
         hardcore_mode,
