@@ -163,6 +163,15 @@ impl World {
     let mut world_names = Buffer::new(vec![]);
     world_names.write_varint(1);
     world_names.write_str("minecraft:overworld");
+
+    let mut out = Buffer::new(vec![]);
+    out.write_u8(0); // Creative
+    out.write_i8(0); // Overworld
+    out.write_i8(1); // Normal difficulty
+    out.write_u8(0); // Max players
+    out.write_str("default"); // World type
+    out.write_bool(false); // Don't reduce debug info
+
     let out = cb::Packet::JoinGameV8 {
       // entity_id:                self.eid(),
       // game_mode:                1,       // Creative
@@ -200,7 +209,8 @@ impl World {
       max_players:        None,    // Ignored
       world_type:         None,
       reduced_debug_info: Some(false),
-      unknown:            vec![],
+      // Game type normal, dimension 0, difficulty 1,
+      unknown:            out.into_inner(),
     };
 
     player.send(out);
