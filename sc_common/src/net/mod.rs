@@ -2,6 +2,7 @@ use crate::version::BlockVersion;
 
 pub mod cb;
 pub mod sb;
+mod ser;
 
 pub trait VersionConverter {
   /// The `id` argument is a block id in the latest version. This function
