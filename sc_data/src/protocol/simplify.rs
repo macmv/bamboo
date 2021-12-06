@@ -261,8 +261,14 @@ fn simplify_op(op: &mut Op) -> bool {
     Op::BitAnd(rhs) => {
       simplify_expr(rhs);
       // For the join game packet.
-      if rhs == &Expr::new(Value::Lit(Lit::Int(-9))) {
-        *rhs = Expr::new(Value::Lit(Lit::Int((-9i8 as u8).into())));
+      match rhs.initial {
+        Value::Lit(Lit::Int(-9)) => {
+          *rhs = Expr::new(Value::Lit(Lit::Int((-9i8 as u8).into())));
+        }
+        Value::Lit(Lit::Int(255)) => {
+          *rhs = Expr::new(Value::Lit(Lit::Int((255u8 as i8).into())));
+        }
+        _ => {}
       }
     }
     Op::Shr(rhs) => simplify_expr(rhs),
