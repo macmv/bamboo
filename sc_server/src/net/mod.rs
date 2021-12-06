@@ -298,8 +298,7 @@ impl Connection {
   /// more than once.
   pub(crate) fn handle_packet(&self, wm: &Arc<WorldManager>, player: &Arc<Player>, p: sb::Packet) {
     match p {
-      /*
-      sb::Packet::Chat { message } => {
+      sb::Packet::ChatV8 { message } => {
         if message.chars().next() == Some('/') {
           let mut chars = message.chars();
           chars.next().unwrap();
@@ -315,6 +314,7 @@ impl Connection {
           player.world().broadcast(msg);
         }
       }
+      /*
       sb::Packet::SetCreativeSlot { slot, item } => {
         if slot > 0 {
           let id =
@@ -397,6 +397,8 @@ impl Connection {
       sb::Packet::PlayerLookV8 { yaw, pitch, .. } => {
         player.set_next_look(yaw, pitch);
       }
+      // Just contains on_ground
+      sb::Packet::PlayerV8 { .. } => {}
       _ => warn!("got unknown packet from client: {:?}", p),
     }
   }
