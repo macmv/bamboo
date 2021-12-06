@@ -3,8 +3,9 @@ use mio::{net::TcpStream, Interest, Registry, Token};
 use rand::{rngs::OsRng, RngCore};
 use rsa::{padding::PaddingScheme, RSAPrivateKey};
 use sc_common::{
+  gnet::{cb as gcb, sb as gsb, tcp},
   math,
-  net::{cb, sb, tcp},
+  net::{cb as ccb, sb as csb},
   util::{chat::Color, Chat, UUID},
   version::ProtocolVersion,
 };
@@ -245,12 +246,13 @@ impl<'a, S: PacketStream + Send + Sync> Conn<'a, S> {
           let idx = m.index();
           self.from_server.drain(0..idx);
           let mut m = MessageReader::new(&self.from_server[..len as usize]);
-          let p = cb::Packet::from_sc(&mut m, self.ver).map_err(|err| {
+          let common = ccb::Packet::read(&mut m).map_err(|err| {
             io::Error::new(
               io::ErrorKind::InvalidData,
-              format!("while reading field packet got error: {}", err),
+              format!("while reading packet got error: {}", err),
             )
           })?;
+          let p = common.to_tcp(self.ver).unwrap();
           let parsed = m.index();
           if len as usize != parsed {
             return Err(io::Error::new(
@@ -321,7 +323,7 @@ impl<'a, S: PacketStream + Send + Sync> Conn<'a, S> {
       match self.client_stream.read(self.ver) {
         Ok(Some(mut p)) => match self.state {
           State::Play => {
-            let packet = sb::Packet::from_tcp(&mut p, self.ver);
+            let packet = gsb::Packet::from_tcp(&mut p, self.ver);
             self.send_to_server(packet)?;
           }
           _ => {
@@ -337,7 +339,7 @@ impl<'a, S: PacketStream + Send + Sync> Conn<'a, S> {
 
   /// Tries to send the packet to the client, and buffers it if that is not
   /// possible.
-  fn send_to_client(&mut self, p: cb::Packet) -> io::Result<()> {
+  fn send_to_client(&mut self, p: gcb::Packet) -> io::Result<()> {
     let mut tcp = tcp::Packet::new(p.tcp_id(self.ver).try_into().unwrap(), self.ver);
     p.to_tcp(&mut tcp);
     self.client_stream.write(tcp);
@@ -346,12 +348,13 @@ impl<'a, S: PacketStream + Send + Sync> Conn<'a, S> {
 
   /// Tries to send the packet to the server, and buffers it if that is not
   /// possible.
-  fn send_to_server(&mut self, p: sb::Packet) -> io::Result<()> {
+  fn send_to_server(&mut self, p: gsb::Packet) -> io::Result<()> {
     // The only error here is EOF, which means the garbage buffer was not enough
     // space for this packet.
 
     let mut m = MessageWriter::new(&mut self.garbage);
-    p.to_sc(&mut m).unwrap();
+    let common = csb::Packet::from_tcp(p, self.ver).unwrap();
+    common.write(&mut m).unwrap();
     let len = m.index();
 
     let mut prefix = [0; 5];
