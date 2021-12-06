@@ -73,7 +73,11 @@ impl fmt::Display for WriteError {
 impl Error for WriteError {}
 
 impl Packet {
-  pub fn to_tcp(self, ver: ProtocolVersion) -> Result<GPacket, WriteError> {
+  pub fn to_tcp(
+    self,
+    ver: ProtocolVersion,
+    conv: impl VersionConverter,
+  ) -> Result<GPacket, WriteError> {
     Ok(match self {
       // Packet::Chunk { .. } => GPacket::ChunkDataV8 {},
       Packet::Chunk { x, z, bit_map, sections, unknown } => GPacket::ChunkDataV8 {
