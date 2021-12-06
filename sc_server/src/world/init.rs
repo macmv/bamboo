@@ -228,15 +228,15 @@ impl World {
     }
 
     // This is the compass packet. TODO: Find the right spawn position packet.
-    player.send(cb::Packet::SpawnPositionV8 {
-      // x:                0.0,        // X
-      // y:                60.0,       // Y
-      // z:                0.0,        // Z
-      // yaw:              0.0,        // Yaw
-      // pitch:            0.0,        // Pitch
-      // flags:            0,          // Flags
+    player.send(cb::Packet::PlayerPosLookV8 {
+      x:              0.0,  // X
+      y:              60.0, // Y
+      z:              0.0,  // Z
+      yaw:            0.0,  // Yaw
+      pitch:          0.0,  // Pitch
+      field_179835_f: None, // Flags
       // teleport_id_v1_9: Some(1234), // TP id
-      spawn_block_pos: Pos::new(0, 60, 0),
+      unknown:        vec![0], // 0 flags
     });
 
     /*
