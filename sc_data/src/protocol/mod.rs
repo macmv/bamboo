@@ -421,7 +421,7 @@ impl Op {
       Op::Deref => 0,
 
       Op::If(..) => 0,
-      Op::Call(..) => 10,
+      Op::Call(..) => 0,
       Op::WrapCall(..) => 10,
     }
   }
