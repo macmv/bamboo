@@ -1,3 +1,4 @@
+use super::VersionConverter;
 use crate::{chunk::paletted::Section, math::Pos, util::Buffer, version::ProtocolVersion};
 use sc_generated::net::cb::Packet as GPacket;
 use std::{error::Error, fmt};
@@ -76,7 +77,7 @@ impl Packet {
   pub fn to_tcp(
     self,
     ver: ProtocolVersion,
-    conv: impl VersionConverter,
+    conv: &impl VersionConverter,
   ) -> Result<GPacket, WriteError> {
     Ok(match self {
       // Packet::Chunk { .. } => GPacket::ChunkDataV8 {},

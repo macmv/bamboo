@@ -1,3 +1,4 @@
+use super::VersionConverter;
 use crate::version::ProtocolVersion;
 use sc_generated::net::sb::Packet as GPacket;
 use std::{error::Error, fmt};
@@ -53,7 +54,11 @@ impl fmt::Display for ReadError {
 impl Error for ReadError {}
 
 impl Packet {
-  pub fn from_tcp(p: GPacket, ver: ProtocolVersion) -> Result<Self, ReadError> {
+  pub fn from_tcp(
+    p: GPacket,
+    _ver: ProtocolVersion,
+    _conv: &impl VersionConverter,
+  ) -> Result<Self, ReadError> {
     Ok(match p {
       GPacket::PlayerV8 { on_ground, .. } => Packet::PlayerOnGround { on_ground },
       // TODO: The `super` call in the player movement packets is not parsed correctly.

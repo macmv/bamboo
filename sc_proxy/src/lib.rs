@@ -2,6 +2,7 @@
 extern crate log;
 
 pub mod conn;
+mod conv;
 pub mod stream;
 
 use mio::{net::TcpListener, Events, Interest, Poll, Token};
@@ -10,6 +11,8 @@ use rsa::RSAPrivateKey;
 use std::{collections::HashMap, error::Error, io, net::SocketAddr, sync::Arc};
 
 use crate::{conn::Conn, stream::java::stream::JavaStream};
+
+pub use conv::TypeConverter;
 
 pub fn load_icon(path: &str) -> String {
   let mut icon = match image::open(path).map_err(|e| error!("error loading icon: {}", e)) {
@@ -52,6 +55,8 @@ pub fn run() -> Result<(), Box<dyn Error>> {
 
   let mut next_token = 0;
 
+  let conv = Arc::new(TypeConverter::new());
+
   loop {
     // Wait for events
     poll.poll(&mut events, None)?;
@@ -86,6 +91,7 @@ pub fn run() -> Result<(), Box<dyn Error>> {
                     der_key.clone(),
                     &icon,
                     server_token,
+                    conv.clone(),
                   ),
                 );
               }

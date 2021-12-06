@@ -1701,6 +1701,7 @@ dependencies = [
  "ringbuf",
  "rsa",
  "sc_common",
+ "sc_data",
  "sc_transfer",
  "serde",
  "serde_derive",

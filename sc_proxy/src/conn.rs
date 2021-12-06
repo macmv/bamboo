@@ -1,3 +1,4 @@
+use super::TypeConverter;
 use crate::stream::PacketStream;
 use mio::{net::TcpStream, Interest, Registry, Token};
 use rand::{rngs::OsRng, RngCore};
@@ -80,6 +81,8 @@ pub struct Conn<'a, S> {
   /// Used to encode packets. The data in here is undefined, but the length will
   /// be constant.
   garbage:       Vec<u8>,
+
+  conv: Arc<TypeConverter>,
 }
 
 impl<S: fmt::Debug> fmt::Debug for Conn<'_, S> {
@@ -149,6 +152,7 @@ impl<'a, S: PacketStream + Send + Sync> Conn<'a, S> {
     der_key: Option<Vec<u8>>,
     icon: &'a str,
     server_token: Token,
+    conv: Arc<TypeConverter>,
   ) -> Conn<'a, S> {
     Conn {
       client_stream,
@@ -168,6 +172,7 @@ impl<'a, S: PacketStream + Send + Sync> Conn<'a, S> {
       to_server: Vec::with_capacity(16 * 1024),
       from_server: Vec::with_capacity(16 * 1024),
       garbage: vec![0; 64 * 1024],
+      conv,
     }
   }
   pub fn ver(&self) -> ProtocolVersion { self.ver }
@@ -248,7 +253,7 @@ impl<'a, S: PacketStream + Send + Sync> Conn<'a, S> {
               format!("while reading packet got error: {}", err),
             )
           })?;
-          let p = common.to_tcp(self.ver).unwrap();
+          let p = common.to_tcp(self.ver, self.conv.as_ref()).unwrap();
           let parsed = m.index();
           if len as usize != parsed {
             return Err(io::Error::new(
@@ -347,7 +352,7 @@ impl<'a, S: PacketStream + Send + Sync> Conn<'a, S> {
     // space for this packet.
 
     let mut m = MessageWriter::new(&mut self.garbage);
-    let common = match csb::Packet::from_tcp(p, self.ver) {
+    let common = match csb::Packet::from_tcp(p, self.ver, self.conv.as_ref()) {
       Ok(p) => p,
       Err(e) => {
         warn!("could not convert packet: {}", e);
