@@ -598,9 +598,9 @@ impl<'a> InstrWriter<'a> {
         self.gen.write("assert!(");
         self.write_expr(val);
         self.gen.write(".len() < ");
-        self.write_val(len);
+        self.write_val(len, false);
         self.gen.write(", \"string is too long (len greater than `");
-        self.write_val(len);
+        self.write_val(len, false);
         self.gen.write("`)\");");
       }
       Instr::Return(v) => {
@@ -624,7 +624,7 @@ impl<'a> InstrWriter<'a> {
       let mut inner = InstrWriter::new_inner(&mut g, &mut self.fields, &self.vars);
       inner.is_closure = self.is_closure;
       inner.needs_deref = self.needs_deref;
-      inner.write_val(&e.initial);
+      inner.write_val(&e.initial, !e.ops.is_empty());
     }
     // if !e.ops.is_empty()
     //   && matches!(&e.initial, Value::Field(field) if
@@ -654,7 +654,7 @@ impl<'a> InstrWriter<'a> {
     self.gen.write(&val);
   }
 
-  fn write_val(&mut self, val: &Value) {
+  fn write_val(&mut self, val: &Value, has_ops: bool) {
     match val {
       Value::Null => self.gen.write("None"),
       Value::Lit(lit) => match lit {
@@ -680,30 +680,22 @@ impl<'a> InstrWriter<'a> {
         self.gen.write(name);
       }
       Value::Field(name) => {
-        // TODO: Move to a simplify pass
         if self.needs_deref {
           if let Some(field) = self.get_field(name).map(|v| v.clone()) {
             if let Some(reader_ty) = &field.reader_type {
-              let field_ty = field.ty.to_rust();
               let mut g = CodeGen::new();
               g.set_indent(self.gen.indent());
-              let ops = if &field_ty != reader_ty {
-                convert::type_cast(&field_ty, reader_ty)
-              } else {
-                vec![]
-              };
               {
                 let mut i = InstrWriter::new_inner(&mut g, &mut self.fields, &self.vars);
                 i.is_closure = self.is_closure;
                 i.needs_deref = self.needs_deref;
                 if reader_ty.is_copy() {
-                  let needs_paren = ops.first().map(|v| v.precedence() < 10).unwrap_or(false);
-                  if needs_paren {
+                  if has_ops {
                     i.gen.write("(");
                   }
                   i.gen.write("*f_");
                   i.gen.write(name);
-                  if needs_paren {
+                  if has_ops {
                     i.gen.write(")");
                   }
                 } else {
@@ -711,21 +703,7 @@ impl<'a> InstrWriter<'a> {
                   i.gen.write(name);
                 }
               }
-              if *reader_ty != field_ty {
-                let mut v = g.into_output();
-                // for op in ops {
-                //   let mut g = CodeGen::new();
-                //   g.set_indent(self.gen.indent());
-                //   let mut i = InstrWriter::new_inner(&mut g, &mut self.fields, &self.vars);
-                //   i.is_closure = self.is_closure;
-                //   i.needs_deref = self.needs_deref;
-                //   i.write_op(&v, &op);
-                //   v = g.into_output();
-                // }
-                self.gen.write(&v);
-              } else {
-                self.gen.write(&g.into_output());
-              }
+              self.gen.write(&g.into_output());
               return;
             }
           }
@@ -1030,9 +1008,9 @@ impl<'a> InstrWriter<'a> {
           assert_eq!(rhs, &Expr::new(Value::Lit(0.into())));
           assert_eq!(args.len(), 1);
           assert!(args[0].ops.is_empty());
-          self.write_val(&lhs.initial);
+          self.write_val(&lhs.initial, false);
           self.gen.write(" == ");
-          self.write_val(&args[0].initial);
+          self.write_val(&args[0].initial, false);
         }
         // Matching `equals(var, foo) != 0`
         Value::CallStatic(_class, name, args) if name == "equals" => {
@@ -1041,9 +1019,9 @@ impl<'a> InstrWriter<'a> {
           assert_eq!(args.len(), 2);
           assert!(args[0].ops.is_empty());
           assert!(args[1].ops.is_empty());
-          self.write_val(&args[0].initial);
+          self.write_val(&args[0].initial, false);
           self.gen.write(" == ");
-          self.write_val(&args[1].initial);
+          self.write_val(&args[1].initial, false);
         }
         _ => {
           cond!(lhs != rhs)

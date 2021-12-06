@@ -104,10 +104,7 @@ impl<'a> ReaderTypes<'a> {
         }
       },
       Value::Static(_class, _name) => RType::new("U"),
-      Value::Field(name) => self
-        .get_field(name)
-        .map(|v| v.reader_type.clone().unwrap_or(RType::new("U")))
-        .unwrap_or(RType::new("U")),
+      Value::Field(name) => self.get_field(name).map(|v| v.ty.to_rust()).unwrap_or(RType::new("U")),
       Value::New(_class, _args) => RType::new("U"),
       Value::Array(_) => RType::new("Vec"),
       Value::MethodRef(class, name) => match class.as_str() {
@@ -164,9 +161,14 @@ impl<'a> ReaderTypes<'a> {
         },
         "Supplier" => initial,
         "ParticleS2CPacket" => RType::new("ParticleData"),
+        "Option" => match name.as_str() {
+          "is_some" => RType::new("bool"),
+          _ => todo!("call {}::{}({:?})", class, name, args),
+        },
         _ => todo!("call {}::{}({:?})", class, name, args),
       },
       Op::Cast(ty) => ty.to_rust(),
+      Op::As(ty) => ty.clone(),
       Op::If(_cond, new) => {
         // TODO: When we get an Option<T> and T, we need to wrap T in Some().
         let new_ty = self.expr_type(new);
@@ -293,7 +295,7 @@ impl<'a> ReaderTypes<'a> {
         Instr::Expr(Expr::new(Value::Var(1)).op(Op::Call(
           class.clone(),
           writer_name.into(),
-          vec![val],
+          vec![self.type_cast(val, convert::reader_func_to_ty("", name))],
         )))
       }
       Some(Op::If(_cond, _new)) => return None,
@@ -306,6 +308,19 @@ impl<'a> ReaderTypes<'a> {
     match v.initial {
       Value::Var(idx) if idx != 1 => self.vars[idx].clone(),
       _ => v.clone(),
+    }
+  }
+
+  fn type_cast(&mut self, mut expr: Expr, field_ty: RType) -> Expr {
+    let writer_ty = self.expr_type(&expr);
+    if writer_ty != field_ty {
+      // dbg!(&self);
+      // dbg!(&writer_ty, &field_ty);
+      // panic!();
+      expr.ops.push(Op::As(field_ty));
+      expr
+    } else {
+      expr
     }
   }
 }
