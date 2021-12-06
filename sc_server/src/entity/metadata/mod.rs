@@ -64,7 +64,5 @@ pub struct Metadata {
 impl Metadata {
   /// Creates a new entity metadata. This should not be called directly.
   /// Instead, use [`Entity::metadata()`](super::Entity::metadata).
-  pub fn new(ver: ProtocolVersion) -> Self {
-    Metadata { ver, fields: HashMap::new() }
-  }
+  pub fn new(ver: ProtocolVersion) -> Self { Metadata { ver, fields: HashMap::new() } }
 }

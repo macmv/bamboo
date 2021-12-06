@@ -83,9 +83,7 @@ impl ScrollBuf {
 
     Ok(())
   }
-  pub fn buf(&mut self) -> &mut VecDeque<u8> {
-    &mut self.buf
-  }
+  pub fn buf(&mut self) -> &mut VecDeque<u8> { &mut self.buf }
 }
 
 /// An appender which logs to standard out.
@@ -150,10 +148,6 @@ impl LineReader {
 }
 
 impl io::Write for LineReader {
-  fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
-    self.buf.write(buf)
-  }
-  fn flush(&mut self) -> io::Result<()> {
-    self.buf.flush()
-  }
+  fn write(&mut self, buf: &[u8]) -> io::Result<usize> { self.buf.write(buf) }
+  fn flush(&mut self) -> io::Result<()> { self.buf.flush() }
 }

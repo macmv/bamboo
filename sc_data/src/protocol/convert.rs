@@ -290,9 +290,7 @@ pub fn type_cast(from: &RType, to: &RType) -> Vec<Op> {
   }]
 }
 
-fn into() -> Op {
-  Op::Call("".into(), "into".into(), vec![])
-}
+fn into() -> Op { Op::Call("".into(), "into".into(), vec![]) }
 fn try_into(name: &str) -> Vec<Op> {
   vec![
     Op::WrapCall(name.into(), "try_from".into(), vec![]),

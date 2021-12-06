@@ -46,39 +46,27 @@ pub struct PlayerInventory {
 }
 
 impl PlayerInventory {
-  pub fn new() -> Self {
-    PlayerInventory { inv: Inventory::new(46), selected_index: 0 }
-  }
+  pub fn new() -> Self { PlayerInventory { inv: Inventory::new(46), selected_index: 0 } }
 
   /// Returns the item in the player's main hand.
-  pub fn main_hand(&self) -> &Stack {
-    self.inv.get(self.selected_index as u32 + 36)
-  }
+  pub fn main_hand(&self) -> &Stack { self.inv.get(self.selected_index as u32 + 36) }
 
   /// Returns the currently selected hotbar index.
-  pub fn selected_index(&self) -> u8 {
-    self.selected_index
-  }
+  pub fn selected_index(&self) -> u8 { self.selected_index }
 
   /// Sets the selected index. Should only be used when recieving a held item
   /// slot packet.
-  pub(crate) fn set_selected(&mut self, index: u8) {
-    self.selected_index = index;
-  }
+  pub(crate) fn set_selected(&mut self, index: u8) { self.selected_index = index; }
 
   /// Gets the item at the given index. 0 is part of the armor slots, not the
   /// start of the hotbar. To access the hotbar, add 36 to the index returned
   /// from main_hand.
-  pub fn get(&self, index: u32) -> &Stack {
-    self.inv.get(index)
-  }
+  pub fn get(&self, index: u32) -> &Stack { self.inv.get(index) }
 
   /// Sets the item in the inventory.
   ///
   /// TODO: Send a packet here.
-  pub fn set(&mut self, index: u32, stack: Stack) {
-    self.inv.set(index, stack)
-  }
+  pub fn set(&mut self, index: u32, stack: Stack) { self.inv.set(index, stack) }
 }
 
 pub struct Player {
@@ -142,34 +130,22 @@ impl Player {
   }
 
   /// Returns the player's username.
-  pub fn username(&self) -> &str {
-    &self.username
-  }
+  pub fn username(&self) -> &str { &self.username }
 
   /// Returns the player's entity id. Used to send packets about entities.
-  pub fn eid(&self) -> i32 {
-    self.eid
-  }
+  pub fn eid(&self) -> i32 { self.eid }
   /// Returns the player's uuid. Used to lookup players in the world.
-  pub fn id(&self) -> UUID {
-    self.uuid
-  }
+  pub fn id(&self) -> UUID { self.uuid }
 
   /// Returns the version that this client connected with. This will only change
   /// if the player disconnects and logs in with another client.
-  pub fn ver(&self) -> ProtocolVersion {
-    self.ver
-  }
+  pub fn ver(&self) -> ProtocolVersion { self.ver }
 
   /// Returns a locked reference to the player's inventory.
-  pub fn lock_inventory(&self) -> MutexGuard<PlayerInventory> {
-    self.inv.lock().unwrap()
-  }
+  pub fn lock_inventory(&self) -> MutexGuard<PlayerInventory> { self.inv.lock().unwrap() }
 
   /// Returns a reference to the world the player is in.
-  pub fn world(&self) -> &Arc<World> {
-    &self.world
-  }
+  pub fn world(&self) -> &Arc<World> { &self.world }
 
   /// This will move the player on the next player tick. Used whenever a
   /// position packet is recieved.
@@ -231,9 +207,7 @@ impl Player {
   }
   /// Returns the player's block position. This is the block that their feet are
   /// in. This is the same thing as calling [`p.pos().block()`](Self::pos).
-  fn block_pos(&self) -> Pos {
-    self.pos().block()
-  }
+  fn block_pos(&self) -> Pos { self.pos().block() }
   /// Returns the player's position and looking direction. This is only updated
   /// once per tick. This also locks a mutex, so you should not call it very
   /// often.
@@ -316,9 +290,7 @@ impl Player {
   /// technically can result in deadlocks, but the way the threads are setup
   /// right now mean that no channel will block another channel, so in practice
   /// this will only produce slow downs, never deadlocks.
-  pub fn send(&self, p: cb::Packet) {
-    self.conn.send(p);
-  }
+  pub fn send(&self, p: cb::Packet) { self.conn.send(p); }
 
   /// Returns true if the player's connection is closed.
   pub fn closed(&self) -> bool {
@@ -328,9 +300,7 @@ impl Player {
 }
 
 impl CommandSender for Player {
-  fn block_pos(&self) -> Option<Pos> {
-    Some(self.block_pos())
-  }
+  fn block_pos(&self) -> Option<Pos> { Some(self.block_pos()) }
 }
 
 #[test]

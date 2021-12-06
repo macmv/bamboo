@@ -25,14 +25,10 @@ pub struct Chunk {
 }
 
 impl Chunk {
-  pub fn new(kind: ChunkKind) -> Self {
-    Chunk { sections: Vec::new(), kind }
-  }
+  pub fn new(kind: ChunkKind) -> Self { Chunk { sections: Vec::new(), kind } }
   /// Returns the kind of chunk this is. For 1.8 chunks, this will be `Fixed`.
   /// For any other chunk, this will be `Paletted`.
-  pub fn kind(&self) -> ChunkKind {
-    self.kind
-  }
+  pub fn kind(&self) -> ChunkKind { self.kind }
   /// This updates the internal data to contain a block at the given position.
   /// In release mode, the position is not checked. In any other mode, a
   /// PosError will be returned if any of the x, y, or z are outside of 0..16

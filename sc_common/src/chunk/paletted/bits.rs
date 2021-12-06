@@ -322,17 +322,11 @@ impl BitArray {
     self.bpe = new.bpe;
   }
   /// Clones the internal data. Used for generating protobufs.
-  pub fn clone_inner(&self) -> Vec<u64> {
-    self.data.clone()
-  }
+  pub fn clone_inner(&self) -> Vec<u64> { self.data.clone() }
   /// Returns the number of bits that every element in this array uses.
-  pub fn bpe(&self) -> u8 {
-    self.bpe
-  }
+  pub fn bpe(&self) -> u8 { self.bpe }
   /// Returns the inner long array.
-  pub fn long_array(&self) -> &[u64] {
-    &self.data
-  }
+  pub fn long_array(&self) -> &[u64] { &self.data }
 }
 
 #[cfg(test)]

@@ -14,9 +14,7 @@ wrap!(Arc<Mutex<Chat>>, SlChatSection, idx: usize);
 #[define_ty(path = "sugarcane::chat::Chat")]
 impl SlChat {
   /// Creates an empty chat message. This can have sections added using `add`.
-  pub fn empty() -> SlChat {
-    SlChat { inner: Arc::new(Mutex::new(Chat::empty())) }
-  }
+  pub fn empty() -> SlChat { SlChat { inner: Arc::new(Mutex::new(Chat::empty())) } }
   /// Adds a new chat section. This will return the section that was just added,
   /// so that it can be modified.
   ///

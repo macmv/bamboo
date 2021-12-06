@@ -35,9 +35,7 @@ impl fmt::Display for Pos {
 impl Pos {
   /// Creates a new block position. This can be used to find chunk coordinates,
   /// place blocks, or send a position in a packet.
-  pub fn new(x: i32, y: i32, z: i32) -> Self {
-    Pos { x, y, z }
-  }
+  pub fn new(x: i32, y: i32, z: i32) -> Self { Pos { x, y, z } }
   /// Converts a block position from a u64 into a Pos. This format of u64 is
   /// used for versions 1.14 and up. This is also the format used with grpc.
   pub fn from_u64(v: u64) -> Self {
@@ -92,19 +90,13 @@ impl Pos {
   }
   /// Returns the X value of the position.
   #[inline(always)]
-  pub fn x(&self) -> i32 {
-    self.x
-  }
+  pub fn x(&self) -> i32 { self.x }
   /// Returns the Y value of the position.
   #[inline(always)]
-  pub fn y(&self) -> i32 {
-    self.y
-  }
+  pub fn y(&self) -> i32 { self.y }
   /// Returns the Z value of the position.
   #[inline(always)]
-  pub fn z(&self) -> i32 {
-    self.z
-  }
+  pub fn z(&self) -> i32 { self.z }
   /// Returns self, with x set to the given value.
   #[inline(always)]
   #[must_use = "with_x returns a modified version of self"]
@@ -149,33 +141,23 @@ impl Pos {
   }
   /// Returns the chunk that this block position is in.
   #[inline(always)]
-  pub fn chunk(&self) -> ChunkPos {
-    ChunkPos::new(self.chunk_x(), self.chunk_z())
-  }
+  pub fn chunk(&self) -> ChunkPos { ChunkPos::new(self.chunk_x(), self.chunk_z()) }
   /// Returns this position within the 0, 0 chunk column. That is, the X and Z
   /// are both set to the chunk relative position. The Y value is unchanged.
   #[inline(always)]
-  pub fn chunk_rel(&self) -> Pos {
-    Pos { x: self.chunk_rel_x(), y: self.y, z: self.chunk_rel_z() }
-  }
+  pub fn chunk_rel(&self) -> Pos { Pos { x: self.chunk_rel_x(), y: self.y, z: self.chunk_rel_z() } }
   /// Returns the block X coordinate within 0..16. This is not the same as X %
   /// 16, because that will give negative numbers for negative X values.
   #[inline(always)]
-  pub fn chunk_rel_x(&self) -> i32 {
-    (self.x % 16 + 16) % 16
-  }
+  pub fn chunk_rel_x(&self) -> i32 { (self.x % 16 + 16) % 16 }
   /// Returns the block Y coordinate within 0..16. This is not the same as Y %
   /// 16, because that will give negative numbers for negative Y values.
   #[inline(always)]
-  pub fn chunk_rel_y(&self) -> i32 {
-    (self.y % 16 + 16) % 16
-  }
+  pub fn chunk_rel_y(&self) -> i32 { (self.y % 16 + 16) % 16 }
   /// Returns the block Z coordinate within 0..16. This is not the same as Z %
   /// 16, because that will give negative numbers for negative Z values.
   #[inline(always)]
-  pub fn chunk_rel_z(&self) -> i32 {
-    (self.z % 16 + 16) % 16
-  }
+  pub fn chunk_rel_z(&self) -> i32 { (self.z % 16 + 16) % 16 }
   /// Returns the chunk X of this position. This is X / 16, rounded to negative
   /// infinity. Rust rounds to zero be default, so this is not the same as X /
   /// 16.
@@ -211,17 +193,13 @@ impl Pos {
   }
   /// Creates a new error from this position. This should be used to signify
   /// that an invalid position was passed somewhere.
-  pub fn err(&self, msg: String) -> PosError {
-    PosError { pos: *self, msg }
-  }
+  pub fn err(&self, msg: String) -> PosError { PosError { pos: *self, msg } }
 
   /// Creates a new iterator from the current position to the other position.
   /// This will iterate through every block within a cube where `self` is the
   /// minimum corner, and `end` is the maximum corner.
   #[inline(always)]
-  pub fn to(&self, end: Pos) -> PosIter {
-    PosIter::new(*self, end)
-  }
+  pub fn to(&self, end: Pos) -> PosIter { PosIter::new(*self, end) }
 
   /// Returns the distance to the other position.
   pub fn dist(&self, other: Pos) -> f64 {
@@ -353,9 +331,7 @@ impl PosIter {
 }
 
 impl From<Range<Pos>> for PosIter {
-  fn from(r: Range<Pos>) -> PosIter {
-    PosIter::new(r.start, r.end)
-  }
+  fn from(r: Range<Pos>) -> PosIter { PosIter::new(r.start, r.end) }
 }
 
 impl Iterator for PosIter {

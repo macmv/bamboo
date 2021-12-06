@@ -79,7 +79,5 @@ pub enum Material {
 }
 
 impl Material {
-  pub fn is_replaceable(&self) -> bool {
-    matches!(self, Material::Plant)
-  }
+  pub fn is_replaceable(&self) -> bool { matches!(self, Material::Plant) }
 }

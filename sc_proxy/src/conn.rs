@@ -170,12 +170,8 @@ impl<'a, S: PacketStream + Send + Sync> Conn<'a, S> {
       garbage: vec![0; 64 * 1024],
     }
   }
-  pub fn ver(&self) -> ProtocolVersion {
-    self.ver
-  }
-  pub fn closed(&self) -> bool {
-    self.closed
-  }
+  pub fn ver(&self) -> ProtocolVersion { self.ver }
+  pub fn closed(&self) -> bool { self.closed }
 
   fn connect_to_server(&mut self, reg: &Registry) -> Result<(), io::Error> {
     info!("connecting to server at {:?}", self.addr);
@@ -313,9 +309,7 @@ impl<'a, S: PacketStream + Send + Sync> Conn<'a, S> {
   }
   /// Reads data from the client tcp connection, and buffers that to be read in
   /// `read_client_packet`.
-  fn poll_client(&mut self) -> io::Result<()> {
-    self.client_stream.poll()
-  }
+  fn poll_client(&mut self) -> io::Result<()> { self.client_stream.poll() }
   /// Reads a packet from the internal buffer from the client. Does not interact
   /// with the tcp connection at all.
   fn read_client_packet(&mut self, reg: &Registry) -> io::Result<()> {

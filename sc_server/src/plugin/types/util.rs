@@ -18,9 +18,7 @@ impl SlPos {
   /// pos = Pos::new(5, 6, 7)
   /// pos.x() // returns 5
   /// ```
-  pub fn x(&self) -> i32 {
-    self.inner.x()
-  }
+  pub fn x(&self) -> i32 { self.inner.x() }
   /// Returns the Y position of this block.
   ///
   /// # Example
@@ -29,9 +27,7 @@ impl SlPos {
   /// pos = Pos::new(5, 6, 7)
   /// pos.y() // returns 6
   /// ```
-  pub fn y(&self) -> i32 {
-    self.inner.y()
-  }
+  pub fn y(&self) -> i32 { self.inner.y() }
   /// Returns the Z position of this block.
   ///
   /// # Example
@@ -40,9 +36,7 @@ impl SlPos {
   /// pos = Pos::new(5, 6, 7)
   /// pos.z() // returns 7
   /// ```
-  pub fn z(&self) -> i32 {
-    self.inner.z()
-  }
+  pub fn z(&self) -> i32 { self.inner.z() }
 }
 
 /// An entity position. This stores X, Y, and Z coordinates as floats.
@@ -58,9 +52,7 @@ impl SlFPos {
   /// pos = FPos::new(5.5, 6.0, 7.2)
   /// pos.x() // returns 5.5
   /// ```
-  pub fn x(&self) -> f64 {
-    self.inner.x()
-  }
+  pub fn x(&self) -> f64 { self.inner.x() }
   /// Returns the Y position of this entity.
   ///
   /// # Example
@@ -69,9 +61,7 @@ impl SlFPos {
   /// pos = FPos::new(5.5, 6.0, 7.2)
   /// pos.y() // returns 6.0
   /// ```
-  pub fn y(&self) -> f64 {
-    self.inner.y()
-  }
+  pub fn y(&self) -> f64 { self.inner.y() }
   /// Returns the Z position of this entity.
   ///
   /// # Example
@@ -80,7 +70,5 @@ impl SlFPos {
   /// pos = FPos::new(5.5, 6.0, 7.2)
   /// pos.z() // returns 7.2
   /// ```
-  pub fn z(&self) -> f64 {
-    self.inner.z()
-  }
+  pub fn z(&self) -> f64 { self.inner.z() }
 }

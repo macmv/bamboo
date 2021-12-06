@@ -60,12 +60,8 @@ impl Gen {
 }
 
 impl BiomeGen for Gen {
-  fn new(id: usize) -> Gen {
-    Gen { id, trees: PointGrid::new(12345, 16, 5) }
-  }
-  fn id(&self) -> usize {
-    self.id
-  }
+  fn new(id: usize) -> Gen { Gen { id, trees: PointGrid::new(12345, 16, 5) } }
+  fn id(&self) -> usize { self.id }
   fn decorate(&self, world: &WorldGen, chunk_pos: ChunkPos, c: &mut MultiChunk) {
     // Iterate through a 2 block radius outside this chunk
     for p in

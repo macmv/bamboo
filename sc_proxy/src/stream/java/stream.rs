@@ -129,9 +129,7 @@ impl PacketStream for JavaStream {
     }
   }
 
-  fn set_compression(&mut self, compression: i32) {
-    self.compression = compression as usize;
-  }
+  fn set_compression(&mut self, compression: i32) { self.compression = compression as usize; }
   fn enable_encryption(&mut self, secret: &[u8; 16]) {
     self.cipher = Some(Cfb8::new_from_slices(secret, secret).unwrap());
   }
@@ -173,9 +171,7 @@ impl PacketStream for JavaStream {
     }
   }
 
-  fn needs_flush(&self) -> bool {
-    !self.outgoing.is_empty()
-  }
+  fn needs_flush(&self) -> bool { !self.outgoing.is_empty() }
 
   fn flush(&mut self) -> Result<()> {
     if self.outgoing.is_empty() {

@@ -99,42 +99,28 @@ impl Entity {
   /// This returns everything about the entity's position, including its
   /// velocity, pitch, yaw, etc. If you just need the position, then
   /// [`fpos`](Self::fpos) will be easier to use.
-  pub fn pos(&self) -> EntityPos {
-    *self.pos.lock()
-  }
+  pub fn pos(&self) -> EntityPos { *self.pos.lock() }
 
   /// Returns this entity's position.
-  pub fn fpos(&self) -> FPos {
-    self.pos().aabb.pos
-  }
+  pub fn fpos(&self) -> FPos { self.pos().aabb.pos }
 
   /// Returns the unique id for this entity.
-  pub fn eid(&self) -> i32 {
-    self.eid
-  }
+  pub fn eid(&self) -> i32 { self.eid }
 
   /// Returns this entity's type. This can be used to send spawn packets to
   /// clients.
-  pub fn ty(&self) -> Type {
-    self.ty
-  }
+  pub fn ty(&self) -> Type { self.ty }
 
   /// Returns this entity's health.
-  pub fn health(&self) -> f32 {
-    *self.health.lock()
-  }
+  pub fn health(&self) -> f32 { *self.health.lock() }
 
   /// Returns true if this entity should despawn.
-  pub fn should_despawn(&self) -> bool {
-    self.behavior.lock().should_despawn(self.health())
-  }
+  pub fn should_despawn(&self) -> bool { self.behavior.lock().should_despawn(self.health()) }
 
   /// Returns the amount of exp stored in this entity. This is just the amount
   /// for an exp orb, but it is also used to find out how much exp an entity
   /// will drop when killed.
-  pub fn exp_count(&self) -> i32 {
-    self.behavior.lock().exp_count()
-  }
+  pub fn exp_count(&self) -> i32 { self.behavior.lock().exp_count() }
 
   /// Sets this entity's velocity. This will send velocity updates to nearby
   /// players, and will affect how the entity moves on the next tick.

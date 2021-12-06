@@ -7,14 +7,10 @@ use std::{
 macro_rules! num_impl {
   ($ty:ty, $read:ident, $write:ident) => {
     impl MessageRead for $ty {
-      fn read(m: &mut MessageReader) -> Result<Self, ReadError> {
-        m.$read()
-      }
+      fn read(m: &mut MessageReader) -> Result<Self, ReadError> { m.$read() }
     }
     impl MessageWrite for $ty {
-      fn write(&self, m: &mut MessageWriter) -> Result<(), WriteError> {
-        m.$write(*self)
-      }
+      fn write(&self, m: &mut MessageWriter) -> Result<(), WriteError> { m.$write(*self) }
     }
   };
 }
@@ -32,14 +28,10 @@ num_impl!(f32, read_f32, write_f32);
 num_impl!(f64, read_f64, write_f64);
 
 impl MessageRead for String {
-  fn read(m: &mut MessageReader) -> Result<Self, ReadError> {
-    m.read_str()
-  }
+  fn read(m: &mut MessageReader) -> Result<Self, ReadError> { m.read_str() }
 }
 impl MessageWrite for String {
-  fn write(&self, m: &mut MessageWriter) -> Result<(), WriteError> {
-    m.write_str(self)
-  }
+  fn write(&self, m: &mut MessageWriter) -> Result<(), WriteError> { m.write_str(self) }
 }
 
 impl<T> MessageRead for Option<T>

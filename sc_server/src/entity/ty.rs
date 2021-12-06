@@ -116,16 +116,12 @@ pub enum Type {
 }
 
 impl Type {
-  pub fn id(&self) -> u32 {
-    0
-  }
+  pub fn id(&self) -> u32 { 0 }
 }
 
 impl FromStr for Type {
   type Err = ();
-  fn from_str(_: &str) -> Result<Self, Self::Err> {
-    Ok(Self::None)
-  }
+  fn from_str(_: &str) -> Result<Self, Self::Err> { Ok(Self::None) }
 }
 
 // Creates the Type enum, and the generate_entities function.
@@ -141,9 +137,7 @@ pub struct Data {
 
 impl Data {
   /// Returns the display name of this entity.
-  pub fn display_name(&self) -> &str {
-    &self.display_name
-  }
+  pub fn display_name(&self) -> &str { &self.display_name }
 
   /// Returns the size of the hitbox of this entity.
   pub fn size(&self) -> Vec3 {
@@ -154,14 +148,10 @@ impl Data {
 impl Type {
   /// Returns the kind as a u32. Should only be used to index into the
   /// converter's internal table of entity types.
-  pub fn to_u32(self) -> u32 {
-    num::ToPrimitive::to_u32(&self).unwrap()
-  }
+  pub fn to_u32(self) -> u32 { num::ToPrimitive::to_u32(&self).unwrap() }
   /// Returns the item with the given id. If the id is invalid, this returns
   /// `Type::Air`.
-  pub fn from_u32(v: u32) -> Type {
-    num::FromPrimitive::from_u32(v).unwrap_or(Type::None)
-  }
+  pub fn from_u32(v: u32) -> Type { num::FromPrimitive::from_u32(v).unwrap_or(Type::None) }
 }
 
 #[derive(Debug)]

@@ -16,9 +16,7 @@ pub struct SlWorld {
 add_from!(Arc<World>, SlWorld);
 
 impl fmt::Debug for SlWorld {
-  fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-    f.debug_struct("SlWorld").finish()
-  }
+  fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result { f.debug_struct("SlWorld").finish() }
 }
 
 impl SlWorld {

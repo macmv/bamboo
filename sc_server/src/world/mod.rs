@@ -133,9 +133,7 @@ impl World {
   }
 
   /// Returns the config used in the whole server.
-  pub fn config(&self) -> &Arc<Config> {
-    self.wm.config()
-  }
+  pub fn config(&self) -> &Arc<Config> { self.wm.config() }
 
   fn global_tick_loop(self: Arc<Self>) {
     let pool = ThreadPool::auto(|| State { mspt: self.mspt.clone() });
@@ -215,37 +213,25 @@ impl World {
   }
 
   /// Returns a new, unique EID.
-  pub fn eid(&self) -> i32 {
-    self.eid.fetch_add(1, Ordering::SeqCst)
-  }
+  pub fn eid(&self) -> i32 { self.eid.fetch_add(1, Ordering::SeqCst) }
 
   /// Returns the current block converter. This can be used to convert old block
   /// ids to new ones, and vice versa. This can also be used to convert block
   /// kinds to types.
-  pub fn block_converter(&self) -> &block::TypeConverter {
-    &self.block_converter
-  }
+  pub fn block_converter(&self) -> &block::TypeConverter { &self.block_converter }
   /// Returns the current item converter. This can be used to convert old item
   /// ids to new ones, and vice versa.
-  pub fn item_converter(&self) -> &item::TypeConverter {
-    &self.item_converter
-  }
+  pub fn item_converter(&self) -> &item::TypeConverter { &self.item_converter }
   /// Returns the current entity converter. This can be used to convert old
   /// entity ids to new ones, and vice versa.
-  pub fn entity_converter(&self) -> &entity::TypeConverter {
-    &self.entity_converter
-  }
+  pub fn entity_converter(&self) -> &entity::TypeConverter { &self.entity_converter }
   /// Returns the plugin manager. This is how events can be sent to plugins.
   /// This is the same plugin manager returned by the [`WorldManager`], and by
   /// other worlds.
-  pub fn plugins(&self) -> &plugin::PluginManager {
-    &self.plugins
-  }
+  pub fn plugins(&self) -> &plugin::PluginManager { &self.plugins }
   /// Returns the command tree that the server uses. This can be used to add
   /// custom commands to the server.
-  pub fn commands(&self) -> &CommandTree {
-    &self.commands
-  }
+  pub fn commands(&self) -> &CommandTree { &self.commands }
 
   /// Generates a chunk for the given chunk position. This will not store the
   /// chunk, or even look in the chunks table at all. It should be used if you
@@ -272,9 +258,7 @@ impl World {
 
   /// Checks if the given chunk position is loaded. This will not check for any
   /// data saved on disk, it only checks if the given chunk is in memory.
-  pub fn has_loaded_chunk(&self, pos: ChunkPos) -> bool {
-    self.chunks.read().contains_key(&pos)
-  }
+  pub fn has_loaded_chunk(&self, pos: ChunkPos) -> bool { self.chunks.read().contains_key(&pos) }
 
   /// Stores a list of chunks in the internal map. This should be used after
   /// calling [`pre_generate_chunk`](Self::pre_generate_chunk) a number of
@@ -428,9 +412,7 @@ impl World {
   }
 
   /// Returns a read lock on the players map.
-  pub fn players(&self) -> RwLockReadGuard<'_, PlayersMap> {
-    self.players.read()
-  }
+  pub fn players(&self) -> RwLockReadGuard<'_, PlayersMap> { self.players.read() }
 
   /// Removes the given player from this world. This should be called from
   /// WorldManagger, so that the world managger's table of players to worlds
@@ -459,9 +441,7 @@ impl World {
 }
 
 impl Default for WorldManager {
-  fn default() -> Self {
-    WorldManager::new()
-  }
+  fn default() -> Self { WorldManager::new() }
 }
 
 impl WorldManager {
@@ -479,13 +459,9 @@ impl WorldManager {
   }
 
   /// Returns the config used in the whole server.
-  pub fn config(&self) -> &Arc<Config> {
-    &self.config
-  }
+  pub fn config(&self) -> &Arc<Config> { &self.config }
 
-  pub fn run(self: Arc<Self>) {
-    self.plugins.clone().run(self);
-  }
+  pub fn run(self: Arc<Self>) { self.plugins.clone().run(self); }
 
   /// Adds a new world.
   pub fn add_world(self: &Arc<Self>) {
@@ -502,23 +478,15 @@ impl WorldManager {
   /// Returns the current block converter. This can be used to convert old block
   /// ids to new ones, and vice versa. This can also be used to convert block
   /// kinds to types.
-  pub fn block_converter(&self) -> &block::TypeConverter {
-    &self.block_converter
-  }
+  pub fn block_converter(&self) -> &block::TypeConverter { &self.block_converter }
 
   /// Returns the current item converter. This can be used to convert old item
   /// ids to new ones, and vice versa.
-  pub fn item_converter(&self) -> &item::TypeConverter {
-    &self.item_converter
-  }
+  pub fn item_converter(&self) -> &item::TypeConverter { &self.item_converter }
   /// Returns the plugins used for the whole server.
-  pub fn plugins(&self) -> &plugin::PluginManager {
-    &self.plugins
-  }
+  pub fn plugins(&self) -> &plugin::PluginManager { &self.plugins }
   /// Returns the commands used for the whole server.
-  pub fn commands(&self) -> &CommandTree {
-    &self.commands
-  }
+  pub fn commands(&self) -> &CommandTree { &self.commands }
 
   /// Broadcasts a message to everyone one the server.
   pub fn broadcast(&self, msg: impl Into<Chat>) {
@@ -533,9 +501,7 @@ impl WorldManager {
 
   /// Returns the default world. This can be used to easily get a world without
   /// any other context.
-  pub fn default_world(&self) -> Arc<World> {
-    self.worlds.lock()[0].clone()
-  }
+  pub fn default_world(&self) -> Arc<World> { self.worlds.lock()[0].clone() }
 
   // /// Adds a new player into the game. This should be called when a new grpc
   // /// proxy connects.

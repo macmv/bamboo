@@ -13,14 +13,10 @@ pub struct Type {
 
 impl Type {
   /// Returns the block kind that this state comes from.
-  pub fn kind(&self) -> Kind {
-    self.kind
-  }
+  pub fn kind(&self) -> Kind { self.kind }
   /// Gets the block id of this type. This id is for the latest version of the
   /// game.
-  pub fn id(&self) -> u32 {
-    self.state
-  }
+  pub fn id(&self) -> u32 { self.state }
 }
 
 #[derive(Debug)]
@@ -39,14 +35,10 @@ include!(concat!(env!("OUT_DIR"), "/block/ty.rs"));
 impl Kind {
   /// Returns the kind as an u32. This is used in the versioning arrays, and in
   /// plugin code, so that ints can be passed around instead of enums.
-  pub fn id(self) -> u32 {
-    num::ToPrimitive::to_u32(&self).unwrap()
-  }
+  pub fn id(self) -> u32 { num::ToPrimitive::to_u32(&self).unwrap() }
   /// Converts the given number to a block kind. If the number is invalid, this
   /// returns Kind::Air.
-  pub fn from_u32(id: u32) -> Self {
-    num::FromPrimitive::from_u32(id).unwrap_or(Kind::Air)
-  }
+  pub fn from_u32(id: u32) -> Self { num::FromPrimitive::from_u32(id).unwrap_or(Kind::Air) }
 }
 
 /// A kind of bounding box. This is from prismarine data. It is not very

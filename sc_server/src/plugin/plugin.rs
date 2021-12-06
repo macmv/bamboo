@@ -59,13 +59,9 @@ impl Plugin {
   }
   /// Returns a cloned Sugarcane struct. This should be used to call Sugarlang
   /// functions.
-  pub fn sc(&self) -> Sugarcane {
-    self.sc.clone()
-  }
+  pub fn sc(&self) -> Sugarcane { self.sc.clone() }
 
-  pub fn call_init(&self) {
-    self.call(path!(main), "init", vec![self.sc.clone().into()]);
-  }
+  pub fn call_init(&self) { self.call(path!(main), "init", vec![self.sc.clone().into()]); }
   pub fn call_on_block_place(&self, player: Arc<Player>, pos: Pos, kind: block::Kind) {
     self.call(
       path!(main),

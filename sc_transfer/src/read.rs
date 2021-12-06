@@ -61,21 +61,15 @@ impl MessageReader<'_> {
   /// can call `index`, and know that this will not have read any data past that
   /// index.
   #[inline(always)]
-  pub fn new(data: &[u8]) -> MessageReader {
-    MessageReader { data, idx: 0 }
-  }
+  pub fn new(data: &[u8]) -> MessageReader { MessageReader { data, idx: 0 } }
 
   /// Returns the current index the reader is at. This byte has not been read,
   /// but will be read the next time any `read_` functions are called.
-  pub fn index(&self) -> usize {
-    self.idx
-  }
+  pub fn index(&self) -> usize { self.idx }
 
   /// Returns true if the reader still has bytes left. If this returns false,
   /// then any future `read_` calls will failed with `ReadError::EOF`.
-  pub fn can_read(&self) -> bool {
-    self.idx < self.data.len()
-  }
+  pub fn can_read(&self) -> bool { self.idx < self.data.len() }
 
   /// Reads some generic type T from `self`. Depending on the situation, this
   /// may be easier than calling the individual `read_*` functions. They will
@@ -91,9 +85,7 @@ impl MessageReader<'_> {
   /// Reads a single boolean from the buffer. Any byte that is non-zero is
   /// interpreted as true. We want to avoid error checking as much as possible,
   /// so it is fine to ignore a value that is not 1 here.
-  pub fn read_bool(&mut self) -> Result<bool> {
-    Ok(self.read_u8()? != 0)
-  }
+  pub fn read_bool(&mut self) -> Result<bool> { Ok(self.read_u8()? != 0) }
   /// Reads a single byte from the buffer. Returns an error if the reader has
   /// read the entire buffer.
   pub fn read_u8(&mut self) -> Result<u8> {
@@ -153,25 +145,17 @@ impl MessageReader<'_> {
     Ok(out)
   }
   /// Reads a single signed byte from the internal buffer.
-  pub fn read_i8(&mut self) -> Result<i8> {
-    Ok(self.read_u8()? as i8)
-  }
+  pub fn read_i8(&mut self) -> Result<i8> { Ok(self.read_u8()? as i8) }
   /// Reads a signed 16 bit integer from the internal buffer. Since 3 bytes
   /// is much larger than 2 bytes, a variable-length integer wouldn't make much
   /// sense. So, this is always encoded as 2 bytes.
-  pub fn read_i16(&mut self) -> Result<i16> {
-    Ok(self.read_u16()? as i16)
-  }
+  pub fn read_i16(&mut self) -> Result<i16> { Ok(self.read_u16()? as i16) }
   /// Reads a signed 32 bit integer from the internal buffer. This reads a u32,
   /// and then decodes it with zig zag encoding.
-  pub fn read_i32(&mut self) -> Result<i32> {
-    Ok(zag(self.read_u32()?))
-  }
+  pub fn read_i32(&mut self) -> Result<i32> { Ok(zag(self.read_u32()?)) }
   /// Reads a signed 64 bit integer from the internal buffer. This reads a u64,
   /// and then decodes it with zig zag encoding.
-  pub fn read_i64(&mut self) -> Result<i64> {
-    Ok(zag(self.read_u64()?))
-  }
+  pub fn read_i64(&mut self) -> Result<i64> { Ok(zag(self.read_u64()?)) }
   /// Reads a 32 bit float from the internal buffer. This will always read 4
   /// bytes.
   pub fn read_f32(&mut self) -> Result<f32> {

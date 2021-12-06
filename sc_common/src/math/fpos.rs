@@ -33,69 +33,47 @@ impl fmt::Display for FPos {
 }
 
 impl Default for FPos {
-  fn default() -> FPos {
-    FPos::new(0.0, 0.0, 0.0)
-  }
+  fn default() -> FPos { FPos::new(0.0, 0.0, 0.0) }
 }
 
 impl From<Pos> for FPos {
-  fn from(p: Pos) -> FPos {
-    FPos { x: p.x.into(), y: p.y.into(), z: p.z.into() }
-  }
+  fn from(p: Pos) -> FPos { FPos { x: p.x.into(), y: p.y.into(), z: p.z.into() } }
 }
 impl From<Vec3> for FPos {
-  fn from(v: Vec3) -> FPos {
-    FPos::new(v.x, v.y, v.z)
-  }
+  fn from(v: Vec3) -> FPos { FPos::new(v.x, v.y, v.z) }
 }
 impl From<FPos> for Vec3 {
-  fn from(v: FPos) -> Vec3 {
-    Vec3::new(v.x, v.y, v.z)
-  }
+  fn from(v: FPos) -> Vec3 { Vec3::new(v.x, v.y, v.z) }
 }
 
 impl FPos {
   /// Creates a new block position. This can be used to find chunk coordinates,
   /// place blocks, or send a position in a packet.
-  pub fn new(x: f64, y: f64, z: f64) -> Self {
-    FPos { x, y, z }
-  }
+  pub fn new(x: f64, y: f64, z: f64) -> Self { FPos { x, y, z } }
   /// Returns the X value of the position.
   #[inline(always)]
-  pub fn x(&self) -> f64 {
-    self.x
-  }
+  pub fn x(&self) -> f64 { self.x }
   /// Returns the Y value of the position.
   #[inline(always)]
-  pub fn y(&self) -> f64 {
-    self.y
-  }
+  pub fn y(&self) -> f64 { self.y }
   /// Returns the Z value of the position.
   #[inline(always)]
-  pub fn z(&self) -> f64 {
-    self.z
-  }
+  pub fn z(&self) -> f64 { self.z }
   /// Returns the X value of the position, as a fixed precision float. This is
   /// the X position multiplied by 32. It is how position packets are sent on
   /// 1.8.
   #[inline(always)]
-  pub fn fixed_x(&self) -> i32 {
-    (self.x * 32.0) as i32
-  }
+  pub fn fixed_x(&self) -> i32 { (self.x * 32.0) as i32 }
   /// Returns the Y value of the position, as a fixed precision float. This is
   /// the Y position multiplied by 32. It is how position packets are sent on
   /// 1.8.
   #[inline(always)]
-  pub fn fixed_y(&self) -> i32 {
-    (self.y * 32.0) as i32
-  }
+  pub fn fixed_y(&self) -> i32 { (self.y * 32.0) as i32 }
   /// Returns the Z value of the position, as a fixed precision float. This is
   /// the Z position multiplied by 32. It is how position packets are sent on
   /// 1.8.
   #[inline(always)]
-  pub fn fixed_z(&self) -> i32 {
-    (self.z * 32.0) as i32
-  }
+  pub fn fixed_z(&self) -> i32 { (self.z * 32.0) as i32 }
   /// Returns the block that this position is in.
   #[inline(always)]
   pub fn block(&self) -> Pos {
@@ -104,14 +82,10 @@ impl FPos {
   /// Returns the chunk that this position is in. This is the same as
   /// `self.block().chunk()`.
   #[inline(always)]
-  pub fn chunk(&self) -> ChunkPos {
-    self.block().chunk()
-  }
+  pub fn chunk(&self) -> ChunkPos { self.block().chunk() }
   /// Creates a new error from this position. This should be used to signify
   /// that an invalid position was passed somewhere.
-  pub fn err(&self, msg: String) -> FPosError {
-    FPosError { pos: *self, msg }
-  }
+  pub fn err(&self, msg: String) -> FPosError { FPosError { pos: *self, msg } }
 }
 
 impl Add for FPos {

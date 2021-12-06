@@ -106,26 +106,18 @@ impl ZigZag for i32 {
   type Unsigned = u32;
 
   #[inline(always)]
-  fn zig(n: i32) -> u32 {
-    ((n << 1) ^ (n >> 31)) as u32
-  }
+  fn zig(n: i32) -> u32 { ((n << 1) ^ (n >> 31)) as u32 }
   #[inline(always)]
-  fn zag(n: u32) -> i32 {
-    (n >> 1) as i32 ^ -((n & 1) as i32)
-  }
+  fn zag(n: u32) -> i32 { (n >> 1) as i32 ^ -((n & 1) as i32) }
 }
 
 impl ZigZag for i64 {
   type Unsigned = u64;
 
   #[inline(always)]
-  fn zig(n: i64) -> u64 {
-    ((n << 1) ^ (n >> 63)) as u64
-  }
+  fn zig(n: i64) -> u64 { ((n << 1) ^ (n >> 63)) as u64 }
   #[inline(always)]
-  fn zag(n: u64) -> i64 {
-    (n >> 1) as i64 ^ -((n & 1) as i64)
-  }
+  fn zag(n: u64) -> i64 { (n >> 1) as i64 ^ -((n & 1) as i64) }
 }
 
 #[cfg(test)]

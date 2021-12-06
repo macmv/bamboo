@@ -32,17 +32,13 @@ pub struct Registry<K: Eq + Hash + Debug + Clone + Copy, V> {
 
 impl<K: Eq + Hash + Debug + Clone + Copy, V> Default for Registry<K, V> {
   /// Same as calling [`new`](Self::new).
-  fn default() -> Self {
-    Registry::new()
-  }
+  fn default() -> Self { Registry::new() }
 }
 
 impl<K: Eq + Hash + Debug + Clone + Copy, V> Registry<K, V> {
   /// Creates an empty registry. Any [`insert`](Self::insert) calls will do the
   /// same thing as [`add`](Self::add).
-  pub fn new() -> Self {
-    Registry { items: vec![], index: 0, ids: HashMap::new() }
-  }
+  pub fn new() -> Self { Registry { items: vec![], index: 0, ids: HashMap::new() } }
   /// Inserts an element to the registry. If [`insert_at`](Self::insert_at) has
   /// not been called yet, this is the same as calling [`add`](Self::add).
   /// Panics if the key already exists.
@@ -101,9 +97,7 @@ impl<K: Eq + Hash + Debug + Clone + Copy, V> Registry<K, V> {
   ///
   /// Without the decrement of the insert index, `"insert again"` would have
   /// been placed after `"b"`.
-  pub fn remove(&mut self, k: K) {
-    self.remove_index(self.ids[&k]);
-  }
+  pub fn remove(&mut self, k: K) { self.remove_index(self.ids[&k]); }
   /// Removes an entry via its index. See [`remove`](Self::remove) for more.
   pub fn remove_index(&mut self, i: usize) {
     // Shifts all ids after index down by one, so that they correctly index into
@@ -167,14 +161,10 @@ impl<K: Eq + Hash + Debug + Clone + Copy, V> Registry<K, V> {
 
   /// Gets an item within the registry, via it's index. This could be used to
   /// retrieve a block/item by its id, or a packet from its id internally.
-  pub fn get_index(&self, i: usize) -> Option<&(K, V)> {
-    self.items.get(i)
-  }
+  pub fn get_index(&self, i: usize) -> Option<&(K, V)> { self.items.get(i) }
 
   /// Iterates through all elements, in order of index.
-  pub fn iter(&self) -> slice::Iter<'_, (K, V)> {
-    self.items.iter()
-  }
+  pub fn iter(&self) -> slice::Iter<'_, (K, V)> { self.items.iter() }
 
   #[cfg(test)]
   fn validate_index(&self, i: usize) {
@@ -196,18 +186,14 @@ pub struct CloningRegistry<K: Eq + Hash + Debug + Clone + Copy, V: Clone> {
 
 impl<K: Eq + Hash + Debug + Clone + Copy, V: Clone> Default for CloningRegistry<K, V> {
   /// Same as calling [`new`](Self::new).
-  fn default() -> Self {
-    CloningRegistry::new()
-  }
+  fn default() -> Self { CloningRegistry::new() }
 }
 
 impl<K: Eq + Hash + Debug + Clone + Copy, V: Clone> CloningRegistry<K, V> {
   /// Creates an empty cloning registry. Any children that are added to this
   /// registry will also be called every time a modifying function is called on
   /// this registry.
-  pub fn new() -> Self {
-    CloningRegistry { current: Registry::new(), children: vec![] }
-  }
+  pub fn new() -> Self { CloningRegistry { current: Registry::new(), children: vec![] } }
 
   /// Adds a new child to this registry. All future calls that modify this
   /// registry will also modify this child.
@@ -237,25 +223,17 @@ impl<K: Eq + Hash + Debug + Clone + Copy, V: Clone> CloningRegistry<K, V> {
 
   /// Gets an item within the registry. This could be used to retrieve
   /// items/blocks by name, or a packet from its id over the wire.
-  pub fn get(&self, k: K) -> Option<(usize, &V)> {
-    self.current.get(k)
-  }
+  pub fn get(&self, k: K) -> Option<(usize, &V)> { self.current.get(k) }
 
   /// Gets an item within the registry, via it's index. This could be used to
   /// retrieve a block by its id, or a packet from its id internally.
-  pub fn get_index(&self, i: usize) -> Option<&(K, V)> {
-    self.current.get_index(i)
-  }
+  pub fn get_index(&self, i: usize) -> Option<&(K, V)> { self.current.get_index(i) }
 
   /// Iterates through all elements, in order of index.
-  pub fn iter(&self) -> slice::Iter<'_, (K, V)> {
-    self.current.iter()
-  }
+  pub fn iter(&self) -> slice::Iter<'_, (K, V)> { self.current.iter() }
 
   #[cfg(test)]
-  fn validate_index(&self, i: usize) {
-    self.current.validate_index(i);
-  }
+  fn validate_index(&self, i: usize) { self.current.validate_index(i); }
 }
 
 type CloningRegRef<K, V> = Rc<RefCell<CloningRegistry<K, Rc<V>>>>;

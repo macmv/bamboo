@@ -84,15 +84,9 @@ impl UUID {
     OsRng.fill_bytes(&mut arr);
     UUID::from_be_bytes(arr)
   }
-  pub fn from_le_bytes(v: [u8; 16]) -> Self {
-    UUID(u128::from_le_bytes(v))
-  }
-  pub fn from_be_bytes(v: [u8; 16]) -> Self {
-    UUID(u128::from_be_bytes(v))
-  }
-  pub fn from_u128(v: u128) -> Self {
-    UUID(v)
-  }
+  pub fn from_le_bytes(v: [u8; 16]) -> Self { UUID(u128::from_le_bytes(v)) }
+  pub fn from_be_bytes(v: [u8; 16]) -> Self { UUID(u128::from_be_bytes(v)) }
+  pub fn from_u128(v: u128) -> Self { UUID(v) }
   /// Parses the string as a uuid with dashes in between. This is the same
   /// format returned from [`as_dashed_str`](Self::as_dashed_str).
   pub fn from_dashed_str(s: &str) -> Result<Self, UUIDParseError> {
@@ -103,9 +97,7 @@ impl UUID {
   }
   /// Returns the uuid represented as a hex string, with no dashes or other
   /// characters.
-  pub fn as_str(&self) -> String {
-    format!("{:x}", self.0)
-  }
+  pub fn as_str(&self) -> String { format!("{:x}", self.0) }
   /// Returns the uuid represented as a string with dashes. This is used
   /// sometimes when refering to player in json, and is a useful function to
   /// have.
@@ -123,21 +115,15 @@ impl UUID {
   /// Returns the underlying `u128`. For packets, you probably want
   /// [`as_be_bytes`](Self::as_be_bytes). For json, you probably want
   /// [`as_str`](Self::as_str) or [`as_dashed_str`](Self::as_dashed_str).
-  pub fn as_u128(&self) -> u128 {
-    self.0
-  }
+  pub fn as_u128(&self) -> u128 { self.0 }
   /// Returns the little-endian representation of the underlying `u128`. This is
   /// the byte order that the Minecraft Bedrock Edition uses in its packet
   /// protocol.
-  pub fn as_le_bytes(&self) -> [u8; 16] {
-    self.0.to_le_bytes()
-  }
+  pub fn as_le_bytes(&self) -> [u8; 16] { self.0.to_le_bytes() }
   /// Returns the big-endian representation of the underlying `u128`. This is
   /// the byte order that the Minecraft Java Edition uses in its packet
   /// protocol.
-  pub fn as_be_bytes(&self) -> [u8; 16] {
-    self.0.to_be_bytes()
-  }
+  pub fn as_be_bytes(&self) -> [u8; 16] { self.0.to_be_bytes() }
 }
 
 impl FromStr for UUID {

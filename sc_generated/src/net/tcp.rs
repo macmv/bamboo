@@ -20,16 +20,12 @@ pub struct Packet {
 
 macro_rules! add_writer {
   ($name: ident, $arg: ty) => {
-    pub fn $name(&mut self, v: $arg) {
-      self.buf.$name(v)
-    }
+    pub fn $name(&mut self, v: $arg) { self.buf.$name(v) }
   };
 }
 macro_rules! add_reader {
   ($name: ident, $ret: ty) => {
-    pub fn $name(&mut self) -> $ret {
-      self.buf.$name()
-    }
+    pub fn $name(&mut self) -> $ret { self.buf.$name() }
   };
 }
 
@@ -44,15 +40,9 @@ impl Packet {
     let id = buf.read_varint();
     Packet { buf, id, ver }
   }
-  pub fn id(&self) -> i32 {
-    self.id
-  }
-  pub fn err(&self) -> &Option<BufferError> {
-    self.buf.err()
-  }
-  pub fn serialize(self) -> Vec<u8> {
-    self.buf.to_vec()
-  }
+  pub fn id(&self) -> i32 { self.id }
+  pub fn err(&self) -> &Option<BufferError> { self.buf.err() }
+  pub fn serialize(self) -> Vec<u8> { self.buf.to_vec() }
 
   add_writer!(write_u8, u8);
   add_writer!(write_u16, u16);
@@ -87,15 +77,9 @@ impl Packet {
   add_reader!(read_bool, bool);
   add_reader!(read_all, Vec<u8>);
 
-  pub fn read_str(&mut self, max_len: u64) -> String {
-    self.buf.read_str(max_len)
-  }
-  pub fn read_ident(&mut self) -> String {
-    self.read_str(32767)
-  }
-  pub fn read_buf(&mut self, len: usize) -> Vec<u8> {
-    self.buf.read_buf(len)
-  }
+  pub fn read_str(&mut self, max_len: u64) -> String { self.buf.read_str(max_len) }
+  pub fn read_ident(&mut self) -> String { self.read_str(32767) }
+  pub fn read_buf(&mut self, len: usize) -> Vec<u8> { self.buf.read_buf(len) }
   pub fn read_byte_arr(&mut self) -> Vec<u8> {
     let len = self.read_varint().try_into().unwrap();
     self.buf.read_buf(len)
@@ -108,18 +92,10 @@ impl Packet {
     self.buf.read_buf(len)
   }
 
-  pub fn index(&self) -> usize {
-    self.buf.index()
-  }
-  pub fn remaining(&self) -> usize {
-    self.buf.len() - self.buf.index()
-  }
-  pub fn len(&self) -> usize {
-    self.buf.len()
-  }
-  pub fn is_empty(&self) -> bool {
-    self.buf.len() == 0
-  }
+  pub fn index(&self) -> usize { self.buf.index() }
+  pub fn remaining(&self) -> usize { self.buf.len() - self.buf.index() }
+  pub fn len(&self) -> usize { self.buf.len() }
+  pub fn is_empty(&self) -> bool { self.buf.len() == 0 }
 
   /// This writes the given block position as a long into the buffer. The old
   /// format is used on 1.8 - 1.13, and the new format will be used for any
@@ -149,14 +125,10 @@ impl Packet {
     self.write_i32(p.z());
   }
   /// Reads a chunk position, as two i32s.
-  pub fn read_chunk_pos(&mut self) -> ChunkPos {
-    ChunkPos::new(self.read_i32(), self.read_i32())
-  }
+  pub fn read_chunk_pos(&mut self) -> ChunkPos { ChunkPos::new(self.read_i32(), self.read_i32()) }
 
   /// Reads an nbt tag from self.
-  pub fn read_nbt(&mut self) -> NBT {
-    NBT::deserialize_buf(&mut self.buf).unwrap()
-  }
+  pub fn read_nbt(&mut self) -> NBT { NBT::deserialize_buf(&mut self.buf).unwrap() }
 
   /// Reads a length prefixed array of integers.
   pub fn read_i32_arr(&mut self) -> Vec<i32> {
@@ -210,14 +182,10 @@ impl Packet {
   }
 
   /// Reads 16 bytes from the buffer, and returns that as a big endian UUID.
-  pub fn read_uuid(&mut self) -> UUID {
-    UUID::from_be_bytes(self.read_buf(16).try_into().unwrap())
-  }
+  pub fn read_uuid(&mut self) -> UUID { UUID::from_be_bytes(self.read_buf(16).try_into().unwrap()) }
 
   /// This writes a UUID into the buffer (in big endian format).
-  pub fn write_uuid(&mut self, v: UUID) {
-    self.write_buf(&v.as_be_bytes());
-  }
+  pub fn write_uuid(&mut self, v: UUID) { self.write_buf(&v.as_be_bytes()); }
 
   /// Reads a block hit result. This (for whatever dumb reason) is part of the
   /// packet buffer in 1.17, and is literally called ONCE. So, because reasons,
@@ -347,13 +315,9 @@ impl Packet {
     }
   }
 
-  pub fn read_varint_arr(&mut self) -> Vec<i32> {
-    self.read_list(Self::read_varint)
-  }
+  pub fn read_varint_arr(&mut self) -> Vec<i32> { self.read_list(Self::read_varint) }
 
-  pub fn write_varint_arr(&mut self, v: &[i32]) {
-    self.write_list(v, |p, &v| p.write_varint(v))
-  }
+  pub fn write_varint_arr(&mut self, v: &[i32]) { self.write_list(v, |p, &v| p.write_varint(v)) }
 
   pub fn read_bits(&mut self) -> Vec<u64> {
     let longs = self.read_varint().try_into().unwrap();

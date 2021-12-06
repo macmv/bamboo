@@ -46,9 +46,7 @@ pub struct CommandTree {
 impl CommandTree {
   /// Creates an empty command tree. This is called whenever a `World` is
   /// created.
-  pub fn new() -> CommandTree {
-    CommandTree { commands: Mutex::new(HashMap::new()) }
-  }
+  pub fn new() -> CommandTree { CommandTree { commands: Mutex::new(HashMap::new()) } }
   /// Adds a new command to the tree. Any new players that join will be able to
   /// execute this command. This will also update the `/help` output, and
   /// include the command syntax/description.
@@ -109,28 +107,20 @@ enum NodeType {
 impl Command {
   /// Creates a new command. This should be used when you want an entirely new
   /// command (not an argument of another command).
-  pub fn new<N: Into<String>>(name: N) -> Self {
-    Self::lit(name.into())
-  }
+  pub fn new<N: Into<String>>(name: N) -> Self { Self::lit(name.into()) }
   /// Creates a new literal node. Use [`add_lit`](Self::add_lit) if you want to
   /// add a literal node to the current command.
-  fn lit(name: String) -> Self {
-    Command { name, ty: NodeType::Literal, children: vec![] }
-  }
+  fn lit(name: String) -> Self { Command { name, ty: NodeType::Literal, children: vec![] } }
   /// Creates a new argument node. Use [`add_arg`](Self::add_arg) if you want to
   /// add an argument node to the current command.
   fn arg(name: String, parser: Parser) -> Self {
     Command { name, ty: NodeType::Argument(parser), children: vec![] }
   }
   /// Gets the number of children in this command.
-  pub fn children_len(&self) -> usize {
-    self.children.len()
-  }
+  pub fn children_len(&self) -> usize { self.children.len() }
   /// Gets a child at the given index. Used in SlCommand, as we cannot return
   /// something that borrows self.
-  pub fn get_child(&mut self, idx: usize) -> Option<&mut Command> {
-    self.children.get_mut(idx)
-  }
+  pub fn get_child(&mut self, idx: usize) -> Option<&mut Command> { self.children.get_mut(idx) }
   /// Adds a new literal argument to the command. Unlike
   /// [`add_arg`](Self::add_arg), the name has a purpose in parsing here.
   /// Literal arguments match the exact text of the name in a command. For
@@ -292,9 +282,7 @@ impl Command {
 
   /// Returns the name of the command. This does not contain a slash at the
   /// start.
-  pub fn name(&self) -> &str {
-    &self.name
-  }
+  pub fn name(&self) -> &str { &self.name }
 }
 
 #[cfg(test)]
@@ -307,9 +295,7 @@ mod tests {
   struct NoneSender {}
 
   impl CommandSender for NoneSender {
-    fn block_pos(&self) -> Option<Pos> {
-      None
-    }
+    fn block_pos(&self) -> Option<Pos> { None }
   }
 
   #[test]

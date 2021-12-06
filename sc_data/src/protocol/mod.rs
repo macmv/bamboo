@@ -64,14 +64,10 @@ pub struct Packet {
 }
 
 impl PartialEq for Packet {
-  fn eq(&self, other: &Self) -> bool {
-    self.name == other.name && self.reader == other.reader
-  }
+  fn eq(&self, other: &Self) -> bool { self.name == other.name && self.reader == other.reader }
 }
 
-fn object_str() -> String {
-  "java/lang/Object".into()
-}
+fn object_str() -> String { "java/lang/Object".into() }
 
 /// The body of a function or closure. This includes a table of all variables to
 /// their kind. This is what maps the variable ids to either `this`, an
@@ -320,9 +316,7 @@ pub struct RType {
 }
 
 impl RType {
-  pub fn new(name: impl Into<String>) -> Self {
-    RType { name: name.into(), generics: vec![] }
-  }
+  pub fn new(name: impl Into<String>) -> Self { RType { name: name.into(), generics: vec![] } }
   pub fn generic(mut self, arg: impl Into<RType>) -> Self {
     self.generics.push(arg.into());
     self
@@ -366,9 +360,7 @@ impl fmt::Display for RType {
 }
 
 impl From<&str> for RType {
-  fn from(s: &str) -> RType {
-    RType::new(s)
-  }
+  fn from(s: &str) -> RType { RType::new(s) }
 }
 
 impl Type {
@@ -424,9 +416,7 @@ impl Op {
 }
 
 impl Expr {
-  pub fn new(initial: Value) -> Expr {
-    Expr { initial, ops: vec![] }
-  }
+  pub fn new(initial: Value) -> Expr { Expr { initial, ops: vec![] } }
   pub fn op(mut self, op: Op) -> Self {
     self.ops.push(op);
     self
@@ -434,7 +424,5 @@ impl Expr {
 }
 
 impl From<i32> for Lit {
-  fn from(v: i32) -> Self {
-    Lit::Int(v)
-  }
+  fn from(v: i32) -> Self { Lit::Int(v) }
 }

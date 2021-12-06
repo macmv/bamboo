@@ -40,18 +40,12 @@ pub type Result<T> = std::result::Result<T, ParseError>;
 impl ParseError {
   /// Creates a new pos error. This error will cover all the characters in
   /// `pos`, and have the error message of the given `kind`.
-  pub fn new(pos: Span, kind: ErrorKind) -> Self {
-    ParseError { pos, kind }
-  }
+  pub fn new(pos: Span, kind: ErrorKind) -> Self { ParseError { pos, kind } }
 
   /// Returns the error kind for this error.
-  pub fn kind(&self) -> &ErrorKind {
-    &self.kind
-  }
+  pub fn kind(&self) -> &ErrorKind { &self.kind }
   /// Returns the position of this this error.
-  pub fn pos(&self) -> Span {
-    self.pos
-  }
+  pub fn pos(&self) -> Span { self.pos }
 
   /// Generates a chat message from the error. This should be sent directly to
   /// the client without any additional formatting.

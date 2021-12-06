@@ -7,16 +7,10 @@ pub struct Lines {
 }
 
 impl Lines {
-  pub fn new() -> Lines {
-    Lines { left: vec![], right: vec![] }
-  }
+  pub fn new() -> Lines { Lines { left: vec![], right: vec![] } }
 
-  pub fn push_left(&mut self, v: String) {
-    self.left.push(v);
-  }
-  pub fn push_right(&mut self, v: String) {
-    self.right.push(v);
-  }
+  pub fn push_left(&mut self, v: String) { self.left.push(v); }
+  pub fn push_right(&mut self, v: String) { self.right.push(v); }
 
   pub fn draw(&self) -> io::Result<()> {
     let (cols, _rows) = terminal::size()?;

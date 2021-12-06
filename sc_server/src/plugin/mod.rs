@@ -38,9 +38,7 @@ impl Sugarcane {
 }
 
 impl fmt::Debug for Sugarcane {
-  fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-    write!(f, "Sugarcane {{}}")
-  }
+  fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result { write!(f, "Sugarcane {{}}") }
 }
 
 // impl Sugarcane {
@@ -78,14 +76,10 @@ impl fmt::Debug for Sugarcane {
 impl PluginManager {
   /// Creates a new plugin manager. This will initialize the Ruby interpreter,
   /// and load all plugins from disk. Do not call this multiple times.
-  pub fn new() -> Self {
-    PluginManager { plugins: Mutex::new(vec![]) }
-  }
+  pub fn new() -> Self { PluginManager { plugins: Mutex::new(vec![]) } }
 
   /// Returns true if plugins should print error messages with colors.
-  pub fn use_color(&self) -> bool {
-    true
-  }
+  pub fn use_color(&self) -> bool { true }
 
   pub fn run(&self, wm: Arc<WorldManager>) {
     self.load(wm);

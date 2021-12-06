@@ -43,7 +43,5 @@ pub trait PacketStream {
   /// This may return an error of kind WouldBlock. If this happens, then this
   /// stream still needs to be flushed. You should poll for `Interest::WRITABLE`
   /// and try again.
-  fn flush(&mut self) -> io::Result<()> {
-    Ok(())
-  }
+  fn flush(&mut self) -> io::Result<()> { Ok(()) }
 }

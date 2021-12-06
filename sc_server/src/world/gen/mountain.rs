@@ -7,12 +7,8 @@ pub struct Gen {
   id: usize,
 }
 impl BiomeGen for Gen {
-  fn new(id: usize) -> Gen {
-    Gen { id }
-  }
-  fn id(&self) -> usize {
-    self.id
-  }
+  fn new(id: usize) -> Gen { Gen { id } }
+  fn id(&self) -> usize { self.id }
   fn layers(&self) -> BiomeLayers {
     let layers = BiomeLayers::new(block::Kind::Bedrock);
     layers

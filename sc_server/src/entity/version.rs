@@ -51,9 +51,7 @@ impl TypeConverter {
 
   /// Returns any data about this item. Includes things like max stack size,
   /// display name, etc.
-  pub fn get_data(&self, entity: Type) -> &Data {
-    &self.types[entity.to_u32() as usize]
-  }
+  pub fn get_data(&self, entity: Type) -> &Data { &self.types[entity.to_u32() as usize] }
 }
 
 #[derive(Debug)]

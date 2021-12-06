@@ -132,19 +132,13 @@ impl MultiChunk {
 
   /// Returns the fixed chunk in this MultiChunk. This is used for 1.8, as the
   /// data is in a different shape than 1.9+.
-  pub fn get_fixed(&self) -> &Chunk {
-    &self.fixed
-  }
+  pub fn get_fixed(&self) -> &Chunk { &self.fixed }
 
   /// Returns the paletted chunk in this MultiChunk. This is used for 1.9+, as
   /// the data is in a different shape than in 1.8.
-  pub fn get_paletted(&self) -> &Chunk {
-    &self.paletted
-  }
+  pub fn get_paletted(&self) -> &Chunk { &self.paletted }
 
   /// Returns a reference to the global type converter. Used to convert a block
   /// id to/from any version.
-  pub fn type_converter(&self) -> &block::TypeConverter {
-    &self.types
-  }
+  pub fn type_converter(&self) -> &block::TypeConverter { &self.types }
 }

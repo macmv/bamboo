@@ -75,9 +75,7 @@ impl BlockVersion {
 
   /// Returns the given index of this block version. Latest -> 0, the version
   /// before latest -> 1, etc.
-  pub fn to_index_rev(self) -> u32 {
-    Self::len() - num::ToPrimitive::to_u32(&self).unwrap_or(0)
-  }
+  pub fn to_index_rev(self) -> u32 { Self::len() - num::ToPrimitive::to_u32(&self).unwrap_or(0) }
 
   /// Returns the protocol version from the given index. 0 -> 1.8, 1 -> 1.9,
   /// etc.
@@ -89,9 +87,7 @@ impl BlockVersion {
   }
 
   /// Returns the given index of this block version. 1.8 -> 0, 1.9 -> 1, etc.
-  pub fn to_index(self) -> u32 {
-    num::ToPrimitive::to_u32(&self).unwrap_or(0)
-  }
+  pub fn to_index(self) -> u32 { num::ToPrimitive::to_u32(&self).unwrap_or(0) }
 }
 
 /// A list of all protocol versions. This is mostly inclusive to what this
@@ -180,9 +176,7 @@ impl ProtocolVersion {
 
   /// Returns the protocol id. This is the version that is sent to the server
   /// from the client. If this is 0, then this is an invalid protocol.
-  pub fn id(&self) -> u32 {
-    num::ToPrimitive::to_u32(self).unwrap_or(0)
-  }
+  pub fn id(&self) -> u32 { num::ToPrimitive::to_u32(self).unwrap_or(0) }
   /// Returns the block version that this protocol version uses.
   pub fn block(&self) -> BlockVersion {
     match self {

@@ -34,22 +34,12 @@ impl ConnStream {
     out.write_str("macmv");
     self.stream.write(out);
   }
-  pub fn write(&mut self, p: sb::Packet) {
-    self.stream.write(p.to_tcp(self.ver))
-  }
-  pub fn needs_flush(&self) -> bool {
-    self.stream.needs_flush()
-  }
-  pub fn flush(&mut self) -> io::Result<()> {
-    self.stream.flush()
-  }
-  pub fn closed(&self) -> bool {
-    self.closed
-  }
+  pub fn write(&mut self, p: sb::Packet) { self.stream.write(p.to_tcp(self.ver)) }
+  pub fn needs_flush(&self) -> bool { self.stream.needs_flush() }
+  pub fn flush(&mut self) -> io::Result<()> { self.stream.flush() }
+  pub fn closed(&self) -> bool { self.closed }
 
-  pub fn poll(&mut self) -> io::Result<()> {
-    self.stream.poll()
-  }
+  pub fn poll(&mut self) -> io::Result<()> { self.stream.poll() }
   pub fn read(&mut self) -> io::Result<Option<cb::Packet>> {
     if let Some(p) = self.stream.read(self.ver)? {
       match self.state {

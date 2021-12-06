@@ -50,17 +50,11 @@ pub struct FuncArg<'a> {
 }
 
 impl CodeGen {
-  pub fn new() -> Self {
-    CodeGen { current: String::new(), indent: 0, needs_indent: false }
-  }
+  pub fn new() -> Self { CodeGen { current: String::new(), indent: 0, needs_indent: false } }
   /// Sets the indent of this generator.
-  pub fn set_indent(&mut self, indent: usize) {
-    self.indent = indent;
-  }
+  pub fn set_indent(&mut self, indent: usize) { self.indent = indent; }
   /// Returns the current indent of this generator.
-  pub fn indent(&self) -> usize {
-    self.indent
-  }
+  pub fn indent(&self) -> usize { self.indent }
   /// Writes an enum literal. Example:
   /// ```
   /// # use sc_data::gen::{CodeGen, EnumVariant};
@@ -318,21 +312,13 @@ impl CodeGen {
     }
   }
   /// Adds a new indent level to the generator.
-  pub fn add_indent(&mut self) {
-    self.indent = self.indent.checked_add(1).unwrap();
-  }
+  pub fn add_indent(&mut self) { self.indent = self.indent.checked_add(1).unwrap(); }
   /// Removes a level of indent from the generator.
-  pub fn remove_indent(&mut self) {
-    self.indent = self.indent.checked_sub(1).unwrap();
-  }
+  pub fn remove_indent(&mut self) { self.indent = self.indent.checked_sub(1).unwrap(); }
   /// Clears all the indents from the generator.
-  pub fn clear_indent(&mut self) {
-    self.indent = 0;
-  }
+  pub fn clear_indent(&mut self) { self.indent = 0; }
   /// Returns the code that was generated with this generator.
-  pub fn into_output(self) -> String {
-    self.current
-  }
+  pub fn into_output(self) -> String { self.current }
 }
 
 impl EnumVariant {
@@ -409,9 +395,7 @@ impl MatchBranch<'_> {
   }
 }
 impl FuncArg<'_> {
-  pub fn slf_ref() -> Self {
-    FuncArg { name: "&self", ty: "" }
-  }
+  pub fn slf_ref() -> Self { FuncArg { name: "&self", ty: "" } }
   pub fn write(&self, gen: &mut CodeGen) {
     gen.write(self.name);
     if self.ty != "" {
@@ -423,7 +407,5 @@ impl FuncArg<'_> {
 
 use std::fmt;
 impl fmt::Debug for CodeGen {
-  fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-    f.debug_struct("CodeGen").finish()
-  }
+  fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result { f.debug_struct("CodeGen").finish() }
 }

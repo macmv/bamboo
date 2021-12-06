@@ -58,14 +58,10 @@ impl MessageWrite for UUID {
 }
 
 impl MessageRead for Item {
-  fn read(m: &mut MessageReader) -> Result<Self, ReadError> {
-    Item::from_sc(m)
-  }
+  fn read(m: &mut MessageReader) -> Result<Self, ReadError> { Item::from_sc(m) }
 }
 impl MessageWrite for Item {
-  fn write(&self, m: &mut MessageWriter) -> Result<(), WriteError> {
-    self.to_sc(m)
-  }
+  fn write(&self, m: &mut MessageWriter) -> Result<(), WriteError> { self.to_sc(m) }
 }
 impl MessageRead for NBT {
   fn read(m: &mut MessageReader) -> Result<Self, ReadError> {
@@ -83,34 +79,26 @@ impl<T> ReadSc for Option<T>
 where
   T: ReadSc,
 {
-  fn read_sc(buf: &mut tcp::Packet) -> Self {
-    buf.read_option(|buf| buf.read_sc())
-  }
+  fn read_sc(buf: &mut tcp::Packet) -> Self { buf.read_option(|buf| buf.read_sc()) }
 }
 impl<T> WriteSc for Option<T>
 where
   T: WriteSc,
 {
-  fn write_sc(&self, buf: &mut tcp::Packet) {
-    buf.write_option(self, |buf, v| buf.write_sc(v))
-  }
+  fn write_sc(&self, buf: &mut tcp::Packet) { buf.write_option(self, |buf, v| buf.write_sc(v)) }
 }
 
 impl<T> ReadSc for Vec<T>
 where
   T: ReadSc,
 {
-  fn read_sc(buf: &mut tcp::Packet) -> Self {
-    buf.read_list(|buf| buf.read_sc())
-  }
+  fn read_sc(buf: &mut tcp::Packet) -> Self { buf.read_list(|buf| buf.read_sc()) }
 }
 impl<T> WriteSc for Vec<T>
 where
   T: WriteSc,
 {
-  fn write_sc(&self, buf: &mut tcp::Packet) {
-    buf.write_list(self, |buf, v| buf.write_sc(v))
-  }
+  fn write_sc(&self, buf: &mut tcp::Packet) { buf.write_list(self, |buf, v| buf.write_sc(v)) }
 }
 impl<K, V> ReadSc for HashMap<K, V>
 where
@@ -134,26 +122,20 @@ impl<T> ReadSc for HashSet<T>
 where
   T: Eq + Hash + ReadSc,
 {
-  fn read_sc(buf: &mut tcp::Packet) -> Self {
-    buf.read_set(|buf| buf.read_sc())
-  }
+  fn read_sc(buf: &mut tcp::Packet) -> Self { buf.read_set(|buf| buf.read_sc()) }
 }
 impl<T> WriteSc for HashSet<T>
 where
   T: WriteSc + Eq + Hash,
 {
-  fn write_sc(&self, buf: &mut tcp::Packet) {
-    buf.write_set(self, |buf, k| k.write_sc(buf))
-  }
+  fn write_sc(&self, buf: &mut tcp::Packet) { buf.write_set(self, |buf, k| k.write_sc(buf)) }
 }
 
 impl<T> ReadSc for [T; 3]
 where
   T: ReadSc,
 {
-  fn read_sc(buf: &mut tcp::Packet) -> Self {
-    [buf.read_sc(), buf.read_sc(), buf.read_sc()]
-  }
+  fn read_sc(buf: &mut tcp::Packet) -> Self { [buf.read_sc(), buf.read_sc(), buf.read_sc()] }
 }
 impl<T> WriteSc for [T; 3]
 where
@@ -189,9 +171,7 @@ where
   T: ReadSc,
   U: ReadSc,
 {
-  fn read_sc(buf: &mut tcp::Packet) -> Self {
-    (buf.read_sc(), buf.read_sc())
-  }
+  fn read_sc(buf: &mut tcp::Packet) -> Self { (buf.read_sc(), buf.read_sc()) }
 }
 impl<T, U> WriteSc for (T, U)
 where

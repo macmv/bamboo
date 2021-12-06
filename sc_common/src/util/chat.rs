@@ -48,9 +48,7 @@ impl Chat {
     Chat { sections: vec![Section { text: msg.into(), ..Default::default() }] }
   }
   /// Creates a new Chat message, with no sections.
-  pub fn empty() -> Self {
-    Chat { sections: vec![] }
-  }
+  pub fn empty() -> Self { Chat { sections: vec![] } }
 
   /// Adds a new chat section, with the given string. The returned reference is
   /// a reference into self, so it must be dropped before adding another
@@ -64,9 +62,7 @@ impl Chat {
 
   /// Generates a json message that represents this chat message. This is used
   /// when serializing chat packets, and when dealing with things like books.
-  pub fn to_json(&self) -> String {
-    serde_json::to_string(self).unwrap()
-  }
+  pub fn to_json(&self) -> String { serde_json::to_string(self).unwrap() }
 
   /// Parses the given json as a chat message.
   pub fn from_json(src: String) -> Result<Self, serde_json::Error> {
@@ -88,12 +84,8 @@ impl Chat {
     out
   }
 
-  pub fn sections_len(&self) -> usize {
-    self.sections.len()
-  }
-  pub fn get_section(&mut self, idx: usize) -> Option<&mut Section> {
-    self.sections.get_mut(idx)
-  }
+  pub fn sections_len(&self) -> usize { self.sections.len() }
+  pub fn get_section(&mut self, idx: usize) -> Option<&mut Section> { self.sections.get_mut(idx) }
 }
 
 impl Serialize for Chat {
@@ -117,9 +109,7 @@ impl Serialize for Chat {
 }
 
 impl From<&str> for Chat {
-  fn from(msg: &str) -> Chat {
-    Chat::new(msg)
-  }
+  fn from(msg: &str) -> Chat { Chat::new(msg) }
 }
 
 /// This is a chat message section. It has some text, and a lot of optional
@@ -335,9 +325,7 @@ pub enum Color {
 impl Color {
   /// Creates a new rgb color. This is only valid for 1.16+ clients. For older
   /// clients, this will render as white.
-  pub fn rgb(r: u8, g: u8, b: u8) -> Self {
-    Color::Custom(format!("#{:02x}{:02x}{:02x}", r, g, b))
-  }
+  pub fn rgb(r: u8, g: u8, b: u8) -> Self { Color::Custom(format!("#{:02x}{:02x}{:02x}", r, g, b)) }
 
   /// Converts the color to a string. This string should be used in chat json.
   pub fn to_str(&self) -> &str {

@@ -11,9 +11,7 @@ pub struct Item {
 }
 
 impl Item {
-  pub fn new(id: i32, count: u8, damage: i16, nbt: NBT) -> Self {
-    Item { id, count, damage, nbt }
-  }
+  pub fn new(id: i32, count: u8, damage: i16, nbt: NBT) -> Self { Item { id, count, damage, nbt } }
   pub fn from_sc(m: &mut MessageReader) -> Result<Self, ReadError> {
     Ok(Item {
       id:     m.read_i32()?,
@@ -30,17 +28,9 @@ impl Item {
     Ok(())
   }
 
-  pub fn id(&self) -> i32 {
-    self.id
-  }
-  pub fn count(&self) -> u8 {
-    self.count
-  }
-  pub fn nbt(&self) -> &NBT {
-    &self.nbt
-  }
+  pub fn id(&self) -> i32 { self.id }
+  pub fn count(&self) -> u8 { self.count }
+  pub fn nbt(&self) -> &NBT { &self.nbt }
 
-  pub fn into_parts(self) -> (i32, u8, NBT) {
-    (self.id, self.count, self.nbt)
-  }
+  pub fn into_parts(self) -> (i32, u8, NBT) { (self.id, self.count, self.nbt) }
 }

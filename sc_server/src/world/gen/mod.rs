@@ -47,14 +47,10 @@ impl BiomeLayers {
   }
 
   /// Returns the total height of all defined layers.
-  pub fn total_height(&self) -> u32 {
-    self.total_height
-  }
+  pub fn total_height(&self) -> u32 { self.total_height }
 
   /// Returns the internal layers list
-  pub fn layers(&self) -> &[(block::Kind, u32)] {
-    &self.layers
-  }
+  pub fn layers(&self) -> &[(block::Kind, u32)] { &self.layers }
 }
 
 pub trait BiomeGen {
@@ -137,9 +133,7 @@ pub trait BiomeGen {
   /// Returns the longest distance that decorations can extend outside of this
   /// biome. This is used to call [`decorate`] when there are blocks of this
   /// biome in a nearby chunk.
-  fn decorate_radius(&self) -> u32 {
-    0
-  }
+  fn decorate_radius(&self) -> u32 { 0 }
   /// Returns the layers that should be used to fill in the ground. See
   /// [`BiomeLayer`] for more.
   fn layers(&self) -> BiomeLayers {
@@ -150,9 +144,7 @@ pub trait BiomeGen {
   }
   /// Returns this biome's height at the given position. By default, this just
   /// uses the world height at the given position.
-  fn height_at(&self, world: &WorldGen, pos: Pos) -> i32 {
-    world.height_at(pos) as i32
-  }
+  fn height_at(&self, world: &WorldGen, pos: Pos) -> i32 { world.height_at(pos) as i32 }
 }
 
 pub struct WorldGen {
@@ -211,9 +203,7 @@ impl WorldGen {
   pub fn biome_id_at(&self, pos: Pos) -> usize {
     self.biome_map.get(pos.into()) as usize % self.biomes.len()
   }
-  pub fn dist_to_border(&self, pos: Pos) -> f64 {
-    self.biome_map.dist_to_border(pos.into())
-  }
+  pub fn dist_to_border(&self, pos: Pos) -> f64 { self.biome_map.dist_to_border(pos.into()) }
   pub fn is_biome<B: BiomeGen>(&self, b: &B, pos: Pos) -> bool {
     let actual = self.biome_id_at(pos);
     b.id() == actual

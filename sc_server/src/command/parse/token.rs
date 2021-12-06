@@ -25,19 +25,13 @@ pub struct Word {
 }
 
 impl<'a> Tokenizer<'a> {
-  pub fn new(text: &'a str) -> Self {
-    Tokenizer { text, chars: text.chars().peekable(), pos: 0 }
-  }
+  pub fn new(text: &'a str) -> Self { Tokenizer { text, chars: text.chars().peekable(), pos: 0 } }
 
   /// Returns the current index into the command of this tokenizer. This will
   /// always be at the start of a valid utf8 character.
-  pub fn pos(&self) -> usize {
-    self.pos
-  }
+  pub fn pos(&self) -> usize { self.pos }
 
-  fn peek_char(&mut self) -> Option<char> {
-    self.chars.peek().map(|v| *v)
-  }
+  fn peek_char(&mut self) -> Option<char> { self.chars.peek().map(|v| *v) }
 
   fn next_char(&mut self) -> Option<char> {
     self.chars.next().map(|v| {
@@ -154,21 +148,15 @@ impl<'a> Tokenizer<'a> {
 }
 
 impl PartialEq<&str> for Word {
-  fn eq(&self, text: &&str) -> bool {
-    self.text == *text
-  }
+  fn eq(&self, text: &&str) -> bool { self.text == *text }
 }
 impl Deref for Word {
   type Target = str;
 
-  fn deref(&self) -> &Self::Target {
-    &self.text
-  }
+  fn deref(&self) -> &Self::Target { &self.text }
 }
 impl From<Word> for String {
-  fn from(w: Word) -> String {
-    w.text
-  }
+  fn from(w: Word) -> String { w.text }
 }
 
 impl Word {
@@ -182,31 +170,21 @@ impl Word {
 
   /// Returns an invalid error. This will use the `Parser::desc` function later
   /// to produce an error spanned over this word.
-  pub fn invalid(&self) -> ParseError {
-    ParseError::new(self.pos, ErrorKind::Invalid)
-  }
+  pub fn invalid(&self) -> ParseError { ParseError::new(self.pos, ErrorKind::Invalid) }
 
   /// Returns the position of this word.
-  pub fn pos(&self) -> Span {
-    self.pos
-  }
+  pub fn pos(&self) -> Span { self.pos }
 
   /// Upates the internal text of this word, without changing the span.
-  pub fn set_text(&mut self, new_text: String) {
-    self.text = new_text;
-  }
+  pub fn set_text(&mut self, new_text: String) { self.text = new_text; }
 }
 
 impl Span {
   /// Creates a new span that wraps the text between the two indices. The
   /// `start` is inclusive, and the `end` is exlusive.
-  pub fn new(start: usize, end: usize) -> Self {
-    Span { start, end }
-  }
+  pub fn new(start: usize, end: usize) -> Self { Span { start, end } }
   /// Creates a span that wraps a single char at index `char_index`.
-  pub fn single(char_index: usize) -> Self {
-    Span { start: char_index, end: char_index + 1 }
-  }
+  pub fn single(char_index: usize) -> Self { Span { start: char_index, end: char_index + 1 } }
 }
 
 #[cfg(test)]

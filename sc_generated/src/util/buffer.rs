@@ -129,13 +129,9 @@ macro_rules! add_write_byte {
 }
 
 impl Buffer {
-  pub fn new(data: Vec<u8>) -> Self {
-    Buffer { data: Cursor::new(data), err: None }
-  }
+  pub fn new(data: Vec<u8>) -> Self { Buffer { data: Cursor::new(data), err: None } }
 
-  pub fn err(&self) -> &Option<BufferError> {
-    &self.err
-  }
+  pub fn err(&self) -> &Option<BufferError> { &self.err }
   fn set_err(&mut self, err: BufferErrorKind, reading: bool) {
     self.err = Some(BufferError { err, pos: self.data.position(), reading });
   }
@@ -157,19 +153,11 @@ impl Buffer {
     }
     vec
   }
-  pub fn len(&self) -> usize {
-    self.data.get_ref().len()
-  }
-  pub fn is_empty(&self) -> bool {
-    self.len() == 0
-  }
-  pub fn index(&self) -> usize {
-    usize::try_from(self.data.position()).unwrap()
-  }
+  pub fn len(&self) -> usize { self.data.get_ref().len() }
+  pub fn is_empty(&self) -> bool { self.len() == 0 }
+  pub fn index(&self) -> usize { usize::try_from(self.data.position()).unwrap() }
 
-  pub fn read_bool(&mut self) -> bool {
-    self.read_u8() != 0
-  }
+  pub fn read_bool(&mut self) -> bool { self.read_u8() != 0 }
   add_read_byte!(read_u8, u8);
   add_read!(read_u16, u16, 0);
   add_read!(read_u32, u32, 0);
@@ -236,16 +224,12 @@ impl Buffer {
       }
     }
   }
-  pub fn write_buf(&mut self, v: &[u8]) {
-    self.data.write_all(v).unwrap();
-  }
+  pub fn write_buf(&mut self, v: &[u8]) { self.data.write_all(v).unwrap(); }
 
   /// This writes a fixed point floating number to the buffer. This simply
   /// multiplies the f64 by 32, and then writes that int into the buffer. This
   /// is not used on newer clients, but is common on older clients.
-  pub fn write_fixed_int(&mut self, v: f64) {
-    self.write_i32((v * 32.0) as i32);
-  }
+  pub fn write_fixed_int(&mut self, v: f64) { self.write_i32((v * 32.0) as i32); }
 
   /// Reads a string. If the length is longer than the given maximum, this will
   /// fail, and return an empty string.
@@ -327,23 +311,17 @@ impl Buffer {
     }
   }
 
-  pub fn into_inner(self) -> Vec<u8> {
-    self.data.into_inner()
-  }
+  pub fn into_inner(self) -> Vec<u8> { self.data.into_inner() }
 }
 
 impl Deref for Buffer {
   type Target = Vec<u8>;
 
-  fn deref(&self) -> &Self::Target {
-    self.data.get_ref()
-  }
+  fn deref(&self) -> &Self::Target { self.data.get_ref() }
 }
 
 impl DerefMut for Buffer {
-  fn deref_mut(&mut self) -> &mut Self::Target {
-    self.data.get_mut()
-  }
+  fn deref_mut(&mut self) -> &mut Self::Target { self.data.get_mut() }
 }
 
 #[cfg(test)]

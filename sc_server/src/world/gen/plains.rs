@@ -6,12 +6,8 @@ pub struct Gen {
   id: usize,
 }
 impl BiomeGen for Gen {
-  fn new(id: usize) -> Gen {
-    Gen { id }
-  }
-  fn id(&self) -> usize {
-    self.id
-  }
+  fn new(id: usize) -> Gen { Gen { id } }
+  fn id(&self) -> usize { self.id }
   fn decorate(&self, world: &WorldGen, chunk_pos: ChunkPos, c: &mut MultiChunk) {
     for mut p in chunk_pos.columns() {
       if world.is_biome(self, p) {

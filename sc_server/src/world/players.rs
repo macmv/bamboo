@@ -26,34 +26,24 @@ pub struct KeysIter<'a> {
 }
 
 impl PlayersMap {
-  pub fn new() -> Self {
-    PlayersMap { inner: HashMap::new() }
-  }
+  pub fn new() -> Self { PlayersMap { inner: HashMap::new() } }
   pub fn iter(&self) -> PlayersIter<'_> {
     PlayersIter { values: self.inner.values(), pos: None, uuid: None }
   }
 
-  pub fn keys(&self) -> KeysIter<'_> {
-    KeysIter { keys: self.inner.keys() }
-  }
+  pub fn keys(&self) -> KeysIter<'_> { KeysIter { keys: self.inner.keys() } }
 
-  pub fn get(&self, id: UUID) -> Option<&Arc<Player>> {
-    self.inner.get(&id)
-  }
+  pub fn get(&self, id: UUID) -> Option<&Arc<Player>> { self.inner.get(&id) }
 }
 
 impl Deref for PlayersMap {
   type Target = HashMap<UUID, Arc<Player>>;
 
-  fn deref(&self) -> &Self::Target {
-    &self.inner
-  }
+  fn deref(&self) -> &Self::Target { &self.inner }
 }
 
 impl DerefMut for PlayersMap {
-  fn deref_mut(&mut self) -> &mut Self::Target {
-    &mut self.inner
-  }
+  fn deref_mut(&mut self) -> &mut Self::Target { &mut self.inner }
 }
 
 impl PlayersIter<'_> {
@@ -91,7 +81,5 @@ impl<'a> Iterator for PlayersIter<'a> {
 impl<'a> Iterator for KeysIter<'a> {
   type Item = UUID;
 
-  fn next(&mut self) -> Option<Self::Item> {
-    self.keys.next().map(|v| *v)
-  }
+  fn next(&mut self) -> Option<Self::Item> { self.keys.next().map(|v| *v) }
 }

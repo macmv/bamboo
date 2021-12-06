@@ -21,9 +21,7 @@ use command::SlCommand;
 macro_rules! add_from {
   ( $ty:ty, $new_ty:ident ) => {
     impl From<$ty> for $new_ty {
-      fn from(inner: $ty) -> $new_ty {
-        $new_ty { inner }
-      }
+      fn from(inner: $ty) -> $new_ty { $new_ty { inner } }
     }
   };
 }

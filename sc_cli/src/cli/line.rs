@@ -135,10 +135,6 @@ impl SingleLineReader<'_> {
     Ok(false)
   }
 
-  fn max_col(&self) -> u16 {
-    self.prompt.len() as u16 + self.out.len() as u16
-  }
-  fn min_col(&self) -> u16 {
-    self.prompt.len() as u16
-  }
+  fn max_col(&self) -> u16 { self.prompt.len() as u16 + self.out.len() as u16 }
+  fn min_col(&self) -> u16 { self.prompt.len() as u16 }
 }

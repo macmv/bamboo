@@ -51,9 +51,7 @@ struct StringReader<'a> {
 }
 
 impl<'a> StringReader<'a> {
-  pub fn new(data: &'a str) -> Self {
-    Self { iter: data.as_bytes().iter() }
-  }
+  pub fn new(data: &'a str) -> Self { Self { iter: data.as_bytes().iter() } }
 }
 
 impl<'a> Read for StringReader<'a> {
@@ -94,9 +92,7 @@ impl<'a> CommandReader<'a> {
   }
 
   /// Reads a word, and parses it as an int.
-  pub fn int(&mut self) -> Result<i32, ReadError> {
-    Ok(5)
-  }
+  pub fn int(&mut self) -> Result<i32, ReadError> { Ok(5) }
 }
 
 #[cfg(test)]

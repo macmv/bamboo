@@ -5,9 +5,7 @@ use sc_common::math::ChunkPos;
 pub struct OreGen {}
 
 impl OreGen {
-  pub fn new(_seed: u64) -> Self {
-    OreGen {}
-  }
+  pub fn new(_seed: u64) -> Self { OreGen {} }
 
   pub fn place(&self, world: &WorldGen, pos: ChunkPos, c: &mut MultiChunk) {
     for col in pos.columns() {

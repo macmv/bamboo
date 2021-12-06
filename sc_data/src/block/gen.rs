@@ -178,14 +178,10 @@ pub trait ToLit {
 }
 
 impl ToLit for u8 {
-  fn to_lit(&self, gen: &mut CodeGen) {
-    gen.write(&self.to_string());
-  }
+  fn to_lit(&self, gen: &mut CodeGen) { gen.write(&self.to_string()); }
 }
 impl ToLit for u32 {
-  fn to_lit(&self, gen: &mut CodeGen) {
-    gen.write(&self.to_string());
-  }
+  fn to_lit(&self, gen: &mut CodeGen) { gen.write(&self.to_string()); }
 }
 impl ToLit for f32 {
   fn to_lit(&self, gen: &mut CodeGen) {

@@ -49,22 +49,16 @@ impl MessageWriter<'_> {
   /// call `index`, and know that none of the data past that index has been
   /// modified.
   #[inline(always)]
-  pub fn new(data: &mut [u8]) -> MessageWriter {
-    MessageWriter { data, idx: 0 }
-  }
+  pub fn new(data: &mut [u8]) -> MessageWriter { MessageWriter { data, idx: 0 } }
 
   /// Returns the current index the writer is at. This byte in the internal
   /// slice will not have been modified yet, and will be modified on the next
   /// call to any of the `write_` functions.
-  pub fn index(&self) -> usize {
-    self.idx
-  }
+  pub fn index(&self) -> usize { self.idx }
 
   /// Returns true if the writer still has bytes left. If this returns false,
   /// then any future `write_` calls will failed with `WriteError::EOF`.
-  pub fn can_write(&self) -> bool {
-    self.idx < self.data.len()
-  }
+  pub fn can_write(&self) -> bool { self.idx < self.data.len() }
 
   /// Writes some generic type T to `self`. Depending on the situation, this
   /// may be easier than calling the individual `write_*` functions. They will
@@ -137,25 +131,17 @@ impl MessageWriter<'_> {
     Ok(())
   }
   /// Writes a single signed byte to the internal buffer.
-  pub fn write_i8(&mut self, v: i8) -> Result {
-    self.write_u8(v as u8)
-  }
+  pub fn write_i8(&mut self, v: i8) -> Result { self.write_u8(v as u8) }
   /// Writes a signed 16 bit integer to the internal buffer. Since 3 bytes
   /// is much larger than 2 bytes, a variable-length integer wouldn't make much
   /// sense. So, this is always encoded as 2 bytes.
-  pub fn write_i16(&mut self, v: i16) -> Result {
-    self.write_u16(v as u16)
-  }
+  pub fn write_i16(&mut self, v: i16) -> Result { self.write_u16(v as u16) }
   /// Writes a signed 32 bit integer to the internal buffer. This encodes the
   /// value with zig zag encoding, and then writes that as a u32.
-  pub fn write_i32(&mut self, v: i32) -> Result {
-    self.write_u32(zig(v))
-  }
+  pub fn write_i32(&mut self, v: i32) -> Result { self.write_u32(zig(v)) }
   /// Writes a signed 64 bit integer to the internal buffer. This encodes the
   /// value with zig zag encoding, and then writes that as a u64.
-  pub fn write_i64(&mut self, v: i64) -> Result {
-    self.write_u64(zig(v))
-  }
+  pub fn write_i64(&mut self, v: i64) -> Result { self.write_u64(zig(v)) }
   /// Writes a 32 bit float to the internal buffer. This will always write 4
   /// bytes.
   pub fn write_f32(&mut self, v: f32) -> Result {
@@ -196,9 +182,7 @@ impl MessageWriter<'_> {
     Ok(())
   }
   /// Writes a length prefixed string.
-  pub fn write_str(&mut self, v: &str) -> Result {
-    self.write_buf(v.as_bytes())
-  }
+  pub fn write_str(&mut self, v: &str) -> Result { self.write_buf(v.as_bytes()) }
 }
 
 #[cfg(test)]

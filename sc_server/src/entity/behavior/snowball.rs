@@ -5,9 +5,7 @@ pub struct SnowballBehavior {
 }
 
 impl Default for SnowballBehavior {
-  fn default() -> Self {
-    SnowballBehavior { _effect: None }
-  }
+  fn default() -> Self { SnowballBehavior { _effect: None } }
 }
 
 impl Behavior for SnowballBehavior {

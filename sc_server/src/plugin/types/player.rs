@@ -16,9 +16,7 @@ wrap!(Arc<Player>, SlPlayer);
 impl SlPlayer {
   /// Returns the username of the player. This will never change, as long as the
   /// user stays online.
-  pub fn username(&self) -> String {
-    self.inner.username().into()
-  }
+  pub fn username(&self) -> String { self.inner.username().into() }
 
   /// Sends the given chat message to a player. This accepts exactly one
   /// argument, which can be any type. If it is a `SlChat`, then it will be

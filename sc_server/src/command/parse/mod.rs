@@ -316,9 +316,7 @@ mod tests {
   struct NoneSender {}
 
   impl CommandSender for NoneSender {
-    fn block_pos(&self) -> Option<Pos> {
-      None
-    }
+    fn block_pos(&self) -> Option<Pos> { None }
   }
 
   #[test]

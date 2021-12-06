@@ -417,9 +417,7 @@ impl Connection {
   }
 
   // Returns true if the connection has been closed.
-  pub fn closed(&self) -> bool {
-    self.closed.load(Ordering::SeqCst)
-  }
+  pub fn closed(&self) -> bool { self.closed.load(Ordering::SeqCst) }
 }
 
 pub struct ConnectionManager {

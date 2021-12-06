@@ -100,7 +100,5 @@ impl SlCommand {
 impl SlArg {
   /// If this argument is a literal, then this returns the value of that
   /// literal. Otherwise, this will return an error.
-  pub fn lit(&self) -> String {
-    self.inner.lit().to_string()
-  }
+  pub fn lit(&self) -> String { self.inner.lit().to_string() }
 }

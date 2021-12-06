@@ -32,9 +32,7 @@ impl AABB {
   ///
   /// Returns true if this collided with anything.
   pub fn move_towards(&mut self, delta: Vec3, nearby: &[AABB]) -> Option<CollisionResult> {
-    fn time_factor(val: f64, start: f64, end: f64) -> f64 {
-      (val - start) / (end - start)
-    }
+    fn time_factor(val: f64, start: f64, end: f64) -> f64 { (val - start) / (end - start) }
 
     let mut result = None;
     let after_move = AABB::new(self.pos + delta, self.size);
@@ -134,28 +132,14 @@ impl AABB {
     )
   }
 
-  pub fn min_x(&self) -> f64 {
-    self.pos.x() - self.size.x / 2.0
-  }
-  pub fn min_y(&self) -> f64 {
-    self.pos.y()
-  }
-  pub fn min_z(&self) -> f64 {
-    self.pos.z() - self.size.z / 2.0
-  }
-  pub fn max_x(&self) -> f64 {
-    self.pos.x() + self.size.x / 2.0
-  }
-  pub fn max_y(&self) -> f64 {
-    self.pos.y() + self.size.y
-  }
-  pub fn max_z(&self) -> f64 {
-    self.pos.z() + self.size.z / 2.0
-  }
+  pub fn min_x(&self) -> f64 { self.pos.x() - self.size.x / 2.0 }
+  pub fn min_y(&self) -> f64 { self.pos.y() }
+  pub fn min_z(&self) -> f64 { self.pos.z() - self.size.z / 2.0 }
+  pub fn max_x(&self) -> f64 { self.pos.x() + self.size.x / 2.0 }
+  pub fn max_y(&self) -> f64 { self.pos.y() + self.size.y }
+  pub fn max_z(&self) -> f64 { self.pos.z() + self.size.z / 2.0 }
 
   /// Returns the minimum position of this bounding box. Can be used to move the
   /// box around.
-  pub fn pos_mut(&mut self) -> &mut FPos {
-    &mut self.pos
-  }
+  pub fn pos_mut(&mut self) -> &mut FPos { &mut self.pos }
 }

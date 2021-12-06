@@ -3,5 +3,6 @@ imports_granularity = "Crate"
 tab_spaces = 2
 use_small_heuristics = "Max"
 wrap_comments = true
+fn_single_line = true
 struct_field_align_threshold = 40
 enum_discrim_align_threshold = 40

@@ -15,9 +15,7 @@ pub struct Version {
 }
 
 impl Version {
-  pub const fn new(maj: u32, min: u32, protocol: u32) -> Version {
-    Version { maj, min, protocol }
-  }
+  pub const fn new(maj: u32, min: u32, protocol: u32) -> Version { Version { maj, min, protocol } }
 }
 
 impl fmt::Display for Version {
@@ -34,21 +32,13 @@ fn out_dir() -> PathBuf {
   PathBuf::new().join(&env::var("OUT_DIR").expect("could not get out dir"))
 }
 
-pub fn generate_blocks() {
-  block::generate(&out_dir()).unwrap();
-}
+pub fn generate_blocks() { block::generate(&out_dir()).unwrap(); }
 
-pub fn generate_items() {
-  item::generate(&out_dir()).unwrap();
-}
+pub fn generate_items() { item::generate(&out_dir()).unwrap(); }
 
-pub fn generate_entities() {
-  entity::generate(&out_dir()).unwrap();
-}
+pub fn generate_entities() { entity::generate(&out_dir()).unwrap(); }
 
-pub fn generate_protocol() {
-  protocol::generate(&out_dir()).unwrap();
-}
+pub fn generate_protocol() { protocol::generate(&out_dir()).unwrap(); }
 
 pub static VERSIONS: &'static [Version] = &[
   Version::new(8, 9, 47),
@@ -63,12 +53,8 @@ pub static VERSIONS: &'static [Version] = &[
 ];
 
 impl Version {
-  pub fn to_protocol(&self) -> String {
-    format!("ProtocolVersion::V1_{}_{}", self.maj, self.min)
-  }
-  pub fn to_block(&self) -> String {
-    format!("BlockVersion::V1_{}", self.maj)
-  }
+  pub fn to_protocol(&self) -> String { format!("ProtocolVersion::V1_{}_{}", self.maj, self.min) }
+  pub fn to_block(&self) -> String { format!("BlockVersion::V1_{}", self.maj) }
   pub fn to_index(&self) -> usize {
     if self.maj <= 12 {
       self.maj as usize - 8

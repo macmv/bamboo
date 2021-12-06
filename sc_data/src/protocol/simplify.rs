@@ -114,9 +114,7 @@ fn set_unknown() -> Instr {
     Expr::new(Value::Var(1)).op(Op::Call("tcp::Packet".into(), "read_all".into(), vec![])),
   )
 }
-fn simplify_cond(cond: &mut Cond) {
-  simplify_cond_overwrite(cond);
-}
+fn simplify_cond(cond: &mut Cond) { simplify_cond_overwrite(cond); }
 fn simplify_cond_overwrite(cond: &mut Cond) -> (bool, Option<Instr>) {
   match cond {
     Cond::Eq(lhs, rhs)
@@ -154,9 +152,7 @@ fn simplify_cond_overwrite(cond: &mut Cond) -> (bool, Option<Instr>) {
     }
   }
 }
-fn simplify_expr(expr: &mut Expr) {
-  simplify_expr_overwrite(expr);
-}
+fn simplify_expr(expr: &mut Expr) { simplify_expr_overwrite(expr); }
 fn simplify_expr_overwrite(expr: &mut Expr) -> (bool, Option<Instr>) {
   fn simplify(expr: &mut Expr) -> (bool, Option<Instr>) {
     simplify_val(&mut expr.initial);

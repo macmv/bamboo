@@ -15,7 +15,5 @@ impl SlBlockKind {
       })?,
     })
   }
-  pub fn to_s(&self) -> String {
-    format!("{}", self.inner.to_str())
-  }
+  pub fn to_s(&self) -> String { format!("{}", self.inner.to_str()) }
 }

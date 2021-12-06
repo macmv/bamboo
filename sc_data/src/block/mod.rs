@@ -150,9 +150,7 @@ mat! {
 }
 
 impl Default for Material {
-  fn default() -> Self {
-    Material::Air
-  }
+  fn default() -> Self { Material::Air }
 }
 
 #[derive(Debug, Clone)]

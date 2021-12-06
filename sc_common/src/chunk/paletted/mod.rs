@@ -57,28 +57,18 @@ impl MessageRead for Section {
 }
 
 impl Section {
-  pub fn new() -> Self {
-    Self::default()
-  }
+  pub fn new() -> Self { Self::default() }
   /// Returns the internal data of this section.
-  pub fn data(&self) -> &BitArray {
-    &self.data
-  }
+  pub fn data(&self) -> &BitArray { &self.data }
   #[inline(always)]
-  fn index(&self, pos: Pos) -> usize {
-    (pos.y() << 8 | pos.z() << 4 | pos.x()) as usize
-  }
+  fn index(&self, pos: Pos) -> usize { (pos.y() << 8 | pos.z() << 4 | pos.x()) as usize }
   /// Writes a single palette id into self.data.
   #[inline(always)]
-  unsafe fn set_palette(&mut self, pos: Pos, id: u32) {
-    self.data.set(self.index(pos), id);
-  }
+  unsafe fn set_palette(&mut self, pos: Pos, id: u32) { self.data.set(self.index(pos), id); }
   /// Returns the palette id at the given position. This only reads from
   /// `self.data`.
   #[inline(always)]
-  unsafe fn get_palette(&self, pos: Pos) -> u32 {
-    self.data.get(self.index(pos))
-  }
+  unsafe fn get_palette(&self, pos: Pos) -> u32 { self.data.get(self.index(pos)) }
   /// This adds a new item to the palette. It will shift all block data, and
   /// extend bits per block (if needed). It will also update the palettes, and
   /// shift the block amounts around. It will not modify the actual amounts in
@@ -134,15 +124,11 @@ impl Section {
     self.data.shift_all_above(id, -1);
   }
   /// Returns the palette of this chunk.
-  pub fn palette(&self) -> &[u32] {
-    &self.palette
-  }
+  pub fn palette(&self) -> &[u32] { &self.palette }
   // Returns the number of non air blocks in this chunk. Because paletted chunks
   // track all the amounts of blocks within the chunk, this is a single Vec
   // lookup.
-  pub fn non_air_blocks(&self) -> u32 {
-    4096 - self.block_amounts[0]
-  }
+  pub fn non_air_blocks(&self) -> u32 { 4096 - self.block_amounts[0] }
 }
 
 impl ChunkSection for Section {
@@ -273,7 +259,5 @@ impl ChunkSection for Section {
       reverse_palette: self.reverse_palette.clone(),
     })
   }
-  fn unwrap_paletted(&self) -> &Self {
-    self
-  }
+  fn unwrap_paletted(&self) -> &Self { self }
 }

@@ -144,9 +144,7 @@ impl<'a> ReaderTypes<'a> {
       }
     }
   }
-  fn var_type(&self, var: usize) -> RType {
-    self.var_types[var].clone()
-  }
+  fn var_type(&self, var: usize) -> RType { self.var_types[var].clone() }
 
   fn op_type(&mut self, initial: RType, op: &Op) -> RType {
     match op {
