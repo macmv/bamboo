@@ -56,6 +56,14 @@ impl Packet {
   pub fn from_tcp(p: GPacket, ver: ProtocolVersion) -> Result<Self, ReadError> {
     Ok(match p {
       GPacket::PlayerV8 { on_ground, .. } => Packet::PlayerOnGround { on_ground },
+      // TODO: The `super` call in the player movement packets is not parsed correctly.
+      GPacket::PlayerLookV8 { yaw, pitch, .. } => {
+        Packet::PlayerLook { yaw, pitch, on_ground: false }
+      }
+      GPacket::PlayerPosLookV8 { x, y, z, yaw, pitch, .. } => {
+        Packet::PlayerPosLook { x, y, z, yaw, pitch, on_ground: false }
+      }
+      GPacket::PlayerPositionV8 { x, y, z, .. } => Packet::PlayerPos { x, y, z, on_ground: false },
       _ => return Err(ReadError { packet: p, kind: ReadErrorKind::UnknownPacket }),
     })
   }
