@@ -350,9 +350,8 @@ impl<'a, S: PacketStream + Send + Sync> Conn<'a, S> {
     // The only error here is EOF, which means the garbage buffer was not enough
     // space for this packet.
 
-    // TODO: Repalce tcp::Packet with MessageWrite
     let mut m = MessageWriter::new(&mut self.garbage);
-    p.to_sc(&mut m);
+    p.to_sc(&mut m).unwrap();
 
     let mut prefix = [0; 5];
     let mut m = MessageWriter::new(&mut prefix);

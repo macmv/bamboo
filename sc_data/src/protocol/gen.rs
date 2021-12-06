@@ -12,13 +12,11 @@ pub fn generate(def: Vec<(Version, PacketDef)>, dir: &Path) -> io::Result<()> {
   let mut all_sb_packets = PacketCollection::new();
 
   for (ver, def) in def {
-    for (i, mut p) in def.clientbound.into_iter().enumerate() {
-      p.tcp_id = i as i32;
-      all_cb_packets.add(ver, p);
+    for (i, p) in def.clientbound.into_iter().enumerate() {
+      all_cb_packets.add(ver, p, i as i32);
     }
-    for (i, mut p) in def.serverbound.into_iter().enumerate() {
-      p.tcp_id = i as i32;
-      all_sb_packets.add(ver, p);
+    for (i, p) in def.serverbound.into_iter().enumerate() {
+      all_sb_packets.add(ver, p, i as i32);
     }
   }
 
@@ -36,20 +34,26 @@ pub fn generate(def: Vec<(Version, PacketDef)>, dir: &Path) -> io::Result<()> {
 }
 #[derive(Debug)]
 struct PacketCollection {
-  packets: HashMap<String, Vec<(Version, Packet)>>,
-  classes: HashMap<Version, HashMap<String, Packet>>,
+  // Maps packet names to [version, packet]
+  packets:  HashMap<String, Vec<(Version, Packet)>>,
+  // Maps versions to packet class -> packet
+  classes:  HashMap<Version, HashMap<String, Packet>>,
+  // Maps versions to packet name -> tcp id
+  versions: HashMap<Version, HashMap<String, i32>>,
 }
 
 impl PacketCollection {
   pub fn new() -> Self {
     PacketCollection {
-      packets: HashMap::new(),
-      classes: crate::VERSIONS.iter().map(|v| (*v, HashMap::new())).collect(),
+      packets:  HashMap::new(),
+      classes:  crate::VERSIONS.iter().map(|v| (*v, HashMap::new())).collect(),
+      versions: crate::VERSIONS.iter().map(|v| (*v, HashMap::new())).collect(),
     }
   }
-  pub fn add(&mut self, ver: Version, mut p: Packet) {
+  pub fn add(&mut self, ver: Version, mut p: Packet, tcp_id: i32) {
     simplify::pass(&mut p);
     self.classes.get_mut(&ver).unwrap().insert(p.class.clone(), p.clone());
+    self.versions.get_mut(&ver).unwrap().insert(p.name.clone(), tcp_id);
     let list = self.packets.entry(p.name.clone()).or_insert_with(|| vec![]);
     if let Some((_, last)) = list.last() {
       if *last == p {
@@ -159,7 +163,9 @@ impl PacketCollection {
                   gen.write("V");
                   gen.write(&ver.maj.to_string());
                   gen.write(" { .. } => ");
-                  gen.write(&p.tcp_id.to_string());
+                  // NOTE: We use `v` here instead of `ver`, as `v` is the specific version we are
+                  // matching against.
+                  gen.write(&self.versions[v].get(&p.name).unwrap_or(&0).to_string());
                   gen.write_line(",");
                   break;
                 }
@@ -302,9 +308,11 @@ impl PacketCollection {
                   if ver.maj > v.maj {
                     break;
                   }
-                  gen.write(&sug_id.to_string());
+                  // NOTE: We use `v` here instead of `ver`, as `v` is the specific version we are
+                  // matching against.
+                  gen.write(&self.versions[v].get(&p.name).unwrap_or(&0).to_string());
                   gen.write(" => ");
-                  gen.write(&p.tcp_id.to_string());
+                  gen.write(&sug_id.to_string());
                   gen.write(", // ");
                   gen.write_line(&p.name);
                   break;

@@ -61,10 +61,6 @@ pub struct Packet {
   /// writing. There are a few differing instructions (like read/writer field),
   /// but the same `Instr` type should be used for both the reader and writer.
   pub writer:  VarBlock,
-
-  /// The index in the data array that comes from sugarcane-data.
-  #[serde(skip_deserializing)]
-  pub tcp_id: i32,
 }
 
 impl PartialEq for Packet {
