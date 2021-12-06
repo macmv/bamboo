@@ -95,7 +95,9 @@ fn update_old_blocks(def: &mut BlockDef) {
 
 fn convert_old_name(name: &mut String) {
   let new = match name.as_str() {
+    // MINECRAFT GO BRRRRRR
     "grass" => "grass_block",
+    "tallgrass" => "grass",
     _ => return,
   };
   *name = new.into();
@@ -104,10 +106,49 @@ fn convert_old_name(name: &mut String) {
 fn old_state(b: &Block, sid: u32, state: &State, old_map: &HashMap<String, Block>) -> u32 {
   match b.name.as_str() {
     "oak_log" => match state.enum_prop("axis") {
-      "X" => old_map["log"].id + 0,
-      "Y" => old_map["log"].id + 4,
-      "Z" => old_map["log"].id + 8,
+      "X" => old_map["log"].id + 0 + 4,
+      "Y" => old_map["log"].id + 0 + 0,
+      "Z" => old_map["log"].id + 0 + 8,
       _ => unreachable!(),
+    },
+    "spruce_log" => match state.enum_prop("axis") {
+      "X" => old_map["log"].id + 1 + 4,
+      "Y" => old_map["log"].id + 1 + 0,
+      "Z" => old_map["log"].id + 1 + 8,
+      _ => unreachable!(),
+    },
+    "birch_log" => match state.enum_prop("axis") {
+      "X" => old_map["log"].id + 2 + 4,
+      "Y" => old_map["log"].id + 2 + 0,
+      "Z" => old_map["log"].id + 2 + 8,
+      _ => unreachable!(),
+    },
+    "jungle_log" => match state.enum_prop("axis") {
+      "X" => old_map["log"].id + 3 + 4,
+      "Y" => old_map["log"].id + 3 + 0,
+      "Z" => old_map["log"].id + 3 + 8,
+      _ => unreachable!(),
+    },
+    "oak_wood" => old_map["log"].id + 4 + 0,
+    "spruce_wood" => old_map["log"].id + 4 + 1,
+    "birch_wood" => old_map["log"].id + 4 + 2,
+    "jungle_wood" => old_map["log"].id + 4 + 3,
+
+    "oak_leaves" => match state.bool_prop("persistent") {
+      true => old_map["leaves"].id + 0 + 0,
+      false => old_map["leaves"].id + 0 + 8,
+    },
+    "spruce_leaves" => match state.bool_prop("persistent") {
+      true => old_map["leaves"].id + 1 + 0,
+      false => old_map["leaves"].id + 1 + 8,
+    },
+    "birch_leaves" => match state.bool_prop("persistent") {
+      true => old_map["leaves"].id + 2 + 0,
+      false => old_map["leaves"].id + 2 + 8,
+    },
+    "jungle_leaves" => match state.bool_prop("persistent") {
+      true => old_map["leaves"].id + 3 + 0,
+      false => old_map["leaves"].id + 3 + 8,
     },
     _ => old_map.get(&b.name).unwrap_or(&old_map["air"]).id + sid,
   }

@@ -225,11 +225,25 @@ impl Block {
 }
 
 impl State {
+  pub fn prop(&self, name: &str) -> &StateProp {
+    self
+      .props
+      .iter()
+      .find(|p| p.name == name)
+      .unwrap_or_else(|| panic!("could not find property {}. valid properties: {:?}", name, self))
+  }
   pub fn enum_prop(&self, name: &str) -> &str {
-    let p = self.props.iter().find(|p| p.name == name).unwrap();
+    let p = self.prop(name);
     match &p.kind {
       StatePropKind::Enum(_, name) => name,
       _ => panic!("not an enum: {:?}", p),
+    }
+  }
+  pub fn bool_prop(&self, name: &str) -> bool {
+    let p = self.prop(name);
+    match &p.kind {
+      StatePropKind::Bool(v) => *v,
+      _ => panic!("not a bool: {:?}", p),
     }
   }
 }
