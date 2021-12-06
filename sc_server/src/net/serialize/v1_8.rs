@@ -27,6 +27,14 @@ pub fn serialize_chunk(pos: ChunkPos, c: &MultiChunk) -> cb::Packet {
 
   // The most it will be is data_len + max varint len
   let mut chunk_data = Buffer::new(Vec::with_capacity(data_len + 5));
+
+  for (y, s) in c.sections().into_iter().enumerate() {
+    if s.is_some() {
+      bit_map |= 1 << y;
+    }
+  }
+
+  chunk_data.write_u16(bit_map);
   chunk_data.write_varint(data_len.try_into().unwrap());
   let prefix_len = chunk_data.len();
 
