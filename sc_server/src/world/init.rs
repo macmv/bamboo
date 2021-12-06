@@ -227,7 +227,6 @@ impl World {
       }
     }
 
-    // This is the compass packet. TODO: Find the right spawn position packet.
     player.send(cb::Packet::PlayerPosLookV8 {
       x:              0.0,  // X
       y:              60.0, // Y

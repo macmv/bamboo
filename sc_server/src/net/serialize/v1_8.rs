@@ -38,10 +38,9 @@ pub fn serialize_chunk(pos: ChunkPos, c: &MultiChunk) -> cb::Packet {
   chunk_data.write_varint(data_len.try_into().unwrap());
   let prefix_len = chunk_data.len();
 
-  for (y, s) in c.sections().into_iter().enumerate() {
+  for s in c.sections().into_iter() {
     if let Some(s) = s {
       let s = s.unwrap_fixed();
-      bit_map |= 1 << y;
       // These are little endian. I'm assuming that the person who wrote the
       // networking for Minecraft and the person who wrote chunk decoding were not
       // consistent.
