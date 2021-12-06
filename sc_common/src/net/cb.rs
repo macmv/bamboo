@@ -1,4 +1,4 @@
-use crate::{math::Pos, util::Buffer, version::ProtocolVersion};
+use crate::{chunk::paletted::Section, math::Pos, util::Buffer, version::ProtocolVersion};
 use sc_generated::net::cb::Packet as GPacket;
 use std::{error::Error, fmt};
 
@@ -13,12 +13,12 @@ pub enum Packet {
     ty:  u32,
   },
   Chunk {
-    x:       i32,
-    z:       i32,
-    palette: Vec<u32>,
-    blocks:  Vec<u32>,
+    x:        i32,
+    z:        i32,
+    bit_map:  u16,
+    sections: Vec<Section>,
     /// Temporary. Will be removed once the proxy has block data.
-    unknown: Vec<u8>,
+    unknown:  Vec<u8>,
   },
   EntityVelocity {
     eid: i32,
@@ -76,7 +76,7 @@ impl Packet {
   pub fn to_tcp(self, ver: ProtocolVersion) -> Result<GPacket, WriteError> {
     Ok(match self {
       // Packet::Chunk { .. } => GPacket::ChunkDataV8 {},
-      Packet::Chunk { x, z, palette, blocks, unknown } => GPacket::ChunkDataV8 {
+      Packet::Chunk { x, z, bit_map, sections, unknown } => GPacket::ChunkDataV8 {
         chunk_x: x,
         chunk_z: z,
         field_149279_g: true,

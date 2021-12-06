@@ -1,3 +1,4 @@
+use sc_transfer::{MessageRead, MessageReader, MessageWrite, MessageWriter, ReadError, WriteError};
 use std::fmt;
 
 /// A resizable element vector. It is always 4096 items long, as that is the
@@ -13,6 +14,19 @@ pub struct BitArray {
   bpe:  u8,
   /// The actual data
   data: Vec<u64>,
+}
+
+impl MessageWrite for BitArray {
+  fn write(&self, m: &mut MessageWriter) -> Result<(), WriteError> {
+    m.write(&self.bpe)?;
+    m.write(&self.data)?;
+    Ok(())
+  }
+}
+impl MessageRead for BitArray {
+  fn read(m: &mut MessageReader) -> Result<Self, ReadError> {
+    Ok(BitArray { bpe: m.read()?, data: m.read()? })
+  }
 }
 
 impl fmt::Debug for BitArray {

@@ -1,6 +1,7 @@
 use super::section::Section as ChunkSection;
 
 use crate::math::{Pos, PosError, WyHashBuilder};
+use sc_transfer::{MessageRead, MessageReader, MessageWrite, MessageWriter, ReadError, WriteError};
 use std::collections::HashMap;
 
 mod bits;
@@ -9,7 +10,7 @@ mod tests;
 
 use bits::BitArray;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Section {
   data:            BitArray,
   // Each index into palette is a palette id. The values are global ids.
@@ -25,6 +26,33 @@ impl Default for Section {
     let mut reverse_palette = HashMap::with_hasher(WyHashBuilder);
     reverse_palette.insert(0, 0);
     Section { data: BitArray::new(4), palette: vec![0], block_amounts: vec![4096], reverse_palette }
+  }
+}
+
+impl MessageWrite for Section {
+  fn write(&self, m: &mut MessageWriter) -> Result<(), WriteError> {
+    m.write(&self.data)?;
+    m.write(&self.palette)?;
+    m.write(&self.block_amounts)?;
+    m.write_u32(self.reverse_palette.len() as u32)?;
+    for (k, v) in &self.reverse_palette {
+      m.write_u32(*k)?;
+      m.write_u32(*v)?;
+    }
+    Ok(())
+  }
+}
+impl MessageRead for Section {
+  fn read(m: &mut MessageReader) -> Result<Self, ReadError> {
+    let data = m.read()?;
+    let palette = m.read()?;
+    let block_amounts = m.read()?;
+    let len = m.read_u32()?;
+    let mut reverse_palette = HashMap::with_capacity_and_hasher(len as usize, WyHashBuilder);
+    for _ in 0..len {
+      reverse_palette.insert(m.read_u32()?, m.read_u32()?);
+    }
+    Ok(Section { data, palette, block_amounts, reverse_palette })
   }
 }
 

@@ -8,6 +8,7 @@ use std::convert::TryInto;
 
 pub fn serialize_chunk(pos: ChunkPos, c: &MultiChunk) -> cb::Packet {
   let mut bit_map = 0;
+  let paletted = c.get_paletted();
   let c = c.get_fixed();
 
   let skylight = true;
@@ -64,10 +65,13 @@ pub fn serialize_chunk(pos: ChunkPos, c: &MultiChunk) -> cb::Packet {
   debug_assert_eq!(chunk_data.len() - prefix_len, data_len, "unexpected chunk data len");
 
   cb::Packet::Chunk {
-    x:       pos.x(),
-    z:       pos.z(),
-    palette: vec![],
-    blocks:  vec![],
+    x: pos.x(),
+    z: pos.z(),
+    bit_map,
+    sections: paletted
+      .sections()
+      .filter_map(|c| c.as_ref().map(|c| c.unwrap_paletted().clone()))
+      .collect(),
     /* chunk_x:        pos.x(),
      * chunk_z:        pos.z(),
      * field_149279_g: true, // ground up
