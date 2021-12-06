@@ -1,4 +1,4 @@
-use super::{BlockDef, Prop, PropKind};
+use super::{Block, BlockDef, Prop, PropKind, State};
 use crate::{gen::CodeGen, Version};
 use std::collections::HashMap;
 
@@ -57,10 +57,17 @@ fn find_ids(ver: Version, old_def: &BlockDef, new_def: &BlockDef) -> (Vec<u32>, 
 
   let mut to_old = Vec::with_capacity(new_def.blocks.len());
   for b in &new_def.blocks {
-    let old_block = old_map.get(&b.name).unwrap_or(&old_map["air"]);
-    for (_sid, _) in b.all_states().iter().enumerate() {
-      // let sid = sid as u32;
-      to_old.push(old_block.id);
+    if ver.maj <= 12 {
+      for (sid, state) in b.all_states().iter().enumerate() {
+        let sid = sid as u32;
+        let old_state = old_state(&b, sid, state, &old_map);
+        to_old.push(old_state);
+      }
+    } else {
+      let old_block = old_map.get(&b.name).unwrap_or(&old_map["air"]);
+      for _ in b.all_states().iter() {
+        to_old.push(old_block.id);
+      }
     }
   }
 
@@ -92,4 +99,16 @@ fn convert_old_name(name: &mut String) {
     _ => return,
   };
   *name = new.into();
+}
+
+fn old_state(b: &Block, sid: u32, state: &State, old_map: &HashMap<String, Block>) -> u32 {
+  match b.name.as_str() {
+    "oak_log" => match state.enum_prop("axis") {
+      "X" => old_map["log"].id + 0,
+      "Y" => old_map["log"].id + 4,
+      "Z" => old_map["log"].id + 8,
+      _ => unreachable!(),
+    },
+    _ => old_map.get(&b.name).unwrap_or(&old_map["air"]).id + sid,
+  }
 }

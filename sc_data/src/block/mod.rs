@@ -161,7 +161,13 @@ pub struct State {
 }
 
 #[derive(Debug, Clone)]
-pub enum StateProp {
+pub struct StateProp {
+  name: String,
+  kind: StatePropKind,
+}
+
+#[derive(Debug, Clone)]
+pub enum StatePropKind {
   Bool(bool),
   Enum(usize, String),
   Int(i32),
@@ -179,10 +185,13 @@ impl Prop {
   }
 
   pub fn state(&self, id: u32) -> StateProp {
-    match &self.kind {
-      PropKind::Bool => StateProp::Bool(id != 0),
-      PropKind::Enum(v) => StateProp::Enum(id as usize, v[id as usize].clone()),
-      PropKind::Int { .. } => StateProp::Int(id as i32),
+    StateProp {
+      name: self.name.clone(),
+      kind: match &self.kind {
+        PropKind::Bool => StatePropKind::Bool(id != 0),
+        PropKind::Enum(v) => StatePropKind::Enum(id as usize, v[id as usize].clone()),
+        PropKind::Int { .. } => StatePropKind::Int(id as i32),
+      },
     }
   }
 }
@@ -212,6 +221,16 @@ impl Block {
       }
     }
     states
+  }
+}
+
+impl State {
+  pub fn enum_prop(&self, name: &str) -> &str {
+    let p = self.props.iter().find(|p| p.name == name).unwrap();
+    match &p.kind {
+      StatePropKind::Enum(_, name) => name,
+      _ => panic!("not an enum: {:?}", p),
+    }
   }
 }
 
