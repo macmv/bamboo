@@ -209,7 +209,6 @@ impl Connection {
                   format!("while reading packet got err: {}", err),
                 )
               })?;
-              info!("got packet: {:?}", p);
               let n = m.index();
               if n != len as usize {
                 return Err(io::Error::new(
@@ -387,19 +386,18 @@ impl Connection {
           };
         }
       }
-      sb::Packet::Position { x, y, z, on_ground: _ } => {
-        player.set_next_pos(x, y, z);
-      }
-      sb::Packet::PositionLook { x, y, z, yaw, pitch, on_ground: _ } => {
-        player.set_next_pos(x, y, z);
-        player.set_next_look(yaw, pitch);
-      }
-      sb::Packet::Look { yaw, pitch, on_ground: _ } => {
-        player.set_next_look(yaw, pitch);
-      }
       */
-      // _ => warn!("got unknown packet from client: {:?}", p),
-      _ => (),
+      sb::Packet::PlayerPositionV8 { x, y, z, .. } => {
+        player.set_next_pos(x, y, z);
+      }
+      sb::Packet::PlayerPosLookV8 { x, y, z, yaw, pitch, .. } => {
+        player.set_next_pos(x, y, z);
+        player.set_next_look(yaw, pitch);
+      }
+      sb::Packet::PlayerLookV8 { yaw, pitch, .. } => {
+        player.set_next_look(yaw, pitch);
+      }
+      _ => warn!("got unknown packet from client: {:?}", p),
     }
   }
 
