@@ -141,3 +141,61 @@ impl Default for Material {
     Material::Air
   }
 }
+
+#[derive(Debug, Clone)]
+pub struct State {
+  props: Vec<StateProp>,
+}
+
+#[derive(Debug, Clone)]
+pub enum StateProp {
+  Bool(bool),
+  Enum(usize, String),
+  Int(i32),
+}
+
+impl Prop {
+  pub fn len(&self) -> u32 {
+    match &self.kind {
+      PropKind::Bool => 2,
+      PropKind::Enum(v) => v.len() as u32,
+      PropKind::Int { min, max } => max - min,
+    }
+  }
+
+  pub fn state(&self, id: u32) -> StateProp {
+    match &self.kind {
+      PropKind::Bool => StateProp::Bool(id != 0),
+      PropKind::Enum(v) => StateProp::Enum(id as usize, v[id as usize].clone()),
+      PropKind::Int { .. } => StateProp::Int(id as i32),
+    }
+  }
+}
+
+impl Block {
+  pub fn all_states(&self) -> Vec<State> {
+    if self.properties.is_empty() {
+      return vec![State { props: vec![] }];
+    }
+    let mut states = vec![];
+    let mut prop_ids = vec![0; self.properties.len()];
+    'all: loop {
+      prop_ids[0] += 1;
+      for i in 0..prop_ids.len() {
+        if prop_ids[i] >= self.properties[i].len() {
+          if i >= prop_ids.len() - 1 {
+            break 'all;
+          }
+          prop_ids[i] = 0;
+          prop_ids[i + 1] += 1;
+        } else {
+          break;
+        }
+      }
+      states.push(State {
+        props: prop_ids.iter().enumerate().map(|(i, id)| self.properties[i].state(*id)).collect(),
+      });
+    }
+    states
+  }
+}
