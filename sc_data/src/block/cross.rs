@@ -43,9 +43,9 @@ fn find_ids(ver: Version, old_def: &BlockDef, new_def: &BlockDef) -> (Vec<u32>, 
   let mut to_old = Vec::with_capacity(new_def.blocks.len());
   for b in &new_def.blocks {
     let old_block = old_map.get(&b.name).unwrap_or(&old_map["air"]);
-    for (sid, _) in b.all_states().iter().enumerate() {
-      let sid = sid as u32;
-      to_old.push(old_block.id + sid);
+    for (_sid, _) in b.all_states().iter().enumerate() {
+      // let sid = sid as u32;
+      to_old.push(old_block.id);
     }
   }
 
