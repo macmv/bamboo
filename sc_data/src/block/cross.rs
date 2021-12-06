@@ -84,23 +84,12 @@ fn find_ids(ver: Version, old_def: &BlockDef, new_def: &BlockDef) -> (Vec<u32>, 
 
 fn update_old_blocks(def: &mut BlockDef) {
   for b in &mut def.blocks {
-    convert_old_name(&mut b.name);
     // Old block ids are weird. In chunk data, they are left shifted by 4. The new
     // empty 4 bits are used for the 16 state ids. This means that if we want to do
     // state conversions correctly, we need to shift this over.
     b.id <<= 4;
     b.properties = vec![Prop { name: "id".into(), kind: PropKind::Int { min: 0, max: 16 } }];
   }
-}
-
-fn convert_old_name(name: &mut String) {
-  let new = match name.as_str() {
-    // MINECRAFT GO BRRRRRR
-    "grass" => "grass_block",
-    "tallgrass" => "grass",
-    _ => return,
-  };
-  *name = new.into();
 }
 
 fn old_state(b: &Block, sid: u32, state: &State, old_map: &HashMap<String, Block>) -> u32 {
@@ -150,6 +139,13 @@ fn old_state(b: &Block, sid: u32, state: &State, old_map: &HashMap<String, Block
       true => old_map["leaves"].id + 3 + 0,
       false => old_map["leaves"].id + 3 + 8,
     },
+
+    // MINECRAFT GO BRRRRRR
+    "grass_block" => old_map["grass"].id,
+    "grass" => old_map["tallgrass"].id + 1,
+
+    "dead_bush" => old_map["tallgrass"].id + 0,
+    "fern" => old_map["tallgrass"].id + 2,
     _ => old_map.get(&b.name).unwrap_or(&old_map["air"]).id + sid,
   }
 }
