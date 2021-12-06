@@ -308,6 +308,9 @@ pub enum Op {
 
   /// Used when casting in rust. Not present in json.
   As(RType),
+
+  /// Puts a `*` in front. Not present in json.
+  Deref,
 }
 
 /// A rust type.
@@ -327,7 +330,7 @@ impl RType {
   }
   pub fn is_copy(&self) -> bool {
     match self.name.as_str() {
-      "u8" | "i8" | "i16" | "i32" | "i64" | "f32" | "f64" | "Pos" | "UUID" => true,
+      "bool" | "u8" | "i8" | "i16" | "i32" | "i64" | "f32" | "f64" | "Pos" | "UUID" => true,
       "Option" => self.generics[0].is_copy(),
       _ => false,
     }
@@ -412,8 +415,10 @@ impl Op {
       Op::Idx(_) => 0,
       Op::Field(_) => 0,
 
+      Op::Deref => 0,
+
       Op::If(..) => 0,
-      Op::Call(..) => 0,
+      Op::Call(..) => 10,
       Op::WrapCall(..) => 10,
     }
   }

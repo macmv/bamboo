@@ -288,7 +288,7 @@ fn simplify_op(op: &mut Op) -> bool {
     }
     Op::Cast(_) => {}
 
-    Op::As(..) | Op::Neq(..) | Op::WrapCall(..) => unreachable!(),
+    _ => unreachable!(),
   }
   false
 }

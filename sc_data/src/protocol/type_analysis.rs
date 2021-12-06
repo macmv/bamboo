@@ -295,7 +295,7 @@ impl<'a> ReaderTypes<'a> {
         Instr::Expr(Expr::new(Value::Var(1)).op(Op::Call(
           class.clone(),
           writer_name.into(),
-          vec![self.type_cast(val, convert::reader_func_to_ty("", name))],
+          vec![self.writer_cast(val, convert::reader_func_to_ty("", name))],
         )))
       }
       Some(Op::If(_cond, _new)) => return None,
@@ -311,16 +311,22 @@ impl<'a> ReaderTypes<'a> {
     }
   }
 
-  fn type_cast(&mut self, mut expr: Expr, field_ty: RType) -> Expr {
+  fn writer_cast(&mut self, mut expr: Expr, field_ty: RType) -> Expr {
     let writer_ty = self.expr_type(&expr);
     if writer_ty != field_ty {
-      // dbg!(&self);
-      // dbg!(&writer_ty, &field_ty);
-      // panic!();
-      expr.ops.push(Op::As(field_ty));
-      expr
-    } else {
-      expr
+      expr.ops.extend(convert::type_cast(&writer_ty, &field_ty));
     }
+    if field_ty.is_copy()
+      && expr
+        .ops
+        .iter()
+        .nth(1)
+        // For Option::is_some()
+        .map(|v| matches!(v, Op::Call(class, _, _) if class != "Option"))
+        .unwrap_or(true)
+    {
+      expr.ops.insert(0, Op::Deref);
+    }
+    expr
   }
 }
