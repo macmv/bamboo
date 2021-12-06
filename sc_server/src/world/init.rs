@@ -165,7 +165,7 @@ impl World {
     world_names.write_str("minecraft:overworld");
 
     let mut out = Buffer::new(vec![]);
-    out.write_u8(0); // Creative
+    out.write_u8(1); // Creative
     out.write_i8(0); // Overworld
     out.write_i8(1); // Normal difficulty
     out.write_u8(0); // Max players
