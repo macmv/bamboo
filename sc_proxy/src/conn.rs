@@ -353,8 +353,13 @@ impl<'a, S: PacketStream + Send + Sync> Conn<'a, S> {
     // space for this packet.
 
     let mut m = MessageWriter::new(&mut self.garbage);
-    let common = csb::Packet::from_tcp(p, self.ver)
-      .unwrap_or_else(|e| panic!("error converting packet to a serverbound packet: {}", e));
+    let common = match csb::Packet::from_tcp(p, self.ver) {
+      Ok(p) => p,
+      Err(e) => {
+        warn!("could not convert packet: {}", e);
+        return Ok(());
+      }
+    };
     common.write(&mut m).unwrap();
     let len = m.index();
 

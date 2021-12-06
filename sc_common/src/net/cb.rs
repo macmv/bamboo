@@ -48,7 +48,7 @@ pub enum Packet {
     z:           f64,
     yaw:         f32,
     pitch:       f32,
-    flags:       u16,
+    flags:       u8,
     teleport_id: u32,
   },
   UnloadChunk {
@@ -112,16 +112,11 @@ impl Packet {
           unknown: out.into_inner(),
         }
       }
+      Packet::KeepAlive { id } => GPacket::KeepAliveV8 { id: id as i32 },
       Packet::PlayerHeader { header, footer } => GPacket::PlayerListHeaderV8 { header, footer },
-      Packet::SetPosLook { x, y, z, yaw, pitch, flags, teleport_id } => GPacket::PlayerPosLookV8 {
-        x,
-        y,
-        z,
-        yaw,
-        pitch,
-        field_179835_f: None,
-        unknown: flags.to_be_bytes().to_vec(),
-      },
+      Packet::SetPosLook { x, y, z, yaw, pitch, flags, teleport_id } => {
+        GPacket::PlayerPosLookV8 { x, y, z, yaw, pitch, field_179835_f: None, unknown: vec![flags] }
+      }
       _ => todo!("convert {:?} into generated packet", self),
     })
   }
