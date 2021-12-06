@@ -114,8 +114,22 @@ impl Packet {
       }
       Packet::KeepAlive { id } => GPacket::KeepAliveV8 { id: id as i32 },
       Packet::PlayerHeader { header, footer } => GPacket::PlayerListHeaderV8 { header, footer },
-      Packet::SetPosLook { x, y, z, yaw, pitch, flags, teleport_id } => {
+      Packet::SetPosLook { x, y, z, yaw, pitch, flags, teleport_id: _ } => {
         GPacket::PlayerPosLookV8 { x, y, z, yaw, pitch, field_179835_f: None, unknown: vec![flags] }
+      }
+      Packet::UnloadChunk { x, z } => {
+        if ver == ProtocolVersion::V1_8 {
+          GPacket::ChunkDataV8 {
+            chunk_x:        x,
+            chunk_z:        z,
+            field_149279_g: true,
+            extracted_data: None,
+            // Zero bit mask, then zero length varint
+            unknown:        vec![0, 0, 0],
+          }
+        } else {
+          GPacket::UnloadChunkV9 { x, z }
+        }
       }
       _ => todo!("convert {:?} into generated packet", self),
     })
