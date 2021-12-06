@@ -6,28 +6,6 @@ use sc_common::{
 };
 use std::convert::TryInto;
 
-pub fn serialize_chunk(pos: ChunkPos, c: &MultiChunk) -> cb::Packet {
-  let mut bit_map = 0;
-  let c = c.get_paletted();
-
-  for (y, s) in c.sections().enumerate() {
-    if s.is_some() {
-      bit_map |= 1 << y;
-    }
-  }
-
-  cb::Packet::Chunk {
-    x: pos.x(),
-    z: pos.z(),
-    bit_map,
-    sections: c
-      .sections()
-      .filter_map(|c| c.as_ref().map(|c| c.unwrap_paletted().clone()))
-      .collect(),
-  }
-}
-
-/*
 pub fn serialize_partial_chunk(pos: ChunkPos, c: &MultiChunk, min: u32, max: u32) -> cb::Packet {
   let mut bit_map = 0;
   let c = c.get_fixed();
@@ -112,4 +90,3 @@ where
     records_v1_16_2:           None,
   }
 }
-*/

@@ -333,8 +333,27 @@ impl World {
   ///
   /// If you are trying to produce a large block change packet, use
   /// [`serialize_partial_chunk`](Self::serialize_partial_chunk).
-  pub fn serialize_chunk(&self, pos: ChunkPos, ver: BlockVersion) -> cb::Packet {
-    self.chunk(pos, |c| crate::net::serialize::serialize_chunk(pos, &c, ver))
+  pub fn serialize_chunk(&self, pos: ChunkPos) -> cb::Packet {
+    self.chunk(pos, |c| {
+      let mut bit_map = 0;
+      let c = c.get_paletted();
+
+      for (y, s) in c.sections().enumerate() {
+        if s.is_some() {
+          bit_map |= 1 << y;
+        }
+      }
+
+      cb::Packet::Chunk {
+        x: pos.x(),
+        z: pos.z(),
+        bit_map,
+        sections: c
+          .sections()
+          .filter_map(|c| c.as_ref().map(|c| c.unwrap_paletted().clone()))
+          .collect(),
+      }
+    })
   }
 
   /// This serializes a chunk for the given version. This packet can be sent

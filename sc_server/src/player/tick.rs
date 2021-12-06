@@ -261,7 +261,7 @@ impl Player {
       for z in min.z()..=max.z() {
         let pos = ChunkPos::new(x, z);
         self.world.inc_view(pos);
-        self.send(self.world.serialize_chunk(pos, self.ver().block()));
+        self.send(self.world.serialize_chunk(pos));
       }
     }
   }

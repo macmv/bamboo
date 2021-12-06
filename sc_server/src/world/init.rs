@@ -212,7 +212,7 @@ impl World {
       for z in -view_distance..=view_distance {
         let pos = ChunkPos::new(x, z);
         self.inc_view(pos);
-        player.send(self.serialize_chunk(pos, player.ver().block()));
+        player.send(self.serialize_chunk(pos));
       }
     }
 
