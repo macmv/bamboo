@@ -63,13 +63,16 @@ impl CodeGen {
   }
   /// Writes an enum literal. Example:
   /// ```
-  /// # use data::gen::{CodeGen, EnumVariant};
+  /// # use sc_data::gen::{CodeGen, EnumVariant};
   /// # let mut gen = CodeGen::new();
-  /// gen.write_enum("Hello", &[
-  ///   EnumVariant::Named("Nothing"),
-  ///   EnumVariant::Tuple("Something", &["String", "i32"]),
-  ///   EnumVariant::Struct("Complex", &[("name", "String"), ("amount", "i32")]),
-  /// ]);
+  /// gen.write_enum("Hello", [
+  ///   EnumVariant::Named("Nothing".into()),
+  ///   EnumVariant::Tuple("Something".into(), vec!["String".into(), "i32".into()]),
+  ///   EnumVariant::Struct("Complex".into(), vec![
+  ///     ("name".into(), "String".into()),
+  ///     ("amount".into(), "i32".into()),
+  ///   ]),
+  /// ].into_iter());
   /// # let out = gen.into_output();
   /// # eprintln!("OUTPUT: {}", out);
   /// # assert_eq!(out,
@@ -104,7 +107,7 @@ impl CodeGen {
   }
   /// Writes an impl block. Example:
   /// ```
-  /// # use data::gen::{CodeGen, EnumVariant};
+  /// # use sc_data::gen::{CodeGen, EnumVariant};
   /// # let mut gen = CodeGen::new();
   /// gen.write_impl("Hello", |gen| {
   ///   gen.write_line("pub fn hello_world() {}");
@@ -137,7 +140,7 @@ impl CodeGen {
   }
   /// Writes a function. Example:
   /// ```
-  /// # use data::gen::{CodeGen, FuncArg};
+  /// # use sc_data::gen::{CodeGen, FuncArg};
   /// # let mut gen = CodeGen::new();
   /// gen.write_func("my_func", &[
   ///   FuncArg { name: "name", ty: "String" },
@@ -197,7 +200,7 @@ impl CodeGen {
   }
   /// Writes a match statement. Example:
   /// ```
-  /// # use data::gen::{CodeGen, FuncArg, MatchBranch};
+  /// # use sc_data::gen::{CodeGen, FuncArg, MatchBranch};
   /// # let mut gen = CodeGen::new();
   /// gen.write_match("var", |gen| {
   ///   gen.write_match_branch(Some("Option"), MatchBranch::Unit("None"));
@@ -209,8 +212,8 @@ impl CodeGen {
   /// # eprintln!("OUTPUT: {}", out);
   /// # assert_eq!(out,
   /// # r#"match var {
-  /// #   Option::None => println!("got nothing"),
-  /// #   Some(value) => println!("got something: {}", value),
+  /// #   Option::None => println!("got nothing!"),
+  /// #   Some(value) => println!("got something: {}!", value),
   /// # }
   /// # "#);
   /// ```
@@ -243,7 +246,7 @@ impl CodeGen {
   }
   /// Writes a block of code. Example:
   /// ```
-  /// # use data::gen::{CodeGen, FuncArg};
+  /// # use sc_data::gen::{CodeGen, FuncArg};
   /// # let mut gen = CodeGen::new();
   /// gen.write_block(|gen| {
   ///   gen.write_line("5 + 6");
@@ -274,7 +277,7 @@ impl CodeGen {
   }
   /// Writes a line comment. Example:
   /// ```
-  /// # use data::gen::CodeGen;
+  /// # use sc_data::gen::CodeGen;
   /// # let mut gen = CodeGen::new();
   /// gen.write_comment("Hello world!");
   /// # let out = gen.into_output();

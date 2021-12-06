@@ -1648,7 +1648,6 @@ dependencies = [
  "convert_case",
  "itertools",
  "serde",
- "serde_derive",
  "serde_json",
  "ureq",
 ]
