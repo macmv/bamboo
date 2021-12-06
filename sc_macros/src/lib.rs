@@ -234,8 +234,8 @@ pub fn packet(input: TokenStream) -> TokenStream {
                 )*
               }
             }
-            v => panic!("unknown packet id {}", v),
           )*
+          v => panic!("unknown packet id {}", v),
         })
       }
       pub fn write(&self, m: &mut sc_transfer::MessageWriter) -> Result<(), sc_transfer::WriteError> {

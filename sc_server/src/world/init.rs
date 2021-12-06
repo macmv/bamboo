@@ -164,15 +164,7 @@ impl World {
     world_names.write_varint(1);
     world_names.write_str("minecraft:overworld");
 
-    let mut out = Buffer::new(vec![]);
-    out.write_u8(1); // Creative
-    out.write_i8(0); // Overworld
-    out.write_i8(1); // Normal difficulty
-    out.write_u8(0); // Max players
-    out.write_str("default"); // World type
-    out.write_bool(false); // Don't reduce debug info
-
-    let out = cb::Packet::JoinGameV8 {
+    let out = cb::Packet::JoinGame {
       // entity_id:                self.eid(),
       // game_mode:                1,       // Creative
       // difficulty_removed_v1_14: Some(1), // Normal
@@ -201,16 +193,13 @@ impl World {
       // dimension_v1_16:          Some("".into()),
       // dimension_v1_16_2:        Some(NBT::new("", dimension).serialize()),
       // world_names_v1_16:        Some(world_names.into_inner()),
-      entity_id:          self.eid(),
+      eid:                self.eid(),
       hardcore_mode:      false,
-      game_type:          None,
-      dimension:          Some(0), // Overworld
-      difficulty:         Some(1), // Normal
-      max_players:        None,    // Ignored
-      world_type:         None,
-      reduced_debug_info: Some(false),
-      // Game type normal, dimension 0, difficulty 1,
-      unknown:            out.into_inner(),
+      game_mode:          1, // Creative
+      dimension:          0, // Overworld
+      level_type:         "default".into(),
+      difficulty:         1, // Normal
+      reduced_debug_info: false,
     };
 
     player.send(out);
@@ -227,15 +216,14 @@ impl World {
       }
     }
 
-    player.send(cb::Packet::PlayerPosLookV8 {
-      x:              0.0,  // X
-      y:              60.0, // Y
-      z:              0.0,  // Z
-      yaw:            0.0,  // Yaw
-      pitch:          0.0,  // Pitch
-      field_179835_f: None, // Flags
-      // teleport_id_v1_9: Some(1234), // TP id
-      unknown:        vec![0], // 0 flags
+    player.send(cb::Packet::SetPosLook {
+      x:           0.0,
+      y:           60.0,
+      z:           0.0,
+      yaw:         0.0,
+      pitch:       0.0,
+      flags:       0,
+      teleport_id: 1234,
     });
 
     /*

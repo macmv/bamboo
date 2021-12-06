@@ -290,20 +290,7 @@ impl Player {
     for x in min.x()..=max.x() {
       for z in min.z()..=max.z() {
         self.world.dec_view(ChunkPos::new(x, z));
-        if self.ver() == ProtocolVersion::V1_8 {
-          self.send(cb::Packet::ChunkDataV8 {
-            chunk_x:        x.into(),
-            chunk_z:        z.into(),
-            field_149279_g: true,
-            extracted_data: None,
-            // Bit mask is 0, length varint is 0
-            unknown:        vec![0, 0, 0],
-          });
-        } else {
-          /*
-          self.send(cb::Packet::UnloadChunk { chunk_x_v1_9: Some(x), chunk_z_v1_9: Some(z) });
-          */
-        }
+        self.send(cb::Packet::UnloadChunk { x: x.into(), z: z.into() });
       }
     }
   }

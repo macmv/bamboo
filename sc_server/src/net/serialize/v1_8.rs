@@ -63,12 +63,16 @@ pub fn serialize_chunk(pos: ChunkPos, c: &MultiChunk) -> cb::Packet {
   }
   debug_assert_eq!(chunk_data.len() - prefix_len, data_len, "unexpected chunk data len");
 
-  cb::Packet::ChunkDataV8 {
-    chunk_x:        pos.x(),
-    chunk_z:        pos.z(),
-    field_149279_g: true, // ground up
-    extracted_data: None,
-    unknown:        chunk_data.into_inner(),
+  cb::Packet::Chunk {
+    x:       pos.x(),
+    z:       pos.z(),
+    palette: vec![],
+    blocks:  vec![],
+    /* chunk_x:        pos.x(),
+     * chunk_z:        pos.z(),
+     * field_149279_g: true, // ground up
+     * extracted_data: None,
+     * unknown:        chunk_data.into_inner(), */
   }
 }
 

@@ -163,7 +163,7 @@ impl Connection {
 
   fn send_to_client(&mut self, p: cb::Packet) -> io::Result<()> {
     let mut m = MessageWriter::new(&mut self.garbage);
-    p.to_sc(&mut m).unwrap();
+    p.write(&mut m).unwrap();
     let len = m.index();
 
     let mut prefix = [0; 5];
@@ -203,7 +203,7 @@ impl Connection {
             // We already handshaked
             if let Some(ver) = self.ver {
               let mut m = MessageReader::new(&self.incoming);
-              let p = sb::Packet::from_sc(&mut m, ver).map_err(|err| {
+              let p = sb::Packet::read(&mut m).map_err(|err| {
                 io::Error::new(
                   io::ErrorKind::InvalidData,
                   format!("while reading packet got err: {}", err),
@@ -298,19 +298,20 @@ impl Connection {
   /// more than once.
   pub(crate) fn handle_packet(&self, wm: &Arc<WorldManager>, player: &Arc<Player>, p: sb::Packet) {
     match p {
-      sb::Packet::ChatV8 { message } => {
-        if message.chars().next() == Some('/') {
-          let mut chars = message.chars();
+      sb::Packet::Chat { msg } => {
+        if msg.chars().next() == Some('/') {
+          let mut chars = msg.chars();
           chars.next().unwrap();
           player.world().commands().execute(wm, player, chars.as_str());
         } else {
+          let text = msg;
           let mut msg = Chat::empty();
           msg.add("<");
           msg.add(player.username()).color(Color::BrightGreen).on_hover(HoverEvent::ShowText(
             format!("wow it is almost like {} sent this message", player.username()),
           ));
           msg.add("> ");
-          msg.add(message);
+          msg.add(text);
           player.world().broadcast(msg);
         }
       }
@@ -387,18 +388,18 @@ impl Connection {
         }
       }
       */
-      sb::Packet::PlayerPositionV8 { x, y, z, .. } => {
+      sb::Packet::PlayerPos { x, y, z, .. } => {
         player.set_next_pos(x, y, z);
       }
-      sb::Packet::PlayerPosLookV8 { x, y, z, yaw, pitch, .. } => {
+      sb::Packet::PlayerPosLook { x, y, z, yaw, pitch, .. } => {
         player.set_next_pos(x, y, z);
         player.set_next_look(yaw, pitch);
       }
-      sb::Packet::PlayerLookV8 { yaw, pitch, .. } => {
+      sb::Packet::PlayerLook { yaw, pitch, .. } => {
         player.set_next_look(yaw, pitch);
       }
       // Just contains on_ground
-      sb::Packet::PlayerV8 { .. } => {}
+      sb::Packet::PlayerOnGround { .. } => {}
       _ => warn!("got unknown packet from client: {:?}", p),
     }
   }

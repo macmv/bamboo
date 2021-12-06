@@ -188,16 +188,16 @@ impl Player {
 
   /// Sends the player a chat message.
   pub fn send_message(&self, msg: &Chat) {
-    self.send(cb::Packet::ChatV8 {
-      chat_component: msg.to_json(),
-      ty:             0, // Chat box, not system message or over hotbar
+    self.send(cb::Packet::Chat {
+      msg: msg.to_json(),
+      ty:  0, // Chat box, not system message or over hotbar
     });
   }
   /// Sends the player a chat message, which will appear over their hotbar.
   pub fn send_hotbar(&self, msg: &Chat) {
-    self.send(cb::Packet::ChatV8 {
-      chat_component: msg.to_json(),
-      ty:             2, // Hotbar, not chat box or system message
+    self.send(cb::Packet::Chat {
+      msg: msg.to_json(),
+      ty:  2, // Hotbar, not chat box or system message
     });
   }
   /// Disconnects the player. The given chat message will be shown on the
@@ -303,13 +303,9 @@ impl Player {
   /// block.
   pub fn sync_block_at(&self, pos: Pos) -> Result<(), PosError> {
     let ty = self.world().get_block(pos)?;
-    self.send(cb::Packet::BlockUpdateV8 {
-      block_position: pos,
-      block_state:    Some((
-        self.world().block_converter().to_old(ty.id(), self.ver().block()),
-        "".into(),
-      )),
-      unknown:        vec![],
+    self.send(cb::Packet::BlockUpdate {
+      pos,
+      state: self.world().block_converter().to_old(ty.id(), self.ver().block()),
     });
     Ok(())
   }

@@ -59,7 +59,7 @@ impl CommandTree {
 
     // nodes_v1_13:      Some(data.into_inner()),
     // root_index_v1_13: Some((nodes.len() - 1) as i32),
-    cb::Packet::CommandTreeV14 { command_tree: None, unknown: vec![] }
+    cb::Packet::Chat { msg: "".into(), ty: 0 }
   }
 }
 
