@@ -8,7 +8,7 @@ use syn::{
   parse::{Parse, ParseStream, Result},
   parse_macro_input,
   spanned::Spanned,
-  Attribute, Error, Expr, Fields, ItemEnum, Lit, LitInt, Token,
+  Attribute, Error, Expr, Lit, LitInt, Token,
 };
 
 mod transfer;

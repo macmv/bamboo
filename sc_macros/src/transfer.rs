@@ -1,10 +1,9 @@
 use proc_macro::TokenStream;
-use proc_macro2::Literal;
+use proc_macro2::{Literal, Span};
 use quote::quote;
 
 use syn::{
-  parse_macro_input, punctuated::Punctuated, Data, DeriveInput, Field, Fields, Ident, Token,
-  Variant,
+  parse_macro_input, punctuated::Punctuated, Data, DeriveInput, Fields, Ident, Token, Variant,
 };
 
 pub fn transfer(input: TokenStream) -> TokenStream {
@@ -18,43 +17,80 @@ pub fn transfer(input: TokenStream) -> TokenStream {
 }
 
 fn t_enum(name: Ident, variants: Punctuated<Variant, Token![,]>) -> TokenStream {
-  let id: Vec<_> =
-    variants.iter().enumerate().map(|(i, _)| Literal::u32_unsuffixed(i as u32)).collect();
-  let variant: Vec<_> = variants.iter().enumerate().map(|(_, v)| v.ident.clone()).collect();
-  let field: Vec<Vec<_>> = variants
+  let variant_read: Vec<_> = variants
     .iter()
     .enumerate()
-    .map(|(_, v)| match &v.fields {
-      Fields::Named(n) => n.named.iter().map(|f| f.ident.as_ref().unwrap()).collect(),
-      _ => panic!("must have struct variant for all packet variants"),
+    .map(|(id, v)| {
+      let variant = &v.ident;
+      let id = Literal::u32_unsuffixed(id as u32);
+      match &v.fields {
+        Fields::Named(f) => {
+          let field = f.named.iter().map(|v| &v.ident).collect::<Vec<_>>();
+          quote! {
+            #id => Self::#variant { #( #field: m.read()? ),* },
+          }
+        }
+        Fields::Unnamed(f) => {
+          let reader = f.unnamed.iter().map(|_| quote!(m.read()?));
+          quote! {
+            #id => Self::#variant(#( #reader ),*),
+          }
+        }
+        _ => todo!(),
+      }
+    })
+    .collect();
+  let variant_write: Vec<_> = variants
+    .iter()
+    .enumerate()
+    .map(|(id, v)| {
+      let variant = &v.ident;
+      let id = Literal::u32_unsuffixed(id as u32);
+      match &v.fields {
+        Fields::Named(f) => {
+          let field = f.named.iter().map(|v| &v.ident).collect::<Vec<_>>();
+          quote! {
+            Self::#variant { #( #field ),* } => {
+              m.write_u32(#id)?;
+              #( m.write(#field)?; )*
+            }
+          }
+        }
+        Fields::Unnamed(f) => {
+          let field = f
+            .unnamed
+            .iter()
+            .enumerate()
+            .map(|(i, _)| Ident::new(&format!("v{}", i), Span::call_site()))
+            .collect::<Vec<_>>();
+          quote! {
+            Self::#variant(#( #field ),*) => {
+              m.write_u32(#id)?;
+              #( m.write(#field)?; )*
+            }
+          }
+        }
+        _ => todo!(),
+      }
     })
     .collect();
 
   let out = quote! {
-    impl #name {
-      pub fn read(m: &mut sc_transfer::MessageReader) -> Result<Self, sc_transfer::ReadError> {
+    impl sc_transfer::MessageRead for #name {
+      fn read(m: &mut sc_transfer::MessageReader) -> Result<Self, sc_transfer::ReadError> {
         Ok(match m.read_u32()? {
           #(
-            #id => {
-              Self::#variant {
-                #(
-                  #field: m.read()?,
-                )*
-              }
-            }
+            #variant_read
           )*
           v => panic!("unknown packet id {}", v),
         })
       }
-      pub fn write(&self, m: &mut sc_transfer::MessageWriter) -> Result<(), sc_transfer::WriteError> {
+    }
+    impl sc_transfer::MessageWrite for #name {
+      fn write(&self, m: &mut sc_transfer::MessageWriter) -> Result<(), sc_transfer::WriteError> {
         match self {
           #(
-            Self::#variant { #( #field ),* } => {
-              m.write_u32(#id)?;
-              #(
-                m.write(#field)?;
-              )*
-            }
+            #variant_write
           )*
         }
         Ok(())
@@ -69,15 +105,17 @@ fn t_struct(name: Ident, fields: Fields) -> TokenStream {
     Fields::Named(f) => {
       let field = f.named.iter().map(|v| &v.ident).collect::<Vec<_>>();
       quote! {
-        impl #name {
-          pub fn read(m: &mut sc_transfer::MessageReader) -> Result<Self, sc_transfer::ReadError> {
+        impl sc_transfer::MessageRead for #name {
+          fn read(m: &mut sc_transfer::MessageReader) -> Result<Self, sc_transfer::ReadError> {
             Ok(Self {
               #(
                 #field: m.read()?,
               )*
             })
           }
-          pub fn write(&self, m: &mut sc_transfer::MessageWriter) -> Result<(), sc_transfer::WriteError> {
+        }
+        impl sc_transfer::MessageWrite for #name {
+          fn write(&self, m: &mut sc_transfer::MessageWriter) -> Result<(), sc_transfer::WriteError> {
             #(
               m.write(&self.#field)?;
             )*
