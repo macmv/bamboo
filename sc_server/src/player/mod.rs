@@ -8,7 +8,7 @@ use crate::{
 use sc_common::{
   math::{ChunkPos, FPos, Pos, PosError, Vec3},
   net::cb,
-  util::{Chat, UUID},
+  util::{Chat, GameMode, UUID},
   version::ProtocolVersion,
 };
 use std::{
@@ -80,6 +80,8 @@ pub struct Player {
   world:         Arc<World>,
   view_distance: u32,
 
+  game_mode: Mutex<GameMode>,
+
   inv: Mutex<PlayerInventory>,
 
   pos: Mutex<PlayerPosition>,
@@ -116,8 +118,9 @@ impl Player {
       ver,
       world,
       view_distance: 10,
-      inv: Mutex::new(PlayerInventory::new()),
-      pos: Mutex::new(PlayerPosition {
+      game_mode: GameMode::Creative.into(),
+      inv: PlayerInventory::new().into(),
+      pos: PlayerPosition {
         curr:       pos,
         prev:       pos,
         next:       pos,
@@ -125,7 +128,8 @@ impl Player {
         pitch:      0.0,
         next_yaw:   0.0,
         next_pitch: 0.0,
-      }),
+      }
+      .into(),
     }
   }
 

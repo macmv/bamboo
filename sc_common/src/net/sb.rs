@@ -1,4 +1,4 @@
-#[derive(Debug, Clone, sc_macros::Packet)]
+#[derive(Debug, Clone, sc_macros::Transfer)]
 pub enum Packet {
   Chat {
     msg: String,

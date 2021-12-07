@@ -227,6 +227,16 @@ impl World {
       teleport_id: 1234,
     });
 
+    // player.send(cb::Packet::PlayerList {
+    //   action: cb::PlayerList::Add(vec![cb::PlayerListAdd {
+    //     id:           player.id(),
+    //     name:         player.name(),
+    //     game_mode:    GameMode::Creative,
+    //     ping:         50,
+    //     display_name: None,
+    //   }]),
+    // });
+
     /*
     let mut info = Buffer::new(vec![]);
     let mut num_info = 1;

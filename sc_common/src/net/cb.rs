@@ -1,9 +1,10 @@
 use crate::{
   chunk::paletted::Section,
   math::{ChunkPos, Pos},
+  util::{GameMode, UUID},
 };
 
-#[derive(Debug, Clone, sc_macros::Packet)]
+#[derive(Debug, Clone, sc_macros::Transfer)]
 pub enum Packet {
   BlockUpdate {
     pos:   Pos,
@@ -63,6 +64,9 @@ pub enum Packet {
     header: String,
     footer: String,
   },
+  PlayerList {
+    action: PlayerListAction,
+  },
   SetPosLook {
     x:           f64,
     y:           f64,
@@ -78,4 +82,58 @@ pub enum Packet {
   UpdateViewPos {
     pos: ChunkPos,
   },
+}
+
+#[derive(Debug, Clone, sc_macros::Transfer)]
+pub enum PlayerListAction {
+  Add(Vec<PlayerListAdd>),
+  UpdateGameMode(Vec<PlayerListGameMode>),
+  UpdateLatency(Vec<PlayerListLatency>),
+  UpdateDisplayName(Vec<PlayerListDisplay>),
+  Remove(Vec<PlayerListRemove>),
+}
+
+/// A single entry in the player list. This is what defines the tab list the
+/// players see ingame. This is also how the client knows what skin to display
+/// for each client. If this is not sent, the client will not spawn a player if
+/// they receive a SpawnPlayer packet.
+#[derive(Debug, Clone, sc_macros::Transfer)]
+pub struct PlayerListAdd {
+  /// Player's UUID.
+  pub id:           UUID,
+  /// The player's username.
+  pub name:         String,
+  pub game_mode:    GameMode,
+  /// Their ping in milliseconds.
+  pub ping:         i32,
+  /// An optional display name. If present, this will replace their username in
+  /// the tab list.
+  pub display_name: Option<String>,
+}
+
+/// See [`PlayerListAdd`]
+#[derive(Debug, Clone, sc_macros::Transfer)]
+pub struct PlayerListGameMode {
+  pub id:        UUID,
+  pub game_mode: GameMode,
+}
+
+/// See [`PlayerListAdd`]
+#[derive(Debug, Clone, sc_macros::Transfer)]
+pub struct PlayerListLatency {
+  pub id:   UUID,
+  pub ping: i32,
+}
+
+/// See [`PlayerListAdd`]
+#[derive(Debug, Clone, sc_macros::Transfer)]
+pub struct PlayerListDisplay {
+  pub id:           UUID,
+  pub display_name: Option<String>,
+}
+
+/// See [`PlayerListAdd`]
+#[derive(Debug, Clone, sc_macros::Transfer)]
+pub struct PlayerListRemove {
+  pub id: UUID,
 }
