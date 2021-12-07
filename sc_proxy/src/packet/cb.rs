@@ -36,7 +36,7 @@ impl ToTcp for Packet {
       }
       Packet::Chunk { pos, bit_map, sections } => super::chunk(pos, bit_map, sections, ver, conv),
       Packet::EntityLook { eid, yaw, pitch, on_ground } => GPacket::EntityLookV8 {
-        entity_id: Some(eid),
+        entity_id: eid,
         pos_x: None,
         pos_y: None,
         pos_z: None,
@@ -48,7 +48,7 @@ impl ToTcp for Packet {
       Packet::EntityMove { eid, x, y, z, on_ground } => {
         if ver == ProtocolVersion::V1_8 {
           GPacket::EntityRelMoveV8 {
-            entity_id: Some(eid),
+            entity_id: eid,
             pos_x: (x / (4096 / 32)) as i8,
             pos_y: (y / (4096 / 32)) as i8,
             pos_z: (z / (4096 / 32)) as i8,
@@ -59,7 +59,7 @@ impl ToTcp for Packet {
           }
         } else {
           GPacket::EntityRelMoveV9 {
-            entity_id: Some(eid),
+            entity_id: eid,
             pos_x: x.into(),
             pos_y: y.into(),
             pos_z: z.into(),
@@ -73,7 +73,7 @@ impl ToTcp for Packet {
       Packet::EntityMoveLook { eid, x, y, z, yaw, pitch, on_ground } => {
         if ver == ProtocolVersion::V1_8 {
           GPacket::EntityLookMoveV8 {
-            entity_id: Some(eid),
+            entity_id: eid,
             pos_x: (x / (4096 / 32)) as i8,
             pos_y: (y / (4096 / 32)) as i8,
             pos_z: (z / (4096 / 32)) as i8,
@@ -84,7 +84,7 @@ impl ToTcp for Packet {
           }
         } else {
           GPacket::EntityLookMoveV9 {
-            entity_id: Some(eid),
+            entity_id: eid,
             pos_x: x.into(),
             pos_y: y.into(),
             pos_z: z.into(),
