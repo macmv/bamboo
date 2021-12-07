@@ -910,12 +910,4 @@ impl<'a> InstrWriter<'a> {
     }
     None
   }
-  pub fn get_field_mut(&mut self, name: &str) -> Option<&mut Field> {
-    for f in self.fields.iter_mut() {
-      if f.name == name {
-        return Some(f);
-      }
-    }
-    None
-  }
 }

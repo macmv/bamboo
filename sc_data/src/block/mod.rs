@@ -36,7 +36,11 @@ pub struct BlockDef {
   blocks: Vec<Block>,
 }
 
+/// A block in any version. This has `#[allow(dead_code)]` because this is a
+/// 1-to-1 with the json data, and I don't want to forget about information
+/// included in the json.
 #[derive(Debug, Clone, Default, Deserialize)]
+#[allow(dead_code)]
 pub struct Block {
   /// The id of the block.
   id:               u32,
