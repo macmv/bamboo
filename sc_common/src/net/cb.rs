@@ -117,7 +117,13 @@ impl Packet {
           unknown: out.into_inner(),
         }
       }
-      Packet::KeepAlive { id } => GPacket::KeepAliveV8 { id: id as i32 },
+      Packet::KeepAlive { id } => {
+        if ver < ProtocolVersion::V1_12_2 {
+          GPacket::KeepAliveV8 { id: id as i32 }
+        } else {
+          GPacket::KeepAliveV12 { id: id.into() }
+        }
+      }
       Packet::PlayerHeader { header, footer } => GPacket::PlayerListHeaderV8 { header, footer },
       Packet::SetPosLook { x, y, z, yaw, pitch, flags, teleport_id } => {
         let mut buf = Buffer::new(vec![]);
