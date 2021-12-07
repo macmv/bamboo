@@ -1,4 +1,4 @@
-use super::{convert, Cond, Expr, Field, Instr, Lit, Op, Packet, Type, Value};
+use super::{convert, Cond, Expr, Field, Instr, Lit, Op, Packet, RType, Type, Value};
 use convert_case::{Case, Casing};
 
 pub fn pass(p: &mut Packet) {
@@ -7,7 +7,7 @@ pub fn pass(p: &mut Packet) {
     p.reader.block = p.reader.block[..l].to_vec();
     p.fields.push(Field {
       name:        "unknown".into(),
-      ty:          Type::Array(Box::new(Type::Byte)),
+      ty:          Type::Rust(RType::new("Vec").generic("u8")),
       reader_type: None,
       option:      false,
       initialized: false,

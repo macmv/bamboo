@@ -368,7 +368,7 @@ impl Type {
     RType::new(match self {
       Self::Void => unreachable!(),
       Self::Bool => "bool",
-      Self::Byte => "u8",
+      Self::Byte => "i8",
       Self::Short => "i16",
       Self::Int => "i32",
       Self::Long => "i64",
