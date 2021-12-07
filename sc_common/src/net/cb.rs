@@ -119,8 +119,21 @@ impl Packet {
       }
       Packet::KeepAlive { id } => GPacket::KeepAliveV8 { id: id as i32 },
       Packet::PlayerHeader { header, footer } => GPacket::PlayerListHeaderV8 { header, footer },
-      Packet::SetPosLook { x, y, z, yaw, pitch, flags, teleport_id: _ } => {
-        GPacket::PlayerPosLookV8 { x, y, z, yaw, pitch, field_179835_f: None, unknown: vec![flags] }
+      Packet::SetPosLook { x, y, z, yaw, pitch, flags, teleport_id } => {
+        let mut buf = Buffer::new(vec![]);
+        buf.write_u8(flags);
+        if ver >= ProtocolVersion::V1_9 {
+          buf.write_varint(teleport_id as i32);
+        }
+        GPacket::PlayerPosLookV8 {
+          x,
+          y,
+          z,
+          yaw,
+          pitch,
+          field_179835_f: None,
+          unknown: buf.into_inner(),
+        }
       }
       Packet::UnloadChunk { x, z } => {
         if ver == ProtocolVersion::V1_8 {
