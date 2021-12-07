@@ -94,9 +94,13 @@ impl Packet {
         reduced_debug_info,
       } => {
         let mut out = Buffer::new(vec![]);
-        out.write_u8(game_mode); // Creative
-        out.write_i8(dimension); // Overworld
-        out.write_i8(difficulty); // Normal difficulty
+        out.write_u8(game_mode);
+        match ver {
+          ProtocolVersion::V1_8 | ProtocolVersion::V1_9 => out.write_i8(dimension),
+          ProtocolVersion::V1_9_2 | ProtocolVersion::V1_9_4 => out.write_i32(dimension.into()),
+          _ => todo!(),
+        }
+        out.write_i8(difficulty);
         out.write_u8(0); // Max players
         out.write_str(&level_type); // World type
         out.write_bool(reduced_debug_info); // Don't reduce debug info
