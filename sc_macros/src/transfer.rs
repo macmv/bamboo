@@ -36,7 +36,9 @@ fn t_enum(name: Ident, variants: Punctuated<Variant, Token![,]>) -> TokenStream 
             #id => Self::#variant(#( #reader ),*),
           }
         }
-        _ => todo!(),
+        Fields::Unit => quote! {
+          #id => Self::#variant,
+        },
       }
     })
     .collect();
@@ -70,7 +72,11 @@ fn t_enum(name: Ident, variants: Punctuated<Variant, Token![,]>) -> TokenStream 
             }
           }
         }
-        _ => todo!(),
+        Fields::Unit => quote! {
+          Self::#variant => {
+            m.write_u32(#id)?;
+          }
+        },
       }
     })
     .collect();
