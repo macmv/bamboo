@@ -55,15 +55,15 @@ impl TypeConverter {
 
   /// Converts an item id into an id for the given version. It should work the
   /// same as [`block_to_old`](Self::block_to_old).
-  pub fn item_to_old(&self, id: u32, ver: BlockVersion) -> u32 { 0 }
+  pub fn item_to_old(&self, _id: u32, _ver: BlockVersion) -> u32 { 0 }
   /// Converts an item id into the latest version. It should work the same as
   /// [`block_to_new`](Self::block_to_new).
-  pub fn item_to_new(&self, id: u32, ver: BlockVersion) -> u32 { 0 }
+  pub fn item_to_new(&self, _id: u32, _ver: BlockVersion) -> u32 { 0 }
 
   /// Converts an entity id into an id for the given version. It should work the
   /// same as [`block_to_old`](Self::block_to_old).
-  pub fn entity_to_old(&self, id: u32, ver: BlockVersion) -> u32 { 0 }
+  pub fn entity_to_old(&self, _id: u32, _ver: BlockVersion) -> u32 { 0 }
   /// Converts an entity id into the latest version. It should work the same as
   /// [`block_to_new`](Self::block_to_new).
-  pub fn entity_to_new(&self, id: u32, ver: BlockVersion) -> u32 { 0 }
+  pub fn entity_to_new(&self, _id: u32, _ver: BlockVersion) -> u32 { 0 }
 }

@@ -1,6 +1,6 @@
 use super::zig;
 
-use std::{borrow::Borrow, error::Error, fmt};
+use std::{error::Error, fmt};
 
 type Result = std::result::Result<(), WriteError>;
 

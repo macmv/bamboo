@@ -6,7 +6,7 @@ use std::collections::HashMap;
 pub fn cross_test(old: &(Version, BlockDef), new: &(Version, BlockDef)) {
   let (old_ver, old_def) = old;
   let (_new_ver, new_def) = new;
-  let (to_old, to_new) = find_ids(*old_ver, old_def, new_def);
+  let (to_old, _to_new) = find_ids(*old_ver, old_def, new_def);
 
   match old_ver.maj {
     8 | 9 | 10 | 11 | 12 => {

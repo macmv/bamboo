@@ -127,7 +127,7 @@ impl World {
         ]),
       ),
     ]);
-    let codec = NBT::new(
+    let _codec = NBT::new(
       "",
       Tag::compound(&[
         (

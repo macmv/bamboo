@@ -47,7 +47,7 @@ impl Player {
         // Make player move for other
         let yaw;
         let pitch;
-        let on_ground = true;
+        let _on_ground = true;
         if look_changed {
           // other.send(cb::Packet::EntityHeadRotation {
           //   entity_id: self.eid,

@@ -224,7 +224,7 @@ impl<'a> ReaderTypes<'a> {
         Instr::Return(_) => {}
         Instr::For(_, _range, _) => {}
         Instr::Switch(_, _table) => {}
-        Instr::If(cond, when_true, when_false) => {
+        Instr::If(cond, when_true, _when_false) => {
           // let mut when_t = vec![];
           // let mut when_f = vec![];
           // self.gen_writer(when_true, &mut when_t);

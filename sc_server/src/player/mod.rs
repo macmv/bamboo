@@ -186,7 +186,7 @@ impl Player {
   /// TODO: This should terminate the connection after this packet is sent.
   /// Closing the channel will drop the packet before it can be sent, so we need
   /// some other way of closing it later.
-  pub fn disconnect<C: Into<Chat>>(&self, msg: C) {
+  pub fn disconnect<C: Into<Chat>>(&self, _msg: C) {
     // self.send(cb::Packet::KickDisconnect { reason: msg.into().to_json() });
   }
 
@@ -253,7 +253,7 @@ impl Player {
 
   /// Sets the player's fly speed. Unlike the packet, this is a multipler. So
   /// setting their flyspeed to 1.0 is the default speed.
-  pub fn set_flyspeed(&self, speed: f32) {
+  pub fn set_flyspeed(&self, _speed: f32) {
     // self.send(cb::Packet::Abilities {
     //   // 0x01: No damage
     //   // 0x02: Flying

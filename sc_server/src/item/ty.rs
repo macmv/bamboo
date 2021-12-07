@@ -38,7 +38,6 @@ impl Type {
 
 #[cfg(test)]
 mod tests {
-  use super::*;
 
   #[test]
   fn test_blocks() {

@@ -1,8 +1,8 @@
 use super::TypeConverter;
 use sc_common::{
-  chunk::{paletted::Section, Section as _},
+  chunk::paletted::Section,
   gnet::cb::Packet,
-  math::{ChunkPos, Pos},
+  math::ChunkPos,
   util::{
     nbt::{Tag, NBT},
     Buffer,

@@ -177,7 +177,7 @@ impl World {
           s.mspt.fetch_add(start.elapsed().as_millis().try_into().unwrap(), Ordering::SeqCst);
         });
       }
-      for (eid, ent) in self.entities().iter() {
+      for (_eid, ent) in self.entities().iter() {
         let ent = ent.clone();
         pool.execute(move |s| {
           let start = Instant::now();

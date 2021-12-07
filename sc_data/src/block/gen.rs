@@ -217,7 +217,7 @@ where
     }
     gen.write_line("&[");
     gen.add_indent();
-    for (i, p) in self.iter().enumerate() {
+    for (_i, p) in self.iter().enumerate() {
       p.to_lit(gen);
       gen.write_line(",");
     }

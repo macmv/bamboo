@@ -34,7 +34,7 @@ impl World {
   }
 
   /// Sends entity position packets to everyone in view of `old`.
-  pub(crate) fn send_entity_pos(&self, eid: i32, old: FPos, new: FPos, on_ground: bool) {
+  pub(crate) fn send_entity_pos(&self, _eid: i32, old: FPos, new: FPos, _on_ground: bool) {
     for p in self.players().iter().in_view(old.chunk()) {
       let mut d_x_v1_8 = 0;
       let mut d_x_v1_9 = 0;
@@ -94,7 +94,7 @@ impl World {
   }
 
   fn send_entity_spawn(&self, player: &Player, ent: &Entity) {
-    let p = ent.pos();
+    let _p = ent.pos();
     let id = ent.ty().id();
     let old_id = self.entity_converter().to_old(id, player.ver().block());
     info!("modern id: {}", id);
@@ -142,7 +142,7 @@ impl World {
     } else {
       // Data is some data specific to that entity. If it is non-zero, then velocity
       // is present.
-      let data: i32 = 0;
+      let _data: i32 = 0;
       // player.send(cb::Packet::SpawnEntity {
       //   entity_id:        ent.eid(),
       //   object_uuid_v1_9: Some(UUID::from_u128(0)),

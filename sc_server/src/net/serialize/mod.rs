@@ -12,7 +12,7 @@ use sc_common::{
 // mod v1_8;
 // mod v1_9;
 
-pub fn serialize_multi_block_change<I>(pos: ChunkPos, ver: BlockVersion, changes: I) -> cb::Packet
+pub fn serialize_multi_block_change<I>(_pos: ChunkPos, ver: BlockVersion, _changes: I) -> cb::Packet
 where
   I: ExactSizeIterator<Item = (Pos, i32)>,
 {
@@ -25,11 +25,11 @@ where
 }
 
 pub fn serialize_partial_chunk(
-  pos: ChunkPos,
-  c: &MultiChunk,
+  _pos: ChunkPos,
+  _c: &MultiChunk,
   ver: BlockVersion,
-  min: u32,
-  max: u32,
+  _min: u32,
+  _max: u32,
 ) -> cb::Packet {
   match ver {
     // BlockVersion::V1_8 => v1_8::serialize_partial_chunk(pos, c, min, max),

@@ -1,4 +1,4 @@
-use super::{ty, Data, Type};
+use super::{Data, Type};
 
 use sc_common::version::BlockVersion;
 

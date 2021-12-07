@@ -92,7 +92,7 @@ impl TypeConverter {
     }
 
     let kind = self.kind_from_id(id, ver);
-    let data = self.get(kind);
+    let _data = self.get(kind);
     Type { kind, state: id }
   }
 

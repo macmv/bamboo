@@ -1,4 +1,4 @@
-use crate::{block, entity, item, player::Player, world::WorldManager};
+use crate::{entity, item, player::Player, world::WorldManager};
 use crossbeam_channel::{Receiver, Sender, TryRecvError};
 use mio::{
   event::Event,
@@ -7,7 +7,7 @@ use mio::{
 };
 use parking_lot::{Mutex, RwLock};
 use sc_common::{
-  math::{FPos, Pos},
+  math::FPos,
   net::{cb, sb},
   util::{
     chat::{Chat, Color, HoverEvent},
@@ -155,7 +155,7 @@ impl Connection {
       match self.rx.try_recv() {
         Ok(p) => self.send_to_client(p)?,
         Err(TryRecvError::Empty) => break,
-        Err(e) => unreachable!(),
+        Err(_e) => unreachable!(),
       }
     }
     Ok(())
@@ -201,7 +201,7 @@ impl Connection {
             let idx = m.index();
             self.incoming.drain(0..idx);
             // We already handshaked
-            if let Some(ver) = self.ver {
+            if let Some(_ver) = self.ver {
               let mut m = MessageReader::new(&self.incoming);
               let p = sb::Packet::read(&mut m).map_err(|err| {
                 io::Error::new(
