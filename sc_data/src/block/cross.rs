@@ -2,18 +2,26 @@ use super::{Block, BlockDef, Prop, PropKind, State};
 use crate::{gen::CodeGen, Version};
 use std::collections::HashMap;
 
+#[cfg(test)]
 pub fn cross_test(old: &(Version, BlockDef), new: &(Version, BlockDef)) {
   let (old_ver, old_def) = old;
   let (_new_ver, new_def) = new;
   let (to_old, to_new) = find_ids(*old_ver, old_def, new_def);
 
   match old_ver.maj {
-    8 => {
+    8 | 9 | 10 | 11 | 12 => {
       assert_eq!(to_old[0], 0); // Air
       assert_eq!(to_old[1], 1 << 4); // Stone
       assert_eq!(to_old[33], 7 << 4); // Bedrock
     }
-    _ => {}
+    14 | 15 | 16 => {
+      assert_eq!(to_old[0], 0); // Air
+      assert_eq!(to_old[1], 1); // Stone
+      assert_eq!(to_old[33], 33); // Bedrock
+    }
+    _ => {
+      panic!("unknown version {}", old_ver);
+    }
   }
 }
 
