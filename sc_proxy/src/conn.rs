@@ -12,7 +12,7 @@ use sc_common::{
   util::{chat::Color, Chat, UUID},
   version::ProtocolVersion,
 };
-use sc_transfer::{MessageReader, MessageWriter, ReadError};
+use sc_transfer::{MessageRead, MessageReader, MessageWrite, MessageWriter, ReadError};
 use serde_derive::{Deserialize, Serialize};
 use sha1::{Digest, Sha1};
 use std::{

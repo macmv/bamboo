@@ -15,7 +15,7 @@ use sc_common::{
   },
   version::ProtocolVersion,
 };
-use sc_transfer::{MessageReader, MessageWriter, ReadError};
+use sc_transfer::{MessageRead, MessageReader, MessageWrite, MessageWriter, ReadError};
 use std::{
   collections::HashMap,
   convert::TryInto,
