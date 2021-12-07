@@ -32,6 +32,9 @@ pub trait FromTcp {
 impl FromTcp for Packet {
   fn from_tcp(p: GPacket, _ver: ProtocolVersion, _conv: &TypeConverter) -> Result<Self, ReadError> {
     Ok(match p {
+      GPacket::ChatV8 { message } | GPacket::ChatV11 { message } => Packet::Chat { msg: message },
+      GPacket::KeepAliveV8 { key } => Packet::KeepAlive { id: key },
+      GPacket::KeepAliveV12 { key } => Packet::KeepAlive { id: key as i32 },
       GPacket::PlayerV8 { on_ground, .. } => Packet::PlayerOnGround { on_ground },
       // TODO: The `super` call in the player movement packets is not parsed correctly.
       GPacket::PlayerLookV8 { yaw, pitch, .. } | GPacket::PlayerRotationV9 { yaw, pitch, .. } => {

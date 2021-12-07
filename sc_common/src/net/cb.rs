@@ -18,6 +18,28 @@ pub enum Packet {
     bit_map:  u16,
     sections: Vec<Section>,
   },
+  EntityLook {
+    eid:       i32,
+    yaw:       i8,
+    pitch:     i8,
+    on_ground: bool,
+  },
+  EntityMove {
+    eid:       i32,
+    x:         i16,
+    y:         i16,
+    z:         i16,
+    on_ground: bool,
+  },
+  EntityMoveLook {
+    eid:       i32,
+    x:         i16,
+    y:         i16,
+    z:         i16,
+    yaw:       i8,
+    pitch:     i8,
+    on_ground: bool,
+  },
   EntityVelocity {
     eid: i32,
     x:   i16,

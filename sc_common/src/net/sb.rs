@@ -3,6 +3,9 @@ pub enum Packet {
   Chat {
     msg: String,
   },
+  KeepAlive {
+    id: i32,
+  },
   PlayerOnGround {
     on_ground: bool,
   },

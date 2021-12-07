@@ -29,12 +29,72 @@ impl ToTcp for Packet {
       // Packet::Chunk { .. } => GPacket::ChunkDataV8 {},
       Packet::Chat { msg, ty } => {
         if ver < ProtocolVersion::V1_12_2 {
-          GPacket::ChatV8 { chat_component: msg, ty }
+          GPacket::ChatV8 { chat_component: msg, ty: ty as i8 }
         } else {
           GPacket::ChatV12 { chat_component: msg, ty: None, unknown: vec![ty] }
         }
       }
       Packet::Chunk { pos, bit_map, sections } => super::chunk(pos, bit_map, sections, ver, conv),
+      Packet::EntityLook { eid, yaw, pitch, on_ground } => GPacket::EntityLookV8 {
+        entity_id: Some(eid),
+        pos_x: None,
+        pos_y: None,
+        pos_z: None,
+        yaw,
+        pitch,
+        on_ground,
+        field_149069_g: None,
+      },
+      Packet::EntityMove { eid, x, y, z, on_ground } => {
+        if ver == ProtocolVersion::V1_8 {
+          GPacket::EntityRelMoveV8 {
+            entity_id: Some(eid),
+            pos_x: (x / (4096 / 32)) as i8,
+            pos_y: (y / (4096 / 32)) as i8,
+            pos_z: (z / (4096 / 32)) as i8,
+            yaw: None,
+            pitch: None,
+            on_ground,
+            field_149069_g: None,
+          }
+        } else {
+          GPacket::EntityRelMoveV9 {
+            entity_id: Some(eid),
+            pos_x: x.into(),
+            pos_y: y.into(),
+            pos_z: z.into(),
+            yaw: None,
+            pitch: None,
+            on_ground,
+            rotating: None,
+          }
+        }
+      }
+      Packet::EntityMoveLook { eid, x, y, z, yaw, pitch, on_ground } => {
+        if ver == ProtocolVersion::V1_8 {
+          GPacket::EntityLookMoveV8 {
+            entity_id: Some(eid),
+            pos_x: (x / (4096 / 32)) as i8,
+            pos_y: (y / (4096 / 32)) as i8,
+            pos_z: (z / (4096 / 32)) as i8,
+            yaw,
+            pitch,
+            on_ground,
+            field_149069_g: None,
+          }
+        } else {
+          GPacket::EntityLookMoveV9 {
+            entity_id: Some(eid),
+            pos_x: x.into(),
+            pos_y: y.into(),
+            pos_z: z.into(),
+            yaw,
+            pitch,
+            on_ground,
+            rotating: None,
+          }
+        }
+      }
       Packet::JoinGame {
         eid,
         hardcore_mode,
