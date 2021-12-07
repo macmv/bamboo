@@ -16,7 +16,7 @@ pub enum Packet {
   },
   Chat {
     msg: String,
-    ty:  u32,
+    ty:  u8,
   },
   Chunk {
     pos:      ChunkPos,
@@ -36,6 +36,7 @@ pub enum Packet {
     dimension:          i8,
     level_type:         String,
     difficulty:         i8,
+    view_distance:      u16,
     reduced_debug_info: bool,
   },
   KeepAlive {
@@ -83,6 +84,13 @@ impl Packet {
   ) -> Result<GPacket, WriteError> {
     Ok(match self {
       // Packet::Chunk { .. } => GPacket::ChunkDataV8 {},
+      Packet::Chat { msg, ty } => {
+        if ver < ProtocolVersion::V1_12_2 {
+          GPacket::ChatV8 { chat_component: msg, ty }
+        } else {
+          GPacket::ChatV12 { chat_component: msg, ty: None, unknown: vec![ty] }
+        }
+      }
       Packet::Chunk { pos, bit_map, sections } => ser::chunk(pos, bit_map, sections, ver, conv),
       Packet::JoinGame {
         eid,
@@ -91,6 +99,7 @@ impl Packet {
         dimension,
         level_type,
         difficulty,
+        view_distance,
         reduced_debug_info,
       } => {
         let mut out = Buffer::new(vec![]);
@@ -101,9 +110,15 @@ impl Packet {
           out.write_i8(dimension.into());
         }
         out.write_i8(difficulty);
-        out.write_u8(0); // Max players
-        out.write_str(&level_type); // World type
-        out.write_bool(reduced_debug_info); // Don't reduce debug info
+        if ver <= ProtocolVersion::V1_12_2 {
+          // Max players. Ignored on the versions where its present.
+          out.write_u8(0);
+        }
+        out.write_str(&level_type);
+        if ver >= ProtocolVersion::V1_14_4 {
+          out.write_varint(view_distance.into());
+        }
+        out.write_bool(reduced_debug_info);
 
         GPacket::JoinGameV8 {
           entity_id: eid,

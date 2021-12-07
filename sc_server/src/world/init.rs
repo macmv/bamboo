@@ -5,7 +5,7 @@ use crate::{
 };
 use rayon::prelude::*;
 use sc_common::{
-  math::{ChunkPos, Pos},
+  math::ChunkPos,
   net::cb,
   util::{
     nbt::{Tag, NBT},
@@ -199,6 +199,7 @@ impl World {
       dimension:          0, // Overworld
       level_type:         "default".into(),
       difficulty:         1, // Normal
+      view_distance:      10,
       reduced_debug_info: false,
     };
 
