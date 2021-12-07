@@ -1,5 +1,10 @@
 use super::{ser, VersionConverter};
-use crate::{chunk::paletted::Section, math::Pos, util::Buffer, version::ProtocolVersion};
+use crate::{
+  chunk::paletted::Section,
+  math::{ChunkPos, Pos},
+  util::Buffer,
+  version::ProtocolVersion,
+};
 use sc_generated::net::cb::Packet as GPacket;
 use std::{error::Error, fmt};
 
@@ -14,8 +19,7 @@ pub enum Packet {
     ty:  u32,
   },
   Chunk {
-    x:        i32,
-    z:        i32,
+    pos:      ChunkPos,
     bit_map:  u16,
     sections: Vec<Section>,
   },
@@ -79,7 +83,7 @@ impl Packet {
   ) -> Result<GPacket, WriteError> {
     Ok(match self {
       // Packet::Chunk { .. } => GPacket::ChunkDataV8 {},
-      Packet::Chunk { x, z, bit_map, sections } => ser::chunk(x, z, bit_map, sections, ver, conv),
+      Packet::Chunk { pos, bit_map, sections } => ser::chunk(pos, bit_map, sections, ver, conv),
       Packet::JoinGame {
         eid,
         hardcore_mode,

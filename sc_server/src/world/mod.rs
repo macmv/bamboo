@@ -345,8 +345,7 @@ impl World {
       }
 
       cb::Packet::Chunk {
-        x: pos.x(),
-        z: pos.z(),
+        pos,
         bit_map,
         sections: c
           .sections()

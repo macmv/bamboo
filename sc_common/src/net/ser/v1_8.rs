@@ -1,14 +1,13 @@
 use crate::{
   chunk::{paletted::Section, Section as _},
-  math::Pos,
+  math::{ChunkPos, Pos},
   net::VersionConverter,
   util::Buffer,
 };
 use sc_generated::{net::cb::Packet, version::BlockVersion};
 
 pub fn chunk(
-  x: i32,
-  z: i32,
+  pos: ChunkPos,
   bit_map: u16,
   sections: &[Section],
   conv: &impl VersionConverter,
@@ -60,8 +59,8 @@ pub fn chunk(
   debug_assert_eq!(chunk_data.len() - prefix_len, data_len, "unexpected chunk data len");
 
   Packet::ChunkDataV8 {
-    chunk_x:        x,
-    chunk_z:        z,
+    chunk_x:        pos.x(),
+    chunk_z:        pos.z(),
     field_149279_g: true,
     extracted_data: None,
     unknown:        chunk_data.into_inner(),
