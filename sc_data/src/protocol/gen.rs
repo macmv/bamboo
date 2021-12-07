@@ -134,9 +134,9 @@ impl PacketCollection {
             gen.write(" => ");
             gen.write_match("self", |gen| {
               for versions in packets.iter() {
-                for (ver, p) in versions {
+                for (ver, p) in versions.iter().rev() {
                   if ver.maj > v.maj {
-                    break;
+                    continue;
                   }
                   gen.write("Packet::");
                   gen.write(&p.name);
