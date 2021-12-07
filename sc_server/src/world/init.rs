@@ -9,7 +9,7 @@ use sc_common::{
   net::cb,
   util::{
     nbt::{Tag, NBT},
-    Buffer, Chat,
+    Buffer, Chat, GameMode,
   },
   version::ProtocolVersion,
 };
@@ -227,15 +227,15 @@ impl World {
       teleport_id: 1234,
     });
 
-    // player.send(cb::Packet::PlayerList {
-    //   action: cb::PlayerList::Add(vec![cb::PlayerListAdd {
-    //     id:           player.id(),
-    //     name:         player.name(),
-    //     game_mode:    GameMode::Creative,
-    //     ping:         50,
-    //     display_name: None,
-    //   }]),
-    // });
+    player.send(cb::Packet::PlayerList {
+      action: cb::PlayerListAction::Add(vec![cb::PlayerListAdd {
+        id:           player.id(),
+        name:         player.username().clone(),
+        game_mode:    GameMode::Creative,
+        ping:         50,
+        display_name: None,
+      }]),
+    });
 
     /*
     let mut info = Buffer::new(vec![]);

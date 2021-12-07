@@ -134,7 +134,7 @@ impl Player {
   }
 
   /// Returns the player's username.
-  pub fn username(&self) -> &str { &self.username }
+  pub fn username(&self) -> &String { &self.username }
 
   /// Returns the player's entity id. Used to send packets about entities.
   pub fn eid(&self) -> i32 { self.eid }
