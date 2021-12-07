@@ -207,6 +207,40 @@ impl ToTcp for Packet {
           unknown: buf.into_inner(),
         }
       }
+      Packet::SpawnPlayer { eid, id, x, y, z, yaw, pitch } => {
+        if ver == ProtocolVersion::V1_8 {
+          GPacket::SpawnPlayerV8 {
+            entity_id: eid,
+            player_id: id,
+            x: (x * 32.0) as i32,
+            y: (y * 32.0) as i32,
+            z: (z * 32.0) as i32,
+            yaw,
+            pitch,
+            current_item: 0,
+            watcher: None,
+            field_148958_j: None,
+            // No entity metadata
+            unknown: vec![0x7f],
+          }
+        } else if ver < ProtocolVersion::V1_15_2 {
+          GPacket::SpawnPlayerV9 {
+            entity_id: eid,
+            unique_id: id,
+            x,
+            y,
+            z,
+            yaw,
+            pitch,
+            watcher: None,
+            data_manager_entries: None,
+            // No entity metadata
+            unknown: vec![0xff],
+          }
+        } else {
+          GPacket::SpawnPlayerV15 { id: eid, uuid: id, x, y, z, yaw, pitch }
+        }
+      }
       Packet::UnloadChunk { pos } => {
         if ver == ProtocolVersion::V1_8 {
           GPacket::ChunkDataV8 {

@@ -76,6 +76,15 @@ pub enum Packet {
     flags:       u8,
     teleport_id: u32,
   },
+  SpawnPlayer {
+    eid:   i32,
+    id:    UUID,
+    x:     f64,
+    y:     f64,
+    z:     f64,
+    yaw:   i8,
+    pitch: i8,
+  },
   UnloadChunk {
     pos: ChunkPos,
   },

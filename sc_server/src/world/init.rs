@@ -256,44 +256,30 @@ impl World {
     player.send(cb::Packet::PlayerList { action: cb::PlayerListAction::Add(info) });
 
     // TODO: Don't assume we spawn in the (0, 0) chunk.
-    for _other in self.players().iter().in_view(ChunkPos::new(0, 0)).not(player.id()) {
-      /*
+    for other in self.players().iter().in_view(ChunkPos::new(0, 0)).not(player.id()) {
       // Create a packet that will spawn me for `other`
       let (pos, pitch, yaw) = player.pos_look();
-      other.send(cb::Packet::NamedEntitySpawn {
-        entity_id:                 player.eid(),
-        player_uuid:               player.id(),
-        x_v1_8:                    Some(pos.fixed_x()),
-        x_v1_9:                    Some(pos.x()),
-        y_v1_8:                    Some(pos.fixed_y()),
-        y_v1_9:                    Some(pos.y()),
-        z_v1_8:                    Some(pos.fixed_z()),
-        z_v1_9:                    Some(pos.z()),
-        yaw:                       yaw as i8, // TODO: Fix doubles/bytes on 1.8
-        pitch:                     pitch as i8,
-        current_item_removed_v1_9: Some(0),
-        metadata_removed_v1_15:    Some(player.metadata(other.ver()).serialize()),
+      other.send(cb::Packet::SpawnPlayer {
+        eid:   player.eid(),
+        id:    player.id(),
+        x:     pos.x(),
+        y:     pos.y(),
+        z:     pos.z(),
+        yaw:   yaw as i8,
+        pitch: pitch as i8,
       });
-      */
 
-      /*
       // Create a packet that will spawn `other` for me
       let (pos, pitch, yaw) = other.pos_look();
-      player.push(cb::Packet::NamedEntitySpawn {
-        entity_id:                 other.eid(),
-        player_uuid:               other.id(),
-        x_v1_8:                    Some(pos.fixed_x()),
-        x_v1_9:                    Some(pos.x()),
-        y_v1_8:                    Some(pos.fixed_y()),
-        y_v1_9:                    Some(pos.y()),
-        z_v1_8:                    Some(pos.fixed_z()),
-        z_v1_9:                    Some(pos.z()),
-        yaw:                       yaw as i8,
-        pitch:                     pitch as i8,
-        current_item_removed_v1_9: Some(0),
-        metadata_removed_v1_15:    Some(other.metadata(player.ver()).serialize()),
+      player.send(cb::Packet::SpawnPlayer {
+        eid:   other.eid(),
+        id:    other.id(),
+        x:     pos.x(),
+        y:     pos.y(),
+        z:     pos.z(),
+        yaw:   yaw as i8,
+        pitch: pitch as i8,
       });
-      */
     }
   }
 }
