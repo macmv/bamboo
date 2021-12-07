@@ -11,6 +11,8 @@ use syn::{
   Attribute, Error, Expr, Fields, ItemEnum, Lit, LitInt, Token,
 };
 
+mod transfer;
+
 struct KeyedArgs {
   keys: HashMap<String, Expr>,
 }
@@ -204,54 +206,5 @@ pub fn protocol_version(_args: TokenStream, input: TokenStream) -> TokenStream {
   out.into()
 }
 
-#[proc_macro_derive(Packet)]
-pub fn packet(input: TokenStream) -> TokenStream {
-  let args = parse_macro_input!(input as ItemEnum);
-
-  let name = args.ident;
-  let id: Vec<_> =
-    args.variants.iter().enumerate().map(|(i, _)| Literal::u32_unsuffixed(i as u32)).collect();
-  let variant: Vec<_> = args.variants.iter().enumerate().map(|(_, v)| v.ident.clone()).collect();
-  let field: Vec<Vec<_>> = args
-    .variants
-    .iter()
-    .enumerate()
-    .map(|(_, v)| match &v.fields {
-      Fields::Named(n) => n.named.iter().map(|f| f.ident.as_ref().unwrap()).collect(),
-      _ => panic!("must have struct variant for all packet variants"),
-    })
-    .collect();
-
-  let out = quote! {
-    impl #name {
-      pub fn read(m: &mut sc_transfer::MessageReader) -> Result<Self, sc_transfer::ReadError> {
-        Ok(match m.read_u32()? {
-          #(
-            #id => {
-              Self::#variant {
-                #(
-                  #field: m.read()?,
-                )*
-              }
-            }
-          )*
-          v => panic!("unknown packet id {}", v),
-        })
-      }
-      pub fn write(&self, m: &mut sc_transfer::MessageWriter) -> Result<(), sc_transfer::WriteError> {
-        match self {
-          #(
-            Self::#variant { #( #field ),* } => {
-              m.write_u32(#id)?;
-              #(
-                m.write(#field)?;
-              )*
-            }
-          )*
-        }
-        Ok(())
-      }
-    }
-  };
-  out.into()
-}
+#[proc_macro_derive(Transfer)]
+pub fn transfer(input: TokenStream) -> TokenStream { transfer::transfer(input) }
