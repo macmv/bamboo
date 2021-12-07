@@ -145,8 +145,10 @@ impl PacketCollection {
                   gen.write(" { .. } => ");
                   // NOTE: We use `v` here instead of `ver`, as `v` is the specific version we are
                   // matching against.
-                  gen.write(&self.versions[v].get(&p.name).unwrap_or(&0).to_string());
-                  gen.write_line(",");
+                  let id = self.versions[v].get(&p.name).unwrap_or(&0);
+                  gen.write(&id.to_string());
+                  gen.write(", // ");
+                  gen.write_line(&format!("{:#x}", id));
                   break;
                 }
               }

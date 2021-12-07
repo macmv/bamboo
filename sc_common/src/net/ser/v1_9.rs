@@ -48,7 +48,7 @@ pub fn chunk(
   data.write_buf(&chunk_data.into_inner());
 
   // No block entities
-  if ver == ProtocolVersion::V1_9_4 {
+  if ver >= ProtocolVersion::V1_9_4 {
     data.write_varint(0);
   }
 

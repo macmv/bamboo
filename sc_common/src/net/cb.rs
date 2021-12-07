@@ -95,10 +95,10 @@ impl Packet {
       } => {
         let mut out = Buffer::new(vec![]);
         out.write_u8(game_mode);
-        match ver {
-          ProtocolVersion::V1_8 | ProtocolVersion::V1_9 => out.write_i8(dimension),
-          ProtocolVersion::V1_9_2 | ProtocolVersion::V1_9_4 => out.write_i32(dimension.into()),
-          _ => todo!(),
+        if ver >= ProtocolVersion::V1_9_2 {
+          out.write_i32(dimension.into());
+        } else {
+          out.write_i8(dimension.into());
         }
         out.write_i8(difficulty);
         out.write_u8(0); // Max players
