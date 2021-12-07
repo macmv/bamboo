@@ -62,10 +62,11 @@ impl Packet {
     Ok(match p {
       GPacket::PlayerV8 { on_ground, .. } => Packet::PlayerOnGround { on_ground },
       // TODO: The `super` call in the player movement packets is not parsed correctly.
-      GPacket::PlayerLookV8 { yaw, pitch, .. } => {
+      GPacket::PlayerLookV8 { yaw, pitch, .. } | GPacket::PlayerRotationV9 { yaw, pitch, .. } => {
         Packet::PlayerLook { yaw, pitch, on_ground: false }
       }
-      GPacket::PlayerPosLookV8 { x, y, z, yaw, pitch, .. } => {
+      GPacket::PlayerPosLookV8 { x, y, z, yaw, pitch, .. }
+      | GPacket::PlayerPositionRotationV9 { x, y, z, yaw, pitch, .. } => {
         Packet::PlayerPosLook { x, y, z, yaw, pitch, on_ground: false }
       }
       GPacket::PlayerPositionV8 { x, y, z, .. } => Packet::PlayerPos { x, y, z, on_ground: false },
