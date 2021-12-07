@@ -98,6 +98,29 @@ impl ToTcp for Packet {
           }
         }
       }
+      Packet::EntityPos { eid, x, y, z, yaw, pitch, on_ground } => {
+        if ver == ProtocolVersion::V1_8 {
+          GPacket::EntityTeleportV8 {
+            entity_id: eid,
+            pos_x: (x * 32.0) as i32,
+            pos_y: (y * 32.0) as i32,
+            pos_z: (z * 32.0) as i32,
+            yaw,
+            pitch,
+            on_ground,
+          }
+        } else {
+          GPacket::EntityTeleportV9 {
+            entity_id: eid,
+            pos_x: x,
+            pos_y: y,
+            pos_z: z,
+            yaw,
+            pitch,
+            on_ground,
+          }
+        }
+      }
       Packet::JoinGame {
         eid,
         hardcore_mode,

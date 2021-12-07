@@ -79,7 +79,9 @@ impl Player {
           } else {
             dx.abs() > 8.0 || dy.abs() > 8.0 || dz.abs() > 8.0
           };
+          let abs_pos = true;
           if abs_pos {
+            // Cannot use relative move
             let yaw;
             let pitch;
             if other.ver() == ProtocolVersion::V1_8 {
@@ -89,19 +91,15 @@ impl Player {
               yaw = pos.yaw as i8;
               pitch = pos.pitch as i8;
             }
-            // // Cannot use relative move
-            // other.send(cb::Packet::EntityTeleport {
-            //   entity_id: self.eid,
-            //   x_v1_8: Some(pos.curr.fixed_x()),
-            //   x_v1_9: Some(pos.curr.x()),
-            //   y_v1_8: Some(pos.curr.fixed_y()),
-            //   y_v1_9: Some(pos.curr.y()),
-            //   z_v1_8: Some(pos.curr.fixed_z()),
-            //   z_v1_9: Some(pos.curr.z()),
-            //   yaw,
-            //   pitch,
-            //   on_ground,
-            // });
+            other.send(cb::Packet::EntityPos {
+              eid: self.eid,
+              x: pos.curr.x(),
+              y: pos.curr.y(),
+              z: pos.curr.z(),
+              yaw,
+              pitch,
+              on_ground,
+            });
           } else {
             // Can use relative move, and we know that pos_changed is true
             if look_changed {

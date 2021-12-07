@@ -19,12 +19,14 @@ pub enum Packet {
     bit_map:  u16,
     sections: Vec<Section>,
   },
+  /// Pitch/yaw change of an entity.
   EntityLook {
     eid:       i32,
     yaw:       i8,
     pitch:     i8,
     on_ground: bool,
   },
+  /// Relative movement of an entity.
   EntityMove {
     eid:       i32,
     x:         i16,
@@ -32,6 +34,7 @@ pub enum Packet {
     z:         i16,
     on_ground: bool,
   },
+  /// Relative movement of an entity, with pitch/yaw change.
   EntityMoveLook {
     eid:       i32,
     x:         i16,
@@ -41,6 +44,17 @@ pub enum Packet {
     pitch:     i8,
     on_ground: bool,
   },
+  /// Absolute position of an entity. Also called entity teleport.
+  EntityPos {
+    eid:       i32,
+    x:         f64,
+    y:         f64,
+    z:         f64,
+    yaw:       i8,
+    pitch:     i8,
+    on_ground: bool,
+  },
+  /// Change of an entity's velocity.
   EntityVelocity {
     eid: i32,
     x:   i16,
