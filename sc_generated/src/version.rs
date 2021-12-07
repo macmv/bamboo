@@ -17,10 +17,10 @@ macro_rules! block_version {
     #[non_exhaustive]
     #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, FromPrimitive, ToPrimitive)]
     pub enum BlockVersion {
-      Invalid,
       $(
         $v,
       )*
+      Invalid,
     }
 
     impl BlockVersion {
