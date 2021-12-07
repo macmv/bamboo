@@ -1,6 +1,6 @@
 use super::{ReadSc, WriteSc};
 use crate::{
-  util::{nbt::NBT, Buffer, BufferError, Item, UUID},
+  util::{nbt::NBT, Buffer, BufferError, BufferErrorKind, Item, UUID},
   version::ProtocolVersion,
   ChunkPos, Pos,
 };
@@ -87,7 +87,8 @@ impl Packet {
   pub fn read_byte_arr_max(&mut self, max: usize) -> Vec<u8> {
     let len = self.read_varint().try_into().unwrap();
     if len > max {
-      panic!("byte array is {} bytes, larger than max {}", len, max);
+      self.buf.set_err(BufferErrorKind::ArrayTooLong { len: len as u64, max: max as u64 }, true);
+      return vec![];
     }
     self.buf.read_buf(len)
   }
@@ -221,9 +222,10 @@ impl Packet {
   /// fails. This is new to 1.17, and simplifies a bunch of small for loops in
   /// previous versions.
   pub fn read_list_max<T>(&mut self, val: impl Fn(&mut Packet) -> T, max: usize) -> Vec<T> {
-    let len = self.read_varint().try_into().unwrap();
+    let len: usize = self.read_varint().try_into().unwrap();
     if len > max {
-      panic!("length {} greater than max {}", len, max);
+      self.buf.set_err(BufferErrorKind::ArrayTooLong { len: len as u64, max: max as u64 }, true);
+      return vec![];
     }
     let mut list = Vec::with_capacity(len);
     for _ in 0..len {
@@ -287,7 +289,8 @@ impl Packet {
   ) -> HashSet<T> {
     let len = self.read_varint().try_into().unwrap();
     if len > max {
-      panic!("length {} greater than max {}", len, max);
+      self.buf.set_err(BufferErrorKind::ArrayTooLong { len: len as u64, max: max as u64 }, true);
+      return HashSet::new();
     }
     let mut set = HashSet::with_capacity(len);
     for _ in 0..len {

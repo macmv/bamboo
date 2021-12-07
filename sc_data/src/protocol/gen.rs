@@ -92,16 +92,20 @@ impl PacketCollection {
       }
     }
 
+    gen.write_line("// Some imports are used on clientbound packets, but not on serverbound");
+    gen.write_line("// packets. This is to remove those warnings.");
+    gen.write_line("#[allow(unused_imports)]");
     gen.write_line("use crate::{");
     gen.write_line("  ChunkPos, Pos,");
     gen.write_line("  version::ProtocolVersion,");
     gen.write_line("  util::{Item, nbt::NBT, UUID},");
     gen.write_line("};");
+    gen.write_line("#[allow(unused_imports)]");
+    gen.write_line("use std::collections::{HashMap, HashSet};");
     gen.write_line("use sc_transfer::{");
     gen.write_line("  MessageRead, MessageReader, MessageWrite, MessageWriter, ReadError,");
     gen.write_line("  WriteError,");
     gen.write_line("};");
-    gen.write_line("use std::collections::{HashMap, HashSet};");
     gen.write_line("");
     gen.write_line("#[derive(Debug, Clone, PartialEq, Eq, Hash)]");
     gen.write_line("pub struct U;");
@@ -217,6 +221,10 @@ impl PacketCollection {
       });
     });
 
+    gen.write_line("/// Unreachable patterns mean the packet has been removed in that version.");
+    gen.write_line("/// This is most likely because I messed up the naming. However, some packets");
+    gen.write_line("/// have been removed in practice. TODO: Handle removed packets.");
+    gen.write_line("#[allow(unreachable_patterns)]");
     gen.write_func(
       "to_sug_id",
       &[FuncArg { name: "id", ty: "i32" }, FuncArg { name: "ver", ty: "ProtocolVersion" }],

@@ -31,8 +31,8 @@ pub enum BufferErrorKind {
   VarInt,
   IO(io::Error),
   FromUtf8Error(FromUtf8Error),
-  StringTooLong(u64, u64),
-  ArrayTooLong(u64, u64),
+  StringTooLong { len: u64, max: u64 },
+  ArrayTooLong { len: u64, max: u64 },
   NegativeLen(i32),
 }
 
@@ -42,10 +42,10 @@ impl fmt::Display for BufferErrorKind {
       Self::VarInt => write!(f, "varint is too long"),
       Self::IO(e) => write!(f, "{}", e),
       Self::FromUtf8Error(e) => write!(f, "{}", e),
-      Self::StringTooLong(len, max) => {
+      Self::StringTooLong { len, max } => {
         write!(f, "string is `{}` characters, longer than max `{}`", len, max)
       }
-      Self::ArrayTooLong(len, max) => {
+      Self::ArrayTooLong { len, max } => {
         write!(f, "array is `{}` elements, longer than max `{}`", len, max)
       }
       Self::NegativeLen(len) => write!(f, "len `{}` is negative", len),
@@ -132,7 +132,7 @@ impl Buffer {
   pub fn new(data: Vec<u8>) -> Self { Buffer { data: Cursor::new(data), err: None } }
 
   pub fn err(&self) -> &Option<BufferError> { &self.err }
-  fn set_err(&mut self, err: BufferErrorKind, reading: bool) {
+  pub fn set_err(&mut self, err: BufferErrorKind, reading: bool) {
     self.err = Some(BufferError { err, pos: self.data.position(), reading });
   }
 
@@ -246,14 +246,14 @@ impl Buffer {
       }
     };
     if len > max_len * 4 {
-      self.set_err(BufferErrorKind::StringTooLong(len, max_len), true);
+      self.set_err(BufferErrorKind::StringTooLong { len, max: max_len }, true);
       return "".into();
     }
     let vec = self.read(len as usize);
     match String::from_utf8(vec) {
       Ok(v) => {
         if v.len() > max_len as usize {
-          self.set_err(BufferErrorKind::StringTooLong(len, max_len), true);
+          self.set_err(BufferErrorKind::StringTooLong { len, max: max_len }, true);
           "".into()
         } else {
           v
