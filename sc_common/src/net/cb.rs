@@ -56,8 +56,10 @@ pub enum Packet {
     teleport_id: u32,
   },
   UnloadChunk {
-    x: i32,
-    z: i32,
+    pos: ChunkPos,
+  },
+  UpdateViewPos {
+    pos: ChunkPos,
   },
 }
 
@@ -156,18 +158,25 @@ impl Packet {
           unknown: buf.into_inner(),
         }
       }
-      Packet::UnloadChunk { x, z } => {
+      Packet::UnloadChunk { pos } => {
         if ver == ProtocolVersion::V1_8 {
           GPacket::ChunkDataV8 {
-            chunk_x:        x,
-            chunk_z:        z,
+            chunk_x:        pos.x(),
+            chunk_z:        pos.z(),
             field_149279_g: true,
             extracted_data: None,
             // Zero bit mask, then zero length varint
             unknown:        vec![0, 0, 0],
           }
         } else {
-          GPacket::UnloadChunkV9 { x, z }
+          GPacket::UnloadChunkV9 { x: pos.x(), z: pos.z() }
+        }
+      }
+      Packet::UpdateViewPos { pos } => {
+        if ver >= ProtocolVersion::V1_14 {
+          GPacket::ChunkRenderDistanceCenterV14 { chunk_x: pos.x(), chunk_z: pos.z() }
+        } else {
+          panic!("cannot send UpdateViewPos for version {}", ver);
         }
       }
       _ => todo!("convert {:?} into generated packet", self),

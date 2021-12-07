@@ -160,6 +160,9 @@ impl Player {
       }
     }
     if old_chunk != new_chunk {
+      if self.ver() >= ProtocolVersion::V1_14 {
+        self.send(cb::Packet::UpdateViewPos { pos: new_chunk });
+      }
       let delta = new_chunk - old_chunk;
       let v = self.view_distance as i32;
       let new_max = new_chunk + ChunkPos::new(v, v);
@@ -289,8 +292,9 @@ impl Player {
     }
     for x in min.x()..=max.x() {
       for z in min.z()..=max.z() {
-        self.world.dec_view(ChunkPos::new(x, z));
-        self.send(cb::Packet::UnloadChunk { x: x.into(), z: z.into() });
+        let pos = ChunkPos::new(x, z);
+        self.world.dec_view(pos);
+        self.send(cb::Packet::UnloadChunk { pos });
       }
     }
   }
