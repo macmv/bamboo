@@ -47,7 +47,7 @@ impl Player {
         // Make player move for other
         let yaw;
         let pitch;
-        let _on_ground = true;
+        let on_ground = true;
         if look_changed {
           // other.send(cb::Packet::EntityHeadRotation {
           //   entity_id: self.eid,
@@ -60,46 +60,24 @@ impl Player {
           pitch = 0;
         }
         if pos_changed {
-          let mut d_x_v1_8 = 0;
-          let mut d_x_v1_9 = 0;
-          let mut d_y_v1_8 = 0;
-          let mut d_y_v1_9 = 0;
-          let mut d_z_v1_8 = 0;
-          let mut d_z_v1_9 = 0;
-          let mut dx = pos.curr.x() - pos.prev.x();
-          let mut dy = pos.curr.y() - pos.prev.y();
-          let mut dz = pos.curr.z() - pos.prev.z();
-          let abs_pos;
-          if other.ver() == ProtocolVersion::V1_8 {
-            dx *= 32.0;
-            dy *= 32.0;
-            dz *= 32.0;
-            if dx.abs() > i8::MAX.into() || dy.abs() > i8::MAX.into() || dz.abs() > i8::MAX.into() {
-              abs_pos = true;
-            } else {
-              // As truncates any negative floats to 0, but just copies the bits for i8 -> u8
-              d_x_v1_8 = dx.round() as i8;
-              d_y_v1_8 = dy.round() as i8;
-              d_z_v1_8 = dz.round() as i8;
-              abs_pos = false;
-            }
+          let dx = pos.curr.x() - pos.prev.x();
+          let dy = pos.curr.y() - pos.prev.y();
+          let dz = pos.curr.z() - pos.prev.z();
+          // On 1.8, we send EntityMove packets with the following value: delta * 32. On
+          // 1.9+, we send it like so: delta * 4096. On 1.8, we use a single byte for the
+          // delta, wheras on 1.9+, we use a short.This means the total blocks you can
+          // represent in each of these forms can be calculated like so:
+          //
+          // 1.8:  (1 << 8) / 32 = 8
+          // 1.9+: (1 << 16) / 4096 = 16
+          //
+          // Because we need to represent negative deltas, we arrive at a total distance
+          // of 4 blocks on 1.8, and 8 blocks on 1.9+. That is how we arrive at the
+          // conditional below.
+          let abs_pos = if other.ver() == ProtocolVersion::V1_8 {
+            dx.abs() > 4.0 || dy.abs() > 4.0 || dz.abs() > 4.0
           } else {
-            dx *= 4096.0;
-            dy *= 4096.0;
-            dz *= 4096.0;
-            // 32 * 128 * 8 = 16384, which is the max value of an i16. So if we have more
-            // than an 8 block delta, we cannot send a relative movement packet.
-            if dx.abs() > i16::MAX.into()
-              || dy.abs() > i16::MAX.into()
-              || dz.abs() > i16::MAX.into()
-            {
-              abs_pos = true;
-            } else {
-              d_x_v1_9 = dx.round() as i16;
-              d_y_v1_9 = dy.round() as i16;
-              d_z_v1_9 = dz.round() as i16;
-              abs_pos = false;
-            }
+            dx.abs() > 8.0 || dy.abs() > 8.0 || dz.abs() > 8.0
           };
           if abs_pos {
             let yaw;
@@ -127,35 +105,28 @@ impl Player {
           } else {
             // Can use relative move, and we know that pos_changed is true
             if look_changed {
-              // other.send(cb::Packet::EntityMoveLook {
-              //   entity_id: self.eid,
-              //   d_x_v1_8: Some(d_x_v1_8),
-              //   d_x_v1_9: Some(d_x_v1_9),
-              //   d_y_v1_8: Some(d_y_v1_8),
-              //   d_y_v1_9: Some(d_y_v1_9),
-              //   d_z_v1_8: Some(d_z_v1_8),
-              //   d_z_v1_9: Some(d_z_v1_9),
-              //   yaw,
-              //   pitch,
-              //   on_ground,
-              // });
+              other.send(cb::Packet::EntityMoveLook {
+                eid: self.eid,
+                x: (dx * 4096.0) as i16,
+                y: (dy * 4096.0) as i16,
+                z: (dz * 4096.0) as i16,
+                yaw,
+                pitch,
+                on_ground,
+              });
             } else {
-              // other.send(cb::Packet::RelEntityMove {
-              //   entity_id: self.eid,
-              //   d_x_v1_8: Some(d_x_v1_8),
-              //   d_x_v1_9: Some(d_x_v1_9),
-              //   d_y_v1_8: Some(d_y_v1_8),
-              //   d_y_v1_9: Some(d_y_v1_9),
-              //   d_z_v1_8: Some(d_z_v1_8),
-              //   d_z_v1_9: Some(d_z_v1_9),
-              //   on_ground,
-              // });
+              other.send(cb::Packet::EntityMove {
+                eid: self.eid,
+                x: (dx * 4096.0) as i16,
+                y: (dy * 4096.0) as i16,
+                z: (dz * 4096.0) as i16,
+                on_ground,
+              });
             }
           }
         } else {
           // Pos changed is false, so look_changed must be true
-          // other.send(cb::Packet::EntityLook { entity_id: self.eid, yaw,
-          // pitch, on_ground });
+          other.send(cb::Packet::EntityLook { eid: self.eid, yaw, pitch, on_ground });
         }
       }
     }
