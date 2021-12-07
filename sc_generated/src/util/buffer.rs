@@ -1,3 +1,7 @@
+use crate::{
+  util::{nbt::NBT, UUID},
+  ChunkPos,
+};
 use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
 
 use std::{
@@ -312,6 +316,96 @@ impl Buffer {
   }
 
   pub fn into_inner(self) -> Vec<u8> { self.data.into_inner() }
+
+  /// Writes a chunk position, as two i32s.
+  pub fn write_chunk_pos(&mut self, p: ChunkPos) {
+    self.write_i32(p.x());
+    self.write_i32(p.z());
+  }
+  /// Reads a chunk position, as two i32s.
+  pub fn read_chunk_pos(&mut self) -> ChunkPos { ChunkPos::new(self.read_i32(), self.read_i32()) }
+
+  /// Reads an nbt tag from self.
+  pub fn read_nbt(&mut self) -> NBT { NBT::deserialize_buf(self).unwrap() }
+
+  /// Reads a length prefixed array of integers.
+  pub fn read_i32_arr(&mut self) -> Vec<i32> {
+    let len = self.read_varint().try_into().unwrap();
+    let mut out = Vec::with_capacity(len);
+    for _ in 0..len {
+      out.push(self.read_i32());
+    }
+    out
+  }
+
+  pub fn write_i32_arr(&mut self, list: &[i32]) {
+    self.write_varint(list.len().try_into().unwrap());
+    for v in list {
+      self.write_i32(*v);
+    }
+  }
+
+  /// Reads 16 bytes from the buffer, and returns that as a big endian UUID.
+  pub fn read_uuid(&mut self) -> UUID { UUID::from_be_bytes(self.read_buf(16).try_into().unwrap()) }
+
+  /// This writes a UUID into the buffer (in big endian format).
+  pub fn write_uuid(&mut self, v: UUID) { self.write_buf(&v.as_be_bytes()); }
+
+  /// Reads a list from the packet. This is new to 1.17, and simplifies a bunch
+  /// of small for loops in previous versions.
+  pub fn read_list<T>(&mut self, val: impl Fn(&mut Buffer) -> T) -> Vec<T> {
+    let len = self.read_varint().try_into().unwrap();
+    let mut list = Vec::with_capacity(len);
+    for _ in 0..len {
+      list.push(val(self));
+    }
+    list
+  }
+  /// Writes a list to the buffer.
+  pub fn write_list<T>(&mut self, list: &[T], write: impl Fn(&mut Buffer, &T)) {
+    self.write_varint(list.len().try_into().unwrap());
+    for v in list {
+      write(self, v);
+    }
+  }
+  /// Reads a list from the packet. If the length is greater than `max`, this
+  /// fails. This is new to 1.17, and simplifies a bunch of small for loops in
+  /// previous versions.
+  pub fn read_list_max<T>(&mut self, val: impl Fn(&mut Buffer) -> T, max: usize) -> Vec<T> {
+    let len: usize = self.read_varint().try_into().unwrap();
+    if len > max {
+      self.set_err(BufferErrorKind::ArrayTooLong { len: len as u64, max: max as u64 }, true);
+      return vec![];
+    }
+    let mut list = Vec::with_capacity(len);
+    for _ in 0..len {
+      list.push(val(self));
+    }
+    list
+  }
+
+  /// Reads a boolean. If true, the closure is called, and the returned value is
+  /// wrapped in Some. Otherwise, this returns None.
+  pub fn read_option<T>(&mut self, val: impl FnOnce(&mut Buffer) -> T) -> Option<T> {
+    if self.read_bool() {
+      Some(val(self))
+    } else {
+      None
+    }
+  }
+  /// Writes `true` if the option is Some, or `false` if None. If the option is
+  /// some, then it also calls the `write` closure.
+  pub fn write_option<T>(&mut self, val: &Option<T>, write: impl FnOnce(&mut Buffer, &T)) {
+    self.write_bool(val.is_some());
+    match val {
+      Some(v) => write(self, &v),
+      None => {}
+    }
+  }
+
+  pub fn read_varint_arr(&mut self) -> Vec<i32> { self.read_list(Self::read_varint) }
+
+  pub fn write_varint_arr(&mut self, v: &[i32]) { self.write_list(v, |p, &v| p.write_varint(v)) }
 }
 
 impl Deref for Buffer {

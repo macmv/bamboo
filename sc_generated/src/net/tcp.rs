@@ -183,10 +183,10 @@ impl Packet {
   }
 
   /// Reads 16 bytes from the buffer, and returns that as a big endian UUID.
-  pub fn read_uuid(&mut self) -> UUID { UUID::from_be_bytes(self.read_buf(16).try_into().unwrap()) }
+  pub fn read_uuid(&mut self) -> UUID { self.buf.read_uuid() }
 
   /// This writes a UUID into the buffer (in big endian format).
-  pub fn write_uuid(&mut self, v: UUID) { self.write_buf(&v.as_be_bytes()); }
+  pub fn write_uuid(&mut self, v: UUID) { self.buf.write_uuid(v); }
 
   /// Reads a block hit result. This (for whatever dumb reason) is part of the
   /// packet buffer in 1.17, and is literally called ONCE. So, because reasons,

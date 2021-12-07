@@ -152,52 +152,41 @@ impl ToTcp for Packet {
         match action {
           cb::PlayerListAction::Add(v) => {
             id = 0;
-            buf.write_varint(v.len().try_into().unwrap());
-            for v in v {
-              buf.write_buf(&v.id.as_be_bytes());
+            buf.write_list(&v, |buf, v| {
+              buf.write_uuid(v.id);
               buf.write_str(&v.name);
               buf.write_varint(0);
               buf.write_varint(v.game_mode.id().into());
               buf.write_varint(v.ping);
-              buf.write_bool(v.display_name.is_some());
-              if let Some(name) = &v.display_name {
-                buf.write_str(&name);
-              }
-            }
+              buf.write_option(&v.display_name, |buf, v| buf.write_str(v));
+            });
           }
           cb::PlayerListAction::UpdateGameMode(v) => {
             id = 1;
-            buf.write_varint(v.len().try_into().unwrap());
-            for v in v {
-              buf.write_buf(&v.id.as_be_bytes());
+            buf.write_list(&v, |buf, v| {
+              buf.write_uuid(v.id);
               buf.write_varint(v.game_mode.id().into());
-            }
+            });
           }
           cb::PlayerListAction::UpdateLatency(v) => {
             id = 2;
-            buf.write_varint(v.len().try_into().unwrap());
-            for v in v {
-              buf.write_buf(&v.id.as_be_bytes());
+            buf.write_list(&v, |buf, v| {
+              buf.write_uuid(v.id);
               buf.write_varint(v.ping);
-            }
+            });
           }
           cb::PlayerListAction::UpdateDisplayName(v) => {
             id = 3;
-            buf.write_varint(v.len().try_into().unwrap());
-            for v in v {
-              buf.write_buf(&v.id.as_be_bytes());
-              buf.write_bool(v.display_name.is_some());
-              if let Some(name) = &v.display_name {
-                buf.write_str(&name);
-              }
-            }
+            buf.write_list(&v, |buf, v| {
+              buf.write_uuid(v.id);
+              buf.write_option(&v.display_name, |buf, v| buf.write_str(v));
+            });
           }
           cb::PlayerListAction::Remove(v) => {
             id = 4;
-            buf.write_varint(v.len().try_into().unwrap());
-            for v in v {
-              buf.write_buf(&v.id.as_be_bytes());
-            }
+            buf.write_list(&v, |buf, v| {
+              buf.write_uuid(v.id);
+            });
           }
         }
         GPacket::PlayerListV8 { action: id, players: None, unknown: buf.into_inner() }
