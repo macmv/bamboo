@@ -15,6 +15,7 @@ use std::{
   f64::consts,
   fmt,
   sync::{Arc, Mutex, MutexGuard},
+  time::Instant,
 };
 
 mod tick;
@@ -36,6 +37,8 @@ struct PlayerPosition {
 
   next_yaw:   f32,
   next_pitch: f32,
+
+  last_set_pos: Instant,
 }
 
 #[derive(Debug)]
@@ -121,13 +124,14 @@ impl Player {
       game_mode: GameMode::Creative.into(),
       inv: PlayerInventory::new().into(),
       pos: PlayerPosition {
-        curr:       pos,
-        prev:       pos,
-        next:       pos,
-        yaw:        0.0,
-        pitch:      0.0,
-        next_yaw:   0.0,
-        next_pitch: 0.0,
+        curr:         pos,
+        prev:         pos,
+        next:         pos,
+        yaw:          0.0,
+        pitch:        0.0,
+        next_yaw:     0.0,
+        next_pitch:   0.0,
+        last_set_pos: Instant::now(),
       }
       .into(),
     }

@@ -2,7 +2,10 @@ use super::Player;
 use parking_lot::Mutex;
 use rayon::prelude::*;
 use sc_common::{math::ChunkPos, net::cb, version::ProtocolVersion};
-use std::cmp::Ordering;
+use std::{
+  cmp::Ordering,
+  time::{Duration, Instant},
+};
 
 impl Player {
   /// Updates the player's position/velocity. This will apply gravity, and do
@@ -13,6 +16,7 @@ impl Player {
     let new_chunk;
     let look_changed;
     let pos_changed;
+    let needs_set_pos;
     let pos = {
       let mut pos = self.pos.lock().unwrap();
       pos.prev = pos.curr;
@@ -40,6 +44,15 @@ impl Player {
       // vector; from prev to curr.
       old_chunk = pos.prev.block().chunk();
       new_chunk = pos.curr.block().chunk();
+
+      let now = Instant::now();
+      if pos_changed && now.duration_since(pos.last_set_pos) > Duration::from_secs(5) {
+        pos.last_set_pos = now;
+        needs_set_pos = true;
+      } else {
+        needs_set_pos = false;
+      }
+
       pos.clone()
     };
     if pos_changed || look_changed {
@@ -79,8 +92,7 @@ impl Player {
           } else {
             dx.abs() > 8.0 || dy.abs() > 8.0 || dz.abs() > 8.0
           };
-          let abs_pos = true;
-          if abs_pos {
+          if abs_pos || needs_set_pos {
             // Cannot use relative move
             let yaw;
             let pitch;
