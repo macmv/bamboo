@@ -1,17 +1,13 @@
-use crate::{
+use super::TypeConverter;
+use sc_common::{
   chunk::{paletted::Section, Section as _},
+  gnet::cb::Packet,
   math::{ChunkPos, Pos},
-  net::VersionConverter,
   util::Buffer,
+  version::BlockVersion,
 };
-use sc_generated::{net::cb::Packet, version::BlockVersion};
 
-pub fn chunk(
-  pos: ChunkPos,
-  bit_map: u16,
-  sections: &[Section],
-  conv: &impl VersionConverter,
-) -> Packet {
+pub fn chunk(pos: ChunkPos, bit_map: u16, sections: &[Section], conv: &TypeConverter) -> Packet {
   let skylight = true;
   let biomes = true;
 

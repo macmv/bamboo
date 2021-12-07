@@ -2,7 +2,7 @@
 extern crate log;
 
 pub mod conn;
-mod conv;
+pub mod packet;
 pub mod stream;
 
 use mio::{net::TcpListener, Events, Interest, Poll, Token};
@@ -10,9 +10,7 @@ use rand::rngs::OsRng;
 use rsa::RSAPrivateKey;
 use std::{collections::HashMap, error::Error, io, net::SocketAddr, sync::Arc};
 
-use crate::{conn::Conn, stream::java::stream::JavaStream};
-
-pub use conv::TypeConverter;
+use crate::{conn::Conn, packet::TypeConverter, stream::java::stream::JavaStream};
 
 pub fn load_icon(path: &str) -> String {
   let mut icon = match image::open(path).map_err(|e| error!("error loading icon: {}", e)) {

@@ -1,21 +1,28 @@
-use crate::{
+use sc_common::{
   chunk::paletted::Section,
+  gnet::cb::Packet,
   math::ChunkPos,
-  net::VersionConverter,
   version::{BlockVersion, ProtocolVersion},
 };
-use sc_generated::net::cb::Packet;
 
 mod v1_14;
 mod v1_8;
 mod v1_9;
+
+mod cb;
+mod conv;
+mod sb;
+
+pub use cb::{ToTcp, WriteError};
+pub use conv::TypeConverter;
+pub use sb::{FromTcp, ReadError};
 
 pub fn chunk(
   pos: ChunkPos,
   bit_map: u16,
   sections: Vec<Section>,
   ver: ProtocolVersion,
-  conv: &impl VersionConverter,
+  conv: &TypeConverter,
 ) -> Packet {
   match ver.block() {
     BlockVersion::V1_8 => v1_8::chunk(pos, bit_map, &sections, conv),

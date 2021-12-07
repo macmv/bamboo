@@ -1,5 +1,8 @@
-use crate::{chunk::paletted::Section, math::ChunkPos, net::VersionConverter, util::Buffer};
-use sc_generated::{net::cb::Packet, version::ProtocolVersion};
+use super::TypeConverter;
+use sc_common::{
+  chunk::paletted::Section, gnet::cb::Packet, math::ChunkPos, util::Buffer,
+  version::ProtocolVersion,
+};
 
 // Applies to 1.9 - 1.12, but 1.10 doesn't work, so idk
 pub fn chunk(
@@ -7,7 +10,7 @@ pub fn chunk(
   bit_map: u16,
   sections: &[Section],
   ver: ProtocolVersion,
-  conv: &impl VersionConverter,
+  conv: &TypeConverter,
 ) -> Packet {
   let biomes = true; // Always true with new chunk set
   let skylight = true; // Assume overworld

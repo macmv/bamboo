@@ -1,13 +1,14 @@
-use crate::{
-  chunk::paletted::Section,
-  math::ChunkPos,
-  net::VersionConverter,
+use super::TypeConverter;
+use sc_common::{
+  chunk::{paletted::Section, Section as _},
+  gnet::cb::Packet,
+  math::{ChunkPos, Pos},
   util::{
     nbt::{Tag, NBT},
     Buffer,
   },
+  version::BlockVersion,
 };
-use sc_generated::{net::cb::Packet, version::BlockVersion};
 
 // CHANGES (since 1.12.2):
 // No length is written for >8 bpb
@@ -15,12 +16,7 @@ use sc_generated::{net::cb::Packet, version::BlockVersion};
 // Added the MOTION_BLOCKING field. This is a heightmap, stored in NBT.
 // Added a u16 for non air blocks at the start of each section.
 // Moved lighting data into another packet, so it is no longer included.
-pub fn chunk(
-  pos: ChunkPos,
-  bit_map: u16,
-  sections: &[Section],
-  conv: &impl VersionConverter,
-) -> Packet {
+pub fn chunk(pos: ChunkPos, bit_map: u16, sections: &[Section], conv: &TypeConverter) -> Packet {
   let biomes = true; // Always true with new chunk set
   let _skylight = true; // Assume overworld
 

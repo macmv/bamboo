@@ -1,5 +1,7 @@
-use super::TypeConverter;
-use crate::stream::PacketStream;
+use crate::{
+  packet::{FromTcp, ToTcp, TypeConverter},
+  stream::PacketStream,
+};
 use mio::{net::TcpStream, Interest, Registry, Token};
 use rand::{rngs::OsRng, RngCore};
 use rsa::{padding::PaddingScheme, RSAPrivateKey};
