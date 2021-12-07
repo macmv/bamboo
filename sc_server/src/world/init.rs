@@ -240,13 +240,25 @@ impl World {
     // We need to add my info into the packet going to me, because minecraft is
     // weird.
     let mut info = vec![my_info];
-    /* let mut spawn_packets = vec![]; */
-    for other in self.players().iter().in_view(ChunkPos::new(0, 0)).not(player.id()) {
+    for other in self.players().iter().not(player.id()) {
       // Lets `other` know that I exist
       other.send(my_info_packet.clone());
 
+      // Add `other` to the list of players that I know about
+      info.push(cb::PlayerListAdd {
+        id:           other.id(),
+        name:         other.username().clone(),
+        game_mode:    GameMode::Creative,
+        ping:         50,
+        display_name: None,
+      });
+    }
+    player.send(cb::Packet::PlayerList { action: cb::PlayerListAction::Add(info) });
+
+    // TODO: Don't assume we spawn in the (0, 0) chunk.
+    for _other in self.players().iter().in_view(ChunkPos::new(0, 0)).not(player.id()) {
       /*
-      // Create a packet that will spawn player for other
+      // Create a packet that will spawn me for `other`
       let (pos, pitch, yaw) = player.pos_look();
       other.send(cb::Packet::NamedEntitySpawn {
         entity_id:                 player.eid(),
@@ -264,19 +276,10 @@ impl World {
       });
       */
 
-      // Add `other` to the list of players that I know about
-      info.push(cb::PlayerListAdd {
-        id:           other.id(),
-        name:         other.username().clone(),
-        game_mode:    GameMode::Creative,
-        ping:         50,
-        display_name: None,
-      });
-
       /*
-      // Create a packet that will spawn other for player
+      // Create a packet that will spawn `other` for me
       let (pos, pitch, yaw) = other.pos_look();
-      spawn_packets.push(cb::Packet::NamedEntitySpawn {
+      player.push(cb::Packet::NamedEntitySpawn {
         entity_id:                 other.eid(),
         player_uuid:               other.id(),
         x_v1_8:                    Some(pos.fixed_x()),
@@ -292,12 +295,5 @@ impl World {
       });
       */
     }
-    player.send(cb::Packet::PlayerList { action: cb::PlayerListAction::Add(info) });
-    /*
-    // Spawn in the player for my on `other`'s screen.
-    for p in spawn_packets {
-      player.send(p);
-    }
-    */
   }
 }
