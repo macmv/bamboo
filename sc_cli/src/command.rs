@@ -18,6 +18,35 @@ pub fn handle(
       writeln!(l, "saying {}", saying)?;
       stream.write(sb::Packet::ChatV8 { message: saying.into() });
     }
+    "move" => {
+      if args.len() != 3 {
+        writeln!(l, "expected a position")?;
+        return Ok(());
+      }
+      let x = match args[0].parse() {
+        Ok(v) => v,
+        Err(_) => return Ok(()),
+      };
+      let y = match args[1].parse() {
+        Ok(v) => v,
+        Err(_) => return Ok(()),
+      };
+      let z = match args[2].parse() {
+        Ok(v) => v,
+        Err(_) => return Ok(()),
+      };
+      writeln!(l, "moving to {} {} {}", x, y, z);
+      stream.write(sb::Packet::PlayerPositionV8 {
+        x,
+        y,
+        z,
+        on_ground: true,
+        yaw: None,
+        pitch: None,
+        moving: None,
+        rotating: None,
+      });
+    }
     c if c.starts_with('/') => {
       let mut out = command.to_string();
       out.push_str(&args.join(" "));
