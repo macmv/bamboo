@@ -10,8 +10,11 @@ mod forest;
 mod math;
 mod mountain;
 mod plains;
+mod sl;
 mod underground;
 pub mod util;
+
+pub use sl::SlBiomeGen;
 
 use underground::Underground;
 

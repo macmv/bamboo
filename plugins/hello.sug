@@ -3,6 +3,8 @@ use sugarcane::{chat::Chat, command::Command, block::BlockKind}
 fn init(sc) {
   sc.info("hello world")
 
+  sc.add_biome(my_biome_gen)
+
   c = Command::new("setblock", handle_setblock)
   c.add_arg_block_pos("pos")
   c.add_lit("word")
@@ -23,4 +25,8 @@ fn handle_setblock(sc, player, args) {
 
 fn on_block_place(sc, player, pos, kind) {
   sc.info("block x:", pos.x())
+}
+
+fn my_biome_gen() {
+
 }
