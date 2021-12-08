@@ -3,7 +3,7 @@ use parking_lot::Mutex;
 use sc_common::{
   gnet::{cb, sb},
   math::ChunkPos,
-  util::Chat,
+  util::{Buffer, Chat},
 };
 use std::time::Instant;
 
@@ -22,13 +22,20 @@ pub fn handle_packet(stream: &mut ConnStream, status: &Mutex<Status>, p: cb::Pac
       stream.write(sb::Packet::KeepAliveV8 { key: id });
       status.lock().last_keep_alive = Instant::now();
     }
-    cb::Packet::ChunkDataV8 { chunk_x, chunk_z, .. } => {
+    cb::Packet::ChunkDataV8 { chunk_x, chunk_z, unknown, .. } => {
       let mut lock = status.lock();
       let pos = ChunkPos::new(chunk_x, chunk_z);
-      if lock.loaded_chunks.contains(&pos) {
-        warn!("leaking chunk at {:?}", pos);
+      let mut buf = Buffer::new(unknown);
+      let bit_map = buf.read_u16();
+      let len = buf.read_varint();
+      if bit_map == 0 && len == 0 {
+        lock.loaded_chunks.remove(&pos);
+      } else {
+        if lock.loaded_chunks.contains(&pos) {
+          warn!("leaking chunk at {:?}", pos);
+        }
+        lock.loaded_chunks.insert(pos);
       }
-      lock.loaded_chunks.insert(pos);
     }
     cb::Packet::PlayerListHeaderV8 { header, footer } => {
       let mut lock = status.lock();
