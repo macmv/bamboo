@@ -1,9 +1,7 @@
-use sugarcane::{chat::Chat, command::Command, block::BlockKind}
+use sugarcane::{chat::Chat, command::Command, block::BlockKind, world::gen}
 
 fn init(sc) {
   sc.info("hello world")
-
-  sc.add_biome(my_biome_gen)
 
   c = Command::new("setblock", handle_setblock)
   c.add_arg_block_pos("pos")
@@ -21,12 +19,32 @@ fn handle_setblock(sc, player, args) {
   c.add(" colors").color("green")
   player.send_message(c)
   player.send_message(BlockKind::from_s("stone"))
+
+  add_biomes(sc)
 }
 
 fn on_block_place(sc, player, pos, kind) {
   sc.info("block x:", pos.x())
 }
 
-fn my_biome_gen() {
+fn add_biomes(sc) {
+  biome = gen::Biome::new("desert")
+  layers = gen::Layers::new("stone")
+  layers.add("sandstone", 5)
+  layers.add("sand", 3)
+  biome.use_layers(layers)
 
+  dead_bush_struct = gen::Structure::from_block("dead_bush")
+  dead_bush = gen::PlantFeature::new(dead_bush_struct, 1, 10)
+  biome.add_feature(dead_bush)
+
+  cactus_struct = Structure::from_func(place_cactus, 0)
+  dead_bush = PlantFeature::new(cactus_struct, 1, 10)
+  biome.add_feature(dead_bush)
+  sc.add_biome(biome)
+}
+
+fn place_cactus(gen, chunk, pos) {
+  height = gen.rand_int(3, 6)
+  chunk.fill(pos, pos + Pos::new(0, height, 0), "cactus")
 }

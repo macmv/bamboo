@@ -17,7 +17,7 @@ pub mod util;
 pub mod world;
 
 use command::SlCommand;
-use world::SlBiome;
+use world::gen::SlBiome;
 
 macro_rules! add_from {
   ( $ty:ty, $new_ty:ident ) => {
@@ -185,8 +185,8 @@ impl PluginManager {
     sl.add_builtin_ty::<command::SlCommand>();
     sl.add_builtin_ty::<command::SlArg>();
     sl.add_builtin_ty::<player::SlPlayer>();
-    sl.add_builtin_ty::<world::SlBiome>();
     sl.add_builtin_ty::<world::SlWorld>();
+    sl.add_builtin_ty::<world::gen::SlBiome>();
 
     let docs = sl.generate_docs(&[
       (
@@ -299,6 +299,13 @@ impl PluginManager {
           /// This module includes a World and WorldManager. The World allows you to spawn
           /// in entities, change blocks, mess with players, etc. The WorldManager allows
           /// you to teleport people between worlds, create new worlds, etc.
+        ),
+      ),
+      (
+        path!(sugarcane::world::gen),
+        markdown!(
+          /// This modules is for everything related to terrain generation. This is a complex
+          /// module, simply becuase of how much there is to do.
         ),
       ),
     ]);
