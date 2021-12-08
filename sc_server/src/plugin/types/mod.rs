@@ -17,6 +17,7 @@ pub mod util;
 pub mod world;
 
 use command::SlCommand;
+use world::SlBiome;
 
 macro_rules! add_from {
   ( $ty:ty, $new_ty:ident ) => {
@@ -153,6 +154,24 @@ impl Sugarcane {
     });
     Ok(())
   }
+  /// Adds a new biome to the server. This works ontop of a terrain generator.
+  /// By default, each of the biomes are chosen at random, for various regions
+  /// of the map. Then, the biome generation takes place in each of these
+  /// regions. The behavior of an individual biome can be overriden using this
+  /// function.
+  ///
+  /// # Example
+  ///
+  /// ```
+  /// fn main(sc) {
+  ///   biome = Biome::new("desert")
+  ///
+  ///   sc.add_biome(biome)
+  /// }
+  /// ```
+  ///
+  /// See the `Biome` docs for more.
+  pub fn add_biome(&self, biome: &SlBiome) -> Result<(), RuntimeError> { Ok(()) }
 }
 
 impl PluginManager {
@@ -166,6 +185,7 @@ impl PluginManager {
     sl.add_builtin_ty::<command::SlCommand>();
     sl.add_builtin_ty::<command::SlArg>();
     sl.add_builtin_ty::<player::SlPlayer>();
+    sl.add_builtin_ty::<world::SlBiome>();
     sl.add_builtin_ty::<world::SlWorld>();
 
     let docs = sl.generate_docs(&[
