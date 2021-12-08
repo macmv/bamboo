@@ -1,8 +1,8 @@
 use rand::{rngs::OsRng, Rng};
 use rsa::PublicKey;
 use sc_common::{
+  gnet::{cb, sb, tcp},
   math::der,
-  net::{cb, sb, tcp},
   version::ProtocolVersion,
 };
 use sc_proxy::{
@@ -34,17 +34,21 @@ impl ConnStream {
     out.write_str("macmv");
     self.stream.write(out);
   }
-  pub fn write(&mut self, p: sb::Packet) { self.stream.write(p.to_tcp(self.ver)) }
+  pub fn write(&mut self, p: sb::Packet) {
+    let mut tcp = tcp::Packet::new(p.tcp_id(self.ver) as i32, self.ver);
+    p.to_tcp(&mut tcp);
+    self.stream.write(tcp);
+  }
   pub fn needs_flush(&self) -> bool { self.stream.needs_flush() }
   pub fn flush(&mut self) -> io::Result<()> { self.stream.flush() }
   pub fn closed(&self) -> bool { self.closed }
 
   pub fn poll(&mut self) -> io::Result<()> { self.stream.poll() }
   pub fn read(&mut self) -> io::Result<Option<cb::Packet>> {
-    if let Some(p) = self.stream.read(self.ver)? {
+    if let Some(mut p) = self.stream.read(self.ver)? {
       match self.state {
         State::Play => {
-          return Ok(Some(cb::Packet::from_tcp(p, self.ver)));
+          return Ok(Some(cb::Packet::from_tcp(&mut p, self.ver)));
         }
         _ => {
           self.handle_handshake(p)?;
@@ -63,7 +67,7 @@ impl ConnStream {
       State::Login => match p.id() {
         0 => {
           // disconnect
-          let reason = p.read_str();
+          let reason = p.read_ident();
           error!("disconnected: {}", reason);
           self.closed = true;
           return Ok(());
@@ -72,11 +76,11 @@ impl ConnStream {
           // encryption request
           warn!("got encryption request, but mojang auth is not implemented");
 
-          let _server_id = p.read_str();
+          let _server_id = p.read_ident();
           let pub_key_len = p.read_varint();
-          let pub_key = p.read_buf(pub_key_len);
+          let pub_key = p.read_buf(pub_key_len.try_into().unwrap());
           let token_len = p.read_varint();
-          let token = p.read_buf(token_len);
+          let token = p.read_buf(token_len.try_into().unwrap());
           let key = der::decode(&pub_key).unwrap();
 
           let mut secret = [0; 16];
@@ -101,7 +105,7 @@ impl ConnStream {
         2 => {
           // login success
           let _uuid = p.read_uuid();
-          let _username = p.read_str();
+          let _username = p.read_str(16);
           self.state = State::Play;
         }
         3 => {

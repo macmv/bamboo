@@ -1,6 +1,6 @@
 use super::ConnStream;
 use crate::cli::LineReader;
-use sc_common::net::sb;
+use sc_common::gnet::sb;
 use std::{io, io::Write};
 
 pub fn handle(
@@ -16,13 +16,13 @@ pub fn handle(
     "say" => {
       let saying = args.join(" ");
       writeln!(l, "saying {}", saying)?;
-      stream.write(sb::Packet::Chat { message: saying.into() });
+      stream.write(sb::Packet::ChatV8 { message: saying.into() });
     }
     c if c.starts_with('/') => {
       let mut out = command.to_string();
       out.push_str(&args.join(" "));
       writeln!(l, "sending command {}", out)?;
-      stream.write(sb::Packet::Chat { message: out });
+      stream.write(sb::Packet::ChatV8 { message: out });
     }
     _ => {
       writeln!(l, "unknown command: {}", command)?;
