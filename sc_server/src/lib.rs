@@ -8,6 +8,7 @@ pub mod item;
 pub mod net;
 pub mod player;
 pub mod plugin;
+pub mod util;
 pub mod world;
 
 // use std::sync::Arc;
