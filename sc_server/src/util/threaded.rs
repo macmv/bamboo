@@ -8,7 +8,7 @@ pub struct Threaded<T> {
   // is inside the closure. With an unsafe cell, this would be a double mutable borrow. With
   // refcell, this will panic.
   threads: RwLock<HashMap<ThreadId, RefCell<T>>>,
-  builder: Box<dyn Fn() -> T>,
+  builder: Box<dyn Fn() -> T + Send>,
 }
 
 impl<T> Threaded<T> {
@@ -17,7 +17,7 @@ impl<T> Threaded<T> {
   /// the same object on every thread. It will still function if you don't
   /// return the same object, as calling `get` from the same thread will always
   /// return the stored object for that thread.
-  pub fn new(builder: impl Fn() -> T + 'static) -> Self {
+  pub fn new(builder: impl Fn() -> T + 'static + Send) -> Self {
     Threaded { threads: RwLock::new(HashMap::new()), builder: Box::new(builder) }
   }
 

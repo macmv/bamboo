@@ -18,7 +18,7 @@ impl Underground {
     Underground { ores: OreGen::new(seed), caves: CaveGen::new(seed) }
   }
 
-  pub fn process(&mut self, world: &WorldGen, pos: ChunkPos, c: &mut MultiChunk) {
+  pub fn process(&self, world: &WorldGen, pos: ChunkPos, c: &mut MultiChunk) {
     self.ores.place(world, pos, c);
     self.caves.carve(world, pos, c);
   }
