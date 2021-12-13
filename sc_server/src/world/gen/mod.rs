@@ -174,6 +174,7 @@ impl WorldGen {
     let id = self.biomes.len();
     self.biomes.push(Box::new(B::new(id)));
   }
+
   pub fn generate(&mut self, pos: ChunkPos, c: &mut MultiChunk) {
     for x in 0..16 {
       for z in 0..16 {

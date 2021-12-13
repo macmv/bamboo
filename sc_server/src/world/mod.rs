@@ -24,7 +24,6 @@ use std::{
     Arc,
   },
   thread,
-  thread::ThreadId,
   time::{Duration, Instant},
 };
 
@@ -69,7 +68,7 @@ pub struct World {
   // Whenever we want to unload chunks, we will clear out this map. So there is no situation where
   // a rwlock is more useful than a normal mutex.
   unloadable_chunks: Mutex<HashSet<ChunkPos>>,
-  generators:        RwLock<HashMap<ThreadId, Mutex<WorldGen>>>,
+  gen:               WorldGen,
   players:           RwLock<PlayersMap>,
   entities:          RwLock<HashMap<i32, Arc<Entity>>>,
   eid:               AtomicI32,
@@ -112,7 +111,7 @@ impl World {
     let world = Arc::new(World {
       chunks: RwLock::new(HashMap::new()),
       unloadable_chunks: Mutex::new(HashSet::new()),
-      generators: RwLock::new(HashMap::new()),
+      gen: WorldGen::new(),
       players: RwLock::new(PlayersMap::new()),
       entities: RwLock::new(HashMap::new()),
       eid: 1.into(),
@@ -238,21 +237,8 @@ impl World {
   /// have a list of chunks to generate, and you would like to generate them in
   /// parallel.
   pub fn pre_generate_chunk(&self, pos: ChunkPos) -> MultiChunk {
-    let tid = thread::current().id();
-    // We first check (read-only) if we need a world generator for this thread
-    if !self.generators.read().contains_key(&tid) {
-      // If we do, we lock it for writing
-      let mut generators = self.generators.write();
-      // Make sure that the chunk was not written in between locking this chunk
-      // Even though we only use this generator on this thread, Rust safety says we
-      // need a Mutex here. I could do away with the mutex in unsafe code, but that
-      // seems like a pre-mature optimization.
-      generators.entry(tid).or_insert_with(|| Mutex::new(WorldGen::new()));
-    }
-    let generators = self.generators.read();
-    let mut lock = generators[&tid].lock();
     let mut c = MultiChunk::new(self.block_converter.clone());
-    lock.generate(pos, &mut c);
+    self.gen.generate(pos, &mut c);
     c
   }
 

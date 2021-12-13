@@ -34,3 +34,9 @@ impl<T> Threaded<T> {
     r
   }
 }
+
+// SAFETY: The only time we access the internal `RefCell` at all is within the
+// `get` function. Because `ThreadId` is guaranteed to be unique for the current
+// thread, we only access one `RefCell` per thread.
+unsafe impl<T: Send> Send for Threaded<T> {}
+unsafe impl<T: Send> Sync for Threaded<T> {}
