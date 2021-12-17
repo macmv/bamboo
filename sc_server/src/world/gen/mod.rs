@@ -3,7 +3,10 @@ use crate::block;
 use math::WarpedVoronoi;
 use noise::{BasicMulti, NoiseFn};
 use sc_common::math::{ChunkPos, Pos, RngCore, WyhashRng};
-use std::{cmp::Ordering, collections::HashSet};
+use std::{
+  cmp::Ordering,
+  collections::{HashMap, HashSet},
+};
 
 mod biomes;
 mod math;
@@ -129,7 +132,17 @@ pub trait BiomeGen {
   }
   /// Decorates the given chunk. This is called for every chunk where a block of
   /// this biome is in the radius of [`decorate_radius`].
-  fn decorate(&self, _world: &WorldGen, _pos: ChunkPos, _c: &mut MultiChunk) {}
+  ///
+  /// The tops map is a mapping of every block column in the chunk to maximum Y
+  /// values.
+  fn decorate(
+    &self,
+    _world: &WorldGen,
+    _pos: ChunkPos,
+    _c: &mut MultiChunk,
+    _tops: &HashMap<Pos, i32>,
+  ) {
+  }
   /// Returns the longest distance that decorations can extend outside of this
   /// biome. This is used to call [`decorate`] when there are blocks of this
   /// biome in a nearby chunk.
@@ -182,37 +195,48 @@ impl WorldGen {
     let b_min_height = min_height.floor() as i32;
     let b_max_height = max_height.ceil() as i32;
     c.fill_kind(Pos::new(0, 0, 0), Pos::new(15, b_min_height, 15), block::Kind::Stone).unwrap();
-    for x in 0..16 {
-      for z in 0..16 {
-        let mut depth = 0;
-        for y in (b_min_height..=b_max_height).rev() {
-          let p = Pos::new(x, y, z);
-          let x = x + pos.x() * 16;
-          let z = z + pos.z() * 16;
-          let val = self.stone.get([x as f64 / div, y as f64 / div, z as f64 / div]);
-          let mut min = (y as f64 - min_height) / (max_height - min_height);
-          min = min * 2.0 - 1.0;
-          if val > min {
-            if depth == 0 {
-              c.set_kind(p, block::Kind::GrassBlock).unwrap();
-            } else if depth <= 2 {
-              c.set_kind(p, block::Kind::Dirt).unwrap();
-            } else {
-              c.set_kind(p, block::Kind::Stone).unwrap();
-            }
-            depth += 1;
-          } else {
-            depth = 0;
+    let mut biomes = HashSet::new();
+    let mut tops = HashMap::new();
+    for p in pos.columns() {
+      biomes.insert(self.biome_id_at(p));
+      let mut depth = 0;
+      let mut found_top = false;
+      for y in (b_min_height..=b_max_height).rev() {
+        let rel = p.chunk_rel().with_y(y);
+        let val = {
+          let x = p.x() as f64 / div;
+          let y = y as f64 / div;
+          let z = p.z() as f64 / div;
+          self.stone.get([x, y, z])
+        };
+        let mut min = (y as f64 - min_height) / (max_height - min_height);
+        min = min * 2.0 - 1.0;
+        if val > min {
+          if !found_top {
+            found_top = true;
+            tops.insert(p.chunk_rel(), y);
           }
+          if depth == 0 {
+            c.set_kind(rel, block::Kind::GrassBlock).unwrap();
+          } else if depth <= 2 {
+            c.set_kind(rel, block::Kind::Dirt).unwrap();
+          } else {
+            c.set_kind(rel, block::Kind::Stone).unwrap();
+          }
+          depth += 1;
+        } else {
+          depth = 0;
         }
+      }
+      if !found_top {
+        tops.insert(p.chunk_rel(), b_max_height);
       }
     }
     self.underground.process(&self, pos, c);
-    /*
-    let mut biomes = HashSet::new();
-    for p in pos.columns() {
-      biomes.insert(self.biome_id_at(p));
+    for b in &biomes {
+      self.biomes[*b].decorate(self, pos, c, &tops);
     }
+    /*
     if biomes.len() == 1 {
       for b in &biomes {
         self.biomes[*b].fill_chunk(self, pos, c);
@@ -222,9 +246,6 @@ impl WorldGen {
         let biome = self.biome_map.get(p.into()) as usize % self.biomes.len();
         self.biomes[biome].fill_column(self, p, c);
       }
-    }
-    for b in &biomes {
-      self.biomes[*b].decorate(self, pos, c);
     }
     */
   }

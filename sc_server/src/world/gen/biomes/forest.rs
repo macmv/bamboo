@@ -4,6 +4,7 @@ use super::{
 };
 use crate::{block, world::chunk::MultiChunk};
 use sc_common::math::{ChunkPos, Pos};
+use std::collections::HashMap;
 
 pub struct Gen {
   id:    usize,
@@ -65,13 +66,19 @@ impl Gen {
 impl BiomeGen for Gen {
   fn new(id: usize) -> Gen { Gen { id, trees: PointGrid::new(12345, 16, 5) } }
   fn id(&self) -> usize { self.id }
-  fn decorate(&self, world: &WorldGen, chunk_pos: ChunkPos, c: &mut MultiChunk) {
+  fn decorate(
+    &self,
+    world: &WorldGen,
+    chunk_pos: ChunkPos,
+    c: &mut MultiChunk,
+    tops: &HashMap<Pos, i32>,
+  ) {
     // Iterate through a 2 block radius outside this chunk
     for p in
       (chunk_pos.block() - Pos::new(2, 0, 2)).to(chunk_pos.block() + Pos::new(15 + 2, 0, 15 + 2))
     {
       if world.is_biome(self, p) && self.trees.contains(p.into()) {
-        let height = self.height_at(world, p);
+        let height = tops[&p.chunk_rel()];
         self.place_tree(world, c, p.with_y(height + 1), chunk_pos);
       }
     }

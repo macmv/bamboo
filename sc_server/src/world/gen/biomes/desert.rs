@@ -4,6 +4,7 @@ use super::{
 };
 use crate::{block, world::chunk::MultiChunk};
 use sc_common::math::{ChunkPos, Pos};
+use std::collections::HashMap;
 
 pub struct Gen {
   id:    usize,
@@ -32,10 +33,16 @@ impl BiomeGen for Gen {
     layers.add(block::Kind::Sand, 2);
     layers
   }
-  fn decorate(&self, world: &WorldGen, chunk_pos: ChunkPos, c: &mut MultiChunk) {
+  fn decorate(
+    &self,
+    world: &WorldGen,
+    chunk_pos: ChunkPos,
+    c: &mut MultiChunk,
+    tops: &HashMap<Pos, i32>,
+  ) {
     for mut p in chunk_pos.columns() {
       if world.is_biome(self, p) {
-        let height = self.height_at(world, p);
+        let height = tops[&p.chunk_rel()];
         p = p.with_y(height + 1);
         if self.cacti.contains(p.into()) {
           self.place_cactus(world, c, p);
