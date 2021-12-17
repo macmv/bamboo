@@ -5,8 +5,6 @@ mod fpos;
 mod rng;
 mod vec;
 
-pub mod terrain;
-
 pub use aabb::AABB;
 pub use fast::{FastMath, EPSILON};
 pub use fpos::{FPos, FPosError};

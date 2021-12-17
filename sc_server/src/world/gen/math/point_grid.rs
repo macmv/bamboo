@@ -1,5 +1,5 @@
 use super::{super::WyhashRng, Point};
-use rand_core::RngCore;
+use sc_common::math::RngCore;
 
 /// This is a randomized point grid. It is built in such a way that the points
 /// inside should be scattered in a random-looking fassion. This should be used

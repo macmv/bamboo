@@ -1,5 +1,13 @@
+mod point;
+mod point_grid;
+mod voronoi;
+
+pub use point::{Point, Slope, Vector};
+pub use point_grid::PointGrid;
+pub use voronoi::Voronoi;
+
 use noise::{BasicMulti, MultiFractal, NoiseFn, Seedable};
-use sc_common::math::terrain::{Point, Voronoi};
+use sc_common::math::RngCore;
 
 /// This is a voronoi map, but all the input coordinates are shifted by two
 /// noise maps.

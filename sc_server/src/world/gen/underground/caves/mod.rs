@@ -1,9 +1,10 @@
-use super::super::{util::Cache, WorldGen};
-use crate::world::chunk::MultiChunk;
-use sc_common::math::{
-  terrain::{Point, PointGrid},
-  ChunkPos, Pos,
+use super::super::{
+  math::{Point, PointGrid},
+  util::Cache,
+  WorldGen,
 };
+use crate::world::chunk::MultiChunk;
+use sc_common::math::{ChunkPos, Pos};
 
 mod worm;
 pub use worm::CaveWorm;

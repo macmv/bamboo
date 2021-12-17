@@ -1,4 +1,4 @@
-use super::{BiomeGen, WorldGen};
+use super::{super::BiomeGen, WorldGen};
 use crate::{block, world::chunk::MultiChunk};
 use sc_common::math::ChunkPos;
 

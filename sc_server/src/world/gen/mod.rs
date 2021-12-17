@@ -5,11 +5,8 @@ use noise::{BasicMulti, NoiseFn};
 use sc_common::math::{ChunkPos, Pos, RngCore, WyhashRng};
 use std::{cmp::Ordering, collections::HashSet};
 
-mod desert;
-mod forest;
+mod biomes;
 mod math;
-mod mountain;
-mod plains;
 mod sl;
 mod underground;
 pub mod util;
@@ -170,10 +167,7 @@ impl WorldGen {
       height,
       underground: Underground::new(seed),
     };
-    gen.add_biome::<desert::Gen>();
-    gen.add_biome::<forest::Gen>();
-    gen.add_biome::<plains::Gen>();
-    gen.add_biome::<mountain::Gen>();
+    gen.add_default_biomes();
     gen
   }
   pub fn add_biome<B: BiomeGen + Send + Sync + 'static>(&mut self) {

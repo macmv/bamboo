@@ -1,4 +1,5 @@
-use rand_core::{impls, Error, RngCore};
+use rand::RngCore;
+use rand_core::{impls, Error};
 
 #[derive(Debug)]
 pub struct WyhashRng(u64);

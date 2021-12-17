@@ -1,4 +1,7 @@
-use super::{BiomeGen, BiomeLayers, WorldGen};
+use super::{
+  super::{BiomeGen, BiomeLayers},
+  WorldGen,
+};
 use crate::block;
 use sc_common::math::Pos;
 use std::cmp;
