@@ -23,19 +23,3 @@ where
     ver => unimplemented!("cannot serialize multi block change for version {:?}", ver),
   }
 }
-
-pub fn serialize_partial_chunk(
-  _pos: ChunkPos,
-  _c: &MultiChunk,
-  ver: BlockVersion,
-  _min: u32,
-  _max: u32,
-) -> cb::Packet {
-  match ver {
-    // BlockVersion::V1_8 => v1_8::serialize_partial_chunk(pos, c, min, max),
-    // BlockVersion::V1_9 | BlockVersion::V1_12 => {
-    //   v1_9::serialize_partial_chunk(pos, c, min, max, ver)
-    // }
-    ver => unimplemented!("cannot serialize chunks for version {:?}", ver),
-  }
-}

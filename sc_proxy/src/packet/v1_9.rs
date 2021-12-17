@@ -7,12 +7,13 @@ use sc_common::{
 // Applies to 1.9 - 1.12, but 1.10 doesn't work, so idk
 pub fn chunk(
   pos: ChunkPos,
+  full: bool,
   bit_map: u16,
   sections: &[Section],
   ver: ProtocolVersion,
   conv: &TypeConverter,
 ) -> Packet {
-  let biomes = true; // Always true with new chunk set
+  let biomes = full;
   let skylight = true; // Assume overworld
 
   let mut chunk_data = Buffer::new(vec![]);
@@ -59,7 +60,7 @@ pub fn chunk(
   Packet::ChunkDataV9 {
     chunk_x:            pos.x(),
     chunk_z:            pos.z(),
-    load_chunk:         true,
+    load_chunk:         full,
     available_sections: bit_map.into(),
     buffer:             vec![],
     field_189557_e:     None,

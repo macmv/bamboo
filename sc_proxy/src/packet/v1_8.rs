@@ -7,9 +7,15 @@ use sc_common::{
   version::BlockVersion,
 };
 
-pub fn chunk(pos: ChunkPos, bit_map: u16, sections: &[Section], conv: &TypeConverter) -> Packet {
-  let skylight = true;
-  let biomes = true;
+pub fn chunk(
+  pos: ChunkPos,
+  full: bool,
+  bit_map: u16,
+  sections: &[Section],
+  conv: &TypeConverter,
+) -> Packet {
+  let biomes = full;
+  let skylight = true; // Assume overworld
 
   let total_sections = sections.len();
 
@@ -57,7 +63,7 @@ pub fn chunk(pos: ChunkPos, bit_map: u16, sections: &[Section], conv: &TypeConve
   Packet::ChunkDataV8 {
     chunk_x:        pos.x(),
     chunk_z:        pos.z(),
-    field_149279_g: true,
+    field_149279_g: full,
     extracted_data: None,
     unknown:        chunk_data.into_inner(),
   }

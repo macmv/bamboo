@@ -16,8 +16,14 @@ use sc_common::{
 // Added the MOTION_BLOCKING field. This is a heightmap, stored in NBT.
 // Added a u16 for non air blocks at the start of each section.
 // Moved lighting data into another packet, so it is no longer included.
-pub fn chunk(pos: ChunkPos, bit_map: u16, sections: &[Section], conv: &TypeConverter) -> Packet {
-  let biomes = true; // Always true with new chunk set
+pub fn chunk(
+  pos: ChunkPos,
+  full: bool,
+  bit_map: u16,
+  sections: &[Section],
+  conv: &TypeConverter,
+) -> Packet {
+  let biomes = full;
   let _skylight = true; // Assume overworld
 
   let mut chunk_data = Buffer::new(vec![]);
@@ -54,7 +60,7 @@ pub fn chunk(pos: ChunkPos, bit_map: u16, sections: &[Section], conv: &TypeConve
   Packet::ChunkDataV14 {
     chunk_x:                pos.x(),
     chunk_z:                pos.z(),
-    is_full_chunk:          true,
+    is_full_chunk:          full,
     vertical_strip_bitmask: bit_map.into(),
     heightmaps:             None,
     data:                   vec![],

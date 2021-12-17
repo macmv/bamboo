@@ -37,7 +37,9 @@ impl ToTcp for Packet {
           GPacket::ChatV12 { chat_component: msg, ty: None, unknown: vec![ty] }
         }
       }
-      Packet::Chunk { pos, bit_map, sections } => super::chunk(pos, bit_map, sections, ver, conv),
+      Packet::Chunk { pos, full, bit_map, sections } => {
+        super::chunk(pos, full, bit_map, sections, ver, conv)
+      }
       Packet::EntityLook { eid, yaw, pitch, on_ground } => GPacket::EntityLookV8 {
         entity_id: eid,
         pos_x: None,

@@ -64,23 +64,10 @@ impl World {
         // any time there is a large multi block change, the client will freeze up. That
         // is why this check is against such a low number.
         if num_blocks_changed > 128 {
-          // Map of block version to packets. This server is optimized at many players
-          // being online, so we only generate the chunk once for each versions.
-          let mut serialized_chunks = HashMap::new();
+          let serialized =
+            self.serialize_partial_chunk(pos, min.chunk_y() as u32, max.chunk_y() as u32);
           for p in self.players().iter().in_view(pos) {
-            p.send(
-              serialized_chunks
-                .entry(pos)
-                .or_insert_with(|| {
-                  self.serialize_partial_chunk(
-                    pos,
-                    p.ver().block(),
-                    min.chunk_y() as u32,
-                    max.chunk_y() as u32,
-                  )
-                })
-                .clone(),
-            );
+            p.send(serialized.clone());
           }
         } else {
           // Map of block versions to multi block change records.

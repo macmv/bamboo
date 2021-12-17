@@ -336,22 +336,17 @@ impl World {
   pub fn serialize_chunk(&self, pos: ChunkPos) -> cb::Packet {
     self.chunk(pos, |c| {
       let mut bit_map = 0;
+      let mut sections = vec![];
       let c = c.get_paletted();
 
       for (y, s) in c.sections().enumerate() {
-        if s.is_some() {
+        if let Some(c) = s {
           bit_map |= 1 << y;
+          sections.push(c.unwrap_paletted().clone());
         }
       }
 
-      cb::Packet::Chunk {
-        pos,
-        bit_map,
-        sections: c
-          .sections()
-          .filter_map(|c| c.as_ref().map(|c| c.unwrap_paletted().clone()))
-          .collect(),
-      }
+      cb::Packet::Chunk { pos, full: true, bit_map, sections }
     })
   }
 
@@ -366,14 +361,24 @@ impl World {
   /// be sent to the client. If that second does not exist, this function will
   /// panic. `min` and `max` should not be outside of 0..15, unless you are
   /// sending this to a 1.17+ client.
-  pub fn serialize_partial_chunk(
-    &self,
-    pos: ChunkPos,
-    ver: BlockVersion,
-    min: u32,
-    max: u32,
-  ) -> cb::Packet {
-    self.chunk(pos, |c| crate::net::serialize::serialize_partial_chunk(pos, &c, ver, min, max))
+  pub fn serialize_partial_chunk(&self, pos: ChunkPos, min: u32, max: u32) -> cb::Packet {
+    self.chunk(pos, |c| {
+      let mut bit_map = 0;
+      let mut sections = vec![];
+      let c = c.get_paletted();
+
+      for (y, s) in c.sections().enumerate() {
+        if (y as u32) < min || y as u32 > max {
+          continue;
+        }
+        if let Some(c) = s {
+          bit_map |= 1 << y;
+          sections.push(c.unwrap_paletted().clone());
+        }
+      }
+
+      cb::Packet::Chunk { pos, full: false, bit_map, sections }
+    })
   }
 
   /// Increments how many people are viewing the given chunk. This counter is

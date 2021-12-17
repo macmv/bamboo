@@ -16,6 +16,7 @@ pub enum Packet {
   },
   Chunk {
     pos:      ChunkPos,
+    full:     bool,
     bit_map:  u16,
     sections: Vec<Section>,
   },
