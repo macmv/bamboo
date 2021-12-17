@@ -158,7 +158,7 @@ pub struct WorldGen {
 impl WorldGen {
   pub fn new() -> Self {
     let mut stone = BasicMulti::new();
-    stone.octaves = 5;
+    stone.octaves = 3;
     let seed = 3210471203948712039;
     let mut gen = WorldGen {
       seed,
@@ -178,13 +178,14 @@ impl WorldGen {
     for x in 0..16 {
       for z in 0..16 {
         let div = 32.0;
+        let height = 64.0_f64;
         let mut first_air = 64;
-        for y in 0..64 {
+        for y in 0..height.ceil() as i32 {
           let p = Pos::new(x, y, z);
           let x = x + pos.x() * 16;
           let z = z + pos.z() * 16;
           let val = self.stone.get([x as f64 / div, y as f64 / div, z as f64 / div]);
-          let mut min = (y as f64 / 64.0).powi(3);
+          let mut min = (y as f64 / height).powi(3);
           min = min * 2.0 - 1.0;
           if val <= min {
             first_air = y;
@@ -193,12 +194,12 @@ impl WorldGen {
           }
         }
         let mut last_stone = first_air - 1;
-        for y in first_air..64 {
+        for y in first_air..height.ceil() as i32 {
           let p = Pos::new(x, y, z);
           let x = x + pos.x() * 16;
           let z = z + pos.z() * 16;
           let val = self.stone.get([x as f64 / div, y as f64 / div, z as f64 / div]);
-          let mut min = (y as f64 / 64.0).powi(3);
+          let mut min = (y as f64 / height).powi(3);
           min = min * 2.0 - 1.0;
           if val > min {
             last_stone = y;
