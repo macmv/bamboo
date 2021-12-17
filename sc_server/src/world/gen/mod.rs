@@ -198,7 +198,9 @@ impl WorldGen {
     let mut biomes = HashSet::new();
     let mut tops = HashMap::new();
     for p in pos.columns() {
-      biomes.insert(self.biome_id_at(p));
+      let b = self.biome_id_at(p);
+      let layers = self.biomes[b].layers();
+      biomes.insert(b);
       let mut depth = 0;
       let mut found_top = false;
       for y in (b_min_height..=b_max_height).rev() {
@@ -217,7 +219,11 @@ impl WorldGen {
             tops.insert(p.chunk_rel(), y);
           }
           if depth == 0 {
-            c.set_kind(rel, block::Kind::GrassBlock).unwrap();
+            c.set_kind(
+              rel,
+              layers.layers().last().map(|(kind, _)| *kind).unwrap_or(layers.main_area),
+            )
+            .unwrap();
           } else if depth <= 2 {
             c.set_kind(rel, block::Kind::Dirt).unwrap();
           } else {
