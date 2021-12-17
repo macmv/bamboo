@@ -207,6 +207,7 @@ impl WorldGen {
         }
       }
     }
+    self.underground.process(&self, pos, c);
     /*
     let mut biomes = HashSet::new();
     for p in pos.columns() {
@@ -222,7 +223,6 @@ impl WorldGen {
         self.biomes[biome].fill_column(self, p, c);
       }
     }
-    self.underground.process(&WorldGen::new(), pos, c);
     for b in &biomes {
       self.biomes[*b].decorate(self, pos, c);
     }
