@@ -37,3 +37,22 @@ pub fn chunk(
     _ => todo!("chunk on version {}", ver),
   }
 }
+
+pub fn multi_block_change(
+  pos: ChunkPos,
+  y: i32,
+  changes: Vec<u64>,
+  ver: ProtocolVersion,
+  conv: &TypeConverter,
+) -> Packet {
+  match ver.block() {
+    BlockVersion::V1_8 | BlockVersion::V1_9 | BlockVersion::V1_12 => {
+      v1_8::multi_block_change(pos, y, changes, ver, conv)
+    }
+    // ProtocolVersion::V1_13 => v1_13::serialize_chunk(pos, bit_map, &sections, conv),
+    // BlockVersion::V1_14 => v1_14::chunk(pos, full, bit_map, &sections, conv),
+    // ProtocolVersion::V1_15 => v1_15::serialize_chunk(pos, c),
+    // ProtocolVersion::V1_16 => v1_16::serialize_chunk(pos, c),
+    _ => todo!("multi block change on version {}", ver),
+  }
+}

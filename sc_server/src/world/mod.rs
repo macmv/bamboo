@@ -407,7 +407,7 @@ impl World {
           {
             panic!("invalid block position {}", pos);
           }
-          (id as u64) << 12 | (pos.x() as u64) << 8 | (pos.z() as u64) << 4 | pos.y() as u64
+          (id as u64) << 12 | (pos.x() as u64) << 8 | (pos.y() as u64) << 4 | pos.z() as u64
         })
         .collect(),
     }

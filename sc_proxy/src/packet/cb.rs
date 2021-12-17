@@ -170,6 +170,9 @@ impl ToTcp for Packet {
           GPacket::KeepAliveV12 { id: id.into() }
         }
       }
+      Packet::MultiBlockChange { pos, y, changes } => {
+        super::multi_block_change(pos, y, changes, ver, conv)
+      }
       Packet::PlayerHeader { header, footer } => GPacket::PlayerListHeaderV8 { header, footer },
       Packet::PlayerList { action } => {
         let id;

@@ -83,7 +83,9 @@ pub enum Packet {
     /// The chunk section Y coordinate.
     y:       i32,
     /// A list of relative coordinates and block ids. Each int is encoded like
-    /// so: `block_id << 12 | (x << 8 | z << 4 | y)`
+    /// so: `block_id << 12 | (x << 8 | y << 4 | z)`. NOTE: This is not the same
+    /// as how 1.17 encodes this! I prefer to keep x, y, z in order, as it makes
+    /// more sense.
     changes: Vec<u64>,
   },
   KeepAlive {

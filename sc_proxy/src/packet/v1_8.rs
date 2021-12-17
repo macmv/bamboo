@@ -4,7 +4,7 @@ use sc_common::{
   gnet::cb::Packet,
   math::{ChunkPos, Pos},
   util::Buffer,
-  version::BlockVersion,
+  version::{BlockVersion, ProtocolVersion},
 };
 
 pub fn chunk(
@@ -66,5 +66,35 @@ pub fn chunk(
     field_149279_g: full,
     extracted_data: None,
     unknown:        chunk_data.into_inner(),
+  }
+}
+
+pub fn multi_block_change(
+  pos: ChunkPos,
+  y: i32,
+  changes: Vec<u64>,
+  ver: ProtocolVersion,
+  conv: &TypeConverter,
+) -> Packet {
+  let mut buf = Buffer::new(vec![]);
+  buf.write_i32(pos.x());
+  buf.write_i32(pos.z());
+  buf.write_varint(changes.len() as i32);
+  for change in changes {
+    let id = (change >> 12) as u32;
+    let s_x = ((change >> 8) & 0xf) as u8;
+    let s_y = ((change >> 4) & 0xf) as u8;
+    let s_z = ((change >> 0) & 0xf) as u8;
+    let old_id = conv.block_to_old(id, ver.block());
+    let y = y * 16 + s_y as i32;
+
+    buf.write_u8((s_x as u8) << 4 | s_z as u8);
+    buf.write_u8(y as u8);
+    buf.write_varint(old_id as i32);
+  }
+  Packet::MultiBlockChangeV8 {
+    chunk_pos_coord: None,
+    changed_blocks:  vec![],
+    unknown:         buf.into_inner(),
   }
 }
