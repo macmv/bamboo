@@ -175,46 +175,34 @@ impl WorldGen {
     self.biomes.push(Box::new(B::new(id)));
   }
 
-  pub fn generate(&mut self, pos: ChunkPos, c: &mut MultiChunk) {
+  pub fn generate(&self, pos: ChunkPos, c: &mut MultiChunk) {
+    let div = 32.0;
+    let min_height = 40.0_f64;
+    let max_height = 64.0_f64;
+    let b_min_height = min_height.floor() as i32;
+    let b_max_height = max_height.ceil() as i32;
+    c.fill_kind(Pos::new(0, 0, 0), Pos::new(15, b_min_height, 15), block::Kind::Stone).unwrap();
     for x in 0..16 {
       for z in 0..16 {
-        let div = 32.0;
-        let height = 64.0_f64;
-        let mut first_air = 64;
-        for y in 0..height.ceil() as i32 {
+        let mut depth = 0;
+        for y in (b_min_height..=b_max_height).rev() {
           let p = Pos::new(x, y, z);
           let x = x + pos.x() * 16;
           let z = z + pos.z() * 16;
           let val = self.stone.get([x as f64 / div, y as f64 / div, z as f64 / div]);
-          let mut min = (y as f64 / height).powi(3);
-          min = min * 2.0 - 1.0;
-          if val <= min {
-            first_air = y;
-            c.fill_kind(p.with_y(0), p.with_y(p.y - 1), block::Kind::Stone).unwrap();
-            break;
-          }
-        }
-        let mut last_stone = first_air - 1;
-        for y in first_air..height.ceil() as i32 {
-          let p = Pos::new(x, y, z);
-          let x = x + pos.x() * 16;
-          let z = z + pos.z() * 16;
-          let val = self.stone.get([x as f64 / div, y as f64 / div, z as f64 / div]);
-          let mut min = (y as f64 / height).powi(3);
+          let mut min = (y as f64 - min_height) / (max_height - min_height);
           min = min * 2.0 - 1.0;
           if val > min {
-            last_stone = y;
-            c.set_kind(p, block::Kind::Stone).unwrap();
-          }
-        }
-        for y in (last_stone - 3..=last_stone).rev() {
-          let p = Pos::new(x, y, z);
-          if c.get_kind(p).unwrap() != block::Kind::Air {
-            if y == last_stone {
+            if depth == 0 {
               c.set_kind(p, block::Kind::GrassBlock).unwrap();
-            } else {
+            } else if depth <= 2 {
               c.set_kind(p, block::Kind::Dirt).unwrap();
+            } else {
+              c.set_kind(p, block::Kind::Stone).unwrap();
             }
+            depth += 1;
+          } else {
+            depth = 0;
           }
         }
       }
