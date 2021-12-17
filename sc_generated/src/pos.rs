@@ -143,9 +143,15 @@ impl Pos {
   #[inline(always)]
   pub fn chunk(&self) -> ChunkPos { ChunkPos::new(self.chunk_x(), self.chunk_z()) }
   /// Returns this position within the 0, 0 chunk column. That is, the X and Z
-  /// are both set to the chunk relative position. The Y value is unchanged.
+  /// are both set to their chunk relative position. The Y value is unchanged.
   #[inline(always)]
   pub fn chunk_rel(&self) -> Pos { Pos { x: self.chunk_rel_x(), y: self.y, z: self.chunk_rel_z() } }
+  /// Returns this position within the 0, 0, 0 chunk sectino. That is, the X, Y
+  /// and Z are all set to their chunk relative position.
+  #[inline(always)]
+  pub fn chunk_section_rel(&self) -> Pos {
+    Pos { x: self.chunk_rel_x(), y: self.chunk_rel_y(), z: self.chunk_rel_z() }
+  }
   /// Returns the block X coordinate within 0..16. This is not the same as X %
   /// 16, because that will give negative numbers for negative X values.
   #[inline(always)]
