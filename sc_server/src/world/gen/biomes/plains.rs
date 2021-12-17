@@ -20,7 +20,12 @@ impl BiomeGen for Gen {
       if world.is_biome(self, p) {
         let height = tops[&p.chunk_rel()];
         p = p.with_y(height + 1);
-        if world.chance(p, 0.30) {
+        if world.chance(p, 0.30)
+          && matches!(
+            c.get_kind(p.chunk_rel().with_y(p.y - 1)).unwrap(),
+            block::Kind::GrassBlock | block::Kind::Dirt
+          )
+        {
           c.set_kind(p.chunk_rel(), block::Kind::Grass).unwrap();
         }
       }
