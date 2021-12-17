@@ -8,13 +8,13 @@ mod players;
 use parking_lot::{Mutex, MutexGuard, RwLock, RwLockReadGuard};
 use sc_common::{
   config::Config,
-  math::{ChunkPos, FPos},
+  math::{ChunkPos, FPos, Pos},
   net::cb,
   util::{
     chat::{Chat, Color},
     ThreadPool, UUID,
   },
-  version::{BlockVersion, ProtocolVersion},
+  version::ProtocolVersion,
 };
 use std::{
   collections::{HashMap, HashSet},
@@ -379,6 +379,38 @@ impl World {
 
       cb::Packet::Chunk { pos, full: false, bit_map, sections }
     })
+  }
+  /// Serializes a multi block change packet. This is generally used in `/fill`
+  /// commands, for chunks where only a few blocks have been changed.
+  ///
+  /// The iterator should contain a list of relative chunk positions, and block
+  /// ids. This function will panic if any of these block positions are outside
+  /// of the zero-zero chunk.
+  #[track_caller]
+  pub fn serialize_multi_block_change(
+    &self,
+    pos: ChunkPos,
+    chunk_y: i32,
+    changes: impl Iterator<Item = (Pos, u32)>,
+  ) -> cb::Packet {
+    cb::Packet::MultiBlockChange {
+      pos,
+      y: chunk_y,
+      changes: changes
+        .map(|(pos, id)| {
+          if pos.x() < 0
+            || pos.x() >= 16
+            || pos.y() < 0
+            || pos.y() >= 16
+            || pos.z() < 0
+            || pos.z() >= 16
+          {
+            panic!("invalid block position {}", pos);
+          }
+          (id as u64) << 12 | (pos.x() as u64) << 8 | (pos.z() as u64) << 4 | pos.y() as u64
+        })
+        .collect(),
+    }
   }
 
   /// Increments how many people are viewing the given chunk. This counter is

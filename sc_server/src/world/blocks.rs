@@ -70,26 +70,21 @@ impl World {
             p.send(serialized.clone());
           }
         } else {
-          // Map of block versions to multi block change records.
-          let mut versions = HashMap::new();
-          for p in self.players().iter().in_view(pos) {
-            p.send(
-              versions
-                .entry(p.ver().block())
-                .or_insert_with(|| {
-                  net::serialize::serialize_multi_block_change(
-                    pos,
-                    p.ver().block(),
-                    min.to(max).map(|pos| {
-                      (
-                        pos.chunk_rel(),
-                        self.block_converter.to_old(ty.id(), p.ver().block()) as i32,
-                      )
-                    }),
-                  )
-                })
-                .clone(),
+          for y in min.chunk_y()..=max.chunk_y() {
+            let serialized = self.serialize_multi_block_change(
+              pos,
+              y,
+              min.to(max).filter_map(|pos| {
+                if pos.chunk_y() == y {
+                  Some((pos.chunk_section_rel(), ty.id()))
+                } else {
+                  None
+                }
+              }),
             );
+            for p in self.players().iter().in_view(pos) {
+              p.send(serialized.clone());
+            }
           }
         }
       }

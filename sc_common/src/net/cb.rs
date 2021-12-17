@@ -72,6 +72,20 @@ pub enum Packet {
     view_distance:      u16,
     reduced_debug_info: bool,
   },
+  /// A list of changed blocks in a chunk section. This is not for a chunk
+  /// column. 1.8 clients have this block for a whole chunk column, but 1.17+
+  /// clients have this packet for a chunk section. It ends up being easier to
+  /// just send multiple packets to 1.8 clients, as there aren't that many
+  /// situations where you are changing blocks in many chunk sections at once.
+  MultiBlockChange {
+    /// The chunk section X and Z coordinate.
+    pos:     ChunkPos,
+    /// The chunk section Y coordinate.
+    y:       i32,
+    /// A list of relative coordinates and block ids. Each int is encoded like
+    /// so: `block_id << 12 | (x << 8 | z << 4 | y)`
+    changes: Vec<u64>,
+  },
   KeepAlive {
     id: u32,
   },
