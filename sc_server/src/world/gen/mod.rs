@@ -144,27 +144,27 @@ pub trait BiomeGen {
   }
   /// Returns this biome's height at the given position. By default, this just
   /// uses the world height at the given position.
-  fn height_at(&self, world: &WorldGen, pos: Pos) -> i32 { world.height_at(pos) as i32 }
+  fn height_at(&self, world: &WorldGen, pos: Pos) -> i32 { 64 }
 }
 
 pub struct WorldGen {
   seed:        u64,
   biome_map:   WarpedVoronoi,
   biomes:      Vec<Box<dyn BiomeGen + Send + Sync>>,
-  height:      BasicMulti,
+  stone:       BasicMulti,
   underground: Underground,
 }
 
 impl WorldGen {
   pub fn new() -> Self {
-    let mut height = BasicMulti::new();
-    height.octaves = 5;
+    let mut stone = BasicMulti::new();
+    stone.octaves = 5;
     let seed = 3210471203948712039;
     let mut gen = WorldGen {
       seed,
       biome_map: WarpedVoronoi::new(seed),
       biomes: vec![],
-      height,
+      stone,
       underground: Underground::new(seed),
     };
     gen.add_default_biomes();
@@ -175,6 +175,49 @@ impl WorldGen {
     self.biomes.push(Box::new(B::new(id)));
   }
   pub fn generate(&mut self, pos: ChunkPos, c: &mut MultiChunk) {
+    for x in 0..16 {
+      for z in 0..16 {
+        let div = 32.0;
+        let mut first_air = 64;
+        for y in 0..64 {
+          let p = Pos::new(x, y, z);
+          let x = x + pos.x() * 16;
+          let z = z + pos.z() * 16;
+          let val = self.stone.get([x as f64 / div, y as f64 / div, z as f64 / div]);
+          let mut min = (y as f64 / 64.0).powi(3);
+          min = min * 2.0 - 1.0;
+          if val <= min {
+            first_air = y;
+            c.fill_kind(p.with_y(0), p.with_y(p.y - 1), block::Kind::Stone).unwrap();
+            break;
+          }
+        }
+        let mut last_stone = first_air - 1;
+        for y in first_air..64 {
+          let p = Pos::new(x, y, z);
+          let x = x + pos.x() * 16;
+          let z = z + pos.z() * 16;
+          let val = self.stone.get([x as f64 / div, y as f64 / div, z as f64 / div]);
+          let mut min = (y as f64 / 64.0).powi(3);
+          min = min * 2.0 - 1.0;
+          if val > min {
+            last_stone = y;
+            c.set_kind(p, block::Kind::Stone).unwrap();
+          }
+        }
+        for y in (last_stone - 3..=last_stone).rev() {
+          let p = Pos::new(x, y, z);
+          if c.get_kind(p).unwrap() != block::Kind::Air {
+            if y == last_stone {
+              c.set_kind(p, block::Kind::GrassBlock).unwrap();
+            } else {
+              c.set_kind(p, block::Kind::Dirt).unwrap();
+            }
+          }
+        }
+      }
+    }
+    /*
     let mut biomes = HashSet::new();
     for p in pos.columns() {
       biomes.insert(self.biome_id_at(p));
@@ -193,9 +236,7 @@ impl WorldGen {
     for b in &biomes {
       self.biomes[*b].decorate(self, pos, c);
     }
-  }
-  pub fn height_at(&self, pos: Pos) -> f64 {
-    self.height.get([pos.x() as f64 / 512.0, pos.z() as f64 / 512.0]) * 20.0 + 60.0
+    */
   }
   pub fn biome_id_at(&self, pos: Pos) -> usize {
     self.biome_map.get(pos.into()) as usize % self.biomes.len()
