@@ -19,6 +19,9 @@ impl CaveWorm {
   }
   pub fn process(&self, chunk_pos: ChunkPos, c: &mut MultiChunk) {
     for pos in &self.steps {
+      if pos.y < 5 {
+        break;
+      }
       if pos.chunk() == chunk_pos {
         // c.set_kind(self.pos.chunk_rel(), block::Kind::LimeWool).unwrap();
         let min = (pos.chunk_rel() - Pos::new(1, 1, 1)).max(Pos::new(0, 0, 0));
