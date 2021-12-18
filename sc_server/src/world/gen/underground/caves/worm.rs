@@ -1,5 +1,6 @@
 use crate::{block, world::chunk::MultiChunk};
 use sc_common::math::{ChunkPos, FastMath, Pos, RngCore, WyhashRng};
+use std::f64::consts::PI;
 
 #[derive(Debug)]
 pub struct CaveWorm {
@@ -13,7 +14,7 @@ pub struct CaveWorm {
 impl CaveWorm {
   pub fn new(seed: u64, pos: Pos) -> Self {
     let mut rng = WyhashRng::new(seed);
-    let angle_horz = ((rng.next_u32() % 1000) as f64 / 1000.0 - 0.5) * std::f64::consts::PI; // -PI to PI
+    let angle_horz = ((rng.next_u32() % 1000) as f64 / 1000.0 - 0.5) * PI; // -PI to PI
     CaveWorm { rng, pos, steps: vec![], angle_vert: 0.0, angle_horz }
   }
   pub fn process(&self, chunk_pos: ChunkPos, c: &mut MultiChunk) {
@@ -55,7 +56,7 @@ impl CaveWorm {
       Pos::new((direction_x * 3.0) as i32, (direction_y * 3.0) as i32, (direction_z * 3.0) as i32);
     self.pos = self.pos.with_y(self.pos.y().max(0).min(255));
     // -0.8 to 0.2
-    self.angle_vert = ((self.rng.next_u32() % 1024) as f64 / 512.0 - 1.0) * 0.5 - 0.3;
+    self.angle_vert = ((self.rng.next_u32() % 1024) as f64 / 512.0 - 1.0) * 0.5 - 0.6;
     // -0.8 to 0.8
     self.angle_horz += ((self.rng.next_u32() % 1024) as f64 / 512.0 - 1.0) * 0.8;
   }
