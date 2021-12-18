@@ -65,7 +65,7 @@ pub enum Packet {
   JoinGame {
     eid:                i32,
     hardcore_mode:      bool,
-    game_mode:          u8,
+    game_mode:          GameMode,
     dimension:          i8,
     level_type:         String,
     difficulty:         i8,

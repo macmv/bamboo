@@ -134,7 +134,7 @@ impl ToTcp for Packet {
         reduced_debug_info,
       } => {
         let mut out = Buffer::new(vec![]);
-        out.write_u8(game_mode);
+        out.write_u8(game_mode.id());
         if ver >= ProtocolVersion::V1_9_2 {
           out.write_i32(dimension.into());
         } else {

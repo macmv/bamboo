@@ -29,7 +29,7 @@ pub fn generate_chunk(c: &mut Criterion) {
 
 criterion_group! {
   name = benches;
-  config = Criterion::default().with_profiler(PProfProfiler::new(100, Output::Flamegraph(None)));
+  config = Criterion::default().with_profiler(PProfProfiler::new(100, Output::Protobuf));
   targets = generate_chunk
 }
 criterion_main!(benches);
