@@ -3,6 +3,7 @@ use crate::{
   command::{Command, Parser, StringType},
   player::Player,
 };
+use parking_lot::Mutex;
 use rayon::prelude::*;
 use sc_common::{
   math::ChunkPos,
@@ -85,11 +86,15 @@ impl World {
     });
 
     info!("generating terrain...");
+    let chunks = Mutex::new(vec![]);
     (-10..=10).into_par_iter().for_each(|x| {
       for z in -10..=10 {
-        self.chunk(ChunkPos::new(x, z), |_| {});
+        let pos = ChunkPos::new(x, z);
+        let c = self.pre_generate_chunk(pos);
+        chunks.lock().push((pos, c));
       }
     });
+    self.store_chunks_no_overwrite(chunks.into_inner());
     info!("done generating terrain");
   }
 
