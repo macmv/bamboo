@@ -1,6 +1,7 @@
 use std::{
   borrow::Borrow,
   collections::{HashMap, VecDeque},
+  fmt,
   fmt::Debug,
   hash::Hash,
 };
@@ -120,6 +121,16 @@ where
         panic!("invalid key: {:?}", key);
       }
     }
+  }
+}
+
+impl<K, V> fmt::Debug for Cache<K, V>
+where
+  K: fmt::Debug,
+  V: fmt::Debug,
+{
+  fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    f.debug_struct("Cache").field("size", &self.data.len()).finish()
   }
 }
 

@@ -1,5 +1,5 @@
 use parking_lot::RwLock;
-use std::{cell::RefCell, collections::HashMap, thread, thread::ThreadId};
+use std::{cell::RefCell, collections::HashMap, fmt, thread, thread::ThreadId};
 
 /// Creates a duplicate struct for each new thread this is used on. This allows
 /// for a shared similar struct between threads.
@@ -40,3 +40,12 @@ impl<T> Threaded<T> {
 // thread, we only access one `RefCell` per thread.
 unsafe impl<T: Send> Send for Threaded<T> {}
 unsafe impl<T: Send> Sync for Threaded<T> {}
+
+impl<T> fmt::Debug for Threaded<T>
+where
+  T: fmt::Debug,
+{
+  fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    self.get(|val| f.debug_tuple("Threaded").field(val).finish())
+  }
+}
