@@ -40,11 +40,11 @@ impl CaveNoise {
           self.noise.get([x, y, z])
         };
         let offset = {
-          const DIV: f64 = 256.0;
+          const DIV: f64 = 512.0;
           let x = p.x() as f64 / DIV;
           let y = y as f64 / DIV;
           let z = p.z() as f64 / DIV;
-          (self.offset.get([x, y, z]) + 1.0) / 2.0
+          self.offset.get([x, y, z])
         };
         let a = (y as f64 - min_height) / (max_height - min_height);
         let b = if y > b_middle { 0.0 } else { (b_middle - y) as f64 / middle };
@@ -55,7 +55,7 @@ impl CaveNoise {
         let mut min = v * 0.2 - 0.1;
         // This dampens the noise more using another noise map, so that we only have
         // caverns in some areas.
-        min += offset * 0.1;
+        min += offset * 0.3 + 0.2;
         if val > min {
           c.set_kind(rel, block::Kind::Air).unwrap();
         }
