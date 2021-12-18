@@ -6,6 +6,14 @@ use crate::{
 
 #[derive(Debug, Clone, sc_macros::Transfer)]
 pub enum Packet {
+  Abilities {
+    invulnerable: bool,
+    flying:       bool,
+    allow_flying: bool,
+    insta_break:  bool,
+    fly_speed:    f32,
+    walk_speed:   f32,
+  },
   BlockUpdate {
     pos:   Pos,
     state: u32,

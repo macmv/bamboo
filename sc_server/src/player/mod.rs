@@ -259,18 +259,17 @@ impl Player {
     delta.x().abs() <= 10 && delta.z().abs() <= 10
   }
 
-  /// Sets the player's fly speed. Unlike the packet, this is a multipler. So
-  /// setting their flyspeed to 1.0 is the default speed.
-  pub fn set_flyspeed(&self, _speed: f32) {
-    // self.send(cb::Packet::Abilities {
-    //   // 0x01: No damage
-    //   // 0x02: Flying
-    //   // 0x04: Can fly
-    //   // 0x08: Can instant break
-    //   flags:         0x02 | 0x04 | 0x08,
-    //   flying_speed:  speed * 0.05,
-    //   walking_speed: 0.1,
-    // });
+  /// Sets the player's fly speed. This is a speed multiplier. So a value of
+  /// `1.0` will reset their fly speed to the default.
+  pub fn set_flyspeed(&self, speed: f32) {
+    self.send(cb::Packet::Abilities {
+      invulnerable: false,
+      flying:       true,
+      allow_flying: true,
+      insta_break:  true,
+      fly_speed:    speed,
+      walk_speed:   1.0,
+    });
   }
 
   /// Sends a block update packet for the block at the given position. This

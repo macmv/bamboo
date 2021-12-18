@@ -29,7 +29,21 @@ pub trait ToTcp {
 impl ToTcp for Packet {
   fn to_tcp(self, ver: ProtocolVersion, conv: &TypeConverter) -> Result<GPacket, WriteError> {
     Ok(match self {
-      // Packet::Chunk { .. } => GPacket::ChunkDataV8 {},
+      Packet::Abilities {
+        invulnerable,
+        flying,
+        allow_flying,
+        insta_break,
+        fly_speed,
+        walk_speed,
+      } => GPacket::PlayerAbilitiesV8 {
+        invulnerable,
+        flying,
+        allow_flying,
+        creative_mode: insta_break,
+        fly_speed: fly_speed * 0.05,
+        walk_speed: walk_speed * 0.1,
+      },
       Packet::Chat { msg, ty } => {
         if ver < ProtocolVersion::V1_12_2 {
           GPacket::ChatV8 { chat_component: msg, ty: ty as i8 }
