@@ -22,10 +22,11 @@ struct ReaderTypes<'a> {
   // write another field, we reassemble that `v_2` in reverse. This is making the assumption that
   // we have completed the variable `v_2` by the time we write the next instruction, which is not
   // always true.
-  var_to_write:   Option<usize>,
+  var_to_write:      Option<usize>,
+  var_func_to_write: Option<String>,
   // For simpler cases, the above sometimes is invalid. This is when the variable defined in
   // `need_to_write` is never used. In these cases, we give up, and store that in this value.
-  needs_to_write: Vec<Instr>,
+  needs_to_write:    Vec<Instr>,
 }
 
 impl Packet {
@@ -61,6 +62,7 @@ impl<'a> ReaderTypes<'a> {
       vars: vars.iter().map(|_| Expr::new(Value::Null)).collect(),
       packet: name,
       var_to_write: None,
+      var_func_to_write: None,
       needs_to_write: vec![],
     }
   }
@@ -234,22 +236,31 @@ impl<'a> ReaderTypes<'a> {
     }
   }
 
+  fn check_var_to_write(&mut self, writer: &mut Vec<Instr>) {
+    if let Some(var) = self.var_to_write.take() {
+      // If need_to_write_used is false, we still want to `take()` need_to_write.
+      if self.needs_to_write.is_empty() {
+        self.needs_to_write.clear();
+      } else {
+        writer.push(Instr::Let(var, Expr::new(Value::Lit(0.into()))));
+        for i in self.needs_to_write.drain(..) {
+          writer.push(i);
+        }
+        writer.push(Instr::Expr(Expr::new(Value::Var(1)).op(Op::Call(
+          "tcp::Packet".into(),
+          self.var_func_to_write.take().unwrap(),
+          vec![Expr::new(Value::Var(var))],
+        ))));
+      }
+    }
+  }
+
   fn gen_writer(&mut self, read: &[Instr], writer: &mut Vec<Instr>) {
     for i in read {
       match i {
         Instr::Set(field, expr) => {
           if self.changes_buf(&expr) {
-            if let Some(var) = self.var_to_write.take() {
-              // If need_to_write_used is false, we still want to `take()` need_to_write.
-              if self.needs_to_write.is_empty() {
-                self.needs_to_write.clear();
-              } else {
-                writer.push(Instr::Let(var, Expr::new(Value::Lit(0.into()))));
-                for i in self.needs_to_write.drain(..) {
-                  writer.push(i);
-                }
-              }
-            }
+            self.check_var_to_write(writer);
             if let Some(instr) = self.set_expr(expr, &Expr::new(Value::Field(field.into()))) {
               writer.push(instr);
             }
@@ -261,8 +272,9 @@ impl<'a> ReaderTypes<'a> {
         }
         Instr::Let(i, expr) => {
           self.vars[*i] = expr.clone();
-          if self.set_expr(expr, &Expr::new(Value::Var(*i))).is_some() {
+          if let Some(func) = self.reverse_set(expr) {
             self.var_to_write = Some(*i);
+            self.var_func_to_write = Some(func);
           }
         }
         Instr::Return(_) => {}
@@ -313,6 +325,7 @@ impl<'a> ReaderTypes<'a> {
         _ => panic!("cannot convert {:?} into writer", i),
       }
     }
+    self.check_var_to_write(writer);
   }
 
   fn changes_buf(&self, expr: &Expr) -> bool {
@@ -323,6 +336,14 @@ impl<'a> ReaderTypes<'a> {
   }
 
   fn set_expr(&mut self, expr: &Expr, field: &Expr) -> Option<Instr> {
+    match &expr.initial {
+      Value::Cond(cond) => {
+        if let Some(var_to_write) = self.var_to_write {
+          self.needs_to_write.push(Instr::Expr(expr.clone()));
+        }
+      }
+      _ => {}
+    }
     Some(match expr.ops.first() {
       Some(Op::Call(class, name, _args)) if class == "tcp::Packet" => {
         assert_eq!(expr.initial, Value::Var(1), "unknown Set value: {:?}", expr);
@@ -346,12 +367,6 @@ impl<'a> ReaderTypes<'a> {
           writer_name.into(),
           vec![self.writer_cast(val, convert::reader_func_to_ty("", name))],
         )))
-      }
-      Some(Op::If(_cond, _new)) => {
-        if let Some(var_to_write) = self.var_to_write {
-          self.needs_to_write.push(Instr::Expr(expr.clone()));
-        }
-        return None;
       }
       Some(_) => return None,
       None => return None,
@@ -384,6 +399,15 @@ impl<'a> ReaderTypes<'a> {
       expr.ops.insert(0, Op::Deref);
     }
     expr
+  }
+
+  fn reverse_set(&self, expr: &Expr) -> Option<String> {
+    match expr.ops.first() {
+      Some(Op::Call(class, name, _args)) if class == "tcp::Packet" => {
+        Some(convert::reader_to_writer(&name).into())
+      }
+      _ => None,
+    }
   }
 
   fn simplify_conditionals(&mut self, instr: &mut [Instr]) {
