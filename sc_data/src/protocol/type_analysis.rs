@@ -22,10 +22,10 @@ struct ReaderTypes<'a> {
   // write another field, we reassemble that `v_2` in reverse. This is making the assumption that
   // we have completed the variable `v_2` by the time we write the next instruction, which is not
   // always true.
-  need_to_write:      Option<Instr>,
+  var_to_write:   Option<usize>,
   // For simpler cases, the above sometimes is invalid. This is when the variable defined in
   // `need_to_write` is never used. In these cases, we give up, and store that in this value.
-  need_to_write_used: bool,
+  needs_to_write: Vec<Instr>,
 }
 
 impl Packet {
@@ -59,8 +59,8 @@ impl<'a> ReaderTypes<'a> {
       fields,
       vars: vars.iter().map(|_| Expr::new(Value::Null)).collect(),
       packet: name,
-      need_to_write: None,
-      need_to_write_used: false,
+      var_to_write: None,
+      needs_to_write: vec![],
     }
   }
   fn get_field(&self, name: &str) -> Option<&Field> {
@@ -236,21 +236,31 @@ impl<'a> ReaderTypes<'a> {
     for i in read {
       match i {
         Instr::Set(field, expr) => {
-          if let Some(need_to_write) = self.need_to_write.take() {
-            // If need_to_write_used is false, we still want to `take()` need_to_write.
-            if self.need_to_write_used {
-              writer.push(need_to_write);
+          if self.changes_buf(&expr) {
+            if let Some(var) = self.var_to_write.take() {
+              // If need_to_write_used is false, we still want to `take()` need_to_write.
+              if self.needs_to_write.is_empty() {
+                self.needs_to_write.clear();
+              } else {
+                writer.push(Instr::Let(var, Expr::new(Value::Lit(0.into()))));
+                for i in self.needs_to_write.drain(..) {
+                  writer.push(i);
+                }
+              }
             }
-          }
-          if let Some(instr) = self.set_expr(expr, &Expr::new(Value::Field(field.into()))) {
-            writer.push(instr);
+            if let Some(instr) = self.set_expr(expr, &Expr::new(Value::Field(field.into()))) {
+              writer.push(instr);
+            }
+          } else {
+            if let Some(i) = self.set_expr(expr, &Expr::new(Value::Field(field.clone()))) {
+              self.needs_to_write.push(i);
+            }
           }
         }
         Instr::Let(i, expr) => {
           self.vars[*i] = expr.clone();
-          if let Some(instr) = self.set_expr(expr, &Expr::new(Value::Var(*i))) {
-            writer.push(Instr::Let(*i, Expr::new(Value::Lit(0.into()))));
-            self.need_to_write = Some(instr);
+          if self.set_expr(expr, &Expr::new(Value::Var(*i))).is_some() {
+            self.var_to_write = Some(*i);
           }
         }
         Instr::Return(_) => {}
@@ -303,6 +313,13 @@ impl<'a> ReaderTypes<'a> {
     }
   }
 
+  fn changes_buf(&self, expr: &Expr) -> bool {
+    match expr.ops.first() {
+      Some(Op::Call(class, name, _args)) if class == "tcp::Packet" && name != "remaining" => true,
+      _ => false,
+    }
+  }
+
   fn set_expr(&mut self, expr: &Expr, field: &Expr) -> Option<Instr> {
     Some(match expr.ops.first() {
       Some(Op::Call(class, name, _args)) if class == "tcp::Packet" => {
@@ -328,7 +345,12 @@ impl<'a> ReaderTypes<'a> {
           vec![self.writer_cast(val, convert::reader_func_to_ty("", name))],
         )))
       }
-      Some(Op::If(_cond, _new)) => return None,
+      Some(Op::If(_cond, _new)) => {
+        if let Some(var_to_write) = self.var_to_write {
+          self.needs_to_write.push(Instr::Expr(expr.clone()));
+        }
+        return None;
+      }
       Some(_) => return None,
       None => return None,
       // _ => panic!("cannot convert {:?} into writer (packet {})", expr, self.packet),
