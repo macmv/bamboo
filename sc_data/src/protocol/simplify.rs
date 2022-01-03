@@ -49,7 +49,7 @@ fn simplify_instr(instr: &mut [Instr]) -> Option<usize> {
         simplify_val(idx);
         simplify_expr(val);
       }
-      Instr::Let(_, val) => {
+      Instr::SetVar(_, val) | Instr::Let(_, val) => {
         match simplify_expr_overwrite(val) {
           (false, Some(new_instr)) => *i = new_instr,
           (false, None) => {}
@@ -150,6 +150,7 @@ fn simplify_cond_overwrite(cond: &mut Cond) -> (bool, Option<Instr>) {
       }
       (false, None)
     }
+    Cond::Bool(val) => simplify_expr_overwrite(val),
   }
 }
 fn simplify_expr(expr: &mut Expr) { simplify_expr_overwrite(expr); }

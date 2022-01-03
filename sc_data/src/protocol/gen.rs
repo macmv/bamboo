@@ -426,7 +426,14 @@ impl<'a> InstrWriter<'a> {
         self.gen.write_line(");");
       }
       Instr::Let(var, val) => {
-        self.gen.write("let v_");
+        self.gen.write("let mut v_");
+        self.gen.write(&var.to_string());
+        self.gen.write(" = ");
+        self.write_expr(val);
+        self.gen.write_line(";");
+      }
+      Instr::SetVar(var, val) => {
+        self.gen.write("v_");
         self.gen.write(&var.to_string());
         self.gen.write(" = ");
         self.write_expr(val);
@@ -653,6 +660,11 @@ impl<'a> InstrWriter<'a> {
       Op::BitAnd(rhs) => {
         self.gen.write(&val);
         self.gen.write(" & ");
+        self.write_expr(rhs);
+      }
+      Op::BitOr(rhs) => {
+        self.gen.write(&val);
+        self.gen.write(" | ");
         self.write_expr(rhs);
       }
       Op::Shr(rhs) => {
@@ -910,6 +922,10 @@ impl<'a> InstrWriter<'a> {
         self.gen.write(") || (");
         self.write_cond(rhs);
         self.gen.write(")");
+      }
+
+      Cond::Bool(val) => {
+        self.write_expr(val);
       }
     }
   }

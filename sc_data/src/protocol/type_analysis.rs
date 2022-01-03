@@ -339,7 +339,30 @@ impl<'a> ReaderTypes<'a> {
     match &expr.initial {
       Value::Cond(cond) => {
         if let Some(var_to_write) = self.var_to_write {
-          self.needs_to_write.push(Instr::Expr(expr.clone()));
+          // self.needs_to_write.push(Instr::Expr(expr.clone()));
+          let (lhs, inverted) = match cond.as_ref() {
+            Cond::Greater(lhs, rhs) | Cond::Neq(lhs, rhs) | Cond::Eq(lhs, rhs) => {
+              todo!("check these conditionals and the rhs for inverted, and use inverted");
+              (lhs, rhs == &Expr::new(Value::Lit(0.into())))
+            }
+            _ => unimplemented!("cond {:?}", cond),
+          };
+          self.needs_to_write.push(Instr::If(
+            Cond::Bool(field.clone().op(Op::Deref)),
+            vec![match lhs.ops.first() {
+              Some(Op::BitAnd(rhs)) => {
+                let lhs = &lhs.initial;
+                let rhs = &rhs.initial;
+                assert_eq!(lhs, &Value::Var(var_to_write));
+                Instr::SetVar(
+                  var_to_write,
+                  Expr::new(Value::Var(var_to_write)).op(Op::BitOr(Expr::new(rhs.clone()))),
+                )
+              }
+              _ => unimplemented!(),
+            }],
+            vec![],
+          ));
         }
       }
       _ => {}

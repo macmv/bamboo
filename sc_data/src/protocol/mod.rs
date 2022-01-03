@@ -175,6 +175,8 @@ pub enum Instr {
   /// variable. An implementation of this might simply call all variables
   /// `var0`, `var1`, etc.
   Let(usize, Expr),
+  /// Same thing as let, but for updating a local variable.
+  SetVar(usize, Expr),
 
   /// If the given conditional is true, then execute the first list of
   /// instructions. Otherwise, execute the second list.
@@ -256,12 +258,17 @@ pub enum Cond {
   Gte(Expr, Expr),
 
   Or(Box<Cond>, Box<Cond>),
+
+  // For single booleans
+  Bool(Expr),
 }
 
 #[derive(Debug, Clone, PartialEq, Deserialize)]
 pub enum Op {
   /// Bitwise and with the given value.
   BitAnd(Expr),
+  /// Bitwise or with the given value. Does not show up in java
+  BitOr(Expr),
   /// Shift right by the given value.
   Shr(Expr),
   /// Unsigned shift right by the given value.
@@ -392,6 +399,7 @@ impl Op {
   pub fn precedence(&self) -> i32 {
     match self {
       Op::BitAnd(_) => 5,
+      Op::BitOr(_) => 5,
       Op::Shr(_) => 4,
       Op::UShr(_) => 4,
       Op::Shl(_) => 4,
