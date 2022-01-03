@@ -41,6 +41,7 @@ impl Packet {
     }
     let mut r = ReaderTypes::new(&self.reader.vars, &mut self.fields, &self.name);
     r.find_instr(&self.reader.block);
+    r.simplify_conditionals(&mut self.reader.block);
     r.gen_writer(&self.reader.block, &mut self.writer.block);
   }
 }
@@ -162,6 +163,7 @@ impl<'a> ReaderTypes<'a> {
           _ => unreachable!(),
         })
       }
+      Value::Cond(_) => todo!(),
     }
   }
   fn var_type(&self, var: usize) -> RType { self.var_types[var].clone() }
@@ -382,5 +384,28 @@ impl<'a> ReaderTypes<'a> {
       expr.ops.insert(0, Op::Deref);
     }
     expr
+  }
+
+  fn simplify_conditionals(&mut self, instr: &mut [Instr]) {
+    for i in instr {
+      match i {
+        Instr::Set(name, expr) => {
+          if let Some(field) = self.get_field_mut(&name) {
+            if field.reader_type == Some(RType::new("i32")) {
+              match expr.ops.last() {
+                Some(Op::If(cond, _)) => {
+                  // expr.ops.pop();
+                  field.reader_type = Some(RType::new("bool"));
+                  *expr = Expr::new(Value::Cond(Box::new(cond.clone())));
+                  // expr = Expr::Cond(cond);
+                }
+                _ => {}
+              }
+            }
+          }
+        }
+        _ => {}
+      }
+    }
   }
 }

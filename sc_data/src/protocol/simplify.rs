@@ -249,6 +249,7 @@ fn simplify_val(val: &mut Value) {
     Value::New(_, args) => {
       args.iter_mut().for_each(|a| simplify_expr(a));
     }
+    Value::Cond(cond) => simplify_cond(cond),
     Value::Null | Value::Lit(_) | Value::Var(_) => {}
   }
 }

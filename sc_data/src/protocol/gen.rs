@@ -642,6 +642,9 @@ impl<'a> InstrWriter<'a> {
         }
         self.gen.write(")");
       }
+      Value::Cond(cond) => {
+        self.write_cond(cond);
+      }
     }
   }
 

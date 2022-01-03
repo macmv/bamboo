@@ -138,6 +138,10 @@ pub enum Value {
   /// usually descriptive enough, so this doesn't include any package
   /// information.
   New(String, Vec<Expr>),
+
+  /// A conditional. Only generated through simplifications, never found from
+  /// java.
+  Cond(Box<Cond>),
 }
 
 #[derive(Debug, Clone, PartialEq, Deserialize)]
