@@ -22,7 +22,10 @@ struct ReaderTypes<'a> {
   // write another field, we reassemble that `v_2` in reverse. This is making the assumption that
   // we have completed the variable `v_2` by the time we write the next instruction, which is not
   // always true.
-  need_to_write: Option<Instr>,
+  need_to_write:      Option<Instr>,
+  // For simpler cases, the above sometimes is invalid. This is when the variable defined in
+  // `need_to_write` is never used. In these cases, we give up, and store that in this value.
+  need_to_write_used: bool,
 }
 
 impl Packet {
@@ -57,6 +60,7 @@ impl<'a> ReaderTypes<'a> {
       vars: vars.iter().map(|_| Expr::new(Value::Null)).collect(),
       packet: name,
       need_to_write: None,
+      need_to_write_used: false,
     }
   }
   fn get_field(&self, name: &str) -> Option<&Field> {
@@ -233,7 +237,10 @@ impl<'a> ReaderTypes<'a> {
       match i {
         Instr::Set(field, expr) => {
           if let Some(need_to_write) = self.need_to_write.take() {
-            writer.push(need_to_write);
+            // If need_to_write_used is false, we still want to `take()` need_to_write.
+            if self.need_to_write_used {
+              writer.push(need_to_write);
+            }
           }
           if let Some(instr) = self.set_expr(expr, &Expr::new(Value::Field(field.into()))) {
             writer.push(instr);
