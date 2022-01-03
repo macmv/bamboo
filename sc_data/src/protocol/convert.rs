@@ -194,6 +194,7 @@ pub fn reader_func_to_ty(field: &str, name: &str) -> RType {
     "read_uuid" => "UUID",
     "read_str" => "String",
     "read_nbt" => "NBT",
+    "remaining" => "i32",
     "read_buf" | "read_byte_arr" | "read_all" => return RType::new("Vec").generic("u8"),
     "read_i32_arr" => return RType::new("Vec").generic("i32"),
     "read_varint_arr" => return RType::new("Vec").generic("i32"),
@@ -252,12 +253,14 @@ pub fn type_cast(from: &RType, to: &RType) -> Vec<Op> {
     "i8" => match from.name.as_str() {
       "bool" => Op::As(RType::new("i8")),
       "u8" | "i16" | "i32" | "i64" => return try_into("i8"),
+      "U" => return vec![],
       _ => panic!("cannot convert `{}` into `{}`", from, to),
     },
     "u8" => match from.name.as_str() {
       "bool" => Op::As(RType::new("u8")),
       "f32" => Op::As(RType::new("u8")),
       "i8" | "i16" | "i32" | "i64" => return try_into("u8"),
+      "U" => return vec![],
       _ => panic!("cannot convert `{}` into `{}`", from, to),
     },
     "U" => return vec![],
@@ -265,6 +268,7 @@ pub fn type_cast(from: &RType, to: &RType) -> Vec<Op> {
       "bool" => Op::As(RType::new("u8")),
       "u8" | "i8" => into(),
       "i32" | "i64" => return try_into("i16"),
+      "U" => return vec![],
       _ => panic!("cannot convert `{}` into `{}`", from, to),
     },
     "i32" => match from.name.as_str() {

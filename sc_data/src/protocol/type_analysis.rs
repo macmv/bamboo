@@ -8,6 +8,21 @@ struct ReaderTypes<'a> {
 
   // For writer gen.
   vars: Vec<Expr>,
+
+  // Stores a read instruction that needs to be inverted. For example:
+  // ```
+  // let v_2 = p.read_i8();
+  // f_invulnerable = if v_2 & 1 != 0 { 1 } else { 0 } != 0;
+  // f_flying = if v_2 & 2 != 0 { 1 } else { 0 } != 0;
+  // f_allow_flying = if v_2 & 4 != 0 { 1 } else { 0 } != 0;
+  // f_creative_mode = if v_2 & 8 != 0 { 1 } else { 0 } != 0;
+  // ```
+  //
+  // When we read the `let` call, we store that `read_i8()` call in `need_to_write`. Then, once we
+  // write another field, we reassemble that `v_2` in reverse. This is making the assumption that
+  // we have completed the variable `v_2` by the time we write the next instruction, which is not
+  // always true.
+  need_to_write: Option<Instr>,
 }
 
 impl Packet {
@@ -41,6 +56,7 @@ impl<'a> ReaderTypes<'a> {
       fields,
       vars: vars.iter().map(|_| Expr::new(Value::Null)).collect(),
       packet: name,
+      need_to_write: None,
     }
   }
   fn get_field(&self, name: &str) -> Option<&Field> {
@@ -216,11 +232,20 @@ impl<'a> ReaderTypes<'a> {
     for i in read {
       match i {
         Instr::Set(field, expr) => {
+          if let Some(need_to_write) = self.need_to_write.take() {
+            writer.push(need_to_write);
+          }
           if let Some(instr) = self.set_expr(expr, &Expr::new(Value::Field(field.into()))) {
             writer.push(instr);
           }
         }
-        Instr::Let(i, expr) => self.vars[*i] = expr.clone(),
+        Instr::Let(i, expr) => {
+          self.vars[*i] = expr.clone();
+          if let Some(instr) = self.set_expr(expr, &Expr::new(Value::Var(*i))) {
+            writer.push(Instr::Let(*i, Expr::new(Value::Lit(0.into()))));
+            self.need_to_write = Some(instr);
+          }
+        }
         Instr::Return(_) => {}
         Instr::For(_, _range, _) => {}
         Instr::Switch(_, _table) => {}
@@ -297,8 +322,9 @@ impl<'a> ReaderTypes<'a> {
         )))
       }
       Some(Op::If(_cond, _new)) => return None,
+      Some(_) => return None,
       None => return None,
-      _ => panic!("cannot convert {:?} into writer (packet {})", expr, self.packet),
+      // _ => panic!("cannot convert {:?} into writer (packet {})", expr, self.packet),
     })
   }
 
@@ -322,6 +348,7 @@ impl<'a> ReaderTypes<'a> {
         // For Option::is_some()
         .map(|v| matches!(v, Op::Call(class, _, _) if class != "Option"))
         .unwrap_or(true)
+      && matches!(expr.initial, Value::Field(_))
     {
       expr.ops.insert(0, Op::Deref);
     }
