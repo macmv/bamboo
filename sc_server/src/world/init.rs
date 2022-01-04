@@ -99,76 +99,6 @@ impl World {
   }
 
   pub(super) fn player_init(&self, player: &Player) {
-    let dimension = Tag::compound(&[
-      ("piglin_safe", Tag::Byte(0)),
-      ("natural", Tag::Byte(1)),
-      ("ambient_light", Tag::Float(0.0)),
-      ("fixed_time", Tag::Long(6000)),
-      ("infiniburn", Tag::String("".into())),
-      ("respawn_anchor_works", Tag::Byte(0)),
-      ("has_skylight", Tag::Byte(1)),
-      ("bed_works", Tag::Byte(1)),
-      ("effects", Tag::String("minecraft:overworld".into())),
-      ("has_raids", Tag::Byte(0)),
-      ("logical_height", Tag::Int(128)),
-      ("coordinate_scale", Tag::Float(1.0)),
-      ("ultrawarm", Tag::Byte(0)),
-      ("has_ceiling", Tag::Byte(0)),
-    ]);
-    let biome = Tag::compound(&[
-      ("precipitation", Tag::String("rain".into())),
-      ("depth", Tag::Float(1.0)),
-      ("temperature", Tag::Float(1.0)),
-      ("scale", Tag::Float(1.0)),
-      ("downfall", Tag::Float(1.0)),
-      ("category", Tag::String("none".into())),
-      (
-        "effects",
-        Tag::compound(&[
-          ("sky_color", Tag::Int(0xff00ff)),
-          ("water_color", Tag::Int(0xff00ff)),
-          ("fog_color", Tag::Int(0xff00ff)),
-          ("water_fog_color", Tag::Int(0xff00ff)),
-        ]),
-      ),
-    ]);
-    let _codec = NBT::new(
-      "",
-      Tag::compound(&[
-        (
-          "minecraft:dimension_type",
-          Tag::compound(&[
-            ("type", Tag::String("minecraft:dimension_type".into())),
-            (
-              "value",
-              Tag::List(vec![Tag::compound(&[
-                ("name", Tag::String("minecraft:overworld".into())),
-                ("id", Tag::Int(0)),
-                ("element", dimension.clone()),
-              ])]),
-            ),
-          ]),
-        ),
-        (
-          "minecraft:worldgen/biome",
-          Tag::compound(&[
-            ("type", Tag::String("minecraft:worldgen/biome".into())),
-            (
-              "value",
-              Tag::List(vec![Tag::compound(&[
-                ("name", Tag::String("minecraft:plains".into())),
-                ("id", Tag::Int(0)),
-                ("element", biome),
-              ])]),
-            ),
-          ]),
-        ),
-      ]),
-    );
-    let mut world_names = Buffer::new(vec![]);
-    world_names.write_varint(1);
-    world_names.write_str("minecraft:overworld");
-
     let out = cb::Packet::JoinGame {
       // entity_id:                self.eid(),
       // game_mode:                1,       // Creative
@@ -198,14 +128,15 @@ impl World {
       // dimension_v1_16:          Some("".into()),
       // dimension_v1_16_2:        Some(NBT::new("", dimension).serialize()),
       // world_names_v1_16:        Some(world_names.into_inner()),
-      eid:                self.eid(),
-      hardcore_mode:      false,
-      game_mode:          GameMode::Creative,
-      dimension:          0, // Overworld
-      level_type:         "default".into(),
-      difficulty:         1, // Normal
-      view_distance:      10,
-      reduced_debug_info: false,
+      eid:                   self.eid(),
+      hardcore_mode:         false,
+      game_mode:             GameMode::Creative,
+      dimension:             0, // Overworld
+      level_type:            "default".into(),
+      difficulty:            1, // Normal
+      view_distance:         10,
+      reduced_debug_info:    false,
+      enable_respawn_screen: true,
     };
 
     player.send(out);

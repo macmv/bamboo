@@ -2,7 +2,10 @@ use super::TypeConverter;
 use sc_common::{
   gnet::cb::Packet as GPacket,
   net::{cb, cb::Packet},
-  util::Buffer,
+  util::{
+    nbt::{Tag, NBT},
+    Buffer,
+  },
   version::ProtocolVersion,
 };
 use std::{error::Error, fmt};
@@ -146,12 +149,35 @@ impl ToTcp for Packet {
         difficulty,
         view_distance,
         reduced_debug_info,
+        enable_respawn_screen,
       } => {
         let mut out = Buffer::new(vec![]);
-        if ver >= ProtocolVersion::V1_14_4 {
+        if ver >= ProtocolVersion::V1_16_5 {
+          out.write_u8(game_mode.id());
+          out.write_i8(-1); // no previous_game_mode
+
+          // List of worlds
+          out.write_varint(1);
+          out.write_str("minecraft:overworld");
+
+          write_dimensions(&mut out);
+
+          // Hashed world seed, used for biomes client side.
+          out.write_u64(0);
+          // Max players (ignored)
+          out.write_varint(0);
+
           out.write_varint(view_distance.into());
+          out.write_bool(reduced_debug_info);
+          out.write_bool(enable_respawn_screen);
+          out.write_bool(false); // Is debug; cannot be modified, has preset blocks
+          out.write_bool(false); // Is flat; changes fog
+        } else {
+          if ver >= ProtocolVersion::V1_14_4 {
+            out.write_varint(view_distance.into());
+          }
+          out.write_bool(reduced_debug_info);
         }
-        out.write_bool(reduced_debug_info);
 
         match ver.maj().unwrap() {
           8 => GPacket::JoinGameV8 {
@@ -175,6 +201,24 @@ impl ToTcp for Packet {
             world_type: level_type,
             reduced_debug_info: None,
             unknown: out.into_inner(),
+          },
+          16 => GPacket::JoinGameV16 {
+            player_entity_id:   eid,
+            hardcore:           hardcore_mode,
+            sha_256_seed:       None,
+            game_mode:          None,
+            previous_game_mode: None,
+            dimension_ids:      None,
+            registry_manager:   None,
+            dimension_type:     None,
+            dimension_id:       None,
+            max_players:        None,
+            view_distance:      None,
+            reduced_debug_info: None,
+            show_death_screen:  None,
+            debug_world:        None,
+            flat_world:         None,
+            unknown:            out.into_inner(),
           },
           _ => unimplemented!(),
         }
@@ -309,4 +353,78 @@ impl ToTcp for Packet {
       _ => todo!("convert {:?} into generated packet", self),
     })
   }
+}
+
+fn write_dimensions(out: &mut Buffer) {
+  let dimension = Tag::compound(&[
+    ("piglin_safe", Tag::Byte(0)),
+    ("natural", Tag::Byte(1)),
+    ("ambient_light", Tag::Float(0.0)),
+    ("fixed_time", Tag::Long(6000)),
+    ("infiniburn", Tag::String("".into())),
+    ("respawn_anchor_works", Tag::Byte(0)),
+    ("has_skylight", Tag::Byte(1)),
+    ("bed_works", Tag::Byte(1)),
+    ("effects", Tag::String("minecraft:overworld".into())),
+    ("has_raids", Tag::Byte(0)),
+    ("logical_height", Tag::Int(128)),
+    ("coordinate_scale", Tag::Float(1.0)),
+    ("ultrawarm", Tag::Byte(0)),
+    ("has_ceiling", Tag::Byte(0)),
+  ]);
+  let biome = Tag::compound(&[
+    ("precipitation", Tag::String("rain".into())),
+    ("depth", Tag::Float(1.0)),
+    ("temperature", Tag::Float(1.0)),
+    ("scale", Tag::Float(1.0)),
+    ("downfall", Tag::Float(1.0)),
+    ("category", Tag::String("none".into())),
+    (
+      "effects",
+      Tag::compound(&[
+        ("sky_color", Tag::Int(0xff00ff)),
+        ("water_color", Tag::Int(0xff00ff)),
+        ("fog_color", Tag::Int(0xff00ff)),
+        ("water_fog_color", Tag::Int(0xff00ff)),
+      ]),
+    ),
+  ]);
+  let codec = NBT::new(
+    "",
+    Tag::compound(&[
+      (
+        "minecraft:dimension_type",
+        Tag::compound(&[
+          ("type", Tag::String("minecraft:dimension_type".into())),
+          (
+            "value",
+            Tag::List(vec![Tag::compound(&[
+              ("name", Tag::String("minecraft:overworld".into())),
+              ("id", Tag::Int(0)),
+              ("element", dimension.clone()),
+            ])]),
+          ),
+        ]),
+      ),
+      (
+        "minecraft:worldgen/biome",
+        Tag::compound(&[
+          ("type", Tag::String("minecraft:worldgen/biome".into())),
+          (
+            "value",
+            Tag::List(vec![Tag::compound(&[
+              ("name", Tag::String("minecraft:plains".into())),
+              ("id", Tag::Int(0)),
+              ("element", biome),
+            ])]),
+          ),
+        ]),
+      ),
+    ]),
+  );
+
+  out.write_buf(&codec.serialize());
+  out.write_buf(&NBT::new("", dimension).serialize());
+  // Current world
+  out.write_str("minecraft:overworld");
 }

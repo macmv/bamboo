@@ -71,14 +71,16 @@ pub enum Packet {
     z:   i16,
   },
   JoinGame {
-    eid:                i32,
-    hardcore_mode:      bool,
-    game_mode:          GameMode,
-    dimension:          i8,
-    level_type:         String,
-    difficulty:         u8,
-    view_distance:      u16,
-    reduced_debug_info: bool,
+    eid:                   i32,
+    hardcore_mode:         bool,
+    game_mode:             GameMode,
+    dimension:             i8,
+    level_type:            String,
+    difficulty:            u8,
+    view_distance:         u16,
+    reduced_debug_info:    bool,
+    /// Only applies to 1.16+ clients.
+    enable_respawn_screen: bool,
   },
   /// A list of changed blocks in a chunk section. This is not for a chunk
   /// column. 1.8 clients have this block for a whole chunk column, but 1.17+
