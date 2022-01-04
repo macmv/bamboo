@@ -4,7 +4,7 @@ use sc_common::{
   net::{cb, cb::Packet},
   util::{
     nbt::{Tag, NBT},
-    Buffer,
+    Buffer, UUID,
   },
   version::ProtocolVersion,
 };
@@ -50,8 +50,17 @@ impl ToTcp for Packet {
       Packet::Chat { msg, ty } => {
         if ver < ProtocolVersion::V1_12_2 {
           GPacket::ChatV8 { chat_component: msg, ty: ty as i8 }
-        } else {
+        } else if ver < ProtocolVersion::V1_16_5 {
           GPacket::ChatV12 { chat_component: msg, ty: None, unknown: vec![ty] }
+        } else {
+          let mut out = Buffer::new(vec![]);
+          out.write_u8(ty);
+          out.write_uuid(UUID::from_u128(0));
+          GPacket::ChatV12 {
+            chat_component: msg,
+            ty:             None,
+            unknown:        out.into_inner(),
+          }
         }
       }
       Packet::Chunk { pos, full, bit_map, sections } => {
