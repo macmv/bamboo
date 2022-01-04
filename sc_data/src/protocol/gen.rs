@@ -132,14 +132,14 @@ impl PacketCollection {
       gen.write("pub fn tcp_id(&self, ver: ProtocolVersion) -> u32 ");
       gen.write_block(|gen| {
         gen.write_match("ver.id()", |gen| {
-          for v in crate::VERSIONS {
-            gen.write_comment(&v.to_string());
-            gen.write(&v.protocol.to_string());
+          for match_ver in crate::VERSIONS {
+            gen.write_comment(&match_ver.to_string());
+            gen.write(&match_ver.protocol.to_string());
             gen.write(" => ");
             gen.write_match("self", |gen| {
               for versions in packets.iter() {
                 for (ver, p) in versions.iter().rev() {
-                  if ver.maj > v.maj {
+                  if ver.maj > match_ver.maj {
                     continue;
                   }
                   gen.write("Packet::");
@@ -147,12 +147,16 @@ impl PacketCollection {
                   gen.write("V");
                   gen.write(&ver.maj.to_string());
                   gen.write(" { .. } => ");
-                  // NOTE: We use `v` here instead of `ver`, as `v` is the specific version we are
-                  // matching against.
-                  let id = self.versions[v].get(&p.name).unwrap_or(&0);
+                  let val = self.versions[match_ver].get(&p.name);
+                  let id = val.unwrap_or(&0);
                   gen.write(&id.to_string());
                   gen.write(", // ");
-                  gen.write_line(&format!("{:#x}", id));
+                  gen.write(&format!("{:#x}", id));
+                  if val.is_some() {
+                    gen.write_line("");
+                  } else {
+                    gen.write_line(" (not found)");
+                  }
                   break;
                 }
               }
