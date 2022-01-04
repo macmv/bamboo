@@ -148,12 +148,6 @@ impl ToTcp for Packet {
         reduced_debug_info,
       } => {
         let mut out = Buffer::new(vec![]);
-        // out.write_u8(game_mode.id());
-        if ver >= ProtocolVersion::V1_9_2 {
-          out.write_i32(dimension.into());
-        } else {
-          out.write_i8(dimension.into());
-        }
         out.write_i8(difficulty);
         if ver <= ProtocolVersion::V1_12_2 {
           // Max players. Ignored on the versions where its present.
@@ -168,8 +162,8 @@ impl ToTcp for Packet {
         GPacket::JoinGameV8 {
           entity_id: eid,
           hardcore_mode,
-          game_type: None,
-          dimension: None,
+          game_type: game_mode.id(),
+          dimension: dimension.into(),
           difficulty: None,
           max_players: None,
           world_type: None,
