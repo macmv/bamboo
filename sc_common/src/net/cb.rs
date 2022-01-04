@@ -76,7 +76,7 @@ pub enum Packet {
     game_mode:          GameMode,
     dimension:          i8,
     level_type:         String,
-    difficulty:         i8,
+    difficulty:         u8,
     view_distance:      u16,
     reduced_debug_info: bool,
   },
