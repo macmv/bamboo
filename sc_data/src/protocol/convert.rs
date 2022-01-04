@@ -258,7 +258,7 @@ pub fn type_cast(from: &RType, to: &RType) -> Vec<Op> {
     "u8" => match from.name.as_str() {
       "bool" => Op::As(RType::new("u8")),
       "f32" => Op::As(RType::new("u8")),
-      "i8" | "i16" | "i32" | "i64" => return try_into("u8"),
+      "i8" | "i16" | "u32" | "i32" | "i64" => return try_into("u8"),
       "U" => return vec![],
       _ => panic!("cannot convert `{}` into `{}`", from, to),
     },
@@ -267,6 +267,12 @@ pub fn type_cast(from: &RType, to: &RType) -> Vec<Op> {
       "bool" => Op::As(RType::new("u8")),
       "u8" | "i8" => into(),
       "i32" | "i64" => return try_into("i16"),
+      "U" => return vec![],
+      _ => panic!("cannot convert `{}` into `{}`", from, to),
+    },
+    "u32" => match from.name.as_str() {
+      "u8" | "i8" | "i16" => into(),
+      "i64" => return try_into("u32"),
       "U" => return vec![],
       _ => panic!("cannot convert `{}` into `{}`", from, to),
     },

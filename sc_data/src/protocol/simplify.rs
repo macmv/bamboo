@@ -167,11 +167,13 @@ fn simplify_expr_overwrite(expr: &mut Expr) -> (bool, Option<Instr>) {
   let res = match &expr.initial {
     Value::CallStatic(class, name, args) => {
       match (class.as_str(), name.as_str()) {
-        ("net/minecraft/world/WorldSettings$GameType", "getByID") => {
-          *expr = args[0].clone();
-        }
+        ("net/minecraft/world/WorldSettings$GameType", "getByID") => *expr = args[0].clone(),
+        ("net/minecraft/world/GameType", "getByID") => *expr = args[0].clone(),
+        ("net/minecraft/world/EnumDifficulty", "getDifficultyEnum") => *expr = args[0].clone(),
+        ("net/minecraft/world/WorldType", "parseWorldType") => *expr = args[0].clone(),
         _ => return (true, None),
       }
+      simplify_expr(expr);
       return (false, None);
     }
     Value::New(..) | Value::Array(_) | Value::Field(..) => return (true, None),

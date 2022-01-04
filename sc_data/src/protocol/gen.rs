@@ -98,7 +98,7 @@ impl PacketCollection {
     gen.write_line("use crate::{");
     gen.write_line("  ChunkPos, Pos,");
     gen.write_line("  version::ProtocolVersion,");
-    gen.write_line("  util::{Item, GameMode, nbt::NBT, UUID},");
+    gen.write_line("  util::{Item, nbt::NBT, UUID},");
     gen.write_line("};");
     gen.write_line("#[allow(unused_imports)]");
     gen.write_line("use std::collections::{HashMap, HashSet};");
