@@ -159,16 +159,41 @@ impl ToTcp for Packet {
         }
         out.write_bool(reduced_debug_info);
 
-        GPacket::JoinGameV8 {
-          entity_id: eid,
-          hardcore_mode,
-          game_type: game_mode.id(),
-          dimension: dimension.into(),
-          difficulty: None,
-          max_players: None,
-          world_type: None,
-          reduced_debug_info: None,
-          unknown: out.into_inner(),
+        match ver.maj().unwrap() {
+          8 => GPacket::JoinGameV8 {
+            entity_id: eid,
+            hardcore_mode,
+            game_type: game_mode.id(),
+            dimension: dimension.into(),
+            difficulty: None,
+            max_players: None,
+            world_type: None,
+            reduced_debug_info: None,
+            unknown: out.into_inner(),
+          },
+          9 => GPacket::JoinGameV9 {
+            player_id: eid,
+            hardcore_mode,
+            game_type: game_mode.id(),
+            dimension: dimension.into(),
+            difficulty: None,
+            max_players: None,
+            world_type: None,
+            reduced_debug_info: None,
+            unknown: out.into_inner(),
+          },
+          10 => GPacket::JoinGameV10 {
+            player_id: eid,
+            hardcore_mode,
+            game_type: game_mode.id(),
+            dimension: dimension.into(),
+            difficulty: None,
+            max_players: None,
+            world_type: None,
+            reduced_debug_info: None,
+            unknown: out.into_inner(),
+          },
+          _ => unimplemented!(),
         }
       }
       Packet::KeepAlive { id } => {
