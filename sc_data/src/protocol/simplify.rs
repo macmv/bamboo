@@ -168,8 +168,7 @@ fn simplify_expr_overwrite(expr: &mut Expr) -> (bool, Option<Instr>) {
     Value::CallStatic(class, name, args) => {
       match (class.as_str(), name.as_str()) {
         ("net/minecraft/world/WorldSettings$GameType", "getByID") => {
-          *expr =
-            Expr::new(Value::CallStatic("GameMode".into(), "from_id".into(), vec![args[0].clone()]))
+          *expr = args[0].clone();
         }
         _ => return (true, None),
       }

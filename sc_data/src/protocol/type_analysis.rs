@@ -23,6 +23,9 @@ struct ReaderTypes<'a> {
   // we have completed the variable `v_2` by the time we write the next instruction, which is not
   // always true.
   var_to_write:      Option<usize>,
+  // Used for an initial value other than 0. Only used in JoinGame packet.
+  var_init_to_write: Option<Expr>,
+  // Used when we write the variable into the buffer, at the end of the needs_to_write block.
   var_func_to_write: Option<String>,
   // For simpler cases, the above sometimes is invalid. This is when the variable defined in
   // `need_to_write` is never used. In these cases, we give up, and store that in this value.
@@ -62,6 +65,7 @@ impl<'a> ReaderTypes<'a> {
       vars: vars.iter().map(|_| Expr::new(Value::Null)).collect(),
       packet: name,
       var_to_write: None,
+      var_init_to_write: None,
       var_func_to_write: None,
       needs_to_write: vec![],
     }
@@ -243,7 +247,10 @@ impl<'a> ReaderTypes<'a> {
       if self.needs_to_write.is_empty() {
         self.needs_to_write.clear();
       } else {
-        writer.push(Instr::Let(var, Expr::new(Value::Lit(0.into()))));
+        writer.push(Instr::Let(
+          var,
+          self.var_init_to_write.take().unwrap_or_else(|| Expr::new(Value::Lit(0.into()))),
+        ));
         for i in self.needs_to_write.drain(..) {
           writer.push(i);
         }
@@ -272,8 +279,6 @@ impl<'a> ReaderTypes<'a> {
           } else {
             if let Some(i) = self.set_expr(expr, &Expr::new(Value::Field(field.clone()))) {
               self.needs_to_write.push(i);
-            } else {
-              panic!("cannot generate writer for field {:?} value {:?}", field, expr);
             }
           }
         }
@@ -359,6 +364,12 @@ impl<'a> ReaderTypes<'a> {
           new_name,
           new_args,
         ))));
+      }
+      Value::Var(v) => {
+        if self.var_to_write.map(|var| var == *v) == Some(true) && expr.ops.is_empty() {
+          self.var_init_to_write = Some(field.clone().op(Op::Deref));
+          return None;
+        }
       }
       Value::Cond(cond) => {
         if let Some(var_to_write) = self.var_to_write {
