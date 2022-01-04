@@ -317,6 +317,8 @@ pub enum Op {
 
   /// Puts a `*` in front. Not present in json.
   Deref,
+  /// Puts a `!` in front. Not present in json.
+  Not,
 }
 
 /// A rust type.
@@ -419,6 +421,7 @@ impl Op {
       Op::Field(_) => 0,
 
       Op::Deref => 0,
+      Op::Not => 0,
 
       Op::If(..) => 0,
       Op::Call(..) => 0,
@@ -433,6 +436,7 @@ impl Expr {
     self.ops.push(op);
     self
   }
+  pub fn add_op(&mut self, op: Op) { self.ops.push(op); }
 }
 
 impl From<i32> for Lit {

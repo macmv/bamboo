@@ -708,6 +708,10 @@ impl<'a> InstrWriter<'a> {
         self.gen.write("*");
         self.gen.write(&val);
       }
+      Op::Not => {
+        self.gen.write("!");
+        self.gen.write(&val);
+      }
       Op::Len => {
         self.gen.write(&val);
         self.gen.write(".len()");
