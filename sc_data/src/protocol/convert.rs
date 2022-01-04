@@ -39,7 +39,7 @@ pub fn class(name: &str) -> RType {
     "Suggestions" => "U",
     "RootCommandNode" => "U",
     "PacketBuffer" | "PacketByteBuf" => "tcp::Packet",
-    "GameType" | "WorldSettings$GameType" => "NBT",
+    "GameType" | "WorldSettings$GameType" => "GameMode",
     "GameMode" => "U", // "GameMode",
     "DimensionType" => "NBT",
     "LevelGeneratorType" => "U",
@@ -289,6 +289,10 @@ pub fn type_cast(from: &RType, to: &RType) -> Vec<Op> {
     "Vec" => return vec![],
     "String" => match from {
       _ => return vec![],
+    },
+    "NBT" => match from.name.as_str() {
+      "U" => return vec![],
+      _ => panic!("cannot convert `{}` into `{}`", from, to),
     },
     _ => panic!("cannot convert `{}` into `{}`", from, to),
   }]

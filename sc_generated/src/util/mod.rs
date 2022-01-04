@@ -53,6 +53,35 @@ pub fn read_varint(buf: &[u8]) -> (i32, isize) {
   (res, total_read)
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, sc_macros::Transfer)]
+pub enum GameMode {
+  Survival,
+  Creative,
+  Adventure,
+  Spectator,
+}
+
+impl GameMode {
+  pub fn id(&self) -> u8 {
+    match self {
+      Self::Survival => 0,
+      Self::Creative => 1,
+      Self::Adventure => 2,
+      Self::Spectator => 3,
+    }
+  }
+
+  pub fn from_id(id: u8) -> Self {
+    match id {
+      0 => Self::Survival,
+      1 => Self::Creative,
+      2 => Self::Adventure,
+      3 => Self::Spectator,
+      _ => panic!("invalid gamemode: {}", id),
+    }
+  }
+}
+
 #[derive(Debug, Clone, Copy, Hash, PartialEq, Eq)]
 pub struct UUID(u128);
 

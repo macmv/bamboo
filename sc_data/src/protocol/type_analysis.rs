@@ -121,6 +121,7 @@ impl<'a> ReaderTypes<'a> {
       Value::CallStatic(class, name, _args) => match (class.as_str(), name.as_str()) {
         ("HashMap", "new") => RType::new("HashMap"),
         ("HashSet", "new") => RType::new("HashSet"),
+        ("GameMode", "from_id") => RType::new("GameMode"),
         _ => {
           println!("need to find type for static call: {}::{}", class, name);
           RType::new("i32")
