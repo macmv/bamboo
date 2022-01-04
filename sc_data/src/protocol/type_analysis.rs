@@ -253,6 +253,10 @@ impl<'a> ReaderTypes<'a> {
           vec![Expr::new(Value::Var(var))],
         ))));
       }
+    } else if !self.needs_to_write.is_empty() {
+      for i in self.needs_to_write.drain(..) {
+        writer.push(i);
+      }
     }
   }
 
@@ -268,6 +272,8 @@ impl<'a> ReaderTypes<'a> {
           } else {
             if let Some(i) = self.set_expr(expr, &Expr::new(Value::Field(field.clone()))) {
               self.needs_to_write.push(i);
+            } else {
+              panic!("cannot generate writer for field {:?} value {:?}", field, expr);
             }
           }
         }
@@ -338,6 +344,22 @@ impl<'a> ReaderTypes<'a> {
 
   fn set_expr(&mut self, expr: &Expr, field: &Expr) -> Option<Instr> {
     match &expr.initial {
+      Value::CallStatic(class, name, args) => {
+        let new_name;
+        let mut new_args = vec![];
+        match (class.as_str(), name.as_str()) {
+          ("GameMode", "from_id") => {
+            new_name = "write_u8".into();
+            new_args.push(args[0].clone().op(Op::Call("GameMode".into(), "id".into(), vec![])))
+          }
+          _ => return None,
+        };
+        return Some(Instr::Expr(Expr::new(Value::Var(1)).op(Op::Call(
+          "tcp::Packet".into(),
+          new_name,
+          new_args,
+        ))));
+      }
       Value::Cond(cond) => {
         if let Some(var_to_write) = self.var_to_write {
           // self.needs_to_write.push(Instr::Expr(expr.clone()));
@@ -358,7 +380,7 @@ impl<'a> ReaderTypes<'a> {
           if inverted {
             cond.add_op(Op::Not);
           }
-          self.needs_to_write.push(Instr::If(
+          return Some(Instr::If(
             Cond::Bool(cond),
             vec![match lhs.ops.first() {
               Some(Op::BitAnd(rhs)) => {
@@ -374,6 +396,31 @@ impl<'a> ReaderTypes<'a> {
             }],
             vec![],
           ));
+        } else {
+          match cond.as_ref() {
+            // This is where we have a reader like so:
+            // f_foo = p.read_u8() != 0;
+            //
+            // So we generate this writer:
+            // p.write_bool(f_foo);
+            //
+            // This only happens on old versions, where they didn't use the `read_bool` function at
+            // all. This might end up being removed if I simplify all the `!= 0` calls into
+            // `read_bool`.
+            Cond::Neq(lhs, rhs) => {
+              assert_eq!(rhs, &Expr::new(Value::Lit(0.into())));
+              match lhs.ops.first().unwrap() {
+                Op::Call(class, _name, _args) if class == "tcp::Packet" => {}
+                _ => unimplemented!(),
+              };
+              return Some(Instr::Expr(Expr::new(Value::Var(1)).op(Op::Call(
+                "tcp::Packet".into(),
+                "write_bool".into(),
+                vec![field.clone().op(Op::Deref)],
+              ))));
+            }
+            _ => unimplemented!(),
+          }
         }
       }
       _ => {}
