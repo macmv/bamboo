@@ -14,7 +14,7 @@ pub fn class(name: &str) -> RType {
     "UUID" => "UUID",
     "String" => "String",
     "BitSet" => "U", // "BitSet",
-    "IntList" => return RType::new("Vec").generic("<i32>"),
+    "IntList" => return RType::new("Vec").generic("i32"),
     "Object2IntMap" => return RType::new("HashMap").generic("U").generic("i32"),
     "Int2ObjectMap" => return RType::new("HashMap").generic("i32").generic("U"),
     "Vec3i" => "[i32; 3]",
