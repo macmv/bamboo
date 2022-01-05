@@ -1,6 +1,16 @@
 use super::{Instr, Packet};
 
 impl Packet {
+  pub fn extend_from_none(&mut self) {
+    let mut new = Vec::with_capacity(self.reader.block.len());
+    for i in &self.reader.block {
+      match i {
+        Instr::Super => {}
+        _ => new.push(i.clone()),
+      }
+    }
+    self.reader.block = new;
+  }
   pub fn extend_from(&mut self, sup: &Packet) {
     let old = self.fields.clone();
     self.fields = sup.fields.clone();

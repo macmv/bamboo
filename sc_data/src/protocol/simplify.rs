@@ -211,7 +211,7 @@ fn simplify_expr_overwrite(expr: &mut Expr) -> (bool, Option<Instr>) {
               "read_varint" | "read_i8" | "read_u8" | "read_i16" | "read_i32" | "read_i64"
               | "read_f32" | "read_f64" | "read_str" | "read_pos" | "read_uuid" | "remaining"
               | "read_varint_arr" | "read_i32_arr" => res,
-              "read_item" | "read_block_hit" | "read_nbt" => return (true, None),
+              "read_item" | "read_block_hit" | "read_nbt" | "read_bits" => return (true, None),
               name => panic!("{}", name),
               // _ => return (true, None),
             },

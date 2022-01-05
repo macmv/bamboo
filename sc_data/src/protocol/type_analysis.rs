@@ -100,7 +100,7 @@ impl<'a> ReaderTypes<'a> {
         Instr::CheckStrLen(_val, _len) => {}
         Instr::Expr(_v) => {}
         Instr::Return(_v) => {}
-        _ => todo!(),
+        _ => todo!("find types for instr {:?} on packet {}", i, self.packet),
       }
     }
   }

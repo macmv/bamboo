@@ -282,6 +282,7 @@ pub fn type_cast(from: &RType, to: &RType) -> Vec<Op> {
       "u8" | "i8" | "i16" => into(),
       "i64" => return try_into("i32"),
       "U" => return vec![],
+      "Option" => return vec![],
       _ => panic!("cannot convert `{}` into `{}`", from, to),
     },
     "i64" => match from.name.as_str() {

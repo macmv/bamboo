@@ -65,7 +65,18 @@ impl PacketCollection {
   pub fn expand_sup(&mut self) {
     for (_name, versions) in &mut self.packets {
       for (ver, p) in versions {
-        if p.extends != "Object" {
+        if p.extends == "Object" {
+          p.extend_from_none();
+        } else if (p.extends == "EntityS2CPacket" || p.extends == "PlayerMoveC2SPacket")
+          && !self.classes[ver].contains_key(&p.extends)
+        {
+          // On 1.17+, the Entity packet is no longer registered, but they all
+          // still extend from that class. However, in 1.17+, the reader
+          // contains everything we need.
+          //
+          // TODO: We still might be missing fields from this packet.
+          p.extend_from_none();
+        } else {
           p.extend_from(&self.classes[ver][&p.extends]);
         }
       }
@@ -87,7 +98,7 @@ impl PacketCollection {
     for versions in &mut packets {
       for (_v, p) in versions {
         // eprintln!("finding reader type of {} for ver {}", p.name, v);
-        // dbg!(&p);
+        // dbg!(&_v, &p);
         p.find_reader_types_gen_writer();
       }
     }
