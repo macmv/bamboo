@@ -34,11 +34,91 @@ The `--release` flag will make the server/proxy faster at runtime, but take
 longer to compile. I recommend it for both, unless you are developing the
 server/proxy.
 
-Because of some compiler flags I hav esetup in `Cargo.toml`, I recommend setting
+Because of some compiler flags I have setup in `Cargo.toml`, I recommend setting
 your IDE to use a different profile. Any time my IDE builds, I pass the flag
 `--profile rust-analyzer` to cargo. This makes code validation much faster, as
 the dev profile uses opt-level 2 (instead of the default 0). This is because
 terrain generation is terribly slow with opt-level set to 0.
+
+### Features
+
+All of these are planned! I have no time frame for doing these things, but here
+is what I would like to see in a 1.0 release:
+
+- [ ] Minigame lobbies
+  - [ ] The 'default chunk' concept
+    - In a minigame lobby, most chunks are the same. The void chunks that are in
+      render distance, but all empty are still stored in a vanilla server. A
+      default chunk fixes this, and uses a single chunk to send data about all
+      of the empty chunks in the world. This can also be used to optimize things
+      like superflat worlds. This is also why the `Chunk` type does not know
+      it's own position.
+  - [ ] Unbreakable world
+    - This needs to be a flag, for both placing and breaking blocks. It should
+      be very easy to toggle with an admin command.
+  - [ ] Ability to switch worlds
+    - This is a server-only task. It involves clearing all the loaded chunks of
+      the client, sending them a dimension change packet, loading all the new chunks,
+      and spawning them into the new world. This will not be very difficult.
+  - [ ] Ability to switch servers
+    - This is a proxy-based task. It involves a new custom packet that the
+      server sends to the 'client', that the proxy will intercept. This is a
+      more difficult task than switching worlds, but is more valuable for
+      scalability.
+- [ ] Some form of terrain generation
+  - Default chunks are good, and fast, but having terrain generation is very
+    fun. I don't want this to be a minigame-only server, and I really like
+    watching my own terrain generate at very fast speeds.
+  - [ ] Default chunk/Terrain generation should be easily toggleable with an
+        admin command.
+- [ ] (Maybe) support 1000 players on one server
+  - Everything is be very multithreaded. This is a very general goal, and is put
+    here as a reminder that things like tick loops are separate for each player.
+- [ ] (Unlikely) Plugin loading in Rust
+  - This is a dynamic linking problem. It shouldn't be very difficult, and will
+    allow pluggable functionality from multiple plugins, all without
+    re-compiling the server. This would act very similar to something like
+    Spigot.
+  - This is not a feature I am very interested in. Sugarlang is turning out to
+    be very powerful, and I would like to focus on that. If anyone wants to implement
+    this, feel free to do so. Just note that it must be compatable with Sugarlang
+    plugins. You need to be able to load both Rust and Sugarlang plugins at the
+    same time.
+- [x] Drop GRPC. I think GRPC is great. It's the perfect balance of speed and
+  cross-versioning safe, and I think it should be used in place of REST in almost
+  all situations. However, I have generated code. This means that I know the exact
+  protocol on the sender and receiver. This means that I don't really care about
+  how easy the procol is to debug, because its all generated code reading/writing
+  to the wire. I also dispise async. It gives you unsized `impl` traits everywhere,
+  and makes it very difficult to work with closures. Dropping GRPC means dropping
+  async, which I really want to do.
+  - This has been dropped. I now use `sc_transfer`, and there is no longer any async
+    within the codebase.
+- [x] Plugin loading in Sugarlang
+  - I really tried to use another language for plugins. It would have been so
+    much simpler to just deal with Python or JavaScript, but I couldn't stand
+    the awful API. So I wrote an entire language for plugins. It's called Sugarlang,
+    and it's specific to this server. You can check it out
+    [here](https://gitlab.com/macmv/sugarlang).
+  - Features still needed in Sugarlang:
+    - [ ] Traits? I'm not sure if I should add this. It would make it much less
+      beginner friendly, as this would also mean strongly typing everything. It
+      would produce much better errors at compile time, as you could never run
+      into an undefined function at runtime.
+    - [x] Remove builtin functions. These are not a very well thought out feature.
+      All builtin functions should be implemented through a new builtin type.
+      - I didn't remove builtin functions, I just rewrote the entire runtime tree.
+        It is much more sane now, and builtin functions are easier to work with.
+
+### Progress
+
+At the time of writing, you can join on 1.8, 1.12, and 1.14+. Breaking blocks works,
+and placing blocks is soon to come (I've had it working before, but it is temporarily
+broken). You can see other players, but you cannot see any animations yet. Things
+like chunk data work well, and are heavily tested.
+
+This is constantly changing, as I don't update this README that much. To see which
+versions work, I recommend cloning the project and running it yourself.
 
 ### Architecture
 
@@ -67,7 +147,7 @@ exponentially difficult problem, but it mostly comes down to data transfer. So
 if all of the proxies are running on separate machines, and if the main server
 is on a fast enough machine, it should be possible.
 
-#### Modules
+### Modules
 
 Any module on this list depends on at least one of the modules before it in the
 list.
@@ -91,81 +171,20 @@ list.
    validate that it is sending good data (things like making sure
    the client won't leak chunks, checks for keep alive packets, etc).
 
-### Features
+### For developers
 
-All of these are planned! I have no time frame for doing these things, but here
-is what I would like to see in a 1.0 release:
+If you would like to contribute to this project, I welcome your changes! Anything
+in the features list above are all good tasks to work on, and would be very appriciated.
 
-- [ ] Minigame lobbies
-  - [ ] The 'default chunk' concept
-    - In a minigame lobby, most chunks are the same. The void chunks that are in
-      render distance, but all empty are still stored in a vanilla server. A
-      default chunk fixes this, and uses a single chunk to send data about all
-      of the empty chunks in the world. This can also be used to optimize things
-      like superflat worlds. This is also why the `Chunk` type does not know
-      it's own position.
-  - [ ] Unbreakable world
-    - This needs to be a flag, for both placing and breaking blocks. It should
-      be very easy to toggle with an admin command.
-  - [ ] Ability to switch worlds
-    - This is a server-only task. Should not be very difficult.
-  - [ ] Ability to switch servers
-    - This is a proxy-based task. It involves a new custom packet that the
-      server sends to the 'client', that the proxy will intercept. This is a
-      more difficult task than switching worlds, but is more valuable for
-      scalability.
-- [ ] Some form of terrain generation
-  - Default chunks are good, and fast, but having terrain generation is very
-    fun. I don't want this to be a minigame-only server, and I really like
-    watching my own terrain generate at very fast speeds.
-  - [ ] Default chunk/Terrain generation should be easily toggleable with an
-        admin command.
-- [ ] (Maybe) support 1000 players on one server
-  - Everything is be very multithreaded. This is a very general goal, and is put
-    here as a reminder that things like tick loops are separate for each player.
-- [ ] (Unlikely) Plugin loading in Rust
-  - This is a dynamic linking problem. It shouldn't be very difficult, and will
-    allow pluggable functionality from multiple plugins, all without
-    re-compiling the server. This would act very similar to something like
-    Spigot.
-  - This is not a feature I am very interested in. Sugarlang is turning out to
-    be very powerful, and I would like to focus on that. If anyone wants to implement
-    this, feel free to do so. Just note that it must be compatable with Sugarlang
-    plugins. You need to be able to load both Rust and Sugarlang plugins at the
-    same time.
-- [ ] Drop GRPC. I think GRPC is great. It's the perfect balance of speed and
-  cross-versioning safe, and I think it should be used in place of REST in almost
-  all situations. However, I have generated code. This means that I know the exact
-  protocol on the sender and receiver. This means that I don't really care about
-  how easy the procol is to debug, because its all generated code reading/writing
-  to the wire. I also dispise async. It gives you unsized `impl` traits everywhere,
-  and makes it very difficult to work with closures. Dropping GRPC means dropping
-  async, which I really want to do.
-- [x] Plugin loading in Sugarlang
-  - I really tried to use another language for plugins. It would have been so
-    much simpler to just deal with Python or JavaScript, but I couldn't stand
-    the awful API. So I wrote an entire language for plugins. It's called Sugarlang,
-    and it's specific to this server. You can check it out
-    [here](https://gitlab.com/macmv/sugarlang).
-  - Features still needed in Sugarlang:
-    - [ ] Traits? I'm not sure if I should add this. It would make it much less
-      beginner friendly, as this would also mean strongly typing everything. It
-      would produce much better errors at compile time, as you could never run
-      into an undefined function at runtime.
-    - [ ] Remove builtin functions. These are not a very well thought out feature.
-      All builtin functions should be implemented through a new builtin type.
+If you are looking for the generated protocol code, you can go from this project
+directory into the generated code directory using this command (after you have run
+the server at least once without release mode):
+```bash
+cd $(find target/debug/build/sc_generated*/out | head -n 1)
+```
 
-### Progress
-
-At the time of writing, you can join on 1.8 through 1.16, and break/place most
-blocks in the game. You can see other players, but you cannot see any animations
-yet. Things like chunk data work well, and are heavily tested.
-
-This server is still very much in development. I do not have a good system setup
-for managing TODOs, as things like Atlassian and Trello don't allow you to make
-a public read-only board. I also don't use either of those very much, simply
-because I haven't bothered. In the future, I will setup some sort of global task
-viewer, so that people can see what I am working on.
+There, you can find a directory for the protocol, which has `cb.rs` and `sb.rs`
+stored. These are the generated protocol reader/writers.
 
 ### What happened to [Sugarcane Go](https://gitlab.com/macmv/sugarcane-go)?
 
