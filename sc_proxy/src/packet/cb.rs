@@ -424,6 +424,7 @@ fn write_dimensions(out: &mut Buffer) {
         ("water_color", Tag::Int(0xff00ff)),
         ("fog_color", Tag::Int(0xff00ff)),
         ("water_fog_color", Tag::Int(0xff00ff)),
+        ("grass_color", Tag::Int(0xff00ff)),
       ]),
     ),
   ]);
