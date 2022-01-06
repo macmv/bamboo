@@ -2,13 +2,18 @@ use super::Material;
 use num_derive::{FromPrimitive, ToPrimitive};
 use std::{error::Error, fmt, str::FromStr};
 
+const STATE_PROPS_LEN: usize = 8;
+
 /// A single block type. This is different from a block kind, which is more
 /// general. For example, there is one block kind for oak stairs. However, there
 /// are 32 types for an oak stair, based on it's state (rotation, in this case).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Type {
-  pub(super) kind:  Kind,
-  pub(super) state: u32,
+  pub(super) kind: Kind,
+  state:           u32,
+  props:           &'static [Prop],
+  // TODO: Make sure there aren't more than 8 properties for any block.
+  state_props:     [u32; STATE_PROPS_LEN],
 }
 
 impl Type {
@@ -16,7 +21,42 @@ impl Type {
   pub fn kind(&self) -> Kind { self.kind }
   /// Gets the block id of this type. This id is for the latest version of the
   /// game.
-  pub fn id(&self) -> u32 { self.state }
+  pub fn id(&self) -> u32 {
+    let mut id = 0;
+    for (i, (p, sid)) in self.props.iter().zip(self.state_props).rev().enumerate() {
+      id += sid;
+      if i != self.props.len() - 1 {
+        id *= p.len() as u32;
+      }
+    }
+    self.state + id
+  }
+  pub fn set_prop(&mut self, name: &str, val: impl Into<PropValue>) {
+    let mut idx = None;
+    for (i, p) in self.props.iter().enumerate() {
+      if p.name == name {
+        idx = Some(i);
+        break;
+      }
+    }
+    if let Some(idx) = idx {
+      let val = val.into();
+      if val.is(&self.props[idx].kind) {
+        self.state_props[idx] = val.id(&self.props[idx].kind);
+      } else {
+        panic!(
+          "the given property {:?} is not compatible with property {:?}",
+          val, self.props[idx]
+        );
+      }
+    } else {
+      panic!("no such property {}, valid properties are {:?}", name, self.props);
+    }
+  }
+  pub fn with_prop(mut self, name: &str, val: impl Into<PropValue>) -> Self {
+    self.set_prop(name, val);
+    self
+  }
 }
 
 #[derive(Debug)]
@@ -90,17 +130,72 @@ pub struct Data {
   default_props: &'static [u32],
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Eq)]
 pub struct Prop {
   name: &'static str,
   kind: PropKind,
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Eq)]
 enum PropKind {
   Bool,
   Enum(&'static [&'static str]),
   Int { min: u32, max: u32 },
+}
+
+#[derive(Debug, PartialEq, Eq)]
+pub enum PropValue {
+  Bool(bool),
+  Enum(String),
+  Int(u32),
+}
+
+impl PropValue {
+  fn id(&self, kind: &PropKind) -> u32 {
+    match self {
+      Self::Bool(v) => {
+        if *v {
+          0
+        } else {
+          1
+        }
+      }
+      Self::Enum(v) => match kind {
+        PropKind::Enum(variants) => {
+          for (i, val) in variants.iter().enumerate() {
+            if v == val {
+              return i as u32;
+            }
+          }
+          unreachable!();
+        }
+        _ => unreachable!(),
+      },
+      Self::Int(v) => match kind {
+        PropKind::Int { min, .. } => v - min,
+        _ => unreachable!(),
+      },
+    }
+  }
+  fn is(&self, kind: &PropKind) -> bool {
+    match self {
+      Self::Bool(_) => matches!(kind, PropKind::Bool),
+      Self::Enum(val) => {
+        matches!(kind, PropKind::Enum(variants) if variants.contains(&val.as_str()))
+      }
+      Self::Int(val) => matches!(kind, PropKind::Int { min, max } if val >= min && val <= max),
+    }
+  }
+}
+
+impl From<bool> for PropValue {
+  fn from(v: bool) -> PropValue { PropValue::Bool(v) }
+}
+impl From<u32> for PropValue {
+  fn from(v: u32) -> PropValue { PropValue::Int(v) }
+}
+impl From<String> for PropValue {
+  fn from(v: String) -> PropValue { PropValue::Enum(v) }
 }
 
 impl Data {
@@ -110,19 +205,14 @@ impl Data {
   /// they place the block, as things like their position/rotation affect which
   /// block gets placed.
   pub fn default_type(&self) -> Type {
-    Type { kind: self.kind, state: self.resolve_state(self.default_props) }
-  }
-
-  fn resolve_state(&self, props: &[u32]) -> u32 {
-    assert_eq!(self.props.len(), props.len());
-    let mut id = 0;
-    for (i, (p, idx)) in self.props.iter().zip(props).rev().enumerate() {
-      id += idx;
-      if i != props.len() - 1 {
-        id *= p.len() as u32;
-      }
+    if self.default_props.len() > STATE_PROPS_LEN {
+      panic!("Type has too many properties: {:?}", self.props);
     }
-    self.state + id
+    let mut state_props = [0; STATE_PROPS_LEN];
+    for (i, p) in self.default_props.iter().enumerate() {
+      state_props[i] = *p;
+    }
+    Type { kind: self.kind, state: self.state, props: self.props, state_props }
   }
 }
 
@@ -138,12 +228,15 @@ impl Prop {
 
 #[cfg(test)]
 mod tests {
-  use super::*;
+  use super::{super::TypeConverter, *};
 
   #[test]
   fn test_generate() {
-    // let kinds = generate_kinds();
-    // Used to show debug output.
-    // assert!(false);
+    let conv = TypeConverter::new();
+
+    let ty = conv.get(Kind::OakLeaves).default_type();
+    assert_eq!(ty.with_prop("distance", 1).id(), 145);
+    assert_eq!(ty.with_prop("distance", 2).id(), 145 + 1);
+    assert_eq!(ty.id(), 145 + 7);
   }
 }

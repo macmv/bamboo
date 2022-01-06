@@ -92,8 +92,9 @@ impl TypeConverter {
     }
 
     let kind = self.kind_from_id(id, BlockVersion::latest());
-    let _data = self.get(kind);
-    Type { kind, state: id }
+    let data = self.get(kind);
+    // TODO: Resolve the given id into property fields
+    data.default_type()
   }
 
   /// Gets a block kind from the given id.
@@ -122,11 +123,11 @@ mod tests {
     // Some easy conversions
     assert_eq!(conv.to_old(1, BlockVersion::V1_8), 1 << 4);
 
-    for i in 0..16000 {
-      if conv.to_old(i, BlockVersion::V1_15) != 0 {
-        dbg!(i);
-      }
-    }
+    // for i in 0..16000 {
+    //   if conv.to_old(i, BlockVersion::V1_15) != 0 {
+    //     dbg!(i);
+    //   }
+    // }
 
     // This line makes it easy to test each version
     // 15743,11268,11252,8595,4080,4080,4080,4080,0
