@@ -27,8 +27,6 @@ pub fn chunk(
   let _skylight = true; // Assume overworld
 
   let mut chunk_data = Buffer::new(vec![]);
-  // Iterates through chunks in order, from ground up. Flatten removes None
-  // sections.
   for s in sections {
     chunk_data.write_u16(s.non_air_blocks() as u16);
     chunk_data.write_u8(s.data().bpe() as u8);

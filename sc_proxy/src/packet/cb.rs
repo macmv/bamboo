@@ -182,10 +182,28 @@ impl ToTcp for Packet {
           out.write_bool(false); // Is debug; cannot be modified, has preset blocks
           out.write_bool(false); // Is flat; changes fog
         } else {
-          if ver >= ProtocolVersion::V1_14_4 {
+          if ver >= ProtocolVersion::V1_15_2 {
+            out.write_i32(dimension.into());
+            // Hashed world seed, used for biomes
+            out.write_u64(0);
+            // Max players (ignored)
+            out.write_u8(0);
+            // World type
+            out.write_str("default");
             out.write_varint(view_distance.into());
+            out.write_bool(reduced_debug_info);
+            out.write_bool(enable_respawn_screen);
+          } else if ver >= ProtocolVersion::V1_14_4 {
+            out.write_i32(dimension.into());
+            // Max players (ignored)
+            out.write_u8(0);
+            // World type
+            out.write_str("default");
+            out.write_varint(view_distance.into());
+            out.write_bool(reduced_debug_info);
+          } else {
+            out.write_bool(reduced_debug_info);
           }
-          out.write_bool(reduced_debug_info);
         }
 
         match ver.maj().unwrap() {
@@ -210,6 +228,17 @@ impl ToTcp for Packet {
             world_type: level_type,
             reduced_debug_info: None,
             unknown: out.into_inner(),
+          },
+          15 => GPacket::JoinGameV14 {
+            player_entity_id:    eid,
+            hardcore:            hardcore_mode,
+            game_mode:           None,
+            dimension:           None,
+            max_players:         None,
+            generator_type:      None,
+            chunk_load_distance: None,
+            reduced_debug_info:  None,
+            unknown:             out.into_inner(),
           },
           16 => GPacket::JoinGameV16 {
             player_entity_id:   eid,
