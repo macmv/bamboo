@@ -91,7 +91,7 @@ impl TypeConverter {
       id = self.to_latest(id, ver);
     }
 
-    let kind = self.kind_from_id(id, ver);
+    let kind = self.kind_from_id(id, BlockVersion::latest());
     let _data = self.get(kind);
     Type { kind, state: id }
   }

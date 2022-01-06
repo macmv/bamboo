@@ -156,8 +156,8 @@ fn block_data(gen: &mut CodeGen, b: &Block) {
   write_prop!(luminance: emit_light);
 
   gen.write("default_props: &[");
-  for (i, _) in b.properties.iter().enumerate() {
-    gen.write("0");
+  for (i, prop) in b.properties.iter().enumerate() {
+    gen.write(&prop.default.to_string());
     if i != b.properties.len() - 1 {
       gen.write(", ");
     }

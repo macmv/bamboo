@@ -14,10 +14,14 @@ pub fn cross_test(old: &(Version, BlockDef), new: &(Version, BlockDef)) {
       assert_eq!(to_old[1], 1 << 4); // Stone
       assert_eq!(to_old[33], 7 << 4); // Bedrock
     }
-    14 | 15 | 16 => {
+    14 | 15 | 16 | 17 => {
       assert_eq!(to_old[0], 0); // Air
       assert_eq!(to_old[1], 1); // Stone
       assert_eq!(to_old[33], 33); // Bedrock
+
+      // The two variants of grass
+      assert_eq!(to_old[8], 8);
+      assert_eq!(to_old[9], 9);
     }
     _ => {
       panic!("unknown version {}", old_ver);
@@ -73,8 +77,18 @@ fn find_ids(ver: Version, old_def: &BlockDef, new_def: &BlockDef) -> (Vec<u32>, 
       }
     } else {
       let old_block = old_map.get(&b.name).unwrap_or(&old_map["air"]);
-      for _ in b.all_states().iter() {
-        to_old.push(old_block.id);
+      if old_block.all_states().len() == b.all_states().len() {
+        // If we have the same number of states, the properties are probably the same,
+        // so we just want to copy it directly.
+        for (sid, _) in b.all_states().iter().enumerate() {
+          to_old.push(old_block.id + sid as u32);
+        }
+      } else {
+        // TODO: If the number of states differ, then we should do some property
+        // comparison here.
+        for _ in b.all_states().iter() {
+          to_old.push(old_block.id);
+        }
       }
     }
   }
@@ -96,7 +110,8 @@ fn update_old_blocks(def: &mut BlockDef) {
     // empty 4 bits are used for the 16 state ids. This means that if we want to do
     // state conversions correctly, we need to shift this over.
     b.id <<= 4;
-    b.properties = vec![Prop { name: "id".into(), kind: PropKind::Int { min: 0, max: 16 } }];
+    b.properties =
+      vec![Prop { name: "id".into(), kind: PropKind::Int { min: 0, max: 16 }, default: 0 }];
   }
 }
 

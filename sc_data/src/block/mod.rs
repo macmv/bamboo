@@ -91,6 +91,9 @@ pub struct Prop {
 
   /// The possible values of this state.
   kind: PropKind,
+
+  /// The default index of this property.
+  default: u32,
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -261,23 +264,24 @@ mod tests {
 
     let b = Block {
       properties: vec![Prop {
-        name: "".into(),
-        kind: PropKind::Enum(vec!["a".into(), "b".into(), "c".into()]),
+        name:    "".into(),
+        kind:    PropKind::Enum(vec!["a".into(), "b".into(), "c".into()]),
+        default: 0,
       }],
       ..Default::default()
     };
     assert_eq!(b.all_states().len(), 3);
 
     let b = Block {
-      properties: vec![Prop { name: "".into(), kind: PropKind::Bool }],
+      properties: vec![Prop { name: "".into(), kind: PropKind::Bool, default: 0 }],
       ..Default::default()
     };
     assert_eq!(b.all_states().len(), 2);
 
     let b = Block {
       properties: vec![
-        Prop { name: "".into(), kind: PropKind::Bool },
-        Prop { name: "".into(), kind: PropKind::Bool },
+        Prop { name: "".into(), kind: PropKind::Bool, default: 0 },
+        Prop { name: "".into(), kind: PropKind::Bool, default: 0 },
       ],
       ..Default::default()
     };
@@ -285,15 +289,23 @@ mod tests {
 
     let b = Block {
       properties: vec![
-        Prop { name: "".into(), kind: PropKind::Enum(vec!["a".into(), "b".into(), "c".into()]) },
-        Prop { name: "".into(), kind: PropKind::Bool },
+        Prop {
+          name:    "".into(),
+          kind:    PropKind::Enum(vec!["a".into(), "b".into(), "c".into()]),
+          default: 0,
+        },
+        Prop { name: "".into(), kind: PropKind::Bool, default: 0 },
       ],
       ..Default::default()
     };
     assert_eq!(b.all_states().len(), 6);
 
     let b = Block {
-      properties: vec![Prop { name: "".into(), kind: PropKind::Int { min: 0, max: 1 } }],
+      properties: vec![Prop {
+        name:    "".into(),
+        kind:    PropKind::Int { min: 0, max: 1 },
+        default: 0,
+      }],
       ..Default::default()
     };
     assert_eq!(b.all_states().len(), 2);

@@ -116,9 +116,11 @@ impl Data {
   fn resolve_state(&self, props: &[u32]) -> u32 {
     assert_eq!(self.props.len(), props.len());
     let mut id = 0;
-    for (p, idx) in self.props.iter().zip(props) {
+    for (i, (p, idx)) in self.props.iter().zip(props).rev().enumerate() {
       id += idx;
-      id *= p.len() as u32;
+      if i != props.len() - 1 {
+        id *= p.len() as u32;
+      }
     }
     self.state + id
   }
@@ -140,7 +142,7 @@ mod tests {
 
   #[test]
   fn test_generate() {
-    dbg!(generate_kinds());
+    // let kinds = generate_kinds();
     // Used to show debug output.
     // assert!(false);
   }
