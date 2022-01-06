@@ -29,7 +29,7 @@ pub fn chunk(
     if s.data().bpe() <= 8 {
       chunk_data.write_varint(s.palette().len() as i32);
       for g in s.palette() {
-        chunk_data.write_varint(conv.block_to_old(*g as u32, BlockVersion::V1_15) as i32);
+        chunk_data.write_varint(conv.block_to_old(*g as u32, BlockVersion::V1_16) as i32);
       }
     }
     let longs = s.data().long_array();
