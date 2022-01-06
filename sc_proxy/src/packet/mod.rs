@@ -7,7 +7,7 @@ use sc_common::{
 
 mod v1_14;
 mod v1_15;
-// mod v1_16;
+mod v1_16;
 mod v1_8;
 mod v1_9;
 
@@ -35,7 +35,7 @@ pub fn chunk(
     // ProtocolVersion::V1_13 => v1_13::serialize_chunk(pos, bit_map, &sections, conv),
     BlockVersion::V1_14 => v1_14::chunk(pos, full, bit_map, &sections, conv),
     BlockVersion::V1_15 => v1_15::chunk(pos, full, bit_map, &sections, conv),
-    // ProtocolVersion::V1_16 => v1_16::chunk(pos, full, bit_map, &sections, conv),
+    BlockVersion::V1_16 => v1_16::chunk(pos, full, bit_map, &sections, conv),
     _ => todo!("chunk on version {}", ver),
   }
 }
