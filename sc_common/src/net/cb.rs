@@ -109,13 +109,16 @@ pub enum Packet {
     action: PlayerListAction,
   },
   SetPosLook {
-    x:           f64,
-    y:           f64,
-    z:           f64,
-    yaw:         f32,
-    pitch:       f32,
-    flags:       u8,
-    teleport_id: u32,
+    x:               f64,
+    y:               f64,
+    z:               f64,
+    yaw:             f32,
+    pitch:           f32,
+    flags:           u8,
+    teleport_id:     u32,
+    /// If set, the client will dismount any vehicle they are riding. Only
+    /// applies to 1.17+ clients.
+    should_dismount: bool,
   },
   SpawnPlayer {
     eid:   i32,

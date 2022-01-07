@@ -52,7 +52,7 @@ impl ToTcp for Packet {
           GPacket::ChatV8 { chat_component: msg, ty: ty as i8 }
         } else if ver < ProtocolVersion::V1_16_5 {
           GPacket::ChatV12 { chat_component: msg, ty: None, unknown: vec![ty] }
-        } else {
+        } else if ver == ProtocolVersion::V1_16_5 {
           let mut out = Buffer::new(vec![]);
           out.write_u8(ty);
           out.write_uuid(UUID::from_u128(0));
@@ -60,6 +60,16 @@ impl ToTcp for Packet {
             chat_component: msg,
             ty:             None,
             unknown:        out.into_inner(),
+          }
+        } else {
+          let mut out = Buffer::new(vec![]);
+          out.write_u8(ty);
+          out.write_uuid(UUID::from_u128(0));
+          GPacket::ChatV17 {
+            message:  msg,
+            location: None,
+            sender:   None,
+            unknown:  out.into_inner(),
           }
         }
       }
@@ -258,20 +268,47 @@ impl ToTcp for Packet {
             flat_world:         None,
             unknown:            out.into_inner(),
           },
+          17 => GPacket::JoinGameV17 {
+            a:                  None,
+            player_entity_id:   eid,
+            hardcore:           hardcore_mode,
+            sha_256_seed:       None,
+            game_mode:          None,
+            previous_game_mode: None,
+            dimension_ids:      None,
+            registry_manager:   None,
+            dimension_type:     None,
+            dimension_id:       None,
+            max_players:        None,
+            view_distance:      None,
+            reduced_debug_info: None,
+            show_death_screen:  None,
+            debug_world:        None,
+            flat_world:         None,
+            unknown:            out.into_inner(),
+          },
           _ => unimplemented!(),
         }
       }
       Packet::KeepAlive { id } => {
         if ver < ProtocolVersion::V1_12_2 {
           GPacket::KeepAliveV8 { id: id as i32 }
-        } else {
+        } else if ver < ProtocolVersion::V1_17_1 {
           GPacket::KeepAliveV12 { id: id.into() }
+        } else {
+          GPacket::KeepAliveV17 { id: id.into() }
         }
       }
       Packet::MultiBlockChange { pos, y, changes } => {
         super::multi_block_change(pos, y, changes, ver, conv)
       }
-      Packet::PlayerHeader { header, footer } => GPacket::PlayerListHeaderV8 { header, footer },
+      Packet::PlayerHeader { header, footer } => {
+        if ver < ProtocolVersion::V1_17_1 {
+          GPacket::PlayerListHeaderV8 { header, footer }
+        } else {
+          GPacket::PlayerListHeaderV17 { header, footer }
+        }
+      }
       Packet::PlayerList { action } => {
         let id;
         let mut buf = Buffer::new(vec![]);
@@ -315,22 +352,43 @@ impl ToTcp for Packet {
             });
           }
         }
-        GPacket::PlayerListV8 { action: id, players: None, unknown: buf.into_inner() }
+        if ver < ProtocolVersion::V1_17_1 {
+          GPacket::PlayerListV8 { action: id, players: None, unknown: buf.into_inner() }
+        } else {
+          GPacket::PlayerListV17 { action: id, entries: None, unknown: buf.into_inner() }
+        }
       }
-      Packet::SetPosLook { x, y, z, yaw, pitch, flags, teleport_id } => {
+      Packet::SetPosLook { x, y, z, yaw, pitch, flags, teleport_id, should_dismount } => {
         let mut buf = Buffer::new(vec![]);
         buf.write_u8(flags);
         if ver >= ProtocolVersion::V1_9 {
           buf.write_varint(teleport_id as i32);
         }
-        GPacket::PlayerPosLookV8 {
-          x,
-          y,
-          z,
-          yaw,
-          pitch,
-          field_179835_f: None,
-          unknown: buf.into_inner(),
+        if ver >= ProtocolVersion::V1_17_1 {
+          buf.write_bool(should_dismount);
+        }
+        if ver < ProtocolVersion::V1_17_1 {
+          GPacket::PlayerPosLookV8 {
+            x,
+            y,
+            z,
+            yaw,
+            pitch,
+            field_179835_f: None,
+            unknown: buf.into_inner(),
+          }
+        } else {
+          GPacket::PlayerPosLookV17 {
+            x,
+            y,
+            z,
+            yaw,
+            pitch,
+            flags: None,
+            teleport_id: None,
+            should_dismount: None,
+            unknown: buf.into_inner(),
+          }
         }
       }
       Packet::SpawnPlayer { eid, id, x, y, z, yaw, pitch } => {
@@ -409,6 +467,9 @@ fn write_dimensions(out: &mut Buffer) {
     ("coordinate_scale", Tag::Float(1.0)),
     ("ultrawarm", Tag::Byte(0)),
     ("has_ceiling", Tag::Byte(0)),
+    // 1.17+
+    ("min_y", Tag::Int(0)),
+    ("height", Tag::Int(256)),
   ]);
   let biome = Tag::compound(&[
     ("precipitation", Tag::String("rain".into())),

@@ -154,13 +154,14 @@ impl World {
     }
 
     player.send(cb::Packet::SetPosLook {
-      x:           0.0,
-      y:           60.0,
-      z:           0.0,
-      yaw:         0.0,
-      pitch:       0.0,
-      flags:       0,
-      teleport_id: 1234,
+      x:               0.0,
+      y:               60.0,
+      z:               0.0,
+      yaw:             0.0,
+      pitch:           0.0,
+      flags:           0,
+      teleport_id:     1234,
+      should_dismount: true,
     });
 
     let my_info = cb::PlayerListAdd {
