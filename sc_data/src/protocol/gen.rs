@@ -65,7 +65,7 @@ impl PacketCollection {
   pub fn expand_sup(&mut self) {
     for (_name, versions) in &mut self.packets {
       for (ver, p) in versions {
-        if p.extends == "Object" {
+        if p.extends == "Object" || p.extends == "Record" {
           p.extend_from_none();
         } else if (p.extends == "EntityS2CPacket" || p.extends == "PlayerMoveC2SPacket")
           && !self.classes[ver].contains_key(&p.extends)
@@ -77,6 +77,7 @@ impl PacketCollection {
           // TODO: We still might be missing fields from this packet.
           p.extend_from_none();
         } else {
+          dbg!(&p);
           p.extend_from(&self.classes[ver][&p.extends]);
         }
       }

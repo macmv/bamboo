@@ -50,10 +50,17 @@ pub static VERSIONS: &'static [Version] = &[
   Version::new(15, 2, 578),
   Version::new(16, 5, 754),
   Version::new(17, 1, 756),
+  Version::new(18, 0, 757),
 ];
 
 impl Version {
-  pub fn to_protocol(&self) -> String { format!("ProtocolVersion::V1_{}_{}", self.maj, self.min) }
+  pub fn to_protocol(&self) -> String {
+    if self.min == 0 {
+      format!("ProtocolVersion::V1_{}", self.maj)
+    } else {
+      format!("ProtocolVersion::V1_{}_{}", self.maj, self.min)
+    }
+  }
   pub fn to_block(&self) -> String { format!("BlockVersion::V1_{}", self.maj) }
   pub fn to_index(&self) -> usize {
     if self.maj <= 12 {
