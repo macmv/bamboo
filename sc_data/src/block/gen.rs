@@ -157,7 +157,7 @@ fn block_data(gen: &mut CodeGen, b: &Block) {
 
   gen.write("default_props: &[");
   for (i, prop) in b.properties.iter().enumerate() {
-    gen.write(&prop.default.to_string());
+    gen.write(&prop.default.to_src());
     if i != b.properties.len() - 1 {
       gen.write(", ");
     }

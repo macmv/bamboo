@@ -1,4 +1,4 @@
-use super::{Block, BlockDef, Prop, PropKind, State};
+use super::{Block, BlockDef, Prop, PropKind, PropValue, State};
 use crate::{gen::CodeGen, Version};
 use std::collections::HashMap;
 
@@ -110,8 +110,11 @@ fn update_old_blocks(def: &mut BlockDef) {
     // empty 4 bits are used for the 16 state ids. This means that if we want to do
     // state conversions correctly, we need to shift this over.
     b.id <<= 4;
-    b.properties =
-      vec![Prop { name: "id".into(), kind: PropKind::Int { min: 0, max: 16 }, default: 0 }];
+    b.properties = vec![Prop {
+      name:    "id".into(),
+      kind:    PropKind::Int { min: 0, max: 16 },
+      default: PropValue::Int(0),
+    }];
   }
 }
 

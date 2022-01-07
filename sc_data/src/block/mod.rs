@@ -93,7 +93,7 @@ pub struct Prop {
   kind: PropKind,
 
   /// The default index of this property.
-  default: u32,
+  default: PropValue,
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -106,6 +106,29 @@ pub enum PropKind {
   /// the inclusive end of the range. The start is normally zero, but can
   /// sometimes be one.
   Int { min: u32, max: u32 },
+}
+
+#[derive(Debug, Clone, Deserialize)]
+#[serde(untagged)]
+pub enum PropValue {
+  /// A boolean property. This can either be `true` or `false`.
+  Bool(bool),
+  /// An enum property. This can be any of the given values.
+  Enum(String),
+  /// A number property. This can be anything from `min..=max`, where `max` is
+  /// the inclusive end of the range. The start is normally zero, but can
+  /// sometimes be one.
+  Int(u32),
+}
+
+impl PropValue {
+  fn to_src(&self) -> String {
+    match self {
+      Self::Bool(v) => format!("PropValue::Bool({})", v),
+      Self::Enum(v) => format!("PropValue::Enum(\"{}\")", v),
+      Self::Int(v) => format!("PropValue::Int({})", v),
+    }
+  }
 }
 
 impl<'de> Deserialize<'de> for Material {

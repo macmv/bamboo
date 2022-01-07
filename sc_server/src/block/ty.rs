@@ -127,7 +127,7 @@ pub struct Data {
   /// convert a single property on a block.
   props:         &'static [Prop],
   /// The default type. Each value is an index into that property.
-  default_props: &'static [u32],
+  default_props: &'static [PropValue],
 }
 
 #[derive(Debug, PartialEq, Eq)]
@@ -210,7 +210,7 @@ impl Data {
     }
     let mut state_props = [0; STATE_PROPS_LEN];
     for (i, p) in self.default_props.iter().enumerate() {
-      state_props[i] = *p;
+      state_props[i] = p.id(&self.props[i].kind);
     }
     Type { kind: self.kind, state: self.state, props: self.props, state_props }
   }
