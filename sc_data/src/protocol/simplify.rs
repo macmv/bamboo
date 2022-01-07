@@ -13,6 +13,17 @@ pub fn pass(p: &mut Packet) {
       initialized: false,
     });
   }
+  if p.reader.block.len() == 1 && matches!(p.reader.block.last(), Some(Instr::Return(_))) {
+    p.reader.block.clear();
+    p.reader.block.push(set_unknown());
+    p.fields.push(Field {
+      name:        "unknown".into(),
+      ty:          Type::Rust(RType::new("Vec").generic("u8")),
+      reader_type: None,
+      option:      false,
+      initialized: false,
+    });
+  }
   for f in &mut p.fields {
     simplify_name(&mut f.name);
   }

@@ -171,6 +171,10 @@ impl ToTcp for Packet {
         enable_respawn_screen,
       } => {
         let mut out = Buffer::new(vec![]);
+        if ver >= ProtocolVersion::V1_18 {
+          out.write_i32(eid);
+          out.write_bool(hardcore_mode);
+        }
         if ver >= ProtocolVersion::V1_16_5 {
           out.write_u8(game_mode.id());
           out.write_i8(-1); // no previous_game_mode
@@ -187,6 +191,10 @@ impl ToTcp for Packet {
           out.write_varint(0);
 
           out.write_varint(view_distance.into());
+          if ver >= ProtocolVersion::V1_18 {
+            // The simulation distance
+            out.write_varint(view_distance.into());
+          }
           out.write_bool(reduced_debug_info);
           out.write_bool(enable_respawn_screen);
           out.write_bool(false); // Is debug; cannot be modified, has preset blocks
@@ -272,6 +280,25 @@ impl ToTcp for Packet {
             a:                  None,
             player_entity_id:   eid,
             hardcore:           hardcore_mode,
+            sha_256_seed:       None,
+            game_mode:          None,
+            previous_game_mode: None,
+            dimension_ids:      None,
+            registry_manager:   None,
+            dimension_type:     None,
+            dimension_id:       None,
+            max_players:        None,
+            view_distance:      None,
+            reduced_debug_info: None,
+            show_death_screen:  None,
+            debug_world:        None,
+            flat_world:         None,
+            unknown:            out.into_inner(),
+          },
+          18 => GPacket::JoinGameV18 {
+            l:                  None,
+            player_entity_id:   None,
+            hardcore:           None,
             sha_256_seed:       None,
             game_mode:          None,
             previous_game_mode: None,
