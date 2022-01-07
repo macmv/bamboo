@@ -11,7 +11,7 @@ use sc_common::{
 };
 
 // CHANGES:
-// - Bitmask was removed.
+// - Bitmask was removed, and we now need to send empty sections.
 // - Biome array now uses paletted section format, and is part of each chunk
 //   section (before it was part of the chunk column).
 // - Light update packet was merged into this packet.
@@ -31,7 +31,24 @@ pub fn chunk(
   // chunk_data.write_varint(1);
   // chunk_data.write_u64(bit_map.into());
 
-  for s in sections {
+  // 1.18 requires all chunk sections to be sent
+  let mut idx = 0;
+  for i in 0..16 {
+    if bit_map & (1 << i) == 0 {
+      chunk_data.write_u16(0); // No non air blocks
+
+      // Paletted container for chunk data
+      chunk_data.write_u8(0); // 0 bpe
+      chunk_data.write_varint(0); // our one value is 0
+      chunk_data.write_varint(0); // no data
+
+      // Paletted container for biome data
+      chunk_data.write_u8(0); // 0 bpe
+      chunk_data.write_varint(0); // our one value is 0
+      chunk_data.write_varint(0); // no data
+      continue;
+    }
+    let s = &sections[idx];
     chunk_data.write_u16(s.non_air_blocks() as u16);
 
     // Paletted container for chunk data
@@ -48,6 +65,7 @@ pub fn chunk(
 
     // Paletted container for biome data
     if biomes {
+      /*
       let len = 64; // 64 entries
       let num_longs = len / (64 / 4);
       chunk_data.write_u8(4); // 4 bits per entry
@@ -60,7 +78,16 @@ pub fn chunk(
         // zeros.
         chunk_data.write_u64(0);
       }
+      */
+      // New special 'single value' palette
+      chunk_data.write_u8(0); // 0 bits per entry
+      chunk_data.write_varint(0); // The single entry is `0`
+      chunk_data.write_varint(0); // The data length is `0`
+
+      // No data follows, as this signifies that the entire section is just that
+      // one biome.
     }
+    idx += 1;
   }
 
   let heightmap = vec![];
