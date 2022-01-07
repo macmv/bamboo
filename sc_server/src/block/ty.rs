@@ -31,7 +31,7 @@ impl Type {
     }
     self.state + id
   }
-  pub fn set_prop(&mut self, name: &str, val: impl Into<PropValue>) {
+  pub fn set_prop<'a>(&mut self, name: &str, val: impl Into<PropValue<'a>>) {
     let mut idx = None;
     for (i, p) in self.props.iter().enumerate() {
       if p.name == name {
@@ -53,7 +53,7 @@ impl Type {
       panic!("no such property {}, valid properties are {:?}", name, self.props);
     }
   }
-  pub fn with_prop(mut self, name: &str, val: impl Into<PropValue>) -> Self {
+  pub fn with_prop<'a>(mut self, name: &str, val: impl Into<PropValue<'a>>) -> Self {
     self.set_prop(name, val);
     self
   }
@@ -127,7 +127,7 @@ pub struct Data {
   /// convert a single property on a block.
   props:         &'static [Prop],
   /// The default type. Each value is an index into that property.
-  default_props: &'static [PropValue],
+  default_props: &'static [PropValue<'static>],
 }
 
 #[derive(Debug, PartialEq, Eq)]
@@ -144,13 +144,13 @@ enum PropKind {
 }
 
 #[derive(Debug, PartialEq, Eq)]
-pub enum PropValue {
+pub enum PropValue<'a> {
   Bool(bool),
-  Enum(String),
+  Enum(&'a str),
   Int(u32),
 }
 
-impl PropValue {
+impl PropValue<'_> {
   fn id(&self, kind: &PropKind) -> u32 {
     match self {
       Self::Bool(v) => {
@@ -181,21 +181,21 @@ impl PropValue {
     match self {
       Self::Bool(_) => matches!(kind, PropKind::Bool),
       Self::Enum(val) => {
-        matches!(kind, PropKind::Enum(variants) if variants.contains(&val.as_str()))
+        matches!(kind, PropKind::Enum(variants) if variants.contains(&val))
       }
       Self::Int(val) => matches!(kind, PropKind::Int { min, max } if val >= min && val <= max),
     }
   }
 }
 
-impl From<bool> for PropValue {
-  fn from(v: bool) -> PropValue { PropValue::Bool(v) }
+impl From<bool> for PropValue<'_> {
+  fn from(v: bool) -> Self { PropValue::Bool(v) }
 }
-impl From<u32> for PropValue {
-  fn from(v: u32) -> PropValue { PropValue::Int(v) }
+impl From<u32> for PropValue<'_> {
+  fn from(v: u32) -> Self { PropValue::Int(v) }
 }
-impl From<String> for PropValue {
-  fn from(v: String) -> PropValue { PropValue::Enum(v) }
+impl<'a> From<&'a str> for PropValue<'a> {
+  fn from(v: &'a str) -> Self { PropValue::Enum(v) }
 }
 
 impl Data {
