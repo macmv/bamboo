@@ -232,6 +232,10 @@ impl World {
   /// custom commands to the server.
   pub fn commands(&self) -> &CommandTree { &self.commands }
 
+  /// Returns the world manager for this world. This is a global value, used for
+  /// things like what players are all online.
+  pub fn world_manager(&self) -> &Arc<WorldManager> { &self.wm }
+
   /// Generates a chunk for the given chunk position. This will not store the
   /// chunk, or even look in the chunks table at all. It should be used if you
   /// have a list of chunks to generate, and you would like to generate them in
@@ -583,5 +587,6 @@ impl WorldManager {
   pub(crate) fn remove_player(&self, id: UUID) {
     let idx = *self.players.lock().get(&id).unwrap();
     self.worlds.lock()[idx].remove_player(id);
+    self.players.lock().remove(&id);
   }
 }

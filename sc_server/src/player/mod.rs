@@ -196,7 +196,15 @@ impl Player {
   /// some other way of closing it later.
   pub fn disconnect<C: Into<Chat>>(&self, _msg: C) {
     // self.send(cb::Packet::KickDisconnect { reason: msg.into().to_json() });
+    self.remove();
   }
+
+  /// Disconnects the player, without sending a disconnect message. Prefer
+  /// [`disconnect`](Self::disconnect) in most situations.
+  ///
+  /// This is used when a player disconnects on their own, and they need to be
+  /// removed from the players list in the world.
+  pub(crate) fn remove(&self) { self.world.world_manager().remove_player(self.uuid); }
 
   /// Generates the player's metadata for the given version. This will include
   /// all fields possible about the player. This should only be called when

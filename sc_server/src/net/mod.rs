@@ -516,12 +516,21 @@ impl ConnectionManager {
   fn wake_event(&mut self, ev: WakeEvent) {
     match ev {
       WakeEvent::Clientbound(tok) => {
-        if let Some((conn, _)) = self.connections.read().get(&tok) {
+        if let Some((conn, player)) = self.connections.read().get(&tok) {
           match conn.lock().try_send() {
             Ok(()) => {}
             Err(e) if e.kind() == io::ErrorKind::WouldBlock => {}
+            Err(e) if e.kind() == io::ErrorKind::BrokenPipe => {
+              if let Some(p) = player {
+                p.remove();
+              }
+              self.connections.write().remove(&tok);
+            }
             Err(e) => {
               error!("error in connection: {}", e);
+              if let Some(p) = player {
+                p.remove();
+              }
               self.connections.write().remove(&tok);
             }
           }
