@@ -34,8 +34,10 @@ impl FromTcp for Packet {
   fn from_tcp(p: GPacket, _ver: ProtocolVersion, _conv: &TypeConverter) -> Result<Self, ReadError> {
     Ok(match p {
       GPacket::ChatV8 { message } | GPacket::ChatV11 { message } => Packet::Chat { msg: message },
-      GPacket::KeepAliveV8 { key } => Packet::KeepAlive { id: key },
-      GPacket::KeepAliveV12 { key } => Packet::KeepAlive { id: key as i32 },
+      GPacket::KeepAliveV8 { key: id } => Packet::KeepAlive { id },
+      GPacket::KeepAliveV12 { key: id } | GPacket::KeepAliveV17 { id } => {
+        Packet::KeepAlive { id: id as i32 }
+      }
       GPacket::PlayerV8 { on_ground, .. } => Packet::PlayerOnGround { on_ground },
       GPacket::PlayerLookV8 { yaw, pitch, on_ground, .. }
       | GPacket::PlayerRotationV9 { yaw, pitch, on_ground, .. } => {
