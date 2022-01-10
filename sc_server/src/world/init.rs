@@ -95,6 +95,13 @@ impl World {
       }
     });
     self.store_chunks_no_overwrite(chunks.into_inner());
+    // Keep spawn chunks always loaded
+    for x in -10..=10 {
+      for z in -10..=10 {
+        let pos = ChunkPos::new(x, z);
+        self.inc_view(pos);
+      }
+    }
     info!("done generating terrain");
   }
 
