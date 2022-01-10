@@ -1,6 +1,6 @@
+use crate::gnet::cb::Packet;
 use sc_common::{
   chunk::paletted::Section,
-  gnet::cb::Packet,
   math::ChunkPos,
   version::{BlockVersion, ProtocolVersion},
 };

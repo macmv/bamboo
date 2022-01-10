@@ -107,8 +107,8 @@ impl PacketCollection {
     gen.write_line("// Some imports are used on clientbound packets, but not on serverbound");
     gen.write_line("// packets. This is to remove those warnings.");
     gen.write_line("#[allow(unused_imports)]");
-    gen.write_line("use crate::{");
-    gen.write_line("  ChunkPos, Pos,");
+    gen.write_line("use sc_common::{");
+    gen.write_line("  math::{ChunkPos, Pos},");
     gen.write_line("  version::ProtocolVersion,");
     gen.write_line("  util::{Item, nbt::NBT, UUID},");
     gen.write_line("};");

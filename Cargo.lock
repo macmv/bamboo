@@ -1713,7 +1713,6 @@ dependencies = [
  "rand_core 0.6.3",
  "rsa",
  "sc_data",
- "sc_generated",
  "sc_macros",
  "sc_transfer",
  "serde",

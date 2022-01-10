@@ -21,10 +21,9 @@ pub mod math;
 pub mod net;
 pub mod registry;
 pub mod util;
+pub mod version;
 
 pub use registry::Registry;
-
-pub use sc_generated::{net as gnet, version};
 
 // #[derive(Debug)]
 // pub struct KeepAlivePolicy {

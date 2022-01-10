@@ -1,7 +1,7 @@
 use super::TypeConverter;
+use crate::gnet::cb::Packet;
 use sc_common::{
   chunk::{paletted::Section, Section as _},
-  gnet::cb::Packet,
   math::{ChunkPos, Pos},
   util::Buffer,
   version::{BlockVersion, ProtocolVersion},

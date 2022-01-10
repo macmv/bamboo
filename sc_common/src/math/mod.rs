@@ -1,7 +1,9 @@
 mod aabb;
+mod chunk_pos;
 pub mod der;
 mod fast;
 mod fpos;
+mod pos;
 mod rng;
 mod vec;
 
@@ -17,7 +19,9 @@ use sha1::{Digest, Sha1};
 use std::hash::BuildHasher;
 use wyhash::WyHash;
 
-pub use sc_generated::{ChunkPos, Pos, PosError, PosIter};
+pub use chunk_pos::ChunkPos;
+pub use pos::{Pos, PosError, PosIter};
+// pub use sc_generated::{ChunkPos, Pos, PosError, PosIter};
 
 /// A block face. This is used to represent a face that a user clicked on.
 #[derive(Debug, Clone, Copy, Hash, PartialEq, Eq)]

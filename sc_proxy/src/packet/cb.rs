@@ -1,6 +1,6 @@
 use super::TypeConverter;
+use crate::gnet::cb::Packet as GPacket;
 use sc_common::{
-  gnet::cb::Packet as GPacket,
   net::{cb, cb::Packet},
   util::{
     nbt::{Tag, NBT},

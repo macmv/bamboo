@@ -1,4 +1,5 @@
 use crate::{
+  gnet::{cb as gcb, sb as gsb, tcp},
   packet::{FromTcp, ToTcp, TypeConverter},
   stream::PacketStream,
 };
@@ -6,7 +7,6 @@ use mio::{net::TcpStream, Interest, Registry, Token};
 use rand::{rngs::OsRng, RngCore};
 use rsa::{padding::PaddingScheme, RSAPrivateKey};
 use sc_common::{
-  gnet::{cb as gcb, sb as gsb, tcp},
   math,
   net::{cb as ccb, sb as csb},
   util::{chat::Color, Chat, UUID},

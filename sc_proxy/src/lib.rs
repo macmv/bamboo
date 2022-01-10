@@ -2,6 +2,7 @@
 extern crate log;
 
 pub mod conn;
+pub mod gnet;
 pub mod packet;
 pub mod stream;
 

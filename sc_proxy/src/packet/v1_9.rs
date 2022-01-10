@@ -1,8 +1,6 @@
 use super::TypeConverter;
-use sc_common::{
-  chunk::paletted::Section, gnet::cb::Packet, math::ChunkPos, util::Buffer,
-  version::ProtocolVersion,
-};
+use crate::gnet::cb::Packet;
+use sc_common::{chunk::paletted::Section, math::ChunkPos, util::Buffer, version::ProtocolVersion};
 
 // Applies to 1.9 - 1.12, but 1.10 doesn't work, so idk
 pub fn chunk(

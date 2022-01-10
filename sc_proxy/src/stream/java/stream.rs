@@ -1,4 +1,5 @@
 use super::super::PacketStream;
+use crate::gnet::tcp;
 use aes::{
   cipher::{AsyncStreamCipher, NewCipher},
   Aes128,
@@ -7,7 +8,7 @@ use cfb8::Cfb8;
 use miniz_oxide::{deflate::compress_to_vec_zlib, inflate::decompress_to_vec_zlib};
 use mio::net::TcpStream;
 use ringbuf::{Consumer, Producer, RingBuffer};
-use sc_common::{gnet::tcp, util, util::Buffer, version::ProtocolVersion};
+use sc_common::{util, util::Buffer, version::ProtocolVersion};
 use std::{
   fmt, io,
   io::{ErrorKind, Read, Result, Write},

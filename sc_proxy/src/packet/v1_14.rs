@@ -1,7 +1,7 @@
 use super::TypeConverter;
+use crate::gnet::cb::Packet;
 use sc_common::{
   chunk::paletted::Section,
-  gnet::cb::Packet,
   math::ChunkPos,
   util::{
     nbt::{Tag, NBT},

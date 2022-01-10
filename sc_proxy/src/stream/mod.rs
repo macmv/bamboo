@@ -1,7 +1,8 @@
 // pub mod bedrock;
 pub mod java;
 
-use sc_common::{gnet::tcp, version::ProtocolVersion};
+use crate::gnet::tcp;
+use sc_common::version::ProtocolVersion;
 use std::io;
 
 pub trait PacketStream {

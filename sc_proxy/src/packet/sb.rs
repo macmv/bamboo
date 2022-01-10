@@ -1,7 +1,6 @@
 use super::TypeConverter;
-use sc_common::{
-  gnet::sb::Packet as GPacket, net::sb::Packet, util::Buffer, version::ProtocolVersion,
-};
+use crate::gnet::sb::Packet as GPacket;
+use sc_common::{net::sb::Packet, util::Buffer, version::ProtocolVersion};
 use std::{error::Error, fmt};
 
 #[derive(Debug, Clone)]
