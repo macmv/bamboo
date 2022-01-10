@@ -453,7 +453,11 @@ impl ToTcp for Packet {
         }
       }
       Packet::UnloadChunk { pos } => {
-        if ver == ProtocolVersion::V1_8 {
+        if ver >= ProtocolVersion::V1_17 {
+          GPacket::UnloadChunkV17 { x: pos.x(), z: pos.z() }
+        } else if ver >= ProtocolVersion::V1_9 {
+          GPacket::UnloadChunkV9 { x: pos.x(), z: pos.z() }
+        } else {
           GPacket::ChunkDataV8 {
             chunk_x:        pos.x(),
             chunk_z:        pos.z(),
@@ -462,12 +466,12 @@ impl ToTcp for Packet {
             // Zero bit mask, then zero length varint
             unknown:        vec![0, 0, 0],
           }
-        } else {
-          GPacket::UnloadChunkV9 { x: pos.x(), z: pos.z() }
         }
       }
       Packet::UpdateViewPos { pos } => {
-        if ver >= ProtocolVersion::V1_14 {
+        if ver >= ProtocolVersion::V1_17 {
+          GPacket::ChunkRenderDistanceCenterV17 { chunk_x: pos.x(), chunk_z: pos.z() }
+        } else if ver >= ProtocolVersion::V1_14 {
           GPacket::ChunkRenderDistanceCenterV14 { chunk_x: pos.x(), chunk_z: pos.z() }
         } else {
           panic!("cannot send UpdateViewPos for version {}", ver);

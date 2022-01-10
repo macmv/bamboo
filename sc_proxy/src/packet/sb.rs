@@ -1,5 +1,7 @@
 use super::TypeConverter;
-use sc_common::{gnet::sb::Packet as GPacket, net::sb::Packet, version::ProtocolVersion};
+use sc_common::{
+  gnet::sb::Packet as GPacket, net::sb::Packet, util::Buffer, version::ProtocolVersion,
+};
 use std::{error::Error, fmt};
 
 #[derive(Debug, Clone)]
@@ -36,15 +38,41 @@ impl FromTcp for Packet {
       GPacket::KeepAliveV8 { key } => Packet::KeepAlive { id: key },
       GPacket::KeepAliveV12 { key } => Packet::KeepAlive { id: key as i32 },
       GPacket::PlayerV8 { on_ground, .. } => Packet::PlayerOnGround { on_ground },
-      // TODO: The `super` call in the player movement packets is not parsed correctly.
-      GPacket::PlayerLookV8 { yaw, pitch, .. } | GPacket::PlayerRotationV9 { yaw, pitch, .. } => {
-        Packet::PlayerLook { yaw, pitch, on_ground: false }
+      GPacket::PlayerLookV8 { yaw, pitch, on_ground, .. }
+      | GPacket::PlayerRotationV9 { yaw, pitch, on_ground, .. } => {
+        Packet::PlayerLook { yaw, pitch, on_ground }
       }
-      GPacket::PlayerPosLookV8 { x, y, z, yaw, pitch, .. }
-      | GPacket::PlayerPositionRotationV9 { x, y, z, yaw, pitch, .. } => {
-        Packet::PlayerPosLook { x, y, z, yaw, pitch, on_ground: false }
+      GPacket::PlayerRotationV17 { unknown, .. } => {
+        let mut buf = Buffer::new(unknown);
+        let yaw = buf.read_f32();
+        let pitch = buf.read_f32();
+        let on_ground = buf.read_bool();
+        Packet::PlayerLook { yaw, pitch, on_ground }
       }
-      GPacket::PlayerPositionV8 { x, y, z, .. } => Packet::PlayerPos { x, y, z, on_ground: false },
+      GPacket::PlayerPosLookV8 { x, y, z, yaw, pitch, on_ground, .. }
+      | GPacket::PlayerPositionRotationV9 { x, y, z, yaw, pitch, on_ground, .. } => {
+        Packet::PlayerPosLook { x, y, z, yaw, pitch, on_ground }
+      }
+      GPacket::PlayerPositionRotationV17 { unknown, .. } => {
+        let mut buf = Buffer::new(unknown);
+        let x = buf.read_f64();
+        let y = buf.read_f64();
+        let z = buf.read_f64();
+        let yaw = buf.read_f32();
+        let pitch = buf.read_f32();
+        let on_ground = buf.read_bool();
+        Packet::PlayerPosLook { x, y, z, yaw, pitch, on_ground }
+      }
+      GPacket::PlayerPositionV8 { x, y, z, on_ground, .. } => {
+        Packet::PlayerPos { x, y, z, on_ground }
+      }
+      GPacket::PlayerPositionV17 { unknown, .. } => {
+        let mut buf = Buffer::new(unknown);
+        let x = buf.read_f64();
+        let y = buf.read_f64();
+        let z = buf.read_f64();
+        Packet::PlayerPos { x, y, z, on_ground: false }
+      }
       _ => return Err(ReadError { packet: p, kind: ReadErrorKind::UnknownPacket }),
     })
   }
