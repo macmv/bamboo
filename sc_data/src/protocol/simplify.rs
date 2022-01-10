@@ -1,6 +1,7 @@
 use super::{convert, Cond, Expr, Field, Instr, Lit, Op, Packet, RType, Type, Value};
 use convert_case::{Case, Casing};
 
+// Called before extend_from
 pub fn pass(p: &mut Packet) {
   let len = simplify_instr(&mut p.reader.block);
   if let Some(l) = len {
@@ -13,7 +14,16 @@ pub fn pass(p: &mut Packet) {
       initialized: false,
     });
   }
-  if p.reader.block.len() == 1 && matches!(p.reader.block.last(), Some(Instr::Return(_))) {
+
+  for f in &mut p.fields {
+    simplify_name(&mut f.name);
+  }
+}
+// Called after extend_from
+pub fn finish(p: &mut Packet) {
+  if (p.reader.block.len() == 1 && matches!(p.reader.block.last(), Some(Instr::Return(_))))
+    || p.fields.is_empty()
+  {
     p.reader.block.clear();
     p.reader.block.push(set_unknown());
     p.fields.push(Field {
@@ -24,11 +34,7 @@ pub fn pass(p: &mut Packet) {
       initialized: false,
     });
   }
-  for f in &mut p.fields {
-    simplify_name(&mut f.name);
-  }
-}
-pub fn finish(p: &mut Packet) {
+
   for f in &mut p.fields {
     let (initialized, option) = check_option(&p.reader.block, &f.name);
     if option && matches!(f.ty, Type::Array(_)) {
@@ -122,7 +128,7 @@ fn simplify_instr(instr: &mut [Instr]) -> Option<usize> {
 fn set_unknown() -> Instr {
   Instr::Set(
     "unknown".into(),
-    Expr::new(Value::Var(1)).op(Op::Call("tcp::Packet".into(), "read_all".into(), vec![])),
+    Expr::new(Value::packet_var()).op(Op::Call("tcp::Packet".into(), "read_all".into(), vec![])),
   )
 }
 fn simplify_cond(cond: &mut Cond) { simplify_cond_overwrite(cond); }

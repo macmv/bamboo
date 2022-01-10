@@ -173,7 +173,9 @@ impl<'a> ReaderTypes<'a> {
       Value::Cond(_) => todo!(),
     }
   }
-  fn var_type(&self, var: usize) -> RType { self.var_types[var].clone() }
+  fn var_type(&self, var: usize) -> RType {
+    self.var_types.get(var).map(|v| v.clone()).unwrap_or_else(|| RType::new("tcp::Packet"))
+  }
 
   fn op_type(&mut self, initial: RType, op: &Op) -> RType {
     match op {
@@ -254,7 +256,7 @@ impl<'a> ReaderTypes<'a> {
         for i in self.needs_to_write.drain(..) {
           writer.push(i);
         }
-        writer.push(Instr::Expr(Expr::new(Value::Var(1)).op(Op::Call(
+        writer.push(Instr::Expr(Expr::new(Value::packet_var()).op(Op::Call(
           "tcp::Packet".into(),
           self.var_func_to_write.take().unwrap(),
           vec![Expr::new(Value::Var(var))],
@@ -359,7 +361,7 @@ impl<'a> ReaderTypes<'a> {
           }
           _ => return None,
         };
-        return Some(Instr::Expr(Expr::new(Value::Var(1)).op(Op::Call(
+        return Some(Instr::Expr(Expr::new(Value::packet_var()).op(Op::Call(
           "tcp::Packet".into(),
           new_name,
           new_args,
@@ -424,7 +426,7 @@ impl<'a> ReaderTypes<'a> {
                 Op::Call(class, _name, _args) if class == "tcp::Packet" => {}
                 _ => unimplemented!(),
               };
-              return Some(Instr::Expr(Expr::new(Value::Var(1)).op(Op::Call(
+              return Some(Instr::Expr(Expr::new(Value::packet_var()).op(Op::Call(
                 "tcp::Packet".into(),
                 "write_bool".into(),
                 vec![field.clone().op(Op::Deref)],
@@ -438,7 +440,7 @@ impl<'a> ReaderTypes<'a> {
     }
     Some(match expr.ops.first() {
       Some(Op::Call(class, name, _args)) if class == "tcp::Packet" => {
-        assert_eq!(expr.initial, Value::Var(1), "unknown Set value: {:?}", expr);
+        assert!(expr.initial.is_packet_var(), "unknown Set value: {:?}", expr);
         let writer_name = convert::reader_to_writer(name);
         let mut val = field.clone();
         for op in expr.ops.iter().skip(1).rev() {
@@ -454,7 +456,7 @@ impl<'a> ReaderTypes<'a> {
             _ => panic!("cannot convert {:?} into writer (packet {})", expr, self.packet),
           });
         }
-        Instr::Expr(Expr::new(Value::Var(1)).op(Op::Call(
+        Instr::Expr(Expr::new(Value::packet_var()).op(Op::Call(
           class.clone(),
           writer_name.into(),
           vec![self.writer_cast(val, convert::reader_func_to_ty("", name))],

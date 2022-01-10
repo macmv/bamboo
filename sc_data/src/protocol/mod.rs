@@ -439,6 +439,17 @@ impl Expr {
   pub fn add_op(&mut self, op: Op) { self.ops.push(op); }
 }
 
+impl Value {
+  pub fn packet_var() -> Self {
+    // Special value, used to signify tcp::Packet value.
+    Value::Var(0xffffffff)
+  }
+
+  pub fn is_packet_var(&self) -> bool {
+    matches!(*self, Value::Var(v) if v == 0 || v == 1 || v == 0xffffffff)
+  }
+}
+
 impl From<i32> for Lit {
   fn from(v: i32) -> Self { Lit::Int(v) }
 }

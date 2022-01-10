@@ -880,13 +880,17 @@ impl<'a> InstrWriter<'a> {
   }
 
   fn write_var(&mut self, v: usize) {
-    match self.vars[v] {
-      VarKind::This => self.gen.write("self"),
-      VarKind::Arg => self.gen.write("p"),
-      VarKind::Local => {
-        self.gen.write("v_");
-        self.gen.write(&v.to_string());
-      }
+    match self.vars.get(v) {
+      Some(kind) => match kind {
+        VarKind::This => self.gen.write("self"),
+        VarKind::Arg => self.gen.write("p"),
+        VarKind::Local => {
+          self.gen.write("v_");
+          self.gen.write(&v.to_string());
+        }
+      },
+      // Probably a special variable, used to signify packet
+      None => self.gen.write("p"),
     }
   }
 
