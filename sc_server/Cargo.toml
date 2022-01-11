@@ -31,6 +31,8 @@ noise = { version = "0.7.0", default-features = false }
 
 sugarlang = { git = "https://gitlab.com/macmv/sugarlang", features = ["docs"] }
 
+clap = { version = "3.0.6", features = ["derive"] }
+
 [build-dependencies]
 sc_data = { path = "../sc_data" }
 

@@ -201,6 +201,7 @@ impl PluginManager {
     sl.add_builtin_ty::<world::SlWorld>();
     sl.add_builtin_ty::<world::gen::SlBiome>();
 
+    info!("generating docs...");
     let docs = sl.generate_docs(&[
       (
         path!(sugarcane),
@@ -323,5 +324,6 @@ impl PluginManager {
       ),
     ]);
     docs.save("target/sl_docs");
+    info!("done generating docs");
   }
 }
