@@ -165,6 +165,7 @@ pub struct WorldGen {
   biome_map:   WarpedVoronoi,
   biomes:      Vec<Box<dyn BiomeGen + Send + Sync>>,
   stone:       BasicMulti,
+  max_height:  BasicMulti,
   underground: Underground,
 }
 
@@ -172,12 +173,15 @@ impl WorldGen {
   pub fn new() -> Self {
     let mut stone = BasicMulti::new();
     stone.octaves = 3;
+    let mut max_height = BasicMulti::new();
+    stone.octaves = 1;
     let seed = 3210471203948712039;
     let mut gen = WorldGen {
       seed,
       biome_map: WarpedVoronoi::new(seed),
       biomes: vec![],
       stone,
+      max_height,
       underground: Underground::new(seed),
     };
     gen.add_default_biomes();
@@ -191,13 +195,15 @@ impl WorldGen {
   pub fn generate(&self, pos: ChunkPos, c: &mut MultiChunk) {
     let div = 32.0;
     let min_height = 40.0_f64;
-    let max_height = 64.0_f64;
     let b_min_height = min_height.floor() as i32;
-    let b_max_height = max_height.ceil() as i32;
     c.fill_kind(Pos::new(0, 0, 0), Pos::new(15, b_min_height, 15), block::Kind::Stone).unwrap();
     let mut biomes = HashSet::new();
     let mut tops = HashMap::new();
     for p in pos.columns() {
+      let x = p.x() as f64 / 64.0;
+      let z = p.z() as f64 / 64.0;
+      let max_height = (self.max_height.get([x, z]) * 1.0) / 2.0 * 50.0 + 200.0;
+      let b_max_height = max_height.ceil() as i32;
       let b = self.biome_id_at(p);
       let layers = self.biomes[b].layers();
       biomes.insert(b);
@@ -206,9 +212,9 @@ impl WorldGen {
       for y in (b_min_height..=b_max_height).rev() {
         let rel = p.chunk_rel().with_y(y);
         let val = {
-          let x = p.x() as f64 / div;
+          let x = p.x() as f64 / div / 2.0;
           let y = y as f64 / div;
-          let z = p.z() as f64 / div;
+          let z = p.z() as f64 / div / 2.0;
           self.stone.get([x, y, z])
         };
         let mut min = (y as f64 - min_height) / (max_height - min_height);
