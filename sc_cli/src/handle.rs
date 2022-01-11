@@ -1,10 +1,10 @@
 use super::{conn::ConnStream, status::Status};
 use parking_lot::Mutex;
 use sc_common::{
-  gnet::{cb, sb},
   math::ChunkPos,
   util::{Buffer, Chat},
 };
+use sc_proxy::gnet::{cb, sb};
 use std::time::Instant;
 
 pub fn handle_packet(stream: &mut ConnStream, status: &Mutex<Status>, p: cb::Packet) {

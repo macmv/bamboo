@@ -14,7 +14,7 @@ pub fn cross_test(old: &(Version, BlockDef), new: &(Version, BlockDef)) {
       assert_eq!(to_old[1], 1 << 4); // Stone
       assert_eq!(to_old[33], 7 << 4); // Bedrock
     }
-    14 | 15 | 16 | 17 => {
+    14 | 15 | 16 | 17 | 18 => {
       assert_eq!(to_old[0], 0); // Air
       assert_eq!(to_old[1], 1); // Stone
       assert_eq!(to_old[33], 33); // Bedrock

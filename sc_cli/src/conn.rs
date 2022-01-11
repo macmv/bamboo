@@ -1,12 +1,9 @@
 use rand::{rngs::OsRng, Rng};
 use rsa::PublicKey;
-use sc_common::{
-  gnet::{cb, sb, tcp},
-  math::der,
-  version::ProtocolVersion,
-};
+use sc_common::{math::der, version::ProtocolVersion};
 use sc_proxy::{
   conn::State,
+  gnet::{cb, sb, tcp},
   stream::{java::JavaStream, PacketStream},
 };
 use std::io;

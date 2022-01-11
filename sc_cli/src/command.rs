@@ -1,6 +1,6 @@
 use super::ConnStream;
 use crate::cli::LineReader;
-use sc_common::gnet::sb;
+use sc_proxy::gnet::sb;
 use std::{io, io::Write};
 
 pub fn handle(
