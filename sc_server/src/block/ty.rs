@@ -232,7 +232,7 @@ mod tests {
   fn test_generate() {
     let conv = TypeConverter::new();
 
-    const ID: u32 = 145;
+    const ID: u32 = 148;
     let ty = conv.get(Kind::OakLeaves).default_type();
     assert_eq!(ty.with_prop("distance", 1).with_prop("persistent", true).id(), ID + 0 + 0 * 2);
     assert_eq!(ty.with_prop("distance", 1).with_prop("persistent", false).id(), ID + 1 + 0 * 2);
