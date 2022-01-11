@@ -5,7 +5,7 @@ use sugarlang::{
   docs::{markdown, MarkdownSection},
   parse::token::Span,
   path,
-  runtime::{RuntimeError, Var, VarData, VarRef},
+  runtime::{RuntimeError, Var, VarRef},
   Sugarlang,
 };
 
@@ -60,14 +60,26 @@ use wrap;
 impl Sugarcane {
   /// Prints out the given arguments as an information message.
   ///
+  /// This is supposed to use variadic arguments, but variadics are being
+  /// rewritten. For now, you can use arrays to print multiple values.
+  ///
   /// # Example
   ///
   /// ```
   /// sc.info("some information")
+  /// sc.info([5, 6])
+  /// sc.info([my_vars, other, info])
+  /// ```
+  ///
+  /// # Old Example
+  ///
+  /// ```
+  /// // NOTE: Does not work!
   /// sc.info(5, 6)
   /// sc.info(my_vars, other, info)
   /// ```
-  pub fn info(&self, args: Variadic<&Var>) {
+  pub fn info(&self, arg: &Var) {
+    /*
     let mut msg = String::new();
     let mut iter = args.iter();
     if let Some(a) = iter.next() {
@@ -76,7 +88,8 @@ impl Sugarcane {
     for a in iter {
       msg += &format!(" {}", a);
     }
-    info!("plugin `{}`: {}", self.plugin, msg);
+    */
+    info!("plugin `{}`: {}", self.plugin, arg);
   }
 
   /// Adds a command to the server.

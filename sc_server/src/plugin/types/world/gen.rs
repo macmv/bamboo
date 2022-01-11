@@ -1,10 +1,6 @@
 use crate::world::gen::SlBiomeGen;
 use std::{fmt, sync::Arc};
-use sugarlang::{
-  define_ty,
-  parse::token::Span,
-  runtime::{RuntimeError, VarData},
-};
+use sugarlang::{define_ty, parse::token::Span, runtime::RuntimeError};
 
 #[derive(Clone)]
 pub struct SlBiome {

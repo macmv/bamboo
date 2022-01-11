@@ -1,11 +1,7 @@
 use super::{add_from, wrap};
 use sc_common::util::{chat::Color, Chat};
 use std::sync::{Arc, Mutex};
-use sugarlang::{
-  define_ty,
-  parse::token::Span,
-  runtime::{RuntimeError, VarData},
-};
+use sugarlang::{define_ty, parse::token::Span, runtime::RuntimeError};
 
 wrap!(Arc<Mutex<Chat>>, SlChat);
 wrap!(Arc<Mutex<Chat>>, SlChatSection, idx: usize);

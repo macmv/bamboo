@@ -2,10 +2,7 @@ use super::{add_from, chat::SlChat, wrap};
 use crate::player::Player;
 use sc_common::util::Chat;
 use std::sync::Arc;
-use sugarlang::{
-  define_ty,
-  runtime::{Var, VarData},
-};
+use sugarlang::{define_ty, runtime::Var};
 
 wrap!(Arc<Player>, SlPlayer);
 

@@ -2,11 +2,7 @@ use super::{add_from, block::SlBlockKind, util::SlPos};
 use crate::world::World;
 use sc_common::math::Pos;
 use std::{fmt, sync::Arc};
-use sugarlang::{
-  define_ty,
-  parse::token::Span,
-  runtime::{RuntimeError, VarData},
-};
+use sugarlang::{define_ty, parse::token::Span, runtime::RuntimeError};
 
 pub mod gen;
 

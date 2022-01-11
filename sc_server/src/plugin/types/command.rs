@@ -1,10 +1,7 @@
 use super::{add_from, wrap};
 use crate::command::{Arg, Command, Parser};
 use std::sync::{Arc, Mutex};
-use sugarlang::{
-  define_ty,
-  runtime::{Callback, VarData},
-};
+use sugarlang::{define_ty, runtime::Callback};
 
 wrap!(Arc<Mutex<Command>>, SlCommand, callback: Option<Callback>, idx: Vec<usize>);
 wrap!(Arg, SlArg);
