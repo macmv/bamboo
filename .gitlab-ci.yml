@@ -1,5 +1,6 @@
 stages:
   - test
+  - deploy
 
 rust-latest-test:
   stage: test
@@ -12,3 +13,15 @@ rust-nightly-test:
   image: rustlang/rust:nightly
   script:
     - cargo test --verbose
+
+pages:
+  stage: deploy
+  image: rustlang/rust:nightly
+  script:
+    - cargo run --bin sc_server -- --only-docs
+    - mkdir -p public/
+    - rm -rf public/*
+    - cp -r target/sl_docs/* public/
+  artifacts:
+    paths:
+    - public
