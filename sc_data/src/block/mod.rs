@@ -289,22 +289,26 @@ mod tests {
       properties: vec![Prop {
         name:    "".into(),
         kind:    PropKind::Enum(vec!["a".into(), "b".into(), "c".into()]),
-        default: 0,
+        default: PropValue::Int(0),
       }],
       ..Default::default()
     };
     assert_eq!(b.all_states().len(), 3);
 
     let b = Block {
-      properties: vec![Prop { name: "".into(), kind: PropKind::Bool, default: 0 }],
+      properties: vec![Prop {
+        name:    "".into(),
+        kind:    PropKind::Bool,
+        default: PropValue::Int(0),
+      }],
       ..Default::default()
     };
     assert_eq!(b.all_states().len(), 2);
 
     let b = Block {
       properties: vec![
-        Prop { name: "".into(), kind: PropKind::Bool, default: 0 },
-        Prop { name: "".into(), kind: PropKind::Bool, default: 0 },
+        Prop { name: "".into(), kind: PropKind::Bool, default: PropValue::Int(0) },
+        Prop { name: "".into(), kind: PropKind::Bool, default: PropValue::Int(0) },
       ],
       ..Default::default()
     };
@@ -315,9 +319,9 @@ mod tests {
         Prop {
           name:    "".into(),
           kind:    PropKind::Enum(vec!["a".into(), "b".into(), "c".into()]),
-          default: 0,
+          default: PropValue::Int(0),
         },
-        Prop { name: "".into(), kind: PropKind::Bool, default: 0 },
+        Prop { name: "".into(), kind: PropKind::Bool, default: PropValue::Int(0) },
       ],
       ..Default::default()
     };
@@ -327,7 +331,7 @@ mod tests {
       properties: vec![Prop {
         name:    "".into(),
         kind:    PropKind::Int { min: 0, max: 1 },
-        default: 0,
+        default: PropValue::Int(0),
       }],
       ..Default::default()
     };
