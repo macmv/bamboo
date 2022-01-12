@@ -54,6 +54,21 @@ impl BiomeLayers {
 
   /// Returns the internal layers list
   pub fn layers(&self) -> &[(block::Kind, u32)] { &self.layers }
+
+  /// Returns the block kind at the given height. This should never fail.
+  pub fn get(&self, mut depth: u32) -> block::Kind {
+    if depth > self.total_height {
+      self.main_area
+    } else {
+      for (kind, d) in self.layers.iter().rev() {
+        match depth.checked_sub(*d) {
+          Some(new_depth) => depth = new_depth,
+          None => return *kind,
+        }
+      }
+      self.main_area
+    }
+  }
 }
 
 pub trait BiomeGen {
@@ -224,17 +239,7 @@ impl WorldGen {
             found_top = true;
             tops.insert(p.chunk_rel(), y);
           }
-          if depth == 0 {
-            c.set_kind(
-              rel,
-              layers.layers().last().map(|(kind, _)| *kind).unwrap_or(layers.main_area),
-            )
-            .unwrap();
-          } else if depth <= 2 {
-            c.set_kind(rel, block::Kind::Dirt).unwrap();
-          } else {
-            c.set_kind(rel, block::Kind::Stone).unwrap();
-          }
+          c.set_kind(rel, layers.get(depth)).unwrap();
           depth += 1;
         } else {
           depth = 0;
