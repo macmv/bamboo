@@ -51,14 +51,11 @@ pub trait YamlKey {
   fn sections(&self) -> Vec<&str>;
 }
 
-impl YamlKey for &str {
+impl YamlKey for str {
   fn sections(&self) -> Vec<&str> { self.split('.').collect() }
 }
-impl YamlKey for String {
-  fn sections(&self) -> Vec<&str> { self.split('.').collect() }
-}
-impl YamlKey for Vec<&str> {
-  fn sections(&self) -> Vec<&str> { self.clone() }
+impl YamlKey for [&str] {
+  fn sections(&self) -> Vec<&str> { self.to_vec() }
 }
 
 impl Config {
@@ -119,7 +116,7 @@ impl Config {
   /// your own type. I hightly recommend against this, as that will just cause
   /// confusion for your users. I will not be adding any more implementations
   /// than the ones present in this file.
-  pub fn get<'a, K, T>(&'a self, key: &K) -> T
+  pub fn get<'a, K: ?Sized, T>(&'a self, key: &K) -> T
   where
     K: YamlKey,
     T: YamlValue<'a>,
@@ -144,7 +141,7 @@ impl Config {
 
   /// Gets the default value at the given key. This will panic if the key does
   /// not exist, or if it was the wrong type.
-  pub fn get_default<'a, K, T>(&'a self, key: &K) -> T
+  pub fn get_default<'a, K: ?Sized, T>(&'a self, key: &K) -> T
   where
     K: YamlKey,
     T: YamlValue<'a>,

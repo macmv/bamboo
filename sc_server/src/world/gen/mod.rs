@@ -205,8 +205,8 @@ impl WorldGen {
   }
   pub fn from_config(config: &Config) -> Self {
     let mut gen = WorldGen::new();
-    if !config.get::<&str, bool>(&"world.void") {
-      for biome in config.get::<&str, Vec<&str>>(&"world.biomes") {
+    if !config.get::<str, bool>("world.void") {
+      for biome in config.get::<str, Vec<&str>>("world.biomes") {
         if let Err(()) = gen.add_named_biome(biome) {
           warn!("unknown biome '{}', skipping", biome);
         }
