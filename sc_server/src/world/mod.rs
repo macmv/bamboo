@@ -111,7 +111,7 @@ impl World {
     let world = Arc::new(World {
       chunks: RwLock::new(HashMap::new()),
       unloadable_chunks: Mutex::new(HashSet::new()),
-      gen: WorldGen::new(),
+      gen: WorldGen::from_config(wm.config()),
       players: RwLock::new(PlayersMap::new()),
       entities: RwLock::new(HashMap::new()),
       eid: 1.into(),

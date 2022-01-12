@@ -1,0 +1,7 @@
+world:
+  void: false
+  biomes:
+    - desert
+    - forest
+    - plains
+    - mountains

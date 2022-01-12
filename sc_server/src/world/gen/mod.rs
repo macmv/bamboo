@@ -2,7 +2,10 @@ use super::chunk::MultiChunk;
 use crate::block;
 use math::WarpedVoronoi;
 use noise::{BasicMulti, NoiseFn};
-use sc_common::math::{ChunkPos, Pos, RngCore, WyhashRng};
+use sc_common::{
+  config::Config,
+  math::{ChunkPos, Pos, RngCore, WyhashRng},
+};
 use std::{
   cmp::Ordering,
   collections::{HashMap, HashSet},
@@ -189,17 +192,26 @@ impl WorldGen {
     let mut stone = BasicMulti::new();
     stone.octaves = 3;
     let mut max_height = BasicMulti::new();
-    stone.octaves = 1;
+    max_height.octaves = 1;
     let seed = 3210471203948712039;
-    let mut gen = WorldGen {
+    WorldGen {
       seed,
       biome_map: WarpedVoronoi::new(seed),
       biomes: vec![],
       stone,
       max_height,
       underground: Underground::new(seed),
-    };
-    gen.add_default_biomes();
+    }
+  }
+  pub fn from_config(config: &Config) -> Self {
+    let mut gen = WorldGen::new();
+    if !config.get::<&str, bool>(&"world.void") {
+      for biome in config.get::<&str, Vec<&str>>(&"world.biomes") {
+        if let Err(()) = gen.add_named_biome(biome) {
+          warn!("unknown biome '{}', skipping", biome);
+        }
+      }
+    }
     gen
   }
   pub fn add_biome<B: BiomeGen + Send + Sync + 'static>(&mut self) {
@@ -208,6 +220,10 @@ impl WorldGen {
   }
 
   pub fn generate(&self, pos: ChunkPos, c: &mut MultiChunk) {
+    // Fast path for void worlds
+    if self.biomes.is_empty() {
+      return;
+    }
     let div = 32.0;
     let min_height = 40.0_f64;
     let b_min_height = min_height.floor() as i32;

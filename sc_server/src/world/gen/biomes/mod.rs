@@ -6,10 +6,14 @@ mod mountain;
 mod plains;
 
 impl WorldGen {
-  pub fn add_default_biomes(&mut self) {
-    self.add_biome::<desert::Gen>();
-    self.add_biome::<forest::Gen>();
-    self.add_biome::<plains::Gen>();
-    self.add_biome::<mountain::Gen>();
+  pub fn add_named_biome(&mut self, name: &str) -> Result<(), ()> {
+    match name {
+      "desert" => self.add_biome::<desert::Gen>(),
+      "forest" => self.add_biome::<forest::Gen>(),
+      "plains" => self.add_biome::<plains::Gen>(),
+      "mountains" => self.add_biome::<mountain::Gen>(),
+      _ => return Err(()),
+    }
+    Ok(())
   }
 }

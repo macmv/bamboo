@@ -1,4 +1,4 @@
-use std::fs;
+use std::{borrow::Borrow, fs};
 use yaml_rust::{yaml::Yaml, YamlLoader};
 
 pub struct Config {
@@ -68,7 +68,6 @@ impl Config {
   /// fallback if the key doesn't exist in the file.
   pub fn new(path: &str, default: &str) -> Self {
     let conf = Config { primary: Self::load_yaml(path), default: Self::load_yaml(default) };
-    dbg!(&conf.primary);
     conf
   }
   /// Creates a new config file, but with source strings, instead of paths. This
@@ -125,17 +124,19 @@ impl Config {
     K: YamlKey,
     T: YamlValue<'a>,
   {
-    let sections = key.sections();
+    let sections = key.borrow().sections();
     let val = Self::get_val(&self.primary, &sections);
     match T::from_yaml(&val) {
       Some(v) => v,
       None => {
-        warn!(
-          "invalid yaml value at `{}`: {:?}, expected a {}",
-          sections.join("."),
-          val,
-          T::name()
-        );
+        if val != &Yaml::BadValue {
+          warn!(
+            "unexpected value at `{}`: {:?}, expected a {}",
+            sections.join("."),
+            val,
+            T::name()
+          );
+        }
         self.get_default(key)
       }
     }
@@ -148,7 +149,7 @@ impl Config {
     K: YamlKey,
     T: YamlValue<'a>,
   {
-    let sections = key.sections();
+    let sections = key.borrow().sections();
     let val = Self::get_val(&self.default, &sections);
     match T::from_yaml(val) {
       Some(v) => v,
@@ -167,7 +168,10 @@ impl Config {
     let mut val = yaml;
     for s in sections {
       match val {
-        Yaml::Hash(map) => val = &map[&Yaml::String(s.to_string())],
+        Yaml::Hash(map) => match map.get(&Yaml::String(s.to_string())) {
+          Some(v) => val = v,
+          None => return &Yaml::BadValue,
+        },
         Yaml::Array(arr) => match s.parse::<usize>() {
           Ok(idx) => val = &arr[idx],
           Err(_) => return &Yaml::BadValue,
