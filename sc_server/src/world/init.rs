@@ -160,10 +160,11 @@ impl World {
       }
     }
 
+    let pos = player.pos();
     player.send(cb::Packet::SetPosLook {
-      x:               0.0,
-      y:               60.0,
-      z:               0.0,
+      x:               pos.x(),
+      y:               pos.y(),
+      z:               pos.z(),
       yaw:             0.0,
       pitch:           0.0,
       flags:           0,
