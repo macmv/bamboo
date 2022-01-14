@@ -8,6 +8,7 @@ use sc_common::{
   },
   version::ProtocolVersion,
 };
+use smallvec::SmallVec;
 use std::{error::Error, fmt};
 
 #[derive(Debug, Clone)]
@@ -26,12 +27,20 @@ impl fmt::Display for WriteError {
 impl Error for WriteError {}
 
 pub trait ToTcp {
-  fn to_tcp(self, ver: ProtocolVersion, conv: &TypeConverter) -> Result<GPacket, WriteError>;
+  fn to_tcp(
+    self,
+    ver: ProtocolVersion,
+    conv: &TypeConverter,
+  ) -> Result<SmallVec<[GPacket; 2]>, WriteError>;
 }
 
 impl ToTcp for Packet {
-  fn to_tcp(self, ver: ProtocolVersion, conv: &TypeConverter) -> Result<GPacket, WriteError> {
-    Ok(match self {
+  fn to_tcp(
+    self,
+    ver: ProtocolVersion,
+    conv: &TypeConverter,
+  ) -> Result<SmallVec<[GPacket; 2]>, WriteError> {
+    Ok(smallvec![match self {
       Packet::Abilities {
         invulnerable,
         flying,
@@ -74,7 +83,7 @@ impl ToTcp for Packet {
         }
       }
       Packet::Chunk { pos, full, bit_map, sections, sky_light, block_light } => {
-        super::chunk(pos, full, bit_map, sections, sky_light, block_light, ver, conv)
+        return Ok(super::chunk(pos, full, bit_map, sections, sky_light, block_light, ver, conv));
       }
       Packet::EntityLook { eid, yaw, pitch, on_ground } => GPacket::EntityLookV8 {
         entity_id: eid,
@@ -478,7 +487,7 @@ impl ToTcp for Packet {
         }
       }
       _ => todo!("convert {:?} into generated packet", self),
-    })
+    }])
   }
 }
 

@@ -104,7 +104,7 @@ pub fn chunk(
   data.write_varint(0); // No block entities
 
   // Light update stuff
-  data.write_bool(true); // Client should trust edges
+  data.write_bool(true); // This is a non-edge chunk
 
   let mut sky_bitmap: u64 = 0;
   let mut sky_len = 0;

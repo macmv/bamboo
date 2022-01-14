@@ -255,7 +255,7 @@ impl<'a, S: PacketStream + Send + Sync> Conn<'a, S> {
               format!("while reading packet got error: {}", err),
             )
           })?;
-          let p = common.to_tcp(self.ver, self.conv.as_ref()).unwrap();
+          let packets = common.to_tcp(self.ver, self.conv.as_ref()).unwrap();
           let parsed = m.index();
           if len as usize != parsed {
             return Err(io::Error::new(
@@ -267,7 +267,9 @@ impl<'a, S: PacketStream + Send + Sync> Conn<'a, S> {
             ));
           }
           self.from_server.drain(0..parsed);
-          self.send_to_client(p)?;
+          for p in packets {
+            self.send_to_client(p)?;
+          }
           Ok(true)
         } else {
           Ok(false)

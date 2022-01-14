@@ -4,6 +4,7 @@ use sc_common::{
   math::ChunkPos,
   version::{BlockVersion, ProtocolVersion},
 };
+use smallvec::SmallVec;
 
 mod v1_14;
 mod v1_15;
@@ -30,8 +31,8 @@ pub fn chunk(
   block_light: LightChunk<BlockLight>,
   ver: ProtocolVersion,
   conv: &TypeConverter,
-) -> Packet {
-  match ver.block() {
+) -> SmallVec<[Packet; 2]> {
+  smallvec![match ver.block() {
     BlockVersion::V1_8 => v1_8::chunk(pos, full, bit_map, &sections, conv),
     BlockVersion::V1_9 | BlockVersion::V1_12 => {
       v1_9::chunk(pos, full, bit_map, &sections, ver, conv)
@@ -45,7 +46,7 @@ pub fn chunk(
       v1_18::chunk(pos, full, bit_map, &sections, sky_light, block_light, conv)
     }
     _ => todo!("chunk on version {}", ver),
-  }
+  }]
 }
 
 pub fn multi_block_change(

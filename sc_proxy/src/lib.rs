@@ -1,5 +1,7 @@
 #[macro_use]
 extern crate log;
+#[macro_use]
+extern crate smallvec;
 
 pub mod conn;
 pub mod gnet;
