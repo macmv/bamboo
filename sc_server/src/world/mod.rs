@@ -341,8 +341,8 @@ impl World {
         full: true,
         bit_map,
         sections,
-        sky_light: c.sky_light(),
-        block_light: c.block_light(),
+        sky_light: c.sky_light().clone(),
+        block_light: c.block_light().clone(),
       }
     })
   }
@@ -362,9 +362,9 @@ impl World {
     self.chunk(pos, |c| {
       let mut bit_map = 0;
       let mut sections = vec![];
-      let c = c.inner();
+      let inner = c.inner();
 
-      for (y, s) in c.sections().enumerate() {
+      for (y, s) in inner.sections().enumerate() {
         if (y as u32) < min || y as u32 > max {
           continue;
         }
@@ -374,7 +374,15 @@ impl World {
         }
       }
 
-      cb::Packet::Chunk { pos, full: false, bit_map, sections }
+      cb::Packet::Chunk {
+        pos,
+        full: false,
+        bit_map,
+        sections,
+        // TODO: Only clone the sections we care about
+        sky_light: c.sky_light().clone(),
+        block_light: c.block_light().clone(),
+      }
     })
   }
   /// Serializes a multi block change packet. This is generally used in `/fill`

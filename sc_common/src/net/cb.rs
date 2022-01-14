@@ -1,5 +1,5 @@
 use crate::{
-  chunk::paletted::Section,
+  chunk::{paletted::Section, BlockLight, LightChunk, SkyLight},
   math::{ChunkPos, Pos},
   util::{GameMode, UUID},
 };
@@ -23,10 +23,12 @@ pub enum Packet {
     ty:  u8,
   },
   Chunk {
-    pos:      ChunkPos,
-    full:     bool,
-    bit_map:  u16,
-    sections: Vec<Section>,
+    pos:         ChunkPos,
+    full:        bool,
+    bit_map:     u16,
+    sections:    Vec<Section>,
+    sky_light:   Option<LightChunk<SkyLight>>,
+    block_light: LightChunk<BlockLight>,
   },
   /// Pitch/yaw change of an entity.
   EntityLook {

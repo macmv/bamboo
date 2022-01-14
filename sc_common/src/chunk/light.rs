@@ -10,13 +10,13 @@ pub trait LightPropagator {
   );
 }
 
-#[derive(sc_macros::Transfer)]
+#[derive(Debug, Clone, sc_macros::Transfer)]
 pub struct LightChunk<P: LightPropagator> {
   sections: Vec<Option<LightSection>>,
   marker:   PhantomData<P>,
 }
 
-#[derive(sc_macros::Transfer)]
+#[derive(Debug, Clone, sc_macros::Transfer)]
 pub struct LightSection {
   /// 2048 bytes, each representing 2 blocks.
   data: Vec<u8>,
@@ -32,6 +32,8 @@ impl<P: LightPropagator> LightChunk<P> {
     }
     P::propagate(self, chunk, pos)
   }
+
+  pub fn sections(&self) -> &[Option<LightSection>] { &self.sections }
 
   pub fn get_section_opt(&self, idx: usize) -> Option<&LightSection> {
     match self.sections.get(idx) {
@@ -67,7 +69,11 @@ impl<P: LightPropagator> LightChunk<P> {
   }
 }
 
+/// Marker trait, which will propagate block light information.
+#[derive(Debug, Clone)]
 pub struct BlockLight {}
+/// Marker trait, which will propagate sky light information.
+#[derive(Debug, Clone)]
 pub struct SkyLight {}
 
 impl LightPropagator for BlockLight {

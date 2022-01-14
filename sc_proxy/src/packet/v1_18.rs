@@ -1,7 +1,7 @@
 use super::TypeConverter;
 use crate::gnet::cb::Packet;
 use sc_common::{
-  chunk::paletted::Section,
+  chunk::{paletted::Section, BlockLight, LightChunk, SkyLight},
   math::ChunkPos,
   util::{
     nbt::{Tag, NBT},
@@ -20,6 +20,8 @@ pub fn chunk(
   full: bool,
   bit_map: u16,
   sections: &[Section],
+  sky_light: Option<LightChunk<SkyLight>>,
+  block_light: LightChunk<BlockLight>,
   conv: &TypeConverter,
 ) -> Packet {
   let biomes = full;
@@ -104,12 +106,31 @@ pub fn chunk(
   // Light update stuff
   data.write_bool(true); // Client should trust edges
 
+  let mut sky_bitmap: u64 = 0;
+  let mut sky_len = 0;
+  if let Some(sky) = &sky_light {
+    for (i, s) in sky.sections().iter().enumerate() {
+      if s.is_some() {
+        sky_bitmap |= 1 << i as u64;
+        sky_len += 2048;
+      }
+    }
+  }
+  let mut block_bitmap: u64 = 0;
+  let mut block_len = 0;
+  for (i, s) in block_light.sections().iter().enumerate() {
+    if s.is_some() {
+      block_bitmap |= 1 << i as u64;
+      block_len += 2048;
+    }
+  }
+
   // Sky light bitset
   data.write_varint(1);
-  data.write_u64(0x0);
+  data.write_u64(sky_bitmap);
   // Block light bitset
   data.write_varint(1);
-  data.write_u64(0x0);
+  data.write_u64(block_bitmap);
   // Empty sky light bitset
   data.write_varint(1);
   data.write_u64(0x0);
@@ -117,9 +138,21 @@ pub fn chunk(
   data.write_varint(1);
   data.write_u64(0x0);
   // Sky light length
-  data.write_varint(0);
+  data.write_varint(sky_len);
+  if let Some(sky) = sky_light {
+    for s in sky.sections() {
+      if let Some(s) = s {
+        data.write_buf(s.data());
+      }
+    }
+  }
   // Block light length
-  data.write_varint(0);
+  data.write_varint(block_len);
+  for s in block_light.sections() {
+    if let Some(s) = s {
+      data.write_buf(s.data());
+    }
+  }
 
   Packet::ChunkDataV17 {
     chunk_x:                pos.x(),

@@ -73,8 +73,8 @@ impl ToTcp for Packet {
           }
         }
       }
-      Packet::Chunk { pos, full, bit_map, sections } => {
-        super::chunk(pos, full, bit_map, sections, ver, conv)
+      Packet::Chunk { pos, full, bit_map, sections, sky_light, block_light } => {
+        super::chunk(pos, full, bit_map, sections, sky_light, block_light, ver, conv)
       }
       Packet::EntityLook { eid, yaw, pitch, on_ground } => GPacket::EntityLookV8 {
         entity_id: eid,
