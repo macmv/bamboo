@@ -110,6 +110,10 @@ pub enum Packet {
   PlayerList {
     action: PlayerListAction,
   },
+  PluginMessage {
+    channel: String,
+    data:    Vec<u8>,
+  },
   SetPosLook {
     x:               f64,
     y:               f64,

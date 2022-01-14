@@ -172,7 +172,7 @@ impl<S: Section> Chunk<S> {
   /// Returns the world height at the given position. This is a simple loop, and
   /// should be avoided.
   pub fn height_at(&self, pos: Pos) -> Result<i32, PosError> {
-    let max_y = self.sections().len() * 16 + 15;
+    let max_y = self.sections().len() * 16;
     for y in (0..max_y).rev() {
       // This is correct; it is not a transparent check, just an air check.
       if self.get_block(pos.with_y(y as i32))? != 0 {

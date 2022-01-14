@@ -28,4 +28,8 @@ pub enum Packet {
     pitch:     f32,
     on_ground: bool,
   },
+  PluginMessage {
+    channel: String,
+    data:    Vec<u8>,
+  },
 }
