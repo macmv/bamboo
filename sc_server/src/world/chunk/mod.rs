@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use sc_common::{
-  chunk::{paletted::Section as PalettedSection, BlockLightChunk, Chunk, SkyLightChunk},
+  chunk::{paletted::Section as PalettedSection, BlockLight, Chunk, LightChunk, SkyLight},
   math::{Pos, PosError},
   version::BlockVersion,
 };
@@ -10,8 +10,8 @@ use crate::block;
 
 pub struct MultiChunk {
   inner: Chunk<PalettedSection>,
-  sky:   Option<SkyLightChunk>,
-  block: BlockLightChunk,
+  sky:   Option<LightChunk<SkyLight>>,
+  block: LightChunk<BlockLight>,
   types: Arc<block::TypeConverter>,
 }
 
@@ -28,8 +28,8 @@ impl MultiChunk {
   pub fn new(types: Arc<block::TypeConverter>, sky: bool) -> MultiChunk {
     MultiChunk {
       inner: Chunk::new(),
-      sky: if sky { Some(SkyLightChunk::new()) } else { None },
-      block: BlockLightChunk::new(),
+      sky: if sky { Some(LightChunk::new()) } else { None },
+      block: LightChunk::new(),
       types,
     }
   }
@@ -140,10 +140,10 @@ impl MultiChunk {
 
   /// Returns the sky light information for this chunk. Used to send lighting
   /// data to clients.
-  pub fn sky_light(&self) -> &Option<SkyLightChunk> { &self.sky }
+  pub fn sky_light(&self) -> &Option<LightChunk<SkyLight>> { &self.sky }
   /// Returns the block light information for this chunk. Used to send lighting
   /// data to clients.
-  pub fn block_light(&self) -> &BlockLightChunk { &self.block }
+  pub fn block_light(&self) -> &LightChunk<BlockLight> { &self.block }
 
   fn update_light(&mut self, pos: Pos) {
     if let Some(sky) = &mut self.sky {
