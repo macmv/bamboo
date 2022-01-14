@@ -1,7 +1,7 @@
 use super::TypeConverter;
 use crate::gnet::cb::Packet;
 use sc_common::{
-  chunk::{paletted::Section, BlockLight, LightChunk, SkyLight},
+  chunk::{paletted::Section, BlockLight, Chunk, LightChunk, SkyLight},
   math::ChunkPos,
   util::{
     nbt::{Tag, NBT},
@@ -19,7 +19,7 @@ pub fn chunk(
   pos: ChunkPos,
   full: bool,
   bit_map: u16,
-  sections: &[Section],
+  sections: Vec<Section>,
   sky_light: Option<LightChunk<SkyLight>>,
   block_light: LightChunk<BlockLight>,
   conv: &TypeConverter,
@@ -92,7 +92,8 @@ pub fn chunk(
     idx += 1;
   }
 
-  let heightmap = vec![];
+  let chunk = Chunk::from_bitmap(bit_map, sections);
+  let heightmap = chunk.build_heightmap();
   let heightmap = NBT::new("", Tag::compound(&[("MOTION_BLOCKING", Tag::LongArray(heightmap))]));
 
   let mut data = Buffer::new(Vec::with_capacity(chunk_data.len()));

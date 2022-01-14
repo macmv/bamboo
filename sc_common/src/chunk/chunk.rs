@@ -14,6 +14,15 @@ pub struct Chunk<S: Section> {
 
 impl<S: Section> Chunk<S> {
   pub fn new() -> Self { Chunk { sections: Vec::new() } }
+  pub fn from_bitmap(bitmap: u16, mut sections: Vec<S>) -> Self {
+    let mut arr: Vec<Option<S>> = (0..16).map(|_| None).collect();
+    for i in (0..16).rev() {
+      if bitmap & (1 << i) != 0 {
+        arr[i] = Some(sections.pop().unwrap());
+      }
+    }
+    Chunk { sections: arr }
+  }
   /// This updates the internal data to contain a block at the given position.
   /// In release mode, the position is not checked. In any other mode, a
   /// PosError will be returned if any of the x, y, or z are outside of 0..16
@@ -101,5 +110,47 @@ impl<S: Section> Chunk<S> {
     }
   }
   /// Returns an iterator through all the internal chunk sections.
-  pub fn sections(&self) -> impl Iterator<Item = &Option<S>> { self.sections.iter() }
+  pub fn sections(&self) -> impl ExactSizeIterator<Item = &Option<S>> { self.sections.iter() }
+
+  /// Builds a heightmap of this chunk. Each long contains 9 bit entries, where
+  /// each entry is the height of the world at the given X, Z coordinate. This
+  /// is used within 1.14+ protocol data, and is a needlessly complicated format
+  /// that you shouldn't waste any time thinking about.
+  ///
+  /// The only reason these are signed is because of NBT long arrays. In
+  /// reality, they should be read as unsigned longs.
+  pub fn build_heightmap(&self) -> Vec<i64> {
+    let mut heightmap = vec![0; 256 * 9 / 64 + 1];
+    let mut shift = 0;
+    let mut index = 0;
+    for z in 0..16 {
+      for x in 0..16 {
+        let v = self.height_at(Pos::new(x, 0, z)).unwrap() as u64;
+        if shift > 64 - 9 {
+          heightmap[index] |= (v.overflowing_shl(shift).0 & 0b111111111 << (64 - 9)) as i64;
+          heightmap[index + 1] |= (v >> (64 - shift)) as i64;
+        } else {
+          heightmap[index] |= (v.overflowing_shl(shift).0) as i64;
+        }
+        shift += 9;
+        if shift > 64 {
+          shift -= 64;
+          index += 1;
+        }
+      }
+    }
+    heightmap
+  }
+  /// Returns the world height at the given position. This is a simple loop, and
+  /// should be avoided.
+  pub fn height_at(&self, pos: Pos) -> Result<i32, PosError> {
+    let max_y = self.sections().len() * 16;
+    for y in (0..max_y).rev() {
+      // This is correct; it is not a transparent check, just an air check.
+      if self.get_block(pos.with_y(y as i32))? != 0 {
+        return Ok(y as i32);
+      }
+    }
+    Ok(0)
+  }
 }
