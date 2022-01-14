@@ -332,7 +332,7 @@ impl World {
       for (y, s) in c.sections().enumerate() {
         if let Some(c) = s {
           bit_map |= 1 << y;
-          sections.push(c.unwrap_paletted().clone());
+          sections.push(c.clone());
         }
       }
 
@@ -363,7 +363,7 @@ impl World {
         }
         if let Some(c) = s {
           bit_map |= 1 << y;
-          sections.push(c.unwrap_paletted().clone());
+          sections.push(c.clone());
         }
       }
 

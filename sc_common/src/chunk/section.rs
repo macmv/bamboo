@@ -1,9 +1,12 @@
-use super::{fixed, paletted};
 use crate::math::{Pos, PosError};
 use std::any::Any;
 
 /// A chunk section.
 pub trait Section: Any {
+  /// Creates an empty chunk section.
+  fn new() -> Self
+  where
+    Self: Sized;
   /// Sets a block within this chunk column. if the position is outside of the
   /// chunk column, it will return a PosError (even in release). The id is
   /// either a blockstate id (see [`block::Type`](crate::block::Type)) or a
@@ -27,16 +30,4 @@ pub trait Section: Any {
   /// `[#derive(Clone)]` on structs that contain a Section should not clone an
   /// entire section.
   fn duplicate(&self) -> Box<dyn Section + Send>;
-  /// Unwraps self as a fixed chunk. This will panic if self is a paletted
-  /// chunk.
-  #[track_caller]
-  fn unwrap_fixed(&self) -> &fixed::Section {
-    panic!("not a fixed chunk!");
-  }
-  /// Unwraps self as a paletted chunk. This will panic if self is a fixed
-  /// chunk.
-  #[track_caller]
-  fn unwrap_paletted(&self) -> &paletted::Section {
-    panic!("not a paletted chunk!");
-  }
 }

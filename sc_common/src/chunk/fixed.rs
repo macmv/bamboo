@@ -7,7 +7,6 @@ pub struct Section {
 }
 
 impl Section {
-  pub fn new() -> Self { Section { data: [0; 16 * 16 * 16] } }
   /// Returns the internal data of this section.
   pub fn data(&self) -> &[u16; 16 * 16 * 16] { &self.data }
   /// Sets the block at the given position within the internal block data.
@@ -25,6 +24,7 @@ impl Section {
 }
 
 impl ChunkSection for Section {
+  fn new() -> Self { Section { data: [0; 16 * 16 * 16] } }
   /// This updates the internal data to contain a block at the given position.
   /// In release mode, the position is not checked. In any other mode, a
   /// PosError will be returned if any of the x, y, or z are outside of 0..16
@@ -80,8 +80,6 @@ impl ChunkSection for Section {
     }
   }
   fn duplicate(&self) -> Box<dyn ChunkSection + Send> { Box::new(Section { data: self.data }) }
-
-  fn unwrap_fixed(&self) -> &Self { self }
 }
 
 #[cfg(test)]

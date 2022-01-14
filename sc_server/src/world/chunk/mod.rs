@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use sc_common::{
-  chunk::{Chunk, ChunkKind},
+  chunk::{fixed::Section as FixedSection, paletted::Section as PalettedSection, Chunk},
   math::{Pos, PosError},
   version::BlockVersion,
 };
@@ -9,8 +9,8 @@ use sc_common::{
 use crate::block;
 
 pub struct MultiChunk {
-  fixed:    Chunk,
-  paletted: Chunk,
+  fixed:    Chunk<FixedSection>,
+  paletted: Chunk<PalettedSection>,
   types:    Arc<block::TypeConverter>,
 }
 
@@ -22,11 +22,7 @@ impl MultiChunk {
   /// would only store one chunk, and would perform all conversions when you
   /// actually tried to get an old id.
   pub fn new(types: Arc<block::TypeConverter>) -> MultiChunk {
-    MultiChunk {
-      fixed: Chunk::new(ChunkKind::Fixed),
-      paletted: Chunk::new(ChunkKind::Paletted),
-      types,
-    }
+    MultiChunk { fixed: Chunk::new(), paletted: Chunk::new(), types }
   }
 
   /// Sets a block within this chunk. p.x and p.z must be within 0..16. If the
@@ -132,11 +128,11 @@ impl MultiChunk {
 
   /// Returns the fixed chunk in this MultiChunk. This is used for 1.8, as the
   /// data is in a different shape than 1.9+.
-  pub fn get_fixed(&self) -> &Chunk { &self.fixed }
+  pub fn get_fixed(&self) -> &Chunk<FixedSection> { &self.fixed }
 
   /// Returns the paletted chunk in this MultiChunk. This is used for 1.9+, as
   /// the data is in a different shape than in 1.8.
-  pub fn get_paletted(&self) -> &Chunk { &self.paletted }
+  pub fn get_paletted(&self) -> &Chunk<PalettedSection> { &self.paletted }
 
   /// Returns a reference to the global type converter. Used to convert a block
   /// id to/from any version.

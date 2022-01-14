@@ -1,29 +1,19 @@
-use super::{fixed, paletted, section::Section};
+use super::section::Section;
 
 use crate::math::{Pos, PosError};
 use std::cmp;
-
-#[derive(Debug, Clone, Copy)]
-pub enum ChunkKind {
-  Fixed,
-  Paletted,
-}
 
 /// A chunk column. This is not clone, because that would mean duplicating an
 /// entire chunk, which you probably don't want to do. If you do need to clone a
 /// chunk, use [`Chunk::duplicate()`].
 ///
 /// If you want to create a cross-versioned chunk, use [`MultiChunk`] instead.
-pub struct Chunk {
-  sections: Vec<Option<Box<dyn Section + Send>>>,
-  kind:     ChunkKind,
+pub struct Chunk<S: Section> {
+  sections: Vec<Option<S>>,
 }
 
-impl Chunk {
-  pub fn new(kind: ChunkKind) -> Self { Chunk { sections: Vec::new(), kind } }
-  /// Returns the kind of chunk this is. For 1.8 chunks, this will be `Fixed`.
-  /// For any other chunk, this will be `Paletted`.
-  pub fn kind(&self) -> ChunkKind { self.kind }
+impl<S: Section> Chunk<S> {
+  pub fn new() -> Self { Chunk { sections: Vec::new() } }
   /// This updates the internal data to contain a block at the given position.
   /// In release mode, the position is not checked. In any other mode, a
   /// PosError will be returned if any of the x, y, or z are outside of 0..16
@@ -36,10 +26,7 @@ impl Chunk {
       self.sections.resize_with(index + 1, || None);
     }
     if self.sections[index].is_none() {
-      self.sections[index] = Some(match &self.kind {
-        ChunkKind::Paletted => Box::new(paletted::Section::new()),
-        ChunkKind::Fixed => Box::new(fixed::Section::new()),
-      });
+      self.sections[index] = Some(S::new());
     }
     match &mut self.sections[index] {
       Some(s) => s.set_block(Pos::new(pos.x(), pos.chunk_rel_y(), pos.z()), ty),
@@ -66,10 +53,7 @@ impl Chunk {
     }
     for index in min_index..=max_index {
       if self.sections[index].is_none() {
-        self.sections[index] = Some(match &self.kind {
-          ChunkKind::Paletted => Box::new(paletted::Section::new()),
-          ChunkKind::Fixed => Box::new(fixed::Section::new()),
-        });
+        self.sections[index] = Some(S::new());
       }
       match &mut self.sections[index] {
         Some(s) => {
@@ -117,7 +101,5 @@ impl Chunk {
     }
   }
   /// Returns an iterator through all the internal chunk sections.
-  pub fn sections(&self) -> impl Iterator<Item = &Option<Box<dyn Section + Send>>> {
-    self.sections.iter()
-  }
+  pub fn sections(&self) -> impl Iterator<Item = &Option<S>> { self.sections.iter() }
 }

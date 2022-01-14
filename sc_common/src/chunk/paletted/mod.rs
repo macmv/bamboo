@@ -57,7 +57,6 @@ impl MessageRead for Section {
 }
 
 impl Section {
-  pub fn new() -> Self { Self::default() }
   /// Returns the internal data of this section.
   pub fn data(&self) -> &BitArray { &self.data }
   #[inline(always)]
@@ -132,6 +131,7 @@ impl Section {
 }
 
 impl ChunkSection for Section {
+  fn new() -> Self { Self::default() }
   fn set_block(&mut self, pos: Pos, ty: u32) -> Result<(), PosError> {
     if pos.x() >= 16 || pos.x() < 0 || pos.y() >= 16 || pos.y() < 0 || pos.z() >= 16 || pos.z() < 0
     {
@@ -259,5 +259,4 @@ impl ChunkSection for Section {
       reverse_palette: self.reverse_palette.clone(),
     })
   }
-  fn unwrap_paletted(&self) -> &Self { self }
 }
