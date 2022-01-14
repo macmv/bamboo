@@ -5,5 +5,5 @@ pub mod paletted;
 mod section;
 
 pub use chunk::Chunk;
-pub use light::{BlockLightChunk, SkyLightChunk};
+pub use light::{BlockLight, LightChunk, SkyLight};
 pub use section::Section;

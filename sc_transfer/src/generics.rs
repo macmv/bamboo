@@ -2,6 +2,7 @@ use super::{MessageRead, MessageReader, MessageWrite, MessageWriter, ReadError, 
 use std::{
   collections::{HashMap, HashSet},
   hash::Hash,
+  marker::PhantomData,
 };
 
 macro_rules! num_impl {
@@ -210,4 +211,11 @@ tuple_impls! {
     (2) -> C
     (3) -> D
   }
+}
+
+impl<T> MessageRead for PhantomData<T> {
+  fn read(_: &mut MessageReader) -> Result<Self, ReadError> { Ok(PhantomData::default()) }
+}
+impl<T> MessageWrite for PhantomData<T> {
+  fn write(&self, _: &mut MessageWriter) -> Result<(), WriteError> { Ok(()) }
 }

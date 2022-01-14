@@ -3,20 +3,25 @@ use proc_macro2::{Literal, Span};
 use quote::quote;
 
 use syn::{
-  parse_macro_input, punctuated::Punctuated, Data, DeriveInput, Fields, Ident, Token, Variant,
+  parse_macro_input, punctuated::Punctuated, Data, DeriveInput, Fields, Generics, Ident, Token,
+  Variant,
 };
 
 pub fn transfer(input: TokenStream) -> TokenStream {
   let args = parse_macro_input!(input as DeriveInput);
 
   match args.data {
-    Data::Enum(en) => t_enum(args.ident, en.variants),
-    Data::Struct(s) => t_struct(args.ident, s.fields),
+    Data::Enum(en) => t_enum(args.ident, args.generics, en.variants),
+    Data::Struct(s) => t_struct(args.ident, args.generics, s.fields),
     Data::Union(_) => unimplemented!("unions are not supported!"),
   }
 }
 
-fn t_enum(name: Ident, variants: Punctuated<Variant, Token![,]>) -> TokenStream {
+fn t_enum(
+  name: Ident,
+  generics: Generics,
+  variants: Punctuated<Variant, Token![,]>,
+) -> TokenStream {
   let variant_read: Vec<_> = variants
     .iter()
     .enumerate()
@@ -81,8 +86,10 @@ fn t_enum(name: Ident, variants: Punctuated<Variant, Token![,]>) -> TokenStream 
     })
     .collect();
 
+  let (impl_generics, ty_generics, where_clause) = generics.split_for_impl();
+
   let out = quote! {
-    impl sc_transfer::MessageRead for #name {
+    impl #impl_generics sc_transfer::MessageRead for #name #ty_generics #where_clause {
       fn read(m: &mut sc_transfer::MessageReader) -> Result<Self, sc_transfer::ReadError> {
         Ok(match m.read_u32()? {
           #(
@@ -92,7 +99,7 @@ fn t_enum(name: Ident, variants: Punctuated<Variant, Token![,]>) -> TokenStream 
         })
       }
     }
-    impl sc_transfer::MessageWrite for #name {
+    impl #impl_generics sc_transfer::MessageWrite for #name #ty_generics #where_clause {
       fn write(&self, m: &mut sc_transfer::MessageWriter) -> Result<(), sc_transfer::WriteError> {
         match self {
           #(
@@ -106,12 +113,13 @@ fn t_enum(name: Ident, variants: Punctuated<Variant, Token![,]>) -> TokenStream 
   out.into()
 }
 
-fn t_struct(name: Ident, fields: Fields) -> TokenStream {
+fn t_struct(name: Ident, generics: Generics, fields: Fields) -> TokenStream {
   let out = match fields {
     Fields::Named(f) => {
       let field = f.named.iter().map(|v| &v.ident).collect::<Vec<_>>();
+      let (impl_generics, ty_generics, where_clause) = generics.split_for_impl();
       quote! {
-        impl sc_transfer::MessageRead for #name {
+        impl #impl_generics sc_transfer::MessageRead for #name #ty_generics #where_clause {
           fn read(m: &mut sc_transfer::MessageReader) -> Result<Self, sc_transfer::ReadError> {
             Ok(Self {
               #(
@@ -120,7 +128,7 @@ fn t_struct(name: Ident, fields: Fields) -> TokenStream {
             })
           }
         }
-        impl sc_transfer::MessageWrite for #name {
+        impl #impl_generics sc_transfer::MessageWrite for #name #ty_generics #where_clause {
           fn write(&self, m: &mut sc_transfer::MessageWriter) -> Result<(), sc_transfer::WriteError> {
             #(
               m.write(&self.#field)?;
