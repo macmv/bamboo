@@ -10,6 +10,8 @@ wrap!(FPos, SlFPos);
 /// If you need a player position, use `FPos` instead.
 #[define_ty(path = "sugarcane::util::Pos")]
 impl SlPos {
+  /// Creates a new block position, with the given X, Y, and Z coordinates.
+  pub fn new(x: i32, y: i32, z: i32) -> Self { SlPos { inner: Pos::new(x, y, z) } }
   /// Returns the X position of this block.
   ///
   /// # Example

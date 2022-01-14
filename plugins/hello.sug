@@ -1,4 +1,10 @@
-use sugarcane::{chat::Chat, command::Command, block::BlockKind, world::gen}
+use sugarcane::{
+  block::BlockKind,
+  chat::Chat,
+  command::Command,
+  world::gen,
+  util::Pos,
+}
 
 fn init(sc) {
   sc.info("hello world")
@@ -28,6 +34,7 @@ fn on_block_place(sc, player, pos, kind) {
 }
 
 fn add_biomes(sc) {
+  /*
   biome = gen::Biome::new("desert")
   layers = gen::Layers::new("stone")
   layers.add("sandstone", 5)
@@ -42,6 +49,7 @@ fn add_biomes(sc) {
   dead_bush = PlantFeature::new(cactus_struct, 1, 10)
   biome.add_feature(dead_bush)
   sc.add_biome(biome)
+  */
 }
 
 fn place_cactus(gen, chunk, pos) {
