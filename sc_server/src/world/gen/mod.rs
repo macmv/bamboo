@@ -224,6 +224,7 @@ impl WorldGen {
     if self.biomes.is_empty() {
       return;
     }
+    c.enable_lighting(false);
     let div = 32.0;
     let min_height = 40.0_f64;
     let b_min_height = min_height.floor() as i32;
@@ -269,6 +270,7 @@ impl WorldGen {
     for b in &biomes {
       self.biomes[*b].decorate(self, pos, c, &tops);
     }
+    c.enable_lighting(true);
     /*
     if biomes.len() == 1 {
       for b in &biomes {

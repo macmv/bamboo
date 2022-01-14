@@ -9,6 +9,7 @@ pub trait LightPropagator {
     chunk: &Chunk<S>,
     pos: Pos,
   );
+  fn propagate_all<P: LightPropagator, S: Section>(light: &mut LightChunk<P>, chunk: &Chunk<S>);
 }
 
 #[derive(Debug, Clone, sc_macros::Transfer)]
@@ -33,6 +34,9 @@ impl<P: LightPropagator> LightChunk<P> {
     }
     P::propagate(self, chunk, pos)
   }
+
+  /// Should be called whenever a large portion of the chunk is changed.
+  pub fn update_all<S: Section>(&mut self, chunk: &Chunk<S>) { P::propagate_all(self, chunk) }
 
   pub fn sections(&self) -> &[Option<LightSection>] { &self.sections }
 
@@ -118,6 +122,9 @@ impl LightPropagator for BlockLight {
       std::mem::swap(&mut queue, &mut other_queue);
     }
   }
+  fn propagate_all<P: LightPropagator, S: Section>(light: &mut LightChunk<P>, chunk: &Chunk<S>) {
+    // TODO
+  }
 }
 
 impl LightPropagator for SkyLight {
@@ -164,6 +171,9 @@ impl LightPropagator for SkyLight {
       queue.clear();
       std::mem::swap(&mut queue, &mut other_queue);
     }
+  }
+  fn propagate_all<P: LightPropagator, S: Section>(light: &mut LightChunk<P>, chunk: &Chunk<S>) {
+    // TODO
   }
 }
 

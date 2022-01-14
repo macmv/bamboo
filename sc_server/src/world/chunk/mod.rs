@@ -9,10 +9,12 @@ use sc_common::{
 use crate::block;
 
 pub struct MultiChunk {
-  inner: Chunk<PalettedSection>,
-  sky:   Option<LightChunk<SkyLight>>,
-  block: LightChunk<BlockLight>,
-  types: Arc<block::TypeConverter>,
+  inner:        Chunk<PalettedSection>,
+  sky:          Option<LightChunk<SkyLight>>,
+  block:        LightChunk<BlockLight>,
+  types:        Arc<block::TypeConverter>,
+  /// Set to false when the world is generating, which makes things much faster.
+  update_light: bool,
 }
 
 impl MultiChunk {
@@ -31,6 +33,7 @@ impl MultiChunk {
       sky: if sky { Some(LightChunk::new()) } else { None },
       block: LightChunk::new(),
       types,
+      update_light: true,
     }
   }
 
@@ -114,10 +117,28 @@ impl MultiChunk {
   /// data to clients.
   pub fn block_light(&self) -> &LightChunk<BlockLight> { &self.block }
 
-  fn update_light(&mut self, pos: Pos) {
-    if let Some(sky) = &mut self.sky {
-      sky.update(&self.inner, pos);
+  /// Will enable/disable lighting. Chunks have lighting enabled by default. If
+  /// enabled, and if it was previously disabled, all the lighting information
+  /// will be recalculated (which is very slow).
+  pub fn enable_lighting(&mut self, enabled: bool) {
+    if !self.update_light && enabled {
+      self.update_all_light();
     }
-    self.block.update(&self.inner, pos);
+    self.update_light = enabled;
+  }
+
+  fn update_all_light(&mut self) {
+    if let Some(sky) = &mut self.sky {
+      sky.update_all(&self.inner);
+    }
+    self.block.update_all(&self.inner);
+  }
+  fn update_light(&mut self, pos: Pos) {
+    if self.update_light {
+      if let Some(sky) = &mut self.sky {
+        sky.update(&self.inner, pos);
+      }
+      self.block.update(&self.inner, pos);
+    }
   }
 }
