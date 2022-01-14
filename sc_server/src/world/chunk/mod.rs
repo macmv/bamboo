@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use sc_common::{
-  chunk::{fixed::Section as FixedSection, paletted::Section as PalettedSection, Chunk},
+  chunk::{paletted::Section as PalettedSection, Chunk},
   math::{Pos, PosError},
   version::BlockVersion,
 };
@@ -9,9 +9,8 @@ use sc_common::{
 use crate::block;
 
 pub struct MultiChunk {
-  fixed:    Chunk<FixedSection>,
-  paletted: Chunk<PalettedSection>,
-  types:    Arc<block::TypeConverter>,
+  inner: Chunk<PalettedSection>,
+  types: Arc<block::TypeConverter>,
 }
 
 impl MultiChunk {
@@ -22,15 +21,14 @@ impl MultiChunk {
   /// would only store one chunk, and would perform all conversions when you
   /// actually tried to get an old id.
   pub fn new(types: Arc<block::TypeConverter>) -> MultiChunk {
-    MultiChunk { fixed: Chunk::new(), paletted: Chunk::new(), types }
+    MultiChunk { inner: Chunk::new(), types }
   }
 
   /// Sets a block within this chunk. p.x and p.z must be within 0..16. If the
   /// server is only running on 1.17, then p.y needs to be within the world
   /// height (whatever that may be). Otherwise, p.y must be within 0..256.
   pub fn set_type(&mut self, p: Pos, ty: block::Type) -> Result<(), PosError> {
-    self.fixed.set_block(p, self.types.to_old(ty.id(), BlockVersion::V1_8))?;
-    self.paletted.set_block(p, ty.id())?;
+    self.inner.set_block(p, ty.id())?;
     Ok(())
   }
 
@@ -38,11 +36,7 @@ impl MultiChunk {
   /// [`set_type`](Self::set_type), but it uses a kind instead of a type. This
   /// will use the default type of the given kind.
   pub fn set_kind(&mut self, p: Pos, kind: block::Kind) -> Result<(), PosError> {
-    self.fixed.set_block(
-      p,
-      self.types.to_old(self.types.get(kind).default_type().id(), BlockVersion::V1_8),
-    )?;
-    self.paletted.set_block(p, self.types.get(kind).default_type().id())?;
+    self.inner.set_block(p, self.types.get(kind).default_type().id())?;
     Ok(())
   }
 
@@ -58,8 +52,7 @@ impl MultiChunk {
   /// call this function without sending any updates yourself, no one in render
   /// distance will see any of these changes!
   pub fn fill(&mut self, min: Pos, max: Pos, ty: block::Type) -> Result<(), PosError> {
-    self.fixed.fill(min, max, self.types.to_old(ty.id(), BlockVersion::V1_8))?;
-    self.paletted.fill(min, max, ty.id())?;
+    self.inner.fill(min, max, ty.id())?;
     Ok(())
   }
 
@@ -71,12 +64,7 @@ impl MultiChunk {
   /// call this function without sending any updates yourself, no one in render
   /// distance will see any of these changes!
   pub fn fill_kind(&mut self, min: Pos, max: Pos, kind: block::Kind) -> Result<(), PosError> {
-    self.fixed.fill(
-      min,
-      max,
-      self.types.to_old(self.types.get(kind).default_type().id(), BlockVersion::V1_8),
-    )?;
-    self.paletted.fill(min, max, self.types.get(kind).default_type().id())?;
+    self.inner.fill(min, max, self.types.get(kind).default_type().id())?;
     Ok(())
   }
 
@@ -86,13 +74,13 @@ impl MultiChunk {
   /// This returns a specific block type. If you only need to block kind, prefer
   /// [`get_kind`](Self::get_kind)
   pub fn get_type(&self, p: Pos) -> Result<block::Type, PosError> {
-    Ok(self.types.type_from_id(self.paletted.get_block(p)?, BlockVersion::V1_16))
+    Ok(self.types.type_from_id(self.inner.get_block(p)?, BlockVersion::V1_16))
   }
 
   /// Gets the type of a block within this chunk. Pos must be within the chunk.
   /// See [`set_block`](Self::set_block) for more.
   pub fn get_kind(&self, p: Pos) -> Result<block::Kind, PosError> {
-    Ok(self.types.kind_from_id(self.paletted.get_block(p)?, BlockVersion::V1_16))
+    Ok(self.types.kind_from_id(self.inner.get_block(p)?, BlockVersion::V1_16))
   }
 
   /// Builds a heightmap of this chunk. Each long contains 9 bit entries, where
@@ -126,13 +114,10 @@ impl MultiChunk {
     heightmap
   }
 
-  /// Returns the fixed chunk in this MultiChunk. This is used for 1.8, as the
-  /// data is in a different shape than 1.9+.
-  pub fn get_fixed(&self) -> &Chunk<FixedSection> { &self.fixed }
-
-  /// Returns the paletted chunk in this MultiChunk. This is used for 1.9+, as
-  /// the data is in a different shape than in 1.8.
-  pub fn get_paletted(&self) -> &Chunk<PalettedSection> { &self.paletted }
+  /// Returns the inner paletted chunk in this MultiChunk. This can be used to
+  /// access the block data directly. All ids are the latest version block
+  /// states.
+  pub fn inner(&self) -> &Chunk<PalettedSection> { &self.inner }
 
   /// Returns a reference to the global type converter. Used to convert a block
   /// id to/from any version.

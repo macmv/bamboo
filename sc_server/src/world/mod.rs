@@ -327,7 +327,7 @@ impl World {
     self.chunk(pos, |c| {
       let mut bit_map = 0;
       let mut sections = vec![];
-      let c = c.get_paletted();
+      let c = c.inner();
 
       for (y, s) in c.sections().enumerate() {
         if let Some(c) = s {
@@ -355,7 +355,7 @@ impl World {
     self.chunk(pos, |c| {
       let mut bit_map = 0;
       let mut sections = vec![];
-      let c = c.get_paletted();
+      let c = c.inner();
 
       for (y, s) in c.sections().enumerate() {
         if (y as u32) < min || y as u32 > max {
