@@ -119,8 +119,8 @@ impl<S: Section> Chunk<S> {
   ///
   /// The only reason these are signed is because of NBT long arrays. In
   /// reality, they should be read as unsigned longs.
-  pub fn build_heightmap(&self) -> Vec<i64> {
-    let mut heightmap = vec![0; 256 * 9 / 64 + 1];
+  pub fn build_heightmap_old(&self) -> Vec<i64> {
+    let mut heightmap = vec![0; 256 * 9 / 64];
     let mut shift = 0;
     let mut index = 0;
     for z in 0..16 {
@@ -141,10 +141,38 @@ impl<S: Section> Chunk<S> {
     }
     heightmap
   }
+  /// Builds a heightmap of this chunk. Each long contains 9 bit entries, where
+  /// each entry is the height of the world at the given X, Z coordinate. This
+  /// is used within 1.16.5+ protocol data, and is a needlessly complicated
+  /// format that you shouldn't waste any time thinking about.
+  ///
+  /// The reason this is a different function is because of compacted long
+  /// arrays. In 1.16, they stopped making entries overlap two longs. This makes
+  /// it easier to serialize/deserialize, but uses slightly more storage.
+  ///
+  /// The only reason these are signed is because of NBT long arrays. In
+  /// reality, they should be read as unsigned longs.
+  pub fn build_heightmap_new(&self) -> Vec<i64> {
+    let mut heightmap = vec![0; (256.0 / (64 / 9) as f32).ceil() as usize];
+    let mut index = 0;
+    let mut shift = 0;
+    for z in 0..16 {
+      for x in 0..16 {
+        let v = self.height_at(Pos::new(x, 0, z)).unwrap() as u64;
+        heightmap[index] |= (v.overflowing_shl(shift).0) as i64;
+        shift += 9;
+        if shift > 64 {
+          shift = 0; // Important! We just subtract 64 in the other one
+          index += 1;
+        }
+      }
+    }
+    heightmap
+  }
   /// Returns the world height at the given position. This is a simple loop, and
   /// should be avoided.
   pub fn height_at(&self, pos: Pos) -> Result<i32, PosError> {
-    let max_y = self.sections().len() * 16;
+    let max_y = self.sections().len() * 16 + 15;
     for y in (0..max_y).rev() {
       // This is correct; it is not a transparent check, just an air check.
       if self.get_block(pos.with_y(y as i32))? != 0 {
