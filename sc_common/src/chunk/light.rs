@@ -3,6 +3,7 @@ use crate::math::{ChunkPos, Pos};
 use std::marker::PhantomData;
 
 pub trait LightPropagator {
+  fn initial_level() -> u8;
   fn propagate<P: LightPropagator, S: Section>(
     light: &mut LightChunk<P>,
     chunk: &Chunk<S>,
@@ -47,7 +48,7 @@ impl<P: LightPropagator> LightChunk<P> {
       self.sections.resize_with(idx + 1, || None);
     }
     if self.sections[idx].is_none() {
-      self.sections[idx] = Some(LightSection::new());
+      self.sections[idx] = Some(LightSection::new(P::initial_level()));
     }
     self.sections.get_mut(idx).unwrap().as_mut().unwrap()
   }
@@ -56,7 +57,7 @@ impl<P: LightPropagator> LightChunk<P> {
       self.sections.resize_with(idx + 1, || None);
     }
     if self.sections[idx].is_none() {
-      self.sections[idx] = Some(LightSection::new());
+      self.sections[idx] = Some(LightSection::new(P::initial_level()));
     }
     self.sections.get(idx).unwrap().as_ref().unwrap()
   }
@@ -77,6 +78,7 @@ pub struct BlockLight {}
 pub struct SkyLight {}
 
 impl LightPropagator for BlockLight {
+  fn initial_level() -> u8 { 0 }
   fn propagate<P: LightPropagator, S: Section>(
     light: &mut LightChunk<P>,
     chunk: &Chunk<S>,
@@ -119,6 +121,7 @@ impl LightPropagator for BlockLight {
 }
 
 impl LightPropagator for SkyLight {
+  fn initial_level() -> u8 { 15 }
   fn propagate<P: LightPropagator, S: Section>(
     light: &mut LightChunk<P>,
     chunk: &Chunk<S>,
@@ -165,7 +168,7 @@ impl LightPropagator for SkyLight {
 }
 
 impl LightSection {
-  pub fn new() -> Self { LightSection { data: vec![0; 2048] } }
+  pub fn new(level: u8) -> Self { LightSection { data: vec![level | (level << 4); 2048] } }
   /// Gets the light value in the given block position.
   ///
   /// # Panics
