@@ -95,6 +95,9 @@ impl LightPropagator for BlockLight {
     let mut other_queue = vec![];
     while !queue.is_empty() {
       for &(source, level) in &queue {
+        if level == 0 {
+          continue;
+        }
         for dir in directions {
           let new_pos = source + dir;
           if new_pos.y() < 0 || new_pos.y() > 255 {
@@ -134,6 +137,9 @@ impl LightPropagator for SkyLight {
     let mut other_queue = vec![];
     while !queue.is_empty() {
       for &(source, level) in &queue {
+        if level == 0 {
+          continue;
+        }
         for dir in directions {
           let new_pos = source + dir;
           if new_pos.y() < 0 || new_pos.y() > 255 {

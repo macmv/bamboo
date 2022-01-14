@@ -112,7 +112,7 @@ pub fn chunk(
     for (i, s) in sky.sections().iter().enumerate() {
       if s.is_some() {
         sky_bitmap |= 1 << i as u64;
-        sky_len += 2048;
+        sky_len += 1;
       }
     }
   }
@@ -121,7 +121,7 @@ pub fn chunk(
   for (i, s) in block_light.sections().iter().enumerate() {
     if s.is_some() {
       block_bitmap |= 1 << i as u64;
-      block_len += 2048;
+      block_len += 1;
     }
   }
 
@@ -142,6 +142,7 @@ pub fn chunk(
   if let Some(sky) = sky_light {
     for s in sky.sections() {
       if let Some(s) = s {
+        data.write_varint(s.data().len() as i32);
         data.write_buf(s.data());
       }
     }
@@ -150,6 +151,7 @@ pub fn chunk(
   data.write_varint(block_len);
   for s in block_light.sections() {
     if let Some(s) = s {
+      data.write_varint(s.data().len() as i32);
       data.write_buf(s.data());
     }
   }
