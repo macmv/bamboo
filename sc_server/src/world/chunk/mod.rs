@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use sc_common::{
-  chunk::{paletted::Section as PalettedSection, Chunk},
+  chunk::{paletted::Section as PalettedSection, BlockLightChunk, Chunk, SkyLightChunk},
   math::{Pos, PosError},
   version::BlockVersion,
 };
@@ -10,6 +10,8 @@ use crate::block;
 
 pub struct MultiChunk {
   inner: Chunk<PalettedSection>,
+  sky:   Option<SkyLightChunk>,
+  block: BlockLightChunk,
   types: Arc<block::TypeConverter>,
 }
 
@@ -20,8 +22,16 @@ impl MultiChunk {
   /// block ids and how they can be transformed into old block ids. Then, this
   /// would only store one chunk, and would perform all conversions when you
   /// actually tried to get an old id.
-  pub fn new(types: Arc<block::TypeConverter>) -> MultiChunk {
-    MultiChunk { inner: Chunk::new(), types }
+  ///
+  /// The second argument is for sky light data. Places like the nether do not
+  /// contain sky light information, so the sky light data is not present.
+  pub fn new(types: Arc<block::TypeConverter>, sky: bool) -> MultiChunk {
+    MultiChunk {
+      inner: Chunk::new(),
+      sky: if sky { Some(SkyLightChunk::new()) } else { None },
+      block: BlockLightChunk::new(),
+      types,
+    }
   }
 
   /// Sets a block within this chunk. p.x and p.z must be within 0..16. If the
@@ -29,6 +39,7 @@ impl MultiChunk {
   /// height (whatever that may be). Otherwise, p.y must be within 0..256.
   pub fn set_type(&mut self, p: Pos, ty: block::Type) -> Result<(), PosError> {
     self.inner.set_block(p, ty.id())?;
+    self.update_light(p);
     Ok(())
   }
 
@@ -37,6 +48,7 @@ impl MultiChunk {
   /// will use the default type of the given kind.
   pub fn set_kind(&mut self, p: Pos, kind: block::Kind) -> Result<(), PosError> {
     self.inner.set_block(p, self.types.get(kind).default_type().id())?;
+    self.update_light(p);
     Ok(())
   }
 
@@ -53,6 +65,9 @@ impl MultiChunk {
   /// distance will see any of these changes!
   pub fn fill(&mut self, min: Pos, max: Pos, ty: block::Type) -> Result<(), PosError> {
     self.inner.fill(min, max, ty.id())?;
+    // TODO: Update light correctly.
+    self.update_light(min);
+    self.update_light(max);
     Ok(())
   }
 
@@ -122,4 +137,18 @@ impl MultiChunk {
   /// Returns a reference to the global type converter. Used to convert a block
   /// id to/from any version.
   pub fn type_converter(&self) -> &block::TypeConverter { &self.types }
+
+  /// Returns the sky light information for this chunk. Used to send lighting
+  /// data to clients.
+  pub fn sky_light(&self) -> &Option<SkyLightChunk> { &self.sky }
+  /// Returns the block light information for this chunk. Used to send lighting
+  /// data to clients.
+  pub fn block_light(&self) -> &BlockLightChunk { &self.block }
+
+  fn update_light(&mut self, pos: Pos) {
+    if let Some(sky) = &mut self.sky {
+      sky.update(&self.inner, pos);
+    }
+    self.block.update(&self.inner, pos);
+  }
 }

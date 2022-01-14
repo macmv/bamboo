@@ -241,7 +241,7 @@ impl World {
   /// have a list of chunks to generate, and you would like to generate them in
   /// parallel.
   pub fn pre_generate_chunk(&self, pos: ChunkPos) -> MultiChunk {
-    let mut c = MultiChunk::new(self.block_converter.clone());
+    let mut c = MultiChunk::new(self.block_converter.clone(), true);
     self.gen.generate(pos, &mut c);
     c
   }
@@ -327,16 +327,23 @@ impl World {
     self.chunk(pos, |c| {
       let mut bit_map = 0;
       let mut sections = vec![];
-      let c = c.inner();
+      let inner = c.inner();
 
-      for (y, s) in c.sections().enumerate() {
+      for (y, s) in inner.sections().enumerate() {
         if let Some(c) = s {
           bit_map |= 1 << y;
           sections.push(c.clone());
         }
       }
 
-      cb::Packet::Chunk { pos, full: true, bit_map, sections }
+      cb::Packet::Chunk {
+        pos,
+        full: true,
+        bit_map,
+        sections,
+        sky_light: c.sky_light(),
+        block_light: c.block_light(),
+      }
     })
   }
 
