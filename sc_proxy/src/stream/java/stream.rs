@@ -23,9 +23,10 @@ pub struct JavaStream {
   outgoing: Vec<u8>,
 
   // If this is zero, compression is disabled.
-  compression: usize,
+  compression:  usize,
   // If this is none, then encryption is disabled.
-  cipher:      Option<Cfb8<Aes128>>,
+  read_cipher:  Option<Cfb8<Aes128>>,
+  write_cipher: Option<Cfb8<Aes128>>,
 }
 
 impl fmt::Debug for JavaStream {
@@ -44,12 +45,13 @@ impl JavaStream {
       recv_cons,
       outgoing: Vec::with_capacity(1024),
       compression: 0,
-      cipher: None,
+      read_cipher: None,
+      write_cipher: None,
     }
   }
 
   fn write_data(&mut self, data: &mut [u8]) {
-    if let Some(c) = &mut self.cipher {
+    if let Some(c) = &mut self.write_cipher {
       c.encrypt(data);
     }
 
@@ -68,7 +70,7 @@ impl PacketStream for JavaStream {
     } else {
       msg = &mut msg[..n];
     }
-    if let Some(c) = &mut self.cipher {
+    if let Some(c) = &mut self.read_cipher {
       c.decrypt(msg);
     }
     self.recv_prod.push_slice(msg);
@@ -132,7 +134,8 @@ impl PacketStream for JavaStream {
 
   fn set_compression(&mut self, compression: i32) { self.compression = compression as usize; }
   fn enable_encryption(&mut self, secret: &[u8; 16]) {
-    self.cipher = Some(Cfb8::new_from_slices(secret, secret).unwrap());
+    self.read_cipher = Some(Cfb8::new_from_slices(secret, secret).unwrap());
+    self.write_cipher = Some(Cfb8::new_from_slices(secret, secret).unwrap());
   }
 
   fn write(&mut self, p: tcp::Packet) {

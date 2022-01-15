@@ -592,7 +592,6 @@ impl<'a, S: PacketStream + Send + Sync> Conn<'a, S> {
             // If we need to disconnect the client, the client is expecting encrypted
             // packets from now on, so we need to enable encryption here.
             self.client_stream.enable_encryption(&secret);
-            self.client_stream.enable_encryption(&secret);
 
             let mut hash = Sha1::new();
             hash.update("");
