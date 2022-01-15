@@ -11,6 +11,7 @@ pub mod stream;
 use mio::{net::TcpListener, Events, Interest, Poll, Token};
 use rand::rngs::OsRng;
 use rsa::RSAPrivateKey;
+use sc_common::math::der;
 use std::{collections::HashMap, error::Error, io, net::SocketAddr, sync::Arc};
 
 use crate::{conn::Conn, packet::TypeConverter, stream::java::stream::JavaStream};
@@ -42,8 +43,8 @@ pub fn run() -> Result<(), Box<dyn Error>> {
 
   // Minecraft uses 1024 bits for this.
   let key = Arc::new(RSAPrivateKey::new(&mut OsRng, 1024).expect("failed to generate a key"));
-  // let der_key = Some(Arc::new(der::encode(&key)));
-  let der_key = None;
+  let der_key = Some(der::encode(&key));
+  // let der_key = None;
   let icon = Arc::new(load_icon("icon.png"));
   let server_ip: SocketAddr = "0.0.0.0:8483".parse().unwrap();
   let compression = 256;
