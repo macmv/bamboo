@@ -36,14 +36,13 @@ impl BiomeGen for Gen {
   fn decorate(
     &self,
     world: &WorldGen,
-    chunk_pos: ChunkPos,
+    _chunk_pos: ChunkPos,
     c: &mut MultiChunk,
-    tops: &HashMap<Pos, i32>,
+    tops: &HashMap<Pos, usize>,
   ) {
-    for mut p in chunk_pos.columns() {
-      if world.is_biome(self, p) {
-        let height = tops[&p.chunk_rel()];
-        p = p.with_y(height + 1);
+    for (&p, &biome) in tops {
+      if biome == self.id() {
+        let p = p + Pos::new(0, 1, 0);
         if self.cacti.contains(p.into()) {
           self.place_cactus(world, c, p);
         } else if world.chance(p, 0.01) {

@@ -71,15 +71,12 @@ impl BiomeGen for Gen {
     world: &WorldGen,
     chunk_pos: ChunkPos,
     c: &mut MultiChunk,
-    tops: &HashMap<Pos, i32>,
+    tops: &HashMap<Pos, usize>,
   ) {
     // Iterate through a 2 block radius outside this chunk
-    for p in
-      (chunk_pos.block() - Pos::new(2, 0, 2)).to(chunk_pos.block() + Pos::new(15 + 2, 0, 15 + 2))
-    {
-      if world.is_biome(self, p) && self.trees.contains(p.into()) {
-        let height = tops[&p.chunk_rel()];
-        self.place_tree(world, c, p.with_y(height + 1), chunk_pos);
+    for (&p, &biome) in tops {
+      if biome == self.id() && self.trees.contains(p.into()) {
+        self.place_tree(world, c, p + Pos::new(0, 1, 0), chunk_pos);
       }
     }
   }

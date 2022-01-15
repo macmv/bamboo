@@ -548,11 +548,17 @@ fn write_dimensions(out: &mut Buffer) {
     (
       "effects",
       Tag::compound(&[
-        ("sky_color", Tag::Int(0xff00ff)),
-        ("water_color", Tag::Int(0xff00ff)),
-        ("fog_color", Tag::Int(0xff00ff)),
-        ("water_fog_color", Tag::Int(0xff00ff)),
-        ("grass_color", Tag::Int(0xff00ff)),
+        ("sky_color", Tag::Int(0x78a7ff)),
+        ("fog_color", Tag::Int(0xc0d8ff)),
+        ("water_fog_color", Tag::Int(0x050533)),
+        ("water_color", Tag::Int(0x3f76e4)),
+        // ("sky_color", Tag::Int(0xff00ff)),
+        // ("water_color", Tag::Int(0xff00ff)),
+        // ("fog_color", Tag::Int(0xff00ff)),
+        // ("water_fog_color", Tag::Int(0xff00ff)),
+        // ("grass_color", Tag::Int(0xff00ff)),
+        // ("foliage_color", Tag::Int(0x00ffe5)),
+        // ("grass_color", Tag::Int(0xff5900)),
       ]),
     ),
   ]);

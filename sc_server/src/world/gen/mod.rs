@@ -158,7 +158,7 @@ pub trait BiomeGen {
     _world: &WorldGen,
     _pos: ChunkPos,
     _c: &mut MultiChunk,
-    _tops: &HashMap<Pos, i32>,
+    _tops: &HashMap<Pos, usize>,
   ) {
   }
   /// Returns the longest distance that decorations can extend outside of this
@@ -236,11 +236,10 @@ impl WorldGen {
       let z = p.z() as f64 / 64.0;
       let max_height = (self.max_height.get([x, z]) * 1.0) / 2.0 * 50.0 + 200.0;
       let b_max_height = max_height.ceil() as i32;
-      let b = self.biome_id_at(p);
-      let layers = self.biomes[b].layers();
-      biomes.insert(b);
+      let biome = self.biome_id_at(p);
+      let layers = self.biomes[biome].layers();
+      biomes.insert(biome);
       let mut depth = 0;
-      let mut found_top = false;
       for y in (b_min_height..=b_max_height).rev() {
         let rel = p.chunk_rel().with_y(y);
         let val = {
@@ -252,9 +251,8 @@ impl WorldGen {
         let mut min = (y as f64 - min_height) / (max_height - min_height);
         min = min * 2.0 - 1.0;
         if val > min {
-          if !found_top {
-            found_top = true;
-            tops.insert(p.chunk_rel(), y);
+          if depth == 0 {
+            tops.insert(p.with_y(y), biome);
           }
           c.set_kind(rel, layers.get(depth)).unwrap();
           depth += 1;
@@ -262,11 +260,7 @@ impl WorldGen {
           depth = 0;
         }
       }
-      if !found_top {
-        tops.insert(p.chunk_rel(), b_max_height);
-      }
     }
-    self.underground.process(&self, pos, c);
     for b in &biomes {
       self.biomes[*b].decorate(self, pos, c, &tops);
     }
