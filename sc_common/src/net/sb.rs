@@ -1,6 +1,7 @@
 use crate::math::Pos;
 
 #[derive(Debug, Clone, sc_macros::Transfer)]
+#[non_exhaustive]
 pub enum Packet {
   BlockDig {
     pos:    Pos,
@@ -14,6 +15,9 @@ pub enum Packet {
   },
   Chat {
     msg: String,
+  },
+  Flying {
+    flying: bool,
   },
   KeepAlive {
     id: i32,

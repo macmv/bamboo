@@ -5,6 +5,7 @@ use crate::{
 };
 
 #[derive(Debug, Clone, sc_macros::Transfer)]
+#[non_exhaustive]
 pub enum Packet {
   Abilities {
     invulnerable: bool,

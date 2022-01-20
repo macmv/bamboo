@@ -318,11 +318,11 @@ impl Connection {
       sb::Packet::BlockDig { pos, status: _, face: _ } => {
         // If the world is locked then we need to sync this block.
         if player.world().is_locked() {
-          player.sync_block_at(pos);
+          player.sync_block_at(pos).unwrap();
         } else {
           // Avoid race condition
           if !player.world().set_kind(pos, block::Kind::Air).unwrap() {
-            player.sync_block_at(pos);
+            player.sync_block_at(pos).unwrap();
           }
         }
       }
