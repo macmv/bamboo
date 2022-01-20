@@ -1,4 +1,4 @@
-use crate::{entity, item, player::Player, world::WorldManager};
+use crate::{block, entity, item, player::Player, world::WorldManager};
 use crossbeam_channel::{Receiver, Sender, TryRecvError};
 use mio::{
   event::Event,
@@ -315,6 +315,17 @@ impl Connection {
           player.world().broadcast(msg);
         }
       }
+      sb::Packet::BlockDig { pos, status: _, face: _ } => {
+        // If the world is locked then we need to sync this block.
+        if player.world().is_locked() {
+          player.sync_block_at(pos);
+        } else {
+          // Avoid race condition
+          if !player.world().set_kind(pos, block::Kind::Air).unwrap() {
+            player.sync_block_at(pos);
+          }
+        }
+      }
       /*
       sb::Packet::SetCreativeSlot { slot, item } => {
         if slot > 0 {
@@ -324,9 +335,6 @@ impl Connection {
             .lock_inventory()
             .set(slot as u32, item::Stack::new(item::Type::from_u32(id)).with_amount(item.count()));
         }
-      }
-      sb::Packet::BlockDig { location, status: _, face: _ } => {
-        player.world().set_kind(location, block::Kind::Air).unwrap();
       }
       sb::Packet::HeldItemSlot { slot_id } => {
         player.lock_inventory().set_selected(slot_id.try_into().unwrap());

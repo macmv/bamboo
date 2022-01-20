@@ -20,7 +20,7 @@ use std::{
   collections::{HashMap, HashSet},
   convert::TryInto,
   sync::{
-    atomic::{AtomicI32, AtomicU32, Ordering},
+    atomic::{AtomicBool, AtomicI32, AtomicU32, Ordering},
     Arc,
   },
   thread,
@@ -79,6 +79,8 @@ pub struct World {
   commands:          Arc<CommandTree>,
   mspt:              Arc<AtomicU32>,
   wm:                Arc<WorldManager>,
+  // If set, then the world cannot be modified.
+  locked:            AtomicBool,
 }
 
 pub struct WorldManager {
@@ -122,6 +124,7 @@ impl World {
       commands,
       mspt: Arc::new(0.into()),
       wm,
+      locked: true.into(),
     });
     let w = world.clone();
     thread::spawn(|| {
@@ -498,6 +501,11 @@ impl World {
       wl.remove(&pos);
     }
   }
+
+  /// Returns true if the world is locked. This is an atomic load, so it will
+  /// always be a race condition. However, whenever you modify the world, this
+  /// is also checked, so it won't end up being a problem.
+  pub fn is_locked(&self) -> bool { self.locked.load(Ordering::Relaxed) }
 }
 
 impl Default for WorldManager {

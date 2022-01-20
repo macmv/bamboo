@@ -1,9 +1,9 @@
-use crate::{block, net, world::World};
+use crate::{block, world::World};
 use sc_common::{
   math::{ChunkPos, FPos, Pos, PosError, Vec3, AABB},
   net::cb,
 };
-use std::{cmp::Ordering, collections::HashMap};
+use std::cmp::Ordering;
 
 /// General block manipulation functions
 impl World {
@@ -14,22 +14,44 @@ impl World {
   /// position is outside of the world. Unlike
   /// [`MultiChunk::set_type`](chunk::MultiChunk::set_type), this will send
   /// packets to anyone within render distance of the given chunk.
-  pub fn set_block(&self, pos: Pos, ty: block::Type) -> Result<(), PosError> {
+  ///
+  /// This will return `true` if a block was placed, and `false` if the block
+  /// could not be placed. This will only ever return `Ok(false)` if the world
+  /// is locked. If the block is the same type as what is already present,
+  /// this will still return `Ok(true)` if the world was unlocked.
+  pub fn set_block(&self, pos: Pos, ty: block::Type) -> Result<bool, PosError> {
+    if self.is_locked() {
+      let id = self.get_block(pos)?.id();
+      for p in self.players().iter().in_view(pos.chunk()) {
+        p.send(cb::Packet::BlockUpdate {
+          pos,
+          state: self.block_converter.to_old(id, p.ver().block()),
+        });
+      }
+      return Ok(false);
+    }
+
     self.chunk(pos.chunk(), |mut c| c.set_type(pos.chunk_rel(), ty))?;
 
+    let id = ty.id();
     for p in self.players().iter().in_view(pos.chunk()) {
       p.send(cb::Packet::BlockUpdate {
         pos,
-        state: self.block_converter.to_old(ty.id(), p.ver().block()),
+        state: self.block_converter.to_old(id, p.ver().block()),
       });
     }
-    Ok(())
+    Ok(true)
   }
 
   /// This sets a block within the world. This will use the default type of the
   /// given kind. It will return an error if the position is outside of the
   /// world.
-  pub fn set_kind(&self, pos: Pos, kind: block::Kind) -> Result<(), PosError> {
+  ///
+  /// This will return `true` if a block was placed, and `false` if the block
+  /// could not be placed. This will only ever return `Ok(false)` if the world
+  /// is locked. If the block is the same type as what is already present,
+  /// this will still return `Ok(true)` if the world was unlocked.
+  pub fn set_kind(&self, pos: Pos, kind: block::Kind) -> Result<bool, PosError> {
     self.set_block(pos, self.block_converter.get(kind).default_type())
   }
 
@@ -39,7 +61,8 @@ impl World {
   pub fn fill_rect(&self, min: Pos, max: Pos, ty: block::Type) -> Result<(), PosError> {
     // Small fills should just send a block update, instead of a multi block change.
     if min == max {
-      return self.set_block(min, ty);
+      self.set_block(min, ty)?;
+      return Ok(());
     }
     for x in min.chunk_x()..=max.chunk_x() {
       for z in min.chunk_z()..=max.chunk_z() {

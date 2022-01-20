@@ -1,5 +1,17 @@
+use crate::math::Pos;
+
 #[derive(Debug, Clone, sc_macros::Transfer)]
 pub enum Packet {
+  BlockDig {
+    pos:    Pos,
+    status: u8,
+    face:   u8,
+  },
+  BlockPlace {
+    pos:  Pos,
+    face: u8,
+    hand: u8,
+  },
   Chat {
     msg: String,
   },
