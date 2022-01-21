@@ -36,7 +36,12 @@ impl<P: LightPropagator> LightChunk<P> {
   }
 
   /// Should be called whenever a large portion of the chunk is changed.
-  pub fn update_all<S: Section>(&mut self, chunk: &Chunk<S>) { P::propagate_all(self, chunk) }
+  pub fn update_all<S: Section>(&mut self, chunk: &Chunk<S>) {
+    for (y, _) in chunk.sections().enumerate() {
+      self.get_section(y);
+    }
+    P::propagate_all(self, chunk)
+  }
 
   pub fn sections(&self) -> &[Option<LightSection>] { &self.sections }
 

@@ -108,23 +108,36 @@ pub fn chunk(
   data.write_bool(true); // This is a non-edge chunk
 
   let mut sky_bitmap: u64 = 0;
+  let mut sky_empty_bitmap: u64 = 0;
   let mut sky_len = 0;
-  if let Some(sky) = &sky_light {
-    for (i, s) in sky.sections().iter().enumerate() {
-      if s.is_some() {
-        sky_bitmap |= 1 << i as u64;
+  for y in 0..16 {
+    if let Some(sky) = &sky_light {
+      if sky.get_section_opt(y).is_some() {
+        sky_bitmap |= 1 << y as u64;
         sky_len += 1;
+        continue;
       }
     }
+    sky_empty_bitmap |= 1 << y as u64;
   }
   let mut block_bitmap: u64 = 0;
+  let mut block_empty_bitmap: u64 = 0;
   let mut block_len = 0;
-  for (i, s) in block_light.sections().iter().enumerate() {
-    if s.is_some() {
-      block_bitmap |= 1 << i as u64;
+  for y in 0..16 {
+    if block_light.get_section_opt(y).is_some() {
+      block_bitmap |= 1 << y as u64;
       block_len += 1;
+    } else {
+      block_empty_bitmap |= 1 << y as u64;
     }
   }
+
+  sky_bitmap <<= 1;
+  sky_empty_bitmap <<= 1;
+  sky_empty_bitmap |= 1 | (1 << 17);
+  block_bitmap <<= 1;
+  block_empty_bitmap <<= 1;
+  block_empty_bitmap |= 1 | (1 << 17);
 
   // Sky light bitset
   data.write_varint(1);
@@ -134,10 +147,10 @@ pub fn chunk(
   data.write_u64(block_bitmap);
   // Empty sky light bitset
   data.write_varint(1);
-  data.write_u64(0x0);
+  data.write_u64(sky_empty_bitmap);
   // Empty block light bitset
   data.write_varint(1);
-  data.write_u64(0x0);
+  data.write_u64(block_empty_bitmap);
   // Sky light length
   data.write_varint(sky_len);
   if let Some(sky) = sky_light {
