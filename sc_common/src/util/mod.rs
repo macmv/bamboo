@@ -8,6 +8,7 @@ mod buffer;
 mod item;
 pub mod nbt;
 
+use crate::math::Pos;
 use rand::{rngs::OsRng, RngCore};
 use serde::de::{self, Deserialize, Deserializer, Unexpected, Visitor};
 use std::{error::Error, fmt, num::ParseIntError, str::FromStr};
@@ -84,6 +85,52 @@ impl GameMode {
       2 => Self::Adventure,
       3 => Self::Spectator,
       _ => panic!("invalid gamemode: {}", id),
+    }
+  }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, sc_macros::Transfer)]
+pub enum Face {
+  Bottom,
+  Top,
+  North,
+  South,
+  West,
+  East,
+}
+
+impl Face {
+  pub fn id(&self) -> u8 {
+    match self {
+      Self::Bottom => 0,
+      Self::Top => 1,
+      Self::North => 2,
+      Self::South => 3,
+      Self::West => 4,
+      Self::East => 5,
+    }
+  }
+
+  pub fn as_dir(&self) -> Pos {
+    match self {
+      Self::Bottom => Pos::new(0, -1, 0),
+      Self::Top => Pos::new(0, 1, 0),
+      Self::North => Pos::new(0, 0, -1),
+      Self::South => Pos::new(0, 0, 1),
+      Self::West => Pos::new(-1, 0, 0),
+      Self::East => Pos::new(1, 0, 0),
+    }
+  }
+
+  pub fn from_id(id: u8) -> Face {
+    match id {
+      0 => Self::Bottom,
+      1 => Self::Top,
+      2 => Self::North,
+      3 => Self::South,
+      4 => Self::West,
+      5 => Self::East,
+      _ => panic!("invalid block face: {}", id),
     }
   }
 }

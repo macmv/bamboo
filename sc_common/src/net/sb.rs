@@ -1,16 +1,16 @@
-use crate::math::Pos;
+use crate::{math::Pos, util::Face};
 
 #[derive(Debug, Clone, sc_macros::Transfer)]
 #[non_exhaustive]
 pub enum Packet {
   BlockDig {
     pos:    Pos,
-    status: u8,
-    face:   u8,
+    status: DigStatus,
+    face:   Face,
   },
   BlockPlace {
     pos:  Pos,
-    face: u8,
+    face: Face,
     hand: u8,
   },
   Chat {
@@ -48,4 +48,11 @@ pub enum Packet {
     channel: String,
     data:    Vec<u8>,
   },
+}
+
+#[derive(Debug, Clone, sc_macros::Transfer)]
+pub enum DigStatus {
+  Start,
+  Cancel,
+  Finish,
 }
