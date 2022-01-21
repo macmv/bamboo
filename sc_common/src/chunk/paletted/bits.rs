@@ -87,7 +87,7 @@ impl BitArray {
         .chars()
         .collect::<Vec<char>>()
         .rchunks(self.bpe.into())
-        .map(|arr| arr.into_iter().collect::<String>())
+        .map(|arr| arr.iter().collect::<String>())
         .rev()
         .collect::<Vec<String>>()
         .join(" ")

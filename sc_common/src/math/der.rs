@@ -31,7 +31,7 @@ impl<'a> asn1::SimpleAsn1Writable<'a> for BitString<'a> {
 
 pub fn decode(bytes: &[u8]) -> Option<RSAPublicKey> {
   let result: asn1::ParseResult<_> = asn1::parse(bytes, |d| {
-    return d.read_element::<asn1::Sequence>()?.parse(|d| {
+    d.read_element::<asn1::Sequence>()?.parse(|d| {
       d.read_element::<asn1::Sequence>()?.parse(|d| {
         // Not sure what I should do with these. Going to ignore for now (read:
         // forever).
@@ -50,7 +50,7 @@ pub fn decode(bytes: &[u8]) -> Option<RSAPublicKey> {
         })
       })?;
       Ok((n, e))
-    });
+    })
   });
 
   let (n, e) = result.unwrap();
@@ -66,17 +66,16 @@ pub fn decode(bytes: &[u8]) -> Option<RSAPublicKey> {
 
 fn write_big_uint(w: &mut asn1::Writer, int: &rsa::BigUint) {
   let mut bytes = int.to_bytes_be();
-  let out;
   let mut tmp = vec![];
   // asn1 BigUint requires the first byte to be a 0, to disambiguate from negative
   // values
-  if bytes[0] & 0x80 != 0 {
+  let out = if bytes[0] & 0x80 != 0 {
     tmp.push(0);
     tmp.append(&mut bytes);
-    out = asn1::BigUint::new(tmp.as_ref()).unwrap()
+    asn1::BigUint::new(tmp.as_ref()).unwrap()
   } else {
-    out = asn1::BigUint::new(&bytes).unwrap()
-  }
+    asn1::BigUint::new(&bytes).unwrap()
+  };
   w.write_element(&out);
 }
 

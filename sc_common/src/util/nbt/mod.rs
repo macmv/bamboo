@@ -87,7 +87,7 @@ impl NBT {
   /// Otherwise, this panics.
   pub fn compound(&self) -> &HashMap<String, Tag> {
     if let Tag::Compound(inner) = &self.tag {
-      &inner
+      inner
     } else {
       panic!("called compound on non-compound type: {:?}", self);
     }

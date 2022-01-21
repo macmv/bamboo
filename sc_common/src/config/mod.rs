@@ -64,8 +64,7 @@ impl Config {
   /// also be loaded. This will never be written to, and will be used as a
   /// fallback if the key doesn't exist in the file.
   pub fn new(path: &str, default: &str) -> Self {
-    let conf = Config { primary: Self::load_yaml(path), default: Self::load_yaml(default) };
-    conf
+    Config { primary: Self::load_yaml(path), default: Self::load_yaml(default) }
   }
   /// Creates a new config file, but with source strings, instead of paths. This
   /// is used in the proxy, which stores its default config in the binary, and
@@ -123,7 +122,7 @@ impl Config {
   {
     let sections = key.borrow().sections();
     let val = Self::get_val(&self.primary, &sections);
-    match T::from_yaml(&val) {
+    match T::from_yaml(val) {
       Some(v) => v,
       None => {
         if val != &Yaml::BadValue {
@@ -256,7 +255,7 @@ impl<'a> YamlValue<'a> for &'a Vec<Yaml> {
 
 impl<'a> YamlValue<'a> for Vec<&'a str> {
   fn from_yaml(v: &'a Yaml) -> Option<Self> {
-    v.as_vec().and_then(|v| v.iter().map(|v| <&str>::from_yaml(&v)).collect::<Option<Vec<&str>>>())
+    v.as_vec()?.iter().map(<&str>::from_yaml).collect::<Option<Vec<&str>>>()
   }
 
   fn name() -> &'static str { "array of string" }

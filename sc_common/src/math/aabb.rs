@@ -46,12 +46,8 @@ impl AABB {
       let mut axis = None;
       if t.x <= t.y && t.x <= t.z {
         // Collided on the X axis
-        let pos_x;
-        if delta.x > 0.0 {
-          pos_x = o.min_x() - self.size.x / 2.0;
-        } else {
-          pos_x = o.max_x() + self.size.x / 2.0;
-        }
+        let pos_x =
+          if delta.x > 0.0 { o.min_x() - self.size.x / 2.0 } else { o.max_x() + self.size.x / 2.0 };
         let fac = time_factor(pos_x, self.pos.x, after_move.pos.x);
         if fac < time {
           time = fac;
@@ -59,13 +55,8 @@ impl AABB {
         }
       } else if t.y <= t.x && t.y <= t.z {
         // Collided on the Y axis
-        let pos_y;
         // Y is different, because self.pos is the bottom, not middle.
-        if delta.y > 0.0 {
-          pos_y = o.min_y() - self.size.y;
-        } else {
-          pos_y = o.max_y();
-        }
+        let pos_y = if delta.y > 0.0 { o.min_y() - self.size.y } else { o.max_y() };
         let fac = time_factor(pos_y, self.pos.y, after_move.pos.y);
         if fac < time {
           time = fac;
@@ -73,12 +64,8 @@ impl AABB {
         }
       } else {
         // Collided on the Z axis
-        let pos_z;
-        if delta.z > 0.0 {
-          pos_z = o.min_z() - self.size.z / 2.0;
-        } else {
-          pos_z = o.max_z() + self.size.z / 2.0;
-        }
+        let pos_z =
+          if delta.z > 0.0 { o.min_z() - self.size.z / 2.0 } else { o.max_z() + self.size.z / 2.0 };
         let fac = time_factor(pos_z, self.pos.z, after_move.pos.z);
         if fac < time {
           time = fac;

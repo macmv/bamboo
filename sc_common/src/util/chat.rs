@@ -346,7 +346,7 @@ impl Color {
       Self::Pink => "pink",
       Self::Yellow => "yellow",
       Self::White => "white",
-      Self::Custom(v) => &v,
+      Self::Custom(v) => v,
     }
   }
 }

@@ -62,6 +62,8 @@ impl PacketCollection {
     }
     list.push((ver, p));
   }
+  // This function is not complete, so we allow this here
+  #[allow(clippy::if_same_then_else)]
   pub fn expand_sup(&mut self) {
     for (_name, versions) in &mut self.packets {
       for (ver, p) in versions {
@@ -84,7 +86,7 @@ impl PacketCollection {
     }
   }
   pub fn finish_simplify(&mut self) {
-    for (_name, versions) in &mut self.packets {
+    for versions in self.packets.values_mut() {
       for (_ver, p) in versions {
         simplify::finish(p);
       }
@@ -247,24 +249,20 @@ impl PacketCollection {
       Some("i32"),
       |gen| {
         gen.write_match("ver.id()", |gen| {
-          for v in crate::VERSIONS {
-            gen.write_comment(&v.to_string());
-            gen.write(&v.protocol.to_string());
+          for match_ver in crate::VERSIONS {
+            gen.write_comment(&match_ver.to_string());
+            gen.write(&match_ver.protocol.to_string());
             gen.write(" => ");
             gen.write_match("id", |gen| {
               for (sug_id, versions) in packets.iter().enumerate() {
-                for (ver, p) in versions {
-                  if ver.maj > v.maj {
-                    break;
+                if let Some((ver, p)) = versions.first() {
+                  if ver.maj <= match_ver.maj {
+                    gen.write(&self.versions[match_ver].get(&p.name).unwrap_or(&0).to_string());
+                    gen.write(" => ");
+                    gen.write(&sug_id.to_string());
+                    gen.write(", // ");
+                    gen.write_line(&p.name);
                   }
-                  // NOTE: We use `v` here instead of `ver`, as `v` is the specific version we are
-                  // matching against.
-                  gen.write(&self.versions[v].get(&p.name).unwrap_or(&0).to_string());
-                  gen.write(" => ");
-                  gen.write(&sug_id.to_string());
-                  gen.write(", // ");
-                  gen.write_line(&p.name);
-                  break;
                 }
               }
               gen.write_line("_ => 0,");
@@ -369,7 +367,7 @@ fn write_to_tcp(gen: &mut CodeGen, p: &Packet, ver: Version) {
 struct InstrWriter<'a> {
   gen:         &'a mut CodeGen,
   fields:      &'a mut Vec<Field>,
-  vars:        &'a Vec<VarKind>,
+  vars:        &'a [VarKind],
   is_closure:  bool,
   needs_deref: bool,
 }
@@ -384,7 +382,7 @@ impl<'a> InstrWriter<'a> {
       needs_deref: false,
     }
   }
-  fn new_inner(gen: &'a mut CodeGen, fields: &'a mut Vec<Field>, vars: &'a Vec<VarKind>) -> Self {
+  fn new_inner(gen: &'a mut CodeGen, fields: &'a mut Vec<Field>, vars: &'a [VarKind]) -> Self {
     InstrWriter { gen, fields, vars, is_closure: false, needs_deref: false }
   }
   pub fn write_instr(&mut self, instr: &Instr) {
@@ -401,9 +399,9 @@ impl<'a> InstrWriter<'a> {
           self.gen.write_line("f_chunks_data.push(p.read_buf(len));");
         } else {
           self.gen.write("f_");
-          self.gen.write(&f_name);
+          self.gen.write(f_name);
           self.gen.write(" = ");
-          if let Some(field) = self.get_field(&f_name) {
+          if let Some(field) = self.get_field(f_name) {
             let ty = field.ty.to_rust();
             if let Some(ref reader) = field.reader_type {
               if *reader != ty {
@@ -411,8 +409,7 @@ impl<'a> InstrWriter<'a> {
               }
             }
           }
-          if self.get_field(&f_name).map(|f| f.option).unwrap_or(false)
-            && val.initial != Value::Null
+          if self.get_field(f_name).map(|f| f.option).unwrap_or(false) && val.initial != Value::Null
           {
             self.gen.write("Some(");
             self.write_expr(&val);
@@ -541,7 +538,7 @@ impl<'a> InstrWriter<'a> {
     let mut g = CodeGen::new();
     g.set_indent(self.gen.indent());
     {
-      let mut inner = InstrWriter::new_inner(&mut g, &mut self.fields, &self.vars);
+      let mut inner = InstrWriter::new_inner(&mut g, self.fields, self.vars);
       inner.is_closure = self.is_closure;
       inner.needs_deref = self.needs_deref;
       inner.write_val(&e.initial);
@@ -553,7 +550,7 @@ impl<'a> InstrWriter<'a> {
       let mut g = CodeGen::new();
       g.set_indent(self.gen.indent());
       {
-        let mut i = InstrWriter::new_inner(&mut g, &mut self.fields, &self.vars);
+        let mut i = InstrWriter::new_inner(&mut g, self.fields, self.vars);
         i.is_closure = self.is_closure;
         i.needs_deref = self.needs_deref;
         if needs_paren {
@@ -587,7 +584,7 @@ impl<'a> InstrWriter<'a> {
         }
         Lit::String(v) => {
           self.gen.write("\"");
-          self.gen.write(&v);
+          self.gen.write(v);
           self.gen.write("\"");
         }
       },
@@ -614,7 +611,7 @@ impl<'a> InstrWriter<'a> {
         if name == "<init>" {
           self.gen.write("new");
         } else {
-          self.gen.write(&name);
+          self.gen.write(name);
         }
         self.gen.write("(");
         for (i, a) in args.iter().enumerate() {
@@ -631,7 +628,7 @@ impl<'a> InstrWriter<'a> {
         if name == "<init>" {
           self.gen.write("new");
         } else {
-          self.gen.write(&name);
+          self.gen.write(name);
         }
       }
       Value::Closure(_args, block) => {
@@ -645,7 +642,7 @@ impl<'a> InstrWriter<'a> {
         self.gen.write_line("|buf| {");
         self.gen.add_indent();
         {
-          let mut inner = InstrWriter::new_inner(&mut self.gen, &mut self.fields, &block.vars);
+          let mut inner = InstrWriter::new_inner(self.gen, self.fields, &block.vars);
           inner.is_closure = true;
           for i in &block.block {
             inner.write_instr(i);
@@ -674,81 +671,81 @@ impl<'a> InstrWriter<'a> {
   fn write_op(&mut self, val: &str, op: &Op) {
     match op {
       Op::BitAnd(rhs) => {
-        self.gen.write(&val);
+        self.gen.write(val);
         self.gen.write(" & ");
         self.write_expr(rhs);
       }
       Op::BitOr(rhs) => {
-        self.gen.write(&val);
+        self.gen.write(val);
         self.gen.write(" | ");
         self.write_expr(rhs);
       }
       Op::Shr(rhs) => {
-        self.gen.write(&val);
+        self.gen.write(val);
         self.gen.write(" >> ");
         self.write_expr(rhs);
       }
       Op::UShr(rhs) => {
-        self.gen.write(&val);
+        self.gen.write(val);
         self.gen.write(" >> ");
         self.write_expr(rhs);
       }
       Op::Shl(rhs) => {
-        self.gen.write(&val);
+        self.gen.write(val);
         self.gen.write(" << ");
         self.write_expr(rhs);
       }
 
       Op::Add(rhs) => {
-        self.gen.write(&val);
+        self.gen.write(val);
         self.gen.write(" + ");
         self.write_expr(rhs);
       }
       Op::Sub(rhs) => {
-        self.gen.write(&val);
+        self.gen.write(val);
         self.gen.write(" - ");
         self.write_expr(rhs);
       }
       Op::Div(rhs) => {
-        self.gen.write(&val);
+        self.gen.write(val);
         self.gen.write(" / ");
         self.write_expr(rhs);
       }
       Op::Mul(rhs) => {
-        self.gen.write(&val);
+        self.gen.write(val);
         self.gen.write(" * ");
         self.write_expr(rhs);
       }
 
       Op::Deref => {
         self.gen.write("*");
-        self.gen.write(&val);
+        self.gen.write(val);
       }
       Op::Not => {
         self.gen.write("!");
-        self.gen.write(&val);
+        self.gen.write(val);
       }
       Op::Len => {
-        self.gen.write(&val);
+        self.gen.write(val);
         self.gen.write(".len()");
       }
       Op::Idx(rhs) => {
-        self.gen.write(&val);
+        self.gen.write(val);
         self.gen.write("[");
         self.write_expr(rhs);
         self.gen.write(".try_into().unwrap()]");
       }
       Op::Field(name) => {
-        self.gen.write(&val);
+        self.gen.write(val);
         self.gen.write(".");
-        self.gen.write(&name);
+        self.gen.write(name);
       }
 
       Op::If(cond, new) => {
         self.gen.write("if ");
         self.write_cond(cond);
         self.gen.write(" { ");
-        self.gen.write(&val);
+        self.gen.write(val);
         self.gen.write(" } else { ");
         if new.initial == Value::Null {
           self.gen.write("Some(");
@@ -761,11 +758,11 @@ impl<'a> InstrWriter<'a> {
       }
 
       Op::WrapCall(class, name, args) => {
-        self.gen.write(&class);
+        self.gen.write(class);
         self.gen.write("::");
-        self.gen.write(&name);
+        self.gen.write(name);
         self.gen.write("(");
-        self.gen.write(&val);
+        self.gen.write(val);
         if !args.is_empty() {
           self.gen.write(", ");
         }
@@ -778,8 +775,8 @@ impl<'a> InstrWriter<'a> {
         self.gen.write(")");
       }
       Op::Call(_class, name, args) => {
-        self.gen.write(&val);
-        if !(name == "get" && args.len() == 0) {
+        self.gen.write(val);
+        if !(name == "get" && args.is_empty()) {
           self.gen.write(".");
           if name == "read_str" && args.is_empty() {
             self.gen.write("read_str(32767)");
@@ -841,7 +838,7 @@ impl<'a> InstrWriter<'a> {
             }
             self.gen.write(")");
           } else {
-            self.gen.write(&name);
+            self.gen.write(name);
             self.gen.write("(");
             for (idx, a) in args.iter().enumerate() {
               self.write_expr(a);
@@ -855,7 +852,7 @@ impl<'a> InstrWriter<'a> {
       }
 
       Op::Cast(ty) => {
-        self.gen.write(&val);
+        self.gen.write(val);
         self.gen.write(match ty {
           Type::Byte => " as i8",
           Type::Short => " as i16",
@@ -867,14 +864,14 @@ impl<'a> InstrWriter<'a> {
         });
       }
       Op::As(ty) => {
-        self.gen.write(&val);
+        self.gen.write(val);
         self.gen.write(" as ");
         self.gen.write(&ty.name);
       }
       Op::Neq(v) => {
-        self.gen.write(&val);
+        self.gen.write(val);
         self.gen.write(" != ");
-        self.write_expr(&v);
+        self.write_expr(v);
       }
     }
   }

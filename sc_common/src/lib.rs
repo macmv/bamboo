@@ -59,7 +59,7 @@ pub fn make_pattern() -> PatternEncoder {
 /// Initializes logger. Might do more things in the future.
 pub fn init(name: &str) {
   let pat = make_pattern();
-  let stdout = ConsoleAppender::builder().encoder(Box::new(pat.clone())).build();
+  let stdout = ConsoleAppender::builder().encoder(Box::new(pat)).build();
 
   init_with_stdout(name, Appender::builder().build("stdout", Box::new(stdout)))
 }

@@ -296,7 +296,7 @@ pub enum Op {
   /// If the conditional is true, replace the current value with the given
   /// value. Otherwise, do not change the current value, or execute the given
   /// expr.
-  If(Cond, Expr),
+  If(Box<Cond>, Expr),
 
   /// Calls the given function (`1`) on the value. The class this function is on
   /// is element `0`.

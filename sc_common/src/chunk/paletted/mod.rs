@@ -186,11 +186,10 @@ impl ChunkSection for Section {
       } else {
         // With anything else, we need to make sure air stays in the palette.
         *self = Section {
-          data: BitArray::from_data(4, vec![0x1111111111111111; 4096 * 4 / 64]),
-          palette: vec![0, ty],
+          data:            BitArray::from_data(4, vec![0x1111111111111111; 4096 * 4 / 64]),
+          palette:         vec![0, ty],
           reverse_palette: vec![(0, 0), (ty, 1)].iter().cloned().collect(),
-          block_amounts: vec![0, 4096],
-          ..Default::default()
+          block_amounts:   vec![0, 4096],
         };
       }
     } else {

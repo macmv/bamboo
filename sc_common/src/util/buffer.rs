@@ -398,7 +398,7 @@ impl Buffer {
   pub fn write_option<T>(&mut self, val: &Option<T>, write: impl FnOnce(&mut Buffer, &T)) {
     self.write_bool(val.is_some());
     match val {
-      Some(v) => write(self, &v),
+      Some(v) => write(self, v),
       None => {}
     }
   }

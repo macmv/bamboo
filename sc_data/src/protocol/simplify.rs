@@ -257,15 +257,15 @@ fn simplify_val(val: &mut Value) {
     Value::CallStatic(class, name, args) => {
       simplify_name(name);
       *class = convert::class(class).to_string();
-      let (new_class, new_name) = convert::static_call(&class, &name);
+      let (new_class, new_name) = convert::static_call(class, name);
       *class = new_class.into();
       *name = new_name.into();
-      args.iter_mut().for_each(|a| simplify_expr(a))
+      args.iter_mut().for_each(simplify_expr);
     }
     Value::MethodRef(class, name) => {
       simplify_name(name);
       *class = convert::class(class).to_string();
-      *val = convert::static_ref(&class, &name);
+      *val = convert::static_ref(class, name);
     }
     Value::Closure(args, block) => {
       for a in args.iter_mut() {
@@ -274,7 +274,7 @@ fn simplify_val(val: &mut Value) {
       simplify_instr(&mut block.block);
     }
     Value::New(_, args) => {
-      args.iter_mut().for_each(|a| simplify_expr(a));
+      args.iter_mut().for_each(simplify_expr);
     }
     Value::Cond(cond) => simplify_cond(cond),
     Value::Null | Value::Lit(_) | Value::Var(_) => {}
@@ -326,7 +326,7 @@ fn simplify_op(op: &mut Op) -> bool {
       if let Some(a) = new_args {
         *args = a;
       } else {
-        args.iter_mut().for_each(|a| simplify_expr(a))
+        args.iter_mut().for_each(simplify_expr)
       }
     }
     Op::Cast(_) => {}
@@ -361,31 +361,25 @@ fn check_option(instr: &[Instr], field: &str) -> (bool, bool) {
         let mut assigned_false = false;
         let mut needs_option = false;
         for i in when_true {
-          match i {
-            Instr::Set(f, val) => {
-              if field == f {
-                if val.initial == Value::Null {
-                  needs_option = true;
-                }
-                assigned_true = true;
-                break;
+          if let Instr::Set(f, val) = i {
+            if field == f {
+              if val.initial == Value::Null {
+                needs_option = true;
               }
+              assigned_true = true;
+              break;
             }
-            _ => {}
           }
         }
         for i in when_false {
-          match i {
-            Instr::Set(f, val) => {
-              if field == f {
-                if val.initial == Value::Null {
-                  needs_option = true;
-                }
-                assigned_false = true;
-                break;
+          if let Instr::Set(f, val) = i {
+            if field == f {
+              if val.initial == Value::Null {
+                needs_option = true;
               }
+              assigned_false = true;
+              break;
             }
-            _ => {}
           }
         }
         match (assigned_true, assigned_false) {

@@ -81,13 +81,13 @@ impl<'a> ReaderTypes<'a> {
       match i {
         Instr::Set(field, expr) => {
           let ty = self.expr_type(expr);
-          self.get_field_mut(field).map(|f| {
+          if let Some(f) = self.get_field_mut(field) {
             let rs_ty = f.ty.to_rust();
             if rs_ty.name == "U" {
               f.ty = Type::Rust(ty.clone());
             }
             f.reader_type = Some(ty);
-          });
+          }
         }
         Instr::SetArr(_arr, _idx, _val) => {}
         Instr::Let(_v, _val) => {}
@@ -132,7 +132,9 @@ impl<'a> ReaderTypes<'a> {
         }
       },
       Value::Static(_class, _name) => RType::new("U"),
-      Value::Field(name) => self.get_field(name).map(|v| v.ty.to_rust()).unwrap_or(RType::new("U")),
+      Value::Field(name) => {
+        self.get_field(name).map(|v| v.ty.to_rust()).unwrap_or_else(|| RType::new("U"))
+      }
       Value::New(_class, _args) => RType::new("U"),
       Value::Array(_) => RType::new("Vec"),
       Value::MethodRef(class, name) => match class.as_str() {
@@ -174,7 +176,7 @@ impl<'a> ReaderTypes<'a> {
     }
   }
   fn var_type(&self, var: usize) -> RType {
-    self.var_types.get(var).map(|v| v.clone()).unwrap_or_else(|| RType::new("tcp::Packet"))
+    self.var_types.get(var).cloned().unwrap_or_else(|| RType::new("tcp::Packet"))
   }
 
   fn op_type(&mut self, initial: RType, op: &Op) -> RType {
@@ -273,7 +275,7 @@ impl<'a> ReaderTypes<'a> {
     for i in read {
       match i {
         Instr::Set(field, expr) => {
-          if self.changes_buf(&expr) {
+          if self.changes_buf(expr) {
             self.check_var_to_write(writer);
             if let Some(instr) = self.set_expr(expr, &Expr::new(Value::Field(field.into()))) {
               writer.push(instr);
@@ -308,30 +310,23 @@ impl<'a> ReaderTypes<'a> {
             })
             .collect();
           assert!(
-            fields_changed.len() > 0,
+            !fields_changed.is_empty(),
             "cannot have a conditional where no fields are modified"
           );
 
-          match cond {
-            Cond::Neq(lhs, rhs) => {
-              assert_eq!(rhs, &Expr::new(Value::Lit(Lit::Int(0))));
-              let v = self.value_of(lhs);
-              writer.push(
-                self
-                  .set_expr(
-                    &v,
-                    &Expr::new(Value::Field(fields_changed[0].clone()))
-                      .op(Op::Call("Option".into(), "is_some".into(), vec![]))
-                      .op(Op::As(RType::new("u8"))),
-                  )
-                  .unwrap(),
-              );
-            }
-            // _ => todo!("cond {:?}", cond),
-            _ => {
-              // writer.push(Instr::If(cond.clone(), when_true.clone(),
-              // when_false.clone()));
-            }
+          if let Cond::Neq(lhs, rhs) = cond {
+            assert_eq!(rhs, &Expr::new(Value::Lit(Lit::Int(0))));
+            let v = self.value_of(lhs);
+            writer.push(
+              self
+                .set_expr(
+                  &v,
+                  &Expr::new(Value::Field(fields_changed[0].clone()))
+                    .op(Op::Call("Option".into(), "is_some".into(), vec![]))
+                    .op(Op::As(RType::new("u8"))),
+                )
+                .unwrap(),
+            );
           }
 
           // writer.push(Instr::If(cond.clone(), when_t, when_f));
@@ -343,10 +338,10 @@ impl<'a> ReaderTypes<'a> {
   }
 
   fn changes_buf(&self, expr: &Expr) -> bool {
-    match expr.ops.first() {
-      Some(Op::Call(class, name, _args)) if class == "tcp::Packet" && name != "remaining" => true,
-      _ => false,
-    }
+    matches!(
+      expr.ops.first(),
+      Some(Op::Call(class, name, _args)) if class == "tcp::Packet" && name != "remaining"
+    )
   }
 
   fn set_expr(&mut self, expr: &Expr, field: &Expr) -> Option<Instr> {
@@ -483,8 +478,7 @@ impl<'a> ReaderTypes<'a> {
     if field_ty.is_copy()
       && expr
         .ops
-        .iter()
-        .nth(1)
+        .get(1)
         // For Option::is_some()
         .map(|v| matches!(v, Op::Call(class, _, _) if class != "Option"))
         .unwrap_or(true)
@@ -498,7 +492,7 @@ impl<'a> ReaderTypes<'a> {
   fn reverse_set(&self, expr: &Expr) -> Option<String> {
     match expr.ops.first() {
       Some(Op::Call(class, name, _args)) if class == "tcp::Packet" => {
-        Some(convert::reader_to_writer(&name).into())
+        Some(convert::reader_to_writer(name).into())
       }
       _ => None,
     }
@@ -506,23 +500,17 @@ impl<'a> ReaderTypes<'a> {
 
   fn simplify_conditionals(&mut self, instr: &mut [Instr]) {
     for i in instr {
-      match i {
-        Instr::Set(name, expr) => {
-          if let Some(field) = self.get_field_mut(&name) {
-            if field.reader_type == Some(RType::new("i32")) {
-              match expr.ops.last() {
-                Some(Op::If(cond, _)) => {
-                  // expr.ops.pop();
-                  field.reader_type = Some(RType::new("bool"));
-                  *expr = Expr::new(Value::Cond(Box::new(cond.clone())));
-                  // expr = Expr::Cond(cond);
-                }
-                _ => {}
-              }
+      if let Instr::Set(name, expr) = i {
+        if let Some(field) = self.get_field_mut(name) {
+          if field.reader_type == Some(RType::new("i32")) {
+            if let Some(Op::If(cond, _)) = expr.ops.last() {
+              // expr.ops.pop();
+              field.reader_type = Some(RType::new("bool"));
+              *expr = Expr::new(Value::Cond(cond.clone()));
+              // expr = Expr::Cond(cond);
             }
           }
         }
-        _ => {}
       }
     }
   }

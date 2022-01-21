@@ -24,6 +24,10 @@ pub struct LightSection {
   data: Vec<u8>,
 }
 
+impl<P: LightPropagator> Default for LightChunk<P> {
+  fn default() -> Self { LightChunk::new() }
+}
+
 impl<P: LightPropagator> LightChunk<P> {
   pub fn new() -> Self { LightChunk { sections: vec![], marker: PhantomData::default() } }
 
@@ -111,10 +115,7 @@ impl LightPropagator for BlockLight {
         }
         for dir in directions {
           let new_pos = source + dir;
-          if new_pos.y() < 0 || new_pos.y() > 255 {
-            continue;
-          } else if new_pos.chunk() != ChunkPos::new(0, 0) {
-            // needs_side = true;
+          if new_pos.y() < 0 || new_pos.y() > 255 || new_pos.chunk() != ChunkPos::new(0, 0) {
             continue;
           }
           if chunk.get_block(new_pos).unwrap() == 0 && light.get_light(new_pos) < level - 1 {
@@ -157,10 +158,7 @@ impl LightPropagator for SkyLight {
         }
         for dir in directions {
           let new_pos = source + dir;
-          if new_pos.y() < 0 || new_pos.y() > 255 {
-            continue;
-          } else if new_pos.chunk() != ChunkPos::new(0, 0) {
-            // needs_side = true;
+          if new_pos.y() < 0 || new_pos.y() > 255 || new_pos.chunk() != ChunkPos::new(0, 0) {
             continue;
           }
           if chunk.get_block(new_pos).unwrap() == 0 {

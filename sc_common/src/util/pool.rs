@@ -46,10 +46,9 @@ impl<S: Send + 'static> ThreadPool<S> {
       threads.push(tx);
 
       let s = new_state();
-      thread::spawn(move || loop {
-        match rx.recv() {
-          Ok(f) => f(&s),
-          Err(_) => break,
+      thread::spawn(move || {
+        while let Ok(f) = rx.recv() {
+          f(&s)
         }
       });
     }
