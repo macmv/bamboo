@@ -38,18 +38,8 @@ impl Point {
   /// what the normal division operator would give).
   pub fn pos_div(&self, rem: i32) -> Point {
     // This should work, but causes things to break horribly
-    let x;
-    let y;
-    if self.x < 0 {
-      x = (self.x + 1) / rem - 1
-    } else {
-      x = self.x / rem
-    }
-    if self.y < 0 {
-      y = (self.y + 1) / rem - 1
-    } else {
-      y = self.y / rem
-    }
+    let x = if self.x < 0 { (self.x + 1) / rem - 1 } else { self.x / rem };
+    let y = if self.y < 0 { (self.y + 1) / rem - 1 } else { self.y / rem };
     // Point::new(self.x / rem, self.y / rem)
     Point::new(x, y)
   }
@@ -59,7 +49,7 @@ impl Point {
   pub fn avg(&self, other: Point) -> Vector {
     Vector::new((self.x + other.x) as f64 / 2.0, (self.y + other.y) as f64 / 2.0)
   }
-  pub fn to_vec(&self) -> Vector { Vector::new(self.x as f64, self.y as f64) }
+  pub fn as_vec(&self) -> Vector { Vector::new(self.x as f64, self.y as f64) }
 }
 
 impl From<Pos> for Point {

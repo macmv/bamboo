@@ -16,7 +16,7 @@ pub fn handle(
     "say" => {
       let saying = args.join(" ");
       writeln!(l, "saying {}", saying)?;
-      stream.write(sb::Packet::ChatV8 { message: saying.into() });
+      stream.write(sb::Packet::ChatV8 { message: saying });
     }
     "move" => {
       if args.len() != 3 {
@@ -35,7 +35,7 @@ pub fn handle(
         Ok(v) => v,
         Err(_) => return Ok(()),
       };
-      writeln!(l, "moving to {} {} {}", x, y, z);
+      writeln!(l, "moving to {} {} {}", x, y, z)?;
       stream.write(sb::Packet::PlayerPositionV8 {
         x,
         y,

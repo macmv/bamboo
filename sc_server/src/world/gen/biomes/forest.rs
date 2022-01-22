@@ -23,12 +23,7 @@ impl Gen {
     for offset in Pos::new(-2, 0, -2).to(Pos::new(2, 0, 2)) {
       // We only want to place things if this column is in the right chunk
       let p = tree_pos + offset;
-      let leaf_start;
-      if world.chance(tree_pos, 0.50) {
-        leaf_start = 3
-      } else {
-        leaf_start = 2
-      }
+      let leaf_start = if world.chance(tree_pos, 0.50) { 3 } else { 2 };
       if p.chunk() == chunk_pos {
         let mut rel = p.chunk_rel();
         if p == tree_pos {

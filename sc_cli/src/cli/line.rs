@@ -21,7 +21,7 @@ impl SingleLineReader<'_> {
   }
 
   pub fn read(mut self) -> io::Result<String> {
-    self.buf.write(self.prompt.as_bytes())?;
+    self.buf.write_all(self.prompt.as_bytes())?;
     self.buf.flush()?;
     let start_index = self.buf.buf().len();
 
@@ -30,7 +30,7 @@ impl SingleLineReader<'_> {
     let mut escape = String::new();
     loop {
       let mut char_buf = [0; 4];
-      reader.read(&mut char_buf)?;
+      let _ = reader.read(&mut char_buf)?;
       let c = match char::from_u32(u32::from_le_bytes(char_buf)) {
         Some(c) => c,
         None => continue,
@@ -43,7 +43,7 @@ impl SingleLineReader<'_> {
       }
       match c {
         '\r' => {
-          self.buf.write(b"\n")?;
+          self.buf.write_all(b"\n")?;
           self.buf.flush()?;
           break;
         }
@@ -78,7 +78,7 @@ impl SingleLineReader<'_> {
       } else {
         if self.col == self.max_col() {
           self.out.push(c);
-          self.buf.write(&[c as u8])?;
+          self.buf.write_all(&[c as u8])?;
         } else {
           let min_col = self.min_col();
           self.out.insert((self.col - min_col) as usize, c);
@@ -89,9 +89,7 @@ impl SingleLineReader<'_> {
         self.buf.flush()?;
 
         if self.col != self.max_col() {
-          io::stdout().write(
-            format!("\x1b[{}D", (self.out.len() as u16 - (self.col - self.min_col()))).as_bytes(),
-          )?;
+          write!(io::stdout(), "\x1b[{}D", self.out.len() as u16 - (self.col - self.min_col()))?;
           io::stdout().flush()?;
         }
       }
@@ -117,7 +115,7 @@ impl SingleLineReader<'_> {
           self.col = self.max_col();
         } else {
           self.col += 1;
-          io::stdout().write(b"\x1b[1C")?;
+          write!(io::stdout(), "\x1b[1C")?;
         }
       }
       b'D' => {
@@ -126,7 +124,7 @@ impl SingleLineReader<'_> {
           self.col = self.min_col();
         } else {
           self.col -= 1;
-          io::stdout().write(b"\x1b[1D")?;
+          write!(io::stdout(), "\x1b[1D")?;
         }
       }
       _ => {}

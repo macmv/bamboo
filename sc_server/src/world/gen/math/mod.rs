@@ -7,7 +7,6 @@ pub use point_grid::PointGrid;
 pub use voronoi::Voronoi;
 
 use noise::{BasicMulti, MultiFractal, NoiseFn, Seedable};
-use sc_common::math::RngCore;
 
 /// This is a voronoi map, but all the input coordinates are shifted by two
 /// noise maps.

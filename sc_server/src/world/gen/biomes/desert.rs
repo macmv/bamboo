@@ -13,12 +13,7 @@ pub struct Gen {
 
 impl Gen {
   pub fn place_cactus(&self, world: &WorldGen, c: &mut MultiChunk, pos: Pos) {
-    let height;
-    if world.chance(pos, 0.50) {
-      height = 3
-    } else {
-      height = 2
-    }
+    let height = if world.chance(pos, 0.50) { 3 } else { 2 };
     let rel = pos.chunk_rel();
     c.fill_kind(rel, rel.add_y(height), block::Kind::Cactus).unwrap();
   }

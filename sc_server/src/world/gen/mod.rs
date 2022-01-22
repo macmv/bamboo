@@ -178,6 +178,10 @@ pub trait BiomeGen {
   fn height_at(&self, world: &WorldGen, pos: Pos) -> i32 { 64 }
 }
 
+impl Default for WorldGen {
+  fn default() -> Self { Self::new() }
+}
+
 pub struct WorldGen {
   seed:        u64,
   biome_map:   WarpedVoronoi,
@@ -207,7 +211,7 @@ impl WorldGen {
     let mut gen = WorldGen::new();
     if !config.get::<str, bool>("world.void") {
       for biome in config.get::<str, Vec<&str>>("world.biomes") {
-        if let Err(()) = gen.add_named_biome(biome) {
+        if gen.add_named_biome(biome).is_err() {
           warn!("unknown biome '{}', skipping", biome);
         }
       }

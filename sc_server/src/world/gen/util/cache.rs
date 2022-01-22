@@ -59,9 +59,9 @@ where
   /// If the key is present within the map, then the value is returned.
   /// Otherwise, the internal builder is used to create a new value for this
   /// key. Either way, a reference into the map is returned.
-  pub fn get<'a>(&mut self, key: K) -> &V {
+  pub fn get(&mut self, key: K) -> &V {
     if let Some((_, index)) = self.data.get_mut(&key) {
-      let idx = index.clone();
+      let idx = *index;
       // We just looked up the item at key, so it should be at the back of age.
       *index = self.age.len() - 1;
       self.age.remove(idx);

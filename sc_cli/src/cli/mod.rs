@@ -38,7 +38,7 @@ impl io::Write for ScrollBuf {
     let stdout = io::stdout();
     let mut writer = stdout.lock();
     if self.restore {
-      writer.write(b"\x1b[s")?; // save pos
+      write!(writer, "\x1b[s")?; // save pos
     }
     let mut line = 0;
     let mut idx = 0;
@@ -53,20 +53,20 @@ impl io::Write for ScrollBuf {
     }
     self.buf.drain(0..idx);
     let mut line = 0;
-    writer.write(format!("\x1b[{};1H\x1b[K", self.min).as_bytes())?; // go to start, erase line
+    write!(writer, "\x1b[{};1H\x1b[K", self.min)?; // go to start, erase line
     for (i, &c) in self.buf.iter().enumerate() {
       if c == b'\n' {
         if self.buf.get(i + 1).is_some() {
           line += 1;
-          writer.write(format!("\x1b[{};1H\x1b[K", line + self.min).as_bytes())?;
+          write!(writer, "\x1b[{};1H\x1b[K", line + self.min)?;
           // go to start, erase line
         }
       } else {
-        writer.write(&[c])?;
+        writer.write_all(&[c])?;
       }
     }
     if self.restore {
-      writer.write(b"\x1b[u")?; // restore pos
+      write!(writer, "\x1b[u")?; // restore pos
     }
     writer.flush()?;
     Ok(())
@@ -78,7 +78,7 @@ impl ScrollBuf {
     self.buf.pop_back();
     let stdout = io::stdout();
     let mut writer = stdout.lock();
-    writer.write(b"\x1b[1D \x1b[1D")?; // left 1 char, print space, left 1 char
+    write!(writer, "\x1b[1D \x1b[1D")?; // left 1 char, print space, left 1 char
     writer.flush()?;
 
     Ok(())
@@ -128,7 +128,7 @@ pub fn setup() -> Result<(), io::Error> {
   terminal::enable_raw_mode()?;
   execute!(io::stdout(), terminal::EnterAlternateScreen)?;
 
-  w.write(b"\x1b[2J")?; // clear
+  write!(w, "\x1b[2J")?; // clear
   Ok(())
 }
 
@@ -143,7 +143,7 @@ impl LineReader {
   }
 
   pub fn read_line(&mut self) -> Result<String, io::Error> {
-    line::SingleLineReader::new(&mut self.buf, &self.prompt).read()
+    line::SingleLineReader::new(&mut self.buf, self.prompt).read()
   }
 }
 

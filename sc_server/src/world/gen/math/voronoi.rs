@@ -21,7 +21,7 @@ impl Voronoi {
   pub fn dist_to_border(&self, p: Point) -> f64 {
     let mut min_dist = 1000.0;
     for b in self.borders(p) {
-      let dist = p.to_vec().dist(b);
+      let dist = p.as_vec().dist(b);
       if dist < min_dist {
         min_dist = dist;
       }
@@ -81,7 +81,7 @@ impl Voronoi {
         let i = s.perp().val();
         let s = s.val();
 
-        let p = p.to_vec();
+        let p = p.as_vec();
         let b = center.avg(neighbor);
 
         let x = (s * p.x - p.y - i * b.x + b.y) / (s - i);

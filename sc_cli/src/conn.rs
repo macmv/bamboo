@@ -44,9 +44,7 @@ impl ConnStream {
   pub fn read(&mut self) -> io::Result<Option<cb::Packet>> {
     if let Some(mut p) = self.stream.read(self.ver)? {
       match self.state {
-        State::Play => {
-          return Ok(Some(cb::Packet::from_tcp(&mut p, self.ver)));
-        }
+        State::Play => Ok(Some(cb::Packet::from_tcp(&mut p, self.ver))),
         _ => {
           self.handle_handshake(p)?;
           Ok(None)

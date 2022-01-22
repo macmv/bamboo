@@ -32,7 +32,7 @@ fn main() {
 fn run(rows: u16) -> Result<(), Box<dyn Error>> {
   let mut args = env::args();
   args.next(); // current process
-  let ip = args.next().unwrap_or("127.0.0.1:25565".into());
+  let ip = args.next().unwrap_or_else(|| "127.0.0.1:25565".into());
 
   // let ver = ProtocolVersion::V1_8;
 
@@ -60,29 +60,24 @@ fn run(rows: u16) -> Result<(), Box<dyn Error>> {
   // let mut next_token = 0;
 
   let c = conn.clone();
-  let w = waker.clone();
+  let w = waker;
   thread::spawn(move || {
     let mut lr = cli::LineReader::new("> ", rows - 15, 15);
-    loop {
-      match lr.read_line() {
-        Ok(line) => {
-          if line.is_empty() {
-            continue;
-          }
-          let mut sections = line.split(' ');
-          let command = sections.next().unwrap();
-          let args: Vec<_> = sections.collect();
-          let mut conn = c.lock();
-          match command::handle(command, &args, &mut conn, &mut lr) {
-            Ok(_) => {}
-            Err(e) => {
-              error!("error handling command: {}", e);
-            }
-          }
-          w.wake().unwrap();
-        }
-        Err(_) => break,
+    while let Ok(line) = lr.read_line() {
+      if line.is_empty() {
+        continue;
       }
+      let mut sections = line.split(' ');
+      let command = sections.next().unwrap();
+      let args: Vec<_> = sections.collect();
+      let mut conn = c.lock();
+      match command::handle(command, &args, &mut conn, &mut lr) {
+        Ok(_) => {}
+        Err(e) => {
+          error!("error handling command: {}", e);
+        }
+      }
+      w.wake().unwrap();
     }
   });
 

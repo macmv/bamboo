@@ -93,6 +93,7 @@ impl World {
     self.entities.write().insert(eid, Arc::new(entity));
   }
 
+  #[allow(clippy::if_same_then_else)]
   fn send_entity_spawn(&self, player: &Player, ent: &Entity) {
     let _p = ent.pos();
     let id = ent.ty().id();
@@ -110,6 +111,7 @@ impl World {
       //   z_v1_9:    Some(p.aabb.pos.z()),
       //   count:     ent.exp_count() as i16,
       // });
+      todo!();
     } else if ent.ty() == entity::Type::Painting {
       // player.send(cb::Packet::SpawnEntityPainting {
       //   entity_id:        ent.eid(),
@@ -119,6 +121,7 @@ impl World {
       //   location:         p.aabb.pos.block(),
       //   direction:        (p.yaw / 360.0 * 8.0 + 4.0) as u8,
       // });
+      todo!();
     } else if ent.ty().is_living() {
       // player.send(cb::Packet::SpawnEntityLiving {
       //   entity_id:              ent.eid(),
@@ -139,6 +142,7 @@ impl World {
       //   velocity_z:             p.vel.fixed_z(),
       //   metadata_removed_v1_15: Some(vec![0x7f]),
       // });
+      todo!();
     } else {
       // Data is some data specific to that entity. If it is non-zero, then velocity
       // is present.
@@ -162,6 +166,7 @@ impl World {
       //   velocity_y_v1_9:  Some(p.vel.fixed_y()),
       //   velocity_z_v1_9:  Some(p.vel.fixed_z()),
       // });
+      todo!();
     }
   }
 }

@@ -32,7 +32,7 @@ pub fn chunk(
     }
     let longs = s.data().long_array();
     chunk_data.write_varint(longs.len() as i32);
-    chunk_data.write_buf(&longs.iter().map(|v| v.to_be_bytes()).flatten().collect::<Vec<u8>>());
+    longs.iter().for_each(|v| chunk_data.write_buf(&v.to_be_bytes()));
     // Light data
     for _ in 0..16 * 16 * 16 / 2 {
       // Each lighting value is 1/2 byte

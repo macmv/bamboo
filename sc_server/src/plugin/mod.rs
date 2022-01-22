@@ -76,6 +76,7 @@ impl fmt::Debug for Sugarcane {
 impl PluginManager {
   /// Creates a new plugin manager. This will initialize the Ruby interpreter,
   /// and load all plugins from disk. Do not call this multiple times.
+  #[allow(clippy::new_without_default)]
   pub fn new() -> Self { PluginManager { plugins: Mutex::new(vec![]) } }
 
   /// Returns true if plugins should print error messages with colors.

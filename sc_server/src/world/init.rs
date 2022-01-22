@@ -8,10 +8,7 @@ use rayon::prelude::*;
 use sc_common::{
   math::ChunkPos,
   net::cb,
-  util::{
-    nbt::{Tag, NBT},
-    Buffer, Chat, GameMode,
-  },
+  util::{Buffer, Chat, GameMode},
   version::ProtocolVersion,
 };
 

@@ -25,6 +25,10 @@ pub struct KeysIter<'a> {
   keys: Keys<'a, UUID, Arc<Player>>,
 }
 
+impl Default for PlayersMap {
+  fn default() -> Self { PlayersMap::new() }
+}
+
 impl PlayersMap {
   pub fn new() -> Self { PlayersMap { inner: HashMap::new() } }
   pub fn iter(&self) -> PlayersIter<'_> {
@@ -81,5 +85,5 @@ impl<'a> Iterator for PlayersIter<'a> {
 impl<'a> Iterator for KeysIter<'a> {
   type Item = UUID;
 
-  fn next(&mut self) -> Option<Self::Item> { self.keys.next().map(|v| *v) }
+  fn next(&mut self) -> Option<Self::Item> { self.keys.next().copied() }
 }

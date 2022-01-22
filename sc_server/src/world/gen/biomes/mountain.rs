@@ -13,7 +13,8 @@ impl BiomeGen for Gen {
   fn new(id: usize) -> Gen { Gen { id } }
   fn id(&self) -> usize { self.id }
   fn layers(&self) -> BiomeLayers {
-    let layers = BiomeLayers::new(block::Kind::Bedrock);
+    let mut layers = BiomeLayers::new(block::Kind::Stone);
+    layers.add(block::Kind::SnowBlock, 3);
     layers
   }
   fn height_at(&self, world: &WorldGen, pos: Pos) -> i32 {
