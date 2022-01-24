@@ -32,7 +32,7 @@ use crate::{
   block, command::CommandTree, entity, entity::Entity, item, net::ConnSender, player::Player,
   plugin,
 };
-use chunk::MultiChunk;
+pub use chunk::MultiChunk;
 use gen::WorldGen;
 
 pub use players::{PlayersIter, PlayersMap};
@@ -53,8 +53,8 @@ pub use players::{PlayersIter, PlayersMap};
 /// 0, then this chunk is essentially flagged for unloading. Chunks are unloaded
 /// lazily, so this chunk will just end up being cleaned up in the future.
 pub struct CountedChunk {
-  count: AtomicU32,
-  chunk: Mutex<MultiChunk>,
+  count:     AtomicU32,
+  pub chunk: Mutex<MultiChunk>,
 }
 
 impl CountedChunk {
@@ -114,8 +114,10 @@ impl World {
     let mut chunks = HashMap::new();
     let gen = if wm.config().get("world.use-schematic") {
       let path: &str = wm.config().get("world.schematic-path");
-      schematic::load_from_file(&mut chunks, path)
-        .unwrap_or_else(|err| error!("could not load schematic file {}: {}", path, err));
+      schematic::load_from_file(&mut chunks, path, || {
+        CountedChunk::new(MultiChunk::new(block_converter.clone(), true))
+      })
+      .unwrap_or_else(|err| error!("could not load schematic file {}: {}", path, err));
       WorldGen::new()
     } else {
       WorldGen::from_config(wm.config())
