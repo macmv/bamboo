@@ -114,7 +114,7 @@ impl World {
     let mut chunks = HashMap::new();
     let gen = if wm.config().get("world.use-schematic") {
       let path: &str = wm.config().get("world.schematic-path");
-      schematic::load_from_file(&mut chunks, path, || {
+      schematic::load_from_file(&mut chunks, path, &block_converter, || {
         CountedChunk::new(MultiChunk::new(block_converter.clone(), true))
       })
       .unwrap_or_else(|err| error!("could not load schematic file {}: {}", path, err));
