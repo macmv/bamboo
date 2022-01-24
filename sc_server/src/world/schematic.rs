@@ -45,7 +45,7 @@ pub fn load_from_file(
       for y in 0..height {
         for z in 0..length {
           for x in 0..width {
-            let i = ((y * height + z) * width) + x;
+            let i = ((y * length + z) * width) + x;
             let bid = blocks[i] as i16;
             let pos = Pos::new(x as i32, y as i32, z as i32);
             let name = &names[&bid];
