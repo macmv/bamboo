@@ -1,6 +1,8 @@
 mod deserialize;
 mod serialize;
 
+pub use deserialize::ParseError;
+
 use std::collections::HashMap;
 
 /// This is an nbt tag. It has a name, and any amount of data. This can be used

@@ -4,6 +4,7 @@ mod entities;
 pub mod gen;
 mod init;
 mod players;
+pub mod schematic;
 
 use parking_lot::{Mutex, MutexGuard, RwLock, RwLockReadGuard};
 use sc_common::{
@@ -51,7 +52,7 @@ pub use players::{PlayersIter, PlayersMap};
 /// A chunk in the world with a number of people viewing it. If the count is at
 /// 0, then this chunk is essentially flagged for unloading. Chunks are unloaded
 /// lazily, so this chunk will just end up being cleaned up in the future.
-struct CountedChunk {
+pub struct CountedChunk {
   count: AtomicU32,
   chunk: Mutex<MultiChunk>,
 }
@@ -110,10 +111,19 @@ impl World {
     commands: Arc<CommandTree>,
     wm: Arc<WorldManager>,
   ) -> Arc<Self> {
+    let mut chunks = HashMap::new();
+    let gen = if wm.config().get("world.use-schematic") {
+      let path: &str = wm.config().get("world.schematic-path");
+      schematic::load_from_file(&mut chunks, path)
+        .unwrap_or_else(|err| error!("could not load schematic file {}: {}", path, err));
+      WorldGen::new()
+    } else {
+      WorldGen::from_config(wm.config())
+    };
     let world = Arc::new(World {
-      chunks: RwLock::new(HashMap::new()),
+      chunks: RwLock::new(chunks),
       unloadable_chunks: Mutex::new(HashSet::new()),
-      gen: WorldGen::from_config(wm.config()),
+      gen,
       players: RwLock::new(PlayersMap::new()),
       entities: RwLock::new(HashMap::new()),
       eid: 1.into(),

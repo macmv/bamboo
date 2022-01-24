@@ -208,15 +208,17 @@ impl WorldGen {
     }
   }
   pub fn from_config(config: &Config) -> Self {
-    let mut gen = WorldGen::new();
-    if !config.get::<str, bool>("world.void") {
+    if config.get("world.void") {
+      WorldGen::new()
+    } else {
+      let mut gen = WorldGen::new();
       for biome in config.get::<str, Vec<&str>>("world.biomes") {
         if gen.add_named_biome(biome).is_err() {
           warn!("unknown biome '{}', skipping", biome);
         }
       }
+      gen
     }
-    gen
   }
   pub fn add_biome<B: BiomeGen + Send + Sync + 'static>(&mut self) {
     let id = self.biomes.len();
