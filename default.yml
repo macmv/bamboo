@@ -1,4 +1,5 @@
 world:
+  use-schematic: false
   void: false
   biomes:
     - desert

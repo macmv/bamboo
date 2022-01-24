@@ -1,0 +1,3 @@
+world:
+  use-schematic: true
+  schematic-path: "schematics/grassirt.schematic"
