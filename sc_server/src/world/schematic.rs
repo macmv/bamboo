@@ -14,7 +14,7 @@ pub fn load_from_file(
   let mut buf = vec![0; metadata.len() as usize];
   f.read(&mut buf).expect("file was too large");
 
-  let tag = NBT::deserialize(buf);
+  let tag = NBT::deserialize_file(buf);
   dbg!(&tag);
   Ok(())
 }

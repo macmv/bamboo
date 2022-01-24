@@ -1,5 +1,6 @@
 use crate::util::Buffer;
-use std::{collections::HashMap, error::Error, fmt, string::FromUtf8Error};
+use flate2::read::GzDecoder;
+use std::{collections::HashMap, error::Error, fmt, io, io::Read, string::FromUtf8Error};
 
 use super::{Tag, NBT};
 
@@ -7,6 +8,7 @@ use super::{Tag, NBT};
 pub enum ParseError {
   InvalidType(u8),
   InvalidString(FromUtf8Error),
+  IO(io::Error),
 }
 
 impl fmt::Display for ParseError {
@@ -14,13 +16,29 @@ impl fmt::Display for ParseError {
     match self {
       Self::InvalidType(ty) => write!(f, "invalid tag type: {}", ty),
       Self::InvalidString(e) => write!(f, "invalid string: {}", e),
+      Self::IO(e) => write!(f, "io error: {}", e),
     }
   }
+}
+
+impl From<io::Error> for ParseError {
+  fn from(e: io::Error) -> ParseError { ParseError::IO(e) }
 }
 
 impl Error for ParseError {}
 
 impl NBT {
+  pub fn deserialize_file(buf: Vec<u8>) -> Result<Self, ParseError> {
+    // This means its gzipped
+    if buf.len() >= 2 && buf[0] == 0x1f && buf[1] == 0x8b {
+      let mut d: GzDecoder<&[u8]> = GzDecoder::new(buf.as_ref());
+      let mut buf = vec![];
+      d.read_to_end(&mut buf)?;
+      Self::deserialize(buf)
+    } else {
+      Self::deserialize(buf)
+    }
+  }
   /// Deserializes the given byte array as nbt data.
   pub fn deserialize(buf: Vec<u8>) -> Result<Self, ParseError> {
     Self::deserialize_buf(&mut Buffer::new(buf))
