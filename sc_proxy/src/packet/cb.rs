@@ -396,29 +396,33 @@ impl ToTcp for Packet {
       }
       Packet::PluginMessage { channel, data } => {
         // No length prefix for data, it is infered from packet length.
-        GPacket::CustomPayloadV17 {
-          max_payload_size:           None,
-          brand:                      None,
-          debug_path:                 None,
-          debug_neighbors_update:     None,
-          debug_structures:           None,
-          debug_worldgen_attempt:     None,
-          debug_poi_ticket_count:     None,
-          debug_poi_added:            None,
-          debug_poi_removed:          None,
-          debug_village_sections:     None,
-          debug_goal_selector:        None,
-          debug_brain:                None,
-          debug_bee:                  None,
-          debug_hive:                 None,
-          debug_game_test_add_marker: None,
-          debug_game_test_clear:      None,
-          debug_raids:                None,
-          debug_game_event:           None,
-          debug_game_event_listeners: None,
-          channel:                    channel,
-          data:                       None,
-          unknown:                    data,
+        if ver < ProtocolVersion::V1_17_1 {
+          GPacket::CustomPayloadV8 { channel, data: None, unknown: data }
+        } else {
+          GPacket::CustomPayloadV17 {
+            max_payload_size:           None,
+            brand:                      None,
+            debug_path:                 None,
+            debug_neighbors_update:     None,
+            debug_structures:           None,
+            debug_worldgen_attempt:     None,
+            debug_poi_ticket_count:     None,
+            debug_poi_added:            None,
+            debug_poi_removed:          None,
+            debug_village_sections:     None,
+            debug_goal_selector:        None,
+            debug_brain:                None,
+            debug_bee:                  None,
+            debug_hive:                 None,
+            debug_game_test_add_marker: None,
+            debug_game_test_clear:      None,
+            debug_raids:                None,
+            debug_game_event:           None,
+            debug_game_event_listeners: None,
+            channel:                    channel,
+            data:                       None,
+            unknown:                    data,
+          }
         }
       }
       Packet::SetPosLook { x, y, z, yaw, pitch, flags, teleport_id, should_dismount } => {
