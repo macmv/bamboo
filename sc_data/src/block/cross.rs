@@ -71,7 +71,9 @@ fn find_ids(ver: Version, old_def: &BlockDef, new_def: &BlockDef) -> (Vec<u32>, 
   }
 
   let old_map: HashMap<_, _> = old_def.blocks.iter().map(|b| (b.name.clone(), b.clone())).collect();
+  /*
   let new_map: HashMap<_, _> = new_def.blocks.iter().map(|b| (b.name.clone(), b.clone())).collect();
+  */
 
   let mut to_old = Vec::with_capacity(new_def.blocks.len());
   for b in &new_def.blocks {
@@ -99,15 +101,20 @@ fn find_ids(ver: Version, old_def: &BlockDef, new_def: &BlockDef) -> (Vec<u32>, 
     }
   }
 
-  let mut to_new = Vec::with_capacity(old_def.blocks.len());
-  for b in &old_def.blocks {
-    let new_block = new_map.get(&b.name).unwrap_or(&new_map["air"]);
-    for (sid, _) in b.all_states().iter().enumerate() {
-      let sid = sid as u32;
-      to_new.push(new_block.id + sid);
+  let mut to_new = Vec::with_capacity(to_old.len());
+  for (new_id, old_id) in to_old.iter().enumerate() {
+    let old_id = *old_id as usize;
+    while to_new.len() <= old_id {
+      to_new.push(None);
+    }
+    // If the block id has already been set, we don't want to override it. This
+    // means that when converting to a new id, we will always default to the lowest
+    // id.
+    if to_new[old_id].is_none() {
+      to_new[old_id] = Some(new_id as u32);
     }
   }
-  (to_old, to_new)
+  (to_old, to_new.into_iter().map(|v| v.unwrap_or(0)).collect())
 }
 
 fn update_old_blocks(def: &mut BlockDef) {
@@ -178,6 +185,6 @@ fn old_state(b: &Block, sid: u32, state: &State, old_map: &HashMap<String, Block
 
     "dead_bush" => old_map["tallgrass"].id + 0,
     "fern" => old_map["tallgrass"].id + 2,
-    _ => old_map.get(&b.name).unwrap_or(&old_map["air"]).id + sid,
+    _ => old_map.get(&b.name).unwrap_or(&old_map["air"]).id,
   }
 }
