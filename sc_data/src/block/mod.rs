@@ -21,6 +21,7 @@ pub fn generate(out_dir: &Path) -> io::Result<()> {
 #[cfg(test)]
 #[test]
 fn test_all() {
+  println!("generating versions...");
   let versions = crate::VERSIONS
     .iter()
     .map(|&ver| {
@@ -28,6 +29,7 @@ fn test_all() {
       (ver, def)
     })
     .collect();
+  println!("testing...");
   gen::test(versions);
 }
 

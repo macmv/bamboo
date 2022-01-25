@@ -6,13 +6,19 @@ use std::collections::HashMap;
 pub fn cross_test(old: &(Version, BlockDef), new: &(Version, BlockDef)) {
   let (old_ver, old_def) = old;
   let (_new_ver, new_def) = new;
-  let (to_old, _to_new) = find_ids(*old_ver, old_def, new_def);
+  let (to_old, to_new) = find_ids(*old_ver, old_def, new_def);
 
   match old_ver.maj {
     8 | 9 | 10 | 11 | 12 => {
       assert_eq!(to_old[0], 0); // Air
+      assert_eq!(to_new[0], 0); // Air
       assert_eq!(to_old[1], 1 << 4); // Stone
+      assert_eq!(to_new[1 << 4], 1); // Stone
       assert_eq!(to_old[33], 7 << 4); // Bedrock
+      assert_eq!(to_new[7 << 4], 33); // Bedrock
+
+      assert_eq!(to_old[3966], 77 << 4); // Stone button
+      assert_eq!(to_new[77 << 4], 3966); // Stone button
     }
     14 | 15 | 16 | 17 | 18 => {
       assert_eq!(to_old[0], 0); // Air
