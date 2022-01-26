@@ -276,6 +276,13 @@ impl State {
       _ => panic!("not a bool: {:?}", p),
     }
   }
+  pub fn int_prop(&self, name: &str) -> i32 {
+    let p = self.prop(name);
+    match &p.kind {
+      StatePropKind::Int(v) => *v,
+      _ => panic!("not an int: {:?}", p),
+    }
+  }
 }
 
 #[cfg(test)]

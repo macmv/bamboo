@@ -78,9 +78,8 @@ fn find_ids(ver: Version, old_def: &BlockDef, new_def: &BlockDef) -> (Vec<u32>, 
   let mut to_old = Vec::with_capacity(new_def.blocks.len());
   for b in &new_def.blocks {
     if ver.maj <= 12 {
-      for (sid, state) in b.all_states().iter().enumerate() {
-        let sid = sid as u32;
-        let old_state = old_state(&b, sid, state, &old_map);
+      for state in b.all_states().iter() {
+        let old_state = old_state(&b, state, &old_map);
         to_old.push(old_state);
       }
     } else {
@@ -131,8 +130,49 @@ fn update_old_blocks(def: &mut BlockDef) {
   }
 }
 
-fn old_state(b: &Block, sid: u32, state: &State, old_map: &HashMap<String, Block>) -> u32 {
+fn old_state(b: &Block, state: &State, old_map: &HashMap<String, Block>) -> u32 {
   match b.name.as_str() {
+    "granite" => old_map["stone"].id + 1,
+    "polished_granite" => old_map["stone"].id + 2,
+    "diorite" => old_map["stone"].id + 3,
+    "polished_diorite" => old_map["stone"].id + 4,
+    "andesite" => old_map["stone"].id + 5,
+    "polished_andesite" => old_map["stone"].id + 6,
+
+    "coarse_dirt" => old_map["dirt"].id + 1,
+    "podzol" => old_map["dirt"].id + 2,
+
+    "oak_planks" => old_map["planks"].id + 0,
+    "spruce_planks" => old_map["planks"].id + 1,
+    "birch_planks" => old_map["planks"].id + 2,
+    "jungle_planks" => old_map["planks"].id + 3,
+    "acacia_planks" => old_map["planks"].id + 4,
+    "dark_oak_planks" => old_map["planks"].id + 5,
+
+    "oak_sapling" => old_map["sapling"].id + 0,
+    "spruce_sapling" => old_map["sapling"].id + 1,
+    "birch_sapling" => old_map["sapling"].id + 2,
+    "jungle_sapling" => old_map["sapling"].id + 3,
+    "acacia_sapling" => old_map["sapling"].id + 4,
+    "dark_oak_sapling" => old_map["sapling"].id + 5,
+
+    "water" => match state.int_prop("level") {
+      0 => old_map["water"].id,
+      // Only levels 1 through 7 are valid. 8 through 15 produce a full water section, which
+      // dissapears after a liquid update. This happens in every version from 1.8-1.18. It is
+      // unclear why this property spans from 0 to 15, but it does.
+      level @ 1..=15 => old_map["flowing_water"].id + level as u32 - 1,
+      _ => unreachable!(),
+    },
+    "lava" => match state.int_prop("level") {
+      0 => old_map["lava"].id,
+      // Same thing with flowing as water
+      level @ 1..=15 => old_map["flowing_lava"].id + level as u32 - 1,
+      _ => unreachable!(),
+    },
+
+    "red_sand" => old_map["sand"].id + 1,
+
     "oak_log" => match state.enum_prop("axis") {
       "X" => old_map["log"].id + 0 + 4,
       "Y" => old_map["log"].id + 0 + 0,
@@ -157,10 +197,10 @@ fn old_state(b: &Block, sid: u32, state: &State, old_map: &HashMap<String, Block
       "Z" => old_map["log"].id + 3 + 8,
       _ => unreachable!(),
     },
-    "oak_wood" => old_map["log"].id + 4 + 0,
-    "spruce_wood" => old_map["log"].id + 4 + 1,
-    "birch_wood" => old_map["log"].id + 4 + 2,
-    "jungle_wood" => old_map["log"].id + 4 + 3,
+    "oak_wood" => old_map["log"].id + 12 + 0,
+    "spruce_wood" => old_map["log"].id + 12 + 1,
+    "birch_wood" => old_map["log"].id + 12 + 2,
+    "jungle_wood" => old_map["log"].id + 12 + 3,
 
     "oak_leaves" => match state.bool_prop("persistent") {
       true => old_map["leaves"].id + 0 + 0,
@@ -178,6 +218,8 @@ fn old_state(b: &Block, sid: u32, state: &State, old_map: &HashMap<String, Block
       true => old_map["leaves"].id + 3 + 0,
       false => old_map["leaves"].id + 3 + 8,
     },
+
+    "wet_sponge" => old_map["sponge"].id + 1,
 
     // MINECRAFT GO BRRRRRR
     "grass_block" => old_map["grass"].id,
