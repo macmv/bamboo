@@ -112,8 +112,8 @@ impl World {
     wm: Arc<WorldManager>,
   ) -> Arc<Self> {
     let mut chunks = HashMap::new();
-    let gen = if wm.config().get("world.use-schematic") {
-      let path: &str = wm.config().get("world.schematic-path");
+    let gen = if wm.config().get("world.schematic.enabled") {
+      let path: &str = wm.config().get("world.schematic.path");
       schematic::load_from_file(&mut chunks, path, &block_converter, || {
         CountedChunk::new(MultiChunk::new(block_converter.clone(), true))
       })

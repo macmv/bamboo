@@ -1,3 +1,5 @@
 world:
-  use-schematic: true
-  schematic-path: "schematics/uss-forrestal-cv59-e230.schematic"
+  debug: true
+  schematic:
+    enabled: false
+    path: "schematics/uss-forrestal-cv59-e230.schematic"
