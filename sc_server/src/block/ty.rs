@@ -212,6 +212,17 @@ impl Data {
     }
     Type { kind: self.kind, state: self.state, props: self.props, state_props }
   }
+
+  /// Returns the type
+  pub fn type_from_id(&self, mut id: u32) -> Type {
+    let mut state_props = [0; STATE_PROPS_LEN];
+    for (i, p) in self.props.iter().enumerate().rev() {
+      let len = p.len();
+      state_props[i] = id % len;
+      id /= len;
+    }
+    Type { kind: self.kind, state: self.state, props: self.props, state_props }
+  }
 }
 
 impl Prop {
@@ -220,6 +231,21 @@ impl Prop {
       PropKind::Bool => 2,
       PropKind::Enum(v) => v.len() as u32,
       PropKind::Int { min, max } => max - min + 1,
+    }
+  }
+
+  pub fn from_id(&self, id: u32) -> PropValue {
+    if id >= self.len() {
+      panic!("id is {}, but len is {}", id, self.len());
+    }
+    match self.kind {
+      PropKind::Bool => match id {
+        0 => PropValue::Bool(true),
+        1 => PropValue::Bool(false),
+        _ => unreachable!(),
+      },
+      PropKind::Enum(v) => PropValue::Enum(v[id as usize]),
+      PropKind::Int { min, .. } => PropValue::Int(id - min),
     }
   }
 }

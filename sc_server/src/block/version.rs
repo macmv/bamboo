@@ -93,8 +93,7 @@ impl TypeConverter {
 
     let kind = self.kind_from_id(id, BlockVersion::latest());
     let data = self.get(kind);
-    // TODO: Resolve the given id into property fields
-    data.default_type()
+    data.type_from_id(id - data.state)
   }
 
   /// Gets a block kind from the given id.
