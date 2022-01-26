@@ -226,6 +226,17 @@ impl WorldGen {
   }
 
   pub fn generate(&self, pos: ChunkPos, c: &mut MultiChunk) {
+    let x = pos.block_x();
+    if x >= 0 && x < 1000 {
+      for x in pos.block_x()..pos.block_x() + 16 {
+        for state in 0..16 {
+          let ty = c
+            .type_converter()
+            .type_from_id((x as u32) << 4 | state as u32, sc_common::version::BlockVersion::V1_8);
+          c.set_type(Pos::new(x % 16, 0, state), ty).unwrap();
+        }
+      }
+    }
     // Fast path for void worlds
     if self.biomes.is_empty() {
       return;
