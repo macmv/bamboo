@@ -104,7 +104,7 @@ pub fn load_from_file(
                 .or_insert_with(new_func)
                 .chunk
                 .lock()
-                .set_kind(pos.chunk_rel(), types.kind_from_id(bid, BlockVersion::V1_8))
+                .set_kind(pos.chunk_rel(), types.kind_from_id(bid, BlockVersion::V1_12))
                 .unwrap();
             }
           }
