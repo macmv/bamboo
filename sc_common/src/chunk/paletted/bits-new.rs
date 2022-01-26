@@ -1,31 +1,7 @@
-//! This is kept here as a reference for 1.13-1.15 clients. This is the old
-//! chunk data format, which looks like this:
-//!
-//! ```
-//! BPE: 5
-//! data:
-//! 234 01234 01234 .....
-//! ___ _____ ..... 34501
-//! ```
-//!
-//! The point is this type of section allows numbers to wrap between the longs.
-//! This is quite simply better than the new format, where the extra bits at the
-//! high end of each long are simply left to be zero. I don't know why mojang
-//! decided to switch away from this. It may be faster for random lookups, but I
-//! have not tested this. I will give mojang the benefit of the doubt on this,
-//! and assume they had their reasons.
-//!
-//! Regardless, a new format is used, which is implemented in `bits.rs`. This
-//! format is generated in the proxy, when creating chunk packets, so this file
-//! is never needed. It is only a reference for anyone looking for an
-//! implementation of the old chunk format.
-//!
-//! NEVERMIND. I have just spent half an hour reading the Minecraft source code,
-//! in order to figure out how to index into the new format. They simply
-//! hardocoded 64 multiply, offset, and shift values which (through some integer
-//! overflow bullshit) magically work. They just hardcoded the numbers for every
-//! possible BPE. This makes the whole thing far more annoying to recreate, and
-//! it uses up more memory. Mojang is smoking some ~other~ shit.
+//! Note that this is the new chunk data format, used in 1.16+. See
+//! `bits-old.rs` for the previous implementation, which works on 1.9-1.15
+//! clients. This new implementation is converted into that old implementation
+//! on the proxy.
 
 use sc_transfer::{MessageRead, MessageReader, MessageWrite, MessageWriter, ReadError, WriteError};
 use std::fmt;
@@ -84,7 +60,9 @@ impl BitArray {
   /// problems.
   pub fn new(bpe: u8) -> Self {
     assert!(bpe < 32, "bpe of {} is too large (must be less than 32)", bpe);
-    BitArray { bpe, data: vec![0; 4096 * bpe as usize / 64] }
+    let epl = 64 / bpe as usize;
+    let len = (4096 + epl - 1) / epl;
+    BitArray { bpe, data: vec![0; len] }
   }
 
   /// Creates a new bit array from the given data.
@@ -92,17 +70,15 @@ impl BitArray {
   /// # Panics
   /// - If `bpe` is larger than 31.
   /// - If the data length is not the expected length given the `bpe`. The
-  ///   expected length is `4096 * bpe / 64`.
+  ///   expected length is `(4096 + (64 / bpe) - 1) / (64 / bpe)`.
   ///
   /// These are both checked all the time, as this function is typically used to
   /// convert data from protobufs, which can have any data in them.
   pub fn from_data(bpe: u8, data: Vec<u64>) -> Self {
     assert!(bpe < 32, "bpe of {} is too large (must be less than 32)", bpe);
-    assert_eq!(
-      data.len(),
-      4096 * bpe as usize / 64,
-      "while creating a bit array from existing data, got incorrect len"
-    );
+    let epl = 64 / bpe as usize;
+    let len = (4096 + epl - 1) / epl;
+    assert_eq!(data.len(), len, "while creating a bit array from existing data, got incorrect len");
     BitArray { bpe, data }
   }
 
