@@ -1,31 +1,7 @@
-//! This is kept here as a reference for 1.13-1.15 clients. This is the old
-//! chunk data format, which looks like this:
-//!
-//! ```
-//! BPE: 5
-//! data:
-//! 234 01234 01234 .....
-//! ___ _____ ..... 34501
-//! ```
-//!
-//! The point is this type of section allows numbers to wrap between the longs.
-//! This is quite simply better than the new format, where the extra bits at the
-//! high end of each long are simply left to be zero. I don't know why mojang
-//! decided to switch away from this. It may be faster for random lookups, but I
-//! have not tested this. I will give mojang the benefit of the doubt on this,
-//! and assume they had their reasons.
-//!
-//! Regardless, a new format is used, which is implemented in `bits.rs`. This
-//! format is generated in the proxy, when creating chunk packets, so this file
-//! is never needed. It is only a reference for anyone looking for an
-//! implementation of the old chunk format.
-//!
-//! NEVERMIND. I have just spent half an hour reading the Minecraft source code,
-//! in order to figure out how to index into the new format. They simply
-//! hardocoded 64 multiply, offset, and shift values which (through some integer
-//! overflow bullshit) magically work. They just hardcoded the numbers for every
-//! possible BPE. This makes the whole thing far more annoying to recreate, and
-//! it uses up more memory. Mojang is smoking some ~other~ shit.
+//! Note that this is the new chunk data format, used in 1.16+. See
+//! `bits-old.rs` for the previous implementation, which works on 1.9-1.15
+//! clients. This new implementation is converted into that old implementation
+//! on the proxy.
 
 use sc_transfer::{MessageRead, MessageReader, MessageWrite, MessageWriter, ReadError, WriteError};
 use std::fmt;
@@ -84,7 +60,9 @@ impl BitArray {
   /// problems.
   pub fn new(bpe: u8) -> Self {
     assert!(bpe < 32, "bpe of {} is too large (must be less than 32)", bpe);
-    BitArray { bpe, data: vec![0; 4096 * bpe as usize / 64] }
+    let epl = 64 / bpe as usize;
+    let len = (4096 + epl - 1) / epl;
+    BitArray { bpe, data: vec![0; len] }
   }
 
   /// Creates a new bit array from the given data.
@@ -92,17 +70,15 @@ impl BitArray {
   /// # Panics
   /// - If `bpe` is larger than 31.
   /// - If the data length is not the expected length given the `bpe`. The
-  ///   expected length is `4096 * bpe / 64`.
+  ///   expected length is `(4096 + (64 / bpe) - 1) / (64 / bpe)`.
   ///
   /// These are both checked all the time, as this function is typically used to
   /// convert data from protobufs, which can have any data in them.
   pub fn from_data(bpe: u8, data: Vec<u64>) -> Self {
     assert!(bpe < 32, "bpe of {} is too large (must be less than 32)", bpe);
-    assert_eq!(
-      data.len(),
-      4096 * bpe as usize / 64,
-      "while creating a bit array from existing data, got incorrect len"
-    );
+    let epl = 64 / bpe as usize;
+    let len = (4096 + epl - 1) / epl;
+    assert_eq!(data.len(), len, "while creating a bit array from existing data, got incorrect len");
     BitArray { bpe, data }
   }
 
@@ -148,58 +124,13 @@ impl BitArray {
       value,
       1 << self.bpe
     );
+    let epl = 64 / self.bpe as usize;
     let bpe: usize = self.bpe.into();
-    let lo: usize = (index * bpe) / 64;
-    let hi: usize = (index * bpe + bpe - 1) / 64;
-    // The bit offset of the smallest bit of lo into the long
-    let shift = (index * bpe) as u32 % 64;
-    let mask = (1 << bpe) - 1;
+    let idx = index / epl;
+    let shift = (index % epl) * bpe;
     let value = u64::from(value);
-    if lo == hi {
-      // The value only spans one long
-      let l = self.data.get_unchecked_mut(lo);
-      *l &= !(mask << shift);
-      *l |= value << shift;
-    } else {
-      // We have a situation where we want to set a number, and we need to split it
-      // into two.
-      //
-      // In this situation, we are working with a Vec<u8>, instead of a Vec<u64>, so
-      // I'm going to use 8 where 64 should be.
-      //
-      // shift = 6 (used to left shift L)
-      // 8 - shift = 2 (used to right shift H, and to make the lo mask)
-      // bpe - (8 - shift) = 3 (this is used to make the hi mask)
-      //
-      // Before the move:
-      //
-      // v -> 0 0 0 H H L L L
-      //
-      // L = v << shift;       L L L 0 0 0 0 0
-      // H = v >> (8 - shift); 0 0 0 0 0 0 H H
-      //
-      // value ->       H H H | L L
-      // long  -> 2 2 2 2 2 2 | 1 1 1 1 1 1
-      //
-      // So we need to shift L to the left by `shift`, and shift H to the right by
-      // `64 - shift`.
-
-      // This mask will match L L 0 0 0
-      let lo_mask = 1_u64.wrapping_shl(64 - shift) - 1 << shift;
-      // This mask will match 0 0 H H H
-      let hi_mask = 1_u64.wrapping_shl(bpe as u32 - (64 - shift)) - 1;
-
-      {
-        let l = self.data.get_unchecked_mut(lo);
-        *l &= !lo_mask;
-        *l |= value.wrapping_shl(shift);
-      }
-      {
-        let h = self.data.get_unchecked_mut(hi);
-        *h &= !hi_mask;
-        *h |= value.wrapping_shr(64 - shift);
-      }
-    }
+    let l = self.data.get_unchecked_mut(idx);
+    *l |= value << shift;
   }
   /// Reads an element from the array. The returned value will always be within
   /// `0..1 << self.bpe`
@@ -219,50 +150,12 @@ impl BitArray {
   pub unsafe fn get(&self, index: usize) -> u32 {
     #[cfg(debug_assertions)]
     assert!(index < 4096, "index {} is too large (must be less than {})", index, 4096);
+    let epl = 64 / self.bpe as usize;
     let bpe: usize = self.bpe.into();
-    let lo: usize = (index * bpe) / 64;
-    let hi: usize = (index * bpe + bpe - 1) / 64;
-    // The bit offset of the smallest bit of lo into the long
-    let shift = (index * bpe) as u32 % 64;
-    let mask = (1 << bpe) - 1;
-    let res = if lo == hi {
-      // The value only spans one long
-      self.data.get_unchecked(lo).wrapping_shr(shift) & mask
-    } else {
-      // We have a situation where we want to get a number, but it is split between
-      // two longs.
-      //
-      // In this situation, we are working with a Vec<u8>, instead of a Vec<u64>, so
-      // I'm going to use 8 where 64 should be.
-      //
-      // shift = 6 (used to right shift L)
-      // 8 - shift = 2 (used to left shift H, and to make the lo mask)
-      // bpe - 8 - shift = 3 (this is used to make the hi mask)
-      //
-      // L = v << shift;
-      // H = v >> (8 - shift);
-      //
-      // value ->       H H H | L L
-      // long  -> 2 2 2 2 2 2 | 1 1 1 1 1 1
-      //
-      // After the move:
-      //
-      // lo -> H H 0 0 0
-      // hi -> 0 0 L L L
-      //
-      // So we need to shift L to the right by `shift`, and shift H to the left by
-      // `64 - shift`.
-
-      // This mask will match 0 0 L L L
-      let lo_mask = 1_u64.wrapping_shl(64 - shift) - 1;
-      // This mask will match H H 0 0 0
-      let hi_mask = (1_u64.wrapping_shl(bpe as u32 - (64 - shift)) - 1) << (64 - shift);
-
-      let lo = self.data.get_unchecked(lo).wrapping_shr(shift) & lo_mask;
-      let hi = self.data.get_unchecked(hi).wrapping_shl(64 - shift) & hi_mask;
-      lo | hi
-    };
-    res as u32
+    let idx = index / epl;
+    let shift = (index % epl) * bpe;
+    let mask = (1 << self.bpe as u64) - 1;
+    ((self.data.get_unchecked(idx) >> shift) & mask) as u32
   }
   /// Utility function. This will find all values within the array that are
   /// above `sep`, and add the give `shift_amount` to them. This is commonly
