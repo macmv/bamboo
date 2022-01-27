@@ -95,7 +95,7 @@ pub fn chunk(
     idx += 1;
   }
 
-  let chunk = Chunk::from_bitmap(bit_map, sections);
+  let chunk = Chunk::from_bitmap(bit_map, sections, 15);
   let heightmap = chunk.build_heightmap_new();
   let heightmap = NBT::new("", Tag::compound(&[("MOTION_BLOCKING", Tag::LongArray(heightmap))]));
 

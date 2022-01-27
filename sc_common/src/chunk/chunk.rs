@@ -10,18 +10,19 @@ use std::cmp;
 /// If you want to create a cross-versioned chunk, use [`MultiChunk`] instead.
 pub struct Chunk<S: Section> {
   sections: Vec<Option<S>>,
+  max_bpe:  u8,
 }
 
 impl<S: Section> Chunk<S> {
-  pub fn new() -> Self { Chunk { sections: Vec::new() } }
-  pub fn from_bitmap(bitmap: u16, mut sections: Vec<S>) -> Self {
+  pub fn new(max_bpe: u8) -> Self { Chunk { sections: Vec::new(), max_bpe } }
+  pub fn from_bitmap(bitmap: u16, mut sections: Vec<S>, max_bpe: u8) -> Self {
     let mut arr: Vec<Option<S>> = (0..16).map(|_| None).collect();
     for i in (0..16).rev() {
       if bitmap & (1 << i) != 0 {
         arr[i] = Some(sections.pop().unwrap());
       }
     }
-    Chunk { sections: arr }
+    Chunk { sections: arr, max_bpe }
   }
   /// This updates the internal data to contain a block at the given position.
   /// In release mode, the position is not checked. In any other mode, a
@@ -35,7 +36,7 @@ impl<S: Section> Chunk<S> {
       self.sections.resize_with(index + 1, || None);
     }
     if self.sections[index].is_none() {
-      self.sections[index] = Some(S::new());
+      self.sections[index] = Some(S::new(self.max_bpe));
     }
     match &mut self.sections[index] {
       Some(s) => s.set_block(Pos::new(pos.x(), pos.chunk_rel_y(), pos.z()), ty),
@@ -62,7 +63,7 @@ impl<S: Section> Chunk<S> {
     }
     for index in min_index..=max_index {
       if self.sections[index].is_none() {
-        self.sections[index] = Some(S::new());
+        self.sections[index] = Some(S::new(self.max_bpe));
       }
       match &mut self.sections[index] {
         Some(s) => {

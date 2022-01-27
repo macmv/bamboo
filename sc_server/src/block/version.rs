@@ -104,6 +104,8 @@ impl TypeConverter {
 
     self.block_states[id as usize]
   }
+
+  pub fn max_bpe(&self) -> u8 { (self.block_states.len() as f32).log2().ceil() as u8 }
 }
 
 #[cfg(test)]

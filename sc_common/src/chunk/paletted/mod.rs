@@ -19,14 +19,8 @@ pub struct Section {
   block_amounts:   Vec<u32>,
   // This maps global ids to palette ids.
   reverse_palette: HashMap<u32, u32, WyHashBuilder>,
-}
-
-impl Default for Section {
-  fn default() -> Self {
-    let mut reverse_palette = HashMap::with_hasher(WyHashBuilder);
-    reverse_palette.insert(0, 0);
-    Section { data: BitArray::new(4), palette: vec![0], block_amounts: vec![4096], reverse_palette }
-  }
+  // When switching to direct palette, this is the bpe that will be used.
+  max_bpe:         u8,
 }
 
 impl MessageWrite for Section {
@@ -34,6 +28,7 @@ impl MessageWrite for Section {
     m.write(&self.data)?;
     m.write(&self.palette)?;
     m.write(&self.block_amounts)?;
+    m.write(&self.max_bpe)?;
     m.write_u32(self.reverse_palette.len() as u32)?;
     for (k, v) in &self.reverse_palette {
       m.write_u32(*k)?;
@@ -47,12 +42,13 @@ impl MessageRead for Section {
     let data = m.read()?;
     let palette = m.read()?;
     let block_amounts = m.read()?;
+    let max_bpe = m.read()?;
     let len = m.read_u32()?;
     let mut reverse_palette = HashMap::with_capacity_and_hasher(len as usize, WyHashBuilder);
     for _ in 0..len {
       reverse_palette.insert(m.read_u32()?, m.read_u32()?);
     }
-    Ok(Section { data, palette, block_amounts, reverse_palette })
+    Ok(Section { data, palette, block_amounts, reverse_palette, max_bpe })
   }
 }
 
@@ -131,7 +127,17 @@ impl Section {
 }
 
 impl ChunkSection for Section {
-  fn new() -> Self { Self::default() }
+  fn new(max_bpe: u8) -> Self {
+    let mut reverse_palette = HashMap::with_hasher(WyHashBuilder);
+    reverse_palette.insert(0, 0);
+    Section {
+      data: BitArray::new(4),
+      palette: vec![0],
+      block_amounts: vec![4096],
+      reverse_palette,
+      max_bpe,
+    }
+  }
   fn set_block(&mut self, pos: Pos, ty: u32) -> Result<(), PosError> {
     if pos.x() >= 16 || pos.x() < 0 || pos.y() >= 16 || pos.y() < 0 || pos.z() >= 16 || pos.z() < 0
     {
@@ -182,7 +188,7 @@ impl ChunkSection for Section {
       // Simple case. We get to just replace the whole section.
       if ty == 0 {
         // With air, this is even easier.
-        *self = Section::default();
+        *self = Section::new(self.max_bpe);
       } else {
         // With anything else, we need to make sure air stays in the palette.
         *self = Section {
@@ -190,6 +196,7 @@ impl ChunkSection for Section {
           palette:         vec![0, ty],
           reverse_palette: vec![(0, 0), (ty, 1)].iter().cloned().collect(),
           block_amounts:   vec![0, 4096],
+          max_bpe:         self.max_bpe,
         };
       }
     } else {
@@ -256,6 +263,7 @@ impl ChunkSection for Section {
       palette:         self.palette.clone(),
       block_amounts:   self.block_amounts.clone(),
       reverse_palette: self.reverse_palette.clone(),
+      max_bpe:         self.max_bpe,
     })
   }
 }

@@ -4,7 +4,7 @@ use std::any::Any;
 /// A chunk section.
 pub trait Section: Any {
   /// Creates an empty chunk section.
-  fn new() -> Self
+  fn new(max_bpe: u8) -> Self
   where
     Self: Sized;
   /// Sets a block within this chunk column. if the position is outside of the

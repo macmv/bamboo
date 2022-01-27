@@ -29,7 +29,7 @@ impl MultiChunk {
   /// contain sky light information, so the sky light data is not present.
   pub fn new(types: Arc<block::TypeConverter>, sky: bool) -> MultiChunk {
     MultiChunk {
-      inner: Chunk::new(),
+      inner: Chunk::new(15),
       sky: if sky { Some(LightChunk::new()) } else { None },
       block: LightChunk::new(),
       types,
