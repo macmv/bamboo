@@ -221,6 +221,53 @@ fn old_state(b: &Block, state: &State, old_map: &HashMap<String, Block>) -> u32 
 
     "wet_sponge" => old_map["sponge"].id + 1,
 
+    "dispenser" => match state.enum_prop("facing") {
+      "DOWN" => old_map["dispenser"].id + 0,
+      "UP" => old_map["dispenser"].id + 1,
+      "NORTH" => old_map["dispenser"].id + 2,
+      "SOUTH" => old_map["dispenser"].id + 3,
+      "WEST" => old_map["dispenser"].id + 4,
+      "EAST" => old_map["dispenser"].id + 5,
+      _ => unreachable!(),
+    },
+
+    "chiseled_sandstone" => old_map["sandstone"].id + 1,
+    "smooth_sandstone" => old_map["sandstone"].id + 2,
+
+    "white_wool" => old_map["wool"].id + 0,
+    "orange_wool" => old_map["wool"].id + 1,
+    "magenta_wool" => old_map["wool"].id + 2,
+    "light_blue_wool" => old_map["wool"].id + 3,
+    "yellow_wool" => old_map["wool"].id + 4,
+    "lime_wool" => old_map["wool"].id + 5,
+    "pink_wool" => old_map["wool"].id + 6,
+    "gray_wool" => old_map["wool"].id + 7,
+    "light_gray_wool" => old_map["wool"].id + 8,
+    "cyan_wool" => old_map["wool"].id + 9,
+    "purple_wool" => old_map["wool"].id + 10,
+    "blue_wool" => old_map["wool"].id + 11,
+    "brown_wool" => old_map["wool"].id + 12,
+    "green_wool" => old_map["wool"].id + 13,
+    "red_wool" => old_map["wool"].id + 14,
+    "black_wool" => old_map["wool"].id + 15,
+
+    "dandelion" => old_map["yellow_flower"].id,
+    "poppy" => old_map["red_flower"].id + 0,
+    "blue_orchid" => old_map["red_flower"].id + 1,
+    "allium" => old_map["red_flower"].id + 2,
+    "azure_bluet" => old_map["red_flower"].id + 3,
+    "red_tulip" => old_map["red_flower"].id + 4,
+    "orange_tulip" => old_map["red_flower"].id + 5,
+    "white_tulip" => old_map["red_flower"].id + 6,
+    "pink_tulip" => old_map["red_flower"].id + 7,
+    "oxeye_daisy" => old_map["red_flower"].id + 8,
+
+    "sandstone_slab" => old_map["stone_slab"].id + 1,
+    "oak_slab" => old_map["stone_slab"].id + 2,
+    "cobblestone_slab" => old_map["stone_slab"].id + 3,
+    "brick_slab" => old_map["stone_slab"].id + 4,
+    "stone_brick_slab" => old_map["stone_slab"].id + 5,
+
     // MINECRAFT GO BRRRRRR
     "grass_block" => old_map["grass"].id,
     "grass" => old_map["tallgrass"].id + 1,
