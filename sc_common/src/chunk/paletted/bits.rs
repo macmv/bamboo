@@ -128,8 +128,10 @@ impl BitArray {
     let bpe: usize = self.bpe.into();
     let idx = index / epl;
     let shift = (index % epl) * bpe;
+    let mask = (1 << self.bpe as u64) - 1;
     let value = u64::from(value);
     let l = self.data.get_unchecked_mut(idx);
+    *l &= !(mask << shift);
     *l |= value << shift;
   }
   /// Reads an element from the array. The returned value will always be within
@@ -257,7 +259,7 @@ mod tests {
 
   #[test]
   fn test_get() {
-    let data: Vec<u64> = vec![u64::MAX; 4096 * 5 / 64];
+    let data: Vec<u64> = vec![u64::MAX; (4096 + (64 / 5) - 1) / (64 / 5)];
     let arr = BitArray { bpe: 5, data };
 
     for i in 0..4096 {
@@ -266,7 +268,7 @@ mod tests {
       }
     }
 
-    let data: Vec<u64> = vec![u64::MAX; 4096 * 4 / 64];
+    let data: Vec<u64> = vec![u64::MAX; (4096 + (64 / 4) - 1) / (64 / 4)];
     let arr = BitArray { bpe: 4, data };
 
     for i in 0..4096 {
@@ -275,7 +277,7 @@ mod tests {
       }
     }
 
-    let data: Vec<u64> = vec![0x7777777777777777; 4096 * 4 / 64];
+    let data: Vec<u64> = vec![0x7777777777777777; (4096 + (64 / 4) - 1) / (64 / 4)];
     let arr = BitArray { bpe: 4, data };
 
     for i in 0..4096 {
@@ -327,22 +329,22 @@ mod tests {
       // Sanity check
       a.set(2, 0x1f);
       assert_eq!(a.data[0], 0x1f << 10 | 0x1f);
-      // Should split the id correctly
+      // Should not split the id
       a.set(12, 0x1f);
-      assert_eq!(a.data[0], 0x1f << 60 | 0x1f << 10 | 0x1f);
-      assert_eq!(a.data[1], 0x1f >> 4);
-      a.set(25, 0x1f);
-      assert_eq!(a.data[1], 0x1f << 61 | 0x1f >> 4);
-      assert_eq!(a.data[2], 0x1f >> 3);
+      assert_eq!(a.data[0], 0x1f << 10 | 0x1f);
+      assert_eq!(a.data[1], 0x1f);
+      a.set(24, 0x1f);
+      assert_eq!(a.data[1], 0x1f);
+      assert_eq!(a.data[2], 0x1f);
       // Clearing bits should work
       a.set(0, 0x3);
-      assert_eq!(a.data[0], 0x1f << 60 | 0x1f << 10 | 0x03);
+      assert_eq!(a.data[0], 0x1f << 10 | 0x03);
     }
   }
   #[test]
   fn test_get_palette() {
     unsafe {
-      let mut data = vec![0; 16 * 16 * 16 * 4 / 64];
+      let mut data = vec![0; (4096 + (64 / 4) - 1) / (64 / 4)];
       data[0] = 0xfaf;
       let a = BitArray::from_data(4, data);
       // Sanity check
@@ -351,9 +353,10 @@ mod tests {
       assert_eq!(a.get(2), 0xf);
       assert_eq!(a.get(3), 0x0);
 
-      let mut data = vec![0; 16 * 16 * 16 * 5 / 64];
-      data[0] = 0x1f << 60 | 0x1f << 10 | 0x1f;
-      data[1] = 0x1f >> 4;
+      let mut data = vec![0; (4096 + (64 / 5) - 1) / (64 / 5)];
+      // The new format doesn't have split longs, so this ends up being very simple.
+      data[0] = 0x1f << 10 | 0x1f;
+      data[1] = 0x1f;
       let a = BitArray::from_data(5, data);
       // Make sure it works with split values
       assert_eq!(a.get(0), 0x1f);
