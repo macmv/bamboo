@@ -78,11 +78,17 @@ impl Section {
     }
     if self.palette.len() + 1 >= 1 << self.data.bpe() as usize {
       if self.data.bpe() >= 8 {
-        assert!(self.max_bpe - 7 < 32, "max_bpe is too large: {}", self.max_bpe);
+        info!(
+          "palette has {} entries, increasing from {} to {} bpe",
+          self.palette.len(),
+          self.data.bpe(),
+          self.max_bpe
+        );
+        assert!(self.max_bpe - 8 < 32, "max_bpe is too large: {}", self.max_bpe);
         unsafe {
           // SAFETY: We just validated that the new `bpe` will be less than 32, so this is
           // safe.
-          self.data.increase_bpe(self.max_bpe - 7);
+          self.data.increase_bpe(self.max_bpe - 8);
         }
         // This removes the palette, as we are now using direct values.
         for i in 0..4096 {
