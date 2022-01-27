@@ -16,6 +16,8 @@ pub struct Section {
   // Each index into palette is a palette id. The values are global ids.
   palette:         Vec<u32>,
   // Each index is a palette id, and the sum of this array must always be 4096 (16 * 16 * 16).
+  // When we aren't in paletted mode (palette is empty) then this just contains 1 element, which
+  // is the amount of air in this section.
   block_amounts:   Vec<u32>,
   // This maps global ids to palette ids.
   reverse_palette: HashMap<u32, u32, WyHashBuilder>,
@@ -71,14 +73,36 @@ impl Section {
   /// block_amounts at the index returned. `ty` must not already be in the
   /// palette. Returns the new palette id.
   fn insert(&mut self, ty: u32) -> u32 {
+    if self.palette.is_empty() {
+      panic!("cannot insert into palette with direct block ids");
+    }
     if self.palette.len() + 1 >= 1 << self.data.bpe() as usize {
       if self.data.bpe() >= 8 {
-        unimplemented!("cannot handle direct palettes yet");
-      }
-      unsafe {
-        // SAFETY: We just made sure that `bpe` is less than 8, so this will never
-        // overflow the max `bpe`.
-        self.data.increase_bpe(1);
+        assert!(self.max_bpe - 7 < 32, "max_bpe is too large: {}", self.max_bpe);
+        unsafe {
+          // SAFETY: We just validated that the new `bpe` will be less than 32, so this is
+          // safe.
+          self.data.increase_bpe(self.max_bpe - 7);
+        }
+        // This removes the palette, as we are now using direct values.
+        for i in 0..4096 {
+          unsafe {
+            // SAFETY i is within 0..4096
+            let v = self.data.get(i);
+            let block_id = self.palette[v as usize];
+            self.data.set(i, block_id);
+          }
+        }
+        self.palette.clear();
+        self.reverse_palette.clear();
+        self.block_amounts.drain(1..);
+        return 0;
+      } else {
+        unsafe {
+          // SAFETY: We just made sure that `bpe` is less than 8, so this will never
+          // overflow the max `bpe`.
+          self.data.increase_bpe(1);
+        }
       }
     }
     let mut palette_id = self.palette.len() as u32;
@@ -156,14 +180,34 @@ impl ChunkSection for Section {
         palette_id
       }
       None => {
-        let palette_id = self.insert(ty);
-        // If insert() was called, and it inserted before prev, the block_amounts would
-        // have been shifted, and prev needs to be shifted as well.
-        if palette_id <= prev {
-          prev += 1;
+        if self.palette.is_empty() {
+          unsafe { self.set_palette(pos, ty) };
+          if ty == 0 && prev != 0 {
+            self.block_amounts[0] += 1;
+          }
+          if prev == 0 && ty != 0 {
+            self.block_amounts[0] -= 1;
+          }
+          return Ok(());
+        } else {
+          let palette_id = self.insert(ty);
+          if self.palette.is_empty() {
+            if ty == 0 && prev != 0 {
+              self.block_amounts[0] += 1;
+            }
+            if prev == 0 && ty != 0 {
+              self.block_amounts[0] -= 1;
+            }
+            return Ok(());
+          }
+          // If insert() was called, and it inserted before prev, the block_amounts would
+          // have been shifted, and prev needs to be shifted as well.
+          if palette_id <= prev {
+            prev += 1;
+          }
+          unsafe { self.set_palette(pos, palette_id) };
+          palette_id
         }
-        unsafe { self.set_palette(pos, palette_id) };
-        palette_id
       }
     };
     self.block_amounts[palette_id as usize] += 1;
@@ -203,6 +247,26 @@ impl ChunkSection for Section {
       // More difficult case. Here, we need to modify all the block amounts,
       // then remove all the items we need to from the palette. Then, we add the
       // new item to the palette, and update the block data.
+
+      // If we are using a direct palette, it is just as fast to just call setblock.
+      if self.palette.is_empty() {
+        for y in min.y()..=max.y() {
+          for z in min.z()..=max.z() {
+            for x in min.x()..=max.x() {
+              let prev = unsafe { self.get_palette(Pos::new(x, y, z)) };
+              if prev == 0 && ty != 0 {
+                self.block_amounts[0] -= 1;
+              }
+              if prev != 0 && ty == 0 {
+                self.block_amounts[0] += 1;
+              }
+              unsafe { self.set_palette(Pos::new(x, y, z), ty) };
+            }
+          }
+        }
+        return Ok(());
+      }
+
       for y in min.y()..=max.y() {
         for z in min.z()..=max.z() {
           for x in min.x()..=max.x() {
@@ -255,7 +319,7 @@ impl ChunkSection for Section {
     // SAFETY: We have validated position, so any get_palette or set_palette calls
     // are now safe.
     let id = unsafe { self.get_palette(pos) };
-    Ok(self.palette[id as usize])
+    Ok(if self.palette.is_empty() { id } else { self.palette[id as usize] })
   }
   fn duplicate(&self) -> Box<dyn ChunkSection + Send> {
     Box::new(Section {

@@ -240,13 +240,11 @@ impl WorldGen {
         2 => BlockVersion::V1_10,
         3 => BlockVersion::V1_11,
         4 => BlockVersion::V1_12,
-        /*
         6 => BlockVersion::V1_14,
         7 => BlockVersion::V1_15,
         8 => BlockVersion::V1_16,
         9 => BlockVersion::V1_17,
         10 => BlockVersion::V1_18,
-        */
         _ => return,
       };
       let x = pos.block_x();
