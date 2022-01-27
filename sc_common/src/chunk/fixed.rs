@@ -88,7 +88,7 @@ mod tests {
 
   #[test]
   fn set_block_id() {
-    let mut s = Section::new();
+    let mut s = Section::new(0);
     s.set_block(Pos::new(1, 0, 0), 5).unwrap();
     s.set_block(Pos::new(0, 0, 1), 10).unwrap();
     s.set_block(Pos::new(0, 1, 0), 20).unwrap();
@@ -103,7 +103,7 @@ mod tests {
 
   #[test]
   fn get_block() {
-    let mut s = Section::new();
+    let mut s = Section::new(0);
     s.set_block(Pos::new(1, 0, 0), 5).unwrap();
     s.set_block(Pos::new(0, 1, 0), 10).unwrap();
     s.set_block(Pos::new(0, 0, 1), 20).unwrap();

@@ -2,11 +2,9 @@ extern crate test;
 
 use super::*;
 
-const MAX_BPE: u8 = 15;
-
 #[test]
 fn test_index() {
-  let s = Section::new(MAX_BPE);
+  let s = Section::default();
   assert_eq!(s.index(Pos::new(0, 0, 0)), 0);
   assert_eq!(s.index(Pos::new(1, 0, 0)), 1);
   assert_eq!(s.index(Pos::new(2, 0, 0)), 2);
@@ -16,7 +14,7 @@ fn test_index() {
 #[test]
 fn test_increase_bits_per_block() {
   unsafe {
-    let mut s = Section::new(MAX_BPE);
+    let mut s = Section::default();
     // Place some blocks
     s.set_palette(Pos::new(0, 0, 0), 0xf);
     s.set_palette(Pos::new(1, 0, 0), 0x0);
@@ -39,7 +37,7 @@ fn test_increase_bits_per_block() {
 #[test]
 fn test_insert() {
   // Tests the append part
-  let mut s = Section::new(MAX_BPE);
+  let mut s = Section::default();
   assert_eq!(s.insert(5), 1);
   assert_eq!(s.palette, vec![0, 5]);
   assert_eq!(s.block_amounts, vec![4096, 0]);
@@ -50,7 +48,7 @@ fn test_insert() {
   assert_eq!(s.reverse_palette, vec![(0, 0), (5, 1), (10, 2)].into_iter().collect());
 
   // Tests the insert part
-  let mut s = Section::new(MAX_BPE);
+  let mut s = Section::default();
   assert_eq!(s.insert(10), 1);
   assert_eq!(s.palette, vec![0, 10]);
   assert_eq!(s.block_amounts, vec![4096, 0]);
@@ -72,7 +70,7 @@ fn test_shift_data_up() -> Result<(), PosError> {
     block_amounts: vec![4096, 0, 0],
     reverse_palette: vec![(0, 0), (5, 1), (10, 2)].into_iter().collect(),
     data: BitArray::from_data(4, data),
-    ..Section::new(MAX_BPE)
+    ..Default::default()
   };
   // Should shift the block data up.
   s.insert(3);
@@ -89,7 +87,7 @@ fn test_remove() {
     palette: vec![0, 5, 10],
     block_amounts: vec![4096, 0, 0],
     reverse_palette: vec![(0, 0), (5, 1), (10, 2)].into_iter().collect(),
-    ..Section::new(MAX_BPE)
+    ..Default::default()
   };
   s.remove(2);
   assert_eq!(s.palette, vec![0, 5]);
@@ -103,7 +101,7 @@ fn test_remove() {
     palette: vec![0, 5, 10],
     block_amounts: vec![4096, 0, 0],
     reverse_palette: vec![(0, 0), (5, 1), (10, 2)].into_iter().collect(),
-    ..Section::new(MAX_BPE)
+    ..Default::default()
   };
   s.remove(1);
   assert_eq!(s.palette, vec![0, 10]);
@@ -126,7 +124,7 @@ fn test_shift_data_down() -> Result<(), PosError> {
     block_amounts: vec![4096, 0, 0],
     reverse_palette: vec![(0, 0), (5, 1), (10, 2)].into_iter().collect(),
     data: BitArray::from_data(4, data),
-    ..Section::new(MAX_BPE)
+    ..Default::default()
   };
   // Should shift the block data down.
   s.remove(1);
@@ -141,7 +139,7 @@ fn test_set_get_block() -> Result<(), PosError> {
   // tests passed.
 
   // Sanity check for palette and block amounts
-  let mut s = Section::new(MAX_BPE);
+  let mut s = Section::default();
   s.set_block(Pos::new(0, 0, 0), 5)?;
   assert_eq!(s.block_amounts, vec![4095, 1]);
   assert_eq!(s.palette, vec![0, 5]);
@@ -159,7 +157,7 @@ fn test_set_get_block() -> Result<(), PosError> {
   assert_eq!(s.palette, vec![0]);
 
   // Make sure that higher palette ids get shifted down correctly.
-  let mut s = Section::new(MAX_BPE);
+  let mut s = Section::default();
   s.set_block(Pos::new(0, 0, 0), 10)?;
   assert_eq!(s.block_amounts, vec![4095, 1]);
   assert_eq!(s.palette, vec![0, 10]);
@@ -180,7 +178,7 @@ fn test_set_get_block() -> Result<(), PosError> {
   assert_eq!(s.palette, vec![0]);
 
   // Make sure that replacing blocks works
-  let mut s = Section::new(MAX_BPE);
+  let mut s = Section::default();
   s.set_block(Pos::new(1, 0, 0), 5)?;
   assert_eq!(s.palette, vec![0, 5]);
   assert_eq!(s.block_amounts, vec![4095, 1]);
@@ -189,7 +187,7 @@ fn test_set_get_block() -> Result<(), PosError> {
   assert_eq!(s.block_amounts, vec![4095, 1]);
 
   // Test get block
-  let mut s = Section::new(MAX_BPE);
+  let mut s = Section::default();
   s.set_block(Pos::new(0, 0, 0), 10)?;
   assert_eq!(s.get_block(Pos::new(0, 0, 0))?, 10);
   s.set_block(Pos::new(0, 0, 0), 123)?;
@@ -204,7 +202,7 @@ fn test_set_get_block() -> Result<(), PosError> {
 }
 #[test]
 fn test_set_all() -> Result<(), PosError> {
-  let mut s = Section::new(MAX_BPE);
+  let mut s = Section::default();
   for x in 0..16 {
     for y in 0..16 {
       for z in 0..16 {
@@ -228,7 +226,7 @@ fn test_set_all() -> Result<(), PosError> {
 }
 #[test]
 fn test_fill() -> Result<(), PosError> {
-  let mut s = Section::new(MAX_BPE);
+  let mut s = Section::default();
   s.fill(Pos::new(0, 0, 0), Pos::new(15, 15, 15), 20)?;
   assert_eq!(s.data.clone_inner(), vec![0x1111111111111111; 16 * 16 * 16 * 4 / 64]);
   assert_eq!(s.palette, vec![0, 20]);
@@ -242,7 +240,7 @@ fn test_fill() -> Result<(), PosError> {
   assert_eq!(s.palette, vec![0, 5, 20]);
   assert_eq!(s.block_amounts, vec![0, 1, 4095]);
 
-  let mut s = Section::new(MAX_BPE);
+  let mut s = Section::default();
   s.fill(Pos::new(3, 4, 5), Pos::new(8, 9, 10), 20)?;
 
   dbg!(&s);
