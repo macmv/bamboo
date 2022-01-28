@@ -139,6 +139,18 @@ impl SlCommand {
     idx.push(self.command(&mut lock).children_len() - 1);
     SlCommand { inner: self.inner.clone(), callback: None, idx }
   }
+  /// Adds a new block kind argument to the command.
+  ///
+  /// This will be parsed as a single world, which will then be converted to a
+  /// block kind. An invalid block kind will not read the callback, and will
+  /// instead return an error to the user.
+  pub fn add_arg_block_kind(&mut self, name: &str) -> SlCommand {
+    let mut lock = self.inner.lock().unwrap();
+    self.command(&mut lock).add_arg(name, Parser::BlockState);
+    let mut idx = self.idx.clone();
+    idx.push(self.command(&mut lock).children_len() - 1);
+    SlCommand { inner: self.inner.clone(), callback: None, idx }
+  }
   /// Adds a literal to the command.
   ///
   /// This is a special type of argument. It matches the exact text of the name.

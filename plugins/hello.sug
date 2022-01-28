@@ -1,5 +1,5 @@
 use sugarcane::{
-  block::BlockKind,
+  block,
   chat::Chat,
   command::Command,
   world::gen,
@@ -11,8 +11,7 @@ fn init(sc) {
 
   c = Command::new("setblock", handle_setblock)
   c.add_arg_block_pos("pos")
-  c.add_lit("word")
-    .add_arg_block_pos("pos")
+  c.add_arg_block_kind("kind")
   sc.add_command(c)
 
   c = Command::new("getblock", handle_getblock)
@@ -24,6 +23,7 @@ fn handle_setblock(sc, player, args) {
   // args[0] is `setblock`
   // args[1] is the position
   // args[2] is the block kind
+  sc.info(args)
   player.world().set_kind(args[1], args[2])
 }
 
