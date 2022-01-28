@@ -1,4 +1,4 @@
-use crate::{block, entity, item, player::Player, world::WorldManager};
+use crate::{player::Player, world::WorldManager};
 use crossbeam_channel::{Receiver, Sender, TryRecvError};
 use mio::{
   event::Event,
@@ -7,12 +7,8 @@ use mio::{
 };
 use parking_lot::{Mutex, RwLock};
 use sc_common::{
-  math::FPos,
   net::{cb, sb},
-  util::{
-    chat::{Chat, Color, HoverEvent},
-    ThreadPool, UUID,
-  },
+  util::{ThreadPool, UUID},
   version::ProtocolVersion,
 };
 use sc_transfer::{MessageRead, MessageReader, MessageWrite, MessageWriter, ReadError};
@@ -28,6 +24,7 @@ use std::{
   },
 };
 
+pub mod packet;
 pub(crate) mod serialize;
 
 pub struct Connection {
@@ -141,17 +138,18 @@ impl Connection {
     &mut self,
     wm: &Arc<WorldManager>,
     player: &Option<Arc<Player>>,
-  ) -> io::Result<(bool, Option<Arc<Player>>)> {
+  ) -> io::Result<(bool, Option<Arc<Player>>, Vec<sb::Packet>)> {
     loop {
       let n = match self.stream.read(&mut self.garbage) {
-        Ok(0) => return Ok((true, None)),
+        Ok(0) => return Ok((true, None, vec![])),
         Ok(n) => n,
-        Err(e) if e.kind() == io::ErrorKind::WouldBlock => return Ok((false, None)),
+        Err(e) if e.kind() == io::ErrorKind::WouldBlock => return Ok((false, None, vec![])),
         Err(e) => return Err(e),
       };
       self.incoming.extend_from_slice(&self.garbage[..n]);
-      if let Some(p) = self.read_incoming(wm, player)? {
-        return Ok((false, Some(p)));
+      let (player, packets) = self.read_incoming(wm, player)?;
+      if let Some(p) = player {
+        return Ok((false, Some(p), packets));
       }
     }
   }
@@ -197,7 +195,8 @@ impl Connection {
     &mut self,
     wm: &Arc<WorldManager>,
     player: &Option<Arc<Player>>,
-  ) -> io::Result<Option<Arc<Player>>> {
+  ) -> io::Result<(Option<Arc<Player>>, Vec<sb::Packet>)> {
+    let mut out = vec![];
     while !self.incoming.is_empty() {
       let mut m = MessageReader::new(&self.incoming);
       match m.read_u32() {
@@ -226,7 +225,7 @@ impl Connection {
                 ));
               }
               self.incoming.drain(0..n);
-              self.handle_packet(wm, player.as_ref().unwrap(), p);
+              out.push(p);
             } else {
               // This is the first packet, so it must be a login packet.
               let mut m = MessageReader::new(&self.incoming);
@@ -257,7 +256,7 @@ impl Connection {
               self.incoming.drain(0..idx);
               self.ver = Some(ver);
               // We rely on the caller to set the player using this value.
-              return Ok(Some(wm.new_player(self.sender(), username, uuid, ver)));
+              return Ok((Some(wm.new_player(self.sender(), username, uuid, ver)), out));
             }
           } else {
             break;
@@ -266,7 +265,7 @@ impl Connection {
         // If this is an EOF, then we have a partial varint, so we are done reading.
         Err(e) => {
           if matches!(e, ReadError::EOF) {
-            return Ok(None);
+            return Ok((None, out));
           } else {
             return Err(io::Error::new(
               io::ErrorKind::InvalidData,
@@ -276,7 +275,7 @@ impl Connection {
         }
       }
     }
-    Ok(None)
+    Ok((None, out))
   }
 
   // This waits for the a login packet from the proxy. If any other packet is
@@ -299,136 +298,6 @@ impl Connection {
   //     _ => panic!("expecting login packet, got: {:?}", p),
   //   }
   // }
-
-  /// This starts up the recieving loop for this connection. Do not call this
-  /// more than once.
-  pub(crate) fn handle_packet(&self, wm: &Arc<WorldManager>, player: &Arc<Player>, p: sb::Packet) {
-    match p {
-      sb::Packet::Chat { msg } => {
-        if msg.chars().next() == Some('/') {
-          let mut chars = msg.chars();
-          chars.next().unwrap();
-          player.world().commands().execute(wm, player, chars.as_str());
-        } else {
-          let text = msg;
-          let mut msg = Chat::empty();
-          msg.add("<");
-          msg.add(player.username()).color(Color::BrightGreen).on_hover(HoverEvent::ShowText(
-            format!("wow it is almost like {} sent this message", player.username()),
-          ));
-          msg.add("> ");
-          msg.add(text);
-          player.world().broadcast(msg);
-        }
-      }
-      sb::Packet::BlockDig { pos, status: _, face: _ } => {
-        // If the world is locked then we need to sync this block.
-        if player.world().is_locked() {
-          player.sync_block_at(pos).unwrap();
-        } else {
-          // Avoid race condition
-          if !player.world().set_kind(pos, block::Kind::Air).unwrap() {
-            player.sync_block_at(pos).unwrap();
-          }
-        }
-      }
-      /*
-      sb::Packet::SetCreativeSlot { slot, item } => {
-        if slot > 0 {
-          let id =
-            player.world().item_converter().to_latest(item.id() as u32, player.ver().block());
-          player
-            .lock_inventory()
-            .set(slot as u32, item::Stack::new(item::Type::from_u32(id)).with_amount(item.count()));
-        }
-      }
-      sb::Packet::HeldItemSlot { slot_id } => {
-        player.lock_inventory().set_selected(slot_id.try_into().unwrap());
-      }
-      sb::Packet::UseItem { hand_v1_9 } => {
-        // 0 = main hand on 1.8
-        let hand = hand_v1_9.unwrap_or(0);
-        self.use_item(player, hand);
-      }
-      sb::Packet::BlockPlace {
-        mut location,
-        direction_v1_8,
-        direction_v1_9,
-        hand_v1_9,
-        cursor_x_v1_8: _,
-        cursor_x_v1_11: _,
-        cursor_y_v1_8: _,
-        cursor_y_v1_11: _,
-        cursor_z_v1_8: _,
-        cursor_z_v1_11: _,
-        inside_block_v1_14: _,
-        held_item_removed_v1_9: _,
-      } => {
-        // 0 = main hand on 1.8
-        let hand = hand_v1_9.unwrap_or(0);
-
-        let direction: i32 = if player.ver() == ProtocolVersion::V1_8 {
-          // direction_v1_8 is an i8 (not a u8), so the sign stays correct
-          direction_v1_8.unwrap().into()
-        } else {
-          direction_v1_9.unwrap()
-        };
-
-        if location == Pos::new(-1, -1, -1) && direction == -1 {
-          self.use_item(player, hand);
-        } else {
-          let item_data = {
-            let inv = player.lock_inventory();
-            let stack = inv.main_hand();
-            player.world().item_converter().get_data(stack.item())
-          };
-          let kind = item_data.block_to_place();
-
-          match player.world().get_block(location) {
-            Ok(looking_at) => {
-              let block_data = player.world().block_converter().get(looking_at.kind());
-              if !block_data.material.is_replaceable() {
-                let _ = player.sync_block_at(location);
-                location += Pos::dir_from_byte(direction.try_into().unwrap());
-              }
-
-              match player.world().set_kind(location, kind) {
-                Ok(_) => player.world().plugins().on_block_place(player.clone(), location, kind),
-                Err(e) => player.send_hotbar(&Chat::new(e.to_string())),
-              }
-            }
-            Err(e) => player.send_hotbar(&Chat::new(e.to_string())),
-          };
-        }
-      }
-      */
-      sb::Packet::PlayerPos { x, y, z, .. } => {
-        player.set_next_pos(x, y, z);
-      }
-      sb::Packet::PlayerPosLook { x, y, z, yaw, pitch, .. } => {
-        player.set_next_pos(x, y, z);
-        player.set_next_look(yaw, pitch);
-      }
-      sb::Packet::PlayerLook { yaw, pitch, .. } => {
-        player.set_next_look(yaw, pitch);
-      }
-      // Just contains on_ground
-      sb::Packet::PlayerOnGround { .. } => {}
-      _ => warn!("got unknown packet from client: {:?}", p),
-    }
-  }
-
-  fn use_item(&self, player: &Arc<Player>, _hand: i32) {
-    // TODO: Offhand
-    let inv = player.lock_inventory();
-    let main = inv.main_hand();
-    if main.item() == item::Type::Snowball {
-      let eid = player.world().summon(entity::Type::Slime, player.pos() + FPos::new(0.0, 1.0, 0.0));
-      // If the entity doesn't exist, it already despawned, so we do nothing if it
-      // isn't in the world.
-      player.world().entities().get(&eid).map(|ent| ent.set_vel(player.look_as_vec() * 0.5));
-    }
-  }
 
   // Returns true if the connection has been closed.
   pub fn closed(&self) -> bool { self.closed.load(Ordering::SeqCst) }
@@ -577,26 +446,46 @@ impl ConnectionManager {
       loop {
         let rl = c.read();
         let (conn, player) = rl.get(&token).expect("got event for a client that does not exist");
-        let mut conn = conn.lock();
-        match conn.read(&wm, player) {
-          Ok((false, Some(p))) => {
+        // Make sure we drop conn! We can get a deadlock if we call `packet::handle`
+        // when this is locked.
+        let (disconnect, new_player, packets) = match conn.lock().read(&wm, player) {
+          Ok(v) => v,
+          // Something else went wrong.
+          Err(e) => {
+            error!("error in connection: {}", e);
+            return true;
+          }
+        };
+        match (disconnect, new_player) {
+          (false, Some(p)) => {
             // The handshake was just completed, so now we need to add the player into the
             // main hashmap. So we drop the read lock, and then lock the map for writing.
             // This is the only situation where we don't break, as conn.read() will return
             // early if it gets a player.
-            drop(conn);
             drop(rl);
-            let mut wl = c.write();
-            let (_, player) = wl.get_mut(&token).unwrap();
-            *player = Some(p);
+            // Make sure to drop wl before calling handle
+            {
+              let mut wl = c.write();
+              let (_, player) = wl.get_mut(&token).unwrap();
+              *player = Some(p);
+            }
+            let rl = c.read();
+            let (_, player) = rl.get(&token).unwrap();
+            for p in packets {
+              packet::handle(wm, player.as_ref().unwrap(), p);
+            }
           }
           // Normal operation. We are done reading all the data.
-          Ok((false, None)) => break,
+          (false, None) => {
+            for p in packets {
+              packet::handle(wm, player.as_ref().unwrap(), p);
+            }
+          }
           // Connection is closed without an error.
-          Ok((true, _)) => return true,
-          // Something else went wrong.
-          Err(e) => {
-            error!("error in connection: {}", e);
+          (true, _) => {
+            for p in packets {
+              packet::handle(wm, player.as_ref().unwrap(), p);
+            }
             return true;
           }
         }
