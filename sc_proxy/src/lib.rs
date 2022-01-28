@@ -47,8 +47,8 @@ pub fn run() -> Result<(), Box<dyn Error>> {
   let key = Arc::new(RSAPrivateKey::new(&mut OsRng, 1024).expect("failed to generate a key"));
   let der_key = if config.get("encryption") { Some(der::encode(&key)) } else { None };
   let icon = Arc::new(load_icon(config.get("icon")));
-  let server_ip: SocketAddr = "0.0.0.0:8483".parse().unwrap();
-  let compression = 256;
+  let server_ip: SocketAddr = config.get::<_, String>("server").parse().unwrap();
+  let compression = config.get("compression-thresh");
 
   let mut poll = Poll::new()?;
   let mut events = Events::with_capacity(1024);
