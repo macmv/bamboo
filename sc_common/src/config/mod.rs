@@ -60,17 +60,17 @@ impl YamlKey for [&str] {
 
 impl Config {
   /// Creates a new config for the given path. The path is a runtime path to
-  /// load the config file. The default path is a secondary path, which will
-  /// also be loaded. This will never be written to, and will be used as a
-  /// fallback if the key doesn't exist in the file.
-  pub fn new(path: &str, default: &str) -> Self {
-    Config { primary: Self::load_yaml(path), default: Self::load_yaml(default) }
-  }
-  /// Creates a new config file, but with source strings, instead of paths. This
-  /// is used in the proxy, which stores its default config in the binary, and
-  /// will run without any errors when the config isn't present.
-  pub fn new_src(primary: &str, default: &str) -> Self {
-    Config { primary: Self::load_yaml_src(primary), default: Self::load_yaml_src(default) }
+  /// load the config file. The default path is yaml source, which should be
+  /// loaded with `include_str!`. The defaul is used whenever a key is not
+  /// present in the main config. When this is created, a file at `default_path`
+  /// will be created, and the default yaml source will be written there.
+  /// This is for developers, so they can view the default config as a
+  /// reference. If the file cannot be written, a warning will be printed.
+  pub fn new(path: &str, default_path: &str, default_src: &str) -> Self {
+    fs::write(default_path, default_src).unwrap_or_else(|e| {
+      warn!("could not write default configuration to disk at `{}`: {}", default_path, e);
+    });
+    Config { primary: Self::load_yaml(path), default: Self::load_yaml_src(default_src) }
   }
 
   fn load_yaml(path: &str) -> Yaml {

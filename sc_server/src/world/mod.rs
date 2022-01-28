@@ -534,7 +534,11 @@ impl WorldManager {
       commands:         Arc::new(CommandTree::new()),
       worlds:           Mutex::new(vec![]),
       players:          Mutex::new(HashMap::new()),
-      config:           Arc::new(Config::new("config.yml", "default.yml")),
+      config:           Arc::new(Config::new(
+        "config.yml",
+        "config-default.yml",
+        include_str!("../default.yml"),
+      )),
     }
   }
 

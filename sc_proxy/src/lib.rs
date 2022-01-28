@@ -30,7 +30,7 @@ pub fn load_icon(path: &str) -> String {
 pub fn run() -> Result<(), Box<dyn Error>> {
   sc_common::init("proxy");
 
-  let config = Config::new("proxy.yml", "proxy-default.yml");
+  let config = Config::new("proxy.yml", "proxy-default.yml", include_str!("default.yml"));
 
   const JAVA_LISTENER: Token = Token(0xffffffff);
   const BEDROCK_LISTENER: Token = Token(0xfffffffe);
