@@ -394,8 +394,12 @@ impl ConnectionManager {
             read_pool.execute(move |s| {
               if Self::handle(&s.wm, &s.conns, token, e) {
                 let mut c = s.conns.write();
-                let (_, p) = c.remove(&token).expect("got event for a client that does not exist");
-                s.wm.remove_player(p.as_ref().unwrap().id());
+                // Multiple threads can handle this event, so if the token has alrady been
+                // removed, we know it was another thread that called this. Therefore, we can
+                // just ignore a player that is not present.
+                if let Some((_, p)) = c.remove(&token) {
+                  s.wm.remove_player(p.as_ref().unwrap().id());
+                }
               }
             });
             info!("done handling event for {:?}", token);
@@ -445,47 +449,67 @@ impl ConnectionManager {
     if ev.is_readable() {
       loop {
         let rl = c.read();
-        let (conn, player) = rl.get(&token).expect("got event for a client that does not exist");
-        // Make sure we drop conn! We can get a deadlock if we call `packet::handle`
-        // when this is locked.
-        let (disconnect, new_player, packets) = match conn.lock().read(&wm, player) {
-          Ok(v) => v,
-          // Something else went wrong.
-          Err(e) => {
-            error!("error in connection: {}", e);
+        // If this isn't present, we assume another thread has removed the player, and
+        // we return.
+        if let Some((conn, player)) = rl.get(&token) {
+          // Make sure we drop conn! We can get a deadlock if we call `packet::handle`
+          // when this is locked.
+          let (disconnect, new_player, packets) = match conn.lock().read(&wm, player) {
+            Ok(v) => v,
+            // Something else went wrong.
+            Err(e) => {
+              error!("error in connection: {}", e);
+              return true;
+            }
+          };
+          // Don't drop our read lock yet, as we need to use the player we got from it.
+          if let Some(player) = player {
+            for p in packets {
+              packet::handle(wm, player, p);
+            }
+          } else {
+            drop(rl);
+            // The player must be created after we drop the `conn.lock()`, so that sending
+            // login packets doesn't deadlock.
+            if let Some((sender, username, uuid, ver)) = new_player {
+              let new_player = wm.new_player(sender, username, uuid, ver);
+              {
+                let mut wl = c.write();
+                let (_, player) = wl.get_mut(&token).unwrap();
+                *player = Some(new_player);
+              }
+              let rl = c.read();
+              if let Some((_, player)) = rl.get(&token) {
+                for p in packets {
+                  packet::handle(wm, player.as_ref().unwrap(), p);
+                }
+              }
+            }
+          }
+          if disconnect {
             return true;
           }
-        };
-        drop(rl);
-        // The player must be created after we drop the `conn.lock()`, so that sending
-        // login packets doesn't deadlock.
-        if let Some((sender, username, uuid, ver)) = new_player {
-          let new_player = wm.new_player(sender, username, uuid, ver);
-          let mut wl = c.write();
-          let (_, player) = wl.get_mut(&token).unwrap();
-          *player = Some(new_player);
-        }
-        let rl = c.read();
-        let (_, player) = rl.get(&token).unwrap();
-        for p in packets {
-          packet::handle(wm, player.as_ref().unwrap(), p);
-        }
-        if disconnect {
-          return true;
+        } else {
+          // We return false because the player has already been removed from the map.
+          return false;
         }
       }
     }
     if ev.is_writable() {
       let rl = c.read();
-      let (conn, _) = rl.get(&token).expect("got event for a client that does not exist");
-      let mut conn = conn.lock();
-      match conn.try_flush() {
-        Ok(()) => {}
-        Err(e) if e.kind() == io::ErrorKind::WouldBlock => {}
-        Err(e) => {
-          error!("error in connection: {}", e);
-          return true;
+      if let Some((conn, _)) = rl.get(&token) {
+        let mut conn = conn.lock();
+        match conn.try_flush() {
+          Ok(()) => {}
+          Err(e) if e.kind() == io::ErrorKind::WouldBlock => {}
+          Err(e) => {
+            error!("error in connection: {}", e);
+            return true;
+          }
         }
+      } else {
+        // We return false because the player has already been removed from the map.
+        return false;
       }
     }
     false
