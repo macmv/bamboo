@@ -1,4 +1,4 @@
-use super::{add_from, chat::SlChat, wrap};
+use super::{add_from, chat::SlChat, world::SlWorld, wrap};
 use crate::player::Player;
 use sc_common::util::Chat;
 use std::sync::Arc;
@@ -47,4 +47,8 @@ impl SlPlayer {
     };
     self.inner.send_message(&out);
   }
+
+  /// Returns the world this player is in. This can be used to get/set
+  /// blocks, access other players, and modify entities.
+  pub fn world(&self) -> SlWorld { self.inner.world().clone().into() }
 }

@@ -142,7 +142,7 @@ impl Sugarcane {
               VarRef::Owned(
                 args
                   .iter()
-                  .map(|arg| command::SlArg::from(arg.clone()).into())
+                  .map(|arg| command::sl_from_arg(arg.clone()))
                   .collect::<Vec<Var>>()
                   .into(),
               ),
@@ -196,7 +196,6 @@ impl PluginManager {
     sl.add_builtin_ty::<chat::SlChat>();
     sl.add_builtin_ty::<chat::SlChatSection>();
     sl.add_builtin_ty::<command::SlCommand>();
-    sl.add_builtin_ty::<command::SlArg>();
     sl.add_builtin_ty::<player::SlPlayer>();
     sl.add_builtin_ty::<world::SlWorld>();
     sl.add_builtin_ty::<world::gen::SlBiome>();

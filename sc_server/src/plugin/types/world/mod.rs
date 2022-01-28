@@ -61,4 +61,12 @@ impl SlWorld {
     self.inner.fill_rect_kind(min.inner, max.inner, kind.inner).unwrap();
     Ok(())
   }
+
+  /// Returns the kind of block at the given position.
+  ///
+  /// This will return an error if the position is outside the world.
+  pub fn get_kind(&self, pos: &SlPos) -> Result<SlBlockKind, RuntimeError> {
+    self.check_pos(pos.inner)?;
+    Ok(self.inner.get_kind(pos.inner).unwrap().into())
+  }
 }

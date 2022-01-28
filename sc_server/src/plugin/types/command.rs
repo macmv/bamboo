@@ -1,10 +1,12 @@
-use super::{add_from, wrap};
+use super::{util::SlPos, wrap};
 use crate::command::{Arg, Command, Parser};
 use std::sync::{Arc, Mutex};
-use sugarlang::{define_ty, runtime::Callback};
+use sugarlang::{
+  define_ty,
+  runtime::{Callback, Var},
+};
 
 wrap!(Arc<Mutex<Command>>, SlCommand, callback: Option<Callback>, idx: Vec<usize>);
-wrap!(Arg, SlArg);
 
 impl SlCommand {
   fn command<'a>(&self, inner: &'a mut Command) -> &'a mut Command {
@@ -13,6 +15,15 @@ impl SlCommand {
       c = c.get_child(*idx).unwrap();
     }
     c
+  }
+}
+
+pub fn sl_from_arg(arg: Arg) -> Var {
+  match arg {
+    Arg::Literal(text) => text.into(),
+    Arg::String(text) => text.into(),
+    Arg::BlockPos(pos) => SlPos::from(pos).into(),
+    _ => todo!("command arg {:?}", arg),
   }
 }
 
@@ -89,13 +100,4 @@ impl SlCommand {
     idx.push(self.command(&mut lock).children_len() - 1);
     SlCommand { inner: self.inner.clone(), callback: None, idx }
   }
-}
-
-/// A command argument. This is how you read back the arguments that a user
-/// passed to your command.
-#[define_ty(path = "sugarcane::command::Arg")]
-impl SlArg {
-  /// If this argument is a literal, then this returns the value of that
-  /// literal. Otherwise, this will return an error.
-  pub fn lit(&self) -> String { self.inner.lit().to_string() }
 }

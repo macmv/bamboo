@@ -7,8 +7,13 @@ use std::cmp::Ordering;
 
 /// General block manipulation functions
 impl World {
+  /// Returns the block type at the given position.
   pub fn get_block(&self, pos: Pos) -> Result<block::Type, PosError> {
     self.chunk(pos.chunk(), |c| c.get_type(pos.chunk_rel()))
+  }
+  /// Returns the block kind at the given position.
+  pub fn get_kind(&self, pos: Pos) -> Result<block::Kind, PosError> {
+    Ok(self.get_block(pos)?.kind())
   }
   /// This sets a block within the world. It will return an error if the
   /// position is outside of the world. Unlike
