@@ -22,9 +22,12 @@ impl WorldGen {
     c.fill_kind(Pos::new(0, Y - 1, 0), Pos::new(15, Y - 1, 15), fill).unwrap();
 
     // First, draw the ground
-    if pos.z() < 0 {
+    if pos.z() < 0 || pos.x() < -1 {
       self.debug_numbers(pos, c);
       return;
+    }
+    if pos.x() == -1 {
+      self.debug_numbers(pos, c);
     }
 
     if pos.x() < -1 || pos.z() < -1 || pos.z() > total_height {
@@ -111,6 +114,24 @@ impl WorldGen {
     // #########################
     // ```
 
+    if pos.x() >= -5 && pos.x() <= -1 && pos.z() >= 0 && pos.z() % 3 == 0 {
+      const X: i32 = -20;
+      let ver = (pos.z() / 3 + 8) as u8;
+      if ver <= MAX_VER as u8 {
+        self.place_digit(pos, c, 1, X, pos.block_z() + 10);
+        let dot = Pos::new(X + 3, Y - 1, pos.block_z() + 14);
+        if dot.chunk() == pos {
+          c.set_kind(dot.chunk_rel(), EDGE).unwrap();
+        }
+        if ver < 10 {
+          self.place_digit(pos, c, ver, X + 5, pos.block_z() + 10);
+        } else {
+          self.place_digit(pos, c, ver / 10, X + 5, pos.block_z() + 10);
+          self.place_digit(pos, c, ver % 10, X + 9, pos.block_z() + 10);
+        }
+      }
+    }
+
     if pos.x() < -1 {
       return;
     }
@@ -135,7 +156,7 @@ impl WorldGen {
       if id < 0 {
         continue;
       }
-      let left = num * 4 - 1;
+      let left = pos.block_x() + num * 4 - 1;
       self.place_number(pos, c, id, left);
     }
   }
@@ -170,7 +191,7 @@ impl WorldGen {
       for z in 0..5 {
         let ch = &num[z as usize][x as usize..x as usize + 1];
         let pos = Pos::new(left + x, Y - 1, top + z);
-        if pos.chunk_x() == 0 && pos.chunk_z() == chunk_pos.z() && ch == "#" {
+        if pos.chunk_x() == chunk_pos.x() && pos.chunk_z() == chunk_pos.z() && ch == "#" {
           c.set_kind(pos.chunk_rel(), EDGE).unwrap();
         }
       }
