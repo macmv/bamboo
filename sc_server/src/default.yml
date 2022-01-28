@@ -1,3 +1,8 @@
+# The default view distance. Note that this can be changed for a single
+# player via a plugin at runtime.
+view-distance: 10
+
+# Configs for world generation/loading.
 world:
   schematic:
     # If set, then the world will be a void world, and a schematic will be

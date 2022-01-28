@@ -84,8 +84,8 @@ impl World {
 
     info!("generating terrain...");
     let chunks = Mutex::new(vec![]);
-    (-10..=10).into_par_iter().for_each(|x| {
-      for z in -10..=10 {
+    (-32..=32).into_par_iter().for_each(|x| {
+      for z in -32..=32 {
         let pos = ChunkPos::new(x, z);
         let c = self.pre_generate_chunk(pos);
         chunks.lock().push((pos, c));
@@ -93,8 +93,8 @@ impl World {
     });
     self.store_chunks_no_overwrite(chunks.into_inner());
     // Keep spawn chunks always loaded
-    for x in -10..=10 {
-      for z in -10..=10 {
+    for x in -32..=32 {
+      for z in -32..=32 {
         let pos = ChunkPos::new(x, z);
         self.inc_view(pos);
       }
@@ -138,7 +138,7 @@ impl World {
       dimension:             0, // Overworld
       level_type:            "default".into(),
       difficulty:            1, // Normal
-      view_distance:         10,
+      view_distance:         player.view_distance() as u16,
       reduced_debug_info:    false,
       enable_respawn_screen: true,
     };
@@ -148,9 +148,9 @@ impl World {
       player.send(self.commands().serialize());
     }
 
-    let view_distance = 10;
-    for x in -view_distance..=view_distance {
-      for z in -view_distance..=view_distance {
+    let d = player.view_distance() as i32;
+    for x in -d..=d {
+      for z in -d..=d {
         let pos = ChunkPos::new(x, z);
         self.inc_view(pos);
         player.send(self.serialize_chunk(pos));

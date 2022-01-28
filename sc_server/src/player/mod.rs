@@ -119,8 +119,8 @@ impl Player {
       uuid,
       conn,
       ver,
+      view_distance: world.config().get("view-distance"),
       world,
-      view_distance: 10,
       game_mode: GameMode::Creative.into(),
       inv: PlayerInventory::new().into(),
       pos: PlayerPosition {
@@ -144,6 +144,9 @@ impl Player {
   pub fn eid(&self) -> i32 { self.eid }
   /// Returns the player's uuid. Used to lookup players in the world.
   pub fn id(&self) -> UUID { self.uuid }
+  /// Returns the player's view disstance. This is how far they can see in
+  /// chunks.
+  pub fn view_distance(&self) -> u32 { self.view_distance }
 
   /// Returns the version that this client connected with. This will only change
   /// if the player disconnects and logs in with another client.
@@ -263,8 +266,7 @@ impl Player {
   /// Returns true if the player is within render distance of the given chunk
   pub fn in_view(&self, pos: ChunkPos) -> bool {
     let delta = pos - self.pos().block().chunk();
-    // TODO: Store view distance
-    delta.x().abs() <= 10 && delta.z().abs() <= 10
+    delta.x().abs() as u32 <= self.view_distance && delta.z().abs() as u32 <= self.view_distance
   }
 
   /// Sets the player's fly speed. This is a speed multiplier. So a value of

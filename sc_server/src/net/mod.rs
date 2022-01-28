@@ -19,7 +19,7 @@ use sc_transfer::{MessageRead, MessageReader, MessageWrite, MessageWriter, ReadE
 use std::{
   collections::HashMap,
   convert::TryInto,
-  io,
+  fmt, io,
   io::{Read, Write},
   net::SocketAddr,
   sync::{
@@ -52,6 +52,12 @@ pub struct ConnSender {
   wake:  Sender<WakeEvent>,
   waker: Arc<Waker>,
   tok:   Token,
+}
+
+impl fmt::Debug for Connection {
+  fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    f.debug_struct("Connection").field("closed", &self.closed).finish()
+  }
 }
 
 impl ConnSender {
@@ -463,7 +469,9 @@ impl ConnectionManager {
 
     let (tx, rx) = crossbeam_channel::bounded(1024);
 
-    let pool =
+    let write_pool =
+      ThreadPool::auto(|| State { wm: self.wm.clone(), conns: self.connections.clone() });
+    let read_pool =
       ThreadPool::auto(|| State { wm: self.wm.clone(), conns: self.connections.clone() });
 
     loop {
@@ -499,47 +507,59 @@ impl ConnectionManager {
               (Mutex::new(Connection::new(conn, tx.clone(), waker.clone(), token)), None),
             );
           },
-          WAKE => loop {
-            match rx.try_recv() {
-              Ok(ev) => self.wake_event(ev),
-              Err(TryRecvError::Empty) => break,
-              Err(_) => unreachable!(),
-            }
-          },
+          WAKE => {
+            let r = rx.clone();
+            write_pool.execute(move |s| loop {
+              info!("handling woke, rx has {} elems", r.len());
+              match r.try_recv() {
+                Ok(ev) => Self::wake_event(&s, ev),
+                Err(TryRecvError::Empty) => break,
+                Err(_) => unreachable!(),
+              }
+              info!("done handling woke, rx has {} elems", r.len());
+            });
+          }
           token => {
+            info!("handling event for {:?}...", token);
             let e = event.clone();
-            pool.execute(move |s| {
+            read_pool.execute(move |s| {
               if Self::handle(&s.wm, &s.conns, token, e) {
                 let mut c = s.conns.write();
                 let (_, p) = c.remove(&token).expect("got event for a client that does not exist");
                 s.wm.remove_player(p.as_ref().unwrap().id());
               }
             });
+            info!("done handling event for {:?}", token);
           }
         }
       }
     }
   }
 
-  fn wake_event(&mut self, ev: WakeEvent) {
+  fn wake_event(s: &State, ev: WakeEvent) {
     match ev {
       WakeEvent::Clientbound(tok) => {
-        if let Some((conn, player)) = self.connections.read().get(&tok) {
+        if let Some((conn, player)) = s.conns.read().get(&tok) {
+          info!("sending on lock: {:?}", conn);
           match conn.lock().try_send() {
-            Ok(()) => {}
-            Err(e) if e.kind() == io::ErrorKind::WouldBlock => {}
+            Ok(()) => {
+              info!("send worked!");
+            }
+            Err(e) if e.kind() == io::ErrorKind::WouldBlock => {
+              info!("would block, skipping");
+            }
             Err(e) if e.kind() == io::ErrorKind::BrokenPipe => {
               if let Some(p) = player {
                 p.remove();
               }
-              self.connections.write().remove(&tok);
+              s.conns.write().remove(&tok);
             }
             Err(e) => {
               error!("error in connection: {}", e);
               if let Some(p) = player {
                 p.remove();
               }
-              self.connections.write().remove(&tok);
+              s.conns.write().remove(&tok);
             }
           }
         }

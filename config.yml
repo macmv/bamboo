@@ -1,3 +1,4 @@
+view-distance: 12
 world:
   debug: true
   schematic:
