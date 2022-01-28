@@ -48,14 +48,39 @@ impl ToTcp for Packet {
         insta_break,
         fly_speed,
         walk_speed,
-      } => GPacket::PlayerAbilitiesV8 {
-        invulnerable,
-        flying,
-        allow_flying,
-        creative_mode: insta_break,
-        fly_speed: fly_speed * 0.05,
-        walk_speed: walk_speed * 0.1,
-      },
+      } =>
+        if ver < ProtocolVersion::V1_16_5 {
+          GPacket::PlayerAbilitiesV8 {
+            invulnerable,
+            flying,
+            allow_flying,
+            creative_mode: insta_break,
+            fly_speed: fly_speed * 0.05,
+            walk_speed: walk_speed * 0.1,
+          }
+        } else if ver < ProtocolVersion::V1_17_1 {
+          GPacket::PlayerAbilitiesV16 {
+            invulnerable,
+            flying,
+            allow_flying,
+            creative_mode: insta_break,
+            fly_speed: fly_speed * 0.05,
+            walk_speed: walk_speed * 0.1,
+          }
+        } else {
+          GPacket::PlayerAbilitiesV17 {
+            invulnerable_mask: None,
+            flying_mask: None,
+            allow_flying_mask: None,
+            creative_mode_mask: None,
+            invulnerable,
+            flying,
+            allow_flying,
+            creative_mode: insta_break,
+            fly_speed: fly_speed * 0.05,
+            walk_speed: walk_speed * 0.1,
+          }
+        },
       Packet::Chat { msg, ty } => {
         if ver < ProtocolVersion::V1_12_2 {
           GPacket::ChatV8 { chat_component: msg, ty: ty as i8 }
