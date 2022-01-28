@@ -136,21 +136,21 @@ impl Connection {
   /// Some(player) is returned, as it may not have read all availible data.
   pub fn read(
     &mut self,
-    wm: &Arc<WorldManager>,
-    player: &Option<Arc<Player>>,
   ) -> io::Result<(bool, Option<(ConnSender, String, UUID, ProtocolVersion)>, Vec<sb::Packet>)> {
+    let mut out = vec![];
     loop {
       let n = match self.stream.read(&mut self.garbage) {
-        Ok(0) => return Ok((true, None, vec![])),
+        Ok(0) => return Ok((true, None, out)),
         Ok(n) => n,
-        Err(e) if e.kind() == io::ErrorKind::WouldBlock => return Ok((false, None, vec![])),
+        Err(e) if e.kind() == io::ErrorKind::WouldBlock => return Ok((false, None, out)),
         Err(e) => return Err(e),
       };
       self.incoming.extend_from_slice(&self.garbage[..n]);
-      let (new_player, packets) = self.read_incoming(wm, player)?;
+      let (new_player, packets) = self.read_incoming()?;
       if let Some(new_player) = new_player {
         return Ok((false, Some(new_player), packets));
       }
+      out.extend(packets);
     }
   }
 
@@ -193,8 +193,6 @@ impl Connection {
 
   fn read_incoming(
     &mut self,
-    wm: &Arc<WorldManager>,
-    player: &Option<Arc<Player>>,
   ) -> io::Result<(Option<(ConnSender, String, UUID, ProtocolVersion)>, Vec<sb::Packet>)> {
     let mut out = vec![];
     while !self.incoming.is_empty() {
@@ -445,7 +443,7 @@ impl ConnectionManager {
         if let Some((conn, player)) = rl.get(&token) {
           // Make sure we drop conn! We can get a deadlock if we call `packet::handle`
           // when this is locked.
-          let (disconnect, new_player, packets) = match conn.lock().read(&wm, player) {
+          let (disconnect, new_player, packets) = match conn.lock().read() {
             Ok(v) => v,
             // Something else went wrong.
             Err(e) => {
@@ -453,8 +451,14 @@ impl ConnectionManager {
               return true;
             }
           };
+          if disconnect {
+            return true;
+          }
           // Don't drop our read lock yet, as we need to use the player we got from it.
           if let Some(player) = player {
+            if packets.is_empty() {
+              break;
+            }
             for p in packets {
               packet::handle(wm, player, p);
             }
@@ -476,9 +480,6 @@ impl ConnectionManager {
                 }
               }
             }
-          }
-          if disconnect {
-            return true;
           }
         } else {
           // We return false because the player has already been removed from the map.
