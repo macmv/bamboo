@@ -198,6 +198,7 @@ impl ChunkSection for Section {
         } else {
           let palette_id = self.insert(ty);
           if self.palette.is_empty() {
+            unsafe { self.set_palette(pos, ty) };
             if ty == 0 && prev != 0 {
               self.block_amounts[0] += 1;
             }
