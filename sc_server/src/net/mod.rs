@@ -138,7 +138,7 @@ impl Connection {
     &mut self,
     wm: &Arc<WorldManager>,
     player: &Option<Arc<Player>>,
-  ) -> io::Result<(bool, Option<Arc<Player>>, Vec<sb::Packet>)> {
+  ) -> io::Result<(bool, Option<(ConnSender, String, UUID, ProtocolVersion)>, Vec<sb::Packet>)> {
     loop {
       let n = match self.stream.read(&mut self.garbage) {
         Ok(0) => return Ok((true, None, vec![])),
@@ -147,9 +147,9 @@ impl Connection {
         Err(e) => return Err(e),
       };
       self.incoming.extend_from_slice(&self.garbage[..n]);
-      let (player, packets) = self.read_incoming(wm, player)?;
-      if let Some(p) = player {
-        return Ok((false, Some(p), packets));
+      let (new_player, packets) = self.read_incoming(wm, player)?;
+      if let Some(new_player) = new_player {
+        return Ok((false, Some(new_player), packets));
       }
     }
   }
@@ -195,7 +195,7 @@ impl Connection {
     &mut self,
     wm: &Arc<WorldManager>,
     player: &Option<Arc<Player>>,
-  ) -> io::Result<(Option<Arc<Player>>, Vec<sb::Packet>)> {
+  ) -> io::Result<(Option<(ConnSender, String, UUID, ProtocolVersion)>, Vec<sb::Packet>)> {
     let mut out = vec![];
     while !self.incoming.is_empty() {
       let mut m = MessageReader::new(&self.incoming);
@@ -256,7 +256,7 @@ impl Connection {
               self.incoming.drain(0..idx);
               self.ver = Some(ver);
               // We rely on the caller to set the player using this value.
-              return Ok((Some(wm.new_player(self.sender(), username, uuid, ver)), out));
+              return Ok((Some((self.sender(), username, uuid, ver)), out));
             }
           } else {
             break;
@@ -456,38 +456,22 @@ impl ConnectionManager {
             return true;
           }
         };
-        match (disconnect, new_player) {
-          (false, Some(p)) => {
-            // The handshake was just completed, so now we need to add the player into the
-            // main hashmap. So we drop the read lock, and then lock the map for writing.
-            // This is the only situation where we don't break, as conn.read() will return
-            // early if it gets a player.
-            drop(rl);
-            // Make sure to drop wl before calling handle
-            {
-              let mut wl = c.write();
-              let (_, player) = wl.get_mut(&token).unwrap();
-              *player = Some(p);
-            }
-            let rl = c.read();
-            let (_, player) = rl.get(&token).unwrap();
-            for p in packets {
-              packet::handle(wm, player.as_ref().unwrap(), p);
-            }
-          }
-          // Normal operation. We are done reading all the data.
-          (false, None) => {
-            for p in packets {
-              packet::handle(wm, player.as_ref().unwrap(), p);
-            }
-          }
-          // Connection is closed without an error.
-          (true, _) => {
-            for p in packets {
-              packet::handle(wm, player.as_ref().unwrap(), p);
-            }
-            return true;
-          }
+        drop(rl);
+        // The player must be created after we drop the `conn.lock()`, so that sending
+        // login packets doesn't deadlock.
+        if let Some((sender, username, uuid, ver)) = new_player {
+          let new_player = wm.new_player(sender, username, uuid, ver);
+          let mut wl = c.write();
+          let (_, player) = wl.get_mut(&token).unwrap();
+          *player = Some(new_player);
+        }
+        let rl = c.read();
+        let (_, player) = rl.get(&token).unwrap();
+        for p in packets {
+          packet::handle(wm, player.as_ref().unwrap(), p);
+        }
+        if disconnect {
+          return true;
         }
       }
     }
