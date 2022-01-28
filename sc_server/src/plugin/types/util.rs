@@ -1,13 +1,14 @@
 use super::{add_from, wrap};
-use sc_common::math::{FPos, Pos};
+use sc_common::math::{ChunkPos, FPos, Pos};
 use sugarlang::define_ty;
 
 wrap!(Pos, SlPos);
+wrap!(ChunkPos, SlChunkPos);
 wrap!(FPos, SlFPos);
 
-/// A block position. This stores X, Y, and Z coordinates.
+/// A block position. This stores X, Y, and Z coordinates as ints.
 ///
-/// If you need a player position, use `FPos` instead.
+/// If you need a player position, use `FPos` (for float position) instead.
 #[define_ty(path = "sugarcane::util::Pos")]
 impl SlPos {
   /// Creates a new block position, with the given X, Y, and Z coordinates.
@@ -36,6 +37,33 @@ impl SlPos {
   ///
   /// ```
   /// pos = Pos::new(5, 6, 7)
+  /// pos.z() // returns 7
+  /// ```
+  pub fn z(&self) -> i32 { self.inner.z() }
+}
+
+/// A chunk position. This stores X and Z coordinates.
+///
+/// If you need a block position, use `Pos` instead.
+#[define_ty(path = "sugarcane::util::ChunkPos")]
+impl SlChunkPos {
+  /// Creates a new chunk position, with the given X and Z coordinates.
+  pub fn new(x: i32, z: i32) -> Self { SlChunkPos { inner: ChunkPos::new(x, z) } }
+  /// Returns the X position of this chuk.
+  ///
+  /// # Example
+  ///
+  /// ```
+  /// pos = ChunkPos::new(5, 7)
+  /// pos.x() // returns 5
+  /// ```
+  pub fn x(&self) -> i32 { self.inner.x() }
+  /// Returns the Z position of this chuk.
+  ///
+  /// # Example
+  ///
+  /// ```
+  /// pos = ChunkPos::new(5, 7)
   /// pos.z() // returns 7
   /// ```
   pub fn z(&self) -> i32 { self.inner.z() }

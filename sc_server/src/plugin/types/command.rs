@@ -1,4 +1,7 @@
-use super::{util::SlPos, wrap};
+use super::{
+  util::{SlChunkPos, SlPos},
+  wrap,
+};
 use crate::command::{Arg, Command, Parser};
 use std::sync::{Arc, Mutex};
 use sugarlang::{
@@ -21,8 +24,80 @@ impl SlCommand {
 pub fn sl_from_arg(arg: Arg) -> Var {
   match arg {
     Arg::Literal(text) => text.into(),
-    Arg::String(text) => text.into(),
+    Arg::Bool(v) => v.into(),
+    Arg::Double(v) => v.into(),
+    Arg::Float(v) => v.into(),
+    Arg::Int(v) => v.into(),
+    Arg::String(v) => v.into(),
+    /*
+    Arg::Entity(EntitySelector),
+    Arg::ScoreHolder(String),
+    Arg::GameProfile(EntitySelector),
+    */
     Arg::BlockPos(pos) => SlPos::from(pos).into(),
+    Arg::ColumnPos(pos) => SlChunkPos::from(pos).into(),
+    /*
+    Arg::Vec3(f64, f64, f64),
+    Arg::Vec2(f64, f64),
+    BlockState(block::Kind, HashMap<String, String>, Option<NBT>),
+    BlockPredicate(block::Kind),
+    ItemStack(item::Stack),
+    ItemPredicate(item::Type),
+    Color(Color),
+    Component(Chat),
+    Message(String),
+    Nbt(NBT),
+    NbtPath(String),
+    Objective(String),
+    ObjectiveCriteria(String),
+    Operation(String),
+    Particle(String), // TODO: Particles
+    Rotation(f32, f32),
+    Angle(f32),
+    ScoreboardSlot(String),
+    Swizzle(f64, f64, f64),
+    Team(String),
+    /// A name for an inventory slot. Unclear on what is valid. Parsed as a string
+    /// for now.
+    ItemSlot(String),
+    /// An identifier. Parsed as a string for now.
+    ResourceLocation(String),
+    /// A potion effect. Parsed as an identifier (things like `minecraft:foo`).
+    MobEffect(String),
+    /// A function. Also parsed as a string, because I do not know what this is.
+    Function(String),
+    /// Entity anchor. What even is this thing. Parsed as a string,
+    EntityAnchor(String),
+    Range {
+      min: f64,
+      max: f64,
+    },
+    IntRange {
+      min: i32,
+      max: i32,
+    },
+    FloatRange {
+      min: f64,
+      max: f64,
+    },
+    /// Represents a item enchantment. Parsed as a string.
+    ItemEnchantment(String),
+    /// Represents an entity summon. This will be a parsed entity type.
+    EntitySummon(entity::Type),
+    /// Represents a dimension. MORE STRINGS
+    Dimension(String),
+    Uuid(UUID),
+    /// Different to nbt how?
+    NbtTag(NBT),
+    /// Once again, different to nbt how?
+    NbtCompoundTag(NBT),
+    Time(u64),
+
+    /// A forge mod id
+    Modid(String),
+    /// A enum class to use for suggestion. Added by Minecraft Forge.
+    Enum(String),
+    */
     _ => todo!("command arg {:?}", arg),
   }
 }
