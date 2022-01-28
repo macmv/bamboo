@@ -5,7 +5,6 @@ use noise::{BasicMulti, NoiseFn};
 use sc_common::{
   config::Config,
   math::{ChunkPos, Pos, RngCore, WyhashRng},
-  version::BlockVersion,
 };
 use std::{
   cmp::Ordering,
@@ -13,6 +12,7 @@ use std::{
 };
 
 mod biomes;
+mod debug;
 mod math;
 mod sl;
 mod underground;
@@ -234,28 +234,7 @@ impl WorldGen {
 
   pub fn generate(&self, pos: ChunkPos, c: &mut MultiChunk) {
     if self.debug {
-      let ver = match pos.z() {
-        0 => BlockVersion::V1_8,
-        1 => BlockVersion::V1_9,
-        2 => BlockVersion::V1_10,
-        3 => BlockVersion::V1_11,
-        4 => BlockVersion::V1_12,
-        6 => BlockVersion::V1_14,
-        7 => BlockVersion::V1_15,
-        8 => BlockVersion::V1_16,
-        9 => BlockVersion::V1_17,
-        10 => BlockVersion::V1_18,
-        _ => return,
-      };
-      let x = pos.block_x();
-      if x >= 0 && x < 1000 {
-        for x in pos.block_x()..pos.block_x() + 16 {
-          for state in 0..16 {
-            let ty = c.type_converter().type_from_id(x as u32 * 16 + state as u32, ver);
-            c.set_type(Pos::new(x % 16, 0, state), ty).unwrap();
-          }
-        }
-      }
+      self.debug_world(pos, c);
       return;
     }
     // Fast path for void worlds
