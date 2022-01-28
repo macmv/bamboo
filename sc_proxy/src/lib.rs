@@ -46,7 +46,7 @@ pub fn run() -> Result<(), Box<dyn Error>> {
   // The vanilla server uses 1024 bits for this.
   let key = Arc::new(RSAPrivateKey::new(&mut OsRng, 1024).expect("failed to generate a key"));
   let der_key = if config.get("encryption") { Some(der::encode(&key)) } else { None };
-  let icon = Arc::new(load_icon("icon.png"));
+  let icon = Arc::new(load_icon(config.get("icon")));
   let server_ip: SocketAddr = "0.0.0.0:8483".parse().unwrap();
   let compression = 256;
 
