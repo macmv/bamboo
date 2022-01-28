@@ -14,19 +14,26 @@ fn init(sc) {
   c.add_lit("word")
     .add_arg_block_pos("pos")
   sc.add_command(c)
+
+  c = Command::new("getblock", handle_getblock)
+  c.add_arg_block_pos("pos")
+  sc.add_command(c)
 }
 
 fn handle_setblock(sc, player, args) {
-  sc.info("SETBLOCK")
+  // args[0] is `setblock`
+  // args[1] is the position
+  // args[2] is the block kind
+  player.world().set_kind(args[1], args[2])
+}
 
+fn handle_getblock(sc, player, args) {
+  // args[0] is `getblock`
+  // args[1] is the position
   c = Chat::empty()
-  c.add("I").color("red")
-  c.add(" am").color("yellow")
-  c.add(" colors").color("green")
+  c.add("block: ")
+  c.add(player.world().get_kind(args[1]).to_s())
   player.send_message(c)
-  player.send_message(BlockKind::from_s("stone"))
-
-  add_biomes(sc)
 }
 
 fn on_block_place(sc, player, pos, kind) {
