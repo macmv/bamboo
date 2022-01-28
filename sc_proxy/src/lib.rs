@@ -11,7 +11,7 @@ pub mod stream;
 use mio::{net::TcpListener, Events, Interest, Poll, Token};
 use rand::rngs::OsRng;
 use rsa::RSAPrivateKey;
-use sc_common::math::der;
+use sc_common::{config::Config, math::der};
 use std::{collections::HashMap, error::Error, io, net::SocketAddr, sync::Arc};
 
 use crate::{conn::Conn, packet::TypeConverter, stream::java::stream::JavaStream};
@@ -30,6 +30,8 @@ pub fn load_icon(path: &str) -> String {
 pub fn run() -> Result<(), Box<dyn Error>> {
   sc_common::init("proxy");
 
+  let config = Config::new("proxy.yml", "proxy-default.yml");
+
   const JAVA_LISTENER: Token = Token(0xffffffff);
   const BEDROCK_LISTENER: Token = Token(0xfffffffe);
 
@@ -41,10 +43,9 @@ pub fn run() -> Result<(), Box<dyn Error>> {
   // info!("listening for bedrock clients on {}", addr);
   // let mut bedrock_listener = bedrock::Listener::bind(addr).await?;
 
-  // Minecraft uses 1024 bits for this.
+  // The vanilla server uses 1024 bits for this.
   let key = Arc::new(RSAPrivateKey::new(&mut OsRng, 1024).expect("failed to generate a key"));
-  let der_key = Some(der::encode(&key));
-  // let der_key = None;
+  let der_key = if config.get("encryption") { Some(der::encode(&key)) } else { None };
   let icon = Arc::new(load_icon("icon.png"));
   let server_ip: SocketAddr = "0.0.0.0:8483".parse().unwrap();
   let compression = 256;
