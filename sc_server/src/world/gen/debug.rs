@@ -143,30 +143,34 @@ impl WorldGen {
       if pos.x() >= 0 {
         c.fill_kind(Pos::new(0, Y - 1, 15), Pos::new(15, Y - 1, 15), EDGE).unwrap();
         for x in 0..16 {
-          if x % 4 == 0 {
+          if x % 16 == 0 {
+            c.fill_kind(Pos::new(x, Y - 1, 11), Pos::new(x, Y - 1, 14), EDGE).unwrap();
+          } else if x % 8 == 0 {
+            c.fill_kind(Pos::new(x, Y - 1, 12), Pos::new(x, Y - 1, 14), EDGE).unwrap();
+          } else if x % 4 == 0 {
             c.fill_kind(Pos::new(x, Y - 1, 13), Pos::new(x, Y - 1, 14), EDGE).unwrap();
-          } else if x % 4 == 2 {
+          } else if x % 2 == 0 {
             c.set_kind(Pos::new(x, Y - 1, 14), EDGE).unwrap();
           }
         }
       }
     }
-    for num in 0..5 {
-      let id = (pos.x() * 4 + num) * 2;
+    for num in 0..2 {
+      let id = (pos.x() + num) * 8;
       if id < 0 {
         continue;
       }
-      let left = pos.block_x() + num * 4 - 1;
+      let left = pos.block_x() + num * 16 - 1;
       self.place_number(pos, c, id, left);
     }
   }
 
   fn place_number(&self, pos: ChunkPos, c: &mut MultiChunk, mut id: i32, left: i32) {
+    let mut z = -11;
     if id == 0 {
-      self.place_digit(pos, c, 0, left, -9);
+      self.place_digit(pos, c, 0, left, z);
       return;
     }
-    let mut z = -9;
     while id != 0 {
       self.place_digit(pos, c, (id % 10) as u8, left, z);
       z -= 6;
