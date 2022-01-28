@@ -379,17 +379,14 @@ impl ConnectionManager {
           WAKE => {
             let r = rx.clone();
             write_pool.execute(move |s| loop {
-              info!("handling woke, rx has {} elems", r.len());
               match r.try_recv() {
                 Ok(ev) => Self::wake_event(&s, ev),
                 Err(TryRecvError::Empty) => break,
                 Err(_) => unreachable!(),
               }
-              info!("done handling woke, rx has {} elems", r.len());
             });
           }
           token => {
-            info!("handling event for {:?}...", token);
             let e = event.clone();
             read_pool.execute(move |s| {
               if Self::handle(&s.wm, &s.conns, token, e) {
@@ -402,7 +399,6 @@ impl ConnectionManager {
                 }
               }
             });
-            info!("done handling event for {:?}", token);
           }
         }
       }
@@ -413,14 +409,9 @@ impl ConnectionManager {
     match ev {
       WakeEvent::Clientbound(tok) => {
         if let Some((conn, player)) = s.conns.read().get(&tok) {
-          info!("sending on lock: {:?}", conn);
           match conn.lock().try_send() {
-            Ok(()) => {
-              info!("send worked!");
-            }
-            Err(e) if e.kind() == io::ErrorKind::WouldBlock => {
-              info!("would block, skipping");
-            }
+            Ok(()) => {}
+            Err(e) if e.kind() == io::ErrorKind::WouldBlock => {}
             Err(e) if e.kind() == io::ErrorKind::BrokenPipe => {
               if let Some(p) = player {
                 p.remove();
