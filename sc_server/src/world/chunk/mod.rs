@@ -92,13 +92,13 @@ impl MultiChunk {
   /// This returns a specific block type. If you only need to block kind, prefer
   /// [`get_kind`](Self::get_kind)
   pub fn get_type(&self, p: Pos) -> Result<block::Type, PosError> {
-    Ok(self.types.type_from_id(self.inner.get_block(p)?, BlockVersion::V1_16))
+    Ok(self.types.type_from_id(self.inner.get_block(p)?, BlockVersion::latest()))
   }
 
   /// Gets the type of a block within this chunk. Pos must be within the chunk.
   /// See [`set_block`](Self::set_block) for more.
   pub fn get_kind(&self, p: Pos) -> Result<block::Kind, PosError> {
-    Ok(self.types.kind_from_id(self.inner.get_block(p)?, BlockVersion::V1_16))
+    Ok(self.types.kind_from_id(self.inner.get_block(p)?, BlockVersion::latest()))
   }
 
   /// Returns the inner paletted chunk in this MultiChunk. This can be used to

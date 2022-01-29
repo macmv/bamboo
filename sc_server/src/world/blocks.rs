@@ -13,7 +13,7 @@ impl World {
   }
   /// Returns the block kind at the given position.
   pub fn get_kind(&self, pos: Pos) -> Result<block::Kind, PosError> {
-    Ok(self.get_block(pos)?.kind())
+    self.chunk(pos.chunk(), |c| c.get_kind(pos.chunk_rel()))
   }
   /// This sets a block within the world. It will return an error if the
   /// position is outside of the world. Unlike
