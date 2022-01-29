@@ -81,6 +81,19 @@ impl ToTcp for Packet {
             walk_speed: walk_speed * 0.1,
           }
         },
+      Packet::BlockUpdate { pos, state } => {
+        let mut buf = Buffer::new(vec![]);
+        buf.write_varint(state as i32);
+        if ver < ProtocolVersion::V1_17_1 {
+          GPacket::BlockUpdateV8 {
+            block_position: pos,
+            block_state:    None,
+            unknown:        buf.into_inner(),
+          }
+        } else {
+          GPacket::BlockUpdateV17 { pos: pos, state: None, unknown: buf.into_inner() }
+        }
+      }
       Packet::Chat { msg, ty } => {
         if ver < ProtocolVersion::V1_12_2 {
           GPacket::ChatV8 { chat_component: msg, ty: ty as i8 }
