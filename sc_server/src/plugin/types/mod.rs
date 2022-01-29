@@ -271,8 +271,12 @@ impl PluginManager {
           /// // `sc` is the Sugarcane struct, which gives you access to everything on
           /// // the server.
           /// // `player` is the player who sent this command.
-          /// // `args` is the parsed arguments to your command. See `command::Arg` for
-          /// // details on how to handle that.
+          /// // `args` is the parsed arguments to your command. Each item in this array
+          /// // is typed according to the arguments. So, the first item will be a string
+          /// // with the text "fill", the second will be a string will the text "rect"
+          /// // or "circle", the third item will be a block position, and the last item will
+          /// // be another block position or a float.
+          ///
           /// fn handle_fill(sc, player, args) {
           ///   player.send_message("You just ran /fill!")
           /// }
@@ -288,6 +292,14 @@ impl PluginManager {
           /// `pos`    `pos`
           ///   |        |
           /// `pos`   `float`
+          /// ```
+          ///
+          /// This will parse all of these commands:
+          ///
+          /// ```
+          /// /fill rect -3 -2 -1 4 5 6
+          /// /fill circle ~ ~ ~ 3.5
+          /// /fill rect ~-10 ~-10 ~-10 ~10 ~10 ~10
           /// ```
         ),
       ),

@@ -1,4 +1,5 @@
 use super::{
+  block::SlBlockKind,
   util::{SlChunkPos, SlPos},
   wrap,
 };
@@ -39,7 +40,9 @@ pub fn sl_from_arg(arg: Arg) -> Var {
     /*
     Arg::Vec3(f64, f64, f64),
     Arg::Vec2(f64, f64),
-    BlockState(block::Kind, HashMap<String, String>, Option<NBT>),
+    */
+    Arg::BlockState(kind, _props, _nbt) => SlBlockKind::from(kind).into(),
+    /*
     BlockPredicate(block::Kind),
     ItemStack(item::Stack),
     ItemPredicate(item::Type),
