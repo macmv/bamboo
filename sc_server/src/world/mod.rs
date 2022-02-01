@@ -234,17 +234,17 @@ impl World {
   /// Returns the current block converter. This can be used to convert old block
   /// ids to new ones, and vice versa. This can also be used to convert block
   /// kinds to types.
-  pub fn block_converter(&self) -> &block::TypeConverter { &self.block_converter }
+  pub fn block_converter(&self) -> &Arc<block::TypeConverter> { &self.block_converter }
   /// Returns the current item converter. This can be used to convert old item
   /// ids to new ones, and vice versa.
-  pub fn item_converter(&self) -> &item::TypeConverter { &self.item_converter }
+  pub fn item_converter(&self) -> &Arc<item::TypeConverter> { &self.item_converter }
   /// Returns the current entity converter. This can be used to convert old
   /// entity ids to new ones, and vice versa.
-  pub fn entity_converter(&self) -> &entity::TypeConverter { &self.entity_converter }
+  pub fn entity_converter(&self) -> &Arc<entity::TypeConverter> { &self.entity_converter }
   /// Returns the plugin manager. This is how events can be sent to plugins.
   /// This is the same plugin manager returned by the [`WorldManager`], and by
   /// other worlds.
-  pub fn plugins(&self) -> &plugin::PluginManager { &self.plugins }
+  pub fn plugins(&self) -> &Arc<plugin::PluginManager> { &self.plugins }
   /// Returns the command tree that the server uses. This can be used to add
   /// custom commands to the server.
   pub fn commands(&self) -> &CommandTree { &self.commands }
@@ -564,13 +564,13 @@ impl WorldManager {
   /// Returns the current block converter. This can be used to convert old block
   /// ids to new ones, and vice versa. This can also be used to convert block
   /// kinds to types.
-  pub fn block_converter(&self) -> &block::TypeConverter { &self.block_converter }
+  pub fn block_converter(&self) -> &Arc<block::TypeConverter> { &self.block_converter }
 
   /// Returns the current item converter. This can be used to convert old item
   /// ids to new ones, and vice versa.
-  pub fn item_converter(&self) -> &item::TypeConverter { &self.item_converter }
+  pub fn item_converter(&self) -> &Arc<item::TypeConverter> { &self.item_converter }
   /// Returns the plugins used for the whole server.
-  pub fn plugins(&self) -> &plugin::PluginManager { &self.plugins }
+  pub fn plugins(&self) -> &Arc<plugin::PluginManager> { &self.plugins }
   /// Returns the commands used for the whole server.
   pub fn commands(&self) -> &CommandTree { &self.commands }
 
