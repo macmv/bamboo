@@ -11,3 +11,6 @@ perf.data
 perf.data.old
 
 *-default.yml
+
+# a testing world
+/world

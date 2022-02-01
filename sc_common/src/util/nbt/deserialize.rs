@@ -1,5 +1,5 @@
 use crate::util::Buffer;
-use flate2::read::GzDecoder;
+use flate2::read::{GzDecoder, ZlibDecoder};
 use std::{collections::HashMap, error::Error, fmt, io, io::Read, string::FromUtf8Error};
 
 use super::{Tag, NBT};
@@ -21,6 +21,9 @@ impl fmt::Display for ParseError {
   }
 }
 
+impl From<FromUtf8Error> for ParseError {
+  fn from(e: FromUtf8Error) -> ParseError { ParseError::InvalidString(e) }
+}
 impl From<io::Error> for ParseError {
   fn from(e: io::Error) -> ParseError { ParseError::IO(e) }
 }
@@ -29,14 +32,20 @@ impl Error for ParseError {}
 
 impl NBT {
   pub fn deserialize_file(buf: Vec<u8>) -> Result<Self, ParseError> {
-    // This means its gzipped
     if buf.len() >= 2 && buf[0] == 0x1f && buf[1] == 0x8b {
+      // This means its gzipped
       let mut d: GzDecoder<&[u8]> = GzDecoder::new(buf.as_ref());
       let mut buf = vec![];
       d.read_to_end(&mut buf)?;
       Self::deserialize(buf)
     } else {
-      Self::deserialize(buf)
+      // It could be zlib compressed or not compressed
+      let mut d: ZlibDecoder<&[u8]> = ZlibDecoder::new(buf.as_ref());
+      let mut decompressed = vec![];
+      match d.read_to_end(&mut decompressed) {
+        Ok(_) => Self::deserialize(decompressed),
+        Err(_) => Self::deserialize(buf),
+      }
     }
   }
   /// Deserializes the given byte array as nbt data.
@@ -51,7 +60,7 @@ impl NBT {
   pub fn deserialize_buf(buf: &mut Buffer) -> Result<Self, ParseError> {
     let ty = buf.read_u8();
     let len = buf.read_u16();
-    let name = String::from_utf8(buf.read(len as usize)).unwrap();
+    let name = String::from_utf8(buf.read(len as usize))?;
     Ok(NBT::new(&name, Tag::deserialize(ty, buf)?))
   }
 }

@@ -4,6 +4,7 @@ mod entities;
 pub mod gen;
 mod init;
 mod players;
+mod region;
 pub mod schematic;
 
 use parking_lot::{Mutex, MutexGuard, RwLock, RwLockReadGuard};
@@ -138,6 +139,7 @@ impl World {
       wm,
       locked: true.into(),
     });
+    world.load_from_disk(&std::path::PathBuf::new().join("world")).unwrap();
     let w = world.clone();
     thread::spawn(|| {
       w.init();
