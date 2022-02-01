@@ -106,58 +106,81 @@ impl Tag {
     Self::Compound(inner)
   }
 
+  #[track_caller]
   pub fn unwrap_byte(&self) -> i8 {
     match self {
       Self::Byte(v) => *v,
       _ => panic!("not a byte: {:?}", self),
     }
   }
+  #[track_caller]
   pub fn unwrap_short(&self) -> i16 {
     match self {
       Self::Short(v) => *v,
       _ => panic!("not a short: {:?}", self),
     }
   }
+  #[track_caller]
   pub fn unwrap_int(&self) -> i32 {
     match self {
       Self::Int(v) => *v,
       _ => panic!("not an int: {:?}", self),
     }
   }
+  #[track_caller]
   pub fn unwrap_long(&self) -> i64 {
     match self {
       Self::Long(v) => *v,
       _ => panic!("not a long: {:?}", self),
     }
   }
+  #[track_caller]
   pub fn unwrap_float(&self) -> f32 {
     match self {
       Self::Float(v) => *v,
       _ => panic!("not a float: {:?}", self),
     }
   }
+  #[track_caller]
   pub fn unwrap_double(&self) -> f64 {
     match self {
       Self::Double(v) => *v,
       _ => panic!("not a double: {:?}", self),
     }
   }
+  #[track_caller]
   pub fn unwrap_string(&self) -> &str {
     match self {
       Self::String(v) => v,
       _ => panic!("not a string: {:?}", self),
     }
   }
+  #[track_caller]
   pub fn unwrap_byte_arr(&self) -> &[u8] {
     match self {
       Self::ByteArr(v) => v,
       _ => panic!("not a string: {:?}", self),
     }
   }
+  #[track_caller]
+  pub fn unwrap_list(&self) -> &Vec<Tag> {
+    match self {
+      Self::List(v) => v,
+      _ => panic!("not a list: {:?}", self),
+    }
+  }
+  #[track_caller]
   pub fn unwrap_compound(&self) -> &HashMap<String, Tag> {
     match self {
       Self::Compound(v) => v,
       _ => panic!("not a compound: {:?}", self),
+    }
+  }
+  #[track_caller]
+  pub fn unwrap_long_arr(&self) -> &Vec<i64> {
+    match self {
+      Self::LongArray(v) => v,
+      _ => panic!("not a long array: {:?}", self),
     }
   }
 }

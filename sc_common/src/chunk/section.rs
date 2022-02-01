@@ -30,4 +30,6 @@ pub trait Section: Any {
   /// `[#derive(Clone)]` on structs that contain a Section should not clone an
   /// entire section.
   fn duplicate(&self) -> Box<dyn Section + Send>;
+
+  fn set_from(&mut self, palette: Vec<u32>, data: Vec<u64>) { unimplemented!() }
 }

@@ -113,6 +113,26 @@ impl<S: Section> Chunk<S> {
   /// Returns an iterator through all the internal chunk sections.
   pub fn sections(&self) -> impl ExactSizeIterator<Item = &Option<S>> { self.sections.iter() }
 
+  /// Returns the section at the given index. If it doesn't exist, this will
+  /// create an empty section. If the `y` cordinate is out of bounds, this will
+  /// panic.
+  pub fn section_mut(&mut self, y: u32) -> &mut S {
+    if !(0..16).contains(&y) {
+      panic!("Y coordinate is outside of chunk");
+    }
+    let index = y as usize;
+    if index >= self.sections.len() {
+      self.sections.resize_with(index + 1, || None);
+    }
+    if self.sections[index].is_none() {
+      self.sections[index] = Some(S::new(self.max_bpe));
+    }
+    match &mut self.sections[index] {
+      Some(s) => s,
+      None => unreachable!(),
+    }
+  }
+
   /// Builds a heightmap of this chunk. Each long contains 9 bit entries, where
   /// each entry is the height of the world at the given X, Z coordinate. This
   /// is used within 1.14+ protocol data, and is a needlessly complicated format

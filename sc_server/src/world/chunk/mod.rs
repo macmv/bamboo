@@ -105,6 +105,8 @@ impl MultiChunk {
   /// access the block data directly. All ids are the latest version block
   /// states.
   pub fn inner(&self) -> &Chunk<PalettedSection> { &self.inner }
+  /// Same as [`inner`](Self::inner), but returns a mutable reference.
+  pub fn inner_mut(&mut self) -> &mut Chunk<PalettedSection> { &mut self.inner }
 
   /// Returns a reference to the global type converter. Used to convert a block
   /// id to/from any version.

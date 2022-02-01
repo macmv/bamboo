@@ -2,8 +2,9 @@
 //! is made for vanilla compatability, and the latter is a custom protobuf
 //! format which is easier to maintain.
 
-use sc_common::util::nbt::{Tag, NBT};
-use std::{fs, io, path::Path};
+use crate::block;
+use sc_common::{chunk::Section, math::ChunkPos, util::nbt::NBT};
+use std::{fs, io, path::Path, str::FromStr};
 
 use super::World;
 
@@ -62,8 +63,43 @@ impl World {
       let header = &chunk[..5];
       let len = u32::from_be_bytes(header[..4].try_into().unwrap()) as usize;
       let _compression = header[4];
-      let nbt = NBT::deserialize_file(chunk[5..5 + len].to_vec());
-      dbg!(&nbt);
+      let nbt = NBT::deserialize_file(chunk[5..5 + len - 1].to_vec()).unwrap();
+
+      // the chunk_x and chunk_z values are absolute.
+      let chunk_x = nbt.compound()["xPos"].unwrap_int();
+      let chunk_z = nbt.compound()["zPos"].unwrap_int();
+      let pos = ChunkPos::new(chunk_x, chunk_z);
+
+      self.chunk(pos, |mut chunk| {
+        for s in nbt.compound()["sections"].unwrap_list() {
+          let section = s.unwrap_compound();
+          let y = section["Y"].unwrap_byte();
+          if y < 0 {
+            // TODO: Handle negative chunks
+            continue;
+          }
+          let y = y as u32;
+          let block_states = section["block_states"].unwrap_compound();
+          // Skip air sections
+          if !block_states.contains_key("data") {
+            continue;
+          }
+          let data = block_states["data"].unwrap_long_arr().iter().map(|v| *v as u64).collect();
+          let palette: Vec<_> = block_states["palette"]
+            .unwrap_list()
+            .iter()
+            .map(|item| {
+              let item = item.unwrap_compound();
+              // TODO: Read properties
+              let name = item["Name"].unwrap_string();
+              let name = name.strip_prefix("minecraft:").unwrap();
+              self.block_converter().get(block::Kind::from_str(name).unwrap()).default_type().id()
+            })
+            .collect();
+          let section = chunk.inner_mut().section_mut(y);
+          section.set_from(palette, data);
+        }
+      });
     }
     Ok(())
   }

@@ -337,4 +337,35 @@ impl ChunkSection for Section {
       max_bpe:         self.max_bpe,
     })
   }
+  fn set_from(&mut self, palette: Vec<u32>, data: Vec<u64>) {
+    let bpe = bpe_from_palette(palette.len(), self.max_bpe);
+    self.palette = palette;
+    self.reverse_palette =
+      self.palette.iter().enumerate().map(|(i, val)| (*val, i as u32)).collect();
+    self.data = BitArray::from_data(bpe, data);
+    self.block_amounts = vec![0; self.palette.len()];
+    for y in 0..16 {
+      for z in 0..16 {
+        for x in 0..16 {
+          // SAFETY: The block position is always within 0..16 on all axis
+          unsafe {
+            let id = self.get_palette(Pos::new(x, y, z)) as usize;
+            self.block_amounts[id] += 1;
+          }
+        }
+      }
+    }
+  }
+}
+
+fn bpe_from_palette(len: usize, max_bpe: u8) -> u8 {
+  match len {
+    0..=16 => 4,
+    17..=32 => 5,
+    33..=64 => 6,
+    65..=128 => 7,
+    129..=256 => 8,
+    257.. => max_bpe,
+    _ => unreachable!(),
+  }
 }
