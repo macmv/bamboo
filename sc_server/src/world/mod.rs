@@ -112,18 +112,18 @@ impl World {
     commands: Arc<CommandTree>,
     wm: Arc<WorldManager>,
   ) -> Arc<Self> {
-    let mut chunks = HashMap::new();
+    let chunks = HashMap::new();
     let gen = WorldGen::from_config(wm.config());
+    /*
     for schematic in wm.config().get::<_, Vec<String>>("world.schematics") {
-      /*
       let path = schematic.get("path");
       let pos = Pos::new(schematic.get("x"), schematic.get("y"), schematic.get("z"));
       schematic::load_from_file(&mut chunks, path, &block_converter, || {
         CountedChunk::new(MultiChunk::new(block_converter.clone(), true))
       })
       .unwrap_or_else(|err| error!("could not load schematic file {}: {}", path, err));
-      */
     }
+    */
     let world = Arc::new(World {
       chunks: RwLock::new(chunks),
       unloadable_chunks: Mutex::new(HashSet::new()),
