@@ -13,7 +13,7 @@ pub trait YamlValue<'a> {
     Self: Sized;
 
   /// Returns the name of this yaml value (string, integer, etc).
-  fn name() -> &'static str
+  fn name() -> String
   where
     Self: Sized;
 }
@@ -182,23 +182,18 @@ impl Config {
 impl YamlValue<'_> for bool {
   fn from_yaml(v: &Yaml) -> Option<Self> { v.as_bool() }
 
-  fn name() -> &'static str { "bool" }
+  fn name() -> String { "bool".into() }
 }
 
-macro_rules! yaml_array {
-  ($name:expr, $($ty:ty),*) => {
-    $(
-      impl YamlValue<'_> for Vec<$ty> {
-        fn from_yaml(v: &Yaml) -> Option<Self> {
-          v.as_vec().and_then(|v| v.iter().map(|v| <$ty>::from_yaml(&v)).collect::<Option<Vec<$ty>>>())
-        }
+impl<'a, T> YamlValue<'a> for Vec<T>
+where
+  T: YamlValue<'a>,
+{
+  fn from_yaml(v: &'a Yaml) -> Option<Self> {
+    v.as_vec().and_then(|v| v.iter().map(|v| T::from_yaml(&v)).collect::<Option<Vec<T>>>())
+  }
 
-        fn name() -> &'static str {
-          concat!("array of ", $name)
-        }
-      }
-    )*
-  };
+  fn name() -> String { format!("array of {}", T::name()) }
 }
 
 macro_rules! yaml_number {
@@ -209,54 +204,36 @@ macro_rules! yaml_number {
           v.as_i64().and_then(|v| v.try_into().ok())
         }
 
-        fn name() -> &'static str {
-          $name
+        fn name() -> String {
+          $name.into()
         }
       }
-
-      yaml_array!($name, $ty);
     )*
   };
 }
 
 yaml_number!("integer", u8, u16, u32, u64, i8, i16, i32, i64);
-yaml_array!("float", f32, f64);
-yaml_array!("string", String);
 
 impl<'a> YamlValue<'a> for &'a str {
   fn from_yaml(v: &'a Yaml) -> Option<Self> { v.as_str() }
 
-  fn name() -> &'static str { "string" }
+  fn name() -> String { "string".into() }
 }
 
 impl YamlValue<'_> for String {
   fn from_yaml(v: &Yaml) -> Option<Self> { v.as_str().map(|v| v.into()) }
 
-  fn name() -> &'static str { "string" }
+  fn name() -> String { "string".into() }
 }
 
 impl YamlValue<'_> for f32 {
   fn from_yaml(v: &Yaml) -> Option<Self> { v.as_f64().map(|v| v as f32) }
 
-  fn name() -> &'static str { "float" }
+  fn name() -> String { "float".into() }
 }
 
 impl YamlValue<'_> for f64 {
   fn from_yaml(v: &Yaml) -> Option<Self> { v.as_f64() }
 
-  fn name() -> &'static str { "float" }
-}
-
-impl<'a> YamlValue<'a> for &'a Vec<Yaml> {
-  fn from_yaml(v: &'a Yaml) -> Option<Self> { v.as_vec() }
-
-  fn name() -> &'static str { "array" }
-}
-
-impl<'a> YamlValue<'a> for Vec<&'a str> {
-  fn from_yaml(v: &'a Yaml) -> Option<Self> {
-    v.as_vec()?.iter().map(<&str>::from_yaml).collect::<Option<Vec<&str>>>()
-  }
-
-  fn name() -> &'static str { "array of string" }
+  fn name() -> String { "float".into() }
 }
