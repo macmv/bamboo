@@ -1,39 +1,42 @@
-use crate::block;
+use num::{FromPrimitive, ToPrimitive};
 use num_derive::{FromPrimitive, ToPrimitive};
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, FromPrimitive, ToPrimitive)]
-pub enum Type {
-  Air,
-  Snowball,
-}
+use std::{error::Error, fmt, str::FromStr};
 
 /// Any data specific to a block kind. This includes all function handlers for
 /// when a block gets placed/broken, and any custom functionality a block might
 /// have.
 #[derive(Debug)]
 pub struct Data {
-  display_name:   &'static str,
-  stack_size:     u32,
-  block_to_place: block::Kind,
+  ty:   Type,
+  name: &'static str,
+  id:   u32,
 }
 
 impl Data {
-  pub fn display_name(&self) -> &str { &self.display_name }
-
-  /// Returns the block to place from this item.
-  pub fn block_to_place(&self) -> block::Kind { self.block_to_place }
+  pub fn id(&self) -> u32 { self.id }
 }
+
+#[derive(Debug)]
+pub struct InvalidItem(String);
+
+impl fmt::Display for InvalidItem {
+  fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    write!(f, "invalid item name: {}", self.0)
+  }
+}
+
+impl Error for InvalidItem {}
 
 // Creates the type enum, and the generate_data function
 include!(concat!(env!("OUT_DIR"), "/item/ty.rs"));
 
 impl Type {
-  /// Returns the kind as a u32. Should only be used to index into the
-  /// converter's internal table of block kinds.
-  pub fn to_u32(self) -> u32 { num::ToPrimitive::to_u32(&self).unwrap() }
-  /// Returns the item with the given id. If the id is invalid, this returns
-  /// `Type::Air`.
-  pub fn from_u32(v: u32) -> Type { num::FromPrimitive::from_u32(v).unwrap_or(Type::Air) }
+  /// Returns the kind as an u32. This is used in the versioning arrays, and in
+  /// plugin code, so that ints can be passed around instead of enums.
+  pub fn id(self) -> u32 { ToPrimitive::to_u32(&self).unwrap() }
+  /// Converts the given number to a block kind. If the number is invalid, this
+  /// returns Kind::Air.
+  pub fn from_u32(id: u32) -> Self { FromPrimitive::from_u32(id).unwrap_or(Type::Air) }
 }
 
 #[cfg(test)]

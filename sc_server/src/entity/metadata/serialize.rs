@@ -209,7 +209,7 @@ impl Metadata {
           Field::Float(v) => out.write_f32(*v),
           Field::String(v) => out.write_str(v),
           Field::Item(v) => {
-            out.write_i16(v.item().to_u32() as i16);
+            out.write_i16(v.item().id() as i16);
             out.write_u8(v.amount());
             out.write_i16(0); // Item damage
             out.write_u8(0x00); // TODO: NBT

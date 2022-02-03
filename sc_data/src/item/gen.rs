@@ -15,7 +15,7 @@ pub fn generate_ty(def: &ItemDef) -> String {
   gen.write_line("/// Auto generated item kind. This is directly generated");
   gen.write_line("/// from sugarcane data.");
   gen.write_line("#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, ToPrimitive, FromPrimitive)]");
-  gen.write("pub enum Kind ");
+  gen.write("pub enum Type ");
   gen.write_block(|gen| {
     for b in &def.items {
       gen.write(&b.name.to_case(Case::Pascal));
@@ -23,10 +23,10 @@ pub fn generate_ty(def: &ItemDef) -> String {
     }
   });
   gen.write_line("");
-  gen.write("impl FromStr for Kind ");
+  gen.write("impl FromStr for Type ");
   gen.write_block(|gen| {
-    gen.write_line("type Err = InvalidBlock;");
-    gen.write("fn from_str(s: &str) -> Result<Self, Self::Err>");
+    gen.write_line("type Err = InvalidItem;");
+    gen.write("fn from_str(s: &str) -> Result<Self, Self::Err> ");
     gen.write_block(|gen| {
       gen.write_line("Ok(match s {");
       gen.add_indent();
@@ -37,12 +37,12 @@ pub fn generate_ty(def: &ItemDef) -> String {
         gen.write(&b.name.to_case(Case::Pascal));
         gen.write_line(",");
       }
-      gen.write_line("_ => return Err(InvalidBlock(s.into())),");
+      gen.write_line("_ => return Err(InvalidItem(s.into())),");
       gen.remove_indent();
       gen.write_line("})");
     });
   });
-  gen.write("impl Kind ");
+  gen.write("impl Type ");
   gen.write_block(|gen| {
     gen.write("pub fn to_str(&self) -> &'static str");
     gen.write_block(|gen| {
@@ -119,12 +119,12 @@ fn item_data(gen: &mut CodeGen, b: &Item) {
   gen.write_line("Data {");
   gen.add_indent();
 
-  gen.write("kind: Kind::");
+  gen.write("ty: Type::");
   gen.write(&b.name.to_case(Case::Pascal));
   gen.write_line(",");
 
   write_prop!(name);
-  write_prop!(id: state);
+  write_prop!(id);
 
   gen.remove_indent();
   gen.write("}");

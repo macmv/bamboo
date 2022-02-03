@@ -2,6 +2,7 @@ use sc_common::version::BlockVersion;
 
 pub struct TypeConverter {
   blocks: &'static [block::Version],
+  items:  &'static [item::Version],
 }
 
 mod block {
@@ -17,8 +18,23 @@ mod block {
   include!(concat!(env!("OUT_DIR"), "/block/version.rs"));
 }
 
+mod item {
+  use sc_common::version::BlockVersion;
+
+  #[derive(Debug)]
+  pub struct Version {
+    pub to_old: &'static [u32],
+    pub to_new: &'static [u32],
+    pub ver:    BlockVersion,
+  }
+
+  include!(concat!(env!("OUT_DIR"), "/item/version.rs"));
+}
+
 impl TypeConverter {
-  pub fn new() -> Self { TypeConverter { blocks: block::generate_versions() } }
+  pub fn new() -> Self {
+    TypeConverter { blocks: block::generate_versions(), items: item::generate_versions() }
+  }
 }
 
 impl TypeConverter {

@@ -53,7 +53,7 @@ impl TypeConverter {
 
   /// Returns any data about this item. Includes things like max stack size,
   /// display name, etc.
-  pub fn get_data(&self, item: Type) -> &Data { &self.types[item.to_u32() as usize] }
+  pub fn get_data(&self, item: Type) -> &Data { &self.types[item.id() as usize] }
 }
 
 /// This is the conversion table for a single old version of the game and the
