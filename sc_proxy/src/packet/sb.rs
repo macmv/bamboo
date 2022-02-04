@@ -2,7 +2,7 @@ use super::TypeConverter;
 use crate::gnet::sb::Packet as GPacket;
 use sc_common::{
   net::sb::Packet,
-  util::{nbt::NBT, Buffer, Item},
+  util::{nbt::NBT, Buffer, Face, Item},
   version::ProtocolVersion,
 };
 use std::{error::Error, fmt};
@@ -47,6 +47,14 @@ impl FromTcp for Packet {
       }
       GPacket::KeepAliveV8 { key: id } => Packet::KeepAlive { id },
       GPacket::KeepAliveV12 { key: id } => Packet::KeepAlive { id: id as i32 },
+      GPacket::PlayerBlockPlacementV8 { position, placed_block_direction, unknown: _, .. } => {
+        // let mut buf = Buffer::new(unknown);
+        Packet::BlockPlace {
+          pos:  position,
+          face: Face::from_id(placed_block_direction as u8),
+          hand: 0,
+        }
+      }
       GPacket::PlayerV8 { on_ground, .. } => Packet::PlayerOnGround { on_ground },
       GPacket::PlayerLookV8 { yaw, pitch, on_ground, .. }
       | GPacket::PlayerRotationV9 { yaw, pitch, on_ground, .. } => {
