@@ -137,8 +137,8 @@ impl World {
       plugins,
       commands,
       mspt: Arc::new(0.into()),
+      locked: wm.config().get::<_, bool>("world.locked").into(),
       wm,
-      locked: true.into(),
     });
     world.load_from_disk(&std::path::PathBuf::new().join("world")).unwrap();
     let w = world.clone();

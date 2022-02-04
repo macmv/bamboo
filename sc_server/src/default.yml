@@ -4,6 +4,13 @@ view-distance: 10
 
 # Configs for world generation/loading.
 world:
+  # If set, the world cannot be modified. This can be used in minigame
+  # lobbies, for example.
+  locked: false
+
+  # Generation settings
+
+  # Schematic reading settings.
   schematic:
     # If set, then the world will be a void world, and a schematic will be
     # loaded from the given path on server startup. This overrides any of
