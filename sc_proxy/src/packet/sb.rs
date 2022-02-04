@@ -1,5 +1,5 @@
 use super::TypeConverter;
-use crate::gnet::sb::Packet as GPacket;
+use crate::gnet::{sb::Packet as GPacket, tcp};
 use sc_common::{
   math::Pos,
   net::sb::Packet,
@@ -60,6 +60,29 @@ impl FromTcp for Packet {
           }
         }
       }
+      GPacket::PlayerInteractBlockV9 { position, placed_block_direction, hand, .. } => {
+        Packet::BlockPlace {
+          pos:  position,
+          face: Face::from_id(placed_block_direction as u8),
+          hand: Hand::from_id(hand as u8),
+        }
+      }
+      GPacket::PlayerInteractBlockV14 { hand, unknown, .. } => {
+        let mut buf = tcp::Packet::from_buf_id(unknown, 0, ver);
+        // `unknown` has these fields:
+        // - position
+        // - face (varint)
+        // - cursor x (float)
+        // - cursor y (float)
+        // - cursor z (float)
+        // - inside block (bool)
+        Packet::BlockPlace {
+          pos:  buf.read_pos(),
+          face: Face::from_id(buf.read_varint() as u8),
+          hand: Hand::from_id(hand as u8),
+        }
+      }
+      GPacket::PlayerInteractItemV9 { hand } => Packet::UseItem { hand: Hand::from_id(hand as u8) },
       GPacket::PlayerV8 { on_ground, .. } => Packet::PlayerOnGround { on_ground },
       GPacket::PlayerLookV8 { yaw, pitch, on_ground, .. }
       | GPacket::PlayerRotationV9 { yaw, pitch, on_ground, .. } => {

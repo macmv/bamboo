@@ -66,6 +66,23 @@ pub enum Hand {
   Off,
 }
 
+impl Hand {
+  pub fn id(&self) -> u8 {
+    match self {
+      Self::Main => 0,
+      Self::Off => 1,
+    }
+  }
+
+  pub fn from_id(id: u8) -> Hand {
+    match id {
+      0 => Self::Main,
+      1 => Self::Off,
+      _ => panic!("invalid hand: {}", id),
+    }
+  }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, sc_macros::Transfer)]
 pub enum GameMode {
   Survival,

@@ -33,10 +33,17 @@ impl Packet {
     buf.write_varint(id);
     Packet { buf, id, ver }
   }
+  /// Creates a new TCP packet from the given data. This will read a varint from
+  /// the data to get the packet's ID.
   pub fn from_buf(data: Vec<u8>, ver: ProtocolVersion) -> Packet {
     let mut buf = Buffer::new(data);
     let id = buf.read_varint();
     Packet { buf, id, ver }
+  }
+  /// Creates a new TCP packet from the given data. This will not read anything
+  /// from the data, as the ID is supplied.
+  pub fn from_buf_id(data: Vec<u8>, id: i32, ver: ProtocolVersion) -> Packet {
+    Packet { buf: Buffer::new(data), id, ver }
   }
   pub fn id(&self) -> i32 { self.id }
   pub fn err(&self) -> &Option<BufferError> { self.buf.err() }
