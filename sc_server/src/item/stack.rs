@@ -1,4 +1,5 @@
 use super::Type;
+use sc_common::util::Item;
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Stack {
@@ -6,8 +7,14 @@ pub struct Stack {
   amount: u8,
 }
 
+impl From<Item> for Stack {
+  /// Creates an item stack from the given item. This is how we convert protocol
+  /// items into server storage.
+  fn from(it: Item) -> Self { Stack::new(Type::from_u32(it.id() as u32)).with_amount(it.count()) }
+}
+
 impl Stack {
-  /// Creates an empty item stack. This has the type set to air, and the count
+  /// Creates an empty item stck. This has the type set to air, and the count
   /// set to 0.
   pub fn empty() -> Self { Stack { item: Type::Air, amount: 0 } }
   /// Creates an item stack containing a single item with the given type.

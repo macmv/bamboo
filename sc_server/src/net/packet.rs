@@ -38,16 +38,10 @@ pub(crate) fn handle(wm: &Arc<WorldManager>, player: &Arc<Player>, p: sb::Packet
         }
       }
     }
-    /*
-    sb::Packet::SetCreativeSlot { slot, item } => {
-      if slot > 0 {
-        let id =
-          player.world().item_converter().to_latest(item.id() as u32, player.ver().block());
-        player
-          .lock_inventory()
-          .set(slot as u32, item::Stack::new(item::Type::from_u32(id)).with_amount(item.count()));
-      }
+    sb::Packet::CreativeInventoryUpdate { slot, item } => {
+      player.lock_inventory().set(slot as u32, item.into());
     }
+    /*
     sb::Packet::HeldItemSlot { slot_id } => {
       player.lock_inventory().set_selected(slot_id.try_into().unwrap());
     }
