@@ -1,6 +1,6 @@
 use crate::{
   math::Pos,
-  util::{Face, Item},
+  util::{Face, Hand, Item},
 };
 
 #[derive(Debug, Clone, sc_macros::Transfer)]
@@ -14,10 +14,10 @@ pub enum Packet {
   BlockPlace {
     pos:  Pos,
     face: Face,
-    hand: u8,
+    hand: Hand,
   },
   CreativeInventoryUpdate {
-    slot: u8,
+    slot: i8,
     item: Item,
   },
   Chat {
@@ -54,6 +54,9 @@ pub enum Packet {
   PluginMessage {
     channel: String,
     data:    Vec<u8>,
+  },
+  UseItem {
+    hand: Hand,
   },
 }
 
