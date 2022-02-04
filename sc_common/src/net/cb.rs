@@ -31,6 +31,11 @@ pub enum Packet {
     sky_light:   Option<LightChunk<SkyLight>>,
     block_light: LightChunk<BlockLight>,
   },
+  CommandList {
+    nodes: Vec<CommandNode>,
+    // Index into the above list
+    root:  u32,
+  },
   /// Pitch/yaw change of an entity.
   EntityLook {
     eid:       i32,
@@ -142,6 +147,38 @@ pub enum Packet {
   UpdateViewPos {
     pos: ChunkPos,
   },
+}
+
+#[derive(Debug, Clone, sc_macros::Transfer)]
+pub struct CommandNode {
+  /// The type. This is `flags & 0x03`.
+  pub ty:         CommandType,
+  /// If set, then `flags & 0x04` should be set. This means the command is valid
+  /// after this node. For example, `/setblock <pos> <ty>` has three nodes (lit,
+  /// arg, arg). Only the last node has executable set.
+  pub executable: bool,
+  /// Indices into the command nodes array
+  pub children:   Vec<u32>,
+  /// If present, `flags & 0x08` must be set. Index into the command nodes
+  /// array.
+  pub redirect:   Option<u32>,
+  /// Only present for literal and argument nodes.
+  pub name:       String,
+  /// Only present for argument nodes.
+  pub parser:     String,
+  /// Only present for certain argument nodes. Format varies. This remains the
+  /// same accross versions.
+  pub properties: Vec<u8>,
+  /// If present, `flags & 0x10` must be set. This is a type of suggestion to
+  /// give when the client is entering this node.
+  pub suggestion: Option<String>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, sc_macros::Transfer)]
+pub enum CommandType {
+  Root,
+  Literal,
+  Argument,
 }
 
 #[derive(Debug, Clone, sc_macros::Transfer)]

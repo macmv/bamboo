@@ -1,7 +1,10 @@
 use super::TypeConverter;
 use crate::gnet::cb::Packet as GPacket;
 use sc_common::{
-  net::{cb, cb::Packet},
+  net::{
+    cb,
+    cb::{CommandType, Packet},
+  },
   util::{
     nbt::{Tag, NBT},
     Buffer, UUID,
@@ -95,6 +98,49 @@ impl ToTcp for Packet {
       }
       Packet::Chunk { pos, full, bit_map, sections, sky_light, block_light } => {
         return Ok(super::chunk(pos, full, bit_map, sections, sky_light, block_light, ver, conv));
+      }
+      Packet::CommandList { nodes, root } => {
+        if ver < ProtocolVersion::V1_13 {
+          panic!("command tree doesn't exist for version {}", ver);
+        }
+        let mut buf = Buffer::new(vec![]);
+        buf.write_list(&nodes, |buf, node| {
+          let mut flags = match node.ty {
+            CommandType::Root => 0,
+            CommandType::Literal => 1,
+            CommandType::Argument => 2,
+          };
+          if node.executable {
+            flags &= 0x04;
+          }
+          if node.redirect.is_some() {
+            flags &= 0x08;
+          }
+          if node.suggestion.is_some() {
+            flags &= 0x08;
+          }
+          buf.write_u8(flags);
+          buf.write_list(&node.children, |buf, child| buf.write_varint(*child as i32));
+          if let Some(redirect) = node.redirect {
+            buf.write_varint(redirect as i32);
+          }
+          if node.ty == CommandType::Literal || node.ty == CommandType::Argument {
+            buf.write_str(&node.name);
+          }
+          if node.ty == CommandType::Argument {
+            buf.write_str(&node.parser);
+            buf.write_buf(&node.properties);
+          }
+          if let Some(suggestion) = &node.suggestion {
+            buf.write_str(&suggestion);
+          }
+        });
+        buf.write_varint(root as i32);
+        if ver > ProtocolVersion::V1_14_4 {
+          GPacket::CommandTreeV16 { command_tree: None, unknown: buf.into_inner() }
+        } else {
+          GPacket::CommandTreeV14 { command_tree: None, unknown: buf.into_inner() }
+        }
       }
       Packet::EntityLook { eid, yaw, pitch, on_ground } => GPacket::EntityLookV8 {
         entity_id: eid,
