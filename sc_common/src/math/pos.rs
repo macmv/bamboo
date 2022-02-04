@@ -1,4 +1,5 @@
 use super::ChunkPos;
+use crate::util::Face;
 use std::{
   error::Error,
   fmt, mem,
@@ -287,6 +288,15 @@ impl AddAssign for Pos {
     self.y += other.y;
     self.z += other.z;
   }
+}
+
+impl Add<Face> for Pos {
+  type Output = Self;
+  fn add(self, other: Face) -> Self { self + other.as_dir() }
+}
+
+impl AddAssign<Face> for Pos {
+  fn add_assign(&mut self, other: Face) { *self += other.as_dir() }
 }
 
 impl Sub for Pos {
