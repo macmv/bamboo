@@ -111,13 +111,13 @@ impl ToTcp for Packet {
             CommandType::Argument => 2,
           };
           if node.executable {
-            flags &= 0x04;
+            flags |= 0x04;
           }
           if node.redirect.is_some() {
-            flags &= 0x08;
+            flags |= 0x08;
           }
           if node.suggestion.is_some() {
-            flags &= 0x08;
+            flags |= 0x10;
           }
           buf.write_u8(flags);
           buf.write_list(&node.children, |buf, child| buf.write_varint(*child as i32));
