@@ -1,6 +1,6 @@
 use crate::{block, entity, item, player::Player, world::WorldManager};
 use sc_common::{
-  math::FPos,
+  math::{FPos, Pos},
   net::sb,
   util::chat::{Chat, Color, HoverEvent},
 };
@@ -50,50 +50,42 @@ pub(crate) fn handle(wm: &Arc<WorldManager>, player: &Arc<Player>, p: sb::Packet
       let hand = hand_v1_9.unwrap_or(0);
       self.use_item(player, hand);
     }
-    sb::Packet::BlockPlace {
-      mut location,
-      direction_v1_8,
-      direction_v1_9,
-      hand_v1_9,
-      cursor_x_v1_8: _,
-      cursor_x_v1_11: _,
-      cursor_y_v1_8: _,
-      cursor_y_v1_11: _,
-      cursor_z_v1_8: _,
-      cursor_z_v1_11: _,
-      inside_block_v1_14: _,
-      held_item_removed_v1_9: _,
-    } => {
-      // 0 = main hand on 1.8
-      let hand = hand_v1_9.unwrap_or(0);
-
+    */
+    sb::Packet::BlockPlace { mut pos, face, hand } => {
+      /*
       let direction: i32 = if player.ver() == ProtocolVersion::V1_8 {
         // direction_v1_8 is an i8 (not a u8), so the sign stays correct
         direction_v1_8.unwrap().into()
       } else {
         direction_v1_9.unwrap()
       };
+      */
 
-      if location == Pos::new(-1, -1, -1) && direction == -1 {
-        self.use_item(player, hand);
+      if pos == Pos::new(-1, -1, -1)
+      /* && face == -1 */
+      {
+        // self.use_item(player, hand);
       } else {
+        /*
         let item_data = {
           let inv = player.lock_inventory();
           let stack = inv.main_hand();
           player.world().item_converter().get_data(stack.item())
         };
         let kind = item_data.block_to_place();
+        */
+        let kind = crate::block::Kind::Stone;
 
-        match player.world().get_block(location) {
+        match player.world().get_block(pos) {
           Ok(looking_at) => {
             let block_data = player.world().block_converter().get(looking_at.kind());
             if !block_data.material.is_replaceable() {
-              let _ = player.sync_block_at(location);
-              location += Pos::dir_from_byte(direction.try_into().unwrap());
+              let _ = player.sync_block_at(pos);
+              pos += face;
             }
 
-            match player.world().set_kind(location, kind) {
-              Ok(_) => player.world().plugins().on_block_place(player.clone(), location, kind),
+            match player.world().set_kind(pos, kind) {
+              Ok(_) => player.world().plugins().on_block_place(player.clone(), pos, kind),
               Err(e) => player.send_hotbar(&Chat::new(e.to_string())),
             }
           }
@@ -101,7 +93,6 @@ pub(crate) fn handle(wm: &Arc<WorldManager>, player: &Arc<Player>, p: sb::Packet
         };
       }
     }
-    */
     sb::Packet::PlayerPos { x, y, z, .. } => {
       player.set_next_pos(x, y, z);
     }
