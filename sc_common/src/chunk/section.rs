@@ -31,5 +31,8 @@ pub trait Section: Any {
   /// entire section.
   fn duplicate(&self) -> Box<dyn Section + Send>;
 
-  fn set_from(&mut self, palette: Vec<u32>, data: Vec<u64>) { unimplemented!() }
+  fn set_from(&mut self, palette: Vec<u32>, data: Vec<u64>) {
+    let _ = (palette, data);
+    unimplemented!()
+  }
 }
