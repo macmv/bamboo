@@ -339,18 +339,61 @@ impl ChunkSection for Section {
   }
   fn set_from(&mut self, palette: Vec<u32>, data: Vec<u64>) {
     let bpe = bpe_from_palette(palette.len(), self.max_bpe);
-    self.palette = palette;
-    self.reverse_palette =
-      self.palette.iter().enumerate().map(|(i, val)| (*val, i as u32)).collect();
-    self.data = BitArray::from_data(bpe, data);
-    self.block_amounts = vec![0; self.palette.len()];
-    for y in 0..16 {
-      for z in 0..16 {
-        for x in 0..16 {
-          // SAFETY: The block position is always within 0..16 on all axis
-          unsafe {
-            let id = self.get_palette(Pos::new(x, y, z)) as usize;
-            self.block_amounts[id] += 1;
+    let mut sorted = true;
+    for (i, curr) in palette.iter().enumerate() {
+      if i == 0 {
+        continue;
+      }
+      let prev = palette[i - 1];
+      if prev > *curr {
+        sorted = false;
+        break;
+      }
+    }
+    if sorted {
+      // Fast path, we can just copy all the data into this chunk.
+      self.palette = palette;
+      self.reverse_palette =
+        self.palette.iter().enumerate().map(|(i, val)| (*val, i as u32)).collect();
+      self.data = BitArray::from_data(bpe, data);
+
+      self.block_amounts = vec![0; self.palette.len()];
+      for y in 0..16 {
+        for z in 0..16 {
+          for x in 0..16 {
+            // SAFETY: The block position is always within 0..16 on all axis
+            unsafe {
+              let id = self.get_palette(Pos::new(x, y, z)) as usize;
+              self.block_amounts[id] += 1;
+            }
+          }
+        }
+      }
+    } else {
+      // Slow path. Here, the palette needs to be re-sorted, and we need to change
+      // everything in `data`.
+      let mut sorted_palette = palette.clone();
+      sorted_palette.sort_unstable();
+
+      self.palette = sorted_palette;
+      self.reverse_palette =
+        self.palette.iter().enumerate().map(|(i, val)| (*val, i as u32)).collect();
+
+      let to_sorted_arr: Vec<_> = palette.iter().map(|v| self.reverse_palette[v]).collect();
+
+      self.block_amounts = vec![0; self.palette.len()];
+      self.data = BitArray::from_data(bpe, data);
+      for y in 0..16 {
+        for z in 0..16 {
+          for x in 0..16 {
+            let pos = Pos::new(x, y, z);
+            // SAFETY: The block position is always within 0..16 on all axis
+            unsafe {
+              let unsorted_id = self.get_palette(pos);
+              let sorted_id = to_sorted_arr[unsorted_id as usize];
+              self.set_palette(pos, sorted_id);
+              self.block_amounts[sorted_id as usize] += 1;
+            }
           }
         }
       }
