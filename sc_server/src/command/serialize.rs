@@ -1,21 +1,11 @@
 use super::{Command, CommandTree, NodeType, Parser, StringType};
-use sc_common::{net::cb, util::Buffer};
-
-impl NodeType {
-  fn mask(&self) -> u8 {
-    match self {
-      Self::Root => 0x00,
-      Self::Literal => 0x01,
-      Self::Argument(_) => 0x02,
-    }
-  }
-}
-
-struct IndexNode {
-  name:     String,
-  ty:       NodeType,
-  children: Vec<usize>,
-}
+use sc_common::{
+  net::{
+    cb,
+    cb::{CommandNode, CommandType},
+  },
+  util::Buffer,
+};
 
 impl CommandTree {
   /// Serializes the entire command tree. This will be called any time a player
@@ -33,33 +23,7 @@ impl CommandTree {
     };
     c.write_nodes(&mut nodes);
 
-    let mut data = Buffer::new(vec![]);
-    data.write_varint(nodes.len() as i32);
-
-    for node in &nodes {
-      let mask = node.ty.mask();
-      // TODO: Check executable bits
-      data.write_u8(mask);
-      data.write_varint(node.children.len() as i32);
-      for &index in &node.children {
-        data.write_varint(index as i32);
-      }
-      match &node.ty {
-        NodeType::Argument(parser) => {
-          data.write_str(&node.name);
-          data.write_str(&parser.name());
-          parser.write_data(&mut data);
-        }
-        NodeType::Literal => {
-          data.write_str(&node.name);
-        }
-        NodeType::Root => {}
-      }
-    }
-
-    // nodes_v1_13:      Some(data.into_inner()),
-    // root_index_v1_13: Some((nodes.len() - 1) as i32),
-    cb::Packet::Chat { msg: "".into(), ty: 0 }
+    cb::Packet::CommandList { nodes, root: 0 }
   }
 }
 
@@ -68,10 +32,39 @@ impl Command {
   // already be in the list before a node can be written.
   //
   // Returns the index of self into the array.
-  fn write_nodes(&self, nodes: &mut Vec<IndexNode>) -> usize {
+  fn write_nodes(&self, nodes: &mut Vec<CommandNode>) -> u32 {
     let children = self.children.iter().map(|c| c.write_nodes(nodes)).collect();
-    nodes.push(IndexNode { name: self.name.clone(), ty: self.ty.clone(), children });
-    nodes.len() - 1
+    nodes.push(CommandNode {
+      ty: self.ty.as_ty(),
+      executable: false,
+      children,
+      redirect: None,
+      name: self.name.clone(),
+      parser: match &self.ty {
+        NodeType::Argument(parser) => parser.name().into(),
+        _ => "".into(),
+      },
+      properties: match &self.ty {
+        NodeType::Argument(parser) => {
+          let mut buf = Buffer::new(vec![]);
+          parser.write_data(&mut buf);
+          buf.into_inner()
+        }
+        _ => vec![],
+      },
+      suggestion: None,
+    });
+    (nodes.len() - 1) as u32
+  }
+}
+
+impl NodeType {
+  fn as_ty(&self) -> CommandType {
+    match self {
+      Self::Root => CommandType::Root,
+      Self::Literal => CommandType::Literal,
+      Self::Argument(_) => CommandType::Argument,
+    }
   }
 }
 
