@@ -618,7 +618,7 @@ impl WorldManager {
   ) -> Arc<Player> {
     let w = self.worlds.lock()[0].clone();
     let player =
-      Player::new(w.eid(), username, uuid, conn, ver, w.clone(), FPos::new(0.0, 64.0, 0.0));
+      Player::new(w.eid(), username, uuid, conn, ver, w.clone(), FPos::new(0.0, 80.0, 0.0));
     self.players.lock().insert(uuid, 0);
     w.new_player(player)
   }
