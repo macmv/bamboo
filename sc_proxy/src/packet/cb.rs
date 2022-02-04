@@ -58,21 +58,8 @@ impl ToTcp for Packet {
             fly_speed: fly_speed * 0.05,
             walk_speed: walk_speed * 0.1,
           }
-        } else if ver < ProtocolVersion::V1_17_1 {
-          GPacket::PlayerAbilitiesV16 {
-            invulnerable,
-            flying,
-            allow_flying,
-            creative_mode: insta_break,
-            fly_speed: fly_speed * 0.05,
-            walk_speed: walk_speed * 0.1,
-          }
         } else {
-          GPacket::PlayerAbilitiesV17 {
-            invulnerable_mask: None,
-            flying_mask: None,
-            allow_flying_mask: None,
-            creative_mode_mask: None,
+          GPacket::PlayerAbilitiesV16 {
             invulnerable,
             flying,
             allow_flying,
@@ -84,14 +71,10 @@ impl ToTcp for Packet {
       Packet::BlockUpdate { pos, state } => {
         let mut buf = Buffer::new(vec![]);
         buf.write_varint(state as i32);
-        if ver < ProtocolVersion::V1_17_1 {
-          GPacket::BlockUpdateV8 {
-            block_position: pos,
-            block_state:    None,
-            unknown:        buf.into_inner(),
-          }
-        } else {
-          GPacket::BlockUpdateV17 { pos: pos, state: None, unknown: buf.into_inner() }
+        GPacket::BlockUpdateV8 {
+          block_position: pos,
+          block_state:    None,
+          unknown:        buf.into_inner(),
         }
       }
       Packet::Chat { msg, ty } => {
@@ -99,7 +82,7 @@ impl ToTcp for Packet {
           GPacket::ChatV8 { chat_component: msg, ty: ty as i8 }
         } else if ver < ProtocolVersion::V1_16_5 {
           GPacket::ChatV12 { chat_component: msg, ty: None, unknown: vec![ty] }
-        } else if ver == ProtocolVersion::V1_16_5 {
+        } else {
           let mut out = Buffer::new(vec![]);
           out.write_u8(ty);
           out.write_uuid(UUID::from_u128(0));
@@ -107,16 +90,6 @@ impl ToTcp for Packet {
             chat_component: msg,
             ty:             None,
             unknown:        out.into_inner(),
-          }
-        } else {
-          let mut out = Buffer::new(vec![]);
-          out.write_u8(ty);
-          out.write_uuid(UUID::from_u128(0));
-          GPacket::ChatV17 {
-            message:  msg,
-            location: None,
-            sender:   None,
-            unknown:  out.into_inner(),
           }
         }
       }
@@ -367,21 +340,15 @@ impl ToTcp for Packet {
       Packet::KeepAlive { id } => {
         if ver < ProtocolVersion::V1_12_2 {
           GPacket::KeepAliveV8 { id: id as i32 }
-        } else if ver < ProtocolVersion::V1_17_1 {
-          GPacket::KeepAliveV12 { id: id.into() }
         } else {
-          GPacket::KeepAliveV17 { id: id.into() }
+          GPacket::KeepAliveV12 { id: id.into() }
         }
       }
       Packet::MultiBlockChange { pos, y, changes } => {
         super::multi_block_change(pos, y, changes, ver, conv)
       }
       Packet::PlayerHeader { header, footer } => {
-        if ver < ProtocolVersion::V1_17_1 {
-          GPacket::PlayerListHeaderV8 { header, footer }
-        } else {
-          GPacket::PlayerListHeaderV17 { header, footer }
-        }
+        GPacket::PlayerListHeaderV8 { header, footer }
       }
       Packet::PlayerList { action } => {
         let id;
@@ -434,32 +401,26 @@ impl ToTcp for Packet {
       }
       Packet::PluginMessage { channel, data } => {
         // No length prefix for data, it is infered from packet length.
-        if ver < ProtocolVersion::V1_17_1 {
+        if ver < ProtocolVersion::V1_14_4 {
           GPacket::CustomPayloadV8 { channel, data: None, unknown: data }
         } else {
-          GPacket::CustomPayloadV17 {
-            max_payload_size:           None,
-            brand:                      None,
-            debug_path:                 None,
-            debug_neighbors_update:     None,
-            debug_structures:           None,
-            debug_worldgen_attempt:     None,
-            debug_poi_ticket_count:     None,
-            debug_poi_added:            None,
-            debug_poi_removed:          None,
-            debug_village_sections:     None,
-            debug_goal_selector:        None,
-            debug_brain:                None,
-            debug_bee:                  None,
-            debug_hive:                 None,
-            debug_game_test_add_marker: None,
-            debug_game_test_clear:      None,
-            debug_raids:                None,
-            debug_game_event:           None,
-            debug_game_event_listeners: None,
-            channel:                    channel,
-            data:                       None,
-            unknown:                    data,
+          GPacket::CustomPayloadV14 {
+            brand:                  None,
+            debug_path:             None,
+            debug_neighbors_update: None,
+            debug_structures:       None,
+            debug_worldgen_attempt: None,
+            debug_poi_ticket_count: None,
+            debug_poi_added:        None,
+            debug_poi_removed:      None,
+            debug_village_sections: None,
+            debug_goal_selector:    None,
+            debug_brain:            None,
+            debug_caves:            None,
+            debug_raids:            None,
+            channel:                channel,
+            data:                   None,
+            unknown:                data,
           }
         }
       }
@@ -472,28 +433,14 @@ impl ToTcp for Packet {
         if ver >= ProtocolVersion::V1_17_1 {
           buf.write_bool(should_dismount);
         }
-        if ver < ProtocolVersion::V1_17_1 {
-          GPacket::PlayerPosLookV8 {
-            x,
-            y,
-            z,
-            yaw,
-            pitch,
-            field_179835_f: None,
-            unknown: buf.into_inner(),
-          }
-        } else {
-          GPacket::PlayerPosLookV17 {
-            x,
-            y,
-            z,
-            yaw,
-            pitch,
-            flags: None,
-            teleport_id: None,
-            should_dismount: None,
-            unknown: buf.into_inner(),
-          }
+        GPacket::PlayerPosLookV8 {
+          x,
+          y,
+          z,
+          yaw,
+          pitch,
+          field_179835_f: None,
+          unknown: buf.into_inner(),
         }
       }
       Packet::SpawnPlayer { eid, id, x, y, z, yaw, pitch } => {
@@ -531,9 +478,7 @@ impl ToTcp for Packet {
         }
       }
       Packet::UnloadChunk { pos } => {
-        if ver >= ProtocolVersion::V1_17 {
-          GPacket::UnloadChunkV17 { x: pos.x(), z: pos.z() }
-        } else if ver >= ProtocolVersion::V1_9 {
+        if ver >= ProtocolVersion::V1_9 {
           GPacket::UnloadChunkV9 { x: pos.x(), z: pos.z() }
         } else {
           GPacket::ChunkDataV8 {
@@ -547,9 +492,7 @@ impl ToTcp for Packet {
         }
       }
       Packet::UpdateViewPos { pos } => {
-        if ver >= ProtocolVersion::V1_17 {
-          GPacket::ChunkRenderDistanceCenterV17 { chunk_x: pos.x(), chunk_z: pos.z() }
-        } else if ver >= ProtocolVersion::V1_14 {
+        if ver >= ProtocolVersion::V1_14 {
           GPacket::ChunkRenderDistanceCenterV14 { chunk_x: pos.x(), chunk_z: pos.z() }
         } else {
           panic!("cannot send UpdateViewPos for version {}", ver);

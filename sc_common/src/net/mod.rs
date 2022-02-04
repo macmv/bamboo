@@ -3,7 +3,7 @@ pub mod sb;
 
 use crate::{
   math::{ChunkPos, Pos},
-  util::{nbt::NBT, Item, UUID},
+  util::{nbt::NBT, UUID},
 };
 use sc_transfer::{MessageRead, MessageReader, MessageWrite, MessageWriter, ReadError, WriteError};
 
@@ -44,12 +44,6 @@ impl MessageWrite for UUID {
   }
 }
 
-impl MessageRead for Item {
-  fn read(m: &mut MessageReader) -> Result<Self, ReadError> { Item::from_sc(m) }
-}
-impl MessageWrite for Item {
-  fn write(&self, m: &mut MessageWriter) -> Result<(), WriteError> { self.to_sc(m) }
-}
 impl MessageRead for NBT {
   fn read(m: &mut MessageReader) -> Result<Self, ReadError> {
     // TODO: ParseError into ReadError

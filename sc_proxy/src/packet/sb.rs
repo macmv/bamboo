@@ -34,11 +34,8 @@ impl FromTcp for Packet {
   fn from_tcp(p: GPacket, _ver: ProtocolVersion, _conv: &TypeConverter) -> Result<Self, ReadError> {
     Ok(match p {
       GPacket::ChatV8 { message } | GPacket::ChatV11 { message } => Packet::Chat { msg: message },
-      GPacket::ChatV17 { chat_message, max_length: _ } => Packet::Chat { msg: chat_message },
       GPacket::KeepAliveV8 { key: id } => Packet::KeepAlive { id },
-      GPacket::KeepAliveV12 { key: id } | GPacket::KeepAliveV17 { id } => {
-        Packet::KeepAlive { id: id as i32 }
-      }
+      GPacket::KeepAliveV12 { key: id } => Packet::KeepAlive { id: id as i32 },
       GPacket::PlayerV8 { on_ground, .. } => Packet::PlayerOnGround { on_ground },
       GPacket::PlayerLookV8 { yaw, pitch, on_ground, .. }
       | GPacket::PlayerRotationV9 { yaw, pitch, on_ground, .. } => {
@@ -76,8 +73,7 @@ impl FromTcp for Packet {
         Packet::PlayerPos { x, y, z, on_ground: false }
       }
       GPacket::UpdatePlayerAbilitiesV14 { flying, .. }
-      | GPacket::UpdatePlayerAbilitiesV16 { flying, .. }
-      | GPacket::UpdatePlayerAbilitiesV17 { flying, .. } => Packet::Flying { flying },
+      | GPacket::UpdatePlayerAbilitiesV16 { flying, .. } => Packet::Flying { flying },
       _ => return Err(ReadError { packet: p, kind: ReadErrorKind::UnknownPacket }),
     })
   }

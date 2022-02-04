@@ -1,4 +1,7 @@
-use crate::{math::Pos, util::Face};
+use crate::{
+  math::Pos,
+  util::{Face, Item},
+};
 
 #[derive(Debug, Clone, sc_macros::Transfer)]
 #[non_exhaustive]
@@ -12,6 +15,10 @@ pub enum Packet {
     pos:  Pos,
     face: Face,
     hand: u8,
+  },
+  CreativeInventoryUpdate {
+    slot: u8,
+    item: Item,
   },
   Chat {
     msg: String,
