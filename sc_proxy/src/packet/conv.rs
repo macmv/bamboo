@@ -69,12 +69,33 @@ impl TypeConverter {
     }
   }
 
-  /// Converts an item id into an id for the given version. It should work the
-  /// same as [`block_to_old`](Self::block_to_old).
-  pub fn item_to_old(&self, _id: u32, _ver: BlockVersion) -> u32 { 0 }
   /// Converts an item id into the latest version. It should work the same as
   /// [`block_to_new`](Self::block_to_new).
-  pub fn item_to_new(&self, _id: u32, _ver: BlockVersion) -> u32 { 0 }
+  pub fn item_to_new(&self, id: u32, ver: BlockVersion) -> u32 {
+    // Air always maps to air. Since multiple latest blocks convert to air, we need
+    // this check
+    if id == 0 {
+      return 0;
+    }
+    if ver == BlockVersion::latest() {
+      return id;
+    }
+    match self.items[ver.to_index() as usize].to_new.get(id as usize) {
+      Some(v) => *v,
+      None => 0,
+    }
+  }
+  /// Converts an item id into an id for the given version. It should work the
+  /// same as [`block_to_old`](Self::block_to_old).
+  pub fn item_to_old(&self, id: u32, ver: BlockVersion) -> u32 {
+    if ver == BlockVersion::latest() {
+      return id;
+    }
+    match self.items[ver.to_index() as usize].to_old.get(id as usize) {
+      Some(v) => *v,
+      None => 0,
+    }
+  }
 
   /// Converts an entity id into an id for the given version. It should work the
   /// same as [`block_to_old`](Self::block_to_old).

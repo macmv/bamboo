@@ -1,6 +1,10 @@
 use super::TypeConverter;
 use crate::gnet::sb::Packet as GPacket;
-use sc_common::{net::sb::Packet, util::Buffer, version::ProtocolVersion};
+use sc_common::{
+  net::sb::Packet,
+  util::{nbt::NBT, Buffer, Item},
+  version::ProtocolVersion,
+};
 use std::{error::Error, fmt};
 
 #[derive(Debug, Clone)]
@@ -31,9 +35,16 @@ pub trait FromTcp {
 }
 
 impl FromTcp for Packet {
-  fn from_tcp(p: GPacket, _ver: ProtocolVersion, _conv: &TypeConverter) -> Result<Self, ReadError> {
+  fn from_tcp(p: GPacket, ver: ProtocolVersion, conv: &TypeConverter) -> Result<Self, ReadError> {
     Ok(match p {
       GPacket::ChatV8 { message } | GPacket::ChatV11 { message } => Packet::Chat { msg: message },
+      GPacket::CreativeInventoryActionV8 { slot_id, unknown, .. } => {
+        let mut buf = Buffer::new(unknown);
+        Packet::CreativeInventoryUpdate {
+          slot: slot_id.try_into().unwrap(),
+          item: read_item(ver, &mut buf, conv),
+        }
+      }
       GPacket::KeepAliveV8 { key: id } => Packet::KeepAlive { id },
       GPacket::KeepAliveV12 { key: id } => Packet::KeepAlive { id: id as i32 },
       GPacket::PlayerV8 { on_ground, .. } => Packet::PlayerOnGround { on_ground },
@@ -76,5 +87,33 @@ impl FromTcp for Packet {
       | GPacket::UpdatePlayerAbilitiesV16 { flying, .. } => Packet::Flying { flying },
       _ => return Err(ReadError { packet: p, kind: ReadErrorKind::UnknownPacket }),
     })
+  }
+}
+
+fn read_item(ver: ProtocolVersion, buf: &mut Buffer, conv: &TypeConverter) -> Item {
+  if ver < ProtocolVersion::V1_13 {
+    let id = buf.read_i16();
+    let count;
+    let damage;
+    let nbt;
+    if id == -1 {
+      count = 0;
+      damage = 0;
+      nbt = NBT::empty("");
+    } else {
+      count = buf.read_u8();
+      damage = buf.read_i16();
+      nbt = buf.read_nbt();
+    }
+    Item::new(conv.item_to_new(id as u32, ver.block()) as i32, count, damage, nbt)
+  } else {
+    if buf.read_bool() {
+      let id = buf.read_varint();
+      let count = buf.read_u8();
+      let nbt = buf.read_nbt();
+      Item::new(conv.item_to_new(id as u32, ver.block()) as i32, count, 0, nbt)
+    } else {
+      Item::new(0, 0, 0, NBT::empty(""))
+    }
   }
 }
