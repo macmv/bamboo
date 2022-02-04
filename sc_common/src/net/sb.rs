@@ -66,3 +66,14 @@ pub enum DigStatus {
   Cancel,
   Finish,
 }
+
+impl DigStatus {
+  pub fn from_id(id: u8) -> Self {
+    match id {
+      0 => Self::Start,
+      1 => Self::Cancel,
+      2 => Self::Finish,
+      _ => panic!("invalid dig status: {}", id),
+    }
+  }
+}

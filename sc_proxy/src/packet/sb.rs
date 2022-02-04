@@ -2,7 +2,7 @@ use super::TypeConverter;
 use crate::gnet::{sb::Packet as GPacket, tcp};
 use sc_common::{
   math::Pos,
-  net::sb::Packet,
+  net::sb::{DigStatus, Packet},
   util::{nbt::NBT, Buffer, Face, Hand, Item},
   version::ProtocolVersion,
 };
@@ -48,6 +48,20 @@ impl FromTcp for Packet {
       }
       GPacket::KeepAliveV8 { key: id } => Packet::KeepAlive { id },
       GPacket::KeepAliveV12 { key: id } => Packet::KeepAlive { id: id as i32 },
+      GPacket::PlayerActionV14 { pos, action, unknown, .. } => {
+        let mut buf = tcp::Packet::from_buf_id(unknown, 0, ver);
+        if action < 2 {
+          Packet::BlockDig {
+            pos,
+            status: DigStatus::from_id(action as u8),
+            face: Face::from_id(buf.read_varint() as u8),
+          }
+        } else {
+          warn!("need to implement dropping item packets");
+          // placeholder
+          Packet::UseItem { hand: Hand::Main }
+        }
+      }
       GPacket::PlayerBlockPlacementV8 { position, placed_block_direction, unknown: _, .. } => {
         // let mut buf = Buffer::new(unknown);
         if position == Pos::new(-1, -1, -1) && placed_block_direction == 255 {
