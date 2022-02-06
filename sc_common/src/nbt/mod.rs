@@ -1,4 +1,5 @@
 mod deserialize;
+mod serde;
 mod serialize;
 
 pub use deserialize::ParseError;
