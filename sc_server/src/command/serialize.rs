@@ -23,7 +23,7 @@ impl CommandTree {
     };
     c.write_nodes(&mut nodes);
 
-    cb::Packet::CommandList { nodes, root: 0 }
+    cb::Packet::CommandList { root: nodes.len() as u32 - 1, nodes }
   }
 }
 
