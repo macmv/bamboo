@@ -6,7 +6,6 @@ pub use pool::ThreadPool;
 
 mod buffer;
 mod item;
-pub mod nbt;
 
 use crate::math::Pos;
 use rand::{rngs::OsRng, RngCore};

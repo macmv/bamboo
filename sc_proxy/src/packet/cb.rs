@@ -1,14 +1,12 @@
 use super::TypeConverter;
 use crate::gnet::cb::Packet as GPacket;
 use sc_common::{
+  nbt::{Tag, NBT},
   net::{
     cb,
     cb::{CommandType, Packet},
   },
-  util::{
-    nbt::{Tag, NBT},
-    Buffer, UUID,
-  },
+  util::{Buffer, UUID},
   version::ProtocolVersion,
 };
 use smallvec::SmallVec;

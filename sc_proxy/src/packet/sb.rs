@@ -2,8 +2,9 @@ use super::TypeConverter;
 use crate::gnet::{sb::Packet as GPacket, tcp};
 use sc_common::{
   math::Pos,
+  nbt::NBT,
   net::sb::{DigStatus, Packet},
-  util::{nbt::NBT, Buffer, Face, Hand, Item},
+  util::{Buffer, Face, Hand, Item},
   version::ProtocolVersion,
 };
 use std::{error::Error, fmt};

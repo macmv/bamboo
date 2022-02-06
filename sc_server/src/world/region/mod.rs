@@ -3,7 +3,7 @@
 //! format which is easier to maintain.
 
 use crate::block;
-use sc_common::{chunk::Section, math::ChunkPos, util::nbt::NBT};
+use sc_common::{chunk::Section, math::ChunkPos, nbt::NBT};
 use std::{fs, io, path::Path, str::FromStr};
 
 use super::World;

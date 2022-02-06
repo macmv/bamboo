@@ -1,6 +1,7 @@
 use sc_common::{
   math::{ChunkPos, Pos},
-  util::{nbt::NBT, Buffer, BufferError, BufferErrorKind, Item, UUID},
+  nbt::NBT,
+  util::{Buffer, BufferError, BufferErrorKind, Item, UUID},
   version::ProtocolVersion,
 };
 use std::{

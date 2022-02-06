@@ -3,10 +3,8 @@ use crate::gnet::cb::Packet;
 use sc_common::{
   chunk::paletted::Section,
   math::ChunkPos,
-  util::{
-    nbt::{Tag, NBT},
-    Buffer,
-  },
+  nbt::{Tag, NBT},
+  util::Buffer,
   version::BlockVersion,
 };
 

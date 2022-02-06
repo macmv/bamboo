@@ -1,4 +1,4 @@
-use super::nbt::NBT;
+use crate::nbt::NBT;
 
 #[derive(Debug, Clone, PartialEq, sc_macros::Transfer)]
 pub struct Item {

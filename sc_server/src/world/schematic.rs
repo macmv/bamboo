@@ -2,7 +2,7 @@ use super::CountedChunk;
 use crate::block;
 use sc_common::{
   math::{ChunkPos, Pos},
-  util::nbt::{ParseError, NBT},
+  nbt::{ParseError, NBT},
   version::BlockVersion,
 };
 use std::{collections::HashMap, fs, fs::File, io::Read, str::FromStr};

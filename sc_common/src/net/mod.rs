@@ -3,7 +3,8 @@ pub mod sb;
 
 use crate::{
   math::{ChunkPos, Pos},
-  util::{nbt::NBT, UUID},
+  nbt::NBT,
+  util::UUID,
 };
 use sc_transfer::{MessageRead, MessageReader, MessageWrite, MessageWriter, ReadError, WriteError};
 

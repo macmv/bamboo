@@ -1,9 +1,9 @@
 use crate::{block, entity, item};
 use sc_common::{
   math::{ChunkPos, Pos},
+  nbt::NBT,
   util::{
     chat::{Chat, Color},
-    nbt::NBT,
     UUID,
   },
 };

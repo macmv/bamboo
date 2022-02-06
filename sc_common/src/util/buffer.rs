@@ -1,7 +1,4 @@
-use crate::{
-  math::ChunkPos,
-  util::{nbt::NBT, UUID},
-};
+use crate::{math::ChunkPos, nbt::NBT, util::UUID};
 use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
 
 use std::{

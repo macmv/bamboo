@@ -18,6 +18,7 @@ use log4rs::{
 pub mod chunk;
 pub mod config;
 pub mod math;
+pub mod nbt;
 pub mod net;
 pub mod registry;
 pub mod util;
