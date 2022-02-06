@@ -10,7 +10,7 @@
 //! # Example
 //!
 //! ```rust
-//! use common::util::{Chat, chat::Color};
+//! use sc_common::util::{Chat, chat::Color};
 //!
 //! let mut msg = Chat::new("Hello! ".to_string());
 //!
