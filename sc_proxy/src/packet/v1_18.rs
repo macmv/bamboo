@@ -55,9 +55,6 @@ pub fn chunk(
 
     // Paletted container for chunk data
     chunk_data.write_u8(s.data().bpe() as u8);
-    if pos.x() == 1 && pos.z() == -1 {
-      dbg!(s);
-    }
     if s.data().bpe() <= 8 {
       chunk_data.write_varint(s.palette().len() as i32);
       for g in s.palette() {
