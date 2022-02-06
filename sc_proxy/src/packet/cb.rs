@@ -313,7 +313,7 @@ impl ToTcp for Packet {
             reduced_debug_info: None,
             unknown: out.into_inner(),
           },
-          15 => GPacket::JoinGameV14 {
+          14..=15 => GPacket::JoinGameV14 {
             player_entity_id:    eid,
             hardcore:            hardcore_mode,
             game_mode:           None,
