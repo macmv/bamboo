@@ -1,13 +1,14 @@
 use sc_common::{
   math::{ChunkPos, Pos},
   nbt::NBT,
-  util::{Buffer, BufferError, BufferErrorKind, Item, UUID},
+  util::{Buffer, BufferError, Item, UUID},
   version::ProtocolVersion,
 };
 use std::{
   collections::{HashMap, HashSet},
   convert::TryInto,
   hash::Hash,
+  ops::{Deref, DerefMut},
 };
 
 #[derive(Debug)]
@@ -16,6 +17,32 @@ pub struct Packet {
   index: usize,
   id:    i32,
   ver:   ProtocolVersion,
+}
+
+#[derive(Debug)]
+pub struct WrappedBuffer<'a> {
+  buf:   Buffer<'a>,
+  index: &'a mut usize,
+}
+
+impl<'a> WrappedBuffer<'a> {
+  fn new(data: &'a mut Vec<u8>, index: &'a mut usize) -> Self {
+    WrappedBuffer { buf: Buffer::new_index(data, *index), index }
+  }
+}
+
+impl Drop for WrappedBuffer<'_> {
+  fn drop(&mut self) { *self.index = self.buf.index(); }
+}
+
+impl<'a> Deref for WrappedBuffer<'a> {
+  type Target = Buffer<'a>;
+
+  fn deref(&self) -> &Self::Target { &self.buf }
+}
+
+impl<'a> DerefMut for WrappedBuffer<'a> {
+  fn deref_mut(&mut self) -> &mut Self::Target { &mut self.buf }
 }
 
 macro_rules! add_writer {
@@ -50,7 +77,11 @@ impl Packet {
     Packet { data, index: 0, id, ver }
   }
 
-  pub fn buf<'a>(&'a mut self) -> Buffer<'a> { Buffer::new_index(&mut self.data, self.index) }
+  /// Returns the internal buffer. This is wrapped in another type, so that the
+  /// index stored in this `tcp::Packet` is updated when the buffer is dropped.
+  pub fn buf<'a>(&'a mut self) -> WrappedBuffer<'a> {
+    WrappedBuffer::new(&mut self.data, &mut self.index)
+  }
 
   pub fn id(&self) -> i32 { self.id }
   pub fn err(&self) -> Option<&BufferError> { None }
