@@ -117,10 +117,11 @@ impl<'a> ser::Serializer for &'a mut Serializer {
     Ok(())
   }
 
-  fn serialize_none(self) -> Result<()> {
-    self.tag = Tag::End;
-    Ok(())
-  }
+  // There isn't really a `None` in NBT. There is `Tag::End`, which could be
+  // searched and removed if this was in a struct or map, which would essentially
+  // skip this value if it's `None`. However, I don't care enough, so I'm just
+  // going to produce an error.
+  fn serialize_none(self) -> Result<()> { Err(Error::CannotSerializeNone) }
   fn serialize_some<T>(self, value: &T) -> Result<()>
   where
     T: ?Sized + Serialize,
@@ -128,10 +129,7 @@ impl<'a> ser::Serializer for &'a mut Serializer {
     value.serialize(self)
   }
 
-  fn serialize_unit(self) -> Result<()> {
-    self.tag = Tag::End;
-    Ok(())
-  }
+  fn serialize_unit(self) -> Result<()> { Err(Error::CannotSerializeNone) }
 
   // Unit struct means a named value containing no data. Again, since there is
   // no data, map this to JSON as `null`. There is no need to serialize the

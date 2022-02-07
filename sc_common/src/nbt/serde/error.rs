@@ -10,6 +10,7 @@ pub enum Error {
   TryFromInt(TryFromIntError),
   ListType(Tag, Tag),
   MapKey(Tag),
+  CannotSerializeNone,
   Enum,
 }
 
@@ -34,6 +35,12 @@ impl Display for Error {
       }
       Error::MapKey(got) => {
         write!(f, "expected a string for map key, got: {:?}", got)
+      }
+      Error::CannotSerializeNone => {
+        write!(
+          f,
+          "cannot serialize `None` or `()` (use `#[serde(skip_serializing_if = \"Option::is_none\")]`)"
+        )
       }
       Error::Enum => {
         write!(f, "enums are not supported")
