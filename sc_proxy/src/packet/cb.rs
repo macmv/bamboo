@@ -1,6 +1,7 @@
 use super::TypeConverter;
 use crate::gnet::cb::Packet as GPacket;
 use sc_common::{
+  nbt,
   nbt::{Tag, NBT},
   net::{
     cb,
@@ -9,6 +10,7 @@ use sc_common::{
   util::{Buffer, UUID},
   version::ProtocolVersion,
 };
+use serde::Serialize;
 use smallvec::SmallVec;
 use std::{error::Error, fmt};
 
@@ -547,86 +549,128 @@ impl ToTcp for Packet {
   }
 }
 
-fn write_dimensions(out: &mut Buffer) {
-  let dimension = Tag::compound(&[
-    ("piglin_safe", Tag::Byte(0)),
-    ("natural", Tag::Byte(1)),
-    ("ambient_light", Tag::Float(0.0)),
-    ("fixed_time", Tag::Long(6000)),
-    ("infiniburn", Tag::String("".into())),
-    ("respawn_anchor_works", Tag::Byte(0)),
-    ("has_skylight", Tag::Byte(1)),
-    ("bed_works", Tag::Byte(1)),
-    ("effects", Tag::String("minecraft:overworld".into())),
-    ("has_raids", Tag::Byte(0)),
-    ("logical_height", Tag::Int(128)),
-    ("coordinate_scale", Tag::Float(1.0)),
-    ("ultrawarm", Tag::Byte(0)),
-    ("has_ceiling", Tag::Byte(0)),
-    // 1.17+
-    ("min_y", Tag::Int(0)),
-    ("height", Tag::Int(256)),
-  ]);
-  let biome = Tag::compound(&[
-    ("precipitation", Tag::String("rain".into())),
-    ("depth", Tag::Float(1.0)),
-    ("temperature", Tag::Float(1.0)),
-    ("scale", Tag::Float(1.0)),
-    ("downfall", Tag::Float(1.0)),
-    ("category", Tag::String("none".into())),
-    (
-      "effects",
-      Tag::compound(&[
-        ("sky_color", Tag::Int(0x78a7ff)),
-        ("fog_color", Tag::Int(0xc0d8ff)),
-        ("water_fog_color", Tag::Int(0x050533)),
-        ("water_color", Tag::Int(0x3f76e4)),
-        // ("sky_color", Tag::Int(0xff00ff)),
-        // ("water_color", Tag::Int(0xff00ff)),
-        // ("fog_color", Tag::Int(0xff00ff)),
-        // ("water_fog_color", Tag::Int(0xff00ff)),
-        // ("grass_color", Tag::Int(0xff00ff)),
-        // ("foliage_color", Tag::Int(0x00ffe5)),
-        // ("grass_color", Tag::Int(0xff5900)),
-      ]),
-    ),
-  ]);
-  let codec = NBT::new(
-    "",
-    Tag::compound(&[
-      (
-        "minecraft:dimension_type",
-        Tag::compound(&[
-          ("type", Tag::String("minecraft:dimension_type".into())),
-          (
-            "value",
-            Tag::List(vec![Tag::compound(&[
-              ("name", Tag::String("minecraft:overworld".into())),
-              ("id", Tag::Int(0)),
-              ("element", dimension.clone()),
-            ])]),
-          ),
-        ]),
-      ),
-      (
-        "minecraft:worldgen/biome",
-        Tag::compound(&[
-          ("type", Tag::String("minecraft:worldgen/biome".into())),
-          (
-            "value",
-            Tag::List(vec![Tag::compound(&[
-              ("name", Tag::String("minecraft:plains".into())),
-              ("id", Tag::Int(0)),
-              ("element", biome),
-            ])]),
-          ),
-        ]),
-      ),
-    ]),
-  );
+#[derive(Debug, Clone, Serialize)]
+struct Dimension {
+  piglin_safe:          bool,
+  natural:              bool,
+  ambient_light:        f32,
+  fixed_time:           i64,
+  infiniburn:           String,
+  respawn_anchor_works: bool,
+  has_skylight:         bool,
+  bed_works:            bool,
+  effects:              String,
+  has_raids:            bool,
+  logical_height:       i32,
+  coordinate_scale:     f32,
+  ultrawarm:            bool,
+  has_ceiling:          bool,
+  // 1.17+
+  min_y:                i32,
+  height:               i32,
+}
 
-  out.write_buf(&codec.serialize());
-  out.write_buf(&NBT::new("", dimension).serialize());
+#[derive(Debug, Clone, Serialize)]
+struct Biome {
+  precipitation: String,
+  depth:         f32,
+  temperature:   f32,
+  scale:         f32,
+  downfall:      f32,
+  category:      String,
+  effects:       BiomeEffects,
+}
+#[derive(Debug, Clone, Serialize)]
+struct BiomeEffects {
+  sky_color:       i32,
+  fog_color:       i32,
+  water_fog_color: i32,
+  water_color:     i32,
+  foliage_color:   Option<i32>,
+  grass_color:     Option<i32>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+struct LoginInfo {
+  #[serde(rename = "minecraft:dimension_type")]
+  dimensions: Codec<Dimension>,
+  #[serde(rename = "minecraft:worldgen/biome")]
+  biomes:     Codec<Biome>,
+}
+#[derive(Debug, Clone, Serialize)]
+struct Codec<T> {
+  #[serde(rename = "type")]
+  ty:    String,
+  value: Vec<CodecItem<T>>,
+}
+#[derive(Debug, Clone, Serialize)]
+struct CodecItem<T> {
+  name:    String,
+  id:      i32,
+  element: T,
+}
+
+fn write_dimensions(out: &mut Buffer) {
+  let dimension = Dimension {
+    piglin_safe:          false,
+    natural:              true,
+    ambient_light:        0.0,
+    fixed_time:           6000,
+    infiniburn:           "".into(),
+    respawn_anchor_works: false,
+    has_skylight:         true,
+    bed_works:            true,
+    effects:              "minecraft:overworld".into(),
+    has_raids:            false,
+    logical_height:       128,
+    coordinate_scale:     1.0,
+    ultrawarm:            false,
+    has_ceiling:          false,
+    min_y:                0,
+    height:               256,
+  };
+  let biome = Biome {
+    precipitation: "rain".into(),
+    depth:         1.0,
+    temperature:   1.0,
+    scale:         1.0,
+    downfall:      1.0,
+    category:      "none".into(),
+    effects:       BiomeEffects {
+      sky_color:       0x78a7ff,
+      fog_color:       0xc0d8ff,
+      water_fog_color: 0x050533,
+      water_color:     0x3f76e4,
+      foliage_color:   None,
+      grass_color:     None,
+      // sky_color:       0xff00ff,
+      // water_color:     0xff00ff,
+      // fog_color:       0xff00ff,
+      // water_fog_color: 0xff00ff,
+      // grass_color:     0xff00ff,
+      // foliage_color:   0x00ffe5,
+      // grass_color:     0xff5900,
+    },
+  };
+  let dimension_tag = nbt::to_nbt("", &dimension).unwrap();
+
+  let info = LoginInfo {
+    dimensions: Codec {
+      ty:    "minecraft:dimension_type".into(),
+      value: vec![CodecItem {
+        name:    "minecraft:overworld".into(),
+        id:      0,
+        element: dimension,
+      }],
+    },
+    biomes:     Codec {
+      ty:    "minecraft:worldgen/biome".into(),
+      value: vec![CodecItem { name: "minecraft:plains".into(), id: 0, element: biome }],
+    },
+  };
+
+  out.write_buf(&nbt::to_nbt("", &info).unwrap().serialize());
+  out.write_buf(&dimension_tag.serialize());
   // Current world
   out.write_str("minecraft:overworld");
 }
