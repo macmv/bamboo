@@ -2,13 +2,15 @@ use super::super::Tag;
 use serde::{de, ser};
 use std::{fmt, fmt::Display, num::TryFromIntError};
 
-#[derive(Debug)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum Error {
   Message(String),
   Eof,
+
   TryFromInt(TryFromIntError),
   ListType(Tag, Tag),
   MapKey(Tag),
+  Enum,
 }
 
 pub type Result<T> = std::result::Result<T, Error>;
@@ -24,14 +26,17 @@ impl de::Error for Error {
 impl Display for Error {
   fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
     match self {
-      Error::Message(msg) => f.write_str(msg),
-      Error::Eof => f.write_str("unexpected end of input"),
+      Error::Message(msg) => write!(f, "{}", msg),
+      Error::Eof => write!(f, "unexpected end of input"),
       Error::TryFromInt(e) => write!(f, "invalid integer: {}", e),
       Error::ListType(expected, got) => {
         write!(f, "expected type in list: {:?}, got: {:?}", expected, got)
       }
       Error::MapKey(got) => {
         write!(f, "expected a string for map key, got: {:?}", got)
+      }
+      Error::Enum => {
+        write!(f, "enums are not supported")
       }
     }
   }

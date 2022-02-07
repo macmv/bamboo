@@ -131,19 +131,6 @@ impl<'a> ser::Serializer for &'a mut Serializer {
   // name in most formats.
   fn serialize_unit_struct(self, _name: &'static str) -> Result<()> { self.serialize_unit() }
 
-  // When serializing a unit variant (or any other kind of variant), formats
-  // can choose whether to keep track of it by index or by name. Binary
-  // formats typically use the index of the variant and human-readable formats
-  // typically use the name.
-  fn serialize_unit_variant(
-    self,
-    _name: &'static str,
-    _variant_index: u32,
-    variant: &'static str,
-  ) -> Result<()> {
-    self.serialize_str(variant)
-  }
-
   // As is done here, serializers are encouraged to treat newtype structs as
   // insignificant wrappers around the data they contain.
   fn serialize_newtype_struct<T>(self, _name: &'static str, value: &T) -> Result<()>
@@ -151,29 +138,6 @@ impl<'a> ser::Serializer for &'a mut Serializer {
     T: ?Sized + Serialize,
   {
     value.serialize(self)
-  }
-
-  // Note that newtype variant (and all of the other variant serialization
-  // methods) refer exclusively to the "externally tagged" enum
-  // representation.
-  //
-  // Serialize this to JSON in externally tagged form as `{ NAME: VALUE }`.
-  fn serialize_newtype_variant<T>(
-    self,
-    _name: &'static str,
-    _variant_index: u32,
-    variant: &'static str,
-    value: &T,
-  ) -> Result<()>
-  where
-    T: ?Sized + Serialize,
-  {
-    value.serialize(&mut *self);
-    let tag = std::mem::replace(&mut self.tag, Tag::End);
-    let mut map = HashMap::new();
-    map.insert(variant.into(), tag);
-    self.tag = Tag::Compound(map);
-    Ok(())
   }
 
   // Now we get to the serialization of compound types.
@@ -207,18 +171,6 @@ impl<'a> ser::Serializer for &'a mut Serializer {
     self.serialize_seq(Some(len))
   }
 
-  // Tuple variants are represented in JSON as `{ NAME: [DATA...] }`. Again
-  // this method is only responsible for the externally tagged representation.
-  fn serialize_tuple_variant(
-    self,
-    _name: &'static str,
-    _variant_index: u32,
-    variant: &'static str,
-    _len: usize,
-  ) -> Result<Self::SerializeTupleVariant> {
-    todo!()
-  }
-
   // Maps are represented in JSON as `{ K: V, K: V, ... }`.
   fn serialize_map(self, _len: Option<usize>) -> Result<Self::SerializeMap> {
     Ok(MapSerializer { ser: self, key: None, items: HashMap::new() })
@@ -233,16 +185,44 @@ impl<'a> ser::Serializer for &'a mut Serializer {
     self.serialize_map(Some(len))
   }
 
-  // Struct variants are represented in JSON as `{ NAME: { K: V, ... } }`.
-  // This is the externally tagged representation.
+  // We don't support enums (they don't really make sense)
+  fn serialize_unit_variant(
+    self,
+    _name: &'static str,
+    _variant_index: u32,
+    _variant: &'static str,
+  ) -> Result<()> {
+    Err(Error::Enum)
+  }
+  fn serialize_newtype_variant<T>(
+    self,
+    _name: &'static str,
+    _variant_index: u32,
+    _variant: &'static str,
+    _value: &T,
+  ) -> Result<()>
+  where
+    T: ?Sized + Serialize,
+  {
+    Err(Error::Enum)
+  }
+  fn serialize_tuple_variant(
+    self,
+    _name: &'static str,
+    _variant_index: u32,
+    _variant: &'static str,
+    _len: usize,
+  ) -> Result<Self::SerializeTupleVariant> {
+    Err(Error::Enum)
+  }
   fn serialize_struct_variant(
     self,
     _name: &'static str,
     _variant_index: u32,
-    variant: &'static str,
+    _variant: &'static str,
     _len: usize,
   ) -> Result<Self::SerializeStructVariant> {
-    todo!()
+    Err(Error::Enum)
   }
 }
 
@@ -449,6 +429,12 @@ fn test_struct() {
 }
 
 #[test]
+fn test_arrays() {
+  let arr = vec![2, 3, 4];
+  assert_eq!(to_tag(&arr).unwrap(), Tag::List(vec![Tag::Int(2), Tag::Int(3), Tag::Int(4)]));
+}
+
+#[test]
 fn test_enum() {
   #[derive(Serialize)]
   enum E {
@@ -457,22 +443,16 @@ fn test_enum() {
     Tuple(u32, u32),
     Struct { a: u32 },
   }
-  /*
 
   let u = E::Unit;
-  let expected = r#""Unit""#;
-  assert_eq!(to_string(&u).unwrap(), expected);
+  assert_eq!(to_tag(&u).unwrap_err(), Error::Enum);
 
   let n = E::Newtype(1);
-  let expected = r#"{"Newtype":1}"#;
-  assert_eq!(to_string(&n).unwrap(), expected);
+  assert_eq!(to_tag(&n).unwrap_err(), Error::Enum);
 
   let t = E::Tuple(1, 2);
-  let expected = r#"{"Tuple":[1,2]}"#;
-  assert_eq!(to_string(&t).unwrap(), expected);
+  assert_eq!(to_tag(&t).unwrap_err(), Error::Enum);
 
   let s = E::Struct { a: 1 };
-  let expected = r#"{"Struct":{"a":1}}"#;
-  assert_eq!(to_string(&s).unwrap(), expected);
-  */
+  assert_eq!(to_tag(&s).unwrap_err(), Error::Enum);
 }
