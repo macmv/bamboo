@@ -46,9 +46,10 @@ impl Command {
       },
       properties: match &self.ty {
         NodeType::Argument(parser) => {
-          let mut buf = Buffer::new(vec![]);
+          let mut data = vec![];
+          let mut buf = Buffer::new(&mut data);
           parser.write_data(&mut buf);
-          buf.into_inner()
+          data
         }
         _ => vec![],
       },

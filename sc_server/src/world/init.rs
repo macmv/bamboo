@@ -157,12 +157,10 @@ impl World {
       }
     }
 
-    let mut data = Buffer::new(vec![]);
-    data.write_str("Sugarcane");
-    player.send(cb::Packet::PluginMessage {
-      channel: "minecraft:brand".into(),
-      data:    data.into_inner(),
-    });
+    let mut data = vec![];
+    let mut buf = Buffer::new(&mut data);
+    buf.write_str("Sugarcane");
+    player.send(cb::Packet::PluginMessage { channel: "minecraft:brand".into(), data });
 
     let pos = player.pos();
     player.send(cb::Packet::SetPosLook {

@@ -185,7 +185,8 @@ impl Metadata {
   /// Serializes the entity metadata. This will not consume the metadata, and
   /// will never fail. The `set` functions are where error handling is done.
   pub fn serialize(&self) -> Vec<u8> {
-    let mut out = Buffer::new(vec![]);
+    let mut data = vec![];
+    let mut out = Buffer::new(&mut data);
     for (id, field) in &self.fields {
       if self.ver == ProtocolVersion::V1_8 {
         // Index and type are the same byte in 1.8
@@ -360,6 +361,6 @@ impl Metadata {
     } else {
       out.write_u8(0xff);
     }
-    out.into_inner()
+    data
   }
 }
