@@ -140,7 +140,7 @@ impl World {
       locked: wm.config().get::<_, bool>("world.locked").into(),
       wm,
     });
-    world.load_from_disk(&std::path::PathBuf::new().join("world")).unwrap();
+    // world.load_from_disk(&std::path::PathBuf::new().join("world")).unwrap();
     let w = world.clone();
     thread::spawn(|| {
       w.init();
