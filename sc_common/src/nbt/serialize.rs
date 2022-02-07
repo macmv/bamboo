@@ -4,12 +4,13 @@ use super::{Tag, NBT};
 
 impl NBT {
   pub fn serialize(&self) -> Vec<u8> {
-    let mut out = Buffer::new(vec![]);
+    let mut data = vec![];
+    let mut out = Buffer::new(&mut data);
     out.write_u8(self.tag.ty());
     out.write_u16(self.name.len() as u16);
     out.write_buf(self.name.as_bytes());
     out.write_buf(&self.tag.serialize());
-    out.into_inner()
+    data
   }
 }
 
@@ -35,7 +36,8 @@ impl Tag {
 
   /// Serializes the data of the tag. Does not add type byte.
   fn serialize(&self) -> Vec<u8> {
-    let mut out = Buffer::new(vec![]);
+    let mut data = vec![];
+    let mut out = Buffer::new(&mut data);
     match self {
       Self::End => (),
       Self::Byte(v) => out.write_i8(*v),
@@ -87,7 +89,7 @@ impl Tag {
         }
       }
     }
-    out.into_inner()
+    data
   }
 }
 

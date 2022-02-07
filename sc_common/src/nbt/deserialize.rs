@@ -49,8 +49,8 @@ impl NBT {
     }
   }
   /// Deserializes the given byte array as nbt data.
-  pub fn deserialize(buf: Vec<u8>) -> Result<Self, ParseError> {
-    Self::deserialize_buf(&mut Buffer::new(buf))
+  pub fn deserialize(mut buf: Vec<u8>) -> Result<Self, ParseError> {
+    Self::deserialize_buf(&mut Buffer::new(&mut buf))
   }
   /// Deserializes the given buffer as nbt data. This will continue reading
   /// where this buffer is currently placed, and will advance the reader to be

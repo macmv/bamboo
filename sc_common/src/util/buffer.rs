@@ -58,8 +58,8 @@ impl Error for BufferError {}
 impl Error for BufferErrorKind {}
 
 #[derive(Debug)]
-pub struct Buffer {
-  data: Cursor<Vec<u8>>,
+pub struct Buffer<'a> {
+  data: Cursor<&'a mut Vec<u8>>,
   err:  Option<BufferError>,
 }
 
@@ -129,8 +129,8 @@ macro_rules! add_write_byte {
   };
 }
 
-impl Buffer {
-  pub fn new(data: Vec<u8>) -> Self { Buffer { data: Cursor::new(data), err: None } }
+impl<'a> Buffer<'a> {
+  pub fn new(data: &'a mut Vec<u8>) -> Self { Buffer { data: Cursor::new(data), err: None } }
 
   pub fn err(&self) -> &Option<BufferError> { &self.err }
   pub fn set_err(&mut self, err: BufferErrorKind, reading: bool) {
@@ -312,8 +312,6 @@ impl Buffer {
     }
   }
 
-  pub fn into_inner(self) -> Vec<u8> { self.data.into_inner() }
-
   /// Writes a chunk position, as two i32s.
   pub fn write_chunk_pos(&mut self, p: ChunkPos) {
     self.write_i32(p.x());
@@ -400,18 +398,18 @@ impl Buffer {
     }
   }
 
-  pub fn read_varint_arr(&mut self) -> Vec<i32> { self.read_list(Self::read_varint) }
+  pub fn read_varint_arr(&mut self) -> Vec<i32> { self.read_list(|buf| buf.read_varint()) }
 
   pub fn write_varint_arr(&mut self, v: &[i32]) { self.write_list(v, |p, &v| p.write_varint(v)) }
 }
 
-impl Deref for Buffer {
-  type Target = Vec<u8>;
+impl<'a> Deref for Buffer<'a> {
+  type Target = &'a mut Vec<u8>;
 
   fn deref(&self) -> &Self::Target { self.data.get_ref() }
 }
 
-impl DerefMut for Buffer {
+impl DerefMut for Buffer<'_> {
   fn deref_mut(&mut self) -> &mut Self::Target { self.data.get_mut() }
 }
 
@@ -421,47 +419,56 @@ mod tests {
 
   #[test]
   pub fn read_varint() {
-    let mut buf = Buffer::new(vec![1]);
+    let mut data = vec![1];
+    let mut buf = Buffer::new(&mut data);
     assert_eq!(1, buf.read_varint());
     assert!(buf.err().is_none());
 
-    let mut buf = Buffer::new(vec![127]);
+    let mut data = vec![127];
+    let mut buf = Buffer::new(&mut data);
     assert_eq!(127, buf.read_varint());
     assert!(buf.err().is_none());
 
-    let mut buf = Buffer::new(vec![128, 2]);
+    let mut data = vec![128, 2];
+    let mut buf = Buffer::new(&mut data);
     assert_eq!(256, buf.read_varint());
     assert!(buf.err().is_none());
 
-    let mut buf = Buffer::new(vec![255, 255, 255, 255, 15]);
+    let mut data = vec![255, 255, 255, 255, 15];
+    let mut buf = Buffer::new(&mut data);
     assert_eq!(-1, buf.read_varint());
     assert!(buf.err().is_none());
 
-    let mut buf = Buffer::new(vec![255, 255, 255, 255, 255]);
+    let mut data = vec![255, 255, 255, 255, 255];
+    let mut buf = Buffer::new(&mut data);
     assert_eq!(0, buf.read_varint());
     assert!(buf.err().is_some());
   }
 
   #[test]
   pub fn write_varint() {
-    let mut buf = Buffer::new(vec![]);
+    let mut data = vec![];
+    let mut buf = Buffer::new(&mut data);
     buf.write_varint(1);
     assert!(buf.err().is_none());
-    assert_eq!(vec![1], buf.into_inner());
+    assert_eq!(vec![1], data);
 
-    let mut buf = Buffer::new(vec![]);
+    let mut data = vec![];
+    let mut buf = Buffer::new(&mut data);
     buf.write_varint(127);
     assert!(buf.err().is_none());
-    assert_eq!(vec![127], buf.into_inner());
+    assert_eq!(vec![127], data);
 
-    let mut buf = Buffer::new(vec![]);
+    let mut data = vec![];
+    let mut buf = Buffer::new(&mut data);
     buf.write_varint(256);
     assert!(buf.err().is_none());
-    assert_eq!(vec![128, 2], buf.into_inner());
+    assert_eq!(vec![128, 2], data);
 
-    let mut buf = Buffer::new(vec![]);
+    let mut data = vec![];
+    let mut buf = Buffer::new(&mut data);
     buf.write_varint(-1);
     assert!(buf.err().is_none());
-    assert_eq!(vec![255, 255, 255, 255, 15], buf.into_inner());
+    assert_eq!(vec![255, 255, 255, 255, 15], data);
   }
 }
