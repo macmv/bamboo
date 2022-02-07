@@ -25,11 +25,12 @@ pub fn chunk(
     + if biomes { 256 } else { 0 }; // Biomes
 
   // The most it will be is data_len + max varint len
-  let mut chunk_data = Buffer::new(Vec::with_capacity(data_len + 5));
+  let mut chunk_data = Vec::with_capacity(data_len + 5);
+  let mut chunk_buf = Buffer::new(&mut chunk_data);
 
-  chunk_data.write_u16(bit_map);
-  chunk_data.write_varint(data_len.try_into().unwrap());
-  let prefix_len = chunk_data.len();
+  chunk_buf.write_u16(bit_map);
+  chunk_buf.write_varint(data_len.try_into().unwrap());
+  let prefix_len = chunk_buf.len();
 
   for s in sections {
     for y in 0..16 {
@@ -37,7 +38,7 @@ pub fn chunk(
         for x in 0..16 {
           let b = s.get_block(Pos::new(x, y, z)).unwrap();
           let old_id = conv.block_to_old(b, BlockVersion::V1_8);
-          chunk_data.write_buf(&(old_id as u16).to_le_bytes());
+          chunk_buf.write_buf(&(old_id as u16).to_le_bytes());
         }
       }
     }
@@ -45,17 +46,17 @@ pub fn chunk(
   // Light data
   for _ in 0..total_sections * 16 * 16 * 16 / 2 {
     // Each lighting value is 1/2 byte
-    chunk_data.write_u8(0xff);
+    chunk_buf.write_u8(0xff);
   }
   if skylight {
     for _ in 0..total_sections * 16 * 16 * 16 / 2 {
       // Each lighting value is 1/2 byte
-      chunk_data.write_u8(0xff);
+      chunk_buf.write_u8(0xff);
     }
   }
   if biomes {
     for _ in 0..256 {
-      chunk_data.write_u8(127); // Void biome
+      chunk_buf.write_u8(127); // Void biome
     }
   }
   debug_assert_eq!(chunk_data.len() - prefix_len, data_len, "unexpected chunk data len");
@@ -65,7 +66,7 @@ pub fn chunk(
     chunk_z:        pos.z(),
     field_149279_g: full,
     extracted_data: None,
-    unknown:        chunk_data.into_inner(),
+    unknown:        chunk_data,
   }
 }
 
@@ -76,7 +77,8 @@ pub fn multi_block_change(
   ver: ProtocolVersion,
   conv: &TypeConverter,
 ) -> Packet {
-  let mut buf = Buffer::new(vec![]);
+  let mut data = vec![];
+  let mut buf = Buffer::new(&mut data);
   buf.write_i32(pos.x());
   buf.write_i32(pos.z());
   buf.write_varint(changes.len() as i32);
@@ -95,6 +97,6 @@ pub fn multi_block_change(
   Packet::MultiBlockChangeV8 {
     chunk_pos_coord: None,
     changed_blocks:  vec![],
-    unknown:         buf.into_inner(),
+    unknown:         data,
   }
 }

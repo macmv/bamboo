@@ -117,7 +117,7 @@ impl PacketStream for JavaStream {
     self.recv_cons.pop_slice(&mut vec);
     // And parse it
     if self.compression != 0 {
-      let mut buf = Buffer::new(vec);
+      let mut buf = Buffer::new(&mut vec);
       let uncompressed_length = buf.read_varint();
       if uncompressed_length == 0 {
         Ok(Some(tcp::Packet::from_buf(buf.read_all(), ver)))
@@ -143,7 +143,8 @@ impl PacketStream for JavaStream {
     let mut bytes = p.serialize();
 
     // Either the uncompressed length, or the total and uncompressed length.
-    let mut buf = Buffer::new(vec![]);
+    let mut data = vec![];
+    let mut buf = Buffer::new(&mut data);
 
     if self.compression != 0 {
       if bytes.len() > self.compression {
@@ -151,7 +152,8 @@ impl PacketStream for JavaStream {
         let mut compressed = compress_to_vec_zlib(&bytes, 1);
 
         // See how many bytes the uncompressed_length varint takes up
-        let mut uncompressed_length_buf = Buffer::new(vec![]);
+        let mut uncompressed_length_data = vec![];
+        let mut uncompressed_length_buf = Buffer::new(&mut uncompressed_length_data);
         uncompressed_length_buf.write_varint(uncompressed_length as i32);
 
         // This is the total length of the packet.

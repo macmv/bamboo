@@ -25,7 +25,8 @@ pub fn chunk(
   let biomes = full;
   let _skylight = true; // Assume overworld
 
-  let mut chunk_data = Buffer::new(vec![]);
+  let mut chunk_data = vec![];
+  let mut chunk_buf = Buffer::new(&mut chunk_data);
 
   // This is the length in longs that the bit map takes up.
   // chunk_data.write_varint(1);
@@ -35,33 +36,33 @@ pub fn chunk(
   let mut idx = 0;
   for i in 0..16 {
     if bit_map & (1 << i) == 0 {
-      chunk_data.write_u16(0); // No non air blocks
+      chunk_buf.write_u16(0); // No non air blocks
 
       // Paletted container for chunk data
-      chunk_data.write_u8(0); // 0 bpe
-      chunk_data.write_varint(0); // our one value is 0
-      chunk_data.write_varint(0); // no data
+      chunk_buf.write_u8(0); // 0 bpe
+      chunk_buf.write_varint(0); // our one value is 0
+      chunk_buf.write_varint(0); // no data
 
       // Paletted container for biome data
-      chunk_data.write_u8(0); // 0 bpe
-      chunk_data.write_varint(0); // our one value is 0
-      chunk_data.write_varint(0); // no data
+      chunk_buf.write_u8(0); // 0 bpe
+      chunk_buf.write_varint(0); // our one value is 0
+      chunk_buf.write_varint(0); // no data
       continue;
     }
     let s = &sections[idx];
-    chunk_data.write_u16(s.non_air_blocks() as u16);
+    chunk_buf.write_u16(s.non_air_blocks() as u16);
 
     // Paletted container for chunk data
-    chunk_data.write_u8(s.data().bpe() as u8);
+    chunk_buf.write_u8(s.data().bpe() as u8);
     if s.data().bpe() <= 8 {
-      chunk_data.write_varint(s.palette().len() as i32);
+      chunk_buf.write_varint(s.palette().len() as i32);
       for g in s.palette() {
-        chunk_data.write_varint(conv.block_to_old(*g as u32, BlockVersion::V1_18) as i32);
+        chunk_buf.write_varint(conv.block_to_old(*g as u32, BlockVersion::V1_18) as i32);
       }
     }
     let longs = s.data().long_array();
-    chunk_data.write_varint(longs.len() as i32);
-    longs.iter().for_each(|v| chunk_data.write_buf(&v.to_be_bytes()));
+    chunk_buf.write_varint(longs.len() as i32);
+    longs.iter().for_each(|v| chunk_buf.write_buf(&v.to_be_bytes()));
 
     // Paletted container for biome data
     if biomes {
@@ -80,9 +81,9 @@ pub fn chunk(
       }
       */
       // New special 'single value' palette
-      chunk_data.write_u8(0); // 0 bits per entry
-      chunk_data.write_varint(0); // The single entry is `0`
-      chunk_data.write_varint(0); // The data length is `0`
+      chunk_buf.write_u8(0); // 0 bits per entry
+      chunk_buf.write_varint(0); // The single entry is `0`
+      chunk_buf.write_varint(0); // The data length is `0`
 
       // No data follows, as this signifies that the entire section is just that
       // one biome.
@@ -94,16 +95,17 @@ pub fn chunk(
   let heightmap = chunk.build_heightmap_new();
   let heightmap = NBT::new("", Tag::compound(&[("MOTION_BLOCKING", Tag::LongArray(heightmap))]));
 
-  let mut data = Buffer::new(Vec::with_capacity(chunk_data.len()));
+  let mut data = Vec::with_capacity(chunk_buf.len());
+  let mut buf = Buffer::new(&mut data);
 
-  data.write_buf(&heightmap.serialize());
+  buf.write_buf(&heightmap.serialize());
 
-  data.write_varint(chunk_data.len() as i32);
-  data.write_buf(&chunk_data.into_inner());
-  data.write_varint(0); // No block entities
+  buf.write_varint(chunk_buf.len() as i32);
+  buf.write_buf(&chunk_data);
+  buf.write_varint(0); // No block entities
 
   // Light update stuff
-  data.write_bool(true); // This is a non-edge chunk
+  buf.write_bool(true); // This is a non-edge chunk
 
   let mut sky_bitmap: u64 = 0;
   let mut sky_empty_bitmap: u64 = 0;
@@ -138,33 +140,33 @@ pub fn chunk(
   block_empty_bitmap |= 1 | (1 << 17);
 
   // Sky light bitset
-  data.write_varint(1);
-  data.write_u64(sky_bitmap);
+  buf.write_varint(1);
+  buf.write_u64(sky_bitmap);
   // Block light bitset
-  data.write_varint(1);
-  data.write_u64(block_bitmap);
+  buf.write_varint(1);
+  buf.write_u64(block_bitmap);
   // Empty sky light bitset
-  data.write_varint(1);
-  data.write_u64(sky_empty_bitmap);
+  buf.write_varint(1);
+  buf.write_u64(sky_empty_bitmap);
   // Empty block light bitset
-  data.write_varint(1);
-  data.write_u64(block_empty_bitmap);
+  buf.write_varint(1);
+  buf.write_u64(block_empty_bitmap);
   // Sky light length
-  data.write_varint(sky_len);
+  buf.write_varint(sky_len);
   if let Some(sky) = sky_light {
     for s in sky.sections() {
       if let Some(s) = s {
-        data.write_varint(s.data().len() as i32);
-        data.write_buf(s.data());
+        buf.write_varint(s.data().len() as i32);
+        buf.write_buf(s.data());
       }
     }
   }
   // Block light length
-  data.write_varint(block_len);
+  buf.write_varint(block_len);
   for s in block_light.sections() {
     if let Some(s) = s {
-      data.write_varint(s.data().len() as i32);
-      data.write_buf(s.data());
+      buf.write_varint(s.data().len() as i32);
+      buf.write_buf(s.data());
     }
   }
 
@@ -177,6 +179,6 @@ pub fn chunk(
     data:                   vec![],
     biome_array:            vec![],
     block_entities:         None,
-    unknown:                data.into_inner(),
+    unknown:                data,
   }
 }

@@ -131,6 +131,11 @@ macro_rules! add_write_byte {
 
 impl<'a> Buffer<'a> {
   pub fn new(data: &'a mut Vec<u8>) -> Self { Buffer { data: Cursor::new(data), err: None } }
+  pub fn new_index(data: &'a mut Vec<u8>, index: usize) -> Self {
+    let mut cursor = Cursor::new(data);
+    cursor.set_position(index as u64);
+    Buffer { data: cursor, err: None }
+  }
 
   pub fn err(&self) -> &Option<BufferError> { &self.err }
   pub fn set_err(&mut self, err: BufferErrorKind, reading: bool) {

@@ -12,43 +12,49 @@ use std::{
 
 #[derive(Debug)]
 pub struct Packet {
-  buf: Buffer,
-  id:  i32,
-  ver: ProtocolVersion,
+  data:  Vec<u8>,
+  index: usize,
+  id:    i32,
+  ver:   ProtocolVersion,
 }
 
 macro_rules! add_writer {
   ($name: ident, $arg: ty) => {
-    pub fn $name(&mut self, v: $arg) { self.buf.$name(v) }
+    pub fn $name(&mut self, v: $arg) { self.buf().$name(v) }
   };
 }
 macro_rules! add_reader {
   ($name: ident, $ret: ty) => {
-    pub fn $name(&mut self) -> $ret { self.buf.$name() }
+    pub fn $name(&mut self) -> $ret { self.buf().$name() }
   };
 }
 
 impl Packet {
-  pub fn new(id: i32, ver: ProtocolVersion) -> Packet {
-    let mut buf = Buffer::new(vec![]);
-    buf.write_varint(id);
-    Packet { buf, id, ver }
+  /// Creates a new packet. Writes the given id into the internal buffer.
+  pub fn new(id: i32, ver: ProtocolVersion) -> Self {
+    let mut p = Packet { data: vec![], index: 0, id, ver };
+    p.write_varint(id);
+    p
   }
   /// Creates a new TCP packet from the given data. This will read a varint from
   /// the data to get the packet's ID.
-  pub fn from_buf(data: Vec<u8>, ver: ProtocolVersion) -> Packet {
-    let mut buf = Buffer::new(data);
-    let id = buf.read_varint();
-    Packet { buf, id, ver }
+  pub fn from_buf(data: Vec<u8>, ver: ProtocolVersion) -> Self {
+    let mut p = Packet { data, index: 0, id: 0, ver };
+    let id = p.read_varint();
+    p.id = id;
+    p
   }
   /// Creates a new TCP packet from the given data. This will not read anything
   /// from the data, as the ID is supplied.
-  pub fn from_buf_id(data: Vec<u8>, id: i32, ver: ProtocolVersion) -> Packet {
-    Packet { buf: Buffer::new(data), id, ver }
+  pub fn from_buf_id(data: Vec<u8>, id: i32, ver: ProtocolVersion) -> Self {
+    Packet { data, index: 0, id, ver }
   }
+
+  pub fn buf<'a>(&'a mut self) -> Buffer<'a> { Buffer::new_index(&mut self.data, self.index) }
+
   pub fn id(&self) -> i32 { self.id }
-  pub fn err(&self) -> &Option<BufferError> { self.buf.err() }
-  pub fn serialize(self) -> Vec<u8> { self.buf.to_vec() }
+  pub fn err(&self) -> Option<&BufferError> { None }
+  pub fn serialize(self) -> Vec<u8> { self.data }
 
   add_writer!(write_u8, u8);
   add_writer!(write_u16, u16);
@@ -83,35 +89,37 @@ impl Packet {
   add_reader!(read_bool, bool);
   add_reader!(read_all, Vec<u8>);
 
-  pub fn read_str(&mut self, max_len: u64) -> String { self.buf.read_str(max_len) }
+  pub fn read_str(&mut self, max_len: u64) -> String { self.buf().read_str(max_len) }
   pub fn read_ident(&mut self) -> String { self.read_str(32767) }
-  pub fn read_buf(&mut self, len: usize) -> Vec<u8> { self.buf.read_buf(len) }
+  pub fn read_buf(&mut self, len: usize) -> Vec<u8> { self.buf().read_buf(len) }
   pub fn read_byte_arr(&mut self) -> Vec<u8> {
     let len = self.read_varint().try_into().unwrap();
-    self.buf.read_buf(len)
+    self.buf().read_buf(len)
   }
   pub fn read_byte_arr_max(&mut self, max: usize) -> Vec<u8> {
     let len = self.read_varint().try_into().unwrap();
     if len > max {
-      self.buf.set_err(BufferErrorKind::ArrayTooLong { len: len as u64, max: max as u64 }, true);
+      // TODO: Handle errors
+      // self.buf().set_err(BufferErrorKind::ArrayTooLong { len: len as u64, max: max
+      // as u64 }, true);
       return vec![];
     }
-    self.buf.read_buf(len)
+    self.buf().read_buf(len)
   }
 
-  pub fn index(&self) -> usize { self.buf.index() }
-  pub fn remaining(&self) -> usize { self.buf.len() - self.buf.index() }
-  pub fn len(&self) -> usize { self.buf.len() }
-  pub fn is_empty(&self) -> bool { self.buf.len() == 0 }
+  pub fn index(&self) -> usize { self.index }
+  pub fn remaining(&self) -> usize { self.data.len() - self.index }
+  pub fn len(&self) -> usize { self.data.len() }
+  pub fn is_empty(&self) -> bool { self.data.len() == 0 }
 
   /// This writes the given block position as a long into the buffer. The old
   /// format is used on 1.8 - 1.13, and the new format will be used for any
   /// packet with version 1.14 or later.
   pub fn write_pos(&mut self, p: Pos) {
     if self.ver < ProtocolVersion::V1_14 {
-      self.buf.write_u64(p.to_old_u64());
+      self.write_u64(p.to_old_u64());
     } else {
-      self.buf.write_u64(p.to_u64());
+      self.write_u64(p.to_u64());
     }
   }
 
@@ -135,7 +143,7 @@ impl Packet {
   pub fn read_chunk_pos(&mut self) -> ChunkPos { ChunkPos::new(self.read_i32(), self.read_i32()) }
 
   /// Reads an nbt tag from self.
-  pub fn read_nbt(&mut self) -> NBT { NBT::deserialize_buf(&mut self.buf).unwrap() }
+  pub fn read_nbt(&mut self) -> NBT { NBT::deserialize_buf(&mut self.buf()).unwrap() }
 
   /// Reads a length prefixed array of integers.
   pub fn read_i32_arr(&mut self) -> Vec<i32> {
@@ -189,10 +197,10 @@ impl Packet {
   }
 
   /// Reads 16 bytes from the buffer, and returns that as a big endian UUID.
-  pub fn read_uuid(&mut self) -> UUID { self.buf.read_uuid() }
+  pub fn read_uuid(&mut self) -> UUID { self.buf().read_uuid() }
 
   /// This writes a UUID into the buffer (in big endian format).
-  pub fn write_uuid(&mut self, v: UUID) { self.buf.write_uuid(v); }
+  pub fn write_uuid(&mut self, v: UUID) { self.buf().write_uuid(v); }
 
   /// Reads a block hit result. This (for whatever dumb reason) is part of the
   /// packet buffer in 1.17, and is literally called ONCE. So, because reasons,
@@ -230,7 +238,9 @@ impl Packet {
   pub fn read_list_max<T>(&mut self, val: impl Fn(&mut Packet) -> T, max: usize) -> Vec<T> {
     let len: usize = self.read_varint().try_into().unwrap();
     if len > max {
-      self.buf.set_err(BufferErrorKind::ArrayTooLong { len: len as u64, max: max as u64 }, true);
+      // TODO: Errors
+      // self.buf.set_err(BufferErrorKind::ArrayTooLong { len: len as u64, max: max as
+      // u64 }, true);
       return vec![];
     }
     let mut list = Vec::with_capacity(len);
@@ -295,7 +305,9 @@ impl Packet {
   ) -> HashSet<T> {
     let len = self.read_varint().try_into().unwrap();
     if len > max {
-      self.buf.set_err(BufferErrorKind::ArrayTooLong { len: len as u64, max: max as u64 }, true);
+      // TODO: Errors
+      // self.buf.set_err(BufferErrorKind::ArrayTooLong { len: len as u64, max: max as
+      // u64 }, true);
       return HashSet::new();
     }
     let mut set = HashSet::with_capacity(len);
@@ -324,8 +336,7 @@ impl Packet {
     }
   }
 
-  pub fn read_varint_arr(&mut self) -> Vec<i32> { self.read_list(Self::read_varint) }
-
+  pub fn read_varint_arr(&mut self) -> Vec<i32> { self.read_list(|buf| buf.read_varint()) }
   pub fn write_varint_arr(&mut self, v: &[i32]) { self.write_list(v, |p, &v| p.write_varint(v)) }
 
   pub fn read_bits(&mut self) -> Vec<u64> {

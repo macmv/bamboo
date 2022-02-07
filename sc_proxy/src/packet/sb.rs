@@ -40,8 +40,8 @@ impl FromTcp for Packet {
   fn from_tcp(p: GPacket, ver: ProtocolVersion, conv: &TypeConverter) -> Result<Self, ReadError> {
     Ok(match p {
       GPacket::ChatV8 { message } | GPacket::ChatV11 { message } => Packet::Chat { msg: message },
-      GPacket::CreativeInventoryActionV8 { slot_id, unknown, .. } => {
-        let mut buf = Buffer::new(unknown);
+      GPacket::CreativeInventoryActionV8 { slot_id, mut unknown, .. } => {
+        let mut buf = Buffer::new(&mut unknown);
         Packet::CreativeInventoryUpdate {
           slot: slot_id.try_into().unwrap(),
           item: read_item(ver, &mut buf, conv),
@@ -103,8 +103,8 @@ impl FromTcp for Packet {
       | GPacket::PlayerRotationV9 { yaw, pitch, on_ground, .. } => {
         Packet::PlayerLook { yaw, pitch, on_ground }
       }
-      GPacket::PlayerRotationV17 { unknown, .. } => {
-        let mut buf = Buffer::new(unknown);
+      GPacket::PlayerRotationV17 { mut unknown, .. } => {
+        let mut buf = Buffer::new(&mut unknown);
         let yaw = buf.read_f32();
         let pitch = buf.read_f32();
         let on_ground = buf.read_bool();
@@ -114,8 +114,8 @@ impl FromTcp for Packet {
       | GPacket::PlayerPositionRotationV9 { x, y, z, yaw, pitch, on_ground, .. } => {
         Packet::PlayerPosLook { x, y, z, yaw, pitch, on_ground }
       }
-      GPacket::PlayerPositionRotationV17 { unknown, .. } => {
-        let mut buf = Buffer::new(unknown);
+      GPacket::PlayerPositionRotationV17 { mut unknown, .. } => {
+        let mut buf = Buffer::new(&mut unknown);
         let x = buf.read_f64();
         let y = buf.read_f64();
         let z = buf.read_f64();
@@ -127,8 +127,8 @@ impl FromTcp for Packet {
       GPacket::PlayerPositionV8 { x, y, z, on_ground, .. } => {
         Packet::PlayerPos { x, y, z, on_ground }
       }
-      GPacket::PlayerPositionV17 { unknown, .. } => {
-        let mut buf = Buffer::new(unknown);
+      GPacket::PlayerPositionV17 { mut unknown, .. } => {
+        let mut buf = Buffer::new(&mut unknown);
         let x = buf.read_f64();
         let y = buf.read_f64();
         let z = buf.read_f64();

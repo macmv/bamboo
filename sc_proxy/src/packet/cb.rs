@@ -72,13 +72,10 @@ impl ToTcp for Packet {
           }
         },
       Packet::BlockUpdate { pos, state } => {
-        let mut buf = Buffer::new(vec![]);
+        let mut data = vec![];
+        let mut buf = Buffer::new(&mut data);
         buf.write_varint(state as i32);
-        GPacket::BlockUpdateV8 {
-          block_position: pos,
-          block_state:    None,
-          unknown:        buf.into_inner(),
-        }
+        GPacket::BlockUpdateV8 { block_position: pos, block_state: None, unknown: data }
       }
       Packet::Chat { msg, ty } => {
         if ver < ProtocolVersion::V1_12_2 {
@@ -86,14 +83,11 @@ impl ToTcp for Packet {
         } else if ver < ProtocolVersion::V1_16_5 {
           GPacket::ChatV12 { chat_component: msg, ty: None, unknown: vec![ty] }
         } else {
-          let mut out = Buffer::new(vec![]);
-          out.write_u8(ty);
-          out.write_uuid(UUID::from_u128(0));
-          GPacket::ChatV12 {
-            chat_component: msg,
-            ty:             None,
-            unknown:        out.into_inner(),
-          }
+          let mut data = vec![];
+          let mut buf = Buffer::new(&mut data);
+          buf.write_u8(ty);
+          buf.write_uuid(UUID::from_u128(0));
+          GPacket::ChatV12 { chat_component: msg, ty: None, unknown: data }
         }
       }
       Packet::Chunk { pos, full, bit_map, sections, sky_light, block_light } => {
@@ -103,7 +97,8 @@ impl ToTcp for Packet {
         if ver < ProtocolVersion::V1_13 {
           panic!("command tree doesn't exist for version {}", ver);
         }
-        let mut buf = Buffer::new(vec![]);
+        let mut data = vec![];
+        let mut buf = Buffer::new(&mut data);
         buf.write_list(&nodes, |buf, node| {
           let mut flags = match node.ty {
             CommandType::Root => 0,
@@ -137,9 +132,9 @@ impl ToTcp for Packet {
         });
         buf.write_varint(root as i32);
         if ver > ProtocolVersion::V1_14_4 {
-          GPacket::CommandTreeV16 { command_tree: None, unknown: buf.into_inner() }
+          GPacket::CommandTreeV16 { command_tree: None, unknown: data }
         } else {
-          GPacket::CommandTreeV14 { command_tree: None, unknown: buf.into_inner() }
+          GPacket::CommandTreeV14 { command_tree: None, unknown: data }
         }
       }
       Packet::EntityLook { eid, yaw, pitch, on_ground } => GPacket::EntityLookV8 {
@@ -236,57 +231,58 @@ impl ToTcp for Packet {
         reduced_debug_info,
         enable_respawn_screen,
       } => {
-        let mut out = Buffer::new(vec![]);
+        let mut data = vec![];
+        let mut buf = Buffer::new(&mut data);
         if ver >= ProtocolVersion::V1_18 {
-          out.write_i32(eid);
-          out.write_bool(hardcore_mode);
+          buf.write_i32(eid);
+          buf.write_bool(hardcore_mode);
         }
         if ver >= ProtocolVersion::V1_16_5 {
-          out.write_u8(game_mode.id());
-          out.write_i8(-1); // no previous_game_mode
+          buf.write_u8(game_mode.id());
+          buf.write_i8(-1); // no previous_game_mode
 
           // List of worlds
-          out.write_varint(1);
-          out.write_str("minecraft:overworld");
+          buf.write_varint(1);
+          buf.write_str("minecraft:overworld");
 
-          write_dimensions(&mut out);
+          write_dimensions(&mut buf);
 
           // Hashed world seed, used for biomes client side.
-          out.write_u64(0);
+          buf.write_u64(0);
           // Max players (ignored)
-          out.write_varint(0);
+          buf.write_varint(0);
 
-          out.write_varint(view_distance.into());
+          buf.write_varint(view_distance.into());
           if ver >= ProtocolVersion::V1_18 {
             // The simulation distance
-            out.write_varint(view_distance.into());
+            buf.write_varint(view_distance.into());
           }
-          out.write_bool(reduced_debug_info);
-          out.write_bool(enable_respawn_screen);
-          out.write_bool(false); // Is debug; cannot be modified, has preset blocks
-          out.write_bool(false); // Is flat; changes fog
+          buf.write_bool(reduced_debug_info);
+          buf.write_bool(enable_respawn_screen);
+          buf.write_bool(false); // Is debug; cannot be modified, has preset blocks
+          buf.write_bool(false); // Is flat; changes fog
         } else {
           if ver >= ProtocolVersion::V1_15_2 {
-            out.write_i32(dimension.into());
+            buf.write_i32(dimension.into());
             // Hashed world seed, used for biomes
-            out.write_u64(0);
+            buf.write_u64(0);
             // Max players (ignored)
-            out.write_u8(0);
+            buf.write_u8(0);
             // World type
-            out.write_str("default");
-            out.write_varint(view_distance.into());
-            out.write_bool(reduced_debug_info);
-            out.write_bool(enable_respawn_screen);
+            buf.write_str("default");
+            buf.write_varint(view_distance.into());
+            buf.write_bool(reduced_debug_info);
+            buf.write_bool(enable_respawn_screen);
           } else if ver >= ProtocolVersion::V1_14_4 {
-            out.write_i32(dimension.into());
+            buf.write_i32(dimension.into());
             // Max players (ignored)
-            out.write_u8(0);
+            buf.write_u8(0);
             // World type
-            out.write_str("default");
-            out.write_varint(view_distance.into());
-            out.write_bool(reduced_debug_info);
+            buf.write_str("default");
+            buf.write_varint(view_distance.into());
+            buf.write_bool(reduced_debug_info);
           } else {
-            out.write_bool(reduced_debug_info);
+            buf.write_bool(reduced_debug_info);
           }
         }
 
@@ -300,7 +296,7 @@ impl ToTcp for Packet {
             max_players: 0,
             world_type: level_type,
             reduced_debug_info: None,
-            unknown: out.into_inner(),
+            unknown: data,
           },
           9..=13 => GPacket::JoinGameV9 {
             player_id: eid,
@@ -311,7 +307,7 @@ impl ToTcp for Packet {
             max_players: 0,
             world_type: level_type,
             reduced_debug_info: None,
-            unknown: out.into_inner(),
+            unknown: data,
           },
           14..=15 => GPacket::JoinGameV14 {
             player_entity_id:    eid,
@@ -322,7 +318,7 @@ impl ToTcp for Packet {
             generator_type:      None,
             chunk_load_distance: None,
             reduced_debug_info:  None,
-            unknown:             out.into_inner(),
+            unknown:             data,
           },
           16 => GPacket::JoinGameV16 {
             player_entity_id:   eid,
@@ -340,7 +336,7 @@ impl ToTcp for Packet {
             show_death_screen:  None,
             debug_world:        None,
             flat_world:         None,
-            unknown:            out.into_inner(),
+            unknown:            data,
           },
           17 => GPacket::JoinGameV17 {
             a:                  None,
@@ -359,7 +355,7 @@ impl ToTcp for Packet {
             show_death_screen:  None,
             debug_world:        None,
             flat_world:         None,
-            unknown:            out.into_inner(),
+            unknown:            data,
           },
           18 => GPacket::JoinGameV18 {
             l:                  None,
@@ -378,7 +374,7 @@ impl ToTcp for Packet {
             show_death_screen:  None,
             debug_world:        None,
             flat_world:         None,
-            unknown:            out.into_inner(),
+            unknown:            data,
           },
           _ => unimplemented!(),
         }
@@ -398,7 +394,8 @@ impl ToTcp for Packet {
       }
       Packet::PlayerList { action } => {
         let id;
-        let mut buf = Buffer::new(vec![]);
+        let mut data = vec![];
+        let mut buf = Buffer::new(&mut data);
         match action {
           cb::PlayerListAction::Add(v) => {
             id = 0;
@@ -440,9 +437,9 @@ impl ToTcp for Packet {
           }
         }
         if ver < ProtocolVersion::V1_17_1 {
-          GPacket::PlayerListV8 { action: id, players: None, unknown: buf.into_inner() }
+          GPacket::PlayerListV8 { action: id, players: None, unknown: data }
         } else {
-          GPacket::PlayerListV17 { action: id, entries: None, unknown: buf.into_inner() }
+          GPacket::PlayerListV17 { action: id, entries: None, unknown: data }
         }
       }
       Packet::PluginMessage { channel, data } => {
@@ -471,7 +468,8 @@ impl ToTcp for Packet {
         }
       }
       Packet::SetPosLook { x, y, z, yaw, pitch, flags, teleport_id, should_dismount } => {
-        let mut buf = Buffer::new(vec![]);
+        let mut data = vec![];
+        let mut buf = Buffer::new(&mut data);
         buf.write_u8(flags);
         if ver >= ProtocolVersion::V1_9 {
           buf.write_varint(teleport_id as i32);
@@ -479,15 +477,7 @@ impl ToTcp for Packet {
         if ver >= ProtocolVersion::V1_17_1 {
           buf.write_bool(should_dismount);
         }
-        GPacket::PlayerPosLookV8 {
-          x,
-          y,
-          z,
-          yaw,
-          pitch,
-          field_179835_f: None,
-          unknown: buf.into_inner(),
-        }
+        GPacket::PlayerPosLookV8 { x, y, z, yaw, pitch, field_179835_f: None, unknown: data }
       }
       Packet::SpawnPlayer { eid, id, x, y, z, yaw, pitch } => {
         if ver == ProtocolVersion::V1_8 {

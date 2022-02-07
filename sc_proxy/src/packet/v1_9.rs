@@ -14,45 +14,47 @@ pub fn chunk(
   let biomes = full;
   let skylight = true; // Assume overworld
 
-  let mut chunk_data = Buffer::new(vec![]);
+  let mut chunk_data = vec![];
+  let mut chunk_buf = Buffer::new(&mut chunk_data);
   // Iterates through chunks in order, from ground up. Flatten removes None
   // sections.
   for s in sections {
-    chunk_data.write_u8(s.data().bpe() as u8);
-    chunk_data.write_varint(s.palette().len() as i32);
+    chunk_buf.write_u8(s.data().bpe() as u8);
+    chunk_buf.write_varint(s.palette().len() as i32);
     for g in s.palette() {
-      chunk_data.write_varint(conv.block_to_old(*g as u32, ver.block()) as i32);
+      chunk_buf.write_varint(conv.block_to_old(*g as u32, ver.block()) as i32);
     }
     let longs = s.data().long_array();
-    chunk_data.write_varint(longs.len() as i32);
-    chunk_data.reserve(longs.len() * 8); // 8 bytes per long
-    longs.iter().for_each(|v| chunk_data.write_buf(&v.to_be_bytes()));
+    chunk_buf.write_varint(longs.len() as i32);
+    chunk_buf.reserve(longs.len() * 8); // 8 bytes per long
+    longs.iter().for_each(|v| chunk_buf.write_buf(&v.to_be_bytes()));
     // Light data
     for _ in 0..16 * 16 * 16 / 2 {
       // Each lighting value is 1/2 byte
-      chunk_data.write_u8(0xff);
+      chunk_buf.write_u8(0xff);
     }
     if skylight {
       for _ in 0..16 * 16 * 16 / 2 {
         // Each lighting value is 1/2 byte
-        chunk_data.write_u8(0xff);
+        chunk_buf.write_u8(0xff);
       }
     }
   }
 
   if biomes {
     for _ in 0..256 {
-      chunk_data.write_u8(127); // Void biome
+      chunk_buf.write_u8(127); // Void biome
     }
   }
 
-  let mut data = Buffer::new(Vec::with_capacity(chunk_data.len()));
-  data.write_varint(chunk_data.len() as i32);
-  data.write_buf(&chunk_data.into_inner());
+  let mut data = Vec::with_capacity(chunk_buf.len());
+  let mut buf = Buffer::new(&mut data);
+  buf.write_varint(chunk_buf.len() as i32);
+  buf.write_buf(&chunk_data);
 
   // No block entities
   if ver >= ProtocolVersion::V1_9_4 {
-    data.write_varint(0);
+    buf.write_varint(0);
   }
 
   Packet::ChunkDataV9 {
@@ -62,6 +64,6 @@ pub fn chunk(
     available_sections: bit_map.into(),
     buffer:             vec![],
     field_189557_e:     None,
-    unknown:            data.into_inner(),
+    unknown:            data,
   }
 }

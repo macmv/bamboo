@@ -24,35 +24,38 @@ pub fn chunk(
   let biomes = full;
   let _skylight = true; // Assume overworld
 
-  let mut chunk_data = Buffer::new(vec![]);
+  let mut chunk_data = vec![];
+  let mut chunk_buf = Buffer::new(&mut chunk_data);
   for s in sections {
-    chunk_data.write_u16(s.non_air_blocks() as u16);
-    chunk_data.write_u8(s.data().bpe() as u8);
+    chunk_buf.write_u16(s.non_air_blocks() as u16);
+    chunk_buf.write_u8(s.data().bpe() as u8);
     if s.data().bpe() <= 8 {
-      chunk_data.write_varint(s.palette().len() as i32);
+      chunk_buf.write_varint(s.palette().len() as i32);
       for g in s.palette() {
-        chunk_data.write_varint(conv.block_to_old(*g as u32, BlockVersion::V1_14) as i32);
+        chunk_buf.write_varint(conv.block_to_old(*g as u32, BlockVersion::V1_14) as i32);
       }
     }
     let longs = s.data().long_array();
-    chunk_data.write_varint(longs.len() as i32);
-    longs.iter().for_each(|v| chunk_data.write_buf(&v.to_be_bytes()));
+    chunk_buf.write_varint(longs.len() as i32);
+    longs.iter().for_each(|v| chunk_buf.write_buf(&v.to_be_bytes()));
   }
 
   if biomes {
     for _ in 0..256 {
-      chunk_data.write_i32(127); // Void biome
+      chunk_buf.write_i32(127); // Void biome
     }
   }
 
   let heightmap = vec![];
   let heightmap = NBT::new("", Tag::compound(&[("MOTION_BLOCKING", Tag::LongArray(heightmap))]));
 
-  let mut data = Buffer::new(Vec::with_capacity(chunk_data.len()));
-  data.write_buf(&heightmap.serialize());
-  data.write_varint(chunk_data.len() as i32);
-  data.write_buf(&chunk_data.into_inner());
-  data.write_varint(0); // No block entities
+  let mut data = Vec::with_capacity(chunk_buf.len());
+  let mut buf = Buffer::new(&mut data);
+  buf.write_buf(&heightmap.serialize());
+  buf.write_varint(chunk_buf.len() as i32);
+  buf.write_buf(&chunk_data);
+  buf.write_varint(0); // No block entities
+
   Packet::ChunkDataV14 {
     chunk_x:                pos.x(),
     chunk_z:                pos.z(),
@@ -61,6 +64,6 @@ pub fn chunk(
     heightmaps:             None,
     data:                   vec![],
     block_entities:         None,
-    unknown:                data.into_inner(),
+    unknown:                data,
   }
 }
