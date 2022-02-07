@@ -1,5 +1,5 @@
 use super::{
-  super::Tag,
+  super::{Tag, NBT},
   error::{Error, Result},
 };
 use serde::{ser, Serialize};
@@ -17,6 +17,13 @@ pub struct MapSerializer<'a> {
   ser:   &'a mut Serializer,
   key:   Option<String>,
   items: HashMap<String, Tag>,
+}
+
+pub fn to_nbt<T>(name: &str, value: &T) -> Result<NBT>
+where
+  T: Serialize,
+{
+  Ok(NBT::new(name, to_tag(value)?))
 }
 
 pub fn to_tag<T>(value: &T) -> Result<Tag>

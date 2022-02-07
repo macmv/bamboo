@@ -2,6 +2,7 @@ mod deserialize;
 mod serde;
 mod serialize;
 
+pub use self::serde::{to_nbt, to_tag};
 pub use deserialize::ParseError;
 
 use std::collections::HashMap;
