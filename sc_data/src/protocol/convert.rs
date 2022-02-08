@@ -166,7 +166,7 @@ pub fn member_call<'a>(class: &str, name: &'a str) -> (&'a str, Option<Vec<Expr>
       "decode" => return ("read_nbt", Some(vec![]), true),
       "read_block_hit_result" => "read_block_hit",
       "read_block_pos" => "read_pos",
-      "readable_bytes" => "remaining",
+      "readable_bytes" => return ("remaining", None, false),
       "read_optional" => "read_option",
       "read_map" | "read_collection" => "read_map",
       "read_list" => "read_list",

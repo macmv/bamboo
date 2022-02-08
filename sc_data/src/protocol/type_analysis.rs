@@ -451,7 +451,8 @@ impl<'a> ReaderTypes<'a> {
             }
             Op::BitAnd(v) => Op::BitAnd(v.clone()),
             Op::Div(v) => Op::Mul(v.clone()),
-            Op::Try => op.clone(),
+            // When converting from reader to writer, we remove the `?` from the ops.
+            Op::Try => continue,
             _ => panic!("cannot convert {:?} into writer (packet {})", expr, self.packet),
           });
         }
@@ -478,6 +479,14 @@ impl<'a> ReaderTypes<'a> {
     let writer_ty = self.expr_type(&expr);
     if writer_ty != field_ty {
       expr.ops.extend(convert::type_cast(&writer_ty, &field_ty));
+    }
+    // Remove double cast, which causes the below deref check to work in more
+    // situations.
+    if matches!(expr.ops.last(), Some(Op::As(_)))
+      && matches!(expr.ops.iter().rev().nth(1), Some(Op::As(_)))
+    {
+      let len = expr.ops.len();
+      expr.ops.remove(len - 2);
     }
     if field_ty.is_copy()
       && expr
