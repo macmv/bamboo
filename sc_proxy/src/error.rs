@@ -11,7 +11,13 @@ pub enum Error {
   TransferWrite(sc_transfer::WriteError),
   UnknownCB(Box<cb::Packet>),
   UnknownSB(Box<sb::Packet>),
-  ParseError { msg: String, id: i32, ver: ProtocolVersion, pos: usize },
+  ParseError {
+    msg: &'static str,
+    err: Box<dyn std::error::Error>,
+    id:  i32,
+    ver: ProtocolVersion,
+    pos: usize,
+  },
 }
 
 pub type Result<T> = std::result::Result<T, Error>;
@@ -19,18 +25,17 @@ pub type Result<T> = std::result::Result<T, Error>;
 impl fmt::Display for Error {
   fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
     match self {
-      Self::Buffer(e) => write!(f, "{}", e),
-      Self::IO(e) => write!(f, "{}", e),
-      Self::Addr(e) => write!(f, "invalid address: {}", e),
-      Self::TransferRead(e) => write!(f, "{}", e),
-      Self::TransferWrite(e) => write!(f, "{}", e),
-      Self::UnknownCB(p) => write!(f, "unknown clientbound packet {:?}", p),
-      Self::UnknownSB(p) => write!(f, "unknown serverbound packet {:?}", p),
-      Self::ParseError { msg, id, ver, pos } => {
+      Self::Buffer(e) => write!(f, "{e}"),
+      Self::IO(e) => write!(f, "{e}"),
+      Self::Addr(e) => write!(f, "invalid address: {e}"),
+      Self::TransferRead(e) => write!(f, "{e}"),
+      Self::TransferWrite(e) => write!(f, "{e}"),
+      Self::UnknownCB(p) => write!(f, "unknown clientbound packet {p:?}"),
+      Self::UnknownSB(p) => write!(f, "unknown serverbound packet {p:?}"),
+      Self::ParseError { msg, err, id, ver, pos } => {
         write!(
           f,
-          "parse error for packet {:#x} on version {:?} (at byte {:#x}): {}",
-          id, ver, pos, msg
+          "parse error for packet {id:#x} on version {ver:?} (at byte {pos:#x}): while in {msg}, got error: {err}",
         )
       }
     }

@@ -55,13 +55,8 @@ impl Packet {
   pub fn buf(&mut self) -> &mut Buffer<Vec<u8>> { &mut self.buf }
 
   pub fn id(&self) -> i32 { self.id }
-  pub fn err(&self, e: impl std::fmt::Display, msg: &'static str) -> Error {
-    Error::ParseError {
-      pos: self.buf.index(),
-      id:  self.id,
-      ver: self.ver,
-      msg: format!("while in {}: {}", msg, e),
-    }
+  pub fn err(&self, e: impl std::error::Error + 'static, msg: &'static str) -> Error {
+    Error::ParseError { pos: self.buf.index(), id: self.id, ver: self.ver, msg, err: Box::new(e) }
   }
   pub fn serialize(self) -> Vec<u8> { self.buf.into_inner() }
 
