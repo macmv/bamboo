@@ -126,7 +126,10 @@ impl Parser {
 
   /// If this parser stores any extra data, that will be written to the buffer.
   /// Most nodes will not write any extra data.
-  pub fn write_data(&self, buf: &mut Buffer) {
+  pub fn write_data<T>(&self, buf: &mut Buffer<T>)
+  where
+    std::io::Cursor<T>: std::io::Write,
+  {
     match self {
       Self::Double { min, max } => {
         let mut bitmask = 0;
