@@ -12,7 +12,7 @@ use rand::{rngs::OsRng, RngCore};
 use serde::de::{self, Deserialize, Deserializer, Unexpected, Visitor};
 use std::{error::Error, fmt, num::ParseIntError, str::FromStr};
 
-pub use buffer::{Buffer, BufferError, BufferErrorKind};
+pub use buffer::{Buffer, BufferError, BufferErrorKind, Mode};
 pub use item::Item;
 
 pub fn serialize_varint(v: i32) -> Vec<u8> {

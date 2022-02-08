@@ -1,7 +1,7 @@
 use sc_common::{
   math::{ChunkPos, Pos},
   nbt::NBT,
-  util::{Buffer, BufferError, Item, UUID},
+  util::{Buffer, BufferError, Item, Mode, UUID},
   version::ProtocolVersion,
 };
 use std::{
@@ -10,6 +10,21 @@ use std::{
   hash::Hash,
   ops::{Deref, DerefMut},
 };
+
+pub type Result<T> = std::result::Result<T, ParseError>;
+
+#[derive(Debug)]
+pub struct ParseError {
+  kind: ParseErrorKind,
+  pos:  u64,
+  id:   i32,
+  ver:  ProtocolVersion,
+}
+
+#[derive(Debug)]
+pub enum ParseErrorKind {
+  BufferError(BufferError),
+}
 
 #[derive(Debug)]
 pub struct Packet {
@@ -52,7 +67,7 @@ macro_rules! add_writer {
 }
 macro_rules! add_reader {
   ($name: ident, $ret: ty) => {
-    pub fn $name(&mut self) -> $ret { self.buf().$name() }
+    pub fn $name(&mut self) -> Result<$ret> { self.buf().$name() }
   };
 }
 
@@ -65,11 +80,11 @@ impl Packet {
   }
   /// Creates a new TCP packet from the given data. This will read a varint from
   /// the data to get the packet's ID.
-  pub fn from_buf(data: Vec<u8>, ver: ProtocolVersion) -> Self {
+  pub fn from_buf(data: Vec<u8>, ver: ProtocolVersion) -> Result<Self> {
     let mut p = Packet { data, index: 0, id: 0, ver };
-    let id = p.read_varint();
+    let id = p.read_varint()?;
     p.id = id;
-    p
+    Ok(p)
   }
   /// Creates a new TCP packet from the given data. This will not read anything
   /// from the data, as the ID is supplied.
@@ -84,7 +99,9 @@ impl Packet {
   }
 
   pub fn id(&self) -> i32 { self.id }
-  pub fn err(&self) -> Option<&BufferError> { None }
+  pub fn err(&self, e: impl Into<ParseErrorKind>) -> ParseError {
+    ParseError { kind: e.into(), pos: self.pos, id: self.id, ver: self.ver }
+  }
   pub fn serialize(self) -> Vec<u8> { self.data }
 
   add_writer!(write_u8, u8);
@@ -118,24 +135,26 @@ impl Packet {
   add_reader!(read_f64, f64);
   add_reader!(read_varint, i32);
   add_reader!(read_bool, bool);
-  add_reader!(read_all, Vec<u8>);
+  pub fn read_all(&mut self) -> Vec<u8> { self.buf().read_all() }
 
-  pub fn read_str(&mut self, max_len: u64) -> String { self.buf().read_str(max_len) }
-  pub fn read_ident(&mut self) -> String { self.read_str(32767) }
-  pub fn read_buf(&mut self, len: usize) -> Vec<u8> { self.buf().read_buf(len) }
-  pub fn read_byte_arr(&mut self) -> Vec<u8> {
-    let len = self.read_varint().try_into().unwrap();
-    self.buf().read_buf(len)
+  pub fn read_str(&mut self, max_len: u64) -> Result<String> { self.buf().read_str(max_len) }
+  pub fn read_ident(&mut self) -> Result<String> { self.read_str(32767) }
+  pub fn read_buf(&mut self, len: usize) -> Result<Vec<u8>> {
+    self.buf().read_buf(len).map_err(|e| self.err(e))
   }
-  pub fn read_byte_arr_max(&mut self, max: usize) -> Vec<u8> {
-    let len = self.read_varint().try_into().unwrap();
+  pub fn read_byte_arr(&mut self) -> Result<Vec<u8>> {
+    let len = self.read_varint()?.try_into().unwrap();
+    self.buf().read_buf(len).map_err(|e| self.err(e))
+  }
+  pub fn read_byte_arr_max(&mut self, max: usize) -> Result<Vec<u8>> {
+    let len = self.read_varint()?.try_into().unwrap();
     if len > max {
       // TODO: Handle errors
       // self.buf().set_err(BufferErrorKind::ArrayTooLong { len: len as u64, max: max
       // as u64 }, true);
       return vec![];
     }
-    self.buf().read_buf(len)
+    self.buf().read_buf(len).map_err(|e| self.err(e))
   }
 
   pub fn index(&self) -> usize { self.index }
@@ -156,13 +175,9 @@ impl Packet {
 
   /// This parses a postition from the internal buffer (format depends on the
   /// version), and then returns that as a Pos struct.
-  pub fn read_pos(&mut self) -> Pos {
-    let num = self.read_u64();
-    if self.ver < ProtocolVersion::V1_14 {
-      Pos::from_old_u64(num)
-    } else {
-      Pos::from_u64(num)
-    }
+  pub fn read_pos(&mut self) -> Result<Pos> {
+    let num = self.read_u64()?;
+    Ok(if self.ver < ProtocolVersion::V1_14 { Pos::from_old_u64(num) } else { Pos::from_u64(num) })
   }
 
   /// Writes a chunk position, as two i32s.
@@ -171,19 +186,23 @@ impl Packet {
     self.write_i32(p.z());
   }
   /// Reads a chunk position, as two i32s.
-  pub fn read_chunk_pos(&mut self) -> ChunkPos { ChunkPos::new(self.read_i32(), self.read_i32()) }
+  pub fn read_chunk_pos(&mut self) -> Result<ChunkPos> {
+    Ok(ChunkPos::new(self.read_i32()?, self.read_i32()?))
+  }
 
   /// Reads an nbt tag from self.
-  pub fn read_nbt(&mut self) -> NBT { NBT::deserialize_buf(&mut self.buf()).unwrap() }
+  pub fn read_nbt(&mut self) -> Result<NBT> {
+    NBT::deserialize_buf(&mut self.buf()).map_err(|e| self.err(e))
+  }
 
   /// Reads a length prefixed array of integers.
-  pub fn read_i32_arr(&mut self) -> Vec<i32> {
-    let len = self.read_varint().try_into().unwrap();
+  pub fn read_i32_arr(&mut self) -> Result<Vec<i32>> {
+    let len = self.read_varint()?.try_into().unwrap();
     let mut out = Vec::with_capacity(len);
     for _ in 0..len {
-      out.push(self.read_i32());
+      out.push(self.read_i32()?);
     }
-    out
+    Ok(out)
   }
 
   pub fn write_i32_arr(&mut self, list: &[i32]) {
@@ -197,18 +216,18 @@ impl Packet {
   /// version).
   pub fn read_item(&mut self) -> Item {
     if self.ver < ProtocolVersion::V1_13 {
-      let id = self.read_i16();
+      let id = self.read_i16()?;
       let mut count = 0;
       let mut damage = 0;
       let mut nbt = NBT::empty("");
       if id != -1 {
-        count = self.read_u8();
-        damage = self.read_i16();
-        nbt = self.read_nbt();
+        count = self.read_u8()?;
+        damage = self.read_i16()?;
+        nbt = self.read_nbt()?;
       }
       Item::new(id.into(), count, damage, nbt)
     } else {
-      unreachable!("invalid version: {:?}", self.ver);
+      todo!("read item on version: {:?}", self.ver);
     }
   }
 
@@ -223,12 +242,12 @@ impl Packet {
         self.write_u8(0); // TODO: Write nbt data
       }
     } else {
-      unreachable!("invalid version: {:?}", self.ver);
+      todo!("write item on version: {:?}", self.ver);
     }
   }
 
   /// Reads 16 bytes from the buffer, and returns that as a big endian UUID.
-  pub fn read_uuid(&mut self) -> UUID { self.buf().read_uuid() }
+  pub fn read_uuid(&mut self) -> Result<UUID> { self.buf().read_uuid().map_err(|e| self.err(e)) }
 
   /// This writes a UUID into the buffer (in big endian format).
   pub fn write_uuid(&mut self, v: UUID) { self.buf().write_uuid(v); }
@@ -236,25 +255,25 @@ impl Packet {
   /// Reads a block hit result. This (for whatever dumb reason) is part of the
   /// packet buffer in 1.17, and is literally called ONCE. So, because reasons,
   /// I need to implement it as well.
-  pub fn read_block_hit(&mut self) -> ((f32, f32, f32), i32, Pos, bool) {
-    let pos = self.read_pos();
-    let dir = self.read_varint();
-    let x = self.read_f32();
-    let y = self.read_f32();
-    let z = self.read_f32();
-    let hit = self.read_bool();
-    return ((pos.x() as f32 + x, pos.y() as f32 + y, pos.z() as f32 + z), dir, pos, hit);
+  pub fn read_block_hit(&mut self) -> Result<((f32, f32, f32), i32, Pos, bool)> {
+    let pos = self.read_pos()?;
+    let dir = self.read_varint()?;
+    let x = self.read_f32()?;
+    let y = self.read_f32()?;
+    let z = self.read_f32()?;
+    let hit = self.read_bool()?;
+    return Ok(((pos.x() as f32 + x, pos.y() as f32 + y, pos.z() as f32 + z), dir, pos, hit));
   }
 
   /// Reads a list from the packet. This is new to 1.17, and simplifies a bunch
   /// of small for loops in previous versions.
-  pub fn read_list<T>(&mut self, val: impl Fn(&mut Packet) -> T) -> Vec<T> {
-    let len = self.read_varint().try_into().unwrap();
+  pub fn read_list<T>(&mut self, val: impl Fn(&mut Packet) -> Result<T>) -> Result<Vec<T>> {
+    let len = self.read_varint()?.try_into().unwrap();
     let mut list = Vec::with_capacity(len);
     for _ in 0..len {
-      list.push(val(self));
+      list.push(val(self)?);
     }
-    list
+    Ok(list)
   }
   /// Writes a list to the buffer.
   pub fn write_list<T>(&mut self, list: &[T], write: impl Fn(&mut Packet, &T)) {
@@ -266,34 +285,41 @@ impl Packet {
   /// Reads a list from the packet. If the length is greater than `max`, this
   /// fails. This is new to 1.17, and simplifies a bunch of small for loops in
   /// previous versions.
-  pub fn read_list_max<T>(&mut self, val: impl Fn(&mut Packet) -> T, max: usize) -> Vec<T> {
-    let len: usize = self.read_varint().try_into().unwrap();
+  pub fn read_list_max<T>(
+    &mut self,
+    val: impl Fn(&mut Packet) -> Result<T>,
+    max: usize,
+  ) -> Result<Vec<T>> {
+    let len: usize = self.read_varint()?.try_into().unwrap();
     if len > max {
-      // TODO: Errors
-      // self.buf.set_err(BufferErrorKind::ArrayTooLong { len: len as u64, max: max as
-      // u64 }, true);
-      return vec![];
+      return Err(
+        self.err(ParseErrorKind::BufferError(
+          self
+            .buf()
+            .err(BufferErrorKind::ArrayTooLong { len: len as u64, max: max as u64 }, Mode::Reading),
+        )),
+      );
     }
     let mut list = Vec::with_capacity(len);
     for _ in 0..len {
-      list.push(val(self));
+      list.push(val(self)?);
     }
-    list
+    Ok(list)
   }
 
   /// Reads a HashMap from the packet. This is new to 1.17, and simplifies a
   /// bunch of small for loops in previous versions.
   pub fn read_map<K: Eq + Hash, V>(
     &mut self,
-    key: impl Fn(&mut Packet) -> K,
-    val: impl Fn(&mut Packet) -> V,
-  ) -> HashMap<K, V> {
-    let len = self.read_varint().try_into().unwrap();
+    key: impl Fn(&mut Packet) -> Result<K>,
+    val: impl Fn(&mut Packet) -> Result<V>,
+  ) -> Result<HashMap<K, V>> {
+    let len = self.read_varint()?.try_into().unwrap();
     let mut map = HashMap::with_capacity(len);
     for _ in 0..len {
-      map.insert(key(self), val(self));
+      map.insert(key(self)?, val(self)?);
     }
-    map
+    Ok(map)
   }
   /// Writes a HashMap to the packet.
   pub fn write_map<K: Eq + Hash, V>(
@@ -311,13 +337,16 @@ impl Packet {
 
   /// Reads a HashSet from the packet. This is new to 1.17, and simplifies a
   /// bunch of small for loops in previous versions.
-  pub fn read_set<T: Eq + Hash>(&mut self, val: impl Fn(&mut Packet) -> T) -> HashSet<T> {
-    let len = self.read_varint().try_into().unwrap();
+  pub fn read_set<T: Eq + Hash>(
+    &mut self,
+    val: impl Fn(&mut Packet) -> Result<T>,
+  ) -> Result<HashSet<T>> {
+    let len = self.read_varint()?.try_into().unwrap();
     let mut set = HashSet::with_capacity(len);
     for _ in 0..len {
-      set.insert(val(self));
+      set.insert(val(self)?);
     }
-    set
+    Ok(set)
   }
   /// Writes a HashSet to the packet.
   pub fn write_set<T: Eq + Hash>(&mut self, set: &HashSet<T>, val: impl Fn(&mut Packet, &T)) {
@@ -331,31 +360,34 @@ impl Packet {
   /// previous versions.
   pub fn read_set_max<T: Eq + Hash>(
     &mut self,
-    val: impl Fn(&mut Packet) -> T,
+    val: impl Fn(&mut Packet) -> Result<T,>
     max: usize,
-  ) -> HashSet<T> {
-    let len = self.read_varint().try_into().unwrap();
+  ) -> Result<HashSet<T>> {
+    let len = self.read_varint()?.try_into().unwrap();
     if len > max {
       // TODO: Errors
-      // self.buf.set_err(BufferErrorKind::ArrayTooLong { len: len as u64, max: max as
-      // u64 }, true);
-      return HashSet::new();
+      return Err(
+        self.err(ParseErrorKind::BufferError(
+          self
+            .buf()
+            .err(BufferErrorKind::ArrayTooLong { len: len as u64, max: max as u64 }, Mode::Reading),
+        )),
+      );
     }
     let mut set = HashSet::with_capacity(len);
     for _ in 0..len {
-      set.insert(val(self));
+      set.insert(val(self)?);
     }
-    set
+    Ok(set)
   }
 
   /// Reads a boolean. If true, the closure is called, and the returned value is
   /// wrapped in Some. Otherwise, this returns None.
-  pub fn read_option<T>(&mut self, val: impl FnOnce(&mut Packet) -> T) -> Option<T> {
-    if self.read_bool() {
-      Some(val(self))
-    } else {
-      None
-    }
+  pub fn read_option<T>(
+    &mut self,
+    val: impl FnOnce(&mut Packet) -> Result<T>,
+  ) -> Result<Option<T>> {
+    Ok(if self.read_bool()? { Some(val(self)?) } else { None })
   }
   /// Writes `true` if the option is Some, or `false` if None. If the option is
   /// some, then it also calls the `write` closure.
@@ -367,15 +399,15 @@ impl Packet {
     }
   }
 
-  pub fn read_varint_arr(&mut self) -> Vec<i32> { self.read_list(|buf| buf.read_varint()) }
+  pub fn read_varint_arr(&mut self) -> Result<Vec<i32>> { self.read_list(|buf| buf.read_varint()) }
   pub fn write_varint_arr(&mut self, v: &[i32]) { self.write_list(v, |p, &v| p.write_varint(v)) }
 
-  pub fn read_bits(&mut self) -> Vec<u64> {
-    let longs = self.read_varint().try_into().unwrap();
+  pub fn read_bits(&mut self) -> Result<Vec<u64>> {
+    let longs = self.read_varint()?.try_into().unwrap();
     let mut out = Vec::with_capacity(longs);
     for _ in 0..longs {
-      out.push(self.read_u64());
+      out.push(self.read_u64()?);
     }
-    out
+    Ok(out)
   }
 }
