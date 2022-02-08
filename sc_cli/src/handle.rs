@@ -4,10 +4,13 @@ use sc_common::{
   math::ChunkPos,
   util::{Buffer, Chat},
 };
-use sc_proxy::gnet::{cb, sb};
+use sc_proxy::{
+  gnet::{cb, sb},
+  Result,
+};
 use std::time::Instant;
 
-pub fn handle_packet(stream: &mut ConnStream, status: &Mutex<Status>, p: cb::Packet) {
+pub fn handle_packet(stream: &mut ConnStream, status: &Mutex<Status>, p: cb::Packet) -> Result<()> {
   match p {
     cb::Packet::JoinGameV8 { .. } => {}
     cb::Packet::ChatV8 { chat_component, .. } => match Chat::from_json(chat_component) {
@@ -26,8 +29,8 @@ pub fn handle_packet(stream: &mut ConnStream, status: &Mutex<Status>, p: cb::Pac
       let mut lock = status.lock();
       let pos = ChunkPos::new(chunk_x, chunk_z);
       let mut buf = Buffer::new(unknown);
-      let bit_map = buf.read_u16();
-      let len = buf.read_varint();
+      let bit_map = buf.read_u16()?;
+      let len = buf.read_varint()?;
       if bit_map == 0 && len == 0 {
         lock.loaded_chunks.remove(&pos);
       } else {
@@ -50,4 +53,5 @@ pub fn handle_packet(stream: &mut ConnStream, status: &Mutex<Status>, p: cb::Pac
     }
     p => warn!("unhandled packet {}...", &format!("{:?}", p)[..40]),
   }
+  Ok(())
 }

@@ -104,7 +104,7 @@ fn run(rows: u16) -> Result<(), Box<dyn Error>> {
                       closed = true;
                       break;
                     } else if let Some(p) = p {
-                      handle::handle_packet(&mut conn, &status, p);
+                      handle::handle_packet(&mut conn, &status, p)?;
                     } else {
                       // We are done reading packet from the internal buffer
                       break;
@@ -121,7 +121,7 @@ fn run(rows: u16) -> Result<(), Box<dyn Error>> {
                 break;
               }
             }
-            Err(ref e) if e.kind() == io::ErrorKind::WouldBlock => break,
+            Err(ref e) if e.is_would_block() => break,
             Err(e) => {
               error!("error while listening to client {:?}: {}", tok, e);
               closed = true;
@@ -138,7 +138,7 @@ fn run(rows: u16) -> Result<(), Box<dyn Error>> {
         while conn.needs_flush() {
           match conn.flush() {
             Ok(_) => {}
-            Err(ref e) if e.kind() == io::ErrorKind::WouldBlock => break,
+            Err(ref e) if e.is_would_block() => break,
             Err(e) => {
               error!("error while flushing packets to the client {:?}: {}", tok, e);
               break;

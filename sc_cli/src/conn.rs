@@ -5,6 +5,7 @@ use sc_proxy::{
   conn::State,
   gnet::{cb, sb, tcp},
   stream::{java::JavaStream, PacketStream},
+  Result,
 };
 use std::io;
 
@@ -37,14 +38,14 @@ impl ConnStream {
     self.stream.write(tcp);
   }
   pub fn needs_flush(&self) -> bool { self.stream.needs_flush() }
-  pub fn flush(&mut self) -> io::Result<()> { self.stream.flush() }
+  pub fn flush(&mut self) -> Result<()> { self.stream.flush() }
   pub fn closed(&self) -> bool { self.closed }
 
-  pub fn poll(&mut self) -> io::Result<()> { self.stream.poll() }
-  pub fn read(&mut self) -> io::Result<Option<cb::Packet>> {
+  pub fn poll(&mut self) -> Result<()> { self.stream.poll() }
+  pub fn read(&mut self) -> Result<Option<cb::Packet>> {
     if let Some(mut p) = self.stream.read(self.ver)? {
       match self.state {
-        State::Play => Ok(Some(cb::Packet::from_tcp(&mut p, self.ver))),
+        State::Play => Ok(Some(cb::Packet::from_tcp(&mut p, self.ver)?)),
         _ => {
           self.handle_handshake(p)?;
           Ok(None)
@@ -55,14 +56,14 @@ impl ConnStream {
     }
   }
 
-  fn handle_handshake(&mut self, mut p: tcp::Packet) -> io::Result<()> {
+  fn handle_handshake(&mut self, mut p: tcp::Packet) -> Result<()> {
     match self.state {
       State::Handshake => unreachable!(),
       State::Status => unreachable!(),
       State::Login => match p.id() {
         0 => {
           // disconnect
-          let reason = p.read_ident();
+          let reason = p.read_ident()?;
           error!("disconnected: {}", reason);
           self.closed = true;
           return Ok(());
@@ -71,11 +72,11 @@ impl ConnStream {
           // encryption request
           warn!("got encryption request, but mojang auth is not implemented");
 
-          let _server_id = p.read_ident();
-          let pub_key_len = p.read_varint();
-          let pub_key = p.read_buf(pub_key_len.try_into().unwrap());
-          let token_len = p.read_varint();
-          let token = p.read_buf(token_len.try_into().unwrap());
+          let _server_id = p.read_ident()?;
+          let pub_key_len = p.read_varint()?;
+          let pub_key = p.read_buf(pub_key_len.try_into().unwrap())?;
+          let token_len = p.read_varint()?;
+          let token = p.read_buf(token_len.try_into().unwrap())?;
           let key = der::decode(&pub_key).unwrap();
 
           let mut secret = [0; 16];
@@ -99,13 +100,13 @@ impl ConnStream {
         }
         2 => {
           // login success
-          let _uuid = p.read_uuid();
-          let _username = p.read_str(16);
+          let _uuid = p.read_uuid()?;
+          let _username = p.read_str(16)?;
           self.state = State::Play;
         }
         3 => {
           // set compression
-          let thresh = p.read_varint();
+          let thresh = p.read_varint()?;
           self.stream.set_compression(thresh);
         }
         _ => unreachable!(),
