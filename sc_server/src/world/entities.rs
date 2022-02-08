@@ -74,6 +74,8 @@ impl World {
           abs_pos = false;
         }
       };
+      // TODO: Entities
+      let _ = (d_x_v1_8, d_x_v1_9, d_y_v1_8, d_y_v1_9, d_z_v1_8, d_z_v1_9, abs_pos);
       // p.send(cb::Packet::RelEntityMove {
       //   entity_id: eid,
       //   d_x_v1_8: Some(d_x_v1_8),

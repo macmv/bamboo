@@ -13,7 +13,13 @@ pub struct Data {
 }
 
 impl Data {
+  /// Returns the type of this item. This is copyable, and is a unique ID that
+  /// can be easily passed around.
+  pub fn ty(&self) -> Type { self.ty }
+  /// Returns the item's ID. This is the latest protocol ID.
   pub fn id(&self) -> u32 { self.id }
+  /// Returns the name of this item. This is something like `minecraft:stone`.
+  pub fn name(&self) -> &'static str { self.name }
 }
 
 #[derive(Debug)]

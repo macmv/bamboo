@@ -1,4 +1,4 @@
-use super::{Data, Type};
+use super::{ty, Data, Type};
 
 use sc_common::version::BlockVersion;
 
@@ -17,10 +17,7 @@ impl TypeConverter {
   /// [`WorldManager::get_item_converter`](crate::world::WorldManager::
   /// get_item_converter).
   #[allow(clippy::new_without_default)]
-  pub fn new() -> Self {
-    // Self { types: ty::generate_items(), versions: generate_versions() }
-    Self { types: &[], versions: &[] }
-  }
+  pub fn new() -> Self { Self { types: ty::generate_kinds(), versions: generate_versions() } }
 
   /// Takes the given old item id, which is part of `ver`, and returns the new
   /// id that it maps to. If the id is invalid, this will return 0 (empty).
@@ -68,6 +65,7 @@ pub struct Version {
   to_old: &'static [u32],
   // Index is the old id, value is the new id (0 for invalid)
   to_new: &'static [u32],
+  #[allow(unused)]
   ver:    BlockVersion,
 }
 

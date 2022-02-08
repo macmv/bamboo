@@ -2,7 +2,7 @@ use crate::{
   gnet::{cb as gcb, sb as gsb, tcp},
   packet::{FromTcp, ToTcp, TypeConverter},
   stream::PacketStream,
-  Error, Result,
+  Result,
 };
 use mio::{net::TcpStream, Interest, Registry, Token};
 use rand::{rngs::OsRng, RngCore};

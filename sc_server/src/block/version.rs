@@ -11,6 +11,7 @@ use sc_common::version::BlockVersion;
 pub struct Version {
   to_old: &'static [u32],
   to_new: &'static [u32],
+  #[allow(unused)]
   ver:    BlockVersion,
 }
 

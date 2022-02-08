@@ -314,6 +314,19 @@ impl Player {
     // TODO: Hold onto an Arc<AtomicBool>
     false
   }
+
+  /// Returns a mutex to the player's game mode. This can be used to read/write
+  /// to their gamemode.
+  ///
+  /// NOTE: Writing to this will not update the player's gamemode! Call
+  /// [`set_gamemode`](Self::set_gamemode) to send a packet to the client.
+  pub fn gamemode(&self) -> &Mutex<GameMode> { &self.game_mode }
+
+  /// Updates the player's gamemode.
+  pub fn set_gamemode(&self, mode: GameMode) {
+    let _ = mode;
+    todo!()
+  }
 }
 
 impl CommandSender for Player {

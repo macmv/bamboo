@@ -41,17 +41,17 @@ pub(crate) fn handle(wm: &Arc<WorldManager>, player: &Arc<Player>, p: sb::Packet
     sb::Packet::CreativeInventoryUpdate { slot, item } => {
       player.lock_inventory().set(slot as u32, item.into());
     }
-    /*
-    sb::Packet::HeldItemSlot { slot_id } => {
-      player.lock_inventory().set_selected(slot_id.try_into().unwrap());
+    sb::Packet::ChangeHeldItem { slot } => {
+      player.lock_inventory().set_selected(slot);
     }
+    /*
     sb::Packet::UseItem { hand_v1_9 } => {
       // 0 = main hand on 1.8
       let hand = hand_v1_9.unwrap_or(0);
       self.use_item(player, hand);
     }
     */
-    sb::Packet::BlockPlace { mut pos, face, hand } => {
+    sb::Packet::BlockPlace { mut pos, face, hand: _ } => {
       /*
       let direction: i32 = if player.ver() == ProtocolVersion::V1_8 {
         // direction_v1_8 is an i8 (not a u8), so the sign stays correct
@@ -66,6 +66,8 @@ pub(crate) fn handle(wm: &Arc<WorldManager>, player: &Arc<Player>, p: sb::Packet
       {
         // self.use_item(player, hand);
       } else {
+        // TODO: Data generator should store which items are blockitems, and what blocks
+        // they place.
         /*
         let item_data = {
           let inv = player.lock_inventory();
@@ -109,6 +111,7 @@ pub(crate) fn handle(wm: &Arc<WorldManager>, player: &Arc<Player>, p: sb::Packet
   }
 }
 
+#[allow(unused)]
 fn use_item(player: &Arc<Player>, _hand: i32) {
   // TODO: Offhand
   let inv = player.lock_inventory();

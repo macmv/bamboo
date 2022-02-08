@@ -184,7 +184,7 @@ impl Sugarcane {
   /// ```
   ///
   /// See the `Biome` docs for more.
-  pub fn add_biome(&self, biome: &SlBiome) -> Result<(), RuntimeError> { Ok(()) }
+  pub fn add_biome(&self, _biome: &SlBiome) -> Result<(), RuntimeError> { Ok(()) }
 }
 
 impl PluginManager {

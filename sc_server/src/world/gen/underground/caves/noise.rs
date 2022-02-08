@@ -1,6 +1,6 @@
 use crate::{block, world::chunk::MultiChunk};
 use noise::{BasicMulti, NoiseFn};
-use sc_common::math::{ChunkPos, Pos};
+use sc_common::math::ChunkPos;
 
 pub struct CaveNoise {
   noise:  BasicMulti,
@@ -9,7 +9,7 @@ pub struct CaveNoise {
 }
 
 impl CaveNoise {
-  pub fn new(seed: u64) -> Self {
+  pub fn new(_seed: u64) -> Self {
     let mut noise = BasicMulti::new();
     noise.octaves = 5;
     let mut middle = BasicMulti::new();
@@ -18,8 +18,6 @@ impl CaveNoise {
     offset.octaves = 1;
     CaveNoise { noise, middle, offset }
   }
-
-  fn val(&self, pos: Pos) -> f64 { 0.0 }
 
   pub fn carve(&self, pos: ChunkPos, c: &mut MultiChunk) {
     let min_height = 0.0_f64;

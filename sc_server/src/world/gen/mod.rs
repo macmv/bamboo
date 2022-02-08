@@ -13,7 +13,7 @@ use std::{
 
 mod biomes;
 mod debug;
-mod math;
+pub mod math;
 mod sl;
 mod underground;
 pub mod util;
@@ -176,7 +176,7 @@ pub trait BiomeGen {
   }
   /// Returns this biome's height at the given position. By default, this just
   /// uses the world height at the given position.
-  fn height_at(&self, world: &WorldGen, pos: Pos) -> i32 { 64 }
+  fn height_at(&self, _world: &WorldGen, _pos: Pos) -> i32 { 64 }
 }
 
 impl Default for WorldGen {
@@ -189,6 +189,7 @@ pub struct WorldGen {
   biomes:      Vec<Box<dyn BiomeGen + Send + Sync>>,
   stone:       BasicMulti,
   max_height:  BasicMulti,
+  #[allow(unused)]
   underground: Underground,
   debug:       bool,
 }

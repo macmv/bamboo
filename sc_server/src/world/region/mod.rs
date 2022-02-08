@@ -35,17 +35,17 @@ impl World {
           Some(s) => s,
           None => continue,
         };
-        let (x, z) = match parse_region_name(name) {
+        let (_x, _z) = match parse_region_name(name) {
           Some(v) => v,
           None => continue,
         };
-        self.load_region_file(x, z, &path)?;
+        self.load_region_file(&path)?;
       }
     }
     Ok(())
   }
 
-  fn load_region_file(&self, region_x: i32, region_z: i32, path: &Path) -> io::Result<()> {
+  fn load_region_file(&self, path: &Path) -> io::Result<()> {
     let data = fs::read(path)?;
     let header = &data[..8192];
     // `offset` is an offset into the file, not an offset into the chunks table.

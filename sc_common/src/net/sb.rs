@@ -20,6 +20,9 @@ pub enum Packet {
     slot: i8,
     item: Item,
   },
+  ChangeHeldItem {
+    slot: u8,
+  },
   Chat {
     msg: String,
   },
