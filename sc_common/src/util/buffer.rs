@@ -129,17 +129,6 @@ impl<'a> Buffer<'a> {
     BufferError { err: e.into(), pos: self.data.position(), mode }
   }
 
-  /// Writes all of data to the buffer. This will increment the position of the
-  /// reader as well. Use append to write to the end of the buffer without
-  /// changing position.
-  pub fn write(&mut self, data: &[u8]) -> Result<()> {
-    self.data.write_all(data).map_err(|e| self.err(e, Writing))
-  }
-  pub fn read(&mut self, len: usize) -> Result<Vec<u8>> {
-    let mut vec = vec![0u8; len];
-    self.data.read_exact(&mut vec).map_err(|e| self.err(e, Reading))?;
-    Ok(vec)
-  }
   pub fn len(&self) -> usize { self.data.get_ref().len() }
   pub fn is_empty(&self) -> bool { self.len() == 0 }
   pub fn index(&self) -> usize { usize::try_from(self.data.position()).unwrap() }
@@ -200,7 +189,8 @@ impl<'a> Buffer<'a> {
 
   pub fn read_buf(&mut self, len: usize) -> Result<Vec<u8>> {
     let mut buf = vec![0; len];
-    self.data.read_exact(&mut buf).map_err(|e| self.err(e, Reading))?;
+    info!("reading buf {}, {:?}", len, self);
+    self.data.read(&mut buf).map_err(|e| self.err(e, Reading))?;
     Ok(buf)
   }
   /// This doesn't return a result, as the only thing that could go wrong is a
@@ -216,11 +206,11 @@ impl<'a> Buffer<'a> {
   /// fail, and return an error.
   pub fn read_str(&mut self, max_len: u64) -> Result<String> {
     let len = self.read_varint()?;
-    let len = len.try_into().map_err(|e| self.err(BufferErrorKind::NegativeLen(len), Reading))?;
+    let len = len.try_into().map_err(|_| self.err(BufferErrorKind::NegativeLen(len), Reading))?;
     if len > max_len * 4 {
       return Err(self.err(BufferErrorKind::StringTooLong { len, max: max_len }, Reading));
     }
-    let vec = self.read(len as usize)?;
+    let vec = self.read_buf(len as usize)?;
     match String::from_utf8(vec) {
       Ok(v) => {
         if v.len() > max_len as usize {
@@ -234,7 +224,7 @@ impl<'a> Buffer<'a> {
   }
   pub fn write_str(&mut self, v: &str) {
     self.write_varint(v.len() as i32);
-    self.write(v.as_bytes());
+    self.write(v.as_bytes()).unwrap();
   }
 
   pub fn read_varint(&mut self) -> Result<i32> {

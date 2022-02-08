@@ -65,7 +65,7 @@ impl NBT {
   pub fn deserialize_buf(buf: &mut Buffer) -> Result<Self, ParseError> {
     let ty = buf.read_u8()?;
     let len = buf.read_u16()?;
-    let name = String::from_utf8(buf.read(len as usize)?)?;
+    let name = String::from_utf8(buf.read_buf(len as usize)?)?;
     Ok(NBT::new(&name, Tag::deserialize(ty, buf)?))
   }
 }
@@ -82,11 +82,11 @@ impl Tag {
       6 => Ok(Self::Double(buf.read_f64()?)),
       7 => {
         let len = buf.read_i32()?;
-        Ok(Self::ByteArr(buf.read(len as usize)?))
+        Ok(Self::ByteArr(buf.read_buf(len as usize)?))
       }
       8 => {
         let len = buf.read_u16()?;
-        match String::from_utf8(buf.read(len as usize)?) {
+        match String::from_utf8(buf.read_buf(len as usize)?) {
           Ok(v) => Ok(Self::String(v)),
           Err(e) => Err(ParseError::InvalidString(e)),
         }
@@ -108,7 +108,7 @@ impl Tag {
             break;
           }
           let len = buf.read_u16()?;
-          let name = String::from_utf8(buf.read(len as usize)?).unwrap();
+          let name = String::from_utf8(buf.read_buf(len as usize)?).unwrap();
           let tag = Tag::deserialize(ty, buf)?;
           inner.insert(name, tag);
         }
