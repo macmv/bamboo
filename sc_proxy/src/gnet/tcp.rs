@@ -25,7 +25,9 @@ macro_rules! add_writer {
 }
 macro_rules! add_reader {
   ($name: ident, $ret: ty) => {
-    pub fn $name(&mut self) -> Result<$ret> { self.buf.$name().map_err(|e| self.err(e)) }
+    pub fn $name(&mut self) -> Result<$ret> {
+      self.buf.$name().map_err(|e| self.err(e, stringify!($name)))
+    }
   };
 }
 
@@ -53,8 +55,13 @@ impl Packet {
   pub fn buf(&mut self) -> &mut Buffer<Vec<u8>> { &mut self.buf }
 
   pub fn id(&self) -> i32 { self.id }
-  pub fn err(&self, e: impl std::fmt::Display) -> Error {
-    Error::ParseError { pos: self.buf.index(), id: self.id, ver: self.ver, msg: format!("{}", e) }
+  pub fn err(&self, e: impl std::fmt::Display, msg: &'static str) -> Error {
+    Error::ParseError {
+      pos: self.buf.index(),
+      id:  self.id,
+      ver: self.ver,
+      msg: format!("while in {}: {}", msg, e),
+    }
   }
   pub fn serialize(self) -> Vec<u8> { self.buf.into_inner() }
 
@@ -92,15 +99,15 @@ impl Packet {
   pub fn read_all(&mut self) -> Vec<u8> { self.buf().read_all() }
 
   pub fn read_str(&mut self, max_len: u64) -> Result<String> {
-    self.buf().read_str(max_len).map_err(|e| self.err(e))
+    self.buf().read_str(max_len).map_err(|e| self.err(e, "read_str"))
   }
   pub fn read_ident(&mut self) -> Result<String> { self.read_str(32767) }
   pub fn read_buf(&mut self, len: usize) -> Result<Vec<u8>> {
-    self.buf().read_buf(len).map_err(|e| self.err(e))
+    self.buf().read_buf(len).map_err(|e| self.err(e, "read_buf"))
   }
   pub fn read_byte_arr(&mut self) -> Result<Vec<u8>> {
     let len = self.read_varint()?.try_into().unwrap();
-    self.buf().read_buf(len).map_err(|e| self.err(e))
+    self.buf().read_buf(len).map_err(|e| self.err(e, "read_byte_arr"))
   }
   pub fn read_byte_arr_max(&mut self, max: usize) -> Result<Vec<u8>> {
     let len = self.read_varint()?.try_into().unwrap();
@@ -108,9 +115,9 @@ impl Packet {
       let err = self
         .buf()
         .err(BufferErrorKind::ArrayTooLong { len: len as u64, max: max as u64 }, Mode::Reading);
-      return Err(self.err(err));
+      return Err(self.err(err, "read_byte_arr_max"));
     }
-    self.buf().read_buf(len).map_err(|e| self.err(e))
+    self.buf().read_buf(len).map_err(|e| self.err(e, "read_byte_arr_max"))
   }
 
   pub fn index(&self) -> usize { self.buf.index() }
@@ -153,7 +160,7 @@ impl Packet {
       Err(e) => e,
     };
     let e = self.buf().err(err, Mode::Reading);
-    Err(self.err(e))
+    Err(self.err(e, "read_nbt"))
   }
 
   /// Reads a length prefixed array of integers.
@@ -208,7 +215,9 @@ impl Packet {
   }
 
   /// Reads 16 bytes from the buffer, and returns that as a big endian UUID.
-  pub fn read_uuid(&mut self) -> Result<UUID> { self.buf.read_uuid().map_err(|e| self.err(e)) }
+  pub fn read_uuid(&mut self) -> Result<UUID> {
+    self.buf.read_uuid().map_err(|e| self.err(e, "read_uuid"))
+  }
 
   /// This writes a UUID into the buffer (in big endian format).
   pub fn write_uuid(&mut self, v: UUID) { self.buf.write_uuid(v); }
@@ -256,7 +265,7 @@ impl Packet {
       let e = self
         .buf()
         .err(BufferErrorKind::ArrayTooLong { len: len as u64, max: max as u64 }, Mode::Reading);
-      return Err(self.err(e));
+      return Err(self.err(e, "read_list_max"));
     }
     let mut list = Vec::with_capacity(len);
     for _ in 0..len {
@@ -326,7 +335,7 @@ impl Packet {
       let e = self
         .buf()
         .err(BufferErrorKind::ArrayTooLong { len: len as u64, max: max as u64 }, Mode::Reading);
-      return Err(self.err(e));
+      return Err(self.err(e, "read_set_max"));
     }
     let mut set = HashSet::with_capacity(len);
     for _ in 0..len {
