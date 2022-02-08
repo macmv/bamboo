@@ -1,64 +1,16 @@
+use crate::{Error, Result};
 use sc_common::{
   math::{ChunkPos, Pos},
-  nbt::{ParseError, NBT},
-  util::{Buffer, BufferError, BufferErrorKind, Item, Mode, UUID},
+  nbt::NBT,
+  util::{Buffer, BufferErrorKind, Item, Mode, UUID},
   version::ProtocolVersion,
 };
 use std::{
   collections::{HashMap, HashSet},
   convert::TryInto,
-  fmt,
   hash::Hash,
-  io,
   ops::{Deref, DerefMut},
 };
-
-pub type Result<T> = std::result::Result<T, Error>;
-
-#[derive(Debug)]
-pub struct Error {
-  kind: ErrorKind,
-  pos:  usize,
-  id:   i32,
-  ver:  ProtocolVersion,
-}
-
-#[derive(Debug)]
-pub enum ErrorKind {
-  BufferError(BufferError),
-  IO(io::Error),
-}
-
-impl From<BufferError> for ErrorKind {
-  fn from(e: BufferError) -> Self { ErrorKind::BufferError(e) }
-}
-impl From<BufferError> for Error {
-  fn from(e: BufferError) -> Self {
-    Error { kind: ErrorKind::BufferError(e), pos: 0, id: 0, ver: ProtocolVersion::Invalid }
-  }
-}
-impl From<io::Error> for Error {
-  fn from(e: io::Error) -> Self {
-    Error { kind: ErrorKind::IO(e), pos: 0, id: 0, ver: ProtocolVersion::Invalid }
-  }
-}
-
-impl fmt::Display for Error {
-  fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-    write!(f, "error while reading packet id {:#x} (version {}): {}", self.id, self.ver, self.kind)
-  }
-}
-
-impl fmt::Display for ErrorKind {
-  fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-    match self {
-      Self::BufferError(e) => write!(f, "{}", e),
-      Self::IO(e) => write!(f, "{}", e),
-    }
-  }
-}
-
-impl std::error::Error for Error {}
 
 #[derive(Debug)]
 pub struct Packet {
@@ -92,15 +44,6 @@ impl<'a> Deref for WrappedBuffer<'a> {
 
 impl<'a> DerefMut for WrappedBuffer<'a> {
   fn deref_mut(&mut self) -> &mut Self::Target { &mut self.buf }
-}
-
-impl Error {
-  pub fn is_would_block(&self) -> bool {
-    match self.kind {
-      ErrorKind::IO(e) => matches!(e.kind(), io::ErrorKind::WouldBlock),
-      _ => false,
-    }
-  }
 }
 
 macro_rules! add_writer {
@@ -142,8 +85,8 @@ impl Packet {
   }
 
   pub fn id(&self) -> i32 { self.id }
-  pub fn err(&self, e: impl Into<ErrorKind>) -> Error {
-    Error { kind: e.into(), pos: self.index, id: self.id, ver: self.ver }
+  pub fn err(&self, e: impl std::fmt::Display) -> Error {
+    Error::ParseError { pos: self.index, id: self.id, ver: self.ver, msg: format!("{}", e) }
   }
   pub fn serialize(self) -> Vec<u8> { self.data }
 
@@ -195,11 +138,11 @@ impl Packet {
     let len = self.read_varint()?.try_into().unwrap();
     if len > max {
       return Err(
-        self.err(ErrorKind::BufferError(
+        self.err(
           self
             .buf()
             .err(BufferErrorKind::ArrayTooLong { len: len as u64, max: max as u64 }, Mode::Reading),
-        )),
+        ),
       );
     }
     self.buf().read_buf(len).map_err(|e| self.err(e))
@@ -341,11 +284,11 @@ impl Packet {
     let len: usize = self.read_varint()?.try_into().unwrap();
     if len > max {
       return Err(
-        self.err(ErrorKind::BufferError(
+        self.err(
           self
             .buf()
             .err(BufferErrorKind::ArrayTooLong { len: len as u64, max: max as u64 }, Mode::Reading),
-        )),
+        ),
       );
     }
     let mut list = Vec::with_capacity(len);
@@ -414,11 +357,11 @@ impl Packet {
     let len = self.read_varint()?.try_into().unwrap();
     if len > max {
       return Err(
-        self.err(ErrorKind::BufferError(
+        self.err(
           self
             .buf()
             .err(BufferErrorKind::ArrayTooLong { len: len as u64, max: max as u64 }, Mode::Reading),
-        )),
+        ),
       );
     }
     let mut set = HashSet::with_capacity(len);

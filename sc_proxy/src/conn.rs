@@ -1,8 +1,8 @@
 use crate::{
   gnet::{cb as gcb, sb as gsb, tcp},
-  packet,
   packet::{FromTcp, ToTcp, TypeConverter},
   stream::PacketStream,
+  Error, Result,
 };
 use mio::{net::TcpStream, Interest, Registry, Token};
 use rand::{rngs::OsRng, RngCore};
@@ -181,7 +181,7 @@ impl<'a, S: PacketStream + Send + Sync> Conn<'a, S> {
   pub fn ver(&self) -> ProtocolVersion { self.ver }
   pub fn closed(&self) -> bool { self.closed }
 
-  fn connect_to_server(&mut self, reg: &Registry) -> Result<(), io::Error> {
+  fn connect_to_server(&mut self, reg: &Registry) -> Result<()> {
     info!("connecting to server at {:?}", self.addr);
     let mut stream = TcpStream::connect(self.addr)?;
     reg.register(&mut stream, self.server_token, Interest::READABLE | Interest::WRITABLE).unwrap();
@@ -202,7 +202,7 @@ impl<'a, S: PacketStream + Send + Sync> Conn<'a, S> {
     self.write_server()
   }
 
-  pub fn write_server(&mut self) -> io::Result<()> {
+  pub fn write_server(&mut self) -> Result<()> {
     let n = self.server_stream.as_mut().unwrap().write(&self.to_server)?;
     self.to_server.drain(0..n);
     Ok(())
@@ -210,7 +210,7 @@ impl<'a, S: PacketStream + Send + Sync> Conn<'a, S> {
 
   /// Reads as much data as possible from the server. Returns Ok(true) or Err(_)
   /// if the connection should be terminated.
-  pub fn read_server(&mut self) -> io::Result<bool> {
+  pub fn read_server(&mut self) -> Result<bool> {
     loop {
       match self.poll_server() {
         Ok(true) => return Ok(true),
@@ -225,7 +225,7 @@ impl<'a, S: PacketStream + Send + Sync> Conn<'a, S> {
           }
         },
         Err(ref e) if e.kind() == io::ErrorKind::WouldBlock => return Ok(false),
-        Err(e) => return Err(e),
+        Err(e) => return Err(e.into()),
       }
     }
   }
@@ -242,7 +242,7 @@ impl<'a, S: PacketStream + Send + Sync> Conn<'a, S> {
 
   /// Returns true if there are more packets, false if there is an empty or
   /// partial packet.
-  fn read_server_packet(&mut self) -> io::Result<bool> {
+  fn read_server_packet(&mut self) -> Result<bool> {
     let mut m = MessageReader::new(&self.from_server);
     match m.read_i32() {
       Ok(len) => {
@@ -265,7 +265,7 @@ impl<'a, S: PacketStream + Send + Sync> Conn<'a, S> {
                 "did not read all the packet data (expected to read {} bytes, but only read {} bytes)",
                 len, parsed
               ),
-            ));
+            ).into());
           }
           self.from_server.drain(0..parsed);
           for p in packets {
@@ -281,7 +281,7 @@ impl<'a, S: PacketStream + Send + Sync> Conn<'a, S> {
         if matches!(e, ReadError::EOF) {
           Ok(false)
         } else {
-          return Err(io::Error::new(ErrorKind::InvalidData, e.to_string()));
+          return Err(io::Error::new(ErrorKind::InvalidData, e.to_string()).into());
         }
       }
     }
@@ -289,7 +289,7 @@ impl<'a, S: PacketStream + Send + Sync> Conn<'a, S> {
 
   /// Writes all the data possible to the client. Returns Err(WouldBlock) or
   /// Ok(()) if everything worked as expected.
-  pub fn write_client(&mut self) -> Result<(), packet::ReadError> {
+  pub fn write_client(&mut self) -> Result<()> {
     while self.client_stream.needs_flush() {
       self.client_stream.flush()?;
     }
@@ -298,7 +298,7 @@ impl<'a, S: PacketStream + Send + Sync> Conn<'a, S> {
 
   /// Reads as much data as possible, without blocking. Returns Ok(true) or
   /// Err(_) if the connection should be closed.
-  pub fn read_client(&mut self, reg: &Registry) -> Result<bool, tcp::Error> {
+  pub fn read_client(&mut self, reg: &Registry) -> Result<bool> {
     // Poll, then read, then try and poll again. If we have no data left, we return
     // Ok(false). If we have closed the connection, we return Ok(true). If we error
     // at all, we close the connection.
@@ -319,15 +319,15 @@ impl<'a, S: PacketStream + Send + Sync> Conn<'a, S> {
   }
   /// Reads data from the client tcp connection, and buffers that to be read in
   /// `read_client_packet`.
-  fn poll_client(&mut self) -> Result<(), tcp::Error> { self.client_stream.poll() }
+  fn poll_client(&mut self) -> Result<()> { self.client_stream.poll() }
   /// Reads a packet from the internal buffer from the client. Does not interact
   /// with the tcp connection at all.
-  fn read_client_packet(&mut self, reg: &Registry) -> Result<(), tcp::Error> {
+  fn read_client_packet(&mut self, reg: &Registry) -> Result<()> {
     loop {
       match self.client_stream.read(self.ver) {
         Ok(Some(mut p)) => match self.state {
           State::Play => {
-            let packet = gsb::Packet::from_tcp(&mut p, self.ver);
+            let packet = gsb::Packet::from_tcp(&mut p, self.ver)?;
             self.send_to_server(packet)?;
           }
           _ => {
@@ -343,7 +343,7 @@ impl<'a, S: PacketStream + Send + Sync> Conn<'a, S> {
 
   /// Tries to send the packet to the client, and buffers it if that is not
   /// possible.
-  fn send_to_client(&mut self, p: gcb::Packet) -> Result<(), sb::ReadError> {
+  fn send_to_client(&mut self, p: gcb::Packet) -> Result<()> {
     // debug!("sending packet {:?}", p);
     let mut tcp = tcp::Packet::new(p.tcp_id(self.ver).try_into().unwrap(), self.ver);
     p.to_tcp(&mut tcp);
@@ -354,7 +354,7 @@ impl<'a, S: PacketStream + Send + Sync> Conn<'a, S> {
 
   /// Tries to send the packet to the server, and buffers it if that is not
   /// possible.
-  fn send_to_server(&mut self, p: gsb::Packet) -> io::Result<()> {
+  fn send_to_server(&mut self, p: gsb::Packet) -> Result<()> {
     // The only error here is EOF, which means the garbage buffer was not enough
     // space for this packet.
 
@@ -394,7 +394,7 @@ impl<'a, S: PacketStream + Send + Sync> Conn<'a, S> {
 
   /// Sends the login success packet, and sets the state to Play. The stream
   /// will not be flushed.
-  fn finish_login(&mut self, reg: &Registry) -> Result<(), io::Error> {
+  fn finish_login(&mut self, reg: &Registry) -> Result<()> {
     // Login success
     let info = self.info.as_ref().unwrap();
     let ver = self.ver();
@@ -458,7 +458,7 @@ impl<'a, S: PacketStream + Send + Sync> Conn<'a, S> {
   /// the client just wants to get the status of the server. If this function
   /// returns Ok(Some(LoginInfo)), then a connection should be initialized with
   /// a grpc server.
-  fn handle_handshake(&mut self, mut p: tcp::Packet, reg: &Registry) -> Result<(), tcp::Error> {
+  fn handle_handshake(&mut self, mut p: tcp::Packet, reg: &Registry) -> Result<()> {
     match self.state {
       State::Handshake => {
         if p.id() != 0 {

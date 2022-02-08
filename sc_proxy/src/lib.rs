@@ -4,15 +4,18 @@ extern crate log;
 extern crate smallvec;
 
 pub mod conn;
+mod error;
 pub mod gnet;
 pub mod packet;
 pub mod stream;
+
+pub use error::{Error, Result};
 
 use mio::{net::TcpListener, Events, Interest, Poll, Token};
 use rand::rngs::OsRng;
 use rsa::RSAPrivateKey;
 use sc_common::{config::Config, math::der};
-use std::{collections::HashMap, error::Error, io, net::SocketAddr, sync::Arc};
+use std::{collections::HashMap, io, net::SocketAddr, sync::Arc};
 
 use crate::{conn::Conn, packet::TypeConverter, stream::java::stream::JavaStream};
 
@@ -27,7 +30,7 @@ pub fn load_icon(path: &str) -> String {
   "data:image/png;base64,".to_string() + &enc.into_inner()
 }
 
-pub fn run() -> Result<(), Box<dyn Error>> {
+pub fn run() -> Result<()> {
   sc_common::init("proxy");
 
   let config = Config::new("proxy.yml", "proxy-default.yml", include_str!("default.yml"));
@@ -118,7 +121,7 @@ pub fn run() -> Result<(), Box<dyn Error>> {
               let conn = clients.get_mut(&token).expect("client doesn't exist!");
               match conn.read_server() {
                 Ok(_) => {}
-                Err(ref e) if e.kind() == io::ErrorKind::WouldBlock => {}
+                Err(ref e) if e.is_would_block() => {}
                 Err(e) => {
                   error!("error while parsing packet from server {:?}: {}", token, e);
                   clients.remove(&token);
@@ -130,7 +133,7 @@ pub fn run() -> Result<(), Box<dyn Error>> {
               if let Some(conn) = clients.get_mut(&token) {
                 match conn.write_server() {
                   Ok(_) => {}
-                  Err(ref e) if e.kind() == io::ErrorKind::WouldBlock => {}
+                  Err(ref e) if e.is_would_block() => {}
                   Err(e) => {
                     error!("error while flushing packets to the client {:?}: {}", token, e);
                     clients.remove(&token);

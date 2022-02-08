@@ -1,5 +1,5 @@
 use super::super::PacketStream;
-use crate::gnet::{tcp, tcp::Result};
+use crate::{gnet::tcp, Result};
 use aes::{
   cipher::{AsyncStreamCipher, NewCipher},
   Aes128,

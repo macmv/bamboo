@@ -121,7 +121,7 @@ impl PacketCollection {
     gen.write_line("  MessageRead, MessageReader, MessageWrite, MessageWriter, ReadError,");
     gen.write_line("  WriteError,");
     gen.write_line("};");
-    gen.write_line("use crate::gnet::tcp::Error;");
+    gen.write_line("use crate::Error;");
     gen.write_line("");
     gen.write_line("#[derive(Debug, Clone, PartialEq, Eq, Hash)]");
     gen.write_line("pub struct U;");

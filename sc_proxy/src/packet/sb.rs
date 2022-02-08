@@ -1,62 +1,24 @@
 use super::TypeConverter;
-use crate::gnet::{sb::Packet as GPacket, tcp};
+use crate::{
+  gnet::{sb::Packet as GPacket, tcp},
+  Error, Result,
+};
 use sc_common::{
   math::Pos,
   nbt::NBT,
   net::sb::{DigStatus, Packet},
-  util::{Buffer, BufferError, Face, Hand, Item},
+  util::{Buffer, Face, Hand, Item},
   version::ProtocolVersion,
 };
-use std::{error::Error, fmt};
-
-#[derive(Debug)]
-pub struct ReadError {
-  kind: ReadErrorKind,
-}
-
-#[derive(Debug)]
-pub enum ReadErrorKind {
-  UnknownPacket,
-  TcpError(tcp::Error),
-}
-
-impl fmt::Display for ReadError {
-  fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-    match self.kind {
-      ReadErrorKind::UnknownPacket => write!(f, "unknown packet"),
-      ReadErrorKind::TcpError(e) => {
-        write!(f, "while reading, got error: {:?}", e)
-      }
-    }
-  }
-}
-
-impl From<tcp::Error> for ReadError {
-  fn from(e: tcp::Error) -> Self { ReadError { kind: ReadErrorKind::TcpError(e) } }
-}
-impl From<BufferError> for ReadError {
-  fn from(e: BufferError) -> Self { ReadError { kind: ReadErrorKind::TcpError(e.into()) } }
-}
-
-impl Error for ReadError {}
-
-impl ReadError {
-  pub fn is_would_block(&self) -> bool {
-    match &self.kind {
-      ReadErrorKind::TcpError(e) => e.is_would_block(),
-      _ => false,
-    }
-  }
-}
 
 pub trait FromTcp {
-  fn from_tcp(p: GPacket, ver: ProtocolVersion, conv: &TypeConverter) -> Result<Self, ReadError>
+  fn from_tcp(p: GPacket, ver: ProtocolVersion, conv: &TypeConverter) -> Result<Self>
   where
     Self: Sized;
 }
 
 impl FromTcp for Packet {
-  fn from_tcp(p: GPacket, ver: ProtocolVersion, conv: &TypeConverter) -> Result<Self, ReadError> {
+  fn from_tcp(p: GPacket, ver: ProtocolVersion, conv: &TypeConverter) -> Result<Self> {
     Ok(match p {
       GPacket::ChatV8 { message } | GPacket::ChatV11 { message } => Packet::Chat { msg: message },
       GPacket::CreativeInventoryActionV8 { slot_id, mut unknown, .. } => {
@@ -155,16 +117,12 @@ impl FromTcp for Packet {
       }
       GPacket::UpdatePlayerAbilitiesV14 { flying, .. }
       | GPacket::UpdatePlayerAbilitiesV16 { flying, .. } => Packet::Flying { flying },
-      _ => return Err(ReadError { kind: ReadErrorKind::UnknownPacket }),
+      gpacket => return Err(Error::UnknownSB(Box::new(gpacket))),
     })
   }
 }
 
-fn read_item(
-  ver: ProtocolVersion,
-  buf: &mut Buffer,
-  conv: &TypeConverter,
-) -> Result<Item, ReadError> {
+fn read_item(ver: ProtocolVersion, buf: &mut Buffer, conv: &TypeConverter) -> Result<Item> {
   Ok(if ver < ProtocolVersion::V1_13 {
     let id = buf.read_i16()?;
     let count;
