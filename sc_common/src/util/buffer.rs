@@ -85,8 +85,8 @@ impl From<ParseError> for BufferErrorKind {
 }
 
 #[derive(Debug)]
-pub struct Buffer<'a> {
-  data: Cursor<&'a mut Vec<u8>>,
+pub struct Buffer<T> {
+  data: Cursor<T>,
 }
 
 macro_rules! add_read {
@@ -117,9 +117,9 @@ macro_rules! add_write_byte {
   };
 }
 
-impl<'a> Buffer<'a> {
-  pub fn new(data: &'a mut Vec<u8>) -> Self { Buffer { data: Cursor::new(data) } }
-  pub fn new_index(data: &'a mut Vec<u8>, index: usize) -> Self {
+impl<T> Buffer<T> {
+  pub fn new(data: T) -> Self { Buffer { data: Cursor::new(data) } }
+  pub fn new_index(data: T, index: usize) -> Self {
     let mut cursor = Cursor::new(data);
     cursor.set_position(index as u64);
     Buffer { data: cursor }
@@ -128,8 +128,13 @@ impl<'a> Buffer<'a> {
   pub fn err(&self, e: impl Into<BufferErrorKind>, mode: Mode) -> BufferError {
     BufferError { err: e.into(), pos: self.data.position(), mode }
   }
+}
 
-  pub fn len(&self) -> usize { self.data.get_ref().len() }
+impl<T> Buffer<T>
+where
+  T: AsRef<[u8]>,
+{
+  pub fn len(&self) -> usize { self.data.get_ref().as_ref().len() }
   pub fn is_empty(&self) -> bool { self.len() == 0 }
   pub fn index(&self) -> usize { usize::try_from(self.data.position()).unwrap() }
 
@@ -157,25 +162,6 @@ impl<'a> Buffer<'a> {
     }
   }
 
-  pub fn write_bool(&mut self, v: bool) {
-    if v {
-      self.write_u8(1);
-    } else {
-      self.write_u8(0);
-    }
-  }
-  add_write_byte!(write_u8, u8);
-  add_write!(write_u16, u16);
-  add_write!(write_u32, u32);
-  add_write!(write_u64, u64);
-  add_write_byte!(write_i8, i8);
-  add_write!(write_i16, i16);
-  add_write!(write_i32, i32);
-  add_write!(write_i64, i64);
-
-  add_write!(write_f32, f32);
-  add_write!(write_f64, f64);
-
   /// Doesn't return a result, as this will just return an empty array if we
   /// have read anything.
   pub fn read_all(&mut self) -> Vec<u8> {
@@ -189,18 +175,9 @@ impl<'a> Buffer<'a> {
 
   pub fn read_buf(&mut self, len: usize) -> Result<Vec<u8>> {
     let mut buf = vec![0; len];
-    info!("reading buf {}, {:?}", len, self);
     self.data.read(&mut buf).map_err(|e| self.err(e, Reading))?;
     Ok(buf)
   }
-  /// This doesn't return a result, as the only thing that could go wrong is a
-  /// oom error, which isn't even returned as an error.
-  pub fn write_buf(&mut self, v: &[u8]) { self.data.write_all(v).unwrap(); }
-
-  /// This writes a fixed point floating number to the buffer. This simply
-  /// multiplies the f64 by 32, and then writes that int into the buffer. This
-  /// is not used on newer clients, but is common on older clients.
-  pub fn write_fixed_int(&mut self, v: f64) { self.write_i32((v * 32.0) as i32); }
 
   /// Reads a string. If the length is longer than the given maximum, this will
   /// fail, and return an error.
@@ -222,10 +199,6 @@ impl<'a> Buffer<'a> {
       Err(e) => Err(self.err(e, Reading)),
     }
   }
-  pub fn write_str(&mut self, v: &str) {
-    self.write_varint(v.len() as i32);
-    self.write(v.as_bytes()).unwrap();
-  }
 
   pub fn read_varint(&mut self) -> Result<i32> {
     let mut res: i32 = 0;
@@ -244,6 +217,113 @@ impl<'a> Buffer<'a> {
     }
     Ok(res)
   }
+
+  /// Reads a chunk position, as two i32s.
+  pub fn read_chunk_pos(&mut self) -> Result<ChunkPos> {
+    Ok(ChunkPos::new(self.read_i32()?, self.read_i32()?))
+  }
+
+  /// Reads an nbt tag from self.
+  pub fn read_nbt(&mut self) -> Result<NBT> {
+    NBT::deserialize_buf(self).map_err(|e| self.err(e, Reading))
+  }
+
+  /// Reads a length prefixed array of integers.
+  pub fn read_i32_arr(&mut self) -> Result<Vec<i32>> {
+    let len = self.read_varint()?.try_into().unwrap();
+    let mut out = Vec::with_capacity(len);
+    for _ in 0..len {
+      out.push(self.read_i32()?);
+    }
+    Ok(out)
+  }
+
+  /// Reads 16 bytes from the buffer, and returns that as a big endian UUID.
+  pub fn read_uuid(&mut self) -> Result<UUID> {
+    Ok(UUID::from_be_bytes(self.read_buf(16)?.try_into().unwrap()))
+  }
+
+  /// Reads a list from the packet. This is new to 1.17, and simplifies a bunch
+  /// of small for loops in previous versions.
+  pub fn read_list<U>(&mut self, val: impl Fn(&mut Buffer<T>) -> Result<U>) -> Result<Vec<U>> {
+    let len = self.read_varint()?.try_into().unwrap();
+    let mut list = Vec::with_capacity(len);
+    for _ in 0..len {
+      list.push(val(self)?);
+    }
+    Ok(list)
+  }
+
+  /// Reads a list from the packet. If the length is greater than `max`, this
+  /// fails. This is new to 1.17, and simplifies a bunch of small for loops in
+  /// previous versions.
+  pub fn read_list_max<U>(
+    &mut self,
+    val: impl Fn(&mut Buffer<T>) -> Result<U>,
+    max: usize,
+  ) -> Result<Vec<U>> {
+    let len: usize = self.read_varint()?.try_into().unwrap();
+    if len > max {
+      return Err(
+        self.err(BufferErrorKind::ArrayTooLong { len: len as u64, max: max as u64 }, Reading),
+      );
+    }
+    let mut list = Vec::with_capacity(len);
+    for _ in 0..len {
+      list.push(val(self)?);
+    }
+    Ok(list)
+  }
+
+  /// Reads a boolean. If true, the closure is called, and the returned value is
+  /// wrapped in Some. Otherwise, this returns None.
+  pub fn read_option<U>(
+    &mut self,
+    val: impl FnOnce(&mut Buffer<T>) -> Result<U>,
+  ) -> Result<Option<U>> {
+    Ok(if self.read_bool()? { Some(val(self)?) } else { None })
+  }
+
+  pub fn read_varint_arr(&mut self) -> Result<Vec<i32>> { self.read_list(|buf| buf.read_varint()) }
+}
+
+impl<T> Buffer<T>
+where
+  Cursor<T>: io::Write,
+{
+  pub fn write_bool(&mut self, v: bool) {
+    if v {
+      self.write_u8(1);
+    } else {
+      self.write_u8(0);
+    }
+  }
+  add_write_byte!(write_u8, u8);
+  add_write!(write_u16, u16);
+  add_write!(write_u32, u32);
+  add_write!(write_u64, u64);
+  add_write_byte!(write_i8, i8);
+  add_write!(write_i16, i16);
+  add_write!(write_i32, i32);
+  add_write!(write_i64, i64);
+
+  add_write!(write_f32, f32);
+  add_write!(write_f64, f64);
+
+  /// This doesn't return a result, as the only thing that could go wrong is a
+  /// oom error, which isn't even returned as an error.
+  pub fn write_buf(&mut self, v: &[u8]) { self.data.write_all(v).unwrap(); }
+
+  /// This writes a fixed point floating number to the buffer. This simply
+  /// multiplies the f64 by 32, and then writes that int into the buffer. This
+  /// is not used on newer clients, but is common on older clients.
+  pub fn write_fixed_int(&mut self, v: f64) { self.write_i32((v * 32.0) as i32); }
+
+  pub fn write_str(&mut self, v: &str) {
+    self.write_varint(v.len() as i32);
+    self.write_buf(v.as_bytes());
+  }
+
   pub fn write_varint(&mut self, v: i32) {
     // Need to work with u32, as >> acts differently on i32 vs u32.
     let mut val = v as u32;
@@ -265,25 +345,6 @@ impl<'a> Buffer<'a> {
     self.write_i32(p.x());
     self.write_i32(p.z());
   }
-  /// Reads a chunk position, as two i32s.
-  pub fn read_chunk_pos(&mut self) -> Result<ChunkPos> {
-    Ok(ChunkPos::new(self.read_i32()?, self.read_i32()?))
-  }
-
-  /// Reads an nbt tag from self.
-  pub fn read_nbt(&mut self) -> Result<NBT> {
-    NBT::deserialize_buf(self).map_err(|e| self.err(e, Reading))
-  }
-
-  /// Reads a length prefixed array of integers.
-  pub fn read_i32_arr(&mut self) -> Result<Vec<i32>> {
-    let len = self.read_varint()?.try_into().unwrap();
-    let mut out = Vec::with_capacity(len);
-    for _ in 0..len {
-      out.push(self.read_i32()?);
-    }
-    Ok(out)
-  }
 
   pub fn write_i32_arr(&mut self, list: &[i32]) {
     self.write_varint(list.len().try_into().unwrap());
@@ -292,63 +353,20 @@ impl<'a> Buffer<'a> {
     }
   }
 
-  /// Reads 16 bytes from the buffer, and returns that as a big endian UUID.
-  pub fn read_uuid(&mut self) -> Result<UUID> {
-    Ok(UUID::from_be_bytes(self.read_buf(16)?.try_into().unwrap()))
-  }
-
   /// This writes a UUID into the buffer (in big endian format).
   pub fn write_uuid(&mut self, v: UUID) { self.write_buf(&v.as_be_bytes()); }
 
-  /// Reads a list from the packet. This is new to 1.17, and simplifies a bunch
-  /// of small for loops in previous versions.
-  pub fn read_list<T>(&mut self, val: impl Fn(&mut Buffer) -> Result<T>) -> Result<Vec<T>> {
-    let len = self.read_varint()?.try_into().unwrap();
-    let mut list = Vec::with_capacity(len);
-    for _ in 0..len {
-      list.push(val(self)?);
-    }
-    Ok(list)
-  }
   /// Writes a list to the buffer.
-  pub fn write_list<T>(&mut self, list: &[T], write: impl Fn(&mut Buffer, &T)) {
+  pub fn write_list<U>(&mut self, list: &[U], write: impl Fn(&mut Buffer<T>, &U)) {
     self.write_varint(list.len().try_into().unwrap());
     for v in list {
       write(self, v);
     }
   }
-  /// Reads a list from the packet. If the length is greater than `max`, this
-  /// fails. This is new to 1.17, and simplifies a bunch of small for loops in
-  /// previous versions.
-  pub fn read_list_max<T>(
-    &mut self,
-    val: impl Fn(&mut Buffer) -> Result<T>,
-    max: usize,
-  ) -> Result<Vec<T>> {
-    let len: usize = self.read_varint()?.try_into().unwrap();
-    if len > max {
-      return Err(
-        self.err(BufferErrorKind::ArrayTooLong { len: len as u64, max: max as u64 }, Reading),
-      );
-    }
-    let mut list = Vec::with_capacity(len);
-    for _ in 0..len {
-      list.push(val(self)?);
-    }
-    Ok(list)
-  }
 
-  /// Reads a boolean. If true, the closure is called, and the returned value is
-  /// wrapped in Some. Otherwise, this returns None.
-  pub fn read_option<T>(
-    &mut self,
-    val: impl FnOnce(&mut Buffer) -> Result<T>,
-  ) -> Result<Option<T>> {
-    Ok(if self.read_bool()? { Some(val(self)?) } else { None })
-  }
   /// Writes `true` if the option is Some, or `false` if None. If the option is
   /// some, then it also calls the `write` closure.
-  pub fn write_option<T>(&mut self, val: &Option<T>, write: impl FnOnce(&mut Buffer, &T)) {
+  pub fn write_option<U>(&mut self, val: &Option<U>, write: impl FnOnce(&mut Buffer<T>, &U)) {
     self.write_bool(val.is_some());
     match val {
       Some(v) => write(self, v),
@@ -356,18 +374,16 @@ impl<'a> Buffer<'a> {
     }
   }
 
-  pub fn read_varint_arr(&mut self) -> Result<Vec<i32>> { self.read_list(|buf| buf.read_varint()) }
-
   pub fn write_varint_arr(&mut self, v: &[i32]) { self.write_list(v, |p, &v| p.write_varint(v)) }
 }
 
-impl<'a> Deref for Buffer<'a> {
-  type Target = &'a mut Vec<u8>;
+impl<T> Deref for Buffer<T> {
+  type Target = T;
 
   fn deref(&self) -> &Self::Target { self.data.get_ref() }
 }
 
-impl DerefMut for Buffer<'_> {
+impl<T> DerefMut for Buffer<T> {
   fn deref_mut(&mut self) -> &mut Self::Target { self.data.get_mut() }
 }
 

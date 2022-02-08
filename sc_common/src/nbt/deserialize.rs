@@ -62,7 +62,7 @@ impl NBT {
   /// right after the nbt data. If this function returns an error, then the
   /// buffer will be in an undefined state (it will still be safe, but there are
   /// no gauruntees as too how far ahead the buffer will have been advanced).
-  pub fn deserialize_buf(buf: &mut Buffer) -> Result<Self, ParseError> {
+  pub fn deserialize_buf<T: AsRef<[u8]>>(buf: &mut Buffer<T>) -> Result<Self, ParseError> {
     let ty = buf.read_u8()?;
     let len = buf.read_u16()?;
     let name = String::from_utf8(buf.read_buf(len as usize)?)?;
@@ -71,7 +71,7 @@ impl NBT {
 }
 
 impl Tag {
-  fn deserialize(ty: u8, buf: &mut Buffer) -> Result<Self, ParseError> {
+  fn deserialize<T: AsRef<[u8]>>(ty: u8, buf: &mut Buffer<T>) -> Result<Self, ParseError> {
     match ty {
       0 => Ok(Self::End),
       1 => Ok(Self::Byte(buf.read_i8()?)),

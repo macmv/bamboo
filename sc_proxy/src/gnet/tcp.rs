@@ -407,3 +407,12 @@ impl Packet {
     Ok(out)
   }
 }
+
+#[test]
+fn test_index_update() {
+  let data = vec![2, 3];
+  let mut p = Packet::from_buf_id(data, 0, ProtocolVersion::V1_8);
+  assert_eq!(p.read_u8().unwrap(), 2);
+  assert_eq!(p.read_u8().unwrap(), 3);
+  p.read_u8().unwrap_err();
+}

@@ -668,6 +668,8 @@ fn write_dimensions(out: &mut Buffer) {
 
 #[test]
 fn test_codec() {
+  use sc_common::nbt::Tag;
+
   let expected = Tag::compound(&[
     ("piglin_safe", Tag::Byte(0)),
     ("natural", Tag::Byte(1)),
