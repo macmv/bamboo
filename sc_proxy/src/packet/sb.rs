@@ -4,31 +4,50 @@ use sc_common::{
   math::Pos,
   nbt::NBT,
   net::sb::{DigStatus, Packet},
-  util::{Buffer, Face, Hand, Item},
+  util::{Buffer, BufferError, Face, Hand, Item},
   version::ProtocolVersion,
 };
 use std::{error::Error, fmt};
 
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub struct ReadError {
-  packet: GPacket,
-  kind:   ReadErrorKind,
+  kind: ReadErrorKind,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub enum ReadErrorKind {
   UnknownPacket,
+  TcpError(tcp::Error),
 }
 
 impl fmt::Display for ReadError {
   fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
     match self.kind {
-      ReadErrorKind::UnknownPacket => write!(f, "unknown packet {:?}", self.packet),
+      ReadErrorKind::UnknownPacket => write!(f, "unknown packet"),
+      ReadErrorKind::TcpError(e) => {
+        write!(f, "while reading, got error: {:?}", e)
+      }
     }
   }
 }
 
+impl From<tcp::Error> for ReadError {
+  fn from(e: tcp::Error) -> Self { ReadError { kind: ReadErrorKind::TcpError(e) } }
+}
+impl From<BufferError> for ReadError {
+  fn from(e: BufferError) -> Self { ReadError { kind: ReadErrorKind::TcpError(e.into()) } }
+}
+
 impl Error for ReadError {}
+
+impl ReadError {
+  pub fn is_would_block(&self) -> bool {
+    match &self.kind {
+      ReadErrorKind::TcpError(e) => e.is_would_block(),
+      _ => false,
+    }
+  }
+}
 
 pub trait FromTcp {
   fn from_tcp(p: GPacket, ver: ProtocolVersion, conv: &TypeConverter) -> Result<Self, ReadError>
@@ -44,7 +63,7 @@ impl FromTcp for Packet {
         let mut buf = Buffer::new(&mut unknown);
         Packet::CreativeInventoryUpdate {
           slot: slot_id.try_into().unwrap(),
-          item: read_item(ver, &mut buf, conv),
+          item: read_item(ver, &mut buf, conv)?,
         }
       }
       GPacket::KeepAliveV8 { key: id } => Packet::KeepAlive { id },
@@ -55,7 +74,7 @@ impl FromTcp for Packet {
           Packet::BlockDig {
             pos,
             status: DigStatus::from_id(action as u8),
-            face: Face::from_id(buf.read_varint() as u8),
+            face: Face::from_id(buf.read_varint()? as u8),
           }
         } else {
           warn!("need to implement dropping item packets");
@@ -92,8 +111,8 @@ impl FromTcp for Packet {
         // - cursor z (float)
         // - inside block (bool)
         Packet::BlockPlace {
-          pos:  buf.read_pos(),
-          face: Face::from_id(buf.read_varint() as u8),
+          pos:  buf.read_pos()?,
+          face: Face::from_id(buf.read_varint()? as u8),
           hand: Hand::from_id(hand as u8),
         }
       }
@@ -105,9 +124,9 @@ impl FromTcp for Packet {
       }
       GPacket::PlayerRotationV17 { mut unknown, .. } => {
         let mut buf = Buffer::new(&mut unknown);
-        let yaw = buf.read_f32();
-        let pitch = buf.read_f32();
-        let on_ground = buf.read_bool();
+        let yaw = buf.read_f32()?;
+        let pitch = buf.read_f32()?;
+        let on_ground = buf.read_bool()?;
         Packet::PlayerLook { yaw, pitch, on_ground }
       }
       GPacket::PlayerPosLookV8 { x, y, z, yaw, pitch, on_ground, .. }
@@ -116,12 +135,12 @@ impl FromTcp for Packet {
       }
       GPacket::PlayerPositionRotationV17 { mut unknown, .. } => {
         let mut buf = Buffer::new(&mut unknown);
-        let x = buf.read_f64();
-        let y = buf.read_f64();
-        let z = buf.read_f64();
-        let yaw = buf.read_f32();
-        let pitch = buf.read_f32();
-        let on_ground = buf.read_bool();
+        let x = buf.read_f64()?;
+        let y = buf.read_f64()?;
+        let z = buf.read_f64()?;
+        let yaw = buf.read_f32()?;
+        let pitch = buf.read_f32()?;
+        let on_ground = buf.read_bool()?;
         Packet::PlayerPosLook { x, y, z, yaw, pitch, on_ground }
       }
       GPacket::PlayerPositionV8 { x, y, z, on_ground, .. } => {
@@ -129,21 +148,25 @@ impl FromTcp for Packet {
       }
       GPacket::PlayerPositionV17 { mut unknown, .. } => {
         let mut buf = Buffer::new(&mut unknown);
-        let x = buf.read_f64();
-        let y = buf.read_f64();
-        let z = buf.read_f64();
+        let x = buf.read_f64()?;
+        let y = buf.read_f64()?;
+        let z = buf.read_f64()?;
         Packet::PlayerPos { x, y, z, on_ground: false }
       }
       GPacket::UpdatePlayerAbilitiesV14 { flying, .. }
       | GPacket::UpdatePlayerAbilitiesV16 { flying, .. } => Packet::Flying { flying },
-      _ => return Err(ReadError { packet: p, kind: ReadErrorKind::UnknownPacket }),
+      _ => return Err(ReadError { kind: ReadErrorKind::UnknownPacket }),
     })
   }
 }
 
-fn read_item(ver: ProtocolVersion, buf: &mut Buffer, conv: &TypeConverter) -> Item {
-  if ver < ProtocolVersion::V1_13 {
-    let id = buf.read_i16();
+fn read_item(
+  ver: ProtocolVersion,
+  buf: &mut Buffer,
+  conv: &TypeConverter,
+) -> Result<Item, ReadError> {
+  Ok(if ver < ProtocolVersion::V1_13 {
+    let id = buf.read_i16()?;
     let count;
     let damage;
     let nbt;
@@ -152,19 +175,19 @@ fn read_item(ver: ProtocolVersion, buf: &mut Buffer, conv: &TypeConverter) -> It
       damage = 0;
       nbt = NBT::empty("");
     } else {
-      count = buf.read_u8();
-      damage = buf.read_i16();
-      nbt = buf.read_nbt();
+      count = buf.read_u8()?;
+      damage = buf.read_i16()?;
+      nbt = buf.read_nbt()?;
     }
     Item::new(conv.item_to_new(id as u32, ver.block()) as i32, count, damage, nbt)
   } else {
-    if buf.read_bool() {
-      let id = buf.read_varint();
-      let count = buf.read_u8();
-      let nbt = buf.read_nbt();
+    if buf.read_bool()? {
+      let id = buf.read_varint()?;
+      let count = buf.read_u8()?;
+      let nbt = buf.read_nbt()?;
       Item::new(conv.item_to_new(id as u32, ver.block()) as i32, count, 0, nbt)
     } else {
       Item::new(0, 0, 0, NBT::empty(""))
     }
-  }
+  })
 }

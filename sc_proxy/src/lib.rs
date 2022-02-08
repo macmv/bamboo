@@ -159,7 +159,7 @@ pub fn run() -> Result<(), Box<dyn Error>> {
               if let Some(conn) = clients.get_mut(&token) {
                 match conn.write_client() {
                   Ok(_) => {}
-                  Err(ref e) if e.kind() == io::ErrorKind::WouldBlock => {}
+                  Err(ref e) if e.is_would_block() => {}
                   Err(e) => {
                     error!("error while flushing packets to the client {:?}: {}", token, e);
                     clients.remove(&token);

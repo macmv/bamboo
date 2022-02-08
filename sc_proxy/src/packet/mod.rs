@@ -20,6 +20,7 @@ mod sb;
 
 pub use cb::{ToTcp, WriteError};
 pub use conv::TypeConverter;
+pub use sb::ReadError;
 pub use sb::{FromTcp, ReadError};
 
 pub fn chunk(

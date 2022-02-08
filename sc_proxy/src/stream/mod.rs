@@ -20,14 +20,14 @@ pub trait PacketStream {
   /// Trys to read bytes from the internal socket. This may return an error of
   /// kind WouldBlock, in which case there isn't any more data left to read
   /// right now.
-  fn poll(&mut self) -> io::Result<()>;
+  fn poll(&mut self) -> tcp::Result<()>;
   /// Reads data from the internal buffer, and produces a packet. This will not
   /// read from the tcp stream at all. If Ok(None) is produced, then there
   /// aren't any more packets left in the internal buffer. If Ok(Some(p)) is
   /// returned, then you should continue calling read until Ok(None) is
   /// returned. If an error occures, then the stream is invalid, and the
   /// connection should be terminated.
-  fn read(&mut self, ver: ProtocolVersion) -> io::Result<Option<tcp::Packet>>;
+  fn read(&mut self, ver: ProtocolVersion) -> tcp::Result<Option<tcp::Packet>>;
 
   // Writing functions
 
@@ -44,5 +44,5 @@ pub trait PacketStream {
   /// This may return an error of kind WouldBlock. If this happens, then this
   /// stream still needs to be flushed. You should poll for `Interest::WRITABLE`
   /// and try again.
-  fn flush(&mut self) -> io::Result<()> { Ok(()) }
+  fn flush(&mut self) -> tcp::Result<()> { Ok(()) }
 }

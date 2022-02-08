@@ -1,4 +1,8 @@
-use crate::{math::ChunkPos, nbt::NBT, util::UUID};
+use crate::{
+  math::ChunkPos,
+  nbt::{ParseError, NBT},
+  util::UUID,
+};
 use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
 
 use std::{
@@ -46,6 +50,7 @@ pub enum BufferErrorKind {
   ArrayTooLong { len: u64, max: u64 },
   NegativeLen(i32),
   Expected(Vec<u8>, Vec<u8>),
+  NBT(Box<ParseError>),
 }
 
 impl fmt::Display for BufferErrorKind {
@@ -62,6 +67,7 @@ impl fmt::Display for BufferErrorKind {
       }
       Self::NegativeLen(len) => write!(f, "len `{}` is negative", len),
       Self::Expected(expected, got) => write!(f, "expected bytes {:x?}, got {:x?}", expected, got),
+      Self::NBT(err) => write!(f, "nbt parse error: {:?}", err),
     }
   }
 }
@@ -73,6 +79,9 @@ impl From<io::Error> for BufferErrorKind {
 }
 impl From<FromUtf8Error> for BufferErrorKind {
   fn from(e: FromUtf8Error) -> Self { BufferErrorKind::FromUtf8Error(e) }
+}
+impl From<ParseError> for BufferErrorKind {
+  fn from(e: ParseError) -> Self { BufferErrorKind::NBT(Box::new(e)) }
 }
 
 #[derive(Debug)]
@@ -272,7 +281,9 @@ impl<'a> Buffer<'a> {
   }
 
   /// Reads an nbt tag from self.
-  pub fn read_nbt(&mut self) -> NBT { NBT::deserialize_buf(self).unwrap() }
+  pub fn read_nbt(&mut self) -> Result<NBT> {
+    NBT::deserialize_buf(self).map_err(|e| self.err(e, Reading))
+  }
 
   /// Reads a length prefixed array of integers.
   pub fn read_i32_arr(&mut self) -> Result<Vec<i32>> {

@@ -1,5 +1,6 @@
 use crate::{
   gnet::{cb as gcb, sb as gsb, tcp},
+  packet,
   packet::{FromTcp, ToTcp, TypeConverter},
   stream::PacketStream,
 };
@@ -288,7 +289,7 @@ impl<'a, S: PacketStream + Send + Sync> Conn<'a, S> {
 
   /// Writes all the data possible to the client. Returns Err(WouldBlock) or
   /// Ok(()) if everything worked as expected.
-  pub fn write_client(&mut self) -> io::Result<()> {
+  pub fn write_client(&mut self) -> Result<(), packet::ReadError> {
     while self.client_stream.needs_flush() {
       self.client_stream.flush()?;
     }
@@ -297,7 +298,7 @@ impl<'a, S: PacketStream + Send + Sync> Conn<'a, S> {
 
   /// Reads as much data as possible, without blocking. Returns Ok(true) or
   /// Err(_) if the connection should be closed.
-  pub fn read_client(&mut self, reg: &Registry) -> io::Result<bool> {
+  pub fn read_client(&mut self, reg: &Registry) -> Result<bool, tcp::Error> {
     // Poll, then read, then try and poll again. If we have no data left, we return
     // Ok(false). If we have closed the connection, we return Ok(true). If we error
     // at all, we close the connection.
@@ -309,19 +310,19 @@ impl<'a, S: PacketStream + Send + Sync> Conn<'a, S> {
               return Ok(true);
             }
           }
-          Err(e) => return Err(e),
+          Err(e) => return Err(e.into()),
         },
-        Err(ref e) if e.kind() == io::ErrorKind::WouldBlock => return Ok(false),
+        Err(ref e) if e.is_would_block() => return Ok(false),
         Err(e) => return Err(e),
       }
     }
   }
   /// Reads data from the client tcp connection, and buffers that to be read in
   /// `read_client_packet`.
-  fn poll_client(&mut self) -> io::Result<()> { self.client_stream.poll() }
+  fn poll_client(&mut self) -> Result<(), tcp::Error> { self.client_stream.poll() }
   /// Reads a packet from the internal buffer from the client. Does not interact
   /// with the tcp connection at all.
-  fn read_client_packet(&mut self, reg: &Registry) -> io::Result<()> {
+  fn read_client_packet(&mut self, reg: &Registry) -> Result<(), tcp::Error> {
     loop {
       match self.client_stream.read(self.ver) {
         Ok(Some(mut p)) => match self.state {
@@ -342,7 +343,7 @@ impl<'a, S: PacketStream + Send + Sync> Conn<'a, S> {
 
   /// Tries to send the packet to the client, and buffers it if that is not
   /// possible.
-  fn send_to_client(&mut self, p: gcb::Packet) -> io::Result<()> {
+  fn send_to_client(&mut self, p: gcb::Packet) -> Result<(), sb::ReadError> {
     // debug!("sending packet {:?}", p);
     let mut tcp = tcp::Packet::new(p.tcp_id(self.ver).try_into().unwrap(), self.ver);
     p.to_tcp(&mut tcp);
@@ -457,24 +458,26 @@ impl<'a, S: PacketStream + Send + Sync> Conn<'a, S> {
   /// the client just wants to get the status of the server. If this function
   /// returns Ok(Some(LoginInfo)), then a connection should be initialized with
   /// a grpc server.
-  fn handle_handshake(&mut self, mut p: tcp::Packet, reg: &Registry) -> io::Result<()> {
+  fn handle_handshake(&mut self, mut p: tcp::Packet, reg: &Registry) -> Result<(), tcp::Error> {
     match self.state {
       State::Handshake => {
         if p.id() != 0 {
-          return Err(io::Error::new(
-            ErrorKind::InvalidInput,
-            format!("unknown handshake packet {}", p.id()),
-          ));
+          return Err(
+            io::Error::new(ErrorKind::InvalidInput, format!("unknown handshake packet {}", p.id()))
+              .into(),
+          );
         }
-        self.ver = ProtocolVersion::from(p.read_varint());
+        self.ver = ProtocolVersion::from(p.read_varint()?);
         if self.ver == ProtocolVersion::Invalid {
-          return Err(io::Error::new(ErrorKind::InvalidInput, "client sent an invalid version"));
+          return Err(
+            io::Error::new(ErrorKind::InvalidInput, "client sent an invalid version").into(),
+          );
         }
 
         // Max len according to 1.17.1
-        let _addr = p.read_str(255);
-        let _port = p.read_u16();
-        let next = p.read_varint();
+        let _addr = p.read_str(255)?;
+        let _port = p.read_u16()?;
+        let next = p.read_varint()?;
         self.state = State::from_next(next);
       }
       State::Status => {
@@ -488,7 +491,7 @@ impl<'a, S: PacketStream + Send + Sync> Conn<'a, S> {
           }
           // Ping
           1 => {
-            let id = p.read_u64();
+            let id = p.read_u64()?;
             // Send pong
             let mut out = tcp::Packet::new(1, self.ver);
             out.write_u64(id);
@@ -499,10 +502,10 @@ impl<'a, S: PacketStream + Send + Sync> Conn<'a, S> {
             return Ok(());
           }
           _ => {
-            return Err(io::Error::new(
-              ErrorKind::InvalidInput,
-              format!("unknown status packet {}", p.id()),
-            ));
+            return Err(
+              io::Error::new(ErrorKind::InvalidInput, format!("unknown status packet {}", p.id()))
+                .into(),
+            );
           }
         }
       }
@@ -511,10 +514,12 @@ impl<'a, S: PacketStream + Send + Sync> Conn<'a, S> {
           // Login start
           0 => {
             if self.username.is_some() {
-              return Err(io::Error::new(ErrorKind::InvalidInput, "client sent two login packets"));
+              return Err(
+                io::Error::new(ErrorKind::InvalidInput, "client sent two login packets").into(),
+              );
             }
             // Max length according to 1.17.1
-            let name = p.read_str(16);
+            let name = p.read_str(16)?;
             self.username = Some(name.to_string());
             if self.der_key.is_none() {
               self.info = Some(LoginInfo {
@@ -549,15 +554,18 @@ impl<'a, S: PacketStream + Send + Sync> Conn<'a, S> {
           // Encryption response
           1 => {
             if self.username.is_none() {
-              return Err(io::Error::new(
-                ErrorKind::InvalidInput,
-                "client did not send login start before sending ecryption response",
-              ));
+              return Err(
+                io::Error::new(
+                  ErrorKind::InvalidInput,
+                  "client did not send login start before sending ecryption response",
+                )
+                .into(),
+              );
             }
-            let len = p.read_varint();
-            let recieved_secret = p.read_buf(len.try_into().unwrap());
-            let len = p.read_varint();
-            let recieved_token = p.read_buf(len.try_into().unwrap());
+            let len = p.read_varint()?;
+            let recieved_secret = p.read_buf(len.try_into().unwrap())?;
+            let len = p.read_varint()?;
+            let recieved_token = p.read_buf(len.try_into().unwrap())?;
 
             let decrypted_secret =
               self.key.decrypt(PaddingScheme::PKCS1v15Encrypt, &recieved_secret).map_err(|e| {
@@ -570,22 +578,28 @@ impl<'a, S: PacketStream + Send + Sync> Conn<'a, S> {
 
             // Make sure the client sent the correct verify token back
             if decrypted_token != self.verify_token {
-              return Err(io::Error::new(
-                ErrorKind::InvalidInput,
-                format!(
-                  "invalid verify token recieved from client (len: {})",
-                  decrypted_token.len()
-                ),
-              ));
+              return Err(
+                io::Error::new(
+                  ErrorKind::InvalidInput,
+                  format!(
+                    "invalid verify token recieved from client (len: {})",
+                    decrypted_token.len()
+                  ),
+                )
+                .into(),
+              );
             }
             let len = decrypted_secret.len();
             let secret = match decrypted_secret.try_into() {
               Ok(v) => v,
               Err(_) => {
-                return Err(io::Error::new(
-                  ErrorKind::InvalidInput,
-                  format!("invalid secret recieved from client (len: {}, expected len 16)", len,),
-                ))
+                return Err(
+                  io::Error::new(
+                    ErrorKind::InvalidInput,
+                    format!("invalid secret recieved from client (len: {}, expected len 16)", len,),
+                  )
+                  .into(),
+                )
               }
             };
 
@@ -617,31 +631,31 @@ impl<'a, S: PacketStream + Send + Sync> Conn<'a, S> {
                   Err(e) => return Err(io::Error::new(
                     ErrorKind::InvalidData,
                     format!("invalid json data recieved from session server: {}", e),
-                  ))
+                  ).into())
                 }
               },
               Err(e) => return Err(io::Error::new(
                 ErrorKind::Other,
                 format!("failed to authenticate client: {}", e),
-              ))
+              ).into())
             };
 
             self.send_compression();
             self.finish_login(reg)?;
           }
           _ => {
-            return Err(io::Error::new(
-              ErrorKind::InvalidInput,
-              format!("unknown login packet {}", p.id()),
-            ));
+            return Err(
+              io::Error::new(ErrorKind::InvalidInput, format!("unknown login packet {}", p.id()))
+                .into(),
+            );
           }
         }
       }
       v => {
-        return Err(io::Error::new(
-          ErrorKind::InvalidInput,
-          format!("invalid connection state {:?}", v),
-        ));
+        return Err(
+          io::Error::new(ErrorKind::InvalidInput, format!("invalid connection state {:?}", v))
+            .into(),
+        );
       }
     }
 

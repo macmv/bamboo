@@ -1,5 +1,5 @@
 use super::super::PacketStream;
-use crate::gnet::tcp;
+use crate::gnet::{tcp, tcp::Result};
 use aes::{
   cipher::{AsyncStreamCipher, NewCipher},
   Aes128,
@@ -11,7 +11,7 @@ use ringbuf::{Consumer, Producer, RingBuffer};
 use sc_common::{util, util::Buffer, version::ProtocolVersion};
 use std::{
   fmt, io,
-  io::{ErrorKind, Read, Result, Write},
+  io::{ErrorKind, Read, Write},
 };
 
 pub struct JavaStream {
@@ -66,7 +66,7 @@ impl PacketStream for JavaStream {
     // This appends to msg, so we don't need to truncate
     let n = self.stream.read(msg)?;
     if n == 0 {
-      return Err(io::Error::new(ErrorKind::ConnectionAborted, "client has disconnected"));
+      return Err(io::Error::new(ErrorKind::ConnectionAborted, "client has disconnected").into());
     } else {
       msg = &mut msg[..n];
     }
@@ -105,7 +105,7 @@ impl PacketStream for JavaStream {
     });
     // Varint that is more than 5 bytes long.
     if read < 0 {
-      return Err(io::Error::new(ErrorKind::InvalidData, "invalid varint"));
+      return Err(io::Error::new(ErrorKind::InvalidData, "invalid varint").into());
     }
     // Incomplete varint, or an incomplete packet
     if read == 0 || (self.recv_cons.len() as isize) < len + read {
@@ -118,17 +118,17 @@ impl PacketStream for JavaStream {
     // And parse it
     if self.compression != 0 {
       let mut buf = Buffer::new(&mut vec);
-      let uncompressed_length = buf.read_varint();
+      let uncompressed_length = buf.read_varint()?;
       if uncompressed_length == 0 {
-        Ok(Some(tcp::Packet::from_buf(buf.read_all(), ver)))
+        Ok(Some(tcp::Packet::from_buf(buf.read_all(), ver)?))
       } else {
         let decompressed = decompress_to_vec_zlib(&buf.read_all()).map_err(|e| {
           io::Error::new(ErrorKind::InvalidData, format!("invalid zlib data: {:?}", e))
         })?;
-        Ok(Some(tcp::Packet::from_buf(decompressed, ver)))
+        Ok(Some(tcp::Packet::from_buf(decompressed, ver)?))
       }
     } else {
-      Ok(Some(tcp::Packet::from_buf(vec, ver)))
+      Ok(Some(tcp::Packet::from_buf(vec, ver)?))
     }
   }
 
