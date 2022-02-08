@@ -378,19 +378,19 @@ mod tests {
   pub fn read_varint() {
     let mut data = vec![1];
     let mut buf = Buffer::new(&mut data);
-    assert_eq!(Ok(1), buf.read_varint());
+    assert_eq!(1, buf.read_varint().unwrap());
 
     let mut data = vec![127];
     let mut buf = Buffer::new(&mut data);
-    assert_eq!(Ok(127), buf.read_varint());
+    assert_eq!(127, buf.read_varint().unwrap());
 
     let mut data = vec![128, 2];
     let mut buf = Buffer::new(&mut data);
-    assert_eq!(Ok(256), buf.read_varint());
+    assert_eq!(256, buf.read_varint().unwrap());
 
     let mut data = vec![255, 255, 255, 255, 15];
     let mut buf = Buffer::new(&mut data);
-    assert_eq!(Ok(-1), buf.read_varint());
+    assert_eq!(-1, buf.read_varint().unwrap());
 
     let mut data = vec![255, 255, 255, 255, 255];
     let mut buf = Buffer::new(&mut data);
