@@ -129,6 +129,7 @@ impl LightPropagator for BlockLight {
     }
   }
   fn propagate_all<P: LightPropagator, S: Section>(light: &mut LightChunk<P>, chunk: &Chunk<S>) {
+    let _ = (light, chunk);
     // TODO
   }
 }
@@ -176,6 +177,7 @@ impl LightPropagator for SkyLight {
     }
   }
   fn propagate_all<P: LightPropagator, S: Section>(light: &mut LightChunk<P>, chunk: &Chunk<S>) {
+    let _ = (light, chunk);
     // TODO
   }
 }

@@ -22,7 +22,7 @@ pub enum Mode {
   Writing,
 }
 
-use Mode::{Reading, Writing};
+use Mode::Reading;
 
 #[derive(Debug)]
 pub struct BufferError {

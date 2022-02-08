@@ -24,6 +24,7 @@ pub struct ItemDef {
 }
 
 #[derive(Debug, Clone, Deserialize)]
+#[allow(dead_code)]
 pub struct Item {
   /// The id of the item.
   id:    u32,
