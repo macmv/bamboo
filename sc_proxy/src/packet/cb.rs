@@ -2,7 +2,6 @@ use super::TypeConverter;
 use crate::gnet::cb::Packet as GPacket;
 use sc_common::{
   nbt,
-  nbt::{Tag, NBT},
   net::{
     cb,
     cb::{CommandType, Packet},
