@@ -263,11 +263,13 @@ impl PacketCollection {
               for (sug_id, versions) in packets.iter().enumerate() {
                 if let Some((ver, p)) = versions.first() {
                   if ver.maj <= match_ver.maj {
-                    gen.write(&self.versions[match_ver].get(&p.name).unwrap_or(&0).to_string());
-                    gen.write(" => ");
-                    gen.write(&sug_id.to_string());
-                    gen.write(", // ");
-                    gen.write_line(&p.name);
+                    if let Some(tcp_id) = self.versions[match_ver].get(&p.name) {
+                      gen.write(&tcp_id.to_string());
+                      gen.write(" => ");
+                      gen.write(&sug_id.to_string());
+                      gen.write(", // ");
+                      gen.write_line(&p.name);
+                    }
                   }
                 }
               }
