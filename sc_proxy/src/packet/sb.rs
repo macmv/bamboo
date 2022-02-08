@@ -122,7 +122,11 @@ impl FromTcp for Packet {
   }
 }
 
-fn read_item(ver: ProtocolVersion, buf: &mut Buffer, conv: &TypeConverter) -> Result<Item> {
+fn read_item<T: AsRef<[u8]>>(
+  ver: ProtocolVersion,
+  buf: &mut Buffer<T>,
+  conv: &TypeConverter,
+) -> Result<Item> {
   Ok(if ver < ProtocolVersion::V1_13 {
     let id = buf.read_i16()?;
     let count;

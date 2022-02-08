@@ -9,68 +9,37 @@ use std::{
   collections::{HashMap, HashSet},
   convert::TryInto,
   hash::Hash,
-  ops::{Deref, DerefMut},
 };
 
 #[derive(Debug)]
 pub struct Packet {
-  data:  Vec<u8>,
-  index: usize,
-  id:    i32,
-  ver:   ProtocolVersion,
-}
-
-#[derive(Debug)]
-pub struct WrappedBuffer<'a> {
-  buf:   Buffer<'a>,
-  index: &'a mut usize,
-}
-
-impl<'a> WrappedBuffer<'a> {
-  fn new(data: &'a mut Vec<u8>, index: &'a mut usize) -> Self {
-    WrappedBuffer { buf: Buffer::new_index(data, *index), index }
-  }
-}
-
-impl Drop for WrappedBuffer<'_> {
-  fn drop(&mut self) { *self.index = self.buf.index(); }
-}
-
-impl<'a> Deref for WrappedBuffer<'a> {
-  type Target = Buffer<'a>;
-
-  fn deref(&self) -> &Self::Target { &self.buf }
-}
-
-impl<'a> DerefMut for WrappedBuffer<'a> {
-  fn deref_mut(&mut self) -> &mut Self::Target { &mut self.buf }
+  buf: Buffer<Vec<u8>>,
+  id:  i32,
+  ver: ProtocolVersion,
 }
 
 macro_rules! add_writer {
   ($name: ident, $arg: ty) => {
-    pub fn $name(&mut self, v: $arg) { self.buf().$name(v) }
+    pub fn $name(&mut self, v: $arg) { self.buf.$name(v) }
   };
 }
 macro_rules! add_reader {
   ($name: ident, $ret: ty) => {
-    pub fn $name(&mut self) -> Result<$ret> {
-      let res = self.buf().$name();
-      res.map_err(|e| self.err(e))
-    }
+    pub fn $name(&mut self) -> Result<$ret> { self.buf.$name().map_err(|e| self.err(e)) }
   };
 }
 
 impl Packet {
   /// Creates a new packet. Writes the given id into the internal buffer.
   pub fn new(id: i32, ver: ProtocolVersion) -> Self {
-    let mut p = Packet { data: vec![], index: 0, id, ver };
+    let mut p = Packet { buf: Buffer::new(vec![]), id, ver };
     p.write_varint(id);
     p
   }
   /// Creates a new TCP packet from the given data. This will read a varint from
   /// the data to get the packet's ID.
   pub fn from_buf(data: Vec<u8>, ver: ProtocolVersion) -> Result<Self> {
-    let mut p = Packet { data, index: 0, id: 0, ver };
+    let mut p = Packet { buf: Buffer::new(data), id: 0, ver };
     let id = p.read_varint()?;
     p.id = id;
     Ok(p)
@@ -78,20 +47,16 @@ impl Packet {
   /// Creates a new TCP packet from the given data. This will not read anything
   /// from the data, as the ID is supplied.
   pub fn from_buf_id(data: Vec<u8>, id: i32, ver: ProtocolVersion) -> Self {
-    Packet { data, index: 0, id, ver }
+    Packet { buf: Buffer::new(data), id, ver }
   }
 
-  /// Returns the internal buffer. This is wrapped in another type, so that the
-  /// index stored in this `tcp::Packet` is updated when the buffer is dropped.
-  pub fn buf<'a>(&'a mut self) -> WrappedBuffer<'a> {
-    WrappedBuffer::new(&mut self.data, &mut self.index)
-  }
+  pub fn buf(&mut self) -> &mut Buffer<Vec<u8>> { &mut self.buf }
 
   pub fn id(&self) -> i32 { self.id }
   pub fn err(&self, e: impl std::fmt::Display) -> Error {
-    Error::ParseError { pos: self.index, id: self.id, ver: self.ver, msg: format!("{}", e) }
+    Error::ParseError { pos: self.buf.index(), id: self.id, ver: self.ver, msg: format!("{}", e) }
   }
-  pub fn serialize(self) -> Vec<u8> { self.data }
+  pub fn serialize(self) -> Vec<u8> { self.buf.into_inner() }
 
   add_writer!(write_u8, u8);
   add_writer!(write_u16, u16);
@@ -127,18 +92,15 @@ impl Packet {
   pub fn read_all(&mut self) -> Vec<u8> { self.buf().read_all() }
 
   pub fn read_str(&mut self, max_len: u64) -> Result<String> {
-    let res = self.buf().read_str(max_len);
-    res.map_err(|e| self.err(e))
+    self.buf().read_str(max_len).map_err(|e| self.err(e))
   }
   pub fn read_ident(&mut self) -> Result<String> { self.read_str(32767) }
   pub fn read_buf(&mut self, len: usize) -> Result<Vec<u8>> {
-    let res = self.buf().read_buf(len);
-    res.map_err(|e| self.err(e))
+    self.buf().read_buf(len).map_err(|e| self.err(e))
   }
   pub fn read_byte_arr(&mut self) -> Result<Vec<u8>> {
     let len = self.read_varint()?.try_into().unwrap();
-    let res = self.buf().read_buf(len);
-    res.map_err(|e| self.err(e))
+    self.buf().read_buf(len).map_err(|e| self.err(e))
   }
   pub fn read_byte_arr_max(&mut self, max: usize) -> Result<Vec<u8>> {
     let len = self.read_varint()?.try_into().unwrap();
@@ -148,14 +110,13 @@ impl Packet {
         .err(BufferErrorKind::ArrayTooLong { len: len as u64, max: max as u64 }, Mode::Reading);
       return Err(self.err(err));
     }
-    let res = self.buf().read_buf(len);
-    res.map_err(|e| self.err(e))
+    self.buf().read_buf(len).map_err(|e| self.err(e))
   }
 
-  pub fn index(&self) -> usize { self.index }
-  pub fn remaining(&self) -> usize { self.data.len() - self.index }
-  pub fn len(&self) -> usize { self.data.len() }
-  pub fn is_empty(&self) -> bool { self.data.len() == 0 }
+  pub fn index(&self) -> usize { self.buf.index() }
+  pub fn remaining(&self) -> usize { self.buf.len() - self.buf.index() }
+  pub fn len(&self) -> usize { self.buf.len() }
+  pub fn is_empty(&self) -> bool { self.buf.len() == 0 }
 
   /// This writes the given block position as a long into the buffer. The old
   /// format is used on 1.8 - 1.13, and the new format will be used for any
@@ -187,12 +148,12 @@ impl Packet {
 
   /// Reads an nbt tag from self.
   pub fn read_nbt(&mut self) -> Result<NBT> {
-    let e = match NBT::deserialize_buf(&mut self.buf()) {
+    let err = match NBT::deserialize_buf(&mut self.buf) {
       Ok(v) => return Ok(v),
       Err(e) => e,
     };
-    let err = self.buf().err(e, Mode::Reading);
-    Err(self.err(err))
+    let e = self.buf().err(err, Mode::Reading);
+    Err(self.err(e))
   }
 
   /// Reads a length prefixed array of integers.
@@ -247,13 +208,10 @@ impl Packet {
   }
 
   /// Reads 16 bytes from the buffer, and returns that as a big endian UUID.
-  pub fn read_uuid(&mut self) -> Result<UUID> {
-    let res = self.buf().read_uuid();
-    res.map_err(|e| self.err(e))
-  }
+  pub fn read_uuid(&mut self) -> Result<UUID> { self.buf.read_uuid().map_err(|e| self.err(e)) }
 
   /// This writes a UUID into the buffer (in big endian format).
-  pub fn write_uuid(&mut self, v: UUID) { self.buf().write_uuid(v); }
+  pub fn write_uuid(&mut self, v: UUID) { self.buf.write_uuid(v); }
 
   /// Reads a block hit result. This (for whatever dumb reason) is part of the
   /// packet buffer in 1.17, and is literally called ONCE. So, because reasons,

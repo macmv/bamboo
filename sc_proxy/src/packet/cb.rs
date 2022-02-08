@@ -601,7 +601,10 @@ struct CodecItem<T> {
   element: T,
 }
 
-fn write_dimensions(out: &mut Buffer) {
+fn write_dimensions<T>(out: &mut Buffer<T>)
+where
+  std::io::Cursor<T>: std::io::Write,
+{
   let dimension = Dimension {
     piglin_safe:          false,
     natural:              true,

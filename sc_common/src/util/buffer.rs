@@ -128,6 +128,8 @@ impl<T> Buffer<T> {
   pub fn err(&self, e: impl Into<BufferErrorKind>, mode: Mode) -> BufferError {
     BufferError { err: e.into(), pos: self.data.position(), mode }
   }
+
+  pub fn into_inner(self) -> T { self.data.into_inner() }
 }
 
 impl<T> Buffer<T>
