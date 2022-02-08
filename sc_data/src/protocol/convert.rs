@@ -121,7 +121,9 @@ pub fn static_ref(class: &str, name: &str) -> Value {
   Value::MethodRef(c.into(), n.into())
 }
 
-pub fn member_call<'a>(class: &str, name: &'a str) -> (&'a str, Option<Vec<Expr>>) {
+/// Returns the new name, an optional list of arguments, and `true` if this
+/// needs a `?`
+pub fn member_call<'a>(class: &str, name: &'a str) -> (&'a str, Option<Vec<Expr>>, bool) {
   // TODO: Update things like PacketBuffer to tcp::Packet here
   (
     match name {
@@ -151,15 +153,17 @@ pub fn member_call<'a>(class: &str, name: &'a str) -> (&'a str, Option<Vec<Expr>
       "read_bytes" => "read_buf",           // Fixed length
       "read_byte_array" => "read_byte_arr", // Variable length
       "read_bit_set" => "read_bits",
-      "read_enum_constant" | "read_enum_value" => return ("read_varint", Some(vec![])),
+      "read_enum_constant" | "read_enum_value" => return ("read_varint", Some(vec![]), true),
       "read_text_component"
       | "read_text"
       | "read_identifier"
       | "read_chat_component"
-      | "func_192575_l" => return ("read_str", Some(vec![Expr::new(Value::Lit(32767.into()))])),
+      | "func_192575_l" => {
+        return ("read_str", Some(vec![Expr::new(Value::Lit(32767.into()))]), true)
+      }
       "read_item_stack_from_buffer" | "read_item_stack" => "read_item",
       "read_nbt_tag_compound_from_buffer" | "read_compound_tag" => "read_nbt",
-      "decode" => return ("read_nbt", Some(vec![])),
+      "decode" => return ("read_nbt", Some(vec![]), true),
       "read_block_hit_result" => "read_block_hit",
       "read_block_pos" => "read_pos",
       "readable_bytes" => "remaining",
@@ -173,6 +177,7 @@ pub fn member_call<'a>(class: &str, name: &'a str) -> (&'a str, Option<Vec<Expr>
       }
     },
     None,
+    true,
   )
 }
 

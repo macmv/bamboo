@@ -726,6 +726,10 @@ impl<'a> InstrWriter<'a> {
         self.gen.write("!");
         self.gen.write(val);
       }
+      Op::Try => {
+        self.gen.write(val);
+        self.gen.write("?");
+      }
       Op::Len => {
         self.gen.write(val);
         self.gen.write(".len()");

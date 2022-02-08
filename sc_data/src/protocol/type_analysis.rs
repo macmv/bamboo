@@ -213,6 +213,9 @@ impl<'a> ReaderTypes<'a> {
         }
       }
       Op::BitAnd(_) | Op::Add(_) | Op::Sub(_) | Op::Div(_) | Op::Mul(_) => initial,
+      // We just assume all reader functions return a T (instead of Result<T>), so this won't change
+      // the type.
+      Op::Try => initial,
       v => todo!("op {:?}", v),
     }
   }
@@ -448,6 +451,7 @@ impl<'a> ReaderTypes<'a> {
             }
             Op::BitAnd(v) => Op::BitAnd(v.clone()),
             Op::Div(v) => Op::Mul(v.clone()),
+            Op::Try => op.clone(),
             _ => panic!("cannot convert {:?} into writer (packet {})", expr, self.packet),
           });
         }

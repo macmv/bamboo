@@ -319,6 +319,8 @@ pub enum Op {
   Deref,
   /// Puts a `!` in front. Not present in json.
   Not,
+  /// Puts a `?` after. Not present in json.
+  Try,
 }
 
 /// A rust type.
@@ -422,6 +424,7 @@ impl Op {
 
       Op::Deref => 0,
       Op::Not => 0,
+      Op::Try => 0,
 
       Op::If(..) => 0,
       Op::Call(..) => 0,

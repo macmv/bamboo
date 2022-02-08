@@ -63,7 +63,7 @@ fn simplify_instr(instr: &mut [Instr]) -> Option<usize> {
       }
       Instr::SetArr(arr, idx, val) => {
         simplify_expr(arr);
-        simplify_val(idx);
+        let _ = simplify_val(idx);
         simplify_expr(val);
       }
       Instr::SetVar(_, val) | Instr::Let(_, val) => {
@@ -118,7 +118,7 @@ fn simplify_instr(instr: &mut [Instr]) -> Option<usize> {
       }
       Instr::CheckStrLen(s, len) => {
         simplify_expr(s);
-        simplify_val(len);
+        let _ = simplify_val(len);
       }
       Instr::Return(v) => simplify_expr(v),
     }
@@ -173,11 +173,16 @@ fn simplify_cond_overwrite(cond: &mut Cond) -> (bool, Option<Instr>) {
 fn simplify_expr(expr: &mut Expr) { simplify_expr_overwrite(expr); }
 fn simplify_expr_overwrite(expr: &mut Expr) -> (bool, Option<Instr>) {
   fn simplify(expr: &mut Expr) -> (bool, Option<Instr>) {
-    simplify_val(&mut expr.initial);
-    for op in expr.ops.iter_mut() {
-      if simplify_op(op) {
+    expr.ops.extend(simplify_val(&mut expr.initial));
+    let len = expr.ops.len();
+    let old_ops = std::mem::replace(&mut expr.ops, Vec::with_capacity(len));
+    for mut op in old_ops {
+      let (skip, extra_ops) = simplify_op(&mut op);
+      if skip {
         return (true, None);
       }
+      expr.ops.push(op);
+      expr.ops.extend(extra_ops);
     }
     (false, convert::overwrite(expr))
   }
@@ -249,7 +254,8 @@ fn simplify_expr_overwrite(expr: &mut Expr) -> (bool, Option<Instr>) {
   }
   res
 }
-fn simplify_val(val: &mut Value) {
+#[must_use]
+fn simplify_val(val: &mut Value) -> Vec<Op> {
   match val {
     Value::Field(name) => simplify_name(name),
     Value::Static(..) => {}
@@ -279,8 +285,9 @@ fn simplify_val(val: &mut Value) {
     Value::Cond(cond) => simplify_cond(cond),
     Value::Null | Value::Lit(_) | Value::Var(_) => {}
   }
+  vec![]
 }
-fn simplify_op(op: &mut Op) -> bool {
+fn simplify_op(op: &mut Op) -> (bool, Vec<Op>) {
   match op {
     Op::BitAnd(rhs) => {
       simplify_expr(rhs);
@@ -311,29 +318,32 @@ fn simplify_op(op: &mut Op) -> bool {
     Op::If(cond, val) => {
       match simplify_cond_overwrite(cond) {
         (false, _) => {}
-        (true, _) => return true,
+        (true, _) => return (true, vec![]),
       }
       match simplify_expr_overwrite(val) {
         (false, _) => {}
-        (true, _) => return true,
+        (true, _) => return (true, vec![]),
       }
     }
     Op::Call(class, name, args) => {
       *class = convert::class(class).to_string();
       simplify_name(name);
-      let (new_name, new_args) = convert::member_call(class, name);
+      let (new_name, new_args, needs_try) = convert::member_call(class, name);
       *name = new_name.into();
       if let Some(a) = new_args {
         *args = a;
       } else {
         args.iter_mut().for_each(simplify_expr)
       }
+      if needs_try {
+        return (false, vec![Op::Try]);
+      }
     }
     Op::Cast(_) => {}
 
     _ => unreachable!(),
   }
-  false
+  (false, vec![])
 }
 fn simplify_name(name: &mut String) {
   if name == "type" {
