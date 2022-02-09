@@ -256,7 +256,7 @@ impl<'a, S: PacketStream + Send + Sync> Conn<'a, S> {
               format!("while reading packet got error: {}", err),
             )
           })?;
-          let packets = common.to_tcp(self.ver, self.conv.as_ref()).unwrap();
+          let packets = common.to_tcp(self).unwrap();
           let parsed = m.index();
           if len as usize != parsed {
             return Err(io::Error::new(
@@ -391,6 +391,10 @@ impl<'a, S: PacketStream + Send + Sync> Conn<'a, S> {
       self.client_stream.set_compression(self.compression_target);
     }
   }
+
+  /// Switches this connection to a new server. If all of the ips are bad, this
+  /// doesn't change anything.
+  pub fn switch_to(&mut self, _ips: Vec<SocketAddr>) { todo!() }
 
   /// Sends the login success packet, and sets the state to Play. The stream
   /// will not be flushed.
@@ -662,4 +666,6 @@ impl<'a, S: PacketStream + Send + Sync> Conn<'a, S> {
     self.client_stream.flush()?;
     Ok(())
   }
+
+  pub fn conv(&self) -> &TypeConverter { self.conv.as_ref() }
 }

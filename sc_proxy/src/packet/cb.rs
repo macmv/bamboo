@@ -1,5 +1,5 @@
 use super::TypeConverter;
-use crate::gnet::cb::Packet as GPacket;
+use crate::{gnet::cb::Packet as GPacket, stream::PacketStream, Conn};
 use sc_common::{
   nbt,
   net::{
@@ -29,19 +29,19 @@ impl fmt::Display for WriteError {
 impl Error for WriteError {}
 
 pub trait ToTcp {
-  fn to_tcp(
+  fn to_tcp<S: PacketStream + Send + Sync>(
     self,
-    ver: ProtocolVersion,
-    conv: &TypeConverter,
+    conn: &Conn<S>,
   ) -> Result<SmallVec<[GPacket; 2]>, WriteError>;
 }
 
 impl ToTcp for Packet {
-  fn to_tcp(
+  fn to_tcp<S: PacketStream + Send + Sync>(
     self,
-    ver: ProtocolVersion,
-    conv: &TypeConverter,
+    conn: &Conn<S>,
   ) -> Result<SmallVec<[GPacket; 2]>, WriteError> {
+    let ver = conn.ver();
+
     Ok(smallvec![match self {
       Packet::Abilities {
         invulnerable,
@@ -90,7 +90,16 @@ impl ToTcp for Packet {
         }
       }
       Packet::Chunk { pos, full, bit_map, sections, sky_light, block_light } => {
-        return Ok(super::chunk(pos, full, bit_map, sections, sky_light, block_light, ver, conv));
+        return Ok(super::chunk(
+          pos,
+          full,
+          bit_map,
+          sections,
+          sky_light,
+          block_light,
+          ver,
+          conn.conv(),
+        ));
       }
       Packet::CommandList { nodes, root } => {
         if ver < ProtocolVersion::V1_13 {
@@ -386,7 +395,7 @@ impl ToTcp for Packet {
         }
       }
       Packet::MultiBlockChange { pos, y, changes } => {
-        super::multi_block_change(pos, y, changes, ver, conv)
+        super::multi_block_change(pos, y, changes, ver, conn.conv())
       }
       Packet::PlayerHeader { header, footer } => {
         GPacket::PlayerListHeaderV8 { header, footer }
@@ -511,6 +520,10 @@ impl ToTcp for Packet {
         } else {
           GPacket::SpawnPlayerV15 { id: eid, uuid: id, x, y, z, yaw, pitch }
         }
+      }
+      Packet::SwitchServer { ips } => {
+        conn.switch_to(ips);
+        return Ok(smallvec![]);
       }
       Packet::UnloadChunk { pos } => {
         if ver >= ProtocolVersion::V1_9 {
