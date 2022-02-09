@@ -1,7 +1,10 @@
 use super::{add_from, chat::SlChat, world::SlWorld, wrap};
 use crate::player::Player;
 use sc_common::util::Chat;
-use std::{net::SocketAddr, sync::Arc};
+use std::{
+  net::{SocketAddr, ToSocketAddrs},
+  sync::Arc,
+};
 use sugarlang::{
   define_ty,
   parse::token::Span,
@@ -61,8 +64,11 @@ impl SlPlayer {
   /// will be returned.
   pub fn switch_to(&self, ip: &str) -> Result<(), RuntimeError> {
     // TODO: Span::call_site()
-    let ip: SocketAddr = ip.parse().map_err(|e| RuntimeError::custom(ip, Span::default()))?;
-    self.inner.switch_to(ip);
+    let ips: Vec<SocketAddr> = ip
+      .to_socket_addrs()
+      .map_err(|e| RuntimeError::custom(format!("invalid ip '{ip}': {e}"), Span::default()))?
+      .collect();
+    self.inner.switch_to(ips);
     Ok(())
   }
 }

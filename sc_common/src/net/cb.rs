@@ -147,7 +147,7 @@ pub enum Packet {
   /// simply disconnect the player from the old server. If the connection
   /// failed, then a `sb::SwitchServerFailed` packet will be sent to the server.
   SwitchServer {
-    ip: SocketAddr,
+    ips: Vec<SocketAddr>,
   },
   UnloadChunk {
     pos: ChunkPos,

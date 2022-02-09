@@ -335,9 +335,14 @@ impl Player {
   /// moved.
   ///
   /// Because this is all over the network, the player can be disconnected at
-  /// any time. If the `ip` was a badd address, or the server refused to accept
-  /// the connection, the packet `SwitchServerFailed` will be sent back to us.
-  pub fn switch_to(&self, ip: SocketAddr) { self.send(cb::Packet::SwitchServer { ip }); }
+  /// any time. If the `ips` was all bad addresses, or the server refused to
+  /// accept the connection, the packet `SwitchServerFailed` will be sent back
+  /// to us.
+  ///
+  /// The order of `ips` matters. The first one will be tried first, then the
+  /// second one, etc. This is expected to be the result of
+  /// [`ToSocketAddrs`](std::net::ToSocketAddrs).
+  pub fn switch_to(&self, ips: Vec<SocketAddr>) { self.send(cb::Packet::SwitchServer { ips }); }
 }
 
 impl CommandSender for Player {
