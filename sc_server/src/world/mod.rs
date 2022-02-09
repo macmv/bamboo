@@ -217,7 +217,13 @@ impl World {
       // If a bunch of people connect at the same time, we don't want a bunch of lock
       // contention.
       let players = self.players.read();
-      if players.contains_key(&player.id()) {
+      if let Some(existing_player) = players.get(player.id()) {
+        warn!(
+          "a player named {} tried to join, but had the same id as {} (id: {:?})",
+          player.username(),
+          existing_player.username(),
+          player.id(),
+        );
         player.disconnect("Another player with the same id is already connected!");
         return player;
       }
@@ -225,6 +231,7 @@ impl World {
       let mut players = self.players.write();
       players.insert(player.id(), player.clone());
     }
+    info!("{} has joined the game", player.username());
     self.player_init(&player);
     player
   }
