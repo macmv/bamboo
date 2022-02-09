@@ -403,6 +403,25 @@ impl ConnectionManager {
     }
   }
 
+  /// Logs a disconnect, and if the player is present, it removes them.
+  fn handle_disconnect(player: &Option<Arc<Player>>) {
+    if let Some(p) = player {
+      info!("{} left the game", p.username());
+      p.remove();
+    } else {
+      info!("a client who has not finished logging in has left the game");
+    }
+  }
+
+  /// If this is not a normal disconnect, then this logs an error, and calls
+  /// [`disconnect_player`](Self::disconnect_player).
+  fn handle_error(e: io::Error, player: &Option<Arc<Player>>) {
+    if !matches!(e.kind(), io::ErrorKind::BrokenPipe | io::ErrorKind::ConnectionReset) {
+      error!("error in connection: {}", e);
+    }
+    Self::handle_disconnect(player);
+  }
+
   fn wake_event(s: &State, ev: WakeEvent) {
     match ev {
       WakeEvent::Clientbound(tok) => {
@@ -410,17 +429,8 @@ impl ConnectionManager {
           match conn.lock().try_send() {
             Ok(()) => {}
             Err(e) if e.kind() == io::ErrorKind::WouldBlock => {}
-            Err(e) if e.kind() == io::ErrorKind::BrokenPipe => {
-              if let Some(p) = player {
-                p.remove();
-              }
-              s.conns.write().remove(&tok);
-            }
             Err(e) => {
-              error!("error in connection: {}", e);
-              if let Some(p) = player {
-                p.remove();
-              }
+              Self::handle_error(e, player);
               s.conns.write().remove(&tok);
             }
           }
@@ -447,11 +457,12 @@ impl ConnectionManager {
             Ok(v) => v,
             // Something else went wrong.
             Err(e) => {
-              error!("error in connection: {}", e);
+              Self::handle_error(e, player);
               return true;
             }
           };
           if disconnect {
+            Self::handle_disconnect(player);
             return true;
           }
           // Don't drop our read lock yet, as we need to use the player we got from it.
@@ -489,13 +500,13 @@ impl ConnectionManager {
     }
     if ev.is_writable() {
       let rl = c.read();
-      if let Some((conn, _)) = rl.get(&token) {
+      if let Some((conn, player)) = rl.get(&token) {
         let mut conn = conn.lock();
         match conn.try_flush() {
           Ok(()) => {}
           Err(e) if e.kind() == io::ErrorKind::WouldBlock => {}
           Err(e) => {
-            error!("error in connection: {}", e);
+            Self::handle_error(e, player);
             return true;
           }
         }

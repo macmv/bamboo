@@ -626,8 +626,13 @@ impl WorldManager {
   /// Removes the player. This is not part of the public API because it does not
   /// terminate their connection. This is called after their connection is
   /// terminated.
+  ///
+  /// If the player is not present, this will do nothing.
   pub(crate) fn remove_player(&self, id: UUID) {
-    let idx = *self.players.lock().get(&id).unwrap();
+    let idx = match self.players.lock().get(&id) {
+      Some(v) => *v,
+      None => return,
+    };
     self.worlds.lock()[idx].remove_player(id);
     self.players.lock().remove(&id);
   }
