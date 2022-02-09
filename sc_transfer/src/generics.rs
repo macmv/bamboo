@@ -3,6 +3,7 @@ use std::{
   collections::{HashMap, HashSet},
   hash::Hash,
   marker::PhantomData,
+  net::{Ipv4Addr, Ipv6Addr, SocketAddr, SocketAddrV4, SocketAddrV6},
 };
 
 macro_rules! num_impl {
@@ -218,4 +219,95 @@ impl<T> MessageRead for PhantomData<T> {
 }
 impl<T> MessageWrite for PhantomData<T> {
   fn write(&self, _: &mut MessageWriter) -> Result<(), WriteError> { Ok(()) }
+}
+
+impl MessageRead for SocketAddr {
+  fn read(m: &mut MessageReader) -> Result<Self, ReadError> {
+    Ok(match m.read_u8()? {
+      0 => SocketAddr::V4(m.read()?),
+      1 => SocketAddr::V6(m.read()?),
+      v => panic!("unknown socket addr type {}", v),
+    })
+  }
+}
+impl MessageWrite for SocketAddr {
+  fn write(&self, m: &mut MessageWriter) -> Result<(), WriteError> {
+    match self {
+      SocketAddr::V4(addr) => {
+        m.write_u8(0)?;
+        m.write(addr)?;
+      }
+      SocketAddr::V6(addr) => {
+        m.write_u8(1)?;
+        m.write(addr)?;
+      }
+    }
+    Ok(())
+  }
+}
+
+impl MessageRead for SocketAddrV4 {
+  fn read(m: &mut MessageReader) -> Result<Self, ReadError> {
+    Ok(SocketAddrV4::new(m.read()?, m.read()?))
+  }
+}
+impl MessageWrite for SocketAddrV4 {
+  fn write(&self, m: &mut MessageWriter) -> Result<(), WriteError> {
+    m.write(self.ip())?;
+    m.write(&self.port())?;
+    Ok(())
+  }
+}
+impl MessageRead for SocketAddrV6 {
+  fn read(m: &mut MessageReader) -> Result<Self, ReadError> {
+    Ok(SocketAddrV6::new(m.read()?, m.read()?, m.read()?, m.read()?))
+  }
+}
+impl MessageWrite for SocketAddrV6 {
+  fn write(&self, m: &mut MessageWriter) -> Result<(), WriteError> {
+    m.write(self.ip())?;
+    m.write(&self.port())?;
+    m.write(&self.flowinfo())?;
+    m.write(&self.scope_id())?;
+    Ok(())
+  }
+}
+impl MessageRead for Ipv4Addr {
+  fn read(m: &mut MessageReader) -> Result<Self, ReadError> {
+    // 4 8-bit numbers
+    Ok(Ipv4Addr::new(m.read()?, m.read()?, m.read()?, m.read()?))
+  }
+}
+impl MessageWrite for Ipv4Addr {
+  fn write(&self, m: &mut MessageWriter) -> Result<(), WriteError> {
+    // 4 8-bit numbers
+    for oct in self.octets() {
+      m.write(&oct)?;
+    }
+    Ok(())
+  }
+}
+impl MessageRead for Ipv6Addr {
+  fn read(m: &mut MessageReader) -> Result<Self, ReadError> {
+    // 8 16-bit numbers
+    Ok(Ipv6Addr::new(
+      m.read()?,
+      m.read()?,
+      m.read()?,
+      m.read()?,
+      m.read()?,
+      m.read()?,
+      m.read()?,
+      m.read()?,
+    ))
+  }
+}
+impl MessageWrite for Ipv6Addr {
+  fn write(&self, m: &mut MessageWriter) -> Result<(), WriteError> {
+    // 8 16-bit numbers
+    for seg in self.segments() {
+      m.write(&seg)?;
+    }
+    Ok(())
+  }
 }

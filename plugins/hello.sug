@@ -17,6 +17,9 @@ fn init(sc) {
   c = Command::new("getblock", handle_getblock)
   c.add_arg_block_pos("pos")
   sc.add_command(c)
+
+  c = Command::new("join", handle_join)
+  sc.add_command(c)
 }
 
 fn handle_setblock(sc, player, args) {
@@ -34,6 +37,11 @@ fn handle_getblock(sc, player, args) {
   c.add("block: ")
   c.add(player.world().get_kind(args[1]).to_s())
   player.send_message(c)
+}
+
+fn handle_join(sc, player, args) {
+  // args[0] is `join`
+  player.switch_to("localhost:25566")
 }
 
 fn on_block_place(sc, player, pos, kind) {

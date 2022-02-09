@@ -1,8 +1,12 @@
 use super::{add_from, chat::SlChat, world::SlWorld, wrap};
 use crate::player::Player;
 use sc_common::util::Chat;
-use std::sync::Arc;
-use sugarlang::{define_ty, runtime::Var};
+use std::{net::SocketAddr, sync::Arc};
+use sugarlang::{
+  define_ty,
+  parse::token::Span,
+  runtime::{RuntimeError, Var},
+};
 
 wrap!(Arc<Player>, SlPlayer);
 
@@ -51,4 +55,14 @@ impl SlPlayer {
   /// Returns the world this player is in. This can be used to get/set
   /// blocks, access other players, and modify entities.
   pub fn world(&self) -> SlWorld { self.inner.world().clone().into() }
+
+  /// Switches the player to a new server. If the server is found, the player
+  /// will be disconnected after this call. If the server is not found, an error
+  /// will be returned.
+  pub fn switch_to(&self, ip: &str) -> Result<(), RuntimeError> {
+    // TODO: Span::call_site()
+    let ip: SocketAddr = ip.parse().map_err(|e| RuntimeError::custom(ip, Span::default()))?;
+    self.inner.switch_to(ip);
+    Ok(())
+  }
 }

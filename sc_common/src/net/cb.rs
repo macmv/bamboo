@@ -3,6 +3,7 @@ use crate::{
   math::{ChunkPos, Pos},
   util::{GameMode, UUID},
 };
+use std::net::SocketAddr;
 
 #[derive(Debug, Clone, sc_macros::Transfer)]
 #[non_exhaustive]
@@ -140,6 +141,13 @@ pub enum Packet {
     z:     f64,
     yaw:   i8,
     pitch: i8,
+  },
+  /// A special packet. This will cause the proxy to start moving this player to
+  /// a new server. If the new server accepts the connection, the proxy will
+  /// simply disconnect the player from the old server. If the connection
+  /// failed, then a `sb::SwitchServerFailed` packet will be sent to the server.
+  SwitchServer {
+    ip: SocketAddr,
   },
   UnloadChunk {
     pos: ChunkPos,

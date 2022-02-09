@@ -13,7 +13,8 @@ use sc_common::{
 };
 use std::{
   f64::consts,
-  fmt,
+  fmt, io,
+  net::SocketAddr,
   sync::{Arc, Mutex, MutexGuard},
   time::Instant,
 };
@@ -327,6 +328,16 @@ impl Player {
     let _ = mode;
     todo!()
   }
+
+  /// Sends a server switch packet to the proxy. If the ip address is valid, the
+  /// proxy will move this player and disconnect them from this server. If the
+  /// `ip` is invalid, the proxy will log an error, and the player will not be
+  /// moved.
+  ///
+  /// Because this is all over the network, the player can be disconnected at
+  /// any time. If the `ip` was a badd address, or the server refused to accept
+  /// the connection, the packet `SwitchServerFailed` will be sent back to us.
+  pub fn switch_to(&self, ip: SocketAddr) { self.send(cb::Packet::SwitchServer { ip }); }
 }
 
 impl CommandSender for Player {

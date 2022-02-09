@@ -95,7 +95,7 @@ fn t_enum(
           #(
             #variant_read
           )*
-          v => panic!("unknown packet id {}", v),
+          v => panic!("unknown enum id {}", v),
         })
       }
     }
