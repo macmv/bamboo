@@ -107,7 +107,7 @@ pub(crate) fn handle(wm: &Arc<WorldManager>, player: &Arc<Player>, p: sb::Packet
     }
     // Just contains on_ground
     sb::Packet::PlayerOnGround { .. } => {}
-    _ => warn!("got unknown packet from client: {:?}", p),
+    _ => warn!("unknown packet: {:?}", p),
   }
 }
 
