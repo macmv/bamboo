@@ -5,9 +5,11 @@ use crate::{
 };
 use std::net::SocketAddr;
 
-#[derive(Debug, Clone, sc_macros::Transfer)]
+#[sc_macros::transfer]
+#[derive(Debug, Clone)]
 #[non_exhaustive]
 pub enum Packet {
+  #[id = 0]
   Abilities {
     invulnerable: bool,
     flying:       bool,
@@ -157,7 +159,8 @@ pub enum Packet {
   },
 }
 
-#[derive(Debug, Clone, sc_macros::Transfer)]
+#[sc_macros::transfer]
+#[derive(Debug, Clone)]
 pub struct CommandNode {
   /// The type. This is `flags & 0x03`.
   pub ty:         CommandType,
@@ -182,14 +185,16 @@ pub struct CommandNode {
   pub suggestion: Option<String>,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, sc_macros::Transfer)]
+#[sc_macros::transfer]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum CommandType {
   Root,
   Literal,
   Argument,
 }
 
-#[derive(Debug, Clone, sc_macros::Transfer)]
+#[sc_macros::transfer]
+#[derive(Debug, Clone)]
 pub enum PlayerListAction {
   Add(Vec<PlayerListAdd>),
   UpdateGameMode(Vec<PlayerListGameMode>),
@@ -202,7 +207,8 @@ pub enum PlayerListAction {
 /// players see ingame. This is also how the client knows what skin to display
 /// for each client. If this is not sent, the client will not spawn a player if
 /// they receive a SpawnPlayer packet.
-#[derive(Debug, Clone, sc_macros::Transfer)]
+#[sc_macros::transfer]
+#[derive(Debug, Clone)]
 pub struct PlayerListAdd {
   /// Player's UUID.
   pub id:           UUID,
@@ -217,28 +223,32 @@ pub struct PlayerListAdd {
 }
 
 /// See [`PlayerListAdd`]
-#[derive(Debug, Clone, sc_macros::Transfer)]
+#[sc_macros::transfer]
+#[derive(Debug, Clone)]
 pub struct PlayerListGameMode {
   pub id:        UUID,
   pub game_mode: GameMode,
 }
 
 /// See [`PlayerListAdd`]
-#[derive(Debug, Clone, sc_macros::Transfer)]
+#[sc_macros::transfer]
+#[derive(Debug, Clone)]
 pub struct PlayerListLatency {
   pub id:   UUID,
   pub ping: i32,
 }
 
 /// See [`PlayerListAdd`]
-#[derive(Debug, Clone, sc_macros::Transfer)]
+#[sc_macros::transfer]
+#[derive(Debug, Clone)]
 pub struct PlayerListDisplay {
   pub id:           UUID,
   pub display_name: Option<String>,
 }
 
 /// See [`PlayerListAdd`]
-#[derive(Debug, Clone, sc_macros::Transfer)]
+#[sc_macros::transfer]
+#[derive(Debug, Clone)]
 pub struct PlayerListRemove {
   pub id: UUID,
 }

@@ -59,7 +59,8 @@ pub fn read_varint(buf: &[u8]) -> (i32, isize) {
   (res, total_read)
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, sc_macros::Transfer)]
+#[sc_macros::transfer]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Hand {
   Main,
   Off,
@@ -82,7 +83,8 @@ impl Hand {
   }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, sc_macros::Transfer)]
+#[sc_macros::transfer]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub enum GameMode {
   Survival,
   Creative,

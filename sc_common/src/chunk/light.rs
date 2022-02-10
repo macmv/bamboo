@@ -12,15 +12,20 @@ pub trait LightPropagator {
   fn propagate_all<P: LightPropagator, S: Section>(light: &mut LightChunk<P>, chunk: &Chunk<S>);
 }
 
-#[derive(Debug, Clone, sc_macros::Transfer)]
+#[sc_macros::transfer]
+#[derive(Debug, Clone)]
 pub struct LightChunk<P: LightPropagator> {
+  #[id = 0]
   sections: Vec<Option<LightSection>>,
+  #[id = 1]
   marker:   PhantomData<P>,
 }
 
-#[derive(Debug, Clone, sc_macros::Transfer)]
+#[sc_macros::transfer]
+#[derive(Debug, Clone)]
 pub struct LightSection {
-  /// 2048 bytes, each representing 2 blocks.
+  // 2048 bytes, each representing 2 blocks.
+  #[id = 0]
   data: Vec<u8>,
 }
 

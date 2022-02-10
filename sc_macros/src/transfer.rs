@@ -1,204 +1,30 @@
 use proc_macro::TokenStream;
-use proc_macro2::TokenStream as TokenStream2;
-use quote::{quote, ToTokens};
-
-use syn::{
-  braced, parenthesized,
-  parse::{Parse, ParseStream, Result},
-  parse_macro_input,
-  punctuated::Punctuated,
-  token, Generics, Ident, LitInt, Token, Type, Visibility,
-};
-
-#[derive(Debug)]
-enum TransferInput {
-  Struct(Struct),
-  Enum(Enum),
-}
-
-#[derive(Debug)]
-struct Struct {
-  vis:      Visibility,
-  strct:    Token![struct],
-  name:     Ident,
-  generics: Generics,
-  brace:    token::Brace,
-  fields:   Punctuated<Field, Token![,]>,
-}
-#[derive(Debug)]
-struct Enum {
-  vis:      Visibility,
-  strct:    Token![enum],
-  name:     Ident,
-  generics: Generics,
-  brace:    token::Brace,
-  variants: Punctuated<Variant, Token![,]>,
-}
-#[derive(Debug)]
-struct Variant {
-  name: Ident,
-  data: VariantData,
-}
-#[derive(Debug)]
-enum VariantData {
-  None,
-  Tuple { paren: token::Paren, fields: Punctuated<Type, Token![,]> },
-  Struct { brace: token::Brace, fields: Punctuated<Field, Token![,]> },
-}
-#[derive(Debug)]
-struct Field {
-  // Here is where we parse something different:
-  // ```
-  // struct Foo {
-  //   0 -> a: i32,
-  //   1 -> b: String,
-  //   2 -> c: (u8, u8),
-  // }
-  // ```
-  //
-  // The number is the ID of each field. This allows for forwards compatibility when we update the
-  // proxy (but not the servers in the back).
-  number: LitInt,
-  arrow:  Token![->],
-  name:   Ident,
-  colon:  Token![:],
-  ty:     Type,
-}
-
-impl Parse for TransferInput {
-  fn parse(input: ParseStream) -> Result<Self> {
-    /*
-    let mut attrs = input.call(Attribute::parse_outer)?;
-    let ahead = input.fork();
-    let vis: Visibility = input.parse()?;
-    */
-    if input.peek(Token![struct]) {
-      input.parse().map(TransferInput::Struct)
-    } else {
-      input.parse().map(TransferInput::Enum)
-    }
-  }
-}
-
-impl Parse for Struct {
-  fn parse(input: ParseStream) -> Result<Self> {
-    let content;
-    Ok(Struct {
-      vis:      input.parse()?,
-      strct:    input.parse()?,
-      name:     input.parse()?,
-      generics: input.parse()?,
-      brace:    braced!(content in input),
-      fields:   content.parse_terminated(Field::parse)?,
-    })
-  }
-}
-impl Parse for Enum {
-  fn parse(input: ParseStream) -> Result<Self> {
-    let content;
-    Ok(Enum {
-      vis:      input.parse()?,
-      strct:    input.parse()?,
-      name:     input.parse()?,
-      generics: input.parse()?,
-      brace:    braced!(content in input),
-      variants: content.parse_terminated(Variant::parse)?,
-    })
-  }
-}
-impl Parse for Variant {
-  fn parse(input: ParseStream) -> Result<Self> {
-    Ok(Variant { name: input.parse()?, data: input.parse()? })
-  }
-}
-impl Parse for VariantData {
-  fn parse(input: ParseStream) -> Result<Self> {
-    Ok(if input.peek(token::Paren) {
-      let content;
-      VariantData::Tuple {
-        paren:  parenthesized!(content in input),
-        fields: content.parse_terminated(Type::parse)?,
-      }
-    } else if input.peek(token::Brace) {
-      let content;
-      VariantData::Struct {
-        brace:  braced!(content in input),
-        fields: content.parse_terminated(Field::parse)?,
-      }
-    } else {
-      VariantData::None
-    })
-  }
-}
-impl Parse for Field {
-  fn parse(input: ParseStream) -> Result<Self> {
-    Ok(Field {
-      number: input.parse()?,
-      arrow:  input.parse()?,
-      name:   input.parse()?,
-      colon:  input.parse()?,
-      ty:     input.parse()?,
-    })
-  }
-}
-
-impl ToTokens for TransferInput {
-  fn to_tokens(&self, tokens: &mut TokenStream2) {
-    match self {
-      Self::Struct(s) => s.to_tokens(tokens),
-      Self::Enum(e) => e.to_tokens(tokens),
-    }
-  }
-}
-impl ToTokens for Struct {
-  fn to_tokens(&self, tokens: &mut TokenStream2) {
-    self.vis.to_tokens(tokens);
-    self.strct.to_tokens(tokens);
-    self.name.to_tokens(tokens);
-    self.generics.to_tokens(tokens);
-    self.brace.surround(tokens, |tokens| self.fields.to_tokens(tokens));
-  }
-}
-impl ToTokens for Enum {
-  fn to_tokens(&self, tokens: &mut TokenStream2) {
-    self.vis.to_tokens(tokens);
-    self.strct.to_tokens(tokens);
-    self.name.to_tokens(tokens);
-    self.generics.to_tokens(tokens);
-    self.brace.surround(tokens, |tokens| self.variants.to_tokens(tokens));
-  }
-}
-impl ToTokens for Variant {
-  fn to_tokens(&self, tokens: &mut TokenStream2) {
-    self.name.to_tokens(tokens);
-    self.data.to_tokens(tokens);
-  }
-}
-impl ToTokens for VariantData {
-  fn to_tokens(&self, tokens: &mut TokenStream2) {
-    match self {
-      Self::None => {}
-      Self::Tuple { paren, fields } => {
-        paren.surround(tokens, |tokens| fields.to_tokens(tokens));
-      }
-      Self::Struct { brace, fields } => {
-        brace.surround(tokens, |tokens| fields.to_tokens(tokens));
-      }
-    }
-  }
-}
-impl ToTokens for Field {
-  fn to_tokens(&self, tokens: &mut TokenStream2) {
-    self.name.to_tokens(tokens);
-    self.colon.to_tokens(tokens);
-    self.ty.to_tokens(tokens);
-  }
-}
+use quote::quote;
+use syn::{parse_macro_input, Item};
 
 pub fn transfer(input: TokenStream) -> TokenStream {
-  let args = parse_macro_input!(input as TransferInput);
+  let mut args = parse_macro_input!(input as Item);
 
-  quote!(#args).into()
+  match &mut args {
+    Item::Struct(s) => {
+      for f in &mut s.fields {
+        f.attrs.clear();
+      }
+    }
+    Item::Enum(e) => {
+      for v in &mut e.variants {
+        v.attrs.clear();
+        for f in &mut v.fields {
+          f.attrs.clear();
+        }
+      }
+    }
+    _ => unimplemented!(),
+  }
+
+  let out = quote!(#args);
+
+  out.into()
   /*
   match args {
     TransferInput::Enum(en) => t_enum(args.ident, args.generics, en.variants),

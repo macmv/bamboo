@@ -3,7 +3,8 @@ use crate::{
   util::{Face, Hand, Item},
 };
 
-#[derive(Debug, Clone, sc_macros::Transfer)]
+#[sc_macros::transfer]
+#[derive(Debug, Clone)]
 #[non_exhaustive]
 pub enum Packet {
   BlockDig {
@@ -63,7 +64,8 @@ pub enum Packet {
   },
 }
 
-#[derive(Debug, Clone, sc_macros::Transfer)]
+#[sc_macros::transfer]
+#[derive(Debug, Clone)]
 pub enum DigStatus {
   Start,
   Cancel,
