@@ -1,24 +1,48 @@
 use proc_macro::TokenStream;
-use quote::quote;
-use syn::{parse_macro_input, Item};
+use quote::{quote, quote_spanned};
+use syn::{
+  parse::{ParseStream, Parser, Result},
+  parse_macro_input,
+  spanned::Spanned,
+  Attribute, Item, LitInt, Token,
+};
 
 pub fn transfer(input: TokenStream) -> TokenStream {
   let mut args = parse_macro_input!(input as Item);
 
   match &mut args {
     Item::Struct(s) => {
+      let mut ids = vec![];
       for f in &mut s.fields {
-        for (i, a) in f.attrs.clone().iter().enumerate() {
-          if a.path.get_ident().map(|i| i == "id").unwrap_or(false) {
-            println!("found id: {:?}", a);
-            f.attrs.remove(i);
+        let (idx, id) = match find_id(&f.attrs) {
+          Some(v) => v,
+          None => {
+            return quote_spanned!(
+              f.vis.span().join(f.ty.span()).unwrap() =>
+              compile_error!("all fields must list an id with #[id = 0]");
+            )
+            .into()
           }
-        }
+        };
+        f.attrs.remove(idx);
+        ids.push(id);
       }
     }
     Item::Enum(e) => {
+      let mut ids = vec![];
       for v in &mut e.variants {
-        v.attrs.clear();
+        let (idx, id) = match find_id(&v.attrs) {
+          Some(v) => v,
+          None => {
+            return quote_spanned!(
+              v.ident.span() =>
+              compile_error!("all fields must list an id with #[id = 0]");
+            )
+            .into()
+          }
+        };
+        v.attrs.remove(idx);
+        ids.push(id);
         for f in &mut v.fields {
           f.attrs.clear();
         }
@@ -36,6 +60,25 @@ pub fn transfer(input: TokenStream) -> TokenStream {
     TransferInput::Struct(s) => t_struct(args.ident, args.generics, s.fields),
   }
   */
+}
+
+fn parse_id(input: ParseStream) -> Result<u32> {
+  let _: Token![=] = input.parse()?;
+  let lit: LitInt = input.parse()?;
+  lit.base10_parse()
+}
+
+fn find_id(attrs: &[Attribute]) -> Option<(usize, u32)> {
+  for (i, a) in attrs.iter().enumerate() {
+    if a.path.get_ident().map(|i| i == "id").unwrap_or(false) {
+      let id = match parse_id.parse2(a.tokens.clone()) {
+        Ok(v) => v,
+        Err(_) => continue,
+      };
+      return Some((i, id));
+    }
+  }
+  None
 }
 
 /*
