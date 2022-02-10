@@ -31,14 +31,14 @@ impl Error for WriteError {}
 pub trait ToTcp {
   fn to_tcp<S: PacketStream + Send + Sync>(
     self,
-    conn: &Conn<S>,
+    conn: &mut Conn<S>,
   ) -> Result<SmallVec<[GPacket; 2]>, WriteError>;
 }
 
 impl ToTcp for Packet {
   fn to_tcp<S: PacketStream + Send + Sync>(
     self,
-    conn: &Conn<S>,
+    conn: &mut Conn<S>,
   ) -> Result<SmallVec<[GPacket; 2]>, WriteError> {
     let ver = conn.ver();
 

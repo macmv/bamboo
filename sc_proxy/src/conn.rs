@@ -256,8 +256,8 @@ impl<'a, S: PacketStream + Send + Sync> Conn<'a, S> {
               format!("while reading packet got error: {}", err),
             )
           })?;
-          let packets = common.to_tcp(self).unwrap();
           let parsed = m.index();
+          let packets = common.to_tcp(self).unwrap();
           if len as usize != parsed {
             return Err(io::Error::new(
               io::ErrorKind::InvalidData,
