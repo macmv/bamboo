@@ -111,7 +111,8 @@ impl GameMode {
   }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, sc_macros::Transfer)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[sc_macros::transfer]
 pub enum Face {
   Bottom,
   Top,

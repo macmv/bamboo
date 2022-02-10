@@ -13,5 +13,7 @@ pub fn protocol_version(_args: TokenStream, input: TokenStream) -> TokenStream {
   protocol_version::protocol_version(input)
 }
 
-#[proc_macro_derive(Transfer)]
-pub fn transfer(input: TokenStream) -> TokenStream { transfer::transfer(input) }
+#[proc_macro_attribute]
+pub fn transfer(_args: TokenStream, input: TokenStream) -> TokenStream {
+  transfer::transfer(input.into()).into()
+}
