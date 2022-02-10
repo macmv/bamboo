@@ -1,4 +1,4 @@
-use super::zag;
+use super::{zag, Header};
 
 use std::{error::Error, fmt};
 
@@ -90,6 +90,10 @@ impl MessageReader<'_> {
   {
     T::read(self)
   }
+
+  /// Reads a 3 bit header for a new field. The `u8` returned is the remaining
+  /// bits, shifted right by 3. So this `u8` will only have 5 bits of data set.
+  pub fn read_header(&mut self) -> Result<(Header, u8)> { Ok((Header::None, 0)) }
 
   /// Reads a single boolean from the buffer. Any byte that is non-zero is
   /// interpreted as true. We want to avoid error checking as much as possible,

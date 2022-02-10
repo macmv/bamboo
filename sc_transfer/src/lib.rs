@@ -15,6 +15,13 @@
 //!
 //! # Message Format
 //!
+//! Each message starts with a 3 bit header. This header tells the reader how to
+//! find the length of the following fields. Note that this doesn't include
+//! information about signed/unsigned integers. The 3 bit header's purpose is
+//! only to determine the length of the following data. See [`Header`].
+//!
+//!
+//!
 //! Messages are encoded using one of three methods: fixed field encoding,
 //! varible field encoding, and varible data encoding.
 //!
@@ -41,6 +48,80 @@ mod write;
 
 pub use read::{MessageRead, MessageReader, ReadError};
 pub use write::{MessageWrite, MessageWriter, WriteError};
+
+/// This is a 3 bit header for every field. For example, if I write a `u8`, a 3
+/// bit [`VarInt`] header will be written, with the actual data following that.
+/// This tells the reading side how to parse this message. This also allows for
+/// forwards compatibility, where one side of a connection updates their spec.
+///
+/// [`VarInt`] is also used to encode all integers, including bytes. This is so
+/// that all small number only take up one byte (including the header).
+///
+/// [`VarInt`] doesn't specify the sign of the number. This is because we
+/// read/write everyting as an unsigned number, and then use zigzag
+/// encoding/decoding after the fact. It is up to the reader to determine if it
+/// is expecting a signed or unsigned number.
+///
+/// [`VarInt`]: Header::VarInt
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Header {
+  /// The 5 bits following this header contain no data. This is a placeholder
+  /// for things like missing struct fields, or enum variants with no data.
+  None,
+  /// The next 5 bits are used as the LSB of a varint. If the highest bit is
+  /// set, then the next byte will also be used to store the byte. This
+  /// helps a lot with small numbers, whose value usually only needs a few bits.
+  VarInt,
+  /// The next 5 bits are not used. The next 4 bytes are read as a 32-bit float.
+  Float,
+  /// The next 5 bits are not used. The next 8 bytes are read as a 64-bit
+  /// double.
+  Double,
+  /// The next 5 bits (and following bytes) are used in the same way as
+  /// `VarInt`, to specify the number of fields that follows. A message is then
+  /// parsed for every following field. If a field is removed, a `None` header
+  /// will be inserted to signify that there is a missing field.
+  ///
+  /// This is essentially a `VarInt` which specifies the length for an array of
+  /// fields.
+  Struct,
+  /// The next 5 bits (and following bytes) are used in the same was as
+  /// `VarInt`, to specify which enum variant follows. After this, a single
+  /// field is read, which will specify what data this enum variant stores.
+  ///
+  /// The `VarInt` that this reads is less useful for a reader who doesn't know
+  /// the original message format. However, it makes a reader that is expecting
+  /// a certain format much more correct.
+  Enum,
+}
+
+impl Header {
+  /// Returns the Header for this 3 bit ID. `None` will be returned for any
+  /// value that outside `0..6`.
+  pub fn from_id(id: u8) -> Option<Header> {
+    Some(match id {
+      0x00 => Self::None,
+      0x01 => Self::VarInt,
+      0x02 => Self::Float,
+      0x03 => Self::Double,
+      0x04 => Self::Struct,
+      0x05 => Self::Enum,
+      _ => return None,
+    })
+  }
+
+  /// Returns the 3 bit ID for this header. This is used when writing a message.
+  pub fn id(&self) -> u8 {
+    match self {
+      Self::None => 0x00,
+      Self::VarInt => 0x01,
+      Self::Float => 0x02,
+      Self::Double => 0x03,
+      Self::Struct => 0x04,
+      Self::Enum => 0x05,
+    }
+  }
+}
 
 /// Encodes the number using zig zag encoding. See the [trait](ZigZag) docs
 /// for more.
