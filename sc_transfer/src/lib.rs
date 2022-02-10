@@ -123,6 +123,20 @@ impl Header {
   }
 }
 
+/// This contains the data following any `Header`. This isn't very useful,
+/// unless you are reading a message without any spec. If you have a spec,
+/// prefer the individual `read_*` functions instead, as these will do things
+/// like zig-zag encoding/decoding for you.
+#[derive(Debug, Clone)]
+pub enum Message {
+  None,
+  VarInt(u64),
+  Float(f32),
+  Double(f64),
+  Struct(Vec<Message>),
+  Enum(u64, Box<Message>),
+}
+
 /// Encodes the number using zig zag encoding. See the [trait](ZigZag) docs
 /// for more.
 #[inline(always)]
