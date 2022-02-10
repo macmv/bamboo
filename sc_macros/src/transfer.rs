@@ -8,7 +8,12 @@ pub fn transfer(input: TokenStream) -> TokenStream {
   match &mut args {
     Item::Struct(s) => {
       for f in &mut s.fields {
-        f.attrs.clear();
+        for (i, a) in f.attrs.clone().iter().enumerate() {
+          if a.path.get_ident().map(|i| i == "id").unwrap_or(false) {
+            println!("found id: {:?}", a);
+            f.attrs.remove(i);
+          }
+        }
       }
     }
     Item::Enum(e) => {
