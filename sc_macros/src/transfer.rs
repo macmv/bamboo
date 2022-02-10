@@ -43,15 +43,26 @@ pub fn transfer(input: TokenStream) -> TokenStream {
         };
         v.attrs.remove(idx);
         ids.push(id);
+        /*
         for f in &mut v.fields {
           f.attrs.clear();
         }
+        */
       }
     }
     _ => unimplemented!(),
   }
 
-  let out = quote!(#args);
+  let out = quote! {
+    #args
+
+    impl sc_transfer::MessageRead for #ty {
+      fn read(&self, m: &mut sc_transfer::MessageReader) -> Result<Self, sc_transfer::ReadError> {
+        let ty = flags | 0x07;
+        let num_fields = flags >> 2;
+      }
+    }
+  };
 
   out.into()
   /*

@@ -35,6 +35,15 @@ impl fmt::Display for ReadError {
   }
 }
 
+// TODO:
+// Types:
+// 0x00 => byte (signed or unsigned)
+// 0x01 => int (signed or unsigned), varint encoded
+// 0x02 => float
+// 0x03 => double
+// 0x04 => struct
+// 0x05 => enum
+
 impl Error for ReadError {}
 
 /// A trait for anything that can be read from a MessageReader.
