@@ -1,4 +1,4 @@
-use super::{zig, Header, Message};
+use super::{zig, Header};
 
 use std::{error::Error, fmt};
 

@@ -1,4 +1,4 @@
-use super::{zag, Header, Message};
+use super::{zag, Header};
 
 use std::{error::Error, fmt, string::FromUtf8Error};
 
@@ -30,7 +30,7 @@ pub enum ValidReadError {
   /// Returned if an enum variant is invalid. This likely means we are reading
   /// an enum variant from a newer client, so we should just ignore this and
   /// continue reading.
-  InvalidVariant(u64, Header),
+  InvalidVariant(u64),
   /// This happens if we try to read a specific field, and get a different type.
   /// Everything was valid on the wire, so this is recoverable.
   ///
@@ -69,8 +69,8 @@ impl fmt::Display for ValidReadError {
   fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
     match self {
       Self::InvalidUtf8(e) => write!(f, "invalid utf8: {}", e),
-      Self::InvalidVariant(variant, msg) => {
-        write!(f, "invalid variant: {variant} (data: {msg:?})")
+      Self::InvalidVariant(variant) => {
+        write!(f, "invalid variant: {variant}")
       }
       Self::WrongMessage(m, header) => {
         write!(f, "got message {m:?}, expected message {header:?}")
@@ -215,38 +215,6 @@ impl MessageReader<'_> {
     Ok((Header::from_id(val & 0x07).ok_or(InvalidReadError::InvalidHeader(val & 0x07))?, val >> 3))
   }
 
-  /// Reads any message. This will return an error if the buffer doesn't have
-  /// enough bytes, or if the header is invalid.
-  ///
-  /// Avoid this if possible. If a struct is read, this will simply return a
-  /// list of `Message`s, which is harder to work with. If you are expecting a
-  /// certain type, [`read`](Self::read) will be much more effective.
-  ///
-  /// This returns an `InvalidResult`, as any error from this function means the
-  /// [`MessageReader`] is now in an invalid state.
-  pub fn read_any<'a>(&'a mut self) -> InvalidResult<Message<'a>> {
-    let (header, extra) = self.read_header()?;
-    Ok(match header {
-      Header::None => Message::None,
-      Header::VarInt => Message::VarInt(self.read_varint(extra)?),
-      Header::Float => Message::Float(self.read_float()?),
-      Header::Double => Message::Double(self.read_double()?),
-      Header::Struct => {
-        let num_fields = self.read_varint(extra)?;
-        let mut fields = Vec::with_capacity(num_fields as usize);
-        for _ in 0..num_fields {
-          fields.push(self.read_any()?);
-        }
-        Message::Struct(fields)
-      }
-      Header::Enum => Message::Enum(self.read_varint(extra)?, Box::new(self.read_any()?)),
-      Header::Bytes => {
-        let len = self.read_varint(extra)? as usize;
-        Message::Bytes(self.read_buf(len)?)
-      }
-    })
-  }
-
   /// Advances past the given number of fields. This is faster than calling
   /// [`read_any`] repeatedly, as we don't allocate at all.
   pub fn skip_fields(&mut self, fields: u64) -> InvalidResult<()> {
@@ -386,7 +354,7 @@ macro_rules! read_unsigned {
     /// - If the header read is not a `VarInt`, a [`ValidReadError::WrongMessage`]
     ///   is returned.
     pub fn $reader(&mut self) -> Result<$ret> {
-      self.read_any()?.into_varint()?.try_into().map_err(|_| InvalidReadError::VarIntTooLong.into())
+      self.read_u64()?.try_into().map_err(|_| InvalidReadError::VarIntTooLong.into())
     }
   };
 }
@@ -402,8 +370,7 @@ macro_rules! read_signed {
     ///   is returned.
     pub fn $reader(&mut self) -> Result<$ret> {
       self
-        .read_any()?
-        .into_varint()?
+        .read_u64()?
         .try_into()
         .map_err(|_| InvalidReadError::VarIntTooLong.into())
         .map(|v| zag(v))
@@ -413,13 +380,20 @@ macro_rules! read_signed {
 
 impl MessageReader<'_> {
   /// Reads a single field. If this is not a `None` field, this returns a
-  /// [`ReadError::WrongMessage`] error.
-  pub fn read_none(&mut self) -> Result<()> { self.read_any()?.into_none().map_err(Into::into) }
+  /// [`ValidReadError::WrongMessage`] error.
+  pub fn read_none(&mut self) -> Result<()> {
+    let (header, _) = self.read_header()?;
+    if header != Header::None {
+      Err(ValidReadError::WrongMessage(header, Header::None).into())
+    } else {
+      Ok(())
+    }
+  }
 
   /// Reads a field. The field must be a `VarInt`, and the value must not be
   /// larger than 1. This field (including the header) will always use 1 byte.
   pub fn read_bool(&mut self) -> Result<bool> {
-    let num = self.read_any()?.into_varint()?;
+    let num = self.read_u64()?;
     if num == 0 {
       Ok(false)
     } else if num == 1 {
@@ -432,7 +406,17 @@ impl MessageReader<'_> {
   read_unsigned!(read_u8, u8);
   read_unsigned!(read_u16, u16);
   read_unsigned!(read_u32, u32);
-  read_unsigned!(read_u64, u64);
+  /// Reads a `u64` from the internal buffer. This will read a header, and
+  /// return a [`ValidReadError::WrongMessage`] error if it is another type.
+  /// This will then read the remaining bytes of the varint.
+  pub fn read_u64(&mut self) -> Result<u64> {
+    let (header, extra) = self.read_header()?;
+    if header != Header::VarInt {
+      Err(ValidReadError::WrongMessage(header, Header::VarInt).into())
+    } else {
+      self.read_varint(extra).map_err(Into::into)
+    }
+  }
 
   read_signed!(read_i8, i8);
   read_signed!(read_i16, i16);
@@ -441,10 +425,24 @@ impl MessageReader<'_> {
 
   /// Reads a float. This will return an error if the header read is not a
   /// `Float` header.
-  pub fn read_f32(&mut self) -> Result<f32> { self.read_any()?.into_float().map_err(Into::into) }
+  pub fn read_f32(&mut self) -> Result<f32> {
+    let (header, extra) = self.read_header()?;
+    if header != Header::VarInt {
+      Err(ValidReadError::WrongMessage(header, Header::Float).into())
+    } else {
+      self.read_float().map_err(Into::into)
+    }
+  }
   /// Reads a double. This will return an error if the header read is not a
   /// `Double` header.
-  pub fn read_f64(&mut self) -> Result<f64> { self.read_any()?.into_double().map_err(Into::into) }
+  pub fn read_f64(&mut self) -> Result<f64> {
+    let (header, extra) = self.read_header()?;
+    if header != Header::VarInt {
+      Err(ValidReadError::WrongMessage(header, Header::Double).into())
+    } else {
+      self.read_double().map_err(Into::into)
+    }
+  }
 
   /// Reads a struct. This will return an error if the header read is not a
   /// `Struct` header, or if any of the fields of the struct are invalid.
@@ -464,12 +462,13 @@ impl MessageReader<'_> {
           max_fields,
         })
       }
-      _ => {
+      m => {
         // We must keep the buffer at a valid state, so we undo the `read_header` call
-        // above.
+        // above. We also want to skip this field (whatever it might be), so that the
+        // next call can get the next field.
         self.undo_read_byte();
-        let msg = self.read_any()?;
-        Err(ValidReadError::WrongMessage(msg.header(), Header::Struct).into())
+        self.skip_field()?;
+        Err(ValidReadError::WrongMessage(m, Header::Struct).into())
       }
     }
   }
@@ -494,28 +493,34 @@ impl MessageReader<'_> {
               max_fields,
             })
           }
-          _ => {
+          m => {
             // We must keep the buffer at a valid state, so we undo the `read_header` call
             // above.
             self.undo_read_byte();
-            let msg = self.read_any()?;
-            Err(ValidReadError::WrongMessage(msg.header(), Header::Struct).into())
+            self.skip_field()?;
+            Err(ValidReadError::WrongMessage(m, Header::Struct).into())
           }
         }
       }
-      _ => {
+      m => {
         // We must keep the buffer at a valid state, so we undo the `read_header` call
         // above.
         self.undo_read_byte();
-        let msg = self.read_any()?;
-        Err(ValidReadError::WrongMessage(msg.header(), Header::Enum).into())
+        self.skip_field()?;
+        Err(ValidReadError::WrongMessage(m, Header::Enum).into())
       }
     }
   }
   /// Reads a byte array. If the header is not a `Bytes` header, this will
-  /// return an error.
+  /// return a [`ValidReadError::WrongMessage`] error.
   pub fn read_bytes(&mut self) -> Result<&[u8]> {
-    self.read_any()?.into_bytes().map_err(Into::into)
+    let (header, extra) = self.read_header()?;
+    if header != Header::VarInt {
+      Err(ValidReadError::WrongMessage(header, Header::Bytes).into())
+    } else {
+      let len = self.read_varint(extra)?;
+      self.read_buf(len as usize).map_err(Into::into)
+    }
   }
 }
 
@@ -533,7 +538,7 @@ impl StructReader<'_> {
     }
     self.current_field += 1;
     while self.current_field <= field {
-      self.reader.read_any()?;
+      self.reader.skip_field()?;
       if self.current_field >= self.max_fields {
         return Ok(T::default());
       }
@@ -558,10 +563,7 @@ impl EnumReader<'_> {
   /// Returns an error that should be generated when the enum variant is
   /// invalid.
   pub fn invalid_variant(&mut self) -> ReadError {
-    match self.reader.read_any() {
-      Ok(m) => ValidReadError::InvalidVariant(self.variant, m.header()).into(),
-      Err(e) => e.into(),
-    }
+    ValidReadError::InvalidVariant(self.variant).into()
   }
 
   /// Reads a single field.
@@ -577,7 +579,7 @@ impl EnumReader<'_> {
     }
     self.current_field += 1;
     while self.current_field <= field {
-      self.reader.read_any()?;
+      self.reader.skip_field()?;
       if self.current_field >= self.max_fields {
         return Ok(T::default());
       }
