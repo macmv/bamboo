@@ -434,7 +434,11 @@ impl StructReader<'_, '_> {
     if field >= self.max_fields {
       Ok(T::default())
     } else {
-      T::read(self.reader)
+      match T::read(self.reader) {
+        Ok(v) => Ok(v),
+        Err(ReadError::Valid(_)) => Ok(T::default()),
+        Err(ReadError::Invalid(e)) => Err(ReadError::Invalid(e)),
+      }
     }
   }
 }
@@ -443,42 +447,42 @@ impl StructReader<'_, '_> {
 mod tests {
   use super::*;
 
+  #[derive(Debug, Clone, PartialEq)]
+  struct EmptyStruct {}
+  impl StructRead for EmptyStruct {
+    fn read_struct(_m: &mut StructReader) -> Result<Self> { Ok(EmptyStruct {}) }
+  }
+  #[derive(Debug, Clone, PartialEq)]
+  struct IntStruct {
+    a: i32,
+    b: u8,
+  }
+  impl StructRead for IntStruct {
+    fn read_struct(m: &mut StructReader) -> Result<Self> {
+      Ok(IntStruct { a: m.read(0)?, b: m.read(1)? })
+    }
+  }
+  #[derive(Debug, Clone, PartialEq)]
+  enum SampleEnum {
+    A,
+    B,
+    C,
+    D,
+  }
+  impl EnumRead for SampleEnum {
+    fn read_enum(variant: u64, field: Message) -> Result<Self> {
+      Ok(match variant {
+        0 => Self::A,
+        1 => Self::B,
+        2 => Self::C,
+        3 => Self::D,
+        _ => return Err(ValidReadError::InvalidVariant(variant, field).into()),
+      })
+    }
+  }
+
   #[test]
   fn simple() {
-    #[derive(Debug, Clone, PartialEq)]
-    struct EmptyStruct {}
-    impl StructRead for EmptyStruct {
-      fn read_struct(_m: &mut StructReader) -> Result<Self> { Ok(EmptyStruct {}) }
-    }
-    #[derive(Debug, Clone, PartialEq)]
-    struct IntStruct {
-      a: i32,
-      b: u8,
-    }
-    impl StructRead for IntStruct {
-      fn read_struct(m: &mut StructReader) -> Result<Self> {
-        Ok(IntStruct { a: m.read(0)?, b: m.read(1)? })
-      }
-    }
-    #[derive(Debug, Clone, PartialEq)]
-    enum SampleEnum {
-      A,
-      B,
-      C,
-      D,
-    }
-    impl EnumRead for SampleEnum {
-      fn read_enum(variant: u64, field: Message) -> Result<Self> {
-        Ok(match variant {
-          0 => Self::A,
-          1 => Self::B,
-          2 => Self::C,
-          3 => Self::D,
-          _ => return Err(ValidReadError::InvalidVariant(variant, field).into()),
-        })
-      }
-    }
-
     let msg = [
       // A None
       0b000,
@@ -543,6 +547,33 @@ mod tests {
     assert_eq!(m.read_u16().unwrap(), 256);
     assert!(matches!(m.read_u32().unwrap_err(), ReadError::EOF));
     */
+  }
+
+  #[test]
+  fn missing_fields() {
+    let msg = [
+      // A struct with no fields
+      0b100 | 0 << 3,
+      // A struct with 1 field (a), set to some valid number
+      0b100 | 1 << 3,
+      0b001 | super::super::zig(-2_i8) << 3,
+      // A struct with 1 field (a), set to some invalid field
+      0b100 | 1 << 3,
+      0b000, // none
+      // A struct with 1 field (a), set to some invalid field
+      0b100 | 1 << 3,
+      0b110, // an empty byte array
+      // A struct with 2 fields, with 1 set to some invalid field
+      0b100 | 2 << 3,
+      0b000,          // none
+      0b001 | 3 << 3, // an int
+    ];
+    let mut m = MessageReader::new(&msg);
+    assert_eq!(m.read_struct::<IntStruct>().unwrap(), IntStruct { a: 0, b: 0 });
+    assert_eq!(m.read_struct::<IntStruct>().unwrap(), IntStruct { a: -2, b: 0 });
+    assert_eq!(m.read_struct::<IntStruct>().unwrap(), IntStruct { a: 0, b: 0 });
+    assert_eq!(m.read_struct::<IntStruct>().unwrap(), IntStruct { a: 0, b: 0 });
+    assert_eq!(m.read_struct::<IntStruct>().unwrap(), IntStruct { a: 0, b: 3 });
   }
 
   #[test]
