@@ -19,28 +19,26 @@
 //! find the length of the following fields. Note that this doesn't include
 //! information about signed/unsigned integers. The 3 bit header's purpose is
 //! only to determine the length of the following data. See [`Header`].
-//!
-//!
-//!
-//! Messages are encoded using one of three methods: fixed field encoding,
-//! varible field encoding, and varible data encoding.
-//!
-//! Fixed field encoding is used on `bool`, `i8`, `u8`, `i16`, `u16`, `f32`, and
-//! `f64`. This is used when the field is a certain number of bytes, and it will
-//! never change size. Note that this is more of a general concept of encoding.
-//! Each of the read/write functions here just writes those bytes to the buffer,
-//! without any type of length or type prefix.
-//!
-//! Variable field encoding is used on `i32`, `u32`, `i64`, and `u64`. This
-//! means that the field will only use a certain number of bytes depending on
-//! how large it is. So a value of 0 will only use 1 byte, while a value of 500
-//! uses 2 bytes. This uses varint encoding internally. See below for the
-//! details on how varints are encoded. The signed versions (`i32` and `i64`)
-//! are encoded after being [zig-zag](ZigZag) encoded.
-//!
-//! Variable data encoding is used for strings and byte arrays. This will write
-//! the length of the data as a `u32` into the buffer, and the copy the data in
-//! after that.
+
+// Messages are encoded using one of three methods: fixed field encoding,
+// varible field encoding, and varible data encoding.
+//
+// Fixed field encoding is used on `bool`, `i8`, `u8`, `i16`, `u16`, `f32`, and
+// `f64`. This is used when the field is a certain number of bytes, and it will
+// never change size. Note that this is more of a general concept of encoding.
+// Each of the read/write functions here just writes those bytes to the buffer,
+// without any type of length or type prefix.
+//
+// Variable field encoding is used on `i32`, `u32`, `i64`, and `u64`. This
+// means that the field will only use a certain number of bytes depending on
+// how large it is. So a value of 0 will only use 1 byte, while a value of 500
+// uses 2 bytes. This uses varint encoding internally. See below for the
+// details on how varints are encoded. The signed versions (`i32` and `i64`)
+// are encoded after being [zig-zag](ZigZag) encoded.
+//
+// Variable data encoding is used for strings and byte arrays. This will write
+// the length of the data as a `u32` into the buffer, and the copy the data in
+// after that.
 
 mod generics;
 mod read;
@@ -93,6 +91,9 @@ pub enum Header {
   /// the original message format. However, it makes a reader that is expecting
   /// a certain format much more correct.
   Enum,
+  /// Similar to `Struct`. A `VarInt` is read using the next 5 bits (and
+  /// following bytes). This number is the number of bytes that follows.
+  Bytes,
 }
 
 impl Header {
@@ -106,6 +107,7 @@ impl Header {
       0x03 => Self::Double,
       0x04 => Self::Struct,
       0x05 => Self::Enum,
+      0x06 => Self::Bytes,
       _ => return None,
     })
   }
@@ -119,6 +121,7 @@ impl Header {
       Self::Double => 0x03,
       Self::Struct => 0x04,
       Self::Enum => 0x05,
+      Self::Bytes => 0x06,
     }
   }
 }
@@ -135,6 +138,52 @@ pub enum Message {
   Double(f64),
   Struct(Vec<Message>),
   Enum(u64, Box<Message>),
+  Bytes(Vec<u8>),
+}
+
+impl Message {
+  pub fn into_none(self) -> Result<(), ReadError> {
+    match self {
+      Message::None => Ok(()),
+      m => Err(ReadError::WrongMessage(m, Header::None)),
+    }
+  }
+  pub fn into_varint(self) -> Result<u64, ReadError> {
+    match self {
+      Message::VarInt(num) => Ok(num),
+      m => Err(ReadError::WrongMessage(m, Header::VarInt)),
+    }
+  }
+  pub fn into_float(self) -> Result<f32, ReadError> {
+    match self {
+      Message::Float(num) => Ok(num),
+      m => Err(ReadError::WrongMessage(m, Header::Float)),
+    }
+  }
+  pub fn into_double(self) -> Result<f64, ReadError> {
+    match self {
+      Message::Double(num) => Ok(num),
+      m => Err(ReadError::WrongMessage(m, Header::Double)),
+    }
+  }
+  pub fn into_struct(self) -> Result<Vec<Message>, ReadError> {
+    match self {
+      Message::Struct(fields) => Ok(fields),
+      m => Err(ReadError::WrongMessage(m, Header::Struct)),
+    }
+  }
+  pub fn into_enum(self) -> Result<(u64, Message), ReadError> {
+    match self {
+      Message::Enum(variant, field) => Ok((variant, *field)),
+      m => Err(ReadError::WrongMessage(m, Header::Enum)),
+    }
+  }
+  pub fn into_bytes(self) -> Result<Vec<u8>, ReadError> {
+    match self {
+      Message::Bytes(bytes) => Ok(bytes),
+      m => Err(ReadError::WrongMessage(m, Header::Enum)),
+    }
+  }
 }
 
 /// Encodes the number using zig zag encoding. See the [trait](ZigZag) docs
@@ -195,6 +244,24 @@ pub trait ZigZag {
   /// Decodes the number using zig zag encoding. See the [trait](ZigZag) docs
   /// for more.
   fn zag(n: Self::Unsigned) -> Self;
+}
+
+impl ZigZag for i8 {
+  type Unsigned = u8;
+
+  #[inline(always)]
+  fn zig(n: i8) -> u8 { ((n << 1) ^ (n >> 7)) as u8 }
+  #[inline(always)]
+  fn zag(n: u8) -> i8 { (n >> 1) as i8 ^ -((n & 1) as i8) }
+}
+
+impl ZigZag for i16 {
+  type Unsigned = u16;
+
+  #[inline(always)]
+  fn zig(n: i16) -> u16 { ((n << 1) ^ (n >> 15)) as u16 }
+  #[inline(always)]
+  fn zag(n: u16) -> i16 { (n >> 1) as i16 ^ -((n & 1) as i16) }
 }
 
 impl ZigZag for i32 {

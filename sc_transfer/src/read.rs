@@ -1,6 +1,6 @@
 use super::{zag, Header, Message};
 
-use std::{error::Error, fmt};
+use std::{error::Error, fmt, string::FromUtf8Error};
 
 type Result<T> = std::result::Result<T, ReadError>;
 
@@ -19,7 +19,7 @@ pub enum ReadError {
   /// reading the right field, so we should fail.
   InvalidBufLength,
   /// This happens if we read a string, and its not valid UTF8.
-  InvalidUTF8,
+  InvalidUtf8(FromUtf8Error),
   /// This happens if the 3 bit header is invalid.
   InvalidHeader(u8),
   /// This happens if we try to read a specific field, and get a different type.
@@ -33,7 +33,7 @@ impl fmt::Display for ReadError {
     match self {
       Self::VarIntTooLong => write!(f, "failed to read field: varint was too long"),
       Self::InvalidBufLength => write!(f, "failed to read field: buffer was too long"),
-      Self::InvalidUTF8 => write!(f, "failed to read field: invalid utf8 string"),
+      Self::InvalidUtf8(e) => write!(f, "failed to read field: invalid utf8 string: {}", e),
       Self::InvalidHeader(header) => {
         write!(f, "failed to read field: invalid header {header:#x}")
       }
@@ -43,6 +43,10 @@ impl fmt::Display for ReadError {
       Self::EOF => write!(f, "failed to read field: eof reached"),
     }
   }
+}
+
+impl From<FromUtf8Error> for ReadError {
+  fn from(e: FromUtf8Error) -> Self { ReadError::InvalidUtf8(e) }
 }
 
 // TODO:
@@ -56,10 +60,24 @@ impl fmt::Display for ReadError {
 
 impl Error for ReadError {}
 
-/// A trait for anything that can be read from a MessageReader.
+/// A trait for anything that can be read from a [`MessageReader`].
 pub trait MessageRead {
   /// Reads a value of Self from the reader.
   fn read(reader: &mut MessageReader) -> Result<Self>
+  where
+    Self: Sized;
+}
+/// A trait for any struct that can be read from a [`MessageReader`].
+pub trait StructRead {
+  /// Reads a value of Self from the given struct fields.
+  fn read_struct(fields: Vec<Message>) -> Result<Self>
+  where
+    Self: Sized;
+}
+/// A trait for any enum that can be read from a [`MessageReader`].
+pub trait EnumRead {
+  /// Reads a value of Self from the given variant and message.
+  fn read_enum(variant: u64, field: Message) -> Result<Self>
   where
     Self: Sized;
 }
@@ -122,6 +140,10 @@ impl MessageReader<'_> {
         )
       }
       Header::Enum => Message::Enum(self.read_varint(extra)?, Box::new(self.read_any()?)),
+      Header::Bytes => {
+        let len = self.read_varint(extra)? as usize;
+        Message::Bytes(self.read_buf(len)?)
+      }
     })
   }
 
@@ -191,126 +213,99 @@ impl MessageReader<'_> {
     Ok(f64::from_bits(n))
   }
 
-  /// Reads a single boolean from the buffer. Any byte that is non-zero is
-  /// interpreted as true. We want to avoid error checking as much as possible,
-  /// so it is fine to ignore a value that is not 1 here.
-  pub fn read_bool(&mut self) -> Result<bool> { Ok(self.read_u8()? != 0) }
-
-  /// Reads a field, and makes sure that it is a `VarInt`.
-  ///
-  /// Errors:
-  /// - If there are no remaining bytes, a [`ReadError::EOF`] is returned.
-  /// - If the header read is not a `VarInt`, a [`ReadError::InvalidHeader`] is
-  ///   returned.
-  /// - If the varint parsed is too large, then a [`ReadError::VarIntTooLong`]
-  ///   is returned.
-  pub fn read_u8(&mut self) -> Result<u8> {
-    match self.read_any()? {
-      Message::VarInt(num) => num.try_into().map_err(|_| ReadError::VarIntTooLong),
-      m => Err(ReadError::WrongMessage(m, Header::VarInt)),
-    }
-  }
-  /// Reads an unsigned 16 bit integer from the internal buffer. Since 3 bytes
-  /// is much larger than 2 bytes, a variable-length integer wouldn't make much
-  /// sense. So, this is always encoded as 2 bytes.
-  pub fn read_u16(&mut self) -> Result<u16> {
-    Ok(self.read_u8()? as u16 | (self.read_u8()? as u16) << 8)
-  }
-  /// Reads an unsigned 32 bit integer from the internal buffer. 5 bytes is not
-  /// much more than 4, so this is encoded as a variable length integer.
-  pub fn read_u32(&mut self) -> Result<u32> {
-    let mut out = 0;
-    let mut i = 0;
-    let mut v;
-    loop {
-      v = self.read_u8()?;
-      let done = v & 0x80 == 0;
-      out |= ((v as u32) & !0x80) << i * 7;
-      if done {
-        break;
-      }
-      i += 1;
-      // This is only 5 bytes because 32 / 7 = 4.57
-      if i >= 5 {
-        return Err(ReadError::VarIntTooLong);
-      }
-    }
-    Ok(out)
-  }
-  /// Reads an unsigned 64 bit integer from the internal buffer. 10 bytes is not
-  /// much more than 8, so this is encoded as a variable length integer.
-  pub fn read_u64(&mut self) -> Result<u64> {
-    let mut out = 0;
-    let mut i = 0;
-    let mut v;
-    loop {
-      v = self.read_u8()?;
-      let done = v & 0x80 == 0;
-      out |= ((v as u64) & !0x80) << i * 7;
-      if done {
-        break;
-      }
-      i += 1;
-      // This is not 9 bytes, because 64 / 7 = 9.14, so we need 10 bytes of space
-      if i >= 10 {
-        return Err(ReadError::VarIntTooLong);
-      }
-    }
-    Ok(out)
-  }
-  /// Reads a single signed byte from the internal buffer.
-  pub fn read_i8(&mut self) -> Result<i8> { Ok(self.read_u8()? as i8) }
-  /// Reads a signed 16 bit integer from the internal buffer. Since 3 bytes
-  /// is much larger than 2 bytes, a variable-length integer wouldn't make much
-  /// sense. So, this is always encoded as 2 bytes.
-  pub fn read_i16(&mut self) -> Result<i16> { Ok(self.read_u16()? as i16) }
-  /// Reads a signed 32 bit integer from the internal buffer. This reads a u32,
-  /// and then decodes it with zig zag encoding.
-  pub fn read_i32(&mut self) -> Result<i32> { Ok(zag(self.read_u32()?)) }
-  /// Reads a signed 64 bit integer from the internal buffer. This reads a u64,
-  /// and then decodes it with zig zag encoding.
-  pub fn read_i64(&mut self) -> Result<i64> { Ok(zag(self.read_u64()?)) }
-  /// Reads a 32 bit float from the internal buffer. This will always read 4
-  /// bytes.
-  pub fn read_f32(&mut self) -> Result<f32> {
-    let n = self.read_u8()? as u32
-      | (self.read_u8()? as u32) << 8
-      | (self.read_u8()? as u32) << 16
-      | (self.read_u8()? as u32) << 24;
-    Ok(f32::from_bits(n))
-  }
-  /// Reads a 64 bit float from the internal buffer. This will always read 8
-  /// bytes.
-  pub fn read_f64(&mut self) -> Result<f64> {
-    let n = self.read_u8()? as u64
-      | (self.read_u8()? as u64) << 8
-      | (self.read_u8()? as u64) << 16
-      | (self.read_u8()? as u64) << 24
-      | (self.read_u8()? as u64) << 32
-      | (self.read_u8()? as u64) << 40
-      | (self.read_u8()? as u64) << 48
-      | (self.read_u8()? as u64) << 56;
-    Ok(f64::from_bits(n))
-  }
-  /// Reads the given number of bytes. This does not write a length prefix.
-  pub fn read_bytes(&mut self, len: usize) -> Result<Vec<u8>> {
+  /// Reads the given number of bytes from the buffer.
+  fn read_buf(&mut self, len: usize) -> Result<Vec<u8>> {
     if self.idx + len > self.data.len() {
-      return Err(ReadError::InvalidBufLength);
+      Err(ReadError::InvalidBufLength)
+    } else {
+      let out = self.data[self.idx..self.idx + len].to_vec();
+      self.idx += len;
+      Ok(out)
     }
-    let out = self.data[self.idx..self.idx + len].to_vec();
-    self.idx += len;
-    Ok(out)
   }
-  /// Reads a length prefixed buffer.
-  pub fn read_buf(&mut self) -> Result<Vec<u8>> {
-    let len = self.read_u32()? as usize;
-    self.read_bytes(len)
+}
+
+macro_rules! read_unsigned {
+  ( $reader:ident, $ret:ty ) => {
+    /// Reads a field, and makes sure that it is an 8 bit integer.
+    ///
+    /// Errors:
+    /// - If there are no remaining bytes, a [`ReadError::EOF`] is returned.
+    /// - If the header read is not a `VarInt`, a [`ReadError::WrongMessage`] is
+    ///   returned.
+    /// - If the varint parsed is too large, then a [`ReadError::VarIntTooLong`] is
+    ///   returned.
+    pub fn $reader(&mut self) -> Result<$ret> {
+      self.read_any()?.into_varint()?.try_into().map_err(|_| ReadError::VarIntTooLong)
+    }
+  };
+}
+macro_rules! read_signed {
+  ( $reader:ident, $ret:ty ) => {
+    /// Reads a field, and makes sure that it is an 8 bit integer.
+    ///
+    /// Errors:
+    /// - If there are no remaining bytes, a [`ReadError::EOF`] is returned.
+    /// - If the header read is not a `VarInt`, a [`ReadError::WrongMessage`] is
+    ///   returned.
+    /// - If the varint parsed is too large, then a [`ReadError::VarIntTooLong`] is
+    ///   returned.
+    pub fn $reader(&mut self) -> Result<$ret> {
+      self
+        .read_any()?
+        .into_varint()?
+        .try_into()
+        .map_err(|_| ReadError::VarIntTooLong)
+        .map(|v| zag(v))
+    }
+  };
+}
+
+impl MessageReader<'_> {
+  /// Reads a single field. If this is not a `None` field, this returns a
+  /// [`ReadError::WrongMessage`] error.
+  pub fn read_none(&mut self) -> Result<()> { self.read_any()?.into_none() }
+
+  /// Reads a field. The field must be a `VarInt`, and the value must not be
+  /// larger than 1. This field (including the header) will always use 1 byte.
+  pub fn read_bool(&mut self) -> Result<bool> {
+    let num = self.read_any()?.into_varint()?;
+    if num == 0 {
+      Ok(false)
+    } else if num == 1 {
+      Ok(true)
+    } else {
+      Err(ReadError::VarIntTooLong)
+    }
   }
-  /// Reads a length prefixed string.
-  pub fn read_str(&mut self) -> Result<String> {
-    let buf = self.read_buf()?;
-    Ok(String::from_utf8(buf).map_err(|_| ReadError::InvalidUTF8)?)
+
+  read_unsigned!(read_u8, u8);
+  read_unsigned!(read_u16, u16);
+  read_unsigned!(read_u32, u32);
+  read_unsigned!(read_u64, u64);
+
+  read_signed!(read_i8, i8);
+  read_signed!(read_i16, i16);
+  read_signed!(read_i32, i32);
+  read_signed!(read_i64, i64);
+
+  /// Reads a float. This will return an error if the header read is not a
+  /// `Float` header.
+  pub fn read_f32(&mut self) -> Result<f32> { self.read_any()?.into_float() }
+  /// Reads a double. This will return an error if the header read is not a
+  /// `Double` header.
+  pub fn read_f64(&mut self) -> Result<f64> { self.read_any()?.into_double() }
+
+  pub fn read_struct<S: StructRead>(&mut self) -> Result<S> {
+    S::read_struct(self.read_any()?.into_struct()?)
   }
+  pub fn read_enum<E: EnumRead>(&mut self) -> Result<E> {
+    let (variant, field) = self.read_any()?.into_enum()?;
+    E::read_enum(variant, field)
+  }
+  /// Reads a byte array. If the header is not a `Bytes` header, this will
+  /// return an error.
+  pub fn read_bytes(&mut self) -> Result<Vec<u8>> { self.read_any()?.into_bytes() }
 }
 
 #[cfg(test)]
@@ -367,7 +362,7 @@ mod tests {
   fn bytes() {
     let mut m = MessageReader::new(b"hello");
     assert_eq!(m.index(), 0);
-    assert_eq!(&m.read_bytes(5).unwrap(), b"hello");
+    assert_eq!(&m.read_bytes().unwrap(), b"hello");
     assert_eq!(m.index(), 5);
   }
 }

@@ -30,7 +30,9 @@ num_impl!(f32, read_f32, write_f32);
 num_impl!(f64, read_f64, write_f64);
 
 impl MessageRead for String {
-  fn read(m: &mut MessageReader) -> Result<Self, ReadError> { m.read_str() }
+  fn read(m: &mut MessageReader) -> Result<Self, ReadError> {
+    String::from_utf8(m.read_bytes()?).map_err(Into::into)
+  }
 }
 impl MessageWrite for String {
   fn write(&self, m: &mut MessageWriter) -> Result<(), WriteError> { m.write_str(self) }
