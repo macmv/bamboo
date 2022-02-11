@@ -142,46 +142,46 @@ pub enum Message {
 }
 
 impl Message {
-  pub fn into_none(self) -> Result<(), ReadError> {
+  pub fn into_none(self) -> Result<(), ValidReadError> {
     match self {
       Message::None => Ok(()),
-      m => Err(ValidReadError::WrongMessage(m, Header::None).into()),
+      m => Err(ValidReadError::WrongMessage(m, Header::None)),
     }
   }
-  pub fn into_varint(self) -> Result<u64, ReadError> {
+  pub fn into_varint(self) -> Result<u64, ValidReadError> {
     match self {
       Message::VarInt(num) => Ok(num),
-      m => Err(ValidReadError::WrongMessage(m, Header::VarInt).into()),
+      m => Err(ValidReadError::WrongMessage(m, Header::VarInt)),
     }
   }
-  pub fn into_float(self) -> Result<f32, ReadError> {
+  pub fn into_float(self) -> Result<f32, ValidReadError> {
     match self {
       Message::Float(num) => Ok(num),
-      m => Err(ValidReadError::WrongMessage(m, Header::Float).into()),
+      m => Err(ValidReadError::WrongMessage(m, Header::Float)),
     }
   }
-  pub fn into_double(self) -> Result<f64, ReadError> {
+  pub fn into_double(self) -> Result<f64, ValidReadError> {
     match self {
       Message::Double(num) => Ok(num),
-      m => Err(ValidReadError::WrongMessage(m, Header::Double).into()),
+      m => Err(ValidReadError::WrongMessage(m, Header::Double)),
     }
   }
-  pub fn into_struct(self) -> Result<Vec<Message>, ReadError> {
+  pub fn into_struct(self) -> Result<Vec<Message>, ValidReadError> {
     match self {
       Message::Struct(fields) => Ok(fields),
-      m => Err(ValidReadError::WrongMessage(m, Header::Struct).into()),
+      m => Err(ValidReadError::WrongMessage(m, Header::Struct)),
     }
   }
-  pub fn into_enum(self) -> Result<(u64, Message), ReadError> {
+  pub fn into_enum(self) -> Result<(u64, Message), ValidReadError> {
     match self {
       Message::Enum(variant, field) => Ok((variant, *field)),
-      m => Err(ValidReadError::WrongMessage(m, Header::Enum).into()),
+      m => Err(ValidReadError::WrongMessage(m, Header::Enum)),
     }
   }
-  pub fn into_bytes(self) -> Result<Vec<u8>, ReadError> {
+  pub fn into_bytes(self) -> Result<Vec<u8>, ValidReadError> {
     match self {
       Message::Bytes(bytes) => Ok(bytes),
-      m => Err(ValidReadError::WrongMessage(m, Header::Enum).into()),
+      m => Err(ValidReadError::WrongMessage(m, Header::Enum)),
     }
   }
 }

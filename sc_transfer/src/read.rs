@@ -3,6 +3,7 @@ use super::{zag, Header, Message};
 use std::{error::Error, fmt, string::FromUtf8Error};
 
 type Result<T> = std::result::Result<T, ReadError>;
+type InvalidResult<T> = std::result::Result<T, InvalidReadError>;
 
 /// An error while reading a field. This can happen if the end of the internal
 /// buffer is reached, or if a varint has too many bytes.
@@ -206,7 +207,7 @@ impl MessageReader<'_> {
   ///
   /// This is private, as the caller can break the state of this reader if they
   /// do not handle the result correctly.
-  fn read_header(&mut self) -> Result<(Header, u8)> {
+  fn read_header(&mut self) -> InvalidResult<(Header, u8)> {
     let val = self.read_byte()?;
     Ok((Header::from_id(val & 0x07).ok_or(InvalidReadError::InvalidHeader(val & 0x07))?, val >> 3))
   }
@@ -217,7 +218,10 @@ impl MessageReader<'_> {
   /// Avoid this if possible. If a struct is read, this will simply return a
   /// list of `Message`s, which is harder to work with. If you are expecting a
   /// certain type, [`read`](Self::read) will be much more effective.
-  pub fn read_any(&mut self) -> Result<Message> {
+  ///
+  /// This returns an `InvalidResult`, as any error from this function means the
+  /// [`MessageReader`] is now in an invalid state.
+  pub fn read_any(&mut self) -> InvalidResult<Message> {
     let (header, extra) = self.read_header()?;
     Ok(match header {
       Header::None => Message::None,
@@ -227,7 +231,7 @@ impl MessageReader<'_> {
       Header::Struct => {
         let num_fields = self.read_varint(extra)?;
         Message::Struct(
-          (0..num_fields).into_iter().map(|_| self.read_any()).collect::<Result<_>>()?,
+          (0..num_fields).into_iter().map(|_| self.read_any()).collect::<InvalidResult<_>>()?,
         )
       }
       Header::Enum => Message::Enum(self.read_varint(extra)?, Box::new(self.read_any()?)),
@@ -242,9 +246,9 @@ impl MessageReader<'_> {
   /// read the entire buffer.
   ///
   /// This is private, as this is doesn't read a `Header`.
-  fn read_byte(&mut self) -> Result<u8> {
+  fn read_byte(&mut self) -> InvalidResult<u8> {
     if self.idx >= self.data.len() {
-      Err(InvalidReadError::EOF.into())
+      Err(InvalidReadError::EOF)
     } else {
       self.idx += 1;
       Ok(self.data[self.idx - 1])
@@ -254,7 +258,7 @@ impl MessageReader<'_> {
   /// the 5th bit (0x10) is not set, this will not read anything.
   ///
   /// This is private, as this is doesn't read a `Header`.
-  fn read_varint(&mut self, header: u8) -> Result<u64> {
+  fn read_varint(&mut self, header: u8) -> InvalidResult<u64> {
     if header & 0x10 == 0 {
       return Ok(header.into());
     }
@@ -272,7 +276,7 @@ impl MessageReader<'_> {
       i += 1;
       // (64 - 5) / 7 = 8.42, so we need 9 bytes of space
       if i >= 9 {
-        return Err(InvalidReadError::VarIntTooLong.into());
+        return Err(InvalidReadError::VarIntTooLong);
       }
     }
     Ok(out)
@@ -281,7 +285,7 @@ impl MessageReader<'_> {
   /// them into a float.
   ///
   /// This is private, as it doesn't read a `Header`.
-  fn read_float(&mut self) -> Result<f32> {
+  fn read_float(&mut self) -> InvalidResult<f32> {
     let n = self.read_byte()? as u32
       | (self.read_byte()? as u32) << 8
       | (self.read_byte()? as u32) << 16
@@ -292,7 +296,7 @@ impl MessageReader<'_> {
   /// them into a double.
   ///
   /// This is private, as it doesn't read a `Header`.
-  fn read_double(&mut self) -> Result<f64> {
+  fn read_double(&mut self) -> InvalidResult<f64> {
     let n = self.read_byte()? as u64
       | (self.read_byte()? as u64) << 8
       | (self.read_byte()? as u64) << 16
@@ -305,7 +309,7 @@ impl MessageReader<'_> {
   }
 
   /// Reads the given number of bytes from the buffer.
-  fn read_buf(&mut self, len: usize) -> Result<Vec<u8>> {
+  fn read_buf(&mut self, len: usize) -> InvalidResult<Vec<u8>> {
     if self.idx + len > self.data.len() {
       Err(InvalidReadError::InvalidBufLength.into())
     } else {
@@ -355,7 +359,7 @@ macro_rules! read_signed {
 impl MessageReader<'_> {
   /// Reads a single field. If this is not a `None` field, this returns a
   /// [`ReadError::WrongMessage`] error.
-  pub fn read_none(&mut self) -> Result<()> { self.read_any()?.into_none() }
+  pub fn read_none(&mut self) -> Result<()> { self.read_any()?.into_none().map_err(Into::into) }
 
   /// Reads a field. The field must be a `VarInt`, and the value must not be
   /// larger than 1. This field (including the header) will always use 1 byte.
@@ -382,10 +386,10 @@ impl MessageReader<'_> {
 
   /// Reads a float. This will return an error if the header read is not a
   /// `Float` header.
-  pub fn read_f32(&mut self) -> Result<f32> { self.read_any()?.into_float() }
+  pub fn read_f32(&mut self) -> Result<f32> { self.read_any()?.into_float().map_err(Into::into) }
   /// Reads a double. This will return an error if the header read is not a
   /// `Double` header.
-  pub fn read_f64(&mut self) -> Result<f64> { self.read_any()?.into_double() }
+  pub fn read_f64(&mut self) -> Result<f64> { self.read_any()?.into_double().map_err(Into::into) }
 
   /// Reads a struct. This will return an error if the header read is not a
   /// `Struct` header, or if any of the fields of the struct are invalid.
@@ -411,7 +415,9 @@ impl MessageReader<'_> {
   }
   /// Reads a byte array. If the header is not a `Bytes` header, this will
   /// return an error.
-  pub fn read_bytes(&mut self) -> Result<Vec<u8>> { self.read_any()?.into_bytes() }
+  pub fn read_bytes(&mut self) -> Result<Vec<u8>> {
+    self.read_any()?.into_bytes().map_err(Into::into)
+  }
 }
 
 impl StructReader<'_, '_> {
@@ -428,10 +434,7 @@ impl StructReader<'_, '_> {
     }
     self.current_field += 1;
     while self.current_field <= field {
-      match self.reader.read_none() {
-        Ok(_) | Err(ReadError::Valid(_)) => {}
-        Err(ReadError::Invalid(e)) => return Err(e.into()),
-      }
+      self.reader.read_any()?;
       if self.current_field >= self.max_fields {
         return Ok(T::default());
       }
