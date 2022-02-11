@@ -168,8 +168,10 @@ pub struct StructReader<'a> {
 /// Wrapper around a partially parsed enum. This is the enum equivalent of
 /// [`StructReader`].
 pub struct EnumReader<'a> {
-  reader:  MessageReader<'a>,
-  variant: u64,
+  reader:        MessageReader<'a>,
+  variant:       u64,
+  current_field: u64,
+  max_fields:    u64,
 }
 
 impl MessageReader<'_> {
@@ -480,15 +482,30 @@ impl MessageReader<'_> {
     match header {
       Header::Enum => {
         let variant = self.read_varint(extra)?;
-        let start_idx = self.idx;
-        // Advance out `self.idx` ahead to the end of this struct, before passing it to
-        // `read_struct`. This ensures that we stay in a valid state, even if the
-        // StructReader is dropped before reading all fields.
-        self.skip_field()?;
-        E::read_enum(EnumReader {
-          reader: MessageReader { data: self.data, idx: start_idx },
-          variant,
-        })
+        let (header, extra) = self.read_header()?;
+        match header {
+          Header::Struct => {
+            let max_fields = self.read_varint(extra)?;
+            let start_idx = self.idx;
+            // Advance out `self.idx` ahead to the end of this struct, before passing it to
+            // `read_struct`. This ensures that we stay in a valid state, even if the
+            // StructReader is dropped before reading all fields.
+            self.skip_fields(max_fields)?;
+            E::read_enum(EnumReader {
+              reader: MessageReader { data: self.data, idx: start_idx },
+              variant,
+              current_field: 0,
+              max_fields,
+            })
+          }
+          _ => {
+            // We must keep the buffer at a valid state, so we undo the `read_header` call
+            // above.
+            self.undo_read_byte();
+            let msg = self.read_any()?;
+            Err(ValidReadError::WrongMessage(msg, Header::Struct).into())
+          }
+        }
       }
       _ => {
         // We must keep the buffer at a valid state, so we undo the `read_header` call
@@ -552,11 +569,32 @@ impl EnumReader<'_> {
   }
 
   /// Reads a single field.
-  pub fn read<T: Default + MessageRead>(&mut self) -> Result<T> {
-    match T::read(&mut self.reader) {
-      Ok(v) => Ok(v),
-      Err(ReadError::Valid(_)) => Ok(T::default()),
-      Err(ReadError::Invalid(e)) => Err(e.into()),
+  ///
+  /// # Panics
+  /// - If `field` is less than the previous field.
+  pub fn read<T: Default + MessageRead>(&mut self, field: u64) -> Result<T> {
+    if field < self.current_field {
+      panic!(
+        "cannot read field that is < current field: {field} (current_field: {})",
+        self.current_field,
+      );
+    }
+    self.current_field += 1;
+    while self.current_field <= field {
+      self.reader.read_any()?;
+      if self.current_field >= self.max_fields {
+        return Ok(T::default());
+      }
+      self.current_field += 1;
+    }
+    if field >= self.max_fields {
+      Ok(T::default())
+    } else {
+      match T::read(&mut self.reader) {
+        Ok(v) => Ok(v),
+        Err(ReadError::Valid(_)) => Ok(T::default()),
+        Err(ReadError::Invalid(e)) => Err(e.into()),
+      }
     }
   }
 }
@@ -604,6 +642,22 @@ mod tests {
         1 => Self::B,
         2 => Self::C,
         3 => Self::D,
+        _ => return Err(m.invalid_variant()),
+      })
+    }
+  }
+  #[derive(Debug, Clone, PartialEq)]
+  enum DataEnum {
+    A,
+    B(i8),
+    C(u8, u8),
+  }
+  impl EnumRead for DataEnum {
+    fn read_enum(mut m: EnumReader) -> Result<Self> {
+      Ok(match m.variant() {
+        0 => Self::A,
+        1 => Self::B(m.read(0)?),
+        2 => Self::C(m.read(0)?, m.read(1)?),
         _ => return Err(m.invalid_variant()),
       })
     }
@@ -715,6 +769,22 @@ mod tests {
     assert_eq!(m.read_struct::<EmptyStruct>().unwrap(), EmptyStruct {});
     let err = m.read_struct::<IntStruct>().unwrap_err();
     assert!(matches!(err, ReadError::Invalid(InvalidReadError::EOF)), "unexpected error {:?}", err);
+  }
+
+  #[test]
+  fn enums() {
+    let msg = [
+      // An enum with no data
+      0b101 | 0 << 3,
+      0b100 | 0 << 3,
+      // An enum storing an int
+      0b101 | 1 << 3,
+      0b100 | 1 << 3,
+      0b001 | super::super::zig(-2_i8) << 3,
+    ];
+    let mut m = MessageReader::new(&msg);
+    assert_eq!(m.read_enum::<DataEnum>().unwrap(), DataEnum::A);
+    assert_eq!(m.read_enum::<DataEnum>().unwrap(), DataEnum::B(-2));
   }
 
   #[test]
