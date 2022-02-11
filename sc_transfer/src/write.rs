@@ -94,6 +94,8 @@ impl MessageWriter<'_> {
   fn write_header(&mut self, header: Header, mut num: u64) -> Result {
     if num >= 16 {
       num |= 0x10;
+    } else {
+      num &= !0x10;
     }
     self.write_byte(header.id() | (num as u8) << 3)
   }
@@ -234,22 +236,22 @@ mod tests {
     assert_eq!(m.index(), 0);
     m.write_u8(0).unwrap();
     assert_eq!(m.index(), 1);
-    m.write_u8(0).unwrap();
+    m.write_u8(1).unwrap();
     assert_eq!(m.index(), 2);
-    m.write_u8(2).unwrap();
+    m.write_u8(15).unwrap();
     assert_eq!(m.index(), 3);
     assert!(matches!(m.write_u8(5).unwrap_err(), WriteError::EOF));
-    assert_eq!(data, [0, 0, 2]);
+    assert_eq!(data, [0b001 | 0 << 3, 0b001 | 1 << 3, 0b001 | 15 << 3]);
 
-    let mut data = [0; 4];
+    let mut data = [0; 3];
     let mut m = MessageWriter::new(&mut data);
     assert_eq!(m.index(), 0);
-    m.write_u16(127).unwrap();
-    assert_eq!(m.index(), 2);
-    m.write_u16(256).unwrap();
-    assert_eq!(m.index(), 4);
+    m.write_u8(1).unwrap();
+    assert_eq!(m.index(), 1);
+    m.write_u8(16).unwrap();
+    assert_eq!(m.index(), 3);
     assert!(matches!(m.write_u8(5).unwrap_err(), WriteError::EOF));
-    assert_eq!(data, [127, 0, 0, 1]);
+    assert_eq!(data, [0b001 | 1 << 3, 0b001 | 0x10 << 3, 1]);
   }
 
   #[test]
