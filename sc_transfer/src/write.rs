@@ -1,4 +1,4 @@
-use super::zig;
+use super::{zig, Header, Message};
 
 use std::{error::Error, fmt};
 
@@ -76,75 +76,112 @@ impl MessageWriter<'_> {
     v.write(self)
   }
 
-  /// Writes a single boolean to the internal buffer.
-  pub fn write_bool(&mut self, v: bool) -> Result {
-    self.write_u8(if v { 1 } else { 0 })?;
-    Ok(())
+  /// Moves the reader back 1 byte. This is used when we read a header, then
+  /// need to read it again. This helps make sure the buffer is always in a
+  /// valid state.
+  ///
+  /// # Panics
+  /// - If the buffer at index 0.
+  fn undo_write_byte(&mut self) {
+    self.idx = self.idx.checked_sub(1).expect("cannot move buffer back 1 (at index 0)");
   }
-  /// Writes a single byte to the internal buffer. Returns an error if the
-  /// writer has reached the end of the buffer.
-  pub fn write_u8(&mut self, v: u8) -> Result {
+
+  /// Writes the 3 bit header, and 5 bits of extra data. The 3 MSB of `extra`
+  /// will be ignored.
+  ///
+  /// This is private, as the caller can break the state of this reader if they
+  /// do not handle the result correctly.
+  fn write_header(&mut self, header: Header, num: u64) -> Result {
+    if num >= 16 {
+      num |= 0x10;
+    }
+    self.write_byte(header.id() | (num as u8) << 3)
+  }
+
+  /// Writes any message. This will return an error if the buffer doesn't have
+  /// enough bytes.
+  ///
+  /// This is fine to use on it's own. [`write`](Self::write) is easier, and
+  /// will write the same headers, but either works.
+  pub fn write_any(&mut self, msg: &Message) -> Result {
+    match msg {
+      Message::None => self.write_header(Header::None, 0),
+      Message::VarInt(num) => {
+        // write_header ignores anything past the 5 LSB
+        self.write_header(Header::VarInt, *num)?;
+        self.write_varint(*num)
+      }
+      Message::Float(num) => {
+        self.write_header(Header::Float, 0)?;
+        self.write_float(*num)
+      }
+      Message::Double(num) => {
+        self.write_header(Header::Double, 0)?;
+        self.write_double(*num)
+      }
+      Message::Struct(fields) => {
+        let num_fields = fields.len() as u64;
+        self.write_header(Header::Struct, num_fields)?;
+        self.write_varint(num_fields)?;
+        for f in fields {
+          self.write_any(f)?;
+        }
+        Ok(())
+      }
+      Message::Enum(variant, field) => {
+        self.write_header(Header::Enum, *variant)?;
+        self.write_varint(*variant)?;
+        self.write_any(field)
+      }
+      Message::Bytes(buf) => {
+        let len = buf.len() as u64;
+        self.write_header(Header::Bytes, len)?;
+        self.write_varint(len)?;
+        self.write_buf(&buf)
+      }
+    }
+  }
+
+  /// Writes a single byte to the buffer. Returns an error if the reader has
+  /// written to the entire buffer.
+  ///
+  /// This is private, as this is doesn't read a `Header`.
+  fn write_byte(&mut self, num: u8) -> Result {
     if self.idx >= self.data.len() {
       Err(WriteError::EOF)
     } else {
-      self.data[self.idx] = v;
+      self.data[self.idx] = num;
       self.idx += 1;
       Ok(())
     }
   }
-  /// Writes an unsigned 16 bit integer from the internal buffer. Since 3 bytes
-  /// is much larger than 2 bytes, a variable-length integer wouldn't make much
-  /// sense. So, this is always encoded as 2 bytes.
-  pub fn write_u16(&mut self, v: u16) -> Result {
-    self.write_u8(v as u8)?;
-    self.write_u8((v >> 8) as u8)?;
-    Ok(())
-  }
-  /// Writes an unsigned 32 bit integer from the internal buffer. 5 bytes is not
-  /// much more than 4, so this is encoded as a variable length integer (the
-  /// smaller the number, then less bytes it uses).
-  pub fn write_u32(&mut self, mut v: u32) -> Result {
+  /// Reads a varint from the buffer. If the number is less than 16, then
+  /// nothing will be written. This assumes the first 5 bits have already been
+  /// written using [`write_header`].
+  ///
+  /// This is private, as this is doesn't read a `Header`.
+  fn write_varint(&mut self, mut v: u64) -> Result {
+    if v < 16 {
+      return Ok(());
+    }
+    v >>= 4; // We wrote 5 bits in [`write_header`], which is only 4 bits of `v`.
+
     loop {
       if v >= 128 {
-        self.write_u8(0x80 | v as u8 & !0x80)?;
+        self.write_byte(0x80 | v as u8 & !0x80)?;
         v >>= 7;
       } else {
-        self.write_u8(v as u8 & !0x80)?;
+        self.write_byte(v as u8 & !0x80)?;
         break;
       }
     }
     Ok(())
   }
-  /// Reads an unsigned 64 bit integer from the internal buffer. 9 bytes is not
-  /// much more than 8, so this is encoded as a variable length integer (the
-  /// smaller the number, then less bytes it uses).
-  pub fn write_u64(&mut self, mut v: u64) -> Result {
-    loop {
-      if v >= 128 {
-        self.write_u8(0x80 | v as u8 & !0x80)?;
-        v >>= 7;
-      } else {
-        self.write_u8(v as u8 & !0x80)?;
-        break;
-      }
-    }
-    Ok(())
-  }
-  /// Writes a single signed byte to the internal buffer.
-  pub fn write_i8(&mut self, v: i8) -> Result { self.write_u8(v as u8) }
-  /// Writes a signed 16 bit integer to the internal buffer. Since 3 bytes
-  /// is much larger than 2 bytes, a variable-length integer wouldn't make much
-  /// sense. So, this is always encoded as 2 bytes.
-  pub fn write_i16(&mut self, v: i16) -> Result { self.write_u16(v as u16) }
-  /// Writes a signed 32 bit integer to the internal buffer. This encodes the
-  /// value with zig zag encoding, and then writes that as a u32.
-  pub fn write_i32(&mut self, v: i32) -> Result { self.write_u32(zig(v)) }
-  /// Writes a signed 64 bit integer to the internal buffer. This encodes the
-  /// value with zig zag encoding, and then writes that as a u64.
-  pub fn write_i64(&mut self, v: i64) -> Result { self.write_u64(zig(v)) }
-  /// Writes a 32 bit float to the internal buffer. This will always write 4
-  /// bytes.
-  pub fn write_f32(&mut self, v: f32) -> Result {
+  /// Writes a float to the buffer. This will simply write the 4 bytes of the
+  /// float.
+  ///
+  /// This is private, as it doesn't read a `Header`.
+  fn write_float(&mut self, v: f32) -> Result {
     let n = v.to_bits();
     self.write_u8(n as u8)?;
     self.write_u8((n >> 8) as u8)?;
@@ -152,9 +189,11 @@ impl MessageWriter<'_> {
     self.write_u8((n >> 24) as u8)?;
     Ok(())
   }
-  /// Reads a 64 bit float from the internal buffer. This will always read 8
+  /// Writes a double to the buffer. This will simply write the double's 8
   /// bytes.
-  pub fn write_f64(&mut self, v: f64) -> Result {
+  ///
+  /// This is private, as it doesn't read a `Header`.
+  fn write_double(&mut self, v: f64) -> Result {
     let n = v.to_bits();
     self.write_u8(n as u8)?;
     self.write_u8((n >> 8) as u8)?;
@@ -166,23 +205,48 @@ impl MessageWriter<'_> {
     self.write_u8((n >> 56) as u8)?;
     Ok(())
   }
-  /// Writes the given bytes. This does not write a length prefix.
-  pub fn write_bytes(&mut self, v: &[u8]) -> Result {
-    if self.idx + v.len() > self.data.len() {
-      return Err(WriteError::BufTooLong);
+
+  /// Writes the given number of bytes from the buffer.
+  fn write_buf(&mut self, buf: &[u8]) -> Result {
+    if self.idx + buf.len() > self.data.len() {
+      Err(WriteError::BufTooLong.into())
+    } else {
+      self.data[self.idx..self.idx + buf.len()].clone_from_slice(buf);
+      self.idx += buf.len();
+      Ok(())
     }
-    self.data[self.idx..self.idx + v.len()].clone_from_slice(v);
-    self.idx += v.len();
+  }
+}
+
+impl MessageWriter<'_> {
+  /// Writes a single boolean to the internal buffer.
+  pub fn write_bool(&mut self, v: bool) -> Result {
+    self.write_u8(if v { 1 } else { 0 })?;
     Ok(())
   }
-  /// Writes a length prefixed buffer.
-  pub fn write_buf(&mut self, v: &[u8]) -> Result {
-    self.write_u32(v.len().try_into().expect("capacity overflow"))?;
-    self.write_bytes(v)?;
-    Ok(())
-  }
-  /// Writes a length prefixed string.
-  pub fn write_str(&mut self, v: &str) -> Result { self.write_buf(v.as_bytes()) }
+  /// Writes a single byte to the internal buffer. Returns an error if the
+  /// writer has reached the end of the buffer.
+  pub fn write_u8(&mut self, v: u8) -> Result { self.write_any(&Message::VarInt(v.into())) }
+  /// Writes an unsigned 16 bit integer to the internal buffer. Returns an error
+  /// if the writer has reached the end of the buffer.
+  pub fn write_u16(&mut self, v: u16) -> Result { self.write_any(&Message::VarInt(v.into())) }
+  /// Writes an unsigned 32 bit integer to the internal buffer. Returns an error
+  /// if the writer has reached the end of the buffer.
+  pub fn write_u32(&mut self, mut v: u32) -> Result { self.write_any(&Message::VarInt(v.into())) }
+  /// Writes an unsigned 64 bit integer to the internal buffer. Returns an error
+  /// if the writer has reached the end of the buffer.
+  pub fn write_u64(&mut self, mut v: u64) -> Result { self.write_any(&Message::VarInt(v.into())) }
+  /// Writes a single signed byte to the internal buffer.
+  pub fn write_i8(&mut self, v: i8) -> Result { self.write_u8(zig(v)) }
+  /// Writes a signed 16 bit integer to the internal buffer.
+  pub fn write_i16(&mut self, v: i16) -> Result { self.write_u16(zig(v)) }
+  /// Writes a signed 32 bit integer to the internal buffer. This encodes the
+  /// value with zig zag encoding, and then writes that as a u32.
+  pub fn write_i32(&mut self, v: i32) -> Result { self.write_u32(zig(v)) }
+  /// Writes a signed 64 bit integer to the internal buffer. This encodes the
+  /// value with zig zag encoding, and then writes that as a u64.
+  pub fn write_i64(&mut self, v: i64) -> Result { self.write_u64(zig(v)) }
+  pub fn write_bytes(&mut self, bytes: &[u8]) -> Result { self.write_any(&Message::Bytes(bytes)) }
 }
 
 #[cfg(test)]
