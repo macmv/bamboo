@@ -143,6 +143,16 @@ impl MessageReader<'_> {
     T::read(self)
   }
 
+  /// Moves the reader back 1 byte. This is used when we read a header, then
+  /// need to read it again. This helps make sure the buffer is always in a
+  /// valid state.
+  ///
+  /// # Panics
+  /// - If the buffer at index 0.
+  fn undo_read_byte(&mut self) {
+    self.idx = self.idx.checked_sub(1).expect("cannot move buffr back 1 (at index 0)");
+  }
+
   /// Reads a 3 bit header for a new field. The `u8` returned is the remaining
   /// bits, shifted right by 3. So this `u8` will only have 5 bits of data set.
   ///
@@ -329,6 +339,8 @@ impl MessageReader<'_> {
   /// `Double` header.
   pub fn read_f64(&mut self) -> Result<f64> { self.read_any()?.into_double() }
 
+  /// Reads a struct. This will return an error if the header read is not a
+  /// `Struct` header, or if any of the fields of the struct are invalid.
   pub fn read_struct<S: StructRead>(&mut self) -> Result<S> {
     let (header, extra) = self.read_header()?;
     match header {
@@ -336,8 +348,13 @@ impl MessageReader<'_> {
         let max_fields = self.read_varint(extra)?;
         S::read_struct(&mut StructReader { reader: self, current_field: 0, max_fields })
       }
-      _ => todo!("return the buffer to a valid state"),
-      // _ => Err(ReadError::WrongMessage(Message::None, header)),
+      _ => {
+        // We must keep the buffer at a valid state, so we undo the `read_header` call
+        // above.
+        self.undo_read_byte();
+        let msg = self.read_any()?;
+        Err(ReadError::WrongMessage(msg, header))
+      }
     }
   }
   pub fn read_enum<E: EnumRead>(&mut self) -> Result<E> {
@@ -383,7 +400,7 @@ mod tests {
     #[derive(Debug, Clone, PartialEq)]
     struct EmptyStruct {}
     impl StructRead for EmptyStruct {
-      fn read_struct(m: &mut StructReader) -> Result<Self> { Ok(EmptyStruct {}) }
+      fn read_struct(_m: &mut StructReader) -> Result<Self> { Ok(EmptyStruct {}) }
     }
     #[derive(Debug, Clone, PartialEq)]
     struct IntStruct {
