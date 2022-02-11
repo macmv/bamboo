@@ -401,7 +401,7 @@ impl MessageReader<'_> {
         // above.
         self.undo_read_byte();
         let msg = self.read_any()?;
-        Err(ValidReadError::WrongMessage(msg, header).into())
+        Err(ValidReadError::WrongMessage(msg, Header::Struct).into())
       }
     }
   }
@@ -587,6 +587,11 @@ mod tests {
       0b100 | 2 << 3,
       0b001 | 2 << 3, // an int
       0b001 | 3 << 3, // an int
+      // A struct with 2 fields (both valid), that will be read by a struct expecting 0 fields
+      // (this makes sure we advance the buffer past all the fields).
+      0b100 | 2 << 3,
+      0b001 | 2 << 3, // an int
+      0b001 | 3 << 3, // an int
     ];
     let mut m = MessageReader::new(&msg);
     assert_eq!(m.read_struct::<IntStruct>().unwrap(), IntStruct { a: 0, b: 0 });
@@ -595,10 +600,9 @@ mod tests {
     assert_eq!(m.read_struct::<IntStruct>().unwrap(), IntStruct { a: 0, b: 0 });
     assert_eq!(m.read_struct::<IntStruct>().unwrap(), IntStruct { a: 0, b: 3 });
     assert_eq!(m.read_struct::<RemovedFieldStruct>().unwrap(), RemovedFieldStruct { a: 2, b: 0 });
-    assert!(matches!(
-      m.read_struct::<IntStruct>().unwrap_err(),
-      ReadError::Invalid(InvalidReadError::EOF)
-    ));
+    assert_eq!(m.read_struct::<EmptyStruct>().unwrap(), EmptyStruct {});
+    let err = m.read_struct::<IntStruct>().unwrap_err();
+    assert!(matches!(err, ReadError::Invalid(InvalidReadError::EOF)), "unexpected error {:?}", err);
   }
 
   #[test]
