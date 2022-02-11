@@ -310,13 +310,13 @@ impl MessageReader<'_> {
       return Ok(header.into());
     }
 
-    let mut out = header as u64;
+    let mut out = header as u64 & 0x0f; // We only want the 4 LSB
     let mut i = 0;
     let mut v;
     loop {
       v = self.read_byte()?;
       let done = v & 0x80 == 0;
-      out |= ((v as u64) & !0x80) << (i * 7 + 5); // We start with 5 bits set
+      out |= ((v as u64) & !0x80) << (i * 7 + 4); // We start with a 5 bit number, so 4 bits are set
       if done {
         break;
       }
@@ -720,35 +720,25 @@ mod tests {
   #[test]
   fn varints() {
     let mut m = MessageReader::new(&[
-      0,        // 0
-      1,        // 1
-      127,      // 127
-      53 | 128, // ..
-      77,       // 53 | 77 << 7
-      0 | 128,  // ..
-      0 | 128,  // ..
-      0,        // 0 (still valid, because checking for validity like this takes too long)
-      0 | 128,  // ..
-      0 | 128,  // ..
-      0 | 128,  // ..
-      0 | 128,  // ..
-      0,        // 0 (still valid, because checking for validity like this takes too long)
-      0 | 128,  // ..
-      0 | 128,  // ..
-      0 | 128,  // ..
-      0 | 128,  // ..
-      0 | 128,  // VarIntTooLong
+      0b001 | 0 << 3,  // 0
+      0b001 | 1 << 3,  // 1
+      0b001 | 15 << 3, // 15
+      0b001 | 16 << 3, // 16
+      1,               // ..
+      0b001 | 31 << 3, // 255
+      15,              // ..
     ]);
-    assert_eq!(m.read_u32().unwrap(), 0);
-    assert_eq!(m.read_u32().unwrap(), 1);
-    assert_eq!(m.read_u32().unwrap(), 127);
-    assert_eq!(m.read_u32().unwrap(), 53 | 77 << 7);
-    assert_eq!(m.read_u32().unwrap(), 0);
-    assert_eq!(m.read_u32().unwrap(), 0);
+    assert_eq!(m.read_u8().unwrap(), 0);
+    assert_eq!(m.read_u8().unwrap(), 1);
+    assert_eq!(m.read_u8().unwrap(), 15);
+    assert_eq!(m.read_u8().unwrap(), 16);
+    assert_eq!(m.read_u8().unwrap(), 255);
+    /*
     assert!(matches!(
       m.read_u32().unwrap_err(),
       ReadError::Invalid(InvalidReadError::VarIntTooLong)
     ));
+    */
     assert!(matches!(m.read_u32().unwrap_err(), ReadError::Invalid(InvalidReadError::EOF)));
   }
 
