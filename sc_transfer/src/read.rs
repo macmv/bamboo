@@ -419,25 +419,31 @@ impl StructReader<'_, '_> {
   ///
   /// # Panics
   /// - The `field` must be larger than the previous field.
-  pub fn read<T: Default + MessageRead>(&mut self, mut field: u64) -> Result<T> {
+  pub fn read<T: Default + MessageRead>(&mut self, field: u64) -> Result<T> {
     if field < self.current_field {
       panic!(
         "cannot read field that is < current field: {field} (current_field: {})",
         self.current_field,
       );
     }
-    while field < self.current_field {
-      self.reader.read_none()?;
-      field += 1;
+    self.current_field += 1;
+    while self.current_field <= field {
+      match self.reader.read_none() {
+        Ok(_) | Err(ReadError::Valid(_)) => {}
+        Err(ReadError::Invalid(e)) => return Err(e.into()),
+      }
+      if self.current_field >= self.max_fields {
+        return Ok(T::default());
+      }
+      self.current_field += 1;
     }
-    self.current_field = field + 1;
     if field >= self.max_fields {
       Ok(T::default())
     } else {
       match T::read(self.reader) {
         Ok(v) => Ok(v),
         Err(ReadError::Valid(_)) => Ok(T::default()),
-        Err(ReadError::Invalid(e)) => Err(ReadError::Invalid(e)),
+        Err(ReadError::Invalid(e)) => Err(e.into()),
       }
     }
   }
@@ -460,6 +466,16 @@ mod tests {
   impl StructRead for IntStruct {
     fn read_struct(m: &mut StructReader) -> Result<Self> {
       Ok(IntStruct { a: m.read(0)?, b: m.read(1)? })
+    }
+  }
+  #[derive(Debug, Clone, PartialEq)]
+  struct RemovedFieldStruct {
+    a: u8,
+    b: u8,
+  }
+  impl StructRead for RemovedFieldStruct {
+    fn read_struct(m: &mut StructReader) -> Result<Self> {
+      Ok(RemovedFieldStruct { a: m.read(0)?, b: m.read(2)? })
     }
   }
   #[derive(Debug, Clone, PartialEq)]
@@ -567,6 +583,10 @@ mod tests {
       0b100 | 2 << 3,
       0b000,          // none
       0b001 | 3 << 3, // an int
+      // A struct with 2 fields (both valid), but being read by a struct with 3 fields
+      0b100 | 2 << 3,
+      0b001 | 2 << 3, // an int
+      0b001 | 3 << 3, // an int
     ];
     let mut m = MessageReader::new(&msg);
     assert_eq!(m.read_struct::<IntStruct>().unwrap(), IntStruct { a: 0, b: 0 });
@@ -574,6 +594,11 @@ mod tests {
     assert_eq!(m.read_struct::<IntStruct>().unwrap(), IntStruct { a: 0, b: 0 });
     assert_eq!(m.read_struct::<IntStruct>().unwrap(), IntStruct { a: 0, b: 0 });
     assert_eq!(m.read_struct::<IntStruct>().unwrap(), IntStruct { a: 0, b: 3 });
+    assert_eq!(m.read_struct::<RemovedFieldStruct>().unwrap(), RemovedFieldStruct { a: 2, b: 0 });
+    assert!(matches!(
+      m.read_struct::<IntStruct>().unwrap_err(),
+      ReadError::Invalid(InvalidReadError::EOF)
+    ));
   }
 
   #[test]
