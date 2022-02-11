@@ -159,8 +159,8 @@ pub struct MessageReader<'a> {
 /// maximum amount of fields.
 ///
 /// This is the core of th forwards compatibility in this protocol.
-pub struct StructReader<'a, 'b> {
-  reader:        &'a mut MessageReader<'b>,
+pub struct StructReader<'a> {
+  reader:        MessageReader<'a>,
   current_field: u64,
   max_fields:    u64,
 }
@@ -242,6 +242,46 @@ impl MessageReader<'_> {
     })
   }
 
+  /// Advances past the given number of fields. This is faster than calling
+  /// [`read_any`] repeatedly, as we don't allocate at all.
+  pub fn skip_fields(&mut self, fields: u64) -> InvalidResult<()> {
+    for _ in 0..fields {
+      self.skip_field()?;
+    }
+    Ok(())
+  }
+
+  /// Skips a single field. This is faster than [`read_any`], as it doesn't
+  /// allocate.
+  pub fn skip_field(&mut self) -> InvalidResult<()> {
+    let (header, extra) = self.read_header()?;
+    match header {
+      Header::None => {}
+      Header::VarInt => {
+        self.read_varint(extra)?;
+      }
+      Header::Float => {
+        self.read_float()?;
+      }
+      Header::Double => {
+        self.read_double()?;
+      }
+      Header::Struct => {
+        let num_fields = self.read_varint(extra)?;
+        self.skip_fields(num_fields)?;
+      }
+      Header::Enum => {
+        let _variant = self.read_varint(extra)?;
+        self.skip_field()?;
+      }
+      Header::Bytes => {
+        let len = self.read_varint(extra)? as usize;
+        self.skip_bytes(len)?;
+      }
+    }
+    Ok(())
+  }
+
   /// Reads a single byte from the buffer. Returns an error if the reader has
   /// read the entire buffer.
   ///
@@ -316,6 +356,16 @@ impl MessageReader<'_> {
       let out = self.data[self.idx..self.idx + len].to_vec();
       self.idx += len;
       Ok(out)
+    }
+  }
+
+  /// Skips the given number of bytes.
+  fn skip_bytes(&mut self, len: usize) -> InvalidResult<()> {
+    if self.idx + len > self.data.len() {
+      Err(InvalidReadError::InvalidBufLength.into())
+    } else {
+      self.idx += len;
+      Ok(())
     }
   }
 }
@@ -398,7 +448,16 @@ impl MessageReader<'_> {
     match header {
       Header::Struct => {
         let max_fields = self.read_varint(extra)?;
-        S::read_struct(&mut StructReader { reader: self, current_field: 0, max_fields })
+        let start_idx = self.idx;
+        // Advance out `self.idx` ahead to the end of this struct, before passing it to
+        // `read_struct`. This ensures that we stay in a valid state, even if the
+        // StructReader is dropped before reading all fields.
+        self.skip_fields(max_fields)?;
+        S::read_struct(&mut StructReader {
+          reader: MessageReader { data: self.data, idx: start_idx },
+          current_field: 0,
+          max_fields,
+        })
       }
       _ => {
         // We must keep the buffer at a valid state, so we undo the `read_header` call
@@ -420,7 +479,7 @@ impl MessageReader<'_> {
   }
 }
 
-impl StructReader<'_, '_> {
+impl StructReader<'_> {
   /// Reads a single field.
   ///
   /// # Panics
@@ -443,7 +502,7 @@ impl StructReader<'_, '_> {
     if field >= self.max_fields {
       Ok(T::default())
     } else {
-      match T::read(self.reader) {
+      match T::read(&mut self.reader) {
         Ok(v) => Ok(v),
         Err(ReadError::Valid(_)) => Ok(T::default()),
         Err(ReadError::Invalid(e)) => Err(e.into()),
