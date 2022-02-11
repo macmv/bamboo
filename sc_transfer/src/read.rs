@@ -124,14 +124,14 @@ pub trait MessageRead {
 /// A trait for any struct that can be read from a [`MessageReader`].
 pub trait StructRead {
   /// Reads a value of Self from the given struct fields.
-  fn read_struct(reader: &mut StructReader) -> Result<Self>
+  fn read_struct(reader: StructReader) -> Result<Self>
   where
     Self: Sized;
 }
 /// A trait for any enum that can be read from a [`MessageReader`].
 pub trait EnumRead {
   /// Reads a value of Self from the given variant and message.
-  fn read_enum(variant: u64, field: Message) -> Result<Self>
+  fn read_enum(reader: EnumReader) -> Result<Self>
   where
     Self: Sized;
 }
@@ -163,6 +163,13 @@ pub struct StructReader<'a> {
   reader:        MessageReader<'a>,
   current_field: u64,
   max_fields:    u64,
+}
+
+/// Wrapper around a partially parsed enum. This is the enum equivalent of
+/// [`StructReader`].
+pub struct EnumReader<'a> {
+  reader:  MessageReader<'a>,
+  variant: u64,
 }
 
 impl MessageReader<'_> {
@@ -453,7 +460,7 @@ impl MessageReader<'_> {
         // `read_struct`. This ensures that we stay in a valid state, even if the
         // StructReader is dropped before reading all fields.
         self.skip_fields(max_fields)?;
-        S::read_struct(&mut StructReader {
+        S::read_struct(StructReader {
           reader: MessageReader { data: self.data, idx: start_idx },
           current_field: 0,
           max_fields,
@@ -469,8 +476,28 @@ impl MessageReader<'_> {
     }
   }
   pub fn read_enum<E: EnumRead>(&mut self) -> Result<E> {
-    let (variant, field) = self.read_any()?.into_enum()?;
-    E::read_enum(variant, field)
+    let (header, extra) = self.read_header()?;
+    match header {
+      Header::Enum => {
+        let variant = self.read_varint(extra)?;
+        let start_idx = self.idx;
+        // Advance out `self.idx` ahead to the end of this struct, before passing it to
+        // `read_struct`. This ensures that we stay in a valid state, even if the
+        // StructReader is dropped before reading all fields.
+        self.skip_field()?;
+        E::read_enum(EnumReader {
+          reader: MessageReader { data: self.data, idx: start_idx },
+          variant,
+        })
+      }
+      _ => {
+        // We must keep the buffer at a valid state, so we undo the `read_header` call
+        // above.
+        self.undo_read_byte();
+        let msg = self.read_any()?;
+        Err(ValidReadError::WrongMessage(msg, Header::Enum).into())
+      }
+    }
   }
   /// Reads a byte array. If the header is not a `Bytes` header, this will
   /// return an error.
@@ -511,6 +538,29 @@ impl StructReader<'_> {
   }
 }
 
+impl EnumReader<'_> {
+  /// Returns the variant of this enum reader. Should be matched against in
+  /// implementers of [`EnumRead`].
+  pub fn variant(&self) -> u64 { self.variant }
+  /// Returns an error that should be generated when the enum variant is
+  /// invalid.
+  pub fn invalid_variant(&mut self) -> ReadError {
+    match self.reader.read_any() {
+      Ok(m) => ValidReadError::InvalidVariant(self.variant, m).into(),
+      Err(e) => e.into(),
+    }
+  }
+
+  /// Reads a single field.
+  pub fn read<T: Default + MessageRead>(&mut self) -> Result<T> {
+    match T::read(&mut self.reader) {
+      Ok(v) => Ok(v),
+      Err(ReadError::Valid(_)) => Ok(T::default()),
+      Err(ReadError::Invalid(e)) => Err(e.into()),
+    }
+  }
+}
+
 #[cfg(test)]
 mod tests {
   use super::*;
@@ -518,7 +568,7 @@ mod tests {
   #[derive(Debug, Clone, PartialEq)]
   struct EmptyStruct {}
   impl StructRead for EmptyStruct {
-    fn read_struct(_m: &mut StructReader) -> Result<Self> { Ok(EmptyStruct {}) }
+    fn read_struct(_m: StructReader) -> Result<Self> { Ok(EmptyStruct {}) }
   }
   #[derive(Debug, Clone, PartialEq)]
   struct IntStruct {
@@ -526,7 +576,7 @@ mod tests {
     b: u8,
   }
   impl StructRead for IntStruct {
-    fn read_struct(m: &mut StructReader) -> Result<Self> {
+    fn read_struct(mut m: StructReader) -> Result<Self> {
       Ok(IntStruct { a: m.read(0)?, b: m.read(1)? })
     }
   }
@@ -536,7 +586,7 @@ mod tests {
     b: u8,
   }
   impl StructRead for RemovedFieldStruct {
-    fn read_struct(m: &mut StructReader) -> Result<Self> {
+    fn read_struct(mut m: StructReader) -> Result<Self> {
       Ok(RemovedFieldStruct { a: m.read(0)?, b: m.read(2)? })
     }
   }
@@ -548,13 +598,13 @@ mod tests {
     D,
   }
   impl EnumRead for SampleEnum {
-    fn read_enum(variant: u64, field: Message) -> Result<Self> {
-      Ok(match variant {
+    fn read_enum(mut m: EnumReader) -> Result<Self> {
+      Ok(match m.variant() {
         0 => Self::A,
         1 => Self::B,
         2 => Self::C,
         3 => Self::D,
-        _ => return Err(ValidReadError::InvalidVariant(variant, field).into()),
+        _ => return Err(m.invalid_variant()),
       })
     }
   }
