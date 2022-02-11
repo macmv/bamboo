@@ -426,8 +426,8 @@ impl MessageReader<'_> {
   /// Reads a float. This will return an error if the header read is not a
   /// `Float` header.
   pub fn read_f32(&mut self) -> Result<f32> {
-    let (header, extra) = self.read_header()?;
-    if header != Header::VarInt {
+    let (header, _) = self.read_header()?;
+    if header != Header::Float {
       Err(ValidReadError::WrongMessage(header, Header::Float).into())
     } else {
       self.read_float().map_err(Into::into)
@@ -436,8 +436,8 @@ impl MessageReader<'_> {
   /// Reads a double. This will return an error if the header read is not a
   /// `Double` header.
   pub fn read_f64(&mut self) -> Result<f64> {
-    let (header, extra) = self.read_header()?;
-    if header != Header::VarInt {
+    let (header, _) = self.read_header()?;
+    if header != Header::Double {
       Err(ValidReadError::WrongMessage(header, Header::Double).into())
     } else {
       self.read_double().map_err(Into::into)
@@ -515,7 +515,7 @@ impl MessageReader<'_> {
   /// return a [`ValidReadError::WrongMessage`] error.
   pub fn read_bytes(&mut self) -> Result<&[u8]> {
     let (header, extra) = self.read_header()?;
-    if header != Header::VarInt {
+    if header != Header::Bytes {
       Err(ValidReadError::WrongMessage(header, Header::Bytes).into())
     } else {
       let len = self.read_varint(extra)?;
@@ -692,7 +692,7 @@ mod tests {
       0b001 | 10 << 3,
       // An enum, at variant 1, with no data
       0b101 | 1 << 3,
-      0b000,
+      0b100 | 0 << 3,
       // A byte array of 5 bytes
       0b110 | 5 << 3,
       b'H',

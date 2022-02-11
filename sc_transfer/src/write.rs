@@ -98,50 +98,6 @@ impl MessageWriter<'_> {
     self.write_byte(header.id() | (num as u8) << 3)
   }
 
-  /// Writes any message. This will return an error if the buffer doesn't have
-  /// enough bytes.
-  ///
-  /// This is fine to use on it's own. [`write`](Self::write) is easier, and
-  /// will write the same headers, but either works.
-  pub fn write_any(&mut self, msg: &Message) -> Result {
-    match msg {
-      Message::None => self.write_header(Header::None, 0),
-      Message::VarInt(num) => {
-        // write_header ignores anything past the 5 LSB
-        self.write_header(Header::VarInt, *num)?;
-        self.write_varint(*num)
-      }
-      Message::Float(num) => {
-        self.write_header(Header::Float, 0)?;
-        self.write_float(*num)
-      }
-      Message::Double(num) => {
-        self.write_header(Header::Double, 0)?;
-        self.write_double(*num)
-      }
-      Message::Struct(fields) => {
-        let num_fields = fields.len() as u64;
-        self.write_header(Header::Struct, num_fields)?;
-        self.write_varint(num_fields)?;
-        for f in fields {
-          self.write_any(f)?;
-        }
-        Ok(())
-      }
-      Message::Enum(variant, field) => {
-        self.write_header(Header::Enum, *variant)?;
-        self.write_varint(*variant)?;
-        self.write_any(field)
-      }
-      Message::Bytes(buf) => {
-        let len = buf.len() as u64;
-        self.write_header(Header::Bytes, len)?;
-        self.write_varint(len)?;
-        self.write_buf(&buf)
-      }
-    }
-  }
-
   /// Writes a single byte to the buffer. Returns an error if the reader has
   /// written to the entire buffer.
   ///
@@ -226,16 +182,19 @@ impl MessageWriter<'_> {
   }
   /// Writes a single byte to the internal buffer. Returns an error if the
   /// writer has reached the end of the buffer.
-  pub fn write_u8(&mut self, v: u8) -> Result { self.write_any(&Message::VarInt(v.into())) }
+  pub fn write_u8(&mut self, v: u8) -> Result { self.write_u64(v.into()) }
   /// Writes an unsigned 16 bit integer to the internal buffer. Returns an error
   /// if the writer has reached the end of the buffer.
-  pub fn write_u16(&mut self, v: u16) -> Result { self.write_any(&Message::VarInt(v.into())) }
+  pub fn write_u16(&mut self, v: u16) -> Result { self.write_u64(v.into()) }
   /// Writes an unsigned 32 bit integer to the internal buffer. Returns an error
   /// if the writer has reached the end of the buffer.
-  pub fn write_u32(&mut self, v: u32) -> Result { self.write_any(&Message::VarInt(v.into())) }
+  pub fn write_u32(&mut self, v: u32) -> Result { self.write_u64(v.into()) }
   /// Writes an unsigned 64 bit integer to the internal buffer. Returns an error
   /// if the writer has reached the end of the buffer.
-  pub fn write_u64(&mut self, v: u64) -> Result { self.write_any(&Message::VarInt(v.into())) }
+  pub fn write_u64(&mut self, v: u64) -> Result {
+    self.write_header(Header::VarInt, v)?;
+    self.write_varint(v)
+  }
   /// Writes a single signed byte to the internal buffer.
   pub fn write_i8(&mut self, v: i8) -> Result { self.write_u8(zig(v)) }
   /// Writes a signed 16 bit integer to the internal buffer.
@@ -247,11 +206,21 @@ impl MessageWriter<'_> {
   /// value with zig zag encoding, and then writes that as a u64.
   pub fn write_i64(&mut self, v: i64) -> Result { self.write_u64(zig(v)) }
 
-  pub fn write_f32(&mut self, v: f32) -> Result { self.write_any(&Message::Float(v)) }
-  pub fn write_f64(&mut self, v: f64) -> Result { self.write_any(&Message::Double(v)) }
+  pub fn write_f32(&mut self, v: f32) -> Result {
+    self.write_header(Header::Float, 0)?;
+    self.write_float(v)
+  }
+  pub fn write_f64(&mut self, v: f64) -> Result {
+    self.write_header(Header::Double, 0)?;
+    self.write_double(v)
+  }
 
   pub fn write_str(&mut self, s: &str) -> Result { self.write_bytes(s.as_bytes()) }
-  pub fn write_bytes(&mut self, bytes: &[u8]) -> Result { self.write_any(&Message::Bytes(bytes)) }
+  pub fn write_bytes(&mut self, bytes: &[u8]) -> Result {
+    self.write_header(Header::Bytes, bytes.len() as u64)?;
+    self.write_varint(bytes.len() as u64)?;
+    self.write_buf(bytes)
+  }
 }
 
 #[cfg(test)]
