@@ -6,26 +6,49 @@ type Result<T> = std::result::Result<T, ReadError>;
 
 /// An error while reading a field. This can happen if the end of the internal
 /// buffer is reached, or if a varint has too many bytes.
+///
+/// There are two variants here: [`Valid`](Self::Valid) and
+/// [`Invalid`](Self::Invalid). These are for error recovery. If the error is a
+/// [`Valid`](Self::Valid) error, then the [`MessageReader`] is in a valid
+/// state, and you can continue reading. Otherwise, the state of the
+/// [`MessageReader`] is undefined.
 #[derive(Debug)]
 #[non_exhaustive]
 pub enum ReadError {
-  /// Varints are encoded such that the highest bit is set to 1 if there is a
-  /// byte following, and 0 if the varint has ended. An i32 can only take up to
-  /// 5 bytes of space. So, if the highest bit is set on the 5th byte, then we
-  /// have an invalid varint, and this error is produced.
-  VarIntTooLong,
-  /// This happens when reading a buffer (byte array or string) and the length
-  /// prefix extends beyond the internal data. This is likely because we aren't
-  /// reading the right field, so we should fail.
-  InvalidBufLength,
-  /// This happens if we read a string, and its not valid UTF8.
+  Valid(ValidReadError),
+  Invalid(InvalidReadError),
+}
+
+#[derive(Debug)]
+#[non_exhaustive]
+pub enum ValidReadError {
+  /// This happens if we read a string, and its not valid UTF8. This is easy to
+  /// recover from, as it happens after we know the length of the buffer (so we
+  /// can just skip this field).
   InvalidUtf8(FromUtf8Error),
-  /// Returned if an enum variant is invalid.
-  InvalidVariant(u64),
-  /// This happens if the 3 bit header is invalid.
-  InvalidHeader(u8),
+  /// Returned if an enum variant is invalid. This likely means we are reading
+  /// an enum variant from a newer client, so we should just ignore this and
+  /// continue reading.
+  InvalidVariant(u64, Message),
   /// This happens if we try to read a specific field, and get a different type.
+  /// Everything was valid on the wire, so this is recoverable.
   WrongMessage(Message, Header),
+}
+
+#[derive(Debug)]
+#[non_exhaustive]
+pub enum InvalidReadError {
+  /// This happens when reading a buffer (byte array or string) and the length
+  /// prefix extends beyond the internal data. This is similar to EOF, and is
+  /// unrecoverable.
+  InvalidBufLength,
+  /// Happens if a varint is too long. This likely means the data was corrupted,
+  /// and we cannot recover.
+  VarIntTooLong,
+  /// This happens if the 3 bit header is invalid. This either means we are
+  /// talking to a newer version of the protocol, or the data is corrupted.
+  /// Either way, we cannot recover.
+  InvalidHeader(u8),
   /// This happens if we try to read something and there are no bytes left.
   EOF,
 }
@@ -33,26 +56,53 @@ pub enum ReadError {
 impl fmt::Display for ReadError {
   fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
     match self {
-      Self::VarIntTooLong => write!(f, "failed to read field: varint was too long"),
-      Self::InvalidBufLength => write!(f, "failed to read field: buffer was too long"),
-      Self::InvalidUtf8(e) => write!(f, "failed to read field: invalid utf8 string: {}", e),
-      Self::InvalidVariant(variant) => {
-        write!(f, "failed to read field: invalid variant: {variant}")
-      }
-      Self::InvalidHeader(header) => {
-        write!(f, "failed to read field: invalid header {header:#x}")
+      Self::Valid(e) => write!(f, "read error (buffer is still valid): {e}"),
+      Self::Invalid(e) => write!(f, "read error (buffer is now invalid): {e}"),
+    }
+  }
+}
+impl fmt::Display for ValidReadError {
+  fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    match self {
+      Self::InvalidUtf8(e) => write!(f, "invalid utf8: {}", e),
+      Self::InvalidVariant(variant, msg) => {
+        write!(f, "invalid variant: {variant} (data: {msg:?})")
       }
       Self::WrongMessage(m, header) => {
-        write!(f, "failed to read field: got message {m:?}, expected message {header:?}")
+        write!(f, "got message {m:?}, expected message {header:?}")
+      }
+    }
+  }
+}
+impl fmt::Display for InvalidReadError {
+  fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    match self {
+      Self::VarIntTooLong => write!(f, "failed to read field: varint was too long"),
+      Self::InvalidBufLength => write!(f, "failed to read field: buffer was too long"),
+      Self::InvalidHeader(header) => {
+        write!(f, "failed to read field: invalid header {header:#x}")
       }
       Self::EOF => write!(f, "failed to read field: eof reached"),
     }
   }
 }
 
-impl From<FromUtf8Error> for ReadError {
-  fn from(e: FromUtf8Error) -> Self { ReadError::InvalidUtf8(e) }
+impl From<ValidReadError> for ReadError {
+  fn from(e: ValidReadError) -> Self { ReadError::Valid(e) }
 }
+impl From<InvalidReadError> for ReadError {
+  fn from(e: InvalidReadError) -> Self { ReadError::Invalid(e) }
+}
+impl From<FromUtf8Error> for ReadError {
+  fn from(e: FromUtf8Error) -> Self { ReadError::Valid(e.into()) }
+}
+impl From<FromUtf8Error> for ValidReadError {
+  fn from(e: FromUtf8Error) -> Self { ValidReadError::InvalidUtf8(e.into()) }
+}
+
+impl Error for ReadError {}
+impl Error for ValidReadError {}
+impl Error for InvalidReadError {}
 
 // TODO:
 // Types:
@@ -62,8 +112,6 @@ impl From<FromUtf8Error> for ReadError {
 // 0x03 => double
 // 0x04 => struct
 // 0x05 => enum
-
-impl Error for ReadError {}
 
 /// A trait for anything that can be read from a [`MessageReader`].
 pub trait MessageRead {
@@ -160,7 +208,7 @@ impl MessageReader<'_> {
   /// do not handle the result correctly.
   fn read_header(&mut self) -> Result<(Header, u8)> {
     let val = self.read_byte()?;
-    Ok((Header::from_id(val & 0x07).ok_or(ReadError::InvalidHeader(val & 0x07))?, val >> 3))
+    Ok((Header::from_id(val & 0x07).ok_or(InvalidReadError::InvalidHeader(val & 0x07))?, val >> 3))
   }
 
   /// Reads any message. This will return an error if the buffer doesn't have
@@ -196,7 +244,7 @@ impl MessageReader<'_> {
   /// This is private, as this is doesn't read a `Header`.
   fn read_byte(&mut self) -> Result<u8> {
     if self.idx >= self.data.len() {
-      Err(ReadError::EOF)
+      Err(InvalidReadError::EOF.into())
     } else {
       self.idx += 1;
       Ok(self.data[self.idx - 1])
@@ -224,7 +272,7 @@ impl MessageReader<'_> {
       i += 1;
       // (64 - 5) / 7 = 8.42, so we need 9 bytes of space
       if i >= 9 {
-        return Err(ReadError::VarIntTooLong);
+        return Err(InvalidReadError::VarIntTooLong.into());
       }
     }
     Ok(out)
@@ -259,7 +307,7 @@ impl MessageReader<'_> {
   /// Reads the given number of bytes from the buffer.
   fn read_buf(&mut self, len: usize) -> Result<Vec<u8>> {
     if self.idx + len > self.data.len() {
-      Err(ReadError::InvalidBufLength)
+      Err(InvalidReadError::InvalidBufLength.into())
     } else {
       let out = self.data[self.idx..self.idx + len].to_vec();
       self.idx += len;
@@ -273,13 +321,13 @@ macro_rules! read_unsigned {
     /// Reads a field, and makes sure that it is an 8 bit integer.
     ///
     /// Errors:
-    /// - If there are no remaining bytes, a [`ReadError::EOF`] is returned.
-    /// - If the header read is not a `VarInt`, a [`ReadError::WrongMessage`] is
-    ///   returned.
-    /// - If the varint parsed is too large, then a [`ReadError::VarIntTooLong`] is
-    ///   returned.
+    /// - If there are no remaining bytes, a [`InvalidReadError::EOF`] is returned.
+    /// - If the varint parsed is too large, then a
+    ///   [`InvalidReadError::VarIntTooLong`] is returned.
+    /// - If the header read is not a `VarInt`, a [`ValidReadError::WrongMessage`]
+    ///   is returned.
     pub fn $reader(&mut self) -> Result<$ret> {
-      self.read_any()?.into_varint()?.try_into().map_err(|_| ReadError::VarIntTooLong)
+      self.read_any()?.into_varint()?.try_into().map_err(|_| InvalidReadError::VarIntTooLong.into())
     }
   };
 }
@@ -288,17 +336,17 @@ macro_rules! read_signed {
     /// Reads a field, and makes sure that it is an 8 bit integer.
     ///
     /// Errors:
-    /// - If there are no remaining bytes, a [`ReadError::EOF`] is returned.
-    /// - If the header read is not a `VarInt`, a [`ReadError::WrongMessage`] is
-    ///   returned.
-    /// - If the varint parsed is too large, then a [`ReadError::VarIntTooLong`] is
-    ///   returned.
+    /// - If there are no remaining bytes, a [`InvalidReadError::EOF`] is returned.
+    /// - If the varint parsed is too large, then a
+    ///   [`InvalidReadError::VarIntTooLong`] is returned.
+    /// - If the header read is not a `VarInt`, a [`ValidReadError::WrongMessage`]
+    ///   is returned.
     pub fn $reader(&mut self) -> Result<$ret> {
       self
         .read_any()?
         .into_varint()?
         .try_into()
-        .map_err(|_| ReadError::VarIntTooLong)
+        .map_err(|_| InvalidReadError::VarIntTooLong.into())
         .map(|v| zag(v))
     }
   };
@@ -318,7 +366,7 @@ impl MessageReader<'_> {
     } else if num == 1 {
       Ok(true)
     } else {
-      Err(ReadError::VarIntTooLong)
+      Err(InvalidReadError::VarIntTooLong.into())
     }
   }
 
@@ -353,7 +401,7 @@ impl MessageReader<'_> {
         // above.
         self.undo_read_byte();
         let msg = self.read_any()?;
-        Err(ReadError::WrongMessage(msg, header))
+        Err(ValidReadError::WrongMessage(msg, header).into())
       }
     }
   }
@@ -426,7 +474,7 @@ mod tests {
           1 => Self::B,
           2 => Self::C,
           3 => Self::D,
-          _ => return Err(ReadError::InvalidVariant(variant)),
+          _ => return Err(ValidReadError::InvalidVariant(variant, field).into()),
         })
       }
     }
@@ -487,7 +535,7 @@ mod tests {
     assert_eq!(m.index(), 22);
     assert_eq!(m.read_bytes().unwrap(), b"Hello");
     assert_eq!(m.index(), 28);
-    assert!(matches!(m.read_none().unwrap_err(), ReadError::EOF));
+    assert!(matches!(m.read_none().unwrap_err(), ReadError::Invalid(InvalidReadError::EOF)));
 
     /*
     let mut m = MessageReader::new(&[127, 0, 0, 1]);
@@ -525,8 +573,11 @@ mod tests {
     assert_eq!(m.read_u32().unwrap(), 53 | 77 << 7);
     assert_eq!(m.read_u32().unwrap(), 0);
     assert_eq!(m.read_u32().unwrap(), 0);
-    assert!(matches!(m.read_u32().unwrap_err(), ReadError::VarIntTooLong));
-    assert!(matches!(m.read_u32().unwrap_err(), ReadError::EOF));
+    assert!(matches!(
+      m.read_u32().unwrap_err(),
+      ReadError::Invalid(InvalidReadError::VarIntTooLong)
+    ));
+    assert!(matches!(m.read_u32().unwrap_err(), ReadError::Invalid(InvalidReadError::EOF)));
   }
 
   #[test]

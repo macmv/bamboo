@@ -44,7 +44,7 @@ mod generics;
 mod read;
 mod write;
 
-pub use read::{MessageRead, MessageReader, ReadError};
+pub use read::{InvalidReadError, MessageRead, MessageReader, ReadError, ValidReadError};
 pub use write::{MessageWrite, MessageWriter, WriteError};
 
 /// This is a 3 bit header for every field. For example, if I write a `u8`, a 3
@@ -145,43 +145,43 @@ impl Message {
   pub fn into_none(self) -> Result<(), ReadError> {
     match self {
       Message::None => Ok(()),
-      m => Err(ReadError::WrongMessage(m, Header::None)),
+      m => Err(ValidReadError::WrongMessage(m, Header::None).into()),
     }
   }
   pub fn into_varint(self) -> Result<u64, ReadError> {
     match self {
       Message::VarInt(num) => Ok(num),
-      m => Err(ReadError::WrongMessage(m, Header::VarInt)),
+      m => Err(ValidReadError::WrongMessage(m, Header::VarInt).into()),
     }
   }
   pub fn into_float(self) -> Result<f32, ReadError> {
     match self {
       Message::Float(num) => Ok(num),
-      m => Err(ReadError::WrongMessage(m, Header::Float)),
+      m => Err(ValidReadError::WrongMessage(m, Header::Float).into()),
     }
   }
   pub fn into_double(self) -> Result<f64, ReadError> {
     match self {
       Message::Double(num) => Ok(num),
-      m => Err(ReadError::WrongMessage(m, Header::Double)),
+      m => Err(ValidReadError::WrongMessage(m, Header::Double).into()),
     }
   }
   pub fn into_struct(self) -> Result<Vec<Message>, ReadError> {
     match self {
       Message::Struct(fields) => Ok(fields),
-      m => Err(ReadError::WrongMessage(m, Header::Struct)),
+      m => Err(ValidReadError::WrongMessage(m, Header::Struct).into()),
     }
   }
   pub fn into_enum(self) -> Result<(u64, Message), ReadError> {
     match self {
       Message::Enum(variant, field) => Ok((variant, *field)),
-      m => Err(ReadError::WrongMessage(m, Header::Enum)),
+      m => Err(ValidReadError::WrongMessage(m, Header::Enum).into()),
     }
   }
   pub fn into_bytes(self) -> Result<Vec<u8>, ReadError> {
     match self {
       Message::Bytes(bytes) => Ok(bytes),
-      m => Err(ReadError::WrongMessage(m, Header::Enum)),
+      m => Err(ValidReadError::WrongMessage(m, Header::Enum).into()),
     }
   }
 }
