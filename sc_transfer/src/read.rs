@@ -20,6 +20,8 @@ pub enum ReadError {
   InvalidBufLength,
   /// This happens if we read a string, and its not valid UTF8.
   InvalidUtf8(FromUtf8Error),
+  /// Returned if an enum variant is invalid.
+  InvalidVariant(u64),
   /// This happens if the 3 bit header is invalid.
   InvalidHeader(u8),
   /// This happens if we try to read a specific field, and get a different type.
@@ -34,6 +36,9 @@ impl fmt::Display for ReadError {
       Self::VarIntTooLong => write!(f, "failed to read field: varint was too long"),
       Self::InvalidBufLength => write!(f, "failed to read field: buffer was too long"),
       Self::InvalidUtf8(e) => write!(f, "failed to read field: invalid utf8 string: {}", e),
+      Self::InvalidVariant(variant) => {
+        write!(f, "failed to read field: invalid variant: {variant}")
+      }
       Self::InvalidHeader(header) => {
         write!(f, "failed to read field: invalid header {header:#x}")
       }
@@ -121,11 +126,16 @@ impl MessageReader<'_> {
 
   /// Reads a 3 bit header for a new field. The `u8` returned is the remaining
   /// bits, shifted right by 3. So this `u8` will only have 5 bits of data set.
-  pub fn read_header(&mut self) -> Result<(Header, u8)> {
+  ///
+  /// This is private, as the caller can break the state of this reader if they
+  /// do not handle the result correctly.
+  fn read_header(&mut self) -> Result<(Header, u8)> {
     let val = self.read_byte()?;
     Ok((Header::from_id(val & 0x07).ok_or(ReadError::InvalidHeader(val & 0x07))?, val >> 3))
   }
 
+  /// Reads any message. This will return an error if the buffer doesn't have
+  /// enough bytes, or if the header is invalid.
   pub fn read_any(&mut self) -> Result<Message> {
     let (header, extra) = self.read_header()?;
     Ok(match header {
@@ -160,11 +170,11 @@ impl MessageReader<'_> {
     }
   }
   /// Reads a varint from the buffer. The given value is a 5 bit LSB header. If
-  /// the 5th bit is not set, this will not read anything.
+  /// the 5th bit (0x10) is not set, this will not read anything.
   ///
   /// This is private, as this is doesn't read a `Header`.
   fn read_varint(&mut self, header: u8) -> Result<u64> {
-    if header & 0x08 != 0 {
+    if header & 0x10 == 0 {
       return Ok(header.into());
     }
 
@@ -172,15 +182,15 @@ impl MessageReader<'_> {
     let mut i = 0;
     let mut v;
     loop {
-      v = self.read_u8()?;
+      v = self.read_byte()?;
       let done = v & 0x80 == 0;
-      out |= ((v as u64) & !0x80) << i * 7;
+      out |= ((v as u64) & !0x80) << (i * 7 + 5); // We start with 5 bits set
       if done {
         break;
       }
       i += 1;
-      // This is not 9 bytes, because 64 / 7 = 9.14, so we need 10 bytes of space
-      if i >= 10 {
+      // (64 - 5) / 7 = 8.42, so we need 9 bytes of space
+      if i >= 9 {
         return Err(ReadError::VarIntTooLong);
       }
     }
@@ -191,10 +201,10 @@ impl MessageReader<'_> {
   ///
   /// This is private, as it doesn't read a `Header`.
   fn read_float(&mut self) -> Result<f32> {
-    let n = self.read_u8()? as u32
-      | (self.read_u8()? as u32) << 8
-      | (self.read_u8()? as u32) << 16
-      | (self.read_u8()? as u32) << 24;
+    let n = self.read_byte()? as u32
+      | (self.read_byte()? as u32) << 8
+      | (self.read_byte()? as u32) << 16
+      | (self.read_byte()? as u32) << 24;
     Ok(f32::from_bits(n))
   }
   /// Reads a double from the buffer. This will simply read 8 bytes, and convert
@@ -202,14 +212,14 @@ impl MessageReader<'_> {
   ///
   /// This is private, as it doesn't read a `Header`.
   fn read_double(&mut self) -> Result<f64> {
-    let n = self.read_u8()? as u64
-      | (self.read_u8()? as u64) << 8
-      | (self.read_u8()? as u64) << 16
-      | (self.read_u8()? as u64) << 24
-      | (self.read_u8()? as u64) << 32
-      | (self.read_u8()? as u64) << 40
-      | (self.read_u8()? as u64) << 48
-      | (self.read_u8()? as u64) << 56;
+    let n = self.read_byte()? as u64
+      | (self.read_byte()? as u64) << 8
+      | (self.read_byte()? as u64) << 16
+      | (self.read_byte()? as u64) << 24
+      | (self.read_byte()? as u64) << 32
+      | (self.read_byte()? as u64) << 40
+      | (self.read_byte()? as u64) << 48
+      | (self.read_byte()? as u64) << 56;
     Ok(f64::from_bits(n))
   }
 
@@ -314,16 +324,106 @@ mod tests {
 
   #[test]
   fn simple() {
-    let mut m = MessageReader::new(&[0, 0, 2]);
-    assert_eq!(m.read_u8().unwrap(), 0);
-    assert_eq!(m.read_u8().unwrap(), 0);
-    assert_eq!(m.read_u8().unwrap(), 2);
-    assert!(matches!(m.read_u32().unwrap_err(), ReadError::EOF));
+    #[derive(Debug, Clone, PartialEq)]
+    struct EmptyStruct {}
+    impl StructRead for EmptyStruct {
+      fn read_struct(fields: Vec<Message>) -> Result<Self> { Ok(EmptyStruct {}) }
+    }
+    #[derive(Debug, Clone, PartialEq)]
+    struct IntStruct {
+      a: i32,
+      b: u8,
+    }
+    impl StructRead for IntStruct {
+      fn read_struct(fields: Vec<Message>) -> Result<Self> {
+        Ok(IntStruct {
+          a: fields[0].clone().into_varint()?.try_into().unwrap(),
+          b: fields[1].clone().into_varint()?.try_into().unwrap(),
+        })
+      }
+    }
+    #[derive(Debug, Clone, PartialEq)]
+    enum SampleEnum {
+      A,
+      B,
+      C,
+      D,
+    }
+    impl EnumRead for SampleEnum {
+      fn read_enum(variant: u64, field: Message) -> Result<Self> {
+        Ok(match variant {
+          0 => Self::A,
+          1 => Self::B,
+          2 => Self::C,
+          3 => Self::D,
+          _ => return Err(ReadError::InvalidVariant(variant)),
+        })
+      }
+    }
 
+    let mut m = MessageReader::new(&[
+      // A None
+      0b000,
+      // A VarInt
+      0b001 | 12 << 3, // A 5 bit varint can store 0-15 without needing another byte.
+      // A Float
+      0b010,
+      0,
+      0,
+      0,
+      0,
+      // A Double
+      0b011,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      // A struct with no fields
+      0b100 | 0 << 3,
+      // A struct with 2 int fields
+      0b100 | 2 << 3,
+      0b001 | 5 << 3,
+      0b001 | 10 << 3,
+      // An enum, at variant 1, with no data
+      0b101 | 1 << 3,
+      0b000,
+      // A byte array of 5 bytes
+      0b110 | 5 << 3,
+      b'H',
+      b'e',
+      b'l',
+      b'l',
+      b'o',
+    ]);
+    assert_eq!(m.index(), 0);
+    assert_eq!(m.read_none().unwrap(), ());
+    assert_eq!(m.index(), 1);
+    assert_eq!(m.read_u8().unwrap(), 12);
+    assert_eq!(m.index(), 2);
+    assert_eq!(m.read_f32().unwrap(), 0.0);
+    assert_eq!(m.index(), 7);
+    assert_eq!(m.read_f64().unwrap(), 0.0);
+    assert_eq!(m.index(), 16);
+    assert_eq!(m.read_struct::<EmptyStruct>().unwrap(), EmptyStruct {});
+    assert_eq!(m.index(), 17);
+    assert_eq!(m.read_struct::<IntStruct>().unwrap(), IntStruct { a: 5, b: 10 });
+    assert_eq!(m.index(), 20);
+    assert_eq!(m.read_enum::<SampleEnum>().unwrap(), SampleEnum::B);
+    assert_eq!(m.index(), 22);
+    assert_eq!(m.read_bytes().unwrap(), b"Hello");
+    assert_eq!(m.index(), 28);
+    assert!(matches!(m.read_none().unwrap_err(), ReadError::EOF));
+
+    /*
     let mut m = MessageReader::new(&[127, 0, 0, 1]);
     assert_eq!(m.read_u16().unwrap(), 127);
     assert_eq!(m.read_u16().unwrap(), 256);
     assert!(matches!(m.read_u32().unwrap_err(), ReadError::EOF));
+    */
   }
 
   #[test]
