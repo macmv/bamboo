@@ -75,7 +75,7 @@ pub trait MessageRead {
 /// A trait for any struct that can be read from a [`MessageReader`].
 pub trait StructRead {
   /// Reads a value of Self from the given struct fields.
-  fn read_struct(fields: Vec<Message>) -> Result<Self>
+  fn read_struct(reader: &mut StructReader) -> Result<Self>
   where
     Self: Sized;
 }
@@ -95,6 +95,25 @@ pub trait EnumRead {
 pub struct MessageReader<'a> {
   data: &'a [u8],
   idx:  usize,
+}
+
+/// Wrapper around a partially parsed struct. This will validate that all fields
+/// were read. This makes it very easy to derive `StructRead` on a struct type.
+///
+/// This has a single very useful function: [`read`](StructReader::read). This
+/// function will read a single field, given an index. The index must be greater
+/// than the previous field. If it is two or more indices ahead, this will read
+/// `None` fields as placeholders.
+///
+/// This will also track the current field read, and the total number of fields.
+/// This will automically return a default value if you try to read past the
+/// maximum amount of fields.
+///
+/// This is the core of th forwards compatibility in this protocol.
+pub struct StructReader<'a, 'b> {
+  reader:        &'a mut MessageReader<'b>,
+  current_field: u64,
+  max_fields:    u64,
 }
 
 impl MessageReader<'_> {
@@ -136,6 +155,10 @@ impl MessageReader<'_> {
 
   /// Reads any message. This will return an error if the buffer doesn't have
   /// enough bytes, or if the header is invalid.
+  ///
+  /// Avoid this if possible. If a struct is read, this will simply return a
+  /// list of `Message`s, which is harder to work with. If you are expecting a
+  /// certain type, [`read`](Self::read) will be much more effective.
   pub fn read_any(&mut self) -> Result<Message> {
     let (header, extra) = self.read_header()?;
     Ok(match header {
@@ -307,7 +330,15 @@ impl MessageReader<'_> {
   pub fn read_f64(&mut self) -> Result<f64> { self.read_any()?.into_double() }
 
   pub fn read_struct<S: StructRead>(&mut self) -> Result<S> {
-    S::read_struct(self.read_any()?.into_struct()?)
+    let (header, extra) = self.read_header()?;
+    match header {
+      Header::Struct => {
+        let max_fields = self.read_varint(extra)?;
+        S::read_struct(&mut StructReader { reader: self, current_field: 0, max_fields })
+      }
+      _ => todo!("return the buffer to a valid state"),
+      // _ => Err(ReadError::WrongMessage(Message::None, header)),
+    }
   }
   pub fn read_enum<E: EnumRead>(&mut self) -> Result<E> {
     let (variant, field) = self.read_any()?.into_enum()?;
@@ -316,6 +347,31 @@ impl MessageReader<'_> {
   /// Reads a byte array. If the header is not a `Bytes` header, this will
   /// return an error.
   pub fn read_bytes(&mut self) -> Result<Vec<u8>> { self.read_any()?.into_bytes() }
+}
+
+impl StructReader<'_, '_> {
+  /// Reads a single field.
+  ///
+  /// # Panics
+  /// - The `field` must be larger than the previous field.
+  pub fn read<T: Default + MessageRead>(&mut self, mut field: u64) -> Result<T> {
+    if field < self.current_field {
+      panic!(
+        "cannot read field that is < current field: {field} (current_field: {})",
+        self.current_field,
+      );
+    }
+    while field < self.current_field {
+      self.reader.read_none()?;
+      field += 1;
+    }
+    self.current_field = field + 1;
+    if field >= self.max_fields {
+      Ok(T::default())
+    } else {
+      T::read(self.reader)
+    }
+  }
 }
 
 #[cfg(test)]
@@ -327,7 +383,7 @@ mod tests {
     #[derive(Debug, Clone, PartialEq)]
     struct EmptyStruct {}
     impl StructRead for EmptyStruct {
-      fn read_struct(fields: Vec<Message>) -> Result<Self> { Ok(EmptyStruct {}) }
+      fn read_struct(m: &mut StructReader) -> Result<Self> { Ok(EmptyStruct {}) }
     }
     #[derive(Debug, Clone, PartialEq)]
     struct IntStruct {
@@ -335,11 +391,8 @@ mod tests {
       b: u8,
     }
     impl StructRead for IntStruct {
-      fn read_struct(fields: Vec<Message>) -> Result<Self> {
-        Ok(IntStruct {
-          a: fields[0].clone().into_varint()?.try_into().unwrap(),
-          b: fields[1].clone().into_varint()?.try_into().unwrap(),
-        })
+      fn read_struct(m: &mut StructReader) -> Result<Self> {
+        Ok(IntStruct { a: m.read(0)?, b: m.read(1)? })
       }
     }
     #[derive(Debug, Clone, PartialEq)]
@@ -361,7 +414,7 @@ mod tests {
       }
     }
 
-    let mut m = MessageReader::new(&[
+    let msg = [
       // A None
       0b000,
       // A VarInt
@@ -386,7 +439,7 @@ mod tests {
       0b100 | 0 << 3,
       // A struct with 2 int fields
       0b100 | 2 << 3,
-      0b001 | 5 << 3,
+      0b001 | super::super::zig(-3_i8) << 3,
       0b001 | 10 << 3,
       // An enum, at variant 1, with no data
       0b101 | 1 << 3,
@@ -398,7 +451,8 @@ mod tests {
       b'l',
       b'l',
       b'o',
-    ]);
+    ];
+    let mut m = MessageReader::new(&msg);
     assert_eq!(m.index(), 0);
     assert_eq!(m.read_none().unwrap(), ());
     assert_eq!(m.index(), 1);
@@ -410,7 +464,7 @@ mod tests {
     assert_eq!(m.index(), 16);
     assert_eq!(m.read_struct::<EmptyStruct>().unwrap(), EmptyStruct {});
     assert_eq!(m.index(), 17);
-    assert_eq!(m.read_struct::<IntStruct>().unwrap(), IntStruct { a: 5, b: 10 });
+    assert_eq!(m.read_struct::<IntStruct>().unwrap(), IntStruct { a: -3, b: 10 });
     assert_eq!(m.index(), 20);
     assert_eq!(m.read_enum::<SampleEnum>().unwrap(), SampleEnum::B);
     assert_eq!(m.index(), 22);
