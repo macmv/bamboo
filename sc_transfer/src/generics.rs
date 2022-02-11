@@ -31,7 +31,7 @@ num_impl!(f64, read_f64, write_f64);
 
 impl MessageRead for String {
   fn read(m: &mut MessageReader) -> Result<Self, ReadError> {
-    String::from_utf8(m.read_bytes()?).map_err(Into::into)
+    String::from_utf8(m.read_bytes()?.into()).map_err(Into::into)
   }
 }
 impl MessageWrite for String {

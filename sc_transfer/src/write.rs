@@ -91,7 +91,7 @@ impl MessageWriter<'_> {
   ///
   /// This is private, as the caller can break the state of this reader if they
   /// do not handle the result correctly.
-  fn write_header(&mut self, header: Header, num: u64) -> Result {
+  fn write_header(&mut self, header: Header, mut num: u64) -> Result {
     if num >= 16 {
       num |= 0x10;
     }
@@ -232,10 +232,10 @@ impl MessageWriter<'_> {
   pub fn write_u16(&mut self, v: u16) -> Result { self.write_any(&Message::VarInt(v.into())) }
   /// Writes an unsigned 32 bit integer to the internal buffer. Returns an error
   /// if the writer has reached the end of the buffer.
-  pub fn write_u32(&mut self, mut v: u32) -> Result { self.write_any(&Message::VarInt(v.into())) }
+  pub fn write_u32(&mut self, v: u32) -> Result { self.write_any(&Message::VarInt(v.into())) }
   /// Writes an unsigned 64 bit integer to the internal buffer. Returns an error
   /// if the writer has reached the end of the buffer.
-  pub fn write_u64(&mut self, mut v: u64) -> Result { self.write_any(&Message::VarInt(v.into())) }
+  pub fn write_u64(&mut self, v: u64) -> Result { self.write_any(&Message::VarInt(v.into())) }
   /// Writes a single signed byte to the internal buffer.
   pub fn write_i8(&mut self, v: i8) -> Result { self.write_u8(zig(v)) }
   /// Writes a signed 16 bit integer to the internal buffer.
@@ -246,6 +246,11 @@ impl MessageWriter<'_> {
   /// Writes a signed 64 bit integer to the internal buffer. This encodes the
   /// value with zig zag encoding, and then writes that as a u64.
   pub fn write_i64(&mut self, v: i64) -> Result { self.write_u64(zig(v)) }
+
+  pub fn write_f32(&mut self, v: f32) -> Result { self.write_any(&Message::Float(v)) }
+  pub fn write_f64(&mut self, v: f64) -> Result { self.write_any(&Message::Double(v)) }
+
+  pub fn write_str(&mut self, s: &str) -> Result { self.write_bytes(s.as_bytes()) }
   pub fn write_bytes(&mut self, bytes: &[u8]) -> Result { self.write_any(&Message::Bytes(bytes)) }
 }
 

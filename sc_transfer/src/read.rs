@@ -30,10 +30,13 @@ pub enum ValidReadError {
   /// Returned if an enum variant is invalid. This likely means we are reading
   /// an enum variant from a newer client, so we should just ignore this and
   /// continue reading.
-  InvalidVariant(u64, Message),
+  InvalidVariant(u64, Header),
   /// This happens if we try to read a specific field, and get a different type.
   /// Everything was valid on the wire, so this is recoverable.
-  WrongMessage(Message, Header),
+  ///
+  /// The first value is the header of the message received, and the second is
+  /// what was expected.
+  WrongMessage(Header, Header),
 }
 
 #[derive(Debug)]
@@ -104,15 +107,6 @@ impl From<FromUtf8Error> for ValidReadError {
 impl Error for ReadError {}
 impl Error for ValidReadError {}
 impl Error for InvalidReadError {}
-
-// TODO:
-// Types:
-// 0x00 => byte (signed or unsigned)
-// 0x01 => int (signed or unsigned), varint encoded
-// 0x02 => float
-// 0x03 => double
-// 0x04 => struct
-// 0x05 => enum
 
 /// A trait for anything that can be read from a [`MessageReader`].
 pub trait MessageRead {
@@ -230,7 +224,7 @@ impl MessageReader<'_> {
   ///
   /// This returns an `InvalidResult`, as any error from this function means the
   /// [`MessageReader`] is now in an invalid state.
-  pub fn read_any(&mut self) -> InvalidResult<Message> {
+  pub fn read_any<'a>(&'a mut self) -> InvalidResult<Message<'a>> {
     let (header, extra) = self.read_header()?;
     Ok(match header {
       Header::None => Message::None,
@@ -239,9 +233,11 @@ impl MessageReader<'_> {
       Header::Double => Message::Double(self.read_double()?),
       Header::Struct => {
         let num_fields = self.read_varint(extra)?;
-        Message::Struct(
-          (0..num_fields).into_iter().map(|_| self.read_any()).collect::<InvalidResult<_>>()?,
-        )
+        let mut fields = Vec::with_capacity(num_fields as usize);
+        for _ in 0..num_fields {
+          fields.push(self.read_any()?);
+        }
+        Message::Struct(fields)
       }
       Header::Enum => Message::Enum(self.read_varint(extra)?, Box::new(self.read_any()?)),
       Header::Bytes => {
@@ -358,11 +354,11 @@ impl MessageReader<'_> {
   }
 
   /// Reads the given number of bytes from the buffer.
-  fn read_buf(&mut self, len: usize) -> InvalidResult<Vec<u8>> {
+  fn read_buf(&mut self, len: usize) -> InvalidResult<&[u8]> {
     if self.idx + len > self.data.len() {
       Err(InvalidReadError::InvalidBufLength.into())
     } else {
-      let out = self.data[self.idx..self.idx + len].to_vec();
+      let out = &self.data[self.idx..self.idx + len];
       self.idx += len;
       Ok(out)
     }
@@ -473,7 +469,7 @@ impl MessageReader<'_> {
         // above.
         self.undo_read_byte();
         let msg = self.read_any()?;
-        Err(ValidReadError::WrongMessage(msg, Header::Struct).into())
+        Err(ValidReadError::WrongMessage(msg.header(), Header::Struct).into())
       }
     }
   }
@@ -503,7 +499,7 @@ impl MessageReader<'_> {
             // above.
             self.undo_read_byte();
             let msg = self.read_any()?;
-            Err(ValidReadError::WrongMessage(msg, Header::Struct).into())
+            Err(ValidReadError::WrongMessage(msg.header(), Header::Struct).into())
           }
         }
       }
@@ -512,13 +508,13 @@ impl MessageReader<'_> {
         // above.
         self.undo_read_byte();
         let msg = self.read_any()?;
-        Err(ValidReadError::WrongMessage(msg, Header::Enum).into())
+        Err(ValidReadError::WrongMessage(msg.header(), Header::Enum).into())
       }
     }
   }
   /// Reads a byte array. If the header is not a `Bytes` header, this will
   /// return an error.
-  pub fn read_bytes(&mut self) -> Result<Vec<u8>> {
+  pub fn read_bytes(&mut self) -> Result<&[u8]> {
     self.read_any()?.into_bytes().map_err(Into::into)
   }
 }
@@ -563,7 +559,7 @@ impl EnumReader<'_> {
   /// invalid.
   pub fn invalid_variant(&mut self) -> ReadError {
     match self.reader.read_any() {
-      Ok(m) => ValidReadError::InvalidVariant(self.variant, m).into(),
+      Ok(m) => ValidReadError::InvalidVariant(self.variant, m.header()).into(),
       Err(e) => e.into(),
     }
   }

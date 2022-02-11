@@ -131,57 +131,69 @@ impl Header {
 /// prefer the individual `read_*` functions instead, as these will do things
 /// like zig-zag encoding/decoding for you.
 #[derive(Debug, Clone)]
-pub enum Message {
+pub enum Message<'a> {
   None,
   VarInt(u64),
   Float(f32),
   Double(f64),
-  Struct(Vec<Message>),
-  Enum(u64, Box<Message>),
-  Bytes(Vec<u8>),
+  Struct(Vec<Message<'a>>),
+  Enum(u64, Box<Message<'a>>),
+  Bytes(&'a [u8]),
 }
 
-impl Message {
+impl<'a> Message<'a> {
   pub fn into_none(self) -> Result<(), ValidReadError> {
     match self {
       Message::None => Ok(()),
-      m => Err(ValidReadError::WrongMessage(m, Header::None)),
+      m => Err(ValidReadError::WrongMessage(m.header(), Header::None)),
     }
   }
   pub fn into_varint(self) -> Result<u64, ValidReadError> {
     match self {
       Message::VarInt(num) => Ok(num),
-      m => Err(ValidReadError::WrongMessage(m, Header::VarInt)),
+      m => Err(ValidReadError::WrongMessage(m.header(), Header::VarInt)),
     }
   }
   pub fn into_float(self) -> Result<f32, ValidReadError> {
     match self {
       Message::Float(num) => Ok(num),
-      m => Err(ValidReadError::WrongMessage(m, Header::Float)),
+      m => Err(ValidReadError::WrongMessage(m.header(), Header::Float)),
     }
   }
   pub fn into_double(self) -> Result<f64, ValidReadError> {
     match self {
       Message::Double(num) => Ok(num),
-      m => Err(ValidReadError::WrongMessage(m, Header::Double)),
+      m => Err(ValidReadError::WrongMessage(m.header(), Header::Double)),
     }
   }
-  pub fn into_struct(self) -> Result<Vec<Message>, ValidReadError> {
+  pub fn into_struct(self) -> Result<Vec<Message<'a>>, ValidReadError> {
     match self {
       Message::Struct(fields) => Ok(fields),
-      m => Err(ValidReadError::WrongMessage(m, Header::Struct)),
+      m => Err(ValidReadError::WrongMessage(m.header(), Header::Struct)),
     }
   }
-  pub fn into_enum(self) -> Result<(u64, Message), ValidReadError> {
+  pub fn into_enum(self) -> Result<(u64, Message<'a>), ValidReadError> {
     match self {
       Message::Enum(variant, field) => Ok((variant, *field)),
-      m => Err(ValidReadError::WrongMessage(m, Header::Enum)),
+      m => Err(ValidReadError::WrongMessage(m.header(), Header::Enum)),
     }
   }
-  pub fn into_bytes(self) -> Result<Vec<u8>, ValidReadError> {
+  pub fn into_bytes(self) -> Result<&'a [u8], ValidReadError> {
     match self {
       Message::Bytes(bytes) => Ok(bytes),
-      m => Err(ValidReadError::WrongMessage(m, Header::Enum)),
+      m => Err(ValidReadError::WrongMessage(m.header(), Header::Enum)),
+    }
+  }
+
+  pub fn header(&self) -> Header {
+    match self {
+      Message::None => Header::None,
+      Message::VarInt(_) => Header::VarInt,
+      Message::Float(_) => Header::Float,
+      Message::Double(_) => Header::Double,
+      Message::Struct(_) => Header::Struct,
+      Message::Enum(_, _) => Header::Enum,
+      Message::Bytes(_) => Header::Bytes,
     }
   }
 }
