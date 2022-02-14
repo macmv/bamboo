@@ -44,7 +44,10 @@ mod generics;
 mod read;
 mod write;
 
-pub use read::{InvalidReadError, MessageRead, MessageReader, ReadError, ValidReadError};
+pub use read::{
+  EnumRead, EnumReader, InvalidReadError, MessageRead, MessageReader, ReadError, StructRead,
+  StructReader, ValidReadError,
+};
 pub use write::{MessageWrite, MessageWriter, WriteError};
 
 /// This is a 3 bit header for every field. For example, if I write a `u8`, a 3

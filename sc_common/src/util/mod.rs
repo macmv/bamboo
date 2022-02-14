@@ -62,7 +62,9 @@ pub fn read_varint(buf: &[u8]) -> (i32, isize) {
 #[sc_macros::transfer]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Hand {
+  #[id = 0]
   Main,
+  #[id = 1]
   Off,
 }
 
@@ -86,10 +88,18 @@ impl Hand {
 #[sc_macros::transfer]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub enum GameMode {
+  #[id = 0]
   Survival,
+  #[id = 1]
   Creative,
+  #[id = 2]
   Adventure,
+  #[id = 3]
   Spectator,
+}
+
+impl Default for GameMode {
+  fn default() -> Self { GameMode::Survival }
 }
 
 impl GameMode {
@@ -116,11 +126,17 @@ impl GameMode {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[sc_macros::transfer]
 pub enum Face {
+  #[id = 0]
   Bottom,
+  #[id = 1]
   Top,
+  #[id = 2]
   North,
+  #[id = 3]
   South,
+  #[id = 4]
   West,
+  #[id = 5]
   East,
 }
 
@@ -162,6 +178,10 @@ impl Face {
 
 #[derive(Debug, Clone, Copy, Hash, PartialEq, Eq)]
 pub struct UUID(u128);
+
+impl Default for UUID {
+  fn default() -> UUID { UUID::from_u128(0) }
+}
 
 #[derive(Debug)]
 pub enum UUIDParseError {

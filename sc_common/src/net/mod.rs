@@ -8,7 +8,7 @@ use crate::{
 };
 use sc_transfer::{MessageRead, MessageReader, MessageWrite, MessageWriter, ReadError, WriteError};
 
-impl MessageRead for Pos {
+impl MessageRead<'_> for Pos {
   fn read(m: &mut MessageReader) -> Result<Self, ReadError> {
     Ok(Pos::new(m.read_i32()?, m.read_i32()?, m.read_i32()?))
   }
@@ -21,7 +21,7 @@ impl MessageWrite for Pos {
     Ok(())
   }
 }
-impl MessageRead for ChunkPos {
+impl MessageRead<'_> for ChunkPos {
   fn read(m: &mut MessageReader) -> Result<Self, ReadError> {
     Ok(ChunkPos::new(m.read_i32()?, m.read_i32()?))
   }
@@ -33,9 +33,9 @@ impl MessageWrite for ChunkPos {
     Ok(())
   }
 }
-impl MessageRead for UUID {
+impl MessageRead<'_> for UUID {
   fn read(m: &mut MessageReader) -> Result<Self, ReadError> {
-    Ok(UUID::from_le_bytes(m.read_bytes(16)?.try_into().unwrap()))
+    Ok(UUID::from_le_bytes(m.read_bytes()?.try_into().unwrap()))
   }
 }
 impl MessageWrite for UUID {
@@ -45,7 +45,7 @@ impl MessageWrite for UUID {
   }
 }
 
-impl MessageRead for NBT {
+impl MessageRead<'_> for NBT {
   fn read(m: &mut MessageReader) -> Result<Self, ReadError> {
     // TODO: ParseError into ReadError
     Ok(NBT::deserialize(m.read_buf()?).unwrap())

@@ -37,6 +37,10 @@ pub enum ValidReadError {
   /// The first value is the header of the message received, and the second is
   /// what was expected.
   WrongMessage(Header, Header),
+  /// Happens if we are missing a field for a struct. This is only ever produced
+  /// when calling [`must_read`](StructReader::must_read). This function should
+  /// be avoided, as it doesn't allow for any forwards compatibility.
+  MissingField(u64),
 }
 
 #[derive(Debug)]
@@ -74,6 +78,9 @@ impl fmt::Display for ValidReadError {
       }
       Self::WrongMessage(m, header) => {
         write!(f, "got message {m:?}, expected message {header:?}")
+      }
+      Self::MissingField(field) => {
+        write!(f, "missing struct field {field}")
       }
     }
   }
@@ -528,7 +535,7 @@ impl<'a> MessageReader<'a> {
 }
 
 impl<'a> StructReader<'a> {
-  /// Reads a single field.
+  /// Reads a single field. Returns a default value if the field is not present.
   ///
   /// # Panics
   /// - The `field` must be larger than the previous field.
@@ -553,6 +560,39 @@ impl<'a> StructReader<'a> {
       match T::read(&mut self.reader) {
         Ok(v) => Ok(v),
         Err(ReadError::Valid(_)) => Ok(T::default()),
+        Err(ReadError::Invalid(e)) => Err(e.into()),
+      }
+    }
+  }
+  /// Reads a single field. The [`read`](Self::read) function will simply return
+  /// a default value if the field is not present. For forwards compatibility,
+  /// that should always be prefered. However, if you cannot implement
+  /// [`Default`] for a field, this function can be used instead. This will
+  /// return an error if the field is not present.
+  ///
+  /// Only use this if you know that you will *never* remove this field in the
+  /// future!
+  pub fn must_read<T: MessageRead<'a>>(&mut self, field: u64) -> Result<T> {
+    if field < self.current_field {
+      panic!(
+        "cannot read field that is < current field: {field} (current_field: {})",
+        self.current_field,
+      );
+    }
+    self.current_field += 1;
+    while self.current_field <= field {
+      self.reader.skip_field()?;
+      if self.current_field >= self.max_fields {
+        return Err(ValidReadError::MissingField(field).into());
+      }
+      self.current_field += 1;
+    }
+    if field >= self.max_fields {
+      Err(ValidReadError::MissingField(field).into())
+    } else {
+      match T::read(&mut self.reader) {
+        Ok(v) => Ok(v),
+        Err(ReadError::Valid(_)) => Err(ValidReadError::MissingField(field).into()),
         Err(ReadError::Invalid(e)) => Err(e.into()),
       }
     }

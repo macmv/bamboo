@@ -1,35 +1,41 @@
 use proc_macro::TokenStream;
+use proc_macro2::TokenStream as TokenStream2;
 use quote::{quote, quote_spanned};
 use syn::{
-  parse::{ParseStream, Parser, Result},
-  parse_macro_input,
-  spanned::Spanned,
-  Attribute, Item, LitInt, Token,
+  parse::{ParseStream, Parser},
+  parse_macro_input, Attribute, Fields, Item, LitInt, Token,
 };
 
 pub fn transfer(input: TokenStream) -> TokenStream {
   let mut args = parse_macro_input!(input as Item);
 
+  let block;
   match &mut args {
     Item::Struct(s) => {
-      let mut ids = vec![];
-      for f in &mut s.fields {
-        let (idx, id) = match find_id(&f.attrs) {
-          Some(v) => v,
-          None => {
-            return quote_spanned!(
-              f.vis.span().join(f.ty.span()).unwrap() =>
-              compile_error!("all fields must list an id with #[id = 0]");
-            )
-            .into()
+      let ty = &s.ident;
+      let (impl_generics, ty_generics, where_clause) = s.generics.split_for_impl();
+      let setter = create_setter(&mut s.fields);
+
+      block = quote! {
+        impl #impl_generics sc_transfer::MessageRead<'_> for #ty #ty_generics #where_clause {
+          fn read(&self, m: &mut sc_transfer::MessageReader) -> Result<Self, sc_transfer::ReadError> {
+            m.read_struct::<Self>()
           }
-        };
-        f.attrs.remove(idx);
-        ids.push(id);
-      }
+        }
+
+        impl #impl_generics sc_transfer::StructRead for #ty #ty_generics #where_clause {
+          fn read_struct(mut m: sc_transfer::StructReader) -> Result<Self, sc_transfer::ReadError> {
+            Ok(Self #setter)
+          }
+        }
+      };
     }
     Item::Enum(e) => {
+      let ty = &e.ident;
+      let (impl_generics, ty_generics, where_clause) = e.generics.split_for_impl();
+      let mut variants = vec![];
       let mut ids = vec![];
+      let mut setters = vec![];
       for v in &mut e.variants {
         let (idx, id) = match find_id(&v.attrs) {
           Some(v) => v,
@@ -42,13 +48,29 @@ pub fn transfer(input: TokenStream) -> TokenStream {
           }
         };
         v.attrs.remove(idx);
+        variants.push(&v.ident);
         ids.push(id);
-        /*
-        for f in &mut v.fields {
-          f.attrs.clear();
-        }
-        */
+        setters.push(create_setter(&mut v.fields));
       }
+
+      block = quote! {
+        impl #impl_generics sc_transfer::MessageRead<'_> for #ty #ty_generics #where_clause {
+          fn read(&self, m: &mut sc_transfer::MessageReader) -> Result<Self, sc_transfer::ReadError> {
+            m.read_enum::<Self>()
+          }
+        }
+
+        impl #impl_generics sc_transfer::EnumRead for #ty #ty_generics #where_clause {
+          fn read_enum(mut m: sc_transfer::EnumReader) -> Result<Self, sc_transfer::ReadError> {
+            Ok(match m.variant() {
+              #(
+                #ids => Self::#variants #setters,
+              )*
+              _ => return Err(m.invalid_variant()),
+            })
+          }
+        }
+      };
     }
     _ => unimplemented!(),
   }
@@ -56,12 +78,7 @@ pub fn transfer(input: TokenStream) -> TokenStream {
   let out = quote! {
     #args
 
-    impl sc_transfer::MessageRead for #ty {
-      fn read(&self, m: &mut sc_transfer::MessageReader) -> Result<Self, sc_transfer::ReadError> {
-        let ty = flags | 0x07;
-        let num_fields = flags >> 2;
-      }
-    }
+    #block
   };
 
   out.into()
@@ -73,13 +90,13 @@ pub fn transfer(input: TokenStream) -> TokenStream {
   */
 }
 
-fn parse_id(input: ParseStream) -> Result<u32> {
+fn parse_id(input: ParseStream) -> Result<u64, syn::Error> {
   let _: Token![=] = input.parse()?;
   let lit: LitInt = input.parse()?;
   lit.base10_parse()
 }
 
-fn find_id(attrs: &[Attribute]) -> Option<(usize, u32)> {
+fn find_id(attrs: &[Attribute]) -> Option<(usize, u64)> {
   for (i, a) in attrs.iter().enumerate() {
     if a.path.get_ident().map(|i| i == "id").unwrap_or(false) {
       let id = match parse_id.parse2(a.tokens.clone()) {
@@ -90,6 +107,40 @@ fn find_id(attrs: &[Attribute]) -> Option<(usize, u32)> {
     }
   }
   None
+}
+
+fn create_setter(f: &mut Fields) -> TokenStream2 {
+  match f {
+    Fields::Unit => quote!(),
+    Fields::Unnamed(fields) => {
+      let mut out = quote!();
+      for (i, _) in fields.unnamed.iter().enumerate() {
+        let i = i as u64;
+        out.extend(quote!(m.read(#i)?,));
+      }
+      quote!((#out))
+    }
+    Fields::Named(fields) => {
+      let mut ids = vec![];
+      let mut names = vec![];
+      for (i, f) in &mut fields.named.iter_mut().enumerate() {
+        let id = match find_id(&f.attrs) {
+          Some((idx, id)) => {
+            f.attrs.remove(idx);
+            id
+          }
+          None => i as u64,
+        };
+        names.push(f.ident.as_ref().unwrap());
+        ids.push(id);
+      }
+      quote!({
+        #(
+          #names: m.read(#ids)?,
+        )*
+      })
+    }
+  }
 }
 
 /*

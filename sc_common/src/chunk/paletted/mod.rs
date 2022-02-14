@@ -1,7 +1,6 @@
 use super::section::Section as ChunkSection;
 
 use crate::math::{Pos, PosError, WyHashBuilder};
-use sc_transfer::{MessageRead, MessageReader, MessageWrite, MessageWriter, ReadError, WriteError};
 use std::collections::HashMap;
 
 mod bits;
@@ -11,7 +10,9 @@ mod tests;
 use bits::BitArray;
 
 #[derive(Debug, Clone)]
+#[sc_macros::transfer]
 pub struct Section {
+  #[must_exist]
   data:            BitArray,
   // Each index into palette is a palette id. The values are global ids.
   palette:         Vec<u32>,
@@ -23,35 +24,6 @@ pub struct Section {
   reverse_palette: HashMap<u32, u32, WyHashBuilder>,
   // When switching to direct palette, this is the bpe that will be used.
   max_bpe:         u8,
-}
-
-impl MessageWrite for Section {
-  fn write(&self, m: &mut MessageWriter) -> Result<(), WriteError> {
-    m.write(&self.data)?;
-    m.write(&self.palette)?;
-    m.write(&self.block_amounts)?;
-    m.write(&self.max_bpe)?;
-    m.write_u32(self.reverse_palette.len() as u32)?;
-    for (k, v) in &self.reverse_palette {
-      m.write_u32(*k)?;
-      m.write_u32(*v)?;
-    }
-    Ok(())
-  }
-}
-impl MessageRead for Section {
-  fn read(m: &mut MessageReader) -> Result<Self, ReadError> {
-    let data = m.read()?;
-    let palette = m.read()?;
-    let block_amounts = m.read()?;
-    let max_bpe = m.read()?;
-    let len = m.read_u32()?;
-    let mut reverse_palette = HashMap::with_capacity_and_hasher(len as usize, WyHashBuilder);
-    for _ in 0..len {
-      reverse_palette.insert(m.read_u32()?, m.read_u32()?);
-    }
-    Ok(Section { data, palette, block_amounts, reverse_palette, max_bpe })
-  }
 }
 
 impl Section {
