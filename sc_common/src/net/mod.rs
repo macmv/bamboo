@@ -48,11 +48,11 @@ impl MessageWrite for UUID {
 impl MessageRead<'_> for NBT {
   fn read(m: &mut MessageReader) -> Result<Self, ReadError> {
     // TODO: ParseError into ReadError
-    Ok(NBT::deserialize(m.read_buf()?).unwrap())
+    Ok(NBT::deserialize(m.read_bytes()?.to_vec()).unwrap())
   }
 }
 impl MessageWrite for NBT {
   fn write(&self, m: &mut MessageWriter) -> Result<(), WriteError> {
-    m.write_buf(&self.serialize())
+    m.write_bytes(&self.serialize())
   }
 }

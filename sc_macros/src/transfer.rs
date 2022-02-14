@@ -18,7 +18,7 @@ pub fn transfer(input: TokenStream) -> TokenStream {
 
       block = quote! {
         impl #impl_generics sc_transfer::MessageRead<'_> for #ty #ty_generics #where_clause {
-          fn read(&self, m: &mut sc_transfer::MessageReader) -> Result<Self, sc_transfer::ReadError> {
+          fn read(m: &mut sc_transfer::MessageReader) -> Result<Self, sc_transfer::ReadError> {
             m.read_struct::<Self>()
           }
         }
@@ -55,7 +55,7 @@ pub fn transfer(input: TokenStream) -> TokenStream {
 
       block = quote! {
         impl #impl_generics sc_transfer::MessageRead<'_> for #ty #ty_generics #where_clause {
-          fn read(&self, m: &mut sc_transfer::MessageReader) -> Result<Self, sc_transfer::ReadError> {
+          fn read(m: &mut sc_transfer::MessageReader) -> Result<Self, sc_transfer::ReadError> {
             m.read_enum::<Self>()
           }
         }
@@ -108,6 +108,14 @@ fn find_id(attrs: &[Attribute]) -> Option<(usize, u64)> {
   }
   None
 }
+fn find_must_exist(attrs: &[Attribute]) -> Option<usize> {
+  for (i, a) in attrs.iter().enumerate() {
+    if a.path.get_ident().map(|i| i == "must_exist").unwrap_or(false) {
+      return Some(i);
+    }
+  }
+  None
+}
 
 fn create_setter(f: &mut Fields) -> TokenStream2 {
   match f {
@@ -123,6 +131,7 @@ fn create_setter(f: &mut Fields) -> TokenStream2 {
     Fields::Named(fields) => {
       let mut ids = vec![];
       let mut names = vec![];
+      let mut reader = vec![];
       for (i, f) in &mut fields.named.iter_mut().enumerate() {
         let id = match find_id(&f.attrs) {
           Some((idx, id)) => {
@@ -133,10 +142,17 @@ fn create_setter(f: &mut Fields) -> TokenStream2 {
         };
         names.push(f.ident.as_ref().unwrap());
         ids.push(id);
+        reader.push(match find_must_exist(&f.attrs) {
+          Some(idx) => {
+            f.attrs.remove(idx);
+            quote!(must_read)
+          }
+          None => quote!(read),
+        });
       }
       quote!({
         #(
-          #names: m.read(#ids)?,
+          #names: m.#reader(#ids)?,
         )*
       })
     }

@@ -103,7 +103,10 @@ pub enum Packet {
   #[id = 13]
   PlayerHeader { header: String, footer: String },
   #[id = 14]
-  PlayerList { action: PlayerListAction },
+  PlayerList {
+    #[must_exist]
+    action: PlayerListAction,
+  },
   #[id = 15]
   PluginMessage { channel: String, data: Vec<u8> },
   #[id = 16]
@@ -138,6 +141,7 @@ pub enum Packet {
 pub struct CommandNode {
   /// The type. This is `flags & 0x03`.
   #[id = 0]
+  #[must_exist]
   pub ty:         CommandType,
   /// If set, then `flags & 0x04` should be set. This means the command is valid
   /// after this node. For example, `/setblock <pos> <ty>` has three nodes (lit,
@@ -198,59 +202,47 @@ pub enum PlayerListAction {
 /// for each client. If this is not sent, the client will not spawn a player if
 /// they receive a SpawnPlayer packet.
 #[sc_macros::transfer]
-#[derive(Debug, Clone)]
+#[derive(Debug, Default, Clone)]
 pub struct PlayerListAdd {
   /// Player's UUID.
-  #[id = 0]
   pub id:           UUID,
   /// The player's username.
-  #[id = 1]
   pub name:         String,
-  #[id = 2]
   pub game_mode:    GameMode,
   /// Their ping in milliseconds.
-  #[id = 3]
   pub ping:         i32,
   /// An optional display name. If present, this will replace their username in
   /// the tab list.
-  #[id = 4]
   pub display_name: Option<String>,
 }
 
 /// See [`PlayerListAdd`]
 #[sc_macros::transfer]
-#[derive(Debug, Clone)]
+#[derive(Debug, Default, Clone)]
 pub struct PlayerListGameMode {
-  #[id = 0]
   pub id:        UUID,
-  #[id = 1]
   pub game_mode: GameMode,
 }
 
 /// See [`PlayerListAdd`]
 #[sc_macros::transfer]
-#[derive(Debug, Clone)]
+#[derive(Debug, Default, Clone)]
 pub struct PlayerListLatency {
-  #[id = 0]
   pub id:   UUID,
-  #[id = 1]
   pub ping: i32,
 }
 
 /// See [`PlayerListAdd`]
 #[sc_macros::transfer]
-#[derive(Debug, Clone)]
+#[derive(Debug, Default, Clone)]
 pub struct PlayerListDisplay {
-  #[id = 0]
   pub id:           UUID,
-  #[id = 1]
   pub display_name: Option<String>,
 }
 
 /// See [`PlayerListAdd`]
 #[sc_macros::transfer]
-#[derive(Debug, Clone)]
+#[derive(Debug, Default, Clone)]
 pub struct PlayerListRemove {
-  #[id = 0]
   pub id: UUID,
 }

@@ -68,6 +68,10 @@ pub enum Hand {
   Off,
 }
 
+impl Default for Hand {
+  fn default() -> Self { Hand::Main }
+}
+
 impl Hand {
   pub fn id(&self) -> u8 {
     match self {
@@ -138,6 +142,10 @@ pub enum Face {
   West,
   #[id = 5]
   East,
+}
+
+impl Default for Face {
+  fn default() -> Self { Face::Bottom }
 }
 
 impl Face {

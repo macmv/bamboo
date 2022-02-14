@@ -1,7 +1,7 @@
 use super::{MessageRead, MessageReader, MessageWrite, MessageWriter, ReadError, WriteError};
 use std::{
   collections::{HashMap, HashSet},
-  hash::Hash,
+  hash::{BuildHasher, Hash},
   marker::PhantomData,
   net::{Ipv4Addr, Ipv6Addr, SocketAddr, SocketAddrV4, SocketAddrV6},
 };
@@ -88,14 +88,15 @@ where
     Ok(())
   }
 }
-impl<'a, K, V> MessageRead<'a> for HashMap<K, V>
+impl<'a, K, V, B> MessageRead<'a> for HashMap<K, V, B>
 where
   K: MessageRead<'a> + Eq + Hash,
   V: MessageRead<'a>,
+  B: BuildHasher + Default,
 {
   fn read(m: &mut MessageReader<'a>) -> Result<Self, ReadError> {
     let len: usize = m.read_u32()?.try_into().unwrap();
-    let mut out = HashMap::with_capacity(len);
+    let mut out = HashMap::with_capacity_and_hasher(len, B::default());
     for _ in 0..len {
       out.insert(m.read()?, m.read()?);
     }

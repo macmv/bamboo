@@ -7,46 +7,27 @@ use crate::{
 #[derive(Debug, Clone)]
 #[non_exhaustive]
 pub enum Packet {
-  BlockDig {
-    pos:    Pos,
-    status: DigStatus,
-    face:   Face,
-  },
-  BlockPlace {
-    pos:  Pos,
-    face: Face,
-    hand: Hand,
-  },
-  CreativeInventoryUpdate {
-    slot: i8,
-    item: Item,
-  },
-  ChangeHeldItem {
-    slot: u8,
-  },
-  Chat {
-    msg: String,
-  },
-  Flying {
-    flying: bool,
-  },
-  KeepAlive {
-    id: i32,
-  },
-  PlayerOnGround {
-    on_ground: bool,
-  },
-  PlayerLook {
-    yaw:       f32,
-    pitch:     f32,
-    on_ground: bool,
-  },
-  PlayerPos {
-    x:         f64,
-    y:         f64,
-    z:         f64,
-    on_ground: bool,
-  },
+  #[id = 0]
+  BlockDig { pos: Pos, status: DigStatus, face: Face },
+  #[id = 1]
+  BlockPlace { pos: Pos, face: Face, hand: Hand },
+  #[id = 2]
+  CreativeInventoryUpdate { slot: i8, item: Item },
+  #[id = 3]
+  ChangeHeldItem { slot: u8 },
+  #[id = 4]
+  Chat { msg: String },
+  #[id = 5]
+  Flying { flying: bool },
+  #[id = 6]
+  KeepAlive { id: i32 },
+  #[id = 7]
+  PlayerOnGround { on_ground: bool },
+  #[id = 8]
+  PlayerLook { yaw: f32, pitch: f32, on_ground: bool },
+  #[id = 9]
+  PlayerPos { x: f64, y: f64, z: f64, on_ground: bool },
+  #[id = 10]
   PlayerPosLook {
     x:         f64,
     y:         f64,
@@ -55,21 +36,25 @@ pub enum Packet {
     pitch:     f32,
     on_ground: bool,
   },
-  PluginMessage {
-    channel: String,
-    data:    Vec<u8>,
-  },
-  UseItem {
-    hand: Hand,
-  },
+  #[id = 11]
+  PluginMessage { channel: String, data: Vec<u8> },
+  #[id = 12]
+  UseItem { hand: Hand },
 }
 
 #[sc_macros::transfer]
 #[derive(Debug, Clone)]
 pub enum DigStatus {
+  #[id = 0]
   Start,
+  #[id = 1]
   Cancel,
+  #[id = 2]
   Finish,
+}
+
+impl Default for DigStatus {
+  fn default() -> Self { DigStatus::Start }
 }
 
 impl DigStatus {

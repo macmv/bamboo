@@ -638,6 +638,36 @@ impl<'a> EnumReader<'a> {
       }
     }
   }
+
+  /// Reads a single field. Returns an error if it is not present.
+  ///
+  /// # Panics
+  /// - If `field` is less than the previous field.
+  pub fn must_read<T: MessageRead<'a>>(&mut self, field: u64) -> Result<T> {
+    if field < self.current_field {
+      panic!(
+        "cannot read field that is < current field: {field} (current_field: {})",
+        self.current_field,
+      );
+    }
+    self.current_field += 1;
+    while self.current_field <= field {
+      self.reader.skip_field()?;
+      if self.current_field >= self.max_fields {
+        return Err(ValidReadError::MissingField(field).into());
+      }
+      self.current_field += 1;
+    }
+    if field >= self.max_fields {
+      Err(ValidReadError::MissingField(field).into())
+    } else {
+      match T::read(&mut self.reader) {
+        Ok(v) => Ok(v),
+        Err(ReadError::Valid(_)) => Err(ValidReadError::MissingField(field).into()),
+        Err(ReadError::Invalid(e)) => Err(e.into()),
+      }
+    }
+  }
 }
 
 #[cfg(test)]

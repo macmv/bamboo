@@ -15,6 +15,10 @@ pub struct NBT {
   name: String,
 }
 
+impl Default for NBT {
+  fn default() -> Self { NBT::new("", Tag::compound(&[])) }
+}
+
 /// This is a single tag. It does not contain a name, but has the actual data
 /// for any of the nbt tags.
 #[derive(Debug, Clone, PartialEq)]
