@@ -226,27 +226,22 @@ impl MessageWriter<'_> {
 
   pub fn write_struct(
     &mut self,
-    fields: impl ExactSizeIterator<Item = impl Fn(&mut MessageWriter) -> Result>,
+    num_fields: u64,
+    writer: impl FnOnce(&mut MessageWriter) -> Result,
   ) -> Result {
-    let len = fields.len() as u64;
-    self.write_header(Header::Struct, len)?;
-    self.write_varint(len)?;
-    for (i, v) in fields.enumerate() {
-      if i >= len as usize {
-        panic!("iterator was supposed to iterator {} times, but it iterated {} times", len, i);
-      }
-      v(self)?;
-    }
-    Ok(())
+    self.write_header(Header::Struct, num_fields)?;
+    self.write_varint(num_fields)?;
+    writer(self)
   }
   pub fn write_enum(
     &mut self,
     variant: u64,
-    fields: impl ExactSizeIterator<Item = impl Fn(&mut MessageWriter) -> Result>,
+    num_fields: u64,
+    writer: impl FnOnce(&mut MessageWriter) -> Result,
   ) -> Result {
     self.write_header(Header::Enum, variant)?;
     self.write_varint(variant)?;
-    self.write_struct(fields)
+    self.write_struct(num_fields, writer)
   }
 }
 
@@ -258,14 +253,12 @@ mod tests {
   fn structs() {
     let mut data = [0; 4];
     let mut m = MessageWriter::new(&mut data);
-    m.write_struct(
-      [
-        |m: &mut MessageWriter| m.write_u8(5),
-        |m: &mut MessageWriter| m.write_u8(6),
-        |m: &mut MessageWriter| m.write_u8(7),
-      ]
-      .into_iter(),
-    )
+    m.write_struct(3, |m| {
+      m.write_u8(5)?;
+      m.write_u8(6)?;
+      m.write_u8(7)?;
+      Ok(())
+    })
     .unwrap();
     assert!(matches!(m.write_u8(5).unwrap_err(), WriteError::EOF));
     assert_eq!(data, [0b100 | 3 << 3, 0b001 | 5 << 3, 0b001 | 6 << 3, 0b001 | 7 << 3]);
@@ -275,15 +268,13 @@ mod tests {
   fn enums() {
     let mut data = [0; 5];
     let mut m = MessageWriter::new(&mut data);
-    m.write_enum(
-      5,
-      [
-        |m: &mut MessageWriter| m.write_u8(5),
-        |m: &mut MessageWriter| m.write_u8(6),
-        |m: &mut MessageWriter| m.write_u8(7),
-      ]
-      .into_iter(),
-    )
+    let a = 5_i32;
+    m.write_enum(5, 3, |m| {
+      m.write(&5_i32)?;
+      m.write(&a)?;
+      m.write(&7_i32)?;
+      Ok(())
+    })
     .unwrap();
     assert!(matches!(m.write_u8(5).unwrap_err(), WriteError::EOF));
     assert_eq!(

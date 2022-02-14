@@ -103,10 +103,11 @@ where
     Ok(out)
   }
 }
-impl<K, V> MessageWrite for HashMap<K, V>
+impl<K, V, B> MessageWrite for HashMap<K, V, B>
 where
   K: MessageWrite,
   V: MessageWrite,
+  B: BuildHasher,
 {
   fn write(&self, m: &mut MessageWriter) -> Result<(), WriteError> {
     m.write_u32(self.len().try_into().unwrap())?;
