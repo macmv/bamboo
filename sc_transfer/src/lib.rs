@@ -258,4 +258,13 @@ mod tests {
     let mut m = MessageReader::new(&buf);
     assert_eq!(m.read_f64().unwrap(), 3.456);
   }
+
+  #[test]
+  fn read_write() {
+    let mut buf = [0; 5];
+    let mut m = MessageWriter::new(&mut buf);
+    m.write_u32(123525).unwrap();
+    let mut m = MessageReader::new(&buf);
+    assert_eq!(m.read_u32().unwrap(), 123525);
+  }
 }

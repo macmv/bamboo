@@ -268,11 +268,11 @@ mod tests {
   fn enums() {
     let mut data = [0; 5];
     let mut m = MessageWriter::new(&mut data);
-    let a = 5_i32;
+    let a = 6_u32;
     m.write_enum(5, 3, |m| {
-      m.write(&5_i32)?;
+      m.write(&5_u32)?;
       m.write(&a)?;
-      m.write(&7_i32)?;
+      m.write(&7_u32)?;
       Ok(())
     })
     .unwrap();
