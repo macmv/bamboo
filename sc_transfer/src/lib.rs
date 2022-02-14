@@ -243,13 +243,13 @@ mod tests {
 
   #[test]
   fn floats() {
-    let mut buf = [0; 4];
+    let mut buf = [0; 5];
     let mut m = MessageWriter::new(&mut buf);
     m.write_f32(3.456).unwrap();
     let mut m = MessageReader::new(&buf);
     assert_eq!(m.read_f32().unwrap(), 3.456);
 
-    let mut buf = [0; 8];
+    let mut buf = [0; 9];
     let mut m = MessageWriter::new(&mut buf);
     m.write_f64(3.456).unwrap();
     let mut m = MessageReader::new(&buf);

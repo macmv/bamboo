@@ -8,7 +8,7 @@ use std::{
 
 macro_rules! num_impl {
   ($ty:ty, $read:ident, $write:ident) => {
-    impl MessageRead for $ty {
+    impl MessageRead<'_> for $ty {
       fn read(m: &mut MessageReader) -> Result<Self, ReadError> { m.$read() }
     }
     impl MessageWrite for $ty {
@@ -29,20 +29,25 @@ num_impl!(i64, read_i64, write_i64);
 num_impl!(f32, read_f32, write_f32);
 num_impl!(f64, read_f64, write_f64);
 
-impl MessageRead for String {
-  fn read(m: &mut MessageReader) -> Result<Self, ReadError> {
-    String::from_utf8(m.read_bytes()?.into()).map_err(Into::into)
-  }
+impl<'a> MessageRead<'a> for &'a str {
+  fn read(m: &mut MessageReader<'a>) -> Result<Self, ReadError> { m.read_str() }
+}
+impl MessageWrite for &str {
+  fn write(&self, m: &mut MessageWriter) -> Result<(), WriteError> { m.write_str(self) }
+}
+
+impl MessageRead<'_> for String {
+  fn read(m: &mut MessageReader) -> Result<Self, ReadError> { Ok(m.read_str()?.into()) }
 }
 impl MessageWrite for String {
   fn write(&self, m: &mut MessageWriter) -> Result<(), WriteError> { m.write_str(self) }
 }
 
-impl<T> MessageRead for Option<T>
+impl<'a, T> MessageRead<'a> for Option<T>
 where
-  T: MessageRead,
+  T: MessageRead<'a>,
 {
-  fn read(m: &mut MessageReader) -> Result<Self, ReadError> {
+  fn read(m: &mut MessageReader<'a>) -> Result<Self, ReadError> {
     Ok(if m.read()? { Some(m.read()?) } else { None })
   }
 }
@@ -58,11 +63,11 @@ where
     }
   }
 }
-impl<T> MessageRead for Vec<T>
+impl<'a, T> MessageRead<'a> for Vec<T>
 where
-  T: MessageRead,
+  T: MessageRead<'a>,
 {
-  fn read(m: &mut MessageReader) -> Result<Self, ReadError> {
+  fn read(m: &mut MessageReader<'a>) -> Result<Self, ReadError> {
     let len: usize = m.read_u32()?.try_into().unwrap();
     let mut out = Vec::with_capacity(len);
     for _ in 0..len {
@@ -83,12 +88,12 @@ where
     Ok(())
   }
 }
-impl<K, V> MessageRead for HashMap<K, V>
+impl<'a, K, V> MessageRead<'a> for HashMap<K, V>
 where
-  K: MessageRead + Eq + Hash,
-  V: MessageRead,
+  K: MessageRead<'a> + Eq + Hash,
+  V: MessageRead<'a>,
 {
-  fn read(m: &mut MessageReader) -> Result<Self, ReadError> {
+  fn read(m: &mut MessageReader<'a>) -> Result<Self, ReadError> {
     let len: usize = m.read_u32()?.try_into().unwrap();
     let mut out = HashMap::with_capacity(len);
     for _ in 0..len {
@@ -111,11 +116,11 @@ where
     Ok(())
   }
 }
-impl<T> MessageRead for HashSet<T>
+impl<'a, T> MessageRead<'a> for HashSet<T>
 where
-  T: MessageRead + Eq + Hash,
+  T: MessageRead<'a> + Eq + Hash,
 {
-  fn read(m: &mut MessageReader) -> Result<Self, ReadError> {
+  fn read(m: &mut MessageReader<'a>) -> Result<Self, ReadError> {
     let len: usize = m.read_u32()?.try_into().unwrap();
     let mut out = HashSet::with_capacity(len);
     for _ in 0..len {
@@ -143,15 +148,15 @@ where
 
 macro_rules! array_impl {
   { $n:expr, $t:ident $($ts:ident)* } => {
-    impl<T: MessageRead> MessageRead for [T; $n] {
-      fn read(m: &mut MessageReader) -> Result<Self, ReadError> {
+    impl<'a, T: MessageRead<'a>> MessageRead<'a> for [T; $n] {
+      fn read(m: &mut MessageReader<'a>) -> Result<Self, ReadError> {
         Ok([$t::read(m)?, $($ts::read(m)?),*])
       }
     }
     array_impl! { ($n - 1), $($ts)* }
   };
   { $n:expr, } => {
-    impl<T> MessageRead for [T; $n] {
+    impl<T> MessageRead<'_> for [T; $n] {
       fn read(_m: &mut MessageReader) -> Result<Self, ReadError> { Ok([]) }
     }
   };
@@ -178,8 +183,8 @@ macro_rules! tuple_impls {
       }
     )+) => {
     $(
-      impl<$($T: MessageRead),+> MessageRead for ($($T,)+) {
-        fn read(m: &mut MessageReader) -> Result<Self, ReadError> {
+      impl<'a, $($T: MessageRead<'a>),+> MessageRead<'a> for ($($T,)+) {
+        fn read(m: &mut MessageReader<'a>) -> Result<Self, ReadError> {
           Ok(($($T::read(m)?,)+))
         }
       }
@@ -216,14 +221,14 @@ tuple_impls! {
   }
 }
 
-impl<T> MessageRead for PhantomData<T> {
+impl<T> MessageRead<'_> for PhantomData<T> {
   fn read(_: &mut MessageReader) -> Result<Self, ReadError> { Ok(PhantomData::default()) }
 }
 impl<T> MessageWrite for PhantomData<T> {
   fn write(&self, _: &mut MessageWriter) -> Result<(), WriteError> { Ok(()) }
 }
 
-impl MessageRead for SocketAddr {
+impl MessageRead<'_> for SocketAddr {
   fn read(m: &mut MessageReader) -> Result<Self, ReadError> {
     Ok(match m.read_u8()? {
       0 => SocketAddr::V4(m.read()?),
@@ -248,7 +253,7 @@ impl MessageWrite for SocketAddr {
   }
 }
 
-impl MessageRead for SocketAddrV4 {
+impl MessageRead<'_> for SocketAddrV4 {
   fn read(m: &mut MessageReader) -> Result<Self, ReadError> {
     Ok(SocketAddrV4::new(m.read()?, m.read()?))
   }
@@ -260,7 +265,7 @@ impl MessageWrite for SocketAddrV4 {
     Ok(())
   }
 }
-impl MessageRead for SocketAddrV6 {
+impl MessageRead<'_> for SocketAddrV6 {
   fn read(m: &mut MessageReader) -> Result<Self, ReadError> {
     Ok(SocketAddrV6::new(m.read()?, m.read()?, m.read()?, m.read()?))
   }
@@ -274,7 +279,7 @@ impl MessageWrite for SocketAddrV6 {
     Ok(())
   }
 }
-impl MessageRead for Ipv4Addr {
+impl MessageRead<'_> for Ipv4Addr {
   fn read(m: &mut MessageReader) -> Result<Self, ReadError> {
     // 4 8-bit numbers
     Ok(Ipv4Addr::new(m.read()?, m.read()?, m.read()?, m.read()?))
@@ -289,7 +294,7 @@ impl MessageWrite for Ipv4Addr {
     Ok(())
   }
 }
-impl MessageRead for Ipv6Addr {
+impl MessageRead<'_> for Ipv6Addr {
   fn read(m: &mut MessageReader) -> Result<Self, ReadError> {
     // 8 16-bit numbers
     Ok(Ipv6Addr::new(

@@ -141,10 +141,10 @@ impl MessageWriter<'_> {
   /// This is private, as it doesn't read a `Header`.
   fn write_float(&mut self, v: f32) -> Result {
     let n = v.to_bits();
-    self.write_u8(n as u8)?;
-    self.write_u8((n >> 8) as u8)?;
-    self.write_u8((n >> 16) as u8)?;
-    self.write_u8((n >> 24) as u8)?;
+    self.write_byte(n as u8)?;
+    self.write_byte((n >> 8) as u8)?;
+    self.write_byte((n >> 16) as u8)?;
+    self.write_byte((n >> 24) as u8)?;
     Ok(())
   }
   /// Writes a double to the buffer. This will simply write the double's 8
@@ -153,14 +153,14 @@ impl MessageWriter<'_> {
   /// This is private, as it doesn't read a `Header`.
   fn write_double(&mut self, v: f64) -> Result {
     let n = v.to_bits();
-    self.write_u8(n as u8)?;
-    self.write_u8((n >> 8) as u8)?;
-    self.write_u8((n >> 16) as u8)?;
-    self.write_u8((n >> 24) as u8)?;
-    self.write_u8((n >> 32) as u8)?;
-    self.write_u8((n >> 40) as u8)?;
-    self.write_u8((n >> 48) as u8)?;
-    self.write_u8((n >> 56) as u8)?;
+    self.write_byte(n as u8)?;
+    self.write_byte((n >> 8) as u8)?;
+    self.write_byte((n >> 16) as u8)?;
+    self.write_byte((n >> 24) as u8)?;
+    self.write_byte((n >> 32) as u8)?;
+    self.write_byte((n >> 40) as u8)?;
+    self.write_byte((n >> 48) as u8)?;
+    self.write_byte((n >> 56) as u8)?;
     Ok(())
   }
 

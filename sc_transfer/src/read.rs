@@ -1,6 +1,6 @@
 use super::{zag, Header};
 
-use std::{error::Error, fmt, string::FromUtf8Error};
+use std::{error::Error, fmt, str::Utf8Error};
 
 type Result<T> = std::result::Result<T, ReadError>;
 type InvalidResult<T> = std::result::Result<T, InvalidReadError>;
@@ -26,7 +26,7 @@ pub enum ValidReadError {
   /// This happens if we read a string, and its not valid UTF8. This is easy to
   /// recover from, as it happens after we know the length of the buffer (so we
   /// can just skip this field).
-  InvalidUtf8(FromUtf8Error),
+  InvalidUtf8(Utf8Error),
   /// Returned if an enum variant is invalid. This likely means we are reading
   /// an enum variant from a newer client, so we should just ignore this and
   /// continue reading.
@@ -97,11 +97,11 @@ impl From<ValidReadError> for ReadError {
 impl From<InvalidReadError> for ReadError {
   fn from(e: InvalidReadError) -> Self { ReadError::Invalid(e) }
 }
-impl From<FromUtf8Error> for ReadError {
-  fn from(e: FromUtf8Error) -> Self { ReadError::Valid(e.into()) }
+impl From<Utf8Error> for ReadError {
+  fn from(e: Utf8Error) -> Self { ReadError::Valid(e.into()) }
 }
-impl From<FromUtf8Error> for ValidReadError {
-  fn from(e: FromUtf8Error) -> Self { ValidReadError::InvalidUtf8(e.into()) }
+impl From<Utf8Error> for ValidReadError {
+  fn from(e: Utf8Error) -> Self { ValidReadError::InvalidUtf8(e.into()) }
 }
 
 impl Error for ReadError {}
@@ -109,9 +109,9 @@ impl Error for ValidReadError {}
 impl Error for InvalidReadError {}
 
 /// A trait for anything that can be read from a [`MessageReader`].
-pub trait MessageRead {
+pub trait MessageRead<'a> {
   /// Reads a value of Self from the reader.
-  fn read(reader: &mut MessageReader) -> Result<Self>
+  fn read(reader: &mut MessageReader<'a>) -> Result<Self>
   where
     Self: Sized;
 }
@@ -168,7 +168,7 @@ pub struct EnumReader<'a> {
   max_fields:    u64,
 }
 
-impl MessageReader<'_> {
+impl<'a> MessageReader<'a> {
   /// Creates a new MessageReader. This will read data from the given slice, and
   /// use an internal index to know what byte to read from. After reading, you
   /// can call `index`, and know that this will not have read any data past that
@@ -190,7 +190,7 @@ impl MessageReader<'_> {
   /// use.
   pub fn read<T>(&mut self) -> Result<T>
   where
-    T: MessageRead,
+    T: MessageRead<'a>,
   {
     T::read(self)
   }
@@ -322,7 +322,7 @@ impl MessageReader<'_> {
   }
 
   /// Reads the given number of bytes from the buffer.
-  fn read_buf(&mut self, len: usize) -> InvalidResult<&[u8]> {
+  fn read_buf(&mut self, len: usize) -> InvalidResult<&'a [u8]> {
     if self.idx + len > self.data.len() {
       Err(InvalidReadError::InvalidBufLength.into())
     } else {
@@ -378,7 +378,7 @@ macro_rules! read_signed {
   };
 }
 
-impl MessageReader<'_> {
+impl<'a> MessageReader<'a> {
   /// Reads a single field. If this is not a `None` field, this returns a
   /// [`ValidReadError::WrongMessage`] error.
   pub fn read_none(&mut self) -> Result<()> {
@@ -513,7 +513,7 @@ impl MessageReader<'_> {
   }
   /// Reads a byte array. If the header is not a `Bytes` header, this will
   /// return a [`ValidReadError::WrongMessage`] error.
-  pub fn read_bytes(&mut self) -> Result<&[u8]> {
+  pub fn read_bytes(&mut self) -> Result<&'a [u8]> {
     let (header, extra) = self.read_header()?;
     if header != Header::Bytes {
       Err(ValidReadError::WrongMessage(header, Header::Bytes).into())
@@ -522,14 +522,17 @@ impl MessageReader<'_> {
       self.read_buf(len as usize).map_err(Into::into)
     }
   }
+  /// Reads a string. If the header is not a `Bytes` header, this will
+  /// return a [`ValidReadError::WrongMessage`] error.
+  pub fn read_str(&mut self) -> Result<&'a str> { Ok(std::str::from_utf8(self.read_bytes()?)?) }
 }
 
-impl StructReader<'_> {
+impl<'a> StructReader<'a> {
   /// Reads a single field.
   ///
   /// # Panics
   /// - The `field` must be larger than the previous field.
-  pub fn read<T: Default + MessageRead>(&mut self, field: u64) -> Result<T> {
+  pub fn read<T: Default + MessageRead<'a>>(&mut self, field: u64) -> Result<T> {
     if field < self.current_field {
       panic!(
         "cannot read field that is < current field: {field} (current_field: {})",
@@ -556,7 +559,7 @@ impl StructReader<'_> {
   }
 }
 
-impl EnumReader<'_> {
+impl<'a> EnumReader<'a> {
   /// Returns the variant of this enum reader. Should be matched against in
   /// implementers of [`EnumRead`].
   pub fn variant(&self) -> u64 { self.variant }
@@ -570,7 +573,7 @@ impl EnumReader<'_> {
   ///
   /// # Panics
   /// - If `field` is less than the previous field.
-  pub fn read<T: Default + MessageRead>(&mut self, field: u64) -> Result<T> {
+  pub fn read<T: Default + MessageRead<'a>>(&mut self, field: u64) -> Result<T> {
     if field < self.current_field {
       panic!(
         "cannot read field that is < current field: {field} (current_field: {})",
@@ -812,9 +815,9 @@ mod tests {
 
   #[test]
   fn bytes() {
-    let mut m = MessageReader::new(b"hello");
+    let mut m = MessageReader::new(&[0b110 | 5 << 3, b'h', b'e', b'l', b'l', b'o']);
     assert_eq!(m.index(), 0);
-    assert_eq!(&m.read_bytes().unwrap(), b"hello");
-    assert_eq!(m.index(), 5);
+    assert_eq!(m.read_str().unwrap(), "hello");
+    assert_eq!(m.index(), 6);
   }
 }
