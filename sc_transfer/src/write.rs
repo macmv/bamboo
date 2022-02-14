@@ -223,11 +223,74 @@ impl MessageWriter<'_> {
     self.write_varint(bytes.len() as u64)?;
     self.write_buf(bytes)
   }
+
+  pub fn write_struct(
+    &mut self,
+    fields: impl ExactSizeIterator<Item = impl Fn(&mut MessageWriter) -> Result>,
+  ) -> Result {
+    let len = fields.len() as u64;
+    self.write_header(Header::Struct, len)?;
+    self.write_varint(len)?;
+    for (i, v) in fields.enumerate() {
+      if i >= len as usize {
+        panic!("iterator was supposed to iterator {} times, but it iterated {} times", len, i);
+      }
+      v(self)?;
+    }
+    Ok(())
+  }
+  pub fn write_enum(
+    &mut self,
+    variant: u64,
+    fields: impl ExactSizeIterator<Item = impl Fn(&mut MessageWriter) -> Result>,
+  ) -> Result {
+    self.write_header(Header::Enum, variant)?;
+    self.write_varint(variant)?;
+    self.write_struct(fields)
+  }
 }
 
 #[cfg(test)]
 mod tests {
   use super::*;
+
+  #[test]
+  fn structs() {
+    let mut data = [0; 4];
+    let mut m = MessageWriter::new(&mut data);
+    m.write_struct(
+      [
+        |m: &mut MessageWriter| m.write_u8(5),
+        |m: &mut MessageWriter| m.write_u8(6),
+        |m: &mut MessageWriter| m.write_u8(7),
+      ]
+      .into_iter(),
+    )
+    .unwrap();
+    assert!(matches!(m.write_u8(5).unwrap_err(), WriteError::EOF));
+    assert_eq!(data, [0b100 | 3 << 3, 0b001 | 5 << 3, 0b001 | 6 << 3, 0b001 | 7 << 3]);
+  }
+
+  #[test]
+  fn enums() {
+    let mut data = [0; 5];
+    let mut m = MessageWriter::new(&mut data);
+    m.write_enum(
+      5,
+      [
+        |m: &mut MessageWriter| m.write_u8(5),
+        |m: &mut MessageWriter| m.write_u8(6),
+        |m: &mut MessageWriter| m.write_u8(7),
+      ]
+      .into_iter(),
+    )
+    .unwrap();
+    assert!(matches!(m.write_u8(5).unwrap_err(), WriteError::EOF));
+    assert_eq!(
+      data,
+      [0b101 | 5 << 3, 0b100 | 3 << 3, 0b001 | 5 << 3, 0b001 | 6 << 3, 0b001 | 7 << 3]
+    );
+  }
 
   #[test]
   fn simple() {
@@ -254,6 +317,7 @@ mod tests {
     assert_eq!(data, [0b001 | 1 << 3, 0b001 | 0x10 << 3, 1]);
   }
 
+  /*
   #[test]
   fn varints() {
     const EXPECTED: &[u8] = &[
@@ -299,4 +363,5 @@ mod tests {
     assert_eq!(m.index(), 5);
     assert!(matches!(m.write_bytes(b"a").unwrap_err(), WriteError::BufTooLong));
   }
+  */
 }
