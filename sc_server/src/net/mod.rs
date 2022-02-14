@@ -11,7 +11,9 @@ use sc_common::{
   util::{ThreadPool, UUID},
   version::ProtocolVersion,
 };
-use sc_transfer::{MessageRead, MessageReader, MessageWrite, MessageWriter, ReadError};
+use sc_transfer::{
+  InvalidReadError, MessageRead, MessageReader, MessageWrite, MessageWriter, ReadError,
+};
 use std::{
   collections::HashMap,
   convert::TryInto,
@@ -227,14 +229,17 @@ impl Connection {
             } else {
               // This is the first packet, so it must be a login packet.
               let mut m = MessageReader::new(&self.incoming);
-              let username = m.read_str().map_err(|e| {
-                io::Error::new(
-                  io::ErrorKind::InvalidData,
-                  format!("error reading handshake: {}", e),
-                )
-              })?;
+              let username = m
+                .read_str()
+                .map_err(|e| {
+                  io::Error::new(
+                    io::ErrorKind::InvalidData,
+                    format!("error reading handshake: {}", e),
+                  )
+                })?
+                .into();
               let uuid = UUID::from_be_bytes(
-                m.read_bytes(16)
+                m.read_bytes()
                   .map_err(|e| {
                     io::Error::new(
                       io::ErrorKind::InvalidData,
@@ -262,7 +267,7 @@ impl Connection {
         }
         // If this is an EOF, then we have a partial varint, so we are done reading.
         Err(e) => {
-          if matches!(e, ReadError::EOF) {
+          if matches!(e, ReadError::Invalid(InvalidReadError::EOF)) {
             return Ok((None, out));
           } else {
             return Err(io::Error::new(
