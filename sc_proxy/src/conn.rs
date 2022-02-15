@@ -252,6 +252,7 @@ impl<'a, S: PacketStream + Send + Sync> Conn<'a, S> {
           let idx = m.index();
           self.from_server.drain(0..idx);
           let mut m = MessageReader::new(&self.from_server[..len as usize]);
+          info!("message:\n{}", m);
           let common = ccb::Packet::read(&mut m).map_err(|err| {
             io::Error::new(
               io::ErrorKind::InvalidData,

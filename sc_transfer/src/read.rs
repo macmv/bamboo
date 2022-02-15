@@ -97,6 +97,75 @@ impl fmt::Display for InvalidReadError {
     }
   }
 }
+impl fmt::Display for MessageReader<'_> {
+  fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    write!(f, "Message ({} bytes) {{", self.data.len())?;
+    let mut reader = MessageReader::new(self.data);
+    while reader.can_read() {
+      match reader.write_fmt(1, f) {
+        Ok(()) => {}
+        Err(e) => writeln!(f, "  Err({e}),")?,
+      }
+    }
+    write!(f, "}}")?;
+    Ok(())
+  }
+}
+impl MessageReader<'_> {
+  fn write_fmt(&mut self, indent: usize, f: &mut fmt::Formatter) -> Result<()> {
+    let sp = "  ".repeat(indent);
+    let (header, extra) = self.read_header()?;
+    match header {
+      Header::None => {
+        writeln!(f, "{sp}None,").unwrap();
+      }
+      Header::VarInt => {
+        let v = self.read_varint(extra)?;
+        writeln!(f, "{sp}VarInt({v} {v:#x}),").unwrap();
+      }
+      Header::Float => {
+        let v = self.read_float()?;
+        writeln!(f, "{sp}Float({v}),").unwrap();
+      }
+      Header::Double => {
+        let v = self.read_double()?;
+        writeln!(f, "{sp}Double({v}),").unwrap();
+      }
+      Header::Struct => {
+        let num_fields = self.read_varint(extra)?;
+        writeln!(f, "{sp}Struct(fields: {num_fields}) {{").unwrap();
+        for _ in 0..num_fields {
+          match self.write_fmt(indent + 1, f) {
+            Ok(()) => {}
+            Err(e) => writeln!(f, "{sp}Err({e})").unwrap(),
+          }
+        }
+        writeln!(f, "{sp}}}").unwrap();
+      }
+      Header::Enum => {
+        let variant = self.read_varint(extra)?;
+        writeln!(f, "{sp}Enum(variant: {variant}) {{").unwrap();
+        match self.write_fmt(indent + 1, f) {
+          Ok(()) => {}
+          Err(e) => writeln!(f, "{sp}Err({e})").unwrap(),
+        }
+        writeln!(f, "{sp}}}").unwrap();
+      }
+      Header::Bytes => {
+        let len = self.read_varint(extra)? as usize;
+        let data = self.read_buf(len)?;
+        writeln!(f, "{sp}Bytes(len: {len}) {{").unwrap();
+        writeln!(f, "{sp}  hex: {data:#x?}").unwrap();
+        match std::str::from_utf8(data) {
+          Ok(v) => writeln!(f, "{sp}  str: '{v}'").unwrap(),
+          Err(e) => writeln!(f, "{sp}  str: {e}").unwrap(),
+        }
+        writeln!(f, "{sp}}}").unwrap();
+      }
+    }
+    Ok(())
+  }
+}
 
 impl From<ValidReadError> for ReadError {
   fn from(e: ValidReadError) -> Self { ReadError::Valid(e) }
