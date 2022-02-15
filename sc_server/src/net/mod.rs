@@ -174,9 +174,10 @@ impl Connection {
 
     let mut prefix = [0; 5];
     let mut m = MessageWriter::new(&mut prefix);
-    m.write_i32(len as i32).unwrap();
+    m.write_u32(len.try_into().unwrap()).unwrap();
     let prefix_len = m.index();
 
+    info!("writing len: {} (prefix: {:#x?})", len, &prefix[..prefix_len]);
     self.outgoing.extend_from_slice(&prefix[..prefix_len]);
     self.outgoing.extend_from_slice(&self.garbage[..len]);
     self.try_flush()

@@ -126,7 +126,7 @@ impl PacketCollection {
     gen.write_line("#[derive(Debug, Clone, PartialEq, Eq, Hash)]");
     gen.write_line("pub struct U;");
     gen.write_line("");
-    gen.write_line("impl MessageRead for U {");
+    gen.write_line("impl MessageRead<'_> for U {");
     gen.write_line("  fn read(_: &mut MessageReader) -> Result<Self, ReadError> { Ok(U) }");
     gen.write_line("}");
     gen.write_line("impl MessageWrite for U {");

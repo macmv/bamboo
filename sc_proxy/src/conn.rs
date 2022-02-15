@@ -13,7 +13,9 @@ use sc_common::{
   util::{chat::Color, Chat, UUID},
   version::ProtocolVersion,
 };
-use sc_transfer::{MessageRead, MessageReader, MessageWrite, MessageWriter, ReadError};
+use sc_transfer::{
+  InvalidReadError, MessageRead, MessageReader, MessageWrite, MessageWriter, ReadError,
+};
 use serde_derive::{Deserialize, Serialize};
 use sha1::{Digest, Sha1};
 use std::{
@@ -244,7 +246,7 @@ impl<'a, S: PacketStream + Send + Sync> Conn<'a, S> {
   /// partial packet.
   fn read_server_packet(&mut self) -> Result<bool> {
     let mut m = MessageReader::new(&self.from_server);
-    match m.read_i32() {
+    match m.read_u32() {
       Ok(len) => {
         if len as usize + m.index() <= self.from_server.len() {
           let idx = m.index();
@@ -278,7 +280,7 @@ impl<'a, S: PacketStream + Send + Sync> Conn<'a, S> {
       }
       // There are no bytes waiting for us, or an invalid varint.
       Err(e) => {
-        if matches!(e, ReadError::EOF) {
+        if matches!(e, ReadError::Invalid(InvalidReadError::EOF)) {
           Ok(false)
         } else {
           return Err(io::Error::new(ErrorKind::InvalidData, e.to_string()).into());
