@@ -13,7 +13,7 @@ impl<T> MessageWrite for &T
 where
   T: ?Sized + MessageWrite,
 {
-  fn write(&self, m: &mut MessageWriter) -> Result<(), WriteError> { m.write(self) }
+  fn write(&self, m: &mut MessageWriter) -> Result<(), WriteError> { m.write::<T>(self) }
 }
 
 macro_rules! num_impl {
@@ -233,99 +233,115 @@ tuple_impls! {
 }
 
 impl<T> MessageRead<'_> for PhantomData<T> {
-  fn read(_: &mut MessageReader) -> Result<Self, ReadError> { Ok(PhantomData::default()) }
+  fn read(m: &mut MessageReader) -> Result<Self, ReadError> { m.read_struct() }
+}
+impl<T> StructRead<'_> for PhantomData<T> {
+  fn read_struct(_: StructReader) -> Result<Self, ReadError> { Ok(PhantomData::default()) }
 }
 impl<T> MessageWrite for PhantomData<T> {
-  fn write(&self, _: &mut MessageWriter) -> Result<(), WriteError> { Ok(()) }
+  fn write(&self, m: &mut MessageWriter) -> Result<(), WriteError> { m.write_struct(0, |_| Ok(())) }
 }
 
 impl MessageRead<'_> for SocketAddr {
-  fn read(m: &mut MessageReader) -> Result<Self, ReadError> {
-    Ok(match m.read_u8()? {
-      0 => SocketAddr::V4(m.read()?),
-      1 => SocketAddr::V6(m.read()?),
-      v => panic!("unknown socket addr type {}", v),
-    })
+  fn read(m: &mut MessageReader) -> Result<Self, ReadError> { m.read_enum() }
+}
+
+impl EnumRead<'_> for SocketAddr {
+  fn read_enum(mut m: EnumReader) -> Result<Self, ReadError> {
+    match m.variant() {
+      0 => Ok(SocketAddr::V4(m.must_read(0)?)),
+      1 => Ok(SocketAddr::V6(m.must_read(0)?)),
+      _ => Err(m.invalid_variant()),
+    }
   }
 }
 impl MessageWrite for SocketAddr {
   fn write(&self, m: &mut MessageWriter) -> Result<(), WriteError> {
-    match self {
-      SocketAddr::V4(addr) => {
-        m.write_u8(0)?;
-        m.write(addr)?;
-      }
-      SocketAddr::V6(addr) => {
-        m.write_u8(1)?;
-        m.write(addr)?;
-      }
-    }
-    Ok(())
+    m.write_enum(
+      match self {
+        SocketAddr::V4(_) => 0,
+        SocketAddr::V6(_) => 1,
+      },
+      1,
+      |m| match self {
+        SocketAddr::V4(addr) => m.write(addr),
+        SocketAddr::V6(addr) => m.write(addr),
+      },
+    )
   }
 }
 
 impl MessageRead<'_> for SocketAddrV4 {
-  fn read(m: &mut MessageReader) -> Result<Self, ReadError> {
-    Ok(SocketAddrV4::new(m.read()?, m.read()?))
+  fn read(m: &mut MessageReader) -> Result<Self, ReadError> { m.read_struct() }
+}
+impl StructRead<'_> for SocketAddrV4 {
+  fn read_struct(mut m: StructReader) -> Result<Self, ReadError> {
+    Ok(SocketAddrV4::new(m.must_read(0)?, m.must_read(1)?))
   }
 }
 impl MessageWrite for SocketAddrV4 {
   fn write(&self, m: &mut MessageWriter) -> Result<(), WriteError> {
-    m.write(self.ip())?;
-    m.write(&self.port())?;
-    Ok(())
+    m.write_struct(2, |m| {
+      m.write(self.ip())?;
+      m.write(&self.port())
+    })
   }
 }
 impl MessageRead<'_> for SocketAddrV6 {
-  fn read(m: &mut MessageReader) -> Result<Self, ReadError> {
-    Ok(SocketAddrV6::new(m.read()?, m.read()?, m.read()?, m.read()?))
+  fn read(m: &mut MessageReader) -> Result<Self, ReadError> { m.read_struct() }
+}
+impl StructRead<'_> for SocketAddrV6 {
+  fn read_struct(mut m: StructReader) -> Result<Self, ReadError> {
+    Ok(SocketAddrV6::new(m.must_read(0)?, m.must_read(1)?, m.must_read(2)?, m.must_read(3)?))
   }
 }
 impl MessageWrite for SocketAddrV6 {
   fn write(&self, m: &mut MessageWriter) -> Result<(), WriteError> {
-    m.write(self.ip())?;
-    m.write(&self.port())?;
-    m.write(&self.flowinfo())?;
-    m.write(&self.scope_id())?;
-    Ok(())
+    m.write_struct(4, |m| {
+      m.write(self.ip())?;
+      m.write(&self.port())?;
+      m.write(&self.flowinfo())?;
+      m.write(&self.scope_id())
+    })
   }
 }
 impl MessageRead<'_> for Ipv4Addr {
   fn read(m: &mut MessageReader) -> Result<Self, ReadError> {
     // 4 8-bit numbers
-    Ok(Ipv4Addr::new(m.read()?, m.read()?, m.read()?, m.read()?))
+    let mut iter = m.read_list()?;
+    Ok(Ipv4Addr::new(
+      iter.next().unwrap()?,
+      iter.next().unwrap()?,
+      iter.next().unwrap()?,
+      iter.next().unwrap()?,
+    ))
   }
 }
 impl MessageWrite for Ipv4Addr {
   fn write(&self, m: &mut MessageWriter) -> Result<(), WriteError> {
     // 4 8-bit numbers
-    for oct in self.octets() {
-      m.write(&oct)?;
-    }
-    Ok(())
+    m.write_list(self.octets().iter())
   }
 }
 impl MessageRead<'_> for Ipv6Addr {
   fn read(m: &mut MessageReader) -> Result<Self, ReadError> {
     // 8 16-bit numbers
+    let mut iter = m.read_list()?;
     Ok(Ipv6Addr::new(
-      m.read()?,
-      m.read()?,
-      m.read()?,
-      m.read()?,
-      m.read()?,
-      m.read()?,
-      m.read()?,
-      m.read()?,
+      iter.next().unwrap()?,
+      iter.next().unwrap()?,
+      iter.next().unwrap()?,
+      iter.next().unwrap()?,
+      iter.next().unwrap()?,
+      iter.next().unwrap()?,
+      iter.next().unwrap()?,
+      iter.next().unwrap()?,
     ))
   }
 }
 impl MessageWrite for Ipv6Addr {
   fn write(&self, m: &mut MessageWriter) -> Result<(), WriteError> {
     // 8 16-bit numbers
-    for seg in self.segments() {
-      m.write(&seg)?;
-    }
-    Ok(())
+    m.write_list(self.segments().iter())
   }
 }

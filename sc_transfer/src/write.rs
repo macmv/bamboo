@@ -71,7 +71,7 @@ impl MessageWriter<'_> {
   /// `write_bool(true)` instead of `write(&true)`.
   pub fn write<T>(&mut self, v: &T) -> Result
   where
-    T: MessageWrite,
+    T: ?Sized + MessageWrite,
   {
     v.write(self)
   }
