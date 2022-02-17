@@ -243,6 +243,15 @@ impl MessageWriter<'_> {
     self.write_varint(variant)?;
     self.write_struct(num_fields, writer)
   }
+  pub fn write_list(
+    &mut self,
+    len: u64,
+    writer: impl FnOnce(&mut MessageWriter) -> Result,
+  ) -> Result {
+    self.write_header(Header::List, len)?;
+    self.write_varint(len)?;
+    writer(self)
+  }
 }
 
 #[cfg(test)]

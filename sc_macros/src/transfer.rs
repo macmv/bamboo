@@ -28,7 +28,7 @@ pub fn transfer(input: TokenStream) -> TokenStream {
             m.read_struct::<Self>()
           }
         }
-        impl #impl_generics sc_transfer::StructRead for #ty #ty_generics #where_clause {
+        impl #impl_generics sc_transfer::StructRead<'_> for #ty #ty_generics #where_clause {
           fn read_struct(mut m: sc_transfer::StructReader) -> Result<Self, sc_transfer::ReadError> {
             Ok(Self #setter)
           }
@@ -113,7 +113,7 @@ pub fn transfer(input: TokenStream) -> TokenStream {
           }
         }
 
-        impl #impl_generics sc_transfer::EnumRead for #ty #ty_generics #where_clause {
+        impl #impl_generics sc_transfer::EnumRead<'_> for #ty #ty_generics #where_clause {
           fn read_enum(mut m: sc_transfer::EnumReader) -> Result<Self, sc_transfer::ReadError> {
             Ok(match m.variant() {
               #(

@@ -1,4 +1,7 @@
-use super::{MessageRead, MessageReader, MessageWrite, MessageWriter, ReadError, WriteError};
+use super::{
+  MessageRead, MessageReader, MessageWrite, MessageWriter, ReadError, StructRead, StructReader,
+  WriteError,
+};
 use std::{
   collections::{HashMap, HashSet},
   hash::{BuildHasher, Hash},
@@ -68,12 +71,7 @@ where
   T: MessageRead<'a>,
 {
   fn read(m: &mut MessageReader<'a>) -> Result<Self, ReadError> {
-    let len: usize = m.read_u32()?.try_into().unwrap();
-    let mut out = Vec::with_capacity(len);
-    for _ in 0..len {
-      out.push(m.read()?);
-    }
-    Ok(out)
+    m.read_list::<T>()?.collect::<Result<Vec<T>, _>>()
   }
 }
 impl<T> MessageWrite for Vec<T>

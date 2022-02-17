@@ -1,6 +1,6 @@
 use super::{zag, Header};
 
-use std::{error::Error, fmt, str::Utf8Error};
+use std::{error::Error, fmt, marker::PhantomData, str::Utf8Error};
 
 type Result<T> = std::result::Result<T, ReadError>;
 type InvalidResult<T> = std::result::Result<T, InvalidReadError>;
@@ -162,6 +162,17 @@ impl MessageReader<'_> {
         }
         writeln!(f, "{sp}}}").unwrap();
       }
+      Header::List => {
+        let len = self.read_varint(extra)?;
+        writeln!(f, "{sp}List(len: {len}) {{").unwrap();
+        for _ in 0..len {
+          match self.write_fmt(indent + 1, f) {
+            Ok(()) => {}
+            Err(e) => writeln!(f, "{sp}Err({e})").unwrap(),
+          }
+        }
+        writeln!(f, "{sp}}}").unwrap();
+      }
     }
     Ok(())
   }
@@ -192,16 +203,16 @@ pub trait MessageRead<'a> {
     Self: Sized;
 }
 /// A trait for any struct that can be read from a [`MessageReader`].
-pub trait StructRead {
+pub trait StructRead<'a> {
   /// Reads a value of Self from the given struct fields.
-  fn read_struct(reader: StructReader) -> Result<Self>
+  fn read_struct(reader: StructReader<'a>) -> Result<Self>
   where
     Self: Sized;
 }
 /// A trait for any enum that can be read from a [`MessageReader`].
-pub trait EnumRead {
+pub trait EnumRead<'a> {
   /// Reads a value of Self from the given variant and message.
-  fn read_enum(reader: EnumReader) -> Result<Self>
+  fn read_enum(reader: EnumReader<'a>) -> Result<Self>
   where
     Self: Sized;
 }
@@ -242,6 +253,14 @@ pub struct EnumReader<'a> {
   variant:       u64,
   current_field: u64,
   max_fields:    u64,
+}
+
+/// Wrapper around a list.
+pub struct ListReader<'a, T> {
+  reader:  MessageReader<'a>,
+  current: u64,
+  len:     u64,
+  phantom: PhantomData<T>,
 }
 
 impl<'a> MessageReader<'a> {
@@ -326,6 +345,10 @@ impl<'a> MessageReader<'a> {
       Header::Bytes => {
         let len = self.read_varint(extra)? as usize;
         self.skip_bytes(len)?;
+      }
+      Header::List => {
+        let len = self.read_varint(extra)?;
+        self.skip_fields(len)?;
       }
     }
     Ok(())
@@ -522,7 +545,7 @@ impl<'a> MessageReader<'a> {
 
   /// Reads a struct. This will return an error if the header read is not a
   /// `Struct` header, or if any of the fields of the struct are invalid.
-  pub fn read_struct<S: StructRead>(&mut self) -> Result<S> {
+  pub fn read_struct<S: StructRead<'a>>(&mut self) -> Result<S> {
     let (header, extra) = self.read_header()?;
     match header {
       Header::Struct => {
@@ -548,7 +571,7 @@ impl<'a> MessageReader<'a> {
       }
     }
   }
-  pub fn read_enum<E: EnumRead>(&mut self) -> Result<E> {
+  pub fn read_enum<E: EnumRead<'a>>(&mut self) -> Result<E> {
     let (header, extra) = self.read_header()?;
     match header {
       Header::Enum => {
@@ -601,6 +624,25 @@ impl<'a> MessageReader<'a> {
   /// Reads a string. If the header is not a `Bytes` header, this will
   /// return a [`ValidReadError::WrongMessage`] error.
   pub fn read_str(&mut self) -> Result<&'a str> { Ok(std::str::from_utf8(self.read_bytes()?)?) }
+
+  /// Reads a list of type `T`. This will return a ListReader, which is an
+  /// iterator over `Result<T, ReadError>`.
+  pub fn read_list<T>(&mut self) -> Result<ListReader<'a, T>> {
+    let (header, extra) = self.read_header()?;
+    if header != Header::List {
+      Err(ValidReadError::WrongMessage(header, Header::Bytes).into())
+    } else {
+      let len = self.read_varint(extra)?;
+      let reader = ListReader {
+        reader: MessageReader { data: self.data, idx: self.idx },
+        current: 0,
+        len,
+        phantom: PhantomData::default(),
+      };
+      self.skip_fields(len)?;
+      Ok(reader)
+    }
+  }
 }
 
 impl<'a> StructReader<'a> {
@@ -737,6 +779,34 @@ impl<'a> EnumReader<'a> {
       }
     }
   }
+}
+
+impl<'a, T> Iterator for ListReader<'a, T>
+where
+  T: MessageRead<'a>,
+{
+  type Item = Result<T>;
+
+  fn next(&mut self) -> Option<Self::Item> {
+    if self.current < self.len {
+      self.current += 1;
+      Some(self.reader.read())
+    } else {
+      None
+    }
+  }
+
+  fn size_hint(&self) -> (usize, Option<usize>) {
+    let curr = self.current as usize;
+    let len = self.len as usize;
+    (len - curr, Some(len - curr))
+  }
+}
+impl<'a, T> ExactSizeIterator for ListReader<'a, T>
+where
+  T: MessageRead<'a>,
+{
+  fn len(&self) -> usize { self.len as usize - self.current as usize }
 }
 
 #[cfg(test)]

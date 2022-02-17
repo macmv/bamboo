@@ -97,6 +97,12 @@ pub enum Header {
   /// Similar to `Struct`. A `VarInt` is read using the next 5 bits (and
   /// following bytes). This number is the number of bytes that follows.
   Bytes,
+  /// Very similar to struct. The only difference is how this is read; a struct
+  /// is meant to be read with an expected spec already known, only skipping
+  /// unknown fields. A list on the other hand should not have a known length.
+  /// So, when reading a list, the reader is given the list's length at the
+  /// start.
+  List,
 }
 
 impl Header {
@@ -111,6 +117,7 @@ impl Header {
       0x04 => Self::Struct,
       0x05 => Self::Enum,
       0x06 => Self::Bytes,
+      0x07 => Self::Bytes,
       _ => return None,
     })
   }
@@ -125,6 +132,7 @@ impl Header {
       Self::Struct => 0x04,
       Self::Enum => 0x05,
       Self::Bytes => 0x06,
+      Self::List => 0x07,
     }
   }
 }
