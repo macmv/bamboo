@@ -21,6 +21,7 @@ impl fmt::Display for PosError {
 impl Error for PosError {}
 
 #[derive(Debug, Clone, Copy, Hash, PartialEq, Eq)]
+#[sc_macros::transfer]
 pub struct Pos {
   pub x: i32,
   pub y: i32,

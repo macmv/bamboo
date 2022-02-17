@@ -6,6 +6,7 @@ use std::{
 use super::{Pos, PosIter};
 
 #[derive(Debug, Clone, Copy, Hash, PartialEq, Eq)]
+#[sc_macros::transfer]
 pub struct ChunkPos {
   x: i32,
   z: i32,
