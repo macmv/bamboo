@@ -224,6 +224,9 @@ impl MessageWriter<'_> {
     self.write_buf(bytes)
   }
 
+  /// Writes a struct. The number of fields must match the number of write calls
+  /// in `writer`. If it does not match, everything past this field in the
+  /// message will be invalid.
   pub fn write_struct(
     &mut self,
     num_fields: u64,
@@ -233,6 +236,9 @@ impl MessageWriter<'_> {
     self.write_varint(num_fields)?;
     writer(self)
   }
+  /// Writes an enum. The variant is some identifier that should be used when
+  /// reading to figure out what data is expected. The `num_fields` and `writer`
+  /// are passed to [`write_struct`](Self::write_struct).
   pub fn write_enum(
     &mut self,
     variant: u64,
@@ -243,14 +249,20 @@ impl MessageWriter<'_> {
     self.write_varint(variant)?;
     self.write_struct(num_fields, writer)
   }
-  pub fn write_list(
-    &mut self,
-    len: u64,
-    writer: impl FnOnce(&mut MessageWriter) -> Result,
-  ) -> Result {
+  /// Writes a list of type `T`. The length is retrieved from
+  /// [`ExactSizeIterator::len`]. Returning an invalid length will generate
+  /// invalid data.
+  pub fn write_list<T>(&mut self, iter: impl ExactSizeIterator<Item = T>) -> Result
+  where
+    T: MessageWrite,
+  {
+    let len = iter.len() as u64;
     self.write_header(Header::List, len)?;
     self.write_varint(len)?;
-    writer(self)
+    for v in iter {
+      self.write(&v)?;
+    }
+    Ok(())
   }
 }
 
