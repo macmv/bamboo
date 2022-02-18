@@ -99,79 +99,90 @@ impl fmt::Display for InvalidReadError {
 }
 impl fmt::Display for MessageReader<'_> {
   fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-    write!(f, "Message ({} bytes) {{", self.data.len())?;
+    writeln!(f, "Message ({} bytes) {{", self.data.len())?;
     let mut reader = MessageReader::new(self.data);
     while reader.can_read() {
-      match reader.write_fmt(1, f) {
-        Ok(()) => {}
-        Err(e) => writeln!(f, "  Err({e}),")?,
-      }
+      writeln!(f, "Field: {:#?}", reader)?;
+      reader.skip_field().unwrap();
     }
     write!(f, "}}")?;
     Ok(())
   }
 }
+impl fmt::Debug for MessageReader<'_> {
+  fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    match self.clone().write_fmt(f) {
+      Ok(()) => Ok(()),
+      Err(e) => writeln!(f, "  Err({e}),"),
+    }
+  }
+}
+
 impl MessageReader<'_> {
-  fn write_fmt(&mut self, indent: usize, f: &mut fmt::Formatter) -> Result<()> {
-    let sp = "  ".repeat(indent);
+  fn write_fmt(&mut self, f: &mut fmt::Formatter) -> Result<()> {
     let (header, extra) = self.read_header()?;
     match header {
-      Header::None => {
-        writeln!(f, "{sp}None,").unwrap();
-      }
+      Header::None => write!(f, "None").unwrap(),
       Header::VarInt => {
         let v = self.read_varint(extra)?;
-        writeln!(f, "{sp}VarInt({v} {v:#x}),").unwrap();
+        write!(f, "VarInt({v} {v:#x})").unwrap();
       }
       Header::Float => {
         let v = self.read_float()?;
-        writeln!(f, "{sp}Float({v}),").unwrap();
+        write!(f, "Float({v})").unwrap();
       }
       Header::Double => {
         let v = self.read_double()?;
-        writeln!(f, "{sp}Double({v}),").unwrap();
+        write!(f, "Double({v})").unwrap();
       }
       Header::Struct => {
         let num_fields = self.read_varint(extra)?;
-        writeln!(f, "{sp}Struct(fields: {num_fields}) {{").unwrap();
+        let mut tup = f.debug_tuple("Struct");
         for _ in 0..num_fields {
-          match self.write_fmt(indent + 1, f) {
-            Ok(()) => {}
-            Err(e) => writeln!(f, "{sp}Err({e})").unwrap(),
-          }
+          tup.field(&self);
+          self.skip_field()?;
         }
-        writeln!(f, "{sp}}}").unwrap();
+        tup.finish().unwrap();
       }
       Header::Enum => {
         let variant = self.read_varint(extra)?;
-        writeln!(f, "{sp}Enum(variant: {variant}) {{").unwrap();
-        match self.write_fmt(indent + 1, f) {
-          Ok(()) => {}
-          Err(e) => writeln!(f, "{sp}Err({e})").unwrap(),
-        }
-        writeln!(f, "{sp}}}").unwrap();
+        let mut tup = f.debug_tuple("Enum");
+        tup.field(&variant);
+        tup.field(self);
+        self.skip_field()?;
+        tup.finish().unwrap();
       }
       Header::Bytes => {
         let len = self.read_varint(extra)? as usize;
         let data = self.read_buf(len)?;
-        writeln!(f, "{sp}Bytes(len: {len}) {{").unwrap();
-        writeln!(f, "{sp}  hex: {data:#x?}").unwrap();
-        match std::str::from_utf8(data) {
-          Ok(v) => writeln!(f, "{sp}  str: '{v}'").unwrap(),
-          Err(e) => writeln!(f, "{sp}  str: {e}").unwrap(),
+        if data.len() == 0 {
+          write!(f, "Bytes(len: 0) {{}}").unwrap();
+        } else {
+          let mut s = f.debug_struct("Bytes");
+          s.field("data", &data);
+          match std::str::from_utf8(data) {
+            Ok(v) => s.field("str", &v),
+            Err(e) => s.field("str", &e),
+          };
+          s.finish().unwrap();
         }
-        writeln!(f, "{sp}}}").unwrap();
       }
       Header::List => {
         let len = self.read_varint(extra)?;
-        writeln!(f, "{sp}List(len: {len}) {{").unwrap();
-        for _ in 0..len {
-          match self.write_fmt(indent + 1, f) {
-            Ok(()) => {}
-            Err(e) => writeln!(f, "{sp}Err({e})").unwrap(),
+        /*
+        if len == 0 {
+          writeln!(f, "{sp}List(len: 0) {{}}").unwrap();
+        } else {
+          writeln!(f, "{sp}List(len: {len}) {{").unwrap();
+          for _ in 0..len {
+            match self.write_fmt(indent + 1, f) {
+              Ok(()) => {}
+              Err(e) => writeln!(f, "{sp}Err({e})").unwrap(),
+            }
           }
+          writeln!(f, "{sp}}}").unwrap();
         }
-        writeln!(f, "{sp}}}").unwrap();
+        */
       }
     }
     Ok(())
@@ -222,6 +233,7 @@ pub trait EnumRead<'a> {
 /// [`MessageWrite`](super::MessageWrite).
 ///
 /// See the [crate] level docs for how fields are decoded.
+#[derive(Clone)]
 pub struct MessageReader<'a> {
   data: &'a [u8],
   idx:  usize,
