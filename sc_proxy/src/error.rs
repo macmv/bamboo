@@ -28,8 +28,8 @@ impl fmt::Display for Error {
       Self::Buffer(e) => write!(f, "{e}"),
       Self::IO(e) => write!(f, "{e}"),
       Self::Addr(e) => write!(f, "invalid address: {e}"),
-      Self::TransferRead(e) => write!(f, "{e}"),
-      Self::TransferWrite(e) => write!(f, "{e}"),
+      Self::TransferRead(e) => write!(f, "while reading from server: {e}"),
+      Self::TransferWrite(e) => write!(f, "while writing to server: {e}"),
       Self::UnknownCB(p) => write!(f, "unknown clientbound packet {p:?}"),
       Self::UnknownSB(p) => write!(f, "unknown serverbound packet {p:?}"),
       Self::ParseError { msg, err, id, ver, pos } => {

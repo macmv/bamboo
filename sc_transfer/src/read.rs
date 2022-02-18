@@ -14,7 +14,6 @@ type InvalidResult<T> = std::result::Result<T, InvalidReadError>;
 /// state, and you can continue reading. Otherwise, the state of the
 /// [`MessageReader`] is undefined.
 #[derive(Debug)]
-#[non_exhaustive]
 pub enum ReadError {
   Valid(ValidReadError),
   Invalid(InvalidReadError),

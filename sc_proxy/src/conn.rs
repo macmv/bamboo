@@ -252,14 +252,18 @@ impl<'a, S: PacketStream + Send + Sync> Conn<'a, S> {
           let idx = m.index();
           self.from_server.drain(0..idx);
           let mut m = MessageReader::new(&self.from_server[..len as usize]);
-          info!("message:\n{}", m);
-          let common = ccb::Packet::read(&mut m).map_err(|err| {
-            io::Error::new(
-              io::ErrorKind::InvalidData,
-              format!("while reading packet got error: {}", err),
-            )
-          })?;
+          let common = match ccb::Packet::read(&mut m) {
+            Ok(v) => v,
+            Err(ReadError::Valid(e)) => {
+              warn!("invalid message from server: {}", e);
+              let parsed = m.index();
+              self.from_server.drain(0..parsed);
+              return Ok(true);
+            }
+            Err(e @ ReadError::Invalid(_)) => return Err(e.into()),
+          };
           let parsed = m.index();
+          self.from_server.drain(0..parsed);
           let packets = common.to_tcp(self).unwrap();
           if len as usize != parsed {
             return Err(io::Error::new(
@@ -270,7 +274,6 @@ impl<'a, S: PacketStream + Send + Sync> Conn<'a, S> {
               ),
             ).into());
           }
-          self.from_server.drain(0..parsed);
           for p in packets {
             self.send_to_client(p)?;
           }
@@ -365,7 +368,7 @@ impl<'a, S: PacketStream + Send + Sync> Conn<'a, S> {
     let common = match csb::Packet::from_tcp(p, self.ver, self.conv.as_ref()) {
       Ok(p) => p,
       Err(e) => {
-        warn!("could not convert packet: {}", e);
+        warn!("{e}");
         return Ok(());
       }
     };
