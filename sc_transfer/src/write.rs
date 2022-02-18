@@ -76,16 +76,6 @@ impl MessageWriter<'_> {
     v.write(self)
   }
 
-  /// Moves the reader back 1 byte. This is used when we read a header, then
-  /// need to read it again. This helps make sure the buffer is always in a
-  /// valid state.
-  ///
-  /// # Panics
-  /// - If the buffer at index 0.
-  fn undo_write_byte(&mut self) {
-    self.idx = self.idx.checked_sub(1).expect("cannot move buffer back 1 (at index 0)");
-  }
-
   /// Writes the 3 bit header, and 5 bits of extra data. The 3 MSB of `extra`
   /// will be ignored.
   ///

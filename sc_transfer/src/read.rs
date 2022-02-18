@@ -168,20 +168,12 @@ impl MessageReader<'_> {
       }
       Header::List => {
         let len = self.read_varint(extra)?;
-        /*
-        if len == 0 {
-          writeln!(f, "{sp}List(len: 0) {{}}").unwrap();
-        } else {
-          writeln!(f, "{sp}List(len: {len}) {{").unwrap();
-          for _ in 0..len {
-            match self.write_fmt(indent + 1, f) {
-              Ok(()) => {}
-              Err(e) => writeln!(f, "{sp}Err({e})").unwrap(),
-            }
-          }
-          writeln!(f, "{sp}}}").unwrap();
+        let mut list = f.debug_list();
+        for _ in 0..len {
+          list.entry(&self);
+          self.skip_field()?;
         }
-        */
+        list.finish().unwrap();
       }
     }
     Ok(())
