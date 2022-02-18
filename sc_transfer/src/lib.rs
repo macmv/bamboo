@@ -117,7 +117,7 @@ impl Header {
       0x04 => Self::Struct,
       0x05 => Self::Enum,
       0x06 => Self::Bytes,
-      0x07 => Self::Bytes,
+      0x07 => Self::List,
       _ => return None,
     })
   }
