@@ -21,6 +21,45 @@ pub struct BitArray {
   data: Vec<u64>,
 }
 
+// This impl uses a byte array for `data`, instead of a varint array. After some
+// testing in the debug world, it turns out the varint array is smaller in all
+// of the cases that I tested it on. I have not done any benchmarks, so this
+// implementation might be faster (in which case we want to use it). I am going
+// to leave this commented for now, as I don't think it would be significantly
+// faster.
+/*
+use sc_transfer::{
+  MessageRead, MessageReader, MessageWrite, MessageWriter, ReadError, StructRead, StructReader,
+  WriteError,
+};
+impl MessageRead<'_> for BitArray {
+  fn read(m: &mut MessageReader) -> Result<Self, ReadError> { m.read_struct() }
+}
+impl StructRead<'_> for BitArray {
+  fn read_struct(mut m: StructReader) -> Result<Self, ReadError> {
+    let bpe = m.must_read::<u8>(0)?;
+    let bytes = m.must_read::<&[u8]>(1)?;
+    let mut data = Vec::with_capacity(bytes.len() / 8);
+    for v in bytes.chunks(8) {
+      data.push(u64::from_le_bytes(v.try_into().unwrap()));
+    }
+    Ok(BitArray { bpe, data })
+  }
+}
+impl MessageWrite for BitArray {
+  fn write(&self, m: &mut MessageWriter) -> Result<(), WriteError> {
+    let mut bytes = Vec::with_capacity(self.data.len() / 8);
+    for v in &self.data {
+      bytes.extend(v.to_le_bytes());
+    }
+    m.write_struct(2, |m| {
+      m.write_u8(self.bpe)?;
+      m.write_bytes(&bytes)
+    })
+  }
+}
+*/
+
 impl fmt::Debug for BitArray {
   fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
     writeln!(f, "BitArray {{")?;

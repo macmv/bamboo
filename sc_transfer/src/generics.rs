@@ -85,6 +85,12 @@ where
     })
   }
 }
+impl<'a> MessageRead<'a> for &'a [u8] {
+  fn read(m: &mut MessageReader<'a>) -> Result<Self, ReadError> { m.read_bytes() }
+}
+impl MessageWrite for &[u8] {
+  fn write(&self, m: &mut MessageWriter) -> Result<(), WriteError> { m.write_bytes(self) }
+}
 impl<'a, T> MessageRead<'a> for Vec<T>
 where
   T: MessageRead<'a>,
