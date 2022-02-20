@@ -14,9 +14,8 @@ use sc_common::{
   net::cb,
   util::{
     chat::{Chat, Color},
-    ThreadPool, UUID,
+    JoinInfo, ThreadPool, UUID,
   },
-  version::ProtocolVersion,
 };
 use std::{
   collections::{HashMap, HashSet},
@@ -210,7 +209,7 @@ impl World {
       }
     }
   }
-  fn new_player(self: Arc<Self>, player: Player) -> Arc<Player> {
+  fn new_player(self: Arc<Self>, player: Player, info: JoinInfo) -> Arc<Player> {
     let player = Arc::new(player);
     // We need to unlock players so that player_init() will work.
     {
@@ -232,7 +231,7 @@ impl World {
       players.insert(player.id(), player.clone());
     }
     info!("{} has joined the game", player.username());
-    self.player_init(&player);
+    self.player_init(&player, info);
     player
   }
 
@@ -616,18 +615,11 @@ impl WorldManager {
   // }
   /// Adds a new player into the game. This should be called when a new grpc
   /// proxy connects.
-  pub fn new_player(
-    &self,
-    conn: ConnSender,
-    username: String,
-    uuid: UUID,
-    ver: ProtocolVersion,
-  ) -> Arc<Player> {
+  pub fn new_player(&self, conn: ConnSender, info: JoinInfo) -> Arc<Player> {
     let w = self.worlds.lock()[0].clone();
-    let player =
-      Player::new(w.eid(), username, uuid, conn, ver, w.clone(), FPos::new(0.0, 80.0, 0.0));
-    self.players.lock().insert(uuid, 0);
-    w.new_player(player)
+    let player = Player::new(w.eid(), conn, info.clone(), w.clone(), FPos::new(0.0, 80.0, 0.0));
+    self.players.lock().insert(info.uuid, 0);
+    w.new_player(player, info)
   }
 
   /// Removes the player. This is not part of the public API because it does not

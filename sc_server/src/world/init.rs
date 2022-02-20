@@ -8,7 +8,7 @@ use rayon::prelude::*;
 use sc_common::{
   math::ChunkPos,
   net::cb,
-  util::{Buffer, Chat, GameMode},
+  util::{Buffer, Chat, GameMode, JoinInfo},
   version::ProtocolVersion,
 };
 
@@ -102,7 +102,7 @@ impl World {
     info!("done generating terrain");
   }
 
-  pub(super) fn player_init(&self, player: &Player) {
+  pub(super) fn player_init(&self, player: &Player, info: JoinInfo) {
     let out = cb::Packet::JoinGame {
       // entity_id:                self.eid(),
       // game_mode:                1,       // Creative

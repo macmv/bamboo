@@ -8,7 +8,7 @@ use mio::{
 use parking_lot::{Mutex, RwLock};
 use sc_common::{
   net::{cb, sb},
-  util::{ThreadPool, UUID},
+  util::{JoinInfo, ThreadPool},
   version::ProtocolVersion,
 };
 use sc_transfer::{
@@ -46,6 +46,7 @@ pub struct Connection {
   garbage:  Vec<u8>,
 }
 
+#[derive(Debug, Clone)]
 pub struct ConnSender {
   tx:    Sender<cb::Packet>,
   wake:  Sender<WakeEvent>,
@@ -136,9 +137,7 @@ impl Connection {
   /// returned, then the next time this functions is called, that same player
   /// should be passed in. This function should be called again after
   /// Some(player) is returned, as it may not have read all availible data.
-  pub fn read(
-    &mut self,
-  ) -> io::Result<(bool, Option<(ConnSender, String, UUID, ProtocolVersion)>, Vec<sb::Packet>)> {
+  pub fn read(&mut self) -> io::Result<(bool, Option<(ConnSender, JoinInfo)>, Vec<sb::Packet>)> {
     let mut out = vec![];
     loop {
       let n = match self.stream.read(&mut self.garbage) {
@@ -148,9 +147,9 @@ impl Connection {
         Err(e) => return Err(e),
       };
       self.incoming.extend_from_slice(&self.garbage[..n]);
-      let (new_player, packets) = self.read_incoming()?;
-      if let Some(new_player) = new_player {
-        return Ok((false, Some(new_player), packets));
+      let (info, packets) = self.read_incoming()?;
+      if info.is_some() {
+        return Ok((false, info, packets));
       }
       out.extend(packets);
     }
@@ -193,21 +192,20 @@ impl Connection {
     Ok(())
   }
 
-  fn read_incoming(
-    &mut self,
-  ) -> io::Result<(Option<(ConnSender, String, UUID, ProtocolVersion)>, Vec<sb::Packet>)> {
+  fn read_incoming(&mut self) -> io::Result<(Option<(ConnSender, JoinInfo)>, Vec<sb::Packet>)> {
     let mut out = vec![];
     while !self.incoming.is_empty() {
       let mut m = MessageReader::new(&self.incoming);
       match m.read_u32() {
         Ok(len) => {
-          if len as usize + m.index() <= self.incoming.len() {
+          let len = len as usize;
+          if len + m.index() <= self.incoming.len() {
             // Remove the length varint at the start
             let idx = m.index();
             self.incoming.drain(0..idx);
             // We already handshaked
-            if let Some(_ver) = self.ver {
-              let mut m = MessageReader::new(&self.incoming);
+            if self.ver.is_some() {
+              let mut m = MessageReader::new(&self.incoming[..len]);
               let p = sb::Packet::read(&mut m).map_err(|err| {
                 io::Error::new(
                   io::ErrorKind::InvalidData,
@@ -215,7 +213,8 @@ impl Connection {
                 )
               })?;
               let n = m.index();
-              if n != len as usize {
+              self.incoming.drain(0..n);
+              if n != len {
                 return Err(io::Error::new(
                   io::ErrorKind::InvalidData,
                   format!(
@@ -224,42 +223,30 @@ impl Connection {
                   ),
                 ));
               }
-              self.incoming.drain(0..n);
               out.push(p);
             } else {
               // This is the first packet, so it must be a login packet.
-              let mut m = MessageReader::new(&self.incoming);
-              let username = m
-                .read_str()
-                .map_err(|e| {
-                  io::Error::new(
-                    io::ErrorKind::InvalidData,
-                    format!("error reading handshake: {}", e),
-                  )
-                })?
-                .into();
-              let uuid = UUID::from_be_bytes(
-                m.read_bytes()
-                  .map_err(|e| {
-                    io::Error::new(
-                      io::ErrorKind::InvalidData,
-                      format!("error reading handshake: {}", e),
-                    )
-                  })?
-                  .try_into()
-                  .unwrap(),
-              );
-              let ver = ProtocolVersion::from(m.read_i32().map_err(|e| {
+              let mut m = MessageReader::new(&self.incoming[..len]);
+              let info: JoinInfo = m.read().map_err(|e| {
                 io::Error::new(
                   io::ErrorKind::InvalidData,
                   format!("error reading handshake: {}", e),
                 )
-              })?);
-              let idx = m.index();
-              self.incoming.drain(0..idx);
-              self.ver = Some(ver);
+              })?;
+              let n = m.index();
+              self.incoming.drain(0..n);
+              if n != len {
+                return Err(io::Error::new(
+                  io::ErrorKind::InvalidData,
+                  format!(
+                    "handshake did not parse enough bytes (expected {}, only parsed {})",
+                    len, n
+                  ),
+                ));
+              }
+              self.ver = Some(ProtocolVersion::from(info.ver as i32));
               // We rely on the caller to set the player using this value.
-              return Ok((Some((self.sender(), username, uuid, ver)), out));
+              return Ok((Some((self.sender(), info)), out));
             }
           } else {
             break;
@@ -458,7 +445,7 @@ impl ConnectionManager {
         if let Some((conn, player)) = rl.get(&token) {
           // Make sure we drop conn! We can get a deadlock if we call `packet::handle`
           // when this is locked.
-          let (disconnect, new_player, packets) = match conn.lock().read() {
+          let (disconnect, join_info, packets) = match conn.lock().read() {
             Ok(v) => v,
             // Something else went wrong.
             Err(e) => {
@@ -482,8 +469,8 @@ impl ConnectionManager {
             drop(rl);
             // The player must be created after we drop the `conn.lock()`, so that sending
             // login packets doesn't deadlock.
-            if let Some((sender, username, uuid, ver)) = new_player {
-              let new_player = wm.new_player(sender, username, uuid, ver);
+            if let Some((conn, info)) = join_info {
+              let new_player = wm.new_player(conn, info);
               {
                 let mut wl = c.write();
                 let (_, player) = wl.get_mut(&token).unwrap();

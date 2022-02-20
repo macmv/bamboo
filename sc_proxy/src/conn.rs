@@ -10,7 +10,7 @@ use rsa::{padding::PaddingScheme, RSAPrivateKey};
 use sc_common::{
   math,
   net::{cb as ccb, sb as csb},
-  util::{chat::Color, Chat, UUID},
+  util::{chat::Color, Chat, JoinInfo, JoinMode, UUID},
   version::ProtocolVersion,
 };
 use sc_transfer::{
@@ -189,10 +189,12 @@ impl<'a, S: PacketStream + Send + Sync> Conn<'a, S> {
     self.server_stream = Some(stream);
 
     self.write_data_to_server(|s, m| {
-      m.write_u8(0)?; // mode is joining
-      m.write_str(s.username.as_ref().unwrap())?;
-      m.write_bytes(&s.info.as_ref().unwrap().id.as_be_bytes())?;
-      m.write_i32(s.ver.id() as i32)?;
+      m.write(&JoinInfo {
+        mode:     JoinMode::New,
+        username: s.username.clone().unwrap(),
+        uuid:     s.info.as_ref().unwrap().id,
+        ver:      s.ver.id(),
+      })?;
       Ok(())
     })
   }
@@ -382,6 +384,10 @@ impl<'a, S: PacketStream + Send + Sync> Conn<'a, S> {
       let mut m = MessageWriter::new(&mut garbage);
       f(self, &mut m)?;
       let len = m.index();
+      // No data was written, so we don't send this.
+      if len == 0 {
+        return Ok(());
+      }
 
       let mut prefix = [0; 5];
       let mut m = MessageWriter::new(&mut prefix);
@@ -417,10 +423,12 @@ impl<'a, S: PacketStream + Send + Sync> Conn<'a, S> {
       };
       let old_stream = std::mem::replace(&mut self.server_stream, Some(conn));
       match self.write_data_to_server(|s, m| {
-        m.write_u8(1)?; // mode is switching
-        m.write_str(s.username.as_ref().unwrap())?;
-        m.write_bytes(&s.info.as_ref().unwrap().id.as_be_bytes())?;
-        m.write_i32(s.ver.id() as i32)?;
+        m.write(&JoinInfo {
+          mode:     JoinMode::Switch,
+          username: s.username.clone().unwrap(),
+          uuid:     s.info.as_ref().unwrap().id,
+          ver:      s.ver.id(),
+        })?;
         Ok(())
       }) {
         Ok(()) => break,

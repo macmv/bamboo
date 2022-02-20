@@ -7,7 +7,7 @@ pub use pool::ThreadPool;
 mod buffer;
 mod item;
 
-use crate::math::Pos;
+use crate::{math::Pos, version::ProtocolVersion};
 use rand::{rngs::OsRng, RngCore};
 use serde::de::{self, Deserialize, Deserializer, Unexpected, Visitor};
 use std::{error::Error, fmt, num::ParseIntError, str::FromStr};
@@ -297,6 +297,28 @@ impl<'de> Deserialize<'de> for UUID {
     }
     deserializer.deserialize_str(Inner)
   }
+}
+
+#[derive(Debug, Clone)]
+#[sc_macros::transfer]
+pub struct JoinInfo {
+  #[must_exist]
+  pub mode:     JoinMode,
+  #[must_exist]
+  pub username: String,
+  #[must_exist]
+  pub uuid:     UUID,
+  #[must_exist]
+  pub ver:      u32,
+}
+
+#[derive(Debug, Clone)]
+#[sc_macros::transfer]
+pub enum JoinMode {
+  #[id = 0]
+  New,
+  #[id = 1]
+  Switch,
 }
 
 #[cfg(test)]

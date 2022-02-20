@@ -8,12 +8,12 @@ use crate::{
 use sc_common::{
   math::{ChunkPos, FPos, Pos, PosError, Vec3},
   net::cb,
-  util::{Chat, GameMode, UUID},
+  util::{Chat, GameMode, JoinInfo, UUID},
   version::ProtocolVersion,
 };
 use std::{
   f64::consts,
-  fmt, io,
+  fmt,
   net::SocketAddr,
   sync::{Arc, Mutex, MutexGuard},
   time::Instant,
@@ -105,21 +105,13 @@ impl fmt::Debug for Player {
 }
 
 impl Player {
-  pub fn new(
-    eid: i32,
-    username: String,
-    uuid: UUID,
-    conn: ConnSender,
-    ver: ProtocolVersion,
-    world: Arc<World>,
-    pos: FPos,
-  ) -> Self {
+  pub fn new(eid: i32, conn: ConnSender, info: JoinInfo, world: Arc<World>, pos: FPos) -> Self {
     Player {
       eid,
-      username,
-      uuid,
+      username: info.username,
+      uuid: info.uuid,
       conn,
-      ver,
+      ver: ProtocolVersion::from(info.ver as i32),
       view_distance: world.config().get("view-distance"),
       world,
       game_mode: GameMode::Creative.into(),
