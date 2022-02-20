@@ -1,0 +1,4 @@
+fn init(sc) {
+  bedwars::init::say_hello(sc)
+  sc.info("initializing bedwars")
+}

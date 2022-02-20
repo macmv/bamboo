@@ -114,16 +114,22 @@ impl PluginManager {
         let path = f.path();
         info!("found plugin at {}", path.to_str().unwrap());
         let name = path.file_stem().unwrap().to_str().unwrap().to_string();
-        // let mut sl = Sugarlang::new();
-        // sl.add_builtin_ty::<Sugarcane>();
-        // sl.exec_statement("sugarcane::Sugarcane::init()");
-
         let mut p = Plugin::new(plugins.len(), name, wm.clone());
+
         p.load_from_file(&path, self);
-
         p.call_init();
-
         plugins.push(p);
+      } else if m.is_dir() {
+        let main_path = f.path().join("main.sug");
+        if main_path.exists() && main_path.is_file() {
+          info!("found plugin at {}", main_path.to_str().unwrap());
+          let name = f.path().file_stem().unwrap().to_str().unwrap().to_string();
+          let mut p = Plugin::new(plugins.len(), name, wm.clone());
+
+          p.load_from_dir(&f.path(), self);
+          p.call_init();
+          plugins.push(p);
+        }
       }
     }
   }

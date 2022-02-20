@@ -1,0 +1,3 @@
+fn say_hello(sc) {
+  sc.info("hello world")
+}

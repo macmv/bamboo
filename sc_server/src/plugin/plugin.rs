@@ -9,7 +9,7 @@ use sc_common::math::Pos;
 use std::{fs, path::Path, sync::Arc};
 use sugarlang::{
   path,
-  runtime::{LockedEnv, Path as TyPath, Var},
+  runtime::{LockedEnv, Path as SlPath, Path as TyPath, Var},
   SlError, Sugarlang,
 };
 
@@ -36,18 +36,39 @@ impl Plugin {
     sl.set_color(manager.use_color());
     PluginManager::add_builtins(&mut sl);
     match fs::read_to_string(path) {
-      Ok(src) => match sl.parse_file(&path!(main), path, src) {
-        Ok(_) => {
-          self.sl = Some(sl);
+      Ok(src) => {
+        match sl.parse_file(&SlPath::new(vec![self.name.clone(), "main".into()]), path, src) {
+          Ok(_) => {
+            self.sl = Some(sl);
+          }
+          Err(err) => {
+            self.sl = Some(sl);
+            self.print_err(err);
+            self.sl = None;
+          }
         }
-        Err(err) => {
-          self.sl = Some(sl);
-          self.print_err(err);
-          self.sl = None;
-        }
-      },
+      }
       Err(err) => {
         warn!("{}", err);
+      }
+    }
+  }
+
+  /// This replaces the plugin envrionment with a new one, and then parses all
+  /// of the files ending in `.sug` in the given directory.
+  pub fn load_from_dir(&mut self, dir: &Path, manager: &PluginManager) {
+    self.sl = None;
+    let mut sl = Sugarlang::new();
+    sl.set_color(manager.use_color());
+    PluginManager::add_builtins(&mut sl);
+    match sl.parse_dir(dir, &SlPath::new(vec![self.name.clone()])) {
+      Ok(_) => {
+        self.sl = Some(sl);
+      }
+      Err(err) => {
+        self.sl = Some(sl);
+        self.print_err(err);
+        self.sl = None;
       }
     }
   }
@@ -61,7 +82,12 @@ impl Plugin {
   /// functions.
   pub fn sc(&self) -> Sugarcane { self.sc.clone() }
 
-  pub fn call_init(&self) { self.call(path!(main::init), vec![self.sc.clone().into()]); }
+  pub fn call_init(&self) {
+    self.call(
+      SlPath::new(vec![self.name.clone(), "main".into(), "init".into()]),
+      vec![self.sc.clone().into()],
+    );
+  }
   pub fn call_on_block_place(&self, player: Arc<Player>, pos: Pos, kind: block::Kind) {
     self.call(
       path!(main::on_block_place),
@@ -90,8 +116,4 @@ impl Plugin {
       None => panic!("cannot print error without a sugarlang envrionment present!"),
     }
   }
-
-  /// This replaces the plugin envrionment with a new one, and then parses all
-  /// of the files ending in `.sug` in the given directory.
-  pub fn load_from_dir(_path: &Path) {}
 }
