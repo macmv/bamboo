@@ -219,182 +219,186 @@ impl Plugin {
     sl.add_builtin_ty::<world::gen::SlBiome>();
 
     info!("generating docs...");
-    let docs = sl.generate_docs(&[
-      (
-        path!(sugarcane),
-        markdown!(
-          /// The sugarcane API. This is how all sugarlang code can interact
-          /// with the sugarcane minecraft server. To get started with writing
-          /// a plugin, create a directory called `plugins` next to the server.
-          /// Inside that dirctory, create a file named something like `hello.sug`.
-          /// In that file, put the following code:
-          ///
-          /// ```
-          /// fn init() {
-          ///   sugarcane::info("Hello world")
-          /// }
-          /// ```
-          ///
-          /// To start doing more things with your plugin, check out the docs
-          /// for the `Sugarcane` type. You can access an instance of it like so:
-          ///
-          /// ```
-          /// fn init() {
-          ///   sc = sugarcane::instance()
-          ///   sc.broadcast("This will show up in chat for everyone!")
-          /// }
-          /// ```
+    let docs = sl.generate_docs(
+      &[
+        (
+          path!(sugarcane),
+          markdown!(
+            /// The sugarcane API. This is how all sugarlang code can interact
+            /// with the sugarcane minecraft server. To get started with writing
+            /// a plugin, create a directory called `plugins` next to the server.
+            /// Inside that dirctory, create a file named something like `hello.sug`.
+            /// In that file, put the following code:
+            ///
+            /// ```
+            /// fn init() {
+            ///   sugarcane::info("Hello world")
+            /// }
+            /// ```
+            ///
+            /// To start doing more things with your plugin, check out the docs
+            /// for the `Sugarcane` type. You can access an instance of it like so:
+            ///
+            /// ```
+            /// fn init() {
+            ///   sc = sugarcane::instance()
+            ///   sc.broadcast("This will show up in chat for everyone!")
+            /// }
+            /// ```
+          ),
         ),
-      ),
-      (
-        path!(sugarcane::trace),
-        markdown!(
-          /// Prints out the given arguments as a `trace` log message.
+        (
+          path!(sugarcane::block),
+          markdown!(
+            /// This module handles blocks. It includes types to manage block kinds,
+            /// block types, and any other data for blocks.
+          ),
         ),
-      ),
-      (
-        path!(sugarcane::debug),
-        markdown!(
-          /// Prints out the given arguments as a `debug` log message.
+        (
+          path!(sugarcane::chat),
+          markdown!(
+            /// This module handles chat messages. It includes a chat message (`Chat`),
+            /// and a chat section type (`ChatSection`).
+          ),
         ),
-      ),
-      (
-        path!(sugarcane::info),
-        markdown!(
-          /// Prints out the given arguments as an `info` log message.
-          ///
-          /// # Example
-          ///
-          /// ```
-          /// sc.info("some information")
-          /// sc.info(5, 6)
-          /// sc.info(my_vars, other, info)
-          /// ```
+        (
+          path!(sugarcane::command),
+          markdown!(
+            /// This module handles commands. Since minecraft 1.13, commands have gotten
+            /// somewhat complex. This module allows you to build a command from a tree
+            /// of arguments, and parse those commands from the client.
+            ///
+            /// For 1.8 to 1.12 clients, auto complete is implemented on the server, so
+            /// it seems similar to 1.13+. You should not need to worry about this. You
+            /// should be focused on building a command that takes the right arguments,
+            /// which will then be handled by the server and client for you.
+            ///
+            /// Here is an example of creating a simple command:
+            ///
+            /// ```
+            /// fn init() {
+            ///   // The first argument is the name of the command, and the second argument
+            ///   // is the function to call when the command is executed by a client.
+            ///   c = Command::new("fill", handle_fill)
+            ///   // This will expect the word `rect` to be inserted into the command string.
+            ///   c.add_lit("rect")
+            ///     .add_arg_block_pos("min")
+            ///     .add_arg_block_pos("max")
+            ///   // This will expect the word `circle` to be inserted into the command string.
+            ///   // Since we are working with the original `c` struct, this is added as a
+            ///   // second path in the tree, next to the `rect` path.
+            ///   c.add_lit("rect")
+            ///     .add_arg_block_pos("center")
+            ///     .add_arg_float("radius")
+            /// }
+            ///
+            /// // `sc` is the Sugarcane struct, which gives you access to everything on
+            /// // the server.
+            /// // `player` is the player who sent this command.
+            /// // `args` is the parsed arguments to your command. Each item in this array
+            /// // is typed according to the arguments. So, the first item will be a string
+            /// // with the text "fill", the second will be a string will the text "rect"
+            /// // or "circle", the third item will be a block position, and the last item will
+            /// // be another block position or a float.
+            ///
+            /// fn handle_fill(sc, player, args) {
+            ///   player.send_message("You just ran /fill!")
+            /// }
+            /// ```
+            ///
+            /// This will build a command with a tree like so:
+            ///
+            /// ```
+            ///      fill
+            ///    /      \
+            /// "rect"  "circle"
+            ///   |        |
+            /// `pos`    `pos`
+            ///   |        |
+            /// `pos`   `float`
+            /// ```
+            ///
+            /// This will parse all of these commands:
+            ///
+            /// ```
+            /// /fill rect -3 -2 -1 4 5 6
+            /// /fill circle ~ ~ ~ 3.5
+            /// /fill rect ~-10 ~-10 ~-10 ~10 ~10 ~10
+            /// ```
+          ),
         ),
-      ),
-      (
-        path!(sugarcane::warn),
-        markdown!(
-          /// Prints out the given arguments as a `warn` log message.
+        (
+          path!(sugarcane::player),
+          markdown!(
+            /// This module handles the player. It only includes one struct, called `Player`.
+            /// Players are very complex, so it makes sense not to bundle the player in with
+            /// entities.
+          ),
         ),
-      ),
-      (
-        path!(sugarcane::error),
-        markdown!(
-          /// Prints out the given arguments as an `error` log message.
+        (
+          path!(sugarcane::util),
+          markdown!(
+            /// This module includes various utilities, such as block positions, chunk positions,
+            /// byte buffers, things like UUID, and more.
+          ),
         ),
-      ),
-      (
-        path!(sugarcane::block),
-        markdown!(
-          /// This module handles blocks. It includes types to manage block kinds,
-          /// block types, and any other data for blocks.
+        (
+          path!(sugarcane::world),
+          markdown!(
+            /// This module includes a World and WorldManager. The World allows you to spawn
+            /// in entities, change blocks, mess with players, etc. The WorldManager allows
+            /// you to teleport people between worlds, create new worlds, etc.
+          ),
         ),
-      ),
-      (
-        path!(sugarcane::chat),
-        markdown!(
-          /// This module handles chat messages. It includes a chat message (`Chat`),
-          /// and a chat section type (`ChatSection`).
+        (
+          path!(sugarcane::world::gen),
+          markdown!(
+            /// This modules is for everything related to terrain generation. This is a complex
+            /// module, simply becuase of how much there is to do.
+          ),
         ),
-      ),
-      (
-        path!(sugarcane::command),
-        markdown!(
-          /// This module handles commands. Since minecraft 1.13, commands have gotten
-          /// somewhat complex. This module allows you to build a command from a tree
-          /// of arguments, and parse those commands from the client.
-          ///
-          /// For 1.8 to 1.12 clients, auto complete is implemented on the server, so
-          /// it seems similar to 1.13+. You should not need to worry about this. You
-          /// should be focused on building a command that takes the right arguments,
-          /// which will then be handled by the server and client for you.
-          ///
-          /// Here is an example of creating a simple command:
-          ///
-          /// ```
-          /// fn init() {
-          ///   // The first argument is the name of the command, and the second argument
-          ///   // is the function to call when the command is executed by a client.
-          ///   c = Command::new("fill", handle_fill)
-          ///   // This will expect the word `rect` to be inserted into the command string.
-          ///   c.add_lit("rect")
-          ///     .add_arg_block_pos("min")
-          ///     .add_arg_block_pos("max")
-          ///   // This will expect the word `circle` to be inserted into the command string.
-          ///   // Since we are working with the original `c` struct, this is added as a
-          ///   // second path in the tree, next to the `rect` path.
-          ///   c.add_lit("rect")
-          ///     .add_arg_block_pos("center")
-          ///     .add_arg_float("radius")
-          /// }
-          ///
-          /// // `sc` is the Sugarcane struct, which gives you access to everything on
-          /// // the server.
-          /// // `player` is the player who sent this command.
-          /// // `args` is the parsed arguments to your command. Each item in this array
-          /// // is typed according to the arguments. So, the first item will be a string
-          /// // with the text "fill", the second will be a string will the text "rect"
-          /// // or "circle", the third item will be a block position, and the last item will
-          /// // be another block position or a float.
-          ///
-          /// fn handle_fill(sc, player, args) {
-          ///   player.send_message("You just ran /fill!")
-          /// }
-          /// ```
-          ///
-          /// This will build a command with a tree like so:
-          ///
-          /// ```
-          ///      fill
-          ///    /      \
-          /// "rect"  "circle"
-          ///   |        |
-          /// `pos`    `pos`
-          ///   |        |
-          /// `pos`   `float`
-          /// ```
-          ///
-          /// This will parse all of these commands:
-          ///
-          /// ```
-          /// /fill rect -3 -2 -1 4 5 6
-          /// /fill circle ~ ~ ~ 3.5
-          /// /fill rect ~-10 ~-10 ~-10 ~10 ~10 ~10
-          /// ```
+      ],
+      &[
+        (
+          path!(sugarcane::trace),
+          markdown!(
+            /// Prints out the given arguments as a `trace` log message.
+          ),
         ),
-      ),
-      (
-        path!(sugarcane::player),
-        markdown!(
-          /// This module handles the player. It only includes one struct, called `Player`.
-          /// Players are very complex, so it makes sense not to bundle the player in with
-          /// entities.
+        (
+          path!(sugarcane::debug),
+          markdown!(
+            /// Prints out the given arguments as a `debug` log message.
+          ),
         ),
-      ),
-      (
-        path!(sugarcane::util),
-        markdown!(
-          /// This module includes various utilities, such as block positions, chunk positions,
-          /// byte buffers, things like UUID, and more.
+        (
+          path!(sugarcane::info),
+          markdown!(
+            /// Prints out the given arguments as an `info` log message.
+            ///
+            /// # Example
+            ///
+            /// ```
+            /// sc.info("some information")
+            /// sc.info(5, 6)
+            /// sc.info(my_vars, other, info)
+            /// ```
+          ),
         ),
-      ),
-      (
-        path!(sugarcane::world),
-        markdown!(
-          /// This module includes a World and WorldManager. The World allows you to spawn
-          /// in entities, change blocks, mess with players, etc. The WorldManager allows
-          /// you to teleport people between worlds, create new worlds, etc.
+        (
+          path!(sugarcane::warn),
+          markdown!(
+            /// Prints out the given arguments as a `warn` log message.
+          ),
         ),
-      ),
-      (
-        path!(sugarcane::world::gen),
-        markdown!(
-          /// This modules is for everything related to terrain generation. This is a complex
-          /// module, simply becuase of how much there is to do.
+        (
+          path!(sugarcane::error),
+          markdown!(
+            /// Prints out the given arguments as an `error` log message.
+          ),
         ),
-      ),
-    ]);
+      ],
+    );
     docs.save("target/sl_docs");
     info!("done generating docs");
   }
