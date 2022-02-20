@@ -218,7 +218,6 @@ impl Plugin {
     sl.add_builtin_ty::<world::SlWorld>();
     sl.add_builtin_ty::<world::gen::SlBiome>();
 
-    info!("generating docs...");
     let docs = sl.generate_docs(
       &[
         (
@@ -400,6 +399,9 @@ impl Plugin {
       ],
     );
     docs.save("target/sl_docs");
-    info!("done generating docs");
+    info!(
+      "generated docs at {}",
+      std::env::current_dir().unwrap().join("target/sl_docs/sugarcane/index.html").display()
+    );
   }
 }
