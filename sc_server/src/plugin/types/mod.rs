@@ -58,40 +58,6 @@ use wrap;
 /// need to).
 #[define_ty(path = "sugarcane::Sugarcane")]
 impl Sugarcane {
-  /// Prints out the given arguments as an information message.
-  ///
-  /// This is supposed to use variadic arguments, but variadics are being
-  /// rewritten. For now, you can use arrays to print multiple values.
-  ///
-  /// # Example
-  ///
-  /// ```
-  /// sc.info("some information")
-  /// sc.info([5, 6])
-  /// sc.info([my_vars, other, info])
-  /// ```
-  ///
-  /// # Old Example
-  ///
-  /// ```
-  /// // NOTE: Does not work!
-  /// sc.info(5, 6)
-  /// sc.info(my_vars, other, info)
-  /// ```
-  pub fn info(&self, arg: &Var) {
-    /*
-    let mut msg = String::new();
-    let mut iter = args.iter();
-    if let Some(a) = iter.next() {
-      msg += &format!("{}", a);
-    }
-    for a in iter {
-      msg += &format!(" {}", a);
-    }
-    */
-    info!("plugin `{}`: {}", self.plugin, arg);
-  }
-
   /// Adds a command to the server.
   ///
   /// # Example
@@ -187,6 +153,18 @@ impl Sugarcane {
   pub fn add_biome(&self, _biome: &SlBiome) -> Result<(), RuntimeError> { Ok(()) }
 }
 
+fn format(args: &[VarRef]) -> String {
+  let mut msg = String::new();
+  let mut iter = args.iter();
+  if let Some(a) = iter.next() {
+    msg += &format!("{}", a);
+  }
+  for a in iter {
+    msg += &format!(" {}", a);
+  }
+  msg
+}
+
 impl Plugin {
   pub fn add_builtins(&self, sl: &mut Sugarlang) {
     let sc = self.sc();
@@ -194,6 +172,41 @@ impl Plugin {
       RuntimeError::check_arg_len(&args, 0, pos)?;
       Ok(sc.clone().into())
     });
+    {
+      let name = self.name().clone();
+      sl.add_builtin_fn(path!(sugarcane::trace), move |_env, _slf, args, _pos| {
+        trace!("plugin `{}`: {}", name, format(&args));
+        Ok(Var::None)
+      });
+    }
+    {
+      let name = self.name().clone();
+      sl.add_builtin_fn(path!(sugarcane::debug), move |_env, _slf, args, _pos| {
+        debug!("plugin `{}`: {}", name, format(&args));
+        Ok(Var::None)
+      });
+    }
+    {
+      let name = self.name().clone();
+      sl.add_builtin_fn(path!(sugarcane::info), move |_env, _slf, args, _pos| {
+        info!("plugin `{}`: {}", name, format(&args));
+        Ok(Var::None)
+      });
+    }
+    {
+      let name = self.name().clone();
+      sl.add_builtin_fn(path!(sugarcane::warn), move |_env, _slf, args, _pos| {
+        warn!("plugin `{}`: {}", name, format(&args));
+        Ok(Var::None)
+      });
+    }
+    {
+      let name = self.name().clone();
+      sl.add_builtin_fn(path!(sugarcane::error), move |_env, _slf, args, _pos| {
+        error!("plugin `{}`: {}", name, format(&args));
+        Ok(Var::None)
+      });
+    }
     sl.add_builtin_ty::<Sugarcane>();
     sl.add_builtin_ty::<util::SlPos>();
     sl.add_builtin_ty::<util::SlFPos>();
@@ -217,15 +230,58 @@ impl Plugin {
           /// In that file, put the following code:
           ///
           /// ```
-          /// fn init(sc) {
-          ///   sc.info("hello world")
+          /// fn init() {
+          ///   sugarcane::info("Hello world")
           /// }
           /// ```
           ///
-          /// The given variable (`sc`) is a `Sugarcane` builtin. It is how you
-          /// interact with the entire server. You can lookup worlds and players,
-          /// add commands, and more. To start doing more things with your plugin,
-          /// check out the docs for the `Sugarcane` type.
+          /// To start doing more things with your plugin, check out the docs
+          /// for the `Sugarcane` type. You can access an instance of it like so:
+          ///
+          /// ```
+          /// fn init() {
+          ///   sc = sugarcane::instance()
+          ///   sc.broadcast("This will show up in chat for everyone!")
+          /// }
+          /// ```
+        ),
+      ),
+      (
+        path!(sugarcane::trace),
+        markdown!(
+          /// Prints out the given arguments as a `trace` log message.
+        ),
+      ),
+      (
+        path!(sugarcane::debug),
+        markdown!(
+          /// Prints out the given arguments as a `debug` log message.
+        ),
+      ),
+      (
+        path!(sugarcane::info),
+        markdown!(
+          /// Prints out the given arguments as an `info` log message.
+          ///
+          /// # Example
+          ///
+          /// ```
+          /// sc.info("some information")
+          /// sc.info(5, 6)
+          /// sc.info(my_vars, other, info)
+          /// ```
+        ),
+      ),
+      (
+        path!(sugarcane::warn),
+        markdown!(
+          /// Prints out the given arguments as a `warn` log message.
+        ),
+      ),
+      (
+        path!(sugarcane::error),
+        markdown!(
+          /// Prints out the given arguments as an `error` log message.
         ),
       ),
       (

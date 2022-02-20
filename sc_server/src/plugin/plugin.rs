@@ -28,6 +28,8 @@ impl Plugin {
     Plugin { sc: Sugarcane::new(idx, name.clone(), wm), name, sl: None }
   }
 
+  pub fn name(&self) -> &String { &self.name }
+
   /// This replaces the plugins envrionment with a new one, and then parses the
   /// given file as a sugarlang source file.
   pub fn load_from_file(&mut self, path: &Path, manager: &PluginManager) {
