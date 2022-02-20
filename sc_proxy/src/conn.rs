@@ -19,6 +19,7 @@ use sc_transfer::{
 use serde_derive::{Deserialize, Serialize};
 use sha1::{Digest, Sha1};
 use std::{
+  cell::RefCell,
   convert::TryInto,
   fmt, io,
   io::{ErrorKind, Read, Write},
@@ -83,12 +84,11 @@ pub struct Conn<'a, S> {
   /// Bytes that have been read from the server, but don't form a complete
   /// packet yet.
   from_server:   Vec<u8>,
-  /// Used to encode packets. The data in here is undefined, but the length will
-  /// be constant.
-  garbage:       Vec<u8>,
 
   conv: Arc<TypeConverter>,
 }
+// Used when reading/writing to the server.
+thread_local!(static GARBAGE: RefCell<Vec<u8>> = RefCell::new(vec![0; 64 * 1024]));
 
 impl<S: fmt::Debug> fmt::Debug for Conn<'_, S> {
   fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -176,7 +176,6 @@ impl<'a, S: PacketStream + Send + Sync> Conn<'a, S> {
       server_token,
       to_server: Vec::with_capacity(16 * 1024),
       from_server: Vec::with_capacity(16 * 1024),
-      garbage: vec![0; 64 * 1024],
       conv,
     }
   }
@@ -189,19 +188,13 @@ impl<'a, S: PacketStream + Send + Sync> Conn<'a, S> {
     reg.register(&mut stream, self.server_token, Interest::READABLE | Interest::WRITABLE).unwrap();
     self.server_stream = Some(stream);
 
-    let mut buf = [0; 1024];
-    let mut m = MessageWriter::new(&mut buf);
-    m.write_str(self.username.as_ref().unwrap()).unwrap();
-    m.write_bytes(&self.info.as_ref().unwrap().id.as_be_bytes()).unwrap();
-    m.write_i32(self.ver.id() as i32).unwrap();
-    let len = m.index();
-    let mut prefix = [0; 5];
-    let mut m = MessageWriter::new(&mut prefix);
-    m.write_u32(len as u32).unwrap();
-    let prefix_len = m.index();
-    self.to_server.extend_from_slice(&prefix[..prefix_len]);
-    self.to_server.extend_from_slice(&buf[..len]);
-    self.write_server()
+    self.write_data_to_server(|s, m| {
+      m.write_u8(0)?; // mode is joining
+      m.write_str(s.username.as_ref().unwrap())?;
+      m.write_bytes(&s.info.as_ref().unwrap().id.as_be_bytes())?;
+      m.write_i32(s.ver.id() as i32)?;
+      Ok(())
+    })
   }
 
   pub fn write_server(&mut self) -> Result<()> {
@@ -234,12 +227,15 @@ impl<'a, S: PacketStream + Send + Sync> Conn<'a, S> {
 
   /// Returns true if the connection should close.
   fn poll_server(&mut self) -> io::Result<bool> {
-    let n = self.server_stream.as_mut().unwrap().read(&mut self.garbage)?;
-    if n == 0 {
-      return Ok(true);
-    }
-    self.from_server.extend_from_slice(&self.garbage[..n]);
-    Ok(false)
+    GARBAGE.with(|g| {
+      let mut garbage = g.borrow_mut();
+      let n = self.server_stream.as_mut().unwrap().read(&mut garbage)?;
+      if n == 0 {
+        return Ok(true);
+      }
+      self.from_server.extend_from_slice(&garbage[..n]);
+      Ok(false)
+    })
   }
 
   /// Returns true if there are more packets, false if there is an empty or
@@ -361,28 +357,41 @@ impl<'a, S: PacketStream + Send + Sync> Conn<'a, S> {
   /// Tries to send the packet to the server, and buffers it if that is not
   /// possible.
   fn send_to_server(&mut self, p: gsb::Packet) -> Result<()> {
-    // The only error here is EOF, which means the garbage buffer was not enough
-    // space for this packet.
+    self.write_data_to_server(|s, m| {
+      // An error here is for an unimplemented packet
+      let common = match csb::Packet::from_tcp(p, s.ver, s.conv.as_ref()) {
+        Ok(p) => p,
+        Err(e) => {
+          warn!("{e}");
+          return Ok(());
+        }
+      };
+      // The only error here is EOF, which means the garbage buffer was not enough
+      // space for this packet.
+      common.write(m).unwrap();
+      Ok(())
+    })
+  }
 
-    let mut m = MessageWriter::new(&mut self.garbage);
-    let common = match csb::Packet::from_tcp(p, self.ver, self.conv.as_ref()) {
-      Ok(p) => p,
-      Err(e) => {
-        warn!("{e}");
-        return Ok(());
-      }
-    };
-    common.write(&mut m).unwrap();
-    let len = m.index();
+  fn write_data_to_server(
+    &mut self,
+    f: impl FnOnce(&mut Self, &mut MessageWriter) -> Result<()>,
+  ) -> Result<()> {
+    GARBAGE.with(|g| {
+      let mut garbage = g.borrow_mut();
+      let mut m = MessageWriter::new(&mut garbage);
+      f(self, &mut m)?;
+      let len = m.index();
 
-    let mut prefix = [0; 5];
-    let mut m = MessageWriter::new(&mut prefix);
-    m.write_u32(len as u32).unwrap();
-    let prefix_len = m.index();
-    self.to_server.extend_from_slice(&prefix[..prefix_len]);
-    self.to_server.extend_from_slice(&self.garbage[..len]);
+      let mut prefix = [0; 5];
+      let mut m = MessageWriter::new(&mut prefix);
+      m.write_u32(len as u32).unwrap();
+      let prefix_len = m.index();
+      self.to_server.extend_from_slice(&prefix[..prefix_len]);
+      self.to_server.extend_from_slice(&garbage[..len]);
 
-    self.write_server()
+      self.write_server()
+    })
   }
 
   /// Sends the set compression packet, using self.compression_target. The
@@ -400,7 +409,28 @@ impl<'a, S: PacketStream + Send + Sync> Conn<'a, S> {
 
   /// Switches this connection to a new server. If all of the ips are bad, this
   /// doesn't change anything.
-  pub fn switch_to(&mut self, _ips: Vec<SocketAddr>) { todo!() }
+  pub fn switch_to(&mut self, addrs: Vec<SocketAddr>) {
+    for addr in addrs {
+      let conn = match TcpStream::connect(addr) {
+        Ok(v) => v,
+        Err(_) => continue,
+      };
+      let old_stream = std::mem::replace(&mut self.server_stream, Some(conn));
+      match self.write_data_to_server(|s, m| {
+        m.write_u8(1)?; // mode is switching
+        m.write_str(s.username.as_ref().unwrap())?;
+        m.write_bytes(&s.info.as_ref().unwrap().id.as_be_bytes())?;
+        m.write_i32(s.ver.id() as i32)?;
+        Ok(())
+      }) {
+        Ok(()) => break,
+        Err(_) => {
+          self.server_stream = old_stream;
+          continue;
+        }
+      }
+    }
+  }
 
   /// Sends the login success packet, and sets the state to Play. The stream
   /// will not be flushed.
