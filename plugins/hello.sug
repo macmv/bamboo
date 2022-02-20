@@ -6,8 +6,9 @@ use sugarcane::{
   util::Pos,
 }
 
-fn init(sc) {
-  sc.info("hello world")
+fn init() {
+  sugarcane::info("hello world")
+  sc = sugarcane::instance()
 
   c = Command::new("setblock", handle_setblock)
   c.add_arg_block_pos("pos")

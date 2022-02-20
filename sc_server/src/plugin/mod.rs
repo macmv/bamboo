@@ -4,11 +4,9 @@ mod types;
 pub use plugin::Plugin;
 
 use crate::{block, player::Player, world::WorldManager};
+use parking_lot::Mutex;
 use sc_common::math::Pos;
-use std::{
-  fmt, fs,
-  sync::{Arc, Mutex},
-};
+use std::{fmt, fs, sync::Arc};
 use sugarlang::runtime::Var;
 
 #[derive(Debug)]
@@ -30,12 +28,12 @@ pub struct Sugarcane {
   idx:    usize,
   plugin: String,
   wm:     Arc<WorldManager>,
-  data:   Arc<Var>,
+  data:   Arc<Mutex<Var>>,
 }
 
 impl Sugarcane {
   pub fn new(idx: usize, plugin: String, wm: Arc<WorldManager>) -> Self {
-    Sugarcane { idx, plugin, wm, data: Arc::new(Var::None) }
+    Sugarcane { idx, plugin, wm, data: Arc::new(Mutex::new(Var::None)) }
   }
 }
 
@@ -107,7 +105,7 @@ impl PluginManager {
 
   /// Loads all plugins from disk. Call this to reload all plugins.
   fn load(&self, wm: Arc<WorldManager>) {
-    let mut plugins = self.plugins.lock().unwrap();
+    let mut plugins = self.plugins.lock();
     plugins.clear();
     for f in fs::read_dir("plugins").unwrap() {
       let f = f.unwrap();
@@ -137,7 +135,7 @@ impl PluginManager {
   }
 
   pub fn on_block_place(&self, player: Arc<Player>, pos: Pos, kind: block::Kind) {
-    for p in self.plugins.lock().unwrap().iter() {
+    for p in self.plugins.lock().iter() {
       p.call_on_block_place(player.clone(), pos, kind);
     }
   }

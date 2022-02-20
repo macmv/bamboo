@@ -85,16 +85,12 @@ impl Plugin {
   pub fn sc(&self) -> Sugarcane { self.sc.clone() }
 
   pub fn call_init(&self) {
-    self.call(
-      SlPath::new(vec![self.name.clone(), "main".into(), "init".into()]),
-      vec![self.sc.clone().into()],
-    );
+    self.call(SlPath::new(vec![self.name.clone(), "main".into(), "init".into()]), vec![]);
   }
   pub fn call_on_block_place(&self, player: Arc<Player>, pos: Pos, kind: block::Kind) {
     self.call(
       path!(main::on_block_place),
       vec![
-        self.sc.clone().into(),
         types::player::SlPlayer::from(player).into(),
         types::util::SlPos::from(pos).into(),
         types::block::SlBlockKind::from(kind).into(),

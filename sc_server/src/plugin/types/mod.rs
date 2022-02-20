@@ -95,7 +95,7 @@ impl Sugarcane {
         let mut err = None;
         let mut has_err = false;
         {
-          let mut lock = wm.plugins().plugins.lock().unwrap();
+          let mut lock = wm.plugins().plugins.lock();
           let plugin = &mut lock[idx];
           let sc = plugin.sc();
           if let Err(e) = cb.call(
