@@ -9,6 +9,7 @@ use std::{
   fmt, fs,
   sync::{Arc, Mutex},
 };
+use sugarlang::runtime::Var;
 
 #[derive(Debug)]
 pub enum Event {
@@ -29,11 +30,12 @@ pub struct Sugarcane {
   idx:    usize,
   plugin: String,
   wm:     Arc<WorldManager>,
+  data:   Arc<Var>,
 }
 
 impl Sugarcane {
   pub fn new(idx: usize, plugin: String, wm: Arc<WorldManager>) -> Self {
-    Sugarcane { idx, plugin, wm }
+    Sugarcane { idx, plugin, wm, data: Arc::new(Var::None) }
   }
 }
 
