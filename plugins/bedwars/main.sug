@@ -1,4 +1,42 @@
-fn init(sc) {
-  bedwars::init::say_hello(sc)
-  sc.info("initializing bedwars")
+struct PlayerData {
+  teams: arr,
+}
+struct Team {
+  color: str,
+  players: arr,
+}
+
+fn init() {
+  sugarcane::info("initializing bedwars")
+
+  data = PlayerData {
+    teams: [
+      Team {
+        color: "red",
+        players: [],
+      },
+      Team {
+        color: "green",
+        players: [],
+      },
+      Team {
+        color: "blue",
+        players: [],
+      },
+      Team {
+        color: "yellow",
+        players: [],
+      }
+    ]
+  }
+  sc = sugarcane::instance()
+  sc.store(data)
+}
+
+fn add_player_to_team(sc, player, team) {
+  
+}
+
+fn start_game(sc) {
+
 }

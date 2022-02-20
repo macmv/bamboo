@@ -34,7 +34,7 @@ impl Plugin {
     self.sl = None;
     let mut sl = Sugarlang::new();
     sl.set_color(manager.use_color());
-    PluginManager::add_builtins(&mut sl);
+    self.add_builtins(&mut sl);
     match fs::read_to_string(path) {
       Ok(src) => {
         match sl.parse_file(&SlPath::new(vec![self.name.clone(), "main".into()]), path, src) {
@@ -60,7 +60,7 @@ impl Plugin {
     self.sl = None;
     let mut sl = Sugarlang::new();
     sl.set_color(manager.use_color());
-    PluginManager::add_builtins(&mut sl);
+    self.add_builtins(&mut sl);
     match sl.parse_dir(dir, &SlPath::new(vec![self.name.clone()])) {
       Ok(_) => {
         self.sl = Some(sl);

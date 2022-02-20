@@ -2,7 +2,7 @@
 extern crate log;
 
 use clap::Parser;
-use sc_server::{net::ConnectionManager, plugin::PluginManager, world::WorldManager};
+use sc_server::{net::ConnectionManager, plugin::Plugin, world::WorldManager};
 use std::{error::Error, sync::Arc, thread};
 use sugarlang::Sugarlang;
 
@@ -62,8 +62,9 @@ fn main() -> Result<(), Box<dyn Error>> {
   sc_common::init("server");
 
   if args.only_docs {
+    let plugin = Plugin::new(0, "".into(), Arc::new(WorldManager::new()));
     let mut sl = Sugarlang::new();
-    PluginManager::add_builtins(&mut sl);
+    plugin.add_builtins(&mut sl);
     return Ok(());
   }
 

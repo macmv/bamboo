@@ -1,4 +1,4 @@
-use super::{PluginManager, Sugarcane};
+use super::{Plugin, PluginManager, Sugarcane};
 use sc_common::util::{chat::Color, Chat};
 use sugarlang::{
   define_ty,
@@ -187,8 +187,13 @@ impl Sugarcane {
   pub fn add_biome(&self, _biome: &SlBiome) -> Result<(), RuntimeError> { Ok(()) }
 }
 
-impl PluginManager {
-  pub fn add_builtins(sl: &mut Sugarlang) {
+impl Plugin {
+  pub fn add_builtins(&self, sl: &mut Sugarlang) {
+    let sc = self.sc();
+    sl.add_builtin_fn(path!(sugarcane::instance), move |_env, _slf, args, pos| {
+      RuntimeError::check_arg_len(&args, 0, pos)?;
+      Ok(sc.clone().into())
+    });
     sl.add_builtin_ty::<Sugarcane>();
     sl.add_builtin_ty::<util::SlPos>();
     sl.add_builtin_ty::<util::SlFPos>();
