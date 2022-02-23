@@ -6,11 +6,10 @@ struct Team {
   players: arr,
 }
 
-static teams = []
-
-fn init() locks teams {
+fn init() {
   sugarcane::info("initializing bedwars")
 
+  teams = []
   teams.push(Team {
     color: "red",
     players: [],
@@ -27,10 +26,14 @@ fn init() locks teams {
     color: "yellow",
     players: [],
   })
+  sc = sugarcane::instance()
+  sc.store(teams)
 }
 
-fn add_player_to_team(player, team) locks teams {
-  for i = 0; i < teams.len(); i++ {
+fn add_player_to_team(player, team) {
+  sc = sugarcane::instance()
+  teams = sc.load()
+  for i = 0, i < teams.len(), i++ {
     if teams[i].color == team {
       teams[i].players.push(player)
       break
