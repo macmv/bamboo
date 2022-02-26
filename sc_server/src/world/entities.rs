@@ -5,9 +5,11 @@ use sc_common::{
   math::{ChunkPos, FPos, Vec3},
   net::cb,
   util::UUID,
-  version::ProtocolVersion,
 };
-use std::{collections::HashMap, sync::Arc};
+use std::{
+  collections::HashMap,
+  sync::{atomic::Ordering, Arc},
+};
 
 impl World {
   pub fn summon(self: &Arc<Self>, ty: entity::Type, pos: FPos) -> i32 {
@@ -37,15 +39,13 @@ impl World {
   /// Sends entity position packets to everyone in view of `old`.
   pub(crate) fn send_entity_pos(&self, _eid: i32, old: FPos, new: FPos, _on_ground: bool) {
     for p in self.players().iter().in_view(old.chunk()) {
-      let mut d_x_v1_8 = 0;
-      let mut d_x_v1_9 = 0;
-      let mut d_y_v1_8 = 0;
-      let mut d_y_v1_9 = 0;
-      let mut d_z_v1_8 = 0;
-      let mut d_z_v1_9 = 0;
-      let mut dx = new.x() - old.x();
-      let mut dy = new.y() - old.y();
-      let mut dz = new.z() - old.z();
+      let x = new.x() - old.x();
+      let y = new.y() - old.y();
+      let z = new.z() - old.z();
+      let x = (x * 4096.0).round() as i16;
+      let y = (y * 4096.0).round() as i16;
+      let z = (z * 4096.0).round() as i16;
+      /*
       let abs_pos;
       if p.ver() == ProtocolVersion::V1_8 {
         dx *= 32.0;
@@ -75,18 +75,14 @@ impl World {
           abs_pos = false;
         }
       };
-      // TODO: Entities
-      let _ = (d_x_v1_8, d_x_v1_9, d_y_v1_8, d_y_v1_9, d_z_v1_8, d_z_v1_9, abs_pos);
-      // p.send(cb::Packet::RelEntityMove {
-      //   entity_id: eid,
-      //   d_x_v1_8: Some(d_x_v1_8),
-      //   d_x_v1_9: Some(d_x_v1_9),
-      //   d_y_v1_8: Some(d_y_v1_8),
-      //   d_y_v1_9: Some(d_y_v1_9),
-      //   d_z_v1_8: Some(d_z_v1_8),
-      //   d_z_v1_9: Some(d_z_v1_9),
-      //   on_ground,
-      // });
+      */
+      p.send(cb::Packet::EntityMove {
+        eid: self.eid.load(Ordering::SeqCst),
+        x,
+        y,
+        z,
+        on_ground: false,
+      });
     }
   }
 
