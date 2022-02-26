@@ -78,7 +78,7 @@ pub struct World {
   entity_converter:  Arc<entity::TypeConverter>,
   plugins:           Arc<plugin::PluginManager>,
   commands:          Arc<CommandTree>,
-  mspt:              Arc<AtomicU32>,
+  uspt:              Arc<AtomicU32>,
   wm:                Arc<WorldManager>,
   // If set, then the world cannot be modified.
   locked:            AtomicBool,
@@ -99,7 +99,7 @@ pub struct WorldManager {
 }
 
 struct State {
-  mspt: Arc<AtomicU32>,
+  uspt: Arc<AtomicU32>,
 }
 
 impl World {
@@ -135,7 +135,7 @@ impl World {
       entity_converter,
       plugins,
       commands,
-      mspt: Arc::new(0.into()),
+      uspt: Arc::new(0.into()),
       locked: wm.config().get::<_, bool>("world.locked").into(),
       wm,
     });
@@ -152,7 +152,7 @@ impl World {
   pub fn config(&self) -> &Arc<Config> { self.wm.config() }
 
   fn global_tick_loop(self: Arc<Self>) {
-    let pool = ThreadPool::auto(|| State { mspt: self.mspt.clone() });
+    let pool = ThreadPool::auto(|| State { uspt: self.uspt.clone() });
     let mut tick = 0;
     loop {
       let start = Instant::now();
@@ -161,13 +161,13 @@ impl World {
         let mut footer = Chat::empty();
 
         header.add("big gaming\n").color(Color::Blue);
-        footer.add("\nmspt: ");
-        let mspt = self.mspt.swap(0, Ordering::SeqCst) / 20;
-        footer.add(format!("{}", mspt)).color(if mspt > 50 {
+        footer.add("\nuspt: ");
+        let uspt = self.uspt.swap(0, Ordering::SeqCst) / 20;
+        footer.add(uspt.to_string()).color(if uspt > 50_000 {
           Color::Red
-        } else if mspt > 20 {
+        } else if uspt > 20_000 {
           Color::Gold
-        } else if mspt > 10 {
+        } else if uspt > 10_000 {
           Color::Yellow
         } else {
           Color::BrightGreen
@@ -190,7 +190,7 @@ impl World {
           if tick % 20 == 0 {
             p.send(cb::Packet::KeepAlive { id: 1234556 });
           }
-          s.mspt.fetch_add(start.elapsed().as_millis().try_into().unwrap(), Ordering::SeqCst);
+          s.uspt.fetch_add(start.elapsed().as_micros().try_into().unwrap(), Ordering::SeqCst);
         });
       }
       for (_eid, ent) in self.entities().iter() {
@@ -198,7 +198,7 @@ impl World {
         pool.execute(move |s| {
           let start = Instant::now();
           ent.tick();
-          s.mspt.fetch_add(start.elapsed().as_millis().try_into().unwrap(), Ordering::SeqCst);
+          s.uspt.fetch_add(start.elapsed().as_micros().try_into().unwrap(), Ordering::SeqCst);
         });
       }
       tick += 1;
