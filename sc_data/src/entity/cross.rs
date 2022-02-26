@@ -1,5 +1,6 @@
 use super::{Entity, EntityDef};
 use crate::{gen::CodeGen, Version};
+use convert_case::{Case, Casing};
 use std::collections::HashMap;
 
 pub fn cross_version(gen: &mut CodeGen, old: &(Version, EntityDef), new: &(Version, EntityDef)) {
@@ -42,10 +43,11 @@ fn find_ids(ver: Version, old_def: &EntityDef, new_def: &EntityDef) -> (Vec<u32>
   let mut to_old = Vec::with_capacity(new_def.entities.len());
   for e in &new_def.entities {
     let e = e.as_ref().unwrap();
-    let old_item = old_map
-      .get(&e.name)
-      .unwrap_or_else(|| panic!("cannot find entity for version {ver} with name {}", &e.name));
-    to_old.push(old_item.id);
+    let name = if ver.maj <= 10 { convert_name(&e.name) } else { e.name.clone() };
+    match old_map.get(&name) {
+      Some(old_entity) => to_old.push(old_entity.id),
+      None => to_old.push(0),
+    };
   }
 
   let mut to_new = Vec::with_capacity(to_old.len());
@@ -63,6 +65,8 @@ fn find_ids(ver: Version, old_def: &EntityDef, new_def: &EntityDef) -> (Vec<u32>
   }
   (to_old, to_new.into_iter().map(|v| v.unwrap_or(0)).collect())
 }
+
+fn convert_name(name: &str) -> String { name.to_case(Case::Pascal) }
 
 /*
 fn old_state(b: &Block, state: &State, old_map: &HashMap<String, Block>) -> u32 {
