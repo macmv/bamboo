@@ -37,7 +37,7 @@ impl World {
   }
 
   /// Sends entity position packets to everyone in view of `old`.
-  pub(crate) fn send_entity_pos(&self, _eid: i32, old: FPos, new: FPos, _on_ground: bool) {
+  pub(crate) fn send_entity_pos(&self, eid: i32, old: FPos, new: FPos, on_ground: bool) {
     for p in self.players().iter().in_view(old.chunk()) {
       let x = new.x() - old.x();
       let y = new.y() - old.y();
@@ -76,13 +76,7 @@ impl World {
         }
       };
       */
-      p.send(cb::Packet::EntityMove {
-        eid: self.eid.load(Ordering::SeqCst),
-        x,
-        y,
-        z,
-        on_ground: false,
-      });
+      p.send(cb::Packet::EntityMove { eid, x, y, z, on_ground });
     }
   }
 
