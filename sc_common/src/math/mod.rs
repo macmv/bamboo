@@ -1,4 +1,3 @@
-mod aabb;
 mod chunk_pos;
 pub mod der;
 mod fast;
@@ -7,7 +6,6 @@ mod pos;
 mod rng;
 mod vec;
 
-pub use aabb::AABB;
 pub use fast::{FastMath, EPSILON};
 pub use fpos::{FPos, FPosError};
 pub use rng::WyhashRng;

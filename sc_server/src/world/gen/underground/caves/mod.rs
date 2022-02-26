@@ -1,9 +1,9 @@
-use super::super::{
+use super::super::{util::Cache, WorldGen};
+use crate::{
   math::{Point, PointGrid},
-  util::Cache,
-  WorldGen,
+  util::Threaded,
+  world::chunk::MultiChunk,
 };
-use crate::{util::Threaded, world::chunk::MultiChunk};
 use sc_common::math::{ChunkPos, Pos};
 
 mod noise;

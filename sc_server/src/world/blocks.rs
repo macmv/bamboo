@@ -1,6 +1,6 @@
-use crate::{block, world::World};
+use crate::{block, math::AABB, world::World};
 use sc_common::{
-  math::{ChunkPos, FPos, Pos, PosError, Vec3, AABB},
+  math::{ChunkPos, FPos, Pos, PosError, Vec3},
   net::cb,
 };
 use std::cmp::Ordering;

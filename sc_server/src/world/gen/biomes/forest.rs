@@ -1,8 +1,5 @@
-use super::{
-  super::{math::PointGrid, BiomeGen},
-  WorldGen,
-};
-use crate::{block, world::chunk::MultiChunk};
+use super::{super::BiomeGen, WorldGen};
+use crate::{block, math::PointGrid, world::chunk::MultiChunk};
 use sc_common::math::{ChunkPos, Pos};
 use std::collections::HashMap;
 

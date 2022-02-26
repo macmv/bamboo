@@ -1,4 +1,4 @@
-use super::{FPos, Vec3};
+use sc_common::math::{FPos, Vec3};
 
 #[derive(Debug, Clone, Copy)]
 pub struct AABB {

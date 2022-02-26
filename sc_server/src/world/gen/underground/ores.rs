@@ -1,9 +1,10 @@
-use super::super::{
+use super::super::{util::Cache, WorldGen, WyhashRng};
+use crate::{
+  block,
   math::{Point, PointGrid},
-  util::Cache,
-  WorldGen, WyhashRng,
+  util::Threaded,
+  world::chunk::MultiChunk,
 };
-use crate::{block, util::Threaded, world::chunk::MultiChunk};
 use sc_common::math::{ChunkPos, Pos, RngCore};
 
 #[derive(Debug)]

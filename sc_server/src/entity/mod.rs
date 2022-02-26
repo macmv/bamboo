@@ -6,9 +6,9 @@ pub use metadata::Metadata;
 pub use ty::{Data, Type};
 pub use version::TypeConverter;
 
-use crate::world::World;
+use crate::{math::AABB, world::World};
 use parking_lot::{Mutex, RwLock};
-use sc_common::math::{FPos, Vec3, AABB};
+use sc_common::math::{FPos, Vec3};
 use std::sync::Arc;
 
 pub mod behavior;

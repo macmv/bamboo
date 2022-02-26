@@ -1,4 +1,4 @@
-use super::super::Pos;
+use sc_common::math::Pos;
 use std::ops::{Add, Div, Sub};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]

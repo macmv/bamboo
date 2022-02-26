@@ -1,6 +1,5 @@
 use super::chunk::MultiChunk;
-use crate::block;
-use math::WarpedVoronoi;
+use crate::{block, math::WarpedVoronoi};
 use noise::{BasicMulti, NoiseFn};
 use sc_common::{
   config::Config,
@@ -13,7 +12,6 @@ use std::{
 
 mod biomes;
 mod debug;
-pub mod math;
 mod sl;
 mod underground;
 pub mod util;
