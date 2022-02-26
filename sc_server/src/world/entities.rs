@@ -131,7 +131,7 @@ impl World {
         eid:      ent.eid(),
         // 1.18 clients will not render mobs that have the same UUID
         id:       UUID::random(),
-        ty:       107,
+        ty:       old_id,
         x:        p.aabb.pos.x(),
         y:        p.aabb.pos.y(),
         z:        p.aabb.pos.z(),

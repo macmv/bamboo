@@ -117,10 +117,6 @@ pub enum Type {
 }
 */
 
-impl Type {
-  pub fn id(&self) -> u32 { 0 }
-}
-
 // Creates the Type enum, and the generate_entities function.
 include!(concat!(env!("OUT_DIR"), "/entity/ty.rs"));
 
@@ -147,7 +143,7 @@ impl Data {
 impl Type {
   /// Returns the kind as a u32. Should only be used to index into the
   /// converter's internal table of entity types.
-  pub fn to_u32(self) -> u32 { num::ToPrimitive::to_u32(&self).unwrap() }
+  pub fn id(self) -> u32 { num::ToPrimitive::to_u32(&self).unwrap() }
   /// Returns the entity with the given id. If the id is invalid, this returns
   /// `None`. This differes from items and blocks, as those both have defaults
   /// (air). There is no 'air' like entity, so we need to return an Option here.
