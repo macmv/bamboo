@@ -1,4 +1,4 @@
-use super::{Data, Type};
+use super::{ty, Data, Type};
 use sc_common::version::BlockVersion;
 
 /// This is a version converter. It is how all entity ids are converted between
@@ -16,10 +16,7 @@ impl TypeConverter {
   /// use [`WorldManager::get_entity_converter`](crate::world::WorldManager::
   /// get_entity_converter).
   #[allow(clippy::new_without_default)]
-  pub fn new() -> Self {
-    // Self { types: ty::generate_entities(), versions: generate_versions() }
-    Self { types: &[], versions: &[] }
-  }
+  pub fn new() -> Self { Self { types: ty::generate_kinds(), versions: generate_versions() } }
 
   /// Takes the given old entity id, which is part of `ver`, and returns the new
   /// id that it maps to. If the id is invalid, this will make a guess at what
