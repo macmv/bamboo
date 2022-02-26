@@ -238,7 +238,12 @@ impl ToTcp for Packet {
         }
       }
       Packet::EntityVelocity { eid, x, y, z } => {
-        GPacket::EntityVelocityV8 { entity_id: eid, motion_x: x, motion_y: y, motion_z: z }
+        GPacket::EntityVelocityV8 {
+          entity_id: eid,
+          motion_x:  x.into(),
+          motion_y:  y.into(),
+          motion_z:  z.into(),
+        }
       }
       Packet::JoinGame {
         eid,
