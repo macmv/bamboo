@@ -4,6 +4,7 @@ use parking_lot::RwLockReadGuard;
 use sc_common::{
   math::{ChunkPos, FPos, Vec3},
   net::cb,
+  util::UUID,
   version::ProtocolVersion,
 };
 use std::{collections::HashMap, sync::Arc};
@@ -97,7 +98,8 @@ impl World {
 
   #[allow(clippy::if_same_then_else)]
   fn send_entity_spawn(&self, player: &Player, ent: &Entity) {
-    let _p = ent.pos();
+    info!("spawning entity {:?}", ent.ty());
+    let p = ent.pos();
     let id = ent.ty().id();
     let old_id = self.entity_converter().to_old(id, player.ver().block());
     info!("modern id: {}", id);
@@ -125,26 +127,20 @@ impl World {
       // });
       todo!();
     } else if ent.ty().is_living() {
-      // player.send(cb::Packet::SpawnEntityLiving {
-      //   entity_id:              ent.eid(),
-      //   entity_uuid_v1_9:       Some(UUID::from_u128(0)),
-      //   type_v1_8:              Some(old_id as u8),
-      //   type_v1_11:             Some(old_id as i32),
-      //   x_v1_8:                 Some(p.aabb.pos.fixed_x()),
-      //   x_v1_9:                 Some(p.aabb.pos.x()),
-      //   y_v1_8:                 Some(p.aabb.pos.fixed_y()),
-      //   y_v1_9:                 Some(p.aabb.pos.y()),
-      //   z_v1_8:                 Some(p.aabb.pos.fixed_z()),
-      //   z_v1_9:                 Some(p.aabb.pos.z()),
-      //   yaw:                    (p.yaw / 360.0 * 256.0) as i8,
-      //   pitch:                  (p.pitch / 360.0 * 256.0) as i8,
-      //   head_pitch:             0,
-      //   velocity_x:             p.vel.fixed_x(),
-      //   velocity_y:             p.vel.fixed_y(),
-      //   velocity_z:             p.vel.fixed_z(),
-      //   metadata_removed_v1_15: Some(vec![0x7f]),
-      // });
-      todo!();
+      player.send(cb::Packet::SpawnLivingEntity {
+        eid:      ent.eid(),
+        id:       UUID::from_u128(0),
+        ty:       old_id,
+        x:        p.aabb.pos.x(),
+        y:        p.aabb.pos.y(),
+        z:        p.aabb.pos.z(),
+        yaw:      (p.yaw / 360.0 * 256.0) as i8,
+        pitch:    (p.pitch / 360.0 * 256.0) as i8,
+        head_yaw: 0,
+        vel_x:    p.vel.fixed_x(),
+        vel_y:    p.vel.fixed_y(),
+        vel_z:    p.vel.fixed_z(),
+      });
     } else {
       // Data is some data specific to that entity. If it is non-zero, then velocity
       // is present.

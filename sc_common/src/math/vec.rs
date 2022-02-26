@@ -17,13 +17,13 @@ impl Vec3 {
   pub fn new(x: f64, y: f64, z: f64) -> Self { Vec3 { x, y, z } }
   /// Returns the velocity in the packet format. This is `self.x * 8000`,
   /// because self.x is in blocks/tick.
-  pub fn fixed_x(&self) -> i16 { (self.x * 8000.0) as i16 }
+  pub fn fixed_x(&self) -> i32 { (self.x * 8000.0) as i32 }
   /// Returns the velocity in the packet format. This is `self.y * 8000`,
   /// because self.y is in blocks/tick.
-  pub fn fixed_y(&self) -> i16 { (self.y * 8000.0) as i16 }
+  pub fn fixed_y(&self) -> i32 { (self.y * 8000.0) as i32 }
   /// Returns the velocity in the packet format. This is `self.z * 8000`,
   /// because self.z is in blocks/tick.
-  pub fn fixed_z(&self) -> i16 { (self.z * 8000.0) as i16 }
+  pub fn fixed_z(&self) -> i32 { (self.z * 8000.0) as i32 }
 }
 
 impl Add for Vec2 {

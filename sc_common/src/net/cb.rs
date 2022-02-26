@@ -67,7 +67,7 @@ pub enum Packet {
   },
   /// Change of an entity's velocity.
   #[id = 9]
-  EntityVelocity { eid: i32, x: i16, y: i16, z: i16 },
+  EntityVelocity { eid: i32, x: i32, y: i32, z: i32 },
   #[id = 10]
   JoinGame {
     eid:                   i32,
@@ -121,6 +121,21 @@ pub enum Packet {
     /// If set, the client will dismount any vehicle they are riding. Only
     /// applies to 1.17+ clients.
     should_dismount: bool,
+  },
+  #[id = 21]
+  SpawnLivingEntity {
+    eid:      i32,
+    id:       UUID,
+    ty:       u32,
+    x:        f64,
+    y:        f64,
+    z:        f64,
+    yaw:      i8,
+    pitch:    i8,
+    head_yaw: i8,
+    vel_x:    i32,
+    vel_y:    i32,
+    vel_z:    i32,
   },
   #[id = 17]
   SpawnPlayer { eid: i32, id: UUID, x: f64, y: f64, z: f64, yaw: i8, pitch: i8 },

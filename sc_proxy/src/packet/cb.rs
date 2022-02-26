@@ -228,6 +228,9 @@ impl ToTcp for Packet {
           }
         }
       }
+      Packet::EntityVelocity { eid, x, y, z } => {
+        GPacket::EntityVelocityV8 { entity_id: eid, motion_x: x, motion_y: y, motion_z: z }
+      }
       Packet::JoinGame {
         eid,
         hardcore_mode,
@@ -486,6 +489,35 @@ impl ToTcp for Packet {
           buf.write_bool(should_dismount);
         }
         GPacket::PlayerPosLookV8 { x, y, z, yaw, pitch, field_179835_f: None, unknown: data }
+      }
+      Packet::SpawnLivingEntity {
+        eid,
+        id,
+        ty,
+        x,
+        y,
+        z,
+        yaw,
+        pitch,
+        head_yaw,
+        vel_x,
+        vel_y,
+        vel_z,
+      } => {
+        GPacket::SpawnMobV15 {
+          id: eid,
+          uuid: id,
+          entity_type_id: ty as i32,
+          x,
+          y,
+          z,
+          velocity_x: vel_x.into(),
+          velocity_y: vel_y.into(),
+          velocity_z: vel_z.into(),
+          yaw,
+          pitch,
+          head_yaw,
+        }
       }
       Packet::SpawnPlayer { eid, id, x, y, z, yaw, pitch } => {
         if ver == ProtocolVersion::V1_8 {
