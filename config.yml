@@ -1,4 +1,3 @@
-view-distance: 32
 world:
   locked: true
   debug: true
