@@ -32,46 +32,60 @@ impl AABB {
   ///
   /// Returns true if this collided with anything.
   pub fn move_towards(&mut self, delta: Vec3, nearby: &[AABB]) -> Option<CollisionResult> {
-    fn time_factor(val: f64, start: f64, end: f64) -> f64 { (val - start) / (end - start) }
-
     let mut result = None;
-    let after_move = AABB::new(self.pos + delta, self.size);
+    let start = self.clone();
+    let end = AABB::new(self.pos + delta, self.size);
     let mut time = 1.0;
-    for &o in nearby.iter().filter(|&&o| after_move.is_colliding_with(o)) {
-      let d = self.distance_from(o);
+    for &wall in nearby.iter().filter(|&&o| end.is_colliding_with(o)) {
       // Time to collide with the object, in each axis. We use this to find out which
       // axis will collide first.
-      let t = Vec3::new(d.x / delta.x, d.y / delta.y, d.z / delta.z);
+      //
+      // This two vectors store 6 numbers, each of which is a collision percentage. If
+      // any of these collision percentages are within 0..1, then we have a potential
+      // collision at that percentage.
+      let t_min = Vec3::new(
+        (wall.min_x() - start.max_x()) / delta.x,
+        (wall.min_y() - start.max_y()) / delta.y,
+        (wall.min_z() - start.max_z()) / delta.z,
+      );
+      let t_max = Vec3::new(
+        (wall.max_x() - start.min_x()) / delta.x,
+        (wall.max_y() - start.min_y()) / delta.y,
+        (wall.max_z() - start.min_z()) / delta.z,
+      );
+
+      fn in_range(val: (f64, f64), range: (f64, f64)) -> bool {
+        let (a, b) = val;
+        let (min, max) = range;
+        (a > min && a < max) || (b > min && b < max) || (a < min && b > max)
+      }
 
       let mut axis = None;
-      if t.x <= t.y && t.x <= t.z {
-        // Collided on the X axis
-        let pos_x =
-          if delta.x > 0.0 { o.min_x() - self.size.x / 2.0 } else { o.max_x() + self.size.x / 2.0 };
-        let fac = time_factor(pos_x, self.pos.x, after_move.pos.x);
-        if fac < time {
-          time = fac;
-          axis = Some(Vec3::new(delta.x.signum(), 0.0, 0.0));
-        }
-      } else if t.y <= t.x && t.y <= t.z {
-        // Collided on the Y axis
-        // Y is different, because self.pos is the bottom, not middle.
-        let pos_y = if delta.y > 0.0 { o.min_y() - self.size.y } else { o.max_y() };
-        let fac = time_factor(pos_y, self.pos.y, after_move.pos.y);
-        if fac < time {
-          time = fac;
-          axis = Some(Vec3::new(0.0, delta.y.signum(), 0.0));
-        }
-      } else {
-        // Collided on the Z axis
-        let pos_z =
-          if delta.z > 0.0 { o.min_z() - self.size.z / 2.0 } else { o.max_z() + self.size.z / 2.0 };
-        let fac = time_factor(pos_z, self.pos.z, after_move.pos.z);
-        if fac < time {
-          time = fac;
-          axis = Some(Vec3::new(0.0, 0.0, delta.z.signum()));
-        }
+      macro_rules! axis {
+        ($time:expr, $axis:ident: $axis_val:expr, ($min_a:ident, $max_a:ident): $a:ident, ($min_b:ident, $max_b:ident): $b:ident) => {
+          if $time.$axis > 0.0 && $time.$axis < 1.0 && $time.$axis < time {
+            let t = $time.$axis;
+            let $min_a = start.$min_a() + delta.$a * t;
+            let $max_a = start.$max_a() + delta.$a * t;
+            let $min_b = start.$min_b() + delta.$b * t;
+            let $max_b = start.$max_b() + delta.$b * t;
+            if in_range(($min_a, $max_a), (wall.$min_a(), wall.$max_a()))
+              && in_range(($min_b, $max_b), (wall.$min_b(), wall.$max_b()))
+            {
+              time = t;
+              axis = Some($axis_val);
+            }
+          }
+        };
       }
+
+      axis!(t_min, x: Vec3::new(1.0, 0.0, 0.0), (min_y, max_y): y, (min_z, max_z): z);
+      axis!(t_min, y: Vec3::new(0.0, 1.0, 0.0), (min_x, max_x): x, (min_z, max_z): z);
+      axis!(t_min, z: Vec3::new(0.0, 0.0, 1.0), (min_x, max_x): x, (min_y, max_y): y);
+      axis!(t_max, x: Vec3::new(1.0, 0.0, 0.0), (min_y, max_y): y, (min_z, max_z): z);
+      axis!(t_max, y: Vec3::new(0.0, 1.0, 0.0), (min_x, max_x): x, (min_z, max_z): z);
+      axis!(t_max, z: Vec3::new(0.0, 0.0, 1.0), (min_x, max_x): x, (min_y, max_y): y);
+
       if let Some(axis) = axis {
         result = Some(CollisionResult { axis, factor: time })
       }
@@ -129,4 +143,31 @@ impl AABB {
   /// Returns the minimum position of this bounding box. Can be used to move the
   /// box around.
   pub fn pos_mut(&mut self) -> &mut FPos { &mut self.pos }
+}
+
+#[cfg(test)]
+mod tests {
+  use super::*;
+
+  #[test]
+  fn collisions() {
+    let mut b = AABB::new(FPos::new(0.0, 0.0, 0.0), Vec3::new(1.0, 1.0, 1.0));
+    let walls = vec![
+      AABB::new(FPos::new(5.0, 0.0, 0.0), Vec3::new(1.0, 10.0, 10.0)),
+      AABB::new(FPos::new(0.0, 0.0, 10.0), Vec3::new(10.0, 10.0, 1.0)),
+    ];
+
+    assert!(b.move_towards(Vec3::new(1.0, 0.0, 0.0), &walls).is_none());
+    assert_eq!(b.pos, FPos::new(1.0, 0.0, 0.0));
+
+    assert!(b.move_towards(Vec3::new(1.0, 0.0, 0.0), &walls).is_none());
+    assert_eq!(b.pos, FPos::new(2.0, 0.0, 0.0));
+
+    assert!(b.move_towards(Vec3::new(1.0, 0.0, 0.0), &walls).is_none());
+    assert_eq!(b.pos, FPos::new(3.0, 0.0, 0.0));
+
+    let res = b.move_towards(Vec3::new(2.0, 0.0, 2.0), &walls).unwrap();
+    assert_eq!(res.factor, 0.5);
+    assert_eq!(b.pos, FPos::new(4.0, 0.0, 1.0));
+  }
 }
