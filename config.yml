@@ -1,5 +1,5 @@
 world:
-  locked: true
+  # locked: true
   debug: true
   schematic:
     enabled: false

@@ -44,13 +44,13 @@ pub(crate) fn handle(wm: &Arc<WorldManager>, player: &Arc<Player>, p: sb::Packet
     sb::Packet::ChangeHeldItem { slot } => {
       player.lock_inventory().set_selected(slot);
     }
-    /*
-    sb::Packet::UseItem { hand_v1_9 } => {
-      // 0 = main hand on 1.8
-      let hand = hand_v1_9.unwrap_or(0);
-      self.use_item(player, hand);
+    sb::Packet::UseItem { hand: _ } => {
+      // Spawn a snowball (for fun)
+      let eid = player.world().summon(entity::Type::Slime, player.pos() + FPos::new(0.0, 1.0, 0.0));
+      // If the entity doesn't exist, it already despawned, so we do nothing if it
+      // isn't in the world.
+      player.world().entities().get(&eid).map(|ent| ent.set_vel(player.look_as_vec() * 5.0));
     }
-    */
     sb::Packet::BlockPlace { mut pos, face, hand: _ } => {
       /*
       let direction: i32 = if player.ver() == ProtocolVersion::V1_8 {
