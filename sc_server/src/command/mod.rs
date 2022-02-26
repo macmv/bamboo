@@ -62,7 +62,11 @@ impl CommandTree {
   pub fn execute(&self, world: &Arc<WorldManager>, player: &Arc<Player>, text: &str) {
     let mut reader = CommandReader::new(text);
     let commands = self.commands.lock();
-    let (command, handler) = match &commands.get(&reader.word(StringType::Word).unwrap()) {
+    let command_name = match reader.word(StringType::Word) {
+      Ok(v) => v,
+      Err(_) => return,
+    };
+    let (command, handler) = match &commands.get(&command_name) {
       Some(v) => v,
       None => {
         let mut msg = Chat::empty();
