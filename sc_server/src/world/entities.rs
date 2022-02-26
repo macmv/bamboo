@@ -129,8 +129,9 @@ impl World {
     } else if ent.ty().is_living() {
       player.send(cb::Packet::SpawnLivingEntity {
         eid:      ent.eid(),
-        id:       UUID::from_u128(0),
-        ty:       old_id,
+        // 1.18 clients will not render mobs that have the same UUID
+        id:       UUID::random(),
+        ty:       107,
         x:        p.aabb.pos.x(),
         y:        p.aabb.pos.y(),
         z:        p.aabb.pos.z(),
