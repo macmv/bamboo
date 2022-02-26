@@ -63,6 +63,10 @@ impl AABB {
       let mut axis = None;
       macro_rules! axis {
         ($time:expr, $axis:ident: $axis_val:expr, ($min_a:ident, $max_a:ident): $a:ident, ($min_b:ident, $max_b:ident): $b:ident) => {
+          if $time.$axis == 0.0 {
+            time = 0.0;
+            axis = Some($axis_val);
+          }
           if $time.$axis > 0.0 && $time.$axis < 1.0 && $time.$axis < time {
             let t = $time.$axis;
             let $min_a = start.$min_a() + delta.$a * t;
