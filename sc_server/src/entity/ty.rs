@@ -2,6 +2,7 @@ use num_derive::{FromPrimitive, ToPrimitive};
 use sc_common::math::Vec3;
 use std::{error::Error, fmt, str::FromStr};
 
+/*
 #[derive(Debug, Clone, Copy, PartialEq, Eq, FromPrimitive, ToPrimitive)]
 pub enum Type {
   AreaEffectCloud,
@@ -114,14 +115,10 @@ pub enum Type {
   FishingBobber,
   None,
 }
+*/
 
 impl Type {
   pub fn id(&self) -> u32 { 0 }
-}
-
-impl FromStr for Type {
-  type Err = ();
-  fn from_str(_: &str) -> Result<Self, Self::Err> { Ok(Self::None) }
 }
 
 // Creates the Type enum, and the generate_entities function.
@@ -130,14 +127,16 @@ include!(concat!(env!("OUT_DIR"), "/entity/ty.rs"));
 /// Any data specific to an entity.
 #[derive(Debug)]
 pub struct Data {
-  display_name: &'static str,
-  width:        f32,
-  height:       f32,
+  ty:     Type,
+  id:     u32,
+  name:   &'static str,
+  width:  f32,
+  height: f32,
 }
 
 impl Data {
-  /// Returns the display name of this entity.
-  pub fn display_name(&self) -> &str { &self.display_name }
+  /// Returns the name of this entity.
+  pub fn name(&self) -> &str { &self.name }
 
   /// Returns the size of the hitbox of this entity.
   pub fn size(&self) -> Vec3 {
@@ -149,9 +148,10 @@ impl Type {
   /// Returns the kind as a u32. Should only be used to index into the
   /// converter's internal table of entity types.
   pub fn to_u32(self) -> u32 { num::ToPrimitive::to_u32(&self).unwrap() }
-  /// Returns the item with the given id. If the id is invalid, this returns
-  /// `Type::Air`.
-  pub fn from_u32(v: u32) -> Type { num::FromPrimitive::from_u32(v).unwrap_or(Type::None) }
+  /// Returns the entity with the given id. If the id is invalid, this returns
+  /// `None`. This differes from items and blocks, as those both have defaults
+  /// (air). There is no 'air' like entity, so we need to return an Option here.
+  pub fn from_u32(v: u32) -> Option<Type> { num::FromPrimitive::from_u32(v) }
 }
 
 #[derive(Debug)]
@@ -170,8 +170,9 @@ impl Type {
   /// fancy nonsense. This is mostly used when spawning entities, as non-living
   /// entities have a different packet.
   ///
-  /// Special entities (paintings, exp orbs, and players) will return if they
-  /// are living, even though they should all be spawned using special packets.
+  /// Special entities (paintings, exp orbs, and players) will return `true` if
+  /// they are living, even though they should all be spawned using special
+  /// packets.
   pub fn is_living(&self) -> bool {
     match self {
       Self::AreaEffectCloud => false,
@@ -282,7 +283,12 @@ impl Type {
       Self::ZombifiedPiglin => true,
       Self::Player => true,
       Self::FishingBobber => false,
-      Self::None => false,
+
+      Self::Axolotl => true,
+      Self::GlowItemFrame => false,
+      Self::GlowSquid => true,
+      Self::Goat => true,
+      Self::Marker => false,
     }
   }
 }

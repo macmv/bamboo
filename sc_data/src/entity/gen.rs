@@ -25,7 +25,7 @@ pub fn generate_ty(def: &EntityDef) -> String {
   gen.write_line("");
   gen.write("impl FromStr for Type ");
   gen.write_block(|gen| {
-    gen.write_line("type Err = InvalidItem;");
+    gen.write_line("type Err = InvalidEntity;");
     gen.write("fn from_str(s: &str) -> Result<Self, Self::Err> ");
     gen.write_block(|gen| {
       gen.write_line("Ok(match s {");
@@ -38,7 +38,7 @@ pub fn generate_ty(def: &EntityDef) -> String {
         gen.write(&b.name.to_case(Case::Pascal));
         gen.write_line(",");
       }
-      gen.write_line("_ => return Err(InvalidItem(s.into())),");
+      gen.write_line("_ => return Err(InvalidEntity(s.into())),");
       gen.remove_indent();
       gen.write_line("})");
     });
