@@ -32,8 +32,9 @@ pub fn chunk(
         chunk_buf.write_varint(conv.block_to_old(*g as u32, BlockVersion::V1_15) as i32);
       }
     }
-    let longs = s.data().long_array();
+    let longs = s.data().old_long_array();
     chunk_buf.write_varint(longs.len() as i32);
+    chunk_buf.reserve(longs.len() * 8); // 8 bytes per long
     longs.iter().for_each(|v| chunk_buf.write_buf(&v.to_be_bytes()));
   }
 

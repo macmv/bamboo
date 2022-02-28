@@ -24,7 +24,7 @@ pub fn chunk(
     for g in s.palette() {
       chunk_buf.write_varint(conv.block_to_old(*g as u32, ver.block()) as i32);
     }
-    let longs = s.data().long_array();
+    let longs = s.data().old_long_array();
     chunk_buf.write_varint(longs.len() as i32);
     chunk_buf.reserve(longs.len() * 8); // 8 bytes per long
     longs.iter().for_each(|v| chunk_buf.write_buf(&v.to_be_bytes()));

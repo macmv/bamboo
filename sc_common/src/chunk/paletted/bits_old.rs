@@ -1,4 +1,4 @@
-//! This is kept here as a reference for 1.13-1.15 clients. This is the old
+//! This is kept here as a reference for 1.9-1.15 clients. This is the old
 //! chunk data format, which looks like this:
 //!
 //! ```
@@ -31,7 +31,6 @@
 //! nonsense algorithm is completely uneeded. So the new system is simpler and
 //! probably faster, but is still implemented terribly in vanilla.
 
-use sc_transfer::{MessageRead, MessageReader, MessageWrite, MessageWriter, ReadError, WriteError};
 use std::fmt;
 
 /// A resizable element vector. It is always 4096 items long, as that is the
@@ -42,27 +41,14 @@ use std::fmt;
 /// This is used to separate out some of the nasty bitwise operations, and make
 /// the [`Section`](super::Section) code a lot cleaner.
 #[derive(Clone)]
-pub struct BitArray {
+pub struct OldBitArray {
   /// Bits per entry
-  bpe:  u8,
+  bpe:             u8,
   /// The actual data
-  data: Vec<u64>,
+  pub(super) data: Vec<u64>,
 }
 
-impl MessageWrite for BitArray {
-  fn write(&self, m: &mut MessageWriter) -> Result<(), WriteError> {
-    m.write(&self.bpe)?;
-    m.write(&self.data)?;
-    Ok(())
-  }
-}
-impl MessageRead for BitArray {
-  fn read(m: &mut MessageReader) -> Result<Self, ReadError> {
-    Ok(BitArray { bpe: m.read()?, data: m.read()? })
-  }
-}
-
-impl fmt::Debug for BitArray {
+impl fmt::Debug for OldBitArray {
   fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
     writeln!(f, "BitArray {{")?;
     for v in &self.data {
@@ -73,7 +59,7 @@ impl fmt::Debug for BitArray {
   }
 }
 
-impl BitArray {
+impl OldBitArray {
   /// Creates a new bit array, with all of the data set to 0. `bpe` is the
   /// number of bits per element in the array. The length of this array will
   /// always be 4096. For normal operation of a chunk, `bpe` should always start
@@ -88,7 +74,7 @@ impl BitArray {
   /// problems.
   pub fn new(bpe: u8) -> Self {
     assert!(bpe < 32, "bpe of {} is too large (must be less than 32)", bpe);
-    BitArray { bpe, data: vec![0; 4096 * bpe as usize / 64] }
+    OldBitArray { bpe, data: vec![0; 4096 * bpe as usize / 64] }
   }
 
   /// Creates a new bit array from the given data.
@@ -107,7 +93,7 @@ impl BitArray {
       4096 * bpe as usize / 64,
       "while creating a bit array from existing data, got incorrect len"
     );
-    BitArray { bpe, data }
+    OldBitArray { bpe, data }
   }
 
   /// This is useful for debugging internal data; it will print out the number
@@ -347,7 +333,7 @@ impl BitArray {
   pub unsafe fn increase_bpe(&mut self, increase: u8) {
     #[cfg(debug_assertions)]
     assert!(increase <= 31 || self.bpe + increase <= 31, "increase is too large");
-    let mut new = BitArray::new(self.bpe + increase);
+    let mut new = OldBitArray::new(self.bpe + increase);
     for i in 0..4096 {
       new.set(i, self.get(i));
     }
@@ -369,7 +355,7 @@ mod tests {
   #[test]
   fn test_get() {
     let data: Vec<u64> = vec![u64::MAX; 4096 * 5 / 64];
-    let arr = BitArray { bpe: 5, data };
+    let arr = OldBitArray { bpe: 5, data };
 
     for i in 0..4096 {
       unsafe {
@@ -378,7 +364,7 @@ mod tests {
     }
 
     let data: Vec<u64> = vec![u64::MAX; 4096 * 4 / 64];
-    let arr = BitArray { bpe: 4, data };
+    let arr = OldBitArray { bpe: 4, data };
 
     for i in 0..4096 {
       unsafe {
@@ -387,7 +373,7 @@ mod tests {
     }
 
     let data: Vec<u64> = vec![0x7777777777777777; 4096 * 4 / 64];
-    let arr = BitArray { bpe: 4, data };
+    let arr = OldBitArray { bpe: 4, data };
 
     for i in 0..4096 {
       unsafe {
@@ -400,7 +386,7 @@ mod tests {
   #[test]
   fn test_set() {
     for bpe in 2..32 {
-      let mut arr = BitArray::new(bpe);
+      let mut arr = OldBitArray::new(bpe);
       let max = 1 << bpe;
 
       for i in 0..4096 {
@@ -417,7 +403,7 @@ mod tests {
   #[test]
   fn test_set_palette() {
     unsafe {
-      let mut a = BitArray::new(4);
+      let mut a = OldBitArray::new(4);
       // Sanity check
       a.set(0, 0xf);
       assert_eq!(a.data[0], 0xf);
@@ -431,7 +417,7 @@ mod tests {
       a.set(15, 0x3);
       assert_eq!(a.data[0], 0x3000000000000f0f);
 
-      let mut a = BitArray::new(5);
+      let mut a = OldBitArray::new(5);
       // Sanity check
       a.set(0, 0x1f);
       assert_eq!(a.data[0], 0x1f);
@@ -455,7 +441,7 @@ mod tests {
     unsafe {
       let mut data = vec![0; 16 * 16 * 16 * 4 / 64];
       data[0] = 0xfaf;
-      let a = BitArray::from_data(4, data);
+      let a = OldBitArray::from_data(4, data);
       // Sanity check
       assert_eq!(a.get(0), 0xf);
       assert_eq!(a.get(1), 0xa);
@@ -465,7 +451,7 @@ mod tests {
       let mut data = vec![0; 16 * 16 * 16 * 5 / 64];
       data[0] = 0x1f << 60 | 0x1f << 10 | 0x1f;
       data[1] = 0x1f >> 4;
-      let a = BitArray::from_data(5, data);
+      let a = OldBitArray::from_data(5, data);
       // Make sure it works with split values
       assert_eq!(a.get(0), 0x1f);
       assert_eq!(a.get(1), 0x0);

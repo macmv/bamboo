@@ -3,6 +3,7 @@
 //! clients. This new implementation is converted into that old implementation
 //! on the proxy.
 
+use super::OldBitArray;
 use std::fmt;
 
 /// A resizable element vector. It is always 4096 items long, as that is the
@@ -277,6 +278,23 @@ impl BitArray {
   pub fn bpe(&self) -> u8 { self.bpe }
   /// Returns the inner long array.
   pub fn long_array(&self) -> &[u64] { &self.data }
+
+  /// Returns the inner long array, using the old format (used in 1.9-1.15).
+  /// This needs to copy all the data over to this older format, so this is not
+  /// a cheap operation.
+  pub fn old_long_array(&self) -> Vec<u64> {
+    if self.bpe == 4 {
+      return self.data.clone();
+    }
+    let mut data = OldBitArray::new(self.bpe);
+    for i in 0..4096 {
+      // SAFETY: `i` is within 0..4096
+      unsafe {
+        data.set(i, self.get(i));
+      }
+    }
+    data.data
+  }
 }
 
 #[cfg(test)]

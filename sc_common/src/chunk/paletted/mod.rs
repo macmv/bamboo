@@ -4,10 +4,12 @@ use crate::math::{Pos, PosError, WyHashBuilder};
 use std::collections::HashMap;
 
 mod bits;
+mod bits_old;
 #[cfg(test)]
 mod tests;
 
-use bits::BitArray;
+pub use bits::BitArray;
+pub use bits_old::OldBitArray;
 
 #[derive(Debug, Clone)]
 #[sc_macros::transfer]
