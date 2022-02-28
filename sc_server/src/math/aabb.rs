@@ -57,7 +57,8 @@ impl AABB {
       fn in_range(val: (f64, f64), range: (f64, f64)) -> bool {
         let (a, b) = val;
         let (min, max) = range;
-        (a > min && a < max) || (b > min && b < max) || (a < min && b > max)
+        // TODO: Handle all the edge cases here
+        (a >= min && a <= max) || (b >= min && b <= max) || (a <= min && b >= max)
       }
 
       let mut axis = None;

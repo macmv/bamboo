@@ -46,7 +46,8 @@ pub(crate) fn handle(wm: &Arc<WorldManager>, player: &Arc<Player>, p: sb::Packet
     }
     sb::Packet::UseItem { hand: _ } => {
       // Spawn a snowball (for fun)
-      let eid = player.world().summon(entity::Type::Slime, player.pos() + FPos::new(0.0, 1.0, 0.0));
+      let eid =
+        player.world().summon(entity::Type::Zombie, player.pos() + FPos::new(0.0, 1.0, 0.0));
       // If the entity doesn't exist, it already despawned, so we do nothing if it
       // isn't in the world.
       player.world().entities().get(&eid).map(|ent| ent.set_vel(player.look_as_vec() * 5.0));

@@ -4,4 +4,5 @@ fn main() {
   sc_data::generate_protocol();
   sc_data::generate_blocks();
   sc_data::generate_items();
+  sc_data::generate_entities();
 }

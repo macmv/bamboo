@@ -90,10 +90,6 @@ impl World {
   fn send_entity_spawn(&self, player: &Player, ent: &Entity) {
     info!("spawning entity {:?}", ent.ty());
     let p = ent.pos();
-    let id = ent.ty().id();
-    let old_id = self.entity_converter().to_old(id, player.ver().block());
-    info!("modern id: {}", id);
-    info!("old id: {:?}", old_id);
     if ent.ty() == entity::Type::ExperienceOrb {
       // player.send(cb::Packet::SpawnEntityExperienceOrb {
       //   entity_id: ent.eid(),
@@ -121,7 +117,7 @@ impl World {
         eid:      ent.eid(),
         // 1.18 clients will not render mobs that have the same UUID
         id:       UUID::random(),
-        ty:       old_id,
+        ty:       ent.ty().id(),
         x:        p.aabb.pos.x(),
         y:        p.aabb.pos.y(),
         z:        p.aabb.pos.z(),

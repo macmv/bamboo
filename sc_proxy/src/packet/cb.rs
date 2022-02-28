@@ -522,7 +522,7 @@ impl ToTcp for Packet {
           GPacket::SpawnMobV15 {
             id: eid,
             uuid: id,
-            entity_type_id: ty as i32,
+            entity_type_id: conn.conv().entity_to_old(ty, ver.block()) as i32,
             x,
             y,
             z,
@@ -537,7 +537,7 @@ impl ToTcp for Packet {
           GPacket::SpawnMobV11 {
             entity_id: eid,
             unique_id: id,
-            ty: 55,
+            ty: dbg!(conn.conv().entity_to_old(dbg!(ty), ver.block()) as i32),
             x,
             y,
             z,
