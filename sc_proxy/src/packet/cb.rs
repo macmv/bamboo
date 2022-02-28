@@ -518,19 +518,39 @@ impl ToTcp for Packet {
         vel_y,
         vel_z,
       } => {
-        GPacket::SpawnMobV15 {
-          id: eid,
-          uuid: id,
-          entity_type_id: ty as i32,
-          x,
-          y,
-          z,
-          velocity_x: vel_x.into(),
-          velocity_y: vel_y.into(),
-          velocity_z: vel_z.into(),
-          yaw,
-          pitch,
-          head_yaw,
+        if ver >= ProtocolVersion::V1_15_2 {
+          GPacket::SpawnMobV15 {
+            id: eid,
+            uuid: id,
+            entity_type_id: ty as i32,
+            x,
+            y,
+            z,
+            velocity_x: vel_x.into(),
+            velocity_y: vel_y.into(),
+            velocity_z: vel_z.into(),
+            yaw,
+            pitch,
+            head_yaw,
+          }
+        } else {
+          GPacket::SpawnMobV11 {
+            entity_id: eid,
+            unique_id: id,
+            ty: 55,
+            x,
+            y,
+            z,
+            velocity_x: vel_x.into(),
+            velocity_y: vel_y.into(),
+            velocity_z: vel_z.into(),
+            yaw,
+            pitch,
+            head_pitch: head_yaw,
+            data_manager: None,
+            data_manager_entries: None,
+            unknown: vec![0xff], // No entity metadata
+          }
         }
       }
       Packet::SpawnPlayer { eid, id, x, y, z, yaw, pitch } => {
