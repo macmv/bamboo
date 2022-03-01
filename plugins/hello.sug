@@ -4,6 +4,7 @@ use sugarcane::{
   command::Command,
   world::gen,
   util::Pos,
+  item::UI,
 }
 
 fn init() {
@@ -21,6 +22,24 @@ fn init() {
 
   c = Command::new("join", handle_join)
   sc.add_command(c)
+
+  c = Command::new("ui", handle_ui)
+  sc.add_command(c)
+}
+
+fn handle_ui(sc, player, args) {
+  ui = UI::new([
+    "xxxxxxxxx",
+    "x abcde x",
+    "xxxxxxxxx",
+  ])
+  ui.item("x", "minecraft:gray_stained_glass_pane")
+  ui.item("a", "minecraft:stone")
+  ui.item("b", "minecraft:dirt")
+  ui.item("c", "minecraft:stick")
+  ui.item("d", "minecraft:diamond_sword")
+  ui.item("e", "minecraft:black_wool")
+  player.show_inventory(ui.finish())
 }
 
 fn handle_setblock(sc, player, args) {
