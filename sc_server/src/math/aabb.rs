@@ -54,13 +54,6 @@ impl AABB {
         (wall.max_z() - start.min_z()) / delta.z,
       );
 
-      fn in_range(val: (f64, f64), range: (f64, f64)) -> bool {
-        let (a, b) = val;
-        let (min, max) = range;
-        // TODO: Handle all the edge cases here
-        (a >= min && a <= max) || (b >= min && b <= max) || (a <= min && b >= max)
-      }
-
       let mut axis = None;
       macro_rules! axis {
         ($time:expr, $axis:ident: $axis_val:expr, ($min_a:ident, $max_a:ident): $a:ident, ($min_b:ident, $max_b:ident): $b:ident) => {
@@ -150,9 +143,47 @@ impl AABB {
   pub fn pos_mut(&mut self) -> &mut FPos { &mut self.pos }
 }
 
+fn in_range(val: (f64, f64), range: (f64, f64)) -> bool {
+  let (a, b) = val;
+  let (min, max) = range;
+  // this is a collision:
+  // val   ->   ####
+  // range -> ####
+  // val   -> ####
+  // range -> ####
+  // val   -> ######
+  // range -> ####
+  // val   -> ##
+  // range -> ####
+  //
+  // this is NOT a collision:
+  // val   -> ####
+  // range ->      ####
+  // val   -> ####    (val.max == range.min)
+  // range ->    ####
+  // val   ->    #### (val.max == range.min)
+  // range -> ####
+  let a_inside = a > min && a < max;
+  let b_inside = b > min && b < max;
+  a_inside || b_inside || (a <= min && b >= max)
+  // (a >= min && a <= max) || (b >= min && b <= max) || (a <= min && b >=
+  // max)
+}
+
 #[cfg(test)]
 mod tests {
   use super::*;
+
+  #[test]
+  fn in_range_test() {
+    assert!(in_range((1.0, 2.0), (0.0, 5.0)));
+    assert!(in_range((0.0, 2.0), (0.0, 5.0)));
+    assert!(in_range((2.0, 3.0), (0.0, 5.0)));
+    assert!(in_range((0.0, 5.0), (0.0, 5.0)));
+    assert!(!in_range((5.0, 6.0), (0.0, 5.0)));
+    assert!(in_range((0.0, 5.0), (0.0, 1.0)));
+    assert!(in_range((0.0, 5.0), (2.0, 3.0)));
+  }
 
   #[test]
   fn collisions() {

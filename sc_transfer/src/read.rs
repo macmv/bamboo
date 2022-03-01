@@ -818,7 +818,7 @@ mod tests {
 
   #[derive(Debug, Clone, PartialEq)]
   struct EmptyStruct {}
-  impl StructRead for EmptyStruct {
+  impl StructRead<'_> for EmptyStruct {
     fn read_struct(_m: StructReader) -> Result<Self> { Ok(EmptyStruct {}) }
   }
   #[derive(Debug, Clone, PartialEq)]
@@ -826,7 +826,7 @@ mod tests {
     a: i32,
     b: u8,
   }
-  impl StructRead for IntStruct {
+  impl StructRead<'_> for IntStruct {
     fn read_struct(mut m: StructReader) -> Result<Self> {
       Ok(IntStruct { a: m.read(0)?, b: m.read(1)? })
     }
@@ -836,7 +836,7 @@ mod tests {
     a: u8,
     b: u8,
   }
-  impl StructRead for RemovedFieldStruct {
+  impl StructRead<'_> for RemovedFieldStruct {
     fn read_struct(mut m: StructReader) -> Result<Self> {
       Ok(RemovedFieldStruct { a: m.read(0)?, b: m.read(2)? })
     }
@@ -848,7 +848,7 @@ mod tests {
     C,
     D,
   }
-  impl EnumRead for SampleEnum {
+  impl EnumRead<'_> for SampleEnum {
     fn read_enum(mut m: EnumReader) -> Result<Self> {
       Ok(match m.variant() {
         0 => Self::A,
@@ -865,7 +865,7 @@ mod tests {
     B(i8),
     C(u8, u8),
   }
-  impl EnumRead for DataEnum {
+  impl EnumRead<'_> for DataEnum {
     fn read_enum(mut m: EnumReader) -> Result<Self> {
       Ok(match m.variant() {
         0 => Self::A,
