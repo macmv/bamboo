@@ -1852,6 +1852,7 @@ dependencies = [
  "sc_data",
  "sc_transfer",
  "sugarlang",
+ "thiserror",
 ]
 
 [[package]]
