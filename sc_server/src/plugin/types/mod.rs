@@ -12,6 +12,7 @@ use sugarlang::{
 pub mod block;
 pub mod chat;
 pub mod command;
+pub mod item;
 pub mod player;
 pub mod util;
 pub mod world;
@@ -213,6 +214,7 @@ impl Plugin {
     sl.add_builtin_ty::<block::SlBlockKind>();
     sl.add_builtin_ty::<chat::SlChat>();
     sl.add_builtin_ty::<chat::SlChatSection>();
+    sl.add_builtin_ty::<item::SlUI>();
     sl.add_builtin_ty::<command::SlCommand>();
     sl.add_builtin_ty::<player::SlPlayer>();
     sl.add_builtin_ty::<world::SlWorld>();

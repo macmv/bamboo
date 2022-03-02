@@ -33,12 +33,12 @@ fn handle_ui(sc, player, args) {
     "x abcde x",
     "xxxxxxxxx",
   ])
-  ui.item("x", "minecraft:gray_stained_glass_pane")
-  ui.item("a", "minecraft:stone")
-  ui.item("b", "minecraft:dirt")
-  ui.item("c", "minecraft:stick")
-  ui.item("d", "minecraft:diamond_sword")
-  ui.item("e", "minecraft:black_wool")
+  ui.item("x", "gray_stained_glass_pane")
+  ui.item("a", "stone")
+  ui.item("b", "dirt")
+  ui.item("c", "stick")
+  ui.item("d", "diamond_sword")
+  ui.item("e", "black_wool")
   player.show_inventory(ui.finish())
 }
 

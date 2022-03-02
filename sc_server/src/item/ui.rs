@@ -2,6 +2,7 @@ use super::{Inventory, Stack};
 use std::collections::HashMap;
 use thiserror::Error;
 
+#[derive(Debug, Clone)]
 pub struct UI {
   pattern: Vec<String>,
   items:   HashMap<char, Stack>,
