@@ -24,8 +24,8 @@ mod item {
 
   #[derive(Debug)]
   pub struct Version {
-    pub to_old: &'static [u32],
-    pub to_new: &'static [u32],
+    pub to_old: &'static [(u32, u32)],
+    pub to_new: &'static [&'static [u32]],
     pub ver:    BlockVersion,
   }
 
@@ -89,7 +89,7 @@ impl TypeConverter {
 
   /// Converts an item id into the latest version. It should work the same as
   /// [`block_to_new`](Self::block_to_new).
-  pub fn item_to_new(&self, id: u32, ver: BlockVersion) -> u32 {
+  pub fn item_to_new(&self, id: u32, damage: u32, ver: BlockVersion) -> u32 {
     // Air always maps to air. Since multiple latest blocks convert to air, we need
     // this check
     if id == 0 {
@@ -99,19 +99,19 @@ impl TypeConverter {
       return id;
     }
     match self.items[ver.to_index() as usize].to_new.get(id as usize) {
-      Some(v) => *v,
+      Some(v) => v.get(id as usize).copied().unwrap_or(0),
       None => 0,
     }
   }
   /// Converts an item id into an id for the given version. It should work the
   /// same as [`block_to_old`](Self::block_to_old).
-  pub fn item_to_old(&self, id: u32, ver: BlockVersion) -> u32 {
+  pub fn item_to_old(&self, id: u32, ver: BlockVersion) -> (u32, u32) {
     if ver == BlockVersion::latest() {
-      return id;
+      return (id, 0);
     }
     match self.items[ver.to_index() as usize].to_old.get(id as usize) {
       Some(v) => *v,
-      None => 0,
+      None => (0, 0),
     }
   }
 

@@ -21,7 +21,7 @@ impl TypeConverter {
 
   /// Takes the given old item id, which is part of `ver`, and returns the new
   /// id that it maps to. If the id is invalid, this will return 0 (empty).
-  pub fn to_latest(&self, id: u32, ver: BlockVersion) -> u32 {
+  pub fn to_latest(&self, id: u32, damage: u32, ver: BlockVersion) -> u32 {
     // Air always maps to air. Since multiple latest blocks convert to air, we need
     // this check
     if id == 0 {
@@ -31,20 +31,23 @@ impl TypeConverter {
       return id;
     }
     match self.versions[self.versions.len() - ver.to_index() as usize].to_new.get(id as usize) {
-      Some(v) => *v,
+      Some(v) => v.get(damage as usize).copied().unwrap_or(0),
       None => 0,
     }
   }
 
   /// Takes the new item id, and converts it to the old id, for the given
   /// version. If the id is invalid, this will return 0 (empty).
-  pub fn to_old(&self, id: u32, ver: BlockVersion) -> u32 {
+  ///
+  /// This returned list should be used with the damage of the item. If it is
+  /// empty, then there is no matching id, and `0` should be used.
+  pub fn to_old(&self, id: u32, ver: BlockVersion) -> (u32, u32) {
     if ver == BlockVersion::latest() {
-      return id;
+      return (id, 0);
     }
     match self.versions[self.versions.len() - ver.to_index() as usize].to_old.get(id as usize) {
       Some(v) => *v,
-      None => 0,
+      None => (0, 0),
     }
   }
 
@@ -61,10 +64,10 @@ impl TypeConverter {
 /// and a HashMap will be the best option.
 #[derive(Debug)]
 pub struct Version {
-  // Index is the new id, value is the old id
-  to_old: &'static [u32],
-  // Index is the old id, value is the new id (0 for invalid)
-  to_new: &'static [u32],
+  // Index is the new id, value is the (old id, old damage)
+  to_old: &'static [(u32, u32)],
+  // Index is the old id, value is a list of old damage to new id (0 for invalid)
+  to_new: &'static [&'static [u32]],
   #[allow(unused)]
   ver:    BlockVersion,
 }

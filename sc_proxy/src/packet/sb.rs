@@ -141,13 +141,13 @@ fn read_item<T: AsRef<[u8]>>(
       damage = buf.read_i16()?;
       nbt = buf.read_nbt()?;
     }
-    Item::new(conv.item_to_new(id as u32, ver.block()) as i32, count, damage, nbt)
+    Item::new(conv.item_to_new(id as u32, damage as u32, ver.block()) as i32, count, damage, nbt)
   } else {
     if buf.read_bool()? {
       let id = buf.read_varint()?;
       let count = buf.read_u8()?;
       let nbt = buf.read_nbt()?;
-      Item::new(conv.item_to_new(id as u32, ver.block()) as i32, count, 0, nbt)
+      Item::new(conv.item_to_new(id as u32, 0, ver.block()) as i32, count, 0, nbt)
     } else {
       Item::new(0, 0, 0, NBT::empty(""))
     }

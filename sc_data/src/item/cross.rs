@@ -11,16 +11,23 @@ pub fn cross_version(gen: &mut CodeGen, old: &(Version, ItemDef), new: &(Version
   gen.add_indent();
 
   gen.write("to_old: &[");
-  for id in to_old {
+  for (id, damage) in to_old {
+    gen.write("(");
     gen.write(&id.to_string());
     gen.write(",");
+    gen.write(&damage.to_string());
+    gen.write("),");
   }
   gen.write_line("],");
 
   gen.write("to_new: &[");
-  for id in to_new {
-    gen.write(&id.to_string());
-    gen.write(",");
+  for ids in to_new {
+    gen.write("&[");
+    for id in ids {
+      gen.write(&id.to_string());
+      gen.write(",");
+    }
+    gen.write("],");
   }
   gen.write_line("],");
 
@@ -31,7 +38,11 @@ pub fn cross_version(gen: &mut CodeGen, old: &(Version, ItemDef), new: &(Version
   gen.write("}");
 }
 
-fn find_ids(_ver: Version, old_def: &ItemDef, new_def: &ItemDef) -> (Vec<u32>, Vec<u32>) {
+fn find_ids(
+  ver: Version,
+  old_def: &ItemDef,
+  new_def: &ItemDef,
+) -> (Vec<(u32, u32)>, Vec<Vec<u32>>) {
   let mut old_def = old_def.clone();
   if old_def.items[0].name != "air" {
     old_def.items.insert(0, Item { id: 0, name: "air".into(), class: "".into() });
@@ -40,24 +51,34 @@ fn find_ids(_ver: Version, old_def: &ItemDef, new_def: &ItemDef) -> (Vec<u32>, V
 
   let mut to_old = Vec::with_capacity(new_def.items.len());
   for i in &new_def.items {
-    let old_item = old_map.get(&i.name).unwrap_or(&old_map["air"]);
-    to_old.push(old_item.id);
+    if ver.maj <= 12 {
+      let (old_id, damage) = old_item(&i, &old_map);
+      to_old.push((old_id, damage));
+    } else {
+      let old_item = old_map.get(&i.name).unwrap_or(&old_map["air"]);
+      to_old.push((old_item.id, 0));
+    }
   }
 
   let mut to_new = Vec::with_capacity(to_old.len());
-  for (new_id, old_id) in to_old.iter().enumerate() {
-    let old_id = *old_id as usize;
+  for (new_id, &(old_id, old_damage)) in to_old.iter().enumerate() {
+    let old_id = old_id as usize;
     while to_new.len() <= old_id {
-      to_new.push(None);
+      to_new.push(vec![]);
     }
-    // If the block id has already been set, we don't want to override it. This
-    // means that when converting to a new id, we will always default to the lowest
-    // id.
-    if to_new[old_id].is_none() {
-      to_new[old_id] = Some(new_id as u32);
+    while to_new[old_id].len() <= old_damage as usize {
+      to_new[old_id].push(0);
     }
+    to_new[old_id][old_damage as usize] = new_id as u32;
   }
-  (to_old, to_new.into_iter().map(|v| v.unwrap_or(0)).collect())
+  (to_old, to_new)
+}
+
+fn old_item(i: &Item, old_map: &HashMap<String, Item>) -> (u32, u32) {
+  match i.name.as_str() {
+    "black_wool" => (old_map["wool"].id, 3),
+    _ => (old_map.get(&i.name).unwrap_or(&old_map["air"]).id, 0),
+  }
 }
 
 /*

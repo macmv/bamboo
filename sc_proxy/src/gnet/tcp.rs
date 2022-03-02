@@ -201,7 +201,7 @@ impl Packet {
       self.write_i16(item.id() as i16);
       if item.id() != -1 {
         self.write_u8(item.count());
-        self.write_i16(0); // Item damage
+        self.write_i16(item.damage);
         self.write_u8(0); // TODO: Write nbt data
       }
     } else {
