@@ -75,6 +75,7 @@ impl DigStatus {
   }
 }
 
+// See https://wiki.vg/Protocol#Click_Window
 #[sc_macros::transfer]
 #[derive(Clone, Debug)]
 pub enum ClickWindow {
