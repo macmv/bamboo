@@ -40,6 +40,9 @@ impl UI {
     let mut inv = Inventory::new(self.pattern.len() as u32 * 9);
     for (r, row) in self.pattern.iter().enumerate() {
       for (col, c) in row.chars().enumerate() {
+        if c == ' ' {
+          continue;
+        }
         match self.items.get(&c) {
           Some(stack) => inv.set(r as u32 * 9 + col as u32, stack.clone()),
           None => return Err(UIError::MissingItem(c)),
