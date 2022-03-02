@@ -17,6 +17,13 @@ pub enum Packet {
   ChangeHeldItem { slot: u8 },
   #[id = 4]
   Chat { msg: String },
+  #[id = 13]
+  ClickWindow {
+    id:   u8,
+    slot: i16,
+    #[must_exist]
+    mode: ClickWindow,
+  },
   #[id = 5]
   Flying { flying: bool },
   #[id = 6]
@@ -66,4 +73,41 @@ impl DigStatus {
       _ => panic!("invalid dig status: {}", id),
     }
   }
+}
+
+#[sc_macros::transfer]
+#[derive(Clone, Debug)]
+pub enum ClickWindow {
+  #[id = 0]
+  Click(Button),
+  #[id = 1]
+  ShiftClick(Button),
+  #[id = 2]
+  Number(u8),
+  #[id = 4]
+  Drop,
+  #[id = 5]
+  DropAll,
+  #[id = 6]
+  DragStart(Button),
+  #[id = 7]
+  DragAdd(Button),
+  #[id = 8]
+  DragEnd(Button),
+  #[id = 9]
+  DoubleClick,
+}
+
+#[sc_macros::transfer]
+#[derive(Clone, Debug)]
+pub enum Button {
+  #[id = 0]
+  Left,
+  #[id = 1]
+  Middle,
+  #[id = 2]
+  Right,
+}
+impl Default for Button {
+  fn default() -> Self { Button::Left }
 }
