@@ -522,11 +522,12 @@ impl ToTcp for Packet {
         vel_y,
         vel_z,
       } => {
+        let ty = conn.conv().entity_to_old(ty, ver.block()) as i32;
         if ver >= ProtocolVersion::V1_15_2 {
           GPacket::SpawnMobV15 {
             id: eid,
             uuid: id,
-            entity_type_id: conn.conv().entity_to_old(ty, ver.block()) as i32,
+            entity_type_id: ty,
             x,
             y,
             z,
@@ -537,11 +538,11 @@ impl ToTcp for Packet {
             pitch,
             head_yaw,
           }
-        } else {
+        } else if ver >= ProtocolVersion::V1_11 {
           GPacket::SpawnMobV11 {
             entity_id: eid,
             unique_id: id,
-            ty: dbg!(conn.conv().entity_to_old(dbg!(ty), ver.block()) as i32),
+            ty,
             x,
             y,
             z,
@@ -553,6 +554,41 @@ impl ToTcp for Packet {
             head_pitch: head_yaw,
             data_manager: None,
             data_manager_entries: None,
+            unknown: vec![0xff], // No entity metadata
+          }
+        } else if ver >= ProtocolVersion::V1_9 {
+          GPacket::SpawnMobV9 {
+            entity_id: eid,
+            unique_id: id,
+            ty,
+            x,
+            y,
+            z,
+            velocity_x: vel_x.into(),
+            velocity_y: vel_y.into(),
+            velocity_z: vel_z.into(),
+            yaw,
+            pitch,
+            head_pitch: head_yaw,
+            data_manager: None,
+            data_manager_entries: None,
+            unknown: vec![0xff], // No entity metadata
+          }
+        } else {
+          GPacket::SpawnMobV8 {
+            entity_id: eid,
+            ty,
+            x: (x * 32.0) as i32,
+            y: (y * 32.0) as i32,
+            z: (z * 32.0) as i32,
+            velocity_x: vel_x.into(),
+            velocity_y: vel_y.into(),
+            velocity_z: vel_z.into(),
+            yaw,
+            pitch,
+            head_pitch: head_yaw,
+            field_149043_l: None,
+            watcher: None,
             unknown: vec![0xff], // No entity metadata
           }
         }
