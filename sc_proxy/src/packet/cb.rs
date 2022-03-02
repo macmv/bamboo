@@ -629,7 +629,8 @@ impl ToTcp for Packet {
       Packet::WindowItems { id, items, held } => {
         let mut buf = tcp::Packet::from_buf_id(vec![], 0, ver);
         buf.write_i16(items.len() as i16);
-        for it in items {
+        for mut it in items {
+          it.id = conn.conv().item_to_old(it.id as u32, ver.block()) as i32;
           buf.write_item(&it);
         }
         GPacket::WindowItemsV8 {
