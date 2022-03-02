@@ -180,6 +180,24 @@ impl Player {
       ty:  2, // Hotbar, not chat box or system message
     });
   }
+
+  pub fn show_inventory(&self, inv: &Inventory) {
+    let size = inv.size();
+    if size > 9 * 6 {
+      panic!();
+    }
+    if size % 9 != 0 {
+      panic!();
+    }
+    let ty = (size / 9) as u8;
+    self.send(cb::Packet::WindowOpen { id: 1, ty, title: Chat::new("big energy").to_json() });
+    self.send(cb::Packet::WindowItems {
+      id:    1,
+      items: inv.items().iter().map(|i| i.to_item()).collect(),
+      held:  Stack::empty().to_item(),
+    });
+  }
+
   /// Disconnects the player. The given chat message will be shown on the
   /// loading screen.
   ///

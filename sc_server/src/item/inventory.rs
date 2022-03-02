@@ -14,4 +14,9 @@ impl Inventory {
   pub fn get(&self, index: u32) -> &Stack { &self.items[index as usize] }
   /// Returns a mutable reference to the item stack at the given index.
   pub fn get_mut(&mut self, index: u32) -> &mut Stack { &mut self.items[index as usize] }
+
+  /// Returns the inventory size.
+  pub fn size(&self) -> u32 { self.items.len() as u32 }
+  /// Returns the items in the inventory.
+  pub fn items(&self) -> &Vec<Stack> { &self.items }
 }

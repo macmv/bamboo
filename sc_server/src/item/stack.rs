@@ -1,5 +1,5 @@
 use super::Type;
-use sc_common::util::Item;
+use sc_common::{nbt::NBT, util::Item};
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Stack {
@@ -36,4 +36,8 @@ impl Stack {
   /// Returns true if this item stack is considered "empty". This is true
   /// whenever the type is Air, or whenever the amount is 0.
   pub fn is_empty(&self) -> bool { self.item == Type::Air || self.amount == 0 }
+
+  pub fn to_item(&self) -> Item {
+    Item { id: self.item.id() as i32, count: self.amount, damage: 0, nbt: NBT::empty("") }
+  }
 }

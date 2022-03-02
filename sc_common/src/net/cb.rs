@@ -1,7 +1,7 @@
 use crate::{
   chunk::{paletted::Section, BlockLight, LightChunk, SkyLight},
   math::{ChunkPos, Pos},
-  util::{GameMode, UUID},
+  util::{GameMode, Item, UUID},
 };
 use std::net::SocketAddr;
 
@@ -149,6 +149,11 @@ pub enum Packet {
   UnloadChunk { pos: ChunkPos },
   #[id = 20]
   UpdateViewPos { pos: ChunkPos },
+
+  #[id = 22]
+  WindowOpen { id: u8, ty: u8, title: String },
+  #[id = 23]
+  WindowItems { id: u8, items: Vec<Item>, held: Item },
 }
 
 #[sc_macros::transfer]

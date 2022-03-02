@@ -1,4 +1,4 @@
-use super::{add_from, chat::SlChat, world::SlWorld, wrap};
+use super::{add_from, chat::SlChat, item::SlInventory, world::SlWorld, wrap};
 use crate::player::Player;
 use sc_common::util::Chat;
 use std::{
@@ -71,4 +71,7 @@ impl SlPlayer {
     self.inner.switch_to(ips);
     Ok(())
   }
+
+  /// Shows an inventory to the player.
+  pub fn show_inventory(&self, inv: &SlInventory) { self.inner.show_inventory(&inv.inner) }
 }

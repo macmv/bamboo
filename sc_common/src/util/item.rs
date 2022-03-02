@@ -3,11 +3,11 @@ use crate::nbt::NBT;
 #[derive(Debug, Clone, PartialEq)]
 #[sc_macros::transfer]
 pub struct Item {
-  id:     i32,
-  count:  u8,
+  pub id:     i32,
+  pub count:  u8,
   // Only exists on 1.8-1.12 clients. 1.13+ clients use NBT for this
-  damage: i16,
-  nbt:    NBT,
+  pub damage: i16,
+  pub nbt:    NBT,
 }
 
 impl Default for Item {
