@@ -1,5 +1,9 @@
 use super::TypeConverter;
-use crate::{gnet::cb::Packet as GPacket, stream::PacketStream, Conn};
+use crate::{
+  gnet::{cb::Packet as GPacket, tcp},
+  stream::PacketStream,
+  Conn,
+};
 use sc_common::{
   nbt,
   net::{
@@ -610,6 +614,28 @@ impl ToTcp for Packet {
           GPacket::ChunkRenderDistanceCenterV14 { chunk_x: pos.x(), chunk_z: pos.z() }
         } else {
           panic!("cannot send UpdateViewPos for version {}", ver);
+        }
+      }
+      Packet::WindowOpen { id, ty, title } => {
+        GPacket::OpenWindowV8 {
+          window_id:      id.into(),
+          inventory_type: "minecraft:chest".into(),
+          window_title:   title,
+          slot_count:     (ty * 9).into(),
+          entity_id:      None,
+          unknown:        vec![],
+        }
+      }
+      Packet::WindowItems { id, items, held } => {
+        let mut buf = tcp::Packet::from_buf_id(vec![], 0, ver);
+        buf.write_i16(items.len() as i16);
+        for it in items {
+          buf.write_item(&it);
+        }
+        GPacket::WindowItemsV8 {
+          window_id:   id.into(),
+          item_stacks: vec![],
+          unknown:     buf.serialize(),
         }
       }
       _ => todo!("convert {:?} into generated packet", self),
