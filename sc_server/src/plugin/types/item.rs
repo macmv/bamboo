@@ -1,12 +1,16 @@
 use super::{add_from, wrap};
 use crate::{
   item,
-  item::{Stack, UI},
+  item::{Inventory, Stack, UI},
 };
 use std::str::FromStr;
 use sugarlang::{define_ty, parse::token::Span, runtime::RuntimeError};
 
 wrap!(UI, SlUI);
+wrap!(Inventory, SlInventory);
+
+#[define_ty(path = "sugarcane::item::Inventory")]
+impl SlInventory {}
 
 /// An inventory UI.
 ///
@@ -59,5 +63,13 @@ impl SlUI {
       ),
     );
     Ok(())
+  }
+
+  pub fn to_inventory(&self) -> Result<SlInventory, RuntimeError> {
+    let inv = self
+      .inner
+      .to_inventory()
+      .map_err(|e| RuntimeError::Custom(e.to_string(), Span::default()))?;
+    Ok(SlInventory { inner: inv })
   }
 }

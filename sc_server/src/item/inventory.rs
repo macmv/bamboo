@@ -1,6 +1,6 @@
 use super::Stack;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Inventory {
   items: Vec<Stack>,
 }
