@@ -76,7 +76,40 @@ fn find_ids(
 
 fn old_item(i: &Item, old_map: &HashMap<String, Item>) -> (u32, u32) {
   match i.name.as_str() {
-    "black_wool" => (old_map["wool"].id, 3),
+    "white_wool" => (old_map["wool"].id, 0),
+    "orange_wool" => (old_map["wool"].id, 1),
+    "magenta_wool" => (old_map["wool"].id, 2),
+    "light_blue_wool" => (old_map["wool"].id, 3),
+    "yellow_wool" => (old_map["wool"].id, 4),
+    "lime_wool" => (old_map["wool"].id, 5),
+    "pink_wool" => (old_map["wool"].id, 6),
+    "gray_wool" => (old_map["wool"].id, 7),
+    "light_gray_wool" => (old_map["wool"].id, 8),
+    "cyan_wool" => (old_map["wool"].id, 9),
+    "purple_wool" => (old_map["wool"].id, 10),
+    "blue_wool" => (old_map["wool"].id, 11),
+    "brown_wool" => (old_map["wool"].id, 12),
+    "green_wool" => (old_map["wool"].id, 13),
+    "red_wool" => (old_map["wool"].id, 14),
+    "black_wool" => (old_map["wool"].id, 15),
+
+    "white_stained_glass_pane" => (old_map["stained_glass_pane"].id, 0),
+    "orange_stained_glass_pane" => (old_map["stained_glass_pane"].id, 1),
+    "magenta_stained_glass_pane" => (old_map["stained_glass_pane"].id, 2),
+    "light_blue_stained_glass_pane" => (old_map["stained_glass_pane"].id, 3),
+    "yellow_stained_glass_pane" => (old_map["stained_glass_pane"].id, 4),
+    "lime_stained_glass_pane" => (old_map["stained_glass_pane"].id, 5),
+    "pink_stained_glass_pane" => (old_map["stained_glass_pane"].id, 6),
+    "gray_stained_glass_pane" => (old_map["stained_glass_pane"].id, 7),
+    "light_gray_stained_glass_pane" => (old_map["stained_glass_pane"].id, 8),
+    "cyan_stained_glass_pane" => (old_map["stained_glass_pane"].id, 9),
+    "purple_stained_glass_pane" => (old_map["stained_glass_pane"].id, 10),
+    "blue_stained_glass_pane" => (old_map["stained_glass_pane"].id, 11),
+    "brown_stained_glass_pane" => (old_map["stained_glass_pane"].id, 12),
+    "green_stained_glass_pane" => (old_map["stained_glass_pane"].id, 13),
+    "red_stained_glass_pane" => (old_map["stained_glass_pane"].id, 14),
+    "black_stained_glass_pane" => (old_map["stained_glass_pane"].id, 15),
+
     _ => (old_map.get(&i.name).unwrap_or(&old_map["air"]).id, 0),
   }
 }
