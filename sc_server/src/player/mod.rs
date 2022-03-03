@@ -19,7 +19,10 @@ use std::{
   time::Instant,
 };
 
+mod inventory;
 mod tick;
+
+pub use inventory::PlayerInventory;
 
 #[derive(Debug, Clone)]
 struct PlayerPosition {
@@ -40,37 +43,6 @@ struct PlayerPosition {
   next_pitch: f32,
 
   last_set_pos: Instant,
-}
-
-#[derive(Debug)]
-pub struct PlayerInventory {
-  inv:            Inventory,
-  // An index into the hotbar (0..=8)
-  selected_index: u8,
-}
-
-impl PlayerInventory {
-  pub fn new() -> Self { PlayerInventory { inv: Inventory::new(46), selected_index: 0 } }
-
-  /// Returns the item in the player's main hand.
-  pub fn main_hand(&self) -> &Stack { self.inv.get(self.selected_index as u32 + 36) }
-
-  /// Returns the currently selected hotbar index.
-  pub fn selected_index(&self) -> u8 { self.selected_index }
-
-  /// Sets the selected index. Should only be used when recieving a held item
-  /// slot packet.
-  pub(crate) fn set_selected(&mut self, index: u8) { self.selected_index = index; }
-
-  /// Gets the item at the given index. 0 is part of the armor slots, not the
-  /// start of the hotbar. To access the hotbar, add 36 to the index returned
-  /// from main_hand.
-  pub fn get(&self, index: u32) -> &Stack { self.inv.get(index) }
-
-  /// Sets the item in the inventory.
-  ///
-  /// TODO: Send a packet here.
-  pub fn set(&mut self, index: u32, stack: Stack) { self.inv.set(index, stack) }
 }
 
 pub struct Player {

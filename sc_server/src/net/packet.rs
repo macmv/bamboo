@@ -10,6 +10,9 @@ use std::sync::Arc;
 /// more than once.
 pub(crate) fn handle(wm: &Arc<WorldManager>, player: &Arc<Player>, p: sb::Packet) {
   match p {
+    sb::Packet::KeepAlive { id: _ } => {
+      // TODO
+    }
     sb::Packet::Chat { msg } => {
       if msg.chars().next() == Some('/') {
         let mut chars = msg.chars();
@@ -39,7 +42,10 @@ pub(crate) fn handle(wm: &Arc<WorldManager>, player: &Arc<Player>, p: sb::Packet
       }
     }
     sb::Packet::CreativeInventoryUpdate { slot, item } => {
-      player.lock_inventory().set(slot as u32, item.into());
+      player.lock_inventory().set(slot.into(), item.into());
+    }
+    sb::Packet::ClickWindow { id: _, slot, mode } => {
+      player.lock_inventory().click_window(slot.into(), mode);
     }
     sb::Packet::ChangeHeldItem { slot } => {
       player.lock_inventory().set_selected(slot);

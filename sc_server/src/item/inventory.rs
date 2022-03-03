@@ -1,4 +1,5 @@
 use super::Stack;
+use std::mem;
 
 #[derive(Debug, Clone)]
 pub struct Inventory {
@@ -19,4 +20,9 @@ impl Inventory {
   pub fn size(&self) -> u32 { self.items.len() as u32 }
   /// Returns the items in the inventory.
   pub fn items(&self) -> &Vec<Stack> { &self.items }
+
+  /// Replaces the item at `index` with the given stack.
+  pub fn replace(&mut self, index: u32, stack: Stack) -> Stack {
+    mem::replace(&mut self.items[index as usize], stack)
+  }
 }
