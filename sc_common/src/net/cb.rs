@@ -151,9 +151,14 @@ pub enum Packet {
   UpdateViewPos { pos: ChunkPos },
 
   #[id = 22]
-  WindowOpen { id: u8, ty: u8, title: String },
+  WindowOpen { wid: u8, ty: u8, title: String },
   #[id = 23]
-  WindowItems { id: u8, items: Vec<Item>, held: Item },
+  WindowItems { wid: u8, items: Vec<Item>, held: Item },
+  /// AKA SetSlot. I named it this so that in alphabetical order it would show
+  /// up with the rest of
+  /// the inventory packets.
+  #[id = 24]
+  WindowItem { wid: u8, slot: i32, item: Item },
 }
 
 #[sc_macros::transfer]

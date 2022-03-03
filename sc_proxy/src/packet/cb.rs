@@ -652,9 +652,9 @@ impl ToTcp for Packet {
           panic!("cannot send UpdateViewPos for version {}", ver);
         }
       }
-      Packet::WindowOpen { id, ty, title } => {
+      Packet::WindowOpen { wid, ty, title } => {
         GPacket::OpenWindowV8 {
-          window_id:      id.into(),
+          window_id:      wid.into(),
           inventory_type: "minecraft:chest".into(),
           window_title:   title,
           slot_count:     (ty * 9).into(),
@@ -662,7 +662,7 @@ impl ToTcp for Packet {
           unknown:        vec![],
         }
       }
-      Packet::WindowItems { id, items, held } => {
+      Packet::WindowItems { wid, items, held } => {
         let mut buf = tcp::Packet::from_buf_id(vec![], 0, ver);
         buf.write_i16(items.len() as i16);
         for mut it in items {
@@ -672,9 +672,22 @@ impl ToTcp for Packet {
           buf.write_item(&it);
         }
         GPacket::WindowItemsV8 {
-          window_id:   id.into(),
+          window_id:   wid.into(),
           item_stacks: vec![],
           unknown:     buf.serialize(),
+        }
+      }
+      Packet::WindowItem { wid, slot, mut item } => {
+        let mut buf = tcp::Packet::from_buf_id(vec![], 0, ver);
+        let (id, damage) = conn.conv().item_to_old(item.id as u32, ver.block());
+        item.id = id as i32;
+        item.damage = damage as i16;
+        buf.write_item(&item);
+        GPacket::SetSlotV8 {
+          window_id: wid.into(),
+          slot:      slot,
+          item:      None,
+          unknown:   buf.serialize(),
         }
       }
       _ => todo!("convert {:?} into generated packet", self),

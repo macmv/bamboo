@@ -82,12 +82,12 @@ impl Player {
       eid,
       username: info.username,
       uuid: info.uuid,
+      inv: PlayerInventory::new(conn.clone()).into(),
       conn,
       ver: ProtocolVersion::from(info.ver as i32),
       view_distance: world.config().get("view-distance"),
       world,
       game_mode: GameMode::Creative.into(),
-      inv: PlayerInventory::new().into(),
       pos: PlayerPosition {
         curr:         pos,
         prev:         pos,
@@ -162,9 +162,9 @@ impl Player {
       panic!();
     }
     let ty = (size / 9) as u8;
-    self.send(cb::Packet::WindowOpen { id: 1, ty, title: Chat::new("big energy").to_json() });
+    self.send(cb::Packet::WindowOpen { wid: 1, ty, title: title.to_json() });
     self.send(cb::Packet::WindowItems {
-      id:    1,
+      wid:   1,
       items: inv.items().iter().map(|i| i.to_item()).collect(),
       held:  Stack::empty().to_item(),
     });

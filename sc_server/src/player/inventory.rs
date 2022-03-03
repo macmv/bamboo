@@ -1,12 +1,20 @@
-use crate::item::{Inventory, Stack};
-use sc_common::net::sb::{Button, ClickWindow};
+use crate::{
+  item::{Inventory, Stack},
+  net::ConnSender,
+};
+use sc_common::net::{
+  cb,
+  sb::{Button, ClickWindow},
+};
 use std::mem;
 
 /// An inventory, wrapped so that any time it is modified, a packet will be sent
 /// to a client.
 #[derive(Debug)]
 pub struct WrappedInventory {
-  inv: Inventory,
+  inv:    Inventory,
+  conn:   ConnSender,
+  offset: u32,
 }
 
 #[derive(Debug)]
@@ -19,11 +27,11 @@ pub struct PlayerInventory {
 }
 
 impl PlayerInventory {
-  pub fn new() -> Self {
+  pub fn new(conn: ConnSender) -> Self {
     // We always store an inventory with 46 slots, even if the client is on 1.8 (in
     // that version, there was no off-hand).
     PlayerInventory {
-      main:           WrappedInventory::new(Inventory::new(46)),
+      main:           WrappedInventory::new(Inventory::new(46), conn),
       selected_index: 0,
       window:         None,
     }
@@ -31,7 +39,12 @@ impl PlayerInventory {
 
   pub fn open_window(&mut self, inv: Inventory) {
     assert!(self.window.is_none());
-    self.window = Some((WrappedInventory::new(inv), Stack::empty()));
+    self.main.set_offset(inv.size());
+    self.window = Some((WrappedInventory::new(inv, self.main.conn.clone()), Stack::empty()));
+  }
+  pub fn close_window(&mut self) {
+    let (_, _) = self.window.take().unwrap();
+    self.main.set_offset(0);
   }
 
   /// Returns the item in the player's main hand.
@@ -74,43 +87,63 @@ impl PlayerInventory {
       self.main.get(index as u32)
     }
   }
-  /// Gets the item out of the inventory. This uses absolute ids, so depending
-  /// on if a window is open, the actual slot being accessed may change. Use
-  /// [`main`](Self::main) or [`win`](Self::win) to access the main inventory or
-  /// the open window directly.
-  pub fn get_mut(&mut self, index: i32) -> &mut Stack {
+  /// Replaces the item at `index` with the given item. The old item will be
+  /// returned. This allows you to replace items without cloning them.
+  pub fn replace(&mut self, index: i32, stack: Stack) -> Stack {
     if index == -999 {
-      &mut self.window.as_mut().unwrap().1
+      self.main.conn.send(cb::Packet::WindowItem {
+        wid:  u8::MAX,
+        slot: -1,
+        item: stack.to_item(),
+      });
+      mem::replace(&mut self.window.as_mut().unwrap().1, stack)
     } else if let Some((win, _)) = &mut self.window {
       if index > 0 {
         let i = index as u32;
         if i < win.size() {
-          win.get_mut(i)
+          win.replace(i, stack)
         } else {
-          self.main.get_mut(i - win.size())
+          self.main.replace(i - win.size(), stack)
         }
       } else {
-        self.main.get_mut(index as u32)
+        self.main.replace(index as u32, stack)
       }
     } else {
-      self.main.get_mut(index as u32)
+      self.main.replace(index as u32, stack)
     }
-  }
-
-  /// Replaces the item at `index` with the given item. The old item will be
-  /// returned. This allows you to replace items without cloning them.
-  pub fn replace(&mut self, index: i32, stack: Stack) -> Stack {
-    mem::replace(self.get_mut(index), stack)
   }
   /// Sets the item in the inventory. This uses absolute ids, so depending
   /// on if a window is open, the actual slot being accessed may change. Use
   /// [`main`](Self::main) or [`win`](Self::win) to access the main inventory or
   /// the open window directly.
-  pub fn set(&mut self, index: i32, stack: Stack) { *self.get_mut(index) = stack }
+  pub fn set(&mut self, index: i32, stack: Stack) {
+    if index == -999 {
+      self.main.conn.send(cb::Packet::WindowItem {
+        wid:  u8::MAX,
+        slot: -1,
+        item: stack.to_item(),
+      });
+      self.window.as_mut().unwrap().1 = stack;
+    } else if let Some((win, _)) = &mut self.window {
+      if index > 0 {
+        let i = index as u32;
+        if i < win.size() {
+          win.set(i, stack)
+        } else {
+          self.main.set(i - win.size(), stack)
+        }
+      } else {
+        self.main.set(index as u32, stack)
+      }
+    } else {
+      self.main.set(index as u32, stack)
+    }
+  }
 
   /// Handles an inventory move operation.
   pub fn click_window(&mut self, slot: i32, click: ClickWindow) {
     info!("handling click at slot {slot} {click:?}");
+    let inv_size = self.win().unwrap().size();
     match click {
       ClickWindow::Click(button) => match button {
         Button::Left => self.swap(slot, -999),
@@ -118,7 +151,7 @@ impl PlayerInventory {
         Button::Middle => todo!(),
       },
       ClickWindow::Number(num) => {
-        self.swap(slot, (num + 36).into());
+        self.swap(slot, num as i32 + 27 + inv_size as i32);
       }
       _ => todo!(),
     }
@@ -128,10 +161,11 @@ impl PlayerInventory {
   /// not empty, this is a noop.
   pub fn split(&mut self, a: i32, b: i32) {
     if self.get(b).is_empty() {
-      let stack = self.get_mut(a);
+      let mut stack = self.get(a).clone();
       let total = stack.amount();
       stack.set_amount(total / 2);
       let remaining = total - stack.amount();
+      self.set(a, stack);
       self.set(b, self.get(a).clone().with_amount(remaining));
     }
   }
@@ -145,15 +179,32 @@ impl PlayerInventory {
 }
 
 impl WrappedInventory {
-  pub fn new(inv: Inventory) -> Self { WrappedInventory { inv } }
+  pub fn new(inv: Inventory, conn: ConnSender) -> Self { WrappedInventory { inv, conn, offset: 0 } }
   /// Gets the item at the given index.
   pub fn get(&self, index: u32) -> &Stack { self.inv.get(index as u32) }
-  /// Gets the item at the given index.
-  pub fn get_mut(&mut self, index: u32) -> &mut Stack { self.inv.get_mut(index as u32) }
   /// Sets the item in the inventory.
-  ///
-  /// TODO: Send a packet here.
-  pub fn set(&mut self, index: u32, stack: Stack) { self.inv.set(index as u32, stack) }
+  pub fn set(&mut self, index: u32, stack: Stack) {
+    self.conn.send(cb::Packet::WindowItem {
+      wid:  1,
+      slot: (index + self.offset) as i32,
+      item: stack.to_item(),
+    });
+    self.inv.set(index as u32, stack);
+  }
+  /// Replaces an item in the inventory.
+  pub fn replace(&mut self, index: u32, stack: Stack) -> Stack {
+    self.conn.send(cb::Packet::WindowItem {
+      wid:  1,
+      slot: (index + self.offset) as i32,
+      item: stack.to_item(),
+    });
+    self.inv.replace(index as u32, stack)
+  }
+
+  /// Sets the offset for sending packets. This is used when an inventory is
+  /// opened/closed. It causes [`set`](Self::set) to send slot ids with this
+  /// offset.
+  fn set_offset(&mut self, offset: u32) { self.offset = offset; }
 
   pub fn size(&self) -> u32 { self.inv.size() }
 }
