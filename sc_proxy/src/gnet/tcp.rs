@@ -190,7 +190,20 @@ impl Packet {
       } else {
         count = self.read_u8()?;
         damage = self.read_i16()?;
-        nbt = self.read_nbt()?;
+        // Quirk with NBT here; if there is a single `0` byte, then there is no NBT
+        // data. This is fixed in 1.13+
+        let remaining = self.read_all();
+        if remaining.get(0) == Some(&0) {
+          nbt = NBT::empty("");
+        } else {
+          match NBT::deserialize_buf(&mut self.buf) {
+            Ok(v) => nbt = v,
+            Err(e) => {
+              let e = self.buf().err(e, Mode::Reading);
+              return Err(self.err(e, "read_nbt"));
+            }
+          };
+        }
       }
       Item::new(
         conv.item_to_new(id as u32, damage as u32, self.ver.block()) as i32,
