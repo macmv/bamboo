@@ -5,7 +5,7 @@ pub use plugin::Plugin;
 
 use crate::{block, player::Player, world::WorldManager};
 use parking_lot::Mutex;
-use sc_common::math::Pos;
+use sc_common::{math::Pos, net::sb::ClickWindow};
 use std::{fmt, fs, sync::Arc};
 use sugarlang::runtime::Var;
 
@@ -138,5 +138,14 @@ impl PluginManager {
     for p in self.plugins.lock().iter() {
       p.call_on_block_place(player.clone(), pos, kind);
     }
+  }
+  pub fn on_click_window(&self, player: Arc<Player>, slot: i32, mode: ClickWindow) -> bool {
+    let mut allow = true;
+    for p in self.plugins.lock().iter() {
+      if !p.call_on_click_window(player.clone(), slot, mode.clone()) {
+        allow = false
+      }
+    }
+    allow
   }
 }

@@ -44,3 +44,7 @@ fn add_player_to_team(player, team) {
 fn start_game(sc) {
 
 }
+
+fn on_click_window(player, slot, mode) {
+  true
+}

@@ -3,11 +3,16 @@ use crate::{
   item,
   item::{Inventory, Stack, UI},
 };
+use sc_common::net::sb::ClickWindow;
 use std::str::FromStr;
 use sugarlang::{define_ty, parse::token::Span, runtime::RuntimeError};
 
 wrap!(UI, SlUI);
+wrap!(ClickWindow, SlClickWindow);
 wrap!(Inventory, SlInventory);
+
+#[define_ty(path = "sugarcane::item::ClickWindow")]
+impl SlClickWindow {}
 
 #[define_ty(path = "sugarcane::item::Inventory")]
 impl SlInventory {}

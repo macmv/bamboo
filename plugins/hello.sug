@@ -68,6 +68,10 @@ fn on_block_place(sc, player, pos, kind) {
   sc.info("block x:", pos.x())
 }
 
+fn on_click_window(player, slot, mode) {
+  false
+}
+
 fn add_biomes(sc) {
   /*
   biome = gen::Biome::new("desert")

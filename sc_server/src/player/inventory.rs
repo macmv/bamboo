@@ -164,20 +164,28 @@ impl PlayerInventory {
   }
 
   /// Handles an inventory move operation.
-  pub fn click_window(&mut self, slot: i32, click: ClickWindow) {
+  pub fn click_window(&mut self, slot: i32, click: ClickWindow, allow: bool) {
     info!("handling click at slot {slot} {click:?}");
+
+    macro_rules! allow {
+      (self.$name:ident($a:expr, $b:expr)) => {
+        if allow {
+          self.$name($a, $b);
+        } else {
+          self.sync($a);
+          self.sync($b);
+        }
+      };
+    }
+
     let inv_size = self.win().unwrap().size();
     match click {
       ClickWindow::Click(button) => match button {
-        Button::Left => self.swap(slot, -999),
-        Button::Right => self.split(slot, -999),
+        Button::Left => allow!(self.swap(slot, -999)),
+        Button::Right => allow!(self.split(slot, -999)),
         Button::Middle => todo!(),
       },
-      ClickWindow::Number(num) => {
-        // self.swap(slot, num as i32 + 27 + inv_size as i32);
-        self.sync(slot);
-        self.sync(num as i32 + 27 + inv_size as i32);
-      }
+      ClickWindow::Number(num) => allow!(self.swap(slot, num as i32 + 27 + inv_size as i32)),
       _ => todo!(),
     }
   }

@@ -5,7 +5,7 @@
 // use std::sync::{mpsc, Arc};
 use super::{types, PluginManager, Sugarcane};
 use crate::{block, player::Player, world::WorldManager};
-use sc_common::math::Pos;
+use sc_common::{math::Pos, net::sb::ClickWindow};
 use std::{fs, path::Path, sync::Arc};
 use sugarlang::{
   path,
@@ -84,12 +84,14 @@ impl Plugin {
   /// functions.
   pub fn sc(&self) -> Sugarcane { self.sc.clone() }
 
-  pub fn call_init(&self) {
-    self.call(SlPath::new(vec![self.name.clone(), "main".into(), "init".into()]), vec![]);
+  fn path(&self, name: &str) -> SlPath {
+    SlPath::new(vec![self.name.clone(), "main".into(), name.into()])
   }
+
+  pub fn call_init(&self) { self.call(self.path("init"), vec![]); }
   pub fn call_on_block_place(&self, player: Arc<Player>, pos: Pos, kind: block::Kind) {
     self.call(
-      path!(main::on_block_place),
+      self.path("on_block_place"),
       vec![
         types::player::SlPlayer::from(player).into(),
         types::util::SlPos::from(pos).into(),
@@ -97,14 +99,30 @@ impl Plugin {
       ],
     );
   }
+  pub fn call_on_click_window(&self, player: Arc<Player>, slot: i32, mode: ClickWindow) -> bool {
+    match self.call(
+      self.path("on_click_window"),
+      vec![
+        types::player::SlPlayer::from(player).into(),
+        slot.into(),
+        types::item::SlClickWindow::from(mode).into(),
+      ],
+    ) {
+      Var::Bool(v) => v,
+      _ => true,
+    }
+  }
 
-  pub fn call(&self, path: TyPath, args: Vec<Var>) {
+  pub fn call(&self, path: TyPath, args: Vec<Var>) -> Var {
     match &self.sl {
       Some(sl) => match sl.call_args(path, args.into_iter().map(|v| v.into_ref()).collect()) {
-        Ok(_) => {}
-        Err(e) => self.print_err(e),
+        Ok(v) => v,
+        Err(e) => {
+          self.print_err(e);
+          Var::None
+        }
       },
-      None => {}
+      None => Var::None,
     }
   }
 

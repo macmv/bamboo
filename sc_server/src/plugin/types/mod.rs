@@ -214,6 +214,8 @@ impl Plugin {
     sl.add_builtin_ty::<block::SlBlockKind>();
     sl.add_builtin_ty::<chat::SlChat>();
     sl.add_builtin_ty::<chat::SlChatSection>();
+    sl.add_builtin_ty::<item::SlClickWindow>();
+    sl.add_builtin_ty::<item::SlInventory>();
     sl.add_builtin_ty::<item::SlUI>();
     sl.add_builtin_ty::<command::SlCommand>();
     sl.add_builtin_ty::<player::SlPlayer>();
