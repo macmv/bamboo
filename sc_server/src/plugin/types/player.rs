@@ -73,5 +73,7 @@ impl SlPlayer {
   }
 
   /// Shows an inventory to the player.
-  pub fn show_inventory(&self, inv: &SlInventory) { self.inner.show_inventory(&inv.inner) }
+  pub fn show_inventory(&self, inv: &SlInventory, title: &SlChat) {
+    self.inner.show_inventory(inv.inner.clone(), &title.inner.lock().unwrap())
+  }
 }

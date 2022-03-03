@@ -153,7 +153,7 @@ impl Player {
     });
   }
 
-  pub fn show_inventory(&self, inv: &Inventory) {
+  pub fn show_inventory(&self, inv: Inventory, title: &Chat) {
     let size = inv.size();
     if size > 9 * 6 {
       panic!();
@@ -168,6 +168,7 @@ impl Player {
       items: inv.items().iter().map(|i| i.to_item()).collect(),
       held:  Stack::empty().to_item(),
     });
+    self.lock_inventory().open_window(inv);
   }
 
   /// Disconnects the player. The given chat message will be shown on the

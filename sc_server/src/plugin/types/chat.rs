@@ -9,6 +9,8 @@ wrap!(Arc<Mutex<Chat>>, SlChatSection, idx: usize);
 /// A chat message. This is how you can send formatted chat message to players.
 #[define_ty(path = "sugarcane::chat::Chat")]
 impl SlChat {
+  /// Creates a new chat message with the given text.
+  pub fn new(text: &str) -> SlChat { SlChat { inner: Arc::new(Mutex::new(Chat::new(text))) } }
   /// Creates an empty chat message. This can have sections added using `add`.
   pub fn empty() -> SlChat { SlChat { inner: Arc::new(Mutex::new(Chat::empty())) } }
   /// Adds a new chat section. This will return the section that was just added,

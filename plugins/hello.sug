@@ -39,7 +39,7 @@ fn handle_ui(sc, player, args) {
   ui.item("c", "stick")
   ui.item("d", "diamond_sword")
   ui.item("e", "black_wool")
-  player.show_inventory(ui.to_inventory())
+  player.show_inventory(ui.to_inventory(), Chat::new("big gaming"))
 }
 
 fn handle_setblock(sc, player, args) {
