@@ -140,6 +140,29 @@ impl PlayerInventory {
     }
   }
 
+  pub fn sync(&self, index: i32) {
+    if index == -999 {
+      self.main.conn.send(cb::Packet::WindowItem {
+        wid:  u8::MAX,
+        slot: -1,
+        item: self.window.as_ref().unwrap().1.to_item(),
+      });
+    } else if let Some((win, _)) = &self.window {
+      if index > 0 {
+        let i = index as u32;
+        if i < win.size() {
+          win.sync(i)
+        } else {
+          self.main.sync(i - win.size())
+        }
+      } else {
+        self.main.sync(index as u32)
+      }
+    } else {
+      self.main.sync(index as u32)
+    }
+  }
+
   /// Handles an inventory move operation.
   pub fn click_window(&mut self, slot: i32, click: ClickWindow) {
     info!("handling click at slot {slot} {click:?}");
@@ -151,7 +174,9 @@ impl PlayerInventory {
         Button::Middle => todo!(),
       },
       ClickWindow::Number(num) => {
-        self.swap(slot, num as i32 + 27 + inv_size as i32);
+        // self.swap(slot, num as i32 + 27 + inv_size as i32);
+        self.sync(slot);
+        self.sync(num as i32 + 27 + inv_size as i32);
       }
       _ => todo!(),
     }
@@ -199,6 +224,14 @@ impl WrappedInventory {
       item: stack.to_item(),
     });
     self.inv.replace(index as u32, stack)
+  }
+  /// Syncs the item at the given slot with the client.
+  pub fn sync(&self, index: u32) {
+    self.conn.send(cb::Packet::WindowItem {
+      wid:  1,
+      slot: (index + self.offset) as i32,
+      item: self.inv.get(index).to_item(),
+    });
   }
 
   /// Sets the offset for sending packets. This is used when an inventory is
