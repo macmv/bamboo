@@ -20,6 +20,8 @@ impl Inventory {
   pub fn size(&self) -> u32 { self.items.len() as u32 }
   /// Returns the items in the inventory.
   pub fn items(&self) -> &Vec<Stack> { &self.items }
+  /// Returns the items in the inventory.
+  pub fn items_mut(&mut self) -> &mut [Stack] { &mut self.items }
 
   /// Replaces the item at `index` with the given stack.
   pub fn replace(&mut self, index: u32, stack: Stack) -> Stack {

@@ -179,12 +179,22 @@ impl PlayerInventory {
     }
 
     let inv_size = self.win().unwrap().size();
+    let in_main = slot > 0 && (slot as u32) > inv_size;
     match click {
       ClickWindow::Click(button) => match button {
         Button::Left => allow!(self.swap(slot, -999)),
         Button::Right => allow!(self.split(slot, -999)),
         Button::Middle => todo!(),
       },
+      ClickWindow::ShiftClick(_) => {
+        let stack = self.get(slot).clone();
+        let prev_amount = stack.amount();
+        let new_amount =
+          if in_main { self.main.add(&stack) } else { self.win_mut().unwrap().add(&stack) };
+        if new_amount != prev_amount {
+          self.set(slot, stack.with_amount(new_amount));
+        }
+      }
       ClickWindow::Number(num) => allow!(self.swap(slot, num as i32 + 27 + inv_size as i32)),
       _ => todo!(),
     }
@@ -240,6 +250,42 @@ impl WrappedInventory {
       slot: (index + self.offset) as i32,
       item: self.inv.get(index).to_item(),
     });
+  }
+
+  /// Tries to add the given stack to this inventory. This will return the
+  /// number of remaining items in the stack. If the inventory has enough space,
+  /// this will return 0.
+  pub fn add(&mut self, stack: &Stack) -> u8 {
+    let sync = |index: u32, item: &Stack| {
+      self.conn.send(cb::Packet::WindowItem {
+        wid:  1,
+        slot: (index + self.offset) as i32,
+        item: item.to_item(),
+      });
+    };
+    let mut remaining = stack.amount();
+    for (i, it) in self.inv.items_mut().iter_mut().enumerate() {
+      let i = i as u32;
+      if it.is_empty() {
+        *it = stack.clone().with_amount(remaining);
+        sync(i, it);
+        remaining = 0;
+      } else if it.item() == stack.item() {
+        let amount_possible = 64 - it.amount();
+        if amount_possible > remaining {
+          *it = stack.clone().with_amount(it.amount() + remaining);
+          remaining = 0;
+        } else {
+          *it = stack.clone().with_amount(64);
+          remaining -= amount_possible;
+        }
+        sync(i, it);
+      }
+      if remaining == 0 {
+        break;
+      }
+    }
+    remaining
   }
 
   /// Sets the offset for sending packets. This is used when an inventory is
