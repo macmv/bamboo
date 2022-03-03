@@ -18,7 +18,7 @@ impl Player {
     let pos_changed;
     let needs_set_pos;
     let pos = {
-      let mut pos = self.pos.lock().unwrap();
+      let mut pos = self.pos.lock();
       pos.prev = pos.curr;
       look_changed = pos.yaw != pos.next_yaw || pos.pitch != pos.next_pitch;
       pos_changed = pos.curr != pos.next;
@@ -255,7 +255,7 @@ impl Player {
   /// removed.
   pub(crate) fn unload_all(&self) {
     let chunk = {
-      let pos = self.pos.lock().unwrap();
+      let pos = self.pos.lock();
       pos.curr.block().chunk()
     };
     let v = self.view_distance as i32;

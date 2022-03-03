@@ -5,19 +5,14 @@ use crate::{
   net::ConnSender,
   world::World,
 };
+use parking_lot::{Mutex, MutexGuard};
 use sc_common::{
   math::{ChunkPos, FPos, Pos, PosError, Vec3},
   net::cb,
   util::{Chat, GameMode, JoinInfo, UUID},
   version::ProtocolVersion,
 };
-use std::{
-  f64::consts,
-  fmt,
-  net::SocketAddr,
-  sync::{Arc, Mutex, MutexGuard},
-  time::Instant,
-};
+use std::{f64::consts, fmt, net::SocketAddr, sync::Arc, time::Instant};
 
 mod inventory;
 mod tick;
@@ -118,7 +113,7 @@ impl Player {
   pub fn ver(&self) -> ProtocolVersion { self.ver }
 
   /// Returns a locked reference to the player's inventory.
-  pub fn lock_inventory(&self) -> MutexGuard<PlayerInventory> { self.inv.lock().unwrap() }
+  pub fn lock_inventory(&self) -> MutexGuard<PlayerInventory> { self.inv.lock() }
 
   /// Returns a reference to the world the player is in.
   pub fn world(&self) -> &Arc<World> { &self.world }
@@ -126,14 +121,14 @@ impl Player {
   /// This will move the player on the next player tick. Used whenever a
   /// position packet is recieved.
   pub(crate) fn set_next_pos(&self, x: f64, y: f64, z: f64) {
-    let mut pos = self.pos.lock().unwrap();
+    let mut pos = self.pos.lock();
     pos.next = FPos::new(x, y, z);
   }
 
   /// This will set the player's look direction on the next player tick. Used
   /// whenever a player look packet is recieved.
   pub(crate) fn set_next_look(&self, yaw: f32, pitch: f32) {
-    let mut pos = self.pos.lock().unwrap();
+    let mut pos = self.pos.lock();
     pos.next_yaw = yaw;
     pos.next_pitch = pitch;
   }
@@ -205,7 +200,7 @@ impl Player {
   /// Returns the player's position. This is only updated once per tick. This
   /// also needs to lock a mutex, so you should not call it very often.
   pub fn pos(&self) -> FPos {
-    let pos = self.pos.lock().unwrap();
+    let pos = self.pos.lock();
     pos.curr
   }
   /// Returns the player's block position. This is the block that their feet are
@@ -215,7 +210,7 @@ impl Player {
   /// once per tick. This also locks a mutex, so you should not call it very
   /// often.
   pub fn pos_look(&self) -> (FPos, f32, f32) {
-    let pos = self.pos.lock().unwrap();
+    let pos = self.pos.lock();
     (pos.curr, pos.pitch, pos.yaw)
   }
   /// Returns the player's current and previous position. This is only updated
@@ -224,7 +219,7 @@ impl Player {
   /// [`pos`](Self::pos). The first item returned is the current position, and
   /// the second item is the previous position.
   pub fn pos_with_prev(&self) -> (FPos, FPos) {
-    let pos = self.pos.lock().unwrap();
+    let pos = self.pos.lock();
     (pos.curr, pos.prev)
   }
 
@@ -232,7 +227,7 @@ impl Player {
   /// looking to the side. It is in the range -180..180. This is only updated
   /// once per tick.
   pub fn look(&self) -> (f32, f32) {
-    let pos = self.pos.lock().unwrap();
+    let pos = self.pos.lock();
     (pos.pitch, pos.yaw)
   }
 
