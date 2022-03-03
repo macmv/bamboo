@@ -1,4 +1,4 @@
-use crate::{Error, Result};
+use crate::{packet::TypeConverter, Error, Result};
 use sc_common::{
   math::{ChunkPos, Pos},
   nbt::NBT,
@@ -177,20 +177,36 @@ impl Packet {
 
   /// This parses an item from the internal buffer (format depends on the
   /// version).
-  pub fn read_item(&mut self) -> Result<Item> {
+  pub fn read_item(&mut self, conv: &TypeConverter) -> Result<Item> {
     Ok(if self.ver < ProtocolVersion::V1_13 {
       let id = self.read_i16()?;
-      let mut count = 0;
-      let mut damage = 0;
-      let mut nbt = NBT::empty("");
-      if id != -1 {
+      let count;
+      let damage;
+      let nbt;
+      if id == -1 {
+        count = 0;
+        damage = 0;
+        nbt = NBT::empty("");
+      } else {
         count = self.read_u8()?;
         damage = self.read_i16()?;
         nbt = self.read_nbt()?;
       }
-      Item::new(id.into(), count, damage, nbt)
+      Item::new(
+        conv.item_to_new(id as u32, damage as u32, self.ver.block()) as i32,
+        count,
+        damage,
+        nbt,
+      )
     } else {
-      todo!("read item on version: {:?}", self.ver);
+      if self.read_bool()? {
+        let id = self.read_varint()?;
+        let count = self.read_u8()?;
+        let nbt = self.read_nbt()?;
+        Item::new(conv.item_to_new(id as u32, 0, self.ver.block()) as i32, count, 0, nbt)
+      } else {
+        Item::new(0, 0, 0, NBT::empty(""))
+      }
     })
   }
 

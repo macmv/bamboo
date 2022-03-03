@@ -5,11 +5,11 @@ use crate::{
 };
 use sc_common::{
   math::Pos,
-  nbt::NBT,
-  net::sb::{DigStatus, Packet},
-  util::{Buffer, Face, Hand, Item},
+  net::sb::{Button, ClickWindow, DigStatus, Packet},
+  util::{Buffer, Face, Hand},
   version::ProtocolVersion,
 };
+use std::{io, io::ErrorKind};
 
 pub trait FromTcp {
   fn from_tcp(p: GPacket, ver: ProtocolVersion, conv: &TypeConverter) -> Result<Self>
@@ -21,11 +21,45 @@ impl FromTcp for Packet {
   fn from_tcp(p: GPacket, ver: ProtocolVersion, conv: &TypeConverter) -> Result<Self> {
     Ok(match p {
       GPacket::ChatV8 { message } | GPacket::ChatV11 { message } => Packet::Chat { msg: message },
+      GPacket::ClickWindowV8 {
+        window_id,
+        slot_id,
+        used_button,
+        action_number,
+        clicked_item: _,
+        mode,
+        unknown,
+      } => {
+        let mut buf = tcp::Packet::from_buf_id(unknown, 0, ver);
+        let _item = buf.read_item(&conv)?;
+        Packet::ClickWindow {
+          id:   window_id.try_into().unwrap(),
+          slot: slot_id.try_into().unwrap(),
+          mode: click_window(mode, used_button)?,
+        }
+      }
+      GPacket::ClickWindowV9 {
+        window_id,
+        slot_id,
+        used_button,
+        action_number,
+        clicked_item: _,
+        mode,
+        unknown,
+      } => {
+        let mut buf = tcp::Packet::from_buf_id(unknown, 0, ver);
+        let _item = buf.read_item(&conv)?;
+        Packet::ClickWindow {
+          id:   window_id.try_into().unwrap(),
+          slot: slot_id.try_into().unwrap(),
+          mode: click_window(mode, used_button)?,
+        }
+      }
       GPacket::CreativeInventoryActionV8 { slot_id, mut unknown, .. } => {
-        let mut buf = Buffer::new(&mut unknown);
+        let mut buf = tcp::Packet::from_buf_id(unknown, 0, ver);
         Packet::CreativeInventoryUpdate {
           slot: slot_id.try_into().unwrap(),
-          item: read_item(ver, &mut buf, conv)?,
+          item: buf.read_item(conv)?,
         }
       }
       GPacket::KeepAliveV8 { key: id } => Packet::KeepAlive { id },
@@ -122,34 +156,44 @@ impl FromTcp for Packet {
   }
 }
 
-fn read_item<T: AsRef<[u8]>>(
-  ver: ProtocolVersion,
-  buf: &mut Buffer<T>,
-  conv: &TypeConverter,
-) -> Result<Item> {
-  Ok(if ver < ProtocolVersion::V1_13 {
-    let id = buf.read_i16()?;
-    let count;
-    let damage;
-    let nbt;
-    if id == -1 {
-      count = 0;
-      damage = 0;
-      nbt = NBT::empty("");
-    } else {
-      count = buf.read_u8()?;
-      damage = buf.read_i16()?;
-      nbt = buf.read_nbt()?;
-    }
-    Item::new(conv.item_to_new(id as u32, damage as u32, ver.block()) as i32, count, damage, nbt)
-  } else {
-    if buf.read_bool()? {
-      let id = buf.read_varint()?;
-      let count = buf.read_u8()?;
-      let nbt = buf.read_nbt()?;
-      Item::new(conv.item_to_new(id as u32, 0, ver.block()) as i32, count, 0, nbt)
-    } else {
-      Item::new(0, 0, 0, NBT::empty(""))
-    }
+fn click_window(mode: i32, bt: i32) -> Result<ClickWindow> {
+  Ok(match mode {
+    // Click
+    0 => ClickWindow::Click(button(bt)?),
+    // Shift click
+    1 => ClickWindow::ShiftClick(button(bt)?),
+    // Number (puts the item in the given slot in the hotbar)
+    2 => ClickWindow::Number(bt.try_into().unwrap()),
+    // Middle click
+    3 => ClickWindow::Click(Button::Middle),
+    // Drop item
+    4 => match bt {
+      0 => ClickWindow::Drop,
+      1 => ClickWindow::DropAll,
+      _ => {
+        return Err(io::Error::new(ErrorKind::Other, "invalid button for drop item action").into())
+      }
+    },
+    // Drag item
+    5 => match bt {
+      0 | 4 | 8 => ClickWindow::DragStart(button(bt)?),
+      1 | 5 | 9 => ClickWindow::DragAdd(button(bt)?),
+      2 | 6 | 10 => ClickWindow::DragEnd(button(bt)?),
+      _ => {
+        return Err(io::Error::new(ErrorKind::Other, "invalid button for drag item action").into())
+      }
+    },
+    // Double click
+    6 => ClickWindow::DoubleClick,
+    _ => return Err(io::Error::new(ErrorKind::Other, "invalid click window mode").into()),
+  })
+}
+
+fn button(bt: i32) -> Result<Button> {
+  Ok(match bt {
+    0 => Button::Left,
+    1 => Button::Right,
+    2 => Button::Middle,
+    _ => return Err(io::Error::new(ErrorKind::Other, "invalid button").into()),
   })
 }
