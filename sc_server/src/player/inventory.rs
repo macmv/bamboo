@@ -73,7 +73,7 @@ impl PlayerInventory {
     if index == -999 {
       &self.window.as_ref().unwrap().1
     } else if let Some((win, _)) = &self.window {
-      if index > 0 {
+      if index >= 0 {
         let i = index as u32;
         if i < win.size() {
           win.get(i)
@@ -98,7 +98,7 @@ impl PlayerInventory {
       });
       mem::replace(&mut self.window.as_mut().unwrap().1, stack)
     } else if let Some((win, _)) = &mut self.window {
-      if index > 0 {
+      if index >= 0 {
         let i = index as u32;
         if i < win.size() {
           win.replace(i, stack)
@@ -125,7 +125,7 @@ impl PlayerInventory {
       });
       self.window.as_mut().unwrap().1 = stack;
     } else if let Some((win, _)) = &mut self.window {
-      if index > 0 {
+      if index >= 0 {
         let i = index as u32;
         if i < win.size() {
           win.set(i, stack)
@@ -148,7 +148,7 @@ impl PlayerInventory {
         item: self.window.as_ref().unwrap().1.to_item(),
       });
     } else if let Some((win, _)) = &self.window {
-      if index > 0 {
+      if index >= 0 {
         let i = index as u32;
         if i < win.size() {
           win.sync(i)
@@ -179,7 +179,8 @@ impl PlayerInventory {
     }
 
     let inv_size = self.win().unwrap().size();
-    let in_main = slot > 0 && (slot as u32) > inv_size;
+    let in_main = slot >= 0 && (slot as u32) > inv_size;
+    info!("in main: {in_main}");
     match click {
       ClickWindow::Click(button) => match button {
         Button::Left => allow!(self.swap(slot, -999)),
@@ -189,10 +190,25 @@ impl PlayerInventory {
       ClickWindow::ShiftClick(_) => {
         let stack = self.get(slot).clone();
         let prev_amount = stack.amount();
-        let new_amount =
-          if in_main { self.main.add(&stack) } else { self.win_mut().unwrap().add(&stack) };
-        if new_amount != prev_amount {
-          self.set(slot, stack.with_amount(new_amount));
+        // We are shift clicking in `in_main`, so we add it to the other inventory.
+        if allow {
+          let new_amount =
+            if in_main { self.win_mut().unwrap().add(&stack) } else { self.main.add(&stack) };
+          if new_amount != prev_amount {
+            self.set(slot, stack.with_amount(new_amount));
+          }
+        } else {
+          let new_amount = if in_main {
+            self.win_mut().unwrap().add_sync(&stack)
+          } else {
+            self.main.add_sync(&stack)
+          };
+          if new_amount != prev_amount {
+            self.sync(slot);
+          }
+        }
+        for i in 0..36 + inv_size as i32 {
+          self.sync(i);
         }
       }
       ClickWindow::Number(num) => allow!(self.swap(slot, num as i32 + 27 + inv_size as i32)),
@@ -280,6 +296,31 @@ impl WrappedInventory {
           remaining -= amount_possible;
         }
         sync(i, it);
+      }
+      if remaining == 0 {
+        break;
+      }
+    }
+    remaining
+  }
+  /// This does the same thing as `add`, but doesn't move any items around. This
+  /// is used when the client shift clicks an item, and the server declines the
+  /// transaction.
+  pub fn add_sync(&self, stack: &Stack) -> u8 {
+    let mut remaining = stack.amount();
+    for (i, it) in self.inv.items().iter().enumerate() {
+      let i = i as u32;
+      if it.is_empty() {
+        self.sync(i);
+        remaining = 0;
+      } else if it.item() == stack.item() {
+        let amount_possible = 64 - it.amount();
+        if amount_possible > remaining {
+          remaining = 0;
+        } else {
+          remaining -= amount_possible;
+        }
+        self.sync(i);
       }
       if remaining == 0 {
         break;
