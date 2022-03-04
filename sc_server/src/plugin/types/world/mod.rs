@@ -20,7 +20,7 @@ impl fmt::Debug for SlWorld {
 impl SlWorld {
   pub fn check_pos(&self, pos: Pos) -> Result<Pos, RuntimeError> {
     self.inner.check_pos(pos).map_err(|p| {
-      RuntimeError::custom(format!("invalid position {}: {}", p.pos, p.msg), Span::default())
+      RuntimeError::custom(format!("invalid position {}: {}", p.pos, p.msg), Span::call_site())
     })
   }
 }

@@ -52,7 +52,7 @@ impl SlUI {
   pub fn new(rows: Vec<&str>) -> Result<SlUI, RuntimeError> {
     Ok(SlUI {
       inner: UI::new(rows.iter().map(|&v| v.into()).collect())
-        .map_err(|e| RuntimeError::Custom(e.to_string(), Span::default()))?,
+        .map_err(|e| RuntimeError::Custom(e.to_string(), Span::call_site()))?,
     })
   }
 
@@ -63,14 +63,14 @@ impl SlUI {
       None => {
         return Err(RuntimeError::Custom(
           "Cannot use empty string as item key".into(),
-          Span::default(),
+          Span::call_site(),
         ))
       }
     };
     if iter.next().is_some() {
       return Err(RuntimeError::Custom(
         "Cannot use multiple character string as item key".into(),
-        Span::default(),
+        Span::call_site(),
       ));
     }
     self.inner.item(key, item.inner.clone());
@@ -81,7 +81,7 @@ impl SlUI {
     let inv = self
       .inner
       .to_inventory()
-      .map_err(|e| RuntimeError::Custom(e.to_string(), Span::default()))?;
+      .map_err(|e| RuntimeError::Custom(e.to_string(), Span::call_site()))?;
     Ok(SlInventory { inner: inv })
   }
 }

@@ -66,7 +66,7 @@ impl SlPlayer {
     // TODO: Span::call_site()
     let ips: Vec<SocketAddr> = ip
       .to_socket_addrs()
-      .map_err(|e| RuntimeError::custom(format!("invalid ip '{ip}': {e}"), Span::default()))?
+      .map_err(|e| RuntimeError::custom(format!("invalid ip '{ip}': {e}"), Span::call_site()))?
       .collect();
     self.inner.switch_to(ips);
     Ok(())

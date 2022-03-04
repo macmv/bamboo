@@ -27,7 +27,7 @@ impl SlBlockKind {
   pub fn from_s(name: &str) -> Result<SlBlockKind, RuntimeError> {
     Ok(SlBlockKind {
       inner: block::Kind::from_str(name).map_err(|_| {
-        RuntimeError::custom(format!("invalid block name '{}'", name), Span::default())
+        RuntimeError::custom(format!("invalid block name '{}'", name), Span::call_site())
       })?,
     })
   }

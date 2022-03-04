@@ -55,7 +55,9 @@ impl SlChatSection {
       "red" => Color::Red,
       "yellow" => Color::Yellow,
       "green" => Color::BrightGreen,
-      _ => return Err(RuntimeError::custom(format!("invalid color `{}`", color), Span::default())),
+      _ => {
+        return Err(RuntimeError::custom(format!("invalid color `{}`", color), Span::call_site()))
+      }
     };
     self.inner.lock().unwrap().get_section(self.idx).unwrap().color(col);
     Ok(())

@@ -81,7 +81,7 @@ impl Sugarcane {
       None => {
         return Err(RuntimeError::custom(
           "cannot pass in child command! you must pass in a command created from `Command::new`",
-          Span::default(),
+          Span::call_site(),
         ))
       }
     };
