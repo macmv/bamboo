@@ -4,7 +4,7 @@ use sugarcane::{
   command::Command,
   world::gen,
   util::Pos,
-  item::UI,
+  item::{Stack, UI},
 }
 
 fn init() {
@@ -25,6 +25,8 @@ fn init() {
 
   c = Command::new("ui", handle_ui)
   sc.add_command(c)
+
+  stack = Stack::new("stonea")
 }
 
 fn handle_ui(sc, player, args) {
