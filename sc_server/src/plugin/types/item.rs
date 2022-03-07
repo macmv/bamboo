@@ -28,6 +28,10 @@ impl SlStack {
       ),
     })
   }
+
+  pub fn with_amount(&self, amount: u8) -> Self {
+    SlStack { inner: self.inner.clone().with_amount(amount) }
+  }
 }
 
 /// An inventory UI.

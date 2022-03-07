@@ -69,7 +69,7 @@ fn on_block_place(sc, player, pos, kind) {
 }
 
 fn on_click_window(player, slot, mode) {
-  false
+  true
 }
 
 fn add_biomes(sc) {

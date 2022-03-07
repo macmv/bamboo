@@ -140,6 +140,17 @@ impl PlayerInventory {
     }
   }
 
+  pub fn sync_all(&self) {
+    let mut items: Vec<_> = self.main.inv.items().iter().map(|i| i.to_item()).collect();
+    let mut held = Stack::empty().to_item();
+    if let Some((inv, win_held)) = &self.window {
+      held = win_held.to_item();
+      for it in inv.inv.items() {
+        items.push(it.to_item());
+      }
+    }
+    self.main.conn.send(cb::Packet::WindowItems { wid: 1, items, held });
+  }
   pub fn sync(&self, index: i32) {
     if index == -999 {
       self.main.conn.send(cb::Packet::WindowItem {
@@ -197,6 +208,8 @@ impl PlayerInventory {
           if new_amount != prev_amount {
             self.set(slot, stack.with_amount(new_amount));
           }
+          // For debug
+          self.sync_all();
         } else {
           let new_amount = if in_main {
             self.win_mut().unwrap().add_sync(&stack)
