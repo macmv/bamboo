@@ -115,13 +115,18 @@ impl Plugin {
 
   pub fn call(&self, path: TyPath, args: Vec<Var>) -> Var {
     match &self.sl {
-      Some(sl) => match sl.call_args(path, args.into_iter().map(|v| v.into_ref()).collect()) {
-        Ok(v) => v,
-        Err(e) => {
-          self.print_err(e);
-          Var::None
+      Some(sl) => {
+        if !sl.has_func(&path) {
+          return Var::None;
         }
-      },
+        match sl.call_args(&path, args.into_iter().map(|v| v.into_ref()).collect()) {
+          Ok(v) => v,
+          Err(e) => {
+            self.print_err(e);
+            Var::None
+          }
+        }
+      }
       None => Var::None,
     }
   }

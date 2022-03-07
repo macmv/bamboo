@@ -169,41 +169,41 @@ fn format(args: &[VarRef]) -> String {
 impl Plugin {
   pub fn add_builtins(&self, sl: &mut Sugarlang) {
     let sc = self.sc();
-    sl.add_builtin_fn(path!(sugarcane::instance), move |_env, _slf, args, pos| {
+    sl.add_builtin_fn(path!(sugarcane::instance), false, move |_env, _slf, args, pos| {
       RuntimeError::check_arg_len(&args, 0, pos)?;
       Ok(sc.clone().into())
     });
     {
       let name = self.name().clone();
-      sl.add_builtin_fn(path!(sugarcane::trace), move |_env, _slf, args, _pos| {
+      sl.add_builtin_fn(path!(sugarcane::trace), false, move |_env, _slf, args, _pos| {
         trace!("plugin `{}`: {}", name, format(&args));
         Ok(Var::None)
       });
     }
     {
       let name = self.name().clone();
-      sl.add_builtin_fn(path!(sugarcane::debug), move |_env, _slf, args, _pos| {
+      sl.add_builtin_fn(path!(sugarcane::debug), false, move |_env, _slf, args, _pos| {
         debug!("plugin `{}`: {}", name, format(&args));
         Ok(Var::None)
       });
     }
     {
       let name = self.name().clone();
-      sl.add_builtin_fn(path!(sugarcane::info), move |_env, _slf, args, _pos| {
+      sl.add_builtin_fn(path!(sugarcane::info), false, move |_env, _slf, args, _pos| {
         info!("plugin `{}`: {}", name, format(&args));
         Ok(Var::None)
       });
     }
     {
       let name = self.name().clone();
-      sl.add_builtin_fn(path!(sugarcane::warn), move |_env, _slf, args, _pos| {
+      sl.add_builtin_fn(path!(sugarcane::warn), false, move |_env, _slf, args, _pos| {
         warn!("plugin `{}`: {}", name, format(&args));
         Ok(Var::None)
       });
     }
     {
       let name = self.name().clone();
-      sl.add_builtin_fn(path!(sugarcane::error), move |_env, _slf, args, _pos| {
+      sl.add_builtin_fn(path!(sugarcane::error), false, move |_env, _slf, args, _pos| {
         error!("plugin `{}`: {}", name, format(&args));
         Ok(Var::None)
       });

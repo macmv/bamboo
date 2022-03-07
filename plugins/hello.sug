@@ -25,8 +25,6 @@ fn init() {
 
   c = Command::new("ui", handle_ui)
   sc.add_command(c)
-
-  stack = Stack::new("stonea")
 }
 
 fn handle_ui(sc, player, args) {
@@ -35,12 +33,12 @@ fn handle_ui(sc, player, args) {
     "x abcde x",
     "xxxxxxxxx",
   ])
-  ui.item("x", "gray_stained_glass_pane")
-  ui.item("a", "stone")
-  ui.item("b", "dirt")
-  ui.item("c", "stick")
-  ui.item("d", "diamond_sword")
-  ui.item("e", "black_wool")
+  ui.item("x", Stack::new("gray_stained_glass_pane"))
+  ui.item("a", Stack::new("stone").with_amount(3))
+  ui.item("b", Stack::new("dirt"))
+  ui.item("c", Stack::new("stick"))
+  ui.item("d", Stack::new("diamond_sword"))
+  ui.item("e", Stack::new("black_wool"))
   player.show_inventory(ui.to_inventory(), Chat::new("big gaming"))
 }
 
