@@ -222,7 +222,9 @@ impl Plugin {
     sl.add_builtin_ty::<player::SlPlayer>();
     sl.add_builtin_ty::<world::SlWorld>();
     sl.add_builtin_ty::<world::gen::SlBiome>();
+  }
 
+  pub fn generate_docs(&self, sl: &Sugarlang) {
     let docs = sl.generate_docs(
       &[
         (
@@ -404,9 +406,5 @@ impl Plugin {
       ],
     );
     docs.save("target/sl_docs");
-    info!(
-      "generated docs at {}",
-      std::env::current_dir().unwrap().join("target/sl_docs/sugarcane/index.html").display()
-    );
   }
 }

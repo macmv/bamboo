@@ -2,9 +2,8 @@
 extern crate log;
 
 use clap::Parser;
-use sc_server::{net::ConnectionManager, plugin::Plugin, world::WorldManager};
+use sc_server::{net::ConnectionManager, world::WorldManager};
 use std::{error::Error, sync::Arc, thread};
-use sugarlang::Sugarlang;
 
 /// Simple program to greet a person
 #[derive(Parser, Debug)]
@@ -12,8 +11,13 @@ use sugarlang::Sugarlang;
 struct Args {
   /// If set, the server will generate sugarlang docs and exit, without doing
   /// anything else.
-  #[clap(short, long)]
+  #[clap(long)]
   only_docs: bool,
+  /// If set, then docs will not be written. They are written by default so
+  /// that new users can easily find them. If this is set, `only_docs` will
+  /// be ignored.
+  #[clap(long)]
+  no_docs:   bool,
 }
 
 // #[derive(Clone)]
@@ -61,11 +65,11 @@ fn main() -> Result<(), Box<dyn Error>> {
   let args = Args::parse();
   sc_common::init("server");
 
-  if args.only_docs {
-    let plugin = Plugin::new(0, "".into(), Arc::new(WorldManager::new()));
-    let mut sl = Sugarlang::new();
-    plugin.add_builtins(&mut sl);
-    return Ok(());
+  if !args.no_docs {
+    sc_server::generate_sl_docs();
+    if args.only_docs {
+      return Ok(());
+    }
   }
 
   let addr = "0.0.0.0:8483".parse().unwrap();
