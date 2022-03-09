@@ -26,7 +26,9 @@ pages:
     paths:
     - public
 
+# See https://www.collabora.com/news-and-blog/blog/2021/03/24/rust-integrating-llvm-source-base-code-coverage-with-gitlab/
 coverage:
+  stage: deploy
   image: "rustdocker/rust:nightly"
   stage: extras
   variables:
@@ -38,6 +40,15 @@ coverage:
       # generate html report
     - cargo install grcov
     - grcov . --binary-path ./target/debug/ -s . -t html --branch --ignore-not-existing --ignore "*cargo*" -o ./coverage/
+      # generate cobertura report for gitlab integration
+    - pip3 install lcov_cobertura
+    - grcov . --binary-path ./target/debug/ -s . -t lcov --branch --ignore-not-existing --ignore "*cargo*" -o coverage.lcov
+    - python3 /usr/local/lib/python3.5/dist-packages/lcov_cobertura.py coverage.lcov
+      # output coverage summary for gitlab parsing
+    - apt-get update && apt-get install -y lcov
+    - lcov --summary coverage.lcov
   artifacts:
     paths:
       - 'coverage'
+    reports:
+      cobertura: coverage.xml
