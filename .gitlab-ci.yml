@@ -25,3 +25,19 @@ pages:
   artifacts:
     paths:
     - public
+
+coverage:
+  image: "rustdocker/rust:nightly"
+  stage: extras
+  variables:
+    RUSTFLAGS: "-Zinstrument-coverage"
+    LLVM_PROFILE_FILE: "coverage-%p-%m.profraw"
+  script:
+    - rustup component add llvm-tools-preview
+    - cargo test
+      # generate html report
+    - cargo install grcov
+    - grcov . --binary-path ./target/debug/ -s . -t html --branch --ignore-not-existing --ignore "*cargo*" -o ./coverage/
+  artifacts:
+    paths:
+      - 'coverage'
