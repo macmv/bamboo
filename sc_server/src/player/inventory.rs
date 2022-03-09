@@ -87,59 +87,45 @@ impl PlayerInventory {
       self.main.get(index as u32)
     }
   }
-  /// Replaces the item at `index` with the given item. The old item will be
-  /// returned. This allows you to replace items without cloning them.
-  pub fn replace(&mut self, index: i32, stack: Stack) -> Stack {
+  // This is private as modifying the stack doesn't send an update to the client.
+  fn get_mut(&mut self, index: i32) -> &mut Stack {
     if index == -999 {
-      self.main.conn.send(cb::Packet::WindowItem {
-        wid:  u8::MAX,
-        slot: -1,
-        item: stack.to_item(),
-      });
-      mem::replace(&mut self.window.as_mut().unwrap().1, stack)
+      &mut self.window.as_mut().unwrap().1
     } else if let Some((win, _)) = &mut self.window {
       if index >= 0 {
         let i = index as u32;
         if i < win.size() {
-          win.replace(i, stack)
+          win.get_mut(i)
         } else {
-          self.main.replace(i - win.size(), stack)
+          self.main.get_mut(i - win.size())
         }
       } else {
-        self.main.replace(index as u32, stack)
+        self.main.get_mut(index as u32)
       }
     } else {
-      self.main.replace(index as u32, stack)
+      self.main.get_mut(index as u32)
     }
+  }
+  /// Replaces the item at `index` with the given item. The old item will be
+  /// returned. This allows you to replace items without cloning them.
+  pub fn replace(&mut self, index: i32, stack: Stack) -> Stack {
+    let res = mem::replace(self.get_mut(index), stack);
+    self.sync(index);
+    res
   }
   /// Sets the item in the inventory. This uses absolute ids, so depending
   /// on if a window is open, the actual slot being accessed may change. Use
   /// [`main`](Self::main) or [`win`](Self::win) to access the main inventory or
   /// the open window directly.
   pub fn set(&mut self, index: i32, stack: Stack) {
-    if index == -999 {
-      self.main.conn.send(cb::Packet::WindowItem {
-        wid:  u8::MAX,
-        slot: -1,
-        item: stack.to_item(),
-      });
-      self.window.as_mut().unwrap().1 = stack;
-    } else if let Some((win, _)) = &mut self.window {
-      if index >= 0 {
-        let i = index as u32;
-        if i < win.size() {
-          win.set(i, stack)
-        } else {
-          self.main.set(i - win.size(), stack)
-        }
-      } else {
-        self.main.set(index as u32, stack)
-      }
-    } else {
-      self.main.set(index as u32, stack)
-    }
+    *self.get_mut(index) = stack;
+    self.sync(index);
   }
 
+  /// Sends an inventory update to the client. This is more efficient than
+  /// calling [`sync`](Self::sync) for all the slots in the inventory, but is
+  /// less efficient than syncing a single slot. Only use this when needed, as
+  /// it will send the data for every item to the client.
   pub fn sync_all(&self) {
     let mut items: Vec<_> = self.main.inv.items().iter().map(|i| i.to_item()).collect();
     let mut held = Stack::empty().to_item();
@@ -151,6 +137,9 @@ impl PlayerInventory {
     }
     self.main.conn.send(cb::Packet::WindowItems { wid: 1, items, held });
   }
+  /// Sends an item update for the given slot. This shouldn't every be needed,
+  /// as functions like [`set`](Self::set) and [`replace`](Self::replace) will
+  /// call this for you.
   pub fn sync(&self, index: i32) {
     if index == -999 {
       self.main.conn.send(cb::Packet::WindowItem {
@@ -179,12 +168,13 @@ impl PlayerInventory {
     info!("handling click at slot {slot} {click:?}");
 
     macro_rules! allow {
-      (self.$name:ident($a:expr, $b:expr)) => {
+      (self.$name:ident($($arg:expr),*)) => {
         if allow {
-          self.$name($a, $b);
+          self.$name($($arg),*);
         } else {
-          self.sync($a);
-          self.sync($b);
+          $(
+            self.sync($arg);
+          )*
         }
       };
     }
@@ -225,6 +215,8 @@ impl PlayerInventory {
         }
       }
       ClickWindow::Number(num) => allow!(self.swap(slot, num as i32 + 27 + inv_size as i32)),
+      ClickWindow::Drop => allow!(self.drop_one(slot)),
+      ClickWindow::DropAll => allow!(self.drop_all(slot)),
       _ => todo!(),
     }
   }
@@ -248,29 +240,47 @@ impl PlayerInventory {
     let b_it = self.replace(b, a_it);
     self.set(a, b_it);
   }
+
+  /// Removes a single item from the given slot.
+  pub fn drop_one(&mut self, slot: i32) {
+    let it = self.get(slot);
+    if it.is_empty() || it.amount() == 0 {
+      return;
+    }
+    let _old = if it.amount() == 1 {
+      self.replace(slot, Stack::empty());
+    } else {
+      let it = self.get_mut(slot);
+      it.set_amount(it.amount() - 1);
+      self.sync(slot);
+      self.get(slot).clone();
+    };
+    // TODO: Spawn entity using `old`
+  }
+
+  /// Removes the entire stack at the given slot.
+  pub fn drop_all(&mut self, slot: i32) {
+    let _old = self.replace(slot, Stack::empty());
+    // TODO: Spawn entity using `old`
+  }
 }
 
 impl WrappedInventory {
   pub fn new(inv: Inventory, conn: ConnSender) -> Self { WrappedInventory { inv, conn, offset: 0 } }
   /// Gets the item at the given index.
   pub fn get(&self, index: u32) -> &Stack { self.inv.get(index as u32) }
+  /// This is private as updating the item doesn't send an update to the client.
+  fn get_mut(&mut self, index: u32) -> &mut Stack { self.inv.get_mut(index as u32) }
   /// Sets the item in the inventory.
   pub fn set(&mut self, index: u32, stack: Stack) {
-    self.conn.send(cb::Packet::WindowItem {
-      wid:  1,
-      slot: (index + self.offset) as i32,
-      item: stack.to_item(),
-    });
-    self.inv.set(index as u32, stack);
+    *self.get_mut(index) = stack;
+    self.sync(index);
   }
   /// Replaces an item in the inventory.
   pub fn replace(&mut self, index: u32, stack: Stack) -> Stack {
-    self.conn.send(cb::Packet::WindowItem {
-      wid:  1,
-      slot: (index + self.offset) as i32,
-      item: stack.to_item(),
-    });
-    self.inv.replace(index as u32, stack)
+    let res = mem::replace(self.get_mut(index), stack);
+    self.sync(index);
+    res
   }
   /// Syncs the item at the given slot with the client.
   pub fn sync(&self, index: u32) {
@@ -285,6 +295,9 @@ impl WrappedInventory {
   /// number of remaining items in the stack. If the inventory has enough space,
   /// this will return 0.
   pub fn add(&mut self, stack: &Stack) -> u8 {
+    // Local `sync` impl, which doesn't use the internal inventory. This is needed
+    // because we iterate through the inventory with `items_mut`, so the inventory
+    // is mutably borrowed for the entire loop.
     let sync = |index: u32, item: &Stack| {
       self.conn.send(cb::Packet::WindowItem {
         wid:  1,
