@@ -8,7 +8,9 @@ use sc_common::{
   nbt,
   net::{
     cb,
-    cb::{CommandType, Packet},
+    cb::{
+      CommandType, ObjectiveAction, ObjectiveType, Packet, ScoreboardAction, ScoreboardDisplay,
+    },
   },
   util::{Buffer, UUID},
   version::ProtocolVersion,
@@ -494,6 +496,75 @@ impl ToTcp for Packet {
             data:                   None,
             unknown:                data,
           }
+        }
+      }
+      Packet::ScoreboardDisplay { position, objective } => {
+        let pos = match position {
+          ScoreboardDisplay::List => 0,
+          ScoreboardDisplay::Sidebar => 1,
+          ScoreboardDisplay::BelowName => 2,
+        };
+        if ver < ProtocolVersion::V1_18 {
+          GPacket::ScoreboardDisplayV8 { position: pos, score_name: objective }
+        } else {
+          GPacket::ScoreboardDisplayV18 { slot: pos, name: objective }
+        }
+      }
+      Packet::ScoreboardObjective { mode, objective } => {
+        let m = match mode {
+          ObjectiveAction::Create { .. } => 0,
+          ObjectiveAction::Remove => 1,
+          ObjectiveAction::Update { .. } => 2,
+        };
+        let mut data = vec![];
+        let mut buf = Buffer::new(&mut data);
+        match mode {
+          ObjectiveAction::Create { value, ty } | ObjectiveAction::Update { value, ty } => {
+            buf.write_str(&value);
+            buf.write_varint(match ty {
+              ObjectiveType::Integer => 0,
+              ObjectiveType::Hearts => 1,
+            });
+          }
+          _ => {}
+        }
+        if ver < ProtocolVersion::V1_18 {
+          GPacket::ScoreboardObjectiveV8 {
+            objective_name:  objective,
+            field_149342_c:  m,
+            objective_value: None,
+            ty:              None,
+            unknown:         data,
+          }
+        } else {
+          GPacket::ScoreboardObjectiveV18 {
+            name:         objective,
+            mode:         m,
+            unknown:      data,
+            add_mode:     None,
+            remove_mode:  None,
+            update_mode:  None,
+            display_name: None,
+            ty:           None,
+          }
+        }
+      }
+      Packet::ScoreboardUpdate { username, objective, action } => {
+        let mut data = vec![];
+        let mut buf = Buffer::new(&mut data);
+        match action {
+          ScoreboardAction::Create(score) => buf.write_varint(score),
+          ScoreboardAction::Remove => {}
+        }
+        GPacket::UpdateScoreV8 {
+          name: username,
+          objective,
+          action: match action {
+            ScoreboardAction::Create(_) => 0,
+            ScoreboardAction::Remove => 1,
+          },
+          value: None,
+          unknown: data,
         }
       }
       Packet::SetPosLook { x, y, z, yaw, pitch, flags, teleport_id, should_dismount } => {

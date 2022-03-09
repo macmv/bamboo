@@ -15,9 +15,11 @@ use sc_common::{
 use std::{f64::consts, fmt, net::SocketAddr, sync::Arc, time::Instant};
 
 mod inventory;
+mod scoreboard;
 mod tick;
 
 pub use inventory::PlayerInventory;
+pub use scoreboard::Scoreboard;
 
 #[derive(Debug, Clone)]
 struct PlayerPosition {
@@ -53,9 +55,9 @@ pub struct Player {
 
   game_mode: Mutex<GameMode>,
 
-  inv: Mutex<PlayerInventory>,
-
-  pos: Mutex<PlayerPosition>,
+  inv:        Mutex<PlayerInventory>,
+  scoreboard: Mutex<Scoreboard>,
+  pos:        Mutex<PlayerPosition>,
 }
 
 impl fmt::Debug for Player {
@@ -66,6 +68,7 @@ impl fmt::Debug for Player {
       .field("ver", &self.ver)
       .field("view_distance", &self.view_distance)
       .field("inv", &self.inv)
+      .field("scoreboard", &self.scoreboard)
       .field("pos", &self.pos)
       .finish()
   }
@@ -78,6 +81,7 @@ impl Player {
       username: info.username,
       uuid: info.uuid,
       inv: PlayerInventory::new(conn.clone()).into(),
+      scoreboard: Scoreboard::new(conn.clone()).into(),
       conn,
       ver: ProtocolVersion::from(info.ver as i32),
       view_distance: world.config().get("view-distance"),
@@ -114,6 +118,8 @@ impl Player {
 
   /// Returns a locked reference to the player's inventory.
   pub fn lock_inventory(&self) -> MutexGuard<PlayerInventory> { self.inv.lock() }
+  /// Returns a locked reference to the player's scoreboard.
+  pub fn lock_scoreboard(&self) -> MutexGuard<Scoreboard> { self.scoreboard.lock() }
 
   /// Returns a reference to the world the player is in.
   pub fn world(&self) -> &Arc<World> { &self.world }

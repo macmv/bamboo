@@ -109,6 +109,25 @@ pub enum Packet {
   },
   #[id = 15]
   PluginMessage { channel: String, data: Vec<u8> },
+  #[id = 25]
+  ScoreboardDisplay {
+    #[must_exist]
+    position:  ScoreboardDisplay,
+    objective: String,
+  },
+  #[id = 26]
+  ScoreboardObjective {
+    objective: String,
+    #[must_exist]
+    mode:      ObjectiveAction,
+  },
+  #[id = 27]
+  ScoreboardUpdate {
+    username:  String,
+    objective: String,
+    #[must_exist]
+    action:    ScoreboardAction,
+  },
   #[id = 16]
   SetPosLook {
     x:               f64,
@@ -205,6 +224,47 @@ pub enum CommandType {
   Literal,
   #[id = 2]
   Argument,
+}
+
+#[sc_macros::transfer]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ScoreboardDisplay {
+  #[id = 0]
+  List,
+  #[id = 1]
+  Sidebar,
+  #[id = 2]
+  BelowName,
+}
+#[derive(Debug, Clone, PartialEq, Eq)]
+#[sc_macros::transfer]
+pub enum ObjectiveAction {
+  #[id = 0]
+  Create { value: String, ty: ObjectiveType },
+  #[id = 1]
+  Remove,
+  #[id = 2]
+  Update { value: String, ty: ObjectiveType },
+}
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[sc_macros::transfer]
+pub enum ObjectiveType {
+  #[id = 0]
+  Integer,
+  #[id = 1]
+  Hearts,
+}
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[sc_macros::transfer]
+pub enum ScoreboardAction {
+  #[id = 0]
+  Create(i32),
+  #[id = 1]
+  Remove,
+}
+
+impl Default for ObjectiveType {
+  fn default() -> Self { ObjectiveType::Integer }
 }
 
 #[sc_macros::transfer]
