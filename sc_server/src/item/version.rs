@@ -131,6 +131,6 @@ mod tests {
     let conv = TypeConverter::new();
 
     // Diamond block
-    assert_eq!(conv.to_old(182, BlockVersion::V1_8), 57);
+    assert_eq!(conv.to_old(182, BlockVersion::V1_8), (57, 0));
   }
 }
