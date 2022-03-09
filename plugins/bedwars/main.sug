@@ -2,28 +2,23 @@ struct PlayerData {
   teams: arr,
 }
 struct Team {
-  color: str,
   players: arr,
 }
 
 fn init() {
   sugarcane::info("initializing bedwars")
 
-  teams = []
-  teams.push(Team {
-    color: "red",
+  teams = map {}
+  teams.insert("red", Team {
     players: [],
   })
-  teams.push(Team {
-    color: "green",
+  teams.insert("green", Team {
     players: [],
   })
-  teams.push(Team {
-    color: "blue",
+  teams.insert("blue", Team {
     players: [],
   })
-  teams.push(Team {
-    color: "yellow",
+  teams.insert("yellow", Team {
     players: [],
   })
   sc = sugarcane::instance()
@@ -32,13 +27,14 @@ fn init() {
 
 fn add_player_to_team(player, team) {
   sc = sugarcane::instance()
-  teams = sc.load()
+  teams = sc.lock()
   for i = 0, i < teams.len(), i++ {
     if teams[i].color == team {
       teams[i].players.push(player)
       break
     }
   }
+  sc.unlock(teams)
 }
 
 fn start_game(sc) {

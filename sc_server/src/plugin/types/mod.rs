@@ -152,6 +152,41 @@ impl Sugarcane {
   ///
   /// See the `Biome` docs for more.
   pub fn add_biome(&self, _biome: &SlBiome) -> Result<(), RuntimeError> { Ok(()) }
+
+  /// Locks the internal data. If the internal data is already locked, this will
+  /// continue trying to lock that data.
+  pub fn lock(&self) -> Var {
+    loop {
+      match self.data.lock().take() {
+        Some(v) => return v,
+        None => std::thread::yield_now(),
+      }
+    }
+  }
+
+  pub fn store(&self, data: &Var) -> Result<(), RuntimeError> {
+    let mut lock = self.data.lock();
+    if lock.is_none() {
+      return Err(RuntimeError::custom("data is already locked!", Span::call_site()));
+    }
+    lock.replace(data.clone());
+    Ok(())
+  }
+
+  /// Releases the lock on the internal data. This will move the given data back
+  /// into the lock. Note that if the lock is not held, this will return an
+  /// error.
+  pub fn unlock(&self, data: &Var) -> Result<(), RuntimeError> {
+    let prev = self.data.lock().replace(data.clone());
+    if let Some(prev) = prev {
+      Err(RuntimeError::custom(
+        format!("was not locked! existing data: {prev:?}"),
+        Span::call_site(),
+      ))
+    } else {
+      Ok(())
+    }
+  }
 }
 
 fn format(args: &[VarRef]) -> String {

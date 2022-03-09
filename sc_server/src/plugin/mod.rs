@@ -4,7 +4,7 @@ mod types;
 pub use plugin::Plugin;
 
 use crate::{block, player::Player, world::WorldManager};
-use parking_lot::Mutex;
+use parking_lot::{Mutex, MutexGuard};
 use sc_common::{math::Pos, net::sb::ClickWindow};
 use std::{fmt, fs, sync::Arc};
 use sugarlang::runtime::Var;
@@ -28,12 +28,17 @@ pub struct Sugarcane {
   idx:    usize,
   plugin: String,
   wm:     Arc<WorldManager>,
-  data:   Arc<Mutex<Var>>,
+  // Locking this removes the value. If the value is none, then this enters a wait loop until there
+  // is a value present.
+  //
+  // This is not by any means "fast", but it will work as long as a thread doesn't lock this for
+  // too long.
+  data:   Arc<Mutex<Option<Var>>>,
 }
 
 impl Sugarcane {
   pub fn new(idx: usize, plugin: String, wm: Arc<WorldManager>) -> Self {
-    Sugarcane { idx, plugin, wm, data: Arc::new(Mutex::new(Var::None)) }
+    Sugarcane { idx, plugin, wm, data: Arc::new(Mutex::new(Some(Var::None))) }
   }
 }
 
