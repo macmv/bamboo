@@ -325,7 +325,7 @@ mod tests {
     assert_eq!(Parser::Bool.parse(&mut Tokenizer::new("false"), &NoneSender {})?, Arg::Bool(false));
     assert_eq!(
       Parser::Bool.parse(&mut Tokenizer::new("invalid"), &NoneSender {}).unwrap_err().kind(),
-      &ErrorKind::Expected("true or false".into())
+      &ErrorKind::Invalid,
     );
 
     // assert_eq!(Parser::Double { min: None, max: None }.parse("5.3")?,
