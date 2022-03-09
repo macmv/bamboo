@@ -7,7 +7,7 @@ use crate::{block, player::Player, world::WorldManager};
 use parking_lot::{Mutex, MutexGuard};
 use sc_common::{math::Pos, net::sb::ClickWindow};
 use std::{fmt, fs, sync::Arc};
-use sugarlang::runtime::Var;
+use sugarlang::runtime::{Var, VarSend};
 
 #[derive(Debug)]
 pub enum Event {
@@ -33,12 +33,12 @@ pub struct Sugarcane {
   //
   // This is not by any means "fast", but it will work as long as a thread doesn't lock this for
   // too long.
-  data:   Arc<Mutex<Option<Var>>>,
+  data:   Arc<Mutex<Option<VarSend>>>,
 }
 
 impl Sugarcane {
   pub fn new(idx: usize, plugin: String, wm: Arc<WorldManager>) -> Self {
-    Sugarcane { idx, plugin, wm, data: Arc::new(Mutex::new(Some(Var::None))) }
+    Sugarcane { idx, plugin, wm, data: Arc::new(Mutex::new(Some(VarSend::None))) }
   }
 }
 

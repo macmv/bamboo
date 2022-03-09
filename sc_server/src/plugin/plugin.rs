@@ -119,7 +119,7 @@ impl Plugin {
         if !sl.has_func(&path) {
           return Var::None;
         }
-        match sl.call_args(&path, args.into_iter().map(|v| v.into_ref()).collect()) {
+        match sl.call_args(&path, args) {
           Ok(v) => v,
           Err(e) => {
             self.print_err(e);

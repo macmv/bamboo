@@ -5,7 +5,7 @@ use sugarlang::{
   docs::{markdown, MarkdownSection},
   parse::token::Span,
   path,
-  runtime::{RuntimeError, Var, VarRef},
+  runtime::{RuntimeError, Var},
   Sugarlang,
 };
 
@@ -102,17 +102,9 @@ impl Sugarcane {
           if let Err(e) = cb.call(
             &mut plugin.lock_env(),
             vec![
-              VarRef::Owned(sc.into()),
-              player
-                .map(|p| VarRef::Owned(player::SlPlayer::from(p.clone()).into()))
-                .unwrap_or(VarRef::Owned(Var::None)),
-              VarRef::Owned(
-                args
-                  .iter()
-                  .map(|arg| command::sl_from_arg(arg.clone()))
-                  .collect::<Vec<Var>>()
-                  .into(),
-              ),
+              sc.into(),
+              player.map(|p| player::SlPlayer::from(p.clone()).into()).unwrap_or(Var::None),
+              args.iter().map(|arg| command::sl_from_arg(arg.clone())).collect::<Vec<Var>>().into(),
             ],
           ) {
             err = Some(e);
@@ -158,26 +150,30 @@ impl Sugarcane {
   pub fn lock(&self) -> Var {
     loop {
       match self.data.lock().take() {
-        Some(v) => return v,
+        Some(v) => return v.into(),
         None => std::thread::yield_now(),
       }
     }
   }
 
-  pub fn store(&self, data: &Var) -> Result<(), RuntimeError> {
+  /// Locks the internal data, stores the given value, and then unlocks it. Note
+  /// that this should be avoided if you have multiple threads modifying
+  /// `data`. This can cause a race condition if you are not careful. If you
+  /// need to hold onto a lock, then call `Sugarcane::lock` instead.
+  pub fn store(&self, data: Var) -> Result<(), RuntimeError> {
     let mut lock = self.data.lock();
     if lock.is_none() {
       return Err(RuntimeError::custom("data is already locked!", Span::call_site()));
     }
-    lock.replace(data.clone());
+    lock.replace(data.into());
     Ok(())
   }
 
   /// Releases the lock on the internal data. This will move the given data back
   /// into the lock. Note that if the lock is not held, this will return an
   /// error.
-  pub fn unlock(&self, data: &Var) -> Result<(), RuntimeError> {
-    let prev = self.data.lock().replace(data.clone());
+  pub fn unlock(&self, data: Var) -> Result<(), RuntimeError> {
+    let prev = self.data.lock().replace(data.into());
     if let Some(prev) = prev {
       Err(RuntimeError::custom(
         format!("was not locked! existing data: {prev:?}"),
@@ -189,7 +185,7 @@ impl Sugarcane {
   }
 }
 
-fn format(args: &[VarRef]) -> String {
+fn format(args: &[Var]) -> String {
   let mut msg = String::new();
   let mut iter = args.iter();
   if let Some(a) = iter.next() {

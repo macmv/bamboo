@@ -53,9 +53,9 @@ impl SlStack {
 impl SlUI {
   /// Returns the block kind for that string. This will return an error if the
   /// block name is invalid.
-  pub fn new(rows: Vec<&str>) -> Result<SlUI, RuntimeError> {
+  pub fn new(rows: Vec<String>) -> Result<SlUI, RuntimeError> {
     Ok(SlUI {
-      inner: UI::new(rows.iter().map(|&v| v.into()).collect())
+      inner: UI::new(rows.iter().map(|v| v.into()).collect())
         .map_err(|e| RuntimeError::Custom(e.to_string(), Span::call_site()))?,
     })
   }

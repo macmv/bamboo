@@ -40,10 +40,11 @@ impl SlPlayer {
   /// // in red, then gold, then yellow.
   /// p.send_message(chat)
   /// ```
-  pub fn send_message(&self, msg: &Var) {
-    let out = match msg {
+  pub fn send_message(&self, msg: Var) {
+    let out = match &msg {
       Var::Builtin(_, data) => {
-        let chat = data.as_any().downcast_ref::<SlChat>();
+        let borrow = data.borrow();
+        let chat = borrow.as_any().downcast_ref::<SlChat>();
         if let Some(chat) = chat {
           chat.inner.lock().unwrap().clone()
         } else {
