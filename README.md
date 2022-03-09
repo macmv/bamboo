@@ -1,5 +1,8 @@
 # Sugarcane in Rust
 
+[![lines of code](https://tokei.rs/b1/gitlab/macmv/sugarcane?category=code)](https://github.com/XAMPPRocky/tokei)
+[![sugarlang docs](https://macmv.gitlab.io/sugarcane/badge.svg)](https://macmv.gitlab.io/sugarcane/sugarcane/index.html)
+
 A safe, fast, and secure Minecraft server optimized for minigames.
 
 ### How to run
