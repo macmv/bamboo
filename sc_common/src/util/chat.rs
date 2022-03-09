@@ -84,6 +84,18 @@ impl Chat {
     out
   }
 
+  /// Generates a color-coded string for this message. Depending on where the
+  /// text is being rendered, this may be the only option that works. However,
+  /// this is much less flexible than the json format, and there may be missing
+  /// features.
+  pub fn to_codes(&self) -> String {
+    let mut out = String::new();
+    for s in &self.sections {
+      s.to_codes(&mut out);
+    }
+    out
+  }
+
   pub fn sections_len(&self) -> usize { self.sections.len() }
   pub fn get_section(&mut self, idx: usize) -> Option<&mut Section> { self.sections.get_mut(idx) }
 }
@@ -299,6 +311,42 @@ impl Section {
       e.to_plain(out);
     }
   }
+
+  fn to_codes(&self, out: &mut String) {
+    if self.bold == Some(true) {
+      out.push_str("§l");
+    }
+    if self.italic == Some(true) {
+      out.push_str("§o");
+    }
+    if self.underlined == Some(true) {
+      out.push_str("§u");
+    }
+    if self.strikethrough == Some(true) {
+      out.push_str("§m");
+    }
+    if self.obfuscated == Some(true) {
+      out.push_str("§k");
+    }
+    if let Some(c) = &self.color {
+      if c != &Color::White {
+        out.push('§');
+        out.push(c.code());
+      }
+    }
+    out.push_str(&self.text);
+    for e in &self.extra {
+      e.to_codes(out);
+    }
+    // This is the lazy way, of just resetting after every section. This is
+    // meant to be after subsections, so that they keep the formatting of their
+    // parent. This only works for a single level deep of children, but this format
+    // isn't meant to be complete anyways.
+    //
+    // TODO: Implement resetting/color codes the correct way, where we track the
+    // color state between every section, and find the difference between each one.
+    out.push_str("§r");
+  }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -347,6 +395,29 @@ impl Color {
       Self::Yellow => "yellow",
       Self::White => "white",
       Self::Custom(v) => v,
+    }
+  }
+
+  /// Returns the color code for this color.
+  pub const fn code(&self) -> char {
+    match self {
+      Self::Black => '0',
+      Self::DarkBlue => '1',
+      Self::DarkGreen => '2',
+      Self::DarkAqua => '3',
+      Self::DarkRed => '4',
+      Self::Purple => '5',
+      Self::Gold => '6',
+      Self::Gray => '7',
+      Self::DarkGray => '8',
+      Self::Blue => '9',
+      Self::BrightGreen => 'a',
+      Self::Cyan => 'b',
+      Self::Red => 'c',
+      Self::Pink => 'd',
+      Self::Yellow => 'e',
+      Self::White => 'f',
+      Self::Custom(_) => 'f',
     }
   }
 }

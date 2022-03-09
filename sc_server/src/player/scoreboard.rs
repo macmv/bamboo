@@ -61,7 +61,7 @@ impl Scoreboard {
       objective: "scoreboard".into(),
       action:    cb::ScoreboardAction::Remove,
     });
-    self.lines[line as usize] = text.to_plain();
+    self.lines[line as usize] = text.to_codes();
     self.conn.send(cb::Packet::ScoreboardUpdate {
       username:  self.lines[line as usize].clone(),
       objective: "scoreboard".into(),
