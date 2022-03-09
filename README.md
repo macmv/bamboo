@@ -1,7 +1,6 @@
 # Sugarcane in Rust
 
 [![lines of code](https://tokei.rs/b1/gitlab/macmv/sugarcane?category=code)](https://github.com/XAMPPRocky/tokei)
-[![sugarlang docs](https://macmv.gitlab.io/sugarcane/badge.svg)](https://macmv.gitlab.io/sugarcane/sugarcane/index.html)
 
 A safe, fast, and secure Minecraft server optimized for minigames.
 
@@ -180,14 +179,25 @@ If you would like to contribute to this project, I welcome your changes! Anythin
 in the features list above are all good tasks to work on, and would be very appriciated.
 
 If you are looking for the generated protocol code, you can go from this project
-directory into the generated code directory using this command (after you have run
-the server at least once without release mode):
+directory into the generated code directory using this command:
 ```bash
-cd $(find target/debug/build/sc_generated*/out | head -n 1)
+# For the proxy in debug mode:
+cd $(find target/debug/build/sc_proxy*/out | head -n 1)
+# For the proxy in release mode:
+cd $(find target/release/build/sc_proxy*/out | head -n 1)
+# For the server in debug mode:
+cd $(find target/debug/build/sc_server*/out | head -n 1)
+# For the server in release mode:
+cd $(find target/release/build/sc_server*/out | head -n 1)
 ```
 
-There, you can find a directory for the protocol, which has `cb.rs` and `sb.rs`
-stored. These are the generated protocol reader/writers.
+If you have run the server/proxy in debug/release mode, then the appropriate command
+should work. Note that these will all bring you to a directory containing the same
+folders.
+
+Inside this output directory, there will be a folder called `protocol`, which has
+`cb.rs` and `sb.rs` stored. These are the generated protocol files for clientbound
+and serverbound packets.
 
 ### What happened to [Sugarcane Go](https://gitlab.com/macmv/sugarcane-go)?
 
