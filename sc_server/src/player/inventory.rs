@@ -43,7 +43,7 @@ impl PlayerInventory {
     self.window = Some((WrappedInventory::new(inv, self.main.conn.clone()), Stack::empty()));
   }
   pub fn close_window(&mut self) {
-    let (_, _) = self.window.take().unwrap();
+    self.window.take();
     self.main.set_offset(0);
   }
 

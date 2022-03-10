@@ -69,7 +69,7 @@ impl FromTcp for Packet {
       GPacket::KeepAliveV12 { key: id } => Packet::KeepAlive { id: id as i32 },
       GPacket::PlayerActionV14 { pos, action, unknown, .. } => {
         let mut buf = tcp::Packet::from_buf_id(unknown, 0, ver);
-        if action < 2 {
+        if action <= 2 {
           Packet::BlockDig {
             pos,
             status: DigStatus::from_id(action as u8),
@@ -83,10 +83,16 @@ impl FromTcp for Packet {
       }
       GPacket::PlayerDiggingV8 { position, facing: _, status, unknown } => {
         let mut buf = Buffer::new(unknown);
-        Packet::BlockDig {
-          pos:    position,
-          status: DigStatus::from_id(status as u8),
-          face:   Face::from_id(buf.read_varint()? as u8),
+        if status <= 2 {
+          Packet::BlockDig {
+            pos:    position,
+            status: DigStatus::from_id(status as u8),
+            face:   Face::from_id(buf.read_varint()? as u8),
+          }
+        } else {
+          warn!("need to implement dropping item packets");
+          // placeholder
+          Packet::UseItem { hand: Hand::Main }
         }
       }
       GPacket::PlayerBlockPlacementV8 { position, placed_block_direction, unknown: _, .. } => {
