@@ -36,11 +36,12 @@ The `--release` flag will make the server/proxy faster at runtime, but take
 longer to compile. I recommend it for both, unless you are developing the
 server/proxy.
 
-Because of some compiler flags I have setup in `Cargo.toml`, I recommend setting
-your IDE to use a different profile. Any time my IDE builds, I pass the flag
-`--profile rust-analyzer` to cargo. This makes code validation much faster, as
-the dev profile uses opt-level 2 (instead of the default 0). This is because
-terrain generation is terribly slow with opt-level set to 0.
+After running the server or proxy, a file named `config-default.yml` and
+`proxy-default.yml` will be created. These files are written when the
+server/proxy start, and will not be read. Instead, modify `config.yml`
+and `proxy.yml` to override settings in the default config. Here you can
+do things like change the world generation, enable/disable plugins, and
+enable online mode for the proxy.
 
 ### Features
 
@@ -173,7 +174,7 @@ list.
    validate that it is sending good data (things like making sure
    the client won't leak chunks, checks for keep alive packets, etc).
 
-### For developers
+### For Rust developers
 
 If you would like to contribute to this project, I welcome your changes! Anything
 in the features list above are all good tasks to work on, and would be very appriciated.
@@ -198,6 +199,26 @@ folders.
 Inside this output directory, there will be a folder called `protocol`, which has
 `cb.rs` and `sb.rs` stored. These are the generated protocol files for clientbound
 and serverbound packets.
+
+Because of some compiler flags I have setup in `Cargo.toml`, I recommend setting
+your IDE to use a different profile. Any time my IDE builds, I pass the flag
+`--profile rust-analyzer` to cargo. This makes code validation much faster, as
+the dev profile uses opt-level 2 (instead of the default 0). This is because
+terrain generation is terribly slow with opt-level set to 0.
+
+### For Sugarlang devlopers
+
+Sugarlang is the language used for plugins in this server. See the
+[plugins](https://gitlab.com/macmv/sugarcane/-/tree/main/plugins) directory
+for some examples.
+
+The [docs](https://macmv.gitlab.io/sugarcane/sugarcane/index.html) are kept up
+to date, and those should be helpful when writing plugins.
+
+This language is mostly complete, but the actual interface with the server from
+Sugarlang is not complete at all. These plugins are mostly there to test the
+API that I'm writing, and they should contain examples of the newest features
+as I develop them.
 
 ### What happened to [Sugarcane Go](https://gitlab.com/macmv/sugarcane-go)?
 
