@@ -240,7 +240,6 @@ impl PlayerInventory {
       ClickWindow::DragStart(_) => self.drag_start(),
       ClickWindow::DragAdd(_) => self.drag_add(slot),
       ClickWindow::DragEnd(_) => self.drag_end(),
-      _ => todo!(),
     }
 
     self.sync_all();
