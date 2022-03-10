@@ -23,7 +23,7 @@ impl FromTcp for Packet {
       GPacket::ChatV8 { message } | GPacket::ChatV11 { message } => Packet::Chat { msg: message },
       GPacket::ClickWindowV8 {
         window_id,
-        slot_id,
+        mut slot_id,
         used_button,
         action_number,
         clicked_item: _,
@@ -32,6 +32,9 @@ impl FromTcp for Packet {
       } => {
         let mut buf = tcp::Packet::from_buf_id(unknown, 0, ver);
         let _item = buf.read_item(&conv)?;
+        if slot_id == -1 {
+          slot_id = -999;
+        }
         Packet::ClickWindow {
           id:   window_id.try_into().unwrap(),
           slot: slot_id.try_into().unwrap(),
@@ -43,7 +46,7 @@ impl FromTcp for Packet {
       }
       GPacket::ClickWindowV9 {
         window_id,
-        slot_id,
+        mut slot_id,
         used_button,
         action_number,
         clicked_item: _,
@@ -52,6 +55,9 @@ impl FromTcp for Packet {
       } => {
         let mut buf = tcp::Packet::from_buf_id(unknown, 0, ver);
         let _item = buf.read_item(&conv)?;
+        if slot_id == -1 {
+          slot_id = -999;
+        }
         Packet::ClickWindow {
           id:   window_id.try_into().unwrap(),
           slot: slot_id.try_into().unwrap(),
@@ -220,6 +226,6 @@ fn button(bt: i32) -> Result<Button> {
     0 => Button::Left,
     1 => Button::Right,
     2 => Button::Middle,
-    _ => return Err(io::Error::new(ErrorKind::Other, "invalid button").into()),
+    _ => return Err(io::Error::new(ErrorKind::Other, format!("invalid button {bt}")).into()),
   })
 }

@@ -49,7 +49,9 @@ pub(crate) fn handle(wm: &Arc<WorldManager>, player: &Arc<Player>, p: sb::Packet
       }
     }
     sb::Packet::CreativeInventoryUpdate { slot, item } => {
-      player.lock_inventory().set(slot.into(), item.into());
+      if slot >= 0 {
+        player.lock_inventory().set(slot.into(), item.into());
+      }
     }
     sb::Packet::ClickWindow { id: _, slot, mode } => {
       let allow =

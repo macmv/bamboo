@@ -203,11 +203,21 @@ impl PlayerInventory {
     let in_main = slot >= 0 && (slot as u32) > inv_size;
     info!("in main: {in_main}");
     match click {
-      ClickWindow::Click(button) => match button {
-        Button::Left => allow!(self.swap(slot, -999)),
-        Button::Right => allow!(self.split(slot, -999)),
-        Button::Middle => {}
-      },
+      ClickWindow::Click(button) => {
+        if slot == -999 {
+          match button {
+            Button::Left => allow!(self.drop_all(slot)),
+            Button::Right => allow!(self.drop_one(slot)),
+            Button::Middle => {}
+          }
+        } else {
+          match button {
+            Button::Left => allow!(self.swap(slot, -999)),
+            Button::Right => allow!(self.split(slot, -999)),
+            Button::Middle => {}
+          }
+        }
+      }
       ClickWindow::ShiftClick(_) => {
         let stack = self.get(slot).clone();
         let prev_amount = stack.amount();
