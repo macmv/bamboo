@@ -76,6 +76,57 @@ fn find_ids(
 
 fn old_item(i: &Item, old_map: &HashMap<String, Item>) -> (u32, u32) {
   match i.name.as_str() {
+    "granite" => (old_map["stone"].id, 1),
+    "polished_granite" => (old_map["stone"].id, 2),
+    "diorite" => (old_map["stone"].id, 3),
+    "polished_diorite" => (old_map["stone"].id, 4),
+    "andesite" => (old_map["stone"].id, 5),
+    "polished_andesite" => (old_map["stone"].id, 6),
+
+    "grass_block" => (old_map["grass"].id, 0),
+
+    "coarse_dirt" => (old_map["dirt"].id, 1),
+    "podzol" => (old_map["dirt"].id, 2),
+
+    "oak_planks" => (old_map["planks"].id, 0),
+    "spruce_planks" => (old_map["planks"].id, 1),
+    "birch_planks" => (old_map["planks"].id, 2),
+    "jungle_planks" => (old_map["planks"].id, 3),
+    "acacia_planks" => (old_map["planks"].id, 4),
+    "dark_oak_planks" => (old_map["planks"].id, 5),
+
+    "oak_sapling" => (old_map["sapling"].id, 0),
+    "spruce_sapling" => (old_map["sapling"].id, 1),
+    "birch_sapling" => (old_map["sapling"].id, 2),
+    "jungle_sapling" => (old_map["sapling"].id, 3),
+    "acacia_sapling" => (old_map["sapling"].id, 4),
+    "dark_oak_sapling" => (old_map["sapling"].id, 5),
+
+    "red_sand" => (old_map["sand"].id, 1),
+
+    "oak_log" => (old_map["log"].id, 0),
+    "spruce_log" => (old_map["log"].id, 1),
+    "birch_log" => (old_map["log"].id, 2),
+    "jungle_log" => (old_map["log"].id, 3),
+    "acacia_log" => (old_map["log"].id, 4),
+    "dark_oak_log" => (old_map["log"].id, 5),
+
+    "oak_leaves" => (old_map["leaves"].id, 0),
+    "spruce_leaves" => (old_map["leaves"].id, 1),
+    "birch_leaves" => (old_map["leaves"].id, 2),
+    "jungle_leaves" => (old_map["leaves"].id, 3),
+    "acacia_leaves" => (old_map["leaves"].id, 4),
+    "dark_oak_leaves" => (old_map["leaves"].id, 5),
+
+    "wet_sponge" => (old_map["sponge"].id, 1),
+
+    "chiseled_sandstone" => (old_map["sandstone"].id, 1),
+    "smooth_sandstone" => (old_map["sandstone"].id, 2),
+
+    "dead_bush" => (old_map["tallgrass"].id, 0),
+    "grass" => (old_map["tallgrass"].id, 1),
+    "fern" => (old_map["tallgrass"].id, 2),
+
     "white_wool" => (old_map["wool"].id, 0),
     "orange_wool" => (old_map["wool"].id, 1),
     "magenta_wool" => (old_map["wool"].id, 2),
@@ -92,6 +143,17 @@ fn old_item(i: &Item, old_map: &HashMap<String, Item>) -> (u32, u32) {
     "green_wool" => (old_map["wool"].id, 13),
     "red_wool" => (old_map["wool"].id, 14),
     "black_wool" => (old_map["wool"].id, 15),
+
+    "dandelion" => (old_map["yellow_flower"].id, 0),
+    "poppy" => (old_map["red_flower"].id, 0),
+    "blue_orchid" => (old_map["red_flower"].id, 1),
+    "allium" => (old_map["red_flower"].id, 2),
+    "azure_bluet" => (old_map["red_flower"].id, 3),
+    "red_tulip" => (old_map["red_flower"].id, 4),
+    "orange_tulip" => (old_map["red_flower"].id, 5),
+    "white_tulip" => (old_map["red_flower"].id, 6),
+    "pink_tulip" => (old_map["red_flower"].id, 7),
+    "oxeye_daisy" => (old_map["red_flower"].id, 8),
 
     "white_stained_glass_pane" => (old_map["stained_glass_pane"].id, 0),
     "orange_stained_glass_pane" => (old_map["stained_glass_pane"].id, 1),
