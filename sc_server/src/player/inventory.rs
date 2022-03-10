@@ -48,7 +48,7 @@ impl PlayerInventory {
   }
 
   /// Returns the item in the player's main hand.
-  pub fn main_hand(&self) -> &Stack { self.main().get(self.selected_index as u32 + 36) }
+  pub fn main_hand(&self) -> &Stack { self.main().get(self.selected_index as u32 + 27) }
 
   /// Returns the currently selected hotbar index.
   pub fn selected_index(&self) -> u8 { self.selected_index }

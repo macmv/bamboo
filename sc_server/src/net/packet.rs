@@ -4,7 +4,7 @@ use sc_common::{
   net::sb,
   util::chat::{Chat, Color, HoverEvent},
 };
-use std::sync::Arc;
+use std::{str::FromStr, sync::Arc};
 
 /// This starts up the recieving loop for this connection. Do not call this
 /// more than once.
@@ -84,15 +84,13 @@ pub(crate) fn handle(wm: &Arc<WorldManager>, player: &Arc<Player>, p: sb::Packet
       } else {
         // TODO: Data generator should store which items are blockitems, and what blocks
         // they place.
-        /*
         let item_data = {
           let inv = player.lock_inventory();
           let stack = inv.main_hand();
           player.world().item_converter().get_data(stack.item())
         };
-        let kind = item_data.block_to_place();
-        */
-        let kind = crate::block::Kind::Stone;
+        player.send_message(&Chat::new(format!("placing item: {}", item_data.name())));
+        let kind = block::Kind::from_str(item_data.name()).unwrap_or(block::Kind::Stone);
 
         match player.world().get_block(pos) {
           Ok(looking_at) => {
