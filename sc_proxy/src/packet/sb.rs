@@ -65,6 +65,7 @@ impl FromTcp for Packet {
           item: buf.read_item(conv)?,
         }
       }
+      GPacket::HeldItemChangeV8 { slot_id } => Packet::ChangeHeldItem { slot: slot_id as u8 },
       GPacket::KeepAliveV8 { key: id } => Packet::KeepAlive { id },
       GPacket::KeepAliveV12 { key: id } => Packet::KeepAlive { id: id as i32 },
       GPacket::PlayerActionV14 { pos, action, unknown, .. } => {
