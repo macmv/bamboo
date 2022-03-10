@@ -47,6 +47,8 @@ pub enum Packet {
   PluginMessage { channel: String, data: Vec<u8> },
   #[id = 12]
   UseItem { hand: Hand },
+  #[id = 14]
+  WindowClose { wid: u8 },
 }
 
 #[sc_macros::transfer]

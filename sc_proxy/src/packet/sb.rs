@@ -38,6 +38,9 @@ impl FromTcp for Packet {
           mode: click_window(mode, used_button)?,
         }
       }
+      GPacket::CloseWindowV8 { window_id } => {
+        Packet::WindowClose { wid: window_id.try_into().unwrap() }
+      }
       GPacket::ClickWindowV9 {
         window_id,
         slot_id,
@@ -78,6 +81,14 @@ impl FromTcp for Packet {
           Packet::UseItem { hand: Hand::Main }
         }
       }
+      GPacket::PlayerDiggingV8 { position, facing: _, status, unknown } => {
+        let mut buf = Buffer::new(unknown);
+        Packet::BlockDig {
+          pos:    position,
+          status: DigStatus::from_id(status as u8),
+          face:   Face::from_id(buf.read_varint()? as u8),
+        }
+      }
       GPacket::PlayerBlockPlacementV8 { position, placed_block_direction, unknown: _, .. } => {
         // let mut buf = Buffer::new(unknown);
         if position == Pos::new(-1, -1, -1) && placed_block_direction == 255 {
@@ -91,6 +102,13 @@ impl FromTcp for Packet {
         }
       }
       GPacket::PlayerInteractBlockV9 { position, placed_block_direction, hand, .. } => {
+        Packet::BlockPlace {
+          pos:  position,
+          face: Face::from_id(placed_block_direction as u8),
+          hand: Hand::from_id(hand as u8),
+        }
+      }
+      GPacket::PlayerInteractBlockV11 { position, placed_block_direction, hand, .. } => {
         Packet::BlockPlace {
           pos:  position,
           face: Face::from_id(placed_block_direction as u8),

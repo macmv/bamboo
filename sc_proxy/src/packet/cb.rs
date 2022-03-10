@@ -207,7 +207,7 @@ impl ToTcp for Packet {
             on_ground,
             field_149069_g: None,
           }
-        } else {
+        } else if ver < ProtocolVersion::V1_17_1 {
           GPacket::EntityLookMoveV9 {
             entity_id: eid,
             pos_x: x.into(),
@@ -218,6 +218,17 @@ impl ToTcp for Packet {
             on_ground,
             rotating: None,
           }
+        } else {
+          let mut data = vec![];
+          let mut buf = Buffer::new(&mut data);
+          buf.write_varint(eid);
+          buf.write_i16(x.into());
+          buf.write_i16(y.into());
+          buf.write_i16(z.into());
+          buf.write_i8(yaw);
+          buf.write_i8(pitch);
+          buf.write_bool(on_ground);
+          GPacket::EntityLookMoveV17 { unknown: data }
         }
       }
       Packet::EntityPos { eid, x, y, z, yaw, pitch, on_ground } => {

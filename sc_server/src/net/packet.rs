@@ -123,6 +123,7 @@ pub(crate) fn handle(wm: &Arc<WorldManager>, player: &Arc<Player>, p: sb::Packet
     }
     // Just contains on_ground
     sb::Packet::PlayerOnGround { .. } => {}
+    sb::Packet::WindowClose { wid: _ } => player.lock_inventory().close_window(),
     _ => warn!("unknown packet: {:?}", p),
   }
 }
