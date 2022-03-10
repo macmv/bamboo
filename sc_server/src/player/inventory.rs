@@ -30,6 +30,11 @@ pub struct PlayerInventory {
   selected_index: u8,
   // Open window and held item
   window:         Option<(WrappedInventory, Stack)>,
+
+  /// Used when draging the mouse over items. This is sent as a collection of
+  /// packets all at once, after the drag is finished. Because it's sent as
+  /// multiple packets, we need to hold onto this state.
+  drag_slots: Vec<i32>,
 }
 
 impl PlayerInventory {
@@ -40,6 +45,7 @@ impl PlayerInventory {
       main:           WrappedInventory::new(Inventory::new(46), conn),
       selected_index: 0,
       window:         None,
+      drag_slots:     vec![],
     }
   }
 
@@ -231,6 +237,9 @@ impl PlayerInventory {
       ClickWindow::Drop => allow!(self.drop_one(slot)),
       ClickWindow::DropAll => allow!(self.drop_all(slot)),
       ClickWindow::DoubleClick => allow!(self.double_click(slot)),
+      ClickWindow::DragStart(_) => self.drag_start(),
+      ClickWindow::DragAdd(_) => self.drag_add(slot),
+      ClickWindow::DragEnd(_) => self.drag_end(),
       _ => todo!(),
     }
 
@@ -305,6 +314,25 @@ impl PlayerInventory {
       }
     }
     self.set(-999, held);
+  }
+
+  pub fn drag_start(&mut self) { self.drag_slots.clear(); }
+  pub fn drag_add(&mut self, slot: i32) { self.drag_slots.push(slot); }
+  pub fn drag_end(&mut self) {
+    let stack = self.get(-999).clone();
+    let items_per_slot = stack.amount() / self.drag_slots.len() as u8;
+    let items_remaining = stack.amount() % self.drag_slots.len() as u8;
+    for slot in self.drag_slots.clone() {
+      self.set(slot, stack.clone().with_amount(items_per_slot));
+    }
+    self.drag_slots.clear();
+    if items_remaining == 0 {
+      self.set(-999, Stack::empty());
+    } else {
+      let stack = self.get_mut(-999);
+      stack.set_amount(items_remaining);
+      self.sync(-999);
+    }
   }
 }
 
