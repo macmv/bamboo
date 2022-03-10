@@ -15,10 +15,16 @@ pub struct WrappedInventory {
   inv:    Inventory,
   conn:   ConnSender,
   offset: u32,
+  skip:   u32,
 }
 
 #[derive(Debug)]
 pub struct PlayerInventory {
+  // The main inventory. Slots 0 through 8 are your armor and crafting bench slots. Slots 9-44 are
+  // the main inventory. Slot 45 is the off hand.
+  //
+  // Note that slots 9-44 are used in chests as well, so we have some extra nonsense to handle
+  // that.
   main:           WrappedInventory,
   // An index into the hotbar (0..=8)
   selected_index: u8,
@@ -39,16 +45,16 @@ impl PlayerInventory {
 
   pub fn open_window(&mut self, inv: Inventory) {
     assert!(self.window.is_none());
-    self.main.set_offset(inv.size());
+    self.main.set_offset_skip(inv.size(), 9);
     self.window = Some((WrappedInventory::new(inv, self.main.conn.clone()), Stack::empty()));
   }
   pub fn close_window(&mut self) {
     self.window.take();
-    self.main.set_offset(0);
+    self.main.set_offset_skip(0, 0);
   }
 
   /// Returns the item in the player's main hand.
-  pub fn main_hand(&self) -> &Stack { self.main().get(self.selected_index as u32 + 27) }
+  pub fn main_hand(&self) -> &Stack { self.main().get(self.selected_index as u32 + 36) }
 
   /// Returns the currently selected hotbar index.
   pub fn selected_index(&self) -> u8 { self.selected_index }
@@ -78,7 +84,9 @@ impl PlayerInventory {
         if i < win.size() {
           win.get(i)
         } else {
-          self.main.get(i - win.size())
+          // Note the +9. This is because slots 0-8 are the armor slots of the player's
+          // inventory.
+          self.main.get(i - win.size() + 9)
         }
       } else {
         self.main.get(index as u32)
@@ -97,7 +105,9 @@ impl PlayerInventory {
         if i < win.size() {
           win.get_mut(i)
         } else {
-          self.main.get_mut(i - win.size())
+          // Note the +9. This is because slots 0-8 are the armor slots of the player's
+          // inventory.
+          self.main.get_mut(i - win.size() + 9)
         }
       } else {
         self.main.get_mut(index as u32)
@@ -127,13 +137,17 @@ impl PlayerInventory {
   /// less efficient than syncing a single slot. Only use this when needed, as
   /// it will send the data for every item to the client.
   pub fn sync_all(&self) {
-    let mut items: Vec<_> = self.main.inv.items().iter().map(|i| i.to_item()).collect();
+    let mut items = vec![];
     let mut held = Stack::empty().to_item();
     if let Some((inv, win_held)) = &self.window {
       held = win_held.to_item();
       for it in inv.inv.items() {
         items.push(it.to_item());
       }
+    }
+    // Skip the armor/crafting bench slots
+    for it in self.main.inv.items().iter().skip(9) {
+      items.push(it.to_item());
     }
     self.main.conn.send(cb::Packet::WindowItems { wid: 1, items, held });
   }
@@ -153,7 +167,7 @@ impl PlayerInventory {
         if i < win.size() {
           win.sync(i)
         } else {
-          self.main.sync(i - win.size())
+          self.main.sync(i - win.size() + 9)
         }
       } else {
         self.main.sync(index as u32)
@@ -198,7 +212,6 @@ impl PlayerInventory {
           if new_amount != prev_amount {
             self.set(slot, stack.with_amount(new_amount));
           }
-          // For debug
           self.sync_all();
         } else {
           let new_amount = if in_main {
@@ -219,6 +232,8 @@ impl PlayerInventory {
       ClickWindow::DropAll => allow!(self.drop_all(slot)),
       _ => todo!(),
     }
+
+    self.sync_all();
   }
 
   /// Takes half of the items in the slot `a` and moves them to `b`. If `b` is
@@ -248,12 +263,12 @@ impl PlayerInventory {
       return;
     }
     let _old = if it.amount() == 1 {
-      self.replace(slot, Stack::empty());
+      self.replace(slot, Stack::empty())
     } else {
       let it = self.get_mut(slot);
       it.set_amount(it.amount() - 1);
       self.sync(slot);
-      self.get(slot).clone();
+      self.get(slot).clone()
     };
     // TODO: Spawn entity using `old`
   }
@@ -266,7 +281,9 @@ impl PlayerInventory {
 }
 
 impl WrappedInventory {
-  pub fn new(inv: Inventory, conn: ConnSender) -> Self { WrappedInventory { inv, conn, offset: 0 } }
+  pub fn new(inv: Inventory, conn: ConnSender) -> Self {
+    WrappedInventory { inv, conn, offset: 0, skip: 0 }
+  }
   /// Gets the item at the given index.
   pub fn get(&self, index: u32) -> &Stack { self.inv.get(index as u32) }
   /// This is private as updating the item doesn't send an update to the client.
@@ -286,7 +303,7 @@ impl WrappedInventory {
   pub fn sync(&self, index: u32) {
     self.conn.send(cb::Packet::WindowItem {
       wid:  1,
-      slot: (index + self.offset) as i32,
+      slot: (index + self.offset - self.skip) as i32,
       item: self.inv.get(index).to_item(),
     });
   }
@@ -301,12 +318,12 @@ impl WrappedInventory {
     let sync = |index: u32, item: &Stack| {
       self.conn.send(cb::Packet::WindowItem {
         wid:  1,
-        slot: (index + self.offset) as i32,
+        slot: (index + self.offset - self.skip) as i32,
         item: item.to_item(),
       });
     };
     let mut remaining = stack.amount();
-    for (i, it) in self.inv.items_mut().iter_mut().enumerate() {
+    for (i, it) in self.inv.items_mut().iter_mut().skip(self.skip as usize).enumerate() {
       let i = i as u32;
       if it.is_empty() {
         *it = stack.clone().with_amount(remaining);
@@ -334,7 +351,7 @@ impl WrappedInventory {
   /// transaction.
   pub fn add_sync(&self, stack: &Stack) -> u8 {
     let mut remaining = stack.amount();
-    for (i, it) in self.inv.items().iter().enumerate() {
+    for (i, it) in self.inv.items().iter().skip(self.skip as usize).enumerate() {
       let i = i as u32;
       if it.is_empty() {
         self.sync(i);
@@ -358,7 +375,17 @@ impl WrappedInventory {
   /// Sets the offset for sending packets. This is used when an inventory is
   /// opened/closed. It causes [`set`](Self::set) to send slot ids with this
   /// offset.
-  fn set_offset(&mut self, offset: u32) { self.offset = offset; }
+  ///
+  /// The `skip` is used when adding items; it is used in the main inventory
+  /// to skip the armor slots.
+  ///
+  /// Note that the actual id sent will be `offset - skip`. So for the main
+  /// inventory, when shown a chest, the offset should be set to 27, and skip
+  /// should be sent to 9. This means the actual ids sent will be offset by 18.
+  fn set_offset_skip(&mut self, offset: u32, skip: u32) {
+    self.offset = offset;
+    self.skip = skip;
+  }
 
   pub fn size(&self) -> u32 { self.inv.size() }
 }

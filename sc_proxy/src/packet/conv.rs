@@ -99,7 +99,7 @@ impl TypeConverter {
       return id;
     }
     match self.items[ver.to_index() as usize].to_new.get(id as usize) {
-      Some(v) => v.get(id as usize).copied().unwrap_or(0),
+      Some(v) => v.get(damage as usize).copied().unwrap_or(0),
       None => 0,
     }
   }

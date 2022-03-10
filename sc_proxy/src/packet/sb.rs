@@ -58,7 +58,7 @@ impl FromTcp for Packet {
           mode: click_window(mode, used_button)?,
         }
       }
-      GPacket::CreativeInventoryActionV8 { slot_id, mut unknown, .. } => {
+      GPacket::CreativeInventoryActionV8 { slot_id, unknown, .. } => {
         let mut buf = tcp::Packet::from_buf_id(unknown, 0, ver);
         Packet::CreativeInventoryUpdate {
           slot: slot_id.try_into().unwrap(),

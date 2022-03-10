@@ -190,6 +190,7 @@ impl Packet {
       } else {
         count = self.read_u8()?;
         damage = self.read_i16()?;
+        dbg!(id, damage);
         // Quirk with NBT here; if there is a single `0` byte, then there is no NBT
         // data. This is fixed in 1.13+
         let remaining = self.read_all();
@@ -206,7 +207,7 @@ impl Packet {
         }
       }
       Item::new(
-        conv.item_to_new(id as u32, damage as u32, self.ver.block()) as i32,
+        dbg!(conv.item_to_new(id as u32, damage as u32, self.ver.block()) as i32),
         count,
         damage,
         nbt,

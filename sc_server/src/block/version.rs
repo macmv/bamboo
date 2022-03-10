@@ -103,7 +103,7 @@ impl TypeConverter {
       id = self.to_latest(id, ver);
     }
 
-    self.block_states[id as usize]
+    self.block_states.get(id as usize).copied().unwrap_or(Kind::Air)
   }
 
   pub fn max_bpe(&self) -> u8 { (self.block_states.len() as f32).log2().ceil() as u8 }
