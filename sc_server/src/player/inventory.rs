@@ -230,6 +230,7 @@ impl PlayerInventory {
       ClickWindow::Number(num) => allow!(self.swap(slot, num as i32 + 27 + inv_size as i32)),
       ClickWindow::Drop => allow!(self.drop_one(slot)),
       ClickWindow::DropAll => allow!(self.drop_all(slot)),
+      ClickWindow::DoubleClick => allow!(self.double_click(slot)),
       _ => todo!(),
     }
 
@@ -277,6 +278,33 @@ impl PlayerInventory {
   pub fn drop_all(&mut self, slot: i32) {
     let _old = self.replace(slot, Stack::empty());
     // TODO: Spawn entity using `old`
+  }
+
+  /// Grabs up to a full stack of whatever item is at the given slot, and moves
+  /// it to the cursor slot.
+  pub fn double_click(&mut self, _slot: i32) {
+    let mut held = self.replace(-999, Stack::empty());
+    for i in 0..36 + self.win().unwrap().size() {
+      let i = i as i32;
+      let stack = self.get(i);
+      if stack.item() != held.item() {
+        continue;
+      }
+      if stack.amount() + held.amount() > 64 {
+        let mut stack = stack.clone();
+        stack.set_amount(stack.amount() - (64 - held.amount()));
+        self.set(i, stack);
+        held.set_amount(64);
+      } else {
+        let amount = stack.amount();
+        self.set(i, Stack::empty());
+        held.set_amount(held.amount() + amount);
+      }
+      if held.amount() == 64 {
+        break;
+      }
+    }
+    self.set(-999, held);
   }
 }
 
