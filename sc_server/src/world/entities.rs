@@ -3,6 +3,7 @@ use crate::{entity, entity::Entity, player::Player};
 use parking_lot::RwLockReadGuard;
 use sc_common::{
   math::{ChunkPos, FPos, Vec3},
+  nbt::NBT,
   net::cb,
   util::UUID,
 };
@@ -13,8 +14,12 @@ use std::{
 
 impl World {
   pub fn summon(self: &Arc<Self>, ty: entity::Type, pos: FPos) -> i32 {
+    self.summon_nbt(ty, pos, NBT::empty(""))
+  }
+
+  pub fn summon_nbt(self: &Arc<Self>, ty: entity::Type, pos: FPos, nbt: NBT) -> i32 {
     let eid = self.eid();
-    let ent = Entity::new(eid, ty, self.clone(), pos);
+    let ent = Entity::new(eid, ty, self.clone(), pos, nbt);
 
     for p in self.players().iter().in_view(pos.chunk()) {
       self.send_entity_spawn(p, &ent);

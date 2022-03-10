@@ -1,12 +1,20 @@
 use crate::{
+  entity,
   item::{Inventory, Stack},
   net::ConnSender,
+  player::Player,
 };
-use sc_common::net::{
-  cb,
-  sb::{Button, ClickWindow},
+use sc_common::{
+  nbt::{Tag, NBT},
+  net::{
+    cb,
+    sb::{Button, ClickWindow},
+  },
 };
-use std::mem;
+use std::{
+  mem,
+  sync::{Arc, Weak},
+};
 
 /// An inventory, wrapped so that any time it is modified, a packet will be sent
 /// to a client.
@@ -35,10 +43,12 @@ pub struct PlayerInventory {
   /// packets all at once, after the drag is finished. Because it's sent as
   /// multiple packets, we need to hold onto this state.
   drag_slots: Vec<i32>,
+
+  player: Weak<Player>,
 }
 
 impl PlayerInventory {
-  pub fn new(conn: ConnSender) -> Self {
+  pub fn new(weak: Weak<Player>, conn: ConnSender) -> Self {
     // We always store an inventory with 46 slots, even if the client is on 1.8 (in
     // that version, there was no off-hand).
     PlayerInventory {
@@ -46,6 +56,7 @@ impl PlayerInventory {
       selected_index: 0,
       window:         None,
       drag_slots:     vec![],
+      player:         weak,
     }
   }
 
@@ -286,13 +297,24 @@ impl PlayerInventory {
       self.sync(slot);
       self.get(slot).clone()
     };
-    // TODO: Spawn entity using `old`
+    if let Some(p) = self.player.upgrade() {
+      let mut tag = NBT::new(
+        "",
+        Tag::compound(&[(
+          "Item",
+          Tag::compound(&[("id", Tag::String("minecraft:diamond".into()))]),
+        )]),
+      );
+      p.world().summon_nbt(entity::Type::Item, p.pos(), tag);
+    }
   }
 
   /// Removes the entire stack at the given slot.
   pub fn drop_all(&mut self, slot: i32) {
     let _old = self.replace(slot, Stack::empty());
-    // TODO: Spawn entity using `old`
+    if let Some(p) = self.player.upgrade() {
+      p.world().summon(entity::Type::Item, p.pos());
+    }
   }
 
   /// Grabs up to a full stack of whatever item is at the given slot, and moves

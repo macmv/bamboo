@@ -8,7 +8,10 @@ pub use version::TypeConverter;
 
 use crate::{math::AABB, world::World};
 use parking_lot::{Mutex, RwLock};
-use sc_common::math::{FPos, Vec3};
+use sc_common::{
+  math::{FPos, Vec3},
+  nbt::NBT,
+};
 use std::sync::Arc;
 
 pub mod behavior;
@@ -55,13 +58,16 @@ pub struct Entity {
   /// players need to be notified. This can change if the entity is teleported.
   world:    RwLock<Arc<World>>,
   behavior: Mutex<Box<dyn Behavior + Send>>,
+
+  /// NBT data for this entity.
+  nbt: Mutex<NBT>,
 }
 
 impl Entity {
   /// Creates a new entity, with default functionality. They will take normal
   /// damage, and despawn if their health hits 0. If you want custom
   /// functionality of any kind, call [`new_custom`].
-  pub fn new(eid: i32, ty: Type, world: Arc<World>, pos: FPos) -> Self {
+  pub fn new(eid: i32, ty: Type, world: Arc<World>, pos: FPos, nbt: NBT) -> Self {
     let behavior = behavior::for_entity(ty);
     Entity {
       eid,
@@ -70,6 +76,7 @@ impl Entity {
       health: Mutex::new(behavior.max_health()),
       world: RwLock::new(world),
       behavior: Mutex::new(behavior),
+      nbt: Mutex::new(nbt),
     }
   }
 
@@ -81,6 +88,7 @@ impl Entity {
     pos: FPos,
     world: Arc<World>,
     behavior: B,
+    nbt: NBT,
   ) -> Self {
     Entity {
       eid,
@@ -89,6 +97,7 @@ impl Entity {
       health: Mutex::new(behavior.max_health()),
       world: RwLock::new(world),
       behavior: Mutex::new(Box::new(behavior)),
+      nbt: Mutex::new(nbt),
     }
   }
 

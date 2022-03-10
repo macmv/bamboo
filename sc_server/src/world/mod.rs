@@ -209,8 +209,7 @@ impl World {
       }
     }
   }
-  fn new_player(self: Arc<Self>, player: Player, info: JoinInfo) -> Arc<Player> {
-    let player = Arc::new(player);
+  fn new_player(self: Arc<Self>, player: Arc<Player>, info: JoinInfo) {
     // We need to unlock players so that player_init() will work.
     {
       // If a bunch of people connect at the same time, we don't want a bunch of lock
@@ -224,7 +223,7 @@ impl World {
           player.id(),
         );
         player.disconnect("Another player with the same id is already connected!");
-        return player;
+        return;
       }
       drop(players);
       let mut players = self.players.write();
@@ -232,7 +231,6 @@ impl World {
     }
     info!("{} has joined the game", player.username());
     self.player_init(&player, info);
-    player
   }
 
   /// Returns a new, unique EID.
@@ -619,7 +617,8 @@ impl WorldManager {
     let w = self.worlds.lock()[0].clone();
     let player = Player::new(w.eid(), conn, info.clone(), w.clone(), FPos::new(0.0, 80.0, 0.0));
     self.players.lock().insert(info.uuid, 0);
-    w.new_player(player, info)
+    w.new_player(player.clone(), info);
+    player
   }
 
   /// Removes the player. This is not part of the public API because it does not

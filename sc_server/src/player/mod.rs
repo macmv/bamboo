@@ -75,12 +75,18 @@ impl fmt::Debug for Player {
 }
 
 impl Player {
-  pub fn new(eid: i32, conn: ConnSender, info: JoinInfo, world: Arc<World>, pos: FPos) -> Self {
-    Player {
+  pub fn new(
+    eid: i32,
+    conn: ConnSender,
+    info: JoinInfo,
+    world: Arc<World>,
+    pos: FPos,
+  ) -> Arc<Self> {
+    Arc::new_cyclic(|weak| Player {
       eid,
       username: info.username,
       uuid: info.uuid,
-      inv: PlayerInventory::new(conn.clone()).into(),
+      inv: PlayerInventory::new(weak.clone(), conn.clone()).into(),
       scoreboard: Scoreboard::new(conn.clone()).into(),
       conn,
       ver: ProtocolVersion::from(info.ver as i32),
@@ -98,7 +104,7 @@ impl Player {
         last_set_pos: Instant::now(),
       }
       .into(),
-    }
+    })
   }
 
   /// Returns the player's username.
