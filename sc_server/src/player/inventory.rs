@@ -206,7 +206,7 @@ impl PlayerInventory {
       ClickWindow::Click(button) => match button {
         Button::Left => allow!(self.swap(slot, -999)),
         Button::Right => allow!(self.split(slot, -999)),
-        Button::Middle => todo!(),
+        Button::Middle => {}
       },
       ClickWindow::ShiftClick(_) => {
         let stack = self.get(slot).clone();
@@ -228,9 +228,6 @@ impl PlayerInventory {
           if new_amount != prev_amount {
             self.sync(slot);
           }
-        }
-        for i in 0..36 + inv_size as i32 {
-          self.sync(i);
         }
       }
       ClickWindow::Number(num) => allow!(self.swap(slot, num as i32 + 27 + inv_size as i32)),
