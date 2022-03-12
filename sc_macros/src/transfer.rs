@@ -38,6 +38,7 @@ pub fn transfer(input: TokenStream) -> TokenStream {
     Item::Enum(e) => {
       let ty = &e.ident;
       let (impl_generics, ty_generics, where_clause) = e.generics.split_for_impl();
+      let mut idents = vec![];
       let mut variants = vec![];
       let mut ids = vec![];
       let mut readers = vec![];
@@ -46,6 +47,7 @@ pub fn transfer(input: TokenStream) -> TokenStream {
       let mut empty_block = vec![];
       let mut variant_names = vec![];
       for v in &mut e.variants {
+        idents.push(&v.ident);
         let (idx, id) = match find_id(&v.attrs) {
           Some(v) => v,
           None => {
@@ -58,6 +60,15 @@ pub fn transfer(input: TokenStream) -> TokenStream {
         };
         v.attrs.remove(idx);
         variants.push(&v.ident);
+        if let Some(idx) = ids.iter().position(|v| *v == id) {
+          let err1 = quote_spanned!(
+            idents[idx].span() => compile_error!("id first used here");
+          );
+          let err2 = quote_spanned!(
+            v.ident.span() => compile_error!("duplicate id created here");
+          );
+          return quote!(#err1 #err2).into();
+        }
         ids.push(id);
         let (read, write_len, write) = create_setter(&mut v.fields, false);
         readers.push(read);
