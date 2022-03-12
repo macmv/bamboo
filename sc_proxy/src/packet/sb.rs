@@ -174,7 +174,8 @@ impl FromTcp for Packet {
         let z = buf.read_f64()?;
         Packet::PlayerPos { x, y, z, on_ground: false }
       }
-      GPacket::UpdatePlayerAbilitiesV14 { flying, .. }
+      GPacket::PlayerAbilitiesV8 { flying, .. }
+      | GPacket::UpdatePlayerAbilitiesV14 { flying, .. }
       | GPacket::UpdatePlayerAbilitiesV16 { flying, .. } => Packet::Flying { flying },
       gpacket => return Err(Error::UnknownSB(Box::new(gpacket))),
     })

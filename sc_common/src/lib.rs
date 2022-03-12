@@ -2,7 +2,6 @@
   html_playground_url = "https://play.rust-lang.org/",
   test(no_crate_inject, attr(deny(warnings)))
 )]
-#![feature(test)]
 
 #[macro_use]
 extern crate log;
