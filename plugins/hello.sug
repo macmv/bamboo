@@ -27,7 +27,7 @@ fn init() {
   sc.add_command(c)
 }
 
-fn handle_ui(sc, player, args) {
+fn handle_ui(player, args) {
   ui = UI::new([
     "xxxxxxxxx",
     "x abcde x",
@@ -42,7 +42,7 @@ fn handle_ui(sc, player, args) {
   player.show_inventory(ui.to_inventory(), Chat::new("big gaming"))
 }
 
-fn handle_setblock(sc, player, args) {
+fn handle_setblock(player, args) {
   // args[0] is `setblock`
   // args[1] is the position
   // args[2] is the block kind
@@ -50,7 +50,7 @@ fn handle_setblock(sc, player, args) {
   player.world().set_kind(args[1], args[2])
 }
 
-fn handle_getblock(sc, player, args) {
+fn handle_getblock(player, args) {
   // args[0] is `getblock`
   // args[1] is the position
   c = Chat::empty()
@@ -59,12 +59,12 @@ fn handle_getblock(sc, player, args) {
   player.send_message(c)
 }
 
-fn handle_join(sc, player, args) {
+fn handle_join(player, args) {
   // args[0] is `join`
   player.switch_to("localhost:25566")
 }
 
-fn on_block_place(sc, player, pos, kind) {
+fn on_block_place(player, pos, kind) {
   sc.info("block x:", pos.x())
 }
 
