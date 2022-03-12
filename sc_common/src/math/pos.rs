@@ -1,5 +1,6 @@
 use super::ChunkPos;
 use crate::util::Face;
+use sc_macros::Transfer;
 use std::{
   error::Error,
   fmt, mem,
@@ -20,8 +21,7 @@ impl fmt::Display for PosError {
 
 impl Error for PosError {}
 
-#[derive(Debug, Clone, Copy, Hash, PartialEq, Eq)]
-#[sc_macros::transfer]
+#[derive(Transfer, Debug, Clone, Copy, Hash, PartialEq, Eq)]
 pub struct Pos {
   pub x: i32,
   pub y: i32,

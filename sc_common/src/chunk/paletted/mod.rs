@@ -1,6 +1,7 @@
 use super::section::Section as ChunkSection;
 
 use crate::math::{Pos, PosError, WyHashBuilder};
+use sc_macros::Transfer;
 use std::collections::HashMap;
 
 mod bits;
@@ -11,8 +12,7 @@ mod tests;
 pub use bits::BitArray;
 pub use bits_old::OldBitArray;
 
-#[derive(Debug, Clone)]
-#[sc_macros::transfer]
+#[derive(Transfer, Debug, Clone)]
 pub struct Section {
   #[must_exist]
   data:            BitArray,

@@ -7,8 +7,9 @@ pub use pool::ThreadPool;
 mod buffer;
 mod item;
 
-use crate::{math::Pos, version::ProtocolVersion};
+use crate::math::Pos;
 use rand::{rngs::OsRng, RngCore};
+use sc_macros::Transfer;
 use serde::de::{self, Deserialize, Deserializer, Unexpected, Visitor};
 use std::{error::Error, fmt, num::ParseIntError, str::FromStr};
 
@@ -59,8 +60,7 @@ pub fn read_varint(buf: &[u8]) -> (i32, isize) {
   (res, total_read)
 }
 
-#[sc_macros::transfer]
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Transfer, Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Hand {
   #[id = 0]
   Main,
@@ -89,8 +89,7 @@ impl Hand {
   }
 }
 
-#[sc_macros::transfer]
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Transfer, Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub enum GameMode {
   #[id = 0]
   Survival,
@@ -127,8 +126,7 @@ impl GameMode {
   }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-#[sc_macros::transfer]
+#[derive(Transfer, Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Face {
   #[id = 0]
   Bottom,
@@ -299,8 +297,7 @@ impl<'de> Deserialize<'de> for UUID {
   }
 }
 
-#[derive(Debug, Clone)]
-#[sc_macros::transfer]
+#[derive(Transfer, Debug, Clone)]
 pub struct JoinInfo {
   #[must_exist]
   pub mode:     JoinMode,
@@ -312,8 +309,7 @@ pub struct JoinInfo {
   pub ver:      u32,
 }
 
-#[derive(Debug, Clone)]
-#[sc_macros::transfer]
+#[derive(Transfer, Debug, Clone)]
 pub enum JoinMode {
   #[id = 0]
   New,

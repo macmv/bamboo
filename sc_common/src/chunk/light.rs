@@ -1,5 +1,6 @@
 use super::{Chunk, Section};
 use crate::math::{ChunkPos, Pos};
+use sc_macros::Transfer;
 use std::marker::PhantomData;
 
 pub trait LightPropagator {
@@ -12,8 +13,7 @@ pub trait LightPropagator {
   fn propagate_all<P: LightPropagator, S: Section>(light: &mut LightChunk<P>, chunk: &Chunk<S>);
 }
 
-#[sc_macros::transfer]
-#[derive(Debug, Clone)]
+#[derive(Transfer, Debug, Clone)]
 pub struct LightChunk<P: LightPropagator> {
   #[id = 0]
   sections: Vec<Option<LightSection>>,
@@ -21,8 +21,7 @@ pub struct LightChunk<P: LightPropagator> {
   marker:   PhantomData<P>,
 }
 
-#[sc_macros::transfer]
-#[derive(Debug, Clone)]
+#[derive(Transfer, Debug, Clone)]
 pub struct LightSection {
   // 2048 bytes, each representing 2 blocks.
   #[id = 0]

@@ -1,7 +1,7 @@
 use crate::nbt::NBT;
+use sc_macros::Transfer;
 
-#[derive(Debug, Clone, PartialEq)]
-#[sc_macros::transfer]
+#[derive(Transfer, Debug, Clone, PartialEq)]
 pub struct Item {
   pub id:     i32,
   pub count:  u8,

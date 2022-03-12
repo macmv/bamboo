@@ -3,10 +3,10 @@ use crate::{
   math::{ChunkPos, Pos},
   util::{GameMode, Item, UUID},
 };
+use sc_macros::Transfer;
 use std::net::SocketAddr;
 
-#[sc_macros::transfer]
-#[derive(Debug, Clone)]
+#[derive(Transfer, Debug, Clone)]
 #[non_exhaustive]
 pub enum Packet {
   #[id = 0]
@@ -180,8 +180,7 @@ pub enum Packet {
   WindowItem { wid: u8, slot: i32, item: Item },
 }
 
-#[sc_macros::transfer]
-#[derive(Debug, Clone)]
+#[derive(Transfer, Debug, Clone)]
 pub struct CommandNode {
   /// The type. This is `flags & 0x03`.
   #[id = 0]
@@ -215,8 +214,7 @@ pub struct CommandNode {
   pub suggestion: Option<String>,
 }
 
-#[sc_macros::transfer]
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Transfer, Debug, Clone, Copy, PartialEq, Eq)]
 pub enum CommandType {
   #[id = 0]
   Root,
@@ -226,8 +224,7 @@ pub enum CommandType {
   Argument,
 }
 
-#[sc_macros::transfer]
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Transfer, Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ScoreboardDisplay {
   #[id = 0]
   List,
@@ -236,8 +233,7 @@ pub enum ScoreboardDisplay {
   #[id = 2]
   BelowName,
 }
-#[derive(Debug, Clone, PartialEq, Eq)]
-#[sc_macros::transfer]
+#[derive(Transfer, Debug, Clone, PartialEq, Eq)]
 pub enum ObjectiveAction {
   #[id = 0]
   Create { value: String, ty: ObjectiveType },
@@ -246,16 +242,14 @@ pub enum ObjectiveAction {
   #[id = 2]
   Update { value: String, ty: ObjectiveType },
 }
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-#[sc_macros::transfer]
+#[derive(Transfer, Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ObjectiveType {
   #[id = 0]
   Integer,
   #[id = 1]
   Hearts,
 }
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-#[sc_macros::transfer]
+#[derive(Transfer, Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ScoreboardAction {
   #[id = 0]
   Create(i32),
@@ -267,8 +261,7 @@ impl Default for ObjectiveType {
   fn default() -> Self { ObjectiveType::Integer }
 }
 
-#[sc_macros::transfer]
-#[derive(Debug, Clone)]
+#[derive(Transfer, Debug, Clone)]
 pub enum PlayerListAction {
   #[id = 0]
   Add(Vec<PlayerListAdd>),
@@ -286,8 +279,7 @@ pub enum PlayerListAction {
 /// players see ingame. This is also how the client knows what skin to display
 /// for each client. If this is not sent, the client will not spawn a player if
 /// they receive a SpawnPlayer packet.
-#[sc_macros::transfer]
-#[derive(Debug, Default, Clone)]
+#[derive(Transfer, Debug, Default, Clone)]
 pub struct PlayerListAdd {
   /// Player's UUID.
   pub id:           UUID,
@@ -302,32 +294,28 @@ pub struct PlayerListAdd {
 }
 
 /// See [`PlayerListAdd`]
-#[sc_macros::transfer]
-#[derive(Debug, Default, Clone)]
+#[derive(Transfer, Debug, Default, Clone)]
 pub struct PlayerListGameMode {
   pub id:        UUID,
   pub game_mode: GameMode,
 }
 
 /// See [`PlayerListAdd`]
-#[sc_macros::transfer]
-#[derive(Debug, Default, Clone)]
+#[derive(Transfer, Debug, Default, Clone)]
 pub struct PlayerListLatency {
   pub id:   UUID,
   pub ping: i32,
 }
 
 /// See [`PlayerListAdd`]
-#[sc_macros::transfer]
-#[derive(Debug, Default, Clone)]
+#[derive(Transfer, Debug, Default, Clone)]
 pub struct PlayerListDisplay {
   pub id:           UUID,
   pub display_name: Option<String>,
 }
 
 /// See [`PlayerListAdd`]
-#[sc_macros::transfer]
-#[derive(Debug, Default, Clone)]
+#[derive(Transfer, Debug, Default, Clone)]
 pub struct PlayerListRemove {
   pub id: UUID,
 }

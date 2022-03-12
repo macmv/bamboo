@@ -7,14 +7,14 @@ use syn::{
 };
 
 pub fn transfer(input: TokenStream) -> TokenStream {
-  let mut args = parse_macro_input!(input as Item);
+  let args = parse_macro_input!(input as Item);
 
   let block;
-  match &mut args {
+  match args {
     Item::Struct(s) => {
       let ty = &s.ident;
       let (impl_generics, ty_generics, where_clause) = s.generics.split_for_impl();
-      let (setter, write_len, writer) = create_setter(&mut s.fields, true);
+      let (setter, write_len, writer) = create_setter(&s.fields, true);
 
       block = quote! {
         impl #impl_generics sc_transfer::MessageWrite for #ty #ty_generics #where_clause {
@@ -46,9 +46,9 @@ pub fn transfer(input: TokenStream) -> TokenStream {
       let mut writers = vec![];
       let mut empty_block = vec![];
       let mut variant_names = vec![];
-      for v in &mut e.variants {
+      for v in &e.variants {
         idents.push(&v.ident);
-        let (idx, id) = match find_id(&v.attrs) {
+        let (_, id) = match find_id(&v.attrs) {
           Some(v) => v,
           None => {
             return quote_spanned!(
@@ -58,7 +58,6 @@ pub fn transfer(input: TokenStream) -> TokenStream {
             .into()
           }
         };
-        v.attrs.remove(idx);
         variants.push(&v.ident);
         if let Some(idx) = ids.iter().position(|v| *v == id) {
           let err1 = quote_spanned!(
@@ -70,7 +69,7 @@ pub fn transfer(input: TokenStream) -> TokenStream {
           return quote!(#err1 #err2).into();
         }
         ids.push(id);
-        let (read, write_len, write) = create_setter(&mut v.fields, false);
+        let (read, write_len, write) = create_setter(&v.fields, false);
         readers.push(read);
         writer_len.push(write_len);
         writers.push(write);
@@ -140,8 +139,6 @@ pub fn transfer(input: TokenStream) -> TokenStream {
   }
 
   let out = quote! {
-    #args
-
     #block
   };
 
@@ -182,7 +179,7 @@ fn find_must_exist(attrs: &[Attribute]) -> Option<usize> {
 }
 
 /// Creates a reader and writer
-fn create_setter(f: &mut Fields, has_self: bool) -> (TokenStream2, u64, TokenStream2) {
+fn create_setter(f: &Fields, has_self: bool) -> (TokenStream2, u64, TokenStream2) {
   match f {
     Fields::Unit => (quote!(), 0 as u64, quote!(Ok(()))),
     Fields::Unnamed(fields) => {
@@ -206,21 +203,15 @@ fn create_setter(f: &mut Fields, has_self: bool) -> (TokenStream2, u64, TokenStr
       let mut reader = vec![];
       let mut selfs = vec![];
       let len = fields.named.len() as u64;
-      for (i, f) in &mut fields.named.iter_mut().enumerate() {
+      for (i, f) in fields.named.iter().enumerate() {
         let id = match find_id(&f.attrs) {
-          Some((idx, id)) => {
-            f.attrs.remove(idx);
-            id
-          }
+          Some((_, id)) => id,
           None => i as u64,
         };
         names.push(f.ident.as_ref().unwrap());
         ids.push(id);
         reader.push(match find_must_exist(&f.attrs) {
-          Some(idx) => {
-            f.attrs.remove(idx);
-            quote!(must_read)
-          }
+          Some(_) => quote!(must_read),
           None => quote!(read),
         });
         if has_self {

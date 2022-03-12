@@ -2,9 +2,9 @@ use crate::{
   math::Pos,
   util::{Face, Hand, Item},
 };
+use sc_macros::Transfer;
 
-#[sc_macros::transfer]
-#[derive(Debug, Clone)]
+#[derive(Transfer, Debug, Clone)]
 #[non_exhaustive]
 pub enum Packet {
   #[id = 0]
@@ -51,8 +51,7 @@ pub enum Packet {
   WindowClose { wid: u8 },
 }
 
-#[sc_macros::transfer]
-#[derive(Debug, Clone)]
+#[derive(Transfer, Debug, Clone)]
 pub enum DigStatus {
   #[id = 0]
   Start,
@@ -78,8 +77,7 @@ impl DigStatus {
 }
 
 // See https://wiki.vg/Protocol#Click_Window
-#[sc_macros::transfer]
-#[derive(Clone, Debug)]
+#[derive(Transfer, Clone, Debug)]
 pub enum ClickWindow {
   #[id = 0]
   Click(Button),
@@ -101,8 +99,7 @@ pub enum ClickWindow {
   DoubleClick,
 }
 
-#[sc_macros::transfer]
-#[derive(Clone, Debug)]
+#[derive(Transfer, Clone, Debug)]
 pub enum Button {
   #[id = 0]
   Left,
