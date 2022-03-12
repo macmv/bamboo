@@ -30,7 +30,7 @@ pub trait Behavior {
     }
     p.vel.y *= 0.98;
 
-    // This is multiplied by the 'sliperiness' of the block the entity is standing
+    // This is multiplied by the 'slipperiness' of the block the entity is standing
     // on.
     p.vel.x *= 0.91;
     p.vel.z *= 0.91;
