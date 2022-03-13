@@ -1,5 +1,7 @@
 # Sugarcane in Rust
 
+[![pipeline status](https://gitlab.com/macmv/sugarcane/badges/main/pipeline.svg)](https://gitlab.com/macmv/sugarcane/-/pipelines)
+[![coverage report](https://gitlab.com/macmv/sugarcane/badges/main/coverage.svg)](https://macmv.gitlab.io/sugarcane/index.html)
 [![lines of code](https://tokei.rs/b1/gitlab/macmv/sugarcane?category=code)](https://github.com/XAMPPRocky/tokei)
 [![Discord](https://badgen.net/badge/icon/discord?icon=discord&label)](https://discord.gg/8CTr3N9yzU)
 
