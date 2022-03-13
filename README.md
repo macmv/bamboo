@@ -1,6 +1,7 @@
 # Sugarcane in Rust
 
 [![lines of code](https://tokei.rs/b1/gitlab/macmv/sugarcane?category=code)](https://github.com/XAMPPRocky/tokei)
+[![Discord](https://badgen.net/badge/icon/discord?icon=discord&label)](https://discord.gg/8CTr3N9yzU)
 
 A safe, fast, and secure Minecraft server optimized for minigames.
 
@@ -42,6 +43,8 @@ server/proxy start, and will not be read. Instead, modify `config.yml`
 and `proxy.yml` to override settings in the default config. Here you can
 do things like change the world generation, enable/disable plugins, and
 enable online mode for the proxy.
+
+Feel free to ask questions in the [discord](https://discord.gg/8CTr3N9yzU)!
 
 ### Features
 
