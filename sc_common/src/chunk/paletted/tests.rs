@@ -1,5 +1,3 @@
-extern crate test;
-
 use super::*;
 
 const MAX_BPE: u8 = 15;
