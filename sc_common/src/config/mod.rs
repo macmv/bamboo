@@ -25,7 +25,7 @@ pub trait YamlValue<'a> {
 /// In order to index into maps, simply use a string name for a section. To
 /// index into an array, use a number in the array. Example:
 ///
-/// ```
+/// ```ignore
 /// foo: bar
 /// hello:
 ///   name: world
@@ -40,7 +40,7 @@ pub trait YamlValue<'a> {
 /// ```
 ///
 /// These are valid indices:
-/// ```
+/// ```ignore
 /// foo         // points to 'bar'
 /// hello.name  // points to 'world'
 /// items.0     // points to 3

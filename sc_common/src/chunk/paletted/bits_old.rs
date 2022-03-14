@@ -1,7 +1,7 @@
 //! This is kept here as a reference for 1.9-1.15 clients. This is the old
 //! chunk data format, which looks like this:
 //!
-//! ```
+//! ```ignore
 //! BPE: 5
 //! data:
 //! 234 01234 01234 .....
