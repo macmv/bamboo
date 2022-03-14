@@ -75,6 +75,7 @@ fn main() -> Result<(), Box<dyn Error>> {
   let addr = "0.0.0.0:8483".parse().unwrap();
 
   let wm = Arc::new(WorldManager::new());
+  wm.load();
   wm.add_world();
 
   let w = wm.clone();

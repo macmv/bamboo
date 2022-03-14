@@ -141,8 +141,11 @@ impl World {
     });
     // world.load_from_disk(&std::path::PathBuf::new().join("world")).unwrap();
     let w = world.clone();
+    // We want this world to be fully initialized when we return; this is so that if
+    // a player tries to join this world while it's still loading, we don't have the
+    // connection thread trying to generate chunks at the same time.
+    w.init();
     thread::spawn(|| {
-      w.init();
       w.global_tick_loop();
     });
     world
@@ -549,10 +552,15 @@ impl WorldManager {
     }
   }
 
+  /// Loads plugins
+  pub fn load(self: &Arc<Self>) { self.plugins.load(self.clone()) }
+
   /// Returns the config used in the whole server.
   pub fn config(&self) -> &Arc<Config> { &self.config }
 
-  pub fn run(self: Arc<Self>) { self.plugins.clone().run(self); }
+  /// Runs the main loop for plugins. This will also run a global tick loop in
+  /// the future. This is a blocking call.
+  pub fn run(self: Arc<Self>) { self.plugins.run(self.clone()); }
 
   /// Adds a new world.
   pub fn add_world(self: &Arc<Self>) {

@@ -88,7 +88,6 @@ impl PluginManager {
   pub fn use_color(&self) -> bool { true }
 
   pub fn run(&self, wm: Arc<WorldManager>) {
-    self.load(wm);
     // let mut ctx = Context::new();
     // ctx.register_global_class::<Sugarcane>().unwrap();
     // let _o = ctx.construct_object();
@@ -109,7 +108,7 @@ impl PluginManager {
   }
 
   /// Loads all plugins from disk. Call this to reload all plugins.
-  fn load(&self, wm: Arc<WorldManager>) {
+  pub fn load(&self, wm: Arc<WorldManager>) {
     let mut plugins = self.plugins.lock();
     plugins.clear();
     for f in fs::read_dir("plugins").unwrap() {
