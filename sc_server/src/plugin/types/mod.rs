@@ -66,11 +66,11 @@ impl Sugarcane {
   /// ```
   /// fn main() {
   ///   c = Command::new("setblock", handle_setblock)
-  ///   sc.add_command(c)
+  ///   sugarcane::instance().add_command(c)
   /// }
   ///
-  /// fn handle_setblock(sc, player, args) {
-  ///   sc.info("ran setblock!")
+  /// fn handle_setblock(player, args) {
+  ///   sugarcane::info("ran setblock!")
   /// }
   /// ```
   pub fn add_command(&self, command: &SlCommand) -> Result<(), RuntimeError> {
@@ -98,11 +98,9 @@ impl Sugarcane {
         {
           let mut lock = wm.plugins().plugins.lock();
           let plugin = &mut lock[idx];
-          let sc = plugin.sc();
           if let Err(e) = cb.call(
             &mut plugin.lock_env(),
             vec![
-              sc.into(),
               player.map(|p| player::SlPlayer::from(p.clone()).into()).unwrap_or(Var::None),
               args.iter().map(|arg| command::sl_from_arg(arg.clone())).collect::<Vec<Var>>().into(),
             ],

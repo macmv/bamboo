@@ -46,7 +46,7 @@ fn handle_setblock(player, args) {
   // args[0] is `setblock`
   // args[1] is the position
   // args[2] is the block kind
-  sc.info(args)
+  sugarcane::info(args)
   player.world().set_kind(args[1], args[2])
 }
 
@@ -65,7 +65,7 @@ fn handle_join(player, args) {
 }
 
 fn on_block_place(player, pos, kind) {
-  sc.info("block x:", pos.x())
+  sugarcane::info("block x:", pos.x())
 }
 
 fn on_click_window(player, slot, mode) {
