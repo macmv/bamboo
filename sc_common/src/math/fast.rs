@@ -26,16 +26,15 @@ pub trait FastMath {
 /// This value returned can differ by +/- `EPSILON`. The way this is tested is
 /// with a function like so:
 /// ```
+/// # use sc_common::math::EPSILON;
 /// fn assert_close(a: f64, b: f64) {
 ///   assert!(a > b - EPSILON, "values differ: {} {}", a, b);
 ///   assert!(a < b + EPSILON, "values differ: {} {}", a, b);
 /// }
-/// ```
 ///
-/// This value could be decreased down to `0.004`, if the `fast_cos` and
-/// `fast_sin` functions were improved. Currently, they do most of the math with
-/// longs, which speeds things up a lot. However, this reduces the accuracy by a
-/// lot.
+/// assert_close(1.000001, 1.0);
+/// assert_close(0.999999, 1.0);
+/// ```
 pub const EPSILON: f64 = 0.005;
 // pub const EPSILON: f64 = 0.004;
 

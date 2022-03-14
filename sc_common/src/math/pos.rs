@@ -226,17 +226,25 @@ impl Pos {
 
   /// Returns the min of each element in self and other.
   ///
+  /// This doesn't use [`std::cmp::Ord`], as two positions aren't really
+  /// "larger" or "smaller" than one another. Instead, this just acts on `X`,
+  /// `Y`, and `Z` independantly.
+  ///
   /// # Example
   ///
   /// ```
+  /// # use sc_common::math::Pos;
   /// // Basic usage
   /// assert_eq!(Pos::new(1, 5, 6).min(Pos::new(3, 3, 3)), Pos::new(1, 3, 3));
   ///
   /// // Keep a position within a chunk relative range (this would be useful for
   /// // filling a cube, for example).
-  /// let pos = Pos::new(16 + 2, 34, 32 + 14);
-  /// assert_eq!(pos.chunk_rel(), Pos::new(5, 34, 14));
-  /// assert_eq!((pos.chunk_rel() + Pos::new(3, 3, 3)).min(15, 255, 15), Pos::new(8, 34, 15));
+  /// let pos = Pos::new(2, 34, 14);
+  /// let new_pos = pos + Pos::new(3, 3, 3);
+  /// // `new_pos` is be outside a chunk, and might break something
+  /// assert_eq!(new_pos, Pos::new(5, 37, 17));
+  /// // This would clamp the `new_pos` within the chunk boundries
+  /// assert_eq!(new_pos.min(Pos::new(15, 255, 15)), Pos::new(5, 37, 15));
   /// ```
   pub fn min(&self, other: Pos) -> Pos {
     Pos::new(self.x.min(other.x), self.y.min(other.y), self.z.min(other.z))
@@ -244,17 +252,25 @@ impl Pos {
 
   /// Returns the max of each element in self and other.
   ///
+  /// This doesn't use [`std::cmp::Ord`], as two positions aren't really
+  /// "larger" or "smaller" than one another. Instead, this just acts on `X`,
+  /// `Y`, and `Z` independantly.
+  ///
   /// # Example
   ///
   /// ```
+  /// # use sc_common::math::Pos;
   /// // Basic usage
   /// assert_eq!(Pos::new(1, 5, 6).max(Pos::new(3, 3, 3)), Pos::new(3, 5, 6));
   ///
   /// // Keep a position within a chunk relative range (this would be useful for
   /// // filling a cube, for example).
-  /// let pos = Pos::new(16 + 2, 34, 32 + 14);
-  /// assert_eq!(pos.chunk_rel(), Pos::new(2, 34, 14));
-  /// assert_eq!((pos.chunk_rel() - Pos::new(3, 3, 3)).max(0, 0, 0), Pos::new(0, 34, 11));
+  /// let pos = Pos::new(2, 34, 14);
+  /// let new_pos = pos - Pos::new(3, 3, 3);
+  /// // `new_pos` is be outside a chunk, and might break something
+  /// assert_eq!(new_pos, Pos::new(-1, 31, 11));
+  /// // This would clamp the `new_pos` within the chunk boundries
+  /// assert_eq!(new_pos.max(Pos::new(0, 0, 0)), Pos::new(0, 31, 11));
   /// ```
   pub fn max(&self, other: Pos) -> Pos {
     Pos::new(self.x.max(other.x), self.y.max(other.y), self.z.max(other.z))
@@ -267,6 +283,7 @@ impl Pos {
   /// # Example
   ///
   /// ```
+  /// # use sc_common::math::Pos;
   /// assert_eq!(
   ///   Pos::new(1, 5, 6).min_max(Pos::new(3, 3, 3)),
   ///   (Pos::new(1, 3, 3), Pos::new(3, 5, 6))

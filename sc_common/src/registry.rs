@@ -74,7 +74,7 @@ impl<K: Eq + Hash + Debug + Clone + Copy, V> Registry<K, V> {
   /// # Example
   ///
   /// ```rust
-  /// # use common::registry::Registry;
+  /// # use sc_common::registry::Registry;
   /// # let some_value = 100;
   /// let mut reg = Registry::new();
   /// reg.add("a", some_value);
@@ -121,7 +121,7 @@ impl<K: Eq + Hash + Debug + Clone + Copy, V> Registry<K, V> {
   /// # Example
   ///
   /// ```rust
-  /// # use common::registry::Registry;
+  /// # use sc_common::registry::Registry;
   /// # let some_value = 100;
   /// let mut reg = Registry::new();
   /// reg.add("a", some_value);
