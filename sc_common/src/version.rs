@@ -161,8 +161,7 @@ impl ProtocolVersion {
   }
   /// Converts the given string to a protocol version. This string should be in
   /// the same format as the enums. That is, V1_12_2 would get
-  /// `ProtocolVersion::V1_12_2`. This is different than
-  /// [`from_str`](Self::from_str), because this will return [`Self::Invalid`]
+  /// `ProtocolVersion::V1_12_2`. This will return [`Self::Invalid`]
   /// if the string could not be parsed.
   pub fn parse_str(s: &str) -> Self {
     match s.parse() {

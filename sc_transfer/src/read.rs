@@ -313,8 +313,7 @@ impl<'a> MessageReader<'a> {
     Ok((Header::from_id(val & 0x07).ok_or(InvalidReadError::InvalidHeader(val & 0x07))?, val >> 3))
   }
 
-  /// Advances past the given number of fields. This is faster than calling
-  /// [`read_any`] repeatedly, as we don't allocate at all.
+  /// Advances past the given number of fields.
   pub fn skip_fields(&mut self, fields: u64) -> InvalidResult<()> {
     for _ in 0..fields {
       self.skip_field()?;
@@ -322,8 +321,7 @@ impl<'a> MessageReader<'a> {
     Ok(())
   }
 
-  /// Skips a single field. This is faster than [`read_any`], as it doesn't
-  /// allocate.
+  /// Skips a single field.
   pub fn skip_field(&mut self) -> InvalidResult<()> {
     let (header, extra) = self.read_header()?;
     match header {

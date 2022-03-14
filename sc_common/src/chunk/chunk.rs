@@ -3,11 +3,15 @@ use super::section::Section;
 use crate::math::{Pos, PosError};
 use std::cmp;
 
-/// A chunk column. This is not clone, because that would mean duplicating an
-/// entire chunk, which you probably don't want to do. If you do need to clone a
-/// chunk, use [`Chunk::duplicate()`].
+/// A chunk column. This is not `Clone`, because that would mean duplicating an
+/// entire chunk, which you probably don't want to do.
 ///
-/// If you want to create a cross-versioned chunk, use [`MultiChunk`] instead.
+/// Note that this should have a function called `duplicate` which does the same
+/// thing as clone, but I have not implemented it, as I have never needed to
+/// clone a chunk.
+///
+/// If you want to create a cross-versioned chunk, use `MultiChunk` (in
+/// `sc_server`) instead.
 pub struct Chunk<S: Section> {
   sections: Vec<Option<S>>,
   max_bpe:  u8,
