@@ -39,9 +39,9 @@ The `--release` flag will make the server/proxy faster at runtime, but take
 longer to compile. I recommend it for both, unless you are developing the
 server/proxy.
 
-After running the server or proxy, a file named `config-default.yml` and
+After running the server or proxy, a file named `server-default.yml` and
 `proxy-default.yml` will be created. These files are written when the
-server/proxy start, and will not be read. Instead, modify `config.yml`
+server/proxy start, and will not be read. Instead, modify `server.yml`
 and `proxy.yml` to override settings in the default config. Here you can
 do things like change the world generation, enable/disable plugins, and
 enable online mode for the proxy.
