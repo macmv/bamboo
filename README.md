@@ -1,13 +1,13 @@
 <div align="center">
   <h1>
-    <img src="https://gitlab.com/macmv/sugarcane/-/raw/main/icon.png" width=35>
-    Sugarcane
-    <img src="https://gitlab.com/macmv/sugarcane/-/raw/main/icon.png" width=35>
+    <img src="https://gitlab.com/macmv/bamboo/-/raw/main/icon.png" width=35>
+    Bamboo
+    <img src="https://gitlab.com/macmv/bamboo/-/raw/main/icon.png" width=35>
   </h1>
 
-  [![pipeline status](https://gitlab.com/macmv/sugarcane/badges/main/pipeline.svg)](https://gitlab.com/macmv/sugarcane/-/pipelines)
-  [![coverage report](https://gitlab.com/macmv/sugarcane/badges/main/coverage.svg)](https://macmv.gitlab.io/sugarcane/index.html)
-  [![lines of code](https://tokei.rs/b1/gitlab/macmv/sugarcane?category=code)](https://github.com/XAMPPRocky/tokei)
+  [![pipeline status](https://gitlab.com/macmv/bamboo/badges/main/pipeline.svg)](https://gitlab.com/macmv/bamboo/-/pipelines)
+  [![coverage report](https://gitlab.com/macmv/bamboo/badges/main/coverage.svg)](https://macmv.gitlab.io/bamboo/index.html)
+  [![lines of code](https://tokei.rs/b1/gitlab/macmv/bamboo?category=code)](https://github.com/XAMPPRocky/tokei)
   [![Discord](https://badgen.net/badge/icon/discord?icon=discord&label)](https://discord.gg/8CTr3N9yzU)
 
   A safe, fast, and secure Minecraft server optimized for minigames.
@@ -19,8 +19,8 @@ Install [rust](https://www.rust-lang.org/learn/get-started), and then clone
 this repository:
 
 ```
-git clone https://gitlab.com/macmv/sugarcane.git
-cd sugarcane
+git clone https://gitlab.com/macmv/bamboo.git
+cd bamboo
 ```
 
 Now you need to build the server and proxy. You can run the server with this
