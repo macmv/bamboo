@@ -293,6 +293,12 @@ impl<T> Buffer<T>
 where
   Cursor<T>: io::Write,
 {
+  /// Advances the cursor `amount` bytes, without modifying the data.
+  pub fn skip(&mut self, amount: u64) {
+    let new_pos = self.data.position() + amount;
+    self.data.set_position(new_pos);
+  }
+
   pub fn write_bool(&mut self, v: bool) {
     if v {
       self.write_u8(1);
