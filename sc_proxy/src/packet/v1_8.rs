@@ -25,18 +25,24 @@ pub fn chunk(
     + if biomes { 256 } else { 0 }; // Biomes
 
   // The most it will be is data_len + max varint len
-  let mut chunk_data = Vec::with_capacity(data_len + 5);
+  let mut chunk_data = vec![0; data_len + 2 + 5];
   let mut chunk_buf = Buffer::new(&mut chunk_data);
 
   chunk_buf.write_u16(bit_map);
   chunk_buf.write_varint(data_len.try_into().unwrap());
-  let prefix_len = chunk_buf.len();
+  let prefix_len = chunk_buf.index();
 
   for s in sections {
     for y in 0..16 {
       for z in 0..16 {
         for x in 0..16 {
           let b = s.get_block(Pos::new(x, y, z)).unwrap();
+          // Theres a lot of air. Profiling says this helps a lot (~20% improvement for a
+          // superflat world).
+          if b == 0 {
+            chunk_buf.skip(2);
+            continue;
+          }
           let old_id = conv.block_to_old(b, BlockVersion::V1_8);
           chunk_buf.write_buf(&(old_id as u16).to_le_bytes());
         }
@@ -59,7 +65,12 @@ pub fn chunk(
       chunk_buf.write_u8(127); // Void biome
     }
   }
-  debug_assert_eq!(chunk_data.len() - prefix_len, data_len, "unexpected chunk data len");
+  // This is going to pop at most 4 elements.
+  let len = chunk_buf.index();
+  while chunk_data.len() > len {
+    chunk_data.pop();
+  }
+  assert_eq!(chunk_data.len() - prefix_len, data_len, "unexpected chunk data len");
 
   Packet::ChunkDataV8 {
     chunk_x:        pos.x(),
