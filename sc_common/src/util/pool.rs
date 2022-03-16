@@ -1,8 +1,5 @@
 use crossbeam_channel::Sender;
-use std::{
-  sync::atomic::{AtomicU32, Ordering},
-  thread,
-};
+use std::thread;
 
 type BoxFn<S> = Box<dyn FnOnce(&S) + Send>;
 
@@ -13,9 +10,9 @@ type BoxFn<S> = Box<dyn FnOnce(&S) + Send>;
 /// initialization, instead of cloning it every time you call `execute`.
 pub struct ThreadPool<S> {
   threads: Vec<Sender<BoxFn<S>>>,
-  // I don't want to use AtomicUsize here, as I want consistency between host systems. Also 4
+  // I don't want to use usize here, as I want consistency between host systems. Also 4
   // billion threads is never going to happen, so we don't need to worry about overflows.
-  id:      AtomicU32,
+  id:      u32,
 }
 
 impl<S: Send + 'static> ThreadPool<S> {
@@ -52,12 +49,30 @@ impl<S: Send + 'static> ThreadPool<S> {
         }
       });
     }
-    ThreadPool { threads, id: 0.into() }
+    ThreadPool { threads, id: 0 }
   }
 
   /// Executes the given task on the next worker thread.
-  pub fn execute<F: FnOnce(&S) + Send + 'static>(&self, f: F) {
-    let id = self.id.fetch_add(1, Ordering::Relaxed) % self.threads.len() as u32;
+  pub fn execute<F: FnOnce(&S) + Send + 'static>(&mut self, f: F) {
+    self.id = self.id.wrapping_add(1);
+    let id = self.id % self.threads.len() as u32;
     self.threads[id as usize].send(Box::new(f)).expect("thread unexpectedly closed");
+  }
+
+  /// Waits for all tasks to be completed
+  pub fn wait(&self) {
+    loop {
+      let mut empty = true;
+      for thread in &self.threads {
+        if !thread.is_empty() {
+          empty = false;
+          break;
+        }
+      }
+      if empty {
+        break;
+      }
+      std::thread::yield_now();
+    }
   }
 }

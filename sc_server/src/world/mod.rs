@@ -155,7 +155,7 @@ impl World {
   pub fn config(&self) -> &Arc<Config> { self.wm.config() }
 
   fn global_tick_loop(self: Arc<Self>) {
-    let pool = ThreadPool::auto(|| State { uspt: self.uspt.clone() });
+    let mut pool = ThreadPool::auto(|| State { uspt: self.uspt.clone() });
     let mut tick = 0;
     loop {
       let start = Instant::now();
@@ -204,6 +204,8 @@ impl World {
           s.uspt.fetch_add(start.elapsed().as_micros().try_into().unwrap(), Ordering::SeqCst);
         });
       }
+      // We don't want overlapping tick loops
+      pool.wait();
       tick += 1;
       let time = Instant::now().duration_since(start);
       match Duration::from_millis(50).checked_sub(time) {
