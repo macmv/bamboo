@@ -44,5 +44,8 @@ flate2 = "1.0"
 ringbuf = "0.2.4"
 smallvec = "1.8.0"
 
+# profiling
+pprof = { version = "0.6.1", features = ["protobuf"] }
+
 [build-dependencies]
 sc_data = { path = "../sc_data" }
