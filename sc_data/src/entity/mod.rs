@@ -131,12 +131,12 @@ impl EntityDef {
     }
   }
 
-  pub fn get(&self, name: &str) -> &Entity {
+  pub fn get(&self, name: &str) -> Option<&Entity> {
     let name = convert_name(name);
     if let Some(&idx) = self.entity_map.get(&name) {
-      self.entities[idx].as_ref().unwrap()
+      Some(self.entities[idx].as_ref().unwrap())
     } else {
-      panic!("no entity found with name {name}");
+      None
     }
   }
 }

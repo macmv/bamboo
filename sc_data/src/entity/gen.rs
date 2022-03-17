@@ -109,8 +109,12 @@ fn generate_versions(versions: &[(Version, EntityDef)]) -> String {
   gen.write_block(|gen| {
     gen.write_line("&[");
     gen.add_indent();
-    for (v, ent) in versions {
-      entity_metadata(gen, v, ent, &versions.last().unwrap().1);
+    let latest = &versions.last().unwrap().1;
+    for ent in latest.entities.iter().flatten() {
+      entity_metadata(
+        gen,
+        &versions.iter().map(|(ver, def)| (ver, def.get(&ent.name))).collect::<Vec<_>>(),
+      );
       gen.write_line(",");
     }
     gen.remove_indent();
