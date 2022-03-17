@@ -18,6 +18,9 @@ pub fn entity_metadata(gen: &mut CodeGen, v: &Version, ent: &EntityDef) {
         for meta in &e.metadata {
           gen.write("MetadataField ");
           gen.write_block(|gen| {
+            gen.write("id: ");
+            gen.write(&meta.id.to_string());
+            gen.write_line(",");
             gen.write("name: \"");
             gen.write(&meta.name);
             gen.write_line("\",");
