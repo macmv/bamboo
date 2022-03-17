@@ -9,7 +9,7 @@ use std::collections::HashMap;
 #[derive(Transfer)]
 pub struct Metadata {
   // A sparse map of indices to serialized fields.
-  fields: HashMap<u8, Field>,
+  pub fields: HashMap<u8, Field>,
 }
 
 #[derive(Transfer)]
