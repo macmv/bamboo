@@ -1,4 +1,4 @@
-use super::{cross::cross_version, Entity, EntityDef};
+use super::{cross::cross_version, meta::entity_metadata, Entity, EntityDef};
 use crate::{gen::CodeGen, Version};
 use convert_case::{Case, Casing};
 use std::{fs, io, path::Path};
@@ -96,6 +96,21 @@ fn generate_versions(versions: &[(Version, EntityDef)]) -> String {
     gen.add_indent();
     for v in versions {
       cross_version(gen, v, versions.last().unwrap());
+      gen.write_line(",");
+    }
+    gen.remove_indent();
+    gen.write_line("]");
+  });
+
+  gen.write_line("/// Generates the cross-versioning data for entity metadata. This is how old");
+  gen.write_line("/// clients can see the same entities as newer ones. This is specifically used");
+  gen.write_line("/// for things like what item an entity is holding, it's health, etc.");
+  gen.write_line("pub fn generate_metadata() -> &'static [VersionMetadata] ");
+  gen.write_block(|gen| {
+    gen.write_line("&[");
+    gen.add_indent();
+    for (v, ent) in versions {
+      entity_metadata(gen, v, ent);
       gen.write_line(",");
     }
     gen.remove_indent();
