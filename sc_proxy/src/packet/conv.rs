@@ -43,6 +43,8 @@ mod entity {
   }
 
   include!(concat!(env!("OUT_DIR"), "/entity/version.rs"));
+
+  use super::entity_types::*;
 }
 
 impl TypeConverter {
@@ -141,5 +143,96 @@ impl TypeConverter {
       Some(v) => *v,
       None => 0,
     }
+  }
+}
+
+mod entity_types {
+  #[derive(Debug, Clone)]
+  pub struct Metadata {
+    pub(super) entities: &'static [EntityMetadata],
+  }
+
+  #[derive(Debug, Clone)]
+  pub struct EntityMetadata {
+    pub(super) entity: &'static str,
+    pub(super) fields: &'static [MetadataField],
+  }
+
+  #[derive(Debug, Clone)]
+  pub struct MetadataField {
+    /// The index of this metadata field.
+    pub(super) id:   u32,
+    /// The name of this field. This is how cross-versioning works. We use the
+    /// yarn mappings here, and convert MCP mappings into yarn mappings.
+    pub(super) name: &'static str,
+    /// The kind of metadata.
+    pub(super) ty:   MetadataType,
+  }
+
+  /// An entity metadata type. Note that the documentation for this type is for
+  /// 1.18.2. Older versions will have different serializing/deserializing
+  /// rules.
+  #[derive(Debug, Clone)]
+  pub enum MetadataType {
+    /// A single byte.
+    Byte,
+    /// A varint (same as protocol).
+    VarInt,
+    /// A short. Only present on 1.8-1.12.
+    Short,
+    /// A 4 byte floating point number
+    Float,
+    /// A varint prefixed string
+    String,
+    /// A string, which is JSON encoded chat data.
+    Chat,
+    /// A boolean. If true, this is followed by a Chat field.
+    OptChat,
+    /// An item stack. Same as protocol.
+    Item,
+    /// A single byte.
+    Bool,
+    /// 3 floats for X, Y, then Z.
+    Rotation,
+    /// A position encoded as a long.
+    Position,
+    /// A boolean. If true, this is followed by a Position.
+    OptPosition,
+    /// A VarInt. This will be from 0-5 (inclusive), which maps to a direction
+    /// like so:
+    /// - 0: Down
+    /// - 1: Up
+    /// - 2: North
+    /// - 3: South
+    /// - 4: West
+    /// - 5: East
+    Direction,
+    /// A boolean. If true, then a 16 byte UUID follows.
+    OptUUID,
+    /// A varint, which should be parsed as a block ID.
+    BlockID,
+    /// An NBT tag. This is not length prefixed. The entire tag must be parsed
+    /// to find the end of this field.
+    NBT,
+    /// A VarInt for the particle ID, followed by some data. The data following
+    /// must be infered from the particle ID.
+    Particle,
+    /// 3 VarInts: villager type, villager profession, and villager level.
+    VillagerData,
+    /// A boolean. If true, a VarInt follows.
+    OptVarInt,
+    /// A VarInt, from 0-7 (inclusive). The numbers map to these poses:
+    /// - 0: Standing
+    /// - 1: Fall flying
+    /// - 2: Sleeping
+    /// - 3: Swiming
+    /// - 4: Spin attack
+    /// - 5: Sneaking
+    /// - 6: Long jumping
+    /// - 7: Dying
+    Pose,
+
+    /// TODO: Figure out what this is!
+    FireworkData,
   }
 }
