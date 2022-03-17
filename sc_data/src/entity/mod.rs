@@ -1,6 +1,7 @@
 use crate::dl;
+use convert_case::{Case, Casing};
 use serde::Deserialize;
-use std::{fs, io, path::Path};
+use std::{collections::HashMap, fs, io, path::Path};
 
 mod cross;
 mod gen;
@@ -11,7 +12,8 @@ pub fn generate(out_dir: &Path) -> io::Result<()> {
   let versions = crate::VERSIONS
     .iter()
     .map(|&ver| {
-      let def: EntityDef = dl::get("entities", ver);
+      let mut def: EntityDef = dl::get("entities", ver);
+      def.init();
       (ver, def)
     })
     .collect();
@@ -21,7 +23,9 @@ pub fn generate(out_dir: &Path) -> io::Result<()> {
 
 #[derive(Debug, Clone, Deserialize)]
 pub struct EntityDef {
-  entities: Vec<Option<Entity>>,
+  entities:   Vec<Option<Entity>>,
+  #[serde(skip)]
+  entity_map: HashMap<String, usize>,
 }
 
 #[derive(Debug, Clone, Default, Deserialize)]
@@ -116,4 +120,68 @@ pub enum MetadataType {
 
   /// TODO: Figure out what this is!
   FireworkData,
+}
+
+impl EntityDef {
+  pub fn init(&mut self) {
+    for (id, ent) in self.entities.iter().enumerate() {
+      if let Some(e) = ent {
+        self.entity_map.insert(e.name.clone(), id);
+      }
+    }
+  }
+
+  pub fn get(&self, name: &str) -> &Entity {
+    let name = convert_name(name);
+    if let Some(&idx) = self.entity_map.get(&name) {
+      self.entities[idx].as_ref().unwrap()
+    } else {
+      panic!("no entity found with name {name}");
+    }
+  }
+}
+
+fn convert_name(name: &str) -> String {
+  let lower = name.to_case(Case::Snake);
+  match lower.as_str() {
+    // Can't exist, need a placeholder. TODO: Remove Mob from data collector.
+    "mob" => "arrow",
+    "monster" => "arrow",
+
+    "xp_orb" => "experience_orb",
+    "thrown_egg" => "egg",
+    "thrown_enderpearl" => "ender_pearl",
+    "thrown_potion" => "potion",
+    "thrown_exp_bottle" | "xp_bottle" => "experience_bottle",
+    "primed_tnt" => "tnt",
+    "eye_of_ender_signal" => "eye_of_ender",
+    "falling_sand" => "falling_block",
+    "fireworks_rocket_entity" | "fireworks_rocket" => "firework_rocket",
+    "minecart_command_block" | "commandblock_minecart" => "command_block_minecart",
+    "minecart_rideable" => "minecart",
+    "minecart_chest" => "chest_minecart",
+    "minecart_furnace" => "furnace_minecart",
+    "minecart_tnt" => "tnt_minecart",
+    "minecart_hopper" => "hopper_minecart",
+    "minecart_spawner" => "spawner_minecart",
+    "pig_zombie" | "zombie_pigman" => "zombified_piglin",
+    // ^^^^^^^^^   ^^^^^^^^^^^^^^^    ^^^^^^^^^^^^^^^^^^
+    //   ????        correct name         stupid name
+    "lava_slime" => "magma_cube",
+    "wither_boss" => "wither",
+    "mushroom_cow" => "mooshroom",
+    // who changes their entity from `snow_man` to `snowman`
+    "snow_man" | "snowman" => "snow_golem",
+    "ozelot" => "ocelot", // spelling 100
+    "villager_golem" => "iron_golem",
+    "entity_horse" => "horse",
+    "ender_crystal" => "end_crystal",
+
+    "evocation_fangs" => "evoker_fangs",
+    "evocation_illager" => "evoker",
+    "vindication_illager" => "vindicator",
+    "illusion_illager" => "illusioner",
+    _ => return lower,
+  }
+  .into()
 }

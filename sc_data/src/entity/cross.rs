@@ -3,6 +3,63 @@ use crate::{gen::CodeGen, Version};
 use convert_case::{Case, Casing};
 use std::collections::HashMap;
 
+pub fn cross_version_metadata(gen: &mut CodeGen, old_ver: &Version, old: &Entity, new: &Entity) {
+  let (to_old, to_new) = find_metadata_ids(old, new);
+
+  gen.write_line("Version {");
+  gen.add_indent();
+
+  gen.write("to_old: &[");
+  for id in to_old {
+    gen.write(&id.to_string());
+    gen.write(",");
+  }
+  gen.write_line("],");
+
+  gen.write("to_new: &[");
+  for id in to_new {
+    gen.write(&id.to_string());
+    gen.write(",");
+  }
+  gen.write_line("],");
+
+  gen.write("ver: ");
+  gen.write_line(&old_ver.to_block());
+
+  gen.remove_indent();
+  gen.write("}");
+}
+
+fn find_metadata_ids(old_def: &Entity, new_def: &Entity) -> (Vec<u32>, Vec<u32>) {
+  let old_def = old_def.clone();
+  let old_map: HashMap<_, _> =
+    old_def.metadata.iter().map(|b| (b.name.clone(), b.clone())).collect();
+
+  let mut to_old = Vec::with_capacity(new_def.metadata.len());
+  for e in &new_def.metadata {
+    let name = e.name.clone();
+    match old_map.get(&name) {
+      Some(old_meta) => to_old.push(old_meta.id),
+      None => to_old.push(0),
+    };
+  }
+
+  let mut to_new = Vec::with_capacity(to_old.len());
+  for (new_id, old_id) in to_old.iter().enumerate() {
+    let old_id = *old_id as usize;
+    while to_new.len() <= old_id {
+      to_new.push(None);
+    }
+    // If the block id has already been set, we don't want to override it. This
+    // means that when converting to a new id, we will always default to the lowest
+    // id.
+    if to_new[old_id].is_none() {
+      to_new[old_id] = Some(new_id as u32);
+    }
+  }
+  (to_old, to_new.into_iter().map(|v| v.unwrap_or(0)).collect())
+}
+
 pub fn cross_version(gen: &mut CodeGen, old: &(Version, EntityDef), new: &(Version, EntityDef)) {
   let (old_ver, old_def) = old;
   let (_new_ver, new_def) = new;

@@ -1,7 +1,7 @@
-use super::EntityDef;
+use super::{cross::cross_version_metadata, EntityDef};
 use crate::{gen::CodeGen, Version};
 
-pub fn entity_metadata(gen: &mut CodeGen, v: &Version, ent: &EntityDef) {
+pub fn entity_metadata(gen: &mut CodeGen, v: &Version, ent: &EntityDef, latest: &EntityDef) {
   gen.write("Metadata ");
   gen.write_block(|gen| {
     gen.write_line("entities: &[");
@@ -32,6 +32,8 @@ pub fn entity_metadata(gen: &mut CodeGen, v: &Version, ent: &EntityDef) {
         }
         gen.remove_indent();
         gen.write_line("]");
+
+        cross_version_metadata(gen, v, e, latest.get(&e.name));
       });
       gen.write_line(",");
     }

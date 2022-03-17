@@ -110,7 +110,7 @@ fn generate_versions(versions: &[(Version, EntityDef)]) -> String {
     gen.write_line("&[");
     gen.add_indent();
     for (v, ent) in versions {
-      entity_metadata(gen, v, ent);
+      entity_metadata(gen, v, ent, &versions.last().unwrap().1);
       gen.write_line(",");
     }
     gen.remove_indent();
