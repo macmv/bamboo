@@ -144,18 +144,36 @@ impl TypeConverter {
       None => 0,
     }
   }
+
+  /// Converts an entity metadata field id into an id for the given version.
+  ///
+  /// The argument `ty` is the entity type (not the metadata field type). The
+  /// argument `id` is the modern metadata field index. The argument `ver` is
+  /// the version that `id` is being converted to.
+  pub fn entity_metadata_to_old(&self, ty: u32, id: u32, ver: BlockVersion) -> u32 {
+    if ver == BlockVersion::latest() {
+      return id;
+    }
+    match self.entities[ver.to_index() as usize].to_old.get(id as usize) {
+      Some(v) => *v,
+      None => 0,
+    }
+  }
 }
 
 mod entity_types {
+  use sc_common::version::BlockVersion;
+
   #[derive(Debug, Clone)]
   pub struct Metadata {
-    pub(super) entities: &'static [EntityMetadata],
+    entity:   &'static str,
+    versions: &'static [MetadataVersion],
   }
 
   #[derive(Debug, Clone)]
-  pub struct EntityMetadata {
-    pub(super) entity: &'static str,
-    pub(super) fields: &'static [MetadataField],
+  pub struct MetadataVersion {
+    fields:  &'static [MetadataField],
+    version: BlockVersion,
   }
 
   #[derive(Debug, Clone)]

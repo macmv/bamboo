@@ -1,17 +1,17 @@
 use super::TypeConverter;
 use sc_common::{
-  metadata::{Field, Metadata},
-  util::Buffer,
+  metadata::{Field, Metadata, Pose},
+  util::{Buffer, Face},
   version::ProtocolVersion,
 };
 
 /// Serializes the entity metadata. This will not consume the metadata, and
 /// will never fail. The `set` functions are where error handling is done.
-pub fn metadata(meta: &Metadata, ver: ProtocolVersion, conv: &TypeConverter) -> Vec<u8> {
+pub fn metadata(ty: u32, meta: &Metadata, ver: ProtocolVersion, conv: &TypeConverter) -> Vec<u8> {
   let mut data = vec![];
   let mut out = Buffer::new(&mut data);
   for (id, field) in &meta.fields {
-    id = conv.entity_metadata_to_old(id, ver);
+    id = conv.entity_metadata_to_old(ty, id, ver);
     if ver == ProtocolVersion::V1_8 {
       // Index and type are the same byte in 1.8
       let mut index_type = id & 0x1f;
@@ -147,8 +147,8 @@ pub fn metadata(meta: &Metadata, ver: ProtocolVersion, conv: &TypeConverter) -> 
           }
         }
         Field::Direction(v) => match v {
-          Face::Down => out.write_varint(0),
-          Face::Up => out.write_varint(1),
+          Face::Bottom => out.write_varint(0),
+          Face::Top => out.write_varint(1),
           Face::North => out.write_varint(2),
           Face::South => out.write_varint(3),
           Face::West => out.write_varint(4),

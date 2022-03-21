@@ -63,13 +63,14 @@ include!(concat!(env!("OUT_DIR"), "/entity/version.rs"));
 
 #[derive(Debug, Clone)]
 pub struct Metadata {
-  entities: &'static [EntityMetadata],
+  entity:   &'static str,
+  versions: &'static [MetadataVersion],
 }
 
 #[derive(Debug, Clone)]
-pub struct EntityMetadata {
-  entity: &'static str,
-  fields: &'static [MetadataField],
+pub struct MetadataVersion {
+  fields:  &'static [MetadataField],
+  version: BlockVersion,
 }
 
 #[derive(Debug, Clone)]
