@@ -1,6 +1,7 @@
 use crate::{
   chunk::{paletted::Section, BlockLight, LightChunk, SkyLight},
   math::{ChunkPos, Pos},
+  metadata::Metadata,
   util::{GameMode, Item, UUID},
 };
 use sc_macros::Transfer;
@@ -155,6 +156,7 @@ pub enum Packet {
     vel_x:    i16,
     vel_y:    i16,
     vel_z:    i16,
+    meta:     Metadata,
   },
   #[id = 17]
   SpawnPlayer { eid: i32, id: UUID, x: f64, y: f64, z: f64, yaw: i8, pitch: i8 },

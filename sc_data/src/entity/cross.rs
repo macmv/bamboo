@@ -3,6 +3,109 @@ use crate::{gen::CodeGen, Version};
 use convert_case::{Case, Casing};
 use std::collections::HashMap;
 
+pub fn cross_version_metadata(
+  gen: &mut CodeGen,
+  old_ver: &Version,
+  old: &EntityDef,
+  new: &EntityDef,
+  to_old: &[u32],
+) {
+  gen.write_line("metadata: &[");
+  gen.add_indent();
+  for ent in &new.entities {
+    let new = ent.as_ref().unwrap();
+    let old = &old.entities[to_old[new.id as usize] as usize];
+    gen.write_comment(&new.name);
+    if let Some(old) = old {
+      let (to_old, to_new) = find_metadata_ids(old, new);
+      gen.write_line("Metadata {");
+      gen.add_indent();
+
+      gen.write("to_old: &[");
+      for id in &to_old {
+        gen.write(&id.to_string());
+        gen.write(",");
+      }
+      gen.write_line("],");
+
+      gen.write("to_new: &[");
+      for id in to_new {
+        gen.write(&id.to_string());
+        gen.write(",");
+      }
+      gen.write_line("],");
+
+      gen.write_line("old_types: &[");
+      gen.add_indent();
+      for field in &old.metadata_list() {
+        if let Some(field) = field {
+          gen.write("Some(MetadataType::");
+          gen.write(&format!("{:?}", field.ty));
+          gen.write_line("),");
+        } else {
+          gen.write_line("None,");
+        }
+      }
+      gen.remove_indent();
+      gen.write_line("],");
+
+      gen.write_line("new_types: &[");
+      gen.add_indent();
+      for field in &new.metadata {
+        gen.write("MetadataType::");
+        gen.write(&format!("{:?}", field.ty));
+        gen.write_line(",");
+      }
+      gen.remove_indent();
+      gen.write_line("],");
+
+      gen.remove_indent();
+      gen.write_line("},");
+    } else {
+      gen.write_line("Metadata {");
+      gen.write_line("  to_old: &[],");
+      gen.write_line("  to_new: &[],");
+      gen.write_line("  old_types: &[],");
+      gen.write_line("  new_types: &[],");
+      gen.write_line("},");
+    }
+  }
+  gen.remove_indent();
+  gen.write_line("],");
+}
+
+fn find_metadata_ids(old_def: &Entity, new_def: &Entity) -> (Vec<u32>, Vec<u32>) {
+  let old_map: HashMap<_, _> =
+    old_def.metadata.iter().map(|b| (b.name.clone(), b.clone())).collect();
+
+  let mut to_old = Vec::with_capacity(new_def.metadata.len());
+  let mut max_old_id = 0;
+  for e in &new_def.metadata {
+    let name = e.name.clone();
+    match old_map.get(&name) {
+      Some(old_meta) => {
+        if old_meta.id > max_old_id {
+          max_old_id = old_meta.id;
+        }
+        to_old.push(old_meta.id)
+      }
+      None => to_old.push(0),
+    };
+  }
+
+  let mut to_new = vec![None; max_old_id as usize + 1];
+  for (new_id, old_id) in to_old.iter().enumerate() {
+    let old_id = *old_id as usize;
+    // If the block id has already been set, we don't want to override it. This
+    // means that when converting to a new id, we will always default to the lowest
+    // id.
+    if to_new[old_id].is_none() {
+      to_new[old_id] = Some(new_id as u32);
+    }
+  }
+  (to_old, to_new.into_iter().map(|v| v.unwrap_or(0)).collect())
+}
+
 pub fn cross_version(gen: &mut CodeGen, old: &(Version, EntityDef), new: &(Version, EntityDef)) {
   let (old_ver, old_def) = old;
   let (_new_ver, new_def) = new;
@@ -12,7 +115,7 @@ pub fn cross_version(gen: &mut CodeGen, old: &(Version, EntityDef), new: &(Versi
   gen.add_indent();
 
   gen.write("to_old: &[");
-  for id in to_old {
+  for id in &to_old {
     gen.write(&id.to_string());
     gen.write(",");
   }
@@ -24,6 +127,8 @@ pub fn cross_version(gen: &mut CodeGen, old: &(Version, EntityDef), new: &(Versi
     gen.write(",");
   }
   gen.write_line("],");
+
+  cross_version_metadata(gen, old_ver, old_def, new_def, &to_old);
 
   gen.write("ver: ");
   gen.write_line(&old_ver.to_block());

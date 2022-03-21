@@ -16,11 +16,14 @@ mod v1_9;
 
 mod cb;
 mod conv;
+mod metadata;
 mod sb;
 
 pub use cb::{ToTcp, WriteError};
 pub use conv::TypeConverter;
 pub use sb::FromTcp;
+
+pub use metadata::metadata;
 
 pub fn chunk(
   pos: ChunkPos,
