@@ -608,7 +608,7 @@ impl ToTcp for Packet {
         let new_ty = ty;
         let ty = conn.conv().entity_to_old(ty, ver.block()) as i32;
         if ver >= ProtocolVersion::V1_15_2 {
-          GPacket::SpawnMobV15 {
+          let spawn = GPacket::SpawnMobV15 {
             id: eid,
             uuid: id,
             entity_type_id: ty,
@@ -621,6 +621,18 @@ impl ToTcp for Packet {
             yaw,
             pitch,
             head_yaw,
+          };
+          if !meta.fields.is_empty() {
+            return Ok(smallvec![
+              spawn,
+              GPacket::EntityMetadataV8 {
+                entity_id:      eid,
+                field_149378_b: None,
+                unknown:        metadata(new_ty, &meta, ver, conn.conv()),
+              }
+            ]);
+          } else {
+            spawn
           }
         } else if ver >= ProtocolVersion::V1_11 {
           GPacket::SpawnMobV11 {
@@ -656,7 +668,7 @@ impl ToTcp for Packet {
             head_pitch: head_yaw,
             data_manager: None,
             data_manager_entries: None,
-            unknown: vec![0xff], // No entity metadata
+            unknown: metadata(new_ty, &meta, ver, conn.conv()),
           }
         } else {
           GPacket::SpawnMobV8 {
@@ -690,8 +702,7 @@ impl ToTcp for Packet {
             current_item: 0,
             watcher: None,
             field_148958_j: None,
-            // No entity metadata
-            unknown: vec![0x7f],
+            unknown: vec![0x7f], // No entity metadata
           }
         } else if ver < ProtocolVersion::V1_15_2 {
           GPacket::SpawnPlayerV9 {
@@ -704,8 +715,7 @@ impl ToTcp for Packet {
             pitch,
             watcher: None,
             data_manager_entries: None,
-            // No entity metadata
-            unknown: vec![0xff],
+            unknown: vec![0xff], // No entity metadata
           }
         } else {
           GPacket::SpawnPlayerV15 { id: eid, uuid: id, x, y, z, yaw, pitch }
