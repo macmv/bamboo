@@ -5,7 +5,6 @@ use std::{collections::HashMap, fs, io, path::Path};
 
 mod cross;
 mod gen;
-mod meta;
 
 pub fn generate(out_dir: &Path) -> io::Result<()> {
   fs::create_dir_all(out_dir.join("entity"))?;

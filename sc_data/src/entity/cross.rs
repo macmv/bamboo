@@ -35,6 +35,26 @@ pub fn cross_version_metadata(
       }
       gen.write_line("],");
 
+      gen.write_line("old_types: &[");
+      gen.add_indent();
+      for field in &old.metadata {
+        gen.write("MetadataType::");
+        gen.write(&format!("{:?}", field.ty));
+        gen.write_line(",");
+      }
+      gen.remove_indent();
+      gen.write_line("],");
+
+      gen.write_line("new_types: &[");
+      gen.add_indent();
+      for field in &new.metadata {
+        gen.write("MetadataType::");
+        gen.write(&format!("{:?}", field.ty));
+        gen.write_line(",");
+      }
+      gen.remove_indent();
+      gen.write_line("],");
+
       gen.remove_indent();
       gen.write_line("},");
     }
@@ -44,25 +64,27 @@ pub fn cross_version_metadata(
 }
 
 fn find_metadata_ids(old_def: &Entity, new_def: &Entity) -> (Vec<u32>, Vec<u32>) {
-  let old_def = old_def.clone();
   let old_map: HashMap<_, _> =
     old_def.metadata.iter().map(|b| (b.name.clone(), b.clone())).collect();
 
   let mut to_old = Vec::with_capacity(new_def.metadata.len());
+  let mut max_old_id = 0;
   for e in &new_def.metadata {
     let name = e.name.clone();
     match old_map.get(&name) {
-      Some(old_meta) => to_old.push(old_meta.id),
+      Some(old_meta) => {
+        if old_meta.id > max_old_id {
+          max_old_id = old_meta.id;
+        }
+        to_old.push(old_meta.id)
+      }
       None => to_old.push(0),
     };
   }
 
-  let mut to_new = Vec::with_capacity(to_old.len());
+  let mut to_new = vec![None; max_old_id as usize + 1];
   for (new_id, old_id) in to_old.iter().enumerate() {
     let old_id = *old_id as usize;
-    while to_new.len() <= old_id {
-      to_new.push(None);
-    }
     // If the block id has already been set, we don't want to override it. This
     // means that when converting to a new id, we will always default to the lowest
     // id.

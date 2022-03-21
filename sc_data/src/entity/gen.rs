@@ -1,4 +1,4 @@
-use super::{cross::cross_version, meta::entity_metadata, Entity, EntityDef};
+use super::{cross::cross_version, Entity, EntityDef};
 use crate::{gen::CodeGen, Version};
 use convert_case::{Case, Casing};
 use std::{fs, io, path::Path};
