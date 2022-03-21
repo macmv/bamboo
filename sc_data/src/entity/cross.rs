@@ -3,31 +3,44 @@ use crate::{gen::CodeGen, Version};
 use convert_case::{Case, Casing};
 use std::collections::HashMap;
 
-pub fn cross_version_metadata(gen: &mut CodeGen, old_ver: &Version, old: &Entity, new: &Entity) {
-  let (to_old, to_new) = find_metadata_ids(old, new);
-
-  gen.write_line("Version {");
+pub fn cross_version_metadata(
+  gen: &mut CodeGen,
+  old_ver: &Version,
+  old: &EntityDef,
+  new: &EntityDef,
+  to_old: &[u32],
+) {
+  gen.write_line("metadata: &[");
   gen.add_indent();
+  for ent in &new.entities {
+    let new = ent.as_ref().unwrap();
+    let old = &old.entities[to_old[new.id as usize] as usize];
+    if let Some(old) = old {
+      let (to_old, to_new) = find_metadata_ids(old, new);
+      gen.write_comment(&new.name);
+      gen.write_line("Metadata {");
+      gen.add_indent();
 
-  gen.write("to_old: &[");
-  for id in to_old {
-    gen.write(&id.to_string());
-    gen.write(",");
+      gen.write("to_old: &[");
+      for id in &to_old {
+        gen.write(&id.to_string());
+        gen.write(",");
+      }
+      gen.write_line("],");
+
+      gen.write("to_new: &[");
+      for id in to_new {
+        gen.write(&id.to_string());
+        gen.write(",");
+      }
+      gen.write_line("],");
+
+      gen.remove_indent();
+      gen.write_line("},");
+    }
   }
-  gen.write_line("],");
-
-  gen.write("to_new: &[");
-  for id in to_new {
-    gen.write(&id.to_string());
-    gen.write(",");
-  }
-  gen.write_line("],");
-
-  gen.write("ver: ");
-  gen.write_line(&old_ver.to_block());
-
   gen.remove_indent();
-  gen.write("}");
+  gen.write_line("],");
 }
 
 fn find_metadata_ids(old_def: &Entity, new_def: &Entity) -> (Vec<u32>, Vec<u32>) {
@@ -69,7 +82,7 @@ pub fn cross_version(gen: &mut CodeGen, old: &(Version, EntityDef), new: &(Versi
   gen.add_indent();
 
   gen.write("to_old: &[");
-  for id in to_old {
+  for id in &to_old {
     gen.write(&id.to_string());
     gen.write(",");
   }
@@ -81,6 +94,8 @@ pub fn cross_version(gen: &mut CodeGen, old: &(Version, EntityDef), new: &(Versi
     gen.write(",");
   }
   gen.write_line("],");
+
+  cross_version_metadata(gen, old_ver, old_def, new_def, &to_old);
 
   gen.write("ver: ");
   gen.write_line(&old_ver.to_block());

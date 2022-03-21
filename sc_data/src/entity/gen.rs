@@ -102,25 +102,6 @@ fn generate_versions(versions: &[(Version, EntityDef)]) -> String {
     gen.write_line("]");
   });
 
-  gen.write_line("/// Generates the cross-versioning data for entity metadata. This is how old");
-  gen.write_line("/// clients can see the same entities as newer ones. This is specifically used");
-  gen.write_line("/// for things like what item an entity is holding, it's health, etc.");
-  gen.write_line("pub fn generate_metadata() -> &'static [Metadata] ");
-  gen.write_block(|gen| {
-    gen.write_line("&[");
-    gen.add_indent();
-    let latest = &versions.last().unwrap().1;
-    for ent in latest.entities.iter().flatten() {
-      entity_metadata(
-        gen,
-        &versions.iter().map(|(ver, def)| (ver, def.get(&ent.name))).collect::<Vec<_>>(),
-      );
-      gen.write_line(",");
-    }
-    gen.remove_indent();
-    gen.write_line("]");
-  });
-
   gen.into_output()
 }
 

@@ -166,14 +166,10 @@ mod entity_types {
 
   #[derive(Debug, Clone)]
   pub struct Metadata {
-    entity:   &'static str,
-    versions: &'static [MetadataVersion],
-  }
-
-  #[derive(Debug, Clone)]
-  pub struct MetadataVersion {
-    fields:  &'static [MetadataField],
-    version: BlockVersion,
+    to_old:    &'static [u32],
+    to_new:    &'static [u32],
+    old_types: &'static [MetadataType],
+    new_types: &'static [MetadataType],
   }
 
   #[derive(Debug, Clone)]
