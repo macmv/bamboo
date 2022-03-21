@@ -140,6 +140,24 @@ impl EntityDef {
   }
 }
 
+impl Entity {
+  pub fn metadata_list(&self) -> Vec<Option<MetadataField>> {
+    let mut sorted = self.metadata.clone();
+    sorted.sort_unstable_by_key(|field| field.id);
+    let mut list = Vec::with_capacity(sorted.len());
+    let mut id = 0;
+    for field in sorted {
+      while id != field.id {
+        list.push(None);
+        id += 1;
+      }
+      list.push(Some(field));
+      id += 1;
+    }
+    list
+  }
+}
+
 fn convert_name(name: &str) -> String {
   let lower = name.to_case(Case::Snake);
   match lower.as_str() {

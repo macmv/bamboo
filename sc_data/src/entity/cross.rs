@@ -37,10 +37,14 @@ pub fn cross_version_metadata(
 
       gen.write_line("old_types: &[");
       gen.add_indent();
-      for field in &old.metadata {
-        gen.write("MetadataType::");
-        gen.write(&format!("{:?}", field.ty));
-        gen.write_line(",");
+      for field in &old.metadata_list() {
+        if let Some(field) = field {
+          gen.write("Some(MetadataType::");
+          gen.write(&format!("{:?}", field.ty));
+          gen.write_line("),");
+        } else {
+          gen.write_line("None,");
+        }
       }
       gen.remove_indent();
       gen.write_line("],");
