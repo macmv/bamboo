@@ -53,35 +53,21 @@ impl TypeConverter {
 
 #[derive(Debug)]
 pub struct Version {
-  to_old: &'static [u32],
-  to_new: &'static [u32],
+  to_old:   &'static [u32],
+  to_new:   &'static [u32],
+  metadata: &'static [Metadata],
   #[allow(unused)]
-  ver:    BlockVersion,
+  ver:      BlockVersion,
 }
 
 include!(concat!(env!("OUT_DIR"), "/entity/version.rs"));
 
 #[derive(Debug, Clone)]
 pub struct Metadata {
-  entity:   &'static str,
-  versions: &'static [MetadataVersion],
-}
-
-#[derive(Debug, Clone)]
-pub struct MetadataVersion {
-  fields:  &'static [MetadataField],
-  version: BlockVersion,
-}
-
-#[derive(Debug, Clone)]
-pub struct MetadataField {
-  /// The index of this metadata field.
-  id:   u32,
-  /// The name of this field. This is how cross-versioning works. We use the
-  /// yarn mappings here, and convert MCP mappings into yarn mappings.
-  name: &'static str,
-  /// The kind of metadata.
-  ty:   MetadataType,
+  to_old:    &'static [u8],
+  to_new:    &'static [u8],
+  old_types: &'static [Option<MetadataType>],
+  new_types: &'static [MetadataType],
 }
 
 /// An entity metadata type. Note that the documentation for this type is for

@@ -10,8 +10,8 @@ use sc_common::{
 pub fn metadata(ty: u32, meta: &Metadata, ver: ProtocolVersion, conv: &TypeConverter) -> Vec<u8> {
   let mut data = vec![];
   let mut out = Buffer::new(&mut data);
-  for (id, field) in &meta.fields {
-    id = conv.entity_metadata_to_old(ty, id, ver);
+  for (&id, field) in &meta.fields {
+    let id = conv.entity_metadata_to_old(ty, id, ver.block());
     if ver == ProtocolVersion::V1_8 {
       // Index and type are the same byte in 1.8
       let mut index_type = id & 0x1f;
@@ -53,7 +53,7 @@ pub fn metadata(ty: u32, meta: &Metadata, ver: ProtocolVersion, conv: &TypeConve
         _ => unreachable!(),
       }
     } else {
-      out.write_varint((*id).into());
+      out.write_varint(id.into());
       // Thank you minecraft. All of this is just for the metadata types.
       out.write_u8(match field {
         Field::Byte(_) => 0,

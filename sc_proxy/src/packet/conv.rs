@@ -37,9 +37,10 @@ mod entity {
 
   #[derive(Debug)]
   pub struct Version {
-    pub to_old: &'static [u32],
-    pub to_new: &'static [u32],
-    pub ver:    BlockVersion,
+    pub to_old:   &'static [u32],
+    pub to_new:   &'static [u32],
+    pub metadata: &'static [Metadata],
+    pub ver:      BlockVersion,
   }
 
   include!(concat!(env!("OUT_DIR"), "/entity/version.rs"));
@@ -147,14 +148,14 @@ impl TypeConverter {
 
   /// Converts an entity metadata field id into an id for the given version.
   ///
-  /// The argument `ty` is the entity type (not the metadata field type). The
-  /// argument `id` is the modern metadata field index. The argument `ver` is
-  /// the version that `id` is being converted to.
-  pub fn entity_metadata_to_old(&self, ty: u32, id: u32, ver: BlockVersion) -> u32 {
+  /// The argument `ty` is the *modern* (not old) entity type. The argument `id`
+  /// is the modern metadata field index. The argument `ver` is the version
+  /// that `id` is being converted to.
+  pub fn entity_metadata_to_old(&self, ty: u32, id: u8, ver: BlockVersion) -> u8 {
     if ver == BlockVersion::latest() {
       return id;
     }
-    match self.entities[ver.to_index() as usize].to_old.get(id as usize) {
+    match self.entities[ver.to_index() as usize].metadata[ty as usize].to_old.get(id as usize) {
       Some(v) => *v,
       None => 0,
     }
@@ -162,25 +163,12 @@ impl TypeConverter {
 }
 
 mod entity_types {
-  use sc_common::version::BlockVersion;
-
   #[derive(Debug, Clone)]
   pub struct Metadata {
-    to_old:    &'static [u32],
-    to_new:    &'static [u32],
-    old_types: &'static [MetadataType],
-    new_types: &'static [MetadataType],
-  }
-
-  #[derive(Debug, Clone)]
-  pub struct MetadataField {
-    /// The index of this metadata field.
-    pub(super) id:   u32,
-    /// The name of this field. This is how cross-versioning works. We use the
-    /// yarn mappings here, and convert MCP mappings into yarn mappings.
-    pub(super) name: &'static str,
-    /// The kind of metadata.
-    pub(super) ty:   MetadataType,
+    pub to_old:    &'static [u8],
+    pub to_new:    &'static [u8],
+    pub old_types: &'static [Option<MetadataType>],
+    pub new_types: &'static [MetadataType],
   }
 
   /// An entity metadata type. Note that the documentation for this type is for
