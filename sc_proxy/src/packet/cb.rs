@@ -1,4 +1,4 @@
-use super::TypeConverter;
+use super::{metadata, TypeConverter};
 use crate::{
   gnet::{cb::Packet as GPacket, tcp},
   stream::PacketStream,
@@ -603,7 +603,9 @@ impl ToTcp for Packet {
         vel_x,
         vel_y,
         vel_z,
+        meta,
       } => {
+        let new_ty = ty;
         let ty = conn.conv().entity_to_old(ty, ver.block()) as i32;
         if ver >= ProtocolVersion::V1_15_2 {
           GPacket::SpawnMobV15 {
@@ -636,7 +638,7 @@ impl ToTcp for Packet {
             head_pitch: head_yaw,
             data_manager: None,
             data_manager_entries: None,
-            unknown: vec![0xff], // No entity metadata
+            unknown: metadata(new_ty, &meta, ver, conn.conv()),
           }
         } else if ver >= ProtocolVersion::V1_9 {
           GPacket::SpawnMobV9 {

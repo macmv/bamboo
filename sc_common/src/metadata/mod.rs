@@ -1,18 +1,17 @@
 use crate::{
   math::Pos,
-  util::{Chat, Face, Item, UUID},
-  version::ProtocolVersion,
+  util::{Face, Item, UUID},
 };
 use sc_macros::Transfer;
 use std::collections::HashMap;
 
-#[derive(Transfer)]
+#[derive(Debug, Default, Clone, Transfer, PartialEq)]
 pub struct Metadata {
   // A sparse map of indices to serialized fields.
   pub fields: HashMap<u8, Field>,
 }
 
-#[derive(Transfer)]
+#[derive(Debug, Clone, Copy, Transfer, PartialEq)]
 pub enum Pose {
   #[id = 0]
   Standing,
@@ -36,7 +35,7 @@ impl Default for Pose {
 
 /// The types for each metadata field. Updated to the latest version of the
 /// game.
-#[derive(Transfer)]
+#[derive(Debug, Clone, Transfer, PartialEq)]
 pub enum Field {
   // Only valid on 1.8
   #[id = 0]

@@ -23,7 +23,7 @@ pub use cb::{ToTcp, WriteError};
 pub use conv::TypeConverter;
 pub use sb::FromTcp;
 
-use metadata::metadata;
+pub use metadata::metadata;
 
 pub fn chunk(
   pos: ChunkPos,

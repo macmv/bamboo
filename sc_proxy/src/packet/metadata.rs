@@ -6,7 +6,10 @@ use sc_common::{
 };
 
 /// Serializes the entity metadata. This will not consume the metadata, and
-/// will never fail. The `set` functions are where error handling is done.
+/// will fail if there is invalid metadata fields given. This is for
+/// cross-versioning reasons. Currently, this will panic when given bad data.
+///
+/// TODO: Return a `Result`.
 pub fn metadata(ty: u32, meta: &Metadata, ver: ProtocolVersion, conv: &TypeConverter) -> Vec<u8> {
   let mut data = vec![];
   let mut out = Buffer::new(&mut data);

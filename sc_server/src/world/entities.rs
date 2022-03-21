@@ -132,6 +132,7 @@ impl World {
         vel_x:    p.vel.fixed_x(),
         vel_y:    p.vel.fixed_y(),
         vel_z:    p.vel.fixed_z(),
+        meta:     Default::default(),
       });
     } else {
       // Data is some data specific to that entity. If it is non-zero, then velocity
