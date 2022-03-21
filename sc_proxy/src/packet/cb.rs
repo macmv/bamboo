@@ -673,7 +673,7 @@ impl ToTcp for Packet {
             head_pitch: head_yaw,
             field_149043_l: None,
             watcher: None,
-            unknown: vec![0x7f], // No entity metadata
+            unknown: metadata(new_ty, &meta, ver, conn.conv()),
           }
         }
       }

@@ -39,6 +39,7 @@ mod entity {
   pub struct Version {
     pub to_old:   &'static [u32],
     pub to_new:   &'static [u32],
+    /// List of new entities, indexed by modern ids (no matter what `ver` is).
     pub metadata: &'static [Metadata],
     pub ver:      BlockVersion,
   }

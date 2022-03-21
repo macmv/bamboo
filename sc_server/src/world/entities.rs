@@ -3,6 +3,7 @@ use crate::{entity, entity::Entity, player::Player};
 use parking_lot::RwLockReadGuard;
 use sc_common::{
   math::{ChunkPos, FPos, Vec3},
+  metadata::Metadata,
   nbt::NBT,
   net::cb,
   util::UUID,
@@ -118,6 +119,8 @@ impl World {
       // });
       todo!();
     } else if ent.ty().is_living() {
+      let mut metadata = Metadata::new();
+      metadata.set_byte(17, 1);
       player.send(cb::Packet::SpawnLivingEntity {
         eid:      ent.eid(),
         // 1.18 clients will not render mobs that have the same UUID
@@ -132,7 +135,7 @@ impl World {
         vel_x:    p.vel.fixed_x(),
         vel_y:    p.vel.fixed_y(),
         vel_z:    p.vel.fixed_z(),
-        meta:     Default::default(),
+        meta:     metadata,
       });
     } else {
       // Data is some data specific to that entity. If it is non-zero, then velocity

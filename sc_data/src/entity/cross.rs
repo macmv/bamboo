@@ -15,9 +15,9 @@ pub fn cross_version_metadata(
   for ent in &new.entities {
     let new = ent.as_ref().unwrap();
     let old = &old.entities[to_old[new.id as usize] as usize];
+    gen.write_comment(&new.name);
     if let Some(old) = old {
       let (to_old, to_new) = find_metadata_ids(old, new);
-      gen.write_comment(&new.name);
       gen.write_line("Metadata {");
       gen.add_indent();
 
@@ -60,6 +60,13 @@ pub fn cross_version_metadata(
       gen.write_line("],");
 
       gen.remove_indent();
+      gen.write_line("},");
+    } else {
+      gen.write_line("Metadata {");
+      gen.write_line("  to_old: &[],");
+      gen.write_line("  to_new: &[],");
+      gen.write_line("  old_types: &[],");
+      gen.write_line("  new_types: &[],");
       gen.write_line("},");
     }
   }

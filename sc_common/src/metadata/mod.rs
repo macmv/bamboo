@@ -96,4 +96,8 @@ pub enum Field {
 
 impl Metadata {
   pub fn new() -> Self { Metadata { fields: HashMap::new() } }
+
+  pub fn set_byte(&mut self, idx: u8, value: i8) {
+    self.fields.insert(idx, Field::Byte(value as u8));
+  }
 }
