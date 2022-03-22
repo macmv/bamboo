@@ -139,7 +139,7 @@ impl World {
       // is present.
       let _data: i32 = 0;
       let mut metadata = Metadata::new();
-      metadata.set_item(8, item::Stack::new(item::Type::Dirt).to_item());
+      metadata.set_item(7, item::Stack::new(item::Type::Dirt).to_item());
       player.send(cb::Packet::SpawnEntity {
         eid:   ent.eid(),
         // 1.18 clients will not render mobs that have the same UUID
