@@ -239,7 +239,13 @@ impl Packet {
         }
       }
     } else {
-      todo!("write item on version: {:?}", self.ver);
+      let present = item.count() != 0 && item.id() != -1;
+      self.write_bool(present);
+      if present {
+        self.write_varint(item.id());
+        self.write_u8(item.count());
+        self.write_u8(0x00); // TODO: Write nbt data
+      }
     }
   }
 
