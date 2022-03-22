@@ -158,6 +158,21 @@ pub enum Packet {
     vel_z:    i16,
     meta:     Metadata,
   },
+  #[id = 28]
+  SpawnEntity {
+    eid:   i32,
+    id:    UUID,
+    ty:    u32,
+    x:     f64,
+    y:     f64,
+    z:     f64,
+    yaw:   i8,
+    pitch: i8,
+    vel_x: i16,
+    vel_y: i16,
+    vel_z: i16,
+    meta:  Metadata,
+  },
   #[id = 17]
   SpawnPlayer { eid: i32, id: UUID, x: f64, y: f64, z: f64, yaw: i8, pitch: i8 },
   /// A special packet. This will cause the proxy to start moving this player to

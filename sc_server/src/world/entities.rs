@@ -141,6 +141,23 @@ impl World {
       // Data is some data specific to that entity. If it is non-zero, then velocity
       // is present.
       let _data: i32 = 0;
+      let mut metadata = Metadata::new();
+      metadata.set_byte(17, 1);
+      player.send(cb::Packet::SpawnEntity {
+        eid:   ent.eid(),
+        // 1.18 clients will not render mobs that have the same UUID
+        id:    UUID::random(),
+        ty:    ent.ty().id(),
+        x:     p.aabb.pos.x(),
+        y:     p.aabb.pos.y(),
+        z:     p.aabb.pos.z(),
+        yaw:   (p.yaw / 360.0 * 256.0) as i8,
+        pitch: (p.pitch / 360.0 * 256.0) as i8,
+        vel_x: p.vel.fixed_x(),
+        vel_y: p.vel.fixed_y(),
+        vel_z: p.vel.fixed_z(),
+        meta:  metadata,
+      });
       // player.send(cb::Packet::SpawnEntity {
       //   entity_id:        ent.eid(),
       //   object_uuid_v1_9: Some(UUID::from_u128(0)),
@@ -160,7 +177,6 @@ impl World {
       //   velocity_y_v1_9:  Some(p.vel.fixed_y()),
       //   velocity_z_v1_9:  Some(p.vel.fixed_z()),
       // });
-      todo!();
     }
   }
 }
