@@ -29,6 +29,7 @@ pages:
 
     - mkdir -p public/
     - rm -rf public/*
+    - mkdir -p public/doc/sugarlang/ public/doc/rust
     - cp -r target/sl_docs/* public/doc/sugarlang/
     - cp -r target/doc/* public/doc/rust/
     - cp tarpaulin-report.html public/tarpaulin-report.html
