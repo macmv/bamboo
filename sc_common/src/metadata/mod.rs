@@ -100,4 +100,5 @@ impl Metadata {
   pub fn set_byte(&mut self, idx: u8, value: i8) {
     self.fields.insert(idx, Field::Byte(value as u8));
   }
+  pub fn set_item(&mut self, idx: u8, value: Item) { self.fields.insert(idx, Field::Item(value)); }
 }

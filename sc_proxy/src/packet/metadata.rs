@@ -129,7 +129,22 @@ pub fn metadata(ty: u32, meta: &Metadata, ver: ProtocolVersion, conv: &TypeConve
             out.write_str(&v);
           }
         }
-        Field::Item(_v) => todo!("items on new versions in entity metadata"),
+        Field::Item(v) => {
+          dbg!(&v);
+          if v.id() == -1 {
+            out.write_bool(false);
+          } else {
+            let (id, _damage) = conv.item_to_old(v.id() as u32, ver.block());
+            let present = v.count() != 0;
+            out.write_bool(present);
+            if present {
+              info!("PRESENT");
+              out.write_varint(id as i32);
+              out.write_u8(v.count());
+              out.write_u8(0x00); // TODO: Write nbt data
+            }
+          }
+        }
         Field::Bool(v) => out.write_bool(*v),
         Field::Rotation(x, y, z) => {
           out.write_f32(*x);

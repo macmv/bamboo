@@ -1,5 +1,5 @@
 use super::World;
-use crate::{entity, entity::Entity, player::Player};
+use crate::{entity, entity::Entity, item, player::Player};
 use parking_lot::RwLockReadGuard;
 use sc_common::{
   math::{ChunkPos, FPos, Vec3},
@@ -8,10 +8,7 @@ use sc_common::{
   net::cb,
   util::UUID,
 };
-use std::{
-  collections::HashMap,
-  sync::{atomic::Ordering, Arc},
-};
+use std::{collections::HashMap, sync::Arc};
 
 impl World {
   pub fn summon(self: &Arc<Self>, ty: entity::Type, pos: FPos) -> i32 {
@@ -142,7 +139,7 @@ impl World {
       // is present.
       let _data: i32 = 0;
       let mut metadata = Metadata::new();
-      metadata.set_byte(17, 1);
+      metadata.set_item(8, item::Stack::new(item::Type::Dirt).to_item());
       player.send(cb::Packet::SpawnEntity {
         eid:   ent.eid(),
         // 1.18 clients will not render mobs that have the same UUID
