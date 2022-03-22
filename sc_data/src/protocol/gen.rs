@@ -139,7 +139,7 @@ impl PacketCollection {
     gen.write_block(|gen| {
       for versions in &packets {
         for (ver, p) in versions {
-          write_packet(gen, &format!("{}V{}", p.name, ver.maj), p);
+          write_packet(gen, &format!("{}V{}", p.name, ver.maj), p, *ver);
         }
       }
     });
@@ -285,7 +285,42 @@ impl PacketCollection {
   }
 }
 
-fn write_packet(gen: &mut CodeGen, name: &str, p: &Packet) {
+fn write_packet(gen: &mut CodeGen, name: &str, p: &Packet, ver: Version) {
+  gen.set_doc_comment(true);
+  gen.write_line("Definition:");
+  gen.write_line("```rust,ignore");
+  write_def(gen, name, p);
+  gen.write_line("```");
+
+  gen.write_line("Both these code blocks use [`tcp::Packet`](crate::gnet::tcp::Packet) for");
+  gen.write_line("reading/writing fields.");
+  gen.write_line("");
+
+  gen.write_line("[`from_tcp`](Self::from_tcp) (packet reader):");
+  gen.write_line("```rust,ignore");
+  gen.write_line("let p = tcp::Packet::new(vec![]);");
+  gen.write_line("");
+  write_from_tcp(gen, p, ver);
+  gen.write_line("```");
+  gen.write_line("");
+
+  gen.write_line("[`to_tcp`](Self::to_tcp) (packet writer):");
+  gen.write_line("```rust,ignore");
+  gen.write_line("let p = tcp::Packet::new(vec![]);");
+  gen.write_line("");
+  gen.write_line("match self {");
+  gen.add_indent();
+  write_to_tcp(gen, p, ver);
+  gen.write_line("_ => { /* ... */ }");
+  gen.remove_indent();
+  gen.write_line("}");
+  gen.write_line("```");
+  gen.set_doc_comment(false);
+
+  write_def(gen, name, p);
+}
+
+fn write_def(gen: &mut CodeGen, name: &str, p: &Packet) {
   gen.write(name);
   gen.write_line(" {");
   gen.add_indent();

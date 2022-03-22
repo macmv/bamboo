@@ -8,6 +8,9 @@ pub struct CodeGen {
   indent:       usize,
   // Indent is added when we write a new line, not on write_line
   needs_indent: bool,
+  // Used when writing doc comments. Indents will be split between this index. For example, a
+  // doc_comment of Some(2) and an indent of 3 would generate 4 spaces, then `/// `, then 2 spaces.
+  doc_comment:  Option<usize>,
 }
 pub enum EnumVariant {
   Named(String),
@@ -50,9 +53,26 @@ pub struct FuncArg<'a> {
 }
 
 impl CodeGen {
-  pub fn new() -> Self { CodeGen { current: String::new(), indent: 0, needs_indent: false } }
+  pub fn new() -> Self {
+    CodeGen {
+      current:      String::new(),
+      indent:       0,
+      needs_indent: false,
+      doc_comment:  None,
+    }
+  }
   /// Sets the indent of this generator.
   pub fn set_indent(&mut self, indent: usize) { self.indent = indent; }
+  /// Enables doc comments. All code written will be prefixed with `///`, at the
+  /// current indent. So, future indents will be inserted after the current
+  /// indent level. Disabling this will go back to writing normal code.
+  pub fn set_doc_comment(&mut self, enable: bool) {
+    if enable {
+      self.doc_comment = Some(self.indent)
+    } else {
+      self.doc_comment = None
+    }
+  }
   /// Returns the current indent of this generator.
   pub fn indent(&self) -> usize { self.indent }
   /// Writes an enum literal. Example:
@@ -295,14 +315,25 @@ impl CodeGen {
       return;
     }
     if self.needs_indent {
-      self.current.push_str(&"  ".repeat(self.indent));
+      if let Some(doc_comment) = self.doc_comment {
+        self.current.push_str(&"  ".repeat(doc_comment));
+        self.current.push_str(&"/// ");
+        self.current.push_str(&"  ".repeat(self.indent - doc_comment));
+      } else {
+        self.current.push_str(&"  ".repeat(self.indent));
+      }
       self.needs_indent = false;
     }
     self.current.push_str(src);
   }
   pub fn write_line(&mut self, src: &str) {
-    // If we want a blank line, don't add indents
+    // If we want a blank line, only add indents before doc_comment
     if src == "" {
+      if let Some(doc_comment) = self.doc_comment {
+        self.current.push_str(&"  ".repeat(doc_comment));
+        // Note there is no trailing whitespace here
+        self.current.push_str(&"///");
+      }
       self.current.push_str("\n");
       self.needs_indent = true;
     } else {
