@@ -1,5 +1,6 @@
 use super::{convert, Cond, Expr, Field, Instr, Lit, Op, Packet, RType, Type, Value};
 use convert_case::{Case, Casing};
+use std::mem;
 
 // Called before extend_from
 pub fn pass(p: &mut Packet) {
@@ -35,14 +36,22 @@ pub fn finish(p: &mut Packet) {
     });
   }
 
-  for f in &mut p.fields {
-    let (initialized, option) = check_option(&p.reader.block, &f.name);
-    if option && matches!(f.ty, Type::Array(_)) {
-      f.option = false;
-      f.initialized = false;
-    } else {
-      f.initialized = initialized;
-      f.option = option;
+  let fields = Vec::with_capacity(p.fields.len());
+  let old_fields = mem::replace(&mut p.fields, fields);
+  for mut f in old_fields {
+    match init_state(&p.reader.block, &f.name) {
+      // Don't push the field if it is not used
+      InitState::Unused => {}
+      InitState::Used { is_option, needs_default } => {
+        if is_option && matches!(f.ty, Type::Array(_)) {
+          f.option = false;
+          f.initialized = false;
+        } else {
+          f.initialized = !needs_default;
+          f.option = is_option;
+        }
+        p.fields.push(f);
+      }
     }
   }
 }
@@ -353,28 +362,36 @@ fn simplify_name(name: &mut String) {
   }
 }
 
+#[derive(Debug, Clone)]
+enum InitState {
+  Unused,
+  Used { is_option: bool, needs_default: bool },
+}
+
 /// Returns `(initialized, option)`. The first bool will be false when the
 /// field needs a default value.
-fn check_option(instr: &[Instr], field: &str) -> (bool, bool) {
+fn init_state(instr: &[Instr], field: &str) -> InitState {
+  let mut used = false;
+  let mut is_option = false;
+  let mut needs_default = false;
   for i in instr {
     match i {
       Instr::Set(f, val) => {
         if field == f {
-          if val.initial == Value::Null {
-            return (true, true);
-          }
-          return (true, false);
+          is_option = val.initial == Value::Null;
+          used = true;
+          needs_default = false;
+          break;
         }
       }
       Instr::If(_, when_true, when_false) => {
         let mut assigned_true = false;
         let mut assigned_false = false;
-        let mut needs_option = false;
         for i in when_true {
           if let Instr::Set(f, val) = i {
             if field == f {
               if val.initial == Value::Null {
-                needs_option = true;
+                is_option = true;
               }
               assigned_true = true;
               break;
@@ -385,22 +402,35 @@ fn check_option(instr: &[Instr], field: &str) -> (bool, bool) {
           if let Instr::Set(f, val) = i {
             if field == f {
               if val.initial == Value::Null {
-                needs_option = true;
+                is_option = true;
               }
               assigned_false = true;
               break;
             }
           }
         }
+        if !assigned_true && !assigned_false {
+          continue;
+        }
+        used = true;
         match (assigned_true, assigned_false) {
-          (true, true) => return (true, needs_option),
-          (false, true) => return (false, true),
-          (true, false) => return (false, true),
-          (false, false) => continue,
+          (true, true) => {
+            needs_default = false;
+          }
+          (false, true) | (true, false) => {
+            needs_default = true;
+            is_option = true;
+            break;
+          }
+          (false, false) => {}
         }
       }
       _ => {}
     }
   }
-  (false, true)
+  if !used {
+    InitState::Unused
+  } else {
+    InitState::Used { is_option, needs_default }
+  }
 }
