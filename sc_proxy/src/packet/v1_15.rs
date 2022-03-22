@@ -61,9 +61,6 @@ pub fn chunk(
     chunk_z:                pos.z(),
     is_full_chunk:          full,
     vertical_strip_bitmask: bit_map.into(),
-    heightmaps:             None,
-    data:                   vec![],
-    block_entities:         None,
     unknown:                data,
   }
 }

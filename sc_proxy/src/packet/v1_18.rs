@@ -170,15 +170,5 @@ pub fn chunk(
     }
   }
 
-  Packet::ChunkDataV17 {
-    chunk_x:                pos.x(),
-    chunk_z:                pos.z(),
-    max_data_length:        None,
-    vertical_strip_bitmask: None,
-    heightmaps:             None,
-    data:                   vec![],
-    biome_array:            vec![],
-    block_entities:         None,
-    unknown:                data,
-  }
+  Packet::ChunkDataV17 { chunk_x: pos.x(), chunk_z: pos.z(), unknown: data }
 }

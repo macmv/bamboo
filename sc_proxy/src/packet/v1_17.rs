@@ -62,15 +62,5 @@ pub fn chunk(
   buf.write_varint(chunk_buf.len() as i32);
   buf.write_buf(&chunk_data);
   buf.write_varint(0); // No block entities
-  Packet::ChunkDataV17 {
-    chunk_x:                pos.x(),
-    chunk_z:                pos.z(),
-    max_data_length:        None,
-    vertical_strip_bitmask: None,
-    heightmaps:             None,
-    data:                   vec![],
-    biome_array:            vec![],
-    block_entities:         None,
-    unknown:                data,
-  }
+  Packet::ChunkDataV17 { chunk_x: pos.x(), chunk_z: pos.z(), unknown: data }
 }

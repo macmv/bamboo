@@ -76,7 +76,6 @@ pub fn chunk(
     chunk_x:        pos.x(),
     chunk_z:        pos.z(),
     field_149279_g: full,
-    extracted_data: None,
     unknown:        chunk_data,
   }
 }
@@ -105,9 +104,5 @@ pub fn multi_block_change(
     buf.write_u8(y as u8);
     buf.write_varint(old_id as i32);
   }
-  Packet::MultiBlockChangeV8 {
-    chunk_pos_coord: None,
-    changed_blocks:  vec![],
-    unknown:         data,
-  }
+  Packet::MultiBlockChangeV8 { unknown: data }
 }

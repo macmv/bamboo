@@ -62,8 +62,6 @@ pub fn chunk(
     chunk_z:            pos.z(),
     load_chunk:         full,
     available_sections: bit_map.into(),
-    buffer:             vec![],
-    field_189557_e:     None,
     unknown:            data,
   }
 }

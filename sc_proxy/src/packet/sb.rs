@@ -26,7 +26,6 @@ impl FromTcp for Packet {
         mut slot_id,
         used_button,
         action_number,
-        clicked_item: _,
         mode,
         unknown,
       } => {
@@ -49,7 +48,6 @@ impl FromTcp for Packet {
         mut slot_id,
         used_button,
         action_number,
-        clicked_item: _,
         mode,
         unknown,
       } => {
@@ -88,7 +86,7 @@ impl FromTcp for Packet {
           Packet::UseItem { hand: Hand::Main }
         }
       }
-      GPacket::PlayerDiggingV8 { position, facing: _, status, unknown } => {
+      GPacket::PlayerDiggingV8 { position, status, unknown } => {
         let mut buf = Buffer::new(unknown);
         if status <= 2 {
           Packet::BlockDig {
