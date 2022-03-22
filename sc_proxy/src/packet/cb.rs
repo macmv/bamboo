@@ -618,6 +618,11 @@ impl ToTcp for Packet {
           }
           // metadata(new_ty, &meta, ver, conn.conv()),
         } else {
+          let mut data = vec![];
+          let mut buf = Buffer::new(&mut data);
+          buf.write_i16(vel_x.into());
+          buf.write_i16(vel_y.into());
+          buf.write_i16(vel_z.into());
           GPacket::SpawnObjectV8 {
             entity_id: eid,
             ty,
@@ -626,8 +631,8 @@ impl ToTcp for Packet {
             z: (z * 32.0) as i32,
             yaw: yaw.into(),
             pitch: pitch.into(),
-            field_149020_k: 0,
-            unknown: vec![0],
+            field_149020_k: 1, // Non-zero, so velocity is present
+            unknown: data,
           }
           //metadata(new_ty, &meta, ver, conn.conv()),
         };
