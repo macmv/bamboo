@@ -14,12 +14,14 @@ pub(crate) fn handle(wm: &Arc<WorldManager>, player: &Arc<Player>, p: sb::Packet
       // TODO
     }
     sb::Packet::Chat { msg } => {
+      /*
       player.lock_scoreboard().show();
       player.lock_scoreboard().set_line(1, &Chat::new("foo"));
       player.lock_scoreboard().set_line(2, &Chat::new("bar"));
       let mut c = Chat::new("foo");
       c.add(" bar").color(Color::BrightGreen);
       player.lock_scoreboard().set_line(3, &c);
+      */
 
       if msg.chars().next() == Some('/') {
         let mut chars = msg.chars();
