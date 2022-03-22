@@ -1,5 +1,6 @@
 use super::{
   block::SlBlockKind,
+  item::SlStack,
   util::{SlChunkPos, SlPos},
   wrap,
 };
@@ -42,9 +43,9 @@ pub fn sl_from_arg(arg: Arg) -> Var {
     Arg::Vec2(f64, f64),
     */
     Arg::BlockState(kind, _props, _nbt) => SlBlockKind::from(kind).into(),
+    Arg::ItemStack(stack) => SlStack::from(stack).into(),
     /*
     BlockPredicate(block::Kind),
-    ItemStack(item::Stack),
     ItemPredicate(item::Type),
     Color(Color),
     Component(Chat),
@@ -150,6 +151,18 @@ impl SlCommand {
   pub fn add_arg_block_kind(&mut self, name: &str) -> SlCommand {
     let mut lock = self.inner.lock().unwrap();
     self.command(&mut lock).add_arg(name, Parser::BlockState);
+    let mut idx = self.idx.clone();
+    idx.push(self.command(&mut lock).children_len() - 1);
+    SlCommand { inner: self.inner.clone(), callback: None, idx }
+  }
+  /// Adds a new item kind argument to the command.
+  ///
+  /// This will be parsed as a single world, which will then be converted to an
+  /// item kind. An invalid item kind will not read the callback, and will
+  /// instead return an error to the user.
+  pub fn add_arg_item_stack(&mut self, name: &str) -> SlCommand {
+    let mut lock = self.inner.lock().unwrap();
+    self.command(&mut lock).add_arg(name, Parser::ItemStack);
     let mut idx = self.idx.clone();
     idx.push(self.command(&mut lock).children_len() - 1);
     SlCommand { inner: self.inner.clone(), callback: None, idx }

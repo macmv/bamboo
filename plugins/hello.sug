@@ -20,11 +20,27 @@ fn init() {
   c.add_arg_block_pos("pos")
   sc.add_command(c)
 
+  c = Command::new("give", handle_give)
+  c.add_arg_item_stack("item")
+  sc.add_command(c)
+
   c = Command::new("join", handle_join)
   sc.add_command(c)
 
   c = Command::new("ui", handle_ui)
   sc.add_command(c)
+}
+
+fn handle_setblock(player, args) {
+  // args[0] is `setblock`
+  // args[1] is the position
+  // args[2] is the block kind
+  sugarcane::info(args)
+  player.world().set_kind(args[1], args[2])
+}
+
+fn handle_give(player, args) {
+  player.give(args[1])
 }
 
 fn handle_ui(player, args) {
@@ -40,14 +56,6 @@ fn handle_ui(player, args) {
   ui.item("d", Stack::new("diamond_sword"))
   ui.item("e", Stack::new("black_wool"))
   player.show_inventory(ui.to_inventory(), Chat::new("big gaming"))
-}
-
-fn handle_setblock(player, args) {
-  // args[0] is `setblock`
-  // args[1] is the position
-  // args[2] is the block kind
-  sugarcane::info(args)
-  player.world().set_kind(args[1], args[2])
 }
 
 fn handle_getblock(player, args) {

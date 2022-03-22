@@ -5,7 +5,7 @@ pub use err::{ChildError, ErrorKind, ParseError, Result};
 pub use token::{Span, Tokenizer, Word};
 
 use super::{Arg, CommandSender, Parser, StringType};
-use crate::{block, entity};
+use crate::{block, entity, item};
 use sc_common::math::Pos;
 use std::{collections::HashMap, fmt::Display, str::FromStr};
 
@@ -117,6 +117,10 @@ impl Parser {
           HashMap::new(),
           None,
         ))
+      }
+      Self::ItemStack => {
+        let w = tokens.read_spaced_word()?;
+        Ok(Arg::ItemStack(item::Stack::new(item::Type::from_str(&w).map_err(|_| w.invalid())?)))
       }
       Self::EntitySummon => {
         let w = tokens.read_spaced_word()?;

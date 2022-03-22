@@ -1,4 +1,10 @@
-use super::{add_from, chat::SlChat, item::SlInventory, world::SlWorld, wrap};
+use super::{
+  add_from,
+  chat::SlChat,
+  item::{SlInventory, SlStack},
+  world::SlWorld,
+  wrap,
+};
 use crate::player::Player;
 use sc_common::util::Chat;
 use std::{
@@ -77,4 +83,7 @@ impl SlPlayer {
   pub fn show_inventory(&self, inv: &SlInventory, title: &SlChat) {
     self.inner.show_inventory(inv.inner.clone(), &title.inner.lock().unwrap())
   }
+
+  /// Gives the player the passed item.
+  pub fn give(&self, stack: &SlStack) { self.inner.lock_inventory().main_mut().add(&stack.inner); }
 }
