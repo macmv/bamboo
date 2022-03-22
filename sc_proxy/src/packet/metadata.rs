@@ -130,7 +130,6 @@ pub fn metadata(ty: u32, meta: &Metadata, ver: ProtocolVersion, conv: &TypeConve
           }
         }
         Field::Item(v) => {
-          dbg!(&v);
           if v.id() == -1 {
             out.write_bool(false);
           } else {
@@ -138,7 +137,6 @@ pub fn metadata(ty: u32, meta: &Metadata, ver: ProtocolVersion, conv: &TypeConve
             let present = v.count() != 0;
             out.write_bool(present);
             if present {
-              info!("PRESENT");
               out.write_varint(id as i32);
               out.write_u8(v.count());
               out.write_u8(0x00); // TODO: Write nbt data
