@@ -36,16 +36,7 @@ pub fn handle(
         Err(_) => return Ok(()),
       };
       writeln!(l, "moving to {} {} {}", x, y, z)?;
-      stream.write(sb::Packet::PlayerPositionV8 {
-        x,
-        y,
-        z,
-        on_ground: true,
-        yaw: None,
-        pitch: None,
-        moving: None,
-        rotating: None,
-      });
+      stream.write(sb::Packet::PlayerPositionV8 { x, y, z, on_ground: true });
     }
     c if c.starts_with('/') => {
       let mut out = command.to_string();
