@@ -18,8 +18,10 @@ pages:
   stage: deploy
   image: "rustdocker/rust:nightly"
   script:
-    # Generate docs
+    # Generate sugarlang docs
     - cargo run --bin sc_server -- --only-docs
+    # Generate rust docs
+    - cargo doc -p sc_proxy
 
     # Generate coverage report
     - cargo install cargo-tarpaulin
@@ -27,11 +29,12 @@ pages:
 
     - mkdir -p public/
     - rm -rf public/*
-    - cp -r target/sl_docs/* public/
+    - cp -r target/sl_docs/* public/doc/sugarlang/
+    - cp -r target/doc/* public/doc/rust/
     - cp tarpaulin-report.html public/tarpaulin-report.html
 
   artifacts:
     paths:
-    - public
+      - public
     reports:
       cobertura: cobertura.xml
