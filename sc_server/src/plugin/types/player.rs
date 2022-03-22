@@ -85,5 +85,5 @@ impl SlPlayer {
   }
 
   /// Gives the player the passed item.
-  pub fn give(&self, stack: &SlStack) { self.inner.lock_inventory().main_mut().add(&stack.inner); }
+  pub fn give(&self, stack: &SlStack) { self.inner.lock_inventory().give(stack.inner.clone()); }
 }

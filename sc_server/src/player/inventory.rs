@@ -11,10 +11,7 @@ use sc_common::{
     sb::{Button, ClickWindow},
   },
 };
-use std::{
-  mem,
-  sync::{Arc, Weak},
-};
+use std::{mem, sync::Weak};
 
 /// An inventory, wrapped so that any time it is modified, a packet will be sent
 /// to a client.
@@ -22,6 +19,7 @@ use std::{
 pub struct WrappedInventory {
   inv:    Inventory,
   conn:   ConnSender,
+  wid:    u8,
   offset: u32,
   skip:   u32,
 }
@@ -52,7 +50,7 @@ impl PlayerInventory {
     // We always store an inventory with 46 slots, even if the client is on 1.8 (in
     // that version, there was no off-hand).
     PlayerInventory {
-      main:           WrappedInventory::new(Inventory::new(46), conn),
+      main:           WrappedInventory::new(Inventory::new(46), conn, 0),
       selected_index: 0,
       window:         None,
       drag_slots:     vec![],
@@ -63,12 +61,15 @@ impl PlayerInventory {
   pub fn open_window(&mut self, inv: Inventory) {
     assert!(self.window.is_none());
     self.main.set_offset_skip(inv.size(), 9);
-    self.window = Some((WrappedInventory::new(inv, self.main.conn.clone()), Stack::empty()));
+    self.window = Some((WrappedInventory::new(inv, self.main.conn.clone(), 1), Stack::empty()));
   }
   pub fn close_window(&mut self) {
     self.window.take();
     self.main.set_offset_skip(0, 0);
   }
+
+  /// Gives an item to the player.
+  pub fn give(&mut self, stack: Stack) { self.main_mut().set(36, stack); }
 
   /// Returns the item in the player's main hand.
   pub fn main_hand(&self) -> &Stack { self.main().get(self.selected_index as u32 + 36) }
@@ -298,7 +299,7 @@ impl PlayerInventory {
       self.get(slot).clone()
     };
     if let Some(p) = self.player.upgrade() {
-      let mut tag = NBT::new(
+      let tag = NBT::new(
         "",
         Tag::compound(&[(
           "Item",
@@ -365,8 +366,8 @@ impl PlayerInventory {
 }
 
 impl WrappedInventory {
-  pub fn new(inv: Inventory, conn: ConnSender) -> Self {
-    WrappedInventory { inv, conn, offset: 0, skip: 0 }
+  pub fn new(inv: Inventory, conn: ConnSender, wid: u8) -> Self {
+    WrappedInventory { inv, conn, wid, offset: 0, skip: 0 }
   }
   /// Gets the item at the given index.
   pub fn get(&self, index: u32) -> &Stack { self.inv.get(index as u32) }
@@ -386,7 +387,7 @@ impl WrappedInventory {
   /// Syncs the item at the given slot with the client.
   pub fn sync(&self, index: u32) {
     self.conn.send(cb::Packet::WindowItem {
-      wid:  1,
+      wid:  self.wid,
       slot: (index + self.offset - self.skip) as i32,
       item: self.inv.get(index).to_item(),
     });
@@ -401,7 +402,7 @@ impl WrappedInventory {
     // is mutably borrowed for the entire loop.
     let sync = |index: u32, item: &Stack| {
       self.conn.send(cb::Packet::WindowItem {
-        wid:  1,
+        wid:  self.wid,
         slot: (index + self.offset - self.skip) as i32,
         item: item.to_item(),
       });
