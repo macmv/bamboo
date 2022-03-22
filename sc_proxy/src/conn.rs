@@ -351,10 +351,6 @@ impl<'a, S: PacketStream + Send + Sync> Conn<'a, S> {
     // debug!("sending packet {:?}", p);
     let mut tcp = tcp::Packet::new(p.tcp_id(self.ver).try_into().unwrap(), self.ver);
     p.to_tcp(&mut tcp);
-    if matches!(p, gcb::Packet::EntityMetadataV8 { .. } | gcb::Packet::SpawnObjectV14 { .. }) {
-      dbg!(&p);
-      dbg!(&tcp);
-    }
     // debug!("sending bytes {:?}", tcp);
     self.client_stream.write(tcp);
     self.write_client()
