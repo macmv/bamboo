@@ -346,7 +346,8 @@ impl<'a> ReaderTypes<'a> {
                   .unwrap(),
               );
             }
-            // writer.push(Instr::If(cond.clone(), when_t, when_f));
+
+            writer.push(Instr::If(cond.clone(), when_t, when_f));
           } else {
             writer.push(Instr::If(cond.clone(), when_t, when_f));
           }
