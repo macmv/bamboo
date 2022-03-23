@@ -7,6 +7,7 @@ fn field(name: &str) -> Expr { Expr::new(Value::Field(name.into())) }
 fn lit(lit: impl Into<Lit>) -> Expr { Expr::new(Value::Lit(lit.into())) }
 fn local(id: usize) -> Expr { Expr::new(Value::Var(id)) }
 fn as_(name: &str) -> Op { Op::As(name.into()) }
+fn and(val: Expr) -> Op { Op::BitAnd(val) }
 fn packet() -> Expr { Expr::new(Value::packet_var()) }
 fn block(block: Vec<Instr>, locals: usize) -> VarBlock {
   let mut vars = vec![VarKind::This, VarKind::Arg];
@@ -159,6 +160,58 @@ fn conditional_writer_test() {
     ),
   ];
   let writer = vec![
+    Instr::Expr(packet().op(call!(
+      write_i32[field("baz").op(call!(Option::is_some[])).op(as_("u8")).op(call!(::into[]))]
+    ))),
+    Instr::If(
+      cond(field("baz").op(call!(Option::is_some[]))),
+      vec![Instr::Expr(packet().op(call!(write_i32[field("baz").op(Op::Deref)])))],
+      vec![],
+    ),
+  ];
+  let fields = vec![Field {
+    name:        "baz".into(),
+    ty:          Type::Int,
+    reader_type: Some(RType::new("i32")),
+    initialized: false,
+    option:      true,
+  }];
+  let mut p = Packet {
+    extends: "".into(),
+    class:   "".into(),
+    name:    "Bar".into(),
+    fields:  fields![foo: Int, bar: Int, baz: Int],
+    reader:  block(reader, 1),
+    writer:  block(vec![], 0),
+  };
+  generate(&mut p);
+
+  assert_eq!(p.writer.block, writer);
+  assert_eq!(p.fields, fields);
+}
+
+#[test]
+fn multi_conditional_writer_test() {
+  let reader = vec![
+    Instr::Let(2, packet().op(call!(read_u8[]))),
+    Instr::If(
+      Cond::Neq(local(2).op(and(lit(1))), lit(0)),
+      vec![Instr::Set("foo".into(), packet().op(call!(read_i32[])))],
+      vec![],
+    ),
+    Instr::If(
+      Cond::Neq(local(2).op(and(lit(2))), lit(0)),
+      vec![Instr::Set("bar".into(), packet().op(call!(read_i32[])))],
+      vec![],
+    ),
+    Instr::If(
+      Cond::Neq(local(2).op(and(lit(4))), lit(0)),
+      vec![Instr::Set("baz".into(), packet().op(call!(read_i32[])))],
+      vec![],
+    ),
+  ];
+  let writer = vec![
+    Instr::Let(2, lit(0)),
     Instr::Expr(packet().op(call!(
       write_i32[field("baz").op(call!(Option::is_some[])).op(as_("u8")).op(call!(::into[]))]
     ))),

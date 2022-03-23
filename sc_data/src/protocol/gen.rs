@@ -495,6 +495,13 @@ impl<'a> InstrWriter<'a> {
         self.write_expr(val);
         self.gen.write_line(";");
       }
+      Instr::SetVarAnd(var, val) => {
+        self.gen.write("v_");
+        self.gen.write(&var.to_string());
+        self.gen.write(" &= ");
+        self.write_expr(val);
+        self.gen.write_line(";");
+      }
       Instr::Expr(v) => {
         self.write_expr(v);
         self.gen.write_line(";")

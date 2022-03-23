@@ -178,8 +178,11 @@ pub enum Instr {
   /// variable. An implementation of this might simply call all variables
   /// `var0`, `var1`, etc.
   Let(usize, Expr),
-  /// Same thing as let, but for updating a local variable.
+  /// Same thing as let, but for updating a local variable (doesn't add the let
+  /// keyword).
   SetVar(usize, Expr),
+  /// Same thing as SetVar, but is `&=` instead of `=`.
+  SetVarAnd(usize, Expr),
 
   /// If the given conditional is true, then execute the first list of
   /// instructions. Otherwise, execute the second list.

@@ -345,6 +345,8 @@ impl<'a> ReaderTypes<'a> {
                   )
                   .unwrap(),
               );
+            } else {
+              unimplemented!();
             }
 
             writer.push(Instr::If(
