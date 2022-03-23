@@ -332,7 +332,7 @@ impl<'a> ReaderTypes<'a> {
               "cannot have a conditional where no fields are modified"
             );
 
-            if let Cond::Neq(lhs, rhs) = cond {
+            if let Cond::Greater(lhs, rhs) | Cond::Neq(lhs, rhs) = cond {
               assert_eq!(rhs, &Expr::new(Value::Lit(Lit::Int(0))));
               let v = self.value_of(lhs);
               writer.push(
@@ -347,7 +347,15 @@ impl<'a> ReaderTypes<'a> {
               );
             }
 
-            writer.push(Instr::If(cond.clone(), when_t, when_f));
+            writer.push(Instr::If(
+              Cond::Bool(Expr::new(Value::Field(fields_changed[0].clone())).op(Op::Call(
+                "Option".into(),
+                "is_some".into(),
+                vec![],
+              ))),
+              when_t,
+              when_f,
+            ));
           } else {
             writer.push(Instr::If(cond.clone(), when_t, when_f));
           }

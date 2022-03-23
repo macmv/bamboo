@@ -2,7 +2,6 @@ use super::{
   simplify, Cond, Expr, Field, Instr, Lit, Op, Packet, RType, Type, Value, VarBlock, VarKind,
 };
 
-fn call(name: &str, args: Vec<Expr>) -> Op { Op::Call("tcp::Packet".into(), name.into(), args) }
 fn cond(expr: Expr) -> Cond { Cond::Bool(expr) }
 fn field(name: &str) -> Expr { Expr::new(Value::Field(name.into())) }
 fn lit(lit: impl Into<Lit>) -> Expr { Expr::new(Value::Lit(lit.into())) }
@@ -10,7 +9,7 @@ fn local(id: usize) -> Expr { Expr::new(Value::Var(id)) }
 fn as_(name: &str) -> Op { Op::As(name.into()) }
 fn packet() -> Expr { Expr::new(Value::packet_var()) }
 fn block(block: Vec<Instr>, locals: usize) -> VarBlock {
-  let mut vars = vec![VarKind::This];
+  let mut vars = vec![VarKind::This, VarKind::Arg];
   for _ in 0..locals {
     vars.push(VarKind::Local);
   }
@@ -19,7 +18,13 @@ fn block(block: Vec<Instr>, locals: usize) -> VarBlock {
 
 macro_rules! call {
   ( $name:ident [ $($arg:expr),* ] ) => {
-    call(stringify!($name), vec![$($arg),*])
+    Op::Call("tcp::Packet".into(), stringify!($name).into(), vec![$($arg),*])
+  };
+  ( ::$name:ident [ $($arg:expr),* ] ) => {
+    Op::Call("".into(), stringify!($name).into(), vec![$($arg),*])
+  };
+  ( $class:ident::$name:ident [ $($arg:expr),* ] ) => {
+    Op::Call(stringify!($class).into(), stringify!($name).into(), vec![$($arg),*])
   }
 }
 
@@ -146,19 +151,19 @@ fn conditional_writer_test() {
   assert_eq!(p.writer.block, writer);
 
   let reader = vec![
-    Instr::Let(1, packet().op(call!(read_i32[]))),
+    Instr::Let(2, packet().op(call!(read_i32[]))),
     Instr::If(
-      Cond::Greater(local(1), lit(0)),
+      Cond::Greater(local(2), lit(0)),
       vec![Instr::Set("baz".into(), packet().op(call!(read_i32[])))],
       vec![],
     ),
   ];
   let writer = vec![
     Instr::Expr(packet().op(call!(
-      write_i32[lit(0).op(Op::If(Box::new(cond(field("baz").op(call!(is_some[])))), lit(1)))]
+      write_i32[field("baz").op(call!(Option::is_some[])).op(as_("u8")).op(call!(::into[]))]
     ))),
     Instr::If(
-      cond(field("baz").op(call!(is_some[]))),
+      cond(field("baz").op(call!(Option::is_some[]))),
       vec![Instr::Expr(packet().op(call!(write_i32[field("baz").op(Op::Deref)])))],
       vec![],
     ),
