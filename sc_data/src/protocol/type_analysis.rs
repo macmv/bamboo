@@ -86,7 +86,9 @@ impl<'a> ReaderTypes<'a> {
             if rs_ty.name == "U" {
               f.ty = Type::Rust(ty.clone());
             }
-            f.reader_type = Some(ty);
+            if f.reader_type.is_none() {
+              f.reader_type = Some(ty);
+            }
           }
         }
         Instr::SetArr(_arr, _idx, _val) => {}
