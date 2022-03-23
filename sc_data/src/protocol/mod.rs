@@ -219,6 +219,8 @@ impl PartialEq for Instr {
       // Field names change a bunch. If the reader ops are the same, it doesn't matter which field
       // they are going to.
       (Self::Set(_, a), Self::Set(_, b)) => a == b,
+      (Self::SetVar(a1, a2), Self::SetVar(b1, b2)) => a1 == b1 && a2 == b2,
+      (Self::SetVarOr(a1, a2), Self::SetVarOr(b1, b2)) => a1 == b1 && a2 == b2,
       (Self::SetArr(a, a1, a2), Self::SetArr(b, b1, b2)) => a == b && a1 == b1 && a2 == b2,
       (Self::Let(_, a), Self::Let(_, b)) => a == b,
       (Self::If(a, a1, a2), Self::If(b, b1, b2)) => a == b && a1 == b1 && a2 == b2,

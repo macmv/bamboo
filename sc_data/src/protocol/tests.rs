@@ -1,6 +1,7 @@
 use super::{
   simplify, Cond, Expr, Field, Instr, Lit, Op, Packet, RType, Type, Value, VarBlock, VarKind,
 };
+use pretty_assertions::assert_eq;
 use std::mem;
 
 fn cond(expr: Expr) -> Cond { Cond::Bool(expr) }
@@ -240,13 +241,29 @@ fn multi_conditional_writer_test() {
       vec![],
     ),
   ];
-  let fields = vec![Field {
-    name:        "baz".into(),
-    ty:          Type::Int,
-    reader_type: Some(RType::new("i32")),
-    initialized: false,
-    option:      true,
-  }];
+  let fields = vec![
+    Field {
+      name:        "foo".into(),
+      ty:          Type::Int,
+      reader_type: Some(RType::new("i32")),
+      initialized: false,
+      option:      true,
+    },
+    Field {
+      name:        "bar".into(),
+      ty:          Type::Int,
+      reader_type: Some(RType::new("i32")),
+      initialized: true,
+      option:      true,
+    },
+    Field {
+      name:        "baz".into(),
+      ty:          Type::Int,
+      reader_type: Some(RType::new("i32")),
+      initialized: false,
+      option:      true,
+    },
+  ];
   let mut p = Packet {
     extends: "".into(),
     class:   "".into(),

@@ -275,8 +275,9 @@ impl<'a> ReaderTypes<'a> {
   }
 
   fn gen_writer(&mut self, read: &[Instr], writer: &mut Vec<Instr>) {
-    for i in read {
-      match i {
+    let mut if_chain = vec![];
+    for (i, instr) in read.iter().enumerate() {
+      match instr {
         Instr::Set(field, expr) => {
           if self.changes_buf(expr) {
             self.check_var_to_write(writer);
@@ -319,7 +320,10 @@ impl<'a> ReaderTypes<'a> {
             }
           }
 
-          if needs_assume {
+          if needs_assume && if_chain.is_empty() {
+            writer.push(Instr::Let(2, Expr::new(Value::Lit(Lit::Int(0)))));
+          }
+          if needs_assume || !if_chain.is_empty() {
             let fields_changed: Vec<_> = when_true
               .iter()
               .filter_map(|i| match i {
@@ -334,22 +338,29 @@ impl<'a> ReaderTypes<'a> {
 
             if let Cond::Greater(lhs, rhs) | Cond::Neq(lhs, rhs) = cond {
               assert_eq!(rhs, &Expr::new(Value::Lit(Lit::Int(0))));
-              let v = self.value_of(lhs);
-              writer.push(
-                self
-                  .set_expr(
-                    &v,
-                    &Expr::new(Value::Field(fields_changed[0].clone()))
-                      .op(Op::Call("Option".into(), "is_some".into(), vec![]))
-                      .op(Op::As(RType::new("u8"))),
-                  )
-                  .unwrap(),
-              );
+              match lhs.ops.get(0) {
+                Some(Op::BitAnd(rhs)) => {
+                  writer.push(Instr::SetVarOr(
+                    2,
+                    rhs.clone().op(Op::If(
+                      Box::new(Cond::Bool(
+                        Expr::new(Value::Field(fields_changed[0].clone())).op(Op::Call(
+                          "Option".into(),
+                          "is_some".into(),
+                          vec![],
+                        )),
+                      )),
+                      Expr::new(Value::Lit(Lit::Int(0))),
+                    )),
+                  ));
+                }
+                _ => {}
+              }
             } else {
               unimplemented!();
             }
 
-            writer.push(Instr::If(
+            if_chain.push(Instr::If(
               Cond::Bool(Expr::new(Value::Field(fields_changed[0].clone())).op(Op::Call(
                 "Option".into(),
                 "is_some".into(),
@@ -358,6 +369,22 @@ impl<'a> ReaderTypes<'a> {
               when_t,
               when_f,
             ));
+            if matches!(read.get(i + 1), Some(Instr::If(_, _, _))) {
+              continue;
+            } else {
+              if let Cond::Greater(lhs, _) | Cond::Neq(lhs, _) = cond {
+                writer.push(Instr::Expr(Expr::new(Value::packet_var()).op(Op::Call(
+                  "tcp::Packet".into(),
+                  "write_u8".into(),
+                  vec![Expr::new(lhs.initial.clone())],
+                ))));
+              } else {
+                unimplemented!();
+              }
+              for instr in if_chain.drain(..) {
+                writer.push(instr);
+              }
+            }
           } else {
             writer.push(Instr::If(cond.clone(), when_t, when_f));
           }
