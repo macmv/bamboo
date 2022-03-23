@@ -403,16 +403,14 @@ impl<'a> ReaderTypes<'a> {
             if matches!(read.get(i + 1), Some(Instr::If(_, _, _))) {
               continue;
             } else {
-              if let Cond::Greater(lhs, _) | Cond::Neq(lhs, _) = cond {
-                writer.push(Instr::Expr(Expr::new(Value::packet_var()).op(Op::Call(
-                  "tcp::Packet".into(),
-                  "write_u8".into(),
-                  vec![Expr::new(lhs.initial.clone())],
-                ))));
-              } else {
-                unimplemented!();
-              }
-              for instr in if_chain.take().unwrap().1.drain(..) {
+              let (var, mut updates) = if_chain.take().unwrap();
+              // This is the initial value we read and compared against:
+              // let v_2 = p.read_i32();
+              //           ^^^^^^^^^^^^ this expression
+              // if v_2 & 1 != 0 { ... }
+              let initial_read = self.value_of(&Expr::new(Value::Var(var)));
+              writer.push(self.set_expr(&initial_read, &Expr::new(Value::Var(var))).unwrap());
+              for instr in updates.drain(..) {
                 writer.push(instr);
               }
             }
