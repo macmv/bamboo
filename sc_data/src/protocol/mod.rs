@@ -448,6 +448,12 @@ impl Expr {
     self
   }
   pub fn add_op(&mut self, op: Op) { self.ops.push(op); }
+  pub fn unwrap_int(self) -> i32 {
+    match self.initial {
+      Value::Lit(Lit::Int(v)) => v,
+      _ => panic!("not an integer: {:?}", self),
+    }
+  }
 }
 
 impl Value {

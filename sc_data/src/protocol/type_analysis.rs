@@ -350,11 +350,13 @@ impl<'a> ReaderTypes<'a> {
 
               assert_eq!(rhs, &Expr::new(Value::Lit(Lit::Int(0))));
               match lhs.ops.get(0) {
-                // `if v_2 & 1 != 1 {}`
-                Some(Op::BitAnd(rhs)) => {
+                // `if v_2 & 1 != 0 {}`
+                Some(Op::BitAnd(and)) => {
+                  assert!(rhs.clone().unwrap_int() == 0);
+                  assert!(and.clone().unwrap_int() > 0);
                   writer.push(Instr::SetVarOr(
                     if_chain.as_ref().unwrap().0,
-                    rhs.clone().op(Op::If(
+                    and.clone().op(Op::If(
                       Box::new(Cond::Bool(
                         Expr::new(Value::Field(fields_changed[0].clone())).op(Op::Call(
                           "Option".into(),
@@ -368,6 +370,7 @@ impl<'a> ReaderTypes<'a> {
                 }
                 // `if v_2 != 0 {}`
                 None => {
+                  assert!(rhs.clone().unwrap_int() == 0);
                   writer.push(Instr::SetVar(
                     if_chain.as_ref().unwrap().0,
                     Expr::new(Value::Lit(Lit::Int(1))).clone().op(Op::If(
