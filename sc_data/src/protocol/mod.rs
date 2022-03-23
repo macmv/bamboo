@@ -455,7 +455,27 @@ impl Value {
     matches!(*self, Value::Var(v) if v == 0 || v == 1 || v == 0xffffffff)
   }
 }
+impl Cond {
+  pub fn all_exprs(&self) -> Vec<&Expr> {
+    match self {
+      Self::Eq(l, r) => vec![l, r],
+      Self::Neq(l, r) => vec![l, r],
+      Self::Less(l, r) => vec![l, r],
+      Self::Greater(l, r) => vec![l, r],
+      Self::Lte(l, r) => vec![l, r],
+      Self::Gte(l, r) => vec![l, r],
 
+      Self::Or(l, r) => {
+        let mut list = l.all_exprs();
+        list.extend(r.all_exprs().into_iter());
+        list
+      }
+
+      // For single booleans
+      Self::Bool(e) => vec![e],
+    }
+  }
+}
 impl From<i32> for Lit {
   fn from(v: i32) -> Self { Lit::Int(v) }
 }

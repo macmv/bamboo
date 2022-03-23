@@ -299,40 +299,57 @@ impl<'a> ReaderTypes<'a> {
         Instr::Return(_) => {}
         Instr::For(_, _range, _) => {}
         Instr::Switch(_, _table) => {}
-        Instr::If(cond, when_true, _when_false) => {
-          // let mut when_t = vec![];
-          // let mut when_f = vec![];
-          // self.gen_writer(when_true, &mut when_t);
-          // self.gen_writer(when_false, &mut when_f);
+        Instr::If(cond, when_true, when_false) => {
+          let mut when_t = vec![];
+          let mut when_f = vec![];
+          self.gen_writer(when_true, &mut when_t);
+          self.gen_writer(when_false, &mut when_f);
 
-          let fields_changed: Vec<_> = when_true
-            .iter()
-            .filter_map(|i| match i {
-              Instr::Set(field, _) => Some(field),
-              _ => None,
-            })
-            .collect();
-          assert!(
-            !fields_changed.is_empty(),
-            "cannot have a conditional where no fields are modified"
-          );
-
-          if let Cond::Neq(lhs, rhs) = cond {
-            assert_eq!(rhs, &Expr::new(Value::Lit(Lit::Int(0))));
-            let v = self.value_of(lhs);
-            writer.push(
-              self
-                .set_expr(
-                  &v,
-                  &Expr::new(Value::Field(fields_changed[0].clone()))
-                    .op(Op::Call("Option".into(), "is_some".into(), vec![]))
-                    .op(Op::As(RType::new("u8"))),
-                )
-                .unwrap(),
-            );
+          // If we check against local variables, we need to assume the conditional based
+          // on which fields were changed. Otherwise, we can just copy the conditional to
+          // the writer.
+          let mut needs_assume = false;
+          for expr in cond.all_exprs() {
+            match expr.initial {
+              Value::Var(_) => {
+                needs_assume = true;
+                break;
+              }
+              _ => {}
+            }
           }
 
-          // writer.push(Instr::If(cond.clone(), when_t, when_f));
+          if needs_assume {
+            let fields_changed: Vec<_> = when_true
+              .iter()
+              .filter_map(|i| match i {
+                Instr::Set(field, _) => Some(field),
+                _ => None,
+              })
+              .collect();
+            assert!(
+              !fields_changed.is_empty(),
+              "cannot have a conditional where no fields are modified"
+            );
+
+            if let Cond::Neq(lhs, rhs) = cond {
+              assert_eq!(rhs, &Expr::new(Value::Lit(Lit::Int(0))));
+              let v = self.value_of(lhs);
+              writer.push(
+                self
+                  .set_expr(
+                    &v,
+                    &Expr::new(Value::Field(fields_changed[0].clone()))
+                      .op(Op::Call("Option".into(), "is_some".into(), vec![]))
+                      .op(Op::As(RType::new("u8"))),
+                  )
+                  .unwrap(),
+              );
+            }
+            // writer.push(Instr::If(cond.clone(), when_t, when_f));
+          } else {
+            writer.push(Instr::If(cond.clone(), when_t, when_f));
+          }
         }
         _ => panic!("cannot convert {:?} into writer", i),
       }
