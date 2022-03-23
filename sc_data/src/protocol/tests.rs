@@ -38,6 +38,15 @@ macro_rules! fields {
 fn generate(p: &mut Packet) {
   simplify::finish(p);
   p.find_reader_types_gen_writer();
+
+  let mut gen = crate::gen::CodeGen::new();
+  gen.write_line("READER:");
+  super::gen::write_from_tcp(&mut gen, &p, crate::VERSIONS[0]);
+  gen.write_line("");
+  gen.write_line("WRITER:");
+  super::gen::write_to_tcp(&mut gen, &p, crate::VERSIONS[0]);
+
+  println!("{}", gen.into_output());
 }
 
 #[test]

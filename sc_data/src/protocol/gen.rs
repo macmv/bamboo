@@ -340,7 +340,7 @@ fn write_def(gen: &mut CodeGen, name: &str, p: &Packet) {
   gen.write_line("},");
 }
 
-fn write_from_tcp(gen: &mut CodeGen, p: &Packet, ver: Version) {
+pub fn write_from_tcp(gen: &mut CodeGen, p: &Packet, ver: Version) {
   for f in &p.fields {
     gen.write("let");
     if !f.initialized {
@@ -378,7 +378,7 @@ fn write_from_tcp(gen: &mut CodeGen, p: &Packet, ver: Version) {
   gen.remove_indent();
   gen.write_line("}");
 }
-fn write_to_tcp(gen: &mut CodeGen, p: &Packet, ver: Version) {
+pub fn write_to_tcp(gen: &mut CodeGen, p: &Packet, ver: Version) {
   gen.write("Packet::");
   gen.write(&p.name);
   gen.write("V");
