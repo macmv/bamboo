@@ -244,7 +244,7 @@ impl<'a> ReaderTypes<'a> {
         RType::new("HashMap").generic(self.expr_type(&args[0])).generic(self.expr_type(&args[1]))
       }
       "read_list" => RType::new("Vec").generic(self.expr_type(&args[0])),
-      _ => todo!("call {}", name),
+      _ => todo!("call `{name}`"),
     }
   }
 

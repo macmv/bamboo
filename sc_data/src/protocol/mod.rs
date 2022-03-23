@@ -8,6 +8,9 @@ mod gen;
 mod simplify;
 mod type_analysis;
 
+#[cfg(test)]
+mod tests;
+
 pub fn generate(out_dir: &Path) -> io::Result<()> {
   let mut versions = vec![];
   for &ver in crate::VERSIONS {
