@@ -321,10 +321,6 @@ impl<'a> ReaderTypes<'a> {
               _ => {}
             }
           }
-
-          if needs_assume && if_chain.is_none() {
-            writer.push(Instr::Let(2, Expr::new(Value::Lit(Lit::Int(0)))));
-          }
           if needs_assume || !if_chain.is_none() {
             let fields_changed: Vec<_> = when_true
               .iter()
@@ -338,11 +334,13 @@ impl<'a> ReaderTypes<'a> {
               "cannot have a conditional where no fields are modified"
             );
 
+            let mut initial_var = None;
             if let Cond::Greater(lhs, rhs) | Cond::Neq(lhs, rhs) = cond {
               if if_chain.is_none() {
                 match lhs.initial {
                   Value::Var(id) => {
                     if_chain = Some((id, vec![]));
+                    initial_var = Some(id);
                   }
                   _ => unimplemented!(),
                 }
@@ -354,6 +352,9 @@ impl<'a> ReaderTypes<'a> {
                 Some(Op::BitAnd(and)) => {
                   assert!(rhs.clone().unwrap_int() == 0);
                   assert!(and.clone().unwrap_int() > 0);
+                  if let Some(var) = initial_var {
+                    writer.push(Instr::Let(var, Expr::new(Value::Lit(Lit::Int(0)))));
+                  }
                   writer.push(Instr::SetVarOr(
                     if_chain.as_ref().unwrap().0,
                     and.clone().op(Op::If(
@@ -368,9 +369,27 @@ impl<'a> ReaderTypes<'a> {
                     )),
                   ));
                 }
+                // `if p.read_i32() != 0 {}`
+                Some(Op::Call(class, name, args)) => {
+                  assert!(rhs.clone().unwrap_int() == 0);
+                  writer.push(Instr::Expr(Expr::new(Value::packet_var()).op(Op::Call(
+                    "tcp::Packet".into(),
+                    "write_i32".into(),
+                    vec![
+                      Expr::new(Value::Field(fields_changed[0].clone())).op(Op::Call(
+                        "Option".into(),
+                        "is_some".into(),
+                        vec![],
+                      )).op(Op::As(RType::new("u8")))
+                    ],
+                  ))));
+                }
                 // `if v_2 != 0 {}`
                 None => {
                   assert!(rhs.clone().unwrap_int() == 0);
+                  if let Some(var) = initial_var {
+                    writer.push(Instr::Let(var, Expr::new(Value::Lit(Lit::Int(0)))));
+                  }
                   writer.push(Instr::SetVar(
                     if_chain.as_ref().unwrap().0,
                     Expr::new(Value::Lit(Lit::Int(1))).clone().op(Op::If(
@@ -385,7 +404,7 @@ impl<'a> ReaderTypes<'a> {
                     )),
                   ));
                 }
-                v => unimplemented!("lhs {v:?}"),
+                v => unimplemented!("lhs {v:?}, rhs {rhs:?}"),
               }
             } else {
               unimplemented!();
@@ -404,14 +423,21 @@ impl<'a> ReaderTypes<'a> {
               continue;
             } else {
               let (var, mut updates) = if_chain.take().unwrap();
-              // This is the initial value we read and compared against:
-              // let v_2 = p.read_i32();
-              //           ^^^^^^^^^^^^ this expression
-              // if v_2 & 1 != 0 { ... }
-              let initial_read = self.value_of(&Expr::new(Value::Var(var)));
-              writer.push(self.set_expr(&initial_read, &Expr::new(Value::Var(var))).unwrap());
-              for instr in updates.drain(..) {
-                writer.push(instr);
+              if Value::Var(var) == Value::packet_var() {
+                // if p.read_i32() != 0 { ... }
+                for instr in updates.drain(..) {
+                  writer.push(instr);
+                }
+              } else {
+                // This is the initial value we read and compared against:
+                // let v_2 = p.read_i32();
+                //           ^^^^^^^^^^^^ this expression
+                // if v_2 & 1 != 0 { ... }
+                let initial_read = self.value_of(&Expr::new(Value::Var(var)));
+                writer.push(self.set_expr(&initial_read, &Expr::new(Value::Var(var))).unwrap());
+                for instr in updates.drain(..) {
+                  writer.push(instr);
+                }
               }
             }
           } else {
