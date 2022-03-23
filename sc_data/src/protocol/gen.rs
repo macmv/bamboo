@@ -495,10 +495,10 @@ impl<'a> InstrWriter<'a> {
         self.write_expr(val);
         self.gen.write_line(";");
       }
-      Instr::SetVarAnd(var, val) => {
+      Instr::SetVarOr(var, val) => {
         self.gen.write("v_");
         self.gen.write(&var.to_string());
-        self.gen.write(" &= ");
+        self.gen.write(" |= ");
         self.write_expr(val);
         self.gen.write_line(";");
       }

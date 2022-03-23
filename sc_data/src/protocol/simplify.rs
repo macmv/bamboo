@@ -75,7 +75,7 @@ fn simplify_instr(instr: &mut [Instr]) -> Option<usize> {
         let _ = simplify_val(idx);
         simplify_expr(val);
       }
-      Instr::SetVar(_, val) | Instr::SetVarAnd(_, val) | Instr::Let(_, val) => {
+      Instr::SetVar(_, val) | Instr::SetVarOr(_, val) | Instr::Let(_, val) => {
         match simplify_expr_overwrite(val) {
           (false, Some(new_instr)) => *i = new_instr,
           (false, None) => {}

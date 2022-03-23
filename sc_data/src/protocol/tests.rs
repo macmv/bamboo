@@ -1,13 +1,16 @@
 use super::{
   simplify, Cond, Expr, Field, Instr, Lit, Op, Packet, RType, Type, Value, VarBlock, VarKind,
 };
+use std::mem;
 
 fn cond(expr: Expr) -> Cond { Cond::Bool(expr) }
 fn field(name: &str) -> Expr { Expr::new(Value::Field(name.into())) }
 fn lit(lit: impl Into<Lit>) -> Expr { Expr::new(Value::Lit(lit.into())) }
 fn local(id: usize) -> Expr { Expr::new(Value::Var(id)) }
 fn as_(name: &str) -> Op { Op::As(name.into()) }
+fn if_(cond: Cond, els: Expr) -> Op { Op::If(Box::new(cond), els) }
 fn and(val: Expr) -> Op { Op::BitAnd(val) }
+fn null() -> Expr { Expr::new(Value::Null) }
 fn packet() -> Expr { Expr::new(Value::packet_var()) }
 fn block(block: Vec<Instr>, locals: usize) -> VarBlock {
   let mut vars = vec![VarKind::This, VarKind::Arg];
@@ -41,7 +44,7 @@ macro_rules! fields {
   }
 }
 
-fn generate(p: &mut Packet) {
+fn generate(p: &mut Packet, mut writer: Vec<Instr>) {
   simplify::finish(p);
   p.find_reader_types_gen_writer();
 
@@ -51,6 +54,11 @@ fn generate(p: &mut Packet) {
   gen.write_line("");
   gen.write_line("WRITER:");
   super::gen::write_to_tcp(&mut gen, &p, crate::VERSIONS[0]);
+  gen.write_line("");
+  gen.write_line("EXPECTED WRITER:");
+  mem::swap(&mut p.writer.block, &mut writer);
+  super::gen::write_to_tcp(&mut gen, &p, crate::VERSIONS[0]);
+  mem::swap(&mut p.writer.block, &mut writer);
 
   println!("{}", gen.into_output());
 }
@@ -98,7 +106,7 @@ fn simple_writer_test() {
     reader:  block(reader, 0),
     writer:  block(vec![], 0),
   };
-  generate(&mut p);
+  generate(&mut p, writer.clone());
 
   assert_eq!(p.fields, fields);
   assert_eq!(p.writer.block, writer);
@@ -146,7 +154,7 @@ fn conditional_writer_test() {
     reader:  block(reader, 0),
     writer:  block(vec![], 0),
   };
-  generate(&mut p);
+  generate(&mut p, writer.clone());
 
   assert_eq!(p.fields, fields);
   assert_eq!(p.writer.block, writer);
@@ -184,7 +192,7 @@ fn conditional_writer_test() {
     reader:  block(reader, 1),
     writer:  block(vec![], 0),
   };
-  generate(&mut p);
+  generate(&mut p, writer.clone());
 
   assert_eq!(p.writer.block, writer);
   assert_eq!(p.fields, fields);
@@ -202,19 +210,30 @@ fn multi_conditional_writer_test() {
     Instr::If(
       Cond::Neq(local(2).op(and(lit(2))), lit(0)),
       vec![Instr::Set("bar".into(), packet().op(call!(read_i32[])))],
-      vec![],
+      vec![Instr::Set("bar".into(), null())],
     ),
     Instr::If(
-      Cond::Neq(local(2).op(and(lit(4))), lit(0)),
+      Cond::Greater(local(2).op(and(lit(4))), lit(0)),
       vec![Instr::Set("baz".into(), packet().op(call!(read_i32[])))],
       vec![],
     ),
   ];
   let writer = vec![
     Instr::Let(2, lit(0)),
-    Instr::Expr(packet().op(call!(
-      write_i32[field("baz").op(call!(Option::is_some[])).op(as_("u8")).op(call!(::into[]))]
-    ))),
+    Instr::SetVarOr(2, lit(1).op(if_(cond(field("foo").op(call!(Option::is_some[]))), lit(0)))),
+    Instr::SetVarOr(2, lit(2).op(if_(cond(field("bar").op(call!(Option::is_some[]))), lit(0)))),
+    Instr::SetVarOr(2, lit(4).op(if_(cond(field("baz").op(call!(Option::is_some[]))), lit(0)))),
+    Instr::Expr(packet().op(call!(write_u8[local(2)]))),
+    Instr::If(
+      cond(field("foo").op(call!(Option::is_some[]))),
+      vec![Instr::Expr(packet().op(call!(write_i32[field("foo").op(Op::Deref)])))],
+      vec![],
+    ),
+    Instr::If(
+      cond(field("bar").op(call!(Option::is_some[]))),
+      vec![Instr::Expr(packet().op(call!(write_i32[field("bar").op(Op::Deref)])))],
+      vec![],
+    ),
     Instr::If(
       cond(field("baz").op(call!(Option::is_some[]))),
       vec![Instr::Expr(packet().op(call!(write_i32[field("baz").op(Op::Deref)])))],
@@ -236,7 +255,7 @@ fn multi_conditional_writer_test() {
     reader:  block(reader, 1),
     writer:  block(vec![], 0),
   };
-  generate(&mut p);
+  generate(&mut p, writer.clone());
 
   assert_eq!(p.writer.block, writer);
   assert_eq!(p.fields, fields);

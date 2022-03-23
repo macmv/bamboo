@@ -181,8 +181,8 @@ pub enum Instr {
   /// Same thing as let, but for updating a local variable (doesn't add the let
   /// keyword).
   SetVar(usize, Expr),
-  /// Same thing as SetVar, but is `&=` instead of `=`.
-  SetVarAnd(usize, Expr),
+  /// Same thing as SetVar, but is `|=` instead of `=`.
+  SetVarOr(usize, Expr),
 
   /// If the given conditional is true, then execute the first list of
   /// instructions. Otherwise, execute the second list.
