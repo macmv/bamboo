@@ -112,5 +112,5 @@ fn start_plugin(plugin: String, path: &Path) {
 }
 
 impl PluginImpl for SocketPlugin {
-  fn call(&self, ev: ServerEvent) {}
+  fn call(&self, ev: ServerEvent) { self.send(ev); }
 }
