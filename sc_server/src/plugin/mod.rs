@@ -6,7 +6,7 @@ pub use plugin::Plugin;
 
 use crate::{block, player::Player, world::WorldManager};
 use parking_lot::{Mutex, MutexGuard};
-use sc_common::{math::Pos, net::sb::ClickWindow};
+use sc_common::{config::Config, math::Pos, net::sb::ClickWindow};
 use std::{fmt, fs, sync::Arc};
 use sugarlang::runtime::{Var, VarSend};
 
@@ -126,24 +126,35 @@ impl PluginManager {
         plugins.push(p);
       } else if m.is_dir() {
         let path = f.path();
+        let config = Config::new(
+          path.join("plugin.yml").to_str().unwrap(),
+          path.join("plugin-default.yml").to_str().unwrap(),
+          include_str!("plugin.yml"),
+        );
+        let ty: String = config.get("type");
         let name = path.file_stem().unwrap().to_str().unwrap().to_string();
-        if let Some(plugin) = socket::open(name, f.path()) {
-          plugin.wait_for_ready();
-          plugin.send(socket::ServerEvent::BlockPlace { pos: (1, 2, 3) });
-          std::thread::sleep(std::time::Duration::from_secs(100000));
-        }
-        /*
-        let main_path = f.path().join("main.sug");
-        if main_path.exists() && main_path.is_file() {
-          info!("found plugin at {}", main_path.to_str().unwrap());
-          let name = f.path().file_stem().unwrap().to_str().unwrap().to_string();
-          let mut p = Plugin::new(plugins.len(), name, wm.clone());
+        if ty == "socket" {
+          info!("found socket plugin at {}", path.to_str().unwrap());
+          if let Some(plugin) = socket::open(name, f.path()) {
+            plugin.wait_for_ready();
+            plugin.send(socket::ServerEvent::BlockPlace { pos: (1, 2, 3) });
+          }
+        } else if ty == "panda" {
+          let main_path = f.path().join("main.sug");
+          if main_path.exists() && main_path.is_file() {
+            info!("found panda plugin at {}", main_path.to_str().unwrap());
+            let name = f.path().file_stem().unwrap().to_str().unwrap().to_string();
+            let mut p = Plugin::new(plugins.len(), name, wm.clone());
 
-          p.load_from_dir(&f.path(), self);
-          p.call_init();
-          plugins.push(p);
+            p.load_from_dir(&f.path(), self);
+            p.call_init();
+            plugins.push(p);
+          } else {
+            error!("plugin `{name}` does not have a `main.sug` file");
+          }
+        } else {
+          error!("plugin `{name}` has invalid plugin type: `{ty}`");
         }
-        */
       }
     }
   }
