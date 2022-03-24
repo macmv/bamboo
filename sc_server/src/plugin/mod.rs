@@ -129,6 +129,8 @@ impl PluginManager {
         let name = path.file_stem().unwrap().to_str().unwrap().to_string();
         if let Some(plugin) = socket::open(name, f.path()) {
           plugin.wait_for_ready();
+          plugin.send(socket::ServerEvent::BlockPlace { pos: (1, 2, 3) });
+          std::thread::sleep(std::time::Duration::from_secs(100000));
         }
         /*
         let main_path = f.path().join("main.sug");

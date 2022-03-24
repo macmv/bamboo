@@ -1,7 +1,7 @@
 use parking_lot::Mutex;
 use std::{
   fs,
-  io::{BufRead, BufReader},
+  io::{BufRead, BufReader, Write},
   os::unix::net::{UnixListener, UnixStream},
   path::{Path, PathBuf},
   process::{Command, Stdio},
@@ -12,15 +12,21 @@ pub struct SocketPlugin {
   socket: Mutex<BufReader<UnixStream>>,
 }
 
-#[derive(Debug, Clone, serde::Deserialize, serde::Serialize)]
+#[derive(Debug, Clone, serde::Deserialize)]
 #[serde(tag = "type")]
-pub enum Event {
+pub enum PluginEvent {
   Register { ty: String },
   Ready,
 }
 
+#[derive(Debug, Clone, serde::Serialize)]
+#[serde(tag = "type")]
+pub enum ServerEvent {
+  BlockPlace { pos: (u32, u32, u32) },
+}
+
 impl SocketPlugin {
-  pub fn read(&self) -> Event {
+  pub fn read(&self) -> PluginEvent {
     let mut sock = self.socket.lock();
     let mut buf = vec![];
     sock.read_until(b'\0', &mut buf).unwrap();
@@ -35,20 +41,27 @@ impl SocketPlugin {
       }
     }
   }
-  pub fn handle_event(&self, e: Event) {
+  pub fn handle_event(&self, e: PluginEvent) {
     match e {
-      Event::Ready => {}
-      Event::Register { ty } => todo!(),
+      PluginEvent::Ready => {}
+      PluginEvent::Register { ty } => todo!(),
     }
   }
   pub fn wait_for_ready(&self) {
     loop {
       match self.read() {
-        Event::Ready => break,
+        PluginEvent::Ready => break,
         e => self.handle_event(e),
       }
     }
     info!("plugin `{}` is ready", self.name);
+  }
+  pub fn send(&self, ev: ServerEvent) {
+    let mut sock = self.socket.lock();
+    let mut data = serde_json::to_vec(&ev).unwrap();
+    data.push(b'\0');
+    sock.get_mut().write_all(&data).unwrap();
+    sock.get_mut().flush().unwrap();
   }
 }
 

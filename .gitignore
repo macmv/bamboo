@@ -16,3 +16,5 @@ perf.data.old
 /world
 
 pprof.pb
+
+__pycache__

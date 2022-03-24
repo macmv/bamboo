@@ -1,19 +1,14 @@
-import socket
-import time
-import json
-import sys
+import event
+import server
 
-sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
-sock.connect("server.sock")
-file = sock.makefile(mode='w')
+server = server.Server()
+
+server.send(event.Ready())
+
 while True:
-    ready = {
-        "type": "Ready",
-    }
-    file.write(json.dumps(ready))
-    file.write('\0')
-    file.flush()
-    time.sleep(1)
+    event = server.recv()
+    print(event)
+    print(event.pos)
     # sock.send(bytes(json.dumps(ready), encoding="utf-8"))
     # sock.flush()
     # data = sock.recv(100)
