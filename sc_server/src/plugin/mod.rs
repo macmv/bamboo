@@ -1,4 +1,5 @@
 mod plugin;
+mod socket;
 mod types;
 
 pub use plugin::Plugin;
@@ -124,6 +125,12 @@ impl PluginManager {
         p.call_init();
         plugins.push(p);
       } else if m.is_dir() {
+        let path = f.path();
+        let name = path.file_stem().unwrap().to_str().unwrap().to_string();
+        if let Some(plugin) = socket::open(name, f.path()) {
+          plugin.wait_for_ready();
+        }
+        /*
         let main_path = f.path().join("main.sug");
         if main_path.exists() && main_path.is_file() {
           info!("found plugin at {}", main_path.to_str().unwrap());
@@ -134,6 +141,7 @@ impl PluginManager {
           p.call_init();
           plugins.push(p);
         }
+        */
       }
     }
   }
