@@ -196,6 +196,17 @@ impl<'a> ReaderTypes<'a> {
         "ParticleS2CPacket" => RType::new("ParticleData"),
         "Option" => match name.as_str() {
           "is_some" => RType::new("bool"),
+          "as_ref" => initial,
+          // Quirk: fields that are options have an `option` field set, but their type is not
+          // `Option`. So, if we aren't unwrapping an `Option`, we need to return the initial
+          // value.
+          "unwrap" => {
+            if initial.name == "Option" {
+              initial.generics[0].clone()
+            } else {
+              initial
+            }
+          }
           _ => todo!("call {}::{}({:?})", class, name, args),
         },
         _ => todo!("call {}::{}({:?})", class, name, args),
@@ -283,7 +294,17 @@ impl<'a> ReaderTypes<'a> {
         Instr::Set(field, expr) => {
           if self.changes_buf(expr) {
             self.check_var_to_write(writer);
-            if let Some(instr) = self.set_expr(expr, &Expr::new(Value::Field(field.into()))) {
+            let mut field_val = Expr::new(Value::Field(field.into()));
+            let field = self.get_field(&field).unwrap();
+            if field.option {
+              if field.ty.to_rust().is_copy() {
+                field_val.add_op(Op::Call("Option".into(), "unwrap".into(), vec![]));
+              } else {
+                field_val.add_op(Op::Call("Option".into(), "as_ref".into(), vec![]));
+                field_val.add_op(Op::Call("Option".into(), "unwrap".into(), vec![]));
+              }
+            }
+            if let Some(instr) = self.set_expr(expr, &field_val) {
               writer.push(instr);
             }
           } else {
@@ -424,7 +445,7 @@ impl<'a> ReaderTypes<'a> {
               continue;
             } else {
               let (var, mut updates) = if_chain.take().unwrap();
-              if Value::Var(var) == Value::packet_var() {
+              if Value::Var(var) == Value::packet_var() || var == 1 {
                 // if p.read_i32() != 0 { ... }
                 for instr in updates.drain(..) {
                   writer.push(instr);
@@ -435,7 +456,11 @@ impl<'a> ReaderTypes<'a> {
                 //           ^^^^^^^^^^^^ this expression
                 // if v_2 & 1 != 0 { ... }
                 let initial_read = self.value_of(&Expr::new(Value::Var(var)));
-                writer.push(self.set_expr(&initial_read, &Expr::new(Value::Var(var))).unwrap());
+                writer.push(
+                  self
+                    .set_expr(&initial_read, &Expr::new(Value::Var(var)))
+                    .unwrap_or_else(|| panic!("could not create writer from {initial_read:?}")),
+                );
                 for instr in updates.drain(..) {
                   writer.push(instr);
                 }
@@ -606,6 +631,12 @@ impl<'a> ReaderTypes<'a> {
         // For Option::is_some()
         .map(|v| matches!(v, Op::Call(class, _, _) if class != "Option"))
         .unwrap_or(true)
+      && !expr
+        .ops
+        .last()
+        // For Option::unwrap(). This derefs for us
+        .map(|v| matches!(v, Op::Call(class, name, _) if class == "Option" && name == "unwrap"))
+        .unwrap_or(false)
       && matches!(expr.initial, Value::Field(_))
     {
       expr.ops.insert(0, Op::Deref);
