@@ -139,7 +139,7 @@ impl World {
       locked: wm.config().get::<_, bool>("world.locked").into(),
       wm,
     });
-    // world.load_from_disk(&std::path::PathBuf::new().join("world")).unwrap();
+    world.load_from_disk(&std::path::PathBuf::new().join("world")).unwrap();
     let w = world.clone();
     // We want this world to be fully initialized when we return; this is so that if
     // a player tries to join this world while it's still loading, we don't have the

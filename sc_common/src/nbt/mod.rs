@@ -100,6 +100,8 @@ impl NBT {
       panic!("called compound on non-compound type: {:?}", self);
     }
   }
+
+  pub fn into_tag(self) -> Tag { self.tag }
 }
 
 impl Tag {
