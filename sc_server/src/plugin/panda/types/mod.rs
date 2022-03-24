@@ -1,4 +1,4 @@
-use super::{Plugin, PluginManager, Sugarcane};
+use super::{super::PluginManager, PandaPlugin, Sugarcane};
 use sc_common::util::{chat::Color, Chat};
 use sugarlang::{
   define_ty,
@@ -98,8 +98,9 @@ impl Sugarcane {
         {
           let mut lock = wm.plugins().plugins.lock();
           let plugin = &mut lock[idx];
+          let panda = plugin.unwrap_panda();
           if let Err(e) = cb.call(
-            &mut plugin.lock_env(),
+            &mut panda.lock_env(),
             vec![
               player.map(|p| player::SlPlayer::from(p.clone()).into()).unwrap_or(Var::None),
               args.iter().map(|arg| command::sl_from_arg(arg.clone())).collect::<Vec<Var>>().into(),
@@ -109,7 +110,7 @@ impl Sugarcane {
             has_err = true;
           }
           if let Some(e) = err {
-            plugin.print_err(e);
+            panda.print_err(e);
           }
         }
         if has_err {
@@ -195,7 +196,7 @@ fn format(args: &[Var]) -> String {
   msg
 }
 
-impl Plugin {
+impl PandaPlugin {
   pub fn add_builtins(&self, sl: &mut Sugarlang) {
     let sc = self.sc();
     sl.add_builtin_fn(path!(sugarcane::instance), false, move |_env, _slf, args, pos| {

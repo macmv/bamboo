@@ -1,3 +1,4 @@
+use super::{PluginEvent, PluginImpl, ServerEvent};
 use parking_lot::Mutex;
 use std::{
   fs,
@@ -8,25 +9,32 @@ use std::{
 };
 
 pub struct SocketPlugin {
-  name:   String,
   socket: Mutex<BufReader<UnixStream>>,
 }
 
-#[derive(Debug, Clone, serde::Deserialize)]
-#[serde(tag = "type")]
-pub enum PluginEvent {
-  Register { ty: String },
-  Ready,
-}
-
-#[derive(Debug, Clone, serde::Serialize)]
-#[serde(tag = "type")]
-pub enum ServerEvent {
-  BlockPlace { pos: (u32, u32, u32) },
-}
-
 impl SocketPlugin {
-  pub fn read(&self) -> PluginEvent {
+  pub fn new(name: String, path: PathBuf) -> Option<SocketPlugin> {
+    let sock_path = path.join("server.sock");
+    if sock_path.exists() {
+      fs::remove_file(&sock_path).unwrap();
+    }
+    let listener = UnixListener::bind(&sock_path).unwrap();
+
+    start_plugin(name.clone(), &path);
+
+    match listener.accept() {
+      Ok((socket, _)) => {
+        info!("plugin `{name}` has connected");
+        return Some(SocketPlugin { socket: Mutex::new(BufReader::new(socket)) });
+      }
+      Err(e) => {
+        error!("accept function failed: {:?}", e);
+        None
+      }
+    }
+  }
+
+  pub fn read(&self) -> Result<PluginEvent, ()> {
     let mut sock = self.socket.lock();
     let mut buf = vec![];
     sock.read_until(b'\0', &mut buf).unwrap();
@@ -34,9 +42,10 @@ impl SocketPlugin {
     buf.pop(); // Remove null byte
     loop {
       match serde_json::from_slice(&buf) {
-        Ok(v) => return v,
+        Ok(v) => return Ok(v),
         Err(e) => {
-          error!("invalid event from plugin `{}`: {}", self.name, e);
+          error!("invalid event from plugin `{}`: {}", "", e);
+          return Err(());
         }
       }
     }
@@ -47,14 +56,15 @@ impl SocketPlugin {
       PluginEvent::Register { ty } => todo!(),
     }
   }
-  pub fn wait_for_ready(&self) {
+  pub fn wait_for_ready(&self) -> Result<(), ()> {
     loop {
-      match self.read() {
+      match self.read()? {
         PluginEvent::Ready => break,
         e => self.handle_event(e),
       }
     }
-    info!("plugin `{}` is ready", self.name);
+    info!("plugin `{}` is ready", "");
+    Ok(())
   }
   pub fn send(&self, ev: ServerEvent) {
     let mut sock = self.socket.lock();
@@ -62,27 +72,6 @@ impl SocketPlugin {
     data.push(b'\0');
     sock.get_mut().write_all(&data).unwrap();
     sock.get_mut().flush().unwrap();
-  }
-}
-
-pub fn open(plugin: String, path: PathBuf) -> Option<SocketPlugin> {
-  let sock_path = path.join("server.sock");
-  if sock_path.exists() {
-    fs::remove_file(&sock_path).unwrap();
-  }
-  let listener = UnixListener::bind(&sock_path).unwrap();
-
-  start_plugin(plugin.clone(), &path);
-
-  match listener.accept() {
-    Ok((socket, _)) => {
-      info!("plugin `{plugin}` has connected");
-      return Some(SocketPlugin { name: plugin, socket: Mutex::new(BufReader::new(socket)) });
-    }
-    Err(e) => {
-      error!("accept function failed: {:?}", e);
-      None
-    }
   }
 }
 
@@ -120,4 +109,8 @@ fn start_plugin(plugin: String, path: &Path) {
       }
     }
   });
+}
+
+impl PluginImpl for SocketPlugin {
+  fn call(&self, ev: ServerEvent) {}
 }

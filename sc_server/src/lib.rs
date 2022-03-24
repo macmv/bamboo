@@ -12,14 +12,14 @@ pub mod plugin;
 pub mod util;
 pub mod world;
 
-use crate::{plugin::Plugin, world::WorldManager};
+use crate::{plugin::panda::PandaPlugin, world::WorldManager};
 use std::sync::Arc;
 use sugarlang::Sugarlang;
 
 pub fn generate_sl_docs() {
   info!("generating sugarlang docs...",);
 
-  let plugin = Plugin::new(0, "".into(), Arc::new(WorldManager::new()));
+  let plugin = PandaPlugin::new(0, "".into(), Arc::new(WorldManager::new()));
   let mut sl = Sugarlang::new();
   plugin.add_builtins(&mut sl);
   plugin.generate_docs(&sl);
