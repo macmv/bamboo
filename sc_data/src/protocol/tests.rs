@@ -207,9 +207,9 @@ fn inline_conditional_writer_test() {
     vec![],
   )];
   let writer = vec![
-    Instr::Let(2, lit(0)),
-    Instr::SetVar(2, lit(1).op(if_(cond(field("baz").op(call!(Option::is_some[]))), lit(0)))),
-    Instr::Expr(packet().op(call!(write_i32[local(2)]))),
+    Instr::Expr(
+      packet().op(call!(write_i32[field("baz").op(call!(Option::is_some[])).op(as_("i32"))])),
+    ),
     Instr::If(
       cond(field("baz").op(call!(Option::is_some[]))),
       vec![Instr::Expr(packet().op(call!(write_i32[field("baz").op(Op::Deref)])))],

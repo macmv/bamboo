@@ -370,19 +370,20 @@ impl<'a> ReaderTypes<'a> {
                   ));
                 }
                 // `if p.read_i32() != 0 {}`
-                Some(Op::Call(class, name, args)) => {
+                Some(Op::Call(..)) => {
                   assert!(rhs.clone().unwrap_int() == 0);
-                  writer.push(Instr::Expr(Expr::new(Value::packet_var()).op(Op::Call(
-                    "tcp::Packet".into(),
-                    "write_i32".into(),
-                    vec![
-                      Expr::new(Value::Field(fields_changed[0].clone())).op(Op::Call(
-                        "Option".into(),
-                        "is_some".into(),
-                        vec![],
-                      )).op(Op::As(RType::new("u8")))
-                    ],
-                  ))));
+                  writer.push(
+                    self
+                      .set_expr(
+                        &lhs,
+                        &Expr::new(Value::Field(fields_changed[0].clone())).op(Op::Call(
+                          "Option".into(),
+                          "is_some".into(),
+                          vec![],
+                        )),
+                      )
+                      .unwrap(),
+                  );
                 }
                 // `if v_2 != 0 {}`
                 None => {
