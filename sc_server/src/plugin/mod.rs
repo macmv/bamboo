@@ -146,7 +146,6 @@ impl PluginManager {
         if ty == "socket" {
           info!("found socket plugin at {}", path.to_str().unwrap());
           if let Some(plugin) = sockets.add(name.clone(), f.path()) {
-            plugin.clone().spawn_listener();
             plugins.push(Plugin::new(config, name, plugin));
           }
         } else if ty == "panda" {
@@ -173,7 +172,8 @@ impl PluginManager {
       sockets.listen();
     });
     for plug in plugins {
-      plug.wait_for_ready();
+      plug.wait_for_ready().unwrap();
+      plug.clone().spawn_listener();
     }
   }
 
