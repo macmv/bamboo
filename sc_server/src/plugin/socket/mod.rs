@@ -164,7 +164,11 @@ impl WrappedSocket {
       let mut buf = vec![0; 1024];
       match self.stream.read(&mut buf) {
         Ok(n) => {
-          self.incoming.extend(buf);
+          if n == 0 {
+            // TODO: Close connection
+            return Ok(());
+          }
+          self.incoming.extend(&buf[..n]);
           self.read_events()?;
         }
         Err(e) if matches!(e.kind(), io::ErrorKind::WouldBlock) => return Ok(()),
