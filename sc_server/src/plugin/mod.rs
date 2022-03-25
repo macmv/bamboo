@@ -7,7 +7,7 @@ pub use json::*;
 pub use plugin::{Plugin, PluginEvent, PluginImpl, ServerEvent, ServerEventKind};
 
 use panda::PandaPlugin;
-use socket::SocketPlugin;
+use socket::SocketManager;
 
 use crate::{block, player::Player, world::WorldManager};
 use parking_lot::Mutex;
@@ -117,6 +117,9 @@ impl PluginManager {
   pub fn load(&self, wm: Arc<WorldManager>) {
     let mut plugins = self.plugins.lock();
     plugins.clear();
+
+    let mut sockets = SocketManager::new(wm.clone());
+
     for f in fs::read_dir("plugins").unwrap() {
       let f = f.unwrap();
       let m = fs::metadata(f.path()).unwrap();
@@ -142,7 +145,7 @@ impl PluginManager {
         let name = path.file_stem().unwrap().to_str().unwrap().to_string();
         if ty == "socket" {
           info!("found socket plugin at {}", path.to_str().unwrap());
-          if let Some(plugin) = SocketPlugin::new(wm.clone(), name.clone(), f.path()) {
+          if let Some(plugin) = sockets.add(name.clone(), f.path()) {
             let _ = plugin.wait_for_ready();
             let plugin = Arc::new(plugin);
             plugin.clone().spawn_listener();
@@ -166,6 +169,8 @@ impl PluginManager {
         }
       }
     }
+
+    sockets.listen();
   }
 
   pub fn on_block_place(&self, player: Arc<Player>, pos: Pos, kind: block::Kind) {
