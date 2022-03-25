@@ -1,19 +1,22 @@
 use super::{PluginEvent, PluginImpl, ServerEvent};
+use crate::world::WorldManager;
 use parking_lot::Mutex;
 use std::{
-  fs,
+  fs, io,
   io::{BufRead, BufReader, Write},
   os::unix::net::{UnixListener, UnixStream},
   path::{Path, PathBuf},
   process::{Command, Stdio},
+  sync::Arc,
 };
 
 pub struct SocketPlugin {
+  wm:     Arc<WorldManager>,
   socket: Mutex<BufReader<UnixStream>>,
 }
 
 impl SocketPlugin {
-  pub fn new(name: String, path: PathBuf) -> Option<SocketPlugin> {
+  pub fn new(wm: Arc<WorldManager>, name: String, path: PathBuf) -> Option<SocketPlugin> {
     let sock_path = path.join("server.sock");
     if sock_path.exists() {
       fs::remove_file(&sock_path).unwrap();
@@ -25,7 +28,7 @@ impl SocketPlugin {
     match listener.accept() {
       Ok((socket, _)) => {
         info!("plugin `{name}` has connected");
-        return Some(SocketPlugin { socket: Mutex::new(BufReader::new(socket)) });
+        return Some(SocketPlugin { wm, socket: Mutex::new(BufReader::new(socket)) });
       }
       Err(e) => {
         error!("accept function failed: {:?}", e);
@@ -54,6 +57,9 @@ impl SocketPlugin {
     match e {
       PluginEvent::Ready => {}
       PluginEvent::Register { ty } => todo!(),
+      PluginEvent::SendChat { text } => {
+        self.wm.broadcast(text);
+      }
     }
   }
   pub fn wait_for_ready(&self) -> Result<(), ()> {
@@ -66,12 +72,13 @@ impl SocketPlugin {
     info!("plugin `{}` is ready", "");
     Ok(())
   }
-  pub fn send(&self, ev: ServerEvent) {
+  pub fn send(&self, ev: ServerEvent) -> io::Result<()> {
     let mut sock = self.socket.lock();
     let mut data = serde_json::to_vec(&ev).unwrap();
     data.push(b'\0');
-    sock.get_mut().write_all(&data).unwrap();
-    sock.get_mut().flush().unwrap();
+    sock.get_mut().write_all(&data)?;
+    sock.get_mut().flush()?;
+    Ok(())
   }
 }
 
@@ -112,5 +119,13 @@ fn start_plugin(plugin: String, path: &Path) {
 }
 
 impl PluginImpl for SocketPlugin {
-  fn call(&self, ev: ServerEvent) { self.send(ev); }
+  fn call(&self, ev: ServerEvent) -> Result<(), ()> {
+    match self.send(ev) {
+      Ok(_) => Ok(()),
+      Err(e) => {
+        error!("could not send message to plugin: {e}");
+        Err(())
+      }
+    }
+  }
 }

@@ -123,6 +123,9 @@ impl Serialize for Chat {
 impl From<&str> for Chat {
   fn from(msg: &str) -> Chat { Chat::new(msg) }
 }
+impl From<String> for Chat {
+  fn from(msg: String) -> Chat { Chat::new(msg) }
+}
 
 /// This is a chat message section. It has some text, and a lot of optional
 /// fields:

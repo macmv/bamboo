@@ -137,6 +137,6 @@ impl PandaPlugin {
 }
 
 impl PluginImpl for PandaPlugin {
-  fn call(&self, ev: ServerEvent) {}
+  fn call(&self, ev: ServerEvent) -> Result<(), ()> { Ok(()) }
   fn panda(&mut self) -> Option<&mut PandaPlugin> { Some(self) }
 }

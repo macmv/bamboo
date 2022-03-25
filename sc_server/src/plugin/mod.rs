@@ -1,8 +1,10 @@
+mod json;
 pub mod panda;
 mod plugin;
 pub mod socket;
 
-pub use plugin::{Plugin, PluginEvent, PluginImpl, ServerEvent};
+pub use json::*;
+pub use plugin::{Plugin, PluginEvent, PluginImpl, ServerEvent, ServerEventKind};
 
 use panda::PandaPlugin;
 use socket::SocketPlugin;
@@ -140,7 +142,7 @@ impl PluginManager {
         let name = path.file_stem().unwrap().to_str().unwrap().to_string();
         if ty == "socket" {
           info!("found socket plugin at {}", path.to_str().unwrap());
-          if let Some(plugin) = SocketPlugin::new(name.clone(), f.path()) {
+          if let Some(plugin) = SocketPlugin::new(wm.clone(), name.clone(), f.path()) {
             plugin.wait_for_ready();
             plugins.push(Plugin::new(config, name, plugin));
           }
@@ -165,9 +167,14 @@ impl PluginManager {
   }
 
   pub fn on_block_place(&self, player: Arc<Player>, pos: Pos, kind: block::Kind) {
-    for p in self.plugins.lock().iter() {
-      p.call(ServerEvent::BlockPlace { pos: (pos.x(), pos.y(), pos.z()) });
-    }
+    let player: JsonPlayer = player.into();
+    self.plugins.lock().retain(|p| {
+      p.call(ServerEvent {
+        player: player.clone(),
+        kind:   ServerEventKind::BlockPlace { pos: pos.into() },
+      })
+      .is_ok()
+    });
   }
   pub fn on_click_window(&self, player: Arc<Player>, slot: i32, mode: ClickWindow) -> bool {
     let mut allow = true;
