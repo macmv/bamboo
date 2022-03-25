@@ -40,7 +40,10 @@ impl SocketPlugin {
     let p = self.clone();
     std::thread::spawn(move || loop {
       match p.read() {
-        Ok(ev) => p.handle_event(ev),
+        Ok(ev) => {
+          info!("handling event {ev:?}");
+          p.handle_event(ev)
+        }
         Err(_) => break,
       }
     });
@@ -52,13 +55,11 @@ impl SocketPlugin {
     sock.read_until(b'\0', &mut buf).unwrap();
     drop(sock);
     buf.pop(); // Remove null byte
-    loop {
-      match serde_json::from_slice(&buf) {
-        Ok(v) => return Ok(v),
-        Err(e) => {
-          error!("invalid event from plugin `{}`: {}", "", e);
-          return Err(());
-        }
+    match serde_json::from_slice(&buf) {
+      Ok(v) => Ok(v),
+      Err(e) => {
+        error!("invalid event from plugin `{}`: {}", "", e);
+        Err(())
       }
     }
   }
