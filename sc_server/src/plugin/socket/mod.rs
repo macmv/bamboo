@@ -36,6 +36,15 @@ impl SocketPlugin {
       }
     }
   }
+  pub fn spawn_listener(self: Arc<Self>) {
+    let p = self.clone();
+    std::thread::spawn(move || loop {
+      match p.read() {
+        Ok(ev) => p.handle_event(ev),
+        Err(_) => break,
+      }
+    });
+  }
 
   pub fn read(&self) -> Result<PluginEvent, ()> {
     let mut sock = self.socket.lock();
@@ -118,7 +127,7 @@ fn start_plugin(plugin: String, path: &Path) {
   });
 }
 
-impl PluginImpl for SocketPlugin {
+impl PluginImpl for Arc<SocketPlugin> {
   fn call(&self, ev: ServerEvent) -> Result<(), ()> {
     match self.send(ev) {
       Ok(_) => Ok(()),

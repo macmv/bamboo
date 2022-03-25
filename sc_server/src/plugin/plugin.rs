@@ -2,7 +2,7 @@ use super::{panda::PandaPlugin, JsonPlayer, JsonPos};
 use sc_common::config::Config;
 
 #[derive(Debug, Clone, serde::Deserialize)]
-#[serde(tag = "type")]
+#[serde(tag = "t")]
 pub enum PluginEvent {
   Register { ty: String },
   Ready,

@@ -2,10 +2,20 @@ import json
 
 def read(b):
     blob = json.loads(b)
-    match blob["type"]:
+    match blob["t"]:
         case "BlockPlace": return BlockPlace.from_json(blob)
         case other: print("unknown event " + other)
     return None
+
+class SendChat:
+    def __init__(self, text):
+        self.text = text
+
+    def to_json(self):
+        return json.dumps({
+            "t": "SendChat",
+            "text": self.text,
+        })
 
 class BlockPlace:
     def __init__(self, pos):
@@ -17,5 +27,5 @@ class BlockPlace:
 class Ready:
     def to_json(self):
         return json.dumps({
-            "type": "Ready",
+            "t": "Ready",
         })

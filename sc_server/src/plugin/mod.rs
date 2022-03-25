@@ -143,7 +143,9 @@ impl PluginManager {
         if ty == "socket" {
           info!("found socket plugin at {}", path.to_str().unwrap());
           if let Some(plugin) = SocketPlugin::new(wm.clone(), name.clone(), f.path()) {
-            plugin.wait_for_ready();
+            let _ = plugin.wait_for_ready();
+            let plugin = Arc::new(plugin);
+            plugin.clone().spawn_listener();
             plugins.push(Plugin::new(config, name, plugin));
           }
         } else if ty == "panda" {
