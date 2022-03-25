@@ -146,8 +146,6 @@ impl PluginManager {
         if ty == "socket" {
           info!("found socket plugin at {}", path.to_str().unwrap());
           if let Some(plugin) = sockets.add(name.clone(), f.path()) {
-            let _ = plugin.wait_for_ready();
-            let plugin = Arc::new(plugin);
             plugin.clone().spawn_listener();
             plugins.push(Plugin::new(config, name, plugin));
           }
@@ -170,7 +168,13 @@ impl PluginManager {
       }
     }
 
-    sockets.listen();
+    let plugins = sockets.take_plugins();
+    std::thread::spawn(|| {
+      sockets.listen();
+    });
+    for plug in plugins {
+      plug.wait_for_ready();
+    }
   }
 
   pub fn on_block_place(&self, player: Arc<Player>, pos: Pos, kind: block::Kind) {

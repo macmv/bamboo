@@ -1,14 +1,12 @@
 use super::{PluginEvent, PluginImpl, ServerEvent};
 use crate::world::WorldManager;
 use crossbeam_channel::{Receiver, Sender};
-use mio::{
-  net::{UnixListener, UnixStream},
-  Events, Interest, Poll, Token, Waker,
-};
+use mio::{net::UnixStream, Events, Interest, Poll, Token, Waker};
 use std::{
   collections::HashMap,
   fs, io,
   io::{BufRead, BufReader},
+  os::unix::net::UnixListener as StdUnixListener,
   path::{Path, PathBuf},
   process::{Command, Stdio},
   sync::Arc,
@@ -24,6 +22,7 @@ pub struct SocketManager {
   tok_rx:   Receiver<Token>,
   serv_rx:  HashMap<Token, Receiver<ServerEvent>>,
   plug_tx:  HashMap<Token, Sender<PluginEvent>>,
+  plugins:  Vec<Arc<SocketPlugin>>,
 }
 
 pub struct SocketPlugin {
@@ -50,10 +49,11 @@ impl SocketManager {
       tok_tx,
       serv_rx: HashMap::new(),
       plug_tx: HashMap::new(),
+      plugins: vec![],
     }
   }
 
-  pub fn add(&mut self, name: String, path: PathBuf) -> Option<SocketPlugin> {
+  pub fn add(&mut self, name: String, path: PathBuf) -> Option<Arc<SocketPlugin>> {
     let mut socket = open(name, path)?;
 
     let tok = Token(self.next_tok);
@@ -77,7 +77,13 @@ impl SocketManager {
     self.sockets.insert(tok, socket);
     self.serv_rx.insert(tok, serv_rx);
     self.plug_tx.insert(tok, plug_tx);
+    let plugin = Arc::new(plugin);
+    self.plugins.push(plugin.clone());
     Some(plugin)
+  }
+
+  pub fn take_plugins(&mut self) -> Vec<Arc<SocketPlugin>> {
+    std::mem::replace(&mut self.plugins, vec![])
   }
 
   pub fn listen(mut self) {
@@ -116,14 +122,15 @@ fn open(name: String, path: PathBuf) -> Option<UnixStream> {
   if sock_path.exists() {
     fs::remove_file(&sock_path).unwrap();
   }
-  let listener = UnixListener::bind(&sock_path).unwrap();
+  let listener = StdUnixListener::bind(&sock_path).unwrap();
 
   start_plugin(name.clone(), &path);
 
   match listener.accept() {
     Ok((socket, _)) => {
       info!("plugin `{name}` has connected");
-      Some(socket)
+      socket.set_nonblocking(true).unwrap();
+      Some(UnixStream::from_std(socket))
     }
     Err(e) => {
       error!("accept function failed: {:?}", e);
@@ -134,6 +141,7 @@ fn open(name: String, path: PathBuf) -> Option<UnixStream> {
 
 impl SocketPlugin {
   pub fn spawn_listener(self: Arc<Self>) {
+    info!("spawning listener");
     let p = self.clone();
     std::thread::spawn(move || loop {
       match p.read() {
@@ -144,6 +152,7 @@ impl SocketPlugin {
         Err(_) => break,
       }
     });
+    info!("spawned listener");
   }
 
   pub fn read(&self) -> Result<PluginEvent, ()> { Ok(self.rx.recv().unwrap()) }
@@ -157,6 +166,7 @@ impl SocketPlugin {
     }
   }
   pub fn wait_for_ready(&self) -> Result<(), ()> {
+    info!("waiting for ready");
     loop {
       match self.read()? {
         PluginEvent::Ready => break,
@@ -167,9 +177,9 @@ impl SocketPlugin {
     Ok(())
   }
   pub fn send(&self, ev: ServerEvent) -> io::Result<()> {
-    self.tok_tx.send(self.tok);
-    self.serv_tx.send(ev);
-    self.waker.wake();
+    self.tok_tx.send(self.tok).unwrap();
+    self.serv_tx.send(ev).unwrap();
+    self.waker.wake().unwrap();
     Ok(())
   }
 }
