@@ -25,14 +25,17 @@ class Server:
 
     def wait_for_reply(self):
         while True:
-            message = self.recv()
-            if message is event.Reply:
+            message = self.recv_skip_cache()
+            if issubclass(type(message), event.Reply):
                 return message
             self.cache.append(message)
 
     def recv(self):
         if len(self.cache) > 0:
             return self.cache.pop()
+        return self.recv_skip_cache()
+
+    def recv_skip_cache(self):
         while True:
             event = self.read_event()
             if event != None:
