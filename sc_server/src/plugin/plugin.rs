@@ -38,9 +38,9 @@ pub enum ServerMessage {
     event:  ServerEvent,
   },
   Reply {
-    message: u32,
+    reply_id: u32,
     #[serde(flatten)]
-    reply:   ServerReply,
+    reply:    ServerReply,
   },
 }
 

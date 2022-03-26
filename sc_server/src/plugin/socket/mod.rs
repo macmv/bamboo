@@ -298,8 +298,8 @@ impl SocketPlugin {
     self.waker.wake().unwrap();
     Ok(())
   }
-  pub fn reply(&self, id: u32, reply: ServerReply) -> io::Result<()> {
-    self.send(ServerMessage::Reply { message: id, reply })
+  pub fn reply(&self, reply_id: u32, reply: ServerReply) -> io::Result<()> {
+    self.send(ServerMessage::Reply { reply_id, reply })
   }
 }
 
