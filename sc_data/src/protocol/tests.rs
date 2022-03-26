@@ -127,7 +127,7 @@ fn conditional_writer_test() {
     Instr::Expr(packet().op(call!(write_i32[field("foo").op(Op::Deref)]))),
     Instr::If(
       Cond::Greater(field("foo"), lit(0)),
-      vec![Instr::Expr(packet().op(call!(write_i32[field("baz").op(Op::Deref)])))],
+      vec![Instr::Expr(packet().op(call!(write_i32[field("baz").op(call!(Option::unwrap[]))])))],
       vec![],
     ),
   ];
@@ -174,7 +174,7 @@ fn conditional_writer_test() {
     Instr::Expr(packet().op(call!(write_i32[local(2)]))),
     Instr::If(
       cond(field("baz").op(call!(Option::is_some[]))),
-      vec![Instr::Expr(packet().op(call!(write_i32[field("baz").op(Op::Deref)])))],
+      vec![Instr::Expr(packet().op(call!(write_i32[field("baz").op(call!(Option::unwrap[]))])))],
       vec![],
     ),
   ];
@@ -212,7 +212,7 @@ fn inline_conditional_writer_test() {
     ),
     Instr::If(
       cond(field("baz").op(call!(Option::is_some[]))),
-      vec![Instr::Expr(packet().op(call!(write_i32[field("baz").op(Op::Deref)])))],
+      vec![Instr::Expr(packet().op(call!(write_i32[field("baz").op(call!(Option::unwrap[]))])))],
       vec![],
     ),
   ];
@@ -265,17 +265,17 @@ fn multi_conditional_writer_test() {
     Instr::Expr(packet().op(call!(write_u8[local(2)]))),
     Instr::If(
       cond(field("foo").op(call!(Option::is_some[]))),
-      vec![Instr::Expr(packet().op(call!(write_i32[field("foo").op(Op::Deref)])))],
+      vec![Instr::Expr(packet().op(call!(write_i32[field("foo").op(call!(Option::unwrap[]))])))],
       vec![],
     ),
     Instr::If(
       cond(field("bar").op(call!(Option::is_some[]))),
-      vec![Instr::Expr(packet().op(call!(write_i32[field("bar").op(Op::Deref)])))],
+      vec![Instr::Expr(packet().op(call!(write_i32[field("bar").op(call!(Option::unwrap[]))])))],
       vec![],
     ),
     Instr::If(
       cond(field("baz").op(call!(Option::is_some[]))),
-      vec![Instr::Expr(packet().op(call!(write_i32[field("baz").op(Op::Deref)])))],
+      vec![Instr::Expr(packet().op(call!(write_i32[field("baz").op(call!(Option::unwrap[]))])))],
       vec![],
     ),
   ];
