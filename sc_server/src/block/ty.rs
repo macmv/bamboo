@@ -1,6 +1,6 @@
 use super::Material;
 use num_derive::{FromPrimitive, ToPrimitive};
-use std::{error::Error, fmt, str::FromStr};
+use std::{collections::HashMap, error::Error, fmt, str::FromStr};
 
 const STATE_PROPS_LEN: usize = 8;
 
@@ -54,6 +54,15 @@ impl Type {
   pub fn with_prop<'a>(mut self, name: &str, val: impl Into<PropValue<'a>>) -> Self {
     self.set_prop(name, val);
     self
+  }
+
+  pub fn props(&self) -> HashMap<String, String> {
+    self
+      .props
+      .iter()
+      .enumerate()
+      .map(|(i, prop)| (prop.name.into(), prop.kind.name_at(self.state_props[i])))
+      .collect()
   }
 }
 
@@ -146,6 +155,22 @@ pub enum PropValue<'a> {
   Bool(bool),
   Enum(&'a str),
   Int(u32),
+}
+
+impl PropKind {
+  pub fn name_at(&self, id: u32) -> String {
+    match self {
+      Self::Bool => {
+        if id == 0 {
+          "true".into()
+        } else {
+          "false".into()
+        }
+      }
+      Self::Enum(names) => names.get(id as usize).copied().unwrap_or("").into(),
+      Self::Int { min, .. } => (min + id).to_string(),
+    }
+  }
 }
 
 impl PropValue<'_> {

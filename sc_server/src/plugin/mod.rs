@@ -4,7 +4,10 @@ mod plugin;
 pub mod socket;
 
 pub use json::*;
-pub use plugin::{Plugin, PluginEvent, PluginImpl, ServerEvent, ServerEventKind};
+pub use plugin::{
+  Plugin, PluginEvent, PluginImpl, PluginMessage, PluginRequest, ServerEvent, ServerMessage,
+  ServerReply,
+};
 
 use panda::PandaPlugin;
 use socket::SocketManager;
@@ -177,15 +180,14 @@ impl PluginManager {
     }
   }
 
+  fn message(&self, msg: ServerMessage) {
+    self.plugins.lock().retain(|p| p.call(msg.clone()).is_ok());
+  }
+  fn event(&self, player: JsonPlayer, event: ServerEvent) {
+    self.message(ServerMessage::Event { player, event });
+  }
   pub fn on_block_place(&self, player: Arc<Player>, pos: Pos, kind: block::Kind) {
-    let player: JsonPlayer = player.into();
-    self.plugins.lock().retain(|p| {
-      p.call(ServerEvent {
-        player: player.clone(),
-        kind:   ServerEventKind::BlockPlace { pos: pos.into() },
-      })
-      .is_ok()
-    });
+    self.event(player.into(), ServerEvent::BlockPlace { pos: pos.into() });
   }
   pub fn on_click_window(&self, player: Arc<Player>, slot: i32, mode: ClickWindow) -> bool {
     let mut allow = true;

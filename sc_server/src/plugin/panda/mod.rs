@@ -1,11 +1,10 @@
 mod types;
 
-use super::{PluginImpl, PluginManager, ServerEvent, Sugarcane};
+use super::{PluginImpl, PluginManager, ServerMessage, Sugarcane};
 use crate::{block, player::Player, world::WorldManager};
 use sc_common::{math::Pos, net::sb::ClickWindow};
 use std::{fs, path::Path, sync::Arc};
 use sugarlang::{
-  path,
   runtime::{LockedEnv, Path as SlPath, Path as TyPath, Var},
   SlError, Sugarlang,
 };
@@ -137,6 +136,6 @@ impl PandaPlugin {
 }
 
 impl PluginImpl for PandaPlugin {
-  fn call(&self, ev: ServerEvent) -> Result<(), ()> { Ok(()) }
+  fn call(&self, ev: ServerMessage) -> Result<(), ()> { Ok(()) }
   fn panda(&mut self) -> Option<&mut PandaPlugin> { Some(self) }
 }

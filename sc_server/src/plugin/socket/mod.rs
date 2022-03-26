@@ -1,4 +1,6 @@
-use super::{PluginEvent, PluginImpl, ServerEvent};
+use super::{
+  PluginEvent, PluginImpl, PluginMessage, PluginRequest, ServerEvent, ServerMessage, ServerReply,
+};
 use crate::world::WorldManager;
 use crossbeam_channel::{Receiver, Sender};
 use mio::{event::Event, net::UnixStream, Events, Interest, Poll, Token, Waker};
@@ -16,7 +18,7 @@ struct WrappedSocket {
   stream:   UnixStream,
   outgoing: Vec<u8>,
   incoming: Vec<u8>,
-  plug_tx:  Sender<PluginEvent>,
+  plug_tx:  Sender<PluginMessage>,
 }
 
 pub struct SocketManager {
@@ -27,7 +29,7 @@ pub struct SocketManager {
   poll:     Poll,
   tok_tx:   Sender<Token>,
   tok_rx:   Receiver<Token>,
-  serv_rx:  HashMap<Token, Receiver<ServerEvent>>,
+  serv_rx:  HashMap<Token, Receiver<ServerMessage>>,
   plugins:  Vec<Arc<SocketPlugin>>,
 }
 
@@ -36,8 +38,8 @@ pub struct SocketPlugin {
   tok:     Token,
   waker:   Arc<Waker>,
   tok_tx:  Sender<Token>,
-  serv_tx: Sender<ServerEvent>,
-  rx:      Receiver<PluginEvent>,
+  serv_tx: Sender<ServerMessage>,
+  rx:      Receiver<PluginMessage>,
 }
 
 const LISTEN: Token = Token(0);
@@ -143,7 +145,7 @@ impl SocketManager {
 }
 
 impl WrappedSocket {
-  pub fn new(stream: UnixStream, plug_tx: Sender<PluginEvent>) -> Self {
+  pub fn new(stream: UnixStream, plug_tx: Sender<PluginMessage>) -> Self {
     WrappedSocket {
       stream,
       outgoing: Vec::with_capacity(1024),
@@ -152,7 +154,7 @@ impl WrappedSocket {
     }
   }
 
-  pub fn send(&mut self, ev: ServerEvent) -> io::Result<()> {
+  pub fn send(&mut self, ev: ServerMessage) -> io::Result<()> {
     self.outgoing.append(&mut serde_json::to_vec(&ev).unwrap());
     self.outgoing.push(b'\0');
     self.try_flush()?;
@@ -238,7 +240,7 @@ impl SocketPlugin {
       match p.read() {
         Ok(ev) => {
           info!("handling event {ev:?}");
-          p.handle_event(ev)
+          p.handle_message(ev);
         }
         Err(_) => break,
       }
@@ -246,8 +248,14 @@ impl SocketPlugin {
     info!("spawned listener");
   }
 
-  pub fn read(&self) -> Result<PluginEvent, ()> { Ok(self.rx.recv().unwrap()) }
-  pub fn handle_event(&self, e: PluginEvent) {
+  pub fn read(&self) -> Result<PluginMessage, ()> { Ok(self.rx.recv().unwrap()) }
+  pub fn handle_message(&self, msg: PluginMessage) -> io::Result<()> {
+    match msg {
+      PluginMessage::Event { event } => self.handle_event(event),
+      PluginMessage::Request { reply_id, request } => self.handle_request(reply_id, request),
+    }
+  }
+  pub fn handle_event(&self, e: PluginEvent) -> io::Result<()> {
     match e {
       PluginEvent::Ready => {}
       PluginEvent::Register { ty } => todo!(),
@@ -255,23 +263,43 @@ impl SocketPlugin {
         self.wm.broadcast(text);
       }
     }
+    Ok(())
+  }
+  pub fn handle_request(&self, id: u32, r: PluginRequest) -> io::Result<()> {
+    match r {
+      PluginRequest::GetBlock { pos } => {
+        self.reply(
+          id,
+          ServerReply::Block {
+            pos,
+            block: self.wm.default_world().get_block(pos.into()).unwrap().into(),
+          },
+        )?;
+      }
+    }
+    Ok(())
   }
   pub fn wait_for_ready(&self) -> Result<(), ()> {
     info!("waiting for ready");
     loop {
       match self.read()? {
-        PluginEvent::Ready => break,
-        e => self.handle_event(e),
+        PluginMessage::Event { event: PluginEvent::Ready } => break,
+        e => {
+          self.handle_message(e);
+        }
       }
     }
     info!("plugin `{}` is ready", "");
     Ok(())
   }
-  pub fn send(&self, ev: ServerEvent) -> io::Result<()> {
+  pub fn send(&self, ev: ServerMessage) -> io::Result<()> {
     self.tok_tx.send(self.tok).unwrap();
     self.serv_tx.send(ev).unwrap();
     self.waker.wake().unwrap();
     Ok(())
+  }
+  pub fn reply(&self, id: u32, reply: ServerReply) -> io::Result<()> {
+    self.send(ServerMessage::Reply { message: id, reply })
   }
 }
 
@@ -312,7 +340,7 @@ fn start_plugin(plugin: String, path: &Path) {
 }
 
 impl PluginImpl for Arc<SocketPlugin> {
-  fn call(&self, ev: ServerEvent) -> Result<(), ()> {
+  fn call(&self, ev: ServerMessage) -> Result<(), ()> {
     match self.send(ev) {
       Ok(_) => Ok(()),
       Err(e) => {
