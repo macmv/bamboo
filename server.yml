@@ -2,6 +2,13 @@ world:
   # locked: true
   # debug: true
   void: true
+
+  vanilla:
+    enabled: true
+    # Note that this is in the gitignore, as vanilla worlds are not at all efficient
+    # with git.
+    path: "world"
+
   schematic:
     enabled: false
     path: "schematics/uss-forrestal-cv59-e230.schematic"

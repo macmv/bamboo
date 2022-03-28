@@ -139,13 +139,19 @@ impl World {
       locked: wm.config().get::<_, bool>("world.locked").into(),
       wm,
     });
-    world.load_from_disk(&std::path::PathBuf::new().join("world")).unwrap();
-    let w = world.clone();
+    if world.config().get("world.vanilla.enabled") {
+      world
+        .load_from_disk(
+          &std::path::PathBuf::new().join(world.config().get::<_, &str>("world.vanilla.path")),
+        )
+        .unwrap();
+    }
     // We want this world to be fully initialized when we return; this is so that if
     // a player tries to join this world while it's still loading, we don't have the
     // connection thread trying to generate chunks at the same time.
-    w.init();
-    thread::spawn(|| {
+    world.init();
+    let w = world.clone();
+    thread::spawn(move || {
       w.global_tick_loop();
     });
     world
