@@ -1,6 +1,4 @@
-use super::{
-  PluginEvent, PluginImpl, PluginMessage, PluginRequest, ServerEvent, ServerMessage, ServerReply,
-};
+use super::{PluginEvent, PluginImpl, PluginMessage, PluginRequest, ServerMessage, ServerReply};
 use crate::world::WorldManager;
 use crossbeam_channel::{Receiver, Sender};
 use mio::{event::Event, net::UnixStream, Events, Interest, Poll, Token, Waker};
@@ -116,7 +114,13 @@ impl SocketManager {
           },
           token => {
             // One of our sockets has just changed state
-            self.handle_socket_change(ev, token);
+            match self.handle_socket_change(ev, token) {
+              Ok(()) => {}
+              Err(e) => {
+                error!("could not handle socket event: {e}");
+                self.sockets.remove(&token);
+              }
+            }
           }
         }
         /*
@@ -240,7 +244,13 @@ impl SocketPlugin {
       match p.read() {
         Ok(ev) => {
           info!("handling event {ev:?}");
-          p.handle_message(ev);
+          match p.handle_message(ev) {
+            Ok(()) => {}
+            Err(e) => {
+              error!("could not handle message from plugin: {e}");
+              return;
+            }
+          }
         }
         Err(_) => break,
       }
@@ -285,7 +295,7 @@ impl SocketPlugin {
       match self.read()? {
         PluginMessage::Event { event: PluginEvent::Ready } => break,
         e => {
-          self.handle_message(e);
+          self.handle_message(e).map_err(|_| ())?;
         }
       }
     }
