@@ -709,7 +709,7 @@ impl ToTcp for Packet {
           unknown:        vec![],
         }
       }
-      Packet::WindowItems { wid, items, held } => {
+      Packet::WindowItems { wid, items, held: _ } => {
         let mut buf = tcp::Packet::from_buf_id(vec![], 0, ver);
         buf.write_i16(items.len() as i16);
         for mut it in items {

@@ -25,7 +25,7 @@ impl FromTcp for Packet {
         window_id,
         mut slot_id,
         used_button,
-        action_number,
+        action_number: _,
         mode,
         unknown,
       } => {
@@ -47,7 +47,7 @@ impl FromTcp for Packet {
         window_id,
         mut slot_id,
         used_button,
-        action_number,
+        action_number: _,
         mode,
         unknown,
       } => {
