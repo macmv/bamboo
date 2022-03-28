@@ -27,6 +27,7 @@ pub struct EntityDef {
   entity_map: HashMap<String, usize>,
 }
 
+#[allow(dead_code)]
 #[derive(Debug, Clone, Default, Deserialize)]
 pub struct Entity {
   /// The id of the entity.
@@ -130,6 +131,8 @@ impl EntityDef {
     }
   }
 
+  /// Gets an entity. Unused, but might be useful in the future.
+  #[allow(dead_code)]
   pub fn get(&self, name: &str) -> Option<&Entity> {
     let name = convert_name(name);
     if let Some(&idx) = self.entity_map.get(&name) {
@@ -158,6 +161,9 @@ impl Entity {
   }
 }
 
+// TODO: This converts all the old names to new ones, and it should actually be
+// used.
+#[allow(dead_code)]
 fn convert_name(name: &str) -> String {
   let lower = name.to_case(Case::Snake);
   match lower.as_str() {

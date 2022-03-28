@@ -3,6 +3,7 @@ use crate::{gen::CodeGen, Version};
 use convert_case::{Case, Casing};
 use std::collections::HashMap;
 
+#[allow(unused_variables)]
 pub fn cross_version_metadata(
   gen: &mut CodeGen,
   old_ver: &Version,
