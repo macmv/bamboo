@@ -40,14 +40,22 @@ fn add_player_to_team(player, team) {
 fn find_smallest_team() {
   sc = sugarcane::instance()
   teams = sc.lock()
+  sugarcane::info("foo 1")
   smallest_size = 100
   smallest_team = ""
+  sugarcane::info("foo 2")
   for i = 0, i < teams.len(), i++ {
+    sugarcane::info("foo 3")
+    sugarcane::info(teams)
+    sugarcane::info(teams[i])
+    sugarcane::info()
+    sugarcane::info()
     if teams[i].players.len() < smallest_size {
       smallest_team = teams[i].color
       smallest_size = teams[i].players.len()
     }
   }
+  sugarcane::info("foo 4")
   sc.unlock(teams)
   smallest_team
 }
