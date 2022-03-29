@@ -14,7 +14,7 @@ use socket::SocketManager;
 
 use crate::{block, player::Player, world::WorldManager};
 use parking_lot::Mutex;
-use sc_common::{config::Config, math::Pos, net::sb::ClickWindow};
+use sc_common::{config::Config, math::Pos, net::sb::ClickWindow, util::Chat};
 use std::{fmt, fs, sync::Arc};
 use sugarlang::runtime::VarSend;
 
@@ -188,6 +188,12 @@ impl PluginManager {
   }
   pub fn on_block_place(&self, player: Arc<Player>, pos: Pos, block: block::Type) {
     self.event(player, ServerEvent::BlockPlace { pos, block });
+  }
+  pub fn on_chat_message(&self, player: Arc<Player>, message: Chat) {
+    self.event(player, ServerEvent::Chat { text: message.to_plain() });
+  }
+  pub fn on_player_join(&self, player: Arc<Player>) {
+    self.event(player, ServerEvent::PlayerJoin {});
   }
   pub fn on_click_window(&self, player: Arc<Player>, slot: i32, mode: ClickWindow) -> bool {
     let mut allow = true;

@@ -59,6 +59,7 @@ pub enum ServerEvent {
   Chat {
     text: String,
   },
+  PlayerJoin {},
 }
 
 #[derive(Debug, Clone, serde::Serialize)]

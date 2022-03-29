@@ -108,6 +108,15 @@ impl PandaPlugin {
       _ => true,
     }
   }
+  pub fn call_on_chat_message(&self, player: Arc<Player>, text: String) {
+    self.call(
+      self.path("on_chat_message"),
+      vec![types::player::SlPlayer::from(player).into(), text.into()],
+    );
+  }
+  pub fn call_on_player_join(&self, player: Arc<Player>) {
+    self.call(self.path("on_player_join"), vec![types::player::SlPlayer::from(player).into()]);
+  }
 
   pub fn call(&self, path: TyPath, args: Vec<Var>) -> Var {
     match &self.sl {
@@ -140,7 +149,8 @@ impl PluginImpl for PandaPlugin {
     match ev {
       ServerMessage::Event { player, event } => match event {
         ServerEvent::BlockPlace { pos, block } => self.call_on_block_place(player, pos, block),
-        _ => {}
+        ServerEvent::Chat { text } => self.call_on_chat_message(player, text),
+        ServerEvent::PlayerJoin {} => self.call_on_player_join(player),
       },
       _ => {}
     }
