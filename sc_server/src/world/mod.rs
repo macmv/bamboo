@@ -564,6 +564,9 @@ impl WorldManager {
     }
   }
 
+  /// Returns a list of all worlds on the server.
+  pub fn worlds(&self) -> MutexGuard<'_, Vec<Arc<World>>> { self.worlds.lock() }
+
   /// Loads plugins
   pub fn load(self: &Arc<Self>) { self.plugins.load(self.clone()) }
 

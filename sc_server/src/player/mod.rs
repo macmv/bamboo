@@ -278,12 +278,17 @@ impl Player {
   /// will be removed, and the username will show instead.
   pub fn set_display_name(&self, name: Option<Chat>) {
     *self.display_name.lock() = name.clone();
-    self.send(cb::Packet::PlayerList {
+    let update = cb::Packet::PlayerList {
       action: cb::PlayerListAction::UpdateDisplayName(vec![cb::PlayerListDisplay {
         id:           self.id(),
         display_name: name.map(|c| c.to_json()),
       }]),
-    });
+    };
+    for w in self.world().world_manager().worlds().iter() {
+      for p in w.players().iter() {
+        p.send(update.clone());
+      }
+    }
   }
   /// Returns the current display name.
   pub fn display_name(&self) -> MutexGuard<'_, Option<Chat>> { self.display_name.lock() }
