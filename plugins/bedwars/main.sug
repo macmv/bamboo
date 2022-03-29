@@ -32,6 +32,9 @@ fn add_player_to_team(player, team) {
   line.add(team).color(team)
   player.show_scoreboard()
   player.set_scoreboard_line(1, line)
+  name = Chat::empty()
+  name.add(player.username()).color(team)
+  player.set_display_name(name)
 
   sc = sugarcane::instance()
   teams = sc.lock()

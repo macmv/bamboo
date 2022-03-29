@@ -1,7 +1,7 @@
 world:
   # locked: true
-  # debug: true
-  void: true
+  debug: true
+  # void: true
 
   vanilla:
     enabled: true

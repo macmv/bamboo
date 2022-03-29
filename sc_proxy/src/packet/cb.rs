@@ -466,18 +466,34 @@ impl ToTcp for Packet {
       Packet::ScoreboardUpdate { username, objective, action } => {
         let mut data = vec![];
         let mut buf = Buffer::new(&mut data);
-        match action {
-          ScoreboardAction::Create(score) => buf.write_varint(score),
-          ScoreboardAction::Remove => {}
-        }
-        GPacket::UpdateScoreV8 {
-          name: username,
-          objective,
-          action: match action {
-            ScoreboardAction::Create(_) => 0,
-            ScoreboardAction::Remove => 1,
-          },
-          unknown: data,
+        if ver >= ProtocolVersion::V1_14_4 {
+          buf.write_str(&objective);
+          match action {
+            ScoreboardAction::Create(score) => buf.write_varint(score),
+            ScoreboardAction::Remove => {}
+          }
+          GPacket::UpdateScoreV14 {
+            player_name: username,
+            mode:        match action {
+              ScoreboardAction::Create(_) => 0,
+              ScoreboardAction::Remove => 1,
+            },
+            unknown:     data,
+          }
+        } else {
+          match action {
+            ScoreboardAction::Create(score) => buf.write_varint(score),
+            ScoreboardAction::Remove => {}
+          }
+          GPacket::UpdateScoreV8 {
+            name: username,
+            objective,
+            action: match action {
+              ScoreboardAction::Create(_) => 0,
+              ScoreboardAction::Remove => 1,
+            },
+            unknown: data,
+          }
         }
       }
       Packet::SetPosLook { x, y, z, yaw, pitch, flags, teleport_id, should_dismount } => {

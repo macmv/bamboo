@@ -47,6 +47,7 @@ pub struct Player {
   eid:           i32,
   // Player's username
   username:      String,
+  display_name:  Mutex<Option<Chat>>,
   uuid:          UUID,
   conn:          ConnSender,
   ver:           ProtocolVersion,
@@ -85,6 +86,7 @@ impl Player {
     Arc::new_cyclic(|weak| Player {
       eid,
       username: info.username,
+      display_name: Mutex::new(None),
       uuid: info.uuid,
       inv: PlayerInventory::new(weak.clone(), conn.clone()).into(),
       scoreboard: Scoreboard::new(conn.clone()).into(),
@@ -272,6 +274,19 @@ impl Player {
       walk_speed:   1.0,
     });
   }
+  /// Sets the player's display name. If `name` is `None`, then the display name
+  /// will be removed, and the username will show instead.
+  pub fn set_display_name(&self, name: Option<Chat>) {
+    *self.display_name.lock() = name.clone();
+    self.send(cb::Packet::PlayerList {
+      action: cb::PlayerListAction::UpdateDisplayName(vec![cb::PlayerListDisplay {
+        id:           self.id(),
+        display_name: name.map(|c| c.to_json()),
+      }]),
+    });
+  }
+  /// Returns the current display name.
+  pub fn display_name(&self) -> MutexGuard<'_, Option<Chat>> { self.display_name.lock() }
 
   /// Sends a block update packet for the block at the given position. This
   /// ensures that the client sees what the server sees at that position.

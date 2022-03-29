@@ -95,6 +95,15 @@ impl SlPlayer {
     self.inner.lock_scoreboard().set_line(line, &message.inner.lock().unwrap());
   }
 
+  /// Sets a display name for this player. This will be shown instead of their
+  /// username in the tab list and above their head.
+  pub fn set_display_name(&self, name: &SlChat) {
+    self.inner.set_display_name(Some(name.inner.lock().unwrap().clone()));
+  }
+  /// Removes a display name on this player (if any is present). This does
+  /// nothing if there is no display name on this player.
+  pub fn clear_display_name(&self) { self.inner.set_display_name(None); }
+
   /// Gives the player the passed item.
   pub fn give(&self, stack: &SlStack) { self.inner.lock_inventory().give(stack.inner.clone()); }
 }

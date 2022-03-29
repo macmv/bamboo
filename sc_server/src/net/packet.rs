@@ -65,10 +65,15 @@ pub(crate) fn handle(wm: &Arc<WorldManager>, player: &Arc<Player>, p: sb::Packet
     }
     sb::Packet::UseItem { hand: _ } => {
       // Spawn a snowball (for fun)
-      let eid = player.world().summon(entity::Type::Item, player.pos() + FPos::new(0.0, 1.0, 0.0));
-      // If the entity doesn't exist, it already despawned, so we do nothing if it
-      // isn't in the world.
-      player.world().entities().get(&eid).map(|ent| ent.set_vel(player.look_as_vec() * 1.0));
+      //
+      // let eid = player.world().summon(entity::Type::Item, player.pos() +
+      // FPos::new(0.0, 1.0, 0.0));
+      //
+      // If the entity doesn't exist, it already despawned, so we do nothing if
+      // it isn't in the world.
+      //
+      // player.world().entities().get(&eid).map(|ent|
+      // ent.set_vel(player.look_as_vec() * 1.0));
     }
     sb::Packet::BlockPlace { mut pos, face, hand: _ } => {
       /*
@@ -92,8 +97,10 @@ pub(crate) fn handle(wm: &Arc<WorldManager>, player: &Arc<Player>, p: sb::Packet
           let stack = inv.main_hand();
           player.world().item_converter().get_data(stack.item())
         };
-        player.send_message(&Chat::new(format!("placing item: {}", item_data.name())));
-        let kind = block::Kind::from_str(item_data.name()).unwrap_or(block::Kind::Stone);
+        let kind = block::Kind::from_str(item_data.name()).unwrap_or_else(|_| {
+          player.send_message(&Chat::new(format!("ah! {} is confusing", item_data.name())));
+          block::Kind::Air
+        });
 
         match player.world().get_block(pos) {
           Ok(looking_at) => {
