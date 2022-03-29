@@ -52,9 +52,22 @@ impl SlChatSection {
   /// ```
   pub fn color(&self, color: &str) -> Result<(), RuntimeError> {
     let col = match color {
-      "red" => Color::Red,
-      "yellow" => Color::Yellow,
+      "black" => Color::Black,
+      "dark_blue" => Color::DarkBlue,
+      "dark_green" => Color::DarkGreen,
+      "dark_aqua" => Color::DarkAqua,
+      "dark_red" => Color::DarkRed,
+      "dark_purple" => Color::Purple,
+      "gold" => Color::Gold,
+      "gray" => Color::Gray,
+      "dark_gray" => Color::DarkGray,
+      "blue" => Color::Blue,
       "green" => Color::BrightGreen,
+      "aqua" => Color::Cyan,
+      "red" => Color::Red,
+      "pink" => Color::Pink,
+      "yellow" => Color::Yellow,
+      "white" => Color::White,
       _ => {
         return Err(RuntimeError::custom(format!("invalid color `{}`", color), Span::call_site()))
       }

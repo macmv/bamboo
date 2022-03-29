@@ -17,7 +17,7 @@ fn init() {
   teams.insert("green", Team {
     players: [],
   })
-  teams.insert("cyan", Team {
+  teams.insert("aqua", Team {
     players: [],
   })
   teams.insert("yellow", Team {
