@@ -304,7 +304,7 @@ impl Player {
     let update = cb::Packet::PlayerList {
       action: cb::PlayerListAction::UpdateDisplayName(vec![cb::PlayerListDisplay {
         id:           self.id(),
-        display_name: name.map(|c| c.to_json()),
+        display_name: name.as_ref().map(|c| c.to_json()),
       }]),
     };
     for w in self.world().world_manager().worlds().iter() {
@@ -314,6 +314,8 @@ impl Player {
     }
     let mut meta = Metadata::new();
     meta.set_byte(0, self.status_byte());
+    meta.set_opt_chat(2, name); // custom name
+    meta.set_bool(3, true); // custom name visible
     let out = cb::Packet::EntityMetadata { eid: self.eid, ty: entity::Type::Player.id(), meta };
     let pos = self.pos().block().chunk();
     for p in self.world().players().iter().in_view(pos) {

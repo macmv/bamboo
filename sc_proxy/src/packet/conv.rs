@@ -32,7 +32,7 @@ mod item {
   include!(concat!(env!("OUT_DIR"), "/item/version.rs"));
 }
 
-mod entity {
+pub(super) mod entity {
   use sc_common::version::BlockVersion;
 
   #[derive(Debug)]
@@ -46,7 +46,7 @@ mod entity {
 
   include!(concat!(env!("OUT_DIR"), "/entity/version.rs"));
 
-  use super::entity_types::*;
+  pub use super::entity_types::*;
 }
 
 impl TypeConverter {
@@ -161,6 +161,22 @@ impl TypeConverter {
       None => 0,
     }
   }
+
+  /// Returns the (new, old) entity metadata type for the given field. This is
+  /// used to convert metadata fields into older versions.
+  ///
+  /// The argument `ty` is the *modern* (not old) entity type. The argument `id`
+  /// is the modern metadata field index. The argument `ver` is the version
+  /// that `id` is being converted to.
+  pub fn entity_metadata_types(
+    &self,
+    ty: u32,
+    id: u8,
+    ver: BlockVersion,
+  ) -> (entity::MetadataType, entity::MetadataType) {
+    let meta = &self.entities[ver.to_index() as usize].metadata[ty as usize];
+    (meta.new_types[id as usize], meta.old_types[id as usize].unwrap())
+  }
 }
 
 mod entity_types {
@@ -175,7 +191,7 @@ mod entity_types {
   /// An entity metadata type. Note that the documentation for this type is for
   /// 1.18.2. Older versions will have different serializing/deserializing
   /// rules.
-  #[derive(Debug, Clone)]
+  #[derive(Debug, Clone, Copy)]
   pub enum MetadataType {
     /// A single byte.
     Byte,
@@ -183,6 +199,8 @@ mod entity_types {
     VarInt,
     /// A short. Only present on 1.8-1.12.
     Short,
+    /// An int. Only present on 1.8-1.12.
+    Int,
     /// A 4 byte floating point number
     Float,
     /// A varint prefixed string

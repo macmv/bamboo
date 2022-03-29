@@ -1,9 +1,10 @@
-use super::TypeConverter;
+use super::{conv::entity::MetadataType, TypeConverter};
 use sc_common::{
   metadata::{Field, Metadata, Pose},
   util::{Buffer, Face},
   version::ProtocolVersion,
 };
+use std::mem;
 
 /// Serializes the entity metadata. This will not consume the metadata, and
 /// will fail if there is invalid metadata fields given. This is for
@@ -15,6 +16,11 @@ pub fn metadata(ty: u32, meta: &Metadata, ver: ProtocolVersion, conv: &TypeConve
   let mut out = Buffer::new(&mut data);
   for (&id, field) in &meta.fields {
     let id = conv.entity_metadata_to_old(ty, id, ver.block());
+    let (_new_ty, old_ty) = conv.entity_metadata_types(ty, id, ver.block());
+    let mut field = field.clone();
+    if !is_ty(&field, old_ty) {
+      convert_field(&mut field, old_ty);
+    }
     if ver == ProtocolVersion::V1_8 {
       // Index and type are the same byte in 1.8
       let mut index_type = id & 0x1f;
@@ -31,11 +37,11 @@ pub fn metadata(ty: u32, meta: &Metadata, ver: ProtocolVersion, conv: &TypeConve
       }
       out.write_u8(index_type);
       match field {
-        Field::Byte(v) => out.write_u8(*v),
-        Field::Short(v) => out.write_i16(*v),
-        Field::Int(v) => out.write_i32(*v),
-        Field::Float(v) => out.write_f32(*v),
-        Field::String(v) => out.write_str(v),
+        Field::Byte(v) => out.write_u8(v),
+        Field::Short(v) => out.write_i16(v),
+        Field::Int(v) => out.write_i32(v),
+        Field::Float(v) => out.write_f32(v),
+        Field::String(v) => out.write_str(&v),
         Field::Item(v) => {
           let (it, damage) = conv.item_to_old(v.id() as u32, ver.block());
           out.write_i16(it as i16);
@@ -49,9 +55,9 @@ pub fn metadata(ty: u32, meta: &Metadata, ver: ProtocolVersion, conv: &TypeConve
           out.write_i32(v.z());
         }
         Field::Rotation(x, y, z) => {
-          out.write_f32(*x);
-          out.write_f32(*y);
-          out.write_f32(*z);
+          out.write_f32(x);
+          out.write_f32(y);
+          out.write_f32(z);
         }
         _ => unreachable!(),
       }
@@ -118,11 +124,11 @@ pub fn metadata(ty: u32, meta: &Metadata, ver: ProtocolVersion, conv: &TypeConve
       match field {
         Field::Short(_) => unreachable!(),
         Field::Int(_) => unreachable!(),
-        Field::Byte(v) => out.write_u8(*v),
-        Field::Varint(v) => out.write_varint(*v),
-        Field::Float(v) => out.write_f32(*v),
-        Field::String(v) => out.write_str(v),
-        Field::Chat(v) => out.write_str(v),
+        Field::Byte(v) => out.write_u8(v),
+        Field::Varint(v) => out.write_varint(v),
+        Field::Float(v) => out.write_f32(v),
+        Field::String(v) => out.write_str(&v),
+        Field::Chat(v) => out.write_str(&v),
         Field::OptChat(v) => {
           out.write_bool(v.is_some());
           if let Some(v) = v {
@@ -143,11 +149,11 @@ pub fn metadata(ty: u32, meta: &Metadata, ver: ProtocolVersion, conv: &TypeConve
             }
           }
         }
-        Field::Bool(v) => out.write_bool(*v),
+        Field::Bool(v) => out.write_bool(v),
         Field::Rotation(x, y, z) => {
-          out.write_f32(*x);
-          out.write_f32(*y);
-          out.write_f32(*z);
+          out.write_f32(x);
+          out.write_f32(y);
+          out.write_f32(z);
         }
         Field::Position(v) => {
           out.write_i32(v.x());
@@ -176,13 +182,13 @@ pub fn metadata(ty: u32, meta: &Metadata, ver: ProtocolVersion, conv: &TypeConve
             out.write_buf(&v.as_le_bytes());
           }
         }
-        Field::BlockID(v) => out.write_varint(*v),
-        Field::NBT(v) => out.write_buf(v),
-        Field::Particle(v) => out.write_buf(v),
+        Field::BlockID(v) => out.write_varint(v),
+        Field::NBT(v) => out.write_buf(&v),
+        Field::Particle(v) => out.write_buf(&v),
         Field::VillagerData(ty, p, l) => {
-          out.write_varint(*ty);
-          out.write_varint(*p);
-          out.write_varint(*l);
+          out.write_varint(ty);
+          out.write_varint(p);
+          out.write_varint(l);
         }
         Field::OptVarint(v) => out.write_varint(v.unwrap_or(0)),
         Field::Pose(v) => match v {
@@ -203,4 +209,45 @@ pub fn metadata(ty: u32, meta: &Metadata, ver: ProtocolVersion, conv: &TypeConve
     out.write_u8(0xff);
   }
   data
+}
+
+fn is_ty(field: &Field, ty: MetadataType) -> bool {
+  match field {
+    // Only valid on 1.8
+    Field::Short(_) => matches!(ty, MetadataType::Byte),
+    Field::Int(_) => matches!(ty, MetadataType::Int),
+
+    Field::Byte(_) => matches!(ty, MetadataType::Byte),
+    Field::Float(_) => matches!(ty, MetadataType::Float),
+    Field::String(_) => matches!(ty, MetadataType::String),
+    Field::Item(_) => matches!(ty, MetadataType::Item),
+    Field::Position(_) => matches!(ty, MetadataType::Position),
+    Field::Rotation(..) => matches!(ty, MetadataType::Rotation),
+
+    Field::Varint(_) => matches!(ty, MetadataType::VarInt),
+    Field::Chat(_) => matches!(ty, MetadataType::Chat),
+    Field::Bool(_) => matches!(ty, MetadataType::Bool),
+    Field::OptPosition(_) => matches!(ty, MetadataType::OptPosition),
+    Field::Direction(_) => matches!(ty, MetadataType::Direction),
+    Field::OptUUID(_) => matches!(ty, MetadataType::OptUUID),
+    Field::BlockID(_) => matches!(ty, MetadataType::BlockID),
+
+    Field::NBT(_) => matches!(ty, MetadataType::NBT),
+
+    Field::OptChat(_) => matches!(ty, MetadataType::OptChat),
+    Field::Particle(_) => matches!(ty, MetadataType::Particle),
+
+    Field::VillagerData(..) => matches!(ty, MetadataType::VillagerData),
+    Field::OptVarint(_) => matches!(ty, MetadataType::OptVarInt),
+    Field::Pose(_) => matches!(ty, MetadataType::Pose),
+  }
+}
+fn convert_field(field: &mut Field, ty: MetadataType) {
+  // Replace `field` with a temporary, so that we can move out of the old data.
+  match (mem::replace(field, Field::Bool(false)), ty) {
+    (Field::OptChat(msg), MetadataType::String) => {
+      *field = Field::String(msg.unwrap_or_else(String::new))
+    }
+    _ => panic!("cannot convert {field:?} into {ty:?}"),
+  }
 }

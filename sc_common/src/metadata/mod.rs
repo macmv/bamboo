@@ -1,6 +1,6 @@
 use crate::{
   math::Pos,
-  util::{Face, Item, UUID},
+  util::{Chat, Face, Item, UUID},
 };
 use sc_macros::Transfer;
 use std::collections::HashMap;
@@ -99,6 +99,10 @@ impl Metadata {
 
   pub fn set_byte(&mut self, idx: u8, value: i8) {
     self.fields.insert(idx, Field::Byte(value as u8));
+  }
+  pub fn set_bool(&mut self, idx: u8, value: bool) { self.fields.insert(idx, Field::Bool(value)); }
+  pub fn set_opt_chat(&mut self, idx: u8, value: Option<Chat>) {
+    self.fields.insert(idx, Field::OptChat(value.map(|v| v.to_json())));
   }
   pub fn set_item(&mut self, idx: u8, value: Item) { self.fields.insert(idx, Field::Item(value)); }
 }
