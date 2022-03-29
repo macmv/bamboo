@@ -182,6 +182,11 @@ impl Sugarcane {
       Ok(())
     }
   }
+
+  /// Broadcasts the given chat message.
+  pub fn broadcast(&self, chat: &chat::SlChat) {
+    self.wm.broadcast(chat.inner.lock().unwrap().clone());
+  }
 }
 
 fn format(args: &[Var]) -> String {

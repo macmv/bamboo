@@ -1,3 +1,5 @@
+use sugarcane::chat::Chat
+
 struct PlayerData {
   teams: arr,
 }
@@ -15,7 +17,7 @@ fn init() {
   teams.insert("green", Team {
     players: [],
   })
-  teams.insert("blue", Team {
+  teams.insert("cyan", Team {
     players: [],
   })
   teams.insert("yellow", Team {
@@ -26,16 +28,14 @@ fn init() {
 }
 
 fn add_player_to_team(player, team) {
+  line = Chat::new("Team: ")
+  line.add(team).color(team)
+  player.show_scoreboard()
+  player.set_scoreboard_line(1, line)
+
   sc = sugarcane::instance()
   teams = sc.lock()
-  keys = teams.keys()
-  for i = 0, i < teams.len(), i++ {
-    color = keys[i]
-    if color == team {
-      teams[color].players.push(player)
-      break
-    }
-  }
+  teams[team].players.push(player)
   sc.unlock(teams)
 }
 

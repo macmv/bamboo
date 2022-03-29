@@ -84,6 +84,17 @@ impl SlPlayer {
     self.inner.show_inventory(inv.inner.clone(), &title.inner.lock().unwrap())
   }
 
+  /// Shows a scoreboard to the player. Call `set_scoreboard_line` to display
+  /// anything in the scoreboard.
+  pub fn show_scoreboard(&self) { self.inner.lock_scoreboard().show(); }
+  /// Hides the scoreboard for the player.
+  pub fn hide_scoreboard(&self) { self.inner.lock_scoreboard().hide(); }
+  /// Sets a line in the scoreboard. If it is hidden, this will still work, and
+  /// the updated lines will show when the scoreboard is shown again.
+  pub fn set_scoreboard_line(&self, line: u8, message: &SlChat) {
+    self.inner.lock_scoreboard().set_line(line, &message.inner.lock().unwrap());
+  }
+
   /// Gives the player the passed item.
   pub fn give(&self, stack: &SlStack) { self.inner.lock_inventory().give(stack.inner.clone()); }
 }
