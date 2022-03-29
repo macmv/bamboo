@@ -3,6 +3,10 @@
 # for panda plugins, use 'panda'
 type: socket
 
+# If set to true, then this plugin will be loaded. If set to false,
+# this plugin will be ignored.
+enabled: false
+
 # Socket-specific configs
 socket:
   # This is the command the server should run to start the plugin.

@@ -144,6 +144,9 @@ impl PluginManager {
           path.join("plugin-default.yml").to_str().unwrap(),
           include_str!("plugin.yml"),
         );
+        if !config.get::<_, bool>("enabled") {
+          continue;
+        }
         let ty: String = config.get("type");
         let name = path.file_stem().unwrap().to_str().unwrap().to_string();
         if ty == "socket" {
