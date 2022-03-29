@@ -109,7 +109,7 @@ impl Player {
         next_yaw:     0.0,
         next_pitch:   0.0,
         last_set_pos: Instant::now(),
-        crouching:    true,
+        crouching:    false,
         sprinting:    false,
         swimming:     false,
       }
@@ -313,9 +313,9 @@ impl Player {
       }
     }
     let mut meta = Metadata::new();
-    meta.set_byte(0, self.status_byte());
-    meta.set_opt_chat(2, name); // custom name
-    meta.set_bool(3, true); // custom name visible
+    meta.set_byte(0, self.status_byte() | 0x01);
+    meta.set_bool(2, true); // custom name visible
+    meta.set_opt_chat(3, Some(Chat::new("BLAH"))); // custom name
     let out = cb::Packet::EntityMetadata { eid: self.eid, ty: entity::Type::Player.id(), meta };
     let pos = self.pos().block().chunk();
     for p in self.world().players().iter().in_view(pos) {

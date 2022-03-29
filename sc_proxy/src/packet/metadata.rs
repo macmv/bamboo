@@ -15,17 +15,20 @@ pub fn metadata(ty: u32, meta: &Metadata, ver: ProtocolVersion, conv: &TypeConve
   let mut data = vec![];
   let mut out = Buffer::new(&mut data);
   for (&id, field) in &meta.fields {
-    let id = conv.entity_metadata_to_old(ty, id, ver.block());
-    let (_new_ty, old_ty) = conv.entity_metadata_types(ty, id, ver.block());
+    let (id, new_ty, old_ty) = conv.entity_metadata_types(ty, id, ver.block());
+
+    debug_assert!(is_ty(&field, new_ty), "expected field to have type {new_ty:?}, got {field:?}");
+
     let mut field = field.clone();
     if !is_ty(&field, old_ty) {
       convert_field(&mut field, old_ty);
     }
+
     if ver == ProtocolVersion::V1_8 {
       // Index and type are the same byte in 1.8
       let mut index_type = id & 0x1f;
       match field {
-        Field::Byte(_) => index_type |= 0 << 5,
+        Field::Byte(_) | Field::Bool(_) => index_type |= 0 << 5,
         Field::Short(_) => index_type |= 1 << 5,
         Field::Int(_) => index_type |= 2 << 5,
         Field::Float(_) => index_type |= 3 << 5,
@@ -33,11 +36,12 @@ pub fn metadata(ty: u32, meta: &Metadata, ver: ProtocolVersion, conv: &TypeConve
         Field::Item(_) => index_type |= 5 << 5,
         Field::Position(_) => index_type |= 6 << 5,
         Field::Rotation(_, _, _) => index_type |= 7 << 5,
-        _ => unreachable!(),
+        _ => unreachable!("cannot write {field:?} in 1.8"),
       }
       out.write_u8(index_type);
       match field {
         Field::Byte(v) => out.write_u8(v),
+        Field::Bool(v) => out.write_bool(v),
         Field::Short(v) => out.write_i16(v),
         Field::Int(v) => out.write_i32(v),
         Field::Float(v) => out.write_f32(v),
@@ -244,10 +248,11 @@ fn is_ty(field: &Field, ty: MetadataType) -> bool {
 }
 fn convert_field(field: &mut Field, ty: MetadataType) {
   // Replace `field` with a temporary, so that we can move out of the old data.
-  match (mem::replace(field, Field::Bool(false)), ty) {
+  let old_field = mem::replace(field, Field::Bool(false));
+  match (old_field, ty) {
     (Field::OptChat(msg), MetadataType::String) => {
       *field = Field::String(msg.unwrap_or_else(String::new))
     }
-    _ => panic!("cannot convert {field:?} into {ty:?}"),
+    (field, ty) => panic!("cannot convert {field:?} into {ty:?}"),
   }
 }

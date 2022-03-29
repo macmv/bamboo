@@ -173,9 +173,10 @@ impl TypeConverter {
     ty: u32,
     id: u8,
     ver: BlockVersion,
-  ) -> (entity::MetadataType, entity::MetadataType) {
+  ) -> (u8, entity::MetadataType, entity::MetadataType) {
     let meta = &self.entities[ver.to_index() as usize].metadata[ty as usize];
-    (meta.new_types[id as usize], meta.old_types[id as usize].unwrap())
+    let old_id = meta.to_old.get(id as usize).copied().unwrap_or(0);
+    (old_id, meta.new_types[id as usize], meta.old_types[old_id as usize].unwrap())
   }
 }
 
