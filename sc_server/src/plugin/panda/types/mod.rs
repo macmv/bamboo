@@ -211,35 +211,35 @@ impl PandaPlugin {
     {
       let name = self.name().clone();
       sl.add_builtin_fn(path!(sugarcane::trace), false, move |_env, _slf, args, _pos| {
-        trace!("plugin `{}`: {}", name, format(&args));
+        trace!("`{}`: {}", name, format(&args));
         Ok(Var::None)
       });
     }
     {
       let name = self.name().clone();
       sl.add_builtin_fn(path!(sugarcane::debug), false, move |_env, _slf, args, _pos| {
-        debug!("plugin `{}`: {}", name, format(&args));
+        debug!("`{}`: {}", name, format(&args));
         Ok(Var::None)
       });
     }
     {
       let name = self.name().clone();
       sl.add_builtin_fn(path!(sugarcane::info), false, move |_env, _slf, args, _pos| {
-        info!("plugin `{}`: {}", name, format(&args));
+        info!("`{}`: {}", name, format(&args));
         Ok(Var::None)
       });
     }
     {
       let name = self.name().clone();
       sl.add_builtin_fn(path!(sugarcane::warn), false, move |_env, _slf, args, _pos| {
-        warn!("plugin `{}`: {}", name, format(&args));
+        warn!("`{}`: {}", name, format(&args));
         Ok(Var::None)
       });
     }
     {
       let name = self.name().clone();
       sl.add_builtin_fn(path!(sugarcane::error), false, move |_env, _slf, args, _pos| {
-        error!("plugin `{}`: {}", name, format(&args));
+        error!("`{}`: {}", name, format(&args));
         Ok(Var::None)
       });
     }
