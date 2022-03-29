@@ -1,5 +1,7 @@
 use super::{panda::PandaPlugin, JsonBlock, JsonPlayer, JsonPos};
-use sc_common::config::Config;
+use crate::{block, player::Player};
+use sc_common::{config::Config, math::Pos};
+use std::sync::Arc;
 
 #[derive(Debug, Clone, serde::Deserialize)]
 #[serde(tag = "kind")]
@@ -33,7 +35,8 @@ pub enum PluginRequest {
 #[serde(tag = "kind")]
 pub enum ServerMessage {
   Event {
-    player: JsonPlayer,
+    #[serde(serialize_with = "to_json_ty::<_, JsonPlayer, _>")]
+    player: Arc<Player>,
     #[serde(flatten)]
     event:  ServerEvent,
   },
@@ -47,14 +50,26 @@ pub enum ServerMessage {
 #[derive(Debug, Clone, serde::Serialize)]
 #[serde(tag = "type")]
 pub enum ServerEvent {
-  BlockPlace { pos: JsonPos },
-  Chat { text: String },
+  BlockPlace {
+    #[serde(serialize_with = "to_json_ty::<_, JsonPos, _>")]
+    pos:   Pos,
+    #[serde(serialize_with = "to_json_ty::<_, JsonBlock, _>")]
+    block: block::Type,
+  },
+  Chat {
+    text: String,
+  },
 }
 
 #[derive(Debug, Clone, serde::Serialize)]
 #[serde(tag = "type")]
 pub enum ServerReply {
-  Block { pos: JsonPos, block: JsonBlock },
+  Block {
+    #[serde(serialize_with = "to_json_ty::<_, JsonPos, _>")]
+    pos:   Pos,
+    #[serde(serialize_with = "to_json_ty::<_, JsonBlock, _>")]
+    block: block::Type,
+  },
 }
 
 pub trait PluginImpl: std::any::Any {
@@ -76,4 +91,11 @@ impl Plugin {
   }
   pub fn call(&self, ev: ServerMessage) -> Result<(), ()> { self.imp.call(ev) }
   pub fn unwrap_panda(&mut self) -> &mut PandaPlugin { self.imp.panda().unwrap() }
+}
+
+fn to_json_ty<T: Clone + Into<U>, U: serde::Serialize, S: serde::Serializer>(
+  v: &T,
+  ser: S,
+) -> Result<S::Ok, S::Error> {
+  Into::<U>::into(v.clone()).serialize(ser)
 }

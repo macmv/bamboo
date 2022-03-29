@@ -281,7 +281,7 @@ impl SocketPlugin {
         self.reply(
           id,
           ServerReply::Block {
-            pos,
+            pos:   pos.into(),
             block: self.wm.default_world().get_block(pos.into()).unwrap().into(),
           },
         )?;

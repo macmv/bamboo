@@ -183,11 +183,11 @@ impl PluginManager {
   fn message(&self, msg: ServerMessage) {
     self.plugins.lock().retain(|p| p.call(msg.clone()).is_ok());
   }
-  fn event(&self, player: JsonPlayer, event: ServerEvent) {
+  fn event(&self, player: Arc<Player>, event: ServerEvent) {
     self.message(ServerMessage::Event { player, event });
   }
-  pub fn on_block_place(&self, player: Arc<Player>, pos: Pos, kind: block::Kind) {
-    self.event(player.into(), ServerEvent::BlockPlace { pos: pos.into() });
+  pub fn on_block_place(&self, player: Arc<Player>, pos: Pos, block: block::Type) {
+    self.event(player, ServerEvent::BlockPlace { pos, block });
   }
   pub fn on_click_window(&self, player: Arc<Player>, slot: i32, mode: ClickWindow) -> bool {
     let mut allow = true;

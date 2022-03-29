@@ -1,6 +1,6 @@
 mod types;
 
-use super::{PluginImpl, PluginManager, ServerMessage, Sugarcane};
+use super::{PluginImpl, PluginManager, ServerEvent, ServerMessage, Sugarcane};
 use crate::{block, player::Player, world::WorldManager};
 use sc_common::{math::Pos, net::sb::ClickWindow};
 use std::{fs, path::Path, sync::Arc};
@@ -85,13 +85,13 @@ impl PandaPlugin {
   }
 
   pub fn call_init(&self) { self.call(self.path("init"), vec![]); }
-  pub fn call_on_block_place(&self, player: Arc<Player>, pos: Pos, kind: block::Kind) {
+  pub fn call_on_block_place(&self, player: Arc<Player>, pos: Pos, ty: block::Type) {
     self.call(
       self.path("on_block_place"),
       vec![
         types::player::SlPlayer::from(player).into(),
         types::util::SlPos::from(pos).into(),
-        types::block::SlBlockKind::from(kind).into(),
+        types::block::SlBlockKind::from(ty.kind()).into(),
       ],
     );
   }
@@ -136,6 +136,15 @@ impl PandaPlugin {
 }
 
 impl PluginImpl for PandaPlugin {
-  fn call(&self, ev: ServerMessage) -> Result<(), ()> { Ok(()) }
+  fn call(&self, ev: ServerMessage) -> Result<(), ()> {
+    match ev {
+      ServerMessage::Event { player, event } => match event {
+        ServerEvent::BlockPlace { pos, block } => self.call_on_block_place(player, pos, block),
+        _ => {}
+      },
+      _ => {}
+    }
+    Ok(())
+  }
   fn panda(&mut self) -> Option<&mut PandaPlugin> { Some(self) }
 }

@@ -103,8 +103,9 @@ pub(crate) fn handle(wm: &Arc<WorldManager>, player: &Arc<Player>, p: sb::Packet
               pos += face;
             }
 
-            match player.world().set_kind(pos, kind) {
-              Ok(_) => player.world().plugins().on_block_place(player.clone(), pos, kind),
+            let ty = player.world().block_converter().get(kind).default_type();
+            match player.world().set_block(pos, ty) {
+              Ok(_) => player.world().plugins().on_block_place(player.clone(), pos, ty),
               Err(e) => player.send_hotbar(&Chat::new(e.to_string())),
             }
           }

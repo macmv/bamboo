@@ -37,10 +37,35 @@ fn add_player_to_team(player, team) {
   sc.unlock(teams)
 }
 
+fn find_smallest_team() {
+  sc = sugarcane::instance()
+  teams = sc.lock()
+  smallest_size = 100
+  smallest_team = ""
+  for i = 0, i < teams.len(), i++ {
+    if teams[i].players.len() < smallest_size {
+      smallest_team = teams[i].color
+      smallest_size = teams[i].players.len()
+    }
+  }
+  sc.unlock(teams)
+  smallest_team
+}
+
 fn start_game(sc) {
 
 }
 
 fn on_click_window(player, slot, mode) {
   true
+}
+
+fn on_block_place(player, pos, kind) {
+  sugarcane::info("placing block")
+}
+
+fn on_player_join(player) {
+  team = find_smallest_team()
+  sugarcane::info("Adding " + player.username() + " to " + team)
+  add_player_to_team(player, team)
 }
