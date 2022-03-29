@@ -516,14 +516,16 @@ impl World {
   /// stays synced.
   fn remove_player(&self, id: UUID) {
     let mut lock = self.players.write();
-    let p = lock.remove(&id).unwrap();
-    p.unload_all();
-    if lock.is_empty() {
-      drop(lock);
-      self.unload_chunks();
-      let len = self.chunks.read().len();
-      if len != 0 {
-        warn!("chunks remaining after last player logged off: {}", len);
+    // If the player is not present, this player has already been removed.
+    if let Some(p) = lock.remove(&id) {
+      p.unload_all();
+      if lock.is_empty() {
+        drop(lock);
+        self.unload_chunks();
+        let len = self.chunks.read().len();
+        if len != 0 {
+          warn!("chunks remaining after last player logged off: {}", len);
+        }
       }
     }
   }
