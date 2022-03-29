@@ -55,7 +55,7 @@ pub enum Field {
   Pose(Pose),
 }
 
-pub struct Metadata {
+struct Metadata {
   ver:    ProtocolVersion,
   // A sparse map of indices to serialized fields.
   fields: HashMap<u8, Field>,

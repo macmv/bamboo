@@ -1,6 +1,6 @@
 use crate::{
   command::CommandSender,
-  entity::Metadata,
+  entity,
   item::{Inventory, Stack},
   net::ConnSender,
   world::World,
@@ -8,6 +8,7 @@ use crate::{
 use parking_lot::{Mutex, MutexGuard};
 use sc_common::{
   math::{ChunkPos, FPos, Pos, PosError, Vec3},
+  metadata::Metadata,
   net::cb,
   util::{Chat, GameMode, JoinInfo, UUID},
   version::ProtocolVersion,
@@ -40,6 +41,10 @@ struct PlayerPosition {
   next_pitch: f32,
 
   last_set_pos: Instant,
+
+  crouching: bool,
+  sprinting: bool,
+  swimming:  bool,
 }
 
 pub struct Player {
@@ -104,6 +109,9 @@ impl Player {
         next_yaw:     0.0,
         next_pitch:   0.0,
         last_set_pos: Instant::now(),
+        crouching:    true,
+        sprinting:    false,
+        swimming:     false,
       }
       .into(),
     })
@@ -202,11 +210,26 @@ impl Player {
   /// removed from the players list in the world.
   pub(crate) fn remove(&self) { self.world.world_manager().remove_player(self.uuid); }
 
+  /// Returns the status byte for entity metadata. The bits are as follows:
+  ///
+  /// - `0x01`: Is on fire
+  /// - `0x02`: Is crouching
+  /// - `0x04`: Only on old versions; is riding
+  /// - `0x08`: Is sprinting
+  /// - `0x10`: Is swimming
+  /// - `0x20`: Is invisible
+  /// - `0x40`: Is glowing
+  /// - `0x80`: Is flying with elytra
+  pub fn status_byte(&self) -> i8 {
+    let pos = self.pos.lock();
+    ((pos.crouching as i8) << 1) | ((pos.sprinting as i8) << 4) | ((pos.swimming as i8) << 5)
+  }
+
   /// Generates the player's metadata for the given version. This will include
   /// all fields possible about the player. This should only be called when
   /// spawning in a new player.
   pub fn metadata(&self, ver: ProtocolVersion) -> Metadata {
-    let meta = Metadata::new(ver);
+    let meta = Metadata::new();
     // meta.set_byte(0, 0b00000000).unwrap();
     meta
   }
@@ -288,6 +311,13 @@ impl Player {
       for p in w.players().iter() {
         p.send(update.clone());
       }
+    }
+    let mut meta = Metadata::new();
+    meta.set_byte(0, self.status_byte());
+    let out = cb::Packet::EntityMetadata { eid: self.eid, ty: entity::Type::Player.id(), meta };
+    let pos = self.pos().block().chunk();
+    for p in self.world().players().iter().in_view(pos) {
+      p.send(out.clone());
     }
   }
   /// Returns the current display name.

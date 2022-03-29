@@ -238,6 +238,12 @@ impl ToTcp for Packet {
           }
         }
       }
+      Packet::EntityMetadata { eid, ty, meta } => {
+        GPacket::EntityMetadataV8 {
+          entity_id: eid,
+          unknown:   metadata(ty, &meta, ver, conn.conv()),
+        }
+      }
       Packet::EntityVelocity { eid, x, y, z } => {
         GPacket::EntityVelocityV8 {
           entity_id: eid,

@@ -69,6 +69,8 @@ pub enum Packet {
   /// Change of an entity's velocity.
   #[id = 9]
   EntityVelocity { eid: i32, x: i16, y: i16, z: i16 },
+  #[id = 29]
+  EntityMetadata { eid: i32, ty: u32, meta: Metadata },
   #[id = 10]
   JoinGame {
     eid:                   i32,
