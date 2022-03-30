@@ -13,10 +13,10 @@ use self::panda::PandaPlugin;
 use socket::SocketManager;
 
 use crate::{block, player::Player, world::WorldManager};
+use ::panda::runtime::VarSend;
 use bb_common::{config::Config, math::Pos, net::sb::ClickWindow, util::Chat};
 use parking_lot::Mutex;
 use std::{fmt, fs, sync::Arc};
-use ::panda::runtime::VarSend;
 
 #[derive(Debug)]
 pub enum Event {
@@ -123,7 +123,7 @@ impl PluginManager {
             plugins.push(Plugin::new(config, name, plugin));
           }
         } else if ty == "panda" {
-          let main_path = f.path().join("main.sug");
+          let main_path = f.path().join("main.pand");
           if main_path.exists() && main_path.is_file() {
             info!("found panda plugin at {}", main_path.to_str().unwrap());
             let name = f.path().file_stem().unwrap().to_str().unwrap().to_string();
@@ -133,7 +133,7 @@ impl PluginManager {
             p.call_init();
             plugins.push(Plugin::new(config, name, p));
           } else {
-            error!("plugin `{name}` does not have a `main.sug` file");
+            error!("plugin `{name}` does not have a `main.pand` file");
           }
         } else {
           error!("plugin `{name}` has invalid plugin type: `{ty}`");

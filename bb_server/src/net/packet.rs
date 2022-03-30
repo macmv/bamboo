@@ -55,7 +55,10 @@ pub(crate) fn handle(wm: &Arc<WorldManager>, player: &Arc<Player>, p: sb::Packet
         player.lock_inventory().set(slot.into(), item.into());
       }
     }
-    sb::Packet::ClickWindow { id: _, slot, mode } => {
+    sb::Packet::ClickWindow { wid, mut slot, mode } => {
+      if wid == 0 {
+        slot = i16::from(player.lock_inventory().selected_index()) + 27;
+      }
       let allow =
         player.world().plugins().on_click_window(player.clone(), slot.into(), mode.clone());
       player.lock_inventory().click_window(slot.into(), mode, allow);

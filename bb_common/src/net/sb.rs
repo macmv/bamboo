@@ -7,6 +7,8 @@ use bb_macros::Transfer;
 #[derive(Transfer, Debug, Clone)]
 #[non_exhaustive]
 pub enum Packet {
+  #[id = 17]
+  Animation { hand: Hand },
   #[id = 0]
   BlockDig { pos: Pos, status: DigStatus, face: Face },
   #[id = 1]
@@ -19,7 +21,7 @@ pub enum Packet {
   Chat { msg: String },
   #[id = 13]
   ClickWindow {
-    id:   u8,
+    wid:  u8,
     slot: i16,
     #[must_exist]
     mode: ClickWindow,

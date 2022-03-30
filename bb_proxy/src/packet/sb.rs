@@ -20,6 +20,8 @@ pub trait FromTcp {
 impl FromTcp for Packet {
   fn from_tcp(p: GPacket, ver: ProtocolVersion, conv: &TypeConverter) -> Result<Self> {
     Ok(match p {
+      GPacket::AnimationV8 { unknown: _ } => Packet::Animation { hand: Hand::Main },
+      GPacket::AnimationV9 { hand } => Packet::Animation { hand: Hand::from_id(hand as u8) },
       GPacket::ChatV8 { message } | GPacket::ChatV11 { message } => Packet::Chat { msg: message },
       GPacket::ClickWindowV8 {
         window_id,
@@ -35,7 +37,7 @@ impl FromTcp for Packet {
           slot_id = -999;
         }
         Packet::ClickWindow {
-          id:   window_id.try_into().unwrap(),
+          wid:  window_id.try_into().unwrap(),
           slot: slot_id.try_into().unwrap(),
           mode: click_window(mode, used_button)?,
         }
@@ -74,16 +76,23 @@ impl FromTcp for Packet {
       GPacket::KeepAliveV12 { key: id } => Packet::KeepAlive { id: id as i32 },
       GPacket::PlayerDigV8 { position, status, unknown } => {
         let mut buf = tcp::Packet::from_buf_id(unknown, 0, ver);
-        if status <= 2 {
-          Packet::BlockDig {
+        match status {
+          0 | 1 | 2 => Packet::BlockDig {
             pos:    position,
             status: DigStatus::from_id(status as u8),
             face:   Face::from_id(buf.read_varint()? as u8),
+          },
+          3 => Packet::ClickWindow { wid: 0, slot: 0, mode: ClickWindow::DropAll },
+          4 => Packet::ClickWindow { wid: 0, slot: 0, mode: ClickWindow::Drop },
+          5 => {
+            return Err(io::Error::new(ErrorKind::Other, "need to implement eating packet").into())
           }
-        } else {
-          warn!("need to implement dropping item packets");
-          // placeholder
-          Packet::UseItem { hand: Hand::Main }
+          6 => {
+            return Err(
+              io::Error::new(ErrorKind::Other, "need to implement swap item packet").into(),
+            )
+          }
+          _ => return Err(io::Error::new(ErrorKind::Other, "invalid player dig action").into()),
         }
       }
       GPacket::PlayerBlockPlacementV8 { position, placed_block_direction, unknown: _, .. } => {
