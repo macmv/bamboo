@@ -35,7 +35,9 @@ pub struct PlayerInventory {
   // An index into the hotbar (0..=8)
   selected_index: u8,
   // Open window and held item
-  window:         Option<(WrappedInventory, Stack)>,
+  window:         Option<WrappedInventory>,
+  // Held item. Always present, as survival inventories don't count as windows.
+  held:           Stack,
 
   /// Used when draging the mouse over items. This is sent as a collection of
   /// packets all at once, after the drag is finished. Because it's sent as
@@ -53,6 +55,7 @@ impl PlayerInventory {
       main:           WrappedInventory::new(Inventory::new(46), conn, 0),
       selected_index: 0,
       window:         None,
+      held:           Stack::empty(),
       drag_slots:     vec![],
       player:         weak,
     }
@@ -61,7 +64,7 @@ impl PlayerInventory {
   pub fn open_window(&mut self, inv: Inventory) {
     assert!(self.window.is_none());
     self.main.set_offset_skip(inv.size(), 9);
-    self.window = Some((WrappedInventory::new(inv, self.main.conn.clone(), 1), Stack::empty()));
+    self.window = Some(WrappedInventory::new(inv, self.main.conn.clone(), 1));
   }
   pub fn close_window(&mut self) {
     self.window.take();
@@ -84,10 +87,8 @@ impl PlayerInventory {
   pub fn main(&self) -> &WrappedInventory { &self.main }
   pub fn main_mut(&mut self) -> &mut WrappedInventory { &mut self.main }
 
-  pub fn win(&self) -> Option<&WrappedInventory> { self.window.as_ref().map(|(win, _)| win) }
-  pub fn win_mut(&mut self) -> Option<&mut WrappedInventory> {
-    self.window.as_mut().map(|(win, _)| win)
-  }
+  pub fn win(&self) -> Option<&WrappedInventory> { self.window.as_ref() }
+  pub fn win_mut(&mut self) -> Option<&mut WrappedInventory> { self.window.as_mut() }
 
   /// Gets the item out of the inventory. This uses absolute ids, so depending
   /// on if a window is open, the actual slot being accessed may change. Use
@@ -95,8 +96,8 @@ impl PlayerInventory {
   /// the open window directly.
   pub fn get(&self, index: i32) -> &Stack {
     if index == -999 {
-      &self.window.as_ref().unwrap().1
-    } else if let Some((win, _)) = &self.window {
+      &self.held
+    } else if let Some(win) = &self.window {
       if index >= 0 {
         let i = index as u32;
         if i < win.size() {
@@ -116,8 +117,8 @@ impl PlayerInventory {
   // This is private as modifying the stack doesn't send an update to the client.
   fn get_mut(&mut self, index: i32) -> &mut Stack {
     if index == -999 {
-      &mut self.window.as_mut().unwrap().1
-    } else if let Some((win, _)) = &mut self.window {
+      &mut self.held
+    } else if let Some(win) = &mut self.window {
       if index >= 0 {
         let i = index as u32;
         if i < win.size() {
@@ -156,9 +157,8 @@ impl PlayerInventory {
   /// it will send the data for every item to the client.
   pub fn sync_all(&self) {
     let mut items = vec![];
-    let mut held = Stack::empty().to_item();
-    if let Some((inv, win_held)) = &self.window {
-      held = win_held.to_item();
+    let held = self.held.to_item();
+    if let Some(inv) = &self.window {
       for it in inv.inv.items() {
         items.push(it.to_item());
       }
@@ -177,9 +177,9 @@ impl PlayerInventory {
       self.main.conn.send(cb::Packet::WindowItem {
         wid:  u8::MAX,
         slot: -1,
-        item: self.window.as_ref().unwrap().1.to_item(),
+        item: self.held.to_item(),
       });
-    } else if let Some((win, _)) = &self.window {
+    } else if let Some(win) = &self.window {
       if index >= 0 {
         let i = index as u32;
         if i < win.size() {
@@ -211,8 +211,14 @@ impl PlayerInventory {
       };
     }
 
-    let inv_size = self.win().unwrap().size();
-    let in_main = slot >= 0 && (slot as u32) > inv_size;
+    let mut inv_size = 0;
+    let in_main = match self.win() {
+      Some(win) => {
+        inv_size = win.size();
+        slot >= 0 && (slot as u32) > inv_size
+      }
+      None => true,
+    };
     info!("in main: {in_main}");
     match click {
       ClickWindow::Click(button) => {

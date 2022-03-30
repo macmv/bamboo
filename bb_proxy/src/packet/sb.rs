@@ -59,7 +59,7 @@ impl FromTcp for Packet {
           slot_id = -999;
         }
         Packet::ClickWindow {
-          id:   window_id.try_into().unwrap(),
+          wid:  window_id.try_into().unwrap(),
           slot: slot_id.try_into().unwrap(),
           mode: click_window(mode, used_button)?,
         }
@@ -82,8 +82,8 @@ impl FromTcp for Packet {
             status: DigStatus::from_id(status as u8),
             face:   Face::from_id(buf.read_varint()? as u8),
           },
-          3 => Packet::ClickWindow { wid: 0, slot: 0, mode: ClickWindow::DropAll },
-          4 => Packet::ClickWindow { wid: 0, slot: 0, mode: ClickWindow::Drop },
+          3 => Packet::ClickWindow { wid: u8::MAX, slot: 0, mode: ClickWindow::DropAll },
+          4 => Packet::ClickWindow { wid: u8::MAX, slot: 0, mode: ClickWindow::Drop },
           5 => {
             return Err(io::Error::new(ErrorKind::Other, "need to implement eating packet").into())
           }
