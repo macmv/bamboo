@@ -5,7 +5,7 @@ use bb_common::{
   metadata::Metadata,
   nbt::NBT,
   net::cb,
-  util::UUID,
+  util::{Chat, UUID},
 };
 use parking_lot::RwLockReadGuard;
 use std::{collections::HashMap, sync::Arc};
@@ -142,7 +142,7 @@ impl World {
       todo!();
     } else if ent.ty().is_living() {
       let mut metadata = Metadata::new();
-      metadata.set_byte(17, 1);
+      metadata.set_byte(0, 1);
       player.send(cb::Packet::SpawnLivingEntity {
         eid:      ent.eid(),
         // 1.18 clients will not render mobs that have the same UUID
