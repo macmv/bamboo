@@ -380,12 +380,13 @@ impl ConnectionManager {
             let e = event.clone();
             read_pool.execute(move |s| {
               if Self::handle(&s.wm, &s.conns, token, e) {
-                let mut c = s.conns.write();
+                let mut wl = s.conns.write();
                 // Multiple threads can handle this event, so if the token has alrady been
                 // removed, we know it was another thread that called this. Therefore, we can
                 // just ignore a player that is not present.
-                if let Some((_, p)) = c.remove(&token) {
-                  s.wm.remove_player(p.as_ref().unwrap().id());
+                if let Some((_, p)) = wl.remove(&token) {
+                  drop(wl);
+                  Self::handle_disconnect(&p);
                 }
               }
             });
@@ -416,15 +417,19 @@ impl ConnectionManager {
   fn wake_event(s: &State, ev: WakeEvent) {
     match ev {
       WakeEvent::Clientbound(tok) => {
+        let mut remove = false;
         if let Some((conn, player)) = s.conns.read().get(&tok) {
-          match conn.lock().try_send() {
-            Ok(()) => {}
-            Err(e) if e.kind() == io::ErrorKind::WouldBlock => {}
+          remove = match conn.lock().try_send() {
+            Ok(()) => false,
+            Err(e) if e.kind() == io::ErrorKind::WouldBlock => false,
             Err(e) => {
               Self::handle_error(e, player);
-              s.conns.write().remove(&tok);
+              true
             }
-          }
+          };
+        }
+        if remove {
+          s.conns.write().remove(&tok);
         }
       }
     }
