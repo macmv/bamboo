@@ -85,6 +85,29 @@ impl World {
 
   pub fn entities(&self) -> RwLockReadGuard<'_, HashMap<i32, Arc<Entity>>> { self.entities.read() }
 
+  /// Sends packets to respawn the player for all clients in render distance.
+  /// This is used when custom names are set, because I cannot, for the life
+  /// of me, figure out how to get the clients to update a custom name for a
+  /// player.
+  pub fn respawn_player(self: &Arc<Self>, player: &Player) {
+    let (pos, pitch, yaw) = player.pos_look();
+    let chunk = pos.block().chunk();
+    let out = cb::Packet::SpawnPlayer {
+      eid:   player.eid(),
+      id:    player.id(),
+      ty:    entity::Type::Player.id(),
+      x:     pos.x(),
+      y:     pos.y(),
+      z:     pos.z(),
+      yaw:   yaw as i8,
+      pitch: pitch as i8,
+      meta:  player.metadata(),
+    };
+    for p in self.players().iter().in_view(chunk).not(player.id()) {
+      p.send(out.clone());
+    }
+  }
+
   fn add_entity(&self, eid: i32, entity: Entity) {
     self.entities.write().insert(eid, Arc::new(entity));
   }

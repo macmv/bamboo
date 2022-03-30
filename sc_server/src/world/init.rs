@@ -1,6 +1,7 @@
 use super::World;
 use crate::{
   command::{Command, Parser, StringType},
+  entity,
   player::Player,
 };
 use parking_lot::Mutex;
@@ -209,11 +210,13 @@ impl World {
       other.send(cb::Packet::SpawnPlayer {
         eid:   player.eid(),
         id:    player.id(),
+        ty:    entity::Type::Player.id(),
         x:     pos.x(),
         y:     pos.y(),
         z:     pos.z(),
         yaw:   yaw as i8,
         pitch: pitch as i8,
+        meta:  player.metadata(),
       });
 
       // Create a packet that will spawn `other` for me
@@ -221,11 +224,13 @@ impl World {
       player.send(cb::Packet::SpawnPlayer {
         eid:   other.eid(),
         id:    other.id(),
+        ty:    entity::Type::Player.id(),
         x:     pos.x(),
         y:     pos.y(),
         z:     pos.z(),
         yaw:   yaw as i8,
         pitch: pitch as i8,
+        meta:  other.metadata(),
       });
     }
   }

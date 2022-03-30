@@ -675,7 +675,7 @@ impl ToTcp for Packet {
           spawn
         }
       }
-      Packet::SpawnPlayer { eid, id, x, y, z, yaw, pitch } => {
+      Packet::SpawnPlayer { eid, id, ty, x, y, z, yaw, pitch, meta } => {
         if ver == ProtocolVersion::V1_8 {
           GPacket::SpawnPlayerV8 {
             entity_id: eid,
@@ -686,7 +686,7 @@ impl ToTcp for Packet {
             yaw,
             pitch,
             current_item: 0,
-            unknown: vec![0x7f], // No entity metadata
+            unknown: metadata(ty, &meta, ver, conn.conv()),
           }
         } else if ver < ProtocolVersion::V1_15_2 {
           GPacket::SpawnPlayerV9 {
@@ -697,10 +697,21 @@ impl ToTcp for Packet {
             z,
             yaw,
             pitch,
-            unknown: vec![0xff], // No entity metadata
+            unknown: metadata(ty, &meta, ver, conn.conv()),
           }
         } else {
-          GPacket::SpawnPlayerV15 { id: eid, uuid: id, x, y, z, yaw, pitch }
+          let spawn = GPacket::SpawnPlayerV15 { id: eid, uuid: id, x, y, z, yaw, pitch };
+          if !meta.fields.is_empty() {
+            return Ok(smallvec![
+              spawn,
+              GPacket::EntityMetadataV8 {
+                entity_id: eid,
+                unknown:   metadata(ty, &meta, ver, conn.conv()),
+              }
+            ]);
+          } else {
+            spawn
+          }
         }
       }
       Packet::SwitchServer { ips } => {

@@ -228,9 +228,11 @@ impl Player {
   /// Generates the player's metadata for the given version. This will include
   /// all fields possible about the player. This should only be called when
   /// spawning in a new player.
-  pub fn metadata(&self, ver: ProtocolVersion) -> Metadata {
-    let meta = Metadata::new();
-    // meta.set_byte(0, 0b00000000).unwrap();
+  pub fn metadata(&self) -> Metadata {
+    let mut meta = Metadata::new();
+    meta.set_byte(0, self.status_byte() | 0x01);
+    meta.set_bool(2, true); // custom name visible
+    meta.set_opt_chat(3, self.display_name.lock().clone()); // custom name
     meta
   }
 
@@ -312,15 +314,7 @@ impl Player {
         p.send(update.clone());
       }
     }
-    let mut meta = Metadata::new();
-    meta.set_byte(0, self.status_byte() | 0x01);
-    meta.set_bool(2, true); // custom name visible
-    meta.set_opt_chat(3, Some(Chat::new("BLAH"))); // custom name
-    let out = cb::Packet::EntityMetadata { eid: self.eid, ty: entity::Type::Player.id(), meta };
-    let pos = self.pos().block().chunk();
-    for p in self.world().players().iter().in_view(pos) {
-      p.send(out.clone());
-    }
+    self.world().respawn_player(self);
   }
   /// Returns the current display name.
   pub fn display_name(&self) -> MutexGuard<'_, Option<Chat>> { self.display_name.lock() }

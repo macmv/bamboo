@@ -176,7 +176,17 @@ pub enum Packet {
     meta:  Metadata,
   },
   #[id = 17]
-  SpawnPlayer { eid: i32, id: UUID, x: f64, y: f64, z: f64, yaw: i8, pitch: i8 },
+  SpawnPlayer {
+    eid:   i32,
+    id:    UUID,
+    ty:    u32,
+    x:     f64,
+    y:     f64,
+    z:     f64,
+    yaw:   i8,
+    pitch: i8,
+    meta:  Metadata,
+  },
   /// A special packet. This will cause the proxy to start moving this player to
   /// a new server. If the new server accepts the connection, the proxy will
   /// simply disconnect the player from the old server. If the connection
