@@ -1,10 +1,11 @@
 #[macro_use]
 extern crate log;
 
-use pprof::protos::Message;
-use std::{fs::File, io::Write};
-
 fn main() {
+  /*
+  use pprof::protos::Message;
+  use std::{fs::File, io::Write};
+
   let profile = true;
   let guard = if profile {
     println!("starting cpu profiler");
@@ -12,12 +13,14 @@ fn main() {
   } else {
     None
   };
+  */
 
   match sc_proxy::run() {
     Ok(_) => (),
     Err(e) => error!("error: {}", e),
   }
 
+  /*
   if let Some(guard) = guard {
     match guard.report().build() {
       Ok(report) => {
@@ -33,4 +36,5 @@ fn main() {
       }
     };
   }
+  */
 }
