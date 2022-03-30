@@ -19,9 +19,9 @@ pages:
   image: "rustdocker/rust:nightly"
   script:
     # Generate sugarlang docs
-    - cargo run --bin sc_server -- --only-docs
+    - cargo run --bin bb_server -- --only-docs
     # Generate rust docs
-    - cargo doc -p sc_proxy
+    - cargo doc -p bb_proxy
 
     # Generate coverage report
     - cargo install cargo-tarpaulin
