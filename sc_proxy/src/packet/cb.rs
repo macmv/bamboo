@@ -151,26 +151,21 @@ impl ToTcp for Packet {
           GPacket::CommandTreeV14 { unknown: data }
         }
       }
-      Packet::EntityLook { eid, yaw, pitch, on_ground } =>
-        GPacket::EntityLookV8 { entity_id: eid, yaw, pitch, on_ground },
-      Packet::EntityMove { eid, x, y, z, on_ground } => {
-        if ver == ProtocolVersion::V1_8 {
-          GPacket::EntityRelMoveV8 {
-            entity_id: eid,
-            pos_x: (x / (4096 / 32)) as i8,
-            pos_y: (y / (4096 / 32)) as i8,
-            pos_z: (z / (4096 / 32)) as i8,
-            on_ground,
-          }
-        } else if ver < ProtocolVersion::V1_17_1 {
-          GPacket::EntityRelMoveV9 {
-            entity_id: eid,
-            pos_x: x.into(),
-            pos_y: y.into(),
-            pos_z: z.into(),
-            on_ground,
-          }
+      Packet::EntityLook { eid, yaw, pitch, on_ground } => {
+        if ver >= ProtocolVersion::V1_17_1 {
+          let mut data = vec![];
+          let mut buf = Buffer::new(&mut data);
+          buf.write_varint(eid);
+          buf.write_i8(yaw);
+          buf.write_i8(pitch);
+          buf.write_bool(on_ground);
+          GPacket::EntityLookV17 { unknown: data }
         } else {
+          GPacket::EntityLookV8 { entity_id: eid, yaw, pitch, on_ground }
+        }
+      }
+      Packet::EntityMove { eid, x, y, z, on_ground } => {
+        if ver >= ProtocolVersion::V1_17_1 {
           let mut data = vec![];
           let mut buf = Buffer::new(&mut data);
           buf.write_varint(eid);
@@ -179,30 +174,26 @@ impl ToTcp for Packet {
           buf.write_i16(z);
           buf.write_bool(on_ground);
           GPacket::EntityRelMoveV17 { unknown: data }
-        }
-      }
-      Packet::EntityMoveLook { eid, x, y, z, yaw, pitch, on_ground } => {
-        if ver == ProtocolVersion::V1_8 {
-          GPacket::EntityLookMoveV8 {
-            entity_id: eid,
-            pos_x: (x / (4096 / 32)) as i8,
-            pos_y: (y / (4096 / 32)) as i8,
-            pos_z: (z / (4096 / 32)) as i8,
-            yaw,
-            pitch,
-            on_ground,
-          }
-        } else if ver < ProtocolVersion::V1_17_1 {
-          GPacket::EntityLookMoveV9 {
+        } else if ver >= ProtocolVersion::V1_9_4 {
+          GPacket::EntityRelMoveV9 {
             entity_id: eid,
             pos_x: x.into(),
             pos_y: y.into(),
             pos_z: z.into(),
-            yaw,
-            pitch,
             on_ground,
           }
         } else {
+          GPacket::EntityRelMoveV8 {
+            entity_id: eid,
+            pos_x: (x / (4096 / 32)) as i8,
+            pos_y: (y / (4096 / 32)) as i8,
+            pos_z: (z / (4096 / 32)) as i8,
+            on_ground,
+          }
+        }
+      }
+      Packet::EntityMoveLook { eid, x, y, z, yaw, pitch, on_ground } => {
+        if ver >= ProtocolVersion::V1_17_1 {
           let mut data = vec![];
           let mut buf = Buffer::new(&mut data);
           buf.write_varint(eid);
@@ -213,6 +204,26 @@ impl ToTcp for Packet {
           buf.write_i8(pitch);
           buf.write_bool(on_ground);
           GPacket::EntityLookMoveV17 { unknown: data }
+        } else if ver >= ProtocolVersion::V1_9_4 {
+          GPacket::EntityLookMoveV9 {
+            entity_id: eid,
+            pos_x: x.into(),
+            pos_y: y.into(),
+            pos_z: z.into(),
+            yaw,
+            pitch,
+            on_ground,
+          }
+        } else {
+          GPacket::EntityLookMoveV8 {
+            entity_id: eid,
+            pos_x: (x / (4096 / 32)) as i8,
+            pos_y: (y / (4096 / 32)) as i8,
+            pos_z: (z / (4096 / 32)) as i8,
+            yaw,
+            pitch,
+            on_ground,
+          }
         }
       }
       Packet::EntityPos { eid, x, y, z, yaw, pitch, on_ground } => {
@@ -430,10 +441,14 @@ impl ToTcp for Packet {
         }
       }
       Packet::RemoveEntities { eids } => {
-        let mut data = vec![];
-        let mut buf = Buffer::new(&mut data);
-        buf.write_list(&eids, |buf, &e| buf.write_varint(e));
-        GPacket::DestroyEntitiesV8 { unknown: data }
+        if ver >= ProtocolVersion::V1_17_1 {
+          GPacket::DestroyEntitiesV17 { entity_ids: eids }
+        } else {
+          let mut data = vec![];
+          let mut buf = Buffer::new(&mut data);
+          buf.write_list(&eids, |buf, &e| buf.write_varint(e));
+          GPacket::DestroyEntitiesV8 { unknown: data }
+        }
       }
       Packet::ScoreboardDisplay { position, objective } => {
         let pos = match position {
