@@ -41,3 +41,10 @@ lto = false
 
 [profile.bench]
 opt-level = 2
+
+# Used when we make our final binary.
+[profile.deploy]
+inherits = "release"
+opt-level = 3
+lto = true
+debug = false
