@@ -9,10 +9,7 @@ type BoxFn<S> = Box<dyn FnOnce(&S) + Send>;
 /// whenever they execute. This can be used for things such as cloning an arc on
 /// initialization, instead of cloning it every time you call `execute`.
 pub struct ThreadPool<S> {
-  threads: Vec<Sender<BoxFn<S>>>,
-  // I don't want to use usize here, as I want consistency between host systems. Also 4
-  // billion threads is never going to happen, so we don't need to worry about overflows.
-  id:      u32,
+  tx: Sender<BoxFn<S>>,
 }
 
 impl<S: Send + 'static> ThreadPool<S> {
@@ -37,39 +34,28 @@ impl<S: Send + 'static> ThreadPool<S> {
     if workers == 0 {
       panic!("cannot create a thread pool with no workers");
     }
-    let mut threads: Vec<Sender<BoxFn<S>>> = Vec::with_capacity(workers as usize);
+    let (tx, rx): (Sender<BoxFn<S>>, _) = crossbeam_channel::bounded(256);
     for _ in 0..workers {
-      let (tx, rx) = crossbeam_channel::bounded(32);
-      threads.push(tx);
-
       let s = new_state();
+      let rx = rx.clone();
       thread::spawn(move || {
         while let Ok(f) = rx.recv() {
           f(&s)
         }
       });
     }
-    ThreadPool { threads, id: 0 }
+    ThreadPool { tx }
   }
 
   /// Executes the given task on the next worker thread.
-  pub fn execute<F: FnOnce(&S) + Send + 'static>(&mut self, f: F) {
-    self.id = self.id.wrapping_add(1);
-    let id = self.id % self.threads.len() as u32;
-    self.threads[id as usize].send(Box::new(f)).expect("thread unexpectedly closed");
+  pub fn execute<F: FnOnce(&S) + Send + 'static>(&self, f: F) {
+    self.tx.send(Box::new(f)).expect("thread unexpectedly closed");
   }
 
   /// Waits for all tasks to be completed
   pub fn wait(&self) {
     loop {
-      let mut empty = true;
-      for thread in &self.threads {
-        if !thread.is_empty() {
-          empty = false;
-          break;
-        }
-      }
-      if empty {
+      if self.tx.is_empty() {
         break;
       }
       std::thread::yield_now();
