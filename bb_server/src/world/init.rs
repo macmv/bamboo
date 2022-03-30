@@ -63,7 +63,7 @@ impl World {
       }
     });
     let mut c = Command::new("flyspeed");
-    c.add_arg("multiplier", Parser::Float { min: Some(0.0), max: None });
+    c.add_arg("multiplier", Parser::Float { min: None, max: None });
     self.commands().add(c, |_, player, args| {
       // args[0] is `flyspeed`
       let v = args[1].float();
