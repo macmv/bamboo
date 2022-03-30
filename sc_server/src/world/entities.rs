@@ -92,7 +92,8 @@ impl World {
   pub fn respawn_player(self: &Arc<Self>, player: &Player) {
     let (pos, pitch, yaw) = player.pos_look();
     let chunk = pos.block().chunk();
-    let out = cb::Packet::SpawnPlayer {
+    let remove = cb::Packet::RemoveEntities { eids: vec![player.eid()] };
+    let add = cb::Packet::SpawnPlayer {
       eid:   player.eid(),
       id:    player.id(),
       ty:    entity::Type::Player.id(),
@@ -104,7 +105,8 @@ impl World {
       meta:  player.metadata(),
     };
     for p in self.players().iter().in_view(chunk).not(player.id()) {
-      p.send(out.clone());
+      p.send(remove.clone());
+      p.send(add.clone());
     }
   }
 

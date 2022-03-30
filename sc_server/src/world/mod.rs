@@ -518,9 +518,21 @@ impl World {
     let mut lock = self.players.write();
     // If the player is not present, this player has already been removed.
     if let Some(p) = lock.remove(&id) {
+      let players_is_empty = lock.is_empty();
+      drop(lock);
+
+      info!("{} left the game", p.username());
+      let entity_remove = cb::Packet::RemoveEntities { eids: vec![p.eid()] };
+      let list_remove = cb::Packet::PlayerList {
+        action: cb::PlayerListAction::Remove(vec![cb::PlayerListRemove { id: p.id() }]),
+      };
+      for other in p.world().players().iter().in_view(p.pos().block().chunk()).not(p.id()) {
+        other.send(entity_remove.clone());
+        other.send(list_remove.clone());
+      }
       p.unload_all();
-      if lock.is_empty() {
-        drop(lock);
+
+      if players_is_empty {
         self.unload_chunks();
         let len = self.chunks.read().len();
         if len != 0 {

@@ -112,6 +112,8 @@ pub enum Packet {
   },
   #[id = 15]
   PluginMessage { channel: String, data: Vec<u8> },
+  #[id = 30]
+  RemoveEntities { eids: Vec<i32> },
   #[id = 25]
   ScoreboardDisplay {
     #[must_exist]

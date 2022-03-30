@@ -398,7 +398,6 @@ impl ConnectionManager {
   /// Logs a disconnect, and if the player is present, it removes them.
   fn handle_disconnect(player: &Option<Arc<Player>>) {
     if let Some(p) = player {
-      info!("{} left the game", p.username());
       p.remove();
     } else {
       info!("a client who has not finished logging in has left the game");

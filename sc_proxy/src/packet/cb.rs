@@ -429,6 +429,12 @@ impl ToTcp for Packet {
           GPacket::CustomPayloadV14 { channel: channel, unknown: data }
         }
       }
+      Packet::RemoveEntities { eids } => {
+        let mut data = vec![];
+        let mut buf = Buffer::new(&mut data);
+        buf.write_list(&eids, |buf, &e| buf.write_varint(e));
+        GPacket::DestroyEntitiesV8 { unknown: data }
+      }
       Packet::ScoreboardDisplay { position, objective } => {
         let pos = match position {
           ScoreboardDisplay::List => 0,
