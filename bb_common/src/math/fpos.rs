@@ -1,4 +1,5 @@
 use super::{ChunkPos, Pos, Vec3};
+use bb_macros::Transfer;
 use std::{
   error::Error,
   fmt,
@@ -19,7 +20,7 @@ impl fmt::Display for FPosError {
 
 impl Error for FPosError {}
 
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Transfer, Debug, Clone, Copy, PartialEq)]
 pub struct FPos {
   pub x: f64,
   pub y: f64,

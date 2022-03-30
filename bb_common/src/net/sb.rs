@@ -1,5 +1,5 @@
 use crate::{
-  math::Pos,
+  math::{FPos, Pos},
   util::{Face, Hand, Item},
 };
 use bb_macros::Transfer;
@@ -47,6 +47,11 @@ pub enum Packet {
   PluginMessage { channel: String, data: Vec<u8> },
   #[id = 12]
   UseItem { hand: Hand },
+  /// Sneaking will not be present on 1.8-1.15 clients. It should be used if it
+  /// is present (it will produce more accurate results for shift-clicking on an
+  /// entity).
+  #[id = 15]
+  UseEntity { eid: i32, action: UseEntityAction, sneaking: Option<bool> },
   #[id = 14]
   WindowClose { wid: u8 },
 }
@@ -61,8 +66,21 @@ pub enum DigStatus {
   Finish,
 }
 
+#[derive(Transfer, Debug, Clone)]
+pub enum UseEntityAction {
+  #[id = 0]
+  Attack,
+  #[id = 1]
+  Interact(Hand),
+  #[id = 2]
+  InteractAt(FPos, Hand),
+}
+
 impl Default for DigStatus {
   fn default() -> Self { DigStatus::Start }
+}
+impl Default for UseEntityAction {
+  fn default() -> Self { UseEntityAction::Attack }
 }
 
 impl DigStatus {

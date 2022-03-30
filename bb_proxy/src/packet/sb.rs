@@ -4,8 +4,8 @@ use crate::{
   Error, Result,
 };
 use bb_common::{
-  math::Pos,
-  net::sb::{Button, ClickWindow, DigStatus, Packet},
+  math::{FPos, Pos},
+  net::sb::{Button, ClickWindow, DigStatus, Packet, UseEntityAction},
   util::{Buffer, Face, Hand},
   version::ProtocolVersion,
 };
@@ -139,6 +139,29 @@ impl FromTcp for Packet {
           pos:  buf.read_pos()?,
           face: Face::from_id(buf.read_varint()? as u8),
           hand: Hand::from_id(hand as u8),
+        }
+      }
+      GPacket::UseEntityV8 { entity_id, action, unknown } => {
+        let mut buf = tcp::Packet::from_buf_id(unknown, 0, ver);
+        Packet::UseEntity {
+          eid:      entity_id,
+          action:   match action {
+            0 => UseEntityAction::Interact(if ver == ProtocolVersion::V1_8 {
+              Hand::Main
+            } else {
+              Hand::from_id(buf.read_u8()?)
+            }),
+            1 => UseEntityAction::Attack,
+            2 => UseEntityAction::InteractAt(
+              FPos::new(buf.read_f32()?.into(), buf.read_f32()?.into(), buf.read_f32()?.into()),
+              if ver == ProtocolVersion::V1_8 { Hand::Main } else { Hand::from_id(buf.read_u8()?) },
+            ),
+            _ => UseEntityAction::Attack,
+          },
+          sneaking: match ver >= ProtocolVersion::V1_16_5 {
+            true => Some(buf.read_bool()?),
+            false => None,
+          },
         }
       }
       GPacket::PlayerInteractItemV9 { hand } => Packet::UseItem { hand: Hand::from_id(hand as u8) },
