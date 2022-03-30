@@ -12,7 +12,7 @@ use sc_common::{
       CommandType, ObjectiveAction, ObjectiveType, Packet, ScoreboardAction, ScoreboardDisplay,
     },
   },
-  util::{Buffer, UUID},
+  util::{Buffer, Chat, UUID},
   version::ProtocolVersion,
 };
 use serde::Serialize;
@@ -451,7 +451,12 @@ impl ToTcp for Packet {
         let mut buf = Buffer::new(&mut data);
         match mode {
           ObjectiveAction::Create { value, ty } | ObjectiveAction::Update { value, ty } => {
-            buf.write_str(&value);
+            if ver <= ProtocolVersion::V1_12_2 {
+              let chat = Chat::from_json(value).unwrap();
+              buf.write_str(&chat.to_codes());
+            } else {
+              buf.write_str(&value);
+            }
             buf.write_varint(match ty {
               ObjectiveType::Integer => 0,
               ObjectiveType::Hearts => 1,

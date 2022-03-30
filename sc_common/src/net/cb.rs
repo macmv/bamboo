@@ -254,10 +254,14 @@ pub enum ScoreboardDisplay {
 }
 #[derive(Transfer, Debug, Clone, PartialEq, Eq)]
 pub enum ObjectiveAction {
+  /// The value here is a json encoded chat message. For older (1.8 - 1.12)
+  /// clients, this will be converted into a color-coded message by the proxy.
   #[id = 0]
   Create { value: String, ty: ObjectiveType },
   #[id = 1]
   Remove,
+  /// The value here is a json encoded chat message. For older (1.8 - 1.12)
+  /// clients, this will be converted into a color-coded message by the proxy.
   #[id = 2]
   Update { value: String, ty: ObjectiveType },
 }
