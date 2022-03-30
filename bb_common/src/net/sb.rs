@@ -28,6 +28,8 @@ pub enum Packet {
   Flying { flying: bool },
   #[id = 6]
   KeepAlive { id: i32 },
+  #[id = 16]
+  PlayerCommand { command: PlayerCommand },
   #[id = 7]
   PlayerOnGround { on_ground: bool },
   #[id = 8]
@@ -76,11 +78,28 @@ pub enum UseEntityAction {
   InteractAt(FPos, Hand),
 }
 
+#[derive(Transfer, Debug, Clone)]
+pub enum PlayerCommand {
+  #[id = 0]
+  StartSneak,
+  #[id = 1]
+  StopSneak,
+  #[id = 2]
+  StartSprint,
+  #[id = 3]
+  StopSprint,
+  #[id = 4]
+  LeaveBed,
+}
+
 impl Default for DigStatus {
   fn default() -> Self { DigStatus::Start }
 }
 impl Default for UseEntityAction {
   fn default() -> Self { UseEntityAction::Attack }
+}
+impl Default for PlayerCommand {
+  fn default() -> Self { PlayerCommand::StartSneak }
 }
 
 impl DigStatus {

@@ -5,7 +5,7 @@ use crate::{
 };
 use bb_common::{
   math::{FPos, Pos},
-  net::sb::{Button, ClickWindow, DigStatus, Packet, UseEntityAction},
+  net::sb::{Button, ClickWindow, DigStatus, Packet, PlayerCommand, UseEntityAction},
   util::{Buffer, Face, Hand},
   version::ProtocolVersion,
 };
@@ -72,22 +72,8 @@ impl FromTcp for Packet {
       GPacket::HeldItemChangeV8 { slot_id } => Packet::ChangeHeldItem { slot: slot_id as u8 },
       GPacket::KeepAliveV8 { key: id } => Packet::KeepAlive { id },
       GPacket::KeepAliveV12 { key: id } => Packet::KeepAlive { id: id as i32 },
-      GPacket::PlayerActionV14 { pos, action, unknown, .. } => {
+      GPacket::PlayerDigV8 { position, status, unknown } => {
         let mut buf = tcp::Packet::from_buf_id(unknown, 0, ver);
-        if action <= 2 {
-          Packet::BlockDig {
-            pos,
-            status: DigStatus::from_id(action as u8),
-            face: Face::from_id(buf.read_varint()? as u8),
-          }
-        } else {
-          warn!("need to implement dropping item packets");
-          // placeholder
-          Packet::UseItem { hand: Hand::Main }
-        }
-      }
-      GPacket::PlayerDiggingV8 { position, status, unknown } => {
-        let mut buf = Buffer::new(unknown);
         if status <= 2 {
           Packet::BlockDig {
             pos:    position,
@@ -156,7 +142,7 @@ impl FromTcp for Packet {
               FPos::new(buf.read_f32()?.into(), buf.read_f32()?.into(), buf.read_f32()?.into()),
               if ver == ProtocolVersion::V1_8 { Hand::Main } else { Hand::from_id(buf.read_u8()?) },
             ),
-            _ => UseEntityAction::Attack,
+            _ => return Err(io::Error::new(ErrorKind::Other, "invalid use entity action").into()),
           },
           sneaking: match ver >= ProtocolVersion::V1_16_5 {
             true => Some(buf.read_bool()?),
@@ -164,6 +150,16 @@ impl FromTcp for Packet {
           },
         }
       }
+      GPacket::PlayerCommandV8 { entity_id: _, action, aux_data: _ } => Packet::PlayerCommand {
+        command: match action {
+          0 => PlayerCommand::StartSneak,
+          1 => PlayerCommand::StopSneak,
+          2 => PlayerCommand::LeaveBed,
+          3 => PlayerCommand::StartSprint,
+          4 => PlayerCommand::StopSprint,
+          _ => return Err(io::Error::new(ErrorKind::Other, "invalid player action").into()),
+        },
+      },
       GPacket::PlayerInteractItemV9 { hand } => Packet::UseItem { hand: Hand::from_id(hand as u8) },
       GPacket::PlayerV8 { on_ground, .. } => Packet::PlayerOnGround { on_ground },
       GPacket::PlayerLookV8 { yaw, pitch, on_ground, .. }
