@@ -66,6 +66,17 @@ pub fn init(name: &str) {
 }
 
 pub fn init_with_stdout(name: &str, stdout: Appender) {
+  init_with_stdout_level(name, stdout, LevelFilter::Info)
+}
+
+pub fn init_with_level(name: &str, level: LevelFilter) {
+  let pat = make_pattern();
+  let stdout = ConsoleAppender::builder().encoder(Box::new(pat)).build();
+
+  init_with_stdout_level(name, Appender::builder().build("stdout", Box::new(stdout)), level)
+}
+
+pub fn init_with_stdout_level(name: &str, stdout: Appender, level: LevelFilter) {
   let pat = make_pattern();
 
   let disk = FileAppender::builder()
@@ -79,7 +90,7 @@ pub fn init_with_stdout(name: &str, stdout: Appender) {
   let config = Config::builder()
     .appender(stdout)
     .appender(Appender::builder().build("disk", Box::new(disk)))
-    .build(Root::builder().appender("stdout").appender("disk").build(LevelFilter::Info))
+    .build(Root::builder().appender("stdout").appender("disk").build(level))
     .unwrap();
 
   log4rs::init_config(config).unwrap();

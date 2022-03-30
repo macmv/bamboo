@@ -31,7 +31,8 @@ pub fn load_icon(path: &str) -> String {
 }
 
 pub fn run() -> Result<()> {
-  sc_common::init("proxy");
+  let level = if std::env::args().len() > 1 { log::LevelFilter::Debug } else { log::LevelFilter::Info };
+  sc_common::init_with_level("proxy", level);
 
   let config = Config::new("proxy.yml", "proxy-default.yml", include_str!("default.yml"));
 
