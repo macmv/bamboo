@@ -148,8 +148,7 @@ pub fn member_call<'a>(class: &str, name: &'a str) -> (&'a str, Option<Vec<Expr>
       "read_double" => "read_f64",
       "read_uuid" => "read_uuid",
       "read_string" | "read_string_from_buffer" => "read_str",
-      "read_var_int_array" => "read_varint_arr",
-      "read_int_array" | "read_int_list" => "read_i32_arr",
+      "read_var_int_array" | "read_int_array" | "read_int_list" => "read_varint_arr",
       "read_bytes" => "read_buf",           // Fixed length
       "read_byte_array" => "read_byte_arr", // Variable length
       "read_bit_set" => "read_bits",
