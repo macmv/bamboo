@@ -1,5 +1,4 @@
 use super::{conn::ConnStream, status::Status};
-use parking_lot::Mutex;
 use bb_common::{
   math::ChunkPos,
   util::{Buffer, Chat},
@@ -8,6 +7,7 @@ use bb_proxy::{
   gnet::{cb, sb},
   Result,
 };
+use parking_lot::Mutex;
 use std::time::Instant;
 
 pub fn handle_packet(stream: &mut ConnStream, status: &Mutex<Status>, p: cb::Packet) -> Result<()> {

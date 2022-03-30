@@ -1,8 +1,8 @@
 #[macro_use]
 extern crate log;
 
-use clap::Parser;
 use bb_server::{net::ConnectionManager, world::WorldManager};
+use clap::Parser;
 use std::{error::Error, sync::Arc, thread};
 
 /// Simple program to greet a person
@@ -49,7 +49,7 @@ struct Args {
 //     Ok(Response::new(StatusResponse {
 //       id:          vec![],
 //       num_players: 5,
-//       server_type: "sugarcane-rs".into(),
+//       server_type: "bamboo".into(),
 //     }))
 //   }
 //   async fn reserve_slots(

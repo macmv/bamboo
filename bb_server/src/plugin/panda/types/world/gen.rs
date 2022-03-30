@@ -20,7 +20,7 @@ impl fmt::Debug for SlBiome {
 /// # Example
 ///
 /// ```
-/// fn main(sc) {
+/// fn main(bb) {
 ///   biome = Biome::new("desert")
 ///   // First, we make the desert have a sand ground.
 ///
@@ -77,7 +77,7 @@ impl fmt::Debug for SlBiome {
 ///   biome.add_feature(dead_bush)
 ///
 ///   // Finally, add the biome to the terrain generator.
-///   sc.add_biome(biome)
+///   bb.add_biome(biome)
 /// }
 ///
 /// // A structure will be passed the terrain generator, the chunk that it needs
@@ -97,5 +97,5 @@ impl fmt::Debug for SlBiome {
 ///   chunk.fill(pos, pos + Pos::new(0, height, 0), "cactus");
 /// }
 /// ```
-#[define_ty(path = "sugarcane::world::gen::Biome")]
+#[define_ty(path = "bamboo::world::gen::Biome")]
 impl SlBiome {}

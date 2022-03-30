@@ -1,6 +1,6 @@
+use bb_common::math::FastMath;
 use criterion::{black_box, criterion_group, criterion_main, Criterion};
 use pprof::criterion::{Output, PProfProfiler};
-use bb_common::math::FastMath;
 
 pub fn fast_cos(c: &mut Criterion) {
   c.bench_function("fast cos f64", |b| {

@@ -13,8 +13,8 @@ use panda::PandaPlugin;
 use socket::SocketManager;
 
 use crate::{block, player::Player, world::WorldManager};
-use parking_lot::Mutex;
 use bb_common::{config::Config, math::Pos, net::sb::ClickWindow, util::Chat};
+use parking_lot::Mutex;
 use std::{fmt, fs, sync::Arc};
 use sugarlang::runtime::VarSend;
 
@@ -24,15 +24,15 @@ pub enum Event {
   OnBlockPlace(Arc<Player>, Pos, block::Kind),
 }
 
-/// A struct that manages all Sugarlang plugins. This will handle re-loading all
-/// the source files on `/reload`, and will also send events to all the plugins
-/// when needed.
+/// A struct that manages all plugins. This will handle re-loading all the
+/// source files on `/reload`, and will also send events to all the plugins when
+/// needed.
 pub struct PluginManager {
   plugins: Mutex<Vec<Plugin>>,
 }
 
 #[derive(Clone)]
-pub struct Sugarcane {
+pub struct Bamboo {
   // Index into plugins array
   idx:    usize,
   plugin: String,
@@ -45,47 +45,15 @@ pub struct Sugarcane {
   data:   Arc<Mutex<Option<VarSend>>>,
 }
 
-impl Sugarcane {
+impl Bamboo {
   pub fn new(idx: usize, plugin: String, wm: Arc<WorldManager>) -> Self {
-    Sugarcane { idx, plugin, wm, data: Arc::new(Mutex::new(Some(VarSend::None))) }
+    Bamboo { idx, plugin, wm, data: Arc::new(Mutex::new(Some(VarSend::None))) }
   }
 }
 
-impl fmt::Debug for Sugarcane {
-  fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result { write!(f, "Sugarcane {{}}") }
+impl fmt::Debug for Bamboo {
+  fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result { write!(f, "Bamboo {{}}") }
 }
-
-// impl Sugarcane {
-//   fn new(wm: Arc<WorldManager>) -> Self {
-//     Sugarcane { _wm: wm }
-//   }
-//   fn info(_this: &Value, args: &[Value], ctx: &mut Context) -> Result<Value>
-// {     info!("{}", args.get(0).cloned().unwrap_or_default().to_string(ctx)?);
-//     Ok(Value::Null)
-//   }
-//   fn add_plugin(this: &Value, args: &[Value], ctx: &mut Context) ->
-// Result<Value> {     if let ObjectData::NativeObject(s) =
-// &this.to_object(ctx)?.borrow().data {       info!("got self: {:?}", s);
-//     } else {
-//       error!("gaming?");
-//     }
-//     info!("{}", args[0].to_string(ctx).unwrap());
-//     Ok(Value::Null)
-//   }
-// }
-
-// impl Sugarcane {
-//   fn constructor(_this: &Value, _args: &[Value], _ctx: &mut Context) ->
-// Result<Self> {     Err(Value::String("cannot construct Sugarcane from
-// JS".into()))   }
-//
-//   fn init(class: &mut ClassBuilder) -> Result<()> {
-//     class.static_method("info", 0, Self::info);
-//     class.method("add_plugin", 0, Self::add_plugin);
-//
-//     Ok(())
-//   }
-// }
 
 impl PluginManager {
   /// Creates a new plugin manager. This will initialize the Ruby interpreter,
@@ -98,11 +66,11 @@ impl PluginManager {
 
   pub fn run(&self, wm: Arc<WorldManager>) {
     // let mut ctx = Context::new();
-    // ctx.register_global_class::<Sugarcane>().unwrap();
+    // ctx.register_global_class::<Bamboo>().unwrap();
     // let _o = ctx.construct_object();
     // ctx.register_global_property(
     //   "sc",
-    //   Object::native_object(Box::new(Sugarcane::new(wm.clone()))),
+    //   Object::native_object(Box::new(Bamboo::new(wm.clone()))),
     //   Attribute::all(),
     // );
     // self.load(&mut ctx, wm);

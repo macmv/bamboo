@@ -22,7 +22,7 @@ wrap!(Arc<Player>, SlPlayer);
 /// A Player. This struct is for online players. If anyone has disconnected,
 /// this struct will still exist, but the functions will return outdated
 /// information. There is currently no way to lookup an offline player.
-#[define_ty(path = "sugarcane::player::Player")]
+#[define_ty(path = "bamboo::player::Player")]
 impl SlPlayer {
   /// Returns the username of the player. This will never change, as long as the
   /// user stays online.

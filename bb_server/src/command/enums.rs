@@ -43,7 +43,7 @@ pub enum Parser {
   /// players (with either a username or `@a`) is allowed.
   Entity { single: bool, players: bool },
   /// A user that is on the current scoreboard. With the scoreboard system that
-  /// sugarcane has, this doesn't make that much sense.
+  /// bamboo has, this doesn't make that much sense.
   ScoreHolder { multiple: bool },
 
   /// Player, online or not. Can also use a selector.

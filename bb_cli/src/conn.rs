@@ -1,5 +1,3 @@
-use rand::{rngs::OsRng, Rng};
-use rsa::PublicKey;
 use bb_common::{math::der, version::ProtocolVersion};
 use bb_proxy::{
   conn::State,
@@ -7,6 +5,8 @@ use bb_proxy::{
   stream::{java::JavaStream, PacketStream},
   Result,
 };
+use rand::{rngs::OsRng, Rng};
+use rsa::PublicKey;
 use std::io;
 
 pub struct ConnStream {

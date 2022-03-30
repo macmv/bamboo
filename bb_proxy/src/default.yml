@@ -1,4 +1,4 @@
-# The Sugarcane server's IP
+# The Bamboo server's IP.
 server: "0.0.0.0:8483"
 # This enables authentication with Mojang's servers. This should only be
 # disabled if you know what you are doing.

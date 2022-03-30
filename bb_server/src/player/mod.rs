@@ -5,7 +5,6 @@ use crate::{
   net::ConnSender,
   world::World,
 };
-use parking_lot::{Mutex, MutexGuard};
 use bb_common::{
   math::{ChunkPos, FPos, Pos, PosError, Vec3},
   metadata::Metadata,
@@ -13,6 +12,7 @@ use bb_common::{
   util::{Chat, GameMode, JoinInfo, UUID},
   version::ProtocolVersion,
 };
+use parking_lot::{Mutex, MutexGuard};
 use std::{f64::consts, fmt, net::SocketAddr, sync::Arc, time::Instant};
 
 mod inventory;

@@ -1,7 +1,7 @@
 use super::Player;
+use bb_common::{math::ChunkPos, net::cb, version::ProtocolVersion};
 use parking_lot::Mutex;
 use rayon::prelude::*;
-use bb_common::{math::ChunkPos, net::cb, version::ProtocolVersion};
 use std::{
   cmp::Ordering,
   time::{Duration, Instant},

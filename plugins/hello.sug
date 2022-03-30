@@ -1,4 +1,4 @@
-use sugarcane::{
+use bamboo::{
   block,
   chat::Chat,
   command::Command,
@@ -8,34 +8,34 @@ use sugarcane::{
 }
 
 fn init() {
-  sugarcane::info("hello world")
-  sc = sugarcane::instance()
+  bamboo::info("hello world")
+  bb = bamboo::instance()
 
   c = Command::new("setblock", handle_setblock)
   c.add_arg_block_pos("pos")
     .add_arg_block_kind("kind")
-  sc.add_command(c)
+  bb.add_command(c)
 
   c = Command::new("getblock", handle_getblock)
   c.add_arg_block_pos("pos")
-  sc.add_command(c)
+  bb.add_command(c)
 
   c = Command::new("give", handle_give)
   c.add_arg_item_stack("item")
-  sc.add_command(c)
+  bb.add_command(c)
 
   c = Command::new("join", handle_join)
-  sc.add_command(c)
+  bb.add_command(c)
 
   c = Command::new("ui", handle_ui)
-  sc.add_command(c)
+  bb.add_command(c)
 }
 
 fn handle_setblock(player, args) {
   // args[0] is `setblock`
   // args[1] is the position
   // args[2] is the block kind
-  sugarcane::info(args)
+  bamboo::info(args)
   player.world().set_kind(args[1], args[2])
 }
 
@@ -73,14 +73,14 @@ fn handle_join(player, args) {
 }
 
 fn on_block_place(player, pos, kind) {
-  sugarcane::info("block x:", pos.x())
+  bamboo::info("block x:", pos.x())
 }
 
 fn on_click_window(player, slot, mode) {
   true
 }
 
-fn add_biomes(sc) {
+fn add_biomes(bb) {
   /*
   biome = gen::Biome::new("desert")
   layers = gen::Layers::new("stone")
@@ -95,7 +95,7 @@ fn add_biomes(sc) {
   cactus_struct = Structure::from_func(place_cactus, 0)
   dead_bush = PlantFeature::new(cactus_struct, 1, 10)
   biome.add_feature(dead_bush)
-  sc.add_biome(biome)
+  bb.add_biome(biome)
   */
 }
 

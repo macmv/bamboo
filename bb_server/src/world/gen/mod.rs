@@ -1,10 +1,10 @@
 use super::chunk::MultiChunk;
 use crate::{block, math::WarpedVoronoi};
-use noise::{BasicMulti, NoiseFn};
 use bb_common::{
   config::Config,
   math::{ChunkPos, Pos, RngCore, WyhashRng},
 };
+use noise::{BasicMulti, NoiseFn};
 use std::{
   cmp::Ordering,
   collections::{HashMap, HashSet},

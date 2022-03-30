@@ -1,10 +1,10 @@
-use criterion::{criterion_group, criterion_main, Criterion};
-use pprof::criterion::{Output, PProfProfiler};
 use bb_common::math::ChunkPos;
 use bb_server::{
   block,
   world::{chunk::MultiChunk, gen::WorldGen},
 };
+use criterion::{criterion_group, criterion_main, Criterion};
+use pprof::criterion::{Output, PProfProfiler};
 use std::sync::Arc;
 
 pub fn generate_chunk(c: &mut Criterion) {

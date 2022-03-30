@@ -1,5 +1,5 @@
-use num_derive::{FromPrimitive, ToPrimitive};
 use bb_common::math::Vec3;
+use num_derive::{FromPrimitive, ToPrimitive};
 use std::{error::Error, fmt, str::FromStr};
 
 /*

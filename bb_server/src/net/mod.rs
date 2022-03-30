@@ -1,11 +1,4 @@
 use crate::{player::Player, world::WorldManager};
-use crossbeam_channel::{Receiver, Sender, TryRecvError};
-use mio::{
-  event::Event,
-  net::{TcpListener, TcpStream},
-  Events, Interest, Poll, Token, Waker,
-};
-use parking_lot::{Mutex, RwLock};
 use bb_common::{
   net::{cb, sb},
   util::{JoinInfo, ThreadPool},
@@ -14,6 +7,13 @@ use bb_common::{
 use bb_transfer::{
   InvalidReadError, MessageRead, MessageReader, MessageWrite, MessageWriter, ReadError,
 };
+use crossbeam_channel::{Receiver, Sender, TryRecvError};
+use mio::{
+  event::Event,
+  net::{TcpListener, TcpStream},
+  Events, Interest, Poll, Token, Waker,
+};
+use parking_lot::{Mutex, RwLock};
 use std::{
   collections::HashMap,
   convert::TryInto,

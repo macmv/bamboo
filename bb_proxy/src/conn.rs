@@ -4,9 +4,6 @@ use crate::{
   stream::PacketStream,
   Result,
 };
-use mio::{net::TcpStream, Interest, Registry, Token};
-use rand::{rngs::OsRng, RngCore};
-use rsa::{padding::PaddingScheme, RSAPrivateKey};
 use bb_common::{
   math,
   net::{cb as ccb, sb as csb},
@@ -16,6 +13,9 @@ use bb_common::{
 use bb_transfer::{
   InvalidReadError, MessageRead, MessageReader, MessageWrite, MessageWriter, ReadError,
 };
+use mio::{net::TcpStream, Interest, Registry, Token};
+use rand::{rngs::OsRng, RngCore};
+use rsa::{padding::PaddingScheme, RSAPrivateKey};
 use serde_derive::{Deserialize, Serialize};
 use sha1::{Digest, Sha1};
 use std::{
@@ -472,14 +472,14 @@ impl<'a, S: PacketStream + Send + Sync> Conn<'a, S> {
   /// Generates the json status for the server
   fn build_status(&self) -> JsonStatus {
     let mut description = Chat::empty();
-    description.add("Sugarcane").color(Color::BrightGreen);
+    description.add("Bamboo").color(Color::BrightGreen);
     description.add(" -- ").color(Color::Gray);
     #[cfg(debug_assertions)]
     description.add("Development mode").color(Color::Blue);
     #[cfg(not(debug_assertions))]
     description.add("Release mode").color(Color::Red);
     JsonStatus {
-      version: JsonVersion { name: "1.8".into(), protocol: self.ver.id() as i32 },
+      version: JsonVersion { name: "1.8 - 1.17.1".into(), protocol: self.ver.id() as i32 },
       players: JsonPlayers {
         max:    69,
         online: 420,

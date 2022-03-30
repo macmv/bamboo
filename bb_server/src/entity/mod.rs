@@ -6,11 +6,11 @@ pub use ty::{Data, Type};
 pub use version::TypeConverter;
 
 use crate::{math::AABB, world::World};
-use parking_lot::{Mutex, RwLock};
 use bb_common::{
   math::{FPos, Vec3},
   nbt::NBT,
 };
+use parking_lot::{Mutex, RwLock};
 use std::sync::Arc;
 
 pub mod behavior;

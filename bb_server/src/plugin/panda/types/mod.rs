@@ -1,4 +1,4 @@
-use super::{super::PluginManager, PandaPlugin, Sugarcane};
+use super::{super::PluginManager, Bamboo, PandaPlugin};
 use bb_common::util::{chat::Color, Chat};
 use sugarlang::{
   define_ty,
@@ -53,12 +53,12 @@ macro_rules! wrap {
 use add_from;
 use wrap;
 
-/// This is a handle into the Sugarcane server. It allows you to modify the
+/// This is a handle into the Bamboo server. It allows you to modify the
 /// world, add commands, lookup players, and more. It will be passed to every
 /// callback, so you should not store this in a global (although you can if you
 /// need to).
-#[define_ty(path = "sugarcane::Sugarcane")]
-impl Sugarcane {
+#[define_ty(path = "bamboo::Bamboo")]
+impl Bamboo {
   /// Adds a command to the server.
   ///
   /// # Example
@@ -66,11 +66,11 @@ impl Sugarcane {
   /// ```
   /// fn main() {
   ///   c = Command::new("setblock", handle_setblock)
-  ///   sugarcane::instance().add_command(c)
+  ///   bamboo::instance().add_command(c)
   /// }
   ///
   /// fn handle_setblock(player, args) {
-  ///   sugarcane::info("ran setblock!")
+  ///   bamboo::info("ran setblock!")
   /// }
   /// ```
   pub fn add_command(&self, command: &SlCommand) -> Result<(), RuntimeError> {
@@ -134,10 +134,11 @@ impl Sugarcane {
   /// # Example
   ///
   /// ```
-  /// fn main(sc) {
+  /// fn main() {
   ///   biome = Biome::new("desert")
   ///
-  ///   sc.add_biome(biome)
+  ///   bb = bamboo::instance()
+  ///   bb.add_biome(biome)
   /// }
   /// ```
   ///
@@ -158,7 +159,7 @@ impl Sugarcane {
   /// Locks the internal data, stores the given value, and then unlocks it. Note
   /// that this should be avoided if you have multiple threads modifying
   /// `data`. This can cause a race condition if you are not careful. If you
-  /// need to hold onto a lock, then call `Sugarcane::lock` instead.
+  /// need to hold onto a lock, then call `Bamboo::lock` instead.
   pub fn store(&self, data: Var) -> Result<(), RuntimeError> {
     let mut lock = self.data.lock();
     if lock.is_none() {
@@ -203,47 +204,47 @@ fn format(args: &[Var]) -> String {
 
 impl PandaPlugin {
   pub fn add_builtins(&self, sl: &mut Sugarlang) {
-    let sc = self.sc();
-    sl.add_builtin_fn(path!(sugarcane::instance), false, move |_env, _slf, args, pos| {
+    let bb = self.bb();
+    sl.add_builtin_fn(path!(bamboo::instance), false, move |_env, _slf, args, pos| {
       RuntimeError::check_arg_len(&args, 0, pos)?;
-      Ok(sc.clone().into())
+      Ok(bb.clone().into())
     });
     {
       let name = self.name().clone();
-      sl.add_builtin_fn(path!(sugarcane::trace), false, move |_env, _slf, args, _pos| {
+      sl.add_builtin_fn(path!(bamboo::trace), false, move |_env, _slf, args, _pos| {
         trace!("`{}`: {}", name, format(&args));
         Ok(Var::None)
       });
     }
     {
       let name = self.name().clone();
-      sl.add_builtin_fn(path!(sugarcane::debug), false, move |_env, _slf, args, _pos| {
+      sl.add_builtin_fn(path!(bamboo::debug), false, move |_env, _slf, args, _pos| {
         debug!("`{}`: {}", name, format(&args));
         Ok(Var::None)
       });
     }
     {
       let name = self.name().clone();
-      sl.add_builtin_fn(path!(sugarcane::info), false, move |_env, _slf, args, _pos| {
+      sl.add_builtin_fn(path!(bamboo::info), false, move |_env, _slf, args, _pos| {
         info!("`{}`: {}", name, format(&args));
         Ok(Var::None)
       });
     }
     {
       let name = self.name().clone();
-      sl.add_builtin_fn(path!(sugarcane::warn), false, move |_env, _slf, args, _pos| {
+      sl.add_builtin_fn(path!(bamboo::warn), false, move |_env, _slf, args, _pos| {
         warn!("`{}`: {}", name, format(&args));
         Ok(Var::None)
       });
     }
     {
       let name = self.name().clone();
-      sl.add_builtin_fn(path!(sugarcane::error), false, move |_env, _slf, args, _pos| {
+      sl.add_builtin_fn(path!(bamboo::error), false, move |_env, _slf, args, _pos| {
         error!("`{}`: {}", name, format(&args));
         Ok(Var::None)
       });
     }
-    sl.add_builtin_ty::<Sugarcane>();
+    sl.add_builtin_ty::<Bamboo>();
     sl.add_builtin_ty::<util::SlPos>();
     sl.add_builtin_ty::<util::SlFPos>();
     sl.add_builtin_ty::<block::SlBlockKind>();
@@ -263,47 +264,47 @@ impl PandaPlugin {
     let docs = sl.generate_docs(
       &[
         (
-          path!(sugarcane),
+          path!(bamboo),
           markdown!(
-            /// The sugarcane API. This is how all sugarlang code can interact
-            /// with the sugarcane minecraft server. To get started with writing
+            /// The Bamboo API. This is how all sugarlang code can interact
+            /// with the Bamboo minecraft server. To get started with writing
             /// a plugin, create a directory called `plugins` next to the server.
             /// Inside that dirctory, create a file named something like `hello.sug`.
             /// In that file, put the following code:
             ///
             /// ```
             /// fn init() {
-            ///   sugarcane::info("Hello world")
+            ///   bamboo::info("Hello world")
             /// }
             /// ```
             ///
             /// To start doing more things with your plugin, check out the docs
-            /// for the `Sugarcane` type. You can access an instance of it like so:
+            /// for the `Bamboo` type. You can access an instance of it like so:
             ///
             /// ```
             /// fn init() {
-            ///   sc = sugarcane::instance()
-            ///   sc.broadcast("This will show up in chat for everyone!")
+            ///   bb = bamboo::instance()
+            ///   bb.broadcast("This will show up in chat for everyone!")
             /// }
             /// ```
           ),
         ),
         (
-          path!(sugarcane::block),
+          path!(bamboo::block),
           markdown!(
             /// This module handles blocks. It includes types to manage block kinds,
             /// block types, and any other data for blocks.
           ),
         ),
         (
-          path!(sugarcane::chat),
+          path!(bamboo::chat),
           markdown!(
             /// This module handles chat messages. It includes a chat message (`Chat`),
             /// and a chat section type (`ChatSection`).
           ),
         ),
         (
-          path!(sugarcane::command),
+          path!(bamboo::command),
           markdown!(
             /// This module handles commands. Since minecraft 1.13, commands have gotten
             /// somewhat complex. This module allows you to build a command from a tree
@@ -333,7 +334,7 @@ impl PandaPlugin {
             ///     .add_arg_float("radius")
             /// }
             ///
-            /// // `sc` is the Sugarcane struct, which gives you access to everything on
+            /// // `bb` is the Bamboo struct, which gives you access to everything on
             /// // the server.
             /// // `player` is the player who sent this command.
             /// // `args` is the parsed arguments to your command. Each item in this array
@@ -342,7 +343,7 @@ impl PandaPlugin {
             /// // or "circle", the third item will be a block position, and the last item will
             /// // be another block position or a float.
             ///
-            /// fn handle_fill(sc, player, args) {
+            /// fn handle_fill(bb, player, args) {
             ///   player.send_message("You just ran /fill!")
             /// }
             /// ```
@@ -369,7 +370,7 @@ impl PandaPlugin {
           ),
         ),
         (
-          path!(sugarcane::player),
+          path!(bamboo::player),
           markdown!(
             /// This module handles the player. It only includes one struct, called `Player`.
             /// Players are very complex, so it makes sense not to bundle the player in with
@@ -377,14 +378,14 @@ impl PandaPlugin {
           ),
         ),
         (
-          path!(sugarcane::util),
+          path!(bamboo::util),
           markdown!(
             /// This module includes various utilities, such as block positions, chunk positions,
             /// byte buffers, things like UUID, and more.
           ),
         ),
         (
-          path!(sugarcane::world),
+          path!(bamboo::world),
           markdown!(
             /// This module includes a World and WorldManager. The World allows you to spawn
             /// in entities, change blocks, mess with players, etc. The WorldManager allows
@@ -392,7 +393,7 @@ impl PandaPlugin {
           ),
         ),
         (
-          path!(sugarcane::world::gen),
+          path!(bamboo::world::gen),
           markdown!(
             /// This modules is for everything related to terrain generation. This is a complex
             /// module, simply becuase of how much there is to do.
@@ -401,39 +402,39 @@ impl PandaPlugin {
       ],
       &[
         (
-          path!(sugarcane::trace),
+          path!(bamboo::trace),
           markdown!(
             /// Prints out the given arguments as a `trace` log message.
           ),
         ),
         (
-          path!(sugarcane::debug),
+          path!(bamboo::debug),
           markdown!(
             /// Prints out the given arguments as a `debug` log message.
           ),
         ),
         (
-          path!(sugarcane::info),
+          path!(bamboo::info),
           markdown!(
             /// Prints out the given arguments as an `info` log message.
             ///
             /// # Example
             ///
             /// ```
-            /// sc.info("some information")
-            /// sc.info(5, 6)
-            /// sc.info(my_vars, other, info)
+            /// bamboo::info("some information")
+            /// bamboo::info(5, 6)
+            /// bamboo::info(my_vars, other, info)
             /// ```
           ),
         ),
         (
-          path!(sugarcane::warn),
+          path!(bamboo::warn),
           markdown!(
             /// Prints out the given arguments as a `warn` log message.
           ),
         ),
         (
-          path!(sugarcane::error),
+          path!(bamboo::error),
           markdown!(
             /// Prints out the given arguments as an `error` log message.
           ),

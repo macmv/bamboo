@@ -1,6 +1,6 @@
 use crate::{block, world::chunk::MultiChunk};
-use noise::{BasicMulti, NoiseFn};
 use bb_common::math::ChunkPos;
+use noise::{BasicMulti, NoiseFn};
 
 pub struct CaveNoise {
   noise:  BasicMulti,

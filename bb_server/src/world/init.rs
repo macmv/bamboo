@@ -4,14 +4,14 @@ use crate::{
   entity,
   player::Player,
 };
-use parking_lot::Mutex;
-use rayon::prelude::*;
 use bb_common::{
   math::ChunkPos,
   net::cb,
   util::{Buffer, Chat, GameMode, JoinInfo},
   version::ProtocolVersion,
 };
+use parking_lot::Mutex;
+use rayon::prelude::*;
 
 impl World {
   pub fn init(&self) {
@@ -160,7 +160,7 @@ impl World {
 
     let mut data = vec![];
     let mut buf = Buffer::new(&mut data);
-    buf.write_str("Sugarcane");
+    buf.write_str("Bamboo");
     player.send(cb::Packet::PluginMessage { channel: "minecraft:brand".into(), data });
 
     let pos = player.pos();

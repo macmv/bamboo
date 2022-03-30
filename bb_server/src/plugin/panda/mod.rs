@@ -1,6 +1,6 @@
 mod types;
 
-use super::{PluginImpl, PluginManager, ServerEvent, ServerMessage, Sugarcane};
+use super::{Bamboo, PluginImpl, PluginManager, ServerEvent, ServerMessage};
 use crate::{block, player::Player, world::WorldManager};
 use bb_common::{math::Pos, net::sb::ClickWindow};
 use std::{fs, path::Path, sync::Arc};
@@ -14,14 +14,14 @@ use sugarlang::{
 pub struct PandaPlugin {
   name: String,
   sl:   Option<Sugarlang>,
-  sc:   Sugarcane,
+  bb:   Bamboo,
 }
 
 impl PandaPlugin {
   //   /// Creates a new plugin. The name should be the name of the module (for
   //   /// debugging) and the Module should be the ruby module for this plugin.
   pub fn new(idx: usize, name: String, wm: Arc<WorldManager>) -> Self {
-    PandaPlugin { sc: Sugarcane::new(idx, name.clone(), wm), name, sl: None }
+    PandaPlugin { bb: Bamboo::new(idx, name.clone(), wm), name, sl: None }
   }
 
   pub fn name(&self) -> &String { &self.name }
@@ -76,9 +76,9 @@ impl PandaPlugin {
     let (env, files) = sl.env_files();
     env.lock(files)
   }
-  /// Returns a cloned Sugarcane struct. This should be used to call Sugarlang
+  /// Returns a cloned Bamboo struct. This should be used to call Panda
   /// functions.
-  pub fn sc(&self) -> Sugarcane { self.sc.clone() }
+  pub fn bb(&self) -> Bamboo { self.bb.clone() }
 
   fn path(&self, name: &str) -> SlPath {
     SlPath::new(vec![self.name.clone(), "main".into(), name.into()])

@@ -28,9 +28,9 @@ pub use parse::{ErrorKind, ParseError, Tokenizer};
 pub use sender::CommandSender;
 
 use crate::{player::Player, world::WorldManager};
+use bb_common::util::chat::{Chat, Color};
 use parking_lot::Mutex;
 use reader::CommandReader;
-use bb_common::util::chat::{Chat, Color};
 use std::{collections::HashMap, sync::Arc};
 
 type Handler = Box<dyn Fn(&Arc<WorldManager>, Option<&Arc<Player>>, Vec<Arg>) + Send + Sync>;

@@ -1,7 +1,7 @@
 use ansi_term::Colour;
+use bb_common::{math::ChunkPos, util::UUID};
 use lines::Lines;
 use parking_lot::Mutex;
-use bb_common::{math::ChunkPos, util::UUID};
 use std::{
   collections::{HashMap, HashSet},
   io,

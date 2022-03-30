@@ -11,10 +11,10 @@ pub mod stream;
 
 pub use error::{Error, Result};
 
+use bb_common::{config::Config, math::der};
 use mio::{net::TcpListener, Events, Interest, Poll, Token};
 use rand::rngs::OsRng;
 use rsa::RSAPrivateKey;
-use bb_common::{config::Config, math::der};
 use std::{collections::HashMap, io, net::SocketAddr, sync::Arc};
 
 use crate::{conn::Conn, packet::TypeConverter, stream::java::stream::JavaStream};
@@ -31,7 +31,8 @@ pub fn load_icon(path: &str) -> String {
 }
 
 pub fn run() -> Result<()> {
-  let level = if std::env::args().len() > 1 { log::LevelFilter::Debug } else { log::LevelFilter::Info };
+  let level =
+    if std::env::args().len() > 1 { log::LevelFilter::Debug } else { log::LevelFilter::Info };
   bb_common::init_with_level("proxy", level);
 
   let config = Config::new("proxy.yml", "proxy-default.yml", include_str!("default.yml"));

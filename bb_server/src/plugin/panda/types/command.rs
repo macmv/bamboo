@@ -108,7 +108,7 @@ pub fn sl_from_arg(arg: Arg) -> Var {
 
 /// A command. This is how to setup the arguments for a custom commands that
 /// users can run.
-#[define_ty(path = "sugarcane::command::Command")]
+#[define_ty(path = "bamboo::command::Command")]
 impl SlCommand {
   /// Creates a new command. The callback must be a function, which takes 3
   /// arguments. See the example for details.
@@ -120,8 +120,8 @@ impl SlCommand {
   ///   c = Command::new("setblock", handle_setblock)
   /// }
   ///
-  /// fn handle_setblock(sc, player, args) {
-  ///   sc.info("ran setblock!")
+  /// fn handle_setblock(bb, player, args) {
+  ///   bb.info("ran setblock!")
   /// }
   /// ```
   pub fn new(name: &str, callback: Callback) -> SlCommand {

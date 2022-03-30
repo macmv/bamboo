@@ -27,7 +27,7 @@ impl SlWorld {
 
 /// A Minecraft world. This stores all of the information about blocks,
 /// entities, and players in this world.
-#[define_ty(path = "sugarcane::world::World")]
+#[define_ty(path = "bamboo::world::World")]
 impl SlWorld {
   /// Sets a single block in the world. This will return an error if the block
   /// is outside of the world.

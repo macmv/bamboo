@@ -12,13 +12,13 @@ wrap!(ClickWindow, SlClickWindow);
 wrap!(Inventory, SlInventory);
 wrap!(Stack, SlStack);
 
-#[define_ty(path = "sugarcane::item::ClickWindow")]
+#[define_ty(path = "bamboo::item::ClickWindow")]
 impl SlClickWindow {}
 
-#[define_ty(path = "sugarcane::item::Inventory")]
+#[define_ty(path = "bamboo::item::Inventory")]
 impl SlInventory {}
 
-#[define_ty(path = "sugarcane::item::Stack")]
+#[define_ty(path = "bamboo::item::Stack")]
 impl SlStack {
   pub fn new(name: &str) -> Result<Self, RuntimeError> {
     Ok(SlStack {
@@ -36,7 +36,7 @@ impl SlStack {
 
 /// An inventory UI.
 ///
-/// You should use this by importing `sugarcane::block`. This will make your
+/// You should use this by importing `bamboo::block`. This will make your
 /// code much easier to read. For example:
 ///
 /// ```
@@ -49,7 +49,7 @@ impl SlStack {
 ///
 /// If you instead use `Kind` on its own, it is much less clear that this is
 /// a block kind.
-#[define_ty(path = "sugarcane::item::UI")]
+#[define_ty(path = "bamboo::item::UI")]
 impl SlUI {
   /// Returns the block kind for that string. This will return an error if the
   /// block name is invalid.

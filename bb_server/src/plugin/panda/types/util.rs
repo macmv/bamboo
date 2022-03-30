@@ -9,7 +9,7 @@ wrap!(FPos, SlFPos);
 /// A block position. This stores X, Y, and Z coordinates as ints.
 ///
 /// If you need a player position, use `FPos` (for float position) instead.
-#[define_ty(path = "sugarcane::util::Pos")]
+#[define_ty(path = "bamboo::util::Pos")]
 impl SlPos {
   /// Creates a new block position, with the given X, Y, and Z coordinates.
   pub fn new(x: i32, y: i32, z: i32) -> Self { SlPos { inner: Pos::new(x, y, z) } }
@@ -45,7 +45,7 @@ impl SlPos {
 /// A chunk position. This stores X and Z coordinates.
 ///
 /// If you need a block position, use `Pos` instead.
-#[define_ty(path = "sugarcane::util::ChunkPos")]
+#[define_ty(path = "bamboo::util::ChunkPos")]
 impl SlChunkPos {
   /// Creates a new chunk position, with the given X and Z coordinates.
   pub fn new(x: i32, z: i32) -> Self { SlChunkPos { inner: ChunkPos::new(x, z) } }
@@ -72,7 +72,7 @@ impl SlChunkPos {
 /// An entity position. This stores X, Y, and Z coordinates as floats.
 ///
 /// If you need a block position, use `Pos` instead.
-#[define_ty(path = "sugarcane::util::FPos")]
+#[define_ty(path = "bamboo::util::FPos")]
 impl SlFPos {
   /// Returns the X position of this entity.
   ///

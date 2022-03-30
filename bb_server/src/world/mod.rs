@@ -7,7 +7,6 @@ mod players;
 mod region;
 pub mod schematic;
 
-use parking_lot::{Mutex, MutexGuard, RwLock, RwLockReadGuard};
 use bb_common::{
   config::Config,
   math::{ChunkPos, FPos, Pos},
@@ -17,6 +16,7 @@ use bb_common::{
     JoinInfo, ThreadPool, UUID,
   },
 };
+use parking_lot::{Mutex, MutexGuard, RwLock, RwLockReadGuard};
 use std::{
   collections::{HashMap, HashSet},
   convert::TryInto,

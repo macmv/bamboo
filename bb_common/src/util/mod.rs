@@ -8,8 +8,8 @@ mod buffer;
 mod item;
 
 use crate::math::Pos;
-use rand::{rngs::OsRng, RngCore};
 use bb_macros::Transfer;
+use rand::{rngs::OsRng, RngCore};
 use serde::de::{self, Deserialize, Deserializer, Unexpected, Visitor};
 use std::{error::Error, fmt, num::ParseIntError, str::FromStr};
 

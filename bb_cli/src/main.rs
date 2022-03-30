@@ -1,11 +1,11 @@
 #[macro_use]
 extern crate log;
 
+use bb_proxy::stream::java::JavaStream;
 use conn::ConnStream;
 use crossterm::{execute, terminal};
 use mio::{net::TcpStream, Events, Interest, Poll, Token, Waker};
 use parking_lot::Mutex;
-use bb_proxy::stream::java::JavaStream;
 use std::{env, error::Error, io, sync::Arc, thread};
 
 mod cli;

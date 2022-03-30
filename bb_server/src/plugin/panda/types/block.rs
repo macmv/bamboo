@@ -7,7 +7,7 @@ wrap!(block::Kind, SlBlockKind);
 
 /// A block kind. This is how you get/set blocks in the world.
 ///
-/// You should use this by importing `sugarcane::block`. This will make your
+/// You should use this by importing `bamboo::block`. This will make your
 /// code much easier to read. For example:
 ///
 /// ```
@@ -20,7 +20,7 @@ wrap!(block::Kind, SlBlockKind);
 ///
 /// If you instead use `Kind` on its own, it is much less clear that this is
 /// a block kind.
-#[define_ty(path = "sugarcane::block::Kind")]
+#[define_ty(path = "bamboo::block::Kind")]
 impl SlBlockKind {
   /// Returns the block kind for that string. This will return an error if the
   /// block name is invalid.

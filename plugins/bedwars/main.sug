@@ -1,4 +1,4 @@
-use sugarcane::chat::Chat
+use bamboo::chat::Chat
 
 struct PlayerData {
   teams: arr,
@@ -8,7 +8,7 @@ struct Team {
 }
 
 fn init() {
-  sugarcane::info("initializing bedwars")
+  bamboo::info("initializing bedwars")
 
   teams = map {}
   teams.insert("red", Team {
@@ -23,8 +23,8 @@ fn init() {
   teams.insert("yellow", Team {
     players: [],
   })
-  sc = sugarcane::instance()
-  sc.store(teams)
+  bb = bamboo::instance()
+  bb.store(teams)
 }
 
 fn add_player_to_team(player, team) {
@@ -36,15 +36,15 @@ fn add_player_to_team(player, team) {
   name.add(player.username()).color(team)
   player.set_display_name(name)
 
-  sc = sugarcane::instance()
-  teams = sc.lock()
+  bb = bamboo::instance()
+  teams = bb.lock()
   teams[team].players.push(player)
-  sc.unlock(teams)
+  bb.unlock(teams)
 }
 
 fn find_smallest_team() {
-  sc = sugarcane::instance()
-  teams = sc.lock()
+  bb = bamboo::instance()
+  teams = bb.lock()
   smallest_size = 100
   smallest_team = ""
   keys = teams.keys()
@@ -55,11 +55,11 @@ fn find_smallest_team() {
       smallest_size = teams[color].players.len()
     }
   }
-  sc.unlock(teams)
+  bb.unlock(teams)
   smallest_team
 }
 
-fn start_game(sc) {
+fn start_game(bb) {
 
 }
 
@@ -72,6 +72,6 @@ fn on_block_place(player, pos, kind) {
 
 fn on_player_join(player) {
   team = find_smallest_team()
-  sugarcane::info("Adding " + player.username() + " to " + team)
+  bamboo::info("Adding " + player.username() + " to " + team)
   add_player_to_team(player, team)
 }

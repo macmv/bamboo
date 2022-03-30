@@ -1,6 +1,5 @@
 use super::World;
 use crate::{entity, entity::Entity, item, player::Player};
-use parking_lot::RwLockReadGuard;
 use bb_common::{
   math::{ChunkPos, FPos, Vec3},
   metadata::Metadata,
@@ -8,6 +7,7 @@ use bb_common::{
   net::cb,
   util::UUID,
 };
+use parking_lot::RwLockReadGuard;
 use std::{collections::HashMap, sync::Arc};
 
 impl World {
