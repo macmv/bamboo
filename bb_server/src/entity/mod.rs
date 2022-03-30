@@ -8,9 +8,9 @@ pub use version::TypeConverter;
 use crate::{math::AABB, world::World};
 use bb_common::{
   math::{FPos, Vec3},
-  nbt::NBT,
+  metadata::Metadata,
 };
-use parking_lot::{Mutex, RwLock};
+use parking_lot::{Mutex, MutexGuard, RwLock};
 use std::sync::Arc;
 
 pub mod behavior;
@@ -58,15 +58,15 @@ pub struct Entity {
   world:    RwLock<Arc<World>>,
   behavior: Mutex<Box<dyn Behavior + Send>>,
 
-  /// NBT data for this entity.
-  nbt: Mutex<NBT>,
+  /// Entity metadata
+  meta: Mutex<Metadata>,
 }
 
 impl Entity {
   /// Creates a new entity, with default functionality. They will take normal
   /// damage, and despawn if their health hits 0. If you want custom
   /// functionality of any kind, call [`new_custom`].
-  pub fn new(eid: i32, ty: Type, world: Arc<World>, pos: FPos, nbt: NBT) -> Self {
+  pub fn new(eid: i32, ty: Type, world: Arc<World>, pos: FPos, meta: Metadata) -> Self {
     let behavior = behavior::for_entity(ty);
     Entity {
       eid,
@@ -75,7 +75,7 @@ impl Entity {
       health: Mutex::new(behavior.max_health()),
       world: RwLock::new(world),
       behavior: Mutex::new(behavior),
-      nbt: Mutex::new(nbt),
+      meta: Mutex::new(meta),
     }
   }
 
@@ -87,7 +87,7 @@ impl Entity {
     pos: FPos,
     world: Arc<World>,
     behavior: B,
-    nbt: NBT,
+    meta: Metadata,
   ) -> Self {
     Entity {
       eid,
@@ -96,7 +96,7 @@ impl Entity {
       health: Mutex::new(behavior.max_health()),
       world: RwLock::new(world),
       behavior: Mutex::new(Box::new(behavior)),
-      nbt: Mutex::new(nbt),
+      meta: Mutex::new(meta),
     }
   }
 
@@ -179,4 +179,7 @@ impl Entity {
     }
     false
   }
+
+  /// Returns all of this entity's metadata.
+  pub fn metadata(&self) -> MutexGuard<'_, Metadata> { self.meta.lock() }
 }

@@ -5,6 +5,7 @@ use crate::{
   player::Player,
 };
 use bb_common::{
+  metadata::Metadata,
   nbt::{Tag, NBT},
   net::{
     cb,
@@ -296,14 +297,14 @@ impl PlayerInventory {
     if it.is_empty() || it.amount() == 0 {
       return;
     }
-    let _old = if it.amount() == 1 {
-      self.replace(slot, Stack::empty())
+    let removed = it.clone().with_amount(1);
+    if it.amount() == 1 {
+      self.replace(slot, Stack::empty());
     } else {
       let it = self.get_mut(slot);
       it.set_amount(it.amount() - 1);
       self.sync(slot);
-      self.get(slot).clone()
-    };
+    }
     if let Some(p) = self.player.upgrade() {
       let tag = NBT::new(
         "",
@@ -312,7 +313,9 @@ impl PlayerInventory {
           Tag::compound(&[("id", Tag::String("minecraft:diamond".into()))]),
         )]),
       );
-      p.world().summon_nbt(entity::Type::Item, p.pos(), tag);
+      let mut meta = Metadata::new();
+      meta.set_item(8, removed.to_item());
+      p.world().summon_meta(entity::Type::Item, p.pos(), meta);
     }
   }
 
