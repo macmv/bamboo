@@ -1,29 +1,29 @@
 [workspace]
 members = [
-  # Contains some small utilities used in sc_server
-  "sc_macros",
+  # Contains some small utilities used in bb_server
+  "bb_macros",
   # The transfer protocol. This is built to be read from/written to
   # by generated code, so it is not very easy to debug a packet.
-  "sc_transfer",
+  "bb_transfer",
   # The code generator. This takes json from sugarcane-data and
   # generates Rust source.
-  "sc_data",
+  "bb_data",
   # Common utilities. These are things like item parsers, UUIDs,
   # etc. This is anything that both the server and proxy need.
-  "sc_common",
+  "bb_common",
   # The Minecraft server. This is the first binary target. It is
   # a fully-functioning server.
-  "sc_server",
+  "bb_server",
   # The proxy. This is required for any clients to connection to
-  # the server. It converts the sc_transfer protocol into the
+  # the server. It converts the bb_transfer protocol into the
   # Minecraft protocol using generated code.
-  "sc_proxy",
+  "bb_proxy",
   # A cli tool, used to connect to a Minecraft server and validate
   # that it is sending good data (things like making sure the client
   # won't leak chunks, checks for keep alive packets, etc).
   #
   # This is not part of the server! It is only used for testing.
-  "sc_cli",
+  "bb_cli",
 ]
 
 [profile.rust-analyzer]

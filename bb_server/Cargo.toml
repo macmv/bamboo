@@ -1,0 +1,60 @@
+[package]
+name = "bb_server"
+version = "0.2.0"
+edition = "2021"
+
+[lib]
+name = "bb_server"
+path = "src/lib.rs"
+
+[[bin]]
+name = "bb_server"
+path = "src/main.rs"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+bb_common = { path = "../bb_common" }
+bb_transfer = { path = "../bb_transfer" }
+# logger
+log = "0.4"
+
+# par_iter
+rayon = "1.5.1"
+# networking
+mio = { version = "0.7.13", default-features = false, features = ["os-poll", "net"] }
+# better channels
+crossbeam-channel = "0.5.1"
+# better locks
+parking_lot = "0.12"
+# better errors
+thiserror = "1.0"
+
+# number stuff
+num = "0.4"
+num-traits = "0.2"
+num-derive = "0.3"
+
+# noise maps. TODO: Replace
+noise = { version = "0.7.0", default-features = false }
+
+# scripting language
+sugarlang = { git = "https://gitlab.com/macmv/sugarlang", features = ["docs"] }
+
+# command line args
+clap = { version = "3.0.6", features = ["derive"] }
+
+# plugins
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+
+[build-dependencies]
+bb_data = { path = "../bb_data" }
+
+[dev-dependencies]
+pprof = { version = "0.4.3", features = ["criterion", "protobuf"] }
+criterion = "0.3.4"
+
+[[bench]]
+name = "terrain"
+harness = false

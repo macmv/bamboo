@@ -160,6 +160,140 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "904dfeac50f3cdaba28fc6f57fdcddb75f49ed61346676a78c4ffe55877802fd"
 
 [[package]]
+name = "bb_cli"
+version = "0.2.0"
+dependencies = [
+ "ansi_term",
+ "anyhow",
+ "bb_common",
+ "bb_proxy",
+ "crossbeam-channel",
+ "crossterm",
+ "log",
+ "log4rs",
+ "mio",
+ "parking_lot 0.11.2",
+ "rand 0.8.4",
+ "rsa",
+ "rustyline",
+]
+
+[[package]]
+name = "bb_common"
+version = "0.2.0"
+dependencies = [
+ "anyhow",
+ "asn1",
+ "bb_data",
+ "bb_macros",
+ "bb_transfer",
+ "byteorder",
+ "bytes",
+ "criterion",
+ "crossbeam-channel",
+ "flate2",
+ "log",
+ "log4rs",
+ "num",
+ "num-derive",
+ "num-traits",
+ "num_cpus",
+ "pprof 0.4.5",
+ "rand 0.8.4",
+ "rand_core 0.6.3",
+ "rsa",
+ "serde",
+ "serde_derive",
+ "serde_json",
+ "sha-1",
+ "strum",
+ "strum_macros",
+ "wyhash",
+ "yaml-rust",
+]
+
+[[package]]
+name = "bb_data"
+version = "0.2.0"
+dependencies = [
+ "convert_case",
+ "itertools 0.10.3",
+ "pretty_assertions",
+ "serde",
+ "serde_json",
+ "ureq",
+]
+
+[[package]]
+name = "bb_macros"
+version = "0.2.0"
+dependencies = [
+ "proc-macro-error",
+ "proc-macro2",
+ "quote",
+ "syn",
+]
+
+[[package]]
+name = "bb_proxy"
+version = "0.2.0"
+dependencies = [
+ "aes",
+ "base64",
+ "bb_common",
+ "bb_data",
+ "bb_transfer",
+ "cfb8",
+ "crossbeam-channel",
+ "flate2",
+ "image",
+ "log",
+ "md5",
+ "miniz_oxide 0.4.4",
+ "mio",
+ "parking_lot 0.11.2",
+ "pprof 0.6.2",
+ "rand 0.8.4",
+ "ringbuf",
+ "rsa",
+ "serde",
+ "serde_derive",
+ "serde_json",
+ "sha-1",
+ "smallvec",
+ "ureq",
+]
+
+[[package]]
+name = "bb_server"
+version = "0.2.0"
+dependencies = [
+ "bb_common",
+ "bb_data",
+ "bb_transfer",
+ "clap 3.0.14",
+ "criterion",
+ "crossbeam-channel",
+ "log",
+ "mio",
+ "noise",
+ "num",
+ "num-derive",
+ "num-traits",
+ "parking_lot 0.12.0",
+ "pprof 0.4.5",
+ "rayon",
+ "serde",
+ "serde_json",
+ "sugarlang",
+ "thiserror",
+]
+
+[[package]]
+name = "bb_transfer"
+version = "0.2.0"
+
+[[package]]
 name = "bitflags"
 version = "1.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1905,140 +2039,6 @@ checksum = "93fc1dc3aaa9bfed95e02e6eadabb4baf7e3078b0bd1b4d7b6b0b68378900502"
 dependencies = [
  "winapi-util",
 ]
-
-[[package]]
-name = "sc_cli"
-version = "0.1.0"
-dependencies = [
- "ansi_term",
- "anyhow",
- "crossbeam-channel",
- "crossterm",
- "log",
- "log4rs",
- "mio",
- "parking_lot 0.11.2",
- "rand 0.8.4",
- "rsa",
- "rustyline",
- "sc_common",
- "sc_proxy",
-]
-
-[[package]]
-name = "sc_common"
-version = "0.1.1"
-dependencies = [
- "anyhow",
- "asn1",
- "byteorder",
- "bytes",
- "criterion",
- "crossbeam-channel",
- "flate2",
- "log",
- "log4rs",
- "num",
- "num-derive",
- "num-traits",
- "num_cpus",
- "pprof 0.4.5",
- "rand 0.8.4",
- "rand_core 0.6.3",
- "rsa",
- "sc_data",
- "sc_macros",
- "sc_transfer",
- "serde",
- "serde_derive",
- "serde_json",
- "sha-1",
- "strum",
- "strum_macros",
- "wyhash",
- "yaml-rust",
-]
-
-[[package]]
-name = "sc_data"
-version = "0.1.1"
-dependencies = [
- "convert_case",
- "itertools 0.10.3",
- "pretty_assertions",
- "serde",
- "serde_json",
- "ureq",
-]
-
-[[package]]
-name = "sc_macros"
-version = "0.1.1"
-dependencies = [
- "proc-macro-error",
- "proc-macro2",
- "quote",
- "syn",
-]
-
-[[package]]
-name = "sc_proxy"
-version = "0.1.1"
-dependencies = [
- "aes",
- "base64",
- "cfb8",
- "crossbeam-channel",
- "flate2",
- "image",
- "log",
- "md5",
- "miniz_oxide 0.4.4",
- "mio",
- "parking_lot 0.11.2",
- "pprof 0.6.2",
- "rand 0.8.4",
- "ringbuf",
- "rsa",
- "sc_common",
- "sc_data",
- "sc_transfer",
- "serde",
- "serde_derive",
- "serde_json",
- "sha-1",
- "smallvec",
- "ureq",
-]
-
-[[package]]
-name = "sc_server"
-version = "0.1.1"
-dependencies = [
- "clap 3.0.14",
- "criterion",
- "crossbeam-channel",
- "log",
- "mio",
- "noise",
- "num",
- "num-derive",
- "num-traits",
- "parking_lot 0.12.0",
- "pprof 0.4.5",
- "rayon",
- "sc_common",
- "sc_data",
- "sc_transfer",
- "serde",
- "serde_json",
- "sugarlang",
- "thiserror",
-]
-
-[[package]]
-name = "sc_transfer"
-version = "0.1.0"
 
 [[package]]
 name = "scopeguard"
