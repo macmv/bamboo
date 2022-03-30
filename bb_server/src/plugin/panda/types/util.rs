@@ -1,18 +1,18 @@
 use super::{add_from, wrap};
 use bb_common::math::{ChunkPos, FPos, Pos};
-use sugarlang::define_ty;
+use panda::define_ty;
 
-wrap!(Pos, SlPos);
-wrap!(ChunkPos, SlChunkPos);
-wrap!(FPos, SlFPos);
+wrap!(Pos, PdPos);
+wrap!(ChunkPos, PdChunkPos);
+wrap!(FPos, PdFPos);
 
 /// A block position. This stores X, Y, and Z coordinates as ints.
 ///
 /// If you need a player position, use `FPos` (for float position) instead.
 #[define_ty(path = "bamboo::util::Pos")]
-impl SlPos {
+impl PdPos {
   /// Creates a new block position, with the given X, Y, and Z coordinates.
-  pub fn new(x: i32, y: i32, z: i32) -> Self { SlPos { inner: Pos::new(x, y, z) } }
+  pub fn new(x: i32, y: i32, z: i32) -> Self { PdPos { inner: Pos::new(x, y, z) } }
   /// Returns the X position of this block.
   ///
   /// # Example
@@ -46,9 +46,9 @@ impl SlPos {
 ///
 /// If you need a block position, use `Pos` instead.
 #[define_ty(path = "bamboo::util::ChunkPos")]
-impl SlChunkPos {
+impl PdChunkPos {
   /// Creates a new chunk position, with the given X and Z coordinates.
-  pub fn new(x: i32, z: i32) -> Self { SlChunkPos { inner: ChunkPos::new(x, z) } }
+  pub fn new(x: i32, z: i32) -> Self { PdChunkPos { inner: ChunkPos::new(x, z) } }
   /// Returns the X position of this chuk.
   ///
   /// # Example
@@ -73,7 +73,7 @@ impl SlChunkPos {
 ///
 /// If you need a block position, use `Pos` instead.
 #[define_ty(path = "bamboo::util::FPos")]
-impl SlFPos {
+impl PdFPos {
   /// Returns the X position of this entity.
   ///
   /// # Example

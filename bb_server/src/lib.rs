@@ -14,15 +14,15 @@ pub mod world;
 
 use crate::{plugin::panda::PandaPlugin, world::WorldManager};
 use std::sync::Arc;
-use sugarlang::Sugarlang;
+use panda::Panda;
 
-pub fn generate_sl_docs() {
+pub fn generate_panda_docs() {
   info!("generating sugarlang docs...",);
 
   let plugin = PandaPlugin::new(0, "".into(), Arc::new(WorldManager::new()));
-  let mut sl = Sugarlang::new();
-  plugin.add_builtins(&mut sl);
-  plugin.generate_docs(&sl);
+  let mut pd = Panda::new();
+  plugin.add_builtins(&mut pd);
+  plugin.generate_docs(&pd);
 
   info!(
     "generated docs at {}",

@@ -1,18 +1,18 @@
 use super::{add_from, wrap};
 use bb_common::util::{chat::Color, Chat};
 use std::sync::{Arc, Mutex};
-use sugarlang::{define_ty, parse::token::Span, runtime::RuntimeError};
+use panda::{define_ty, parse::token::Span, runtime::RuntimeError};
 
-wrap!(Arc<Mutex<Chat>>, SlChat);
-wrap!(Arc<Mutex<Chat>>, SlChatSection, idx: usize);
+wrap!(Arc<Mutex<Chat>>, PdChat);
+wrap!(Arc<Mutex<Chat>>, PdChatSection, idx: usize);
 
 /// A chat message. This is how you can send formatted chat message to players.
 #[define_ty(path = "bamboo::chat::Chat")]
-impl SlChat {
+impl PdChat {
   /// Creates a new chat message with the given text.
-  pub fn new(text: &str) -> SlChat { SlChat { inner: Arc::new(Mutex::new(Chat::new(text))) } }
+  pub fn new(text: &str) -> PdChat { PdChat { inner: Arc::new(Mutex::new(Chat::new(text))) } }
   /// Creates an empty chat message. This can have sections added using `add`.
-  pub fn empty() -> SlChat { SlChat { inner: Arc::new(Mutex::new(Chat::empty())) } }
+  pub fn empty() -> PdChat { PdChat { inner: Arc::new(Mutex::new(Chat::empty())) } }
   /// Adds a new chat section. This will return the section that was just added,
   /// so that it can be modified.
   ///
@@ -26,10 +26,10 @@ impl SlChat {
   /// //   |
   /// //    \ Adds the section "hello"
   /// ```
-  pub fn add(&self, msg: &str) -> SlChatSection {
+  pub fn add(&self, msg: &str) -> PdChatSection {
     let mut lock = self.inner.lock().unwrap();
     lock.add(msg);
-    SlChatSection { inner: self.inner.clone(), idx: lock.sections_len() - 1 }
+    PdChatSection { inner: self.inner.clone(), idx: lock.sections_len() - 1 }
   }
 }
 
@@ -37,8 +37,8 @@ impl SlChat {
 /// All of the functions on this section will modify the chat message this came
 /// from.
 #[define_ty(path = "bamboo::chat::ChatSection")]
-impl SlChatSection {
-  /// Sets the color of this chat section. Since Sugarlang does not support
+impl PdChatSection {
+  /// Sets the color of this chat section. Since Panda does not support
   /// enums, the color is simply a string. An invalid color will result in an
   /// error.
   ///

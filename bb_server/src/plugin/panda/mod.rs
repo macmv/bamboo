@@ -4,16 +4,16 @@ use super::{Bamboo, PluginImpl, PluginManager, ServerEvent, ServerMessage};
 use crate::{block, player::Player, world::WorldManager};
 use bb_common::{math::Pos, net::sb::ClickWindow};
 use std::{fs, path::Path, sync::Arc};
-use sugarlang::{
-  runtime::{LockedEnv, Path as SlPath, Path as TyPath, Var},
-  SlError, Sugarlang,
+use panda::{
+  runtime::{LockedEnv, Path as PdPath, Path as TyPath, Var},
+  PdError, Panda,
 };
 
 /// A wrapper struct for a Panda plugin. This is used to execute Panda code
 /// whenever an event happens.
 pub struct PandaPlugin {
   name: String,
-  sl:   Option<Sugarlang>,
+  sl:   Option<Panda>,
   bb:   Bamboo,
 }
 
@@ -27,15 +27,15 @@ impl PandaPlugin {
   pub fn name(&self) -> &String { &self.name }
 
   /// This replaces the plugins envrionment with a new one, and then parses the
-  /// given file as a sugarlang source file.
+  /// given file as a panda source file.
   pub fn load_from_file(&mut self, path: &Path, manager: &PluginManager) {
     self.sl = None;
-    let mut sl = Sugarlang::new();
+    let mut sl = Panda::new();
     sl.set_color(manager.use_color());
     self.add_builtins(&mut sl);
     match fs::read_to_string(path) {
       Ok(src) => {
-        match sl.parse_file(&SlPath::new(vec![self.name.clone(), "main".into()]), path, src) {
+        match sl.parse_file(&PdPath::new(vec![self.name.clone(), "main".into()]), path, src) {
           Ok(_) => {
             self.sl = Some(sl);
           }
@@ -56,10 +56,10 @@ impl PandaPlugin {
   /// of the files ending in `.sug` in the given directory.
   pub fn load_from_dir(&mut self, dir: &Path, manager: &PluginManager) {
     self.sl = None;
-    let mut sl = Sugarlang::new();
+    let mut sl = Panda::new();
     sl.set_color(manager.use_color());
     self.add_builtins(&mut sl);
-    match sl.parse_dir(dir, &SlPath::new(vec![self.name.clone()])) {
+    match sl.parse_dir(dir, &PdPath::new(vec![self.name.clone()])) {
       Ok(_) => {
         self.sl = Some(sl);
       }
@@ -80,8 +80,8 @@ impl PandaPlugin {
   /// functions.
   pub fn bb(&self) -> Bamboo { self.bb.clone() }
 
-  fn path(&self, name: &str) -> SlPath {
-    SlPath::new(vec![self.name.clone(), "main".into(), name.into()])
+  fn path(&self, name: &str) -> PdPath {
+    PdPath::new(vec![self.name.clone(), "main".into(), name.into()])
   }
 
   pub fn call_init(&self) { self.call(self.path("init"), vec![]); }
@@ -89,9 +89,9 @@ impl PandaPlugin {
     self.call(
       self.path("on_block_place"),
       vec![
-        types::player::SlPlayer::from(player).into(),
-        types::util::SlPos::from(pos).into(),
-        types::block::SlBlockKind::from(ty.kind()).into(),
+        types::player::PdPlayer::from(player).into(),
+        types::util::PdPos::from(pos).into(),
+        types::block::PdBlockKind::from(ty.kind()).into(),
       ],
     );
   }
@@ -99,9 +99,9 @@ impl PandaPlugin {
     match self.call(
       self.path("on_click_window"),
       vec![
-        types::player::SlPlayer::from(player).into(),
+        types::player::PdPlayer::from(player).into(),
         slot.into(),
-        types::item::SlClickWindow::from(mode).into(),
+        types::item::PdClickWindow::from(mode).into(),
       ],
     ) {
       Var::Bool(v) => v,
@@ -111,11 +111,11 @@ impl PandaPlugin {
   pub fn call_on_chat_message(&self, player: Arc<Player>, text: String) {
     self.call(
       self.path("on_chat_message"),
-      vec![types::player::SlPlayer::from(player).into(), text.into()],
+      vec![types::player::PdPlayer::from(player).into(), text.into()],
     );
   }
   pub fn call_on_player_join(&self, player: Arc<Player>) {
-    self.call(self.path("on_player_join"), vec![types::player::SlPlayer::from(player).into()]);
+    self.call(self.path("on_player_join"), vec![types::player::PdPlayer::from(player).into()]);
   }
 
   pub fn call(&self, path: TyPath, args: Vec<Var>) -> Var {
@@ -136,10 +136,10 @@ impl PandaPlugin {
     }
   }
 
-  pub fn print_err<E: SlError>(&self, err: E) {
+  pub fn print_err<E: PdError>(&self, err: E) {
     match &self.sl {
       Some(sl) => warn!("error in plugin `{}`:\n{}", self.name, sl.gen_err(err)),
-      None => panic!("cannot print error without a sugarlang envrionment present!"),
+      None => panic!("cannot print error without a panda environment present!"),
     }
   }
 }

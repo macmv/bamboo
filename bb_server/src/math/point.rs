@@ -14,7 +14,7 @@ pub struct Vector {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
-pub struct Slope(f64);
+pub struct Pdope(f64);
 
 impl Point {
   pub fn new(x: i32, y: i32) -> Self { Point { x, y } }
@@ -44,7 +44,7 @@ impl Point {
     Point::new(x, y)
   }
 
-  pub fn slope(&self) -> Slope { Slope(self.y as f64 / self.x as f64) }
+  pub fn slope(&self) -> Pdope { Pdope(self.y as f64 / self.x as f64) }
 
   pub fn avg(&self, other: Point) -> Vector {
     Vector::new((self.x + other.x) as f64 / 2.0, (self.y + other.y) as f64 / 2.0)
@@ -62,11 +62,11 @@ impl Vector {
     ((self.x - other.x).powi(2) + (self.y - other.y).powi(2)).sqrt()
   }
 
-  pub fn slope(&self) -> Slope { Slope(self.y as f64 / self.x as f64) }
+  pub fn slope(&self) -> Pdope { Pdope(self.y as f64 / self.x as f64) }
 }
 
-impl Slope {
-  pub fn perp(self) -> Slope { Slope(-1.0 / self.0) }
+impl Pdope {
+  pub fn perp(self) -> Pdope { Pdope(-1.0 / self.0) }
   pub fn to_vec(self) -> Vector { Vector::new(self.0.cos(), self.0.sin()) }
   pub fn val(&self) -> f64 { self.0 }
 }

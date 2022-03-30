@@ -4,7 +4,7 @@ mod point_grid;
 mod voronoi;
 
 pub use aabb::AABB;
-pub use point::{Point, Slope, Vector};
+pub use point::{Point, Pdope, Vector};
 pub use point_grid::PointGrid;
 pub use voronoi::Voronoi;
 

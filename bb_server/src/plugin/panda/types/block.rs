@@ -1,9 +1,9 @@
 use super::{add_from, wrap};
 use crate::block;
 use std::str::FromStr;
-use sugarlang::{define_ty, parse::token::Span, runtime::RuntimeError};
+use panda::{define_ty, parse::token::Span, runtime::RuntimeError};
 
-wrap!(block::Kind, SlBlockKind);
+wrap!(block::Kind, PdBlockKind);
 
 /// A block kind. This is how you get/set blocks in the world.
 ///
@@ -21,11 +21,11 @@ wrap!(block::Kind, SlBlockKind);
 /// If you instead use `Kind` on its own, it is much less clear that this is
 /// a block kind.
 #[define_ty(path = "bamboo::block::Kind")]
-impl SlBlockKind {
+impl PdBlockKind {
   /// Returns the block kind for that string. This will return an error if the
   /// block name is invalid.
-  pub fn from_s(name: &str) -> Result<SlBlockKind, RuntimeError> {
-    Ok(SlBlockKind {
+  pub fn from_s(name: &str) -> Result<PdBlockKind, RuntimeError> {
+    Ok(PdBlockKind {
       inner: block::Kind::from_str(name).map_err(|_| {
         RuntimeError::custom(format!("invalid block name '{}'", name), Span::call_site())
       })?,

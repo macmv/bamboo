@@ -280,12 +280,12 @@ dependencies = [
  "num",
  "num-derive",
  "num-traits",
+ "panda",
  "parking_lot 0.12.0",
  "pprof 0.4.5",
  "rayon",
  "serde",
  "serde_json",
- "sugarlang",
  "thiserror",
 ]
 
@@ -1397,6 +1397,38 @@ dependencies = [
 ]
 
 [[package]]
+name = "panda"
+version = "0.1.0"
+source = "git+https://gitlab.com/macmv/panda#0399d9943fb5a15aa40e74be91aaf476c37fa810"
+dependencies = [
+ "ansi_term",
+ "instant",
+ "panda_derive",
+ "panda_docs",
+ "smallvec",
+ "utf8-chars",
+]
+
+[[package]]
+name = "panda_derive"
+version = "0.1.0"
+source = "git+https://gitlab.com/macmv/panda#0399d9943fb5a15aa40e74be91aaf476c37fa810"
+dependencies = [
+ "proc-macro-error",
+ "proc-macro2",
+ "quote",
+ "syn",
+]
+
+[[package]]
+name = "panda_docs"
+version = "0.1.0"
+source = "git+https://gitlab.com/macmv/panda#0399d9943fb5a15aa40e74be91aaf476c37fa810"
+dependencies = [
+ "html-builder",
+]
+
+[[package]]
 name = "parking_lot"
 version = "0.11.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2239,38 +2271,6 @@ name = "subtle"
 version = "2.4.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "6bdef32e8150c2a081110b42772ffe7d7c9032b606bc226c8260fd97e0976601"
-
-[[package]]
-name = "sugarlang"
-version = "0.1.0"
-source = "git+https://gitlab.com/macmv/sugarlang#0a668510903ba8e11d009470b2ae5106d43d22fd"
-dependencies = [
- "ansi_term",
- "instant",
- "smallvec",
- "sugarlang_derive",
- "sugarlang_docs",
- "utf8-chars",
-]
-
-[[package]]
-name = "sugarlang_derive"
-version = "0.1.0"
-source = "git+https://gitlab.com/macmv/sugarlang#0a668510903ba8e11d009470b2ae5106d43d22fd"
-dependencies = [
- "proc-macro-error",
- "proc-macro2",
- "quote",
- "syn",
-]
-
-[[package]]
-name = "sugarlang_docs"
-version = "0.1.0"
-source = "git+https://gitlab.com/macmv/sugarlang#0a668510903ba8e11d009470b2ae5106d43d22fd"
-dependencies = [
- "html-builder",
-]
 
 [[package]]
 name = "symbolic-common"

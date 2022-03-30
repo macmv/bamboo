@@ -124,7 +124,7 @@ pub enum MetadataType {
   /// A VarInt, from 0-7 (inclusive). The numbers map to these poses:
   /// - 0: Standing
   /// - 1: Fall flying
-  /// - 2: Sleeping
+  /// - 2: Pdeeping
   /// - 3: Swiming
   /// - 4: Spin attack
   /// - 5: Sneaking

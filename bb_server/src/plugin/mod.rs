@@ -9,14 +9,14 @@ pub use plugin::{
   ServerReply,
 };
 
-use panda::PandaPlugin;
+use self::panda::PandaPlugin;
 use socket::SocketManager;
 
 use crate::{block, player::Player, world::WorldManager};
 use bb_common::{config::Config, math::Pos, net::sb::ClickWindow, util::Chat};
 use parking_lot::Mutex;
 use std::{fmt, fs, sync::Arc};
-use sugarlang::runtime::VarSend;
+use ::panda::runtime::VarSend;
 
 #[derive(Debug)]
 pub enum Event {

@@ -66,7 +66,7 @@ fn main() -> Result<(), Box<dyn Error>> {
   bb_common::init("server");
 
   if !args.no_docs {
-    bb_server::generate_sl_docs();
+    bb_server::generate_panda_docs();
     if args.only_docs {
       return Ok(());
     }

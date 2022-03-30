@@ -1,23 +1,23 @@
-use super::{add_from, block::SlBlockKind, util::SlPos};
+use super::{add_from, block::PdBlockKind, util::PdPos};
 use crate::world::World;
 use bb_common::math::Pos;
 use std::{fmt, sync::Arc};
-use sugarlang::{define_ty, parse::token::Span, runtime::RuntimeError};
+use panda::{define_ty, parse::token::Span, runtime::RuntimeError};
 
 pub mod gen;
 
 #[derive(Clone)]
-pub struct SlWorld {
+pub struct PdWorld {
   pub(super) inner: Arc<World>,
 }
 
-add_from!(Arc<World>, SlWorld);
+add_from!(Arc<World>, PdWorld);
 
-impl fmt::Debug for SlWorld {
-  fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result { f.debug_struct("SlWorld").finish() }
+impl fmt::Debug for PdWorld {
+  fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result { f.debug_struct("PdWorld").finish() }
 }
 
-impl SlWorld {
+impl PdWorld {
   pub fn check_pos(&self, pos: Pos) -> Result<Pos, RuntimeError> {
     self.inner.check_pos(pos).map_err(|p| {
       RuntimeError::custom(format!("invalid position {}: {}", p.pos, p.msg), Span::call_site())
@@ -28,7 +28,7 @@ impl SlWorld {
 /// A Minecraft world. This stores all of the information about blocks,
 /// entities, and players in this world.
 #[define_ty(path = "bamboo::world::World")]
-impl SlWorld {
+impl PdWorld {
   /// Sets a single block in the world. This will return an error if the block
   /// is outside of the world.
   ///
@@ -39,7 +39,7 @@ impl SlWorld {
   /// This function will do everything you want in a block place. It will update
   /// the blocks stored in the world, and send block updates to all clients in
   /// render distance.
-  pub fn set_kind(&self, pos: &SlPos, kind: &SlBlockKind) -> Result<(), RuntimeError> {
+  pub fn set_kind(&self, pos: &PdPos, kind: &PdBlockKind) -> Result<(), RuntimeError> {
     self.check_pos(pos.inner)?;
     self.inner.set_kind(pos.inner, kind.inner).unwrap();
     Ok(())
@@ -52,9 +52,9 @@ impl SlWorld {
   /// clients in render distance.
   pub fn fill_rect_kind(
     &self,
-    min: &SlPos,
-    max: &SlPos,
-    kind: &SlBlockKind,
+    min: &PdPos,
+    max: &PdPos,
+    kind: &PdBlockKind,
   ) -> Result<(), RuntimeError> {
     self.check_pos(min.inner)?;
     self.check_pos(max.inner)?;
@@ -65,7 +65,7 @@ impl SlWorld {
   /// Returns the kind of block at the given position.
   ///
   /// This will return an error if the position is outside the world.
-  pub fn get_kind(&self, pos: &SlPos) -> Result<SlBlockKind, RuntimeError> {
+  pub fn get_kind(&self, pos: &PdPos) -> Result<PdBlockKind, RuntimeError> {
     self.check_pos(pos.inner)?;
     Ok(self.inner.get_kind(pos.inner).unwrap().into())
   }

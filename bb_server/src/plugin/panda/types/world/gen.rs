@@ -1,17 +1,17 @@
-use crate::world::gen::SlBiomeGen;
+use crate::world::gen::PdBiomeGen;
 use std::{fmt, sync::Arc};
-use sugarlang::define_ty;
+use panda::define_ty;
 
 #[derive(Clone)]
 #[allow(unused)]
-pub struct SlBiome {
+pub struct PdBiome {
   name:             String,
-  pub(super) inner: Arc<SlBiomeGen>,
+  pub(super) inner: Arc<PdBiomeGen>,
 }
 
-impl fmt::Debug for SlBiome {
+impl fmt::Debug for PdBiome {
   fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-    f.debug_struct("SlBiome").field("name", &self.name).finish()
+    f.debug_struct("PdBiome").field("name", &self.name).finish()
   }
 }
 
@@ -98,4 +98,4 @@ impl fmt::Debug for SlBiome {
 /// }
 /// ```
 #[define_ty(path = "bamboo::world::gen::Biome")]
-impl SlBiome {}
+impl PdBiome {}

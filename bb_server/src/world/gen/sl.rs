@@ -1,10 +1,10 @@
 use super::BiomeGen;
 
-pub struct SlBiomeGen {
+pub struct PdBiomeGen {
   id: usize,
 }
 
-impl BiomeGen for SlBiomeGen {
-  fn new(id: usize) -> Self { SlBiomeGen { id } }
+impl BiomeGen for PdBiomeGen {
+  fn new(id: usize) -> Self { PdBiomeGen { id } }
   fn id(&self) -> usize { self.id }
 }

@@ -16,7 +16,7 @@ mod sl;
 mod underground;
 pub mod util;
 
-pub use sl::SlBiomeGen;
+pub use sl::PdBiomeGen;
 
 use underground::Underground;
 

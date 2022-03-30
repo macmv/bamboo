@@ -1,12 +1,12 @@
 use super::{super::PluginManager, Bamboo, PandaPlugin};
 use bb_common::util::{chat::Color, Chat};
-use sugarlang::{
+use panda::{
   define_ty,
   docs::{markdown, MarkdownSection},
   parse::token::Span,
   path,
   runtime::{RuntimeError, Var},
-  Sugarlang,
+  Panda,
 };
 
 pub mod block;
@@ -17,8 +17,8 @@ pub mod player;
 pub mod util;
 pub mod world;
 
-use command::SlCommand;
-use world::gen::SlBiome;
+use command::PdCommand;
+use world::gen::PdBiome;
 
 macro_rules! add_from {
   ( $ty:ty, $new_ty:ident ) => {
@@ -73,7 +73,7 @@ impl Bamboo {
   ///   bamboo::info("ran setblock!")
   /// }
   /// ```
-  pub fn add_command(&self, command: &SlCommand) -> Result<(), RuntimeError> {
+  pub fn add_command(&self, command: &PdCommand) -> Result<(), RuntimeError> {
     let wm = self.wm.clone();
     let wm2 = self.wm.clone();
     let cb = match command.callback.clone() {
@@ -102,7 +102,7 @@ impl Bamboo {
           if let Err(e) = cb.call(
             &mut panda.lock_env(),
             vec![
-              player.map(|p| player::SlPlayer::from(p.clone()).into()).unwrap_or(Var::None),
+              player.map(|p| player::PdPlayer::from(p.clone()).into()).unwrap_or(Var::None),
               args.iter().map(|arg| command::sl_from_arg(arg.clone())).collect::<Vec<Var>>().into(),
             ],
           ) {
@@ -143,7 +143,7 @@ impl Bamboo {
   /// ```
   ///
   /// See the `Biome` docs for more.
-  pub fn add_biome(&self, _biome: &SlBiome) -> Result<(), RuntimeError> { Ok(()) }
+  pub fn add_biome(&self, _biome: &PdBiome) -> Result<(), RuntimeError> { Ok(()) }
 
   /// Locks the internal data. If the internal data is already locked, this will
   /// continue trying to lock that data.
@@ -185,7 +185,7 @@ impl Bamboo {
   }
 
   /// Broadcasts the given chat message.
-  pub fn broadcast(&self, chat: &chat::SlChat) {
+  pub fn broadcast(&self, chat: &chat::PdChat) {
     self.wm.broadcast(chat.inner.lock().unwrap().clone());
   }
 }
@@ -203,7 +203,7 @@ fn format(args: &[Var]) -> String {
 }
 
 impl PandaPlugin {
-  pub fn add_builtins(&self, sl: &mut Sugarlang) {
+  pub fn add_builtins(&self, sl: &mut Panda) {
     let bb = self.bb();
     sl.add_builtin_fn(path!(bamboo::instance), false, move |_env, _slf, args, pos| {
       RuntimeError::check_arg_len(&args, 0, pos)?;
@@ -245,31 +245,31 @@ impl PandaPlugin {
       });
     }
     sl.add_builtin_ty::<Bamboo>();
-    sl.add_builtin_ty::<util::SlPos>();
-    sl.add_builtin_ty::<util::SlFPos>();
-    sl.add_builtin_ty::<block::SlBlockKind>();
-    sl.add_builtin_ty::<chat::SlChat>();
-    sl.add_builtin_ty::<chat::SlChatSection>();
-    sl.add_builtin_ty::<item::SlClickWindow>();
-    sl.add_builtin_ty::<item::SlInventory>();
-    sl.add_builtin_ty::<item::SlStack>();
-    sl.add_builtin_ty::<item::SlUI>();
-    sl.add_builtin_ty::<command::SlCommand>();
-    sl.add_builtin_ty::<player::SlPlayer>();
-    sl.add_builtin_ty::<world::SlWorld>();
-    sl.add_builtin_ty::<world::gen::SlBiome>();
+    sl.add_builtin_ty::<util::PdPos>();
+    sl.add_builtin_ty::<util::PdFPos>();
+    sl.add_builtin_ty::<block::PdBlockKind>();
+    sl.add_builtin_ty::<chat::PdChat>();
+    sl.add_builtin_ty::<chat::PdChatSection>();
+    sl.add_builtin_ty::<item::PdClickWindow>();
+    sl.add_builtin_ty::<item::PdInventory>();
+    sl.add_builtin_ty::<item::PdStack>();
+    sl.add_builtin_ty::<item::PdUI>();
+    sl.add_builtin_ty::<command::PdCommand>();
+    sl.add_builtin_ty::<player::PdPlayer>();
+    sl.add_builtin_ty::<world::PdWorld>();
+    sl.add_builtin_ty::<world::gen::PdBiome>();
   }
 
-  pub fn generate_docs(&self, sl: &Sugarlang) {
+  pub fn generate_docs(&self, sl: &Panda) {
     let docs = sl.generate_docs(
       &[
         (
           path!(bamboo),
           markdown!(
-            /// The Bamboo API. This is how all sugarlang code can interact
+            /// The Bamboo API. This is how all panda code can interact
             /// with the Bamboo minecraft server. To get started with writing
             /// a plugin, create a directory called `plugins` next to the server.
-            /// Inside that dirctory, create a file named something like `hello.sug`.
+            /// Inside that directory, create a file named something like `hello.sug`.
             /// In that file, put the following code:
             ///
             /// ```

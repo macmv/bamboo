@@ -1,8 +1,8 @@
 use super::{
   add_from,
-  chat::SlChat,
-  item::{SlInventory, SlStack},
-  world::SlWorld,
+  chat::PdChat,
+  item::{PdInventory, PdStack},
+  world::PdWorld,
   wrap,
 };
 use crate::player::Player;
@@ -11,25 +11,25 @@ use std::{
   net::{SocketAddr, ToSocketAddrs},
   sync::Arc,
 };
-use sugarlang::{
+use panda::{
   define_ty,
   parse::token::Span,
   runtime::{RuntimeError, Var},
 };
 
-wrap!(Arc<Player>, SlPlayer);
+wrap!(Arc<Player>, PdPlayer);
 
 /// A Player. This struct is for online players. If anyone has disconnected,
 /// this struct will still exist, but the functions will return outdated
 /// information. There is currently no way to lookup an offline player.
 #[define_ty(path = "bamboo::player::Player")]
-impl SlPlayer {
+impl PdPlayer {
   /// Returns the username of the player. This will never change, as long as the
   /// user stays online.
   pub fn username(&self) -> String { self.inner.username().into() }
 
   /// Sends the given chat message to a player. This accepts exactly one
-  /// argument, which can be any type. If it is a `SlChat`, then it will be
+  /// argument, which can be any type. If it is a `PdChat`, then it will be
   /// formatted correctly. Anything else will show up with debug formatting.
   ///
   /// # Example
@@ -50,7 +50,7 @@ impl SlPlayer {
     let out = match &msg {
       Var::Builtin(_, data) => {
         let borrow = data.borrow();
-        let chat = borrow.as_any().downcast_ref::<SlChat>();
+        let chat = borrow.as_any().downcast_ref::<PdChat>();
         if let Some(chat) = chat {
           chat.inner.lock().unwrap().clone()
         } else {
@@ -64,7 +64,7 @@ impl SlPlayer {
 
   /// Returns the world this player is in. This can be used to get/set
   /// blocks, access other players, and modify entities.
-  pub fn world(&self) -> SlWorld { self.inner.world().clone().into() }
+  pub fn world(&self) -> PdWorld { self.inner.world().clone().into() }
 
   /// Switches the player to a new server. If the server is found, the player
   /// will be disconnected after this call. If the server is not found, an error
@@ -80,7 +80,7 @@ impl SlPlayer {
   }
 
   /// Shows an inventory to the player.
-  pub fn show_inventory(&self, inv: &SlInventory, title: &SlChat) {
+  pub fn show_inventory(&self, inv: &PdInventory, title: &PdChat) {
     self.inner.show_inventory(inv.inner.clone(), &title.inner.lock().unwrap())
   }
 
@@ -91,13 +91,13 @@ impl SlPlayer {
   pub fn hide_scoreboard(&self) { self.inner.lock_scoreboard().hide(); }
   /// Sets a line in the scoreboard. If it is hidden, this will still work, and
   /// the updated lines will show when the scoreboard is shown again.
-  pub fn set_scoreboard_line(&self, line: u8, message: &SlChat) {
+  pub fn set_scoreboard_line(&self, line: u8, message: &PdChat) {
     self.inner.lock_scoreboard().set_line(line, &message.inner.lock().unwrap());
   }
 
   /// Sets a display name for this player. This will be shown instead of their
   /// username in the tab list and above their head.
-  pub fn set_display_name(&self, name: &SlChat) {
+  pub fn set_display_name(&self, name: &PdChat) {
     self.inner.set_display_name(Some(name.inner.lock().unwrap().clone()));
   }
   /// Removes a display name on this player (if any is present). This does
@@ -105,5 +105,5 @@ impl SlPlayer {
   pub fn clear_display_name(&self) { self.inner.set_display_name(None); }
 
   /// Gives the player the passed item.
-  pub fn give(&self, stack: &SlStack) { self.inner.lock_inventory().give(stack.inner.clone()); }
+  pub fn give(&self, stack: &PdStack) { self.inner.lock_inventory().give(stack.inner.clone()); }
 }

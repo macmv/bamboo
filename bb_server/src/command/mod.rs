@@ -122,7 +122,7 @@ impl Command {
   }
   /// Gets the number of children in this command.
   pub fn children_len(&self) -> usize { self.children.len() }
-  /// Gets a child at the given index. Used in SlCommand, as we cannot return
+  /// Gets a child at the given index. Used in PdCommand, as we cannot return
   /// something that borrows self.
   pub fn get_child(&mut self, idx: usize) -> Option<&mut Command> { self.children.get_mut(idx) }
   /// Adds a new literal argument to the command. Unlike

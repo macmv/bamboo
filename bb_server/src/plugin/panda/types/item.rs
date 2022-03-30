@@ -5,23 +5,23 @@ use crate::{
 };
 use bb_common::net::sb::ClickWindow;
 use std::str::FromStr;
-use sugarlang::{define_ty, parse::token::Span, runtime::RuntimeError};
+use panda::{define_ty, parse::token::Span, runtime::RuntimeError};
 
-wrap!(UI, SlUI);
-wrap!(ClickWindow, SlClickWindow);
-wrap!(Inventory, SlInventory);
-wrap!(Stack, SlStack);
+wrap!(UI, PdUI);
+wrap!(ClickWindow, PdClickWindow);
+wrap!(Inventory, PdInventory);
+wrap!(Stack, PdStack);
 
 #[define_ty(path = "bamboo::item::ClickWindow")]
-impl SlClickWindow {}
+impl PdClickWindow {}
 
 #[define_ty(path = "bamboo::item::Inventory")]
-impl SlInventory {}
+impl PdInventory {}
 
 #[define_ty(path = "bamboo::item::Stack")]
-impl SlStack {
+impl PdStack {
   pub fn new(name: &str) -> Result<Self, RuntimeError> {
-    Ok(SlStack {
+    Ok(PdStack {
       inner: Stack::new(
         item::Type::from_str(name)
           .map_err(|e| RuntimeError::Custom(e.to_string(), Span::call_site()))?,
@@ -30,7 +30,7 @@ impl SlStack {
   }
 
   pub fn with_amount(&self, amount: u8) -> Self {
-    SlStack { inner: self.inner.clone().with_amount(amount) }
+    PdStack { inner: self.inner.clone().with_amount(amount) }
   }
 }
 
@@ -50,17 +50,17 @@ impl SlStack {
 /// If you instead use `Kind` on its own, it is much less clear that this is
 /// a block kind.
 #[define_ty(path = "bamboo::item::UI")]
-impl SlUI {
+impl PdUI {
   /// Returns the block kind for that string. This will return an error if the
   /// block name is invalid.
-  pub fn new(rows: Vec<String>) -> Result<SlUI, RuntimeError> {
-    Ok(SlUI {
+  pub fn new(rows: Vec<String>) -> Result<PdUI, RuntimeError> {
+    Ok(PdUI {
       inner: UI::new(rows.iter().map(|v| v.into()).collect())
         .map_err(|e| RuntimeError::Custom(e.to_string(), Span::call_site()))?,
     })
   }
 
-  pub fn item(&mut self, key: &str, item: &SlStack) -> Result<(), RuntimeError> {
+  pub fn item(&mut self, key: &str, item: &PdStack) -> Result<(), RuntimeError> {
     let mut iter = key.chars();
     let key = match iter.next() {
       Some(v) => v,
@@ -81,11 +81,11 @@ impl SlUI {
     Ok(())
   }
 
-  pub fn to_inventory(&self) -> Result<SlInventory, RuntimeError> {
+  pub fn to_inventory(&self) -> Result<PdInventory, RuntimeError> {
     let inv = self
       .inner
       .to_inventory()
       .map_err(|e| RuntimeError::Custom(e.to_string(), Span::call_site()))?;
-    Ok(SlInventory { inner: inv })
+    Ok(PdInventory { inner: inv })
   }
 }

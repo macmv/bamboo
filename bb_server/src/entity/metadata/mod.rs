@@ -11,7 +11,7 @@ use std::collections::HashMap;
 pub enum Pose {
   Standing,
   FallFlying,
-  Sleeping,
+  Pdeeping,
   Swimming,
   SpinAttack,
   Sneaking,
