@@ -4,8 +4,8 @@ use crate::{
   item::{Inventory, Stack, UI},
 };
 use bb_common::net::sb::ClickWindow;
-use std::str::FromStr;
 use panda::{define_ty, parse::token::Span, runtime::RuntimeError};
+use std::str::FromStr;
 
 wrap!(UI, PdUI);
 wrap!(ClickWindow, PdClickWindow);

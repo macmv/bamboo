@@ -5,11 +5,11 @@ use super::{
   wrap,
 };
 use crate::command::{Arg, Command, Parser};
-use std::sync::{Arc, Mutex};
 use panda::{
   define_ty,
   runtime::{Callback, Var},
 };
+use std::sync::{Arc, Mutex};
 
 wrap!(Arc<Mutex<Command>>, PdCommand, callback: Option<Callback>, idx: Vec<usize>);
 

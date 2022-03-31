@@ -3,11 +3,11 @@ mod types;
 use super::{Bamboo, PluginImpl, PluginManager, ServerEvent, ServerMessage};
 use crate::{block, player::Player, world::WorldManager};
 use bb_common::{math::Pos, net::sb::ClickWindow};
-use std::{fs, path::Path, sync::Arc};
 use panda::{
   runtime::{LockedEnv, Path as PdPath, Path as TyPath, Var},
-  PdError, Panda,
+  Panda, PdError,
 };
+use std::{fs, path::Path, sync::Arc};
 
 /// A wrapper struct for a Panda plugin. This is used to execute Panda code
 /// whenever an event happens.

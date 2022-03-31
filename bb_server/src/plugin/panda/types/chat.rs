@@ -1,7 +1,7 @@
 use super::{add_from, wrap};
 use bb_common::util::{chat::Color, Chat};
-use std::sync::{Arc, Mutex};
 use panda::{define_ty, parse::token::Span, runtime::RuntimeError};
+use std::sync::{Arc, Mutex};
 
 wrap!(Arc<Mutex<Chat>>, PdChat);
 wrap!(Arc<Mutex<Chat>>, PdChatSection, idx: usize);

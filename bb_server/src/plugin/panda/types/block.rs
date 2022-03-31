@@ -1,7 +1,7 @@
 use super::{add_from, wrap};
 use crate::block;
-use std::str::FromStr;
 use panda::{define_ty, parse::token::Span, runtime::RuntimeError};
+use std::str::FromStr;
 
 wrap!(block::Kind, PdBlockKind);
 

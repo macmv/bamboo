@@ -1,6 +1,6 @@
 use crate::world::gen::PdBiomeGen;
-use std::{fmt, sync::Arc};
 use panda::define_ty;
+use std::{fmt, sync::Arc};
 
 #[derive(Clone)]
 #[allow(unused)]

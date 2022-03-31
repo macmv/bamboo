@@ -13,8 +13,8 @@ pub mod util;
 pub mod world;
 
 use crate::{plugin::panda::PandaPlugin, world::WorldManager};
-use std::sync::Arc;
 use panda::Panda;
+use std::sync::Arc;
 
 pub fn generate_panda_docs() {
   info!("generating sugarlang docs...",);
