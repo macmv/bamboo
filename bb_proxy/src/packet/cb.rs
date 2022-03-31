@@ -653,7 +653,7 @@ impl ToTcp for Packet {
           GPacket::SpawnObjectV9 {
             entity_id: eid,
             unique_id: id,
-            ty,
+            ty: object_ty(ty),
             x,
             y,
             z,
@@ -671,15 +671,15 @@ impl ToTcp for Packet {
           buf.write_i16(vel_y.into());
           buf.write_i16(vel_z.into());
           GPacket::SpawnObjectV8 {
-            entity_id: eid,
-            ty,
-            x: (x * 32.0) as i32,
-            y: (y * 32.0) as i32,
-            z: (z * 32.0) as i32,
-            yaw: yaw.into(),
-            pitch: pitch.into(),
+            entity_id:      eid,
+            ty:             object_ty(ty),
+            x:              (x * 32.0) as i32,
+            y:              (y * 32.0) as i32,
+            z:              (z * 32.0) as i32,
+            yaw:            yaw.into(),
+            pitch:          pitch.into(),
             field_149020_k: 1, // Non-zero, so velocity is present
-            unknown: data,
+            unknown:        data,
           }
         };
         if !meta.fields.is_empty() {
@@ -1013,4 +1013,40 @@ fn test_codec() {
   dbg!(&expected);
   dbg!(&nbt::to_tag(&biome).unwrap());
   assert_eq!(expected, nbt::to_tag(&biome).unwrap());
+}
+
+fn object_ty(entity: i32) -> i32 {
+  // I cannot find the normal entity ids for these objects:
+  // _ => 11,   // Minecart (storage, unused)
+  // _ => 12,   // Minecart (powered, unused)
+  // _ => 74,   // Falling Dragon Egg
+  // _ => 90,   // Fishing Float
+  // _ => 92,  // Tipped Arrow
+  match entity {
+    41 => 1,   // Boat
+    1 => 2,    // Item Stack (Slot)
+    3 => 3,    // Area Effect Cloud
+    42 => 10,  // Minecart
+    20 => 50,  // Activated TNT
+    200 => 51, // EnderCrystal
+    10 => 60,  // Arrow (projectile)
+    11 => 61,  // Snowball (projectile)
+    7 => 62,   // Egg (projectile)
+    12 => 63,  // FireBall (ghast projectile)
+    13 => 64,  // FireCharge (blaze projectile)
+    14 => 65,  // Thrown Enderpearl
+    19 => 66,  // Wither Skull (projectile)
+    25 => 67,  // Shulker Bullet
+    21 => 70,  // Falling Objects
+    18 => 71,  // Item frames
+    15 => 72,  // Eye of Ender
+    16 => 73,  // Thrown Potion
+    17 => 75,  // Thrown Exp Bottle
+    22 => 76,  // Firework Rocket
+    8 => 77,   // Leash Knot
+    30 => 78,  // ArmorStand
+    24 => 91,  // Spectral Arrow
+    26 => 93,  // Dragon Fireball
+    _ => panic!("not an object: {entity}"),
+  }
 }
