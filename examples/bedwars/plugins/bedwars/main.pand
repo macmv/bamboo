@@ -1,62 +1,31 @@
-use bamboo::chat::Chat
+use bamboo::{
+  chat::Chat,
+  util::Pos,
+}
 
-struct PlayerData {
-  teams: arr,
+struct Bedwars {
+  teams: map,
+  players: map,
 }
 struct Team {
   players: arr,
+  spawn: Pos,
 }
 
 fn init() {
   bamboo::info("initializing bedwars")
 
-  teams = map {}
-  teams.insert("red", Team {
-    players: [],
-  })
-  teams.insert("green", Team {
-    players: [],
-  })
-  teams.insert("aqua", Team {
-    players: [],
-  })
-  teams.insert("yellow", Team {
-    players: [],
-  })
-  bb = bamboo::instance()
-  bb.store(teams)
-}
-
-fn add_player_to_team(player, team) {
-  line = Chat::new("Team: ")
-  line.add(team).color(team)
-  player.show_scoreboard()
-  player.set_scoreboard_line(1, line)
-  name = Chat::empty()
-  name.add(player.username()).color(team)
-  player.set_display_name(name)
-
-  bb = bamboo::instance()
-  teams = bb.lock()
-  teams[team].players.push(player)
-  bb.unlock(teams)
-}
-
-fn find_smallest_team() {
-  bb = bamboo::instance()
-  teams = bb.lock()
-  smallest_size = 100
-  smallest_team = ""
-  keys = teams.keys()
-  for i = 0, i < teams.len(), i++ {
-    color = keys[i]
-    if teams[color].players.len() < smallest_size {
-      smallest_team = color
-      smallest_size = teams[color].players.len()
-    }
+  teams = map {
+    "red":    Team { players: [], spawn: Pos::new(40, 60, 0) },
+    "green":  Team { players: [], spawn: Pos::new(-40, 60, 0) },
+    "aqua":   Team { players: [], spawn: Pos::new(0, 60, 40) },
+    "yellow": Team { players: [], spawn: Pos::new(0, 60, -40) },
   }
-  bb.unlock(teams)
-  smallest_team
+  bb = bamboo::instance()
+  bb.store(Bedwars {
+    teams: teams,
+    players: map {},
+  })
 }
 
 fn start_game(bb) {
@@ -71,7 +40,63 @@ fn on_block_place(player, pos, kind) {
 }
 
 fn on_player_join(player) {
-  team = find_smallest_team()
+  bb = bamboo::instance()
+  bedwars = bb.lock()
+
+  team = bedwars.find_smallest_team()
   bamboo::info("Adding " + player.username() + " to " + team)
-  add_player_to_team(player, team)
+  bedwars.add_player_to_team(player, team)
+  bedwars.teleport_to_spawn(player)
+
+  bb.unlock(bedwars)
+}
+
+fn teleport_to_spawn(player) {
+  bb = bamboo::instance()
+  teams = bb.lock()
+  smallest_size = 100
+  smallest_team = ""
+  keys = teams.keys()
+  for i = 0, i < teams.len(), i++ {
+    color = keys[i]
+    if teams[color].players.len() < smallest_size {
+      smallest_team = color
+      smallest_size = teams[color].players.len()
+    }
+  }
+  bb.unlock(teams)
+}
+
+impl Bedwars {
+  fn teleport_to_spawn(self, player) {
+    team = self.teams[self.players[player.username()]]
+    player.teleport(team.spawn)
+  }
+
+  fn find_smallest_team(self) {
+    smallest_size = 100
+    smallest_team = ""
+    keys = self.teams.keys()
+    for i = 0, i < self.teams.len(), i++ {
+      color = keys[i]
+      if self.teams[color].players.len() < smallest_size {
+        smallest_team = color
+        smallest_size = self.teams[color].players.len()
+      }
+    }
+    smallest_team
+  }
+
+  fn add_player_to_team(self, player, team) {
+    line = Chat::new("Team: ")
+    line.add(team).color(team)
+    player.show_scoreboard()
+    player.set_scoreboard_line(1, line)
+    name = Chat::empty()
+    name.add(player.username()).color(team)
+    player.set_display_name(name)
+
+    self.teams[team].players.push(player)
+    self.players.insert(player.username(), team)
+  }
 }
