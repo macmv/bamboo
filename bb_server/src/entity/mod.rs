@@ -164,7 +164,7 @@ impl Entity {
         } else if res.axis.z != 0.0 {
           p.vel.z = 0.0
         }
-        if res.axis.y == -1.0 {
+        if res.axis.y > 0.0 {
           p.grounded = true;
         }
         p.aabb = tmp;

@@ -7,14 +7,14 @@ use super::{
 };
 use crate::player::Player;
 use bb_common::util::Chat;
-use std::{
-  net::{SocketAddr, ToSocketAddrs},
-  sync::Arc,
-};
 use panda::{
   define_ty,
   parse::token::Span,
   runtime::{RuntimeError, Var},
+};
+use std::{
+  net::{SocketAddr, ToSocketAddrs},
+  sync::Arc,
 };
 
 wrap!(Arc<Player>, PdPlayer);
@@ -105,5 +105,5 @@ impl PdPlayer {
   pub fn clear_display_name(&self) { self.inner.set_display_name(None); }
 
   /// Gives the player the passed item.
-  pub fn give(&self, stack: &PdStack) { self.inner.lock_inventory().give(stack.inner.clone()); }
+  pub fn give(&self, stack: &PdStack) { self.inner.lock_inventory().give(&stack.inner); }
 }

@@ -65,15 +65,17 @@ impl PlayerInventory {
   pub fn open_window(&mut self, inv: Inventory) {
     assert!(self.window.is_none());
     self.main.set_offset_skip(inv.size(), 9);
+    self.main.wid = 1;
     self.window = Some(WrappedInventory::new(inv, self.main.conn.clone(), 1));
   }
   pub fn close_window(&mut self) {
     self.window.take();
     self.main.set_offset_skip(0, 0);
+    self.main.wid = 0;
   }
 
   /// Gives an item to the player.
-  pub fn give(&mut self, stack: Stack) { self.main_mut().set(36, stack); }
+  pub fn give(&mut self, stack: &Stack) { self.main_mut().add(stack); }
 
   /// Returns the item in the player's main hand.
   pub fn main_hand(&self) -> &Stack { self.main().get(self.selected_index as u32 + 36) }
@@ -415,7 +417,7 @@ impl WrappedInventory {
       });
     };
     let mut remaining = stack.amount();
-    for (i, it) in self.inv.items_mut().iter_mut().skip(self.skip as usize).enumerate() {
+    for (i, it) in self.inv.items_mut().iter_mut().skip(self.skip as usize).enumerate().skip(36) {
       let i = i as u32;
       if it.is_empty() {
         *it = stack.clone().with_amount(remaining);
