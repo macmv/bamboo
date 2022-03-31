@@ -136,7 +136,7 @@ impl BedwarsPlayer {
       self.player.teleport(self.spawn, self.spawn_yaw, 0.0)
     } else if self.time_to_respawn > 0 {
       self.time_to_respawn--
-      self.player.send_chat(Chat::new(self.time_to_respawn.to_s()))
+      self.player.send_message(Chat::new(self.time_to_respawn.to_s()))
     }
   }
 
