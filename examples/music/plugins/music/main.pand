@@ -2,6 +2,7 @@ use bamboo::{
   util::Pos,
   block,
   command::Command,
+  chat::Chat,
 }
 
 struct MusicInfo {
@@ -19,16 +20,16 @@ fn init() {
 
   world = bb.default_world()
   length = 32
-  world.fill_rect_kind(Pos::new(-1, 60, -8), Pos::new(length + 1, 60, 9), block::Kind::from_s("jukebox"))
+  world.fill_rect_kind(Pos::new(-1, 60, -9), Pos::new(length + 1, 60, 17), block::Kind::from_s("jukebox"))
 
-  world.fill_rect_kind(Pos::new(0, 61, -10), Pos::new(length + 1, 61, -8), block::Kind::from_s("stone"))
-  world.fill_rect_kind(Pos::new(0, 61, 9), Pos::new(length + 1, 61, 9), block::Kind::from_s("stone"))
+  world.fill_rect_kind(Pos::new(0, 61, -11), Pos::new(length + 1, 61, -9), block::Kind::from_s("stone"))
+  world.fill_rect_kind(Pos::new(0, 61, 17), Pos::new(length + 1, 61, 17), block::Kind::from_s("stone"))
 
-  world.fill_rect_kind(Pos::new(length + 1, 61, -7), Pos::new(length + 1, 61, 8), block::Kind::from_s("stone"))
+  world.fill_rect_kind(Pos::new(length + 1, 61, -8), Pos::new(length + 1, 61, 16), block::Kind::from_s("stone"))
 
-  world.fill_rect_kind(Pos::new(-5, 61, -8), Pos::new(-1, 61, 16), block::Kind::from_s("white_wool"))
+  world.fill_rect_kind(Pos::new(-5, 61, -9), Pos::new(-1, 61, 17), block::Kind::from_s("white_wool"))
 
-  z = -7
+  z = -8
   for i = 0, i < 2, i++ {
     for j = 0, j < 3, j++ {
       world.fill_rect_kind(Pos::new(-5, 62, z), Pos::new(-3, 62, z), block::Kind::from_s("black_wool"))
@@ -41,6 +42,7 @@ fn init() {
     }
     z += 1
   }
+  world.fill_rect_kind(Pos::new(-5, 62, z), Pos::new(-3, 62, z), block::Kind::from_s("black_wool"))
 
   instruments = [
     block::Kind::from_s("oak_log"),
@@ -62,7 +64,7 @@ fn init() {
   ]
 
   for i = 0, i < instruments.len(), i++ {
-    world.set_kind(Pos::new(i, 62, -10), instruments[i])
+    world.set_kind(Pos::new(i, 62, -11), instruments[i])
   }
   info = MusicInfo {
     current_block: 0,
@@ -118,8 +120,8 @@ fn on_tick() {
 }
 
 fn on_block_place(player, pos, kind) {
-  if pos.z() > -8 {
-    if pos.z() < 16 {
+  if pos.z() >= -8 {
+    if pos.z() <= 16 {
       bb = bamboo::instance()
       info = bb.lock()
       info.place_block(pos.z())
@@ -132,11 +134,21 @@ impl MusicInfo {
   fn update_head(self) {
     world = bamboo::instance().default_world()
     if self.current_block == 0 {
-      world.set_kind(Pos::new(self.length, 61, -8), block::Kind::from_s("stone"))
+      world.set_kind(Pos::new(self.length, 61, -9), block::Kind::from_s("stone"))
     } else {
-      world.set_kind(Pos::new(self.current_block - 1, 61, -8), block::Kind::from_s("stone"))
+      world.set_kind(Pos::new(self.current_block - 1, 61, -9), block::Kind::from_s("stone"))
     }
-    world.set_kind(Pos::new(self.current_block, 61, -8), block::Kind::from_s("lime_wool"))
+    world.set_kind(Pos::new(self.current_block, 61, -9), block::Kind::from_s("lime_wool"))
+
+    for z = -8, z < 16, z++ {
+      pos = Pos::new(self.current_block, 61, z)
+      block = world.get_kind(pos)
+      if block.to_s() != "air" {
+        world.set_kind(pos, block::Kind::from_s("gold_block"))
+      }
+      note = z + 8
+      // pitch = 2 ** (note - 12.0 / 12.0)
+    }
   }
 
   fn update_placed_block(self) {
@@ -159,7 +171,7 @@ impl MusicInfo {
   fn place_piano_note(self, is_highlight) {
     z = self.placed_block_z
     world = bamboo::instance().default_world()
-    note = z + 7
+    note = z + 8
     is_black_note = false
     if note % 12 < 6 {
       is_black_note = note % 2 == 0
