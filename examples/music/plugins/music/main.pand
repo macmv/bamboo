@@ -1,6 +1,7 @@
 use bamboo::{
   util::Pos,
-  block
+  block,
+  command::Command,
 }
 
 struct MusicInfo {
@@ -8,6 +9,9 @@ struct MusicInfo {
   length: int,
   playing: bool,
   last_move: int,
+
+  placed_block_z: int,
+  placed_block_timeout: int,
 }
 
 fn init() {
@@ -16,8 +20,27 @@ fn init() {
   world = bb.default_world()
   length = 32
   world.fill_rect_kind(Pos::new(-1, 60, -8), Pos::new(length + 1, 60, 9), block::Kind::from_s("jukebox"))
-  world.fill_rect_kind(Pos::new(-1, 61, -8), Pos::new(length + 1, 61, -8), block::Kind::from_s("stone"))
-  world.fill_rect_kind(Pos::new(-1, 61, 9), Pos::new(length + 1, 61, 9), block::Kind::from_s("stone"))
+
+  world.fill_rect_kind(Pos::new(0, 61, -10), Pos::new(length + 1, 61, -8), block::Kind::from_s("stone"))
+  world.fill_rect_kind(Pos::new(0, 61, 9), Pos::new(length + 1, 61, 9), block::Kind::from_s("stone"))
+
+  world.fill_rect_kind(Pos::new(length + 1, 61, -7), Pos::new(length + 1, 61, 8), block::Kind::from_s("stone"))
+
+  world.fill_rect_kind(Pos::new(-5, 61, -8), Pos::new(-1, 61, 16), block::Kind::from_s("white_wool"))
+
+  z = -7
+  for i = 0, i < 2, i++ {
+    for j = 0, j < 3, j++ {
+      world.fill_rect_kind(Pos::new(-5, 62, z), Pos::new(-3, 62, z), block::Kind::from_s("black_wool"))
+      z += 2
+    }
+    z += 1
+    for j = 0, j < 2, j++ {
+      world.fill_rect_kind(Pos::new(-5, 62, z), Pos::new(-3, 62, z), block::Kind::from_s("black_wool"))
+      z += 2
+    }
+    z += 1
+  }
 
   instruments = [
     block::Kind::from_s("oak_log"),
@@ -39,16 +62,38 @@ fn init() {
   ]
 
   for i = 0, i < instruments.len(), i++ {
-    world.set_kind(Pos::new(-1, 61, -7 + i), instruments[i])
+    world.set_kind(Pos::new(i, 62, -10), instruments[i])
   }
   info = MusicInfo {
     current_block: 0,
     length: length,
     playing: false,
     last_move: 0,
+    placed_block_z: 0,
+    placed_block_timeout: 0,
   }
   info.update_head()
   bb.store(info)
+
+  c = Command::new("play", handle_play)
+  bb.add_command(c)
+
+  c = Command::new("stop", handle_stop)
+  bb.add_command(c)
+}
+
+fn handle_play(player, args) {
+  bb = bamboo::instance()
+  info = bb.lock()
+  info.play()
+  bb.unlock(info)
+}
+
+fn handle_stop(player, args) {
+  bb = bamboo::instance()
+  info = bb.lock()
+  info.stop()
+  bb.unlock(info)
 }
 
 fn on_tick() {
@@ -67,18 +112,86 @@ fn on_tick() {
     }
     info.update_head()
   }
+  info.update_placed_block()
 
   bb.unlock(info)
+}
+
+fn on_block_place(player, pos, kind) {
+  if pos.z() > -8 {
+    if pos.z() < 16 {
+      bb = bamboo::instance()
+      info = bb.lock()
+      info.place_block(pos.z())
+      bb.unlock(info)
+    }
+  }
 }
 
 impl MusicInfo {
   fn update_head(self) {
     world = bamboo::instance().default_world()
     if self.current_block == 0 {
-      world.set_kind(Pos::new(self.length, 61, 9), block::Kind::from_s("stone"))
+      world.set_kind(Pos::new(self.length, 61, -8), block::Kind::from_s("stone"))
     } else {
-      world.set_kind(Pos::new(self.current_block - 1, 61, 9), block::Kind::from_s("stone"))
+      world.set_kind(Pos::new(self.current_block - 1, 61, -8), block::Kind::from_s("stone"))
     }
-    world.set_kind(Pos::new(self.current_block, 61, 9), block::Kind::from_s("lime_wool"))
+    world.set_kind(Pos::new(self.current_block, 61, -8), block::Kind::from_s("lime_wool"))
+  }
+
+  fn update_placed_block(self) {
+    if self.placed_block_timeout != 0 {
+      if self.placed_block_timeout % 6 == 1 {
+        self.place_piano_note(false)
+      } else if self.placed_block_timeout % 6 == 4 {
+        self.place_piano_note(true)
+      }
+      self.placed_block_timeout--
+    }
+  }
+  fn place_block(self, z) {
+    self.place_piano_note(false)
+    self.placed_block_z = z
+    self.placed_block_timeout = 6 * 3 - 2
+    self.place_piano_note(true)
+  }
+
+  fn place_piano_note(self, is_highlight) {
+    z = self.placed_block_z
+    world = bamboo::instance().default_world()
+    note = z + 7
+    is_black_note = false
+    if note % 12 < 6 {
+      is_black_note = note % 2 == 0
+    } else if note % 12 < 11 {
+      is_black_note = (note - 1) % 2 == 0
+    }
+    if is_highlight {
+      b = block::Kind::from_s("gold_block")
+    } else {
+      if is_black_note {
+        b = block::Kind::from_s("black_wool")
+      } else {
+        b = block::Kind::from_s("white_wool")
+      }
+    }
+    if is_black_note {
+      world.fill_rect_kind(Pos::new(-5, 62, z), Pos::new(-3, 62, z), b)
+    } else {
+      world.fill_rect_kind(Pos::new(-5, 61, z), Pos::new(-1, 61, z), b)
+    }
+  }
+
+  fn play(self) {
+    self.playing = true
+  }
+  fn stop(self) {
+    self.playing = false
+    self.last_move = 0
+
+    world = bamboo::instance().default_world()
+    world.set_kind(Pos::new(self.current_block, 61, -8), block::Kind::from_s("stone"))
+    self.current_block = 0
+    world.set_kind(Pos::new(self.current_block, 61, -8), block::Kind::from_s("lime_wool"))
   }
 }
