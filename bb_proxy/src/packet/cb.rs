@@ -635,7 +635,7 @@ impl ToTcp for Packet {
       Packet::SpawnEntity { eid, id, ty, x, y, z, yaw, pitch, vel_x, vel_y, vel_z, meta } => {
         let new_ty = ty;
         let ty = conn.conv().entity_to_old(ty, ver.block()) as i32;
-        let spawn = if ver >= ProtocolVersion::V1_11 {
+        let spawn = if ver >= ProtocolVersion::V1_14_4 {
           let mut data = vec![];
           let mut buf = Buffer::new(&mut data);
           buf.write_varint(ty);
@@ -662,9 +662,8 @@ impl ToTcp for Packet {
             speed_x: vel_x.into(),
             speed_y: vel_y.into(),
             speed_z: vel_z.into(),
-            data: 0,
+            data: 1, // Writer is bugged, so velocity is always written, so this can never be 0
           }
-          // metadata(new_ty, &meta, ver, conn.conv()),
         } else {
           let mut data = vec![];
           let mut buf = Buffer::new(&mut data);
@@ -682,7 +681,6 @@ impl ToTcp for Packet {
             field_149020_k: 1, // Non-zero, so velocity is present
             unknown: data,
           }
-          //metadata(new_ty, &meta, ver, conn.conv()),
         };
         if !meta.fields.is_empty() {
           return Ok(smallvec![

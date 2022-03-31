@@ -139,16 +139,26 @@ pub fn metadata(ty: u32, meta: &Metadata, ver: ProtocolVersion, conv: &TypeConve
             out.write_str(&v);
           }
         }
-        Field::Item(v) => {
-          if v.id() == -1 {
-            out.write_bool(false);
+        Field::Item(item) => {
+          if ver < ProtocolVersion::V1_13 {
+            if item.count() == 0 {
+              out.write_i16(-1);
+            } else {
+              let (id, damage) = conv.item_to_old(item.id() as u32, ver.block());
+              out.write_i16(id as i16);
+              if item.id() != -1 {
+                out.write_u8(item.count());
+                out.write_i16(damage as i16);
+                out.write_u8(0); // TODO: Write nbt data
+              }
+            }
           } else {
-            let (id, _damage) = conv.item_to_old(v.id() as u32, ver.block());
-            let present = v.count() != 0;
+            let present = item.count() != 0 && item.id() != -1;
+            let (id, _damage) = conv.item_to_old(item.id() as u32, ver.block());
             out.write_bool(present);
             if present {
               out.write_varint(id as i32);
-              out.write_u8(v.count());
+              out.write_u8(item.count());
               out.write_u8(0x00); // TODO: Write nbt data
             }
           }
