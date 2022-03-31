@@ -192,7 +192,8 @@ impl ToTcp for Packet {
           }
         }
       }
-      Packet::EntityEquipment { eid, slot, item } => {
+      Packet::EntityEquipment { eid, slot, mut item } => {
+        conn.conv().item(&mut item, ver.block());
         if ver >= ProtocolVersion::V1_16_5 {
           let mut buf = tcp::Packet::from_buf_id(vec![], 0, ver);
           buf.write_item(&item);
@@ -857,18 +858,14 @@ impl ToTcp for Packet {
         let mut buf = tcp::Packet::from_buf_id(vec![], 0, ver);
         buf.write_i16(items.len() as i16);
         for mut it in items {
-          let (id, damage) = conn.conv().item_to_old(it.id as u32, ver.block());
-          it.id = id as i32;
-          it.damage = damage as i16;
+          conn.conv().item(&mut it, ver.block());
           buf.write_item(&it);
         }
         GPacket::WindowItemsV8 { window_id: wid.into(), unknown: buf.serialize() }
       }
       Packet::WindowItem { wid, slot, mut item } => {
         let mut buf = tcp::Packet::from_buf_id(vec![], 0, ver);
-        let (id, damage) = conn.conv().item_to_old(item.id as u32, ver.block());
-        item.id = id as i32;
-        item.damage = damage as i16;
+        conn.conv().item(&mut item, ver.block());
         buf.write_item(&item);
         GPacket::SetSlotV8 { window_id: wid.into(), slot: slot, unknown: buf.serialize() }
       }

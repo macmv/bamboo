@@ -46,11 +46,12 @@ pub fn metadata(ty: u32, meta: &Metadata, ver: ProtocolVersion, conv: &TypeConve
         Field::Int(v) => out.write_i32(v),
         Field::Float(v) => out.write_f32(v),
         Field::String(v) => out.write_str(&v),
-        Field::Item(v) => {
-          let (it, damage) = conv.item_to_old(v.id() as u32, ver.block());
-          out.write_i16(it as i16);
-          out.write_u8(v.count());
-          out.write_i16(damage as i16);
+        Field::Item(item) => {
+          let mut item = item.clone();
+          conv.item(&mut item, ver.block());
+          out.write_i16(item.id as i16);
+          out.write_u8(item.count());
+          out.write_i16(item.damage);
           out.write_u8(0x00); // TODO: NBT
         }
         Field::Position(v) => {
@@ -139,25 +140,26 @@ pub fn metadata(ty: u32, meta: &Metadata, ver: ProtocolVersion, conv: &TypeConve
             out.write_str(&v);
           }
         }
-        Field::Item(item) => {
+        Field::Item(mut item) => {
+          let mut item = item.clone();
           if ver < ProtocolVersion::V1_13 {
             if item.count() == 0 {
               out.write_i16(-1);
             } else {
-              let (id, damage) = conv.item_to_old(item.id() as u32, ver.block());
-              out.write_i16(id as i16);
+              conv.item(&mut item, ver.block());
+              out.write_i16(item.id as i16);
               if item.id() != -1 {
                 out.write_u8(item.count());
-                out.write_i16(damage as i16);
+                out.write_i16(item.damage);
                 out.write_u8(0); // TODO: Write nbt data
               }
             }
           } else {
             let present = item.count() != 0 && item.id() != -1;
-            let (id, _damage) = conv.item_to_old(item.id() as u32, ver.block());
+            conv.item(&mut item, ver.block());
             out.write_bool(present);
             if present {
-              out.write_varint(id as i32);
+              out.write_varint(item.id as i32);
               out.write_u8(item.count());
               out.write_u8(0x00); // TODO: Write nbt data
             }

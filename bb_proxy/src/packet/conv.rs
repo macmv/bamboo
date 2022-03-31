@@ -1,4 +1,4 @@
-use bb_common::version::BlockVersion;
+use bb_common::{util::Item, version::BlockVersion};
 
 pub struct TypeConverter {
   blocks:   &'static [block::Version],
@@ -109,7 +109,7 @@ impl TypeConverter {
   }
   /// Converts an item id into an id for the given version. It should work the
   /// same as [`block_to_old`](Self::block_to_old).
-  pub fn item_to_old(&self, id: u32, ver: BlockVersion) -> (u32, u32) {
+  fn item_to_old(&self, id: u32, ver: BlockVersion) -> (u32, u32) {
     if ver == BlockVersion::latest() {
       return (id, 0);
     }
@@ -117,6 +117,12 @@ impl TypeConverter {
       Some(v) => *v,
       None => (0, 0),
     }
+  }
+
+  pub fn item(&self, item: &mut Item, ver: BlockVersion) {
+    let (id, damage) = self.item_to_old(item.id as u32, ver);
+    item.id = id as i32;
+    item.damage = damage as i16;
   }
 
   /// Converts an entity id into the latest version. It should work the same as
