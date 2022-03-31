@@ -56,12 +56,19 @@ impl Scoreboard {
   }
 
   pub fn set_line(&mut self, line: u8, text: &Chat) {
+    let mut text = text.to_codes();
+    if text == self.lines[line as usize] {
+      return;
+    }
+    while self.lines.contains(&text) {
+      text.push(' ');
+    }
     self.conn.send(cb::Packet::ScoreboardUpdate {
       username:  self.lines[line as usize].clone(),
       objective: "scoreboard".into(),
       action:    cb::ScoreboardAction::Remove,
     });
-    self.lines[line as usize] = text.to_codes();
+    self.lines[line as usize] = text;
     self.conn.send(cb::Packet::ScoreboardUpdate {
       username:  self.lines[line as usize].clone(),
       objective: "scoreboard".into(),

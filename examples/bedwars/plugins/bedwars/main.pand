@@ -63,8 +63,8 @@ fn on_player_join(player) {
 
   team = bedwars.find_smallest_team()
   bamboo::info("Adding " + player.username() + " to " + team)
-  bedwars.add_player_to_team(player, team)
-  bedwars.teleport_to_spawn(player)
+  p = bedwars.add_player_to_team(player, team)
+  p.teleport_to_lobby()
 
   bb.unlock(bedwars)
 }
@@ -123,6 +123,7 @@ impl Bedwars {
     if self.players.len() >= 4 {
       self.start_countdown()
     }
+    p
   }
 
   fn set_scoreboard_status(self, player) {
@@ -130,46 +131,45 @@ impl Bedwars {
       // parsing is bugged, i can't have an empty block here
       1 + 2
     } else {
-      player.set_scoreboard_line(6, Chat::new("Waiting for"))
-      player.set_scoreboard_line(5, Chat::new("players..."))
-
       self.set_scoreboard_player_count(player)
-      player.set_scoreboard_line(3, Chat::new(""))
+      player.set_scoreboard_line(4, Chat::new(""))
       if self.countdown > 0 {
         self.set_scoreboard_countdown(player)
       }
     }
   }
   fn set_scoreboard_player_count(self, player) {
-    line = Chat::empty()
+    line = Chat::new("players: ")
     line.add((self.players.len() + 1).to_s() + "/12").color("yellow")
-    player.set_scoreboard_line(4, line)
+    player.set_scoreboard_line(6, Chat::new("Waiting for"))
+    player.set_scoreboard_line(5, line)
   }
   fn set_scoreboard_countdown(self, player) {
-    player.set_scoreboard_line(2, Chat::new("Starting in " + self.countdown / 20))
+    line = Chat::new("Starting in ")
+    line.add((self.countdown / 20).to_s()).color("yellow")
+    player.set_scoreboard_line(3, line)
   }
 
   fn tick(self) {
+    keys = self.players.keys()
+    msg = 0 // placeholder
     if self.in_game {
-      keys = self.players.keys()
       for i = 0, i < self.players.len(), i++ {
         username = keys[i]
         self.players[username].tick()
       }
     } else if self.countdown == 1 {
       self.countdown = 0
-      keys = self.players.keys()
       for i = 0, i < self.players.len(), i++ {
         username = keys[i]
         self.players[username].start()
       }
     } else if self.countdown > 0 {
       if self.countdown <= 100 {
-        if self.time_to_respawn % 20 == 0 {
+        if self.countdown % 20 == 0 {
           msg = Chat::empty()
-          msg.add((self.time_to_respawn / 20).to_s()).color("red")
+          msg.add((self.countdown / 20).to_s()).color("red")
 
-          keys = self.players.keys()
           for i = 0, i < self.players.len(), i++ {
             username = keys[i]
             self.players[username].player.set_title(msg)
@@ -178,7 +178,6 @@ impl Bedwars {
         }
       }
       if self.countdown % 20 == 0 {
-        keys = self.players.keys()
         for i = 0, i < self.players.len(), i++ {
           username = keys[i]
           self.set_scoreboard_countdown(self.players[username].player)
@@ -189,7 +188,7 @@ impl Bedwars {
   }
 
   fn start_countdown(self) {
-
+    self.countdown = 15 * 20
   }
 }
 
@@ -221,6 +220,9 @@ impl BedwarsPlayer {
 
   fn teleport_to_spawn(self) {
     self.player.teleport(self.spawn, self.spawn_yaw, 0.0)
+  }
+  fn teleport_to_lobby(self) {
+    self.player.teleport(FPos::new(0.0, 70.0, 0.0), 0.0, 0.0)
   }
 
   fn start(self) {
