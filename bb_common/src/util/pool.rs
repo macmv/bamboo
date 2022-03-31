@@ -47,9 +47,30 @@ impl<S: Send + 'static> ThreadPool<S> {
     ThreadPool { tx }
   }
 
-  /// Executes the given task on the next worker thread.
+  /// Executes the given task on a random worker thread.
   pub fn execute<F: FnOnce(&S) + Send + 'static>(&self, f: F) {
     self.tx.send(Box::new(f)).expect("thread unexpectedly closed");
+  }
+
+  /// Runs the given closure for every item in the iterator, until the iterator
+  /// returns None.
+  ///
+  /// Since each backing thread is just consuming from a channel, this will
+  /// simply push a closure for every single element. This means that if you
+  /// provide a large iterator, there is a good chance the channel used will
+  /// fill up, and cause this function to block.
+  pub fn execute_for_each<
+    I: Iterator<Item = T>,
+    T: Send + 'static,
+    F: FnOnce(T, &S) + Copy + Send + Sync + 'static,
+  >(
+    &self,
+    iter: I,
+    f: F,
+  ) {
+    for it in iter {
+      self.tx.send(Box::new(move |s| f(it, s))).expect("thread unexpectedly closed");
+    }
   }
 
   /// Waits for all tasks to be completed

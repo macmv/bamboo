@@ -99,7 +99,8 @@ pub struct WorldManager {
 }
 
 struct State {
-  uspt: Arc<AtomicU32>,
+  uspt:  Arc<AtomicU32>,
+  world: Arc<World>,
 }
 
 impl World {
@@ -161,7 +162,8 @@ impl World {
   pub fn config(&self) -> &Arc<Config> { self.wm.config() }
 
   fn global_tick_loop(self: Arc<Self>) {
-    let mut pool = ThreadPool::auto(|| State { uspt: self.uspt.clone() });
+    let mut pool =
+      ThreadPool::auto(|| State { uspt: self.uspt.clone(), world: Arc::clone(&self) });
     let mut tick = 0;
     loop {
       let start = Instant::now();
@@ -204,12 +206,11 @@ impl World {
       }
       for (&eid, ent) in self.entities().iter() {
         let ent = ent.clone();
-        let w = self.clone();
         pool.execute(move |s| {
           let start = Instant::now();
           if ent.tick() {
-            w.entities.write().remove(&eid);
-            for p in w.players().iter().in_view(ent.fpos().block().chunk()) {
+            s.world.entities.write().remove(&eid);
+            for p in s.world.players().iter().in_view(ent.fpos().block().chunk()) {
               p.send(cb::Packet::RemoveEntities { eids: vec![eid] });
             }
           }
