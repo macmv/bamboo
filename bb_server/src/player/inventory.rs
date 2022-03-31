@@ -11,6 +11,7 @@ use bb_common::{
     cb,
     sb::{Button, ClickWindow},
   },
+  util::Hand,
 };
 use std::{mem, sync::Weak};
 
@@ -85,7 +86,19 @@ impl PlayerInventory {
 
   /// Sets the selected index. Should only be used when recieving a held item
   /// slot packet.
-  pub(crate) fn set_selected(&mut self, index: u8) { self.selected_index = index; }
+  ///
+  /// This will send equipment updates.
+  pub(crate) fn set_selected(&mut self, index: u8) {
+    if self.main.get(index as u32 + 36) != self.main.get(self.selected_index as u32 + 36) {
+      let p = self.player.upgrade().unwrap();
+      p.send_to_in_view(cb::Packet::EntityEquipment {
+        eid:  p.eid(),
+        slot: cb::EquipmentSlot::Hand(Hand::Main),
+        item: self.main.get(index as u32 + 36).to_item(),
+      });
+    }
+    self.selected_index = index;
+  }
 
   pub fn main(&self) -> &WrappedInventory { &self.main }
   pub fn main_mut(&mut self) -> &mut WrappedInventory { &mut self.main }
@@ -176,6 +189,14 @@ impl PlayerInventory {
   /// as functions like [`set`](Self::set) and [`replace`](Self::replace) will
   /// call this for you.
   pub fn sync(&self, index: i32) {
+    if index == self.selected_index as i32 + 36 {
+      let p = self.player.upgrade().unwrap();
+      p.send_to_in_view(cb::Packet::EntityEquipment {
+        eid:  p.eid(),
+        slot: cb::EquipmentSlot::Hand(Hand::Main),
+        item: self.main.get(index as u32).to_item(),
+      });
+    }
     if index == -999 {
       self.main.conn.send(cb::Packet::WindowItem {
         wid:  u8::MAX,
@@ -379,21 +400,26 @@ impl WrappedInventory {
     WrappedInventory { inv, conn, wid, offset: 0, skip: 0 }
   }
   /// Gets the item at the given index.
+  #[track_caller]
   pub fn get(&self, index: u32) -> &Stack { self.inv.get(index as u32) }
   /// This is private as updating the item doesn't send an update to the client.
+  #[track_caller]
   fn get_mut(&mut self, index: u32) -> &mut Stack { self.inv.get_mut(index as u32) }
   /// Sets the item in the inventory.
+  #[track_caller]
   pub fn set(&mut self, index: u32, stack: Stack) {
     *self.get_mut(index) = stack;
     self.sync(index);
   }
   /// Replaces an item in the inventory.
+  #[track_caller]
   pub fn replace(&mut self, index: u32, stack: Stack) -> Stack {
     let res = mem::replace(self.get_mut(index), stack);
     self.sync(index);
     res
   }
   /// Syncs the item at the given slot with the client.
+  #[track_caller]
   pub fn sync(&self, index: u32) {
     self.conn.send(cb::Packet::WindowItem {
       wid:  self.wid,

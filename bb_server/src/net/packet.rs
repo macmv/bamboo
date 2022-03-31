@@ -1,7 +1,7 @@
 use crate::{block, entity, item, player::Player, world::WorldManager};
 use bb_common::{
   math::{FPos, Pos},
-  net::{cb, cb::Animation, sb},
+  net::{cb, sb},
   util::chat::{Chat, Color, HoverEvent},
 };
 use std::{str::FromStr, sync::Arc};
@@ -135,8 +135,10 @@ pub(crate) fn handle(wm: &Arc<WorldManager>, player: &Arc<Player>, p: sb::Packet
     // Just contains on_ground
     sb::Packet::PlayerOnGround { .. } => {}
     sb::Packet::PlayerCommand { command } => player.handle_command(command),
-    sb::Packet::Animation { hand } => player
-      .send_to_in_view(cb::Packet::Animation { eid: player.eid(), kind: Animation::Swing(hand) }),
+    sb::Packet::Animation { hand } => player.send_to_in_view(cb::Packet::Animation {
+      eid:  player.eid(),
+      kind: cb::Animation::Swing(hand),
+    }),
     sb::Packet::WindowClose { wid: _ } => player.lock_inventory().close_window(),
     _ => warn!("unknown packet: {:?}", p),
   }
