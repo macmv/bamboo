@@ -91,21 +91,17 @@ impl PluginManager {
 
     let mut sockets = SocketManager::new(wm.clone());
 
-    for f in fs::read_dir("plugins").unwrap() {
+    let iter = match fs::read_dir("plugins") {
+      Ok(v) => v,
+      Err(e) => {
+        warn!("error reading directory `plugins`: {e}");
+        return;
+      }
+    };
+    for f in iter {
       let f = f.unwrap();
       let m = fs::metadata(f.path()).unwrap();
-      if m.is_file() {
-        /*
-        let path = f.path();
-        info!("found plugin at {}", path.to_str().unwrap());
-        let name = path.file_stem().unwrap().to_str().unwrap().to_string();
-        let mut p = Plugin::new(plugins.len(), name, wm.clone());
-
-        p.load_from_file(&path, self);
-        p.call_init();
-        plugins.push(p);
-        */
-      } else if m.is_dir() {
+      if m.is_dir() {
         let path = f.path();
         let config = Config::new(
           path.join("plugin.yml").to_str().unwrap(),

@@ -1,4 +1,4 @@
-use super::{super::PluginManager, Bamboo, PandaPlugin};
+use super::{Bamboo, PandaPlugin};
 use bb_common::util::{chat::Color, Chat};
 use panda::{
   define_ty,
@@ -18,7 +18,7 @@ pub mod util;
 pub mod world;
 
 use command::PdCommand;
-use world::gen::PdBiome;
+use world::{gen::PdBiome, PdWorld};
 
 macro_rules! add_from {
   ( $ty:ty, $new_ty:ident ) => {
@@ -188,6 +188,9 @@ impl Bamboo {
   pub fn broadcast(&self, chat: &chat::PdChat) {
     self.wm.broadcast(chat.inner.lock().unwrap().clone());
   }
+
+  /// Returns the default world.
+  pub fn default_world(&self) -> PdWorld { self.wm.default_world().into() }
 }
 
 fn format(args: &[Var]) -> String {

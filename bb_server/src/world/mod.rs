@@ -589,7 +589,7 @@ impl WorldManager {
   pub fn worlds(&self) -> MutexGuard<'_, Vec<Arc<World>>> { self.worlds.lock() }
 
   /// Loads plugins
-  pub fn load(self: &Arc<Self>) { self.plugins.load(self.clone()) }
+  pub fn load_plugins(self: &Arc<Self>) { self.plugins.load(self.clone()) }
 
   /// Returns the config used in the whole server.
   pub fn config(&self) -> &Arc<Config> { &self.config }
