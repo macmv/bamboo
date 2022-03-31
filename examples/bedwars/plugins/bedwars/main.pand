@@ -1,6 +1,6 @@
 use bamboo::{
   chat::Chat,
-  util::Pos,
+  util::FPos,
 }
 
 struct Bedwars {
@@ -10,16 +10,17 @@ struct Bedwars {
 struct Team {
   players: arr,
   spawn: Pos,
+  spawn_yaw: float,
 }
 
 fn init() {
   bamboo::info("initializing bedwars")
 
   teams = map {
-    "red":    Team { players: [], spawn: Pos::new(40, 60, 0) },
-    "green":  Team { players: [], spawn: Pos::new(-40, 60, 0) },
-    "aqua":   Team { players: [], spawn: Pos::new(0, 60, 40) },
-    "yellow": Team { players: [], spawn: Pos::new(0, 60, -40) },
+    "red":    Team { players: [], spawn: FPos::new(0.0,   61.0, -40.0), spawn_yaw: 0.0 },
+    "green":  Team { players: [], spawn: FPos::new(40.0,  61.0, 0.0  ), spawn_yaw: 90.0 },
+    "aqua":   Team { players: [], spawn: FPos::new(0.0,   61.0, 40.0 ), spawn_yaw: 180.0 },
+    "yellow": Team { players: [], spawn: FPos::new(-40.0, 61.0, 0.0  ), spawn_yaw: 270.0 },
   }
   bb = bamboo::instance()
   bb.store(Bedwars {
@@ -70,7 +71,7 @@ fn teleport_to_spawn(player) {
 impl Bedwars {
   fn teleport_to_spawn(self, player) {
     team = self.teams[self.players[player.username()]]
-    player.teleport(team.spawn)
+    player.teleport(team.spawn, team.spawn_yaw, 0.0)
   }
 
   fn find_smallest_team(self) {
