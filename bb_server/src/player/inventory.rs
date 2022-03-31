@@ -5,8 +5,8 @@ use crate::{
   player::Player,
 };
 use bb_common::{
+  math::FPos,
   metadata::Metadata,
-  nbt::{Tag, NBT},
   net::{
     cb,
     sb::{Button, ClickWindow},
@@ -306,25 +306,23 @@ impl PlayerInventory {
       self.sync(slot);
     }
     if let Some(p) = self.player.upgrade() {
-      let tag = NBT::new(
-        "",
-        Tag::compound(&[(
-          "Item",
-          Tag::compound(&[("id", Tag::String("minecraft:diamond".into()))]),
-        )]),
-      );
-      let mut meta = Metadata::new();
-      meta.set_item(8, removed.to_item());
-      p.world().summon_meta(entity::Type::Item, p.pos(), meta);
+      Self::spawn_dropped_item(&p, &removed);
     }
   }
 
   /// Removes the entire stack at the given slot.
   pub fn drop_all(&mut self, slot: i32) {
-    let _old = self.replace(slot, Stack::empty());
+    let removed = self.replace(slot, Stack::empty());
     if let Some(p) = self.player.upgrade() {
-      p.world().summon(entity::Type::Item, p.pos());
+      Self::spawn_dropped_item(&p, &removed);
     }
+  }
+
+  fn spawn_dropped_item(p: &Player, it: &Stack) {
+    let mut meta = Metadata::new();
+    meta.set_item(8, it.to_item());
+    let eid = p.world().summon_meta(entity::Type::Item, p.pos() + FPos::new(0.0, 1.5, 0.0), meta);
+    p.world().entities().get(&eid).map(|e| e.set_vel(p.look_as_vec() * 0.5));
   }
 
   /// Grabs up to a full stack of whatever item is at the given slot, and moves
