@@ -2,6 +2,7 @@ use super::{
   add_from,
   chat::PdChat,
   item::{PdInventory, PdStack},
+  util::PdFPos,
   world::PdWorld,
   wrap,
 };
@@ -27,6 +28,11 @@ impl PdPlayer {
   /// Returns the username of the player. This will never change, as long as the
   /// user stays online.
   pub fn username(&self) -> String { self.inner.username().into() }
+
+  /// Teleports the player to the given position, with a yaw and pitch.
+  pub fn teleport(&self, pos: &PdFPos, yaw: f32, pitch: f32) {
+    self.inner.teleport(pos.inner, yaw, pitch);
+  }
 
   /// Sends the given chat message to a player. This accepts exactly one
   /// argument, which can be any type. If it is a `PdChat`, then it will be

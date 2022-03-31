@@ -155,6 +155,24 @@ impl Player {
     pos.next_pitch = pitch;
   }
 
+  /// Teleports the player to the given position, and set's their looking
+  /// direction to the given yaw/pitch. You cannot teleport a player without
+  /// also setting their yaw/pitch.
+  pub fn teleport(&self, pos: FPos, yaw: f32, pitch: f32) {
+    self.send(cb::Packet::SetPosLook {
+      pos,
+      yaw,
+      pitch,
+      flags: 0,
+      teleport_id: 0,
+      should_dismount: true,
+    });
+    let mut p = self.pos.lock();
+    p.next_yaw = yaw;
+    p.next_pitch = pitch;
+    p.next = pos;
+  }
+
   /// Sends the player a chat message.
   pub fn send_message(&self, msg: &Chat) {
     self.send(cb::Packet::Chat {

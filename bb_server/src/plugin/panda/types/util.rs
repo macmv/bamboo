@@ -74,6 +74,9 @@ impl PdChunkPos {
 /// If you need a block position, use `Pos` instead.
 #[define_ty(path = "bamboo::util::FPos")]
 impl PdFPos {
+  /// Creates a new floating point position, with the given X, Y, and Z
+  /// coordinates.
+  pub fn new(x: f64, y: f64, z: f64) -> Self { PdFPos { inner: FPos::new(x, y, z) } }
   /// Returns the X position of this entity.
   ///
   /// # Example
