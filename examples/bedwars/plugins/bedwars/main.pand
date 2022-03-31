@@ -1,7 +1,9 @@
 use bamboo::{
   chat::Chat,
   util::FPos,
+  item,
   player::Player,
+  world::World,
 }
 
 // Stores all the game info
@@ -24,24 +26,29 @@ struct BedwarsPlayer {
 // Stores info for a team
 struct Team {
   players: arr,
-  spawn: Pos,
+  spawn: FPos,
   spawn_yaw: float,
+  resource_spawn: FPos,
+  world: World,
+  iron_spawn_time: int,
+  gold_spawn_time: int,
 }
 
 fn init() {
   bamboo::info("initializing bedwars")
 
-  teams = map {
-    "red":    Team { players: [], spawn: FPos::new(0.0,   61.0, -40.0), spawn_yaw: 0.0 },
-    "green":  Team { players: [], spawn: FPos::new(40.0,  61.0, 0.0  ), spawn_yaw: 90.0 },
-    "aqua":   Team { players: [], spawn: FPos::new(0.0,   61.0, 40.0 ), spawn_yaw: 180.0 },
-    "yellow": Team { players: [], spawn: FPos::new(-40.0, 61.0, 0.0  ), spawn_yaw: 270.0 },
-  }
   bb = bamboo::instance()
+  world = bb.default_world()
+  teams = map {
+    "red":    Team::new(world, FPos::new(0.0,   61.0, -40.0), 0.0,   FPos::new(0.5,   62.0, -44.5)),
+    "green":  Team::new(world, FPos::new(40.0,  61.0, 0.0  ), 90.0,  FPos::new(44.5,  62.0, 0.5  )),
+    "aqua":   Team::new(world, FPos::new(0.0,   61.0, 40.0 ), 180.0, FPos::new(0.5,   62.0, 44.5 )),
+    "yellow": Team::new(world, FPos::new(-40.0, 61.0, 0.0  ), 270.0, FPos::new(-44.5, 62.0, 0.5  )),
+  }
   bb.store(Bedwars {
     teams: teams,
     players: map {},
-    in_game: false,
+    in_game: true,
     countdown: 0,
   })
 }
@@ -158,6 +165,10 @@ impl Bedwars {
         username = keys[i]
         self.players[username].tick()
       }
+      keys = self.teams.keys()
+      for i = 0, i < self.teams.len(), i++ {
+        self.teams[keys[i]].tick()
+      }
     } else if self.countdown == 1 {
       self.countdown = 0
       for i = 0, i < self.players.len(), i++ {
@@ -231,5 +242,31 @@ impl BedwarsPlayer {
 
   fn alive(self) {
     self.time_to_respawn == 0
+  }
+}
+
+impl Team {
+  fn new(world, spawn, yaw, resource_spawn) {
+    Team {
+      players: [],
+      spawn: spawn,
+      spawn_yaw: yaw,
+      resource_spawn: resource_spawn,
+      world: world,
+      iron_spawn_time: 0,
+      gold_spawn_time: 0,
+    }
+  }
+  fn tick(self) {
+    if self.iron_spawn_time == 0 {
+      self.iron_spawn_time = 5 * 20
+      self.world.summon_item(self.resource_spawn, item::Stack::new("iron_ingot"))
+    }
+    self.iron_spawn_time--
+    if self.gold_spawn_time == 0 {
+      self.gold_spawn_time = 20 * 20
+      self.world.summon_item(self.resource_spawn, item::Stack::new("gold_ingot"))
+    }
+    self.gold_spawn_time--
   }
 }
