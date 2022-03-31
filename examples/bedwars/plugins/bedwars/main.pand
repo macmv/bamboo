@@ -123,7 +123,7 @@ impl BedwarsPlayer {
   fn new(player, team_name, spawn, spawn_yaw) {
     BedwarsPlayer {
       player: player,
-      time_to_respawn: 100,
+      time_to_respawn: 5 * 20,
       team_name: team_name,
       spawn: spawn,
       spawn_yaw: spawn_yaw,
@@ -135,8 +135,13 @@ impl BedwarsPlayer {
       self.time_to_respawn = 0
       self.player.teleport(self.spawn, self.spawn_yaw, 0.0)
     } else if self.time_to_respawn > 0 {
+      if self.time_to_respawn % 20 == 0 {
+        msg = Chat::empty()
+        msg.add((self.time_to_respawn / 20).to_s()).color("red")
+        self.player.set_title(msg)
+        self.player.show_title(0, 20, 0)
+      }
       self.time_to_respawn--
-      self.player.send_message(Chat::new(self.time_to_respawn.to_s()))
     }
   }
 
