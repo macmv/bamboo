@@ -68,6 +68,20 @@ impl PdPlayer {
     self.inner.send_message(&out);
   }
 
+  /// Sets the title for this player. To show the title and subtitle, call
+  /// [`show_title`].
+  pub fn set_title(&self, title: &PdChat) { self.inner.set_title(&title.inner.lock().unwrap()); }
+  /// Sets the subtitle for this player. To show the title and subtitle, call
+  /// [`show_title`].
+  pub fn set_subtitle(&self, subtitle: &PdChat) {
+    self.inner.set_subtitle(&subtitle.inner.lock().unwrap());
+  }
+  /// Shows the current title to the player. The `fade_in`, `stay`, and
+  /// `fade_out` arguments are all in ticks.
+  pub fn show_title(&self, fade_in: u32, stay: u32, fade_out: u32) {
+    self.inner.show_title(fade_in, stay, fade_out);
+  }
+
   /// Returns the world this player is in. This can be used to get/set
   /// blocks, access other players, and modify entities.
   pub fn world(&self) -> PdWorld { self.inner.world().clone().into() }

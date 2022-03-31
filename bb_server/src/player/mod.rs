@@ -188,6 +188,22 @@ impl Player {
     });
   }
 
+  /// Sets the title for this player. To show the title and subtitle, call
+  /// [`show_title`](Self::show_title).
+  pub fn set_title(&self, title: &Chat) {
+    self.send(cb::Packet::Title { action: cb::TitleAction::Title(title.to_json()) });
+  }
+  /// Sets the subtitle for this player. To show the title and subtitle, call
+  /// [`show_title`](Self::show_title).
+  pub fn set_subtitle(&self, subtitle: &Chat) {
+    self.send(cb::Packet::Title { action: cb::TitleAction::Subtitle(subtitle.to_json()) });
+  }
+  /// Shows the current title to the player. The `fade_in`, `stay`, and
+  /// `fade_out` arguments are all in ticks.
+  pub fn show_title(&self, fade_in: u32, stay: u32, fade_out: u32) {
+    self.send(cb::Packet::Title { action: cb::TitleAction::Times { fade_in, stay, fade_out } });
+  }
+
   pub fn show_inventory(&self, inv: Inventory, title: &Chat) {
     let size = inv.size();
     if size > 9 * 6 {

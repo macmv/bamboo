@@ -851,9 +851,9 @@ impl ToTcp for Packet {
             TitleAction::Title(ref chat) => buf.write_str(chat),
             TitleAction::Subtitle(ref chat) => buf.write_str(chat),
             TitleAction::Times { fade_in, stay, fade_out } => {
-              buf.write_varint(fade_in as i32);
-              buf.write_varint(stay as i32);
-              buf.write_varint(fade_out as i32);
+              buf.write_i32(fade_in as i32);
+              buf.write_i32(stay as i32);
+              buf.write_i32(fade_out as i32);
             }
             _ => {}
           }
