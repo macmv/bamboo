@@ -2,7 +2,7 @@ use crate::{
   chunk::{paletted::Section, BlockLight, LightChunk, SkyLight},
   math::{ChunkPos, Pos},
   metadata::Metadata,
-  util::{GameMode, Item, UUID},
+  util::{GameMode, Hand, Item, UUID},
 };
 use bb_macros::Transfer;
 use std::net::SocketAddr;
@@ -19,6 +19,8 @@ pub enum Packet {
     fly_speed:    f32,
     walk_speed:   f32,
   },
+  #[id = 32]
+  Animation { eid: i32, kind: Animation },
   #[id = 1]
   BlockUpdate { pos: Pos, state: u32 },
   #[id = 2]
@@ -245,6 +247,24 @@ pub struct CommandNode {
   /// give when the client is entering this node.
   #[id = 7]
   pub suggestion: Option<String>,
+}
+
+#[derive(Transfer, Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Animation {
+  #[id = 0]
+  Swing(Hand),
+  #[id = 1]
+  Damage,
+  #[id = 2]
+  LeaveBed,
+  #[id = 3]
+  Crit,
+  #[id = 4]
+  MagicCrit,
+}
+
+impl Default for Animation {
+  fn default() -> Self { Animation::Swing(Hand::Main) }
 }
 
 #[derive(Transfer, Debug, Clone, Copy, PartialEq, Eq)]

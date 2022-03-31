@@ -9,10 +9,11 @@ use bb_common::{
   net::{
     cb,
     cb::{
-      CommandType, ObjectiveAction, ObjectiveType, Packet, ScoreboardAction, ScoreboardDisplay,
+      Animation, CommandType, ObjectiveAction, ObjectiveType, Packet, ScoreboardAction,
+      ScoreboardDisplay,
     },
   },
-  util::{Buffer, Chat, UUID},
+  util::{Buffer, Chat, UUID, Hand},
   version::ProtocolVersion,
 };
 use serde::Serialize;
@@ -76,6 +77,32 @@ impl ToTcp for Packet {
             walk_speed: walk_speed * 0.1,
           }
         },
+      Packet::Animation { eid, kind } => {
+        if ver == ProtocolVersion::V1_8 {
+          GPacket::AnimationV8 {
+            entity_id: eid,
+            ty:        match kind {
+              Animation::Swing(_) => 0,
+              Animation::Damage => 1,
+              Animation::LeaveBed => 2,
+              Animation::Crit => 4,
+              Animation::MagicCrit => 5,
+            },
+          }
+        } else {
+          GPacket::AnimationV8 {
+            entity_id: eid,
+            ty:        match kind {
+              Animation::Swing(Hand::Main) => 0,
+              Animation::Damage => 1,
+              Animation::LeaveBed => 2,
+              Animation::Swing(Hand::Off) => 0,
+              Animation::Crit => 4,
+              Animation::MagicCrit => 5,
+            },
+          }
+        }
+      }
       Packet::BlockUpdate { pos, state } => {
         let mut data = vec![];
         let mut buf = Buffer::new(&mut data);

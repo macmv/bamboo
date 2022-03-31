@@ -345,6 +345,23 @@ impl Player {
   /// this will only produce slow downs, never deadlocks.
   pub fn send(&self, p: cb::Packet) { self.conn.send(p); }
 
+  /// Sends the given packet to all players in view of this player, *not
+  /// including* `self`. If you want to also send the packet to `self`,
+  /// call [`send_all_in_view`](Self::send_all_in_view).
+  pub fn send_to_in_view(&self, p: cb::Packet) {
+    for other in self.world.players().iter().in_view(self.pos().chunk()).not(self.uuid) {
+      other.send(p.clone());
+    }
+  }
+  /// Sends the given packet to all players in view of this player, *including*
+  /// `self`. If you don't wnat to send the packet to `self`, call
+  /// [`send_to_in_view`](Self::send_to_in_view).
+  pub fn send_all_in_view(&self, p: cb::Packet) {
+    for other in self.world.players().iter().in_view(self.pos().chunk()) {
+      other.send(p.clone());
+    }
+  }
+
   /// Returns true if the player's connection is closed.
   pub fn closed(&self) -> bool {
     // TODO: Hold onto an Arc<AtomicBool>
@@ -390,10 +407,11 @@ impl Player {
     let mut meta = Metadata::new();
     meta.set_byte(0, self.status_byte());
     let pos = self.pos().chunk();
-    let out = cb::Packet::EntityMetadata { eid: self.eid(), ty: entity::Type::Player.id(), meta };
-    for other in self.world.players().iter().in_view(pos).not(self.uuid) {
-      other.send(out.clone());
-    }
+    self.send_to_in_view(cb::Packet::EntityMetadata {
+      eid: self.eid(),
+      ty: entity::Type::Player.id(),
+      meta,
+    });
   }
 }
 
