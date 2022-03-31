@@ -1,0 +1,5 @@
+world:
+  void: true
+  vanilla:
+    enabled: true
+    path: "world"
