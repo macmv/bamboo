@@ -8,7 +8,7 @@ use crate::{
 use bb_common::{
   math::{ChunkPos, FPos, Pos, PosError, Vec3},
   metadata::Metadata,
-  net::cb,
+  net::{cb, sb::PlayerCommand},
   util::{Chat, GameMode, JoinInfo, UUID},
   version::ProtocolVersion,
 };
@@ -230,9 +230,8 @@ impl Player {
   /// spawning in a new player.
   pub fn metadata(&self) -> Metadata {
     let mut meta = Metadata::new();
-    meta.set_byte(0, self.status_byte() | 0x01);
-    meta.set_bool(2, true); // custom name visible
-    meta.set_opt_chat(3, self.display_name.lock().clone()); // custom name
+    meta.set_byte(0, self.status_byte());
+    // Custom names aren't present for players, so we don't set fields 2 and 3.
     meta
   }
 
@@ -379,6 +378,23 @@ impl Player {
   /// second one, etc. This is expected to be the result of
   /// [`ToSocketAddrs`](std::net::ToSocketAddrs).
   pub fn switch_to(&self, ips: Vec<SocketAddr>) { self.send(cb::Packet::SwitchServer { ips }); }
+
+  pub(super) fn handle_command(&self, command: PlayerCommand) {
+    match command {
+      PlayerCommand::StartSprint => self.pos.lock().sprinting = true,
+      PlayerCommand::StopSprint => self.pos.lock().sprinting = false,
+      PlayerCommand::StartSneak => self.pos.lock().crouching = true,
+      PlayerCommand::StopSneak => self.pos.lock().crouching = false,
+      _ => {}
+    }
+    let mut meta = Metadata::new();
+    meta.set_byte(0, self.status_byte());
+    let pos = self.pos().chunk();
+    let out = cb::Packet::EntityMetadata { eid: self.eid(), ty: entity::Type::Player.id(), meta };
+    for other in self.world.players().iter().in_view(pos).not(self.uuid) {
+      other.send(out.clone());
+    }
+  }
 }
 
 impl CommandSender for Player {
