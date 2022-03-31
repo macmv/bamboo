@@ -38,6 +38,8 @@ pub enum Packet {
     // Index into the above list
     root:  u32,
   },
+  #[id = 31]
+  CollectItem { item_eid: i32, player_eid: i32, amount: u8 },
   /// Pitch/yaw change of an entity.
   #[id = 5]
   EntityLook { eid: i32, yaw: i8, pitch: i8, on_ground: bool },

@@ -151,6 +151,20 @@ impl ToTcp for Packet {
           GPacket::CommandTreeV14 { unknown: data }
         }
       }
+      Packet::CollectItem { item_eid, player_eid, amount } => {
+        if ver >= ProtocolVersion::V1_11_2 {
+          GPacket::CollectItemV11 {
+            collected_item_entity_id: item_eid,
+            entity_id:                player_eid,
+            field_191209_c:           amount.into(),
+          }
+        } else {
+          GPacket::CollectItemV8 {
+            collected_item_entity_id: item_eid,
+            entity_id:                player_eid,
+          }
+        }
+      }
       Packet::EntityLook { eid, yaw, pitch, on_ground } => {
         if ver >= ProtocolVersion::V1_17_1 {
           let mut data = vec![];

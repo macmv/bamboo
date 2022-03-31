@@ -1,4 +1,6 @@
 use super::{Behavior, Entity, EntityPos, ShouldDespawn};
+use crate::item::Stack;
+use bb_common::net::cb;
 
 pub struct ItemBehavior {
   age: u32,
@@ -10,7 +12,6 @@ impl Default for ItemBehavior {
 
 impl Behavior for ItemBehavior {
   fn tick(&mut self, ent: &Entity, p: &mut EntityPos) -> ShouldDespawn {
-    let _ = ent;
     let vel = p.vel;
     p.aabb.pos += vel;
     // This is for items.
@@ -22,10 +23,23 @@ impl Behavior for ItemBehavior {
     }
     self.age += 1;
 
-    if self.age >= 20 {
-      for player in ent.world.read().players().iter().in_view(p.aabb.pos.block().chunk()) {
+    if self.age >= 10 {
+      let pos = p.aabb.pos;
+      let chunk = pos.block().chunk();
+      for player in ent.world.read().players().iter().in_view(chunk) {
         if player.pos().dist_squared(p.aabb.pos) < 1.5_f64.powi(2) {
-          player.lock_inventory().give(ent.metadata().get_item(8).into());
+          let stack: Stack = ent.metadata().get_item(8).into();
+          let amount = stack.amount();
+          player.lock_inventory().give(stack);
+
+          let collect =
+            cb::Packet::CollectItem { item_eid: ent.eid(), player_eid: player.eid(), amount };
+          // We want to include `player` in this loop, as they should also see the pickup
+          // animation
+          for other in player.world().players().iter().in_view(chunk) {
+            other.send(collect.clone());
+          }
+
           return ShouldDespawn(true);
         }
       }

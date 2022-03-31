@@ -9,8 +9,7 @@ impl Default for SnowballBehavior {
 }
 
 impl Behavior for SnowballBehavior {
-  fn tick(&mut self, ent: &Entity, p: &mut EntityPos) -> ShouldDespawn {
-    let _ = ent;
+  fn tick(&mut self, _ent: &Entity, p: &mut EntityPos) -> ShouldDespawn {
     let vel = p.vel;
     p.aabb.pos += vel;
     // This is for all projectiles. It is totally different on living entities.

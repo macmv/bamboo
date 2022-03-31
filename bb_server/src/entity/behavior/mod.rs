@@ -31,7 +31,8 @@ pub trait Behavior {
     let vel = p.vel;
     p.aabb.pos += vel;
     // 9.8 m/s ~= 0.5 m/tick. However, minecraft go brrr, and gravity is actually
-    // 0.03 b/tick for projectiles, and 0.08 b/tick for living entities.
+    // 0.03 b/tick for projectiles, 0.04 b/tick for items, and 0.08 b/tick for
+    // living entities.
     if !p.grounded {
       p.vel.y -= 0.08;
     }
