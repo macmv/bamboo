@@ -9,11 +9,11 @@ use bb_common::{
   net::{
     cb,
     cb::{
-      Animation, CommandType, ObjectiveAction, ObjectiveType, Packet, ScoreboardAction,
-      ScoreboardDisplay,
+      Animation, ArmorSlot, CommandType, EquipmentSlot, ObjectiveAction, ObjectiveType, Packet,
+      ScoreboardAction, ScoreboardDisplay,
     },
   },
-  util::{Buffer, Chat, UUID, Hand},
+  util::{Buffer, Chat, Hand, UUID},
   version::ProtocolVersion,
 };
 use serde::Serialize;
@@ -189,6 +189,52 @@ impl ToTcp for Packet {
           GPacket::CollectItemV8 {
             collected_item_entity_id: item_eid,
             entity_id:                player_eid,
+          }
+        }
+      }
+      Packet::EntityEquipment { eid, slot, item } => {
+        if ver >= ProtocolVersion::V1_16_5 {
+          let mut buf = tcp::Packet::from_buf_id(vec![], 0, ver);
+          buf.write_item(&item);
+          buf.write_varint(match slot {
+            EquipmentSlot::Hand(Hand::Main) => 0,
+            EquipmentSlot::Hand(Hand::Off) => 1,
+            EquipmentSlot::Armor(ArmorSlot::Boots) => 2,
+            EquipmentSlot::Armor(ArmorSlot::Leggings) => 3,
+            EquipmentSlot::Armor(ArmorSlot::Chestplate) => 4,
+            EquipmentSlot::Armor(ArmorSlot::Helmet) => 5,
+          });
+          GPacket::EntityEquipmentV16 { id: eid, unknown: buf.serialize() }
+        } else if ver >= ProtocolVersion::V1_9_4 {
+          let mut buf = tcp::Packet::from_buf_id(vec![], 0, ver);
+          buf.write_item(&item);
+          GPacket::EntityEquipmentV9 {
+            entity_id:      eid,
+            equipment_slot: match slot {
+              EquipmentSlot::Hand(Hand::Main) => 0,
+              EquipmentSlot::Hand(Hand::Off) => 1,
+              EquipmentSlot::Armor(ArmorSlot::Boots) => 2,
+              EquipmentSlot::Armor(ArmorSlot::Leggings) => 3,
+              EquipmentSlot::Armor(ArmorSlot::Chestplate) => 4,
+              EquipmentSlot::Armor(ArmorSlot::Helmet) => 5,
+            },
+            unknown:        buf.serialize(),
+          }
+        } else {
+          let mut buf = tcp::Packet::from_buf_id(vec![], 0, ver);
+          buf.write_item(&item);
+          GPacket::EntityEquipmentV8 {
+            entity_id:      eid,
+            equipment_slot: match slot {
+              EquipmentSlot::Hand(Hand::Main) => 0,
+              // 1.8 client can't see offhand, so we can't really send them anything
+              EquipmentSlot::Hand(Hand::Off) => return Ok(smallvec![]),
+              EquipmentSlot::Armor(ArmorSlot::Boots) => 1,
+              EquipmentSlot::Armor(ArmorSlot::Leggings) => 2,
+              EquipmentSlot::Armor(ArmorSlot::Chestplate) => 3,
+              EquipmentSlot::Armor(ArmorSlot::Helmet) => 4,
+            },
+            unknown:        buf.serialize(),
           }
         }
       }

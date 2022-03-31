@@ -42,6 +42,9 @@ pub enum Packet {
   },
   #[id = 31]
   CollectItem { item_eid: i32, player_eid: i32, amount: u8 },
+  /// An entity's armor/holding item
+  #[id = 33]
+  EntityEquipment { eid: i32, slot: EquipmentSlot, item: Item },
   /// Pitch/yaw change of an entity.
   #[id = 5]
   EntityLook { eid: i32, yaw: i8, pitch: i8, on_ground: bool },
@@ -265,6 +268,34 @@ pub enum Animation {
 
 impl Default for Animation {
   fn default() -> Self { Animation::Swing(Hand::Main) }
+}
+
+#[derive(Transfer, Debug, Clone, Copy, PartialEq, Eq)]
+pub enum EquipmentSlot {
+  #[id = 0]
+  Hand(Hand),
+  #[id = 1]
+  Armor(ArmorSlot),
+}
+
+impl Default for EquipmentSlot {
+  fn default() -> Self { EquipmentSlot::Hand(Hand::Main) }
+}
+
+#[derive(Transfer, Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ArmorSlot {
+  #[id = 0]
+  Helmet,
+  #[id = 1]
+  Chestplate,
+  #[id = 2]
+  Leggings,
+  #[id = 3]
+  Boots,
+}
+
+impl Default for ArmorSlot {
+  fn default() -> Self { ArmorSlot::Helmet }
 }
 
 #[derive(Transfer, Debug, Clone, Copy, PartialEq, Eq)]
