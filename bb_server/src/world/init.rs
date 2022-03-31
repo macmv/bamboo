@@ -165,13 +165,11 @@ impl World {
 
     let pos = player.pos();
     player.send(cb::Packet::SetPosLook {
-      x:               pos.x(),
-      y:               pos.y(),
-      z:               pos.z(),
-      yaw:             0.0,
-      pitch:           0.0,
-      flags:           0,
-      teleport_id:     1234,
+      pos,
+      yaw: 0.0,
+      pitch: 0.0,
+      flags: 0,
+      teleport_id: 1234,
       should_dismount: true,
     });
 
@@ -208,29 +206,25 @@ impl World {
       // Create a packet that will spawn me for `other`
       let (pos, pitch, yaw) = player.pos_look();
       other.send(cb::Packet::SpawnPlayer {
-        eid:   player.eid(),
-        id:    player.id(),
-        ty:    entity::Type::Player.id(),
-        x:     pos.x(),
-        y:     pos.y(),
-        z:     pos.z(),
-        yaw:   yaw as i8,
+        eid: player.eid(),
+        id: player.id(),
+        ty: entity::Type::Player.id(),
+        pos,
+        yaw: yaw as i8,
         pitch: pitch as i8,
-        meta:  player.metadata(),
+        meta: player.metadata(),
       });
 
       // Create a packet that will spawn `other` for me
       let (pos, pitch, yaw) = other.pos_look();
       player.send(cb::Packet::SpawnPlayer {
-        eid:   other.eid(),
-        id:    other.id(),
-        ty:    entity::Type::Player.id(),
-        x:     pos.x(),
-        y:     pos.y(),
-        z:     pos.z(),
-        yaw:   yaw as i8,
+        eid: other.eid(),
+        id: other.id(),
+        ty: entity::Type::Player.id(),
+        pos,
+        yaw: yaw as i8,
         pitch: pitch as i8,
-        meta:  other.metadata(),
+        meta: other.metadata(),
       });
     }
   }

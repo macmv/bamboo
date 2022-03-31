@@ -616,7 +616,7 @@ impl ToTcp for Packet {
           }
         }
       }
-      Packet::SetPosLook { x, y, z, yaw, pitch, flags, teleport_id, should_dismount } => {
+      Packet::SetPosLook { pos, yaw, pitch, flags, teleport_id, should_dismount } => {
         let mut data = vec![];
         let mut buf = Buffer::new(&mut data);
         buf.write_u8(flags);
@@ -626,15 +626,13 @@ impl ToTcp for Packet {
         if ver >= ProtocolVersion::V1_17_1 {
           buf.write_bool(should_dismount);
         }
-        GPacket::PlayerPosLookV8 { x, y, z, yaw, pitch, unknown: data }
+        GPacket::PlayerPosLookV8 { x: pos.x(), y: pos.y(), z: pos.z(), yaw, pitch, unknown: data }
       }
       Packet::SpawnLivingEntity {
         eid,
         id,
         ty,
-        x,
-        y,
-        z,
+        pos,
         yaw,
         pitch,
         head_yaw,
@@ -650,9 +648,9 @@ impl ToTcp for Packet {
             id: eid,
             uuid: id,
             entity_type_id: ty,
-            x,
-            y,
-            z,
+            x: pos.x(),
+            y: pos.y(),
+            z: pos.z(),
             velocity_x: vel_x.into(),
             velocity_y: vel_y.into(),
             velocity_z: vel_z.into(),
@@ -676,9 +674,9 @@ impl ToTcp for Packet {
             entity_id: eid,
             unique_id: id,
             ty,
-            x,
-            y,
-            z,
+            x: pos.x(),
+            y: pos.y(),
+            z: pos.z(),
             velocity_x: vel_x.into(),
             velocity_y: vel_y.into(),
             velocity_z: vel_z.into(),
@@ -692,9 +690,9 @@ impl ToTcp for Packet {
             entity_id: eid,
             unique_id: id,
             ty,
-            x,
-            y,
-            z,
+            x: pos.x(),
+            y: pos.y(),
+            z: pos.z(),
             velocity_x: vel_x.into(),
             velocity_y: vel_y.into(),
             velocity_z: vel_z.into(),
@@ -707,9 +705,9 @@ impl ToTcp for Packet {
           GPacket::SpawnMobV8 {
             entity_id: eid,
             ty,
-            x: (x * 32.0) as i32,
-            y: (y * 32.0) as i32,
-            z: (z * 32.0) as i32,
+            x: (pos.x() * 32.0) as i32,
+            y: (pos.y() * 32.0) as i32,
+            z: (pos.z() * 32.0) as i32,
             velocity_x: vel_x.into(),
             velocity_y: vel_y.into(),
             velocity_z: vel_z.into(),
@@ -720,16 +718,16 @@ impl ToTcp for Packet {
           }
         }
       }
-      Packet::SpawnEntity { eid, id, ty, x, y, z, yaw, pitch, vel_x, vel_y, vel_z, meta } => {
+      Packet::SpawnEntity { eid, id, ty, pos, yaw, pitch, vel_x, vel_y, vel_z, meta } => {
         let new_ty = ty;
         let ty = conn.conv().entity_to_old(ty, ver.block()) as i32;
         let spawn = if ver >= ProtocolVersion::V1_14_4 {
           let mut data = vec![];
           let mut buf = Buffer::new(&mut data);
           buf.write_varint(ty);
-          buf.write_f64(x);
-          buf.write_f64(y);
-          buf.write_f64(z);
+          buf.write_f64(pos.x());
+          buf.write_f64(pos.y());
+          buf.write_f64(pos.z());
           buf.write_i8(pitch);
           buf.write_i8(yaw);
           buf.write_i32(0); // data
@@ -741,16 +739,17 @@ impl ToTcp for Packet {
           GPacket::SpawnObjectV9 {
             entity_id: eid,
             unique_id: id,
-            ty: object_ty(ty),
-            x,
-            y,
-            z,
-            yaw: yaw.into(),
-            pitch: pitch.into(),
-            speed_x: vel_x.into(),
-            speed_y: vel_y.into(),
-            speed_z: vel_z.into(),
-            data: 1, // Writer is bugged, so velocity is always written, so this can never be 0
+            ty:        object_ty(ty),
+            x:         pos.x(),
+            y:         pos.y(),
+            z:         pos.z(),
+            yaw:       yaw.into(),
+            pitch:     pitch.into(),
+            speed_x:   vel_x.into(),
+            speed_y:   vel_y.into(),
+            speed_z:   vel_z.into(),
+            data:      1, /* Writer is bugged, so velocity is always written, so this can never
+                           * be 0 */
           }
         } else {
           let mut data = vec![];
@@ -761,9 +760,9 @@ impl ToTcp for Packet {
           GPacket::SpawnObjectV8 {
             entity_id:      eid,
             ty:             object_ty(ty),
-            x:              (x * 32.0) as i32,
-            y:              (y * 32.0) as i32,
-            z:              (z * 32.0) as i32,
+            x:              (pos.x() * 32.0) as i32,
+            y:              (pos.y() * 32.0) as i32,
+            z:              (pos.z() * 32.0) as i32,
             yaw:            yaw.into(),
             pitch:          pitch.into(),
             field_149020_k: 1, // Non-zero, so velocity is present
@@ -782,14 +781,14 @@ impl ToTcp for Packet {
           spawn
         }
       }
-      Packet::SpawnPlayer { eid, id, ty, x, y, z, yaw, pitch, meta } => {
+      Packet::SpawnPlayer { eid, id, ty, pos, yaw, pitch, meta } => {
         if ver == ProtocolVersion::V1_8 {
           GPacket::SpawnPlayerV8 {
             entity_id: eid,
             player_id: id,
-            x: (x * 32.0) as i32,
-            y: (y * 32.0) as i32,
-            z: (z * 32.0) as i32,
+            x: (pos.x() * 32.0) as i32,
+            y: (pos.y() * 32.0) as i32,
+            z: (pos.z() * 32.0) as i32,
             yaw,
             pitch,
             current_item: 0,
@@ -799,15 +798,23 @@ impl ToTcp for Packet {
           GPacket::SpawnPlayerV9 {
             entity_id: eid,
             unique_id: id,
-            x,
-            y,
-            z,
+            x: pos.x(),
+            y: pos.y(),
+            z: pos.z(),
             yaw,
             pitch,
             unknown: metadata(ty, &meta, ver, conn.conv()),
           }
         } else {
-          let spawn = GPacket::SpawnPlayerV15 { id: eid, uuid: id, x, y, z, yaw, pitch };
+          let spawn = GPacket::SpawnPlayerV15 {
+            id: eid,
+            uuid: id,
+            x: pos.x(),
+            y: pos.y(),
+            z: pos.z(),
+            yaw,
+            pitch,
+          };
           if !meta.fields.is_empty() {
             return Ok(smallvec![
               spawn,

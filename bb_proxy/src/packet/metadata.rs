@@ -140,7 +140,7 @@ pub fn metadata(ty: u32, meta: &Metadata, ver: ProtocolVersion, conv: &TypeConve
             out.write_str(&v);
           }
         }
-        Field::Item(mut item) => {
+        Field::Item(item) => {
           let mut item = item.clone();
           if ver < ProtocolVersion::V1_13 {
             if item.count() == 0 {

@@ -93,15 +93,13 @@ impl World {
     let chunk = pos.block().chunk();
     let remove = cb::Packet::RemoveEntities { eids: vec![player.eid()] };
     let add = cb::Packet::SpawnPlayer {
-      eid:   player.eid(),
-      id:    player.id(),
-      ty:    entity::Type::Player.id(),
-      x:     pos.x(),
-      y:     pos.y(),
-      z:     pos.z(),
-      yaw:   yaw as i8,
+      eid: player.eid(),
+      id: player.id(),
+      ty: entity::Type::Player.id(),
+      pos,
+      yaw: yaw as i8,
       pitch: pitch as i8,
-      meta:  player.metadata(),
+      meta: player.metadata(),
     };
     for p in self.players().iter().in_view(chunk).not(player.id()) {
       p.send(remove.clone());
@@ -145,9 +143,7 @@ impl World {
         // 1.18 clients will not render mobs that have the same UUID
         id:       UUID::random(),
         ty:       ent.ty().id(),
-        x:        p.aabb.pos.x(),
-        y:        p.aabb.pos.y(),
-        z:        p.aabb.pos.z(),
+        pos:      p.aabb.pos,
         yaw:      (p.yaw / 360.0 * 256.0) as i8,
         pitch:    (p.pitch / 360.0 * 256.0) as i8,
         head_yaw: 0,
@@ -165,9 +161,7 @@ impl World {
         // 1.18 clients will not render mobs that have the same UUID
         id:    UUID::random(),
         ty:    ent.ty().id(),
-        x:     p.aabb.pos.x(),
-        y:     p.aabb.pos.y(),
-        z:     p.aabb.pos.z(),
+        pos:   p.aabb.pos,
         yaw:   (p.yaw / 360.0 * 256.0) as i8,
         pitch: (p.pitch / 360.0 * 256.0) as i8,
         vel_x: p.vel.fixed_x(),
