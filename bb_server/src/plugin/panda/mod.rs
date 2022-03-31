@@ -1,6 +1,6 @@
 mod types;
 
-use super::{Bamboo, PluginImpl, PluginManager, ServerEvent, ServerMessage};
+use super::{Bamboo, GlobalServerEvent, PluginImpl, PluginManager, ServerEvent, ServerMessage};
 use crate::{block, player::Player, world::WorldManager};
 use bb_common::{math::Pos, net::sb::ClickWindow};
 use panda::{
@@ -117,6 +117,7 @@ impl PandaPlugin {
   pub fn call_on_player_join(&self, player: Arc<Player>) {
     self.call(self.path("on_player_join"), vec![types::player::PdPlayer::from(player).into()]);
   }
+  pub fn call_on_tick(&self) { self.call(self.path("on_tick"), vec![]); }
 
   pub fn call(&self, path: TyPath, args: Vec<Var>) -> Var {
     match &self.sl {
@@ -151,6 +152,9 @@ impl PluginImpl for PandaPlugin {
         ServerEvent::BlockPlace { pos, block } => self.call_on_block_place(player, pos, block),
         ServerEvent::Chat { text } => self.call_on_chat_message(player, text),
         ServerEvent::PlayerJoin {} => self.call_on_player_join(player),
+      },
+      ServerMessage::GlobalEvent { event } => match event {
+        GlobalServerEvent::Tick => self.call_on_tick(),
       },
       _ => {}
     }

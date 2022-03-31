@@ -40,6 +40,10 @@ pub enum ServerMessage {
     #[serde(flatten)]
     event:  ServerEvent,
   },
+  GlobalEvent {
+    #[serde(flatten)]
+    event: GlobalServerEvent,
+  },
   Reply {
     reply_id: u32,
     #[serde(flatten)]
@@ -59,7 +63,13 @@ pub enum ServerEvent {
   Chat {
     text: String,
   },
-  PlayerJoin {},
+  PlayerJoin,
+}
+
+#[derive(Debug, Clone, serde::Serialize)]
+#[serde(tag = "type")]
+pub enum GlobalServerEvent {
+  Tick,
 }
 
 #[derive(Debug, Clone, serde::Serialize)]

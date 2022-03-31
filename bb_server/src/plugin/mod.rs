@@ -5,8 +5,8 @@ pub mod socket;
 
 pub use json::*;
 pub use plugin::{
-  Plugin, PluginEvent, PluginImpl, PluginMessage, PluginRequest, ServerEvent, ServerMessage,
-  ServerReply,
+  GlobalServerEvent, Plugin, PluginEvent, PluginImpl, PluginMessage, PluginRequest, ServerEvent,
+  ServerMessage, ServerReply,
 };
 
 use self::panda::PandaPlugin;
@@ -63,26 +63,6 @@ impl PluginManager {
 
   /// Returns true if plugins should print error messages with colors.
   pub fn use_color(&self) -> bool { true }
-
-  pub fn run(&self, wm: Arc<WorldManager>) {
-    // let mut ctx = Context::new();
-    // ctx.register_global_class::<Bamboo>().unwrap();
-    // let _o = ctx.construct_object();
-    // ctx.register_global_property(
-    //   "sc",
-    //   Object::native_object(Box::new(Bamboo::new(wm.clone()))),
-    //   Attribute::all(),
-    // );
-    // self.load(&mut ctx, wm);
-    //
-    // let rx = self.rx.lock().unwrap();
-    // self.handle_event(Event::Init);
-    // loop {
-    //   if let Ok(e) = rx.recv() {
-    //     self.handle_event(e);
-    //   }
-    // }
-  }
 
   /// Loads all plugins from disk. Call this to reload all plugins.
   pub fn load(&self, wm: Arc<WorldManager>) {
@@ -153,6 +133,10 @@ impl PluginManager {
   fn event(&self, player: Arc<Player>, event: ServerEvent) {
     self.message(ServerMessage::Event { player, event });
   }
+  fn global_event(&self, event: GlobalServerEvent) {
+    self.message(ServerMessage::GlobalEvent { event });
+  }
+  pub fn on_tick(&self) { self.global_event(GlobalServerEvent::Tick); }
   pub fn on_block_place(&self, player: Arc<Player>, pos: Pos, block: block::Type) {
     self.event(player, ServerEvent::BlockPlace { pos, block });
   }

@@ -162,8 +162,7 @@ impl World {
   pub fn config(&self) -> &Arc<Config> { self.wm.config() }
 
   fn global_tick_loop(self: Arc<Self>) {
-    let mut pool =
-      ThreadPool::auto(|| State { uspt: self.uspt.clone(), world: Arc::clone(&self) });
+    let pool = ThreadPool::auto(|| State { uspt: self.uspt.clone(), world: Arc::clone(&self) });
     let mut tick = 0;
     loop {
       let start = Instant::now();
@@ -594,9 +593,9 @@ impl WorldManager {
   /// Returns the config used in the whole server.
   pub fn config(&self) -> &Arc<Config> { &self.config }
 
-  /// Runs the main loop for plugins. This will also run a global tick loop in
-  /// the future. This is a blocking call.
-  pub fn run(self: Arc<Self>) { self.plugins.run(self.clone()); }
+  /// Runs a global tick loop. This is used for plugin events. This is a
+  /// blocking call.
+  pub fn run(self: Arc<Self>) { self.global_tick_loop(); }
 
   /// Adds a new world.
   pub fn add_world(self: &Arc<Self>) {
@@ -677,5 +676,17 @@ impl WorldManager {
     };
     self.worlds.lock()[idx].remove_player(id);
     self.players.lock().remove(&id);
+  }
+
+  fn global_tick_loop(self: Arc<Self>) {
+    loop {
+      let start = Instant::now();
+      self.plugins.on_tick();
+      let time = Instant::now().duration_since(start);
+      match Duration::from_millis(50).checked_sub(time) {
+        Some(t) => thread::sleep(t),
+        None => warn!("plugin tick took more than 50 milliseconds: {}", time.as_millis()),
+      }
+    }
   }
 }
