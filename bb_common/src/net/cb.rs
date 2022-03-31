@@ -194,6 +194,11 @@ pub enum Packet {
   /// failed, then a `sb::SwitchServerFailed` packet will be sent to the server.
   #[id = 18]
   SwitchServer { ips: Vec<SocketAddr> },
+  #[id = 34]
+  Title {
+    #[must_exist]
+    action: TitleAction,
+  },
   #[id = 19]
   UnloadChunk { pos: ChunkPos },
   #[id = 20]
@@ -208,6 +213,22 @@ pub enum Packet {
   /// the inventory packets.
   #[id = 24]
   WindowItem { wid: u8, slot: i32, item: Item },
+}
+
+#[derive(Transfer, Debug, Clone, PartialEq, Eq)]
+pub enum TitleAction {
+  /// JSON encoded chat
+  #[id = 0]
+  Title(String),
+  /// JSON encoded chat
+  #[id = 1]
+  Subtitle(String),
+  #[id = 2]
+  Times { fade_in: u32, stay: u32, fade_out: u32 },
+  /// If true, the title will also be reset. If false, then sending the same
+  /// times will show the same title again.
+  #[id = 3]
+  Clear(bool),
 }
 
 #[derive(Transfer, Debug, Clone)]

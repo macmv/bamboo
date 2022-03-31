@@ -10,7 +10,7 @@ use bb_common::{
     cb,
     cb::{
       Animation, ArmorSlot, CommandType, EquipmentSlot, ObjectiveAction, ObjectiveType, Packet,
-      ScoreboardAction, ScoreboardDisplay,
+      ScoreboardAction, ScoreboardDisplay, TitleAction,
     },
   },
   util::{Buffer, Chat, Hand, UUID},
@@ -831,6 +831,53 @@ impl ToTcp for Packet {
       Packet::SwitchServer { ips } => {
         conn.switch_to(ips);
         return Ok(smallvec![]);
+      }
+      Packet::Title { action } => {
+        if ver >= ProtocolVersion::V1_17_1 {
+          match action {
+            TitleAction::Title(chat) => GPacket::TitleV17 { title: chat },
+            TitleAction::Subtitle(chat) => GPacket::SubtitleV17 { subtitle: chat },
+            TitleAction::Times { fade_in, stay, fade_out } => GPacket::TitleFadeV17 {
+              fade_in_ticks:  fade_in as i32,
+              remain_ticks:   stay as i32,
+              fade_out_ticks: fade_out as i32,
+            },
+            TitleAction::Clear(reset) => GPacket::ClearTitleV17 { reset },
+          }
+        } else {
+          let mut data = vec![];
+          let mut buf = Buffer::new(&mut data);
+          match action {
+            TitleAction::Title(ref chat) => buf.write_str(chat),
+            TitleAction::Subtitle(ref chat) => buf.write_str(chat),
+            TitleAction::Times { fade_in, stay, fade_out } => {
+              buf.write_varint(fade_in as i32);
+              buf.write_varint(stay as i32);
+              buf.write_varint(fade_out as i32);
+            }
+            _ => {}
+          }
+          GPacket::TitleV8 {
+            ty:      if ver >= ProtocolVersion::V1_12_2 {
+              match action {
+                TitleAction::Title(_) => 0,
+                TitleAction::Subtitle(_) => 1,
+                TitleAction::Times { .. } => 3,
+                TitleAction::Clear(false) => 4,
+                TitleAction::Clear(true) => 5,
+              }
+            } else {
+              match action {
+                TitleAction::Title(_) => 0,
+                TitleAction::Subtitle(_) => 1,
+                TitleAction::Times { .. } => 2,
+                TitleAction::Clear(false) => 3,
+                TitleAction::Clear(true) => 4,
+              }
+            },
+            unknown: data,
+          }
+        }
       }
       Packet::UnloadChunk { pos } => {
         if ver >= ProtocolVersion::V1_9 {
