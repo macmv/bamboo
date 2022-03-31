@@ -1,14 +1,12 @@
 use super::{Behavior, Entity, EntityPos, ShouldDespawn};
 
-pub struct SnowballBehavior {
-  _effect: Option<i32>,
+pub struct ItemBehavior {}
+
+impl Default for ItemBehavior {
+  fn default() -> Self { ItemBehavior {} }
 }
 
-impl Default for SnowballBehavior {
-  fn default() -> Self { SnowballBehavior { _effect: None } }
-}
-
-impl Behavior for SnowballBehavior {
+impl Behavior for ItemBehavior {
   fn tick(&self, ent: &Entity, p: &mut EntityPos) -> ShouldDespawn {
     let _ = ent;
     let vel = p.vel;
@@ -19,6 +17,13 @@ impl Behavior for SnowballBehavior {
     p.vel.z *= 0.99;
     if !p.grounded {
       p.vel.y -= 0.03;
+    }
+
+    for player in ent.world.read().players().iter().in_view(p.aabb.pos.block().chunk()) {
+      if player.pos().dist_squared(p.aabb.pos) < 1.5_f64.powi(2) {
+        player.lock_inventory().give(ent.metadata().get_item(8).into());
+        return ShouldDespawn(true);
+      }
     }
     ShouldDespawn(false)
   }

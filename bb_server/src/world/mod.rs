@@ -202,11 +202,17 @@ impl World {
           s.uspt.fetch_add(start.elapsed().as_micros().try_into().unwrap(), Ordering::SeqCst);
         });
       }
-      for (_eid, ent) in self.entities().iter() {
+      for (&eid, ent) in self.entities().iter() {
         let ent = ent.clone();
+        let w = self.clone();
         pool.execute(move |s| {
           let start = Instant::now();
-          ent.tick();
+          if ent.tick() {
+            w.entities.write().remove(&eid);
+            for p in w.players().iter().in_view(ent.fpos().block().chunk()) {
+              p.send(cb::Packet::RemoveEntities { eids: vec![eid] });
+            }
+          }
           s.uspt.fetch_add(start.elapsed().as_micros().try_into().unwrap(), Ordering::SeqCst);
         });
       }

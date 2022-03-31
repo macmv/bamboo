@@ -1,8 +1,15 @@
+mod item;
 mod snowball;
 
+pub use item::ItemBehavior;
 pub use snowball::SnowballBehavior;
 
 use super::{Entity, EntityPos, Type};
+
+/// A wrapper type, to make it clear that `true` means an entity should be
+/// removed.
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub struct ShouldDespawn(pub bool);
 
 pub trait Behavior {
   /// The maximum health of this entity.
@@ -10,7 +17,7 @@ pub trait Behavior {
 
   /// Returns true if the entity should despawn. Called whenever the entity's
   /// health changes, or when `check_despawn` is called.
-  fn should_despawn(&self, health: f32) -> bool { health <= 0.0 }
+  fn should_despawn(&self, health: f32) -> ShouldDespawn { ShouldDespawn(health <= 0.0) }
 
   /// Returns the amount of exp in this entity. For exp orbs, this is used when
   /// spawning them. For entities, this is how much exp will drop when they are
@@ -19,7 +26,7 @@ pub trait Behavior {
 
   /// Any extra functionality needed. Called every tick, after movement and
   /// collision checks have been completed.
-  fn tick(&self, ent: &Entity, p: &mut EntityPos) -> bool {
+  fn tick(&self, ent: &Entity, p: &mut EntityPos) -> ShouldDespawn {
     let _ = ent;
     let vel = p.vel;
     p.aabb.pos += vel;
@@ -34,7 +41,7 @@ pub trait Behavior {
     // on.
     p.vel.x *= 0.91;
     p.vel.z *= 0.91;
-    false
+    ShouldDespawn(false)
   }
 }
 
@@ -47,6 +54,7 @@ impl Behavior for DefaultBehavior {}
 pub fn for_entity(ty: Type) -> Box<dyn Behavior + Send> {
   match ty {
     Type::Snowball => Box::new(SnowballBehavior::default()),
+    Type::Item => Box::new(ItemBehavior::default()),
     _ => Box::new(DefaultBehavior::default()),
   }
 }

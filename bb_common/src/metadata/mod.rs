@@ -105,4 +105,15 @@ impl Metadata {
     self.fields.insert(idx, Field::OptChat(value.map(|v| v.to_json())));
   }
   pub fn set_item(&mut self, idx: u8, value: Item) { self.fields.insert(idx, Field::Item(value)); }
+
+  pub fn get_item(&self, idx: u8) -> Item {
+    self
+      .fields
+      .get(&idx)
+      .map(|f| match f {
+        Field::Item(it) => it.clone(),
+        _ => Item::default(),
+      })
+      .unwrap_or(Item::default())
+  }
 }

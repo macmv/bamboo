@@ -123,7 +123,7 @@ impl Entity {
   pub fn health(&self) -> f32 { *self.health.lock() }
 
   /// Returns true if this entity should despawn.
-  pub fn should_despawn(&self) -> bool { self.behavior.lock().should_despawn(self.health()) }
+  pub fn should_despawn(&self) -> bool { self.behavior.lock().should_despawn(self.health()).0 }
 
   /// Returns the amount of exp stored in this entity. This is just the amount
   /// for an exp orb, but it is also used to find out how much exp an entity
@@ -148,7 +148,7 @@ impl Entity {
     let mut p = self.pos.lock().clone();
     let old = p.aabb;
     let old_vel = p.vel;
-    if self.behavior.lock().tick(self, &mut p) {
+    if self.behavior.lock().tick(self, &mut p).0 {
       return true;
     }
     let w = self.world.read();
