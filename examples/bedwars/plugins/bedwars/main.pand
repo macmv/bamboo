@@ -48,7 +48,7 @@ fn init() {
   bb.store(Bedwars {
     teams: teams,
     players: map {},
-    in_game: true,
+    in_game: false,
     countdown: 0,
   })
 }

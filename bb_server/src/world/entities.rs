@@ -113,7 +113,6 @@ impl World {
 
   #[allow(clippy::if_same_then_else)]
   fn send_entity_spawn(&self, player: &Player, ent: &Entity) {
-    info!("spawning entity {:?}", ent.ty());
     let p = ent.pos();
     if ent.ty() == entity::Type::ExperienceOrb {
       // player.send(cb::Packet::SpawnEntityExperienceOrb {
