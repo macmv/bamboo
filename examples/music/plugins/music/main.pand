@@ -3,13 +3,21 @@ use bamboo::{
   block
 }
 
+struct MusicInfo {
+  current_block: int,
+  length: int,
+  playing: bool,
+  last_move: int,
+}
+
 fn init() {
   bb = bamboo::instance()
 
   world = bb.default_world()
-  world.fill_rect_kind(Pos::new(-5, 60, -8), Pos::new(5, 60, 9), block::Kind::from_s("jukebox"))
-  world.fill_rect_kind(Pos::new(-5, 61, -8), Pos::new(5, 61, -8), block::Kind::from_s("stone"))
-  world.fill_rect_kind(Pos::new(-5, 61, 9), Pos::new(5, 61, 9), block::Kind::from_s("stone"))
+  length = 32
+  world.fill_rect_kind(Pos::new(-1, 60, -8), Pos::new(length + 1, 60, 9), block::Kind::from_s("jukebox"))
+  world.fill_rect_kind(Pos::new(-1, 61, -8), Pos::new(length + 1, 61, -8), block::Kind::from_s("stone"))
+  world.fill_rect_kind(Pos::new(-1, 61, 9), Pos::new(length + 1, 61, 9), block::Kind::from_s("stone"))
 
   instruments = [
     block::Kind::from_s("oak_log"),
@@ -31,6 +39,46 @@ fn init() {
   ]
 
   for i = 0, i < instruments.len(), i++ {
-    world.set_kind(Pos::new(-5, 61, -7 + i), instruments[i])
+    world.set_kind(Pos::new(-1, 61, -7 + i), instruments[i])
+  }
+  info = MusicInfo {
+    current_block: 0,
+    length: length,
+    playing: false,
+    last_move: 0,
+  }
+  info.update_head()
+  bb.store(info)
+}
+
+fn on_tick() {
+  bb = bamboo::instance()
+  info = bb.lock()
+
+  if info.playing {
+    info.last_move++
+  }
+
+  if info.last_move > 5 {
+    info.last_move = 0
+    info.current_block++
+    if info.current_block > info.length {
+      info.current_block = 0
+    }
+    info.update_head()
+  }
+
+  bb.unlock(info)
+}
+
+impl MusicInfo {
+  fn update_head(self) {
+    world = bamboo::instance().default_world()
+    if self.current_block == 0 {
+      world.set_kind(Pos::new(self.length, 61, 9), block::Kind::from_s("stone"))
+    } else {
+      world.set_kind(Pos::new(self.current_block - 1, 61, 9), block::Kind::from_s("stone"))
+    }
+    world.set_kind(Pos::new(self.current_block, 61, 9), block::Kind::from_s("lime_wool"))
   }
 }
