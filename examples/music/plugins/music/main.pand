@@ -1,0 +1,36 @@
+use bamboo::{
+  util::Pos,
+  block
+}
+
+fn init() {
+  bb = bamboo::instance()
+
+  world = bb.default_world()
+  world.fill_rect_kind(Pos::new(-5, 60, -8), Pos::new(5, 60, 9), block::Kind::from_s("jukebox"))
+  world.fill_rect_kind(Pos::new(-5, 61, -8), Pos::new(5, 61, -8), block::Kind::from_s("stone"))
+  world.fill_rect_kind(Pos::new(-5, 61, 9), Pos::new(5, 61, 9), block::Kind::from_s("stone"))
+
+  instruments = [
+    block::Kind::from_s("oak_log"),
+    block::Kind::from_s("sand"),
+    block::Kind::from_s("glass"),
+    block::Kind::from_s("stone"),
+    block::Kind::from_s("gold_block"),
+    block::Kind::from_s("clay"),
+    block::Kind::from_s("packed_ice"),
+    block::Kind::from_s("white_wool"),
+    block::Kind::from_s("bone_block"),
+    block::Kind::from_s("iron_block"),
+    block::Kind::from_s("soul_sand"),
+    block::Kind::from_s("pumpkin"),
+    block::Kind::from_s("emerald_block"),
+    block::Kind::from_s("hay_block"),
+    block::Kind::from_s("glowstone"),
+    block::Kind::from_s("white_terracotta"),
+  ]
+
+  for i = 0, i < instruments.len(), i++ {
+    world.set_kind(Pos::new(-5, 61, -7 + i), instruments[i])
+  }
+}
