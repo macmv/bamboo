@@ -1,12 +1,25 @@
 use bamboo::{
   chat::Chat,
   util::FPos,
+  player::Player,
 }
 
+// Stores all the game info
 struct Bedwars {
   teams: map,
   players: map,
 }
+// Stores info for a player
+struct BedwarsPlayer {
+  player: Player,
+  // A number of ticks
+  time_to_respawn: int,
+
+  team_name: str,
+  spawn: Pos,
+  spawn_yaw: float,
+}
+// Stores info for a team
 struct Team {
   players: arr,
   spawn: Pos,
@@ -52,25 +65,18 @@ fn on_player_join(player) {
   bb.unlock(bedwars)
 }
 
-fn teleport_to_spawn(player) {
+fn on_tick() {
   bb = bamboo::instance()
-  teams = bb.lock()
-  smallest_size = 100
-  smallest_team = ""
-  keys = teams.keys()
-  for i = 0, i < teams.len(), i++ {
-    color = keys[i]
-    if teams[color].players.len() < smallest_size {
-      smallest_team = color
-      smallest_size = teams[color].players.len()
-    }
-  }
-  bb.unlock(teams)
+  bedwars = bb.lock()
+
+  bedwars.tick()
+
+  bb.unlock(bedwars)
 }
 
 impl Bedwars {
   fn teleport_to_spawn(self, player) {
-    team = self.teams[self.players[player.username()]]
+    team = self.teams[self.players[player.username()].team_name]
     player.teleport(team.spawn, team.spawn_yaw, 0.0)
   }
 
@@ -97,7 +103,44 @@ impl Bedwars {
     name.add(player.username()).color(team)
     player.set_display_name(name)
 
-    self.teams[team].players.push(player)
-    self.players.insert(player.username(), team)
+    spawn = self.teams[team].spawn
+    spawn_yaw = self.teams[team].spawn_yaw
+    p = BedwarsPlayer::new(player, team, spawn, spawn_yaw)
+    self.teams[team].players.push(p)
+    self.players.insert(player.username(), p)
+  }
+
+  fn tick(self) {
+    keys = self.players.keys()
+    for i = 0, i < self.players.len(), i++ {
+      username = keys[i]
+      self.players[username].tick()
+    }
+  }
+}
+
+impl BedwarsPlayer {
+  fn new(player, team_name, spawn, spawn_yaw) {
+    BedwarsPlayer {
+      player: player,
+      time_to_respawn: 100,
+      team_name: team_name,
+      spawn: spawn,
+      spawn_yaw: spawn_yaw,
+    }
+  }
+
+  fn tick(self) {
+    if self.time_to_respawn == 1 {
+      self.time_to_respawn = 0
+      self.player.teleport(self.spawn, self.spawn_yaw, 0.0)
+    } else if self.time_to_respawn > 0 {
+      self.time_to_respawn--
+      self.player.send_chat(Chat::new(self.time_to_respawn.to_s()))
+    }
+  }
+
+  fn alive(self) {
+    self.time_to_respawn == 0
   }
 }
