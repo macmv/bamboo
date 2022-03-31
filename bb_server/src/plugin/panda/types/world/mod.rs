@@ -1,6 +1,11 @@
-use super::{add_from, block::PdBlockKind, util::PdPos};
-use crate::world::World;
-use bb_common::math::Pos;
+use super::{
+  add_from,
+  block::PdBlockKind,
+  item::PdStack,
+  util::{PdFPos, PdPos},
+};
+use crate::{entity, world::World};
+use bb_common::{math::Pos, metadata::Metadata};
 use panda::{define_ty, parse::token::Span, runtime::RuntimeError};
 use std::{fmt, sync::Arc};
 
@@ -68,5 +73,12 @@ impl PdWorld {
   pub fn get_kind(&self, pos: &PdPos) -> Result<PdBlockKind, RuntimeError> {
     self.check_pos(pos.inner)?;
     Ok(self.inner.get_kind(pos.inner).unwrap().into())
+  }
+
+  /// Summons a dropped item at the given posision.
+  pub fn summon_item(&self, pos: &PdFPos, stack: &PdStack) {
+    let mut meta = Metadata::new();
+    meta.set_item(8, stack.inner.to_item());
+    self.inner.summon_meta(entity::Type::Item, pos.inner, meta);
   }
 }
