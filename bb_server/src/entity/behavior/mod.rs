@@ -26,7 +26,7 @@ pub trait Behavior {
 
   /// Any extra functionality needed. Called every tick, after movement and
   /// collision checks have been completed.
-  fn tick(&self, ent: &Entity, p: &mut EntityPos) -> ShouldDespawn {
+  fn tick(&mut self, ent: &Entity, p: &mut EntityPos) -> ShouldDespawn {
     let _ = ent;
     let vel = p.vel;
     p.aabb.pos += vel;
