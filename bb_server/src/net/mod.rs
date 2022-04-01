@@ -66,15 +66,17 @@ impl ConnSender {
   /// there are too many packets queued. The limit is 512 packets before this
   /// will block, so this should very rarely happen.
   ///
+  /// Note that this will simply drop the packet if the client has disconnected.
+  ///
   /// # Panics
   ///
-  /// This has the possibility to panic if any of the channels this uses are
-  /// disconnected. This will not happen unless the connection has been closed,
-  /// or the connection manager has been stopped.
+  /// This will panic if the waker thread used globally has been closed. The
+  /// only way for this to close is if the network manager stops working.
   pub fn send(&self, p: cb::Packet) {
-    self.tx.send(p).unwrap();
-    self.wake.send(WakeEvent::Clientbound(self.tok)).unwrap();
-    self.waker.wake().unwrap();
+    if let Ok(()) = self.tx.send(p) {
+      self.wake.send(WakeEvent::Clientbound(self.tok)).unwrap();
+      self.waker.wake().unwrap();
+    }
   }
 }
 
@@ -119,15 +121,17 @@ impl Connection {
   /// there are too many packets queued. The limit is 512 packets before this
   /// will block, so this should very rarely happen.
   ///
+  /// Note that this will simply drop the packet if the client has disconnected.
+  ///
   /// # Panics
   ///
-  /// This has the possibility to panic if any of the channels this uses are
-  /// disconnected. This will not happen unless the connection has been closed,
-  /// or the connection manager has been stopped.
+  /// This will panic if the waker thread used globally has been closed. The
+  /// only way for this to close is if the network manager stops working.
   pub fn send(&self, p: cb::Packet) {
-    self.tx.send(p).unwrap();
-    self.wake.send(WakeEvent::Clientbound(self.tok)).unwrap();
-    self.waker.wake().unwrap();
+    if let Ok(()) = self.tx.send(p) {
+      self.wake.send(WakeEvent::Clientbound(self.tok)).unwrap();
+      self.waker.wake().unwrap();
+    }
   }
 
   /// If this returns Ok(true) or an error, the connection should be closed.
