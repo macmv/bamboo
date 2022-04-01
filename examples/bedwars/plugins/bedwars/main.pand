@@ -40,10 +40,10 @@ fn init() {
   bb = bamboo::instance()
   world = bb.default_world()
   teams = map {
-    "red":    Team::new(world, FPos::new(0.0,   61.0, -40.0), 0.0,   FPos::new(0.5,   62.0, -44.5)),
+    "red":    Team::new(world, FPos::new(0.0,   61.0, -40.0), 0.0,   FPos::new(0.5,   62.0, -43.5)),
     "green":  Team::new(world, FPos::new(40.0,  61.0, 0.0  ), 90.0,  FPos::new(44.5,  62.0, 0.5  )),
     "aqua":   Team::new(world, FPos::new(0.0,   61.0, 40.0 ), 180.0, FPos::new(0.5,   62.0, 44.5 )),
-    "yellow": Team::new(world, FPos::new(-40.0, 61.0, 0.0  ), 270.0, FPos::new(-44.5, 62.0, 0.5  )),
+    "yellow": Team::new(world, FPos::new(-40.0, 61.0, 0.0  ), 270.0, FPos::new(-43.5, 62.0, 0.5  )),
   }
   bb.store(Bedwars {
     teams: teams,
@@ -94,12 +94,10 @@ impl Bedwars {
   fn find_smallest_team(self) {
     smallest_size = 100
     smallest_team = ""
-    keys = self.teams.keys()
-    for i = 0, i < self.teams.len(), i++ {
-      color = keys[i]
-      if self.teams[color].players.len() < smallest_size {
+    for color, team in self.teams {
+      if team.players.len() < smallest_size {
         smallest_team = color
-        smallest_size = self.teams[color].players.len()
+        smallest_size = team.players.len()
       }
     }
     smallest_team
@@ -112,9 +110,10 @@ impl Bedwars {
     player.set_scoreboard_line(8, line)
     player.set_scoreboard_line(7, Chat::new(""))
     self.set_scoreboard_status(player)
-    keys = self.players.keys()
-    for i = 0, i < self.players.len(), i++ {
-      self.set_scoreboard_player_count(self.players[keys[i]].player)
+    n = 0 // placeholder, fixes empty for loop bug
+    p = 0
+    for n, p in self.players {
+      self.set_scoreboard_player_count(p.player)
     }
 
     name = Chat::empty()
@@ -158,40 +157,35 @@ impl Bedwars {
   }
 
   fn tick(self) {
-    keys = self.players.keys()
     msg = 0 // placeholder
     if self.in_game {
-      for i = 0, i < self.players.len(), i++ {
-        username = keys[i]
-        self.players[username].tick()
+      for username, player in self.players {
+        player.tick()
       }
-      keys = self.teams.keys()
-      for i = 0, i < self.teams.len(), i++ {
-        self.teams[keys[i]].tick()
+      for color, team in self.teams {
+        team.tick()
       }
     } else if self.countdown == 1 {
-      self.countdown = 0
-      for i = 0, i < self.players.len(), i++ {
-        username = keys[i]
-        self.players[username].start()
+      for username, player in self.players {
+        player.start()
       }
+      self.in_game = true
+      self.countdown = 0
     } else if self.countdown > 0 {
       if self.countdown <= 100 {
         if self.countdown % 20 == 0 {
           msg = Chat::empty()
           msg.add((self.countdown / 20).to_s()).color("red")
 
-          for i = 0, i < self.players.len(), i++ {
-            username = keys[i]
-            self.players[username].player.set_title(msg)
-            self.players[username].player.show_title(0, 20, 0)
+          for username, player in self.players {
+            player.player.set_title(msg)
+            player.player.show_title(0, 20, 0)
           }
         }
       }
       if self.countdown % 20 == 0 {
-        for i = 0, i < self.players.len(), i++ {
-          username = keys[i]
-          self.set_scoreboard_countdown(self.players[username].player)
+        for username, player in self.players {
+          self.set_scoreboard_countdown(player.player)
         }
       }
       self.countdown--

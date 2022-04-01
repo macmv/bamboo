@@ -1399,7 +1399,7 @@ dependencies = [
 [[package]]
 name = "panda"
 version = "0.1.0"
-source = "git+https://gitlab.com/macmv/panda#b53e0560bb81fa6aaa4f2542f2630269e2a74b72"
+source = "git+https://gitlab.com/macmv/panda#8d72c4020280650d69fc60d5b3d120b77b3233c1"
 dependencies = [
  "ansi_term",
  "instant",
@@ -1412,7 +1412,7 @@ dependencies = [
 [[package]]
 name = "panda_derive"
 version = "0.1.0"
-source = "git+https://gitlab.com/macmv/panda#b53e0560bb81fa6aaa4f2542f2630269e2a74b72"
+source = "git+https://gitlab.com/macmv/panda#8d72c4020280650d69fc60d5b3d120b77b3233c1"
 dependencies = [
  "proc-macro-error",
  "proc-macro2",
@@ -1423,7 +1423,7 @@ dependencies = [
 [[package]]
 name = "panda_docs"
 version = "0.1.0"
-source = "git+https://gitlab.com/macmv/panda#b53e0560bb81fa6aaa4f2542f2630269e2a74b72"
+source = "git+https://gitlab.com/macmv/panda#8d72c4020280650d69fc60d5b3d120b77b3233c1"
 dependencies = [
  "html-builder",
 ]
