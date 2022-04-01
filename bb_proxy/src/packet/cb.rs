@@ -10,7 +10,7 @@ use bb_common::{
     cb,
     cb::{
       Animation, ArmorSlot, CommandType, EquipmentSlot, ObjectiveAction, ObjectiveType, Packet,
-      ScoreboardAction, ScoreboardDisplay, TitleAction,
+      ScoreboardAction, ScoreboardDisplay, SoundCategory, TitleAction,
     },
   },
   util::{Buffer, Chat, Hand, UUID},
@@ -518,6 +518,81 @@ impl ToTcp for Packet {
           GPacket::PlayerListV8 { action: id, unknown: data }
         } else {
           GPacket::PlayerListV17 { action: id, unknown: data }
+        }
+      }
+      Packet::PlaySound { name, category, pos, volume, pitch } => {
+        if ver >= ProtocolVersion::V1_14_4 {
+          GPacket::CustomSoundV14 {
+            id: name,
+            category: match category {
+              SoundCategory::Master => 0,
+              SoundCategory::Music => 1,
+              SoundCategory::Records => 2,
+              SoundCategory::Weather => 3,
+              SoundCategory::Blocks => 4,
+              SoundCategory::Hostile => 5,
+              SoundCategory::Neutral => 6,
+              SoundCategory::Players => 7,
+              SoundCategory::Ambient => 8,
+              SoundCategory::Voice => 9,
+            },
+            fixed_x: (pos.x() * 8.0) as i32,
+            fixed_y: (pos.y() * 8.0) as i32,
+            fixed_z: (pos.z() * 8.0) as i32,
+            volume,
+            pitch,
+          }
+        } else if ver >= ProtocolVersion::V1_10_2 {
+          GPacket::CustomSoundV10 {
+            sound_name: name,
+            category: match category {
+              SoundCategory::Master => 0,
+              SoundCategory::Music => 1,
+              SoundCategory::Records => 2,
+              SoundCategory::Weather => 3,
+              SoundCategory::Blocks => 4,
+              SoundCategory::Hostile => 5,
+              SoundCategory::Neutral => 6,
+              SoundCategory::Players => 7,
+              SoundCategory::Ambient => 8,
+              SoundCategory::Voice => 9,
+            },
+            x: (pos.x() * 8.0) as i32,
+            y: (pos.y() * 8.0) as i32,
+            z: (pos.z() * 8.0) as i32,
+            volume,
+            pitch,
+          }
+        } else if ver >= ProtocolVersion::V1_9_4 {
+          GPacket::CustomSoundV9 {
+            sound_name: name,
+            category: match category {
+              SoundCategory::Master => 0,
+              SoundCategory::Music => 1,
+              SoundCategory::Records => 2,
+              SoundCategory::Weather => 3,
+              SoundCategory::Blocks => 4,
+              SoundCategory::Hostile => 5,
+              SoundCategory::Neutral => 6,
+              SoundCategory::Players => 7,
+              SoundCategory::Ambient => 8,
+              SoundCategory::Voice => 9,
+            },
+            x: (pos.x() * 8.0) as i32,
+            y: (pos.y() * 8.0) as i32,
+            z: (pos.z() * 8.0) as i32,
+            volume,
+            pitch: (pitch * 128.0) as i32,
+          }
+        } else {
+          GPacket::PlaySoundV8 {
+            sound_name:   name,
+            pos_x:        (pos.x() * 8.0) as i32,
+            pos_y:        (pos.y() * 8.0) as i32,
+            pos_z:        (pos.z() * 8.0) as i32,
+            sound_volume: volume,
+            sound_pitch:  (pitch * 128.0) as i32,
+          }
         }
       }
       Packet::PluginMessage { channel, data } => {

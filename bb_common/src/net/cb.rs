@@ -117,6 +117,14 @@ pub enum Packet {
     #[must_exist]
     action: PlayerListAction,
   },
+  #[id = 36]
+  PlaySound {
+    name:     String,
+    category: SoundCategory,
+    pos:      FPos,
+    volume:   f32,
+    pitch:    f32,
+  },
   #[id = 15]
   PluginMessage { channel: String, data: Vec<u8> },
   #[id = 30]
@@ -219,6 +227,34 @@ pub enum Packet {
   /// the inventory packets.
   #[id = 24]
   WindowItem { wid: u8, slot: i32, item: Item },
+}
+
+#[derive(Transfer, Debug, Clone, PartialEq, Eq)]
+pub enum SoundCategory {
+  #[id = 0]
+  Master,
+  #[id = 1]
+  Music,
+  #[id = 2]
+  Records,
+  #[id = 3]
+  Weather,
+  #[id = 4]
+  Blocks,
+  #[id = 5]
+  Hostile,
+  #[id = 6]
+  Neutral,
+  #[id = 7]
+  Players,
+  #[id = 8]
+  Ambient,
+  #[id = 9]
+  Voice,
+}
+
+impl Default for SoundCategory {
+  fn default() -> Self { SoundCategory::Master }
 }
 
 #[derive(Transfer, Debug, Clone, PartialEq)]

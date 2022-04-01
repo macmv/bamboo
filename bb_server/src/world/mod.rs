@@ -568,6 +568,22 @@ impl World {
   /// always be a race condition. However, whenever you modify the world, this
   /// is also checked, so it won't end up being a problem.
   pub fn is_locked(&self) -> bool { self.locked.load(Ordering::Relaxed) }
+
+  /// Plays the given sound at the given positions. All nearby players will be
+  /// able to hear it.
+  pub fn play_sound(
+    &self,
+    sound: String,
+    category: cb::SoundCategory,
+    pos: FPos,
+    volume: f32,
+    pitch: f32,
+  ) {
+    let out = cb::Packet::PlaySound { name: sound, category, pos, volume, pitch };
+    for p in self.players().iter().in_view(pos.block().chunk()) {
+      p.send(out.clone());
+    }
+  }
 }
 
 impl Default for WorldManager {
