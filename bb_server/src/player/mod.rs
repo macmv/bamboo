@@ -17,10 +17,12 @@ use std::{f64::consts, fmt, net::SocketAddr, sync::Arc, time::Instant};
 
 mod inventory;
 mod scoreboard;
+mod team;
 mod tick;
 
 pub use inventory::PlayerInventory;
 pub use scoreboard::Scoreboard;
+pub use team::Team;
 
 #[derive(Debug, Clone)]
 struct PlayerPosition {
@@ -440,7 +442,6 @@ impl Player {
     }
     let mut meta = Metadata::new();
     meta.set_byte(0, self.status_byte());
-    let pos = self.pos().chunk();
     self.send_to_in_view(cb::Packet::EntityMetadata {
       eid: self.eid(),
       ty: entity::Type::Player.id(),

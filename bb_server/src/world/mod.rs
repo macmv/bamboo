@@ -29,7 +29,13 @@ use std::{
 };
 
 use crate::{
-  block, command::CommandTree, entity, entity::Entity, item, net::ConnSender, player::Player,
+  block,
+  command::CommandTree,
+  entity,
+  entity::Entity,
+  item,
+  net::ConnSender,
+  player::{Player, Team},
   plugin,
 };
 pub use chunk::MultiChunk;
@@ -90,6 +96,8 @@ pub struct WorldManager {
   worlds:           Mutex<Vec<Arc<World>>>,
   // Player id to world index
   players:          Mutex<HashMap<UUID, usize>>,
+  // Team name to team
+  teams:            RwLock<HashMap<String, Team>>,
   block_converter:  Arc<block::TypeConverter>,
   item_converter:   Arc<item::TypeConverter>,
   entity_converter: Arc<entity::TypeConverter>,
@@ -576,6 +584,7 @@ impl WorldManager {
       commands:         Arc::new(CommandTree::new()),
       worlds:           Mutex::new(vec![]),
       players:          Mutex::new(HashMap::new()),
+      teams:            RwLock::new(HashMap::new()),
       config:           Arc::new(Config::new(
         "server.yml",
         "server-default.yml",
@@ -686,6 +695,14 @@ impl WorldManager {
       match Duration::from_millis(50).checked_sub(time) {
         Some(t) => thread::sleep(t),
         None => warn!("plugin tick took more than 50 milliseconds: {}", time.as_millis()),
+      }
+    }
+  }
+
+  pub fn send_to_all(&self, out: cb::Packet) {
+    for w in self.worlds.lock().iter() {
+      for p in w.players().iter() {
+        p.send(out.clone());
       }
     }
   }

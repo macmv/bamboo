@@ -31,6 +31,7 @@
 //! The resulting json is not very nice to look at, but it is what the Minecraft
 //! client parses.
 
+use bb_macros::Transfer;
 use serde::ser::{Serialize, SerializeMap, SerializeSeq, SerializeStruct, Serializer};
 use serde_derive::{Deserialize, Serialize};
 
@@ -352,24 +353,41 @@ impl Section {
   }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Transfer, Debug, Clone, PartialEq, Eq)]
 pub enum Color {
+  #[id = 0]
   Black,
+  #[id = 1]
   DarkBlue,
+  #[id = 2]
   DarkGreen,
+  #[id = 3]
   DarkAqua,
+  #[id = 4]
   DarkRed,
+  #[id = 5]
   Purple,
+  #[id = 6]
   Gold,
+  #[id = 7]
   Gray,
+  #[id = 8]
   DarkGray,
+  #[id = 9]
   Blue,
+  #[id = 10]
   BrightGreen,
+  #[id = 11]
   Cyan,
+  #[id = 12]
   Red,
+  #[id = 13]
   Pink,
+  #[id = 14]
   Yellow,
+  #[id = 15]
   White,
+  #[id = 16]
   Custom(String),
 }
 

@@ -2,7 +2,7 @@ use crate::{
   chunk::{paletted::Section, BlockLight, LightChunk, SkyLight},
   math::{ChunkPos, FPos, Pos},
   metadata::Metadata,
-  util::{GameMode, Hand, Item, UUID},
+  util::{chat::Color, GameMode, Hand, Item, UUID},
 };
 use bb_macros::Transfer;
 use std::net::SocketAddr;
@@ -194,6 +194,12 @@ pub enum Packet {
   /// failed, then a `sb::SwitchServerFailed` packet will be sent to the server.
   #[id = 18]
   SwitchServer { ips: Vec<SocketAddr> },
+  #[id = 35]
+  Teams {
+    team:   String,
+    #[must_exist]
+    action: TeamAction,
+  },
   #[id = 34]
   Title {
     #[must_exist]
@@ -213,6 +219,57 @@ pub enum Packet {
   /// the inventory packets.
   #[id = 24]
   WindowItem { wid: u8, slot: i32, item: Item },
+}
+
+#[derive(Transfer, Debug, Clone, PartialEq)]
+pub enum TeamAction {
+  #[id = 0]
+  Create {
+    #[must_exist]
+    info:     TeamInfo,
+    entities: Vec<String>,
+  },
+  #[id = 1]
+  Remove,
+  #[id = 2]
+  UpdateInfo {
+    #[must_exist]
+    info: TeamInfo,
+  },
+  #[id = 3]
+  AddEntities { entities: Vec<String> },
+  #[id = 4]
+  RemoveEntities { entities: Vec<String> },
+}
+
+#[derive(Transfer, Debug, Clone, PartialEq, Eq)]
+pub struct TeamInfo {
+  /// JSON encoded chat
+  pub display_name:  String,
+  pub friendly_fire: bool,
+  pub see_invis:     bool,
+  #[must_exist]
+  pub name_tag:      TeamRule,
+  #[must_exist]
+  pub collisions:    TeamRule,
+  #[must_exist]
+  pub color:         Color,
+  /// JSON encoded chat
+  pub prefix:        String,
+  /// JSON encoded chat
+  pub postfix:       String,
+}
+
+#[derive(Transfer, Debug, Clone, Copy, PartialEq, Eq)]
+pub enum TeamRule {
+  #[id = 0]
+  Always,
+  #[id = 1]
+  ForOwnTeam,
+  #[id = 2]
+  ForOtherTeams,
+  #[id = 3]
+  Never,
 }
 
 #[derive(Transfer, Debug, Clone, PartialEq, Eq)]
