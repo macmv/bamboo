@@ -30,13 +30,13 @@ fn init() {
   world.fill_rect_kind(Pos::new(-5, 61, -9), Pos::new(-1, 61, 17), block::Kind::from_s("white_wool"))
 
   z = -8
-  for i = 0, i < 2, i++ {
-    for j = 0, j < 3, j++ {
+  for i in 0..2 {
+    for j in 0..3 {
       world.fill_rect_kind(Pos::new(-5, 62, z), Pos::new(-3, 62, z), block::Kind::from_s("black_wool"))
       z += 2
     }
     z += 1
-    for j = 0, j < 2, j++ {
+    for j in 0..2 {
       world.fill_rect_kind(Pos::new(-5, 62, z), Pos::new(-3, 62, z), block::Kind::from_s("black_wool"))
       z += 2
     }
@@ -63,8 +63,8 @@ fn init() {
     block::Kind::from_s("white_terracotta"),
   ]
 
-  for i = 0, i < instruments.len(), i++ {
-    world.set_kind(Pos::new(i, 62, -11), instruments[i])
+  for instr in instruments {
+    world.set_kind(Pos::new(i, 62, -11), instr)
   }
   info = MusicInfo {
     current_block: 0,
@@ -140,7 +140,7 @@ impl MusicInfo {
     }
     world.set_kind(Pos::new(self.current_block, 61, -9), block::Kind::from_s("lime_wool"))
 
-    for z = -8, z < 16, z++ {
+    for z in -8..16 {
       pos = Pos::new(self.current_block, 61, z)
       block = world.get_kind(pos)
       if block.to_s() != "air" {
