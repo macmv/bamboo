@@ -93,9 +93,9 @@ pub struct World {
 pub struct WorldManager {
   // This will always have at least 1 entry. The world at index 0 is considered the "default"
   // world.
-  worlds:           Mutex<Vec<Arc<World>>>,
-  // Player id to world index
-  players:          Mutex<HashMap<UUID, usize>>,
+  worlds:           RwLock<Vec<Arc<World>>>,
+  // Player id to world index and player
+  players:          RwLock<HashMap<UUID, (usize, Arc<Player>)>>,
   // Team name to team
   teams:            RwLock<HashMap<String, Team>>,
   block_converter:  Arc<block::TypeConverter>,
@@ -582,8 +582,8 @@ impl WorldManager {
       entity_converter: Arc::new(entity::TypeConverter::new()),
       plugins:          Arc::new(plugin::PluginManager::new()),
       commands:         Arc::new(CommandTree::new()),
-      worlds:           Mutex::new(vec![]),
-      players:          Mutex::new(HashMap::new()),
+      worlds:           RwLock::new(vec![]),
+      players:          RwLock::new(HashMap::new()),
       teams:            RwLock::new(HashMap::new()),
       config:           Arc::new(Config::new(
         "server.yml",
@@ -594,7 +594,10 @@ impl WorldManager {
   }
 
   /// Returns a list of all worlds on the server.
-  pub fn worlds(&self) -> MutexGuard<'_, Vec<Arc<World>>> { self.worlds.lock() }
+  pub fn worlds(&self) -> RwLockReadGuard<'_, Vec<Arc<World>>> { self.worlds.read() }
+
+  /// Returns a list of all the teams on the server.
+  pub fn teams(&self) -> RwLockReadGuard<'_, HashMap<String, Team>> { self.teams.read() }
 
   /// Loads plugins
   pub fn load_plugins(self: &Arc<Self>) { self.plugins.load(self.clone()) }
@@ -608,7 +611,7 @@ impl WorldManager {
 
   /// Adds a new world.
   pub fn add_world(self: &Arc<Self>) {
-    self.worlds.lock().push(World::new(
+    self.worlds.write().push(World::new(
       self.block_converter.clone(),
       self.item_converter.clone(),
       self.entity_converter.clone(),
@@ -634,7 +637,7 @@ impl WorldManager {
   /// Broadcasts a message to everyone one the server.
   pub fn broadcast(&self, msg: impl Into<Chat>) {
     let m = msg.into();
-    let worlds = self.worlds.lock();
+    let worlds = self.worlds.read();
     for w in worlds.iter() {
       for p in w.players.read().values() {
         p.send_message(&m);
@@ -644,7 +647,7 @@ impl WorldManager {
 
   /// Returns the default world. This can be used to easily get a world without
   /// any other context.
-  pub fn default_world(&self) -> Arc<World> { self.worlds.lock()[0].clone() }
+  pub fn default_world(&self) -> Arc<World> { self.worlds.read()[0].clone() }
 
   // /// Adds a new player into the game. This should be called when a new grpc
   // /// proxy connects.
@@ -666,9 +669,9 @@ impl WorldManager {
   /// Adds a new player into the game. This should be called when a new grpc
   /// proxy connects.
   pub fn new_player(&self, conn: ConnSender, info: JoinInfo) -> Arc<Player> {
-    let w = self.worlds.lock()[0].clone();
+    let w = self.worlds.read()[0].clone();
     let player = Player::new(w.eid(), conn, info.clone(), w.clone(), FPos::new(0.0, 80.0, 0.0));
-    self.players.lock().insert(info.uuid, 0);
+    self.players.write().insert(info.uuid, (0, player.clone()));
     w.new_player(player.clone(), info);
     player
   }
@@ -679,12 +682,18 @@ impl WorldManager {
   ///
   /// If the player is not present, this will do nothing.
   pub(crate) fn remove_player(&self, id: UUID) {
-    let idx = match self.players.lock().get(&id) {
-      Some(v) => *v,
+    let idx = match self.players.read().get(&id) {
+      Some(v) => v.0,
       None => return,
     };
-    self.worlds.lock()[idx].remove_player(id);
-    self.players.lock().remove(&id);
+    self.worlds.write()[idx].remove_player(id);
+    // Avoid race condition, this needs to be before we remove `id` from `players`.
+    // If we do this after, then the team might iterate through its own players and
+    // need to look them up from `self.players`.
+    for (_, team) in self.teams.write().iter_mut() {
+      team.player_disconnect(id);
+    }
+    self.players.write().remove(&id);
   }
 
   fn global_tick_loop(self: Arc<Self>) {
@@ -700,10 +709,14 @@ impl WorldManager {
   }
 
   pub fn send_to_all(&self, out: cb::Packet) {
-    for w in self.worlds.lock().iter() {
+    for w in self.worlds.read().iter() {
       for p in w.players().iter() {
         p.send(out.clone());
       }
     }
+  }
+
+  pub fn get_player(&self, id: UUID) -> Option<Arc<Player>> {
+    self.players.read().get(&id).map(|v| v.1.clone())
   }
 }

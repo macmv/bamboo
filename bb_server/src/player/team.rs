@@ -12,7 +12,7 @@ use std::{collections::HashSet, sync::Arc};
 pub struct Team {
   name: String,
 
-  // Set of player ids
+  /// Set of uuids for players on this team.
   members: HashSet<UUID>,
 
   display_name:   Chat,
@@ -90,5 +90,22 @@ impl Team {
       prefix:        self.prefix.to_json(),
       postfix:       self.prefix.to_json(),
     }
+  }
+
+  pub(crate) fn player_disconnect(&mut self, id: UUID) { self.members.remove(&id); }
+
+  /// Creates the team for the player that has just joined.
+  pub(crate) fn send_join(&self, player: &Player) {
+    player.send(cb::Packet::Teams {
+      team:   self.name.clone(),
+      action: TeamAction::Create {
+        info:     self.info(),
+        entities: self
+          .members
+          .iter()
+          .map(|id| self.wm.get_player(*id).unwrap().username().clone())
+          .collect(),
+      },
+    });
   }
 }

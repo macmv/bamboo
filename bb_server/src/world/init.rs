@@ -227,5 +227,9 @@ impl World {
         meta: other.metadata(),
       });
     }
+
+    for (_, team) in self.wm.teams().iter() {
+      team.send_join(&player);
+    }
   }
 }
