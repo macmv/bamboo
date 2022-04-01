@@ -5,7 +5,7 @@ use super::{
   util::{PdFPos, PdPos},
 };
 use crate::{entity, world::World};
-use bb_common::{math::Pos, metadata::Metadata};
+use bb_common::{math::Pos, metadata::Metadata, net::cb::SoundCategory};
 use panda::{define_ty, parse::token::Span, runtime::RuntimeError};
 use std::{fmt, sync::Arc};
 
@@ -80,5 +80,42 @@ impl PdWorld {
     let mut meta = Metadata::new();
     meta.set_item(8, stack.inner.to_item());
     self.inner.summon_meta(entity::Type::Item, pos.inner, meta);
+  }
+
+  /// Plays the given sound at the given positions. All nearby players will be
+  /// able to hear it.
+  pub fn play_sound(
+    &self,
+    sound: &str,
+    category: &str,
+    pos: &PdFPos,
+    volume: f32,
+    pitch: f32,
+  ) -> Result<(), RuntimeError> {
+    self.inner.play_sound(
+      sound.into(),
+      match category {
+        "master" => SoundCategory::Master,
+        "music" => SoundCategory::Music,
+        "record" => SoundCategory::Records,
+        "weather" => SoundCategory::Weather,
+        "block" => SoundCategory::Blocks,
+        "hostile" => SoundCategory::Hostile,
+        "neutral" => SoundCategory::Neutral,
+        "player" => SoundCategory::Players,
+        "ambient" => SoundCategory::Ambient,
+        "voice" => SoundCategory::Voice,
+        _ => {
+          return Err(RuntimeError::custom(
+            format!("invalid sound category: {category}"),
+            Span::call_site(),
+          ))
+        }
+      },
+      pos.inner,
+      volume,
+      pitch,
+    );
+    Ok(())
   }
 }

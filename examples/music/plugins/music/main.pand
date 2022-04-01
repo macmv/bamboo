@@ -1,5 +1,5 @@
 use bamboo::{
-  util::Pos,
+  util::{FPos, Pos},
   block,
   command::Command,
   chat::Chat,
@@ -106,7 +106,7 @@ fn on_tick() {
     info.last_move++
   }
 
-  if info.last_move > 5 {
+  if info.last_move >= 2 {
     info.last_move = 0
     info.current_block++
     if info.current_block > info.length {
@@ -130,6 +130,17 @@ fn on_block_place(player, pos, kind) {
   }
 }
 
+fn sound_for(block) {
+  if block == "gold_block" {
+    "note.pling"
+  } else if block == "clay" {
+    bamboo::info("snare")
+    "note.snare"
+  } else {
+    "note.harp"
+  }
+}
+
 impl MusicInfo {
   fn update_head(self) {
     world = bamboo::instance().default_world()
@@ -144,10 +155,11 @@ impl MusicInfo {
       pos = Pos::new(self.current_block, 61, z)
       block = world.get_kind(pos)
       if block.to_s() != "air" {
-        world.set_kind(pos, block::Kind::from_s("gold_block"))
+        sound = sound_for(world.get_kind(pos).to_s())
+        note = z + 8
+        pitch = 2.0 ** ((note.to_f() - 12.0) / 12.0)
+        world.play_sound(sound, "master", FPos::new(0.0, 60.0, 0.0), 1.0, pitch)
       }
-      note = z + 8
-      // pitch = 2 ** (note - 12.0 / 12.0)
     }
   }
 
