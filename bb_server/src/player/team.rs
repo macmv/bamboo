@@ -50,8 +50,18 @@ impl Team {
     t
   }
 
-  pub fn set_prefix(&mut self, prefix: Chat) { self.prefix = prefix; }
-  pub fn set_postfix(&mut self, postfix: Chat) { self.postfix = postfix; }
+  pub fn set_prefix(&mut self, prefix: Chat) {
+    self.prefix = prefix;
+    self.update_info();
+  }
+  pub fn set_postfix(&mut self, postfix: Chat) {
+    self.postfix = postfix;
+    self.update_info();
+  }
+  pub fn set_color(&mut self, color: Color) {
+    self.color = color;
+    self.update_info();
+  }
 
   pub fn add(&mut self, player: &Player) {
     self.members.insert(player.id());
@@ -62,6 +72,13 @@ impl Team {
     self.wm.send_to_all(out);
   }
 
+  fn update_info(&self) {
+    let out = cb::Packet::Teams {
+      team:   self.name.clone(),
+      action: TeamAction::UpdateInfo { info: self.info() },
+    };
+    self.wm.send_to_all(out);
+  }
   fn info(&self) -> TeamInfo {
     TeamInfo {
       display_name:  self.display_name.to_json(),
