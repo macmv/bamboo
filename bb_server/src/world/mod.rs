@@ -229,7 +229,7 @@ impl World {
       tick += 1;
       let time = Instant::now().duration_since(start);
       match Duration::from_millis(50).checked_sub(time) {
-        Some(t) => thread::sleep(t),
+        Some(t) => spin_sleep::sleep(t),
         None => warn!("tick took more than 50 milliseconds: {}", time.as_millis()),
       }
     }
@@ -718,7 +718,7 @@ impl WorldManager {
       self.plugins.on_tick();
       let time = Instant::now().duration_since(start);
       match Duration::from_millis(50).checked_sub(time) {
-        Some(t) => thread::sleep(t),
+        Some(t) => spin_sleep::sleep(t),
         None => warn!("plugin tick took more than 50 milliseconds: {}", time.as_millis()),
       }
     }
