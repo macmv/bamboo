@@ -1,10 +1,10 @@
 world:
   # locked: true
-  debug: true
+  # debug: true
   # void: true
 
   vanilla:
-    enabled: true
+    enabled: false
     # Note that this is in the gitignore, as vanilla worlds are not at all efficient
     # with git.
     path: "world"

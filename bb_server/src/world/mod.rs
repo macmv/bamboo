@@ -111,6 +111,8 @@ struct State {
   world: Arc<World>,
 }
 
+const TICK_TIME: Duration = Duration::from_millis(50);
+
 impl World {
   pub fn new(
     block_converter: Arc<block::TypeConverter>,
@@ -172,8 +174,8 @@ impl World {
   fn global_tick_loop(self: Arc<Self>) {
     let pool = ThreadPool::auto(|| State { uspt: self.uspt.clone(), world: Arc::clone(&self) });
     let mut tick = 0;
+    let mut start = Instant::now();
     loop {
-      let start = Instant::now();
       if tick % 20 == 0 {
         let mut header = Chat::empty();
         let mut footer = Chat::empty();
@@ -227,10 +229,11 @@ impl World {
       // We don't want overlapping tick loops
       pool.wait();
       tick += 1;
-      let time = Instant::now().duration_since(start);
-      match Duration::from_millis(50).checked_sub(time) {
+      let passed = Instant::now().duration_since(start);
+      start += TICK_TIME;
+      match TICK_TIME.checked_sub(passed) {
         Some(t) => spin_sleep::sleep(t),
-        None => warn!("tick took more than 50 milliseconds: {}", time.as_millis()),
+        None => warn!("tick took {passed:?} (more than 50 ms)"),
       }
     }
   }
@@ -713,13 +716,14 @@ impl WorldManager {
   }
 
   fn global_tick_loop(self: Arc<Self>) {
+    let mut start = Instant::now();
     loop {
-      let start = Instant::now();
       self.plugins.on_tick();
-      let time = Instant::now().duration_since(start);
-      match Duration::from_millis(50).checked_sub(time) {
+      let passed = Instant::now().duration_since(start);
+      start += TICK_TIME;
+      match TICK_TIME.checked_sub(passed) {
         Some(t) => spin_sleep::sleep(t),
-        None => warn!("plugin tick took more than 50 milliseconds: {}", time.as_millis()),
+        None => warn!("plugin tick took {passed:?} (more than 50 ms)"),
       }
     }
   }
