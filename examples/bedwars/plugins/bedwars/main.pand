@@ -4,6 +4,7 @@ use bamboo::{
   item,
   player::Player,
   world::World,
+  command::Command,
 }
 
 // Stores all the game info
@@ -51,10 +52,18 @@ fn init() {
     in_game: false,
     countdown: 0,
   })
+
+  c = Command::new("start", handle_start)
+  bb.add_command(c)
 }
 
-fn start_game(bb) {
+fn handle_start(player, args) {
+  bb = bamboo::instance()
+  bedwars = bb.lock()
 
+  bedwars.countdown = 1
+
+  bb.unlock(bedwars)
 }
 
 fn on_click_window(player, slot, mode) {
@@ -126,8 +135,10 @@ impl Bedwars {
     self.teams[team].players.push(p)
     self.players.insert(player.username(), p)
 
-    if self.players.len() >= 4 {
-      self.start_countdown()
+    if self.players.len() >= 2 {
+      self.start_countdown(30)
+    } else if self.players.len() >= 4 {
+      self.start_countdown(15)
     }
     p
   }
@@ -192,8 +203,12 @@ impl Bedwars {
     }
   }
 
-  fn start_countdown(self) {
-    self.countdown = 15 * 20
+  fn start_countdown(self, seconds) {
+    if self.countdown == 0 {
+      self.countdown = seconds * 20
+    } else if self.countdown > seconds * 20 {
+      self.countdown = seconds * 20
+    }
   }
 }
 
@@ -201,7 +216,7 @@ impl BedwarsPlayer {
   fn new(player, team_name, spawn, spawn_yaw) {
     BedwarsPlayer {
       player: player,
-      time_to_respawn: 5 * 20,
+      time_to_respawn: 0,
       team_name: team_name,
       spawn: spawn,
       spawn_yaw: spawn_yaw,
@@ -231,6 +246,8 @@ impl BedwarsPlayer {
   }
 
   fn start(self) {
+    self.player.clear_scoreboard_line(3)
+    self.player.clear_scoreboard_line(4)
     self.teleport_to_spawn()
   }
 

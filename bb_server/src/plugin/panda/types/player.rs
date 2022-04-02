@@ -114,6 +114,9 @@ impl PdPlayer {
   pub fn set_scoreboard_line(&self, line: u8, message: &PdChat) {
     self.inner.lock_scoreboard().set_line(line, &message.inner.lock().unwrap());
   }
+  /// Clears a line in the scoreboard. If it is hidden, this will still work,
+  /// and the updated lines will show when the scoreboard is shown again.
+  pub fn clear_scoreboard_line(&self, line: u8) { self.inner.lock_scoreboard().clear_line(line); }
 
   /// Sets a display name for this player. This will be shown instead of their
   /// username in the tab list and above their head.
