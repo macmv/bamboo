@@ -144,10 +144,7 @@ impl Bedwars {
   }
 
   fn set_scoreboard_status(self, player) {
-    if self.in_game {
-      // parsing is bugged, i can't have an empty block here
-      1 + 2
-    } else {
+    if !self.in_game {
       self.set_scoreboard_player_count(player)
       player.set_scoreboard_line(4, Chat::new(""))
       if self.countdown > 0 {
@@ -204,9 +201,7 @@ impl Bedwars {
   }
 
   fn start_countdown(self, seconds) {
-    if self.countdown == 0 {
-      self.countdown = seconds * 20
-    } else if self.countdown > seconds * 20 {
+    if self.countdown == 0 || self.countdown > seconds * 20 {
       self.countdown = seconds * 20
     }
   }

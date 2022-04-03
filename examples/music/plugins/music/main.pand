@@ -120,13 +120,11 @@ fn on_tick() {
 }
 
 fn on_block_place(player, pos, kind) {
-  if pos.z() >= -8 {
-    if pos.z() <= 16 {
-      bb = bamboo::instance()
-      info = bb.lock()
-      info.place_block(pos.z())
-      bb.unlock(info)
-    }
+  if pos.z() >= -8 && pos.z() <= 16 {
+    bb = bamboo::instance()
+    info = bb.lock()
+    info.place_block(pos.z())
+    bb.unlock(info)
   }
 }
 
