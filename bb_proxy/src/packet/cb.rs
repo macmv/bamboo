@@ -14,7 +14,7 @@ use bb_common::{
       TitleAction,
     },
   },
-  util::{Buffer, Hand, UUID},
+  util::{chat, Buffer, Hand, UUID},
   version::ProtocolVersion,
 };
 use serde::Serialize;
@@ -984,7 +984,12 @@ impl ToTcp for Packet {
             buf.write_str(&info.postfix.to_json());
           } else if ver >= ProtocolVersion::V1_9_4 {
             buf.write_str(&info.display_name.to_codes());
-            buf.write_str(&info.prefix.to_codes());
+            // Team colors are broken. This code makes titles match the functionality of
+            // 1.14+ clients.
+            let mut prefix = info.prefix.to_codes();
+            prefix.push(chat::CODE_SEP);
+            prefix.push(info.color.code());
+            buf.write_str(&prefix);
             buf.write_str(&info.postfix.to_codes());
             buf.write_u8(
               if info.friendly_fire { 0x01 } else { 0x00 }
@@ -1002,10 +1007,17 @@ impl ToTcp for Packet {
               TeamRule::ForOwnTeam => "pushOwnTeam",
               TeamRule::Never => "never",
             });
+            // This is pointless, as the client will never render it. But theres no real
+            // reason not to send it.
             buf.write_varint(info.color.id().into());
           } else {
             buf.write_str(&info.display_name.to_codes());
-            buf.write_str(&info.prefix.to_codes());
+            // Team colors are broken. This code makes titles match the functionality of
+            // 1.14+ clients.
+            let mut prefix = info.prefix.to_codes();
+            prefix.push(chat::CODE_SEP);
+            prefix.push(info.color.code());
+            buf.write_str(&prefix);
             buf.write_str(&info.postfix.to_codes());
             buf.write_u8(
               if info.friendly_fire { 0x01 } else { 0x00 }
@@ -1017,6 +1029,8 @@ impl ToTcp for Packet {
               TeamRule::ForOwnTeam => "hideForOwnTeam",
               TeamRule::Never => "never",
             });
+            // This is pointless, as the client will never render it. But theres no real
+            // reason not to send it.
             buf.write_u8(info.color.id());
           }
         }

@@ -49,6 +49,9 @@ pub struct Chat {
   sections: Vec<Section>,
 }
 
+/// The character used in the old chat codes formatting.
+pub const CODE_SEP: char = '§';
+
 impl Chat {
   /// Creates a new Chat message. This will contain a single section, with the
   /// given text set. No formatting will be applied.
