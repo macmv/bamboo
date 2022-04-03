@@ -133,11 +133,13 @@ impl Bedwars {
     self.teams[team].add_player(p)
     self.players.insert(player.username(), p)
 
+    /*
     if self.players.len() >= 2 {
       self.start_countdown(30)
     } else if self.players.len() >= 4 {
       self.start_countdown(15)
     }
+    */
     p
   }
 

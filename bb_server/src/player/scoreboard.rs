@@ -24,7 +24,7 @@ impl Scoreboard {
       self.conn.send(cb::Packet::ScoreboardObjective {
         objective: "scoreboard".into(),
         mode:      cb::ObjectiveAction::Create {
-          value: Chat::new("Scoreboard").to_json(),
+          value: Chat::new("Scoreboard"),
           ty:    cb::ObjectiveType::Integer,
         },
       });

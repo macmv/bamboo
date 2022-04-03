@@ -522,7 +522,7 @@ impl World {
   pub fn broadcast(&self, msg: impl Into<Chat>) {
     let m = msg.into();
     for p in self.players.read().values() {
-      p.send_message(&m);
+      p.send_message(m.clone());
     }
   }
 
@@ -685,7 +685,7 @@ impl WorldManager {
     let worlds = self.worlds.read();
     for w in worlds.iter() {
       for p in w.players.read().values() {
-        p.send_message(&m);
+        p.send_message(m.clone());
       }
     }
   }

@@ -79,7 +79,7 @@ impl World {
       if let Some(p) = player {
         let eid = p.world().summon(ty, p.pos());
         info!("eid of mob: {}", eid);
-        p.send_message(&Chat::new(format!("summoned {:?}", ty)));
+        p.send_message(Chat::new(format!("summoned {:?}", ty)));
       }
     });
 

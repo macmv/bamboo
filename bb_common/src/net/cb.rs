@@ -2,7 +2,7 @@ use crate::{
   chunk::{paletted::Section, BlockLight, LightChunk, SkyLight},
   math::{ChunkPos, FPos, Pos},
   metadata::Metadata,
-  util::{chat::Color, GameMode, Hand, Item, UUID},
+  util::{chat::Color, Chat, GameMode, Hand, Item, UUID},
 };
 use bb_macros::Transfer;
 use std::net::SocketAddr;
@@ -24,7 +24,7 @@ pub enum Packet {
   #[id = 1]
   BlockUpdate { pos: Pos, state: u32 },
   #[id = 2]
-  Chat { msg: String, ty: u8 },
+  Chat { msg: Chat, ty: u8 },
   #[id = 3]
   Chunk {
     pos:         ChunkPos,
@@ -229,7 +229,7 @@ pub enum Packet {
   WindowItem { wid: u8, slot: i32, item: Item },
 }
 
-#[derive(Transfer, Debug, Clone, PartialEq, Eq)]
+#[derive(Transfer, Debug, Clone, PartialEq)]
 pub enum SoundCategory {
   #[id = 0]
   Master,
@@ -278,10 +278,9 @@ pub enum TeamAction {
   RemoveEntities { entities: Vec<String> },
 }
 
-#[derive(Transfer, Debug, Clone, PartialEq, Eq)]
+#[derive(Transfer, Debug, Clone, PartialEq)]
 pub struct TeamInfo {
-  /// JSON encoded chat
-  pub display_name:  String,
+  pub display_name:  Chat,
   pub friendly_fire: bool,
   pub see_invis:     bool,
   #[must_exist]
@@ -290,10 +289,8 @@ pub struct TeamInfo {
   pub collisions:    TeamRule,
   #[must_exist]
   pub color:         Color,
-  /// JSON encoded chat
-  pub prefix:        String,
-  /// JSON encoded chat
-  pub postfix:       String,
+  pub prefix:        Chat,
+  pub postfix:       Chat,
 }
 
 #[derive(Transfer, Debug, Clone, Copy, PartialEq, Eq)]
@@ -308,14 +305,12 @@ pub enum TeamRule {
   Never,
 }
 
-#[derive(Transfer, Debug, Clone, PartialEq, Eq)]
+#[derive(Transfer, Debug, Clone, PartialEq)]
 pub enum TitleAction {
-  /// JSON encoded chat
   #[id = 0]
-  Title(String),
-  /// JSON encoded chat
+  Title(Chat),
   #[id = 1]
-  Subtitle(String),
+  Subtitle(Chat),
   #[id = 2]
   Times { fade_in: u32, stay: u32, fade_out: u32 },
   /// If true, the title will also be reset. If false, then sending the same
@@ -423,18 +418,14 @@ pub enum ScoreboardDisplay {
   #[id = 2]
   BelowName,
 }
-#[derive(Transfer, Debug, Clone, PartialEq, Eq)]
+#[derive(Transfer, Debug, Clone, PartialEq)]
 pub enum ObjectiveAction {
-  /// The value here is a json encoded chat message. For older (1.8 - 1.12)
-  /// clients, this will be converted into a color-coded message by the proxy.
   #[id = 0]
-  Create { value: String, ty: ObjectiveType },
+  Create { value: Chat, ty: ObjectiveType },
   #[id = 1]
   Remove,
-  /// The value here is a json encoded chat message. For older (1.8 - 1.12)
-  /// clients, this will be converted into a color-coded message by the proxy.
   #[id = 2]
-  Update { value: String, ty: ObjectiveType },
+  Update { value: Chat, ty: ObjectiveType },
 }
 #[derive(Transfer, Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ObjectiveType {
@@ -505,7 +496,7 @@ pub struct PlayerListLatency {
 #[derive(Transfer, Debug, Default, Clone)]
 pub struct PlayerListDisplay {
   pub id:           UUID,
-  pub display_name: Option<String>,
+  pub display_name: Option<Chat>,
 }
 
 /// See [`PlayerListAdd`]

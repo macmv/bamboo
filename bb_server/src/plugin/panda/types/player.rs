@@ -68,16 +68,18 @@ impl PdPlayer {
       }
       _ => Chat::new(msg.to_string()),
     };
-    self.inner.send_message(&out);
+    self.inner.send_message(out);
   }
 
   /// Sets the title for this player. To show the title and subtitle, call
   /// [`show_title`].
-  pub fn set_title(&self, title: &PdChat) { self.inner.set_title(&title.inner.lock().unwrap()); }
+  pub fn set_title(&self, title: &PdChat) {
+    self.inner.set_title(title.inner.lock().unwrap().clone());
+  }
   /// Sets the subtitle for this player. To show the title and subtitle, call
   /// [`show_title`].
   pub fn set_subtitle(&self, subtitle: &PdChat) {
-    self.inner.set_subtitle(&subtitle.inner.lock().unwrap());
+    self.inner.set_subtitle(subtitle.inner.lock().unwrap().clone());
   }
   /// Shows the current title to the player. The `fade_in`, `stay`, and
   /// `fade_out` arguments are all in ticks.

@@ -14,7 +14,7 @@ use bb_common::{
       TitleAction,
     },
   },
-  util::{Buffer, Chat, Hand, UUID},
+  util::{Buffer, Hand, UUID},
   version::ProtocolVersion,
 };
 use serde::Serialize;
@@ -112,15 +112,15 @@ impl ToTcp for Packet {
       }
       Packet::Chat { msg, ty } => {
         if ver < ProtocolVersion::V1_12_2 {
-          GPacket::ChatV8 { chat_component: msg, ty: ty as i8 }
+          GPacket::ChatV8 { chat_component: msg.to_json(), ty: ty as i8 }
         } else if ver < ProtocolVersion::V1_16_5 {
-          GPacket::ChatV12 { chat_component: msg, unknown: vec![ty] }
+          GPacket::ChatV12 { chat_component: msg.to_json(), unknown: vec![ty] }
         } else {
           let mut data = vec![];
           let mut buf = Buffer::new(&mut data);
           buf.write_u8(ty);
           buf.write_uuid(UUID::from_u128(0));
-          GPacket::ChatV12 { chat_component: msg, unknown: data }
+          GPacket::ChatV12 { chat_component: msg.to_json(), unknown: data }
         }
       }
       Packet::Chunk { pos, full, bit_map, sections, sky_light, block_light } => {
@@ -505,7 +505,7 @@ impl ToTcp for Packet {
             id = 3;
             buf.write_list(&v, |buf, v| {
               buf.write_uuid(v.id);
-              buf.write_option(&v.display_name, |buf, v| buf.write_str(v));
+              buf.write_option(&v.display_name, |buf, v| buf.write_str(&v.to_json()));
             });
           }
           cb::PlayerListAction::Remove(v) => {
@@ -637,10 +637,9 @@ impl ToTcp for Packet {
         match mode {
           ObjectiveAction::Create { value, ty } | ObjectiveAction::Update { value, ty } => {
             if ver <= ProtocolVersion::V1_12_2 {
-              let chat = Chat::from_json(&value).unwrap();
-              buf.write_str(&chat.to_codes());
+              buf.write_str(&value.to_codes());
             } else {
-              buf.write_str(&value);
+              buf.write_str(&value.to_json());
             }
             buf.write_varint(match ty {
               ObjectiveType::Integer => 0,
@@ -911,8 +910,8 @@ impl ToTcp for Packet {
       Packet::Title { action } => {
         if ver >= ProtocolVersion::V1_17_1 {
           match action {
-            TitleAction::Title(chat) => GPacket::TitleV17 { title: chat },
-            TitleAction::Subtitle(chat) => GPacket::SubtitleV17 { subtitle: chat },
+            TitleAction::Title(chat) => GPacket::TitleV17 { title: chat.to_json() },
+            TitleAction::Subtitle(chat) => GPacket::SubtitleV17 { subtitle: chat.to_json() },
             TitleAction::Times { fade_in, stay, fade_out } => GPacket::TitleFadeV17 {
               fade_in_ticks:  fade_in as i32,
               remain_ticks:   stay as i32,
@@ -924,8 +923,8 @@ impl ToTcp for Packet {
           let mut data = vec![];
           let mut buf = Buffer::new(&mut data);
           match action {
-            TitleAction::Title(ref chat) => buf.write_str(chat),
-            TitleAction::Subtitle(ref chat) => buf.write_str(chat),
+            TitleAction::Title(ref chat) => buf.write_str(&chat.to_json()),
+            TitleAction::Subtitle(ref chat) => buf.write_str(&chat.to_json()),
             TitleAction::Times { fade_in, stay, fade_out } => {
               buf.write_i32(fade_in as i32);
               buf.write_i32(stay as i32);
@@ -963,7 +962,7 @@ impl ToTcp for Packet {
         }
         fn write_info(ver: ProtocolVersion, buf: &mut Buffer<&mut Vec<u8>>, info: &TeamInfo) {
           if ver >= ProtocolVersion::V1_14_4 {
-            buf.write_str(&info.display_name);
+            buf.write_str(&info.display_name.to_json());
             buf.write_u8(
               if info.friendly_fire { 0x01 } else { 0x00 }
                 | if info.see_invis { 0x02 } else { 0x00 },
@@ -981,12 +980,12 @@ impl ToTcp for Packet {
               TeamRule::Never => "never",
             });
             buf.write_varint(info.color.id().into());
-            buf.write_str(&info.prefix);
-            buf.write_str(&info.postfix);
+            buf.write_str(&info.prefix.to_json());
+            buf.write_str(&info.postfix.to_json());
           } else if ver >= ProtocolVersion::V1_9_4 {
-            buf.write_str(&info.display_name);
-            buf.write_str(&Chat::from_json(&info.prefix).unwrap().to_codes());
-            buf.write_str(&Chat::from_json(&info.postfix).unwrap().to_codes());
+            buf.write_str(&info.display_name.to_codes());
+            buf.write_str(&info.prefix.to_codes());
+            buf.write_str(&info.postfix.to_codes());
             buf.write_u8(
               if info.friendly_fire { 0x01 } else { 0x00 }
                 | if info.see_invis { 0x02 } else { 0x00 },
@@ -1005,9 +1004,9 @@ impl ToTcp for Packet {
             });
             buf.write_varint(info.color.id().into());
           } else {
-            buf.write_str(&info.display_name);
-            buf.write_str(&Chat::from_json(&info.prefix).unwrap().to_codes());
-            buf.write_str(&Chat::from_json(&info.postfix).unwrap().to_codes());
+            buf.write_str(&info.display_name.to_codes());
+            buf.write_str(&info.prefix.to_codes());
+            buf.write_str(&info.postfix.to_codes());
             buf.write_u8(
               if info.friendly_fire { 0x01 } else { 0x00 }
                 | if info.see_invis { 0x02 } else { 0x00 },

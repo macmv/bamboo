@@ -100,7 +100,7 @@ pub(crate) fn handle(wm: &Arc<WorldManager>, player: &Arc<Player>, p: sb::Packet
           player.world().item_converter().get_data(stack.item())
         };
         let kind = block::Kind::from_str(item_data.name()).unwrap_or_else(|_| {
-          player.send_message(&Chat::new(format!("ah! {} is confusing", item_data.name())));
+          player.send_message(Chat::new(format!("ah! {} is confusing", item_data.name())));
           block::Kind::Air
         });
 
@@ -115,10 +115,10 @@ pub(crate) fn handle(wm: &Arc<WorldManager>, player: &Arc<Player>, p: sb::Packet
             let ty = player.world().block_converter().get(kind).default_type();
             match player.world().set_block(pos, ty) {
               Ok(_) => player.world().plugins().on_block_place(player.clone(), pos, ty),
-              Err(e) => player.send_hotbar(&Chat::new(e.to_string())),
+              Err(e) => player.send_hotbar(Chat::new(e.to_string())),
             }
           }
-          Err(e) => player.send_hotbar(&Chat::new(e.to_string())),
+          Err(e) => player.send_hotbar(Chat::new(e.to_string())),
         };
       }
     }

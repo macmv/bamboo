@@ -73,14 +73,14 @@ impl CommandTree {
         msg.add(""); // Makes the default color white
         msg.add("Unknown command: ").color(Color::Red);
         msg.add(text);
-        player.send_message(&msg);
+        player.send_message(msg);
         return;
       }
     };
     let args = match command.parse(text, player.as_ref()) {
       Ok(v) => v,
       Err(e) => {
-        player.send_message(&e.to_chat(text));
+        player.send_message(e.to_chat(text));
         return;
       }
     };

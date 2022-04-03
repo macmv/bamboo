@@ -36,11 +36,16 @@ use serde::ser::{Serialize, SerializeMap, SerializeSeq, SerializeStruct, Seriali
 use serde_derive::{Deserialize, Serialize};
 use std::{error::Error, fmt, str::FromStr};
 
+impl Default for Chat {
+  fn default() -> Self { Chat::empty() }
+}
+
 /// This is a chat message. It has a list of sections, and can be serialized to
 /// json.
-#[derive(Debug, Clone, PartialEq, Deserialize)]
+#[derive(Transfer, Debug, Clone, PartialEq, Deserialize)]
 pub struct Chat {
   /// Can never be empty, as it causes too many bugs/edge cases.
+  #[id = 0]
   sections: Vec<Section>,
 }
 
@@ -162,43 +167,59 @@ impl From<String> for Chat {
 /// [`on_click`]: Self::on_click
 /// [`on_hover`]: Self::on_hover
 /// [`add_child`]: Self::add_child
-#[derive(Debug, Default, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Transfer, Debug, Default, Clone, Serialize, Deserialize, PartialEq)]
 pub struct Section {
+  #[id = 0]
   text:          String,
+  #[id = 1]
   #[serde(skip_serializing_if = "Option::is_none", default)]
   bold:          Option<bool>,
+  #[id = 2]
   #[serde(skip_serializing_if = "Option::is_none", default)]
   italic:        Option<bool>,
+  #[id = 3]
   #[serde(skip_serializing_if = "Option::is_none", default)]
   underlined:    Option<bool>,
+  #[id = 4]
   #[serde(skip_serializing_if = "Option::is_none", default)]
   strikethrough: Option<bool>,
+  #[id = 5]
   #[serde(skip_serializing_if = "Option::is_none", default)]
   obfuscated:    Option<bool>,
+  #[id = 6]
   #[serde(skip_serializing_if = "Option::is_none", skip_deserializing)]
   color:         Option<Color>,
   // Holding shift and clicking on this section will insert this text into the chat box.
+  #[id = 7]
   #[serde(skip_serializing_if = "Option::is_none", default)]
   insertion:     Option<String>,
   // Clicking on this section will do something
+  #[id = 8]
   #[serde(skip_serializing_if = "Option::is_none", skip_deserializing)]
   #[serde(rename = "clickEvent")]
   click_event:   Option<ClickEvent>,
   // Hovering over this section will do something
+  #[id = 9]
   #[serde(skip_serializing_if = "Option::is_none", skip_deserializing)]
   #[serde(rename = "hoverEvent")]
   hover_event:   Option<HoverEvent>,
   // Any child elements. If any of their options are None, then these options should be used.
+  #[id = 10]
   #[serde(skip_serializing_if = "Vec::is_empty", default)]
   extra:         Vec<Section>,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Transfer, Debug, Clone, PartialEq, Eq)]
 pub enum ClickEvent {
+  #[id = 0]
   OpenURL(String),
+  #[id = 1]
   RunCommand(String),
+  #[id = 2]
   SuggestCommand(String),
+  #[id = 3]
   ChangePage(String),
+  #[id = 4]
   CopyToClipboard(String),
 }
 
@@ -221,10 +242,13 @@ impl Serialize for ClickEvent {
   }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Transfer, Debug, Clone, PartialEq, Eq)]
 pub enum HoverEvent {
+  #[id = 0]
   ShowText(String),
+  #[id = 1]
   ShowItem(String),
+  #[id = 2]
   ShowEntity(String),
 }
 

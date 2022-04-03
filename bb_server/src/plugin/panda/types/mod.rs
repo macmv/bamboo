@@ -138,7 +138,7 @@ impl Bamboo {
             let mut out = Chat::new("");
             out.add("Error executing command: ").color(Color::Red);
             out.add(format!("`{}` encountered an internal error", args[0].lit()));
-            p.send_message(&out);
+            p.send_message(out);
           }
         }
       }

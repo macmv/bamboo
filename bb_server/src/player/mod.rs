@@ -175,29 +175,29 @@ impl Player {
   }
 
   /// Sends the player a chat message.
-  pub fn send_message(&self, msg: &Chat) {
+  pub fn send_message(&self, msg: Chat) {
     self.send(cb::Packet::Chat {
-      msg: msg.to_json(),
-      ty:  0, // Chat box, not system message or over hotbar
+      msg,
+      ty: 0, // Chat box, not system message or over hotbar
     });
   }
   /// Sends the player a chat message, which will appear over their hotbar.
-  pub fn send_hotbar(&self, msg: &Chat) {
+  pub fn send_hotbar(&self, msg: Chat) {
     self.send(cb::Packet::Chat {
-      msg: msg.to_json(),
-      ty:  2, // Hotbar, not chat box or system message
+      msg,
+      ty: 2, // Hotbar, not chat box or system message
     });
   }
 
   /// Sets the title for this player. To show the title and subtitle, call
   /// [`show_title`](Self::show_title).
-  pub fn set_title(&self, title: &Chat) {
-    self.send(cb::Packet::Title { action: cb::TitleAction::Title(title.to_json()) });
+  pub fn set_title(&self, title: Chat) {
+    self.send(cb::Packet::Title { action: cb::TitleAction::Title(title) });
   }
   /// Sets the subtitle for this player. To show the title and subtitle, call
   /// [`show_title`](Self::show_title).
-  pub fn set_subtitle(&self, subtitle: &Chat) {
-    self.send(cb::Packet::Title { action: cb::TitleAction::Subtitle(subtitle.to_json()) });
+  pub fn set_subtitle(&self, subtitle: Chat) {
+    self.send(cb::Packet::Title { action: cb::TitleAction::Subtitle(subtitle) });
   }
   /// Shows the current title to the player. The `fade_in`, `stay`, and
   /// `fade_out` arguments are all in ticks.
@@ -346,7 +346,7 @@ impl Player {
     let update = cb::Packet::PlayerList {
       action: cb::PlayerListAction::UpdateDisplayName(vec![cb::PlayerListDisplay {
         id:           self.id(),
-        display_name: name.as_ref().map(|c| c.to_json()),
+        display_name: name,
       }]),
     };
     for w in self.world().world_manager().worlds().iter() {

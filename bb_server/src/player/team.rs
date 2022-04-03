@@ -87,14 +87,14 @@ impl Team {
   }
   fn info(&self) -> TeamInfo {
     TeamInfo {
-      display_name:  self.display_name.to_json(),
+      display_name:  self.display_name.clone(),
       friendly_fire: self.friendly_fire,
       see_invis:     self.see_invis,
       name_tag:      self.name_tag_rule,
       collisions:    self.collision_rule,
       color:         self.color.clone(),
-      prefix:        self.prefix.to_json(),
-      postfix:       self.postfix.to_json(),
+      prefix:        self.prefix.clone(),
+      postfix:       self.postfix.clone(),
     }
   }
 
