@@ -134,7 +134,7 @@ impl Bedwars {
     spawn = self.teams[team].spawn
     spawn_yaw = self.teams[team].spawn_yaw
     p = BedwarsPlayer::new(player, team, spawn, spawn_yaw)
-    self.teams[team].players.push(p)
+    self.teams[team].add_player(p)
     self.players.insert(player.username(), p)
 
     if self.players.len() >= 2 {
@@ -267,6 +267,10 @@ impl BTeam {
       gold_spawn_time: 0,
       team: team,
     }
+  }
+  fn add_player(self, player) {
+    self.players.push(player)
+    self.team.add_player(player.player)
   }
   fn tick(self) {
     if self.iron_spawn_time == 0 {

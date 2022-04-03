@@ -148,4 +148,7 @@ impl PdTeam {
     );
     Ok(())
   }
+
+  /// Adds the player to this team.
+  pub fn add_player(&self, player: &PdPlayer) { self.inner.lock().add(&player.inner); }
 }
