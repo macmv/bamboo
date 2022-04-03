@@ -659,6 +659,8 @@ impl WorldManager {
     wl.insert(name, team.clone());
     Some(team)
   }
+  /// Gets the team with the given name. If it doesn't exist, this will return
+  /// `None`.
   pub fn team(&self, name: &str) -> Option<Arc<Mutex<Team>>> {
     let rl = self.teams.read();
     rl.get(name).cloned()

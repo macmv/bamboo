@@ -7,7 +7,7 @@ use super::{
   wrap,
 };
 use crate::player::{Player, Team};
-use bb_common::util::Chat;
+use bb_common::util::{chat::Color, Chat};
 use panda::{
   define_ty,
   parse::token::Span,
@@ -16,6 +16,7 @@ use panda::{
 use parking_lot::Mutex;
 use std::{
   net::{SocketAddr, ToSocketAddrs},
+  str::FromStr,
   sync::Arc,
 };
 
@@ -139,4 +140,12 @@ impl PdPlayer {
 ///
 /// This can be created through `Bamboo::create_team`.
 #[define_ty(path = "bamboo::player::Team")]
-impl PdTeam {}
+impl PdTeam {
+  pub fn set_color(&self, name: &str) -> Result<(), RuntimeError> {
+    self.inner.lock().set_color(
+      Color::from_str(name)
+        .map_err(|err| RuntimeError::custom(err.to_string(), Span::call_site()))?,
+    );
+    Ok(())
+  }
+}

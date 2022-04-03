@@ -1,7 +1,10 @@
 use super::{add_from, wrap};
 use bb_common::util::{chat::Color, Chat};
 use panda::{define_ty, parse::token::Span, runtime::RuntimeError};
-use std::sync::{Arc, Mutex};
+use std::{
+  str::FromStr,
+  sync::{Arc, Mutex},
+};
 
 wrap!(Arc<Mutex<Chat>>, PdChat);
 wrap!(Arc<Mutex<Chat>>, PdChatSection, idx: usize);
@@ -51,28 +54,10 @@ impl PdChatSection {
   /// chat.add("hello").color("red")
   /// ```
   pub fn color(&self, color: &str) -> Result<(), RuntimeError> {
-    let col = match color {
-      "black" => Color::Black,
-      "dark_blue" => Color::DarkBlue,
-      "dark_green" => Color::DarkGreen,
-      "dark_aqua" => Color::DarkAqua,
-      "dark_red" => Color::DarkRed,
-      "dark_purple" => Color::Purple,
-      "gold" => Color::Gold,
-      "gray" => Color::Gray,
-      "dark_gray" => Color::DarkGray,
-      "blue" => Color::Blue,
-      "green" => Color::BrightGreen,
-      "aqua" => Color::Cyan,
-      "red" => Color::Red,
-      "pink" => Color::Pink,
-      "yellow" => Color::Yellow,
-      "white" => Color::White,
-      _ => {
-        return Err(RuntimeError::custom(format!("invalid color `{}`", color), Span::call_site()))
-      }
-    };
-    self.inner.lock().unwrap().get_section(self.idx).unwrap().color(col);
+    self.inner.lock().unwrap().get_section(self.idx).unwrap().color(
+      Color::from_str(color)
+        .map_err(|err| RuntimeError::custom(err.to_string(), Span::call_site()))?,
+    );
     Ok(())
   }
 }

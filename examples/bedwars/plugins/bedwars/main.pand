@@ -5,6 +5,7 @@ use bamboo::{
   player::Player,
   world::World,
   command::Command,
+  player::Team,
 }
 
 // Stores all the game info
@@ -25,7 +26,7 @@ struct BedwarsPlayer {
   spawn_yaw: float,
 }
 // Stores info for a team
-struct Team {
+struct BTeam {
   players: arr,
   spawn: FPos,
   spawn_yaw: float,
@@ -33,6 +34,7 @@ struct Team {
   world: World,
   iron_spawn_time: int,
   gold_spawn_time: int,
+  team: Team,
 }
 
 fn init() {
@@ -41,10 +43,10 @@ fn init() {
   bb = bamboo::instance()
   world = bb.default_world()
   teams = map {
-    "red":    Team::new(world, FPos::new(0.0,   61.0, -40.0), 0.0,   FPos::new(0.5,   62.0, -43.5)),
-    "green":  Team::new(world, FPos::new(40.0,  61.0, 0.0  ), 90.0,  FPos::new(44.5,  62.0, 0.5  )),
-    "aqua":   Team::new(world, FPos::new(0.0,   61.0, 40.0 ), 180.0, FPos::new(0.5,   62.0, 44.5 )),
-    "yellow": Team::new(world, FPos::new(-40.0, 61.0, 0.0  ), 270.0, FPos::new(-43.5, 62.0, 0.5  )),
+    "red":    BTeam::new(world, bb, FPos::new(0.0,   61.0, -40.0), 0.0,   FPos::new(0.5,   62.0, -43.5), "red"),
+    "green":  BTeam::new(world, bb, FPos::new(40.0,  61.0, 0.0  ), 90.0,  FPos::new(44.5,  62.0, 0.5  ), "green"),
+    "aqua":   BTeam::new(world, bb, FPos::new(0.0,   61.0, 40.0 ), 180.0, FPos::new(0.5,   62.0, 44.5 ), "aqua"),
+    "yellow": BTeam::new(world, bb, FPos::new(-40.0, 61.0, 0.0  ), 270.0, FPos::new(-43.5, 62.0, 0.5  ), "yellow"),
   }
   bb.store(Bedwars {
     teams: teams,
@@ -251,9 +253,11 @@ impl BedwarsPlayer {
   }
 }
 
-impl Team {
-  fn new(world, spawn, yaw, resource_spawn) {
-    Team {
+impl BTeam {
+  fn new(world, bb, spawn, yaw, resource_spawn, team_color) {
+    team = bb.create_team(team_color)
+    team.set_color(team_color)
+    BTeam {
       players: [],
       spawn: spawn,
       spawn_yaw: yaw,
@@ -261,6 +265,7 @@ impl Team {
       world: world,
       iron_spawn_time: 0,
       gold_spawn_time: 0,
+      team: team,
     }
   }
   fn tick(self) {

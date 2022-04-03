@@ -34,6 +34,7 @@
 use bb_macros::Transfer;
 use serde::ser::{Serialize, SerializeMap, SerializeSeq, SerializeStruct, Serializer};
 use serde_derive::{Deserialize, Serialize};
+use std::{error::Error, fmt, str::FromStr};
 
 /// This is a chat message. It has a list of sections, and can be serialized to
 /// json.
@@ -440,6 +441,41 @@ impl Color {
       Self::White => 'f',
       Self::Custom(_) => 'f',
     }
+  }
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct ColorFromStrError(String);
+
+impl fmt::Display for ColorFromStrError {
+  fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result { write!(f, "invalid color: {}", self.0) }
+}
+
+impl Error for ColorFromStrError {}
+
+impl FromStr for Color {
+  type Err = ColorFromStrError;
+
+  fn from_str(s: &str) -> Result<Color, ColorFromStrError> {
+    Ok(match s {
+      "black" => Color::Black,
+      "dark_blue" => Color::DarkBlue,
+      "dark_green" => Color::DarkGreen,
+      "dark_aqua" => Color::DarkAqua,
+      "dark_red" => Color::DarkRed,
+      "dark_purple" => Color::Purple,
+      "gold" => Color::Gold,
+      "gray" => Color::Gray,
+      "dark_gray" => Color::DarkGray,
+      "blue" => Color::Blue,
+      "green" => Color::BrightGreen,
+      "aqua" => Color::Cyan,
+      "red" => Color::Red,
+      "pink" => Color::Pink,
+      "yellow" => Color::Yellow,
+      "white" => Color::White,
+      _ => return Err(ColorFromStrError(s.into())),
+    })
   }
 }
 
