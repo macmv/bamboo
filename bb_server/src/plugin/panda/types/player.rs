@@ -121,14 +121,18 @@ impl PdPlayer {
   /// and the updated lines will show when the scoreboard is shown again.
   pub fn clear_scoreboard_line(&self, line: u8) { self.inner.lock_scoreboard().clear_line(line); }
 
-  /// Sets a display name for this player. This will be shown instead of their
-  /// username in the tab list and above their head.
-  pub fn set_display_name(&self, name: &PdChat) {
-    self.inner.set_display_name(Some(name.inner.lock().unwrap().clone()));
+  /// Sets the player's tab list name.
+  ///
+  /// Note that this does not update the name above the player's head. The only
+  /// way to do that is by adding this player to a team.
+  ///
+  /// This will produce inconsistent behavior if the player is on a team. Only
+  /// use if needed. Using teams is going to be more reliable.
+  pub fn set_tab_name(&self, name: &PdChat) {
+    self.inner.set_tab_name(Some(name.inner.lock().unwrap().clone()));
   }
-  /// Removes a display name on this player (if any is present). This does
-  /// nothing if there is no display name on this player.
-  pub fn clear_display_name(&self) { self.inner.set_display_name(None); }
+  /// Removes the player's tab list name.
+  pub fn clear_tab_name(&self) { self.inner.set_tab_name(None); }
 
   /// Gives the player the passed item.
   pub fn give(&self, stack: &PdStack) { self.inner.lock_inventory().give(&stack.inner); }

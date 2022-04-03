@@ -178,7 +178,7 @@ impl World {
       name:         player.username().clone(),
       game_mode:    GameMode::Creative,
       ping:         50,
-      display_name: player.display_name().clone().map(|c| c.to_json()),
+      display_name: player.tab_name().clone().map(|c| c.to_json()),
     };
     let my_info_packet =
       cb::Packet::PlayerList { action: cb::PlayerListAction::Add(vec![my_info.clone()]) };
@@ -196,7 +196,7 @@ impl World {
         name:         other.username().clone(),
         game_mode:    GameMode::Creative,
         ping:         50,
-        display_name: other.display_name().clone().map(|c| c.to_json()),
+        display_name: other.tab_name().clone().map(|c| c.to_json()),
       });
     }
     player.send(cb::Packet::PlayerList { action: cb::PlayerListAction::Add(info) });

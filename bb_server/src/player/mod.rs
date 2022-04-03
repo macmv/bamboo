@@ -52,9 +52,8 @@ struct PlayerPosition {
 pub struct Player {
   // The EID of the player. Never changes.
   eid:           i32,
-  // Player's username
   username:      String,
-  display_name:  Mutex<Option<Chat>>,
+  tab_name:      Mutex<Option<Chat>>,
   uuid:          UUID,
   conn:          ConnSender,
   ver:           ProtocolVersion,
@@ -93,7 +92,7 @@ impl Player {
     Arc::new_cyclic(|weak| Player {
       eid,
       username: info.username,
-      display_name: Mutex::new(None),
+      tab_name: Mutex::new(None),
       uuid: info.uuid,
       inv: PlayerInventory::new(weak.clone(), conn.clone()).into(),
       scoreboard: Scoreboard::new(conn.clone()).into(),
@@ -334,10 +333,16 @@ impl Player {
       walk_speed:   1.0,
     });
   }
-  /// Sets the player's display name. If `name` is `None`, then the display name
-  /// will be removed, and the username will show instead.
-  pub fn set_display_name(&self, name: Option<Chat>) {
-    *self.display_name.lock() = name.clone();
+  /// Sets the player's tab list name. If `name` is `None`, then the display
+  /// name will be removed, and the username will show instead.
+  ///
+  /// Note that this does not update the name above the player's head. The only
+  /// way to do that is by adding this player to a team.
+  ///
+  /// This will produce inconsistent behavior if the player is on a team. Only
+  /// use if needed. Using teams is going to be more reliable.
+  pub fn set_tab_name(&self, name: Option<Chat>) {
+    *self.tab_name.lock() = name.clone();
     let update = cb::Packet::PlayerList {
       action: cb::PlayerListAction::UpdateDisplayName(vec![cb::PlayerListDisplay {
         id:           self.id(),
@@ -349,10 +354,9 @@ impl Player {
         p.send(update.clone());
       }
     }
-    self.world().respawn_player(self);
   }
-  /// Returns the current display name.
-  pub fn display_name(&self) -> MutexGuard<'_, Option<Chat>> { self.display_name.lock() }
+  /// Returns the current tab list name.
+  pub fn tab_name(&self) -> MutexGuard<'_, Option<Chat>> { self.tab_name.lock() }
 
   /// Sends a block update packet for the block at the given position. This
   /// ensures that the client sees what the server sees at that position.
