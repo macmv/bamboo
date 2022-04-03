@@ -127,9 +127,9 @@ impl Bedwars {
       self.set_scoreboard_player_count(p.player)
     }
 
-    name = Chat::empty()
-    name.add(player.username()).color(team)
-    player.set_display_name(name)
+    // name = Chat::empty()
+    // name.add(player.username()).color(team)
+    // player.set_display_name(name)
 
     spawn = self.teams[team].spawn
     spawn_yaw = self.teams[team].spawn_yaw

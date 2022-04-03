@@ -10,7 +10,8 @@ use bb_common::{
     cb,
     cb::{
       Animation, ArmorSlot, CommandType, EquipmentSlot, ObjectiveAction, ObjectiveType, Packet,
-      ScoreboardAction, ScoreboardDisplay, SoundCategory, TitleAction,
+      ScoreboardAction, ScoreboardDisplay, SoundCategory, TeamAction, TeamInfo, TeamRule,
+      TitleAction,
     },
   },
   util::{Buffer, Chat, Hand, UUID},
@@ -636,7 +637,7 @@ impl ToTcp for Packet {
         match mode {
           ObjectiveAction::Create { value, ty } | ObjectiveAction::Update { value, ty } => {
             if ver <= ProtocolVersion::V1_12_2 {
-              let chat = Chat::from_json(value).unwrap();
+              let chat = Chat::from_json(&value).unwrap();
               buf.write_str(&chat.to_codes());
             } else {
               buf.write_str(&value);
@@ -952,6 +953,103 @@ impl ToTcp for Packet {
             },
             unknown: data,
           }
+        }
+      }
+      Packet::Teams { team, action } => {
+        let mut data = vec![];
+        let mut buf = Buffer::new(&mut data);
+        fn write_entities(buf: &mut Buffer<&mut Vec<u8>>, entities: &[String]) {
+          buf.write_list(&entities, |buf, n| buf.write_str(n.as_str()));
+        }
+        fn write_info(ver: ProtocolVersion, buf: &mut Buffer<&mut Vec<u8>>, info: &TeamInfo) {
+          if ver >= ProtocolVersion::V1_14_4 {
+            buf.write_str(&info.display_name);
+            buf.write_u8(
+              if info.friendly_fire { 0x01 } else { 0x00 }
+                | if info.see_invis { 0x02 } else { 0x00 },
+            );
+            buf.write_str(match info.name_tag {
+              TeamRule::Always => "always",
+              TeamRule::ForOtherTeams => "hideForOtherTeams",
+              TeamRule::ForOwnTeam => "hideForOwnTeam",
+              TeamRule::Never => "never",
+            });
+            buf.write_str(match info.collisions {
+              TeamRule::Always => "always",
+              TeamRule::ForOtherTeams => "pushrOtherTeams",
+              TeamRule::ForOwnTeam => "pushOwnTeam",
+              TeamRule::Never => "never",
+            });
+            buf.write_varint(info.color.id().into());
+            buf.write_str(&info.prefix);
+            buf.write_str(&info.postfix);
+          } else if ver >= ProtocolVersion::V1_9_4 {
+            buf.write_str(&info.display_name);
+            buf.write_str(&Chat::from_json(&info.prefix).unwrap().to_codes());
+            buf.write_str(&Chat::from_json(&info.postfix).unwrap().to_codes());
+            buf.write_u8(
+              if info.friendly_fire { 0x01 } else { 0x00 }
+                | if info.see_invis { 0x02 } else { 0x00 },
+            );
+            buf.write_str(match info.name_tag {
+              TeamRule::Always => "always",
+              TeamRule::ForOtherTeams => "hideForOtherTeams",
+              TeamRule::ForOwnTeam => "hideForOwnTeam",
+              TeamRule::Never => "never",
+            });
+            buf.write_str(match info.collisions {
+              TeamRule::Always => "always",
+              TeamRule::ForOtherTeams => "pushrOtherTeams",
+              TeamRule::ForOwnTeam => "pushOwnTeam",
+              TeamRule::Never => "never",
+            });
+            buf.write_varint(info.color.id().into());
+          } else {
+            buf.write_str(&info.display_name);
+            buf.write_str(&Chat::from_json(&info.prefix).unwrap().to_codes());
+            buf.write_str(&Chat::from_json(&info.postfix).unwrap().to_codes());
+            buf.write_u8(
+              if info.friendly_fire { 0x01 } else { 0x00 }
+                | if info.see_invis { 0x02 } else { 0x00 },
+            );
+            buf.write_str(match info.name_tag {
+              TeamRule::Always => "always",
+              TeamRule::ForOtherTeams => "hideForOtherTeams",
+              TeamRule::ForOwnTeam => "hideForOwnTeam",
+              TeamRule::Never => "never",
+            });
+            buf.write_u8(info.color.id());
+          }
+        }
+        match &action {
+          TeamAction::Create { info, entities } => {
+            write_info(ver, &mut buf, info);
+            write_entities(&mut buf, entities);
+          }
+          TeamAction::Remove => {}
+          TeamAction::UpdateInfo { info } => {
+            write_info(ver, &mut buf, info);
+          }
+          TeamAction::AddEntities { entities } => {
+            write_entities(&mut buf, entities);
+          }
+          TeamAction::RemoveEntities { entities } => {
+            write_entities(&mut buf, entities);
+          }
+        }
+        let ty = match action {
+          TeamAction::Create { .. } => 0,
+          TeamAction::Remove => 1,
+          TeamAction::UpdateInfo { .. } => 2,
+          TeamAction::AddEntities { .. } => 3,
+          TeamAction::RemoveEntities { .. } => 4,
+        };
+        if ver >= ProtocolVersion::V1_18 {
+          GPacket::TeamsV18 { packet_type: ty, team_name: team, unknown: data }
+        } else if ver >= ProtocolVersion::V1_17_1 {
+          GPacket::TeamsV17 { packet_type: ty, team_name: team, unknown: data }
+        } else {
+          GPacket::TeamsV8 { field_149314_f: ty, field_149320_a: team, unknown: data }
         }
       }
       Packet::UnloadChunk { pos } => {

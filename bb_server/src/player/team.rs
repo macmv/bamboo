@@ -30,6 +30,8 @@ pub struct Team {
 
 impl Team {
   pub fn new(wm: Arc<WorldManager>, name: String) -> Self {
+    let mut prefix = Chat::empty();
+    prefix.add("[BIG] ").color(Color::Red);
     let t = Team {
       name: name.clone(),
       members: HashSet::new(),
@@ -39,8 +41,8 @@ impl Team {
       name_tag_rule: TeamRule::Always,
       collision_rule: TeamRule::Always,
       color: Color::White,
-      prefix: Chat::empty(),
-      postfix: Chat::empty(),
+      prefix,
+      postfix: Chat::new(" whaa"),
       wm,
     };
     let out = cb::Packet::Teams {
@@ -92,7 +94,7 @@ impl Team {
       collisions:    self.collision_rule,
       color:         self.color.clone(),
       prefix:        self.prefix.to_json(),
-      postfix:       self.prefix.to_json(),
+      postfix:       self.postfix.to_json(),
     }
   }
 

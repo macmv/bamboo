@@ -40,6 +40,7 @@ use std::{error::Error, fmt, str::FromStr};
 /// json.
 #[derive(Debug, Clone, PartialEq, Deserialize)]
 pub struct Chat {
+  /// Can never be empty, as it causes too many bugs/edge cases.
   sections: Vec<Section>,
 }
 
@@ -49,8 +50,11 @@ impl Chat {
   pub fn new<M: Into<String>>(msg: M) -> Self {
     Chat { sections: vec![Section { text: msg.into(), ..Default::default() }] }
   }
-  /// Creates a new Chat message, with no sections.
-  pub fn empty() -> Self { Chat { sections: vec![] } }
+  /// Creates a new Chat message, with 1 empty section.
+  ///
+  /// There are numerous problesm with having no sections, so the sections list
+  /// can never be empty.
+  pub fn empty() -> Self { Chat::new("") }
 
   /// Adds a new chat section, with the given string. The returned reference is
   /// a reference into self, so it must be dropped before adding another
@@ -67,12 +71,12 @@ impl Chat {
   pub fn to_json(&self) -> String { serde_json::to_string(self).unwrap() }
 
   /// Parses the given json as a chat message.
-  pub fn from_json(src: String) -> Result<Self, serde_json::Error> {
+  pub fn from_json(src: &str) -> Result<Self, serde_json::Error> {
     if src.starts_with('{') {
-      let s: Section = serde_json::from_str(&src)?;
+      let s: Section = serde_json::from_str(src)?;
       Ok(Chat { sections: vec![s] })
     } else {
-      let sections: Vec<Section> = serde_json::from_str(&src)?;
+      let sections: Vec<Section> = serde_json::from_str(src)?;
       Ok(Chat { sections })
     }
   }
@@ -440,6 +444,29 @@ impl Color {
       Self::Yellow => 'e',
       Self::White => 'f',
       Self::Custom(_) => 'f',
+    }
+  }
+
+  /// Returns the color id. Used in Teams packet.
+  pub const fn id(&self) -> u8 {
+    match self {
+      Self::Black => 0x00,
+      Self::DarkBlue => 0x01,
+      Self::DarkGreen => 0x02,
+      Self::DarkAqua => 0x03,
+      Self::DarkRed => 0x04,
+      Self::Purple => 0x05,
+      Self::Gold => 0x06,
+      Self::Gray => 0x07,
+      Self::DarkGray => 0x08,
+      Self::Blue => 0x09,
+      Self::BrightGreen => 0x0a,
+      Self::Cyan => 0x0b,
+      Self::Red => 0x0c,
+      Self::Pink => 0x0d,
+      Self::Yellow => 0x0e,
+      Self::White => 0x0f,
+      Self::Custom(_) => 0x0f,
     }
   }
 }
