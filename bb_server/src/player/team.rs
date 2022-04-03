@@ -9,6 +9,7 @@ use bb_common::{
 };
 use std::{collections::HashSet, sync::Arc};
 
+#[derive(Debug)]
 pub struct Team {
   name: String,
 
@@ -49,6 +50,9 @@ impl Team {
     t.wm.send_to_all(out);
     t
   }
+
+  /// Returns the name of the team.
+  pub fn name(&self) -> &String { &self.name }
 
   pub fn set_prefix(&mut self, prefix: Chat) {
     self.prefix = prefix;

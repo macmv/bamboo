@@ -229,7 +229,7 @@ impl World {
     }
 
     for (_, team) in self.wm.teams().iter() {
-      team.send_join(&player);
+      team.lock().send_join(&player);
     }
   }
 }

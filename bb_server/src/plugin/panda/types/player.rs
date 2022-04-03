@@ -6,19 +6,21 @@ use super::{
   world::PdWorld,
   wrap,
 };
-use crate::player::Player;
+use crate::player::{Player, Team};
 use bb_common::util::Chat;
 use panda::{
   define_ty,
   parse::token::Span,
   runtime::{RuntimeError, Var},
 };
+use parking_lot::Mutex;
 use std::{
   net::{SocketAddr, ToSocketAddrs},
   sync::Arc,
 };
 
 wrap!(Arc<Player>, PdPlayer);
+wrap!(Arc<Mutex<Team>>, PdTeam);
 
 /// A Player. This struct is for online players. If anyone has disconnected,
 /// this struct will still exist, but the functions will return outdated
@@ -130,3 +132,11 @@ impl PdPlayer {
   /// Gives the player the passed item.
   pub fn give(&self, stack: &PdStack) { self.inner.lock_inventory().give(&stack.inner); }
 }
+
+/// A team. This is a group of players and entities, which all share a set
+/// of properties. These properties include setting a username color, disabling
+/// friendly fire, showing invisible teammates, and more.
+///
+/// This can be created through `Bamboo::create_team`.
+#[define_ty(path = "bamboo::player::Team")]
+impl PdTeam {}

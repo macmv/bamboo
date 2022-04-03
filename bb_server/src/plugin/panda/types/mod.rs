@@ -18,6 +18,7 @@ pub mod util;
 pub mod world;
 
 use command::PdCommand;
+use player::PdTeam;
 use world::{gen::PdBiome, PdWorld};
 
 macro_rules! add_from {
@@ -59,6 +60,25 @@ use wrap;
 /// need to).
 #[define_ty(path = "bamboo::Bamboo")]
 impl Bamboo {
+  /// Creates the given team, if it does not exist. If it exists, this will
+  /// return an error.
+  pub fn create_team(&self, name: &str) -> Result<PdTeam, RuntimeError> {
+    self
+      .wm
+      .create_team(name.into())
+      .map(|team| PdTeam { inner: team })
+      .ok_or_else(|| RuntimeError::custom("Team already exists", Span::call_site()))
+  }
+  /// Returns the given team, if it exists. If it doesn't exist, this will
+  /// return an error.
+  pub fn team(&self, name: &str) -> Result<PdTeam, RuntimeError> {
+    self
+      .wm
+      .team(name.into())
+      .map(|team| PdTeam { inner: team })
+      .ok_or_else(|| RuntimeError::custom("Team doesn't exist", Span::call_site()))
+  }
+
   /// Adds a command to the server.
   ///
   /// # Example

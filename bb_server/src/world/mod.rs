@@ -20,6 +20,7 @@ use parking_lot::{Mutex, MutexGuard, RwLock, RwLockReadGuard};
 use std::{
   collections::{HashMap, HashSet},
   convert::TryInto,
+  fmt,
   sync::{
     atomic::{AtomicBool, AtomicI32, AtomicU32, Ordering},
     Arc,
@@ -97,7 +98,7 @@ pub struct WorldManager {
   // Player id to world index and player
   players:          RwLock<HashMap<UUID, (usize, Arc<Player>)>>,
   // Team name to team
-  teams:            RwLock<HashMap<String, Team>>,
+  teams:            RwLock<HashMap<String, Arc<Mutex<Team>>>>,
   block_converter:  Arc<block::TypeConverter>,
   item_converter:   Arc<item::TypeConverter>,
   entity_converter: Arc<entity::TypeConverter>,
@@ -593,6 +594,12 @@ impl Default for WorldManager {
   fn default() -> Self { WorldManager::new() }
 }
 
+impl fmt::Debug for WorldManager {
+  fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    f.debug_struct("WorldManager").field("players", &self.players.read().len()).finish()
+  }
+}
+
 impl WorldManager {
   pub fn new() -> Self {
     WorldManager {
@@ -616,7 +623,9 @@ impl WorldManager {
   pub fn worlds(&self) -> RwLockReadGuard<'_, Vec<Arc<World>>> { self.worlds.read() }
 
   /// Returns a list of all the teams on the server.
-  pub fn teams(&self) -> RwLockReadGuard<'_, HashMap<String, Team>> { self.teams.read() }
+  pub fn teams(&self) -> RwLockReadGuard<'_, HashMap<String, Arc<Mutex<Team>>>> {
+    self.teams.read()
+  }
 
   /// Loads plugins
   pub fn load_plugins(self: &Arc<Self>) { self.plugins.load(self.clone()) }
@@ -638,6 +647,21 @@ impl WorldManager {
       self.commands.clone(),
       self.clone(),
     ));
+  }
+  /// Creates a team. Returns `None`, and does nothing, if there is already a
+  /// team with the given name.
+  pub fn create_team(self: &Arc<Self>, name: String) -> Option<Arc<Mutex<Team>>> {
+    let mut wl = self.teams.write();
+    if wl.contains_key(&name) {
+      return None;
+    }
+    let team = Arc::new(Mutex::new(Team::new(self.clone(), name.clone())));
+    wl.insert(name, team.clone());
+    Some(team)
+  }
+  pub fn team(&self, name: &str) -> Option<Arc<Mutex<Team>>> {
+    let rl = self.teams.read();
+    rl.get(name).cloned()
   }
 
   /// Returns the current block converter. This can be used to convert old block
@@ -709,8 +733,8 @@ impl WorldManager {
     // Avoid race condition, this needs to be before we remove `id` from `players`.
     // If we do this after, then the team might iterate through its own players and
     // need to look them up from `self.players`.
-    for (_, team) in self.teams.write().iter_mut() {
-      team.player_disconnect(id);
+    for (_, team) in self.teams.read().iter() {
+      team.lock().player_disconnect(id);
     }
     self.players.write().remove(&id);
   }
