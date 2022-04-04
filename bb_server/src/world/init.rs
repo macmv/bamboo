@@ -135,7 +135,7 @@ impl World {
       // world_names_v1_16:        Some(world_names.into_inner()),
       eid:                   self.eid(),
       hardcore_mode:         false,
-      game_mode:             GameMode::Creative,
+      game_mode:             player.game_mode(),
       dimension:             0, // Overworld
       level_type:            "default".into(),
       difficulty:            1, // Normal

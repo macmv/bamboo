@@ -2,6 +2,17 @@
 # player via a plugin at runtime.
 view-distance: 10
 
+# Whenever a player joins, they will be put into this gamemode. This can
+# be overriden with plugins, but without any plugins, this will be the
+# gamemode of all the clients.
+#
+# Can be one of:
+# - creative
+# - survival
+# - adventure (partially implemented)
+# - spectator (not implemented)
+default-gamemode: creative
+
 # Configs for world generation/loading.
 world:
   # If set, the world cannot be modified. This can be used in minigame

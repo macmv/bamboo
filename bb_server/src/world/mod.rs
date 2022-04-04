@@ -13,7 +13,7 @@ use bb_common::{
   net::cb,
   util::{
     chat::{Chat, Color},
-    JoinInfo, ThreadPool, UUID,
+    GameMode, JoinInfo, ThreadPool, UUID,
   },
 };
 use parking_lot::{Mutex, MutexGuard, RwLock, RwLockReadGuard};
@@ -105,6 +105,8 @@ pub struct WorldManager {
   plugins:          Arc<plugin::PluginManager>,
   commands:         Arc<CommandTree>,
   config:           Arc<Config>,
+
+  default_game_mode: GameMode,
 }
 
 struct State {
@@ -602,25 +604,27 @@ impl fmt::Debug for WorldManager {
 
 impl WorldManager {
   pub fn new() -> Self {
+    let config = Config::new("server.yml", "server-default.yml", include_str!("../default.yml"));
     WorldManager {
-      block_converter:  Arc::new(block::TypeConverter::new()),
-      item_converter:   Arc::new(item::TypeConverter::new()),
-      entity_converter: Arc::new(entity::TypeConverter::new()),
-      plugins:          Arc::new(plugin::PluginManager::new()),
-      commands:         Arc::new(CommandTree::new()),
-      worlds:           RwLock::new(vec![]),
-      players:          RwLock::new(HashMap::new()),
-      teams:            RwLock::new(HashMap::new()),
-      config:           Arc::new(Config::new(
-        "server.yml",
-        "server-default.yml",
-        include_str!("../default.yml"),
-      )),
+      block_converter:   Arc::new(block::TypeConverter::new()),
+      item_converter:    Arc::new(item::TypeConverter::new()),
+      entity_converter:  Arc::new(entity::TypeConverter::new()),
+      plugins:           Arc::new(plugin::PluginManager::new()),
+      commands:          Arc::new(CommandTree::new()),
+      worlds:            RwLock::new(vec![]),
+      players:           RwLock::new(HashMap::new()),
+      teams:             RwLock::new(HashMap::new()),
+      default_game_mode: config.get("default-gamemode"),
+      config:            Arc::new(config),
     }
   }
 
   /// Returns a list of all worlds on the server.
   pub fn worlds(&self) -> RwLockReadGuard<'_, Vec<Arc<World>>> { self.worlds.read() }
+
+  /// Returns the default game mode for the server. Used when a new client
+  /// connects.
+  pub fn default_game_mode(&self) -> GameMode { self.default_game_mode }
 
   /// Returns a list of all the teams on the server.
   pub fn teams(&self) -> RwLockReadGuard<'_, HashMap<String, Arc<Mutex<Team>>>> {

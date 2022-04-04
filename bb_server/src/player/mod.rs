@@ -99,8 +99,8 @@ impl Player {
       conn,
       ver: ProtocolVersion::from(info.ver as i32),
       view_distance: world.config().get("view-distance"),
+      game_mode: Mutex::new(world.world_manager().default_game_mode()),
       world,
-      game_mode: GameMode::Creative.into(),
       pos: PlayerPosition {
         curr:         pos,
         prev:         pos,
@@ -408,15 +408,13 @@ impl Player {
     false
   }
 
-  /// Returns a mutex to the player's game mode. This can be used to read/write
-  /// to their gamemode.
-  ///
-  /// NOTE: Writing to this will not update the player's gamemode! Call
-  /// [`set_gamemode`](Self::set_gamemode) to send a packet to the client.
-  pub fn gamemode(&self) -> &Mutex<GameMode> { &self.game_mode }
+  /// Returns the player's game mode. To change their game mode, call
+  /// [`set_gamemode`](Self::set_gamemode).
+  pub fn game_mode(&self) -> GameMode { *self.game_mode.lock() }
 
-  /// Updates the player's gamemode.
-  pub fn set_gamemode(&self, mode: GameMode) {
+  /// Updates the player's game mode.
+  pub fn set_game_mode(&self, mode: GameMode) {
+    self.send(cb::Packet::ChangeGameState { action: cb::ChangeGameState::GameMode(mode) });
     let _ = mode;
     todo!()
   }

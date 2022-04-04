@@ -1,4 +1,5 @@
-use std::{borrow::Borrow, fs};
+use crate::util::GameMode;
+use std::{borrow::Borrow, fs, str::FromStr};
 use yaml_rust::{yaml::Yaml, YamlLoader};
 
 pub struct Config {
@@ -183,6 +184,11 @@ impl YamlValue<'_> for bool {
   fn from_yaml(v: &Yaml) -> Option<Self> { v.as_bool() }
 
   fn name() -> String { "bool".into() }
+}
+impl YamlValue<'_> for GameMode {
+  fn from_yaml(v: &Yaml) -> Option<Self> { GameMode::from_str(v.as_str()?).ok() }
+
+  fn name() -> String { "game mode".into() }
 }
 
 impl<'a, T> YamlValue<'a> for Vec<T>

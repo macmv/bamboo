@@ -1,3 +1,4 @@
+default-gamemode: survival
 world:
   void: true
   vanilla:

@@ -126,6 +126,31 @@ impl GameMode {
   }
 }
 
+#[derive(Debug)]
+pub struct InvalidGameMode(String);
+
+impl fmt::Display for InvalidGameMode {
+  fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    write!(f, "invalid game mode: {}", self.0)
+  }
+}
+
+impl Error for InvalidGameMode {}
+
+impl FromStr for GameMode {
+  type Err = InvalidGameMode;
+
+  fn from_str(s: &str) -> Result<Self, InvalidGameMode> {
+    Ok(match s {
+      "survival" => GameMode::Survival,
+      "creative" => GameMode::Creative,
+      "adventure" => GameMode::Adventure,
+      "spectator" => GameMode::Spectator,
+      _ => return Err(InvalidGameMode(s.into())),
+    })
+  }
+}
+
 #[derive(Transfer, Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Face {
   #[id = 0]

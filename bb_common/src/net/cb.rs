@@ -23,6 +23,11 @@ pub enum Packet {
   Animation { eid: i32, kind: Animation },
   #[id = 1]
   BlockUpdate { pos: Pos, state: u32 },
+  #[id = 38]
+  ChangeGameState {
+    #[must_exist]
+    action: ChangeGameState,
+  },
   #[id = 2]
   Chat { msg: Chat, ty: u8 },
   #[id = 3]
@@ -229,6 +234,52 @@ pub enum Packet {
   /// the inventory packets.
   #[id = 24]
   WindowItem { wid: u8, slot: i32, item: Item },
+}
+
+#[derive(Transfer, Debug, Clone, PartialEq)]
+pub enum ChangeGameState {
+  #[id = 0]
+  InvalidBed,
+  #[id = 1]
+  EndRaining,
+  #[id = 2]
+  BeginRaining,
+  #[id = 3]
+  GameMode(GameMode),
+  #[id = 4]
+  EnterCredits,
+  #[id = 5]
+  DemoMessage(f32),
+  /// On vanilla, this is sent any time any player is hit with an arrow. Does
+  /// not appear to serve a purpose.
+  #[id = 6]
+  ArrowHitPlayer,
+  /// Used to set the darkness of the sky. Only valid between 0 and 1.
+  ///
+  /// This only does anything on clients 1.8-1.14.
+  /// Sending this to a newer client will do nothing (the proxy will ignore it).
+  #[id = 7]
+  FadeValue(f32),
+  /// Used to change how quickly the sky changes colors (in ticks).
+  ///
+  /// This only does anything on clients 1.8-1.14.
+  /// Sending this to a newer client will do nothing (the proxy will ignore it).
+  #[id = 8]
+  FadeTime(f32),
+  /// Plays a pufferfish sting sound effect.
+  #[id = 9]
+  PufferfishSting,
+  /// Plays elder guardian effect and sound. TODO: Needs more research.
+  #[id = 10]
+  ElderGuardianAppear,
+  /// Enables the respawn screen. If true, the respawn screen is enabled. If
+  /// false, the client immediately respawns. NOTE: This only works on 1.15+
+  /// clients! If you need instant respawn on older clients, you cannot let them
+  /// get to 0 health.
+  ///
+  /// Sending this to an old client will do nothing (the proxy will ignore it).
+  #[id = 11]
+  EnableRespawnScreen(bool),
 }
 
 #[derive(Transfer, Debug, Clone, PartialEq)]
