@@ -288,11 +288,16 @@ impl Player {
     }
   }
 
-  pub(crate) fn start_digging(&self) { self.pos.lock().dig_progress = Some(0.0); }
+  pub(crate) fn start_digging(&self, pos: Pos) {
+    // Silently ignore dig packets outside the world.
+    if let Ok(kind) = self.world.get_kind(pos) {
+      self.pos.lock().dig_progress = Some((0.0, kind));
+    }
+  }
   pub(crate) fn cancel_digging(&self) { self.pos.lock().dig_progress = None; }
   pub(crate) fn finish_digging(&self, pos: Pos) {
     let progress = std::mem::replace(&mut self.pos.lock().dig_progress, None);
-    if matches!(progress, Some(v) if v >= 1.0) {
+    if matches!(progress, Some((v, _)) if v >= 1.0) {
       if !self.world().set_kind(pos, block::Kind::Air).unwrap() {
         self.sync_block_at(pos).unwrap();
       }
@@ -302,8 +307,39 @@ impl Player {
   }
 
   fn update_dig_progress(&self, pos: &mut PlayerPosition) {
-    if let Some(p) = &mut pos.dig_progress {
-      *p += 0.1;
+    if let Some((p, block)) = &mut pos.dig_progress {
+      // Handles block/item type, and efficiency levels
+      let mut speed = self
+        .lock_inventory()
+        .main_hand()
+        .mining_speed(self.world.world_manager().block_converter().get(*block));
+
+      // TODO: Multiply by haste:
+      // if self.has_haste() {
+      //   speed *= 1.0 + (haste_level + 1) * 0.2;
+      // }
+
+      // TODO: Multiply by mining fatigue:
+      // match mining_fatigue {
+      //   0 => speed * 0.3,
+      //   1 => speed * 0.09,
+      //   2 => speed * 0.0027,
+      //   _ => speed * 0.00081,
+      // }
+
+      if self.world.get_kind(pos.curr.block()) == Ok(block::Kind::Water) {
+        speed *= 0.2;
+      }
+
+      // TODO: Multiply by on ground:
+      // if pos.on_ground {
+      //   speed *= 0.2;
+      // }
+      // We can't really trust the client for this, as they can say they're on ground
+      // at any point. This means we need to do a bit of physics on the player to
+      // figure out if they are on ground.
+
+      *p += speed;
     }
   }
 }

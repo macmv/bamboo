@@ -1,4 +1,5 @@
 use crate::{
+  block,
   command::CommandSender,
   entity,
   item::{Inventory, Stack},
@@ -54,7 +55,7 @@ struct PlayerPosition {
   /// they send a `DigStatus::Finish` packet.
   ///
   /// Will always be `None` outside of survival.
-  dig_progress: Option<f64>,
+  dig_progress: Option<(f64, block::Kind)>,
 }
 
 pub struct Player {

@@ -49,7 +49,7 @@ pub(crate) fn handle(wm: &Arc<WorldManager>, player: &Arc<Player>, p: sb::Packet
       } else {
         match player.game_mode() {
           GameMode::Survival => match status {
-            sb::DigStatus::Start => player.start_digging(),
+            sb::DigStatus::Start => player.start_digging(pos),
             sb::DigStatus::Cancel => player.cancel_digging(),
             sb::DigStatus::Finish => player.finish_digging(pos),
           },
