@@ -1,3 +1,4 @@
+mod dig;
 mod inventory;
 mod stack;
 mod ty;

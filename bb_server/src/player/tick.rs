@@ -340,6 +340,8 @@ impl Player {
       // figure out if they are on ground.
 
       *p += speed;
+
+      info!("progress: {p}");
     }
   }
 }

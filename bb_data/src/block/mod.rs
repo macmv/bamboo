@@ -178,7 +178,39 @@ macro_rules! mat {
 
 mat! {
   "AIR" => Air,
+  // Required for server to not desync things
+  "REPLACEABLE_PLANT" => ReplaceablePlant,
+  "ICE" => Ice,
+  "DENSE_ICE" => DenseIce,
+
+  // Nice to have, not needed
+  "SOIL" => Soil,
   "STONE" => Stone,
+  "WOOD" => Wood,
+  "NETHER_WOOD" => NetherWood,
+  "ORGANIC" => Organic,
+  "SOLID_ORGANIC" => SolidOrganic,
+  "NETHER_SHOOTS" => NetherShoots,
+  "EARTH" => Earth,
+  "PLANT" => Plant,
+  "WATER" => Water,
+  "LAVA" => Lava,
+  "SAND" => Sand,
+  "LEAVES" => Leaves,
+  "SPONGE" => Sponge,
+  "GLASS" => Glass,
+  "METAL" => Metal,
+  "WOOL" => Wool,
+  "PART" => Part,
+  "PISTON" => Piston,
+  "COBWEB" => Cobweb,
+  "SEAGRASS" => Seagrass,
+  "UNDERWATER_PLANT" => UnderwaterPlant,
+  "EGG" => Egg,
+  "SNOW" => Snow,
+  "SNOW_BLOCK" => SnowBlock,
+  "SNOW_POWDER" => SnowPowder,
+  "DECORATION" => Decoration,
 }
 
 impl Default for Material {

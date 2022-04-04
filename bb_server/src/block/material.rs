@@ -65,19 +65,54 @@
 /// | web          | cloth   |      | x             | destroy         |             |             |                       |
 /// | piston       | stone   |      |               | immovable       |             |             |                       |
 /// | barrier      | air     |      | x             | destroy         |             |             |                       |
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 #[non_exhaustive]
 pub enum Material {
   Air,
+  // Required for server to not desync things
+  ReplaceablePlant,
+  Ice,
+  DenseIce,
+
+  // Nice to have, not needed
+  Soil,
   Stone,
-  Dirt,
-  Plant,
   Wood,
-  Web,
+  NetherWood,
+  Organic,
+  SolidOrganic,
+  NetherShoots,
+  Earth,
+  Plant,
+  Water,
+  Lava,
+  Sand,
+  Leaves,
+  Sponge,
+  Glass,
+  Metal,
   Wool,
+  Part,
+  Piston,
+  Cobweb,
+  Seagrass,
+  UnderwaterPlant,
+  Egg,
+  Snow,
+  SnowBlock,
+  SnowPowder,
+  Decoration,
+
+  // Makes everything simpler (especially for weird materials that I don't care about).
   Unknown,
 }
 
 impl Material {
-  pub fn is_replaceable(&self) -> bool { matches!(self, Material::Plant) }
+  pub fn is_replaceable(&self) -> bool { matches!(self, Material::ReplaceablePlant) }
+  pub fn slipperiness(&self) -> f32 {
+    match self {
+      Material::Ice | Material::DenseIce => 0.98,
+      _ => 0.6,
+    }
+  }
 }
