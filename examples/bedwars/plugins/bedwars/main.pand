@@ -42,6 +42,10 @@ fn init() {
 
   bb = bamboo::instance()
   world = bb.default_world()
+  world.summon_item(FPos::new(0.0, 61.0, 0.0), item::Stack::new("wooden_pickaxe"))
+  world.summon_item(FPos::new(0.0, 61.0, 0.0), item::Stack::new("stone_pickaxe"))
+  world.summon_item(FPos::new(0.0, 61.0, 0.0), item::Stack::new("iron_pickaxe"))
+  world.summon_item(FPos::new(0.0, 61.0, 0.0), item::Stack::new("golden_pickaxe"))
   teams = map {
     "red":    BTeam::new(world, bb, FPos::new(0.0,   61.0, -40.0), 0.0,   FPos::new(0.5,   62.0, -43.5), "red"),
     "green":  BTeam::new(world, bb, FPos::new(40.0,  61.0, 0.0  ), 90.0,  FPos::new(44.5,  62.0, 0.5  ), "green"),

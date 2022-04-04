@@ -291,7 +291,13 @@ impl Player {
   pub(crate) fn start_digging(&self, pos: Pos) {
     // Silently ignore dig packets outside the world.
     if let Ok(kind) = self.world.get_kind(pos) {
-      self.pos.lock().dig_progress = Some((0.0, kind));
+      // For some reason, I end up being around a tick behind the client when they
+      // send a finish dig packet. This is probably because they expect me to handle
+      // the finish dig in the tick loop, not in a network thread. Regardless, this
+      // fixes the problem.
+      let mut pos = self.pos.lock();
+      pos.dig_progress = Some((0.0, kind));
+      self.update_dig_progress(&mut pos);
     }
   }
   pub(crate) fn cancel_digging(&self) { self.pos.lock().dig_progress = None; }
