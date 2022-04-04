@@ -70,11 +70,20 @@ impl Tool {
     if !self.ty.does_mine(block.material) {
       return false;
     }
-    // TODO: Vanilla now uses tags, so this is far more of a pain in the ass than I
-    // expected. For now I have the blocks I care about:
     let required_grade = match block.kind {
-      block::Kind::Stone => ToolGrade::Wood,
-      block::Kind::DiamondOre => ToolGrade::Iron,
+      block::Kind::IronBlock
+      | block::Kind::IronOre
+      | block::Kind::LapisBlock
+      | block::Kind::LapisOre => ToolGrade::Stone,
+      block::Kind::DiamondBlock
+      | block::Kind::DiamondOre
+      | block::Kind::EmeraldBlock
+      | block::Kind::EmeraldOre
+      | block::Kind::GoldBlock
+      | block::Kind::GoldOre
+      | block::Kind::RedstoneOre => ToolGrade::Iron,
+      block::Kind::Obsidian => ToolGrade::Diamond,
+
       _ => ToolGrade::Wood,
     };
     self.grade.mining_level() >= required_grade.mining_level()
