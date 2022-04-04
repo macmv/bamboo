@@ -2,7 +2,10 @@ use crate::{block, entity, item, player::Player, world::WorldManager};
 use bb_common::{
   math::{FPos, Pos},
   net::{cb, sb},
-  util::chat::{Chat, Color, HoverEvent},
+  util::{
+    chat::{Chat, Color, HoverEvent},
+    GameMode,
+  },
 };
 use std::{str::FromStr, sync::Arc};
 
@@ -39,14 +42,30 @@ pub(crate) fn handle(wm: &Arc<WorldManager>, player: &Arc<Player>, p: sb::Packet
         player.world().broadcast(msg);
       }
     }
-    sb::Packet::BlockDig { pos, status: _, face: _ } => {
+    sb::Packet::BlockDig { pos, status, face: _ } => {
       // If the world is locked then we need to sync this block.
       if player.world().is_locked() {
         player.sync_block_at(pos).unwrap();
       } else {
-        // Avoid race condition
-        if !player.world().set_kind(pos, block::Kind::Air).unwrap() {
-          player.sync_block_at(pos).unwrap();
+        match player.game_mode() {
+          GameMode::Survival => match status {
+            sb::DigStatus::Start => player.start_digging(),
+            sb::DigStatus::Cancel => player.cancel_digging(),
+            sb::DigStatus::Finish => player.finish_digging(pos),
+          },
+          GameMode::Creative => {
+            // Avoid race condition
+            if !player.world().set_kind(pos, block::Kind::Air).unwrap() {
+              player.sync_block_at(pos).unwrap();
+            }
+          }
+          // TODO: Not sure if the sync is needed, but it won't hurt much.
+          GameMode::Adventure => {
+            player.sync_block_at(pos).unwrap();
+          }
+          // We will just ignore block digs from spectators, as they won't show any updates client
+          // side.
+          GameMode::Spectator => {}
         }
       }
     }

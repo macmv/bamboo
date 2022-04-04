@@ -47,6 +47,14 @@ struct PlayerPosition {
   crouching: bool,
   sprinting: bool,
   swimming:  bool,
+
+  /// Stores the current progress. Mining time can change between when you start
+  /// and when you end, so the most accurate way to track mining time is to
+  /// increase this by some fraction every tick, and then check if its >= 1 when
+  /// they send a `DigStatus::Finish` packet.
+  ///
+  /// Will always be `None` outside of survival.
+  dig_progress: Option<f64>,
 }
 
 pub struct Player {
@@ -113,6 +121,7 @@ impl Player {
         crouching:    false,
         sprinting:    false,
         swimming:     false,
+        dig_progress: None,
       }
       .into(),
     })

@@ -1,5 +1,10 @@
-use super::Player;
-use bb_common::{math::ChunkPos, net::cb, version::ProtocolVersion};
+use super::{Player, PlayerPosition};
+use crate::block;
+use bb_common::{
+  math::{ChunkPos, Pos},
+  net::cb,
+  version::ProtocolVersion,
+};
 use parking_lot::Mutex;
 use rayon::prelude::*;
 use std::{
@@ -19,6 +24,7 @@ impl Player {
     let needs_set_pos;
     let pos = {
       let mut pos = self.pos.lock();
+      self.update_dig_progress(&mut pos);
       pos.prev = pos.curr;
       look_changed = pos.yaw != pos.next_yaw || pos.pitch != pos.next_pitch;
       pos_changed = pos.curr != pos.next;
@@ -279,6 +285,25 @@ impl Player {
         self.world.dec_view(pos);
         self.send(cb::Packet::UnloadChunk { pos });
       }
+    }
+  }
+
+  pub(crate) fn start_digging(&self) { self.pos.lock().dig_progress = Some(0.0); }
+  pub(crate) fn cancel_digging(&self) { self.pos.lock().dig_progress = None; }
+  pub(crate) fn finish_digging(&self, pos: Pos) {
+    let progress = std::mem::replace(&mut self.pos.lock().dig_progress, None);
+    if matches!(progress, Some(v) if v >= 1.0) {
+      if !self.world().set_kind(pos, block::Kind::Air).unwrap() {
+        self.sync_block_at(pos).unwrap();
+      }
+    } else {
+      self.sync_block_at(pos).unwrap();
+    }
+  }
+
+  fn update_dig_progress(&self, pos: &mut PlayerPosition) {
+    if let Some(p) = &mut pos.dig_progress {
+      *p += 0.1;
     }
   }
 }
