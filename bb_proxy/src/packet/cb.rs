@@ -240,6 +240,9 @@ impl ToTcp for Packet {
           }
         }
       }
+      Packet::EntityHeadLook { eid, yaw } => {
+        GPacket::EntityHeadLookV8 { entity_id: eid, yaw }
+      }
       Packet::EntityLook { eid, yaw, pitch, on_ground } => {
         if ver >= ProtocolVersion::V1_17_1 {
           let mut data = vec![];

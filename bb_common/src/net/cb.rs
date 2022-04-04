@@ -45,6 +45,8 @@ pub enum Packet {
   /// An entity's armor/holding item
   #[id = 33]
   EntityEquipment { eid: i32, slot: EquipmentSlot, item: Item },
+  #[id = 37]
+  EntityHeadLook { eid: i32, yaw: i8 },
   /// Pitch/yaw change of an entity.
   #[id = 5]
   EntityLook { eid: i32, yaw: i8, pitch: i8, on_ground: bool },

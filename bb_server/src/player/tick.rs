@@ -124,6 +124,7 @@ impl Player {
                 pitch,
                 on_ground,
               });
+              other.send(cb::Packet::EntityHeadLook { eid: self.eid, yaw });
             } else {
               other.send(cb::Packet::EntityMove {
                 eid: self.eid,
@@ -137,6 +138,7 @@ impl Player {
         } else {
           // Pos changed is false, so look_changed must be true
           other.send(cb::Packet::EntityLook { eid: self.eid, yaw, pitch, on_ground });
+          other.send(cb::Packet::EntityHeadLook { eid: self.eid, yaw });
         }
       }
     }
