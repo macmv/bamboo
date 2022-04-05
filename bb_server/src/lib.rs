@@ -17,7 +17,7 @@ use panda::Panda;
 use std::sync::Arc;
 
 pub fn generate_panda_docs() {
-  info!("generating sugarlang docs...",);
+  info!("generating panda docs...",);
 
   let plugin = PandaPlugin::new(0, "".into(), Arc::new(WorldManager::new()));
   let mut pd = Panda::new();

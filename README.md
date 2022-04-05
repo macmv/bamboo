@@ -108,43 +108,39 @@ is what I would like to see in a 1.0 release:
   async, which I really want to do.
   - This has been dropped. I now use `sc_transfer`, and there is no longer any async
     within the codebase.
-- [x] Plugin loading in Sugarlang
+- [x] Plugin loading in Panda (custom language)
   - I really tried to use another language for plugins. It would have been so
     much simpler to just deal with Python or JavaScript, but I couldn't stand
-    the awful API. So I wrote an entire language for plugins. It's called Sugarlang,
+    the awful API. So I wrote an entire language for plugins. It's called Panda,
     and it's specific to this server. You can check it out
-    [here](https://gitlab.com/macmv/sugarlang).
-  - Features still needed in Sugarlang:
-    - [ ] Traits? I'm not sure if I should add this. It would make it much less
-      beginner friendly, as this would also mean strongly typing everything. It
-      would produce much better errors at compile time, as you could never run
-      into an undefined function at runtime.
-    - [x] Remove builtin functions. These are not a very well thought out feature.
-      All builtin functions should be implemented through a new builtin type.
-      - I didn't remove builtin functions, I just rewrote the entire runtime tree.
-        It is much more sane now, and builtin functions are easier to work with.
+    [here](https://gitlab.com/macmv/panda).
+- [ ] Plugin loading via sockets
+  - Sending messages over a unix socket is fast, and would work pretty well for
+    loading a plugin. At the time of writing, there is a simple python plugin,
+    which can send chat messages and get blocks over a socket. This interface is
+    far more annoying to work with (I need to deal with json), and is very
+    incomplete. PRs are welcome to improve this interface!
 
 ### Progress
 
 At the time of writing, you can join on 1.8, 1.12, and 1.14+. Breaking blocks works,
-and placing blocks is soon to come (I've had it working before, but it is temporarily
-broken). You can see other players, but you cannot see any animations yet. Things
-like chunk data work well, and are heavily tested.
+and placing blocks works on most versions. You can see other players, and most of the
+animations are working. Things like chunk data work well, and are heavily tested.
 
 This is constantly changing, as I don't update this README that much. To see which
-versions work, I recommend cloning the project and running it yourself.
+versions work, I recommend cloning the project and running it yourself. I may also
+host a public demo server in the future, which will be open for anyone to join.
 
 ### Architecture
 
-Sugarcane uses a proxy-server model. The proxy talks to a Minecraft client over
-a TCP connection, and also talks to a server over a GRPC connection. This has a
-number of benefits, such as performance, scalability, and most importantly,
-cross-versioning. The Minecraft client changes it's packet definition quite a
-bit for every version, and supporting all the way back to 1.8 means that almost
-everything is different. The benefit to the server is that the GRPC connection
-is version-agnostic. The proxy manages all of the conversion between various TCP
-versions, and converts all of those packets into one GRPC packet which is sent
-to the server.
+Bamboo uses a proxy-server model. The proxy talks to a Minecraft client over
+the TCP based Minecraft protocol, and talks to the server over a custom TCP based
+protocol at the same time. This has a number of benefits, such as performance,
+scalability, and most importantly, cross-versioning. The Minecraft client changes
+it's packet definition quite a bit for every version, and supporting all the way
+back to 1.8 means that almost everything is different. Having my own proxy in place
+means the server works entirely with latest versioned data, and the proxy handles
+all the older versions.
 
 As for the server itself, it does a lot of things differently from the vanilla
 server. For one, there are very few global locks. This server is designed to be
@@ -217,34 +213,36 @@ your IDE to use a different profile. Any time my IDE builds, I pass the flag
 the dev profile uses opt-level 2 (instead of the default 0). This is because
 terrain generation is terribly slow with opt-level set to 0.
 
-### For Sugarlang devlopers
+### For Panda devlopers
 
-Sugarlang is the language used for plugins in this server. See the
-[plugins](https://gitlab.com/macmv/sugarcane/-/tree/main/plugins) directory
+Panda is the language used for plugins in this server. See the
+[examples](https://gitlab.com/macmv/bamboo/-/tree/main/examples) directory
 for some examples.
 
-The [docs](https://macmv.gitlab.io/sugarcane/sugarcane/index.html) are kept up
-to date, and those should be helpful when writing plugins.
+The [docs](https://macmv.gitlab.io/bamboo/doc/sugarlang/bamboo/index.html) are
+kept up to date by pipelines, and those should be helpful when writing plugins.
 
 This language is mostly complete, but the actual interface with the server from
-Sugarlang is not complete at all. These plugins are mostly there to test the
+Panda is not complete at all. These plugins are mostly there to test the
 API that I'm writing, and they should contain examples of the newest features
 as I develop them.
 
-### What happened to [Sugarcane Go](https://gitlab.com/macmv/sugarcane-go)?
+### What happened to [Sugarcane](https://gitlab.com/macmv/sugarcane-go)?
 
-This is a rewrite of that. This implementation aims to improve a number of
-things wrong with the first implementation:
+Well two things happened. Firstly, this project used to also be called sugarcane,
+but I renamed it due to another minecraft project also being named sugarcane.
+Secondly, before this project, I did the same thing but in Go. I switched once
+I learned Rust, as I cannot think of any reason to use Go any more.
+
+Here are some reasons why I rewrote the project:
 
 - Manual everything
   - The Go version did almost everything by hand. This includes packet
     definitions, block data, items, and the rest. This ended up being a lot of
     work to write, and most importantly, maintain.
-  - The Rust version fixes that, with a lot of things done at compile time. The
-    `data` crate reads from Prismarine data, and generates a bunch of source
+  - Bamboo fixes that, with a lot of things done at compile time. The `bb_data`
+    crate reads from my own data source, and generates a bunch of Rust source
     files that are also included at compile time.
-  - TODO: I recently learned about proc macros, and it might make sense to move
-    the data crate to a proc macro, as that might help compile times a lot.
 - It's Rust
   - I didn't know rust when writing the first version, and I was very happy with
     Go at the time. However, after learning Rust, I couldn't bare to work with
@@ -254,6 +252,3 @@ things wrong with the first implementation:
   - Everything is better the second time around. I am able to copy a lot of the
     code from Go over to Rust, and things like chunk data/encryption can be
     implemented in a much better manner.
-  - I wanted to test the old proxy with the new server and vice versa, but the
-    new GRPC format is totally incompatible. It is much better now, but is still
-    a totally new format.

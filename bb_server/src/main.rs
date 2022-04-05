@@ -5,11 +5,10 @@ use bb_server::{net::ConnectionManager, world::WorldManager};
 use clap::Parser;
 use std::{error::Error, sync::Arc, thread};
 
-/// Simple program to greet a person
 #[derive(Parser, Debug)]
 #[clap(about, version, author)]
 struct Args {
-  /// If set, the server will generate sugarlang docs and exit, without doing
+  /// If set, the server will generate panda docs and exit, without doing
   /// anything else.
   #[clap(long)]
   only_docs: bool,
@@ -61,14 +60,14 @@ struct Args {
 //   }
 // }
 
-fn main() -> Result<(), Box<dyn Error>> {
+fn main() {
   let args = Args::parse();
   bb_common::init("server");
 
   if !args.no_docs {
     bb_server::generate_panda_docs();
     if args.only_docs {
-      return Ok(());
+      return;
     }
   }
 
@@ -84,7 +83,8 @@ fn main() -> Result<(), Box<dyn Error>> {
   let mut conn = ConnectionManager::new(wm);
 
   info!("listening on {}", addr);
-  conn.run(addr)?;
-
-  Ok(())
+  match conn.run(addr) {
+    Ok(_) => {}
+    Err(e) => error!("error in connection: {e}"),
+  };
 }
