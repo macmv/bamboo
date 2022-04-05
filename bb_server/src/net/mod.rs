@@ -54,9 +54,21 @@ pub struct ConnSender {
   tok:   Token,
 }
 
+#[derive(Debug, Clone)]
+struct EventWrapper {
+  pub is_readable: bool,
+  pub is_writable: bool,
+}
+
 impl fmt::Debug for Connection {
   fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
     f.debug_struct("Connection").field("closed", &self.closed).finish()
+  }
+}
+
+impl EventWrapper {
+  pub fn new(e: &Event) -> Self {
+    EventWrapper { is_readable: e.is_readable(), is_writable: e.is_writable() }
   }
 }
 
@@ -381,7 +393,7 @@ impl ConnectionManager {
             });
           }
           token => {
-            let e = event.clone();
+            let e = EventWrapper::new(event);
             read_pool.execute(move |s| {
               if Self::handle(&s.wm, &s.conns, token, e) {
                 let mut wl = s.conns.write();
@@ -443,9 +455,9 @@ impl ConnectionManager {
     wm: &Arc<WorldManager>,
     c: &RwLock<HashMap<Token, (Mutex<Connection>, Option<Arc<Player>>)>>,
     token: Token,
-    ev: Event,
+    ev: EventWrapper,
   ) -> bool {
-    if ev.is_readable() {
+    if ev.is_readable {
       loop {
         let rl = c.read();
         // If this isn't present, we assume another thread has removed the player, and
@@ -498,7 +510,7 @@ impl ConnectionManager {
         }
       }
     }
-    if ev.is_writable() {
+    if ev.is_writable {
       let rl = c.read();
       if let Some((conn, player)) = rl.get(&token) {
         let mut conn = conn.lock();
