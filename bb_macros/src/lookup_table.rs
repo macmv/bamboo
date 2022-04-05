@@ -50,28 +50,29 @@ impl Parse for LookupArgs {
   fn parse(input: ParseStream) -> Result<Self> {
     let mut args = KeyedArgs::parse(input)?.keys;
 
-    let min = match args.remove("min").ok_or(input.error("expected a `min` argument"))? {
+    let min = match args.remove("min").ok_or_else(|| input.error("expected a `min` argument"))? {
       Expr::Lit(lit) => match lit.lit {
         Lit::Float(f) => f.base10_parse::<f64>()?,
         v => return Err(Error::new(v.span(), "expected an f64")),
       },
       v => return Err(Error::new(v.span(), "expected an f64")),
     };
-    let max = match args.remove("max").ok_or(input.error("expected a `max` argument"))? {
+    let max = match args.remove("max").ok_or_else(|| input.error("expected a `max` argument"))? {
       Expr::Lit(lit) => match lit.lit {
         Lit::Float(f) => f.base10_parse::<f64>()?,
         v => return Err(Error::new(v.span(), "expected an f64")),
       },
       v => return Err(Error::new(v.span(), "expected an f64")),
     };
-    let steps = match args.remove("steps").ok_or(input.error("expected a `steps` argument"))? {
-      Expr::Lit(lit) => match lit.lit {
-        Lit::Int(v) => v.base10_parse::<usize>()?,
+    let steps =
+      match args.remove("steps").ok_or_else(|| input.error("expected a `steps` argument"))? {
+        Expr::Lit(lit) => match lit.lit {
+          Lit::Int(v) => v.base10_parse::<usize>()?,
+          v => return Err(Error::new(v.span(), "expected a usize")),
+        },
         v => return Err(Error::new(v.span(), "expected a usize")),
-      },
-      v => return Err(Error::new(v.span(), "expected a usize")),
-    };
-    let ty = match args.remove("ty").ok_or(input.error("expected a `ty` argument"))? {
+      };
+    let ty = match args.remove("ty").ok_or_else(|| input.error("expected a `ty` argument"))? {
       Expr::Path(path) => path.path.segments.first().unwrap().ident.clone(),
       v => return Err(Error::new(v.span(), "expected a type name (like f64)")),
     };

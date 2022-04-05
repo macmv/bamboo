@@ -157,7 +157,7 @@ impl MessageWriter<'_> {
   /// Writes the given number of bytes from the buffer.
   fn write_buf(&mut self, buf: &[u8]) -> Result {
     if self.idx + buf.len() > self.data.len() {
-      Err(WriteError::BufTooLong.into())
+      Err(WriteError::BufTooLong)
     } else {
       self.data[self.idx..self.idx + buf.len()].clone_from_slice(buf);
       self.idx += buf.len();

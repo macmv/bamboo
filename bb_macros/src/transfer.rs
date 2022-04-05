@@ -9,14 +9,13 @@ use syn::{
 pub fn transfer(input: TokenStream) -> TokenStream {
   let args = parse_macro_input!(input as Item);
 
-  let block;
-  match args {
+  let block = match args {
     Item::Struct(s) => {
       let ty = &s.ident;
       let (impl_generics, ty_generics, where_clause) = s.generics.split_for_impl();
       let (setter, write_len, writer) = create_setter(&s.fields, true);
 
-      block = quote! {
+      quote! {
         impl #impl_generics bb_transfer::MessageWrite for #ty #ty_generics #where_clause {
           fn write(&self, m: &mut bb_transfer::MessageWriter) -> Result<(), bb_transfer::WriteError> {
             m.write_struct(#write_len, |m| #writer)
@@ -33,7 +32,7 @@ pub fn transfer(input: TokenStream) -> TokenStream {
             Ok(Self #setter)
           }
         }
-      };
+      }
     }
     Item::Enum(e) => {
       let ty = &e.ident;
@@ -95,7 +94,7 @@ pub fn transfer(input: TokenStream) -> TokenStream {
         }
       }
 
-      block = quote! {
+      quote! {
         impl #impl_generics bb_transfer::MessageWrite for #ty #ty_generics #where_clause {
           fn write(&self, m: &mut bb_transfer::MessageWriter) -> Result<(), bb_transfer::WriteError> {
             m.write_enum(match self {
@@ -133,10 +132,10 @@ pub fn transfer(input: TokenStream) -> TokenStream {
             })
           }
         }
-      };
+      }
     }
     _ => unimplemented!(),
-  }
+  };
 
   let out = quote! {
     #block
@@ -181,7 +180,7 @@ fn find_must_exist(attrs: &[Attribute]) -> Option<usize> {
 /// Creates a reader and writer
 fn create_setter(f: &Fields, has_self: bool) -> (TokenStream2, u64, TokenStream2) {
   match f {
-    Fields::Unit => (quote!(), 0 as u64, quote!(Ok(()))),
+    Fields::Unit => (quote!(), 0, quote!(Ok(()))),
     Fields::Unnamed(fields) => {
       let mut read = quote!();
       let mut write = quote!();

@@ -154,7 +154,7 @@ impl MessageReader<'_> {
       Header::Bytes => {
         let len = self.read_varint(extra)? as usize;
         let data = self.read_buf(len)?;
-        if data.len() == 0 {
+        if data.is_empty() {
           write!(f, "Bytes(len: 0) {{}}").unwrap();
         } else {
           let mut s = f.debug_struct("Bytes");
@@ -190,7 +190,7 @@ impl From<Utf8Error> for ReadError {
   fn from(e: Utf8Error) -> Self { ReadError::Valid(e.into()) }
 }
 impl From<Utf8Error> for ValidReadError {
-  fn from(e: Utf8Error) -> Self { ValidReadError::InvalidUtf8(e.into()) }
+  fn from(e: Utf8Error) -> Self { ValidReadError::InvalidUtf8(e) }
 }
 
 impl Error for ReadError {}
@@ -424,7 +424,7 @@ impl<'a> MessageReader<'a> {
   /// Reads the given number of bytes from the buffer.
   fn read_buf(&mut self, len: usize) -> InvalidResult<&'a [u8]> {
     if self.idx + len > self.data.len() {
-      Err(InvalidReadError::InvalidBufLength.into())
+      Err(InvalidReadError::InvalidBufLength)
     } else {
       let out = &self.data[self.idx..self.idx + len];
       self.idx += len;
@@ -435,7 +435,7 @@ impl<'a> MessageReader<'a> {
   /// Skips the given number of bytes.
   fn skip_bytes(&mut self, len: usize) -> InvalidResult<()> {
     if self.idx + len > self.data.len() {
-      Err(InvalidReadError::InvalidBufLength.into())
+      Err(InvalidReadError::InvalidBufLength)
     } else {
       self.idx += len;
       Ok(())
