@@ -13,7 +13,7 @@ use std::time::Instant;
 pub fn handle_packet(stream: &mut ConnStream, status: &Mutex<Status>, p: cb::Packet) -> Result<()> {
   match p {
     cb::Packet::JoinGameV8 { .. } => {}
-    cb::Packet::ChatV8 { chat_component, .. } => match Chat::from_json(chat_component) {
+    cb::Packet::ChatV8 { chat_component, .. } => match Chat::from_json(&chat_component) {
       Ok(m) => info!("chat: {}", m.to_plain()),
       Err(e) => warn!("invalid chat: {}", e),
     },
@@ -42,11 +42,11 @@ pub fn handle_packet(stream: &mut ConnStream, status: &Mutex<Status>, p: cb::Pac
     }
     cb::Packet::PlayerListHeaderV8 { header, footer } => {
       let mut lock = status.lock();
-      match Chat::from_json(header) {
+      match Chat::from_json(&header) {
         Ok(m) => lock.header = m.to_plain().replace('\n', ""),
         Err(e) => warn!("invalid header: {}", e),
       }
-      match Chat::from_json(footer) {
+      match Chat::from_json(&footer) {
         Ok(m) => lock.footer = m.to_plain().replace('\n', ""),
         Err(e) => warn!("invalid footer: {}", e),
       }
