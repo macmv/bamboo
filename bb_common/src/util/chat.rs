@@ -558,24 +558,31 @@ mod tests {
         msg.to_json(),
         r#"[{"text":"Hello!"},{"text":" more text","bold":true,"italic":true}]"#
       );
+
+      // Empty should have a single component, to avoid clientside bugs.
+      let msg = Chat::empty();
+      assert_eq!(msg.to_json(), r#"{"text":""}"#);
+      let msg = Chat::new("");
+      assert_eq!(msg.to_json(), r#"{"text":""}"#);
+      assert_eq!(Chat::empty(), Chat::new(""));
     }
 
     // Test serializing colors
     {
       let msg = Chat::empty();
-      assert_eq!(msg.to_json(), r#"{}"#);
+      assert_eq!(msg.to_json(), r#"{"text":""}"#);
 
       let mut m = msg.clone();
       m.add("colored").color(Color::BrightGreen);
-      assert_eq!(m.to_json(), r#"{"text":"colored","color":"green"}"#);
+      assert_eq!(m.to_json(), r#"[{"text":""},{"text":"colored","color":"green"}]"#);
 
       let mut m = msg.clone();
       m.add("another color").color(Color::Black);
-      assert_eq!(m.to_json(), r#"{"text":"another color","color":"black"}"#);
+      assert_eq!(m.to_json(), r#"[{"text":""},{"text":"another color","color":"black"}]"#);
 
       let mut m = msg.clone();
       m.add("custom color").color(Color::rgb(0, 127, 255));
-      assert_eq!(m.to_json(), r##"{"text":"custom color","color":"#007fff"}"##);
+      assert_eq!(m.to_json(), r##"[{"text":""},{"text":"custom color","color":"#007fff"}]"##);
     }
 
     // Test all the other nonsense
@@ -583,14 +590,14 @@ mod tests {
       // Insertion text
       let mut msg = Chat::empty();
       msg.add("click me!").insertion("I am text");
-      assert_eq!(msg.to_json(), r#"{"text":"click me!","insertion":"I am text"}"#);
+      assert_eq!(msg.to_json(), r#"[{"text":""},{"text":"click me!","insertion":"I am text"}]"#);
 
       // Click event
       let mut msg = Chat::empty();
       msg.add("click me!").on_click(ClickEvent::OpenURL("https://google.com".into()));
       assert_eq!(
         msg.to_json(),
-        r#"{"text":"click me!","clickEvent":{"action":"open_url","value":"https://google.com"}}"#
+        r#"[{"text":""},{"text":"click me!","clickEvent":{"action":"open_url","value":"https://google.com"}}]"#
       );
 
       // Hover event
@@ -598,7 +605,7 @@ mod tests {
       msg.add("hover time").on_hover(HoverEvent::ShowText("big gaming".into()));
       assert_eq!(
         msg.to_json(),
-        r#"{"text":"hover time","hoverEvent":{"action":"show_text","value":"big gaming"}}"#
+        r#"[{"text":""},{"text":"hover time","hoverEvent":{"action":"show_text","value":"big gaming"}}]"#
       );
 
       // Children testing
@@ -608,7 +615,7 @@ mod tests {
       msg.add("main section ").bold().add_child("hello").italic();
       assert_eq!(
         msg.to_json(),
-        r#"{"text":"main section ","bold":true,"extra":[{"text":"hello","italic":true}]}"#
+        r#"[{"text":""},{"text":"main section ","bold":true,"extra":[{"text":"hello","italic":true}]}]"#
       );
     }
   }
