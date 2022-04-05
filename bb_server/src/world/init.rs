@@ -103,7 +103,7 @@ impl World {
     info!("done generating terrain");
   }
 
-  pub(super) fn player_init(&self, player: &Player, info: JoinInfo) {
+  pub(super) fn player_init(&self, player: &Player, _info: JoinInfo) {
     let out = cb::Packet::JoinGame {
       // entity_id:                self.eid(),
       // game_mode:                1,       // Creative

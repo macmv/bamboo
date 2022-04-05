@@ -34,20 +34,19 @@ pub struct PluginManager {
 #[derive(Clone)]
 pub struct Bamboo {
   // Index into plugins array
-  idx:    usize,
-  plugin: String,
-  wm:     Arc<WorldManager>,
+  idx:  usize,
+  wm:   Arc<WorldManager>,
   // Locking this removes the value. If the value is none, then this enters a wait loop until there
   // is a value present.
   //
   // This is not by any means "fast", but it will work as long as a thread doesn't lock this for
   // too long.
-  data:   Arc<Mutex<Option<VarSend>>>,
+  data: Arc<Mutex<Option<VarSend>>>,
 }
 
 impl Bamboo {
-  pub fn new(idx: usize, plugin: String, wm: Arc<WorldManager>) -> Self {
-    Bamboo { idx, plugin, wm, data: Arc::new(Mutex::new(Some(VarSend::None))) }
+  pub fn new(idx: usize, wm: Arc<WorldManager>) -> Self {
+    Bamboo { idx, wm, data: Arc::new(Mutex::new(Some(VarSend::None))) }
   }
 }
 
@@ -96,7 +95,7 @@ impl PluginManager {
         if ty == "socket" {
           info!("found socket plugin at {}", path.to_str().unwrap());
           if let Some(plugin) = sockets.add(name.clone(), f.path()) {
-            plugins.push(Plugin::new(config, name, plugin));
+            plugins.push(Plugin::new(config, plugin));
           }
         } else if ty == "panda" {
           let main_path = f.path().join("main.pand");
@@ -107,7 +106,7 @@ impl PluginManager {
 
             p.load_from_dir(&f.path(), self);
             p.call_init();
-            plugins.push(Plugin::new(config, name, p));
+            plugins.push(Plugin::new(config, p));
           } else {
             error!("plugin `{name}` does not have a `main.pand` file");
           }
@@ -146,9 +145,9 @@ impl PluginManager {
   pub fn on_player_join(&self, player: Arc<Player>) {
     self.event(player, ServerEvent::PlayerJoin {});
   }
-  pub fn on_click_window(&self, player: Arc<Player>, slot: i32, mode: ClickWindow) -> bool {
-    let mut allow = true;
-    for p in self.plugins.lock().iter() {
+  pub fn on_click_window(&self, _player: Arc<Player>, _slot: i32, _mode: ClickWindow) -> bool {
+    let allow = true;
+    for _p in self.plugins.lock().iter() {
       /*
       if !p.call(player.clone(), slot, mode.clone()) {
         allow = false

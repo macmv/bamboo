@@ -268,7 +268,7 @@ impl SocketPlugin {
   pub fn handle_event(&self, e: PluginEvent) -> io::Result<()> {
     match e {
       PluginEvent::Ready => {}
-      PluginEvent::Register { ty } => todo!(),
+      PluginEvent::Register { ty: _ } => todo!(),
       PluginEvent::SendChat { text } => {
         self.wm.broadcast(text);
       }

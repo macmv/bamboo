@@ -91,14 +91,14 @@ pub trait PluginImpl: std::any::Any {
 }
 
 pub struct Plugin {
+  #[allow(unused)]
   config: Config,
-  name:   String,
   imp:    Box<dyn PluginImpl + Send + Sync>,
 }
 
 impl Plugin {
-  pub fn new(config: Config, name: String, imp: impl PluginImpl + Send + Sync + 'static) -> Self {
-    Plugin { config, name, imp: Box::new(imp) }
+  pub fn new(config: Config, imp: impl PluginImpl + Send + Sync + 'static) -> Self {
+    Plugin { config, imp: Box::new(imp) }
   }
   pub fn call(&self, ev: ServerMessage) -> Result<(), ()> { self.imp.call(ev) }
   pub fn unwrap_panda(&mut self) -> &mut PandaPlugin { self.imp.panda().unwrap() }

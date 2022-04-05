@@ -33,6 +33,7 @@ macro_rules! wrap {
   ( $ty:ty, $new_ty:ident ) => {
     #[derive(Clone, Debug)]
     pub struct $new_ty {
+      #[allow(unused)]
       pub(super) inner: $ty,
     }
 

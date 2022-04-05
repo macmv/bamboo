@@ -51,10 +51,14 @@ impl TypeConverter {
   pub fn get_data(&self, entity: Type) -> &Data { &self.types[entity.id() as usize] }
 }
 
+// TODO: Don't include versioning data, as we don't really need it.
+
 #[derive(Debug)]
 pub struct Version {
   to_old:   &'static [u32],
   to_new:   &'static [u32],
+  // These are required for the data generator.
+  #[allow(unused)]
   metadata: &'static [Metadata],
   #[allow(unused)]
   ver:      BlockVersion,
@@ -64,9 +68,13 @@ include!(concat!(env!("OUT_DIR"), "/entity/version.rs"));
 
 #[derive(Debug, Clone)]
 pub struct Metadata {
+  #[allow(unused)]
   to_old:    &'static [u8],
+  #[allow(unused)]
   to_new:    &'static [u8],
+  #[allow(unused)]
   old_types: &'static [Option<MetadataType>],
+  #[allow(unused)]
   new_types: &'static [MetadataType],
 }
 

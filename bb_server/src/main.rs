@@ -3,7 +3,7 @@ extern crate log;
 
 use bb_server::{net::ConnectionManager, world::WorldManager};
 use clap::Parser;
-use std::{error::Error, sync::Arc, thread};
+use std::{sync::Arc, thread};
 
 #[derive(Parser, Debug)]
 #[clap(about, version, author)]

@@ -123,11 +123,11 @@ include!(concat!(env!("OUT_DIR"), "/entity/ty.rs"));
 /// Any data specific to an entity.
 #[derive(Debug)]
 pub struct Data {
-  ty:     Type,
-  id:     u32,
-  name:   &'static str,
-  width:  f32,
-  height: f32,
+  pub ty:     Type,
+  pub id:     u32,
+  pub name:   &'static str,
+  pub width:  f32,
+  pub height: f32,
 }
 
 impl Data {

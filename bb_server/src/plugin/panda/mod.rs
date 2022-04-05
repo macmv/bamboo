@@ -18,10 +18,10 @@ pub struct PandaPlugin {
 }
 
 impl PandaPlugin {
-  //   /// Creates a new plugin. The name should be the name of the module (for
-  //   /// debugging) and the Module should be the ruby module for this plugin.
+  /// Creates a new plugin. The name should be the name of the plugin (for
+  /// logs).
   pub fn new(idx: usize, name: String, wm: Arc<WorldManager>) -> Self {
-    PandaPlugin { bb: Bamboo::new(idx, name.clone(), wm), name, sl: None }
+    PandaPlugin { bb: Bamboo::new(idx, wm), name, sl: None }
   }
 
   pub fn name(&self) -> &String { &self.name }

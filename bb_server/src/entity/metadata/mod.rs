@@ -1,3 +1,6 @@
+//! Old implementation of entity metadata. TODO: Move the rest of the functions
+//! in the directory to bb_common.
+
 mod serialize;
 
 use crate::item;

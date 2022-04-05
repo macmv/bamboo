@@ -332,9 +332,9 @@ impl ConnectionManager {
 
     let (tx, rx) = crossbeam_channel::bounded(1024);
 
-    let mut write_pool =
+    let write_pool =
       ThreadPool::auto(|| State { wm: self.wm.clone(), conns: self.connections.clone() });
-    let mut read_pool =
+    let read_pool =
       ThreadPool::auto(|| State { wm: self.wm.clone(), conns: self.connections.clone() });
 
     loop {

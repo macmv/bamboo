@@ -1,5 +1,5 @@
 use super::World;
-use crate::{entity, entity::Entity, item, player::Player};
+use crate::{entity, entity::Entity, player::Player};
 use bb_common::{
   math::{ChunkPos, FPos, Vec3},
   metadata::Metadata,
