@@ -27,10 +27,26 @@ const MAX_SIZE: usize = 127;
 ///
 /// Example:
 /// ```
-/// let cache = Cache::new(|key| key + 10);
+/// use bb_server::world::gen::util::Cache;
+/// use std::sync::{Arc, Mutex};
 ///
-/// assert_eq!(cache.get(5), 15);
-/// assert_eq!(cache.get(5), 15); // This will not call builder
+/// // An atomic would be less clear here, so lets just use a Mutex<i32>.
+/// let num_calls = Arc::new(Mutex::new(0));
+/// let num_calls_clone = num_calls.clone();
+/// // The closure passed here must be `Send`, so we need to use a mutex.
+/// let mut cache = Cache::new(move |key| {
+///   *num_calls_clone.lock().unwrap() += 1;
+///   key + 10
+/// });
+///
+/// assert_eq!(*cache.get(5), 15);
+/// assert_eq!(*cache.get(5), 15); // This will not call builder.
+/// assert_eq!(*num_calls.lock().unwrap(), 1);
+///
+/// assert_eq!(*cache.get(10), 20); // This calls the builder again.
+/// assert_eq!(*num_calls.lock().unwrap(), 2);
+/// assert_eq!(*cache.get(10), 20); // This won't call the builder.
+/// assert_eq!(*num_calls.lock().unwrap(), 2);
 /// ```
 pub struct Cache<K, V> {
   data:    HashMap<K, (V, usize)>,

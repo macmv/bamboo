@@ -5,6 +5,7 @@
 //! # Examples
 //!
 //! ```
+//! # use bb_server::command::{Command, Parser};
 //! let mut c = Command::new("fill");
 //! c.add_arg("first", Parser::BlockPos); // The string is just the name of the argument. It serves no purpose in parsing.
 //! c.add_arg("second", Parser::BlockPos);
@@ -138,6 +139,7 @@ impl Command {
   /// And you would implement that command like this:
   ///
   /// ```
+  /// # use bb_server::command::{Command, Parser};
   /// let mut c = Command::new("fill");
   /// c.add_lit("rect")
   ///   .add_arg("min", Parser::BlockPos)

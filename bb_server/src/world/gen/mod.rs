@@ -42,6 +42,9 @@ impl BiomeLayers {
   /// plains.
   ///
   /// ```rust
+  /// # use bb_server::world::gen::BiomeLayers;
+  /// use bb_server::block;
+  ///
   /// let mut layers = BiomeLayers::new(block::Kind::Stone);
   /// layers.add(block::Kind::Dirt, 4);
   /// layers.add(block::Kind::GrassBlock, 1);

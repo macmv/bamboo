@@ -1,3 +1,4 @@
+#[cfg(not(doctest))]
 mod types;
 
 use super::{Bamboo, GlobalServerEvent, PluginImpl, PluginManager, ServerEvent, ServerMessage};
