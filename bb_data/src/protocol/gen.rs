@@ -54,7 +54,7 @@ impl PacketCollection {
     simplify::pass(&mut p);
     self.classes.get_mut(&ver).unwrap().insert(p.class.clone(), p.clone());
     self.versions.get_mut(&ver).unwrap().insert(p.name.clone(), tcp_id);
-    let list = self.packets.entry(p.name.clone()).or_insert_with(|| vec![]);
+    let list = self.packets.entry(p.name.clone()).or_insert_with(Vec::new);
     if let Some((_, last)) = list.last() {
       if *last == p {
         return;
@@ -65,7 +65,7 @@ impl PacketCollection {
   // This function is not complete, so we allow this here
   #[allow(clippy::if_same_then_else)]
   pub fn expand_sup(&mut self) {
-    for (_name, versions) in &mut self.packets {
+    for versions in self.packets.values_mut() {
       for (ver, p) in versions {
         if p.extends == "Object" || p.extends == "Record" {
           p.extend_from_none();

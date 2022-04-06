@@ -53,6 +53,7 @@ pub struct FuncArg<'a> {
 }
 
 impl CodeGen {
+  #[allow(clippy::new_without_default)]
   pub fn new() -> Self {
     CodeGen {
       current:      String::new(),
@@ -311,13 +312,13 @@ impl CodeGen {
 
   pub fn write(&mut self, src: &str) {
     // Make sure not to indent when we aren't writing anything
-    if src == "" {
+    if src.is_empty() {
       return;
     }
     if self.needs_indent {
       if let Some(doc_comment) = self.doc_comment {
         self.current.push_str(&"  ".repeat(doc_comment));
-        self.current.push_str(&"/// ");
+        self.current.push_str("/// ");
         self.current.push_str(&"  ".repeat(self.indent - doc_comment));
       } else {
         self.current.push_str(&"  ".repeat(self.indent));
@@ -328,17 +329,17 @@ impl CodeGen {
   }
   pub fn write_line(&mut self, src: &str) {
     // If we want a blank line, only add indents before doc_comment
-    if src == "" {
+    if src.is_empty() {
       if let Some(doc_comment) = self.doc_comment {
         self.current.push_str(&"  ".repeat(doc_comment));
         // Note there is no trailing whitespace here
-        self.current.push_str(&"///");
+        self.current.push_str("///");
       }
-      self.current.push_str("\n");
+      self.current.push('\n');
       self.needs_indent = true;
     } else {
       self.write(src);
-      self.current.push_str("\n");
+      self.current.push('\n');
       self.needs_indent = true;
     }
   }
@@ -356,11 +357,11 @@ impl EnumVariant {
   pub fn write(&self, gen: &mut CodeGen) {
     match self {
       Self::Named(name) => {
-        gen.write(&name);
+        gen.write(name);
         gen.write_line(",");
       }
       Self::Tuple(name, fields) => {
-        gen.write(&name);
+        gen.write(name);
         gen.write("(");
         for (i, f) in fields.iter().enumerate() {
           gen.write(f);
@@ -371,13 +372,13 @@ impl EnumVariant {
         gen.write_line("),");
       }
       Self::Struct(name, fields) => {
-        gen.write(&name);
+        gen.write(name);
         gen.write_line(" {");
         gen.add_indent();
         for (name, ty) in fields {
-          gen.write(&name);
+          gen.write(name);
           gen.write(": ");
-          gen.write(&ty);
+          gen.write(ty);
           gen.write_line(",");
         }
         gen.remove_indent();
@@ -390,10 +391,10 @@ impl MatchBranch<'_> {
   pub fn write(&self, gen: &mut CodeGen) {
     match self {
       Self::Unit(name) => {
-        gen.write(&name);
+        gen.write(name);
       }
       Self::Tuple(name, fields) => {
-        gen.write(&name);
+        gen.write(name);
         gen.write("(");
         for (i, f) in fields.iter().enumerate() {
           gen.write(f);
@@ -404,8 +405,8 @@ impl MatchBranch<'_> {
         gen.write(")");
       }
       Self::Struct(name, fields) => {
-        gen.write(&name);
-        if fields.len() == 0 {
+        gen.write(name);
+        if fields.is_empty() {
           gen.write(" { .. }");
         } else {
           gen.write_line(" {");
@@ -429,7 +430,7 @@ impl FuncArg<'_> {
   pub fn slf_ref() -> Self { FuncArg { name: "&self", ty: "" } }
   pub fn write(&self, gen: &mut CodeGen) {
     gen.write(self.name);
-    if self.ty != "" {
+    if !self.ty.is_empty() {
       gen.write(": ");
       gen.write(self.ty);
     }

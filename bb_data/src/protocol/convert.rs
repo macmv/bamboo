@@ -59,7 +59,6 @@ pub fn class(name: &str) -> RType {
 
     _ => "U",
   })
-  .into()
 }
 
 pub fn static_call<'a, 'b>(class: &'a str, name: &'b str) -> (&'a str, &'b str) {
@@ -94,7 +93,7 @@ pub fn static_call<'a, 'b>(class: &'a str, name: &'b str) -> (&'a str, &'b str) 
 pub fn static_ref(class: &str, name: &str) -> Value {
   let (c, n) = match (class, name) {
     ("tcp::Packet", _) => (
-      "tcp::Packet".into(),
+      "tcp::Packet",
       match name {
         "read_var_int" => "read_varint",
         "read_item_stack" => "read_item",
@@ -297,9 +296,7 @@ pub fn type_cast(from: &RType, to: &RType) -> Vec<Op> {
     },
     "HashMap<U, U>" | "HashMap<U, i32>" | "HashSet<U>" | "Vec<U>" => return vec![],
     "Vec" => return vec![],
-    "String" => match from {
-      _ => return vec![],
-    },
+    "String" => return vec![],
     "NBT" => match from.name.as_str() {
       "U" => return vec![],
       _ => panic!("cannot convert `{}` into `{}`", from, to),
@@ -346,34 +343,31 @@ pub fn this_call(name: &str, args: &mut Vec<Expr>) -> Option<Instr> {
 
 pub fn overwrite(expr: &mut Expr) -> Option<Instr> {
   for op in expr.ops.clone() {
-    match op {
-      Op::Call(class, name, mut args) => {
-        match (class.as_str(), name.as_str()) {
-          // This is for all the Registry.BLOCK.get(buf.read_varint()) calls. We don't
-          // have anything like that in the packet crate, so we just want the varint.
-          ("DefaultedRegistry" | "Registry" | "IdList", "get")
-          | (_, "get_by_value")
-          | (_, "get_object_by_id") => {
-            assert_eq!(args.len(), 1, "{:?}", args);
-            *expr = args.pop().unwrap();
-          }
-          // This is for BossBar on 1.17. They changed the system to parse an enum variant, then
-          // cast that to some type, then dynamically invoke a function on that enum. Long story
-          // short, I can't parse it at all.
-          ("Function", "apply") => {
-            return Some(Instr::Switch(
-              Expr::new(Value::Var(1)).op(Op::Call(
-                "tcp::Packet".into(),
-                "read_varint".into(),
-                vec![],
-              )),
-              vec![],
-            ));
-          }
-          _ => {}
+    if let Op::Call(class, name, mut args) = op {
+      match (class.as_str(), name.as_str()) {
+        // This is for all the Registry.BLOCK.get(buf.read_varint()) calls. We don't
+        // have anything like that in the packet crate, so we just want the varint.
+        ("DefaultedRegistry" | "Registry" | "IdList", "get")
+        | (_, "get_by_value")
+        | (_, "get_object_by_id") => {
+          assert_eq!(args.len(), 1, "{:?}", args);
+          *expr = args.pop().unwrap();
         }
+        // This is for BossBar on 1.17. They changed the system to parse an enum variant, then
+        // cast that to some type, then dynamically invoke a function on that enum. Long story
+        // short, I can't parse it at all.
+        ("Function", "apply") => {
+          return Some(Instr::Switch(
+            Expr::new(Value::Var(1)).op(Op::Call(
+              "tcp::Packet".into(),
+              "read_varint".into(),
+              vec![],
+            )),
+            vec![],
+          ));
+        }
+        _ => {}
       }
-      _ => {}
     }
   }
   None

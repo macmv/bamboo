@@ -295,7 +295,7 @@ impl<'a> ReaderTypes<'a> {
           if self.changes_buf(expr) {
             self.check_var_to_write(writer);
             let mut field_val = Expr::new(Value::Field(field.into()));
-            let field = self.get_field(&field).unwrap();
+            let field = self.get_field(field).unwrap();
             if field.option {
               if field.ty.to_rust().is_copy() {
                 field_val.add_op(Op::Call("Option".into(), "unwrap".into(), vec![]));
@@ -307,10 +307,8 @@ impl<'a> ReaderTypes<'a> {
             if let Some(instr) = self.set_expr(expr, &field_val) {
               writer.push(instr);
             }
-          } else {
-            if let Some(i) = self.set_expr(expr, &Expr::new(Value::Field(field.clone()))) {
-              self.needs_to_write.push(i);
-            }
+          } else if let Some(i) = self.set_expr(expr, &Expr::new(Value::Field(field.clone()))) {
+            self.needs_to_write.push(i);
           }
         }
         Instr::Let(i, expr) => {
@@ -334,15 +332,12 @@ impl<'a> ReaderTypes<'a> {
           // the writer.
           let mut needs_assume = false;
           for expr in cond.all_exprs() {
-            match expr.initial {
-              Value::Var(_) => {
-                needs_assume = true;
-                break;
-              }
-              _ => {}
+            if let Value::Var(_) = expr.initial {
+              needs_assume = true;
+              break;
             }
           }
-          if needs_assume || !if_chain.is_none() {
+          if needs_assume || if_chain.is_some() {
             let fields_changed: Vec<_> = when_true
               .iter()
               .filter_map(|i| match i {
@@ -396,7 +391,7 @@ impl<'a> ReaderTypes<'a> {
                   writer.push(
                     self
                       .set_expr(
-                        &lhs,
+                        lhs,
                         &Expr::new(Value::Field(fields_changed[0].clone())).op(Op::Call(
                           "Option".into(),
                           "is_some".into(),

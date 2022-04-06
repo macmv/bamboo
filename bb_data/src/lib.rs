@@ -40,7 +40,7 @@ pub fn generate_entities() { entity::generate(&out_dir()).unwrap(); }
 
 pub fn generate_protocol() { protocol::generate(&out_dir()).unwrap(); }
 
-pub static VERSIONS: &'static [Version] = &[
+pub static VERSIONS: &[Version] = &[
   Version::new(8, 9, 47),
   Version::new(9, 4, 110),
   Version::new(10, 2, 210),

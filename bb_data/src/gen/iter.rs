@@ -24,10 +24,9 @@ where
 
   #[inline]
   fn next(&mut self) -> Option<Self::Item> {
-    if let Some(item) = self.start.next() {
-      Some(item)
-    } else {
-      self.inner.next()
+    match self.start.next() {
+      Some(item) => Some(item),
+      None => self.inner.next(),
     }
   }
 }
@@ -40,23 +39,22 @@ where
 
   #[inline]
   fn next(&mut self) -> Option<Self::Item> {
-    if let Some(item) = self.inner.next() {
-      Some(item)
-    } else {
-      self.end.next()
+    match self.inner.next() {
+      Some(item) => Some(item),
+      None => self.end.next(),
     }
   }
 }
 
 pub trait AppendIters: Iterator {
-  fn append_start<'a, J>(self, start: J) -> AppendStart<Self, J::IntoIter>
+  fn append_start<J>(self, start: J) -> AppendStart<Self, J::IntoIter>
   where
     J: IntoIterator<Item = Self::Item>,
     Self: Sized,
   {
     AppendStart { start: start.into_iter(), inner: self }
   }
-  fn append_end<'a, J>(self, end: J) -> AppendEnd<Self, J::IntoIter>
+  fn append_end<J>(self, end: J) -> AppendEnd<Self, J::IntoIter>
   where
     J: IntoIterator<Item = Self::Item>,
     Self: Sized,

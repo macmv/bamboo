@@ -52,7 +52,7 @@ fn find_ids(
   let mut to_old = Vec::with_capacity(new_def.items.len());
   for i in &new_def.items {
     if ver.maj <= 12 {
-      let (old_id, damage) = old_item(&i, &old_map);
+      let (old_id, damage) = old_item(i, &old_map);
       to_old.push((old_id, damage));
     } else {
       let old_item = old_map.get(&i.name).unwrap_or(&old_map["air"]);

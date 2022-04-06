@@ -79,7 +79,7 @@ fn find_ids(ver: Version, old_def: &BlockDef, new_def: &BlockDef) -> (Vec<u32>, 
   for b in &new_def.blocks {
     if ver.maj <= 12 {
       for state in b.all_states().iter() {
-        let old_state = old_state(&b, state, &old_map);
+        let old_state = old_state(b, state, &old_map);
         to_old.push(old_state);
       }
     } else {
@@ -130,6 +130,8 @@ fn update_old_blocks(def: &mut BlockDef) {
   }
 }
 
+// Adding `+ 0` makes this section look nice, so clippy can be ignored here.
+#[allow(clippy::identity_op)]
 fn old_state(b: &Block, state: &State, old_map: &HashMap<String, Block>) -> u32 {
   match b.name.as_str() {
     "granite" => old_map["stone"].id + 1,

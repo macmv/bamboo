@@ -56,6 +56,8 @@ pub struct MetadataField {
   ty:   MetadataType,
 }
 
+// NBT is annoying, and I couldn't be bothered to fix it.
+#[allow(clippy::upper_case_acronyms)]
 /// An entity metadata type. Note that the documentation for this type is for
 /// 1.18.2. Older versions will have different serializing/deserializing rules.
 #[derive(Debug, Clone, Deserialize)]

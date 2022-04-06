@@ -149,7 +149,7 @@ impl ToLit for f32 {
   fn to_lit(&self, gen: &mut CodeGen) {
     if self.fract() == 0.0 {
       gen.write(&self.to_string());
-      gen.write(&".0");
+      gen.write(".0");
     } else {
       gen.write(&self.to_string());
     }
@@ -158,7 +158,7 @@ impl ToLit for f32 {
 impl ToLit for String {
   fn to_lit(&self, gen: &mut CodeGen) {
     gen.write("\"");
-    gen.write(&self);
+    gen.write(self);
     gen.write("\"");
   }
 }
