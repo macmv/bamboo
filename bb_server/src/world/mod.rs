@@ -541,7 +541,9 @@ impl World {
       let players_is_empty = lock.is_empty();
       drop(lock);
 
+      self.plugins().on_player_leave(p.clone());
       info!("{} left the game", p.username());
+
       let entity_remove = cb::Packet::RemoveEntities { eids: vec![p.eid()] };
       let list_remove = cb::Packet::PlayerList {
         action: cb::PlayerListAction::Remove(vec![cb::PlayerListRemove { id: p.id() }]),

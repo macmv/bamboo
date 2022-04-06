@@ -64,6 +64,7 @@ pub enum ServerEvent {
     text: String,
   },
   PlayerJoin,
+  PlayerLeave,
 }
 
 #[derive(Debug, Clone, serde::Serialize)]

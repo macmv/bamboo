@@ -90,6 +90,12 @@ impl fmt::Debug for Player {
   }
 }
 
+impl Drop for Player {
+  fn drop(&mut self) {
+    info!("dropping player {}", self.username);
+  }
+}
+
 impl Player {
   pub fn new(
     eid: i32,

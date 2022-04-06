@@ -91,6 +91,16 @@ fn on_player_join(player) {
   bb.unlock(bedwars)
 }
 
+fn on_player_leave(player) {
+  bb = bamboo::instance()
+  bedwars = bb.lock()
+
+  bedwars.players = map {}
+  bedwars.teams = map {}
+
+  bb.unlock(bedwars)
+}
+
 fn on_tick() {
   bb = bamboo::instance()
   bedwars = bb.lock()

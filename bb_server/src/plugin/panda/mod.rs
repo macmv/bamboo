@@ -118,6 +118,9 @@ impl PandaPlugin {
   pub fn call_on_player_join(&self, player: Arc<Player>) {
     self.call(self.path("on_player_join"), vec![types::player::PdPlayer::from(player).into()]);
   }
+  pub fn call_on_player_leave(&self, player: Arc<Player>) {
+    self.call(self.path("on_player_leave"), vec![types::player::PdPlayer::from(player).into()]);
+  }
   pub fn call_on_tick(&self) { self.call(self.path("on_tick"), vec![]); }
 
   pub fn call(&self, path: TyPath, args: Vec<Var>) -> Var {
@@ -153,6 +156,7 @@ impl PluginImpl for PandaPlugin {
         ServerEvent::BlockPlace { pos, block } => self.call_on_block_place(player, pos, block),
         ServerEvent::Chat { text } => self.call_on_chat_message(player, text),
         ServerEvent::PlayerJoin {} => self.call_on_player_join(player),
+        ServerEvent::PlayerLeave {} => self.call_on_player_leave(player),
       },
       ServerMessage::GlobalEvent { event } => match event {
         GlobalServerEvent::Tick => self.call_on_tick(),
