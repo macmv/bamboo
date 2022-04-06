@@ -175,7 +175,7 @@ impl OldBitArray {
       // `64 - shift`.
 
       // This mask will match L L 0 0 0
-      let lo_mask = 1_u64.wrapping_shl(64 - shift) - 1 << shift;
+      let lo_mask = (1_u64.wrapping_shl(64 - shift) - 1) << shift;
       // This mask will match 0 0 H H H
       let hi_mask = 1_u64.wrapping_shl(bpe as u32 - (64 - shift)) - 1;
 

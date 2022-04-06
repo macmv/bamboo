@@ -114,6 +114,6 @@ impl Metadata {
         Field::Item(it) => it.clone(),
         _ => Item::default(),
       })
-      .unwrap_or(Item::default())
+      .unwrap_or_default()
   }
 }

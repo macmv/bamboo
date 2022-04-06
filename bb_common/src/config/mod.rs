@@ -196,7 +196,7 @@ where
   T: YamlValue<'a>,
 {
   fn from_yaml(v: &'a Yaml) -> Option<Self> {
-    v.as_vec().and_then(|v| v.iter().map(|v| T::from_yaml(&v)).collect::<Option<Vec<T>>>())
+    v.as_vec().and_then(|v| v.iter().map(|v| T::from_yaml(v)).collect::<Option<Vec<T>>>())
   }
 
   fn name() -> String { format!("array of {}", T::name()) }

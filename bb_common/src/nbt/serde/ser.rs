@@ -253,7 +253,7 @@ impl<'a> ser::SerializeSeq for SeqSerializer<'a> {
       let expected_ty = first.ty();
       let actual_ty = tag.ty();
       if expected_ty != actual_ty {
-        return Err(Error::ListType(first.clone(), tag.clone()));
+        return Err(Error::ListType(first.clone(), tag));
       }
     }
     self.items.push(tag);
