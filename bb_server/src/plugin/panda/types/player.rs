@@ -20,6 +20,10 @@ use std::{
   sync::{Arc, Weak},
 };
 
+// TODO: The `Weak` system is far better than using an `Arc`, but will still
+// create race conditions if the player leaves while an event is being handled.
+// This needs to be handled correctly, but I don't know how.
+
 #[derive(Clone, Debug)]
 pub struct PdPlayer {
   pub(super) inner: Weak<Player>,
@@ -40,9 +44,13 @@ impl PdPlayer {
   }
 }
 
-/// A Player. This struct is for online players. If anyone has disconnected,
-/// this struct will still exist, but the functions will return outdated
-/// information. There is currently no way to lookup an offline player.
+/// A Player. This struct is for online players. There is currently no way to
+/// lookup an offline player.
+///
+/// Most of the functions on `Player` will return an error if the player has
+/// disconnected. This means that any plugins that wish to keep track of online
+/// players need to implement `on_player_leave`, and remove the player from
+/// their internal list at that time.
 #[define_ty(path = "bamboo::player::Player")]
 impl PdPlayer {
   /// Returns the username of the player. This will never change, as long as the
