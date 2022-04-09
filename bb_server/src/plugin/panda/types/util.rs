@@ -1,10 +1,14 @@
 use super::{add_from, wrap};
-use bb_common::math::{ChunkPos, FPos, Pos};
+use bb_common::{
+  math::{ChunkPos, FPos, Pos},
+  util::UUID,
+};
 use panda::define_ty;
 
 wrap!(Pos, PdPos);
 wrap!(ChunkPos, PdChunkPos);
 wrap!(FPos, PdFPos);
+wrap!(UUID, PdUUID);
 
 /// A block position. This stores X, Y, and Z coordinates as ints.
 ///
@@ -104,4 +108,11 @@ impl PdFPos {
   /// pos.z() // returns 7.2
   /// ```
   pub fn z(&self) -> f64 { self.inner.z() }
+}
+
+/// A UUID. This is used as a unique identifier for players and entities.
+#[define_ty(path = "bamboo::util::UUID")]
+impl PdUUID {
+  /// Returns the UUID as a string, with dashes inserted.
+  pub fn to_s(&self) -> String { self.inner.as_dashed_str() }
 }
