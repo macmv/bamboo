@@ -199,6 +199,13 @@ impl ChunkSection for Section {
     Ok(())
   }
   fn fill(&mut self, min: Pos, max: Pos, ty: u32) -> Result<(), PosError> {
+    // This is required to not corrupt the chunk. I don't think this is required for
+    // safety, but it is required to avoid a panic.
+    //
+    // TODO: If this is not required for safety, then we could only do this check
+    // when debug assertions are enabled.
+    let (min, max) = Pos::min_max(min, max);
+
     if min.x() >= 16 || min.x() < 0 || min.y() >= 16 || min.y() < 0 || min.z() >= 16 || min.z() < 0
     {
       return Err(min.err("expected min to be within 0 <= x, y, z < 16".into()));
