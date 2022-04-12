@@ -225,7 +225,7 @@ impl LightSection {
   /// The given position must be within 0..16 on all axis.
   pub unsafe fn get_unchecked(&self, pos: Pos) -> u8 {
     let idx = (pos.x() as usize) << 8 | (pos.y() as usize) << 4 | (pos.z() as usize);
-    self.data.get_unchecked(idx / 2) >> (4 * (idx % 2))
+    (self.data.get_unchecked(idx / 2) >> (4 * (idx % 2))) & 0x0f
   }
 
   /// Sets the light value in the given block position.
