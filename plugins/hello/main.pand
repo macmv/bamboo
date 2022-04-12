@@ -9,9 +9,9 @@ use bamboo::{
 
 fn init() {
   bamboo::info("hello world")
-  bb = bamboo::instance()
+  let bb = bamboo::instance()
 
-  c = Command::new("setblock", handle_setblock)
+  let c = Command::new("setblock", handle_setblock)
   c.add_arg_block_pos("pos")
     .add_arg_block_kind("kind")
   bb.add_command(c)
@@ -44,7 +44,7 @@ fn handle_give(player, args) {
 }
 
 fn handle_ui(player, args) {
-  ui = UI::new([
+  let ui = UI::new([
     "xxxxxxxxx",
     "x abcde x",
     "xxxxxxxxx",
@@ -61,7 +61,7 @@ fn handle_ui(player, args) {
 fn handle_getblock(player, args) {
   // args[0] is `getblock`
   // args[1] is the position
-  c = Chat::empty()
+  let c = Chat::empty()
   c.add("block: ")
   c.add(player.world().get_kind(args[1]).to_s())
   player.send_message(c)
@@ -100,6 +100,6 @@ fn add_biomes(bb) {
 }
 
 fn place_cactus(gen, chunk, pos) {
-  height = gen.rand_int(3, 6)
+  let height = gen.rand_int(3, 6)
   chunk.fill(pos, pos + Pos::new(0, height, 0), "cactus")
 }
