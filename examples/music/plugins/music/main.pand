@@ -16,10 +16,10 @@ struct MusicInfo {
 }
 
 fn init() {
-  bb = bamboo::instance()
+  let bb = bamboo::instance()
 
-  world = bb.default_world()
-  length = 32
+  let world = bb.default_world()
+  let length = 32
   world.fill_rect_kind(Pos::new(-1, 60, -9), Pos::new(length + 1, 60, 17), block::Kind::from_s("jukebox"))
 
   world.fill_rect_kind(Pos::new(0, 61, -11), Pos::new(length + 1, 61, -9), block::Kind::from_s("stone"))
@@ -29,7 +29,7 @@ fn init() {
 
   world.fill_rect_kind(Pos::new(-5, 61, -9), Pos::new(-1, 61, 17), block::Kind::from_s("white_wool"))
 
-  z = -8
+  let z = -8
   for i in 0..2 {
     for j in 0..3 {
       world.fill_rect_kind(Pos::new(-5, 62, z), Pos::new(-3, 62, z), block::Kind::from_s("black_wool"))
@@ -44,7 +44,7 @@ fn init() {
   }
   world.fill_rect_kind(Pos::new(-5, 62, z), Pos::new(-3, 62, z), block::Kind::from_s("black_wool"))
 
-  instruments = [
+  let instruments = [
     block::Kind::from_s("oak_log"),
     block::Kind::from_s("sand"),
     block::Kind::from_s("glass"),
@@ -63,10 +63,12 @@ fn init() {
     block::Kind::from_s("white_terracotta"),
   ]
 
+  let i = 0
   for instr in instruments {
     world.set_kind(Pos::new(i, 62, -11), instr)
+    i++
   }
-  info = MusicInfo {
+  let info = MusicInfo {
     current_block: 0,
     length: length,
     playing: false,
@@ -77,7 +79,7 @@ fn init() {
   info.update_head()
   bb.store(info)
 
-  c = Command::new("play", handle_play)
+  let c = Command::new("play", handle_play)
   bb.add_command(c)
 
   c = Command::new("stop", handle_stop)
@@ -85,22 +87,22 @@ fn init() {
 }
 
 fn handle_play(player, args) {
-  bb = bamboo::instance()
-  info = bb.lock()
+  let bb = bamboo::instance()
+  let info = bb.lock()
   info.play()
   bb.unlock(info)
 }
 
 fn handle_stop(player, args) {
-  bb = bamboo::instance()
-  info = bb.lock()
+  let bb = bamboo::instance()
+  let info = bb.lock()
   info.stop()
   bb.unlock(info)
 }
 
 fn on_tick() {
-  bb = bamboo::instance()
-  info = bb.lock()
+  let bb = bamboo::instance()
+  let info = bb.lock()
 
   if info.playing {
     info.last_move++
@@ -121,8 +123,8 @@ fn on_tick() {
 
 fn on_block_place(player, pos, kind) {
   if pos.z() >= -8 && pos.z() <= 16 {
-    bb = bamboo::instance()
-    info = bb.lock()
+    let bb = bamboo::instance()
+    let info = bb.lock()
     info.place_block(pos.z())
     bb.unlock(info)
   }
@@ -141,7 +143,7 @@ fn sound_for(block) {
 
 impl MusicInfo {
   fn update_head(self) {
-    world = bamboo::instance().default_world()
+    let world = bamboo::instance().default_world()
     if self.current_block == 0 {
       world.set_kind(Pos::new(self.length, 61, -9), block::Kind::from_s("stone"))
     } else {
@@ -150,12 +152,12 @@ impl MusicInfo {
     world.set_kind(Pos::new(self.current_block, 61, -9), block::Kind::from_s("lime_wool"))
 
     for z in -8..16 {
-      pos = Pos::new(self.current_block, 61, z)
-      block = world.get_kind(pos)
+      let pos = Pos::new(self.current_block, 61, z)
+      let block = world.get_kind(pos)
       if block.to_s() != "air" {
-        sound = sound_for(world.get_kind(pos).to_s())
-        note = z + 8
-        pitch = 2.0 ** ((note.to_f() - 12.0) / 12.0)
+        let sound = sound_for(world.get_kind(pos).to_s())
+        let note = z + 8
+        let pitch = 2.0 ** ((note.to_f() - 12.0) / 12.0)
         world.play_sound(sound, "master", FPos::new(0.0, 60.0, 0.0), 1.0, pitch)
       }
     }
@@ -179,15 +181,16 @@ impl MusicInfo {
   }
 
   fn place_piano_note(self, is_highlight) {
-    z = self.placed_block_z
-    world = bamboo::instance().default_world()
-    note = z + 8
-    is_black_note = false
+    let z = self.placed_block_z
+    let world = bamboo::instance().default_world()
+    let note = z + 8
+    let is_black_note = false
     if note % 12 < 6 {
       is_black_note = note % 2 == 0
     } else if note % 12 < 11 {
       is_black_note = (note - 1) % 2 == 0
     }
+    let b
     if is_highlight {
       b = block::Kind::from_s("gold_block")
     } else {
@@ -211,7 +214,7 @@ impl MusicInfo {
     self.playing = false
     self.last_move = 0
 
-    world = bamboo::instance().default_world()
+    let world = bamboo::instance().default_world()
     world.set_kind(Pos::new(self.current_block, 61, -8), block::Kind::from_s("stone"))
     self.current_block = 0
     world.set_kind(Pos::new(self.current_block, 61, -8), block::Kind::from_s("lime_wool"))
