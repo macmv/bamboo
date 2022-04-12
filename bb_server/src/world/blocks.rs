@@ -69,6 +69,7 @@ impl World {
       self.set_block(min, ty)?;
       return Ok(());
     }
+    let (min, max) = Pos::min_max(min, max);
     for x in min.chunk_x()..=max.chunk_x() {
       for z in min.chunk_z()..=max.chunk_z() {
         let pos = ChunkPos::new(x, z);

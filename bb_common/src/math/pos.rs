@@ -288,8 +288,13 @@ impl Pos {
   ///   Pos::new(1, 5, 6).min_max(Pos::new(3, 3, 3)),
   ///   (Pos::new(1, 3, 3), Pos::new(3, 5, 6))
   /// );
+  /// // different syntax, does the same thing
+  /// assert_eq!(
+  ///   Pos::min_max(Pos::new(1, 5, 6), Pos::new(3, 3, 3)),
+  ///   (Pos::new(1, 3, 3), Pos::new(3, 5, 6))
+  /// );
   /// ```
-  pub fn min_max(&self, other: Pos) -> (Pos, Pos) {
+  pub fn min_max(self, other: Pos) -> (Pos, Pos) {
     (
       Pos::new(self.x.min(other.x), self.y.min(other.y), self.z.min(other.z)),
       Pos::new(self.x.max(other.x), self.y.max(other.y), self.z.max(other.z)),
