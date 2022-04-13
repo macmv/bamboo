@@ -277,6 +277,7 @@ impl LightSection {
   /// within 0..16 on all axis.
   pub unsafe fn set_unchecked(&mut self, pos: Pos, level: u8) {
     let idx = (pos.x() as usize) << 8 | (pos.y() as usize) << 4 | (pos.z() as usize);
+    *self.data.get_unchecked_mut(idx / 2) &= !(0xf << (4 * (idx % 2)));
     *self.data.get_unchecked_mut(idx / 2) |= level << (4 * (idx % 2));
   }
 
