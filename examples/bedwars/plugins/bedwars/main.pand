@@ -40,13 +40,13 @@ struct BTeam {
 fn init() {
   bamboo::info("initializing bedwars")
 
-  bb = bamboo::instance()
-  world = bb.default_world()
+  let bb = bamboo::instance()
+  let world = bb.default_world()
   world.summon_item(FPos::new(0.0, 61.0, 0.0), item::Stack::new("wooden_pickaxe"))
   world.summon_item(FPos::new(0.0, 61.0, 0.0), item::Stack::new("stone_pickaxe"))
   world.summon_item(FPos::new(0.0, 61.0, 0.0), item::Stack::new("iron_pickaxe"))
   world.summon_item(FPos::new(0.0, 61.0, 0.0), item::Stack::new("golden_pickaxe"))
-  teams = map {
+  let teams = map {
     "red":    BTeam::new(world, bb, FPos::new(0.0,   61.0, -40.0), 0.0,   FPos::new(0.5,   62.0, -43.5), "red"),
     "green":  BTeam::new(world, bb, FPos::new(40.0,  61.0, 0.0  ), 90.0,  FPos::new(44.5,  62.0, 0.5  ), "green"),
     "aqua":   BTeam::new(world, bb, FPos::new(0.0,   61.0, 40.0 ), 180.0, FPos::new(0.5,   62.0, 44.5 ), "aqua"),
@@ -59,13 +59,13 @@ fn init() {
     countdown: 0,
   })
 
-  c = Command::new("start", handle_start)
+  let c = Command::new("start", handle_start)
   bb.add_command(c)
 }
 
 fn handle_start(player, args) {
-  bb = bamboo::instance()
-  bedwars = bb.lock()
+  let bb = bamboo::instance()
+  let bedwars = bb.lock()
 
   bedwars.countdown = 1
 
@@ -80,12 +80,12 @@ fn on_block_place(player, pos, kind) {
 }
 
 fn on_player_join(player) {
-  bb = bamboo::instance()
-  bedwars = bb.lock()
+  let bb = bamboo::instance()
+  let bedwars = bb.lock()
 
-  team = bedwars.find_smallest_team()
+  let team = bedwars.find_smallest_team()
   bamboo::info("Adding " + player.username() + " to " + team)
-  p = bedwars.add_player_to_team(player, team)
+  let p = bedwars.add_player_to_team(player, team)
   p.teleport_to_lobby()
 
   bb.unlock(bedwars)
@@ -104,8 +104,8 @@ fn on_player_leave(player) {
 */
 
 fn on_tick() {
-  bb = bamboo::instance()
-  bedwars = bb.lock()
+  let bb = bamboo::instance()
+  let bedwars = bb.lock()
 
   bedwars.tick()
 
@@ -114,13 +114,13 @@ fn on_tick() {
 
 impl Bedwars {
   fn teleport_to_spawn(self, player) {
-    team = self.teams[self.players[player.username()].team_name]
+    let team = self.teams[self.players[player.username()].team_name]
     player.teleport(team.spawn, team.spawn_yaw, 0.0)
   }
 
   fn find_smallest_team(self) {
-    smallest_size = 100
-    smallest_team = ""
+    let smallest_size = 100
+    let smallest_team = ""
     for color, team in self.teams {
       if team.players.len() < smallest_size {
         smallest_team = color
@@ -131,21 +131,19 @@ impl Bedwars {
   }
 
   fn add_player_to_team(self, player, team) {
-    line = Chat::new("Team: ")
+    let line = Chat::new("Team: ")
     line.add(team).color(team)
     player.show_scoreboard()
     player.set_scoreboard_line(8, line)
     player.set_scoreboard_line(7, Chat::new(""))
     self.set_scoreboard_status(player)
-    n = 0 // placeholder, fixes empty for loop bug
-    p = 0
     for n, p in self.players {
       self.set_scoreboard_player_count(p.player)
     }
 
-    spawn = self.teams[team].spawn
-    spawn_yaw = self.teams[team].spawn_yaw
-    p = BedwarsPlayer::new(player, team, spawn, spawn_yaw)
+    let spawn = self.teams[team].spawn
+    let spawn_yaw = self.teams[team].spawn_yaw
+    let p = BedwarsPlayer::new(player, team, spawn, spawn_yaw)
     self.teams[team].add_player(p)
     self.players.insert(player.username(), p)
 
@@ -169,19 +167,18 @@ impl Bedwars {
     }
   }
   fn set_scoreboard_player_count(self, player) {
-    line = Chat::new("players: ")
+    let line = Chat::new("players: ")
     line.add((self.players.len() + 1).to_s() + "/12").color("yellow")
     player.set_scoreboard_line(6, Chat::new("Waiting for"))
     player.set_scoreboard_line(5, line)
   }
   fn set_scoreboard_countdown(self, player) {
-    line = Chat::new("Starting in ")
+    let line = Chat::new("Starting in ")
     line.add((self.countdown / 20).to_s()).color("yellow")
     player.set_scoreboard_line(3, line)
   }
 
   fn tick(self) {
-    msg = 0 // placeholder
     if self.in_game {
       for username, player in self.players {
         player.tick()
@@ -198,7 +195,7 @@ impl Bedwars {
     } else if self.countdown > 0 {
       if self.countdown <= 100 {
         if self.countdown % 20 == 0 {
-          msg = Chat::empty()
+          let msg = Chat::empty()
           msg.add((self.countdown / 20).to_s()).color("red")
 
           for username, player in self.players {
@@ -240,7 +237,7 @@ impl BedwarsPlayer {
       self.teleport_to_spawn()
     } else if self.time_to_respawn > 0 {
       if self.time_to_respawn % 20 == 0 {
-        msg = Chat::empty()
+        let msg = Chat::empty()
         msg.add((self.time_to_respawn / 20).to_s()).color("red")
         self.player.set_title(msg)
         self.player.show_title(0, 20, 0)
@@ -269,7 +266,7 @@ impl BedwarsPlayer {
 
 impl BTeam {
   fn new(world, bb, spawn, yaw, resource_spawn, team_color) {
-    team = bb.create_team(team_color)
+    let team = bb.create_team(team_color)
     team.set_color(team_color)
     BTeam {
       players: [],
