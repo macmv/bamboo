@@ -334,7 +334,7 @@ impl Player {
       }
     }
     if finished {
-      if !self.world().set_kind(pos, block::Kind::Air).unwrap() {
+      if !self.world().break_block(pos).unwrap() {
         self.sync_block_at(pos).unwrap();
       }
     } else if sync {
@@ -395,7 +395,7 @@ impl Player {
       }
     }
     if let Some(pos) = finish {
-      if !self.world().set_kind(pos, block::Kind::Air).unwrap() {
+      if !self.world().break_block(pos).unwrap() {
         self.sync_block_at(pos).unwrap();
       }
     }

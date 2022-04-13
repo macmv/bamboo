@@ -1,9 +1,10 @@
-use crate::{block, math::AABB, world::World};
+use crate::{block, entity, item, item::Stack, math::AABB, world::World};
 use bb_common::{
   math::{ChunkPos, FPos, Pos, PosError, Vec3},
+  metadata::Metadata,
   net::cb,
 };
-use std::cmp::Ordering;
+use std::{cmp::Ordering, sync::Arc};
 
 /// General block manipulation functions
 impl World {
@@ -15,6 +16,25 @@ impl World {
   pub fn get_kind(&self, pos: Pos) -> Result<block::Kind, PosError> {
     self.chunk(pos.chunk(), |c| c.get_kind(pos.chunk_rel()))
   }
+  /// This is the same as `set_kind(pos, block::Kind::Air)`, but it spawns a
+  /// dropped item where the block was.
+  ///
+  /// Returns `false` if the world is locked. In this case, a sync should be
+  /// sent back to the client.
+  pub fn break_block(self: &Arc<Self>, pos: Pos) -> Result<bool, PosError> {
+    let res = self.set_kind(pos, block::Kind::Air)?;
+    if res {
+      let mut meta = Metadata::new();
+      meta.set_item(8, Stack::new(item::Type::Stone).to_item());
+      self.summon_meta(
+        entity::Type::Item,
+        FPos::new(pos.x as f64 + 0.5, pos.y as f64 + 0.5, pos.z as f64 + 0.5),
+        meta,
+      );
+    }
+    Ok(res)
+  }
+
   /// This sets a block within the world. It will return an error if the
   /// position is outside of the world. Unlike
   /// [`MultiChunk::set_type`](chunk::MultiChunk::set_type), this will send
