@@ -1,4 +1,4 @@
-use super::{Player, PlayerPosition};
+use super::{DigProgress, Player, PlayerPosition};
 use crate::block;
 use bb_common::{
   math::{ChunkPos, Pos},
@@ -11,6 +11,12 @@ use std::{
   cmp::Ordering,
   time::{Duration, Instant},
 };
+
+impl DigProgress {
+  pub fn new(pos: Pos, kind: block::Kind) -> Self {
+    DigProgress { progress: 0.0, pos, kind, wants_finish: false }
+  }
+}
 
 impl Player {
   /// Updates the player's position/velocity. This will apply gravity, and do
@@ -61,6 +67,8 @@ impl Player {
 
       pos.clone()
     };
+    // Handle edge case for players sending dig finish too early.
+    self.check_dig_wants_finish();
     if pos_changed || look_changed {
       for other in self.world.players().iter().in_view(pos.curr.chunk()).not(self.uuid) {
         // Make player move for other
@@ -291,34 +299,58 @@ impl Player {
   pub(crate) fn start_digging(&self, pos: Pos) {
     // Silently ignore dig packets outside the world.
     if let Ok(kind) = self.world.get_kind(pos) {
+      let mut ppos = self.pos.lock();
+      ppos.dig_progress = Some(DigProgress::new(pos, kind));
       // For some reason, I end up being around a tick behind the client when they
       // send a finish dig packet. This is probably because they expect me to handle
       // the finish dig in the tick loop, not in a network thread. Regardless, this
       // fixes the problem.
-      let mut pos = self.pos.lock();
-      pos.dig_progress = Some((0.0, kind));
-      self.update_dig_progress(&mut pos);
+      self.update_dig_progress(&mut ppos);
     }
   }
   pub(crate) fn cancel_digging(&self) { self.pos.lock().dig_progress = None; }
   pub(crate) fn finish_digging(&self, pos: Pos) {
-    let progress = std::mem::replace(&mut self.pos.lock().dig_progress, None);
-    if matches!(progress, Some((v, _)) if v >= 1.0) {
+    let mut sync = false;
+    let mut finished = false;
+    {
+      let mut lock = self.pos.lock();
+      if let Some(p) = &mut lock.dig_progress {
+        if pos == p.pos {
+          if p.progress >= 1.0 {
+            finished = true;
+          } else {
+            p.wants_finish = true;
+          }
+        } else {
+          // If we get a different position, reset digging progress, and send a sync back.
+          // This is most likely someone trying to cheat.
+          sync = true;
+        }
+      } else {
+        sync = true;
+      }
+      if finished || sync {
+        lock.dig_progress = None;
+      }
+    }
+    if finished {
       if !self.world().set_kind(pos, block::Kind::Air).unwrap() {
         self.sync_block_at(pos).unwrap();
       }
-    } else {
+    } else if sync {
       self.sync_block_at(pos).unwrap();
     }
   }
 
+  /// Returns true if a dig finish needs to be sent. This is an edge case, for
+  /// after the client sends a DigStatus::Finish packet too early.
   fn update_dig_progress(&self, pos: &mut PlayerPosition) {
-    if let Some((p, block)) = &mut pos.dig_progress {
+    if let Some(p) = &mut pos.dig_progress {
       // Handles block/item type, and efficiency levels
       let mut speed = self
         .lock_inventory()
         .main_hand()
-        .mining_speed(self.world.world_manager().block_converter().get(*block));
+        .mining_speed(self.world.world_manager().block_converter().get(p.kind));
 
       // TODO: Multiply by haste:
       // if self.has_haste() {
@@ -345,9 +377,27 @@ impl Player {
       // at any point. This means we need to do a bit of physics on the player to
       // figure out if they are on ground.
 
-      *p += speed;
+      p.progress += speed;
+    }
+  }
 
-      info!("progress: {p}");
+  fn check_dig_wants_finish(&self) {
+    let mut finish = None;
+    {
+      let mut lock = self.pos.lock();
+      if let Some(p) = &lock.dig_progress {
+        if p.wants_finish && p.progress >= 1.0 {
+          finish = Some(p.pos);
+        }
+      }
+      if finish.is_some() {
+        lock.dig_progress = None;
+      }
+    }
+    if let Some(pos) = finish {
+      if !self.world().set_kind(pos, block::Kind::Air).unwrap() {
+        self.sync_block_at(pos).unwrap();
+      }
     }
   }
 }

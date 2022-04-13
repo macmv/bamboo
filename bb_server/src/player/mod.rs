@@ -26,6 +26,20 @@ pub use scoreboard::Scoreboard;
 pub use team::Team;
 
 #[derive(Debug, Clone)]
+struct DigProgress {
+  progress:     f64,
+  pos:          Pos,
+  kind:         block::Kind,
+  /// If we receive a `DigStatus::Finish` packet before the server thinks this
+  /// is done, we set this to `true`. Then, in the tick loop, we still track
+  /// progress, and send an update back once we think it should be finished.
+  ///
+  /// This will prevent digging too fast, while also preventing desyncs between
+  /// the client and server.
+  wants_finish: bool,
+}
+
+#[derive(Debug, Clone)]
 struct PlayerPosition {
   // This is the current position of the player. It is only updated once per tick.
   curr: FPos,
@@ -55,7 +69,7 @@ struct PlayerPosition {
   /// they send a `DigStatus::Finish` packet.
   ///
   /// Will always be `None` outside of survival.
-  dig_progress: Option<(f64, block::Kind)>,
+  dig_progress: Option<DigProgress>,
 }
 
 pub struct Player {
