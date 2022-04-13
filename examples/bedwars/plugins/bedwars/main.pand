@@ -83,7 +83,7 @@ fn on_block_place(player, pos, kind) {
   let bb = bamboo::instance()
   let bedwars = bb.lock()
   // store some dummy value, as I don't have hashsets
-  bedwars.placed_positions.insert(pos.x(), true)
+  bedwars.placed_positions.insert(pos, true)
   bb.unlock(bedwars)
   true
 }
@@ -91,7 +91,7 @@ fn on_block_place(player, pos, kind) {
 fn on_block_break(player, pos, kind) {
   let bb = bamboo::instance()
   let bedwars = bb.lock()
-  let can_place = bedwars.placed_positions.contains_key(pos.x())
+  let can_place = bedwars.placed_positions.contains_key(pos)
   bb.unlock(bedwars)
   can_place
 }

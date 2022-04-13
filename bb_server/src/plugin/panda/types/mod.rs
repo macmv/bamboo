@@ -50,10 +50,22 @@ macro_rules! wrap {
     }
   };
 }
+macro_rules! wrap_eq {
+  ( $ty:ty, $new_ty:ident ) => {
+    #[derive(Clone, Debug, Hash, PartialEq, Eq)]
+    pub struct $new_ty {
+      #[allow(unused)]
+      pub(super) inner: $ty,
+    }
+
+    add_from!($ty, $new_ty);
+  };
+}
 
 // Only want these to be public to local files.
 use add_from;
 use wrap;
+use wrap_eq;
 
 /// This is a handle into the Bamboo server. It allows you to modify the
 /// world, add commands, lookup players, and more. It will be passed to every
