@@ -199,6 +199,7 @@ dependencies = [
  "num-traits",
  "num_cpus",
  "pprof 0.4.5",
+ "pretty_assertions",
  "rand 0.8.4",
  "rand_core 0.6.3",
  "rsa",

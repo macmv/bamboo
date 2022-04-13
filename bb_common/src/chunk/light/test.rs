@@ -1,5 +1,6 @@
 use super::{super::paletted::Section, BlockLight, Chunk, LightChunk};
 use crate::math::Pos;
+use pretty_assertions::assert_eq;
 
 fn chunk_from_str(lines: &[&[&str]]) -> (Chunk<Section>, LightChunk<BlockLight>) {
   let mut chunk = Chunk::new(4);
@@ -43,7 +44,7 @@ fn basic_propogate() {
     &[
       "    ###    ",
       "    #9#    ",
-      "    #6#    ",
+      "    #8#    ",
       "    #7#    ",
       "    #6#    ",
       "   1#5#1   ",

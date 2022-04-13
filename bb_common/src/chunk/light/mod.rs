@@ -43,7 +43,12 @@ impl fmt::Debug for LightSection {
     for y in 0..16 {
       for z in 0..8 {
         for x in 0..16 {
-          write!(f, "{:x}", self.get(Pos::new(x, y, z)))?;
+          let v = self.get(Pos::new(x, y, z));
+          if v == 0 {
+            write!(f, ".")?;
+          } else {
+            write!(f, "{v:x}")?;
+          }
         }
         write!(f, " ")?;
       }
@@ -53,7 +58,12 @@ impl fmt::Debug for LightSection {
     for y in 0..16 {
       for z in 8..16 {
         for x in 0..16 {
-          write!(f, "{:x}", self.get(Pos::new(x, y, z)))?;
+          let v = self.get(Pos::new(x, y, z));
+          if v == 0 {
+            write!(f, ".")?;
+          } else {
+            write!(f, "{v:x}")?;
+          }
         }
         write!(f, " ")?;
       }
@@ -267,7 +277,7 @@ impl LightSection {
   /// within 0..16 on all axis.
   pub unsafe fn set_unchecked(&mut self, pos: Pos, level: u8) {
     let idx = (pos.x() as usize) << 8 | (pos.y() as usize) << 4 | (pos.z() as usize);
-    *self.data.get_unchecked_mut(idx / 2) = level << (4 * (idx % 2));
+    *self.data.get_unchecked_mut(idx / 2) |= level << (4 * (idx % 2));
   }
 
   /// Returns the internal lighting data for this section. Can be sent directly
