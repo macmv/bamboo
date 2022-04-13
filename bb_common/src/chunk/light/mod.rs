@@ -1,7 +1,10 @@
 use super::{Chunk, Section};
 use crate::math::{ChunkPos, Pos};
 use bb_macros::Transfer;
-use std::marker::PhantomData;
+use std::{fmt, marker::PhantomData};
+
+#[cfg(test)]
+mod test;
 
 pub trait LightPropagator {
   fn initial_level() -> u8;
@@ -13,7 +16,7 @@ pub trait LightPropagator {
   fn propagate_all<P: LightPropagator, S: Section>(light: &mut LightChunk<P>, chunk: &Chunk<S>);
 }
 
-#[derive(Transfer, Debug, Clone)]
+#[derive(Transfer, Debug, Clone, PartialEq)]
 pub struct LightChunk<P: LightPropagator> {
   #[id = 0]
   sections: Vec<Option<LightSection>>,
@@ -21,7 +24,7 @@ pub struct LightChunk<P: LightPropagator> {
   marker:   PhantomData<P>,
 }
 
-#[derive(Transfer, Debug, Clone)]
+#[derive(Transfer, Clone, PartialEq)]
 pub struct LightSection {
   // 2048 bytes, each representing 2 blocks.
   #[id = 0]
@@ -30,6 +33,34 @@ pub struct LightSection {
 
 impl<P: LightPropagator> Default for LightChunk<P> {
   fn default() -> Self { LightChunk::new() }
+}
+
+impl fmt::Debug for LightSection {
+  fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    writeln!(f, "LightChunk([")?;
+    writeln!(f, "each square is on one z plane")?;
+    writeln!(f, "z 0..8:")?;
+    for y in 0..16 {
+      for z in 0..8 {
+        for x in 0..16 {
+          write!(f, "{:x}", self.get(Pos::new(x, y, z)))?;
+        }
+        write!(f, " ")?;
+      }
+      writeln!(f)?;
+    }
+    writeln!(f, "z 8..16:")?;
+    for y in 0..16 {
+      for z in 8..16 {
+        for x in 0..16 {
+          write!(f, "{:x}", self.get(Pos::new(x, y, z)))?;
+        }
+        write!(f, " ")?;
+      }
+      writeln!(f)?;
+    }
+    writeln!(f, "])")
+  }
 }
 
 impl<P: LightPropagator> LightChunk<P> {
@@ -88,10 +119,10 @@ impl<P: LightPropagator> LightChunk<P> {
 }
 
 /// Marker trait, which will propagate block light information.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct BlockLight {}
 /// Marker trait, which will propagate sky light information.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct SkyLight {}
 
 impl LightPropagator for BlockLight {
