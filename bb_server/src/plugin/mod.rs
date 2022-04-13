@@ -129,15 +129,36 @@ impl PluginManager {
   fn message(&self, msg: ServerMessage) {
     self.plugins.lock().retain(|p| p.call(msg.clone()).is_ok());
   }
+  fn message_bool(&self, msg: ServerMessage) -> bool {
+    let mut allow = true;
+    self.plugins.lock().retain(|p| {
+      if let Ok(res) = p.call(msg.clone()) {
+        if !res {
+          allow = false;
+        }
+        true
+      } else {
+        // Remove this plugin
+        false
+      }
+    });
+    allow
+  }
   fn event(&self, player: Arc<Player>, event: ServerEvent) {
     self.message(ServerMessage::Event { player, event });
+  }
+  fn event_bool(&self, player: Arc<Player>, event: ServerEvent) -> bool {
+    self.message_bool(ServerMessage::Event { player, event })
   }
   fn global_event(&self, event: GlobalServerEvent) {
     self.message(ServerMessage::GlobalEvent { event });
   }
   pub fn on_tick(&self) { self.global_event(GlobalServerEvent::Tick); }
-  pub fn on_block_place(&self, player: Arc<Player>, pos: Pos, block: block::Type) {
-    self.event(player, ServerEvent::BlockPlace { pos, block });
+  pub fn on_block_place(&self, player: Arc<Player>, pos: Pos, block: block::Type) -> bool {
+    self.event_bool(player, ServerEvent::BlockPlace { pos, block })
+  }
+  pub fn on_block_break(&self, player: Arc<Player>, pos: Pos, block: block::Type) -> bool {
+    self.event_bool(player, ServerEvent::BlockBreak { pos, block })
   }
   pub fn on_chat_message(&self, player: Arc<Player>, message: Chat) {
     self.event(player, ServerEvent::Chat { text: message.to_plain() });

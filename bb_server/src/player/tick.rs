@@ -9,6 +9,7 @@ use parking_lot::Mutex;
 use rayon::prelude::*;
 use std::{
   cmp::Ordering,
+  sync::Arc,
   time::{Duration, Instant},
 };
 
@@ -22,7 +23,7 @@ impl Player {
   /// Updates the player's position/velocity. This will apply gravity, and do
   /// collision checks. Should never be called at a different rate than the
   /// global tick rate.
-  pub(crate) fn tick(&self) {
+  pub(crate) fn tick(self: &Arc<Self>) {
     let old_chunk;
     let new_chunk;
     let look_changed;
@@ -309,7 +310,7 @@ impl Player {
     }
   }
   pub(crate) fn cancel_digging(&self) { self.pos.lock().dig_progress = None; }
-  pub(crate) fn finish_digging(&self, pos: Pos) {
+  pub(crate) fn finish_digging(self: &Arc<Player>, pos: Pos) {
     let mut sync = false;
     let mut finished = false;
     {
@@ -334,7 +335,15 @@ impl Player {
       }
     }
     if finished {
-      if !self.world().break_block(pos).unwrap() {
+      if self.world().plugins().on_block_break(
+        self.clone(),
+        pos,
+        self.world().get_block(pos).unwrap(),
+      ) {
+        if !self.world().break_block(pos).unwrap() {
+          self.sync_block_at(pos).unwrap();
+        }
+      } else {
         self.sync_block_at(pos).unwrap();
       }
     } else if sync {
@@ -381,7 +390,7 @@ impl Player {
     }
   }
 
-  fn check_dig_wants_finish(&self) {
+  fn check_dig_wants_finish(self: &Arc<Self>) {
     let mut finish = None;
     {
       let mut lock = self.pos.lock();
@@ -395,7 +404,15 @@ impl Player {
       }
     }
     if let Some(pos) = finish {
-      if !self.world().break_block(pos).unwrap() {
+      if self.world().plugins().on_block_break(
+        self.clone(),
+        pos,
+        self.world().get_block(pos).unwrap(),
+      ) {
+        if !self.world().break_block(pos).unwrap() {
+          self.sync_block_at(pos).unwrap();
+        }
+      } else {
         self.sync_block_at(pos).unwrap();
       }
     }

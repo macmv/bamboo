@@ -350,9 +350,9 @@ fn start_plugin(plugin: String, path: &Path) {
 }
 
 impl PluginImpl for Arc<SocketPlugin> {
-  fn call(&self, ev: ServerMessage) -> Result<(), ()> {
+  fn call(&self, ev: ServerMessage) -> Result<bool, ()> {
     match self.send(ev) {
-      Ok(_) => Ok(()),
+      Ok(_) => Ok(true),
       Err(e) => {
         error!("could not send message to plugin: {e}");
         Err(())

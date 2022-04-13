@@ -60,6 +60,12 @@ pub enum ServerEvent {
     #[serde(serialize_with = "to_json_ty::<_, JsonBlock, _>")]
     block: block::Type,
   },
+  BlockBreak {
+    #[serde(serialize_with = "to_json_ty::<_, JsonPos, _>")]
+    pos:   Pos,
+    #[serde(serialize_with = "to_json_ty::<_, JsonBlock, _>")]
+    block: block::Type,
+  },
   Chat {
     text: String,
   },
@@ -87,7 +93,9 @@ pub enum ServerReply {
 pub trait PluginImpl: std::any::Any {
   /// If this returns an error, the plugin will be removed, and this function
   /// will not be called again.
-  fn call(&self, event: ServerMessage) -> Result<(), ()>;
+  ///
+  /// If this returns `false`, the event will be cancelled.
+  fn call(&self, event: ServerMessage) -> Result<bool, ()>;
   fn panda(&mut self) -> Option<&mut PandaPlugin> { None }
 }
 
@@ -101,7 +109,7 @@ impl Plugin {
   pub fn new(config: Config, imp: impl PluginImpl + Send + Sync + 'static) -> Self {
     Plugin { config, imp: Box::new(imp) }
   }
-  pub fn call(&self, ev: ServerMessage) -> Result<(), ()> { self.imp.call(ev) }
+  pub fn call(&self, ev: ServerMessage) -> Result<bool, ()> { self.imp.call(ev) }
   pub fn unwrap_panda(&mut self) -> &mut PandaPlugin { self.imp.panda().unwrap() }
 }
 

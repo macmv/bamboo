@@ -86,15 +86,33 @@ impl PandaPlugin {
   }
 
   pub fn call_init(&self) { self.call(self.path("init"), vec![]); }
-  pub fn call_on_block_place(&self, player: Arc<Player>, pos: Pos, ty: block::Type) {
-    self.call(
+  pub fn call_on_block_place(&self, player: Arc<Player>, pos: Pos, ty: block::Type) -> bool {
+    if let Var::Bool(allow) = self.call(
       self.path("on_block_place"),
       vec![
         types::player::PdPlayer::from(player).into(),
         types::util::PdPos::from(pos).into(),
         types::block::PdBlockKind::from(ty.kind()).into(),
       ],
-    );
+    ) {
+      allow
+    } else {
+      true
+    }
+  }
+  pub fn call_on_block_break(&self, player: Arc<Player>, pos: Pos, ty: block::Type) -> bool {
+    if let Var::Bool(allow) = self.call(
+      self.path("on_block_break"),
+      vec![
+        types::player::PdPlayer::from(player).into(),
+        types::util::PdPos::from(pos).into(),
+        types::block::PdBlockKind::from(ty.kind()).into(),
+      ],
+    ) {
+      allow
+    } else {
+      true
+    }
   }
   pub fn call_on_click_window(&self, player: Arc<Player>, slot: i32, mode: ClickWindow) -> bool {
     match self.call(
@@ -150,10 +168,15 @@ impl PandaPlugin {
 }
 
 impl PluginImpl for PandaPlugin {
-  fn call(&self, ev: ServerMessage) -> Result<(), ()> {
+  fn call(&self, ev: ServerMessage) -> Result<bool, ()> {
     match ev {
       ServerMessage::Event { player, event } => match event {
-        ServerEvent::BlockPlace { pos, block } => self.call_on_block_place(player, pos, block),
+        ServerEvent::BlockPlace { pos, block } => {
+          return Ok(self.call_on_block_place(player, pos, block))
+        }
+        ServerEvent::BlockBreak { pos, block } => {
+          return Ok(self.call_on_block_break(player, pos, block))
+        }
         ServerEvent::Chat { text } => self.call_on_chat_message(player, text),
         ServerEvent::PlayerJoin {} => self.call_on_player_join(player),
         ServerEvent::PlayerLeave {} => self.call_on_player_leave(player),
@@ -163,7 +186,7 @@ impl PluginImpl for PandaPlugin {
       },
       _ => {}
     }
-    Ok(())
+    Ok(true)
   }
   fn panda(&mut self) -> Option<&mut PandaPlugin> { Some(self) }
 }

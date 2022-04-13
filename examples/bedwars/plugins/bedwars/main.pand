@@ -14,6 +14,7 @@ struct Bedwars {
   players: map,
   in_game: bool,
   countdown: int,
+  placed_positions: map,
 }
 // Stores info for a player
 struct BedwarsPlayer {
@@ -58,6 +59,7 @@ fn init() {
     players: map {},
     in_game: false,
     countdown: 0,
+    placed_positions: map {},
   })
 
   let c = Command::new("start", handle_start)
@@ -78,6 +80,20 @@ fn on_click_window(player, slot, mode) {
 }
 
 fn on_block_place(player, pos, kind) {
+  let bb = bamboo::instance()
+  let bedwars = bb.lock()
+  // store some dummy value, as I don't have hashsets
+  bedwars.placed_positions.insert(pos.x(), true)
+  bb.unlock(bedwars)
+  true
+}
+
+fn on_block_break(player, pos, kind) {
+  let bb = bamboo::instance()
+  let bedwars = bb.lock()
+  let can_place = bedwars.placed_positions.contains_key(pos.x())
+  bb.unlock(bedwars)
+  can_place
 }
 
 fn on_player_join(player) {
