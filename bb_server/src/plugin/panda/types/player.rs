@@ -6,7 +6,10 @@ use super::{
   world::PdWorld,
   wrap,
 };
-use crate::player::{Player, Team};
+use crate::{
+  item::Stack,
+  player::{Player, Team},
+};
 use bb_common::util::{chat::Color, Chat, UUID};
 use panda::{
   define_ty,
@@ -168,6 +171,77 @@ impl PdPlayer {
   pub fn show_inventory(&self, inv: &PdInventory, title: &PdChat) {
     if let Ok(i) = self.inner() {
       i.show_inventory(inv.inner.clone(), &title.inner.lock().unwrap());
+    }
+  }
+  /// Returns true if the player is in an inventory. This does not include their
+  /// own inventory! The server cannot know if the player is in their survival
+  /// inventory.
+  pub fn in_window(&self) -> bool {
+    if let Ok(i) = self.inner() {
+      i.lock_inventory().win().is_some()
+    } else {
+      false
+    }
+  }
+  pub fn get_item(&self, slot: i32) -> PdStack {
+    if let Ok(i) = self.inner() {
+      i.lock_inventory().get(slot).clone().into()
+    } else {
+      Stack::empty().into()
+    }
+  }
+  /// If the player has the items in the given stack, they will be removed, and
+  /// `true` will be returned. If not, this will do nothing, and return `false`.
+  ///
+  /// If the stack is empty, this will always return `true`.
+  pub fn try_remove_item(&self, stack: &PdStack) -> bool {
+    if stack.inner.amount() == 0 {
+      return true;
+    }
+    if let Ok(i) = self.inner() {
+      let mut inv = i.lock_inventory();
+      let main = inv.main();
+      let mut needed_amount = stack.inner.amount();
+      for slot in 9..46 {
+        let it = main.get(slot);
+        if it.item() == stack.inner.item() {
+          needed_amount = needed_amount.checked_sub(it.amount()).unwrap_or(0);
+        }
+        if needed_amount == 0 {
+          break;
+        }
+      }
+      if needed_amount == 0 {
+        let mut amount_to_remove = stack.inner.amount();
+        let main = inv.main_mut();
+        for slot in 9..46 {
+          let it = main.get_mut(slot);
+          let mut sync = false;
+          if it.item() == stack.inner.item() {
+            if it.amount() <= amount_to_remove {
+              it.set_amount(0);
+              sync = true;
+            } else {
+              let new_amount = it.amount() - amount_to_remove;
+              amount_to_remove = 0;
+              it.set_amount(new_amount);
+              sync = true;
+            }
+            needed_amount = needed_amount.checked_sub(it.amount()).unwrap_or(0);
+          }
+          if sync {
+            main.sync(slot);
+          }
+          if amount_to_remove == 0 {
+            break;
+          }
+        }
+        true
+      } else {
+        false
+      }
+    } else {
+      true
     }
   }
 

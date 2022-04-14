@@ -169,15 +169,7 @@ impl PluginManager {
   pub fn on_player_leave(&self, player: Arc<Player>) {
     self.event(player, ServerEvent::PlayerLeave {});
   }
-  pub fn on_click_window(&self, _player: Arc<Player>, _slot: i32, _mode: ClickWindow) -> bool {
-    let allow = true;
-    for _p in self.plugins.lock().iter() {
-      /*
-      if !p.call(player.clone(), slot, mode.clone()) {
-        allow = false
-      }
-      */
-    }
-    allow
+  pub fn on_click_window(&self, player: Arc<Player>, slot: i32, mode: ClickWindow) -> bool {
+    self.event_bool(player, ServerEvent::ClickWindow { slot, mode })
   }
 }

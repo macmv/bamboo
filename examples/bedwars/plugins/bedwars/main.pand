@@ -50,6 +50,9 @@ fn init() {
   world.summon_item(FPos::new(0.0, 61.0, 0.0), item::Stack::new("iron_pickaxe"))
   world.summon_item(FPos::new(0.0, 61.0, 0.0), item::Stack::new("golden_pickaxe"))
   world.summon_item(FPos::new(0.0, 61.0, 0.0), item::Stack::new("stone").with_amount(64))
+  world.summon_item(FPos::new(0.0, 61.0, 0.0), item::Stack::new("iron_ingot").with_amount(64))
+  world.summon_item(FPos::new(0.0, 61.0, 0.0), item::Stack::new("yellow_wool").with_amount(64))
+  world.summon_item(FPos::new(0.0, 61.0, 0.0), item::Stack::new("gold_ingot").with_amount(64))
   let teams = map {
     "red":    BTeam::new(world, bb, FPos::new(0.0,   61.0, -40.0), 0.0,   FPos::new(0.5,   62.0, -43.5), "red"),
     "green":  BTeam::new(world, bb, FPos::new(40.0,  61.0, 0.0  ), 90.0,  FPos::new(44.5,  62.0, 0.5  ), "green"),
@@ -101,7 +104,48 @@ fn handle_shop(player, args) {
 }
 
 fn on_click_window(player, slot, mode) {
-  true
+  if player.in_window() {
+    let clicked = player.get_item(slot)
+    if slot >= 20 && slot <= 22 {
+      purchase(player, clicked)
+    }
+    bamboo::info("handle buying at slot " + slot.to_s())
+    false
+  } else {
+    true
+  }
+}
+
+struct Prices {
+  iron: int,
+  gold: int,
+  diamond: int,
+  emerald: int,
+}
+
+fn purchase(player, item) {
+  let prices = map {
+    "lime_wool":   Prices { iron: 4, gold: 0, diamond: 0, emerald: 0 },
+    "red_wool":    Prices { iron: 4, gold: 0, diamond: 0, emerald: 0 },
+    "cyan_wool":   Prices { iron: 4, gold: 0, diamond: 0, emerald: 0 },
+    "yellow_wool": Prices { iron: 4, gold: 0, diamond: 0, emerald: 0 },
+    "oak_planks":  Prices { iron: 0, gold: 3, diamond: 0, emerald: 0 },
+    "diamond_sword": Prices { iron: 0, gold: 12, diamond: 0, emerald: 0 },
+  }
+
+  let price = prices[item.name()]
+  if !player.try_remove_item(Stack::new("iron_ingot").with_amount(price.iron)) {
+    player.send_message(Chat::new("Not enough iron (need " + price.iron.to_s() + ")"))
+  } else if !player.try_remove_item(Stack::new("gold_ingot").with_amount(price.gold)) {
+    player.send_message(Chat::new("Not enough gold (need " + price.gold.to_s() + ")"))
+  } else if !player.try_remove_item(Stack::new("diamond").with_amount(price.diamond)) {
+    player.send_message(Chat::new("Not enough diamonds (need " + price.diamond.to_s() + ")"))
+  } else if !player.try_remove_item(Stack::new("emerald").with_amount(price.emerald)) {
+    player.send_message(Chat::new("Not enough emerals (need " + price.emerald.to_s() + ")"))
+  } else {
+    bamboo::info(item)
+    player.give(item)
+  }
 }
 
 fn on_block_place(player, pos, kind) {

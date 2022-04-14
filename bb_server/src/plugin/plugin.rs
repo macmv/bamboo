@@ -1,6 +1,6 @@
 use super::{panda::PandaPlugin, JsonBlock, JsonPlayer, JsonPos};
 use crate::{block, player::Player};
-use bb_common::{config::Config, math::Pos};
+use bb_common::{config::Config, math::Pos, net::sb::ClickWindow};
 use std::sync::Arc;
 
 #[derive(Debug, Clone, serde::Deserialize)]
@@ -68,6 +68,11 @@ pub enum ServerEvent {
   },
   Chat {
     text: String,
+  },
+  ClickWindow {
+    slot: i32,
+    #[serde(skip)]
+    mode: ClickWindow,
   },
   PlayerJoin,
   PlayerLeave,

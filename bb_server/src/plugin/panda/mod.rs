@@ -178,6 +178,9 @@ impl PluginImpl for PandaPlugin {
           return Ok(self.call_on_block_break(player, pos, block))
         }
         ServerEvent::Chat { text } => self.call_on_chat_message(player, text),
+        ServerEvent::ClickWindow { slot, mode } => {
+          return Ok(self.call_on_click_window(player, slot, mode))
+        }
         ServerEvent::PlayerJoin {} => self.call_on_player_join(player),
         ServerEvent::PlayerLeave {} => self.call_on_player_leave(player),
       },

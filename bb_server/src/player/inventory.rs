@@ -448,7 +448,7 @@ impl WrappedInventory {
       });
     };
     let mut remaining = stack.amount();
-    for (i, it) in self.inv.items_mut().iter_mut().skip(self.skip as usize).enumerate().skip(36) {
+    for (i, it) in self.inv.items_mut().iter_mut().skip(self.skip as usize).enumerate() {
       let i = i as u32;
       if it.is_empty() {
         *it = stack.clone().with_amount(remaining);

@@ -32,6 +32,8 @@ impl PdStack {
   pub fn with_amount(&self, amount: u8) -> Self {
     PdStack { inner: self.inner.clone().with_amount(amount) }
   }
+
+  pub fn name(&self) -> String { self.inner.item().to_str().into() }
 }
 
 /// An inventory UI.
