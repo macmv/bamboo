@@ -113,11 +113,9 @@ pub(crate) fn handle(wm: &Arc<WorldManager>, player: &Arc<Player>, p: sb::Packet
       } else {
         // TODO: Data generator should store which items are blockitems, and what blocks
         // they place.
-        let item_data = {
-          let inv = player.lock_inventory();
-          let stack = inv.main_hand();
-          player.world().item_converter().get_data(stack.item())
-        };
+        let mut inv = player.lock_inventory();
+        let stack = inv.main_hand();
+        let item_data = player.world().item_converter().get_data(stack.item());
         let kind = block::Kind::from_str(item_data.name()).unwrap_or_else(|_| {
           player.send_message(Chat::new(format!("ah! {} is confusing", item_data.name())));
           block::Kind::Air
@@ -134,6 +132,13 @@ pub(crate) fn handle(wm: &Arc<WorldManager>, player: &Arc<Player>, p: sb::Packet
             let ty = player.world().block_converter().get(kind).default_type();
             match player.world().set_block(pos, ty) {
               Ok(_) => {
+                if player.game_mode() != GameMode::Creative {
+                  let idx = inv.main_hand_index();
+                  let stack = inv.main_mut().get_mut(idx);
+                  stack.set_amount(stack.amount() - 1);
+                  inv.main().sync(idx);
+                }
+                drop(inv);
                 // TODO: Handle plugins cancelling this place.
                 player.world().plugins().on_block_place(player.clone(), pos, ty);
               }

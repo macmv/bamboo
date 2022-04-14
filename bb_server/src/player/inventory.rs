@@ -78,6 +78,11 @@ impl PlayerInventory {
   /// Gives an item to the player.
   pub fn give(&mut self, stack: &Stack) { self.main_mut().add(stack); }
 
+  /// Returns the index in the main inventory for the main hand. Only use with
+  /// `inv.main()`! If you use it with an open window, this will look up an
+  /// invalid index.
+  pub fn main_hand_index(&self) -> u32 { self.selected_index as u32 + 36 }
+
   /// Returns the item in the player's main hand.
   pub fn main_hand(&self) -> &Stack { self.main().get(self.selected_index as u32 + 36) }
 
@@ -131,7 +136,7 @@ impl PlayerInventory {
     }
   }
   // This is private as modifying the stack doesn't send an update to the client.
-  fn get_mut(&mut self, index: i32) -> &mut Stack {
+  pub(crate) fn get_mut(&mut self, index: i32) -> &mut Stack {
     if index == -999 {
       &mut self.held
     } else if let Some(win) = &mut self.window {
@@ -404,7 +409,7 @@ impl WrappedInventory {
   pub fn get(&self, index: u32) -> &Stack { self.inv.get(index as u32) }
   /// This is private as updating the item doesn't send an update to the client.
   #[track_caller]
-  fn get_mut(&mut self, index: u32) -> &mut Stack { self.inv.get_mut(index as u32) }
+  pub(crate) fn get_mut(&mut self, index: u32) -> &mut Stack { self.inv.get_mut(index as u32) }
   /// Sets the item in the inventory.
   #[track_caller]
   pub fn set(&mut self, index: u32, stack: Stack) {
