@@ -2,6 +2,7 @@ use bamboo::{
   chat::Chat,
   util::FPos,
   item,
+  item::{Stack, UI},
   player::Player,
   world::World,
   command::Command,
@@ -35,6 +36,7 @@ struct BTeam {
   world: World,
   iron_spawn_time: int,
   gold_spawn_time: int,
+  color: str,
   team: Team,
 }
 
@@ -64,6 +66,9 @@ fn init() {
 
   let c = Command::new("start", handle_start)
   bb.add_command(c)
+
+  c = Command::new("shop", handle_shop)
+  bb.add_command(c)
 }
 
 fn handle_start(player, args) {
@@ -73,6 +78,26 @@ fn handle_start(player, args) {
   bedwars.countdown = 1
 
   bb.unlock(bedwars)
+}
+
+fn handle_shop(player, args) {
+  let bb = bamboo::instance()
+  let bedwars = bb.lock()
+  let wool_item = bedwars.team_of_player(player).wool_item()
+  bb.unlock(bedwars)
+
+  let ui = UI::new([
+    "xxxxxxxxx",
+    "x       x",
+    "x abc   x",
+    "x       x",
+    "xxxxxxxxx",
+  ])
+  ui.item("x", Stack::new("gray_stained_glass_pane"))
+  ui.item("a", wool_item.with_amount(16))
+  ui.item("b", Stack::new("oak_planks").with_amount(4))
+  ui.item("c", Stack::new("diamond_sword"))
+  player.show_inventory(ui.to_inventory(), Chat::new("Shop"))
 }
 
 fn on_click_window(player, slot, mode) {
@@ -133,6 +158,10 @@ impl Bedwars {
   fn teleport_to_spawn(self, player) {
     let team = self.teams[self.players[player.username()].team_name]
     player.teleport(team.spawn, team.spawn_yaw, 0.0)
+  }
+
+  fn team_of_player(self, player) {
+    self.teams[self.players[player.username()].team_name]
   }
 
   fn find_smallest_team(self) {
@@ -293,6 +322,7 @@ impl BTeam {
       world: world,
       iron_spawn_time: 0,
       gold_spawn_time: 0,
+      color: team_color,
       team: team,
     }
   }
@@ -311,5 +341,15 @@ impl BTeam {
       self.world.summon_item(self.resource_spawn, item::Stack::new("gold_ingot"))
     }
     self.gold_spawn_time--
+  }
+
+  fn wool_item(self) {
+    if self.color == "green" {
+      Stack::new("lime_wool")
+    } else if self.color == "aqua" {
+      Stack::new("cyan_wool")
+    } else {
+      Stack::new(self.color + "_wool")
+    }
   }
 }
