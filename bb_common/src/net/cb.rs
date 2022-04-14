@@ -117,6 +117,16 @@ pub enum Packet {
   },
   #[id = 12]
   KeepAlive { id: u32 },
+  #[id = 39]
+  Particle {
+    id:         i32,
+    long:       bool,
+    pos:        FPos,
+    offset:     FPos,
+    data_float: f32,
+    count:      i32,
+    data:       Vec<u8>,
+  },
   #[id = 13]
   PlayerHeader { header: String, footer: String },
   #[id = 14]

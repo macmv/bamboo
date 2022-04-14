@@ -13,7 +13,7 @@ use bb_common::{
   net::cb,
   util::{
     chat::{Chat, Color},
-    GameMode, JoinInfo, ThreadPool, UUID,
+    Buffer, GameMode, JoinInfo, ThreadPool, UUID,
   },
 };
 use parking_lot::{Mutex, MutexGuard, RwLock, RwLockReadGuard};
@@ -205,6 +205,33 @@ impl World {
         let p = p.clone();
         pool.execute(move |s| {
           let start = Instant::now();
+
+          let mut data = vec![];
+          // let mut buf = Buffer::new(&mut data);
+          // buf.write_varint(1);
+          /*
+          buf.write_f32(1.0); // r
+          buf.write_f32(0.0); // g
+          buf.write_f32(0.0); // b
+          buf.write_f32(1.0); // scale
+          */
+
+          for x in 0..20 {
+            for y in 0..20 {
+              for z in 0..20 {
+                p.send(cb::Packet::Particle {
+                  id:         30, // redstone dust
+                  long:       false,
+                  pos:        FPos::new(x as f64 / 10.0, y as f64 / 10.0 + 150.0, z as f64 / 10.0),
+                  offset:     FPos::new(0.0, 0.0, 0.0),
+                  data_float: 0.0,
+                  count:      1,
+                  data:       data.clone(),
+                });
+              }
+            }
+          }
+
           // Updates the player correctly, and performs collision checks. This also
           // handles new chunks.
           p.tick();
@@ -721,7 +748,7 @@ impl WorldManager {
   /// proxy connects.
   pub fn new_player(&self, conn: ConnSender, info: JoinInfo) -> Arc<Player> {
     let w = self.worlds.read()[0].clone();
-    let player = Player::new(w.eid(), conn, info.clone(), w.clone(), FPos::new(0.0, 80.0, 0.0));
+    let player = Player::new(w.eid(), conn, info.clone(), w.clone(), FPos::new(0.0, 120.0, 0.0));
     self.players.write().insert(info.uuid, (0, player.clone()));
     w.new_player(player.clone(), info);
     player

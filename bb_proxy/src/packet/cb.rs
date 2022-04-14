@@ -471,6 +471,22 @@ impl ToTcp for Packet {
       Packet::MultiBlockChange { pos, y, changes } => {
         super::multi_block_change(pos, y, changes, ver, conn.conv())
       }
+      Packet::Particle { id, long, pos, offset, data_float, count, data: particle_data } => {
+        let mut data = vec![];
+        let mut buf = Buffer::new(&mut data);
+        buf.write_i32(id);
+        buf.write_bool(long);
+        buf.write_f32(pos.x() as f32);
+        buf.write_f32(pos.y() as f32);
+        buf.write_f32(pos.z() as f32);
+        buf.write_f32(offset.x() as f32);
+        buf.write_f32(offset.y() as f32);
+        buf.write_f32(offset.z() as f32);
+        buf.write_f32(data_float);
+        buf.write_i32(count);
+        buf.write_buf(&particle_data);
+        GPacket::ParticleV8 { unknown: data }
+      }
       Packet::PlayerHeader { header, footer } => {
         GPacket::PlayerListHeaderV8 { header, footer }
       }
