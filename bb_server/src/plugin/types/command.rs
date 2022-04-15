@@ -5,10 +5,8 @@ use super::{
   wrap,
 };
 use crate::command::{Arg, Command, Parser};
-use panda::{
-  define_ty,
-  runtime::{Callback, Var},
-};
+use bb_plugin_macros::define_ty;
+use panda::runtime::{Callback, Var};
 use std::sync::{Arc, Mutex};
 
 wrap!(Arc<Mutex<Command>>, PCommand, callback: Option<Callback>, idx: Vec<usize>);
@@ -108,7 +106,7 @@ pub fn sl_from_arg(arg: Arg) -> Var {
 
 /// A command. This is how to setup the arguments for a custom commands that
 /// users can run.
-#[define_ty(path = "bamboo::command::Command")]
+#[define_ty(panda_path = "bamboo::command::Command")]
 impl PCommand {
   /// Creates a new command. The callback must be a function, which takes 3
   /// arguments. See the example for details.

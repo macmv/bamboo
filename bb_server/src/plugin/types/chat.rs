@@ -1,6 +1,7 @@
 use super::{add_from, wrap};
 use bb_common::util::{chat::Color, Chat};
-use panda::{define_ty, parse::token::Span, runtime::RuntimeError};
+use bb_plugin_macros::define_ty;
+use panda::{parse::token::Span, runtime::RuntimeError};
 use std::{
   str::FromStr,
   sync::{Arc, Mutex},
@@ -10,7 +11,7 @@ wrap!(Arc<Mutex<Chat>>, PChat);
 wrap!(Arc<Mutex<Chat>>, PChatSection, idx: usize);
 
 /// A chat message. This is how you can send formatted chat message to players.
-#[define_ty(path = "bamboo::chat::Chat")]
+#[define_ty(panda_path = "bamboo::chat::Chat")]
 impl PChat {
   /// Creates a new chat message with the given text.
   pub fn new(text: &str) -> PChat { PChat { inner: Arc::new(Mutex::new(Chat::new(text))) } }
@@ -39,7 +40,7 @@ impl PChat {
 /// A chat message section. This section knows which chat message it came from.
 /// All of the functions on this section will modify the chat message this came
 /// from.
-#[define_ty(path = "bamboo::chat::ChatSection")]
+#[define_ty(panda_path = "bamboo::chat::ChatSection")]
 impl PChatSection {
   /// Sets the color of this chat section. Since Panda does not support
   /// enums, the color is simply a string. An invalid color will result in an

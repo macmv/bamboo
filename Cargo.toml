@@ -11,6 +11,9 @@ members = [
   # Common utilities. These are things like item parsers, UUIDs,
   # etc. This is anything that both the server and proxy need.
   "bb_common",
+  # Proc macros to generate plugin types on the server. Depended
+  # on only by the server.
+  "bb_plugin_macros",
   # The Minecraft server. This is the first binary target. It is
   # a fully-functioning server.
   "bb_server",

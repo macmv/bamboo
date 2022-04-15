@@ -6,7 +6,8 @@ use super::{
 };
 use crate::{entity, world::World};
 use bb_common::{math::Pos, metadata::Metadata, net::cb::SoundCategory};
-use panda::{define_ty, parse::token::Span, runtime::RuntimeError};
+use bb_plugin_macros::define_ty;
+use panda::{parse::token::Span, runtime::RuntimeError};
 use std::{fmt, sync::Arc};
 
 pub mod gen;
@@ -32,7 +33,7 @@ impl PWorld {
 
 /// A Minecraft world. This stores all of the information about blocks,
 /// entities, and players in this world.
-#[define_ty(path = "bamboo::world::World")]
+#[define_ty(panda_path = "bamboo::world::World")]
 impl PWorld {
   /// Sets a single block in the world. This will return an error if the block
   /// is outside of the world.

@@ -3,7 +3,7 @@ use bb_common::{
   math::{ChunkPos, FPos, Pos},
   util::UUID,
 };
-use panda::define_ty;
+use bb_plugin_macros::define_ty;
 
 wrap_eq!(Pos, PPos);
 wrap_eq!(ChunkPos, PChunkPos);
@@ -13,7 +13,7 @@ wrap_eq!(UUID, PUUID);
 /// A block position. This stores X, Y, and Z coordinates as ints.
 ///
 /// If you need a player position, use `FPos` (for float position) instead.
-#[define_ty(path = "bamboo::util::Pos", map_key = true)]
+#[define_ty(panda_path = "bamboo::util::Pos", panda_map_key = true)]
 impl PPos {
   /// Creates a new block position, with the given X, Y, and Z coordinates.
   pub fn new(x: i32, y: i32, z: i32) -> Self { PPos { inner: Pos::new(x, y, z) } }
@@ -49,7 +49,7 @@ impl PPos {
 /// A chunk position. This stores X and Z coordinates.
 ///
 /// If you need a block position, use `Pos` instead.
-#[define_ty(path = "bamboo::util::ChunkPos", map_key = true)]
+#[define_ty(panda_path = "bamboo::util::ChunkPos", panda_map_key = true)]
 impl PChunkPos {
   /// Creates a new chunk position, with the given X and Z coordinates.
   pub fn new(x: i32, z: i32) -> Self { PChunkPos { inner: ChunkPos::new(x, z) } }
@@ -76,7 +76,7 @@ impl PChunkPos {
 /// An entity position. This stores X, Y, and Z coordinates as floats.
 ///
 /// If you need a block position, use `Pos` instead.
-#[define_ty(path = "bamboo::util::FPos")]
+#[define_ty(panda_path = "bamboo::util::FPos")]
 impl PFPos {
   /// Creates a new floating point position, with the given X, Y, and Z
   /// coordinates.
@@ -111,7 +111,7 @@ impl PFPos {
 }
 
 /// A UUID. This is used as a unique identifier for players and entities.
-#[define_ty(path = "bamboo::util::UUID", map_key = true)]
+#[define_ty(panda_path = "bamboo::util::UUID", panda_map_key = true)]
 impl PUUID {
   /// Returns the UUID as a string, with dashes inserted.
   pub fn to_s(&self) -> String { self.inner.as_dashed_str() }

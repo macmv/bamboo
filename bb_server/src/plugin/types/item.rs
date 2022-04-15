@@ -4,7 +4,8 @@ use crate::{
   item::{Inventory, Stack, UI},
 };
 use bb_common::net::sb::ClickWindow;
-use panda::{define_ty, parse::token::Span, runtime::RuntimeError};
+use bb_plugin_macros::define_ty;
+use panda::{parse::token::Span, runtime::RuntimeError};
 use std::str::FromStr;
 
 wrap!(UI, PUI);
@@ -12,13 +13,13 @@ wrap!(ClickWindow, PClickWindow);
 wrap!(Inventory, PInventory);
 wrap!(Stack, PStack);
 
-#[define_ty(path = "bamboo::item::ClickWindow")]
+#[define_ty(panda_path = "bamboo::item::ClickWindow")]
 impl PClickWindow {}
 
-#[define_ty(path = "bamboo::item::Inventory")]
+#[define_ty(panda_path = "bamboo::item::Inventory")]
 impl PInventory {}
 
-#[define_ty(path = "bamboo::item::Stack")]
+#[define_ty(panda_path = "bamboo::item::Stack")]
 impl PStack {
   pub fn new(name: &str) -> Result<Self, RuntimeError> {
     Ok(PStack {
@@ -51,7 +52,7 @@ impl PStack {
 ///
 /// If you instead use `Kind` on its own, it is much less clear that this is
 /// a block kind.
-#[define_ty(path = "bamboo::item::UI")]
+#[define_ty(panda_path = "bamboo::item::UI")]
 impl PUI {
   /// Returns the block kind for that string. This will return an error if the
   /// block name is invalid.

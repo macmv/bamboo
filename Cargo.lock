@@ -236,6 +236,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "bb_plugin_macros"
+version = "0.2.0"
+dependencies = [
+ "proc-macro-error",
+ "proc-macro2",
+ "quote",
+ "syn",
+]
+
+[[package]]
 name = "bb_proxy"
 version = "0.2.0"
 dependencies = [
@@ -271,6 +281,7 @@ version = "0.2.0"
 dependencies = [
  "bb_common",
  "bb_data",
+ "bb_plugin_macros",
  "bb_transfer",
  "clap 3.0.14",
  "criterion",

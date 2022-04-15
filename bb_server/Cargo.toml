@@ -16,6 +16,7 @@ path = "src/main.rs"
 [dependencies]
 bb_common = { path = "../bb_common" }
 bb_transfer = { path = "../bb_transfer" }
+bb_plugin_macros = { path = "../bb_plugin_macros" }
 # logger
 log = "0.4"
 

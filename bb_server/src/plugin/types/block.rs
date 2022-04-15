@@ -1,6 +1,7 @@
 use super::{add_from, wrap};
 use crate::block;
-use panda::{define_ty, parse::token::Span, runtime::RuntimeError};
+use bb_plugin_macros::define_ty;
+use panda::{parse::token::Span, runtime::RuntimeError};
 use std::str::FromStr;
 
 wrap!(block::Kind, PBlockKind);
@@ -20,7 +21,7 @@ wrap!(block::Kind, PBlockKind);
 ///
 /// If you instead use `Kind` on its own, it is much less clear that this is
 /// a block kind.
-#[define_ty(path = "bamboo::block::Kind")]
+#[define_ty(panda_path = "bamboo::block::Kind")]
 impl PBlockKind {
   /// Returns the block kind for that string. This will return an error if the
   /// block name is invalid.

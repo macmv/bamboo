@@ -1,5 +1,5 @@
 use crate::world::gen::PBiomeGen;
-use panda::define_ty;
+use bb_plugin_macros::define_ty;
 use std::{fmt, sync::Arc};
 
 #[derive(Clone)]
@@ -97,5 +97,5 @@ impl fmt::Debug for PBiome {
 ///   chunk.fill(pos, pos + Pos::new(0, height, 0), "cactus");
 /// }
 /// ```
-#[define_ty(path = "bamboo::world::gen::Biome")]
+#[define_ty(panda_path = "bamboo::world::gen::Biome")]
 impl PBiome {}

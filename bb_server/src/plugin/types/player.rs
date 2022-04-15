@@ -11,8 +11,8 @@ use crate::{
   player::{Player, Team},
 };
 use bb_common::util::{chat::Color, Chat, UUID};
+use bb_plugin_macros::define_ty;
 use panda::{
-  define_ty,
   parse::token::Span,
   runtime::{Result, RuntimeError, Var},
 };
@@ -51,7 +51,7 @@ impl PPlayer {
 /// for a player who is offline, but it can stay alive after a player has
 /// disconnected. For this reason, some functions simply do nothing if a player
 /// has logged off, while others will cause an error.
-#[define_ty(path = "bamboo::player::Player")]
+#[define_ty(panda_path = "bamboo::player::Player")]
 impl PPlayer {
   /// Returns the username of the player. This will never change, as long as the
   /// user stays online.
@@ -319,7 +319,7 @@ impl PPlayer {
 /// friendly fire, showing invisible teammates, and more.
 ///
 /// This can be created through `Bamboo::create_team`.
-#[define_ty(path = "bamboo::player::Team")]
+#[define_ty(panda_path = "bamboo::player::Team")]
 impl PTeam {
   /// Sets the color of this team. All players in this team will have their
   /// usernames displayed in this color.
