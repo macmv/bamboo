@@ -7,21 +7,21 @@ use bb_common::net::sb::ClickWindow;
 use panda::{define_ty, parse::token::Span, runtime::RuntimeError};
 use std::str::FromStr;
 
-wrap!(UI, PdUI);
-wrap!(ClickWindow, PdClickWindow);
-wrap!(Inventory, PdInventory);
-wrap!(Stack, PdStack);
+wrap!(UI, PUI);
+wrap!(ClickWindow, PClickWindow);
+wrap!(Inventory, PInventory);
+wrap!(Stack, PStack);
 
 #[define_ty(path = "bamboo::item::ClickWindow")]
-impl PdClickWindow {}
+impl PClickWindow {}
 
 #[define_ty(path = "bamboo::item::Inventory")]
-impl PdInventory {}
+impl PInventory {}
 
 #[define_ty(path = "bamboo::item::Stack")]
-impl PdStack {
+impl PStack {
   pub fn new(name: &str) -> Result<Self, RuntimeError> {
-    Ok(PdStack {
+    Ok(PStack {
       inner: Stack::new(
         item::Type::from_str(name)
           .map_err(|e| RuntimeError::Custom(e.to_string(), Span::call_site()))?,
@@ -30,7 +30,7 @@ impl PdStack {
   }
 
   pub fn with_amount(&self, amount: u8) -> Self {
-    PdStack { inner: self.inner.clone().with_amount(amount) }
+    PStack { inner: self.inner.clone().with_amount(amount) }
   }
 
   pub fn name(&self) -> String { self.inner.item().to_str().into() }
@@ -52,17 +52,17 @@ impl PdStack {
 /// If you instead use `Kind` on its own, it is much less clear that this is
 /// a block kind.
 #[define_ty(path = "bamboo::item::UI")]
-impl PdUI {
+impl PUI {
   /// Returns the block kind for that string. This will return an error if the
   /// block name is invalid.
-  pub fn new(rows: Vec<String>) -> Result<PdUI, RuntimeError> {
-    Ok(PdUI {
+  pub fn new(rows: Vec<String>) -> Result<PUI, RuntimeError> {
+    Ok(PUI {
       inner: UI::new(rows.iter().map(|v| v.into()).collect())
         .map_err(|e| RuntimeError::Custom(e.to_string(), Span::call_site()))?,
     })
   }
 
-  pub fn item(&mut self, key: &str, item: &PdStack) -> Result<(), RuntimeError> {
+  pub fn item(&mut self, key: &str, item: &PStack) -> Result<(), RuntimeError> {
     let mut iter = key.chars();
     let key = match iter.next() {
       Some(v) => v,
@@ -83,11 +83,11 @@ impl PdUI {
     Ok(())
   }
 
-  pub fn to_inventory(&self) -> Result<PdInventory, RuntimeError> {
+  pub fn to_inventory(&self) -> Result<PInventory, RuntimeError> {
     let inv = self
       .inner
       .to_inventory()
       .map_err(|e| RuntimeError::Custom(e.to_string(), Span::call_site()))?;
-    Ok(PdInventory { inner: inv })
+    Ok(PInventory { inner: inv })
   }
 }

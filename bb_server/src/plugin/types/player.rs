@@ -1,9 +1,9 @@
 use super::{
   add_from,
-  chat::PdChat,
-  item::{PdInventory, PdStack},
-  util::{PdFPos, PdUUID},
-  world::PdWorld,
+  chat::PChat,
+  item::{PInventory, PStack},
+  util::{PFPos, PUUID},
+  world::PWorld,
   wrap,
 };
 use crate::{
@@ -24,19 +24,19 @@ use std::{
 };
 
 #[derive(Clone, Debug)]
-pub struct PdPlayer {
+pub struct PPlayer {
   pub(super) inner: Weak<Player>,
   pub username:     String,
   pub uuid:         UUID,
 }
-impl From<Arc<Player>> for PdPlayer {
+impl From<Arc<Player>> for PPlayer {
   fn from(p: Arc<Player>) -> Self {
-    PdPlayer { username: p.username().clone(), uuid: p.id(), inner: Arc::downgrade(&p) }
+    PPlayer { username: p.username().clone(), uuid: p.id(), inner: Arc::downgrade(&p) }
   }
 }
-wrap!(Arc<Mutex<Team>>, PdTeam);
+wrap!(Arc<Mutex<Team>>, PTeam);
 
-impl PdPlayer {
+impl PPlayer {
   pub fn inner(&self) -> Result<Arc<Player>> {
     self.inner.upgrade().ok_or_else(|| {
       RuntimeError::custom(format!("`{}` is offline", self.username), Span::call_site())
@@ -52,7 +52,7 @@ impl PdPlayer {
 /// disconnected. For this reason, some functions simply do nothing if a player
 /// has logged off, while others will cause an error.
 #[define_ty(path = "bamboo::player::Player")]
-impl PdPlayer {
+impl PPlayer {
   /// Returns the username of the player. This will never change, as long as the
   /// user stays online.
   ///
@@ -66,19 +66,19 @@ impl PdPlayer {
   ///
   /// Note that this may change if the proxy is in offline mode instead of
   /// online mode.
-  pub fn uuid(&self) -> PdUUID { PdUUID { inner: self.uuid } }
+  pub fn uuid(&self) -> PUUID { PUUID { inner: self.uuid } }
 
   /// Teleports the player to the given position, with a yaw and pitch.
   ///
   /// This will do nothing if the player is offline.
-  pub fn teleport(&self, pos: &PdFPos, yaw: f32, pitch: f32) {
+  pub fn teleport(&self, pos: &PFPos, yaw: f32, pitch: f32) {
     if let Ok(i) = self.inner() {
       i.teleport(pos.inner, yaw, pitch);
     }
   }
 
   /// Sends the given chat message to a player. This accepts exactly one
-  /// argument, which can be any type. If it is a `PdChat`, then it will be
+  /// argument, which can be any type. If it is a `PChat`, then it will be
   /// formatted correctly. Anything else will show up with debug formatting.
   ///
   /// This will do nothing if the player is offline.
@@ -101,7 +101,7 @@ impl PdPlayer {
     let out = match &msg {
       Var::Builtin(_, data) => {
         let borrow = data.borrow();
-        let chat = borrow.as_any().downcast_ref::<PdChat>();
+        let chat = borrow.as_any().downcast_ref::<PChat>();
         if let Some(chat) = chat {
           chat.inner.lock().unwrap().clone()
         } else {
@@ -119,7 +119,7 @@ impl PdPlayer {
   /// [`show_title`].
   ///
   /// This will do nothing if the player is offline.
-  pub fn set_title(&self, title: &PdChat) {
+  pub fn set_title(&self, title: &PChat) {
     if let Ok(i) = self.inner() {
       i.set_title(title.inner.lock().unwrap().clone());
     }
@@ -128,7 +128,7 @@ impl PdPlayer {
   /// [`show_title`].
   ///
   /// This will do nothing if the player is offline.
-  pub fn set_subtitle(&self, subtitle: &PdChat) {
+  pub fn set_subtitle(&self, subtitle: &PChat) {
     if let Ok(i) = self.inner() {
       i.set_subtitle(subtitle.inner.lock().unwrap().clone());
     }
@@ -147,7 +147,7 @@ impl PdPlayer {
   /// blocks, access other players, and modify entities.
   ///
   /// This will return an error if the player is offline.
-  pub fn world(&self) -> Result<PdWorld> { Ok(self.inner()?.world().clone().into()) }
+  pub fn world(&self) -> Result<PWorld> { Ok(self.inner()?.world().clone().into()) }
 
   /// Switches the player to a new server. If the server is found, the player
   /// will be disconnected after this call. If the server is not found, an error
@@ -168,7 +168,7 @@ impl PdPlayer {
   /// Shows an inventory to the player.
   ///
   /// This will do nothing if the player is offline.
-  pub fn show_inventory(&self, inv: &PdInventory, title: &PdChat) {
+  pub fn show_inventory(&self, inv: &PInventory, title: &PChat) {
     if let Ok(i) = self.inner() {
       i.show_inventory(inv.inner.clone(), &title.inner.lock().unwrap());
     }
@@ -183,7 +183,7 @@ impl PdPlayer {
       false
     }
   }
-  pub fn get_item(&self, slot: i32) -> PdStack {
+  pub fn get_item(&self, slot: i32) -> PStack {
     if let Ok(i) = self.inner() {
       i.lock_inventory().get(slot).clone().into()
     } else {
@@ -194,7 +194,7 @@ impl PdPlayer {
   /// `true` will be returned. If not, this will do nothing, and return `false`.
   ///
   /// If the stack is empty, this will always return `true`.
-  pub fn try_remove_item(&self, stack: &PdStack) -> bool {
+  pub fn try_remove_item(&self, stack: &PStack) -> bool {
     if stack.inner.amount() == 0 {
       return true;
     }
@@ -266,7 +266,7 @@ impl PdPlayer {
   /// the updated lines will show when the scoreboard is shown again.
   ///
   /// This will do nothing if the player is offline.
-  pub fn set_scoreboard_line(&self, line: u8, message: &PdChat) {
+  pub fn set_scoreboard_line(&self, line: u8, message: &PChat) {
     if let Ok(i) = self.inner() {
       i.lock_scoreboard().set_line(line, &message.inner.lock().unwrap());
     }
@@ -290,7 +290,7 @@ impl PdPlayer {
   /// use if needed. Using teams is going to be more reliable.
   ///
   /// This will do nothing if the player is offline.
-  pub fn set_tab_name(&self, name: &PdChat) {
+  pub fn set_tab_name(&self, name: &PChat) {
     if let Ok(i) = self.inner() {
       i.set_tab_name(Some(name.inner.lock().unwrap().clone()));
     }
@@ -307,7 +307,7 @@ impl PdPlayer {
   /// Gives the player the passed item.
   ///
   /// This will do nothing if the player is offline.
-  pub fn give(&self, stack: &PdStack) {
+  pub fn give(&self, stack: &PStack) {
     if let Ok(i) = self.inner() {
       i.lock_inventory().give(&stack.inner);
     }
@@ -320,7 +320,7 @@ impl PdPlayer {
 ///
 /// This can be created through `Bamboo::create_team`.
 #[define_ty(path = "bamboo::player::Team")]
-impl PdTeam {
+impl PTeam {
   /// Sets the color of this team. All players in this team will have their
   /// usernames displayed in this color.
   pub fn set_color(&self, name: &str) -> Result<()> {
@@ -334,7 +334,7 @@ impl PdTeam {
   /// Adds the player to this team.
   ///
   /// This will do nothing if the player is offline.
-  pub fn add_player(&self, player: &PdPlayer) {
+  pub fn add_player(&self, player: &PPlayer) {
     if let Ok(i) = player.inner() {
       self.inner.lock().add(i.as_ref());
     }

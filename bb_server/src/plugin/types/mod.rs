@@ -1,3 +1,12 @@
+//! This module exposes a general plugin API for scripting languages. Using proc
+//! macros, this is supposed to generate an API for Panda, Python, and more in
+//! the future.
+//!
+//! All the types defined here start with `P`, which is short for Plugin
+//! (example: `BlockKind` is `PBlockKind`). This is so that the types are easy
+//! to differentiate from the server types. In the scripting languages, the
+//! types do not start with a `P`.
+
 use super::{Bamboo, PandaPlugin};
 use bb_common::util::{chat::Color, Chat};
 use panda::{
@@ -17,9 +26,9 @@ pub mod player;
 pub mod util;
 pub mod world;
 
-use command::PdCommand;
-use player::PdTeam;
-use world::{gen::PdBiome, PdWorld};
+use command::PCommand;
+use player::PTeam;
+use world::{gen::PBiome, PWorld};
 
 macro_rules! add_from {
   ( $ty:ty, $new_ty:ident ) => {
@@ -75,20 +84,20 @@ use wrap_eq;
 impl Bamboo {
   /// Creates the given team, if it does not exist. If it exists, this will
   /// return an error.
-  pub fn create_team(&self, name: &str) -> Result<PdTeam, RuntimeError> {
+  pub fn create_team(&self, name: &str) -> Result<PTeam, RuntimeError> {
     self
       .wm
       .create_team(name.into())
-      .map(|team| PdTeam { inner: team })
+      .map(|team| PTeam { inner: team })
       .ok_or_else(|| RuntimeError::custom("Team already exists", Span::call_site()))
   }
   /// Returns the given team, if it exists. If it doesn't exist, this will
   /// return an error.
-  pub fn team(&self, name: &str) -> Result<PdTeam, RuntimeError> {
+  pub fn team(&self, name: &str) -> Result<PTeam, RuntimeError> {
     self
       .wm
       .team(name.into())
-      .map(|team| PdTeam { inner: team })
+      .map(|team| PTeam { inner: team })
       .ok_or_else(|| RuntimeError::custom("Team doesn't exist", Span::call_site()))
   }
 
@@ -106,7 +115,7 @@ impl Bamboo {
   ///   bamboo::info("ran setblock!")
   /// }
   /// ```
-  pub fn add_command(&self, command: &PdCommand) -> Result<(), RuntimeError> {
+  pub fn add_command(&self, command: &PCommand) -> Result<(), RuntimeError> {
     let wm = self.wm.clone();
     let wm2 = self.wm.clone();
     let cb = match command.callback.clone() {
@@ -135,7 +144,7 @@ impl Bamboo {
           if let Err(e) = cb.call(
             &mut panda.lock_env(),
             vec![
-              player.map(|p| player::PdPlayer::from(p.clone()).into()).unwrap_or(Var::None),
+              player.map(|p| player::PPlayer::from(p.clone()).into()).unwrap_or(Var::None),
               args.iter().map(|arg| command::sl_from_arg(arg.clone())).collect::<Vec<Var>>().into(),
             ],
           ) {
@@ -176,7 +185,7 @@ impl Bamboo {
   /// ```
   ///
   /// See the `Biome` docs for more.
-  pub fn add_biome(&self, _biome: &PdBiome) -> Result<(), RuntimeError> { Ok(()) }
+  pub fn add_biome(&self, _biome: &PBiome) -> Result<(), RuntimeError> { Ok(()) }
 
   /// Locks the internal data. If the internal data is already locked, this will
   /// continue trying to lock that data.
@@ -218,12 +227,12 @@ impl Bamboo {
   }
 
   /// Broadcasts the given chat message.
-  pub fn broadcast(&self, chat: &chat::PdChat) {
+  pub fn broadcast(&self, chat: &chat::PChat) {
     self.wm.broadcast(chat.inner.lock().unwrap().clone());
   }
 
   /// Returns the default world.
-  pub fn default_world(&self) -> PdWorld { self.wm.default_world().into() }
+  pub fn default_world(&self) -> PWorld { self.wm.default_world().into() }
 }
 
 fn format(args: &[Var]) -> String {
@@ -281,20 +290,20 @@ impl PandaPlugin {
       });
     }
     sl.add_builtin_ty::<Bamboo>();
-    sl.add_builtin_ty::<util::PdPos>();
-    sl.add_builtin_ty::<util::PdFPos>();
-    sl.add_builtin_ty::<block::PdBlockKind>();
-    sl.add_builtin_ty::<chat::PdChat>();
-    sl.add_builtin_ty::<chat::PdChatSection>();
-    sl.add_builtin_ty::<item::PdClickWindow>();
-    sl.add_builtin_ty::<item::PdInventory>();
-    sl.add_builtin_ty::<item::PdStack>();
-    sl.add_builtin_ty::<item::PdUI>();
-    sl.add_builtin_ty::<command::PdCommand>();
-    sl.add_builtin_ty::<player::PdPlayer>();
-    sl.add_builtin_ty::<player::PdTeam>();
-    sl.add_builtin_ty::<world::PdWorld>();
-    sl.add_builtin_ty::<world::gen::PdBiome>();
+    sl.add_builtin_ty::<util::PPos>();
+    sl.add_builtin_ty::<util::PFPos>();
+    sl.add_builtin_ty::<block::PBlockKind>();
+    sl.add_builtin_ty::<chat::PChat>();
+    sl.add_builtin_ty::<chat::PChatSection>();
+    sl.add_builtin_ty::<item::PClickWindow>();
+    sl.add_builtin_ty::<item::PInventory>();
+    sl.add_builtin_ty::<item::PStack>();
+    sl.add_builtin_ty::<item::PUI>();
+    sl.add_builtin_ty::<command::PCommand>();
+    sl.add_builtin_ty::<player::PPlayer>();
+    sl.add_builtin_ty::<player::PTeam>();
+    sl.add_builtin_ty::<world::PWorld>();
+    sl.add_builtin_ty::<world::gen::PBiome>();
   }
 
   pub fn generate_docs(&self, sl: &Panda) {

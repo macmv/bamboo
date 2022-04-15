@@ -12,11 +12,11 @@ use std::{
 
 mod biomes;
 mod debug;
-mod sl;
+mod plugin;
 mod underground;
 pub mod util;
 
-pub use sl::PdBiomeGen;
+pub use plugin::PBiomeGen;
 
 use underground::Underground;
 

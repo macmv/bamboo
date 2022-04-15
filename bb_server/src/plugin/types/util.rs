@@ -5,18 +5,18 @@ use bb_common::{
 };
 use panda::define_ty;
 
-wrap_eq!(Pos, PdPos);
-wrap_eq!(ChunkPos, PdChunkPos);
-wrap!(FPos, PdFPos);
-wrap_eq!(UUID, PdUUID);
+wrap_eq!(Pos, PPos);
+wrap_eq!(ChunkPos, PChunkPos);
+wrap!(FPos, PFPos);
+wrap_eq!(UUID, PUUID);
 
 /// A block position. This stores X, Y, and Z coordinates as ints.
 ///
 /// If you need a player position, use `FPos` (for float position) instead.
 #[define_ty(path = "bamboo::util::Pos", map_key = true)]
-impl PdPos {
+impl PPos {
   /// Creates a new block position, with the given X, Y, and Z coordinates.
-  pub fn new(x: i32, y: i32, z: i32) -> Self { PdPos { inner: Pos::new(x, y, z) } }
+  pub fn new(x: i32, y: i32, z: i32) -> Self { PPos { inner: Pos::new(x, y, z) } }
   /// Returns the X position of this block.
   ///
   /// # Example
@@ -50,9 +50,9 @@ impl PdPos {
 ///
 /// If you need a block position, use `Pos` instead.
 #[define_ty(path = "bamboo::util::ChunkPos", map_key = true)]
-impl PdChunkPos {
+impl PChunkPos {
   /// Creates a new chunk position, with the given X and Z coordinates.
-  pub fn new(x: i32, z: i32) -> Self { PdChunkPos { inner: ChunkPos::new(x, z) } }
+  pub fn new(x: i32, z: i32) -> Self { PChunkPos { inner: ChunkPos::new(x, z) } }
   /// Returns the X position of this chuk.
   ///
   /// # Example
@@ -77,10 +77,10 @@ impl PdChunkPos {
 ///
 /// If you need a block position, use `Pos` instead.
 #[define_ty(path = "bamboo::util::FPos")]
-impl PdFPos {
+impl PFPos {
   /// Creates a new floating point position, with the given X, Y, and Z
   /// coordinates.
-  pub fn new(x: f64, y: f64, z: f64) -> Self { PdFPos { inner: FPos::new(x, y, z) } }
+  pub fn new(x: f64, y: f64, z: f64) -> Self { PFPos { inner: FPos::new(x, y, z) } }
   /// Returns the X position of this entity.
   ///
   /// # Example
@@ -112,7 +112,7 @@ impl PdFPos {
 
 /// A UUID. This is used as a unique identifier for players and entities.
 #[define_ty(path = "bamboo::util::UUID", map_key = true)]
-impl PdUUID {
+impl PUUID {
   /// Returns the UUID as a string, with dashes inserted.
   pub fn to_s(&self) -> String { self.inner.as_dashed_str() }
 }

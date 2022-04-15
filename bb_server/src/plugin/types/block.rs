@@ -3,7 +3,7 @@ use crate::block;
 use panda::{define_ty, parse::token::Span, runtime::RuntimeError};
 use std::str::FromStr;
 
-wrap!(block::Kind, PdBlockKind);
+wrap!(block::Kind, PBlockKind);
 
 /// A block kind. This is how you get/set blocks in the world.
 ///
@@ -21,11 +21,11 @@ wrap!(block::Kind, PdBlockKind);
 /// If you instead use `Kind` on its own, it is much less clear that this is
 /// a block kind.
 #[define_ty(path = "bamboo::block::Kind")]
-impl PdBlockKind {
+impl PBlockKind {
   /// Returns the block kind for that string. This will return an error if the
   /// block name is invalid.
-  pub fn from_s(name: &str) -> Result<PdBlockKind, RuntimeError> {
-    Ok(PdBlockKind {
+  pub fn from_s(name: &str) -> Result<PBlockKind, RuntimeError> {
+    Ok(PBlockKind {
       inner: block::Kind::from_str(name).map_err(|_| {
         RuntimeError::custom(format!("invalid block name '{}'", name), Span::call_site())
       })?,

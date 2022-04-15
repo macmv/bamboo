@@ -1,17 +1,17 @@
-use crate::world::gen::PdBiomeGen;
+use crate::world::gen::PBiomeGen;
 use panda::define_ty;
 use std::{fmt, sync::Arc};
 
 #[derive(Clone)]
 #[allow(unused)]
-pub struct PdBiome {
+pub struct PBiome {
   name:             String,
-  pub(super) inner: Arc<PdBiomeGen>,
+  pub(super) inner: Arc<PBiomeGen>,
 }
 
-impl fmt::Debug for PdBiome {
+impl fmt::Debug for PBiome {
   fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-    f.debug_struct("PdBiome").field("name", &self.name).finish()
+    f.debug_struct("PBiome").field("name", &self.name).finish()
   }
 }
 
@@ -98,4 +98,4 @@ impl fmt::Debug for PdBiome {
 /// }
 /// ```
 #[define_ty(path = "bamboo::world::gen::Biome")]
-impl PdBiome {}
+impl PBiome {}

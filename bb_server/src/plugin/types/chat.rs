@@ -6,16 +6,16 @@ use std::{
   sync::{Arc, Mutex},
 };
 
-wrap!(Arc<Mutex<Chat>>, PdChat);
-wrap!(Arc<Mutex<Chat>>, PdChatSection, idx: usize);
+wrap!(Arc<Mutex<Chat>>, PChat);
+wrap!(Arc<Mutex<Chat>>, PChatSection, idx: usize);
 
 /// A chat message. This is how you can send formatted chat message to players.
 #[define_ty(path = "bamboo::chat::Chat")]
-impl PdChat {
+impl PChat {
   /// Creates a new chat message with the given text.
-  pub fn new(text: &str) -> PdChat { PdChat { inner: Arc::new(Mutex::new(Chat::new(text))) } }
+  pub fn new(text: &str) -> PChat { PChat { inner: Arc::new(Mutex::new(Chat::new(text))) } }
   /// Creates an empty chat message. This can have sections added using `add`.
-  pub fn empty() -> PdChat { PdChat { inner: Arc::new(Mutex::new(Chat::empty())) } }
+  pub fn empty() -> PChat { PChat { inner: Arc::new(Mutex::new(Chat::empty())) } }
   /// Adds a new chat section. This will return the section that was just added,
   /// so that it can be modified.
   ///
@@ -29,10 +29,10 @@ impl PdChat {
   /// //   |
   /// //    \ Adds the section "hello"
   /// ```
-  pub fn add(&self, msg: &str) -> PdChatSection {
+  pub fn add(&self, msg: &str) -> PChatSection {
     let mut lock = self.inner.lock().unwrap();
     lock.add(msg);
-    PdChatSection { inner: self.inner.clone(), idx: lock.sections_len() - 1 }
+    PChatSection { inner: self.inner.clone(), idx: lock.sections_len() - 1 }
   }
 }
 
@@ -40,7 +40,7 @@ impl PdChat {
 /// All of the functions on this section will modify the chat message this came
 /// from.
 #[define_ty(path = "bamboo::chat::ChatSection")]
-impl PdChatSection {
+impl PChatSection {
   /// Sets the color of this chat section. Since Panda does not support
   /// enums, the color is simply a string. An invalid color will result in an
   /// error.

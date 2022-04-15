@@ -89,9 +89,9 @@ impl PandaPlugin {
     if let Var::Bool(allow) = self.call(
       self.path("on_block_place"),
       vec![
-        types::player::PdPlayer::from(player).into(),
-        types::util::PdPos::from(pos).into(),
-        types::block::PdBlockKind::from(ty.kind()).into(),
+        types::player::PPlayer::from(player).into(),
+        types::util::PPos::from(pos).into(),
+        types::block::PBlockKind::from(ty.kind()).into(),
       ],
     ) {
       allow
@@ -103,9 +103,9 @@ impl PandaPlugin {
     if let Var::Bool(allow) = self.call(
       self.path("on_block_break"),
       vec![
-        types::player::PdPlayer::from(player).into(),
-        types::util::PdPos::from(pos).into(),
-        types::block::PdBlockKind::from(ty.kind()).into(),
+        types::player::PPlayer::from(player).into(),
+        types::util::PPos::from(pos).into(),
+        types::block::PBlockKind::from(ty.kind()).into(),
       ],
     ) {
       allow
@@ -117,9 +117,9 @@ impl PandaPlugin {
     match self.call(
       self.path("on_click_window"),
       vec![
-        types::player::PdPlayer::from(player).into(),
+        types::player::PPlayer::from(player).into(),
         slot.into(),
-        types::item::PdClickWindow::from(mode).into(),
+        types::item::PClickWindow::from(mode).into(),
       ],
     ) {
       Var::Bool(v) => v,
@@ -129,14 +129,14 @@ impl PandaPlugin {
   pub fn call_on_chat_message(&self, player: Arc<Player>, text: String) {
     self.call(
       self.path("on_chat_message"),
-      vec![types::player::PdPlayer::from(player).into(), text.into()],
+      vec![types::player::PPlayer::from(player).into(), text.into()],
     );
   }
   pub fn call_on_player_join(&self, player: Arc<Player>) {
-    self.call(self.path("on_player_join"), vec![types::player::PdPlayer::from(player).into()]);
+    self.call(self.path("on_player_join"), vec![types::player::PPlayer::from(player).into()]);
   }
   pub fn call_on_player_leave(&self, player: Arc<Player>) {
-    self.call(self.path("on_player_leave"), vec![types::player::PdPlayer::from(player).into()]);
+    self.call(self.path("on_player_leave"), vec![types::player::PPlayer::from(player).into()]);
   }
   pub fn call_on_tick(&self) { self.call(self.path("on_tick"), vec![]); }
 

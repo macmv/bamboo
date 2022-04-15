@@ -1,8 +1,8 @@
 use super::{
   add_from,
-  block::PdBlockKind,
-  item::PdStack,
-  util::{PdFPos, PdPos},
+  block::PBlockKind,
+  item::PStack,
+  util::{PFPos, PPos},
 };
 use crate::{entity, world::World};
 use bb_common::{math::Pos, metadata::Metadata, net::cb::SoundCategory};
@@ -12,17 +12,17 @@ use std::{fmt, sync::Arc};
 pub mod gen;
 
 #[derive(Clone)]
-pub struct PdWorld {
+pub struct PWorld {
   pub(super) inner: Arc<World>,
 }
 
-add_from!(Arc<World>, PdWorld);
+add_from!(Arc<World>, PWorld);
 
-impl fmt::Debug for PdWorld {
-  fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result { f.debug_struct("PdWorld").finish() }
+impl fmt::Debug for PWorld {
+  fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result { f.debug_struct("PWorld").finish() }
 }
 
-impl PdWorld {
+impl PWorld {
   pub fn check_pos(&self, pos: Pos) -> Result<Pos, RuntimeError> {
     self.inner.check_pos(pos).map_err(|p| {
       RuntimeError::custom(format!("invalid position {}: {}", p.pos, p.msg), Span::call_site())
@@ -33,7 +33,7 @@ impl PdWorld {
 /// A Minecraft world. This stores all of the information about blocks,
 /// entities, and players in this world.
 #[define_ty(path = "bamboo::world::World")]
-impl PdWorld {
+impl PWorld {
   /// Sets a single block in the world. This will return an error if the block
   /// is outside of the world.
   ///
@@ -44,7 +44,7 @@ impl PdWorld {
   /// This function will do everything you want in a block place. It will update
   /// the blocks stored in the world, and send block updates to all clients in
   /// render distance.
-  pub fn set_kind(&self, pos: &PdPos, kind: &PdBlockKind) -> Result<(), RuntimeError> {
+  pub fn set_kind(&self, pos: &PPos, kind: &PBlockKind) -> Result<(), RuntimeError> {
     self.check_pos(pos.inner)?;
     self.inner.set_kind(pos.inner, kind.inner).unwrap();
     Ok(())
@@ -57,9 +57,9 @@ impl PdWorld {
   /// clients in render distance.
   pub fn fill_rect_kind(
     &self,
-    min: &PdPos,
-    max: &PdPos,
-    kind: &PdBlockKind,
+    min: &PPos,
+    max: &PPos,
+    kind: &PBlockKind,
   ) -> Result<(), RuntimeError> {
     self.check_pos(min.inner)?;
     self.check_pos(max.inner)?;
@@ -70,13 +70,13 @@ impl PdWorld {
   /// Returns the kind of block at the given position.
   ///
   /// This will return an error if the position is outside the world.
-  pub fn get_kind(&self, pos: &PdPos) -> Result<PdBlockKind, RuntimeError> {
+  pub fn get_kind(&self, pos: &PPos) -> Result<PBlockKind, RuntimeError> {
     self.check_pos(pos.inner)?;
     Ok(self.inner.get_kind(pos.inner).unwrap().into())
   }
 
   /// Summons a dropped item at the given posision.
-  pub fn summon_item(&self, pos: &PdFPos, stack: &PdStack) {
+  pub fn summon_item(&self, pos: &PFPos, stack: &PStack) {
     let mut meta = Metadata::new();
     meta.set_item(8, stack.inner.to_item());
     self.inner.summon_meta(entity::Type::Item, pos.inner, meta);
@@ -88,7 +88,7 @@ impl PdWorld {
     &self,
     sound: &str,
     category: &str,
-    pos: &PdFPos,
+    pos: &PFPos,
     volume: f32,
     pitch: f32,
   ) -> Result<(), RuntimeError> {

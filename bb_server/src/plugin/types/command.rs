@@ -1,7 +1,7 @@
 use super::{
-  block::PdBlockKind,
-  item::PdStack,
-  util::{PdChunkPos, PdPos},
+  block::PBlockKind,
+  item::PStack,
+  util::{PChunkPos, PPos},
   wrap,
 };
 use crate::command::{Arg, Command, Parser};
@@ -11,9 +11,9 @@ use panda::{
 };
 use std::sync::{Arc, Mutex};
 
-wrap!(Arc<Mutex<Command>>, PdCommand, callback: Option<Callback>, idx: Vec<usize>);
+wrap!(Arc<Mutex<Command>>, PCommand, callback: Option<Callback>, idx: Vec<usize>);
 
-impl PdCommand {
+impl PCommand {
   fn command<'a>(&self, inner: &'a mut Command) -> &'a mut Command {
     let mut c = inner;
     for idx in &self.idx {
@@ -36,14 +36,14 @@ pub fn sl_from_arg(arg: Arg) -> Var {
     Arg::ScoreHolder(String),
     Arg::GameProfile(EntitySelector),
     */
-    Arg::BlockPos(pos) => PdPos::from(pos).into(),
-    Arg::ColumnPos(pos) => PdChunkPos::from(pos).into(),
+    Arg::BlockPos(pos) => PPos::from(pos).into(),
+    Arg::ColumnPos(pos) => PChunkPos::from(pos).into(),
     /*
     Arg::Vec3(f64, f64, f64),
     Arg::Vec2(f64, f64),
     */
-    Arg::BlockState(kind, _props, _nbt) => PdBlockKind::from(kind).into(),
-    Arg::ItemStack(stack) => PdStack::from(stack).into(),
+    Arg::BlockState(kind, _props, _nbt) => PBlockKind::from(kind).into(),
+    Arg::ItemStack(stack) => PStack::from(stack).into(),
     /*
     BlockPredicate(block::Kind),
     ItemPredicate(item::Type),
@@ -109,7 +109,7 @@ pub fn sl_from_arg(arg: Arg) -> Var {
 /// A command. This is how to setup the arguments for a custom commands that
 /// users can run.
 #[define_ty(path = "bamboo::command::Command")]
-impl PdCommand {
+impl PCommand {
   /// Creates a new command. The callback must be a function, which takes 3
   /// arguments. See the example for details.
   ///
@@ -124,8 +124,8 @@ impl PdCommand {
   ///   bb.info("ran setblock!")
   /// }
   /// ```
-  pub fn new(name: &str, callback: Callback) -> PdCommand {
-    PdCommand {
+  pub fn new(name: &str, callback: Callback) -> PCommand {
+    PCommand {
       inner:    Arc::new(Mutex::new(Command::new(name))),
       callback: Some(callback),
       idx:      vec![],
@@ -136,36 +136,36 @@ impl PdCommand {
   /// This will be parsed as three numbers in a row. If you use a `~` before the
   /// block coordinates, they will be parsed as relative coordinates. So if you
   /// are standing at X: 50, then `~10` will be converted into X: 60.
-  pub fn add_arg_block_pos(&mut self, name: &str) -> PdCommand {
+  pub fn add_arg_block_pos(&mut self, name: &str) -> PCommand {
     let mut lock = self.inner.lock().unwrap();
     self.command(&mut lock).add_arg(name, Parser::BlockPos);
     let mut idx = self.idx.clone();
     idx.push(self.command(&mut lock).children_len() - 1);
-    PdCommand { inner: self.inner.clone(), callback: None, idx }
+    PCommand { inner: self.inner.clone(), callback: None, idx }
   }
   /// Adds a new block kind argument to the command.
   ///
   /// This will be parsed as a single world, which will then be converted to a
   /// block kind. An invalid block kind will not read the callback, and will
   /// instead return an error to the user.
-  pub fn add_arg_block_kind(&mut self, name: &str) -> PdCommand {
+  pub fn add_arg_block_kind(&mut self, name: &str) -> PCommand {
     let mut lock = self.inner.lock().unwrap();
     self.command(&mut lock).add_arg(name, Parser::BlockState);
     let mut idx = self.idx.clone();
     idx.push(self.command(&mut lock).children_len() - 1);
-    PdCommand { inner: self.inner.clone(), callback: None, idx }
+    PCommand { inner: self.inner.clone(), callback: None, idx }
   }
   /// Adds a new item kind argument to the command.
   ///
   /// This will be parsed as a single world, which will then be converted to an
   /// item kind. An invalid item kind will not read the callback, and will
   /// instead return an error to the user.
-  pub fn add_arg_item_stack(&mut self, name: &str) -> PdCommand {
+  pub fn add_arg_item_stack(&mut self, name: &str) -> PCommand {
     let mut lock = self.inner.lock().unwrap();
     self.command(&mut lock).add_arg(name, Parser::ItemStack);
     let mut idx = self.idx.clone();
     idx.push(self.command(&mut lock).children_len() - 1);
-    PdCommand { inner: self.inner.clone(), callback: None, idx }
+    PCommand { inner: self.inner.clone(), callback: None, idx }
   }
   /// Adds a literal to the command.
   ///
@@ -196,11 +196,11 @@ impl PdCommand {
   /// As you can see, this should only be used when you have a keyword you need
   /// the user to type in. See `add_arg_word` if you are expecting a single
   /// word.
-  pub fn add_lit(&mut self, name: &str) -> PdCommand {
+  pub fn add_lit(&mut self, name: &str) -> PCommand {
     let mut lock = self.inner.lock().unwrap();
     self.command(&mut lock).add_lit(name);
     let mut idx = self.idx.clone();
     idx.push(self.command(&mut lock).children_len() - 1);
-    PdCommand { inner: self.inner.clone(), callback: None, idx }
+    PCommand { inner: self.inner.clone(), callback: None, idx }
   }
 }
