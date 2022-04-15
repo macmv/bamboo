@@ -39,7 +39,7 @@ num-derive = "0.3"
 noise = { version = "0.7.0", default-features = false }
 
 # scripting language
-panda = { git = "https://gitlab.com/macmv/panda", features = ["docs"] }
+panda = { git = "https://gitlab.com/macmv/panda", features = ["docs"], optional = true }
 
 # command line args
 clap = { version = "3.0.6", features = ["derive"] }
@@ -57,6 +57,11 @@ bb_data = { path = "../bb_data" }
 [dev-dependencies]
 pprof = { version = "0.4.3", features = ["criterion", "protobuf"] }
 criterion = "0.3.4"
+
+[features]
+default = ["panda_plugins"]
+panda_plugins = ["panda"]
+socket_plugins = []
 
 [[bench]]
 name = "terrain"

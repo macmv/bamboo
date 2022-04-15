@@ -1,7 +1,10 @@
-use super::{panda::PandaPlugin, JsonBlock, JsonPlayer, JsonPos};
+use super::{JsonBlock, JsonPlayer, JsonPos};
 use crate::{block, player::Player};
 use bb_common::{config::Config, math::Pos, net::sb::ClickWindow};
 use std::sync::Arc;
+
+#[cfg(feature = "panda_plugins")]
+use super::panda::PandaPlugin;
 
 #[derive(Debug, Clone, serde::Deserialize)]
 #[serde(tag = "kind")]
@@ -101,6 +104,7 @@ pub trait PluginImpl: std::any::Any {
   ///
   /// If this returns `false`, the event will be cancelled.
   fn call(&self, event: ServerMessage) -> Result<bool, ()>;
+  #[cfg(feature = "panda_plugins")]
   fn panda(&mut self) -> Option<&mut PandaPlugin> { None }
 }
 
@@ -115,6 +119,7 @@ impl Plugin {
     Plugin { config, imp: Box::new(imp) }
   }
   pub fn call(&self, ev: ServerMessage) -> Result<bool, ()> { self.imp.call(ev) }
+  #[cfg(feature = "panda_plugins")]
   pub fn unwrap_panda(&mut self) -> &mut PandaPlugin { self.imp.panda().unwrap() }
 }
 

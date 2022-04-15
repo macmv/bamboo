@@ -12,13 +12,13 @@ pub mod plugin;
 pub mod util;
 pub mod world;
 
-use crate::{plugin::panda::PandaPlugin, world::WorldManager};
-use panda::Panda;
-use std::sync::Arc;
-
+#[cfg(feature = "panda_plugins")]
 pub fn generate_panda_docs() {
-  info!("generating panda docs...",);
+  use crate::{plugin::panda::PandaPlugin, world::WorldManager};
+  use panda::Panda;
+  use std::sync::Arc;
 
+  info!("generating panda docs...",);
   let plugin = PandaPlugin::new(0, "".into(), Arc::new(WorldManager::new()));
   let mut pd = Panda::new();
   plugin.add_builtins(&mut pd);
@@ -28,4 +28,9 @@ pub fn generate_panda_docs() {
     "generated docs at {}",
     std::env::current_dir().unwrap().join("target/sl_docs/bamboo/index.html").display()
   );
+}
+
+#[cfg(not(feature = "panda_plugins"))]
+pub fn generate_panda_docs() {
+  info!("panda plugins disabled, cannot generate docs");
 }
