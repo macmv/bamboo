@@ -1,7 +1,9 @@
 use proc_macro::TokenStream;
 use proc_macro_error::abort;
 use quote::quote;
-use syn::{parse_macro_input, AttributeArgs, ItemImpl, Lit, Meta, NestedMeta};
+use syn::{
+  parse::Parser, parse_macro_input, Attribute, AttributeArgs, ItemImpl, Lit, Meta, NestedMeta,
+};
 
 pub fn define_ty(args: TokenStream, input: TokenStream) -> TokenStream {
   let args = parse_macro_input!(args as AttributeArgs);
@@ -29,12 +31,18 @@ pub fn define_ty(args: TokenStream, input: TokenStream) -> TokenStream {
   let mut block = parse_macro_input!(input as ItemImpl);
   for it in &mut block.items {
     match it {
-      syn::ImplItem::Method(_method) => {}
+      syn::ImplItem::Method(method) => {
+        if method.sig.ident == "new" {
+          let new_attr = quote!(#[cfg_attr(feature = "python_plugins", ::pyo3::new)]).into();
+          method.attrs.push(Attribute::parse_outer.parse(new_attr).unwrap().pop().unwrap());
+        }
+      }
       _ => abort!(it, "only expecting methods"),
     }
   }
   quote!(
     #[cfg_attr(feature = "panda_plugins", ::panda::define_ty(path = #panda_path, map_key = #panda_map_key))]
+    #[cfg_attr(feature = "python_plugins", ::pyo3::pymethods)]
     #block
   )
   .into()
