@@ -5,6 +5,9 @@ mod plugin;
 #[cfg(feature = "socket_plugins")]
 pub mod socket;
 
+#[cfg(not(doctest))]
+mod types;
+
 pub use json::*;
 pub use plugin::{
   GlobalServerEvent, Plugin, PluginEvent, PluginImpl, PluginMessage, PluginRequest, ServerEvent,

@@ -1,7 +1,6 @@
-#[cfg(not(doctest))]
-mod types;
-
-use super::{Bamboo, GlobalServerEvent, PluginImpl, PluginManager, ServerEvent, ServerMessage};
+use super::{
+  types, Bamboo, GlobalServerEvent, PluginImpl, PluginManager, ServerEvent, ServerMessage,
+};
 use crate::{block, player::Player, world::WorldManager};
 use bb_common::{math::Pos, net::sb::ClickWindow};
 use panda::{
