@@ -1,10 +1,11 @@
 use super::{
-  types, Bamboo, GlobalServerEvent, PluginImpl, PluginManager, ServerEvent, ServerMessage,
+  types, types::Callback as BCallback, Bamboo, GlobalServerEvent, PluginImpl, PluginManager,
+  ServerEvent, ServerMessage,
 };
 use crate::{block, player::Player, world::WorldManager};
 use bb_common::{math::Pos, net::sb::ClickWindow};
 use panda::{
-  runtime::{LockedEnv, Path as PdPath, Path as TyPath, Var},
+  runtime::{Callback, LockedEnv, Path as PdPath, Path as TyPath, Var},
   Panda, PdError,
 };
 use std::{fs, path::Path, sync::Arc};
@@ -15,6 +16,10 @@ pub struct PandaPlugin {
   name: String,
   sl:   Option<Panda>,
   bb:   Bamboo,
+}
+
+impl BCallback for Callback {
+  fn box_clone(&self) -> Box<dyn BCallback> { Box::new(self.clone()) }
 }
 
 impl PandaPlugin {

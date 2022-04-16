@@ -92,10 +92,12 @@ pub fn define_ty(args: TokenStream, input: TokenStream) -> TokenStream {
     }
   );
   // Will print the result of this proc macro
+  /*
   let mut p =
     std::process::Command::new("rustfmt").stdin(std::process::Stdio::piped()).spawn().unwrap();
   std::io::Write::write_all(p.stdin.as_mut().unwrap(), out.to_string().as_bytes()).unwrap();
   p.wait_with_output().unwrap();
+  */
 
   out.into()
 }

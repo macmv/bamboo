@@ -2,20 +2,41 @@ use super::{
   block::PBlockKind,
   item::PStack,
   util::{PChunkPos, PPos},
-  wrap, Callback as BCallback,
+  Callback as BCallback,
 };
 use crate::command::{Arg, Command, Parser};
 use bb_plugin_macros::define_ty;
-use std::sync::{Arc, Mutex};
+use std::{
+  fmt,
+  sync::{Arc, Mutex},
+};
 
 use panda::runtime::Callback;
+#[cfg_attr(feature = "python_plugins", ::pyo3::pyclass)]
+pub struct PCommand {
+  pub(super) inner:    Arc<Mutex<Command>>,
+  pub(super) callback: Option<Box<dyn BCallback>>,
+  pub(super) idx:      Vec<usize>,
+}
 
-wrap!(
-  Arc<Mutex<Command>>,
-  PCommand,
-  callback: Option<Box<dyn BCallback + Send + Sync>>,
-  idx: Vec<usize>
-);
+impl Clone for PCommand {
+  fn clone(&self) -> Self {
+    PCommand {
+      inner:    self.inner.clone(),
+      callback: self.callback.as_ref().map(|c| c.box_clone()),
+      idx:      self.idx.clone(),
+    }
+  }
+}
+impl fmt::Debug for PCommand {
+  fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    f.debug_struct("PCommand")
+      .field("inner", &self.inner)
+      .field("callback", &self.callback)
+      .field("idx", &self.idx)
+      .finish()
+  }
+}
 
 impl PCommand {
   fn command<'a>(&self, inner: &'a mut Command) -> &'a mut Command {
@@ -27,7 +48,7 @@ impl PCommand {
   }
 }
 
-pub fn sl_from_arg(arg: Arg) -> Var {
+pub fn sl_from_arg(arg: Arg) -> panda::runtime::Var {
   match arg {
     Arg::Literal(text) => text.into(),
     Arg::Bool(v) => v.into(),

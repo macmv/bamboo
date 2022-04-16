@@ -31,7 +31,7 @@ use player::PTeam;
 use std::fmt;
 use world::{gen::PBiome, PWorld};
 
-pub trait Callback: fmt::Debug {
+pub trait Callback: fmt::Debug + Send + Sync {
   #[cfg(feature = "panda_plugins")]
   fn call_panda(
     &self,
