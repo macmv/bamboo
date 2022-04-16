@@ -2,6 +2,8 @@ mod json;
 #[cfg(feature = "panda_plugins")]
 pub mod panda;
 mod plugin;
+#[cfg(feature = "python_plugins")]
+pub mod python;
 #[cfg(feature = "socket_plugins")]
 pub mod socket;
 

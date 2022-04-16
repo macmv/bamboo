@@ -2,14 +2,13 @@ use super::{
   block::PBlockKind,
   item::PStack,
   util::{PChunkPos, PPos},
-  wrap,
+  wrap, Callback,
 };
 use crate::command::{Arg, Command, Parser};
 use bb_plugin_macros::define_ty;
-use panda::runtime::{Callback, Var};
 use std::sync::{Arc, Mutex};
 
-wrap!(Arc<Mutex<Command>>, PCommand, callback: Option<Callback>, idx: Vec<usize>);
+wrap!(Arc<Mutex<Command>>, PCommand, callback: Option<Box<dyn Callback>>, idx: Vec<usize>);
 
 impl PCommand {
   fn command<'a>(&self, inner: &'a mut Command) -> &'a mut Command {
@@ -122,7 +121,7 @@ impl PCommand {
   ///   bb.info("ran setblock!")
   /// }
   /// ```
-  pub fn new(name: &str, callback: Callback) -> PCommand {
+  pub fn new(name: &str, callback: Box<dyn Callback>) -> PCommand {
     PCommand {
       inner:    Arc::new(Mutex::new(Command::new(name))),
       callback: Some(callback),
