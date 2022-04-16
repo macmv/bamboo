@@ -28,7 +28,26 @@ pub mod world;
 
 use command::PCommand;
 use player::PTeam;
+use std::fmt;
 use world::{gen::PBiome, PWorld};
+
+pub trait Callback: fmt::Debug {
+  #[cfg(feature = "panda_plugins")]
+  fn call_panda(
+    &self,
+    env: &mut panda::runtime::LockedEnv<'_>,
+    args: Vec<panda::runtime::Var>,
+  ) -> panda::runtime::Result<()> {
+    let _ = (env, args);
+    panic!("cannot call this callback in panda");
+  }
+  #[cfg(feature = "python_plugins")]
+  fn call_python(&self, args: Vec<pyo3::PyObject>) {
+    panic!("cannot call this callback in python");
+  }
+
+  fn box_clone(&self) -> Box<dyn Callback>;
+}
 
 macro_rules! add_from {
   ( $ty:ty, $new_ty:ident ) => {
@@ -121,8 +140,8 @@ impl Bamboo {
   pub fn add_command(&self, command: &PCommand) -> Result<(), RuntimeError> {
     let wm = self.wm.clone();
     let wm2 = self.wm.clone();
-    let cb = match command.callback.clone() {
-      Some(cb) => cb,
+    let cb = match &command.callback {
+      Some(cb) => cb.box_clone(),
       None => {
         return Err(RuntimeError::custom(
           "cannot pass in child command! you must pass in a command created from `Command::new`",
@@ -134,7 +153,7 @@ impl Bamboo {
     let idx = self.idx;
     wm.commands().add(command, move |_, player, args| {
       let wm = wm2.clone();
-      let mut cb = cb.clone();
+      let mut cb = cb.box_clone();
       {
         // We need this awkward scoping setup to avoid borrowing errors, and to make
         // sure `lock` doesn't get sent between threads.
@@ -144,7 +163,7 @@ impl Bamboo {
           let mut lock = wm.plugins().plugins.lock();
           let plugin = &mut lock[idx];
           let panda = plugin.unwrap_panda();
-          if let Err(e) = cb.call(
+          if let Err(e) = cb.call_panda(
             &mut panda.lock_env(),
             vec![
               player.map(|p| player::PPlayer::from(p.clone()).into()).unwrap_or(Var::None),

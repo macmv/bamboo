@@ -1,7 +1,10 @@
 use proc_macro::TokenStream;
 use proc_macro_error::abort;
 use quote::quote;
-use syn::{parse_macro_input, AttributeArgs, FnArg, Ident, ItemImpl, Lit, Meta, NestedMeta, Type};
+use syn::{
+  parse_macro_input, AttributeArgs, FnArg, Ident, ItemImpl, Lit, Meta, NestedMeta, PathArguments,
+  ReturnType, Type,
+};
 
 pub fn define_ty(args: TokenStream, input: TokenStream) -> TokenStream {
   let args = parse_macro_input!(args as AttributeArgs);
@@ -37,6 +40,7 @@ pub fn define_ty(args: TokenStream, input: TokenStream) -> TokenStream {
         let py_name = Ident::new(&format!("py_{}", method.sig.ident), name.span());
         let py_args = python_args(method.sig.inputs.iter());
         let py_arg_names = python_arg_names(method.sig.inputs.iter());
+        let (py_ret, conv_ret) = python_ret(&method.sig.output);
         let pd_name = Ident::new(&format!("pd_{}", method.sig.ident), name.span());
         let pd_args = panda_args(method.sig.inputs.iter());
         let pd_arg_names = panda_arg_names(method.sig.inputs.iter());
@@ -44,8 +48,8 @@ pub fn define_ty(args: TokenStream, input: TokenStream) -> TokenStream {
         if name == "new" {
           python_funcs.push(quote!(
             #[new]
-            fn #py_name(#(#py_args),*) #ret {
-              Self::#name(#(#py_arg_names),*)
+            fn #py_name(#(#py_args),*) #py_ret {
+              Self::#name(#(#py_arg_names),*) #conv_ret
             }
           ));
         } else if method.sig.receiver().is_none() {
@@ -64,7 +68,7 @@ pub fn define_ty(args: TokenStream, input: TokenStream) -> TokenStream {
         }
 
         panda_funcs.push(quote!(
-          fn #pd_name(#(#pd_args),*) {
+          fn #pd_name(#(#pd_args),*) #ret {
             Self::#name(#(#pd_arg_names),*)
           }
         ));
@@ -73,20 +77,26 @@ pub fn define_ty(args: TokenStream, input: TokenStream) -> TokenStream {
     }
   }
   let out = quote!(
-    #[cfg_attr(feature = "panda_plugins", ::panda::define_ty(path = #panda_path, map_key = #panda_map_key))]
     #block
-
-    #[cfg(feature = "panda_plugins")]
-    impl #ty {
-      #( #panda_funcs )*
-    }
 
     #[cfg(feature = "python_plugins")]
     #[::pyo3::pymethods]
     impl #ty {
       #( #python_funcs )*
     }
+
+    #[cfg(feature = "panda_plugins")]
+    #[::panda::define_ty(path = #panda_path, map_key = #panda_map_key)]
+    impl #ty {
+      #( #panda_funcs )*
+    }
   );
+  // Will print the result of this proc macro
+  let mut p =
+    std::process::Command::new("rustfmt").stdin(std::process::Stdio::piped()).spawn().unwrap();
+  std::io::Write::write_all(p.stdin.as_mut().unwrap(), out.to_string().as_bytes()).unwrap();
+  p.wait_with_output().unwrap();
+
   out.into()
 }
 
@@ -102,8 +112,8 @@ fn python_args<'a>(args: impl Iterator<Item = &'a FnArg>) -> Vec<impl quote::ToT
             | "f32" | "f64" | "Vec" => {
               quote!(#name: #path)
             }
-            // TODO
-            "Callback" => quote!(#name: crate::plugin::python::PyCallback),
+            // Assume this is a Box<dyn Callback>
+            "Box" => quote!(#name: ::pyo3::PyObject),
             "Var" => quote!(#name: i32),
             _ => abort!(ty.ty, "cannot handle type"),
           },
@@ -132,8 +142,7 @@ fn python_arg_names<'a>(args: impl Iterator<Item = &'a FnArg>) -> Vec<impl quote
             | "f32" | "f64" | "Vec" => {
               quote!(#name)
             }
-            // TODO
-            "Callback" => quote!(#name),
+            "Box" => quote!(Box::new(#name)),
             "Var" => quote!(#name),
             _ => abort!(ty.ty, "cannot handle type"),
           },
@@ -159,6 +168,7 @@ fn panda_args<'a>(args: impl Iterator<Item = &'a FnArg>) -> Vec<impl quote::ToTo
         let name = &ty.pat;
         match &*ty.ty {
           Type::Path(path) => match path.path.segments[0].ident.to_string().as_str() {
+            // Assume this is a Box<dyn Callback>
             "Box" => quote!(#name: Callback),
             _ => quote!(#name: #path),
           },
@@ -174,8 +184,41 @@ fn panda_arg_names<'a>(args: impl Iterator<Item = &'a FnArg>) -> Vec<impl quote:
       FnArg::Receiver(_) => quote!(self),
       FnArg::Typed(ty) => {
         let name = &ty.pat;
-        quote!(#name)
+        match &*ty.ty {
+          Type::Path(path) => match path.path.segments[0].ident.to_string().as_str() {
+            // Assume this is a Box<dyn Callback>
+            "Box" => quote!(Box::new(#name)),
+            _ => quote!(#name),
+          },
+          _ => quote!(#name),
+        }
       }
     })
     .collect()
+}
+
+fn python_ret<'a>(out: &ReturnType) -> (impl quote::ToTokens, Option<impl quote::ToTokens>) {
+  (
+    match &out {
+      ReturnType::Type(_, ty) => match &**ty {
+        Type::Path(path) => match path.path.segments[0].ident.to_string().as_str() {
+          "Result" => {
+            let arg = match &path.path.segments[0].arguments {
+              PathArguments::AngleBracketed(args) => args.args.first().cloned().unwrap(),
+              _ => unreachable!(),
+            };
+            return (
+              quote!(-> ::pyo3::PyResult<#arg>),
+              Some(quote!(.map_err(crate::plugin::python::conv_err))),
+            );
+          }
+          "Var" => quote!(-> ::pyo3::PyObject),
+          _ => quote!(#out),
+        },
+        _ => abort!(out, "cannot handle ret"),
+      },
+      _ => quote!(),
+    },
+    None,
+  )
 }
