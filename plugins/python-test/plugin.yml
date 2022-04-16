@@ -1,11 +1,11 @@
 
 # The type of plugin. For socket based plugins, use 'socket', and
 # for panda plugins, use 'panda'
-type: panda
+type: python
 
 # If set to true, then this plugin will be loaded. If set to false,
 # this plugin will be ignored.
-enabled: false
+enabled: true
 
 # Socket-specific configs
 socket:

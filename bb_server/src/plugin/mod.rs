@@ -103,40 +103,53 @@ impl PluginManager {
         }
         let ty: String = config.get("type");
         let name = path.file_stem().unwrap().to_str().unwrap().to_string();
-        if ty == "socket" {
-          info!("found socket plugin at {}", path.to_str().unwrap());
-          #[cfg(feature = "socket_plugins")]
-          {
-            if let Some(plugin) = sockets.add(name.clone(), f.path()) {
-              plugins.push(Plugin::new(config, plugin));
+        match ty.as_str() {
+          "socket" => {
+            info!("found socket plugin at {}", path.to_str().unwrap());
+            #[cfg(feature = "socket_plugins")]
+            {
+              if let Some(plugin) = sockets.add(name.clone(), f.path()) {
+                plugins.push(Plugin::new(config, plugin));
+              }
+            }
+            #[cfg(not(feature = "socket_plugins"))]
+            {
+              info!("socket plugins are disabling, skipping {}", path.to_str().unwrap());
             }
           }
-          #[cfg(not(feature = "socket_plugins"))]
-          {
-            info!("socket plugins are disabling, skipping {}", path.to_str().unwrap());
+          "python" => {
+            info!("found python plugin at {}", path.to_str().unwrap());
+            #[cfg(feature = "python_plugins")]
+            {
+              plugins.push(Plugin::new(config, python::Plugin::new(name.clone())));
+            }
+            #[cfg(not(feature = "python_plugins"))]
+            {
+              info!("python plugins are disabling, skipping {}", path.to_str().unwrap());
+            }
           }
-        } else if ty == "panda" {
-          let main_path = f.path().join("main.pand");
-          info!("found panda plugin at {}", main_path.to_str().unwrap());
-          #[cfg(feature = "panda_plugins")]
-          {
-            if main_path.exists() && main_path.is_file() {
-              let name = f.path().file_stem().unwrap().to_str().unwrap().to_string();
-              let mut p = PandaPlugin::new(plugins.len(), name.clone(), wm.clone());
+          "panda" => {
+            let main_path = f.path().join("main.pand");
+            info!("found panda plugin at {}", main_path.to_str().unwrap());
+            #[cfg(feature = "panda_plugins")]
+            {
+              if main_path.exists() && main_path.is_file() {
+                let name = f.path().file_stem().unwrap().to_str().unwrap().to_string();
+                let mut p = PandaPlugin::new(plugins.len(), name.clone(), wm.clone());
 
-              p.load_from_dir(&f.path(), self);
-              p.call_init();
-              plugins.push(Plugin::new(config, p));
-            } else {
-              error!("plugin `{name}` does not have a `main.pand` file");
+                p.load_from_dir(&f.path(), self);
+                p.call_init();
+                plugins.push(Plugin::new(config, p));
+              } else {
+                error!("plugin `{name}` does not have a `main.pand` file");
+              }
+            }
+            #[cfg(not(feature = "panda_plugins"))]
+            {
+              info!("panda plugins are disabling, skipping {}", main_path.to_str().unwrap());
             }
           }
-          #[cfg(not(feature = "panda_plugins"))]
-          {
-            info!("panda plugins are disabling, skipping {}", main_path.to_str().unwrap());
-          }
-        } else {
-          error!("plugin `{name}` has invalid plugin type: `{ty}`");
+          _ => error!("plugin `{name}` has invalid plugin type: `{ty}`"),
         }
       }
     }
