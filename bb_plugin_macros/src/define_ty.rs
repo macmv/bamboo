@@ -1,7 +1,7 @@
 use proc_macro::TokenStream;
 use proc_macro_error::abort;
 use quote::quote;
-use syn::{parse_macro_input, AttributeArgs, Ident, ItemImpl, Lit, Meta, NestedMeta};
+use syn::{parse_macro_input, AttributeArgs, FnArg, Ident, ItemImpl, Lit, Meta, NestedMeta, Type};
 
 pub fn define_ty(args: TokenStream, input: TokenStream) -> TokenStream {
   let args = parse_macro_input!(args as AttributeArgs);
@@ -34,33 +34,25 @@ pub fn define_ty(args: TokenStream, input: TokenStream) -> TokenStream {
       syn::ImplItem::Method(method) => {
         let name = &method.sig.ident;
         let py_name = Ident::new(&format!("py_{}", method.sig.ident), name.span());
+        let args = transform_args(method.sig.inputs.iter());
         if method.sig.ident == "new" {
           python_funcs.push(quote!(
             #[new]
-            fn #py_name() {
+            fn #py_name(#(#args),*) {
               // Self::#name(#arg_names)
             }
           ));
-          /*
-          let new_attr = quote!(#[cfg_attr(feature = "python_plugins", new)]).into();
-          method.attrs.push(Attribute::parse_outer.parse(new_attr).unwrap().pop().unwrap());
-          */
         }
         if method.sig.receiver().is_none() {
-          /*
-          let new_attr = quote!(#[cfg_attr(feature = "python_plugins", staticmethod)]).into();
-          method.attrs.push(Attribute::parse_outer.parse(new_attr).unwrap().pop().unwrap());
-          */
-          // let new_attr = quote!(#[staticmethod]).into();
           python_funcs.push(quote!(
             #[staticmethod]
-            fn #py_name() {
+            fn #py_name(#(#args),*) {
               // Self::#name(#arg_names)
             }
           ));
         } else {
           python_funcs.push(quote!(
-            fn #py_name() {
+            fn #py_name(#(#args),*) {
               // Self::#name(#arg_names)
             }
           ));
@@ -80,4 +72,37 @@ pub fn define_ty(args: TokenStream, input: TokenStream) -> TokenStream {
     }
   );
   out.into()
+}
+
+fn transform_args<'a>(args: impl Iterator<Item = &'a FnArg>) -> Vec<impl quote::ToTokens> {
+  args
+    .map(|a| match a {
+      FnArg::Receiver(_) => quote!(#a),
+      FnArg::Typed(ty) => {
+        let name = &ty.pat;
+        match &*ty.ty {
+          Type::Path(path) => match path.path.segments[0].ident.to_string().as_str() {
+            "u8" | "i8" | "u16" | "i16" | "u32" | "i32" | "u64" | "i64" | "u128" | "i128"
+            | "f32" | "f64" | "Vec" => {
+              quote!(#name: #path)
+            }
+            // TODO
+            "Callback" => quote!(#name: i32),
+            "Var" => quote!(#name: i32),
+            _ => abort!(ty.ty, "cannot handle type"),
+          },
+          Type::Reference(path) => match &*path.elem {
+            Type::Path(path) => match path.path.segments[0].ident.to_string().as_str() {
+              "str" => {
+                quote!(#name: #path)
+              }
+              _ => quote!(#name: #path),
+            },
+            _ => abort!(ty.ty, "cannot handle type"),
+          },
+          _ => abort!(ty.ty, "cannot handle type"),
+        }
+      }
+    })
+    .collect()
 }
