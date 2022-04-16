@@ -39,6 +39,7 @@ pub struct PluginManager {
 }
 
 #[derive(Clone)]
+#[cfg_attr(feature = "python_plugins", ::pyo3::pyclass)]
 pub struct Bamboo {
   // Index into plugins array
   idx:  usize,

@@ -41,6 +41,7 @@ macro_rules! add_from {
 macro_rules! wrap {
   ( $ty:ty, $new_ty:ident ) => {
     #[derive(Clone, Debug)]
+    #[cfg_attr(feature = "python_plugins", ::pyo3::pyclass)]
     pub struct $new_ty {
       #[allow(unused)]
       pub(super) inner: $ty,
@@ -51,6 +52,7 @@ macro_rules! wrap {
 
   ( $ty:ty, $new_ty:ident, $($extra:ident: $extra_ty:ty),* ) => {
     #[derive(Clone, Debug)]
+    #[cfg_attr(feature = "python_plugins", ::pyo3::pyclass)]
     pub struct $new_ty {
       pub(super) inner:  $ty,
       $(
@@ -62,6 +64,7 @@ macro_rules! wrap {
 macro_rules! wrap_eq {
   ( $ty:ty, $new_ty:ident ) => {
     #[derive(Clone, Debug, Hash, PartialEq, Eq)]
+    #[cfg_attr(feature = "python_plugins", ::pyo3::pyclass)]
     pub struct $new_ty {
       #[allow(unused)]
       pub(super) inner: $ty,

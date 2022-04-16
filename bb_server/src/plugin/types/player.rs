@@ -24,6 +24,7 @@ use std::{
 };
 
 #[derive(Clone, Debug)]
+#[cfg_attr(feature = "python_plugins", ::pyo3::pyclass)]
 pub struct PPlayer {
   pub(super) inner: Weak<Player>,
   pub username:     String,

@@ -13,6 +13,7 @@ use std::{fmt, sync::Arc};
 pub mod gen;
 
 #[derive(Clone)]
+#[cfg_attr(feature = "python_plugins", ::pyo3::pyclass)]
 pub struct PWorld {
   pub(super) inner: Arc<World>,
 }

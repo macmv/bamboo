@@ -4,6 +4,7 @@ use std::{fmt, sync::Arc};
 
 #[derive(Clone)]
 #[allow(unused)]
+#[cfg_attr(feature = "python_plugins", ::pyo3::pyclass)]
 pub struct PBiome {
   name:             String,
   pub(super) inner: Arc<PBiomeGen>,
