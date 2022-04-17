@@ -1,7 +1,7 @@
 
 # The type of plugin. For socket based plugins, use 'socket', and
 # for panda plugins, use 'panda'
-type: panda
+type: wasm
 
 # If set to true, then this plugin will be loaded. If set to false,
 # this plugin will be ignored.
@@ -18,9 +18,9 @@ socket:
 wasm:
   # The command to run to compile the wasm. If empty, no command
   # will be run.
-  compile: ""
+  compile: "cargo build"
   # The path to the compile wasm.
-  output: ""
+  output: "target/debug/wasm-test.wasm"
 
 # Panda-specific configs
 panda:

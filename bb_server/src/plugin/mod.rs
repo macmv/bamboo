@@ -82,8 +82,6 @@ impl PluginManager {
 
     #[cfg(feature = "socket_plugins")]
     let mut sockets = SocketManager::new(wm.clone());
-    #[cfg(feature = "wasm_plugins")]
-    wasm::foo().unwrap();
 
     let iter = match fs::read_dir("plugins") {
       Ok(v) => v,
@@ -130,6 +128,20 @@ impl PluginManager {
             #[cfg(not(feature = "python_plugins"))]
             {
               info!("python plugins are disabling, skipping {}", path.to_str().unwrap());
+            }
+          }
+          "wasm" => {
+            info!("found wasm plugin at {}", path.to_str().unwrap());
+            #[cfg(feature = "wasm_plugins")]
+            {
+              match wasm::Plugin::new(name.clone()) {
+                Ok(p) => plugins.push(Plugin::new(config, p)),
+                Err(e) => error!("error loading {name}: {e}"),
+              }
+            }
+            #[cfg(not(feature = "wasm_plugins"))]
+            {
+              info!("wasm plugins are disabling, skipping {}", path.to_str().unwrap());
             }
           }
           "panda" => {
