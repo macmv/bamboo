@@ -14,7 +14,7 @@ pub struct Plugin {
 /// into.
 type OUT = u32;
 
-trait Input<'a> {
+trait Input {
   type WasmArgs: WasmTypeList;
   fn call_native<Rets: WasmTypeList>(
     &self,
@@ -22,42 +22,47 @@ trait Input<'a> {
     addr: OUT,
   ) -> Option<Rets>;
 }
-trait Output<'a> {
+trait Output {
   fn size() -> u32;
-  fn from_addr(mem: &'a Memory, addr: OUT) -> Self;
+  fn from_addr(mem: &Memory, addr: OUT) -> Self;
 }
 
-impl<'a> Output<'a> for () {
+impl Output for () {
   fn size() -> u32 { 0 }
   fn from_addr(_: &Memory, _: OUT) -> Self { () }
 }
-impl<'a, A: Output<'a>> Output<'a> for (A,) {
+impl<A: Output> Output for (A,) {
   fn size() -> u32 { A::size() }
-  fn from_addr(mem: &'a Memory, addr: OUT) -> Self { (A::from_addr(mem, addr),) }
+  fn from_addr(mem: &Memory, addr: OUT) -> Self { (A::from_addr(mem, addr),) }
 }
-impl<'a, A: Output<'a>, B: Output<'a>> Output<'a> for (A, B) {
+impl<A: Output, B: Output> Output for (A, B) {
   fn size() -> u32 { A::size() + B::size() }
-  fn from_addr(mem: &'a Memory, mut addr: OUT) -> Self {
+  fn from_addr(mem: &Memory, mut addr: OUT) -> Self {
     (A::from_addr(mem, addr), {
       addr += A::size();
       B::from_addr(mem, addr)
     })
   }
 }
-impl<'a> Output<'a> for &'a str {
+impl Output for String {
   fn size() -> u32 { <(i32, i32)>::size() }
-  fn from_addr(mem: &'a Memory, mut addr: OUT) -> Self {
+  fn from_addr(mem: &Memory, mut addr: OUT) -> Self {
     let (ptr, len) = <(i32, i32)>::from_addr(mem, addr);
     let ptr = WasmPtr::<u8, _>::new(ptr as u32);
-    unsafe { ptr.get_utf8_str(mem, len as u32).unwrap() }
+    // SAFETY: The safety invariants of `get_utf8_str` say that we cannot modify the
+    // memory that the &str points to, which we aren't doing. The reason I'm not
+    // just using `get_utf8_string` is because the internals of that function look a
+    // lot slower than the `str` variant. I have not benchmarked it, but from a
+    // glance this method seems faster.
+    unsafe { ptr.get_utf8_str(mem, len as u32).unwrap().into() }
   }
 }
-impl<'a> Output<'a> for i32 {
+impl Output for i32 {
   fn size() -> u32 { 4 }
   fn from_addr(mem: &Memory, addr: OUT) -> Self { mem.view::<i32>()[addr as usize / 4].get() }
 }
 
-impl<'a> Input<'a> for i32 {
+impl Input for i32 {
   type WasmArgs = (i32, OUT);
   fn call_native<Rets: WasmTypeList>(
     &self,
@@ -78,7 +83,7 @@ impl Plugin {
     Ok(Plugin { inst })
   }
 
-  fn call<'a, I: Input<'a>, O: Output<'a>>(&'a self, name: &str, input: I) -> Option<O> {
+  fn call<I: Input, O: Output>(&self, name: &str, input: I) -> Option<O> {
     let mem = self.inst.exports.get_memory("memory").unwrap();
     // FIXME:
     // This seems stupid, but in what world is address zero valid? The plugin will
@@ -94,7 +99,7 @@ impl Plugin {
 
 impl PluginImpl for Plugin {
   fn call(&self, ev: ServerMessage) -> Result<bool, ()> {
-    let res = self.call::<i32, &str>("init", 5);
+    let res = self.call::<i32, String>("init", 5).unwrap();
     dbg!(res);
     Ok(true)
   }
