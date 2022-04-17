@@ -27,6 +27,11 @@ members = [
   #
   # This is not part of the server! It is only used for testing.
   "bb_cli",
+  # This is a weird crate. It uses a buildscript to parse the bb_server
+  # plugin interface, then generates a C interface from that code.
+  # So it doesn't directly depend on anything here, but it requires
+  # the source of bb_server to be present.
+  "bb_ffi",
 ]
 
 [profile.rust-analyzer]
