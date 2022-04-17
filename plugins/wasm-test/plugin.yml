@@ -18,9 +18,9 @@ socket:
 wasm:
   # The command to run to compile the wasm. If empty, no command
   # will be run.
-  compile: "cargo build"
-  # The path to the compile wasm.
-  output: "target/debug/wasm-test.wasm"
+  compile: "wasm-pack build --target web"
+  # The path to the compiled wasm.
+  output: "pkg/wasm_test_bg.wasm"
 
 # Panda-specific configs
 panda:

@@ -19,7 +19,7 @@ wasm:
   # The command to run to compile the wasm. If empty, no command
   # will be run.
   compile: ""
-  # The path to the compile wasm.
+  # The path to the compiled wasm.
   output: ""
 
 # Panda-specific configs
