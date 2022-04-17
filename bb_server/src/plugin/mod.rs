@@ -6,6 +6,8 @@ mod plugin;
 pub mod python;
 #[cfg(feature = "socket_plugins")]
 pub mod socket;
+#[cfg(feature = "wasm_plugins")]
+pub mod wasm;
 
 #[cfg(not(doctest))]
 mod types;
@@ -80,6 +82,8 @@ impl PluginManager {
 
     #[cfg(feature = "socket_plugins")]
     let mut sockets = SocketManager::new(wm.clone());
+    #[cfg(feature = "wasm_plugins")]
+    wasm::foo().unwrap();
 
     let iter = match fs::read_dir("plugins") {
       Ok(v) => v,
