@@ -1,7 +1,7 @@
 pub use bb_ffi as ffi;
 pub use log::*;
 
-use bb_ffi::{CChat, CPlayer, CPos};
+use bb_ffi::CChat;
 use std::{ffi::CString, marker::PhantomData};
 
 use bb_common::util::Chat;
@@ -26,15 +26,13 @@ impl Bamboo {
   }
 }
 
-use log::{Record, Level, Metadata, LevelFilter};
+use log::{Level, LevelFilter, Metadata, Record};
 
 struct Logger;
 static LOGGER: Logger = Logger;
 
 impl log::Log for Logger {
-  fn enabled(&self, metadata: &Metadata) -> bool {
-    metadata.level() <= Level::Info
-  }
+  fn enabled(&self, metadata: &Metadata) -> bool { metadata.level() <= Level::Info }
 
   fn log(&self, record: &Record) {
     if self.enabled(record.metadata()) {
