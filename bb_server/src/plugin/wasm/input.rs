@@ -1,6 +1,17 @@
 use super::{Input, OUT};
 use wasmer::{FromToNativeWasmType, NativeFunc, WasmTypeList};
 
+impl Input for () {
+  type WasmArgs = OUT;
+  fn call_native<Rets: WasmTypeList>(
+    &self,
+    native: &NativeFunc<Self::WasmArgs, Rets>,
+    addr: OUT,
+  ) -> Option<Rets> {
+    native.call(addr).ok()
+  }
+}
+
 impl<A, B> Input for (A, B)
 where
   A: Input + FromToNativeWasmType + Copy,

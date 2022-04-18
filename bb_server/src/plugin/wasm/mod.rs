@@ -3,7 +3,10 @@ mod output;
 
 use super::{PluginImpl, ServerMessage};
 use std::{error::Error, fs, path::Path};
-use wasmer::{imports, Instance, Memory, Module, NativeFunc, Store, WasmTypeList};
+use wasmer::{
+  imports, Function, HostEnvInitError, Instance, LazyInit, Memory, Module, NativeFunc, Store,
+  WasmPtr, WasmTypeList, WasmerEnv,
+};
 
 pub struct Plugin {
   inst: Instance,
@@ -31,12 +34,28 @@ trait Output {
   fn from_addr(mem: &Memory, addr: OUT) -> Self;
 }
 
+#[derive(WasmerEnv, Clone)]
+pub struct Env {
+  #[wasmer(export)]
+  memory: LazyInit<Memory>,
+}
+
+fn broadcast(env: &Env, message: i32) {
+  let ptr = WasmPtr::<u8, _>::new(message as u32);
+  let s = ptr.get_utf8_string_with_nul(env.memory.get_ref().unwrap()).unwrap();
+  dbg!(s);
+}
+
 impl Plugin {
   pub fn new(name: String, path: &Path, output: String) -> Result<Self, Box<dyn Error>> {
     let store = Store::default();
     let module = Module::new(&store, fs::read(path.join(output))?)?;
-    // The module doesn't import anything, so we create an empty import object.
-    let import_object = imports! {};
+    let env = Env { memory: LazyInit::new() };
+    let import_object = imports! {
+      "env" => {
+        "broadcast" => Function::new_native_with_env(&store, env, broadcast),
+      }
+    };
     let inst = Instance::new(&module, &import_object)?;
     Ok(Plugin { inst })
   }
@@ -57,7 +76,7 @@ impl Plugin {
 
 impl PluginImpl for Plugin {
   fn call(&self, ev: ServerMessage) -> Result<bool, ()> {
-    let res = self.call::<i32, (bool, String)>("init", 4).unwrap();
+    let res = self.call::<(), ()>("init", ()).unwrap();
     dbg!(res);
     Ok(true)
   }

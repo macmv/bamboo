@@ -3,5 +3,12 @@
 version = 3
 
 [[package]]
+name = "bb_ffi"
+version = "0.2.0"
+
+[[package]]
 name = "wasm-test"
 version = "0.1.0"
+dependencies = [
+ "bb_ffi",
+]
