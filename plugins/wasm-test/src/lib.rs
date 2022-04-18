@@ -1,4 +1,5 @@
 use bb_plugin::{
+  ffi::CUUID,
   player::Player,
   util::{chat::Color, Chat},
 };
@@ -7,13 +8,11 @@ use bb_plugin::{
 extern crate bb_plugin;
 
 #[no_mangle]
-extern "C" fn init() {
-  bb_plugin::init();
-}
+extern "C" fn init() { bb_plugin::init(); }
 
 #[no_mangle]
-extern "C" fn on_block_place(eid: i32, x: i32, y: i32, z: i32) {
-  let p = Player::new(eid);
+extern "C" fn on_block_place(id: CUUID, x: i32, y: i32, z: i32) {
+  let p = Player::new(id);
   let mut chat = Chat::new("player: ");
   chat.add(&p.username());
   chat.add(", x: ").color(Color::Red);
@@ -25,5 +24,5 @@ extern "C" fn on_block_place(eid: i32, x: i32, y: i32, z: i32) {
   let bb = bb_plugin::instance();
   bb.broadcast(chat);
   info!("hello world");
-  warn!("big: {eid}");
+  warn!("big: {:?}", id.bytes);
 }

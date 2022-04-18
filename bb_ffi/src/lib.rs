@@ -13,6 +13,15 @@ unsafe impl ValueType for CPlayer {}
 
 #[repr(C)]
 #[derive(Clone, Copy)]
+pub struct CUUID {
+  pub bytes: [u32; 4],
+}
+
+#[cfg(feature = "host")]
+unsafe impl ValueType for CUUID {}
+
+#[repr(C)]
+#[derive(Clone, Copy)]
 pub struct CChat {
   pub message: *const c_char,
 }
@@ -45,7 +54,7 @@ extern "C" {
   /// Writes the player's username into the given buffer. Returns 1
   /// if the username won't fit in the buffer, or if the pointer is
   /// invalid.
-  pub fn bb_player_username(player: i32, buf: *mut u8, len: u32) -> i32;
+  pub fn bb_player_username(player: *const CUUID, buf: *mut u8, len: u32) -> i32;
   /// Sends the given chat message to the player.
-  pub fn bb_player_send_message(player: i32, message: *const CChat);
+  pub fn bb_player_send_message(player: *const CUUID, message: *const CChat);
 }

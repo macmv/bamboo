@@ -1,6 +1,6 @@
 use crate::world::WorldManager;
 use bb_common::util::Chat;
-use bb_ffi::CChat;
+use bb_ffi::{CChat, CUUID};
 use log::Level;
 use std::sync::Arc;
 use wasmer::{imports, Array, Function, ImportObject, LazyInit, Memory, Store, WasmPtr, WasmerEnv};
@@ -59,8 +59,20 @@ fn broadcast(env: &Env, message: WasmPtr<CChat>) {
   env.wm.broadcast(Chat::new(s));
 }
 
-fn player_username(env: &Env, player: i32, buf: WasmPtr<u8>, buf_len: u32) -> i32 {
-  let player = match env.wm.get_player(bb_common::util::UUID::from_u128(0)) {
+fn player_username(
+  env: &Env,
+  id: WasmPtr<CUUID>,
+  buf: WasmPtr<u8>,
+  buf_len: u32,
+) -> i32 {
+  let mem = env.mem();
+  let uuid = match id.deref(mem) {
+    Some(id) => id.get(),
+    None => return 1,
+  };
+  let player = match env.wm.get_player(bb_common::util::UUID::from_u128(
+    (uuid.bytes[3] as u128) << (3 * 32) | (uuid.bytes[2] as u128) << (2 * 32) | (uuid.bytes[1] as u128) << 32 | uuid.bytes[0] as u128,
+  )) {
     Some(p) => p,
     None => return 1,
   };
@@ -69,7 +81,6 @@ fn player_username(env: &Env, player: i32, buf: WasmPtr<u8>, buf_len: u32) -> i3
   if bytes.len() > buf_len as usize {
     return 1;
   }
-  let mem = env.mem();
   if end as usize > mem.size().bytes().0 {
     return 1;
   }

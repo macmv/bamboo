@@ -4,6 +4,7 @@ mod output;
 
 use super::{PluginImpl, ServerEvent, ServerMessage};
 use crate::world::WorldManager;
+use bb_ffi::CUUID;
 use std::{error::Error, fs, path::Path, sync::Arc};
 use wasmer::{ExportError, Instance, Memory, Module, NativeFunc, Store, WasmTypeList};
 
@@ -77,9 +78,22 @@ impl PluginImpl for Plugin {
   fn call(&self, m: ServerMessage) -> Result<bool, ()> {
     Ok(match m {
       ServerMessage::Event { player, event } => match event {
-        ServerEvent::BlockPlace { pos, .. } => {
-          self.call("on_block_place", (player.eid(), pos.x(), pos.y(), pos.z()))?
-        }
+        ServerEvent::BlockPlace { pos, .. } => self.call(
+          "on_block_place",
+          (
+            CUUID {
+              bytes: [
+                u32::from_ne_bytes(player.id().as_le_bytes()[0..4].try_into().unwrap()),
+                u32::from_ne_bytes(player.id().as_le_bytes()[4..8].try_into().unwrap()),
+                u32::from_ne_bytes(player.id().as_le_bytes()[8..12].try_into().unwrap()),
+                u32::from_ne_bytes(player.id().as_le_bytes()[12..16].try_into().unwrap()),
+              ],
+            },
+            pos.x(),
+            pos.y(),
+            pos.z(),
+          ),
+        )?,
         _ => true,
       },
       _ => true,
