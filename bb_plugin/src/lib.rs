@@ -19,7 +19,7 @@ impl Bamboo {
     unsafe {
       let s = CString::new(message.to_codes()).unwrap();
       let c_chat = CChat { message: s.as_ptr() };
-      bb_ffi::broadcast(&c_chat);
+      bb_ffi::bb_broadcast(&c_chat);
     }
   }
 }
