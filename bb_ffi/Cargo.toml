@@ -9,3 +9,4 @@ edition = "2021"
 wasmer-types = { version = "2.2.1", default-features = false, features = ["std"] }
 
 [build-dependencies]
+cbindgen = "0.20.0"
