@@ -228,6 +228,9 @@ dependencies = [
 [[package]]
 name = "bb_ffi"
 version = "0.2.0"
+dependencies = [
+ "wasmer-types",
+]
 
 [[package]]
 name = "bb_macros"

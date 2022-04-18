@@ -7,7 +7,7 @@ edition = "2021"
 crate-type = ["cdylib"]
 
 [dependencies]
-bb_ffi = { path = "../../bb_ffi" }
+bb_plugin = { path = "../../bb_plugin" }
 
 # Seperate workspace
 [workspace]

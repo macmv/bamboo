@@ -1,11 +1,11 @@
 [package]
-name = "bb_ffi"
+name = "bb_plugin"
 version = "0.2.0"
 edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-wasmer-types = { version = "2.2.1", default-features = false, features = ["std"] }
+bb_ffi = { path = "../bb_ffi" }
 
 [build-dependencies]

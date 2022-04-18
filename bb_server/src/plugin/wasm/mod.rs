@@ -2,6 +2,7 @@ mod input;
 mod output;
 
 use super::{PluginImpl, ServerMessage};
+use bb_ffi::CChat;
 use std::{error::Error, fs, path::Path};
 use wasmer::{
   imports, Function, HostEnvInitError, Instance, LazyInit, Memory, Module, NativeFunc, Store,
@@ -40,8 +41,9 @@ pub struct Env {
   memory: LazyInit<Memory>,
 }
 
-fn broadcast(env: &Env, message: i32) {
-  let ptr = WasmPtr::<u8, _>::new(message as u32);
+fn broadcast(env: &Env, message: WasmPtr<CChat>) {
+  let chat = message.deref(env.memory.get_ref().unwrap()).unwrap().get();
+  let ptr = WasmPtr::<u8, _>::new(chat.message as u32);
   let s = ptr.get_utf8_string_with_nul(env.memory.get_ref().unwrap()).unwrap();
   dbg!(s);
 }
