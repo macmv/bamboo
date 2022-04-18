@@ -2,17 +2,25 @@ use crate::world::WorldManager;
 use bb_common::util::Chat;
 use bb_ffi::CChat;
 use std::sync::Arc;
-use wasmer::{imports, Function, ImportObject, LazyInit, Memory, Store, WasmPtr, WasmerEnv};
+use wasmer::{imports, Function, ImportObject, LazyInit, Memory, Store, WasmPtr, WasmerEnv, Array};
 
 #[derive(WasmerEnv, Clone)]
 pub struct Env {
   #[wasmer(export)]
   pub memory: LazyInit<Memory>,
   pub wm:     Arc<WorldManager>,
+  pub name:   Arc<String>,
 }
 
 impl Env {
   pub fn mem(&self) -> &Memory { self.memory.get_ref().expect("Env not initialized") }
+}
+
+fn info(env: &Env, message: WasmPtr<u8, Array>) {
+  unsafe {
+    let s = message.get_utf8_str_with_nul(env.mem()).unwrap();
+    info!("`{}`: {}", env.name, s);
+  }
 }
 
 fn broadcast(env: &Env, message: WasmPtr<CChat>) {
@@ -44,10 +52,11 @@ fn player_username(env: &Env, player: i32, buf: WasmPtr<u8>, buf_len: u32) -> i3
   0
 }
 
-pub fn imports(store: &Store, wm: Arc<WorldManager>) -> ImportObject {
-  let env = Env { memory: LazyInit::new(), wm };
+pub fn imports(store: &Store, wm: Arc<WorldManager>, name: String) -> ImportObject {
+  let env = Env { memory: LazyInit::new(), wm, name: Arc::new(name) };
   imports! {
     "env" => {
+      "bb_info" => Function::new_native_with_env(&store, env.clone(), info),
       "bb_broadcast" => Function::new_native_with_env(&store, env.clone(), broadcast),
       "bb_player_username" => Function::new_native_with_env(&store, env.clone(), player_username),
     }

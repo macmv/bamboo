@@ -23,3 +23,10 @@ impl Bamboo {
     }
   }
 }
+
+pub fn info(message: &str) {
+  unsafe {
+    let s = CString::new(message).unwrap();
+    bb_ffi::bb_info(s.as_ptr() as *const _);
+  }
+}

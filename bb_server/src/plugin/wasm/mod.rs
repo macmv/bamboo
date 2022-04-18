@@ -34,14 +34,14 @@ trait Output {
 
 impl Plugin {
   pub fn new(
-    _name: String,
+    name: String,
     path: &Path,
     output: String,
     wm: Arc<WorldManager>,
   ) -> Result<Self, Box<dyn Error>> {
     let store = Store::default();
     let module = Module::new(&store, fs::read(path.join(output))?)?;
-    let import_object = funcs::imports(&store, wm);
+    let import_object = funcs::imports(&store, wm, name);
     let inst = Instance::new(&module, &import_object)?;
     Ok(Plugin { inst })
   }

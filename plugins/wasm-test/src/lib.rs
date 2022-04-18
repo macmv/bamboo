@@ -16,4 +16,5 @@ extern "C" fn on_block_place(eid: i32, x: i32, y: i32, z: i32) {
   chat.add(&format!("{}", z));
   let bb = bb_plugin::instance();
   bb.broadcast(chat);
+  bb_plugin::info("hello world");
 }
