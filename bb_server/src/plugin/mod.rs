@@ -134,7 +134,12 @@ impl PluginManager {
             info!("found wasm plugin at {}", path.to_str().unwrap());
             #[cfg(feature = "wasm_plugins")]
             {
-              match wasm::Plugin::new(name.clone(), &path, config.get::<_, String>("wasm.output")) {
+              match wasm::Plugin::new(
+                name.clone(),
+                &path,
+                config.get::<_, String>("wasm.output"),
+                wm.clone(),
+              ) {
                 Ok(p) => plugins.push(Plugin::new(config, p)),
                 Err(e) => error!("error loading {name}: {e}"),
               }

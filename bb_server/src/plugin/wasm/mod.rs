@@ -1,12 +1,14 @@
 mod input;
 mod output;
 
-use super::{PluginImpl, ServerMessage};
+use super::{PluginImpl, ServerEvent, ServerMessage};
+use crate::world::WorldManager;
+use bb_common::util::Chat;
 use bb_ffi::CChat;
-use std::{error::Error, fs, path::Path};
+use std::{error::Error, fs, path::Path, sync::Arc};
 use wasmer::{
-  imports, Function, Instance, LazyInit, Memory, Module, NativeFunc, Store,
-  WasmPtr, WasmTypeList, WasmerEnv,
+  imports, Function, Instance, LazyInit, Memory, Module, NativeFunc, Store, WasmPtr, WasmTypeList,
+  WasmerEnv,
 };
 
 pub struct Plugin {
@@ -39,20 +41,26 @@ trait Output {
 pub struct Env {
   #[wasmer(export)]
   memory: LazyInit<Memory>,
+  wm:     Arc<WorldManager>,
 }
 
 fn broadcast(env: &Env, message: WasmPtr<CChat>) {
   let chat = message.deref(env.memory.get_ref().unwrap()).unwrap().get();
   let ptr = WasmPtr::<u8, _>::new(chat.message as u32);
   let s = ptr.get_utf8_string_with_nul(env.memory.get_ref().unwrap()).unwrap();
-  dbg!(s);
+  env.wm.broadcast(Chat::new(s));
 }
 
 impl Plugin {
-  pub fn new(_name: String, path: &Path, output: String) -> Result<Self, Box<dyn Error>> {
+  pub fn new(
+    _name: String,
+    path: &Path,
+    output: String,
+    wm: Arc<WorldManager>,
+  ) -> Result<Self, Box<dyn Error>> {
     let store = Store::default();
     let module = Module::new(&store, fs::read(path.join(output))?)?;
-    let env = Env { memory: LazyInit::new() };
+    let env = Env { memory: LazyInit::new(), wm };
     let import_object = imports! {
       "env" => {
         "broadcast" => Function::new_native_with_env(&store, env, broadcast),
@@ -77,9 +85,16 @@ impl Plugin {
 }
 
 impl PluginImpl for Plugin {
-  fn call(&self, _ev: ServerMessage) -> Result<bool, ()> {
-    let res = self.call::<(), ()>("init", ()).unwrap();
-    dbg!(res);
+  fn call(&self, m: ServerMessage) -> Result<bool, ()> {
+    match m {
+      ServerMessage::Event { player, event } => match event {
+        ServerEvent::BlockPlace { .. } => {
+          let res = self.call::<(), ()>("init", ()).unwrap();
+        }
+        _ => {}
+      },
+      _ => {}
+    }
     Ok(true)
   }
 }
