@@ -8,5 +8,6 @@ edition = "2021"
 [dependencies]
 bb_common = { path = "../bb_common", default-features = false }
 bb_ffi = { path = "../bb_ffi" }
+log = "0.4"
 
 [build-dependencies]

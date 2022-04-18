@@ -3,6 +3,14 @@ use bb_plugin::{
   util::{chat::Color, Chat},
 };
 
+#[macro_use]
+extern crate bb_plugin;
+
+#[no_mangle]
+extern "C" fn init() {
+  bb_plugin::init();
+}
+
 #[no_mangle]
 extern "C" fn on_block_place(eid: i32, x: i32, y: i32, z: i32) {
   let p = Player::new(eid);
@@ -16,5 +24,6 @@ extern "C" fn on_block_place(eid: i32, x: i32, y: i32, z: i32) {
   chat.add(&format!("{}", z));
   let bb = bb_plugin::instance();
   bb.broadcast(chat);
-  bb_plugin::info("hello world");
+  info!("hello world");
+  warn!("big: {eid}");
 }

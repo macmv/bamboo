@@ -1,4 +1,6 @@
 pub use bb_ffi as ffi;
+pub use log::*;
+
 use bb_ffi::{CChat, CPlayer, CPos};
 use std::{ffi::CString, marker::PhantomData};
 
@@ -24,9 +26,32 @@ impl Bamboo {
   }
 }
 
-pub fn info(message: &str) {
-  unsafe {
-    let s = CString::new(message).unwrap();
-    bb_ffi::bb_info(s.as_ptr() as *const _);
+use log::{Record, Level, Metadata, LevelFilter};
+
+struct Logger;
+static LOGGER: Logger = Logger;
+
+impl log::Log for Logger {
+  fn enabled(&self, metadata: &Metadata) -> bool {
+    metadata.level() <= Level::Info
   }
+
+  fn log(&self, record: &Record) {
+    if self.enabled(record.metadata()) {
+      unsafe {
+        if let Some(s) = record.args().as_str() {
+          bb_ffi::bb_log_len(record.level() as u32, s.as_ptr() as *const _, s.len() as u32);
+        } else {
+          let s = record.args().to_string();
+          bb_ffi::bb_log_len(record.level() as u32, s.as_ptr() as *const _, s.len() as u32);
+        }
+      }
+    }
+  }
+  fn flush(&self) {}
+}
+
+pub fn init() {
+  log::set_logger(&LOGGER).unwrap();
+  log::set_max_level(LevelFilter::Info);
 }

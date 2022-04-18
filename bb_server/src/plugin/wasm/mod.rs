@@ -43,7 +43,9 @@ impl Plugin {
     let module = Module::new(&store, fs::read(path.join(output))?)?;
     let import_object = funcs::imports(&store, wm, name);
     let inst = Instance::new(&module, &import_object)?;
-    Ok(Plugin { inst })
+    let plug = Plugin { inst };
+    plug.call("init", ()).unwrap();
+    Ok(plug)
   }
 
   fn call<I: Input>(&self, name: &str, input: I) -> Result<bool, ()> {

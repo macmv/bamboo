@@ -1,8 +1,9 @@
 use crate::world::WorldManager;
 use bb_common::util::Chat;
 use bb_ffi::CChat;
+use log::Level;
 use std::sync::Arc;
-use wasmer::{imports, Function, ImportObject, LazyInit, Memory, Store, WasmPtr, WasmerEnv, Array};
+use wasmer::{imports, Array, Function, ImportObject, LazyInit, Memory, Store, WasmPtr, WasmerEnv};
 
 #[derive(WasmerEnv, Clone)]
 pub struct Env {
@@ -16,11 +17,39 @@ impl Env {
   pub fn mem(&self) -> &Memory { self.memory.get_ref().expect("Env not initialized") }
 }
 
-fn info(env: &Env, message: WasmPtr<u8, Array>) {
-  unsafe {
-    let s = message.get_utf8_str_with_nul(env.mem()).unwrap();
-    info!("`{}`: {}", env.name, s);
-  }
+fn log_from_level(level: u32) -> Option<Level> {
+  Some(match level {
+    1 => Level::Error,
+    2 => Level::Warn,
+    3 => Level::Info,
+    4 => Level::Debug,
+    5 => Level::Trace,
+    _ => return None,
+  })
+}
+
+fn log(env: &Env, level: u32, message: WasmPtr<u8, Array>) {
+  let level = match log_from_level(level) {
+    Some(l) => l,
+    None => return,
+  };
+  // SAFETY: We aren't using the string outside this function,
+  // so this is safe. It also avoids allocating, so that's why
+  // we use this instead of `get_utf8_string_with_nul`.
+  let s = unsafe { message.get_utf8_str_with_nul(env.mem()).unwrap() };
+  log!(level, "`{}`: {}", env.name, s);
+}
+
+fn log_len(env: &Env, level: u32, message: WasmPtr<u8, Array>, len: u32) {
+  let level = match log_from_level(level) {
+    Some(l) => l,
+    None => return,
+  };
+  // SAFETY: We aren't using the string outside this function,
+  // so this is safe. It also avoids allocating, so that's why
+  // we use this instead of `get_utf8_string_with_nul`.
+  let s = unsafe { message.get_utf8_str(env.mem(), len).unwrap() };
+  log!(level, "`{}`: {}", env.name, s);
 }
 
 fn broadcast(env: &Env, message: WasmPtr<CChat>) {
@@ -56,7 +85,8 @@ pub fn imports(store: &Store, wm: Arc<WorldManager>, name: String) -> ImportObje
   let env = Env { memory: LazyInit::new(), wm, name: Arc::new(name) };
   imports! {
     "env" => {
-      "bb_info" => Function::new_native_with_env(&store, env.clone(), info),
+      "bb_log" => Function::new_native_with_env(&store, env.clone(), log),
+      "bb_log_len" => Function::new_native_with_env(&store, env.clone(), log_len),
       "bb_broadcast" => Function::new_native_with_env(&store, env.clone(), broadcast),
       "bb_player_username" => Function::new_native_with_env(&store, env.clone(), player_username),
     }

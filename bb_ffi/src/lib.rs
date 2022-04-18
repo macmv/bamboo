@@ -32,18 +32,13 @@ pub struct CPos {
 unsafe impl ValueType for CPos {}
 
 extern "C" {
-  /// Logs the given message as a debug message. The pointer must point
-  /// to a nul-terminated string.
-  pub fn bb_debug(message: *const u8);
-  /// Logs the given message as info. The pointer must point to a
+  /// Logs the given message. The pointer must point to a utf8-valid
   /// nul-terminated string.
-  pub fn bb_info(message: *const u8);
-  /// Logs the given message as a warning. The pointer must point to
-  /// a nul-terminated string.
-  pub fn bb_warn(message: *const u8);
-  /// Logs the given message as an error. The pointer must point to
-  /// a nul-terminated string.
-  pub fn bb_error(message: *const u8);
+  pub fn bb_log(level: u32, message: *const u8);
+  /// Logs the given message. The pointer must pointer to a utf8-valid
+  /// string. There can be null bytes, but they will not terminate the
+  /// message.
+  pub fn bb_log_len(level: u32, message: *const u8, len: u32);
 
   /// Broadcasts the given chat message to all players.
   pub fn bb_broadcast(message: *const CChat);
