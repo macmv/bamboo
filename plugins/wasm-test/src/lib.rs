@@ -24,5 +24,4 @@ extern "C" fn on_block_place(id: CUUID, x: i32, y: i32, z: i32) {
   let bb = bb_plugin::instance();
   bb.broadcast(chat);
   info!("hello world");
-  warn!("big: {:?}", id.bytes);
 }
