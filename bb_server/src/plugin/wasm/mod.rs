@@ -7,8 +7,8 @@ use bb_common::util::Chat;
 use bb_ffi::CChat;
 use std::{error::Error, fs, path::Path, sync::Arc};
 use wasmer::{
-  imports, Function, Instance, LazyInit, Memory, Module, NativeFunc, Store, WasmPtr, WasmTypeList,
-  WasmerEnv,
+  imports, ExportError, Function, Instance, LazyInit, Memory, Module, NativeFunc, Store, WasmPtr,
+  WasmTypeList, WasmerEnv,
 };
 
 pub struct Plugin {
@@ -26,7 +26,6 @@ trait Input {
   fn call_native<Rets: WasmTypeList>(
     &self,
     native: &NativeFunc<Self::WasmArgs, Rets>,
-    addr: OUT,
   ) -> Option<Rets>;
 }
 trait Output {
@@ -45,10 +44,14 @@ pub struct Env {
 }
 
 fn broadcast(env: &Env, message: WasmPtr<CChat>) {
-  let chat = message.deref(env.memory.get_ref().unwrap()).unwrap().get();
+  let chat = message.deref(env.mem()).unwrap().get();
   let ptr = WasmPtr::<u8, _>::new(chat.message as u32);
-  let s = ptr.get_utf8_string_with_nul(env.memory.get_ref().unwrap()).unwrap();
+  let s = ptr.get_utf8_string_with_nul(env.mem()).unwrap();
   env.wm.broadcast(Chat::new(s));
+}
+
+impl Env {
+  pub fn mem(&self) -> &Memory { self.memory.get_ref().expect("Env not initialized") }
 }
 
 impl Plugin {
@@ -70,31 +73,41 @@ impl Plugin {
     Ok(Plugin { inst })
   }
 
-  fn call<I: Input, O: Output>(&self, name: &str, input: I) -> Option<O> {
-    let mem = self.inst.exports.get_memory("memory").unwrap();
-    // FIXME:
-    // This seems stupid, but in what world is address zero valid? The plugin will
-    // never allocate at address zero, and it probably won't write to it unless we
-    // tell it to. Because I can't figure out a better solution, I'm just going to
-    // leave it as is until its a problem.
-    let out = 0_u32;
-    let func = self.inst.exports.get_native_function::<I::WasmArgs, ()>(name).unwrap();
-    input.call_native(&func, out).unwrap();
-    Some(O::from_addr(mem, out))
+  fn call<I: Input>(&self, name: &str, input: I) -> Result<bool, ()> {
+    // Try to get function with bool. If this fails, try with no return. If that
+    // fails, error out.
+    //
+    // If the function doesn't exist, we ignore the error.
+    match self.inst.exports.get_native_function::<I::WasmArgs, u8>(name) {
+      Ok(func) => Ok(input.call_native(&func).unwrap() != 0),
+      Err(ExportError::IncompatibleType) => {
+        match self.inst.exports.get_native_function::<I::WasmArgs, ()>(name) {
+          Ok(func) => {
+            input.call_native(&func).unwrap();
+            Ok(true)
+          }
+          Err(ExportError::IncompatibleType) => {
+            error!("incompatible types when calling {name}");
+            Err(())
+          }
+          Err(ExportError::Missing(_)) => Ok(true),
+        }
+      }
+      Err(ExportError::Missing(_)) => Ok(true),
+    }
   }
 }
 
 impl PluginImpl for Plugin {
   fn call(&self, m: ServerMessage) -> Result<bool, ()> {
-    match m {
+    Ok(match m {
       ServerMessage::Event { player, event } => match event {
-        ServerEvent::BlockPlace { .. } => {
-          let res = self.call::<(), ()>("init", ()).unwrap();
+        ServerEvent::BlockPlace { pos, .. } => {
+          self.call::<(i32, i32, i32)>("on_block_place", (pos.x(), pos.y(), pos.z()))?
         }
-        _ => {}
+        _ => true,
       },
-      _ => {}
-    }
-    Ok(true)
+      _ => true,
+    })
   }
 }

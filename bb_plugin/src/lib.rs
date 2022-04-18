@@ -1,3 +1,4 @@
+pub use bb_ffi as ffi;
 use bb_ffi::{CChat, CPlayer, CPos};
 use std::{ffi::CString, marker::PhantomData};
 

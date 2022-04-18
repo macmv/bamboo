@@ -1,14 +1,13 @@
-use super::{Input, OUT};
+use super::Input;
 use wasmer::{FromToNativeWasmType, NativeFunc, WasmTypeList};
 
 impl Input for () {
-  type WasmArgs = OUT;
+  type WasmArgs = ();
   fn call_native<Rets: WasmTypeList>(
     &self,
     native: &NativeFunc<Self::WasmArgs, Rets>,
-    addr: OUT,
   ) -> Option<Rets> {
-    native.call(addr).ok()
+    native.call().ok()
   }
 }
 
@@ -17,23 +16,36 @@ where
   A: Input + FromToNativeWasmType + Copy,
   B: Input + FromToNativeWasmType + Copy,
 {
-  type WasmArgs = (A, B, OUT);
+  type WasmArgs = (A, B);
   fn call_native<Rets: WasmTypeList>(
     &self,
     native: &NativeFunc<Self::WasmArgs, Rets>,
-    addr: OUT,
   ) -> Option<Rets> {
-    native.call(self.0, self.1, addr).ok()
+    native.call(self.0, self.1).ok()
+  }
+}
+
+impl<A, B, C> Input for (A, B, C)
+where
+  A: Input + FromToNativeWasmType + Copy,
+  B: Input + FromToNativeWasmType + Copy,
+  C: Input + FromToNativeWasmType + Copy,
+{
+  type WasmArgs = (A, B, C);
+  fn call_native<Rets: WasmTypeList>(
+    &self,
+    native: &NativeFunc<Self::WasmArgs, Rets>,
+  ) -> Option<Rets> {
+    native.call(self.0, self.1, self.2).ok()
   }
 }
 
 impl Input for i32 {
-  type WasmArgs = (i32, OUT);
+  type WasmArgs = i32;
   fn call_native<Rets: WasmTypeList>(
     &self,
     native: &NativeFunc<Self::WasmArgs, Rets>,
-    addr: OUT,
   ) -> Option<Rets> {
-    native.call(*self, addr).ok()
+    native.call(*self).ok()
   }
 }
