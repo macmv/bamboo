@@ -2,15 +2,7 @@ use crate::util::{Buffer, BufferError};
 use flate2::read::{GzDecoder, ZlibDecoder};
 use std::{collections::HashMap, error::Error, fmt, io, io::Read, string::FromUtf8Error};
 
-use super::{Tag, NBT};
-
-#[derive(Debug)]
-pub enum ParseError {
-  InvalidType(u8),
-  InvalidString(FromUtf8Error),
-  IO(io::Error),
-  BufferError(BufferError),
-}
+use super::{ParseError, Tag, NBT};
 
 impl fmt::Display for ParseError {
   fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {

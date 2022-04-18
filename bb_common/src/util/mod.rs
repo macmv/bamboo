@@ -9,6 +9,7 @@ mod item;
 
 use crate::math::Pos;
 use bb_macros::Transfer;
+#[cfg(feature = "host")]
 use rand::{rngs::OsRng, RngCore};
 use serde::de::{self, Deserialize, Deserializer, Unexpected, Visitor};
 use std::{error::Error, fmt, num::ParseIntError, str::FromStr};
@@ -58,6 +59,38 @@ pub fn read_varint(buf: &[u8]) -> (i32, isize) {
     }
   }
   (res, total_read)
+}
+
+use crate::nbt::NBT;
+use bb_transfer::{MessageRead, MessageReader, MessageWrite, MessageWriter, ReadError, WriteError};
+
+impl MessageRead<'_> for UUID {
+  fn read(m: &mut MessageReader) -> Result<Self, ReadError> {
+    Ok(UUID::from_le_bytes(m.read_bytes()?.try_into().unwrap()))
+  }
+}
+impl MessageWrite for UUID {
+  fn write(&self, m: &mut MessageWriter) -> Result<(), WriteError> {
+    m.write_bytes(&self.as_le_bytes())?;
+    Ok(())
+  }
+}
+
+#[cfg(feature = "host")]
+impl MessageRead<'_> for NBT {
+  fn read(m: &mut MessageReader) -> Result<Self, ReadError> {
+    // TODO: ParseError into ReadError
+    Ok(NBT::deserialize(m.read_bytes()?.to_vec()).unwrap())
+  }
+}
+#[cfg(not(feature = "host"))]
+impl MessageRead<'_> for NBT {
+  fn read(_: &mut MessageReader) -> Result<Self, ReadError> { panic!("cannot read NBT in plugin") }
+}
+impl MessageWrite for NBT {
+  fn write(&self, m: &mut MessageWriter) -> Result<(), WriteError> {
+    m.write_bytes(&self.serialize())
+  }
 }
 
 #[derive(Transfer, Debug, Clone, Copy, PartialEq, Eq)]
@@ -237,6 +270,7 @@ impl Error for UUIDParseError {}
 
 impl UUID {
   /// Generates a random UUID. This uses rand::OsRng, so it will be secure.
+  #[cfg(feature = "host")]
   pub fn random() -> Self {
     let mut arr = [0; 16];
     OsRng.fill_bytes(&mut arr);

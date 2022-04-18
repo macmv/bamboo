@@ -6,6 +6,7 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+bb_common = { path = "../bb_common", default-features = false }
 bb_ffi = { path = "../bb_ffi" }
 
 [build-dependencies]

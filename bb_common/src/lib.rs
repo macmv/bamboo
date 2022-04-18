@@ -7,7 +7,9 @@
 extern crate log;
 
 // use flexi_logger::{Duplicate, LogTarget, Logger};
+#[cfg(feature = "host")]
 use log::LevelFilter;
+#[cfg(feature = "host")]
 use log4rs::{
   append::{console::ConsoleAppender, file::FileAppender},
   config::{Appender, Config, Root},
@@ -19,6 +21,7 @@ pub mod config;
 pub mod math;
 pub mod metadata;
 pub mod nbt;
+#[cfg(feature = "host")]
 pub mod net;
 pub mod registry;
 pub mod util;
@@ -49,6 +52,7 @@ pub use registry::Registry;
 // }
 
 /// Makes a pattern, which adds file names in debug mode.
+#[cfg(feature = "host")]
 pub fn make_pattern() -> PatternEncoder {
   #[cfg(debug_assertions)]
   let pat = PatternEncoder::new("{d(%Y-%m-%d %H:%M:%S:%f)} {f}:{L} [{h({l})}] {m}{n}");
@@ -59,16 +63,25 @@ pub fn make_pattern() -> PatternEncoder {
 
 /// Initializes logger. Might do more things in the future.
 pub fn init(name: &str) {
-  let pat = make_pattern();
-  let stdout = ConsoleAppender::builder().encoder(Box::new(pat)).build();
+  #[cfg(feature = "host")]
+  {
+    let pat = make_pattern();
+    let stdout = ConsoleAppender::builder().encoder(Box::new(pat)).build();
 
-  init_with_stdout(name, Appender::builder().build("stdout", Box::new(stdout)))
+    init_with_stdout(name, Appender::builder().build("stdout", Box::new(stdout)))
+  }
+  #[cfg(not(feature = "host"))]
+  {
+    let _ = name;
+  }
 }
 
+#[cfg(feature = "host")]
 pub fn init_with_stdout(name: &str, stdout: Appender) {
   init_with_stdout_level(name, stdout, LevelFilter::Info)
 }
 
+#[cfg(feature = "host")]
 pub fn init_with_level(name: &str, level: LevelFilter) {
   let pat = make_pattern();
   let stdout = ConsoleAppender::builder().encoder(Box::new(pat)).build();
@@ -76,6 +89,7 @@ pub fn init_with_level(name: &str, level: LevelFilter) {
   init_with_stdout_level(name, Appender::builder().build("stdout", Box::new(stdout)), level)
 }
 
+#[cfg(feature = "host")]
 pub fn init_with_stdout_level(name: &str, stdout: Appender, level: LevelFilter) {
   let pat = make_pattern();
 

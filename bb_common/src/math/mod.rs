@@ -1,16 +1,20 @@
 mod chunk_pos;
+#[cfg(feature = "host")]
 pub mod der;
 mod fast;
 mod fpos;
 mod pos;
+#[cfg(feature = "host")]
 mod rng;
 mod vec;
 
 pub use fast::{FastMath, EPSILON};
 pub use fpos::{FPos, FPosError};
+#[cfg(feature = "host")]
 pub use rng::WyhashRng;
 pub use vec::{Vec2, Vec3};
 
+#[cfg(feature = "host")]
 pub use rand_core::RngCore;
 
 use sha1::{Digest, Sha1};

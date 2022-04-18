@@ -11,14 +11,14 @@ bb_macros = { path = "../bb_macros" }
 # bb_generated = { path = "../bb_generated" }
 
 # flexi_logger = "0.17"
-log4rs = "1.0.0"
+log4rs = { version = "1.0.0", optional = true }
 anyhow = "1.0.0"
 log = "0.4"
 
 crossbeam-channel = "0.5.1"
 
 asn1 = "0.5.3"
-rsa = "0.4.0"
+rsa = { version = "0.4.0", optional = true }
 sha-1 = "0.9.6"
 byteorder = "1.4"
 
@@ -29,11 +29,11 @@ strum = "0.20"
 strum_macros = "0.20"
 
 bytes = "1.0.1"
-rand = "0.8.3"
-rand_core = "0.6.3"
+rand = { version = "0.8.3", optional = true }
+rand_core = { version = "0.6.3", optional = true }
 wyhash = "0.5.0"
 num_cpus = "1.13.0"
-flate2 = "1.0"
+flate2 = { version = "1.0", optional = true }
 
 serde = "1.0"
 serde_derive = "1.0"
@@ -51,6 +51,10 @@ bb_data = { path = "../bb_data" }
 pprof = { version = "0.4.3", features = ["criterion", "flamegraph"] }
 criterion = "0.3.4"
 pretty_assertions = "1.2.0"
+
+[features]
+default = ["host"]
+host = ["log4rs", "flate2", "rsa", "rand", "rand_core"]
 
 [[bench]]
 name = "chunk"

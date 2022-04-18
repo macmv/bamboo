@@ -1,8 +1,6 @@
-use crate::{
-  math::ChunkPos,
-  nbt::{ParseError, NBT},
-  util::UUID,
-};
+#[cfg(feature = "host")]
+use crate::nbt::NBT;
+use crate::{math::ChunkPos, nbt::ParseError, util::UUID};
 use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
 
 use std::{
@@ -226,6 +224,7 @@ where
   }
 
   /// Reads an nbt tag from self.
+  #[cfg(feature = "host")]
   pub fn read_nbt(&mut self) -> Result<NBT> {
     NBT::deserialize_buf(self).map_err(|e| self.err(e, Reading))
   }

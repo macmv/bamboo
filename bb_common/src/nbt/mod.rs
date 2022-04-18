@@ -1,11 +1,22 @@
+#[cfg(feature = "host")]
 mod deserialize;
+#[cfg(feature = "host")]
 mod serde;
 mod serialize;
 
+#[cfg(feature = "host")]
 pub use self::serde::{to_nbt, to_tag};
-pub use deserialize::ParseError;
 
-use std::collections::HashMap;
+use crate::util::BufferError;
+use std::{collections::HashMap, io, string::FromUtf8Error};
+
+#[derive(Debug)]
+pub enum ParseError {
+  InvalidType(u8),
+  InvalidString(FromUtf8Error),
+  IO(io::Error),
+  BufferError(BufferError),
+}
 
 /// This is an nbt tag. It has a name, and any amount of data. This can be used
 /// to store item data, entity data, level data, and more.
