@@ -1,5 +1,7 @@
+#[cfg(feature = "host")]
 use std::env;
 
+#[cfg(feature = "host")]
 fn main() {
   let crate_dir = env::var("CARGO_MANIFEST_DIR").unwrap();
 
@@ -9,3 +11,5 @@ fn main() {
     .expect("Unable to generate bindings")
     .write_to_file("bamboo.h");
 }
+#[cfg(not(feature = "host"))]
+fn main() {}

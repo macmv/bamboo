@@ -5,7 +5,7 @@ use super::{PluginImpl, ServerMessage};
 use bb_ffi::CChat;
 use std::{error::Error, fs, path::Path};
 use wasmer::{
-  imports, Function, HostEnvInitError, Instance, LazyInit, Memory, Module, NativeFunc, Store,
+  imports, Function, Instance, LazyInit, Memory, Module, NativeFunc, Store,
   WasmPtr, WasmTypeList, WasmerEnv,
 };
 
@@ -49,7 +49,7 @@ fn broadcast(env: &Env, message: WasmPtr<CChat>) {
 }
 
 impl Plugin {
-  pub fn new(name: String, path: &Path, output: String) -> Result<Self, Box<dyn Error>> {
+  pub fn new(_name: String, path: &Path, output: String) -> Result<Self, Box<dyn Error>> {
     let store = Store::default();
     let module = Module::new(&store, fs::read(path.join(output))?)?;
     let env = Env { memory: LazyInit::new() };
@@ -77,7 +77,7 @@ impl Plugin {
 }
 
 impl PluginImpl for Plugin {
-  fn call(&self, ev: ServerMessage) -> Result<bool, ()> {
+  fn call(&self, _ev: ServerMessage) -> Result<bool, ()> {
     let res = self.call::<(), ()>("init", ()).unwrap();
     dbg!(res);
     Ok(true)
