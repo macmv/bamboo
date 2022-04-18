@@ -1,9 +1,14 @@
-use bb_plugin::util::{chat::Color, Chat};
+use bb_plugin::{
+  player::Player,
+  util::{chat::Color, Chat},
+};
 
 #[no_mangle]
-extern "C" fn on_block_place(x: i32, y: i32, z: i32) {
-  let mut chat = Chat::new("pos: ");
-  chat.add("x: ").color(Color::Red);
+extern "C" fn on_block_place(eid: i32, x: i32, y: i32, z: i32) {
+  let p = Player::new(eid);
+  let mut chat = Chat::new("player: ");
+  chat.add(&p.username());
+  chat.add(", x: ").color(Color::Red);
   chat.add(&format!("{}, ", x));
   chat.add("y: ").color(Color::Red);
   chat.add(&format!("{}, ", y));

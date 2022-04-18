@@ -50,6 +50,24 @@ fn broadcast(env: &Env, message: WasmPtr<CChat>) {
   env.wm.broadcast(Chat::new(s));
 }
 
+fn player_username(env: &Env, player: i32, buf: WasmPtr<u8>, buf_len: u32) {
+  let player = env.wm.get_player(bb_common::util::UUID::from_u128(0)).unwrap();
+  let bytes = player.username().as_bytes();
+  let end = buf.offset() + bytes.len() as u32;
+  if bytes.len() > buf_len as usize {
+    return;
+  }
+  let mem = env.mem();
+  if end as usize > mem.size().bytes().0 {
+    return;
+  }
+  unsafe {
+    let ptr = mem.view::<u8>().as_ptr().add(buf.offset() as usize) as *mut u8;
+    let slice: &mut [u8] = std::slice::from_raw_parts_mut(ptr, bytes.len());
+    slice.copy_from_slice(bytes);
+  }
+}
+
 impl Env {
   pub fn mem(&self) -> &Memory { self.memory.get_ref().expect("Env not initialized") }
 }
@@ -66,7 +84,8 @@ impl Plugin {
     let env = Env { memory: LazyInit::new(), wm };
     let import_object = imports! {
       "env" => {
-        "broadcast" => Function::new_native_with_env(&store, env, broadcast),
+        "broadcast" => Function::new_native_with_env(&store, env.clone(), broadcast),
+        "player_username" => Function::new_native_with_env(&store, env.clone(), player_username),
       }
     };
     let inst = Instance::new(&module, &import_object)?;
@@ -83,7 +102,7 @@ impl Plugin {
       Err(ExportError::IncompatibleType) => {
         match self.inst.exports.get_native_function::<I::WasmArgs, ()>(name) {
           Ok(func) => {
-            input.call_native(&func).unwrap();
+            input.call_native(&func);
             Ok(true)
           }
           Err(ExportError::IncompatibleType) => {
@@ -103,7 +122,7 @@ impl PluginImpl for Plugin {
     Ok(match m {
       ServerMessage::Event { player, event } => match event {
         ServerEvent::BlockPlace { pos, .. } => {
-          self.call::<(i32, i32, i32)>("on_block_place", (pos.x(), pos.y(), pos.z()))?
+          self.call("on_block_place", (player.eid(), pos.x(), pos.y(), pos.z()))?
         }
         _ => true,
       },

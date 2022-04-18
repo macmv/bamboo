@@ -33,4 +33,5 @@ unsafe impl ValueType for CPos {}
 
 extern "C" {
   pub fn broadcast(message: *const CChat);
+  pub fn player_username(player: i32, buf: *mut u8, len: u32);
 }

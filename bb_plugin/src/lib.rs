@@ -6,6 +6,8 @@ use bb_common::util::Chat;
 
 pub use bb_common::{math, util};
 
+pub mod player;
+
 pub struct Bamboo {
   marker: PhantomData<()>,
 }
