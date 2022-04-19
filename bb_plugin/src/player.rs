@@ -1,5 +1,5 @@
-use std::ffi::CStr;
 use bb_ffi::CUUID;
+use std::ffi::CStr;
 
 pub struct Player {
   id: CUUID,
