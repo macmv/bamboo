@@ -244,6 +244,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "bb_plugin"
+version = "0.2.0"
+dependencies = [
+ "bb_common",
+ "bb_ffi",
+ "log",
+]
+
+[[package]]
 name = "bb_plugin_macros"
 version = "0.2.0"
 dependencies = [

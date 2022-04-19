@@ -14,8 +14,11 @@ members = [
   # Proc macros to generate plugin types on the server. Depended
   # on only by the server.
   "bb_plugin_macros",
-  # The Minecraft server. This is the first binary target. It is
-  # a fully-functioning server.
+  # This defines a bunch of #[repr(C)] structs/functions, which are
+  # used in the Wasm api. Depended on by the server and bb_plugin.
+  "bb_ffi",
+  # The Minecraft server. This is the first binary target. It depends
+  # on bb_common, bb_ffi, bb_transfer, and bb_plugin_macros.
   "bb_server",
   # The proxy. This is required for any clients to connection to
   # the server. It converts the bb_transfer protocol into the
@@ -27,11 +30,12 @@ members = [
   #
   # This is not part of the server! It is only used for testing.
   "bb_cli",
-  # This is a weird crate. It uses a buildscript to parse the bb_server
-  # plugin interface, then generates a C interface from that code.
-  # So it doesn't directly depend on anything here, but it requires
-  # the source of bb_server to be present.
-  "bb_ffi",
+
+  # This is a library that should be included on the plugin side.
+  # It wraps all the types in `bb_ffi` with safe, easy to use types.
+  # To write a plugin in another language, one would need to work
+  # from `bb_ffi`, not `bb_plugin`, as this is very Rust-specific.
+  "bb_plugin",
 ]
 
 [profile.rust-analyzer]
