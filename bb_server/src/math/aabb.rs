@@ -33,7 +33,7 @@ impl AABB {
   /// Returns true if this collided with anything.
   pub fn move_towards(&mut self, delta: Vec3, nearby: &[AABB]) -> Option<CollisionResult> {
     let mut result = None;
-    let start = self.clone();
+    let start = *self;
     let end = AABB::new(self.pos + delta, self.size);
     let mut time = 1.0;
     for &wall in nearby.iter().filter(|&&o| end.is_colliding_with(o)) {

@@ -60,6 +60,11 @@ struct EventWrapper {
   pub is_writable: bool,
 }
 
+pub struct NewConn {
+  pub sender: ConnSender,
+  pub info:   JoinInfo,
+}
+
 impl fmt::Debug for Connection {
   fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
     f.debug_struct("Connection").field("closed", &self.closed).finish()
@@ -153,7 +158,7 @@ impl Connection {
   /// returned, then the next time this functions is called, that same player
   /// should be passed in. This function should be called again after
   /// Some(player) is returned, as it may not have read all availible data.
-  pub fn read(&mut self) -> io::Result<(bool, Option<(ConnSender, JoinInfo)>, Vec<sb::Packet>)> {
+  pub fn read(&mut self) -> io::Result<(bool, Option<NewConn>, Vec<sb::Packet>)> {
     let mut out = vec![];
     loop {
       let n = match self.stream.read(&mut self.garbage) {
@@ -163,9 +168,9 @@ impl Connection {
         Err(e) => return Err(e),
       };
       self.incoming.extend_from_slice(&self.garbage[..n]);
-      let (info, packets) = self.read_incoming()?;
-      if info.is_some() {
-        return Ok((false, info, packets));
+      let (new_conn, packets) = self.read_incoming()?;
+      if new_conn.is_some() {
+        return Ok((false, new_conn, packets));
       }
       out.extend(packets);
     }
@@ -199,7 +204,7 @@ impl Connection {
 
   fn try_flush(&mut self) -> io::Result<()> {
     while !self.outgoing.is_empty() {
-      let n = match self.stream.write(&mut self.outgoing) {
+      let n = match self.stream.write(&self.outgoing) {
         Ok(v) => v,
         Err(e) => return Err(e),
       };
@@ -208,7 +213,7 @@ impl Connection {
     Ok(())
   }
 
-  fn read_incoming(&mut self) -> io::Result<(Option<(ConnSender, JoinInfo)>, Vec<sb::Packet>)> {
+  fn read_incoming(&mut self) -> io::Result<(Option<NewConn>, Vec<sb::Packet>)> {
     let mut out = vec![];
     while !self.incoming.is_empty() {
       let mut m = MessageReader::new(&self.incoming);
@@ -262,7 +267,7 @@ impl Connection {
               }
               self.ver = Some(ProtocolVersion::from(info.ver as i32));
               // We rely on the caller to set the player using this value.
-              return Ok((Some((self.sender(), info)), out));
+              return Ok((Some(NewConn { sender: self.sender(), info }), out));
             }
           } else {
             break;
@@ -310,7 +315,7 @@ impl Connection {
 }
 
 pub struct ConnectionManager {
-  connections: Arc<RwLock<HashMap<Token, (Mutex<Connection>, Option<Arc<Player>>)>>>,
+  connections: Arc<RwLock<HashMap<Token, ConnPlayer>>>,
   wm:          Arc<WorldManager>,
 }
 
@@ -318,9 +323,18 @@ pub enum WakeEvent {
   Clientbound(Token),
 }
 
+struct ConnPlayer {
+  pub conn:   Mutex<Connection>,
+  pub player: Option<Arc<Player>>,
+}
+
 struct State {
   wm:    Arc<WorldManager>,
-  conns: Arc<RwLock<HashMap<Token, (Mutex<Connection>, Option<Arc<Player>>)>>>,
+  conns: Arc<RwLock<HashMap<Token, ConnPlayer>>>,
+}
+
+impl ConnPlayer {
+  pub fn new(conn: Connection) -> Self { ConnPlayer { conn: Mutex::new(conn), player: None } }
 }
 
 impl ConnectionManager {
@@ -379,14 +393,14 @@ impl ConnectionManager {
 
             self.connections.write().insert(
               token,
-              (Mutex::new(Connection::new(conn, tx.clone(), waker.clone(), token)), None),
+              ConnPlayer::new(Connection::new(conn, tx.clone(), waker.clone(), token)),
             );
           },
           WAKE => {
             let r = rx.clone();
             write_pool.execute(move |s| loop {
               match r.try_recv() {
-                Ok(ev) => Self::wake_event(&s, ev),
+                Ok(ev) => Self::wake_event(s, ev),
                 Err(TryRecvError::Empty) => break,
                 Err(_) => unreachable!(),
               }
@@ -400,9 +414,9 @@ impl ConnectionManager {
                 // Multiple threads can handle this event, so if the token has alrady been
                 // removed, we know it was another thread that called this. Therefore, we can
                 // just ignore a player that is not present.
-                if let Some((_, p)) = wl.remove(&token) {
+                if let Some(p) = wl.remove(&token) {
                   drop(wl);
-                  Self::handle_disconnect(&p);
+                  Self::handle_disconnect(&p.player);
                 }
               }
             });
@@ -434,12 +448,12 @@ impl ConnectionManager {
     match ev {
       WakeEvent::Clientbound(tok) => {
         let mut remove = false;
-        if let Some((conn, player)) = s.conns.read().get(&tok) {
-          remove = match conn.lock().try_send() {
+        if let Some(player) = s.conns.read().get(&tok) {
+          remove = match player.conn.lock().try_send() {
             Ok(()) => false,
             Err(e) if e.kind() == io::ErrorKind::WouldBlock => false,
             Err(e) => {
-              Self::handle_error(e, player);
+              Self::handle_error(e, &player.player);
               true
             }
           };
@@ -453,7 +467,7 @@ impl ConnectionManager {
 
   fn handle(
     wm: &Arc<WorldManager>,
-    c: &RwLock<HashMap<Token, (Mutex<Connection>, Option<Arc<Player>>)>>,
+    c: &RwLock<HashMap<Token, ConnPlayer>>,
     token: Token,
     ev: EventWrapper,
   ) -> bool {
@@ -462,23 +476,23 @@ impl ConnectionManager {
         let rl = c.read();
         // If this isn't present, we assume another thread has removed the player, and
         // we return.
-        if let Some((conn, player)) = rl.get(&token) {
+        if let Some(player) = rl.get(&token) {
           // Make sure we drop conn! We can get a deadlock if we call `packet::handle`
           // when this is locked.
-          let (disconnect, join_info, packets) = match conn.lock().read() {
+          let (disconnect, new_conn, packets) = match player.conn.lock().read() {
             Ok(v) => v,
             // Something else went wrong.
             Err(e) => {
-              Self::handle_error(e, player);
+              Self::handle_error(e, &player.player);
               return true;
             }
           };
           if disconnect {
-            Self::handle_disconnect(player);
+            Self::handle_disconnect(&player.player);
             return true;
           }
           // Don't drop our read lock yet, as we need to use the player we got from it.
-          if let Some(player) = player {
+          if let Some(player) = &player.player {
             if packets.is_empty() {
               break;
             }
@@ -489,17 +503,17 @@ impl ConnectionManager {
             drop(rl);
             // The player must be created after we drop the `conn.lock()`, so that sending
             // login packets doesn't deadlock.
-            if let Some((conn, info)) = join_info {
-              let new_player = wm.new_player(conn, info);
+            if let Some(new_conn) = new_conn {
+              let new_player = wm.new_player(new_conn.sender, new_conn.info);
               {
                 let mut wl = c.write();
-                let (_, player) = wl.get_mut(&token).unwrap();
-                *player = Some(new_player);
+                let player: &mut ConnPlayer = wl.get_mut(&token).unwrap();
+                player.player = Some(new_player);
               }
               let rl = c.read();
-              if let Some((_, player)) = rl.get(&token) {
+              if let Some(player) = rl.get(&token) {
                 for p in packets {
-                  packet::handle(wm, player.as_ref().unwrap(), p);
+                  packet::handle(wm, player.player.as_ref().unwrap(), p);
                 }
               }
             }
@@ -512,13 +526,13 @@ impl ConnectionManager {
     }
     if ev.is_writable {
       let rl = c.read();
-      if let Some((conn, player)) = rl.get(&token) {
-        let mut conn = conn.lock();
+      if let Some(player) = rl.get(&token) {
+        let mut conn = player.conn.lock();
         match conn.try_flush() {
           Ok(()) => {}
           Err(e) if e.kind() == io::ErrorKind::WouldBlock => {}
           Err(e) => {
-            Self::handle_error(e, player);
+            Self::handle_error(e, &player.player);
             return true;
           }
         }

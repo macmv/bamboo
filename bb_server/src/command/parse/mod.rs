@@ -69,21 +69,21 @@ impl Parser {
       Self::BlockPos => {
         if let Some(pos) = sender.block_pos() {
           let mut w_x = tokens.read_spaced_text()?;
-          let x_rel = w_x.starts_with("~");
+          let x_rel = w_x.starts_with('~');
           if x_rel {
             w_x.set_text(w_x[1..].to_string());
           }
           let x = if x_rel && w_x.is_empty() { 0 } else { parse_num(&w_x, &None, &None)? };
 
           let mut w_y = tokens.read_spaced_text()?;
-          let y_rel = w_y.starts_with("~");
+          let y_rel = w_y.starts_with('~');
           if y_rel {
             w_y.set_text(w_y[1..].to_string());
           }
           let y = if y_rel && w_y.is_empty() { 0 } else { parse_num(&w_y, &None, &None)? };
 
           let mut w_z = tokens.read_spaced_text()?;
-          let z_rel = w_z.starts_with("~");
+          let z_rel = w_z.starts_with('~');
           if z_rel {
             w_z.set_text(w_z[1..].to_string());
           }

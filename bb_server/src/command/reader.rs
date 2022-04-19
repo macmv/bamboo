@@ -56,9 +56,9 @@ impl<'a> StringReader<'a> {
 
 impl<'a> Read for StringReader<'a> {
   fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
-    for i in 0..buf.len() {
+    for (i, it) in buf.iter_mut().enumerate() {
       if let Some(x) = self.iter.next() {
-        buf[i] = *x;
+        *it = *x;
       } else {
         return Ok(i);
       }

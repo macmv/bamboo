@@ -61,7 +61,7 @@ impl ParseError {
       out.add(&text[self.pos.start..self.pos.end]).color(Color::Red).underlined();
       out.add(&text[self.pos.end..]).color(Color::White);
     }
-    out.add(format!("\n  -> {}", self.kind.to_string())).color(Color::White);
+    out.add(format!("\n  -> {}", self.kind)).color(Color::White);
 
     out
   }

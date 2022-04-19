@@ -39,7 +39,7 @@ impl Player {
       pos.curr = pos.next;
       pos.yaw = pos.next_yaw;
       // We want to keep yaw within -180..=180
-      pos.yaw = pos.yaw % 360.0;
+      pos.yaw %= 360.0;
       if pos.yaw < -180.0 {
         pos.yaw += 360.0;
       }

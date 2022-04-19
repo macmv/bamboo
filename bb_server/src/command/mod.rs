@@ -40,6 +40,7 @@ type Handler = Box<dyn Fn(&Arc<WorldManager>, Option<&Arc<Player>>, Vec<Arg>) + 
 /// the clients can run. It handles serializing these commands to packets, and
 /// callbacks for when a command is run. It also delegates all of the command
 /// parsing that needs to be done for callbacks to work.
+#[derive(Default)]
 pub struct CommandTree {
   commands: Mutex<HashMap<String, (Command, Handler)>>,
 }

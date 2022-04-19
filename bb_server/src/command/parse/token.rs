@@ -31,7 +31,7 @@ impl<'a> Tokenizer<'a> {
   /// always be at the start of a valid utf8 character.
   pub fn pos(&self) -> usize { self.pos }
 
-  fn peek_char(&mut self) -> Option<char> { self.chars.peek().map(|v| *v) }
+  fn peek_char(&mut self) -> Option<char> { self.chars.peek().copied() }
 
   fn next_char(&mut self) -> Option<char> {
     self.chars.next().map(|v| {
@@ -138,7 +138,7 @@ impl<'a> Tokenizer<'a> {
   /// Checks for trailing characters. If there are any unread characters, this
   /// will return an error.
   pub fn check_trailing(&mut self) -> Result<()> {
-    if let Some(_) = self.peek_char() {
+    if self.peek_char().is_some() {
       let s = self.text[self.pos..].to_string();
       Err(ParseError::new(Span::new(self.pos, self.pos + s.len()), ErrorKind::Expected(s)))
     } else {

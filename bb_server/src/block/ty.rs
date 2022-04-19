@@ -203,9 +203,7 @@ impl PropValue<'_> {
   fn is(&self, kind: &PropKind) -> bool {
     match self {
       Self::Bool(_) => matches!(kind, PropKind::Bool),
-      Self::Enum(val) => {
-        matches!(kind, PropKind::Enum(variants) if variants.contains(&val))
-      }
+      Self::Enum(val) => matches!(kind, PropKind::Enum(variants) if variants.contains(val)),
       Self::Int(val) => matches!(kind, PropKind::Int { min, max } if val >= min && val <= max),
     }
   }
@@ -251,6 +249,7 @@ impl Data {
 }
 
 impl Prop {
+  #[allow(clippy::len_without_is_empty)]
   pub fn len(&self) -> u32 {
     match self.kind {
       PropKind::Bool => 2,

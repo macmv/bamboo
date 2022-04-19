@@ -144,7 +144,7 @@ impl Entity {
     // modify `self.pos` from anywhere else (simply because the functions don't
     // exist), then we won't overwrite changed data by unlocking and re-locking this
     // mutex.
-    let mut p = self.pos.lock().clone();
+    let mut p = *self.pos.lock();
     let old = p.aabb;
     let old_vel = p.vel;
     if self.behavior.lock().tick(self, &mut p).0 {

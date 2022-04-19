@@ -26,7 +26,7 @@ pub(crate) fn handle(wm: &Arc<WorldManager>, player: &Arc<Player>, p: sb::Packet
       player.lock_scoreboard().set_line(3, &c);
       */
 
-      if msg.chars().next() == Some('/') {
+      if msg.starts_with('/') {
         let mut chars = msg.chars();
         chars.next().unwrap();
         player.world().commands().execute(wm, player, chars.as_str());
@@ -93,8 +93,9 @@ pub(crate) fn handle(wm: &Arc<WorldManager>, player: &Arc<Player>, p: sb::Packet
 
       // If the entity doesn't exist, it already despawned, so we do nothing if
       // it isn't in the world.
-
-      player.world().entities().get(&eid).map(|ent| ent.set_vel(player.look_as_vec() * 1.0));
+      if let Some(ent) = player.world().entities().get(&eid) {
+        ent.set_vel(player.look_as_vec() * 1.0);
+      }
     }
     sb::Packet::BlockPlace { mut pos, face, hand: _ } => {
       /*
@@ -180,6 +181,8 @@ fn use_item(player: &Arc<Player>, _hand: i32) {
     let eid = player.world().summon(entity::Type::Slime, player.pos() + FPos::new(0.0, 1.0, 0.0));
     // If the entity doesn't exist, it already despawned, so we do nothing if it
     // isn't in the world.
-    player.world().entities().get(&eid).map(|ent| ent.set_vel(player.look_as_vec() * 0.5));
+    if let Some(ent) = player.world().entities().get(&eid) {
+      ent.set_vel(player.look_as_vec() * 0.5);
+    }
   }
 }

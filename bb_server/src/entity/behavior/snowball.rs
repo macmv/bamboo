@@ -1,11 +1,8 @@
 use super::{Behavior, Entity, EntityPos, ShouldDespawn};
 
+#[derive(Default)]
 pub struct SnowballBehavior {
   _effect: Option<i32>,
-}
-
-impl Default for SnowballBehavior {
-  fn default() -> Self { SnowballBehavior { _effect: None } }
 }
 
 impl Behavior for SnowballBehavior {

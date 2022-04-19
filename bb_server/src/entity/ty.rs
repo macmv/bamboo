@@ -132,7 +132,7 @@ pub struct Data {
 
 impl Data {
   /// Returns the name of this entity.
-  pub fn name(&self) -> &str { &self.name }
+  pub fn name(&self) -> &str { self.name }
 
   /// Returns the size of the hitbox of this entity.
   pub fn size(&self) -> Vec3 { Vec3::new(self.width as f64, self.height as f64, self.width as f64) }

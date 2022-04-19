@@ -2,12 +2,9 @@ use super::{Behavior, Entity, EntityPos, ShouldDespawn};
 use crate::item::Stack;
 use bb_common::net::cb;
 
+#[derive(Default)]
 pub struct ItemBehavior {
   age: u32,
-}
-
-impl Default for ItemBehavior {
-  fn default() -> Self { ItemBehavior { age: 0 } }
 }
 
 impl Behavior for ItemBehavior {
