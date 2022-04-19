@@ -5,7 +5,8 @@ mod output;
 use super::{CallError, PluginImpl, ServerEvent, ServerMessage};
 use crate::world::WorldManager;
 use bb_ffi::CUUID;
-use std::{error::Error, fs, path::Path, sync::Arc};
+use std::{fs, io, path::Path, process::Command, sync::Arc};
+use thiserror::Error;
 use wasmer::{ExportError, Instance, Memory, Module, NativeFunc, Store, WasmTypeList};
 
 pub struct Plugin {
@@ -33,15 +34,45 @@ trait Output {
   fn from_addr(mem: &Memory, addr: OUT) -> Self;
 }
 
+#[derive(Error, Debug)]
+pub enum PluginCreateError {
+  #[error("failed to compile: {0}")]
+  CompileMissing(io::Error),
+  #[error("failed to compile: {0}")]
+  CompileFailed(String),
+  #[error("couldn't find source: {0}")]
+  Missing(io::Error),
+  #[error("could not instantiate plugin: {0}")]
+  InstantiationError(#[from] wasmer::InstantiationError),
+  #[error("could not compile plugin: {0}")]
+  CompileError(#[from] wasmer::CompileError),
+}
+
 impl Plugin {
   pub fn new(
     name: String,
     path: &Path,
+    compile: String,
     output: String,
     wm: Arc<WorldManager>,
-  ) -> Result<Self, Box<dyn Error>> {
+  ) -> Result<Self, PluginCreateError> {
+    if !compile.is_empty() {
+      info!("compiling {name}...");
+      let out = Command::new("sh")
+        .arg("-c")
+        .arg(&compile)
+        .current_dir(path)
+        .output()
+        .map_err(PluginCreateError::CompileMissing)?;
+      if out.status.success() {
+        info!("compiled {name}:\n{}", String::from_utf8_lossy(&out.stderr));
+      } else {
+        return Err(PluginCreateError::CompileFailed(String::from_utf8_lossy(&out.stderr).into()));
+      }
+    }
     let store = Store::default();
-    let module = Module::new(&store, fs::read(path.join(output))?)?;
+    let module =
+      Module::new(&store, fs::read(path.join(output)).map_err(PluginCreateError::Missing)?)?;
     let import_object = funcs::imports(&store, wm, name);
     let inst = Instance::new(&module, &import_object)?;
     let plug = Plugin { inst };

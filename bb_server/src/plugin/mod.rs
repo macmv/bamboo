@@ -130,6 +130,7 @@ impl PluginManager {
               match wasm::Plugin::new(
                 name.clone(),
                 &path,
+                config.get::<_, String>("wasm.compile"),
                 config.get::<_, String>("wasm.output"),
                 wm.clone(),
               ) {
