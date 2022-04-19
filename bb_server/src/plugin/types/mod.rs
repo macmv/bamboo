@@ -118,7 +118,7 @@ impl Bamboo {
   pub fn team(&self, name: &str) -> Result<PTeam, RuntimeError> {
     self
       .wm
-      .team(name.into())
+      .team(name)
       .map(|team| PTeam { inner: team })
       .ok_or_else(|| RuntimeError::custom("Team doesn't exist", Span::call_site()))
   }
@@ -153,7 +153,7 @@ impl Bamboo {
     let idx = self.idx;
     wm.commands().add(command, move |_, player, args| {
       let wm = wm2.clone();
-      let mut cb = cb.box_clone();
+      let cb = cb.box_clone();
       {
         // We need this awkward scoping setup to avoid borrowing errors, and to make
         // sure `lock` doesn't get sent between threads.
@@ -314,6 +314,7 @@ impl PandaPlugin {
     sl.add_builtin_ty::<Bamboo>();
     sl.add_builtin_ty::<util::PPos>();
     sl.add_builtin_ty::<util::PFPos>();
+    sl.add_builtin_ty::<util::PUUID>();
     sl.add_builtin_ty::<block::PBlockKind>();
     sl.add_builtin_ty::<chat::PChat>();
     sl.add_builtin_ty::<chat::PChatSection>();

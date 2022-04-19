@@ -1,6 +1,6 @@
 use super::{
-  types, types::Callback as BCallback, Bamboo, GlobalServerEvent, PluginImpl, PluginManager,
-  ServerEvent, ServerMessage,
+  types, types::Callback as BCallback, Bamboo, CallError, GlobalServerEvent, PluginImpl,
+  PluginManager, ServerEvent, ServerMessage,
 };
 use crate::{block, player::Player, world::WorldManager};
 use bb_common::{math::Pos, net::sb::ClickWindow};
@@ -172,7 +172,7 @@ impl PandaPlugin {
 }
 
 impl PluginImpl for PandaPlugin {
-  fn call(&self, ev: ServerMessage) -> Result<bool, ()> {
+  fn call(&self, ev: ServerMessage) -> Result<bool, CallError> {
     match ev {
       ServerMessage::Event { player, event } => match event {
         ServerEvent::BlockPlace { pos, block } => {

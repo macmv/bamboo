@@ -16,7 +16,7 @@ pub fn load_from_file(
   let mut f = File::open(path).expect("no file found");
   let metadata = fs::metadata(path).expect("unable to read metadata");
   let mut buf = vec![0; metadata.len() as usize];
-  f.read(&mut buf).expect("file was too large");
+  f.read_exact(&mut buf).expect("file was too large");
 
   let tag = NBT::deserialize_file(buf)?;
   let compound = tag.compound();

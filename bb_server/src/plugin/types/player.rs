@@ -206,7 +206,7 @@ impl PPlayer {
       for slot in 9..46 {
         let it = main.get(slot);
         if it.item() == stack.inner.item() {
-          needed_amount = needed_amount.checked_sub(it.amount()).unwrap_or(0);
+          needed_amount = needed_amount.saturating_sub(it.amount());
         }
         if needed_amount == 0 {
           break;
@@ -228,7 +228,7 @@ impl PPlayer {
               it.set_amount(new_amount);
               sync = true;
             }
-            needed_amount = needed_amount.checked_sub(it.amount()).unwrap_or(0);
+            needed_amount = needed_amount.saturating_sub(it.amount());
           }
           if sync {
             main.sync(slot);

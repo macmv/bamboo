@@ -33,5 +33,5 @@ impl PBlockKind {
     })
   }
   /// Returns the name of this block. This is the same name passed to `from_s`.
-  pub fn to_s(&self) -> String { format!("{}", self.inner.to_str()) }
+  pub fn to_s(&self) -> String { self.inner.to_str().to_string() }
 }

@@ -1,4 +1,6 @@
-use super::{PluginEvent, PluginImpl, PluginMessage, PluginRequest, ServerMessage, ServerReply};
+use super::{
+  CallError, PluginEvent, PluginImpl, PluginMessage, PluginRequest, ServerMessage, ServerReply,
+};
 use crate::world::WorldManager;
 use crossbeam_channel::{Receiver, Sender};
 use mio::{event::Event, net::UnixStream, Events, Interest, Poll, Token, Waker};
@@ -350,13 +352,10 @@ fn start_plugin(plugin: String, path: &Path) {
 }
 
 impl PluginImpl for Arc<SocketPlugin> {
-  fn call(&self, ev: ServerMessage) -> Result<bool, ()> {
+  fn call(&self, ev: ServerMessage) -> Result<bool, CallError> {
     match self.send(ev) {
       Ok(_) => Ok(true),
-      Err(e) => {
-        error!("could not send message to plugin: {e}");
-        Err(())
-      }
+      Err(e) => Err(CallError::no_keep(e)),
     }
   }
 }

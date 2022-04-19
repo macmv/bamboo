@@ -13,7 +13,7 @@ use bb_common::{
   net::cb,
   util::{
     chat::{Chat, Color},
-    Buffer, GameMode, JoinInfo, ThreadPool, UUID,
+    GameMode, JoinInfo, ThreadPool, UUID,
   },
 };
 use parking_lot::{Mutex, MutexGuard, RwLock, RwLockReadGuard};
@@ -265,7 +265,7 @@ impl World {
     // We want our plugin stuff to trigger after the player has received all the
     // chunks and whatever other initialization stuff. This means we can't screw
     // anything up with the loading process (like trying to teleport the player).
-    self.plugins().on_player_join(player.clone());
+    self.plugins().on_player_join(player);
   }
 
   /// Returns a new, unique EID.

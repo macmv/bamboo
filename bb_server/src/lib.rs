@@ -1,3 +1,5 @@
+#![allow(clippy::needless_question_mark, clippy::upper_case_acronyms)]
+
 #[macro_use]
 extern crate log;
 

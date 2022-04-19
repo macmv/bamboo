@@ -1,4 +1,4 @@
-use super::{types::Callback, PluginImpl, ServerMessage};
+use super::{types::Callback, CallError, PluginImpl, ServerMessage};
 use crossbeam_channel::{Receiver, Sender};
 use panda::runtime::RuntimeError;
 use pyo3::{exceptions, prelude::*};
@@ -59,8 +59,7 @@ impl Plugin {
 }
 
 impl PluginImpl for Plugin {
-  fn call(&self, event: ServerMessage) -> Result<bool, ()> {
-    self.tx.send(event);
-    Ok(true)
+  fn call(&self, event: ServerMessage) -> Result<bool, CallError> {
+    self.tx.send(event).map(|_| true).map_err(CallError::no_keep)
   }
 }

@@ -14,8 +14,8 @@ mod types;
 
 pub use json::*;
 pub use plugin::{
-  GlobalServerEvent, Plugin, PluginEvent, PluginImpl, PluginMessage, PluginRequest, ServerEvent,
-  ServerMessage, ServerReply,
+  CallError, GlobalServerEvent, Plugin, PluginEvent, PluginImpl, PluginMessage, PluginRequest,
+  ServerEvent, ServerMessage, ServerReply,
 };
 
 #[cfg(feature = "panda_plugins")]

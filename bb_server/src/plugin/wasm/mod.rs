@@ -2,7 +2,7 @@ mod funcs;
 mod input;
 mod output;
 
-use super::{PluginImpl, ServerEvent, ServerMessage};
+use super::{CallError, PluginImpl, ServerEvent, ServerMessage};
 use crate::world::WorldManager;
 use bb_ffi::CUUID;
 use std::{error::Error, fs, path::Path, sync::Arc};
@@ -49,7 +49,7 @@ impl Plugin {
     Ok(plug)
   }
 
-  fn call<I: Input>(&self, name: &str, input: I) -> Result<bool, ()> {
+  fn call<I: Input>(&self, name: &str, input: I) -> Result<bool, CallError> {
     // Try to get function with bool. If this fails, try with no return. If that
     // fails, error out.
     //
@@ -62,10 +62,7 @@ impl Plugin {
             input.call_native(&func);
             Ok(true)
           }
-          Err(ExportError::IncompatibleType) => {
-            error!("incompatible types when calling {name}");
-            Err(())
-          }
+          Err(e @ ExportError::IncompatibleType) => Err(CallError::no_keep(e)),
           Err(ExportError::Missing(_)) => Ok(true),
         }
       }
@@ -75,7 +72,7 @@ impl Plugin {
 }
 
 impl PluginImpl for Plugin {
-  fn call(&self, m: ServerMessage) -> Result<bool, ()> {
+  fn call(&self, m: ServerMessage) -> Result<bool, CallError> {
     Ok(match m {
       ServerMessage::Event { player, event } => match event {
         ServerEvent::BlockPlace { pos, .. } => self.call(

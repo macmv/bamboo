@@ -1,7 +1,7 @@
 use super::{JsonBlock, JsonPlayer, JsonPos};
 use crate::{block, player::Player};
 use bb_common::{config::Config, math::Pos, net::sb::ClickWindow};
-use std::sync::Arc;
+use std::{error::Error, fmt, sync::Arc};
 
 #[cfg(feature = "panda_plugins")]
 use super::panda::PandaPlugin;
@@ -103,7 +103,7 @@ pub trait PluginImpl: std::any::Any {
   /// will not be called again.
   ///
   /// If this returns `false`, the event will be cancelled.
-  fn call(&self, event: ServerMessage) -> Result<bool, ()>;
+  fn call(&self, event: ServerMessage) -> Result<bool, CallError>;
   #[cfg(feature = "panda_plugins")]
   fn panda(&mut self) -> Option<&mut PandaPlugin> { None }
 }
@@ -114,11 +114,39 @@ pub struct Plugin {
   imp:    Box<dyn PluginImpl + Send + Sync>,
 }
 
+#[derive(Debug)]
+pub struct CallError {
+  pub keep:  bool,
+  pub inner: Box<dyn Error>,
+}
+
+impl CallError {
+  pub fn no_keep(inner: impl Error + 'static) -> Self {
+    CallError { keep: false, inner: Box::new(inner) }
+  }
+  pub fn keep(inner: impl Error + 'static) -> Self {
+    CallError { keep: true, inner: Box::new(inner) }
+  }
+}
+
+impl fmt::Display for CallError {
+  fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    write!(f, "{}", self.inner)?;
+    if self.keep {
+      write!(f, " (plugin still valid)")
+    } else {
+      write!(f, " (plugin no longer valid)")
+    }
+  }
+}
+
+impl Error for CallError {}
+
 impl Plugin {
   pub fn new(config: Config, imp: impl PluginImpl + Send + Sync + 'static) -> Self {
     Plugin { config, imp: Box::new(imp) }
   }
-  pub fn call(&self, ev: ServerMessage) -> Result<bool, ()> { self.imp.call(ev) }
+  pub fn call(&self, ev: ServerMessage) -> Result<bool, CallError> { self.imp.call(ev) }
   #[cfg(feature = "panda_plugins")]
   pub fn unwrap_panda(&mut self) -> &mut PandaPlugin { self.imp.panda().unwrap() }
 }
