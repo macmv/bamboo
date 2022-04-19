@@ -29,7 +29,7 @@ impl PluginManager {
     plugins.clear();
 
     #[cfg(feature = "socket_plugins")]
-    let mut sockets = SocketManager::new(wm.clone());
+    let mut sockets = super::socket::SocketManager::new(wm.clone());
 
     let iter = match fs::read_dir("plugins") {
       Ok(v) => v,
@@ -71,7 +71,11 @@ impl PluginManager {
             info!("found python plugin at {}", path.to_str().unwrap());
             #[cfg(feature = "python_plugins")]
             {
-              plugins.push(Plugin::new(name.clone(), config, python::Plugin::new(name.clone())));
+              plugins.push(Plugin::new(
+                name.clone(),
+                config,
+                super::python::Plugin::new(name.clone()),
+              ));
             }
             #[cfg(not(feature = "python_plugins"))]
             {
@@ -82,7 +86,7 @@ impl PluginManager {
             info!("found wasm plugin at {}", path.to_str().unwrap());
             #[cfg(feature = "wasm_plugins")]
             {
-              match wasm::Plugin::new(
+              match super::wasm::Plugin::new(
                 name.clone(),
                 &path,
                 config.get::<_, String>("wasm.compile"),

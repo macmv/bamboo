@@ -50,6 +50,7 @@ pub enum PluginMessage {
 
 /// A message to the server. The server cannot reply to this message. Once sent,
 /// the plugin should forget about it.
+#[non_exhaustive]
 #[derive(Debug, Clone, serde::Deserialize)]
 #[serde(tag = "type")]
 pub enum PluginEvent {
@@ -61,12 +62,14 @@ pub enum PluginEvent {
 /// A request from the plugin to the server. The id to reply with is stored in
 /// [PluginMessage]. Once sent, the plugin should expect a reply from the server
 /// soon. See also [ServerReply].
+#[non_exhaustive]
 #[derive(Debug, Clone, serde::Deserialize)]
 #[serde(tag = "type")]
 pub enum PluginRequest {
   GetBlock { pos: JsonPos },
 }
 /// A response to a request from the server. See also [ServerRequest].
+#[non_exhaustive]
 #[derive(Debug, Clone, serde::Deserialize)]
 #[serde(tag = "type")]
 pub enum PluginReply {
@@ -103,6 +106,7 @@ pub enum ServerMessage {
 
 /// An event from the server to the plugin. There is also a player listed with
 /// this event.
+#[non_exhaustive]
 #[derive(Debug, Clone, serde::Serialize)]
 #[serde(tag = "type")]
 pub enum ServerEvent {
@@ -112,6 +116,7 @@ pub enum ServerEvent {
 }
 /// An event from the server to the plugin. This is very similar to
 /// [ServerEvent], but there is no player specified with this event.
+#[non_exhaustive]
 #[derive(Debug, Clone, serde::Serialize)]
 #[serde(tag = "type")]
 pub enum GlobalServerEvent {
@@ -119,6 +124,7 @@ pub enum GlobalServerEvent {
 }
 /// A request from the server to the plugin. The server should expect a reply
 /// within a certain timeout from the plugin. See also [PluginReply].
+#[non_exhaustive]
 #[derive(Debug, Clone, serde::Serialize)]
 #[serde(tag = "type")]
 pub enum ServerRequest {
@@ -143,6 +149,7 @@ pub enum ServerRequest {
 
 /// A reply from the server to the plugin. This is a reponse to a
 /// [PluginRequest].
+#[non_exhaustive]
 #[derive(Debug, Clone, serde::Serialize)]
 #[serde(tag = "type")]
 pub enum ServerReply {

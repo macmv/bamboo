@@ -2,8 +2,8 @@ mod funcs;
 mod input;
 mod output;
 
-use super::{CallError, PluginImpl, ServerMessage, ServerRequest};
-use crate::world::WorldManager;
+use super::{CallError, GlobalServerEvent, PluginImpl, PluginReply, ServerEvent, ServerRequest};
+use crate::{player::Player, world::WorldManager};
 use bb_ffi::CUUID;
 use std::{fs, io, path::Path, process::Command, sync::Arc};
 use thiserror::Error;
@@ -80,7 +80,7 @@ impl Plugin {
     Ok(plug)
   }
 
-  fn call<I: Input>(&self, name: &str, input: I) -> Result<bool, CallError> {
+  fn call_bool<I: Input>(&self, name: &str, input: I) -> Result<bool, CallError> {
     // Try to get function with bool. If this fails, try with no return. If that
     // fails, error out.
     //
@@ -100,13 +100,25 @@ impl Plugin {
       Err(ExportError::Missing(_)) => Ok(true),
     }
   }
+  fn call<I: Input>(&self, name: &str, input: I) -> Result<(), CallError> {
+    self.call_bool(name, input)?;
+    Ok(())
+  }
 }
 
 impl PluginImpl for Plugin {
-  fn call(&self, m: ServerMessage) -> Result<bool, CallError> {
-    Ok(match m {
-      ServerMessage::Request { player, request, .. } => match request {
-        ServerRequest::BlockPlace { pos, .. } => self.call(
+  fn call(&self, _player: Arc<Player>, _ev: ServerEvent) -> Result<(), CallError> { todo!() }
+  fn call_global(&self, ev: GlobalServerEvent) -> Result<(), CallError> {
+    match ev {
+      GlobalServerEvent::Tick => self.call("tick", ())?,
+    }
+    Ok(())
+  }
+
+  fn req(&self, player: Arc<Player>, request: ServerRequest) -> Result<PluginReply, CallError> {
+    Ok(PluginReply::Cancel {
+      allow: match request {
+        ServerRequest::BlockPlace { pos, .. } => self.call_bool(
           "on_block_place",
           (
             CUUID {
@@ -124,7 +136,6 @@ impl PluginImpl for Plugin {
         )?,
         _ => true,
       },
-      _ => true,
     })
   }
 }

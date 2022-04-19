@@ -116,6 +116,12 @@ impl fmt::Display for CallError {
 
 impl Error for CallError {}
 
+impl CallError {
+  pub fn log(&self) {
+    error!("{self}");
+  }
+}
+
 impl Plugin {
   pub fn new(name: String, config: Config, imp: impl PluginImpl + Send + Sync + 'static) -> Self {
     let (server_tx, server_rx) = crossbeam_channel::bounded(128);
@@ -124,31 +130,52 @@ impl Plugin {
     let i = Arc::clone(&imp);
     thread::spawn(move || {
       while let Ok(ev) = server_rx.recv() {
-        match ev {
-          ServerMessage::Request { reply_id, player, request } => match i.req(player, request) {
-            Ok(reply) => plugin_tx.send(PluginMessage::Reply { reply_id, reply }).unwrap(),
-            _ => todo!(),
-          },
-          _ => todo!(),
+        let res = match ev {
+          ServerMessage::Request { reply_id, player, request } => i
+            .req(player, request)
+            .map(|reply| plugin_tx.send(PluginMessage::Reply { reply_id, reply }).unwrap()),
+          ServerMessage::Event { player, event } => i.call(player, event),
+          ServerMessage::GlobalEvent { event } => i.call_global(event),
+          ServerMessage::Reply { .. } => Ok(()),
+        };
+        match res {
+          Ok(()) => (),
+          Err(e) => {
+            e.log();
+            if !e.keep {
+              return;
+            }
+          }
         }
       }
     });
     Plugin { config, name, imp, reply_id: 0, tx: server_tx, rx: plugin_rx }
   }
   pub fn call(&self, ev: ServerMessage, timeout: Duration) -> Result<bool, CallError> {
+    let reply = match ev {
+      ServerMessage::Request { reply_id, .. } => Some(reply_id),
+      _ => None,
+    };
     self.tx.send(ev).unwrap();
-    match self.rx.recv_timeout(timeout) {
-      Ok(res) => match res {
-        PluginMessage::Reply { reply_id: _, reply } => match reply {
-          PluginReply::Cancel { allow } => Ok(allow),
+    if let Some(_reply) = reply {
+      match self.rx.recv_timeout(timeout) {
+        Ok(res) => match res {
+          PluginMessage::Reply { reply_id: _, reply } => match reply {
+            PluginReply::Cancel { allow } => Ok(allow),
+          },
+          _ => todo!(),
         },
-        _ => todo!(),
-      },
-      Err(RecvTimeoutError::Timeout) => {
-        warn!("event timed out for plugin `{}`", self.name);
-        Ok(true)
+        Err(RecvTimeoutError::Timeout) => {
+          warn!("event timed out for plugin `{}`", self.name);
+          Ok(true)
+        }
+        Err(e @ RecvTimeoutError::Disconnected) => {
+          error!("plugin {} disconnected", self.name);
+          Err(CallError::no_keep(e))
+        }
       }
-      Err(RecvTimeoutError::Disconnected) => panic!("plugin disconnected"),
+    } else {
+      Ok(true)
     }
   }
   pub fn next_reply(&mut self) -> u32 {
