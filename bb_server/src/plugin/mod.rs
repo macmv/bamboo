@@ -203,18 +203,18 @@ impl PluginManager {
   fn event(&self, player: Arc<Player>, event: ServerEvent) {
     self.message(ServerMessage::Event { player, event });
   }
-  fn event_bool(&self, player: Arc<Player>, event: ServerEvent) -> bool {
-    self.message_bool(ServerMessage::Event { player, event })
+  fn req(&self, player: Arc<Player>, request: ServerRequest) -> bool {
+    self.message_bool(ServerMessage::Request { reply_id: 0, player, request })
   }
   fn global_event(&self, event: GlobalServerEvent) {
     self.message(ServerMessage::GlobalEvent { event });
   }
   pub fn on_tick(&self) { self.global_event(GlobalServerEvent::Tick); }
   pub fn on_block_place(&self, player: Arc<Player>, pos: Pos, block: block::Type) -> bool {
-    self.event_bool(player, ServerEvent::BlockPlace { pos, block })
+    self.req(player, ServerRequest::BlockPlace { pos, block })
   }
   pub fn on_block_break(&self, player: Arc<Player>, pos: Pos, block: block::Type) -> bool {
-    self.event_bool(player, ServerEvent::BlockBreak { pos, block })
+    self.req(player, ServerRequest::BlockBreak { pos, block })
   }
   pub fn on_chat_message(&self, player: Arc<Player>, message: Chat) {
     self.event(player, ServerEvent::Chat { text: message.to_plain() });
@@ -226,7 +226,7 @@ impl PluginManager {
     self.event(player, ServerEvent::PlayerLeave {});
   }
   pub fn on_click_window(&self, player: Arc<Player>, slot: i32, mode: ClickWindow) -> bool {
-    self.event_bool(player, ServerEvent::ClickWindow { slot, mode })
+    self.req(player, ServerRequest::ClickWindow { slot, mode })
   }
 }
 
@@ -244,6 +244,11 @@ pub enum PluginMessage {
     reply_id: u32,
     #[serde(flatten)]
     request:  PluginRequest,
+  },
+  Reply {
+    reply_id: u32,
+    #[serde(flatten)]
+    reply:    PluginReply,
   },
 }
 
@@ -274,6 +279,13 @@ pub enum ServerMessage {
     #[serde(flatten)]
     event: GlobalServerEvent,
   },
+  Request {
+    reply_id: u32,
+    #[serde(serialize_with = "to_json_ty::<_, JsonPlayer, _>")]
+    player:   Arc<Player>,
+    #[serde(flatten)]
+    request:  ServerRequest,
+  },
   Reply {
     reply_id: u32,
     #[serde(flatten)]
@@ -284,6 +296,13 @@ pub enum ServerMessage {
 #[derive(Debug, Clone, serde::Serialize)]
 #[serde(tag = "type")]
 pub enum ServerEvent {
+  Chat { text: String },
+  PlayerJoin,
+  PlayerLeave,
+}
+#[derive(Debug, Clone, serde::Serialize)]
+#[serde(tag = "type")]
+pub enum ServerRequest {
   BlockPlace {
     #[serde(serialize_with = "to_json_ty::<_, JsonPos, _>")]
     pos:   Pos,
@@ -296,16 +315,11 @@ pub enum ServerEvent {
     #[serde(serialize_with = "to_json_ty::<_, JsonBlock, _>")]
     block: block::Type,
   },
-  Chat {
-    text: String,
-  },
   ClickWindow {
     slot: i32,
     #[serde(skip)]
     mode: ClickWindow,
   },
-  PlayerJoin,
-  PlayerLeave,
 }
 
 #[derive(Debug, Clone, serde::Serialize)]
@@ -323,6 +337,12 @@ pub enum ServerReply {
     #[serde(serialize_with = "to_json_ty::<_, JsonBlock, _>")]
     block: block::Type,
   },
+}
+
+#[derive(Debug, Clone, serde::Deserialize)]
+#[serde(tag = "type")]
+pub enum PluginReply {
+  Cancel { allow: bool },
 }
 
 pub trait PluginImpl: std::any::Any {

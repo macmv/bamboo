@@ -1,6 +1,6 @@
 use super::{
   types, types::Callback as BCallback, Bamboo, CallError, GlobalServerEvent, PluginImpl,
-  PluginManager, ServerEvent, ServerMessage,
+  PluginManager, ServerEvent, ServerMessage, ServerRequest,
 };
 use crate::{block, player::Player, world::WorldManager};
 use bb_common::{math::Pos, net::sb::ClickWindow};
@@ -175,19 +175,19 @@ impl PluginImpl for PandaPlugin {
   fn call(&self, ev: ServerMessage) -> Result<bool, CallError> {
     match ev {
       ServerMessage::Event { player, event } => match event {
-        ServerEvent::BlockPlace { pos, block } => {
-          return Ok(self.call_on_block_place(player, pos, block))
-        }
-        ServerEvent::BlockBreak { pos, block } => {
-          return Ok(self.call_on_block_break(player, pos, block))
-        }
         ServerEvent::Chat { text } => self.call_on_chat_message(player, text),
-        ServerEvent::ClickWindow { slot, mode } => {
-          return Ok(self.call_on_click_window(player, slot, mode))
-        }
         ServerEvent::PlayerJoin {} => self.call_on_player_join(player),
         ServerEvent::PlayerLeave {} => self.call_on_player_leave(player),
       },
+      ServerMessage::Request { player, request, .. } => {
+        return Ok(match request {
+          ServerRequest::BlockPlace { pos, block } => self.call_on_block_place(player, pos, block),
+          ServerRequest::BlockBreak { pos, block } => self.call_on_block_break(player, pos, block),
+          ServerRequest::ClickWindow { slot, mode } => {
+            self.call_on_click_window(player, slot, mode)
+          }
+        })
+      }
       ServerMessage::GlobalEvent { event } => match event {
         GlobalServerEvent::Tick => self.call_on_tick(),
       },

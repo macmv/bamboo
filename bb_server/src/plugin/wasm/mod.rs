@@ -2,7 +2,7 @@ mod funcs;
 mod input;
 mod output;
 
-use super::{CallError, PluginImpl, ServerEvent, ServerMessage};
+use super::{CallError, PluginImpl, ServerMessage, ServerRequest};
 use crate::world::WorldManager;
 use bb_ffi::CUUID;
 use std::{fs, io, path::Path, process::Command, sync::Arc};
@@ -105,8 +105,8 @@ impl Plugin {
 impl PluginImpl for Plugin {
   fn call(&self, m: ServerMessage) -> Result<bool, CallError> {
     Ok(match m {
-      ServerMessage::Event { player, event } => match event {
-        ServerEvent::BlockPlace { pos, .. } => self.call(
+      ServerMessage::Request { player, request, .. } => match request {
+        ServerRequest::BlockPlace { pos, .. } => self.call(
           "on_block_place",
           (
             CUUID {
