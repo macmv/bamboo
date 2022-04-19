@@ -1,24 +1,15 @@
-use super::TypeConverter;
+use super::{ChunkWithPos, TypeConverter};
 use crate::gnet::cb::Packet;
-use bb_common::{chunk::paletted::Section, math::ChunkPos, util::Buffer, version::ProtocolVersion};
+use bb_common::{util::Buffer, version::ProtocolVersion};
 
 // Applies to 1.9 - 1.12, but 1.10 doesn't work, so idk
-pub fn chunk(
-  pos: ChunkPos,
-  full: bool,
-  bit_map: u16,
-  sections: &[Section],
-  ver: ProtocolVersion,
-  conv: &TypeConverter,
-) -> Packet {
-  let biomes = full;
+pub fn chunk(chunk: ChunkWithPos, ver: ProtocolVersion, conv: &TypeConverter) -> Packet {
+  let biomes = chunk.full;
   let skylight = true; // Assume overworld
 
   let mut chunk_data = vec![];
   let mut chunk_buf = Buffer::new(&mut chunk_data);
-  // Iterates through chunks in order, from ground up. Flatten removes None
-  // sections.
-  for s in sections {
+  for s in &chunk.sections {
     chunk_buf.write_u8(s.data().bpe() as u8);
     chunk_buf.write_varint(s.palette().len() as i32);
     for g in s.palette() {
@@ -58,10 +49,10 @@ pub fn chunk(
   }
 
   Packet::ChunkDataV9 {
-    chunk_x:            pos.x(),
-    chunk_z:            pos.z(),
-    load_chunk:         full,
-    available_sections: bit_map.into(),
+    chunk_x:            chunk.pos.x(),
+    chunk_z:            chunk.pos.z(),
+    load_chunk:         chunk.full,
+    available_sections: chunk.bit_map.into(),
     unknown:            data,
   }
 }

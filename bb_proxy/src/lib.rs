@@ -1,3 +1,5 @@
+#![allow(clippy::identity_op)]
+
 #[macro_use]
 extern crate log;
 #[macro_use]
@@ -93,14 +95,14 @@ pub fn run() -> Result<()> {
                   client_token,
                   Conn::new(
                     JavaStream::new(client),
-                    server_ip.clone(),
-                    compression,
+                    server_ip,
                     key.clone(),
                     der_key.clone(),
-                    &icon,
                     server_token,
                     conv.clone(),
-                  ),
+                  )
+                  .with_icon(&icon)
+                  .with_compression(compression),
                 );
               }
               Err(ref e) if e.kind() == io::ErrorKind::WouldBlock => {
@@ -146,7 +148,7 @@ pub fn run() -> Result<()> {
           } else {
             if event.is_readable() {
               let conn = clients.get_mut(&token).expect("client doesn't exist!");
-              match conn.read_client(&poll.registry()) {
+              match conn.read_client(poll.registry()) {
                 Ok(false) => {}
                 Ok(true) => {
                   clients.remove(&token);

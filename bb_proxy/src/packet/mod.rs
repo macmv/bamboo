@@ -25,29 +25,29 @@ pub use sb::FromTcp;
 
 pub use metadata::metadata;
 
-pub fn chunk(
-  pos: ChunkPos,
-  full: bool,
-  bit_map: u16,
-  sections: Vec<Section>,
-  sky_light: Option<LightChunk<SkyLight>>,
+pub struct ChunkWithPos {
+  pos:         ChunkPos,
+  full:        bool,
+  bit_map:     u16,
+  sections:    Vec<Section>,
+  sky_light:   Option<LightChunk<SkyLight>>,
   block_light: LightChunk<BlockLight>,
+}
+
+pub fn chunk(
+  chunk: ChunkWithPos,
   ver: ProtocolVersion,
   conv: &TypeConverter,
 ) -> SmallVec<[Packet; 2]> {
   smallvec![match ver.block() {
-    BlockVersion::V1_8 => v1_8::chunk(pos, full, bit_map, &sections, conv),
-    BlockVersion::V1_9 | BlockVersion::V1_12 => {
-      v1_9::chunk(pos, full, bit_map, &sections, ver, conv)
-    }
+    BlockVersion::V1_8 => v1_8::chunk(chunk, conv),
+    BlockVersion::V1_9 | BlockVersion::V1_12 => v1_9::chunk(chunk, ver, conv),
     // ProtocolVersion::V1_13 => v1_13::serialize_chunk(pos, bit_map, &sections, conv),
-    BlockVersion::V1_14 => v1_14::chunk(pos, full, bit_map, &sections, conv),
-    BlockVersion::V1_15 => v1_15::chunk(pos, full, bit_map, &sections, conv),
-    BlockVersion::V1_16 => v1_16::chunk(pos, full, bit_map, &sections, conv),
-    BlockVersion::V1_17 => v1_17::chunk(pos, full, bit_map, &sections, conv),
-    BlockVersion::V1_18 => {
-      v1_18::chunk(pos, full, bit_map, sections, sky_light, block_light, conv)
-    }
+    BlockVersion::V1_14 => v1_14::chunk(chunk, conv),
+    BlockVersion::V1_15 => v1_15::chunk(chunk, conv),
+    BlockVersion::V1_16 => v1_16::chunk(chunk, conv),
+    BlockVersion::V1_17 => v1_17::chunk(chunk, conv),
+    BlockVersion::V1_18 => v1_18::chunk(chunk, conv),
     _ => todo!("chunk on version {}", ver),
   }]
 }

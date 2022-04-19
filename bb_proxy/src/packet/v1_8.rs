@@ -1,23 +1,17 @@
-use super::TypeConverter;
+use super::{ChunkWithPos, TypeConverter};
 use crate::gnet::cb::Packet;
 use bb_common::{
-  chunk::{paletted::Section, Section as _},
+  chunk::Section as _,
   math::{ChunkPos, Pos},
   util::Buffer,
   version::{BlockVersion, ProtocolVersion},
 };
 
-pub fn chunk(
-  pos: ChunkPos,
-  full: bool,
-  bit_map: u16,
-  sections: &[Section],
-  conv: &TypeConverter,
-) -> Packet {
-  let biomes = full;
+pub fn chunk(chunk: ChunkWithPos, conv: &TypeConverter) -> Packet {
+  let biomes = chunk.full;
   let skylight = true; // Assume overworld
 
-  let total_sections = sections.len();
+  let total_sections = chunk.sections.len();
 
   let data_len = total_sections * 16 * 16 * 16 * 2 // Chunk data
     + (total_sections * 16 * 16 * 16 / 2) // Block light
@@ -28,11 +22,11 @@ pub fn chunk(
   let mut chunk_data = vec![0; data_len + 2 + 5];
   let mut chunk_buf = Buffer::new(&mut chunk_data);
 
-  chunk_buf.write_u16(bit_map);
+  chunk_buf.write_u16(chunk.bit_map);
   chunk_buf.write_varint(data_len.try_into().unwrap());
   let prefix_len = chunk_buf.index();
 
-  for s in sections {
+  for s in &chunk.sections {
     for y in 0..16 {
       for z in 0..16 {
         for x in 0..16 {
@@ -73,9 +67,9 @@ pub fn chunk(
   assert_eq!(chunk_data.len() - prefix_len, data_len, "unexpected chunk data len");
 
   Packet::ChunkDataV8 {
-    chunk_x:        pos.x(),
-    chunk_z:        pos.z(),
-    field_149279_g: full,
+    chunk_x:        chunk.pos.x(),
+    chunk_z:        chunk.pos.z(),
+    field_149279_g: chunk.full,
     unknown:        chunk_data,
   }
 }

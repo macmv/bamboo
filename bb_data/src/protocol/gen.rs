@@ -185,6 +185,7 @@ impl PacketCollection {
         });
       });
       gen.write_line("#[allow(unused_mut, unused_variables)]");
+      gen.write_line("#[allow(clippy::needless_late_init)]");
       gen.write(
         "pub fn from_tcp(p: &mut tcp::Packet, ver: ProtocolVersion) -> Result<Self, Error> ",
       );
@@ -233,6 +234,7 @@ impl PacketCollection {
         gen.write(")"); // Close the `Ok(` from above the match
       });
       gen.write_line("#[allow(unused_mut, unused_variables, unused_assignments)]");
+      gen.write_line("#[allow(clippy::assign_op_pattern)]");
       gen.write("pub fn to_tcp(&self, p: &mut tcp::Packet) ");
       gen.write_block(|gen| {
         gen.write_match("self", |gen| {

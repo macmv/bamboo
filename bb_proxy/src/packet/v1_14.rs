@@ -1,8 +1,6 @@
-use super::TypeConverter;
+use super::{ChunkWithPos, TypeConverter};
 use crate::gnet::cb::Packet;
 use bb_common::{
-  chunk::paletted::Section,
-  math::ChunkPos,
   nbt::{Tag, NBT},
   util::Buffer,
   version::BlockVersion,
@@ -14,19 +12,13 @@ use bb_common::{
 // Added the MOTION_BLOCKING field. This is a heightmap, stored in NBT.
 // Added a u16 for non air blocks at the start of each section.
 // Moved lighting data into another packet, so it is no longer included.
-pub fn chunk(
-  pos: ChunkPos,
-  full: bool,
-  bit_map: u16,
-  sections: &[Section],
-  conv: &TypeConverter,
-) -> Packet {
-  let biomes = full;
+pub fn chunk(chunk: ChunkWithPos, conv: &TypeConverter) -> Packet {
+  let biomes = chunk.full;
   let _skylight = true; // Assume overworld
 
   let mut chunk_data = vec![];
   let mut chunk_buf = Buffer::new(&mut chunk_data);
-  for s in sections {
+  for s in &chunk.sections {
     chunk_buf.write_u16(s.non_air_blocks() as u16);
     chunk_buf.write_u8(s.data().bpe() as u8);
     if s.data().bpe() <= 8 {
@@ -58,10 +50,10 @@ pub fn chunk(
   buf.write_varint(0); // No block entities
 
   Packet::ChunkDataV14 {
-    chunk_x:                pos.x(),
-    chunk_z:                pos.z(),
-    is_full_chunk:          full,
-    vertical_strip_bitmask: bit_map.into(),
+    chunk_x:                chunk.pos.x(),
+    chunk_z:                chunk.pos.z(),
+    is_full_chunk:          chunk.full,
+    vertical_strip_bitmask: chunk.bit_map.into(),
     unknown:                data,
   }
 }

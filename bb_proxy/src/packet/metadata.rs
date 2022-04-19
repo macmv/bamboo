@@ -17,7 +17,7 @@ pub fn metadata(ty: u32, meta: &Metadata, ver: ProtocolVersion, conv: &TypeConve
   for (&id, field) in &meta.fields {
     let (id, new_ty, old_ty) = conv.entity_metadata_types(ty, id, ver.block());
 
-    debug_assert!(is_ty(&field, new_ty), "expected field to have type {new_ty:?}, got {field:?}");
+    debug_assert!(is_ty(field, new_ty), "expected field to have type {new_ty:?}, got {field:?}");
 
     let mut field = field.clone();
     if !is_ty(&field, old_ty) {
@@ -262,9 +262,7 @@ fn convert_field(field: &mut Field, ty: MetadataType) {
   // Replace `field` with a temporary, so that we can move out of the old data.
   let old_field = mem::replace(field, Field::Bool(false));
   match (old_field, ty) {
-    (Field::OptChat(msg), MetadataType::String) => {
-      *field = Field::String(msg.unwrap_or_else(String::new))
-    }
+    (Field::OptChat(msg), MetadataType::String) => *field = Field::String(msg.unwrap_or_default()),
     (field, ty) => panic!("cannot convert {field:?} into {ty:?}"),
   }
 }

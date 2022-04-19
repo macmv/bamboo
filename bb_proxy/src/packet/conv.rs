@@ -50,6 +50,10 @@ pub(super) mod entity {
 }
 
 impl TypeConverter {
+  /// Creates a new type converter. This uses almost entirely static references
+  /// to lookup tables, so it should be fast. This isn't `Default`, as I don't
+  /// expect this to be fast in the future.
+  #[allow(clippy::new_without_default)]
   pub fn new() -> Self {
     TypeConverter {
       blocks:   block::generate_versions(),
@@ -199,6 +203,7 @@ mod entity_types {
   /// 1.18.2. Older versions will have different serializing/deserializing
   /// rules.
   #[derive(Debug, Clone, Copy)]
+  #[allow(clippy::upper_case_acronyms)]
   pub enum MetadataType {
     /// A single byte.
     Byte,

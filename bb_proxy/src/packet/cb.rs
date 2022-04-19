@@ -125,12 +125,7 @@ impl ToTcp for Packet {
       }
       Packet::Chunk { pos, full, bit_map, sections, sky_light, block_light } => {
         return Ok(super::chunk(
-          pos,
-          full,
-          bit_map,
-          sections,
-          sky_light,
-          block_light,
+          super::ChunkWithPos { pos, full, bit_map, sections, sky_light, block_light },
           ver,
           conn.conv(),
         ));
@@ -169,7 +164,7 @@ impl ToTcp for Packet {
             buf.write_buf(&node.properties);
           }
           if let Some(suggestion) = &node.suggestion {
-            buf.write_str(&suggestion);
+            buf.write_str(suggestion);
           }
         });
         buf.write_varint(root as i32);
@@ -289,9 +284,9 @@ impl ToTcp for Packet {
           let mut data = vec![];
           let mut buf = Buffer::new(&mut data);
           buf.write_varint(eid);
-          buf.write_i16(x.into());
-          buf.write_i16(y.into());
-          buf.write_i16(z.into());
+          buf.write_i16(x);
+          buf.write_i16(y);
+          buf.write_i16(z);
           buf.write_i8(yaw);
           buf.write_i8(pitch);
           buf.write_bool(on_ground);
@@ -396,29 +391,27 @@ impl ToTcp for Packet {
           buf.write_bool(enable_respawn_screen);
           buf.write_bool(false); // Is debug; cannot be modified, has preset blocks
           buf.write_bool(false); // Is flat; changes fog
+        } else if ver >= ProtocolVersion::V1_15_2 {
+          buf.write_i32(dimension.into());
+          // Hashed world seed, used for biomes
+          buf.write_u64(0);
+          // Max players (ignored)
+          buf.write_u8(0);
+          // World type
+          buf.write_str("default");
+          buf.write_varint(view_distance.into());
+          buf.write_bool(reduced_debug_info);
+          buf.write_bool(enable_respawn_screen);
+        } else if ver >= ProtocolVersion::V1_14_4 {
+          buf.write_i32(dimension.into());
+          // Max players (ignored)
+          buf.write_u8(0);
+          // World type
+          buf.write_str("default");
+          buf.write_varint(view_distance.into());
+          buf.write_bool(reduced_debug_info);
         } else {
-          if ver >= ProtocolVersion::V1_15_2 {
-            buf.write_i32(dimension.into());
-            // Hashed world seed, used for biomes
-            buf.write_u64(0);
-            // Max players (ignored)
-            buf.write_u8(0);
-            // World type
-            buf.write_str("default");
-            buf.write_varint(view_distance.into());
-            buf.write_bool(reduced_debug_info);
-            buf.write_bool(enable_respawn_screen);
-          } else if ver >= ProtocolVersion::V1_14_4 {
-            buf.write_i32(dimension.into());
-            // Max players (ignored)
-            buf.write_u8(0);
-            // World type
-            buf.write_str("default");
-            buf.write_varint(view_distance.into());
-            buf.write_bool(reduced_debug_info);
-          } else {
-            buf.write_bool(reduced_debug_info);
-          }
+          buf.write_bool(reduced_debug_info);
         }
 
         match ver.maj().unwrap() {
@@ -620,7 +613,7 @@ impl ToTcp for Packet {
         if ver < ProtocolVersion::V1_14_4 {
           GPacket::CustomPayloadV8 { channel, unknown: data }
         } else {
-          GPacket::CustomPayloadV14 { channel: channel, unknown: data }
+          GPacket::CustomPayloadV14 { channel, unknown: data }
         }
       }
       Packet::RemoveEntities { eids } => {
@@ -848,9 +841,9 @@ impl ToTcp for Packet {
         } else {
           let mut data = vec![];
           let mut buf = Buffer::new(&mut data);
-          buf.write_i16(vel_x.into());
-          buf.write_i16(vel_y.into());
-          buf.write_i16(vel_z.into());
+          buf.write_i16(vel_x);
+          buf.write_i16(vel_y);
+          buf.write_i16(vel_z);
           GPacket::SpawnObjectV8 {
             entity_id:      eid,
             ty:             object_ty(ty),
@@ -977,7 +970,7 @@ impl ToTcp for Packet {
         let mut data = vec![];
         let mut buf = Buffer::new(&mut data);
         fn write_entities(buf: &mut Buffer<&mut Vec<u8>>, entities: &[String]) {
-          buf.write_list(&entities, |buf, n| buf.write_str(n.as_str()));
+          buf.write_list(entities, |buf, n| buf.write_str(n.as_str()));
         }
         fn write_info(ver: ProtocolVersion, buf: &mut Buffer<&mut Vec<u8>>, info: &TeamInfo) {
           if ver >= ProtocolVersion::V1_14_4 {
@@ -1126,7 +1119,7 @@ impl ToTcp for Packet {
         let mut buf = tcp::Packet::from_buf_id(vec![], 0, ver);
         conn.conv().item(&mut item, ver.block());
         buf.write_item(&item);
-        GPacket::SetSlotV8 { window_id: wid.into(), slot: slot, unknown: buf.serialize() }
+        GPacket::SetSlotV8 { window_id: wid.into(), slot, unknown: buf.serialize() }
       }
       _ => todo!("convert {:?} into generated packet", self),
     }])

@@ -212,15 +212,13 @@ impl Packet {
         damage,
         nbt,
       )
+    } else if self.read_bool()? {
+      let id = self.read_varint()?;
+      let count = self.read_u8()?;
+      let nbt = self.read_nbt()?;
+      Item::new(conv.item_to_new(id as u32, 0, self.ver.block()) as i32, count, 0, nbt)
     } else {
-      if self.read_bool()? {
-        let id = self.read_varint()?;
-        let count = self.read_u8()?;
-        let nbt = self.read_nbt()?;
-        Item::new(conv.item_to_new(id as u32, 0, self.ver.block()) as i32, count, 0, nbt)
-      } else {
-        Item::new(0, 0, 0, NBT::empty(""))
-      }
+      Item::new(0, 0, 0, NBT::empty(""))
     })
   }
 
@@ -256,19 +254,6 @@ impl Packet {
 
   /// This writes a UUID into the buffer (in big endian format).
   pub fn write_uuid(&mut self, v: UUID) { self.buf.write_uuid(v); }
-
-  /// Reads a block hit result. This (for whatever dumb reason) is part of the
-  /// packet buffer in 1.17, and is literally called ONCE. So, because reasons,
-  /// I need to implement it as well.
-  pub fn read_block_hit(&mut self) -> Result<((f32, f32, f32), i32, Pos, bool)> {
-    let pos = self.read_pos()?;
-    let dir = self.read_varint()?;
-    let x = self.read_f32()?;
-    let y = self.read_f32()?;
-    let z = self.read_f32()?;
-    let hit = self.read_bool()?;
-    return Ok(((pos.x() as f32 + x, pos.y() as f32 + y, pos.z() as f32 + z), dir, pos, hit));
-  }
 
   /// Reads a list from the packet. This is new to 1.17, and simplifies a bunch
   /// of small for loops in previous versions.
@@ -392,7 +377,7 @@ impl Packet {
   pub fn write_option<T>(&mut self, val: &Option<T>, write: impl FnOnce(&mut Packet, &T)) {
     self.write_bool(val.is_some());
     match val {
-      Some(v) => write(self, &v),
+      Some(v) => write(self, v),
       None => {}
     }
   }

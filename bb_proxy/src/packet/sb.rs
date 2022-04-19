@@ -32,7 +32,7 @@ impl FromTcp for Packet {
         unknown,
       } => {
         let mut buf = tcp::Packet::from_buf_id(unknown, 0, ver);
-        let _item = buf.read_item(&conv)?;
+        let _item = buf.read_item(conv)?;
         if slot_id == -1 {
           slot_id = -999;
         }
@@ -54,7 +54,7 @@ impl FromTcp for Packet {
         unknown,
       } => {
         let mut buf = tcp::Packet::from_buf_id(unknown, 0, ver);
-        let _item = buf.read_item(&conv)?;
+        let _item = buf.read_item(conv)?;
         if slot_id == -1 {
           slot_id = -999;
         }

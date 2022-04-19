@@ -152,24 +152,22 @@ impl<'a, S: PacketStream + Send + Sync> Conn<'a, S> {
   pub fn new(
     client_stream: S,
     addr: SocketAddr,
-    compression_target: i32,
     key: Arc<RSAPrivateKey>,
     der_key: Option<Vec<u8>>,
-    icon: &'a str,
     server_token: Token,
     conv: Arc<TypeConverter>,
-  ) -> Conn<'a, S> {
+  ) -> Self {
     Conn {
       client_stream,
       state: State::Handshake,
       ver: ProtocolVersion::Invalid,
-      icon,
+      icon: "",
       username: None,
       info: None,
       verify_token: [0u8; 4],
       key,
       der_key,
-      compression_target,
+      compression_target: 0,
       closed: false,
       addr,
       server_stream: None,
@@ -179,6 +177,15 @@ impl<'a, S: PacketStream + Send + Sync> Conn<'a, S> {
       conv,
     }
   }
+  pub fn with_compression(mut self, compression_target: i32) -> Self {
+    self.compression_target = compression_target;
+    self
+  }
+  pub fn with_icon(mut self, icon: &'a str) -> Self {
+    self.icon = icon;
+    self
+  }
+
   pub fn ver(&self) -> ProtocolVersion { self.ver }
   pub fn closed(&self) -> bool { self.closed }
 
@@ -285,7 +292,7 @@ impl<'a, S: PacketStream + Send + Sync> Conn<'a, S> {
         if matches!(e, ReadError::Invalid(InvalidReadError::EOF)) {
           Ok(false)
         } else {
-          return Err(io::Error::new(ErrorKind::InvalidData, e.to_string()).into());
+          Err(io::Error::new(ErrorKind::InvalidData, e.to_string()).into())
         }
       }
     }
@@ -314,7 +321,7 @@ impl<'a, S: PacketStream + Send + Sync> Conn<'a, S> {
               return Ok(true);
             }
           }
-          Err(e) => return Err(e.into()),
+          Err(e) => return Err(e),
         },
         Err(ref e) if e.is_would_block() => return Ok(false),
         Err(e) => return Err(e),

@@ -1,8 +1,7 @@
-use super::TypeConverter;
+use super::{ChunkWithPos, TypeConverter};
 use crate::gnet::cb::Packet;
 use bb_common::{
-  chunk::{paletted::Section, BlockLight, Chunk, LightChunk, SkyLight},
-  math::ChunkPos,
+  chunk::Chunk,
   nbt::{Tag, NBT},
   util::Buffer,
   version::BlockVersion,
@@ -13,16 +12,8 @@ use bb_common::{
 // - Biome array now uses paletted section format, and is part of each chunk
 //   section (before it was part of the chunk column).
 // - Light update packet was merged into this packet.
-pub fn chunk(
-  pos: ChunkPos,
-  full: bool,
-  bit_map: u16,
-  sections: Vec<Section>,
-  sky_light: Option<LightChunk<SkyLight>>,
-  block_light: LightChunk<BlockLight>,
-  conv: &TypeConverter,
-) -> Packet {
-  let biomes = full;
+pub fn chunk(chunk: ChunkWithPos, conv: &TypeConverter) -> Packet {
+  let biomes = chunk.full;
   let _skylight = true; // Assume overworld
 
   let mut chunk_data = vec![];
@@ -35,7 +26,7 @@ pub fn chunk(
   // 1.18 requires all chunk sections to be sent
   let mut idx = 0;
   for i in 0..16 {
-    if bit_map & (1 << i) == 0 {
+    if chunk.bit_map & (1 << i) == 0 {
       chunk_buf.write_u16(0); // No non air blocks
 
       // Paletted container for chunk data
@@ -49,7 +40,7 @@ pub fn chunk(
       chunk_buf.write_varint(0); // no data
       continue;
     }
-    let s = &sections[idx];
+    let s = &chunk.sections[idx];
     chunk_buf.write_u16(s.non_air_blocks() as u16);
 
     // Paletted container for chunk data
@@ -91,8 +82,8 @@ pub fn chunk(
     idx += 1;
   }
 
-  let chunk = Chunk::from_bitmap(bit_map, sections, 15);
-  let heightmap = chunk.build_heightmap_new();
+  let c = Chunk::from_bitmap(chunk.bit_map, chunk.sections, 15);
+  let heightmap = c.build_heightmap_new();
   let heightmap = NBT::new("", Tag::compound(&[("MOTION_BLOCKING", Tag::LongArray(heightmap))]));
 
   let mut data = Vec::with_capacity(chunk_buf.len());
@@ -111,7 +102,7 @@ pub fn chunk(
   let mut sky_empty_bitmap: u64 = 0;
   let mut sky_len = 0;
   for y in 0..16 {
-    if let Some(sky) = &sky_light {
+    if let Some(sky) = &chunk.sky_light {
       if sky.get_section_opt(y).is_some() {
         sky_bitmap |= 1 << y as u64;
         sky_len += 1;
@@ -124,7 +115,7 @@ pub fn chunk(
   let mut block_empty_bitmap: u64 = 0;
   let mut block_len = 0;
   for y in 0..16 {
-    if block_light.get_section_opt(y).is_some() {
+    if chunk.block_light.get_section_opt(y).is_some() {
       block_bitmap |= 1 << y as u64;
       block_len += 1;
     } else {
@@ -153,22 +144,18 @@ pub fn chunk(
   buf.write_u64(block_empty_bitmap);
   // Sky light length
   buf.write_varint(sky_len);
-  if let Some(sky) = sky_light {
-    for s in sky.sections() {
-      if let Some(s) = s {
-        buf.write_varint(s.data().len() as i32);
-        buf.write_buf(s.data());
-      }
-    }
-  }
-  // Block light length
-  buf.write_varint(block_len);
-  for s in block_light.sections() {
-    if let Some(s) = s {
+  if let Some(sky) = chunk.sky_light {
+    for s in sky.sections().iter().flatten() {
       buf.write_varint(s.data().len() as i32);
       buf.write_buf(s.data());
     }
   }
+  // Block light length
+  buf.write_varint(block_len);
+  for s in chunk.block_light.sections().iter().flatten() {
+    buf.write_varint(s.data().len() as i32);
+    buf.write_buf(s.data());
+  }
 
-  Packet::ChunkDataV17 { chunk_x: pos.x(), chunk_z: pos.z(), unknown: data }
+  Packet::ChunkDataV17 { chunk_x: chunk.pos.x(), chunk_z: chunk.pos.z(), unknown: data }
 }
