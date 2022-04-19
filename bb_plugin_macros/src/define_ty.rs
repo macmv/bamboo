@@ -199,7 +199,7 @@ fn panda_arg_names<'a>(args: impl Iterator<Item = &'a FnArg>) -> Vec<impl quote:
     .collect()
 }
 
-fn python_ret<'a>(out: &ReturnType) -> (impl quote::ToTokens, Option<impl quote::ToTokens>) {
+fn python_ret(out: &ReturnType) -> (impl quote::ToTokens, Option<impl quote::ToTokens>) {
   (
     match &out {
       ReturnType::Type(_, ty) => match &**ty {
