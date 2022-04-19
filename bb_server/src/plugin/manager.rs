@@ -12,7 +12,7 @@ use super::{GlobalServerEvent, Plugin, ServerEvent, ServerMessage, ServerRequest
 use crate::{block, player::Player, world::WorldManager};
 use bb_common::{config::Config, math::Pos, net::sb::ClickWindow, util::Chat};
 use parking_lot::Mutex;
-use std::{fs, sync::Arc};
+use std::{fs, sync::Arc, time::Duration};
 
 impl PluginManager {
   /// Creates a new plugin manager. This will initialize the Ruby interpreter,
@@ -59,7 +59,7 @@ impl PluginManager {
             #[cfg(feature = "socket_plugins")]
             {
               if let Some(plugin) = sockets.add(name.clone(), f.path()) {
-                plugins.push(Plugin::new(config, plugin));
+                plugins.push(Plugin::new(name.clone(), config, plugin));
               }
             }
             #[cfg(not(feature = "socket_plugins"))]
@@ -71,7 +71,7 @@ impl PluginManager {
             info!("found python plugin at {}", path.to_str().unwrap());
             #[cfg(feature = "python_plugins")]
             {
-              plugins.push(Plugin::new(config, python::Plugin::new(name.clone())));
+              plugins.push(Plugin::new(name.clone(), config, python::Plugin::new(name.clone())));
             }
             #[cfg(not(feature = "python_plugins"))]
             {
@@ -89,7 +89,7 @@ impl PluginManager {
                 config.get::<_, String>("wasm.output"),
                 wm.clone(),
               ) {
-                Ok(p) => plugins.push(Plugin::new(config, p)),
+                Ok(p) => plugins.push(Plugin::new(name.clone(), config, p)),
                 Err(e) => error!("error loading {name}: {e}"),
               }
             }
@@ -109,7 +109,7 @@ impl PluginManager {
 
                 p.load_from_dir(&f.path(), self);
                 p.call_init();
-                plugins.push(Plugin::new(config, p));
+                plugins.push(Plugin::new(name.clone(), config, p));
               } else {
                 error!("plugin `{name}` does not have a `main.pand` file");
               }
@@ -138,12 +138,12 @@ impl PluginManager {
   }
 
   fn message(&self, msg: ServerMessage) {
-    self.plugins.lock().retain(|p| p.call(msg.clone()).is_ok());
+    self.plugins.lock().retain_mut(|p| p.call(msg.clone(), Duration::from_millis(50)).is_ok());
   }
   fn message_bool(&self, msg: ServerMessage) -> bool {
     let mut allow = true;
     self.plugins.lock().retain(|p| {
-      if let Ok(res) = p.call(msg.clone()) {
+      if let Ok(res) = p.call(msg.clone(), Duration::from_millis(50)) {
         if !res {
           allow = false;
         }

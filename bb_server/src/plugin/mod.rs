@@ -26,8 +26,9 @@ use socket::SocketManager;
 use crate::{block, player::Player, world::WorldManager};
 use ::panda::runtime::VarSend;
 use bb_common::{config::Config, math::Pos};
+use crossbeam_channel::{Receiver, RecvTimeoutError, Sender};
 use parking_lot::Mutex;
-use std::{error::Error, fmt, sync::Arc};
+use std::{error::Error, fmt, sync::Arc, thread, time::Duration};
 
 #[derive(Debug)]
 pub enum Event {
@@ -63,19 +64,28 @@ impl fmt::Debug for Bamboo {
 use self::panda::PandaPlugin;
 
 pub trait PluginImpl: std::any::Any {
-  /// If this returns an error, the plugin will be removed, and this function
-  /// will not be called again.
-  ///
-  /// If this returns `false`, the event will be cancelled.
-  fn call(&self, event: ServerMessage) -> Result<bool, CallError>;
+  /// Calls an event. There is no reply for `ServerEvent`. If an error is
+  /// thrown, it will be logged, and the plugin will be removed if `keep` is
+  /// `false`.
+  fn call(&self, player: Arc<Player>, event: ServerEvent) -> Result<(), CallError>;
+  fn call_global(&self, event: GlobalServerEvent) -> Result<(), CallError>;
+  /// Calls an event. This should block until it gets a reply.
+  fn req(&self, player: Arc<Player>, event: ServerRequest) -> Result<PluginReply, CallError>;
   #[cfg(feature = "panda_plugins")]
   fn panda(&mut self) -> Option<&mut PandaPlugin> { None }
 }
 
 pub struct Plugin {
+  // This will be useful in the future. Probably.
   #[allow(unused)]
-  config: Config,
-  imp:    Box<dyn PluginImpl + Send + Sync>,
+  config:   Config,
+  name:     String,
+  // TODO: Maybe use a mutex or something, so that we can get `unwrap_panda` to work again.
+  #[allow(unused)]
+  imp:      Arc<dyn PluginImpl + Send + Sync>,
+  reply_id: u32,
+  tx:       Sender<ServerMessage>,
+  rx:       Receiver<PluginMessage>,
 }
 
 #[derive(Debug)]
@@ -107,10 +117,48 @@ impl fmt::Display for CallError {
 impl Error for CallError {}
 
 impl Plugin {
-  pub fn new(config: Config, imp: impl PluginImpl + Send + Sync + 'static) -> Self {
-    Plugin { config, imp: Box::new(imp) }
+  pub fn new(name: String, config: Config, imp: impl PluginImpl + Send + Sync + 'static) -> Self {
+    let (server_tx, server_rx) = crossbeam_channel::bounded(128);
+    let (plugin_tx, plugin_rx) = crossbeam_channel::bounded(128);
+    let imp = Arc::new(imp);
+    let i = Arc::clone(&imp);
+    thread::spawn(move || {
+      while let Ok(ev) = server_rx.recv() {
+        match ev {
+          ServerMessage::Request { reply_id, player, request } => match i.req(player, request) {
+            Ok(reply) => plugin_tx.send(PluginMessage::Reply { reply_id, reply }).unwrap(),
+            _ => todo!(),
+          },
+          _ => todo!(),
+        }
+      }
+    });
+    Plugin { config, name, imp, reply_id: 0, tx: server_tx, rx: plugin_rx }
   }
-  pub fn call(&self, ev: ServerMessage) -> Result<bool, CallError> { self.imp.call(ev) }
+  pub fn call(&self, ev: ServerMessage, timeout: Duration) -> Result<bool, CallError> {
+    self.tx.send(ev).unwrap();
+    match self.rx.recv_timeout(timeout) {
+      Ok(res) => match res {
+        PluginMessage::Reply { reply_id: _, reply } => match reply {
+          PluginReply::Cancel { allow } => Ok(allow),
+        },
+        _ => todo!(),
+      },
+      Err(RecvTimeoutError::Timeout) => {
+        warn!("event timed out for plugin `{}`", self.name);
+        Ok(true)
+      }
+      Err(RecvTimeoutError::Disconnected) => panic!("plugin disconnected"),
+    }
+  }
+  pub fn next_reply(&mut self) -> u32 {
+    self.reply_id += 1;
+    self.reply_id
+  }
+  #[cfg(feature = "panda_plugins")]
+  pub fn unwrap_panda(&mut self) -> &mut PandaPlugin { todo!() }
+  /*
   #[cfg(feature = "panda_plugins")]
   pub fn unwrap_panda(&mut self) -> &mut PandaPlugin { self.imp.panda().unwrap() }
+  */
 }

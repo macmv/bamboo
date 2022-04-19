@@ -1,6 +1,6 @@
 use super::{
   types, types::Callback as BCallback, Bamboo, CallError, GlobalServerEvent, PluginImpl,
-  PluginManager, ServerEvent, ServerMessage, ServerRequest,
+  PluginManager, PluginReply, ServerEvent, ServerRequest,
 };
 use crate::{block, player::Player, world::WorldManager};
 use bb_common::{math::Pos, net::sb::ClickWindow};
@@ -172,28 +172,28 @@ impl PandaPlugin {
 }
 
 impl PluginImpl for PandaPlugin {
-  fn call(&self, ev: ServerMessage) -> Result<bool, CallError> {
+  fn call(&self, player: Arc<Player>, ev: ServerEvent) -> Result<(), CallError> {
     match ev {
-      ServerMessage::Event { player, event } => match event {
-        ServerEvent::Chat { text } => self.call_on_chat_message(player, text),
-        ServerEvent::PlayerJoin {} => self.call_on_player_join(player),
-        ServerEvent::PlayerLeave {} => self.call_on_player_leave(player),
-      },
-      ServerMessage::Request { player, request, .. } => {
-        return Ok(match request {
-          ServerRequest::BlockPlace { pos, block } => self.call_on_block_place(player, pos, block),
-          ServerRequest::BlockBreak { pos, block } => self.call_on_block_break(player, pos, block),
-          ServerRequest::ClickWindow { slot, mode } => {
-            self.call_on_click_window(player, slot, mode)
-          }
-        })
-      }
-      ServerMessage::GlobalEvent { event } => match event {
-        GlobalServerEvent::Tick => self.call_on_tick(),
-      },
-      _ => {}
+      ServerEvent::Chat { text } => self.call_on_chat_message(player, text),
+      ServerEvent::PlayerJoin {} => self.call_on_player_join(player),
+      ServerEvent::PlayerLeave {} => self.call_on_player_leave(player),
     }
-    Ok(true)
+    Ok(())
+  }
+  fn call_global(&self, ev: GlobalServerEvent) -> Result<(), CallError> {
+    match ev {
+      GlobalServerEvent::Tick => self.call_on_tick(),
+    }
+    Ok(())
+  }
+  fn req(&self, player: Arc<Player>, request: ServerRequest) -> Result<PluginReply, CallError> {
+    Ok(PluginReply::Cancel {
+      allow: match request {
+        ServerRequest::BlockPlace { pos, block } => self.call_on_block_place(player, pos, block),
+        ServerRequest::BlockBreak { pos, block } => self.call_on_block_break(player, pos, block),
+        ServerRequest::ClickWindow { slot, mode } => self.call_on_click_window(player, slot, mode),
+      },
+    })
   }
   fn panda(&mut self) -> Option<&mut PandaPlugin> { Some(self) }
 }
