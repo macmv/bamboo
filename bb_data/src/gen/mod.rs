@@ -302,6 +302,7 @@ impl CodeGen {
   /// # "#);
   /// ```
   /// That will produce:
+  #[allow(rustdoc::invalid_rust_codeblocks)]
   /// ```ignore
   /// // Hello world!
   /// ```

@@ -20,6 +20,12 @@ pub use plugin::PBiomeGen;
 
 use underground::Underground;
 
+/// A set of layers, used when generating terrain. This starts from the top, and
+/// stores the layers in order below that. There is also a default area, which
+/// fills everything below the last layer.
+///
+/// TODO: This should be an interface, so that one could add noise maps to each
+/// layer, or use absolute layering (like in mesa biomes).
 pub struct BiomeLayers {
   layers:       Vec<(block::Kind, u32)>,
   main_area:    block::Kind,
@@ -87,13 +93,15 @@ pub trait BiomeGen {
   fn id(&self) -> usize;
   /// This fills an entire chunk with the given biome. This will fill the chunk
   /// with stone, up to the height at the middle. It will then carve/add blocks
-  /// to the other columns of the chunk. Finally, it will call [`fill_column`]
-  /// for each column within the chunk. It will use the height of the stone as
-  /// the minimum to pass to `fill_column`.
+  /// to the other columns of the chunk. Finally, it will call
+  /// [`fill_column`](Self::fill_column) for each column within the chunk. It
+  /// will use the height of the stone as the minimum to pass to
+  /// `fill_column`.
   ///
-  /// For most biomes, this should not be overriden. [`height_at`] should be
-  /// overriden if you want to build something like a mountain, and [`layers`]
-  /// should be overriden if you need something like a desert.
+  /// For most biomes, this should not be overriden.
+  /// [`height_at`](Self::height_at) should be overriden if you want to build
+  /// something like a mountain, and [`layers`](Self::layers) should be
+  /// overriden if you need something like a desert.
   fn fill_chunk(&self, world: &WorldGen, pos: ChunkPos, c: &mut MultiChunk) {
     let average_min_height = self.height_at(world, pos.block() + Pos::new(8, 0, 8));
     let layers = self.layers();
@@ -133,6 +141,9 @@ pub trait BiomeGen {
   /// This fills a single block column with this chunk. If there are multiple
   /// biomes in a chunk, this is called instead of fill_chunk. Y of pos will
   /// always be 0.
+  ///
+  /// This should be overriden. Instead, set the biome [`layers`](Self::layers),
+  /// and use [`decorate`](Self::decorate).
   fn fill_column(&self, world: &WorldGen, pos: Pos, c: &mut MultiChunk) {
     let height = self.height_at(world, pos);
     let pos = pos.chunk_rel();
@@ -151,24 +162,29 @@ pub trait BiomeGen {
     }
   }
   /// Decorates the given chunk. This is called for every chunk where a block of
-  /// this biome is in the radius of [`decorate_radius`].
+  /// this biome is in the radius of [`decorate_radius`](Self::decorate_radius).
   ///
-  /// The tops map is a mapping of every block column in the chunk to maximum Y
-  /// values.
+  /// If you want to add trees, bushes, or similar decorations, override this
+  /// and [`decorate_radius`](Self::decorate_radius).
+  ///
+  /// The `tops` map is a mapping of every block column in the chunk to maximum
+  /// Y values. The positions are all chunk-relative (X and Z in `0..16`), with
+  /// the Y set to 0.
   fn decorate(
     &self,
-    _world: &WorldGen,
-    _pos: ChunkPos,
-    _c: &mut MultiChunk,
-    _tops: &HashMap<Pos, usize>,
+    world: &WorldGen,
+    pos: ChunkPos,
+    c: &mut MultiChunk,
+    tops: &HashMap<Pos, usize>,
   ) {
+    let _ = (world, pos, c, tops);
   }
   /// Returns the longest distance that decorations can extend outside of this
-  /// biome. This is used to call [`decorate`] when there are blocks of this
-  /// biome in a nearby chunk.
+  /// biome. This is used to call [`decorate`](Self::decorate) when there are
+  /// blocks of this biome in a nearby chunk.
   fn decorate_radius(&self) -> u32 { 0 }
   /// Returns the layers that should be used to fill in the ground. See
-  /// [`BiomeLayer`] for more.
+  /// [`BiomeLayers`] for more.
   fn layers(&self) -> BiomeLayers {
     let mut layers = BiomeLayers::new(block::Kind::Stone);
     layers.add(block::Kind::Dirt, 4);

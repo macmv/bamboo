@@ -36,9 +36,8 @@ impl World {
   }
 
   /// This sets a block within the world. It will return an error if the
-  /// position is outside of the world. Unlike
-  /// [`MultiChunk::set_type`](chunk::MultiChunk::set_type), this will send
-  /// packets to anyone within render distance of the given chunk.
+  /// position is outside of the world. This will send packets to anyone within
+  /// render distance of the given chunk.
   ///
   /// This will return `true` if a block was placed, and `false` if the block
   /// could not be placed. This will only ever return `Ok(false)` if the world

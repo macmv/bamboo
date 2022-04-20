@@ -439,14 +439,14 @@ impl Player {
   }
 
   /// Returns the player's game mode. To change their game mode, call
-  /// [`set_gamemode`](Self::set_gamemode).
+  /// [`set_game_mode`](Self::set_game_mode).
   pub fn game_mode(&self) -> GameMode { *self.game_mode.lock() }
 
-  /// Updates the player's game mode.
+  /// Updates the player's game mode. This can be retrieved with
+  /// [`game_mode`](Self::game_mode).
   pub fn set_game_mode(&self, mode: GameMode) {
     self.send(cb::Packet::ChangeGameState { action: cb::ChangeGameState::GameMode(mode) });
-    let _ = mode;
-    todo!()
+    *self.game_mode.lock() = mode;
   }
 
   /// Sends a server switch packet to the proxy. If the ip address is valid, the

@@ -680,6 +680,10 @@ impl WorldManager {
   /// Returns the current item converter. This can be used to convert old item
   /// ids to new ones, and vice versa.
   pub fn item_converter(&self) -> &Arc<item::TypeConverter> { &self.item_converter }
+  /// Returns the current entity converter. This can be used to convert old
+  /// entity ids to new ones, and vice versa. It can also be used for
+  /// converting entity metadata indices.
+  pub fn entity_converter(&self) -> &Arc<entity::TypeConverter> { &self.entity_converter }
   /// Returns the plugins used for the whole server.
   pub fn plugins(&self) -> &Arc<plugin::PluginManager> { &self.plugins }
   /// Returns the commands used for the whole server.

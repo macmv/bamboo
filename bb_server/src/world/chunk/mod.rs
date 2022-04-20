@@ -96,7 +96,7 @@ impl MultiChunk {
   }
 
   /// Gets the type of a block within this chunk. Pos must be within the chunk.
-  /// See [`set_block`](Self::set_block) for more.
+  /// See [`set_kind`](Self::set_kind) for more.
   pub fn get_kind(&self, p: Pos) -> Result<block::Kind, PosError> {
     Ok(self.types.kind_from_id(self.inner.get_block(p)?, BlockVersion::latest()))
   }

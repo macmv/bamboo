@@ -13,8 +13,9 @@ impl TypeConverter {
   /// Creates a new converter. This will reload all the versioning data. This is
   /// mostly built into the binary, but it is still a waste to call this
   /// function. Do not call this unless you have a very good reason. Instead,
-  /// use [`WorldManager::get_entity_converter`](crate::world::WorldManager::
-  /// get_entity_converter).
+  /// use [`WorldManager::entity_converter`].
+  ///
+  /// [`WorldManager::entity_converter`]: crate::world::WorldManager::entity_converter
   #[allow(clippy::new_without_default)]
   pub fn new() -> Self { Self { types: ty::generate_kinds(), versions: generate_versions() } }
 

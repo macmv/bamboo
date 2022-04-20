@@ -11,11 +11,11 @@ pub struct TypeConverter {
 }
 
 impl TypeConverter {
-  /// Creates a new converter. This will parse the csv file, and allocate around
-  /// 200K of memory. Do not call this unless you have a very good reason.
-  /// Instead, use
-  /// [`WorldManager::get_item_converter`](crate::world::WorldManager::
-  /// get_item_converter).
+  /// Creates a new converter. This will allocate a bunch. Do not call this
+  /// unless you have a very good reason. Instead, use
+  /// [`WorldManager::item_converter`].
+  ///
+  /// [`WorldManager::item_converter`]: crate::world::WorldManager::item_converter
   #[allow(clippy::new_without_default)]
   pub fn new() -> Self { Self { types: ty::generate_kinds(), versions: generate_versions() } }
 

@@ -64,7 +64,7 @@ pub struct Entity {
 impl Entity {
   /// Creates a new entity, with default functionality. They will take normal
   /// damage, and despawn if their health hits 0. If you want custom
-  /// functionality of any kind, call [`new_custom`].
+  /// functionality of any kind, call [`new_custom`](Self::new_custom).
   pub fn new(eid: i32, ty: Type, world: Arc<World>, pos: FPos, meta: Metadata) -> Self {
     let behavior = behavior::for_entity(ty);
     Entity {

@@ -18,7 +18,7 @@
 //! means 10 blocks up/right/forward of your current position. See the
 //! [`Parser`] type for details on the various parsers.
 mod enums;
-mod parse;
+pub mod parse;
 pub mod reader;
 mod sender;
 mod serialize;
