@@ -8,9 +8,10 @@ pub struct PluginManager {
 #[cfg(feature = "panda_plugins")]
 use super::PandaPlugin;
 
-use super::{GlobalServerEvent, Plugin, ServerEvent, ServerMessage, ServerRequest};
+use super::{GlobalServerEvent, Plugin, PluginMessage, PluginReply, ServerEvent, ServerRequest};
 use crate::{block, player::Player, world::WorldManager};
 use bb_common::{config::Config, math::Pos, net::sb::ClickWindow, util::Chat};
+use crossbeam_channel::Select;
 use parking_lot::Mutex;
 use std::{fs, sync::Arc, time::Duration};
 
@@ -141,32 +142,66 @@ impl PluginManager {
     }
   }
 
-  fn message(&self, msg: ServerMessage) {
-    self.plugins.lock().retain_mut(|p| p.call(msg.clone(), Duration::from_millis(50)).is_ok());
-  }
-  fn message_bool(&self, msg: ServerMessage) -> bool {
-    let mut allow = true;
-    self.plugins.lock().retain(|p| {
-      if let Ok(res) = p.call(msg.clone(), Duration::from_millis(50)) {
-        if !res {
-          allow = false;
-        }
-        true
-      } else {
-        // Remove this plugin
-        false
-      }
-    });
-    allow
-  }
   fn event(&self, player: Arc<Player>, event: ServerEvent) {
-    self.message(ServerMessage::Event { player, event });
-  }
-  fn req(&self, player: Arc<Player>, request: ServerRequest) -> bool {
-    self.message_bool(ServerMessage::Request { reply_id: 0, player, request })
+    self.plugins.lock().retain(|p| match p.call(player.clone(), event.clone()) {
+      Ok(_) => true,
+      Err(e) => e.keep,
+    });
   }
   fn global_event(&self, event: GlobalServerEvent) {
-    self.message(ServerMessage::GlobalEvent { event });
+    self.plugins.lock().retain(|p| match p.call_global(event.clone()) {
+      Ok(_) => true,
+      Err(e) => e.keep,
+    });
+  }
+  fn req(&self, player: Arc<Player>, request: ServerRequest) -> bool {
+    let reply_id = 0;
+    let mut plugins = self.plugins.lock();
+    // Send all the events first.
+    plugins.retain(|p| match p.req(reply_id, player.clone(), request.clone()) {
+      Ok(_) => true,
+      Err(e) => e.keep,
+    });
+    // Then wait on all of them.
+    let mut allow = true;
+    let mut plugins_left: Vec<_> = plugins.iter_mut().collect();
+    while !plugins_left.is_empty() {
+      let mut sel = Select::new();
+      for p in &plugins_left {
+        sel.recv(p.recv());
+      }
+      let index;
+      let message;
+      let plugin;
+      match sel.select_timeout(Duration::from_millis(50)) {
+        Ok(op) => {
+          index = op.index();
+          let plugin = &plugins_left[index];
+          message = op.recv(plugin.recv()).unwrap()
+        }
+        Err(_) => return allow,
+      }
+      plugin = &mut plugins_left[index];
+      match &message {
+        PluginMessage::Reply { reply_id: rid, reply } => {
+          if *rid == reply_id {
+            match reply {
+              PluginReply::Cancel { allow: a } => {
+                if !a {
+                  allow = false
+                }
+              }
+            }
+            plugins_left.remove(index);
+          } else {
+            plugin.add_to_queue(message);
+          }
+        }
+        _ => plugin.add_to_queue(message),
+      }
+    }
+
+    allow
   }
   pub fn on_tick(&self) { self.global_event(GlobalServerEvent::Tick); }
   pub fn on_block_place(&self, player: Arc<Player>, pos: Pos, block: block::Type) -> bool {

@@ -26,9 +26,9 @@ use socket::SocketManager;
 use crate::{block, player::Player, world::WorldManager};
 use ::panda::runtime::VarSend;
 use bb_common::{config::Config, math::Pos};
-use crossbeam_channel::{Receiver, RecvTimeoutError, Sender};
+use crossbeam_channel::{Receiver, Sender};
 use parking_lot::Mutex;
-use std::{error::Error, fmt, sync::Arc, thread, time::Duration};
+use std::{collections::VecDeque, error::Error, fmt, sync::Arc, thread};
 
 #[derive(Debug)]
 pub enum Event {
@@ -78,14 +78,15 @@ pub trait PluginImpl: std::any::Any {
 pub struct Plugin {
   // This will be useful in the future. Probably.
   #[allow(unused)]
-  config:   Config,
-  name:     String,
+  config: Config,
+  #[allow(unused)]
+  name:   String,
   // TODO: Maybe use a mutex or something, so that we can get `unwrap_panda` to work again.
   #[allow(unused)]
-  imp:      Arc<dyn PluginImpl + Send + Sync>,
-  reply_id: u32,
-  tx:       Sender<ServerMessage>,
-  rx:       Receiver<PluginMessage>,
+  imp:    Arc<dyn PluginImpl + Send + Sync>,
+  tx:     Sender<ServerMessage>,
+  rx:     Receiver<PluginMessage>,
+  queue:  VecDeque<PluginMessage>,
 }
 
 #[derive(Debug)]
@@ -149,39 +150,27 @@ impl Plugin {
         }
       }
     });
-    Plugin { config, name, imp, reply_id: 0, tx: server_tx, rx: plugin_rx }
+    Plugin { config, name, imp, tx: server_tx, rx: plugin_rx, queue: VecDeque::new() }
   }
-  pub fn call(&self, ev: ServerMessage, timeout: Duration) -> Result<bool, CallError> {
-    let reply = match ev {
-      ServerMessage::Request { reply_id, .. } => Some(reply_id),
-      _ => None,
-    };
-    self.tx.send(ev).unwrap();
-    if let Some(_reply) = reply {
-      match self.rx.recv_timeout(timeout) {
-        Ok(res) => match res {
-          PluginMessage::Reply { reply_id: _, reply } => match reply {
-            PluginReply::Cancel { allow } => Ok(allow),
-          },
-          _ => todo!(),
-        },
-        Err(RecvTimeoutError::Timeout) => {
-          warn!("event timed out for plugin `{}`", self.name);
-          Ok(true)
-        }
-        Err(e @ RecvTimeoutError::Disconnected) => {
-          error!("plugin {} disconnected", self.name);
-          Err(CallError::no_keep(e))
-        }
-      }
-    } else {
-      Ok(true)
-    }
+  pub fn call(&self, player: Arc<Player>, event: ServerEvent) -> Result<(), CallError> {
+    self.tx.send(ServerMessage::Event { player, event }).unwrap();
+    Ok(())
   }
-  pub fn next_reply(&mut self) -> u32 {
-    self.reply_id += 1;
-    self.reply_id
+  pub fn call_global(&self, event: GlobalServerEvent) -> Result<(), CallError> {
+    self.tx.send(ServerMessage::GlobalEvent { event }).unwrap();
+    Ok(())
   }
+  pub fn req(
+    &self,
+    reply_id: u32,
+    player: Arc<Player>,
+    request: ServerRequest,
+  ) -> Result<(), CallError> {
+    self.tx.send(ServerMessage::Request { reply_id, player, request }).unwrap();
+    Ok(())
+  }
+  pub fn recv(&self) -> &Receiver<PluginMessage> { &self.rx }
+  pub fn add_to_queue(&mut self, message: PluginMessage) { self.queue.push_back(message); }
   #[cfg(feature = "panda_plugins")]
   pub fn unwrap_panda(&mut self) -> &mut PandaPlugin { todo!() }
   /*
