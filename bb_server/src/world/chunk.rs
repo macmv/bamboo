@@ -1,12 +1,19 @@
-use std::sync::Arc;
-
+use crate::block;
 use bb_common::{
   chunk::{paletted::Section as PalettedSection, BlockLight, Chunk, LightChunk, SkyLight},
   math::{Pos, PosError},
   version::BlockVersion,
 };
+use parking_lot::Mutex;
+use std::sync::{atomic::AtomicU32, Arc};
 
-use crate::block;
+/// A chunk in the world with a number of people viewing it. If the count is at
+/// 0, then this chunk is essentially flagged for unloading. Chunks are unloaded
+/// lazily, so this chunk will just end up being cleaned up in the future.
+pub struct CountedChunk {
+  pub(super) count: AtomicU32,
+  pub chunk:        Mutex<MultiChunk>,
+}
 
 pub struct MultiChunk {
   inner:        Chunk<PalettedSection>,
@@ -15,6 +22,13 @@ pub struct MultiChunk {
   types:        Arc<block::TypeConverter>,
   /// Set to false when the world is generating, which makes things much faster.
   update_light: bool,
+}
+
+impl CountedChunk {
+  /// Creates a new counted chunk with the counter at 0.
+  pub fn new(c: MultiChunk) -> CountedChunk {
+    CountedChunk { count: 0.into(), chunk: Mutex::new(c) }
+  }
 }
 
 impl MultiChunk {

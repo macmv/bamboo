@@ -1,5 +1,18 @@
+//! Handles all the worlds on a Bamboo server.
+//!
+//! This has two main types, [`World`] and [`WorldManager`].
+//!
+//! [`World`] handles everything for a single world. This includes chunks, world
+//! tick loops, players, and entities.
+//!
+//! [`WorldManager`] handles everything for the whole server. It is sort of the
+//! global Bamboo type. There is one `WorldManager` per server. This handles
+//! global things, like all the teams, players, and worlds. It also handles new
+//! players joining, and players leaving. Lastly, it also contains a global tick
+//! loop, which is currently only used for plugins.
+
 mod blocks;
-pub mod chunk;
+mod chunk;
 mod entities;
 pub mod gen;
 mod init;
@@ -39,9 +52,9 @@ use crate::{
   player::{Player, Team},
   plugin,
 };
-pub use chunk::MultiChunk;
 use gen::WorldGen;
 
+pub use chunk::{CountedChunk, MultiChunk};
 pub use players::{PlayersIter, PlayersMap};
 
 // pub struct ChunkRef<'a> {
@@ -56,21 +69,11 @@ pub use players::{PlayersIter, PlayersMap};
 //   }
 // }
 
-/// A chunk in the world with a number of people viewing it. If the count is at
-/// 0, then this chunk is essentially flagged for unloading. Chunks are unloaded
-/// lazily, so this chunk will just end up being cleaned up in the future.
-pub struct CountedChunk {
-  count:     AtomicU32,
-  pub chunk: Mutex<MultiChunk>,
-}
-
-impl CountedChunk {
-  /// Creates a new counted chunk with the counter at 0.
-  pub fn new(c: MultiChunk) -> CountedChunk {
-    CountedChunk { count: 0.into(), chunk: Mutex::new(c) }
-  }
-}
-
+/// A Minecraft world. This has a list of players, a collection of chunks, and a
+/// collection of entities.
+///
+/// This also contains a bunch of references to other server stuff, such as
+/// [block]/[item]/[entity] type converters, and the [`WorldManager`].
 pub struct World {
   chunks:            RwLock<HashMap<ChunkPos, CountedChunk>>,
   // Whenever we want to unload chunks, we will clear out this map. So there is no situation where
@@ -91,6 +94,11 @@ pub struct World {
   locked:            AtomicBool,
 }
 
+/// The world manager. This is essentially a Bamboo type. It stores all the
+/// global state for the server.
+///
+/// This has a list of worlds, and it knows about every online player. This is
+/// also where the [block]/[item]/[entity] type converters are created.
 pub struct WorldManager {
   // This will always have at least 1 entry. The world at index 0 is considered the "default"
   // world.
@@ -117,7 +125,8 @@ struct State {
 const TICK_TIME: Duration = Duration::from_millis(50);
 
 impl World {
-  pub fn new(
+  /// Creates a new world. See also [`WorldManager::add_world`].
+  pub(crate) fn new(
     block_converter: Arc<block::TypeConverter>,
     item_converter: Arc<item::TypeConverter>,
     entity_converter: Arc<entity::TypeConverter>,
@@ -690,6 +699,13 @@ impl WorldManager {
   pub fn commands(&self) -> &CommandTree { &self.commands }
 
   /// Broadcasts a message to everyone one the server.
+  ///
+  /// # Example
+  /// ```
+  /// # use bb_server::world::WorldManager;
+  /// let wm = WorldManager::new();
+  /// wm.broadcast("Hello world!");
+  /// ```
   pub fn broadcast(&self, msg: impl Into<Chat>) {
     let m = msg.into();
     let worlds = self.worlds.read();
