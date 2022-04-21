@@ -28,7 +28,7 @@ use ::panda::runtime::VarSend;
 use bb_common::{config::Config, math::Pos};
 use crossbeam_channel::{Receiver, Sender};
 use parking_lot::Mutex;
-use std::{collections::VecDeque, error::Error, fmt, sync::Arc, thread};
+use std::{error::Error, fmt, sync::Arc, thread};
 
 #[derive(Debug)]
 pub enum Event {
@@ -78,15 +78,16 @@ pub trait PluginImpl: std::any::Any {
 pub struct Plugin {
   // This will be useful in the future. Probably.
   #[allow(unused)]
-  config: Config,
+  config:    Config,
   #[allow(unused)]
-  name:   String,
+  name:      String,
   // TODO: Maybe use a mutex or something, so that we can get `unwrap_panda` to work again.
   #[allow(unused)]
-  imp:    Arc<dyn PluginImpl + Send + Sync>,
-  tx:     Sender<ServerMessage>,
-  rx:     Receiver<PluginMessage>,
-  queue:  VecDeque<PluginMessage>,
+  imp:       Arc<dyn PluginImpl + Send + Sync>,
+  tx:        Sender<ServerMessage>,
+  rx:        Receiver<PluginMessage>,
+  /// Used to recycled events we don't care about back into the queue.
+  plugin_tx: Sender<PluginMessage>,
 }
 
 #[derive(Debug)]
@@ -129,6 +130,7 @@ impl Plugin {
     let (plugin_tx, plugin_rx) = crossbeam_channel::bounded(128);
     let imp = Arc::new(imp);
     let i = Arc::clone(&imp);
+    let ptx = plugin_tx.clone();
     thread::spawn(move || {
       while let Ok(ev) = server_rx.recv() {
         let res = match ev {
@@ -150,7 +152,7 @@ impl Plugin {
         }
       }
     });
-    Plugin { config, name, imp, tx: server_tx, rx: plugin_rx, queue: VecDeque::new() }
+    Plugin { config, name, imp, tx: server_tx, rx: plugin_rx, plugin_tx: ptx }
   }
   pub fn call(&self, player: Arc<Player>, event: ServerEvent) -> Result<(), CallError> {
     self.tx.send(ServerMessage::Event { player, event }).unwrap();
@@ -169,8 +171,28 @@ impl Plugin {
     self.tx.send(ServerMessage::Request { reply_id, player, request }).unwrap();
     Ok(())
   }
-  pub fn recv(&self) -> &Receiver<PluginMessage> { &self.rx }
-  pub fn add_to_queue(&mut self, message: PluginMessage) { self.queue.push_back(message); }
+  pub fn rx(&self) -> &Receiver<PluginMessage> { &self.rx }
+  /// `Some(true)` means we allow.
+  /// `Some(false)` means we disallow.
+  /// `None` means this is a message we don't care about.
+  pub(crate) fn check_allow(&self, msg: PluginMessage, now: u32, rid: u32) -> Option<bool> {
+    match &msg {
+      PluginMessage::Reply { reply_id, reply } => {
+        // If it is too old, we discard this message. The listener for this reply has
+        // probably already exited, so we just ignore it.
+        if reply_id + 50_000 < now {
+          return None;
+        }
+        if *reply_id == rid {
+          match reply {
+            PluginReply::Cancel { allow } => return Some(*allow),
+          }
+        }
+      }
+      _ => self.plugin_tx.send(msg).unwrap(),
+    }
+    None
+  }
   #[cfg(feature = "panda_plugins")]
   pub fn unwrap_panda(&mut self) -> &mut PandaPlugin { todo!() }
   /*

@@ -1,25 +1,30 @@
-/// A struct that manages all plugins. This will handle re-loading all the
-/// source files on `/reload`, and will also send events to all the plugins when
-/// needed.
-pub struct PluginManager {
-  pub(super) plugins: Mutex<Vec<Plugin>>,
-}
-
 #[cfg(feature = "panda_plugins")]
 use super::PandaPlugin;
 
-use super::{GlobalServerEvent, Plugin, PluginMessage, PluginReply, ServerEvent, ServerRequest};
+use super::{GlobalServerEvent, Plugin, ServerEvent, ServerRequest};
 use crate::{block, player::Player, world::WorldManager};
 use bb_common::{config::Config, math::Pos, net::sb::ClickWindow, util::Chat};
 use crossbeam_channel::Select;
 use parking_lot::Mutex;
-use std::{fs, sync::Arc, time::Duration};
+use std::{
+  fs,
+  sync::Arc,
+  time::{Duration, Instant},
+};
+
+/// A struct that manages all plugins. This will handle re-loading all the
+/// source files on `/reload`, and will also send events to all the plugins when
+/// needed.
+pub struct PluginManager {
+  start:              Instant,
+  pub(super) plugins: Mutex<Vec<Plugin>>,
+}
 
 impl PluginManager {
   /// Creates a new plugin manager. This will initialize the Ruby interpreter,
   /// and load all plugins from disk. Do not call this multiple times.
   #[allow(clippy::new_without_default)]
-  pub fn new() -> Self { PluginManager { plugins: Mutex::new(vec![]) } }
+  pub fn new() -> Self { PluginManager { start: Instant::now(), plugins: Mutex::new(vec![]) } }
 
   /// Returns true if plugins should print error messages with colors.
   pub fn use_color(&self) -> bool { true }
@@ -155,7 +160,7 @@ impl PluginManager {
     });
   }
   fn req(&self, player: Arc<Player>, request: ServerRequest) -> bool {
-    let reply_id = 0;
+    let reply_id = self.start.elapsed().as_micros() as u32;
     let mut plugins = self.plugins.lock();
     // Send all the events first.
     plugins.retain(|p| match p.req(reply_id, player.clone(), request.clone()) {
@@ -165,40 +170,31 @@ impl PluginManager {
     // Then wait on all of them.
     let mut allow = true;
     let mut plugins_left: Vec<_> = plugins.iter_mut().collect();
+    let deadline = Instant::now() + Duration::from_millis(50);
     while !plugins_left.is_empty() {
       let mut sel = Select::new();
       for p in &plugins_left {
-        sel.recv(p.recv());
+        sel.recv(p.rx());
       }
       let index;
       let message;
       let plugin;
-      match sel.select_timeout(Duration::from_millis(50)) {
+      match sel.select_deadline(deadline) {
         Ok(op) => {
           index = op.index();
           let plugin = &plugins_left[index];
-          message = op.recv(plugin.recv()).unwrap()
+          message = op.recv(plugin.rx()).unwrap();
         }
         Err(_) => return allow,
       }
       plugin = &mut plugins_left[index];
-      match &message {
-        PluginMessage::Reply { reply_id: rid, reply } => {
-          if *rid == reply_id {
-            match reply {
-              PluginReply::Cancel { allow: a } => {
-                if !a {
-                  allow = false
-                }
-              }
-            }
-            plugins_left.remove(index);
-          } else {
-            plugin.add_to_queue(message);
-          }
-        }
-        _ => plugin.add_to_queue(message),
+      let now = self.start.elapsed().as_micros() as u32;
+      match plugin.check_allow(message, now, reply_id) {
+        Some(false) => allow = false,
+        Some(true) => {}
+        None => continue,
       }
+      plugins_left.remove(index);
     }
 
     allow
