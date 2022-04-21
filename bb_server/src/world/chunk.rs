@@ -15,6 +15,14 @@ pub struct CountedChunk {
   pub chunk:        Mutex<MultiChunk>,
 }
 
+/// This stores the block information for the latest version, block lighting
+/// information, and optionally sky light information.
+///
+/// In the past, this used to store a copy of the chunk data for each version.
+/// However, converting the palette on the proxy with a lookup table ended up
+/// using far less memory, and was nearly as fast. The name starts with Multi
+/// because it used to store all of the other versioning data. It would be a
+/// pain to change it, and I don't really want to bother.
 pub struct MultiChunk {
   inner:        Chunk<PalettedSection>,
   sky:          Option<LightChunk<SkyLight>>,
@@ -32,12 +40,7 @@ impl CountedChunk {
 }
 
 impl MultiChunk {
-  /// Creates an empty chunk. Currently, it just creates a seperate chunk for
-  /// every supported version. In the future, it will take a list of versions as
-  /// parameters. If it is fast enough, I might generate a mapping of all new
-  /// block ids and how they can be transformed into old block ids. Then, this
-  /// would only store one chunk, and would perform all conversions when you
-  /// actually tried to get an old id.
+  /// Creates an empty chunk.
   ///
   /// The second argument is for sky light data. Places like the nether do not
   /// contain sky light information, so the sky light data is not present.
@@ -51,9 +54,15 @@ impl MultiChunk {
     }
   }
 
-  /// Sets a block within this chunk. p.x and p.z must be within 0..16. If the
-  /// server is only running on 1.17, then p.y needs to be within the world
-  /// height (whatever that may be). Otherwise, p.y must be within 0..256.
+  /// Sets a block within this chunk. `p.x` and `p.z` must be within 0..16. If
+  /// the server supports multi-height worlds (not implemented yet), then p.y
+  /// needs to be within the world height (whatever that may be). Otherwise,
+  /// p.y must be within 0..256.
+  ///
+  /// WARNING: This will not send any packets to players! This function is meant
+  /// for use by the world directly, or during use terrain generation. If you
+  /// call this function without sending any updates yourself, no one in render
+  /// distance will see any of these changes!
   pub fn set_type(&mut self, p: Pos, ty: block::Type) -> Result<(), PosError> {
     self.inner.set_block(p, ty.id())?;
     self.update_light(p);
@@ -62,7 +71,14 @@ impl MultiChunk {
 
   /// Sets a block within this chunk. This is the same as
   /// [`set_type`](Self::set_type), but it uses a kind instead of a type. This
-  /// will use the default type of the given kind.
+  /// will use the default type of the given kind. For example, an oak log would
+  /// be placed facing upwards (along the Y axis), as this is the default type
+  /// for that block.
+  ///
+  /// WARNING: This will not send any packets to players! This function is meant
+  /// for use by the world directly, or during use terrain generation. If you
+  /// call this function without sending any updates yourself, no one in render
+  /// distance will see any of these changes!
   pub fn set_kind(&mut self, p: Pos, kind: block::Kind) -> Result<(), PosError> {
     self.inner.set_block(p, self.types.get(kind).default_type().id())?;
     self.update_light(p);
@@ -73,8 +89,8 @@ impl MultiChunk {
   /// column (see [`set_type`](Self::set_type)), and min must be less than or
   /// equal to max.
   ///
-  /// Since multi chunks always store a fixed chunk and a paletted chunk, this
-  /// will always be faster than calling set_type in a loop.
+  /// Since multi chunks always store information in a paletted chunk, this will
+  /// always be faster than calling [`set_type`](Self::set_type) repeatedly.
   ///
   /// WARNING: This will not send any packets to players! This function is meant
   /// for use by the world directly, or during use terrain generation. If you
@@ -100,11 +116,11 @@ impl MultiChunk {
     Ok(())
   }
 
-  /// Gets the type of a block within this chunk. Pos must be within the chunk.
+  /// Gets the type of a block within this chunk. `p` must be within the chunk.
   /// See [`set_kind`](Self::set_kind) for more.
   ///
   /// This returns a specific block type. If you only need to block kind, prefer
-  /// [`get_kind`](Self::get_kind)
+  /// [`get_kind`](Self::get_kind).
   pub fn get_type(&self, p: Pos) -> Result<block::Type, PosError> {
     Ok(self.types.type_from_id(self.inner.get_block(p)?, BlockVersion::latest()))
   }
