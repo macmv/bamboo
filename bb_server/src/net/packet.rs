@@ -167,6 +167,17 @@ pub(crate) fn handle(wm: &Arc<WorldManager>, player: &Arc<Player>, p: sb::Packet
       eid:  player.eid(),
       kind: cb::Animation::Swing(hand),
     }),
+    sb::Packet::UseEntity { eid, action, sneaking } => {
+      if let Some(crouching) = sneaking {
+        player.set_crouching(crouching);
+      }
+      if let Some(ent) = player.world().entities().get(&eid) {
+        match action {
+          sb::UseEntityAction::Attack => player.attack(ent),
+          _ => warn!("todo: action {action:?}"),
+        }
+      }
+    }
     sb::Packet::WindowClose { wid: _ } => player.lock_inventory().close_window(),
     _ => warn!("unknown packet: {:?}", p),
   }

@@ -2,6 +2,7 @@ use crate::{
   block,
   command::CommandSender,
   entity,
+  entity::Entity,
   item::{Inventory, Stack},
   net::ConnSender,
   world::World,
@@ -479,6 +480,26 @@ impl Player {
       ty: entity::Type::Player.id(),
       meta,
     });
+  }
+
+  pub(super) fn set_crouching(&self, crouching: bool) {
+    let mut p = self.pos.lock();
+    let needs_update = p.crouching != crouching;
+    p.crouching = crouching;
+    drop(p);
+    if needs_update {
+      let mut meta = Metadata::new();
+      meta.set_byte(0, self.status_byte());
+      self.send_to_in_view(cb::Packet::EntityMetadata {
+        eid: self.eid(),
+        ty: entity::Type::Player.id(),
+        meta,
+      });
+    }
+  }
+
+  pub(super) fn attack(&self, other: &Entity) {
+    info!("{} is attacking {}", self.username(), other.eid());
   }
 }
 
