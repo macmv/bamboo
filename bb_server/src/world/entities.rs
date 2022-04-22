@@ -1,5 +1,9 @@
 use super::World;
-use crate::{entity, entity::Entity, player::Player};
+use crate::{
+  entity,
+  entity::{Entity, EntityData, EntityRef},
+  player::Player,
+};
 use bb_common::{
   math::{ChunkPos, FPos, Vec3},
   metadata::Metadata,
@@ -16,13 +20,13 @@ impl World {
 
   pub fn summon_meta(self: &Arc<Self>, ty: entity::Type, pos: FPos, meta: Metadata) -> i32 {
     let eid = self.eid();
-    let ent = Entity::new(eid, ty, self.clone(), pos, meta);
+    let ent = Entity::Entity(Arc::new(EntityData::new(eid, ty, self.clone(), pos, meta)));
+    self.add_entity(eid, ent);
+    let entity_ref = ent.as_entity_ref(self).unwrap();
 
     for p in self.players().iter().in_view(pos.chunk()) {
-      self.send_entity_spawn(p, &ent);
+      self.send_entity_spawn(p, &entity_ref);
     }
-
-    self.add_entity(eid, ent);
     eid
   }
 
@@ -82,7 +86,7 @@ impl World {
     }
   }
 
-  pub fn entities(&self) -> RwLockReadGuard<'_, HashMap<i32, Arc<Entity>>> { self.entities.read() }
+  pub fn entities(&self) -> RwLockReadGuard<'_, HashMap<i32, Entity>> { self.entities.read() }
 
   /// Sends packets to respawn the player for all clients in render distance.
   /// This is used when custom names are set, because I cannot, for the life
@@ -107,12 +111,10 @@ impl World {
     }
   }
 
-  fn add_entity(&self, eid: i32, entity: Entity) {
-    self.entities.write().insert(eid, Arc::new(entity));
-  }
+  fn add_entity(&self, eid: i32, entity: Entity) { self.entities.write().insert(eid, entity); }
 
   #[allow(clippy::if_same_then_else)]
-  fn send_entity_spawn(&self, player: &Player, ent: &Entity) {
+  fn send_entity_spawn(&self, player: &Player, ent: &EntityRef) {
     let p = ent.pos();
     if ent.ty() == entity::Type::ExperienceOrb {
       // player.send(cb::Packet::SpawnEntityExperienceOrb {

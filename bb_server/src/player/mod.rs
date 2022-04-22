@@ -499,7 +499,9 @@ impl Player {
   }
 
   pub(super) fn attack(&self, other: &Entity) {
-    info!("{} is attacking {}", self.username(), other.eid());
+    if let Some(ent) = other.as_entity_ref(self.world()) {
+      info!("{} is attacking {}", self.username(), ent.eid());
+    }
   }
 }
 

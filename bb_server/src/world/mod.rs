@@ -81,7 +81,7 @@ pub struct World {
   unloadable_chunks: Mutex<HashSet<ChunkPos>>,
   gen:               WorldGen,
   players:           RwLock<PlayersMap>,
-  entities:          RwLock<HashMap<i32, Arc<Entity>>>,
+  entities:          RwLock<HashMap<i32, Entity>>,
   eid:               AtomicI32,
   block_converter:   Arc<block::TypeConverter>,
   item_converter:    Arc<item::TypeConverter>,
@@ -211,6 +211,7 @@ impl World {
           p.send(out.clone());
         }
       }
+      /*
       for p in self.players().iter() {
         let p = p.clone();
         pool.execute(move |s| {
@@ -226,14 +227,18 @@ impl World {
           s.uspt.fetch_add(start.elapsed().as_micros().try_into().unwrap(), Ordering::SeqCst);
         });
       }
+      */
       for (&eid, ent) in self.entities().iter() {
         let ent = ent.clone();
+        let w = self.clone();
         pool.execute(move |s| {
           let start = Instant::now();
-          if ent.tick() {
-            s.world.entities.write().remove(&eid);
-            for p in s.world.players().iter().in_view(ent.fpos().block().chunk()) {
-              p.send(cb::Packet::RemoveEntities { eids: vec![eid] });
+          if let Some(ent) = ent.as_entity_ref(&w) {
+            if ent.tick() {
+              s.world.entities.write().remove(&eid);
+              for p in s.world.players().iter().in_view(ent.fpos().block().chunk()) {
+                p.send(cb::Packet::RemoveEntities { eids: vec![eid] });
+              }
             }
           }
           s.uspt.fetch_add(start.elapsed().as_micros().try_into().unwrap(), Ordering::SeqCst);
@@ -269,6 +274,8 @@ impl World {
       drop(players);
       let mut players = self.players.write();
       players.insert(player.id(), player.clone());
+      let mut entities = self.entities.write();
+      entities.insert(player.eid(), Entity::Player(player.id()));
     }
     info!("{} has joined the game", player.username());
     self.player_init(&player, info);

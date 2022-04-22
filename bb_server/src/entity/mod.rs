@@ -8,6 +8,7 @@ use crate::{math::AABB, player::Player, world::World};
 use bb_common::{
   math::{FPos, Vec3},
   metadata::Metadata,
+  util::UUID,
 };
 use parking_lot::{Mutex, MutexGuard, RwLock};
 use std::sync::Arc;
@@ -40,11 +41,34 @@ impl EntityPos {
   }
 }
 
-pub enum Entity {
-  Entity(EntityData),
-  Player(Player),
+/// This is any entity on the server. It can be a player or a server-controlled
+/// entity.
+///
+/// This stores a reference to a player. If you need to pass around an entity,
+/// use [`Entity`].
+#[derive(Clone)]
+pub enum EntityRef<'a> {
+  Entity(&'a EntityData),
+  Player(&'a Arc<Player>),
 }
 
+/// An entity or a player's id. This is how all entities are stored on the
+/// server, and it's how players can also be treated as entities.
+///
+/// Use [`as_entity_ref`](Self::as_entity_ref) to convert this to an
+/// [`EntityRef`].
+///
+/// This is cheap to clone, as it uses [`Arc`]s internally.
+#[derive(Clone)]
+pub enum Entity {
+  Entity(Arc<EntityData>),
+  Player(UUID),
+}
+
+/// The data for a server-controlled entity. This is seperate from an
+/// [`Entity`], as it cannot represent a client player. It can represent an NPC
+/// (non player character) that looks like a player, but it cannot be controlled
+/// by a client.
 pub struct EntityData {
   /// The unique id for this entity. This is the key used to store entities in
   /// the World.
@@ -67,43 +91,28 @@ pub struct EntityData {
 }
 
 impl Entity {
-  /// Creates a new entity, with default functionality. They will take normal
-  /// damage, and despawn if their health hits 0. If you want custom
-  /// functionality of any kind, call [`new_custom`](Self::new_custom).
-  pub fn new(eid: i32, ty: Type, world: Arc<World>, pos: FPos, meta: Metadata) -> Self {
-    let behavior = behavior::for_entity(ty);
-    Entity::Entity(EntityData {
-      eid,
-      pos: Mutex::new(EntityPos::new(pos, world.entity_converter().get_data(ty).size())),
-      ty,
-      health: Mutex::new(behavior.max_health()),
-      world: RwLock::new(world),
-      behavior: Mutex::new(behavior),
-      meta: Mutex::new(meta),
-    })
+  pub fn as_entity(&self) -> Option<&EntityData> {
+    match self {
+      Self::Entity(e) => Some(e),
+      Self::Player(_) => None,
+    }
+  }
+  pub fn as_player<'a>(&'a self, world: &'a World) -> Option<&'a Arc<Player>> {
+    match self {
+      Self::Entity(_) => None,
+      Self::Player(id) => world.players().get(*id),
+    }
   }
 
-  /// Creates a new entity, with the given functionality. This value will be
-  /// store within the entity until it despawns.
-  pub fn new_custom<B: Behavior + Send + 'static>(
-    eid: i32,
-    ty: Type,
-    pos: FPos,
-    world: Arc<World>,
-    behavior: B,
-    meta: Metadata,
-  ) -> Self {
-    Entity::Entity(EntityData {
-      eid,
-      pos: Mutex::new(EntityPos::new(pos, world.entity_converter().get_data(ty).size())),
-      ty,
-      health: Mutex::new(behavior.max_health()),
-      world: RwLock::new(world),
-      behavior: Mutex::new(Box::new(behavior)),
-      meta: Mutex::new(meta),
+  pub fn as_entity_ref<'a>(&'a self, world: &'a World) -> Option<EntityRef<'a>> {
+    Some(match self {
+      Self::Entity(e) => EntityRef::Entity(e),
+      Self::Player(id) => EntityRef::Player(world.players().get(*id)?),
     })
   }
+}
 
+impl EntityRef<'_> {
   /// Reads this entity's position. This will always be up to date with the
   /// server's known position of this entity. Some clients may be behind this
   /// position (by up to 1/20 of a second).
@@ -203,6 +212,43 @@ impl Entity {
 }
 
 impl EntityData {
+  /// Creates a new entity, with default functionality. They will take normal
+  /// damage, and despawn if their health hits 0. If you want custom
+  /// functionality of any kind, call [`new_custom`](Self::new_custom).
+  pub fn new(eid: i32, ty: Type, world: Arc<World>, pos: FPos, meta: Metadata) -> Self {
+    let behavior = behavior::for_entity(ty);
+    EntityData {
+      eid,
+      pos: Mutex::new(EntityPos::new(pos, world.entity_converter().get_data(ty).size())),
+      ty,
+      health: Mutex::new(behavior.max_health()),
+      world: RwLock::new(world),
+      behavior: Mutex::new(behavior),
+      meta: Mutex::new(meta),
+    }
+  }
+
+  /// Creates a new entity, with the given functionality. This value will be
+  /// store within the entity until it despawns.
+  pub fn new_custom<B: Behavior + Send + 'static>(
+    eid: i32,
+    ty: Type,
+    pos: FPos,
+    world: Arc<World>,
+    behavior: B,
+    meta: Metadata,
+  ) -> Self {
+    EntityData {
+      eid,
+      pos: Mutex::new(EntityPos::new(pos, world.entity_converter().get_data(ty).size())),
+      ty,
+      health: Mutex::new(behavior.max_health()),
+      world: RwLock::new(world),
+      behavior: Mutex::new(Box::new(behavior)),
+      meta: Mutex::new(meta),
+    }
+  }
+
   pub fn fpos(&self) -> FPos { self.pos.lock().aabb.pos }
   pub fn health(&self) -> f32 { *self.health.lock() }
   pub fn eid(&self) -> i32 { self.eid }
