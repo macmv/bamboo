@@ -195,9 +195,9 @@ impl EntityRef<'_> {
   pub(crate) fn tick(&self) -> bool {
     match self {
       Self::Entity(e) => e.tick(),
-      Self::Player(_) => {
-        todo!();
-        // p.tick();
+      Self::Player(p) => {
+        p.tick();
+        false
       }
     }
   }
