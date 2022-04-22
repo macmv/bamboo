@@ -13,6 +13,9 @@ view-distance: 10
 # - spectator (not implemented)
 default-gamemode: survival
 
+# The place where everyone spawns in within the world.
+spawn-point: 0 64 0
+
 # Configs for world generation/loading.
 world:
   # If set, the world cannot be modified. This can be used in minigame

@@ -115,6 +115,7 @@ pub struct WorldManager {
   config:           Arc<Config>,
 
   default_game_mode: GameMode,
+  spawn_point:       FPos,
 }
 
 struct State {
@@ -626,6 +627,7 @@ impl WorldManager {
       players:           RwLock::new(HashMap::new()),
       teams:             RwLock::new(HashMap::new()),
       default_game_mode: config.get("default-gamemode"),
+      spawn_point:       config.get("spawn-point"),
       config:            Arc::new(config),
     }
   }
@@ -741,7 +743,7 @@ impl WorldManager {
   /// proxy connects.
   pub fn new_player(&self, conn: ConnSender, info: JoinInfo) -> Arc<Player> {
     let w = self.worlds.read()[0].clone();
-    let player = Player::new(w.eid(), conn, info.clone(), w.clone(), FPos::new(0.0, 120.0, 0.0));
+    let player = Player::new(w.eid(), conn, info.clone(), w.clone(), self.spawn_point);
     self.players.write().insert(info.uuid, (0, player.clone()));
     w.new_player(player.clone(), info);
     player
