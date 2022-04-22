@@ -1,4 +1,4 @@
-use super::{Behavior, Entity, EntityPos, ShouldDespawn};
+use super::{Behavior, EntityData, EntityPos, ShouldDespawn};
 use crate::item::Stack;
 use bb_common::net::cb;
 
@@ -8,7 +8,7 @@ pub struct ItemBehavior {
 }
 
 impl Behavior for ItemBehavior {
-  fn tick(&mut self, ent: &Entity, p: &mut EntityPos) -> ShouldDespawn {
+  fn tick(&mut self, ent: &EntityData, p: &mut EntityPos) -> ShouldDespawn {
     let vel = p.vel;
     p.aabb.pos += vel;
     // This is for items.

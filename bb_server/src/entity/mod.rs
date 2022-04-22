@@ -4,7 +4,7 @@ mod version;
 pub use ty::{Data, Type};
 pub use version::TypeConverter;
 
-use crate::{math::AABB, world::World};
+use crate::{math::AABB, player::Player, world::World};
 use bb_common::{
   math::{FPos, Vec3},
   metadata::Metadata,
@@ -40,7 +40,12 @@ impl EntityPos {
   }
 }
 
-pub struct Entity {
+pub enum Entity {
+  Entity(EntityData),
+  Player(Player),
+}
+
+pub struct EntityData {
   /// The unique id for this entity. This is the key used to store entities in
   /// the World.
   eid:      i32,
@@ -67,7 +72,7 @@ impl Entity {
   /// functionality of any kind, call [`new_custom`](Self::new_custom).
   pub fn new(eid: i32, ty: Type, world: Arc<World>, pos: FPos, meta: Metadata) -> Self {
     let behavior = behavior::for_entity(ty);
-    Entity {
+    Entity::Entity(EntityData {
       eid,
       pos: Mutex::new(EntityPos::new(pos, world.entity_converter().get_data(ty).size())),
       ty,
@@ -75,7 +80,7 @@ impl Entity {
       world: RwLock::new(world),
       behavior: Mutex::new(behavior),
       meta: Mutex::new(meta),
-    }
+    })
   }
 
   /// Creates a new entity, with the given functionality. This value will be
@@ -88,7 +93,7 @@ impl Entity {
     behavior: B,
     meta: Metadata,
   ) -> Self {
-    Entity {
+    Entity::Entity(EntityData {
       eid,
       pos: Mutex::new(EntityPos::new(pos, world.entity_converter().get_data(ty).size())),
       ty,
@@ -96,7 +101,7 @@ impl Entity {
       world: RwLock::new(world),
       behavior: Mutex::new(Box::new(behavior)),
       meta: Mutex::new(meta),
-    }
+    })
   }
 
   /// Reads this entity's position. This will always be up to date with the
@@ -106,39 +111,103 @@ impl Entity {
   /// This returns everything about the entity's position, including its
   /// velocity, pitch, yaw, etc. If you just need the position, then
   /// [`fpos`](Self::fpos) will be easier to use.
-  pub fn pos(&self) -> EntityPos { *self.pos.lock() }
+  pub fn pos(&self) -> EntityPos {
+    match self {
+      Self::Entity(e) => *e.pos.lock(),
+      _ => todo!(),
+    }
+  }
 
   /// Returns this entity's position.
-  pub fn fpos(&self) -> FPos { self.pos().aabb.pos }
+  pub fn fpos(&self) -> FPos {
+    match self {
+      Self::Entity(e) => e.pos.lock().aabb.pos,
+      Self::Player(p) => p.pos(),
+    }
+  }
 
   /// Returns the unique id for this entity.
-  pub fn eid(&self) -> i32 { self.eid }
+  pub fn eid(&self) -> i32 {
+    match self {
+      Self::Entity(e) => e.eid,
+      Self::Player(p) => p.eid(),
+    }
+  }
 
   /// Returns this entity's type. This can be used to send spawn packets to
   /// clients.
-  pub fn ty(&self) -> Type { self.ty }
+  pub fn ty(&self) -> Type {
+    match self {
+      Self::Entity(e) => e.ty,
+      Self::Player(_) => Type::Player,
+    }
+  }
 
   /// Returns this entity's health.
-  pub fn health(&self) -> f32 { *self.health.lock() }
+  pub fn health(&self) -> f32 {
+    match self {
+      Self::Entity(e) => *e.health.lock(),
+      Self::Player(_) => 20.0,
+    }
+  }
 
   /// Returns true if this entity should despawn.
-  pub fn should_despawn(&self) -> bool { self.behavior.lock().should_despawn(self.health()).0 }
+  pub fn should_despawn(&self) -> bool {
+    match self {
+      Self::Entity(e) => e.behavior.lock().should_despawn(e.health()).0,
+      Self::Player(_) => false,
+    }
+  }
 
   /// Returns the amount of exp stored in this entity. This is just the amount
   /// for an exp orb, but it is also used to find out how much exp an entity
   /// will drop when killed.
-  pub fn exp_count(&self) -> i32 { self.behavior.lock().exp_count() }
+  pub fn exp_count(&self) -> i32 {
+    match self {
+      Self::Entity(e) => e.behavior.lock().exp_count(),
+      Self::Player(_) => 5,
+    }
+  }
 
   /// Sets this entity's velocity. This will send velocity updates to nearby
   /// players, and will affect how the entity moves on the next tick.
   pub fn set_vel(&self, vel: Vec3) {
-    self.pos.lock().vel = vel;
-    self.world.read().send_entity_vel(self.fpos().chunk(), self.eid, vel);
+    match self {
+      Self::Entity(e) => {
+        e.pos.lock().vel = vel;
+        e.world.read().send_entity_vel(e.fpos().chunk(), e.eid, vel);
+      }
+      Self::Player(_) => todo!("set vel for player"),
+    }
   }
 
   /// Called 20 times a second. Calling this more/less frequently will break
   /// things.
   pub(crate) fn tick(&self) -> bool {
+    match self {
+      Self::Entity(e) => e.tick(),
+      Self::Player(_) => {
+        todo!();
+        // p.tick();
+      }
+    }
+  }
+
+  /// Returns all of this entity's metadata.
+  pub fn metadata(&self) -> MutexGuard<'_, Metadata> {
+    match self {
+      Self::Entity(e) => e.meta.lock(),
+      Self::Player(_) => todo!(),
+    }
+  }
+}
+
+impl EntityData {
+  pub fn fpos(&self) -> FPos { self.pos.lock().aabb.pos }
+  pub fn health(&self) -> f32 { *self.health.lock() }
+  pub fn eid(&self) -> i32 { self.eid }
+  pub fn metadata(&self) -> MutexGuard<'_, Metadata> { self.meta.lock() }
+  fn tick(&self) -> bool {
     // We don't actually have a race condition here, unless tick() is called at the
     // same time from multiple places (which would be a Bad Thing). Because we can't
     // modify `self.pos` from anywhere else (simply because the functions don't
@@ -178,7 +247,4 @@ impl Entity {
     }
     false
   }
-
-  /// Returns all of this entity's metadata.
-  pub fn metadata(&self) -> MutexGuard<'_, Metadata> { self.meta.lock() }
 }

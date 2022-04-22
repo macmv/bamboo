@@ -1,4 +1,4 @@
-use super::{Behavior, Entity, EntityPos, ShouldDespawn};
+use super::{Behavior, EntityData, EntityPos, ShouldDespawn};
 
 #[derive(Default)]
 pub struct SnowballBehavior {
@@ -6,7 +6,7 @@ pub struct SnowballBehavior {
 }
 
 impl Behavior for SnowballBehavior {
-  fn tick(&mut self, _ent: &Entity, p: &mut EntityPos) -> ShouldDespawn {
+  fn tick(&mut self, _ent: &EntityData, p: &mut EntityPos) -> ShouldDespawn {
     let vel = p.vel;
     p.aabb.pos += vel;
     // This is for all projectiles. It is totally different on living entities.

@@ -4,7 +4,7 @@ mod snowball;
 pub use item::ItemBehavior;
 pub use snowball::SnowballBehavior;
 
-use super::{Entity, EntityPos, Type};
+use super::{EntityData, EntityPos, Type};
 
 /// A wrapper type, to make it clear that `true` means an entity should be
 /// removed.
@@ -26,7 +26,7 @@ pub trait Behavior {
 
   /// Any extra functionality needed. Called every tick, after movement and
   /// collision checks have been completed.
-  fn tick(&mut self, ent: &Entity, p: &mut EntityPos) -> ShouldDespawn {
+  fn tick(&mut self, ent: &EntityData, p: &mut EntityPos) -> ShouldDespawn {
     let _ = ent;
     let vel = p.vel;
     p.aabb.pos += vel;
