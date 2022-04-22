@@ -5,7 +5,7 @@ type: socket
 
 # If set to true, then this plugin will be loaded. If set to false,
 # this plugin will be ignored.
-enabled: false
+enabled: true
 
 # Socket-specific configs
 socket:

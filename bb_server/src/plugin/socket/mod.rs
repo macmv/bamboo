@@ -1,7 +1,8 @@
 use super::{
   CallError, PluginEvent, PluginImpl, PluginMessage, PluginRequest, ServerMessage, ServerReply,
+  ServerRequest,
 };
-use crate::world::WorldManager;
+use crate::{player::Player, world::WorldManager};
 use crossbeam_channel::{Receiver, Sender};
 use mio::{event::Event, net::UnixStream, Events, Interest, Poll, Token, Waker};
 use std::{
@@ -352,10 +353,19 @@ fn start_plugin(plugin: String, path: &Path) {
 }
 
 impl PluginImpl for Arc<SocketPlugin> {
-  fn call(&self, ev: ServerMessage) -> Result<bool, CallError> {
-    match self.send(ev) {
-      Ok(_) => Ok(true),
-      Err(e) => Err(CallError::no_keep(e)),
-    }
+  fn call(&self, player: Arc<Player>, event: ServerEvent) -> Result<(), CallError> {
+    self.send(ServerMessage::Event { player, event }).map_err(CallError::no_keep)
+  }
+  fn call_global(&self, event: GlobalServerEvent) -> Result<(), CallError> {
+    self.send(ServerMessage::GlobalEvent { event }).map_err(CallError::no_keep)
+  }
+
+  fn req(
+    &self,
+    player: Arc<Player>,
+    reply_id: u32,
+    request: ServerRequest,
+  ) -> Result<PluginReply, CallError> {
+    self.send(ServerMessage::Request { player, reply_id, request }).map_err(CallError::no_keep)
   }
 }
