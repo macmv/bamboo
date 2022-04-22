@@ -350,7 +350,7 @@ impl PlayerInventory {
     let mut meta = Metadata::new();
     meta.set_item(8, it.to_item());
     let eid = p.world().summon_meta(entity::Type::Item, p.pos() + FPos::new(0.0, 1.5, 0.0), meta);
-    if let Some(e) = p.world().entities().get(&eid) {
+    if let Some(e) = p.world().entities().get(eid) {
       e.set_vel(p.look_as_vec() * 0.5);
     }
   }

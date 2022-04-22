@@ -11,9 +11,106 @@ use bb_common::{
   util::UUID,
 };
 use parking_lot::RwLockReadGuard;
-use std::{collections::HashMap, sync::Arc};
+use std::{
+  collections::{
+    hash_map::{Iter, Keys, Values},
+    HashMap,
+  },
+  ops::{Deref, DerefMut},
+  sync::Arc,
+};
+
+pub struct EntitiesMap {
+  inner: HashMap<i32, Entity>,
+}
+
+pub struct EntitiesMapRef<'a> {
+  inner: RwLockReadGuard<'a, EntitiesMap>,
+  world: &'a Arc<World>,
+}
+
+pub struct EntitiesIter<'a> {
+  values: Values<'a, i32, Entity>,
+  world:  &'a Arc<World>,
+  // The eid that must be skipped
+  eid:    Option<i32>,
+}
+
+pub struct KeysIter<'a> {
+  keys: Keys<'a, i32, Entity>,
+}
+
+impl EntitiesMap {
+  pub fn new() -> Self { EntitiesMap { inner: HashMap::new() } }
+}
+
+impl EntitiesMapRef<'_> {
+  pub fn iter(&self) -> EntitiesIter<'_> {
+    EntitiesIter { values: self.inner.values(), world: self.world, eid: None }
+  }
+  pub fn iter_values(&self) -> Iter<i32, Entity> { self.inner.iter() }
+  pub fn keys(&self) -> KeysIter<'_> { KeysIter { keys: self.inner.keys() } }
+
+  /// Returns the entity for the given id. Returns `None` if the id is invalid,
+  /// or if the backing `World` has been dropped.
+  pub fn get<'a>(&'a self, eid: i32) -> Option<EntityRef<'a>> {
+    self.inner.get(&eid)?.as_entity_ref(&self.world)
+  }
+  /// Returns the entity for the given id. Returns `None` if the id is invalid,
+  /// or if the entity is a player.
+  pub fn get_ent(&self, eid: i32) -> Option<&Arc<EntityData>> { self.inner.get(&eid)?.as_entity() }
+  /// Returns the entity for the given id. Returns `None` if the id is invalid,
+  /// if the entity is not a player, or if the backing `World` has been dropped.
+  pub fn get_player(&self, eid: i32) -> Option<Arc<Player>> {
+    self.inner.get(&eid)?.as_player(&self.world)
+  }
+}
+
+impl Deref for EntitiesMap {
+  type Target = HashMap<i32, Entity>;
+
+  fn deref(&self) -> &Self::Target { &self.inner }
+}
+
+impl DerefMut for EntitiesMap {
+  fn deref_mut(&mut self) -> &mut Self::Target { &mut self.inner }
+}
+
+impl EntitiesIter<'_> {
+  pub fn not(mut self, eid: i32) -> Self {
+    self.eid = Some(eid);
+    self
+  }
+}
+
+impl<'a> Iterator for EntitiesIter<'a> {
+  type Item = EntityRef<'a>;
+
+  fn next(&mut self) -> Option<Self::Item> {
+    for e in &mut self.values {
+      let ent = e.as_entity_ref(self.world.as_ref())?;
+      if let Some(eid) = self.eid {
+        if ent.eid() == eid {
+          continue;
+        }
+      }
+      return Some(ent);
+    }
+    None
+  }
+}
+
+impl<'a> Iterator for KeysIter<'a> {
+  type Item = i32;
+
+  fn next(&mut self) -> Option<Self::Item> { self.keys.next().copied() }
+}
 
 impl World {
+  pub fn entities<'a>(self: &'a Arc<Self>) -> EntitiesMapRef<'a> {
+    EntitiesMapRef { inner: self.entities.read(), world: self }
+  }
+
   pub fn summon(self: &Arc<Self>, ty: entity::Type, pos: FPos) -> i32 {
     self.summon_meta(ty, pos, Metadata::new())
   }
@@ -21,7 +118,7 @@ impl World {
   pub fn summon_meta(self: &Arc<Self>, ty: entity::Type, pos: FPos, meta: Metadata) -> i32 {
     let eid = self.eid();
     let ent = Entity::Entity(Arc::new(EntityData::new(eid, ty, self.clone(), pos, meta)));
-    self.add_entity(eid, ent);
+    self.add_entity(eid, ent.clone());
     let entity_ref = ent.as_entity_ref(self).unwrap();
 
     for p in self.players().iter().in_view(pos.chunk()) {
@@ -85,8 +182,6 @@ impl World {
       p.send(cb::Packet::EntityMove { eid, x, y, z, on_ground });
     }
   }
-
-  pub fn entities(&self) -> RwLockReadGuard<'_, HashMap<i32, Entity>> { self.entities.read() }
 
   /// Sends packets to respawn the player for all clients in render distance.
   /// This is used when custom names are set, because I cannot, for the life

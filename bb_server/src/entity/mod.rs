@@ -49,7 +49,7 @@ impl EntityPos {
 #[derive(Clone)]
 pub enum EntityRef<'a> {
   Entity(&'a EntityData),
-  Player(&'a Arc<Player>),
+  Player(Arc<Player>),
 }
 
 /// An entity or a player's id. This is how all entities are stored on the
@@ -91,23 +91,23 @@ pub struct EntityData {
 }
 
 impl Entity {
-  pub fn as_entity(&self) -> Option<&EntityData> {
+  pub fn as_entity(&self) -> Option<&Arc<EntityData>> {
     match self {
       Self::Entity(e) => Some(e),
       Self::Player(_) => None,
     }
   }
-  pub fn as_player<'a>(&'a self, world: &'a World) -> Option<&'a Arc<Player>> {
+  pub fn as_player<'a>(&'a self, world: &'a World) -> Option<Arc<Player>> {
     match self {
       Self::Entity(_) => None,
-      Self::Player(id) => world.players().get(*id),
+      Self::Player(id) => Some(world.players().get(*id)?.clone()),
     }
   }
 
   pub fn as_entity_ref<'a>(&'a self, world: &'a World) -> Option<EntityRef<'a>> {
     Some(match self {
       Self::Entity(e) => EntityRef::Entity(e),
-      Self::Player(id) => EntityRef::Player(world.players().get(*id)?),
+      Self::Player(id) => EntityRef::Player(world.players().get(*id)?.clone()),
     })
   }
 }

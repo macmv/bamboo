@@ -55,6 +55,7 @@ use crate::{
 use gen::WorldGen;
 
 pub use chunk::{CountedChunk, MultiChunk};
+pub use entities::{EntitiesIter, EntitiesMap};
 pub use players::{PlayersIter, PlayersMap};
 
 // pub struct ChunkRef<'a> {
@@ -81,7 +82,7 @@ pub struct World {
   unloadable_chunks: Mutex<HashSet<ChunkPos>>,
   gen:               WorldGen,
   players:           RwLock<PlayersMap>,
-  entities:          RwLock<HashMap<i32, Entity>>,
+  entities:          RwLock<EntitiesMap>,
   eid:               AtomicI32,
   block_converter:   Arc<block::TypeConverter>,
   item_converter:    Arc<item::TypeConverter>,
@@ -152,7 +153,7 @@ impl World {
       unloadable_chunks: Mutex::new(HashSet::new()),
       gen,
       players: RwLock::new(PlayersMap::new()),
-      entities: RwLock::new(HashMap::new()),
+      entities: RwLock::new(EntitiesMap::new()),
       eid: 1.into(),
       block_converter,
       item_converter,
@@ -228,20 +229,20 @@ impl World {
         });
       }
       */
-      for (&eid, ent) in self.entities().iter() {
+      for (&eid, ent) in self.entities().iter_values() {
         let ent = ent.clone();
         let w = self.clone();
         pool.execute(move |s| {
-          let start = Instant::now();
-          if let Some(ent) = ent.as_entity_ref(&w) {
+          if let Some(ent) = ent.as_entity_ref(w.as_ref()) {
+            let start = Instant::now();
             if ent.tick() {
               s.world.entities.write().remove(&eid);
               for p in s.world.players().iter().in_view(ent.fpos().block().chunk()) {
                 p.send(cb::Packet::RemoveEntities { eids: vec![eid] });
               }
             }
+            s.uspt.fetch_add(start.elapsed().as_micros().try_into().unwrap(), Ordering::SeqCst);
           }
-          s.uspt.fetch_add(start.elapsed().as_micros().try_into().unwrap(), Ordering::SeqCst);
         });
       }
       // We don't want overlapping tick loops

@@ -2,7 +2,7 @@ use crate::{
   block,
   command::CommandSender,
   entity,
-  entity::Entity,
+  entity::EntityRef,
   item::{Inventory, Stack},
   net::ConnSender,
   world::World,
@@ -498,10 +498,8 @@ impl Player {
     }
   }
 
-  pub(super) fn attack(&self, other: &Entity) {
-    if let Some(ent) = other.as_entity_ref(self.world()) {
-      info!("{} is attacking {}", self.username(), ent.eid());
-    }
+  pub(super) fn attack(&self, other: EntityRef) {
+    info!("{} is attacking {}", self.username(), other.eid());
   }
 }
 

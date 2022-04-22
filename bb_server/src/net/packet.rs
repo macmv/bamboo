@@ -93,7 +93,7 @@ pub(crate) fn handle(wm: &Arc<WorldManager>, player: &Arc<Player>, p: sb::Packet
 
       // If the entity doesn't exist, it already despawned, so we do nothing if
       // it isn't in the world.
-      if let Some(ent) = player.world().entities().get(&eid) {
+      if let Some(ent) = player.world().entities().get(eid) {
         ent.set_vel(player.look_as_vec() * 1.0);
       }
     }
@@ -171,7 +171,7 @@ pub(crate) fn handle(wm: &Arc<WorldManager>, player: &Arc<Player>, p: sb::Packet
       if let Some(crouching) = sneaking {
         player.set_crouching(crouching);
       }
-      if let Some(ent) = player.world().entities().get(&eid) {
+      if let Some(ent) = player.world().entities().get(eid) {
         match action {
           sb::UseEntityAction::Attack => player.attack(ent),
           _ => warn!("todo: action {action:?}"),
@@ -192,7 +192,7 @@ fn use_item(player: &Arc<Player>, _hand: i32) {
     let eid = player.world().summon(entity::Type::Slime, player.pos() + FPos::new(0.0, 1.0, 0.0));
     // If the entity doesn't exist, it already despawned, so we do nothing if it
     // isn't in the world.
-    if let Some(ent) = player.world().entities().get(&eid) {
+    if let Some(ent) = player.world().entities().get(eid) {
       ent.set_vel(player.look_as_vec() * 0.5);
     }
   }
