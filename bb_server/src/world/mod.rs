@@ -287,7 +287,7 @@ impl World {
   }
 
   /// Returns a new, unique EID.
-  pub fn eid(&self) -> i32 { self.eid.fetch_add(1, Ordering::SeqCst) }
+  pub fn new_eid(&self) -> i32 { self.eid.fetch_add(1, Ordering::SeqCst) }
 
   /// Returns the current block converter. This can be used to convert old block
   /// ids to new ones, and vice versa. This can also be used to convert block
@@ -751,7 +751,7 @@ impl WorldManager {
   /// proxy connects.
   pub fn new_player(&self, conn: ConnSender, info: JoinInfo) -> Arc<Player> {
     let w = self.worlds.read()[0].clone();
-    let player = Player::new(w.eid(), conn, info.clone(), w.clone(), self.spawn_point);
+    let player = Player::new(w.new_eid(), conn, info.clone(), w.clone(), self.spawn_point);
     self.players.write().insert(info.uuid, (0, player.clone()));
     w.new_player(player.clone(), info);
     player

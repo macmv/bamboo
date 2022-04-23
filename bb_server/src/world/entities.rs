@@ -116,7 +116,7 @@ impl World {
   }
 
   pub fn summon_meta(self: &Arc<Self>, ty: entity::Type, pos: FPos, meta: Metadata) -> i32 {
-    let eid = self.eid();
+    let eid = self.new_eid();
     let ent = Entity::Entity(Arc::new(EntityData::new(eid, ty, self.clone(), pos, meta)));
     self.add_entity(eid, ent.clone());
     let entity_ref = ent.as_entity_ref(self).unwrap();
