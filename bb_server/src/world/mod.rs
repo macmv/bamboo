@@ -752,7 +752,16 @@ impl WorldManager {
   /// proxy connects.
   pub fn new_player(&self, conn: ConnSender, info: JoinInfo) -> Arc<Player> {
     let w = self.worlds.read()[0].clone();
-    let player = Player::new(w.new_eid(), conn, info.clone(), w.clone(), self.spawn_point);
+    let mut px = FPos::new(self.spawn_point.x, self.spawn_point.y, self.spawn_point.z);
+    let mut py = FPos::new(px.x, px.y + 1.0, px.z);
+    loop {
+      if w.get_block(px.block()).unwrap().id() == 0 && w.get_block(py.block()).unwrap().id() == 0 {
+        break;
+      }
+      px = FPos::new(px.x, px.y + 1.0, px.z);
+      py = FPos::new(py.x, py.y + 1.0, py.z);
+    }
+    let player = Player::new(w.new_eid(), conn, info.clone(), w.clone(), px);
     self.players.write().insert(info.uuid, (0, player.clone()));
     w.new_player(player.clone(), info);
     player
