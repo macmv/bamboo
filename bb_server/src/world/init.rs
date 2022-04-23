@@ -85,12 +85,18 @@ impl World {
 
     info!("generating terrain...");
     let chunks = Mutex::new(vec![]);
+    let chunks_n: Mutex<f64> = Mutex::new(0.0);
     (-32..=32).into_par_iter().for_each(|x| {
       for z in -32..=32 {
         let pos = ChunkPos::new(x, z);
         let c = self.pre_generate_chunk(pos);
         chunks.lock().push((pos, c));
       }
+      let progress = f64::from(*chunks_n.lock()) / 64.0f64 * 100.0f64;
+      if progress % 5.0f64 == 0.0f64 {
+        info!("{}%", progress);
+      }
+      *chunks_n.lock() += 1.0;
     });
     self.store_chunks_no_overwrite(chunks.into_inner());
     // Keep spawn chunks always loaded
