@@ -32,7 +32,6 @@ pub fn define_ty(args: TokenStream, input: TokenStream) -> TokenStream {
   let block = parse_macro_input!(input as ItemImpl);
   let ty = &block.self_ty;
   let mut python_funcs = vec![];
-  let mut panda_funcs = vec![];
   for it in &block.items {
     match it {
       syn::ImplItem::Method(method) => {
@@ -41,10 +40,6 @@ pub fn define_ty(args: TokenStream, input: TokenStream) -> TokenStream {
         let py_args = python_args(method.sig.inputs.iter());
         let py_arg_names = python_arg_names(method.sig.inputs.iter());
         let (py_ret, conv_ret) = python_ret(&method.sig.output);
-        let pd_name = Ident::new(&format!("pd_{}", method.sig.ident), name.span());
-        let pd_args = panda_args(method.sig.inputs.iter());
-        let pd_arg_names = panda_arg_names(method.sig.inputs.iter());
-        let ret = &method.sig.output;
         if name == "new" {
           python_funcs.push(quote!(
             #[new]
@@ -66,29 +61,19 @@ pub fn define_ty(args: TokenStream, input: TokenStream) -> TokenStream {
             }
           ));
         }
-
-        panda_funcs.push(quote!(
-          fn #pd_name(#(#pd_args),*) #ret {
-            Self::#name(#(#pd_arg_names),*)
-          }
-        ));
       }
       _ => abort!(it, "only expecting methods"),
     }
   }
   let out = quote!(
+    #[cfg(feature = "panda_plugins")]
+    #[::panda::define_ty(path = #panda_path, map_key = #panda_map_key)]
     #block
 
     #[cfg(feature = "python_plugins")]
     #[::pyo3::pymethods]
     impl #ty {
       #( #python_funcs )*
-    }
-
-    #[cfg(feature = "panda_plugins")]
-    #[::panda::define_ty(path = #panda_path, map_key = #panda_map_key)]
-    impl #ty {
-      #( #panda_funcs )*
     }
   );
   // Will print the result of this proc macro
@@ -117,6 +102,7 @@ fn python_args<'a>(args: impl Iterator<Item = &'a FnArg>) -> Vec<impl quote::ToT
             // Assume this is a Box<dyn Callback>
             "Box" => quote!(#name: ::pyo3::PyObject),
             "Var" => quote!(#name: i32),
+            "Callback" => quote!(#name: Callback),
             _ => abort!(ty.ty, "cannot handle type"),
           },
           Type::Reference(path) => match &*path.elem {
@@ -146,6 +132,7 @@ fn python_arg_names<'a>(args: impl Iterator<Item = &'a FnArg>) -> Vec<impl quote
             }
             "Box" => quote!(Box::new(#name)),
             "Var" => quote!(#name),
+            "Callback" => quote!(#name),
             _ => abort!(ty.ty, "cannot handle type"),
           },
           Type::Reference(path) => match &*path.elem {
@@ -156,43 +143,6 @@ fn python_arg_names<'a>(args: impl Iterator<Item = &'a FnArg>) -> Vec<impl quote
             _ => abort!(ty.ty, "cannot handle type"),
           },
           _ => abort!(ty.ty, "cannot handle type"),
-        }
-      }
-    })
-    .collect()
-}
-
-fn panda_args<'a>(args: impl Iterator<Item = &'a FnArg>) -> Vec<impl quote::ToTokens> {
-  args
-    .map(|a| match a {
-      FnArg::Receiver(_) => quote!(#a),
-      FnArg::Typed(ty) => {
-        let name = &ty.pat;
-        match &*ty.ty {
-          Type::Path(path) => match path.path.segments[0].ident.to_string().as_str() {
-            // Assume this is a Box<dyn Callback>
-            "Box" => quote!(#name: Callback),
-            _ => quote!(#name: #path),
-          },
-          _ => quote!(#ty),
-        }
-      }
-    })
-    .collect()
-}
-fn panda_arg_names<'a>(args: impl Iterator<Item = &'a FnArg>) -> Vec<impl quote::ToTokens> {
-  args
-    .map(|a| match a {
-      FnArg::Receiver(_) => quote!(self),
-      FnArg::Typed(ty) => {
-        let name = &ty.pat;
-        match &*ty.ty {
-          Type::Path(path) => match path.path.segments[0].ident.to_string().as_str() {
-            // Assume this is a Box<dyn Callback>
-            "Box" => quote!(Box::new(#name)),
-            _ => quote!(#name),
-          },
-          _ => quote!(#name),
         }
       }
     })

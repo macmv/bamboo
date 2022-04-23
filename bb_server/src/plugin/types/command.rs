@@ -6,12 +6,12 @@ use super::{
 };
 use crate::command::{Arg, Command, Parser};
 use bb_plugin_macros::define_ty;
+use panda::runtime::Callback;
 use std::{
   fmt,
   sync::{Arc, Mutex},
 };
 
-use panda::runtime::Callback;
 #[cfg_attr(feature = "python_plugins", ::pyo3::pyclass)]
 pub struct PCommand {
   pub(super) inner:    Arc<Mutex<Command>>,
@@ -149,10 +149,10 @@ impl PCommand {
   ///   bb.info("ran setblock!")
   /// }
   /// ```
-  pub fn new(name: &str, callback: Box<dyn BCallback + Send + Sync>) -> PCommand {
+  pub fn new(name: &str, callback: Callback) -> PCommand {
     PCommand {
       inner:    Arc::new(Mutex::new(Command::new(name))),
-      callback: Some(callback),
+      callback: Some(Box::new(callback)),
       idx:      vec![],
     }
   }
