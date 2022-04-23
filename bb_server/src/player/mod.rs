@@ -320,7 +320,7 @@ impl Player {
   }
 
   /// Returns if player is currently alive
-  pub fn alive(&self) -> bool { *self.health.lock() > 0 }
+  pub fn alive(&self) -> bool { *self.health.lock() > 0.0 }
 
   /// Returns the player's block position. This is the block that their feet are
   /// in. This is the same thing as calling [`p.pos().block()`](Self::pos).

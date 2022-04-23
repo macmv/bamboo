@@ -213,9 +213,12 @@ impl EntityRef<'_> {
   /// Damages the entity. If `blockable` is true, then shields, armor, and
   /// absorption will affect the amount of damage. If `blockable` is false, then
   /// this will deal exactly `damage` amount to the player.
-  pub fn damage(&self, amount: f32, blockable: bool, knockback: Vec3) {
+  ///
+  /// Returns `true` if the entity was able to be damaged. This will only return
+  /// false for dead or invulnerable entities.
+  pub fn damage(&self, amount: f32, blockable: bool, knockback: Vec3) -> bool {
     match self {
-      Self::Entity(_) => {} // TODO
+      Self::Entity(_) => true, // TODO
       Self::Player(p) => p.damage(amount, blockable, knockback),
     }
   }
