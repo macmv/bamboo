@@ -673,7 +673,21 @@ impl ToTcp for Packet {
       Packet::ScoreboardUpdate { username, objective, action } => {
         let mut data = vec![];
         let mut buf = Buffer::new(&mut data);
-        if ver >= ProtocolVersion::V1_14_4 {
+        if ver >= ProtocolVersion::V1_18 {
+          buf.write_str(&objective);
+          match action {
+            ScoreboardAction::Create(score) => buf.write_varint(score),
+            ScoreboardAction::Remove => {}
+          }
+          GPacket::UpdateScoreV18 {
+            player_name: username,
+            mode:        match action {
+              ScoreboardAction::Create(_) => 0,
+              ScoreboardAction::Remove => 1,
+            },
+            unknown:     data,
+          }
+        } else if ver >= ProtocolVersion::V1_14_4 {
           buf.write_str(&objective);
           match action {
             ScoreboardAction::Create(score) => buf.write_varint(score),
