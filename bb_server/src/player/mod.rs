@@ -506,13 +506,13 @@ impl Player {
     // Handles base damage and enchantments
     let damage = self.lock_inventory().main_hand().attack_damage();
     // TODO: Strength
-    other.damage(damage, true);
+    other.damage(damage, true, Vec3::new(0.0, 0.3, 0.0) + self.look_as_vec() * 0.4);
   }
 
   /// Damages the player. If `blockable` is true, then shields, armor, and
   /// absorption will affect the amount of damage. If `blockable` is false, then
   /// this will deal exactly `damage` amount to the player.
-  pub fn damage(&self, amount: f32, blockable: bool) {
+  pub fn damage(&self, amount: f32, blockable: bool, knockback: Vec3) {
     if blockable {
       // TODO: Blocking
       /*
@@ -539,6 +539,12 @@ impl Player {
       let mut health = self.health.lock();
       *health -= amount;
       self.send(cb::Packet::UpdateHealth { health: *health, food: 20, saturation: 0.0 });
+      self.send(cb::Packet::EntityVelocity {
+        eid: self.eid(),
+        x:   (knockback.x * 8000.0) as i16,
+        y:   (knockback.y * 8000.0) as i16,
+        z:   (knockback.z * 8000.0) as i16,
+      });
     }
     let pos = self.pos();
     for p in self.world().players().iter().in_view(self.pos().chunk()) {
