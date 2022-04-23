@@ -559,6 +559,7 @@ impl World {
       let players_is_empty = lock.is_empty();
       drop(lock);
 
+      self.entities.write().remove(&p.eid());
       self.plugins().on_player_leave(p.clone());
       info!("{} left the game", p.username());
 
