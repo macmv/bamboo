@@ -133,7 +133,7 @@ impl World {
       // dimension_v1_16:          Some("".into()),
       // dimension_v1_16_2:        Some(NBT::new("", dimension).serialize()),
       // world_names_v1_16:        Some(world_names.into_inner()),
-      eid:                   self.eid(),
+      eid:                   player.eid(),
       hardcore_mode:         false,
       game_mode:             player.game_mode(),
       dimension:             0, // Overworld
