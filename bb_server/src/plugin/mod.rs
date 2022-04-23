@@ -27,7 +27,7 @@ use crate::{block, player::Player, world::WorldManager};
 use ::panda::runtime::VarSend;
 use bb_common::{config::Config, math::Pos};
 use crossbeam_channel::{Receiver, Sender};
-use parking_lot::Mutex;
+use parking_lot::{Mutex, MutexGuard};
 use std::{error::Error, fmt, sync::Arc, thread};
 
 #[derive(Debug)]
@@ -81,9 +81,7 @@ pub struct Plugin {
   config:    Config,
   #[allow(unused)]
   name:      String,
-  // TODO: Maybe use a mutex or something, so that we can get `unwrap_panda` to work again.
-  #[allow(unused)]
-  imp:       Arc<dyn PluginImpl + Send + Sync>,
+  imp:       Arc<Mutex<dyn PluginImpl + Send + Sync>>,
   tx:        Sender<ServerMessage>,
   rx:        Receiver<PluginMessage>,
   /// Used to recycled events we don't care about back into the queue.
@@ -128,17 +126,18 @@ impl Plugin {
   pub fn new(name: String, config: Config, imp: impl PluginImpl + Send + Sync + 'static) -> Self {
     let (server_tx, server_rx) = crossbeam_channel::bounded(128);
     let (plugin_tx, plugin_rx) = crossbeam_channel::bounded(128);
-    let imp = Arc::new(imp);
+    let imp = Arc::new(Mutex::new(imp));
     let i = Arc::clone(&imp);
     let ptx = plugin_tx.clone();
     thread::spawn(move || {
       while let Ok(ev) = server_rx.recv() {
         let res = match ev {
           ServerMessage::Request { reply_id, player, request } => i
+            .lock()
             .req(player, request)
             .map(|reply| plugin_tx.send(PluginMessage::Reply { reply_id, reply }).unwrap()),
-          ServerMessage::Event { player, event } => i.call(player, event),
-          ServerMessage::GlobalEvent { event } => i.call_global(event),
+          ServerMessage::Event { player, event } => i.lock().call(player, event),
+          ServerMessage::GlobalEvent { event } => i.lock().call_global(event),
           ServerMessage::Reply { .. } => Ok(()),
         };
         match res {
@@ -193,8 +192,7 @@ impl Plugin {
     }
     None
   }
-  #[cfg(feature = "panda_plugins")]
-  pub fn unwrap_panda(&mut self) -> &mut PandaPlugin { todo!() }
+  pub fn lock_imp(&self) -> MutexGuard<'_, dyn PluginImpl + Send + Sync> { self.imp.lock() }
   /*
   #[cfg(feature = "panda_plugins")]
   pub fn unwrap_panda(&mut self) -> &mut PandaPlugin { self.imp.panda().unwrap() }

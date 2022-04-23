@@ -19,6 +19,14 @@ pub struct PandaPlugin {
 }
 
 impl BCallback for Callback {
+  fn call_panda(
+    &self,
+    env: &mut panda::runtime::LockedEnv<'_>,
+    args: Vec<panda::runtime::Var>,
+  ) -> panda::runtime::Result<()> {
+    self.call(env, args)?;
+    Ok(())
+  }
   fn box_clone(&self) -> Box<dyn BCallback> { Box::new(self.clone()) }
 }
 

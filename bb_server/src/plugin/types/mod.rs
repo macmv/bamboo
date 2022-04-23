@@ -162,7 +162,8 @@ impl Bamboo {
         {
           let mut lock = wm.plugins().plugins.lock();
           let plugin = &mut lock[idx];
-          let panda = plugin.unwrap_panda();
+          let mut imp = plugin.lock_imp();
+          let panda = imp.panda().unwrap();
           if let Err(e) = cb.call_panda(
             &mut panda.lock_env(),
             vec![
