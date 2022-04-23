@@ -1122,7 +1122,11 @@ impl ToTcp for Packet {
         let mut buf = tcp::Packet::from_buf_id(vec![], 0, ver);
         conn.conv().item(&mut item, ver.block());
         buf.write_item(&item);
-        GPacket::SetSlotV8 { window_id: wid.into(), slot, unknown: buf.serialize() }
+        if ver >= ProtocolVersion::V1_17_1 {
+          GPacket::SetSlotV17 { sync_id: wid.into(), revision: 0, slot, unknown: buf.serialize() }
+        } else {
+          GPacket::SetSlotV8 { window_id: wid.into(), slot, unknown: buf.serialize() }
+        }
       }
       _ => todo!("convert {:?} into generated packet", self),
     }])

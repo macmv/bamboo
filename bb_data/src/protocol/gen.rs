@@ -155,6 +155,8 @@ impl PacketCollection {
             gen.write_match("self", |gen| {
               for versions in packets.iter() {
                 for (ver, p) in versions.iter().rev() {
+                  let val = self.versions[match_ver].get(&p.name);
+                  let id = if let Some(id) = val { id } else { continue };
                   if ver.maj > match_ver.maj {
                     continue;
                   }
@@ -163,16 +165,9 @@ impl PacketCollection {
                   gen.write("V");
                   gen.write(&ver.maj.to_string());
                   gen.write(" { .. } => ");
-                  let val = self.versions[match_ver].get(&p.name);
-                  let id = val.unwrap_or(&0);
                   gen.write(&id.to_string());
                   gen.write(", // ");
-                  gen.write(&format!("{:#x}", id));
-                  if val.is_some() {
-                    gen.write_line("");
-                  } else {
-                    gen.write_line(" (not found)");
-                  }
+                  gen.write_line(&format!("{:#x}", id));
                   break;
                 }
               }
