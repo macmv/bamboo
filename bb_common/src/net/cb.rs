@@ -232,6 +232,8 @@ pub enum Packet {
   },
   #[id = 19]
   UnloadChunk { pos: ChunkPos },
+  #[id = 40]
+  UpdateHealth { health: f32, food: i32, saturation: f32 },
   #[id = 20]
   UpdateViewPos { pos: ChunkPos },
 

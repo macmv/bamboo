@@ -1090,6 +1090,9 @@ impl ToTcp for Packet {
           }
         }
       }
+      Packet::UpdateHealth { health, food, saturation } => {
+        GPacket::UpdateHealthV8 { health, food_level: food, saturation_level: saturation }
+      }
       Packet::UpdateViewPos { pos } => {
         if ver >= ProtocolVersion::V1_14 {
           GPacket::ChunkRenderDistanceCenterV14 { chunk_x: pos.x(), chunk_z: pos.z() }

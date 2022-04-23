@@ -532,8 +532,14 @@ impl Player {
       other.set_absorption(other.absorption() - (damage_before_abs - damageAmount));
       */
     }
-    *self.health.lock() -= amount;
-    info!("{} health: {}", self.username(), *self.health.lock());
+    {
+      let mut health = self.health.lock();
+      *health -= amount;
+      self.send(cb::Packet::UpdateHealth { health: *health, food: 20, saturation: 0.0 });
+    }
+    for p in self.world().players().iter().in_view(self.pos().chunk()).not(self.id()) {
+      p.send(cb::Packet::Animation { eid: self.eid(), kind: cb::Animation::Damage });
+    }
   }
 }
 
