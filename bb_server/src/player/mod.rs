@@ -74,8 +74,8 @@ struct PlayerPosition {
 }
 
 struct PlayerFood {
-    food:       i32,
-    saturation: f32,
+  food:       i32,
+  saturation: f32,
 }
 
 pub struct Player {
@@ -96,7 +96,7 @@ pub struct Player {
   pos:        Mutex<PlayerPosition>,
 
   health: Mutex<f32>,
-  food:   Mutex<PlayerFood>
+  food:   Mutex<PlayerFood>,
 }
 
 impl fmt::Debug for Player {
@@ -156,11 +156,7 @@ impl Player {
       }
       .into(),
       health: Mutex::new(20.0),
-      food:   PlayerFood {
-          food:       20,
-          saturation: 5.0,
-      }
-      .into(),
+      food: PlayerFood { food: 20, saturation: 5.0 }.into(),
     })
   }
 
@@ -324,9 +320,7 @@ impl Player {
   }
 
   /// Returns if player is currently alive
-  pub fn alive(&self) -> bool {
-    *self.health.lock() > 0
-  }
+  pub fn alive(&self) -> bool { *self.health.lock() > 0 }
 
   /// Returns the player's block position. This is the block that their feet are
   /// in. This is the same thing as calling [`p.pos().block()`](Self::pos).
@@ -526,19 +520,25 @@ impl Player {
     other.damage(damage, true, Vec3::new(0.0, 0.3, 0.0) + self.look_as_vec() * 0.4);
   }
 
+  /// Returns true if the player can be damaged. This will return `false` if
+  /// they are in creative, or are dead.
+  ///
+  /// This will add more checks in the future.
   pub fn damageable(&self) -> bool {
     // TODO: Void damage
-    matches!(self.game_mode(), GameMode::Survival | GameMode::Adventure)
-      && self.alive()
+    matches!(self.game_mode(), GameMode::Survival | GameMode::Adventure) && self.alive()
   }
 
   /// Damages the player. If `blockable` is true, then shields, armor, and
   /// absorption will affect the amount of damage. If `blockable` is false, then
   /// this will deal exactly `damage` amount to the player.
-  /// Returns if the entity has been successfully damaged, 0 Damage should be true as well
+  ///
+  /// Returns if the entity has been successfully damaged. 0 damage will still
+  /// return `true`. This will only return `false` if [`Player::damageable`] is
+  /// `false`.
   pub fn damage(&self, amount: f32, blockable: bool, knockback: Vec3) -> bool {
     if !self.damageable() {
-      false
+      return false;
     }
 
     if blockable {
@@ -565,14 +565,14 @@ impl Player {
     // our health. So, I simply don't send the health to other clients here.
     {
       let mut health = self.health.lock();
-      let     food   = self.food.lock();
+      let food = self.food.lock();
 
       *health -= amount;
 
       self.send(cb::Packet::UpdateHealth {
         health:     *health,
         food:       food.food,
-        saturation: food.saturation
+        saturation: food.saturation,
       });
       self.send(cb::Packet::EntityVelocity {
         eid: self.eid(),
