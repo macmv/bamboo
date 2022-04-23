@@ -12,6 +12,7 @@ use bb_common::{
 };
 use parking_lot::Mutex;
 use rayon::prelude::*;
+use std::sync::atomic::{AtomicU32, Ordering};
 
 impl World {
   pub fn init(&self) {
@@ -85,23 +86,30 @@ impl World {
 
     info!("generating terrain...");
     let chunks = Mutex::new(vec![]);
-    let chunks_n: Mutex<f64> = Mutex::new(0.0);
-    (-32..=32).into_par_iter().for_each(|x| {
-      for z in -32..=32 {
+    let loaded = AtomicU32::new(0);
+    let view_distance = self.config().get::<_, i32>("view-distance");
+    let total = ((view_distance * 2 + 1) * (view_distance * 2 + 1)) as f64;
+    (-view_distance..=view_distance).into_par_iter().for_each(|x| {
+      for z in -view_distance..=view_distance {
         let pos = ChunkPos::new(x, z);
         let c = self.pre_generate_chunk(pos);
         chunks.lock().push((pos, c));
+
+        let num_loaded = loaded.fetch_add(1, Ordering::SeqCst);
+        let old_progress = (f64::from(num_loaded) / total) * 100.0;
+        let new_progress = (f64::from(num_loaded + 1) / total) * 100.0;
+        const INC: f64 = 10.0;
+        // We want 10% increments, so if the fetch_add just put us over a 10% increment,
+        // we log it.
+        if (old_progress / INC) as i32 != (new_progress / INC) as i32 {
+          info!("{:0.2}%", new_progress);
+        }
       }
-      let progress = f64::from(*chunks_n.lock()) / 64.0f64 * 100.0f64;
-      if progress % 5.0f64 == 0.0f64 {
-        info!("{}%", progress);
-      }
-      *chunks_n.lock() += 1.0;
     });
     self.store_chunks_no_overwrite(chunks.into_inner());
     // Keep spawn chunks always loaded
-    for x in -32..=32 {
-      for z in -32..=32 {
+    for x in -view_distance..=view_distance {
+      for z in -view_distance..=view_distance {
         let pos = ChunkPos::new(x, z);
         self.inc_view(pos);
       }
