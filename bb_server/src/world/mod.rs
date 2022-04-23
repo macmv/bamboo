@@ -611,6 +611,22 @@ impl World {
       p.send(out.clone());
     }
   }
+
+  /// Searches upwards for an open spawn point, based on the `start` position.
+  /// This may return a position outside the world.
+  pub fn find_spawn_point(&self, start: Pos) -> Pos {
+    let mut pos = start;
+    loop {
+      let lo = pos;
+      let hi = pos + Pos::new(0, 1, 0);
+      if self.get_kind(lo).map(|k| k == block::Kind::Air).unwrap_or(true)
+        && self.get_kind(hi).map(|k| k == block::Kind::Air).unwrap_or(true)
+      {
+        break pos;
+      }
+      pos += Pos::new(0, 1, 0);
+    }
+  }
 }
 
 impl Default for WorldManager {
@@ -752,16 +768,12 @@ impl WorldManager {
   /// proxy connects.
   pub fn new_player(&self, conn: ConnSender, info: JoinInfo) -> Arc<Player> {
     let w = self.worlds.read()[0].clone();
-    let mut px = FPos::new(self.spawn_point.x, self.spawn_point.y, self.spawn_point.z);
-    let mut py = FPos::new(px.x, px.y + 1.0, px.z);
-    loop {
-      if w.get_block(px.block()).unwrap().id() == 0 && w.get_block(py.block()).unwrap().id() == 0 {
-        break;
-      }
-      px = FPos::new(px.x, px.y + 1.0, px.z);
-      py = FPos::new(py.x, py.y + 1.0, py.z);
-    }
-    let player = Player::new(w.new_eid(), conn, info.clone(), w.clone(), px);
+    let spawn = if self.config().get("find-spawn") {
+      w.find_spawn_point(self.spawn_point.block()).into()
+    } else {
+      self.spawn_point
+    };
+    let player = Player::new(w.new_eid(), conn, info.clone(), w.clone(), spawn);
     self.players.write().insert(info.uuid, (0, player.clone()));
     w.new_player(player.clone(), info);
     player
