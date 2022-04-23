@@ -89,6 +89,8 @@ pub struct Player {
   inv:        Mutex<PlayerInventory>,
   scoreboard: Mutex<Scoreboard>,
   pos:        Mutex<PlayerPosition>,
+
+  health: Mutex<f32>,
 }
 
 impl fmt::Debug for Player {
@@ -101,6 +103,7 @@ impl fmt::Debug for Player {
       .field("inv", &self.inv)
       .field("scoreboard", &self.scoreboard)
       .field("pos", &self.pos)
+      .field("health", &self.pos)
       .finish()
   }
 }
@@ -146,6 +149,7 @@ impl Player {
         dig_progress: None,
       }
       .into(),
+      health: Mutex::new(20.0),
     })
   }
 
@@ -499,7 +503,37 @@ impl Player {
   }
 
   pub(super) fn attack(&self, other: EntityRef) {
-    info!("{} is attacking {}", self.username(), other.eid());
+    // Handles base damage and enchantments
+    let damage = self.lock_inventory().main_hand().attack_damage();
+    // TODO: Strength
+    other.damage(damage, true);
+  }
+
+  /// Damages the player. If `blockable` is true, then shields, armor, and
+  /// absorption will affect the amount of damage. If `blockable` is false, then
+  /// this will deal exactly `damage` amount to the player.
+  pub fn damage(&self, amount: f32, blockable: bool) {
+    if blockable {
+      // TODO: Blocking
+      /*
+      if self.is_blocking() {
+        damage = (1.0 + damage) * 0.5;
+      }
+      */
+      // TODO: Armor damage and armor reducing damage
+      /*
+      let armor_damage = 25.0 - other.armor_total();
+      damage = (damage * armor_damage) / 25.0;
+      */
+      // TODO: Absorbtion
+      /*
+      let damage_before_abs = damage;
+      damage = cmp::max(damage - other.absorption());
+      other.set_absorption(other.absorption() - (damage_before_abs - damageAmount));
+      */
+    }
+    *self.health.lock() -= amount;
+    info!("{} health: {}", self.username(), *self.health.lock());
   }
 }
 

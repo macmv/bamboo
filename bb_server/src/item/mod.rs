@@ -1,3 +1,4 @@
+mod attack;
 mod dig;
 mod inventory;
 mod stack;

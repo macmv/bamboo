@@ -209,6 +209,24 @@ impl EntityRef<'_> {
       Self::Player(_) => todo!(),
     }
   }
+
+  /// Damages the entity. If `blockable` is true, then shields, armor, and
+  /// absorption will affect the amount of damage. If `blockable` is false, then
+  /// this will deal exactly `damage` amount to the player.
+  pub fn damage(&self, amount: f32, blockable: bool) {
+    match self {
+      Self::Entity(_) => {} // TODO
+      Self::Player(p) => p.damage(amount, blockable),
+    }
+  }
+
+  /// Returns `true` if this is a player.
+  pub fn is_player(&self) -> bool { matches!(self, Self::Player(_)) }
+
+  /// Returns `false` if this is a player. The name for this function is
+  /// unclear, as players are also entities. I don't have a name for non-player
+  /// entities, so I just call them entities here.
+  pub fn is_entity(&self) -> bool { matches!(self, Self::Entity(_)) }
 }
 
 impl EntityData {
