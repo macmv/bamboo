@@ -215,8 +215,7 @@ impl World {
     }
     player.send(cb::Packet::PlayerList { action: cb::PlayerListAction::Add(info) });
 
-    // TODO: Don't assume we spawn in the (0, 0) chunk.
-    for other in self.players().iter().in_view(ChunkPos::new(0, 0)).not(player.id()) {
+    for other in self.players().iter().in_view(player.pos().chunk()).not(player.id()) {
       // Create a packet that will spawn me for `other`
       let (pos, pitch, yaw) = player.pos_look();
       other.send(cb::Packet::SpawnPlayer {
