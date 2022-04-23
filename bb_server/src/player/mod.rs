@@ -532,13 +532,35 @@ impl Player {
       other.set_absorption(other.absorption() - (damage_before_abs - damageAmount));
       */
     }
+    // Here, vanilla would send a metadata update for self's health. This
+    // doesn't make any sense, as other players (with a hacked client) can see
+    // our health. So, I simply don't send the health to other clients here.
     {
       let mut health = self.health.lock();
       *health -= amount;
       self.send(cb::Packet::UpdateHealth { health: *health, food: 20, saturation: 0.0 });
     }
-    for p in self.world().players().iter().in_view(self.pos().chunk()).not(self.id()) {
-      p.send(cb::Packet::Animation { eid: self.eid(), kind: cb::Animation::Damage });
+    let pos = self.pos();
+    for p in self.world().players().iter().in_view(self.pos().chunk()) {
+      if p.id() != self.id() {
+        p.send(cb::Packet::Animation { eid: self.eid(), kind: cb::Animation::Damage });
+      }
+      // - player.attack.weak is failing a hit (hitting an invuln player)
+      // - player.attack.strong is hitting a shield
+      // - player.attack.sweep is played with player.hurt (and optionally
+      //   player.attack.crit), when a player hits multiple targets
+      // - player.attack.crit is played with player.hurt, when a player crits
+      // - player.attack.knockback is similar to crit (idk when its used)
+      // - player.hurt is the base hurt sound
+      //
+      // Note that the proxy will convert all of these to the 1.8 names
+      p.send(cb::Packet::PlaySound {
+        name: "entity.player.hurt".into(),
+        category: cb::SoundCategory::Players,
+        pos,
+        volume: 1.0,
+        pitch: 1.0,
+      });
     }
   }
 }
