@@ -16,6 +16,7 @@ use bb_common::{
 };
 use parking_lot::{Mutex, MutexGuard};
 use std::{f64::consts, fmt, net::SocketAddr, sync::Arc, time::Instant};
+use std::ops::{Add, Mul};
 
 mod inventory;
 mod scoreboard;
@@ -51,6 +52,8 @@ struct PlayerPosition {
   // This is the most recently recieved position packet. It is updated whenever a position packet
   // is recieved. It is also used to set x,y,z on the next tick.
   next: FPos,
+
+  vel: Vec3,
 
   yaw:   f32,
   pitch: f32,
@@ -151,6 +154,7 @@ impl Player {
         curr:         pos,
         prev:         pos,
         next:         pos,
+        vel:          Vec3::new(0.0, 0.0, 0.0),
         yaw:          0.0,
         pitch:        0.0,
         next_yaw:     0.0,
@@ -177,6 +181,8 @@ impl Player {
   /// Returns the player's view disstance. This is how far they can see in
   /// chunks.
   pub fn view_distance(&self) -> u32 { self.view_distance }
+
+  pub fn health(&self) -> f32 { self.health.lock().health }
 
   /// Returns the version that this client connected with. This will only change
   /// if the player disconnects and logs in with another client.
@@ -465,6 +471,30 @@ impl Player {
     *self.game_mode.lock() = mode;
   }
 
+  pub fn get_vel(&self) -> Vec3 {
+    self.pos.lock().vel
+  }
+
+  pub fn set_vel(&self, vel: Vec3) {
+    self.pos.lock().vel = vel;
+    self.send_vel(vel);
+  }
+
+  pub fn add_vel(&self, vel: Vec3) {
+    let mut pos = self.pos.lock();
+    pos.vel = pos.vel.add(vel);
+    self.send_vel(vel);
+  }
+
+  fn send_vel(&self, vel: Vec3) {
+    self.send_all_in_view(cb::Packet::EntityVelocity {
+      eid: self.eid(),
+      x:   vel.fixed_x(),
+      y:   vel.fixed_y(),
+      z:   vel.fixed_z(),
+    });
+  }
+
   /// Sends a server switch packet to the proxy. If the ip address is valid, the
   /// proxy will move this player and disconnect them from this server. If the
   /// `ip` is invalid, the proxy will log an error, and the player will not be
@@ -517,7 +547,8 @@ impl Player {
     // Handles base damage and enchantments
     let damage = self.lock_inventory().main_hand().attack_damage();
     // TODO: Strength
-    other.damage(damage, true, Vec3::new(0.0, 0.3, 0.0) + self.look_as_vec() * 0.4);
+    let v = self.look_as_vec().mul(0.4);
+    other.damage(damage, true, Vec3::new(v.x, 0.4, v.z));
   }
 
   /// Returns true if the player can be damaged. This will return `false` if
@@ -579,12 +610,8 @@ impl Player {
         food:       food.food,
         saturation: food.saturation,
       });
-      self.send(cb::Packet::EntityVelocity {
-        eid: self.eid(),
-        x:   (knockback.x * 8000.0) as i16,
-        y:   (knockback.y * 8000.0) as i16,
-        z:   (knockback.z * 8000.0) as i16,
-      });
+
+      self.add_vel(knockback);
     }
     let pos = self.pos();
     for p in self.world().players().iter().in_view(self.pos().chunk()) {
