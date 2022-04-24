@@ -473,7 +473,7 @@ impl Player {
     *self.game_mode.lock() = mode;
   }
 
-  pub fn get_vel(&self) -> Vec3 {
+  pub fn vel(&self) -> Vec3 {
     self.pos.lock().vel
   }
 
