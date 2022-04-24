@@ -156,7 +156,7 @@ impl EntityRef<'_> {
   pub fn health(&self) -> f32 {
     match self {
       Self::Entity(e) => *e.health.lock(),
-      Self::Player(_) => 20.0,
+      Self::Player(p) => p.health(),
     }
   }
 
@@ -174,7 +174,7 @@ impl EntityRef<'_> {
   pub fn exp_count(&self) -> i32 {
     match self {
       Self::Entity(e) => e.behavior.lock().exp_count(),
-      Self::Player(_) => 5,
+      Self::Player(_) => 5, // TODO
     }
   }
 
@@ -186,7 +186,7 @@ impl EntityRef<'_> {
         e.pos.lock().vel = vel;
         e.world.read().send_entity_vel(e.fpos().chunk(), e.eid, vel);
       }
-      Self::Player(_) => todo!("set vel for player"),
+      Self::Player(p) => { p.set_vel(vel); }
     }
   }
 
