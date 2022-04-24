@@ -310,7 +310,7 @@ impl PPlayer {
   /// This will do nothing if the player is offline.
   pub fn give(&self, stack: &PStack) {
     if let Ok(i) = self.inner() {
-      i.lock_inventory().give(&stack.inner);
+      i.lock_inventory().give(stack.inner.clone());
     }
   }
 }

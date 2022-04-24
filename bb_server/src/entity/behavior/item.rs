@@ -29,20 +29,26 @@ impl Behavior for ItemBehavior {
       for player in ent.world.read().players().iter().in_view(chunk) {
         if player.pos().dist_squared(p.aabb.pos) < 1.5_f64.powi(2) {
           let stack: Stack = ent.metadata().get_item(8).into();
-          player.lock_inventory().give(&stack);
+          let amount = stack.amount();
+          let remaining = player.lock_inventory().give(stack);
 
-          let collect = cb::Packet::CollectItem {
-            item_eid:   ent.eid(),
-            player_eid: player.eid(),
-            amount:     stack.amount(),
-          };
-          // We want to include `player` in this loop, as they should also see the pickup
-          // animation
-          for other in player.world().players().iter().in_view(chunk) {
-            other.send(collect.clone());
+          if remaining == 0 {
+            let collect =
+              cb::Packet::CollectItem { item_eid: ent.eid(), player_eid: player.eid(), amount };
+            // We want to include `player` in this loop, as they should also see the pickup
+            // animation
+            for other in player.world().players().iter().in_view(chunk) {
+              other.send(collect.clone());
+            }
+
+            return ShouldDespawn(true);
+          } else {
+            // We still give the partial amount to the player (lock_inventory().give()), but
+            // we don't show the pickup animation.
+            let mut stack: Stack = ent.metadata().get_item(8).into();
+            stack.set_amount(remaining);
+            ent.metadata().set_item(8, stack.to_item());
           }
-
-          return ShouldDespawn(true);
         }
       }
     }

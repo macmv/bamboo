@@ -76,8 +76,13 @@ impl PlayerInventory {
     self.hotbar.wid = 0;
   }
 
-  /// Gives an item to the player.
-  pub fn give(&mut self, stack: &Stack) { self.main_mut().add(stack); }
+  /// Gives an item to the player. Returns the number of remaining items in the
+  /// stack.
+  pub fn give(&mut self, mut stack: Stack) -> u8 {
+    let remaining = self.hotbar_mut().add(&stack);
+    stack.set_amount(remaining);
+    self.main_mut().add(&stack)
+  }
 
   /// Returns the item in the player's main hand.
   pub fn main_hand(&self) -> &Stack { self.hotbar().get_raw(self.selected_index as u32).unwrap() }
