@@ -79,6 +79,7 @@ struct PlayerPosition {
 pub struct PlayerHealth {
   health:     f32,
   absorption: f32,
+  hit_delay:  u32,
 }
 
 #[derive(Debug, Clone)]
@@ -165,7 +166,7 @@ impl Player {
         dig_progress: None,
       }
       .into(),
-      health: PlayerHealth { health: 20.0, absorption: 0.0 }.into(),
+      health: PlayerHealth { health: 20.0, absorption: 0.0, hit_delay: 0 }.into(),
       food: PlayerFood { food: 20, saturation: 5.0 }.into(),
     })
   }
@@ -590,6 +591,13 @@ impl Player {
       return false;
     }
 
+    let mut health = self.health.lock();
+    let food = self.food.lock();
+
+    if health.hit_delay > 0 {
+      return false;
+    }
+
     if blockable {
       // TODO: Blocking
       /*
@@ -607,9 +615,6 @@ impl Player {
     // doesn't make any sense, as other players (with a hacked client) can see
     // our health. So, I simply don't send the health to other clients here.
     {
-      let mut health = self.health.lock();
-      let food = self.food.lock();
-
       let amount_original = amount;
 
       amount -= health.absorption;
@@ -662,6 +667,8 @@ impl Player {
         pitch: 1.0,
       });
     }
+
+    health.hit_delay = 10;
 
     true
   }

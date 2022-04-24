@@ -25,6 +25,7 @@ impl Player {
   /// collision checks. Should never be called at a different rate than the
   /// global tick rate.
   pub(crate) fn tick(self: &Arc<Self>) {
+    let mut health = self.health.lock();
     let old_chunk;
     let new_chunk;
     let look_changed;
@@ -231,6 +232,8 @@ impl Player {
       self.load_chunks(load_min, load_max);
       self.unload_chunks(unload_min, unload_max);
     }
+
+    if health.hit_delay > 0 { health.hit_delay -= 1; }
   }
 
   /// Loads the chunks between min and max, inclusive.
