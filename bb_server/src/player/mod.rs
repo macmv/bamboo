@@ -73,6 +73,13 @@ struct PlayerPosition {
   dig_progress: Option<DigProgress>,
 }
 
+#[derive(Debug, Clone)]
+struct PlayerHealth {
+  health:     f32,
+  absorption: f32,
+}
+
+#[derive(Debug, Clone)]
 struct PlayerFood {
   food:       i32,
   saturation: f32,
@@ -95,7 +102,7 @@ pub struct Player {
   scoreboard: Mutex<Scoreboard>,
   pos:        Mutex<PlayerPosition>,
 
-  health: Mutex<f32>,
+  health: Mutex<PlayerHealth>,
   food:   Mutex<PlayerFood>,
 }
 
@@ -155,7 +162,7 @@ impl Player {
         dig_progress: None,
       }
       .into(),
-      health: Mutex::new(20.0),
+      health: PlayerHealth { health: 20.0, absorption: 0.0 }.into(),
       food: PlayerFood { food: 20, saturation: 5.0 }.into(),
     })
   }
@@ -320,7 +327,7 @@ impl Player {
   }
 
   /// Returns if player is currently alive
-  pub fn alive(&self) -> bool { *self.health.lock() > 0.0 }
+  pub fn alive(&self) -> bool { (*self.health.lock()).health > 0.0 }
 
   /// Returns the player's block position. This is the block that their feet are
   /// in. This is the same thing as calling [`p.pos().block()`](Self::pos).
@@ -536,7 +543,7 @@ impl Player {
   /// Returns if the entity has been successfully damaged. 0 damage will still
   /// return `true`. This will only return `false` if [`Player::damageable`] is
   /// `false`.
-  pub fn damage(&self, amount: f32, blockable: bool, knockback: Vec3) -> bool {
+  pub fn damage(&self, mut amount: f32, blockable: bool, knockback: Vec3) -> bool {
     if !self.damageable() {
       return false;
     }
@@ -552,13 +559,7 @@ impl Player {
       /*
       let armor_damage = 25.0 - other.armor_total();
       damage = (damage * armor_damage) / 25.0;
-      */
-      // TODO: Absorbtion
-      /*
-      let damage_before_abs = damage;
-      damage = cmp::max(damage - other.absorption());
-      other.set_absorption(other.absorption() - (damage_before_abs - damageAmount));
-      */
+       */
     }
     // Here, vanilla would send a metadata update for self's health. This
     // doesn't make any sense, as other players (with a hacked client) can see
@@ -567,10 +568,21 @@ impl Player {
       let mut health = self.health.lock();
       let food = self.food.lock();
 
-      *health -= amount;
+      let amount_original = amount;
+
+      amount -= health.absorption;
+      if amount < 0.0 {
+        amount = 0.0;
+      }
+      health.absorption -= amount_original - amount;
+      if amount != 0.0 {
+        let h = health.health;
+        health.health = h - amount;
+        health.absorption -= amount;
+      }
 
       self.send(cb::Packet::UpdateHealth {
-        health:     *health,
+        health:     health.health,
         food:       food.food,
         saturation: food.saturation,
       });
