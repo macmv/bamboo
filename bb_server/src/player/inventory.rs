@@ -1,6 +1,6 @@
 use crate::{
   entity,
-  item::{Inventory, Stack},
+  item::{Inventory, Stack, WrappedInventory},
   net::ConnSender,
   player::Player,
 };
@@ -15,29 +15,19 @@ use bb_common::{
 };
 use std::{mem, sync::Weak};
 
-/// An inventory, wrapped so that any time it is modified, a packet will be sent
-/// to a client.
-#[derive(Debug)]
-pub struct WrappedInventory {
-  inv:    Inventory,
-  conn:   ConnSender,
-  wid:    u8,
-  offset: u32,
-  skip:   u32,
-}
-
 #[derive(Debug)]
 pub struct PlayerInventory {
-  // The main inventory. Slots 0 through 8 are your armor and crafting bench slots. Slots 9-44 are
-  // the main inventory. Slot 45 is the off hand.
-  //
-  // Note that slots 9-44 are used in chests as well, so we have some extra nonsense to handle
-  // that.
-  main:           WrappedInventory,
+  head:           WrappedInventory<1>,
+  chest:          WrappedInventory<1>,
+  legs:           WrappedInventory<1>,
+  feet:           WrappedInventory<1>,
+  crafting:       WrappedInventory<5>,
+  main:           WrappedInventory<27>,
+  hotbar:         WrappedInventory<9>,
   // An index into the hotbar (0..=8)
   selected_index: u8,
   // Open window and held item
-  window:         Option<WrappedInventory>,
+  window:         Option<WrappedInventory<27>>,
   // Held item. Always present, as survival inventories don't count as windows.
   held:           Stack,
 
@@ -54,7 +44,13 @@ impl PlayerInventory {
     // We always store an inventory with 46 slots, even if the client is on 1.8 (in
     // that version, there was no off-hand).
     PlayerInventory {
-      main:           WrappedInventory::new(Inventory::new(46), conn, 0),
+      head:           WrappedInventory::new(Inventory::new(), conn.clone(), 0, 0),
+      chest:          WrappedInventory::new(Inventory::new(), conn.clone(), 0, 1),
+      legs:           WrappedInventory::new(Inventory::new(), conn.clone(), 0, 2),
+      feet:           WrappedInventory::new(Inventory::new(), conn.clone(), 0, 3),
+      crafting:       WrappedInventory::new(Inventory::new(), conn.clone(), 0, 4),
+      main:           WrappedInventory::new(Inventory::new(), conn.clone(), 0, 9),
+      hotbar:         WrappedInventory::new(Inventory::new(), conn.clone(), 0, 36),
       selected_index: 0,
       window:         None,
       held:           Stack::empty(),
@@ -63,16 +59,21 @@ impl PlayerInventory {
     }
   }
 
-  pub fn open_window(&mut self, inv: Inventory) {
+  pub fn open_window(&mut self, inv: Inventory<27>) {
     assert!(self.window.is_none());
-    self.main.set_offset_skip(inv.size(), 9);
+    // Assume chest-like for now.
+    self.main.offset = inv.size();
     self.main.wid = 1;
-    self.window = Some(WrappedInventory::new(inv, self.main.conn.clone(), 1));
+    self.hotbar.offset = inv.size() + self.main.size();
+    self.hotbar.wid = 1;
+    self.window = Some(WrappedInventory::new(inv, self.main.conn.clone(), 1, 0));
   }
   pub fn close_window(&mut self) {
     self.window.take();
-    self.main.set_offset_skip(0, 0);
+    self.main.offset = 9;
     self.main.wid = 0;
+    self.hotbar.offset = 36;
+    self.hotbar.wid = 0;
   }
 
   /// Gives an item to the player.
@@ -81,10 +82,10 @@ impl PlayerInventory {
   /// Returns the index in the main inventory for the main hand. Only use with
   /// `inv.main()`! If you use it with an open window, this will look up an
   /// invalid index.
-  pub fn main_hand_index(&self) -> u32 { self.selected_index as u32 + 36 }
+  pub fn main_hand_index(&self) -> u32 { self.selected_index as u32 + self.hotbar.offset }
 
   /// Returns the item in the player's main hand.
-  pub fn main_hand(&self) -> &Stack { self.main().get(self.selected_index as u32 + 36) }
+  pub fn main_hand(&self) -> &Stack { self.main().get(self.main_hand_index()) }
 
   /// Returns the currently selected hotbar index.
   pub fn selected_index(&self) -> u8 { self.selected_index }
@@ -105,11 +106,11 @@ impl PlayerInventory {
     self.selected_index = index;
   }
 
-  pub fn main(&self) -> &WrappedInventory { &self.main }
-  pub fn main_mut(&mut self) -> &mut WrappedInventory { &mut self.main }
+  pub fn main(&self) -> &WrappedInventory<27> { &self.main }
+  pub fn main_mut(&mut self) -> &mut WrappedInventory<27> { &mut self.main }
 
-  pub fn win(&self) -> Option<&WrappedInventory> { self.window.as_ref() }
-  pub fn win_mut(&mut self) -> Option<&mut WrappedInventory> { self.window.as_mut() }
+  pub fn win(&self) -> Option<&WrappedInventory<27>> { self.window.as_ref() }
+  pub fn win_mut(&mut self) -> Option<&mut WrappedInventory<27>> { self.window.as_mut() }
 
   /// Gets the item out of the inventory. This uses absolute ids, so depending
   /// on if a window is open, the actual slot being accessed may change. Use
@@ -117,43 +118,49 @@ impl PlayerInventory {
   /// the open window directly.
   pub fn get(&self, index: i32) -> &Stack {
     if index == -999 {
-      &self.held
-    } else if let Some(win) = &self.window {
-      if index >= 0 {
-        let i = index as u32;
-        if i < win.size() {
-          win.get(i)
-        } else {
-          // Note the +9. This is because slots 0-8 are the armor slots of the player's
-          // inventory.
-          self.main.get(i - win.size() + 9)
-        }
-      } else {
-        self.main.get(index as u32)
+      return &self.held;
+    }
+    if let Some(win) = &self.window {
+      match index {
+        0..=26 => win.get(index as u32),
+        27..=35 => self.hotbar.get_offset(index as u32),
+        _ => panic!(),
       }
     } else {
-      self.main.get(index as u32)
+      match index {
+        0 => self.head.get_offset(index as u32),
+        1 => self.chest.get_offset(index as u32),
+        2 => self.legs.get_offset(index as u32),
+        3 => self.feet.get_offset(index as u32),
+        4..=8 => self.crafting.get_offset(index as u32),
+        9..=35 => self.main.get_offset(index as u32),
+        36..=44 => self.hotbar.get_offset(index as u32),
+        _ => panic!(),
+      }
     }
   }
   // This is private as modifying the stack doesn't send an update to the client.
   pub(crate) fn get_mut(&mut self, index: i32) -> &mut Stack {
     if index == -999 {
-      &mut self.held
-    } else if let Some(win) = &mut self.window {
-      if index >= 0 {
-        let i = index as u32;
-        if i < win.size() {
-          win.get_mut(i)
-        } else {
-          // Note the +9. This is because slots 0-8 are the armor slots of the player's
-          // inventory.
-          self.main.get_mut(i - win.size() + 9)
-        }
-      } else {
-        self.main.get_mut(index as u32)
+      return &mut self.held;
+    }
+    if let Some(win) = &mut self.window {
+      match index {
+        0..=26 => win.get_mut(index as u32),
+        27..=35 => self.hotbar.get_offset_mut(index as u32),
+        _ => panic!(),
       }
     } else {
-      self.main.get_mut(index as u32)
+      match index {
+        0 => self.head.get_offset_mut(index as u32),
+        1 => self.chest.get_offset_mut(index as u32),
+        2 => self.legs.get_offset_mut(index as u32),
+        3 => self.feet.get_offset_mut(index as u32),
+        4..=8 => self.crafting.get_offset_mut(index as u32),
+        9..=35 => self.main.get_offset_mut(index as u32),
+        36..=44 => self.hotbar.get_offset_mut(index as u32),
+        _ => panic!(),
+      }
     }
   }
   /// Replaces the item at `index` with the given item. The old item will be
@@ -199,7 +206,7 @@ impl PlayerInventory {
       p.send_to_in_view(cb::Packet::EntityEquipment {
         eid:  p.eid(),
         slot: cb::EquipmentSlot::Hand(Hand::Main),
-        item: self.main.get(index as u32).to_item(),
+        item: self.get(index).to_item(),
       });
     }
     if index == -999 {
@@ -208,19 +215,25 @@ impl PlayerInventory {
         slot: -1,
         item: self.held.to_item(),
       });
-    } else if let Some(win) = &self.window {
-      if index >= 0 {
-        let i = index as u32;
-        if i < win.size() {
-          win.sync(i)
-        } else {
-          self.main.sync(i - win.size() + 9)
-        }
-      } else {
-        self.main.sync(index as u32)
+      return;
+    }
+    if let Some(win) = &self.window {
+      match index {
+        0..=26 => win.sync(index as u32),
+        27..=35 => self.hotbar.sync_offset(index as u32),
+        _ => panic!(),
       }
     } else {
-      self.main.sync(index as u32)
+      match index {
+        0 => self.head.sync_offset(index as u32),
+        1 => self.chest.sync_offset(index as u32),
+        2 => self.legs.sync_offset(index as u32),
+        3 => self.feet.sync_offset(index as u32),
+        4..=8 => self.crafting.sync_offset(index as u32),
+        9..=35 => self.main.sync_offset(index as u32),
+        36..=44 => self.hotbar.sync_offset(index as u32),
+        _ => panic!(),
+      }
     }
   }
 
@@ -270,24 +283,43 @@ impl PlayerInventory {
         let prev_amount = stack.amount();
         // We are shift clicking in `in_main`, so we add it to the other inventory.
         if allow {
-          let new_amount =
-            if in_main { self.win_mut().unwrap().add(&stack) } else { self.main.add(&stack) };
-          if new_amount != prev_amount {
-            self.set(slot, stack.with_amount(new_amount));
-          }
-          self.sync_all();
-        } else {
-          let new_amount = if in_main {
-            self.win_mut().unwrap().add_sync(&stack)
+          let idx = slot as u32;
+          if let Some(win) = self.win() {
+            if let Some(mut stack) = win.get(idx).cloned() {
+              let remaining = self.hotbar.add(&stack);
+              stack.set_amount(remaining);
+              if stack.amount() > 0 {
+                let remaining = self.main.add(&stack);
+                stack.set_amount(remaining);
+              }
+              win.set(idx, stack);
+            } else if let Some(mut stack) = self.main.get(idx).cloned() {
+              let remaining = win.add(&stack);
+              stack.set_amount(remaining);
+              self.main.set(slot as u32, stack);
+            } else if let Some(mut stack) = self.hotbar.get(idx).cloned() {
+              let remaining = win.add(&stack);
+              stack.set_amount(remaining);
+              self.main.set(idx, stack);
+            }
           } else {
-            self.main.add_sync(&stack)
-          };
-          if new_amount != prev_amount {
-            self.sync(slot);
+            // TODO: Armor slots
+            if let Some(stack) = self.main.get(idx).cloned() {
+              let remaining = self.hotbar.add(&stack);
+              stack.set_amount(remaining);
+              self.main.set(idx, stack);
+            } else if let Some(stack) = self.hotbar.get(idx).cloned() {
+              let remaining = self.main.add(&stack);
+              stack.set_amount(remaining);
+              self.hotbar.set(idx, stack);
+            }
           }
+        } else {
+          // TODO: Only sync needed
+          self.sync_all();
         }
       }
-      ClickWindow::Number(num) => allow!(self.swap(slot, num as i32 + 27 + inv_size as i32)),
+      ClickWindow::Number(num) => allow!(self.swap(slot, num as i32 + self.hotbar.offset as i32)),
       ClickWindow::Drop => allow!(self.drop_one(slot)),
       ClickWindow::DropAll => allow!(self.drop_all(slot)),
       ClickWindow::DoubleClick => allow!(self.double_click(slot)),
@@ -400,119 +432,4 @@ impl PlayerInventory {
       self.sync(-999);
     }
   }
-}
-
-impl WrappedInventory {
-  pub fn new(inv: Inventory, conn: ConnSender, wid: u8) -> Self {
-    WrappedInventory { inv, conn, wid, offset: 0, skip: 0 }
-  }
-  /// Gets the item at the given index.
-  #[track_caller]
-  pub fn get(&self, index: u32) -> &Stack { self.inv.get(index as u32) }
-  /// This is private as updating the item doesn't send an update to the client.
-  #[track_caller]
-  pub(crate) fn get_mut(&mut self, index: u32) -> &mut Stack { self.inv.get_mut(index as u32) }
-  /// Sets the item in the inventory.
-  #[track_caller]
-  pub fn set(&mut self, index: u32, stack: Stack) {
-    *self.get_mut(index) = stack;
-    self.sync(index);
-  }
-  /// Replaces an item in the inventory.
-  #[track_caller]
-  pub fn replace(&mut self, index: u32, stack: Stack) -> Stack {
-    let res = mem::replace(self.get_mut(index), stack);
-    self.sync(index);
-    res
-  }
-  /// Syncs the item at the given slot with the client.
-  #[track_caller]
-  pub fn sync(&self, index: u32) {
-    self.conn.send(cb::Packet::WindowItem {
-      wid:  self.wid,
-      slot: (index + self.offset - self.skip) as i32,
-      item: self.inv.get(index).to_item(),
-    });
-  }
-
-  /// Tries to add the given stack to this inventory. This will return the
-  /// number of remaining items in the stack. If the inventory has enough space,
-  /// this will return 0.
-  pub fn add(&mut self, stack: &Stack) -> u8 {
-    // Local `sync` impl, which doesn't use the internal inventory. This is needed
-    // because we iterate through the inventory with `items_mut`, so the inventory
-    // is mutably borrowed for the entire loop.
-    let sync = |index: u32, item: &Stack| {
-      self.conn.send(cb::Packet::WindowItem {
-        wid:  self.wid,
-        slot: (index + self.offset - self.skip) as i32,
-        item: item.to_item(),
-      });
-    };
-    let mut remaining = stack.amount();
-    for (i, it) in self.inv.items_mut().iter_mut().skip(self.skip as usize).enumerate() {
-      let i = i as u32;
-      if it.is_empty() {
-        *it = stack.clone().with_amount(remaining);
-        sync(i, it);
-        remaining = 0;
-      } else if it.item() == stack.item() {
-        let amount_possible = 64 - it.amount();
-        if amount_possible > remaining {
-          *it = stack.clone().with_amount(it.amount() + remaining);
-          remaining = 0;
-        } else {
-          *it = stack.clone().with_amount(64);
-          remaining -= amount_possible;
-        }
-        sync(i, it);
-      }
-      if remaining == 0 {
-        break;
-      }
-    }
-    remaining
-  }
-  /// This does the same thing as `add`, but doesn't move any items around. This
-  /// is used when the client shift clicks an item, and the server declines the
-  /// transaction.
-  pub fn add_sync(&self, stack: &Stack) -> u8 {
-    let mut remaining = stack.amount();
-    for (i, it) in self.inv.items().iter().skip(self.skip as usize).enumerate() {
-      let i = i as u32;
-      if it.is_empty() {
-        self.sync(i);
-        remaining = 0;
-      } else if it.item() == stack.item() {
-        let amount_possible = 64 - it.amount();
-        if amount_possible > remaining {
-          remaining = 0;
-        } else {
-          remaining -= amount_possible;
-        }
-        self.sync(i);
-      }
-      if remaining == 0 {
-        break;
-      }
-    }
-    remaining
-  }
-
-  /// Sets the offset for sending packets. This is used when an inventory is
-  /// opened/closed. It causes [`set`](Self::set) to send slot ids with this
-  /// offset.
-  ///
-  /// The `skip` is used when adding items; it is used in the main inventory
-  /// to skip the armor slots.
-  ///
-  /// Note that the actual id sent will be `offset - skip`. So for the main
-  /// inventory, when shown a chest, the offset should be set to 27, and skip
-  /// should be sent to 9. This means the actual ids sent will be offset by 18.
-  fn set_offset_skip(&mut self, offset: u32, skip: u32) {
-    self.offset = offset;
-    self.skip = skip;
-  }
-
-  pub fn size(&self) -> u32 { self.inv.size() }
 }

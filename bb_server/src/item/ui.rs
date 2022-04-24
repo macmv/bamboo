@@ -36,8 +36,8 @@ impl UI {
 
   pub fn item(&mut self, key: char, stack: Stack) { self.items.insert(key, stack); }
 
-  pub fn to_inventory(&self) -> Result<Inventory, UIError> {
-    let mut inv = Inventory::new(self.pattern.len() as u32 * 9);
+  pub fn to_inventory(&self) -> Result<Inventory<27>, UIError> {
+    let mut inv = Inventory::new();
     for (r, row) in self.pattern.iter().enumerate() {
       for (col, c) in row.chars().enumerate() {
         if c == ' ' {

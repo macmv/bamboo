@@ -254,15 +254,8 @@ impl Player {
     self.send(cb::Packet::Title { action: cb::TitleAction::Times { fade_in, stay, fade_out } });
   }
 
-  pub fn show_inventory(&self, inv: Inventory, title: &Chat) {
-    let size = inv.size();
-    if size > 9 * 6 {
-      panic!();
-    }
-    if size % 9 != 0 {
-      panic!();
-    }
-    let ty = (size / 9) as u8;
+  pub fn show_inventory(&self, inv: Inventory<27>, title: &Chat) {
+    let ty = (inv.size() / 9) as u8;
     self.send(cb::Packet::WindowOpen { wid: 1, ty, title: title.to_json() });
     self.send(cb::Packet::WindowItems {
       wid:   1,

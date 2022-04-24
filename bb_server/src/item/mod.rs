@@ -6,7 +6,7 @@ mod ty;
 mod ui;
 mod version;
 
-pub use inventory::Inventory;
+pub use inventory::{Inventory, WrappedInventory};
 pub use stack::Stack;
 pub use ty::{Data, Type};
 pub use ui::{UIError, UI};

@@ -10,7 +10,7 @@ use std::str::FromStr;
 
 wrap!(UI, PUI);
 wrap!(ClickWindow, PClickWindow);
-wrap!(Inventory, PInventory);
+wrap!(Inventory<27>, PInventory);
 wrap!(Stack, PStack);
 
 #[define_ty(panda_path = "bamboo::item::ClickWindow")]

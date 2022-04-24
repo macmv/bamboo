@@ -14,9 +14,12 @@ impl From<Item> for Stack {
 }
 
 impl Stack {
+  /// The empty stack. Useful for array initializers. This is the same as
+  /// [`Stack::empty`].
+  pub const EMPTY: Stack = Stack::empty();
   /// Creates an empty item stck. This has the type set to air, and the count
   /// set to 0.
-  pub fn empty() -> Self { Stack { item: Type::Air, amount: 0 } }
+  pub const fn empty() -> Self { Stack { item: Type::Air, amount: 0 } }
   /// Creates an item stack containing a single item with the given type.
   pub fn new(item: Type) -> Self { Stack { item, amount: 1 } }
 
