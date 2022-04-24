@@ -134,10 +134,10 @@ pub(crate) fn handle(wm: &Arc<WorldManager>, player: &Arc<Player>, p: sb::Packet
             match player.world().set_block(pos, ty) {
               Ok(_) => {
                 if player.game_mode() != GameMode::Creative {
-                  let idx = inv.main_hand_index();
-                  let stack = inv.main_mut().get_mut(idx);
+                  let idx = inv.selected_index() as u32;
+                  let stack = inv.hotbar_mut().get_raw_mut(idx).unwrap();
                   stack.set_amount(stack.amount() - 1);
-                  inv.main().sync(idx);
+                  inv.hotbar().sync_raw(idx);
                 }
                 drop(inv);
                 // TODO: Handle plugins cancelling this place.

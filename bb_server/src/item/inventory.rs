@@ -27,7 +27,7 @@ impl<const N: usize> Inventory<N> {
   pub fn get_mut(&mut self, index: u32) -> Option<&mut Stack> { self.items.get_mut(index as usize) }
 
   /// Returns the inventory size.
-  pub fn size(&self) -> u32 { self.items.len() as u32 }
+  pub const fn size(&self) -> u32 { self.items.len() as u32 }
   /// Returns the items in the inventory.
   pub fn items(&self) -> &[Stack; N] { &self.items }
   /// Returns the items in the inventory.
@@ -57,7 +57,13 @@ impl<const N: usize> WrappedInventory<N> {
   pub fn get_raw(&self, index: u32) -> Option<&Stack> { self.inv.get(index) }
   /// Given an index with an offset, this will remove the offset, and lookup the
   /// item at that index.
-  pub fn get(&self, index: u32) -> Option<&Stack> { self.inv.get(index - self.offset) }
+  pub fn get(&self, index: u32) -> Option<&Stack> {
+    if index < self.offset {
+      None
+    } else {
+      self.get_raw(index - self.offset)
+    }
+  }
   /// This is private as updating the item doesn't send an update to the client.
   pub(crate) fn get_raw_mut(&mut self, index: u32) -> Option<&mut Stack> {
     self.inv.get_mut(index as u32)
@@ -65,22 +71,36 @@ impl<const N: usize> WrappedInventory<N> {
   /// Given an index with an offset, this will remove the offset, and lookup the
   /// item at that index.
   pub(crate) fn get_mut(&mut self, index: u32) -> Option<&mut Stack> {
-    self.inv.get_mut(index - self.offset)
+    if index < self.offset {
+      None
+    } else {
+      self.get_raw_mut(index - self.offset)
+    }
   }
   /// Sets the item in the inventory.
   #[track_caller]
   pub fn set_raw(&mut self, index: u32, stack: Stack) {
-    *self.get_mut(index).unwrap() = stack;
-    self.sync(index);
+    if let Some(it) = self.get_raw_mut(index) {
+      *it = stack;
+      self.sync_raw(index);
+    } else {
+      panic!("index too large {} > {}", index, self.size());
+    }
   }
   /// Sets the item in the inventory, offsetting the index by self.offset.
   #[track_caller]
-  pub fn set(&mut self, index: u32, stack: Stack) { self.set(index - self.offset, stack); }
+  pub fn set(&mut self, index: u32, stack: Stack) {
+    if index < self.offset {
+      panic!("index too small {} < {}", index, self.offset);
+    } else {
+      self.set_raw(index - self.offset, stack);
+    }
+  }
   /// Replaces an item in the inventory.
   #[track_caller]
   pub fn replace_raw(&mut self, index: u32, stack: Stack) -> Stack {
-    let res = mem::replace(self.get_mut(index), stack);
-    self.sync(index);
+    let res = mem::replace(self.get_raw_mut(index).unwrap(), stack);
+    self.sync_raw(index);
     res
   }
   /// Syncs the item at the given slot with the client.
@@ -89,7 +109,7 @@ impl<const N: usize> WrappedInventory<N> {
     self.conn.send(cb::Packet::WindowItem {
       wid:  self.wid,
       slot: (index + self.offset) as i32,
-      item: self.get_raw(index).to_item(),
+      item: self.get_raw(index).unwrap().to_item(),
     });
   }
   /// Syncs the item at the index. The offset will first be subtracted from the
@@ -99,15 +119,13 @@ impl<const N: usize> WrappedInventory<N> {
     self.conn.send(cb::Packet::WindowItem {
       wid:  self.wid,
       slot: index as i32,
-      item: self.get(index).to_item(),
+      item: self.get(index).unwrap().to_item(),
     });
   }
 
   /// Returns true if the given slot is within `self.offset..self.offset +
   /// self.size`.
-  pub fn has_slot(&self, index: u32) -> bool {
-    (self.offset..self.offset + self.size()).contains(&index)
-  }
+  pub fn has_slot(&self, index: u32) -> bool { self.get(index).is_some() }
 
   /// Tries to add the given stack to this inventory. This will return the
   /// number of remaining items in the stack. If the inventory has enough space,
@@ -155,7 +173,7 @@ impl<const N: usize> WrappedInventory<N> {
     for (i, it) in self.inv.items().iter().enumerate() {
       let i = i as u32;
       if it.is_empty() {
-        self.sync(i);
+        self.sync_raw(i);
         remaining = 0;
       } else if it.item() == stack.item() {
         let amount_possible = 64 - it.amount();
@@ -164,7 +182,7 @@ impl<const N: usize> WrappedInventory<N> {
         } else {
           remaining -= amount_possible;
         }
-        self.sync(i);
+        self.sync_raw(i);
       }
       if remaining == 0 {
         break;
@@ -174,5 +192,5 @@ impl<const N: usize> WrappedInventory<N> {
   }
 
   /// Returns the size of this inventory.
-  pub fn size(&self) -> u32 { self.inv.size() }
+  pub const fn size(&self) -> u32 { self.inv.size() }
 }

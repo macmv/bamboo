@@ -204,7 +204,7 @@ impl PPlayer {
       let main = inv.main();
       let mut needed_amount = stack.inner.amount();
       for slot in 9..46 {
-        let it = main.get(slot);
+        let it = main.get(slot).unwrap();
         if it.item() == stack.inner.item() {
           needed_amount = needed_amount.saturating_sub(it.amount());
         }
@@ -216,7 +216,7 @@ impl PPlayer {
         let mut amount_to_remove = stack.inner.amount();
         let main = inv.main_mut();
         for slot in 9..46 {
-          let it = main.get_mut(slot);
+          let it = main.get_mut(slot).unwrap();
           let mut sync = false;
           if it.item() == stack.inner.item() {
             if it.amount() <= amount_to_remove {

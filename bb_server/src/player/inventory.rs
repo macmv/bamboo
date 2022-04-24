@@ -79,15 +79,12 @@ impl PlayerInventory {
   /// Gives an item to the player.
   pub fn give(&mut self, stack: &Stack) { self.main_mut().add(stack); }
 
-  /// Returns the index in the main inventory for the main hand. Only use with
-  /// `inv.main()`! If you use it with an open window, this will look up an
-  /// invalid index.
-  pub fn main_hand_index(&self) -> u32 { self.selected_index as u32 + self.hotbar.offset }
-
   /// Returns the item in the player's main hand.
-  pub fn main_hand(&self) -> &Stack { self.main().get(self.main_hand_index()) }
+  pub fn main_hand(&self) -> &Stack { self.hotbar().get_raw(self.selected_index as u32).unwrap() }
 
-  /// Returns the currently selected hotbar index.
+  /// Returns the currently selected hotbar index. Can be used with
+  /// [`hotbar`](Self::hotbar) and `get_raw` to get the item player is holding.
+  /// [`main_hand`](Self::main_hand) will do the same thing.
   pub fn selected_index(&self) -> u8 { self.selected_index }
 
   /// Sets the selected index. Should only be used when recieving a held item
@@ -100,7 +97,7 @@ impl PlayerInventory {
       p.send_to_in_view(cb::Packet::EntityEquipment {
         eid:  p.eid(),
         slot: cb::EquipmentSlot::Hand(Hand::Main),
-        item: self.main.get(index as u32 + 36).to_item(),
+        item: self.main.get(index as u32 + 36).unwrap().to_item(),
       });
     }
     self.selected_index = index;
@@ -108,6 +105,9 @@ impl PlayerInventory {
 
   pub fn main(&self) -> &WrappedInventory<27> { &self.main }
   pub fn main_mut(&mut self) -> &mut WrappedInventory<27> { &mut self.main }
+
+  pub fn hotbar(&self) -> &WrappedInventory<9> { &self.hotbar }
+  pub fn hotbar_mut(&mut self) -> &mut WrappedInventory<9> { &mut self.hotbar }
 
   pub fn win(&self) -> Option<&WrappedInventory<27>> { self.window.as_ref() }
   pub fn win_mut(&mut self) -> Option<&mut WrappedInventory<27>> { self.window.as_mut() }
@@ -120,48 +120,52 @@ impl PlayerInventory {
     if index == -999 {
       return &self.held;
     }
+    let idx = index as u32;
     if let Some(win) = &self.window {
       match index {
-        0..=26 => win.get(index as u32),
-        27..=35 => self.hotbar.get_offset(index as u32),
+        0..=26 => win.get(idx),
+        27..=35 => self.hotbar.get(idx),
         _ => panic!(),
       }
     } else {
       match index {
-        0 => self.head.get_offset(index as u32),
-        1 => self.chest.get_offset(index as u32),
-        2 => self.legs.get_offset(index as u32),
-        3 => self.feet.get_offset(index as u32),
-        4..=8 => self.crafting.get_offset(index as u32),
-        9..=35 => self.main.get_offset(index as u32),
-        36..=44 => self.hotbar.get_offset(index as u32),
+        0 => self.head.get(idx),
+        1 => self.chest.get(idx),
+        2 => self.legs.get(idx),
+        3 => self.feet.get(idx),
+        4..=8 => self.crafting.get(idx),
+        9..=35 => self.main.get(idx),
+        36..=44 => self.hotbar.get(idx),
         _ => panic!(),
       }
     }
+    .unwrap()
   }
   // This is private as modifying the stack doesn't send an update to the client.
   pub(crate) fn get_mut(&mut self, index: i32) -> &mut Stack {
     if index == -999 {
       return &mut self.held;
     }
+    let idx = index as u32;
     if let Some(win) = &mut self.window {
       match index {
-        0..=26 => win.get_mut(index as u32),
-        27..=35 => self.hotbar.get_offset_mut(index as u32),
+        0..=26 => win.get_mut(idx),
+        27..=35 => self.hotbar.get_mut(idx),
         _ => panic!(),
       }
     } else {
       match index {
-        0 => self.head.get_offset_mut(index as u32),
-        1 => self.chest.get_offset_mut(index as u32),
-        2 => self.legs.get_offset_mut(index as u32),
-        3 => self.feet.get_offset_mut(index as u32),
-        4..=8 => self.crafting.get_offset_mut(index as u32),
-        9..=35 => self.main.get_offset_mut(index as u32),
-        36..=44 => self.hotbar.get_offset_mut(index as u32),
+        0 => self.head.get_mut(idx),
+        1 => self.chest.get_mut(idx),
+        2 => self.legs.get_mut(idx),
+        3 => self.feet.get_mut(idx),
+        4..=8 => self.crafting.get_mut(idx),
+        9..=35 => self.main.get_mut(idx),
+        36..=44 => self.hotbar.get_mut(idx),
         _ => panic!(),
       }
     }
+    .unwrap()
   }
   /// Replaces the item at `index` with the given item. The old item will be
   /// returned. This allows you to replace items without cloning them.
@@ -217,21 +221,22 @@ impl PlayerInventory {
       });
       return;
     }
+    let idx = index as u32;
     if let Some(win) = &self.window {
       match index {
-        0..=26 => win.sync(index as u32),
-        27..=35 => self.hotbar.sync_offset(index as u32),
+        0..=26 => win.sync(idx),
+        27..=35 => self.hotbar.sync(idx),
         _ => panic!(),
       }
     } else {
       match index {
-        0 => self.head.sync_offset(index as u32),
-        1 => self.chest.sync_offset(index as u32),
-        2 => self.legs.sync_offset(index as u32),
-        3 => self.feet.sync_offset(index as u32),
-        4..=8 => self.crafting.sync_offset(index as u32),
-        9..=35 => self.main.sync_offset(index as u32),
-        36..=44 => self.hotbar.sync_offset(index as u32),
+        0 => self.head.sync(idx),
+        1 => self.chest.sync(idx),
+        2 => self.legs.sync(idx),
+        3 => self.feet.sync(idx),
+        4..=8 => self.crafting.sync(idx),
+        9..=35 => self.main.sync(idx),
+        36..=44 => self.hotbar.sync(idx),
         _ => panic!(),
       }
     }
@@ -253,15 +258,6 @@ impl PlayerInventory {
       };
     }
 
-    let mut inv_size = 0;
-    let in_main = match self.win() {
-      Some(win) => {
-        inv_size = win.size();
-        slot >= 0 && (slot as u32) > inv_size
-      }
-      None => true,
-    };
-    info!("in main: {in_main}");
     match click {
       ClickWindow::Click(button) => {
         if slot == -999 {
@@ -279,12 +275,9 @@ impl PlayerInventory {
         }
       }
       ClickWindow::ShiftClick(_) => {
-        let stack = self.get(slot).clone();
-        let prev_amount = stack.amount();
-        // We are shift clicking in `in_main`, so we add it to the other inventory.
         if allow {
           let idx = slot as u32;
-          if let Some(win) = self.win() {
+          if let Some(win) = &mut self.window {
             if let Some(mut stack) = win.get(idx).cloned() {
               let remaining = self.hotbar.add(&stack);
               stack.set_amount(remaining);
@@ -304,11 +297,11 @@ impl PlayerInventory {
             }
           } else {
             // TODO: Armor slots
-            if let Some(stack) = self.main.get(idx).cloned() {
+            if let Some(mut stack) = self.main.get(idx).cloned() {
               let remaining = self.hotbar.add(&stack);
               stack.set_amount(remaining);
               self.main.set(idx, stack);
-            } else if let Some(stack) = self.hotbar.get(idx).cloned() {
+            } else if let Some(mut stack) = self.hotbar.get(idx).cloned() {
               let remaining = self.main.add(&stack);
               stack.set_amount(remaining);
               self.hotbar.set(idx, stack);
