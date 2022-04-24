@@ -182,6 +182,8 @@ impl Player {
   /// chunks.
   pub fn view_distance(&self) -> u32 { self.view_distance }
 
+  pub fn lock_health(&self) -> MutexGuard<'_, PlayerHealth> { self.health.lock() }
+
   pub fn health(&self) -> f32 { self.health.lock().health }
 
   /// Returns the version that this client connected with. This will only change
