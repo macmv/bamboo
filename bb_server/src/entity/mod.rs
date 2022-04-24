@@ -186,7 +186,9 @@ impl EntityRef<'_> {
         e.pos.lock().vel = vel;
         e.world.read().send_entity_vel(e.fpos().chunk(), e.eid, vel);
       }
-      Self::Player(p) => { p.set_vel(vel); }
+      Self::Player(p) => {
+        p.set_vel(vel);
+      }
     }
   }
 

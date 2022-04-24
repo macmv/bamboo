@@ -14,9 +14,8 @@ use bb_common::{
   util::{Chat, GameMode, JoinInfo, UUID},
   version::ProtocolVersion,
 };
-use parking_lot::{Mutex, MutexGuard, RawMutex};
+use parking_lot::{Mutex, MutexGuard};
 use std::{f64::consts, fmt, net::SocketAddr, sync::Arc, time::Instant};
-use std::ops::{Add, Mul};
 
 mod inventory;
 mod scoreboard;
@@ -182,9 +181,12 @@ impl Player {
   /// chunks.
   pub fn view_distance(&self) -> u32 { self.view_distance }
 
-  pub fn lock_health(&self) -> parking_lot::lock_api::MutexGuard<'_, RawMutex, PlayerHealth> { self.health.lock() }
+  /// Returns the player's health and absorbtion hearts. Modifying these values
+  /// will not send an update to the client.
+  pub(crate) fn lock_health(&self) -> MutexGuard<'_, PlayerHealth> { self.health.lock() }
 
-  pub fn health(&self) -> f32 { self.health.lock().health }
+  /// Returns the player's health.
+  pub fn health(&self) -> f32 { self.lock_health().health }
 
   /// Returns the version that this client connected with. This will only change
   /// if the player disconnects and logs in with another client.
@@ -262,6 +264,8 @@ impl Player {
     self.send(cb::Packet::Title { action: cb::TitleAction::Times { fade_in, stay, fade_out } });
   }
 
+  /// Shows the given inventory to the client. The title will be shown in the
+  /// top left of the window.
   pub fn show_inventory(&self, inv: Inventory<27>, title: &Chat) {
     let ty = (inv.size() / 9) as u8;
     self.send(cb::Packet::WindowOpen { wid: 1, ty, title: title.to_json() });
@@ -473,21 +477,31 @@ impl Player {
     *self.game_mode.lock() = mode;
   }
 
-  pub fn vel(&self) -> Vec3 {
-    self.pos.lock().vel
-  }
+  /// Returns the current velocity of the player.
+  pub fn vel(&self) -> Vec3 { self.pos.lock().vel }
 
+  /// Sets the player's velocity to `vel`. This will send a velocity update to
+  /// the player.
   pub fn set_vel(&self, vel: Vec3) {
     self.pos.lock().vel = vel;
     self.send_vel(vel);
   }
 
+  /// Adds `vel` to the player's current velocity, and sends an update to the
+  /// player.
   pub fn add_vel(&self, vel: Vec3) {
-    let mut pos = self.pos.lock();
-    pos.vel = pos.vel.add(vel);
-    self.send_vel(vel);
+    // Send after unlocking `pos`.
+    let v = {
+      let mut pos = self.pos.lock();
+      pos.vel += vel;
+      pos.vel
+    };
+    self.send_vel(v);
   }
 
+  /// Sends the given velocity vector to all nearby players, including `self`.
+  /// When `self` receives this, it will modify the player's velocity. This is
+  /// mostly used for knockback.
   fn send_vel(&self, vel: Vec3) {
     self.send_all_in_view(cb::Packet::EntityVelocity {
       eid: self.eid(),
@@ -545,11 +559,13 @@ impl Player {
     }
   }
 
+  /// Attacks the given player. This is private to the crate, as it should only
+  /// be called when we get an attack packet.
   pub(super) fn attack(&self, other: EntityRef) {
     // Handles base damage and enchantments
     let damage = self.lock_inventory().main_hand().attack_damage();
     // TODO: Strength
-    let v = self.look_as_vec().mul(0.4);
+    let v = self.look_as_vec() * 0.4;
     other.damage(damage, true, Vec3::new(v.x, 0.4, v.z));
   }
 
