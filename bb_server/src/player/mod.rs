@@ -14,7 +14,7 @@ use bb_common::{
   util::{Chat, GameMode, JoinInfo, UUID},
   version::ProtocolVersion,
 };
-use parking_lot::{Mutex, MutexGuard};
+use parking_lot::{Mutex, MutexGuard, RawMutex};
 use std::{f64::consts, fmt, net::SocketAddr, sync::Arc, time::Instant};
 use std::ops::{Add, Mul};
 
@@ -77,13 +77,13 @@ struct PlayerPosition {
 }
 
 #[derive(Debug, Clone)]
-struct PlayerHealth {
+pub struct PlayerHealth {
   health:     f32,
   absorption: f32,
 }
 
 #[derive(Debug, Clone)]
-struct PlayerFood {
+pub struct PlayerFood {
   food:       i32,
   saturation: f32,
 }
@@ -182,7 +182,7 @@ impl Player {
   /// chunks.
   pub fn view_distance(&self) -> u32 { self.view_distance }
 
-  pub fn lock_health(&self) -> MutexGuard<'_, PlayerHealth> { self.health.lock() }
+  pub fn lock_health(&self) -> parking_lot::lock_api::MutexGuard<'_, RawMutex, PlayerHealth> { self.health.lock() }
 
   pub fn health(&self) -> f32 { self.health.lock().health }
 
