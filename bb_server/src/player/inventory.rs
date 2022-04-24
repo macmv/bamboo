@@ -1,5 +1,5 @@
 use crate::{
-  entity,
+  entity, item,
   item::{Inventory, Stack, WrappedInventory},
   net::ConnSender,
   player::Player,
@@ -277,14 +277,20 @@ impl PlayerInventory {
                 if self.held.is_empty() {
                   self.split(slot, -999);
                 } else {
-                  let amount = self.held.amount();
-                  self.held.set_amount(amount - 1);
-                  if let Some(it) = self.get_mut(slot) {
-                    it.set_amount(it.amount() + 1);
-                  } else {
+                  let it = self.get(slot).unwrap();
+                  if it.item() == item::Type::Air {
+                    let amount = self.held.amount();
+                    self.held.set_amount(amount - 1);
                     self.set(slot, self.held.clone().with_amount(1));
+                  } else if self.held.item() == it.item() {
+                    let amount = self.held.amount();
+                    self.held.set_amount(amount - 1);
+                    let it = self.get_mut(slot).unwrap();
+                    it.set_amount(it.amount() + 1);
+                    self.sync(slot);
+                  } else {
+                    self.swap(slot, -999);
                   }
-                  self.sync(slot);
                 }
               } else {
                 self.sync(slot);
