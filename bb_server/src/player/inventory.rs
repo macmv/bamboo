@@ -121,16 +121,16 @@ impl PlayerInventory {
   /// on if a window is open, the actual slot being accessed may change. Use
   /// [`main`](Self::main) or [`win`](Self::win) to access the main inventory or
   /// the open window directly.
-  pub fn get(&self, index: i32) -> &Stack {
+  pub fn get(&self, index: i32) -> Option<&Stack> {
     if index == -999 {
-      return &self.held;
+      return Some(&self.held);
     }
     let idx = index as u32;
     if let Some(win) = &self.window {
       match index {
         0..=26 => win.get(idx),
         27..=35 => self.hotbar.get(idx),
-        _ => panic!(),
+        _ => None,
       }
     } else {
       match index {
@@ -141,22 +141,21 @@ impl PlayerInventory {
         4..=8 => self.crafting.get(idx),
         9..=35 => self.main.get(idx),
         36..=44 => self.hotbar.get(idx),
-        _ => panic!(),
+        _ => None,
       }
     }
-    .unwrap()
   }
   // This is private as modifying the stack doesn't send an update to the client.
-  pub(crate) fn get_mut(&mut self, index: i32) -> &mut Stack {
+  pub(crate) fn get_mut(&mut self, index: i32) -> Option<&mut Stack> {
     if index == -999 {
-      return &mut self.held;
+      return Some(&mut self.held);
     }
     let idx = index as u32;
     if let Some(win) = &mut self.window {
       match index {
         0..=26 => win.get_mut(idx),
         27..=35 => self.hotbar.get_mut(idx),
-        _ => panic!(),
+        _ => None,
       }
     } else {
       match index {
@@ -167,15 +166,14 @@ impl PlayerInventory {
         4..=8 => self.crafting.get_mut(idx),
         9..=35 => self.main.get_mut(idx),
         36..=44 => self.hotbar.get_mut(idx),
-        _ => panic!(),
+        _ => None,
       }
     }
-    .unwrap()
   }
   /// Replaces the item at `index` with the given item. The old item will be
   /// returned. This allows you to replace items without cloning them.
   pub fn replace(&mut self, index: i32, stack: Stack) -> Stack {
-    let res = mem::replace(self.get_mut(index), stack);
+    let res = mem::replace(self.get_mut(index).unwrap(), stack);
     self.sync(index);
     res
   }
@@ -184,7 +182,7 @@ impl PlayerInventory {
   /// [`main`](Self::main) or [`win`](Self::win) to access the main inventory or
   /// the open window directly.
   pub fn set(&mut self, index: i32, stack: Stack) {
-    *self.get_mut(index) = stack;
+    *self.get_mut(index).unwrap() = stack;
     self.sync(index);
   }
 
@@ -215,7 +213,7 @@ impl PlayerInventory {
       p.send_to_in_view(cb::Packet::EntityEquipment {
         eid:  p.eid(),
         slot: cb::EquipmentSlot::Hand(Hand::Main),
-        item: self.get(index).to_item(),
+        item: self.get(index).unwrap().to_item(),
       });
     }
     if index == -999 {
@@ -274,7 +272,25 @@ impl PlayerInventory {
         } else {
           match button {
             Button::Left => allow!(self.swap(slot, -999)),
-            Button::Right => allow!(self.split(slot, -999)),
+            Button::Right => {
+              if allow {
+                if self.held.is_empty() {
+                  self.split(slot, -999);
+                } else {
+                  let amount = self.held.amount();
+                  self.held.set_amount(amount - 1);
+                  if let Some(it) = self.get_mut(slot) {
+                    it.set_amount(it.amount() + 1);
+                  } else {
+                    self.set(slot, self.held.clone().with_amount(1));
+                  }
+                  self.sync(slot);
+                }
+              } else {
+                self.sync(slot);
+                self.sync(-999);
+              }
+            }
             Button::Middle => {}
           }
         }
@@ -332,13 +348,13 @@ impl PlayerInventory {
   /// Takes half of the items in the slot `a` and moves them to `b`. If `b` is
   /// not empty, this is a noop.
   pub fn split(&mut self, a: i32, b: i32) {
-    if self.get(b).is_empty() {
-      let mut stack = self.get(a).clone();
+    if self.get(b).unwrap().is_empty() {
+      let mut stack = self.get(a).unwrap().clone();
       let total = stack.amount();
       stack.set_amount(total / 2);
       let remaining = total - stack.amount();
       self.set(a, stack);
-      self.set(b, self.get(a).clone().with_amount(remaining));
+      self.set(b, self.get(a).unwrap().clone().with_amount(remaining));
     }
   }
 
@@ -351,7 +367,7 @@ impl PlayerInventory {
 
   /// Removes a single item from the given slot.
   pub fn drop_one(&mut self, slot: i32) {
-    let it = self.get(slot);
+    let it = self.get(slot).unwrap();
     if it.is_empty() || it.amount() == 0 {
       return;
     }
@@ -359,7 +375,7 @@ impl PlayerInventory {
     if it.amount() == 1 {
       self.replace(slot, Stack::empty());
     } else {
-      let it = self.get_mut(slot);
+      let it = self.get_mut(slot).unwrap();
       it.set_amount(it.amount() - 1);
       self.sync(slot);
     }
@@ -389,9 +405,11 @@ impl PlayerInventory {
   /// it to the cursor slot.
   pub fn double_click(&mut self, _slot: i32) {
     let mut held = self.replace(-999, Stack::empty());
-    for i in 0..36 + self.win().unwrap().size() {
+    let start = if self.win().is_some() { 0 } else { 9 };
+    let end = if let Some(win) = self.win() { win.size() + 36 } else { 45 };
+    for i in start..end {
       let i = i as i32;
-      let stack = self.get(i);
+      let stack = self.get(i).unwrap();
       if stack.item() != held.item() {
         continue;
       }
@@ -410,12 +428,14 @@ impl PlayerInventory {
       }
     }
     self.set(-999, held);
+    // TODO: Make sure we don't need this
+    self.sync_all();
   }
 
   pub fn drag_start(&mut self) { self.drag_slots.clear(); }
   pub fn drag_add(&mut self, slot: i32) { self.drag_slots.push(slot); }
   pub fn drag_end(&mut self) {
-    let stack = self.get(-999).clone();
+    let stack = self.get(-999).unwrap().clone();
     let items_per_slot = stack.amount() / self.drag_slots.len() as u8;
     let items_remaining = stack.amount() % self.drag_slots.len() as u8;
     for slot in self.drag_slots.clone() {
@@ -425,7 +445,7 @@ impl PlayerInventory {
     if items_remaining == 0 {
       self.set(-999, Stack::empty());
     } else {
-      let stack = self.get_mut(-999);
+      let stack = self.get_mut(-999).unwrap();
       stack.set_amount(items_remaining);
       self.sync(-999);
     }

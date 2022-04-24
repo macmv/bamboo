@@ -186,7 +186,7 @@ impl PPlayer {
   }
   pub fn get_item(&self, slot: i32) -> PStack {
     if let Ok(i) = self.inner() {
-      i.lock_inventory().get(slot).clone().into()
+      i.lock_inventory().get(slot).unwrap_or(&Stack::EMPTY).clone().into()
     } else {
       Stack::empty().into()
     }
