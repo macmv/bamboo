@@ -629,8 +629,17 @@ impl Player {
         saturation: food.saturation,
       });
 
-      self.add_vel(knockback);
+      let vel = {
+        let mut pos = self.pos.lock();
+        pos.vel = pos.vel + knockback;
+        if pos.vel.y > 0.4 {
+          pos.vel.y = 0.4;
+        }
+        pos.vel
+      };
+      self.send_vel(vel);
     }
+
     let pos = self.pos();
     for p in self.world().players().iter().in_view(self.pos().chunk()) {
       if p.id() != self.id() {

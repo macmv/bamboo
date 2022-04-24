@@ -12,6 +12,7 @@ use std::{
   sync::Arc,
   time::{Duration, Instant},
 };
+use bb_common::math::Vec3;
 
 impl DigProgress {
   pub fn new(pos: Pos, kind: block::Kind) -> Self {
@@ -36,6 +37,14 @@ impl Player {
       look_changed = pos.yaw != pos.next_yaw || pos.pitch != pos.next_pitch;
       pos_changed = pos.curr != pos.next;
       // TODO: Movement checks here
+
+      if (pos.vel.x.abs() + pos.vel.y.abs() + pos.vel.z.abs()) > 0.0 {
+        pos.vel = Vec3::from(pos.next - pos.curr); // pos.vel * 0.98;
+        if pos.vel.x > -0.003 && pos.vel.x < 0.003 { pos.vel.x = 0.0; }
+        if pos.vel.y > -0.003 && pos.vel.y < 0.003 { pos.vel.y = 0.0; }
+        if pos.vel.z > -0.003 && pos.vel.z < 0.003 { pos.vel.z = 0.0; }
+      }
+
       pos.curr = pos.next;
       pos.yaw = pos.next_yaw;
       // We want to keep yaw within -180..=180
