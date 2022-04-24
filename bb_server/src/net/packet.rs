@@ -136,8 +136,10 @@ pub(crate) fn handle(wm: &Arc<WorldManager>, player: &Arc<Player>, p: sb::Packet
                 if player.game_mode() != GameMode::Creative {
                   let idx = inv.selected_index() as u32;
                   let stack = inv.hotbar_mut().get_raw_mut(idx).unwrap();
-                  stack.set_amount(stack.amount() - 1);
-                  inv.hotbar().sync_raw(idx);
+                  if stack.amount() >= 1 {
+                    stack.set_amount(stack.amount() - 1);
+                    inv.hotbar().sync_raw(idx);
+                  }
                 }
                 drop(inv);
                 // TODO: Handle plugins cancelling this place.
