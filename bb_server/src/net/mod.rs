@@ -29,6 +29,9 @@ use std::{
 pub mod packet;
 pub(crate) mod serialize;
 
+#[cfg(test)]
+mod tests;
+
 pub struct Connection {
   stream: TcpStream,
   ver:    Option<ProtocolVersion>,

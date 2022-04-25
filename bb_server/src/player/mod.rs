@@ -41,7 +41,7 @@ struct DigProgress {
 }
 
 #[derive(Debug, Clone)]
-struct PlayerPosition {
+pub(crate) struct PlayerPosition {
   // This is the current position of the player. It is only updated once per tick.
   curr: FPos,
 
@@ -324,6 +324,10 @@ impl Player {
     // Custom names aren't present for players, so we don't set fields 2 and 3.
     meta
   }
+
+  /// Locks the player's position. While this is locked, no ticks or movement
+  /// updates can be processed.
+  pub(crate) fn lock_pos(&self) -> MutexGuard<'_, PlayerPosition> { self.pos.lock() }
 
   /// Returns the player's position. This is only updated once per tick. This
   /// also needs to lock a mutex, so you should not call it very often.
