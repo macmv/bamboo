@@ -19,6 +19,9 @@ perf.data.old
 
 examples/*/target
 
+# cargo test generates docs, and puts them here.
+bb_server/target
+
 pprof.pb
 
 __pycache__

@@ -18,20 +18,20 @@ pages:
   stage: deploy
   image: "rustdocker/rust:nightly"
   script:
-    # Generate sugarlang docs
-    - cargo run --bin bb_server -- --only-docs
     # Generate rust docs
-    - cargo doc -p bb_proxy
+    - cargo doc
 
-    # Generate coverage report
-    - cargo install cargo-tarpaulin
+    # Install cargo-tarpaulin
+    - curl -L https://github.com/xd009642/tarpaulin/releases/download/0.20.0/cargo-tarpaulin-0.20.0-travis.tar.gz | tar xvz -C $HOME/.cargo/bin
+
+    # Generate coverage report, and panda docs
     - cargo tarpaulin --out html xml
 
     # Make our webpage
     - mkdir -p public/
     - rm -rf public/*
     - mkdir -p public/doc/sugarlang/ public/doc/rust
-    - cp -r target/sl_docs/* public/doc/sugarlang/
+    - cp -r bb_server/target/sl_docs/* public/doc/sugarlang/
     - cp -r target/doc/* public/doc/rust/
 
     # Upload to codecov

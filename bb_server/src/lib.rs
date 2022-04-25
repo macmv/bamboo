@@ -36,3 +36,13 @@ pub fn generate_panda_docs() {
 pub fn generate_panda_docs() {
   info!("panda plugins disabled, cannot generate docs");
 }
+
+#[cfg(test)]
+mod tests {
+  use super::*;
+
+  /// Generates docs on test. This is useful for the pipeline, as we can just
+  /// compile one binary for coverage results and docs.
+  #[test]
+  fn generate_docs() { generate_panda_docs(); }
+}
