@@ -11,15 +11,15 @@
 //!
 //! # Examples
 //!
-//! ```
+//! ```text
 //!     Server <-- PluginRequest::GetBlock Plugin
 //!     Server   ServerReply::Block -->    Plugin
 //! ```
-//! ```
+//! ```text
 //!     Server ServerRequest::PlaceBlock --> Plugin
 //!     Server   <-- PluginReply::Cancel     Plugin
 //! ```
-//! ```
+//! ```text
 //!     Server <-- ServerRequest::Chat Plugin
 //! ```
 

@@ -10,6 +10,29 @@ pub mod wasm;
 #[cfg(not(doctest))]
 mod types;
 
+#[cfg(doctest)]
+mod types {
+  use std::fmt;
+
+  pub trait Callback: fmt::Debug + Send + Sync {
+    #[cfg(feature = "panda_plugins")]
+    fn call_panda(
+      &self,
+      env: &mut panda::runtime::LockedEnv<'_>,
+      args: Vec<panda::runtime::Var>,
+    ) -> panda::runtime::Result<()> {
+      let _ = (env, args);
+      panic!("cannot call this callback in panda");
+    }
+    #[cfg(feature = "python_plugins")]
+    fn call_python(&self, args: Vec<pyo3::PyObject>) {
+      panic!("cannot call this callback in python");
+    }
+
+    fn box_clone(&self) -> Box<dyn Callback>;
+  }
+}
+
 pub mod json;
 mod manager;
 mod message;
