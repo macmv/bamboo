@@ -43,14 +43,14 @@ struct DigProgress {
 #[derive(Debug, Clone)]
 pub(crate) struct PlayerPosition {
   // This is the current position of the player. It is only updated once per tick.
-  curr: FPos,
+  pub(crate) curr: FPos,
 
   // This is the position on the previous tick. It is only updated once per tick.
-  prev: FPos,
+  pub(crate) prev: FPos,
 
   // This is the most recently recieved position packet. It is updated whenever a position packet
   // is recieved. It is also used to set x,y,z on the next tick.
-  next: FPos,
+  pub(crate) next: FPos,
 
   vel: Vec3,
 

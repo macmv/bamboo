@@ -1,3 +1,4 @@
+use super::WakeEvent;
 use crate::{
   net::{packet, ConnSender},
   player::Player,
@@ -5,21 +6,27 @@ use crate::{
 };
 use bb_common::{
   math::FPos,
-  net::sb,
+  net::{cb, sb},
   util::{JoinInfo, JoinMode, UUID},
   version::ProtocolVersion,
 };
+use crossbeam_channel::Receiver;
 use std::sync::Arc;
 
 pub struct TestHandler {
-  wm:     Arc<WorldManager>,
-  player: Arc<Player>,
+  rx:      Receiver<cb::Packet>,
+  wake_rx: Receiver<WakeEvent>,
+  wm:      Arc<WorldManager>,
+  player:  Arc<Player>,
 }
 
 impl TestHandler {
   pub fn new() -> Self {
+    bb_common::init("test");
     let wm = Arc::new(WorldManager::new());
-    let sender = ConnSender::new();
+    wm.add_world();
+    let poll = mio::Poll::new().unwrap();
+    let (rx, wake_rx, sender) = ConnSender::mock(&poll);
     let info = JoinInfo {
       mode:     JoinMode::New,
       username: "macmv".into(),
@@ -27,7 +34,7 @@ impl TestHandler {
       ver:      ProtocolVersion::V1_8.id(),
     };
     let player = wm.new_player(sender, info);
-    TestHandler { wm, player }
+    TestHandler { rx, wake_rx, wm, player }
   }
   pub fn handle(&self, p: sb::Packet) { packet::handle(&self.wm, &self.player, p); }
   pub fn player(&self) -> &Arc<Player> { &self.player }

@@ -81,6 +81,15 @@ impl EventWrapper {
 }
 
 impl ConnSender {
+  #[cfg(test)]
+  pub(crate) fn mock(poll: &Poll) -> (Receiver<cb::Packet>, Receiver<WakeEvent>, Self) {
+    const WAKE: Token = Token(0xfffffffe);
+
+    let (tx, rx) = crossbeam_channel::bounded(2048);
+    let (wake_tx, wake_rx) = crossbeam_channel::bounded(2048);
+    let waker = Arc::new(Waker::new(poll.registry(), WAKE).unwrap());
+    (rx, wake_rx, ConnSender { tx, wake: wake_tx, waker, tok: Token(0) })
+  }
   /// Sends the given packet to the client. Assuming there aren't too many
   /// packets in the queue, this is a non-blocking operation. This will block if
   /// there are too many packets queued. The limit is 512 packets before this
