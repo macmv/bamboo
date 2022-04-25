@@ -38,12 +38,31 @@ impl TestHandler {
   }
   pub fn handle(&self, p: sb::Packet) { packet::handle(&self.wm, &self.player, p); }
   pub fn player(&self) -> &Arc<Player> { &self.player }
+  pub fn clear(&self) {
+    while let Ok(_) = self.rx.try_recv() {}
+    while let Ok(_) = self.wake_rx.try_recv() {}
+  }
+  pub fn assert_empty(&self) {
+    if !self.rx.is_empty() {
+      while let Ok(m) = self.rx.try_recv() {
+        info!("message: {m:?}");
+      }
+      panic!("got messages, but expected none");
+    }
+  }
 }
 
 #[test]
 fn test_move_packets() {
   let sender = TestHandler::new();
-  // sender.handle(sb::Packet::PlayerMove {});
+  sender.clear();
+  sender.handle(sb::Packet::PlayerPos {
+    x:         1.0,
+    y:         2.0,
+    z:         3.0,
+    on_ground: true,
+  });
   let pos = sender.player().lock_pos();
   assert_eq!(pos.next, FPos::new(1.0, 2.0, 3.0));
+  sender.assert_empty();
 }
