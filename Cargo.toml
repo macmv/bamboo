@@ -60,3 +60,6 @@ inherits = "release"
 opt-level = 3
 lto = true
 debug = false
+
+[profile.tarpaulin]
+inherits = "rust-analyzer"
