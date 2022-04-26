@@ -7,7 +7,7 @@ use crate::{
 use bb_macros::Transfer;
 use std::net::SocketAddr;
 
-#[derive(Transfer, Debug, Clone)]
+#[derive(Transfer, Debug, Clone, PartialEq)]
 #[non_exhaustive]
 pub enum Packet {
   #[id = 0]
@@ -384,7 +384,7 @@ pub enum TitleAction {
   Clear(bool),
 }
 
-#[derive(Transfer, Debug, Clone)]
+#[derive(Transfer, Debug, Clone, PartialEq)]
 pub struct CommandNode {
   /// The type. This is `flags & 0x03`.
   #[id = 0]
@@ -511,7 +511,7 @@ impl Default for ObjectiveType {
   fn default() -> Self { ObjectiveType::Integer }
 }
 
-#[derive(Transfer, Debug, Clone)]
+#[derive(Transfer, Debug, Clone, PartialEq)]
 pub enum PlayerListAction {
   #[id = 0]
   Add(Vec<PlayerListAdd>),
@@ -529,7 +529,7 @@ pub enum PlayerListAction {
 /// players see ingame. This is also how the client knows what skin to display
 /// for each client. If this is not sent, the client will not spawn a player if
 /// they receive a SpawnPlayer packet.
-#[derive(Transfer, Debug, Default, Clone)]
+#[derive(Transfer, Debug, Default, Clone, PartialEq)]
 pub struct PlayerListAdd {
   /// Player's UUID.
   pub id:           UUID,
@@ -544,28 +544,28 @@ pub struct PlayerListAdd {
 }
 
 /// See [`PlayerListAdd`]
-#[derive(Transfer, Debug, Default, Clone)]
+#[derive(Transfer, Debug, Default, Clone, PartialEq)]
 pub struct PlayerListGameMode {
   pub id:        UUID,
   pub game_mode: GameMode,
 }
 
 /// See [`PlayerListAdd`]
-#[derive(Transfer, Debug, Default, Clone)]
+#[derive(Transfer, Debug, Default, Clone, PartialEq)]
 pub struct PlayerListLatency {
   pub id:   UUID,
   pub ping: i32,
 }
 
 /// See [`PlayerListAdd`]
-#[derive(Transfer, Debug, Default, Clone)]
+#[derive(Transfer, Debug, Default, Clone, PartialEq)]
 pub struct PlayerListDisplay {
   pub id:           UUID,
   pub display_name: Option<Chat>,
 }
 
 /// See [`PlayerListAdd`]
-#[derive(Transfer, Debug, Default, Clone)]
+#[derive(Transfer, Debug, Default, Clone, PartialEq)]
 pub struct PlayerListRemove {
   pub id: UUID,
 }

@@ -12,7 +12,7 @@ mod tests;
 pub use bits::BitArray;
 pub use bits_old::OldBitArray;
 
-#[derive(Transfer, Debug, Clone)]
+#[derive(Transfer, Debug, Clone, PartialEq)]
 pub struct Section {
   #[must_exist]
   data:            BitArray,

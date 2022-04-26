@@ -14,7 +14,7 @@ use std::fmt;
 ///
 /// This is used to separate out some of the nasty bitwise operations, and make
 /// the [`Section`](super::Section) code a lot cleaner.
-#[derive(Transfer, Clone)]
+#[derive(Transfer, Clone, PartialEq)]
 pub struct BitArray {
   /// Bits per entry
   bpe:  u8,

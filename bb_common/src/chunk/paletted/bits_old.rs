@@ -40,7 +40,7 @@ use std::fmt;
 ///
 /// This is used to separate out some of the nasty bitwise operations, and make
 /// the [`Section`](super::Section) code a lot cleaner.
-#[derive(Clone)]
+#[derive(Clone, PartialEq)]
 pub struct OldBitArray {
   /// Bits per entry
   bpe:             u8,
