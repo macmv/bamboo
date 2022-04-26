@@ -209,8 +209,8 @@ dependencies = [
  "sha-1",
  "strum",
  "strum_macros",
+ "toml",
  "wyhash",
- "yaml-rust",
 ]
 
 [[package]]

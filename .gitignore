@@ -13,6 +13,7 @@ perf.data
 perf.data.old
 
 *-default.yml
+*-default.toml
 
 # a testing world
 /world

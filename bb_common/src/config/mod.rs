@@ -1,11 +1,11 @@
 use std::{borrow::Borrow, fs, sync::Arc};
-use yaml_rust::{yaml::Yaml, YamlLoader};
+use toml::{map::Map, Value};
 
 mod types;
 
 pub struct Config {
-  primary: Yaml,
-  default: Yaml,
+  primary: Value,
+  default: Value,
 }
 
 pub struct ConfigSection {
@@ -13,19 +13,19 @@ pub struct ConfigSection {
   path:   Vec<String>,
 }
 
-pub trait YamlValue<'a> {
-  /// If this current type matches the yaml value, this returns Some(v).
-  fn from_yaml(v: &'a Yaml) -> Option<Self>
+pub trait TomlValue<'a> {
+  /// If this current type matches the toml value, this returns Some(v).
+  fn from_toml(v: &'a Value) -> Option<Self>
   where
     Self: Sized;
 
-  /// Returns the name of this yaml value (string, integer, etc).
+  /// Returns the name of this toml value (string, integer, etc).
   fn name() -> String
   where
     Self: Sized;
 }
 
-/// A yaml key. This is how a path to a yaml value can be specified. This can be
+/// A toml key. This is how a path to a toml value can be specified. This can be
 /// represented as either an array or a string. If it is a string, it will be
 /// split by dots into an array.
 ///
@@ -53,58 +53,51 @@ pub trait YamlValue<'a> {
 /// items.0     // points to 3
 /// items.2.lot // points to 10
 /// ```
-pub trait YamlKey {
+pub trait Key {
   /// Returns the sections of this key.
   fn sections(&self) -> Vec<&str>;
 }
 
-impl YamlKey for str {
+impl Key for str {
   fn sections(&self) -> Vec<&str> { self.split('.').collect() }
 }
-impl YamlKey for [&str] {
+impl Key for [&str] {
   fn sections(&self) -> Vec<&str> { self.to_vec() }
 }
 
 impl Config {
   /// Creates a new config for the given path. The path is a runtime path to
-  /// load the config file. The default path is yaml source, which should be
+  /// load the config file. The default path is toml source, which should be
   /// loaded with `include_str!`. The defaul is used whenever a key is not
   /// present in the main config. When this is created, a file at `default_path`
-  /// will be created, and the default yaml source will be written there.
+  /// will be created, and the default toml source will be written there.
   /// This is for developers, so they can view the default config as a
   /// reference. If the file cannot be written, a warning will be printed.
   pub fn new(path: &str, default_path: &str, default_src: &str) -> Self {
     fs::write(default_path, default_src).unwrap_or_else(|e| {
       warn!("could not write default configuration to disk at `{}`: {}", default_path, e);
     });
-    Config { primary: Self::load_yaml(path), default: Self::load_yaml_src(default_src) }
+    Config { primary: Self::load_toml(path), default: Self::load_toml_src(default_src) }
   }
 
-  fn load_yaml(path: &str) -> Yaml {
-    YamlLoader::load_from_str(&fs::read_to_string(path).unwrap_or_else(|e| {
-      error!("error loading yaml at `{}`: {}", path, e);
+  fn load_toml(path: &str) -> Value {
+    let src = fs::read_to_string(path).unwrap_or_else(|e| {
+      error!("error loading toml at `{path}`: {e}");
       "".into()
-    }))
-    .unwrap_or_else(|e| {
-      error!("error loading yaml at `{}`: {}", path, e);
-      vec![]
+    });
+    src.parse().unwrap_or_else(|e| {
+      error!("error loading toml at `{path}`: {e}");
+      Value::Table(Map::new())
     })
-    .into_iter()
-    .next()
-    .unwrap_or(Yaml::Null)
   }
-  fn load_yaml_src(src: &str) -> Yaml {
-    YamlLoader::load_from_str(src)
-      .unwrap_or_else(|e| {
-        error!("error loading yaml: {}", e);
-        vec![]
-      })
-      .into_iter()
-      .next()
-      .unwrap_or(Yaml::Null)
+  fn load_toml_src(src: &str) -> Value {
+    src.parse().unwrap_or_else(|e| {
+      error!("error loading toml: {e}");
+      Value::Table(Map::new())
+    })
   }
 
-  /// Reads the yaml value at the given key. This will always return a value. If
+  /// Reads the toml value at the given key. This will always return a value. If
   /// the value doesn't exist in the primary config (or the value is the wrong
   /// type), then it will use the default config. If it doesn't exist there (or
   /// if it's the wrong type), this function will panic.
@@ -124,24 +117,24 @@ impl Config {
   /// than the ones present in this file.
   pub fn get<'a, K: ?Sized, T>(&'a self, key: &K) -> T
   where
-    K: YamlKey,
-    T: YamlValue<'a>,
+    K: Key,
+    T: TomlValue<'a>,
   {
     let sections = key.borrow().sections();
-    let val = Self::get_val(&self.primary, &sections);
-    match T::from_yaml(val) {
-      Some(v) => v,
-      None => {
-        if val != &Yaml::BadValue {
+    match Self::get_val(&self.primary, &sections) {
+      Some(val) => match T::from_toml(val) {
+        Some(v) => v,
+        None => {
           warn!(
             "unexpected value at `{}`: {:?}, expected a {}",
             sections.join("."),
             val,
             T::name()
           );
+          self.get_default(key)
         }
-        self.get_default(key)
-      }
+      },
+      None => self.get_default(key),
     }
   }
 
@@ -149,46 +142,48 @@ impl Config {
   /// not exist, or if it was the wrong type.
   fn get_default<'a, K: ?Sized, T>(&'a self, key: &K) -> T
   where
-    K: YamlKey,
-    T: YamlValue<'a>,
+    K: Key,
+    T: TomlValue<'a>,
   {
     let sections = key.borrow().sections();
-    let val = Self::get_val(&self.default, &sections);
-    match T::from_yaml(val) {
-      Some(v) => v,
-      None => {
-        panic!(
-          "default had wrong type for key `{}`: {:?}, expected a {}",
-          sections.join("."),
-          val,
-          T::name(),
-        );
-      }
+    match Self::get_val(&self.default, &sections) {
+      Some(val) => match T::from_toml(val) {
+        Some(v) => v,
+        None => {
+          panic!(
+            "default had wrong type for key `{}`: {:?}, expected a {}",
+            sections.join("."),
+            val,
+            T::name(),
+          );
+        }
+      },
+      None => panic!("default does not have key `{}`", sections.join(".")),
     }
   }
 
-  fn get_val<'a>(yaml: &'a Yaml, sections: &[&str]) -> &'a Yaml {
-    let mut val = yaml;
+  fn get_val<'a>(toml: &'a Value, sections: &[&str]) -> Option<&'a Value> {
+    let mut val = toml;
     for s in sections {
       match val {
-        Yaml::Hash(map) => match map.get(&Yaml::String(s.to_string())) {
+        Value::Table(map) => match map.get(*s) {
           Some(v) => val = v,
-          None => return &Yaml::BadValue,
+          None => return None,
         },
-        Yaml::Array(arr) => match s.parse::<usize>() {
+        Value::Array(arr) => match s.parse::<usize>() {
           Ok(idx) => val = &arr[idx],
-          Err(_) => return &Yaml::BadValue,
+          Err(_) => return None,
         },
-        _ => return &Yaml::BadValue,
+        _ => return None,
       }
     }
-    val
+    Some(val)
   }
 
   /// Returns a config section for the given key.
   pub fn section<K: ?Sized>(self: &Arc<Self>, key: &K) -> ConfigSection
   where
-    K: YamlKey,
+    K: Key,
   {
     ConfigSection {
       config: self.clone(),
@@ -201,8 +196,8 @@ impl ConfigSection {
   /// Gets the config value at the given key, prefixed by this reference's path.
   pub fn get<'a, K: ?Sized, T>(&'a self, key: &K) -> T
   where
-    K: YamlKey,
-    T: YamlValue<'a>,
+    K: Key,
+    T: TomlValue<'a>,
   {
     let mut path: Vec<_> = self.path.iter().map(|s| s.as_str()).collect();
     let sections = key.borrow().sections();
