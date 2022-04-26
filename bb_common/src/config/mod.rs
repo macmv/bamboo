@@ -1,4 +1,4 @@
-use std::{borrow::Borrow, fs};
+use std::{borrow::Borrow, fs, sync::Arc};
 use yaml_rust::{yaml::Yaml, YamlLoader};
 
 mod types;
@@ -6,6 +6,11 @@ mod types;
 pub struct Config {
   primary: Yaml,
   default: Yaml,
+}
+
+pub struct ConfigSection {
+  config: Arc<Config>,
+  path:   Vec<String>,
 }
 
 pub trait YamlValue<'a> {
@@ -142,7 +147,7 @@ impl Config {
 
   /// Gets the default value at the given key. This will panic if the key does
   /// not exist, or if it was the wrong type.
-  pub fn get_default<'a, K: ?Sized, T>(&'a self, key: &K) -> T
+  fn get_default<'a, K: ?Sized, T>(&'a self, key: &K) -> T
   where
     K: YamlKey,
     T: YamlValue<'a>,
@@ -178,5 +183,30 @@ impl Config {
       }
     }
     val
+  }
+
+  /// Returns a config section for the given key.
+  pub fn section<K: ?Sized>(self: &Arc<Self>, key: &K) -> ConfigSection
+  where
+    K: YamlKey,
+  {
+    ConfigSection {
+      config: self.clone(),
+      path:   key.sections().iter().map(|v| v.to_string()).collect(),
+    }
+  }
+}
+
+impl ConfigSection {
+  /// Gets the config value at the given key, prefixed by this reference's path.
+  pub fn get<'a, K: ?Sized, T>(&'a self, key: &K) -> T
+  where
+    K: YamlKey,
+    T: YamlValue<'a>,
+  {
+    let mut path: Vec<_> = self.path.iter().map(|s| s.as_str()).collect();
+    let sections = key.borrow().sections();
+    path.extend(sections);
+    self.config.get(path.as_slice())
   }
 }

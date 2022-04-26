@@ -87,7 +87,7 @@ impl World {
     info!("generating terrain...");
     let chunks = Mutex::new(vec![]);
     let loaded = AtomicU32::new(0);
-    let view_distance = self.config().get::<_, i32>("view-distance");
+    let view_distance = self.wm.config().get::<_, i32>("view-distance");
     let total = ((view_distance * 2 + 1) * (view_distance * 2 + 1)) as f64;
     (-view_distance..=view_distance).into_par_iter().for_each(|x| {
       for z in -view_distance..=view_distance {

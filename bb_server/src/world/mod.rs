@@ -21,7 +21,7 @@ mod region;
 pub mod schematic;
 
 use bb_common::{
-  config::Config,
+  config::{Config, ConfigSection},
   math::{ChunkPos, FPos, Pos},
   net::cb,
   util::{
@@ -91,6 +91,7 @@ pub struct World {
   commands:          Arc<CommandTree>,
   uspt:              Arc<AtomicU32>,
   wm:                Arc<WorldManager>,
+  config:            ConfigSection,
   // If set, then the world cannot be modified.
   locked:            AtomicBool,
 }
@@ -137,9 +138,10 @@ impl World {
     wm: Arc<WorldManager>,
   ) -> Arc<Self> {
     let chunks = HashMap::new();
-    let gen = WorldGen::from_config(wm.config());
+    let config = wm.config().section("world");
+    let gen = WorldGen::from_config(&config);
     /*
-    for schematic in wm.config().get::<_, Vec<String>>("world.schematics") {
+    for schematic in config.get::<_, Vec<String>>("schematics") {
       let path = schematic.get("path");
       let pos = Pos::new(schematic.get("x"), schematic.get("y"), schematic.get("z"));
       schematic::load_from_file(&mut chunks, path, &block_converter, || {
@@ -161,13 +163,14 @@ impl World {
       plugins,
       commands,
       uspt: Arc::new(0.into()),
-      locked: wm.config().get::<_, bool>("world.locked").into(),
+      locked: config.get::<_, bool>("locked").into(),
+      config,
       wm,
     });
-    if world.config().get("world.vanilla.enabled") {
+    if world.config().get("vanilla.enabled") {
       world
         .load_from_disk(
-          &std::path::PathBuf::new().join(world.config().get::<_, &str>("world.vanilla.path")),
+          &std::path::PathBuf::new().join(world.config().get::<_, &str>("vanilla.path")),
         )
         .unwrap();
     }
@@ -183,7 +186,7 @@ impl World {
   }
 
   /// Returns the config used in the whole server.
-  pub fn config(&self) -> &Arc<Config> { self.wm.config() }
+  pub fn config(&self) -> &ConfigSection { &self.config }
 
   fn global_tick_loop(self: Arc<Self>) {
     let pool = ThreadPool::auto(|| State { uspt: self.uspt.clone(), world: Arc::clone(&self) });

@@ -1,7 +1,7 @@
 use super::chunk::MultiChunk;
 use crate::{block, math::WarpedVoronoi};
 use bb_common::{
-  config::Config,
+  config::ConfigSection,
   math::{ChunkPos, Pos, RngCore, WyhashRng},
 };
 use noise::{BasicMulti, NoiseFn};
@@ -228,16 +228,16 @@ impl WorldGen {
       debug: false,
     }
   }
-  pub fn from_config(config: &Config) -> Self {
-    if config.get("world.debug") {
+  pub fn from_config(config: &ConfigSection) -> Self {
+    if config.get("debug") {
       let mut gen = WorldGen::new();
       gen.debug = true;
       gen
-    } else if config.get("world.void") {
+    } else if config.get("void") {
       WorldGen::new()
     } else {
       let mut gen = WorldGen::new();
-      for biome in config.get::<str, Vec<&str>>("world.biomes") {
+      for biome in config.get::<_, Vec<&str>>("biomes") {
         if gen.add_named_biome(biome).is_err() {
           warn!("unknown biome '{}', skipping", biome);
         }
