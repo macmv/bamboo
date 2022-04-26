@@ -103,11 +103,10 @@ fn test_move_packets() {
     handler.assert_empty();
   }
   handler.player().tick();
-  handler.assert_sent(&[cb::Packet::EntityMove {
-    eid:       handler.player().eid(),
-    x:         1 * 32,
-    y:         2 * 32,
-    z:         3 * 32,
-    on_ground: true,
-  }]);
+  {
+    let pos = handler.player().lock_pos();
+    assert_eq!(pos.curr, FPos::new(1.0, 2.0, 3.0));
+    assert_eq!(pos.next, FPos::new(1.0, 2.0, 3.0));
+    handler.assert_empty();
+  }
 }

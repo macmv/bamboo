@@ -147,7 +147,7 @@ impl Player {
       scoreboard: Scoreboard::new(conn.clone()).into(),
       conn,
       ver: ProtocolVersion::from(info.ver as i32),
-      view_distance: world.config().get("view-distance"),
+      view_distance: world.world_manager().config().get("view-distance"),
       game_mode: Mutex::new(world.world_manager().default_game_mode()),
       world,
       pos: PlayerPosition {
@@ -327,6 +327,7 @@ impl Player {
 
   /// Locks the player's position. While this is locked, no ticks or movement
   /// updates can be processed.
+  #[cfg(test)]
   pub(crate) fn lock_pos(&self) -> MutexGuard<'_, PlayerPosition> { self.pos.lock() }
 
   /// Returns the player's position. This is only updated once per tick. This
