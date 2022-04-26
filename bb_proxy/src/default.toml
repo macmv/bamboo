@@ -1,0 +1,11 @@
+# The Bamboo server's IP.
+server = "0.0.0.0:8483"
+# This enables authentication with Mojang's servers. This should only be
+# disabled if you know what you are doing.
+encryption = true
+# This is the packet compression threshold. Vanilla clients will perform
+# far worse if this is turned off. Compression can be disabled by setting
+# this to 0.
+compression-thresh = 256
+# The path to the icon.
+icon = "icon.png"

@@ -37,7 +37,7 @@ pub fn run() -> Result<()> {
     if std::env::args().len() > 1 { log::LevelFilter::Debug } else { log::LevelFilter::Info };
   bb_common::init_with_level("proxy", level);
 
-  let config = Config::new("proxy.yml", "proxy-default.yml", include_str!("default.yml"));
+  let config = Config::new("proxy.toml", "proxy-default.toml", include_str!("default.toml"));
 
   const JAVA_LISTENER: Token = Token(0xffffffff);
   const BEDROCK_LISTENER: Token = Token(0xfffffffe);
