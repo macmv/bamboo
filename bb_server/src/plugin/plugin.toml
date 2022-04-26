@@ -31,4 +31,4 @@ output = ""
 # the block below as their config, or read this from disk.
 [custom]
 # Custom values here!
-spawn_point = { x: 0.0, y: 60.0, z: 0.0 }
+spawn_point = { x = 0.0, y = 60.0, z = 0.0 }

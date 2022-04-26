@@ -1,6 +1,0 @@
-default-gamemode: survival
-world:
-  void: true
-  vanilla:
-    enabled: true
-    path: "world"

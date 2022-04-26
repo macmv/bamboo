@@ -50,9 +50,9 @@ impl PluginManager {
       if m.is_dir() {
         let path = f.path();
         let config = Config::new(
-          path.join("plugin.yml").to_str().unwrap(),
-          path.join("plugin-default.yml").to_str().unwrap(),
-          include_str!("plugin.yml"),
+          path.join("plugin.toml").to_str().unwrap(),
+          path.join("plugin-default.toml").to_str().unwrap(),
+          include_str!("plugin.toml"),
         );
         if !config.get::<_, bool>("enabled") {
           continue;
