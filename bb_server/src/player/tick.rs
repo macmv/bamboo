@@ -1,7 +1,7 @@
 use super::{DigProgress, Player, PlayerPosition};
 use crate::block;
 use bb_common::{
-  math::{ChunkPos, Pos},
+  math::{ChunkPos, Pos, Vec3},
   net::cb,
   version::ProtocolVersion,
 };
@@ -12,7 +12,6 @@ use std::{
   sync::Arc,
   time::{Duration, Instant},
 };
-use bb_common::math::Vec3;
 
 impl DigProgress {
   pub fn new(pos: Pos, kind: block::Kind) -> Self {
@@ -31,22 +30,50 @@ impl Player {
     let look_changed;
     let pos_changed;
     let needs_set_pos;
+    let mut invalid_move = None;
     let pos = {
       let mut pos = self.pos.lock();
       self.update_dig_progress(&mut pos);
-      pos.prev = pos.curr;
-      look_changed = pos.yaw != pos.next_yaw || pos.pitch != pos.next_pitch;
-      pos_changed = pos.curr != pos.next;
-      // TODO: Movement checks here
 
-      if (pos.vel.x.abs() + pos.vel.y.abs() + pos.vel.z.abs()) > 0.0 {
-        pos.vel = Vec3::from(pos.next - pos.curr); // pos.vel * 0.98;
-        if pos.vel.x > -0.003 && pos.vel.x < 0.003 { pos.vel.x = 0.0; }
-        if pos.vel.y > -0.003 && pos.vel.y < 0.003 { pos.vel.y = 0.0; }
-        if pos.vel.z > -0.003 && pos.vel.z < 0.003 { pos.vel.z = 0.0; }
+      // This uses the position from the previous tick to find the velocity on that
+      // tick, and finds what we expected the client to move on that tick.
+      let expected_move = Vec3::from(pos.curr - pos.prev);
+      // This uses the new position to find the velocity that the client moved this
+      // tick.
+      let actual_move = Vec3::from(pos.next - pos.curr);
+      // The player's acceleration.
+      let accel = expected_move - actual_move;
+      info!(
+        "{} moved at {:0.2} {:0.2} {:0.2} (total: {:0.3})",
+        self.username,
+        accel.x,
+        accel.y,
+        accel.z,
+        accel.len()
+      );
+
+      // In 1.8, on the client, I never saw this go above 1.5. On the server, this
+      // goes above 2 every now and then.
+      if accel.len() > 3.0 {
+        warn!(
+          "{} moved too fast (pos: {} {} {})",
+          self.username, pos.curr.x, pos.curr.y, pos.curr.z
+        );
+        invalid_move = Some(cb::Packet::SetPosLook {
+          pos:             pos.curr,
+          yaw:             pos.yaw,
+          pitch:           pos.pitch,
+          flags:           0,
+          teleport_id:     0,
+          should_dismount: false,
+        });
+      } else {
+        pos.prev = pos.curr;
+        pos.curr = pos.next;
       }
 
-      pos.curr = pos.next;
+      look_changed = pos.yaw != pos.next_yaw || pos.pitch != pos.next_pitch;
+      pos_changed = pos.curr != pos.next;
       pos.yaw = pos.next_yaw;
       // We want to keep yaw within -180..=180
       pos.yaw %= 360.0;
@@ -63,6 +90,7 @@ impl Player {
       } else if pos.pitch < -90.0 {
         pos.pitch = -90.0;
       }
+
       // Whether or not the collision checks passes, we now have a movement
       // vector; from prev to curr.
       old_chunk = pos.prev.block().chunk();
@@ -78,6 +106,10 @@ impl Player {
 
       pos.clone()
     };
+    // We don't want `pos` locked while sending packets
+    if let Some(p) = invalid_move {
+      self.send(p);
+    }
     // Handle edge case for players sending dig finish too early.
     self.check_dig_wants_finish();
     if pos_changed || look_changed {
@@ -233,7 +265,9 @@ impl Player {
       self.unload_chunks(unload_min, unload_max);
     }
 
-    if health.hit_delay > 0 { health.hit_delay -= 1; }
+    if health.hit_delay > 0 {
+      health.hit_delay -= 1;
+    }
   }
 
   /// Loads the chunks between min and max, inclusive.

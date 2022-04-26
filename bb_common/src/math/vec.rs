@@ -24,6 +24,13 @@ impl Vec3 {
   /// Returns the velocity in the packet format. This is `self.z * 8000`,
   /// because self.z is in blocks/tick.
   pub fn fixed_z(&self) -> i16 { (self.z * 8000.0) as i16 }
+
+  /// Returns the length of this vector, squared.
+  pub fn len_squared(&self) -> f64 { self.x.powi(2) + self.y.powi(2) + self.z.powi(2) }
+
+  /// Returns the length of this vector. If possible, prefer
+  /// [`len_squared`](Self::len_squared).
+  pub fn len(&self) -> f64 { self.len_squared().sqrt() }
 }
 
 impl Add for Vec2 {
