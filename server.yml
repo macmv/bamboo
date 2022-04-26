@@ -1,3 +1,5 @@
+default-gamemode: survival
+
 world:
   # locked: true
   # debug: true

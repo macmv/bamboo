@@ -126,14 +126,22 @@ impl Stack {
   /// Using the item type, the block being mined, and the efficiency of this
   /// item stack, this returns the base speed to mine a block of the given type.
   pub fn mining_speed(&self, block: &block::Data) -> f64 {
-    let speed = if let Some(tool) = self.item().tool() {
-      if tool.does_mine(block) {
-        tool.grade.base_speed() / 30.0
+    let speed = if !block.material.requires_tool() {
+      // doesn't require tool
+      1.0 / 30.0
+    } else {
+      // requires tool
+      if let Some(tool) = self.item().tool() {
+        if tool.does_mine(block) {
+          tool.grade.base_speed() / 30.0
+        } else {
+          // the tool we have isn't correct
+          1.0 / 100.0
+        }
       } else {
+        // we don't have a tool
         1.0 / 100.0
       }
-    } else {
-      1.0 / 100.0
     };
     speed / block.hardness as f64
   }

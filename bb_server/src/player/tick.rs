@@ -43,14 +43,6 @@ impl Player {
       let actual_move = Vec3::from(pos.next - pos.curr);
       // The player's acceleration.
       let accel = expected_move - actual_move;
-      info!(
-        "{} moved at {:0.2} {:0.2} {:0.2} (total: {:0.3})",
-        self.username,
-        accel.x,
-        accel.y,
-        accel.z,
-        accel.len()
-      );
 
       // In 1.8, on the client, I never saw this go above 1.5. On the server, this
       // goes above 2 every now and then.

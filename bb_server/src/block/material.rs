@@ -115,4 +115,7 @@ impl Material {
       _ => 0.6,
     }
   }
+  pub fn requires_tool(&self) -> bool {
+    matches!(self, Material::Stone | Material::Snow | Material::SnowBlock)
+  }
 }
