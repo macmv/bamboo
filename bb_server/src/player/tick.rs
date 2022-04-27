@@ -35,6 +35,9 @@ impl Player {
       let mut pos = self.pos.lock();
       self.update_dig_progress(&mut pos);
 
+      look_changed = pos.yaw != pos.next_yaw || pos.pitch != pos.next_pitch;
+      pos_changed = pos.curr != pos.next;
+
       // This uses the position from the previous tick to find the velocity on that
       // tick, and finds what we expected the client to move on that tick.
       let expected_move = Vec3::from(pos.curr - pos.prev);
@@ -64,8 +67,6 @@ impl Player {
         pos.curr = pos.next;
       }
 
-      look_changed = pos.yaw != pos.next_yaw || pos.pitch != pos.next_pitch;
-      pos_changed = pos.curr != pos.next;
       pos.yaw = pos.next_yaw;
       // We want to keep yaw within -180..=180
       pos.yaw %= 360.0;
