@@ -88,6 +88,7 @@ pub(crate) fn handle(wm: &Arc<WorldManager>, player: &Arc<Player>, p: sb::Packet
     sb::Packet::UseItem { hand: _ } => {
       // Spawn a snowball (for fun)
 
+      /*
       let eid =
         player.world().summon(entity::Type::ArmorStand, player.pos() + FPos::new(0.0, 1.0, 0.0));
 
@@ -96,6 +97,7 @@ pub(crate) fn handle(wm: &Arc<WorldManager>, player: &Arc<Player>, p: sb::Packet
       if let Some(ent) = player.world().entities().get(eid) {
         ent.set_vel(player.look_as_vec() * 1.0);
       }
+      */
     }
     sb::Packet::BlockPlace { mut pos, face, hand: _ } => {
       /*
