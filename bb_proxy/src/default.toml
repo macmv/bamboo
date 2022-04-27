@@ -1,5 +1,11 @@
+# Only show info logs by default.
+log-level = "info"
+
 # The Bamboo server's IP.
 server = "0.0.0.0:8483"
+# The IP of the proxy. This is the IP that all clients will connect to.
+address = "0.0.0.0:25565"
+
 # This enables authentication with Mojang's servers. This should only be
 # disabled if you know what you are doing.
 encryption = true

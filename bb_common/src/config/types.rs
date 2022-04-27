@@ -1,5 +1,6 @@
 use super::TomlValue;
 use crate::{math::FPos, util::GameMode};
+use log::{Level, LevelFilter};
 use std::str::FromStr;
 use toml::Value;
 
@@ -26,8 +27,15 @@ impl TomlValue<'_> for FPos {
       None
     }
   }
-
   fn name() -> String { "posititon".into() }
+}
+impl TomlValue<'_> for Level {
+  fn from_toml(v: &Value) -> Option<Self> { Level::from_str(v.as_str()?).ok() }
+  fn name() -> String { "log level".into() }
+}
+impl TomlValue<'_> for LevelFilter {
+  fn from_toml(v: &Value) -> Option<Self> { LevelFilter::from_str(v.as_str()?).ok() }
+  fn name() -> String { "log level filter".into() }
 }
 
 impl<'a, T> TomlValue<'a> for Vec<T>

@@ -1,6 +1,7 @@
 #[macro_use]
 extern crate log;
 
+use bb_common::config::Config;
 use bb_server::{net::ConnectionManager, world::WorldManager};
 use clap::Parser;
 use std::{sync::Arc, thread};
@@ -62,7 +63,10 @@ struct Args {
 
 fn main() {
   let args = Args::parse();
-  bb_common::init("server");
+  let config = Config::new("server.toml", "server-default.toml", include_str!("default.toml"));
+
+  let level = config.get("log-level");
+  bb_common::init_with_level("server", level);
 
   if !args.no_docs {
     bb_server::generate_panda_docs();
@@ -73,7 +77,7 @@ fn main() {
 
   let addr = "0.0.0.0:8483".parse().unwrap();
 
-  let wm = Arc::new(WorldManager::new());
+  let wm = Arc::new(WorldManager::new_with_config(config));
   wm.add_world();
   wm.load_plugins();
 

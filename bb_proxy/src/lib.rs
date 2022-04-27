@@ -33,16 +33,15 @@ pub fn load_icon(path: &str) -> String {
 }
 
 pub fn run() -> Result<()> {
-  let level =
-    if std::env::args().len() > 1 { log::LevelFilter::Debug } else { log::LevelFilter::Info };
-  bb_common::init_with_level("proxy", level);
-
   let config = Config::new("proxy.toml", "proxy-default.toml", include_str!("default.toml"));
+
+  let level = config.get("log-level");
+  bb_common::init_with_level("proxy", level);
 
   const JAVA_LISTENER: Token = Token(0xffffffff);
   const BEDROCK_LISTENER: Token = Token(0xfffffffe);
 
-  let addr = "0.0.0.0:25565";
+  let addr = config.get::<_, String>("address");
   info!("listening for java clients on {}", addr);
   let mut java_listener = TcpListener::bind(addr.parse()?)?;
 

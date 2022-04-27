@@ -645,6 +645,10 @@ impl fmt::Debug for WorldManager {
 impl WorldManager {
   pub fn new() -> Self {
     let config = Config::new("server.toml", "server-default.toml", include_str!("../default.toml"));
+    WorldManager::new_with_config(config)
+  }
+
+  pub fn new_with_config(config: Config) -> Self {
     WorldManager {
       block_converter:   Arc::new(block::TypeConverter::new()),
       item_converter:    Arc::new(item::TypeConverter::new()),
