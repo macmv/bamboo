@@ -76,6 +76,16 @@ pub(crate) struct PlayerPosition {
 }
 
 #[derive(Debug, Clone)]
+pub struct PlayerAbilities {
+  flying_allowed: bool,
+  flying_speed:   f32,
+  flying:         bool,
+  invulnerable:   bool,
+  instant_break:  bool,
+  walking_speed:  f32,
+}
+
+#[derive(Debug, Clone)]
 pub struct PlayerHealth {
   health:     f32,
   absorption: f32,
@@ -104,6 +114,8 @@ pub struct Player {
   inv:        Mutex<PlayerInventory>,
   scoreboard: Mutex<Scoreboard>,
   pos:        Mutex<PlayerPosition>,
+
+  abilities: Mutex<PlayerAbilities>,
 
   health: Mutex<PlayerHealth>,
   food:   Mutex<PlayerFood>,
@@ -138,6 +150,7 @@ impl Player {
     world: Arc<World>,
     pos: FPos,
   ) -> Arc<Self> {
+    let game_mode = world.world_manager().default_game_mode();
     Arc::new_cyclic(|weak| Player {
       eid,
       username: info.username,
@@ -148,7 +161,7 @@ impl Player {
       conn,
       ver: ProtocolVersion::from(info.ver as i32),
       view_distance: world.world_manager().config().get("view-distance"),
-      game_mode: Mutex::new(world.world_manager().default_game_mode()),
+      game_mode: Mutex::new(game_mode),
       world,
       pos: PlayerPosition {
         curr:         pos,
@@ -164,6 +177,15 @@ impl Player {
         sprinting:    false,
         swimming:     false,
         dig_progress: None,
+      }
+      .into(),
+      abilities: PlayerAbilities {
+        invulnerable:   false,
+        instant_break:  game_mode == GameMode::Creative,
+        flying:         false,
+        flying_allowed: matches!(game_mode, GameMode::Creative | GameMode::Spectator),
+        flying_speed:   1.0,
+        walking_speed:  1.0,
       }
       .into(),
       health: PlayerHealth { health: 20.0, absorption: 0.0, hit_delay: 0 }.into(),
@@ -385,18 +407,47 @@ impl Player {
     delta.x().abs() as u32 <= self.view_distance && delta.z().abs() as u32 <= self.view_distance
   }
 
+  pub fn send_abilities(&self) {
+    let abilities = self.abilities.lock();
+    self.send(cb::Packet::Abilities {
+      invulnerable: abilities.invulnerable,
+      flying:       abilities.flying,
+      allow_flying: abilities.flying_allowed,
+      fly_speed:    abilities.flying_speed,
+      insta_break:  abilities.instant_break,
+      walk_speed:   abilities.walking_speed,
+    });
+  }
+
+  pub fn set_flying_allowed(&self, flag: bool) {
+    {
+      let mut abilities = self.abilities.lock();
+      abilities.flying_allowed = flag;
+    }
+    self.send_abilities();
+  }
+
+  pub fn set_flying(&self, flag: bool) {
+    self.abilities.lock().flying = flag;
+    self.send_abilities();
+  }
+
+  pub(crate) fn set_flying_no_send(&self, flag: bool) { self.abilities.lock().flying = flag; }
+
+  pub fn flying(&self) -> bool { self.abilities.lock().flying }
+
   /// Sets the player's fly speed. This is a speed multiplier. So a value of
   /// `1.0` will reset their fly speed to the default.
   pub fn set_flyspeed(&self, speed: f32) {
-    self.send(cb::Packet::Abilities {
-      invulnerable: false,
-      flying:       true,
-      allow_flying: true,
-      insta_break:  true,
-      fly_speed:    speed,
-      walk_speed:   1.0,
-    });
+    {
+      let mut abilities = self.abilities.lock();
+      abilities.flying_speed = speed;
+    }
+    self.send_abilities();
   }
+
+  pub fn fly_speed(&self) -> f32 { self.abilities.lock().flying_speed }
+
   /// Sets the player's tab list name. If `name` is `None`, then the display
   /// name will be removed, and the username will show instead.
   ///

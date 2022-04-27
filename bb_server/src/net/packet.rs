@@ -164,6 +164,9 @@ pub(crate) fn handle(wm: &Arc<WorldManager>, player: &Arc<Player>, p: sb::Packet
     sb::Packet::PlayerLook { yaw, pitch, .. } => {
       player.set_next_look(yaw, pitch);
     }
+    sb::Packet::Flying { flying } => {
+      player.set_flying_no_send(flying);
+    }
     // Just contains on_ground
     sb::Packet::PlayerOnGround { .. } => {}
     sb::Packet::PlayerCommand { command } => player.handle_command(command),

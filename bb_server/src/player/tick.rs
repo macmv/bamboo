@@ -49,7 +49,9 @@ impl Player {
 
       // In 1.8, on the client, I never saw this go above 1.5. On the server, this
       // goes above 2 every now and then.
-      if accel.len() > 3.0 {
+      let flying = self.flying();
+      let accel_len = accel.len();
+      if (!flying && accel_len > 3.0) || (flying && accel_len > f64::from(self.fly_speed()) * 5.0) {
         warn!(
           "{} moved too fast (pos: {} {} {})",
           self.username, pos.curr.x, pos.curr.y, pos.curr.z
@@ -62,6 +64,7 @@ impl Player {
           teleport_id:     0,
           should_dismount: false,
         });
+        pos.prev = pos.curr;
       } else {
         pos.prev = pos.curr;
         pos.curr = pos.next;
@@ -99,6 +102,7 @@ impl Player {
 
       pos.clone()
     };
+
     // We don't want `pos` locked while sending packets
     if let Some(p) = invalid_move {
       self.send(p);
