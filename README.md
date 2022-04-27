@@ -27,13 +27,13 @@ Now you need to build the server and proxy. You can run the server with this
 command:
 
 ```
-cargo run --bin sc_server --release
+cargo run --bin bb_server --release
 ```
 
 And you can run the proxy with this command:
 
 ```
-cargo run --bin sc_proxy --release
+cargo run --bin bb_proxy --release
 ```
 
 You need the server and proxy to be running at the same time in order to connect!
@@ -86,27 +86,27 @@ is what I would like to see in a 1.0 release:
   - [ ] Default chunk/Terrain generation should be easily toggleable with an
         admin command.
 - [ ] (Maybe) support 1000 players on one server
-  - Everything is be very multithreaded. This is a very general goal, and is put
+  - Everything is very multithreaded. This is a very general goal, and is put
     here as a reminder that things like tick loops are separate for each player.
 - [ ] (Unlikely) Plugin loading in Rust
   - This is a dynamic linking problem. It shouldn't be very difficult, and will
     allow pluggable functionality from multiple plugins, all without
     re-compiling the server. This would act very similar to something like
     Spigot.
-  - This is not a feature I am very interested in. Sugarlang is turning out to
+  - This is not a feature I am very interested in. Panda is turning out to
     be very powerful, and I would like to focus on that. If anyone wants to implement
-    this, feel free to do so. Just note that it must be compatable with Sugarlang
-    plugins. You need to be able to load both Rust and Sugarlang plugins at the
+    this, feel free to do so. Just note that it must be compatible with Panda
+    plugins. You need to be able to load both Rust and Panda plugins at the
     same time.
 - [x] Drop GRPC. I think GRPC is great. It's the perfect balance of speed and
   cross-versioning safe, and I think it should be used in place of REST in almost
   all situations. However, I have generated code. This means that I know the exact
   protocol on the sender and receiver. This means that I don't really care about
-  how easy the procol is to debug, because its all generated code reading/writing
-  to the wire. I also dispise async. It gives you unsized `impl` traits everywhere,
+  how easy the protocol is to debug, because it's all generated code reading/writing
+  to the wire. I also dispose async. It gives you unsized `impl` traits everywhere,
   and makes it very difficult to work with closures. Dropping GRPC means dropping
   async, which I really want to do.
-  - This has been dropped. I now use `sc_transfer`, and there is no longer any async
+  - This has been dropped. I now use `bb_transfer`, and there is no longer any async
     within the codebase.
 - [x] Plugin loading in Panda (custom language)
   - I really tried to use another language for plugins. It would have been so
@@ -137,7 +137,7 @@ Bamboo uses a proxy-server model. The proxy talks to a Minecraft client over
 the TCP based Minecraft protocol, and talks to the server over a custom TCP based
 protocol at the same time. This has a number of benefits, such as performance,
 scalability, and most importantly, cross-versioning. The Minecraft client changes
-it's packet definition quite a bit for every version, and supporting all the way
+its packet definition quite a bit for every version, and supporting all the way
 back to 1.8 means that almost everything is different. Having my own proxy in place
 means the server works entirely with latest versioned data, and the proxy handles
 all the older versions.
@@ -162,41 +162,41 @@ is on a fast enough machine, it should be possible.
 Any module on this list depends on at least one of the modules before it in the
 list.
 
- - `sc_macros`: Contains some small utilities used in sc_server.
- - `sc_transfer`: The server-proxy communication protocol. These
+ - `bb_macros`: Contains some small utilities used in bb_server.
+ - `bb_transfer`: The server-proxy communication protocol. These
    packets describe nothing about there format, so it is up the
    other side to know the protocol spec.
- - `sc_data`: The code generator. This takes prismarine data and
+ - `bb_data`: The code generator. This takes prismarine data and
    generates Rust source.
- - `sc_generated`: The output of `sc_data`. This is a seperate
+ - `bb_generated`: The output of `bb_data`. This is a separate
    crate to improve rebuild times.
- - `sc_common`: Common utilities. These are things like item
-   parsers, UUIDs, etc. This is changed often, so `sc_generated`
+ - `bb_common`: Common utilities. These are things like item
+   parsers, UUIDs, etc. This is changed often, so `bb_generated`
    copies some of the code from here.
- - `sc_server`: The Minecraft server. This is the first binary
+ - `bb_server`: The Minecraft server. This is the first binary
    target.
- - `sc_proxy`: The proxy. This is required for any clients to
+ - `bb_proxy`: The proxy. This is required for any clients to
    connection to the server.
- - `sc_cli`: A cli tool, used to connect to a Minecraft server and
+ - `bb_cli`: A cli tool, used to connect to a Minecraft server and
    validate that it is sending good data (things like making sure
    the client won't leak chunks, checks for keep alive packets, etc).
 
 ### For Rust developers
 
 If you would like to contribute to this project, I welcome your changes! Anything
-in the features list above are all good tasks to work on, and would be very appriciated.
+in the features list above are all good tasks to work on, and would be very appreciated.
 
 If you are looking for the generated protocol code, you can go from this project
 directory into the generated code directory using this command:
 ```bash
 # For the proxy in debug mode:
-cd $(find target/debug/build/sc_proxy*/out | head -n 1)
+cd $(find target/debug/build/bb_proxy*/out | head -n 1)
 # For the proxy in release mode:
-cd $(find target/release/build/sc_proxy*/out | head -n 1)
+cd $(find target/release/build/bb_proxy*/out | head -n 1)
 # For the server in debug mode:
-cd $(find target/debug/build/sc_server*/out | head -n 1)
+cd $(find target/debug/build/bb_server*/out | head -n 1)
 # For the server in release mode:
-cd $(find target/release/build/sc_server*/out | head -n 1)
+cd $(find target/release/build/bb_server*/out | head -n 1)
 ```
 
 If you have run the server/proxy in debug/release mode, then the appropriate command
@@ -213,7 +213,7 @@ your IDE to use a different profile. Any time my IDE builds, I pass the flag
 the dev profile uses opt-level 2 (instead of the default 0). This is because
 terrain generation is terribly slow with opt-level set to 0.
 
-### For Panda devlopers
+### For Panda developers
 
 Panda is the language used for plugins in this server. See the
 [examples](https://gitlab.com/macmv/bamboo/-/tree/main/examples) directory
@@ -232,7 +232,7 @@ as I develop them.
 Well two things happened. Firstly, this project used to also be called sugarcane,
 but I renamed it due to another minecraft project also being named sugarcane.
 Secondly, before this project, I did the same thing but in Go. I switched once
-I learned Rust, as I cannot think of any reason to use Go any more.
+I learned Rust, as I cannot think of any reason to use Go anymore.
 
 Here are some reasons why I rewrote the project:
 
