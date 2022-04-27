@@ -1,6 +1,11 @@
 # Only show info logs by default.
 log-level = "info"
 
+# The address the server will listen for connections on. Vanilla clients
+# cannot connect to this address! The proxy must be configured to connect
+# to this address instead.
+address = "0.0.0.0:8483"
+
 # The default view distance. Note that this can be changed for a single
 # player via a plugin at runtime.
 view-distance = 10

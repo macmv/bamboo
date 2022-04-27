@@ -75,7 +75,13 @@ fn main() {
     }
   }
 
-  let addr = "0.0.0.0:8483".parse().unwrap();
+  let addr = match config.get::<_, String>("address").parse() {
+    Ok(v) => v,
+    Err(e) => {
+      error!("invalid address: {e}");
+      return;
+    }
+  };
 
   let wm = Arc::new(WorldManager::new_with_config(config));
   wm.add_world();
