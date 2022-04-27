@@ -91,22 +91,24 @@ impl TestHandler {
 #[test]
 fn test_move_packets() {
   let handler = TestHandler::new();
+  let pos = handler.player().pos();
+  let new_pos = pos + FPos::new(0.0, 1.0, 0.0);
   handler.handle(sb::Packet::PlayerPos {
-    x:         1.0,
-    y:         2.0,
-    z:         3.0,
+    x:         new_pos.x(),
+    y:         new_pos.y(),
+    z:         new_pos.z(),
     on_ground: true,
   });
   {
     let pos = handler.player().lock_pos();
-    assert_eq!(pos.next, FPos::new(1.0, 2.0, 3.0));
+    assert_eq!(pos.next, new_pos);
     handler.assert_empty();
   }
   handler.player().tick();
   {
     let pos = handler.player().lock_pos();
-    assert_eq!(pos.curr, FPos::new(1.0, 2.0, 3.0));
-    assert_eq!(pos.next, FPos::new(1.0, 2.0, 3.0));
+    assert_eq!(pos.curr, new_pos);
+    assert_eq!(pos.next, new_pos);
     handler.assert_empty();
   }
 }
