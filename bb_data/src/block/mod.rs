@@ -77,12 +77,22 @@ pub struct Block {
   sound_type:   String,
 
   /// A list of items this block drops.
-  drops: Vec<String>,
+  drops: Vec<ItemDrop>,
 
   /// A list of all the properties on this block. If the states are empty, there
   /// is a single valid state for this block, which has no properties. See the
   /// [`State`] docs for more.
   properties: Vec<Prop>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct ItemDrop {
+  /// The item name of this drop.
+  item: String,
+  /// The minimum amount that can be dropped (inclusive).
+  min:  i32,
+  /// The maximum amount that can be dropped (inclusive).
+  max:  i32,
 }
 
 #[derive(Debug, Clone, Deserialize)]

@@ -1,4 +1,4 @@
-use super::{cross::cross_version, Block, BlockDef, Material, Prop, PropKind};
+use super::{cross::cross_version, Block, BlockDef, ItemDrop, Material, Prop, PropKind};
 use crate::{gen::CodeGen, Version};
 use convert_case::{Case, Casing};
 
@@ -167,7 +167,9 @@ fn block_data(gen: &mut CodeGen, b: &Block) {
   gen.write_line("],");
 
   gen.write_line("filter_light: 0,");
-  gen.write_line("drops: &[],");
+  gen.write("drops: ");
+  b.drops.to_lit(gen);
+  gen.write_line(",");
   gen.write_line("bounding_box: BoundingBoxKind::Block,");
   gen.write_line("transparent: false,");
 
@@ -183,6 +185,9 @@ impl ToLit for u8 {
   fn to_lit(&self, gen: &mut CodeGen) { gen.write(&self.to_string()); }
 }
 impl ToLit for u32 {
+  fn to_lit(&self, gen: &mut CodeGen) { gen.write(&self.to_string()); }
+}
+impl ToLit for i32 {
   fn to_lit(&self, gen: &mut CodeGen) { gen.write(&self.to_string()); }
 }
 impl ToLit for f32 {
@@ -266,5 +271,16 @@ impl ToLit for PropKind {
         gen.write(" }");
       }
     }
+  }
+}
+impl ToLit for ItemDrop {
+  fn to_lit(&self, gen: &mut CodeGen) {
+    gen.write("ItemDrop { item: ");
+    self.item.to_lit(gen);
+    gen.write(", min: ");
+    self.min.to_lit(gen);
+    gen.write(", max: ");
+    self.max.to_lit(gen);
+    gen.write(" }");
   }
 }

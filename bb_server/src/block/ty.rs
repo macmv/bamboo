@@ -115,7 +115,7 @@ pub struct Data {
   /// How difficult this is to break with an explosion.
   pub resistance:   f32,
   /// A list of item ids this block can drop.
-  pub drops:        &'static [u32],
+  pub drops:        &'static [ItemDrop],
   /// If this is true, then clients can (at least partially) see through this
   /// block.
   pub transparent:  bool,
@@ -135,6 +135,14 @@ pub struct Data {
   props:         &'static [Prop],
   /// The default type. Each value is an index into that property.
   default_props: &'static [PropValue<'static>],
+}
+
+/// A possible item drop for a block.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct ItemDrop {
+  pub item: &'static str,
+  pub min:  i32,
+  pub max:  i32,
 }
 
 #[derive(Debug, PartialEq, Eq)]
