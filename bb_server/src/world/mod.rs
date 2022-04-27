@@ -260,6 +260,11 @@ impl World {
     }
   }
   fn new_player(self: Arc<Self>, player: Arc<Player>, info: JoinInfo) {
+    {
+      let mut meta = bb_common::metadata::Metadata::new();
+      meta.set_item(8, item::Stack::new(item::Type::IronPickaxe).to_item());
+      self.summon_meta(entity::Type::Item, player.pos(), meta);
+    }
     // We need to unlock players so that player_init() will work.
     {
       // If a bunch of people connect at the same time, we don't want a bunch of lock
