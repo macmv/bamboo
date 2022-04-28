@@ -933,22 +933,29 @@ impl ToTcp for Packet {
         conn.switch_to(ips);
         return Ok(smallvec![]);
       }
-      Packet::Tags { categories } => {
+      Packet::Tags { block, item, fluid, entity_type, game_event } => {
         if ver >= ProtocolVersion::V1_14_4 {
           let mut data = vec![];
           let mut buf = Buffer::new(&mut data);
-          buf.write_varint(categories.len() as i32);
-          for (cat, tags) in &categories {
-            buf.write_str(cat);
-            buf.write_varint(tags.len() as i32);
-            for (name, tag) in tags {
-              buf.write_str(name);
-              buf.write_varint(tag.len() as i32);
-              for _elem in tag {
-                buf.write_varint(5);
+          buf.write_varint(5);
+          macro_rules! tag {
+            ( $name:expr, $tag:expr ) => {
+              buf.write_str($name);
+              buf.write_varint($tag.len() as i32);
+              for (name, tag) in &$tag {
+                buf.write_str(name);
+                buf.write_varint(tag.len() as i32);
+                for elem in tag {
+                  buf.write_varint(*elem);
+                }
               }
-            }
+            };
           }
+          tag!("minecraft:block", block);
+          tag!("minecraft:item", item);
+          tag!("minecraft:fluid", fluid);
+          tag!("minecraft:entity_type", entity_type);
+          tag!("minecraft:game_event", game_event);
           GPacket::SynchronizeTagsV14 { unknown: data }
         } else {
           return Err(WriteError::InvalidVer);

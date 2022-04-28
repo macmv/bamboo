@@ -219,8 +219,16 @@ pub enum Packet {
   /// failed, then a `sb::SwitchServerFailed` packet will be sent to the server.
   #[id = 18]
   SwitchServer { ips: Vec<SocketAddr> },
+  /// The ids are for the latest version. It is up to the proxy to convert them
+  /// to older versions.
   #[id = 41]
-  Tags { categories: HashMap<String, HashMap<String, Vec<String>>> },
+  Tags {
+    block:       HashMap<String, Vec<i32>>,
+    item:        HashMap<String, Vec<i32>>,
+    fluid:       HashMap<String, Vec<i32>>,
+    entity_type: HashMap<String, Vec<i32>>,
+    game_event:  HashMap<String, Vec<i32>>,
+  },
   #[id = 35]
   Teams {
     team:   String,

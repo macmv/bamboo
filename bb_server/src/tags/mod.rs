@@ -1,5 +1,6 @@
+use crate::block;
 use bb_common::net::cb;
-use std::collections::HashMap;
+use std::{collections::HashMap, str::FromStr};
 
 include!(concat!(env!("OUT_DIR"), "/tag/tags.rs"));
 
@@ -13,18 +14,18 @@ impl Tags {
   pub fn new() -> Self { Tags { categories: generate_tags() } }
 
   pub fn serialize(&self) -> cb::Packet {
-    let mut tags = HashMap::new();
-    tags.insert("minecraft:block".into(), self.categories.block.serialize());
-    tags.insert("minecraft:item".into(), self.categories.item.serialize());
-    tags.insert("minecraft:fluid".into(), self.categories.fluid.serialize());
-    tags.insert("minecraft:entity_type".into(), self.categories.entity_type.serialize());
-    tags.insert("minecraft:game_event".into(), self.categories.game_event.serialize());
-    cb::Packet::Tags { categories: tags }
+    cb::Packet::Tags {
+      block:       self.categories.block.serialize(),
+      item:        self.categories.item.serialize(),
+      fluid:       self.categories.fluid.serialize(),
+      entity_type: self.categories.entity_type.serialize(),
+      game_event:  self.categories.game_event.serialize(),
+    }
   }
 }
 
 impl TagCategory {
-  fn serialize(&self) -> HashMap<String, Vec<String>> {
+  fn serialize(&self) -> HashMap<String, Vec<i32>> {
     self
       .tags
       .iter()
@@ -37,7 +38,7 @@ impl TagCategory {
       .collect()
   }
 
-  fn expand_tag(&self, name: &str) -> Vec<String> {
+  fn expand_tag(&self, name: &str) -> Vec<i32> {
     if name.starts_with('#') {
       for tag in self.tags {
         if name == tag.name {
@@ -46,7 +47,7 @@ impl TagCategory {
       }
       panic!();
     } else {
-      vec![name.into()]
+      vec![block::Kind::from_str(name).map(|b| b.id()).unwrap_or(0) as i32]
     }
   }
 }
