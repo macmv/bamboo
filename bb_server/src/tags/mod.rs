@@ -47,7 +47,10 @@ impl TagCategory {
       }
       panic!();
     } else {
-      vec![block::Kind::from_str(name).map(|b| b.id()).unwrap_or(0) as i32]
+      match block::Kind::from_str(name) {
+        Ok(id) => vec![id as i32],
+        Err(_) => vec![],
+      }
     }
   }
 }
