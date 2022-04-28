@@ -19,7 +19,6 @@ impl Tags {
     tags.insert("minecraft:fluid".into(), self.categories.fluid.serialize());
     tags.insert("minecraft:entity_type".into(), self.categories.entity_type.serialize());
     tags.insert("minecraft:game_event".into(), self.categories.game_event.serialize());
-    dbg!(&tags);
     cb::Packet::Tags { categories: tags }
   }
 }

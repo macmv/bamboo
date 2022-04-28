@@ -944,8 +944,8 @@ impl ToTcp for Packet {
             for (name, tag) in tags {
               buf.write_str(name);
               buf.write_varint(tag.len() as i32);
-              for elem in tag {
-                buf.write_str(elem);
+              for _elem in tag {
+                buf.write_varint(5);
               }
             }
           }
