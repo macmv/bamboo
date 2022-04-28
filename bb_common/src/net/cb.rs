@@ -5,7 +5,7 @@ use crate::{
   util::{chat::Color, Chat, GameMode, Hand, Item, UUID},
 };
 use bb_macros::Transfer;
-use std::net::SocketAddr;
+use std::{collections::HashMap, net::SocketAddr};
 
 #[derive(Transfer, Debug, Clone, PartialEq)]
 #[non_exhaustive]
@@ -219,6 +219,8 @@ pub enum Packet {
   /// failed, then a `sb::SwitchServerFailed` packet will be sent to the server.
   #[id = 18]
   SwitchServer { ips: Vec<SocketAddr> },
+  #[id = 41]
+  Tags { categories: HashMap<String, HashMap<String, Vec<String>>> },
   #[id = 35]
   Teams {
     team:   String,

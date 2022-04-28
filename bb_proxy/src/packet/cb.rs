@@ -933,6 +933,27 @@ impl ToTcp for Packet {
         conn.switch_to(ips);
         return Ok(smallvec![]);
       }
+      Packet::Tags { categories } => {
+        if ver >= ProtocolVersion::V1_14_4 {
+          let mut data = vec![];
+          let mut buf = Buffer::new(&mut data);
+          buf.write_varint(categories.len() as i32);
+          for (cat, tags) in &categories {
+            buf.write_str(cat);
+            buf.write_varint(tags.len() as i32);
+            for (name, tag) in tags {
+              buf.write_str(name);
+              buf.write_varint(tag.len() as i32);
+              for elem in tag {
+                buf.write_str(elem);
+              }
+            }
+          }
+          GPacket::SynchronizeTagsV14 { unknown: data }
+        } else {
+          return Err(WriteError::InvalidVer);
+        }
+      }
       Packet::Title { action } => {
         if ver >= ProtocolVersion::V1_17_1 {
           match action {

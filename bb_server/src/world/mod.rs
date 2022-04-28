@@ -51,6 +51,7 @@ use crate::{
   net::ConnSender,
   player::{Player, Team},
   plugin,
+  tags::Tags,
 };
 use gen::WorldGen;
 
@@ -113,6 +114,7 @@ pub struct WorldManager {
   item_converter:   Arc<item::TypeConverter>,
   entity_converter: Arc<entity::TypeConverter>,
   plugins:          Arc<plugin::PluginManager>,
+  tags:             Arc<Tags>,
   commands:         Arc<CommandTree>,
   config:           Arc<Config>,
 
@@ -656,6 +658,7 @@ impl WorldManager {
       entity_converter:  Arc::new(entity::TypeConverter::new()),
       plugins:           Arc::new(plugin::PluginManager::new()),
       commands:          Arc::new(CommandTree::new()),
+      tags:              Arc::new(Tags::new()),
       worlds:            RwLock::new(vec![]),
       players:           RwLock::new(HashMap::new()),
       teams:             RwLock::new(HashMap::new()),
@@ -748,6 +751,12 @@ impl WorldManager {
   pub fn plugins(&self) -> &Arc<plugin::PluginManager> { &self.plugins }
   /// Returns the commands used for the whole server.
   pub fn commands(&self) -> &CommandTree { &self.commands }
+
+  /// Returns the tags for this server. This is mostly used for serializing
+  /// packets. If you need the tags on a specific item/block, use `get` on
+  /// [`block_converter`](Self::block_converter) or
+  /// [`item_converter`](Self::item_converter).
+  pub fn tags(&self) -> &Tags { &self.tags }
 
   /// Broadcasts a message to everyone one the server.
   ///
