@@ -64,10 +64,13 @@ impl World {
       }
     });
     let mut c = Command::new("gamemode");
-    c.add_arg("mode", Parser::String(StringType::Word));
+    c.add_lit("survival");
+    c.add_lit("creative");
+    c.add_lit("adventure");
+    c.add_lit("spectator");
     self.commands().add(c, |_, player, args| match player {
       Some(player) => {
-        player.set_game_mode(match args[1].lit().to_lowercase().as_str() {
+        player.set_game_mode(match args[1].lit() {
           "survival" => GameMode::Survival,
           "creative" => GameMode::Creative,
           "adventure" => GameMode::Adventure,
