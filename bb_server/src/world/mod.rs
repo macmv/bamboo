@@ -178,10 +178,6 @@ impl World {
     // a player tries to join this world while it's still loading, we don't have the
     // connection thread trying to generate chunks at the same time.
     world.init();
-    let w = world.clone();
-    thread::spawn(move || {
-      w.global_tick_loop();
-    });
     world
   }
 
@@ -693,6 +689,22 @@ impl WorldManager {
 
   /// Adds a new world.
   pub fn add_world(self: &Arc<Self>) {
+    let world = World::new(
+      self.block_converter.clone(),
+      self.item_converter.clone(),
+      self.entity_converter.clone(),
+      self.plugins.clone(),
+      self.commands.clone(),
+      self.clone(),
+    );
+    let w = Arc::clone(&world);
+    thread::spawn(move || {
+      w.global_tick_loop();
+    });
+    self.worlds.write().push(world);
+  }
+  #[cfg(test)]
+  pub(crate) fn add_world_no_tick(self: &Arc<Self>) {
     self.worlds.write().push(World::new(
       self.block_converter.clone(),
       self.item_converter.clone(),
