@@ -9,12 +9,25 @@ use bb_common::{
 };
 use std::{str::FromStr, sync::Arc};
 
-/// This starts up the recieving loop for this connection. Do not call this
-/// more than once.
+/// Handles a single packet.
 pub(crate) fn handle(wm: &Arc<WorldManager>, player: &Arc<Player>, p: sb::Packet) {
+  // TODO: This depends on debug formatting, which is unstable. Also, it is slow,
+  // because we allocate every time this is called.
+  /*
+  let log_packets = wm.config().get::<_, Vec<String>>("log-packets");
+  if !log_packets.is_empty() {
+    let msg = format!("{p:?}");
+    for log in log_packets {
+      if log == "all" || msg.starts_with(&log) {
+        info!("packet: {msg}");
+        break;
+      }
+    }
+  }
+  */
   match p {
     sb::Packet::KeepAlive { id: _ } => {
-      // TODO
+      // TODO Keep aliev packets
     }
     sb::Packet::Chat { msg } => {
       /*
@@ -27,9 +40,7 @@ pub(crate) fn handle(wm: &Arc<WorldManager>, player: &Arc<Player>, p: sb::Packet
       */
 
       if msg.starts_with('/') {
-        let mut chars = msg.chars();
-        chars.next().unwrap();
-        player.world().commands().execute(wm, player, chars.as_str());
+        player.world().commands().execute(wm, player, &msg[1..]);
       } else {
         let text = msg;
         let mut msg = Chat::empty();
@@ -39,7 +50,7 @@ pub(crate) fn handle(wm: &Arc<WorldManager>, player: &Arc<Player>, p: sb::Packet
         ));
         msg.add("> ");
         msg.add(text);
-        player.world().broadcast(msg);
+        wm.broadcast(msg);
       }
     }
     sb::Packet::BlockDig { pos, status, face: _ } => {
