@@ -29,6 +29,7 @@ pub struct TagCategory {
 }
 
 #[derive(Clone, Debug, Deserialize)]
+#[allow(dead_code)]
 pub struct Tag {
   name:    String,
   replace: bool,
