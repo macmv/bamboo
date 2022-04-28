@@ -13,7 +13,7 @@ pub fn generate_tags(def: &TagsDef) -> String {
   gen.write_line("pub struct TagCategories {");
   gen.write_line("  block: TagCategory,");
   gen.write_line("  item: TagCategory,");
-  gen.write_line("  entity: TagCategory,");
+  gen.write_line("  entity_type: TagCategory,");
   gen.write_line("  fluid: TagCategory,");
   gen.write_line("  game_event: TagCategory,");
   gen.write_line("}");
@@ -29,6 +29,8 @@ pub fn generate_tags(def: &TagsDef) -> String {
 
   gen.write("pub fn generate_tags() -> TagCategories ");
   gen.write_block(|gen| {
+    gen.write_line("TagCategories {");
+    gen.add_indent();
     for cat in &def.categories {
       gen.write(&cat.name);
       gen.write_line(": TagCategory {");
@@ -38,8 +40,9 @@ pub fn generate_tags(def: &TagsDef) -> String {
       for tag in &cat.values {
         gen.write_line("Tag {");
         gen.add_indent();
-        gen.write("name: ");
-        gen.write_line(&tag.name);
+        gen.write("name: \"");
+        gen.write(&tag.name);
+        gen.write_line("\",");
         gen.write("values: &[");
         for (i, val) in tag.values.iter().enumerate() {
           gen.write("\"");
@@ -58,6 +61,8 @@ pub fn generate_tags(def: &TagsDef) -> String {
       gen.remove_indent();
       gen.write_line("},");
     }
+    gen.remove_indent();
+    gen.write_line("}");
   });
 
   gen.into_output()

@@ -11,6 +11,7 @@ pub mod math;
 pub mod net;
 pub mod player;
 pub mod plugin;
+pub mod tags;
 pub mod util;
 pub mod world;
 
