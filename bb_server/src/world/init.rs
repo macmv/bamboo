@@ -83,11 +83,7 @@ impl World {
     let mut c = Command::new("fly");
     self.commands().add(c, |_, player, _| {
       if let Some(p) = player {
-        let flag = !p.flying_allowed();
-        p.set_flying_allowed(flag);
-        if !flag {
-          p.set_flying(false);
-        }
+        p.set_flying_allowed(!p.flying_allowed());
       }
     });
     let mut c = Command::new("flyspeed");
