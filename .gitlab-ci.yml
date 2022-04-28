@@ -44,3 +44,4 @@ pages:
       - public
     reports:
       cobertura: cobertura.xml
+  coverage: '/^\d+.\d+% coverage/'
