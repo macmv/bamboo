@@ -130,6 +130,9 @@ pub struct Data {
   /// The latest version state id. This is the lowest possible state for this
   /// block. It is used to offset the state calculation for properties.
   pub state:     u32,
+  /// A list of vanilla tags for this block. Plugins should be able to add tags
+  /// in the future. These tags don't include `minecraft:` at the start.
+  pub tags:      &'static [&'static str],
   /// All the properties on this block. These are stored so that it is easy to
   /// convert a single property on a block.
   props:         &'static [Prop],

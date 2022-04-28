@@ -79,6 +79,10 @@ pub struct Block {
   /// A list of items this block drops.
   drops: Vec<ItemDrop>,
 
+  /// All of the tags for this block. Each tag starts with `#`, and does not
+  /// include `minecraft:`.
+  tags: Vec<String>,
+
   /// A list of all the properties on this block. If the states are empty, there
   /// is a single valid state for this block, which has no properties. See the
   /// [`State`] docs for more.
