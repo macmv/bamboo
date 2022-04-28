@@ -6,6 +6,7 @@ mod entity;
 pub mod gen;
 mod item;
 mod protocol;
+mod tag;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct Version {
@@ -33,12 +34,10 @@ fn out_dir() -> PathBuf {
 }
 
 pub fn generate_blocks() { block::generate(&out_dir()).unwrap(); }
-
 pub fn generate_items() { item::generate(&out_dir()).unwrap(); }
-
 pub fn generate_entities() { entity::generate(&out_dir()).unwrap(); }
-
 pub fn generate_protocol() { protocol::generate(&out_dir()).unwrap(); }
+pub fn generate_tags() { tag::generate(&out_dir()).unwrap(); }
 
 pub static VERSIONS: &[Version] = &[
   Version::new(8, 9, 47),
