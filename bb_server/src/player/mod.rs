@@ -458,6 +458,8 @@ impl Player {
     self.send_abilities();
   }
 
+  pub fn flying_allowed(&self) -> bool { self.abilities.lock().flying_allowed }
+
   /// Sets the player to be flying. This will send an update to the client,
   /// causing them to start/stop flying.
   pub fn set_flying(&self, flying: bool) {
