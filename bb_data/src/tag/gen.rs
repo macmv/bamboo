@@ -11,20 +11,20 @@ pub fn generate(def: Vec<(Version, TagsDef)>, dir: &Path) -> io::Result<()> {
 pub fn generate_tags(def: &TagsDef) -> String {
   let mut gen = CodeGen::new();
   gen.write_line("pub struct TagCategories {");
-  gen.write_line("  block: TagCategory,");
-  gen.write_line("  item: TagCategory,");
-  gen.write_line("  entity_type: TagCategory,");
-  gen.write_line("  fluid: TagCategory,");
-  gen.write_line("  game_event: TagCategory,");
+  gen.write_line("  pub block: TagCategory,");
+  gen.write_line("  pub item: TagCategory,");
+  gen.write_line("  pub entity_type: TagCategory,");
+  gen.write_line("  pub fluid: TagCategory,");
+  gen.write_line("  pub game_event: TagCategory,");
   gen.write_line("}");
 
   gen.write_line("pub struct TagCategory {");
-  gen.write_line("  tags: &'static [Tag],");
+  gen.write_line("  pub tags: &'static [Tag],");
   gen.write_line("}");
 
   gen.write_line("pub struct Tag {");
-  gen.write_line("  name: &'static str,");
-  gen.write_line("  values: &'static [&'static str],");
+  gen.write_line("  pub name: &'static str,");
+  gen.write_line("  pub values: &'static [&'static str],");
   gen.write_line("}");
 
   gen.write("pub fn generate_tags() -> TagCategories ");
