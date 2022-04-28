@@ -314,6 +314,7 @@ dependencies = [
  "parking_lot 0.12.0",
  "pprof 0.4.5",
  "pyo3",
+ "rand 0.8.4",
  "rayon",
  "serde",
  "serde_json",

@@ -4,6 +4,7 @@ use bb_common::{
   metadata::Metadata,
   net::cb,
 };
+use rand::Rng;
 use std::{cmp::Ordering, str::FromStr, sync::Arc};
 
 /// General block manipulation functions
@@ -36,11 +37,19 @@ impl World {
       };
       let mut meta = Metadata::new();
       meta.set_item(8, Stack::new(item).with_amount(drop.max as u8).to_item());
-      self.summon_meta(
-        entity::Type::Item,
-        FPos::new(pos.x as f64 + 0.5, pos.y as f64 + 0.5, pos.z as f64 + 0.5),
-        meta,
-      );
+      let item_height = 0.25 / 2.0;
+      thread_local!(static RNG: rand::rngs::ThreadRng = rand::thread_rng());
+      RNG.with(|mut rng| {
+        self.summon_meta(
+          entity::Type::Item,
+          FPos::new(
+            pos.x as f64 + (rng.gen_range(0.25f64, 0.75f64) as f64),
+            pos.y as f64 + (rng.gen_range(0.25f64, 0.75f64) as f64) - item_height,
+            pos.z as f64 + (rng.gen_range(0.25f64, 0.75f64) as f64),
+          ),
+          meta,
+        );
+      });
     }
     Ok(res)
   }

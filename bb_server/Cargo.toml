@@ -20,6 +20,8 @@ bb_plugin_macros = { path = "../bb_plugin_macros" }
 # logger
 log = "0.4"
 
+#rng
+rand = "0.8"
 # par_iter
 rayon = "1.5.1"
 # networking
