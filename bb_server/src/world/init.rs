@@ -63,6 +63,22 @@ impl World {
         _ => unreachable!(),
       }
     });
+    let mut c = Command::new("gamemode");
+    c.add_arg("mode", Parser::String(StringType::Word));
+    self.commands().add(c, |_, player, args| {
+      match player {
+        Some(player) => {
+          player.set_game_mode(match args[1].lit().to_lowercase().as_str() {
+            "survival"  => GameMode::Survival,
+            "creative"  => GameMode::Creative,
+            "adventure" => GameMode::Adventure,
+            "spectator" => GameMode::Spectator,
+            _ => unreachable!(),
+          });
+        },
+        _ => {}
+      }
+    });
     let mut c = Command::new("flyspeed");
     c.add_arg("multiplier", Parser::Float { min: None, max: None });
     self.commands().add(c, |_, player, args| {
