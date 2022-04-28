@@ -1,11 +1,11 @@
-use crate::{block, entity, item, item::Stack, math::AABB, world::World};
+use crate::{block, entity, item, item::Stack, math::AABB, RNG, world::World};
 use bb_common::{
   math::{ChunkPos, FPos, Pos, PosError, Vec3},
   metadata::Metadata,
   net::cb,
 };
-use rand::{rngs::ThreadRng, Rng};
-use std::{cell::RefCell, cmp::Ordering, str::FromStr, sync::Arc};
+use std::{cmp::Ordering, str::FromStr, sync::Arc};
+use rand::Rng;
 
 /// General block manipulation functions
 impl World {
@@ -37,14 +37,14 @@ impl World {
       };
       let mut meta = Metadata::new();
       meta.set_item(8, Stack::new(item).with_amount(drop.max as u8).to_item());
-      thread_local!(static RNG: RefCell<ThreadRng> = rand::thread_rng().into());
-      RNG.with(|rng| {
+      RNG.with(|rng_ref| {
+        let mut rng = rng_ref.borrow_mut();
         self.summon_meta(
           entity::Type::Item,
           FPos::new(
-            pos.x as f64 + (rng.borrow_mut().gen_range(0.25_f64..0.75_f64) as f64),
-            pos.y as f64 + (rng.borrow_mut().gen_range(0.25_f64..0.75_f64) as f64) - 0.125,
-            pos.z as f64 + (rng.borrow_mut().gen_range(0.25_f64..0.75_f64) as f64),
+            pos.x as f64 + rng.gen_range(0.25f64..0.75f64),
+            pos.y as f64 + rng.gen_range(0.25f64..0.75f64) - 0.125,
+            pos.z as f64 + rng.gen_range(0.25f64..0.75f64),
           ),
           meta,
         );

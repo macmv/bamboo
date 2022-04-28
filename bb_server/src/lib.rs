@@ -3,6 +3,9 @@
 #[macro_use]
 extern crate log;
 
+use rand::rngs::ThreadRng;
+use std::cell::RefCell;
+
 pub mod block;
 pub mod command;
 pub mod entity;
@@ -47,3 +50,5 @@ mod tests {
   #[test]
   fn generate_docs() { generate_panda_docs(); }
 }
+
+thread_local!(pub(crate) static RNG: RefCell<ThreadRng> = RefCell::new(rand::thread_rng()));
