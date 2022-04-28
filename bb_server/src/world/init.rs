@@ -80,7 +80,7 @@ impl World {
       }
       _ => {}
     });
-    let mut c = Command::new("fly");
+    let c = Command::new("fly");
     self.commands().add(c, |_, player, _| {
       if let Some(p) = player {
         p.set_flying_allowed(!p.flying_allowed());
