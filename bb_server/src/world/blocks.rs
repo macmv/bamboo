@@ -4,8 +4,8 @@ use bb_common::{
   metadata::Metadata,
   net::cb,
 };
-use rand::Rng;
-use std::{cmp::Ordering, str::FromStr, sync::Arc};
+use rand::{rngs::ThreadRng, Rng};
+use std::{cell::RefCell, cmp::Ordering, str::FromStr, sync::Arc};
 
 /// General block manipulation functions
 impl World {
@@ -37,15 +37,14 @@ impl World {
       };
       let mut meta = Metadata::new();
       meta.set_item(8, Stack::new(item).with_amount(drop.max as u8).to_item());
-      let item_height = 0.25 / 2.0;
-      thread_local!(static RNG: rand::rngs::ThreadRng = rand::thread_rng());
-      RNG.with(|mut rng| {
+      thread_local!(static RNG: RefCell<ThreadRng> = rand::thread_rng().into());
+      RNG.with(|rng| {
         self.summon_meta(
           entity::Type::Item,
           FPos::new(
-            pos.x as f64 + (rng.gen_range(0.25f64, 0.75f64) as f64),
-            pos.y as f64 + (rng.gen_range(0.25f64, 0.75f64) as f64) - item_height,
-            pos.z as f64 + (rng.gen_range(0.25f64, 0.75f64) as f64),
+            pos.x as f64 + (rng.borrow_mut().gen_range(0.25_f64..0.75_f64) as f64),
+            pos.y as f64 + (rng.borrow_mut().gen_range(0.25_f64..0.75_f64) as f64) - 0.125,
+            pos.z as f64 + (rng.borrow_mut().gen_range(0.25_f64..0.75_f64) as f64),
           ),
           meta,
         );
