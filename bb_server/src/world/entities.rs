@@ -276,8 +276,18 @@ impl World {
         vel_y: p.vel.fixed_y(),
         vel_z: p.vel.fixed_z(),
         meta:  ent.metadata().clone(),
+        // We can't reallt check if its a falling block on the proxy, so we do cross-versioning
+        // this here.
         data:  if ent.ty() == entity::Type::FallingBlock {
-          player.world().block_converter().to_old(data as u32, player.ver().block()) as i32
+          let bid = player.world().block_converter().to_old(data as u32, player.ver().block());
+          if player.ver().block() <= bb_common::version::BlockVersion::V1_12 {
+            // Reason for switching metadata in this one location: no idea whatsoever.
+            let meta = bid & 0xf;
+            let block_id = bid >> 4;
+            (block_id | meta << 12) as i32
+          } else {
+            bid as i32
+          }
         } else {
           data
         },
