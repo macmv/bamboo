@@ -74,6 +74,8 @@ pub fn make_behaviors() -> HashMap<Kind, Box<dyn Behavior>> {
     Sand | RedSand | Gravel => impls::Falling,
 
     CraftingTable => impls::CraftingTable,
+
+    RedBed => impls::Bed,
   };
   out
 }
