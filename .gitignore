@@ -17,8 +17,8 @@ perf.data.old
 
 # User-specific configs should be written here, we don't really want
 # these to get checked in.
-server.toml
-proxy.toml
+/server.toml
+/proxy.toml
 
 # a testing world
 /world
