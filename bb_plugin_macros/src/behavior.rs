@@ -1,7 +1,9 @@
 #![allow(dead_code)]
 
 use proc_macro::TokenStream;
+use proc_macro2::Span;
 use quote::quote;
+use std::collections::HashMap;
 use syn::{
   parse::{Parse, ParseStream, Result},
   parse_macro_input,
@@ -11,6 +13,7 @@ use syn::{
 
 struct Behaviors {
   defs:     Vec<Def>,
+  def_map:  HashMap<String, Vec<Ident>>,
   mappings: Vec<Mapping>,
 }
 
@@ -46,11 +49,18 @@ struct KeyDef {
 
 impl Parse for Behaviors {
   fn parse(input: ParseStream) -> Result<Self> {
-    let mut defs = vec![];
+    let mut defs: Vec<Def> = vec![];
     let mut mappings = vec![];
     loop {
       if input.is_empty() {
-        break Ok(Behaviors { defs, mappings });
+        break Ok(Behaviors {
+          def_map: defs
+            .iter()
+            .map(|def| (def.key.key.to_string(), def.values.iter().cloned().collect()))
+            .collect(),
+          defs,
+          mappings,
+        });
       }
       let mut keys: Punctuated<MapKey, Token![|]> = Punctuated::parse_separated_nonempty(input)?;
       let look = input.lookahead1();
@@ -101,12 +111,14 @@ impl Parse for KeyDef {
 }
 
 impl Behaviors {
-  pub fn expand(&self) -> TokenStream {
+  pub fn expand(self) -> TokenStream {
     let mut out = vec![];
-    for mapping in &self.mappings {
-      let expr = &mapping.value;
-      for key in &mapping.keys {
-        for key in self.all_keys(&key) {
+    for mapping in self.mappings {
+      let expr = mapping.value;
+      for key in mapping.keys {
+        let mut list = vec![];
+        key.all_keys(&self.def_map, &mut list);
+        for key in list {
           out.push(quote!(out.insert(Kind::#key, Box::new(#expr))));
         }
       }
@@ -118,9 +130,31 @@ impl Behaviors {
     }
     .into()
   }
-  fn all_keys(&self, keys: &MapKey) -> Vec<Ident> {
-    let mut out = vec![];
-    out
+}
+
+impl MapKey {
+  fn all_keys(self, defs: &HashMap<String, Vec<Ident>>, out: &mut Vec<Ident>) {
+    self.all_keys_inner("".into(), defs, out);
+  }
+  fn all_keys_inner(
+    mut self,
+    prefix: String,
+    defs: &HashMap<String, Vec<Ident>>,
+    out: &mut Vec<Ident>,
+  ) {
+    if self.sections.is_empty() {
+      out.push(Ident::new(&prefix, Span::call_site()));
+      return;
+    }
+    let first = self.sections.remove(0);
+    match first {
+      KeySection::Lit(lit) => self.all_keys_inner(prefix + &lit.to_string(), defs, out),
+      KeySection::Def(def) => {
+        for val in &defs[&def.key.to_string()] {
+          self.clone().all_keys_inner(prefix.clone() + &val.to_string(), defs, out)
+        }
+      }
+    }
   }
 }
 
