@@ -114,10 +114,21 @@ impl World {
   pub fn summon(self: &Arc<Self>, ty: entity::Type, pos: FPos) -> i32 {
     self.summon_meta(ty, pos, Metadata::new())
   }
-
+  pub fn summon_data(self: &Arc<Self>, ty: entity::Type, pos: FPos, data: i32) -> i32 {
+    self.summon_meta_data(ty, pos, Metadata::new(), data)
+  }
   pub fn summon_meta(self: &Arc<Self>, ty: entity::Type, pos: FPos, meta: Metadata) -> i32 {
+    self.summon_meta_data(ty, pos, meta, 1)
+  }
+  pub fn summon_meta_data(
+    self: &Arc<Self>,
+    ty: entity::Type,
+    pos: FPos,
+    meta: Metadata,
+    data: i32,
+  ) -> i32 {
     let eid = self.new_eid();
-    let ent = Entity::Entity(Arc::new(EntityData::new(eid, ty, self.clone(), pos, meta)));
+    let ent = Entity::Entity(Arc::new(EntityData::new(eid, ty, self.clone(), pos, meta, data)));
     self.add_entity(eid, ent.clone());
     let entity_ref = ent.as_entity_ref(self).unwrap();
 
@@ -249,9 +260,10 @@ impl World {
         meta:     ent.metadata().clone(),
       });
     } else {
-      // Data is some data specific to that entity. If it is non-zero, then velocity
-      // is present.
-      let _data: i32 = 0;
+      let data: i32 = match ent {
+        EntityRef::Entity(e) => e.data(),
+        _ => 1,
+      };
       player.send(cb::Packet::SpawnEntity {
         eid:   ent.eid(),
         // 1.18 clients will not render mobs that have the same UUID
@@ -264,6 +276,11 @@ impl World {
         vel_y: p.vel.fixed_y(),
         vel_z: p.vel.fixed_z(),
         meta:  ent.metadata().clone(),
+        data:  if ent.ty() == entity::Type::FallingBlock {
+          player.world().block_converter().to_old(data as u32, player.ver().block()) as i32
+        } else {
+          data
+        },
       });
       // player.send(cb::Packet::SpawnEntity {
       //   entity_id:        ent.eid(),

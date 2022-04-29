@@ -202,6 +202,7 @@ pub enum Packet {
     vel_y: i16,
     vel_z: i16,
     meta:  Metadata,
+    data:  i32,
   },
   #[id = 17]
   SpawnPlayer {

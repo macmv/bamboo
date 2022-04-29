@@ -819,7 +819,19 @@ impl ToTcp for Packet {
           }
         }
       }
-      Packet::SpawnEntity { eid, id, ty, pos, yaw, pitch, vel_x, vel_y, vel_z, meta } => {
+      Packet::SpawnEntity {
+        eid,
+        id,
+        ty,
+        pos,
+        yaw,
+        pitch,
+        vel_x,
+        vel_y,
+        vel_z,
+        meta,
+        data: data_int,
+      } => {
         let new_ty = ty;
         let ty = conn.conv().entity_to_old(ty, ver.block()) as i32;
         let spawn = if ver >= ProtocolVersion::V1_14_4 {
@@ -831,7 +843,7 @@ impl ToTcp for Packet {
           buf.write_f64(pos.z());
           buf.write_i8(pitch);
           buf.write_i8(yaw);
-          buf.write_i32(0); // data
+          buf.write_i32(data_int); // data
           buf.write_i16(vel_x);
           buf.write_i16(vel_y);
           buf.write_i16(vel_z);
@@ -849,8 +861,7 @@ impl ToTcp for Packet {
             speed_x:   vel_x.into(),
             speed_y:   vel_y.into(),
             speed_z:   vel_z.into(),
-            data:      1, /* Writer is bugged, so velocity is always written, so this can never
-                           * be 0 */
+            data:      data_int,
           }
         } else {
           let mut data = vec![];
@@ -866,7 +877,7 @@ impl ToTcp for Packet {
             z:              (pos.z() * 32.0) as i32,
             yaw:            yaw.into(),
             pitch:          pitch.into(),
-            field_149020_k: 1, // Non-zero, so velocity is present
+            field_149020_k: data_int,
             unknown:        data,
           }
         };

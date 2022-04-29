@@ -88,6 +88,10 @@ pub struct EntityData {
 
   /// Entity metadata
   meta: Mutex<Metadata>,
+
+  /// An extra int. Used for item frames and falling blocks. Appears to only be
+  /// used when it changes the rendering of the base entity model.
+  data: i32,
 }
 
 impl Entity {
@@ -238,7 +242,7 @@ impl EntityData {
   /// Creates a new entity, with default functionality. They will take normal
   /// damage, and despawn if their health hits 0. If you want custom
   /// functionality of any kind, call [`new_custom`](Self::new_custom).
-  pub fn new(eid: i32, ty: Type, world: Arc<World>, pos: FPos, meta: Metadata) -> Self {
+  pub fn new(eid: i32, ty: Type, world: Arc<World>, pos: FPos, meta: Metadata, data: i32) -> Self {
     let behavior = behavior::for_entity(ty);
     EntityData {
       eid,
@@ -248,6 +252,7 @@ impl EntityData {
       world: RwLock::new(world),
       behavior: Mutex::new(behavior),
       meta: Mutex::new(meta),
+      data,
     }
   }
 
@@ -260,6 +265,7 @@ impl EntityData {
     world: Arc<World>,
     behavior: B,
     meta: Metadata,
+    data: i32,
   ) -> Self {
     EntityData {
       eid,
@@ -269,9 +275,11 @@ impl EntityData {
       world: RwLock::new(world),
       behavior: Mutex::new(Box::new(behavior)),
       meta: Mutex::new(meta),
+      data,
     }
   }
 
+  pub fn data(&self) -> i32 { self.data }
   pub fn fpos(&self) -> FPos { self.pos.lock().aabb.pos }
   pub fn health(&self) -> f32 { *self.health.lock() }
   pub fn eid(&self) -> i32 { self.eid }
