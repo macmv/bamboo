@@ -13,6 +13,7 @@ use std::collections::HashMap;
 
 /// A block in the worl. This simply stores a [`Type`] and a [`Pos`]. This
 /// stores no references to the world, so this may be out of date.
+#[derive(Debug, Clone, Copy)]
 pub struct Block {
   pub pos: Pos,
   pub ty:  Type,

@@ -1,11 +1,11 @@
-use crate::{block, entity, item, item::Stack, math::AABB, RNG, world::World};
+use crate::{block, block::Block, entity, item, item::Stack, math::AABB, world::World, RNG};
 use bb_common::{
   math::{ChunkPos, FPos, Pos, PosError, Vec3},
   metadata::Metadata,
   net::cb,
 };
-use std::{cmp::Ordering, str::FromStr, sync::Arc};
 use rand::Rng;
+use std::{cmp::Ordering, str::FromStr, sync::Arc};
 
 /// General block manipulation functions
 impl World {
@@ -61,7 +61,51 @@ impl World {
   /// could not be placed. This will only ever return `Ok(false)` if the world
   /// is locked. If the block is the same type as what is already present,
   /// this will still return `Ok(true)` if the world was unlocked.
-  pub fn set_block(&self, pos: Pos, ty: block::Type) -> Result<bool, PosError> {
+  pub fn set_block(self: &Arc<Self>, pos: Pos, ty: block::Type) -> Result<bool, PosError> {
+    if self.is_locked() {
+      let id = self.get_block(pos)?.id();
+      for p in self.players().iter().in_view(pos.chunk()) {
+        p.send(cb::Packet::BlockUpdate {
+          pos,
+          state: self.block_converter.to_old(id, p.ver().block()),
+        });
+      }
+      return Ok(false);
+    }
+
+    let mut old_block = Block::new(pos, ty);
+    let new_block = Block::new(pos, ty);
+    self.chunk(pos.chunk(), |mut c| {
+      old_block.ty = c.get_type(pos.chunk_rel())?;
+      c.set_type(pos.chunk_rel(), ty)
+    })?;
+    macro_rules! dir {
+      ( $x:expr, $y:expr, $z:expr ) => {
+        if let Ok(ty) = self.get_block(pos + Pos::new($x, $y, $z)) {
+          self.world_manager().block_behaviors().call(ty.kind(), |b| {
+            b.update(self, Block::new(pos + Pos::new($x, $y, $z), ty), old_block, new_block)
+          });
+        }
+      };
+    }
+    dir!(1, 0, 0);
+    dir!(-1, 0, 0);
+    dir!(0, 1, 0);
+    dir!(0, -1, 0);
+    dir!(0, 0, 1);
+    dir!(0, 0, -1);
+
+    let id = ty.id();
+    for p in self.players().iter().in_view(pos.chunk()) {
+      p.send(cb::Packet::BlockUpdate {
+        pos,
+        state: self.block_converter.to_old(id, p.ver().block()),
+      });
+    }
+    Ok(true)
+  }
+
+  pub fn set_block_no_update(&self, pos: Pos, ty: block::Type) -> Result<bool, PosError> {
     if self.is_locked() {
       let id = self.get_block(pos)?.id();
       for p in self.players().iter().in_view(pos.chunk()) {
@@ -93,7 +137,7 @@ impl World {
   /// could not be placed. This will only ever return `Ok(false)` if the world
   /// is locked. If the block is the same type as what is already present,
   /// this will still return `Ok(true)` if the world was unlocked.
-  pub fn set_kind(&self, pos: Pos, kind: block::Kind) -> Result<bool, PosError> {
+  pub fn set_kind(self: &Arc<Self>, pos: Pos, kind: block::Kind) -> Result<bool, PosError> {
     self.set_block(pos, self.block_converter.get(kind).default_type())
   }
 
@@ -103,7 +147,7 @@ impl World {
   pub fn fill_rect(&self, min: Pos, max: Pos, ty: block::Type) -> Result<(), PosError> {
     // Small fills should just send a block update, instead of a multi block change.
     if min == max {
-      self.set_block(min, ty)?;
+      self.set_block_no_update(min, ty)?;
       return Ok(());
     }
     let (min, max) = Pos::min_max(min, max);
