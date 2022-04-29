@@ -56,36 +56,53 @@ pub trait TileEntity: Send {}
 
 pub fn make_behaviors() -> HashMap<Kind, Box<dyn Behavior>> {
   let mut out: HashMap<_, Box<dyn Behavior>> = HashMap::new();
-  macro_rules! behaviors {
-    ( $($kind:ident $(| $kind2:ident)* => $impl:expr,)* ) => {
+  /*
+  macro_rules! b {
+    ( $kind:ident $(| $kind2:ident)* => $impl:expr ) => {
+      out.insert(Kind::$kind, Box::new($impl));
       $(
-        out.insert(Kind::$kind, Box::new($impl));
-        $(
-          out.insert(Kind::$kind2, Box::new($impl));
-        )*
+        out.insert(Kind::$kind2, Box::new($impl));
       )*
+    };
+    ( *color*$kind:ident => $impl:expr ) => {
+      let name = concat_idents!(Red, $kind);
+      out.insert(Kind::name, Box::new($impl));
     }
   }
-  behaviors! {
-    OakLog => impls::Log,
-    BirchLog => impls::Log,
-    SpruceLog => impls::Log,
-    DarkOakLog => impls::Log,
-    AcaciaLog => impls::Log,
-    JungleLog => impls::Log,
-    StrippedOakLog => impls::Log,
-    StrippedBirchLog => impls::Log,
-    StrippedSpruceLog => impls::Log,
-    StrippedDarkOakLog => impls::Log,
-    StrippedAcaciaLog => impls::Log,
-    StrippedJungleLog => impls::Log,
+  */
+  bb_plugin_macros::behavior! {
+    *wood* = Oak, Birch, Spruce, DarkOak, Acacia, Jungle;
+    *color* = White, Orange, Magenta, LightBlue, Yellow, Lime, Pink, Gray, LightGray, Cyan, Purple, Blue, Brown, Green, Red, Black;
 
-    Sand | RedSand | Gravel => impls::Falling,
+    *wood*Log => impls::Log;
+    Stripped*wood*Log => impls::Log;
 
-    CraftingTable => impls::CraftingTable,
+    Sand | RedSand | Gravel => impls::Falling;
 
-    RedBed => impls::Bed,
+    CraftingTable => impls::CraftingTable;
+
+    *color*Bed => impls::Bed;
   };
+  /*
+  b!(OakLog => impls::Log);
+  b!(BirchLog => impls::Log);
+  b!(SpruceLog => impls::Log);
+  b!(DarkOakLog => impls::Log);
+  b!(AcaciaLog => impls::Log);
+  b!(JungleLog => impls::Log);
+  b!(StrippedOakLog => impls::Log);
+  b!(StrippedBirchLog => impls::Log);
+  b!(StrippedSpruceLog => impls::Log);
+  b!(StrippedDarkOakLog => impls::Log);
+  b!(StrippedAcaciaLog => impls::Log);
+  b!(StrippedJungleLog => impls::Log);
+
+  b!(Sand | RedSand | Gravel => impls::Falling);
+
+  b!(CraftingTable => impls::CraftingTable);
+
+  b!(*color*Bed => impls::Bed);
+  */
   out
 }
 
