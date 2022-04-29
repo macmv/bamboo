@@ -1,4 +1,4 @@
-use super::ChunkPos;
+use super::{ChunkPos, FPos};
 use crate::util::Face;
 use bb_macros::Transfer;
 use std::{
@@ -299,6 +299,14 @@ impl Pos {
       Pos::new(self.x.min(other.x), self.y.min(other.y), self.z.min(other.z)),
       Pos::new(self.x.max(other.x), self.y.max(other.y), self.z.max(other.z)),
     )
+  }
+
+  /// Converts this position to a floating point position, with the X and Z
+  /// offset by 0.5. This is very common when spawning entities, as generally,
+  /// it is convenient to put them in the center of a block.
+  #[inline]
+  pub fn center(&self) -> FPos {
+    FPos::new(self.x as f64 + 0.5, self.y as f64, self.z as f64 + 0.5)
   }
 }
 

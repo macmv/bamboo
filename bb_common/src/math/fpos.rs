@@ -50,6 +50,7 @@ impl From<FPos> for Vec3 {
 impl FPos {
   /// Creates a new block position. This can be used to find chunk coordinates,
   /// place blocks, or send a position in a packet.
+  #[inline(always)]
   pub fn new(x: f64, y: f64, z: f64) -> Self { FPos { x, y, z } }
   /// Returns the X value of the position.
   #[inline(always)]
