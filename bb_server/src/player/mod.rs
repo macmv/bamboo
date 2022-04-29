@@ -21,10 +21,12 @@ mod inventory;
 mod scoreboard;
 mod team;
 mod tick;
+mod window;
 
 pub use inventory::PlayerInventory;
 pub use scoreboard::Scoreboard;
 pub use team::Team;
+pub use window::Window;
 
 #[derive(Debug, Clone)]
 struct DigProgress {
