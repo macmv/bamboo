@@ -1,7 +1,7 @@
 use super::{Block, Data, Kind, Type};
 use crate::{item::Stack, player::Player, world::World};
 use bb_common::{math::Pos, util::Face};
-use std::{collections::HashMap, sync::Arc};
+use std::sync::Arc;
 
 mod impls;
 
@@ -54,22 +54,29 @@ pub trait Behavior: Send + Sync {
 // TODO: This needs to be able to store it's data to disk.
 pub trait TileEntity: Send {}
 
-pub fn make_behaviors() -> HashMap<Kind, Box<dyn Behavior>> {
-  let mut out: HashMap<_, Box<dyn Behavior>> = HashMap::new();
-  /*
-  macro_rules! b {
-    ( $kind:ident $(| $kind2:ident)* => $impl:expr ) => {
-      out.insert(Kind::$kind, Box::new($impl));
-      $(
-        out.insert(Kind::$kind2, Box::new($impl));
-      )*
-    };
-    ( *color*$kind:ident => $impl:expr ) => {
-      let name = concat_idents!(Red, $kind);
-      out.insert(Kind::name, Box::new($impl));
+#[derive(Default)]
+pub struct BehaviorList {
+  behaviors: Vec<Option<Box<dyn Behavior>>>,
+}
+
+impl BehaviorList {
+  pub fn new() -> Self { BehaviorList::default() }
+  pub fn set(&mut self, kind: Kind, imp: Box<dyn Behavior>) {
+    while kind.id() as usize >= self.behaviors.len() {
+      self.behaviors.push(None);
+    }
+    self.behaviors[kind.id() as usize] = Some(imp);
+  }
+  pub fn get(&self, kind: Kind) -> Option<&Box<dyn Behavior>> {
+    match self.behaviors.get(kind.id() as usize) {
+      Some(Some(b)) => Some(b),
+      _ => None,
     }
   }
-  */
+}
+
+pub fn make_behaviors() -> BehaviorList {
+  let mut out = BehaviorList::new();
   bb_plugin_macros::behavior! {
     *wood* = Oak, Birch, Spruce, DarkOak, Acacia, Jungle;
     *color* = White, Orange, Magenta, LightBlue, Yellow, Lime, Pink, Gray, LightGray, Cyan, Purple, Blue, Brown, Green, Red, Black;
@@ -83,26 +90,6 @@ pub fn make_behaviors() -> HashMap<Kind, Box<dyn Behavior>> {
 
     *color*Bed => impls::Bed;
   };
-  /*
-  b!(OakLog => impls::Log);
-  b!(BirchLog => impls::Log);
-  b!(SpruceLog => impls::Log);
-  b!(DarkOakLog => impls::Log);
-  b!(AcaciaLog => impls::Log);
-  b!(JungleLog => impls::Log);
-  b!(StrippedOakLog => impls::Log);
-  b!(StrippedBirchLog => impls::Log);
-  b!(StrippedSpruceLog => impls::Log);
-  b!(StrippedDarkOakLog => impls::Log);
-  b!(StrippedAcaciaLog => impls::Log);
-  b!(StrippedJungleLog => impls::Log);
-
-  b!(Sand | RedSand | Gravel => impls::Falling);
-
-  b!(CraftingTable => impls::CraftingTable);
-
-  b!(*color*Bed => impls::Bed);
-  */
   out
 }
 

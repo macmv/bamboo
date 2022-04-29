@@ -119,7 +119,7 @@ impl Behaviors {
         let mut list = vec![];
         key.all_keys(&self.def_map, &mut list);
         for key in list {
-          out.push(quote!(out.insert(Kind::#key, Box::new(#expr))));
+          out.push(quote!(out.set(Kind::#key, Box::new(#expr))));
         }
       }
     }

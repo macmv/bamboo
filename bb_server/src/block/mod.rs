@@ -9,7 +9,7 @@ pub use ty::{Data, Kind, Prop, PropValue, Type};
 pub use version::TypeConverter;
 
 use bb_common::math::Pos;
-use std::collections::HashMap;
+use behavior::BehaviorList;
 
 /// A block in the worl. This simply stores a [`Type`] and a [`Pos`]. This
 /// stores no references to the world, so this may be out of date.
@@ -27,14 +27,14 @@ impl Block {
 }
 
 pub struct BehaviorStore {
-  behaviors: HashMap<Kind, Box<dyn Behavior>>,
+  behaviors: BehaviorList,
 }
 
 impl BehaviorStore {
   #[allow(clippy::new_without_default)]
   pub fn new() -> Self { BehaviorStore { behaviors: behavior::make_behaviors() } }
   pub fn call<R>(&self, kind: Kind, f: impl FnOnce(&Box<dyn Behavior>) -> R) -> Option<R> {
-    match self.behaviors.get(&kind) {
+    match self.behaviors.get(kind) {
       Some(b) => Some(f(b)),
       None => None,
     }
