@@ -129,7 +129,8 @@ impl PlayerInventory {
     if let Some(win) = &self.window {
       match index {
         0..=26 => win.get(idx),
-        27..=35 => self.hotbar.get(idx),
+        27..=53 => self.main.get(idx),
+        54..=62 => self.hotbar.get(idx),
         _ => None,
       }
     } else {
@@ -154,7 +155,8 @@ impl PlayerInventory {
     if let Some(win) = &mut self.window {
       match index {
         0..=26 => win.get_mut(idx),
-        27..=35 => self.hotbar.get_mut(idx),
+        27..=53 => self.main.get_mut(idx),
+        54..=62 => self.hotbar.get_mut(idx),
         _ => None,
       }
     } else {
@@ -228,7 +230,8 @@ impl PlayerInventory {
     if let Some(win) = &self.window {
       match index {
         0..=26 => win.sync(idx),
-        27..=35 => self.hotbar.sync(idx),
+        27..=53 => self.main.sync(idx),
+        54..=62 => self.hotbar.sync(idx),
         _ => panic!(),
       }
     } else {

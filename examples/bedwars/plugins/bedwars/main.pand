@@ -91,9 +91,7 @@ fn handle_shop(player, args) {
 
   let ui = UI::new([
     "xxxxxxxxx",
-    "x       x",
     "x abc   x",
-    "x       x",
     "xxxxxxxxx",
   ])
   ui.item("x", Stack::new("gray_stained_glass_pane"))
@@ -106,7 +104,7 @@ fn handle_shop(player, args) {
 fn on_click_window(player, slot, mode) {
   if player.in_window() {
     let clicked = player.get_item(slot)
-    if slot >= 20 && slot <= 22 {
+    if slot >= 11 && slot < 13 {
       purchase(player, clicked)
     }
     bamboo::info("handle buying at slot " + slot.to_s())

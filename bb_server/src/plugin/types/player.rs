@@ -201,10 +201,10 @@ impl PPlayer {
     }
     if let Ok(i) = self.inner() {
       let mut inv = i.lock_inventory();
-      let main = inv.main();
+      let main = inv.hotbar();
       let mut needed_amount = stack.inner.amount();
-      for slot in 9..46 {
-        let it = main.get(slot).unwrap();
+      for slot in 0..9 {
+        let it = main.get_raw(slot).unwrap();
         if it.item() == stack.inner.item() {
           needed_amount = needed_amount.saturating_sub(it.amount());
         }
@@ -214,9 +214,9 @@ impl PPlayer {
       }
       if needed_amount == 0 {
         let mut amount_to_remove = stack.inner.amount();
-        let main = inv.main_mut();
-        for slot in 9..46 {
-          let it = main.get_mut(slot).unwrap();
+        let main = inv.hotbar_mut();
+        for slot in 0..9 {
+          let it = main.get_raw_mut(slot).unwrap();
           let mut sync = false;
           if it.item() == stack.inner.item() {
             if it.amount() <= amount_to_remove {
@@ -231,7 +231,7 @@ impl PPlayer {
             needed_amount = needed_amount.saturating_sub(it.amount());
           }
           if sync {
-            main.sync(slot);
+            main.sync_raw(slot);
           }
           if amount_to_remove == 0 {
             break;
