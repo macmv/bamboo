@@ -2,8 +2,11 @@ use super::{
   super::{Block, Data, Kind, Type},
   Behavior,
 };
-use crate::{entity, world::World};
-use bb_common::{math::Pos, util::Face};
+use crate::{entity, item::Inventory, player::Player, world::World};
+use bb_common::{
+  math::Pos,
+  util::{Chat, Face},
+};
 use std::sync::Arc;
 
 pub struct Log;
@@ -33,5 +36,13 @@ impl Behavior for Falling {
       let _ = world.set_kind(block.pos, Kind::Air);
       world.summon_data(entity::Type::FallingBlock, block.pos.center(), block.ty.id() as i32);
     }
+  }
+}
+
+pub struct CraftingTable;
+impl Behavior for CraftingTable {
+  fn interact(&self, _: Block, player: &Arc<Player>) -> bool {
+    player.show_inventory(Inventory::new(), &Chat::new("Crafting Table"));
+    true
   }
 }

@@ -1,4 +1,4 @@
-use crate::{block, entity, item, player::Player, world::WorldManager};
+use crate::{block, block::Block, entity, item, player::Player, world::WorldManager};
 use bb_common::{
   math::{FPos, Pos},
   net::{cb, sb},
@@ -125,18 +125,29 @@ pub(crate) fn handle(wm: &Arc<WorldManager>, player: &Arc<Player>, p: sb::Packet
       {
         // self.use_item(player, hand);
       } else {
-        // TODO: Data generator should store which items are blockitems, and what blocks
-        // they place.
-        let mut inv = player.lock_inventory();
-        let stack = inv.main_hand();
-        let item_data = player.world().item_converter().get_data(stack.item());
-        let kind = block::Kind::from_str(item_data.name()).unwrap_or_else(|_| {
-          player.send_message(Chat::new(format!("ah! {} is confusing", item_data.name())));
-          block::Kind::Air
-        });
-
         match player.world().get_block(pos) {
           Ok(looking_at) => {
+            let handled = wm
+              .block_behaviors()
+              .call(looking_at.kind(), |b| b.interact(Block::new(pos, looking_at), &player))
+              .unwrap_or(false);
+
+            if handled {
+              let _ = player.sync_block_at(pos);
+              let _ = player.sync_block_at(pos + face);
+              return;
+            }
+
+            // TODO: Data generator should store which items are blockitems, and what blocks
+            // they place.
+            let mut inv = player.lock_inventory();
+            let stack = inv.main_hand();
+            let item_data = player.world().item_converter().get_data(stack.item());
+            let kind = block::Kind::from_str(item_data.name()).unwrap_or_else(|_| {
+              player.send_message(Chat::new(format!("ah! {} is confusing", item_data.name())));
+              block::Kind::Air
+            });
+
             let placing_data = wm.block_converter().get(kind);
             let ty = wm
               .block_behaviors()

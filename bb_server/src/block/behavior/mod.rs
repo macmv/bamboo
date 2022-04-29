@@ -1,5 +1,5 @@
 use super::{Block, Data, Kind, Type};
-use crate::world::World;
+use crate::{player::Player, world::World};
 use bb_common::{math::Pos, util::Face};
 use std::{collections::HashMap, sync::Arc};
 
@@ -33,6 +33,13 @@ pub trait Behavior: Send + Sync {
   /// Blocks such as chests, juke boxes, and furnaces should return a tile
   /// entity here.
   fn create_tile_entity(&self) -> Option<Box<dyn TileEntity>> { None }
+
+  /// Called when a player right clicks on this block. If this returns `true`,
+  /// the event was handled, and a block should not be placed.
+  fn interact(&self, block: Block, player: &Arc<Player>) -> bool {
+    let _ = (block, player);
+    false
+  }
 }
 
 // TODO: This needs to be able to store it's data to disk.
@@ -65,6 +72,8 @@ pub fn make_behaviors() -> HashMap<Kind, Box<dyn Behavior>> {
     StrippedJungleLog => impls::Log,
 
     Sand | RedSand | Gravel => impls::Falling,
+
+    CraftingTable => impls::CraftingTable,
   };
   out
 }
