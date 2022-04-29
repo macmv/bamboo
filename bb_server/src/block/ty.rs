@@ -23,7 +23,7 @@ impl Type {
   /// game.
   pub fn id(&self) -> u32 {
     let mut id = 0;
-    for (p, sid) in self.props.iter().zip(self.state_props) {
+    for (p, sid) in self.props.iter().zip(self.state_props).rev() {
       id *= p.len() as u32;
       id += sid;
     }
@@ -284,7 +284,7 @@ impl Data {
   /// Returns the type
   pub fn type_from_id(&self, mut id: u32) -> Type {
     let mut state_props = [0; STATE_PROPS_LEN];
-    for (i, p) in self.props.iter().enumerate().rev() {
+    for (i, p) in self.props.iter().enumerate() {
       let len = p.len();
       state_props[i] = id % len;
       id /= len;
@@ -329,12 +329,12 @@ mod tests {
 
     const ID: u32 = 148;
     let ty = conv.get(Kind::OakLeaves).default_type();
-    assert_eq!(ty.with_prop("distance", 1).with_prop("persistent", true).id(), ID + 0 + 0 * 2);
-    assert_eq!(ty.with_prop("distance", 1).with_prop("persistent", false).id(), ID + 1 + 0 * 2);
-    assert_eq!(ty.with_prop("distance", 2).with_prop("persistent", true).id(), ID + 0 + 1 * 2);
-    assert_eq!(ty.with_prop("distance", 2).with_prop("persistent", false).id(), ID + 1 + 1 * 2);
-    assert_eq!(ty.with_prop("distance", 3).with_prop("persistent", true).id(), ID + 0 + 2 * 2);
-    assert_eq!(ty.with_prop("distance", 3).with_prop("persistent", false).id(), ID + 1 + 2 * 2);
+    assert_eq!(ty.with_prop("distance", 1).with_prop("persistent", true).id(), ID + 0 * 7 + 0);
+    assert_eq!(ty.with_prop("distance", 1).with_prop("persistent", false).id(), ID + 1 * 7 + 0);
+    assert_eq!(ty.with_prop("distance", 2).with_prop("persistent", true).id(), ID + 0 * 7 + 1);
+    assert_eq!(ty.with_prop("distance", 2).with_prop("persistent", false).id(), ID + 1 * 7 + 1);
+    assert_eq!(ty.with_prop("distance", 3).with_prop("persistent", true).id(), ID + 0 * 7 + 2);
+    assert_eq!(ty.with_prop("distance", 3).with_prop("persistent", false).id(), ID + 1 * 7 + 2);
     assert_eq!(ty.id(), ID + 1 + 6 * 2);
   }
 }
