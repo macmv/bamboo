@@ -329,9 +329,16 @@ impl Add<Face> for Pos {
   type Output = Self;
   fn add(self, other: Face) -> Self { self + other.as_dir() }
 }
-
 impl AddAssign<Face> for Pos {
   fn add_assign(&mut self, other: Face) { *self += other.as_dir() }
+}
+
+impl Sub<Face> for Pos {
+  type Output = Self;
+  fn sub(self, other: Face) -> Self { self - other.as_dir() }
+}
+impl SubAssign<Face> for Pos {
+  fn sub_assign(&mut self, other: Face) { *self -= other.as_dir() }
 }
 
 impl Sub for Pos {

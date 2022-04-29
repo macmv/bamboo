@@ -239,6 +239,19 @@ impl Face {
     }
   }
 }
+impl From<&str> for Face {
+  fn from(s: &str) -> Face {
+    match s {
+      "BOTTOM" => Self::Bottom,
+      "TOP" => Self::Top,
+      "NORTH" => Self::North,
+      "SOUTH" => Self::South,
+      "EAST" => Self::West,
+      "WEST" => Self::East,
+      _ => Self::North,
+    }
+  }
+}
 
 #[derive(Debug, Clone, Copy, Hash, PartialEq, Eq)]
 pub struct UUID(u128);
