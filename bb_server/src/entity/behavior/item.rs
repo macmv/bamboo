@@ -1,6 +1,7 @@
 use super::{Behavior, EntityData, EntityPos, ShouldDespawn};
-use crate::item::Stack;
+use crate::{item::Stack, world::World};
 use bb_common::net::cb;
+use std::sync::Arc;
 
 #[derive(Default)]
 pub struct ItemBehavior {
@@ -8,7 +9,7 @@ pub struct ItemBehavior {
 }
 
 impl Behavior for ItemBehavior {
-  fn tick(&mut self, ent: &EntityData, p: &mut EntityPos) -> ShouldDespawn {
+  fn tick(&mut self, _: &Arc<World>, ent: &EntityData, p: &mut EntityPos) -> ShouldDespawn {
     let vel = p.vel;
     p.aabb.pos += vel;
     // This is for items.

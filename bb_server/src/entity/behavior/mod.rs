@@ -1,10 +1,14 @@
+mod falling_block;
 mod item;
 mod snowball;
 
+pub use falling_block::FallingBlock;
 pub use item::ItemBehavior;
 pub use snowball::SnowballBehavior;
 
 use super::{EntityData, EntityPos, Type};
+use crate::world::World;
+use std::sync::Arc;
 
 /// A wrapper type, to make it clear that `true` means an entity should be
 /// removed.
@@ -26,8 +30,8 @@ pub trait Behavior {
 
   /// Any extra functionality needed. Called every tick, after movement and
   /// collision checks have been completed.
-  fn tick(&mut self, ent: &EntityData, p: &mut EntityPos) -> ShouldDespawn {
-    let _ = ent;
+  fn tick(&mut self, world: &Arc<World>, ent: &EntityData, p: &mut EntityPos) -> ShouldDespawn {
+    let _ = (world, ent);
     let vel = p.vel;
     p.aabb.pos += vel;
     // 9.8 m/s ~= 0.5 m/tick. However, minecraft go brrr, and gravity is actually
@@ -56,6 +60,7 @@ pub fn for_entity(ty: Type) -> Box<dyn Behavior + Send> {
   match ty {
     Type::Snowball => Box::new(SnowballBehavior::default()),
     Type::Item => Box::new(ItemBehavior::default()),
+    Type::FallingBlock => Box::new(FallingBlock::default()),
     _ => Box::new(DefaultBehavior::default()),
   }
 }

@@ -293,7 +293,7 @@ impl EntityData {
     let mut p = *self.pos.lock();
     let old = p.aabb;
     let old_vel = p.vel;
-    if self.behavior.lock().tick(self, &mut p).0 {
+    if self.behavior.lock().tick(&*self.world.read(), self, &mut p).0 {
       return true;
     }
     let w = self.world.read();
