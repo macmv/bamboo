@@ -1,6 +1,6 @@
 use super::{
   super::{Block, Data, Kind, Type},
-  Behavior,
+  Behavior, BlockDrops, Drops,
 };
 use crate::{entity, item::Inventory, player::Player, world::World};
 use bb_common::{
@@ -71,6 +71,13 @@ impl Behavior for Bed {
   fn update(&self, world: &Arc<World>, block: Block, old: Block, new: Block) {
     if new.kind() == Kind::Air && old.kind() == block.kind() && self.other_half(block) == old.pos {
       let _ = world.set_kind(block.pos, Kind::Air);
+    }
+  }
+  fn drops(&self, block: Block) -> BlockDrops {
+    if block.ty.prop("part") == "FOOT" {
+      BlockDrops::Normal
+    } else {
+      BlockDrops::Custom(Drops::empty())
     }
   }
 }

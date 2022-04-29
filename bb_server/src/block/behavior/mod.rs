@@ -1,5 +1,5 @@
 use super::{Block, Data, Kind, Type};
-use crate::{player::Player, world::World};
+use crate::{item::Stack, player::Player, world::World};
 use bb_common::{math::Pos, util::Face};
 use std::{collections::HashMap, sync::Arc};
 
@@ -40,6 +40,15 @@ pub trait Behavior: Send + Sync {
     let _ = (block, player);
     false
   }
+  /// Returns the drops for the given block. The default drops for this block
+  /// are collected from the vanilla client, but this may require some
+  /// overrides. Returning [`BlockDrops::Normal`] will use the vanilla drops,
+  /// and returning [`BlockDrops::Custom`] will override the vanilla drops
+  /// with the given [`Drops`].
+  fn drops(&self, block: Block) -> BlockDrops {
+    let _ = block;
+    BlockDrops::Normal
+  }
 }
 
 // TODO: This needs to be able to store it's data to disk.
@@ -78,4 +87,20 @@ pub fn make_behaviors() -> HashMap<Kind, Box<dyn Behavior>> {
     RedBed => impls::Bed,
   };
   out
+}
+
+/// A collection of things to drop from a block or entity.
+#[derive(Debug, Clone, Default)]
+pub struct Drops {
+  pub exp:   i32,
+  pub items: Vec<Stack>,
+}
+
+pub enum BlockDrops {
+  Normal,
+  Custom(Drops),
+}
+
+impl Drops {
+  pub fn empty() -> Self { Drops::default() }
 }
