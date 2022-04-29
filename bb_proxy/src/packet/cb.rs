@@ -1162,14 +1162,25 @@ impl ToTcp for Packet {
           unknown:        vec![],
         }
       }
-      Packet::WindowItems { wid, items, held: _ } => {
-        let mut buf = tcp::Packet::from_buf_id(vec![], 0, ver);
-        buf.write_i16(items.len() as i16);
-        for mut it in items {
-          conn.conv().item(&mut it, ver.block());
-          buf.write_item(&it);
+      Packet::WindowItems { wid, items, held } => {
+        if ver >= ProtocolVersion::V1_17_1 {
+          let mut buf = tcp::Packet::from_buf_id(vec![], 0, ver);
+          buf.write_varint(items.len() as i32);
+          for mut it in items {
+            conn.conv().item(&mut it, ver.block());
+            buf.write_item(&it);
+          }
+          buf.write_item(&held);
+          GPacket::WindowItemsV17 { sync_id: wid.into(), revision: 0, unknown: buf.serialize() }
+        } else {
+          let mut buf = tcp::Packet::from_buf_id(vec![], 0, ver);
+          buf.write_i16(items.len() as i16);
+          for mut it in items {
+            conn.conv().item(&mut it, ver.block());
+            buf.write_item(&it);
+          }
+          GPacket::WindowItemsV8 { window_id: wid.into(), unknown: buf.serialize() }
         }
-        GPacket::WindowItemsV8 { window_id: wid.into(), unknown: buf.serialize() }
       }
       Packet::WindowItem { wid, slot, mut item } => {
         let mut buf = tcp::Packet::from_buf_id(vec![], 0, ver);
