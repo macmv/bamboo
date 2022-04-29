@@ -48,6 +48,16 @@ impl Behavior for CraftingTable {
 }
 
 pub struct Bed;
+impl Bed {
+  fn other_half(&self, block: Block) -> Pos {
+    let face = Face::from(block.ty.prop("facing").as_enum());
+    if block.ty.prop("part") == "FOOT" {
+      block.pos + face
+    } else {
+      block.pos - face
+    }
+  }
+}
 impl Behavior for Bed {
   fn place(&self, data: &Data, _: Pos, _: Face) -> Type {
     data.default_type().with_prop("part", "FOOT")
@@ -56,6 +66,11 @@ impl Behavior for Bed {
     if block.ty.prop("part") == "FOOT" {
       let dir = Face::North;
       let _ = world.set_block(block.pos + dir, block.ty.with_prop("part", "HEAD"));
+    }
+  }
+  fn update(&self, world: &Arc<World>, block: Block, old: Block, new: Block) {
+    if new.kind() == Kind::Air && old.kind() == block.kind() && self.other_half(block) == old.pos {
+      let _ = world.set_kind(block.pos, Kind::Air);
     }
   }
 }

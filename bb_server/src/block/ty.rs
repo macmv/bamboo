@@ -207,6 +207,12 @@ impl PropKind {
 }
 
 impl PropValue<'_> {
+  pub fn as_enum(&self) -> &str {
+    match self {
+      Self::Enum(v) => v,
+      _ => "",
+    }
+  }
   fn id(&self, kind: &PropKind) -> u32 {
     match self {
       Self::Bool(v) => {
