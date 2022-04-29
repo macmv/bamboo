@@ -172,7 +172,14 @@ fn find_ids(ver: Version, old_def: &EntityDef, new_def: &EntityDef) -> (Vec<u32>
   (to_old, to_new.into_iter().map(|v| v.unwrap_or(0)).collect())
 }
 
-fn convert_name(name: &str) -> String { name.to_case(Case::Pascal) }
+/// Convert new name to old name.
+fn convert_name(name: &str) -> String {
+  match name {
+    "falling_block" => "FallingSand",
+    _ => return name.to_case(Case::Pascal),
+  }
+  .into()
+}
 
 /*
 fn old_state(b: &Block, state: &State, old_map: &HashMap<String, Block>) -> u32 {
