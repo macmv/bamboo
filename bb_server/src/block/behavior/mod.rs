@@ -6,13 +6,32 @@ use std::{collections::HashMap, sync::Arc};
 mod impls;
 
 pub trait Behavior: Send + Sync {
+  /// Called when a block is about to be placed.
+  ///
+  /// This should handle things like logs rotating or torches not placing on
+  /// ceilings.
   fn place(&self, data: &Data, pos: Pos, face: Face) -> Type {
     let _ = (pos, face);
     data.default_type()
   }
+  /// Called after this block is placed. The `block` is the block that was
+  /// placed.
+  ///
+  /// This should handle falling blocks spawning after the block is placed.
+  fn update_place(&self, world: &Arc<World>, block: Block) { let _ = (world, block); }
+  /// Called whenever a block is updated next to `block`. `old` and `new` will
+  /// both have the same position, and will be next to `block`.
+  ///
+  /// This should handle falling blocks being created after a block is broken
+  /// underneath it.
   fn update(&self, world: &Arc<World>, block: Block, old: Block, new: Block) {
     let _ = (world, block, old, new);
   }
+  /// Called when the block is placed. If the block needs to store extra
+  /// information, a [`TileEntity`] should be returned.
+  ///
+  /// Blocks such as chests, juke boxes, and furnaces should return a tile
+  /// entity here.
   fn create_tile_entity(&self) -> Option<Box<dyn TileEntity>> { None }
 }
 

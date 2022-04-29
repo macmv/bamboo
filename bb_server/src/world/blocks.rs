@@ -79,6 +79,12 @@ impl World {
       old_block.ty = c.get_type(pos.chunk_rel())?;
       c.set_type(pos.chunk_rel(), ty)
     })?;
+    // First, handle the update for the block that was just placed.
+    self
+      .world_manager()
+      .block_behaviors()
+      .call(ty.kind(), |b| b.update_place(self, Block::new(pos, ty)));
+    // After that, handle updates for neighboring blocks.
     macro_rules! dir {
       ( $x:expr, $y:expr, $z:expr ) => {
         if let Ok(ty) = self.get_block(pos + Pos::new($x, $y, $z)) {
