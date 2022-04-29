@@ -117,6 +117,7 @@ pub struct WorldManager {
   tags:             Arc<Tags>,
   commands:         Arc<CommandTree>,
   config:           Arc<Config>,
+  block_behaviors:  RwLock<block::BehaviorStore>,
 
   default_game_mode: GameMode,
   spawn_point:       FPos,
@@ -659,6 +660,7 @@ impl WorldManager {
       plugins:           Arc::new(plugin::PluginManager::new()),
       commands:          Arc::new(CommandTree::new()),
       tags:              Arc::new(Tags::new()),
+      block_behaviors:   RwLock::new(block::BehaviorStore::new()),
       worlds:            RwLock::new(vec![]),
       players:           RwLock::new(HashMap::new()),
       teams:             RwLock::new(HashMap::new()),
@@ -751,6 +753,11 @@ impl WorldManager {
   pub fn plugins(&self) -> &Arc<plugin::PluginManager> { &self.plugins }
   /// Returns the commands used for the whole server.
   pub fn commands(&self) -> &CommandTree { &self.commands }
+
+  /// Returns a read lock on the block behavior storage.
+  pub fn block_behaviors(&self) -> RwLockReadGuard<'_, block::BehaviorStore> {
+    self.block_behaviors.read()
+  }
 
   /// Returns the tags for this server. This is mostly used for serializing
   /// packets. If you need the tags on a specific item/block, use `get` on

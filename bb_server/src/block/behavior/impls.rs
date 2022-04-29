@@ -1,18 +1,18 @@
 use super::{
-  super::{Kind, Type, TypeConverter},
+  super::{Data, Type},
   Behavior,
 };
 use bb_common::{math::Pos, util::Face};
 
 pub struct LogBehavior;
 impl Behavior for LogBehavior {
-  fn place(&self, conv: &TypeConverter, kind: Kind, _: Pos, face: Face) -> Type {
-    conv.get(kind).default_type().with_prop(
+  fn place(&self, data: &Data, _: Pos, face: Face) -> Type {
+    data.default_type().with_prop(
       "axis",
       match face {
-        Face::West | Face::East => "x",
-        Face::Top | Face::Bottom => "y",
-        Face::North | Face::South => "z",
+        Face::West | Face::East => "X",
+        Face::Top | Face::Bottom => "Y",
+        Face::North | Face::South => "Z",
       },
     )
   }

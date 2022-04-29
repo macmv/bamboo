@@ -137,13 +137,18 @@ pub(crate) fn handle(wm: &Arc<WorldManager>, player: &Arc<Player>, p: sb::Packet
 
         match player.world().get_block(pos) {
           Ok(looking_at) => {
-            let block_data = player.world().block_converter().get(looking_at.kind());
-            if !block_data.material.is_replaceable() {
+            let placing_data = wm.block_converter().get(kind);
+            let ty = wm
+              .block_behaviors()
+              .call(kind, |b| b.place(placing_data, pos, face))
+              .unwrap_or_else(|| placing_data.default_type());
+
+            let looking_data = wm.block_converter().get(looking_at.kind());
+            if !looking_data.material.is_replaceable() {
               let _ = player.sync_block_at(pos);
               pos += face;
             }
 
-            let ty = player.world().block_converter().get(kind).default_type();
             match player.world().set_block(pos, ty) {
               Ok(_) => {
                 if player.game_mode() != GameMode::Creative {
