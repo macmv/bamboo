@@ -46,7 +46,7 @@ pub fn generate_tags(def: &TagsDef) -> String {
         gen.write("values: &[");
         for (i, val) in tag.values.iter().enumerate() {
           gen.write("\"");
-          gen.write(&val);
+          gen.write(val);
           gen.write("\"");
           if i != tag.values.len() - 1 {
             gen.write(", ");

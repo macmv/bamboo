@@ -425,7 +425,7 @@ impl Player {
   /// Returns true if the player is within render distance of the given chunk
   pub fn in_view(&self, pos: ChunkPos) -> bool {
     let delta = pos - self.pos().block().chunk();
-    delta.x().abs() as u32 <= self.view_distance && delta.z().abs() as u32 <= self.view_distance
+    delta.x().unsigned_abs() <= self.view_distance && delta.z().unsigned_abs() <= self.view_distance
   }
 
   /// Sends the abilities of this player to the client.
@@ -734,7 +734,7 @@ impl Player {
 
       let vel = {
         let mut pos = self.pos.lock();
-        pos.vel = pos.vel + knockback;
+        pos.vel += knockback;
         if pos.vel.y > 0.4 {
           pos.vel.y = 0.4;
         }

@@ -40,6 +40,10 @@ pub struct KeysIter<'a> {
   keys: Keys<'a, i32, Entity>,
 }
 
+impl Default for EntitiesMap {
+  fn default() -> Self { EntitiesMap::new() }
+}
+
 impl EntitiesMap {
   pub fn new() -> Self { EntitiesMap { inner: HashMap::new() } }
 }
@@ -53,8 +57,8 @@ impl EntitiesMapRef<'_> {
 
   /// Returns the entity for the given id. Returns `None` if the id is invalid,
   /// or if the backing `World` has been dropped.
-  pub fn get<'a>(&'a self, eid: i32) -> Option<EntityRef<'a>> {
-    self.inner.get(&eid)?.as_entity_ref(&self.world)
+  pub fn get(&self, eid: i32) -> Option<EntityRef> {
+    self.inner.get(&eid)?.as_entity_ref(self.world)
   }
   /// Returns the entity for the given id. Returns `None` if the id is invalid,
   /// or if the entity is a player.
@@ -62,7 +66,7 @@ impl EntitiesMapRef<'_> {
   /// Returns the entity for the given id. Returns `None` if the id is invalid,
   /// if the entity is not a player, or if the backing `World` has been dropped.
   pub fn get_player(&self, eid: i32) -> Option<Arc<Player>> {
-    self.inner.get(&eid)?.as_player(&self.world)
+    self.inner.get(&eid)?.as_player(self.world)
   }
 }
 

@@ -50,7 +50,7 @@ impl PlayerInventory {
       feet:           WrappedInventory::new(Inventory::new(), conn.clone(), 0, 3),
       crafting:       WrappedInventory::new(Inventory::new(), conn.clone(), 0, 4),
       main:           WrappedInventory::new(Inventory::new(), conn.clone(), 0, 9),
-      hotbar:         WrappedInventory::new(Inventory::new(), conn.clone(), 0, 36),
+      hotbar:         WrappedInventory::new(Inventory::new(), conn, 0, 36),
       selected_index: 0,
       window:         None,
       held:           Stack::empty(),

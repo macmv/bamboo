@@ -67,9 +67,9 @@ impl BehaviorList {
     }
     self.behaviors[kind.id() as usize] = Some(imp);
   }
-  pub fn get(&self, kind: Kind) -> Option<&Box<dyn Behavior>> {
+  pub fn get(&self, kind: Kind) -> Option<&dyn Behavior> {
     match self.behaviors.get(kind.id() as usize) {
-      Some(Some(b)) => Some(b),
+      Some(Some(b)) => Some(b.as_ref()),
       _ => None,
     }
   }

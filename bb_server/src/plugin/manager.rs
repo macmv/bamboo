@@ -178,7 +178,6 @@ impl PluginManager {
       }
       let index;
       let message;
-      let plugin;
       match sel.select_deadline(deadline) {
         Ok(op) => {
           index = op.index();
@@ -187,7 +186,7 @@ impl PluginManager {
         }
         Err(_) => return allow,
       }
-      plugin = &mut plugins_left[index];
+      let plugin = &mut plugins_left[index];
       let now = self.start.elapsed().as_micros() as u32;
       match plugin.check_allow(message, now, reply_id) {
         Some(false) => allow = false,

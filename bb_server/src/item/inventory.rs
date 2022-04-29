@@ -15,6 +15,10 @@ pub struct Inventory<const N: usize> {
   items: [Stack; N],
 }
 
+impl<const N: usize> Default for Inventory<N> {
+  fn default() -> Self { Self::new() }
+}
+
 impl<const N: usize> Inventory<N> {
   pub fn new() -> Self { Inventory { items: [Stack::EMPTY; N] } }
 

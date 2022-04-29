@@ -39,8 +39,8 @@ pub(crate) fn handle(wm: &Arc<WorldManager>, player: &Arc<Player>, p: sb::Packet
       player.lock_scoreboard().set_line(3, &c);
       */
 
-      if msg.starts_with('/') {
-        player.world().commands().execute(wm, player, &msg[1..]);
+      if let Some(command) = msg.strip_prefix('/') {
+        player.world().commands().execute(wm, player, command);
       } else {
         let text = msg;
         let mut msg = Chat::empty();
@@ -129,7 +129,7 @@ pub(crate) fn handle(wm: &Arc<WorldManager>, player: &Arc<Player>, p: sb::Packet
           Ok(looking_at) => {
             let handled = wm
               .block_behaviors()
-              .call(looking_at.kind(), |b| b.interact(Block::new(pos, looking_at), &player))
+              .call(looking_at.kind(), |b| b.interact(Block::new(pos, looking_at), player))
               .unwrap_or(false);
 
             if handled {

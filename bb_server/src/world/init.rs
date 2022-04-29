@@ -68,8 +68,8 @@ impl World {
     c.add_lit("creative");
     c.add_lit("adventure");
     c.add_lit("spectator");
-    self.commands().add(c, |_, player, args| match player {
-      Some(player) => {
+    self.commands().add(c, |_, player, args| {
+      if let Some(player) = player {
         player.set_game_mode(match args[1].lit() {
           "survival" => GameMode::Survival,
           "creative" => GameMode::Creative,
@@ -78,7 +78,6 @@ impl World {
           _ => unreachable!(),
         });
       }
-      _ => {}
     });
     let c = Command::new("fly");
     self.commands().add(c, |_, player, _| {
