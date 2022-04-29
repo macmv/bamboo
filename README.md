@@ -7,7 +7,6 @@
 
   [![pipeline status](https://gitlab.com/macmv/bamboo/badges/main/pipeline.svg)](https://gitlab.com/macmv/bamboo/-/pipelines)
   [![coverage report](https://gitlab.com/macmv/bamboo/badges/main/coverage.svg)](https://app.codecov.io/gl/macmv/bamboo)
-  [![lines of code](https://tokei.rs/b1/gitlab/macmv/bamboo?category=code)](https://github.com/XAMPPRocky/tokei)
   [![Discord](https://badgen.net/badge/icon/discord?icon=discord&label)](https://discord.gg/8CTr3N9yzU)
 
   A safe, fast, and secure Minecraft server optimized for minigames.
