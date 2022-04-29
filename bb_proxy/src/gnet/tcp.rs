@@ -150,12 +150,13 @@ impl Packet {
 
   /// Reads an nbt tag from self.
   pub fn read_nbt(&mut self) -> Result<NBT> {
-    let err = match NBT::deserialize_buf(&mut self.buf) {
-      Ok(v) => return Ok(v),
-      Err(e) => e,
-    };
-    let e = self.buf().err(err, Mode::Reading);
-    Err(self.err(e, "read_nbt"))
+    match NBT::deserialize_buf(&mut self.buf) {
+      Ok(v) => Ok(v),
+      Err(err) => {
+        let e = self.buf().err(err, Mode::Reading);
+        Err(self.err(e, "read_nbt"))
+      }
+    }
   }
 
   /// Reads a length prefixed array of integers.
