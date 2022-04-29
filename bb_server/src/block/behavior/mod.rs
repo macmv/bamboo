@@ -18,17 +18,26 @@ pub trait TileEntity: Send {}
 
 pub fn make_behaviors() -> HashMap<Kind, Box<dyn Behavior>> {
   let mut out: HashMap<_, Box<dyn Behavior>> = HashMap::new();
-  out.insert(Kind::OakLog, Box::new(impls::LogBehavior));
-  out.insert(Kind::BirchLog, Box::new(impls::LogBehavior));
-  out.insert(Kind::SpruceLog, Box::new(impls::LogBehavior));
-  out.insert(Kind::DarkOakLog, Box::new(impls::LogBehavior));
-  out.insert(Kind::AcaciaLog, Box::new(impls::LogBehavior));
-  out.insert(Kind::JungleLog, Box::new(impls::LogBehavior));
-  out.insert(Kind::StrippedOakLog, Box::new(impls::LogBehavior));
-  out.insert(Kind::StrippedBirchLog, Box::new(impls::LogBehavior));
-  out.insert(Kind::StrippedSpruceLog, Box::new(impls::LogBehavior));
-  out.insert(Kind::StrippedDarkOakLog, Box::new(impls::LogBehavior));
-  out.insert(Kind::StrippedAcaciaLog, Box::new(impls::LogBehavior));
-  out.insert(Kind::StrippedJungleLog, Box::new(impls::LogBehavior));
+  macro_rules! behaviors {
+    ( $($kind:ident => $impl:expr,)* ) => {
+      $(
+        out.insert(Kind::$kind, Box::new($impl));
+      )*
+    }
+  }
+  behaviors! {
+    OakLog => impls::LogBehavior,
+    BirchLog => impls::LogBehavior,
+    SpruceLog => impls::LogBehavior,
+    DarkOakLog => impls::LogBehavior,
+    AcaciaLog => impls::LogBehavior,
+    JungleLog => impls::LogBehavior,
+    StrippedOakLog => impls::LogBehavior,
+    StrippedBirchLog => impls::LogBehavior,
+    StrippedSpruceLog => impls::LogBehavior,
+    StrippedDarkOakLog => impls::LogBehavior,
+    StrippedAcaciaLog => impls::LogBehavior,
+    StrippedJungleLog => impls::LogBehavior,
+  };
   out
 }
