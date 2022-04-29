@@ -1,5 +1,6 @@
 use super::{Behavior, EntityData, EntityPos, ShouldDespawn};
 use crate::world::World;
+use bb_common::math::FPos;
 use std::sync::Arc;
 
 #[derive(Default)]
@@ -26,7 +27,10 @@ impl Behavior for FallingBlock {
       let ty = world
         .block_converter()
         .type_from_id(ent.data() as u32, bb_common::version::BlockVersion::latest());
-      let _ = world.set_block(p.aabb.pos.block(), ty);
+      // This new position is at the center of the block, which will be the most
+      // accurate for converting to a block position. If we don't add 0.5, then chains
+      // of falling blocks can sometimes overlap.
+      let _ = world.set_block((p.aabb.pos + FPos::new(0.0, 0.5, 0.0)).block(), ty);
       ShouldDespawn(true)
     } else {
       ShouldDespawn(false)

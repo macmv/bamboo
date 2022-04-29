@@ -23,7 +23,7 @@ impl Behavior for Log {
 pub struct Falling;
 impl Behavior for Falling {
   fn update(&self, world: &Arc<World>, block: Block, _: Block, new: Block) {
-    if new.kind() == Kind::Air {
+    if new.pos.y < block.pos.y && new.kind() == Kind::Air {
       let _ = world.set_kind(block.pos, Kind::Air);
       world.summon_data(entity::Type::FallingBlock, block.pos.center(), block.ty.id() as i32);
     }
