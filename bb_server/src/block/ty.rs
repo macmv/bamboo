@@ -29,6 +29,28 @@ impl Type {
     }
     self.state + id
   }
+  pub fn prop(&self, name: &str) -> PropValue<'_> {
+    let mut idx = None;
+    for (i, p) in self.props.iter().enumerate() {
+      if p.name == name {
+        idx = Some(i);
+        break;
+      }
+    }
+    if let Some(idx) = idx {
+      let state = self.state_props[idx];
+      match self.props[idx].kind {
+        PropKind::Bool => match state {
+          0 => PropValue::Bool(false),
+          _ => PropValue::Bool(true),
+        },
+        PropKind::Enum(values) => PropValue::Enum(values[state as usize]),
+        PropKind::Int { min, max } => PropValue::Int((state + min).min(max)),
+      }
+    } else {
+      panic!("no such property {}, valid properties are {:?}", name, self.props);
+    }
+  }
   pub fn set_prop<'a>(&mut self, name: &str, val: impl Into<PropValue<'a>>) {
     let mut idx = None;
     for (i, p) in self.props.iter().enumerate() {
@@ -228,6 +250,18 @@ impl From<u32> for PropValue<'_> {
 }
 impl<'a> From<&'a str> for PropValue<'a> {
   fn from(v: &'a str) -> Self { PropValue::Enum(v) }
+}
+impl PartialEq<bool> for PropValue<'_> {
+  fn eq(&self, other: &bool) -> bool { matches!(self, PropValue::Bool(v) if v == other) }
+}
+impl PartialEq<u32> for PropValue<'_> {
+  fn eq(&self, other: &u32) -> bool { matches!(self, PropValue::Int(v) if v == other) }
+}
+impl PartialEq<&str> for PropValue<'_> {
+  fn eq(&self, other: &&str) -> bool { matches!(self, PropValue::Enum(v) if v == other) }
+}
+impl PartialEq<str> for PropValue<'_> {
+  fn eq(&self, other: &str) -> bool { matches!(self, PropValue::Enum(v) if *v == other) }
 }
 
 impl Data {

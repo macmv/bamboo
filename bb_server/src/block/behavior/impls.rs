@@ -49,11 +49,13 @@ impl Behavior for CraftingTable {
 
 pub struct Bed;
 impl Behavior for Bed {
-  fn place(&self, data: &Data, _: Pos, face: Face) -> Type {
-    data.default_type().with_prop("part", "foot")
+  fn place(&self, data: &Data, _: Pos, _: Face) -> Type {
+    data.default_type().with_prop("part", "FOOT")
   }
   fn update_place(&self, world: &Arc<World>, block: Block) {
-    let dir = Face::North;
-    world.set_block(block.pos + dir, block.ty.with_prop("part", "head"));
+    if block.ty.prop("part") == "FOOT" {
+      let dir = Face::North;
+      let _ = world.set_block(block.pos + dir, block.ty.with_prop("part", "HEAD"));
+    }
   }
 }
