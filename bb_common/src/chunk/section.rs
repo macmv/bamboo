@@ -1,4 +1,4 @@
-use crate::math::RelPos;
+use crate::math::SectionRelPos;
 use std::any::Any;
 
 /// A chunk section.
@@ -12,7 +12,7 @@ pub trait Section: Any {
   /// either a blockstate id or a block id and metadata (for 1.8). Either way,
   /// it will always chop of the higher bits in the id. In release, this
   /// should be done silently, and in debug, this should panic.
-  fn set_block(&mut self, pos: RelPos, ty: u32);
+  fn set_block(&mut self, pos: SectionRelPos, ty: u32);
   /// This fills the chunk section with the given block. Min and max are
   /// inclusive coordinates, and min must be less than or equal to max. This
   /// function should only validate that if debug assertions are enabled.
@@ -21,13 +21,13 @@ pub trait Section: Any {
   /// However, for paletted chunks, this can lead to large performance
   /// improvements.
   ///
-  /// See also [`RelPos::min_max`] to easily get min/max values from two
+  /// See also [`SectionRelPos::min_max`] to easily get min/max values from two
   /// positions.
-  fn fill(&mut self, min: RelPos, max: RelPos, ty: u32);
+  fn fill(&mut self, min: SectionRelPos, max: SectionRelPos, ty: u32);
   /// This gets the block id at the given position. If the position is outside
   /// of the chunk column, it will return an error. If this chunk is <1.13, then
   /// it will return an number in the format `(id << 4) | meta`
-  fn get_block(&self, pos: RelPos) -> u32;
+  fn get_block(&self, pos: SectionRelPos) -> u32;
   /// Clones the entire chunk section. This is not `clone()`, because
   /// `[#derive(Clone)]` on structs that contain a Section should not clone an
   /// entire section.

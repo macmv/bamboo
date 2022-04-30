@@ -1,5 +1,5 @@
 use super::{Chunk, Section};
-use crate::math::{ColRelPos, Face, RelPos};
+use crate::math::{Face, RelPos, SectionRelPos};
 use bb_macros::Transfer;
 use std::{fmt, marker::PhantomData};
 
@@ -11,7 +11,7 @@ pub trait LightPropagator {
   fn propagate<P: LightPropagator, S: Section>(
     light: &mut LightChunk<P>,
     chunk: &Chunk<S>,
-    pos: ColRelPos,
+    pos: RelPos,
   );
   fn propagate_all<P: LightPropagator, S: Section>(light: &mut LightChunk<P>, chunk: &Chunk<S>);
 }
@@ -43,7 +43,7 @@ impl fmt::Debug for LightSection {
     for y in 0..16 {
       for z in 0..8 {
         for x in 0..16 {
-          let v = self.get(RelPos::new(x, y, z));
+          let v = self.get(SectionRelPos::new(x, y, z));
           if v == 0 {
             write!(f, ".")?;
           } else {
@@ -58,7 +58,7 @@ impl fmt::Debug for LightSection {
     for y in 0..16 {
       for z in 8..16 {
         for x in 0..16 {
-          let v = self.get(RelPos::new(x, y, z));
+          let v = self.get(SectionRelPos::new(x, y, z));
           if v == 0 {
             write!(f, ".")?;
           } else {
@@ -77,7 +77,7 @@ impl<P: LightPropagator> LightChunk<P> {
   pub fn new() -> Self { LightChunk { sections: vec![], marker: PhantomData::default() } }
 
   /// Should be called whenever a block is updated.
-  pub fn update<S: Section>(&mut self, chunk: &Chunk<S>, pos: ColRelPos) {
+  pub fn update<S: Section>(&mut self, chunk: &Chunk<S>, pos: RelPos) {
     P::propagate(self, chunk, pos)
   }
 
@@ -117,11 +117,11 @@ impl<P: LightPropagator> LightChunk<P> {
     self.sections.get(idx).unwrap().as_ref().unwrap()
   }
 
-  pub fn get_light(&mut self, pos: ColRelPos) -> u8 {
-    self.get_section(pos.chunk_y() as usize).get(pos.chunk_rel())
+  pub fn get_light(&mut self, pos: RelPos) -> u8 {
+    self.get_section(pos.chunk_y() as usize).get(pos.section_rel())
   }
-  pub fn set_light(&mut self, pos: ColRelPos, level: u8) {
-    self.get_section_mut(pos.chunk_y() as usize).set(pos.chunk_rel(), level)
+  pub fn set_light(&mut self, pos: RelPos, level: u8) {
+    self.get_section_mut(pos.chunk_y() as usize).set(pos.section_rel(), level)
   }
 }
 
@@ -137,7 +137,7 @@ impl LightPropagator for BlockLight {
   fn propagate<P: LightPropagator, S: Section>(
     light: &mut LightChunk<P>,
     chunk: &Chunk<S>,
-    pos: ColRelPos,
+    pos: RelPos,
   ) {
     let directions = [Face::Up, Face::Down, Face::North, Face::South, Face::East, Face::West];
     let level = light.get_light(pos);
@@ -177,7 +177,7 @@ impl LightPropagator for SkyLight {
   fn propagate<P: LightPropagator, S: Section>(
     light: &mut LightChunk<P>,
     chunk: &Chunk<S>,
-    pos: ColRelPos,
+    pos: RelPos,
   ) {
     let directions = [Face::Up, Face::Down, Face::North, Face::South, Face::East, Face::West];
     let level = light.get_light(pos);
@@ -219,11 +219,7 @@ impl LightPropagator for SkyLight {
 impl LightSection {
   pub fn new(level: u8) -> Self { LightSection { data: vec![level | (level << 4); 2048] } }
   /// Gets the light value in the given block position.
-  ///
-  /// # Panics
-  ///
-  /// If any of the position axis are outside of 0.16.
-  pub fn get(&self, pos: RelPos) -> u8 {
+  pub fn get(&self, pos: SectionRelPos) -> u8 {
     // SAFETY: `pos` is garunteed to be within 0..16
     unsafe {
       let idx = (pos.x() as usize) << 8 | (pos.y() as usize) << 4 | (pos.z() as usize);
@@ -237,7 +233,7 @@ impl LightSection {
   ///
   /// If the light level is outside of 0..16, or if any of the position axis are
   /// outside of 0.16.
-  pub fn set(&mut self, pos: RelPos, level: u8) {
+  pub fn set(&mut self, pos: SectionRelPos, level: u8) {
     if level >= 16 {
       panic!("light level cannot be above 15: {}", level);
     }

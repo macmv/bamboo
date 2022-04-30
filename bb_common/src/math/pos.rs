@@ -1,4 +1,4 @@
-use super::{ChunkPos, ColRelPos, FPos, RelPos};
+use super::{ChunkPos, FPos, RelPos, SectionRelPos};
 use crate::util::Face;
 use bb_macros::Transfer;
 use std::{
@@ -154,23 +154,17 @@ impl Pos {
   /// Returns the chunk that this block position is in.
   #[inline(always)]
   pub fn chunk(&self) -> ChunkPos { ChunkPos::new(self.chunk_x(), self.chunk_z()) }
-  /// Returns this position within the 0, 0 chunk column. That is, the X and Z
-  /// are both set to their chunk relative position. The Y value is unchanged.
-  #[inline(always)]
-  pub fn chunk_col_rel(&self) -> ColRelPos {
-    ColRelPos::new(self.chunk_rel_x() as u8, self.y, self.chunk_rel_z() as u8)
-  }
   /// Returns this position within the 0, 0, 0 chunk cube. That is, the X, Y and
   /// Z are all set to their chunk relative position.
   #[inline(always)]
   pub fn chunk_rel(&self) -> RelPos {
-    RelPos::new(self.chunk_rel_x() as u8, self.chunk_rel_y() as u8, self.chunk_rel_z() as u8)
+    RelPos::new(self.chunk_rel_x() as u8, self.y, self.chunk_rel_z() as u8)
   }
   /// Returns this position within the 0, 0, 0 chunk sectino. That is, the X, Y
   /// and Z are all set to their chunk relative position.
   #[inline(always)]
-  pub fn chunk_section_rel(&self) -> Pos {
-    Pos { x: self.chunk_rel_x(), y: self.chunk_rel_y(), z: self.chunk_rel_z() }
+  pub fn chunk_section_rel(&self) -> SectionRelPos {
+    SectionRelPos::new(self.chunk_rel_x() as u8, self.chunk_rel_y() as u8, self.chunk_rel_z() as u8)
   }
   /// Returns the block X coordinate within 0..16. This is not the same as X %
   /// 16, because that will give negative numbers for negative X values.

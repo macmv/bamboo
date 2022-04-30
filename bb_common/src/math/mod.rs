@@ -24,7 +24,7 @@ use wyhash::WyHash;
 
 pub use chunk_pos::ChunkPos;
 pub use pos::{Pos, PosError, PosIter};
-pub use rel_pos::{ColRelPos, RelPos};
+pub use rel_pos::{RelPos, SectionRelPos};
 // pub use bb_generated::{ChunkPos, Pos, PosError, PosIter};
 
 /// A block face. This is used to represent a face that a user clicked on.

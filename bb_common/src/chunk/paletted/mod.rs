@@ -1,6 +1,6 @@
 use super::section::Section as ChunkSection;
 
-use crate::math::{RelPos, WyHashBuilder};
+use crate::math::{SectionRelPos, WyHashBuilder};
 use bb_macros::Transfer;
 use std::collections::HashMap;
 
@@ -32,16 +32,18 @@ impl Section {
   /// Returns the internal data of this section.
   pub fn data(&self) -> &BitArray { &self.data }
   #[inline(always)]
-  fn index(&self, pos: RelPos) -> usize {
+  fn index(&self, pos: SectionRelPos) -> usize {
     (pos.y() as usize) << 8 | (pos.z() as usize) << 4 | (pos.x() as usize)
   }
   /// Writes a single palette id into self.data.
   #[inline(always)]
-  unsafe fn set_palette(&mut self, pos: RelPos, id: u32) { self.data.set(self.index(pos), id); }
+  unsafe fn set_palette(&mut self, pos: SectionRelPos, id: u32) {
+    self.data.set(self.index(pos), id);
+  }
   /// Returns the palette id at the given position. This only reads from
   /// `self.data`.
   #[inline(always)]
-  unsafe fn get_palette(&self, pos: RelPos) -> u32 { self.data.get(self.index(pos)) }
+  unsafe fn get_palette(&self, pos: SectionRelPos) -> u32 { self.data.get(self.index(pos)) }
   /// This adds a new item to the palette. It will shift all block data, and
   /// extend bits per block (if needed). It will also update the palettes, and
   /// shift the block amounts around. It will not modify the actual amounts in
@@ -144,7 +146,7 @@ impl ChunkSection for Section {
       max_bpe,
     }
   }
-  fn set_block(&mut self, pos: RelPos, ty: u32) {
+  fn set_block(&mut self, pos: SectionRelPos, ty: u32) {
     // SAFETY: By definition, pos.{x,y,z} will be within 0..16
     let mut prev = unsafe { self.get_palette(pos) };
     let palette_id = match self.reverse_palette.get(&ty) {
@@ -194,13 +196,13 @@ impl ChunkSection for Section {
       self.remove(prev);
     }
   }
-  fn fill(&mut self, min: RelPos, max: RelPos, ty: u32) {
+  fn fill(&mut self, min: SectionRelPos, max: SectionRelPos, ty: u32) {
     // This is required to not corrupt the chunk. I don't think this is required for
     // safety, but it is required to avoid a panic.
-    let (min, max) = RelPos::min_max(min, max);
+    let (min, max) = SectionRelPos::min_max(min, max);
 
-    // SAFETY: By definition, RelPos.{x,y,z} will not be outside of 0..16.
-    if min == RelPos::new(0, 0, 0) && max == RelPos::new(15, 15, 15) {
+    // SAFETY: By definition, SectionRelPos.{x,y,z} will not be outside of 0..16.
+    if min == SectionRelPos::new(0, 0, 0) && max == SectionRelPos::new(15, 15, 15) {
       // Simple case. We get to just replace the whole section.
       if ty == 0 {
         // With air, this is even easier.
@@ -225,14 +227,14 @@ impl ChunkSection for Section {
         for y in min.y()..=max.y() {
           for z in min.z()..=max.z() {
             for x in min.x()..=max.x() {
-              let prev = unsafe { self.get_palette(RelPos::new(x, y, z)) };
+              let prev = unsafe { self.get_palette(SectionRelPos::new(x, y, z)) };
               if prev == 0 && ty != 0 {
                 self.block_amounts[0] -= 1;
               }
               if prev != 0 && ty == 0 {
                 self.block_amounts[0] += 1;
               }
-              unsafe { self.set_palette(RelPos::new(x, y, z), ty) };
+              unsafe { self.set_palette(SectionRelPos::new(x, y, z), ty) };
             }
           }
         }
@@ -242,7 +244,7 @@ impl ChunkSection for Section {
       for y in min.y()..=max.y() {
         for z in min.z()..=max.z() {
           for x in min.x()..=max.x() {
-            let id = unsafe { self.get_palette(RelPos::new(x, y, z)) };
+            let id = unsafe { self.get_palette(SectionRelPos::new(x, y, z)) };
             let amt = self.block_amounts[id as usize];
             // Debug assertions mean that we cannot subtract with overflow here.
             self.block_amounts[id as usize] = amt - 1;
@@ -276,13 +278,13 @@ impl ChunkSection for Section {
       for y in min.y()..=max.y() {
         for z in min.z()..=max.z() {
           for x in min.x()..=max.x() {
-            unsafe { self.set_palette(RelPos::new(x, y, z), palette_id) };
+            unsafe { self.set_palette(SectionRelPos::new(x, y, z), palette_id) };
           }
         }
       }
     }
   }
-  fn get_block(&self, pos: RelPos) -> u32 {
+  fn get_block(&self, pos: SectionRelPos) -> u32 {
     // SAFETY: By definition, pos.{x,y,z} is within 0..16
     let id = unsafe { self.get_palette(pos) };
     if self.palette.is_empty() {
@@ -326,7 +328,7 @@ impl ChunkSection for Section {
           for x in 0..16 {
             // SAFETY: The block position is always within 0..16 on all axis
             unsafe {
-              let id = self.get_palette(RelPos::new(x, y, z)) as usize;
+              let id = self.get_palette(SectionRelPos::new(x, y, z)) as usize;
               self.block_amounts[id] += 1;
             }
           }
@@ -349,7 +351,7 @@ impl ChunkSection for Section {
       for y in 0..16 {
         for z in 0..16 {
           for x in 0..16 {
-            let pos = RelPos::new(x, y, z);
+            let pos = SectionRelPos::new(x, y, z);
             // SAFETY: The block position is always within 0..16 on all axis
             unsafe {
               let unsorted_id = self.get_palette(pos);

@@ -1,5 +1,5 @@
 use super::{super::paletted::Section, BlockLight, Chunk, LightChunk};
-use crate::math::Pos;
+use crate::math::{Pos, RelPos};
 use pretty_assertions::assert_eq;
 
 #[track_caller]
@@ -19,7 +19,7 @@ fn chunk_from_str(lines: &[&[&str]]) -> (Chunk<Section>, LightChunk<BlockLight>)
         panic!("line at {z} {y} too long (len: {})", line.len());
       }
       for (x, c) in line.chars().enumerate() {
-        let pos = Pos::new(x as i32, y as i32, z as i32);
+        let pos = RelPos::new(x as u8, y as i32, z as u8);
         chunk.set_block(pos, if c == '#' { 1 } else { 0 }).unwrap();
         let mut tmp = [0u8; 1];
         let string = c.encode_utf8(&mut tmp);
@@ -38,7 +38,7 @@ fn assert_plane_matches(a: &mut LightChunk<BlockLight>, b: &mut LightChunk<Block
   let mut a_str = String::new();
   for y in 0..16 {
     for x in 0..16 {
-      let v = a.get_light(Pos::new(x, y, 0));
+      let v = a.get_light(RelPos::new(x, y, 0));
       if v == 0 {
         a_str.push('.');
       } else {
@@ -50,7 +50,7 @@ fn assert_plane_matches(a: &mut LightChunk<BlockLight>, b: &mut LightChunk<Block
   let mut b_str = String::new();
   for y in 0..16 {
     for x in 0..16 {
-      let v = b.get_light(Pos::new(x, y, 0));
+      let v = b.get_light(RelPos::new(x, y, 0));
       if v == 0 {
         b_str.push('.');
       } else {
@@ -154,11 +154,11 @@ fn basic_propogate() {
   ]);
 
   let mut light = LightChunk::new();
-  light.set_light(Pos::new(5, 1, 0), 10);
-  light.update(&chunk, Pos::new(5, 1, 0));
+  light.set_light(RelPos::new(5, 1, 0), 10);
+  light.update(&chunk, RelPos::new(5, 1, 0));
   assert_eq!(light, expected);
 
-  light.set_light(Pos::new(10, 11, 0), 0xa);
+  light.set_light(RelPos::new(10, 11, 0), 0xa);
   let (_, mut expected) = chunk_from_str(&[&[
     "    ###         ",
     "    #a#         ",
@@ -179,7 +179,7 @@ fn basic_propogate() {
   ]]);
   assert_plane_matches(&mut light, &mut expected);
 
-  light.update(&chunk, Pos::new(10, 11, 0));
+  light.update(&chunk, RelPos::new(10, 11, 0));
   let (_, mut expected) = chunk_from_str(&[&[
     "    ###         ",
     "    #a#         ",
