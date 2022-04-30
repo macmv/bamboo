@@ -1,9 +1,10 @@
 use super::{
   super::{Block, Data, Kind, Type},
-  Behavior, BlockDrops, Drops,
+  Behavior, BlockDrops, Drops, TileEntity,
 };
 use crate::{
   entity,
+  item::Inventory,
   player::{Player, Window},
   world::World,
 };
@@ -11,7 +12,7 @@ use bb_common::{
   math::Pos,
   util::{Chat, Face},
 };
-use std::sync::Arc;
+use std::{any::Any, sync::Arc};
 
 pub struct Log;
 impl Behavior for Log {
@@ -87,4 +88,23 @@ impl Behavior for Bed {
       BlockDrops::Custom(Drops::empty())
     }
   }
+}
+
+pub struct Chest;
+pub struct ChestTE {
+  inv: Inventory<27>,
+}
+impl Behavior for Chest {
+  fn create_te(&self) -> Option<Arc<dyn TileEntity>> {
+    Some(Arc::new(ChestTE { inv: Inventory::new() }))
+  }
+  fn interact(&self, block: Block, player: &Arc<Player>) -> bool {
+    block.te(|chest: &ChestTE| {
+      player.show_inventory(Window::Generic9x3 { inv: chest.inv.clone() }, &Chat::new("Chest"));
+      true
+    })
+  }
+}
+impl TileEntity for ChestTE {
+  fn as_any(&self) -> &dyn Any { self }
 }

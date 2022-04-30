@@ -1,3 +1,4 @@
+use super::WorldManager;
 use crate::{block, block::TileEntity};
 use bb_common::{
   chunk::{paletted::Section as PalettedSection, BlockLight, Chunk, LightChunk, SkyLight},
@@ -28,10 +29,10 @@ pub struct CountedChunk {
 /// pain to change it, and I don't really want to bother.
 pub struct MultiChunk {
   inner:        Chunk<PalettedSection>,
-  tes:          RwLock<HashMap<RelPos, Box<dyn TileEntity>>>,
+  tes:          RwLock<HashMap<RelPos, Arc<dyn TileEntity>>>,
   sky:          Option<LightChunk<SkyLight>>,
   block:        LightChunk<BlockLight>,
-  types:        Arc<block::TypeConverter>,
+  wm:           Arc<WorldManager>,
   /// Set to false when the world is generating, which makes things much faster.
   update_light: bool,
 }
@@ -48,13 +49,13 @@ impl MultiChunk {
   ///
   /// The second argument is for sky light data. Places like the nether do not
   /// contain sky light information, so the sky light data is not present.
-  pub fn new(types: Arc<block::TypeConverter>, sky: bool) -> MultiChunk {
+  pub fn new(wm: Arc<WorldManager>, sky: bool) -> MultiChunk {
     MultiChunk {
       inner: Chunk::new(15),
       tes: RwLock::new(HashMap::new()),
       sky: if sky { Some(LightChunk::new()) } else { None },
       block: LightChunk::new(),
-      types,
+      wm,
       update_light: true,
     }
   }
@@ -71,6 +72,9 @@ impl MultiChunk {
   pub fn set_type(&mut self, p: RelPos, ty: block::Type) -> Result<(), PosError> {
     self.inner.set_block(p, ty.id())?;
     self.update_light(p);
+    if let Some(Some(te)) = self.wm.block_behaviors().call(ty.kind(), |b| b.create_te()) {
+      self.tes.write().insert(p, te);
+    }
     Ok(())
   }
 
@@ -85,9 +89,7 @@ impl MultiChunk {
   /// call this function without sending any updates yourself, no one in render
   /// distance will see any of these changes!
   pub fn set_kind(&mut self, p: RelPos, kind: block::Kind) -> Result<(), PosError> {
-    self.inner.set_block(p, self.types.get(kind).default_type().id())?;
-    self.update_light(p);
-    Ok(())
+    self.set_type(p, self.wm.block_converter().get(kind).default_type())
   }
 
   /// Fills the region within this chunk. Min and max must be within the chunk
@@ -117,7 +119,7 @@ impl MultiChunk {
   /// call this function without sending any updates yourself, no one in render
   /// distance will see any of these changes!
   pub fn fill_kind(&mut self, min: RelPos, max: RelPos, kind: block::Kind) -> Result<(), PosError> {
-    self.inner.fill(min, max, self.types.get(kind).default_type().id())?;
+    self.inner.fill(min, max, self.wm.block_converter().get(kind).default_type().id())?;
     Ok(())
   }
 
@@ -127,13 +129,17 @@ impl MultiChunk {
   /// This returns a specific block type. If you only need to block kind, prefer
   /// [`get_kind`](Self::get_kind).
   pub fn get_type(&self, p: RelPos) -> Result<block::Type, PosError> {
-    Ok(self.types.type_from_id(self.inner.get_block(p)?, BlockVersion::latest()))
+    Ok(self.wm.block_converter().type_from_id(self.inner.get_block(p)?, BlockVersion::latest()))
   }
 
   /// Gets the type of a block within this chunk. Pos must be within the chunk.
   /// See [`set_kind`](Self::set_kind) for more.
   pub fn get_kind(&self, p: RelPos) -> Result<block::Kind, PosError> {
-    Ok(self.types.kind_from_id(self.inner.get_block(p)?, BlockVersion::latest()))
+    Ok(self.wm.block_converter().kind_from_id(self.inner.get_block(p)?, BlockVersion::latest()))
+  }
+
+  pub fn get_te(&self, p: RelPos) -> Option<Arc<dyn TileEntity>> {
+    self.tes.read().get(&p).cloned()
   }
 
   /// Returns the inner paletted chunk in this MultiChunk. This can be used to
@@ -145,7 +151,7 @@ impl MultiChunk {
 
   /// Returns a reference to the global type converter. Used to convert a block
   /// id to/from any version.
-  pub fn type_converter(&self) -> &block::TypeConverter { &self.types }
+  pub fn type_converter(&self) -> &Arc<block::TypeConverter> { &self.wm.block_converter() }
 
   /// Returns the sky light information for this chunk. Used to send lighting
   /// data to clients.

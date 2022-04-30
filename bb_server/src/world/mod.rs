@@ -323,7 +323,7 @@ impl World {
   /// have a list of chunks to generate, and you would like to generate them in
   /// parallel.
   pub fn pre_generate_chunk(&self, pos: ChunkPos) -> MultiChunk {
-    let mut c = MultiChunk::new(self.block_converter.clone(), true);
+    let mut c = MultiChunk::new(self.world_manager().clone(), true);
     self.gen.generate(pos, &mut c);
     c
   }

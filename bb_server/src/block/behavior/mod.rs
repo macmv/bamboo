@@ -1,7 +1,7 @@
 use super::{Block, Data, Kind, Type};
 use crate::{item::Stack, player::Player, world::World};
 use bb_common::{math::Pos, util::Face};
-use std::sync::Arc;
+use std::{any::Any, sync::Arc};
 
 mod impls;
 
@@ -32,7 +32,7 @@ pub trait Behavior: Send + Sync {
   ///
   /// Blocks such as chests, juke boxes, and furnaces should return a tile
   /// entity here.
-  fn create_tile_entity(&self) -> Option<Box<dyn TileEntity>> { None }
+  fn create_te(&self) -> Option<Arc<dyn TileEntity>> { None }
 
   /// Called when a player right clicks on this block. If this returns `true`,
   /// the event was handled, and a block should not be placed.
@@ -52,7 +52,9 @@ pub trait Behavior: Send + Sync {
 }
 
 // TODO: This needs to be able to store it's data to disk.
-pub trait TileEntity: Send {}
+pub trait TileEntity: Any + Send + Sync {
+  fn as_any(&self) -> &dyn Any;
+}
 
 #[derive(Default)]
 pub struct BehaviorList {
@@ -89,6 +91,8 @@ pub fn make_behaviors() -> BehaviorList {
     CraftingTable => impls::CraftingTable;
 
     *color*Bed => impls::Bed;
+
+    Chest => impls::Chest;
   };
   out
 }

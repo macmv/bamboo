@@ -129,7 +129,9 @@ pub(crate) fn handle(wm: &Arc<WorldManager>, player: &Arc<Player>, p: sb::Packet
           Ok(looking_at) => {
             let handled = wm
               .block_behaviors()
-              .call(looking_at.kind(), |b| b.interact(Block::new(pos, looking_at), player))
+              .call(looking_at.kind(), |b| {
+                b.interact(Block::new(player.world(), pos, looking_at), player)
+              })
               .unwrap_or(false);
 
             if handled {
