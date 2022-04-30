@@ -45,6 +45,9 @@ impl FromTcp for Packet {
       GPacket::CloseWindowV8 { window_id } => {
         Packet::WindowClose { wid: window_id.try_into().unwrap() }
       }
+      GPacket::CloseHandledScreenV16 { sync_id } => {
+        Packet::WindowClose { wid: sync_id.try_into().unwrap() }
+      }
       GPacket::ClickWindowV9 {
         window_id,
         mut slot_id,
@@ -62,6 +65,23 @@ impl FromTcp for Packet {
           wid:  window_id.try_into().unwrap(),
           slot: slot_id.try_into().unwrap(),
           mode: click_window(mode, used_button)?,
+        }
+      }
+      GPacket::ClickSlotV17 { sync_id, revision: _, mut slot, button, action_type, unknown } => {
+        let mut buf = tcp::Packet::from_buf_id(unknown, 0, ver);
+        let slots = buf.read_varint()?;
+        for _ in 0..slots {
+          let _slot = buf.read_u16()?;
+          let _item = buf.read_item(conv)?;
+        }
+        let _item = buf.read_item(conv)?;
+        if slot == -1 {
+          slot = -999;
+        }
+        Packet::ClickWindow {
+          wid:  sync_id.try_into().unwrap(),
+          slot: slot.try_into().unwrap(),
+          mode: click_window(action_type, button)?,
         }
       }
       GPacket::CreativeInventoryActionV8 { slot_id, unknown, .. } => {
@@ -170,17 +190,24 @@ impl FromTcp for Packet {
         },
       },
       GPacket::PlayerInteractItemV9 { hand } => Packet::UseItem { hand: Hand::from_id(hand as u8) },
-      GPacket::PlayerV8 { on_ground, .. } => Packet::PlayerOnGround { on_ground },
+      GPacket::PlayerV8 { on_ground, .. } | GPacket::PlayerOnGroundV14 { on_ground } => {
+        Packet::PlayerOnGround { on_ground }
+      }
+      GPacket::PlayerOnGroundV17 { unknown } => {
+        let mut buf = Buffer::new(&unknown);
+        Packet::PlayerOnGround { on_ground: buf.read_bool()? }
+      }
       GPacket::PlayerLookV8 { yaw, pitch, on_ground, .. }
       | GPacket::PlayerRotationV9 { yaw, pitch, on_ground, .. } => {
         Packet::PlayerLook { yaw, pitch, on_ground }
       }
-      GPacket::PlayerRotationV17 { mut unknown, .. } => {
-        let mut buf = Buffer::new(&mut unknown);
-        let yaw = buf.read_f32()?;
-        let pitch = buf.read_f32()?;
-        let on_ground = buf.read_bool()?;
-        Packet::PlayerLook { yaw, pitch, on_ground }
+      GPacket::PlayerRotationV17 { unknown, .. } => {
+        let mut buf = Buffer::new(&unknown);
+        Packet::PlayerLook {
+          yaw:       buf.read_f32()?,
+          pitch:     buf.read_f32()?,
+          on_ground: buf.read_bool()?,
+        }
       }
       GPacket::PlayerPosLookV8 { x, y, z, yaw, pitch, on_ground, .. }
       | GPacket::PlayerPositionRotationV9 { x, y, z, yaw, pitch, on_ground, .. } => {

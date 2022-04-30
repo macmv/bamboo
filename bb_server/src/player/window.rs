@@ -43,8 +43,8 @@ pub enum Window {
     fuel:       Inventory<1>,
   },
   Crafting {
-    grid:   Inventory<9>,
     output: Inventory<1>,
+    grid:   Inventory<9>,
   },
   Enchantment {
     book:  Inventory<1>,
@@ -108,9 +108,9 @@ macro_rules! for_all {
         Self::Generic9x5 { inv } => inv.$name(idx, $($arg),*),
         Self::Generic9x6 { inv } => inv.$name(idx, $($arg),*),
         Self::Generic3x3 { inv } => inv.$name(idx, $($arg),*),
-        Self::Crafting { grid, output } => match idx {
-          0..=8 => grid.$name(idx, $($arg),*),
-          9..=9 => output.$name(idx, $($arg),*),
+        Self::Crafting { output, grid } => match idx {
+          0..=0 => output.$name(idx, $($arg),*),
+          1..=9 => grid.$name(idx - 1, $($arg),*),
           _ => $default,
         },
         _ => todo!(),
@@ -140,7 +140,12 @@ impl Window {
   for_all!(&Self, get(idx: u32) -> Option<&Stack>, None);
   for_all!(&mut Self, get_mut(idx: u32) -> Option<&mut Stack>, None);
   pub fn items(&self) -> ItemsIter<'_> { ItemsIter { win: self, index: 0 } }
-  pub fn add(&mut self, _stack: &Stack) -> u8 { todo!() }
+  pub fn add(&mut self, stack: &Stack) -> u8 {
+    match self {
+      Self::Crafting { grid, .. } => grid.add(stack),
+      _ => todo!(),
+    }
+  }
   pub fn ty(&self) -> &'static str {
     match self {
       Self::Generic9x1 { .. } => "minecraft:generic_9x1",

@@ -201,16 +201,34 @@ impl PlayerInventory {
   /// it will send the data for every item to the client.
   pub fn sync_all(&self) {
     let mut items = vec![];
-    let held = self.held.to_item();
-    if let Some(inv) = &self.window {
-      for it in inv.items() {
+    if let Some(win) = &self.window {
+      for it in win.items() {
+        items.push(it.to_item());
+      }
+    } else {
+      for it in self.head.inv.items() {
+        items.push(it.to_item());
+      }
+      for it in self.chest.inv.items() {
+        items.push(it.to_item());
+      }
+      for it in self.legs.inv.items() {
+        items.push(it.to_item());
+      }
+      for it in self.feet.inv.items() {
+        items.push(it.to_item());
+      }
+      for it in self.crafting.inv.items() {
         items.push(it.to_item());
       }
     }
-    // Skip the armor/crafting bench slots
-    for it in self.main.inv.items().iter().skip(9) {
+    for it in self.main.inv.items().iter() {
       items.push(it.to_item());
     }
+    for it in self.hotbar.inv.items() {
+      items.push(it.to_item());
+    }
+    let held = self.held.to_item();
     self.main.conn.send(cb::Packet::WindowItems { wid: 1, items, held });
   }
   /// Sends an item update for the given slot. This shouldn't every be needed,
@@ -338,7 +356,8 @@ impl PlayerInventory {
             } else if let Some(mut stack) = self.hotbar.get(idx).cloned() {
               let remaining = win.add(&stack);
               stack.set_amount(remaining);
-              self.main.set(idx, stack);
+              self.hotbar.set(idx, stack);
+              self.sync_all();
             }
           } else {
             // TODO: Armor slots

@@ -35,11 +35,37 @@ impl<const N: usize> Inventory<N> {
   /// Returns the items in the inventory.
   pub fn items(&self) -> &[Stack; N] { &self.items }
   /// Returns the items in the inventory.
-  pub fn items_mut(&mut self) -> &mut [Stack] { &mut self.items }
+  pub fn items_mut(&mut self) -> &mut [Stack; N] { &mut self.items }
 
   /// Replaces the item at `index` with the given stack.
   pub fn replace(&mut self, index: u32, stack: Stack) -> Stack {
     mem::replace(&mut self.items[index as usize], stack)
+  }
+
+  /// Tries to add the given stack to this inventory. This will return the
+  /// number of remaining items in the stack. If the inventory has enough space,
+  /// this will return 0.
+  pub fn add(&mut self, stack: &Stack) -> u8 {
+    let mut remaining = stack.amount();
+    for it in self.items_mut().iter_mut() {
+      if it.is_empty() {
+        *it = stack.clone().with_amount(remaining);
+        remaining = 0;
+      } else if it.item() == stack.item() {
+        let amount_possible = 64 - it.amount();
+        if amount_possible > remaining {
+          *it = stack.clone().with_amount(it.amount() + remaining);
+          remaining = 0;
+        } else {
+          *it = stack.clone().with_amount(64);
+          remaining -= amount_possible;
+        }
+      }
+      if remaining == 0 {
+        break;
+      }
+    }
+    remaining
   }
 }
 
