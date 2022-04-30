@@ -1,14 +1,14 @@
 use super::{
   add_from,
   chat::PChat,
-  item::{PInventory, PStack},
+  item::PStack,
   util::{PFPos, PUUID},
   world::PWorld,
   wrap,
 };
 use crate::{
   item::Stack,
-  player::{Player, Team},
+  player::{Player, Team, Window},
 };
 use bb_common::util::{chat::Color, Chat, UUID};
 use bb_plugin_macros::define_ty;
@@ -36,6 +36,7 @@ impl From<Arc<Player>> for PPlayer {
   }
 }
 wrap!(Arc<Mutex<Team>>, PTeam);
+wrap!(Window, PWindow);
 
 impl PPlayer {
   pub fn inner(&self) -> Result<Arc<Player>> {
@@ -44,6 +45,9 @@ impl PPlayer {
     })
   }
 }
+
+#[define_ty(panda_path = "bamboo::player::Window")]
+impl PWindow {}
 
 /// A Player. This struct is for online players. There is currently no way to
 /// lookup an offline player.
@@ -169,7 +173,7 @@ impl PPlayer {
   /// Shows an inventory to the player.
   ///
   /// This will do nothing if the player is offline.
-  pub fn show_inventory(&self, inv: &PInventory, title: &PChat) {
+  pub fn show_inventory(&self, inv: &PWindow, title: &PChat) {
     if let Ok(i) = self.inner() {
       i.show_inventory(inv.inner.clone(), &title.inner.lock().unwrap());
     }

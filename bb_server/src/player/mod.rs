@@ -312,15 +312,14 @@ impl Player {
 
   /// Shows the given inventory to the client. The title will be shown in the
   /// top left of the window.
-  pub fn show_inventory(&self, inv: Inventory<27>, title: &Chat) {
-    let ty = (inv.size() / 9) as u8;
-    self.send(cb::Packet::WindowOpen { wid: 1, ty, title: title.to_json() });
+  pub fn show_inventory(&self, win: Window, title: &Chat) {
+    self.send(cb::Packet::WindowOpen { wid: 1, ty: win.ty(), title: title.to_json() });
     self.send(cb::Packet::WindowItems {
       wid:   1,
-      items: inv.items().iter().map(|i| i.to_item()).collect(),
+      items: win.items().map(|i| i.to_item()).collect(),
       held:  Stack::empty().to_item(),
     });
-    self.lock_inventory().open_window(inv);
+    self.lock_inventory().open_window(win);
   }
 
   /// Disconnects the player. The given chat message will be shown on the

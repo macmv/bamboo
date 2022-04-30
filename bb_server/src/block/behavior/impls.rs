@@ -2,7 +2,11 @@ use super::{
   super::{Block, Data, Kind, Type},
   Behavior, BlockDrops, Drops,
 };
-use crate::{entity, item::Inventory, player::Player, world::World};
+use crate::{
+  entity,
+  player::{Player, Window},
+  world::World,
+};
 use bb_common::{
   math::Pos,
   util::{Chat, Face},
@@ -42,7 +46,10 @@ impl Behavior for Falling {
 pub struct CraftingTable;
 impl Behavior for CraftingTable {
   fn interact(&self, _: Block, player: &Arc<Player>) -> bool {
-    player.show_inventory(Inventory::new(), &Chat::new("Crafting Table"));
+    player.show_inventory(
+      Window::Crafting { grid: Default::default(), output: Default::default() },
+      &Chat::new("Crafting Table"),
+    );
     true
   }
 }

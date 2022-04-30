@@ -1,3 +1,4 @@
+use super::Window;
 use crate::{
   entity, item,
   item::{Inventory, Stack, WrappedInventory},
@@ -27,7 +28,7 @@ pub struct PlayerInventory {
   // An index into the hotbar (0..=8)
   selected_index: u8,
   // Open window and held item
-  window:         Option<WrappedInventory<27>>,
+  window:         Option<Window>,
   // Held item. Always present, as survival inventories don't count as windows.
   held:           Stack,
 
@@ -59,14 +60,14 @@ impl PlayerInventory {
     }
   }
 
-  pub fn open_window(&mut self, inv: Inventory<27>) {
+  pub fn open_window(&mut self, win: Window) {
     assert!(self.window.is_none());
     // Assume chest-like for now.
-    self.main.offset = inv.size();
+    self.main.offset = win.size();
     self.main.wid = 1;
-    self.hotbar.offset = inv.size() + self.main.size();
+    self.hotbar.offset = win.size() + self.main.size();
     self.hotbar.wid = 1;
-    self.window = Some(WrappedInventory::new(inv, self.main.conn.clone(), 1, 0));
+    self.window = Some(win);
   }
   pub fn close_window(&mut self) {
     self.window.take();
@@ -114,8 +115,8 @@ impl PlayerInventory {
   pub fn hotbar(&self) -> &WrappedInventory<9> { &self.hotbar }
   pub fn hotbar_mut(&mut self) -> &mut WrappedInventory<9> { &mut self.hotbar }
 
-  pub fn win(&self) -> Option<&WrappedInventory<27>> { self.window.as_ref() }
-  pub fn win_mut(&mut self) -> Option<&mut WrappedInventory<27>> { self.window.as_mut() }
+  pub fn win(&self) -> Option<&Window> { self.window.as_ref() }
+  pub fn win_mut(&mut self) -> Option<&mut Window> { self.window.as_mut() }
 
   /// Gets the item out of the inventory. This uses absolute ids, so depending
   /// on if a window is open, the actual slot being accessed may change. Use
@@ -127,11 +128,14 @@ impl PlayerInventory {
     }
     let idx = index as u32;
     if let Some(win) = &self.window {
-      match index {
-        0..=26 => win.get(idx),
-        27..=53 => self.main.get(idx),
-        54..=62 => self.hotbar.get(idx),
-        _ => None,
+      if idx < win.size() {
+        win.get(idx)
+      } else if idx < win.size() + 27 {
+        self.main.get(idx)
+      } else if idx < win.size() + 36 {
+        self.hotbar.get(idx)
+      } else {
+        None
       }
     } else {
       match index {
@@ -153,11 +157,14 @@ impl PlayerInventory {
     }
     let idx = index as u32;
     if let Some(win) = &mut self.window {
-      match index {
-        0..=26 => win.get_mut(idx),
-        27..=53 => self.main.get_mut(idx),
-        54..=62 => self.hotbar.get_mut(idx),
-        _ => None,
+      if idx < win.size() {
+        win.get_mut(idx)
+      } else if idx < win.size() + 27 {
+        self.main.get_mut(idx)
+      } else if idx < win.size() + 36 {
+        self.hotbar.get_mut(idx)
+      } else {
+        None
       }
     } else {
       match index {
@@ -196,7 +203,7 @@ impl PlayerInventory {
     let mut items = vec![];
     let held = self.held.to_item();
     if let Some(inv) = &self.window {
-      for it in inv.inv.items() {
+      for it in inv.items() {
         items.push(it.to_item());
       }
     }
@@ -228,12 +235,20 @@ impl PlayerInventory {
     }
     let idx = index as u32;
     if let Some(win) = &self.window {
-      match index {
-        0..=26 => win.sync(idx),
-        27..=53 => self.main.sync(idx),
-        54..=62 => self.hotbar.sync(idx),
-        _ => panic!(),
-      }
+      let it = if idx < win.size() {
+        win.get(idx).unwrap()
+      } else if idx < win.size() + 27 {
+        self.main.get(idx).unwrap()
+      } else if idx < win.size() + 36 {
+        self.hotbar.get(idx).unwrap()
+      } else {
+        panic!()
+      };
+      self.main.conn.send(cb::Packet::WindowItem {
+        wid:  u8::MAX,
+        slot: index,
+        item: it.to_item(),
+      });
     } else {
       match index {
         0 => self.head.sync(idx),
