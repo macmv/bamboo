@@ -273,8 +273,9 @@ impl ChunkSection for Section {
         Some(&palette_id) => palette_id,
         None => self.insert(ty),
       };
-      self.block_amounts[palette_id as usize] +=
-        ((max.x() - min.x() + 1) * (max.y() - min.y() + 1) * (max.z() - min.z() + 1)) as u32;
+      self.block_amounts[palette_id as usize] += (max.x() - min.x() + 1) as u32
+        * (max.y() - min.y() + 1) as u32
+        * (max.z() - min.z() + 1) as u32;
       for y in min.y()..=max.y() {
         for z in min.z()..=max.z() {
           for x in min.x()..=max.x() {
