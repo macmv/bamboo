@@ -142,6 +142,13 @@ impl Window {
   pub fn items(&self) -> ItemsIter<'_> { ItemsIter { win: self, index: 0 } }
   pub fn add(&mut self, stack: &Stack) -> u8 {
     match self {
+      Self::Generic9x1 { inv } => inv.add(stack),
+      Self::Generic9x2 { inv } => inv.add(stack),
+      Self::Generic9x3 { inv } => inv.add(stack),
+      Self::Generic9x4 { inv } => inv.add(stack),
+      Self::Generic9x5 { inv } => inv.add(stack),
+      Self::Generic9x6 { inv } => inv.add(stack),
+      Self::Generic3x3 { inv } => inv.add(stack),
       Self::Crafting { grid, .. } => grid.add(stack),
       _ => todo!(),
     }
