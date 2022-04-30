@@ -1154,12 +1154,55 @@ impl ToTcp for Packet {
         }
       }
       Packet::WindowOpen { wid, ty, size, title } => {
-        GPacket::OpenWindowV8 {
-          window_id:      wid.into(),
-          inventory_type: ty,
-          window_title:   title,
-          slot_count:     size as i32,
-          unknown:        vec![],
+        if ver >= ProtocolVersion::V1_14_4 {
+          let id = match ty.as_str() {
+            "minecraft:generic_9x1" => 0,
+            "minecraft:generic_9x2" => 1,
+            "minecraft:generic_9x3" => 2,
+            "minecraft:generic_9x4" => 3,
+            "minecraft:generic_9x5" => 4,
+            "minecraft:generic_9x6" => 5,
+            "minecraft:generic_3x3" => 6,
+            "minecraft:anvil" => 7,
+            "minecraft:beacon" => 8,
+            "minecraft:blast_furnace" => 9,
+            "minecraft:brewing_stand" => 10,
+            "minecraft:crafting" => 11,
+            "minecraft:enchantment" => 12,
+            "minecraft:furnace" => 13,
+            "minecraft:grindstone" => 14,
+            "minecraft:hopper" => 15,
+            "minecraft:lectern" => 16,
+            "minecraft:loom" => 17,
+            "minecraft:merchant" => 18,
+            "minecraft:shulker_box" => 19,
+            "minecraft:smithing" => 20,
+            "minecraft:smoker" => 21,
+            "minecraft:cartography" => 22,
+            "minecraft:stonecutter" => 23,
+            _ => 0,
+          };
+          if ver >= ProtocolVersion::V1_16_5 {
+            GPacket::OpenScreenV16 {
+              sync_id:           wid.into(),
+              screen_handler_id: id,
+              name:              title,
+            }
+          } else {
+            GPacket::OpenWindowV14 {
+              sync_id:      wid.into(),
+              container_id: id,
+              name:         title,
+            }
+          }
+        } else {
+          GPacket::OpenWindowV8 {
+            window_id:      wid.into(),
+            inventory_type: ty,
+            window_title:   title,
+            slot_count:     size as i32,
+            unknown:        vec![],
+          }
         }
       }
       Packet::WindowItems { wid, items, held } => {
