@@ -249,7 +249,7 @@ pub enum Packet {
   UpdateViewPos { pos: ChunkPos },
 
   #[id = 22]
-  WindowOpen { wid: u8, ty: u8, title: String },
+  WindowOpen { wid: u8, ty: String, size: u32, title: String },
   #[id = 23]
   WindowItems { wid: u8, items: Vec<Item>, held: Item },
   /// AKA SetSlot. I named it this so that in alphabetical order it would show

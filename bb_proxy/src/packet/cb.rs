@@ -1153,12 +1153,12 @@ impl ToTcp for Packet {
           panic!("cannot send UpdateViewPos for version {}", ver);
         }
       }
-      Packet::WindowOpen { wid, ty, title } => {
+      Packet::WindowOpen { wid, ty, size, title } => {
         GPacket::OpenWindowV8 {
           window_id:      wid.into(),
-          inventory_type: "minecraft:chest".into(),
+          inventory_type: ty,
           window_title:   title,
-          slot_count:     (ty * 9).into(),
+          slot_count:     size as i32,
           unknown:        vec![],
         }
       }

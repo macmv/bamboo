@@ -3,22 +3,22 @@ use crate::item::Stack;
 
 #[derive(Debug, Clone)]
 pub enum Window {
-  Generic1x9 {
+  Generic9x1 {
     inv: Inventory<9>,
   },
-  Generic2x9 {
+  Generic9x2 {
     inv: Inventory<18>,
   },
-  Generic3x9 {
+  Generic9x3 {
     inv: Inventory<27>,
   },
-  Generic4x9 {
+  Generic9x4 {
     inv: Inventory<36>,
   },
-  Generic5x9 {
+  Generic9x5 {
     inv: Inventory<45>,
   },
-  Generic6x9 {
+  Generic9x6 {
     inv: Inventory<54>,
   },
   Generic3x3 {
@@ -101,7 +101,13 @@ macro_rules! for_all {
   ( $self:ty, $name:ident (idx: u32 $(, $arg:ident: $ty:ty)*) $( -> $ret:ty )?, $default:expr) => {
     pub fn $name(self: $self, idx: u32, $($arg: $ty),*) $( -> $ret )? {
       match self {
-        Self::Generic3x9 { inv } => inv.$name(idx, $($arg),*),
+        Self::Generic9x1 { inv } => inv.$name(idx, $($arg),*),
+        Self::Generic9x2 { inv } => inv.$name(idx, $($arg),*),
+        Self::Generic9x3 { inv } => inv.$name(idx, $($arg),*),
+        Self::Generic9x4 { inv } => inv.$name(idx, $($arg),*),
+        Self::Generic9x5 { inv } => inv.$name(idx, $($arg),*),
+        Self::Generic9x6 { inv } => inv.$name(idx, $($arg),*),
+        Self::Generic3x3 { inv } => inv.$name(idx, $($arg),*),
         Self::Crafting { grid, output } => match idx {
           0..=8 => grid.$name(idx, $($arg),*),
           9..=9 => output.$name(idx, $($arg),*),
@@ -135,42 +141,42 @@ impl Window {
   for_all!(&mut Self, get_mut(idx: u32) -> Option<&mut Stack>, None);
   pub fn items(&self) -> ItemsIter<'_> { ItemsIter { win: self, index: 0 } }
   pub fn add(&mut self, _stack: &Stack) -> u8 { todo!() }
-  pub fn ty(&self) -> u8 {
+  pub fn ty(&self) -> &'static str {
     match self {
-      Self::Generic1x9 { .. } => 0,
-      Self::Generic2x9 { .. } => 1,
-      Self::Generic3x9 { .. } => 2,
-      Self::Generic4x9 { .. } => 3,
-      Self::Generic5x9 { .. } => 4,
-      Self::Generic6x9 { .. } => 5,
-      Self::Generic3x3 { .. } => 6,
-      Self::Anvil { .. } => 7,
-      Self::Beacon { .. } => 8,
-      Self::BlastFurnace { .. } => 9,
-      Self::BrewingStand { .. } => 10,
-      Self::Crafting { .. } => 11,
-      Self::Enchantment { .. } => 12,
-      Self::Furnace { .. } => 13,
-      Self::Grindstone { .. } => 14,
-      Self::Hopper { .. } => 15,
-      Self::Lectern { .. } => 16,
-      Self::Loom { .. } => 17,
-      Self::Merchant { .. } => 18,
-      Self::ShulkerBox { .. } => 19,
-      Self::Smithing { .. } => 20,
-      Self::Smoker { .. } => 21,
-      Self::Cartography { .. } => 22,
-      Self::Stonecutter { .. } => 23,
+      Self::Generic9x1 { .. } => "minecraft:generic_9x1",
+      Self::Generic9x2 { .. } => "minecraft:generic_9x2",
+      Self::Generic9x3 { .. } => "minecraft:generic_9x3",
+      Self::Generic9x4 { .. } => "minecraft:generic_9x4",
+      Self::Generic9x5 { .. } => "minecraft:generic_9x5",
+      Self::Generic9x6 { .. } => "minecraft:generic_9x6",
+      Self::Generic3x3 { .. } => "minecraft:generic_3x3",
+      Self::Anvil { .. } => "minecraft:anvil",
+      Self::Beacon { .. } => "minecraft:beacon",
+      Self::BlastFurnace { .. } => "minecraft:blast_furnace",
+      Self::BrewingStand { .. } => "minecraft:brewing_stand",
+      Self::Crafting { .. } => "minecraft:crafting",
+      Self::Enchantment { .. } => "minecraft:enchantment",
+      Self::Furnace { .. } => "minecraft:furnace",
+      Self::Grindstone { .. } => "minecraft:grindstone",
+      Self::Hopper { .. } => "minecraft:hopper",
+      Self::Lectern { .. } => "minecraft:lectern",
+      Self::Loom { .. } => "minecraft:loom",
+      Self::Merchant { .. } => "minecraft:merchant",
+      Self::ShulkerBox { .. } => "minecraft:shulker_box",
+      Self::Smithing { .. } => "minecraft:smithing",
+      Self::Smoker { .. } => "minecraft:smoker",
+      Self::Cartography { .. } => "minecraft:cartography",
+      Self::Stonecutter { .. } => "minecraft:stonecutter",
     }
   }
   pub fn size(&self) -> u32 {
     match self {
-      Self::Generic1x9 { .. } => 9,
-      Self::Generic2x9 { .. } => 18,
-      Self::Generic3x9 { .. } => 27,
-      Self::Generic4x9 { .. } => 36,
-      Self::Generic5x9 { .. } => 45,
-      Self::Generic6x9 { .. } => 54,
+      Self::Generic9x1 { .. } => 9,
+      Self::Generic9x2 { .. } => 18,
+      Self::Generic9x3 { .. } => 27,
+      Self::Generic9x4 { .. } => 36,
+      Self::Generic9x5 { .. } => 45,
+      Self::Generic9x6 { .. } => 54,
       Self::Generic3x3 { .. } => 9,
       Self::Anvil { .. } => 3,
       Self::Beacon { .. } => 1,

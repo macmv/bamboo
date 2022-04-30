@@ -313,7 +313,12 @@ impl Player {
   /// Shows the given inventory to the client. The title will be shown in the
   /// top left of the window.
   pub fn show_inventory(&self, win: Window, title: &Chat) {
-    self.send(cb::Packet::WindowOpen { wid: 1, ty: win.ty(), title: title.to_json() });
+    self.send(cb::Packet::WindowOpen {
+      wid:   1,
+      ty:    win.ty().into(),
+      size:  win.size(),
+      title: title.to_json(),
+    });
     self.send(cb::Packet::WindowItems {
       wid:   1,
       items: win.items().map(|i| i.to_item()).collect(),
