@@ -3,7 +3,7 @@ mod material;
 mod ty;
 mod version;
 
-pub use behavior::Behavior;
+pub use behavior::{Behavior, TileEntity};
 pub use material::Material;
 pub use ty::{Data, Kind, Prop, PropValue, Type};
 pub use version::TypeConverter;

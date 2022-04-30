@@ -1,4 +1,4 @@
-use super::{ChunkPos, FPos};
+use super::{ChunkPos, ColRelPos, FPos, RelPos};
 use crate::util::Face;
 use bb_macros::Transfer;
 use std::{
@@ -30,6 +30,12 @@ pub struct Pos {
 
 impl Default for Pos {
   fn default() -> Self { Pos::new(0, 0, 0) }
+}
+impl PartialEq<Pos> for RelPos {
+  fn eq(&self, other: &Pos) -> bool { self.as_pos() == *other }
+}
+impl PartialEq<RelPos> for Pos {
+  fn eq(&self, other: &RelPos) -> bool { other.as_pos() == *self }
 }
 
 impl fmt::Display for Pos {
@@ -151,7 +157,15 @@ impl Pos {
   /// Returns this position within the 0, 0 chunk column. That is, the X and Z
   /// are both set to their chunk relative position. The Y value is unchanged.
   #[inline(always)]
-  pub fn chunk_rel(&self) -> Pos { Pos { x: self.chunk_rel_x(), y: self.y, z: self.chunk_rel_z() } }
+  pub fn chunk_col_rel(&self) -> ColRelPos {
+    ColRelPos::new(self.chunk_rel_x() as u8, self.y, self.chunk_rel_z() as u8)
+  }
+  /// Returns this position within the 0, 0, 0 chunk cube. That is, the X, Y and
+  /// Z are all set to their chunk relative position.
+  #[inline(always)]
+  pub fn chunk_rel(&self) -> RelPos {
+    RelPos::new(self.chunk_rel_x() as u8, self.chunk_rel_y() as u8, self.chunk_rel_z() as u8)
+  }
   /// Returns this position within the 0, 0, 0 chunk sectino. That is, the X, Y
   /// and Z are all set to their chunk relative position.
   #[inline(always)]

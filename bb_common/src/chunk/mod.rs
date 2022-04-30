@@ -6,7 +6,7 @@ mod section;
 pub use light::{BlockLight, LightChunk, SkyLight};
 pub use section::Section;
 
-use crate::math::{Pos, PosError};
+use crate::math::{ColRelPos, PosError};
 use std::cmp;
 
 /// A chunk column. This is not `Clone`, because that would mean duplicating an
@@ -37,7 +37,7 @@ impl<S: Section> Chunk<S> {
   /// This updates the internal data to contain a block at the given position.
   /// In release mode, the position is not checked. In any other mode, a
   /// PosError will be returned if any of the x, y, or z are outside of 0..16
-  pub fn set_block(&mut self, pos: Pos, ty: u32) -> Result<(), PosError> {
+  pub fn set_block(&mut self, pos: ColRelPos, ty: u32) -> Result<(), PosError> {
     let index = pos.chunk_y() as usize;
     if !(0..16).contains(&index) {
       return Err(pos.err("Y coordinate is outside of chunk".into()));
@@ -49,14 +49,14 @@ impl<S: Section> Chunk<S> {
       self.sections[index] = Some(S::new(self.max_bpe));
     }
     match &mut self.sections[index] {
-      Some(s) => s.set_block(Pos::new(pos.x(), pos.chunk_rel_y(), pos.z()), ty),
+      Some(s) => Ok(s.set_block(pos.chunk_rel(), ty)),
       None => unreachable!(),
     }
   }
   /// This fills the given region with the given block. See
   /// [`set_block`](Self::set_block) for details about the bounds of min and
   /// max.
-  pub fn fill(&mut self, min: Pos, max: Pos, ty: u32) -> Result<(), PosError> {
+  pub fn fill(&mut self, min: ColRelPos, max: ColRelPos, ty: u32) -> Result<(), PosError> {
     let min_index = min.chunk_y() as usize;
     let max_index = max.chunk_y() as usize;
     if !(0..16).contains(&min_index) {
@@ -77,13 +77,9 @@ impl<S: Section> Chunk<S> {
       }
       match &mut self.sections[index] {
         Some(s) => {
-          let min = Pos::new(min.x(), cmp::max(min.y(), index as i32 * 16), min.z());
-          let max = Pos::new(max.x(), cmp::min(max.y(), index as i32 * 16 + 15), max.z());
-          s.fill(
-            Pos::new(min.x(), min.chunk_rel_y(), min.z()),
-            Pos::new(max.x(), max.chunk_rel_y(), max.z()),
-            ty,
-          )?;
+          let min = ColRelPos::new(min.x(), cmp::max(min.y(), index as i32 * 16), min.z());
+          let max = ColRelPos::new(max.x(), cmp::min(max.y(), index as i32 * 16 + 15), max.z());
+          s.fill(min.chunk_rel(), max.chunk_rel(), ty);
         }
         None => unreachable!(),
       }
@@ -93,7 +89,7 @@ impl<S: Section> Chunk<S> {
   /// This updates the internal data to contain a block at the given position.
   /// In release mode, the position is not checked. In any other mode, a
   /// PosError will be returned if any of the x, y, or z are outside of 0..16
-  pub fn get_block(&self, pos: Pos) -> Result<u32, PosError> {
+  pub fn get_block(&self, pos: ColRelPos) -> Result<u32, PosError> {
     let index = pos.chunk_y();
     if !(0..16).contains(&index) {
       return Err(pos.err("Y coordinate is outside of chunk".into()));
@@ -103,7 +99,7 @@ impl<S: Section> Chunk<S> {
       return Ok(0);
     }
     match &self.sections[index] {
-      Some(s) => s.get_block(Pos::new(pos.x(), pos.chunk_rel_y(), pos.z())),
+      Some(s) => Ok(s.get_block(pos.chunk_rel())),
       None => unreachable!(),
     }
   }
@@ -153,7 +149,7 @@ impl<S: Section> Chunk<S> {
     let mut index = 0;
     for z in 0..16 {
       for x in 0..16 {
-        let v = self.height_at(Pos::new(x, 0, z)).unwrap() as u64;
+        let v = self.height_at(ColRelPos::new(x, 0, z)).unwrap() as u64;
         if shift > 64 - 9 {
           heightmap[index] |= (v.overflowing_shl(shift).0 & 0b111111111 << (64 - 9)) as i64;
           heightmap[index + 1] |= (v >> (64 - shift)) as i64;
@@ -186,7 +182,7 @@ impl<S: Section> Chunk<S> {
     let mut shift = 0;
     for z in 0..16 {
       for x in 0..16 {
-        let v = self.height_at(Pos::new(x, 0, z)).unwrap() as u64;
+        let v = self.height_at(ColRelPos::new(x, 0, z)).unwrap() as u64;
         heightmap[index] |= (v.overflowing_shl(shift).0) as i64;
         shift += 9;
         if shift > 64 {
@@ -199,7 +195,7 @@ impl<S: Section> Chunk<S> {
   }
   /// Returns the world height at the given position. This is a simple loop, and
   /// should be avoided.
-  pub fn height_at(&self, pos: Pos) -> Result<i32, PosError> {
+  pub fn height_at(&self, pos: ColRelPos) -> Result<i32, PosError> {
     let max_y = self.sections().len() * 16;
     for y in (0..max_y).rev() {
       // This is correct; it is not a transparent check, just an air check.

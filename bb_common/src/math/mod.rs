@@ -4,6 +4,7 @@ pub mod der;
 mod fast;
 mod fpos;
 mod pos;
+mod rel_pos;
 #[cfg(feature = "host")]
 mod rng;
 mod vec;
@@ -23,6 +24,7 @@ use wyhash::WyHash;
 
 pub use chunk_pos::ChunkPos;
 pub use pos::{Pos, PosError, PosIter};
+pub use rel_pos::{ColRelPos, RelPos};
 // pub use bb_generated::{ChunkPos, Pos, PosError, PosIter};
 
 /// A block face. This is used to represent a face that a user clicked on.

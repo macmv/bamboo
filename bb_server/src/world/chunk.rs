@@ -1,11 +1,14 @@
-use crate::block;
+use crate::{block, block::TileEntity};
 use bb_common::{
   chunk::{paletted::Section as PalettedSection, BlockLight, Chunk, LightChunk, SkyLight},
   math::{Pos, PosError},
   version::BlockVersion,
 };
-use parking_lot::Mutex;
-use std::sync::{atomic::AtomicU32, Arc};
+use parking_lot::{Mutex, RwLock};
+use std::{
+  collections::HashMap,
+  sync::{atomic::AtomicU32, Arc},
+};
 
 /// A chunk in the world with a number of people viewing it. If the count is at
 /// 0, then this chunk is essentially flagged for unloading. Chunks are unloaded
@@ -25,6 +28,7 @@ pub struct CountedChunk {
 /// pain to change it, and I don't really want to bother.
 pub struct MultiChunk {
   inner:        Chunk<PalettedSection>,
+  tes:          RwLock<HashMap<Pos, Box<dyn TileEntity>>>,
   sky:          Option<LightChunk<SkyLight>>,
   block:        LightChunk<BlockLight>,
   types:        Arc<block::TypeConverter>,
@@ -47,6 +51,7 @@ impl MultiChunk {
   pub fn new(types: Arc<block::TypeConverter>, sky: bool) -> MultiChunk {
     MultiChunk {
       inner: Chunk::new(15),
+      tes: RwLock::new(HashMap::new()),
       sky: if sky { Some(LightChunk::new()) } else { None },
       block: LightChunk::new(),
       types,
