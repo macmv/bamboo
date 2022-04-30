@@ -1,10 +1,5 @@
 use crate::{
-  block,
-  command::CommandSender,
-  entity,
-  entity::EntityRef,
-  item::{Inventory, Stack},
-  net::ConnSender,
+  block, command::CommandSender, entity, entity::EntityRef, item::Stack, net::ConnSender,
   world::World,
 };
 use bb_common::{

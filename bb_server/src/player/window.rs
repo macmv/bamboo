@@ -1,117 +1,116 @@
-use super::Inventory;
-use crate::item::Stack;
+use crate::item::{SharedInventory, Stack};
 
 #[derive(Debug, Clone)]
 pub enum Window {
   Generic9x1 {
-    inv: Inventory<9>,
+    inv: SharedInventory<9>,
   },
   Generic9x2 {
-    inv: Inventory<18>,
+    inv: SharedInventory<18>,
   },
   Generic9x3 {
-    inv: Inventory<27>,
+    inv: SharedInventory<27>,
   },
   Generic9x4 {
-    inv: Inventory<36>,
+    inv: SharedInventory<36>,
   },
   Generic9x5 {
-    inv: Inventory<45>,
+    inv: SharedInventory<45>,
   },
   Generic9x6 {
-    inv: Inventory<54>,
+    inv: SharedInventory<54>,
   },
   Generic3x3 {
-    inv: Inventory<9>,
+    inv: SharedInventory<9>,
   },
   Anvil {
-    tool:    Inventory<1>,
-    enchant: Inventory<1>,
-    output:  Inventory<1>,
+    tool:    SharedInventory<1>,
+    enchant: SharedInventory<1>,
+    output:  SharedInventory<1>,
   },
   Beacon {
-    inv: Inventory<1>,
+    inv: SharedInventory<1>,
   },
   BlastFurnace {
-    input:  Inventory<1>,
-    fuel:   Inventory<1>,
-    output: Inventory<1>,
+    input:  SharedInventory<1>,
+    fuel:   SharedInventory<1>,
+    output: SharedInventory<1>,
   },
   BrewingStand {
-    bottles:    Inventory<3>,
-    ingredient: Inventory<1>,
-    fuel:       Inventory<1>,
+    bottles:    SharedInventory<3>,
+    ingredient: SharedInventory<1>,
+    fuel:       SharedInventory<1>,
   },
   Crafting {
-    output: Inventory<1>,
-    grid:   Inventory<9>,
+    output: SharedInventory<1>,
+    grid:   SharedInventory<9>,
   },
   Enchantment {
-    book:  Inventory<1>,
-    lapis: Inventory<1>,
+    book:  SharedInventory<1>,
+    lapis: SharedInventory<1>,
   },
   Furnace {
-    input:  Inventory<1>,
-    fuel:   Inventory<1>,
-    output: Inventory<1>,
+    input:  SharedInventory<1>,
+    fuel:   SharedInventory<1>,
+    output: SharedInventory<1>,
   },
   Grindstone {
-    inputs: Inventory<2>,
-    output: Inventory<1>,
+    inputs: SharedInventory<2>,
+    output: SharedInventory<1>,
   },
   Hopper {
-    inv: Inventory<5>,
+    inv: SharedInventory<5>,
   },
   Lectern {
-    book: Inventory<1>,
+    book: SharedInventory<1>,
   },
   Loom {
-    banner:  Inventory<1>,
-    dye:     Inventory<1>,
-    pattern: Inventory<1>,
-    output:  Inventory<1>,
+    banner:  SharedInventory<1>,
+    dye:     SharedInventory<1>,
+    pattern: SharedInventory<1>,
+    output:  SharedInventory<1>,
   },
   Merchant {
-    inv: Inventory<1>,
+    inv: SharedInventory<1>,
   },
   ShulkerBox {
-    inv: Inventory<27>,
+    inv: SharedInventory<27>,
   },
   Smithing {
-    input:   Inventory<1>,
-    upgrade: Inventory<1>,
-    output:  Inventory<1>,
+    input:   SharedInventory<1>,
+    upgrade: SharedInventory<1>,
+    output:  SharedInventory<1>,
   },
   Smoker {
-    input:  Inventory<1>,
-    fuel:   Inventory<1>,
-    output: Inventory<1>,
+    input:  SharedInventory<1>,
+    fuel:   SharedInventory<1>,
+    output: SharedInventory<1>,
   },
   Cartography {
-    map:    Inventory<1>,
-    paper:  Inventory<1>,
-    output: Inventory<1>,
+    map:    SharedInventory<1>,
+    paper:  SharedInventory<1>,
+    output: SharedInventory<1>,
   },
   Stonecutter {
-    input:  Inventory<1>,
-    output: Inventory<1>,
+    input:  SharedInventory<1>,
+    output: SharedInventory<1>,
   },
 }
 macro_rules! for_all {
-  ( $self:ty, $name:ident (idx: u32 $(, $arg:ident: $ty:ty)*) $( -> $ret:ty )?, $default:expr) => {
-    pub fn $name(self: $self, idx: u32, $($arg: $ty),*) $( -> $ret )? {
+  ( $self:ty, $name:ident $call:ident (idx: u32, $stack:ty)) => {
+    pub fn $name<R>(self: $self, idx: u32, f: impl FnOnce($stack) -> R) -> Option<R> {
       match self {
-        Self::Generic9x1 { inv } => inv.$name(idx, $($arg),*),
-        Self::Generic9x2 { inv } => inv.$name(idx, $($arg),*),
-        Self::Generic9x3 { inv } => inv.$name(idx, $($arg),*),
-        Self::Generic9x4 { inv } => inv.$name(idx, $($arg),*),
-        Self::Generic9x5 { inv } => inv.$name(idx, $($arg),*),
-        Self::Generic9x6 { inv } => inv.$name(idx, $($arg),*),
-        Self::Generic3x3 { inv } => inv.$name(idx, $($arg),*),
+        Self::Generic9x1 { inv } => inv.lock().$call(idx).map(|s| f(s)),
+        Self::Generic9x2 { inv } => inv.lock().$call(idx).map(|s| f(s)),
+        Self::Generic9x3 { inv } => inv.lock().$call(idx).map(|s| f(s)),
+        Self::Generic9x4 { inv } => inv.lock().$call(idx).map(|s| f(s)),
+        Self::Generic9x5 { inv } => inv.lock().$call(idx).map(|s| f(s)),
+        Self::Generic9x6 { inv } => inv.lock().$call(idx).map(|s| f(s)),
+        Self::Generic3x3 { inv } => inv.lock().$call(idx).map(|s| f(s)),
         Self::Crafting { output, grid } => match idx {
-          0..=0 => output.$name(idx, $($arg),*),
-          1..=9 => grid.$name(idx - 1, $($arg),*),
-          _ => $default,
+          0..=0 => output.lock().$call(idx).map(|s| f(s)),
+          1..=9 => grid.lock().$call(idx - 1).map(|s| f(s)),
+          _ => None,
         },
         _ => todo!(),
       }
@@ -124,8 +123,8 @@ pub struct ItemsIter<'a> {
   index: u32,
 }
 
-impl<'a> Iterator for ItemsIter<'a> {
-  type Item = &'a Stack;
+impl Iterator for ItemsIter<'_> {
+  type Item = Stack;
 
   fn next(&mut self) -> Option<Self::Item> {
     self.win.get(self.index).map(|it| {
@@ -136,20 +135,21 @@ impl<'a> Iterator for ItemsIter<'a> {
 }
 
 impl Window {
-  for_all!(&mut Self, set(idx: u32, stack: Stack), {});
-  for_all!(&Self, get(idx: u32) -> Option<&Stack>, None);
-  for_all!(&mut Self, get_mut(idx: u32) -> Option<&mut Stack>, None);
+  pub fn get(&self, index: u32) -> Option<Stack> { self.access(index, |s| s.clone()) }
+  pub fn set(&mut self, index: u32, stack: Stack) { self.access_mut(index, move |s| *s = stack); }
+  for_all!(&Self, access get(idx: u32, &Stack));
+  for_all!(&mut Self, access_mut get_mut(idx: u32, &mut Stack));
   pub fn items(&self) -> ItemsIter<'_> { ItemsIter { win: self, index: 0 } }
   pub fn add(&mut self, stack: &Stack) -> u8 {
     match self {
-      Self::Generic9x1 { inv } => inv.add(stack),
-      Self::Generic9x2 { inv } => inv.add(stack),
-      Self::Generic9x3 { inv } => inv.add(stack),
-      Self::Generic9x4 { inv } => inv.add(stack),
-      Self::Generic9x5 { inv } => inv.add(stack),
-      Self::Generic9x6 { inv } => inv.add(stack),
-      Self::Generic3x3 { inv } => inv.add(stack),
-      Self::Crafting { grid, .. } => grid.add(stack),
+      Self::Generic9x1 { inv } => inv.lock().add(stack),
+      Self::Generic9x2 { inv } => inv.lock().add(stack),
+      Self::Generic9x3 { inv } => inv.lock().add(stack),
+      Self::Generic9x4 { inv } => inv.lock().add(stack),
+      Self::Generic9x5 { inv } => inv.lock().add(stack),
+      Self::Generic9x6 { inv } => inv.lock().add(stack),
+      Self::Generic3x3 { inv } => inv.lock().add(stack),
+      Self::Crafting { grid, .. } => grid.lock().add(stack),
       _ => todo!(),
     }
   }

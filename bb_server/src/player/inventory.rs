@@ -122,18 +122,18 @@ impl PlayerInventory {
   /// on if a window is open, the actual slot being accessed may change. Use
   /// [`main`](Self::main) or [`win`](Self::win) to access the main inventory or
   /// the open window directly.
-  pub fn get(&self, index: i32) -> Option<&Stack> {
+  pub fn get(&self, index: i32) -> Option<Stack> {
     if index == -999 {
-      return Some(&self.held);
+      return Some(self.held.clone());
     }
     let idx = index as u32;
     if let Some(win) = &self.window {
       if idx < win.size() {
         win.get(idx)
       } else if idx < win.size() + 27 {
-        self.main.get(idx)
+        self.main.get(idx).cloned()
       } else if idx < win.size() + 36 {
-        self.hotbar.get(idx)
+        self.hotbar.get(idx).cloned()
       } else {
         None
       }
@@ -148,21 +148,22 @@ impl PlayerInventory {
         36..=44 => self.hotbar.get(idx),
         _ => None,
       }
+      .cloned()
     }
   }
   // This is private as modifying the stack doesn't send an update to the client.
-  pub(crate) fn get_mut(&mut self, index: i32) -> Option<&mut Stack> {
+  pub(crate) fn access<R>(&mut self, index: i32, f: impl FnOnce(&mut Stack) -> R) -> Option<R> {
     if index == -999 {
-      return Some(&mut self.held);
+      return Some(f(&mut self.held));
     }
     let idx = index as u32;
     if let Some(win) = &mut self.window {
       if idx < win.size() {
-        win.get_mut(idx)
+        win.access_mut(idx, f)
       } else if idx < win.size() + 27 {
-        self.main.get_mut(idx)
+        self.main.get_mut(idx).map(|s| f(s))
       } else if idx < win.size() + 36 {
-        self.hotbar.get_mut(idx)
+        self.hotbar.get_mut(idx).map(|s| f(s))
       } else {
         None
       }
@@ -177,12 +178,13 @@ impl PlayerInventory {
         36..=44 => self.hotbar.get_mut(idx),
         _ => None,
       }
+      .map(|s| f(s))
     }
   }
   /// Replaces the item at `index` with the given item. The old item will be
   /// returned. This allows you to replace items without cloning them.
   pub fn replace(&mut self, index: i32, stack: Stack) -> Stack {
-    let res = mem::replace(self.get_mut(index).unwrap(), stack);
+    let res = self.access(index, move |it| mem::replace(it, stack)).unwrap();
     self.sync(index);
     res
   }
@@ -191,7 +193,7 @@ impl PlayerInventory {
   /// [`main`](Self::main) or [`win`](Self::win) to access the main inventory or
   /// the open window directly.
   pub fn set(&mut self, index: i32, stack: Stack) {
-    *self.get_mut(index).unwrap() = stack;
+    self.access(index, |it| *it = stack);
     self.sync(index);
   }
 
@@ -254,19 +256,15 @@ impl PlayerInventory {
     let idx = index as u32;
     if let Some(win) = &self.window {
       let it = if idx < win.size() {
-        win.get(idx).unwrap()
+        win.get(idx).unwrap().to_item()
       } else if idx < win.size() + 27 {
-        self.main.get(idx).unwrap()
+        self.main.get(idx).unwrap().to_item()
       } else if idx < win.size() + 36 {
-        self.hotbar.get(idx).unwrap()
+        self.hotbar.get(idx).unwrap().to_item()
       } else {
         panic!()
       };
-      self.main.conn.send(cb::Packet::WindowItem {
-        wid:  u8::MAX,
-        slot: index,
-        item: it.to_item(),
-      });
+      self.main.conn.send(cb::Packet::WindowItem { wid: u8::MAX, slot: index, item: it });
     } else {
       match index {
         0 => self.head.sync(idx),
@@ -321,8 +319,7 @@ impl PlayerInventory {
                   } else if self.held.item() == it.item() {
                     let amount = self.held.amount();
                     self.held.set_amount(amount - 1);
-                    let it = self.get_mut(slot).unwrap();
-                    it.set_amount(it.amount() + 1);
+                    self.access(slot, |s| s.set_amount(s.amount() + 1));
                     self.sync(slot);
                   } else {
                     self.swap(slot, -999);
@@ -341,7 +338,7 @@ impl PlayerInventory {
         if allow {
           let idx = slot as u32;
           if let Some(win) = &mut self.window {
-            if let Some(mut stack) = win.get(idx).cloned() {
+            if let Some(mut stack) = win.get(idx) {
               let remaining = self.hotbar.add(&stack);
               stack.set_amount(remaining);
               if stack.amount() > 0 {
@@ -418,8 +415,7 @@ impl PlayerInventory {
     if it.amount() == 1 {
       self.replace(slot, Stack::empty());
     } else {
-      let it = self.get_mut(slot).unwrap();
-      it.set_amount(it.amount() - 1);
+      self.access(slot, |s| s.set_amount(s.amount() - 1));
       self.sync(slot);
     }
     if let Some(p) = self.player.upgrade() {
@@ -488,8 +484,7 @@ impl PlayerInventory {
     if items_remaining == 0 {
       self.set(-999, Stack::empty());
     } else {
-      let stack = self.get_mut(-999).unwrap();
-      stack.set_amount(items_remaining);
+      self.access(-999, |stack| stack.set_amount(items_remaining));
       self.sync(-999);
     }
   }

@@ -4,7 +4,7 @@ use super::{
 };
 use crate::{
   entity,
-  item::Inventory,
+  item::SharedInventory,
   player::{Player, Window},
   world::World,
 };
@@ -92,11 +92,11 @@ impl Behavior for Bed {
 
 pub struct Chest;
 pub struct ChestTE {
-  inv: Inventory<27>,
+  inv: SharedInventory<27>,
 }
 impl Behavior for Chest {
   fn create_te(&self) -> Option<Arc<dyn TileEntity>> {
-    Some(Arc::new(ChestTE { inv: Inventory::new() }))
+    Some(Arc::new(ChestTE { inv: SharedInventory::new() }))
   }
   fn interact(&self, block: Block, player: &Arc<Player>) -> bool {
     block.te(|chest: &ChestTE| {
