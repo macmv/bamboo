@@ -49,6 +49,7 @@ impl SectionRelPos {
   ///
   /// # Panics
   /// If the X, Y, or Z is greater than 15.
+  #[track_caller]
   pub fn new(x: u8, y: u8, z: u8) -> Self {
     if x >= 16 || y >= 16 || z >= 16 {
       panic!("X, Y and Z must be within 0..16");
