@@ -1,6 +1,6 @@
 use crate::{block, block::Block, entity, item, item::Stack, math::AABB, world::World, RNG};
 use bb_common::{
-  math::{ChunkPos, FPos, Pos, PosError, Vec3},
+  math::{ChunkPos, FPos, Pos, PosError, RelPos, Vec3},
   metadata::Metadata,
   net::cb,
 };
@@ -166,8 +166,8 @@ impl World {
         let max_x = if max.chunk_x() == x { max.chunk_rel_x() } else { 15 };
         let max_z = if max.chunk_z() == z { max.chunk_rel_z() } else { 15 };
 
-        let min = Pos::new(min_x, min.y, min_z);
-        let max = Pos::new(max_x, max.y, max_z);
+        let min = RelPos::new(min_x as u8, min.y, min_z as u8);
+        let max = RelPos::new(max_x as u8, max.y, max_z as u8);
 
         self.chunk(pos, |mut c| c.fill(min, max, ty))?;
 
@@ -192,7 +192,7 @@ impl World {
               y,
               min.to(max).filter_map(|pos| {
                 if pos.chunk_y() == y {
-                  Some((pos.chunk_section_rel(), ty.id()))
+                  Some((pos.section_rel(), ty.id()))
                 } else {
                   None
                 }
@@ -463,7 +463,7 @@ impl World {
             for z in min.z..=max.z {
               for x in min.x..=max.x {
                 let pos = Pos::new(x, y, z);
-                if c.get_kind(pos).unwrap() != block::Kind::Air {
+                if c.get_kind(pos.chunk_rel()).unwrap() != block::Kind::Air {
                   out.push(AABB::new(
                     FPos::from(pos + chunk.block()) + FPos::new(0.5, 0.0, 0.5),
                     Vec3::new(1.0, 1.0, 1.0),

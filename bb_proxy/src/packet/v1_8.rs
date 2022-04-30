@@ -2,7 +2,7 @@ use super::{ChunkWithPos, TypeConverter};
 use crate::gnet::cb::Packet;
 use bb_common::{
   chunk::Section as _,
-  math::{ChunkPos, Pos},
+  math::{ChunkPos, SectionRelPos},
   util::Buffer,
   version::{BlockVersion, ProtocolVersion},
 };
@@ -30,7 +30,7 @@ pub fn chunk(chunk: ChunkWithPos, conv: &TypeConverter) -> Packet {
     for y in 0..16 {
       for z in 0..16 {
         for x in 0..16 {
-          let b = s.get_block(Pos::new(x, y, z)).unwrap();
+          let b = s.get_block(SectionRelPos::new(x, y, z));
           // Theres a lot of air. Profiling says this helps a lot (~20% improvement for a
           // superflat world).
           if b == 0 {

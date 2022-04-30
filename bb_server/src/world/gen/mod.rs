@@ -2,7 +2,7 @@ use super::chunk::MultiChunk;
 use crate::{block, math::WarpedVoronoi};
 use bb_common::{
   config::ConfigSection,
-  math::{ChunkPos, Pos, RngCore, WyhashRng},
+  math::{ChunkPos, Pos, RelPos, RngCore, WyhashRng},
 };
 use noise::{BasicMulti, NoiseFn};
 use std::{
@@ -105,24 +105,25 @@ pub trait BiomeGen {
   fn fill_chunk(&self, world: &WorldGen, pos: ChunkPos, c: &mut MultiChunk) {
     let average_min_height = self.height_at(world, pos.block() + Pos::new(8, 0, 8));
     let layers = self.layers();
-    c.fill_kind(Pos::new(0, 0, 0), Pos::new(15, average_min_height, 15), layers.main_area).unwrap();
+    c.fill_kind(RelPos::new(0, 0, 0), RelPos::new(15, average_min_height, 15), layers.main_area)
+      .unwrap();
     for x in 0..16 {
       for z in 0..16 {
-        let height = self.height_at(world, pos.block() + Pos::new(x, 0, z)) as i32;
+        let height = self.height_at(world, pos.block() + Pos::new(x as i32, 0, z as i32)) as i32;
         let min_height = height - layers.total_height() as i32;
         match min_height.cmp(&average_min_height) {
           Ordering::Less => {
             c.fill_kind(
-              Pos::new(x, min_height + 1, z),
-              Pos::new(x, average_min_height, z),
+              RelPos::new(x, min_height + 1, z),
+              RelPos::new(x, average_min_height, z),
               block::Kind::Air,
             )
             .unwrap();
           }
           Ordering::Greater => {
             c.fill_kind(
-              Pos::new(x, average_min_height, z),
-              Pos::new(x, min_height, z),
+              RelPos::new(x, average_min_height, z),
+              RelPos::new(x, min_height, z),
               layers.main_area,
             )
             .unwrap();
@@ -131,8 +132,12 @@ pub trait BiomeGen {
         }
         let mut level = min_height as u32;
         for (k, depth) in &layers.layers {
-          c.fill_kind(Pos::new(x, level as i32, z), Pos::new(x, (level + depth) as i32, z), *k)
-            .unwrap();
+          c.fill_kind(
+            RelPos::new(x, level as i32, z),
+            RelPos::new(x, (level + depth) as i32, z),
+            *k,
+          )
+          .unwrap();
           level += depth;
         }
       }
@@ -149,15 +154,10 @@ pub trait BiomeGen {
     let pos = pos.chunk_rel();
     let layers = self.layers();
     let min_height = height - layers.total_height() as i32;
-    c.fill_kind(pos, pos + Pos::new(0, min_height, 0), layers.main_area).unwrap();
+    c.fill_kind(pos, pos.add_y(min_height), layers.main_area).unwrap();
     let mut level = min_height as u32;
     for (k, depth) in layers.layers() {
-      c.fill_kind(
-        pos + Pos::new(0, level as i32, 0),
-        pos + Pos::new(0, (level + depth) as i32, 0),
-        *k,
-      )
-      .unwrap();
+      c.fill_kind(pos.add_y(level as i32), pos.add_y((level + depth) as i32), *k).unwrap();
       level += depth;
     }
   }
@@ -263,7 +263,8 @@ impl WorldGen {
     let div = 32.0;
     let min_height = 40.0_f64;
     let b_min_height = min_height.floor() as i32;
-    c.fill_kind(Pos::new(0, 0, 0), Pos::new(15, b_min_height, 15), block::Kind::Stone).unwrap();
+    c.fill_kind(RelPos::new(0, 0, 0), RelPos::new(15, b_min_height, 15), block::Kind::Stone)
+      .unwrap();
     let mut biomes = HashSet::new();
     let mut tops = HashMap::new();
     for p in pos.columns() {

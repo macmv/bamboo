@@ -22,7 +22,7 @@ pub mod schematic;
 
 use bb_common::{
   config::{Config, ConfigSection},
-  math::{ChunkPos, FPos, Pos},
+  math::{ChunkPos, FPos, Pos, SectionRelPos},
   net::cb,
   util::{
     chat::{Chat, Color},
@@ -478,22 +478,13 @@ impl World {
     &self,
     pos: ChunkPos,
     chunk_y: i32,
-    changes: impl Iterator<Item = (Pos, u32)>,
+    changes: impl Iterator<Item = (SectionRelPos, u32)>,
   ) -> cb::Packet {
     cb::Packet::MultiBlockChange {
       pos,
       y: chunk_y,
       changes: changes
         .map(|(pos, id)| {
-          if pos.x() < 0
-            || pos.x() >= 16
-            || pos.y() < 0
-            || pos.y() >= 16
-            || pos.z() < 0
-            || pos.z() >= 16
-          {
-            panic!("invalid block position {}", pos);
-          }
           (id as u64) << 12 | (pos.x() as u64) << 8 | (pos.y() as u64) << 4 | pos.z() as u64
         })
         .collect(),

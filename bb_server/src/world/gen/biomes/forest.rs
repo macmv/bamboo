@@ -1,6 +1,6 @@
 use super::{super::BiomeGen, WorldGen};
 use crate::{block, math::PointGrid, world::chunk::MultiChunk};
-use bb_common::math::{ChunkPos, Pos};
+use bb_common::math::{ChunkPos, Pos, RelPos};
 use std::collections::HashMap;
 
 pub struct Gen {
@@ -27,7 +27,7 @@ impl Gen {
           c.fill_kind(rel, rel.add_y(4), block::Kind::OakLog).unwrap();
           c.fill_kind(rel.add_y(5), rel.add_y(leaf_start + 3), block::Kind::OakLeaves).unwrap();
         } else {
-          rel += Pos::new(0, leaf_start, 0);
+          rel += RelPos::new(0, leaf_start, 0);
           // If this is false, then it is the outside corner, where we don't want leaves
           if (offset.x() > -2 && offset.x() < 2) || (offset.z() > -2 && offset.z() < 2) {
             // If this is true, we are on the outside ring, where the leaves should be lower

@@ -24,9 +24,9 @@ impl CaveWorm {
       }
       if pos.chunk() == chunk_pos {
         // c.set_kind(self.pos.chunk_rel(), block::Kind::LimeWool).unwrap();
-        let min = (pos.chunk_rel() - Pos::new(1, 1, 1)).max(Pos::new(0, 0, 0));
-        let max = (pos.chunk_rel() + Pos::new(1, 1, 1)).min(Pos::new(15, 255, 15));
-        c.fill_kind(min, max, block::Kind::Air).unwrap();
+        let min = (pos.chunk_rel().as_pos() - Pos::new(1, 1, 1)).max(Pos::new(0, 0, 0));
+        let max = (pos.chunk_rel().as_pos() + Pos::new(1, 1, 1)).min(Pos::new(15, 255, 15));
+        c.fill_kind(min.chunk_rel(), max.chunk_rel(), block::Kind::Air).unwrap();
       }
     }
   }

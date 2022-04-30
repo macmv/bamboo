@@ -1,7 +1,7 @@
 use crate::{block, block::TileEntity};
 use bb_common::{
   chunk::{paletted::Section as PalettedSection, BlockLight, Chunk, LightChunk, SkyLight},
-  math::{Pos, PosError},
+  math::{PosError, RelPos},
   version::BlockVersion,
 };
 use parking_lot::{Mutex, RwLock};
@@ -28,7 +28,7 @@ pub struct CountedChunk {
 /// pain to change it, and I don't really want to bother.
 pub struct MultiChunk {
   inner:        Chunk<PalettedSection>,
-  tes:          RwLock<HashMap<Pos, Box<dyn TileEntity>>>,
+  tes:          RwLock<HashMap<RelPos, Box<dyn TileEntity>>>,
   sky:          Option<LightChunk<SkyLight>>,
   block:        LightChunk<BlockLight>,
   types:        Arc<block::TypeConverter>,
@@ -68,7 +68,7 @@ impl MultiChunk {
   /// for use by the world directly, or during use terrain generation. If you
   /// call this function without sending any updates yourself, no one in render
   /// distance will see any of these changes!
-  pub fn set_type(&mut self, p: Pos, ty: block::Type) -> Result<(), PosError> {
+  pub fn set_type(&mut self, p: RelPos, ty: block::Type) -> Result<(), PosError> {
     self.inner.set_block(p, ty.id())?;
     self.update_light(p);
     Ok(())
@@ -84,7 +84,7 @@ impl MultiChunk {
   /// for use by the world directly, or during use terrain generation. If you
   /// call this function without sending any updates yourself, no one in render
   /// distance will see any of these changes!
-  pub fn set_kind(&mut self, p: Pos, kind: block::Kind) -> Result<(), PosError> {
+  pub fn set_kind(&mut self, p: RelPos, kind: block::Kind) -> Result<(), PosError> {
     self.inner.set_block(p, self.types.get(kind).default_type().id())?;
     self.update_light(p);
     Ok(())
@@ -101,7 +101,7 @@ impl MultiChunk {
   /// for use by the world directly, or during use terrain generation. If you
   /// call this function without sending any updates yourself, no one in render
   /// distance will see any of these changes!
-  pub fn fill(&mut self, min: Pos, max: Pos, ty: block::Type) -> Result<(), PosError> {
+  pub fn fill(&mut self, min: RelPos, max: RelPos, ty: block::Type) -> Result<(), PosError> {
     self.inner.fill(min, max, ty.id())?;
     // TODO: Update light correctly.
     self.update_light(min);
@@ -116,7 +116,7 @@ impl MultiChunk {
   /// for use by the world directly, or during use terrain generation. If you
   /// call this function without sending any updates yourself, no one in render
   /// distance will see any of these changes!
-  pub fn fill_kind(&mut self, min: Pos, max: Pos, kind: block::Kind) -> Result<(), PosError> {
+  pub fn fill_kind(&mut self, min: RelPos, max: RelPos, kind: block::Kind) -> Result<(), PosError> {
     self.inner.fill(min, max, self.types.get(kind).default_type().id())?;
     Ok(())
   }
@@ -126,13 +126,13 @@ impl MultiChunk {
   ///
   /// This returns a specific block type. If you only need to block kind, prefer
   /// [`get_kind`](Self::get_kind).
-  pub fn get_type(&self, p: Pos) -> Result<block::Type, PosError> {
+  pub fn get_type(&self, p: RelPos) -> Result<block::Type, PosError> {
     Ok(self.types.type_from_id(self.inner.get_block(p)?, BlockVersion::latest()))
   }
 
   /// Gets the type of a block within this chunk. Pos must be within the chunk.
   /// See [`set_kind`](Self::set_kind) for more.
-  pub fn get_kind(&self, p: Pos) -> Result<block::Kind, PosError> {
+  pub fn get_kind(&self, p: RelPos) -> Result<block::Kind, PosError> {
     Ok(self.types.kind_from_id(self.inner.get_block(p)?, BlockVersion::latest()))
   }
 
@@ -170,7 +170,7 @@ impl MultiChunk {
     }
     self.block.update_all(&self.inner);
   }
-  fn update_light(&mut self, pos: Pos) {
+  fn update_light(&mut self, pos: RelPos) {
     if self.update_light {
       if let Some(sky) = &mut self.sky {
         sky.update(&self.inner, pos);

@@ -1,7 +1,7 @@
 use super::{super::chunk::MultiChunk, WorldGen};
 use crate::block;
 use bb_common::{
-  math::{ChunkPos, Pos},
+  math::{ChunkPos, Pos, RelPos},
   version::BlockVersion,
 };
 
@@ -19,7 +19,7 @@ impl WorldGen {
     } else {
       FILL
     };
-    c.fill_kind(Pos::new(0, Y - 1, 0), Pos::new(15, Y - 1, 15), fill).unwrap();
+    c.fill_kind(RelPos::new(0, Y - 1, 0), RelPos::new(15, Y - 1, 15), fill).unwrap();
 
     // First, draw the ground
     if pos.z() < 0 || pos.x() < -1 {
@@ -40,22 +40,22 @@ impl WorldGen {
     if is_left {
       if is_top {
         // Top left corner
-        c.set_kind(Pos::new(15, Y - 1, 15), EDGE).unwrap();
+        c.set_kind(RelPos::new(15, Y - 1, 15), EDGE).unwrap();
       }
       if is_bottom {
         // Bottom left corner
-        c.set_kind(Pos::new(15, Y - 1, 0), EDGE).unwrap();
+        c.set_kind(RelPos::new(15, Y - 1, 0), EDGE).unwrap();
       }
       if !is_top && !is_bottom {
         // Left edge
-        c.fill_kind(Pos::new(15, Y - 1, 0), Pos::new(15, Y - 1, 15), EDGE).unwrap();
+        c.fill_kind(RelPos::new(15, Y - 1, 0), RelPos::new(15, Y - 1, 15), EDGE).unwrap();
       }
     } else {
       if is_top {
-        c.fill_kind(Pos::new(0, Y - 1, 15), Pos::new(15, Y - 1, 15), EDGE).unwrap();
+        c.fill_kind(RelPos::new(0, Y - 1, 15), RelPos::new(15, Y - 1, 15), EDGE).unwrap();
       }
       if is_bottom {
-        c.fill_kind(Pos::new(0, Y - 1, 0), Pos::new(15, Y - 1, 0), EDGE).unwrap();
+        c.fill_kind(RelPos::new(0, Y - 1, 0), RelPos::new(15, Y - 1, 0), EDGE).unwrap();
       }
     }
 
@@ -86,7 +86,7 @@ impl WorldGen {
         }
         let state = (z + pos.block_z() % 24) / 2;
         let ty = c.type_converter().type_from_id(id as u32 * 16 + state as u32, ver);
-        c.set_type(Pos::new(x % 16, Y, z), ty).unwrap();
+        c.set_type(RelPos::new((x % 16) as u8, Y, z as u8), ty).unwrap();
       }
     }
   }
@@ -138,19 +138,19 @@ impl WorldGen {
     if pos.z() == -1 {
       if pos.x() == -1 {
         // Corner
-        c.set_kind(Pos::new(15, Y - 1, 15), EDGE).unwrap();
+        c.set_kind(RelPos::new(15, Y - 1, 15), EDGE).unwrap();
       }
       if pos.x() >= 0 {
-        c.fill_kind(Pos::new(0, Y - 1, 15), Pos::new(15, Y - 1, 15), EDGE).unwrap();
+        c.fill_kind(RelPos::new(0, Y - 1, 15), RelPos::new(15, Y - 1, 15), EDGE).unwrap();
         for x in 0..16 {
           if x % 16 == 0 {
-            c.fill_kind(Pos::new(x, Y - 1, 11), Pos::new(x, Y - 1, 14), EDGE).unwrap();
+            c.fill_kind(RelPos::new(x, Y - 1, 11), RelPos::new(x, Y - 1, 14), EDGE).unwrap();
           } else if x % 8 == 0 {
-            c.fill_kind(Pos::new(x, Y - 1, 12), Pos::new(x, Y - 1, 14), EDGE).unwrap();
+            c.fill_kind(RelPos::new(x, Y - 1, 12), RelPos::new(x, Y - 1, 14), EDGE).unwrap();
           } else if x % 4 == 0 {
-            c.fill_kind(Pos::new(x, Y - 1, 13), Pos::new(x, Y - 1, 14), EDGE).unwrap();
+            c.fill_kind(RelPos::new(x, Y - 1, 13), RelPos::new(x, Y - 1, 14), EDGE).unwrap();
           } else if x % 2 == 0 {
-            c.set_kind(Pos::new(x, Y - 1, 14), EDGE).unwrap();
+            c.set_kind(RelPos::new(x, Y - 1, 14), EDGE).unwrap();
           }
         }
       }

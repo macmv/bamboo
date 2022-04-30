@@ -5,7 +5,7 @@
 use crate::block;
 use bb_common::{
   chunk::Section,
-  math::{ChunkPos, Pos},
+  math::{ChunkPos, SectionRelPos},
   nbt::NBT,
 };
 use std::{fs, io, path::Path, str::FromStr};
@@ -109,7 +109,7 @@ impl World {
                   let id = (blocks[index] as u32) << 4 | (data[index / 2] & mask) as u32;
                   let old =
                     self.block_converter().to_latest(id, bb_common::version::BlockVersion::V1_8);
-                  section.set_block(Pos::new(x, y, z), old).unwrap();
+                  section.set_block(SectionRelPos::new(x, y, z), old);
                 }
               }
             }
