@@ -77,7 +77,7 @@ impl Parser {
       Self::Bool               => "brigadier:bool",
       Self::Double { .. }      => "brigadier:double",
       Self::Float { .. }       => "brigadier:float",
-      Self::Int { .. }         => "brigadier:int",
+      Self::Int { .. }         => "brigadier:integer",
       Self::String(_)          => "brigadier:string",
       Self::Entity { .. }      => "minecraft:entity",
       Self::ScoreHolder { .. } => "minecraft:score_holder",

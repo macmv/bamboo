@@ -1,6 +1,6 @@
-use super::World;
+use super::{World, WorldManager};
 use crate::{
-  command::{Command, Parser, StringType},
+  command::{Arg, Command, Parser, StringType},
   entity,
   player::Player,
 };
@@ -12,7 +12,10 @@ use bb_common::{
 };
 use parking_lot::Mutex;
 use rayon::prelude::*;
-use std::sync::atomic::{AtomicU32, Ordering};
+use std::sync::{
+  atomic::{AtomicU32, Ordering},
+  Arc,
+};
 
 impl World {
   pub fn init(&self) {
@@ -63,26 +66,35 @@ impl World {
         _ => unreachable!(),
       }
     });
-    let mut c = Command::new("gamemode");
-    c.add_lit("survival");
-    c.add_lit("creative");
-    c.add_lit("adventure");
-    c.add_lit("spectator");
-    c.add_lit("s");
-    c.add_lit("c");
-    c.add_lit("a");
-    c.add_lit("sp");
-    self.commands().add(c, |_, player, args| {
+    fn handle_gamemode(_: &Arc<WorldManager>, player: Option<&Arc<Player>>, args: Vec<Arg>) {
       if let Some(player) = player {
-        player.set_game_mode(match args[1].lit() {
-          "survival" | "s" => GameMode::Survival,
-          "creative" | "c" => GameMode::Creative,
-          "adventure" | "a" => GameMode::Adventure,
-          "spectator" | "sp" => GameMode::Spectator,
+        player.set_game_mode(match &args[1] {
+          Arg::Literal(lit) => match lit.as_str() {
+            "survival" | "s" => GameMode::Survival,
+            "creative" | "c" => GameMode::Creative,
+            "adventure" | "a" => GameMode::Adventure,
+            "spectator" | "sp" => GameMode::Spectator,
+            _ => unreachable!(),
+          },
+          Arg::Int(num) => GameMode::from_id(*num as u8),
           _ => unreachable!(),
         });
       }
-    });
+    }
+    for name in ["gamemode", "gm"] {
+      let mut c = Command::new(name);
+      c.add_lit("survival");
+      c.add_lit("creative");
+      c.add_lit("adventure");
+      c.add_lit("spectator");
+      c.add_lit("s");
+      c.add_lit("c");
+      c.add_lit("a");
+      c.add_lit("sp");
+      c.add_arg("mode", Parser::Int { min: Some(0), max: Some(3) });
+      self.commands().add(c, handle_gamemode);
+    }
+
     let c = Command::new("gms");
     self.commands().add(c, |_, player, _args| {
       if let Some(player) = player {
