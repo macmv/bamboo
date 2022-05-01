@@ -23,7 +23,6 @@ pub fn window(input: TokenStream) -> TokenStream {
   let mut size = vec![];
   for v in input.variants.iter() {
     let mut found_name = false;
-    let mut output = false;
     for attr in &v.attrs {
       if attr.path.get_ident().map(|i| i == "name").unwrap_or(false) {
         match attr.parse_args::<LitStr>() {
@@ -155,10 +154,12 @@ pub fn window(input: TokenStream) -> TokenStream {
     }
   };
   // Will print the result of this proc macro
+  /*
   let mut p =
     std::process::Command::new("rustfmt").stdin(std::process::Stdio::piped()).spawn().unwrap();
   std::io::Write::write_all(p.stdin.as_mut().unwrap(), out.to_string().as_bytes()).unwrap();
   p.wait_with_output().unwrap();
+  */
 
   out.into()
 }
