@@ -26,6 +26,9 @@ pub struct Word {
 
 impl<'a> Tokenizer<'a> {
   pub fn new(text: &'a str) -> Self { Tokenizer { text, chars: text.chars().peekable(), pos: 0 } }
+  pub fn new_with_pos(text: &'a str, pos: usize) -> Self {
+    Tokenizer { text, chars: text.chars().peekable(), pos }
+  }
 
   /// Returns the current index into the command of this tokenizer. This will
   /// always be at the start of a valid utf8 character.
@@ -39,6 +42,25 @@ impl<'a> Tokenizer<'a> {
       v
     })
   }
+
+  pub fn peek(&mut self) -> Option<char> { self.peek_char() }
+
+  /// If the following characters match `text`, then `Ok(())` is returned. The
+  /// characters will be consumed from `self`.
+  pub fn expect(&mut self, text: &str) -> Result<()> {
+    let start = self.pos;
+    for c in text.chars() {
+      if self.next_char() != Some(c) {
+        return Err(ParseError::new(
+          Span::new(start, self.pos),
+          ErrorKind::Expected(format!("`{text}`")),
+        ));
+      }
+    }
+    Ok(())
+  }
+
+  pub fn is_empty(&mut self) -> bool { self.peek_char().is_none() }
 
   /// Reads a single word. This can be terminated by a single space, or by a
   /// non-alphabet character.
@@ -177,6 +199,8 @@ impl Word {
 
   /// Upates the internal text of this word, without changing the span.
   pub fn set_text(&mut self, new_text: String) { self.text = new_text; }
+
+  pub fn as_str(&self) -> &str { &self.text }
 }
 
 impl Span {

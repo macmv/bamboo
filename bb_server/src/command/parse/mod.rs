@@ -4,7 +4,7 @@ mod token;
 pub use err::{ChildError, ErrorKind, ParseError, Result};
 pub use token::{Span, Tokenizer, Word};
 
-use super::{Arg, CommandSender, Parser, StringType};
+use super::{enums::EntitySelector, Arg, CommandSender, Parser, StringType};
 use crate::{block, entity, item};
 use bb_common::math::Pos;
 use std::{collections::HashMap, fmt::Display, str::FromStr};
@@ -125,6 +125,58 @@ impl Parser {
       Self::EntitySummon => {
         let w = tokens.read_spaced_word()?;
         Ok(Arg::EntitySummon(entity::Type::from_str(&w).map_err(|_| w.invalid())?))
+      }
+      Self::Entity { single, players } => {
+        let word = tokens.read_spaced_text()?;
+        Ok(Arg::Entity(if let Some(text) = word.strip_prefix('@') {
+          let mut tokens = Tokenizer::new_with_pos(text, tokens.pos());
+          let selector = tokens.read_word()?;
+          if *single {
+            if !matches!(selector.as_str(), "p" | "s") {
+              return Err(selector.expected("a valid selector (@p or @s)"));
+            }
+          } else {
+            if *players {
+              if !matches!(selector.as_str(), "p" | "r" | "a" | "e" | "s") {
+                return Err(selector.expected("a valid selector"));
+              }
+            } else {
+              if !matches!(selector.as_str(), "e" | "s") {
+                return Err(selector.expected("a valid selector (@e or @s)"));
+              }
+            }
+          }
+          let mut args = HashMap::new();
+          if !tokens.is_empty() {
+            tokens.expect("[")?;
+            loop {
+              let key = tokens.read_word()?;
+              tokens.expect("=")?;
+              let val = tokens.read_word()?;
+              args.insert(key.to_string(), val.to_string());
+              if tokens.peek() == Some(']') {
+                break;
+              } else {
+                tokens.expect(",")?;
+              }
+            }
+          }
+          match selector.as_str() {
+            "p" => EntitySelector::Closest(args),
+            "r" => EntitySelector::Random(args),
+            "a" => EntitySelector::Players(args),
+            "e" => EntitySelector::Entities(args),
+            "s" => EntitySelector::Runner,
+            _ => unreachable!(),
+          }
+        } else {
+          // A username
+          if *players {
+            EntitySelector::Name(word.to_string())
+          } else {
+            return Err(word.expected("a valid selector (@e or @s)"));
+          }
+        }))
       }
       _ => unimplemented!(),
       /* Self::String(ty) => match ty {
