@@ -238,6 +238,17 @@ impl Face {
       _ => panic!("invalid block face: {}", id),
     }
   }
+
+  pub fn as_str(&self) -> &str {
+    match self {
+      Self::Bottom => "BOTTOM",
+      Self::Top => "TOP",
+      Self::North => "NORTH",
+      Self::South => "SOUTH",
+      Self::West => "WEST",
+      Self::East => "EAST",
+    }
+  }
 }
 impl From<&str> for Face {
   fn from(s: &str) -> Face {
@@ -246,8 +257,8 @@ impl From<&str> for Face {
       "TOP" => Self::Top,
       "NORTH" => Self::North,
       "SOUTH" => Self::South,
-      "EAST" => Self::West,
-      "WEST" => Self::East,
+      "WEST" => Self::West,
+      "EAST" => Self::East,
       _ => Self::North,
     }
   }
