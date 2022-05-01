@@ -286,10 +286,15 @@ impl World {
       entities.insert(player.eid(), Entity::Player(player.id()));
     }
     info!("{} has joined the game", player.username());
-    let mut msg = Chat::empty();
-    msg.add(player.username()).color(Color::BrightGreen);
-    msg.add(" has joined").color(Color::Gray);
-    self.world_manager().broadcast(msg);
+
+    if self.world_manager().config().get("join-messages") {
+      // TODO: This message's format should be configurable
+      let mut msg = Chat::empty();
+      msg.add(player.username()).color(Color::BrightGreen);
+      msg.add(" has joined").color(Color::Gray);
+      self.world_manager().broadcast(msg);
+    }
+
     self.player_init(&player, info);
     // We want our plugin stuff to trigger after the player has received all the
     // chunks and whatever other initialization stuff. This means we can't screw
@@ -564,10 +569,15 @@ impl World {
       self.entities.write().remove(&p.eid());
       self.plugins().on_player_leave(p.clone());
       info!("{} left the game", p.username());
-      let mut msg = Chat::empty();
-      msg.add(p.username()).color(Color::BrightGreen);
-      msg.add(" has left").color(Color::Gray);
-      self.world_manager().broadcast(msg);
+
+      if self.world_manager().config().get("leave-messages") {
+        // TODO: This message's format should be configurable
+        let mut msg = Chat::empty();
+        msg.add(p.username()).color(Color::BrightGreen);
+        msg.add(" has left").color(Color::Gray);
+        self.world_manager().broadcast(msg);
+      }
+
       let entity_remove = cb::Packet::RemoveEntities { eids: vec![p.eid()] };
       let list_remove = cb::Packet::PlayerList {
         action: cb::PlayerListAction::Remove(vec![cb::PlayerListRemove { id: p.id() }]),
