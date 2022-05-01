@@ -1,4 +1,5 @@
-use super::{Face, Pos, PosError};
+use super::{Pos, PosError};
+use crate::util::Face;
 use std::{
   fmt, mem,
   ops::{Add, AddAssign, Range},
@@ -224,8 +225,8 @@ impl RelPos {
     let (x, y, z): (i8, _, i8) = match face {
       Face::East => (-1, 0, 0),
       Face::West => (1, 0, 0),
-      Face::Up => (0, 1, 0),
-      Face::Down => (0, -1, 0),
+      Face::Top => (0, 1, 0),
+      Face::Bottom => (0, -1, 0),
       Face::South => (0, 0, 1),
       Face::North => (0, 0, -1),
     };

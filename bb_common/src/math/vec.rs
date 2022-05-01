@@ -1,3 +1,4 @@
+use crate::util::Face;
 use std::ops::{Add, AddAssign, Div, Mul, Sub, SubAssign};
 
 #[derive(Debug, Clone, Copy, PartialEq)]

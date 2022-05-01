@@ -27,24 +27,6 @@ pub use pos::{Pos, PosError, PosIter};
 pub use rel_pos::{RelPos, SectionRelPos};
 // pub use bb_generated::{ChunkPos, Pos, PosError, PosIter};
 
-/// A block face. This is used to represent a face that a user clicked on.
-#[derive(Debug, Clone, Copy, Hash, PartialEq, Eq)]
-pub enum Face {
-  // Order matters here
-  /// Negative Y
-  Down,
-  /// Positive Y
-  Up,
-  /// Negative Z
-  North,
-  /// Positive Z
-  South,
-  /// Negative X
-  West,
-  /// Positive X
-  East,
-}
-
 /// The minecraft hex digest. This is slightly different from a normal hex
 /// digest; see [the wiki](https://wiki.vg/Protocol_Encryption) for more information.
 pub fn hexdigest(hash: Sha1) -> String {

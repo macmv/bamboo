@@ -1,5 +1,8 @@
 use super::{Chunk, Section};
-use crate::math::{Face, RelPos, SectionRelPos};
+use crate::{
+  math::{RelPos, SectionRelPos},
+  util::Face,
+};
 use bb_macros::Transfer;
 use std::{fmt, marker::PhantomData};
 
@@ -139,7 +142,7 @@ impl LightPropagator for BlockLight {
     chunk: &Chunk<S>,
     pos: RelPos,
   ) {
-    let directions = [Face::Up, Face::Down, Face::North, Face::South, Face::East, Face::West];
+    let directions = [Face::Top, Face::Bottom, Face::North, Face::South, Face::East, Face::West];
     let level = light.get_light(pos);
     let mut queue = vec![(pos, level)];
     let mut other_queue = vec![];
@@ -179,7 +182,7 @@ impl LightPropagator for SkyLight {
     chunk: &Chunk<S>,
     pos: RelPos,
   ) {
-    let directions = [Face::Up, Face::Down, Face::North, Face::South, Face::East, Face::West];
+    let directions = [Face::Top, Face::Bottom, Face::North, Face::South, Face::East, Face::West];
     let level = light.get_light(pos);
     let mut queue = vec![(pos, level)];
     let mut other_queue = vec![];
@@ -197,7 +200,7 @@ impl LightPropagator for SkyLight {
             continue;
           }
           if chunk.get_block(new_pos).unwrap() == 0 {
-            if dir == Face::Down {
+            if dir == Face::Bottom {
               other_queue.push((new_pos, level));
             } else if light.get_light(new_pos) < level - 1 {
               light.set_light(new_pos, level - 1);
