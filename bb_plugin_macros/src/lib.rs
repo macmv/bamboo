@@ -2,6 +2,7 @@ use proc_macro::TokenStream;
 
 mod behavior;
 mod define_ty;
+mod window;
 
 #[proc_macro_error::proc_macro_error]
 #[proc_macro_attribute]
@@ -11,3 +12,6 @@ pub fn define_ty(args: TokenStream, input: TokenStream) -> TokenStream {
 
 #[proc_macro]
 pub fn behavior(input: TokenStream) -> TokenStream { behavior::behavior(input) }
+
+#[proc_macro_derive(Window, attributes(filter, output))]
+pub fn window(input: TokenStream) -> TokenStream { window::window(input) }

@@ -184,6 +184,7 @@ impl PlayerInventory {
   /// Replaces the item at `index` with the given item. The old item will be
   /// returned. This allows you to replace items without cloning them.
   pub fn replace(&mut self, index: i32, stack: Stack) -> Stack {
+    dbg!(index);
     let res = self.access(index, move |it| mem::replace(it, stack)).unwrap();
     self.sync(index);
     res
