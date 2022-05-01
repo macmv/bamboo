@@ -1,7 +1,7 @@
 use super::Window;
 use crate::{
   entity, item,
-  item::{Inventory, SingleInventory, Stack},
+  item::{SingleInventory, Stack},
   net::ConnSender,
   player::Player,
 };
@@ -67,11 +67,15 @@ impl PlayerInventory {
     self.main.wid = 1;
     self.hotbar.offset = win.size() + self.main.size();
     self.hotbar.wid = 1;
-    win.open(&self.player.upgrade().unwrap().conn);
+    let p = self.player.upgrade().unwrap();
+    win.open(p.uuid, &p.conn);
     self.window = Some(win);
   }
   pub fn close_window(&mut self) {
-    self.window.take();
+    if let Some(win) = self.window.take() {
+      let p = self.player.upgrade().unwrap();
+      win.close(p.uuid);
+    }
     self.main.offset = 9;
     self.main.wid = 0;
     self.hotbar.offset = 36;
@@ -185,7 +189,6 @@ impl PlayerInventory {
   /// Replaces the item at `index` with the given item. The old item will be
   /// returned. This allows you to replace items without cloning them.
   pub fn replace(&mut self, index: i32, stack: Stack) -> Stack {
-    dbg!(index);
     let res = self.access(index, move |it| mem::replace(it, stack)).unwrap();
     self.sync(index);
     res
@@ -257,7 +260,7 @@ impl PlayerInventory {
     }
     let idx = index as u32;
     if let Some(win) = &self.window {
-      let it = if idx < win.size() {
+      if idx < win.size() {
         win.sync(idx);
       } else if idx < win.size() + 27 {
         self.main.sync(idx);
@@ -265,7 +268,7 @@ impl PlayerInventory {
         self.hotbar.sync(idx);
       } else {
         panic!()
-      };
+      }
     } else {
       match index {
         0 => self.head.sync(idx),
@@ -475,6 +478,9 @@ impl PlayerInventory {
   pub fn drag_start(&mut self) { self.drag_slots.clear(); }
   pub fn drag_add(&mut self, slot: i32) { self.drag_slots.push(slot); }
   pub fn drag_end(&mut self) {
+    if self.drag_slots.is_empty() {
+      return;
+    }
     let stack = self.get(-999).unwrap().clone();
     let items_per_slot = stack.amount() / self.drag_slots.len() as u8;
     let items_remaining = stack.amount() % self.drag_slots.len() as u8;

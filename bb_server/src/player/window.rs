@@ -2,6 +2,7 @@ use crate::{
   item::{SharedInventory, Stack},
   player::ConnSender,
 };
+use bb_common::util::UUID;
 
 #[derive(bb_plugin_macros::Window, Debug, Clone)]
 pub enum Window {
@@ -128,6 +129,9 @@ impl Iterator for ItemsIter<'_> {
 
 impl Window {
   pub fn get(&self, index: u32) -> Option<Stack> { self.access(index, |s| s.clone()) }
-  pub fn set(&mut self, index: u32, stack: Stack) { self.access_mut(index, move |s| *s = stack); }
+  pub fn set(&mut self, index: u32, stack: Stack) {
+    self.access_mut(index, move |s| *s = stack);
+    self.sync(index);
+  }
   pub fn items(&self) -> ItemsIter<'_> { ItemsIter { win: self, index: 0 } }
 }

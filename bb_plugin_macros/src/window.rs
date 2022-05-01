@@ -106,7 +106,7 @@ pub fn window(input: TokenStream) -> TokenStream {
           )*
         }
       }
-      pub fn access_mut<R>(&mut self, index: u32, f: impl FnOnce(&mut Stack) -> R) -> Option<R> {
+      pub(crate) fn access_mut<R>(&mut self, index: u32, f: impl FnOnce(&mut Stack) -> R) -> Option<R> {
         match self {
           #(
             Self::#variant { #(#field),* } => {
@@ -134,12 +134,23 @@ pub fn window(input: TokenStream) -> TokenStream {
           )*
         }
       }
-      pub fn open(&self, conn: &ConnSender) {
+      pub fn open(&self, id: UUID, conn: &ConnSender) {
         match self {
           #(
             Self::#variant { #(#field),* } => {
               #(
-                #field.lock().open(conn.clone());
+                #field.lock().open(id, conn.clone());
+              )*
+            }
+          )*
+        }
+      }
+      pub fn close(&self, id: UUID) {
+        match self {
+          #(
+            Self::#variant { #(#field),* } => {
+              #(
+                #field.lock().close(id);
               )*
             }
           )*

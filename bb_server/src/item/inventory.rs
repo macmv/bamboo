@@ -1,7 +1,7 @@
 use super::Stack;
 use crate::net::ConnSender;
-use bb_common::net::cb;
-use std::mem;
+use bb_common::{net::cb, util::UUID};
+use std::{collections::HashMap, mem};
 
 /// An inventory. This is a very abstract concept in Bamboo. Unlike vanilla,
 /// which uses a bunch of hardocoded offsets into one inventory, we use multiple
@@ -83,7 +83,7 @@ pub struct SingleInventory<const N: usize> {
 pub struct WrappedInventory<const N: usize> {
   pub(crate) inv:     Inventory<N>,
   // Everyone who has this inventory open.
-  pub(crate) viewers: Vec<ConnSender>,
+  pub(crate) viewers: HashMap<UUID, ConnSender>,
   pub(crate) wid:     u8,
   pub(crate) offset:  u32,
 }
@@ -236,10 +236,22 @@ impl<const N: usize> SingleInventory<N> {
 
 impl<const N: usize> WrappedInventory<N> {
   pub fn new(wid: u8, offset: u32) -> Self {
-    WrappedInventory { inv: Inventory::new(), viewers: vec![], wid, offset }
+    WrappedInventory { inv: Inventory::new(), viewers: HashMap::new(), wid, offset }
   }
 
-  pub fn open(&mut self, conn: ConnSender) { self.viewers.push(conn); }
+  /// Adds the player with `id` to the list of players that are viewing this
+  /// inventory.
+  pub fn open(&mut self, id: UUID, conn: ConnSender) {
+    // If we `open` twice for the same player, this should do nothing, as the same
+    // id will always map to the same ConnSender.
+    self.viewers.insert(id, conn);
+  }
+  /// Removes the player from the list of players that has this inventory open.
+  ///
+  /// This must be called! If it is not called, the player will receive updates
+  /// when another player modifies a chest, and to the player that has closed
+  /// the inventory, all the slots would be invalid.
+  pub fn close(&mut self, id: UUID) { self.viewers.remove(&id); }
   /// Gets the item at the given index.
   pub fn get_raw(&self, index: u32) -> Option<&Stack> { self.inv.get(index) }
   /// Given an index with an offset, this will remove the offset, and lookup the
@@ -293,7 +305,7 @@ impl<const N: usize> WrappedInventory<N> {
   /// Syncs the item at the given slot with the client.
   #[track_caller]
   pub fn sync_raw(&self, index: u32) {
-    for conn in &self.viewers {
+    for conn in self.viewers.values() {
       conn.send(cb::Packet::WindowItem {
         wid:  self.wid,
         slot: (index + self.offset) as i32,
@@ -305,7 +317,7 @@ impl<const N: usize> WrappedInventory<N> {
   /// index, to get the actual inventory offset.
   #[track_caller]
   pub(crate) fn sync(&self, index: u32) {
-    for conn in &self.viewers {
+    for conn in self.viewers.values() {
       conn.send(cb::Packet::WindowItem {
         wid:  self.wid,
         slot: index as i32,
@@ -326,7 +338,7 @@ impl<const N: usize> WrappedInventory<N> {
     // because we iterate through the inventory with `items_mut`, so the inventory
     // is mutably borrowed for the entire loop.
     let sync = |index: u32, item: &Stack| {
-      for conn in &self.viewers {
+      for conn in self.viewers.values() {
         conn.send(cb::Packet::WindowItem {
           wid:  self.wid,
           slot: (index + self.offset) as i32,
