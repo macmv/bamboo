@@ -227,6 +227,13 @@ impl World {
       player.send(self.commands().serialize());
     }
 
+    player.send(cb::Packet::EntityStatus {
+      eid:    player.eid(),
+      // Set op permission to level 4
+      // Note that 24 is op permission 0, 25 is op permission 1, etc.
+      status: 28,
+    });
+
     let d = player.view_distance() as i32;
     for x in -d..=d {
       for z in -d..=d {

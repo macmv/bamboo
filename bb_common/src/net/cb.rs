@@ -80,6 +80,8 @@ pub enum Packet {
     pitch:     i8,
     on_ground: bool,
   },
+  #[id = 42]
+  EntityStatus { eid: i32, status: u8 },
   /// Change of an entity's velocity.
   #[id = 9]
   EntityVelocity { eid: i32, x: i16, y: i16, z: i16 },

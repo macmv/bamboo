@@ -397,6 +397,9 @@ impl ToTcp for Packet {
           }
         }
       }
+      Packet::EntityStatus { eid, status } => {
+        GPacket::EntityStatusV8 { entity_id: eid, logic_opcode: status as i8 }
+      }
       Packet::EntityMetadata { eid, ty, meta } => {
         GPacket::EntityMetadataV8 {
           entity_id: eid,
