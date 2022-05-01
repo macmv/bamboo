@@ -150,9 +150,9 @@ impl ToTcp for Packet {
           Action::FadeTime(v) => v,
           Action::EnableRespawnScreen(enable) => {
             if enable {
-              1.0
-            } else {
               0.0
+            } else {
+              1.0
             }
           }
           _ => 0.0,
