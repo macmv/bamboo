@@ -68,12 +68,12 @@ impl Bed {
 }
 impl Behavior for Bed {
   fn place(&self, data: &Data, _: Pos, _: Face) -> Type {
-    data.default_type().with_prop("part", "FOOT")
+    data.default_type().with_prop("part", "FOOT").with_prop("facing", "EAST")
   }
   fn update_place(&self, world: &Arc<World>, block: Block) {
     if block.ty.prop("part") == "FOOT" {
-      let dir = Face::North;
-      let _ = world.set_block(block.pos + dir, block.ty.with_prop("part", "HEAD"));
+      let dir = Face::from(block.ty.prop("facing").as_enum());
+      let _ = world.set_block(block.pos - dir, block.ty.with_prop("part", "HEAD"));
     }
   }
   fn update(&self, world: &Arc<World>, block: Block, old: Block, new: Block) {

@@ -10,7 +10,10 @@ pub fn generate(out_dir: &Path) -> io::Result<()> {
   let versions = crate::VERSIONS
     .iter()
     .map(|&ver| {
-      let def: BlockDef = dl::get("blocks", ver);
+      let mut def: BlockDef = dl::get("blocks", ver);
+      for block in &mut def.blocks {
+        block.properties.sort_unstable_by(|a, b| a.name.cmp(&b.name));
+      }
       (ver, def)
     })
     .collect();
