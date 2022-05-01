@@ -807,6 +807,10 @@ impl WorldManager {
     let player = Player::new(w.new_eid(), conn, info.clone(), w.clone(), spawn);
     self.players.write().insert(info.uuid, (0, player.clone()));
     w.new_player(player.clone(), info);
+    let mut msg = Chat::empty();
+    msg.add(player.username()).color(Color::BrightGreen);
+    msg.add(" has joined").color(Color::Gray);
+    self.broadcast(msg);
     player
   }
 
@@ -816,8 +820,8 @@ impl WorldManager {
   ///
   /// If the player is not present, this will do nothing.
   pub(crate) fn remove_player(&self, id: UUID) {
-    let idx = match self.players.read().get(&id) {
-      Some(v) => v.0,
+    let (idx, name) = match self.players.read().get(&id) {
+      Some(v) => (v.0, v.1.username().clone()),
       None => return,
     };
     self.worlds.write()[idx].remove_player(id);
@@ -828,6 +832,10 @@ impl WorldManager {
       team.lock().player_disconnect(id);
     }
     self.players.write().remove(&id);
+    let mut msg = Chat::empty();
+    msg.add(name).color(Color::BrightGreen);
+    msg.add(" has left").color(Color::Gray);
+    self.broadcast(msg);
   }
 
   fn global_tick_loop(self: Arc<Self>) {
