@@ -56,7 +56,7 @@ use crate::{
 use gen::WorldGen;
 
 pub use chunk::{CountedChunk, MultiChunk};
-pub use entities::{EntitiesIter, EntitiesMap};
+pub use entities::{EntitiesIter, EntitiesMap, EntitiesMapRef};
 pub use players::{PlayersIter, PlayersMap};
 
 // pub struct ChunkRef<'a> {

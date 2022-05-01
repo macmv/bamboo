@@ -186,12 +186,12 @@ impl Parser {
           StringType::Greedy => 2,
         });
       }
-      Self::Entity { single, players } => {
+      Self::Entity { single, only_players } => {
         let mut bitmask = 0;
         if *single {
           bitmask |= 0x01;
         }
-        if *players {
+        if *only_players {
           bitmask |= 0x02;
         }
         buf.write_u8(bitmask);

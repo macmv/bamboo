@@ -1,4 +1,10 @@
-use crate::{block, entity, item};
+use crate::{
+  block, entity,
+  entity::EntityRef,
+  item,
+  player::Player,
+  world::{EntitiesIter, EntitiesMapRef},
+};
 use bb_common::{
   math::{ChunkPos, Pos},
   nbt::NBT,
@@ -7,7 +13,7 @@ use bb_common::{
     UUID,
   },
 };
-use std::collections::HashMap;
+use std::{collections::HashMap, sync::Arc};
 
 /// A string parsing type. Used only in [`Parser::String`].
 #[derive(Debug, Clone, PartialEq)]
@@ -39,9 +45,9 @@ pub enum Parser {
   /// A string. See [`StringType`] for details on how this is parsed.
   String(StringType),
   /// An entity. If `single` is set, then this can only match one entity (things
-  /// like `@e` or `@a` are not allowed). If players is set, then matching
-  /// players (with either a username or `@a`) is allowed.
-  Entity { single: bool, players: bool },
+  /// like `@e` or `@a` are not allowed). If players is set, then only matching
+  /// players (with either a username, `@p`, etc.) is allowed.
+  Entity { single: bool, only_players: bool },
   /// A user that is on the current scoreboard. With the scoreboard system that
   /// bamboo has, this doesn't make that much sense.
   ScoreHolder { multiple: bool },
@@ -265,10 +271,71 @@ impl Arg {
       _ => panic!("arg is a {:?}, not a string", self),
     }
   }
+  pub fn entity(&self) -> EntitySelector {
+    match self {
+      Arg::Entity(v) => v.clone(),
+      _ => panic!("arg is a {:?}, not an entity", self),
+    }
+  }
   pub fn entity_summon(&self) -> entity::Type {
     match self {
       Arg::EntitySummon(v) => *v,
       _ => panic!("arg is a {:?}, not an entity summon", self),
+    }
+  }
+}
+
+pub enum EntityIter<'a> {
+  /// A player
+  Player(Option<Arc<Player>>),
+  /// All entites, with the given restrictions
+  Entities { props: HashMap<String, String>, iter: EntitiesIter<'a> },
+  /// All players, with the given restrictions
+  Players { props: HashMap<String, String>, iter: EntitiesIter<'a> },
+}
+
+impl EntitySelector {
+  pub fn iter<'a>(self, entities: &'a EntitiesMapRef<'a>) -> EntityIter<'a> {
+    match self {
+      EntitySelector::Name(name) => {
+        for ent in entities.iter() {
+          if let Some(p) = ent.as_player() {
+            if p.username() == &name {
+              return EntityIter::Player(Some(p.clone()));
+            }
+          }
+        }
+        EntityIter::Player(None)
+      }
+      EntitySelector::Entities(props) => EntityIter::Entities { props, iter: entities.iter() },
+      EntitySelector::Players(props) => EntityIter::Players { props, iter: entities.iter() },
+      EntitySelector::Runner => EntityIter::Player(None),
+      EntitySelector::Closest(_props) => EntityIter::Player(None),
+      EntitySelector::Random(_props) => EntityIter::Player(None),
+    }
+  }
+}
+
+impl<'a> Iterator for EntityIter<'a> {
+  type Item = EntityRef<'a>;
+
+  fn next(&mut self) -> Option<Self::Item> {
+    match self {
+      EntityIter::Player(p) => p.take().map(EntityRef::Player),
+      EntityIter::Entities { props: _, iter } => {
+        // TODO: Read props, and filter this iterator based on this properties.
+        iter.next()
+      }
+      EntityIter::Players { props: _, iter } => {
+        // TODO: Read props, and filter this iterator based on this properties.
+        loop {
+          let ent = iter.next()?;
+          if ent.as_player().is_none() {
+            continue;
+          }
+          break Some(ent);
+        }
+      }
     }
   }
 }

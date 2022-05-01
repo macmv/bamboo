@@ -66,54 +66,71 @@ impl World {
         _ => unreachable!(),
       }
     });
-    fn handle_gamemode(_: &Arc<WorldManager>, player: Option<&Arc<Player>>, args: Vec<Arg>) {
-      if let Some(player) = player {
-        player.set_game_mode(match &args[1] {
-          Arg::Literal(lit) => match lit.as_str() {
-            "survival" | "s" => GameMode::Survival,
-            "creative" | "c" => GameMode::Creative,
-            "adventure" | "a" => GameMode::Adventure,
-            "spectator" | "sp" => GameMode::Spectator,
-            _ => unreachable!(),
-          },
-          Arg::Int(num) => GameMode::from_id(*num as u8),
+    fn handle_gamemode(wm: &Arc<WorldManager>, player: Option<&Arc<Player>>, args: Vec<Arg>) {
+      let gm = match &args[1] {
+        Arg::Literal(lit) => match lit.as_str() {
+          "survival" | "s" => GameMode::Survival,
+          "creative" | "c" => GameMode::Creative,
+          "adventure" | "a" => GameMode::Adventure,
+          "spectator" | "sp" => GameMode::Spectator,
           _ => unreachable!(),
-        });
+        },
+        Arg::Int(num) => GameMode::from_id(*num as u8),
+        _ => unreachable!(),
+      };
+      if let Some(arg) = args.get(2) {
+        for world in wm.worlds().iter() {
+          for target in arg.entity().iter(&world.entities()) {
+            target.as_player().map(|p| p.set_game_mode(gm));
+          }
+        }
+      } else {
+        if let Some(player) = player {
+          player.set_game_mode(gm);
+        } else {
+          // TODO: Send error saying they need to specify a target
+        }
       }
     }
     for name in ["gamemode", "gm"] {
       let mut c = Command::new(name);
-      c.add_lit("survival");
-      c.add_lit("creative");
-      c.add_lit("adventure");
-      c.add_lit("spectator");
-      c.add_lit("s");
-      c.add_lit("c");
-      c.add_lit("a");
-      c.add_lit("sp");
+      c.add_lit("survival").add_arg("target", Parser::Entity { single: false, only_players: true });
+      c.add_lit("creative").add_arg("target", Parser::Entity { single: false, only_players: true });
+      c.add_lit("adventure")
+        .add_arg("target", Parser::Entity { single: false, only_players: true });
+      c.add_lit("spectator")
+        .add_arg("target", Parser::Entity { single: false, only_players: true });
+      c.add_lit("s").add_arg("target", Parser::Entity { single: false, only_players: true });
+      c.add_lit("c").add_arg("target", Parser::Entity { single: false, only_players: true });
+      c.add_lit("a").add_arg("target", Parser::Entity { single: false, only_players: true });
+      c.add_lit("sp").add_arg("target", Parser::Entity { single: false, only_players: true });
       c.add_arg("mode", Parser::Int { min: Some(0), max: Some(3) });
       self.commands().add(c, handle_gamemode);
     }
 
-    let c = Command::new("gms");
+    let mut c = Command::new("gms");
+    c.add_arg("target", Parser::Entity { single: false, only_players: true });
     self.commands().add(c, |_, player, _args| {
       if let Some(player) = player {
         player.set_game_mode(GameMode::Survival);
       }
     });
-    let c = Command::new("gmc");
+    let mut c = Command::new("gmc");
+    c.add_arg("target", Parser::Entity { single: false, only_players: true });
     self.commands().add(c, |_, player, _args| {
       if let Some(player) = player {
         player.set_game_mode(GameMode::Creative);
       }
     });
-    let c = Command::new("gma");
+    let mut c = Command::new("gma");
+    c.add_arg("target", Parser::Entity { single: false, only_players: true });
     self.commands().add(c, |_, player, _args| {
       if let Some(player) = player {
         player.set_game_mode(GameMode::Adventure);
       }
     });
-    let c = Command::new("gmsp");
+    let mut c = Command::new("gmsp");
+    c.add_arg("target", Parser::Entity { single: false, only_players: true });
     self.commands().add(c, |_, player, _args| {
       if let Some(player) = player {
         player.set_game_mode(GameMode::Spectator);

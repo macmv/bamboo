@@ -117,6 +117,19 @@ impl Entity {
 }
 
 impl EntityRef<'_> {
+  pub fn as_player(&self) -> Option<&Arc<Player>> {
+    match self {
+      Self::Player(p) => Some(p),
+      _ => None,
+    }
+  }
+  pub fn as_entity(&self) -> Option<&EntityData> {
+    match self {
+      Self::Entity(e) => Some(e),
+      _ => None,
+    }
+  }
+
   /// Reads this entity's position. This will always be up to date with the
   /// server's known position of this entity. Some clients may be behind this
   /// position (by up to 1/20 of a second).

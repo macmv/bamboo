@@ -126,25 +126,22 @@ impl Parser {
         let w = tokens.read_spaced_word()?;
         Ok(Arg::EntitySummon(entity::Type::from_str(&w).map_err(|_| w.invalid())?))
       }
-      Self::Entity { single, players } => {
+      Self::Entity { single, only_players } => {
         let word = tokens.read_spaced_text()?;
         Ok(Arg::Entity(if let Some(text) = word.strip_prefix('@') {
-          let mut tokens = Tokenizer::new_with_pos(text, tokens.pos());
+          // Add one for the `@` character
+          let mut tokens = Tokenizer::new_with_pos(text, word.pos().start + 1);
           let selector = tokens.read_word()?;
+          if *only_players && matches!(selector.as_str(), "e" | "r") {
+            return Err(selector.expected("a valid selector (@a, @p or @s)"));
+          }
           if *single {
-            if !matches!(selector.as_str(), "p" | "s") {
+            if matches!(selector.as_str(), "a") {
               return Err(selector.expected("a valid selector (@p or @s)"));
             }
-          } else {
-            if *players {
-              if !matches!(selector.as_str(), "p" | "r" | "a" | "e" | "s") {
-                return Err(selector.expected("a valid selector"));
-              }
-            } else {
-              if !matches!(selector.as_str(), "e" | "s") {
-                return Err(selector.expected("a valid selector (@e or @s)"));
-              }
-            }
+          }
+          if !matches!(selector.as_str(), "p" | "r" | "a" | "e" | "s") {
+            return Err(selector.expected("a valid selector"));
           }
           let mut args = HashMap::new();
           if !tokens.is_empty() {
@@ -171,11 +168,7 @@ impl Parser {
           }
         } else {
           // A username
-          if *players {
-            EntitySelector::Name(word.to_string())
-          } else {
-            return Err(word.expected("a valid selector (@e or @s)"));
-          }
+          EntitySelector::Name(word.to_string())
         }))
       }
       _ => unimplemented!(),
