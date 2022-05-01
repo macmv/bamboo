@@ -295,7 +295,11 @@ pub enum EntityIter<'a> {
 }
 
 impl EntitySelector {
-  pub fn iter<'a>(self, entities: &'a EntitiesMapRef<'a>) -> EntityIter<'a> {
+  pub fn iter<'a>(
+    self,
+    entities: &'a EntitiesMapRef<'a>,
+    runner: Option<&Arc<Player>>,
+  ) -> EntityIter<'a> {
     match self {
       EntitySelector::Name(name) => {
         for ent in entities.iter() {
@@ -309,9 +313,30 @@ impl EntitySelector {
       }
       EntitySelector::Entities(props) => EntityIter::Entities { props, iter: entities.iter() },
       EntitySelector::Players(props) => EntityIter::Players { props, iter: entities.iter() },
-      EntitySelector::Runner => EntityIter::Player(None),
-      EntitySelector::Closest(_props) => EntityIter::Player(None),
-      EntitySelector::Random(_props) => EntityIter::Player(None),
+      EntitySelector::Runner => EntityIter::Player(runner.cloned()),
+      EntitySelector::Closest(_props) => {
+        // TODO: Filter this by props
+        if let Some(runner) = runner {
+          let mut min_dist = f64::MAX;
+          let mut found_player = None;
+          for ent in entities.iter() {
+            if let Some(p) = ent.as_player() {
+              let dist = p.pos().dist_squared(runner.pos());
+              if dist < min_dist {
+                min_dist = dist;
+                found_player = Some(p.clone());
+              }
+            }
+          }
+          EntityIter::Player(found_player)
+        } else {
+          EntityIter::Player(None)
+        }
+      }
+      EntitySelector::Random(_props) => {
+        // TODO: Implement
+        EntityIter::Player(None)
+      }
     }
   }
 }

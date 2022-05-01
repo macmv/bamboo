@@ -66,7 +66,7 @@ impl World {
         _ => unreachable!(),
       }
     });
-    fn handle_gamemode(wm: &Arc<WorldManager>, player: Option<&Arc<Player>>, args: Vec<Arg>) {
+    fn handle_gamemode(wm: &Arc<WorldManager>, runner: Option<&Arc<Player>>, args: Vec<Arg>) {
       let gm = match &args[1] {
         Arg::Literal(lit) => match lit.as_str() {
           "survival" | "s" => GameMode::Survival,
@@ -80,12 +80,12 @@ impl World {
       };
       if let Some(arg) = args.get(2) {
         for world in wm.worlds().iter() {
-          for target in arg.entity().iter(&world.entities()) {
+          for target in arg.entity().iter(&world.entities(), runner) {
             target.as_player().map(|p| p.set_game_mode(gm));
           }
         }
       } else {
-        if let Some(player) = player {
+        if let Some(player) = runner {
           player.set_game_mode(gm);
         } else {
           // TODO: Send error saying they need to specify a target
