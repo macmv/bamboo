@@ -103,12 +103,12 @@ impl PlayerInventory {
   ///
   /// This will send equipment updates.
   pub(crate) fn set_selected(&mut self, index: u8) {
-    if self.main.get(index as u32 + 36) != self.main.get(self.selected_index as u32 + 36) {
+    if self.hotbar.get_raw(index as u32) != self.hotbar.get_raw(self.selected_index as u32) {
       let p = self.player.upgrade().unwrap();
       p.send_to_in_view(cb::Packet::EntityEquipment {
         eid:  p.eid(),
         slot: cb::EquipmentSlot::Hand(Hand::Main),
-        item: self.main.get(index as u32 + 36).unwrap().to_item(),
+        item: self.hotbar.get_raw(index as u32).unwrap().to_item(),
       });
     }
     self.selected_index = index;
