@@ -6,7 +6,7 @@ use bb_common::{
   math::{ChunkPos, FPos, Pos, PosError, Vec3},
   metadata::Metadata,
   net::{cb, sb::PlayerCommand},
-  util::{Chat, GameMode, JoinInfo, UUID},
+  util::{Chat, Face, GameMode, JoinInfo, UUID},
   version::ProtocolVersion,
 };
 use parking_lot::{Mutex, MutexGuard};
@@ -22,6 +22,12 @@ pub use inventory::PlayerInventory;
 pub use scoreboard::Scoreboard;
 pub use team::Team;
 pub use window::Window;
+
+#[derive(Debug, Clone, Copy)]
+pub struct Click {
+  pub face: Face,
+  pub dir:  Vec3,
+}
 
 #[derive(Debug, Clone)]
 struct DigProgress {

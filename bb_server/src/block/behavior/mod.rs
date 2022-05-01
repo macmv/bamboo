@@ -1,6 +1,10 @@
 use super::{Block, Data, Kind, Type};
-use crate::{item::Stack, player::Player, world::World};
-use bb_common::{math::Pos, util::Face};
+use crate::{
+  item::Stack,
+  player::{Click, Player},
+  world::World,
+};
+use bb_common::math::Pos;
 use std::{any::Any, sync::Arc};
 
 mod impls;
@@ -10,8 +14,8 @@ pub trait Behavior: Send + Sync {
   ///
   /// This should handle things like logs rotating or torches not placing on
   /// ceilings.
-  fn place(&self, data: &Data, pos: Pos, face: Face) -> Type {
-    let _ = (pos, face);
+  fn place(&self, data: &Data, pos: Pos, click: Click) -> Type {
+    let _ = (pos, click);
     data.default_type()
   }
   /// Called after this block is placed. The `block` is the block that was

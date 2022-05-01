@@ -5,7 +5,7 @@ use super::{
 use crate::{
   entity,
   item::SharedInventory,
-  player::{Player, Window},
+  player::{Click, Player, Window},
   world::World,
 };
 use bb_common::{
@@ -16,10 +16,10 @@ use std::{any::Any, sync::Arc};
 
 pub struct Log;
 impl Behavior for Log {
-  fn place(&self, data: &Data, _: Pos, face: Face) -> Type {
+  fn place(&self, data: &Data, _: Pos, click: Click) -> Type {
     data.default_type().with_prop(
       "axis",
-      match face {
+      match click.face {
         Face::West | Face::East => "X",
         Face::Top | Face::Bottom => "Y",
         Face::North | Face::South => "Z",
@@ -67,13 +67,16 @@ impl Bed {
   }
 }
 impl Behavior for Bed {
-  fn place(&self, data: &Data, _: Pos, _: Face) -> Type {
-    data.default_type().with_prop("part", "FOOT").with_prop("facing", "EAST")
+  fn place(&self, data: &Data, _: Pos, click: Click) -> Type {
+    data
+      .default_type()
+      .with_prop("part", "FOOT")
+      .with_prop("facing", click.dir.as_horz_face().as_str())
   }
   fn update_place(&self, world: &Arc<World>, block: Block) {
     if block.ty.prop("part") == "FOOT" {
       let dir = Face::from(block.ty.prop("facing").as_enum());
-      let _ = world.set_block(block.pos - dir, block.ty.with_prop("part", "HEAD"));
+      let _ = world.set_block(block.pos + dir, block.ty.with_prop("part", "HEAD"));
     }
   }
   fn update(&self, world: &Arc<World>, block: Block, old: Block, new: Block) {

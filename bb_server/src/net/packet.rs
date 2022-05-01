@@ -1,4 +1,10 @@
-use crate::{block, block::Block, entity, item, player::Player, world::WorldManager};
+use crate::{
+  block,
+  block::Block,
+  entity, item,
+  player::{Click, Player},
+  world::WorldManager,
+};
 use bb_common::{
   math::{FPos, Pos},
   net::{cb, sb},
@@ -150,10 +156,11 @@ pub(crate) fn handle(wm: &Arc<WorldManager>, player: &Arc<Player>, p: sb::Packet
               block::Kind::Air
             });
 
+            let click = Click { face, dir: player.look_as_vec() };
             let placing_data = wm.block_converter().get(kind);
             let ty = wm
               .block_behaviors()
-              .call(kind, |b| b.place(placing_data, pos, face))
+              .call(kind, |b| b.place(placing_data, pos, click))
               .unwrap_or_else(|| placing_data.default_type());
 
             let looking_data = wm.block_converter().get(looking_at.kind());
