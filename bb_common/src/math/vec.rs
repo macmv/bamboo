@@ -32,6 +32,48 @@ impl Vec3 {
   /// Returns the length of this vector. If possible, prefer
   /// [`len_squared`](Self::len_squared).
   pub fn len(&self) -> f64 { self.len_squared().sqrt() }
+
+  pub fn as_face(&self) -> Face {
+    let xa = self.x.abs();
+    let ya = self.y.abs();
+    let za = self.z.abs();
+    if xa > ya && xa > za {
+      if self.x > 0.0 {
+        Face::East
+      } else {
+        Face::West
+      }
+    } else if ya > xa && ya > za {
+      if self.y > 0.0 {
+        Face::Top
+      } else {
+        Face::Bottom
+      }
+    } else {
+      if self.z > 0.0 {
+        Face::South
+      } else {
+        Face::North
+      }
+    }
+  }
+  pub fn as_horz_face(&self) -> Face {
+    let xa = self.x.abs();
+    let za = self.z.abs();
+    if xa > za {
+      if self.x > 0.0 {
+        Face::East
+      } else {
+        Face::West
+      }
+    } else {
+      if self.z > 0.0 {
+        Face::South
+      } else {
+        Face::North
+      }
+    }
+  }
 }
 
 impl Add for Vec2 {
