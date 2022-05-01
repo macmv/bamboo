@@ -68,17 +68,46 @@ impl World {
     c.add_lit("creative");
     c.add_lit("adventure");
     c.add_lit("spectator");
+    c.add_lit("s");
+    c.add_lit("c");
+    c.add_lit("a");
+    c.add_lit("sp");
     self.commands().add(c, |_, player, args| {
       if let Some(player) = player {
         player.set_game_mode(match args[1].lit() {
-          "survival" => GameMode::Survival,
-          "creative" => GameMode::Creative,
-          "adventure" => GameMode::Adventure,
-          "spectator" => GameMode::Spectator,
+          "survival" | "s" => GameMode::Survival,
+          "creative" | "c" => GameMode::Creative,
+          "adventure" | "a" => GameMode::Adventure,
+          "spectator" | "sp" => GameMode::Spectator,
           _ => unreachable!(),
         });
       }
     });
+    let c = Command::new("gms");
+    self.commands().add(c, |_, player, _args| {
+      if let Some(player) = player {
+        player.set_game_mode(GameMode::Survival);
+      }
+    });
+    let c = Command::new("gmc");
+    self.commands().add(c, |_, player, _args| {
+      if let Some(player) = player {
+        player.set_game_mode(GameMode::Creative);
+      }
+    });
+    let c = Command::new("gma");
+    self.commands().add(c, |_, player, _args| {
+      if let Some(player) = player {
+        player.set_game_mode(GameMode::Adventure);
+      }
+    });
+    let c = Command::new("gmsp");
+    self.commands().add(c, |_, player, _args| {
+      if let Some(player) = player {
+        player.set_game_mode(GameMode::Spectator);
+      }
+    });
+
     let c = Command::new("fly");
     self.commands().add(c, |_, player, _| {
       if let Some(p) = player {
