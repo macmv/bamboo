@@ -1,13 +1,16 @@
-use super::Inventory;
+use super::WrappedInventory;
 use parking_lot::{Mutex, MutexGuard};
 use std::sync::Arc;
 
-#[derive(Debug, Default, Clone)]
+#[derive(Debug, Clone)]
 pub struct SharedInventory<const N: usize> {
-  inv: Arc<Mutex<Inventory<N>>>,
+  inv: Arc<Mutex<WrappedInventory<N>>>,
 }
 
 impl<const N: usize> SharedInventory<N> {
-  pub fn new() -> Self { SharedInventory { inv: Arc::new(Mutex::new(Inventory::new())) } }
-  pub fn lock(&self) -> MutexGuard<Inventory<N>> { self.inv.lock() }
+  pub fn new() -> Self {
+    // TODO: Offset should be passedin
+    SharedInventory { inv: Arc::new(Mutex::new(WrappedInventory::new(1, 0))) }
+  }
+  pub fn lock(&self) -> MutexGuard<WrappedInventory<N>> { self.inv.lock() }
 }

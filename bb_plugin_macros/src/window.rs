@@ -120,6 +120,31 @@ pub fn window(input: TokenStream) -> TokenStream {
           )*
         }
       }
+      pub fn sync(&self, index: u32) {
+        match self {
+          #(
+            Self::#variant { #(#field),* } => {
+              match index {
+                #(
+                  #field_start..=#field_end => #field.lock().sync(index - #field_start),
+                )*
+                _ => panic!("cannot sync index out of bounds {}", index),
+              }
+            }
+          )*
+        }
+      }
+      pub fn open(&self, conn: &ConnSender) {
+        match self {
+          #(
+            Self::#variant { #(#field),* } => {
+              #(
+                #field.lock().open(conn.clone());
+              )*
+            }
+          )*
+        }
+      }
       pub fn add(&mut self, stack: &Stack) -> u8 {
         let mut stack = stack.clone();
         match self {

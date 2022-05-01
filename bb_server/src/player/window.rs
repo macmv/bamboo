@@ -1,4 +1,7 @@
-use crate::item::{SharedInventory, Stack};
+use crate::{
+  item::{SharedInventory, Stack},
+  player::ConnSender,
+};
 
 #[derive(bb_plugin_macros::Window, Debug, Clone)]
 pub enum Window {

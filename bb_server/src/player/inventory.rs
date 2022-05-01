@@ -1,7 +1,7 @@
 use super::Window;
 use crate::{
   entity, item,
-  item::{Inventory, Stack, WrappedInventory},
+  item::{Inventory, SingleInventory, Stack},
   net::ConnSender,
   player::Player,
 };
@@ -18,13 +18,13 @@ use std::{mem, sync::Weak};
 
 #[derive(Debug)]
 pub struct PlayerInventory {
-  head:           WrappedInventory<1>,
-  chest:          WrappedInventory<1>,
-  legs:           WrappedInventory<1>,
-  feet:           WrappedInventory<1>,
-  crafting:       WrappedInventory<5>,
-  main:           WrappedInventory<27>,
-  hotbar:         WrappedInventory<9>,
+  head:           SingleInventory<1>,
+  chest:          SingleInventory<1>,
+  legs:           SingleInventory<1>,
+  feet:           SingleInventory<1>,
+  crafting:       SingleInventory<5>,
+  main:           SingleInventory<27>,
+  hotbar:         SingleInventory<9>,
   // An index into the hotbar (0..=8)
   selected_index: u8,
   // Open window and held item
@@ -45,13 +45,13 @@ impl PlayerInventory {
     // We always store an inventory with 46 slots, even if the client is on 1.8 (in
     // that version, there was no off-hand).
     PlayerInventory {
-      head:           WrappedInventory::new(Inventory::new(), conn.clone(), 0, 0),
-      chest:          WrappedInventory::new(Inventory::new(), conn.clone(), 0, 1),
-      legs:           WrappedInventory::new(Inventory::new(), conn.clone(), 0, 2),
-      feet:           WrappedInventory::new(Inventory::new(), conn.clone(), 0, 3),
-      crafting:       WrappedInventory::new(Inventory::new(), conn.clone(), 0, 4),
-      main:           WrappedInventory::new(Inventory::new(), conn.clone(), 0, 9),
-      hotbar:         WrappedInventory::new(Inventory::new(), conn, 0, 36),
+      head:           SingleInventory::new(conn.clone(), 0, 0),
+      chest:          SingleInventory::new(conn.clone(), 0, 1),
+      legs:           SingleInventory::new(conn.clone(), 0, 2),
+      feet:           SingleInventory::new(conn.clone(), 0, 3),
+      crafting:       SingleInventory::new(conn.clone(), 0, 4),
+      main:           SingleInventory::new(conn.clone(), 0, 9),
+      hotbar:         SingleInventory::new(conn, 0, 36),
       selected_index: 0,
       window:         None,
       held:           Stack::empty(),
@@ -67,6 +67,7 @@ impl PlayerInventory {
     self.main.wid = 1;
     self.hotbar.offset = win.size() + self.main.size();
     self.hotbar.wid = 1;
+    win.open(&self.player.upgrade().unwrap().conn);
     self.window = Some(win);
   }
   pub fn close_window(&mut self) {
@@ -109,11 +110,11 @@ impl PlayerInventory {
     self.selected_index = index;
   }
 
-  pub fn main(&self) -> &WrappedInventory<27> { &self.main }
-  pub fn main_mut(&mut self) -> &mut WrappedInventory<27> { &mut self.main }
+  pub fn main(&self) -> &SingleInventory<27> { &self.main }
+  pub fn main_mut(&mut self) -> &mut SingleInventory<27> { &mut self.main }
 
-  pub fn hotbar(&self) -> &WrappedInventory<9> { &self.hotbar }
-  pub fn hotbar_mut(&mut self) -> &mut WrappedInventory<9> { &mut self.hotbar }
+  pub fn hotbar(&self) -> &SingleInventory<9> { &self.hotbar }
+  pub fn hotbar_mut(&mut self) -> &mut SingleInventory<9> { &mut self.hotbar }
 
   pub fn win(&self) -> Option<&Window> { self.window.as_ref() }
   pub fn win_mut(&mut self) -> Option<&mut Window> { self.window.as_mut() }
@@ -257,15 +258,14 @@ impl PlayerInventory {
     let idx = index as u32;
     if let Some(win) = &self.window {
       let it = if idx < win.size() {
-        win.get(idx).unwrap().to_item()
+        win.sync(idx);
       } else if idx < win.size() + 27 {
-        self.main.get(idx).unwrap().to_item()
+        self.main.sync(idx);
       } else if idx < win.size() + 36 {
-        self.hotbar.get(idx).unwrap().to_item()
+        self.hotbar.sync(idx);
       } else {
         panic!()
       };
-      self.main.conn.send(cb::Packet::WindowItem { wid: u8::MAX, slot: index, item: it });
     } else {
       match index {
         0 => self.head.sync(idx),

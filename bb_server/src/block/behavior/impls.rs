@@ -48,7 +48,7 @@ pub struct CraftingTable;
 impl Behavior for CraftingTable {
   fn interact(&self, _: Block, player: &Arc<Player>) -> bool {
     player.show_inventory(
-      Window::Crafting { grid: Default::default(), output: Default::default() },
+      Window::Crafting { grid: SharedInventory::new(), output: SharedInventory::new() },
       &Chat::new("Crafting Table"),
     );
     true
