@@ -1,6 +1,9 @@
 use proc_macro::TokenStream;
-use quote::quote;
-use syn::{parse_macro_input, Expr, Fields, GenericArgument, ItemEnum, Lit, PathArguments, Type};
+use quote::{quote, quote_spanned};
+use syn::{
+  parse_macro_input, Expr, Fields, GenericArgument, ItemEnum, Lit, LitStr, PathArguments, Token,
+  Type,
+};
 
 pub fn window(input: TokenStream) -> TokenStream {
   let input = parse_macro_input!(input as ItemEnum);
@@ -16,8 +19,29 @@ pub fn window(input: TokenStream) -> TokenStream {
     .collect();
   let mut field_start = vec![];
   let mut field_end = vec![];
+  let mut names = vec![];
   let mut size = vec![];
   for v in input.variants.iter() {
+    let mut found_name = false;
+    for attr in &v.attrs {
+      if attr.path.get_ident().map(|i| i == "name").unwrap_or(false) {
+        match attr.parse_args::<LitStr>() {
+          Ok(lit) => {
+            names.push(lit);
+            found_name = true;
+            break;
+          }
+          Err(err) => {
+            let e = err.to_compile_error();
+            return quote_spanned!(v.ident.span() => #e;).into();
+          }
+        }
+      }
+    }
+    if !found_name {
+      return quote_spanned!(v.ident.span() => compile_error!("requires #[name] attribute");)
+        .into();
+    }
     match &v.fields {
       Fields::Named(fields) => {
         let mut index = 0;
@@ -87,6 +111,13 @@ pub fn window(input: TokenStream) -> TokenStream {
         match self {
           #(
             Self::#variant { .. } => #size,
+          )*
+        }
+      }
+      pub fn ty(&self) -> &'static str {
+        match self {
+          #(
+            Self::#variant { .. } => #names,
           )*
         }
       }
