@@ -14,7 +14,7 @@ use bb_common::{
       TitleAction,
     },
   },
-  util::{chat, Buffer, Hand, UUID},
+  util::{chat, Buffer, GameMode, Hand, UUID},
   version::ProtocolVersion,
 };
 use serde::Serialize;
@@ -109,6 +109,63 @@ impl ToTcp for Packet {
         let mut buf = Buffer::new(&mut data);
         buf.write_varint(state as i32);
         GPacket::BlockUpdateV8 { block_position: pos, unknown: data }
+      }
+      Packet::ChangeGameState { action } => {
+        use bb_common::net::cb::ChangeGameState as Action;
+        let reason = match action {
+          Action::InvalidBed => 0,
+          Action::EndRaining => 1,
+          Action::BeginRaining => 2,
+          Action::GameMode(_) => 3,
+          Action::EnterCredits => 4,
+          Action::DemoMessage(_) => 5,
+          Action::ArrowHitPlayer => 6,
+          Action::FadeValue(_) => 7,
+          Action::FadeTime(_) => 8,
+          Action::PufferfishSting => {
+            if ver < ProtocolVersion::V1_14_4 {
+              return Err(WriteError::InvalidVer);
+            } else {
+              9
+            }
+          }
+          Action::ElderGuardianAppear => 10,
+          Action::EnableRespawnScreen(_) => {
+            if ver < ProtocolVersion::V1_15_2 {
+              return Err(WriteError::InvalidVer);
+            } else {
+              9
+            }
+          }
+        };
+        let value = match action {
+          Action::GameMode(mode) => match mode {
+            GameMode::Survival => 0.0,
+            GameMode::Creative => 1.0,
+            GameMode::Adventure => 2.0,
+            GameMode::Spectator => 3.0,
+          },
+          Action::DemoMessage(v) => v,
+          Action::FadeValue(v) => v,
+          Action::FadeTime(v) => v,
+          Action::EnableRespawnScreen(enable) => {
+            if enable {
+              1.0
+            } else {
+              0.0
+            }
+          }
+          _ => 0.0,
+        };
+        if ver >= ProtocolVersion::V1_16_5 {
+          let mut data = vec![];
+          let mut buf = Buffer::new(&mut data);
+          buf.write_u8(reason);
+          buf.write_f32(value);
+          GPacket::ChangeGameStateV16 { unknown: data }
+        } else {
+          GPacket::ChangeGameStateV8 { state: reason.into(), field_149141_c: value }
+        }
       }
       Packet::Chat { msg, ty } => {
         if ver < ProtocolVersion::V1_12_2 {
