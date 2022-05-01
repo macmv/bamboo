@@ -192,8 +192,11 @@ impl ToTcp for Packet {
         conn.conv().item(&mut item, ver.block());
         if ver >= ProtocolVersion::V1_16_5 {
           let mut buf = tcp::Packet::from_buf_id(vec![], 0, ver);
-          buf.write_item(&item);
-          buf.write_varint(match slot {
+          // TODO: Multiple equipment updates can be sent in one packet on this version.
+          // This is serialized as an array, where this byte has the top bit set if there
+          // is another entry. We keep this top bit unset, as this is the single (and
+          // last) entry.
+          buf.write_u8(match slot {
             EquipmentSlot::Hand(Hand::Main) => 0,
             EquipmentSlot::Hand(Hand::Off) => 1,
             EquipmentSlot::Armor(ArmorSlot::Boots) => 2,
@@ -201,6 +204,7 @@ impl ToTcp for Packet {
             EquipmentSlot::Armor(ArmorSlot::Chestplate) => 4,
             EquipmentSlot::Armor(ArmorSlot::Helmet) => 5,
           });
+          buf.write_item(&item);
           GPacket::EntityEquipmentV16 { id: eid, unknown: buf.serialize() }
         } else if ver >= ProtocolVersion::V1_9_4 {
           let mut buf = tcp::Packet::from_buf_id(vec![], 0, ver);
