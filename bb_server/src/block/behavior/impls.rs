@@ -36,8 +36,8 @@ impl Behavior for Falling {
       world.summon_data(entity::Type::FallingBlock, block.pos.center(), block.ty.id() as i32);
     }
   }
-  fn update(&self, world: &Arc<World>, block: Block, _: Block, new: Block) {
-    if new.pos.y < block.pos.y && new.kind() == Kind::Air {
+  fn update(&self, world: &Arc<World>, block: Block, _: Block, _: Block) {
+    if world.get_kind(block.pos.add_y(-1)) == Ok(Kind::Air) {
       let _ = world.set_kind(block.pos, Kind::Air);
       world.summon_data(entity::Type::FallingBlock, block.pos.center(), block.ty.id() as i32);
     }
