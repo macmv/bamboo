@@ -3,13 +3,19 @@ use crate::util::Buffer;
 use super::{Tag, NBT};
 
 impl NBT {
+  pub fn serialize_buf(&self, out: &mut Buffer<&mut Vec<u8>>) {
+    out.write_u8(self.tag.ty());
+    if matches!(self.tag, Tag::End) {
+      return;
+    }
+    out.write_u16(self.name.len() as u16);
+    out.write_buf(self.name.as_bytes());
+    self.tag.serialize(out);
+  }
   pub fn serialize(&self) -> Vec<u8> {
     let mut data = vec![];
     let mut out = Buffer::new(&mut data);
-    out.write_u8(self.tag.ty());
-    out.write_u16(self.name.len() as u16);
-    out.write_buf(self.name.as_bytes());
-    out.write_buf(&self.tag.serialize());
+    self.serialize_buf(&mut out);
     data
   }
 }
@@ -35,9 +41,7 @@ impl Tag {
   }
 
   /// Serializes the data of the tag. Does not add type byte.
-  fn serialize(&self) -> Vec<u8> {
-    let mut data = vec![];
-    let mut out = Buffer::new(&mut data);
+  fn serialize(&self, out: &mut Buffer<&mut Vec<u8>>) {
     match self {
       Self::End => (),
       Self::Byte(v) => out.write_i8(*v),
@@ -58,7 +62,7 @@ impl Tag {
         out.write_u8(v.get(0).unwrap_or(&Self::End).ty());
         out.write_i32(v.len() as i32);
         for tag in v {
-          out.write_buf(&tag.serialize());
+          tag.serialize(out);
         }
       }
       Self::Compound(v) => {
@@ -72,7 +76,7 @@ impl Tag {
           }
           out.write_u16(name.len() as u16);
           out.write_buf(name.as_bytes());
-          out.write_buf(&tag.serialize());
+          tag.serialize(out);
         }
         out.write_u8(Self::End.ty());
       }
@@ -89,7 +93,6 @@ impl Tag {
         }
       }
     }
-    data
   }
 }
 
