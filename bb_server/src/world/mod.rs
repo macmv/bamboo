@@ -890,4 +890,13 @@ impl WorldManager {
   pub fn get_player(&self, id: UUID) -> Option<Arc<Player>> {
     self.players.read().get(&id).map(|v| v.1.clone())
   }
+
+  pub fn get_player_username(&self, name: &String) -> Option<Arc<Player>> {
+    for (_, (_, p)) in self.players.read().iter() {
+      if p.username() == name {
+        return Some(Arc::clone(&p));
+      }
+    }
+    None
+  }
 }
