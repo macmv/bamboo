@@ -837,7 +837,9 @@ impl WorldManager {
       Some(v) => v.0,
       None => return,
     };
-    self.worlds.write()[idx].remove_player(id);
+    // This must be a read lock, or else this deadlocks (because of the leave
+    // message broadcast).
+    self.worlds.read()[idx].remove_player(id);
     // Avoid race condition, this needs to be before we remove `id` from `players`.
     // If we do this after, then the team might iterate through its own players and
     // need to look them up from `self.players`.
