@@ -309,7 +309,28 @@ impl PlayerInventory {
           }
         } else {
           match button {
-            Button::Left => allow!(self.swap(slot, -999)),
+            Button::Left => {
+              if allow {
+                let mut it = self.get(slot).unwrap();
+                if it.item() == self.held.item() {
+                  // Merge stacks in `slot`
+                  if it.amount() + self.held.amount() > 64 {
+                    self.held.set_amount(64 - (it.amount() + self.held.amount()));
+                    it.set_amount(64);
+                  } else {
+                    it.set_amount(it.amount() + self.held.amount());
+                    self.held.set_amount(0);
+                  }
+                  self.set(slot, it);
+                  self.sync(-999);
+                } else {
+                  self.swap(slot, -999);
+                }
+              } else {
+                self.sync(slot);
+                self.sync(-999);
+              }
+            }
             Button::Right => {
               if allow {
                 if self.held.is_empty() {
