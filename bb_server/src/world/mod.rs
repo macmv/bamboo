@@ -286,6 +286,10 @@ impl World {
       entities.insert(player.eid(), Entity::Player(player.id()));
     }
     info!("{} has joined the game", player.username());
+    let mut msg = Chat::empty();
+    msg.add(player.username()).color(Color::BrightGreen);
+    msg.add(" has joined").color(Color::Gray);
+    self.world_manager().broadcast(msg);
     self.player_init(&player, info);
     // We want our plugin stuff to trigger after the player has received all the
     // chunks and whatever other initialization stuff. This means we can't screw
@@ -560,7 +564,10 @@ impl World {
       self.entities.write().remove(&p.eid());
       self.plugins().on_player_leave(p.clone());
       info!("{} left the game", p.username());
-
+      let mut msg = Chat::empty();
+      msg.add(p.username()).color(Color::BrightGreen);
+      msg.add(" has left").color(Color::Gray);
+      self.world_manager().broadcast(msg);
       let entity_remove = cb::Packet::RemoveEntities { eids: vec![p.eid()] };
       let list_remove = cb::Packet::PlayerList {
         action: cb::PlayerListAction::Remove(vec![cb::PlayerListRemove { id: p.id() }]),
@@ -807,10 +814,6 @@ impl WorldManager {
     let player = Player::new(w.new_eid(), conn, info.clone(), w.clone(), spawn);
     self.players.write().insert(info.uuid, (0, player.clone()));
     w.new_player(player.clone(), info);
-    let mut msg = Chat::empty();
-    msg.add(player.username()).color(Color::BrightGreen);
-    msg.add(" has joined").color(Color::Gray);
-    self.broadcast(msg);
     player
   }
 
@@ -820,8 +823,8 @@ impl WorldManager {
   ///
   /// If the player is not present, this will do nothing.
   pub(crate) fn remove_player(&self, id: UUID) {
-    let (idx, name) = match self.players.read().get(&id) {
-      Some(v) => (v.0, v.1.username().clone()),
+    let idx = match self.players.read().get(&id) {
+      Some(v) => v.0,
       None => return,
     };
     self.worlds.write()[idx].remove_player(id);
@@ -832,10 +835,6 @@ impl WorldManager {
       team.lock().player_disconnect(id);
     }
     self.players.write().remove(&id);
-    let mut msg = Chat::empty();
-    msg.add(name).color(Color::BrightGreen);
-    msg.add(" has left").color(Color::Gray);
-    self.broadcast(msg);
   }
 
   fn global_tick_loop(self: Arc<Self>) {
