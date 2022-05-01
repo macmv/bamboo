@@ -1,8 +1,7 @@
 use proc_macro::TokenStream;
 use quote::{quote, quote_spanned};
 use syn::{
-  parse_macro_input, Expr, Fields, GenericArgument, ItemEnum, Lit, LitStr, PathArguments, Token,
-  Type,
+  parse_macro_input, Expr, Fields, GenericArgument, ItemEnum, Lit, LitStr, PathArguments, Type,
 };
 
 pub fn window(input: TokenStream) -> TokenStream {
@@ -19,10 +18,12 @@ pub fn window(input: TokenStream) -> TokenStream {
     .collect();
   let mut field_start = vec![];
   let mut field_end = vec![];
+  let mut field_non_outputs = vec![];
   let mut names = vec![];
   let mut size = vec![];
   for v in input.variants.iter() {
     let mut found_name = false;
+    let mut output = false;
     for attr in &v.attrs {
       if attr.path.get_ident().map(|i| i == "name").unwrap_or(false) {
         match attr.parse_args::<LitStr>() {
@@ -47,7 +48,19 @@ pub fn window(input: TokenStream) -> TokenStream {
         let mut index = 0;
         let mut starts = vec![];
         let mut ends = vec![];
+        let mut non_outputs = vec![];
         for field in &fields.named {
+          let mut output = false;
+          for attr in &field.attrs {
+            if attr.path.get_ident().map(|i| i == "output").unwrap_or(false) {
+              output = true;
+            } else if attr.path.get_ident().map(|i| i == "filter").unwrap_or(false) {
+              // TODO: Handle
+            }
+          }
+          if !output {
+            non_outputs.push(&field.ident);
+          }
           match &field.ty {
             Type::Path(p) => match &p.path.segments.first().unwrap().arguments {
               PathArguments::AngleBracketed(args) => match args.args.first().unwrap() {
@@ -73,6 +86,7 @@ pub fn window(input: TokenStream) -> TokenStream {
         field_start.push(starts);
         field_end.push(ends);
         size.push(index);
+        field_non_outputs.push(non_outputs);
       }
       _ => panic!(),
     }
@@ -103,6 +117,23 @@ pub fn window(input: TokenStream) -> TokenStream {
                 )*
                 _ => None,
               }
+            }
+          )*
+        }
+      }
+      pub fn add(&mut self, stack: &Stack) -> u8 {
+        let mut stack = stack.clone();
+        match self {
+          #(
+            Self::#variant { #(#field_non_outputs,)* .. } => {
+              #(
+                let amount = #field_non_outputs.lock().add(&stack);
+                if amount == 0 {
+                  return 0;
+                }
+                stack.set_amount(amount);
+              )*
+              stack.amount()
             }
           )*
         }

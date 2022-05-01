@@ -127,17 +127,4 @@ impl Window {
   pub fn get(&self, index: u32) -> Option<Stack> { self.access(index, |s| s.clone()) }
   pub fn set(&mut self, index: u32, stack: Stack) { self.access_mut(index, move |s| *s = stack); }
   pub fn items(&self) -> ItemsIter<'_> { ItemsIter { win: self, index: 0 } }
-  pub fn add(&mut self, stack: &Stack) -> u8 {
-    match self {
-      Self::Generic9x1 { inv } => inv.lock().add(stack),
-      Self::Generic9x2 { inv } => inv.lock().add(stack),
-      Self::Generic9x3 { inv } => inv.lock().add(stack),
-      Self::Generic9x4 { inv } => inv.lock().add(stack),
-      Self::Generic9x5 { inv } => inv.lock().add(stack),
-      Self::Generic9x6 { inv } => inv.lock().add(stack),
-      Self::Generic3x3 { inv } => inv.lock().add(stack),
-      Self::Crafting { grid, .. } => grid.lock().add(stack),
-      _ => todo!(),
-    }
-  }
 }
