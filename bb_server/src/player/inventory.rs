@@ -12,7 +12,7 @@ use bb_common::{
     cb,
     sb::{Button, ClickWindow},
   },
-  util::Hand,
+  util::{GameMode, Hand},
 };
 use std::{mem, sync::Weak};
 
@@ -319,7 +319,7 @@ impl PlayerInventory {
                 if it.item() == self.held.item() {
                   // Merge stacks in `slot`
                   if it.amount() + self.held.amount() > 64 {
-                    self.held.set_amount(64 - (it.amount() + self.held.amount()));
+                    self.held.set_amount((it.amount() + self.held.amount()) - 64);
                     it.set_amount(64);
                   } else {
                     it.set_amount(it.amount() + self.held.amount());
@@ -346,10 +346,12 @@ impl PlayerInventory {
                     self.held.set_amount(amount - 1);
                     self.set(slot, self.held.clone().with_amount(1));
                   } else if self.held.item() == it.item() {
-                    let amount = self.held.amount();
-                    self.held.set_amount(amount - 1);
-                    self.access(slot, |s| s.set_amount(s.amount() + 1));
-                    self.sync(slot);
+                    if self.get(slot).unwrap().amount() < 64 {
+                      let amount = self.held.amount();
+                      self.held.set_amount(amount - 1);
+                      self.access(slot, |s| s.set_amount(s.amount() + 1));
+                      self.sync(slot);
+                    }
                   } else {
                     self.swap(slot, -999);
                   }
@@ -520,6 +522,7 @@ impl PlayerInventory {
   }
   pub fn drag_end(&mut self, bt: Button) {
     if self.drag_bt.take() != Some(bt) {
+      self.drag_slots.clear();
       return;
     }
     if self.drag_slots.is_empty() {
@@ -527,7 +530,7 @@ impl PlayerInventory {
     }
     let stack = self.get(-999).unwrap().clone();
     let items_per_slot;
-    let items_remaining;
+    let mut items_remaining;
     match bt {
       Button::Left => {
         items_per_slot = stack.amount() / self.drag_slots.len() as u8;
@@ -541,12 +544,39 @@ impl PlayerInventory {
         items_remaining = stack.amount() - self.drag_slots.len() as u8;
       }
       Button::Middle => {
-        // TODO: Middle mouse drag
-        return;
+        // Older clients still send this when they aren't supposed to.
+        if self.player.upgrade().unwrap().game_mode() != GameMode::Creative {
+          self.sync_all();
+          self.drag_slots.clear();
+          return;
+        }
+        items_per_slot = 64;
+        items_remaining = stack.amount();
       }
     }
     for slot in self.drag_slots.clone() {
-      self.set(slot, stack.clone().with_amount(items_per_slot));
+      self.access(slot, |s| {
+        if s.item() == item::Type::Air {
+          *s = stack.clone().with_amount(items_per_slot);
+        } else if s.item() == stack.item() {
+          // Same item. Here, we add to the slot, and put any overflow in
+          // `items_remaining`.
+          if s.amount() + items_per_slot > 64 {
+            items_remaining += 64 - s.amount();
+            s.set_amount(64);
+          } else {
+            s.set_amount(s.amount() + items_per_slot);
+          }
+        } else {
+          // Different item, so we just put this slots amount in `items_remaining`.
+          //
+          // Note that if this slot has a different type, the client won't send this
+          // slot. However, if they do, we just handle it like this, to avoid losing
+          // items.
+          items_remaining += items_per_slot;
+        }
+      });
+      self.sync(slot);
     }
     self.drag_slots.clear();
     self.access(-999, |stack| stack.set_amount(items_remaining));
