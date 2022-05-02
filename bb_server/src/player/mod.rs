@@ -581,6 +581,12 @@ impl Player {
     *self.game_mode.lock() = mode;
     self.abilities.lock().set_from_game_mode(mode);
     self.send_abilities();
+    self.send(cb::Packet::PlayerList {
+      action: cb::PlayerListAction::UpdateGameMode(vec![cb::PlayerListGameMode {
+        id:        self.id(),
+        game_mode: mode,
+      }]),
+    });
   }
 
   /// Returns the current velocity of the player.
