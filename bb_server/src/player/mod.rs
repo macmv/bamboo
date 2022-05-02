@@ -4,7 +4,7 @@ use crate::{
 };
 use bb_common::{
   math::{ChunkPos, FPos, Pos, PosError, Vec3},
-  metadata::Metadata,
+  metadata::{Metadata, Pose},
   net::{cb, sb::PlayerCommand},
   util::{Chat, Face, GameMode, JoinInfo, UUID},
   version::ProtocolVersion,
@@ -633,20 +633,31 @@ impl Player {
   pub fn switch_to(&self, ips: Vec<SocketAddr>) { self.send(cb::Packet::SwitchServer { ips }); }
 
   pub(super) fn handle_command(&self, command: PlayerCommand) {
+    let mut needs_update = false;
     match command {
-      PlayerCommand::StartSprint => self.pos.lock().sprinting = true,
-      PlayerCommand::StopSprint => self.pos.lock().sprinting = false,
-      PlayerCommand::StartSneak => self.pos.lock().crouching = true,
-      PlayerCommand::StopSneak => self.pos.lock().crouching = false,
+      PlayerCommand::StartSprint => {
+        let mut p = self.pos.lock();
+        needs_update = !p.sprinting;
+        p.sprinting = true;
+      }
+      PlayerCommand::StopSprint => {
+        let mut p = self.pos.lock();
+        needs_update = p.sprinting;
+        p.sprinting = false;
+      }
+      PlayerCommand::StartSneak => self.set_crouching(true),
+      PlayerCommand::StopSneak => self.set_crouching(false),
       _ => {}
     }
-    let mut meta = Metadata::new();
-    meta.set_byte(0, self.status_byte());
-    self.send_to_in_view(cb::Packet::EntityMetadata {
-      eid: self.eid(),
-      ty: entity::Type::Player.id(),
-      meta,
-    });
+    if needs_update {
+      let mut meta = Metadata::new();
+      meta.set_byte(0, self.status_byte());
+      self.send_to_in_view(cb::Packet::EntityMetadata {
+        eid: self.eid(),
+        ty: entity::Type::Player.id(),
+        meta,
+      });
+    }
   }
 
   pub(super) fn set_crouching(&self, crouching: bool) {
@@ -657,6 +668,7 @@ impl Player {
     if needs_update {
       let mut meta = Metadata::new();
       meta.set_byte(0, self.status_byte());
+      meta.set_pose(6, if crouching { Pose::Sneaking } else { Pose::Standing });
       self.send_to_in_view(cb::Packet::EntityMetadata {
         eid: self.eid(),
         ty: entity::Type::Player.id(),

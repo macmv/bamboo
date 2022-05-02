@@ -105,6 +105,7 @@ impl Metadata {
     self.fields.insert(idx, Field::OptChat(value.map(|v| v.to_json())));
   }
   pub fn set_item(&mut self, idx: u8, value: Item) { self.fields.insert(idx, Field::Item(value)); }
+  pub fn set_pose(&mut self, idx: u8, pose: Pose) { self.fields.insert(idx, Field::Pose(pose)); }
 
   pub fn get_item(&self, idx: u8) -> Item {
     self

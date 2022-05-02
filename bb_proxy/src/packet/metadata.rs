@@ -21,7 +21,14 @@ pub fn metadata(ty: u32, meta: &Metadata, ver: ProtocolVersion, conv: &TypeConve
 
     let mut field = field.clone();
     if !is_ty(&field, old_ty) {
-      convert_field(&mut field, old_ty);
+      if !convert_field(&mut field, old_ty) {
+        if id == 0 {
+          // The id is probably missing for this version. Ignore and continue
+          continue;
+        } else {
+          panic!("cannot convert {field:?} into {ty:?}");
+        }
+      }
     }
 
     if ver == ProtocolVersion::V1_8 {
@@ -258,11 +265,12 @@ fn is_ty(field: &Field, ty: MetadataType) -> bool {
     Field::Pose(_) => matches!(ty, MetadataType::Pose),
   }
 }
-fn convert_field(field: &mut Field, ty: MetadataType) {
+fn convert_field(field: &mut Field, ty: MetadataType) -> bool {
   // Replace `field` with a temporary, so that we can move out of the old data.
   let old_field = mem::replace(field, Field::Bool(false));
   match (old_field, ty) {
     (Field::OptChat(msg), MetadataType::String) => *field = Field::String(msg.unwrap_or_default()),
-    (field, ty) => panic!("cannot convert {field:?} into {ty:?}"),
+    (field, ty) => return false,
   }
+  true
 }
