@@ -20,6 +20,7 @@ impl CommandTree {
       name:     "".into(),
       ty:       NodeType::Root,
       children: commands.values().map(|(command, _)| command.clone()).collect(),
+      optional: false,
     };
     c.write_nodes(&mut nodes);
 
@@ -36,7 +37,7 @@ impl Command {
     let children = self.children.iter().map(|c| c.write_nodes(nodes)).collect();
     nodes.push(CommandNode {
       ty: self.ty.as_ty(),
-      executable: false,
+      executable: self.children.is_empty() || self.children.iter().any(|c| c.optional),
       children,
       redirect: None,
       name: self.name.clone(),

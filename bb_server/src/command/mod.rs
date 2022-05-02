@@ -102,6 +102,7 @@ pub struct Command {
   name:     String,
   ty:       NodeType,
   children: Vec<Command>,
+  optional: bool,
 }
 #[derive(Debug, Clone)]
 enum NodeType {
@@ -116,11 +117,18 @@ impl Command {
   pub fn new<N: Into<String>>(name: N) -> Self { Self::lit(name.into()) }
   /// Creates a new literal node. Use [`add_lit`](Self::add_lit) if you want to
   /// add a literal node to the current command.
-  fn lit(name: String) -> Self { Command { name, ty: NodeType::Literal, children: vec![] } }
+  fn lit(name: String) -> Self {
+    Command { name, ty: NodeType::Literal, children: vec![], optional: false }
+  }
   /// Creates a new argument node. Use [`add_arg`](Self::add_arg) if you want to
   /// add an argument node to the current command.
   fn arg(name: String, parser: Parser) -> Self {
-    Command { name, ty: NodeType::Argument(parser), children: vec![] }
+    Command { name, ty: NodeType::Argument(parser), children: vec![], optional: false }
+  }
+  /// Creates a new argument node. Use [`add_arg_opt`](Self::add_arg_opt) if you
+  /// want to add an argument node to the current command.
+  fn arg_opt(name: String, parser: Parser) -> Self {
+    Command { name, ty: NodeType::Argument(parser), children: vec![], optional: true }
   }
   /// Gets the number of children in this command.
   pub fn children_len(&self) -> usize { self.children.len() }
@@ -174,6 +182,13 @@ impl Command {
     let index = self.children.len() - 1;
     self.children.get_mut(index).unwrap()
   }
+  /// Adds an optional argument. This is the same as [`add_arg`](Self::add_arg),
+  /// but allows the command to be parsed without this argument.
+  pub fn add_arg_opt(&mut self, name: &str, parser: Parser) -> &mut Command {
+    self.children.push(Command::arg_opt(name.into(), parser));
+    let index = self.children.len() - 1;
+    self.children.get_mut(index).unwrap()
+  }
   /// Parses the given text. The given text should be the entire command without
   /// a slash at the start. If anything went wrong during parsing, a ParseError
   /// will be returned. Otherwise, a list of fields will be returned.
@@ -195,6 +210,11 @@ impl Command {
   where
     S: CommandSender,
   {
+    // If we are optional, and there aren't any characters remaining, we just
+    // return an empty list. This will signify to the caller that everything worked.
+    if self.optional && tokens.peek().is_none() {
+      return Ok(vec![]);
+    }
     let arg = self.parse_arg(tokens, sender).map_err(|e| (e, 1))?;
     // if self.children.is_empty() && index < text.len() {
     //   return Err(ParseError::Trailing(text[index..].into()));
@@ -222,7 +242,18 @@ impl Command {
         }
       }
     }
-    if !self.children.is_empty() && out.len() == 1 {
+    // We need all of these checks:
+    //
+    // `!errors.is_empty()` makes sure that we actually got an error. This can fail
+    // if we didn't get any errors, or there were no children.
+    //
+    // `!self.children.is_empty()` is making sure that we have any children. Without
+    // any children, this command is the last in the branch, so we just return
+    // `Ok(vec![arg])`.
+    //
+    // `out.len() == 1` requires that none of the children parsed correctly. If any
+    // of them parsed, we use the child that parsed successfully.
+    if !errors.is_empty() && !self.children.is_empty() && out.len() == 1 {
       if errors.len() == 1 {
         let (err, node) = errors.pop().unwrap();
         match err.kind() {
