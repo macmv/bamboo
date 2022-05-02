@@ -261,9 +261,9 @@ fn click_window(mode: i32, bt: i32) -> Result<ClickWindow> {
     },
     // Drag item
     5 => match bt {
-      0 | 4 | 8 => ClickWindow::DragStart(button(bt)?),
-      1 | 5 | 9 => ClickWindow::DragAdd(button(bt)?),
-      2 | 6 | 10 => ClickWindow::DragEnd(button(bt)?),
+      0 | 4 | 8 => ClickWindow::DragStart(button(bt / 4)?),
+      1 | 5 | 9 => ClickWindow::DragAdd(button(bt / 4)?),
+      2 | 6 | 10 => ClickWindow::DragEnd(button(bt / 4)?),
       _ => {
         return Err(io::Error::new(ErrorKind::Other, "invalid button for drag item action").into())
       }

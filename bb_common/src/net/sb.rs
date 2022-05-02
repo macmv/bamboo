@@ -60,7 +60,7 @@ pub enum Packet {
   WindowClose { wid: u8 },
 }
 
-#[derive(Transfer, Debug, Clone)]
+#[derive(Transfer, Debug, Clone, Copy, PartialEq, Eq)]
 pub enum DigStatus {
   #[id = 0]
   Start,
@@ -70,7 +70,7 @@ pub enum DigStatus {
   Finish,
 }
 
-#[derive(Transfer, Debug, Clone)]
+#[derive(Transfer, Debug, Clone, PartialEq)]
 pub enum UseEntityAction {
   #[id = 0]
   Attack,
@@ -80,7 +80,7 @@ pub enum UseEntityAction {
   InteractAt(FPos, Hand),
 }
 
-#[derive(Transfer, Debug, Clone)]
+#[derive(Transfer, Debug, Clone, Copy, PartialEq, Eq)]
 pub enum PlayerCommand {
   #[id = 0]
   StartSneak,
@@ -116,7 +116,7 @@ impl DigStatus {
 }
 
 // See https://wiki.vg/Protocol#Click_Window
-#[derive(Transfer, Clone, Debug)]
+#[derive(Transfer, Clone, Debug, PartialEq, Eq)]
 pub enum ClickWindow {
   #[id = 0]
   Click(Button),
@@ -138,7 +138,7 @@ pub enum ClickWindow {
   DoubleClick,
 }
 
-#[derive(Transfer, Clone, Debug)]
+#[derive(Transfer, Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Button {
   #[id = 0]
   Left,

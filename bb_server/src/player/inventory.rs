@@ -36,6 +36,9 @@ pub struct PlayerInventory {
   /// packets all at once, after the drag is finished. Because it's sent as
   /// multiple packets, we need to hold onto this state.
   drag_slots: Vec<i32>,
+  /// Used for validation that the client is being consistent. If they change
+  /// buttons part way through the drag, we silently ignore the whole thing.
+  drag_bt:    Option<Button>,
 
   player: Weak<Player>,
 }
@@ -56,6 +59,7 @@ impl PlayerInventory {
       window:         None,
       held:           Stack::empty(),
       drag_slots:     vec![],
+      drag_bt:        None,
       player:         weak,
     }
   }
@@ -402,9 +406,9 @@ impl PlayerInventory {
       ClickWindow::Drop => allow!(self.drop_one(slot)),
       ClickWindow::DropAll => allow!(self.drop_all(slot)),
       ClickWindow::DoubleClick => allow!(self.double_click(slot)),
-      ClickWindow::DragStart(_) => self.drag_start(),
-      ClickWindow::DragAdd(_) => self.drag_add(slot),
-      ClickWindow::DragEnd(_) => self.drag_end(),
+      ClickWindow::DragStart(bt) => self.drag_start(bt),
+      ClickWindow::DragAdd(bt) => self.drag_add(bt, slot),
+      ClickWindow::DragEnd(bt) => self.drag_end(bt),
     }
 
     self.sync_all();
@@ -502,24 +506,50 @@ impl PlayerInventory {
     self.sync_all();
   }
 
-  pub fn drag_start(&mut self) { self.drag_slots.clear(); }
-  pub fn drag_add(&mut self, slot: i32) { self.drag_slots.push(slot); }
-  pub fn drag_end(&mut self) {
+  pub fn drag_start(&mut self, bt: Button) {
+    self.drag_slots.clear();
+    self.drag_bt = Some(bt);
+  }
+  pub fn drag_add(&mut self, bt: Button, slot: i32) {
+    if self.drag_bt != Some(bt) {
+      self.drag_bt = None;
+      self.drag_slots.clear();
+      return;
+    }
+    self.drag_slots.push(slot);
+  }
+  pub fn drag_end(&mut self, bt: Button) {
+    if self.drag_bt.take() != Some(bt) {
+      return;
+    }
     if self.drag_slots.is_empty() {
       return;
     }
     let stack = self.get(-999).unwrap().clone();
-    let items_per_slot = stack.amount() / self.drag_slots.len() as u8;
-    let items_remaining = stack.amount() % self.drag_slots.len() as u8;
+    let items_per_slot;
+    let items_remaining;
+    match bt {
+      Button::Left => {
+        items_per_slot = stack.amount() / self.drag_slots.len() as u8;
+        items_remaining = stack.amount() % self.drag_slots.len() as u8;
+      }
+      Button::Right => {
+        items_per_slot = 1;
+        while self.drag_slots.len() as u8 > stack.amount() {
+          self.drag_slots.pop();
+        }
+        items_remaining = stack.amount() - self.drag_slots.len() as u8;
+      }
+      Button::Middle => {
+        // TODO: Middle mouse drag
+        return;
+      }
+    }
     for slot in self.drag_slots.clone() {
       self.set(slot, stack.clone().with_amount(items_per_slot));
     }
     self.drag_slots.clear();
-    if items_remaining == 0 {
-      self.set(-999, Stack::empty());
-    } else {
-      self.access(-999, |stack| stack.set_amount(items_remaining));
-      self.sync(-999);
-    }
+    self.access(-999, |stack| stack.set_amount(items_remaining));
+    self.sync(-999);
   }
 }
