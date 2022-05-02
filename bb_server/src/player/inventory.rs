@@ -418,8 +418,8 @@ impl PlayerInventory {
       let total = stack.amount();
       stack.set_amount(total / 2);
       let remaining = total - stack.amount();
+      self.set(b, stack.clone().with_amount(remaining));
       self.set(a, stack);
-      self.set(b, self.get(a).unwrap().clone().with_amount(remaining));
     }
   }
 
