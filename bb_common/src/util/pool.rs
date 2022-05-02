@@ -16,12 +16,12 @@ impl<S: Send + 'static> ThreadPool<S> {
   /// Creates a thread pool with the same number of works as cores on the
   /// system. These are logical cores, so features like hyper threading will be
   /// accounted for.
-  pub fn auto<F: Fn() -> S>(new_state: F) -> Self {
+  pub fn auto<F: Fn() -> S>(name: &str, new_state: F) -> Self {
     // I'm just going to use the number of cores here. Nothing more, nothing less.
     // Doubling this seems like way to many, and adding a small amount doesn't seem
     // necessary. There are always going to be at least 2 thread pools on the server
     // anyway, so adding more threads won't help that much.
-    ThreadPool::new(num_cpus::get() as u32, new_state)
+    ThreadPool::new(name, num_cpus::get() as u32, new_state)
   }
   /// Creates a thread pool with the given number of worker threads. A
   /// reasonable number should be chosen here. Anything too large will crash the
@@ -30,7 +30,7 @@ impl<S: Send + 'static> ThreadPool<S> {
   /// # Panics
   ///
   /// Panics if the number of workers is 0.
-  pub fn new<F: Fn() -> S>(workers: u32, new_state: F) -> Self {
+  pub fn new<F: Fn() -> S>(name: &str, workers: u32, new_state: F) -> Self {
     if workers == 0 {
       panic!("cannot create a thread pool with no workers");
     }
@@ -38,11 +38,14 @@ impl<S: Send + 'static> ThreadPool<S> {
     for _ in 0..workers {
       let s = new_state();
       let rx = rx.clone();
-      thread::spawn(move || {
-        while let Ok(f) = rx.recv() {
-          f(&s)
-        }
-      });
+      thread::Builder::new()
+        .name(name.to_string())
+        .spawn(move || {
+          while let Ok(f) = rx.recv() {
+            f(&s)
+          }
+        })
+        .unwrap_or_else(|e| panic!("could not spawn worker thread for pool {name}: {e}"));
     }
     ThreadPool { tx }
   }

@@ -188,7 +188,10 @@ impl World {
   pub fn config(&self) -> &ConfigSection { &self.config }
 
   fn global_tick_loop(self: Arc<Self>) {
-    let pool = ThreadPool::auto(|| State { uspt: self.uspt.clone(), world: Arc::clone(&self) });
+    let pool = ThreadPool::auto("global tick loop", || State {
+      uspt:  self.uspt.clone(),
+      world: Arc::clone(&self),
+    });
     let mut tick = 0;
     let mut start = Instant::now();
     loop {
