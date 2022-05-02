@@ -414,12 +414,18 @@ impl PlayerInventory {
   /// not empty, this is a noop.
   pub fn split(&mut self, a: i32, b: i32) {
     if self.get(b).unwrap().is_empty() {
-      let mut stack = self.get(a).unwrap().clone();
+      let stack = self.get(a).unwrap();
       let total = stack.amount();
-      stack.set_amount(total / 2);
-      let remaining = total - stack.amount();
-      self.set(b, stack.clone().with_amount(remaining));
-      self.set(a, stack);
+      if total == 1 {
+        // Edge case. Avoids cloning `a` when we don't need to.
+        self.swap(a, b);
+      } else {
+        let a_amt = total / 2;
+        let b_amt = total - (total / 2);
+        self.access(a, |a| a.set_amount(a_amt));
+        self.sync(a);
+        self.set(b, stack.clone().with_amount(b_amt));
+      }
     }
   }
 
