@@ -110,34 +110,30 @@ impl World {
       self.commands().add(c, handle_gamemode);
     }
 
-    let mut c = Command::new("gms");
-    c.add_arg_opt("target", Parser::Entity { single: false, only_players: true });
-    self.commands().add(c, |_, player, _args| {
-      if let Some(player) = player {
-        player.set_game_mode(GameMode::Survival);
-      }
-    });
-    let mut c = Command::new("gmc");
-    c.add_arg_opt("target", Parser::Entity { single: false, only_players: true });
-    self.commands().add(c, |_, player, _args| {
-      if let Some(player) = player {
-        player.set_game_mode(GameMode::Creative);
-      }
-    });
-    let mut c = Command::new("gma");
-    c.add_arg_opt("target", Parser::Entity { single: false, only_players: true });
-    self.commands().add(c, |_, player, _args| {
-      if let Some(player) = player {
-        player.set_game_mode(GameMode::Adventure);
-      }
-    });
-    let mut c = Command::new("gmsp");
-    c.add_arg_opt("target", Parser::Entity { single: false, only_players: true });
-    self.commands().add(c, |_, player, _args| {
-      if let Some(player) = player {
-        player.set_game_mode(GameMode::Spectator);
-      }
-    });
+    let add_specific_game_mode = |name: &'static str, gm: GameMode| {
+      let mut c = Command::new(name);
+      c.add_arg_opt("target", Parser::Entity { single: false, only_players: true });
+      self.commands().add(c, move |wm, runner, args| {
+        if let Some(arg) = args.get(1) {
+          for world in wm.worlds().iter() {
+            for target in arg.entity().iter(&world.entities(), runner) {
+              target.as_player().map(|p| p.set_game_mode(gm));
+            }
+          }
+        } else {
+          if let Some(player) = runner {
+            player.set_game_mode(gm);
+          } else {
+            // TODO: Send error saying they need to specify a target
+          }
+        }
+      });
+    };
+
+    add_specific_game_mode("gms", GameMode::Survival);
+    add_specific_game_mode("gmc", GameMode::Creative);
+    add_specific_game_mode("gma", GameMode::Adventure);
+    add_specific_game_mode("gmsp", GameMode::Spectator);
 
     let c = Command::new("fly");
     self.commands().add(c, |_, player, _| {
