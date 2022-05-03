@@ -71,7 +71,7 @@ pub(crate) fn handle(wm: &Arc<WorldManager>, mut player: &Arc<Player>, p: sb::Pa
             sb::DigStatus::Finish => player.finish_digging(pos),
           },
           GameMode::Creative => {
-            let click = Click { face, dir: player.look_as_vec() };
+            let click = Click { face, dir: player.look_as_vec(), player };
             match player.world().get_block(pos) {
               Ok(looking_at) => {
                 let inv = player.lock_inventory();
@@ -80,7 +80,7 @@ pub(crate) fn handle(wm: &Arc<WorldManager>, mut player: &Arc<Player>, p: sb::Pa
                   let handled = wm
                     .item_behaviors()
                     .call(stack.item(), |b| {
-                      b.break_block(Block::new(player.world(), pos, looking_at), &player)
+                      b.break_block(Block::new(player.world(), pos, looking_at), click)
                     })
                     .unwrap_or(false);
                   if handled {
@@ -154,7 +154,7 @@ pub(crate) fn handle(wm: &Arc<WorldManager>, mut player: &Arc<Player>, p: sb::Pa
       } else {
         match player.world().get_block(pos) {
           Ok(looking_at) => {
-            let click = Click { face, dir: player.look_as_vec() };
+            let click = Click { face, dir: player.look_as_vec(), player };
             // TODO: Data generator should store which items are blockitems, and what blocks
             // they place.
             let mut inv = player.lock_inventory();
@@ -163,7 +163,7 @@ pub(crate) fn handle(wm: &Arc<WorldManager>, mut player: &Arc<Player>, p: sb::Pa
               let handled = wm
                 .item_behaviors()
                 .call(stack.item(), |b| {
-                  b.interact_block(Block::new(player.world(), pos, looking_at), &player)
+                  b.interact_block(Block::new(player.world(), pos, looking_at), click)
                 })
                 .unwrap_or(false);
               if handled {

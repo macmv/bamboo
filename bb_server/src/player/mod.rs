@@ -29,9 +29,10 @@ pub use team::Team;
 pub use window::Window;
 
 #[derive(Debug, Clone, Copy)]
-pub struct Click {
-  pub face: Face,
-  pub dir:  Vec3,
+pub struct Click<'a> {
+  pub face:   Face,
+  pub dir:    Vec3,
+  pub player: &'a Arc<Player>,
 }
 
 #[derive(Debug, Clone)]
@@ -391,6 +392,11 @@ impl Player {
     let pos = self.pos.lock();
     pos.curr
   }
+
+  /// Returns `true` if the player is crouching.
+  pub fn is_crouching(&self) -> bool { self.pos.lock().crouching }
+  /// Returns `true` if the player is sprinting.
+  pub fn is_sprinting(&self) -> bool { self.pos.lock().sprinting }
 
   /// Returns if player is currently alive
   pub fn alive(&self) -> bool { (*self.health.lock()).health > 0.0 }

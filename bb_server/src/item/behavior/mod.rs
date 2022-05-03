@@ -1,6 +1,5 @@
 use super::Type;
-use crate::{block::Block, player::Player};
-use std::sync::Arc;
+use crate::{block::Block, player::Click};
 
 mod impls;
 
@@ -8,16 +7,16 @@ pub trait Behavior: Send + Sync {
   /// Called when a player right clicks with this item on a block.
   ///
   /// If this returns `true`, then the interaction will be cancelled.
-  fn interact_block(&self, block: Block, player: &Arc<Player>) -> bool {
-    let _ = (block, player);
+  fn interact_block(&self, block: Block, click: Click) -> bool {
+    let _ = (block, click);
     false
   }
 
   /// Called when the player is about to break a block.
   ///
   /// If this returns `true`, the block will not be broken.
-  fn break_block(&self, block: Block, player: &Arc<Player>) -> bool {
-    let _ = (block, player);
+  fn break_block(&self, block: Block, click: Click) -> bool {
+    let _ = (block, click);
     false
   }
 }
