@@ -1,5 +1,10 @@
 use crate::{
-  block, command::CommandSender, entity, entity::EntityRef, item::Stack, net::ConnSender,
+  block,
+  command::{CommandSender, ErrorFormat},
+  entity,
+  entity::EntityRef,
+  item::Stack,
+  net::ConnSender,
   world::World,
 };
 use bb_common::{
@@ -800,6 +805,7 @@ impl Player {
 impl CommandSender for &Arc<Player> {
   fn block_pos(&self) -> Option<Pos> { Some(self.as_ref().block_pos()) }
   fn send_message(&mut self, msg: Chat) { self.as_ref().send_message(msg); }
+  fn error_format(&self) -> ErrorFormat { ErrorFormat::Minecraft }
 }
 
 #[test]

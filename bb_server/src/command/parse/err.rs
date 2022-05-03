@@ -1,4 +1,4 @@
-use super::{Parser, Span};
+use super::{super::ErrorFormat, Parser, Span};
 use bb_common::util::{chat::Color, Chat};
 use std::{error::Error, fmt};
 
@@ -49,19 +49,39 @@ impl ParseError {
 
   /// Generates a chat message from the error. This should be sent directly to
   /// the client without any additional formatting.
-  pub fn to_chat(&self, text: &str) -> Chat {
+  pub fn to_chat(&self, text: &str, format: ErrorFormat) -> Chat {
     let mut out = Chat::new("");
     let prefix = "Invalid command: ";
-    out.add(prefix).color(Color::Red);
-    if self.pos.start == text.len() {
-      out.add(format!("{} ", text)).color(Color::White);
-      out.add(" ").color(Color::Red).underlined();
-    } else {
-      out.add(&text[..self.pos.start]).color(Color::White);
-      out.add(&text[self.pos.start..self.pos.end]).color(Color::Red).underlined();
-      out.add(&text[self.pos.end..]).color(Color::White);
+    match format {
+      ErrorFormat::Minecraft => {
+        out.add(prefix).color(Color::Red);
+        if self.pos.start == text.len() {
+          out.add(format!("{} ", text)).color(Color::White);
+          out.add(" ").color(Color::Red).underlined();
+        } else {
+          out.add(&text[..self.pos.start]).color(Color::White);
+          out.add(&text[self.pos.start..self.pos.end]).color(Color::Red).underlined();
+          out.add(&text[self.pos.end..]).color(Color::White);
+        }
+        out.add(format!("\n  -> {}", self.kind)).color(Color::White);
+      }
+      ErrorFormat::Monospace => {
+        out.add(format!("{prefix}\n")).color(Color::Red);
+        out.add(format!("  {text}\n")).color(Color::White);
+        if self.pos.start == text.len() {
+          out.add(format!("  {}^", " ".repeat(text.len() + 1))).color(Color::Red);
+        } else {
+          out
+            .add(format!(
+              "  {}{}",
+              " ".repeat(self.pos.start),
+              "^".repeat(self.pos.end - self.pos.start)
+            ))
+            .color(Color::Red);
+        }
+        out.add(format!(" {}", self.kind)).color(Color::Red);
+      }
     }
-    out.add(format!("\n  -> {}", self.kind)).color(Color::White);
 
     out
   }

@@ -1,4 +1,7 @@
-use crate::{command::CommandSender, world::WorldManager};
+use crate::{
+  command::{CommandSender, ErrorFormat},
+  world::WorldManager,
+};
 use bb_common::{math::Pos, util::Chat};
 use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
 use mio::{
@@ -243,6 +246,7 @@ impl<'a> Conn<'a> {
           impl CommandSender for Sender {
             fn block_pos(&self) -> Option<Pos> { None }
             fn send_message(&mut self, msg: Chat) { self.payload += &msg.to_codes(); }
+            fn error_format(&self) -> ErrorFormat { ErrorFormat::Monospace }
           }
           let mut sender = Sender { payload: String::new() };
           self.rcon.wm.default_world().commands().execute(&self.rcon.wm, &mut sender, &p.payload);

@@ -26,7 +26,7 @@ mod serialize;
 pub use enums::{Arg, Parser, StringType};
 use parse::{ChildError, Span};
 pub use parse::{ErrorKind, ParseError, Tokenizer};
-pub use sender::CommandSender;
+pub use sender::{CommandSender, ErrorFormat};
 
 use crate::{player::Player, world::WorldManager};
 use bb_common::util::chat::{Chat, Color};
@@ -82,7 +82,8 @@ impl CommandTree {
     let args = match command.parse(text, sender) {
       Ok(v) => v,
       Err(e) => {
-        sender.send_message(e.to_chat(text));
+        let format = sender.error_format();
+        sender.send_message(e.to_chat(text, format));
         return;
       }
     };
@@ -334,7 +335,8 @@ mod tests {
 
   impl CommandSender for NoneSender {
     fn block_pos(&self) -> Option<Pos> { None }
-    fn send_messsage(&mut self, _: Chat) {}
+    fn send_message(&mut self, _: Chat) {}
+    fn error_format(&self) -> ErrorFormat { ErrorFormat::Minecraft }
   }
 
   #[test]
