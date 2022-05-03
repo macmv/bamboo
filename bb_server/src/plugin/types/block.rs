@@ -5,6 +5,7 @@ use panda::{parse::token::Span, runtime::RuntimeError};
 use std::str::FromStr;
 
 wrap!(block::Kind, PBlockKind);
+wrap!(block::Type, PBlockType);
 
 /// A block kind. This is how you get/set blocks in the world.
 ///
@@ -34,4 +35,10 @@ impl PBlockKind {
   }
   /// Returns the name of this block. This is the same name passed to `from_s`.
   pub fn to_s(&self) -> String { self.inner.to_str().to_string() }
+}
+
+#[define_ty(panda_path = "bamboo::block::Type")]
+impl PBlockType {
+  /// Returns the name of this block. This is the same name passed to `from_s`.
+  pub fn to_s(&self) -> String { self.inner.to_string() }
 }

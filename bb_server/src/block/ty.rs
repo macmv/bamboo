@@ -87,6 +87,24 @@ impl Type {
       .collect()
   }
 }
+impl fmt::Display for Type {
+  fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    write!(f, "{}", self.kind().to_str())?;
+    let mut all_props: Vec<_> = self.props().into_iter().collect();
+    all_props.sort_unstable_by(|a, b| a.0.cmp(&b.0));
+    if !all_props.is_empty() {
+      write!(f, "[")?;
+      for (i, (key, val)) in all_props.iter().enumerate() {
+        write!(f, "{key}={val}")?;
+        if i != all_props.len() - 1 {
+          write!(f, ",")?;
+        }
+      }
+      write!(f, "]")?;
+    }
+    Ok(())
+  }
+}
 
 #[derive(Debug)]
 pub struct InvalidBlock(String);

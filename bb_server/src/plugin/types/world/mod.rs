@@ -1,6 +1,6 @@
 use super::{
   add_from,
-  block::PBlockKind,
+  block::{PBlockKind, PBlockType},
   item::PStack,
   util::{PFPos, PPos},
 };
@@ -75,6 +75,14 @@ impl PWorld {
   pub fn get_kind(&self, pos: &PPos) -> Result<PBlockKind, RuntimeError> {
     self.check_pos(pos.inner)?;
     Ok(self.inner.get_kind(pos.inner).unwrap().into())
+  }
+
+  /// Returns the block type at the given position.
+  ///
+  /// This will return an error if the position is outside the world.
+  pub fn get_block(&self, pos: &PPos) -> Result<PBlockType, RuntimeError> {
+    self.check_pos(pos.inner)?;
+    Ok(self.inner.get_block(pos.inner).unwrap().into())
   }
 
   /// Summons a dropped item at the given posision.
