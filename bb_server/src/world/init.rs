@@ -81,15 +81,15 @@ impl World {
       if let Some(arg) = args.get(2) {
         for world in wm.worlds().iter() {
           for target in arg.entity().iter(&world.entities(), runner) {
-            target.as_player().map(|p| p.set_game_mode(gm));
+            if let Some(p) = target.as_player() {
+              p.set_game_mode(gm)
+            }
           }
         }
+      } else if let Some(player) = runner {
+        player.set_game_mode(gm);
       } else {
-        if let Some(player) = runner {
-          player.set_game_mode(gm);
-        } else {
-          // TODO: Send error saying they need to specify a target
-        }
+        // TODO: Send error saying they need to specify a target
       }
     }
     for name in ["gamemode", "gm"] {
@@ -117,15 +117,15 @@ impl World {
         if let Some(arg) = args.get(1) {
           for world in wm.worlds().iter() {
             for target in arg.entity().iter(&world.entities(), runner) {
-              target.as_player().map(|p| p.set_game_mode(gm));
+              if let Some(p) = target.as_player() {
+                p.set_game_mode(gm)
+              }
             }
           }
+        } else if let Some(player) = runner {
+          player.set_game_mode(gm);
         } else {
-          if let Some(player) = runner {
-            player.set_game_mode(gm);
-          } else {
-            // TODO: Send error saying they need to specify a target
-          }
+          // TODO: Send error saying they need to specify a target
         }
       });
     };

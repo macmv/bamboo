@@ -4,6 +4,7 @@ use syn::{
   parse_macro_input, Expr, Fields, GenericArgument, ItemEnum, Lit, LitStr, PathArguments, Type,
 };
 
+#[allow(clippy::collapsible_match)]
 pub fn window(input: TokenStream) -> TokenStream {
   let input = parse_macro_input!(input as ItemEnum);
   let ty = &input.ident;

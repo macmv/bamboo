@@ -8,6 +8,7 @@ pub struct SharedInventory<const N: usize> {
 }
 
 impl<const N: usize> SharedInventory<N> {
+  #[allow(clippy::new_without_default)]
   pub fn new() -> Self {
     // TODO: Offset should be passedin
     SharedInventory { inv: Arc::new(Mutex::new(WrappedInventory::new(1, 0))) }

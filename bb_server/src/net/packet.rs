@@ -72,25 +72,22 @@ pub(crate) fn handle(wm: &Arc<WorldManager>, mut player: &Arc<Player>, p: sb::Pa
           },
           GameMode::Creative => {
             let click = Click { face, dir: player.look_as_vec(), player };
-            match player.world().get_block(pos) {
-              Ok(looking_at) => {
-                let inv = player.lock_inventory();
-                let stack = inv.main_hand();
-                if !stack.is_empty() {
-                  let handled = wm
-                    .item_behaviors()
-                    .call(stack.item(), |b| {
-                      b.break_block(Block::new(player.world(), pos, looking_at), click)
-                    })
-                    .unwrap_or(false);
-                  if handled {
-                    let _ = player.sync_block_at(pos);
-                    let _ = player.sync_block_at(pos + face);
-                    return;
-                  }
+            if let Ok(looking_at) = player.world().get_block(pos) {
+              let inv = player.lock_inventory();
+              let stack = inv.main_hand();
+              if !stack.is_empty() {
+                let handled = wm
+                  .item_behaviors()
+                  .call(stack.item(), |b| {
+                    b.break_block(Block::new(player.world(), pos, looking_at), click)
+                  })
+                  .unwrap_or(false);
+                if handled {
+                  let _ = player.sync_block_at(pos);
+                  let _ = player.sync_block_at(pos + face);
+                  return;
                 }
               }
-              _ => {}
             }
             // Avoid race condition
             if !player.world().set_kind(pos, block::Kind::Air).unwrap() {

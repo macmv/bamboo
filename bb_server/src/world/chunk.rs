@@ -151,7 +151,7 @@ impl MultiChunk {
 
   /// Returns a reference to the global type converter. Used to convert a block
   /// id to/from any version.
-  pub fn type_converter(&self) -> &Arc<block::TypeConverter> { &self.wm.block_converter() }
+  pub fn type_converter(&self) -> &Arc<block::TypeConverter> { self.wm.block_converter() }
 
   /// Returns the sky light information for this chunk. Used to send lighting
   /// data to clients.

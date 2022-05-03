@@ -8,6 +8,7 @@ impl Behavior for DebugStick {
     click.player.send_hotbar(Chat::new(block.ty.to_string()));
     true
   }
+  #[allow(clippy::collapsible_else_if)]
   fn break_block(&self, mut block: Block, click: Click) -> bool {
     let mut all_props: Vec<_> = block.ty.props().into_iter().collect();
     all_props.sort_unstable_by(|a, b| a.0.cmp(&b.0));

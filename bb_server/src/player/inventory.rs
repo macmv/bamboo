@@ -170,9 +170,9 @@ impl PlayerInventory {
       if idx < win.size() {
         win.access_mut(idx, f)
       } else if idx < win.size() + 27 {
-        self.main.get_mut(idx).map(|s| f(s))
+        self.main.get_mut(idx).map(f)
       } else if idx < win.size() + 36 {
-        self.hotbar.get_mut(idx).map(|s| f(s))
+        self.hotbar.get_mut(idx).map(f)
       } else {
         None
       }
@@ -187,7 +187,7 @@ impl PlayerInventory {
         36..=44 => self.hotbar.get_mut(idx),
         _ => None,
       }
-      .map(|s| f(s))
+      .map(f)
     }
   }
   /// Replaces the item at `index` with the given item. The old item will be
@@ -430,7 +430,7 @@ impl PlayerInventory {
         let b_amt = total - (total / 2);
         self.access(a, |a| a.set_amount(a_amt));
         self.sync(a);
-        self.set(b, stack.clone().with_amount(b_amt));
+        self.set(b, stack.with_amount(b_amt));
       }
     }
   }
@@ -528,7 +528,7 @@ impl PlayerInventory {
     if self.drag_slots.is_empty() {
       return;
     }
-    let stack = self.get(-999).unwrap().clone();
+    let stack = self.get(-999).unwrap();
     let items_per_slot;
     let mut items_remaining;
     match bt {

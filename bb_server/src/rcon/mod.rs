@@ -103,7 +103,7 @@ impl RCon {
               .register(&mut conn, token, Interest::READABLE | Interest::WRITABLE)
               .unwrap();
 
-            conns.insert(token, Conn::new(conn, &self));
+            conns.insert(token, Conn::new(conn, self));
           },
           token => {
             if let Some(conn) = conns.get_mut(&token) {
@@ -267,7 +267,7 @@ impl<'a> Conn<'a> {
     }
     let mut buf = Cursor::new(&self.incoming);
     let len = buf.read_i32::<LittleEndian>()? + 4;
-    if len < 0 || len > 4096 {
+    if !(0..=4096).contains(&len) {
       return Err(ParseError::InvalidLength);
     }
     let id = buf.read_i32::<LittleEndian>()?;
@@ -305,7 +305,7 @@ impl<'a> Conn<'a> {
       PacketType::Command => 2,
       PacketType::Output => 0,
     })?;
-    buf.write(p.payload.as_bytes())?;
+    buf.write_all(p.payload.as_bytes())?;
     buf.write_u8(0)?;
     buf.write_u8(0)?;
     Ok(())

@@ -73,8 +73,8 @@ impl World {
       return Ok(false);
     }
 
-    let mut old_block = Block::new(&self, pos, ty);
-    let new_block = Block::new(&self, pos, ty);
+    let mut old_block = Block::new(self, pos, ty);
+    let new_block = Block::new(self, pos, ty);
     self.chunk(pos.chunk(), |mut c| {
       old_block.ty = c.get_type(pos.chunk_rel())?;
       c.set_type(pos.chunk_rel(), ty)
@@ -83,7 +83,7 @@ impl World {
     self
       .world_manager()
       .block_behaviors()
-      .call(ty.kind(), |b| b.update_place(self, Block::new(&self, pos, ty)));
+      .call(ty.kind(), |b| b.update_place(self, Block::new(self, pos, ty)));
     // After that, handle updates for neighboring blocks.
     macro_rules! dir {
       ( $x:expr, $y:expr, $z:expr ) => {
