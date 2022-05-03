@@ -15,11 +15,16 @@ use std::{
 use thiserror::Error;
 
 pub struct RCon {
-  addr: SocketAddr,
-  wm:   Arc<WorldManager>,
+  addr:     SocketAddr,
+  password: String,
+  wm:       Arc<WorldManager>,
 }
 pub struct Conn<'a> {
-  wm: &'a Arc<WorldManager>,
+  rcon:      &'a RCon,
+  logged_in: bool,
+  // If we read invalid, we want to send a result back. This stores if we are in the state of
+  // waiting for the stream to be writable, but not acceptying any more packets.
+  closed:    bool,
 
   stream:   TcpStream,
   incoming: Vec<u8>,
@@ -40,7 +45,7 @@ impl RCon {
       }
     };
 
-    Some(RCon { addr, wm })
+    Some(RCon { addr, password: config.get("password"), wm })
   }
 
   pub fn run(&mut self) {
@@ -51,6 +56,7 @@ impl RCon {
         return;
       }
     };
+    info!("rcon listening on {}", self.addr);
 
     const LISTEN: Token = Token(0xffffffff);
 
@@ -93,11 +99,12 @@ impl RCon {
               .register(&mut conn, token, Interest::READABLE | Interest::WRITABLE)
               .unwrap();
 
-            conns.insert(token, Conn::new(conn, &self.wm));
+            conns.insert(token, Conn::new(conn, &self));
           },
           token => {
             if let Some(conn) = conns.get_mut(&token) {
               if conn.handle(event.is_readable(), event.is_writable()) {
+                info!("rcon client disconnected");
                 conns.remove(&token);
               }
             }
@@ -108,15 +115,10 @@ impl RCon {
   }
 }
 
-enum ReadResult {
-  Normal,
-  Close,
-}
-
 struct Packet {
-  id:   i32,
-  ty:   PacketType,
-  body: String,
+  id:      i32,
+  ty:      PacketType,
+  payload: String,
 }
 enum PacketType {
   Login,
@@ -132,6 +134,12 @@ enum ParseError {
   CannotHandleOutput,
   #[error("invalid packet length")]
   InvalidLength,
+  #[error("not yet logged in")]
+  NotLoggedIn,
+  #[error("already logged in")]
+  AlreadyLoggedIn,
+  #[error("invalid password")]
+  InvalidPassword,
   #[error("{0}")]
   IO(#[from] io::Error),
   #[error("{0}")]
@@ -139,14 +147,16 @@ enum ParseError {
 }
 
 impl<'a> Conn<'a> {
-  pub fn new(stream: TcpStream, wm: &'a Arc<WorldManager>) -> Self {
-    Conn { wm, stream, incoming: vec![], outgoing: vec![] }
+  pub fn new(stream: TcpStream, rcon: &'a RCon) -> Self {
+    Conn { rcon, logged_in: false, closed: false, stream, incoming: vec![], outgoing: vec![] }
   }
   pub fn handle(&mut self, readable: bool, writeable: bool) -> bool {
-    if readable {
+    if !self.closed && readable {
       loop {
         match self.read_bytes() {
-          Ok(()) => {}
+          // Stream closed, so we can't reply, so we just close everything.
+          Ok(true) => return true,
+          Ok(false) => {}
           Err(e) if e.kind() == io::ErrorKind::WouldBlock => break,
           Err(e) => {
             error!("could not read packet: {e}");
@@ -154,17 +164,17 @@ impl<'a> Conn<'a> {
           }
         }
       }
+      // If we get a close here, we might have a reply, which we still want to write.
       match self.read_packets() {
-        Ok(ReadResult::Normal) => {}
-        Ok(ReadResult::Close) => return true,
+        Ok(()) => {}
         Err(e) => {
-          error!("could not read packet: {e}");
-          return true;
+          error!("rcon error: {e}");
+          self.closed = true;
         }
       }
     }
     if writeable {
-      loop {
+      while !self.outgoing.is_empty() {
         match self.write_bytes() {
           Ok(()) => {}
           Err(e) if e.kind() == io::ErrorKind::WouldBlock => break,
@@ -175,14 +185,17 @@ impl<'a> Conn<'a> {
         }
       }
     }
-    false
+    self.closed && self.outgoing.is_empty()
   }
 
-  fn read_bytes(&mut self) -> io::Result<()> {
+  fn read_bytes(&mut self) -> io::Result<bool> {
     let mut buf = [0; 1024];
     let n = self.stream.read(&mut buf)?;
+    if n == 0 {
+      return Ok(true);
+    }
     self.incoming.extend_from_slice(&buf[..n]);
-    Ok(())
+    Ok(false)
   }
   fn write_bytes(&mut self) -> io::Result<()> {
     let n = self.stream.write(&self.outgoing)?;
@@ -190,18 +203,44 @@ impl<'a> Conn<'a> {
     Ok(())
   }
 
-  fn read_packets(&mut self) -> Result<ReadResult, ParseError> {
+  fn read_packets(&mut self) -> Result<(), ParseError> {
     loop {
       let p = match self.read_packet()? {
         Some(p) => p,
-        None => return Ok(ReadResult::Normal),
+        None => return Ok(()),
       };
       match p.ty {
         PacketType::Login => {
-          todo!();
+          if self.logged_in {
+            return Err(ParseError::AlreadyLoggedIn);
+          }
+          if self.rcon.password == p.payload {
+            self.logged_in = true;
+            self.send_packet(Packet {
+              id:      p.id,
+              ty:      PacketType::Login,
+              payload: "logged in".into(),
+            })?;
+            info!("rcon client logged in");
+          } else {
+            self.send_packet(Packet {
+              id:      -1,
+              ty:      PacketType::Login,
+              payload: "invalid password".into(),
+            })?;
+            return Err(ParseError::InvalidPassword);
+          }
         }
         PacketType::Command => {
-          todo!();
+          if !self.logged_in {
+            return Err(ParseError::NotLoggedIn);
+          }
+          info!("executing command {}", p.payload);
+          self.send_packet(Packet {
+            id:      p.id,
+            ty:      PacketType::Output,
+            payload: "foo".into(),
+          })?;
         }
         PacketType::Output => return Err(ParseError::CannotHandleOutput),
       }
@@ -238,6 +277,23 @@ impl<'a> Conn<'a> {
       0 => PacketType::Output,
       _ => return Err(ParseError::InvalidType(ty)),
     };
-    Ok(Some(Packet { id, ty, body: String::from_utf8(payload)? }))
+    Ok(Some(Packet { id, ty, payload: String::from_utf8(payload)? }))
+  }
+  fn send_packet(&mut self, p: Packet) -> io::Result<()> {
+    let len = self.outgoing.len() as u64;
+    let mut buf = Cursor::new(&mut self.outgoing);
+    buf.set_position(len);
+    // 10 is for 4 bytes ty, 4 bytes id, and 2 terminating nul bytes.
+    buf.write_i32::<LittleEndian>(10 + p.payload.len() as i32)?;
+    buf.write_i32::<LittleEndian>(p.id)?;
+    buf.write_i32::<LittleEndian>(match p.ty {
+      PacketType::Login => 3,
+      PacketType::Command => 2,
+      PacketType::Output => 0,
+    })?;
+    buf.write(p.payload.as_bytes())?;
+    buf.write_u8(0)?;
+    buf.write_u8(0)?;
+    Ok(())
   }
 }

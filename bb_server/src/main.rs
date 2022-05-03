@@ -2,7 +2,7 @@
 extern crate log;
 
 use bb_common::config::Config;
-use bb_server::{net::ConnectionManager, world::WorldManager};
+use bb_server::{net::ConnectionManager, rcon::RCon, world::WorldManager};
 use clap::Parser;
 use std::{sync::Arc, thread};
 
@@ -86,6 +86,10 @@ fn main() {
   let wm = Arc::new(WorldManager::new_with_config(config));
   wm.add_world();
   wm.load_plugins();
+
+  if let Some(mut rcon) = RCon::new(wm.clone()) {
+    thread::spawn(move || rcon.run());
+  }
 
   let w = wm.clone();
   thread::spawn(|| w.run());

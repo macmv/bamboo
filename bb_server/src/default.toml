@@ -39,6 +39,21 @@ join-messages = true
 # If true, when a player leaves, a chat message will be displayed.
 leave-messages = true
 
+# Configs for rcon. This is a protocol used by vanilla to allow a remote
+# to execute commands on the server.
+[rcon]
+# By default this is disabled. This is for security. Anyone with access
+# to the port will be able to execute commands on this server.
+enabled = false
+# This is the port that rcon connects listens on.
+addr = "0.0.0.0:25575"
+# This is the password to use when connecting. This is basically meaningless,
+# as the connection is entirely unencrypted. So, if you have the above address
+# open to anyone, consider it completely vulnerable to attacks.
+#
+# Note that the password is always required.
+password = ""
+
 # Configs for world generation/loading.
 [world]
 # If set, the world cannot be modified. This can be used in minigame
