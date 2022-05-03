@@ -59,7 +59,7 @@ pub(crate) fn handle(wm: &Arc<WorldManager>, mut player: &Arc<Player>, p: sb::Pa
         wm.broadcast(msg);
       }
     }
-    sb::Packet::BlockDig { pos, status, face: _ } => {
+    sb::Packet::BlockDig { pos, status, face } => {
       // If the world is locked then we need to sync this block.
       if player.world().is_locked() {
         player.sync_block_at(pos).unwrap();
@@ -71,6 +71,27 @@ pub(crate) fn handle(wm: &Arc<WorldManager>, mut player: &Arc<Player>, p: sb::Pa
             sb::DigStatus::Finish => player.finish_digging(pos),
           },
           GameMode::Creative => {
+            let click = Click { face, dir: player.look_as_vec() };
+            match player.world().get_block(pos) {
+              Ok(looking_at) => {
+                let inv = player.lock_inventory();
+                let stack = inv.main_hand();
+                if !stack.is_empty() {
+                  let handled = wm
+                    .item_behaviors()
+                    .call(stack.item(), |b| {
+                      b.break_block(Block::new(player.world(), pos, looking_at), &player)
+                    })
+                    .unwrap_or(false);
+                  if handled {
+                    let _ = player.sync_block_at(pos);
+                    let _ = player.sync_block_at(pos + face);
+                    return;
+                  }
+                }
+              }
+              _ => {}
+            }
             // Avoid race condition
             if !player.world().set_kind(pos, block::Kind::Air).unwrap() {
               player.sync_block_at(pos).unwrap();

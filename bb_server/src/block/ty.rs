@@ -41,8 +41,8 @@ impl Type {
       let state = self.state_props[idx];
       match self.props[idx].kind {
         PropKind::Bool => match state {
-          0 => PropValue::Bool(false),
-          _ => PropValue::Bool(true),
+          0 => PropValue::Bool(true),
+          _ => PropValue::Bool(false),
         },
         PropKind::Enum(values) => PropValue::Enum(values[state as usize]),
         PropKind::Int { min, max } => PropValue::Int((state + min).min(max)),
@@ -78,6 +78,9 @@ impl Type {
     self
   }
 
+  pub fn prop_at(&self, name: &str) -> Option<&Prop> {
+    self.props.iter().find(|prop| prop.name == name)
+  }
   pub fn props(&self) -> HashMap<String, String> {
     self
       .props
@@ -327,7 +330,7 @@ impl Prop {
     }
   }
 
-  pub fn from_id(&self, id: u32) -> PropValue {
+  pub fn from_id(&self, id: u32) -> PropValue<'static> {
     if id >= self.len() {
       panic!("id is {}, but len is {}", id, self.len());
     }
@@ -341,6 +344,8 @@ impl Prop {
       PropKind::Int { min, .. } => PropValue::Int(id - min),
     }
   }
+
+  pub fn id_of(&self, val: &PropValue) -> u32 { val.id(&self.kind) }
 }
 
 #[cfg(test)]

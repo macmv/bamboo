@@ -12,6 +12,14 @@ pub trait Behavior: Send + Sync {
     let _ = (block, player);
     false
   }
+
+  /// Called when the player is about to break a block.
+  ///
+  /// If this returns `true`, the block will not be broken.
+  fn break_block(&self, block: Block, player: &Arc<Player>) -> bool {
+    let _ = (block, player);
+    false
+  }
 }
 
 #[derive(Default)]
