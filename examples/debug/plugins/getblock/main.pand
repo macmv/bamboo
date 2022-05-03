@@ -1,0 +1,26 @@
+use bamboo::{
+  block,
+  chat::Chat,
+  command::Command,
+  world::gen,
+  util::Pos,
+  item::{Stack, UI},
+}
+
+fn init() {
+  bamboo::info("hello world")
+  let bb = bamboo::instance()
+
+  let c = Command::new("getblock", handle_getblock)
+  c.add_arg_block_pos("pos")
+  bb.add_command(c)
+}
+
+fn handle_getblock(player, args) {
+  // args[0] is `getblock`
+  // args[1] is the position
+  let c = Chat::empty()
+  c.add("block: ")
+  c.add(player.world().get_block(args[1]).to_s())
+  player.send_message(c)
+}
