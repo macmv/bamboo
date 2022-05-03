@@ -325,13 +325,13 @@ impl Command {
 }
 
 #[cfg(test)]
-mod tests {
+pub mod tests {
   use super::*;
   use crate::block;
   use bb_common::math::Pos;
   use std::collections::HashMap;
 
-  struct NoneSender {}
+  pub struct NoneSender {}
 
   impl CommandSender for NoneSender {
     fn block_pos(&self) -> Option<Pos> { None }

@@ -361,12 +361,7 @@ impl Parser {
 #[cfg(test)]
 mod tests {
   use super::*;
-
-  struct NoneSender {}
-
-  impl CommandSender for NoneSender {
-    fn block_pos(&self) -> Option<Pos> { None }
-  }
+  use crate::command::tests::NoneSender;
 
   #[test]
   fn parse_types() -> Result<()> {

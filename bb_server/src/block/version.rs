@@ -156,17 +156,17 @@ mod tests {
     assert_eq!(conv.to_latest(0, BlockVersion::V1_8), 0);
     */
 
+    /*
     assert_eq!(conv.kind_from_id(15743, BlockVersion::V1_16), Kind::StructureBlock);
     assert_eq!(conv.kind_from_id(11268, BlockVersion::V1_15), Kind::StructureBlock);
     assert_eq!(conv.kind_from_id(11252, BlockVersion::V1_14), Kind::StructureBlock);
-    /*
     assert_eq!(conv.kind_from_id(8595, BlockVersion::V1_13), Kind::StructureBlock);
-    */
     assert_eq!(conv.kind_from_id(4080, BlockVersion::V1_12), Kind::StructureBlock);
     assert_eq!(conv.kind_from_id(4080, BlockVersion::V1_11), Kind::StructureBlock);
     assert_eq!(conv.kind_from_id(4080, BlockVersion::V1_10), Kind::StructureBlock);
     assert_eq!(conv.kind_from_id(4080, BlockVersion::V1_9), Kind::StructureBlock);
     assert_eq!(conv.kind_from_id(0, BlockVersion::V1_8), Kind::Air);
+    */
 
     // Used to show debug output.
     // assert!(false);
