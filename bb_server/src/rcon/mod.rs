@@ -1,4 +1,5 @@
 use crate::world::WorldManager;
+use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
 use mio::{
   net::{TcpListener, TcpStream},
   Events, Interest, Poll, Token,
@@ -6,10 +7,12 @@ use mio::{
 use std::{
   collections::HashMap,
   io,
-  io::{Read, Write},
+  io::{BufRead, Cursor, Read, Write},
   net::SocketAddr,
+  string::FromUtf8Error,
   sync::Arc,
 };
+use thiserror::Error;
 
 pub struct RCon {
   addr: SocketAddr,
@@ -110,6 +113,31 @@ enum ReadResult {
   Close,
 }
 
+struct Packet {
+  id:   i32,
+  ty:   PacketType,
+  body: String,
+}
+enum PacketType {
+  Login,
+  Command,
+  Output,
+}
+
+#[derive(Error, Debug)]
+enum ParseError {
+  #[error("invalid packet type {0}")]
+  InvalidType(i32),
+  #[error("cannot handle output packet")]
+  CannotHandleOutput,
+  #[error("invalid packet length")]
+  InvalidLength,
+  #[error("{0}")]
+  IO(#[from] io::Error),
+  #[error("{0}")]
+  InvalidMessage(#[from] FromUtf8Error),
+}
+
 impl<'a> Conn<'a> {
   pub fn new(stream: TcpStream, wm: &'a Arc<WorldManager>) -> Self {
     Conn { wm, stream, incoming: vec![], outgoing: vec![] }
@@ -162,30 +190,54 @@ impl<'a> Conn<'a> {
     Ok(())
   }
 
-  fn read_packets(&mut self) -> Result<ReadResult, io::Error> {
+  fn read_packets(&mut self) -> Result<ReadResult, ParseError> {
     loop {
       let p = match self.read_packet()? {
         Some(p) => p,
         None => return Ok(ReadResult::Normal),
       };
       match p.ty {
-        0 => {
+        PacketType::Login => {
           todo!();
         }
-        2 => {
+        PacketType::Command => {
           todo!();
         }
-        3 => {
-          todo!();
-        }
-        _ => return io::Error::new(io::ErrorKind::Other, "invalid packet type"),
+        PacketType::Output => return Err(ParseError::CannotHandleOutput),
       }
     }
   }
 
-  fn read_packet(&mut self) -> Result<Option<Packet>, io::Error> {
+  fn read_packet(&mut self) -> Result<Option<Packet>, ParseError> {
     if self.incoming.len() < 4 {
       return Ok(None);
     }
+    let mut buf = Cursor::new(&self.incoming);
+    let len = buf.read_i32::<LittleEndian>()? + 4;
+    if len < 0 || len > 4096 {
+      return Err(ParseError::InvalidLength);
+    }
+    let id = buf.read_i32::<LittleEndian>()?;
+    let ty = buf.read_i32::<LittleEndian>()?;
+    let mut payload = vec![];
+    let _ = buf.read_until(b'\0', &mut payload)?;
+    payload.pop();
+    if buf.read_u8()? != 0 {
+      return Err(
+        io::Error::new(io::ErrorKind::InvalidData, "expected terminating NUL byte").into(),
+      );
+    }
+    // as u64 is fine, because we know len >= 0 (from the check above)
+    if buf.position() != len as u64 {
+      return Err(ParseError::InvalidLength);
+    }
+    self.incoming.drain(0..len as usize);
+    let ty = match ty {
+      3 => PacketType::Login,
+      2 => PacketType::Command,
+      0 => PacketType::Output,
+      _ => return Err(ParseError::InvalidType(ty)),
+    };
+    Ok(Some(Packet { id, ty, body: String::from_utf8(payload)? }))
   }
 }

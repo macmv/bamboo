@@ -301,6 +301,7 @@ dependencies = [
  "bb_ffi",
  "bb_plugin_macros",
  "bb_transfer",
+ "byteorder",
  "clap 3.1.9",
  "criterion",
  "crossbeam-channel",
