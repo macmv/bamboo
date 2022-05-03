@@ -118,6 +118,7 @@ pub struct WorldManager {
   commands:         Arc<CommandTree>,
   config:           Arc<Config>,
   block_behaviors:  RwLock<block::BehaviorStore>,
+  item_behaviors:   RwLock<item::BehaviorStore>,
 
   default_game_mode: GameMode,
   spawn_point:       FPos,
@@ -672,6 +673,7 @@ impl WorldManager {
       commands:          Arc::new(CommandTree::new()),
       tags:              Arc::new(Tags::new()),
       block_behaviors:   RwLock::new(block::BehaviorStore::new()),
+      item_behaviors:    RwLock::new(item::BehaviorStore::new()),
       worlds:            RwLock::new(vec![]),
       players:           RwLock::new(HashMap::new()),
       teams:             RwLock::new(HashMap::new()),
@@ -768,6 +770,11 @@ impl WorldManager {
   /// Returns a read lock on the block behavior storage.
   pub fn block_behaviors(&self) -> RwLockReadGuard<'_, block::BehaviorStore> {
     self.block_behaviors.read()
+  }
+
+  /// Returns a read lock on the item behavior storage.
+  pub fn item_behaviors(&self) -> RwLockReadGuard<'_, item::BehaviorStore> {
+    self.item_behaviors.read()
   }
 
   /// Returns the tags for this server. This is mostly used for serializing
