@@ -1,4 +1,5 @@
-use crate::world::WorldManager;
+use crate::{command::CommandSender, world::WorldManager};
+use bb_common::{math::Pos, util::Chat};
 use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
 use mio::{
   net::{TcpListener, TcpStream},
@@ -235,11 +236,20 @@ impl<'a> Conn<'a> {
           if !self.logged_in {
             return Err(ParseError::NotLoggedIn);
           }
-          info!("executing command {}", p.payload);
+          info!("executing rcon command `{}`", p.payload);
+          struct Sender {
+            payload: String,
+          }
+          impl CommandSender for Sender {
+            fn block_pos(&self) -> Option<Pos> { None }
+            fn send_message(&mut self, msg: Chat) { self.payload += &msg.to_codes(); }
+          }
+          let mut sender = Sender { payload: String::new() };
+          self.rcon.wm.default_world().commands().execute(&self.rcon.wm, &mut sender, &p.payload);
           self.send_packet(Packet {
             id:      p.id,
             ty:      PacketType::Output,
-            payload: "foo".into(),
+            payload: sender.payload,
           })?;
         }
         PacketType::Output => return Err(ParseError::CannotHandleOutput),

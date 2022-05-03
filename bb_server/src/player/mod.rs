@@ -797,8 +797,9 @@ impl Player {
   }
 }
 
-impl CommandSender for Player {
-  fn block_pos(&self) -> Option<Pos> { Some(self.block_pos()) }
+impl CommandSender for &Arc<Player> {
+  fn block_pos(&self) -> Option<Pos> { Some(self.as_ref().block_pos()) }
+  fn send_message(&mut self, msg: Chat) { self.as_ref().send_message(msg); }
 }
 
 #[test]

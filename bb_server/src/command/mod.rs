@@ -61,7 +61,7 @@ impl CommandTree {
   /// Called whenever a command should be executed. This can also be used to act
   /// like a player sent a command, even if they didn't. The text passed in
   /// should not contain a `/` at the start.
-  pub fn execute(&self, world: &Arc<WorldManager>, player: &Arc<Player>, text: &str) {
+  pub fn execute<S: CommandSender>(&self, world: &Arc<WorldManager>, sender: &mut S, text: &str) {
     let mut reader = CommandReader::new(text);
     let commands = self.commands.lock();
     let command_name = match reader.word(StringType::Word) {
@@ -75,18 +75,18 @@ impl CommandTree {
         msg.add(""); // Makes the default color white
         msg.add("Unknown command: ").color(Color::Red);
         msg.add(text);
-        player.send_message(msg);
+        sender.send_message(msg);
         return;
       }
     };
-    let args = match command.parse(text, player.as_ref()) {
+    let args = match command.parse(text, sender) {
       Ok(v) => v,
       Err(e) => {
-        player.send_message(e.to_chat(text));
+        sender.send_message(e.to_chat(text));
         return;
       }
     };
-    handler(world, Some(player), args);
+    handler(world, sender.as_player(), args);
   }
 }
 
@@ -334,6 +334,7 @@ mod tests {
 
   impl CommandSender for NoneSender {
     fn block_pos(&self) -> Option<Pos> { None }
+    fn send_messsage(&mut self, _: Chat) {}
   }
 
   #[test]

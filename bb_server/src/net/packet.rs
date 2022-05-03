@@ -16,7 +16,7 @@ use bb_common::{
 use std::{str::FromStr, sync::Arc};
 
 /// Handles a single packet.
-pub(crate) fn handle(wm: &Arc<WorldManager>, player: &Arc<Player>, p: sb::Packet) {
+pub(crate) fn handle(wm: &Arc<WorldManager>, mut player: &Arc<Player>, p: sb::Packet) {
   // TODO: This depends on debug formatting, which is unstable. Also, it is slow,
   // because we allocate every time this is called.
   /*
@@ -46,7 +46,7 @@ pub(crate) fn handle(wm: &Arc<WorldManager>, player: &Arc<Player>, p: sb::Packet
       */
 
       if let Some(command) = msg.strip_prefix('/') {
-        player.world().commands().execute(wm, player, command);
+        player.world().commands().execute(wm, &mut player, command);
       } else {
         let text = msg;
         let mut msg = Chat::empty();
