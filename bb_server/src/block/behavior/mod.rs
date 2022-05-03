@@ -84,6 +84,8 @@ impl BehaviorList {
 pub fn make_behaviors() -> BehaviorList {
   let mut out = BehaviorList::new();
   bb_plugin_macros::behavior! {
+    :Kind:
+
     *wood* = Oak, Birch, Spruce, DarkOak, Acacia, Jungle;
     *color* = White, Orange, Magenta, LightBlue, Yellow, Lime, Pink, Gray, LightGray, Cyan, Purple, Blue, Brown, Green, Red, Black;
 

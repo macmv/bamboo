@@ -12,6 +12,7 @@ use syn::{
 };
 
 struct Behaviors {
+  kind:     Ident,
   defs:     Vec<Def>,
   def_map:  HashMap<String, Vec<Ident>>,
   mappings: Vec<Mapping>,
@@ -51,9 +52,13 @@ impl Parse for Behaviors {
   fn parse(input: ParseStream) -> Result<Self> {
     let mut defs: Vec<Def> = vec![];
     let mut mappings = vec![];
+    let _: Token![:] = input.parse()?;
+    let kind = input.parse()?;
+    let _: Token![:] = input.parse()?;
     loop {
       if input.is_empty() {
         break Ok(Behaviors {
+          kind,
           def_map: defs
             .iter()
             .map(|def| (def.key.key.to_string(), def.values.iter().cloned().collect()))
@@ -113,13 +118,14 @@ impl Parse for KeyDef {
 impl Behaviors {
   pub fn expand(self) -> TokenStream {
     let mut out = vec![];
+    let kind = &self.kind;
     for mapping in self.mappings {
       let expr = mapping.value;
       for key in mapping.keys {
         let mut list = vec![];
         key.all_keys(&self.def_map, &mut list);
         for key in list {
-          out.push(quote!(out.set(Kind::#key, Box::new(#expr))));
+          out.push(quote!(out.set(#kind::#key, Box::new(#expr))));
         }
       }
     }

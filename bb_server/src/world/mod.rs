@@ -264,7 +264,7 @@ impl World {
   fn new_player(self: Arc<Self>, player: Arc<Player>, info: JoinInfo) {
     {
       let mut meta = bb_common::metadata::Metadata::new();
-      meta.set_item(8, item::Stack::new(item::Type::IronPickaxe).to_item());
+      meta.set_item(8, item::Stack::new(item::Type::DebugStick).to_item());
       self.summon_meta(entity::Type::Item, player.pos(), meta);
     }
     // We need to unlock players so that player_init() will work.
