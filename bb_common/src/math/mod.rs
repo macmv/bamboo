@@ -7,13 +7,11 @@ mod pos;
 mod rel_pos;
 #[cfg(feature = "host")]
 mod rng;
-mod vec;
 
 pub use fast::{FastMath, EPSILON};
 pub use fpos::{FPos, FPosError};
 #[cfg(feature = "host")]
 pub use rng::WyhashRng;
-pub use vec::{Vec2, Vec3};
 
 #[cfg(feature = "host")]
 pub use rand_core::RngCore;

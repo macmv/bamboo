@@ -1,4 +1,4 @@
-use super::{ChunkPos, Pos, Vec3};
+use super::{ChunkPos, Pos};
 use bb_macros::Transfer;
 use std::{
   error::Error,
@@ -39,12 +39,6 @@ impl Default for FPos {
 
 impl From<Pos> for FPos {
   fn from(p: Pos) -> FPos { FPos { x: p.x.into(), y: p.y.into(), z: p.z.into() } }
-}
-impl From<Vec3> for FPos {
-  fn from(v: Vec3) -> FPos { FPos::new(v.x, v.y, v.z) }
-}
-impl From<FPos> for Vec3 {
-  fn from(v: FPos) -> Vec3 { Vec3::new(v.x, v.y, v.z) }
 }
 
 impl FPos {
@@ -109,20 +103,6 @@ impl Add for FPos {
 }
 impl AddAssign for FPos {
   fn add_assign(&mut self, other: Self) {
-    self.x += other.x;
-    self.y += other.y;
-    self.z += other.z;
-  }
-}
-
-impl Add<Vec3> for FPos {
-  type Output = Self;
-  fn add(self, other: Vec3) -> Self {
-    Self { x: self.x + other.x, y: self.y + other.y, z: self.z + other.z }
-  }
-}
-impl AddAssign<Vec3> for FPos {
-  fn add_assign(&mut self, other: Vec3) {
     self.x += other.x;
     self.y += other.y;
     self.z += other.z;

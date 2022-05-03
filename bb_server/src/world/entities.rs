@@ -2,10 +2,11 @@ use super::World;
 use crate::{
   entity,
   entity::{Entity, EntityData, EntityRef},
+  math::Vec3,
   player::Player,
 };
 use bb_common::{
-  math::{ChunkPos, FPos, Vec3},
+  math::{ChunkPos, FPos},
   metadata::Metadata,
   net::cb,
   util::UUID,

@@ -1,7 +1,7 @@
 use super::{DigProgress, Player, PlayerPosition};
-use crate::block;
+use crate::{block, math::Vec3};
 use bb_common::{
-  math::{ChunkPos, Pos, Vec3},
+  math::{ChunkPos, Pos},
   net::cb,
   version::ProtocolVersion,
 };

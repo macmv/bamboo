@@ -1,6 +1,14 @@
-use crate::{block, block::Block, entity, item, item::Stack, math::AABB, world::World, RNG};
+use crate::{
+  block,
+  block::Block,
+  entity, item,
+  item::Stack,
+  math::{Vec3, AABB},
+  world::World,
+  RNG,
+};
 use bb_common::{
-  math::{ChunkPos, FPos, Pos, PosError, RelPos, Vec3},
+  math::{ChunkPos, FPos, Pos, PosError, RelPos},
   metadata::Metadata,
   net::cb,
 };

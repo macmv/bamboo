@@ -1,11 +1,13 @@
 mod aabb;
 mod point;
 mod point_grid;
+mod vec;
 mod voronoi;
 
-pub use aabb::AABB;
+pub use aabb::{CollisionResult, AABB};
 pub use point::{Pdope, Point, Vector};
 pub use point_grid::PointGrid;
+pub use vec::Vec3;
 pub use voronoi::Voronoi;
 
 use noise::{BasicMulti, MultiFractal, NoiseFn, Seedable};

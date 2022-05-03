@@ -4,11 +4,12 @@ use crate::{
   entity,
   entity::EntityRef,
   item::Stack,
+  math::Vec3,
   net::ConnSender,
   world::World,
 };
 use bb_common::{
-  math::{ChunkPos, FPos, Pos, PosError, Vec3},
+  math::{ChunkPos, FPos, Pos, PosError},
   metadata::{Metadata, Pose},
   net::{cb, sb::PlayerCommand},
   util::{Chat, Face, GameMode, JoinInfo, UUID},

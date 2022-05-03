@@ -4,12 +4,12 @@ mod version;
 pub use ty::{Data, Type};
 pub use version::TypeConverter;
 
-use crate::{math::AABB, player::Player, world::World};
-use bb_common::{
-  math::{FPos, Vec3},
-  metadata::Metadata,
-  util::UUID,
+use crate::{
+  math::{Vec3, AABB},
+  player::Player,
+  world::World,
 };
+use bb_common::{math::FPos, metadata::Metadata, util::UUID};
 use parking_lot::{Mutex, MutexGuard, RwLock};
 use std::sync::Arc;
 
