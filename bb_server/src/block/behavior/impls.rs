@@ -50,11 +50,11 @@ impl Behavior for CraftingTable {
     let grid = SharedInventory::new();
     let output = SharedInventory::new();
     player.show_inventory(
-      Window::Crafting {
+      Window::Crafting(crate::player::window::CraftingWindow {
         grid:   grid.clone(),
         output: output.clone(),
         wm:     player.world().world_manager().clone(),
-      },
+      }),
       &Chat::new("Crafting Table"),
     );
     true
@@ -109,7 +109,10 @@ impl Behavior for Chest {
   }
   fn interact(&self, block: Block, player: &Arc<Player>) -> bool {
     block.te(|chest: &ChestTE| {
-      player.show_inventory(Window::Generic9x3 { inv: chest.inv.clone() }, &Chat::new("Chest"));
+      player.show_inventory(
+        Window::Generic9x3(crate::player::window::GenericWindow { inv: chest.inv.clone() }),
+        &Chat::new("Chest"),
+      );
       true
     })
   }

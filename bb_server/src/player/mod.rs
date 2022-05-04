@@ -23,7 +23,7 @@ mod inventory;
 mod scoreboard;
 mod team;
 mod tick;
-mod window;
+pub mod window;
 
 pub use click::Click;
 pub use inventory::PlayerInventory;

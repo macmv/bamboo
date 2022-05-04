@@ -1,55 +1,91 @@
 use crate::{
   item::{SharedInventory, Stack},
   player::ConnSender,
+  world::WorldManager,
 };
 use bb_common::util::UUID;
+use std::sync::Arc;
+
+trait WindowData {
+  fn get(&self, index: u32) -> Option<&Stack> { None }
+  fn sync(&self, index: u32) {}
+  fn access<R>(&self, index: u32, f: impl FnOnce(&Stack) -> R) -> Option<R> { None }
+  fn access_mut<R>(&mut self, index: u32, f: impl FnOnce(&mut Stack) -> R) -> Option<R> { None }
+  fn size(&self) -> u32 { 1 }
+  fn add(&mut self, stack: Stack) -> u8 { 0 }
+  fn open(&self, id: UUID, conn: &ConnSender) {}
+  fn close(&self, id: UUID) {}
+}
+
+trait WindowHandler<T> {
+  fn on_update(&self, inv: &T) { let _ = inv; }
+}
 
 #[derive(bb_plugin_macros::Window, Debug, Clone)]
+#[handler(GenericWindowHandler)]
+pub struct GenericWindow<const N: usize> {
+  pub inv: SharedInventory<N>,
+}
+
+#[derive(bb_plugin_macros::Window, Debug, Clone)]
+#[handler(GenericWindowHandler)]
+pub struct SmeltingWindow {
+  pub input:  SharedInventory<1>,
+  // #[filter(fuel)]
+  pub fuel:   SharedInventory<1>,
+  // #[output]
+  pub output: SharedInventory<1>,
+}
+
+#[derive(bb_plugin_macros::Window, Debug, Clone)]
+#[handler(CraftingWindowHandler)]
+pub struct CraftingWindow {
+  // #[output]
+  pub output: SharedInventory<1>,
+  pub grid:   SharedInventory<9>,
+  #[not_inv]
+  pub wm:     Arc<WorldManager>,
+}
+
+struct NoneHandler;
+impl<const N: usize> WindowHandler<GenericWindow<N>> for NoneHandler {}
+impl WindowHandler<SmeltingWindow> for NoneHandler {}
+
+struct CraftingWindowHandler;
+impl WindowHandler<CraftingWindow> for CraftingWindowHandler {
+  fn on_update(&self, win: &CraftingWindow) {}
+}
+
+#[derive(bb_plugin_macros::WindowEnum, Debug, Clone)]
 pub enum Window {
   #[name("minecraft:generic_9x1")]
-  Generic9x1 { inv: SharedInventory<9> },
+  Generic9x1(GenericWindow<9>),
   #[name("minecraft:generic_9x2")]
-  Generic9x2 { inv: SharedInventory<18> },
+  Generic9x2(GenericWindow<18>),
   #[name("minecraft:generic_9x3")]
-  Generic9x3 { inv: SharedInventory<27> },
+  Generic9x3(GenericWindow<27>),
   #[name("minecraft:generic_9x4")]
-  Generic9x4 { inv: SharedInventory<36> },
+  Generic9x4(GenericWindow<36>),
   #[name("minecraft:generic_9x5")]
-  Generic9x5 { inv: SharedInventory<45> },
+  Generic9x5(GenericWindow<45>),
   #[name("minecraft:generic_9x6")]
-  Generic9x6 { inv: SharedInventory<54> },
+  Generic9x6(GenericWindow<54>),
   #[name("minecraft:generic_3x3")]
-  Generic3x3 { inv: SharedInventory<9> },
+  Generic3x3(GenericWindow<9>),
+  #[name("minecraft:crafting")]
+  Crafting(CraftingWindow),
+  /*
   #[name("minecraft:anvil")]
-  Anvil {
-    tool:    SharedInventory<1>,
-    enchant: SharedInventory<1>,
-    #[output]
-    output:  SharedInventory<1>,
-  },
+  Anvil(Anvil),
   #[name("minecraft:beacon")]
-  Beacon { inv: SharedInventory<1> },
+  Beacon(inv: SharedInventory<1>),
   #[name("minecraft:blast_furnace")]
-  BlastFurnace {
-    input:  SharedInventory<1>,
-    #[filter(fuel)]
-    fuel:   SharedInventory<1>,
-    #[output]
-    output: SharedInventory<1>,
-  },
+  BlastFurnace(SmeltingWindow),
   #[name("minecraft:brewing_stand")]
   BrewingStand {
     bottles:    SharedInventory<3>,
     ingredient: SharedInventory<1>,
     fuel:       SharedInventory<1>,
-  },
-  #[name("minecraft:crafting")]
-  Crafting {
-    #[output]
-    output: SharedInventory<1>,
-    grid:   SharedInventory<9>,
-    #[ignore]
-    wm:     WorldManager,
   },
   #[name("minecraft:enchantment")]
   Enchantment { book: SharedInventory<1>, lapis: SharedInventory<1> },
@@ -111,6 +147,7 @@ pub enum Window {
     #[output]
     output: SharedInventory<1>,
   },
+  */
 }
 
 pub struct ItemsIter<'a> {
