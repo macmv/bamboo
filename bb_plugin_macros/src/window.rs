@@ -87,12 +87,14 @@ pub fn window(input: TokenStream) -> TokenStream {
         }
       }
       fn access_mut<R>(&mut self, index: u32, f: impl FnOnce(&mut Stack) -> R) -> Option<R> {
-        match index {
+        let ret = match index {
           #(
             #starts..=#ends => self.#field_names.lock().get_mut(index - #starts).map(|s| f(s)),
           )*
           _ => None,
-        }
+        };
+        #handler.on_update(self);
+        ret
       }
       fn sync(&self, index: u32) {
         match index {
@@ -116,10 +118,12 @@ pub fn window(input: TokenStream) -> TokenStream {
         #(
           let amount = self.#non_outputs.lock().add(&stack);
           if amount == 0 {
+            #handler.on_update(self);
             return 0;
           }
           stack.set_amount(amount);
         )*
+        #handler.on_update(self);
         stack.amount()
       }
       fn size(&self) -> u32 {

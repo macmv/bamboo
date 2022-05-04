@@ -22,13 +22,13 @@ trait WindowHandler<T> {
 }
 
 #[derive(bb_plugin_macros::Window, Debug, Clone)]
-#[handler(GenericWindowHandler)]
+#[handler(NoneHandler)]
 pub struct GenericWindow<const N: usize> {
   pub inv: SharedInventory<N>,
 }
 
 #[derive(bb_plugin_macros::Window, Debug, Clone)]
-#[handler(GenericWindowHandler)]
+#[handler(NoneHandler)]
 pub struct SmeltingWindow {
   pub input:  SharedInventory<1>,
   // #[filter(fuel)]
@@ -53,7 +53,9 @@ impl WindowHandler<SmeltingWindow> for NoneHandler {}
 
 struct CraftingWindowHandler;
 impl WindowHandler<CraftingWindow> for CraftingWindowHandler {
-  fn on_update(&self, win: &CraftingWindow) {}
+  fn on_update(&self, win: &CraftingWindow) {
+    info!("crafting window update: {:?}", win);
+  }
 }
 
 #[derive(bb_plugin_macros::WindowEnum, Debug, Clone)]
