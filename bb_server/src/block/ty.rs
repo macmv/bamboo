@@ -341,7 +341,7 @@ impl Prop {
         _ => unreachable!(),
       },
       PropKind::Enum(v) => PropValue::Enum(v[id as usize]),
-      PropKind::Int { min, .. } => PropValue::Int(id - min),
+      PropKind::Int { min, .. } => PropValue::Int(id + min),
     }
   }
 
