@@ -54,7 +54,11 @@ impl WindowHandler<SmeltingWindow> for NoneHandler {}
 struct CraftingWindowHandler;
 impl WindowHandler<CraftingWindow> for CraftingWindowHandler {
   fn on_update(&self, win: &CraftingWindow) {
-    info!("crafting window update: {:?}", win);
+    if let Some(stack) = win.wm.json_data().crafting.craft(&win.grid.lock().inv) {
+      win.output.lock().set(0, stack);
+    } else {
+      win.output.lock().set(0, Stack::empty());
+    }
   }
 }
 
