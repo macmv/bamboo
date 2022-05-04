@@ -7,14 +7,13 @@ use bb_common::util::UUID;
 use std::sync::Arc;
 
 trait WindowData {
-  fn get(&self, index: u32) -> Option<&Stack> { None }
-  fn sync(&self, index: u32) {}
-  fn access<R>(&self, index: u32, f: impl FnOnce(&Stack) -> R) -> Option<R> { None }
-  fn access_mut<R>(&mut self, index: u32, f: impl FnOnce(&mut Stack) -> R) -> Option<R> { None }
-  fn size(&self) -> u32 { 1 }
-  fn add(&mut self, stack: Stack) -> u8 { 0 }
-  fn open(&self, id: UUID, conn: &ConnSender) {}
-  fn close(&self, id: UUID) {}
+  fn sync(&self, index: u32);
+  fn access<R>(&self, index: u32, f: impl FnOnce(&Stack) -> R) -> Option<R>;
+  fn access_mut<R>(&mut self, index: u32, f: impl FnOnce(&mut Stack) -> R) -> Option<R>;
+  fn size(&self) -> u32;
+  fn add(&mut self, stack: Stack) -> u8;
+  fn open(&self, id: UUID, conn: &ConnSender);
+  fn close(&self, id: UUID);
 }
 
 trait WindowHandler<T> {

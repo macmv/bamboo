@@ -104,6 +104,7 @@ impl<T> IndexMut<(usize, usize)> for Grid<T> {
 /// ```
 #[derive(Debug, Clone, Deserialize)]
 #[serde(tag = "type")]
+#[allow(dead_code)]
 enum JsonRecipe {
   #[serde(rename = "minecraft:crafting_shaped")]
   CraftingShaped { pattern: Vec<String>, key: HashMap<char, CraftingKey>, result: JsonItem },
@@ -150,6 +151,7 @@ enum CraftingKey {
 }
 
 #[derive(Debug, Clone, Deserialize)]
+#[allow(dead_code)]
 struct JsonItem {
   item:  Option<String>,
   tag:   Option<String>,
@@ -182,7 +184,6 @@ impl CraftingData {
   pub fn recipe(&self, recipe: &Recipe) -> Option<&Stack> { self.recipes.get(recipe) }
 
   pub fn craft(&self, input: &Inventory<9>) -> Option<Stack> {
-    info!("crafting {:#?}", input);
     let mut width = 3;
     let mut height = 3;
     let mut grid = Grid::new(3, 3);
@@ -229,7 +230,6 @@ impl CraftingData {
         subsection.set(x, y, grid[(x, y)].clone());
       }
     }
-    info!("got subsection {subsection:#?}");
     let recipe = Recipe { items: subsection };
     self.recipes.get(&recipe).cloned()
   }

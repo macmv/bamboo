@@ -45,7 +45,7 @@ impl Behavior for DebugStick {
 
 pub struct Bucket(pub Option<block::Kind>);
 impl Behavior for Bucket {
-  fn interact_block(&self, block: Block, click: Click) -> bool {
+  fn interact_block(&self, _: Block, click: Click) -> bool {
     if self.0.is_none() {
       let result = click.do_raycast(5.0, true);
       dbg!(result);
