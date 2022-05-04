@@ -33,14 +33,14 @@ pub struct SmeltingWindow {
   pub input:  SharedInventory<1>,
   // #[filter(fuel)]
   pub fuel:   SharedInventory<1>,
-  // #[output]
+  #[output]
   pub output: SharedInventory<1>,
 }
 
 #[derive(bb_plugin_macros::Window, Debug, Clone)]
 #[handler(CraftingWindowHandler)]
 pub struct CraftingWindow {
-  // #[output]
+  #[output]
   pub output: SharedInventory<1>,
   pub grid:   SharedInventory<9>,
   #[not_inv]
