@@ -16,18 +16,16 @@ trait WindowData {
   fn close(&self, id: UUID);
 }
 
-trait WindowHandler<T> {
-  fn on_update(&self, clicked: Option<u32>, inv: &T) { let _ = (clicked, inv); }
+trait WindowHandler {
+  fn on_update(&self, clicked: Option<u32>) { let _ = clicked; }
 }
 
 #[derive(bb_plugin_macros::Window, Debug, Clone)]
-#[handler(NoneHandler)]
 pub struct GenericWindow<const N: usize> {
   pub inv: SharedInventory<N>,
 }
 
 #[derive(bb_plugin_macros::Window, Debug, Clone)]
-#[handler(NoneHandler)]
 pub struct SmeltingWindow {
   pub input:  SharedInventory<1>,
   // #[filter(fuel)]
@@ -37,7 +35,6 @@ pub struct SmeltingWindow {
 }
 
 #[derive(bb_plugin_macros::Window, Debug, Clone)]
-#[handler(CraftingWindowHandler)]
 pub struct CraftingWindow {
   #[output]
   pub output: SharedInventory<1>,
@@ -46,26 +43,24 @@ pub struct CraftingWindow {
   pub wm:     Arc<WorldManager>,
 }
 
-struct NoneHandler;
-impl<const N: usize> WindowHandler<GenericWindow<N>> for NoneHandler {}
-impl WindowHandler<SmeltingWindow> for NoneHandler {}
+impl<const N: usize> WindowHandler for GenericWindow<N> {}
+impl WindowHandler for SmeltingWindow {}
 
-struct CraftingWindowHandler;
-impl WindowHandler<CraftingWindow> for CraftingWindowHandler {
-  fn on_update(&self, clicked: Option<u32>, win: &CraftingWindow) {
+impl WindowHandler for CraftingWindow {
+  fn on_update(&self, clicked: Option<u32>) {
     if let Some(clicked) = clicked {
-      if clicked == 0 && win.output.lock().get(0).unwrap().is_empty() {
-        let mut lock = win.grid.lock();
+      if clicked == 0 && self.output.lock().get(0).unwrap().is_empty() {
+        let mut lock = self.grid.lock();
         for i in 0..9 {
           lock.set(i, Stack::empty());
         }
         return;
       }
     }
-    if let Some(stack) = win.wm.json_data().crafting.craft(&win.grid.lock().inv) {
-      win.output.lock().set(0, stack);
+    if let Some(stack) = self.wm.json_data().crafting.craft(&self.grid.lock().inv) {
+      self.output.lock().set(0, stack);
     } else {
-      win.output.lock().set(0, Stack::empty());
+      self.output.lock().set(0, Stack::empty());
     }
   }
 }

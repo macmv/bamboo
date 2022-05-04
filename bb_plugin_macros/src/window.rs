@@ -1,34 +1,12 @@
 use proc_macro::TokenStream;
 use quote::{quote, quote_spanned};
 use syn::{
-  parse_macro_input, spanned::Spanned, Expr, GenericArgument, Ident, ItemEnum, ItemStruct, Lit,
-  LitStr, PathArguments, Type,
+  parse_macro_input, Expr, GenericArgument, ItemEnum, ItemStruct, Lit, LitStr, PathArguments, Type,
 };
 
 #[allow(clippy::collapsible_match)]
 pub fn window(input: TokenStream) -> TokenStream {
   let input = parse_macro_input!(input as ItemStruct);
-  let mut handler = None;
-  for attr in input.attrs.iter() {
-    if attr.path.get_ident().map(|i| i == "handler").unwrap_or(false) {
-      match attr.parse_args::<Ident>() {
-        Ok(ident) => {
-          handler = Some(ident);
-          break;
-        }
-        Err(err) => {
-          let e = err.to_compile_error();
-          return quote_spanned!(attr.path.span() => #e;).into();
-        }
-      }
-    }
-  }
-  let handler = match handler {
-    Some(h) => h,
-    None => {
-      return quote!(compile_error!("need handler attribute");).into();
-    }
-  };
   let mut field_names = vec![];
   let mut index = 0;
   let mut starts = vec![];
@@ -93,7 +71,7 @@ pub fn window(input: TokenStream) -> TokenStream {
           )*
           _ => None,
         };
-        #handler.on_update(Some(index), self);
+        <Self as WindowHandler>::on_update(self, Some(index));
         ret
       }
       fn sync(&self, index: u32) {
@@ -118,12 +96,12 @@ pub fn window(input: TokenStream) -> TokenStream {
         #(
           let amount = self.#non_outputs.lock().add(&stack);
           if amount == 0 {
-            #handler.on_update(None, self);
+            <Self as WindowHandler>::on_update(self, None);
             return 0;
           }
           stack.set_amount(amount);
         )*
-        #handler.on_update(None, self);
+        <Self as WindowHandler>::on_update(self, None);
         stack.amount()
       }
       fn size(&self) -> u32 {
