@@ -17,7 +17,7 @@ trait WindowData {
 }
 
 trait WindowHandler<T> {
-  fn on_update(&self, inv: &T) { let _ = inv; }
+  fn on_update(&self, clicked: Option<u32>, inv: &T) { let _ = (clicked, inv); }
 }
 
 #[derive(bb_plugin_macros::Window, Debug, Clone)]
@@ -52,7 +52,16 @@ impl WindowHandler<SmeltingWindow> for NoneHandler {}
 
 struct CraftingWindowHandler;
 impl WindowHandler<CraftingWindow> for CraftingWindowHandler {
-  fn on_update(&self, win: &CraftingWindow) {
+  fn on_update(&self, clicked: Option<u32>, win: &CraftingWindow) {
+    if let Some(clicked) = clicked {
+      if clicked == 0 && win.output.lock().get(0).unwrap().is_empty() {
+        let mut lock = win.grid.lock();
+        for i in 0..9 {
+          lock.set(i, Stack::empty());
+        }
+        return;
+      }
+    }
     if let Some(stack) = win.wm.json_data().crafting.craft(&win.grid.lock().inv) {
       win.output.lock().set(0, stack);
     } else {

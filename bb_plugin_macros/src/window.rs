@@ -93,7 +93,7 @@ pub fn window(input: TokenStream) -> TokenStream {
           )*
           _ => None,
         };
-        #handler.on_update(self);
+        #handler.on_update(Some(index), self);
         ret
       }
       fn sync(&self, index: u32) {
@@ -118,12 +118,12 @@ pub fn window(input: TokenStream) -> TokenStream {
         #(
           let amount = self.#non_outputs.lock().add(&stack);
           if amount == 0 {
-            #handler.on_update(self);
+            #handler.on_update(None, self);
             return 0;
           }
           stack.set_amount(amount);
         )*
-        #handler.on_update(self);
+        #handler.on_update(None, self);
         stack.amount()
       }
       fn size(&self) -> u32 {
