@@ -48,6 +48,8 @@ pub enum Window {
     #[output]
     output: SharedInventory<1>,
     grid:   SharedInventory<9>,
+    #[ignore]
+    wm:     WorldManager,
   },
   #[name("minecraft:enchantment")]
   Enchantment { book: SharedInventory<1>, lapis: SharedInventory<1> },

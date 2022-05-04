@@ -49,20 +49,14 @@ impl Behavior for CraftingTable {
   fn interact(&self, _: Block, player: &Arc<Player>) -> bool {
     let grid = SharedInventory::new();
     let output = SharedInventory::new();
-    info!("showing inventory");
     player.show_inventory(
-      Window::Crafting { grid: grid.clone(), output: output.clone() },
+      Window::Crafting {
+        grid:   grid.clone(),
+        output: output.clone(),
+        wm:     player.world().world_manager().clone(),
+      },
       &Chat::new("Crafting Table"),
     );
-    info!("getting wm");
-    let wm = player.world().world_manager().clone();
-    info!("spawning thread");
-    std::thread::spawn(move || loop {
-      std::thread::sleep(std::time::Duration::from_millis(100));
-      if let Some(stack) = wm.json_data().crafting.craft(&grid.lock().inv) {
-        output.lock().set(0, stack);
-      }
-    });
     true
   }
 }

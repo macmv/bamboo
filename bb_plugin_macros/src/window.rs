@@ -54,6 +54,8 @@ pub fn window(input: TokenStream) -> TokenStream {
           for attr in &field.attrs {
             if attr.path.get_ident().map(|i| i == "output").unwrap_or(false) {
               output = true;
+            } else if attr.path.get_ident().map(|i| i == "ignore").unwrap_or(false) {
+              continue;
             } else if attr.path.get_ident().map(|i| i == "filter").unwrap_or(false) {
               // TODO: Handle
             }

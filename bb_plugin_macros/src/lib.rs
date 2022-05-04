@@ -13,5 +13,5 @@ pub fn define_ty(args: TokenStream, input: TokenStream) -> TokenStream {
 #[proc_macro]
 pub fn behavior(input: TokenStream) -> TokenStream { behavior::behavior(input) }
 
-#[proc_macro_derive(Window, attributes(filter, output, name))]
+#[proc_macro_derive(Window, attributes(filter, output, name, ignore))]
 pub fn window(input: TokenStream) -> TokenStream { window::window(input) }
