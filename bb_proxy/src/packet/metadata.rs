@@ -11,7 +11,17 @@ use std::mem;
 /// cross-versioning reasons. Currently, this will panic when given bad data.
 ///
 /// TODO: Return a `Result`.
-pub fn metadata(ty: u32, meta: &Metadata, ver: ProtocolVersion, conv: &TypeConverter) -> Vec<u8> {
+///
+/// This returns an `Option<Vec<u8>>`. If None, the metadata is invalid for this
+/// version, and the packet should be silently ignored. This only returns None
+/// if converting an item id created air. Dropping an air item stack on 1.8
+/// crashes the client, so we just don't want to spawn it in that case.
+pub fn metadata(
+  ty: u32,
+  meta: &Metadata,
+  ver: ProtocolVersion,
+  conv: &TypeConverter,
+) -> Option<Vec<u8>> {
   let mut data = vec![];
   let mut out = Buffer::new(&mut data);
   for (&id, field) in &meta.fields {
@@ -55,7 +65,14 @@ pub fn metadata(ty: u32, meta: &Metadata, ver: ProtocolVersion, conv: &TypeConve
         Field::String(v) => out.write_str(&v),
         Field::Item(item) => {
           let mut item = item.clone();
+          let old_id = item.id;
           conv.item(&mut item, ver.block());
+          if item.id == 0 && old_id != 0 {
+            // This item must not exist on this version. Because dropped items of air cause
+            // old clients to crash, we want to avoid sending this packet entirely. So we
+            // just return None.
+            return None;
+          }
           out.write_i16(item.id as i16);
           out.write_u8(item.count());
           out.write_i16(item.damage);
@@ -153,7 +170,14 @@ pub fn metadata(ty: u32, meta: &Metadata, ver: ProtocolVersion, conv: &TypeConve
             if item.count() == 0 {
               out.write_i16(-1);
             } else {
+              let old_id = item.id;
               conv.item(&mut item, ver.block());
+              if item.id == 0 && old_id != 0 {
+                // This item must not exist on this version. Because dropped items of air cause
+                // old clients to crash, we want to avoid sending this packet entirely. So we
+                // just return None.
+                return None;
+              }
               out.write_i16(item.id as i16);
               if item.id() != -1 {
                 out.write_u8(item.count());
@@ -231,7 +255,7 @@ pub fn metadata(ty: u32, meta: &Metadata, ver: ProtocolVersion, conv: &TypeConve
   } else {
     out.write_u8(0xff);
   }
-  data
+  Some(data)
 }
 
 fn is_ty(field: &Field, ty: MetadataType) -> bool {

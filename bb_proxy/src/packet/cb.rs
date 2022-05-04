@@ -403,7 +403,10 @@ impl ToTcp for Packet {
       Packet::EntityMetadata { eid, ty, meta } => {
         GPacket::EntityMetadataV8 {
           entity_id: eid,
-          unknown:   metadata(ty, &meta, ver, conn.conv()),
+          unknown:   match metadata(ty, &meta, ver, conn.conv()) {
+            Some(m) => m,
+            None => return Ok(smallvec![]),
+          },
         }
       }
       Packet::EntityVelocity { eid, x, y, z } => {
@@ -824,13 +827,15 @@ impl ToTcp for Packet {
             head_yaw,
           };
           if !meta.fields.is_empty() {
-            return Ok(smallvec![
-              spawn,
-              GPacket::EntityMetadataV8 {
-                entity_id: eid,
-                unknown:   metadata(new_ty, &meta, ver, conn.conv()),
+            match metadata(new_ty, &meta, ver, conn.conv()) {
+              Some(data) => {
+                return Ok(smallvec![
+                  spawn,
+                  GPacket::EntityMetadataV8 { entity_id: eid, unknown: data }
+                ])
               }
-            ]);
+              None => spawn,
+            }
           } else {
             spawn
           }
@@ -848,7 +853,10 @@ impl ToTcp for Packet {
             yaw,
             pitch,
             head_pitch: head_yaw,
-            unknown: metadata(new_ty, &meta, ver, conn.conv()),
+            unknown: match metadata(new_ty, &meta, ver, conn.conv()) {
+              Some(m) => m,
+              None => return Ok(smallvec![]),
+            },
           }
         } else if ver >= ProtocolVersion::V1_9 {
           GPacket::SpawnMobV9 {
@@ -864,7 +872,10 @@ impl ToTcp for Packet {
             yaw,
             pitch,
             head_pitch: head_yaw,
-            unknown: metadata(new_ty, &meta, ver, conn.conv()),
+            unknown: match metadata(new_ty, &meta, ver, conn.conv()) {
+              Some(m) => m,
+              None => return Ok(smallvec![]),
+            },
           }
         } else {
           GPacket::SpawnMobV8 {
@@ -879,7 +890,10 @@ impl ToTcp for Packet {
             yaw,
             pitch,
             head_pitch: head_yaw,
-            unknown: metadata(new_ty, &meta, ver, conn.conv()),
+            unknown: match metadata(new_ty, &meta, ver, conn.conv()) {
+              Some(m) => m,
+              None => return Ok(smallvec![]),
+            },
           }
         }
       }
@@ -946,13 +960,15 @@ impl ToTcp for Packet {
           }
         };
         if !meta.fields.is_empty() {
-          return Ok(smallvec![
-            spawn,
-            GPacket::EntityMetadataV8 {
-              entity_id: eid,
-              unknown:   metadata(new_ty, &meta, ver, conn.conv()),
+          match metadata(new_ty, &meta, ver, conn.conv()) {
+            Some(data) => {
+              return Ok(smallvec![
+                spawn,
+                GPacket::EntityMetadataV8 { entity_id: eid, unknown: data }
+              ])
             }
-          ]);
+            None => spawn,
+          }
         } else {
           spawn
         }
@@ -968,7 +984,10 @@ impl ToTcp for Packet {
             yaw,
             pitch,
             current_item: 0,
-            unknown: metadata(ty, &meta, ver, conn.conv()),
+            unknown: match metadata(ty, &meta, ver, conn.conv()) {
+              Some(m) => m,
+              None => return Ok(smallvec![]),
+            },
           }
         } else if ver < ProtocolVersion::V1_15_2 {
           GPacket::SpawnPlayerV9 {
@@ -979,7 +998,10 @@ impl ToTcp for Packet {
             z: pos.z(),
             yaw,
             pitch,
-            unknown: metadata(ty, &meta, ver, conn.conv()),
+            unknown: match metadata(ty, &meta, ver, conn.conv()) {
+              Some(m) => m,
+              None => return Ok(smallvec![]),
+            },
           }
         } else {
           let spawn = GPacket::SpawnPlayerV15 {
@@ -992,13 +1014,15 @@ impl ToTcp for Packet {
             pitch,
           };
           if !meta.fields.is_empty() {
-            return Ok(smallvec![
-              spawn,
-              GPacket::EntityMetadataV8 {
-                entity_id: eid,
-                unknown:   metadata(ty, &meta, ver, conn.conv()),
+            match metadata(ty, &meta, ver, conn.conv()) {
+              Some(data) => {
+                return Ok(smallvec![
+                  spawn,
+                  GPacket::EntityMetadataV8 { entity_id: eid, unknown: data }
+                ])
               }
-            ]);
+              None => spawn,
+            }
           } else {
             spawn
           }
