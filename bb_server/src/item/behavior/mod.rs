@@ -1,5 +1,5 @@
 use super::Type;
-use crate::{block::Block, player::Click};
+use crate::{block, block::Block, player::Click};
 
 mod impls;
 
@@ -48,6 +48,9 @@ pub fn make_behaviors() -> BehaviorList {
     :Type:
 
     DebugStick => impls::DebugStick;
+    WaterBucket => impls::Bucket(Some(block::Kind::Water));
+    LavaBucket => impls::Bucket(Some(block::Kind::Lava));
+    Bucket => impls::Bucket(None);
   };
   out
 }

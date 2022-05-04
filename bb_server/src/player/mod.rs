@@ -12,29 +12,24 @@ use bb_common::{
   math::{ChunkPos, FPos, Pos, PosError},
   metadata::{Metadata, Pose},
   net::{cb, sb::PlayerCommand},
-  util::{Chat, Face, GameMode, JoinInfo, UUID},
+  util::{Chat, GameMode, JoinInfo, UUID},
   version::ProtocolVersion,
 };
 use parking_lot::{Mutex, MutexGuard};
 use std::{f64::consts, fmt, net::SocketAddr, sync::Arc, time::Instant};
 
+mod click;
 mod inventory;
 mod scoreboard;
 mod team;
 mod tick;
 mod window;
 
+pub use click::Click;
 pub use inventory::PlayerInventory;
 pub use scoreboard::Scoreboard;
 pub use team::Team;
 pub use window::Window;
-
-#[derive(Debug, Clone, Copy)]
-pub struct Click<'a> {
-  pub face:   Face,
-  pub dir:    Vec3,
-  pub player: &'a Arc<Player>,
-}
 
 #[derive(Debug, Clone)]
 struct DigProgress {

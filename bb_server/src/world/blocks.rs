@@ -3,7 +3,7 @@ use crate::{
   block::Block,
   entity, item,
   item::Stack,
-  math::{Vec3, AABB},
+  math::{CollisionResult, Vec3, AABB},
   world::World,
   RNG,
 };
@@ -436,7 +436,7 @@ impl World {
   /// perform collision checks.
   ///
   /// For things like stairs, multiple items will be added to the output vector.
-  pub fn nearby_colliders(&self, aabb: AABB) -> Vec<AABB> {
+  pub fn nearby_colliders(&self, aabb: AABB, water: bool) -> Vec<AABB> {
     let mut min = Pos::new(
       aabb.min_x().floor() as i32,
       aabb.min_y().floor() as i32,
@@ -471,7 +471,8 @@ impl World {
             for z in min.z..=max.z {
               for x in min.x..=max.x {
                 let pos = Pos::new(x, y, z);
-                if c.get_kind(pos.chunk_rel()).unwrap() != block::Kind::Air {
+                let kind = c.get_kind(pos.chunk_rel()).unwrap();
+                if kind != block::Kind::Air && (!water || kind != block::Kind::Water) {
                   out.push(AABB::new(
                     FPos::from(pos + chunk.block()) + FPos::new(0.5, 0.0, 0.5),
                     Vec3::new(1.0, 1.0, 1.0),
@@ -484,5 +485,12 @@ impl World {
       }
     }
     out
+  }
+
+  pub fn raycast(&self, mut from: Vec3, to: Vec3, water: bool) -> Option<CollisionResult> {
+    from.move_towards(
+      to - from,
+      &self.nearby_colliders(AABB::new(from.into(), (to - from).into()), water),
+    )
   }
 }

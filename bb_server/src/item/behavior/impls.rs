@@ -1,5 +1,5 @@
 use super::Behavior;
-use crate::{block::Block, player::Click};
+use crate::{block, block::Block, player::Click};
 use bb_common::util::Chat;
 
 pub struct DebugStick;
@@ -39,6 +39,17 @@ impl Behavior for DebugStick {
       }
     }
     let _ = block.world.set_block(block.pos, block.ty);
+    true
+  }
+}
+
+pub struct Bucket(pub Option<block::Kind>);
+impl Behavior for Bucket {
+  fn interact_block(&self, block: Block, click: Click) -> bool {
+    if self.0.is_none() {
+      let result = click.do_raycast(5.0, true);
+      dbg!(result);
+    }
     true
   }
 }

@@ -311,7 +311,7 @@ impl EntityData {
     }
     let w = self.world.read();
     if p.aabb.pos != old.pos {
-      let nearby = w.nearby_colliders(p.aabb);
+      let nearby = w.nearby_colliders(p.aabb, false);
       // Make tmp so that old can be used in world.send_entity_pos.
       let mut tmp = old;
       if let Some(res) = tmp.move_towards((p.aabb.pos - old.pos).into(), &nearby) {
