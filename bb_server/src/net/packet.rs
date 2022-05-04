@@ -154,22 +154,25 @@ pub(crate) fn handle(wm: &Arc<WorldManager>, mut player: &Arc<Player>, p: sb::Pa
             let click = Click { face, dir: player.look_as_vec(), player };
             // TODO: Data generator should store which items are blockitems, and what blocks
             // they place.
-            let mut inv = player.lock_inventory();
-            let stack = inv.main_hand();
-            if !stack.is_empty() {
-              let handled = wm
-                .item_behaviors()
-                .call(stack.item(), |b| {
-                  b.interact_block(Block::new(player.world(), pos, looking_at), click)
-                })
-                .unwrap_or(false);
-              if handled {
-                let _ = player.sync_block_at(pos);
-                let _ = player.sync_block_at(pos + face);
-                return;
+            {
+              let inv = player.lock_inventory();
+              let stack = inv.main_hand();
+              if !stack.is_empty() {
+                let handled = wm
+                  .item_behaviors()
+                  .call(stack.item(), |b| {
+                    b.interact_block(Block::new(player.world(), pos, looking_at), click)
+                  })
+                  .unwrap_or(false);
+                if handled {
+                  let _ = player.sync_block_at(pos);
+                  let _ = player.sync_block_at(pos + face);
+                  return;
+                }
               }
             }
 
+            // `inv` cannot be locked here.
             let handled = wm
               .block_behaviors()
               .call(looking_at.kind(), |b| {
@@ -183,6 +186,8 @@ pub(crate) fn handle(wm: &Arc<WorldManager>, mut player: &Arc<Player>, p: sb::Pa
               return;
             }
 
+            let mut inv = player.lock_inventory();
+            let stack = inv.main_hand();
             let item_data = player.world().item_converter().get_data(stack.item());
             let kind = block::Kind::from_str(item_data.name()).unwrap_or_else(|_| {
               player.send_message(Chat::new(format!("ah! {} is confusing", item_data.name())));

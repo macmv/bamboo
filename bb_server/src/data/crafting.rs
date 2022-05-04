@@ -3,7 +3,13 @@ use crate::{
   item::{Inventory, Stack},
 };
 use serde::Deserialize;
-use std::{collections::HashMap, fs, io, path::Path, str::FromStr};
+use std::{
+  collections::HashMap,
+  fs, io, mem,
+  ops::{Index, IndexMut},
+  path::Path,
+  str::FromStr,
+};
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Recipe {
@@ -32,7 +38,28 @@ impl<T: Default + Clone> Grid<T> {
 }
 
 impl<T> Grid<T> {
+  #[track_caller]
   pub fn set(&mut self, x: usize, y: usize, val: T) { self.items[y * self.width + x] = val; }
+}
+
+impl<T> Index<(usize, usize)> for Grid<T> {
+  type Output = T;
+
+  fn index(&self, pos: (usize, usize)) -> &T {
+    if pos.0 >= self.width || pos.1 >= self.height {
+      panic!("index out of grid size {} by {}: {} {}", self.width, self.height, pos.0, pos.1);
+    }
+    &self.items[pos.1 * self.width + pos.0]
+  }
+}
+
+impl<T> IndexMut<(usize, usize)> for Grid<T> {
+  fn index_mut(&mut self, pos: (usize, usize)) -> &mut T {
+    if pos.0 >= self.width || pos.1 >= self.height {
+      panic!("index out of grid size {} by {}: {} {}", self.width, self.height, pos.0, pos.1);
+    }
+    &mut self.items[pos.1 * self.width + pos.0]
+  }
 }
 
 /// Shaped:
@@ -155,12 +182,56 @@ impl CraftingData {
   pub fn recipe(&self, recipe: &Recipe) -> Option<&Stack> { self.recipes.get(recipe) }
 
   pub fn craft(&self, input: &Inventory<9>) -> Option<Stack> {
+    info!("crafting {:#?}", input);
     let mut width = 3;
     let mut height = 3;
-    for row in (0..3).rev() {
-      for col in (0..3).rev() {}
+    let mut grid = Grid::new(3, 3);
+    for (i, it) in input.items().iter().enumerate() {
+      grid.items[i] = it.clone();
     }
-    None
+    while height > 0 {
+      if grid[(0, 0)].is_empty() && grid[(1, 0)].is_empty() && grid[(2, 0)].is_empty() {
+        for y in 1..3 {
+          for x in 0..3 {
+            grid[(x, y - 1)] = mem::replace(&mut grid[(x, y)], Stack::empty());
+          }
+        }
+        height -= 1;
+      } else if grid[(0, height - 1)].is_empty()
+        && grid[(1, height - 1)].is_empty()
+        && grid[(2, height - 1)].is_empty()
+      {
+        height -= 1;
+      } else {
+        break;
+      }
+    }
+    while width > 0 {
+      if grid[(0, 0)].is_empty() && grid[(0, 1)].is_empty() && grid[(0, 2)].is_empty() {
+        for x in 1..3 {
+          for y in 0..3 {
+            grid[(x - 1, y)] = mem::replace(&mut grid[(x, y)], Stack::empty());
+          }
+        }
+        width -= 1;
+      } else if grid[(width - 1, 0)].is_empty()
+        && grid[(width - 1, 1)].is_empty()
+        && grid[(width - 1, 2)].is_empty()
+      {
+        width -= 1;
+      } else {
+        break;
+      }
+    }
+    let mut subsection = Grid::new(width, height);
+    for x in 0..width {
+      for y in 0..height {
+        subsection.set(x, y, grid[(x, y)].clone());
+      }
+    }
+    info!("got subsection {subsection:#?}");
+    let recipe = Recipe { items: subsection };
+    self.recipes.get(&recipe).cloned()
   }
 }
 

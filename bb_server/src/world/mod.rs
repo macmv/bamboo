@@ -780,6 +780,10 @@ impl WorldManager {
     self.item_behaviors.read()
   }
 
+  /// Returns the json data. This will include crafting recipes, and more data
+  /// in the future.
+  pub fn json_data(&self) -> &Arc<Data> { &self.data }
+
   /// Returns the tags for this server. This is mostly used for serializing
   /// packets. If you need the tags on a specific item/block, use `get` on
   /// [`block_converter`](Self::block_converter) or

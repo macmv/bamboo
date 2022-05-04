@@ -5,7 +5,7 @@ mod crafting;
 pub use crafting::CraftingData;
 
 pub struct Data {
-  crafting: CraftingData,
+  pub crafting: CraftingData,
 }
 
 impl Data {
