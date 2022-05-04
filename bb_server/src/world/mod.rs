@@ -45,6 +45,7 @@ use std::{
 use crate::{
   block,
   command::CommandTree,
+  data::Data,
   entity,
   entity::Entity,
   item,
@@ -119,6 +120,7 @@ pub struct WorldManager {
   config:           Arc<Config>,
   block_behaviors:  RwLock<block::BehaviorStore>,
   item_behaviors:   RwLock<item::BehaviorStore>,
+  data:             Arc<Data>,
 
   default_game_mode: GameMode,
   spawn_point:       FPos,
@@ -674,6 +676,7 @@ impl WorldManager {
       tags:              Arc::new(Tags::new()),
       block_behaviors:   RwLock::new(block::BehaviorStore::new()),
       item_behaviors:    RwLock::new(item::BehaviorStore::new()),
+      data:              Arc::new(Data::load(config.get("data-path"))),
       worlds:            RwLock::new(vec![]),
       players:           RwLock::new(HashMap::new()),
       teams:             RwLock::new(HashMap::new()),

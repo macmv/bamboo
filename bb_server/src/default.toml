@@ -39,6 +39,10 @@ join-messages = true
 # If true, when a player leaves, a chat message will be displayed.
 leave-messages = true
 
+# The path for the vanilla data directory. If not found, an error will be
+# logged, and there will be no crafting recipes.
+data-path = "data/"
+
 # Configs for rcon. This is a protocol used by vanilla to allow a remote
 # to execute commands on the server.
 [rcon]

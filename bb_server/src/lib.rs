@@ -8,6 +8,7 @@ use std::cell::RefCell;
 
 pub mod block;
 pub mod command;
+pub mod data;
 pub mod entity;
 pub mod item;
 pub mod math;

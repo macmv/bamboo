@@ -2,7 +2,7 @@ use super::Type;
 use bb_common::{nbt::NBT, util::Item};
 use std::num::NonZeroU8;
 
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct Stack {
   item:   Type,
   amount: NonZeroU8,
@@ -18,6 +18,10 @@ impl From<Item> for Stack {
 //
 // SAFETY: The value must not be zero, so using `1` is safe.
 const ONE: NonZeroU8 = unsafe { NonZeroU8::new_unchecked(1) };
+
+impl Default for Stack {
+  fn default() -> Self { Self::empty() }
+}
 
 impl Stack {
   /// The empty stack. Useful for array initializers. This is the same as

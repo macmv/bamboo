@@ -23,6 +23,9 @@ perf.data.old
 # a testing world
 /world
 
+# Vanilla datapack. Contains recipies
+/data
+
 examples/*/target
 
 # cargo test generates docs, and puts them here.
