@@ -85,19 +85,22 @@ pub fn init_with_level(_name: &str, level: LevelFilter) {
       if self.enabled(record.metadata()) {
         let now = chrono::Local::now();
         print!("{} ", now.format("%Y-%m-%d %H:%M:%S%.3f"));
-        if let Some(path) = record.module_path() {
-          print!("{path}");
+        #[cfg(debug_assertions)]
+        {
+          if let Some(path) = record.module_path() {
+            print!("{path}");
+          }
+          if let Some(line) = record.line() {
+            print!(":{line}");
+          }
+          print!(" ");
         }
-        if let Some(line) = record.line() {
-          print!(":{line}");
-        }
-        print!(" ");
         match record.level() {
-          Level::Trace => print!("[\x1b[90mTRACE\x1b[0m]"),
-          Level::Debug => print!("[\x1b[91mDEBUG\x1b[0m]"),
-          Level::Info => print!("[\x1b[92mINFO\x1b[0m]"),
-          Level::Warn => print!("[\x1b[93mWARN\x1b[0m]"),
-          Level::Error => print!("[\x1b[94mERROR\x1b[0m]"),
+          Level::Trace => print!("[\x1b[36mTRACE\x1b[0m]"),
+          Level::Debug => print!("[\x1b[34mDEBUG\x1b[0m]"),
+          Level::Info => print!("[\x1b[32mINFO\x1b[0m]"),
+          Level::Warn => print!("[\x1b[33mWARN\x1b[0m]"),
+          Level::Error => print!("[\x1b[31m\x1b[1mERROR\x1b[0m]"),
         }
         println!(" {}", record.args());
       }
