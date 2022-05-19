@@ -69,7 +69,7 @@ pub fn init(name: &str) {
 }
 
 #[cfg(feature = "host")]
-pub fn init_with_level(name: &str, level: LevelFilter) {
+pub fn init_with_level(_name: &str, level: LevelFilter) {
   use log::{Level, Metadata, Record};
 
   struct Logger;
@@ -107,5 +107,5 @@ pub fn init_with_level(name: &str, level: LevelFilter) {
   }
 
   static LOGGER: Logger = Logger;
-  log::set_logger(&LOGGER).map(|()| log::set_max_level(LevelFilter::Info));
+  log::set_logger(&LOGGER).map(|()| log::set_max_level(level)).unwrap();
 }
