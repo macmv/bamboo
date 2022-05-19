@@ -9,12 +9,6 @@ extern crate log;
 // use flexi_logger::{Duplicate, LogTarget, Logger};
 #[cfg(feature = "host")]
 use log::LevelFilter;
-#[cfg(feature = "host")]
-use log4rs::{
-  append::{console::ConsoleAppender, file::FileAppender},
-  config::{Appender, Config, Root},
-  encode::pattern::PatternEncoder,
-};
 
 pub mod chunk;
 pub mod config;
@@ -51,7 +45,7 @@ pub use registry::Registry;
 //   }
 // }
 
-/// Makes a pattern, which adds file names in debug mode.
+/*
 #[cfg(feature = "host")]
 pub fn make_pattern() -> PatternEncoder {
   #[cfg(debug_assertions)]
@@ -60,15 +54,13 @@ pub fn make_pattern() -> PatternEncoder {
   let pat = PatternEncoder::new("{d(%Y-%m-%d %H:%M:%S:%f)} [{h({l})}] {m}{n}");
   pat
 }
+*/
 
 /// Initializes logger. Might do more things in the future.
 pub fn init(name: &str) {
   #[cfg(feature = "host")]
   {
-    let pat = make_pattern();
-    let stdout = ConsoleAppender::builder().encoder(Box::new(pat)).build();
-
-    init_with_stdout(name, Appender::builder().build("stdout", Box::new(stdout)))
+    init_with_level(name, LevelFilter::Info)
   }
   #[cfg(not(feature = "host"))]
   {
@@ -77,43 +69,43 @@ pub fn init(name: &str) {
 }
 
 #[cfg(feature = "host")]
-pub fn init_with_stdout(name: &str, stdout: Appender) {
-  init_with_stdout_level(name, stdout, LevelFilter::Info)
-}
-
-#[cfg(feature = "host")]
 pub fn init_with_level(name: &str, level: LevelFilter) {
-  let pat = make_pattern();
-  let stdout = ConsoleAppender::builder().encoder(Box::new(pat)).build();
+  use log::{Level, Metadata, Record};
 
-  init_with_stdout_level(name, Appender::builder().build("stdout", Box::new(stdout)), level)
-}
+  struct Logger;
 
-#[cfg(feature = "host")]
-pub fn init_with_stdout_level(name: &str, stdout: Appender, level: LevelFilter) {
-  let pat = make_pattern();
+  impl log::Log for Logger {
+    fn enabled(&self, metadata: &Metadata) -> bool {
+      metadata.level() <= Level::Info
+        && !metadata.target().starts_with("regalloc")
+        && !metadata.target().starts_with("wasmer_compiler")
+    }
 
-  let disk = FileAppender::builder()
-    .encoder(Box::new(pat))
-    .build(
-      format!("log/{}.log", name),
-      // Box::new(KeepAlivePolicy::new(Duration::from_secs(60 * 60 * 24 * 7))),
-    )
-    .unwrap();
+    fn log(&self, record: &Record) {
+      if self.enabled(record.metadata()) {
+        let now = chrono::Local::now();
+        print!("{} ", now.format("%Y-%m-%d %H:%M:%S%.3f"));
+        if let Some(path) = record.module_path() {
+          print!("{path}");
+        }
+        if let Some(line) = record.line() {
+          print!(":{line}");
+        }
+        print!(" ");
+        match record.level() {
+          Level::Trace => print!("[\x1b[90mTRACE\x1b[0m]"),
+          Level::Debug => print!("[\x1b[91mDEBUG\x1b[0m]"),
+          Level::Info => print!("[\x1b[92mINFO\x1b[0m]"),
+          Level::Warn => print!("[\x1b[93mWARN\x1b[0m]"),
+          Level::Error => print!("[\x1b[94mERROR\x1b[0m]"),
+        }
+        println!(" {}", record.args());
+      }
+    }
 
-  let config = Config::builder()
-    .appender(stdout)
-    .appender(Appender::builder().build("disk", Box::new(disk)))
-    .build(Root::builder().appender("stdout").appender("disk").build(level))
-    .unwrap();
+    fn flush(&self) {}
+  }
 
-  log4rs::init_config(config).unwrap();
-
-  // Logger::with_env_or_str("info")
-  //   .log_target(LogTarget::File)
-  //   .directory("log")
-  //   .duplicate_to_stdout(Duplicate::All)
-  //   .format(flexi_logger::opt_format)
-  //   .start()
-  //   .unwrap();
+  static LOGGER: Logger = Logger;
+  log::set_logger(&LOGGER).map(|()| log::set_max_level(LevelFilter::Info));
 }
