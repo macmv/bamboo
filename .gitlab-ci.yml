@@ -43,5 +43,7 @@ pages:
     paths:
       - public
     reports:
-      cobertura: cobertura.xml
+      coverage_report:
+        coverage_format: cobertura
+        path: cobertura.xml
   coverage: '/^\d+.\d+% coverage/'
