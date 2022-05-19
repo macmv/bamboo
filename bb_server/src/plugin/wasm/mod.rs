@@ -107,7 +107,12 @@ impl Plugin {
 }
 
 impl PluginImpl for Plugin {
-  fn call(&self, _player: Arc<Player>, _ev: ServerEvent) -> Result<(), CallError> { todo!() }
+  fn call(&self, player: Arc<Player>, ev: ServerEvent) -> Result<(), CallError> {
+    match ev {
+      _ => warn!("todo: ev {ev:?}"),
+    }
+    Ok(())
+  }
   fn call_global(&self, ev: GlobalServerEvent) -> Result<(), CallError> {
     match ev {
       GlobalServerEvent::Tick => self.call("tick", ())?,
