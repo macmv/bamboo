@@ -2,6 +2,7 @@ pub use bb_ffi as ffi;
 pub use log::*;
 
 use bb_ffi::CChat;
+use parking_lot::Mutex;
 use std::{ffi::CString, marker::PhantomData};
 
 use bb_common::util::Chat;
@@ -52,4 +53,26 @@ impl log::Log for Logger {
 pub fn init() {
   log::set_logger(&LOGGER).unwrap();
   log::set_max_level(LevelFilter::Info);
+}
+
+use parking_lot::lock_api::RawMutex;
+
+macro_rules! callback {
+  ( $setter:ident, $static:ident, $sig:ty ) => {
+    static $static: Mutex<Option<Box<dyn ($sig) + Send>>> =
+      Mutex::const_new(parking_lot::RawMutex::INIT, None);
+    pub fn $setter(callback: impl ($sig) + Send + 'static) {
+      *$static.lock() = Some(Box::new(callback));
+    }
+  };
+}
+
+callback!(set_on_block_place, ON_BLOCK_PLACE, Fn(player::Player, ffi::CPos));
+#[no_mangle]
+extern "C" fn on_block_place(id: ffi::CUUID, x: i32, y: i32, z: i32) {
+  if let Some(cb) = ON_BLOCK_PLACE.lock().as_ref() {
+    let p = player::Player::new(id);
+    let pos = ffi::CPos { x, y, z };
+    cb(p, pos);
+  }
 }

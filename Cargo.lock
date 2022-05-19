@@ -250,6 +250,7 @@ dependencies = [
  "bb_common",
  "bb_ffi",
  "log",
+ "parking_lot 0.12.0",
 ]
 
 [[package]]
