@@ -343,8 +343,7 @@ impl World {
       c = match Arc::try_unwrap(c) {
         Ok(c) => return c.into_inner(),
         Err(c) => {
-          // std::thread::yield_now();
-          std::thread::sleep(std::time::Duration::from_millis(1));
+          std::thread::yield_now();
           c
         }
       }
