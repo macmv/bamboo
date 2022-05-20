@@ -70,9 +70,10 @@ locked = false
 debug = false
 # If set, the whole world will be void.
 void = false
-# If not a debug world, and not a void world, then these are the biomes
-# that will be added to the terrain generation.
-biomes = ["desert", "forest", "plains", "mountains"]
+# This can be set to change the world's terrain generator. Generators are
+# added by plugins. If the generator is not present, the server will fail
+# to load.
+generator = ""
 
 # Vanilla world loading settings
 [world.vanilla]

@@ -1,6 +1,6 @@
 use super::Input;
 use bb_ffi::CUUID;
-use wasmer::{FromToNativeWasmType, NativeFunc, WasmTypeList};
+use wasmer::{FromToNativeWasmType, NativeFunc, WasmPtr, WasmTypeList};
 
 impl Input for () {
   type WasmArgs = ();
@@ -84,6 +84,15 @@ where
 
 impl Input for i32 {
   type WasmArgs = i32;
+  fn call_native<Rets: WasmTypeList>(
+    &self,
+    native: &NativeFunc<Self::WasmArgs, Rets>,
+  ) -> Option<Rets> {
+    native.call(*self).ok()
+  }
+}
+impl<T: Copy> Input for WasmPtr<T> {
+  type WasmArgs = WasmPtr<T>;
   fn call_native<Rets: WasmTypeList>(
     &self,
     native: &NativeFunc<Self::WasmArgs, Rets>,

@@ -208,8 +208,8 @@ impl PluginManager {
     allow
   }
   pub fn on_tick(&self) { self.global_event(GlobalServerEvent::Tick); }
-  pub fn on_generate_chunk(&self, chunk: Arc<Mutex<MultiChunk>>, pos: ChunkPos) {
-    self.global_event(GlobalServerEvent::GenerateChunk { generator: "".into(), chunk, pos });
+  pub fn on_generate_chunk(&self, generator: &str, chunk: Arc<Mutex<MultiChunk>>, pos: ChunkPos) {
+    self.global_event(GlobalServerEvent::GenerateChunk { generator: generator.into(), chunk, pos });
   }
   pub fn on_block_place(&self, player: Arc<Player>, pos: Pos, block: block::Type) -> bool {
     self.req(player, ServerRequest::BlockPlace { pos, block })

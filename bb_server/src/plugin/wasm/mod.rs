@@ -11,7 +11,7 @@ use bb_ffi::CUUID;
 use parking_lot::Mutex;
 use std::{fs, io, path::Path, process::Command, sync::Arc};
 use thiserror::Error;
-use wasmer::{ExportError, Instance, Memory, Module, NativeFunc, Store, WasmTypeList};
+use wasmer::{ExportError, Instance, Memory, Module, NativeFunc, Store, WasmPtr, WasmTypeList};
 
 pub struct Plugin {
   inst_mem_lock: Mutex<()>,
@@ -110,13 +110,30 @@ impl Plugin {
     }
   }
 
+  fn malloc_str(&self, text: &str) -> Result<WasmPtr<u8>, CallError> {
+    let ptr = self.call_int("malloc", (text.len() as i32 + 1, 1))? as u32;
+    let mem = self.inst.exports.get_memory("memory").unwrap();
+    unsafe {
+      let _guard = self.inst_mem_lock.lock();
+      let view = mem.data_unchecked_mut();
+      view[ptr as usize..ptr as usize + text.len()].copy_from_slice(text.as_bytes());
+      view[ptr as usize + text.len()] = 0; // Write the nul byte
+    }
+    Ok(WasmPtr::new(ptr))
+  }
+  fn free_str(&self, ptr: WasmPtr<u8>, text: &str) -> Result<(), CallError> {
+    self.call("free", (ptr, text.len() as i32 + 1, 1))
+  }
+
   fn generate_chunk(
     &self,
     generator: &str,
     chunk: Arc<Mutex<MultiChunk>>,
     pos: bb_common::math::ChunkPos,
   ) -> Result<(), CallError> {
-    let ptr = self.call_int("generate_chunk_and_lock", (pos.x(), pos.z()))?;
+    let generator_ptr = self.malloc_str(generator)?;
+    let ptr = self.call_int("generate_chunk_and_lock", (generator_ptr, pos.x(), pos.z()))?;
+    self.free_str(generator_ptr, generator)?;
     if ptr == 0 {
       return Ok(());
     }

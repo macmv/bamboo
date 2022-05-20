@@ -82,7 +82,7 @@ pub struct World {
   // Whenever we want to unload chunks, we will clear out this map. So there is no situation where
   // a rwlock is more useful than a normal mutex.
   unloadable_chunks: Mutex<HashSet<ChunkPos>>,
-  gen:               WorldGen,
+  generator:         String,
   players:           RwLock<PlayersMap>,
   entities:          RwLock<EntitiesMap>,
   eid:               AtomicI32,
@@ -145,7 +145,7 @@ impl World {
   ) -> Arc<Self> {
     let chunks = HashMap::new();
     let config = wm.config().section("world");
-    let gen = WorldGen::from_config(&config);
+    // let gen = WorldGen::from_config(&config);
     /*
     for schematic in config.get::<_, Vec<String>>("schematics") {
       let path = schematic.get("path");
@@ -159,7 +159,7 @@ impl World {
     let world = Arc::new(World {
       chunks: RwLock::new(chunks),
       unloadable_chunks: Mutex::new(HashSet::new()),
-      gen,
+      generator: config.get("generator"),
       players: RwLock::new(PlayersMap::new()),
       entities: RwLock::new(EntitiesMap::new()),
       eid: 1.into(),
@@ -337,7 +337,7 @@ impl World {
   /// parallel.
   pub fn pre_generate_chunk(&self, pos: ChunkPos) -> MultiChunk {
     let mut c = Arc::new(Mutex::new(MultiChunk::new(self.world_manager().clone(), true)));
-    self.plugins.on_generate_chunk(c.clone(), pos);
+    self.plugins.on_generate_chunk(&self.generator, c.clone(), pos);
     loop {
       // self.gen.generate(pos, &mut c);
       c = match Arc::try_unwrap(c) {

@@ -100,13 +100,17 @@ pub fn add_world_generator(
 }
 
 #[no_mangle]
-extern "C" fn generate_chunk_and_lock(x: i32, z: i32) -> *const u8 {
+extern "C" fn generate_chunk_and_lock(name: *const i8, x: i32, z: i32) -> *const u8 {
+  let generator_name = unsafe { std::ffi::CStr::from_ptr(name) };
   let mut sections = vec![];
   let chunk = if let Some(map) = GENERATORS.lock().as_ref() {
-    let gen = &map["testing-generator"];
-    let mut chunk = Chunk::<paletted::Section>::new(8);
-    gen(&mut chunk, ChunkPos::new(x, z));
-    chunk
+    if let Some(gen) = map.get(generator_name.to_str().unwrap()) {
+      let mut chunk = Chunk::<paletted::Section>::new(8);
+      gen(&mut chunk, ChunkPos::new(x, z));
+      chunk
+    } else {
+      return 0 as _;
+    }
   } else {
     return 0 as _;
   };
@@ -134,4 +138,15 @@ extern "C" fn unlock_generated_chunk() {
   unsafe {
     CHUNK_BUF.force_unlock();
   }
+}
+
+#[no_mangle]
+extern "C" fn malloc(size: u32, align: u32) -> u32 {
+  use std::alloc::{alloc, Layout};
+  unsafe { alloc(Layout::from_size_align(size as usize, align as usize).unwrap()) as u32 }
+}
+#[no_mangle]
+extern "C" fn free(ptr: u32, size: u32, align: u32) {
+  use std::alloc::{dealloc, Layout};
+  unsafe { dealloc(ptr as _, Layout::from_size_align(size as usize, align as usize).unwrap()) }
 }
