@@ -294,7 +294,7 @@ fn convert_field(field: &mut Field, ty: MetadataType) -> bool {
   let old_field = mem::replace(field, Field::Bool(false));
   match (old_field, ty) {
     (Field::OptChat(msg), MetadataType::String) => *field = Field::String(msg.unwrap_or_default()),
-    (field, ty) => return false,
+    _ => return false,
   }
   true
 }
