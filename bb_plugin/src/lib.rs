@@ -7,7 +7,7 @@ use std::{collections::HashMap, ffi::CString, marker::PhantomData};
 
 use bb_common::{
   chunk::{paletted, Chunk},
-  math::{ChunkPos, RelPos},
+  math::ChunkPos,
   transfer::MessageWriter,
   util::Chat,
 };

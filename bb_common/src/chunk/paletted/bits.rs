@@ -4,7 +4,6 @@
 //! on the proxy.
 
 use super::OldBitArray;
-use bb_macros::Transfer;
 use std::fmt;
 
 /// A resizable element vector. It is always 4096 items long, as that is the

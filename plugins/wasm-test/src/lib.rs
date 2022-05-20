@@ -1,7 +1,4 @@
-use bb_plugin::{
-  chunk::{paletted, Chunk},
-  util::{chat::Color, Chat},
-};
+use bb_plugin::util::{chat::Color, Chat};
 
 #[macro_use]
 extern crate bb_plugin;
@@ -26,7 +23,7 @@ extern "C" fn init() {
     for col in pos.columns() {
       let height = (noise(col.x(), col.z()) * 20.0 + 10.0) as i32;
       for y in 0..height {
-        chunk.set_block(col.chunk_rel().add_y(y), 1);
+        let _ = chunk.set_block(col.chunk_rel().add_y(y), 1);
       }
     }
   });

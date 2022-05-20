@@ -54,7 +54,6 @@ use crate::{
   plugin,
   tags::Tags,
 };
-use gen::WorldGen;
 
 pub use chunk::{CountedChunk, MultiChunk};
 pub use entities::{EntitiesIter, EntitiesMap, EntitiesMapRef};

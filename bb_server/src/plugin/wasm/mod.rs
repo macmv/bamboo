@@ -11,7 +11,7 @@ use bb_ffi::CUUID;
 use parking_lot::Mutex;
 use std::{fs, io, path::Path, process::Command, sync::Arc};
 use thiserror::Error;
-use wasmer::{ExportError, Instance, Memory, Module, NativeFunc, Store, WasmPtr, WasmTypeList};
+use wasmer::{Instance, Memory, Module, NativeFunc, Store, WasmPtr, WasmTypeList};
 
 pub struct Plugin {
   inst_mem_lock: Mutex<()>,
@@ -165,7 +165,7 @@ impl Plugin {
 }
 
 impl PluginImpl for Plugin {
-  fn call(&self, player: Arc<Player>, ev: ServerEvent) -> Result<(), CallError> {
+  fn call(&self, _player: Arc<Player>, ev: ServerEvent) -> Result<(), CallError> {
     match ev {
       _ => warn!("todo: ev {ev:?}"),
     }
