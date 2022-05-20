@@ -5,9 +5,10 @@ use bb_common::{
   math::{PosError, RelPos},
   version::BlockVersion,
 };
-use parking_lot::{Mutex, RwLock};
+use parking_lot::{Mutex, MutexGuard, RwLock};
 use std::{
   collections::HashMap,
+  fmt,
   sync::{atomic::AtomicU32, Arc},
 };
 
@@ -17,6 +18,12 @@ use std::{
 pub struct CountedChunk {
   pub(super) count: AtomicU32,
   pub chunk:        Mutex<MultiChunk>,
+}
+
+impl fmt::Debug for CountedChunk {
+  fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    f.debug_struct("CountedChunk").field("count", &self.count).finish()
+  }
 }
 
 /// This stores the block information for the latest version, block lighting
@@ -42,6 +49,7 @@ impl CountedChunk {
   pub fn new(c: MultiChunk) -> CountedChunk {
     CountedChunk { count: 0.into(), chunk: Mutex::new(c) }
   }
+  pub fn lock(&self) -> MutexGuard<'_, MultiChunk> { self.chunk.lock() }
 }
 
 impl MultiChunk {

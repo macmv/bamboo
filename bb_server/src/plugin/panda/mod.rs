@@ -191,6 +191,7 @@ impl PluginImpl for PandaPlugin {
   fn call_global(&self, ev: GlobalServerEvent) -> Result<(), CallError> {
     match ev {
       GlobalServerEvent::Tick => self.call_on_tick(),
+      _ => todo!("global event {ev:?}"),
     }
     Ok(())
   }

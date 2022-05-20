@@ -24,8 +24,11 @@
 //! ```
 
 use super::json::*;
-use crate::{block, player::Player};
-use bb_common::{math::Pos, net::sb::ClickWindow};
+use crate::{block, player::Player, world::CountedChunk};
+use bb_common::{
+  math::{ChunkPos, Pos},
+  net::sb::ClickWindow,
+};
 use std::sync::Arc;
 
 /// A message going from the plugin to the server.
@@ -121,6 +124,15 @@ pub enum ServerEvent {
 #[serde(tag = "type")]
 pub enum GlobalServerEvent {
   Tick,
+  /// The plugin should fill the given chunk with the terrain for the given
+  /// generator. MultiChunk is an arc, so this should be mutated.
+  GenerateChunk {
+    generator: String,
+    #[serde(skip)]
+    chunk:     Arc<CountedChunk>,
+    #[serde(skip)]
+    pos:       ChunkPos,
+  },
 }
 /// A request from the server to the plugin. The server should expect a reply
 /// within a certain timeout from the plugin. See also [PluginReply].
