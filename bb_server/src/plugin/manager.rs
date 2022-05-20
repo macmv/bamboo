@@ -2,8 +2,17 @@
 use super::PandaPlugin;
 
 use super::{GlobalServerEvent, Plugin, ServerEvent, ServerRequest};
-use crate::{block, player::Player, world::WorldManager};
-use bb_common::{config::Config, math::Pos, net::sb::ClickWindow, util::Chat};
+use crate::{
+  block,
+  player::Player,
+  world::{MultiChunk, WorldManager},
+};
+use bb_common::{
+  config::Config,
+  math::{ChunkPos, Pos},
+  net::sb::ClickWindow,
+  util::Chat,
+};
 use crossbeam_channel::Select;
 use parking_lot::Mutex;
 use std::{
@@ -199,6 +208,9 @@ impl PluginManager {
     allow
   }
   pub fn on_tick(&self) { self.global_event(GlobalServerEvent::Tick); }
+  pub fn on_generate_chunk(&self, chunk: Arc<Mutex<MultiChunk>>, pos: ChunkPos) {
+    self.global_event(GlobalServerEvent::GenerateChunk { generator: "".into(), chunk, pos });
+  }
   pub fn on_block_place(&self, player: Arc<Player>, pos: Pos, block: block::Type) -> bool {
     self.req(player, ServerRequest::BlockPlace { pos, block })
   }

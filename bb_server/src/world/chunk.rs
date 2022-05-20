@@ -44,6 +44,10 @@ pub struct MultiChunk {
   update_light: bool,
 }
 
+impl fmt::Debug for MultiChunk {
+  fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result { f.debug_struct("MultiChunk").finish() }
+}
+
 impl CountedChunk {
   /// Creates a new counted chunk with the counter at 0.
   pub fn new(c: MultiChunk) -> CountedChunk {

@@ -180,10 +180,8 @@ impl World {
         )
         .unwrap();
     }
-    // We want this world to be fully initialized when we return; this is so that if
-    // a player tries to join this world while it's still loading, we don't have the
-    // connection thread trying to generate chunks at the same time.
-    world.init();
+    // Note that the world is not initialized yet, as we want to load plugins before
+    // initializing.
     world
   }
 
@@ -338,9 +336,18 @@ impl World {
   /// have a list of chunks to generate, and you would like to generate them in
   /// parallel.
   pub fn pre_generate_chunk(&self, pos: ChunkPos) -> MultiChunk {
-    let mut c = MultiChunk::new(self.world_manager().clone(), true);
-    self.gen.generate(pos, &mut c);
-    c
+    let mut c = Arc::new(Mutex::new(MultiChunk::new(self.world_manager().clone(), true)));
+    self.plugins.on_generate_chunk(c.clone(), pos);
+    loop {
+      // self.gen.generate(pos, &mut c);
+      c = match Arc::try_unwrap(c) {
+        Ok(c) => return c.into_inner(),
+        Err(c) => {
+          std::hint::spin_loop();
+          c
+        }
+      }
+    }
   }
 
   /// Checks if the given chunk position is loaded. This will not check for any

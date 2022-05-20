@@ -24,11 +24,12 @@
 //! ```
 
 use super::json::*;
-use crate::{block, player::Player, world::CountedChunk};
+use crate::{block, player::Player, world::MultiChunk};
 use bb_common::{
   math::{ChunkPos, Pos},
   net::sb::ClickWindow,
 };
+use parking_lot::Mutex;
 use std::sync::Arc;
 
 /// A message going from the plugin to the server.
@@ -129,7 +130,7 @@ pub enum GlobalServerEvent {
   GenerateChunk {
     generator: String,
     #[serde(skip)]
-    chunk:     Arc<CountedChunk>,
+    chunk:     Arc<Mutex<MultiChunk>>,
     #[serde(skip)]
     pos:       ChunkPos,
   },

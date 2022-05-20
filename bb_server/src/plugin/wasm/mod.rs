@@ -5,7 +5,7 @@ mod output;
 use super::{CallError, GlobalServerEvent, PluginImpl, PluginReply, ServerEvent, ServerRequest};
 use crate::{
   player::Player,
-  world::{CountedChunk, WorldManager},
+  world::{MultiChunk, WorldManager},
 };
 use bb_ffi::CUUID;
 use parking_lot::Mutex;
@@ -86,23 +86,11 @@ impl Plugin {
   }
 
   fn call_bool<I: Input>(&self, name: &str, input: I) -> Result<bool, CallError> {
-    // Try to get function with bool. If this fails, try with no return. If that
-    // fails, error out.
-    //
-    // If the function doesn't exist, we ignore the error.
+    // Try to get function with int. If this fails, error.
+    // If the function doesn't exist, we error.
     match self.inst.exports.get_native_function::<I::WasmArgs, u8>(name) {
       Ok(func) => Ok(input.call_native(&func).unwrap() != 0),
-      Err(ExportError::IncompatibleType) => {
-        match self.inst.exports.get_native_function::<I::WasmArgs, ()>(name) {
-          Ok(func) => {
-            input.call_native(&func);
-            Ok(true)
-          }
-          Err(e @ ExportError::IncompatibleType) => Err(CallError::no_keep(e)),
-          Err(ExportError::Missing(_)) => Ok(true),
-        }
-      }
-      Err(ExportError::Missing(_)) => Ok(true),
+      Err(e) => Err(CallError::no_keep(e)),
     }
   }
   fn call_int<I: Input>(&self, name: &str, input: I) -> Result<i32, CallError> {
@@ -114,37 +102,40 @@ impl Plugin {
     }
   }
   fn call<I: Input>(&self, name: &str, input: I) -> Result<(), CallError> {
-    self.call_bool(name, input)?;
-    Ok(())
+    // Try to get function with int. If this fails, error.
+    // If the function doesn't exist, we error.
+    match self.inst.exports.get_native_function::<I::WasmArgs, ()>(name) {
+      Ok(func) => Ok(input.call_native(&func).unwrap()),
+      Err(e) => Err(CallError::no_keep(e)),
+    }
   }
 
   fn generate_chunk(
     &self,
     generator: &str,
-    chunk: Arc<CountedChunk>,
+    chunk: Arc<Mutex<MultiChunk>>,
     pos: bb_common::math::ChunkPos,
   ) -> Result<(), CallError> {
-    let chunk = chunk.lock();
-    for section in chunk.inner().sections().flatten() {
-      let chunk_data = section.data().long_array();
-      let chunk_ptr = self.call_int("malloc_u64", chunk_data.len() as i32)? as u32;
-      if chunk_ptr == 0 || chunk_ptr.checked_add(chunk_data.len() as u32).is_none() {
-        // malloc didn't allocate enough
-        // TODO: Error out here, and restart the plugin
+    let data_ptr = self.call_int("malloc", (16 * 2, 4))?;
+    self.call("generate_chunk", (pos.x(), pos.z(), data_ptr))?;
+    // data_ptr is a pointer to an array of u32s like so:
+    // [section_1_ptr, section_1_len, section_2_ptr, ...]
+
+    let mut chunk = chunk.lock();
+    let mem = self.inst.exports.get_memory("memory").unwrap();
+    for section in 0..16 {
+      let view = mem.view::<i32>();
+      let ptr = view[data_ptr as usize / 4 + section * 2].get();
+      let len = view[data_ptr as usize / 4 + section * 2 + 1].get();
+      if len == 0 {
         continue;
       }
-      let mem = self.inst.exports.get_memory("memory").unwrap();
-      // SAFETY: We have locked the plugin for memory writing.
-      unsafe {
-        let _guard = self.inst_mem_lock.lock();
-        let view = mem.view::<u64>();
-        view.subarray(chunk_ptr, chunk_ptr + chunk_data.len() as u32).copy_from(chunk_data);
-        // Make sure we drop `data` before using anything within self.inst
-        // again.
-      };
-      self.call("generate_chunk", (chunk_ptr as i32, chunk_data.len() as i32))?;
-      self.call("free_u64", chunk_ptr as i32)?;
+      let view = mem.view::<u8>();
+      let chunk_data = &view[ptr as usize..ptr as usize + len as usize];
+      self.call("free", (ptr, len, 1))?;
     }
+    self.call("free", (data_ptr, 16 * 2, 4))?;
+
     Ok(())
   }
 }

@@ -86,6 +86,7 @@ fn main() {
   let wm = Arc::new(WorldManager::new_with_config(config));
   wm.add_world();
   wm.load_plugins();
+  wm.default_world().init();
 
   if let Some(mut rcon) = RCon::new(wm.clone()) {
     thread::spawn(move || rcon.run());

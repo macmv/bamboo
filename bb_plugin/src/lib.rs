@@ -76,3 +76,31 @@ extern "C" fn on_block_place(id: ffi::CUUID, x: i32, y: i32, z: i32) {
     cb(p, pos);
   }
 }
+
+#[no_mangle]
+extern "C" fn generate_chunk(x: i32, z: i32, ptr: *mut i32) {
+  unsafe {
+    let section_ptrs = std::slice::from_raw_parts_mut(ptr, 16 * 2);
+    let data: Vec<u8> = vec![0, 1, 2, 3, 4];
+    section_ptrs[0] = data.as_ptr() as i32;
+    section_ptrs[1] = data.len() as i32;
+    std::mem::forget(data);
+    for section in 1..16 {
+      section_ptrs[section * 2 + 0] = 0;
+      section_ptrs[section * 2 + 1] = 0;
+    }
+  }
+}
+#[no_mangle]
+extern "C" fn tick() {}
+
+#[no_mangle]
+extern "C" fn malloc(size: u32, align: u32) -> u32 {
+  use std::alloc::{alloc, Layout};
+  unsafe { alloc(Layout::from_size_align(size as usize, align as usize).unwrap()) as u32 }
+}
+#[no_mangle]
+extern "C" fn free(ptr: *mut u8, size: u32, align: u32) {
+  use std::alloc::{dealloc, Layout};
+  unsafe { dealloc(ptr, Layout::from_size_align(size as usize, align as usize).unwrap()) }
+}
