@@ -72,12 +72,12 @@ macro_rules! callback {
   };
 }
 
-callback!(set_on_block_place, ON_BLOCK_PLACE, Fn(player::Player, ffi::CPos));
+callback!(set_on_block_place, ON_BLOCK_PLACE, Fn(player::Player, math::Pos));
 #[no_mangle]
 extern "C" fn on_block_place(id: ffi::CUUID, x: i32, y: i32, z: i32) {
   if let Some(cb) = ON_BLOCK_PLACE.lock().as_ref() {
     let p = player::Player::new(id);
-    let pos = ffi::CPos { x, y, z };
+    let pos = math::Pos { x, y, z };
     cb(p, pos);
   }
 }
