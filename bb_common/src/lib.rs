@@ -23,6 +23,8 @@ pub mod version;
 
 pub use registry::Registry;
 
+pub use bb_transfer as transfer;
+
 // #[derive(Debug)]
 // pub struct KeepAlivePolicy {
 //   age: Duration,

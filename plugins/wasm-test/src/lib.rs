@@ -1,8 +1,4 @@
-use bb_plugin::{
-  ffi::CUUID,
-  player::Player,
-  util::{chat::Color, Chat},
-};
+use bb_plugin::util::{chat::Color, Chat};
 
 #[macro_use]
 extern crate bb_plugin;

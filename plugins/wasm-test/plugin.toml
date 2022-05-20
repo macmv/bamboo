@@ -2,5 +2,5 @@ type = "wasm"
 enabled = true
 
 [wasm]
-compile = "cargo build --target wasm32-unknown-unknown"
-output = "target/wasm32-unknown-unknown/debug/wasm_test.wasm"
+compile = "cargo build --target wasm32-unknown-unknown --release"
+output = "target/wasm32-unknown-unknown/release/wasm_test.wasm"

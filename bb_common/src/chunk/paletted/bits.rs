@@ -14,7 +14,7 @@ use std::fmt;
 ///
 /// This is used to separate out some of the nasty bitwise operations, and make
 /// the [`Section`](super::Section) code a lot cleaner.
-#[derive(Transfer, Clone, PartialEq)]
+#[derive(Clone, PartialEq)]
 pub struct BitArray {
   /// Bits per entry
   bpe:  u8,
@@ -28,7 +28,6 @@ pub struct BitArray {
 // implementation might be faster (in which case we want to use it). I am going
 // to leave this commented for now, as I don't think it would be significantly
 // faster.
-/*
 use bb_transfer::{
   MessageRead, MessageReader, MessageWrite, MessageWriter, ReadError, StructRead, StructReader,
   WriteError,
@@ -49,17 +48,16 @@ impl StructRead<'_> for BitArray {
 }
 impl MessageWrite for BitArray {
   fn write(&self, m: &mut MessageWriter) -> Result<(), WriteError> {
-    let mut bytes = Vec::with_capacity(self.data.len() / 8);
+    let mut bytes = Vec::with_capacity(self.data.len() * 8);
     for v in &self.data {
       bytes.extend(v.to_le_bytes());
     }
     m.write_struct(2, |m| {
-      m.write_u8(self.bpe)?;
-      m.write_bytes(&bytes)
+      m.write::<u8>(&self.bpe)?;
+      m.write::<&[u8]>(&bytes.as_slice())
     })
   }
 }
-*/
 
 impl fmt::Debug for BitArray {
   fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {

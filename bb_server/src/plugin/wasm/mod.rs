@@ -105,7 +105,7 @@ impl Plugin {
     // Try to get function with int. If this fails, error.
     // If the function doesn't exist, we error.
     match self.inst.exports.get_native_function::<I::WasmArgs, ()>(name) {
-      Ok(func) => Ok(input.call_native(&func).unwrap()),
+      Ok(func) => Ok(input.call_native(&func).unwrap_or(())),
       Err(e) => Err(CallError::no_keep(e)),
     }
   }
@@ -116,25 +116,29 @@ impl Plugin {
     chunk: Arc<Mutex<MultiChunk>>,
     pos: bb_common::math::ChunkPos,
   ) -> Result<(), CallError> {
-    let data_ptr = self.call_int("malloc", (16 * 2, 4))?;
-    self.call("generate_chunk", (pos.x(), pos.z(), data_ptr))?;
-    // data_ptr is a pointer to an array of u32s like so:
-    // [section_1_ptr, section_1_len, section_2_ptr, ...]
-
-    let mut chunk = chunk.lock();
+    let ptr = self.call_int("generate_chunk_and_lock", (pos.x(), pos.z()))?;
     let mem = self.inst.exports.get_memory("memory").unwrap();
-    for section in 0..16 {
-      let view = mem.view::<i32>();
-      let ptr = view[data_ptr as usize / 4 + section * 2].get();
-      let len = view[data_ptr as usize / 4 + section * 2 + 1].get();
-      if len == 0 {
-        continue;
+    // SAFETY: The plugin has locked the generated chunk buffer, so we can read from
+    // it. Accessing this memory is safe for the plugin until we call
+    // `unlock_generated_chunk`. In order for the server to not get UB for a
+    // malicious plugin, we also lock `inst_mem_lock` for the duration that we have
+    // a reference to `data_unchecked`.
+    unsafe {
+      self.inst_mem_lock.lock();
+      let view = mem.data_unchecked();
+      let chunk_data = &view[ptr as usize..];
+      let mut reader = bb_transfer::MessageReader::new(&chunk_data);
+      match reader.read::<Vec<bb_common::chunk::paletted::Section>>() {
+        Ok(sections) => {
+          let mut chunk = chunk.lock();
+          for (y, section) in sections.into_iter().enumerate() {
+            *chunk.inner_mut().section_mut(y as u32) = section;
+          }
+        }
+        Err(e) => error!("bad chunk: {e}"),
       }
-      let view = mem.view::<u8>();
-      let chunk_data = &view[ptr as usize..ptr as usize + len as usize];
-      self.call("free", (ptr, len, 1))?;
     }
-    self.call("free", (data_ptr, 16 * 2, 4))?;
+    self.call("unlock_generated_chunk")?;
 
     Ok(())
   }
