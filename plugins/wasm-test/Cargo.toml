@@ -12,6 +12,9 @@ bb_plugin = { path = "../../bb_plugin" }
 # Seperate workspace
 [workspace]
 
+[profile.release]
+lto = true
+
 [profile.rust-analyzer]
 inherits = "dev"
 opt-level = 0
