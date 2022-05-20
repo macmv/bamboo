@@ -117,6 +117,9 @@ impl Plugin {
     pos: bb_common::math::ChunkPos,
   ) -> Result<(), CallError> {
     let ptr = self.call_int("generate_chunk_and_lock", (pos.x(), pos.z()))?;
+    if ptr == 0 {
+      return Ok(());
+    }
     let mem = self.inst.exports.get_memory("memory").unwrap();
     // SAFETY: The plugin has locked the generated chunk buffer, so we can read from
     // it. Accessing this memory is safe for the plugin until we call
@@ -124,7 +127,7 @@ impl Plugin {
     // malicious plugin, we also lock `inst_mem_lock` for the duration that we have
     // a reference to `data_unchecked`.
     unsafe {
-      self.inst_mem_lock.lock();
+      let _guard = self.inst_mem_lock.lock();
       let view = mem.data_unchecked();
       let chunk_data = &view[ptr as usize..];
       let mut reader = bb_transfer::MessageReader::new(&chunk_data);
@@ -138,7 +141,7 @@ impl Plugin {
         Err(e) => error!("bad chunk: {e}"),
       }
     }
-    self.call("unlock_generated_chunk")?;
+    self.call("unlock_generated_chunk", ())?;
 
     Ok(())
   }

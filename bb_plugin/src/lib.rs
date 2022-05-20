@@ -3,11 +3,16 @@ pub use log::*;
 
 use bb_ffi::CChat;
 use parking_lot::Mutex;
-use std::{ffi::CString, marker::PhantomData};
+use std::{collections::HashMap, ffi::CString, marker::PhantomData};
 
-use bb_common::util::Chat;
+use bb_common::{
+  chunk::{paletted, Chunk},
+  math::{ChunkPos, RelPos},
+  transfer::MessageWriter,
+  util::Chat,
+};
 
-pub use bb_common::{math, util};
+pub use bb_common::{chunk, math, util};
 
 pub mod player;
 
@@ -78,23 +83,33 @@ extern "C" fn on_block_place(id: ffi::CUUID, x: i32, y: i32, z: i32) {
 }
 
 static CHUNK_BUF: Mutex<Option<Vec<u8>>> = Mutex::const_new(parking_lot::RawMutex::INIT, None);
+static GENERATORS: Mutex<
+  Option<HashMap<String, Box<dyn Fn(&mut Chunk<paletted::Section>, ChunkPos) + Send>>>,
+> = Mutex::const_new(parking_lot::RawMutex::INIT, None);
+
+pub fn add_world_generator(
+  name: &str,
+  func: impl Fn(&mut Chunk<paletted::Section>, ChunkPos) + Send + 'static,
+) {
+  let mut lock = GENERATORS.lock();
+  if lock.is_none() {
+    *lock = Some(HashMap::new());
+  }
+  let map = lock.as_mut().unwrap();
+  map.insert(name.into(), Box::new(func));
+}
 
 #[no_mangle]
 extern "C" fn generate_chunk_and_lock(x: i32, z: i32) -> *const u8 {
-  use bb_common::{
-    chunk::{paletted, Chunk},
-    math::RelPos,
-    transfer::MessageWriter,
-  };
-  fn gen_chunk() -> Chunk<paletted::Section> {
-    let mut chunk = Chunk::<paletted::Section>::new(8);
-    for y in 0..16 {
-      let _ = chunk.set_block(RelPos::new(2, 3 + y * 16, 4), 4);
-    }
-    chunk
-  }
   let mut sections = vec![];
-  let chunk = gen_chunk();
+  let chunk = if let Some(map) = GENERATORS.lock().as_ref() {
+    let gen = &map["testing-generator"];
+    let mut chunk = Chunk::<paletted::Section>::new(8);
+    gen(&mut chunk, ChunkPos::new(x, z));
+    chunk
+  } else {
+    return 0 as _;
+  };
   for section in chunk.sections().flatten() {
     sections.push(section);
   }

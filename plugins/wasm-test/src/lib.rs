@@ -1,4 +1,8 @@
-use bb_plugin::util::{chat::Color, Chat};
+use bb_plugin::{
+  chunk::{paletted, Chunk},
+  math::RelPos,
+  util::{chat::Color, Chat},
+};
 
 #[macro_use]
 extern crate bb_plugin;
@@ -18,5 +22,8 @@ extern "C" fn init() {
     let bb = bb_plugin::instance();
     bb.broadcast(chat);
     info!("hello world");
+  });
+  bb_plugin::add_world_generator("testing-generator", |chunk, pos| {
+    chunk.set_block(RelPos::new(0, 0, 0), 4);
   });
 }
