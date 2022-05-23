@@ -4,6 +4,12 @@ use bb_plugin::{
 };
 use std::cmp;
 
+pub mod noise;
+pub mod rng;
+
+use noise::Noise;
+use rng::Rng;
+
 pub fn generate_chunk(chunk: &mut Chunk<paletted::Section>, pos: ChunkPos) {
   let gen = NoiseGenerator { vertical_size: 1, horizontal_size: 2 };
   gen.populate_noise(chunk, pos);
@@ -16,7 +22,8 @@ struct NoiseGenerator {
   pub horizontal_size: i32,
 }
 struct NoiseSampler<'a> {
-  gen: &'a NoiseGenerator,
+  gen:   &'a NoiseGenerator,
+  noise: noise::Perlin,
 }
 
 impl NoiseSampler<'_> {
@@ -26,7 +33,7 @@ impl NoiseSampler<'_> {
   fn sample_noise_y(&mut self, v: f64) {}
   fn sample_noise(&mut self, v: f64) {}
 
-  fn get_block_inner(&self, x: i32, y: i32, z: i32, noise: f64) -> f64 {
+  fn get_block_inner(&mut self, x: i32, y: i32, z: i32, noise: f64) -> f64 {
     let mut e = 0.0;
     let mut f = 0.0;
     let mut g = 0.0;
@@ -84,6 +91,7 @@ impl NoiseSampler<'_> {
 
     n = if h < l { h } else { l };
     n = if n > m { n } else { m };
+    let n = self.noise.sample(x as f64 / 32.0, y as f64 / 32.0, z as f64 / 32.0);
     // n = self.apply_slides(n, y / self.vertical_size);
     // n = blender.method_39338(x, y, z, n);
     if n < -64.0 {
@@ -95,7 +103,7 @@ impl NoiseSampler<'_> {
     }
   }
 
-  fn get_block(&self, x: i32, y: i32, z: i32) -> u32 {
+  fn get_block(&mut self, x: i32, y: i32, z: i32) -> u32 {
     let d = self.get_block_inner(x, y, z, x as f64 / 100.0);
     let mut e = d * 0.64;
     if e < -1.0 {
@@ -135,7 +143,8 @@ impl NoiseGenerator {
     let n = self.vertical_size;
     let o = 16 / m;
     let p = 16 / m;
-    let mut sampler = NoiseSampler { gen: self };
+    let mut rng = Rng::new(SEED);
+    let mut sampler = NoiseSampler { gen: self, noise: noise::Perlin::new(&mut rng) };
     let i = 0 / self.vertical_size;
     let j = 256 / self.vertical_size;
 
