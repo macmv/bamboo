@@ -14,8 +14,8 @@ impl Rng {
   pub fn set_seed(&mut self, seed: i64) { self.seed = (seed ^ 0x5DEECE66D) & 0xFFFFFFFFFFFF; }
 
   pub fn next_bits(&mut self, bits: i32) -> i32 {
-    self.seed = self.seed.wrapping_mul(25214903917) + 11 & 0xFFFFFFFFFFFF;
-    (self.seed >> 48 - bits) as i32
+    self.seed = (self.seed.wrapping_mul(25214903917) + 11) & 0xFFFFFFFFFFFF;
+    (self.seed >> (48 - bits)) as i32
   }
   pub fn next_int(&mut self) -> i32 { self.next_bits(32) }
   pub fn next_int_max(&mut self, max: i32) -> i32 {
@@ -63,6 +63,7 @@ impl Rng {
 #[cfg(test)]
 mod tests {
   use super::*;
+  use pretty_assertions::assert_eq;
 
   #[test]
   fn basic_next_int() {
