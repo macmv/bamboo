@@ -7,7 +7,7 @@
 /// memory. Depending on the allocator, the plugin may simple abort instead of
 /// returning null.
 #[no_mangle]
-unsafe extern "C" fn malloc(size: u32, align: u32) -> *mut u8 {
+unsafe extern "C" fn wasm_malloc(size: u32, align: u32) -> *mut u8 {
   use std::alloc::{alloc, Layout};
   if size == 0 {
     align as _
@@ -36,7 +36,7 @@ unsafe extern "C" fn malloc(size: u32, align: u32) -> *mut u8 {
 /// All of this remains true, except for a `size` of zero. In this case,
 /// `dealloc` will not be called.
 #[no_mangle]
-unsafe extern "C" fn free(ptr: *mut u8, size: u32, align: u32) {
+unsafe extern "C" fn wasm_free(ptr: *mut u8, size: u32, align: u32) {
   use std::alloc::{dealloc, Layout};
   if size != 0 {
     dealloc(ptr, Layout::from_size_align(size as usize, align as usize).unwrap())

@@ -111,7 +111,7 @@ impl Plugin {
   }
 
   fn malloc_str(&self, text: &str) -> Result<WasmPtr<u8>, CallError> {
-    let ptr = self.call_int("malloc", (text.len() as i32 + 1, 1))? as u32;
+    let ptr = self.call_int("wasm_malloc", (text.len() as i32 + 1, 1))? as u32;
     let mem = self.inst.exports.get_memory("memory").unwrap();
     unsafe {
       let _guard = self.inst_mem_lock.lock();
@@ -122,7 +122,7 @@ impl Plugin {
     Ok(WasmPtr::new(ptr))
   }
   fn free_str(&self, ptr: WasmPtr<u8>, text: &str) -> Result<(), CallError> {
-    self.call("free", (ptr, text.len() as i32 + 1, 1))
+    self.call("wasm_free", (ptr, text.len() as i32 + 1, 1))
   }
 
   fn generate_chunk(
