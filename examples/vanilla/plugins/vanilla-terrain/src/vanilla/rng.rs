@@ -26,7 +26,7 @@ impl Rng {
     loop {
       let j = self.next_bits(31);
       k = j % max;
-      if j - k + (max - 1) > 0 {
+      if j - k + (max - 1) >= 0 {
         break;
       }
     }
@@ -83,6 +83,15 @@ mod tests {
     assert_eq!(rng.next_int(), -1155869325);
     assert_similar(rng.next_double(), 0.100473);
     assert_eq!(rng.next_int(), 1749940626);
+  }
+
+  #[test]
+  fn next_int_max() {
+    let mut rng = Rng::new(1);
+    assert_eq!(rng.next_int_max(5), 0);
+    assert_eq!(rng.next_int_max(5), 3);
+    assert_eq!(rng.next_int_max(5), 2);
+    assert_eq!(rng.next_int_max(5), 3);
   }
 
   fn assert_similar(actual: f64, expected: f64) {

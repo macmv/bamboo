@@ -9,7 +9,7 @@ pub struct Perlin {
   origin_x: f64,
   origin_y: f64,
   origin_z: f64,
-  kernel:   [u8; 256],
+  kernel:   [i8; 256],
 }
 
 pub trait Noise {
@@ -25,18 +25,18 @@ impl Perlin {
       kernel:   [0; 256],
     };
     for i in 0..perlin.kernel.len() {
-      perlin.kernel[i] = i as u8;
+      perlin.kernel[i] = i as i8;
     }
     for i in 0..perlin.kernel.len() {
       let j = rng.next_int_max(256 - i as i32) as usize;
-      let b = i as u8;
+      let b = i as i8;
       perlin.kernel[i] = perlin.kernel[i + j];
       perlin.kernel[i + j] = b;
     }
     perlin
   }
 
-  fn gradient(&self, hash: i32) -> i32 { self.kernel[hash as u8 as usize].into() }
+  fn gradient(&self, hash: i32) -> i32 { self.kernel[(hash & 0xff) as usize].into() }
 }
 
 impl Noise for Perlin {
@@ -73,7 +73,28 @@ impl Noise for Perlin {
   }
 }
 
-fn perlin_grad(hash: i32, x: f64, y: f64, z: f64) -> f64 { x * y * z }
+const GRADIENTS: [[i32; 3]; 16] = [
+  [1, 1, 0],
+  [-1, 1, 0],
+  [1, -1, 0],
+  [-1, -1, 0],
+  [1, 0, 1],
+  [-1, 0, 1],
+  [1, 0, -1],
+  [-1, 0, -1],
+  [0, 1, 1],
+  [0, -1, 1],
+  [0, 1, -1],
+  [0, -1, -1],
+  [1, 1, 0],
+  [0, -1, 1],
+  [-1, 1, 0],
+  [0, -1, -1],
+];
+fn perlin_grad(hash: i32, x: f64, y: f64, z: f64) -> f64 {
+  let gradient = GRADIENTS[(hash & 0xf) as usize];
+  gradient[0] as f64 * x + gradient[1] as f64 * y + gradient[2] as f64 * z
+}
 fn perlin_fade(value: f64) -> f64 { value * value * value * (value * (value * 6.0 - 15.0) + 10.0) }
 
 fn lerp3(
@@ -110,6 +131,27 @@ mod tests {
   fn single_perlin_test() {
     let mut rng = Rng::new(1);
     let mut perlin = Perlin::new(&mut rng);
+
+    assert_similar(perlin.origin_x, 187.10481682004246);
+    assert_eq!(
+      perlin.kernel,
+      [
+        85, 92, 42, 62, 65, -44, 73, 40, 50, -10, -94, 18, 80, -22, 20, -56, -50, -69, -108, -79,
+        82, 74, -105, 84, -115, 12, -90, 122, -85, 72, -65, -30, 59, 96, -35, -107, 93, 97, 79, 63,
+        52, -117, 21, -40, -16, -5, -4, -62, 15, 104, 49, -1, -100, -31, -96, 86, -114, -103, -38,
+        83, 23, -41, -61, -95, -29, 56, 111, 39, -18, 24, 68, -49, -71, 123, 13, 51, -19, -84,
+        -119, -76, -21, 45, 64, 102, -3, 118, -86, 31, 69, -67, -7, -104, -112, -52, -48, -23, -66,
+        61, 33, 3, -60, -77, 95, -26, 71, -126, 8, -6, 76, 103, -113, -125, 58, -14, 55, -118,
+        -110, -43, 124, 29, -75, 37, -120, -13, 44, 94, 7, 81, -57, -70, -88, 77, 38, -116, -36,
+        88, -9, 1, -55, 35, 17, 116, 114, -92, -102, -98, -128, 70, -15, 66, 60, -124, 14, -93, 53,
+        -91, 117, -74, -33, -58, -123, 5, 112, -82, 115, -53, -8, -80, 0, -73, 2, 99, 75, 67, 4,
+        126, 30, 87, 109, -46, 22, 98, -64, -101, 127, 48, 36, -81, 78, 119, 32, -25, 100, 121,
+        -24, -99, -121, -12, 47, -32, -28, -106, 105, -89, 57, 25, 113, -51, -20, -11, -45, -37, 9,
+        -87, -54, -27, -68, -34, -109, -97, -78, -39, 11, 28, 10, 26, 125, 16, 91, -72, 110, -17,
+        101, -63, 120, -83, -2, 19, 54, -111, 90, 6, -59, 108, -127, 89, 41, 34, -42, 27, -122,
+        107, 43, 106, 46, -47
+      ]
+    );
 
     assert_similar(perlin.sample(0.0, 0.0, 0.0), 0.10709);
     assert_similar(perlin.sample(0.5, 0.0, 0.0), -0.2507);
