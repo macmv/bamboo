@@ -1,0 +1,20 @@
+[package]
+name = "vanilla-terrain"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+bb_plugin = { path = "../../../../bb_plugin" }
+
+# Seperate workspace
+[workspace]
+
+[profile.release]
+lto = true
+
+[profile.rust-analyzer]
+inherits = "dev"
+opt-level = 0

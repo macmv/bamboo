@@ -1,0 +1,6 @@
+type = "wasm"
+enabled = true
+
+[wasm]
+compile = "cargo build --target wasm32-unknown-unknown --release --color=always"
+output = "target/wasm32-unknown-unknown/release/vanilla_terrain.wasm"
