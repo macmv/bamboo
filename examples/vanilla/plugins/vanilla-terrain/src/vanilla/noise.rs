@@ -101,3 +101,23 @@ fn lerp2(delta_x: f64, delta_y: f64, x0y0: f64, x1y0: f64, x0y1: f64, x1y1: f64)
 }
 
 fn lerp(delta: f64, start: f64, end: f64) -> f64 { start + delta * (end - start) }
+
+#[cfg(test)]
+mod tests {
+  use super::*;
+
+  #[test]
+  fn single_perlin_test() {
+    let mut rng = Rng::new(1);
+    let mut perlin = Perlin::new(&mut rng);
+
+    assert_similar(perlin.sample(0.0, 0.0, 0.0), 0.10709);
+    assert_similar(perlin.sample(0.5, 0.0, 0.0), -0.2507);
+  }
+
+  fn assert_similar(actual: f64, expected: f64) {
+    if (expected - actual).abs() > 0.0001 {
+      panic!("Expected: {expected}, got: {actual}");
+    }
+  }
+}
