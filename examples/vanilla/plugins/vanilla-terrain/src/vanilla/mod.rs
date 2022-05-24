@@ -2,7 +2,6 @@ use bb_plugin::{
   chunk::{paletted, Chunk, Section},
   math::{ChunkPos, Pos, SectionRelPos},
 };
-use std::cmp;
 
 pub mod noise;
 pub mod rng;
@@ -39,7 +38,7 @@ impl NoiseSampler<'_> {
   fn sample_noise(&mut self, v: f64) {}
 
   fn get_block_inner(&mut self, x: i32, y: i32, z: i32, noise: f64) -> f64 {
-    let mut e = 0.0;
+    let e = 0.0;
     let mut f = 0.0;
     let mut g = 0.0;
     /*
@@ -50,9 +49,9 @@ impl NoiseSampler<'_> {
 
     f = e + noise;
     g = 1.5625;
-    let mut h;
-    let mut l;
-    let mut m;
+    let h;
+    let l;
+    let m;
     let mut n;
     let has_no_noise_caves = true;
     if !has_no_noise_caves && !(f < -64.0) {
@@ -110,6 +109,12 @@ impl NoiseSampler<'_> {
 
   fn get_block(&mut self, x: i32, y: i32, z: i32) -> u32 {
     let d = self.get_block_inner(x, y, z, x as f64 / 100.0);
+    if d > 0.0 {
+      0
+    } else {
+      1
+    }
+    /*
     let mut e = d * 0.64;
     if e < -1.0 {
       e = -1.0;
@@ -139,6 +144,7 @@ impl NoiseSampler<'_> {
     } else {
       0
     }
+    */
   }
 }
 

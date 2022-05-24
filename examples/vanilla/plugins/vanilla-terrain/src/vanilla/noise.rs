@@ -42,31 +42,32 @@ impl Noise for Perlin {
     let d = x + self.origin_x;
     let e = y + self.origin_y;
     let f = z + self.origin_z;
-    let sectionX = d.floor() as i32;
-    let sectionY = e.floor() as i32;
-    let sectionZ = f.floor() as i32;
-    let localX = d - sectionX as f64;
-    let localY = e - sectionY as f64;
-    let localZ = f - sectionZ as f64;
-    let fadeLocalX = localY;
+    let section_x = d.floor() as i32;
+    let section_y = e.floor() as i32;
+    let section_z = f.floor() as i32;
+    let local_x = d - section_x as f64;
+    let local_y = e - section_y as f64;
+    let local_z = f - section_z as f64;
+    let fade_local_x = local_y;
 
-    let i = self.gradient(sectionX);
-    let j = self.gradient(sectionX + 1);
-    let k = self.gradient(i + sectionY);
-    let l = self.gradient(i + sectionY + 1);
-    let m = self.gradient(j + sectionY);
-    let n = self.gradient(j + sectionY + 1);
-    let d = perlin_grad(self.gradient(k + sectionZ), localX, localY, localZ);
-    let e = perlin_grad(self.gradient(m + sectionZ), localX - 1.0, localY, localZ);
-    let f = perlin_grad(self.gradient(l + sectionZ), localX, localY - 1.0, localZ);
-    let g = perlin_grad(self.gradient(n + sectionZ), localX - 1.0, localY - 1.0, localZ);
-    let h = perlin_grad(self.gradient(k + sectionZ + 1), localX, localY, localZ - 1.0);
-    let o = perlin_grad(self.gradient(m + sectionZ + 1), localX - 1.0, localY, localZ - 1.0);
-    let p = perlin_grad(self.gradient(l + sectionZ + 1), localX, localY - 1.0, localZ - 1.0);
-    let q = perlin_grad(self.gradient(n + sectionZ + 1), localX - 1.0, localY - 1.0, localZ - 1.0);
-    let r = perlin_fade(localX);
-    let s = perlin_fade(fadeLocalX);
-    let t = perlin_fade(localZ);
+    let i = self.gradient(section_x);
+    let j = self.gradient(section_x + 1);
+    let k = self.gradient(i + section_y);
+    let l = self.gradient(i + section_y + 1);
+    let m = self.gradient(j + section_y);
+    let n = self.gradient(j + section_y + 1);
+    let d = perlin_grad(self.gradient(k + section_z), local_x, local_y, local_z);
+    let e = perlin_grad(self.gradient(m + section_z), local_x - 1.0, local_y, local_z);
+    let f = perlin_grad(self.gradient(l + section_z), local_x, local_y - 1.0, local_z);
+    let g = perlin_grad(self.gradient(n + section_z), local_x - 1.0, local_y - 1.0, local_z);
+    let h = perlin_grad(self.gradient(k + section_z + 1), local_x, local_y, local_z - 1.0);
+    let o = perlin_grad(self.gradient(m + section_z + 1), local_x - 1.0, local_y, local_z - 1.0);
+    let p = perlin_grad(self.gradient(l + section_z + 1), local_x, local_y - 1.0, local_z - 1.0);
+    let q =
+      perlin_grad(self.gradient(n + section_z + 1), local_x - 1.0, local_y - 1.0, local_z - 1.0);
+    let r = perlin_fade(local_x);
+    let s = perlin_fade(fade_local_x);
+    let t = perlin_fade(local_z);
     return lerp3(r, s, t, d, e, f, g, h, o, p, q);
   }
 }

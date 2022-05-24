@@ -1,6 +1,4 @@
-use bb_plugin::util::{chat::Color, Chat};
-
-mod vanilla;
+pub mod vanilla;
 
 #[macro_use]
 extern crate bb_plugin;
