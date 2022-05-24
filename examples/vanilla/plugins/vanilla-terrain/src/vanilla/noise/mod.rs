@@ -3,12 +3,14 @@ mod cached;
 mod double;
 mod octave;
 mod perlin;
+mod wyhash;
 
 pub use cache::Cache;
 pub use cached::Cached;
 pub use double::Double;
 pub use octave::Octave;
 pub use perlin::Perlin;
+pub use wyhash::{WyHash, WyHashBuilder};
 
 pub type DoublePerlin = Double<Octave<Perlin>>;
 pub type OctavePerlin = Octave<Perlin>;

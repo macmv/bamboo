@@ -97,24 +97,24 @@ impl NoiseSampler<'_> {
 
     n = if h < l { h } else { l };
     n = if n > m { n } else { m };
-    let n = self.gen.noise.sample(x as f64 / 64.0, y as f64 / 64.0, z as f64 / 64.0);
     // n = self.apply_slides(n, y / self.vertical_size);
     // n = blender.method_39338(x, y, z, n);
-    if n < -64.0 {
+    let _ = if n < -64.0 {
       -64.0
     } else if n > 64.0 {
       64.0
     } else {
       n
-    }
+    };
+    self.gen.noise.sample(x as f64, y as f64, z as f64)
   }
 
   fn get_block(&mut self, x: i32, y: i32, z: i32) -> u32 {
-    let d = self.get_block_inner(x, y, z, x as f64 / 100.0);
-    if d > 0.0 {
-      0
-    } else {
+    let d = self.get_block_inner(x, y, z, x as f64 / 100.0) / 100.0;
+    if d + 64.0 > y as f64 {
       1
+    } else {
+      0
     }
     /*
     let mut e = d * 0.64;

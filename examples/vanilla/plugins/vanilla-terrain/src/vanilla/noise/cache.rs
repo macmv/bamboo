@@ -1,3 +1,4 @@
+use super::WyHashBuilder;
 use std::{
   borrow::Borrow,
   collections::{HashMap, VecDeque},
@@ -50,7 +51,7 @@ const MAX_SIZE: usize = 127;
 /// assert_eq!(*num_calls.lock().unwrap(), 2);
 /// ```
 pub struct Cache<K, V> {
-  data: HashMap<K, (V, usize)>,
+  data: HashMap<K, (V, usize), WyHashBuilder>,
   age:  VecDeque<K>,
 }
 
@@ -59,8 +60,7 @@ impl<K, V> Cache<K, V> {
   /// the cache, so that all future calls will never allocate anything.
   pub fn new() -> Self {
     Cache {
-      // NOTE: Use a WyHashBuilder here to speed up the cache by a lot.
-      data: HashMap::with_capacity(MAX_SIZE),
+      data: HashMap::with_capacity_and_hasher(MAX_SIZE, WyHashBuilder),
       age:  VecDeque::with_capacity(MAX_SIZE),
     }
   }
@@ -75,6 +75,10 @@ where
   /// Otherwise, the internal builder is used to create a new value for this
   /// key. Either way, a reference into the map is returned.
   pub fn get<F: Fn(K) -> V>(&mut self, key: K, builder: F) -> &V {
+    // This makes sure the order for most recently modified item stays
+    // correct. However, its slow, and removing it gave a 15% improvement in
+    // the chunk test.
+    /*
     if let Some((_, index)) = self.data.get_mut(&key) {
       let idx = *index;
       // We just looked up the item at key, so it should be at the back of age.
@@ -88,6 +92,8 @@ where
         self.data.get_mut(&self.age[i]).unwrap().1 -= 1;
       }
     } else {
+      */
+    if !self.data.contains_key(&key) {
       self.clean();
       self.age.push_back(key);
       self.data.insert(key, ((builder)(key), self.age.len() - 1));
@@ -114,6 +120,7 @@ where
         let key = self.age.pop_front().unwrap();
         self.data.remove(&key).unwrap();
       }
+      #[cfg(debug_assertions)]
       self.validate();
       // self.age just got a bunch of items removed, so we need to fix all the
       // indices in self.data.
@@ -128,6 +135,7 @@ where
     }
   }
 
+  #[cfg(debug_assertions)]
   fn validate(&self) {
     for key in self.age.iter() {
       // dbg!(&self.age);
