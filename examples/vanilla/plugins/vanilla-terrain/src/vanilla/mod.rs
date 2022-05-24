@@ -3,7 +3,9 @@ use bb_plugin::{
   math::{ChunkPos, Pos, SectionRelPos},
 };
 
+pub mod density_funcs;
 pub mod noise;
+pub mod noise_params;
 pub mod rng;
 
 use noise::Noise;
@@ -14,7 +16,7 @@ pub fn generate_chunk(chunk: &mut Chunk<paletted::Section>, pos: ChunkPos) {
   let gen = NoiseGenerator {
     vertical_size:   1,
     horizontal_size: 2,
-    perlin:          noise::Perlin::new(&mut rng),
+    noise:           density_funcs::World::new(&mut rng),
   };
   gen.populate_noise(chunk, pos);
 }
@@ -22,7 +24,7 @@ pub fn generate_chunk(chunk: &mut Chunk<paletted::Section>, pos: ChunkPos) {
 const SEED: i64 = -2238292588208479879;
 
 struct NoiseGenerator {
-  perlin:              noise::Perlin,
+  noise:               density_funcs::World,
   pub vertical_size:   i32,
   pub horizontal_size: i32,
 }
@@ -95,7 +97,7 @@ impl NoiseSampler<'_> {
 
     n = if h < l { h } else { l };
     n = if n > m { n } else { m };
-    let n = self.gen.perlin.sample(x as f64 / 64.0, y as f64 / 64.0, z as f64 / 64.0);
+    let n = self.gen.noise.sample(x as f64 / 64.0, y as f64 / 64.0, z as f64 / 64.0);
     // n = self.apply_slides(n, y / self.vertical_size);
     // n = blender.method_39338(x, y, z, n);
     if n < -64.0 {

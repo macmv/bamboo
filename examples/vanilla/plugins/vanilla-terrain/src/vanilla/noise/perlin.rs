@@ -1,19 +1,10 @@
-use super::rng::Rng;
-
-pub struct Octave<N> {
-  noise:   N,
-  octaves: i32,
-}
+use super::{super::rng::Rng, Noise};
 
 pub struct Perlin {
   origin_x: f64,
   origin_y: f64,
   origin_z: f64,
   kernel:   [i8; 256],
-}
-
-pub trait Noise {
-  fn sample(&self, x: f64, y: f64, z: f64) -> f64;
 }
 
 impl Perlin {
