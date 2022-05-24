@@ -1,8 +1,9 @@
 use super::{
-  noise::{DoublePerlin, Noise, Octave, OctavePerlin, Perlin},
+  noise::{Cached, CachedDoublePerlin, DoublePerlin, Noise, Octave, OctavePerlin, Perlin},
   noise_params::{self, NoiseParams},
   rng::Rng,
 };
+use float_ord::FloatOrd;
 use std::sync::Arc;
 
 pub struct World {
@@ -17,19 +18,19 @@ pub struct DensityFuncs {
 }
 
 pub struct NoiseFuncs {
-  offset:     Arc<DoublePerlin>,
-  continents: Arc<DoublePerlin>,
+  offset:     Arc<CachedDoublePerlin>,
+  continents: Arc<CachedDoublePerlin>,
 }
 
 impl NoiseFuncs {
   pub fn new(rng: &mut Rng) -> Self {
     macro_rules! noise {
       ( $params:expr ) => {
-        Arc::new(DoublePerlin::new(
-          Octave::new(Perlin::new(rng), -$params.first_octave),
-          Octave::new(Perlin::new(rng), -$params.first_octave),
+        Arc::new(Cached::new(DoublePerlin::new(
+          Octave::new(rng, |rng| Perlin::new(rng), -$params.first_octave, $params.amplitudes),
+          Octave::new(rng, |rng| Perlin::new(rng), -$params.first_octave, $params.amplitudes),
           $params.amplitudes[0],
-        ))
+        )))
       };
     }
     NoiseFuncs {
@@ -72,7 +73,7 @@ pub trait Density {
 }
 
 pub struct Shift {
-  noise: Arc<DoublePerlin>,
+  noise: Arc<CachedDoublePerlin>,
 }
 
 pub struct Shifted {
@@ -80,7 +81,7 @@ pub struct Shifted {
   y_scale:  f64,
   shift_x:  Arc<Shift>,
   shift_z:  Arc<Shift>,
-  noise:    Arc<DoublePerlin>,
+  noise:    Arc<Cached<DoublePerlin>>,
 }
 
 impl Density for Shifted {
@@ -100,13 +101,13 @@ impl Density for Shift {
   }
 }
 
-pub fn shift(noise: Arc<DoublePerlin>) -> Shift { Shift { noise } }
+pub fn shift(noise: Arc<CachedDoublePerlin>) -> Shift { Shift { noise } }
 
 pub fn shifted(
   shift_x: Arc<Shift>,
   shift_z: Arc<Shift>,
   xz_scale: f64,
-  noise: Arc<DoublePerlin>,
+  noise: Arc<CachedDoublePerlin>,
 ) -> Shifted {
   Shifted { xz_scale, y_scale: 0.0, shift_x, shift_z, noise }
 }

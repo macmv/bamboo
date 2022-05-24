@@ -271,6 +271,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "float-ord"
+version = "0.3.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8ce81f49ae8a0482e4c55ea62ebbd7e5a686af544c00b9d090bba3ff9be97b3d"
+
+[[package]]
 name = "form_urlencoded"
 version = "1.0.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -836,6 +842,8 @@ name = "vanilla-terrain"
 version = "0.1.0"
 dependencies = [
  "bb_plugin",
+ "float-ord",
+ "parking_lot",
  "pretty_assertions",
 ]
 

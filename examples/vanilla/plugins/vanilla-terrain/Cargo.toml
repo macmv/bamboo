@@ -8,6 +8,8 @@ crate-type = ["cdylib"]
 
 [dependencies]
 bb_plugin = { path = "../../../../bb_plugin" }
+float-ord = "0.3.2"
+parking_lot = "0.12.0"
 
 # Seperate workspace
 [workspace]
