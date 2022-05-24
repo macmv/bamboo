@@ -54,6 +54,18 @@ impl log::Log for Logger {
 }
 
 pub fn init() {
+  std::panic::set_hook(Box::new(|info| {
+    match (info.payload().downcast_ref::<&str>(), info.location()) {
+      (Some(s), Some(location)) => {
+        error!("plugin panic: {s:?} at {}:{}", location.file(), location.line())
+      }
+      (Some(s), None) => error!("plugin panic: {s:?} at <no location>"),
+      (None, Some(location)) => {
+        error!("plugin panic: <no message> at {}:{}", location.file(), location.line())
+      }
+      (None, None) => error!("plugin panic: <no message> at <no location>"),
+    }
+  }));
   log::set_logger(&LOGGER).unwrap();
   log::set_max_level(LevelFilter::Info);
 }
