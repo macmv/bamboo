@@ -34,18 +34,19 @@ const MAX_SIZE: usize = 127;
 /// let num_calls = Arc::new(Mutex::new(0));
 /// let num_calls_clone = num_calls.clone();
 /// // The closure passed here must be `Send`, so we need to use a mutex.
-/// let mut cache = Cache::new(move |key| {
+/// let builder = move |key| {
 ///   *num_calls_clone.lock().unwrap() += 1;
 ///   key + 10
-/// });
+/// };
+/// let mut cache = Cache::new();
 ///
-/// assert_eq!(*cache.get(5), 15);
-/// assert_eq!(*cache.get(5), 15); // This will not call builder.
+/// assert_eq!(*cache.get(5, builder), 15);
+/// assert_eq!(*cache.get(5, builder), 15); // This will not call builder.
 /// assert_eq!(*num_calls.lock().unwrap(), 1);
 ///
-/// assert_eq!(*cache.get(10), 20); // This calls the builder again.
+/// assert_eq!(*cache.get(10, builder), 20); // This calls the builder again.
 /// assert_eq!(*num_calls.lock().unwrap(), 2);
-/// assert_eq!(*cache.get(10), 20); // This won't call the builder.
+/// assert_eq!(*cache.get(10, builder), 20); // This won't call the builder.
 /// assert_eq!(*num_calls.lock().unwrap(), 2);
 /// ```
 pub struct Cache<K, V> {
@@ -154,30 +155,31 @@ mod tests {
 
   #[test]
   fn cache_get() {
-    let mut cache = Cache::new(|key| key + 10);
-    assert_eq!(*cache.get(5), 15);
+    let mut cache = Cache::new();
+    assert_eq!(*cache.get(5, |key| key + 10), 15);
   }
 
   #[test]
   fn cache_clean() {
-    let mut cache = Cache::new(|key| key + 10);
+    let mut cache = Cache::new();
+    let builder = |key| key + 10;
     assert_eq!(cache.age.capacity(), MAX_SIZE);
     assert!(cache.data.capacity() >= MAX_SIZE, "{}", cache.data.capacity());
 
     for i in 0..MAX_SIZE {
-      assert_eq!(*cache.get(i + 30), i + 40);
+      assert_eq!(*cache.get(i + 30, builder), i + 40);
     }
     assert_eq!(cache.data.len(), MAX_SIZE);
     assert_eq!(cache.age.len(), MAX_SIZE);
 
-    assert_eq!(*cache.get(1000), 1010);
+    assert_eq!(*cache.get(1000, builder), 1010);
     // Cache will have removed the element (30, 40), and added the element (1000,
     // 10010).
     assert_eq!(cache.data.len(), MAX_SIZE);
     assert_eq!(cache.age.len(), MAX_SIZE);
 
     // Re-order the age list
-    assert_eq!(*cache.get(31), 41);
+    assert_eq!(*cache.get(31, builder), 41);
     assert_eq!(cache.data.len(), MAX_SIZE);
     assert_eq!(cache.age.len(), MAX_SIZE);
 

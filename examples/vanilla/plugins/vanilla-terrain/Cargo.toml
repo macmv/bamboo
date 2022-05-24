@@ -4,7 +4,8 @@ version = "0.1.0"
 edition = "2021"
 
 [lib]
-crate-type = ["cdylib"]
+name = "vanilla_terrain"
+crate-type = ["lib", "cdylib"]
 
 [dependencies]
 bb_plugin = { path = "../../../../bb_plugin" }
@@ -23,3 +24,9 @@ opt-level = 0
 
 [dev-dependencies]
 pretty_assertions = "1.2.1"
+pprof = { version = "0.3", features = ["flamegraph"] }
+criterion = "0.3.5"
+
+[[bench]]
+name = "chunk"
+harness = false
