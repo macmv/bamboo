@@ -13,7 +13,7 @@ pub struct Perlin {
 }
 
 pub trait Noise {
-  fn sample(&mut self, x: f64, y: f64, z: f64) -> f64;
+  fn sample(&self, x: f64, y: f64, z: f64) -> f64;
 }
 
 impl Perlin {
@@ -38,7 +38,7 @@ impl Perlin {
 }
 
 impl Noise for Perlin {
-  fn sample(&mut self, x: f64, y: f64, z: f64) -> f64 {
+  fn sample(&self, x: f64, y: f64, z: f64) -> f64 {
     let d = x + self.origin_x;
     let e = y + self.origin_y;
     let f = z + self.origin_z;

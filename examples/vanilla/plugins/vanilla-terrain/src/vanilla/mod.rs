@@ -11,19 +11,24 @@ use noise::Noise;
 use rng::Rng;
 
 pub fn generate_chunk(chunk: &mut Chunk<paletted::Section>, pos: ChunkPos) {
-  let gen = NoiseGenerator { vertical_size: 1, horizontal_size: 2 };
+  let mut rng = Rng::new(SEED);
+  let gen = NoiseGenerator {
+    vertical_size:   1,
+    horizontal_size: 2,
+    perlin:          noise::Perlin::new(&mut rng),
+  };
   gen.populate_noise(chunk, pos);
 }
 
 const SEED: i64 = -2238292588208479879;
 
 struct NoiseGenerator {
+  perlin:              noise::Perlin,
   pub vertical_size:   i32,
   pub horizontal_size: i32,
 }
 struct NoiseSampler<'a> {
-  gen:   &'a NoiseGenerator,
-  noise: noise::Perlin,
+  gen: &'a NoiseGenerator,
 }
 
 impl NoiseSampler<'_> {
@@ -91,7 +96,7 @@ impl NoiseSampler<'_> {
 
     n = if h < l { h } else { l };
     n = if n > m { n } else { m };
-    let n = self.noise.sample(x as f64 / 32.0, y as f64 / 32.0, z as f64 / 32.0);
+    let n = self.gen.perlin.sample(x as f64 / 64.0, y as f64 / 64.0, z as f64 / 64.0);
     // n = self.apply_slides(n, y / self.vertical_size);
     // n = blender.method_39338(x, y, z, n);
     if n < -64.0 {
@@ -129,10 +134,10 @@ impl NoiseSampler<'_> {
     e += columnSampler.calculateNoise(x, y, z);
     return chunkNoiseSampler.getAquiferSampler().apply(x, y, z, d, e);
     */
-    if e > 0.0 {
-      0
-    } else {
+    if e > y as f64 / 32.0 {
       1
+    } else {
+      0
     }
   }
 }
@@ -143,8 +148,7 @@ impl NoiseGenerator {
     let n = self.vertical_size;
     let o = 16 / m;
     let p = 16 / m;
-    let mut rng = Rng::new(SEED);
-    let mut sampler = NoiseSampler { gen: self, noise: noise::Perlin::new(&mut rng) };
+    let mut sampler = NoiseSampler { gen: self };
     let i = 0 / self.vertical_size;
     let j = 256 / self.vertical_size;
 
