@@ -28,6 +28,7 @@ impl NoiseFuncs {
         Arc::new(DoublePerlin::new(
           Octave::new(Perlin::new(rng), -$params.first_octave),
           Octave::new(Perlin::new(rng), -$params.first_octave),
+          $params.amplitudes[0],
         ))
       };
     }
