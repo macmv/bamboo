@@ -9,6 +9,7 @@ use std::{ffi::CString, marker::PhantomData};
 pub use bb_common::{chunk, math, util};
 
 pub mod player;
+pub mod time;
 
 mod internal;
 

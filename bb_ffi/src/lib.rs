@@ -57,4 +57,8 @@ extern "C" {
   pub fn bb_player_username(player: *const CUUID, buf: *mut u8, len: u32) -> i32;
   /// Sends the given chat message to the player.
   pub fn bb_player_send_message(player: *const CUUID, message: *const CChat);
+
+  /// Returns the number of nanoseconds since this function was called first.
+  /// This is used to find the duration of a function.
+  pub fn bb_time_since_start() -> u64;
 }
