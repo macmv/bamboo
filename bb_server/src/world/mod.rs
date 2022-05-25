@@ -240,13 +240,12 @@ impl World {
                   let mut queue_lock = s.world.chunks_to_generate.lock();
                   // If the item has already been removed from the queue, or if there aren't any
                   // players waiting on this chunk, we skip it. `generating` will always be true,
-                  // as we want to set that before spawning this task.
-                  let remove;
-                  if let Some((_, players)) = queue_lock.get(&pos) {
-                    remove = players.is_empty();
+                  // as we already set that, after `try_execute` returns `Ok(())`.
+                  let remove = if let Some((_, players)) = queue_lock.get(&pos) {
+                    players.is_empty()
                   } else {
-                    remove = true;
-                  }
+                    true
+                  };
                   if remove {
                     queue_lock.remove(&pos);
                     return;
