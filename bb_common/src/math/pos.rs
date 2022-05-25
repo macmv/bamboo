@@ -137,14 +137,14 @@ impl Pos {
     self.x += x;
     self
   }
-  /// Returns self, with y set to self.x plus the given value.
+  /// Returns self, with y set to self.y plus the given value.
   #[inline(always)]
   #[must_use = "add_y returns a modified version of self"]
   pub fn add_y(mut self, y: i32) -> Self {
     self.y += y;
     self
   }
-  /// Returns self, with z set to self.x plus the given value.
+  /// Returns self, with z set to self.z plus the given value.
   #[inline(always)]
   #[must_use = "add_z returns a modified version of self"]
   pub fn add_z(mut self, z: i32) -> Self {
