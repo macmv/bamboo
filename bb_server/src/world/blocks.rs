@@ -494,32 +494,4 @@ impl World {
       &self.nearby_colliders(AABB::new(from.into(), (to - from).into()), water),
     )
   }
-
-  pub fn unqueue_chunk(&self, pos: ChunkPos, player: &Player) {
-    let mut queue_lock = self.chunks_to_generate.lock();
-    if let Some((_, players)) = queue_lock.get_mut(&pos) {
-      players.remove(&player.id());
-    }
-  }
-  pub fn queue_chunk(&self, pos: ChunkPos, player: &Arc<Player>) {
-    {
-      let rlock = self.chunks.read();
-      if rlock.contains_key(&pos) {
-        drop(rlock);
-        player.send_chunk(pos, || self.serialize_chunk(pos));
-        return;
-      }
-      // drop rlock
-    }
-    let mut queue_lock = self.chunks_to_generate.lock();
-    if let Some((_, players)) = queue_lock.get_mut(&pos) {
-      players.insert(player.id(), Arc::downgrade(player));
-    } else {
-      // next tick, a chunk generator thread will be used to generate this chunk (if
-      // free).
-      let mut players = HashMap::new();
-      players.insert(player.id(), Arc::downgrade(player));
-      queue_lock.insert(pos, (false, players));
-    }
-  }
 }
