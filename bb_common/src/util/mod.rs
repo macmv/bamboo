@@ -17,6 +17,8 @@ use std::{error::Error, fmt, num::ParseIntError, str::FromStr};
 pub use buffer::{Buffer, BufferError, BufferErrorKind, Mode};
 pub use item::Item;
 
+pub use num_cpus::get as num_cpus;
+
 pub fn serialize_varint(v: i32) -> Vec<u8> {
   // Need to work with u32, as >> acts differently on i32 vs u32.
   let mut val = v as u32;

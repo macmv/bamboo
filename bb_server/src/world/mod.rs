@@ -199,10 +199,13 @@ impl World {
       uspt:  self.uspt.clone(),
       world: Arc::clone(&self),
     });
-    let chunk_pool = ThreadPool::auto("chunk generator", || State {
-      uspt:  self.uspt.clone(),
-      world: Arc::clone(&self),
-    });
+    // We set a limit to double the number of cores. This means that we will only
+    // hit an artificial limit if we can generate a chunk in 5 ms.
+    let chunk_pool =
+      ThreadPool::auto_with_limit("chunk generator", bb_common::util::num_cpus() * 10, || State {
+        uspt:  self.uspt.clone(),
+        world: Arc::clone(&self),
+      });
     let mut tick = 0;
     let mut start = Instant::now();
     loop {
@@ -271,7 +274,7 @@ impl World {
                 // case, we just wait until some of them are done. The cache will be cleared out
                 // when the player leaves or moves to another area, so it shouldn't be a problem in
                 // most cases.
-                Err(_) => {}
+                Err(_) => break,
               }
             }
           }
