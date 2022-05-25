@@ -16,9 +16,9 @@ impl Impl {
   pub fn next(&mut self) -> u64 {
     let l = self.lo;
     let mut m = self.hi;
-    let n = (l + m).rotate_left(17) + l;
+    let n = l.wrapping_add(m).rotate_left(17).wrapping_add(l);
     m ^= l;
-    self.lo = l.rotate_left(49) ^ m ^ m << 21;
+    self.lo = l.rotate_left(49) ^ m ^ (m << 21);
     self.hi = m.rotate_left(28);
     n
   }
@@ -35,7 +35,7 @@ fn split_mix(mut seed: u64) -> u64 {
 }
 
 fn xoroshiro_seed(seed: u64) -> (u64, u64) {
-  let l = seed ^ 0x6A09E667F3BCC909;
+  let l = seed ^ 0x6a09e667f3bcc909;
   let m = l.wrapping_sub(7046029254386353131);
   (split_mix(l), split_mix(m))
 }
@@ -55,7 +55,7 @@ impl Rng for Xoroshiro {
     self.imp = Impl::new(lo, hi);
   }
 
-  fn next_int(&mut self) -> i32 { self.next_bits(32) as i32 }
+  fn next_int(&mut self) -> i32 { self.imp.next() as i32 }
   fn next_int_max(&mut self, max: i32) -> i32 {
     let mut l = self.next_int() as u64 & 0xffffffff;
     let mut m = l * max as u64;
@@ -84,5 +84,17 @@ impl Rng for Xoroshiro {
     for _ in 0..count {
       self.next_int();
     }
+  }
+}
+
+#[cfg(test)]
+mod tests {
+  use super::*;
+
+  #[test]
+  fn basic_next_int() {
+    let mut rng = Xoroshiro::new(0);
+    assert_eq!(rng.next_int(), -160476802);
+    assert_eq!(rng.next_int(), 781697906);
   }
 }

@@ -14,10 +14,13 @@ impl<N> Octave<N> {
     octaves: i32,
     amplitudes: &[f64],
   ) -> Self {
+    // TODO: Handle xoroshiro/legacy correctly
+
     Octave {
       samplers:    amplitudes.iter().copied().map(|amp| (noise(rng), amp)).collect(),
       lacunarity:  2.0_f64.powi(octaves),
-      persistence: 2.0_f64.powi(octaves),
+      persistence: 2.0_f64.powi(amplitudes.len() as i32 - 1)
+        / (2.0_f64.powi(amplitudes.len() as i32) - 1.0),
     }
   }
   pub fn get_octave(&self, i: usize) -> &N { &self.samplers[i].0 }
@@ -41,5 +44,30 @@ impl<N: Noise> Noise for Octave<N> {
       persistence /= 2.0;
     }
     total
+  }
+}
+
+#[cfg(test)]
+mod tests {
+  use super::{
+    super::{super::rng::SimpleRng, Perlin},
+    *,
+  };
+  use pretty_assertions::assert_eq;
+
+  #[test]
+  fn single_perlin_test() {
+    let mut rng = SimpleRng::new(0);
+    let mut octave = Octave::new(&mut rng, |rng| Perlin::new(rng), 3, &[1.0, 2.0, 3.0]);
+
+    assert_similar(octave.sample(0.0, 0.0, 0.0), -0.0974);
+    assert_similar(octave.sample(0.5, 0.0, 0.0), 0.35774);
+  }
+
+  #[track_caller]
+  fn assert_similar(actual: f64, expected: f64) {
+    if (expected - actual).abs() > 0.0001 {
+      panic!("Expected: {expected}, got: {actual}");
+    }
   }
 }

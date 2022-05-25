@@ -70,20 +70,20 @@ mod tests {
 
   #[test]
   fn basic_next_int() {
-    let mut rng = Rng::new(1);
+    let mut rng = SimpleRng::new(1);
     assert_eq!(rng.next_int(), -1155869325);
     assert_eq!(rng.next_int(), 431529176);
   }
   #[test]
   fn basic_next_double() {
-    let mut rng = Rng::new(1);
+    let mut rng = SimpleRng::new(1);
     assert_similar(rng.next_double(), 0.730878);
     assert_similar(rng.next_double(), 0.410080);
   }
 
   #[test]
   fn lots_of_calls() {
-    let mut rng = Rng::new(1);
+    let mut rng = SimpleRng::new(1);
     assert_eq!(rng.next_int(), -1155869325);
     assert_similar(rng.next_double(), 0.100473);
     assert_eq!(rng.next_int(), 1749940626);
@@ -91,7 +91,7 @@ mod tests {
 
   #[test]
   fn next_int_max() {
-    let mut rng = Rng::new(1);
+    let mut rng = SimpleRng::new(1);
     assert_eq!(rng.next_int_max(5), 0);
     assert_eq!(rng.next_int_max(5), 3);
     assert_eq!(rng.next_int_max(5), 2);
