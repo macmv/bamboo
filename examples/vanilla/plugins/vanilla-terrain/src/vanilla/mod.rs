@@ -15,15 +15,13 @@ use rng::Rng;
 use density_funcs::{Density, DensityFunc, NoisePos};
 
 pub fn generate_chunk(chunk: &mut Chunk<paletted::Section>, pos: ChunkPos) {
-  let now = bb_plugin::time::Instant::now();
   let mut rng = Rng::new(SEED);
   let gen = NoiseGenerator {
     vertical_size:   1,
     horizontal_size: 2,
     noise:           density_funcs::World::new(&mut rng),
   };
-  info!("elapsed: {:?}", now.elapsed());
-  gen.populate_noise(chunk, pos);
+  let chunk = gen.populate_noise(chunk, pos);
 }
 
 const SEED: i64 = -2238292588208479879;
@@ -215,6 +213,10 @@ impl NoiseGenerator {
     const MIN_Y: i32 = 0;
     const MAX_Y: i32 = 256;
 
+    let mut total_sample = 0;
+    let mut total_setblock = 0;
+    let now = bb_plugin::time::Instant::now();
+
     for section_x in 0..(16 / self.horizontal_size) {
       sampler.sample_end_noise(section_x);
       for section_z in 0..(16 / self.horizontal_size) {
@@ -243,8 +245,11 @@ impl NoiseGenerator {
                 let rel_z = Pos::new(0, 0, z).chunk_rel_z();
                 sampler.sample_noise_z(z, loop_z as f64 / self.horizontal_size as f64);
 
+                let now = bb_plugin::time::Instant::now();
                 let block = sampler.sample_block();
+                total_sample += now.elapsed().as_nanos();
 
+                let now = bb_plugin::time::Instant::now();
                 if block != 0 {
                   /*
                    if (lv10.getLuminance() != 0 && chunk instanceof ProtoChunk) {
@@ -270,12 +275,19 @@ impl NoiseGenerator {
                   }
                   */
                 }
+                total_setblock += now.elapsed().as_nanos();
               }
             }
           }
         }
       }
     }
+    let total = now.elapsed().as_nanos() as f64 / 1_000_000.0;
+    let total_sample = total_sample as f64 / 1_000_000.0;
+    let total_setblock = total_setblock as f64 / 1_000_000.0;
+    info!("total: {total:.4}ms");
+    info!("sample: {total_sample:.4}ms ({:.2}%)", total_sample / total * 100.0);
+    info!("setblock: {total_setblock:.4}ms ({:.2}%)", total_setblock / total * 100.0);
     /*
 
     for(int q = 0; q < o; ++q) {

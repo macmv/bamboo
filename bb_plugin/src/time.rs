@@ -17,6 +17,10 @@ impl Instant {
   }
 }
 
+impl Duration {
+  pub fn as_nanos(&self) -> u64 { self.0 }
+}
+
 impl Add<Duration> for Instant {
   type Output = Instant;
 
