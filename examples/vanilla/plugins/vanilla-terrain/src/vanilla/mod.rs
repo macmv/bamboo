@@ -15,12 +15,14 @@ use rng::Rng;
 use density_funcs::{Density, DensityFunc, NoisePos};
 
 pub fn generate_chunk(chunk: &mut Chunk<paletted::Section>, pos: ChunkPos) {
+  let now = bb_plugin::time::Instant::now();
   let mut rng = Rng::new(SEED);
   let gen = NoiseGenerator {
     vertical_size:   1,
     horizontal_size: 2,
     noise:           density_funcs::World::new(&mut rng),
   };
+  info!("elapsed: {:?}", now.elapsed());
   gen.populate_noise(chunk, pos);
 }
 
