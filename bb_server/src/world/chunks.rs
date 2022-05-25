@@ -49,11 +49,18 @@ impl ChunksToLoad {
     let mut players = HashMap::new();
     players.insert(player.id(), Arc::downgrade(player));
     self.chunks.insert(pos, ChunkToLoad { pos, generating: false, players });
+    // Cache should always get updated here, as the position of `player` has
+    // changed, so all the priorities need to be recalculated.
     self.needs_update = true;
   }
   fn remove_pos(&mut self, pos: ChunkPos) -> Option<ChunkToLoad> {
     self.chunks.remove(&pos).map(|c| {
-      self.needs_update = true;
+      // Don't resort here, just remove the one element
+      if let Some(i) = self.sorted.iter().position(|inner| inner.pos == c.pos) {
+        self.sorted.remove(i);
+      } else {
+        self.needs_update = true;
+      }
       c
     })
   }
@@ -61,9 +68,15 @@ impl ChunksToLoad {
     if let Some(chunk) = self.chunks.get_mut(&pos) {
       chunk.players.remove(&player.id());
       if chunk.players.is_empty() {
-        self.chunks.remove(&pos);
+        self.remove_pos(pos);
+      } else {
+        // Don't resort here, just update the one element
+        if let Some(i) = self.sorted.iter().position(|inner| inner.pos == pos) {
+          self.sorted[i].players.remove(&player.id());
+        } else {
+          self.needs_update = true;
+        }
       }
-      self.needs_update = true;
     }
   }
   fn update_cache(&mut self) {
