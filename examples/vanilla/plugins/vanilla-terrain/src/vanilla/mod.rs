@@ -106,11 +106,11 @@ impl NoiseSampler<'_> {
     } else {
       n
     };
-    self.gen.noise.sample(x as f64, y as f64, z as f64)
+    self.gen.noise.sample(x as f64 / 5.0, y as f64 / 5.0, z as f64 / 5.0)
   }
 
   fn get_block(&mut self, x: i32, y: i32, z: i32) -> u32 {
-    let d = self.get_block_inner(x, y, z, x as f64 / 100.0) / 100.0;
+    let d = self.get_block_inner(x, y, z, x as f64 / 100.0) / 500.0;
     if d + 64.0 > y as f64 {
       1
     } else {
