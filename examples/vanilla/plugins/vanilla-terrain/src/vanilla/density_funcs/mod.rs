@@ -6,15 +6,18 @@ use super::{
 use float_ord::FloatOrd;
 use std::sync::Arc;
 
+pub type DensityFunc = Shifted;
+
 pub struct World {
-  density_funcs: DensityFuncs,
+  pub density_funcs: DensityFuncs,
 }
 
 pub struct DensityFuncs {
-  noise_funcs: NoiseFuncs,
-  shift_x:     Arc<Shift>,
-  shift_z:     Arc<Shift>,
-  continents:  Arc<Shifted>,
+  noise_funcs:       NoiseFuncs,
+  pub shift_x:       Arc<Shift>,
+  pub shift_z:       Arc<Shift>,
+  pub continents:    Arc<Shifted>,
+  pub final_density: Arc<Shifted>,
 }
 
 pub struct NoiseFuncs {
@@ -46,7 +49,8 @@ impl DensityFuncs {
     let shift_z = Arc::new(shift(noise.offset.clone()));
     let continents =
       Arc::new(shifted(shift_x.clone(), shift_z.clone(), 0.25, noise.continents.clone()));
-    DensityFuncs { shift_x, shift_z, continents, noise_funcs: noise }
+    let final_density = continents.clone();
+    DensityFuncs { noise_funcs: noise, shift_x, shift_z, continents, final_density }
   }
 }
 

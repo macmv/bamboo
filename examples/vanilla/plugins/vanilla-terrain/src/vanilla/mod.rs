@@ -2,6 +2,7 @@ use bb_plugin::{
   chunk::{paletted, Chunk, Section},
   math::{ChunkPos, Pos, SectionRelPos},
 };
+use std::sync::Arc;
 
 pub mod density_funcs;
 pub mod noise;
@@ -10,6 +11,8 @@ pub mod rng;
 
 use noise::Noise;
 use rng::Rng;
+
+use density_funcs::{Density, DensityFunc, NoisePos};
 
 pub fn generate_chunk(chunk: &mut Chunk<paletted::Section>, pos: ChunkPos) {
   let mut rng = Rng::new(SEED);
@@ -28,16 +31,75 @@ struct NoiseGenerator {
   pub vertical_size:   i32,
   pub horizontal_size: i32,
 }
-struct NoiseSampler<'a> {
-  gen: &'a NoiseGenerator,
+struct ChunkNoiseSampler<'a> {
+  gen:           &'a NoiseGenerator,
+  block_sampler: BlockStateSampler,
+
+  chunk_x:  i32,
+  chunk_z:  i32,
+  offset_x: i32,
+  offset_y: i32,
+  offset_z: i32,
+  x:        i32,
+  y:        i32,
+  z:        i32,
+}
+struct BlockStateSampler {
+  density: Arc<DensityFunc>,
 }
 
-impl NoiseSampler<'_> {
-  fn sample_end_noise(&mut self, v: i32) {}
-  fn sample_noise_corners(&mut self, x: i32, z: i32) {}
-  fn sample_noise_x(&mut self, v: f64) {}
-  fn sample_noise_y(&mut self, v: f64) {}
-  fn sample_noise(&mut self, v: f64) {}
+impl BlockStateSampler {
+  // Returns a block state, for the given position.
+  fn sample(&self, pos: NoisePos) -> u32 {
+    if self.density.sample(pos) > 0.0 {
+      0
+    } else {
+      1
+    }
+  }
+}
+
+impl<'a> ChunkNoiseSampler<'a> {
+  pub fn new(chunk_x: i32, chunk_z: i32, gen: &'a NoiseGenerator) -> Self {
+    ChunkNoiseSampler {
+      gen,
+      chunk_x,
+      chunk_z,
+      block_sampler: BlockStateSampler { density: gen.noise.density_funcs.final_density.clone() },
+      offset_x: 0,
+      offset_y: 0,
+      offset_z: 0,
+      x: 0,
+      y: 0,
+      z: 0,
+    }
+  }
+  fn sample_end_noise(&mut self, x: i32) {
+    self.offset_x = (self.chunk_x + x) * self.gen.horizontal_size;
+  }
+  fn sample_noise_corners(&mut self, y: i32, z: i32) {
+    const MIN_Y: i32 = 0;
+
+    self.offset_y = (y + MIN_Y) * self.gen.vertical_size;
+    self.offset_z = (self.chunk_z + z) * self.gen.horizontal_size;
+    /*
+    this.field_36593 = true;
+    ++this.field_36578;
+    for (class_6949 lv : this.field_36581) {
+      lv.field_36603.method_40470(lv.field_36604, this);
+    }
+    ++this.field_36578;
+    this.field_36593 = false;
+    */
+  }
+  fn sample_noise_x(&mut self, block_x: i32, x: f64) { self.x = block_x - self.offset_x; }
+  fn sample_noise_y(&mut self, block_y: i32, y: f64) { self.y = block_y - self.offset_y; }
+  // ++this.field_36577;
+  fn sample_noise_z(&mut self, block_z: i32, z: f64) { self.z = block_z - self.offset_z; }
+
+  fn as_noise_pos(&self) -> NoisePos {
+    NoisePos { x: self.offset_x + self.x, y: self.offset_y + self.y, z: self.offset_z + self.z }
+  }
 
   fn get_block_inner(&mut self, x: i32, y: i32, z: i32, noise: f64) -> f64 {
     let e = 0.0;
@@ -107,13 +169,8 @@ impl NoiseSampler<'_> {
     }
   }
 
-  fn get_block(&mut self, x: i32, y: i32, z: i32) -> u32 {
-    let d = self.gen.noise.sample(x as f64 / 5.0, y as f64 / 5.0, z as f64 / 5.0);
-    if d + 64.0 > y as f64 {
-      1
-    } else {
-      0
-    }
+  fn sample_block(&mut self) -> u32 {
+    self.block_sampler.sample(self.as_noise_pos())
     /*
     // let d = self.get_block_inner(x, y, z, x as f64 / 100.0) / 500.0;
     let mut e = d * 0.64;
@@ -151,7 +208,7 @@ impl NoiseSampler<'_> {
 
 impl NoiseGenerator {
   fn populate_noise(&self, chunk: &mut Chunk<paletted::Section>, pos: ChunkPos) {
-    let mut sampler = NoiseSampler { gen: self };
+    let mut sampler = ChunkNoiseSampler::new(pos.x(), pos.z(), self);
 
     const MIN_Y: i32 = 0;
     const MAX_Y: i32 = 256;
@@ -172,18 +229,19 @@ impl NoiseGenerator {
               chunk_section_y = inner_chunk_y;
               section = chunk.section_mut(chunk_section_y as u32);
             }
-            sampler.sample_noise_y(loop_y as f64 / self.vertical_size as f64);
+            sampler.sample_noise_y(y, loop_y as f64 / self.vertical_size as f64);
 
             for loop_x in 0..self.horizontal_size {
               let x = pos.block_x() + section_x * self.horizontal_size + loop_x;
               let rel_x = Pos::new(x, 0, 0).chunk_rel_x();
-              sampler.sample_noise_x(loop_x as f64 / self.horizontal_size as f64);
+              sampler.sample_noise_x(x, loop_x as f64 / self.horizontal_size as f64);
 
               for loop_z in 0..self.horizontal_size {
                 let z = pos.block_z() + section_z * self.horizontal_size + loop_z;
                 let rel_z = Pos::new(0, 0, z).chunk_rel_z();
-                sampler.sample_noise(loop_z as f64 / self.horizontal_size as f64);
-                let block = sampler.get_block(x, y, z);
+                sampler.sample_noise_z(z, loop_z as f64 / self.horizontal_size as f64);
+
+                let block = sampler.sample_block();
 
                 if block != 0 {
                   /*
