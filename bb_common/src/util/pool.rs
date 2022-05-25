@@ -1,4 +1,4 @@
-use crossbeam_channel::Sender;
+use crossbeam_channel::{Sender, TrySendError};
 use std::thread;
 
 type BoxFn<S> = Box<dyn FnOnce(&S) + Send>;
@@ -53,6 +53,16 @@ impl<S: Send + 'static> ThreadPool<S> {
   /// Executes the given task on a random worker thread.
   pub fn execute<F: FnOnce(&S) + Send + 'static>(&self, f: F) {
     self.tx.send(Box::new(f)).expect("thread unexpectedly closed");
+  }
+
+  /// Executes the given task on a random worker thread. Returns Err(()) if the
+  /// channel is full.
+  pub fn try_execute<F: FnOnce(&S) + Send + 'static>(&self, f: F) -> Result<(), ()> {
+    match self.tx.try_send(Box::new(f)) {
+      Ok(()) => Ok(()),
+      Err(TrySendError::Full(_)) => Err(()),
+      Err(TrySendError::Disconnected(_)) => panic!("thread unexpectedly closed"),
+    }
   }
 
   /// Runs the given closure for every item in the iterator, until the iterator

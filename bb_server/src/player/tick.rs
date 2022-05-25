@@ -5,8 +5,6 @@ use bb_common::{
   net::cb,
   version::ProtocolVersion,
 };
-use parking_lot::Mutex;
-use rayon::prelude::*;
 use std::{
   cmp::Ordering,
   sync::Arc,
@@ -268,51 +266,55 @@ impl Player {
   }
 
   /// Loads the chunks between min and max, inclusive.
-  fn load_chunks(&self, min: ChunkPos, max: ChunkPos) {
+  fn load_chunks(self: &Arc<Self>, min: ChunkPos, max: ChunkPos) {
     if min == max {
       return;
     }
-    // Generate the chunks on multiple threads
-    let chunks = Mutex::new(vec![]);
-    if (min.x() - max.x()).abs() > (min.z() - max.z()).abs() {
-      (min.x()..=max.x()).into_par_iter().for_each(|x| {
-        for z in min.z()..=max.z() {
-          let pos = ChunkPos::new(x, z);
-          if self.world.has_loaded_chunk(pos) {
-            continue;
-          }
-          let c = self.world.pre_generate_chunk(pos);
-          chunks.lock().push((pos, c));
-        }
-      });
-    } else {
-      (min.z()..=max.z()).into_par_iter().for_each(|z| {
-        for x in min.x()..=max.x() {
-          let pos = ChunkPos::new(x, z);
-          if self.world.has_loaded_chunk(pos) {
-            continue;
-          }
-          let c = self.world.pre_generate_chunk(pos);
-          chunks.lock().push((pos, c));
-        }
-      });
-    }
-    // Calling store_chunks is a race condition! We check for has_loaded_chunk
-    // above, but the chunks could have been changed between that call and now.
-    // Calling store_chunks could potentially make us loose data.
-    self.world.store_chunks_no_overwrite(chunks.into_inner());
+    // If we have the chunk, send it. Otherwise, queue the chunk to be generated,
+    // and send it to `self.conn` once generated.
+    //
+    // `queue_chunk` will simply send the chunk if it has already been loaded, so
+    // there aren't any race conditions in this function.
     for x in min.x()..=max.x() {
       for z in min.z()..=max.z() {
         let pos = ChunkPos::new(x, z);
-        self.world.inc_view(pos);
-        self.send(self.world.serialize_chunk(pos));
+        if self.world.has_loaded_chunk(pos) {
+          self.send_chunk(pos, || self.world.serialize_chunk(pos));
+        } else {
+          self.world.queue_chunk(pos, Arc::downgrade(self));
+        }
       }
+    }
+  }
+  /// Sends the chunk to the client, and records that the client knows about
+  /// this chunk. This makes sure we avoid ever leaking memory on the client.
+  pub(crate) fn send_chunk(&self, pos: ChunkPos, f: impl FnOnce() -> cb::Packet) {
+    if self.in_view(pos) {
+      let mut lock = self.loaded_chunks.lock();
+      if !lock.contains(&pos) {
+        lock.insert(pos);
+        drop(lock);
+        self.send(f());
+      }
+    }
+  }
+  /// Sends the unload packet for this chunk to the client, and records that the
+  /// client no longer has that chunk in memory.
+  fn send_unload_chunk(&self, pos: ChunkPos) {
+    let mut lock = self.loaded_chunks.lock();
+    if lock.remove(&pos) {
+      drop(lock);
+      self.send(cb::Packet::UnloadChunk { pos });
     }
   }
   /// Unloads all the chunks that this player can see from the world. This will
   /// call dec_view for all the chunks this player can see. This does not send
   /// any packets! It should only be used internally when a player is being
   /// removed.
+  ///
+  /// Note that this won't update the `loaded_chunks` table. This is again
+  /// because the player is about to be removed, so this table will never be
+  /// looked up again.
   pub(crate) fn unload_all(&self) {
     let chunk = {
       let pos = self.pos.lock();
@@ -335,7 +337,7 @@ impl Player {
       for z in min.z()..=max.z() {
         let pos = ChunkPos::new(x, z);
         self.world.dec_view(pos);
-        self.send(cb::Packet::UnloadChunk { pos });
+        self.send_unload_chunk(pos);
       }
     }
   }

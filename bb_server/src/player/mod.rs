@@ -16,7 +16,7 @@ use bb_common::{
   version::ProtocolVersion,
 };
 use parking_lot::{Mutex, MutexGuard};
-use std::{f64::consts, fmt, net::SocketAddr, sync::Arc, time::Instant};
+use std::{collections::HashSet, f64::consts, fmt, net::SocketAddr, sync::Arc, time::Instant};
 
 mod click;
 mod inventory;
@@ -124,6 +124,13 @@ pub struct Player {
 
   health: Mutex<PlayerHealth>,
   food:   Mutex<PlayerFood>,
+
+  // Not very efficient, but required, as we generate chunks in the background. Because chunk
+  // generation is slow, we need to do it over multiple ticks. If the player moves into a chunk,
+  // then moves outside of the chunk, then moves back into the new chunk, they will be sent the
+  // same chunk twice if the terrain generator takes too long. This means it's easiest to simply
+  // store every chunk the client knows about here.
+  loaded_chunks: Mutex<HashSet<ChunkPos>>,
 }
 
 impl fmt::Debug for Player {
@@ -216,6 +223,7 @@ impl Player {
       abilities: Mutex::new(abilities),
       health: PlayerHealth { health: 20.0, absorption: 0.0, hit_delay: 0 }.into(),
       food: PlayerFood { food: 20, saturation: 5.0 }.into(),
+      loaded_chunks: Mutex::new(HashSet::new()),
     })
   }
 

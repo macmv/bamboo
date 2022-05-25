@@ -4,6 +4,7 @@ use crate::{
   entity, item,
   item::Stack,
   math::{CollisionResult, Vec3, AABB},
+  player::Player,
   world::World,
   RNG,
 };
@@ -13,7 +14,11 @@ use bb_common::{
   net::cb,
 };
 use rand::Rng;
-use std::{cmp::Ordering, str::FromStr, sync::Arc};
+use std::{
+  cmp::Ordering,
+  str::FromStr,
+  sync::{Arc, Weak},
+};
 
 /// General block manipulation functions
 impl World {
@@ -492,5 +497,27 @@ impl World {
       to - from,
       &self.nearby_colliders(AABB::new(from.into(), (to - from).into()), water),
     )
+  }
+
+  pub fn queue_chunk(&self, pos: ChunkPos, player: Weak<Player>) {
+    {
+      let rlock = self.chunks.read();
+      if rlock.contains_key(&pos) {
+        drop(rlock);
+        if let Some(p) = player.upgrade() {
+          p.send_chunk(pos, || self.serialize_chunk(pos));
+        }
+        return;
+      }
+      // drop rlock
+    }
+    let mut queue_lock = self.chunks_to_generate.lock();
+    if let Some((_, conns)) = queue_lock.get_mut(&pos) {
+      conns.push(player);
+    } else {
+      // next tick, a chunk generator thread will be used to generate this chunk (if
+      // free).
+      queue_lock.insert(pos, (false, vec![player]));
+    }
   }
 }

@@ -36,7 +36,7 @@ use std::{
   fmt,
   sync::{
     atomic::{AtomicBool, AtomicI32, AtomicU32, Ordering},
-    Arc,
+    Arc, Weak,
   },
   thread,
   time::{Duration, Instant},
@@ -95,6 +95,14 @@ pub struct World {
   config:            ConfigSection,
   // If set, then the world cannot be modified.
   locked:            AtomicBool,
+
+  // A list of chunks that need to be generated. The bool in each entry will be set to `true` if a
+  // thread in the chunk generator pool is generating this chunk. The entry will be removed once
+  // the chunk has been loaded. If a chunk is being generated, the list can be appended to to have
+  // the chunk be sent to that client once the chunk is done.
+  //
+  // TODO: This needs a size cap, and some way to handle chunks being generated too slowly.
+  chunks_to_generate: Mutex<HashMap<ChunkPos, (bool, Vec<Weak<Player>>)>>,
 }
 
 /// The world manager. This is essentially a Bamboo type. It stores all the
@@ -171,6 +179,7 @@ impl World {
       locked: config.get::<_, bool>("locked").into(),
       config,
       wm,
+      chunks_to_generate: Mutex::new(HashMap::new()),
     });
     if world.config().get("vanilla.enabled") {
       world
@@ -189,6 +198,10 @@ impl World {
 
   fn global_tick_loop(self: Arc<Self>) {
     let pool = ThreadPool::auto("global tick loop", || State {
+      uspt:  self.uspt.clone(),
+      world: Arc::clone(&self),
+    });
+    let chunk_pool = ThreadPool::auto("chunk generator", || State {
       uspt:  self.uspt.clone(),
       world: Arc::clone(&self),
     });
@@ -215,6 +228,50 @@ impl World {
         let out = cb::Packet::PlayerHeader { header: header.to_json(), footer: footer.to_json() };
         for p in self.players().values() {
           p.send(out.clone());
+        }
+      }
+      {
+        let mut blocking_gen = vec![];
+        {
+          let mut queue_lock = self.chunks_to_generate.lock();
+          for (&pos, (generating, _)) in queue_lock.iter_mut() {
+            if !*generating {
+              *generating = true;
+              // If we used `execute` here, we could block, and we'd still be holding
+              // `queue_lock`, so this would deadlock.
+              let res = chunk_pool.try_execute(move |s| {
+                let chunk = s.world.pre_generate_chunk(pos);
+                s.world.store_chunks_no_overwrite(vec![(pos, chunk)]);
+                let mut queue_lock = s.world.chunks_to_generate.lock();
+                if let Some((_, players)) = queue_lock.remove(&pos) {
+                  for weak in players {
+                    if let Some(p) = weak.upgrade() {
+                      p.send_chunk(pos, || s.world.serialize_chunk(pos));
+                    }
+                  }
+                }
+              });
+              match res {
+                Ok(()) => {}
+                Err(_) => blocking_gen.push(pos),
+              }
+            }
+          }
+        }
+        // If the channel is full, then we have at least 256 chunks queued. In this
+        // case, we generate some more chunks in the tick loop, which will (purposely)
+        // lag the server, and avoid a deadlock.
+        for pos in blocking_gen {
+          let chunk = self.pre_generate_chunk(pos);
+          self.store_chunks_no_overwrite(vec![(pos, chunk)]);
+          let mut queue_lock = self.chunks_to_generate.lock();
+          if let Some((_, players)) = queue_lock.remove(&pos) {
+            for weak in players {
+              if let Some(p) = weak.upgrade() {
+                p.send_chunk(pos, || self.serialize_chunk(pos));
+              }
+            }
+          }
         }
       }
       /*

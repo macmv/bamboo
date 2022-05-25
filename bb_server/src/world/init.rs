@@ -254,7 +254,7 @@ impl World {
       for z in -d..=d {
         let pos = ChunkPos::new(x, z);
         self.inc_view(pos);
-        player.send(self.serialize_chunk(pos));
+        player.send_chunk(pos, || self.serialize_chunk(pos));
       }
     }
 
