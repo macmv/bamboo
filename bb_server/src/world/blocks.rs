@@ -14,11 +14,7 @@ use bb_common::{
   net::cb,
 };
 use rand::Rng;
-use std::{
-  cmp::Ordering,
-  str::FromStr,
-  sync::{Arc, Weak},
-};
+use std::{cmp::Ordering, collections::HashMap, str::FromStr, sync::Arc};
 
 /// General block manipulation functions
 impl World {
@@ -499,25 +495,31 @@ impl World {
     )
   }
 
-  pub fn queue_chunk(&self, pos: ChunkPos, player: Weak<Player>) {
+  pub fn unqueue_chunk(&self, pos: ChunkPos, player: &Player) {
+    let mut queue_lock = self.chunks_to_generate.lock();
+    if let Some((_, players)) = queue_lock.get_mut(&pos) {
+      players.remove(&player.id());
+    }
+  }
+  pub fn queue_chunk(&self, pos: ChunkPos, player: &Arc<Player>) {
     {
       let rlock = self.chunks.read();
       if rlock.contains_key(&pos) {
         drop(rlock);
-        if let Some(p) = player.upgrade() {
-          p.send_chunk(pos, || self.serialize_chunk(pos));
-        }
+        player.send_chunk(pos, || self.serialize_chunk(pos));
         return;
       }
       // drop rlock
     }
     let mut queue_lock = self.chunks_to_generate.lock();
-    if let Some((_, conns)) = queue_lock.get_mut(&pos) {
-      conns.push(player);
+    if let Some((_, players)) = queue_lock.get_mut(&pos) {
+      players.insert(player.id(), Arc::downgrade(player));
     } else {
       // next tick, a chunk generator thread will be used to generate this chunk (if
       // free).
-      queue_lock.insert(pos, (false, vec![player]));
+      let mut players = HashMap::new();
+      players.insert(player.id(), Arc::downgrade(player));
+      queue_lock.insert(pos, (false, players));
     }
   }
 }

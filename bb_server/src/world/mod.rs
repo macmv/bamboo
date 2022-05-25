@@ -100,9 +100,7 @@ pub struct World {
   // thread in the chunk generator pool is generating this chunk. The entry will be removed once
   // the chunk has been loaded. If a chunk is being generated, the list can be appended to to have
   // the chunk be sent to that client once the chunk is done.
-  //
-  // TODO: This needs a size cap, and some way to handle chunks being generated too slowly.
-  chunks_to_generate: Mutex<HashMap<ChunkPos, (bool, Vec<Weak<Player>>)>>,
+  chunks_to_generate: Mutex<HashMap<ChunkPos, (bool, HashMap<UUID, Weak<Player>>)>>,
 }
 
 /// The world manager. This is essentially a Bamboo type. It stores all the
@@ -231,44 +229,50 @@ impl World {
         }
       }
       {
-        let mut blocking_gen = vec![];
         {
           let mut queue_lock = self.chunks_to_generate.lock();
           for (&pos, (generating, _)) in queue_lock.iter_mut() {
             if !*generating {
-              *generating = true;
               // If we used `execute` here, we could block, and we'd still be holding
               // `queue_lock`, so this would deadlock.
               let res = chunk_pool.try_execute(move |s| {
+                {
+                  let mut queue_lock = s.world.chunks_to_generate.lock();
+                  // If the item has already been removed from the queue, or if there aren't any
+                  // players waiting on this chunk, we skip it. `generating` will always be true,
+                  // as we want to set that before spawning this task.
+                  let remove;
+                  if let Some((_, players)) = queue_lock.get(&pos) {
+                    remove = players.is_empty();
+                  } else {
+                    remove = true;
+                  }
+                  if remove {
+                    queue_lock.remove(&pos);
+                    return;
+                  }
+                }
                 let chunk = s.world.pre_generate_chunk(pos);
                 s.world.store_chunks_no_overwrite(vec![(pos, chunk)]);
                 let mut queue_lock = s.world.chunks_to_generate.lock();
                 if let Some((_, players)) = queue_lock.remove(&pos) {
-                  for weak in players {
-                    if let Some(p) = weak.upgrade() {
-                      p.send_chunk(pos, || s.world.serialize_chunk(pos));
+                  if !players.is_empty() {
+                    let out = s.world.serialize_chunk(pos);
+                    for weak in players.values() {
+                      if let Some(p) = weak.upgrade() {
+                        p.send_chunk(pos, || out.clone());
+                      }
                     }
                   }
                 }
               });
               match res {
-                Ok(()) => {}
-                Err(_) => blocking_gen.push(pos),
-              }
-            }
-          }
-        }
-        // If the channel is full, then we have at least 256 chunks queued. In this
-        // case, we generate some more chunks in the tick loop, which will (purposely)
-        // lag the server, and avoid a deadlock.
-        for pos in blocking_gen {
-          let chunk = self.pre_generate_chunk(pos);
-          self.store_chunks_no_overwrite(vec![(pos, chunk)]);
-          let mut queue_lock = self.chunks_to_generate.lock();
-          if let Some((_, players)) = queue_lock.remove(&pos) {
-            for weak in players {
-              if let Some(p) = weak.upgrade() {
-                p.send_chunk(pos, || self.serialize_chunk(pos));
+                Ok(()) => *generating = true,
+                // If the channel is full, then we have at least 256 chunks queued. In this
+                // case, we just wait until some of them are done. The cache will be cleared out
+                // when the player leaves or moves to another area, so it shouldn't be a problem in
+                // most cases.
+                Err(_) => {}
               }
             }
           }

@@ -281,7 +281,7 @@ impl Player {
         if self.world.has_loaded_chunk(pos) {
           self.send_chunk(pos, || self.world.serialize_chunk(pos));
         } else {
-          self.world.queue_chunk(pos, Arc::downgrade(self));
+          self.world.queue_chunk(pos, self);
         }
       }
     }
@@ -336,6 +336,7 @@ impl Player {
     for x in min.x()..=max.x() {
       for z in min.z()..=max.z() {
         let pos = ChunkPos::new(x, z);
+        self.world.unqueue_chunk(pos, self);
         self.world.dec_view(pos);
         self.send_unload_chunk(pos);
       }
