@@ -6,6 +6,7 @@ use bb_common::{
 };
 use std::{
   collections::{btree_map, BTreeMap, HashMap},
+  fmt,
   sync::{Arc, Weak},
 };
 
@@ -33,39 +34,65 @@ struct PlayerPriority {
   priority: u32,
 }
 
+impl fmt::Debug for ChunkToLoad {
+  fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    f.debug_struct("ChunkToLoad")
+      .field("pos", &self.pos)
+      .field("generating", &self.generating)
+      .field("players", &self.players.len())
+      .finish()
+  }
+}
+
 impl ChunksToLoad {
   pub fn new() -> Self { ChunksToLoad { chunks: BTreeMap::new(), priorities: HashMap::new() } }
   fn add_player(&mut self, priority: u32, pos: ChunkPos, player: &Arc<Player>) {
     if let Some(old_priority) = self.priorities.get(&pos) {
       let chunks = self.chunks.get_mut(old_priority).unwrap();
-      let mut found = false;
-      for chunk in chunks.iter_mut() {
-        if chunk.pos == pos {
-          found = true;
-          chunk
-            .players
+      let mut chunk = None;
+      // Remove the chunk if we already have a ChunkToLoad.
+      for i in 0..chunks.len() {
+        if chunks[i].pos == pos {
+          let mut c = chunks.remove(i);
+          c.players
             .insert(player.id(), PlayerPriority { priority, player: Arc::downgrade(player) });
+          chunk = Some(c);
           break;
         }
       }
-      if !found {
-        let mut players = HashMap::new();
-        players.insert(player.id(), PlayerPriority { priority, player: Arc::downgrade(player) });
-        chunks.push(ChunkToLoad { pos, generating: false, players });
-      }
-      // Update the priority in the `chunks` btree
+      let chunk = match chunk {
+        Some(c) => c,
+        None => {
+          let mut players = HashMap::new();
+          players.insert(player.id(), PlayerPriority { priority, player: Arc::downgrade(player) });
+          ChunkToLoad { pos, generating: false, players }
+        }
+      };
+      // Now we add our `chunk` into the correct bucket.
       let new_priority = old_priority + priority;
-      let chunks = self.chunks.remove(old_priority).unwrap();
       match self.chunks.entry(new_priority) {
         btree_map::Entry::Vacant(e) => {
-          e.insert(chunks);
+          e.insert(vec![chunk]);
         }
         btree_map::Entry::Occupied(mut e) => {
-          e.get_mut().extend(chunks);
+          e.get_mut().push(chunk);
         }
       }
       // Update the priority in the `priorities` map (replaces the value in `pos`)
       self.priorities.insert(pos, new_priority);
+    } else {
+      self.priorities.insert(pos, priority);
+      let mut players = HashMap::new();
+      players.insert(player.id(), PlayerPriority { priority, player: Arc::downgrade(player) });
+      let chunk = ChunkToLoad { pos, generating: false, players };
+      match self.chunks.entry(priority) {
+        btree_map::Entry::Vacant(e) => {
+          e.insert(vec![chunk]);
+        }
+        btree_map::Entry::Occupied(mut e) => {
+          e.get_mut().push(chunk);
+        }
+      }
     }
   }
   // If the item has already been removed from the queue, or if there aren't any
@@ -98,6 +125,9 @@ impl ChunksToLoad {
       for i in 0..chunks.len() {
         if chunks[i].pos == pos {
           let chunk = chunks.remove(i as usize);
+          if chunks.is_empty() {
+            self.chunks.remove(&priority);
+          }
           self.priorities.remove(&pos);
           return Some(chunk);
         }
@@ -139,7 +169,7 @@ impl World {
 
   pub(super) fn check_chunks_queue(&self, pool: &ThreadPool<super::State>) {
     let mut queue_lock = self.chunks_to_load.lock();
-    for (_, chunks) in queue_lock.chunks.iter_mut().rev() {
+    for (_, chunks) in queue_lock.chunks.iter_mut() {
       for chunk in chunks {
         let pos = chunk.pos;
         if !chunk.generating {};

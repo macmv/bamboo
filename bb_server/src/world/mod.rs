@@ -199,9 +199,12 @@ impl World {
       world: Arc::clone(&self),
     });
     // We set a limit to double the number of cores. This means that we will only
-    // hit an artificial limit if we can generate a chunk in 5 ms.
+    // hit an artificial limit if we can generate a chunk in 10 ms. The more we
+    // increase this, the worse the ordering for generating chunks gets.
+    //
+    // TODO: Make this configurable.
     let chunk_pool =
-      ThreadPool::auto_with_limit("chunk generator", bb_common::util::num_cpus() * 10, || State {
+      ThreadPool::auto_with_limit("chunk generator", bb_common::util::num_cpus() * 5, || State {
         uspt:  self.uspt.clone(),
         world: Arc::clone(&self),
       });
