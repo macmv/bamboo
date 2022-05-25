@@ -1,4 +1,7 @@
-use super::{Noise, NoiseConfig, OctavePerlin};
+use super::{
+  super::density_funcs::{Density, NoisePos},
+  Noise, NoiseConfig, OctavePerlin,
+};
 
 pub struct Interpolated {
   lower:         OctavePerlin,
@@ -37,12 +40,12 @@ impl Interpolated {
   }
 }
 
-impl Noise for Interpolated {
-  fn sample(&self, x: f64, y: f64, z: f64) -> f64 {
+impl Density for Interpolated {
+  fn sample(&self, pos: NoisePos) -> f64 {
     use super::octave::maintain_precision;
-    let i = x as i32 / self.cell_width;
-    let j = x as i32 / self.cell_height;
-    let k = x as i32 / self.cell_width;
+    let i = pos.x / self.cell_width;
+    let j = pos.y / self.cell_height;
+    let k = pos.z / self.cell_width;
     let mut total = 0.0;
     let mut persistence = 1.0;
     for octave in 0..8 {
@@ -56,10 +59,10 @@ impl Noise for Interpolated {
       ) / persistence;
       persistence /= 2.0;
     }
-    let mapped = (total / 10.0 + 1.0) / 2.0;
+    let mut mapped = (total / 10.0 + 1.0) / 2.0;
     let bl2 = mapped >= 1.0;
     let bl3 = mapped <= 0.0;
-    let persistence = 1.0;
+    let mut persistence = 1.0;
     let mut lower = 0.0;
     let mut upper = 0.0;
     for octave in 0..16 {

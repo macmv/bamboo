@@ -1,6 +1,7 @@
 use super::{
   noise::{
-    Cached, CachedDoublePerlin, DoublePerlin, Interpolated, Noise, Octave, OctavePerlin, Perlin,
+    Cached, CachedDoublePerlin, DoublePerlin, Interpolated, Noise, NoiseConfig, Octave,
+    OctavePerlin, Perlin,
   },
   noise_params::{self, NoiseParams},
   rng::Rng,
@@ -52,6 +53,29 @@ impl DensityFuncs {
     let continents =
       Arc::new(shifted(shift_x.clone(), shift_z.clone(), 0.25, noise.continents.clone()));
     let final_density = continents.clone();
+    let final_density = Arc::new(Interpolated::new(
+      OctavePerlin::new(
+        rng,
+        |rng| Perlin::new(rng),
+        16,
+        &(0..16).map(|i| i as f64).collect::<Vec<_>>(),
+      ),
+      OctavePerlin::new(
+        rng,
+        |rng| Perlin::new(rng),
+        16,
+        &(0..16).map(|i| i as f64).collect::<Vec<_>>(),
+      ),
+      OctavePerlin::new(
+        rng,
+        |rng| Perlin::new(rng),
+        8,
+        &(0..8).map(|i| i as f64).collect::<Vec<_>>(),
+      ),
+      4,
+      8,
+      &NoiseConfig { xz_scale: 1.0, y_scale: 1.0, xz_factor: 80.0, y_factor: 160.0 },
+    ));
     DensityFuncs { noise_funcs: noise, shift_x, shift_z, continents, final_density }
   }
 }
