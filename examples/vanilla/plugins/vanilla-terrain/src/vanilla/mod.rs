@@ -74,8 +74,7 @@ impl NoiseSampler<'_> {
       } else {
         let s = this.sampleCaveLayerNoise(x, y, z);
         let t;
-        if (s > 64.0) {
-          h = 64.0;
+        if (s > 64.0) { h = 64.0;
         } else {
           t = this.caveCheeseNoise.sample(x as f64, y as f64 / 1.5, z as f64);
           let u = MathHelper.clamp(t + 0.27, -1.0, 1.0);
@@ -99,24 +98,24 @@ impl NoiseSampler<'_> {
     n = if n > m { n } else { m };
     // n = self.apply_slides(n, y / self.vertical_size);
     // n = blender.method_39338(x, y, z, n);
-    let _ = if n < -64.0 {
+    if n < -64.0 {
       -64.0
     } else if n > 64.0 {
       64.0
     } else {
       n
-    };
-    self.gen.noise.sample(x as f64 / 5.0, y as f64 / 5.0, z as f64 / 5.0)
+    }
   }
 
   fn get_block(&mut self, x: i32, y: i32, z: i32) -> u32 {
-    let d = self.get_block_inner(x, y, z, x as f64 / 100.0) / 500.0;
+    let d = self.gen.noise.sample(x as f64 / 5.0, y as f64 / 5.0, z as f64 / 5.0);
     if d + 64.0 > y as f64 {
       1
     } else {
       0
     }
     /*
+    // let d = self.get_block_inner(x, y, z, x as f64 / 100.0) / 500.0;
     let mut e = d * 0.64;
     if e < -1.0 {
       e = -1.0;
@@ -152,59 +151,53 @@ impl NoiseSampler<'_> {
 
 impl NoiseGenerator {
   fn populate_noise(&self, chunk: &mut Chunk<paletted::Section>, pos: ChunkPos) {
-    let m = self.horizontal_size;
-    let n = self.vertical_size;
-    let o = 16 / m;
-    let p = 16 / m;
     let mut sampler = NoiseSampler { gen: self };
-    let i = 0 / self.vertical_size;
-    let j = 256 / self.vertical_size;
 
-    for q in 0..o {
-      sampler.sample_end_noise(q);
-      for r in 0..p {
+    const MIN_Y: i32 = 0;
+    const MAX_Y: i32 = 256;
+
+    for section_x in 0..(16 / self.horizontal_size) {
+      sampler.sample_end_noise(section_x);
+      for section_z in 0..(16 / self.horizontal_size) {
         let mut section = chunk.section_mut(15);
-        let mut section_y = 15;
-        for s in (0..=j - 1).rev() {
-          sampler.sample_noise_corners(s, r);
+        let mut chunk_section_y = 15;
+        for section_y in (0..MAX_Y / self.vertical_size).rev() {
+          sampler.sample_noise_corners(section_y, section_z);
 
-          for t in (0..=n - 1).rev() {
-            let u = (i + s) * n + t;
-            let v = u & 15;
-            let w = Pos::new(0, u, 0).chunk_y();
-            if section_y != w {
-              section_y = w;
-              section = chunk.section_mut(section_y as u32);
+          for loop_y in (0..self.vertical_size).rev() {
+            let y = (MIN_Y / self.vertical_size + section_y) * self.vertical_size + loop_y;
+            let rel_y = Pos::new(0, y, 0).chunk_rel_y();
+            let inner_chunk_y = Pos::new(0, y, 0).chunk_y();
+            if chunk_section_y != inner_chunk_y {
+              chunk_section_y = inner_chunk_y;
+              section = chunk.section_mut(chunk_section_y as u32);
             }
-            let d = t as f64 / n as f64;
-            sampler.sample_noise_y(d);
+            sampler.sample_noise_y(loop_y as f64 / self.vertical_size as f64);
 
-            for x in 0..m {
-              let y = pos.block_x() + q * m + x;
-              let z = y & 15;
-              let e = x as f64 / m as f64;
-              sampler.sample_noise_x(e);
+            for loop_x in 0..self.horizontal_size {
+              let x = pos.block_x() + section_x * self.horizontal_size + loop_x;
+              let rel_x = Pos::new(x, 0, 0).chunk_rel_x();
+              sampler.sample_noise_x(loop_x as f64 / self.horizontal_size as f64);
 
-              for aa in 0..m {
-                let ab = pos.block_z() + r * m + aa;
-                let ac = ab & 15;
-                let f = aa as f64 / m as f64;
-                sampler.sample_noise(f);
-                let block = sampler.get_block(y, u, ab);
+              for loop_z in 0..self.horizontal_size {
+                let z = pos.block_z() + section_z * self.horizontal_size + loop_z;
+                let rel_z = Pos::new(0, 0, z).chunk_rel_z();
+                sampler.sample_noise(loop_z as f64 / self.horizontal_size as f64);
+                let block = sampler.get_block(x, y, z);
 
                 if block != 0 {
                   /*
                    if (lv10.getLuminance() != 0 && chunk instanceof ProtoChunk) {
-                      lv7.set(y, u, ab);
+                      lv7.set(x, y, ab);
                       ((ProtoChunk)chunk).addLightSource(lv7);
                    }
                   */
 
                   section.set_block(
                     SectionRelPos::new(
-                      z.try_into().unwrap(),
-                      v.try_into().unwrap(),
-                      ac.try_into().unwrap(),
+                      rel_x.try_into().unwrap(),
+                      rel_y.try_into().unwrap(),
+                      rel_z.try_into().unwrap(),
                     ),
                     block,
                   );
