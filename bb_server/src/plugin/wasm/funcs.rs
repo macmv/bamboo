@@ -90,6 +90,22 @@ fn player_username(env: &Env, id: WasmPtr<CUUID>, buf: WasmPtr<u8>, buf_len: u32
   0
 }
 
+fn time_since_start(env: &Env) -> u64 {
+  use parking_lot::{lock_api::RawMutex, Mutex};
+  use std::time::Instant;
+
+  static START: Mutex<Option<Instant>> = Mutex::const_new(parking_lot::RawMutex::INIT, None);
+
+  let mut lock = START.lock();
+  match *lock {
+    Some(start) => start.elapsed().as_nanos() as u64,
+    None => {
+      *lock = Some(Instant::now());
+      0
+    }
+  }
+}
+
 pub fn imports(store: &Store, wm: Arc<WorldManager>, name: String) -> ImportObject {
   let env = Env { memory: LazyInit::new(), wm, name: Arc::new(name) };
   imports! {
@@ -98,6 +114,7 @@ pub fn imports(store: &Store, wm: Arc<WorldManager>, name: String) -> ImportObje
       "bb_log_len" => Function::new_native_with_env(&store, env.clone(), log_len),
       "bb_broadcast" => Function::new_native_with_env(&store, env.clone(), broadcast),
       "bb_player_username" => Function::new_native_with_env(&store, env.clone(), player_username),
+      "bb_time_since_start" => Function::new_native_with_env(&store, env.clone(), time_since_start),
     }
   }
 }
