@@ -5,8 +5,7 @@ use bb_common::{
   util::{ThreadPool, UUID},
 };
 use std::{
-  collections::{btree_map, BTreeMap, HashMap},
-  fmt,
+  collections::HashMap,
   sync::{Arc, Weak},
 };
 
@@ -15,138 +14,84 @@ use std::{
 // chunk. The entry will be removed once the chunk has been loaded. If a chunk
 // is being generated, the list can be appended to to have the chunk be sent to
 // that client once the chunk is done.
-//
-// The key is a priority. It is calculated by the distance the player is from a
-// chunk. When a player is added to the queue, the
 pub struct ChunksToLoad {
-  chunks:     BTreeMap<u32, Vec<ChunkToLoad>>,
-  priorities: HashMap<ChunkPos, u32>,
+  chunks:       HashMap<ChunkPos, ChunkToLoad>,
+  // A sorted list of chunks to load. This is cached, and only updated once per tick.
+  sorted:       Vec<ChunkToLoad>,
+  needs_update: bool,
 }
 
+#[derive(Clone)]
 struct ChunkToLoad {
   pos:        ChunkPos,
   generating: bool,
-  players:    HashMap<UUID, PlayerPriority>,
-}
-
-struct PlayerPriority {
-  player:   Weak<Player>,
-  priority: u32,
-}
-
-impl fmt::Debug for ChunkToLoad {
-  fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-    f.debug_struct("ChunkToLoad")
-      .field("pos", &self.pos)
-      .field("generating", &self.generating)
-      .field("players", &self.players.len())
-      .finish()
-  }
+  players:    HashMap<UUID, Weak<Player>>,
 }
 
 impl ChunksToLoad {
-  pub fn new() -> Self { ChunksToLoad { chunks: BTreeMap::new(), priorities: HashMap::new() } }
-  fn add_player(&mut self, priority: u32, pos: ChunkPos, player: &Arc<Player>) {
-    if let Some(old_priority) = self.priorities.get(&pos) {
-      let chunks = self.chunks.get_mut(old_priority).unwrap();
-      let mut chunk = None;
-      // Remove the chunk if we already have a ChunkToLoad.
-      for i in 0..chunks.len() {
-        if chunks[i].pos == pos {
-          let mut c = chunks.remove(i);
-          c.players
-            .insert(player.id(), PlayerPriority { priority, player: Arc::downgrade(player) });
-          chunk = Some(c);
-          break;
-        }
-      }
-      let chunk = match chunk {
-        Some(c) => c,
-        None => {
-          let mut players = HashMap::new();
-          players.insert(player.id(), PlayerPriority { priority, player: Arc::downgrade(player) });
-          ChunkToLoad { pos, generating: false, players }
-        }
-      };
-      // Now we add our `chunk` into the correct bucket.
-      let new_priority = old_priority + priority;
-      match self.chunks.entry(new_priority) {
-        btree_map::Entry::Vacant(e) => {
-          e.insert(vec![chunk]);
-        }
-        btree_map::Entry::Occupied(mut e) => {
-          e.get_mut().push(chunk);
-        }
-      }
-      // Update the priority in the `priorities` map (replaces the value in `pos`)
-      self.priorities.insert(pos, new_priority);
-    } else {
-      self.priorities.insert(pos, priority);
-      let mut players = HashMap::new();
-      players.insert(player.id(), PlayerPriority { priority, player: Arc::downgrade(player) });
-      let chunk = ChunkToLoad { pos, generating: false, players };
-      match self.chunks.entry(priority) {
-        btree_map::Entry::Vacant(e) => {
-          e.insert(vec![chunk]);
-        }
-        btree_map::Entry::Occupied(mut e) => {
-          e.get_mut().push(chunk);
-        }
-      }
-    }
+  pub fn new() -> Self {
+    ChunksToLoad { chunks: HashMap::new(), sorted: vec![], needs_update: false }
   }
   // If the item has already been removed from the queue, or if there aren't any
   // players waiting on this chunk, we skip it. Returns `true` if this chunk still
   // needs to be generated.
   fn needs_pos(&mut self, pos: ChunkPos) -> bool {
-    let priority = match self.priorities.get(&pos) {
-      Some(p) => p,
-      None => return false,
-    };
-    let chunks = self.chunks.get_mut(&priority).unwrap();
-    let mut needs_pos = true;
-    chunks.retain_mut(|chunk| {
-      if chunk.pos == pos && chunk.players.is_empty() {
-        needs_pos = false
-      }
-      if chunk.players.is_empty() {
-        // Make sure the priorities map doesn't contain invalid references
-        self.priorities.remove(&chunk.pos);
-        false
-      } else {
-        true
-      }
-    });
-    needs_pos
-  }
-  fn remove(&mut self, pos: ChunkPos) -> Option<ChunkToLoad> {
-    if let Some(&priority) = self.priorities.get(&pos) {
-      let chunks = self.chunks.get_mut(&priority).unwrap();
-      for i in 0..chunks.len() {
-        if chunks[i].pos == pos {
-          let chunk = chunks.remove(i as usize);
-          if chunks.is_empty() {
-            self.chunks.remove(&priority);
-          }
-          self.priorities.remove(&pos);
-          return Some(chunk);
-        }
-      }
+    match self.chunks.get(&pos) {
+      Some(c) => !c.players.is_empty(),
+      None => false,
     }
-    None
+  }
+  fn add(&mut self, pos: ChunkPos, player: &Arc<Player>) {
+    if let Some(c) = self.chunks.get_mut(&pos) {
+      c.players.insert(player.id(), Arc::downgrade(player));
+      return;
+    }
+    let mut players = HashMap::new();
+    players.insert(player.id(), Arc::downgrade(player));
+    self.chunks.insert(pos, ChunkToLoad { pos, generating: false, players });
+    self.needs_update = true;
+  }
+  fn remove_pos(&mut self, pos: ChunkPos) -> Option<ChunkToLoad> {
+    self.chunks.remove(&pos).map(|c| {
+      self.needs_update = true;
+      c
+    })
+  }
+  fn remove_player(&mut self, pos: ChunkPos, player: &Player) {
+    if let Some(chunk) = self.chunks.get_mut(&pos) {
+      chunk.players.remove(&player.id());
+      if chunk.players.is_empty() {
+        self.chunks.remove(&pos);
+      }
+      self.needs_update = true;
+    }
+  }
+  fn update_cache(&mut self) {
+    if self.needs_update {
+      self.needs_update = false;
+      // Don't reallocate `sorted`
+      self.sorted.clear();
+      self.sorted.extend(self.chunks.values().cloned());
+      self.sorted.sort_unstable_by_key(|chunk| {
+        let mut priority = 0;
+        for (_, weak) in &chunk.players {
+          if let Some(player) = weak.upgrade() {
+            priority += player.pos().with_y(0.0).dist(FPos::new(
+              chunk.pos.block_x() as f64 + 8.0,
+              0.0,
+              chunk.pos.block_z() as f64 + 8.0,
+            )) as u32;
+          }
+        }
+        priority
+      });
+    }
   }
 }
 
 impl World {
   pub fn unqueue_chunk(&self, pos: ChunkPos, player: &Player) {
-    let mut queue_lock = self.chunks_to_load.lock();
-    for chunks in queue_lock.chunks.values_mut() {
-      for chunk in chunks {
-        if chunk.pos == pos && chunk.players.remove(&player.id()).is_some() {
-          break;
-        }
-      }
-    }
+    self.chunks_to_load.lock().remove_player(pos, player);
   }
   pub fn queue_chunk(&self, pos: ChunkPos, player: &Arc<Player>) {
     {
@@ -158,21 +103,16 @@ impl World {
       }
       // drop rlock
     }
-    let mut queue_lock = self.chunks_to_load.lock();
-    let priority = player.pos().with_y(0.0).dist(FPos::new(
-      pos.block_x() as f64 + 8.0,
-      0.0,
-      pos.block_z() as f64 + 8.0,
-    )) as u32;
-    queue_lock.add_player(priority, pos, player);
+    self.chunks_to_load.lock().add(pos, player);
   }
 
   pub(super) fn check_chunks_queue(&self, pool: &ThreadPool<super::State>) {
     let mut queue_lock = self.chunks_to_load.lock();
-    for (_, chunks) in queue_lock.chunks.iter_mut() {
-      for chunk in chunks {
+    queue_lock.update_cache();
+    for i in 0..queue_lock.sorted.len() {
+      let chunk = &mut queue_lock.sorted[i];
+      if !chunk.generating {
         let pos = chunk.pos;
-        if !chunk.generating {};
         // `queue_lock`, so this would deadlock.
         let res = pool.try_execute(move |s| {
           if !s.world.chunks_to_load.lock().needs_pos(pos) {
@@ -181,11 +121,11 @@ impl World {
           let chunk = s.world.pre_generate_chunk(pos);
           s.world.store_chunks_no_overwrite(vec![(pos, chunk)]);
           let mut queue_lock = s.world.chunks_to_load.lock();
-          if let Some(chunk) = queue_lock.remove(pos) {
+          if let Some(chunk) = queue_lock.remove_pos(pos) {
             if !chunk.players.is_empty() {
               let out = s.world.serialize_chunk(pos);
-              for player in chunk.players.values() {
-                if let Some(p) = player.player.upgrade() {
+              for weak in chunk.players.values() {
+                if let Some(p) = weak.upgrade() {
                   p.send_chunk(pos, || out.clone());
                 }
               }
@@ -193,7 +133,10 @@ impl World {
           }
         });
         match res {
-          Ok(()) => chunk.generating = true,
+          Ok(()) => {
+            chunk.generating = true;
+            queue_lock.chunks.get_mut(&pos).unwrap().generating = true;
+          }
           // If the channel is full, then we have at least 256 chunks queued. In this
           // case, we just wait until some of them are done. The cache will be cleared out
           // when the player leaves or moves to another area, so it shouldn't be a problem in
