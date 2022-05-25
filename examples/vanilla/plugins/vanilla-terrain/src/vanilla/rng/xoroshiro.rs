@@ -1,56 +1,83 @@
 use super::Rng;
 
+struct Impl {
+  lo: u64,
+  hi: u64,
+}
+
+impl Impl {
+  pub fn new(lo: u64, hi: u64) -> Self {
+    if lo | hi == 0 {
+      Impl { lo: 11400714819323198485, hi: 7640891576956012809 }
+    } else {
+      Impl { lo, hi }
+    }
+  }
+  pub fn next(&mut self) -> u64 {
+    let l = self.lo;
+    let mut m = self.hi;
+    let n = (l + m).rotate_left(17) + l;
+    m ^= l;
+    self.lo = l.rotate_left(49) ^ m ^ m << 21;
+    self.hi = m.rotate_left(28);
+    n
+  }
+}
+
 pub struct Xoroshiro {
-  seed: i64,
+  imp: Impl,
+}
+
+fn split_mix(mut seed: u64) -> u64 {
+  seed = (seed ^ seed >> 30).wrapping_mul(13787848793156543929);
+  seed = (seed ^ seed >> 27).wrapping_mul(10723151780598845931);
+  seed ^ seed >> 31
+}
+
+fn xoroshiro_seed(seed: u64) -> (u64, u64) {
+  let l = seed ^ 0x6A09E667F3BCC909;
+  let m = l.wrapping_sub(7046029254386353131);
+  (split_mix(l), split_mix(m))
 }
 
 impl Xoroshiro {
   pub fn new(seed: i64) -> Xoroshiro {
-    let mut rng = Xoroshiro { seed: 0 };
-    rng.set_seed(seed);
-    rng
+    let (lo, hi) = xoroshiro_seed(seed as u64);
+    Xoroshiro { imp: Impl::new(lo, hi) }
   }
+
+  fn next_bits(&mut self, bits: i32) -> i64 { (self.imp.next() >> 64 - bits) as i64 }
 }
 
 impl Rng for Xoroshiro {
-  fn set_seed(&mut self, seed: i64) { self.seed = (seed ^ 0x5DEECE66D) & 0xFFFFFFFFFFFF; }
-
-  fn next_bits(&mut self, bits: i32) -> i32 {
-    self.seed = (self.seed.wrapping_mul(25214903917) + 11) & 0xFFFFFFFFFFFF;
-    (self.seed >> (48 - bits)) as i32
+  fn set_seed(&mut self, seed: i64) {
+    let (lo, hi) = xoroshiro_seed(seed as u64);
+    self.imp = Impl::new(lo, hi);
   }
-  fn next_int(&mut self) -> i32 { self.next_bits(32) }
+
+  fn next_int(&mut self) -> i32 { self.next_bits(32) as i32 }
   fn next_int_max(&mut self, max: i32) -> i32 {
-    if (max & max - 1) == 0 {
-      return (max as i64 * (self.next_bits(31) as i64) >> 31) as i32;
-    }
-    let mut k;
-    loop {
-      let j = self.next_bits(31);
-      k = j % max;
-      if j - k + (max - 1) >= 0 {
-        break;
+    let mut l = self.next_int() as u64 & 0xffffffff;
+    let mut m = l * max as u64;
+    let mut n = m & 0xffffffff;
+    if n < max as u64 {
+      let j = (!max + 1) % max;
+      while n < j as u64 {
+        l = self.next_int() as u64 & 0xffffffff;
+        m = l * max as u64;
+        n = m & 0xffffffff;
       }
     }
-    k
+    return (m >> 32) as i32;
   }
 
   fn next_between(&mut self, min: i32, max: i32) -> i32 { self.next_int_max(max - min + 1) + min }
 
-  fn next_long(&mut self) -> i64 {
-    let i = self.next_bits(32);
-    let j = self.next_bits(32);
-    (i as i64) << 32 + j as i64
-  }
+  fn next_long(&mut self) -> i64 { self.imp.next() as i64 }
 
-  fn next_boolean(&mut self) -> bool { true }
-  fn next_float(&mut self) -> f32 { 0.0 }
-  fn next_double(&mut self) -> f64 {
-    let i = self.next_bits(26);
-    let j = self.next_bits(27);
-    let l = ((i as i64) << 27) + j as i64;
-    l as f64 * 1.110223E-16
-  }
+  fn next_boolean(&mut self) -> bool { self.imp.next() != 0 }
+  fn next_float(&mut self) -> f32 { self.next_bits(24) as f32 * 5.9604645E-8 }
+  fn next_double(&mut self) -> f64 { self.next_bits(53) as f64 * 1.110223E-16 }
   fn next_gaussian(&mut self) -> f64 { 0.0 }
 
   fn skip(&mut self, count: usize) {

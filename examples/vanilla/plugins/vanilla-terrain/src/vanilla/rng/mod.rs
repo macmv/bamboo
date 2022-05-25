@@ -7,7 +7,6 @@ pub use xoroshiro::Xoroshiro;
 pub trait Rng {
   fn set_seed(&mut self, seed: i64);
 
-  fn next_bits(&mut self, bits: i32) -> i32;
   fn next_int(&mut self) -> i32;
   fn next_int_max(&mut self, max: i32) -> i32;
   fn next_between(&mut self, min: i32, max: i32) -> i32;

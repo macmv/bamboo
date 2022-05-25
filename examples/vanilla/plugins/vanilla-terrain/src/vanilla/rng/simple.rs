@@ -12,15 +12,16 @@ impl SimpleRng {
   }
 
   pub fn derive(&mut self) -> SimpleRng { todo!() }
-}
-
-impl Rng for SimpleRng {
-  fn set_seed(&mut self, seed: i64) { self.seed = (seed ^ 0x5DEECE66D) & 0xFFFFFFFFFFFF; }
 
   fn next_bits(&mut self, bits: i32) -> i32 {
     self.seed = (self.seed.wrapping_mul(25214903917) + 11) & 0xFFFFFFFFFFFF;
     (self.seed >> (48 - bits)) as i32
   }
+}
+
+impl Rng for SimpleRng {
+  fn set_seed(&mut self, seed: i64) { self.seed = (seed ^ 0x5DEECE66D) & 0xFFFFFFFFFFFF; }
+
   fn next_int(&mut self) -> i32 { self.next_bits(32) }
   fn next_int_max(&mut self, max: i32) -> i32 {
     if (max & max - 1) == 0 {
