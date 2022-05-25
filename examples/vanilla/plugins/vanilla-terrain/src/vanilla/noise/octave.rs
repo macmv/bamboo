@@ -8,9 +8,9 @@ pub struct Octave<N> {
 }
 
 impl<N> Octave<N> {
-  pub fn new(
-    rng: &mut Rng,
-    noise: impl Fn(&mut Rng) -> N,
+  pub fn new<R: Rng>(
+    rng: &mut R,
+    noise: impl Fn(&mut R) -> N,
     octaves: i32,
     amplitudes: &[f64],
   ) -> Self {

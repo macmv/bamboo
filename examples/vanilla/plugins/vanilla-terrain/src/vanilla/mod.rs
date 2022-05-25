@@ -10,12 +10,12 @@ pub mod noise_params;
 pub mod rng;
 
 use noise::Noise;
-use rng::Rng;
+use rng::SimpleRng;
 
 use density_funcs::{Density, DensityFunc, NoisePos};
 
 pub fn generate_chunk(chunk: &mut Chunk<paletted::Section>, pos: ChunkPos) {
-  let mut rng = Rng::new(SEED);
+  let mut rng = SimpleRng::new(SEED);
   let gen = NoiseGenerator {
     vertical_size:   1,
     horizontal_size: 2,
@@ -285,9 +285,10 @@ impl NoiseGenerator {
     let total = now.elapsed().as_nanos() as f64 / 1_000_000.0;
     let total_sample = total_sample as f64 / 1_000_000.0;
     let total_setblock = total_setblock as f64 / 1_000_000.0;
-    info!("total: {total:.4}ms");
-    info!("sample: {total_sample:.4}ms ({:.2}%)", total_sample / total * 100.0);
-    info!("setblock: {total_setblock:.4}ms ({:.2}%)", total_setblock / total * 100.0);
+    // info!("total: {total:.4}ms");
+    // info!("sample: {total_sample:.4}ms ({:.2}%)", total_sample / total *
+    // 100.0); info!("setblock: {total_setblock:.4}ms ({:.2}%)",
+    // total_setblock / total * 100.0);
     /*
 
     for(int q = 0; q < o; ++q) {

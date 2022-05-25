@@ -40,12 +40,22 @@ impl Interpolated {
   }
 }
 
+fn floor_div(x: i32, y: i32) -> i32 {
+  let r = x / y;
+  // if the signs are different and modulo not zero, round down
+  if (x ^ y) < 0 && (r * y != x) {
+    r - 1
+  } else {
+    r
+  }
+}
+
 impl Density for Interpolated {
   fn sample(&self, pos: NoisePos) -> f64 {
     use super::octave::maintain_precision;
-    let i = pos.x / self.cell_width;
-    let j = pos.y / self.cell_height;
-    let k = pos.z / self.cell_width;
+    let i = floor_div(pos.x, self.cell_width);
+    let j = floor_div(pos.y, self.cell_height);
+    let k = floor_div(pos.z, self.cell_width);
     let mut total = 0.0;
     let mut persistence = 1.0;
     for octave in 0..8 {
@@ -75,7 +85,7 @@ impl Density for Interpolated {
         lower += perlin.sample_scale(n, o, p, scale_y, j as f64 * scale_y) / persistence;
       }
       if !bl3 {
-        let perlin = self.lower.get_octave(octave);
+        let perlin = self.upper.get_octave(octave);
         upper += perlin.sample_scale(n, o, p, scale_y, j as f64 * scale_y) / persistence;
       }
       persistence /= 2.0;
@@ -88,6 +98,6 @@ impl Density for Interpolated {
     if mapped > 1.0 {
       mapped = end
     }
-    super::perlin::lerp(mapped, start, end)
+    super::perlin::lerp(mapped, start, end) / 128.0
   }
 }

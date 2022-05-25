@@ -4,7 +4,7 @@ use super::{
     OctavePerlin, Perlin,
   },
   noise_params::{self, NoiseParams},
-  rng::Rng,
+  rng::{Rng, SimpleRng, Xoroshiro},
 };
 use float_ord::FloatOrd;
 use std::sync::Arc;
@@ -29,7 +29,7 @@ pub struct NoiseFuncs {
 }
 
 impl NoiseFuncs {
-  pub fn new(rng: &mut Rng) -> Self {
+  pub fn new<R: Rng>(rng: &mut R) -> Self {
     macro_rules! noise {
       ( $params:expr ) => {
         Arc::new(Cached::new(DoublePerlin::new(
@@ -47,27 +47,29 @@ impl NoiseFuncs {
 }
 
 impl DensityFuncs {
-  pub fn new(noise: NoiseFuncs, rng: &mut Rng) -> Self {
+  pub fn new(noise: NoiseFuncs, rng: &mut impl Rng) -> Self {
     let shift_x = Arc::new(shift(noise.offset.clone()));
     let shift_z = Arc::new(shift(noise.offset.clone()));
     let continents =
       Arc::new(shifted(shift_x.clone(), shift_z.clone(), 0.25, noise.continents.clone()));
     let final_density = continents.clone();
+
+    let mut xoroshiro = Xoroshiro::new(0);
     let final_density = Arc::new(Interpolated::new(
       OctavePerlin::new(
-        rng,
+        &mut xoroshiro,
         |rng| Perlin::new(rng),
         16,
         &(0..16).map(|i| i as f64).collect::<Vec<_>>(),
       ),
       OctavePerlin::new(
-        rng,
+        &mut xoroshiro,
         |rng| Perlin::new(rng),
         16,
         &(0..16).map(|i| i as f64).collect::<Vec<_>>(),
       ),
       OctavePerlin::new(
-        rng,
+        &mut xoroshiro,
         |rng| Perlin::new(rng),
         8,
         &(0..8).map(|i| i as f64).collect::<Vec<_>>(),
@@ -81,7 +83,7 @@ impl DensityFuncs {
 }
 
 impl World {
-  pub fn new(rng: &mut Rng) -> Self {
+  pub fn new(rng: &mut impl Rng) -> Self {
     let noise_funcs = NoiseFuncs::new(rng);
     let density_funcs = DensityFuncs::new(noise_funcs, rng);
     World { density_funcs }

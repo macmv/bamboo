@@ -8,7 +8,7 @@ pub struct Perlin {
 }
 
 impl Perlin {
-  pub fn new(rng: &mut Rng) -> Perlin {
+  pub fn new<R: Rng>(rng: &mut R) -> Perlin {
     let mut perlin = Perlin {
       origin_x: rng.next_double() * 256.0,
       origin_y: rng.next_double() * 256.0,
@@ -115,12 +115,12 @@ pub fn lerp(delta: f64, start: f64, end: f64) -> f64 { start + delta * (end - st
 
 #[cfg(test)]
 mod tests {
-  use super::*;
+  use super::{super::super::rng::SimpleRng, *};
   use pretty_assertions::assert_eq;
 
   #[test]
   fn single_perlin_test() {
-    let mut rng = Rng::new(1);
+    let mut rng = SimpleRng::new(1);
     let mut perlin = Perlin::new(&mut rng);
 
     assert_similar(perlin.origin_x, 187.10481682004246);
