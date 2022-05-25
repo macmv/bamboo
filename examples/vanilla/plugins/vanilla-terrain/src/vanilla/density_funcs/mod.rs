@@ -1,12 +1,14 @@
 use super::{
-  noise::{Cached, CachedDoublePerlin, DoublePerlin, Noise, Octave, OctavePerlin, Perlin},
+  noise::{
+    Cached, CachedDoublePerlin, DoublePerlin, Interpolated, Noise, Octave, OctavePerlin, Perlin,
+  },
   noise_params::{self, NoiseParams},
   rng::Rng,
 };
 use float_ord::FloatOrd;
 use std::sync::Arc;
 
-pub type DensityFunc = Shifted;
+pub type DensityFunc = Interpolated;
 
 pub struct World {
   pub density_funcs: DensityFuncs,
@@ -17,7 +19,7 @@ pub struct DensityFuncs {
   pub shift_x:       Arc<Shift>,
   pub shift_z:       Arc<Shift>,
   pub continents:    Arc<Shifted>,
-  pub final_density: Arc<Shifted>,
+  pub final_density: Arc<Interpolated>,
 }
 
 pub struct NoiseFuncs {

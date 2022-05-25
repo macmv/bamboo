@@ -111,7 +111,7 @@ fn lerp2(delta_x: f64, delta_y: f64, x0y0: f64, x1y0: f64, x0y1: f64, x1y1: f64)
   lerp(delta_y, lerp(delta_x, x0y0, x1y0), lerp(delta_x, x0y1, x1y1))
 }
 
-fn lerp(delta: f64, start: f64, end: f64) -> f64 { start + delta * (end - start) }
+pub fn lerp(delta: f64, start: f64, end: f64) -> f64 { start + delta * (end - start) }
 
 #[cfg(test)]
 mod tests {

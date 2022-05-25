@@ -20,11 +20,13 @@ impl<N> Octave<N> {
       persistence: 2.0_f64.powi(octaves),
     }
   }
+  pub fn get_octave(&self, i: usize) -> &N { &self.samplers[i].0 }
 }
+
+pub fn maintain_precision(v: f64) -> f64 { v - (v / 3.3554432E7 + 0.5).floor() * 3.3554432E7 }
 
 impl<N: Noise> Noise for Octave<N> {
   fn sample(&self, x: f64, y: f64, z: f64) -> f64 {
-    fn maintain_precision(v: f64) -> f64 { v - (v / 3.3554432E7 + 0.5).floor() * 3.3554432E7 }
     let mut total = 0.0;
     let mut lacunarity = self.lacunarity;
     let mut persistence = self.persistence;
