@@ -34,10 +34,10 @@ impl RngDeriver<SimpleRng> for SimpleRngDeriver {
 }
 
 fn java_hash(text: &str) -> i32 {
-  let mut hash = 0;
+  let mut hash = 0_i32;
   let len = text.len() as u32;
   for (i, b) in text.bytes().enumerate() {
-    hash += (b as i32 * 31).wrapping_pow(len - (i as u32 + 1));
+    hash = hash.wrapping_mul(31).wrapping_add(b as i32);
   }
   hash
 }
@@ -93,6 +93,14 @@ impl Rng for SimpleRng {
 mod tests {
   use super::*;
   use pretty_assertions::assert_eq;
+
+  #[test]
+  fn java_hash_test() {
+    assert_eq!(
+      java_hash("asldkadtiguhnsdalrubvnadlrkgunhaliejfp;oijawo98y3q405p9o8y23o45h2l34"),
+      -468667001
+    );
+  }
 
   #[test]
   fn basic_next_int() {
