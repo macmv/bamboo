@@ -8,7 +8,7 @@ pub struct Cached<N> {
   cache: Mutex<Option<(f64, f64, f64, f64)>>,
 }
 
-impl<N: Noise + Send + Sync + 'static> Cached<N> {
+impl<N> Cached<N> {
   pub fn new(noise: N) -> Self { Cached { noise, cache: Mutex::new(None) } }
 }
 
@@ -24,4 +24,8 @@ impl<N: Noise> Noise for Cached<N> {
     *lock = Some((x, y, z, val));
     val
   }
+}
+
+impl<N> From<N> for Cached<N> {
+  fn from(n: N) -> Self { Cached::new(n) }
 }
