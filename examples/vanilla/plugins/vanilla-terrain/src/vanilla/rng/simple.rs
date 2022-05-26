@@ -28,7 +28,9 @@ impl SimpleRngDeriver {
 }
 
 impl RngDeriver<SimpleRng> for SimpleRngDeriver {
-  fn create_rng(&self, name: &str) -> SimpleRng { SimpleRng::new(java_hash(name).into()) }
+  fn create_rng(&self, name: &str) -> SimpleRng {
+    SimpleRng::new(i64::from(java_hash(name)) ^ self.seed)
+  }
 }
 
 fn java_hash(text: &str) -> i32 {
