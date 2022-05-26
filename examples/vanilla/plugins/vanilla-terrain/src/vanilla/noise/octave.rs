@@ -13,7 +13,7 @@ pub struct Octave<N> {
 impl<N> Octave<N> {
   pub fn new<R: Rng>(
     rng: &mut R,
-    noise: impl Fn(&mut <<R as Rng>::Deriver as RngDeriver>::Rng) -> N,
+    noise: impl Fn(&mut R) -> N,
     first_octave: i32,
     amplitudes: &[f64],
   ) -> Self {

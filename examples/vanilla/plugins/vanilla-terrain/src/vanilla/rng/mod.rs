@@ -5,7 +5,7 @@ pub use simple::{SimpleRng, SimpleRngDeriver};
 pub use xoroshiro::{Xoroshiro, XoroshiroDeriver};
 
 pub trait Rng {
-  type Deriver: RngDeriver;
+  type Deriver: RngDeriver<Self>;
 
   /// Creates a deriver from this rng.
   fn create_deriver(&mut self) -> Self::Deriver;
@@ -24,11 +24,7 @@ pub trait Rng {
   fn skip(&mut self, count: usize);
 }
 
-pub trait RngDeriver {
-  /// The rng that will be created from this deriver. Note that this isn't
-  /// always going to be the same as the rng that created this deriver.
-  type Rng: Rng;
-
+pub trait RngDeriver<R: ?Sized> {
   /// Creates an rng from this deriver.
-  fn create_rng(&self, name: &str) -> Self::Rng;
+  fn create_rng(&self, name: &str) -> R;
 }

@@ -27,9 +27,7 @@ impl SimpleRngDeriver {
   pub(super) fn new(seed: i64) -> Self { SimpleRngDeriver { seed } }
 }
 
-impl RngDeriver for SimpleRngDeriver {
-  type Rng = SimpleRng;
-
+impl RngDeriver<SimpleRng> for SimpleRngDeriver {
   fn create_rng(&self, name: &str) -> SimpleRng { SimpleRng::new(java_hash(name).into()) }
 }
 
