@@ -1,5 +1,5 @@
 use super::{
-  super::density_funcs::{Density, NoisePos},
+  super::density::{Density, NoisePos},
   Cached, Noise, NoiseConfig, Octave, Perlin,
 };
 
@@ -100,5 +100,38 @@ impl Density for Interpolated {
       mapped = end
     }
     super::perlin::lerp(mapped, start, end) / 128.0
+  }
+}
+
+#[cfg(test)]
+mod tests {
+  use super::{super::super::rng::Xoroshiro, *};
+
+  #[test]
+  fn basic_sample() {
+    let mut rng = Xoroshiro::new(0);
+    let sampler = Interpolated::new(
+      Octave::new(
+        &mut rng,
+        |rng| Cached::new(Perlin::new(rng)),
+        16,
+        &(0..16).map(|i| i as f64).collect::<Vec<_>>(),
+      ),
+      Octave::new(
+        &mut rng,
+        |rng| Cached::new(Perlin::new(rng)),
+        16,
+        &(0..16).map(|i| i as f64).collect::<Vec<_>>(),
+      ),
+      Octave::new(
+        &mut rng,
+        |rng| Cached::new(Perlin::new(rng)),
+        8,
+        &(0..8).map(|i| i as f64).collect::<Vec<_>>(),
+      ),
+      4,
+      8,
+      &NoiseConfig { xz_scale: 1.0, y_scale: 1.0, xz_factor: 80.0, y_factor: 160.0 },
+    );
   }
 }

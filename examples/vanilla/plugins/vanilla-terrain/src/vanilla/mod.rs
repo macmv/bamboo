@@ -4,7 +4,7 @@ use bb_plugin::{
 };
 use std::sync::Arc;
 
-pub mod density_funcs;
+pub mod density;
 pub mod noise;
 pub mod noise_params;
 pub mod rng;
@@ -12,14 +12,14 @@ pub mod rng;
 use noise::Noise;
 use rng::SimpleRng;
 
-use density_funcs::{Density, DensityFunc, NoisePos};
+use density::{Density, DensityFunc, NoisePos, World};
 
 pub fn generate_chunk(chunk: &mut Chunk<paletted::Section>, pos: ChunkPos) {
   let mut rng = SimpleRng::new(SEED);
   let gen = NoiseGenerator {
     vertical_size:   1,
     horizontal_size: 2,
-    noise:           density_funcs::World::new(&mut rng),
+    noise:           World::new(&mut rng),
   };
   let chunk = gen.populate_noise(chunk, pos);
 }
@@ -27,7 +27,7 @@ pub fn generate_chunk(chunk: &mut Chunk<paletted::Section>, pos: ChunkPos) {
 const SEED: i64 = -2238292588208479879;
 
 struct NoiseGenerator {
-  noise:               density_funcs::World,
+  noise:               World,
   pub vertical_size:   i32,
   pub horizontal_size: i32,
 }
