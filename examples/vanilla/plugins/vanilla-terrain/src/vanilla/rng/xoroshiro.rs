@@ -56,10 +56,9 @@ impl Xoroshiro {
 
 impl RngDeriver<Xoroshiro> for XoroshiroDeriver {
   fn create_rng(&self, name: &str) -> Xoroshiro {
-    let bytes = md5::compute(name).0;
-    let num = u128::from_le_bytes(bytes);
-    let lo = num as u64;
-    let hi = (num >> 64) as u64;
+    let sum = md5::compute(name).0;
+    let lo = u64::from_be_bytes(sum[0..8].try_into().unwrap());
+    let hi = u64::from_be_bytes(sum[8..16].try_into().unwrap());
     return Xoroshiro::new_long(lo ^ self.lo, hi ^ self.hi);
   }
 }
@@ -116,5 +115,14 @@ mod tests {
     let mut rng = Xoroshiro::new(0);
     assert_eq!(rng.next_int(), -160476802);
     assert_eq!(rng.next_int(), 781697906);
+  }
+
+  #[test]
+  fn md5_hashser() {
+    let sum = md5::compute("octave_3").0;
+    assert_eq!(sum[0], 79);
+    assert_eq!(sum[1], 115);
+    assert_eq!(sum[2], 5);
+    assert_eq!(sum[3], 221);
   }
 }

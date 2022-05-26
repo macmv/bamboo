@@ -104,18 +104,30 @@ impl<N: Noise> Noise for Octave<N> {
 #[cfg(test)]
 mod tests {
   use super::{
-    super::{super::rng::SimpleRng, Perlin},
+    super::{
+      super::rng::{SimpleRng, Xoroshiro},
+      Perlin,
+    },
     *,
   };
   use pretty_assertions::assert_eq;
 
   #[test]
-  fn single_perlin_test() {
+  fn octave_simple_test() {
     let mut rng = SimpleRng::new(0);
     let mut octave = Octave::new(&mut rng, |rng| Perlin::new(rng), 3, &[1.0, 2.0, 3.0]);
 
     assert_similar(octave.sample(0.0, 0.0, 0.0), -0.0974);
     assert_similar(octave.sample(0.5, 0.0, 0.0), 0.35774);
+  }
+
+  #[test]
+  fn octave_xoroshiro_test() {
+    let mut rng = Xoroshiro::new(0);
+    let mut octave = Octave::new(&mut rng, |rng| Perlin::new(rng), 3, &[1.0, 2.0, 3.0]);
+
+    assert_similar(octave.sample(0.0, 0.0, 0.0), -0.07138800152556417);
+    assert_similar(octave.sample(0.5, 0.0, 0.0), 0.43152260160800854);
   }
 
   #[track_caller]
