@@ -43,7 +43,7 @@ extern "C" fn generate_chunk_and_lock(name: *const i8, x: i32, z: i32) -> *const
   }
   let mut lock = CHUNK_BUF.lock();
   if lock.is_none() {
-    *lock = Some(vec![0; 8192 * 16]);
+    *lock = Some(vec![0; 1024 * 64]);
   }
   let buffer = lock.as_mut().unwrap();
   let mut writer = MessageWriter::new(buffer);

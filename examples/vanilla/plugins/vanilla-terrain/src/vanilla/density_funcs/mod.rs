@@ -1,7 +1,6 @@
 use super::{
   noise::{
-    Cached, CachedDoublePerlin, DoublePerlin, Interpolated, Noise, NoiseConfig, Octave,
-    OctavePerlin, Perlin,
+    Cached, CachedDoublePerlin, DoublePerlin, Interpolated, Noise, NoiseConfig, Octave, Perlin,
   },
   noise_params::{self, NoiseParams},
   rng::{Rng, SimpleRng, Xoroshiro},
@@ -9,7 +8,11 @@ use super::{
 use float_ord::FloatOrd;
 use std::sync::Arc;
 
-pub type DensityFunc = Interpolated;
+mod cached;
+
+pub use cached::DensityCached;
+
+pub type DensityFunc = DensityCached<Interpolated>;
 
 pub struct World {
   pub density_funcs: DensityFuncs,
@@ -20,7 +23,7 @@ pub struct DensityFuncs {
   pub shift_x:       Arc<Shift>,
   pub shift_z:       Arc<Shift>,
   pub continents:    Arc<Shifted>,
-  pub final_density: Arc<Interpolated>,
+  pub final_density: Arc<DensityCached<Interpolated>>,
 }
 
 pub struct NoiseFuncs {
@@ -52,32 +55,31 @@ impl DensityFuncs {
     let shift_z = Arc::new(shift(noise.offset.clone()));
     let continents =
       Arc::new(shifted(shift_x.clone(), shift_z.clone(), 0.25, noise.continents.clone()));
-    let final_density = continents.clone();
 
     let mut xoroshiro = Xoroshiro::new(0);
-    let final_density = Arc::new(Interpolated::new(
-      OctavePerlin::new(
+    let final_density = Arc::new(DensityCached::new(Interpolated::new(
+      Octave::new(
         &mut xoroshiro,
-        |rng| Perlin::new(rng),
+        |rng| Cached::new(Perlin::new(rng)),
         16,
         &(0..16).map(|i| i as f64).collect::<Vec<_>>(),
       ),
-      OctavePerlin::new(
+      Octave::new(
         &mut xoroshiro,
-        |rng| Perlin::new(rng),
+        |rng| Cached::new(Perlin::new(rng)),
         16,
         &(0..16).map(|i| i as f64).collect::<Vec<_>>(),
       ),
-      OctavePerlin::new(
+      Octave::new(
         &mut xoroshiro,
-        |rng| Perlin::new(rng),
+        |rng| Cached::new(Perlin::new(rng)),
         8,
         &(0..8).map(|i| i as f64).collect::<Vec<_>>(),
       ),
       4,
       8,
       &NoiseConfig { xz_scale: 1.0, y_scale: 1.0, xz_factor: 80.0, y_factor: 160.0 },
-    ));
+    )));
     DensityFuncs { noise_funcs: noise, shift_x, shift_z, continents, final_density }
   }
 }
@@ -93,7 +95,7 @@ impl World {
   }
 }
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub struct NoisePos {
   pub x: i32,
   pub y: i32,

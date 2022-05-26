@@ -6,7 +6,7 @@ use bb_ffi::CChat;
 use parking_lot::Mutex;
 use std::{ffi::CString, marker::PhantomData};
 
-pub use bb_common::{chunk, math, util};
+pub use bb_common::{chunk, math, transfer, util};
 
 pub mod player;
 pub mod time;

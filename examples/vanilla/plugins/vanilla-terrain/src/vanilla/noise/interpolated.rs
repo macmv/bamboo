@@ -1,12 +1,12 @@
 use super::{
   super::density_funcs::{Density, NoisePos},
-  Noise, NoiseConfig, OctavePerlin,
+  Cached, Noise, NoiseConfig, Octave, Perlin,
 };
 
 pub struct Interpolated {
-  lower:         OctavePerlin,
-  upper:         OctavePerlin,
-  interp:        OctavePerlin,
+  lower:         Octave<Cached<Perlin>>,
+  upper:         Octave<Cached<Perlin>>,
+  interp:        Octave<Cached<Perlin>>,
   xz_scale:      f64,
   y_scale:       f64,
   xz_main_scale: f64,
@@ -17,9 +17,9 @@ pub struct Interpolated {
 
 impl Interpolated {
   pub fn new(
-    lower: OctavePerlin,
-    upper: OctavePerlin,
-    interp: OctavePerlin,
+    lower: Octave<Cached<Perlin>>,
+    upper: Octave<Cached<Perlin>>,
+    interp: Octave<Cached<Perlin>>,
     cell_width: i32,
     cell_height: i32,
     config: &NoiseConfig,
@@ -53,12 +53,13 @@ fn floor_div(x: i32, y: i32) -> i32 {
 impl Density for Interpolated {
   fn sample(&self, pos: NoisePos) -> f64 {
     use super::octave::maintain_precision;
+
     let i = floor_div(pos.x, self.cell_width);
     let j = floor_div(pos.y, self.cell_height);
     let k = floor_div(pos.z, self.cell_width);
     let mut total = 0.0;
     let mut persistence = 1.0;
-    for octave in 0..8 {
+    for octave in 0..self.interp.octaves() {
       let perlin = self.interp.get_octave(octave);
       total += perlin.sample_scale(
         maintain_precision(i as f64 * self.xz_main_scale * persistence),
@@ -75,7 +76,7 @@ impl Density for Interpolated {
     let mut persistence = 1.0;
     let mut lower = 0.0;
     let mut upper = 0.0;
-    for octave in 0..16 {
+    for octave in 0..self.lower.octaves() {
       let n = maintain_precision(i as f64 * self.xz_scale * persistence);
       let o = maintain_precision(j as f64 * self.y_scale * persistence);
       let p = maintain_precision(k as f64 * self.xz_scale * persistence);
