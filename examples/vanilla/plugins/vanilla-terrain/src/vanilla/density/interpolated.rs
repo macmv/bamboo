@@ -1,6 +1,6 @@
 use super::{
-  super::density::{Density, NoisePos},
-  Cached, Noise, NoiseConfig, Octave, Perlin,
+  super::noise::{Cached, Noise, Octave, Perlin},
+  Density, NoiseConfig, NoisePos,
 };
 
 pub struct Interpolated {
@@ -52,7 +52,7 @@ fn floor_div(x: i32, y: i32) -> i32 {
 
 impl Density for Interpolated {
   fn sample(&self, pos: NoisePos) -> f64 {
-    use super::octave::maintain_precision;
+    use super::super::noise::maintain_precision;
 
     let i = floor_div(pos.x, self.cell_width);
     let j = floor_div(pos.y, self.cell_height);
@@ -99,7 +99,7 @@ impl Density for Interpolated {
     if mapped > 1.0 {
       mapped = end
     }
-    super::perlin::lerp(mapped, start, end) / 128.0
+    super::super::noise::lerp(mapped, start, end) / 128.0
   }
 }
 

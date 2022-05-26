@@ -1,7 +1,5 @@
 use super::{
-  noise::{
-    Cached, CachedDoublePerlin, DoublePerlin, Interpolated, Noise, NoiseConfig, Octave, Perlin,
-  },
+  noise::{Cached, CachedDoublePerlin, DoublePerlin, Noise, Octave, Perlin},
   noise_params::{self, NoiseParams},
   rng::{Rng, SimpleRng, Xoroshiro},
 };
@@ -9,8 +7,10 @@ use float_ord::FloatOrd;
 use std::sync::Arc;
 
 mod cached;
+mod interpolated;
 
 pub use cached::DensityCached;
+pub use interpolated::Interpolated;
 
 pub type DensityFunc = DensityCached<Interpolated>;
 
@@ -29,6 +29,13 @@ pub struct DensityFuncs {
 pub struct NoiseFuncs {
   offset:     Arc<CachedDoublePerlin>,
   continents: Arc<CachedDoublePerlin>,
+}
+
+pub struct NoiseConfig {
+  pub xz_scale:  f64,
+  pub y_scale:   f64,
+  pub xz_factor: f64,
+  pub y_factor:  f64,
 }
 
 impl NoiseFuncs {
