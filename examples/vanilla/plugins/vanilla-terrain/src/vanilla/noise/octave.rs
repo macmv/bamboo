@@ -1,4 +1,7 @@
-use super::{super::rng::Rng, Noise};
+use super::{
+  super::rng::{Rng, RngDeriver},
+  Noise,
+};
 
 pub struct Octave<N> {
   // One for each octave. The tuple contains the noise function and the amplitude of that function.
@@ -11,17 +14,67 @@ impl<N> Octave<N> {
   pub fn new<R: Rng>(
     rng: &mut R,
     noise: impl Fn(&mut R) -> N,
-    octaves: i32,
+    first_octave: i32,
     amplitudes: &[f64],
   ) -> Self {
-    // TODO: Handle xoroshiro/legacy correctly
+    let i = amplitudes.len() as i32;
+    let j = -first_octave;
+    let mut samplers = Vec::with_capacity(amplitudes.len());
 
-    Octave {
-      samplers:    amplitudes.iter().copied().map(|amp| (noise(rng), amp)).collect(),
-      lacunarity:  2.0_f64.powi(octaves),
-      persistence: 2.0_f64.powi(amplitudes.len() as i32 - 1)
-        / (2.0_f64.powi(amplitudes.len() as i32) - 1.0),
+    let deriver = rng.create_deriver();
+    for k in 0..amplitudes.len() {
+      if amplitudes[k] == 0.0 {
+        continue;
+      };
+      let l = first_octave + k as i32;
+      let mut rng = deriver.create_rng(&format!("octave_{l}"));
+      samplers.push((noise(&mut rng), amplitudes[k]));
     }
+
+    let lacunarity = 2.0_f64.powi(first_octave);
+    let len = amplitudes.len() as i32;
+    let persistence = 2.0_f64.powi(len - 1) / (2.0_f64.powi(len) - 1.0);
+    // this.field_36632 = this.method_40557(2.0);
+
+    Octave { samplers, lacunarity, persistence }
+  }
+  pub fn new_legacy<R: Rng>() -> Self {
+    /*
+    this.firstOctave = pair.getFirst();
+    this.amplitudes = pair.getSecond();
+    int i = this.amplitudes.size();
+    int j = -this.firstOctave;
+    this.octaveSamplers = new PerlinNoiseSampler[i];
+
+    double d;
+    PerlinNoiseSampler perlinNoiseSampler = new PerlinNoiseSampler(random);
+    if (j >= 0 && j < i && (d = this.amplitudes.getDouble(j)) != 0.0) {
+      this.octaveSamplers[j] = perlinNoiseSampler;
+    }
+    for (int k = j - 1; k >= 0; --k) {
+      if (k < i) {
+        double e = this.amplitudes.getDouble(k);
+        if (e != 0.0) {
+          this.octaveSamplers[k] = new PerlinNoiseSampler(random);
+          continue;
+        }
+        OctavePerlinNoiseSampler.skipCalls(random);
+        continue;
+      }
+      OctavePerlinNoiseSampler.skipCalls(random);
+    }
+    if (Arrays.stream(this.octaveSamplers).filter(Objects::nonNull).count() != this.amplitudes.stream().filter(double_ -> double_ != 0.0).count()) {
+      panic!("failed to create correct number of noise levels for given non-zero amplitudes");
+    }
+    if (j < i - 1) {
+      panic!("positive octaves are not allowed");
+    }
+
+    this.lacunarity = Math.pow(2.0, -j);
+    this.persistence = Math.pow(2.0, i - 1) / (Math.pow(2.0, i) - 1.0);
+    this.field_36632 = this.method_40557(2.0);
+    */
+    todo!()
   }
   pub fn get_octave(&self, i: usize) -> &N { &self.samplers[i].0 }
   pub fn octaves(&self) -> usize { self.samplers.len() }

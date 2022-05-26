@@ -1,4 +1,4 @@
-use super::Rng;
+use super::{Rng, RngDeriver};
 
 struct Impl {
   lo: u64,
@@ -27,6 +27,10 @@ impl Impl {
 pub struct Xoroshiro {
   imp: Impl,
 }
+pub struct XoroshiroDeriver {
+  lo: u64,
+  hi: u64,
+}
 
 fn split_mix(mut seed: u64) -> u64 {
   seed = (seed ^ seed >> 30).wrapping_mul(13787848793156543929);
@@ -43,13 +47,29 @@ fn xoroshiro_seed(seed: u64) -> (u64, u64) {
 impl Xoroshiro {
   pub fn new(seed: i64) -> Xoroshiro {
     let (lo, hi) = xoroshiro_seed(seed as u64);
-    Xoroshiro { imp: Impl::new(lo, hi) }
+    Xoroshiro::new_long(lo, hi)
   }
+  pub fn new_long(lo: u64, hi: u64) -> Xoroshiro { Xoroshiro { imp: Impl::new(lo, hi) } }
 
   fn next_bits(&mut self, bits: i32) -> i64 { (self.imp.next() >> 64 - bits) as i64 }
 }
 
+impl RngDeriver<Xoroshiro> for XoroshiroDeriver {
+  fn create_rng(&self, name: &str) -> Xoroshiro {
+    let bytes = md5::compute(name).0;
+    let num = u128::from_le_bytes(bytes);
+    let lo = num as u64;
+    let hi = (num >> 64) as u64;
+    return Xoroshiro::new_long(lo ^ self.lo, hi ^ self.hi);
+  }
+}
+
 impl Rng for Xoroshiro {
+  type Deriver = XoroshiroDeriver;
+  fn create_deriver(&mut self) -> XoroshiroDeriver {
+    XoroshiroDeriver { lo: self.imp.next(), hi: self.imp.next() }
+  }
+
   fn set_seed(&mut self, seed: i64) {
     let (lo, hi) = xoroshiro_seed(seed as u64);
     self.imp = Impl::new(lo, hi);

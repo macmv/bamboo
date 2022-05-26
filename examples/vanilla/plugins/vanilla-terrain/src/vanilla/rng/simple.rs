@@ -1,5 +1,6 @@
-use super::Rng;
+use super::{Rng, RngDeriver};
 
+#[derive(Clone)]
 pub struct SimpleRng {
   seed: i64,
 }
@@ -19,7 +20,18 @@ impl SimpleRng {
   }
 }
 
+pub struct SimpleRngDeriver {
+  rng: SimpleRng,
+}
+
+impl RngDeriver<SimpleRng> for SimpleRngDeriver {
+  fn create_rng(&self, name: &str) -> SimpleRng { self.rng.clone() }
+}
+
 impl Rng for SimpleRng {
+  type Deriver = SimpleRngDeriver;
+  fn create_deriver(&mut self) -> SimpleRngDeriver { SimpleRngDeriver { rng: self.clone() } }
+
   fn set_seed(&mut self, seed: i64) { self.seed = (seed ^ 0x5DEECE66D) & 0xFFFFFFFFFFFF; }
 
   fn next_int(&mut self) -> i32 { self.next_bits(32) }

@@ -11,6 +11,7 @@ crate-type = ["lib", "cdylib"]
 bb_plugin = { path = "../../../../bb_plugin" }
 float-ord = "0.3.2"
 parking_lot = "0.12.0"
+md5 = "0.7.0"
 
 # Seperate workspace
 [workspace]
