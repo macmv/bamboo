@@ -13,12 +13,10 @@ pub struct Octave<N> {
 impl<N> Octave<N> {
   pub fn new<R: Rng>(
     rng: &mut R,
-    noise: impl Fn(&mut R) -> N,
+    noise: impl Fn(&mut <<R as Rng>::Deriver as RngDeriver>::Rng) -> N,
     first_octave: i32,
     amplitudes: &[f64],
   ) -> Self {
-    let i = amplitudes.len() as i32;
-    let j = -first_octave;
     let mut samplers = Vec::with_capacity(amplitudes.len());
 
     let deriver = rng.create_deriver();
@@ -26,8 +24,7 @@ impl<N> Octave<N> {
       if amplitudes[k] == 0.0 {
         continue;
       };
-      let l = first_octave + k as i32;
-      let mut rng = deriver.create_rng(&format!("octave_{l}"));
+      let mut rng = deriver.create_rng(&format!("octave_{}", first_octave + k as i32));
       samplers.push((noise(&mut rng), amplitudes[k]));
     }
 
@@ -76,13 +73,14 @@ impl<N> Octave<N> {
     */
     todo!()
   }
-  pub fn get_octave(&self, i: usize) -> &N { &self.samplers[i].0 }
+  pub fn get_octave(&self, octave: usize) -> &N {
+    &self.samplers[self.samplers.len() - 1 - octave].0
+  }
   pub fn octaves(&self) -> usize { self.samplers.len() }
 }
 
-// pub fn maintain_precision(v: f64) -> f64 { v - (v / 3.3554432E7 +
-// 0.5).floor() * 3.3554432E7 }
-pub fn maintain_precision(v: f64) -> f64 { v }
+pub fn maintain_precision(v: f64) -> f64 { v - (v / 3.3554432E7 + 0.5).floor() * 3.3554432E7 }
+// pub fn maintain_precision(v: f64) -> f64 { v }
 
 impl<N: Noise> Noise for Octave<N> {
   fn sample(&self, x: f64, y: f64, z: f64) -> f64 {

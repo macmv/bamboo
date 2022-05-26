@@ -54,7 +54,9 @@ impl Xoroshiro {
   fn next_bits(&mut self, bits: i32) -> i64 { (self.imp.next() >> 64 - bits) as i64 }
 }
 
-impl RngDeriver<Xoroshiro> for XoroshiroDeriver {
+impl RngDeriver for XoroshiroDeriver {
+  type Rng = Xoroshiro;
+
   fn create_rng(&self, name: &str) -> Xoroshiro {
     let bytes = md5::compute(name).0;
     let num = u128::from_le_bytes(bytes);

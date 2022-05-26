@@ -1,7 +1,10 @@
 use super::{Rng, RngDeriver};
 
-#[derive(Clone)]
 pub struct SimpleRng {
+  seed: i64,
+}
+
+pub struct SimpleRngDeriver {
   seed: i64,
 }
 
@@ -20,17 +23,28 @@ impl SimpleRng {
   }
 }
 
-pub struct SimpleRngDeriver {
-  rng: SimpleRng,
+impl SimpleRngDeriver {
+  pub(super) fn new(seed: i64) -> Self { SimpleRngDeriver { seed } }
 }
 
-impl RngDeriver<SimpleRng> for SimpleRngDeriver {
-  fn create_rng(&self, name: &str) -> SimpleRng { self.rng.clone() }
+impl RngDeriver for SimpleRngDeriver {
+  type Rng = SimpleRng;
+
+  fn create_rng(&self, name: &str) -> SimpleRng { SimpleRng::new(java_hash(name).into()) }
+}
+
+fn java_hash(text: &str) -> i32 {
+  let mut hash = 0;
+  let len = text.len() as u32;
+  for (i, b) in text.bytes().enumerate() {
+    hash += (b as i32 * 31).wrapping_pow(len - (i as u32 + 1));
+  }
+  hash
 }
 
 impl Rng for SimpleRng {
   type Deriver = SimpleRngDeriver;
-  fn create_deriver(&mut self) -> SimpleRngDeriver { SimpleRngDeriver { rng: self.clone() } }
+  fn create_deriver(&mut self) -> SimpleRngDeriver { SimpleRngDeriver::new(self.next_long()) }
 
   fn set_seed(&mut self, seed: i64) { self.seed = (seed ^ 0x5DEECE66D) & 0xFFFFFFFFFFFF; }
 
@@ -55,7 +69,7 @@ impl Rng for SimpleRng {
   fn next_long(&mut self) -> i64 {
     let i = self.next_bits(32);
     let j = self.next_bits(32);
-    (i as i64) << 32 + j as i64
+    ((i as i64) << 32) + j as i64
   }
 
   fn next_boolean(&mut self) -> bool { true }
