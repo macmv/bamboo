@@ -12,6 +12,9 @@ pub use octave::{maintain_precision, Octave};
 pub use perlin::{lerp, Perlin};
 pub use wyhash::{WyHash, WyHashBuilder};
 
+#[cfg(test)]
+pub use perlin::tests::assert_similar;
+
 pub type DoublePerlin = Double<Octave<Perlin>>;
 pub type OctavePerlin = Octave<Perlin>;
 pub type CachedDoublePerlin = Cached<DoublePerlin>;

@@ -1,10 +1,21 @@
 use super::{super::rng::Rng, Noise};
+use std::fmt;
 
 pub struct Perlin {
   origin_x: f64,
   origin_y: f64,
   origin_z: f64,
   kernel:   [i8; 256],
+}
+
+impl fmt::Debug for Perlin {
+  fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    f.debug_struct("Perlin")
+      .field("origin_x", &self.origin_x)
+      .field("origin_y", &self.origin_y)
+      .field("origin_z", &self.origin_z)
+      .finish()
+  }
 }
 
 impl Perlin {
@@ -114,7 +125,7 @@ fn lerp2(delta_x: f64, delta_y: f64, x0y0: f64, x1y0: f64, x0y1: f64, x1y1: f64)
 pub fn lerp(delta: f64, start: f64, end: f64) -> f64 { start + delta * (end - start) }
 
 #[cfg(test)]
-mod tests {
+pub mod tests {
   use super::{super::super::rng::SimpleRng, *};
   use pretty_assertions::assert_eq;
 
@@ -151,7 +162,8 @@ mod tests {
     assert_similar(perlin.sample(0.5, 0.0, 0.0), -0.2507);
   }
 
-  fn assert_similar(actual: f64, expected: f64) {
+  #[track_caller]
+  pub fn assert_similar(actual: f64, expected: f64) {
     if (expected - actual).abs() > 0.0001 {
       panic!("Expected: {expected}, got: {actual}");
     }

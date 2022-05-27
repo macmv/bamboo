@@ -65,23 +65,20 @@ impl DensityFuncs {
 
     let mut xoroshiro = Xoroshiro::new(0);
     let final_density = Arc::new(DensityCached::new(Interpolated::new(
-      Octave::new(
+      Octave::new_legacy_octaves(
         &mut xoroshiro,
         |rng| Cached::new(Perlin::new(rng)),
-        16,
-        &(0..16).map(|i| i as f64).collect::<Vec<_>>(),
+        &(-15..=0).collect::<Vec<_>>(),
       ),
-      Octave::new(
+      Octave::new_legacy_octaves(
         &mut xoroshiro,
         |rng| Cached::new(Perlin::new(rng)),
-        16,
-        &(0..16).map(|i| i as f64).collect::<Vec<_>>(),
+        &(-15..=0).collect::<Vec<_>>(),
       ),
-      Octave::new(
+      Octave::new_legacy_octaves(
         &mut xoroshiro,
         |rng| Cached::new(Perlin::new(rng)),
-        8,
-        &(0..8).map(|i| i as f64).collect::<Vec<_>>(),
+        &(-7..=0).collect::<Vec<_>>(),
       ),
       4,
       8,

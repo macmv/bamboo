@@ -5,12 +5,13 @@ use super::{
 
 pub struct Octave<N> {
   // One for each octave. The tuple contains the noise function and the amplitude of that function.
-  samplers:    Vec<(N, f64)>,
+  // If the sampler is None, the octave should be skipped.
+  samplers:    Vec<(Option<N>, f64)>,
   lacunarity:  f64,
   persistence: f64,
 }
 
-impl<N> Octave<N> {
+impl<N: std::fmt::Debug> Octave<N> {
   pub fn new<R: Rng>(
     rng: &mut R,
     noise: impl Fn(&mut R) -> N,
@@ -25,7 +26,7 @@ impl<N> Octave<N> {
         continue;
       };
       let mut rng = deriver.create_rng(&format!("octave_{}", first_octave + k as i32));
-      samplers.push((noise(&mut rng), amplitudes[k]));
+      samplers.push((Some(noise(&mut rng)), amplitudes[k]));
     }
 
     let lacunarity = 2.0_f64.powi(first_octave);
@@ -35,45 +36,70 @@ impl<N> Octave<N> {
 
     Octave { samplers, lacunarity, persistence }
   }
-  pub fn new_legacy<R: Rng>() -> Self {
-    /*
-    this.firstOctave = pair.getFirst();
-    this.amplitudes = pair.getSecond();
-    int i = this.amplitudes.size();
-    int j = -this.firstOctave;
-    this.octaveSamplers = new PerlinNoiseSampler[i];
+  pub fn new_legacy_octaves<R: Rng>(
+    rng: &mut R,
+    noise: impl Fn(&mut R) -> N,
+    octaves: &[i32],
+  ) -> Self {
+    assert!(!octaves.is_empty());
+    let i = -octaves[0];
+    let k = i + octaves[octaves.len() - 1] + 1;
+    if k < 1 {
+      panic!("total number of octaves needs to be >= 1");
+    }
+    let mut amplitudes = vec![0.0; k as usize];
+    for octave in octaves {
+      amplitudes[(octave + i) as usize] = 1.0;
+    }
 
-    double d;
-    PerlinNoiseSampler perlinNoiseSampler = new PerlinNoiseSampler(random);
-    if (j >= 0 && j < i && (d = this.amplitudes.getDouble(j)) != 0.0) {
-      this.octaveSamplers[j] = perlinNoiseSampler;
+    Self::new_legacy(rng, noise, -i, &amplitudes)
+  }
+  pub fn new_legacy<R: Rng>(
+    rng: &mut R,
+    noise: impl Fn(&mut R) -> N,
+    first_octave: i32,
+    amplitudes: &[f64],
+  ) -> Self {
+    let len = amplitudes.len() as i32;
+    let j = -first_octave;
+    let mut samplers = vec![];
+    samplers.resize_with(amplitudes.len(), || None);
+
+    let first = noise(rng);
+    if j >= 0 && j < len && amplitudes[j as usize] != 0.0 {
+      samplers[j as usize] = Some(first);
     }
-    for (int k = j - 1; k >= 0; --k) {
-      if (k < i) {
-        double e = this.amplitudes.getDouble(k);
-        if (e != 0.0) {
-          this.octaveSamplers[k] = new PerlinNoiseSampler(random);
-          continue;
+    for k in (0..j).rev() {
+      // We still want to use the same number of rng.next() calls, even if we don't
+      // store this perlin.
+      let perlin = noise(rng);
+      if k < amplitudes.len() as i32 {
+        let amp = amplitudes[k as usize];
+        if amp != 0.0 {
+          samplers[k as usize] = Some(perlin);
         }
-        OctavePerlinNoiseSampler.skipCalls(random);
-        continue;
       }
-      OctavePerlinNoiseSampler.skipCalls(random);
     }
-    if (Arrays.stream(this.octaveSamplers).filter(Objects::nonNull).count() != this.amplitudes.stream().filter(double_ -> double_ != 0.0).count()) {
+    if samplers.iter().filter(|s| s.is_some()).count()
+      != amplitudes.iter().filter(|&&v| v != 0.0).count()
+    {
       panic!("failed to create correct number of noise levels for given non-zero amplitudes");
     }
-    if (j < i - 1) {
+    if j < len - 1 {
       panic!("positive octaves are not allowed");
     }
 
-    this.lacunarity = Math.pow(2.0, -j);
-    this.persistence = Math.pow(2.0, i - 1) / (Math.pow(2.0, i) - 1.0);
-    this.field_36632 = this.method_40557(2.0);
-    */
-    todo!()
+    let lacunarity = 2.0_f64.powi(-j);
+    let persistence = 2.0_f64.powi(len - 1) / (2.0_f64.powi(len) - 1.0);
+    // this.field_36632 = this.method_40557(2.0);
+
+    Octave {
+      samplers: samplers.into_iter().enumerate().map(|(i, s)| (s, amplitudes[i])).collect(),
+      lacunarity,
+      persistence,
+    }
   }
-  pub fn get_octave(&self, octave: usize) -> &N {
+  pub fn get_octave(&self, octave: usize) -> &Option<N> {
     &self.samplers[self.samplers.len() - 1 - octave].0
   }
   pub fn octaves(&self) -> usize { self.samplers.len() }
@@ -88,12 +114,14 @@ impl<N: Noise> Noise for Octave<N> {
     let mut lacunarity = self.lacunarity;
     let mut persistence = self.persistence;
     for (noise, amplitude) in &self.samplers {
-      let value = noise.sample(
-        maintain_precision(x * lacunarity),
-        maintain_precision(y * lacunarity),
-        maintain_precision(z * lacunarity),
-      );
-      total += amplitude * value * persistence;
+      if let Some(n) = noise {
+        let value = n.sample(
+          maintain_precision(x * lacunarity),
+          maintain_precision(y * lacunarity),
+          maintain_precision(z * lacunarity),
+        );
+        total += amplitude * value * persistence;
+      }
       lacunarity *= 2.0;
       persistence /= 2.0;
     }
@@ -106,7 +134,7 @@ mod tests {
   use super::{
     super::{
       super::rng::{SimpleRng, Xoroshiro},
-      Perlin,
+      assert_similar, Perlin,
     },
     *,
   };
@@ -128,12 +156,5 @@ mod tests {
 
     assert_similar(octave.sample(0.0, 0.0, 0.0), -0.07138800152556417);
     assert_similar(octave.sample(0.5, 0.0, 0.0), 0.43152260160800854);
-  }
-
-  #[track_caller]
-  fn assert_similar(actual: f64, expected: f64) {
-    if (expected - actual).abs() > 0.0001 {
-      panic!("Expected: {expected}, got: {actual}");
-    }
   }
 }

@@ -60,14 +60,15 @@ impl Density for Interpolated {
     let mut total = 0.0;
     let mut persistence = 1.0;
     for octave in 0..self.interp.octaves() {
-      let perlin = self.interp.get_octave(octave);
-      total += perlin.sample_scale(
-        maintain_precision(i as f64 * self.xz_main_scale * persistence),
-        maintain_precision(j as f64 * self.y_main_scale * persistence),
-        maintain_precision(k as f64 * self.xz_main_scale * persistence),
-        self.y_main_scale * persistence,
-        j as f64 * self.y_main_scale * persistence,
-      ) / persistence;
+      if let Some(perlin) = self.interp.get_octave(octave) {
+        total += perlin.sample_scale(
+          maintain_precision(i as f64 * self.xz_main_scale * persistence),
+          maintain_precision(j as f64 * self.y_main_scale * persistence),
+          maintain_precision(k as f64 * self.xz_main_scale * persistence),
+          self.y_main_scale * persistence,
+          j as f64 * self.y_main_scale * persistence,
+        ) / persistence;
+      }
       persistence /= 2.0;
     }
     let mut mapped = (total / 10.0 + 1.0) / 2.0;
@@ -82,56 +83,61 @@ impl Density for Interpolated {
       let p = maintain_precision(k as f64 * self.xz_scale * persistence);
       let scale_y = self.y_scale * persistence;
       if !bl2 {
-        let perlin = self.lower.get_octave(octave);
-        lower += perlin.sample_scale(n, o, p, scale_y, j as f64 * scale_y) / persistence;
+        if let Some(perlin) = self.lower.get_octave(octave) {
+          lower += perlin.sample_scale(n, o, p, scale_y, j as f64 * scale_y) / persistence;
+        }
       }
       if !bl3 {
-        let perlin = self.upper.get_octave(octave);
-        upper += perlin.sample_scale(n, o, p, scale_y, j as f64 * scale_y) / persistence;
+        if let Some(perlin) = self.upper.get_octave(octave) {
+          upper += perlin.sample_scale(n, o, p, scale_y, j as f64 * scale_y) / persistence;
+        }
       }
       persistence /= 2.0;
     }
     let start = lower / 512.0;
     let end = upper / 512.0;
-    if mapped < 0.0 {
-      mapped = start;
-    }
-    if mapped > 1.0 {
-      mapped = end
-    }
-    super::super::noise::lerp(mapped, start, end) / 128.0
+    let res = if mapped < 0.0 {
+      start
+    } else if mapped > 1.0 {
+      end
+    } else {
+      super::super::noise::lerp(mapped, start, end)
+    };
+    res / 128.0
   }
 }
 
 #[cfg(test)]
 mod tests {
-  use super::{super::super::rng::Xoroshiro, *};
+  use super::{
+    super::super::{noise::assert_similar, rng::Xoroshiro},
+    *,
+  };
 
   #[test]
   fn basic_sample() {
     let mut rng = Xoroshiro::new(0);
     let sampler = Interpolated::new(
-      Octave::new(
+      Octave::new_legacy_octaves(
         &mut rng,
         |rng| Cached::new(Perlin::new(rng)),
-        16,
-        &(0..16).map(|i| i as f64).collect::<Vec<_>>(),
+        &(-15..=0).collect::<Vec<_>>(),
       ),
-      Octave::new(
+      Octave::new_legacy_octaves(
         &mut rng,
         |rng| Cached::new(Perlin::new(rng)),
-        16,
-        &(0..16).map(|i| i as f64).collect::<Vec<_>>(),
+        &(-15..=0).collect::<Vec<_>>(),
       ),
-      Octave::new(
+      Octave::new_legacy_octaves(
         &mut rng,
         |rng| Cached::new(Perlin::new(rng)),
-        8,
-        &(0..8).map(|i| i as f64).collect::<Vec<_>>(),
+        &(-7..=0).collect::<Vec<_>>(),
       ),
       4,
       8,
       &NoiseConfig { xz_scale: 1.0, y_scale: 1.0, xz_factor: 80.0, y_factor: 160.0 },
     );
+
+    assert_similar(sampler.sample(NoisePos { x: 0, y: 0, z: 0 }), 0.05283727086562935);
   }
 }

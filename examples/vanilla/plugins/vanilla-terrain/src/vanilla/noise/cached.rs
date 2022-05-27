@@ -3,6 +3,7 @@ use float_ord::FloatOrd;
 use parking_lot::Mutex;
 use std::ops::Deref;
 
+#[derive(Debug)]
 pub struct Cached<N> {
   noise: N,
   cache: Mutex<Option<(f64, f64, f64, f64)>>,
