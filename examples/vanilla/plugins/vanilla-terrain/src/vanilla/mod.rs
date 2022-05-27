@@ -15,13 +15,17 @@ use rng::SimpleRng;
 use density::{Density, DensityFunc, NoisePos, World};
 
 pub fn generate_chunk(chunk: &mut Chunk<paletted::Section>, pos: ChunkPos) {
-  let mut rng = SimpleRng::new(SEED);
-  let gen = NoiseGenerator {
-    vertical_size:   1,
-    horizontal_size: 2,
-    noise:           World::new(&mut rng),
-  };
-  let chunk = gen.populate_noise(chunk, pos);
+  fn new_gen() -> NoiseGenerator {
+    let mut rng = SimpleRng::new(SEED);
+    NoiseGenerator { vertical_size: 1, horizontal_size: 2, noise: World::new(&mut rng) }
+  }
+
+  thread_local! {
+    static GEN: NoiseGenerator = new_gen();
+  }
+  GEN.with(|g| {
+    g.populate_noise(chunk, pos);
+  });
 }
 
 const SEED: i64 = -2238292588208479879;
@@ -35,14 +39,19 @@ struct ChunkNoiseSampler<'a> {
   gen:           &'a NoiseGenerator,
   block_sampler: BlockStateSampler,
 
-  chunk_x:  i32,
-  chunk_z:  i32,
-  offset_x: i32,
-  offset_y: i32,
-  offset_z: i32,
-  x:        i32,
-  y:        i32,
-  z:        i32,
+  // The start coordinates are the 0,0 relative coordinate of this chunk. These are final.
+  start_x: i32, // field x
+  start_z: i32, // field z
+
+  // The base coordinates are absolute block values, and are the value of the outer loop we're in.
+  base_x: i32, // field 94
+  base_y: i32, // field 72
+  base_z: i32, // field 73
+
+  // The offset coordinates are local to the inner loop we are in.
+  offset_x: i32, // field 74
+  offset_y: i32, // field 75
+  offset_z: i32, // field 76
 }
 struct BlockStateSampler {
   density: Arc<DensityFunc>,
@@ -59,29 +68,39 @@ impl BlockStateSampler {
   }
 }
 
+fn floor_div(x: i32, y: i32) -> i32 {
+  let r = x / y;
+  // if the signs are different and modulo not zero, round down
+  if (x ^ y) < 0 && (r * y != x) {
+    r - 1
+  } else {
+    r
+  }
+}
+
 impl<'a> ChunkNoiseSampler<'a> {
-  pub fn new(chunk_x: i32, chunk_z: i32, gen: &'a NoiseGenerator) -> Self {
+  pub fn new(start_x: i32, start_z: i32, gen: &'a NoiseGenerator) -> Self {
     ChunkNoiseSampler {
       gen,
-      chunk_x,
-      chunk_z,
+      start_x: floor_div(start_x, gen.horizontal_size),
+      start_z: floor_div(start_z, gen.horizontal_size),
       block_sampler: BlockStateSampler { density: gen.noise.density_funcs.final_density.clone() },
+      base_x: 0,
+      base_y: 0,
+      base_z: 0,
       offset_x: 0,
       offset_y: 0,
       offset_z: 0,
-      x: 0,
-      y: 0,
-      z: 0,
     }
   }
   fn sample_end_noise(&mut self, x: i32) {
-    self.offset_x = (self.chunk_x + x) * self.gen.horizontal_size;
+    self.base_x = (self.start_x + x) * self.gen.horizontal_size;
   }
   fn sample_noise_corners(&mut self, y: i32, z: i32) {
     const MIN_Y: i32 = 0;
 
-    self.offset_y = (y + MIN_Y) * self.gen.vertical_size;
-    self.offset_z = (self.chunk_z + z) * self.gen.horizontal_size;
+    self.base_y = (y + MIN_Y) * self.gen.vertical_size;
+    self.base_z = (z + self.start_z) * self.gen.horizontal_size;
     /*
     this.field_36593 = true;
     ++this.field_36578;
@@ -92,13 +111,17 @@ impl<'a> ChunkNoiseSampler<'a> {
     this.field_36593 = false;
     */
   }
-  fn sample_noise_x(&mut self, block_x: i32, x: f64) { self.x = block_x - self.offset_x; }
-  fn sample_noise_y(&mut self, block_y: i32, y: f64) { self.y = block_y - self.offset_y; }
+  fn sample_noise_x(&mut self, block_x: i32, x: f64) { self.offset_x = block_x - self.base_x; }
+  fn sample_noise_y(&mut self, block_y: i32, y: f64) { self.offset_y = block_y - self.base_y; }
   // ++this.field_36577;
-  fn sample_noise_z(&mut self, block_z: i32, z: f64) { self.z = block_z - self.offset_z; }
+  fn sample_noise_z(&mut self, block_z: i32, z: f64) { self.offset_z = block_z - self.base_z; }
 
   fn as_noise_pos(&self) -> NoisePos {
-    NoisePos { x: self.offset_x + self.x, y: self.offset_y + self.y, z: self.offset_z + self.z }
+    NoisePos {
+      x: self.base_x + self.offset_x,
+      y: self.base_y + self.offset_y,
+      z: self.base_z + self.offset_z,
+    }
   }
 
   fn get_block_inner(&mut self, x: i32, y: i32, z: i32, noise: f64) -> f64 {
@@ -208,7 +231,7 @@ impl<'a> ChunkNoiseSampler<'a> {
 
 impl NoiseGenerator {
   fn populate_noise(&self, chunk: &mut Chunk<paletted::Section>, pos: ChunkPos) {
-    let mut sampler = ChunkNoiseSampler::new(pos.x(), pos.z(), self);
+    let mut sampler = ChunkNoiseSampler::new(pos.block_x(), pos.block_z(), self);
 
     const MIN_Y: i32 = 0;
     const MAX_Y: i32 = 256;
