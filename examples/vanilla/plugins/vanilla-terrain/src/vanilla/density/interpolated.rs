@@ -32,8 +32,8 @@ impl Interpolated {
       interp,
       xz_scale,
       y_scale,
-      xz_main_scale: xz_scale * config.xz_factor,
-      y_main_scale: y_scale * config.y_factor,
+      xz_main_scale: xz_scale / config.xz_factor,
+      y_main_scale: y_scale / config.y_factor,
       cell_width,
       cell_height,
     }
@@ -139,5 +139,7 @@ mod tests {
     );
 
     assert_similar(sampler.sample(NoisePos { x: 0, y: 0, z: 0 }), 0.05283727086562935);
+    assert_similar(sampler.sample(NoisePos { x: -8, y: 0, z: 0 }), -0.0689692598430185);
+    assert_similar(sampler.sample(NoisePos { x: -8, y: 8, z: 0 }), -0.09953054218231573);
   }
 }

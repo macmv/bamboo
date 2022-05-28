@@ -40,7 +40,8 @@ impl Perlin {
 }
 
 impl Noise for Perlin {
-  fn sample(&self, x: f64, y: f64, z: f64) -> f64 {
+  fn sample(&self, x: f64, y: f64, z: f64) -> f64 { self.sample_scale(x, y, z, 0.0, 0.0) }
+  fn sample_scale(&self, x: f64, y: f64, z: f64, y_scale: f64, y_max: f64) -> f64 {
     let d = x + self.origin_x;
     let e = y + self.origin_y;
     let f = z + self.origin_z;
@@ -48,9 +49,15 @@ impl Noise for Perlin {
     let section_y = e.floor() as i32;
     let section_z = f.floor() as i32;
     let local_x = d - section_x as f64;
-    let local_y = e - section_y as f64;
+    let fade_local_y = e - section_y as f64;
     let local_z = f - section_z as f64;
-    let fade_local_x = local_y;
+    let n = if y_scale != 0.0 {
+      let m = if y_max >= 0.0 && y_max < fade_local_y { y_max } else { fade_local_y };
+      (m / y_scale + 1.0E-7).floor() * y_scale
+    } else {
+      0.0
+    };
+    let local_y = fade_local_y - n;
 
     let i = self.gradient(section_x);
     let j = self.gradient(section_x + 1);
@@ -68,7 +75,7 @@ impl Noise for Perlin {
     let q =
       perlin_grad(self.gradient(n + section_z + 1), local_x - 1.0, local_y - 1.0, local_z - 1.0);
     let r = perlin_fade(local_x);
-    let s = perlin_fade(fade_local_x);
+    let s = perlin_fade(fade_local_y);
     let t = perlin_fade(local_z);
     return lerp3(r, s, t, d, e, f, g, h, o, p, q);
   }

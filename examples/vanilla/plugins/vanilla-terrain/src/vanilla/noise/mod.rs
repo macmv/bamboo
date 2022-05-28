@@ -21,7 +21,5 @@ pub type CachedDoublePerlin = Cached<DoublePerlin>;
 
 pub trait Noise {
   fn sample(&self, x: f64, y: f64, z: f64) -> f64;
-  fn sample_scale(&self, x: f64, y: f64, z: f64, scale_y: f64, max_y: f64) -> f64 {
-    self.sample(x, y, z)
-  }
+  fn sample_scale(&self, x: f64, y: f64, z: f64, y_scale: f64, y_max: f64) -> f64;
 }

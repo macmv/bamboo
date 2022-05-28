@@ -109,6 +109,26 @@ pub fn maintain_precision(v: f64) -> f64 { v - (v / 3.3554432E7 + 0.5).floor() *
 // pub fn maintain_precision(v: f64) -> f64 { v }
 
 impl<N: Noise> Noise for Octave<N> {
+  fn sample_scale(&self, x: f64, y: f64, z: f64, y_scale: f64, y_max: f64) -> f64 {
+    let mut total = 0.0;
+    let mut lacunarity = self.lacunarity;
+    let mut persistence = self.persistence;
+    for (noise, amplitude) in &self.samplers {
+      if let Some(n) = noise {
+        let value = n.sample_scale(
+          maintain_precision(x * lacunarity),
+          maintain_precision(y * lacunarity),
+          maintain_precision(z * lacunarity),
+          y_scale,
+          y_max,
+        );
+        total += amplitude * value * persistence;
+      }
+      lacunarity *= 2.0;
+      persistence /= 2.0;
+    }
+    total
+  }
   fn sample(&self, x: f64, y: f64, z: f64) -> f64 {
     let mut total = 0.0;
     let mut lacunarity = self.lacunarity;
