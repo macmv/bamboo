@@ -80,9 +80,9 @@ pub fn init_with_level(_name: &str, level: LevelFilter) {
 
   impl log::Log for Logger {
     fn enabled(&self, metadata: &Metadata) -> bool {
-      metadata.level() <= Level::Info
-        && !metadata.target().starts_with("regalloc")
+      !metadata.target().starts_with("regalloc")
         && !metadata.target().starts_with("wasmer_compiler")
+        && !metadata.target().starts_with("cranelift")
     }
 
     fn log(&self, record: &Record) {

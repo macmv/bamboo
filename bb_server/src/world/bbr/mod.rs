@@ -49,10 +49,14 @@ impl RegionMap {
     let region_pos = RegionPos::new(pos);
     let rlock = if !lock.contains_key(&region_pos) {
       drop(lock);
-      let mut region = Region::new(self.wm.clone(), region_pos);
-      region.load();
       let mut write = self.regions.write();
-      write.insert(region_pos, Mutex::new(region));
+      if !write.contains_key(&region_pos) {
+        // If someone else got the write lock, and wrote this region, we don't
+        // want to read it twice. We need to hold the lock while reading, so we don't
+        // read a region twice.
+        let region = Region::new_load(self.wm.clone(), region_pos);
+        write.insert(region_pos, Mutex::new(region));
+      }
       RwLockWriteGuard::downgrade(write)
     } else {
       lock
@@ -90,9 +94,14 @@ impl RegionMap {
 }
 
 impl Region {
-  pub fn new(wm: Arc<WorldManager>, pos: RegionPos) -> Self {
+  fn new(wm: Arc<WorldManager>, pos: RegionPos) -> Self {
     const NONE: Option<CountedChunk> = None;
     Region { wm, pos, chunks: [NONE; 1024], unloadable_chunks: HashSet::new() }
+  }
+  pub fn new_load(wm: Arc<WorldManager>, pos: RegionPos) -> Self {
+    let mut region = Region::new(wm, pos);
+    region.load();
+    region
   }
 
   pub fn get(&self, pos: RegionRelPos) -> &Option<CountedChunk> {

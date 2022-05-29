@@ -25,8 +25,7 @@ thread_local! {
 
 impl Region {
   /// Writes all the stored chunks to disk.
-  pub fn save(&self) {
-    return;
+  pub(super) fn save(&self) {
     CACHE.with(|(region_cache, compression_cache)| {
       let mut region_cache = region_cache.borrow_mut();
       let mut compression_cache = compression_cache.borrow_mut();
@@ -43,6 +42,8 @@ impl Region {
 
       // TODO: Warn about errors here
       let path = self.fname();
+      debug!("saving region to {}", path.display());
+      self.print_summary();
       fs::create_dir_all(path.parent().unwrap()).unwrap();
       File::create(path).unwrap().write_all(&compression_cache).unwrap();
     });
@@ -50,16 +51,19 @@ impl Region {
 
   /// Overwrites all stored chunks with the file on disk, if present. If not
   /// present, this will clear all loaded chunks.
-  pub fn load(&mut self) {
+  pub(super) fn load(&mut self) {
     CACHE.with(|(region_cache, compression_cache)| {
       let mut region_cache = region_cache.borrow_mut();
       let mut compression_cache = compression_cache.borrow_mut();
 
       let path = self.fname();
       if path.exists() {
+        debug!("loading region from {}", path.display());
+        compression_cache.clear();
         let n = File::open(path).unwrap().read_to_end(&mut compression_cache).unwrap();
 
         let mut decoder = GzDecoder::<&[u8]>::new(&compression_cache[..n]);
+        region_cache.clear();
         let n = match decoder.read_to_end(&mut region_cache) {
           Ok(n) => n,
           Err(e) => {
@@ -83,8 +87,24 @@ impl Region {
             *chunk = None;
           }
         }
+
+        self.print_summary();
       }
     });
+  }
+
+  fn print_summary(&self) {
+    println!("CHUNK AT {} {}", self.pos.x, self.pos.z);
+    for z in 0..32 {
+      for x in 0..32 {
+        if self.has_chunk(super::RegionRelPos { x, z }) {
+          print!("x");
+        } else {
+          print!(".");
+        }
+      }
+      println!();
+    }
   }
 
   fn fname(&self) -> PathBuf {
