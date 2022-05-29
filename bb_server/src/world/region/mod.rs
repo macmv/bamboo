@@ -1,6 +1,9 @@
 //! Loads vanilla region files and Bamboo region files from disk. The former
 //! is made for vanilla compatability, and the latter is a custom protobuf
 //! format which is easier to maintain.
+//!
+//! Not to be confused with `bbr` (bamboo region), which is for a custom world
+//! format.
 
 use crate::block;
 use bb_common::{

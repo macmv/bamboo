@@ -107,14 +107,9 @@ impl World {
     self.chunks_to_load.lock().remove_player(pos, player);
   }
   pub fn queue_chunk(&self, pos: ChunkPos, player: &Arc<Player>) {
-    {
-      let rlock = self.chunks.read();
-      if rlock.contains_key(&pos) {
-        drop(rlock);
-        player.send_chunk(pos, || self.serialize_chunk(pos));
-        return;
-      }
-      // drop rlock
+    if self.regions.region(pos, |region| region.has_chunk(pos)) {
+      player.send_chunk(pos, || self.serialize_chunk(pos));
+      return;
     }
     self.chunks_to_load.lock().add(pos, player);
   }

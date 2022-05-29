@@ -11,6 +11,7 @@
 //! players joining, and players leaving. Lastly, it also contains a global tick
 //! loop, which is currently only used for plugins.
 
+mod bbr;
 mod blocks;
 mod chunk;
 mod chunks;
@@ -32,7 +33,7 @@ use bb_common::{
 };
 use parking_lot::{Mutex, MutexGuard, RwLock, RwLockReadGuard};
 use std::{
-  collections::{HashMap, HashSet},
+  collections::HashMap,
   convert::TryInto,
   fmt,
   sync::{
@@ -60,6 +61,7 @@ pub use chunk::{CountedChunk, MultiChunk};
 pub use entities::{EntitiesIter, EntitiesMap, EntitiesMapRef};
 pub use players::{PlayersIter, PlayersMap};
 
+use bbr::{RegionMap, RegionRelPos};
 use chunks::ChunksToLoad;
 
 // pub struct ChunkRef<'a> {
@@ -80,24 +82,21 @@ use chunks::ChunksToLoad;
 /// This also contains a bunch of references to other server stuff, such as
 /// [block]/[item]/[entity] type converters, and the [`WorldManager`].
 pub struct World {
-  chunks:            RwLock<HashMap<ChunkPos, CountedChunk>>,
-  // Whenever we want to unload chunks, we will clear out this map. So there is no situation where
-  // a rwlock is more useful than a normal mutex.
-  unloadable_chunks: Mutex<HashSet<ChunkPos>>,
-  generator:         String,
-  players:           RwLock<PlayersMap>,
-  entities:          RwLock<EntitiesMap>,
-  eid:               AtomicI32,
-  block_converter:   Arc<block::TypeConverter>,
-  item_converter:    Arc<item::TypeConverter>,
-  entity_converter:  Arc<entity::TypeConverter>,
-  plugins:           Arc<plugin::PluginManager>,
-  commands:          Arc<CommandTree>,
-  uspt:              Arc<AtomicU32>,
-  wm:                Arc<WorldManager>,
-  config:            ConfigSection,
+  regions:          RegionMap,
+  generator:        String,
+  players:          RwLock<PlayersMap>,
+  entities:         RwLock<EntitiesMap>,
+  eid:              AtomicI32,
+  block_converter:  Arc<block::TypeConverter>,
+  item_converter:   Arc<item::TypeConverter>,
+  entity_converter: Arc<entity::TypeConverter>,
+  plugins:          Arc<plugin::PluginManager>,
+  commands:         Arc<CommandTree>,
+  uspt:             Arc<AtomicU32>,
+  wm:               Arc<WorldManager>,
+  config:           ConfigSection,
   // If set, then the world cannot be modified.
-  locked:            AtomicBool,
+  locked:           AtomicBool,
 
   chunks_to_load: Mutex<ChunksToLoad>,
 }
@@ -147,7 +146,6 @@ impl World {
     commands: Arc<CommandTree>,
     wm: Arc<WorldManager>,
   ) -> Arc<Self> {
-    let chunks = HashMap::new();
     let config = wm.config().section("world");
     // let gen = WorldGen::from_config(&config);
     /*
@@ -161,8 +159,7 @@ impl World {
     }
     */
     let world = Arc::new(World {
-      chunks: RwLock::new(chunks),
-      unloadable_chunks: Mutex::new(HashSet::new()),
+      regions: RegionMap::new(),
       generator: config.get("generator"),
       players: RwLock::new(PlayersMap::new()),
       entities: RwLock::new(EntitiesMap::new()),
@@ -368,7 +365,7 @@ impl World {
 
   /// Checks if the given chunk position is loaded. This will not check for any
   /// data saved on disk, it only checks if the given chunk is in memory.
-  pub fn has_loaded_chunk(&self, pos: ChunkPos) -> bool { self.chunks.read().contains_key(&pos) }
+  pub fn has_loaded_chunk(&self, pos: ChunkPos) -> bool { self.regions.has_chunk(pos) }
 
   /// Stores a list of chunks in the internal map. This should be used after
   /// calling [`pre_generate_chunk`](Self::pre_generate_chunk) a number of
@@ -379,29 +376,10 @@ impl World {
   /// in the world. While that other thread was running, the world could have
   /// loaded something from disk, which you don't want to overwrite.
   pub fn store_chunks_no_overwrite(&self, chunks: Vec<(ChunkPos, MultiChunk)>) {
-    // Only locks for reading if all the chunks are already in the world.
-    let mut needs_write = false;
-    {
-      let read = self.chunks.read();
-      for (pos, _) in &chunks {
-        if !read.contains_key(pos) {
-          needs_write = true;
-          break;
-        }
-      }
-    }
-    if needs_write {
-      let mut write = self.chunks.write();
-      for (pos, c) in chunks {
-        // Make sure to call or_insert_with. Someone could have changed the chunks
-        // between the read unlock and the write lock. So the needs_write bool is mostly
-        // an approximation.
-        let ent = write.entry(pos).or_insert_with(|| CountedChunk::new(c));
-        // If the chunk was already present, it might not have a count of 0.
-        if ent.count.load(Ordering::Acquire) == 0 {
-          self.unloadable_chunks.lock().insert(pos);
-        }
-      }
+    for (pos, chunk) in chunks {
+      self.regions.region(pos, |mut region| {
+        region.get_or_generate(pos, || CountedChunk::new(chunk));
+      });
     }
   }
 
@@ -417,21 +395,12 @@ impl World {
   where
     F: FnOnce(MutexGuard<MultiChunk>) -> R,
   {
-    // We first check (read-only) if we need to generate a new chunk
-    if !self.chunks.read().contains_key(&pos) {
-      // If we do, we lock it for writing
-      let mut chunks = self.chunks.write();
-      // Make sure that the chunk was not written in between locking this chunk
-      let ent =
-        chunks.entry(pos).or_insert_with(|| CountedChunk::new(self.pre_generate_chunk(pos)));
-      // If the chunk was already present, it might not have a count of 0.
-      if ent.count.load(Ordering::Acquire) == 0 {
-        self.unloadable_chunks.lock().insert(pos);
-      }
-    }
-    let chunks = self.chunks.read();
-    let c = chunks[&pos].chunk.lock();
-    f(c)
+    self.regions.region(pos, |mut region| {
+      let chunk = region.get_or_generate(RegionRelPos::new(pos), || {
+        CountedChunk::new(self.pre_generate_chunk(pos))
+      });
+      f(chunk.lock())
+    })
   }
 
   /// This serializes a chunk for the given version. This packet can be sent
@@ -533,6 +502,8 @@ impl World {
   /// used to track when a chunk should be loaded/unloaded. This will load the
   /// given chunk if it is not loaded already.
   pub fn inc_view(&self, pos: ChunkPos) {
+    // TODO: Reimplement since regions were added
+    /*
     // We first check (read-only) if we need to generate a new chunk
     if !self.chunks.read().contains_key(&pos) {
       // If we do, we lock it for writing
@@ -550,12 +521,15 @@ impl World {
     if c.count.fetch_add(1, Ordering::Acquire) == 0 {
       self.unloadable_chunks.lock().remove(&pos);
     }
+    */
   }
 
   /// Decrements how many people are viewing the given chunk. This counter is
   /// used to track when a chunk should be loaded/unloaded. If this chunk does
   /// not exist, this will do nothing.
   pub fn dec_view(&self, pos: ChunkPos) {
+    // TODO: Reimplement since regions were added
+    /*
     // We first check (read-only) if the chunk is present.
     if !self.chunks.read().contains_key(&pos) {
       return;
@@ -567,6 +541,7 @@ impl World {
     if c.count.fetch_sub(1, Ordering::Acquire) == 1 {
       self.unloadable_chunks.lock().insert(pos);
     }
+    */
   }
 
   /// This broadcasts a chat message to everybody in the world. Note that this
@@ -619,21 +594,18 @@ impl World {
 
       if players_is_empty {
         self.unload_chunks();
+        /*
         let len = self.chunks.read().len();
         if len != 0 {
           warn!("chunks remaining after last player logged off: {}", len);
         }
+        */
       }
     }
   }
 
   // Unloads all the chunks that are cached for unloading.
-  pub fn unload_chunks(&self) {
-    let mut wl = self.chunks.write();
-    for pos in self.unloadable_chunks.lock().drain() {
-      wl.remove(&pos);
-    }
-  }
+  pub fn unload_chunks(&self) { self.regions.unload_chunks(); }
 
   /// Returns true if the world is locked. This is an atomic load, so it will
   /// always be a race condition. However, whenever you modify the world, this
