@@ -9,13 +9,28 @@ impl Region {
   pub fn save(&self) {
     use std::cell::RefCell;
     thread_local! {
-      static REGION_CACHE: RefCell<Vec<u8>> = RefCell::new(vec![]);
+      static CACHE: (RefCell<Vec<u8>>, RefCell<Vec<u8>>) = (RefCell::new(vec![]), RefCell::new(vec![]));
     }
-    REGION_CACHE.with(|cache| {
-      let mut cache = cache.borrow_mut();
-      let mut writer = MessageWriter::new(&mut cache);
-      // TODO: Writer which appends
+    CACHE.with(|(region_cache, compression_cache)| {
+      let mut region_cache = region_cache.borrow_mut();
+      let mut compression_cache = compression_cache.borrow_mut();
+
+      region_cache.clear();
+      let mut writer = MessageWriter::<&mut Vec<u8>>::new(&mut region_cache);
       writer.write(&self).unwrap();
+
+      use bb_common::flate2::{write::GzEncoder, Compression};
+
+      compression_cache.clear();
+      let mut encoder =
+        GzEncoder::<&mut Vec<u8>>::new(&mut compression_cache, Compression::default());
+      encoder.write_all(&region_cache).unwrap();
+      encoder.finish().unwrap();
+
+      // TODO: Warn about errors here
+      fs::create_dir_all("world/chunks").unwrap();
+      let fname = format!("world/chunks/{}.{}.bbr", self.pos.x, self.pos.z);
+      File::create(fname).unwrap().write_all(&compression_cache).unwrap();
     });
   }
 }

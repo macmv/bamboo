@@ -24,6 +24,8 @@ pub mod version;
 pub use registry::Registry;
 
 pub use bb_transfer as transfer;
+#[cfg(feature = "host")]
+pub use flate2;
 
 // #[derive(Debug)]
 // pub struct KeepAlivePolicy {
