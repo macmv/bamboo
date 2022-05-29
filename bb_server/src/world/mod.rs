@@ -159,7 +159,7 @@ impl World {
     }
     */
     let world = Arc::new(World {
-      regions: RegionMap::new(),
+      regions: RegionMap::new(wm.clone()),
       generator: config.get("generator"),
       players: RwLock::new(PlayersMap::new()),
       entities: RwLock::new(EntitiesMap::new()),

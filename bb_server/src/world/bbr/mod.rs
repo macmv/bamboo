@@ -1,12 +1,14 @@
 //! Bamboo region storing in memory, reading, and writing to disk.
 
-mod read;
-mod write;
+mod fs;
 
-use super::CountedChunk;
+use super::{CountedChunk, WorldManager};
 use bb_common::math::ChunkPos;
 use parking_lot::{Mutex, MutexGuard, RwLock, RwLockWriteGuard};
-use std::collections::{HashMap, HashSet};
+use std::{
+  collections::{HashMap, HashSet},
+  sync::Arc,
+};
 
 /// The same structure as a chunk position, but used to index into a region. Can
 /// be converted to/from a `ChunkPos` by multiplying/dividing its coordinates by
@@ -25,10 +27,12 @@ pub struct RegionRelPos {
 }
 
 pub struct RegionMap {
+  wm:      Arc<WorldManager>,
   regions: RwLock<HashMap<RegionPos, Mutex<Region>>>,
 }
 
 pub struct Region {
+  wm:                Arc<WorldManager>,
   pos:               RegionPos,
   /// An array of `32*32 = 1024` chunks. The index is `x + z * 32`.
   chunks:            [Option<CountedChunk>; 1024],
@@ -36,15 +40,19 @@ pub struct Region {
 }
 
 impl RegionMap {
-  pub fn new() -> Self { RegionMap { regions: RwLock::new(HashMap::new()) } }
+  pub fn new(wm: Arc<WorldManager>) -> Self {
+    RegionMap { wm, regions: RwLock::new(HashMap::new()) }
+  }
 
   pub fn region<F: FnOnce(MutexGuard<Region>) -> R, R>(&self, pos: ChunkPos, f: F) -> R {
     let lock = self.regions.read();
     let region_pos = RegionPos::new(pos);
     let rlock = if !lock.contains_key(&region_pos) {
       drop(lock);
+      let mut region = Region::new(self.wm.clone(), region_pos);
+      region.load();
       let mut write = self.regions.write();
-      write.insert(region_pos, Mutex::new(Region::new(region_pos)));
+      write.insert(region_pos, Mutex::new(region));
       RwLockWriteGuard::downgrade(write)
     } else {
       lock
@@ -82,9 +90,9 @@ impl RegionMap {
 }
 
 impl Region {
-  pub fn new(pos: RegionPos) -> Self {
+  pub fn new(wm: Arc<WorldManager>, pos: RegionPos) -> Self {
     const NONE: Option<CountedChunk> = None;
-    Region { pos, chunks: [NONE; 1024], unloadable_chunks: HashSet::new() }
+    Region { wm, pos, chunks: [NONE; 1024], unloadable_chunks: HashSet::new() }
   }
 
   pub fn get(&self, pos: RegionRelPos) -> &Option<CountedChunk> {
