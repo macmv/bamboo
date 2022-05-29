@@ -1,6 +1,6 @@
 use super::{zig, Header};
 
-use std::{error::Error, fmt};
+use std::{error::Error, fmt, io::Write};
 
 type Result = std::result::Result<(), WriteError>;
 
@@ -29,7 +29,9 @@ impl Error for WriteError {}
 /// A trait for anything that can be written to a MessageWriter.
 pub trait MessageWrite {
   /// Writes `self` into the writer.
-  fn write(&self, writer: &mut MessageWriter) -> Result;
+  fn write<W>(&self, writer: &mut MessageWriter<W>) -> Result
+  where
+    W: Write;
 }
 
 /// Wrapper around a byte array for writing fields. Every function on this type
@@ -37,29 +39,41 @@ pub trait MessageWrite {
 /// [`MessageRead`](super::MessageRead).
 ///
 /// See the [crate] level docs for how fields are encoded.
-pub struct MessageWriter<'a> {
-  data: &'a mut [u8],
+pub struct MessageWriter<W> {
+  data: W,
   idx:  usize,
 }
 
-impl MessageWriter<'_> {
+impl<W> MessageWriter<W> {
   /// Creates a new MessageWrite. The given slice will be used to write values.
   /// An internal index is used to know where to write. The MessageWrite will
   /// not modify any data past the index it is at. So after writing, you can
   /// call `index`, and know that none of the data past that index has been
   /// modified.
   #[inline(always)]
-  pub fn new(data: &mut [u8]) -> MessageWriter { MessageWriter { data, idx: 0 } }
+  pub fn new(data: W) -> Self { MessageWriter { data, idx: 0 } }
 
   /// Returns the current index the writer is at. This byte in the internal
   /// slice will not have been modified yet, and will be modified on the next
   /// call to any of the `write_` functions.
   pub fn index(&self) -> usize { self.idx }
+}
 
+/*
+impl<W> MessageWriter<W>
+where
+  W: Write + Seek,
+{
   /// Returns true if the writer still has bytes left. If this returns false,
   /// then any future `write_` calls will failed with `WriteError::EOF`.
   pub fn can_write(&self) -> bool { self.idx < self.data.len() }
+}
+*/
 
+impl<W> MessageWriter<W>
+where
+  W: Write,
+{
   /// Writes some generic type T to `self`. Depending on the situation, this
   /// may be easier than calling the individual `write_*` functions. They will
   /// both compile into the same call, so it doesn't matter which function you
@@ -95,6 +109,11 @@ impl MessageWriter<'_> {
   ///
   /// This is private, as this is doesn't read a `Header`.
   fn write_byte(&mut self, num: u8) -> Result {
+    // TODO: Handle errors!
+    self.data.write_all(&[num]);
+    self.idx += 1;
+    Ok(())
+    /*
     if self.idx >= self.data.len() {
       Err(WriteError::EOF)
     } else {
@@ -102,6 +121,7 @@ impl MessageWriter<'_> {
       self.idx += 1;
       Ok(())
     }
+    */
   }
   /// Reads a varint from the buffer. If the number is less than 16, then
   /// nothing will be written. This assumes the first 5 bits have already been
@@ -156,6 +176,11 @@ impl MessageWriter<'_> {
 
   /// Writes the given number of bytes from the buffer.
   fn write_buf(&mut self, buf: &[u8]) -> Result {
+    // TODO: Handle error!
+    self.data.write(buf);
+    self.idx += buf.len();
+    Ok(())
+    /*
     if self.idx + buf.len() > self.data.len() {
       Err(WriteError::BufTooLong)
     } else {
@@ -163,10 +188,14 @@ impl MessageWriter<'_> {
       self.idx += buf.len();
       Ok(())
     }
+    */
   }
 }
 
-impl MessageWriter<'_> {
+impl<W> MessageWriter<W>
+where
+  W: Write,
+{
   /// Writes a single boolean to the internal buffer.
   pub fn write_bool(&mut self, v: bool) -> Result {
     self.write_u8(if v { 1 } else { 0 })?;
@@ -220,7 +249,7 @@ impl MessageWriter<'_> {
   pub fn write_struct(
     &mut self,
     num_fields: u64,
-    writer: impl FnOnce(&mut MessageWriter) -> Result,
+    writer: impl FnOnce(&mut MessageWriter<W>) -> Result,
   ) -> Result {
     self.write_header(Header::Struct, num_fields)?;
     self.write_varint(num_fields)?;
@@ -233,7 +262,7 @@ impl MessageWriter<'_> {
     &mut self,
     variant: u64,
     num_fields: u64,
-    writer: impl FnOnce(&mut MessageWriter) -> Result,
+    writer: impl FnOnce(&mut MessageWriter<W>) -> Result,
   ) -> Result {
     self.write_header(Header::Enum, variant)?;
     self.write_varint(variant)?;

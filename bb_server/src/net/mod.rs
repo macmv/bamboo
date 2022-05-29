@@ -200,12 +200,12 @@ impl Connection {
   }
 
   fn send_to_client(&mut self, p: cb::Packet) -> io::Result<()> {
-    let mut m = MessageWriter::new(&mut self.garbage);
+    let mut m = MessageWriter::new(self.garbage.as_mut_slice());
     p.write(&mut m).unwrap();
     let len = m.index();
 
     let mut prefix = [0; 5];
-    let mut m = MessageWriter::new(&mut prefix);
+    let mut m = MessageWriter::new(prefix.as_mut_slice());
     m.write_u32(len.try_into().unwrap()).unwrap();
     let prefix_len = m.index();
 

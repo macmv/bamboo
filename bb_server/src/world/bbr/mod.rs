@@ -5,7 +5,6 @@ mod write;
 
 use super::CountedChunk;
 use bb_common::math::ChunkPos;
-use bb_transfer::MessageWriter;
 use parking_lot::{Mutex, MutexGuard, RwLock, RwLockWriteGuard};
 use std::collections::{HashMap, HashSet};
 
@@ -30,6 +29,7 @@ pub struct RegionMap {
 }
 
 pub struct Region {
+  pos:               RegionPos,
   /// An array of `32*32 = 1024` chunks. The index is `x + z * 32`.
   chunks:            [Option<CountedChunk>; 1024],
   unloadable_chunks: HashSet<RegionRelPos>,
@@ -44,7 +44,7 @@ impl RegionMap {
     let rlock = if !lock.contains_key(&region_pos) {
       drop(lock);
       let mut write = self.regions.write();
-      write.insert(region_pos, Mutex::new(Region::new()));
+      write.insert(region_pos, Mutex::new(Region::new(region_pos)));
       RwLockWriteGuard::downgrade(write)
     } else {
       lock
@@ -82,9 +82,9 @@ impl RegionMap {
 }
 
 impl Region {
-  pub fn new() -> Self {
+  pub fn new(pos: RegionPos) -> Self {
     const NONE: Option<CountedChunk> = None;
-    Region { chunks: [NONE; 1024], unloadable_chunks: HashSet::new() }
+    Region { pos, chunks: [NONE; 1024], unloadable_chunks: HashSet::new() }
   }
 
   pub fn get(&self, pos: RegionRelPos) -> &Option<CountedChunk> {

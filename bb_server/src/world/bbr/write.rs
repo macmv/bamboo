@@ -3,6 +3,7 @@
 use super::Region;
 use crate::world::CountedChunk;
 use bb_transfer::{MessageWrite, MessageWriter, WriteError};
+use std::{fs, fs::File, io::Write};
 
 impl Region {
   pub fn save(&self) {
@@ -20,7 +21,7 @@ impl Region {
 }
 
 impl MessageWrite for Region {
-  fn write(&self, w: &mut MessageWriter) -> Result<(), WriteError> {
+  fn write<W: Write>(&self, w: &mut MessageWriter<W>) -> Result<(), WriteError> {
     w.write_struct(1024, |w| {
       for chunk in &self.chunks {
         w.write(&chunk.as_ref().map(WriteableChunk))?;
@@ -33,7 +34,7 @@ impl MessageWrite for Region {
 struct WriteableChunk<'a>(&'a CountedChunk);
 
 impl MessageWrite for WriteableChunk<'_> {
-  fn write(&self, w: &mut MessageWriter) -> Result<(), WriteError> {
+  fn write<W: Write>(&self, w: &mut MessageWriter<W>) -> Result<(), WriteError> {
     // TODO: Write light
     w.write_struct(1, |w| {
       w.write_list(self.0.chunk.lock().inner().sections())?;

@@ -5,6 +5,7 @@ use super::{
 use std::{
   collections::{HashMap, HashSet},
   hash::{BuildHasher, Hash},
+  io::Write,
   marker::PhantomData,
   net::{Ipv4Addr, Ipv6Addr, SocketAddr, SocketAddrV4, SocketAddrV6},
 };
@@ -13,7 +14,9 @@ impl<T> MessageWrite for &T
 where
   T: ?Sized + MessageWrite,
 {
-  fn write(&self, m: &mut MessageWriter) -> Result<(), WriteError> { m.write::<T>(self) }
+  fn write<W: Write>(&self, m: &mut MessageWriter<W>) -> Result<(), WriteError> {
+    m.write::<T>(self)
+  }
 }
 
 macro_rules! num_impl {
@@ -22,7 +25,9 @@ macro_rules! num_impl {
       fn read(m: &mut MessageReader) -> Result<Self, ReadError> { m.$read() }
     }
     impl MessageWrite for $ty {
-      fn write(&self, m: &mut MessageWriter) -> Result<(), WriteError> { m.$write(*self) }
+      fn write<W: Write>(&self, m: &mut MessageWriter<W>) -> Result<(), WriteError> {
+        m.$write(*self)
+      }
     }
   };
 }
@@ -43,14 +48,18 @@ impl<'a> MessageRead<'a> for &'a str {
   fn read(m: &mut MessageReader<'a>) -> Result<Self, ReadError> { m.read_str() }
 }
 impl MessageWrite for &str {
-  fn write(&self, m: &mut MessageWriter) -> Result<(), WriteError> { m.write_str(self) }
+  fn write<W: Write>(&self, m: &mut MessageWriter<W>) -> Result<(), WriteError> {
+    m.write_str(self)
+  }
 }
 
 impl MessageRead<'_> for String {
   fn read(m: &mut MessageReader) -> Result<Self, ReadError> { Ok(m.read_str()?.into()) }
 }
 impl MessageWrite for String {
-  fn write(&self, m: &mut MessageWriter) -> Result<(), WriteError> { m.write_str(self) }
+  fn write<W: Write>(&self, m: &mut MessageWriter<W>) -> Result<(), WriteError> {
+    m.write_str(self)
+  }
 }
 
 impl<'a, T> MessageRead<'a> for Option<T>
@@ -75,7 +84,7 @@ impl<T> MessageWrite for Option<T>
 where
   T: MessageWrite,
 {
-  fn write(&self, m: &mut MessageWriter) -> Result<(), WriteError> {
+  fn write<W: Write>(&self, m: &mut MessageWriter<W>) -> Result<(), WriteError> {
     m.write_enum(if self.is_some() { 1 } else { 0 }, if self.is_some() { 1 } else { 0 }, |m| {
       if let Some(v) = self {
         m.write(v)
@@ -89,7 +98,9 @@ impl<'a> MessageRead<'a> for &'a [u8] {
   fn read(m: &mut MessageReader<'a>) -> Result<Self, ReadError> { m.read_bytes() }
 }
 impl MessageWrite for &[u8] {
-  fn write(&self, m: &mut MessageWriter) -> Result<(), WriteError> { m.write_bytes(self) }
+  fn write<W: Write>(&self, m: &mut MessageWriter<W>) -> Result<(), WriteError> {
+    m.write_bytes(self)
+  }
 }
 impl<'a, T> MessageRead<'a> for Vec<T>
 where
@@ -101,7 +112,9 @@ impl<T> MessageWrite for Vec<T>
 where
   T: MessageWrite,
 {
-  fn write(&self, m: &mut MessageWriter) -> Result<(), WriteError> { m.write_list(self.iter()) }
+  fn write<W: Write>(&self, m: &mut MessageWriter<W>) -> Result<(), WriteError> {
+    m.write_list(self.iter())
+  }
 }
 
 impl<'a, K, V, B> MessageRead<'a> for HashMap<K, V, B>
@@ -120,7 +133,9 @@ where
   V: MessageWrite,
   B: BuildHasher,
 {
-  fn write(&self, m: &mut MessageWriter) -> Result<(), WriteError> { m.write_list(self.iter()) }
+  fn write<W: Write>(&self, m: &mut MessageWriter<W>) -> Result<(), WriteError> {
+    m.write_list(self.iter())
+  }
 }
 impl<'a, T> MessageRead<'a> for HashSet<T>
 where
@@ -132,7 +147,9 @@ impl<T> MessageWrite for HashSet<T>
 where
   T: MessageWrite,
 {
-  fn write(&self, m: &mut MessageWriter) -> Result<(), WriteError> { m.write_list(self.iter()) }
+  fn write<W: Write>(&self, m: &mut MessageWriter<W>) -> Result<(), WriteError> {
+    m.write_list(self.iter())
+  }
 }
 
 // I cannot figure out how to call `m.read()?` multiple times with const
@@ -182,7 +199,9 @@ impl<T, const N: usize> MessageWrite for [T; N]
 where
   T: MessageWrite,
 {
-  fn write(&self, m: &mut MessageWriter) -> Result<(), WriteError> { m.write_list(self.iter()) }
+  fn write<W: Write>(&self, m: &mut MessageWriter<W>) -> Result<(), WriteError> {
+    m.write_list(self.iter())
+  }
 }
 
 macro_rules! tuple_impls {
@@ -204,7 +223,7 @@ macro_rules! tuple_impls {
         }
       }
       impl<$($T: MessageWrite),+> MessageWrite for ($($T,)+) {
-        fn write(&self, m: &mut MessageWriter) -> Result<(), WriteError> {
+        fn write<W: Write>(&self, m: &mut MessageWriter<W>) -> Result<(), WriteError> {
           m.write_struct(count!($($T)+), |m| {
             $(
               self.$idx.write(m)?;
@@ -245,7 +264,9 @@ impl<T> StructRead<'_> for PhantomData<T> {
   fn read_struct(_: StructReader) -> Result<Self, ReadError> { Ok(PhantomData::default()) }
 }
 impl<T> MessageWrite for PhantomData<T> {
-  fn write(&self, m: &mut MessageWriter) -> Result<(), WriteError> { m.write_struct(0, |_| Ok(())) }
+  fn write<W: Write>(&self, m: &mut MessageWriter<W>) -> Result<(), WriteError> {
+    m.write_struct(0, |_| Ok(()))
+  }
 }
 
 impl MessageRead<'_> for SocketAddr {
@@ -262,7 +283,7 @@ impl EnumRead<'_> for SocketAddr {
   }
 }
 impl MessageWrite for SocketAddr {
-  fn write(&self, m: &mut MessageWriter) -> Result<(), WriteError> {
+  fn write<W: Write>(&self, m: &mut MessageWriter<W>) -> Result<(), WriteError> {
     m.write_enum(
       match self {
         SocketAddr::V4(_) => 0,
@@ -286,7 +307,7 @@ impl StructRead<'_> for SocketAddrV4 {
   }
 }
 impl MessageWrite for SocketAddrV4 {
-  fn write(&self, m: &mut MessageWriter) -> Result<(), WriteError> {
+  fn write<W: Write>(&self, m: &mut MessageWriter<W>) -> Result<(), WriteError> {
     m.write_struct(2, |m| {
       m.write(self.ip())?;
       m.write(&self.port())
@@ -302,7 +323,7 @@ impl StructRead<'_> for SocketAddrV6 {
   }
 }
 impl MessageWrite for SocketAddrV6 {
-  fn write(&self, m: &mut MessageWriter) -> Result<(), WriteError> {
+  fn write<W: Write>(&self, m: &mut MessageWriter<W>) -> Result<(), WriteError> {
     m.write_struct(4, |m| {
       m.write(self.ip())?;
       m.write(&self.port())?;
@@ -324,7 +345,7 @@ impl MessageRead<'_> for Ipv4Addr {
   }
 }
 impl MessageWrite for Ipv4Addr {
-  fn write(&self, m: &mut MessageWriter) -> Result<(), WriteError> {
+  fn write<W: Write>(&self, m: &mut MessageWriter<W>) -> Result<(), WriteError> {
     // 4 8-bit numbers
     m.write_list(self.octets().iter())
   }
@@ -346,7 +367,7 @@ impl MessageRead<'_> for Ipv6Addr {
   }
 }
 impl MessageWrite for Ipv6Addr {
-  fn write(&self, m: &mut MessageWriter) -> Result<(), WriteError> {
+  fn write<W: Write>(&self, m: &mut MessageWriter<W>) -> Result<(), WriteError> {
     // 8 16-bit numbers
     m.write_list(self.segments().iter())
   }

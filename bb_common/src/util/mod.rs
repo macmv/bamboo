@@ -12,7 +12,7 @@ use bb_macros::Transfer;
 #[cfg(feature = "host")]
 use rand::{rngs::OsRng, RngCore};
 use serde::de::{self, Deserialize, Deserializer, Unexpected, Visitor};
-use std::{error::Error, fmt, num::ParseIntError, str::FromStr};
+use std::{error::Error, fmt, io::Write, num::ParseIntError, str::FromStr};
 
 pub use buffer::{Buffer, BufferError, BufferErrorKind, Mode};
 pub use item::Item;
@@ -72,7 +72,7 @@ impl MessageRead<'_> for UUID {
   }
 }
 impl MessageWrite for UUID {
-  fn write(&self, m: &mut MessageWriter) -> Result<(), WriteError> {
+  fn write<W: Write>(&self, m: &mut MessageWriter<W>) -> Result<(), WriteError> {
     m.write_bytes(&self.as_le_bytes())?;
     Ok(())
   }
@@ -90,7 +90,7 @@ impl MessageRead<'_> for NBT {
   fn read(_: &mut MessageReader) -> Result<Self, ReadError> { panic!("cannot read NBT in plugin") }
 }
 impl MessageWrite for NBT {
-  fn write(&self, m: &mut MessageWriter) -> Result<(), WriteError> {
+  fn write<W: Write>(&self, m: &mut MessageWriter<W>) -> Result<(), WriteError> {
     m.write_bytes(&self.serialize())
   }
 }

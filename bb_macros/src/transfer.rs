@@ -17,7 +17,7 @@ pub fn transfer(input: TokenStream) -> TokenStream {
 
       quote! {
         impl #impl_generics bb_transfer::MessageWrite for #ty #ty_generics #where_clause {
-          fn write(&self, m: &mut bb_transfer::MessageWriter) -> Result<(), bb_transfer::WriteError> {
+          fn write<__W: ::std::io::Write>(&self, m: &mut bb_transfer::MessageWriter<__W>) -> Result<(), bb_transfer::WriteError> {
             m.write_struct(#write_len, |m| #writer)
           }
         }
@@ -96,7 +96,7 @@ pub fn transfer(input: TokenStream) -> TokenStream {
 
       quote! {
         impl #impl_generics bb_transfer::MessageWrite for #ty #ty_generics #where_clause {
-          fn write(&self, m: &mut bb_transfer::MessageWriter) -> Result<(), bb_transfer::WriteError> {
+          fn write<__W: ::std::io::Write>(&self, m: &mut bb_transfer::MessageWriter<__W>) -> Result<(), bb_transfer::WriteError> {
             m.write_enum(match self {
               #(
                 Self::#variants #empty_block => #ids,

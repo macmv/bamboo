@@ -43,10 +43,11 @@ extern "C" fn generate_chunk_and_lock(name: *const i8, x: i32, z: i32) -> *const
   }
   let mut lock = CHUNK_BUF.lock();
   if lock.is_none() {
-    *lock = Some(vec![0; 1024 * 64]);
+    *lock = Some(vec![]);
   }
   let buffer = lock.as_mut().unwrap();
-  let mut writer = MessageWriter::new(buffer);
+  buffer.clear();
+  let mut writer = MessageWriter::<&mut Vec<u8>>::new(buffer);
   writer.write(&sections).unwrap();
   let ptr = buffer.as_ptr();
   std::mem::forget(lock);

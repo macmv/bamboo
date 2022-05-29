@@ -46,7 +46,7 @@ impl StructRead<'_> for BitArray {
   }
 }
 impl MessageWrite for BitArray {
-  fn write(&self, m: &mut MessageWriter) -> Result<(), WriteError> {
+  fn write<W: std::io::Write>(&self, m: &mut MessageWriter<W>) -> Result<(), WriteError> {
     let mut bytes = Vec::with_capacity(self.data.len() * 8);
     for v in &self.data {
       bytes.extend(v.to_le_bytes());
