@@ -1,5 +1,8 @@
 //! Bamboo region storing in memory, reading, and writing to disk.
 
+mod read;
+mod write;
+
 use super::CountedChunk;
 use bb_common::math::ChunkPos;
 use bb_transfer::MessageWriter;
@@ -107,50 +110,13 @@ impl Region {
   /// Returns true if this region can be unloaded.
   pub fn unload_chunks(&mut self) -> bool {
     // TODO: Unload chunks here
-    self.chunks.iter().all(|c| c.is_none())
-  }
-
-  fn save(&self) {
-    use std::cell::RefCell;
-    thread_local! {
-      static REGION_CACHE: RefCell<Vec<u8>> = RefCell::new(vec![]);
-    }
-    REGION_CACHE.with(|cache| {
-      let mut cache = cache.borrow_mut();
-      let mut writer = MessageWriter::new(&mut cache);
-      // TODO: Writer which appends
-      writer
-        .write_struct(1024, |w| {
-          for chunk in &self.chunks {
-            w.write_enum(
-              match chunk {
-                Some(_) => 1,
-                None => 0,
-              },
-              match chunk {
-                Some(_) => 1,
-                None => 0,
-              },
-              |w| match chunk {
-                Some(c) => {
-                  let lock = c.chunk.lock();
-                  w.write_struct(1, |w| {
-                    w.write_list(lock.inner().sections())?;
-                    Ok(())
-                  })
-                }
-                None => Ok(()),
-              },
-            )?;
-          }
-          Ok(())
-        })
-        .unwrap();
-    });
+    /* self.chunks.iter().all(|c| c.is_none()) */
+    true
   }
 }
 
 impl Drop for Region {
+  /// Saves the region on drop. This makes unloading regions easy.
   fn drop(&mut self) { self.save(); }
 }
 
