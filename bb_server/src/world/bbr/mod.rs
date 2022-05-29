@@ -2,6 +2,7 @@
 
 use super::CountedChunk;
 use bb_common::math::ChunkPos;
+use bb_transfer::MessageWriter;
 use parking_lot::{Mutex, MutexGuard, RwLock, RwLockWriteGuard};
 use std::collections::{HashMap, HashSet};
 
@@ -108,6 +109,49 @@ impl Region {
     // TODO: Unload chunks here
     self.chunks.iter().all(|c| c.is_none())
   }
+
+  fn save(&self) {
+    use std::cell::RefCell;
+    thread_local! {
+      static REGION_CACHE: RefCell<Vec<u8>> = RefCell::new(vec![]);
+    }
+    REGION_CACHE.with(|cache| {
+      let mut cache = cache.borrow_mut();
+      let mut writer = MessageWriter::new(&mut cache);
+      // TODO: Writer which appends
+      writer
+        .write_struct(1024, |w| {
+          for chunk in &self.chunks {
+            w.write_enum(
+              match chunk {
+                Some(_) => 1,
+                None => 0,
+              },
+              match chunk {
+                Some(_) => 1,
+                None => 0,
+              },
+              |w| match chunk {
+                Some(c) => {
+                  let lock = c.chunk.lock();
+                  w.write_struct(1, |w| {
+                    w.write_list(lock.inner().sections())?;
+                    Ok(())
+                  })
+                }
+                None => Ok(()),
+              },
+            )?;
+          }
+          Ok(())
+        })
+        .unwrap();
+    });
+  }
+}
+
+impl Drop for Region {
+  fn drop(&mut self) { self.save(); }
 }
 
 impl RegionPos {
