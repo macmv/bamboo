@@ -156,7 +156,7 @@ impl MessageReader<'_> {
         let data = self.read_buf(len)?;
         if data.is_empty() {
           write!(f, "Bytes(len: 0) {{}}").unwrap();
-        } else {
+        } else if data.len() < 32 {
           let mut s = f.debug_struct("Bytes");
           s.field("data", &data);
           match std::str::from_utf8(data) {
@@ -164,6 +164,8 @@ impl MessageReader<'_> {
             Err(e) => s.field("str", &e),
           };
           s.finish().unwrap();
+        } else {
+          write!(f, "Bytes(len: {})", data.len()).unwrap();
         }
       }
       Header::List => {
@@ -243,6 +245,7 @@ pub struct MessageReader<'a> {
 /// maximum amount of fields.
 ///
 /// This is the core of th forwards compatibility in this protocol.
+#[derive(Debug)]
 pub struct StructReader<'a> {
   reader:        MessageReader<'a>,
   current_field: u64,
@@ -251,6 +254,7 @@ pub struct StructReader<'a> {
 
 /// Wrapper around a partially parsed enum. This is the enum equivalent of
 /// [`StructReader`].
+#[derive(Debug)]
 pub struct EnumReader<'a> {
   reader:        MessageReader<'a>,
   variant:       u64,
@@ -259,6 +263,7 @@ pub struct EnumReader<'a> {
 }
 
 /// Wrapper around a list.
+#[derive(Debug)]
 pub struct ListReader<'a, T> {
   reader:  MessageReader<'a>,
   current: u64,
