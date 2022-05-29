@@ -163,6 +163,7 @@ impl World {
     });
 
     info!("generating train...");
+    /*
     let chunks = Mutex::new(vec![]);
     let loaded = AtomicU32::new(0);
     let view_distance = self.wm.config().get::<_, i32>("view-distance");
@@ -192,6 +193,7 @@ impl World {
         self.inc_view(pos);
       }
     }
+    */
     info!("done generating terrain");
   }
 
