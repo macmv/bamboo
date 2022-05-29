@@ -5,7 +5,7 @@ use bb_common::{
   math::{PosError, RelPos},
   version::BlockVersion,
 };
-use parking_lot::{Mutex, MutexGuard, RwLock};
+use parking_lot::{Mutex, MutexGuard};
 use std::{
   collections::HashMap,
   fmt,
@@ -36,7 +36,7 @@ impl fmt::Debug for CountedChunk {
 /// pain to change it, and I don't really want to bother.
 pub struct MultiChunk {
   inner:        Chunk<PalettedSection>,
-  tes:          RwLock<HashMap<RelPos, Arc<dyn TileEntity>>>,
+  tes:          HashMap<RelPos, Arc<dyn TileEntity>>,
   sky:          Option<LightChunk<SkyLight>>,
   block:        LightChunk<BlockLight>,
   wm:           Arc<WorldManager>,
@@ -64,7 +64,7 @@ impl MultiChunk {
   pub fn new(wm: Arc<WorldManager>, sky: bool) -> MultiChunk {
     MultiChunk {
       inner: Chunk::new(15),
-      tes: RwLock::new(HashMap::new()),
+      tes: HashMap::new(),
       sky: if sky { Some(LightChunk::new()) } else { None },
       block: LightChunk::new(),
       wm,
@@ -85,7 +85,7 @@ impl MultiChunk {
     self.inner.set_block(p, ty.id())?;
     self.update_light(p);
     if let Some(Some(te)) = self.wm.block_behaviors().call(ty.kind(), |b| b.create_te()) {
-      self.tes.write().insert(p, te);
+      self.tes.insert(p, te);
     }
     Ok(())
   }
@@ -150,9 +150,7 @@ impl MultiChunk {
     Ok(self.wm.block_converter().kind_from_id(self.inner.get_block(p)?, BlockVersion::latest()))
   }
 
-  pub fn get_te(&self, p: RelPos) -> Option<Arc<dyn TileEntity>> {
-    self.tes.read().get(&p).cloned()
-  }
+  pub fn get_te(&self, p: RelPos) -> Option<Arc<dyn TileEntity>> { self.tes.get(&p).cloned() }
 
   /// Returns the inner paletted chunk in this MultiChunk. This can be used to
   /// access the block data directly. All ids are the latest version block
