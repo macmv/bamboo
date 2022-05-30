@@ -126,8 +126,13 @@ impl Region {
   pub fn has_chunk(&self, pos: impl Into<RegionRelPos>) -> bool { self.get(pos.into()).is_some() }
   /// Returns true if this region can be unloaded.
   pub fn unload_chunks(&mut self) -> bool {
-    // TODO: Unload chunks here
-    /* self.chunks.iter().all(|c| c.is_none()) */
+    // If all the chunks are either `None` or viewed by nobody, we can unload this
+    // region.
+    for c in self.chunks.iter().flatten() {
+      if c.count.load(std::sync::atomic::Ordering::Acquire) != 0 {
+        return false;
+      }
+    }
     true
   }
 }

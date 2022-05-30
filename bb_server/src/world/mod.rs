@@ -207,6 +207,7 @@ impl World {
       });
     let mut tick = 0;
     let mut start = Instant::now();
+    let mut needs_to_unload = false;
     loop {
       if tick % 20 == 0 {
         let mut header = Chat::empty();
@@ -228,6 +229,23 @@ impl World {
         let out = cb::Packet::PlayerHeader { header: header.to_json(), footer: footer.to_json() };
         for p in self.players().values() {
           p.send(out.clone());
+        }
+      }
+      // Every 30 seconds, try to unload chunks we don't need. We do this on another
+      // thread, as unloading chunks is expensive. If the chunk pool is full, we just
+      // try again next tick. We do all of this before `check_chunks_queue`, as this
+      // might also push tasks to `chunk_pool`, and unloading chunks should have
+      // higher priority than loading more chunks.
+      if tick % (20 * 30) == 0 {
+        needs_to_unload = true;
+      }
+      if needs_to_unload {
+        let res = chunk_pool.try_execute(|s| {
+          s.world.unload_chunks();
+        });
+        match res {
+          Ok(()) => needs_to_unload = false,
+          Err(_) => {}
         }
       }
       self.check_chunks_queue(&chunk_pool);
