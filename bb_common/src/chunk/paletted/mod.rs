@@ -132,6 +132,8 @@ impl Section {
   // track all the amounts of blocks within the chunk, this is a single Vec
   // lookup.
   pub fn non_air_blocks(&self) -> u32 { 4096 - self.block_amounts[0] }
+
+  pub fn into_palette_data(self) -> (Vec<u32>, Vec<u64>) { (self.palette, self.data.into_inner()) }
 }
 
 impl ChunkSection for Section {

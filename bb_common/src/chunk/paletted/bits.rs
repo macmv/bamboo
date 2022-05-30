@@ -271,6 +271,8 @@ impl BitArray {
   }
   /// Clones the internal data. Used for generating protobufs.
   pub fn clone_inner(&self) -> Vec<u64> { self.data.clone() }
+  /// Returns the internal data, without cloning.
+  pub fn into_inner(self) -> Vec<u64> { self.data }
   /// Returns the number of bits that every element in this array uses.
   pub fn bpe(&self) -> u8 { self.bpe }
   /// Returns the inner long array.

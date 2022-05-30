@@ -4,8 +4,9 @@
 use super::Region;
 use crate::world::{CountedChunk, MultiChunk};
 use bb_common::{
-  chunk::paletted,
+  chunk::{paletted, Section},
   flate2::{read::GzDecoder, write::GzEncoder, Compression},
+  version::BlockVersion,
 };
 use bb_transfer::{
   MessageRead, MessageReader, MessageWrite, MessageWriter, ReadError, StructRead, StructReader,
@@ -136,22 +137,37 @@ impl StructRead<'_> for RegionData {
   }
 }
 #[derive(Debug)]
-struct ReadableChunk(Vec<Option<paletted::Section>>);
+struct ReadableChunk {
+  sections: Vec<Option<paletted::Section>>,
+  version:  BlockVersion,
+}
 impl MessageRead<'_> for ReadableChunk {
   fn read(r: &mut MessageReader) -> Result<Self, ReadError> { r.read_struct() }
 }
 impl StructRead<'_> for ReadableChunk {
   fn read_struct(mut r: StructReader) -> Result<Self, ReadError> {
-    Ok(ReadableChunk(r.must_read(0)?))
+    Ok(ReadableChunk {
+      sections: r.must_read(0)?,
+      version:  BlockVersion::from_index(r.must_read(1)?),
+    })
   }
 }
 
 impl ReadableChunk {
   pub fn update_chunk(self, chunk: &mut CountedChunk) {
     let mut lock = chunk.lock();
-    for (y, section) in self.0.into_iter().enumerate() {
+    for (y, section) in self.sections.into_iter().enumerate() {
       if let Some(s) = section {
-        *lock.inner_mut().section_mut(y as u32) = s;
+        let (old_palette, data) = s.into_palette_data();
+        if self.version == BlockVersion::latest() {
+          lock.inner_mut().section_mut(y as u32).set_from(old_palette, data);
+        } else {
+          let mut new_palette = Vec::with_capacity(old_palette.len());
+          for id in old_palette {
+            new_palette.push(lock.wm().block_converter().to_old(id, self.version));
+          }
+          lock.inner_mut().section_mut(y as u32).set_from(new_palette, data);
+        }
       }
     }
   }
@@ -161,8 +177,9 @@ struct WriteableChunk<'a>(&'a CountedChunk);
 impl MessageWrite for WriteableChunk<'_> {
   fn write<W: Write>(&self, w: &mut MessageWriter<W>) -> Result<(), WriteError> {
     // TODO: Write light
-    w.write_struct(1, |w| {
+    w.write_struct(2, |w| {
       w.write_list(self.0.chunk.lock().inner().sections())?;
+      w.write_u32(BlockVersion::latest().to_index())?;
       Ok(())
     })
   }

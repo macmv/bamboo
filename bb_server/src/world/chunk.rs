@@ -72,6 +72,9 @@ impl MultiChunk {
     }
   }
 
+  /// Returns a reference to the global world manager.
+  pub fn wm(&self) -> &Arc<WorldManager> { &self.wm }
+
   /// Sets a block within this chunk. `p.x` and `p.z` must be within 0..16. If
   /// the server supports multi-height worlds (not implemented yet), then p.y
   /// needs to be within the world height (whatever that may be). Otherwise,
