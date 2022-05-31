@@ -339,7 +339,6 @@ impl Player {
       for z in min.z()..=max.z() {
         let pos = ChunkPos::new(x, z);
         self.world.unqueue_chunk(pos, self);
-        self.world.dec_view(pos);
         self.send_unload_chunk(pos);
       }
     }

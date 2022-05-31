@@ -94,12 +94,17 @@ impl Region {
     });
   }
 
-  fn print_summary(&self) {
+  pub(super) fn print_summary(&self) {
     println!("CHUNK AT {} {}", self.pos.x, self.pos.z);
     for z in 0..32 {
       for x in 0..32 {
-        if self.has_chunk(super::RegionRelPos { x, z }) {
-          print!("x");
+        if let Some(c) = self.get(super::RegionRelPos { x, z }) {
+          let count = c.count.load(std::sync::atomic::Ordering::SeqCst);
+          if count > 0 {
+            print!("{count}");
+          } else {
+            print!("x");
+          }
         } else {
           print!(".");
         }
