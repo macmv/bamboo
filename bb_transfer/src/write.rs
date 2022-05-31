@@ -1,6 +1,6 @@
 use super::{zig, Header};
 
-use std::{error::Error, fmt, io::Write};
+use std::{error::Error, fmt, io, io::Write};
 
 type Result = std::result::Result<(), WriteError>;
 
@@ -9,22 +9,30 @@ type Result = std::result::Result<(), WriteError>;
 #[derive(Debug)]
 #[non_exhaustive]
 pub enum WriteError {
-  EOF,
-  BufTooLong,
+  IO(io::Error),
 }
 
 impl fmt::Display for WriteError {
   fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
     match self {
-      Self::EOF => write!(f, "failed to write field: eof reached"),
-      Self::BufTooLong => {
-        write!(f, "failed to write field: tried to write a buffer that was too large")
-      }
+      Self::IO(e) => write!(f, "failed to write field: {e}"),
     }
   }
 }
 
 impl Error for WriteError {}
+
+impl From<io::Error> for WriteError {
+  fn from(e: io::Error) -> Self { WriteError::IO(e) }
+}
+
+impl WriteError {
+  pub fn is_eof(&self) -> bool {
+    match self {
+      Self::IO(e) => matches!(e.kind(), io::ErrorKind::WriteZero | io::ErrorKind::UnexpectedEof),
+    }
+  }
+}
 
 /// A trait for anything that can be written to a MessageWriter.
 pub trait MessageWrite {
@@ -109,19 +117,9 @@ where
   ///
   /// This is private, as this is doesn't read a `Header`.
   fn write_byte(&mut self, num: u8) -> Result {
-    // TODO: Handle errors!
-    self.data.write_all(&[num]);
+    self.data.write_all(&[num])?;
     self.idx += 1;
     Ok(())
-    /*
-    if self.idx >= self.data.len() {
-      Err(WriteError::EOF)
-    } else {
-      self.data[self.idx] = num;
-      self.idx += 1;
-      Ok(())
-    }
-    */
   }
   /// Reads a varint from the buffer. If the number is less than 16, then
   /// nothing will be written. This assumes the first 5 bits have already been
@@ -176,19 +174,9 @@ where
 
   /// Writes the given number of bytes from the buffer.
   fn write_buf(&mut self, buf: &[u8]) -> Result {
-    // TODO: Handle error!
-    self.data.write(buf);
+    self.data.write(buf)?;
     self.idx += buf.len();
     Ok(())
-    /*
-    if self.idx + buf.len() > self.data.len() {
-      Err(WriteError::BufTooLong)
-    } else {
-      self.data[self.idx..self.idx + buf.len()].clone_from_slice(buf);
-      self.idx += buf.len();
-      Ok(())
-    }
-    */
   }
 }
 
@@ -292,7 +280,7 @@ mod tests {
   #[test]
   fn structs() {
     let mut data = [0; 4];
-    let mut m = MessageWriter::new(&mut data);
+    let mut m = MessageWriter::new(data.as_mut_slice());
     m.write_struct(3, |m| {
       m.write_u8(5)?;
       m.write_u8(6)?;
@@ -300,14 +288,14 @@ mod tests {
       Ok(())
     })
     .unwrap();
-    assert!(matches!(m.write_u8(5).unwrap_err(), WriteError::EOF));
+    assert!(m.write_u8(5).unwrap_err().is_eof());
     assert_eq!(data, [0b100 | 3 << 3, 0b001 | 5 << 3, 0b001 | 6 << 3, 0b001 | 7 << 3]);
   }
 
   #[test]
   fn enums() {
     let mut data = [0; 5];
-    let mut m = MessageWriter::new(&mut data);
+    let mut m = MessageWriter::new(data.as_mut_slice());
     let a = 6_u32;
     m.write_enum(5, 3, |m| {
       m.write(&5_u32)?;
@@ -316,7 +304,7 @@ mod tests {
       Ok(())
     })
     .unwrap();
-    assert!(matches!(m.write_u8(5).unwrap_err(), WriteError::EOF));
+    assert!(m.write_u8(5).unwrap_err().is_eof());
     assert_eq!(
       data,
       [0b101 | 5 << 3, 0b100 | 3 << 3, 0b001 | 5 << 3, 0b001 | 6 << 3, 0b001 | 7 << 3]
@@ -326,7 +314,7 @@ mod tests {
   #[test]
   fn simple() {
     let mut data = [0; 3];
-    let mut m = MessageWriter::new(&mut data);
+    let mut m = MessageWriter::new(data.as_mut_slice());
     assert_eq!(m.index(), 0);
     m.write_u8(0).unwrap();
     assert_eq!(m.index(), 1);
@@ -334,17 +322,17 @@ mod tests {
     assert_eq!(m.index(), 2);
     m.write_u8(15).unwrap();
     assert_eq!(m.index(), 3);
-    assert!(matches!(m.write_u8(5).unwrap_err(), WriteError::EOF));
+    assert!(m.write_u8(5).unwrap_err().is_eof());
     assert_eq!(data, [0b001 | 0 << 3, 0b001 | 1 << 3, 0b001 | 15 << 3]);
 
     let mut data = [0; 3];
-    let mut m = MessageWriter::new(&mut data);
+    let mut m = MessageWriter::new(data.as_mut_slice());
     assert_eq!(m.index(), 0);
     m.write_u8(1).unwrap();
     assert_eq!(m.index(), 1);
     m.write_u8(16).unwrap();
     assert_eq!(m.index(), 3);
-    assert!(matches!(m.write_u8(5).unwrap_err(), WriteError::EOF));
+    assert!(m.write_u8(5).unwrap_err().is_eof());
     assert_eq!(data, [0b001 | 1 << 3, 0b001 | 0x10 << 3, 1]);
   }
 

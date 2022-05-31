@@ -255,13 +255,13 @@ mod tests {
   #[test]
   fn floats() {
     let mut buf = [0; 5];
-    let mut m = MessageWriter::new(&mut buf);
+    let mut m = MessageWriter::new(buf.as_mut_slice());
     m.write_f32(3.456).unwrap();
     let mut m = MessageReader::new(&buf);
     assert_eq!(m.read_f32().unwrap(), 3.456);
 
     let mut buf = [0; 9];
-    let mut m = MessageWriter::new(&mut buf);
+    let mut m = MessageWriter::new(buf.as_mut_slice());
     m.write_f64(3.456).unwrap();
     let mut m = MessageReader::new(&buf);
     assert_eq!(m.read_f64().unwrap(), 3.456);
@@ -270,7 +270,7 @@ mod tests {
   #[test]
   fn read_write() {
     let mut buf = [0; 5];
-    let mut m = MessageWriter::new(&mut buf);
+    let mut m = MessageWriter::new(buf.as_mut_slice());
     m.write_u32(123525).unwrap();
     let mut m = MessageReader::new(&buf);
     assert_eq!(m.read_u32().unwrap(), 123525);
