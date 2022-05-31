@@ -1,7 +1,7 @@
 use super::{Block, Data, Kind, Type};
 use crate::{
   item::Stack,
-  player::{Click, Player},
+  player::{BlockClick, Player},
   world::World,
 };
 use bb_common::math::Pos;
@@ -14,7 +14,7 @@ pub trait Behavior: Send + Sync {
   ///
   /// This should handle things like logs rotating or torches not placing on
   /// ceilings.
-  fn place(&self, data: &Data, pos: Pos, click: Click) -> Type {
+  fn place(&self, data: &Data, pos: Pos, click: BlockClick) -> Type {
     let _ = (pos, click);
     data.default_type()
   }

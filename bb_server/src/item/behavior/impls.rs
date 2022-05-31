@@ -1,15 +1,23 @@
 use super::Behavior;
-use crate::{block, block::Block, player::Click};
-use bb_common::util::Chat;
+use crate::{
+  block, entity,
+  player::{BlockClick, Click},
+};
+use bb_common::{math::FPos, util::Chat};
 
 pub struct DebugStick;
 impl Behavior for DebugStick {
-  fn interact_block(&self, block: Block, click: Click) -> bool {
-    click.player.send_hotbar(Chat::new(block.ty.to_string()));
-    true
+  fn interact(&self, click: Click) -> bool {
+    if let Click::Block(click) = click {
+      click.player.send_hotbar(Chat::new(click.block.ty.to_string()));
+      true
+    } else {
+      false
+    }
   }
   #[allow(clippy::collapsible_else_if)]
-  fn break_block(&self, mut block: Block, click: Click) -> bool {
+  fn break_block(&self, click: BlockClick) -> bool {
+    let mut block = click.block;
     let mut all_props: Vec<_> = block.ty.props().into_iter().collect();
     all_props.sort_unstable_by(|a, b| a.0.cmp(&b.0));
     let reverse = click.player.is_crouching();
@@ -45,11 +53,28 @@ impl Behavior for DebugStick {
 
 pub struct Bucket(pub Option<block::Kind>);
 impl Behavior for Bucket {
-  fn interact_block(&self, _: Block, click: Click) -> bool {
+  fn interact(&self, click: Click) -> bool {
     if self.0.is_none() {
       let result = click.do_raycast(5.0, true);
       dbg!(result);
     }
     true
+  }
+}
+
+pub struct Snowball;
+impl Behavior for Snowball {
+  fn interact(&self, click: Click) -> bool {
+    let eid = click
+      .player()
+      .world()
+      .summon(entity::Type::Snowball, click.player().pos() + FPos::new(0.0, 1.0, 0.0));
+
+    // If the entity doesn't exist, it already despawned, so we do nothing if
+    // it isn't in the world.
+    if let Some(ent) = click.player().world().entities().get(eid) {
+      ent.set_vel(click.dir() * 1.5);
+    }
+    false
   }
 }

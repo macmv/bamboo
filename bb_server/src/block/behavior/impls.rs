@@ -5,7 +5,7 @@ use super::{
 use crate::{
   entity,
   item::SharedInventory,
-  player::{Click, Player, Window},
+  player::{BlockClick, Player, Window},
   world::World,
 };
 use bb_common::{
@@ -16,7 +16,7 @@ use std::{any::Any, sync::Arc};
 
 pub struct Log;
 impl Behavior for Log {
-  fn place(&self, data: &Data, _: Pos, click: Click) -> Type {
+  fn place(&self, data: &Data, _: Pos, click: BlockClick) -> Type {
     data.default_type().with_prop(
       "axis",
       match click.face {
@@ -73,7 +73,7 @@ impl Bed {
   }
 }
 impl Behavior for Bed {
-  fn place(&self, data: &Data, _: Pos, click: Click) -> Type {
+  fn place(&self, data: &Data, _: Pos, click: BlockClick) -> Type {
     data
       .default_type()
       .with_prop("part", "FOOT")

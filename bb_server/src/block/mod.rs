@@ -11,7 +11,7 @@ pub use version::TypeConverter;
 use crate::world::World;
 use bb_common::math::Pos;
 use behavior::BehaviorList;
-use std::sync::Arc;
+use std::{fmt, sync::Arc};
 
 /// A block in the worl. This simply stores a [`Type`] and a [`Pos`]. This
 /// stores no references to the world, so this may be out of date.
@@ -20,6 +20,12 @@ pub struct Block<'a> {
   pub world: &'a Arc<World>,
   pub pos:   Pos,
   pub ty:    Type,
+}
+
+impl fmt::Debug for Block<'_> {
+  fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    f.debug_struct("Block").field("pos", &self.pos).field("ty", &self.ty).finish()
+  }
 }
 
 impl<'a> Block<'a> {

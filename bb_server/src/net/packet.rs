@@ -2,7 +2,7 @@ use crate::{
   block,
   block::Block,
   entity, item,
-  player::{Click, Player},
+  player::{AirClick, BlockClick, Click, Player},
   world::WorldManager,
 };
 use bb_common::{
@@ -71,17 +71,18 @@ pub(crate) fn handle(wm: &Arc<WorldManager>, mut player: &Arc<Player>, p: sb::Pa
             sb::DigStatus::Finish => player.finish_digging(pos),
           },
           GameMode::Creative => {
-            let click = Click { face, dir: player.look_as_vec(), player };
             if let Ok(looking_at) = player.world().get_block(pos) {
+              let click = BlockClick {
+                player,
+                face,
+                dir: player.look_as_vec(),
+                block: Block::new(player.world(), pos, looking_at),
+              };
               let inv = player.lock_inventory();
               let stack = inv.main_hand();
               if !stack.is_empty() {
-                let handled = wm
-                  .item_behaviors()
-                  .call(stack.item(), |b| {
-                    b.break_block(Block::new(player.world(), pos, looking_at), click)
-                  })
-                  .unwrap_or(false);
+                let handled =
+                  wm.item_behaviors().call(stack.item(), |b| b.break_block(click)).unwrap_or(false);
                 if handled {
                   let _ = player.sync_block_at(pos);
                   let _ = player.sync_block_at(pos + face);
@@ -121,18 +122,11 @@ pub(crate) fn handle(wm: &Arc<WorldManager>, mut player: &Arc<Player>, p: sb::Pa
       player.lock_inventory().set_selected(slot);
     }
     sb::Packet::UseItem { hand: _ } => {
-      // Spawn a snowball (for fun)
-
-      /*
-      let eid =
-        player.world().summon(entity::Type::ArmorStand, player.pos() + FPos::new(0.0, 1.0, 0.0));
-
-      // If the entity doesn't exist, it already despawned, so we do nothing if
-      // it isn't in the world.
-      if let Some(ent) = player.world().entities().get(eid) {
-        ent.set_vel(player.look_as_vec() * 1.0);
-      }
-      */
+      let inv = player.lock_inventory();
+      // TODO: Use `hand`.
+      let stack = inv.main_hand();
+      let click = Click::Air(AirClick { dir: player.look_as_vec(), player });
+      wm.item_behaviors().call(stack.item(), |b| b.interact(click)).unwrap_or(false);
     }
     sb::Packet::BlockPlace { mut pos, face, hand: _ } => {
       /*
@@ -151,18 +145,22 @@ pub(crate) fn handle(wm: &Arc<WorldManager>, mut player: &Arc<Player>, p: sb::Pa
       } else {
         match player.world().get_block(pos) {
           Ok(looking_at) => {
-            let click = Click { face, dir: player.look_as_vec(), player };
+            let click = BlockClick {
+              player,
+              face,
+              dir: player.look_as_vec(),
+              block: Block::new(player.world(), pos, looking_at),
+            };
             // TODO: Data generator should store which items are blockitems, and what blocks
             // they place.
             {
               let inv = player.lock_inventory();
+              // TODO: Use `hand`.
               let stack = inv.main_hand();
               if !stack.is_empty() {
                 let handled = wm
                   .item_behaviors()
-                  .call(stack.item(), |b| {
-                    b.interact_block(Block::new(player.world(), pos, looking_at), click)
-                  })
+                  .call(stack.item(), |b| b.interact(Click::Block(click)))
                   .unwrap_or(false);
                 if handled {
                   let _ = player.sync_block_at(pos);

@@ -25,7 +25,7 @@ mod team;
 mod tick;
 pub mod window;
 
-pub use click::Click;
+pub use click::{AirClick, BlockClick, Click};
 pub use inventory::PlayerInventory;
 pub use scoreboard::Scoreboard;
 pub use team::Team;

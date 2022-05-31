@@ -1,22 +1,26 @@
 use super::Type;
-use crate::{block, block::Block, player::Click};
+use crate::{
+  block,
+  player::{BlockClick, Click},
+};
 
 mod impls;
 
 pub trait Behavior: Send + Sync {
-  /// Called when a player right clicks with this item on a block.
+  /// Called when a player right clicks with this item. If `block` is Some, then
+  /// the player clicked on a block. Otherwise, they clicked on air.
   ///
   /// If this returns `true`, then the interaction will be cancelled.
-  fn interact_block(&self, block: Block, click: Click) -> bool {
-    let _ = (block, click);
+  fn interact(&self, click: Click) -> bool {
+    let _ = click;
     false
   }
 
   /// Called when the player is about to break a block.
   ///
   /// If this returns `true`, the block will not be broken.
-  fn break_block(&self, block: Block, click: Click) -> bool {
-    let _ = (block, click);
+  fn break_block(&self, click: BlockClick) -> bool {
+    let _ = click;
     false
   }
 }
@@ -51,6 +55,7 @@ pub fn make_behaviors() -> BehaviorList {
     WaterBucket => impls::Bucket(Some(block::Kind::Water));
     LavaBucket => impls::Bucket(Some(block::Kind::Lava));
     Bucket => impls::Bucket(None);
+    Snowball => impls::Snowball;
   };
   out
 }
