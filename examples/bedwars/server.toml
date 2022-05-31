@@ -2,6 +2,6 @@ default-gamemode = "survival"
 [world]
 
 void = true
-[world.vanilla]
-  enabled = true
-  path = "world"
+# [world.vanilla]
+#   enabled = true
+#   path = "world"

@@ -87,6 +87,13 @@ impl RegionMap {
       }
     }
   }
+
+  pub fn save(&self) {
+    let lock = self.regions.read();
+    for region in lock.values() {
+      region.lock().save();
+    }
+  }
 }
 
 impl Region {

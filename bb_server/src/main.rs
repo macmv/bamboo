@@ -84,6 +84,7 @@ fn main() {
   };
 
   let wm = Arc::new(WorldManager::new_with_config(config));
+  wm.stop_on_ctrlc();
   wm.add_world();
   wm.load_plugins();
   wm.default_world().init();

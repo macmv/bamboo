@@ -60,6 +60,9 @@ spin_sleep = "1.1.1"
 # rcon parsing TODO: bb_common::util::Buffer should support little endian
 byteorder = "1.4"
 
+# ctrlc without spawning an entire extra thread
+nix = "0.24"
+
 [build-dependencies]
 bb_data = { path = "../bb_data" }
 

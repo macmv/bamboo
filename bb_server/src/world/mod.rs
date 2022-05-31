@@ -639,6 +639,8 @@ impl World {
       pos += Pos::new(0, 1, 0);
     }
   }
+
+  pub fn save(&self) { self.regions.save(); }
 }
 
 impl Default for WorldManager {
@@ -889,5 +891,41 @@ impl WorldManager {
       }
     }
     None
+  }
+
+  pub fn save_all(&self) {
+    for world in self.worlds.read().iter() {
+      world.save();
+    }
+  }
+
+  pub fn stop_on_ctrlc(self: &Arc<Self>) {
+    use parking_lot::lock_api::RawMutex;
+
+    static CTRLC: Mutex<Option<Arc<WorldManager>>> =
+      Mutex::const_new(parking_lot::RawMutex::INIT, None);
+
+    let mut lock = CTRLC.lock();
+    if lock.is_some() {
+      panic!(
+        "cannot stop this worldmanager on ctrlc, as another worldmanager is already registered"
+      );
+    }
+    *lock = Some(self.clone());
+
+    use nix::{
+      libc,
+      sys::signal::{signal, SigHandler, Signal},
+    };
+
+    extern "C" fn handle_sigint(_sig: libc::c_int) {
+      let lock = CTRLC.lock();
+      if let Some(wm) = &*lock {
+        wm.save_all();
+      }
+    }
+
+    let handler = SigHandler::Handler(handle_sigint);
+    unsafe { signal(Signal::SIGINT, handler) }.unwrap();
   }
 }
