@@ -10,6 +10,7 @@ pub use bb_common::{chunk, math, transfer, util};
 
 pub mod player;
 pub mod time;
+pub mod world;
 
 mod internal;
 
@@ -83,12 +84,14 @@ macro_rules! callback {
   };
 }
 
-callback!(set_on_block_place, ON_BLOCK_PLACE, Fn(player::Player, math::Pos));
+callback!(set_on_block_place, ON_BLOCK_PLACE, Fn(player::Player, math::Pos) -> bool);
 #[no_mangle]
-extern "C" fn on_block_place(id: ffi::CUUID, x: i32, y: i32, z: i32) {
+extern "C" fn on_block_place(id: ffi::CUUID, x: i32, y: i32, z: i32) -> bool {
   if let Some(cb) = ON_BLOCK_PLACE.lock().as_ref() {
     let p = player::Player::new(id);
     let pos = math::Pos { x, y, z };
-    cb(p, pos);
+    cb(p, pos)
+  } else {
+    true
   }
 }

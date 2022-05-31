@@ -55,8 +55,13 @@ extern "C" {
   /// if the username won't fit in the buffer, or if the pointer is
   /// invalid.
   pub fn bb_player_username(player: *const CUUID, buf: *mut u8, len: u32) -> i32;
+  /// Returns the current world for this player.
+  pub fn bb_player_world(player: *const CUUID) -> i32;
   /// Sends the given chat message to the player.
   pub fn bb_player_send_message(player: *const CUUID, message: *const CChat);
+
+  /// Sets a block in the world. Returns 1 if the block position is invalid.
+  pub fn bb_world_set_block(wid: u32, pos: *const CPos, id: u32, version: u32) -> i32;
 
   /// Returns the number of nanoseconds since this function was called first.
   /// This is used to find the duration of a function.

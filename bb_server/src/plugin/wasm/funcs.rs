@@ -1,6 +1,6 @@
-use crate::world::WorldManager;
-use bb_common::util::Chat;
-use bb_ffi::{CChat, CUUID};
+use crate::{block, world::WorldManager};
+use bb_common::{math::Pos, util::Chat, version::BlockVersion};
+use bb_ffi::{CChat, CPos, CUUID};
 use log::Level;
 use std::sync::Arc;
 use wasmer::{imports, Array, Function, ImportObject, LazyInit, Memory, Store, WasmPtr, WasmerEnv};
@@ -90,6 +90,38 @@ fn player_username(env: &Env, id: WasmPtr<CUUID>, buf: WasmPtr<u8>, buf_len: u32
   0
 }
 
+fn player_world(env: &Env, player: WasmPtr<CUUID>) -> i32 {
+  let mem = env.mem();
+  let uuid = match player.deref(mem) {
+    Some(p) => p.get(),
+    None => return -1,
+  };
+  let _player = match env.wm.get_player(bb_common::util::UUID::from_u128(
+    (uuid.bytes[3] as u128) << (3 * 32)
+      | (uuid.bytes[2] as u128) << (2 * 32)
+      | (uuid.bytes[1] as u128) << 32
+      | uuid.bytes[0] as u128,
+  )) {
+    Some(p) => p,
+    None => return -1,
+  };
+  0
+}
+
+fn world_set_block(env: &Env, wid: u32, pos: WasmPtr<CPos>, id: u32, version: u32) -> i32 {
+  let mem = env.mem();
+  let pos = match pos.deref(mem) {
+    Some(p) => p.get(),
+    None => return -1,
+  };
+  let world = env.wm.default_world();
+  let ty = env.wm.block_converter().type_from_id(id, BlockVersion::latest());
+  match world.set_block(Pos::new(pos.x, pos.y, pos.z), ty) {
+    Ok(_) => 0,
+    Err(_) => -1,
+  }
+}
+
 fn time_since_start(env: &Env) -> u64 {
   use parking_lot::{lock_api::RawMutex, Mutex};
   use std::time::Instant;
@@ -114,6 +146,8 @@ pub fn imports(store: &Store, wm: Arc<WorldManager>, name: String) -> ImportObje
       "bb_log_len" => Function::new_native_with_env(&store, env.clone(), log_len),
       "bb_broadcast" => Function::new_native_with_env(&store, env.clone(), broadcast),
       "bb_player_username" => Function::new_native_with_env(&store, env.clone(), player_username),
+      "bb_player_world" => Function::new_native_with_env(&store, env.clone(), player_world),
+      "bb_world_set_block" => Function::new_native_with_env(&store, env.clone(), world_set_block),
       "bb_time_since_start" => Function::new_native_with_env(&store, env.clone(), time_since_start),
     }
   }
