@@ -168,6 +168,8 @@ impl ReadableChunk {
           }
           lock.inner_mut().section_mut(y as u32).set_from(new_palette, data);
         }
+      } else {
+        lock.inner_mut().clear_section(y as u32);
       }
     }
   }

@@ -117,8 +117,10 @@ impl<S: Section> Chunk<S> {
   pub fn sections(&self) -> impl ExactSizeIterator<Item = &Option<S>> { self.sections.iter() }
 
   /// Returns the section at the given index. If it doesn't exist, this will
-  /// create an empty section. If the `y` cordinate is out of bounds, this will
-  /// panic.
+  /// create an empty section.
+  ///
+  /// # Panics
+  /// - If `y` is outside the chunk.
   pub fn section_mut(&mut self, y: u32) -> &mut S {
     if !(0..16).contains(&y) {
       panic!("Y coordinate is outside of chunk");
@@ -133,6 +135,31 @@ impl<S: Section> Chunk<S> {
     match &mut self.sections[index] {
       Some(s) => s,
       None => unreachable!(),
+    }
+  }
+
+  /// Clears the section at the given Y coordinate. If the chunk is at the top,
+  /// the internal chunk list will shrink. This is more effective than calling
+  /// `section_mut.fill(<air>)`
+  ///
+  /// # Panics
+  /// - If `y` is outside the chunk.
+  pub fn clear_section(&mut self, y: u32) {
+    if !(0..16).contains(&y) {
+      panic!("Y coordinate is outside of chunk");
+    }
+    let index = y as usize;
+    if index < self.sections.len() {
+      // Clear the chunk.
+      self.sections[index] = None;
+      // Truncate the sections list.
+      while let Some(last) = self.sections.last() {
+        if last.is_none() {
+          self.sections.pop();
+        } else {
+          break;
+        }
+      }
     }
   }
 
