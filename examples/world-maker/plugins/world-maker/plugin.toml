@@ -1,0 +1,5 @@
+type = "wasm"
+
+[wasm]
+compile = "cargo build --target wasm32-unknown-unknown --release --color=always"
+output = "target/wasm32-unknown-unknown/release/world_maker.wasm"

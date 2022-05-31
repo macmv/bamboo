@@ -1,0 +1,23 @@
+[package]
+name = "world-maker"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+name = "world_maker"
+crate-type = ["lib", "cdylib"]
+
+[dependencies]
+bb_plugin = { path = "../../../../bb_plugin" }
+
+# Seperate workspace
+[workspace]
+
+[profile.release]
+lto = true
+
+[profile.rust-analyzer]
+inherits = "dev"
+opt-level = 0
+
+[dev-dependencies]
