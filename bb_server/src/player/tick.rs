@@ -294,6 +294,7 @@ impl Player {
       if !lock.contains(&pos) {
         lock.insert(pos);
         drop(lock);
+        self.world.inc_view(pos);
         self.send(f());
       }
     }
@@ -304,6 +305,7 @@ impl Player {
     let mut lock = self.loaded_chunks.lock();
     if lock.remove(&pos) {
       drop(lock);
+      self.world.dec_view(pos);
       self.send(cb::Packet::UnloadChunk { pos });
     }
   }

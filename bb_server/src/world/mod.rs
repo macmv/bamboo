@@ -518,48 +518,26 @@ impl World {
 
   /// Increments how many people are viewing the given chunk. This counter is
   /// used to track when a chunk should be loaded/unloaded. This will load the
-  /// given chunk if it is not loaded already.
+  /// chunk if it is not already present.
   pub fn inc_view(&self, pos: ChunkPos) {
-    // TODO: Reimplement since regions were added
-    /*
-    // We first check (read-only) if we need to generate a new chunk
-    if !self.chunks.read().contains_key(&pos) {
-      // If we do, we lock it for writing
-      let mut chunks = self.chunks.write();
-      // Make sure that the chunk was not written in between locking this chunk
-      chunks.entry(pos).or_insert_with(|| CountedChunk::new(self.pre_generate_chunk(pos)));
-    }
-    let chunks = self.chunks.read();
-    let c = &chunks[&pos];
-    // If the count was 0, the chunk might not have been present in
-    // unloadable_chunks, as it might be the one we just added above. We know this
-    // chunk should not be unloaded, so if an unloading task starts between adding
-    // the chunk above and updating this value, we don't want the chunk to be in the
-    // unloadable_chunks at all.
-    if c.count.fetch_add(1, Ordering::Acquire) == 0 {
-      self.unloadable_chunks.lock().remove(&pos);
-    }
-    */
+    self.regions.region(pos, |mut region| {
+      let chunk = region.get_or_generate(RegionRelPos::new(pos), || {
+        CountedChunk::new(self.pre_generate_chunk(pos))
+      });
+      chunk.count.fetch_add(1, Ordering::SeqCst);
+    })
   }
 
   /// Decrements how many people are viewing the given chunk. This counter is
   /// used to track when a chunk should be loaded/unloaded. If this chunk does
   /// not exist, this will do nothing.
   pub fn dec_view(&self, pos: ChunkPos) {
-    // TODO: Reimplement since regions were added
-    /*
-    // We first check (read-only) if the chunk is present.
-    if !self.chunks.read().contains_key(&pos) {
-      return;
-    }
-    let chunks = self.chunks.read();
-    let c = &chunks[&pos];
-    // If the count was 1, then the chunk should be added to the list of chunks to
-    // be unloaded. We don't unload it now, as we only want to lazily unload chunks.
-    if c.count.fetch_sub(1, Ordering::Acquire) == 1 {
-      self.unloadable_chunks.lock().insert(pos);
-    }
-    */
+    self.regions.region(pos, |mut region| {
+      let chunk = region.get_or_generate(RegionRelPos::new(pos), || {
+        CountedChunk::new(self.pre_generate_chunk(pos))
+      });
+      chunk.count.fetch_sub(1, Ordering::SeqCst);
+    })
   }
 
   /// This broadcasts a chat message to everybody in the world. Note that this
