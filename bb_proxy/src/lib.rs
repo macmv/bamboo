@@ -67,8 +67,13 @@ pub fn run() -> Result<()> {
   let conv = Arc::new(TypeConverter::new());
 
   loop {
-    // Wait for events
-    poll.poll(&mut events, None)?;
+    loop {
+      match poll.poll(&mut events, None) {
+        Ok(()) => break,
+        Err(e) if e.kind() == io::ErrorKind::Interrupted => continue,
+        Err(e) => return Err(e.into()),
+      }
+    }
 
     for event in &events {
       match event.token() {
