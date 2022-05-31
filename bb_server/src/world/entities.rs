@@ -225,8 +225,8 @@ impl World {
   fn add_entity(&self, eid: i32, entity: Entity) { self.entities.write().insert(eid, entity); }
 
   #[allow(clippy::if_same_then_else)]
-  fn send_entity_spawn(&self, player: &Player, ent: &EntityRef) {
-    let p = ent.pos();
+  pub(super) fn send_entity_spawn(&self, player: &Player, ent: &EntityRef) {
+    let p = ent.aabb();
     if ent.ty() == entity::Type::ExperienceOrb {
       // player.send(cb::Packet::SpawnEntityExperienceOrb {
       //   entity_id: ent.eid(),

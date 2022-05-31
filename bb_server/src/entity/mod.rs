@@ -137,7 +137,7 @@ impl EntityRef<'_> {
   /// This returns everything about the entity's position, including its
   /// velocity, pitch, yaw, etc. If you just need the position, then
   /// [`fpos`](Self::fpos) will be easier to use.
-  pub fn pos(&self) -> EntityPos {
+  pub fn aabb(&self) -> EntityPos {
     match self {
       Self::Entity(e) => *e.pos.lock(),
       _ => todo!(),
@@ -145,7 +145,7 @@ impl EntityRef<'_> {
   }
 
   /// Returns this entity's position.
-  pub fn fpos(&self) -> FPos {
+  pub fn pos(&self) -> FPos {
     match self {
       Self::Entity(e) => e.pos.lock().aabb.pos,
       Self::Player(p) => p.pos(),

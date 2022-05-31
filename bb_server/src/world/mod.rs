@@ -274,7 +274,7 @@ impl World {
             let start = Instant::now();
             if ent.tick() {
               s.world.entities.write().remove(&eid);
-              for p in s.world.players().iter().in_view(ent.fpos().block().chunk()) {
+              for p in s.world.players().iter().in_view(ent.pos().block().chunk()) {
                 p.send(cb::Packet::RemoveEntities { eids: vec![eid] });
               }
             }

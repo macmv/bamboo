@@ -197,7 +197,7 @@ impl World {
     info!("done generating terrain");
   }
 
-  pub(super) fn player_init(&self, player: &Player, _info: JoinInfo) {
+  pub(super) fn player_init(self: &Arc<Self>, player: &Player, _info: JoinInfo) {
     let out = cb::Packet::JoinGame {
       // entity_id:                self.eid(),
       // game_mode:                1,       // Creative
@@ -303,30 +303,43 @@ impl World {
     }
     player.send(cb::Packet::PlayerList { action: cb::PlayerListAction::Add(info) });
 
-    for other in self.players().iter().in_view(player.pos().chunk()).not(player.id()) {
-      // Create a packet that will spawn me for `other`
-      let (pos, pitch, yaw) = player.pos_look();
-      other.send(cb::Packet::SpawnPlayer {
-        eid: player.eid(),
-        id: player.id(),
-        ty: entity::Type::Player.id(),
-        pos,
-        yaw: yaw as i8,
-        pitch: pitch as i8,
-        meta: player.metadata(),
-      });
+    for other in self.entities().iter() {
+      if !player.in_view(other.pos().block().chunk()) {
+        continue;
+      }
+      if let Some(other) = other.as_player() {
+        // We don't want either packet if this is the same player.
+        if other.id() == player.id() {
+          continue;
+        }
+        // Create a packet that will spawn me for `other`
+        let (pos, pitch, yaw) = player.pos_look();
+        other.send(cb::Packet::SpawnPlayer {
+          eid: player.eid(),
+          id: player.id(),
+          ty: entity::Type::Player.id(),
+          pos,
+          yaw: yaw as i8,
+          pitch: pitch as i8,
+          meta: player.metadata(),
+        });
 
-      // Create a packet that will spawn `other` for me
-      let (pos, pitch, yaw) = other.pos_look();
-      player.send(cb::Packet::SpawnPlayer {
-        eid: other.eid(),
-        id: other.id(),
-        ty: entity::Type::Player.id(),
-        pos,
-        yaw: yaw as i8,
-        pitch: pitch as i8,
-        meta: other.metadata(),
-      });
+        // Create a packet that will spawn `other` for me
+        let (pos, pitch, yaw) = other.pos_look();
+        player.send(cb::Packet::SpawnPlayer {
+          eid: other.eid(),
+          id: other.id(),
+          ty: entity::Type::Player.id(),
+          pos,
+          yaw: yaw as i8,
+          pitch: pitch as i8,
+          meta: other.metadata(),
+        });
+      }
+      if other.as_entity().is_some() {
+        // Create a packet that will spawn `other` for me
+        self.send_entity_spawn(&player, &other);
+      }
     }
 
     for (_, team) in self.wm.teams().iter() {
