@@ -147,10 +147,8 @@ fn add_command(env: &Env, cmd: WasmPtr<CCommand>) {
       };
       let mut children = Vec::with_capacity(cmd.children.len as usize);
       for i in 0..cmd.children.len {
-        children.push(command_from_env(
-          env,
-          WasmPtr::new(cmd.children.get_ptr::<CCommand>(i).unwrap() as u32),
-        )?);
+        children
+          .push(command_from_env(env, WasmPtr::new(cmd.children.get_ptr(i).unwrap() as u32))?);
       }
 
       Some(Command::new_from_plugin(name, ty, children, cmd.optional == 1))

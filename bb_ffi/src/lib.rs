@@ -57,7 +57,7 @@ pub struct CPos {
 unsafe impl ValueType for CPos {}
 
 #[repr(C)]
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Debug)]
 pub struct CCommand {
   /// The name of this command segment. For literals this is their value.
   /// Doesn't contain a NUL at the end.
@@ -80,25 +80,30 @@ pub struct CCommand {
   /// This is a boolean, but `bool` isn't `ValueType` safe.
   pub optional:   u8,
   /// The children of this command.
-  pub children:   CList,
+  pub children:   CList<CCommand>,
 }
 
+#[cfg(feature = "host")]
+impl Copy for CCommand {}
 #[cfg(feature = "host")]
 unsafe impl ValueType for CCommand {}
 
 // `c_void` isn't copy, so this is `u8`. This is incorrect! It
 // should be a `*void`.
 #[repr(C)]
-#[derive(Clone, Copy, Debug)]
-pub struct CList {
+#[derive(Clone, Debug)]
+pub struct CList<T> {
   /// The pointer to the first element in this list.
-  pub first: CPtr<u8>,
+  pub first: CPtr<T>,
   /// The length of this list.
   pub len:   u32,
 }
 
 #[cfg(feature = "host")]
-unsafe impl ValueType for CList {}
+impl<T: Copy> Copy for CList<T> {}
+
+#[cfg(feature = "host")]
+unsafe impl<T: Copy> ValueType for CList<T> {}
 
 extern "C" {
   /// Logs the given message. The pointer must point to a utf8-valid
@@ -155,17 +160,14 @@ impl<T> fmt::Debug for CPtr<T> {
   fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result { fmt::Pointer::fmt(self, f) }
 }
 
-impl CList {
-  pub fn new<T>(list: Vec<T>) -> Self {
+impl<T> CList<T> {
+  pub fn new(list: Vec<T>) -> Self {
     let boxed_slice = list.into_boxed_slice();
     let slice = Box::leak(boxed_slice);
     Self { first: CPtr::new(slice.as_ptr() as _), len: slice.len() as u32 }
   }
-  /// # Safety
-  /// - `T` must match the original `T` used to create this list.
-  pub unsafe fn get<'a, T>(&'a self, index: u32) -> Option<&'a T> { Some(&*self.get_ptr(index)?) }
-  /// Gets a pointer to the given element, if it is in the list.
-  pub fn get_ptr<T>(&self, index: u32) -> Option<*const T> {
+  pub fn get<'a>(&'a self, index: u32) -> Option<&'a T> { Some(unsafe { &*self.get_ptr(index)? }) }
+  pub fn get_ptr(&self, index: u32) -> Option<*const T> {
     if index < self.len {
       let ptr = self.first.as_ptr() as *const T;
       Some(unsafe { ptr.add(index as usize) })
@@ -173,11 +175,21 @@ impl CList {
       None
     }
   }
-  /// # Safety
-  /// - `T` must match the original `T` used to create this list.
-  pub unsafe fn into_vec<T>(self) -> Vec<T> {
+  pub fn into_vec(self) -> Vec<T> {
     // We create a boxed slice above, so the capacity is shrunk to `len`, so we can
     // use len for the capacity here, without leaking memory.
-    Vec::from_raw_parts(self.first.as_ptr() as *mut T, self.len as usize, self.len as usize)
+    unsafe {
+      Vec::from_raw_parts(self.first.as_ptr() as *mut T, self.len as usize, self.len as usize)
+    }
+  }
+}
+
+// On the host, this refers to data in wasm, so we don't want to free it.
+#[cfg(not(feature = "host"))]
+impl<T> Drop for CList<T> {
+  fn drop(&mut self) {
+    unsafe {
+      Vec::from_raw_parts(self.first.as_ptr() as *mut T, self.len as usize, self.len as usize);
+    }
   }
 }
