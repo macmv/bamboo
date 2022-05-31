@@ -134,8 +134,6 @@ fn add_command(env: &Env, cmd: WasmPtr<CCommand>) {
         Some(c) => c.get(),
         None => return None,
       };
-      dbg!(cmd);
-      return None;
       let name = WasmPtr::<u8, Array>::new(cmd.name.ptr).get_utf8_str(mem, cmd.name_len)?.into();
       let parser = if cmd.parser.ptr == 0 {
         None
