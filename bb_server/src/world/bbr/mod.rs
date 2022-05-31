@@ -5,10 +5,7 @@ mod fs;
 use super::{CountedChunk, WorldManager};
 use bb_common::math::ChunkPos;
 use parking_lot::{Mutex, MutexGuard, RwLock, RwLockWriteGuard};
-use std::{
-  collections::{HashMap, HashSet},
-  sync::Arc,
-};
+use std::{collections::HashMap, sync::Arc};
 
 /// The same structure as a chunk position, but used to index into a region. Can
 /// be converted to/from a `ChunkPos` by multiplying/dividing its coordinates by
@@ -32,11 +29,10 @@ pub struct RegionMap {
 }
 
 pub struct Region {
-  wm:                Arc<WorldManager>,
-  pos:               RegionPos,
+  wm:     Arc<WorldManager>,
+  pos:    RegionPos,
   /// An array of `32*32 = 1024` chunks. The index is `x + z * 32`.
-  chunks:            [Option<CountedChunk>; 1024],
-  unloadable_chunks: HashSet<RegionRelPos>,
+  chunks: [Option<CountedChunk>; 1024],
 }
 
 impl RegionMap {
@@ -96,7 +92,7 @@ impl RegionMap {
 impl Region {
   fn new(wm: Arc<WorldManager>, pos: RegionPos) -> Self {
     const NONE: Option<CountedChunk> = None;
-    Region { wm, pos, chunks: [NONE; 1024], unloadable_chunks: HashSet::new() }
+    Region { wm, pos, chunks: [NONE; 1024] }
   }
   pub fn new_load(wm: Arc<WorldManager>, pos: RegionPos) -> Self {
     let mut region = Region::new(wm, pos);

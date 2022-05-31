@@ -4,7 +4,6 @@ use crate::{
   entity, item,
   item::Stack,
   math::{CollisionResult, Vec3, AABB},
-  player::Player,
   world::World,
   RNG,
 };
@@ -14,7 +13,7 @@ use bb_common::{
   net::cb,
 };
 use rand::Rng;
-use std::{cmp::Ordering, collections::HashMap, str::FromStr, sync::Arc};
+use std::{cmp::Ordering, str::FromStr, sync::Arc};
 
 /// General block manipulation functions
 impl World {

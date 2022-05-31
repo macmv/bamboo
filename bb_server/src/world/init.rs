@@ -10,12 +10,7 @@ use bb_common::{
   util::{Buffer, Chat, GameMode, JoinInfo},
   version::ProtocolVersion,
 };
-use parking_lot::Mutex;
-use rayon::prelude::*;
-use std::sync::{
-  atomic::{AtomicU32, Ordering},
-  Arc,
-};
+use std::sync::Arc;
 
 impl World {
   pub fn init(&self) {

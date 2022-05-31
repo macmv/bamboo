@@ -107,7 +107,7 @@ impl World {
             for y in 0..16 {
               for z in 0..16 {
                 for x in 0..16 {
-                  let index = (((y * 16) + z) * 16 + x) as usize;
+                  let index = ((y as usize * 16) + z as usize) * 16 + x as usize;
                   let mask = 0x0f << ((x as u8 % 2) * 4);
                   let id = (blocks[index] as u32) << 4 | (data[index / 2] & mask) as u32;
                   let old =

@@ -95,6 +95,7 @@ impl Region {
   }
 
   pub(super) fn print_summary(&self) {
+    /*
     println!("CHUNK AT {} {}", self.pos.x, self.pos.z);
     for z in 0..32 {
       for x in 0..32 {
@@ -111,6 +112,7 @@ impl Region {
       }
       println!();
     }
+    */
   }
 
   fn fname(&self) -> PathBuf {
