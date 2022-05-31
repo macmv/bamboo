@@ -8,12 +8,14 @@ use std::{ffi::CString, marker::PhantomData};
 
 pub use bb_common::{chunk, math, transfer, util};
 
+pub mod command;
 pub mod player;
 pub mod time;
 pub mod world;
 
 mod internal;
 
+pub use command::add_command;
 pub use internal::gen::add_world_generator;
 
 pub struct Bamboo {

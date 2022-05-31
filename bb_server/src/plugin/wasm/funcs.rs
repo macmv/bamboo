@@ -1,6 +1,10 @@
-use crate::{block, world::WorldManager};
+use crate::{
+  block,
+  command::{Command, NodeType, Parser},
+  world::WorldManager,
+};
 use bb_common::{math::Pos, util::Chat, version::BlockVersion};
-use bb_ffi::{CChat, CPos, CUUID};
+use bb_ffi::{CChat, CCommand, CPos, CUUID};
 use log::Level;
 use std::sync::Arc;
 use wasmer::{imports, Array, Function, ImportObject, LazyInit, Memory, Store, WasmPtr, WasmerEnv};
@@ -122,6 +126,43 @@ fn world_set_block(env: &Env, wid: u32, pos: WasmPtr<CPos>, id: u32, version: u3
   }
 }
 
+fn add_command(env: &Env, cmd: WasmPtr<CCommand>) {
+  fn command_from_env(env: &Env, cmd: WasmPtr<CCommand>) -> Option<Command> {
+    unsafe {
+      let mem = env.mem();
+      let cmd = match cmd.deref(mem) {
+        Some(c) => c.get(),
+        None => return None,
+      };
+      dbg!(cmd);
+      return None;
+      let name = WasmPtr::<u8, Array>::new(cmd.name.ptr).get_utf8_str(mem, cmd.name_len)?.into();
+      let parser = if cmd.parser.ptr == 0 {
+        None
+      } else {
+        WasmPtr::<u8, Array>::new(cmd.parser.ptr).get_utf8_str(mem, cmd.parser_len)
+      };
+      let ty = match cmd.node_type {
+        0 => NodeType::Literal,
+        1 => NodeType::Argument(Parser::BlockPos),
+        _ => return None,
+      };
+      let mut children = Vec::with_capacity(cmd.children.len as usize);
+      for i in 0..cmd.children.len {
+        children.push(command_from_env(
+          env,
+          WasmPtr::new(cmd.children.get_ptr::<CCommand>(i).unwrap() as u32),
+        )?);
+      }
+
+      Some(Command::new_from_plugin(name, ty, children, cmd.optional == 1))
+    }
+  }
+  if let Some(cmd) = command_from_env(env, cmd) {
+    env.wm.commands().add(cmd, |_, _, _| {});
+  }
+}
+
 fn time_since_start(env: &Env) -> u64 {
   use parking_lot::{lock_api::RawMutex, Mutex};
   use std::time::Instant;
@@ -148,6 +189,7 @@ pub fn imports(store: &Store, wm: Arc<WorldManager>, name: String) -> ImportObje
       "bb_player_username" => Function::new_native_with_env(&store, env.clone(), player_username),
       "bb_player_world" => Function::new_native_with_env(&store, env.clone(), player_world),
       "bb_world_set_block" => Function::new_native_with_env(&store, env.clone(), world_set_block),
+      "bb_add_command" => Function::new_native_with_env(&store, env.clone(), add_command),
       "bb_time_since_start" => Function::new_native_with_env(&store, env.clone(), time_since_start),
     }
   }

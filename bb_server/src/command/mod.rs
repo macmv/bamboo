@@ -106,7 +106,7 @@ pub struct Command {
   optional: bool,
 }
 #[derive(Debug, Clone)]
-enum NodeType {
+pub enum NodeType {
   Root,
   Literal,
   Argument(Parser),
@@ -116,6 +116,16 @@ impl Command {
   /// Creates a new command. This should be used when you want an entirely new
   /// command (not an argument of another command).
   pub fn new<N: Into<String>>(name: N) -> Self { Self::lit(name.into()) }
+  /// Creates a new command, with all the given parameters. This is used when
+  /// interacting with plugins.
+  pub(crate) fn new_from_plugin(
+    name: String,
+    ty: NodeType,
+    children: Vec<Command>,
+    optional: bool,
+  ) -> Self {
+    Command { name, ty, children, optional }
+  }
   /// Creates a new literal node. Use [`add_lit`](Self::add_lit) if you want to
   /// add a literal node to the current command.
   fn lit(name: String) -> Self {
