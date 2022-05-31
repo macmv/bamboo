@@ -380,7 +380,13 @@ impl ConnectionManager {
     });
 
     loop {
-      poll.poll(&mut events, None)?;
+      loop {
+        match poll.poll(&mut events, None) {
+          Ok(()) => break,
+          Err(e) if e.kind() == io::ErrorKind::Interrupted => continue,
+          Err(e) => return Err(e),
+        }
+      }
 
       for event in events.iter() {
         match event.token() {

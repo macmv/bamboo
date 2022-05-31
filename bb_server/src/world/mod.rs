@@ -920,9 +920,13 @@ impl WorldManager {
 
     extern "C" fn handle_sigint(_sig: libc::c_int) {
       let lock = CTRLC.lock();
+      println!();
       if let Some(wm) = &*lock {
+        info!("saving world...");
         wm.save_all();
+        info!("saved");
       }
+      std::process::exit(0);
     }
 
     let handler = SigHandler::Handler(handle_sigint);
