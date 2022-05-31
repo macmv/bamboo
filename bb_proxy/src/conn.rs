@@ -87,8 +87,12 @@ pub struct Conn<'a, S> {
 
   conv: Arc<TypeConverter>,
 }
-// Used when reading/writing to the server.
-thread_local!(static GARBAGE: RefCell<Vec<u8>> = RefCell::new(vec![0; 64 * 1024]));
+thread_local! {
+  // Used when reading from the server.
+  static READ_GARBAGE: RefCell<Vec<u8>> = RefCell::new(vec![0; 64 * 1024]);
+  // Used when writing to the server.
+  static WRITE_GARBAGE: RefCell<Vec<u8>> = RefCell::new(vec![]);
+}
 
 impl<S: fmt::Debug> fmt::Debug for Conn<'_, S> {
   fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -236,7 +240,7 @@ impl<'a, S: PacketStream + Send + Sync> Conn<'a, S> {
 
   /// Returns true if the connection should close.
   fn poll_server(&mut self) -> io::Result<bool> {
-    GARBAGE.with(|g| {
+    READ_GARBAGE.with(|g| {
       let mut garbage = g.borrow_mut();
       let n = self.server_stream.as_mut().unwrap().read(&mut garbage)?;
       if n == 0 {
@@ -384,11 +388,12 @@ impl<'a, S: PacketStream + Send + Sync> Conn<'a, S> {
 
   fn write_data_to_server(
     &mut self,
-    f: impl FnOnce(&mut Self, &mut MessageWriter) -> Result<()>,
+    f: impl FnOnce(&mut Self, &mut MessageWriter<&mut Vec<u8>>) -> Result<()>,
   ) -> Result<()> {
-    GARBAGE.with(|g| {
+    WRITE_GARBAGE.with(|g| {
       let mut garbage = g.borrow_mut();
-      let mut m = MessageWriter::new(&mut garbage);
+      garbage.clear();
+      let mut m = MessageWriter::new(garbage.as_mut());
       f(self, &mut m)?;
       let len = m.index();
       // No data was written, so we don't send this.
@@ -397,11 +402,11 @@ impl<'a, S: PacketStream + Send + Sync> Conn<'a, S> {
       }
 
       let mut prefix = [0; 5];
-      let mut m = MessageWriter::new(&mut prefix);
+      let mut m = MessageWriter::new(prefix.as_mut_slice());
       m.write_u32(len as u32).unwrap();
       let prefix_len = m.index();
       self.to_server.extend_from_slice(&prefix[..prefix_len]);
-      self.to_server.extend_from_slice(&garbage[..len]);
+      self.to_server.extend_from_slice(&garbage); // We don't need `[..len]`, as we called `clear` above.
 
       self.write_server()
     })

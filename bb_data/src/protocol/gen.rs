@@ -117,6 +117,7 @@ impl PacketCollection {
     gen.write_line("};");
     gen.write_line("#[allow(unused_imports)]");
     gen.write_line("use std::collections::{HashMap, HashSet};");
+    gen.write_line("use std::io::Write;");
     gen.write_line("use bb_transfer::{");
     gen.write_line("  MessageRead, MessageReader, MessageWrite, MessageWriter, ReadError,");
     gen.write_line("  WriteError,");
@@ -130,7 +131,8 @@ impl PacketCollection {
     gen.write_line("  fn read(_: &mut MessageReader) -> Result<Self, ReadError> { Ok(U) }");
     gen.write_line("}");
     gen.write_line("impl MessageWrite for U {");
-    gen.write_line("  fn write(&self, _: &mut MessageWriter) -> Result<(), WriteError> { Ok(()) }");
+    gen.write_line("  fn write<W: Write>(&self, _: &mut MessageWriter<W>)");
+    gen.write_line("    -> Result<(), WriteError> { Ok(()) }");
     gen.write_line("}");
     gen.write_line("");
 
