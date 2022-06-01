@@ -120,6 +120,29 @@ pub fn cenum(_args: TokenStream, input: TokenStream) -> TokenStream {
       punct
     },
   };
+  let new_funcs = input.variants.iter().enumerate().map(|(variant, v)| {
+    let name = Ident::new(&to_lower(&v.ident.to_string()), v.ident.span());
+    let new_name = Ident::new(&format!("new_{name}"), v.ident.span());
+    let ty = Type::Tuple(TypeTuple {
+      paren_token: Paren { span: v.fields.span() },
+      elems:       {
+        let mut punct = Punctuated::<Type, Token![,]>::new();
+        punct.extend(v.fields.iter().map(|field| field.ty.clone()));
+        punct
+      },
+    });
+    let convert_manually_drop =
+      if is_copy(&ty) { quote!(value) } else { quote!(::std::mem::ManuallyDrop::new(value)) };
+    quote!(
+      #[allow(unused_parens)]
+      pub fn #new_name(value: #ty) -> Self {
+        Self {
+          variant: #variant,
+          data: #data_name { #name: #convert_manually_drop },
+        }
+      }
+    )
+  });
   let as_funcs = input.variants.iter().enumerate().map(|(variant, v)| {
     let name = Ident::new(&to_lower(&v.ident.to_string()), v.ident.span());
     let as_name = Ident::new(&format!("as_{name}"), v.ident.span());
@@ -243,6 +266,7 @@ pub fn cenum(_args: TokenStream, input: TokenStream) -> TokenStream {
     impl Copy for #data_name {}
 
     impl #name {
+      #(#new_funcs)*
       #(#as_funcs)*
       #(#into_funcs)*
     }
