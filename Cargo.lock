@@ -229,8 +229,19 @@ dependencies = [
 name = "bb_ffi"
 version = "0.2.0"
 dependencies = [
+ "bb_ffi_macros",
  "cbindgen",
- "wasmer-types",
+ "wasmer",
+]
+
+[[package]]
+name = "bb_ffi_macros"
+version = "0.2.0"
+dependencies = [
+ "proc-macro-error",
+ "proc-macro2",
+ "quote",
+ "syn",
 ]
 
 [[package]]

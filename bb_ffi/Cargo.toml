@@ -6,10 +6,11 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-wasmer-types = { version = "2.2.1", default-features = false, optional = true }
+bb_ffi_macros = { path = "../bb_ffi_macros" }
+wasmer = { version = "2.2.1", default-features = false, features = ["sys"], optional = true }
 
 [build-dependencies]
 cbindgen = { version = "0.20.0", optional = true }
 
 [features]
-host = ["wasmer-types", "cbindgen"]
+host = ["wasmer", "cbindgen"]

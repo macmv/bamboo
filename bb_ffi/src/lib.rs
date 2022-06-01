@@ -1,69 +1,40 @@
-use std::os::raw::c_char;
-#[cfg(feature = "host")]
-use wasmer_types::ValueType;
+#![deny(improper_ctypes)]
 
-/// A 32 bit pointer. Used because `WasmPtr` isn't `Copy`.
-#[cfg(feature = "host")]
-#[repr(C)]
-#[derive(Clone, Copy)]
-pub struct CPtr<T> {
-  pub ptr:      u32,
-  pub _phantom: std::marker::PhantomData<T>,
+use bb_ffi_macros::ctype;
+
+#[ctype]
+pub struct CStr {
+  pub start: *const u8,
+  pub len:   u32,
 }
 
-#[cfg(not(feature = "host"))]
-#[repr(C)]
-#[derive(Clone, Copy)]
-pub struct CPtr<T> {
-  pub ptr: *const T,
-}
-
-#[repr(C)]
-#[derive(Clone, Copy)]
+#[ctype]
 pub struct CPlayer {
   pub eid: i32,
 }
 
-#[cfg(feature = "host")]
-unsafe impl ValueType for CPlayer {}
-
-#[repr(C)]
-#[derive(Clone, Copy)]
+#[ctype]
 pub struct CUUID {
   pub bytes: [u32; 4],
 }
 
-#[cfg(feature = "host")]
-unsafe impl ValueType for CUUID {}
-
-#[repr(C)]
-#[derive(Clone, Copy)]
+#[ctype]
 pub struct CChat {
-  pub message: *const c_char,
+  pub message: CStr,
 }
 
-#[cfg(feature = "host")]
-unsafe impl ValueType for CChat {}
-
-#[repr(C)]
-#[derive(Clone, Copy)]
+#[ctype]
 pub struct CPos {
   pub x: i32,
   pub y: i32,
   pub z: i32,
 }
 
-#[cfg(feature = "host")]
-unsafe impl ValueType for CPos {}
-
-#[repr(C)]
-#[derive(Clone, Debug)]
+#[ctype]
 pub struct CCommand {
   /// The name of this command segment. For literals this is their value.
   /// Doesn't contain a NUL at the end.
-  pub name:       CPtr<u8>,
-  /// The length of the name.
-  pub name_len:   u32,
+  pub name:      CStr,
   /// An enum.
   ///
   /// ```text
@@ -71,39 +42,29 @@ pub struct CCommand {
   /// 1 -> argument
   /// _ -> invalid command
   /// ```
-  pub node_type:  u8,
+  pub node_type: u8,
   /// This is null for `node_type` of root or literal. Doesn't contain a NUL at
   /// the end.
-  pub parser:     CPtr<u8>,
-  /// The length of the parser.
-  pub parser_len: u32,
+  pub parser:    CStr,
   /// This is a boolean, but `bool` isn't `ValueType` safe.
-  pub optional:   u8,
+  pub optional:  u8,
   /// The children of this command.
-  pub children:   CList<CCommand>,
+  pub children:  CList<CCommand>,
 }
 
-#[cfg(feature = "host")]
-impl Copy for CCommand {}
-#[cfg(feature = "host")]
-unsafe impl ValueType for CCommand {}
-
-// `c_void` isn't copy, so this is `u8`. This is incorrect! It
-// should be a `*void`.
 #[repr(C)]
 #[derive(Clone, Debug)]
 pub struct CList<T> {
   /// The pointer to the first element in this list.
-  pub first: CPtr<T>,
+  pub first: *const T,
   /// The length of this list.
   pub len:   u32,
 }
 
 #[cfg(feature = "host")]
-impl<T: Copy> Copy for CList<T> {}
-
+impl<T: Clone> Copy for CList<T> {}
 #[cfg(feature = "host")]
-unsafe impl<T: Copy> ValueType for CList<T> {}
+unsafe impl<T: Clone> wasmer::ValueType for CList<T> {}
 
 extern "C" {
   /// Logs the given message. The pointer must point to a utf8-valid
@@ -136,20 +97,7 @@ extern "C" {
   pub fn bb_time_since_start() -> u64;
 }
 
-impl<T> CPtr<T> {
-  pub fn new(ptr: *const T) -> Self {
-    #[cfg(feature = "host")]
-    {
-      CPtr { ptr: ptr as _, _phantom: std::marker::PhantomData::default() }
-    }
-    #[cfg(not(feature = "host"))]
-    {
-      CPtr { ptr }
-    }
-  }
-  pub fn as_ptr(&self) -> *const T { self.ptr as _ }
-}
-
+/*
 use std::fmt;
 impl<T> fmt::Pointer for CPtr<T> {
   fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -159,28 +107,28 @@ impl<T> fmt::Pointer for CPtr<T> {
 impl<T> fmt::Debug for CPtr<T> {
   fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result { fmt::Pointer::fmt(self, f) }
 }
+*/
 
 impl<T> CList<T> {
+  #[cfg(not(feature = "host"))]
   pub fn new(list: Vec<T>) -> Self {
     let boxed_slice = list.into_boxed_slice();
     let slice = Box::leak(boxed_slice);
-    Self { first: CPtr::new(slice.as_ptr() as _), len: slice.len() as u32 }
+    Self { first: slice.as_ptr() as _, len: slice.len() as u32 }
   }
-  pub fn get<'a>(&'a self, index: u32) -> Option<&'a T> { Some(unsafe { &*self.get_ptr(index)? }) }
+  #[cfg(feature = "host")]
   pub fn get_ptr(&self, index: u32) -> Option<*const T> {
     if index < self.len {
-      let ptr = self.first.as_ptr() as *const T;
-      Some(unsafe { ptr.add(index as usize) })
+      Some(unsafe { self.first.add(index as usize) })
     } else {
       None
     }
   }
+  #[cfg(not(feature = "host"))]
   pub fn into_vec(self) -> Vec<T> {
     // We create a boxed slice above, so the capacity is shrunk to `len`, so we can
     // use len for the capacity here, without leaking memory.
-    unsafe {
-      Vec::from_raw_parts(self.first.as_ptr() as *mut T, self.len as usize, self.len as usize)
-    }
+    unsafe { Vec::from_raw_parts(self.first as *mut T, self.len as usize, self.len as usize) }
   }
 }
 

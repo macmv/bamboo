@@ -14,6 +14,9 @@ members = [
   # Proc macros to generate plugin types on the server. Depended
   # on only by the server.
   "bb_plugin_macros",
+  # Generates C compatible structs, which use `WasmPtr<T>` instead of
+  # `*const T` on the host.
+  "bb_ffi_macros",
   # This defines a bunch of #[repr(C)] structs/functions, which are
   # used in the Wasm api. Depended on by the server and bb_plugin.
   "bb_ffi",
