@@ -83,6 +83,7 @@ impl SourceFmt for ItemStruct {
   fn fmt(&self, f: &mut Writer) -> fmt::Result {
     for attr in &self.attrs {
       f.write_src(attr)?;
+      writeln!(f)?;
     }
     f.write_src(&self.vis)?;
     writeln!(f, "struct {} {{", self.ident)?;
@@ -100,6 +101,7 @@ impl SourceFmt for ItemUnion {
   fn fmt(&self, f: &mut Writer) -> fmt::Result {
     for attr in &self.attrs {
       f.write_src(attr)?;
+      writeln!(f)?;
     }
     f.write_src(&self.vis)?;
     writeln!(f, "union {} {{", self.ident)?;
@@ -117,6 +119,7 @@ impl SourceFmt for ItemEnum {
   fn fmt(&self, f: &mut Writer) -> fmt::Result {
     for attr in &self.attrs {
       f.write_src(attr)?;
+      writeln!(f)?;
     }
     f.write_src(&self.vis)?;
     writeln!(f, "enum {} {{", self.ident)?;
@@ -174,6 +177,7 @@ impl SourceFmt for Field {
   fn fmt(&self, f: &mut Writer) -> fmt::Result {
     for attr in &self.attrs {
       f.write_src(attr)?;
+      writeln!(f)?;
     }
     if let Some(i) = self.ident.as_ref() {
       f.write_src(&self.vis)?;
@@ -187,6 +191,7 @@ impl SourceFmt for Variant {
   fn fmt(&self, f: &mut Writer) -> fmt::Result {
     for attr in &self.attrs {
       f.write_src(attr)?;
+      writeln!(f)?;
     }
     write!(f, "{}", &self.ident)?;
     match &self.fields {

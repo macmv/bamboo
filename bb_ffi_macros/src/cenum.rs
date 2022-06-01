@@ -6,9 +6,9 @@ use syn::{
   parse_macro_input,
   punctuated::Punctuated,
   spanned::Spanned,
-  token::{Brace, Paren},
-  Field, Fields, FieldsNamed, Ident, ItemEnum, ItemStruct, ItemUnion, Path, PathArguments,
-  PathSegment, Token, Type, TypePath, TypeTuple, Visibility,
+  token::{Brace, Bracket, Paren},
+  Attribute, Field, Fields, FieldsNamed, Ident, ItemEnum, ItemStruct, ItemUnion, Path,
+  PathArguments, PathSegment, Token, Type, TypePath, TypeTuple, VisPublic, Visibility,
 };
 
 macro_rules! punct {
@@ -23,7 +23,7 @@ macro_rules! fields_named {
     FieldsNamed { brace_token: Brace { span: Span::call_site() }, named: punct![$(
       Field {
         attrs: vec![],
-        vis: Visibility::Inherited,
+        vis: Visibility::Public(VisPublic { pub_token: Token![pub](Span::call_site()) }),
         ident: Some(Ident::new(stringify!($name), Span::call_site())),
         colon_token: Some(Token![:](Span::call_site())),
         ty: $ty,
@@ -75,7 +75,7 @@ pub fn cenum(_args: TokenStream, input: TokenStream) -> TokenStream {
   let data_name = Ident::new(&format!("{name}Data"), name.span());
   let fields = input.variants.iter().map(|v| Field {
     attrs:       vec![],
-    vis:         Visibility::Inherited,
+    vis:         Visibility::Public(VisPublic { pub_token: Token![pub](Span::call_site()) }),
     ident:       Some(Ident::new(&to_lower(&v.ident.to_string()), v.ident.span())),
     colon_token: Some(Token![:](Span::call_site())),
     ty:          Type::Tuple(TypeTuple {
@@ -131,7 +131,13 @@ pub fn cenum(_args: TokenStream, input: TokenStream) -> TokenStream {
   });
 
   let gen_struct = ItemStruct {
-    attrs:        vec![],
+    attrs:        vec![Attribute {
+      pound_token:   Token![#](Span::call_site()),
+      style:         syn::AttrStyle::Outer,
+      bracket_token: Bracket { span: Span::call_site() },
+      path:          path!(repr),
+      tokens:        quote!((C)),
+    }],
     vis:          input.vis,
     struct_token: Token![struct](input.enum_token.span()),
     ident:        input.ident.clone(),
@@ -150,8 +156,14 @@ pub fn cenum(_args: TokenStream, input: TokenStream) -> TokenStream {
   );
   */
   let gen_union = ItemUnion {
-    attrs: vec![],
-    vis: Visibility::Inherited,
+    attrs: vec![Attribute {
+      pound_token:   Token![#](Span::call_site()),
+      style:         syn::AttrStyle::Outer,
+      bracket_token: Bracket { span: Span::call_site() },
+      path:          path!(repr),
+      tokens:        quote!((C)),
+    }],
+    vis: Visibility::Public(VisPublic { pub_token: Token![pub](Span::call_site()) }),
     union_token: Token![union](input.enum_token.span()),
     ident: data_name.clone(),
     generics: input.generics,
