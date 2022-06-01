@@ -260,8 +260,11 @@ pub fn cenum(_args: TokenStream, input: TokenStream) -> TokenStream {
     #gen_struct
     #[doc = concat!("See [`", stringify!(#name), "`].")]
     #[allow(unused_parens)]
+    #[cfg_attr(feature = "host", derive(Clone))]
     #gen_union
 
+    #[cfg(feature = "host")]
+    impl Copy for #name {}
     #[cfg(feature = "host")]
     impl Copy for #data_name {}
 
