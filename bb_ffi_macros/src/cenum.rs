@@ -3,9 +3,12 @@ use proc_macro::TokenStream;
 use proc_macro2::Span;
 use quote::quote;
 use syn::{
-  parse_macro_input, punctuated::Punctuated, spanned::Spanned, token::Brace, Field, Fields,
-  FieldsNamed, Ident, ItemEnum, ItemStruct, ItemUnion, Path, PathArguments, PathSegment, Token,
-  Type, TypePath, Visibility,
+  parse_macro_input,
+  punctuated::Punctuated,
+  spanned::Spanned,
+  token::{Brace, Paren},
+  Field, Fields, FieldsNamed, Ident, ItemEnum, ItemStruct, ItemUnion, Path, PathArguments,
+  PathSegment, Token, Type, TypePath, TypeTuple, Visibility,
 };
 
 macro_rules! punct {
@@ -70,11 +73,28 @@ pub fn cenum(_args: TokenStream, input: TokenStream) -> TokenStream {
 
   let name = &input.ident;
   let data_name = Ident::new(&format!("{name}Data"), name.span());
-  let fields = input.variants.iter().map(|v| {
-    let name = Ident::new(&to_lower(&v.ident.to_string()), v.ident.span());
-    let fields = &v.fields;
-    quote!(#name: #fields)
+  let fields = input.variants.iter().map(|v| Field {
+    attrs:       vec![],
+    vis:         Visibility::Inherited,
+    ident:       Some(Ident::new(&to_lower(&v.ident.to_string()), v.ident.span())),
+    colon_token: Some(Token![:](Span::call_site())),
+    ty:          Type::Tuple(TypeTuple {
+      paren_token: Paren { span: v.fields.span() },
+      elems:       {
+        let mut punct = Punctuated::<Type, Token![,]>::new();
+        punct.extend(v.fields.iter().map(|field| field.ty.clone()));
+        punct
+      },
+    }),
   });
+  let fields = FieldsNamed {
+    brace_token: Brace { span: Span::call_site() },
+    named:       {
+      let mut punct = Punctuated::new();
+      punct.extend(fields);
+      punct
+    },
+  };
   let as_funcs = input.variants.iter().enumerate().map(|(variant, v)| {
     let name = Ident::new(&to_lower(&v.ident.to_string()), v.ident.span());
     let as_name = Ident::new(&format!("as_{name}"), v.ident.span());
@@ -115,7 +135,7 @@ pub fn cenum(_args: TokenStream, input: TokenStream) -> TokenStream {
     vis:          input.vis,
     struct_token: Token![struct](input.enum_token.span()),
     ident:        input.ident.clone(),
-    generics:     input.generics,
+    generics:     input.generics.clone(),
     fields:       Fields::Named(fields_named! {
       variant: Type::Path(TypePath { qself: None, path: path!(usize) }),
       data: Type::Path(TypePath { qself: None, path: data_name.clone().into() }),
@@ -129,11 +149,14 @@ pub fn cenum(_args: TokenStream, input: TokenStream) -> TokenStream {
     }
   );
   */
-  let gen_union = quote!(
-    union #data_name {
-      #(#fields),*
-    }
-  );
+  let gen_union = ItemUnion {
+    attrs: vec![],
+    vis: Visibility::Inherited,
+    union_token: Token![union](input.enum_token.span()),
+    ident: data_name.clone(),
+    generics: input.generics,
+    fields,
+  };
 
   let struct_docs = gen_docs(&gen_struct);
   let union_docs = gen_docs(&gen_union);

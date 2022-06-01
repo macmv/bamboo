@@ -1,6 +1,7 @@
 use proc_macro2::TokenStream as TokenStream2;
 use syn::{
-  AttrStyle, Attribute, Expr, Field, Fields, ItemEnum, ItemStruct, Path, Type, Variant, Visibility,
+  AttrStyle, Attribute, Expr, Field, Fields, ItemEnum, ItemStruct, ItemUnion, Path, Type, Variant,
+  Visibility,
 };
 
 pub fn gen_docs<'a, T: 'a>(input: &'a T) -> String
@@ -87,6 +88,23 @@ impl SourceFmt for ItemStruct {
     writeln!(f, "struct {} {{", self.ident)?;
     f.indent();
     for field in &self.fields {
+      f.write_src(field)?;
+      writeln!(f, ",")?;
+    }
+    f.unindent();
+    writeln!(f, "}}")?;
+    Ok(())
+  }
+}
+impl SourceFmt for ItemUnion {
+  fn fmt(&self, f: &mut Writer) -> fmt::Result {
+    for attr in &self.attrs {
+      f.write_src(attr)?;
+    }
+    f.write_src(&self.vis)?;
+    writeln!(f, "union {} {{", self.ident)?;
+    f.indent();
+    for field in &self.fields.named {
       f.write_src(field)?;
       writeln!(f, ",")?;
     }
@@ -187,7 +205,7 @@ impl SourceFmt for Variant {
         for pair in unnamed.unnamed.pairs() {
           f.write_src(*pair.value())?;
           if pair.punct().is_some() {
-            write!(f, ",")?;
+            write!(f, ", ")?;
           }
         }
         write!(f, ")")?;
@@ -203,6 +221,16 @@ impl SourceFmt for Type {
       Type::Array(ty) => write!(f, "[{}; {}]", Source(&*ty.elem), Source(&ty.len)),
       Type::Path(ty) => write!(f, "{}", Source(&ty.path)),
       Type::Ptr(ty) => write!(f, "*const {}", Source(&*ty.elem)),
+      Type::Tuple(ty) => {
+        write!(f, "(")?;
+        for pair in ty.elems.pairs() {
+          f.write_src(*pair.value())?;
+          if pair.punct().is_some() {
+            write!(f, ", ")?;
+          }
+        }
+        write!(f, ")")
+      }
       _ => Ok(()),
     }
   }
