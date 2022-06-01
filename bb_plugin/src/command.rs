@@ -13,7 +13,6 @@ enum NodeType {
 pub fn add_command(cmd: &Command) {
   unsafe {
     let ffi = cmd.to_ffi();
-    log::info!("{ffi:#?}");
     bb_ffi::bb_add_command(&ffi);
   }
 }
@@ -51,22 +50,17 @@ impl Command {
   ///   command. This command points to data in `self` which cannot be changed.
   pub(crate) unsafe fn to_ffi(&self) -> bb_ffi::CCommand {
     bb_ffi::CCommand {
-      name:       bb_ffi::CPtr::new(self.name.as_ptr()),
-      name_len:   self.name.len() as u32,
-      node_type:  match self.ty {
+      name:      bb_ffi::CStr::new(self.name.clone()),
+      node_type: match self.ty {
         NodeType::Literal => 0,
         NodeType::Argument(_) => 1,
       },
-      parser:     bb_ffi::CPtr::new(match &self.ty {
-        NodeType::Literal => 0 as _,
-        NodeType::Argument(parser) => parser.as_ptr(),
-      }),
-      parser_len: match &self.ty {
-        NodeType::Literal => 0,
-        NodeType::Argument(parser) => parser.len() as u32,
+      parser:    match &self.ty {
+        NodeType::Literal => bb_ffi::CStr::new(String::new()),
+        NodeType::Argument(parser) => bb_ffi::CStr::new(parser.clone()),
       },
-      optional:   self.optional as u8,
-      children:   bb_ffi::CList::new(self.children.iter().map(|c| c.to_ffi()).collect()),
+      optional:  self.optional as u8,
+      children:  bb_ffi::CList::new(self.children.iter().map(|c| c.to_ffi()).collect()),
     }
   }
 }

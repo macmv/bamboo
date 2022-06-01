@@ -27,8 +27,7 @@ pub fn instance() -> Bamboo { Bamboo { marker: PhantomData::default() } }
 impl Bamboo {
   pub fn broadcast(&self, message: Chat) {
     unsafe {
-      let s = CString::new(message.to_codes()).unwrap();
-      let c_chat = CChat { message: s.as_ptr() };
+      let c_chat = CChat { message: bb_ffi::CStr::new(message.to_codes()) };
       bb_ffi::bb_broadcast(&c_chat);
     }
   }
@@ -46,10 +45,32 @@ impl log::Log for Logger {
     if self.enabled(record.metadata()) {
       unsafe {
         if let Some(s) = record.args().as_str() {
-          bb_ffi::bb_log_len(record.level() as u32, s.as_ptr() as *const _, s.len() as u32);
+          bb_ffi::bb_log(
+            record.level() as u32,
+            s.as_ptr(),
+            s.len() as u32,
+            record.target().as_ptr(),
+            record.target().len() as u32,
+            record.module_path().unwrap_or("").as_ptr(),
+            record.module_path().unwrap_or("").len() as u32,
+            record.file().unwrap_or("").as_ptr(),
+            record.file().unwrap_or("").len() as u32,
+            record.line().unwrap_or(0),
+          );
         } else {
           let s = record.args().to_string();
-          bb_ffi::bb_log_len(record.level() as u32, s.as_ptr() as *const _, s.len() as u32);
+          bb_ffi::bb_log(
+            record.level() as u32,
+            s.as_ptr(),
+            s.len() as u32,
+            record.target().as_ptr(),
+            record.target().len() as u32,
+            record.module_path().unwrap_or("").as_ptr(),
+            record.module_path().unwrap_or("").len() as u32,
+            record.file().unwrap_or("").as_ptr(),
+            record.file().unwrap_or("").len() as u32,
+            record.line().unwrap_or(0),
+          );
         }
       }
     }

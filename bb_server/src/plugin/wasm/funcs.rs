@@ -32,7 +32,19 @@ fn log_from_level(level: u32) -> Option<Level> {
   })
 }
 
-fn log(env: &Env, level: u32, message: WasmPtr<u8, Array>) {
+fn log(
+  env: &Env,
+  level: u32,
+  message_ptr: WasmPtr<u8, Array>,
+  message_len: u32,
+  target_ptr: WasmPtr<u8, Array>,
+  target_len: u32,
+  module_path_ptr: WasmPtr<u8, Array>,
+  module_path_len: u32,
+  file_ptr: WasmPtr<u8, Array>,
+  file_len: u32,
+  line: u32,
+) {
   let level = match log_from_level(level) {
     Some(l) => l,
     None => return,
@@ -40,26 +52,24 @@ fn log(env: &Env, level: u32, message: WasmPtr<u8, Array>) {
   // SAFETY: We aren't using the string outside this function,
   // so this is safe. It also avoids allocating, so that's why
   // we use this instead of `get_utf8_string_with_nul`.
-  let s = unsafe { message.get_utf8_str_with_nul(env.mem()).unwrap() };
-  log!(level, "`{}`: {}", env.name, s);
-}
 
-fn log_len(env: &Env, level: u32, message: WasmPtr<u8, Array>, len: u32) {
-  let level = match log_from_level(level) {
-    Some(l) => l,
-    None => return,
-  };
-  // SAFETY: We aren't using the string outside this function,
-  // so this is safe. It also avoids allocating, so that's why
-  // we use this instead of `get_utf8_string_with_nul`.
-  let s = unsafe { message.get_utf8_str(env.mem(), len).unwrap() };
-  log!(level, "`{}`: {}", env.name, s);
+  unsafe {
+    log::logger().log(
+      &log::Record::builder()
+        .args(format_args!("{}", message_ptr.get_utf8_str(env.mem(), message_len).unwrap()))
+        .level(level)
+        .target(target_ptr.get_utf8_str(env.mem(), target_len).unwrap())
+        .module_path(Some(module_path_ptr.get_utf8_str(env.mem(), module_path_len).unwrap()))
+        .file(Some(file_ptr.get_utf8_str(env.mem(), file_len).unwrap()))
+        .line(Some(line))
+        .build(),
+    );
+  }
 }
 
 fn broadcast(env: &Env, message: WasmPtr<CChat>) {
   let chat = message.deref(env.mem()).unwrap().get();
-  let ptr = WasmPtr::<u8, _>::new(chat.message as u32);
-  let s = ptr.get_utf8_string_with_nul(env.mem()).unwrap();
+  let s = chat.message.ptr.get_utf8_string_with_nul(env.mem()).unwrap();
   env.wm.broadcast(Chat::new(s));
 }
 
@@ -134,12 +144,8 @@ fn add_command(env: &Env, cmd: WasmPtr<CCommand>) {
         Some(c) => c.get(),
         None => return None,
       };
-      let name = WasmPtr::<u8, Array>::new(cmd.name.ptr).get_utf8_str(mem, cmd.name_len)?.into();
-      let parser = if cmd.parser.ptr == 0 {
-        None
-      } else {
-        WasmPtr::<u8, Array>::new(cmd.parser.ptr).get_utf8_str(mem, cmd.parser_len)
-      };
+      let name = cmd.name.ptr.get_utf8_str(mem, cmd.name.len)?.into();
+      let _parser = cmd.parser.ptr.get_utf8_str(mem, cmd.parser.len)?;
       let ty = match cmd.node_type {
         0 => NodeType::Literal,
         1 => NodeType::Argument(Parser::BlockPos),
@@ -180,7 +186,6 @@ pub fn imports(store: &Store, wm: Arc<WorldManager>, name: String) -> ImportObje
   imports! {
     "env" => {
       "bb_log" => Function::new_native_with_env(&store, env.clone(), log),
-      "bb_log_len" => Function::new_native_with_env(&store, env.clone(), log_len),
       "bb_broadcast" => Function::new_native_with_env(&store, env.clone(), broadcast),
       "bb_player_username" => Function::new_native_with_env(&store, env.clone(), player_username),
       "bb_player_world" => Function::new_native_with_env(&store, env.clone(), player_world),

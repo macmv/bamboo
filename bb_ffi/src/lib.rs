@@ -2,28 +2,41 @@
 
 use bb_ffi_macros::ctype;
 
-#[ctype]
+#[repr(C)]
+#[derive(Debug, Clone)]
 pub struct CStr {
-  pub start: *const u8,
-  pub len:   u32,
+  #[cfg(feature = "host")]
+  pub ptr: wasmer::WasmPtr<u8, wasmer::Array>,
+  #[cfg(not(feature = "host"))]
+  pub ptr: *const u8,
+  pub len: u32,
 }
 
+#[cfg(feature = "host")]
+impl Copy for CStr {}
+#[cfg(feature = "host")]
+unsafe impl wasmer::ValueType for CStr {}
+
 #[ctype]
+#[derive(Debug)]
 pub struct CPlayer {
   pub eid: i32,
 }
 
 #[ctype]
+#[derive(Debug)]
 pub struct CUUID {
   pub bytes: [u32; 4],
 }
 
 #[ctype]
+#[derive(Debug)]
 pub struct CChat {
   pub message: CStr,
 }
 
 #[ctype]
+#[derive(Debug)]
 pub struct CPos {
   pub x: i32,
   pub y: i32,
@@ -31,6 +44,7 @@ pub struct CPos {
 }
 
 #[ctype]
+#[derive(Debug)]
 pub struct CCommand {
   /// The name of this command segment. For literals this is their value.
   /// Doesn't contain a NUL at the end.
@@ -67,13 +81,19 @@ impl<T: Clone> Copy for CList<T> {}
 unsafe impl<T: Clone> wasmer::ValueType for CList<T> {}
 
 extern "C" {
-  /// Logs the given message. The pointer must point to a utf8-valid
-  /// nul-terminated string.
-  pub fn bb_log(level: u32, message: *const u8);
-  /// Logs the given message. The pointer must pointer to a utf8-valid
-  /// string. There can be null bytes, but they will not terminate the
-  /// message.
-  pub fn bb_log_len(level: u32, message: *const u8, len: u32);
+  /// Logs the given message.
+  pub fn bb_log(
+    level: u32,
+    message_ptr: *const u8,
+    message_len: u32,
+    target_ptr: *const u8,
+    target_len: u32,
+    module_path_ptr: *const u8,
+    module_path_len: u32,
+    file_ptr: *const u8,
+    file_len: u32,
+    line: u32,
+  );
 
   /// Adds the command to the server.
   pub fn bb_add_command(command: *const CCommand);
@@ -109,6 +129,25 @@ impl<T> fmt::Debug for CPtr<T> {
 }
 */
 
+impl CStr {
+  #[cfg(not(feature = "host"))]
+  pub fn new(s: String) -> Self {
+    let boxed_str = s.into_boxed_str();
+    let s = Box::leak(boxed_str);
+    CStr { ptr: s.as_ptr() as _, len: s.len() as u32 }
+  }
+}
+
+// On the host, this refers to data in wasm, so we don't want to free it.
+#[cfg(not(feature = "host"))]
+impl Drop for CStr {
+  fn drop(&mut self) {
+    unsafe {
+      String::from_raw_parts(self.ptr as *mut u8, self.len as usize, self.len as usize);
+    }
+  }
+}
+
 impl<T> CList<T> {
   #[cfg(not(feature = "host"))]
   pub fn new(list: Vec<T>) -> Self {
@@ -137,7 +176,7 @@ impl<T> CList<T> {
 impl<T> Drop for CList<T> {
   fn drop(&mut self) {
     unsafe {
-      Vec::from_raw_parts(self.first.as_ptr() as *mut T, self.len as usize, self.len as usize);
+      Vec::from_raw_parts(self.first as *mut T, self.len as usize, self.len as usize);
     }
   }
 }
