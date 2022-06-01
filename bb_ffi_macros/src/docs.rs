@@ -88,6 +88,7 @@ impl SourceFmt for ItemStruct {
     f.indent();
     for field in &self.fields {
       f.write_src(field)?;
+      writeln!(f, ",")?;
     }
     f.unindent();
     writeln!(f, "}}")?;
