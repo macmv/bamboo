@@ -214,6 +214,20 @@ pub fn cenum(_args: TokenStream, input: TokenStream) -> TokenStream {
 
   let out = quote! {
     #(#input_attrs)*
+    /// This enum has been converted into a C safe struct and union. The `variant` is a
+    /// hint for which variant is stored in the union.
+    ///
+    /// This struct and union are designed to have any bit configuration, and still be safe
+    /// to use. This means that if the `variant` is invalid, the union will contain garbage
+    /// data. In the `Clone` impl, the union is literally filled with
+    /// `MaybeUninit::uninit().assume_init()`. This is safe, because all the `as_` functions
+    /// will return `None` in this case.
+    ///
+    /// In order for this to truly be valid in every bit configuration, the variant can be
+    /// changed without modifying the union. This means that every type in the union must
+    /// be valid in any bit configuration. I don't enforce this, but this means that every
+    /// variant should implement `wasmer::ValueType`.
+    ///
     #[doc = "Original enum:"]
     #[doc = #original_docs]
     #[doc = "Converted to struct:"]
@@ -221,6 +235,7 @@ pub fn cenum(_args: TokenStream, input: TokenStream) -> TokenStream {
     #[doc = "Along with the union:"]
     #[doc = #union_docs]
     #gen_struct
+    #[doc = concat!("See [`", stringify!(#name), "`].")]
     #[allow(unused_parens)]
     #gen_union
 
