@@ -17,6 +17,15 @@ impl Copy for CStr {}
 #[cfg(feature = "host")]
 unsafe impl wasmer::ValueType for CStr {}
 
+/// A boolean, except every bit configuration is valid. Use
+/// [`as_bool`](CBool::as_bool) to convert it to a `bool`.
+#[repr(transparent)]
+#[derive(Debug, Clone, Copy)]
+pub struct CBool(pub u8);
+
+#[cfg(feature = "host")]
+unsafe impl wasmer::ValueType for CBool {}
+
 #[ctype]
 #[derive(Debug)]
 pub struct CPlayer {
@@ -61,7 +70,7 @@ pub struct CCommand {
   /// the end.
   pub parser:    CStr,
   /// This is a boolean, but `bool` isn't `ValueType` safe.
-  pub optional:  u8,
+  pub optional:  CBool,
   /// The children of this command.
   pub children:  CList<CCommand>,
 }
@@ -128,6 +137,13 @@ impl<T> fmt::Debug for CPtr<T> {
   fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result { fmt::Pointer::fmt(self, f) }
 }
 */
+
+impl CBool {
+  /// Creates a `CBool` of `1` if `true`, and `0` if `false`.
+  pub fn new(val: bool) -> Self { CBool(if val { 1 } else { 0 }) }
+  /// If the inner value is not `0`.
+  pub fn as_bool(&self) -> bool { self.0 != 0 }
+}
 
 impl CStr {
   #[cfg(not(feature = "host"))]

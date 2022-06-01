@@ -157,7 +157,7 @@ fn add_command(env: &Env, cmd: WasmPtr<CCommand>) {
           .push(command_from_env(env, WasmPtr::new(cmd.children.get_ptr(i).unwrap() as u32))?);
       }
 
-      Some(Command::new_from_plugin(name, ty, children, cmd.optional == 1))
+      Some(Command::new_from_plugin(name, ty, children, cmd.optional.as_bool()))
     }
   }
   if let Some(cmd) = command_from_env(env, cmd) {

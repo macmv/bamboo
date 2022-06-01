@@ -59,7 +59,7 @@ impl Command {
         NodeType::Literal => bb_ffi::CStr::new(String::new()),
         NodeType::Argument(parser) => bb_ffi::CStr::new(parser.clone()),
       },
-      optional:  self.optional as u8,
+      optional:  bb_ffi::CBool::new(self.optional),
       children:  bb_ffi::CList::new(self.children.iter().map(|c| c.to_ffi()).collect()),
     }
   }
