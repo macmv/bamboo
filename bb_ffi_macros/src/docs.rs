@@ -10,39 +10,110 @@ where
   format!("```rust\n{}\n```", Source(input))
 }
 
+pub struct Writer<'a, 'b> {
+  f:            &'a mut fmt::Formatter<'b>,
+  indent:       u32,
+  needs_indent: bool,
+}
+
+impl Writer<'_, '_> {
+  pub fn indent(&mut self) { self.indent += 1; }
+  pub fn unindent(&mut self) { self.indent -= 1; }
+  pub fn write_src<T: SourceFmt>(&mut self, src: &T) -> fmt::Result { src.fmt(self) }
+}
+
 pub struct Source<'a, T>(&'a T);
+
+pub trait SourceFmt {
+  fn fmt(&self, f: &mut Writer) -> fmt::Result;
+}
+
+impl<T: SourceFmt> fmt::Display for Source<'_, T> {
+  fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    let mut w = Writer { f, indent: 0, needs_indent: false };
+    self.0.fmt(&mut w)
+  }
+}
 
 use std::fmt;
 
-impl fmt::Display for Source<'_, ItemStruct> {
-  fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-    for attr in &self.0.attrs {
-      writeln!(f, "{}", Source(attr))?;
+impl Writer<'_, '_> {
+  fn check_indent(&mut self) -> fmt::Result {
+    if self.needs_indent {
+      self.needs_indent = false;
+      for _ in 0..self.indent {
+        self.f.write_str("  ")?;
+      }
     }
-    writeln!(f, "{}struct {} {{", Source(&self.0.vis), self.0.ident)?;
-    for field in &self.0.fields {
-      writeln!(f, "{}", Source(field))?;
+    Ok(())
+  }
+}
+
+use fmt::Write;
+impl Write for Writer<'_, '_> {
+  fn write_str(&mut self, s: &str) -> fmt::Result {
+    let mut iter = s.split('\n').peekable();
+    while let Some(line) = iter.next() {
+      if !line.is_empty() {
+        self.check_indent()?;
+      }
+      self.f.write_str(line)?;
+      if iter.peek().is_some() {
+        self.f.write_char('\n')?;
+        self.needs_indent = true;
+      }
     }
+    Ok(())
+  }
+  fn write_char(&mut self, c: char) -> fmt::Result {
+    if c != '\n' {
+      self.check_indent()?;
+    }
+    self.f.write_char(c)?;
+    self.needs_indent = c == '\n';
+    Ok(())
+  }
+  fn write_fmt(&mut self, args: fmt::Arguments<'_>) -> fmt::Result {
+    self.write_str(&args.to_string())
+  }
+}
+
+impl SourceFmt for ItemStruct {
+  fn fmt(&self, f: &mut Writer) -> fmt::Result {
+    for attr in &self.attrs {
+      f.write_src(attr)?;
+    }
+    f.write_src(&self.vis)?;
+    writeln!(f, "struct {} {{", self.ident)?;
+    f.indent();
+    for field in &self.fields {
+      f.write_src(field)?;
+    }
+    f.unindent();
     writeln!(f, "}}")?;
     Ok(())
   }
 }
-impl fmt::Display for Source<'_, ItemEnum> {
-  fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-    for attr in &self.0.attrs {
-      writeln!(f, "{}", Source(attr))?;
+impl SourceFmt for ItemEnum {
+  fn fmt(&self, f: &mut Writer) -> fmt::Result {
+    for attr in &self.attrs {
+      f.write_src(attr)?;
     }
-    writeln!(f, "{}enum {} {{", Source(&self.0.vis), self.0.ident)?;
-    for variant in &self.0.variants {
-      writeln!(f, "{}", Source(variant))?;
+    f.write_src(&self.vis)?;
+    writeln!(f, "enum {} {{", self.ident)?;
+    f.indent();
+    for variant in &self.variants {
+      f.write_src(variant)?;
+      writeln!(f, ",")?;
     }
+    f.unindent();
     writeln!(f, "}}")?;
     Ok(())
   }
 }
-impl fmt::Display for Source<'_, Visibility> {
-  fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-    match self.0 {
+impl SourceFmt for Visibility {
+  fn fmt(&self, f: &mut Writer) -> fmt::Result {
+    match self {
       Visibility::Inherited => Ok(()),
       Visibility::Public(_) => write!(f, "pub "),
       Visibility::Crate(_) => write!(f, "pub(crate) "),
@@ -50,10 +121,10 @@ impl fmt::Display for Source<'_, Visibility> {
     }
   }
 }
-impl fmt::Display for Source<'_, Attribute> {
-  fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-    if matches!(self.0.path.get_ident(), Some(path) if path == "doc") {
-      let doc = format!("{}", self.0.tokens);
+impl SourceFmt for Attribute {
+  fn fmt(&self, f: &mut Writer) -> fmt::Result {
+    if matches!(self.path.get_ident(), Some(path) if path == "doc") {
+      let doc = format!("{}", self.tokens);
       let doc = &doc[3..doc.len() - 1];
       let mut unescaped = String::with_capacity(doc.len());
       let mut skip = false;
@@ -68,56 +139,66 @@ impl fmt::Display for Source<'_, Attribute> {
       write!(f, "///{unescaped}")?;
     } else {
       write!(f, "#")?;
-      match self.0.style {
+      match self.style {
         AttrStyle::Inner(_) => write!(f, "!")?,
         _ => {}
       }
       write!(f, "[")?;
-      write!(f, "{}", Source(&self.0.path))?;
-      write!(f, "{}", Source(&self.0.tokens))?;
+      f.write_src(&self.path)?;
+      f.write_src(&self.tokens)?;
       write!(f, "]")?;
     }
     Ok(())
   }
 }
-impl fmt::Display for Source<'_, Field> {
-  fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-    for attr in &self.0.attrs {
-      writeln!(f, "  {}", Source(attr))?;
+impl SourceFmt for Field {
+  fn fmt(&self, f: &mut Writer) -> fmt::Result {
+    for attr in &self.attrs {
+      f.write_src(attr)?;
     }
-    write!(f, "  {}{:?}: {},", Source(&self.0.vis), self.0.ident.as_ref(), Source(&self.0.ty))?;
+    if let Some(i) = self.ident.as_ref() {
+      f.write_src(&self.vis)?;
+      write!(f, "{i}: ")?;
+    }
+    f.write_src(&self.ty)?;
     Ok(())
   }
 }
-impl fmt::Display for Source<'_, Variant> {
-  fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-    for attr in &self.0.attrs {
-      writeln!(f, "  {}", Source(attr))?;
+impl SourceFmt for Variant {
+  fn fmt(&self, f: &mut Writer) -> fmt::Result {
+    for attr in &self.attrs {
+      f.write_src(attr)?;
     }
-    write!(f, "  {}", &self.0.ident)?;
-    match &self.0.fields {
+    write!(f, "{}", &self.ident)?;
+    match &self.fields {
       Fields::Named(named) => {
         writeln!(f, "{{")?;
-        for field in &named.named {
-          writeln!(f, "  {}", Source(field))?;
+        for pair in named.named.pairs() {
+          f.write_src(*pair.value())?;
+          if pair.punct().is_some() {
+            writeln!(f, ",")?;
+          }
         }
-        writeln!(f, "  }},")?;
+        writeln!(f, "}}")?;
       }
       Fields::Unnamed(unnamed) => {
         write!(f, "(")?;
-        for field in &unnamed.unnamed {
-          writeln!(f, "{}", Source(field))?;
+        for pair in unnamed.unnamed.pairs() {
+          f.write_src(*pair.value())?;
+          if pair.punct().is_some() {
+            write!(f, ",")?;
+          }
         }
-        write!(f, "),")?;
+        write!(f, ")")?;
       }
-      Fields::Unit => writeln!(f, ",")?,
+      Fields::Unit => (),
     }
     Ok(())
   }
 }
-impl fmt::Display for Source<'_, Type> {
-  fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-    match self.0 {
+impl SourceFmt for Type {
+  fn fmt(&self, f: &mut Writer) -> fmt::Result {
+    match self {
       Type::Array(ty) => write!(f, "[{}; {}]", Source(&*ty.elem), Source(&ty.len)),
       Type::Path(ty) => write!(f, "{}", Source(&ty.path)),
       Type::Ptr(ty) => write!(f, "*const {}", Source(&*ty.elem)),
@@ -125,9 +206,9 @@ impl fmt::Display for Source<'_, Type> {
     }
   }
 }
-impl fmt::Display for Source<'_, Expr> {
-  fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-    match self.0 {
+impl SourceFmt for Expr {
+  fn fmt(&self, f: &mut Writer) -> fmt::Result {
+    match self {
       Expr::Lit(lit) => match &lit.lit {
         syn::Lit::Int(lit) => write!(f, "{}", lit.base10_digits()),
         _ => Ok(()),
@@ -136,19 +217,19 @@ impl fmt::Display for Source<'_, Expr> {
     }
   }
 }
-impl fmt::Display for Source<'_, Path> {
-  fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-    if self.0.leading_colon.is_some() {
+impl SourceFmt for Path {
+  fn fmt(&self, f: &mut Writer) -> fmt::Result {
+    if self.leading_colon.is_some() {
       write!(f, "::")?;
     }
-    for pair in self.0.segments.pairs() {
+    for pair in self.segments.pairs() {
       write!(f, "{}", pair.value().ident)?;
       match &pair.value().arguments {
         syn::PathArguments::AngleBracketed(args) => {
           write!(f, "<")?;
           for pair in args.args.pairs() {
             match pair.value() {
-              syn::GenericArgument::Type(ty) => write!(f, "{}", Source(ty))?,
+              syn::GenericArgument::Type(ty) => f.write_src(ty)?,
               _ => {}
             }
             if pair.punct().is_some() {
@@ -166,6 +247,6 @@ impl fmt::Display for Source<'_, Path> {
     Ok(())
   }
 }
-impl fmt::Display for Source<'_, TokenStream2> {
-  fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result { self.0.fmt(f) }
+impl SourceFmt for TokenStream2 {
+  fn fmt(&self, f: &mut Writer) -> fmt::Result { <Self as fmt::Display>::fmt(self, f.f) }
 }
