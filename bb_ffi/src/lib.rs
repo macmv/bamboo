@@ -46,6 +46,7 @@ pub struct CChat {
 
 #[ctype]
 #[derive(Debug)]
+#[cfg_attr(not(feature = "host"), derive(Copy))]
 pub struct CPos {
   pub x: i32,
   pub y: i32,
