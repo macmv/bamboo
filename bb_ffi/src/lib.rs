@@ -1,6 +1,6 @@
 #![deny(improper_ctypes)]
 
-use bb_ffi_macros::ctype;
+use bb_ffi_macros::{cenum, ctype};
 
 #[repr(C)]
 #[derive(Debug, Clone)]
@@ -88,6 +88,21 @@ pub struct CList<T> {
 impl<T: Clone> Copy for CList<T> {}
 #[cfg(feature = "host")]
 unsafe impl<T: Clone> wasmer::ValueType for CList<T> {}
+
+#[cenum]
+pub enum CArg {
+  Literal(CStr),
+  Bool(CBool),
+  Double(f64),
+  Float(f32),
+  Int(i32),
+  String(CStr),
+  ScoreHolder(CStr),
+  BlockPos(CPos),
+  Vec3(f64, f64, f64),
+  Vec2(f64, f64),
+  BlockState(u32),
+}
 
 extern "C" {
   /// Logs the given message.
