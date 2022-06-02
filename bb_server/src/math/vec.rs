@@ -39,40 +39,32 @@ impl Vec3 {
     let ya = self.y.abs();
     let za = self.z.abs();
     if xa > ya && xa > za {
-      if self.x > 0.0 {
-        Face::East
-      } else {
-        Face::West
+      match self.x > 0.0 {
+        true => Face::East,
+        false => Face::West,
       }
     } else if ya > xa && ya > za {
-      if self.y > 0.0 {
-        Face::Top
-      } else {
-        Face::Bottom
+      match self.y > 0.0 {
+        true => Face::Top,
+        false => Face::Bottom,
       }
     } else {
-      if self.z > 0.0 {
-        Face::South
-      } else {
-        Face::North
+      match self.z > 0.0 {
+        true => Face::South,
+        false => Face::North,
       }
     }
   }
   pub fn as_horz_face(&self) -> Face {
-    let xa = self.x.abs();
-    let za = self.z.abs();
-    if xa > za {
-      if self.x > 0.0 {
-        Face::East
-      } else {
-        Face::West
-      }
-    } else {
-      if self.z > 0.0 {
-        Face::South
-      } else {
-        Face::North
-      }
+    match self.x.abs() > self.z.abs() {
+      true => match self.x > 0.0 {
+        true => Face::East,
+        false => Face::West,
+      },
+      false => match self.z > 0.0 {
+        true => Face::South,
+        false => Face::North,
+      },
     }
   }
 }

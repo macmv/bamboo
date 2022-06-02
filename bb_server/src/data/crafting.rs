@@ -27,6 +27,10 @@ pub struct CraftingData {
   recipes: HashMap<Recipe, Stack>,
 }
 
+impl Default for Recipe {
+  fn default() -> Self { Recipe::new() }
+}
+
 impl Recipe {
   pub fn new() -> Self { Recipe { items: Grid::new(2, 3) } }
 }

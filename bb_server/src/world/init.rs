@@ -333,7 +333,7 @@ impl World {
       }
       if other.as_entity().is_some() {
         // Create a packet that will spawn `other` for me
-        self.send_entity_spawn(&player, &other);
+        self.send_entity_spawn(player, &other);
       }
     }
 

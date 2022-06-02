@@ -30,14 +30,12 @@ pub fn metadata(
     debug_assert!(is_ty(field, new_ty), "expected field to have type {new_ty:?}, got {field:?}");
 
     let mut field = field.clone();
-    if !is_ty(&field, old_ty) {
-      if !convert_field(&mut field, old_ty) {
-        if id == 0 {
-          // The id is probably missing for this version. Ignore and continue
-          continue;
-        } else {
-          panic!("cannot convert {field:?} into {ty:?}");
-        }
+    if !is_ty(&field, old_ty) && !convert_field(&mut field, old_ty) {
+      if id == 0 {
+        // The id is probably missing for this version. Ignore and continue
+        continue;
+      } else {
+        panic!("cannot convert {field:?} into {ty:?}");
       }
     }
 

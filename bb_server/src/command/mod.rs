@@ -118,6 +118,7 @@ impl Command {
   pub fn new<N: Into<String>>(name: N) -> Self { Self::lit(name.into()) }
   /// Creates a new command, with all the given parameters. This is used when
   /// interacting with plugins.
+  #[cfg(feature = "wasm_plugins")]
   pub(crate) fn new_from_plugin(
     name: String,
     ty: NodeType,

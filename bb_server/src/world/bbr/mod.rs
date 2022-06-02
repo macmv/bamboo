@@ -46,13 +46,11 @@ impl RegionMap {
     let rlock = if !lock.contains_key(&region_pos) {
       drop(lock);
       let mut write = self.regions.write();
-      if !write.contains_key(&region_pos) {
-        // If someone else got the write lock, and wrote this region, we don't
-        // want to read it twice. We need to hold the lock while reading, so we don't
-        // read a region twice.
-        let region = Region::new_load(self.wm.clone(), region_pos);
-        write.insert(region_pos, Mutex::new(region));
-      }
+      // If someone else got the write lock, and wrote this region, we don't
+      // want to write it twice.
+      write
+        .entry(region_pos)
+        .or_insert_with(|| Mutex::new(Region::new_load(self.wm.clone(), region_pos)));
       RwLockWriteGuard::downgrade(write)
     } else {
       lock

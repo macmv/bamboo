@@ -87,7 +87,7 @@ impl ChunksToLoad {
       self.sorted.extend(self.chunks.values().cloned());
       self.sorted.sort_unstable_by_key(|chunk| {
         let mut priority = 0;
-        for (_, weak) in &chunk.players {
+        for weak in chunk.players.values() {
           if let Some(player) = weak.upgrade() {
             priority += player.pos().with_y(0.0).dist(FPos::new(
               chunk.pos.block_x() as f64 + 8.0,

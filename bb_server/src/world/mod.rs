@@ -243,9 +243,8 @@ impl World {
         let res = chunk_pool.try_execute(|s| {
           s.world.unload_chunks();
         });
-        match res {
-          Ok(()) => needs_to_unload = false,
-          Err(_) => {}
+        if res.is_ok() {
+          needs_to_unload = false
         }
       }
       self.check_chunks_queue(&chunk_pool);
@@ -887,7 +886,7 @@ impl WorldManager {
   pub fn get_player_username(&self, name: &String) -> Option<Arc<Player>> {
     for (_, (_, p)) in self.players.read().iter() {
       if p.username() == name {
-        return Some(Arc::clone(&p));
+        return Some(Arc::clone(p));
       }
     }
     None

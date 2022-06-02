@@ -488,9 +488,6 @@ impl World {
   }
 
   pub fn raycast(&self, mut from: Vec3, to: Vec3, water: bool) -> Option<CollisionResult> {
-    from.move_towards(
-      to - from,
-      &self.nearby_colliders(AABB::new(from.into(), (to - from).into()), water),
-    )
+    from.move_towards(to - from, &self.nearby_colliders(AABB::new(from.into(), to - from), water))
   }
 }

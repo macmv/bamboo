@@ -51,9 +51,9 @@ impl Behavior for CraftingTable {
     let output = SharedInventory::new();
     player.show_inventory(
       Window::Crafting(crate::player::window::CraftingWindow {
-        grid:   grid.clone(),
-        output: output.clone(),
-        wm:     player.world().world_manager().clone(),
+        grid,
+        output,
+        wm: player.world().world_manager().clone(),
       }),
       &Chat::new("Crafting Table"),
     );

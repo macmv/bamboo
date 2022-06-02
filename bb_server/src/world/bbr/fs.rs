@@ -137,8 +137,8 @@ impl StructRead<'_> for RegionData {
   fn read_struct(mut r: StructReader) -> Result<Self, ReadError> {
     const NONE: Option<ReadableChunk> = None;
     let mut chunks = [NONE; 1024];
-    for i in 0..1024 {
-      chunks[i] = r.must_read(i as u64)?;
+    for (i, chunk) in chunks.iter_mut().enumerate() {
+      *chunk = r.must_read(i as u64)?;
     }
     Ok(RegionData(chunks))
   }

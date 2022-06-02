@@ -135,10 +135,8 @@ impl Parser {
           if *only_players && matches!(selector.as_str(), "e" | "r") {
             return Err(selector.expected("a valid selector (@a, @p or @s)"));
           }
-          if *single {
-            if matches!(selector.as_str(), "a") {
-              return Err(selector.expected("a valid selector (@p or @s)"));
-            }
+          if *single && matches!(selector.as_str(), "a") {
+            return Err(selector.expected("a valid selector (@p or @s)"));
           }
           if !matches!(selector.as_str(), "p" | "r" | "a" | "e" | "s") {
             return Err(selector.expected("a valid selector"));

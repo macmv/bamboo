@@ -1,3 +1,5 @@
+#![allow(clippy::single_match)]
+
 use proc_macro::TokenStream;
 
 mod behavior;
