@@ -1,5 +1,5 @@
-use num::{FromPrimitive, ToPrimitive};
-use num_derive::{FromPrimitive, ToPrimitive};
+use crate::block;
+use bb_common::{util::Buffer, version::ProtocolVersion};
 use std::{error::Error, fmt, str::FromStr};
 
 /// Any data specific to a block kind. This includes all function handlers for
@@ -7,19 +7,16 @@ use std::{error::Error, fmt, str::FromStr};
 /// have.
 #[derive(Debug)]
 pub struct Data {
-  ty:   Type,
   name: &'static str,
   id:   u32,
 }
 
 impl Data {
-  /// Returns the type of this item. This is copyable, and is a unique ID that
-  /// can be easily passed around.
-  pub fn ty(&self) -> Type { self.ty }
-  /// Returns the item's ID. This is the latest protocol ID.
+  /// Returns the particle's ID. This is the latest protocol ID.
   pub fn id(&self) -> u32 { self.id }
-  /// Returns the name of this item. This is something like `dust`. These don't
-  /// have namespaces, because there aren't any namespaces for these on vanilla.
+  /// Returns the name of this particle. This is something like `dust`. These
+  /// don't have namespaces, because there aren't any namespaces for these on
+  /// vanilla.
   ///
   /// TODO: Add namespaces.
   pub fn name(&self) -> &'static str { self.name }
@@ -39,13 +36,48 @@ impl Error for InvalidParticle {}
 // Creates the type enum, and the generate_data function
 include!(concat!(env!("OUT_DIR"), "/particle/ty.rs"));
 
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct Color {
+  pub r: u8,
+  pub g: u8,
+  pub b: u8,
+}
+
 impl Type {
-  /// Returns the kind as an u32. This is used in the versioning arrays, and in
-  /// plugin code, so that ints can be passed around instead of enums.
-  pub fn id(self) -> u32 { ToPrimitive::to_u32(&self).unwrap() }
-  /// Converts the given number to a block kind. If the number is invalid, this
-  /// returns `None`.
-  pub fn from_u32(id: u32) -> Option<Self> { FromPrimitive::from_u32(id) }
+  pub fn extra_data(&self, blocks: block::TypeConverter, ver: ProtocolVersion) -> Vec<u8> {
+    let mut data = vec![];
+    let mut buf = Buffer::new(&mut data);
+    match self {
+      Self::Block(block) => buf.write_varint(blocks.to_old(block.id(), ver.block()) as i32),
+      Self::BlockMarker(block) => {
+        if ver > ProtocolVersion::V1_12_2 {
+          buf.write_varint(blocks.to_old(block.id(), ver.block()) as i32)
+        }
+      }
+      Self::FallingDust(block) => buf.write_varint(blocks.to_old(block.id(), ver.block()) as i32),
+      Self::Dust(color, scale) => {
+        if ver > ProtocolVersion::V1_12_2 {
+          buf.write_f32(color.r as f32 / 255.0); // r
+          buf.write_f32(color.g as f32 / 255.0); // g
+          buf.write_f32(color.b as f32 / 255.0); // b
+          buf.write_f32(*scale); // scale
+        }
+      }
+      Self::DustColorTransition(from, to, scale) => {
+        if ver > ProtocolVersion::V1_12_2 {
+          buf.write_f32(from.r as f32 / 255.0); // r
+          buf.write_f32(from.g as f32 / 255.0); // g
+          buf.write_f32(from.b as f32 / 255.0); // b
+          buf.write_f32(*scale); // scale
+          buf.write_f32(to.r as f32 / 255.0); // r
+          buf.write_f32(to.g as f32 / 255.0); // g
+          buf.write_f32(to.b as f32 / 255.0); // b
+        }
+      }
+      _ => {}
+    }
+    data
+  }
 }
 
 #[cfg(test)]

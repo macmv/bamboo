@@ -10,15 +10,47 @@ pub fn generate(def: Vec<(Version, ParticleDef)>, dir: &Path) -> io::Result<()> 
   Ok(())
 }
 
+fn write_enum_data(gen: &mut CodeGen, name: &str) {
+  match name {
+    "block" => gen.write("(block::Kind)"),
+    "block_marker" => gen.write("(block::Kind)"),
+    "falling_dust" => gen.write("(block::Kind)"),
+    "dust" => gen.write("(Color, f32)"),
+    "dust_color_transition" => gen.write("(Color, Color, f32)"),
+    _ => {}
+  }
+}
+fn write_enum_match(gen: &mut CodeGen, name: &str) {
+  match name {
+    "block" => gen.write("(_)"),
+    "block_marker" => gen.write("(_)"),
+    "falling_dust" => gen.write("(_)"),
+    "dust" => gen.write("(_, _)"),
+    "dust_color_transition" => gen.write("(_, _, _)"),
+    _ => {}
+  }
+}
+fn write_enum_default(gen: &mut CodeGen, name: &str) {
+  match name {
+    "block" => gen.write("(block::Kind::Air)"),
+    "block_marker" => gen.write("(block::Kind::Air)"),
+    "falling_dust" => gen.write("(block::Kind::Air)"),
+    "dust" => gen.write("(Color::default(), 1.0)"),
+    "dust_color_transition" => gen.write("(Color::default(), Color::default(), 1.0)"),
+    _ => {}
+  }
+}
+
 pub fn generate_ty(def: &ParticleDef) -> String {
   let mut gen = CodeGen::new();
   gen.write_line("/// Auto generated particle kind. This is directly generated");
   gen.write_line("/// from bamboo data.");
-  gen.write_line("#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, ToPrimitive, FromPrimitive)]");
+  gen.write_line("#[derive(Debug, Copy, Clone, PartialEq)]");
   gen.write("pub enum Type ");
   gen.write_block(|gen| {
     for b in &def.particles {
       gen.write(&b.name.to_case(Case::Pascal));
+      write_enum_data(gen, &b.name);
       gen.write_line(",");
     }
   });
@@ -35,6 +67,7 @@ pub fn generate_ty(def: &ParticleDef) -> String {
         gen.write(&b.name);
         gen.write("\" => Self::");
         gen.write(&b.name.to_case(Case::Pascal));
+        write_enum_default(gen, &b.name);
         gen.write_line(",");
       }
       gen.write_line("_ => return Err(InvalidParticle(s.into())),");
@@ -54,6 +87,20 @@ pub fn generate_ty(def: &ParticleDef) -> String {
       }
       gen.write_line("]");
       gen.write_line("[self.id() as usize]");
+    });
+    gen.write("pub fn id(&self) -> u32");
+    gen.write_block(|gen| {
+      gen.write("match self");
+      gen.write_block(|gen| {
+        for (id, b) in def.particles.iter().enumerate() {
+          gen.write("Self::");
+          gen.write(&b.name.to_case(Case::Pascal));
+          write_enum_match(gen, &b.name);
+          gen.write(" => ");
+          gen.write(&id.to_string());
+          gen.write_line(",");
+        }
+      });
     });
   });
   gen.write_line("/// Generates a table from all particles kinds to any item data that kind has.");
@@ -119,9 +166,9 @@ fn particle_data(gen: &mut CodeGen, b: &Particle) {
   gen.write_line("Data {");
   gen.add_indent();
 
-  gen.write("ty: Type::");
-  gen.write(&b.name.to_case(Case::Pascal));
-  gen.write_line(",");
+  // gen.write("ty: Type::");
+  // gen.write(&b.name.to_case(Case::Pascal));
+  // gen.write_line(",");
 
   write_prop!(id);
   write_prop!(name);
