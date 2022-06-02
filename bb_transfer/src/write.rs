@@ -174,7 +174,10 @@ where
 
   /// Writes the given number of bytes from the buffer.
   fn write_buf(&mut self, buf: &[u8]) -> Result {
-    self.data.write(buf)?;
+    // We only use a MessageWriter<T> where T is either a &[u8] or a &mut Vec<u8>.
+    // This means this write_all call should be fast, as it will simply call `write`
+    // once.
+    self.data.write_all(buf)?;
     self.idx += buf.len();
     Ok(())
   }
