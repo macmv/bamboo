@@ -34,11 +34,16 @@ fn out_dir() -> PathBuf {
   PathBuf::new().join(&env::var("OUT_DIR").expect("could not get out dir"))
 }
 
+pub enum Target {
+  Host,
+  Plugin,
+}
+
 pub fn generate_blocks() { block::generate(&out_dir()).unwrap(); }
 pub fn generate_items() { item::generate(&out_dir()).unwrap(); }
 pub fn generate_entities() { entity::generate(&out_dir()).unwrap(); }
 pub fn generate_protocol() { protocol::generate(&out_dir()).unwrap(); }
-pub fn generate_particles() { particle::generate(&out_dir()).unwrap(); }
+pub fn generate_particles(target: Target) { particle::generate(&out_dir(), target).unwrap(); }
 pub fn generate_tags() { tag::generate(&out_dir()).unwrap(); }
 
 pub static VERSIONS: &[Version] = &[

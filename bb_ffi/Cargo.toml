@@ -11,6 +11,7 @@ wasmer = { version = "2.2.1", default-features = false, features = ["sys"], opti
 
 [build-dependencies]
 cbindgen = { version = "0.20.0", optional = true }
+bb_data = { path = "../bb_data" }
 
 [features]
 host = ["wasmer", "cbindgen"]

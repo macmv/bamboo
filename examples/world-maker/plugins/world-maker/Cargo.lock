@@ -89,6 +89,7 @@ dependencies = [
 name = "bb_ffi"
 version = "0.2.0"
 dependencies = [
+ "bb_data",
  "bb_ffi_macros",
 ]
 
@@ -117,6 +118,7 @@ name = "bb_plugin"
 version = "0.2.0"
 dependencies = [
  "bb_common",
+ "bb_data",
  "bb_ffi",
  "log",
  "parking_lot",

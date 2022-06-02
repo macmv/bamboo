@@ -1,11 +1,11 @@
-use crate::dl;
+use crate::{dl, Target};
 use serde::Deserialize;
 use std::{fs, io, path::Path};
 
 mod cross;
 mod gen;
 
-pub fn generate(out_dir: &Path) -> io::Result<()> {
+pub fn generate(out_dir: &Path, _target: Target) -> io::Result<()> {
   fs::create_dir_all(out_dir.join("particle"))?;
   let versions = crate::VERSIONS
     .iter()

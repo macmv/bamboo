@@ -8,7 +8,11 @@ use std::marker::PhantomData;
 
 pub use bb_common::{chunk, math, transfer, util};
 
+pub mod block;
 pub mod command;
+pub mod entity;
+pub mod item;
+pub mod particle;
 pub mod player;
 pub mod time;
 pub mod world;

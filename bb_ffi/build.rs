@@ -1,3 +1,5 @@
+use bb_data::Target::Plugin;
+
 #[cfg(feature = "host")]
 use std::env;
 
@@ -10,6 +12,10 @@ fn main() {
     .generate()
     .expect("Unable to generate bindings")
     .write_to_file("bamboo.h");
+
+  build_data();
 }
 #[cfg(not(feature = "host"))]
-fn main() {}
+fn main() { build_data(); }
+
+fn build_data() { bb_data::generate_particles(Plugin); }
