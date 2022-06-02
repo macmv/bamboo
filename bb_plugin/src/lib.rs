@@ -11,6 +11,7 @@ pub use bb_common::{chunk, math, transfer, util};
 pub mod block;
 pub mod command;
 pub mod entity;
+mod ffi_impls;
 pub mod item;
 pub mod particle;
 pub mod player;
@@ -27,6 +28,12 @@ pub struct Bamboo {
 }
 
 pub fn instance() -> Bamboo { Bamboo { marker: PhantomData::default() } }
+
+pub trait IntoFfi {
+  type Ffi;
+
+  fn into_ffi(self) -> Self::Ffi;
+}
 
 impl Bamboo {
   pub fn broadcast(&self, message: Chat) {

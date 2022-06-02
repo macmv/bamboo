@@ -1,4 +1,5 @@
-use crate::block;
+use crate::{block, IntoFfi};
+use bb_common::{math::FPos, transfer::MessageWriter};
 use std::{error::Error, fmt, str::FromStr};
 
 /// Any data specific to a block kind. This includes all function handlers for
@@ -40,4 +41,76 @@ pub struct Color {
   pub r: u8,
   pub g: u8,
   pub b: u8,
+}
+
+/// A cloud of particles.
+pub struct Particle {
+  /// The type of particle.
+  pub ty:            Type,
+  /// The center of this cloud of particles.
+  pub pos:           FPos,
+  /// If set, the particle will be shown to clients up to 65,000 blocks away. If
+  /// not set, the particle will only render up to 256 blocks away.
+  pub long_distance: bool,
+  /// The random offset for this particle cloud. This is multiplied by a random
+  /// number from 0 to 1, and then added to `pos` (all on the client).
+  pub offset:        FPos,
+  /// The number of particles in this cloud.
+  pub count:         u32,
+  /// The data for this particle. This is typically the speed of the particle,
+  /// but sometimes is used for other attributes entirely.
+  pub data:          f32,
+}
+
+impl IntoFfi for Particle {
+  type Ffi = bb_ffi::CParticle;
+
+  fn into_ffi(self) -> bb_ffi::CParticle {
+    bb_ffi::CParticle {
+      ty:            self.ty.into_ffi(),
+      pos:           self.pos.into_ffi(),
+      long_distance: self.long_distance.into_ffi(),
+      offset:        self.offset.into_ffi(),
+      count:         self.count,
+      data:          self.data,
+    }
+  }
+}
+impl IntoFfi for Type {
+  type Ffi = bb_ffi::CParticleType;
+
+  fn into_ffi(self) -> bb_ffi::CParticleType {
+    let mut data = vec![];
+    let mut buf = MessageWriter::new(&mut data);
+    match self {
+      Self::Block(block) => buf.write_struct(1, |w| w.write_u32(block.id())).unwrap(),
+      Self::BlockMarker(block) => buf.write_struct(1, |w| w.write_u32(block.id())).unwrap(),
+      Self::FallingDust(block) => buf.write_struct(1, |w| w.write_u32(block.id())).unwrap(),
+      Self::Dust(color, scale) => {
+        buf
+          .write_struct(4, |w| {
+            w.write_u8(color.r)?; // r
+            w.write_u8(color.g)?; // g
+            w.write_u8(color.b)?; // b
+            w.write_f32(scale) // scale
+          })
+          .unwrap();
+      }
+      Self::DustColorTransition(from, to, scale) => {
+        buf
+          .write_struct(7, |w| {
+            w.write_u8(from.r)?; // r
+            w.write_u8(from.g)?; // g
+            w.write_u8(from.b)?; // b
+            w.write_f32(scale)?; // scale
+            w.write_u8(to.r)?; // r
+            w.write_u8(to.g)?; // g
+            w.write_u8(to.b) // b
+          })
+          .unwrap();
+      }
+      _ => {}
+    }
+    bb_ffi::CParticleType { ty: self.id(), data: data.into_ffi() }
+  }
 }

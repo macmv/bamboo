@@ -55,6 +55,15 @@ pub struct CPos {
 
 #[ctype]
 #[derive(Debug)]
+#[cfg_attr(not(feature = "host"), derive(Copy))]
+pub struct CFPos {
+  pub x: f64,
+  pub y: f64,
+  pub z: f64,
+}
+
+#[ctype]
+#[derive(Debug)]
 pub struct CCommand {
   /// The name of this command segment. For literals this is their value.
   /// Doesn't contain a NUL at the end.
@@ -76,6 +85,44 @@ pub struct CCommand {
   pub children:  CList<CCommand>,
 }
 
+#[ctype]
+#[derive(Debug)]
+pub struct CParticle {
+  /// The type of particle.
+  pub ty:            CParticleType,
+  /// The center of this cloud of particles.
+  pub pos:           CFPos,
+  /// If set, the particle will be shown to clients up to 65,000 blocks away. If
+  /// not set, the particle will only render up to 256 blocks away.
+  pub long_distance: CBool,
+  /// The random offset for this particle cloud. This is multiplied by a random
+  /// number from 0 to 1, and then added to `pos` (all on the client).
+  pub offset:        CFPos,
+  /// The number of particles in this cloud.
+  pub count:         u32,
+  /// The data for this particle. This is typically the speed of the particle,
+  /// but sometimes is used for other attributes entirely.
+  pub data:          f32,
+}
+#[ctype]
+#[derive(Debug)]
+pub struct CParticleType {
+  pub ty:   u32,
+  /// Any extra data for this particle.
+  pub data: CList<u8>,
+}
+
+#[cfg(feature = "host")]
+#[repr(C)]
+#[derive(Clone, Debug)]
+pub struct CList<T: Copy> {
+  /// The pointer to the first element in this list.
+  pub first: wasmer::WasmPtr<T, wasmer::Array>,
+  /// The length of this list.
+  pub len:   u32,
+}
+
+#[cfg(not(feature = "host"))]
 #[repr(C)]
 #[derive(Clone, Debug)]
 pub struct CList<T> {
@@ -86,9 +133,9 @@ pub struct CList<T> {
 }
 
 #[cfg(feature = "host")]
-impl<T: Clone> Copy for CList<T> {}
+impl<T: Copy> Copy for CList<T> {}
 #[cfg(feature = "host")]
-unsafe impl<T: Clone> wasmer::ValueType for CList<T> {}
+unsafe impl<T: Copy> wasmer::ValueType for CList<T> {}
 
 #[cenum]
 pub enum CArg {
@@ -133,6 +180,8 @@ extern "C" {
   pub fn bb_player_world(player: *const CUUID) -> i32;
   /// Sends the given chat message to the player.
   pub fn bb_player_send_message(player: *const CUUID, message: *const CChat);
+  /// Sends the given particle to the player.
+  pub fn bb_player_send_particle(player: *const CUUID, particle: *const CParticle);
 
   /// Sets a block in the world. Returns 1 if the block position is invalid.
   pub fn bb_world_set_block(wid: u32, pos: *const CPos, id: u32, version: u32) -> i32;
@@ -180,26 +229,27 @@ impl Drop for CStr {
   }
 }
 
+#[cfg(not(feature = "host"))]
 impl<T> CList<T> {
-  #[cfg(not(feature = "host"))]
   pub fn new(list: Vec<T>) -> Self {
     let boxed_slice = list.into_boxed_slice();
     let slice = Box::leak(boxed_slice);
     Self { first: slice.as_ptr() as _, len: slice.len() as u32 }
   }
-  #[cfg(feature = "host")]
-  pub fn get_ptr(&self, index: u32) -> Option<*const T> {
-    if index < self.len {
-      Some(unsafe { self.first.add(index as usize) })
-    } else {
-      None
-    }
-  }
-  #[cfg(not(feature = "host"))]
   pub fn into_vec(self) -> Vec<T> {
     // We create a boxed slice above, so the capacity is shrunk to `len`, so we can
     // use len for the capacity here, without leaking memory.
     unsafe { Vec::from_raw_parts(self.first as *mut T, self.len as usize, self.len as usize) }
+  }
+}
+#[cfg(feature = "host")]
+impl<T: Copy> CList<T> {
+  pub fn get_ptr(&self, index: u32) -> Option<*const T> {
+    if index < self.len {
+      Some(unsafe { (self.first.offset() as *const T).add(index as usize) })
+    } else {
+      None
+    }
   }
 }
 
