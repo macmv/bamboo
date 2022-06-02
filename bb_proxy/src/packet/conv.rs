@@ -1,9 +1,10 @@
 use bb_common::{util::Item, version::BlockVersion};
 
 pub struct TypeConverter {
-  blocks:   &'static [block::Version],
-  items:    &'static [item::Version],
-  entities: &'static [entity::Version],
+  blocks:    &'static [block::Version],
+  items:     &'static [item::Version],
+  entities:  &'static [entity::Version],
+  particles: &'static [particle::Version],
 }
 
 mod block {
@@ -49,6 +50,19 @@ pub(super) mod entity {
   pub use super::entity_types::*;
 }
 
+mod particle {
+  use bb_common::version::BlockVersion;
+
+  #[derive(Debug)]
+  pub struct Version {
+    pub to_old: &'static [Option<u32>],
+    pub to_new: &'static [Option<u32>],
+    pub ver:    BlockVersion,
+  }
+
+  include!(concat!(env!("OUT_DIR"), "/particle/version.rs"));
+}
+
 impl TypeConverter {
   /// Creates a new type converter. This uses almost entirely static references
   /// to lookup tables, so it should be fast. This isn't `Default`, as I don't
@@ -56,9 +70,10 @@ impl TypeConverter {
   #[allow(clippy::new_without_default)]
   pub fn new() -> Self {
     TypeConverter {
-      blocks:   block::generate_versions(),
-      items:    item::generate_versions(),
-      entities: entity::generate_versions(),
+      blocks:    block::generate_versions(),
+      items:     item::generate_versions(),
+      entities:  entity::generate_versions(),
+      particles: particle::generate_versions(),
     }
   }
 }
@@ -187,6 +202,37 @@ impl TypeConverter {
     let meta = &self.entities[ver.to_index() as usize].metadata[ty as usize];
     let old_id = meta.to_old.get(id as usize).copied().unwrap_or(0);
     (old_id, meta.new_types[id as usize], meta.old_types[old_id as usize].unwrap())
+  }
+
+  /// Converts a particle id into the latest version. It should work the same as
+  /// [`block_to_new`](Self::block_to_new).
+  ///
+  /// Note that particle 0 is not 'air', and `None` means the client doesn't
+  /// have this particle. In that case, the packet should not be sent to the
+  /// client.
+  ///
+  /// Also note that for the latest version, the id is simply returned. It is
+  /// not validated.
+  pub fn particle_to_new(&self, id: u32, ver: BlockVersion) -> Option<u32> {
+    if ver == BlockVersion::latest() {
+      return Some(id);
+    }
+    self.particles[ver.to_index() as usize].to_new.get(id as usize).copied().unwrap_or(None)
+  }
+  /// Converts a particle id into an id for the given version. It should work
+  /// the same as [`block_to_old`](Self::block_to_old).
+  ///
+  /// Note that particle 0 is not 'air', and `None` means the client doesn't
+  /// have this particle. In that case, the packet should not be sent to the
+  /// client.
+  ///
+  /// Also note that for the latest version, the id is simply returned. It is
+  /// not validated.
+  pub fn particle_to_old(&self, id: u32, ver: BlockVersion) -> Option<u32> {
+    if ver == BlockVersion::latest() {
+      return Some(id);
+    }
+    self.particles[ver.to_index() as usize].to_old.get(id as usize).copied().unwrap_or(None)
   }
 }
 

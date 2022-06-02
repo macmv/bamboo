@@ -264,81 +264,66 @@ impl Player {
       health.hit_delay -= 1;
     }
 
-    if self.ver().maj() == Some(18) {
-      for id in 0..=87 {
-        self.send(cb::Packet::Particle {
-          id,
-          long: true,
-          pos: bb_common::math::FPos::new((id / 8) as f64 * 8.0, 83.0, (id % 8) as f64 * 8.0),
-          offset: bb_common::math::FPos::new(0.5, 0.5, 0.5),
-          data_float: match id {
-            4 => 100.0,
-            _ => 0.0,
-          },
-          count: 2,
-          data: match id {
-            // block state
-            2 | 3 => vec![1],
-            // dust
-            14 => {
-              let mut data = vec![];
-              let mut buf = bb_common::util::Buffer::new(&mut data);
+    for id in 0..=87 {
+      self.send(cb::Packet::Particle {
+        id,
+        long: true,
+        pos: bb_common::math::FPos::new((id / 8) as f64 * 8.0, 83.0, (id % 8) as f64 * 8.0),
+        offset: bb_common::math::FPos::new(0.5, 0.5, 0.5),
+        data_float: match id {
+          4 => 100.0,
+          _ => 0.0,
+        },
+        count: 2,
+        data: match id {
+          // block break
+          2 => vec![1],
+          // block marker
+          3 => {
+            if self.ver().maj() <= Some(12) {
+              vec![]
+            } else {
+              vec![1]
+            }
+          }
+          // dust
+          14 => {
+            let mut data = vec![];
+            let mut buf = bb_common::util::Buffer::new(&mut data);
+            if self.ver().maj() <= Some(12) {
+              // buf.write_varint(1);
+            } else {
               buf.write_f32(1.0); // r
               buf.write_f32(0.0); // g
               buf.write_f32(1.0); // b
               buf.write_f32(1.0); // scale
-              data
             }
-            // dust color transition (???)
-            15 => {
-              let mut data = vec![];
-              let mut buf = bb_common::util::Buffer::new(&mut data);
-              buf.write_f32(1.0); // r
-              buf.write_f32(0.0); // g
-              buf.write_f32(1.0); // b
-              buf.write_f32(1.0); // scale
-              buf.write_f32(1.0); // r
-              buf.write_f32(1.0); // g
-              buf.write_f32(1.0); // b
-              data
-            }
-            // elder guardian (skip)
-            17 => continue,
-            // falling dust
-            24 => vec![1],
-            // item (skip)
-            35 => continue,
-            // vibration (skip)
-            36 => continue,
-            _ => vec![],
-          },
-        });
-      }
-    } else if self.ver().maj() == Some(8) {
-      for id in 0..=41 {
-        self.send(cb::Packet::Particle {
-          id,
-          long: true,
-          pos: bb_common::math::FPos::new((id / 8) as f64 * 8.0, 83.0, (id % 8) as f64 * 8.0),
-          offset: bb_common::math::FPos::new(0.5, 0.5, 0.5),
-          data_float: match id {
-            4 => 100.0,
-            _ => 0.0,
-          },
-          count: 2,
-          data: match id {
-            // item crack
-            36 => continue,
-            // block crack
-            37 => vec![1],
-            // block dust
-            38 => vec![1],
-            // elder guardian (skip)
-            41 => continue,
-            _ => vec![],
-          },
-        });
-      }
+            data
+          }
+          // dust color transition (fades to the second color over time)
+          15 => {
+            let mut data = vec![];
+            let mut buf = bb_common::util::Buffer::new(&mut data);
+            buf.write_f32(1.0); // r
+            buf.write_f32(0.0); // g
+            buf.write_f32(1.0); // b
+            buf.write_f32(1.0); // scale
+            buf.write_f32(1.0); // r
+            buf.write_f32(1.0); // g
+            buf.write_f32(1.0); // b
+            data
+          }
+          // elder guardian (skip)
+          17 => continue,
+          // falling dust
+          24 => vec![1],
+          // item (skip)
+          35 => continue,
+          // vibration (skip)
+          36 => continue,
+          _ => vec![],
+        },
+      });
     }
     self.send_hotbar(bb_common::util::Chat::new(format!("particle: {}", {
       let pos = self.pos();

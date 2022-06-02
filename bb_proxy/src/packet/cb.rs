@@ -534,8 +534,12 @@ impl ToTcp for Packet {
       Packet::Particle { id, long, pos, offset, data_float, count, data: particle_data } => {
         let mut data = vec![];
         let mut buf = Buffer::new(&mut data);
+        let old_id = match conn.conv().particle_to_old(id as u32, ver.block()) {
+          Some(id) => id as i32,
+          None => return Ok(smallvec![]),
+        };
         if ver >= ProtocolVersion::V1_14_4 {
-          buf.write_i32(id);
+          buf.write_i32(old_id);
           buf.write_bool(long);
           buf.write_f64(pos.x());
           buf.write_f64(pos.y());
@@ -548,7 +552,7 @@ impl ToTcp for Packet {
           buf.write_buf(&particle_data);
           GPacket::ParticleV14 { unknown: data }
         } else {
-          buf.write_i32(id);
+          buf.write_i32(old_id);
           buf.write_bool(long);
           buf.write_f32(pos.x() as f32);
           buf.write_f32(pos.y() as f32);

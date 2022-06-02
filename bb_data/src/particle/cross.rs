@@ -58,7 +58,7 @@ fn find_ids(
   let mut to_new = Vec::with_capacity(new_def.particles.len());
   for p in &old_def.particles {
     if ver.maj <= 12 {
-      to_new.push(old_particle(&p.name).map(|new_name| new_map[&new_name].id));
+      to_new.push(old_particle(&p.name).map(|new_name| new_map[dbg!(&new_name)].id));
     } else {
       to_new.push(new_map.get(&p.name).map(|p| p.id));
     }
@@ -106,7 +106,7 @@ fn old_particle(old: &str) -> Option<String> {
     "happyVillager" => "happy_villager",          // shown when you trade with a villager
     "townaura" => "mycelium",                     // appears to be the same as mycelium
     "note" => "note",                             // a musical note
-    "portal" => "poral",                          // purple particles falling slowly
+    "portal" => "portal",                         // purple particles falling slowly
     "enchantmenttable" => "enchant",              // weird letters floating
     "flame" => "flame",                           // small fire icons
     "lava" => "lava",                             // orange embers with smoke flying out
