@@ -20,6 +20,7 @@ pub struct Status {
 
   pub header: String,
   pub footer: String,
+  pub hotbar: String,
 }
 
 pub struct Player {
@@ -36,6 +37,7 @@ impl Status {
       render_distance: 10,
       header:          String::new(),
       footer:          String::new(),
+      hotbar:          String::new(),
     }
   }
 
@@ -68,6 +70,7 @@ impl Status {
 
     lines.push_right(format!("header: {}", self.header));
     lines.push_right(format!("footer: {}", self.footer));
+    lines.push_right(format!("hotbar: {}", self.hotbar));
 
     lines.draw()
   }

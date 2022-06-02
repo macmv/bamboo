@@ -13,8 +13,14 @@ use std::time::Instant;
 pub fn handle_packet(stream: &mut ConnStream, status: &Mutex<Status>, p: cb::Packet) -> Result<()> {
   match p {
     cb::Packet::JoinGameV8 { .. } => {}
-    cb::Packet::ChatV8 { chat_component, .. } => match Chat::from_json(&chat_component) {
-      Ok(m) => info!("chat: {}", m.to_plain()),
+    cb::Packet::ChatV8 { chat_component, ty } => match Chat::from_json(&chat_component) {
+      Ok(m) => {
+        if ty == 0 {
+          info!("chat: {}", m.to_plain())
+        } else {
+          status.lock().hotbar = m.to_plain();
+        }
+      }
       Err(e) => warn!("invalid chat: {}", e),
     },
     cb::Packet::DisconnectV8 { reason } => {
@@ -51,6 +57,7 @@ pub fn handle_packet(stream: &mut ConnStream, status: &Mutex<Status>, p: cb::Pac
         Err(e) => warn!("invalid footer: {}", e),
       }
     }
+    cb::Packet::ParticleV8 { .. } => {}
     p => warn!("unhandled packet {}...", &format!("{:?}", p)[..40]),
   }
   Ok(())
