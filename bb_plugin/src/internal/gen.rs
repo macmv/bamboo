@@ -6,10 +6,11 @@ use bb_common::{
 use parking_lot::{lock_api::RawMutex, Mutex};
 use std::collections::HashMap;
 
+type GeneratorFn = Box<dyn Fn(&mut Chunk<paletted::Section>, ChunkPos) + Send>;
+
 static CHUNK_BUF: Mutex<Option<Vec<u8>>> = Mutex::const_new(RawMutex::INIT, None);
-static GENERATORS: Mutex<
-  Option<HashMap<String, Box<dyn Fn(&mut Chunk<paletted::Section>, ChunkPos) + Send>>>,
-> = Mutex::const_new(parking_lot::RawMutex::INIT, None);
+static GENERATORS: Mutex<Option<HashMap<String, GeneratorFn>>> =
+  Mutex::const_new(parking_lot::RawMutex::INIT, None);
 
 pub fn add_world_generator(
   name: &str,

@@ -4,7 +4,7 @@ pub use log::*;
 use bb_common::util::Chat;
 use bb_ffi::CChat;
 use parking_lot::Mutex;
-use std::{ffi::CString, marker::PhantomData};
+use std::marker::PhantomData;
 
 pub use bb_common::{chunk, math, transfer, util};
 
