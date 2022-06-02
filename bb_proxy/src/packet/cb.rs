@@ -534,18 +534,33 @@ impl ToTcp for Packet {
       Packet::Particle { id, long, pos, offset, data_float, count, data: particle_data } => {
         let mut data = vec![];
         let mut buf = Buffer::new(&mut data);
-        buf.write_i32(id);
-        buf.write_bool(long);
-        buf.write_f32(pos.x() as f32);
-        buf.write_f32(pos.y() as f32);
-        buf.write_f32(pos.z() as f32);
-        buf.write_f32(offset.x() as f32);
-        buf.write_f32(offset.y() as f32);
-        buf.write_f32(offset.z() as f32);
-        buf.write_f32(data_float);
-        buf.write_i32(count);
-        buf.write_buf(&particle_data);
-        GPacket::ParticleV8 { unknown: data }
+        if ver >= ProtocolVersion::V1_14_4 {
+          buf.write_i32(id);
+          buf.write_bool(long);
+          buf.write_f64(pos.x());
+          buf.write_f64(pos.y());
+          buf.write_f64(pos.z());
+          buf.write_f32(offset.x() as f32);
+          buf.write_f32(offset.y() as f32);
+          buf.write_f32(offset.z() as f32);
+          buf.write_f32(data_float);
+          buf.write_i32(count);
+          buf.write_buf(&particle_data);
+          GPacket::ParticleV14 { unknown: data }
+        } else {
+          buf.write_i32(id);
+          buf.write_bool(long);
+          buf.write_f32(pos.x() as f32);
+          buf.write_f32(pos.y() as f32);
+          buf.write_f32(pos.z() as f32);
+          buf.write_f32(offset.x() as f32);
+          buf.write_f32(offset.y() as f32);
+          buf.write_f32(offset.z() as f32);
+          buf.write_f32(data_float);
+          buf.write_i32(count);
+          buf.write_buf(&particle_data);
+          GPacket::ParticleV8 { unknown: data }
+        }
       }
       Packet::PlayerHeader { header, footer } => {
         GPacket::PlayerListHeaderV8 { header, footer }
