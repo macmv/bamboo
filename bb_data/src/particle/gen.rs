@@ -123,6 +123,7 @@ fn particle_data(gen: &mut CodeGen, b: &Particle) {
   gen.write(&b.name.to_case(Case::Pascal));
   gen.write_line(",");
 
+  write_prop!(id);
   write_prop!(name);
 
   gen.remove_indent();

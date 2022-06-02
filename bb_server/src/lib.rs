@@ -13,6 +13,7 @@ pub mod entity;
 pub mod item;
 pub mod math;
 pub mod net;
+pub mod particle;
 pub mod player;
 pub mod plugin;
 pub mod rcon;
