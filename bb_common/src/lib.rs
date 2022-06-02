@@ -7,8 +7,6 @@
 extern crate log;
 
 // use flexi_logger::{Duplicate, LogTarget, Logger};
-#[cfg(feature = "host")]
-use log::LevelFilter;
 
 pub mod chunk;
 pub mod config;
@@ -60,6 +58,11 @@ pub fn make_pattern() -> PatternEncoder {
 }
 */
 
+#[cfg(feature = "host")]
+use log::LevelFilter;
+#[cfg(feature = "host")]
+use std::io;
+
 /// Initializes logger. Might do more things in the future.
 pub fn init(name: &str) {
   #[cfg(feature = "host")]
@@ -74,11 +77,53 @@ pub fn init(name: &str) {
 
 #[cfg(feature = "host")]
 pub fn init_with_level(_name: &str, level: LevelFilter) {
+  init_with_level_writer(_name, level, io::stdout());
+}
+
+#[cfg(feature = "host")]
+pub fn init_with_writer(_name: &str, writer: impl std::io::Write + Send + Sync + 'static) {
+  init_with_level_writer(_name, LevelFilter::Info, writer);
+}
+
+#[cfg(feature = "host")]
+pub fn init_with_level_writer<W: std::io::Write + Send + Sync + 'static>(
+  _name: &str,
+  level: LevelFilter,
+  writer: W,
+) {
   use log::{Level, Metadata, Record};
+  use parking_lot::Mutex;
 
-  struct Logger;
+  struct Logger<W>(Mutex<W>);
 
-  impl log::Log for Logger {
+  impl<W: io::Write> Logger<W> {
+    fn log_inner(&self, record: &Record) -> io::Result<()> {
+      let now = chrono::Local::now();
+      let mut w = self.0.lock();
+      write!(w, "{} ", now.format("%Y-%m-%d %H:%M:%S%.3f"))?;
+      #[cfg(debug_assertions)]
+      {
+        if let Some(path) = record.module_path() {
+          write!(w, "{path}")?;
+        }
+        if let Some(line) = record.line() {
+          write!(w, ":{line}")?;
+        }
+        write!(w, " ")?;
+      }
+      match record.level() {
+        Level::Trace => write!(w, "[\x1b[36mTRACE\x1b[0m]")?,
+        Level::Debug => write!(w, "[\x1b[34mDEBUG\x1b[0m]")?,
+        Level::Info => write!(w, "[\x1b[32mINFO\x1b[0m]")?,
+        Level::Warn => write!(w, "[\x1b[33mWARN\x1b[0m]")?,
+        Level::Error => write!(w, "[\x1b[31m\x1b[1mERROR\x1b[0m]")?,
+      }
+      writeln!(w, " {}", record.args())?;
+      Ok(())
+    }
+  }
+
+  impl<W: io::Write + Send + Sync> log::Log for Logger<W> {
     fn enabled(&self, metadata: &Metadata) -> bool {
       !metadata.target().starts_with("regalloc")
         && !metadata.target().starts_with("wasmer_compiler")
@@ -87,32 +132,16 @@ pub fn init_with_level(_name: &str, level: LevelFilter) {
 
     fn log(&self, record: &Record) {
       if self.enabled(record.metadata()) {
-        let now = chrono::Local::now();
-        print!("{} ", now.format("%Y-%m-%d %H:%M:%S%.3f"));
-        #[cfg(debug_assertions)]
-        {
-          if let Some(path) = record.module_path() {
-            print!("{path}");
-          }
-          if let Some(line) = record.line() {
-            print!(":{line}");
-          }
-          print!(" ");
-        }
-        match record.level() {
-          Level::Trace => print!("[\x1b[36mTRACE\x1b[0m]"),
-          Level::Debug => print!("[\x1b[34mDEBUG\x1b[0m]"),
-          Level::Info => print!("[\x1b[32mINFO\x1b[0m]"),
-          Level::Warn => print!("[\x1b[33mWARN\x1b[0m]"),
-          Level::Error => print!("[\x1b[31m\x1b[1mERROR\x1b[0m]"),
-        }
-        println!(" {}", record.args());
+        let _ = self.log_inner(record);
       }
     }
 
     fn flush(&self) {}
   }
 
-  static LOGGER: Logger = Logger;
-  log::set_logger(&LOGGER).map(|()| log::set_max_level(level)).unwrap();
+  // static LOGGER: Logger = Logger;
+  // log::set_logger(&LOGGER).map(|()| log::set_max_level(level)).unwrap();
+  log::set_boxed_logger(Box::new(Logger(Mutex::new(writer))))
+    .map(|()| log::set_max_level(level))
+    .unwrap();
 }

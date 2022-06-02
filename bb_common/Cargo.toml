@@ -16,6 +16,8 @@ log = "0.4"
 chrono = { version = "0.4.19", optional = true }
 
 crossbeam-channel = "0.5.1"
+# better locks
+parking_lot = { version = "0.12", optional = true }
 
 asn1 = "0.5.3"
 rsa = { version = "0.4.0", optional = true }
@@ -55,7 +57,7 @@ pretty_assertions = "1.2.0"
 
 [features]
 default = ["host"]
-host = ["chrono", "flate2", "rsa", "rand", "rand_core"]
+host = ["chrono", "flate2", "rsa", "rand", "rand_core", "parking_lot"]
 
 [[bench]]
 name = "chunk"

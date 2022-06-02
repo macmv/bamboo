@@ -86,40 +86,7 @@ impl ScrollBuf {
   pub fn buf(&mut self) -> &mut VecDeque<u8> { &mut self.buf }
 }
 
-/// An appender which logs to standard out.
-///
-/// It supports output styling if standard out is a console buffer on Windows
-/// or is a TTY on Unix.
-#[derive(Debug)]
-pub struct SkipConsoleAppender {
-  encoder: Box<dyn Encode>,
-  buf:     Mutex<ScrollBuf>,
-}
-
-impl Append for SkipConsoleAppender {
-  fn append(&self, record: &Record) -> anyhow::Result<()> {
-    let mut buf = self.buf.lock().unwrap();
-    self.encoder.encode(&mut AnsiWriter(&mut buf as &mut ScrollBuf), record)?;
-    Ok(())
-  }
-
-  fn flush(&self) {}
-}
-
-impl SkipConsoleAppender {
-  /// Creates a new `ConsoleAppender` builder.
-  pub fn new<E: Encode>(encoder: E, min: u16, len: u16) -> SkipConsoleAppender {
-    SkipConsoleAppender {
-      encoder: Box::new(encoder),
-      buf:     Mutex::new(ScrollBuf::new(min, len)),
-    }
-  }
-}
-
-pub fn skip_appender(min: u16, len: u16) -> Appender {
-  Appender::builder()
-    .build("stdout", Box::new(SkipConsoleAppender::new(bb_common::make_pattern(), min, len)))
-}
+pub fn skip_appender(min: u16, len: u16) -> impl io::Write { ScrollBuf::new(min, len) }
 
 pub fn setup() -> Result<(), io::Error> {
   let stdout = io::stdout();

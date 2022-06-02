@@ -17,7 +17,7 @@ mod status;
 fn main() {
   let (_cols, rows) = terminal::size().unwrap();
   cli::setup().unwrap();
-  bb_common::init_with_stdout("cli", cli::skip_appender(15, rows - 30));
+  bb_common::init_with_writer("cli", cli::skip_appender(15, rows - 30));
   match run(rows) {
     Ok(_) => (),
     Err(e) => {
