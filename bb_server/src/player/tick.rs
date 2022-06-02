@@ -264,65 +264,21 @@ impl Player {
       health.hit_delay -= 1;
     }
 
-    for id in 0..=87 {
-      self.send(cb::Packet::Particle {
-        id,
-        long: true,
-        pos: bb_common::math::FPos::new((id / 8) as f64 * 8.0, 83.0, (id % 8) as f64 * 8.0),
-        offset: bb_common::math::FPos::new(0.5, 0.5, 0.5),
-        data_float: match id {
-          4 => 100.0,
-          _ => 0.0,
-        },
-        count: 2,
-        data: match id {
-          // block break
-          2 => vec![1],
-          // block marker
-          3 => {
-            if self.ver().maj() <= Some(12) {
-              vec![]
-            } else {
-              vec![1]
-            }
-          }
-          // dust
-          14 => {
-            let mut data = vec![];
-            let mut buf = bb_common::util::Buffer::new(&mut data);
-            if self.ver().maj() <= Some(12) {
-              // buf.write_varint(1);
-            } else {
-              buf.write_f32(1.0); // r
-              buf.write_f32(0.0); // g
-              buf.write_f32(1.0); // b
-              buf.write_f32(1.0); // scale
-            }
-            data
-          }
-          // dust color transition (fades to the second color over time)
-          15 => {
-            let mut data = vec![];
-            let mut buf = bb_common::util::Buffer::new(&mut data);
-            buf.write_f32(1.0); // r
-            buf.write_f32(0.0); // g
-            buf.write_f32(1.0); // b
-            buf.write_f32(1.0); // scale
-            buf.write_f32(1.0); // r
-            buf.write_f32(1.0); // g
-            buf.write_f32(1.0); // b
-            data
-          }
-          // elder guardian (skip)
-          17 => continue,
-          // falling dust
-          24 => vec![1],
-          // item (skip)
-          35 => continue,
-          // vibration (skip)
-          36 => continue,
-          _ => vec![],
-        },
+    for id in 0_u8..=255 {
+      let x = (id / 16) as f64;
+      let z = (id % 16) as f64;
+      let color = crate::particle::Color {
+        r: (x as u8).saturating_mul(16),
+        g: 0,
+        b: (z as u8).saturating_mul(16),
+      };
+      self.send_particle(crate::particle::Particle {
+        ty:            crate::particle::Type::Dust(color, 1.0),
+        long_distance: false,
+        pos:           bb_common::math::FPos::new(x, 83.0, z),
+        offset:        bb_common::math::FPos::new(0.1, 0.1, 0.1),
+        data:          0.0,
+        count:         1,
       });
     }
     self.send_hotbar(bb_common::util::Chat::new(format!("particle: {}", {

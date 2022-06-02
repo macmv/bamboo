@@ -6,6 +6,7 @@ use crate::{
   item::Stack,
   math::Vec3,
   net::ConnSender,
+  particle::Particle,
   world::World,
 };
 use bb_common::{
@@ -303,6 +304,19 @@ impl Player {
       msg,
       ty: 2, // Hotbar, not chat box or system message
     });
+  }
+  /// Sends the particle to the player. This will always send the packet, even
+  /// if the particle is too far away.
+  pub fn send_particle(&self, particle: Particle) {
+    self.send(particle.to_packet(self.world.world_manager().block_converter(), self.ver));
+  }
+  /// Sends the particle to the player, if the player can see the particle. This
+  /// uses `particle.long_distance` to check if the player is in range.
+  pub fn send_particle_if_close(&self, particle: Particle) {
+    let dist = if particle.long_distance { 65536.0_f64 } else { 256.0_f64 }.powi(2);
+    if self.pos().dist_squared(particle.pos) < dist {
+      self.send_particle(particle);
+    }
   }
 
   /// Sets the title for this player. To show the title and subtitle, call

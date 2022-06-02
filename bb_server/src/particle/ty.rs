@@ -44,7 +44,7 @@ pub struct Color {
 }
 
 impl Type {
-  pub fn extra_data(&self, blocks: block::TypeConverter, ver: ProtocolVersion) -> Vec<u8> {
+  pub fn extra_data(&self, blocks: &block::TypeConverter, ver: ProtocolVersion) -> Vec<u8> {
     let mut data = vec![];
     let mut buf = Buffer::new(&mut data);
     match self {
