@@ -1,11 +1,5 @@
 use crossterm::{execute, terminal};
-use log::Record;
-use log4rs::{
-  append::Append,
-  config::Appender,
-  encode::{writer::ansi::AnsiWriter, Encode},
-};
-use std::{collections::VecDeque, io, io::Write, sync::Mutex};
+use std::{collections::VecDeque, io, io::Write};
 
 mod line;
 

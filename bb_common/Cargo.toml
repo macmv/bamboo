@@ -12,7 +12,7 @@ bb_macros = { path = "../bb_macros" }
 
 # flexi_logger = "0.17"
 anyhow = "1.0.0"
-log = "0.4"
+log = { version = "0.4", features = ["std"] }
 chrono = { version = "0.4.19", optional = true }
 
 crossbeam-channel = "0.5.1"

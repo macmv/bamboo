@@ -9,8 +9,6 @@ edition = "2021"
 bb_proxy = { path = "../bb_proxy" }
 bb_common = { path = "../bb_common" }
 log = "0.4"
-log4rs = "1.0.0"
-anyhow = "1.0.44"
 
 # auth
 rand = "0.8.3"
