@@ -263,30 +263,6 @@ impl Player {
     if health.hit_delay > 0 {
       health.hit_delay -= 1;
     }
-
-    for id in 0_u8..=255 {
-      let x = (id / 16) as f64;
-      let z = (id % 16) as f64;
-      let color = crate::particle::Color {
-        r: (x as u8).saturating_mul(16),
-        g: 0,
-        b: (z as u8).saturating_mul(16),
-      };
-      self.send_particle(crate::particle::Particle {
-        ty:            crate::particle::Type::Dust(color, 1.0),
-        long_distance: false,
-        pos:           bb_common::math::FPos::new(x, 83.0, z),
-        offset:        bb_common::math::FPos::new(0.1, 0.1, 0.1),
-        data:          0.0,
-        count:         1,
-      });
-    }
-    self.send_hotbar(bb_common::util::Chat::new(format!("particle: {}", {
-      let pos = self.pos();
-      let row = (pos.x() / 8.0).round();
-      let col = (pos.z() / 8.0).round();
-      row * 8.0 + col
-    })));
   }
 
   /// Loads the chunks between min and max, inclusive.
