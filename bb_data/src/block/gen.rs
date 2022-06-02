@@ -17,7 +17,7 @@ pub fn generate_ty(def: &BlockDef) -> String {
   let mut gen = CodeGen::new();
   gen.write_line("/// Auto generated block kind. This is directly generated");
   gen.write_line("/// from prismarine data.");
-  gen.write_line("#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, ToPrimitive, FromPrimitive)]");
+  gen.write_line("#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]");
   gen.write("pub enum Kind ");
   gen.write_block(|gen| {
     for b in &def.blocks {
@@ -57,6 +57,19 @@ pub fn generate_ty(def: &BlockDef) -> String {
       }
       gen.write_line("]");
       gen.write_line("[self.id() as usize]");
+    });
+    gen.write("pub fn id(&self) -> u32");
+    gen.write_block(|gen| {
+      gen.write("match self");
+      gen.write_block(|gen| {
+        for (id, b) in def.blocks.iter().enumerate() {
+          gen.write("Self::");
+          gen.write(&b.name.to_case(Case::Pascal));
+          gen.write(" => ");
+          gen.write(&id.to_string());
+          gen.write_line(",");
+        }
+      });
     });
   });
   gen.write_line("/// Generates a table from all block kinds to any block data that kind has.");
