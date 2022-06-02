@@ -15,6 +15,16 @@ pub struct ThreadPool<S> {
 /// Default to 256 elements in the queue for a thread pool.
 pub const DEFAULT_LIMIT: usize = 256;
 
+#[derive(Debug)]
+pub struct ChannelFullError;
+
+use std::fmt;
+impl fmt::Display for ChannelFullError {
+  fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result { write!(f, "channel is full") }
+}
+
+impl std::error::Error for ChannelFullError {}
+
 impl<S: Send + 'static> ThreadPool<S> {
   /// Creates a thread pool with the same number of works as cores on the
   /// system. These are logical cores, so features like hyper threading will be
@@ -92,12 +102,12 @@ impl<S: Send + 'static> ThreadPool<S> {
     self.tx.send(Box::new(f)).expect("thread unexpectedly closed");
   }
 
-  /// Executes the given task on a random worker thread. Returns `Err(())` if
+  /// Executes the given task on a random worker thread. Returns `Err` if
   /// the internal channel is full.
-  pub fn try_execute<F: FnOnce(&S) + Send + 'static>(&self, f: F) -> Result<(), ()> {
+  pub fn try_execute<F: FnOnce(&S) + Send + 'static>(&self, f: F) -> Result<(), ChannelFullError> {
     match self.tx.try_send(Box::new(f)) {
       Ok(()) => Ok(()),
-      Err(TrySendError::Full(_)) => Err(()),
+      Err(TrySendError::Full(_)) => Err(ChannelFullError),
       Err(TrySendError::Disconnected(_)) => panic!("thread unexpectedly closed"),
     }
   }

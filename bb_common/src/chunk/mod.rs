@@ -49,7 +49,10 @@ impl<S: Section> Chunk<S> {
       self.sections[index] = Some(S::new(self.max_bpe));
     }
     match &mut self.sections[index] {
-      Some(s) => Ok(s.set_block(pos.section_rel(), ty)),
+      Some(s) => {
+        s.set_block(pos.section_rel(), ty);
+        Ok(())
+      }
       None => unreachable!(),
     }
   }

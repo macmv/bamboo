@@ -133,7 +133,7 @@ impl RelPos {
   #[inline(always)]
   #[must_use = "add_x returns a modified version of self"]
   pub fn add_x(mut self, x: u8) -> Self {
-    if self.x.checked_add(x).unwrap_or(255) > 16 {
+    if self.x.saturating_add(x) > 16 {
       panic!("cannot add X with overflow: {} + {}", self.x, x);
     }
     self.x += x;
@@ -150,7 +150,7 @@ impl RelPos {
   #[inline(always)]
   #[must_use = "add_z returns a modified version of self"]
   pub fn add_z(mut self, z: u8) -> Self {
-    if self.z.checked_add(z).unwrap_or(255) > 16 {
+    if self.z.saturating_add(z) > 16 {
       panic!("cannot add Z with overflow: {} + {}", self.z, z);
     }
     self.z += z;
@@ -255,9 +255,7 @@ impl RelPos {
 impl Add for RelPos {
   type Output = Self;
   fn add(self, other: Self) -> Self {
-    if self.x.checked_add(other.x).unwrap_or(255) > 16
-      || self.z.checked_add(other.z).unwrap_or(255) > 16
-    {
+    if self.x.saturating_add(other.x) > 16 || self.z.saturating_add(other.z) > 16 {
       panic!("cannot add with overflow: {self} + {other}");
     }
     Self { x: self.x + other.x, y: self.y + other.y, z: self.z + other.z }
@@ -266,9 +264,7 @@ impl Add for RelPos {
 
 impl AddAssign for RelPos {
   fn add_assign(&mut self, other: Self) {
-    if self.x.checked_add(other.x).unwrap_or(255) > 16
-      || self.z.checked_add(other.z).unwrap_or(255) > 16
-    {
+    if self.x.saturating_add(other.x) > 16 || self.z.saturating_add(other.z) > 16 {
       panic!("cannot add with overflow: {self} + {other}");
     }
     self.x += other.x;
