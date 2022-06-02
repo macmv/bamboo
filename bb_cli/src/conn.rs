@@ -1,4 +1,4 @@
-use bb_common::{math::der, version::ProtocolVersion};
+use bb_common::{math::der, util::UUID, version::ProtocolVersion};
 use bb_proxy::{
   conn::State,
   gnet::{cb, sb, tcp},
@@ -100,7 +100,12 @@ impl ConnStream {
         }
         2 => {
           // login success
-          let _uuid = p.read_uuid()?;
+          let _uuid = if self.ver >= ProtocolVersion::V1_16 {
+            p.read_uuid()?
+          } else {
+            UUID::from_dashed_str(&p.read_str(36)?)
+              .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e.to_string()))?
+          };
           let _username = p.read_str(16)?;
           self.state = State::Play;
         }
