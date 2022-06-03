@@ -443,15 +443,10 @@ impl World {
   /// perform collision checks.
   ///
   /// For things like stairs, multiple items will be added to the output vector.
-  pub fn nearby_colliders(&self, aabb: AABB, water: bool) -> Vec<AABB> {
-    let mut min = Pos::new(
-      aabb.min_x().floor() as i32,
-      aabb.min_y().floor() as i32,
-      aabb.min_z().floor() as i32,
-    );
-    let mut max =
-      Pos::new(aabb.max_x().ceil() as i32, aabb.max_y().ceil() as i32, aabb.max_z().ceil() as i32);
-
+  pub fn nearby_colliders(&self, from: FPos, to: FPos, radius: f64, water: bool) -> Vec<AABB> {
+    let (min, max) = from.min_max(to);
+    let mut min = min.floor().block();
+    let mut max = max.ceil().block();
     if max.y < 0 || min.y > 255 {
       return vec![];
     }
@@ -466,22 +461,40 @@ impl World {
     for x in min.chunk_x()..=max.chunk_x() {
       for z in min.chunk_z()..=max.chunk_z() {
         let chunk = ChunkPos::new(x, z);
-        let min_x = if min.chunk_x() == x { min.chunk_rel_x() } else { 0 };
-        let min_z = if min.chunk_z() == z { min.chunk_rel_z() } else { 0 };
-        let max_x = if max.chunk_x() == x { max.chunk_rel_x() } else { 15 };
-        let max_z = if max.chunk_z() == z { max.chunk_rel_z() } else { 15 };
+        let min_x = if min.chunk_x() == x { min.chunk_rel_x() as u8 } else { 0 };
+        let min_z = if min.chunk_z() == z { min.chunk_rel_z() as u8 } else { 0 };
+        let max_x = if max.chunk_x() == x { max.chunk_rel_x() as u8 } else { 15 };
+        let max_z = if max.chunk_z() == z { max.chunk_rel_z() as u8 } else { 15 };
 
-        let min = Pos::new(min_x, min.y, min_z);
-        let max = Pos::new(max_x, max.y, max_z);
+        let min = RelPos::new(min_x, min.y, min_z);
+        let max = RelPos::new(max_x, max.y, max_z);
+
+        macro_rules! radius {
+          ( $pos:expr ) => {{
+            let world_pos = FPos::from($pos);
+            let center_of_block = world_pos + FPos::new(0.5, 0.5, 0.5);
+            let axis_vec = to - from;
+            let rel_center_of_block = from - center_of_block;
+            let dist = axis_vec.cross(rel_center_of_block).size() / axis_vec.size();
+            dist
+          }};
+        }
+
         self.chunk(chunk, |c| {
-          for y in min.y..=max.y {
-            for z in min.z..=max.z {
-              for x in min.x..=max.x {
-                let pos = Pos::new(x, y, z);
-                let kind = c.get_kind(pos.chunk_rel()).unwrap();
-                if kind != block::Kind::Air && (!water || kind != block::Kind::Water) {
+          for y in min.y()..=max.y() {
+            for z in min.z()..=max.z() {
+              for x in min.x()..=max.x() {
+                let pos = RelPos::new(x, y, z);
+                // Some basic flamegraph tests show that it is faster to check the block kind
+                // before checking radius.
+                let kind = c.get_kind(pos).unwrap();
+                let world_pos = Pos::new(pos.x().into(), pos.y(), pos.z().into()) + chunk.block();
+                if kind != block::Kind::Air
+                  && (!water || kind != block::Kind::Water)
+                  && radius!(world_pos) < radius
+                {
                   out.push(AABB::new(
-                    FPos::from(pos + chunk.block()) + FPos::new(0.5, 0.0, 0.5),
+                    FPos::from(world_pos) + FPos::new(0.5, 0.0, 0.5),
                     Vec3::new(1.0, 1.0, 1.0),
                   ));
                 }
@@ -495,18 +508,10 @@ impl World {
   }
 
   pub fn raycast(&self, from: FPos, to: FPos, water: bool) -> Option<(FPos, CollisionResult)> {
-    let mut from = Vec3::from(from);
-    let to = Vec3::from(to);
-    let res = from.move_towards(
-      to - from,
-      &self.nearby_colliders(
-        AABB::new(
-          FPos::new(to.x.min(from.x), to.y.min(from.y), to.z.min(from.z)),
-          Vec3::new((to.x - from.x).abs(), (to.y - from.y).abs(), (to.z - from.z).abs()),
-        ),
-        water,
-      ),
-    );
-    res.map(|res| (from.into(), res))
+    let mut from_vec = Vec3::from(from);
+    let to_vec = Vec3::from(to);
+    let colliders = self.nearby_colliders(from, to, 1.0, water);
+    let res = from_vec.move_towards(to_vec - from_vec, &colliders);
+    res.map(|res| (from_vec.into(), res))
   }
 }

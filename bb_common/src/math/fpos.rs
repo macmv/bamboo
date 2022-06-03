@@ -135,6 +135,56 @@ impl FPos {
   pub fn dist_squared(&self, other: FPos) -> f64 {
     (self.x - other.x).powi(2) + (self.y - other.y).powi(2) + (self.z - other.z).powi(2)
   }
+
+  /// Returns the minimum and maximum of each value of the three positions. The
+  /// first argument returned is the min, and the second argument returned is
+  /// the max.
+  ///
+  /// # Example
+  ///
+  /// ```
+  /// # use bb_common::math::FPos;
+  /// assert_eq!(
+  ///   FPos::new(1.0, 5.0, 6.0).min_max(FPos::new(3.0, 3.0, 3.0)),
+  ///   (FPos::new(1.0, 3.0, 3.0), FPos::new(3.0, 5.0, 6.0))
+  /// );
+  /// // different syntax, does the same thing
+  /// assert_eq!(
+  ///   FPos::min_max(FPos::new(1.0, 5.0, 6.0), FPos::new(3.0, 3.0, 3.0)),
+  ///   (FPos::new(1.0, 3.0, 3.0), FPos::new(3.0, 5.0, 6.0))
+  /// );
+  /// ```
+  pub fn min_max(self, other: FPos) -> (FPos, FPos) {
+    (
+      FPos::new(self.x.min(other.x), self.y.min(other.y), self.z.min(other.z)),
+      FPos::new(self.x.max(other.x), self.y.max(other.y), self.z.max(other.z)),
+    )
+  }
+
+  /// Returns the position with all values rounded down.
+  pub fn floor(&self) -> FPos { FPos::new(self.x.floor(), self.y.floor(), self.z.floor()) }
+  /// Returns the position with all values rounded up.
+  pub fn ceil(&self) -> FPos { FPos::new(self.x.ceil(), self.y.ceil(), self.z.ceil()) }
+
+  /// Returns the length of this vector.
+  pub fn size(&self) -> f64 { (self.x.powi(2) + self.y.powi(2) + self.z.powi(2)).sqrt() }
+
+  /// Returns the cross product of `self` and `other`. Order matters here.
+  ///
+  /// ```
+  /// # use bb_common::math::FPos;
+  /// assert_eq!(
+  ///   FPos::new(1.0, 2.0, 3.0).cross(FPos::new(3.0, 2.0, 1.0)),
+  ///   FPos::new(-4.0, 8.0, -4.0),
+  /// );
+  /// ```
+  pub fn cross(self, other: FPos) -> FPos {
+    FPos::new(
+      (self.y * other.z) - (self.z * other.y),
+      -((self.x * other.z) - (self.z * other.x)),
+      (self.x * other.y) - (self.y * other.x),
+    )
+  }
 }
 
 impl Add for FPos {
