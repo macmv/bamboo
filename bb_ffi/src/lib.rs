@@ -287,7 +287,13 @@ impl CStr {
     if self.ptr.is_null() {
       String::new()
     } else {
-      unsafe { String::from_raw_parts(self.ptr, self.len as usize, self.len as usize) }
+      let vec = unsafe { Vec::from_raw_parts(self.ptr, self.len as usize, self.len as usize) };
+      // We usually won't have to allocate. However, if we do get invalid utf8, we
+      // would still like to get a string back. So, we fall back to from_utf8_lossy.
+      match String::from_utf8(vec) {
+        Ok(s) => s,
+        Err(e) => String::from_utf8_lossy(&e.into_bytes()).into(),
+      }
     }
   }
 }
