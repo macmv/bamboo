@@ -7,7 +7,19 @@ use bb_plugin::{
   math::FPos,
   particle,
   particle::{Color, Particle},
+  PlayerStore,
 };
+use std::any::Any;
+
+#[derive(Debug)]
+struct PlayerInfo {
+  brush_size: f64,
+}
+
+impl PlayerStore for PlayerInfo {
+  fn as_any(&mut self) -> &mut dyn Any { self }
+  fn new() -> Self { PlayerInfo { brush_size: 1.0 } }
+}
 
 #[no_mangle]
 extern "C" fn init() {
@@ -29,12 +41,19 @@ fn on_place(player: Player, pos: Pos) -> bool {
     data:          0.0,
     long_distance: false,
   });
+  let instance = bb_plugin::instance();
+  let mut store = instance.store();
+  let info: &mut PlayerInfo = store.player(player.id());
+  info.brush_size += 0.5;
   true
 }
 
 fn on_tick() {
   let world = bb_plugin::world::World::new(0);
   for player in world.players() {
+    let instance = bb_plugin::instance();
+    let mut store = instance.store();
+    let info: &mut PlayerInfo = store.player(player.id());
     let pos = player.pos();
     let look = player.look_as_vec();
     let from = pos + FPos::new(0.0, 1.5, 0.0);
@@ -94,8 +113,7 @@ fn on_tick() {
       for angle in 0..30 {
         let angle = angle as f64 / 30.0 * 2.0 * std::f64::consts::PI;
         // Constant brush size
-        const R: f64 = 1.0;
-        let r = R * 50.0 / pos.dist(from);
+        let r = info.brush_size * 50.0 / pos.dist(from);
         let to = from + unit * angle.cos() * r + other_unit * angle.sin() * r + look * 50.0;
         /*
         // Brush size changes with distance
