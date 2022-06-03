@@ -3,7 +3,7 @@ mod funcs;
 mod input;
 mod output;
 
-pub use ffi::FromFfi;
+pub use ffi::{FromFfi, ToFfi};
 pub use funcs::Env;
 
 use super::{CallError, GlobalServerEvent, PluginImpl, PluginReply, ServerEvent, ServerRequest};

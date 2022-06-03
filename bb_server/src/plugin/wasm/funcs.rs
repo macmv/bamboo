@@ -1,4 +1,4 @@
-use super::FromFfi;
+use super::{FromFfi, ToFfi};
 use crate::{
   block,
   command::{Command, NodeType, Parser},
@@ -7,25 +7,72 @@ use crate::{
   world::WorldManager,
 };
 use bb_common::{math::Pos, util::Chat, version::BlockVersion};
-use bb_ffi::{CChat, CCommand, CParticle, CPos, CUUID};
+use bb_ffi::{CBlockData, CChat, CCommand, CParticle, CPos, CUUID};
 use log::Level;
-use std::sync::Arc;
-use wasmer::{imports, Array, Function, ImportObject, LazyInit, Memory, Store, WasmPtr, WasmerEnv};
+use std::{mem, sync::Arc};
+use wasmer::{
+  imports, Array, Function, ImportObject, LazyInit, Memory, NativeFunc, Store, WasmPtr, WasmerEnv,
+};
 
 #[derive(WasmerEnv, Clone)]
 pub struct Env {
   #[wasmer(export)]
-  pub memory: LazyInit<Memory>,
-  pub wm:     Arc<WorldManager>,
+  pub memory:      LazyInit<Memory>,
+  #[wasmer(export)]
+  pub wasm_malloc: LazyInit<NativeFunc<(u32, u32), u32>>,
+  pub wm:          Arc<WorldManager>,
   /// The version of this plugin. Plugins will send us things like block ids,
   /// and we need to know how to convert them to the server's version. This
   /// allows us to load out-of-date plugins on a newer server.
-  pub ver:    BlockVersion,
-  pub name:   Arc<String>,
+  pub ver:         BlockVersion,
+  pub name:        Arc<String>,
 }
 
 impl Env {
   pub fn mem(&self) -> &Memory { self.memory.get_ref().expect("Env not initialized") }
+  pub fn malloc<T: Copy>(&self) -> WasmPtr<T> {
+    let ptr = self
+      .wasm_malloc
+      .get_ref()
+      .expect("Env not initialized")
+      .call(mem::size_of::<T>() as u32, mem::align_of::<T>() as u32)
+      .unwrap();
+    WasmPtr::new(ptr)
+  }
+  pub fn malloc_array<T: Copy>(&self, len: u32) -> WasmPtr<T, Array> {
+    let ptr = self
+      .wasm_malloc
+      .get_ref()
+      .expect("Env not initialized")
+      .call(mem::size_of::<T>() as u32 * len, mem::align_of::<T>() as u32)
+      .unwrap();
+    WasmPtr::new(ptr)
+  }
+  pub fn malloc_store<T: Copy>(&self, value: T) -> WasmPtr<T> {
+    let ptr = self.malloc::<T>();
+    if u64::from(ptr.offset()) > self.mem().data_size() {
+      panic!("invalid ptr");
+    }
+    // SAFETY: We just validated the `write` call will write to valid memory.
+    unsafe {
+      let ptr = self.mem().data_ptr().add(ptr.offset() as usize);
+      std::ptr::write(ptr as *mut T, value);
+    }
+    ptr
+  }
+  pub fn malloc_array_store<T: Copy>(&self, value: &[T]) -> WasmPtr<T, Array> {
+    let ptr = self.malloc_array::<T>(value.len().try_into().unwrap());
+    if u64::from(ptr.offset()) > self.mem().data_size() {
+      panic!("invalid ptr");
+    }
+    // SAFETY: We just validated the `write` call will write to valid memory.
+    unsafe {
+      // We want to call add on *mut u8, because ptr.offset() gives bytes.
+      let ptr = self.mem().data_ptr().add(ptr.offset() as usize) as *mut T;
+      std::ptr::copy(value.as_ptr(), ptr, value.len());
+    }
+    ptr
+  }
 }
 
 fn log_from_level(level: u32) -> Option<Level> {
@@ -164,6 +211,15 @@ fn world_set_block(env: &Env, wid: u32, pos: WasmPtr<CPos>, id: u32) -> i32 {
     Err(_) => -1,
   }
 }
+fn block_data_for_kind(env: &Env, block: u32) -> u32 {
+  // TODO: Convert block to newer version
+  let data = env.wm.block_converter().get(match block::Kind::from_id(block) {
+    Some(id) => id,
+    None => return 0,
+  });
+  let cdata = data.to_ffi(env);
+  env.malloc_store(cdata).offset()
+}
 
 fn add_command(env: &Env, cmd: WasmPtr<CCommand>) {
   fn command_from_env(env: &Env, cmd: WasmPtr<CCommand>) -> Option<Command> {
@@ -211,7 +267,13 @@ fn time_since_start(env: &Env) -> u64 {
 }
 
 pub fn imports(store: &Store, wm: Arc<WorldManager>, name: String) -> ImportObject {
-  let env = Env { memory: LazyInit::new(), wm, ver: BlockVersion::V1_8, name: Arc::new(name) };
+  let env = Env {
+    memory: LazyInit::new(),
+    wasm_malloc: LazyInit::new(),
+    wm,
+    ver: BlockVersion::V1_8,
+    name: Arc::new(name),
+  };
   imports! {
     "env" => {
       "bb_log" => Function::new_native_with_env(&store, env.clone(), log),
@@ -220,6 +282,7 @@ pub fn imports(store: &Store, wm: Arc<WorldManager>, name: String) -> ImportObje
       "bb_player_world" => Function::new_native_with_env(&store, env.clone(), player_world),
       "bb_player_send_particle" => Function::new_native_with_env(&store, env.clone(), player_send_particle),
       "bb_world_set_block" => Function::new_native_with_env(&store, env.clone(), world_set_block),
+      "bb_block_data_for_kind" => Function::new_native_with_env(&store, env.clone(), block_data_for_kind),
       "bb_add_command" => Function::new_native_with_env(&store, env.clone(), add_command),
       "bb_time_since_start" => Function::new_native_with_env(&store, env.clone(), time_since_start),
     }

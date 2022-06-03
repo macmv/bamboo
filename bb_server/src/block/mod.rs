@@ -3,9 +3,12 @@ mod material;
 mod ty;
 mod version;
 
+#[cfg(feature = "wasm_plugins")]
+mod ffi;
+
 pub use behavior::{Behavior, TileEntity};
 pub use material::Material;
-pub use ty::{Data, Kind, Prop, PropValue, Type};
+pub use ty::{Data, ItemDrop, Kind, Prop, PropValue, Type};
 pub use version::TypeConverter;
 
 use crate::world::World;
