@@ -3,7 +3,7 @@ use crate::{
   block::Block,
   entity, item,
   player::{AirClick, BlockClick, Click, Player},
-  world::WorldManager,
+  world::{EventFlow, WorldManager},
 };
 use bb_common::{
   math::{FPos, Pos},
@@ -81,9 +81,11 @@ pub(crate) fn handle(wm: &Arc<WorldManager>, mut player: &Arc<Player>, p: sb::Pa
               let inv = player.lock_inventory();
               let stack = inv.main_hand();
               if !stack.is_empty() {
-                let handled =
-                  wm.item_behaviors().call(stack.item(), |b| b.break_block(click)).unwrap_or(false);
-                if handled {
+                let flow = wm
+                  .item_behaviors()
+                  .call(stack.item(), |b| b.break_block(click))
+                  .unwrap_or(EventFlow::Continue);
+                if flow.is_handled() {
                   let _ = player.sync_block_at(pos);
                   let _ = player.sync_block_at(pos + face);
                   return;
@@ -126,7 +128,7 @@ pub(crate) fn handle(wm: &Arc<WorldManager>, mut player: &Arc<Player>, p: sb::Pa
       // TODO: Use `hand`.
       let stack = inv.main_hand();
       let click = Click::Air(AirClick { dir: player.look_as_vec(), player });
-      wm.item_behaviors().call(stack.item(), |b| b.interact(click)).unwrap_or(false);
+      wm.item_behaviors().call(stack.item(), |b| b.interact(click)).unwrap_or(EventFlow::Continue);
     }
     sb::Packet::BlockPlace { mut pos, face, hand: _ } => {
       /*
@@ -158,11 +160,9 @@ pub(crate) fn handle(wm: &Arc<WorldManager>, mut player: &Arc<Player>, p: sb::Pa
               // TODO: Use `hand`.
               let stack = inv.main_hand();
               if !stack.is_empty() {
-                let handled = wm
-                  .item_behaviors()
-                  .call(stack.item(), |b| b.interact(Click::Block(click)))
-                  .unwrap_or(false);
-                if handled {
+                let stack = stack.clone();
+                drop(inv); // Don't have inv locked on this event.
+                if wm.events().interact(stack, Click::Block(click)).is_handled() {
                   let _ = player.sync_block_at(pos);
                   let _ = player.sync_block_at(pos + face);
                   return;

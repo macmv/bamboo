@@ -16,6 +16,7 @@ mod blocks;
 mod chunk;
 mod chunks;
 mod entities;
+mod events;
 pub mod gen;
 mod init;
 mod players;
@@ -59,6 +60,7 @@ use crate::{
 
 pub use chunk::{CountedChunk, MultiChunk};
 pub use entities::{EntitiesIter, EntitiesMap, EntitiesMapRef};
+pub use events::{EventFlow, Events};
 pub use players::{PlayersIter, PlayersMap};
 
 use bbr::{RegionMap, RegionRelPos};

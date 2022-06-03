@@ -2,6 +2,7 @@ use super::Type;
 use crate::{
   block,
   player::{BlockClick, Click},
+  world::EventFlow,
 };
 
 mod impls;
@@ -11,17 +12,17 @@ pub trait Behavior: Send + Sync {
   /// the player clicked on a block. Otherwise, they clicked on air.
   ///
   /// If this returns `true`, then the interaction will be cancelled.
-  fn interact(&self, click: Click) -> bool {
+  fn interact(&self, click: Click) -> EventFlow {
     let _ = click;
-    false
+    EventFlow::Continue
   }
 
   /// Called when the player is about to break a block.
   ///
   /// If this returns `true`, the block will not be broken.
-  fn break_block(&self, click: BlockClick) -> bool {
+  fn break_block(&self, click: BlockClick) -> EventFlow {
     let _ = click;
-    false
+    EventFlow::Continue
   }
 }
 
