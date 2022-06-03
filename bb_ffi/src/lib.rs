@@ -8,7 +8,7 @@ pub struct CStr {
   #[cfg(feature = "host")]
   pub ptr: wasmer::WasmPtr<u8, wasmer::Array>,
   #[cfg(not(feature = "host"))]
-  pub ptr: *const u8,
+  pub ptr: *mut u8,
   pub len: u32,
 }
 
@@ -188,7 +188,7 @@ pub struct CList<T: Copy> {
 #[derive(Clone, Debug)]
 pub struct CList<T> {
   /// The pointer to the first element in this list.
-  pub first: *const T,
+  pub first: *mut T,
   /// The length of this list.
   pub len:   u32,
 }
@@ -233,10 +233,9 @@ extern "C" {
 
   /// Broadcasts the given chat message to all players.
   pub fn bb_broadcast(message: *const CChat);
-  /// Writes the player's username into the given buffer. Returns 1
-  /// if the username won't fit in the buffer, or if the pointer is
-  /// invalid.
-  pub fn bb_player_username(player: *const CUUID, buf: *mut u8, len: u32) -> i32;
+  /// Returns the player's username. The plugin is responsible for freeing this
+  /// memory.
+  pub fn bb_player_username(player: *const CUUID) -> *mut CStr;
   /// Returns the current world for this player.
   pub fn bb_player_world(player: *const CUUID) -> i32;
   /// Sends the given chat message to the player.
@@ -247,8 +246,9 @@ extern "C" {
   /// Sets a block in the world. Returns 1 if the block position is invalid.
   pub fn bb_world_set_block(wid: u32, pos: *const CPos, id: u32) -> i32;
 
-  /// Returns the block data for the given kind.
-  pub fn bb_block_data_for_kind(kind: u32) -> *const CBlockData;
+  /// Returns the block data for the given kind. The plugin is responsible for
+  /// freeing this memory.
+  pub fn bb_block_data_for_kind(kind: u32) -> *mut CBlockData;
 
   /// Returns the number of nanoseconds since this function was called first.
   /// This is used to find the duration of a function.
@@ -280,6 +280,15 @@ impl CStr {
     let boxed_str = s.into_boxed_str();
     let s = Box::leak(boxed_str);
     CStr { ptr: s.as_ptr() as _, len: s.len() as u32 }
+  }
+  #[cfg(not(feature = "host"))]
+  pub fn into_string(self) -> String {
+    // See CList::into_vec
+    if self.ptr.is_null() {
+      String::new()
+    } else {
+      unsafe { String::from_raw_parts(self.ptr, self.len as usize, self.len as usize) }
+    }
   }
 }
 

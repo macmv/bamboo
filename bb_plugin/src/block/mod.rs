@@ -23,10 +23,7 @@ pub struct Type {
 impl Kind {
   pub fn data(&self) -> Box<Data> {
     unsafe {
-      let ptr = bb_ffi::bb_block_data_for_kind(self.id()) as *mut bb_ffi::CBlockData;
-      log::info!("size_of<CBlockData>: {:#?}", std::mem::size_of::<bb_ffi::CBlockData>());
-      log::info!("got ptr: {ptr:#?}");
-      let data = Box::from_raw(ptr);
+      let data = Box::from_raw(bb_ffi::bb_block_data_for_kind(self.id()));
       log::info!("data: {data:#?}");
       todo!();
     }

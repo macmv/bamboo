@@ -7,7 +7,7 @@ use crate::{
   world::WorldManager,
 };
 use bb_common::{math::Pos, util::Chat, version::BlockVersion};
-use bb_ffi::{CBlockData, CChat, CCommand, CParticle, CPos, CUUID};
+use bb_ffi::{CBlockData, CChat, CCommand, CParticle, CPos, CStr, CUUID};
 use log::Level;
 use std::{mem, sync::Arc};
 use wasmer::{
@@ -131,7 +131,7 @@ fn broadcast(env: &Env, message: WasmPtr<CChat>) {
   env.wm.broadcast(Chat::new(s));
 }
 
-fn player_username(env: &Env, id: WasmPtr<CUUID>, buf: WasmPtr<u8>, buf_len: u32) -> i32 {
+fn player_username(env: &Env, id: WasmPtr<CUUID>) -> u32 {
   let mem = env.mem();
   let uuid = match id.deref(mem) {
     Some(id) => id.get(),
@@ -146,20 +146,9 @@ fn player_username(env: &Env, id: WasmPtr<CUUID>, buf: WasmPtr<u8>, buf_len: u32
     Some(p) => p,
     None => return 1,
   };
-  let bytes = player.username().as_bytes();
-  let end = buf.offset() + bytes.len() as u32;
-  if bytes.len() > buf_len as usize {
-    return 1;
-  }
-  if end as usize > mem.size().bytes().0 {
-    return 1;
-  }
-  unsafe {
-    let ptr = mem.view::<u8>().as_ptr().add(buf.offset() as usize) as *mut u8;
-    let slice: &mut [u8] = std::slice::from_raw_parts_mut(ptr, bytes.len());
-    slice.copy_from_slice(bytes);
-  }
-  0
+  let cusername = player.username().as_str().to_ffi(env);
+  let ptr = env.malloc_store(cusername);
+  ptr.offset()
 }
 fn player_send_particle(env: &Env, id: WasmPtr<CUUID>, particle: WasmPtr<CParticle>) {
   let mem = env.mem();
