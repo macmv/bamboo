@@ -301,9 +301,16 @@ impl<T> CList<T> {
     Self { first: slice.as_ptr() as _, len: slice.len() as u32 }
   }
   pub fn into_vec(self) -> Vec<T> {
-    // We create a boxed slice above, so the capacity is shrunk to `len`, so we can
-    // use len for the capacity here, without leaking memory.
-    unsafe { Vec::from_raw_parts(self.first as *mut T, self.len as usize, self.len as usize) }
+    // Any bit layout if CList<T> is valid. Therefore, the pointer can be null. Vec
+    // uses a Unique<T> internally, which can never be null. So, we just return an
+    // empty list here.
+    if self.first.is_null() {
+      vec![]
+    } else {
+      // We create a boxed slice above, so the capacity is shrunk to `len`, so we can
+      // use len for the capacity here, without leaking memory.
+      unsafe { Vec::from_raw_parts(self.first as *mut T, self.len as usize, self.len as usize) }
+    }
   }
 }
 #[cfg(feature = "host")]

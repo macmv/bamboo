@@ -50,7 +50,8 @@ impl Env {
   }
   pub fn malloc_store<T: Copy>(&self, value: T) -> WasmPtr<T> {
     let ptr = self.malloc::<T>();
-    if u64::from(ptr.offset()) > self.mem().data_size() {
+    // This checks that the last byte in our allocated region is valid for writes.
+    if u64::from(ptr.offset()) + mem::size_of::<T>() as u64 - 1 > self.mem().data_size() {
       panic!("invalid ptr");
     }
     // SAFETY: We just validated the `write` call will write to valid memory.
@@ -62,7 +63,10 @@ impl Env {
   }
   pub fn malloc_array_store<T: Copy>(&self, value: &[T]) -> WasmPtr<T, Array> {
     let ptr = self.malloc_array::<T>(value.len().try_into().unwrap());
-    if u64::from(ptr.offset()) > self.mem().data_size() {
+    // This checks that the last byte in the array is within out data.
+    if u64::from(ptr.offset()) + mem::size_of::<T>() as u64 * value.len() as u64 - 1
+      > self.mem().data_size()
+    {
       panic!("invalid ptr");
     }
     // SAFETY: We just validated the `write` call will write to valid memory.
