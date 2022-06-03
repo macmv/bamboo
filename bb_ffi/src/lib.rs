@@ -361,12 +361,8 @@ impl<T: Clone> Clone for CList<T> {
     unsafe {
       let new_ptr =
         std::alloc::alloc(std::alloc::Layout::array::<T>(self.len as usize).unwrap()) as *mut T;
-      if std::mem::needs_drop::<T>() {
-        for i in 0..self.len as usize {
-          new_ptr.add(i).write(self.first.add(i).read().clone());
-        }
-      } else {
-        std::ptr::copy(self.first, new_ptr, self.len as usize);
+      for i in 0..self.len as usize {
+        new_ptr.add(i).write(self.first.add(i).read().clone());
       }
       CList { first: new_ptr, len: self.len }
     }
