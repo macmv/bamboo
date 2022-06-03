@@ -71,6 +71,20 @@ pub fn generate_ty(def: &BlockDef) -> String {
         }
       });
     });
+    gen.write("pub fn from_id(id: u32) -> Option<Self>");
+    gen.write_block(|gen| {
+      gen.write("match id");
+      gen.write_block(|gen| {
+        for (id, b) in def.blocks.iter().enumerate() {
+          gen.write(&id.to_string());
+          gen.write(" => ");
+          gen.write("Some(Self::");
+          gen.write(&b.name.to_case(Case::Pascal));
+          gen.write_line("),");
+        }
+        gen.write_line("_ => None,");
+      });
+    });
   });
   gen.write_line("/// Generates a table from all block kinds to any block data that kind has.");
   gen.write_line("/// This does not include cross-versioning data. This includes information like");

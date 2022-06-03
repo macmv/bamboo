@@ -1,5 +1,5 @@
 use super::{Particle, Type};
-use crate::plugin::wasm::FromFfi;
+use crate::{block, plugin::wasm::FromFfi};
 use bb_common::math::FPos;
 use bb_ffi::{CParticle, CParticleType};
 use bb_transfer::MessageReader;
@@ -27,11 +27,23 @@ impl FromFfi for Type {
     let data = Vec::from_ffi(mem, ffi.data);
     let mut r = MessageReader::new(&data);
     match &mut ty {
+      Type::Block(block) => *block = block::Kind::from_id(r.read_u32().unwrap()).unwrap(),
+      Type::BlockMarker(block) => *block = block::Kind::from_id(r.read_u32().unwrap()).unwrap(),
+      Type::FallingDust(block) => *block = block::Kind::from_id(r.read_u32().unwrap()).unwrap(),
       Type::Dust(color, scale) => {
         color.r = r.read_u8().unwrap();
         color.g = r.read_u8().unwrap();
         color.b = r.read_u8().unwrap();
         *scale = r.read_f32().unwrap();
+      }
+      Type::DustColorTransition(from, to, scale) => {
+        from.r = r.read_u8().unwrap();
+        from.g = r.read_u8().unwrap();
+        from.b = r.read_u8().unwrap();
+        *scale = r.read_f32().unwrap();
+        to.r = r.read_u8().unwrap();
+        to.g = r.read_u8().unwrap();
+        to.b = r.read_u8().unwrap();
       }
       _ => {}
     }
