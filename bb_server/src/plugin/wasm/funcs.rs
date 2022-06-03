@@ -17,6 +17,10 @@ pub struct Env {
   #[wasmer(export)]
   pub memory: LazyInit<Memory>,
   pub wm:     Arc<WorldManager>,
+  /// The version of this plugin. Plugins will send us things like block ids,
+  /// and we need to know how to convert them to the server's version. This
+  /// allows us to load out-of-date plugins on a newer server.
+  pub ver:    BlockVersion,
   pub name:   Arc<String>,
 }
 
@@ -125,7 +129,7 @@ fn player_send_particle(env: &Env, id: WasmPtr<CUUID>, particle: WasmPtr<CPartic
     Some(p) => p.get(),
     None => return,
   };
-  let particle = Particle::from_ffi(&mem, cparticle);
+  let particle = Particle::from_ffi(env, cparticle);
   player.send_particle(particle);
 }
 
@@ -147,14 +151,14 @@ fn player_world(env: &Env, player: WasmPtr<CUUID>) -> i32 {
   0
 }
 
-fn world_set_block(env: &Env, wid: u32, pos: WasmPtr<CPos>, id: u32, version: u32) -> i32 {
+fn world_set_block(env: &Env, wid: u32, pos: WasmPtr<CPos>, id: u32) -> i32 {
   let mem = env.mem();
   let pos = match pos.deref(mem) {
     Some(p) => p.get(),
     None => return -1,
   };
   let world = env.wm.default_world();
-  let ty = env.wm.block_converter().type_from_id(id, BlockVersion::latest());
+  let ty = env.wm.block_converter().type_from_id(id, env.ver);
   match world.set_block(Pos::new(pos.x, pos.y, pos.z), ty) {
     Ok(_) => 0,
     Err(_) => -1,
@@ -207,7 +211,7 @@ fn time_since_start(env: &Env) -> u64 {
 }
 
 pub fn imports(store: &Store, wm: Arc<WorldManager>, name: String) -> ImportObject {
-  let env = Env { memory: LazyInit::new(), wm, name: Arc::new(name) };
+  let env = Env { memory: LazyInit::new(), wm, ver: BlockVersion::V1_8, name: Arc::new(name) };
   imports! {
     "env" => {
       "bb_log" => Function::new_native_with_env(&store, env.clone(), log),

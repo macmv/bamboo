@@ -1,5 +1,9 @@
 use super::{Particle, Type};
-use crate::{block, plugin::wasm::FromFfi};
+use crate::{
+  block,
+  plugin::wasm::{Env, FromFfi},
+  world::WorldManager,
+};
 use bb_common::math::FPos;
 use bb_ffi::{CParticle, CParticleType};
 use bb_transfer::MessageReader;
@@ -8,28 +12,34 @@ use wasmer::Memory;
 impl FromFfi for Particle {
   type Ffi = CParticle;
 
-  fn from_ffi(mem: &Memory, ffi: CParticle) -> Self {
+  fn from_ffi(env: &Env, ffi: CParticle) -> Self {
     Particle {
-      ty:            Type::from_ffi(mem, ffi.ty),
-      pos:           FPos::from_ffi(mem, ffi.pos),
-      offset:        FPos::from_ffi(mem, ffi.offset),
+      ty:            Type::from_ffi(env, ffi.ty),
+      pos:           FPos::from_ffi(env, ffi.pos),
+      offset:        FPos::from_ffi(env, ffi.offset),
       count:         ffi.count,
       data:          ffi.data,
-      long_distance: bool::from_ffi(mem, ffi.long_distance),
+      long_distance: bool::from_ffi(env, ffi.long_distance),
     }
   }
 }
 impl FromFfi for Type {
   type Ffi = CParticleType;
 
-  fn from_ffi(mem: &Memory, ffi: CParticleType) -> Self {
+  fn from_ffi(env: &Env, ffi: CParticleType) -> Self {
     let mut ty = Type::from_id(ffi.ty).unwrap();
-    let data = Vec::from_ffi(mem, ffi.data);
+    let data = Vec::from_ffi(env, ffi.data);
     let mut r = MessageReader::new(&data);
     match &mut ty {
-      Type::Block(block) => *block = block::Kind::from_id(r.read_u32().unwrap()).unwrap(),
-      Type::BlockMarker(block) => *block = block::Kind::from_id(r.read_u32().unwrap()).unwrap(),
-      Type::FallingDust(block) => *block = block::Kind::from_id(r.read_u32().unwrap()).unwrap(),
+      Type::Block(block) => {
+        *block = env.wm.block_converter().type_from_id(r.read_u32().unwrap(), env.ver)
+      }
+      Type::BlockMarker(block) => {
+        *block = env.wm.block_converter().type_from_id(r.read_u32().unwrap(), env.ver)
+      }
+      Type::FallingDust(block) => {
+        *block = env.wm.block_converter().type_from_id(r.read_u32().unwrap(), env.ver)
+      }
       Type::Dust(color, scale) => {
         color.r = r.read_u8().unwrap();
         color.g = r.read_u8().unwrap();

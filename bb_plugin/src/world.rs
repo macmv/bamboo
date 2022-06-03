@@ -13,7 +13,6 @@ impl World {
         self.wid,
         &bb_ffi::CPos { x: pos.x(), y: pos.y(), z: pos.z() },
         id,
-        0,
       );
     }
   }

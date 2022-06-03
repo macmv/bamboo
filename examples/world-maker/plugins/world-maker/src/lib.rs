@@ -2,6 +2,7 @@
 extern crate bb_plugin;
 
 use bb_plugin::{
+  block,
   command::Command,
   math::FPos,
   particle,
@@ -20,7 +21,7 @@ use bb_plugin::{math::Pos, player::Player};
 
 fn on_place(player: Player, pos: Pos) -> bool {
   player.send_particle(Particle {
-    ty:            particle::Type::Dust(Color { r: 255, g: 255, b: 0 }, 1.0),
+    ty:            particle::Type::BlockMarker(block::Kind::Stone.data().default_type()),
     pos:           FPos::new(pos.x as f64, pos.y as f64 + 1.0, pos.z as f64),
     offset:        FPos::new(0.0, 0.0, 0.0),
     count:         1,

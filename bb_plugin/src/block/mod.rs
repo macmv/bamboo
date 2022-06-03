@@ -20,7 +20,26 @@ pub struct Type {
   state_props:     [u32; STATE_PROPS_LEN],
 }
 
+impl Kind {
+  pub fn data(&self) -> Box<Data> {
+    unsafe {
+      let data = Box::from_raw(bb_ffi::bb_block_data_for_kind(self.id()) as *mut bb_ffi::CBlockData);
+      dbg!(data);
+      todo!();
+    }
+  }
+}
+
 impl Type {
+  /// Returns the type for air.
+  pub fn air() -> Type {
+    Type {
+      kind:        Kind::Air,
+      state:       0,
+      props:       &[],
+      state_props: [0; STATE_PROPS_LEN],
+    }
+  }
   /// Returns the block kind that this state comes from.
   pub fn kind(&self) -> Kind { self.kind }
   /// Gets the block id of this type. This id is for the latest version of the

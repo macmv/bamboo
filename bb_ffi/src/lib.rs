@@ -112,6 +112,67 @@ pub struct CParticleType {
   pub data: CList<u8>,
 }
 
+#[ctype]
+#[derive(Debug)]
+pub struct CBlockData {
+  /// The kind for this data.
+  pub kind:         u32,
+  /// The name of this block. This is something like `grass_block`.
+  pub name:         CStr,
+  /// The material used to make this block. This controls things like map color,
+  /// sound, what tool breaks the block, etc. Prismarine doesn't have a very
+  /// good material value, so this needs to be updated to more complete data.
+  pub material:     u32,
+  /// Amount of time it takes to break this block.
+  pub hardness:     f32,
+  /// How difficult this is to break with an explosion.
+  pub resistance:   f32,
+  /// A list of item ids this block can drop.
+  pub drops:        CList<CItemDrop>,
+  /// If this is true, then clients can (at least partially) see through this
+  /// block.
+  pub transparent:  CBool,
+  /// This is how much light this block removes. A value of 15 means it blocks
+  /// all light, and a value of 0 means it blocks no light.
+  pub filter_light: u8,
+  /// The amount of light this block emits (0-15).
+  pub emit_light:   u8,
+
+  /// The latest version state id. This is the lowest possible state for this
+  /// block. It is used to offset the state calculation for properties.
+  pub state:         u32,
+  /// A list of vanilla tags for this block. Plugins should be able to add tags
+  /// in the future. These tags don't include `minecraft:` at the start.
+  pub tags:          CList<CStr>,
+  /// All the properties on this block. These are stored so that it is easy to
+  /// convert a single property on a block.
+  pub props:         CList<CBlockProp>,
+  /// The default type. Each value is an index into that property.
+  pub default_props: CList<u32>,
+}
+
+#[ctype]
+#[derive(Debug)]
+pub struct CItemDrop {
+  pub item: CStr,
+  pub min:  i32,
+  pub max:  i32,
+}
+
+#[ctype]
+#[derive(Debug)]
+pub struct CBlockProp {
+  pub name: CStr,
+  pub kind: CBlockPropKind,
+}
+
+#[cenum]
+pub enum CBlockPropKind {
+  Bool,
+  Enum(CList<CStr>),
+  Int { min: u32, max: u32 },
+}
+
 #[cfg(feature = "host")]
 #[repr(C)]
 #[derive(Clone, Debug)]
@@ -184,7 +245,10 @@ extern "C" {
   pub fn bb_player_send_particle(player: *const CUUID, particle: *const CParticle);
 
   /// Sets a block in the world. Returns 1 if the block position is invalid.
-  pub fn bb_world_set_block(wid: u32, pos: *const CPos, id: u32, version: u32) -> i32;
+  pub fn bb_world_set_block(wid: u32, pos: *const CPos, id: u32) -> i32;
+
+  /// Returns the block data for the given kind.
+  pub fn bb_block_data_for_kind(kind: u32) -> *const CBlockData;
 
   /// Returns the number of nanoseconds since this function was called first.
   /// This is used to find the duration of a function.

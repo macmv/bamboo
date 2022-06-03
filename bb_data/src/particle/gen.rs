@@ -12,9 +12,9 @@ pub fn generate(def: Vec<(Version, ParticleDef)>, dir: &Path) -> io::Result<()> 
 
 fn write_enum_data(gen: &mut CodeGen, name: &str) {
   match name {
-    "block" => gen.write("(block::Kind)"),
-    "block_marker" => gen.write("(block::Kind)"),
-    "falling_dust" => gen.write("(block::Kind)"),
+    "block" => gen.write("(block::Type)"),
+    "block_marker" => gen.write("(block::Type)"),
+    "falling_dust" => gen.write("(block::Type)"),
     "dust" => gen.write("(Color, f32)"),
     "dust_color_transition" => gen.write("(Color, Color, f32)"),
     _ => {}
@@ -32,9 +32,9 @@ fn write_enum_match(gen: &mut CodeGen, name: &str) {
 }
 fn write_enum_default(gen: &mut CodeGen, name: &str) {
   match name {
-    "block" => gen.write("(block::Kind::Air)"),
-    "block_marker" => gen.write("(block::Kind::Air)"),
-    "falling_dust" => gen.write("(block::Kind::Air)"),
+    "block" => gen.write("(block::Type::air())"),
+    "block_marker" => gen.write("(block::Type::air())"),
+    "falling_dust" => gen.write("(block::Type::air())"),
     "dust" => gen.write("(Color::default(), 1.0)"),
     "dust_color_transition" => gen.write("(Color::default(), Color::default(), 1.0)"),
     _ => {}

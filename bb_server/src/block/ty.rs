@@ -17,6 +17,15 @@ pub struct Type {
 }
 
 impl Type {
+  /// Returns the type for air.
+  pub fn air() -> Type {
+    Type {
+      kind:        Kind::Air,
+      state:       0,
+      props:       &[],
+      state_props: [0; STATE_PROPS_LEN],
+    }
+  }
   /// Returns the block kind that this state comes from.
   pub fn kind(&self) -> Kind { self.kind }
   /// Gets the block id of this type. This id is for the latest version of the

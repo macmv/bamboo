@@ -76,7 +76,7 @@ pub fn cenum(_args: TokenStream, input: TokenStream) -> TokenStream {
   let fields = input.variants.iter().map(|v| Field {
     attrs:       vec![],
     vis:         Visibility::Public(VisPublic { pub_token: Token![pub](Span::call_site()) }),
-    ident:       Some(Ident::new(&to_lower(&v.ident.to_string()), v.ident.span())),
+    ident:       Some(Ident::new(&format!("f_{}", to_lower(&v.ident.to_string())), v.ident.span())),
     colon_token: Some(Token![:](Span::call_site())),
     ty:          {
       let ty = Type::Tuple(TypeTuple {
@@ -121,7 +121,8 @@ pub fn cenum(_args: TokenStream, input: TokenStream) -> TokenStream {
     },
   };
   let new_funcs = input.variants.iter().enumerate().map(|(variant, v)| {
-    let name = Ident::new(&to_lower(&v.ident.to_string()), v.ident.span());
+    let name = to_lower(&v.ident.to_string());
+    let field = Ident::new(&format!("f_{name}"), v.ident.span());
     let new_name = Ident::new(&format!("new_{name}"), v.ident.span());
     let ty = Type::Tuple(TypeTuple {
       paren_token: Paren { span: v.fields.span() },
@@ -138,22 +139,30 @@ pub fn cenum(_args: TokenStream, input: TokenStream) -> TokenStream {
       pub fn #new_name(value: #ty) -> Self {
         Self {
           variant: #variant,
-          data: #data_name { #name: #convert_manually_drop },
+          data: #data_name { #field: #convert_manually_drop },
         }
       }
     )
   });
   let as_funcs = input.variants.iter().enumerate().map(|(variant, v)| {
-    let name = Ident::new(&to_lower(&v.ident.to_string()), v.ident.span());
+    let name = to_lower(&v.ident.to_string());
+    let field = Ident::new(&format!("f_{name}"), v.ident.span());
     let as_name = Ident::new(&format!("as_{name}"), v.ident.span());
-    let ty = &v.fields;
+    let ty = Type::Tuple(TypeTuple {
+      paren_token: Paren { span: v.fields.span() },
+      elems:       {
+        let mut punct = Punctuated::<Type, Token![,]>::new();
+        punct.extend(v.fields.iter().map(|field| field.ty.clone()));
+        punct
+      },
+    });
     // Deref will convert the `ManuallyDrop` types into references here.
     quote!(
       #[allow(unused_parens)]
       pub fn #as_name(&self) -> Option<&#ty> {
         if self.variant == #variant {
           unsafe {
-            Some(&self.data.#name)
+            Some(&self.data.#field)
           }
         } else {
           None
@@ -162,7 +171,8 @@ pub fn cenum(_args: TokenStream, input: TokenStream) -> TokenStream {
     )
   });
   let into_funcs = input.variants.iter().enumerate().map(|(variant, v)| {
-    let name = Ident::new(&to_lower(&v.ident.to_string()), v.ident.span());
+    let name = to_lower(&v.ident.to_string());
+    let field = Ident::new(&format!("f_{name}"), v.ident.span());
     let into_name = Ident::new(&format!("into_{name}"), v.ident.span());
     let ty = Type::Tuple(TypeTuple {
       paren_token: Paren { span: v.fields.span() },
@@ -173,9 +183,9 @@ pub fn cenum(_args: TokenStream, input: TokenStream) -> TokenStream {
       },
     });
     let convert_manually_drop = if is_copy(&ty) {
-      quote!(self.data.#name)
+      quote!(self.data.#field)
     } else {
-      quote!(::std::mem::ManuallyDrop::into_inner(self.data.#name))
+      quote!(::std::mem::ManuallyDrop::into_inner(self.data.#field))
     };
     quote!(
       #[allow(unused_parens)]
@@ -191,9 +201,16 @@ pub fn cenum(_args: TokenStream, input: TokenStream) -> TokenStream {
     )
   });
   let clone_match_cases = input.variants.iter().enumerate().map(|(variant, v)| {
-    let field = Ident::new(&to_lower(&v.ident.to_string()), v.ident.span());
+    let field = Ident::new(&format!("f_{}", to_lower(&v.ident.to_string())), v.ident.span());
     quote!(
       #variant => #data_name { #field: self.data.#field.clone() },
+    )
+  });
+  let debug_match_cases = input.variants.iter().enumerate().map(|(variant, v)| {
+    let field = Ident::new(&format!("f_{}", to_lower(&v.ident.to_string())), v.ident.span());
+    let fmt_str = format!("{}({{:?}})", v.ident);
+    quote!(
+      #variant => write!(f, #fmt_str, self.data.#field.clone()),
     )
   });
 
@@ -283,6 +300,16 @@ pub fn cenum(_args: TokenStream, input: TokenStream) -> TokenStream {
               #(#clone_match_cases)*
               _ => ::std::mem::MaybeUninit::uninit().assume_init(),
             },
+          }
+        }
+      }
+    }
+    impl ::std::fmt::Debug for #name {
+      fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
+        unsafe {
+          match self.variant {
+            #(#debug_match_cases)*
+            _ => write!(f, "<unknown variant {}>", self.variant),
           }
         }
       }
