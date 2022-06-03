@@ -42,7 +42,7 @@ fn on_tick() {
         for z in -10..10 {
           let look = FPos::new(x as f64 / 10.0, y as f64 / 10.0, z as f64 / 10.0);
           let from = pos + FPos::new(0.0, 1.5, 0.0);
-          let to = from + FPos::new(look.x * 5.0, look.y * 5.0, look.z * 5.0);
+          let to = from + FPos::new(look.x * 50.0, look.y * 50.0, look.z * 50.0);
 
           if let Some(pos) = world.raycast(from, to, true) {
             player.send_particle(Particle {
