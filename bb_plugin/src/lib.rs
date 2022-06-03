@@ -129,3 +129,15 @@ extern "C" fn on_block_place(id: ffi::CUUID, x: i32, y: i32, z: i32) -> bool {
     true
   }
 }
+
+callback!(set_on_tick, ON_TICK, Fn());
+#[no_mangle]
+extern "C" fn on_tick() {
+  // If we fail to lock, we just don't process this update. It kinda sucks, but
+  // parking_lot will panic if we block.
+  if let Some(lock) = ON_TICK.try_lock() {
+    if let Some(cb) = lock.as_ref() {
+      cb()
+    }
+  }
+}

@@ -150,6 +150,25 @@ fn player_username(env: &Env, id: WasmPtr<CUUID>) -> u32 {
   let ptr = env.malloc_store(cusername);
   ptr.offset()
 }
+fn player_pos(env: &Env, id: WasmPtr<CUUID>) -> u32 {
+  let mem = env.mem();
+  let uuid = match id.deref(mem) {
+    Some(id) => id.get(),
+    None => return 0,
+  };
+  let player = match env.wm.get_player(bb_common::util::UUID::from_u128(
+    (uuid.bytes[3] as u128) << (3 * 32)
+      | (uuid.bytes[2] as u128) << (2 * 32)
+      | (uuid.bytes[1] as u128) << 32
+      | uuid.bytes[0] as u128,
+  )) {
+    Some(p) => p,
+    None => return 0,
+  };
+  let cpos = player.pos().to_ffi(env);
+  let ptr = env.malloc_store(cpos);
+  ptr.offset()
+}
 fn player_send_particle(env: &Env, id: WasmPtr<CUUID>, particle: WasmPtr<CParticle>) {
   let mem = env.mem();
   let uuid = match id.deref(mem) {
@@ -203,6 +222,13 @@ fn world_set_block(env: &Env, wid: u32, pos: WasmPtr<CPos>, id: u32) -> i32 {
     Ok(_) => 0,
     Err(_) => -1,
   }
+}
+fn world_players(env: &Env, wid: u32) -> u32 {
+  let world = env.wm.default_world();
+  let players: Vec<_> = world.players().iter().map(|p| p.id()).collect();
+  let cplayers = players.as_slice().to_ffi(env);
+  let ptr = env.malloc_store(cplayers);
+  ptr.offset()
 }
 fn block_data_for_kind(env: &Env, block: u32) -> u32 {
   // TODO: Convert block to newer version
@@ -272,9 +298,11 @@ pub fn imports(store: &Store, wm: Arc<WorldManager>, name: String) -> ImportObje
       "bb_log" => Function::new_native_with_env(&store, env.clone(), log),
       "bb_broadcast" => Function::new_native_with_env(&store, env.clone(), broadcast),
       "bb_player_username" => Function::new_native_with_env(&store, env.clone(), player_username),
+      "bb_player_pos" => Function::new_native_with_env(&store, env.clone(), player_pos),
       "bb_player_world" => Function::new_native_with_env(&store, env.clone(), player_world),
       "bb_player_send_particle" => Function::new_native_with_env(&store, env.clone(), player_send_particle),
       "bb_world_set_block" => Function::new_native_with_env(&store, env.clone(), world_set_block),
+      "bb_world_players" => Function::new_native_with_env(&store, env.clone(), world_players),
       "bb_block_data_for_kind" => Function::new_native_with_env(&store, env.clone(), block_data_for_kind),
       "bb_add_command" => Function::new_native_with_env(&store, env.clone(), add_command),
       "bb_time_since_start" => Function::new_native_with_env(&store, env.clone(), time_since_start),

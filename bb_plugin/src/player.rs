@@ -1,6 +1,8 @@
 use crate::{particle::Particle, world::World, IntoFfi};
+use bb_common::math::FPos;
 use bb_ffi::CUUID;
 
+#[derive(Debug)]
 pub struct Player {
   id: CUUID,
 }
@@ -28,6 +30,12 @@ impl Player {
     unsafe {
       let cparticle = particle.into_ffi();
       bb_ffi::bb_player_send_particle(&self.id, &cparticle);
+    }
+  }
+  pub fn pos(&self) -> FPos {
+    unsafe {
+      let cpos = Box::leak(Box::from_raw(bb_ffi::bb_player_pos(&self.id)));
+      FPos { x: cpos.x, y: cpos.y, z: cpos.z }
     }
   }
 }

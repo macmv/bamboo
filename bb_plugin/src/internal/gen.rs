@@ -54,8 +54,6 @@ extern "C" fn generate_chunk_and_lock(name: *const i8, x: i32, z: i32) -> *const
   std::mem::forget(lock);
   ptr
 }
-#[no_mangle]
-extern "C" fn tick() {}
 
 #[no_mangle]
 extern "C" fn unlock_generated_chunk() {

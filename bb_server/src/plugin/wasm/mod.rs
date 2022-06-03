@@ -177,7 +177,7 @@ impl PluginImpl for Plugin {
   }
   fn call_global(&self, ev: GlobalServerEvent) -> Result<(), CallError> {
     match ev {
-      GlobalServerEvent::Tick => self.call("tick", ())?,
+      GlobalServerEvent::Tick => self.call("on_tick", ())?,
       GlobalServerEvent::GenerateChunk { generator, chunk, pos } => {
         self.generate_chunk(&generator, chunk, pos)?
       }

@@ -215,6 +215,10 @@ pub enum CArg {
   BlockState(u32),
 }
 
+// All functions that return a `*mut` pointer let the plugin free the memory.
+// They should be used by simply passing that value into `Box::from_raw`, and
+// then letting the box clean up the memory.
+
 extern "C" {
   /// Logs the given message.
   pub fn bb_log(
@@ -235,9 +239,10 @@ extern "C" {
 
   /// Broadcasts the given chat message to all players.
   pub fn bb_broadcast(message: *const CChat);
-  /// Returns the player's username. The plugin is responsible for freeing this
-  /// memory.
+  /// Returns the player's username.
   pub fn bb_player_username(player: *const CUUID) -> *mut CStr;
+  /// Returns the player's position.
+  pub fn bb_player_pos(player: *const CUUID) -> *mut CFPos;
   /// Returns the current world for this player.
   pub fn bb_player_world(player: *const CUUID) -> i32;
   /// Sends the given chat message to the player.
@@ -248,8 +253,10 @@ extern "C" {
   /// Sets a block in the world. Returns 1 if the block position is invalid.
   pub fn bb_world_set_block(wid: u32, pos: *const CPos, id: u32) -> i32;
 
-  /// Returns the block data for the given kind. The plugin is responsible for
-  /// freeing this memory.
+  /// Sets a block in the world. Returns 1 if the block position is invalid.
+  pub fn bb_world_players(wid: u32) -> *mut CList<CUUID>;
+
+  /// Returns the block data for the given kind.
   pub fn bb_block_data_for_kind(kind: u32) -> *mut CBlockData;
 
   /// Returns the number of nanoseconds since this function was called first.

@@ -2,9 +2,10 @@ use super::Env;
 use crate::world::WorldManager;
 use bb_common::{
   math::{FPos, Pos},
+  util::UUID,
   version::ProtocolVersion,
 };
-use bb_ffi::{CBool, CFPos, CList, CPos, CStr};
+use bb_ffi::{CBool, CFPos, CList, CPos, CStr, CUUID};
 use std::mem;
 use wasmer::Memory;
 
@@ -47,6 +48,11 @@ impl FromFfi for FPos {
 
   fn from_ffi(_: &Env, ffi: CFPos) -> Self { FPos { x: ffi.x, y: ffi.y, z: ffi.z } }
 }
+impl ToFfi for FPos {
+  type Ffi = CFPos;
+
+  fn to_ffi(&self, _: &Env) -> CFPos { CFPos { x: self.x, y: self.y, z: self.z } }
+}
 impl FromFfi for bool {
   type Ffi = CBool;
 
@@ -72,6 +78,7 @@ where
 impl<T> ToFfi for &[T]
 where
   T: ToFfi,
+  T::Ffi: std::fmt::Debug,
 {
   type Ffi = CList<T::Ffi>;
 
@@ -89,13 +96,28 @@ where
     }
     // SAFETY: We just validated all of ptr..ptr + self.len is valid.
     unsafe {
-      let data_ptr = env.mem().data_ptr() as *mut T::Ffi;
+      // Call add on *mut u8, not *mut T::Ffi.
+      let data_ptr = env.mem().data_ptr().add(ptr.offset() as usize) as *mut T::Ffi;
       for (i, elem) in self.iter().enumerate() {
         let ptr = data_ptr.add(i);
         std::ptr::write(ptr, elem.to_ffi(env));
       }
     }
     CList { first: ptr, len: self.len() as u32 }
+  }
+}
+impl ToFfi for UUID {
+  type Ffi = CUUID;
+
+  fn to_ffi(&self, env: &Env) -> CUUID {
+    CUUID {
+      bytes: [
+        self.as_u128() as u32,
+        (self.as_u128() >> (1 * 32)) as u32,
+        (self.as_u128() >> (2 * 32)) as u32,
+        (self.as_u128() >> (3 * 32)) as u32,
+      ],
+    }
   }
 }
 impl ToFfi for &'_ str {
