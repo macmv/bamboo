@@ -22,7 +22,7 @@ pub struct Type<'a> {
 impl Kind {
   pub fn data(&self) -> Data {
     let data = unsafe { Box::from_raw(bb_ffi::bb_block_data_for_kind(self.id())) };
-    Data {
+    let res = Data {
       kind:          Kind::from_id(data.kind).unwrap(),
       name:          data.name.into_string(),
       material:      Material::Air,
@@ -37,7 +37,9 @@ impl Kind {
       tags:          vec![],
       props:         vec![],
       default_props: vec![],
-    }
+    };
+    log::info!("{res:#?}");
+    res
   }
 }
 

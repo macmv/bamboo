@@ -3,7 +3,8 @@
 use bb_ffi_macros::{cenum, ctype};
 
 #[repr(C)]
-#[derive(Debug, Clone)]
+#[derive(Debug)]
+#[cfg_attr(feature = "host", derive(Clone))]
 pub struct CStr {
   #[cfg(feature = "host")]
   pub ptr: wasmer::WasmPtr<u8, wasmer::Array>,
@@ -185,7 +186,8 @@ pub struct CList<T: Copy> {
 
 #[cfg(not(feature = "host"))]
 #[repr(C)]
-#[derive(Clone, Debug)]
+#[derive(Debug)]
+#[cfg_attr(feature = "host", derive(Clone))]
 pub struct CList<T> {
   /// The pointer to the first element in this list.
   pub first: *mut T,
@@ -283,11 +285,12 @@ impl CStr {
   }
   #[cfg(not(feature = "host"))]
   pub fn into_string(self) -> String {
+    let me = std::mem::ManuallyDrop::new(self);
     // See CList::into_vec
-    if self.ptr.is_null() {
+    if me.ptr.is_null() {
       String::new()
     } else {
-      let vec = unsafe { Vec::from_raw_parts(self.ptr, self.len as usize, self.len as usize) };
+      let vec = unsafe { Vec::from_raw_parts(me.ptr, me.len as usize, me.len as usize) };
       // We usually won't have to allocate. However, if we do get invalid utf8, we
       // would still like to get a string back. So, we fall back to from_utf8_lossy.
       match String::from_utf8(vec) {
@@ -298,12 +301,23 @@ impl CStr {
   }
 }
 
+#[cfg(not(feature = "host"))]
+impl Clone for CStr {
+  fn clone(&self) -> Self {
+    unsafe {
+      let new_ptr = std::alloc::alloc(std::alloc::Layout::array::<u8>(self.len as usize).unwrap());
+      std::ptr::copy(self.ptr, new_ptr, self.len as usize);
+      CStr { ptr: new_ptr, len: self.len }
+    }
+  }
+}
+
 // On the host, this refers to data in wasm, so we don't want to free it.
 #[cfg(not(feature = "host"))]
 impl Drop for CStr {
   fn drop(&mut self) {
     unsafe {
-      String::from_raw_parts(self.ptr as *mut u8, self.len as usize, self.len as usize);
+      Vec::from_raw_parts(self.ptr, self.len as usize, self.len as usize);
     }
   }
 }
@@ -316,15 +330,18 @@ impl<T> CList<T> {
     Self { first: slice.as_ptr() as _, len: slice.len() as u32 }
   }
   pub fn into_vec(self) -> Vec<T> {
+    let me = std::mem::ManuallyDrop::new(self);
     // Any bit layout if CList<T> is valid. Therefore, the pointer can be null. Vec
     // uses a Unique<T> internally, which can never be null. So, we just return an
     // empty list here.
-    if self.first.is_null() {
+    if me.first.is_null() {
       vec![]
     } else {
       // We create a boxed slice above, so the capacity is shrunk to `len`, so we can
       // use len for the capacity here, without leaking memory.
-      unsafe { Vec::from_raw_parts(self.first as *mut T, self.len as usize, self.len as usize) }
+      let vec =
+        unsafe { Vec::from_raw_parts(me.first as *mut T, me.len as usize, me.len as usize) };
+      vec
     }
   }
 }
@@ -335,6 +352,23 @@ impl<T: Copy> CList<T> {
       Some(unsafe { (self.first.offset() as *const T).add(index as usize) })
     } else {
       None
+    }
+  }
+}
+#[cfg(not(feature = "host"))]
+impl<T: Clone> Clone for CList<T> {
+  fn clone(&self) -> Self {
+    unsafe {
+      let new_ptr =
+        std::alloc::alloc(std::alloc::Layout::array::<T>(self.len as usize).unwrap()) as *mut T;
+      if std::mem::needs_drop::<T>() {
+        for i in 0..self.len as usize {
+          new_ptr.add(i).write(self.first.add(i).read().clone());
+        }
+      } else {
+        std::ptr::copy(self.first, new_ptr, self.len as usize);
+      }
+      CList { first: new_ptr, len: self.len }
     }
   }
 }
