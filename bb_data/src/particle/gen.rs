@@ -102,6 +102,21 @@ pub fn generate_ty(def: &ParticleDef) -> String {
         }
       });
     });
+    gen.write("pub fn from_id(id: u32) -> Option<Self>");
+    gen.write_block(|gen| {
+      gen.write("match id");
+      gen.write_block(|gen| {
+        for (id, b) in def.particles.iter().enumerate() {
+          gen.write(&id.to_string());
+          gen.write(" => ");
+          gen.write("Some(Self::");
+          gen.write(&b.name.to_case(Case::Pascal));
+          write_enum_default(gen, &b.name);
+          gen.write_line("),");
+        }
+        gen.write_line("_ => None,");
+      });
+    });
   });
   gen.write_line("/// Generates a table from all particles kinds to any item data that kind has.");
   gen.write_line("/// This does not include cross-versioning data. This includes information like");

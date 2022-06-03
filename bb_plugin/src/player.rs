@@ -1,4 +1,4 @@
-use crate::world::World;
+use crate::{particle::Particle, world::World, IntoFfi};
 use bb_ffi::CUUID;
 use std::ffi::CStr;
 
@@ -25,6 +25,12 @@ impl Player {
       // We need null terminator, so we make use this doesn't overwrite the last byte.
       bb_ffi::bb_player_username(&self.id, buf.as_mut_ptr(), buf.len() as u32 - 1);
       CStr::from_ptr(buf.as_ptr() as *const _).to_str().unwrap().into()
+    }
+  }
+  pub fn send_particle(&self, particle: Particle) {
+    unsafe {
+      let cparticle = particle.into_ffi();
+      bb_ffi::bb_player_send_particle(&self.id, &cparticle);
     }
   }
 }

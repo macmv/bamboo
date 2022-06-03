@@ -1,6 +1,9 @@
+mod ffi;
 mod funcs;
 mod input;
 mod output;
+
+pub use ffi::FromFfi;
 
 use super::{CallError, GlobalServerEvent, PluginImpl, PluginReply, ServerEvent, ServerRequest};
 use crate::{

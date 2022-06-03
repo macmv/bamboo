@@ -81,33 +81,25 @@ impl IntoFfi for Type {
 
   fn into_ffi(self) -> bb_ffi::CParticleType {
     let mut data = vec![];
-    let mut buf = MessageWriter::new(&mut data);
+    let mut w = MessageWriter::new(&mut data);
     match self {
-      Self::Block(block) => buf.write_struct(1, |w| w.write_u32(block.id())).unwrap(),
-      Self::BlockMarker(block) => buf.write_struct(1, |w| w.write_u32(block.id())).unwrap(),
-      Self::FallingDust(block) => buf.write_struct(1, |w| w.write_u32(block.id())).unwrap(),
+      Self::Block(block) => w.write_u32(block.id()).unwrap(),
+      Self::BlockMarker(block) => w.write_u32(block.id()).unwrap(),
+      Self::FallingDust(block) => w.write_u32(block.id()).unwrap(),
       Self::Dust(color, scale) => {
-        buf
-          .write_struct(4, |w| {
-            w.write_u8(color.r)?; // r
-            w.write_u8(color.g)?; // g
-            w.write_u8(color.b)?; // b
-            w.write_f32(scale) // scale
-          })
-          .unwrap();
+        w.write_u8(color.r).unwrap(); // r
+        w.write_u8(color.g).unwrap(); // g
+        w.write_u8(color.b).unwrap(); // b
+        w.write_f32(scale).unwrap(); // scale
       }
       Self::DustColorTransition(from, to, scale) => {
-        buf
-          .write_struct(7, |w| {
-            w.write_u8(from.r)?; // r
-            w.write_u8(from.g)?; // g
-            w.write_u8(from.b)?; // b
-            w.write_f32(scale)?; // scale
-            w.write_u8(to.r)?; // r
-            w.write_u8(to.g)?; // g
-            w.write_u8(to.b) // b
-          })
-          .unwrap();
+        w.write_u8(from.r).unwrap(); // r
+        w.write_u8(from.g).unwrap(); // g
+        w.write_u8(from.b).unwrap(); // b
+        w.write_f32(scale).unwrap(); // scale
+        w.write_u8(to.r).unwrap(); // r
+        w.write_u8(to.g).unwrap(); // g
+        w.write_u8(to.b).unwrap(); // b
       }
       _ => {}
     }

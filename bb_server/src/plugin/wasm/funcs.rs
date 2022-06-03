@@ -1,10 +1,13 @@
+use super::FromFfi;
 use crate::{
   block,
   command::{Command, NodeType, Parser},
+  particle,
+  particle::Particle,
   world::WorldManager,
 };
 use bb_common::{math::Pos, util::Chat, version::BlockVersion};
-use bb_ffi::{CChat, CCommand, CPos, CUUID};
+use bb_ffi::{CChat, CCommand, CParticle, CPos, CUUID};
 use log::Level;
 use std::sync::Arc;
 use wasmer::{imports, Array, Function, ImportObject, LazyInit, Memory, Store, WasmPtr, WasmerEnv};
@@ -103,6 +106,28 @@ fn player_username(env: &Env, id: WasmPtr<CUUID>, buf: WasmPtr<u8>, buf_len: u32
   }
   0
 }
+fn player_send_particle(env: &Env, id: WasmPtr<CUUID>, particle: WasmPtr<CParticle>) {
+  let mem = env.mem();
+  let uuid = match id.deref(mem) {
+    Some(id) => id.get(),
+    None => return,
+  };
+  let player = match env.wm.get_player(bb_common::util::UUID::from_u128(
+    (uuid.bytes[3] as u128) << (3 * 32)
+      | (uuid.bytes[2] as u128) << (2 * 32)
+      | (uuid.bytes[1] as u128) << 32
+      | uuid.bytes[0] as u128,
+  )) {
+    Some(p) => p,
+    None => return,
+  };
+  let cparticle = match particle.deref(mem) {
+    Some(p) => p.get(),
+    None => return,
+  };
+  let particle = Particle::from_ffi(&mem, cparticle);
+  player.send_particle(particle);
+}
 
 fn player_world(env: &Env, player: WasmPtr<CUUID>) -> i32 {
   let mem = env.mem();
@@ -189,6 +214,7 @@ pub fn imports(store: &Store, wm: Arc<WorldManager>, name: String) -> ImportObje
       "bb_broadcast" => Function::new_native_with_env(&store, env.clone(), broadcast),
       "bb_player_username" => Function::new_native_with_env(&store, env.clone(), player_username),
       "bb_player_world" => Function::new_native_with_env(&store, env.clone(), player_world),
+      "bb_player_send_particle" => Function::new_native_with_env(&store, env.clone(), player_send_particle),
       "bb_world_set_block" => Function::new_native_with_env(&store, env.clone(), world_set_block),
       "bb_add_command" => Function::new_native_with_env(&store, env.clone(), add_command),
       "bb_time_since_start" => Function::new_native_with_env(&store, env.clone(), time_since_start),

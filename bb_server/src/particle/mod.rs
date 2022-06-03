@@ -1,6 +1,9 @@
 mod ty;
 mod version;
 
+#[cfg(feature = "wasm_plugins")]
+mod ffi;
+
 pub use ty::{Color, Data, Type};
 pub use version::TypeConverter;
 
