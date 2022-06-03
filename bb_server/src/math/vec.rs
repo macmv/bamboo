@@ -141,7 +141,7 @@ impl Vec3 {
     let start = *self;
     let end = *self + delta;
     let mut time = 1.0;
-    for &wall in nearby.iter().filter(|&&o| end.is_colliding_with(o)) {
+    for &wall in nearby.iter() {
       // Time to collide with the object, in each axis. We use this to find out which
       // axis will collide first.
       //

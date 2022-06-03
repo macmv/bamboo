@@ -3,7 +3,7 @@ use crate::{
   block::Block,
   math::{CollisionResult, Vec3},
 };
-use bb_common::util::Face;
+use bb_common::{math::FPos, util::Face};
 use std::sync::Arc;
 
 #[derive(Debug, Clone, Copy)]
@@ -26,9 +26,9 @@ pub enum Click<'a> {
 }
 
 impl Click<'_> {
-  pub fn do_raycast(&self, distance: f64, water: bool) -> Option<CollisionResult> {
+  pub fn do_raycast(&self, distance: f64, water: bool) -> Option<(FPos, CollisionResult)> {
     // TODO: Figure out eyes position
-    let from = Vec3::from(self.player().pos()) + Vec3::new(0.0, 1.5, 0.0);
+    let from = self.player().pos() + FPos::new(0.0, 1.5, 0.0);
     let to = from + self.dir() * distance;
 
     self.player().world().raycast(from, to, water)

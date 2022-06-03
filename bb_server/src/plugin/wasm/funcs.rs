@@ -265,13 +265,8 @@ fn world_raycast(env: &Env, from: WasmPtr<CFPos>, to: WasmPtr<CFPos>, water: u8)
   };
   let water = water == 1;
   let world = env.wm.default_world();
-  match world.raycast(from.into(), to.into(), water) {
-    Some(res) => {
-      let pos = FPos::new(
-        (to.x - from.x) * res.factor + from.x,
-        (to.y - from.y) * res.factor + from.y,
-        (to.z - from.z) * res.factor + from.z,
-      );
+  match world.raycast(from, to, water) {
+    Some((pos, res)) => {
       let cpos = pos.to_ffi(env);
       let ptr = env.malloc_store(cpos);
       ptr.offset()
