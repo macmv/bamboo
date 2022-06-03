@@ -3,7 +3,7 @@ use bb_macros::Transfer;
 use std::{
   error::Error,
   fmt,
-  ops::{Add, AddAssign, Sub, SubAssign},
+  ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Sub, SubAssign},
 };
 
 #[derive(Debug)]
@@ -213,5 +213,32 @@ impl SubAssign for FPos {
     self.x -= other.x;
     self.y -= other.y;
     self.z -= other.z;
+  }
+}
+
+impl Div<f64> for FPos {
+  type Output = Self;
+  fn div(self, other: f64) -> Self {
+    Self { x: self.x / other, y: self.y / other, z: self.z / other }
+  }
+}
+impl DivAssign<f64> for FPos {
+  fn div_assign(&mut self, other: f64) {
+    self.x /= other;
+    self.y /= other;
+    self.z /= other;
+  }
+}
+impl Mul<f64> for FPos {
+  type Output = Self;
+  fn mul(self, other: f64) -> Self {
+    Self { x: self.x * other, y: self.y * other, z: self.z * other }
+  }
+}
+impl MulAssign<f64> for FPos {
+  fn mul_assign(&mut self, other: f64) {
+    self.x *= other;
+    self.y *= other;
+    self.z *= other;
   }
 }
