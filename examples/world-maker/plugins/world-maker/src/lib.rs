@@ -22,7 +22,7 @@ use bb_plugin::{math::Pos, player::Player};
 fn on_place(player: Player, pos: Pos) -> bool {
   player.send_particle(Particle {
     ty:            particle::Type::BlockMarker(block::Kind::Stone.data().default_type()),
-    pos:           FPos::new(pos.x as f64, pos.y as f64 + 1.0, pos.z as f64),
+    pos:           FPos::new(pos.x as f64 + 0.5, pos.y as f64 + 1.5, pos.z as f64 + 0.5),
     offset:        FPos::new(0.0, 0.0, 0.0),
     count:         1,
     data:          0.0,
