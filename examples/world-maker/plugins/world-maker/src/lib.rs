@@ -41,7 +41,7 @@ fn on_tick() {
 
     if let Some(pos) = world.raycast(from, FPos::new(to.x, to.y, to.z), true) {
       player.send_particle(Particle {
-        ty:            particle::Type::BlockDust(Color { r: 255, g: 255, b: 255 }, 0.5),
+        ty:            particle::Type::Dust(Color { r: 255, g: 255, b: 255 }, 0.5),
         pos:           FPos::new(pos.x as f64 + 0.5, pos.y as f64 + 1.5, pos.z as f64 + 0.5),
         offset:        FPos::new(0.0, 0.0, 0.0),
         count:         1,
