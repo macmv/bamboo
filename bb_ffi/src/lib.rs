@@ -339,9 +339,7 @@ impl<T> CList<T> {
     } else {
       // We create a boxed slice above, so the capacity is shrunk to `len`, so we can
       // use len for the capacity here, without leaking memory.
-      let vec =
-        unsafe { Vec::from_raw_parts(me.first as *mut T, me.len as usize, me.len as usize) };
-      vec
+      unsafe { Vec::from_raw_parts(me.first as *mut T, me.len as usize, me.len as usize) }
     }
   }
 }

@@ -91,6 +91,7 @@ impl TypeConverter {
   /// At the time of writing, this could return a `Type<'static>`. However, in
   /// the future, I would like to add blocks at runtime, which requires that
   /// this is a shorter lifetime.
+  #[allow(clippy::needless_lifetimes)]
   pub fn type_from_id<'a>(&'a self, mut id: u32, ver: BlockVersion) -> Type<'a> {
     if ver != BlockVersion::latest() {
       id = self.to_latest(id, ver);

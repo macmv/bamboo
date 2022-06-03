@@ -1,4 +1,4 @@
-use super::{ty::STATE_PROPS_LEN, Kind, Prop, PropKind, PropValue, Type};
+use super::{ty::STATE_PROPS_LEN, Kind, Prop, PropKind, PropValue};
 use std::{collections::HashMap, fmt};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
