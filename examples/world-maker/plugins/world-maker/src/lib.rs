@@ -38,8 +38,9 @@ fn on_tick() {
     let pos = player.pos();
     let look = player.look_as_vec();
     let from = pos + FPos::new(0.0, 1.5, 0.0);
-    let to = from + FPos::new(look.x * 50.0, look.y * 50.0, look.z * 50.0);
+    let to = from + look * 50.0;
 
+    /*
     if let Some(pos) = world.raycast(from, to, true) {
       let given_x = 1.0;
       let given_y = 1.0;
@@ -66,6 +67,57 @@ fn on_tick() {
           data:          0.0,
           long_distance: false,
         });
+      }
+    }
+    */
+
+    if let Some(pos) = world.raycast(from, to, true) {
+      player.send_particle(Particle {
+        ty: particle::Type::Dust(Color { r: 255, g: 255, b: 255 }, 0.5),
+        pos,
+        offset: FPos::new(0.0, 0.0, 0.0),
+        count: 1,
+        data: 0.0,
+        long_distance: false,
+      });
+      if pos.dist_squared(from) < 1.0 {
+        return;
+      }
+
+      let given_x = 1.0;
+      let given_y = 1.0;
+      let z = -(look.x * given_x + look.y * given_y) / look.z;
+      let vec_in_plane = FPos::new(given_x, given_y, z);
+      let unit = vec_in_plane / vec_in_plane.size();
+      let other_unit = unit.cross(look);
+
+      for angle in 0..30 {
+        let angle = angle as f64 / 30.0 * 2.0 * std::f64::consts::PI;
+        // Constant brush size
+        const R: f64 = 1.0;
+        let r = R * 50.0 / pos.dist(from);
+        let to = from + unit * angle.cos() * r + other_unit * angle.sin() * r + look * 50.0;
+        /*
+        // Brush size changes with distance
+        const R: f64 = 10.0;
+        let to = from + unit * angle.cos() * R + other_unit * angle.sin() * R + look * 50.0;
+        */
+        /*
+        // Same as constant brush size, but the origin of each raycast is wrong
+        const R: f64 = 2.0;
+        let from = from + unit * angle.cos() * R + other_unit * angle.sin() * R;
+        let to = from + look * 50.0;
+        */
+        if let Some(pos) = world.raycast(from, to, true) {
+          player.send_particle(Particle {
+            ty: particle::Type::Dust(Color { r: 255, g: 255, b: 255 }, 0.5),
+            pos,
+            offset: FPos::new(0.0, 0.0, 0.0),
+            count: 1,
+            data: 0.0,
+            long_distance: false,
+          });
+        }
       }
     }
   }
