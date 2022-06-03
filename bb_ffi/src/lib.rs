@@ -62,6 +62,14 @@ pub struct CFPos {
   pub y: f64,
   pub z: f64,
 }
+#[ctype]
+#[derive(Debug)]
+#[cfg_attr(not(feature = "host"), derive(Copy))]
+pub struct CVec3 {
+  pub x: f64,
+  pub y: f64,
+  pub z: f64,
+}
 
 #[ctype]
 #[derive(Debug)]
@@ -243,6 +251,8 @@ extern "C" {
   pub fn bb_player_username(player: *const CUUID) -> *mut CStr;
   /// Returns the player's position.
   pub fn bb_player_pos(player: *const CUUID) -> *mut CFPos;
+  /// Returns the player's looking direction as a unit vector.
+  pub fn bb_player_look_as_vec(player: *const CUUID) -> *mut CVec3;
   /// Returns the current world for this player.
   pub fn bb_player_world(player: *const CUUID) -> i32;
   /// Sends the given chat message to the player.
@@ -252,9 +262,11 @@ extern "C" {
 
   /// Sets a block in the world. Returns 1 if the block position is invalid.
   pub fn bb_world_set_block(wid: u32, pos: *const CPos, id: u32) -> i32;
-
   /// Sets a block in the world. Returns 1 if the block position is invalid.
   pub fn bb_world_players(wid: u32) -> *mut CList<CUUID>;
+  /// Raycasts from the `from` position to `to`. Returns null if there is no
+  /// collision.
+  pub fn bb_world_raycast(from: *const CFPos, to: *const CFPos, water: CBool) -> *mut CFPos;
 
   /// Returns the block data for the given kind.
   pub fn bb_block_data_for_kind(kind: u32) -> *mut CBlockData;

@@ -6,8 +6,12 @@ use crate::{
   particle::Particle,
   world::WorldManager,
 };
-use bb_common::{math::Pos, util::Chat, version::BlockVersion};
-use bb_ffi::{CBlockData, CChat, CCommand, CParticle, CPos, CStr, CUUID};
+use bb_common::{
+  math::{FPos, Pos},
+  util::Chat,
+  version::BlockVersion,
+};
+use bb_ffi::{CBlockData, CChat, CCommand, CFPos, CParticle, CPos, CStr, CUUID};
 use log::Level;
 use std::{mem, sync::Arc};
 use wasmer::{
@@ -169,6 +173,25 @@ fn player_pos(env: &Env, id: WasmPtr<CUUID>) -> u32 {
   let ptr = env.malloc_store(cpos);
   ptr.offset()
 }
+fn player_look_as_vec(env: &Env, id: WasmPtr<CUUID>) -> u32 {
+  let mem = env.mem();
+  let uuid = match id.deref(mem) {
+    Some(id) => id.get(),
+    None => return 0,
+  };
+  let player = match env.wm.get_player(bb_common::util::UUID::from_u128(
+    (uuid.bytes[3] as u128) << (3 * 32)
+      | (uuid.bytes[2] as u128) << (2 * 32)
+      | (uuid.bytes[1] as u128) << 32
+      | uuid.bytes[0] as u128,
+  )) {
+    Some(p) => p,
+    None => return 0,
+  };
+  let cpos = FPos::from(player.look_as_vec()).to_ffi(env);
+  let ptr = env.malloc_store(cpos);
+  ptr.offset()
+}
 fn player_send_particle(env: &Env, id: WasmPtr<CUUID>, particle: WasmPtr<CParticle>) {
   let mem = env.mem();
   let uuid = match id.deref(mem) {
@@ -229,6 +252,32 @@ fn world_players(env: &Env, wid: u32) -> u32 {
   let cplayers = players.as_slice().to_ffi(env);
   let ptr = env.malloc_store(cplayers);
   ptr.offset()
+}
+fn world_raycast(env: &Env, from: WasmPtr<CFPos>, to: WasmPtr<CFPos>, water: u8) -> u32 {
+  let mem = env.mem();
+  let from = match from.deref(mem) {
+    Some(p) => FPos::from_ffi(env, p.get()),
+    None => return 0,
+  };
+  let to = match to.deref(mem) {
+    Some(p) => FPos::from_ffi(env, p.get()),
+    None => return 0,
+  };
+  let water = water == 1;
+  let world = env.wm.default_world();
+  match world.raycast(from.into(), to.into(), water) {
+    Some(res) => {
+      let pos = FPos::new(
+        (to.x - from.x) * res.factor + from.x,
+        (to.y - from.y) * res.factor + from.y,
+        (to.z - from.z) * res.factor + from.z,
+      );
+      let cpos = pos.to_ffi(env);
+      let ptr = env.malloc_store(cpos);
+      ptr.offset()
+    }
+    None => 0,
+  }
 }
 fn block_data_for_kind(env: &Env, block: u32) -> u32 {
   // TODO: Convert block to newer version
@@ -299,10 +348,12 @@ pub fn imports(store: &Store, wm: Arc<WorldManager>, name: String) -> ImportObje
       "bb_broadcast" => Function::new_native_with_env(&store, env.clone(), broadcast),
       "bb_player_username" => Function::new_native_with_env(&store, env.clone(), player_username),
       "bb_player_pos" => Function::new_native_with_env(&store, env.clone(), player_pos),
+      "bb_player_look_as_vec" => Function::new_native_with_env(&store, env.clone(), player_look_as_vec),
       "bb_player_world" => Function::new_native_with_env(&store, env.clone(), player_world),
       "bb_player_send_particle" => Function::new_native_with_env(&store, env.clone(), player_send_particle),
       "bb_world_set_block" => Function::new_native_with_env(&store, env.clone(), world_set_block),
       "bb_world_players" => Function::new_native_with_env(&store, env.clone(), world_players),
+      "bb_world_raycast" => Function::new_native_with_env(&store, env.clone(), world_raycast),
       "bb_block_data_for_kind" => Function::new_native_with_env(&store, env.clone(), block_data_for_kind),
       "bb_add_command" => Function::new_native_with_env(&store, env.clone(), add_command),
       "bb_time_since_start" => Function::new_native_with_env(&store, env.clone(), time_since_start),

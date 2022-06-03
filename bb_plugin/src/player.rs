@@ -38,4 +38,10 @@ impl Player {
       FPos { x: cpos.x, y: cpos.y, z: cpos.z }
     }
   }
+  pub fn look_as_vec(&self) -> FPos {
+    unsafe {
+      let cpos = Box::from_raw(bb_ffi::bb_player_look_as_vec(&self.id));
+      FPos { x: cpos.x, y: cpos.y, z: cpos.z }
+    }
+  }
 }
