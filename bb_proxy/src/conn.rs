@@ -468,7 +468,15 @@ impl<'a, S: PacketStream + Send + Sync> Conn<'a, S> {
     self.client_stream.write(out);
 
     self.state = State::Play;
-    self.connect_to_server(reg)?;
+    match self.connect_to_server(reg) {
+      Ok(()) => {}
+      Err(e) => {
+        let mut msg = Chat::empty();
+        msg.add("Couldn't connect to server: ").color(Color::Red);
+        msg.add(e.to_string());
+        self.send_disconnect(msg);
+      }
+    }
 
     Ok(())
   }
@@ -476,9 +484,20 @@ impl<'a, S: PacketStream + Send + Sync> Conn<'a, S> {
   // Disconnects the client during authentication. The stream will not be flushed.
   fn send_disconnect<C: Into<Chat>>(&mut self, reason: C) {
     // Disconnect
-    let mut out = tcp::Packet::new(0, self.ver);
-    out.write_str(&reason.into().to_json());
-    self.client_stream.write(out);
+    match self.state {
+      State::Handshake => {
+        let mut out = tcp::Packet::new(0, self.ver);
+        out.write_str(&reason.into().to_json());
+        self.client_stream.write(out);
+      }
+      State::Play => {
+        let out = gcb::Packet::DisconnectV8 { reason: reason.into().to_json() };
+        let mut tcp = tcp::Packet::new(out.tcp_id(self.ver) as i32, self.ver);
+        out.to_tcp(&mut tcp);
+        self.client_stream.write(tcp);
+      }
+      s => panic!("cannot send disconnect for state {s:?}"),
+    }
   }
 
   /// Generates the json status for the server
