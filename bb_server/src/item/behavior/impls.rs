@@ -55,9 +55,12 @@ impl Behavior for DebugStick {
 pub struct Bucket(pub Option<block::Kind>);
 impl Behavior for Bucket {
   fn interact(&self, click: Click) -> EventFlow {
-    if self.0.is_none() {
-      let result = click.do_raycast(5.0, true);
-      dbg!(result);
+    if let Some((pos, res)) = click.do_raycast(5.0, true) {
+      let pos = (pos + res.axis / 2.0).block();
+      let _ = match self.0 {
+        Some(block) => click.player().world().set_kind(pos, block),
+        None => click.player().world().set_kind(pos, block::Kind::Air),
+      };
     }
     Handled
   }
