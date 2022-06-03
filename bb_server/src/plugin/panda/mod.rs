@@ -198,8 +198,12 @@ impl PluginImpl for PandaPlugin {
   fn req(&self, player: Arc<Player>, request: ServerRequest) -> Result<PluginReply, CallError> {
     Ok(PluginReply::Cancel {
       allow: match request {
-        ServerRequest::BlockPlace { pos, block } => self.call_on_block_place(player, pos, block),
-        ServerRequest::BlockBreak { pos, block } => self.call_on_block_break(player, pos, block),
+        ServerRequest::BlockPlace { pos, block } => {
+          self.call_on_block_place(player, pos, block.ty())
+        }
+        ServerRequest::BlockBreak { pos, block } => {
+          self.call_on_block_break(player, pos, block.ty())
+        }
         ServerRequest::ClickWindow { slot, mode } => self.call_on_click_window(player, slot, mode),
       },
     })

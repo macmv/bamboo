@@ -52,8 +52,8 @@ impl From<Pos> for JsonPos {
 impl From<JsonPos> for Pos {
   fn from(pos: JsonPos) -> Self { Pos { x: pos.x, y: pos.y, z: pos.z } }
 }
-impl From<block::Type> for JsonBlock {
-  fn from(ty: block::Type) -> Self {
+impl From<block::TypeStore> for JsonBlock {
+  fn from(ty: block::TypeStore) -> Self {
     JsonBlock { kind: ty.kind().to_str().into(), id: ty.id(), props: ty.props() }
   }
 }

@@ -18,8 +18,8 @@ use std::{cmp::Ordering, str::FromStr, sync::Arc};
 /// General block manipulation functions
 impl World {
   /// Returns the block type at the given position.
-  pub fn get_block(&self, pos: Pos) -> Result<block::Type, PosError> {
-    self.chunk(pos.chunk(), |c| c.get_type(pos.chunk_rel()))
+  pub fn get_block(&self, pos: Pos) -> Result<block::TypeStore, PosError> {
+    self.chunk(pos.chunk(), |c| c.get_type(pos.chunk_rel()).map(|b| b.to_store()))
   }
   /// Returns the block kind at the given position.
   pub fn get_kind(&self, pos: Pos) -> Result<block::Kind, PosError> {
@@ -83,10 +83,12 @@ impl World {
 
     let mut old_block = Block::new(self, pos, ty);
     let new_block = Block::new(self, pos, ty);
-    self.chunk(pos.chunk(), |mut c| {
-      old_block.ty = c.get_type(pos.chunk_rel())?;
-      c.set_type(pos.chunk_rel(), ty)
+    let old_ty = self.chunk(pos.chunk(), |mut c| {
+      let old_ty = c.get_type(pos.chunk_rel())?.to_store();
+      c.set_type(pos.chunk_rel(), ty)?;
+      Ok(old_ty)
     })?;
+    old_block.ty = old_ty.ty();
     // First, handle the update for the block that was just placed.
     self
       .world_manager()
@@ -97,7 +99,12 @@ impl World {
       ( $x:expr, $y:expr, $z:expr ) => {
         if let Ok(ty) = self.get_block(pos + Pos::new($x, $y, $z)) {
           self.world_manager().block_behaviors().call(ty.kind(), |b| {
-            b.update(self, Block::new(&self, pos + Pos::new($x, $y, $z), ty), old_block, new_block)
+            b.update(
+              self,
+              Block::new(&self, pos + Pos::new($x, $y, $z), ty.ty()),
+              old_block,
+              new_block,
+            )
           });
         }
       };

@@ -14,7 +14,7 @@ pub trait Behavior: Send + Sync {
   ///
   /// This should handle things like logs rotating or torches not placing on
   /// ceilings.
-  fn place(&self, data: &Data, pos: Pos, click: BlockClick) -> Type {
+  fn place<'a>(&self, data: &'a Data, pos: Pos, click: BlockClick) -> Type<'a> {
     let _ = (pos, click);
     data.default_type()
   }

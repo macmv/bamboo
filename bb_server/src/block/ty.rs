@@ -1,29 +1,50 @@
-use super::Material;
-use num_derive::{FromPrimitive, ToPrimitive};
+use super::{Material, TypeStore};
 use std::{collections::HashMap, error::Error, fmt, str::FromStr};
 
-const STATE_PROPS_LEN: usize = 8;
+pub(super) const STATE_PROPS_LEN: usize = 8;
 
 /// A single block type. This is different from a block kind, which is more
 /// general. For example, there is one block kind for oak stairs. However, there
 /// are 32 types for an oak stair, based on it's state (rotation, in this case).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub struct Type {
+pub struct Type<'a> {
   pub(super) kind: Kind,
   state:           u32,
-  props:           &'static [Prop],
+  props:           &'a [Prop],
   // TODO: Make sure there aren't more than 8 properties for any block.
   state_props:     [u32; STATE_PROPS_LEN],
 }
 
-impl Type {
+impl TypeStore {
+  pub fn ty(&self) -> Type {
+    Type {
+      kind:        self.kind,
+      state:       self.state,
+      props:       &self.props,
+      state_props: self.state_props,
+    }
+  }
+}
+
+impl Type<'_> {
   /// Returns the type for air.
-  pub fn air() -> Type {
+  pub fn air() -> Type<'static> {
     Type {
       kind:        Kind::Air,
       state:       0,
       props:       &[],
       state_props: [0; STATE_PROPS_LEN],
+    }
+  }
+  /// Converts this type into a type that doesn't have a lifetime. Used when
+  /// sending a type to another thread, or somewhere that needs a longer
+  /// lifetime.
+  pub fn to_store(&self) -> TypeStore {
+    TypeStore {
+      kind:        self.kind,
+      state:       self.state,
+      props:       self.props.to_vec(),
+      state_props: self.state_props,
     }
   }
   /// Returns the block kind that this state comes from.
@@ -99,7 +120,7 @@ impl Type {
       .collect()
   }
 }
-impl fmt::Display for Type {
+impl fmt::Display for Type<'_> {
   fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
     write!(f, "{}", self.kind().to_str())?;
     let mut all_props: Vec<_> = self.props().into_iter().collect();
@@ -191,14 +212,14 @@ pub struct ItemDrop {
   pub max:  i32,
 }
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Prop {
-  name: &'static str,
-  kind: PropKind,
+  pub(super) name: &'static str,
+  pub(super) kind: PropKind,
 }
 
-#[derive(Debug, PartialEq, Eq)]
-enum PropKind {
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum PropKind {
   Bool,
   Enum(&'static [&'static str]),
   Int { min: u32, max: u32 },
@@ -234,7 +255,7 @@ impl PropValue<'_> {
       _ => "",
     }
   }
-  fn id(&self, kind: &PropKind) -> u32 {
+  pub(super) fn id(&self, kind: &PropKind) -> u32 {
     match self {
       Self::Bool(v) => {
         if *v {
@@ -260,7 +281,7 @@ impl PropValue<'_> {
       },
     }
   }
-  fn is(&self, kind: &PropKind) -> bool {
+  pub(super) fn is(&self, kind: &PropKind) -> bool {
     match self {
       Self::Bool(_) => matches!(kind, PropKind::Bool),
       Self::Enum(val) => matches!(kind, PropKind::Enum(variants) if variants.contains(val)),

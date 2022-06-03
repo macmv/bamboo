@@ -76,7 +76,7 @@ pub(crate) fn handle(wm: &Arc<WorldManager>, mut player: &Arc<Player>, p: sb::Pa
                 player,
                 face,
                 dir: player.look_as_vec(),
-                block: Block::new(player.world(), pos, looking_at),
+                block: Block::new(player.world(), pos, looking_at.ty()),
               };
               let inv = player.lock_inventory();
               let stack = inv.main_hand();
@@ -149,7 +149,7 @@ pub(crate) fn handle(wm: &Arc<WorldManager>, mut player: &Arc<Player>, p: sb::Pa
               player,
               face,
               dir: player.look_as_vec(),
-              block: Block::new(player.world(), pos, looking_at),
+              block: Block::new(player.world(), pos, looking_at.ty()),
             };
             // TODO: Data generator should store which items are blockitems, and what blocks
             // they place.
@@ -174,7 +174,7 @@ pub(crate) fn handle(wm: &Arc<WorldManager>, mut player: &Arc<Player>, p: sb::Pa
             let handled = wm
               .block_behaviors()
               .call(looking_at.kind(), |b| {
-                b.interact(Block::new(player.world(), pos, looking_at), player)
+                b.interact(Block::new(player.world(), pos, looking_at.ty()), player)
               })
               .unwrap_or(false);
 

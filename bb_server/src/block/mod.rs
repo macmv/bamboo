@@ -1,5 +1,6 @@
 mod behavior;
 mod material;
+mod store;
 mod ty;
 mod version;
 
@@ -8,7 +9,8 @@ mod ffi;
 
 pub use behavior::{Behavior, TileEntity};
 pub use material::Material;
-pub use ty::{Data, ItemDrop, Kind, Prop, PropValue, Type};
+pub use store::TypeStore;
+pub use ty::{Data, ItemDrop, Kind, Prop, PropValue, Type, PropKind};
 pub use version::TypeConverter;
 
 use crate::world::World;
@@ -22,7 +24,7 @@ use std::{fmt, sync::Arc};
 pub struct Block<'a> {
   pub world: &'a Arc<World>,
   pub pos:   Pos,
-  pub ty:    Type,
+  pub ty:    Type<'a>,
 }
 
 impl fmt::Debug for Block<'_> {
@@ -33,7 +35,7 @@ impl fmt::Debug for Block<'_> {
 
 impl<'a> Block<'a> {
   /// Creates a new block at the given position with the given type.
-  pub fn new(world: &'a Arc<World>, pos: Pos, ty: Type) -> Self { Block { world, pos, ty } }
+  pub fn new(world: &'a Arc<World>, pos: Pos, ty: Type<'a>) -> Self { Block { world, pos, ty } }
   /// Returns the kind of block.
   pub fn kind(&self) -> Kind { self.ty.kind() }
 

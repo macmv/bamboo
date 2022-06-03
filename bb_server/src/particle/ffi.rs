@@ -32,13 +32,13 @@ impl FromFfi for Type {
     let mut r = MessageReader::new(&data);
     match &mut ty {
       Type::Block(block) => {
-        *block = env.wm.block_converter().type_from_id(r.read_u32().unwrap(), env.ver)
+        *block = env.wm.block_converter().type_from_id(r.read_u32().unwrap(), env.ver).to_store()
       }
       Type::BlockMarker(block) => {
-        *block = env.wm.block_converter().type_from_id(r.read_u32().unwrap(), env.ver)
+        *block = env.wm.block_converter().type_from_id(r.read_u32().unwrap(), env.ver).to_store()
       }
       Type::FallingDust(block) => {
-        *block = env.wm.block_converter().type_from_id(r.read_u32().unwrap(), env.ver)
+        *block = env.wm.block_converter().type_from_id(r.read_u32().unwrap(), env.ver).to_store()
       }
       Type::Dust(color, scale) => {
         color.r = r.read_u8().unwrap();

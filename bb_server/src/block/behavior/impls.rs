@@ -16,7 +16,7 @@ use std::{any::Any, sync::Arc};
 
 pub struct Log;
 impl Behavior for Log {
-  fn place(&self, data: &Data, _: Pos, click: BlockClick) -> Type {
+  fn place<'a>(&self, data: &'a Data, _: Pos, click: BlockClick) -> Type<'a> {
     data.default_type().with_prop(
       "axis",
       match click.face {
@@ -73,7 +73,7 @@ impl Bed {
   }
 }
 impl Behavior for Bed {
-  fn place(&self, data: &Data, _: Pos, click: BlockClick) -> Type {
+  fn place<'a>(&self, data: &'a Data, _: Pos, click: BlockClick) -> Type<'a> {
     data
       .default_type()
       .with_prop("part", "FOOT")

@@ -5,7 +5,7 @@ use panda::{parse::token::Span, runtime::RuntimeError};
 use std::str::FromStr;
 
 wrap!(block::Kind, PBlockKind);
-wrap!(block::Type, PBlockType);
+wrap!(block::TypeStore, PBlockType);
 
 /// A block kind. This is how you get/set blocks in the world.
 ///

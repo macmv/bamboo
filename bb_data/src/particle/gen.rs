@@ -13,7 +13,7 @@ pub fn generate(def: Vec<(Version, ParticleDef)>, target: Target, dir: &Path) ->
 fn write_enum_data(gen: &mut CodeGen, name: &str, target: Target) {
   match name {
     "block" | "block_marker" | "falling_dust" => match target {
-      Target::Host => gen.write("(block::Type)"),
+      Target::Host => gen.write("(block::TypeStore)"),
       Target::Plugin => gen.write("(block::Type<'a>)"),
     },
     "dust" => gen.write("(Color, f32)"),
@@ -31,11 +31,12 @@ fn write_enum_match(gen: &mut CodeGen, name: &str) {
     _ => {}
   }
 }
-fn write_enum_default(gen: &mut CodeGen, name: &str) {
+fn write_enum_default(gen: &mut CodeGen, name: &str, target: Target) {
   match name {
-    "block" => gen.write("(block::Type::air())"),
-    "block_marker" => gen.write("(block::Type::air())"),
-    "falling_dust" => gen.write("(block::Type::air())"),
+    "block" | "block_marker" | "falling_dust" => match target {
+      Target::Host => gen.write("(block::TypeStore::air())"),
+      Target::Plugin => gen.write("(block::Type::air())"),
+    },
     "dust" => gen.write("(Color::default(), 1.0)"),
     "dust_color_transition" => gen.write("(Color::default(), Color::default(), 1.0)"),
     _ => {}
@@ -46,7 +47,7 @@ pub fn generate_ty(def: &ParticleDef, target: Target) -> String {
   let mut gen = CodeGen::new();
   gen.write_line("/// Auto generated particle kind. This is directly generated");
   gen.write_line("/// from bamboo data.");
-  gen.write_line("#[derive(Debug, Copy, Clone, PartialEq)]");
+  gen.write_line("#[derive(Debug, Clone, PartialEq)]");
   match target {
     Target::Host => gen.write("pub enum Type "),
     Target::Plugin => gen.write("pub enum Type<'a> "),
@@ -74,7 +75,7 @@ pub fn generate_ty(def: &ParticleDef, target: Target) -> String {
         gen.write(&b.name);
         gen.write("\" => Self::");
         gen.write(&b.name.to_case(Case::Pascal));
-        write_enum_default(gen, &b.name);
+        write_enum_default(gen, &b.name, target);
         gen.write_line(",");
       }
       gen.write_line("_ => return Err(InvalidParticle(s.into())),");
@@ -121,7 +122,7 @@ pub fn generate_ty(def: &ParticleDef, target: Target) -> String {
           gen.write(" => ");
           gen.write("Some(Self::");
           gen.write(&b.name.to_case(Case::Pascal));
-          write_enum_default(gen, &b.name);
+          write_enum_default(gen, &b.name, target);
           gen.write_line("),");
         }
         gen.write_line("_ => None,");

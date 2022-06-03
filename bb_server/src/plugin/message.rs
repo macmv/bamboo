@@ -145,13 +145,13 @@ pub enum ServerRequest {
     #[serde(serialize_with = "to_json_ty::<_, JsonPos, _>")]
     pos:   Pos,
     #[serde(serialize_with = "to_json_ty::<_, JsonBlock, _>")]
-    block: block::Type,
+    block: block::TypeStore,
   },
   BlockBreak {
     #[serde(serialize_with = "to_json_ty::<_, JsonPos, _>")]
     pos:   Pos,
     #[serde(serialize_with = "to_json_ty::<_, JsonBlock, _>")]
-    block: block::Type,
+    block: block::TypeStore,
   },
   ClickWindow {
     slot: i32,
@@ -170,7 +170,7 @@ pub enum ServerReply {
     #[serde(serialize_with = "to_json_ty::<_, JsonPos, _>")]
     pos:   Pos,
     #[serde(serialize_with = "to_json_ty::<_, JsonBlock, _>")]
-    block: block::Type,
+    block: block::TypeStore,
   },
 }
 

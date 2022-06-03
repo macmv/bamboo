@@ -385,7 +385,7 @@ impl Player {
       if self.world().plugins().on_block_break(
         self.clone(),
         pos,
-        self.world().get_block(pos).unwrap(),
+        self.world().get_block(pos).unwrap().ty(),
       ) {
         if !self.world().break_block(pos).unwrap() {
           self.sync_block_at(pos).unwrap();
@@ -454,7 +454,7 @@ impl Player {
       if self.world().plugins().on_block_break(
         self.clone(),
         pos,
-        self.world().get_block(pos).unwrap(),
+        self.world().get_block(pos).unwrap().ty(),
       ) {
         if !self.world().break_block(pos).unwrap() {
           self.sync_block_at(pos).unwrap();

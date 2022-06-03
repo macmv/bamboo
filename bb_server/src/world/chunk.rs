@@ -35,11 +35,15 @@ impl fmt::Debug for CountedChunk {
 /// because it used to store all of the other versioning data. It would be a
 /// pain to change it, and I don't really want to bother.
 pub struct MultiChunk {
+  inner: ChunkData,
+  wm:    Arc<WorldManager>,
+}
+
+struct ChunkData {
   inner:        Chunk<PalettedSection>,
   tes:          HashMap<RelPos, Arc<dyn TileEntity>>,
   sky:          Option<LightChunk<SkyLight>>,
   block:        LightChunk<BlockLight>,
-  wm:           Arc<WorldManager>,
   /// Set to false when the world is generating, which makes things much faster.
   update_light: bool,
 }
@@ -56,127 +60,36 @@ impl CountedChunk {
   pub fn lock(&self) -> MutexGuard<'_, MultiChunk> { self.chunk.lock() }
 }
 
-impl MultiChunk {
-  /// Creates an empty chunk.
-  ///
-  /// The second argument is for sky light data. Places like the nether do not
-  /// contain sky light information, so the sky light data is not present.
-  pub fn new(wm: Arc<WorldManager>, sky: bool) -> MultiChunk {
-    MultiChunk {
-      inner: Chunk::new(15),
-      tes: HashMap::new(),
-      sky: if sky { Some(LightChunk::new()) } else { None },
-      block: LightChunk::new(),
-      wm,
+impl ChunkData {
+  fn new(sky: bool) -> Self {
+    ChunkData {
+      inner:        Chunk::new(15),
+      tes:          HashMap::new(),
+      sky:          if sky { Some(LightChunk::new()) } else { None },
+      block:        LightChunk::new(),
       update_light: true,
     }
   }
 
-  /// Returns a reference to the global world manager.
-  pub fn wm(&self) -> &Arc<WorldManager> { &self.wm }
-
-  /// Sets a block within this chunk. `p.x` and `p.z` must be within 0..16. If
-  /// the server supports multi-height worlds (not implemented yet), then p.y
-  /// needs to be within the world height (whatever that may be). Otherwise,
-  /// p.y must be within 0..256.
-  ///
-  /// WARNING: This will not send any packets to players! This function is meant
-  /// for use by the world directly, or during use terrain generation. If you
-  /// call this function without sending any updates yourself, no one in render
-  /// distance will see any of these changes!
-  pub fn set_type(&mut self, p: RelPos, ty: block::Type) -> Result<(), PosError> {
-    self.inner.set_block(p, ty.id())?;
+  /// A `Type<'a>` borrows `self`, so we can't pass that into `set_type`.
+  /// Therefore, we use this inner function to avoid allocating a `TypeStore` in
+  /// `set_kind`.
+  fn set_type_id(
+    &mut self,
+    p: RelPos,
+    ty: u32,
+    kind: block::Kind,
+    behaviors: &block::BehaviorStore,
+  ) -> Result<(), PosError> {
+    self.inner.set_block(p, ty)?;
     self.update_light(p);
-    if let Some(Some(te)) = self.wm.block_behaviors().call(ty.kind(), |b| b.create_te()) {
+    if let Some(Some(te)) = behaviors.call(kind, |b| b.create_te()) {
       self.tes.insert(p, te);
     }
     Ok(())
   }
 
-  /// Sets a block within this chunk. This is the same as
-  /// [`set_type`](Self::set_type), but it uses a kind instead of a type. This
-  /// will use the default type of the given kind. For example, an oak log would
-  /// be placed facing upwards (along the Y axis), as this is the default type
-  /// for that block.
-  ///
-  /// WARNING: This will not send any packets to players! This function is meant
-  /// for use by the world directly, or during use terrain generation. If you
-  /// call this function without sending any updates yourself, no one in render
-  /// distance will see any of these changes!
-  pub fn set_kind(&mut self, p: RelPos, kind: block::Kind) -> Result<(), PosError> {
-    self.set_type(p, self.wm.block_converter().get(kind).default_type())
-  }
-
-  /// Fills the region within this chunk. Min and max must be within the chunk
-  /// column (see [`set_type`](Self::set_type)), and min must be less than or
-  /// equal to max.
-  ///
-  /// Since multi chunks always store information in a paletted chunk, this will
-  /// always be faster than calling [`set_type`](Self::set_type) repeatedly.
-  ///
-  /// WARNING: This will not send any packets to players! This function is meant
-  /// for use by the world directly, or during use terrain generation. If you
-  /// call this function without sending any updates yourself, no one in render
-  /// distance will see any of these changes!
-  pub fn fill(&mut self, min: RelPos, max: RelPos, ty: block::Type) -> Result<(), PosError> {
-    self.inner.fill(min, max, ty.id())?;
-    // TODO: Update light correctly.
-    self.update_light(min);
-    self.update_light(max);
-    Ok(())
-  }
-
-  /// This is the same as [`fill`](Self::fill), but it converts the block kind
-  /// to it's default type.
-  ///
-  /// WARNING: This will not send any packets to players! This function is meant
-  /// for use by the world directly, or during use terrain generation. If you
-  /// call this function without sending any updates yourself, no one in render
-  /// distance will see any of these changes!
-  pub fn fill_kind(&mut self, min: RelPos, max: RelPos, kind: block::Kind) -> Result<(), PosError> {
-    self.inner.fill(min, max, self.wm.block_converter().get(kind).default_type().id())?;
-    Ok(())
-  }
-
-  /// Gets the type of a block within this chunk. `p` must be within the chunk.
-  /// See [`set_kind`](Self::set_kind) for more.
-  ///
-  /// This returns a specific block type. If you only need to block kind, prefer
-  /// [`get_kind`](Self::get_kind).
-  pub fn get_type(&self, p: RelPos) -> Result<block::Type, PosError> {
-    Ok(self.wm.block_converter().type_from_id(self.inner.get_block(p)?, BlockVersion::latest()))
-  }
-
-  /// Gets the type of a block within this chunk. Pos must be within the chunk.
-  /// See [`set_kind`](Self::set_kind) for more.
-  pub fn get_kind(&self, p: RelPos) -> Result<block::Kind, PosError> {
-    Ok(self.wm.block_converter().kind_from_id(self.inner.get_block(p)?, BlockVersion::latest()))
-  }
-
-  pub fn get_te(&self, p: RelPos) -> Option<Arc<dyn TileEntity>> { self.tes.get(&p).cloned() }
-
-  /// Returns the inner paletted chunk in this MultiChunk. This can be used to
-  /// access the block data directly. All ids are the latest version block
-  /// states.
-  pub fn inner(&self) -> &Chunk<PalettedSection> { &self.inner }
-  /// Same as [`inner`](Self::inner), but returns a mutable reference.
-  pub fn inner_mut(&mut self) -> &mut Chunk<PalettedSection> { &mut self.inner }
-
-  /// Returns a reference to the global type converter. Used to convert a block
-  /// id to/from any version.
-  pub fn type_converter(&self) -> &Arc<block::TypeConverter> { self.wm.block_converter() }
-
-  /// Returns the sky light information for this chunk. Used to send lighting
-  /// data to clients.
-  pub fn sky_light(&self) -> &Option<LightChunk<SkyLight>> { &self.sky }
-  /// Returns the block light information for this chunk. Used to send lighting
-  /// data to clients.
-  pub fn block_light(&self) -> &LightChunk<BlockLight> { &self.block }
-
-  /// Will enable/disable lighting. Chunks have lighting enabled by default. If
-  /// enabled, and if it was previously disabled, all the lighting information
-  /// will be recalculated (which is very slow).
-  pub fn enable_lighting(&mut self, enabled: bool) {
+  fn enable_lighting(&mut self, enabled: bool) {
     if !self.update_light && enabled {
       self.update_all_light();
     }
@@ -197,4 +110,135 @@ impl MultiChunk {
       self.block.update(&self.inner, pos);
     }
   }
+}
+
+impl MultiChunk {
+  /// Creates an empty chunk.
+  ///
+  /// The second argument is for sky light data. Places like the nether do not
+  /// contain sky light information, so the sky light data is not present.
+  pub fn new(wm: Arc<WorldManager>, sky: bool) -> MultiChunk {
+    MultiChunk { inner: ChunkData::new(sky), wm }
+  }
+
+  /// Returns a reference to the global world manager.
+  pub fn wm(&self) -> &Arc<WorldManager> { &self.wm }
+
+  /// Sets a block within this chunk. `p.x` and `p.z` must be within 0..16. If
+  /// the server supports multi-height worlds (not implemented yet), then p.y
+  /// needs to be within the world height (whatever that may be). Otherwise,
+  /// p.y must be within 0..256.
+  ///
+  /// WARNING: This will not send any packets to players! This function is meant
+  /// for use by the world directly, or during use terrain generation. If you
+  /// call this function without sending any updates yourself, no one in render
+  /// distance will see any of these changes!
+  pub fn set_type(&mut self, p: RelPos, ty: block::Type) -> Result<(), PosError> {
+    self.inner.set_type_id(p, ty.id(), ty.kind(), &self.wm.block_behaviors())
+  }
+
+  pub fn set_type_with_conv(
+    &mut self,
+    p: RelPos,
+    f: impl FnOnce(&block::TypeConverter) -> block::Type,
+  ) -> Result<(), PosError> {
+    let ty = f(self.wm.block_converter());
+    self.inner.set_type_id(p, ty.id(), ty.kind(), &self.wm.block_behaviors())
+  }
+
+  /// Sets a block within this chunk. This is the same as
+  /// [`set_type`](Self::set_type), but it uses a kind instead of a type. This
+  /// will use the default type of the given kind. For example, an oak log would
+  /// be placed facing upwards (along the Y axis), as this is the default type
+  /// for that block.
+  ///
+  /// WARNING: This will not send any packets to players! This function is meant
+  /// for use by the world directly, or during use terrain generation. If you
+  /// call this function without sending any updates yourself, no one in render
+  /// distance will see any of these changes!
+  pub fn set_kind(&mut self, p: RelPos, kind: block::Kind) -> Result<(), PosError> {
+    let ty = self.wm.block_converter().get(kind).default_type();
+    self.inner.set_type_id(p, ty.id(), ty.kind(), &self.wm.block_behaviors())
+  }
+
+  /// Fills the region within this chunk. Min and max must be within the chunk
+  /// column (see [`set_type`](Self::set_type)), and min must be less than or
+  /// equal to max.
+  ///
+  /// Since multi chunks always store information in a paletted chunk, this will
+  /// always be faster than calling [`set_type`](Self::set_type) repeatedly.
+  ///
+  /// WARNING: This will not send any packets to players! This function is meant
+  /// for use by the world directly, or during use terrain generation. If you
+  /// call this function without sending any updates yourself, no one in render
+  /// distance will see any of these changes!
+  pub fn fill(&mut self, min: RelPos, max: RelPos, ty: block::Type) -> Result<(), PosError> {
+    self.inner.inner.fill(min, max, ty.id())?;
+    // TODO: Update light correctly.
+    self.inner.update_light(min);
+    self.inner.update_light(max);
+    Ok(())
+  }
+
+  /// This is the same as [`fill`](Self::fill), but it converts the block kind
+  /// to it's default type.
+  ///
+  /// WARNING: This will not send any packets to players! This function is meant
+  /// for use by the world directly, or during use terrain generation. If you
+  /// call this function without sending any updates yourself, no one in render
+  /// distance will see any of these changes!
+  pub fn fill_kind(&mut self, min: RelPos, max: RelPos, kind: block::Kind) -> Result<(), PosError> {
+    self.inner.inner.fill(min, max, self.wm.block_converter().get(kind).default_type().id())?;
+    Ok(())
+  }
+
+  /// Gets the type of a block within this chunk. `p` must be within the chunk.
+  /// See [`set_kind`](Self::set_kind) for more.
+  ///
+  /// This returns a specific block type. If you only need to block kind, prefer
+  /// [`get_kind`](Self::get_kind).
+  pub fn get_type(&self, p: RelPos) -> Result<block::Type, PosError> {
+    Ok(
+      self
+        .wm
+        .block_converter()
+        .type_from_id(self.inner.inner.get_block(p)?, BlockVersion::latest()),
+    )
+  }
+
+  /// Gets the type of a block within this chunk. Pos must be within the chunk.
+  /// See [`set_kind`](Self::set_kind) for more.
+  pub fn get_kind(&self, p: RelPos) -> Result<block::Kind, PosError> {
+    Ok(
+      self
+        .wm
+        .block_converter()
+        .kind_from_id(self.inner.inner.get_block(p)?, BlockVersion::latest()),
+    )
+  }
+
+  pub fn get_te(&self, p: RelPos) -> Option<Arc<dyn TileEntity>> { self.inner.tes.get(&p).cloned() }
+
+  /// Returns the inner paletted chunk in this MultiChunk. This can be used to
+  /// access the block data directly. All ids are the latest version block
+  /// states.
+  pub fn inner(&self) -> &Chunk<PalettedSection> { &self.inner.inner }
+  /// Same as [`inner`](Self::inner), but returns a mutable reference.
+  pub fn inner_mut(&mut self) -> &mut Chunk<PalettedSection> { &mut self.inner.inner }
+
+  /// Returns a reference to the global type converter. Used to convert a block
+  /// id to/from any version.
+  pub fn type_converter(&self) -> &Arc<block::TypeConverter> { self.wm.block_converter() }
+
+  /// Returns the sky light information for this chunk. Used to send lighting
+  /// data to clients.
+  pub fn sky_light(&self) -> &Option<LightChunk<SkyLight>> { &self.inner.sky }
+  /// Returns the block light information for this chunk. Used to send lighting
+  /// data to clients.
+  pub fn block_light(&self) -> &LightChunk<BlockLight> { &self.inner.block }
+
+  /// Will enable/disable lighting. Chunks have lighting enabled by default. If
+  /// enabled, and if it was previously disabled, all the lighting information
+  /// will be recalculated (which is very slow).
+  pub fn enable_lighting(&mut self, enabled: bool) { self.inner.enable_lighting(enabled) }
 }

@@ -212,10 +212,10 @@ impl PluginManager {
     self.global_event(GlobalServerEvent::GenerateChunk { generator: generator.into(), chunk, pos });
   }
   pub fn on_block_place(&self, player: Arc<Player>, pos: Pos, block: block::Type) -> bool {
-    self.req(player, ServerRequest::BlockPlace { pos, block })
+    self.req(player, ServerRequest::BlockPlace { pos, block: block.to_store() })
   }
   pub fn on_block_break(&self, player: Arc<Player>, pos: Pos, block: block::Type) -> bool {
-    self.req(player, ServerRequest::BlockBreak { pos, block })
+    self.req(player, ServerRequest::BlockBreak { pos, block: block.to_store() })
   }
   pub fn on_chat_message(&self, player: Arc<Player>, message: Chat) {
     self.event(player, ServerEvent::Chat { text: message.to_plain() });

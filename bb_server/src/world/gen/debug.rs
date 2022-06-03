@@ -85,8 +85,10 @@ impl WorldGen {
           continue;
         }
         let state = (z + pos.block_z() % 24) / 2;
-        let ty = c.type_converter().type_from_id(id as u32 * 16 + state as u32, ver);
-        c.set_type(RelPos::new((x % 16) as u8, Y, z as u8), ty).unwrap();
+        c.set_type_with_conv(RelPos::new((x % 16) as u8, Y, z as u8), |conv| {
+          conv.type_from_id(id as u32 * 16 + state as u32, ver)
+        })
+        .unwrap();
       }
     }
   }
