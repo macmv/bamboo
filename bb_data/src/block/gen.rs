@@ -7,123 +7,138 @@ use std::{fs, io, path::Path};
 #[cfg(test)]
 use super::cross::cross_test;
 
-pub fn generate(def: Vec<(Version, BlockDef)>, dir: &Path) -> io::Result<()> {
-  fs::write(dir.join("ty.rs"), generate_ty(&def.last().unwrap().1))?;
-  fs::write(dir.join("version.rs"), generate_versions(&def))?;
+#[derive(Debug, Clone, Copy)]
+pub struct BlockOpts {
+  pub versions: bool,
+  pub data:     bool,
+  pub kinds:    bool,
+}
+
+pub fn generate(def: Vec<(Version, BlockDef)>, opts: BlockOpts, dir: &Path) -> io::Result<()> {
+  if opts.data || opts.kinds {
+    fs::write(dir.join("ty.rs"), generate_ty(&def.last().unwrap().1, opts))?;
+  }
+  if opts.versions {
+    fs::write(dir.join("version.rs"), generate_versions(&def))?;
+  }
   Ok(())
 }
 
-pub fn generate_ty(def: &BlockDef) -> String {
+pub fn generate_ty(def: &BlockDef, opts: BlockOpts) -> String {
   let mut gen = CodeGen::new();
-  gen.write_line("/// Auto generated block kind. This is directly generated");
-  gen.write_line("/// from prismarine data.");
-  gen.write_line("#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]");
-  gen.write("pub enum Kind ");
-  gen.write_block(|gen| {
-    for b in &def.blocks {
-      gen.write(&b.name.to_case(Case::Pascal));
-      gen.write_line(",");
-    }
-  });
-  gen.write_line("");
-  gen.write("impl FromStr for Kind ");
-  gen.write_block(|gen| {
-    gen.write_line("type Err = InvalidBlock;");
-    gen.write("fn from_str(s: &str) -> Result<Self, Self::Err> ");
+  if opts.kinds {
+    gen.write_line("/// Auto generated block kind. This is directly generated");
+    gen.write_line("/// from prismarine data.");
+    gen.write_line("#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]");
+    gen.write("pub enum Kind ");
     gen.write_block(|gen| {
-      gen.write_line("Ok(match s {");
-      gen.add_indent();
       for b in &def.blocks {
-        gen.write("\"");
-        gen.write(&b.name);
-        gen.write("\" => Self::");
         gen.write(&b.name.to_case(Case::Pascal));
         gen.write_line(",");
       }
-      gen.write_line("_ => return Err(InvalidBlock(s.into())),");
-      gen.remove_indent();
-      gen.write_line("})");
     });
-  });
-  gen.write("impl Kind ");
-  gen.write_block(|gen| {
-    gen.write("pub fn to_str(&self) -> &'static str ");
+    gen.write_line("");
+    gen.write("impl FromStr for Kind ");
     gen.write_block(|gen| {
-      gen.write("[");
-      for b in &def.blocks {
-        gen.write("\"");
-        gen.write(&b.name);
-        gen.write("\",");
-      }
-      gen.write_line("]");
-      gen.write_line("[self.id() as usize]");
-    });
-    gen.write("pub fn id(&self) -> u32");
-    gen.write_block(|gen| {
-      gen.write("match self");
+      gen.write_line("type Err = InvalidBlock;");
+      gen.write("fn from_str(s: &str) -> Result<Self, Self::Err> ");
       gen.write_block(|gen| {
-        for (id, b) in def.blocks.iter().enumerate() {
-          gen.write("Self::");
+        gen.write_line("Ok(match s {");
+        gen.add_indent();
+        for b in &def.blocks {
+          gen.write("\"");
+          gen.write(&b.name);
+          gen.write("\" => Self::");
           gen.write(&b.name.to_case(Case::Pascal));
-          gen.write(" => ");
-          gen.write(&id.to_string());
           gen.write_line(",");
         }
+        gen.write_line("_ => return Err(InvalidBlock(s.into())),");
+        gen.remove_indent();
+        gen.write_line("})");
       });
     });
-    gen.write("pub fn from_id(id: u32) -> Option<Self>");
+    gen.write("impl Kind ");
     gen.write_block(|gen| {
-      gen.write("match id");
+      gen.write("pub fn to_str(&self) -> &'static str ");
       gen.write_block(|gen| {
-        for (id, b) in def.blocks.iter().enumerate() {
-          gen.write(&id.to_string());
-          gen.write(" => ");
-          gen.write("Some(Self::");
-          gen.write(&b.name.to_case(Case::Pascal));
-          gen.write_line("),");
+        gen.write("[");
+        for b in &def.blocks {
+          gen.write("\"");
+          gen.write(&b.name);
+          gen.write("\",");
         }
-        gen.write_line("_ => None,");
+        gen.write_line("]");
+        gen.write_line("[self.id() as usize]");
+      });
+      gen.write("pub fn id(&self) -> u32");
+      gen.write_block(|gen| {
+        gen.write("match self");
+        gen.write_block(|gen| {
+          for (id, b) in def.blocks.iter().enumerate() {
+            gen.write("Self::");
+            gen.write(&b.name.to_case(Case::Pascal));
+            gen.write(" => ");
+            gen.write(&id.to_string());
+            gen.write_line(",");
+          }
+        });
+      });
+      gen.write("pub fn from_id(id: u32) -> Option<Self>");
+      gen.write_block(|gen| {
+        gen.write("match id");
+        gen.write_block(|gen| {
+          for (id, b) in def.blocks.iter().enumerate() {
+            gen.write(&id.to_string());
+            gen.write(" => ");
+            gen.write("Some(Self::");
+            gen.write(&b.name.to_case(Case::Pascal));
+            gen.write_line("),");
+          }
+          gen.write_line("_ => None,");
+        });
       });
     });
-  });
-  gen.write_line("/// Generates a table from all block kinds to any block data that kind has.");
-  gen.write_line("/// This does not include cross-versioning data. This includes information like");
-  gen.write_line("/// the block states, the properties it might have, and custom handlers for");
-  gen.write_line("/// when the block is placed (things like making fences connect, or making");
-  gen.write_line("/// stairs rotate correctly).");
-  gen.write_line("///");
-  gen.write_line("/// The second item returned is a lookup table for a latest block id to a block");
-  gen.write_line("/// kind. It is the only way to convert a block id back into a Kind.");
-  gen.write_line("///");
-  gen.write_line("/// This should only be called once, and will be done internally in the");
-  gen.write_line("/// [`WorldManager`](crate::world::WorldManager). This is left public as it may");
-  gen.write_line("/// be moved to a seperate crate in the future, as it takes a long time to");
-  gen.write_line("/// generate the source files for this.");
-  gen.write_line("///");
-  gen.write_line("/// This function is generated at compile time. See");
-  gen.write_line("/// `data/src/block/mod.rs` and `build.rs` for more.");
-  gen.write("pub fn generate_kinds() -> (&'static [Data], &'static [Kind]) ");
-  gen.write_block(|gen| {
-    gen.write_line("(&[");
-    gen.add_indent();
-    for b in &def.blocks {
-      block_data(gen, b);
-      gen.write_line(",");
-    }
-    gen.remove_indent();
-    gen.write_line("],");
-    gen.write_line("&[");
-    gen.add_indent();
-    for b in &def.blocks {
-      for _ in 0..b.all_states().len() {
-        gen.write("Kind::");
-        gen.write(&b.name.to_case(Case::Pascal));
+  }
+  if opts.data {
+    gen.write_line("/// Generates a table from all block kinds to any block data that kind has.");
+    gen.write_line("/// This does not include cross-versioning data. This includes information");
+    gen.write_line("/// like the block states, the properties it might have, and custom");
+    gen.write_line("/// handlers for when the block is placed (things like making fences connect,");
+    gen.write_line("/// or making stairs rotate correctly).");
+    gen.write_line("///");
+    gen.write_line("/// The second item returned is a lookup table for a latest block id to a");
+    gen.write_line("/// block kind. It is the only way to convert a block id back into a Kind.");
+    gen.write_line("///");
+    gen.write_line("/// This should only be called once, and will be done internally in the");
+    gen.write_line("/// [`WorldManager`](crate::world::WorldManager). This is left public as");
+    gen.write_line("/// it may be moved to a seperate crate in the future, as it takes a long");
+    gen.write_line("/// time to generate the source files for this.");
+    gen.write_line("///");
+    gen.write_line("/// This function is generated at compile time. See");
+    gen.write_line("/// `data/src/block/mod.rs` and `build.rs` for more.");
+    gen.write("pub fn generate_kinds() -> (&'static [Data], &'static [Kind]) ");
+    gen.write_block(|gen| {
+      gen.write_line("(&[");
+      gen.add_indent();
+      for b in &def.blocks {
+        block_data(gen, b);
         gen.write_line(",");
       }
-    }
-    gen.remove_indent();
-    gen.write_line("])");
-  });
+      gen.remove_indent();
+      gen.write_line("],");
+      gen.write_line("&[");
+      gen.add_indent();
+      for b in &def.blocks {
+        for _ in 0..b.all_states().len() {
+          gen.write("Kind::");
+          gen.write(&b.name.to_case(Case::Pascal));
+          gen.write_line(",");
+        }
+      }
+      gen.remove_indent();
+      gen.write_line("])");
+    });
+  }
 
   gen.into_output()
 }

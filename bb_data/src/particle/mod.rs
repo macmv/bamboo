@@ -5,7 +5,7 @@ use std::{fs, io, path::Path};
 mod cross;
 mod gen;
 
-pub fn generate(out_dir: &Path, _target: Target) -> io::Result<()> {
+pub fn generate(out_dir: &Path, target: Target) -> io::Result<()> {
   fs::create_dir_all(out_dir.join("particle"))?;
   let versions = crate::VERSIONS
     .iter()
@@ -14,7 +14,7 @@ pub fn generate(out_dir: &Path, _target: Target) -> io::Result<()> {
       (ver, def)
     })
     .collect();
-  gen::generate(versions, &out_dir.join("particle"))?;
+  gen::generate(versions, target, &out_dir.join("particle"))?;
   Ok(())
 }
 

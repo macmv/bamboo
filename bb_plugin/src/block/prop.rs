@@ -114,7 +114,7 @@ impl Data {
     for (i, p) in self.default_props.iter().enumerate() {
       state_props[i] = p.id(&self.props[i].kind);
     }
-    Type { kind: self.kind, state: self.state, props: self.props, state_props }
+    Type { kind: self.kind, state: self.state, props: &self.props, state_props }
   }
 
   /// Returns the type
@@ -125,7 +125,7 @@ impl Data {
       state_props[i] = id % len;
       id /= len;
     }
-    Type { kind: self.kind, state: self.state, props: self.props, state_props }
+    Type { kind: self.kind, state: self.state, props: &self.props, state_props }
   }
 }
 

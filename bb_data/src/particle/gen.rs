@@ -1,20 +1,21 @@
 use super::{cross::cross_version, Particle, ParticleDef};
-use crate::{gen::CodeGen, Version};
+use crate::{gen::CodeGen, Target, Version};
 use convert_case::{Case, Casing};
 
 use std::{fs, io, path::Path};
 
-pub fn generate(def: Vec<(Version, ParticleDef)>, dir: &Path) -> io::Result<()> {
-  fs::write(dir.join("ty.rs"), generate_ty(&def.last().unwrap().1))?;
+pub fn generate(def: Vec<(Version, ParticleDef)>, target: Target, dir: &Path) -> io::Result<()> {
+  fs::write(dir.join("ty.rs"), generate_ty(&def.last().unwrap().1, target))?;
   fs::write(dir.join("version.rs"), generate_versions(&def))?;
   Ok(())
 }
 
-fn write_enum_data(gen: &mut CodeGen, name: &str) {
+fn write_enum_data(gen: &mut CodeGen, name: &str, target: Target) {
   match name {
-    "block" => gen.write("(block::Type)"),
-    "block_marker" => gen.write("(block::Type)"),
-    "falling_dust" => gen.write("(block::Type)"),
+    "block" | "block_marker" | "falling_dust" => match target {
+      Target::Host => gen.write("(block::Type)"),
+      Target::Plugin => gen.write("(block::Type<'a>)"),
+    },
     "dust" => gen.write("(Color, f32)"),
     "dust_color_transition" => gen.write("(Color, Color, f32)"),
     _ => {}
@@ -41,21 +42,27 @@ fn write_enum_default(gen: &mut CodeGen, name: &str) {
   }
 }
 
-pub fn generate_ty(def: &ParticleDef) -> String {
+pub fn generate_ty(def: &ParticleDef, target: Target) -> String {
   let mut gen = CodeGen::new();
   gen.write_line("/// Auto generated particle kind. This is directly generated");
   gen.write_line("/// from bamboo data.");
   gen.write_line("#[derive(Debug, Copy, Clone, PartialEq)]");
-  gen.write("pub enum Type ");
+  match target {
+    Target::Host => gen.write("pub enum Type "),
+    Target::Plugin => gen.write("pub enum Type<'a> "),
+  }
   gen.write_block(|gen| {
     for b in &def.particles {
       gen.write(&b.name.to_case(Case::Pascal));
-      write_enum_data(gen, &b.name);
+      write_enum_data(gen, &b.name, target);
       gen.write_line(",");
     }
   });
   gen.write_line("");
-  gen.write("impl FromStr for Type ");
+  match target {
+    Target::Host => gen.write("impl FromStr for Type "),
+    Target::Plugin => gen.write("impl FromStr for Type<'_> "),
+  }
   gen.write_block(|gen| {
     gen.write_line("type Err = InvalidParticle;");
     gen.write("fn from_str(s: &str) -> Result<Self, Self::Err> ");
@@ -75,7 +82,10 @@ pub fn generate_ty(def: &ParticleDef) -> String {
       gen.write_line("})");
     });
   });
-  gen.write("impl Type ");
+  match target {
+    Target::Host => gen.write("impl Type "),
+    Target::Plugin => gen.write("impl Type<'_> "),
+  }
   gen.write_block(|gen| {
     gen.write("pub fn to_str(&self) -> &'static str");
     gen.write_block(|gen| {

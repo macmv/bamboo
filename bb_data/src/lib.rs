@@ -9,6 +9,8 @@ mod particle;
 mod protocol;
 mod tag;
 
+pub use block::BlockOpts;
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct Version {
   maj:      u32,
@@ -34,12 +36,13 @@ fn out_dir() -> PathBuf {
   PathBuf::new().join(&env::var("OUT_DIR").expect("could not get out dir"))
 }
 
+#[derive(Debug, Clone, Copy)]
 pub enum Target {
   Host,
   Plugin,
 }
 
-pub fn generate_blocks() { block::generate(&out_dir()).unwrap(); }
+pub fn generate_blocks(opts: BlockOpts) { block::generate(&out_dir(), opts).unwrap(); }
 pub fn generate_items() { item::generate(&out_dir()).unwrap(); }
 pub fn generate_entities() { entity::generate(&out_dir()).unwrap(); }
 pub fn generate_protocol() { protocol::generate(&out_dir()).unwrap(); }

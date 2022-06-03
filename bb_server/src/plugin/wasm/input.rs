@@ -2,13 +2,15 @@ use super::Input;
 use bb_ffi::CUUID;
 use wasmer::{FromToNativeWasmType, NativeFunc, WasmPtr, WasmTypeList};
 
+type Result<T> = std::result::Result<T, wasmer::RuntimeError>;
+
 impl Input for () {
   type WasmArgs = ();
   fn call_native<Rets: WasmTypeList>(
     &self,
     native: &NativeFunc<Self::WasmArgs, Rets>,
-  ) -> Option<Rets> {
-    native.call().ok()
+  ) -> Result<Rets> {
+    native.call()
   }
 }
 
@@ -21,8 +23,8 @@ where
   fn call_native<Rets: WasmTypeList>(
     &self,
     native: &NativeFunc<Self::WasmArgs, Rets>,
-  ) -> Option<Rets> {
-    native.call(self.0, self.1).ok()
+  ) -> Result<Rets> {
+    native.call(self.0, self.1)
   }
 }
 
@@ -36,8 +38,8 @@ where
   fn call_native<Rets: WasmTypeList>(
     &self,
     native: &NativeFunc<Self::WasmArgs, Rets>,
-  ) -> Option<Rets> {
-    native.call(self.0, self.1, self.2).ok()
+  ) -> Result<Rets> {
+    native.call(self.0, self.1, self.2)
   }
 }
 
@@ -52,8 +54,8 @@ where
   fn call_native<Rets: WasmTypeList>(
     &self,
     native: &NativeFunc<Self::WasmArgs, Rets>,
-  ) -> Option<Rets> {
-    native.call(self.0, self.1, self.2, self.3).ok()
+  ) -> Result<Rets> {
+    native.call(self.0, self.1, self.2, self.3)
   }
 }
 
@@ -67,18 +69,16 @@ where
   fn call_native<Rets: WasmTypeList>(
     &self,
     native: &NativeFunc<Self::WasmArgs, Rets>,
-  ) -> Option<Rets> {
-    native
-      .call(
-        self.0.bytes[0],
-        self.0.bytes[1],
-        self.0.bytes[2],
-        self.0.bytes[3],
-        self.1,
-        self.2,
-        self.3,
-      )
-      .ok()
+  ) -> Result<Rets> {
+    native.call(
+      self.0.bytes[0],
+      self.0.bytes[1],
+      self.0.bytes[2],
+      self.0.bytes[3],
+      self.1,
+      self.2,
+      self.3,
+    )
   }
 }
 
@@ -87,8 +87,8 @@ impl Input for i32 {
   fn call_native<Rets: WasmTypeList>(
     &self,
     native: &NativeFunc<Self::WasmArgs, Rets>,
-  ) -> Option<Rets> {
-    native.call(*self).ok()
+  ) -> Result<Rets> {
+    native.call(*self)
   }
 }
 impl<T: Copy> Input for WasmPtr<T> {
@@ -96,7 +96,7 @@ impl<T: Copy> Input for WasmPtr<T> {
   fn call_native<Rets: WasmTypeList>(
     &self,
     native: &NativeFunc<Self::WasmArgs, Rets>,
-  ) -> Option<Rets> {
-    native.call(*self).ok()
+  ) -> Result<Rets> {
+    native.call(*self)
   }
 }

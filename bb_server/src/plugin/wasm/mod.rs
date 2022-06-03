@@ -33,7 +33,7 @@ trait Input {
   fn call_native<Rets: WasmTypeList>(
     &self,
     native: &NativeFunc<Self::WasmArgs, Rets>,
-  ) -> Option<Rets>;
+  ) -> Result<Rets, wasmer::RuntimeError>;
 }
 trait Output {
   /// Returns the size in pointers. This keeps everything aligned, and means we

@@ -12,27 +12,38 @@ const STATE_PROPS_LEN: usize = 8;
 /// general. For example, there is one block kind for oak stairs. However, there
 /// are 32 types for an oak stair, based on it's state (rotation, in this case).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub struct Type {
+pub struct Type<'a> {
   pub(super) kind: Kind,
   state:           u32,
-  props:           &'static [Prop],
-  // TODO: Make sure there aren't more than 8 properties for any block.
+  props:           &'a [Prop],
   state_props:     [u32; STATE_PROPS_LEN],
 }
 
 impl Kind {
-  pub fn data(&self) -> Box<Data> {
-    unsafe {
-      let data = Box::from_raw(bb_ffi::bb_block_data_for_kind(self.id()));
-      log::info!("data: {data:#?}");
-      todo!();
+  pub fn data(&self) -> Data {
+    let data = unsafe { Box::from_raw(bb_ffi::bb_block_data_for_kind(self.id())) };
+    Data {
+      kind:          Kind::from_id(data.kind).unwrap(),
+      name:          data.name.into_string(),
+      material:      Material::Air,
+      hardness:      data.hardness,
+      resistance:    data.resistance,
+      drops:         vec![],
+      transparent:   data.transparent.as_bool(),
+      filter_light:  data.filter_light,
+      emit_light:    data.emit_light,
+      state:         data.state,
+      bounding_box:  BoundingBoxKind::Empty,
+      tags:          vec![],
+      props:         vec![],
+      default_props: vec![],
     }
   }
 }
 
-impl Type {
+impl Type<'_> {
   /// Returns the type for air.
-  pub fn air() -> Type {
+  pub fn air() -> Type<'static> {
     Type {
       kind:        Kind::Air,
       state:       0,
@@ -113,7 +124,7 @@ impl Type {
       .collect()
   }
 }
-impl fmt::Display for Type {
+impl fmt::Display for Type<'_> {
   fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
     write!(f, "{}", self.kind().to_str())?;
     let mut all_props: Vec<_> = self.props().into_iter().collect();
@@ -162,7 +173,7 @@ pub struct Data {
   /// The kind for this data.
   pub kind:         Kind,
   /// The name of this block. This is something like `grass_block`.
-  pub name:         &'static str,
+  pub name:         String,
   /// The material used to make this block. This controls things like map color,
   /// sound, what tool breaks the block, etc. Prismarine doesn't have a very
   /// good material value, so this needs to be updated to more complete data.
@@ -172,7 +183,7 @@ pub struct Data {
   /// How difficult this is to break with an explosion.
   pub resistance:   f32,
   /// A list of item ids this block can drop.
-  pub drops:        &'static [ItemDrop],
+  pub drops:        Vec<ItemDrop>,
   /// If this is true, then clients can (at least partially) see through this
   /// block.
   pub transparent:  bool,
@@ -189,18 +200,18 @@ pub struct Data {
   pub state:     u32,
   /// A list of vanilla tags for this block. Plugins should be able to add tags
   /// in the future. These tags don't include `minecraft:` at the start.
-  pub tags:      &'static [&'static str],
+  pub tags:      Vec<String>,
   /// All the properties on this block. These are stored so that it is easy to
   /// convert a single property on a block.
-  props:         &'static [Prop],
+  props:         Vec<Prop>,
   /// The default type. Each value is an index into that property.
-  default_props: &'static [PropValue<'static>],
+  default_props: Vec<PropValue<'static>>,
 }
 
 /// A possible item drop for a block.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ItemDrop {
-  pub item: &'static str,
+  pub item: String,
   pub min:  i32,
   pub max:  i32,
 }

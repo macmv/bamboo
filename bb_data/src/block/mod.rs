@@ -5,7 +5,9 @@ use std::{fmt, fs, io, path::Path};
 mod cross;
 mod gen;
 
-pub fn generate(out_dir: &Path) -> io::Result<()> {
+pub use gen::BlockOpts;
+
+pub fn generate(out_dir: &Path, opts: BlockOpts) -> io::Result<()> {
   fs::create_dir_all(out_dir.join("block"))?;
   let versions = crate::VERSIONS
     .iter()
@@ -17,7 +19,7 @@ pub fn generate(out_dir: &Path) -> io::Result<()> {
       (ver, def)
     })
     .collect();
-  gen::generate(versions, &out_dir.join("block"))?;
+  gen::generate(versions, opts, &out_dir.join("block"))?;
   Ok(())
 }
 
