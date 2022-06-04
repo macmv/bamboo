@@ -3,7 +3,7 @@ extern crate bb_plugin;
 
 use bb_plugin::{
   block,
-  command::Command,
+  command::{Arg, Command},
   math::FPos,
   particle,
   particle::{Color, Particle},
@@ -13,12 +13,13 @@ use std::any::Any;
 
 #[derive(Debug)]
 struct PlayerInfo {
-  brush_size: f64,
+  constant_brush: bool,
+  brush_size:     f64,
 }
 
 impl PlayerStore for PlayerInfo {
   fn as_any(&mut self) -> &mut dyn Any { self }
-  fn new() -> Self { PlayerInfo { brush_size: 1.0 } }
+  fn new() -> Self { PlayerInfo { constant_brush: true, brush_size: 1.0 } }
 }
 
 #[no_mangle]
@@ -27,7 +28,11 @@ extern "C" fn init() {
   bb_plugin::set_on_block_place(on_place);
   bb_plugin::set_on_tick(on_tick);
   let cmd = Command::new("brush");
-  bb_plugin::add_command(&cmd);
+  bb_plugin::add_command(&cmd, cmd_brush);
+  let cmd = Command::new("+");
+  bb_plugin::add_command(&cmd, cmd_increase_brush);
+  let cmd = Command::new("-");
+  bb_plugin::add_command(&cmd, cmd_decrease_brush);
 }
 
 use bb_plugin::{math::Pos, player::Player};
@@ -41,18 +46,42 @@ fn on_place(player: Player, pos: Pos) -> bool {
     data:          0.0,
     long_distance: false,
   });
-  let instance = bb_plugin::instance();
-  let mut store = instance.store();
+  let mut store = bb_plugin::store();
   let info: &mut PlayerInfo = store.player(player.id());
   info.brush_size += 0.5;
   true
 }
 
+fn cmd_brush(player: Option<Player>, args: Vec<Arg>) {
+  if let Some(p) = player {
+    let mut store = bb_plugin::store();
+    let info: &mut PlayerInfo = store.player(p.id());
+    match args[1].lit() {
+      "constant" => info.constant_brush = true,
+      "dynamic" => info.constant_brush = false,
+      _ => unreachable!(),
+    }
+  }
+}
+fn cmd_increase_brush(player: Option<Player>, args: Vec<Arg>) {
+  if let Some(p) = player {
+    let mut store = bb_plugin::store();
+    let info: &mut PlayerInfo = store.player(p.id());
+    info.brush_size += 0.2;
+  }
+}
+fn cmd_decrease_brush(player: Option<Player>, args: Vec<Arg>) {
+  if let Some(p) = player {
+    let mut store = bb_plugin::store();
+    let info: &mut PlayerInfo = store.player(p.id());
+    info.brush_size -= 0.2;
+  }
+}
+
 fn on_tick() {
   let world = bb_plugin::world::World::new(0);
   for player in world.players() {
-    let instance = bb_plugin::instance();
-    let mut store = instance.store();
+    let mut store = bb_plugin::store();
     let info: &mut PlayerInfo = store.player(player.id());
     let pos = player.pos();
     let look = player.look_as_vec();
@@ -112,14 +141,14 @@ fn on_tick() {
 
       for angle in 0..30 {
         let angle = angle as f64 / 30.0 * 2.0 * std::f64::consts::PI;
-        // Constant brush size
-        let r = info.brush_size * 50.0 / pos.dist(from);
+        let r = if info.constant_brush {
+          // Constant brush size
+          info.brush_size * 50.0 / pos.dist(from)
+        } else {
+          // Brush size changes with distance
+          info.brush_size * 10.0
+        };
         let to = from + unit * angle.cos() * r + other_unit * angle.sin() * r + look * 50.0;
-        /*
-        // Brush size changes with distance
-        const R: f64 = 10.0;
-        let to = from + unit * angle.cos() * R + other_unit * angle.sin() * R + look * 50.0;
-        */
         /*
         // Same as constant brush size, but the origin of each raycast is wrong
         const R: f64 = 2.0;

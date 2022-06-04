@@ -15,6 +15,7 @@ mod ffi_impls;
 pub mod item;
 pub mod particle;
 pub mod player;
+mod store;
 pub mod time;
 pub mod world;
 
@@ -22,6 +23,7 @@ mod internal;
 
 pub use command::add_command;
 pub use internal::gen::add_world_generator;
+pub use store::{store, PlayerStore, PluginStore};
 
 pub struct Bamboo {
   marker: PhantomData<()>,
@@ -35,38 +37,6 @@ pub trait IntoFfi {
   fn into_ffi(self) -> Self::Ffi;
 }
 
-use bb_common::util::UUID;
-use parking_lot::MutexGuard;
-use std::{any::Any, collections::HashMap};
-
-pub trait PlayerStore: Any + Send {
-  fn as_any(&mut self) -> &mut dyn Any;
-  fn new() -> Self
-  where
-    Self: Sized;
-}
-
-pub struct PluginStore {
-  players: Option<HashMap<UUID, Box<dyn PlayerStore>>>,
-}
-
-impl PluginStore {
-  const fn new() -> PluginStore { PluginStore { players: None } }
-  pub fn player<T: PlayerStore>(&mut self, id: UUID) -> &mut T {
-    let b = match &mut self.players {
-      Some(p) => p.entry(id).or_insert_with(|| Box::new(T::new())),
-      p @ None => {
-        *p = Some(HashMap::new());
-        p.as_mut().unwrap().entry(id).or_insert_with(|| Box::new(T::new()))
-      }
-    };
-    b.as_any().downcast_mut().expect("wrong type given for player store")
-  }
-}
-
-static STORE: Mutex<PluginStore> =
-  Mutex::const_new(parking_lot::RawMutex::INIT, PluginStore::new());
-
 impl Bamboo {
   pub fn broadcast(&self, message: Chat) {
     unsafe {
@@ -74,7 +44,6 @@ impl Bamboo {
       bb_ffi::bb_broadcast(&c_chat);
     }
   }
-  pub fn store(&self) -> MutexGuard<PluginStore> { STORE.lock() }
 }
 
 use log::{Level, LevelFilter, Metadata, Record};

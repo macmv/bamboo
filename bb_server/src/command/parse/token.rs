@@ -111,7 +111,7 @@ impl<'a> Tokenizer<'a> {
         self.next_char().unwrap();
         break;
       }
-      if !(c.is_ascii_alphabetic() || c == '_') {
+      if !('!'..'~').contains(&c) {
         valid = false;
       }
       text.push(self.next_char().unwrap());

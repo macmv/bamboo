@@ -1,3 +1,5 @@
+use crate::player::Player;
+
 pub struct Command {
   name:     String,
   ty:       NodeType,
@@ -10,7 +12,22 @@ enum NodeType {
   Argument(String),
 }
 
-pub fn add_command(cmd: &Command) {
+#[derive(Debug, Clone, PartialEq)]
+#[non_exhaustive]
+pub enum Arg {
+  Lit(String),
+}
+
+impl Arg {
+  pub fn lit(&self) -> &str {
+    match self {
+      Self::Lit(s) => s.as_str(),
+      _ => panic!("not a literal: {self:?}"),
+    }
+  }
+}
+
+pub fn add_command(cmd: &Command, cb: impl Fn(Option<Player>, Vec<Arg>)) {
   unsafe {
     let ffi = cmd.to_ffi();
     bb_ffi::bb_add_command(&ffi);
