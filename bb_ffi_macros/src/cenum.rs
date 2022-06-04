@@ -284,6 +284,10 @@ pub fn cenum(_args: TokenStream, input: TokenStream) -> TokenStream {
     impl Copy for #name {}
     #[cfg(feature = "host")]
     impl Copy for #data_name {}
+    #[cfg(feature = "host")]
+    unsafe impl wasmer::ValueType for #name {}
+    #[cfg(feature = "host")]
+    unsafe impl wasmer::ValueType for #data_name {}
 
     impl #name {
       #(#new_funcs)*

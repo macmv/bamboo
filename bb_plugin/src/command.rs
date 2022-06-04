@@ -81,3 +81,12 @@ impl Command {
     }
   }
 }
+
+#[no_mangle]
+extern "C" fn on_command(player: *mut bb_ffi::CUUID, args: *mut bb_ffi::CList<bb_ffi::CArg>) {
+  unsafe {
+    let player = if player.is_null() { None } else { Some(Box::from_raw(player)) };
+    let args = Box::from_raw(args).into_vec();
+    log::info!("got command args {args:?}");
+  }
+}

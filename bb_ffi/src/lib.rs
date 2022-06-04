@@ -3,8 +3,7 @@
 use bb_ffi_macros::{cenum, ctype};
 
 #[repr(C)]
-#[derive(Debug)]
-#[cfg_attr(feature = "host", derive(Clone))]
+#[cfg_attr(feature = "host", derive(Debug, Clone))]
 pub struct CStr {
   #[cfg(feature = "host")]
   pub ptr: wasmer::WasmPtr<u8, wasmer::Array>,
@@ -316,6 +315,29 @@ impl CStr {
         Ok(s) => s,
         Err(e) => String::from_utf8_lossy(&e.into_bytes()).into(),
       }
+    }
+  }
+}
+
+#[cfg(not(feature = "host"))]
+use std::fmt;
+#[cfg(not(feature = "host"))]
+impl fmt::Debug for CStr {
+  fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    if f.alternate() {
+      f.debug_struct("CStr")
+        .field("ptr", &self.ptr)
+        .field("len", &self.len)
+        .field(
+          "str",
+          &String::from_utf8_lossy(unsafe {
+            std::slice::from_raw_parts(self.ptr, self.len as usize)
+          }),
+        )
+        .finish()
+    } else {
+      String::from_utf8_lossy(unsafe { std::slice::from_raw_parts(self.ptr, self.len as usize) })
+        .fmt(f)
     }
   }
 }

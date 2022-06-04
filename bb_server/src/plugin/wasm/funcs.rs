@@ -11,7 +11,7 @@ use bb_common::{
   util::Chat,
   version::BlockVersion,
 };
-use bb_ffi::{CBlockData, CChat, CCommand, CFPos, CParticle, CPos, CStr, CUUID};
+use bb_ffi::{CArg, CBlockData, CChat, CCommand, CFPos, CList, CParticle, CPos, CStr, CUUID};
 use log::Level;
 use std::{mem, sync::Arc};
 use wasmer::{
@@ -24,6 +24,8 @@ pub struct Env {
   pub memory:      LazyInit<Memory>,
   #[wasmer(export)]
   pub wasm_malloc: LazyInit<NativeFunc<(u32, u32), u32>>,
+  #[wasmer(export)]
+  pub on_command:  LazyInit<NativeFunc<(WasmPtr<CUUID>, WasmPtr<CList<CArg>>), ()>>,
   pub wm:          Arc<WorldManager>,
   /// The version of this plugin. Plugins will send us things like block ids,
   /// and we need to know how to convert them to the server's version. This
@@ -309,7 +311,19 @@ fn add_command(env: &Env, cmd: WasmPtr<CCommand>) {
     }
   }
   if let Some(cmd) = command_from_env(env, cmd) {
-    env.wm.commands().add(cmd, |_, _, _| {});
+    let e = env;
+    let env = env.clone();
+    e.wm.commands().add(cmd, move |_, player, args| {
+      let id = match player {
+        Some(p) => env.malloc_store(p.id().to_ffi(&env)),
+        None => WasmPtr::new(0),
+      };
+      let args = env.malloc_store(args.as_slice().to_ffi(&env));
+      match env.on_command.get_ref().unwrap().call(id, args) {
+        Ok(()) => {}
+        Err(e) => error!("couldn't execute command on wasm: {e}"),
+      }
+    });
   }
 }
 
@@ -333,6 +347,7 @@ pub fn imports(store: &Store, wm: Arc<WorldManager>, name: String) -> ImportObje
   let env = Env {
     memory: LazyInit::new(),
     wasm_malloc: LazyInit::new(),
+    on_command: LazyInit::new(),
     wm,
     ver: BlockVersion::V1_8,
     name: Arc::new(name),

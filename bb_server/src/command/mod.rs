@@ -23,6 +23,9 @@ pub mod reader;
 mod sender;
 mod serialize;
 
+#[cfg(feature = "wasm_plugins")]
+mod ffi;
+
 pub use enums::{Arg, Parser, StringType};
 use parse::{ChildError, Span};
 pub use parse::{ErrorKind, ParseError, Tokenizer};
