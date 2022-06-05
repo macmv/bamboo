@@ -183,18 +183,21 @@ pub fn cenum(_args: TokenStream, input: TokenStream) -> TokenStream {
       },
     });
     let convert_manually_drop = if is_copy(&ty) {
-      quote!(self.data.#field)
+      quote!(me.data.#field)
     } else {
-      quote!(::std::mem::ManuallyDrop::into_inner(self.data.#field))
+      quote!(::std::mem::ManuallyDrop::take(&mut me.data.#field))
     };
     quote!(
       #[allow(unused_parens)]
-      pub fn #into_name(self) -> Option<#ty> {
-        if self.variant == #variant {
+      pub fn #into_name(mut self) -> Option<#ty> {
+        let mut me = ::std::mem::ManuallyDrop::new(self);
+        if me.variant == #variant {
           unsafe {
             Some(#convert_manually_drop)
           }
         } else {
+          // Drop self if we have the wrong variant.
+          ::std::mem::ManuallyDrop::into_inner(me);
           None
         }
       }
@@ -205,6 +208,24 @@ pub fn cenum(_args: TokenStream, input: TokenStream) -> TokenStream {
     quote!(
       #variant => #data_name { #field: self.data.#field.clone() },
     )
+  });
+  let drop_match_cases = input.variants.iter().enumerate().flat_map(|(variant, v)| {
+    let field = Ident::new(&format!("f_{}", to_lower(&v.ident.to_string())), v.ident.span());
+    let ty = Type::Tuple(TypeTuple {
+      paren_token: Paren { span: v.fields.span() },
+      elems:       {
+        let mut punct = Punctuated::<Type, Token![,]>::new();
+        punct.extend(v.fields.iter().map(|field| field.ty.clone()));
+        punct
+      },
+    });
+    if is_copy(&ty) {
+      None
+    } else {
+      Some(quote!(
+        #variant => ::std::mem::ManuallyDrop::drop(&mut self.data.#field),
+      ))
+    }
   });
   let debug_match_cases = input.variants.iter().enumerate().map(|(variant, v)| {
     let field = Ident::new(&format!("f_{}", to_lower(&v.ident.to_string())), v.ident.span());
@@ -301,9 +322,20 @@ pub fn cenum(_args: TokenStream, input: TokenStream) -> TokenStream {
           #name {
             variant: self.variant,
             data: match self.variant {
-              #(#clone_match_cases)*
+               #(#clone_match_cases)*
               _ => ::std::mem::MaybeUninit::uninit().assume_init(),
             },
+          }
+        }
+      }
+    }
+    #[cfg(not(feature = "host"))]
+    impl Drop for #name {
+      fn drop(&mut self) {
+        unsafe {
+          match self.variant {
+            #(#drop_match_cases)*
+            _ => {}
           }
         }
       }

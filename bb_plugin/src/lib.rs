@@ -52,7 +52,7 @@ struct Logger;
 static LOGGER: Logger = Logger;
 
 impl log::Log for Logger {
-  fn enabled(&self, metadata: &Metadata) -> bool { metadata.level() <= Level::Info }
+  fn enabled(&self, metadata: &Metadata) -> bool { metadata.level() <= Level::Debug }
 
   fn log(&self, record: &Record) {
     if self.enabled(record.metadata()) {
@@ -105,7 +105,7 @@ pub fn init() {
     }
   }));
   log::set_logger(&LOGGER).unwrap();
-  log::set_max_level(LevelFilter::Info);
+  log::set_max_level(LevelFilter::Debug);
 }
 
 use parking_lot::lock_api::RawMutex;

@@ -1,4 +1,6 @@
 use crate::player::Player;
+use parking_lot::{lock_api::RawMutex, Mutex};
+use std::collections::HashMap;
 
 pub struct Command {
   name:     String,
@@ -19,6 +21,13 @@ pub enum Arg {
 }
 
 impl Arg {
+  pub fn new(carg: bb_ffi::CArg) -> Self {
+    if let Some(s) = carg.into_literal() {
+      Arg::Lit(s.into_string())
+    } else {
+      todo!()
+    }
+  }
   pub fn lit(&self) -> &str {
     match self {
       Self::Lit(s) => s.as_str(),
@@ -27,7 +36,16 @@ impl Arg {
   }
 }
 
-pub fn add_command(cmd: &Command, cb: impl Fn(Option<Player>, Vec<Arg>)) {
+static CALLBACKS: Mutex<Option<HashMap<String, Box<dyn Fn(Option<Player>, Vec<Arg>) + Send>>>> =
+  Mutex::const_new(parking_lot::RawMutex::INIT, None);
+pub fn add_command(cmd: &Command, cb: impl Fn(Option<Player>, Vec<Arg>) + Send + 'static) {
+  {
+    let mut cbs = CALLBACKS.lock();
+    if cbs.is_none() {
+      *cbs = Some(HashMap::new());
+    }
+    cbs.as_mut().unwrap().insert(cmd.name.clone(), Box::new(cb));
+  }
   unsafe {
     let ffi = cmd.to_ffi();
     bb_ffi::bb_add_command(&ffi);
@@ -86,7 +104,12 @@ impl Command {
 extern "C" fn on_command(player: *mut bb_ffi::CUUID, args: *mut bb_ffi::CList<bb_ffi::CArg>) {
   unsafe {
     let player = if player.is_null() { None } else { Some(Box::from_raw(player)) };
-    let args = Box::from_raw(args).into_vec();
-    log::info!("got command args {args:?}");
+    let args = Box::from_raw(args);
+    let args: Vec<_> = args.into_vec().into_iter().map(|carg| Arg::new(carg)).collect();
+    let name = args[0].lit();
+    let cb = CALLBACKS.lock();
+    if let Some(cb) = cb.as_ref() {
+      cb[name](player.map(|id| Player::new(*id)), args);
+    }
   }
 }

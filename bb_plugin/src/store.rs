@@ -24,9 +24,12 @@ impl PluginStore {
 static STORE: Mutex<Option<PluginStore>> = Mutex::const_new(parking_lot::RawMutex::INIT, None);
 
 pub fn store<'a>() -> MappedMutexGuard<'a, PluginStore> {
-  let mut lock = STORE.lock();
-  if lock.is_none() {
-    *lock = Some(PluginStore::new());
+  loop {
+    if let Some(mut lock) = STORE.try_lock() {
+      if lock.is_none() {
+        *lock = Some(PluginStore::new());
+      }
+      break MutexGuard::map(lock, |opt| opt.as_mut().unwrap());
+    }
   }
-  MutexGuard::map(lock, |opt| opt.as_mut().unwrap())
 }

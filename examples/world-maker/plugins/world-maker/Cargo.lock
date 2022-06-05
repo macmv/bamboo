@@ -59,6 +59,7 @@ dependencies = [
  "byteorder",
  "bytes",
  "crossbeam-channel",
+ "libc",
  "log",
  "num",
  "num-derive",

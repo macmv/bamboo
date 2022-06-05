@@ -42,3 +42,59 @@ unsafe extern "C" fn wasm_free(ptr: *mut u8, size: u32, align: u32) {
     dealloc(ptr, Layout::from_size_align(size as usize, align as usize).unwrap())
   }
 }
+
+use std::alloc::{GlobalAlloc, Layout, System};
+
+struct Alloc;
+
+unsafe impl GlobalAlloc for Alloc {
+  unsafe fn alloc(&self, layout: Layout) -> *mut u8 {
+    let ptr = System.alloc(layout);
+
+    use std::io::Write;
+    let mut data = [0; 64];
+    let mut buf: &mut [u8] = &mut data;
+    write!(buf, "allocating at {:#?}: {:#x}", ptr, layout.size());
+    let remaining = buf.len();
+    let written = data.len() - remaining;
+    bb_ffi::bb_log(
+      3,
+      data.as_ptr(),
+      written as u32,
+      "".as_ptr(),
+      "".len() as u32,
+      "".as_ptr(),
+      "".len() as u32,
+      "".as_ptr(),
+      "".len() as u32,
+      0,
+    );
+    ptr
+  }
+
+  unsafe fn dealloc(&self, ptr: *mut u8, layout: Layout) {
+    use std::io::Write;
+    let mut data = [0; 64];
+    let mut buf: &mut [u8] = &mut data;
+    write!(buf, "freeing    at {:#?}: {:#x}", ptr, layout.size());
+    let remaining = buf.len();
+    let written = data.len() - remaining;
+    bb_ffi::bb_log(
+      3,
+      data.as_ptr(),
+      written as u32,
+      "".as_ptr(),
+      "".len() as u32,
+      "".as_ptr(),
+      "".len() as u32,
+      "".as_ptr(),
+      "".len() as u32,
+      0,
+    );
+
+    System.dealloc(ptr, layout);
+  }
+}
+
+#[global_allocator]
+static GLOBAL: Alloc = Alloc;
