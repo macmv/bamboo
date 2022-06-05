@@ -167,6 +167,14 @@ impl SourceFmt for Attribute {
       }
       write!(f, "[")?;
       f.write_src(&self.path)?;
+      let mut iter = self.tokens.clone().into_iter();
+      // If we have the #[foo = "bar"] syntax, we want a space before the token
+      // stream.
+      if let Some(first) = iter.next() {
+        if syn::parse2::<syn::Token![=]>(first.into()).is_ok() {
+          write!(f, " ")?;
+        }
+      }
       f.write_src(&self.tokens)?;
       write!(f, "]")?;
     }
@@ -196,14 +204,16 @@ impl SourceFmt for Variant {
     write!(f, "{}", &self.ident)?;
     match &self.fields {
       Fields::Named(named) => {
-        writeln!(f, "{{")?;
+        writeln!(f, " {{")?;
+        f.indent();
         for pair in named.named.pairs() {
           f.write_src(*pair.value())?;
           if pair.punct().is_some() {
             writeln!(f, ",")?;
           }
         }
-        writeln!(f, "}}")?;
+        f.unindent();
+        write!(f, "}}")?;
       }
       Fields::Unnamed(unnamed) => {
         write!(f, "(")?;

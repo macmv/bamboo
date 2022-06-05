@@ -65,7 +65,7 @@ struct CVariant {
 enum CVariantType {
   Unit,
   Single(Type),
-  Struct(Vec<(Ident, Type)>),
+  Struct(Ident, Vec<(Ident, Type)>),
 }
 
 fn path(ident: Ident) -> Path {
@@ -84,8 +84,8 @@ impl CVariant {
     match &self.ty {
       CVariantType::Unit => None,
       CVariantType::Single(ty) => Some(ty.clone()),
-      CVariantType::Struct(_) => {
-        Some(Type::Path(TypePath { qself: None, path: path(self.name.clone()) }))
+      CVariantType::Struct(name, _) => {
+        Some(Type::Path(TypePath { qself: None, path: path(name.clone()) }))
       }
     }
   }
@@ -110,7 +110,23 @@ impl CEnum {
           }
         }
         Fields::Named(named) => {
-          return Err(quote_spanned!(named.span() => compile_error!("struct variants are not implemented");))
+          let mut name = None;
+          for attr in v.attrs {
+            if attr.path.get_ident().map(|i| i == "name").unwrap_or(false) {
+              if name.is_some() {
+                return Err(quote_spanned!(named.span() => compile_error!("cannot have two #[name] attributes");));
+              }
+              let t: TokenStream = attr.tokens.into();
+              let mut iter = t.into_iter();
+              iter.next().unwrap();
+              let tree = iter.next().unwrap();
+              name = Some(syn::parse::<syn::LitStr>(tree.into()).unwrap().parse().unwrap());
+            }
+          }
+          if name.is_none() {
+            return Err(quote_spanned!(named.span() => compile_error!("missing #[name] attribute");))
+          }
+          CVariantType::Struct(name.unwrap(), vec![])
         }
       }}))
       .collect::<Result<Vec<_>, _>>()?;
@@ -138,6 +154,24 @@ impl CEnum {
     }
   }
 
+  pub fn additional_structs(&self) -> Vec<proc_macro2::TokenStream> {
+    self
+      .variants
+      .iter()
+      .flat_map(|v| match &v.ty {
+        CVariantType::Struct(name, fields) => {
+          let field_name = fields.iter().map(|(name, _)| name);
+          let field_ty = fields.iter().map(|(_, ty)| ty);
+          Some(quote! {
+            pub struct #name {
+              #(#field_name: #field_ty,)*
+            }
+          })
+        }
+        _ => None,
+      })
+      .collect()
+  }
   pub fn new_funcs(&self) -> Vec<proc_macro2::TokenStream> {
     self
       .variants
@@ -384,6 +418,7 @@ pub fn cenum(_args: TokenStream, input: TokenStream) -> TokenStream {
   let union_docs = gen_docs(&gen_union);
 
   let input_attrs: Vec<i32> = vec![];
+  let additional_structs = input.additional_structs();
   let new_funcs = input.new_funcs();
   let as_funcs = input.as_funcs();
   let is_funcs = input.is_funcs();
@@ -425,6 +460,8 @@ pub fn cenum(_args: TokenStream, input: TokenStream) -> TokenStream {
     unsafe impl wasmer::ValueType for #name {}
     #[cfg(feature = "host")]
     unsafe impl wasmer::ValueType for #data_name {}
+
+    #(#additional_structs)*
 
     impl #name {
       #(#new_funcs)*
