@@ -172,6 +172,9 @@ impl CEnum {
             pub struct #name {
               #(pub #field_name: #field_ty,)*
             }
+
+            #[cfg(feature = "host")]
+            unsafe impl<T: Copy> wasmer::ValueType for #name {}
           })
         }
         _ => None,

@@ -271,19 +271,6 @@ pub enum StringType {
   Greedy,
 }
 
-#[ctype]
-#[derive(Debug)]
-pub struct CCommandParserInt {
-  min: COpt<i32>,
-  max: COpt<i32>,
-}
-#[ctype]
-#[derive(Debug)]
-pub struct CCommandParserEntity {
-  single:       CBool,
-  only_players: CBool,
-}
-
 #[cenum]
 pub enum CCommandParser {
   // Simple types:
@@ -296,13 +283,15 @@ pub enum CCommandParser {
   #[name = "CCommandParserFloat"]
   Float { min: COpt<f32>, max: COpt<f32> },
   /// An int, with optional min and max values.
-  Int(CCommandParserInt),
+  #[name = "CCommandParserInt"]
+  Int { min: COpt<i32>, max: COpt<i32> },
   /// A string. See [`StringType`] for details on how this is parsed.
   String(StringType),
   /// An entity. If `single` is set, then this can only match one entity (things
   /// like `@e` or `@a` are not allowed). If players is set, then only matching
   /// players (with either a username, `@p`, etc.) is allowed.
-  Entity(CCommandParserEntity),
+  #[name = "CCommandParserEntity"]
+  Entity { single: CBool, only_players: CBool },
   /// A user that is on the current scoreboard. With the scoreboard system that
   /// bamboo has, this doesn't make that much sense.
   ///
