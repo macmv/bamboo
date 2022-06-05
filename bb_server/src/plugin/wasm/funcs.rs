@@ -42,7 +42,7 @@ impl Env {
       .get_ref()
       .expect("Env not initialized")
       .call(mem::size_of::<T>() as u32, mem::align_of::<T>() as u32)
-      .unwrap();
+      .unwrap_or_else(|e| panic!("{e}"));
     WasmPtr::new(ptr)
   }
   pub fn malloc_array<T: Copy>(&self, len: u32) -> WasmPtr<T, Array> {

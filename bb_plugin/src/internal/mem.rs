@@ -51,6 +51,7 @@ unsafe impl GlobalAlloc for Alloc {
   unsafe fn alloc(&self, layout: Layout) -> *mut u8 {
     let ptr = System.alloc(layout);
 
+    /*
     use std::io::Write;
     let mut data = [0; 64];
     let mut buf: &mut [u8] = &mut data;
@@ -69,10 +70,12 @@ unsafe impl GlobalAlloc for Alloc {
       "".len() as u32,
       0,
     );
+    */
     ptr
   }
 
   unsafe fn dealloc(&self, ptr: *mut u8, layout: Layout) {
+    /*
     use std::io::Write;
     let mut data = [0; 64];
     let mut buf: &mut [u8] = &mut data;
@@ -91,6 +94,7 @@ unsafe impl GlobalAlloc for Alloc {
       "".len() as u32,
       0,
     );
+    */
 
     System.dealloc(ptr, layout);
   }
