@@ -29,6 +29,9 @@ extern "C" fn init() {
   bb_plugin::set_on_tick(on_tick);
   let cmd = Command::new("brush");
   bb_plugin::add_command(&cmd, cmd_brush);
+  let cmd = Command::new("size");
+  cmd.add_arg("size", Parser::Float { min: 0.0, max: None });
+  bb_plugin::add_command(&cmd, cmd_size);
   let cmd = Command::new("+");
   bb_plugin::add_command(&cmd, cmd_increase_brush);
   let cmd = Command::new("-");
@@ -61,6 +64,13 @@ fn cmd_brush(player: Option<Player>, args: Vec<Arg>) {
       "dynamic" => info.constant_brush = false,
       _ => unreachable!(),
     }
+  }
+}
+fn cmd_size(player: Option<Player>, args: Vec<Arg>) {
+  if let Some(p) = player {
+    let mut store = bb_plugin::store();
+    let info: &mut PlayerInfo = store.player(p.id());
+    info.brush_size = args[1].float();
   }
 }
 fn cmd_increase_brush(player: Option<Player>, args: Vec<Arg>) {

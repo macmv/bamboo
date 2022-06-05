@@ -86,7 +86,7 @@ pub struct CCommand {
   pub node_type: u8,
   /// This is null for `node_type` of root or literal. Doesn't contain a NUL at
   /// the end.
-  pub parser:    CStr,
+  pub parser:    CCommandParser,
   /// This is a boolean, but `bool` isn't `ValueType` safe.
   pub optional:  CBool,
   /// The children of this command.
@@ -178,7 +178,14 @@ pub struct CBlockProp {
 pub enum CBlockPropKind {
   Bool,
   Enum(CList<CStr>),
-  Int { min: u32, max: u32 },
+  Int(CBlockPropKindInt),
+}
+
+#[ctype]
+#[derive(Debug)]
+pub struct CBlockPropKindInt {
+  min: u32,
+  max: u32,
 }
 
 #[cfg(feature = "host")]
@@ -194,7 +201,6 @@ pub struct CList<T: Copy> {
 #[cfg(not(feature = "host"))]
 #[repr(C)]
 #[derive(Debug)]
-#[cfg_attr(feature = "host", derive(Clone))]
 pub struct CList<T> {
   /// The pointer to the first element in this list.
   pub first: *mut T,
@@ -207,8 +213,29 @@ impl<T: Copy> Copy for CList<T> {}
 #[cfg(feature = "host")]
 unsafe impl<T: Copy> wasmer::ValueType for CList<T> {}
 
+#[cfg(feature = "host")]
+#[repr(C)]
+#[derive(Clone, Debug)]
+pub struct COpt<T: Copy> {
+  pub present: CBool,
+  pub value:   T,
+}
+
+#[cfg(not(feature = "host"))]
+#[repr(C)]
+#[derive(Debug, Clone, Copy)]
+pub struct COpt<T> {
+  pub present: CBool,
+  pub value:   T,
+}
+
+#[cfg(feature = "host")]
+impl<T: Copy> Copy for CList<T> {}
+#[cfg(feature = "host")]
+unsafe impl<T: Copy> wasmer::ValueType for CList<T> {}
+
 #[cenum]
-pub enum CArg {
+pub enum CCommandArg {
   Literal(CStr),
   Bool(CBool),
   Double(f64),
@@ -220,6 +247,152 @@ pub enum CArg {
   Vec3(f64, f64, f64),
   Vec2(f64, f64),
   BlockState(u32),
+}
+
+/// A string parsing type. Used only in [`Parser::String`].
+#[repr(u8)]
+#[derive(Debug, Clone, Copy)]
+pub enum StringType {
+  /// Matches a single word.
+  Word,
+  /// Matches either a single word, or a phrase in double quotes. Quotes can be
+  /// inserted in the string with `\"`.
+  Quotable,
+  /// Matches all remaining text in the command. Quotes are not interpreted.
+  Greedy,
+}
+
+#[ctype]
+#[derive(Debug)]
+pub struct CCommandParserDouble {
+  min: COpt<f64>,
+  max: COpt<f64>,
+}
+#[ctype]
+#[derive(Debug)]
+pub struct CCommandParserFloat {
+  min: COpt<f32>,
+  max: COpt<f32>,
+}
+#[ctype]
+#[derive(Debug)]
+pub struct CCommandParserInt {
+  min: COpt<i32>,
+  max: COpt<i32>,
+}
+#[ctype]
+#[derive(Debug)]
+pub struct CCommandParserEntity {
+  single:       CBool,
+  only_players: CBool,
+}
+
+#[cenum]
+pub enum CCommandParser {
+  // Simple types:
+  /// True or false.
+  Bool,
+  /// A double, with optional min and max values.
+  Double(CCommandParserDouble),
+  /// A float, with optional min and max values.
+  Float(CCommandParserFloat),
+  /// An int, with optional min and max values.
+  Int(CCommandParserInt),
+  /// A string. See [`StringType`] for details on how this is parsed.
+  String(StringType),
+  /// An entity. If `single` is set, then this can only match one entity (things
+  /// like `@e` or `@a` are not allowed). If players is set, then only matching
+  /// players (with either a username, `@p`, etc.) is allowed.
+  Entity(CCommandParserEntity),
+  /// A user that is on the current scoreboard. With the scoreboard system that
+  /// bamboo has, this doesn't make that much sense.
+  ///
+  /// The bool is true if multiple targets are allowed.
+  ScoreHolder(CBool),
+
+  /// Player, online or not. Can also use a selector.
+  GameProfile,
+  /// location, represented as 3 numbers (which must be integers)
+  BlockPos,
+  /// column location, represented as 3 numbers (which must be integers)
+  ColumnPos,
+  /// A location, represented as 3 numbers
+  Vec3,
+  /// A location, represented as 2 numbers
+  Vec2,
+  /// A block state, optionally including NBT and state information.
+  BlockState,
+  /// A block, or a block tag.
+  BlockPredicate,
+  /// An item, optionally including NBT.
+  ItemStack,
+  /// An item, or an item tag.
+  ItemPredicate,
+  /// Chat color. One of the names from Chat#Colors, or reset.
+  Color,
+  /// A JSON Chat component.
+  Component,
+  /// A regular message, potentially including selectors.
+  Message,
+  /// An NBT value, parsed using JSON-NBT rules.
+  Nbt,
+  /// A path within an NBT value, allowing for array and member accesses.
+  NbtPath,
+  /// A scoreboard objective.
+  Objective,
+  /// A single score criterion.
+  ObjectiveCriteria,
+  /// A scoreboard operator.
+  Operation,
+  /// A particle effect
+  Particle,
+  /// angle, represented as 2 floats
+  Rotation,
+  /// A single float
+  Angle,
+  /// Scoreboard display position slot. list, sidebar, belowName, etc
+  ScoreboardSlot,
+  /// A collection of up to 3 axes.
+  Swizzle,
+  /// The name of a team. Parsed as an unquoted string.
+  Team,
+  /// A name for an inventory slot.
+  ItemSlot,
+  /// An Identifier.
+  ResourceLocation,
+  /// A potion effect.
+  MobEffect,
+  /// A function.
+  Function,
+  /// entity anchor related to the facing argument
+  EntityAnchor,
+  /// A range of values with a min and a max. The bool is `true` if decimals are
+  /// allowed.
+  Range(CBool),
+  /// An integer range of values with a min and a max.
+  IntRange,
+  /// A floating-point range of values with a min and a max.
+  FloatRange,
+  /// Represents a item enchantment.
+  ItemEnchantment,
+  /// Represents an entity summon.
+  EntitySummon,
+  /// Represents a dimension.
+  Dimension,
+  /// Represents a UUID value.
+  Uuid,
+  /// Represents a partial nbt tag, usable in data modify command.
+  NbtTag,
+  /// Represents a full nbt tag.
+  NbtCompoundTag,
+  /// Represents a time duration.
+  Time,
+
+  // Forge only types:
+  /// A forge mod id
+  Modid,
+  /// A enum class to use for suggestion. Added by Minecraft Forge.
+  Enum,
 }
 
 // All functions that return a `*mut` pointer let the plugin free the memory.

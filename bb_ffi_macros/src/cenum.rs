@@ -73,44 +73,53 @@ pub fn cenum(_args: TokenStream, input: TokenStream) -> TokenStream {
 
   let name = &input.ident;
   let data_name = Ident::new(&format!("{name}Data"), name.span());
-  let fields = input.variants.iter().map(|v| Field {
-    attrs:       vec![],
-    vis:         Visibility::Public(VisPublic { pub_token: Token![pub](Span::call_site()) }),
-    ident:       Some(Ident::new(&format!("f_{}", to_lower(&v.ident.to_string())), v.ident.span())),
-    colon_token: Some(Token![:](Span::call_site())),
-    ty:          {
-      let ty = Type::Tuple(TypeTuple {
-        paren_token: Paren { span: v.fields.span() },
-        elems:       {
-          let mut punct = Punctuated::<Type, Token![,]>::new();
-          punct.extend(v.fields.iter().map(|field| field.ty.clone()));
-          punct
+  let fields = input.variants.iter().flat_map(|v| {
+    let ty = Type::Tuple(TypeTuple {
+      paren_token: Paren { span: v.fields.span() },
+      elems:       {
+        let mut punct = Punctuated::<Type, Token![,]>::new();
+        punct.extend(v.fields.iter().map(|field| field.ty.clone()));
+        punct
+      },
+    });
+    if v.fields.is_empty() {
+      None
+    } else {
+      Some(Field {
+        attrs:       vec![],
+        vis:         Visibility::Public(VisPublic { pub_token: Token![pub](Span::call_site()) }),
+        ident:       Some(Ident::new(
+          &format!("f_{}", to_lower(&v.ident.to_string())),
+          v.ident.span(),
+        )),
+        colon_token: Some(Token![:](Span::call_site())),
+        ty:          {
+          if is_copy(&ty) {
+            ty
+          } else {
+            Type::Path(TypePath {
+              qself: None,
+              path:  Path {
+                leading_colon: Some(Token![::](Span::call_site())),
+                segments:      punct![
+                  Ident::new("std", Span::call_site()).into(),
+                  Ident::new("mem", Span::call_site()).into(),
+                  PathSegment {
+                    ident:     Ident::new("ManuallyDrop", Span::call_site()),
+                    arguments: PathArguments::AngleBracketed(syn::AngleBracketedGenericArguments {
+                      colon2_token: None,
+                      lt_token:     Token![<](Span::call_site()),
+                      args:         punct![syn::GenericArgument::Type(ty)],
+                      gt_token:     Token![>](Span::call_site()),
+                    }),
+                  }
+                ],
+              },
+            })
+          }
         },
-      });
-      if is_copy(&ty) {
-        ty
-      } else {
-        Type::Path(TypePath {
-          qself: None,
-          path:  Path {
-            leading_colon: Some(Token![::](Span::call_site())),
-            segments:      punct![
-              Ident::new("std", Span::call_site()).into(),
-              Ident::new("mem", Span::call_site()).into(),
-              PathSegment {
-                ident:     Ident::new("ManuallyDrop", Span::call_site()),
-                arguments: PathArguments::AngleBracketed(syn::AngleBracketedGenericArguments {
-                  colon2_token: None,
-                  lt_token:     Token![<](Span::call_site()),
-                  args:         punct![syn::GenericArgument::Type(ty)],
-                  gt_token:     Token![>](Span::call_site()),
-                }),
-              }
-            ],
-          },
-        })
-      }
-    },
+      })
+    }
   });
   let fields = FieldsNamed {
     brace_token: Brace { span: Span::call_site() },
@@ -124,90 +133,135 @@ pub fn cenum(_args: TokenStream, input: TokenStream) -> TokenStream {
     let name = to_lower(&v.ident.to_string());
     let field = Ident::new(&format!("f_{name}"), v.ident.span());
     let new_name = Ident::new(&format!("new_{name}"), v.ident.span());
-    let ty = Type::Tuple(TypeTuple {
-      paren_token: Paren { span: v.fields.span() },
-      elems:       {
-        let mut punct = Punctuated::<Type, Token![,]>::new();
-        punct.extend(v.fields.iter().map(|field| field.ty.clone()));
-        punct
-      },
-    });
-    let convert_manually_drop =
-      if is_copy(&ty) { quote!(value) } else { quote!(::std::mem::ManuallyDrop::new(value)) };
-    quote!(
-      #[allow(unused_parens)]
-      pub fn #new_name(value: #ty) -> Self {
-        Self {
-          variant: #variant,
-          data: #data_name { #field: #convert_manually_drop },
+    if v.fields.is_empty() {
+      quote!(
+        pub fn #new_name() -> Self {
+          Self {
+            variant: #variant,
+            data: unsafe { ::std::mem::MaybeUninit::uninit().assume_init() },
+          }
         }
-      }
-    )
+      )
+    } else {
+      let ty = Type::Tuple(TypeTuple {
+        paren_token: Paren { span: v.fields.span() },
+        elems:       {
+          let mut punct = Punctuated::<Type, Token![,]>::new();
+          punct.extend(v.fields.iter().map(|field| field.ty.clone()));
+          punct
+        },
+      });
+      let convert_manually_drop =
+        if is_copy(&ty) { quote!(value) } else { quote!(::std::mem::ManuallyDrop::new(value)) };
+      quote!(
+        #[allow(unused_parens)]
+        pub fn #new_name(value: #ty) -> Self {
+          Self {
+            variant: #variant,
+            data: #data_name { #field: #convert_manually_drop },
+          }
+        }
+      )
+    }
   });
   let as_funcs = input.variants.iter().enumerate().map(|(variant, v)| {
     let name = to_lower(&v.ident.to_string());
     let field = Ident::new(&format!("f_{name}"), v.ident.span());
     let as_name = Ident::new(&format!("as_{name}"), v.ident.span());
-    let ty = Type::Tuple(TypeTuple {
-      paren_token: Paren { span: v.fields.span() },
-      elems:       {
-        let mut punct = Punctuated::<Type, Token![,]>::new();
-        punct.extend(v.fields.iter().map(|field| field.ty.clone()));
-        punct
-      },
-    });
-    // Deref will convert the `ManuallyDrop` types into references here.
-    quote!(
-      #[allow(unused_parens)]
-      pub fn #as_name(&self) -> Option<&#ty> {
-        if self.variant == #variant {
-          unsafe {
-            Some(&self.data.#field)
+    if v.fields.is_empty() {
+      quote!(
+        #[allow(unused_parens)]
+        pub fn #as_name(&self) -> Option<()> {
+          if self.variant == #variant {
+            Some(())
+          } else {
+            None
           }
-        } else {
-          None
         }
-      }
-    )
+      )
+    } else {
+      let ty = Type::Tuple(TypeTuple {
+        paren_token: Paren { span: v.fields.span() },
+        elems:       {
+          let mut punct = Punctuated::<Type, Token![,]>::new();
+          punct.extend(v.fields.iter().map(|field| field.ty.clone()));
+          punct
+        },
+      });
+      // Deref will convert the `ManuallyDrop` types into references here.
+      quote!(
+        #[allow(unused_parens)]
+        pub fn #as_name(&self) -> Option<&#ty> {
+          if self.variant == #variant {
+            unsafe {
+              Some(&self.data.#field)
+            }
+          } else {
+            None
+          }
+        }
+      )
+    }
   });
   let into_funcs = input.variants.iter().enumerate().map(|(variant, v)| {
     let name = to_lower(&v.ident.to_string());
     let field = Ident::new(&format!("f_{name}"), v.ident.span());
     let into_name = Ident::new(&format!("into_{name}"), v.ident.span());
-    let ty = Type::Tuple(TypeTuple {
-      paren_token: Paren { span: v.fields.span() },
-      elems:       {
-        let mut punct = Punctuated::<Type, Token![,]>::new();
-        punct.extend(v.fields.iter().map(|field| field.ty.clone()));
-        punct
-      },
-    });
-    let convert_manually_drop = if is_copy(&ty) {
-      quote!(me.data.#field)
-    } else {
-      quote!(::std::mem::ManuallyDrop::take(&mut me.data.#field))
-    };
-    quote!(
-      #[allow(unused_parens)]
-      pub fn #into_name(mut self) -> Option<#ty> {
-        let mut me = ::std::mem::ManuallyDrop::new(self);
-        if me.variant == #variant {
-          unsafe {
-            Some(#convert_manually_drop)
+    if v.fields.is_empty() {
+      quote!(
+        pub fn #into_name(mut self) -> Option<()> {
+          let mut me = ::std::mem::ManuallyDrop::new(self);
+          if me.variant == #variant {
+            Some(())
+          } else {
+            // Drop self if we have the wrong variant.
+            ::std::mem::ManuallyDrop::into_inner(me);
+            None
           }
-        } else {
-          // Drop self if we have the wrong variant.
-          ::std::mem::ManuallyDrop::into_inner(me);
-          None
         }
-      }
-    )
+      )
+    } else {
+      let ty = Type::Tuple(TypeTuple {
+        paren_token: Paren { span: v.fields.span() },
+        elems:       {
+          let mut punct = Punctuated::<Type, Token![,]>::new();
+          punct.extend(v.fields.iter().map(|field| field.ty.clone()));
+          punct
+        },
+      });
+      let convert_manually_drop = if is_copy(&ty) {
+        quote!(me.data.#field)
+      } else {
+        quote!(::std::mem::ManuallyDrop::take(&mut me.data.#field))
+      };
+      quote!(
+        #[allow(unused_parens)]
+        pub fn #into_name(mut self) -> Option<#ty> {
+          let mut me = ::std::mem::ManuallyDrop::new(self);
+          if me.variant == #variant {
+            unsafe {
+              Some(#convert_manually_drop)
+            }
+          } else {
+            // Drop self if we have the wrong variant.
+            ::std::mem::ManuallyDrop::into_inner(me);
+            None
+          }
+        }
+      )
+    }
   });
   let clone_match_cases = input.variants.iter().enumerate().map(|(variant, v)| {
     let field = Ident::new(&format!("f_{}", to_lower(&v.ident.to_string())), v.ident.span());
-    quote!(
-      #variant => #data_name { #field: self.data.#field.clone() },
-    )
+    if v.fields.is_empty() {
+      quote!(
+        #variant => unsafe { ::std::mem::MaybeUninit::uninit().assume_init() },
+      )
+    } else {
+      quote!(
+        #variant => #data_name { #field: self.data.#field.clone() },
+      )
+    }
   });
   let drop_match_cases = input.variants.iter().enumerate().flat_map(|(variant, v)| {
     let field = Ident::new(&format!("f_{}", to_lower(&v.ident.to_string())), v.ident.span());
@@ -230,9 +284,15 @@ pub fn cenum(_args: TokenStream, input: TokenStream) -> TokenStream {
   let debug_match_cases = input.variants.iter().enumerate().map(|(variant, v)| {
     let field = Ident::new(&format!("f_{}", to_lower(&v.ident.to_string())), v.ident.span());
     let fmt_str = format!("{}({{:?}})", v.ident);
-    quote!(
-      #variant => write!(f, #fmt_str, self.data.#field.clone()),
-    )
+    if v.fields.is_empty() {
+      quote!(
+        #variant => write!(f, #fmt_str, ()),
+      )
+    } else {
+      quote!(
+        #variant => write!(f, #fmt_str, self.data.#field.clone()),
+      )
+    }
   });
 
   let name = &input.ident;
@@ -372,7 +432,16 @@ fn to_lower(s: &str) -> String {
 fn is_copy(ty: &Type) -> bool {
   match ty {
     Type::Path(ty) => {
-      if let Some(ident) = ty.path.get_ident() {
+      let ident = &ty.path.segments.first().unwrap().ident;
+      if ident == "COpt" {
+        is_copy(match &ty.path.segments.first().unwrap().arguments {
+          PathArguments::AngleBracketed(args) => match args.args.first().unwrap() {
+            syn::GenericArgument::Type(ty) => ty,
+            _ => unreachable!(),
+          },
+          _ => unreachable!(),
+        })
+      } else {
         ident == "u8"
           || ident == "i8"
           || ident == "u16"
@@ -385,11 +454,9 @@ fn is_copy(ty: &Type) -> bool {
           || ident == "f64"
           || ident == "CBool"
           || ident == "CPos"
-      } else {
-        false
       }
     }
-    Type::Tuple(ty) => ty.elems.iter().any(is_copy),
+    Type::Tuple(ty) => ty.elems.iter().all(is_copy),
     _ => todo!("type {ty:?}"),
   }
 }
