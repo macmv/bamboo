@@ -6,9 +6,9 @@ use syn::{
   parse_macro_input,
   punctuated::Punctuated,
   spanned::Spanned,
-  token::{Brace, Bracket, Paren},
+  token::{Brace, Bracket},
   Attribute, Field, Fields, FieldsNamed, Ident, ItemEnum, ItemStruct, ItemUnion, Path,
-  PathArguments, PathSegment, Token, Type, TypePath, TypeTuple, VisPublic, Visibility,
+  PathArguments, PathSegment, Token, Type, TypePath, VisPublic, Visibility,
 };
 
 macro_rules! punct {
@@ -89,7 +89,8 @@ impl CVariant {
       }
     }
   }
-  pub fn lower_name(&self) -> Ident {
+  pub fn lower_name(&self) -> String { to_lower(&self.name.to_string()) }
+  pub fn field_name(&self) -> Ident {
     Ident::new(&format!("f_{}", to_lower(&self.name.to_string())), self.name.span())
   }
 }
@@ -103,7 +104,7 @@ impl CEnum {
         Fields::Unit => CVariantType::Unit,
         Fields::Unnamed(unnamed) => {
           if unnamed.unnamed.len() == 1 {
-            CVariantType::Single(wrap_manually_drop(unnamed.unnamed.first().unwrap().ty.clone()))
+            CVariantType::Single(unnamed.unnamed.first().unwrap().ty.clone())
           } else {
             return Err(quote_spanned!(unnamed.span() => compile_error!("tuple variants are not allowed");))
           }
@@ -115,34 +116,17 @@ impl CEnum {
       .collect::<Result<Vec<_>, _>>()?;
     Ok(CEnum { vis: input.vis, name: input.ident, variants })
   }
+  pub fn data_name(&self) -> Ident { Ident::new(&format!("{}Data", self.name), self.name.span()) }
 
   pub fn union_fields(&self) -> FieldsNamed {
     let fields = self.variants.iter().flat_map(|v| {
       Some(Field {
         attrs:       vec![],
         vis:         Visibility::Public(VisPublic { pub_token: Token![pub](Span::call_site()) }),
-        ident:       Some(v.lower_name()),
+        ident:       Some(v.field_name()),
         colon_token: Some(Token![:](Span::call_site())),
-        ty:          v.ty()?,
+        ty:          wrap_manually_drop(v.ty()?),
       })
-      /*
-      if v.fields.is_empty() {
-        None
-      } else {
-        Some(Field {
-          attrs:       vec![],
-          vis:         Visibility::Public(VisPublic { pub_token: Token![pub](Span::call_site()) }),
-          ident:       Some(),
-          colon_token: Some(Token![:](Span::call_site())),
-          ty:          {
-            if is_copy(&ty) {
-              ty
-            } else {
-            }
-          },
-        })
-      }
-      */
     });
     FieldsNamed {
       brace_token: Brace { span: Span::call_site() },
@@ -152,6 +136,133 @@ impl CEnum {
         punct
       },
     }
+  }
+
+  pub fn new_funcs(&self) -> Vec<proc_macro2::TokenStream> {
+    self
+      .variants
+      .iter()
+      .enumerate()
+      .map(|(variant, v)| {
+        let field = v.field_name();
+        let new_name = Ident::new(&format!("new_{}", v.lower_name()), v.name.span());
+        if let Some(ty) = v.ty() {
+          let convert_manually_drop =
+            if is_copy(&ty) { quote!(value) } else { quote!(::std::mem::ManuallyDrop::new(value)) };
+          let data_name = self.data_name();
+          quote!(
+            pub fn #new_name(value: #ty) -> Self {
+              Self {
+                variant: #variant,
+                data: #data_name { #field: #convert_manually_drop },
+              }
+            }
+          )
+        } else {
+          quote!(
+            pub fn #new_name() -> Self {
+              Self {
+                variant: #variant,
+                data: unsafe { ::std::mem::MaybeUninit::uninit().assume_init() },
+              }
+            }
+          )
+        }
+      })
+      .collect()
+  }
+  pub fn as_funcs(&self) -> Vec<proc_macro2::TokenStream> {
+    self
+      .variants
+      .iter()
+      .enumerate()
+      .map(|(variant, v)| {
+        let field = v.field_name();
+        let as_name = Ident::new(&format!("as_{}", v.lower_name()), v.name.span());
+        if let Some(ty) = v.ty() {
+          quote!(
+            pub fn #as_name(&self) -> Option<&#ty> {
+              if self.variant == #variant {
+                unsafe {
+                  Some(&self.data.#field)
+                }
+              } else {
+                None
+              }
+            }
+          )
+        } else {
+          quote!(
+            pub fn #as_name(&self) -> Option<()> {
+              if self.variant == #variant {
+                Some(())
+              } else {
+                None
+              }
+            }
+          )
+        }
+      })
+      .collect()
+  }
+  pub fn is_funcs(&self) -> Vec<proc_macro2::TokenStream> {
+    self
+      .variants
+      .iter()
+      .enumerate()
+      .map(|(variant, v)| {
+        let is_name = Ident::new(&format!("is_{}", v.lower_name()), v.name.span());
+        quote!(
+          pub fn #is_name(&self) -> bool { self.variant == #variant }
+        )
+      })
+      .collect()
+  }
+  pub fn into_funcs(&self) -> Vec<proc_macro2::TokenStream> {
+    self
+      .variants
+      .iter()
+      .enumerate()
+      .map(|(variant, v)| {
+        let field = v.field_name();
+        let into_name = Ident::new(&format!("into_{}", v.lower_name()), v.name.span());
+        if let Some(ty) = v.ty() {
+          let convert_manually_drop = if is_copy(&ty) {
+            quote!(me.data.#field)
+          } else {
+            quote!(::std::mem::ManuallyDrop::take(&mut me.data.#field))
+          };
+          quote!(
+            #[allow(unused_parens)]
+            pub fn #into_name(mut self) -> Option<#ty> {
+              let mut me = ::std::mem::ManuallyDrop::new(self);
+              if me.variant == #variant {
+                unsafe {
+                  Some(#convert_manually_drop)
+                }
+              } else {
+                // Drop self if we have the wrong variant.
+                ::std::mem::ManuallyDrop::into_inner(me);
+                None
+              }
+            }
+          )
+        } else {
+          quote!(
+            pub fn #into_name(mut self) -> Option<()> {
+              let mut me = ::std::mem::ManuallyDrop::new(self);
+              if me.variant == #variant {
+                Some(())
+              } else {
+                // Drop self if we have the wrong variant.
+                ::std::mem::ManuallyDrop::into_inner(me);
+                None
+              }
+            }
+          )
+        }
+      })
+      .collect()
   }
 }
 
@@ -190,176 +301,46 @@ pub fn cenum(_args: TokenStream, input: TokenStream) -> TokenStream {
   let fields = input.union_fields();
 
   let name = &input.name;
-  let data_name = Ident::new(&format!("{name}Data"), name.span());
-  /*
-  let new_funcs = input.variants.iter().enumerate().map(|(variant, v)| {
-    let name = to_lower(&v.ident.to_string());
-    let field = Ident::new(&format!("f_{name}"), v.ident.span());
-    let new_name = Ident::new(&format!("new_{name}"), v.ident.span());
-    if v.fields.is_empty() {
-      quote!(
-        pub fn #new_name() -> Self {
-          Self {
-            variant: #variant,
-            data: unsafe { ::std::mem::MaybeUninit::uninit().assume_init() },
-          }
-        }
-      )
-    } else {
-      let ty = Type::Tuple(TypeTuple {
-        paren_token: Paren { span: v.fields.span() },
-        elems:       {
-          let mut punct = Punctuated::<Type, Token![,]>::new();
-          punct.extend(v.fields.iter().map(|field| field.ty.clone()));
-          punct
-        },
-      });
-      let convert_manually_drop =
-        if is_copy(&ty) { quote!(value) } else { quote!(::std::mem::ManuallyDrop::new(value)) };
-      quote!(
-        #[allow(unused_parens)]
-        pub fn #new_name(value: #ty) -> Self {
-          Self {
-            variant: #variant,
-            data: #data_name { #field: #convert_manually_drop },
-          }
-        }
-      )
-    }
-  });
-  let as_funcs = input.variants.iter().enumerate().map(|(variant, v)| {
-    let name = to_lower(&v.ident.to_string());
-    let field = Ident::new(&format!("f_{name}"), v.ident.span());
-    let as_name = Ident::new(&format!("as_{name}"), v.ident.span());
-    if v.fields.is_empty() {
-      quote!(
-        #[allow(unused_parens)]
-        pub fn #as_name(&self) -> Option<()> {
-          if self.variant == #variant {
-            Some(())
-          } else {
-            None
-          }
-        }
-      )
-    } else {
-      let ty = Type::Tuple(TypeTuple {
-        paren_token: Paren { span: v.fields.span() },
-        elems:       {
-          let mut punct = Punctuated::<Type, Token![,]>::new();
-          punct.extend(v.fields.iter().map(|field| field.ty.clone()));
-          punct
-        },
-      });
-      // Deref will convert the `ManuallyDrop` types into references here.
-      quote!(
-        #[allow(unused_parens)]
-        pub fn #as_name(&self) -> Option<&#ty> {
-          if self.variant == #variant {
-            unsafe {
-              Some(&self.data.#field)
-            }
-          } else {
-            None
-          }
-        }
-      )
-    }
-  });
-  let into_funcs = input.variants.iter().enumerate().map(|(variant, v)| {
-    let name = to_lower(&v.ident.to_string());
-    let field = Ident::new(&format!("f_{name}"), v.ident.span());
-    let into_name = Ident::new(&format!("into_{name}"), v.ident.span());
-    if v.fields.is_empty() {
-      quote!(
-        pub fn #into_name(mut self) -> Option<()> {
-          let mut me = ::std::mem::ManuallyDrop::new(self);
-          if me.variant == #variant {
-            Some(())
-          } else {
-            // Drop self if we have the wrong variant.
-            ::std::mem::ManuallyDrop::into_inner(me);
-            None
-          }
-        }
-      )
-    } else {
-      let ty = Type::Tuple(TypeTuple {
-        paren_token: Paren { span: v.fields.span() },
-        elems:       {
-          let mut punct = Punctuated::<Type, Token![,]>::new();
-          punct.extend(v.fields.iter().map(|field| field.ty.clone()));
-          punct
-        },
-      });
-      let convert_manually_drop = if is_copy(&ty) {
-        quote!(me.data.#field)
-      } else {
-        quote!(::std::mem::ManuallyDrop::take(&mut me.data.#field))
-      };
-      quote!(
-        #[allow(unused_parens)]
-        pub fn #into_name(mut self) -> Option<#ty> {
-          let mut me = ::std::mem::ManuallyDrop::new(self);
-          if me.variant == #variant {
-            unsafe {
-              Some(#convert_manually_drop)
-            }
-          } else {
-            // Drop self if we have the wrong variant.
-            ::std::mem::ManuallyDrop::into_inner(me);
-            None
-          }
-        }
-      )
-    }
-  });
+  let data_name = input.data_name();
   let clone_match_cases = input.variants.iter().enumerate().map(|(variant, v)| {
-    let field = Ident::new(&format!("f_{}", to_lower(&v.ident.to_string())), v.ident.span());
-    if v.fields.is_empty() {
-      quote!(
-        #variant => unsafe { ::std::mem::MaybeUninit::uninit().assume_init() },
-      )
-    } else {
+    let field = v.field_name();
+    if v.ty().is_some() {
       quote!(
         #variant => #data_name { #field: self.data.#field.clone() },
+      )
+    } else {
+      quote!(
+        #variant => unsafe { ::std::mem::MaybeUninit::uninit().assume_init() },
       )
     }
   });
   let drop_match_cases = input.variants.iter().enumerate().flat_map(|(variant, v)| {
-    let field = Ident::new(&format!("f_{}", to_lower(&v.ident.to_string())), v.ident.span());
-    let ty = Type::Tuple(TypeTuple {
-      paren_token: Paren { span: v.fields.span() },
-      elems:       {
-        let mut punct = Punctuated::<Type, Token![,]>::new();
-        punct.extend(v.fields.iter().map(|field| field.ty.clone()));
-        punct
-      },
-    });
-    if is_copy(&ty) {
-      None
+    if let Some(ty) = v.ty() {
+      if is_copy(&ty) {
+        None
+      } else {
+        let field = v.field_name();
+        Some(quote!(
+          #variant => ::std::mem::ManuallyDrop::drop(&mut self.data.#field),
+        ))
+      }
     } else {
-      Some(quote!(
-        #variant => ::std::mem::ManuallyDrop::drop(&mut self.data.#field),
-      ))
+      None
     }
   });
   let debug_match_cases = input.variants.iter().enumerate().map(|(variant, v)| {
-    let field = Ident::new(&format!("f_{}", to_lower(&v.ident.to_string())), v.ident.span());
-    let fmt_str = format!("{}({{:?}})", v.ident);
-    if v.fields.is_empty() {
-      quote!(
-        #variant => write!(f, #fmt_str, ()),
-      )
-    } else {
+    let field = v.field_name();
+    let fmt_str = format!("{}({{:?}})", v.name);
+    if v.ty().is_some() {
       quote!(
         #variant => write!(f, #fmt_str, self.data.#field.clone()),
       )
+    } else {
+      quote!(
+        #variant => write!(f, #fmt_str, ()),
+      )
     }
   });
-
-  let name = &input.ident;
-  */
 
   let gen_struct = ItemStruct {
     attrs:        vec![Attribute {
@@ -369,7 +350,7 @@ pub fn cenum(_args: TokenStream, input: TokenStream) -> TokenStream {
       path:          path!(repr),
       tokens:        quote!((C)),
     }],
-    vis:          input.vis,
+    vis:          input.vis.clone(),
     struct_token: Token![struct](Span::call_site()),
     ident:        name.clone(),
     generics:     syn::Generics {
@@ -403,12 +384,10 @@ pub fn cenum(_args: TokenStream, input: TokenStream) -> TokenStream {
   let union_docs = gen_docs(&gen_union);
 
   let input_attrs: Vec<i32> = vec![];
-  let new_funcs: Vec<i32> = vec![];
-  let as_funcs: Vec<i32> = vec![];
-  let into_funcs: Vec<i32> = vec![];
-  let clone_match_cases: Vec<i32> = vec![];
-  let drop_match_cases: Vec<i32> = vec![];
-  let debug_match_cases: Vec<i32> = vec![];
+  let new_funcs = input.new_funcs();
+  let as_funcs = input.as_funcs();
+  let is_funcs = input.is_funcs();
+  let into_funcs = input.into_funcs();
 
   let out = quote! {
     #(#input_attrs)*
@@ -450,6 +429,7 @@ pub fn cenum(_args: TokenStream, input: TokenStream) -> TokenStream {
     impl #name {
       #(#new_funcs)*
       #(#as_funcs)*
+      #(#is_funcs)*
       #(#into_funcs)*
     }
 
