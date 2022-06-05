@@ -126,7 +126,10 @@ impl CEnum {
           if name.is_none() {
             return Err(quote_spanned!(named.span() => compile_error!("missing #[name] attribute");))
           }
-          CVariantType::Struct(name.unwrap(), vec![])
+          CVariantType::Struct(
+            name.unwrap(),
+            named.named.into_iter().map(|v| (v.ident.unwrap(), v.ty)).collect(),
+          )
         }
       }}))
       .collect::<Result<Vec<_>, _>>()?;
@@ -163,8 +166,11 @@ impl CEnum {
           let field_name = fields.iter().map(|(name, _)| name);
           let field_ty = fields.iter().map(|(_, ty)| ty);
           Some(quote! {
+            #[repr(C)]
+            #[derive(Debug, Clone)]
+            #[cfg_attr(feature = "host", derive(Copy))]
             pub struct #name {
-              #(#field_name: #field_ty,)*
+              #(pub #field_name: #field_ty,)*
             }
           })
         }

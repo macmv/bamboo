@@ -208,9 +208,7 @@ impl SourceFmt for Variant {
         f.indent();
         for pair in named.named.pairs() {
           f.write_src(*pair.value())?;
-          if pair.punct().is_some() {
-            writeln!(f, ",")?;
-          }
+          writeln!(f, ",")?;
         }
         f.unindent();
         write!(f, "}}")?;

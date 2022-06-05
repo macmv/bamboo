@@ -230,9 +230,9 @@ pub struct COpt<T> {
 }
 
 #[cfg(feature = "host")]
-impl<T: Copy> Copy for CList<T> {}
+impl<T: Copy> Copy for COpt<T> {}
 #[cfg(feature = "host")]
-unsafe impl<T: Copy> wasmer::ValueType for CList<T> {}
+unsafe impl<T: Copy> wasmer::ValueType for COpt<T> {}
 
 #[cenum]
 pub enum CCommandArg {
@@ -273,18 +273,6 @@ pub enum StringType {
 
 #[ctype]
 #[derive(Debug)]
-pub struct CCommandParserDouble {
-  min: COpt<f64>,
-  max: COpt<f64>,
-}
-#[ctype]
-#[derive(Debug)]
-pub struct CCommandParserFloat {
-  min: COpt<f32>,
-  max: COpt<f32>,
-}
-#[ctype]
-#[derive(Debug)]
 pub struct CCommandParserInt {
   min: COpt<i32>,
   max: COpt<i32>,
@@ -302,9 +290,11 @@ pub enum CCommandParser {
   /// True or false.
   Bool,
   /// A double, with optional min and max values.
-  Double(CCommandParserDouble),
+  #[name = "CCommandParserDouble"]
+  Double { min: COpt<f64>, max: COpt<f64> },
   /// A float, with optional min and max values.
-  Float(CCommandParserFloat),
+  #[name = "CCommandParserFloat"]
+  Float { min: COpt<f32>, max: COpt<f32> },
   /// An int, with optional min and max values.
   Int(CCommandParserInt),
   /// A string. See [`StringType`] for details on how this is parsed.
