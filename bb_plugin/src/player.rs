@@ -42,7 +42,7 @@ impl Player {
   }
   pub fn pos(&self) -> FPos {
     unsafe {
-      let cpos = Box::leak(Box::from_raw(bb_ffi::bb_player_pos(&self.id)));
+      let cpos = Box::from_raw(bb_ffi::bb_player_pos(&self.id));
       FPos { x: cpos.x, y: cpos.y, z: cpos.z }
     }
   }
