@@ -94,12 +94,20 @@ pub fn init_with_level_writer<W: std::io::Write + Send + Sync + 'static>(
   use log::{Level, Metadata, Record};
   use parking_lot::Mutex;
 
-  struct Logger<W>(Mutex<W>);
+  #[cfg(unix)]
+  let isatty = unsafe { libc::isatty(libc::STDOUT_FILENO) } != 0;
+  #[cfg(not(unix))]
+  let isatty = false;
+
+  struct Logger<W> {
+    writer: Mutex<W>,
+    color:  bool,
+  }
 
   impl<W: io::Write> Logger<W> {
     fn log_inner(&self, record: &Record) -> io::Result<()> {
       let now = chrono::Local::now();
-      let mut w = self.0.lock();
+      let mut w = self.writer.lock();
       write!(w, "{} ", now.format("%Y-%m-%d %H:%M:%S%.3f"))?;
       #[cfg(debug_assertions)]
       {
@@ -111,12 +119,22 @@ pub fn init_with_level_writer<W: std::io::Write + Send + Sync + 'static>(
         }
         write!(w, " ")?;
       }
-      match record.level() {
-        Level::Trace => write!(w, "[\x1b[36mTRACE\x1b[0m]")?,
-        Level::Debug => write!(w, "[\x1b[34mDEBUG\x1b[0m]")?,
-        Level::Info => write!(w, "[\x1b[32mINFO\x1b[0m]")?,
-        Level::Warn => write!(w, "[\x1b[33mWARN\x1b[0m]")?,
-        Level::Error => write!(w, "[\x1b[31m\x1b[1mERROR\x1b[0m]")?,
+      if self.color {
+        match record.level() {
+          Level::Trace => write!(w, "[\x1b[36mTRACE\x1b[0m]")?,
+          Level::Debug => write!(w, "[\x1b[34mDEBUG\x1b[0m]")?,
+          Level::Info => write!(w, "[\x1b[32mINFO\x1b[0m]")?,
+          Level::Warn => write!(w, "[\x1b[33mWARN\x1b[0m]")?,
+          Level::Error => write!(w, "[\x1b[31m\x1b[1mERROR\x1b[0m]")?,
+        }
+      } else {
+        match record.level() {
+          Level::Trace => write!(w, "[TRACE]")?,
+          Level::Debug => write!(w, "[DEBUG]")?,
+          Level::Info => write!(w, "[INFO]")?,
+          Level::Warn => write!(w, "[WARN]")?,
+          Level::Error => write!(w, "[ERROR]")?,
+        }
       }
       writeln!(w, " {}", record.args())?;
       Ok(())
@@ -141,7 +159,7 @@ pub fn init_with_level_writer<W: std::io::Write + Send + Sync + 'static>(
 
   // static LOGGER: Logger = Logger;
   // log::set_logger(&LOGGER).map(|()| log::set_max_level(level)).unwrap();
-  log::set_boxed_logger(Box::new(Logger(Mutex::new(writer))))
+  log::set_boxed_logger(Box::new(Logger { writer: Mutex::new(writer), color: isatty }))
     .map(|()| log::set_max_level(level))
     .unwrap();
 }

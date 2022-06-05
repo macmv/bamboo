@@ -14,6 +14,7 @@ bb_macros = { path = "../bb_macros" }
 anyhow = "1.0.0"
 log = { version = "0.4", features = ["std"] }
 chrono = { version = "0.4.19", optional = true }
+libc = "0.2"
 
 crossbeam-channel = "0.5.1"
 # better locks
