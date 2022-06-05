@@ -135,6 +135,8 @@ impl CEnum {
       .collect::<Result<Vec<_>, _>>()?;
     Ok(CEnum { vis: input.vis, name: input.ident, variants })
   }
+  pub fn enum_name(&self) -> Ident { Ident::new(&format!("{}Enum", self.name), self.name.span()) }
+  pub fn cenum_name(&self) -> Ident { self.name.clone() }
   pub fn data_name(&self) -> Ident { Ident::new(&format!("{}Data", self.name), self.name.span()) }
 
   pub fn union_fields(&self) -> FieldsNamed {
@@ -328,6 +330,11 @@ pub fn cenum(_args: TokenStream, input: TokenStream) -> TokenStream {
     .into();
   }
 
+  let mut input_enum = input.clone();
+  for variant in &mut input_enum.variants {
+    variant.attrs.retain(|attr| attr.path.get_ident().map(|i| i != "name").unwrap_or(true));
+  }
+
   let name = input.ident.clone();
   let input = match CEnum::new(input) {
     Ok(v) => v,
@@ -343,7 +350,8 @@ pub fn cenum(_args: TokenStream, input: TokenStream) -> TokenStream {
 
   let fields = input.union_fields();
 
-  let name = &input.name;
+  input_enum.ident = input.enum_name();
+  let name = input.cenum_name();
   let data_name = input.data_name();
   let clone_match_cases = input.variants.iter().enumerate().map(|(variant, v)| {
     let field = v.field_name();
@@ -433,16 +441,23 @@ pub fn cenum(_args: TokenStream, input: TokenStream) -> TokenStream {
   let is_funcs = input.is_funcs();
   let into_funcs = input.into_funcs();
 
+  let enum_name = input.enum_name();
+
   let out = quote! {
     #(#input_attrs)*
-    /// This enum has been converted into a C safe struct and union. The `variant` is a
-    /// hint for which variant is stored in the union.
+    /// This enum has been converted into a C safe struct and union
+    #[doc = concat!("(see [`", stringify!(#name), "`] and [`", stringify!(#data_name), "`]).")]
     ///
     /// This struct and union are designed to have any bit configuration, and still be safe
-    /// to use. This means that if the `variant` is invalid, the union will contain garbage
-    /// data. In the `Clone` impl, the union is literally filled with
+    /// to use (on the host). This means that if the `variant` is invalid, the union will
+    /// contain garbage data. In the `Clone` impl, the union is literally filled with
     /// `MaybeUninit::uninit().assume_init()`. This is safe, because all the `as_` functions
     /// will return `None` in this case.
+    ///
+    /// On the plugin, an invalid variant means something has gone wrong, and the plugin should
+    /// drop this enum. For a plugin, it is *not* safe to access an invalid variant. However,
+    /// the only way this can be produced is through the server doing something incorrectly,
+    /// so this doesn't need to be validated on the plugin.
     ///
     /// In order for this to truly be valid in every bit configuration, the variant can be
     /// changed without modifying the union. This means that every type in the union must
@@ -455,8 +470,12 @@ pub fn cenum(_args: TokenStream, input: TokenStream) -> TokenStream {
     #[doc = #struct_docs]
     #[doc = "Along with the union:"]
     #[doc = #union_docs]
+    #input_enum
+    #[doc = concat!("See [`", stringify!(#enum_name), "`].")]
+    #[allow(unused_parens)]
+    #[cfg_attr(feature = "host", derive(Clone))]
     #gen_struct
-    #[doc = concat!("See [`", stringify!(#name), "`].")]
+    #[doc = concat!("See [`", stringify!(#enum_name), "`].")]
     #[allow(unused_parens)]
     #[cfg_attr(feature = "host", derive(Clone))]
     #gen_union
