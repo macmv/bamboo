@@ -1,7 +1,7 @@
 use super::gen_docs;
 use proc_macro::TokenStream;
-use proc_macro2::Span;
-use quote::quote;
+use proc_macro2::{Span, TokenStream as TokenStream2};
+use quote::{quote, quote_spanned};
 use syn::{
   parse_macro_input,
   punctuated::Punctuated,
@@ -51,15 +51,118 @@ macro_rules! path {
   };
 }
 
+struct CEnum {
+  vis:      Visibility,
+  name:     Ident,
+  variants: Vec<CVariant>,
+}
+
+struct CVariant {
+  name: Ident,
+  ty:   CVariantType,
+}
+
+enum CVariantType {
+  Unit,
+  Single(Type),
+  Struct(Vec<(Ident, Type)>),
+}
+
+fn path(ident: Ident) -> Path {
+  Path {
+    leading_colon: None,
+    segments:      {
+      let mut punct = Punctuated::new();
+      punct.extend([PathSegment { ident, arguments: PathArguments::None }]);
+      punct
+    },
+  }
+}
+
+impl CVariant {
+  pub fn ty(&self) -> Option<Type> {
+    match &self.ty {
+      CVariantType::Unit => None,
+      CVariantType::Single(ty) => Some(ty.clone()),
+      CVariantType::Struct(_) => {
+        Some(Type::Path(TypePath { qself: None, path: path(self.name.clone()) }))
+      }
+    }
+  }
+  pub fn lower_name(&self) -> Ident {
+    Ident::new(&format!("f_{}", to_lower(&self.name.to_string())), self.name.span())
+  }
+}
+
+impl CEnum {
+  pub fn new(input: ItemEnum) -> Result<Self, TokenStream2> {
+    let variants = input
+      .variants
+      .into_iter()
+      .map(|v| Ok(CVariant { name: v.ident, ty: match v.fields {
+        Fields::Unit => CVariantType::Unit,
+        Fields::Unnamed(unnamed) => {
+          if unnamed.unnamed.len() == 1 {
+            CVariantType::Single(wrap_manually_drop(unnamed.unnamed.first().unwrap().ty.clone()))
+          } else {
+            return Err(quote_spanned!(unnamed.span() => compile_error!("tuple variants are not allowed");))
+          }
+        }
+        Fields::Named(named) => {
+          return Err(quote_spanned!(named.span() => compile_error!("struct variants are not implemented");))
+        }
+      }}))
+      .collect::<Result<Vec<_>, _>>()?;
+    Ok(CEnum { vis: input.vis, name: input.ident, variants })
+  }
+
+  pub fn union_fields(&self) -> FieldsNamed {
+    let fields = self.variants.iter().flat_map(|v| {
+      Some(Field {
+        attrs:       vec![],
+        vis:         Visibility::Public(VisPublic { pub_token: Token![pub](Span::call_site()) }),
+        ident:       Some(v.lower_name()),
+        colon_token: Some(Token![:](Span::call_site())),
+        ty:          v.ty()?,
+      })
+      /*
+      if v.fields.is_empty() {
+        None
+      } else {
+        Some(Field {
+          attrs:       vec![],
+          vis:         Visibility::Public(VisPublic { pub_token: Token![pub](Span::call_site()) }),
+          ident:       Some(),
+          colon_token: Some(Token![:](Span::call_site())),
+          ty:          {
+            if is_copy(&ty) {
+              ty
+            } else {
+            }
+          },
+        })
+      }
+      */
+    });
+    FieldsNamed {
+      brace_token: Brace { span: Span::call_site() },
+      named:       {
+        let mut punct = Punctuated::new();
+        punct.extend(fields);
+        punct
+      },
+    }
+  }
+}
+
 #[allow(clippy::collapsible_match)]
 pub fn cenum(_args: TokenStream, input: TokenStream) -> TokenStream {
   let input = parse_macro_input!(input as ItemEnum);
-
   let original_docs = gen_docs(&input);
-  let input_attrs = &input.attrs;
 
   if input.variants.is_empty() {
     let name = &input.ident;
+    let input_attrs = &input.attrs;
     return quote!(
       #(#input_attrs)*
       #[doc = "Original enum:"]
@@ -71,64 +174,24 @@ pub fn cenum(_args: TokenStream, input: TokenStream) -> TokenStream {
     .into();
   }
 
-  let name = &input.ident;
-  let data_name = Ident::new(&format!("{name}Data"), name.span());
-  let fields = input.variants.iter().flat_map(|v| {
-    let ty = Type::Tuple(TypeTuple {
-      paren_token: Paren { span: v.fields.span() },
-      elems:       {
-        let mut punct = Punctuated::<Type, Token![,]>::new();
-        punct.extend(v.fields.iter().map(|field| field.ty.clone()));
-        punct
-      },
-    });
-    if v.fields.is_empty() {
-      None
-    } else {
-      Some(Field {
-        attrs:       vec![],
-        vis:         Visibility::Public(VisPublic { pub_token: Token![pub](Span::call_site()) }),
-        ident:       Some(Ident::new(
-          &format!("f_{}", to_lower(&v.ident.to_string())),
-          v.ident.span(),
-        )),
-        colon_token: Some(Token![:](Span::call_site())),
-        ty:          {
-          if is_copy(&ty) {
-            ty
-          } else {
-            Type::Path(TypePath {
-              qself: None,
-              path:  Path {
-                leading_colon: Some(Token![::](Span::call_site())),
-                segments:      punct![
-                  Ident::new("std", Span::call_site()).into(),
-                  Ident::new("mem", Span::call_site()).into(),
-                  PathSegment {
-                    ident:     Ident::new("ManuallyDrop", Span::call_site()),
-                    arguments: PathArguments::AngleBracketed(syn::AngleBracketedGenericArguments {
-                      colon2_token: None,
-                      lt_token:     Token![<](Span::call_site()),
-                      args:         punct![syn::GenericArgument::Type(ty)],
-                      gt_token:     Token![>](Span::call_site()),
-                    }),
-                  }
-                ],
-              },
-            })
-          }
-        },
-      })
+  let name = input.ident.clone();
+  let input = match CEnum::new(input) {
+    Ok(v) => v,
+    Err(e) => {
+      // Adding an empty struct reduces the number of other errors here.
+      return quote! {
+        #e
+        pub struct #name {}
+      }
+      .into();
     }
-  });
-  let fields = FieldsNamed {
-    brace_token: Brace { span: Span::call_site() },
-    named:       {
-      let mut punct = Punctuated::new();
-      punct.extend(fields);
-      punct
-    },
   };
+
+  let fields = input.union_fields();
+
+  let name = &input.name;
+  let data_name = Ident::new(&format!("{name}Data"), name.span());
+  /*
   let new_funcs = input.variants.iter().enumerate().map(|(variant, v)| {
     let name = to_lower(&v.ident.to_string());
     let field = Ident::new(&format!("f_{name}"), v.ident.span());
@@ -296,6 +359,7 @@ pub fn cenum(_args: TokenStream, input: TokenStream) -> TokenStream {
   });
 
   let name = &input.ident;
+  */
 
   let gen_struct = ItemStruct {
     attrs:        vec![Attribute {
@@ -306,9 +370,14 @@ pub fn cenum(_args: TokenStream, input: TokenStream) -> TokenStream {
       tokens:        quote!((C)),
     }],
     vis:          input.vis,
-    struct_token: Token![struct](input.enum_token.span()),
-    ident:        input.ident.clone(),
-    generics:     input.generics.clone(),
+    struct_token: Token![struct](Span::call_site()),
+    ident:        name.clone(),
+    generics:     syn::Generics {
+      lt_token:     None,
+      params:       Punctuated::new(),
+      gt_token:     None,
+      where_clause: None,
+    },
     fields:       Fields::Named(fields_named! {
       variant: Type::Path(TypePath { qself: None, path: path!(usize) }),
       data: Type::Path(TypePath { qself: None, path: data_name.clone().into() }),
@@ -324,14 +393,22 @@ pub fn cenum(_args: TokenStream, input: TokenStream) -> TokenStream {
       tokens:        quote!((C)),
     }],
     vis: Visibility::Public(VisPublic { pub_token: Token![pub](Span::call_site()) }),
-    union_token: Token![union](input.enum_token.span()),
+    union_token: Token![union](Span::call_site()),
     ident: data_name.clone(),
-    generics: input.generics,
+    generics: gen_struct.generics.clone(),
     fields,
   };
 
   let struct_docs = gen_docs(&gen_struct);
   let union_docs = gen_docs(&gen_union);
+
+  let input_attrs: Vec<i32> = vec![];
+  let new_funcs: Vec<i32> = vec![];
+  let as_funcs: Vec<i32> = vec![];
+  let into_funcs: Vec<i32> = vec![];
+  let clone_match_cases: Vec<i32> = vec![];
+  let drop_match_cases: Vec<i32> = vec![];
+  let debug_match_cases: Vec<i32> = vec![];
 
   let out = quote! {
     #(#input_attrs)*
@@ -458,5 +535,31 @@ fn is_copy(ty: &Type) -> bool {
     }
     Type::Tuple(ty) => ty.elems.iter().all(is_copy),
     _ => todo!("type {ty:?}"),
+  }
+}
+
+fn wrap_manually_drop(ty: Type) -> Type {
+  if is_copy(&ty) {
+    ty
+  } else {
+    Type::Path(TypePath {
+      qself: None,
+      path:  Path {
+        leading_colon: Some(Token![::](Span::call_site())),
+        segments:      punct![
+          Ident::new("std", Span::call_site()).into(),
+          Ident::new("mem", Span::call_site()).into(),
+          PathSegment {
+            ident:     Ident::new("ManuallyDrop", Span::call_site()),
+            arguments: PathArguments::AngleBracketed(syn::AngleBracketedGenericArguments {
+              colon2_token: None,
+              lt_token:     Token![<](Span::call_site()),
+              args:         punct![syn::GenericArgument::Type(ty)],
+              gt_token:     Token![>](Span::call_site()),
+            }),
+          }
+        ],
+      },
+    })
   }
 }

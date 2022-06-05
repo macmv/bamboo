@@ -244,8 +244,10 @@ pub enum CCommandArg {
   String(CStr),
   ScoreHolder(CStr),
   BlockPos(CPos),
-  Vec3(f64, f64, f64),
-  Vec2(f64, f64),
+  /*
+  Vec3 { x: f64, y: f64, z: f64 },
+  Vec2 { x: f64, y: f64 },
+  */
   BlockState(u32),
 }
 
