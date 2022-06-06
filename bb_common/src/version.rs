@@ -54,7 +54,7 @@ block_version![
   [V1_15, V1_15_2],
   [V1_16, V1_16_5],
   [V1_17, V1_17_1],
-  [V1_18, V1_18],
+  [V1_18, V1_18_2],
 ];
 
 impl BlockVersion {
@@ -145,11 +145,12 @@ pub enum ProtocolVersion {
   V1_17_1 = 756,
 
   V1_18   = 757,
+  V1_18_2 = 758,
 }
 
 impl ProtocolVersion {
   /// Returns the latest protocol version.
-  pub fn latest() -> Self { Self::V1_18 }
+  pub fn latest() -> Self { Self::V1_18_2 }
 
   /// Creates a new protocol version from the given id. If the version is
   /// invalid, then this returns `VInvalid`.
@@ -210,6 +211,7 @@ impl ProtocolVersion {
       Self::V1_17 => BlockVersion::V1_17,
       Self::V1_17_1 => BlockVersion::V1_17,
       Self::V1_18 => BlockVersion::V1_18,
+      Self::V1_18_2 => BlockVersion::V1_18,
     }
   }
 }

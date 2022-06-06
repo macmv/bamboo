@@ -59,7 +59,7 @@ pub static VERSIONS: &[Version] = &[
   Version::new(15, 2, 578),
   Version::new(16, 5, 754),
   Version::new(17, 1, 756),
-  Version::new(18, 0, 757),
+  Version::new(18, 2, 758),
 ];
 
 impl Version {
