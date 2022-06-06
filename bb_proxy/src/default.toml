@@ -11,7 +11,7 @@ address = "0.0.0.0:25565"
 encryption = true
 # This is the packet compression threshold. Vanilla clients will perform
 # far worse if this is turned off. Compression can be disabled by setting
-# this to 0.
+# this to -1. The proxy will compress all packets if this is set to 0.
 compression-thresh = 256
 # The path to the icon.
 icon = "icon.png"
