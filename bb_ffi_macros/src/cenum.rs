@@ -391,9 +391,9 @@ impl CEnum {
         }
         CVariantType::Single(_) => {
           let convert_manually_drop = if v.is_copy() {
-            quote!(self.data.#field)
+            quote!(me.data.#field)
           } else {
-            quote!(::std::mem::ManuallyDrop::take(&mut self.data.#field))
+            quote!(::std::mem::ManuallyDrop::take(&mut me.data.#field))
           };
           quote!(#variant => #enum_name::#name(#convert_manually_drop))
         }
@@ -403,7 +403,7 @@ impl CEnum {
             fields.iter().map(|(_, ty)| if is_copy(&ty) { quote!() } else { quote!(.clone()) });
           quote! {
             #variant => #enum_name::#name {
-              #(#field_name: self.data.#field.#field_name #copy_clause,)*
+              #(#field_name: me.data.#field.#field_name #copy_clause,)*
             }
           }
         }
@@ -411,10 +411,12 @@ impl CEnum {
     });
     quote! {
       pub fn into_renum(mut self) -> #enum_name {
+        let mut me = ::std::mem::ManuallyDrop::new(self);
         unsafe {
-          match self.variant {
+          match me.variant {
             #(#into_case,)*
-            _ => panic!("invalid variant: {}", self.variant),
+            // Dropping `me` will do nothing here.
+            _ => panic!("invalid variant: {}", me.variant),
           }
         }
       }
