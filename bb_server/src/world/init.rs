@@ -235,7 +235,10 @@ impl World {
 
     player.send(out);
     if player.ver() >= ProtocolVersion::V1_13 {
-      player.send(self.world_manager().tags().serialize());
+      // TODO: Fix tags for older versions.
+      if player.ver() >= ProtocolVersion::V1_18_2 {
+        player.send(self.world_manager().tags().serialize());
+      }
       player.send(self.commands().serialize());
     }
 
