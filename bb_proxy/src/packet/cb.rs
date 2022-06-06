@@ -1349,34 +1349,33 @@ impl ToTcp for Packet {
 
 #[derive(Debug, Clone, Serialize)]
 struct Dimension {
-  piglin_safe:          bool,
-  natural:              bool,
   ambient_light:        f32,
-  fixed_time:           i64,
-  infiniburn:           String,
-  respawn_anchor_works: bool,
-  has_skylight:         bool,
   bed_works:            bool,
-  effects:              String,
-  has_raids:            bool,
-  logical_height:       i32,
   coordinate_scale:     f32,
-  ultrawarm:            bool,
+  effects:              String,
   has_ceiling:          bool,
-  // 1.17+
-  min_y:                i32,
-  height:               i32,
+  has_raids:            bool,
+  has_skylight:         bool,
+  height:               i32, // 1.17+
+  infiniburn:           String,
+  logical_height:       i32,
+  min_y:                i32, // 1.17+
+  natural:              bool,
+  piglin_safe:          bool,
+  fixed_time:           i64,
+  respawn_anchor_works: bool,
+  ultrawarm:            bool,
 }
 
 #[derive(Debug, Clone, Serialize)]
 struct Biome {
-  precipitation: String,
-  depth:         f32,
-  temperature:   f32,
-  scale:         f32,
-  downfall:      f32,
   category:      String,
+  depth:         f32,
+  downfall:      f32,
   effects:       BiomeEffects,
+  precipitation: String,
+  scale:         f32,
+  temperature:   f32,
 }
 #[derive(Debug, Clone, Serialize)]
 struct BiomeEffects {
@@ -1388,6 +1387,14 @@ struct BiomeEffects {
   foliage_color:   Option<i32>,
   #[serde(skip_serializing_if = "Option::is_none")]
   grass_color:     Option<i32>,
+  mood_sound:      MoodSound, // 1.18.2+
+}
+#[derive(Debug, Clone, Serialize)]
+struct MoodSound {
+  block_search_extent: i32,
+  offset:              f64,
+  sound:               String,
+  tick_delay:          i32,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -1419,7 +1426,7 @@ where
     natural:              true,
     ambient_light:        0.0,
     fixed_time:           6000,
-    infiniburn:           "".into(),
+    infiniburn:           "#minecraft:infiniburn_overworld".into(),
     respawn_anchor_works: false,
     has_skylight:         true,
     bed_works:            true,
@@ -1446,6 +1453,12 @@ where
       water_color:     0x3f76e4,
       foliage_color:   None,
       grass_color:     None,
+      mood_sound:      MoodSound {
+        block_search_extent: 8,
+        offset:              2.0,
+        sound:               "minecraft:ambient.cave".into(),
+        tick_delay:          6000,
+      },
       // sky_color:       0xff00ff,
       // water_color:     0xff00ff,
       // fog_color:       0xff00ff,
