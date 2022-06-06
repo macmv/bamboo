@@ -36,6 +36,7 @@ impl FromFfi for Parser {
 
   fn from_ffi(env: &Env, parser: CCommandParser) -> Self {
     use bb_ffi::CCommandParserEnum as P;
+    dbg!(parser);
     match parser.into_renum() {
       P::Float { min, max } => {
         Parser::Float { min: Option::from_ffi(env, min), max: Option::from_ffi(env, max) }

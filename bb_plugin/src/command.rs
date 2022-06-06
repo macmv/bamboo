@@ -58,6 +58,7 @@ pub fn add_command(cmd: &Command, cb: impl Fn(Option<Player>, Vec<Arg>) + Send +
   }
   unsafe {
     let ffi = cmd.to_ffi();
+    log::info!("sending command {ffi:?}");
     bb_ffi::bb_add_command(&ffi);
   }
 }
@@ -247,7 +248,7 @@ pub enum Parser {
 impl Parser {
   pub(crate) fn to_ffi(&self) -> bb_ffi::CCommandParser {
     use bb_ffi::CCommandParserEnum as P;
-    match self {
+    let cparser = match self {
       Self::Bool => P::Bool,
       Self::Double { min, max } => P::Double { min: COpt::new(*min), max: COpt::new(*max) },
       Self::Float { min, max } => P::Float { min: COpt::new(*min), max: COpt::new(*max) },
@@ -302,6 +303,8 @@ impl Parser {
       Self::Modid => P::Modid,
       Self::Enum => P::Enum,
     }
-    .into_cenum()
+    .into_cenum();
+    log::info!("{cparser:?}");
+    cparser
   }
 }

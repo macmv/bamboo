@@ -1,7 +1,10 @@
 #![deny(improper_ctypes)]
 
 use bb_ffi_macros::{cenum, ctype};
-use std::mem::MaybeUninit;
+use std::{
+  fmt,
+  mem::{ManuallyDrop, MaybeUninit},
+};
 
 #[repr(C)]
 #[cfg_attr(feature = "host", derive(Debug, Clone))]
@@ -201,7 +204,6 @@ pub struct CList<T: Copy> {
 
 #[cfg(not(feature = "host"))]
 #[repr(C)]
-#[derive(Debug)]
 pub struct CList<T> {
   /// The pointer to the first element in this list.
   pub first: *mut T,
@@ -216,14 +218,13 @@ unsafe impl<T: Copy> wasmer::ValueType for CList<T> {}
 
 #[cfg(not(feature = "host"))]
 #[repr(C)]
-#[derive(Debug)]
 pub struct COpt<T> {
   pub present: CBool,
   pub value:   MaybeUninit<T>,
 }
 #[cfg(feature = "host")]
 #[repr(C)]
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub struct COpt<T: Copy> {
   pub present: CBool,
   pub value:   MaybeUninit<T>,
@@ -466,6 +467,40 @@ impl<T> COpt<T> {
 
   pub fn some(val: T) -> Self { COpt { present: CBool::new(true), value: MaybeUninit::new(val) } }
   pub fn none() -> Self { COpt { present: CBool::new(false), value: MaybeUninit::uninit() } }
+
+  pub fn as_option<'a>(&'a self) -> Option<&'a T> {
+    if self.present.as_bool() {
+      Some(unsafe { self.value.assume_init_ref() })
+    } else {
+      None
+    }
+  }
+  pub fn into_option(self) -> Option<T> {
+    let me = ManuallyDrop::new(self);
+    if me.present.as_bool() {
+      Some(unsafe { me.value.assume_init_read() })
+    } else {
+      None
+    }
+  }
+}
+
+#[cfg(feature = "host")]
+impl<T: Copy> COpt<T> {
+  pub fn as_option<'a>(&'a self) -> Option<&'a T> {
+    if self.present.as_bool() {
+      Some(unsafe { self.value.assume_init_ref() })
+    } else {
+      None
+    }
+  }
+  pub fn into_option(self) -> Option<T> {
+    if self.present.as_bool() {
+      Some(unsafe { self.value.assume_init() })
+    } else {
+      None
+    }
+  }
 }
 
 // On the host, this refers to data in wasm, so we don't want to free it.
@@ -495,6 +530,14 @@ impl<T: Clone> Clone for COpt<T> {
     }
   }
 }
+#[cfg(feature = "host")]
+impl<T: Copy + fmt::Debug> fmt::Debug for COpt<T> {
+  fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result { self.as_option().fmt(f) }
+}
+#[cfg(not(feature = "host"))]
+impl<T: fmt::Debug> fmt::Debug for COpt<T> {
+  fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result { self.as_option().fmt(f) }
+}
 
 impl CStr {
   #[cfg(not(feature = "host"))]
@@ -521,8 +564,6 @@ impl CStr {
   }
 }
 
-#[cfg(not(feature = "host"))]
-use std::fmt;
 #[cfg(not(feature = "host"))]
 impl fmt::Debug for CStr {
   fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -585,6 +626,18 @@ impl<T> CList<T> {
       unsafe { Vec::from_raw_parts(me.first as *mut T, me.len as usize, me.len as usize) }
     }
   }
+  pub fn as_slice(&self) -> &[T] {
+    // Any bit layout if CList<T> is valid. Therefore, the pointer can be null. Vec
+    // uses a Unique<T> internally, which can never be null. So, we just return an
+    // empty list here.
+    if self.first.is_null() {
+      &[]
+    } else {
+      // We create a boxed slice above, so the capacity is shrunk to `len`, so we can
+      // use len for the capacity here, without leaking memory.
+      unsafe { std::slice::from_raw_parts(self.first, self.len as usize) }
+    }
+  }
 }
 #[cfg(feature = "host")]
 impl<T: Copy> CList<T> {
@@ -618,4 +671,9 @@ impl<T> Drop for CList<T> {
       Vec::from_raw_parts(self.first as *mut T, self.len as usize, self.len as usize);
     }
   }
+}
+
+#[cfg(not(feature = "host"))]
+impl<T: fmt::Debug> fmt::Debug for CList<T> {
+  fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result { self.as_slice().fmt(f) }
 }
