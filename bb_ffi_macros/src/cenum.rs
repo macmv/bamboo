@@ -89,6 +89,13 @@ impl CVariant {
       }
     }
   }
+  pub fn is_copy(&self) -> bool {
+    match &self.ty {
+      CVariantType::Unit => true,
+      CVariantType::Single(ty) => is_copy(ty),
+      CVariantType::Struct(_, fields) => fields.iter().all(|(_, ty)| is_copy(&ty)),
+    }
+  }
   pub fn lower_name(&self) -> String { to_lower(&self.name.to_string()) }
   pub fn field_name(&self) -> Ident {
     Ident::new(&format!("f_{}", to_lower(&self.name.to_string())), self.name.span())
@@ -146,7 +153,18 @@ impl CEnum {
         vis:         Visibility::Public(VisPublic { pub_token: Token![pub](Span::call_site()) }),
         ident:       Some(v.field_name()),
         colon_token: Some(Token![:](Span::call_site())),
-        ty:          wrap_manually_drop(v.ty()?),
+        ty:          match &v.ty {
+          CVariantType::Unit => return None,
+          CVariantType::Single(ty) => wrap_manually_drop(ty.clone()),
+          CVariantType::Struct(ty_name, fields) => {
+            let ty_path = Type::Path(TypePath { qself: None, path: path(ty_name.clone()) });
+            if fields.iter().all(|(_, ty)| is_copy(&ty)) {
+              ty_path
+            } else {
+              wrap_manually_drop(ty_path)
+            }
+          }
+        },
       })
     });
     FieldsNamed {
@@ -167,10 +185,15 @@ impl CEnum {
         CVariantType::Struct(name, fields) => {
           let field_name = fields.iter().map(|(name, _)| name);
           let field_ty = fields.iter().map(|(_, ty)| ty);
+          let copy_attr = if v.is_copy() {
+            quote!(#[derive(Copy)])
+          } else {
+            quote!(#[cfg_attr(feature = "host", derive(Copy))])
+          };
           Some(quote! {
             #[repr(C)]
             #[derive(Debug, Clone)]
-            #[cfg_attr(feature = "host", derive(Copy))]
+            #copy_attr
             pub struct #name {
               #(pub #field_name: #field_ty,)*
             }
@@ -193,7 +216,7 @@ impl CEnum {
         let new_name = Ident::new(&format!("new_{}", v.lower_name()), v.name.span());
         if let Some(ty) = v.ty() {
           let convert_manually_drop =
-            if is_copy(&ty) { quote!(value) } else { quote!(::std::mem::ManuallyDrop::new(value)) };
+            if v.is_copy() { quote!(value) } else { quote!(::std::mem::ManuallyDrop::new(value)) };
           let data_name = self.data_name();
           quote!(
             pub fn #new_name(value: #ty) -> Self {
@@ -272,7 +295,7 @@ impl CEnum {
         let field = v.field_name();
         let into_name = Ident::new(&format!("into_{}", v.lower_name()), v.name.span());
         if let Some(ty) = v.ty() {
-          let convert_manually_drop = if is_copy(&ty) {
+          let convert_manually_drop = if v.is_copy() {
             quote!(me.data.#field)
           } else {
             quote!(::std::mem::ManuallyDrop::take(&mut me.data.#field))
@@ -308,6 +331,95 @@ impl CEnum {
         }
       })
       .collect()
+  }
+  pub fn into_cenum(&self) -> proc_macro2::TokenStream {
+    let cenum_name = self.cenum_name();
+    let data_name = self.data_name();
+    let into_case = self
+      .variants
+      .iter()
+      .enumerate()
+      .map(|(variant, v)| {
+        let name = &v.name;
+        let field = v.field_name();
+        match &v.ty {
+          CVariantType::Unit => {
+            quote!(Self::#name => #cenum_name { variant: #variant, data: unsafe { ::std::mem::MaybeUninit::uninit().assume_init() } })
+          }
+          CVariantType::Single(_) => {
+            let convert_manually_drop =
+              if v.is_copy() { quote!(value) } else { quote!(::std::mem::ManuallyDrop::new(value)) };
+            quote!(Self::#name(value) => #cenum_name {
+              variant: #variant,
+              data: #data_name {
+                #field: #convert_manually_drop
+              }
+            })
+          }
+          CVariantType::Struct(struct_name, fields) => {
+            let field_name = fields.iter().map(|(name, _)| name).collect::<Vec<_>>();
+            let value = quote!(#struct_name { #(#field_name,)* });
+            let convert_manually_drop =
+              if v.is_copy() { quote!(#value) } else { quote!(::std::mem::ManuallyDrop::new(#value)) };
+            quote! {
+              Self::#name { #(#field_name,)* } => #cenum_name {
+                variant: #variant,
+                data: #data_name {
+                  #field: #convert_manually_drop,
+                }
+              }
+            }
+          }
+        }
+      });
+    quote! {
+      pub fn into_cenum(self) -> #cenum_name {
+        match self {
+          #(#into_case,)*
+        }
+      }
+    };
+    quote!(
+      pub fn into_cenum(self) -> #cenum_name { todo!() }
+    )
+  }
+  pub fn into_renum(&self) -> proc_macro2::TokenStream {
+    let enum_name = self.enum_name();
+    let into_case = self.variants.iter().enumerate().map(|(variant, v)| {
+      let name = &v.name;
+      let field = v.field_name();
+      match &v.ty {
+        CVariantType::Unit => {
+          quote!(#variant => #enum_name::#name)
+        }
+        CVariantType::Single(_) => {
+          let convert_manually_drop = if v.is_copy() {
+            quote!(self.data.#field)
+          } else {
+            quote!(::std::mem::ManuallyDrop::take(&mut self.data.#field))
+          };
+          quote!(#variant => #enum_name::#name(#convert_manually_drop))
+        }
+        CVariantType::Struct(_, fields) => {
+          let field_name = fields.iter().map(|(name, _)| name).collect::<Vec<_>>();
+          quote! {
+            #variant => #enum_name::#name {
+              #(#field_name: self.data.#field.#field_name,)*
+            }
+          }
+        }
+      }
+    });
+    quote! {
+      pub fn into_renum(mut self) -> #enum_name {
+        unsafe {
+          match self.variant {
+            #(#into_case,)*
+            _ => panic!("invalid variant: {}", self.variant),
+          }
+        }
+      }
+    }
   }
 }
 
@@ -366,17 +478,13 @@ pub fn cenum(_args: TokenStream, input: TokenStream) -> TokenStream {
     }
   });
   let drop_match_cases = input.variants.iter().enumerate().flat_map(|(variant, v)| {
-    if let Some(ty) = v.ty() {
-      if is_copy(&ty) {
-        None
-      } else {
-        let field = v.field_name();
-        Some(quote!(
-          #variant => ::std::mem::ManuallyDrop::drop(&mut self.data.#field),
-        ))
-      }
-    } else {
+    if v.is_copy() {
       None
+    } else {
+      let field = v.field_name();
+      Some(quote!(
+        #variant => ::std::mem::ManuallyDrop::drop(&mut self.data.#field),
+      ))
     }
   });
   let debug_match_cases = input.variants.iter().enumerate().map(|(variant, v)| {
@@ -440,6 +548,8 @@ pub fn cenum(_args: TokenStream, input: TokenStream) -> TokenStream {
   let as_funcs = input.as_funcs();
   let is_funcs = input.is_funcs();
   let into_funcs = input.into_funcs();
+  let into_cenum = input.into_cenum();
+  let into_renum = input.into_renum();
 
   let enum_name = input.enum_name();
 
@@ -489,14 +599,21 @@ pub fn cenum(_args: TokenStream, input: TokenStream) -> TokenStream {
     #[cfg(feature = "host")]
     unsafe impl wasmer::ValueType for #data_name {}
 
-    #(#additional_structs)*
+    impl #enum_name {
+      /// Converts this enum into a C safe version, using a union.
+      #into_cenum
+    }
 
     impl #name {
       #(#new_funcs)*
+      /// Converts this C enum back into a Rust enum, that cannot be used accross FFI.
+      #into_renum
       #(#as_funcs)*
       #(#is_funcs)*
       #(#into_funcs)*
     }
+
+    #(#additional_structs)*
 
     impl Clone for #name {
       fn clone(&self) -> Self {
