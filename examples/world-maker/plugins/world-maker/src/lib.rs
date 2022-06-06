@@ -3,7 +3,7 @@ extern crate bb_plugin;
 
 use bb_plugin::{
   block,
-  command::{Arg, Command},
+  command::{Arg, Command, Parser},
   math::FPos,
   particle,
   particle::{Color, Particle},
@@ -29,8 +29,8 @@ extern "C" fn init() {
   bb_plugin::set_on_tick(on_tick);
   let cmd = Command::new("brush");
   bb_plugin::add_command(&cmd, cmd_brush);
-  let cmd = Command::new("size");
-  cmd.add_arg("size", Parser::Float { min: 0.0, max: None });
+  let mut cmd = Command::new("size");
+  cmd.add_arg("size", Parser::Float { min: Some(0.0), max: None });
   bb_plugin::add_command(&cmd, cmd_size);
   let cmd = Command::new("+");
   bb_plugin::add_command(&cmd, cmd_increase_brush);
@@ -70,7 +70,7 @@ fn cmd_size(player: Option<Player>, args: Vec<Arg>) {
   if let Some(p) = player {
     let mut store = bb_plugin::store();
     let info: &mut PlayerInfo = store.player(p.id());
-    info.brush_size = args[1].float();
+    info.brush_size = args[1].float().into();
   }
 }
 fn cmd_increase_brush(player: Option<Player>, args: Vec<Arg>) {

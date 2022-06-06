@@ -214,10 +214,17 @@ impl<T: Copy> Copy for CList<T> {}
 #[cfg(feature = "host")]
 unsafe impl<T: Copy> wasmer::ValueType for CList<T> {}
 
+#[cfg(not(feature = "host"))]
 #[repr(C)]
 #[derive(Debug)]
-#[cfg_attr(feature = "host", derive(Clone))]
 pub struct COpt<T> {
+  pub present: CBool,
+  pub value:   MaybeUninit<T>,
+}
+#[cfg(feature = "host")]
+#[repr(C)]
+#[derive(Debug, Clone)]
+pub struct COpt<T: Copy> {
   pub present: CBool,
   pub value:   MaybeUninit<T>,
 }
@@ -448,6 +455,7 @@ impl CBool {
   pub fn as_bool(&self) -> bool { self.0 != 0 }
 }
 
+#[cfg(not(feature = "host"))]
 impl<T> COpt<T> {
   pub fn new(val: Option<T>) -> Self {
     match val {

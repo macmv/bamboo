@@ -5,7 +5,7 @@ use bb_common::{
   util::UUID,
   version::ProtocolVersion,
 };
-use bb_ffi::{CBool, CFPos, CList, CPos, CStr, CUUID};
+use bb_ffi::{CBool, CFPos, CList, COpt, CPos, CStr, CUUID};
 use std::mem;
 use wasmer::Memory;
 
@@ -27,12 +27,37 @@ macro_rules! self_to_ffi {
         type Ffi = Self;
         fn to_ffi(&self, _: &Env) -> Self::Ffi { *self }
       }
+      impl FromFfi for $ty {
+        type Ffi = Self;
+        fn from_ffi(_: &Env, v: Self::Ffi) -> Self { v }
+      }
     )*
   }
 }
 
-self_to_ffi!(u8, i8, u16, i16, u32, i32);
+self_to_ffi!(u8, i8, u16, i16, u32, i32, u64, i64, f32, f64);
 
+impl<T: FromFfi> FromFfi for Option<T> {
+  type Ffi = COpt<T::Ffi>;
+
+  fn from_ffi(env: &Env, ffi: COpt<T::Ffi>) -> Self {
+    if ffi.present.as_bool() {
+      unsafe { Some(T::from_ffi(env, ffi.value.assume_init())) }
+    } else {
+      None
+    }
+  }
+}
+impl<T: ToFfi> ToFfi for Option<T> {
+  type Ffi = COpt<T::Ffi>;
+
+  fn to_ffi(&self, env: &Env) -> COpt<T::Ffi> {
+    match self {
+      Some(v) => COpt { present: CBool::new(true), value: mem::MaybeUninit::new(v.to_ffi(env)) },
+      None => COpt { present: CBool::new(false), value: mem::MaybeUninit::uninit() },
+    }
+  }
+}
 impl FromFfi for Pos {
   type Ffi = CPos;
 

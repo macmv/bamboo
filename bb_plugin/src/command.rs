@@ -19,6 +19,7 @@ enum NodeType {
 #[non_exhaustive]
 pub enum Arg {
   Literal(String),
+  Float(f32),
 }
 
 impl Arg {
@@ -26,6 +27,7 @@ impl Arg {
     use bb_ffi::CCommandArgEnum as A;
     match carg.into_renum() {
       A::Literal(lit) => Arg::Literal(lit.into_string()),
+      A::Float(v) => Arg::Float(v),
       _ => todo!(),
     }
   }
@@ -33,6 +35,12 @@ impl Arg {
     match self {
       Self::Literal(s) => s.as_str(),
       _ => panic!("not a literal: {self:?}"),
+    }
+  }
+  pub fn float(&self) -> f32 {
+    match self {
+      Self::Float(v) => *v,
+      _ => panic!("not a float: {self:?}"),
     }
   }
 }

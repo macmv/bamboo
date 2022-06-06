@@ -199,7 +199,7 @@ impl CEnum {
             }
 
             #[cfg(feature = "host")]
-            unsafe impl<T: Copy> wasmer::ValueType for #name {}
+            unsafe impl wasmer::ValueType for #name {}
           })
         }
         _ => None,
@@ -378,10 +378,7 @@ impl CEnum {
           #(#into_case,)*
         }
       }
-    };
-    quote!(
-      pub fn into_cenum(self) -> #cenum_name { todo!() }
-    )
+    }
   }
   pub fn into_renum(&self) -> proc_macro2::TokenStream {
     let enum_name = self.enum_name();
@@ -617,6 +614,7 @@ pub fn cenum(_args: TokenStream, input: TokenStream) -> TokenStream {
 
     #(#additional_structs)*
 
+    #[cfg(not(feature = "host"))]
     impl Clone for #name {
       fn clone(&self) -> Self {
         unsafe {

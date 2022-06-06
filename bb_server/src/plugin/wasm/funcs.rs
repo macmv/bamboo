@@ -11,7 +11,9 @@ use bb_common::{
   util::Chat,
   version::BlockVersion,
 };
-use bb_ffi::{CArg, CBlockData, CChat, CCommand, CFPos, CList, CParticle, CPos, CStr, CUUID};
+use bb_ffi::{
+  CBlockData, CChat, CCommand, CCommandArg, CFPos, CList, CParticle, CPos, CStr, CUUID,
+};
 use log::Level;
 use std::{mem, sync::Arc};
 use wasmer::{
@@ -25,7 +27,7 @@ pub struct Env {
   #[wasmer(export)]
   pub wasm_malloc: LazyInit<NativeFunc<(u32, u32), u32>>,
   #[wasmer(export)]
-  pub on_command:  LazyInit<NativeFunc<(WasmPtr<CUUID>, WasmPtr<CList<CArg>>), ()>>,
+  pub on_command:  LazyInit<NativeFunc<(WasmPtr<CUUID>, WasmPtr<CList<CCommandArg>>), ()>>,
   pub wm:          Arc<WorldManager>,
   /// The version of this plugin. Plugins will send us things like block ids,
   /// and we need to know how to convert them to the server's version. This
@@ -295,10 +297,10 @@ fn add_command(env: &Env, cmd: WasmPtr<CCommand>) {
         None => return None,
       };
       let name = cmd.name.ptr.get_utf8_str(mem, cmd.name.len)?.into();
-      let _parser = cmd.parser.ptr.get_utf8_str(mem, cmd.parser.len)?;
+      let parser = <Option<Parser>>::from_ffi(env, cmd.parser);
       let ty = match cmd.node_type {
         0 => NodeType::Literal,
-        1 => NodeType::Argument(Parser::BlockPos),
+        1 => NodeType::Argument(parser.unwrap()),
         _ => return None,
       };
       let mut children = Vec::with_capacity(cmd.children.len as usize);
