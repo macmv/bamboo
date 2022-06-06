@@ -547,17 +547,41 @@ impl<'a, S: PacketStream + Send + Sync> Conn<'a, S> {
           );
         }
         self.ver = ProtocolVersion::from(p.read_varint()?);
-        if self.ver == ProtocolVersion::Invalid {
-          return Err(
-            io::Error::new(ErrorKind::InvalidInput, "client sent an invalid version").into(),
-          );
-        }
 
         // Max len according to 1.17.1
         let _addr = p.read_str(255)?;
         let _port = p.read_u16()?;
         let next = p.read_varint()?;
         self.state = State::from_next(next);
+
+        match self.state {
+          State::Handshake => {
+            return Err(
+              io::Error::new(ErrorKind::InvalidInput, "client tried to switch to handshake state")
+                .into(),
+            )
+          }
+          State::Status => {}
+          State::Login => {
+            if self.ver == ProtocolVersion::Invalid {
+              return Err(
+                io::Error::new(ErrorKind::InvalidInput, "client sent an invalid version").into(),
+              );
+            }
+          }
+          State::Play => {
+            return Err(
+              io::Error::new(ErrorKind::InvalidInput, "client tried to switch to play state")
+                .into(),
+            )
+          }
+          State::Invalid => {
+            return Err(
+              io::Error::new(ErrorKind::InvalidInput, "client tried to switch to invalid state")
+                .into(),
+            )
+          }
+        }
       }
       State::Status => {
         match p.id() {
