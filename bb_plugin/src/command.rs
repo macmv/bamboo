@@ -1,4 +1,5 @@
 use crate::player::Player;
+use bb_ffi::{CBool, COpt};
 use parking_lot::{lock_api::RawMutex, Mutex};
 use std::collections::HashMap;
 
@@ -11,26 +12,26 @@ pub struct Command {
 #[derive(Debug, Clone)]
 enum NodeType {
   Literal,
-  Argument(String),
+  Argument(Parser),
 }
 
 #[derive(Debug, Clone, PartialEq)]
 #[non_exhaustive]
 pub enum Arg {
-  Lit(String),
+  Literal(String),
 }
 
 impl Arg {
-  pub fn new(carg: bb_ffi::CArg) -> Self {
-    if let Some(s) = carg.into_literal() {
-      Arg::Lit(s.into_string())
-    } else {
-      todo!()
+  pub fn new(carg: bb_ffi::CCommandArg) -> Self {
+    use bb_ffi::CCommandArgEnum as A;
+    match carg.into_renum() {
+      A::Literal(lit) => Arg::Literal(lit.into_string()),
+      _ => todo!(),
     }
   }
   pub fn lit(&self) -> &str {
     match self {
-      Self::Lit(s) => s.as_str(),
+      Self::Literal(s) => s.as_str(),
       _ => panic!("not a literal: {self:?}"),
     }
   }
@@ -61,10 +62,10 @@ impl Command {
       optional: false,
     }
   }
-  pub fn add_arg(&mut self, name: impl Into<String>, parser: impl Into<String>) -> &mut Command {
+  pub fn add_arg(&mut self, name: impl Into<String>, parser: Parser) -> &mut Command {
     self.children.push(Command {
       name:     name.into(),
-      ty:       NodeType::Argument(parser.into()),
+      ty:       NodeType::Argument(parser),
       children: vec![],
       optional: false,
     });
@@ -91,8 +92,8 @@ impl Command {
         NodeType::Argument(_) => 1,
       },
       parser:    match &self.ty {
-        NodeType::Literal => bb_ffi::CStr::new(String::new()),
-        NodeType::Argument(parser) => parser.to_ffi(),
+        NodeType::Literal => COpt::none(),
+        NodeType::Argument(parser) => COpt::some(parser.to_ffi()),
       },
       optional:  bb_ffi::CBool::new(self.optional),
       children:  bb_ffi::CList::new(self.children.iter().map(|c| c.to_ffi()).collect()),
@@ -101,7 +102,10 @@ impl Command {
 }
 
 #[no_mangle]
-extern "C" fn on_command(player: *mut bb_ffi::CUUID, args: *mut bb_ffi::CList<bb_ffi::CArg>) {
+extern "C" fn on_command(
+  player: *mut bb_ffi::CUUID,
+  args: *mut bb_ffi::CList<bb_ffi::CCommandArg>,
+) {
   unsafe {
     let player = if player.is_null() { None } else { Some(Box::from_raw(player)) };
     let args = Box::from_raw(args);
@@ -112,6 +116,18 @@ extern "C" fn on_command(player: *mut bb_ffi::CUUID, args: *mut bb_ffi::CList<bb
       cb[name](player.map(|id| Player::new(*id)), args);
     }
   }
+}
+
+/// A string parsing type. Used only in [`Parser::String`].
+#[derive(Debug, Clone, PartialEq)]
+pub enum StringType {
+  /// Matches a single word.
+  Word,
+  /// Matches either a single word, or a phrase in double quotes. Quotes can be
+  /// inserted in the string with `\"`.
+  Quotable,
+  /// Matches all remaining text in the command. Quotes are not interpreted.
+  Greedy,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -224,52 +240,58 @@ impl Parser {
     use bb_ffi::CCommandParserEnum as P;
     match self {
       Self::Bool => P::Bool,
-      Self::Double { min, max } => P::Double { min: COpt::new(min), max: COpt::new(max) },
-      Self::Float { min, max } => P::Bool,
-      Self::Int { min, max } => P::Bool,
-      Self::String(ty) => P::Bool,
-      Self::Entity { single, only_players } => P::Bool,
-      Self::ScoreHolder { multiple } => P::Bool,
-      Self::GameProfile => P::Bool,
-      Self::BlockPos => P::Bool,
-      Self::ColumnPos => P::Bool,
-      Self::Vec3 => P::Bool,
-      Self::Vec2 => P::Bool,
-      Self::BlockState => P::Bool,
-      Self::BlockPredicate => P::Bool,
-      Self::ItemStack => P::Bool,
-      Self::ItemPredicate => P::Bool,
-      Self::Color => P::Bool,
-      Self::Component => P::Bool,
-      Self::Message => P::Bool,
-      Self::Nbt => P::Bool,
-      Self::NbtPath => P::Bool,
-      Self::Objective => P::Bool,
-      Self::ObjectiveCriteria => P::Bool,
-      Self::Operation => P::Bool,
-      Self::Particle => P::Bool,
-      Self::Rotation => P::Bool,
-      Self::Angle => P::Bool,
-      Self::ScoreboardSlot => P::Bool,
-      Self::Swizzle => P::Bool,
-      Self::Team => P::Bool,
-      Self::ItemSlot => P::Bool,
-      Self::ResourceLocation => P::Bool,
-      Self::MobEffect => P::Bool,
-      Self::Function => P::Bool,
-      Self::EntityAnchor => P::Bool,
-      Self::Range { decimals: bool } => P::Bool,
-      Self::IntRange => P::Bool,
-      Self::FloatRange => P::Bool,
-      Self::ItemEnchantment => P::Bool,
-      Self::EntitySummon => P::Bool,
-      Self::Dimension => P::Bool,
-      Self::Uuid => P::Bool,
-      Self::NbtTag => P::Bool,
-      Self::NbtCompoundTag => P::Bool,
-      Self::Time => P::Bool,
-      Self::Modid => P::Bool,
-      Self::Enum => P::Bool,
+      Self::Double { min, max } => P::Double { min: COpt::new(*min), max: COpt::new(*max) },
+      Self::Float { min, max } => P::Float { min: COpt::new(*min), max: COpt::new(*max) },
+      Self::Int { min, max } => P::Int { min: COpt::new(*min), max: COpt::new(*max) },
+      Self::String(ty) => P::String(match ty {
+        StringType::Word => bb_ffi::CCommandStringType::Word,
+        StringType::Quotable => bb_ffi::CCommandStringType::Quotable,
+        StringType::Greedy => bb_ffi::CCommandStringType::Greedy,
+      }),
+      Self::Entity { single, only_players } => {
+        P::Entity { single: CBool::new(*single), only_players: CBool::new(*only_players) }
+      }
+      Self::ScoreHolder { multiple } => P::ScoreHolder(CBool::new(*multiple)),
+      Self::GameProfile => P::GameProfile,
+      Self::BlockPos => P::BlockPos,
+      Self::ColumnPos => P::ColumnPos,
+      Self::Vec3 => P::Vec3,
+      Self::Vec2 => P::Vec2,
+      Self::BlockState => P::BlockState,
+      Self::BlockPredicate => P::BlockPredicate,
+      Self::ItemStack => P::ItemStack,
+      Self::ItemPredicate => P::ItemPredicate,
+      Self::Color => P::Color,
+      Self::Component => P::Component,
+      Self::Message => P::Message,
+      Self::Nbt => P::Nbt,
+      Self::NbtPath => P::NbtPath,
+      Self::Objective => P::Objective,
+      Self::ObjectiveCriteria => P::ObjectiveCriteria,
+      Self::Operation => P::Operation,
+      Self::Particle => P::Particle,
+      Self::Rotation => P::Rotation,
+      Self::Angle => P::Angle,
+      Self::ScoreboardSlot => P::ScoreboardSlot,
+      Self::Swizzle => P::Swizzle,
+      Self::Team => P::Team,
+      Self::ItemSlot => P::ItemSlot,
+      Self::ResourceLocation => P::ResourceLocation,
+      Self::MobEffect => P::MobEffect,
+      Self::Function => P::Function,
+      Self::EntityAnchor => P::EntityAnchor,
+      Self::Range { decimals } => P::Range(CBool::new(*decimals)),
+      Self::IntRange => P::IntRange,
+      Self::FloatRange => P::FloatRange,
+      Self::ItemEnchantment => P::ItemEnchantment,
+      Self::EntitySummon => P::EntitySummon,
+      Self::Dimension => P::Dimension,
+      Self::Uuid => P::Uuid,
+      Self::NbtTag => P::NbtTag,
+      Self::NbtCompoundTag => P::NbtCompoundTag,
+      Self::Time => P::Time,
+      Self::Modid => P::Modid,
+      Self::Enum => P::Enum,
     }
     .into_cenum()
   }

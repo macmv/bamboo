@@ -87,7 +87,7 @@ pub struct CCommand {
   pub node_type: u8,
   /// This is null for `node_type` of root or literal. Doesn't contain a NUL at
   /// the end.
-  pub parser:    CCommandParser,
+  pub parser:    COpt<CCommandParser>,
   /// This is a boolean, but `bool` isn't `ValueType` safe.
   pub optional:  CBool,
   /// The children of this command.
@@ -254,7 +254,7 @@ pub enum CCommandArg {
 /// A string parsing type. Used only in [`Parser::String`].
 #[repr(u8)]
 #[derive(Debug, Clone, Copy)]
-pub enum StringType {
+pub enum CCommandStringType {
   /// Matches a single word.
   Word,
   /// Matches either a single word, or a phrase in double quotes. Quotes can be
@@ -279,7 +279,7 @@ pub enum CCommandParser {
   #[name = "CCommandParserInt"]
   Int { min: COpt<i32>, max: COpt<i32> },
   /// A string. See [`StringType`] for details on how this is parsed.
-  String(StringType),
+  String(CCommandStringType),
   /// An entity. If `single` is set, then this can only match one entity (things
   /// like `@e` or `@a` are not allowed). If players is set, then only matching
   /// players (with either a username, `@p`, etc.) is allowed.
@@ -446,6 +446,18 @@ impl CBool {
   pub fn new(val: bool) -> Self { CBool(if val { 1 } else { 0 }) }
   /// If the inner value is not `0`.
   pub fn as_bool(&self) -> bool { self.0 != 0 }
+}
+
+impl<T> COpt<T> {
+  pub fn new(val: Option<T>) -> Self {
+    match val {
+      Some(v) => COpt::some(v),
+      None => COpt::none(),
+    }
+  }
+
+  pub fn some(val: T) -> Self { COpt { present: CBool::new(true), value: MaybeUninit::new(val) } }
+  pub fn none() -> Self { COpt { present: CBool::new(false), value: MaybeUninit::uninit() } }
 }
 
 // On the host, this refers to data in wasm, so we don't want to free it.
