@@ -1,6 +1,7 @@
 #![deny(improper_ctypes)]
 
 use bb_ffi_macros::{cenum, ctype};
+use std::mem::MaybeUninit;
 
 #[repr(C)]
 #[cfg_attr(feature = "host", derive(Debug, Clone))]
@@ -213,20 +214,12 @@ impl<T: Copy> Copy for CList<T> {}
 #[cfg(feature = "host")]
 unsafe impl<T: Copy> wasmer::ValueType for CList<T> {}
 
-#[cfg(feature = "host")]
 #[repr(C)]
-#[derive(Clone, Debug)]
-pub struct COpt<T: Copy> {
-  pub present: CBool,
-  pub value:   T,
-}
-
-#[cfg(not(feature = "host"))]
-#[repr(C)]
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug)]
+#[cfg_attr(feature = "host", derive(Clone))]
 pub struct COpt<T> {
   pub present: CBool,
-  pub value:   T,
+  pub value:   MaybeUninit<T>,
 }
 
 #[cfg(feature = "host")]
@@ -453,6 +446,34 @@ impl CBool {
   pub fn new(val: bool) -> Self { CBool(if val { 1 } else { 0 }) }
   /// If the inner value is not `0`.
   pub fn as_bool(&self) -> bool { self.0 != 0 }
+}
+
+// On the host, this refers to data in wasm, so we don't want to free it.
+#[cfg(not(feature = "host"))]
+impl<T> Drop for COpt<T> {
+  fn drop(&mut self) {
+    unsafe {
+      if self.present.as_bool() {
+        self.value.assume_init_drop();
+      }
+    }
+  }
+}
+// On the host, this refers to data in wasm, so we don't want to free it.
+#[cfg(not(feature = "host"))]
+impl<T: Clone> Clone for COpt<T> {
+  fn clone(&self) -> Self {
+    unsafe {
+      COpt {
+        present: self.present,
+        value:   if self.present.as_bool() {
+          MaybeUninit::new(self.value.assume_init_ref().clone())
+        } else {
+          MaybeUninit::uninit()
+        },
+      }
+    }
+  }
 }
 
 impl CStr {

@@ -220,5 +220,57 @@ pub enum Parser {
 }
 
 impl Parser {
-  pub(crate) fn to_ffi(&self) -> bb_ffi::CCommandParser {}
+  pub(crate) fn to_ffi(&self) -> bb_ffi::CCommandParser {
+    use bb_ffi::CCommandParserEnum as P;
+    match self {
+      Self::Bool => P::Bool,
+      Self::Double { min, max } => P::Double { min: COpt::new(min), max: COpt::new(max) },
+      Self::Float { min, max } => P::Bool,
+      Self::Int { min, max } => P::Bool,
+      Self::String(ty) => P::Bool,
+      Self::Entity { single, only_players } => P::Bool,
+      Self::ScoreHolder { multiple } => P::Bool,
+      Self::GameProfile => P::Bool,
+      Self::BlockPos => P::Bool,
+      Self::ColumnPos => P::Bool,
+      Self::Vec3 => P::Bool,
+      Self::Vec2 => P::Bool,
+      Self::BlockState => P::Bool,
+      Self::BlockPredicate => P::Bool,
+      Self::ItemStack => P::Bool,
+      Self::ItemPredicate => P::Bool,
+      Self::Color => P::Bool,
+      Self::Component => P::Bool,
+      Self::Message => P::Bool,
+      Self::Nbt => P::Bool,
+      Self::NbtPath => P::Bool,
+      Self::Objective => P::Bool,
+      Self::ObjectiveCriteria => P::Bool,
+      Self::Operation => P::Bool,
+      Self::Particle => P::Bool,
+      Self::Rotation => P::Bool,
+      Self::Angle => P::Bool,
+      Self::ScoreboardSlot => P::Bool,
+      Self::Swizzle => P::Bool,
+      Self::Team => P::Bool,
+      Self::ItemSlot => P::Bool,
+      Self::ResourceLocation => P::Bool,
+      Self::MobEffect => P::Bool,
+      Self::Function => P::Bool,
+      Self::EntityAnchor => P::Bool,
+      Self::Range { decimals: bool } => P::Bool,
+      Self::IntRange => P::Bool,
+      Self::FloatRange => P::Bool,
+      Self::ItemEnchantment => P::Bool,
+      Self::EntitySummon => P::Bool,
+      Self::Dimension => P::Bool,
+      Self::Uuid => P::Bool,
+      Self::NbtTag => P::Bool,
+      Self::NbtCompoundTag => P::Bool,
+      Self::Time => P::Bool,
+      Self::Modid => P::Bool,
+      Self::Enum => P::Bool,
+    }
+    .into_cenum()
+  }
 }

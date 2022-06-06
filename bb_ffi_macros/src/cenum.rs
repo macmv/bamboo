@@ -402,9 +402,11 @@ impl CEnum {
         }
         CVariantType::Struct(_, fields) => {
           let field_name = fields.iter().map(|(name, _)| name).collect::<Vec<_>>();
+          let copy_clause =
+            fields.iter().map(|(_, ty)| if is_copy(&ty) { quote!() } else { quote!(.clone()) });
           quote! {
             #variant => #enum_name::#name {
-              #(#field_name: self.data.#field.#field_name,)*
+              #(#field_name: self.data.#field.#field_name #copy_clause,)*
             }
           }
         }
@@ -672,28 +674,18 @@ fn is_copy(ty: &Type) -> bool {
   match ty {
     Type::Path(ty) => {
       let ident = &ty.path.segments.first().unwrap().ident;
-      if ident == "COpt" {
-        is_copy(match &ty.path.segments.first().unwrap().arguments {
-          PathArguments::AngleBracketed(args) => match args.args.first().unwrap() {
-            syn::GenericArgument::Type(ty) => ty,
-            _ => unreachable!(),
-          },
-          _ => unreachable!(),
-        })
-      } else {
-        ident == "u8"
-          || ident == "i8"
-          || ident == "u16"
-          || ident == "i16"
-          || ident == "u32"
-          || ident == "i32"
-          || ident == "u64"
-          || ident == "i64"
-          || ident == "f32"
-          || ident == "f64"
-          || ident == "CBool"
-          || ident == "CPos"
-      }
+      ident == "u8"
+        || ident == "i8"
+        || ident == "u16"
+        || ident == "i16"
+        || ident == "u32"
+        || ident == "i32"
+        || ident == "u64"
+        || ident == "i64"
+        || ident == "f32"
+        || ident == "f64"
+        || ident == "CBool"
+        || ident == "CPos"
     }
     Type::Tuple(ty) => ty.elems.iter().all(is_copy),
     _ => todo!("type {ty:?}"),
