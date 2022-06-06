@@ -120,9 +120,16 @@ fn log(
   // we use this instead of `get_utf8_string_with_nul`.
 
   unsafe {
+    let s = if u64::from(message_ptr.offset() + message_len) > env.mem().data_size() {
+      std::borrow::Cow::Borrowed("")
+    } else {
+      let mut ptr = env.mem().data_ptr().add(message_ptr.offset() as usize) as *const u8;
+      let slice = std::slice::from_raw_parts(ptr, message_len as usize);
+      String::from_utf8_lossy(slice)
+    };
     log::logger().log(
       &log::Record::builder()
-        .args(format_args!("{}", message_ptr.get_utf8_str(env.mem(), message_len).unwrap()))
+        .args(format_args!("{s}"))
         .level(level)
         .target(target_ptr.get_utf8_str(env.mem(), target_len).unwrap())
         .module_path(Some(module_path_ptr.get_utf8_str(env.mem(), module_path_len).unwrap()))

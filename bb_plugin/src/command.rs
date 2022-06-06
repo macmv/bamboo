@@ -3,6 +3,7 @@ use bb_ffi::{CBool, COpt};
 use parking_lot::{lock_api::RawMutex, Mutex};
 use std::collections::HashMap;
 
+#[derive(Debug)]
 pub struct Command {
   name:     String,
   ty:       NodeType,
@@ -119,9 +120,9 @@ extern "C" fn on_command(
     let args = Box::from_raw(args);
     let args: Vec<_> = args.into_vec().into_iter().map(|carg| Arg::new(carg)).collect();
     let name = args[0].lit();
-    let cb = CALLBACKS.lock();
-    if let Some(cb) = cb.as_ref() {
-      cb[name](player.map(|id| Player::new(*id)), args);
+    let cbs = CALLBACKS.lock();
+    if let Some(cbs) = cbs.as_ref() {
+      cbs[name](player.map(|id| Player::new(*id)), args);
     }
   }
 }
