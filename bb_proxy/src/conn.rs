@@ -510,7 +510,14 @@ impl<'a, S: PacketStream + Send + Sync> Conn<'a, S> {
     #[cfg(not(debug_assertions))]
     description.add("Release mode").color(Color::Red);
     JsonStatus {
-      version: JsonVersion { name: "1.8 - 1.17.1".into(), protocol: self.ver.id() as i32 },
+      version: JsonVersion {
+        name:     format!("1.8 - {}", ProtocolVersion::latest()),
+        protocol: if self.ver == ProtocolVersion::Invalid {
+          ProtocolVersion::latest().id()
+        } else {
+          self.ver.id()
+        } as i32,
+      },
       players: JsonPlayers {
         max:    69,
         online: 420,
