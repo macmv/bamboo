@@ -259,7 +259,7 @@ pub enum CCommandArg {
   BlockState(u32),
 }
 
-/// A string parsing type. Used only in [`Parser::String`].
+/// A string parsing type. Used only in [`CCommandParserEnum::String`].
 #[repr(u8)]
 #[derive(Debug, Clone, Copy)]
 pub enum CCommandStringType {
@@ -286,7 +286,7 @@ pub enum CCommandParser {
   /// An int, with optional min and max values.
   #[name = "CCommandParserInt"]
   Int { min: COpt<i32>, max: COpt<i32> },
-  /// A string. See [`StringType`] for details on how this is parsed.
+  /// A string. See [`CCommandStringType`] for details on how this is parsed.
   String(CCommandStringType),
   /// An entity. If `single` is set, then this can only match one entity (things
   /// like `@e` or `@a` are not allowed). If players is set, then only matching

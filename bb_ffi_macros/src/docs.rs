@@ -8,7 +8,7 @@ pub fn gen_docs<'a, T: 'a>(input: &'a T) -> String
 where
   Source<'a, T>: fmt::Display,
 {
-  format!("```rust\n{}\n```", Source(input))
+  format!("```rust,ignore\n{}\n```", Source(input))
 }
 
 pub struct Writer<'a, 'b> {
