@@ -41,7 +41,7 @@ pub fn run() -> Result<()> {
   const JAVA_LISTENER: Token = Token(0xffffffff);
   const BEDROCK_LISTENER: Token = Token(0xfffffffe);
 
-  let addr = config.get::<_, String>("address");
+  let addr = config.get::<&str>("address");
   info!("listening for java clients on {}", addr);
   let mut java_listener = TcpListener::bind(addr.parse()?)?;
 
@@ -53,7 +53,7 @@ pub fn run() -> Result<()> {
   let key = Arc::new(RSAPrivateKey::new(&mut OsRng, 1024).expect("failed to generate a key"));
   let der_key = if config.get("encryption") { Some(der::encode(&key)) } else { None };
   let icon = Arc::new(load_icon(config.get("icon")));
-  let server_ip: SocketAddr = config.get::<_, String>("server").parse().unwrap();
+  let server_ip: SocketAddr = config.get::<&str>("server").parse().unwrap();
   let compression = config.get("compression-thresh");
 
   let mut poll = Poll::new()?;

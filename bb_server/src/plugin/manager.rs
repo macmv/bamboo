@@ -63,7 +63,7 @@ impl PluginManager {
           path.join("plugin-default.toml").to_str().unwrap(),
           include_str!("plugin.toml"),
         );
-        if !config.get::<_, bool>("enabled") {
+        if !config.get::<bool>("enabled") {
           continue;
         }
         let ty: String = config.get("type");

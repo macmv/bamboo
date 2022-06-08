@@ -38,10 +38,10 @@ pub struct Conn<'a> {
 impl RCon {
   pub fn new(wm: Arc<WorldManager>) -> Option<Self> {
     let config = wm.config().section("rcon");
-    if !config.get::<_, bool>("enabled") {
+    if !config.get::<bool>("enabled") {
       return None;
     }
-    let addr = match config.get::<_, &str>("addr").parse() {
+    let addr = match config.get::<&str>("addr").parse() {
       Ok(a) => a,
       Err(e) => {
         error!("invalid rcon address: {e}");

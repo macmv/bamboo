@@ -172,16 +172,14 @@ impl World {
       plugins,
       commands,
       uspt: Arc::new(0.into()),
-      locked: config.get::<_, bool>("locked").into(),
+      locked: config.get::<bool>("locked").into(),
       config,
       wm,
       chunks_to_load: Mutex::new(ChunksToLoad::new()),
     });
     if world.config().get("vanilla.enabled") {
       world
-        .load_from_disk(
-          &std::path::PathBuf::new().join(world.config().get::<_, &str>("vanilla.path")),
-        )
+        .load_from_disk(&std::path::PathBuf::new().join(world.config().get::<&str>("vanilla.path")))
         .unwrap();
     }
     // Note that the world is not initialized yet, as we want to load plugins before

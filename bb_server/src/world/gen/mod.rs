@@ -237,7 +237,7 @@ impl WorldGen {
       WorldGen::new()
     } else {
       let mut gen = WorldGen::new();
-      for biome in config.get::<_, Vec<&str>>("biomes") {
+      for biome in config.get::<Vec<&str>>("biomes") {
         if gen.add_named_biome(biome).is_err() {
           warn!("unknown biome '{}', skipping", biome);
         }
