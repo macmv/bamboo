@@ -1,4 +1,4 @@
-use std::{borrow::Borrow, fs, sync::Arc};
+use std::{fs, sync::Arc};
 use toml::{map::Map, Value};
 
 mod types;
@@ -65,6 +65,19 @@ impl Key for [&str] {
   fn sections(&self) -> Vec<&str> { self.to_vec() }
 }
 
+fn join_dot<'a, I: Iterator<Item = &'a str>>(key: I) -> String {
+  {
+    let mut s = String::new();
+    for section in key {
+      if !s.is_empty() {
+        s.push_str(".");
+      }
+      s.push_str(section);
+    }
+    s
+  }
+}
+
 impl Config {
   /// Creates a new config for the given path. The path is a runtime path to
   /// load the config file. The default path is toml source, which should be
@@ -115,58 +128,66 @@ impl Config {
   /// your own type. I hightly recommend against this, as that will just cause
   /// confusion for your users. I will not be adding any more implementations
   /// than the ones present in this file.
-  pub fn get<'a, K: ?Sized, T>(&'a self, key: &K) -> T
+  pub fn get<'a, T>(&'a self, key: &str) -> T
   where
-    K: Key,
     T: TomlValue<'a>,
   {
-    let sections = key.borrow().sections();
-    match Self::get_val(&self.primary, &sections) {
+    self.get_at([key].into_iter())
+  }
+
+  pub fn get_at<'a, 'b, I, T>(&'a self, key: I) -> T
+  where
+    I: Iterator<Item = &'b str> + Clone,
+    T: TomlValue<'a>,
+  {
+    match Self::get_val(&self.primary, key.clone()) {
       Some(val) => match T::from_toml(val) {
         Some(v) => v,
         None => {
           warn!(
             "unexpected value at `{}`: {:?}, expected a {}",
-            sections.join("."),
+            join_dot(key.clone()),
             val,
             T::name()
           );
-          self.get_default(key)
+          self.get_default_at(key)
         }
       },
-      None => self.get_default(key),
+      None => self.get_default_at(key),
     }
   }
 
   /// Gets the default value at the given key. This will panic if the key does
   /// not exist, or if it was the wrong type.
-  fn get_default<'a, K: ?Sized, T>(&'a self, key: &K) -> T
+  fn get_default_at<'a, 'b, I, T>(&'a self, key: I) -> T
   where
-    K: Key,
+    I: Iterator<Item = &'b str> + Clone,
     T: TomlValue<'a>,
   {
-    let sections = key.borrow().sections();
-    match Self::get_val(&self.default, &sections) {
+    match Self::get_val(&self.default, key.clone()) {
       Some(val) => match T::from_toml(val) {
         Some(v) => v,
         None => {
           panic!(
             "default had wrong type for key `{}`: {:?}, expected a {}",
-            sections.join("."),
+            join_dot(key),
             val,
             T::name(),
           );
         }
       },
-      None => panic!("default does not have key `{}`", sections.join(".")),
+      None => panic!("default does not have key `{}`", join_dot(key)),
     }
   }
 
-  fn get_val<'a>(toml: &'a Value, sections: &[&str]) -> Option<&'a Value> {
+  fn get_val<'a, 'b, I>(toml: &'a Value, key: I) -> Option<&'a Value>
+  where
+    I: Iterator<Item = &'b str>,
+  {
     let mut val = toml;
-    for s in sections {
+    for s in key {
       match val {
-        Value::Table(map) => match map.get(*s) {
+        Value::Table(map) => match map.get(s) {
           Some(v) => val = v,
           None => return None,
         },
@@ -194,14 +215,10 @@ impl Config {
 
 impl ConfigSection {
   /// Gets the config value at the given key, prefixed by this reference's path.
-  pub fn get<'a, K: ?Sized, T>(&'a self, key: &K) -> T
+  pub fn get<'a, T>(&'a self, key: &str) -> T
   where
-    K: Key,
     T: TomlValue<'a>,
   {
-    let mut path: Vec<_> = self.path.iter().map(|s| s.as_str()).collect();
-    let sections = key.borrow().sections();
-    path.extend(sections);
-    self.config.get(path.as_slice())
+    self.config.get_at(self.path.iter().map(String::as_str).chain([key]))
   }
 }
