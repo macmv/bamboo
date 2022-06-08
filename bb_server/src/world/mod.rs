@@ -897,6 +897,9 @@ impl WorldManager {
     }
   }
 
+  #[cfg(not(target_family = "unix"))]
+  pub fn stop_on_ctrlc(self: &Arc<Self>) {}
+  #[cfg(target_family = "unix")]
   pub fn stop_on_ctrlc(self: &Arc<Self>) {
     use parking_lot::lock_api::RawMutex;
 
