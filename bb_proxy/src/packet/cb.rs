@@ -1387,7 +1387,8 @@ struct BiomeEffects {
   foliage_color:   Option<i32>,
   #[serde(skip_serializing_if = "Option::is_none")]
   grass_color:     Option<i32>,
-  mood_sound:      MoodSound, // 1.18.2+
+  #[serde(skip_serializing_if = "Option::is_none")]
+  mood_sound:      Option<MoodSound>, // 1.18.2+
 }
 #[derive(Debug, Clone, Serialize)]
 struct MoodSound {
@@ -1453,12 +1454,12 @@ where
       water_color:     0x3f76e4,
       foliage_color:   None,
       grass_color:     None,
-      mood_sound:      MoodSound {
+      mood_sound:      Some(MoodSound {
         block_search_extent: 8,
         offset:              2.0,
         sound:               "minecraft:ambient.cave".into(),
         tick_delay:          6000,
-      },
+      }),
       // sky_color:       0xff00ff,
       // water_color:     0xff00ff,
       // fog_color:       0xff00ff,
@@ -1571,6 +1572,7 @@ fn test_codec() {
       water_color:     0x3f76e4,
       foliage_color:   None,
       grass_color:     None,
+      mood_sound:      None,
       // sky_color:       0xff00ff,
       // water_color:     0xff00ff,
       // fog_color:       0xff00ff,
