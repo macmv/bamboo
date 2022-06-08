@@ -221,4 +221,20 @@ impl ConfigSection {
   {
     self.config.get_at(self.path.iter().map(String::as_str).chain([key]))
   }
+
+  /// Returns a config section for the given key. This new key will be appended
+  /// to the current section's key.
+  pub fn section<K: ?Sized>(&self, key: &K) -> ConfigSection
+  where
+    K: Key,
+  {
+    ConfigSection {
+      config: self.config.clone(),
+      path:   {
+        let mut path = self.path.clone();
+        path.extend(key.sections().iter().map(|v| v.to_string()));
+        path
+      },
+    }
+  }
 }

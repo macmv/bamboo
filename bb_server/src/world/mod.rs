@@ -177,10 +177,9 @@ impl World {
       wm,
       chunks_to_load: Mutex::new(ChunksToLoad::new()),
     });
-    if world.config().get("vanilla.enabled") {
-      world
-        .load_from_disk(&std::path::PathBuf::new().join(world.config().get::<&str>("vanilla.path")))
-        .unwrap();
+    let vanilla = world.config().section("vanilla");
+    if vanilla.get("enabled") {
+      world.load_from_disk(&std::path::PathBuf::new().join(vanilla.get::<&str>("path"))).unwrap();
     }
     // Note that the world is not initialized yet, as we want to load plugins before
     // initializing.
