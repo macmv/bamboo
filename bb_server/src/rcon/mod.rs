@@ -73,7 +73,16 @@ impl RCon {
     let mut next_token = 0;
 
     loop {
-      poll.poll(&mut events, None).unwrap();
+      loop {
+        match poll.poll(&mut events, None) {
+          Ok(()) => break,
+          Err(e) if e.kind() == io::ErrorKind::Interrupted => continue,
+          Err(e) => {
+            error!("closing rcon at {} due to error: {}", self.addr, e);
+            return;
+          }
+        }
+      }
       for event in events.iter() {
         match event.token() {
           LISTEN => loop {
@@ -91,7 +100,7 @@ impl RCon {
               Err(e) => {
                 // If it was any other kind of error, something went
                 // wrong and we terminate with an error.
-                error!("error listening in rcon: {e}");
+                error!("closing rcon at {} due to error: {}", self.addr, e);
                 return;
               }
             };
