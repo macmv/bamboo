@@ -62,7 +62,7 @@ pub(crate) fn handle(wm: &Arc<WorldManager>, mut player: &Arc<Player>, p: sb::Pa
     sb::Packet::BlockDig { pos, status, face } => {
       // If the world is locked then we need to sync this block.
       if player.world().is_locked() {
-        player.sync_block_at(pos).unwrap();
+        player.sync_block_at(pos);
       } else {
         match player.game_mode() {
           GameMode::Survival => match status {
@@ -86,20 +86,21 @@ pub(crate) fn handle(wm: &Arc<WorldManager>, mut player: &Arc<Player>, p: sb::Pa
                   .call(stack.item(), |b| b.break_block(click))
                   .unwrap_or(EventFlow::Continue);
                 if flow.is_handled() {
-                  let _ = player.sync_block_at(pos);
-                  let _ = player.sync_block_at(pos + face);
+                  player.sync_block_at(pos);
+                  player.sync_block_at(pos + face);
                   return;
                 }
               }
             }
-            // Avoid race condition
-            if !player.world().set_kind(pos, block::Kind::Air).unwrap() {
-              player.sync_block_at(pos).unwrap();
+            // Make sure to sync this block if the world is locked, or if the position is
+            // invalid.
+            if matches!(player.world().set_kind(pos, block::Kind::Air), Ok(false) | Err(_)) {
+              player.sync_block_at(pos);
             }
           }
           // TODO: Not sure if the sync is needed, but it won't hurt much.
           GameMode::Adventure => {
-            player.sync_block_at(pos).unwrap();
+            player.sync_block_at(pos);
           }
           // We will just ignore block digs from spectators, as they won't show any updates client
           // side.
@@ -163,8 +164,8 @@ pub(crate) fn handle(wm: &Arc<WorldManager>, mut player: &Arc<Player>, p: sb::Pa
                 let stack = stack.clone();
                 drop(inv); // Don't have inv locked on this event.
                 if wm.events().interact(stack, Click::Block(click)).is_handled() {
-                  let _ = player.sync_block_at(pos);
-                  let _ = player.sync_block_at(pos + face);
+                  player.sync_block_at(pos);
+                  player.sync_block_at(pos + face);
                   return;
                 }
               }
@@ -179,8 +180,8 @@ pub(crate) fn handle(wm: &Arc<WorldManager>, mut player: &Arc<Player>, p: sb::Pa
               .unwrap_or(false);
 
             if handled {
-              let _ = player.sync_block_at(pos);
-              let _ = player.sync_block_at(pos + face);
+              player.sync_block_at(pos);
+              player.sync_block_at(pos + face);
               return;
             }
 
@@ -200,7 +201,7 @@ pub(crate) fn handle(wm: &Arc<WorldManager>, mut player: &Arc<Player>, p: sb::Pa
 
             let looking_data = wm.block_converter().get(looking_at.kind());
             if !looking_data.material.is_replaceable() {
-              let _ = player.sync_block_at(pos);
+              player.sync_block_at(pos);
               pos += face;
             }
 
@@ -218,10 +219,17 @@ pub(crate) fn handle(wm: &Arc<WorldManager>, mut player: &Arc<Player>, p: sb::Pa
                 // TODO: Handle plugins cancelling this place.
                 player.world().plugins().on_block_place(player.clone(), pos, ty);
               }
-              Err(e) => player.send_hotbar(Chat::new(e.to_string())),
+              Err(e) => {
+                player.send_hotbar(Chat::new(e.to_string()));
+                player.sync_block_at(pos);
+              }
             }
           }
-          Err(e) => player.send_hotbar(Chat::new(e.to_string())),
+          Err(e) => {
+            player.send_hotbar(Chat::new(e.to_string()));
+            player.sync_block_at(pos);
+            player.sync_block_at(pos + face);
+          }
         };
       }
     }

@@ -562,13 +562,12 @@ impl Player {
   /// ends up becoming desyncronized from the server. So this function is called
   /// on that tall grass block, to prevent the client from showing the wrong
   /// block.
-  pub fn sync_block_at(&self, pos: Pos) -> Result<(), PosError> {
-    let ty = self.world().get_block(pos)?;
+  pub fn sync_block_at(&self, pos: Pos) {
+    let ty = self.world().get_block(pos).unwrap_or(block::TypeStore::air());
     self.send(cb::Packet::BlockUpdate {
       pos,
       state: self.world().block_converter().to_old(ty.id(), self.ver().block()),
     });
-    Ok(())
   }
 
   /// Sends the given packet to this player. This will be flushed as soon as the

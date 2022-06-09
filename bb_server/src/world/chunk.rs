@@ -251,7 +251,7 @@ impl MultiChunk {
   /// worlds can have negative block positions.
   pub fn transform_pos(&self, mut p: RelPos) -> Result<RelPos, PosError> {
     if p.y() < self.inner.min_y || p.y() >= self.inner.height as i32 - self.inner.min_y {
-      Err(p.err("position is outside the world".into()))
+      Err(p.err("is outside the world".into()))
     } else {
       p = p.add_y(self.inner.min_y);
       Ok(p)

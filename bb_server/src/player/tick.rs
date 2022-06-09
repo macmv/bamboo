@@ -388,13 +388,13 @@ impl Player {
         self.world().get_block(pos).unwrap().ty(),
       ) {
         if !self.world().break_block(pos).unwrap() {
-          self.sync_block_at(pos).unwrap();
+          self.sync_block_at(pos);
         }
       } else {
-        self.sync_block_at(pos).unwrap();
+        self.sync_block_at(pos);
       }
     } else if sync {
-      self.sync_block_at(pos).unwrap();
+      self.sync_block_at(pos);
     }
   }
 
@@ -457,10 +457,10 @@ impl Player {
         self.world().get_block(pos).unwrap().ty(),
       ) {
         if !self.world().break_block(pos).unwrap() {
-          self.sync_block_at(pos).unwrap();
+          self.sync_block_at(pos);
         }
       } else {
-        self.sync_block_at(pos).unwrap();
+        self.sync_block_at(pos);
       }
     }
   }
