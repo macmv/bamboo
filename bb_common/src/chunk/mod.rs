@@ -24,7 +24,10 @@ pub struct Chunk<S: Section> {
 }
 
 impl<S: Section> Chunk<S> {
+  /// Creates an empty chunk, that can be resized to any height.
   pub fn new(max_bpe: u8) -> Self { Chunk { sections: Vec::new(), max_bpe } }
+  /// This creates a `256` block tall chunk from the given bitmap. Used in the
+  /// proxy for older versions.
   pub fn from_bitmap(bitmap: u16, mut sections: Vec<S>, max_bpe: u8) -> Self {
     let mut arr: Vec<Option<S>> = (0..16).map(|_| None).collect();
     for i in (0..16).rev() {
@@ -38,10 +41,10 @@ impl<S: Section> Chunk<S> {
   /// In release mode, the position is not checked. In any other mode, a
   /// PosError will be returned if any of the x, y, or z are outside of 0..16
   pub fn set_block(&mut self, pos: RelPos, ty: u32) -> Result<(), PosError> {
-    let index = pos.chunk_y() as usize;
-    if !(0..16).contains(&index) {
-      return Err(pos.err("Y coordinate is outside of chunk".into()));
+    if pos.y() < 0 {
+      return Err(pos.err("Y is negative".into()));
     }
+    let index = pos.chunk_y() as usize;
     if index >= self.sections.len() {
       self.sections.resize_with(index + 1, || None);
     }
@@ -60,14 +63,14 @@ impl<S: Section> Chunk<S> {
   /// [`set_block`](Self::set_block) for details about the bounds of min and
   /// max.
   pub fn fill(&mut self, min: RelPos, max: RelPos, ty: u32) -> Result<(), PosError> {
+    if min.y() < 0 {
+      return Err(min.err("Y is negative".into()));
+    }
+    if max.y() < 0 {
+      return Err(max.err("Y is negative".into()));
+    }
     let min_index = min.chunk_y() as usize;
     let max_index = max.chunk_y() as usize;
-    if !(0..16).contains(&min_index) {
-      return Err(min.err("Y coordinate is outside of chunk".into()));
-    }
-    if !(0..16).contains(&max_index) {
-      return Err(max.err("Y coordinate is outside of chunk".into()));
-    }
     if max_index < min_index {
       return Err(max.err("max is less than min".into()));
     }
@@ -93,12 +96,12 @@ impl<S: Section> Chunk<S> {
   /// In release mode, the position is not checked. In any other mode, a
   /// PosError will be returned if any of the x, y, or z are outside of 0..16
   pub fn get_block(&self, pos: RelPos) -> Result<u32, PosError> {
-    let index = pos.chunk_y();
-    if !(0..16).contains(&index) {
-      return Err(pos.err("Y coordinate is outside of chunk".into()));
+    if pos.y() < 0 {
+      return Err(pos.err("Y is negative".into()));
     }
-    let index = index as usize;
+    let index = pos.chunk_y() as usize;
     if index >= self.sections.len() || self.sections[index].is_none() {
+      // This assumes air is `0`.
       return Ok(0);
     }
     match &self.sections[index] {
@@ -121,13 +124,7 @@ impl<S: Section> Chunk<S> {
 
   /// Returns the section at the given index. If it doesn't exist, this will
   /// create an empty section.
-  ///
-  /// # Panics
-  /// - If `y` is outside the chunk.
   pub fn section_mut(&mut self, y: u32) -> &mut S {
-    if !(0..16).contains(&y) {
-      panic!("Y coordinate is outside of chunk");
-    }
     let index = y as usize;
     if index >= self.sections.len() {
       self.sections.resize_with(index + 1, || None);
@@ -144,13 +141,7 @@ impl<S: Section> Chunk<S> {
   /// Clears the section at the given Y coordinate. If the chunk is at the top,
   /// the internal chunk list will shrink. This is more effective than calling
   /// `section_mut.fill(<air>)`
-  ///
-  /// # Panics
-  /// - If `y` is outside the chunk.
   pub fn clear_section(&mut self, y: u32) {
-    if !(0..16).contains(&y) {
-      panic!("Y coordinate is outside of chunk");
-    }
     let index = y as usize;
     if index < self.sections.len() {
       // Clear the chunk.
