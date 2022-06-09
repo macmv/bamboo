@@ -99,8 +99,12 @@ pub enum Packet {
     difficulty:            u8,
     view_distance:         u16,
     reduced_debug_info:    bool,
-    /// Only applies to 1.16+ clients.
+    /// Only applies to 1.16+ clients. Ignored for older clients.
     enable_respawn_screen: bool,
+    /// Only applies to 1.18+ clients. Ignored for older clients.
+    world_height:          u32,
+    /// Only applies to 1.18+ clients. Ignored for older clients.
+    world_min_y:           i32,
   },
   /// A list of changed blocks in a chunk section. This is not for a chunk
   /// column. 1.8 clients have this block for a whole chunk column, but 1.17+

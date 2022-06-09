@@ -427,6 +427,8 @@ impl ToTcp for Packet {
         view_distance,
         reduced_debug_info,
         enable_respawn_screen,
+        world_height,
+        world_min_y,
       } => {
         let mut data = vec![];
         let mut buf = Buffer::new(&mut data);
@@ -442,7 +444,7 @@ impl ToTcp for Packet {
           buf.write_varint(1);
           buf.write_str("minecraft:overworld");
 
-          write_dimensions(&mut buf);
+          write_dimensions(&mut buf, world_height, world_min_y);
 
           // Hashed world seed, used for biomes client side.
           buf.write_u64(0);
@@ -1418,7 +1420,7 @@ struct CodecItem<T> {
   element: T,
 }
 
-fn write_dimensions<T>(out: &mut Buffer<T>)
+fn write_dimensions<T>(out: &mut Buffer<T>, world_height: u32, world_min_y: i32)
 where
   std::io::Cursor<T>: std::io::Write,
 {
@@ -1437,8 +1439,8 @@ where
     coordinate_scale:     1.0,
     ultrawarm:            false,
     has_ceiling:          false,
-    min_y:                0,
-    height:               256,
+    min_y:                world_min_y,
+    height:               (world_height as i32 + 15) / 16 * 16,
   };
   let biome = Biome {
     precipitation: "rain".into(),

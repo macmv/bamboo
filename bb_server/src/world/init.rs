@@ -231,6 +231,8 @@ impl World {
       view_distance:         player.view_distance() as u16,
       reduced_debug_info:    false,
       enable_respawn_screen: true,
+      world_height:          self.height,
+      world_min_y:           self.min_y,
     };
 
     player.send(out);
