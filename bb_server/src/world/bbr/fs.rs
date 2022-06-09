@@ -80,7 +80,12 @@ impl Region {
             if let Some(chunk) = chunk {
               data.update_chunk(chunk);
             } else {
-              let mut c = CountedChunk::new(MultiChunk::new(self.wm.clone(), true));
+              let mut c = CountedChunk::new(MultiChunk::new(
+                self.world.world_manager().clone(),
+                true,
+                self.world.height,
+                self.world.min_y,
+              ));
               data.update_chunk(&mut c);
               *chunk = Some(c);
             }

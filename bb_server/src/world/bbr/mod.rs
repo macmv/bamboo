@@ -2,10 +2,13 @@
 
 mod fs;
 
-use super::{CountedChunk, WorldManager};
+use super::{CountedChunk, World};
 use bb_common::math::ChunkPos;
 use parking_lot::{Mutex, MutexGuard, RwLock, RwLockWriteGuard};
-use std::{collections::HashMap, sync::Arc};
+use std::{
+  collections::HashMap,
+  sync::{Arc, Weak},
+};
 
 /// The same structure as a chunk position, but used to index into a region. Can
 /// be converted to/from a `ChunkPos` by multiplying/dividing its coordinates by
@@ -24,20 +27,20 @@ pub struct RegionRelPos {
 }
 
 pub struct RegionMap {
-  wm:      Arc<WorldManager>,
+  world:   Weak<World>,
   regions: RwLock<HashMap<RegionPos, Mutex<Region>>>,
 }
 
 pub struct Region {
-  wm:     Arc<WorldManager>,
+  world:  Arc<World>,
   pos:    RegionPos,
   /// An array of `32*32 = 1024` chunks. The index is `x + z * 32`.
   chunks: [Option<CountedChunk>; 1024],
 }
 
 impl RegionMap {
-  pub fn new(wm: Arc<WorldManager>) -> Self {
-    RegionMap { wm, regions: RwLock::new(HashMap::new()) }
+  pub fn new(world: Weak<World>) -> Self {
+    RegionMap { world, regions: RwLock::new(HashMap::new()) }
   }
 
   pub fn region<F: FnOnce(MutexGuard<Region>) -> R, R>(&self, pos: ChunkPos, f: F) -> R {
@@ -50,7 +53,7 @@ impl RegionMap {
       // want to write it twice.
       write
         .entry(region_pos)
-        .or_insert_with(|| Mutex::new(Region::new_load(self.wm.clone(), region_pos)));
+        .or_insert_with(|| Mutex::new(Region::new_load(self.world.upgrade().unwrap(), region_pos)));
       RwLockWriteGuard::downgrade(write)
     } else {
       lock
@@ -95,12 +98,12 @@ impl RegionMap {
 }
 
 impl Region {
-  fn new(wm: Arc<WorldManager>, pos: RegionPos) -> Self {
+  fn new(world: Arc<World>, pos: RegionPos) -> Self {
     const NONE: Option<CountedChunk> = None;
-    Region { wm, pos, chunks: [NONE; 1024] }
+    Region { world, pos, chunks: [NONE; 1024] }
   }
-  pub fn new_load(wm: Arc<WorldManager>, pos: RegionPos) -> Self {
-    let mut region = Region::new(wm, pos);
+  pub fn new_load(world: Arc<World>, pos: RegionPos) -> Self {
+    let mut region = Region::new(world, pos);
     region.load();
     region
   }

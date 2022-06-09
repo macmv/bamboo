@@ -103,6 +103,11 @@ pub struct World {
   locked:           AtomicBool,
 
   chunks_to_load: Mutex<ChunksToLoad>,
+
+  /// A height in blocks. Default is `256`.
+  height: u32,
+  /// A height in blocks. Default is `0`.
+  min_y:  i32,
 }
 
 /// The world manager. This is essentially a Bamboo type. It stores all the
@@ -162,8 +167,8 @@ impl World {
       .unwrap_or_else(|err| error!("could not load schematic file {}: {}", path, err));
     }
     */
-    let world = Arc::new(World {
-      regions: RegionMap::new(wm.clone()),
+    let world = Arc::new_cyclic(|weak| World {
+      regions: RegionMap::new(weak.clone()),
       // generator: config.get("generator"),
       gen,
       players: RwLock::new(PlayersMap::new()),
@@ -176,6 +181,8 @@ impl World {
       commands,
       uspt: Arc::new(0.into()),
       locked: config.get::<bool>("locked").into(),
+      height: config.get("height"),
+      min_y: config.get("min_y"),
       config,
       wm,
       chunks_to_load: Mutex::new(ChunksToLoad::new()),
@@ -368,7 +375,7 @@ impl World {
   /// have a list of chunks to generate, and you would like to generate them in
   /// parallel.
   pub fn pre_generate_chunk(&self, pos: ChunkPos) -> MultiChunk {
-    let mut c = MultiChunk::new(self.world_manager().clone(), true);
+    let mut c = MultiChunk::new(self.world_manager().clone(), true, self.height, self.min_y);
     self.gen.generate(pos, &mut c);
     c
     /*

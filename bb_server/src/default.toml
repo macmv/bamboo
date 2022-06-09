@@ -75,6 +75,11 @@ void = false
 # to load.
 generator = ""
 
+# The height of this world. This is 1 block larger than the maximum block.
+height = 256
+# The minimum Y value of this world. This is the lowest block you can place.
+min_y = 0
+
 # Vanilla world loading settings
 [world.vanilla]
   # If set, then the world will be a void world, and a vanilla world will

@@ -46,6 +46,9 @@ struct ChunkData {
   block:        LightChunk<BlockLight>,
   /// Set to false when the world is generating, which makes things much faster.
   update_light: bool,
+
+  height: u32,
+  min_y:  i32,
 }
 
 impl fmt::Debug for MultiChunk {
@@ -61,13 +64,15 @@ impl CountedChunk {
 }
 
 impl ChunkData {
-  fn new(sky: bool) -> Self {
+  fn new(sky: bool, height: u32, min_y: i32) -> Self {
     ChunkData {
-      inner:        Chunk::new(15),
-      tes:          HashMap::new(),
-      sky:          if sky { Some(LightChunk::new()) } else { None },
-      block:        LightChunk::new(),
+      inner: Chunk::new(15),
+      tes: HashMap::new(),
+      sky: if sky { Some(LightChunk::new()) } else { None },
+      block: LightChunk::new(),
       update_light: true,
+      height,
+      min_y,
     }
   }
 
@@ -117,8 +122,8 @@ impl MultiChunk {
   ///
   /// The second argument is for sky light data. Places like the nether do not
   /// contain sky light information, so the sky light data is not present.
-  pub fn new(wm: Arc<WorldManager>, sky: bool) -> MultiChunk {
-    MultiChunk { inner: ChunkData::new(sky), wm }
+  pub fn new(wm: Arc<WorldManager>, sky: bool, height: u32, min_y: i32) -> MultiChunk {
+    MultiChunk { inner: ChunkData::new(sky, height, min_y), wm }
   }
 
   /// Returns a reference to the global world manager.
