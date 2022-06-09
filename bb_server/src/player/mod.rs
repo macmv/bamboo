@@ -394,8 +394,11 @@ impl Player {
   /// spawning in a new player.
   pub fn metadata(&self) -> Metadata {
     let mut meta = Metadata::new();
+    // Status byte (fire, invisible, etc):
     meta.set_byte(0, self.status_byte());
     // Custom names aren't present for players, so we don't set fields 2 and 3.
+    // Skin parts:
+    meta.set_byte(17, 0x01 | 0x02 | 0x04 | 0x08 | 0x10 | 0x20 | 0x40);
     meta
   }
 
