@@ -11,7 +11,7 @@ pub fn chunk(chunk: ChunkWithPos, conv: &TypeConverter) -> Packet {
   let biomes = chunk.full;
   let skylight = true; // Assume overworld
 
-  let total_sections = chunk.sections.len();
+  let total_sections = chunk.sections.iter().flatten().count();
 
   let data_len = total_sections * 16 * 16 * 16 * 2 // Chunk data
     + (total_sections * 16 * 16 * 16 / 2) // Block light
@@ -22,11 +22,11 @@ pub fn chunk(chunk: ChunkWithPos, conv: &TypeConverter) -> Packet {
   let mut chunk_data = vec![0; data_len + 2 + 5];
   let mut chunk_buf = Buffer::new(&mut chunk_data);
 
-  chunk_buf.write_u16(chunk.bit_map);
+  chunk_buf.write_u16(chunk.old_bit_map());
   chunk_buf.write_varint(data_len.try_into().unwrap());
   let prefix_len = chunk_buf.index();
 
-  for s in &chunk.sections {
+  for s in chunk.sections.iter().flatten() {
     for y in 0..16 {
       for z in 0..16 {
         for x in 0..16 {

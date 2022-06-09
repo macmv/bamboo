@@ -26,16 +26,9 @@ pub struct Chunk<S: Section> {
 impl<S: Section> Chunk<S> {
   /// Creates an empty chunk, that can be resized to any height.
   pub fn new(max_bpe: u8) -> Self { Chunk { sections: Vec::new(), max_bpe } }
-  /// This creates a `256` block tall chunk from the given bitmap. Used in the
-  /// proxy for older versions.
-  pub fn from_bitmap(bitmap: u16, mut sections: Vec<S>, max_bpe: u8) -> Self {
-    let mut arr: Vec<Option<S>> = (0..16).map(|_| None).collect();
-    for i in (0..16).rev() {
-      if bitmap & (1 << i) != 0 {
-        arr[i] = Some(sections.pop().unwrap());
-      }
-    }
-    Chunk { sections: arr, max_bpe }
+  /// Creates a chunk from the given sections list.
+  pub fn from_sections(sections: Vec<Option<S>>, max_bpe: u8) -> Self {
+    Chunk { sections, max_bpe }
   }
   /// This updates the internal data to contain a block at the given position.
   /// In release mode, the position is not checked. In any other mode, a

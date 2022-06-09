@@ -15,7 +15,7 @@ pub fn chunk(chunk: ChunkWithPos, conv: &TypeConverter) -> Packet {
   let mut chunk_data = vec![];
   let mut chunk_buf = Buffer::new(&mut chunk_data);
 
-  for s in &chunk.sections {
+  for s in chunk.sections.iter().flatten() {
     chunk_buf.write_u16(s.non_air_blocks() as u16);
     chunk_buf.write_u8(s.data().bpe() as u8);
     if s.data().bpe() <= 8 {
@@ -47,7 +47,7 @@ pub fn chunk(chunk: ChunkWithPos, conv: &TypeConverter) -> Packet {
 
   // This is the length in longs that the bit map takes up.
   buf.write_varint(1);
-  buf.write_u64(chunk.bit_map.into());
+  buf.write_u64(chunk.old_bit_map().into());
 
   buf.write_buf(&heightmap.serialize());
   buf.write_buf(&biome_data);

@@ -28,8 +28,7 @@ pub use metadata::metadata;
 pub struct ChunkWithPos {
   pos:         ChunkPos,
   full:        bool,
-  bit_map:     u16,
-  sections:    Vec<Section>,
+  sections:    Vec<Option<Section>>,
   sky_light:   Option<LightChunk<SkyLight>>,
   block_light: LightChunk<BlockLight>,
 }
@@ -68,5 +67,20 @@ pub fn multi_block_change(
     // ProtocolVersion::V1_15 => v1_15::serialize_chunk(pos, c),
     // ProtocolVersion::V1_16 => v1_16::serialize_chunk(pos, c),
     _ => todo!("multi block change on version {}", ver),
+  }
+}
+
+impl ChunkWithPos {
+  /// Generates the bitmap used on versions 1.8-1.17 for chunk sections. 1.18+
+  /// sends all chunks, with a special "empty section" format, which only takes
+  /// a few bytes.
+  pub fn old_bit_map(&self) -> u16 {
+    let mut bit_map = 0;
+    for (y, section) in self.sections.iter().enumerate() {
+      if section.is_some() {
+        bit_map |= 1 << y;
+      }
+    }
+    bit_map
   }
 }

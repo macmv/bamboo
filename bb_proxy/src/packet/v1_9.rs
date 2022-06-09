@@ -9,7 +9,7 @@ pub fn chunk(chunk: ChunkWithPos, ver: ProtocolVersion, conv: &TypeConverter) ->
 
   let mut chunk_data = vec![];
   let mut chunk_buf = Buffer::new(&mut chunk_data);
-  for s in &chunk.sections {
+  for s in chunk.sections.iter().flatten() {
     chunk_buf.write_u8(s.data().bpe() as u8);
     chunk_buf.write_varint(s.palette().len() as i32);
     for g in s.palette() {
@@ -52,7 +52,7 @@ pub fn chunk(chunk: ChunkWithPos, ver: ProtocolVersion, conv: &TypeConverter) ->
     chunk_x:            chunk.pos.x(),
     chunk_z:            chunk.pos.z(),
     load_chunk:         chunk.full,
-    available_sections: chunk.bit_map.into(),
+    available_sections: chunk.old_bit_map().into(),
     unknown:            data,
   }
 }

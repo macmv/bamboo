@@ -180,9 +180,9 @@ impl ToTcp for Packet {
           GPacket::ChatV12 { chat_component: msg.to_json(), unknown: data }
         }
       }
-      Packet::Chunk { pos, full, bit_map, sections, sky_light, block_light } => {
+      Packet::Chunk { pos, full, sections, sky_light, block_light } => {
         return Ok(super::chunk(
-          super::ChunkWithPos { pos, full, bit_map, sections, sky_light, block_light },
+          super::ChunkWithPos { pos, full, sections, sky_light, block_light },
           ver,
           conn.conv(),
         ));

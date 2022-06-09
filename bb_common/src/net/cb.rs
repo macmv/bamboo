@@ -34,8 +34,10 @@ pub enum Packet {
   Chunk {
     pos:         ChunkPos,
     full:        bool,
-    bit_map:     u16,
-    sections:    Vec<Section>,
+    /// In order to comply with modern clients, this array must be the full
+    /// length of the world height. If it is too short, a modern client will
+    /// disconnect with an error.
+    sections:    Vec<Option<Section>>,
     sky_light:   Option<LightChunk<SkyLight>>,
     block_light: LightChunk<BlockLight>,
   },

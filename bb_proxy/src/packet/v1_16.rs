@@ -14,7 +14,7 @@ pub fn chunk(chunk: ChunkWithPos, conv: &TypeConverter) -> Packet {
 
   let mut chunk_data = vec![];
   let mut chunk_buf = Buffer::new(&mut chunk_data);
-  for s in &chunk.sections {
+  for s in chunk.sections.iter().flatten() {
     chunk_buf.write_u16(s.non_air_blocks() as u16);
     chunk_buf.write_u8(s.data().bpe() as u8);
     if s.data().bpe() <= 8 {
@@ -53,7 +53,7 @@ pub fn chunk(chunk: ChunkWithPos, conv: &TypeConverter) -> Packet {
     chunk_x:                chunk.pos.x(),
     chunk_z:                chunk.pos.z(),
     is_full_chunk:          chunk.full,
-    vertical_strip_bitmask: chunk.bit_map.into(),
+    vertical_strip_bitmask: chunk.old_bit_map().into(),
     unknown:                data,
   }
 }
