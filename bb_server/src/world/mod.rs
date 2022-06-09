@@ -445,22 +445,12 @@ impl World {
   /// [`serialize_partial_chunk`](Self::serialize_partial_chunk).
   pub fn serialize_chunk(&self, pos: ChunkPos) -> cb::Packet {
     self.chunk(pos, |c| {
-      let mut bit_map = 0;
-      let mut sections = vec![];
       let inner = c.inner();
-
-      for (y, s) in inner.sections().enumerate() {
-        if let Some(c) = s {
-          bit_map |= 1 << y;
-          sections.push(c.clone());
-        }
-      }
 
       cb::Packet::Chunk {
         pos,
         full: true,
-        bit_map,
-        sections,
+        sections: inner.sections().cloned().collect(),
         sky_light: c.sky_light().clone(),
         block_light: c.block_light().clone(),
       }
@@ -480,25 +470,16 @@ impl World {
   /// sending this to a 1.17+ client.
   pub fn serialize_partial_chunk(&self, pos: ChunkPos, min: u32, max: u32) -> cb::Packet {
     self.chunk(pos, |c| {
-      let mut bit_map = 0;
-      let mut sections = vec![];
       let inner = c.inner();
-
-      for (y, s) in inner.sections().enumerate() {
-        if (y as u32) < min || y as u32 > max {
-          continue;
-        }
-        if let Some(c) = s {
-          bit_map |= 1 << y;
-          sections.push(c.clone());
-        }
-      }
 
       cb::Packet::Chunk {
         pos,
         full: false,
-        bit_map,
-        sections,
+        sections: inner
+          .sections()
+          .enumerate()
+          .map(|(y, s)| if (y as u32) < min || y as u32 > max { None } else { s.clone() })
+          .collect(),
         // TODO: Only clone the sections we care about
         sky_light: c.sky_light().clone(),
         block_light: c.block_light().clone(),
