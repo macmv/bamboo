@@ -65,6 +65,7 @@ pub use players::{PlayersIter, PlayersMap};
 
 use bbr::{RegionMap, RegionRelPos};
 use chunks::ChunksToLoad;
+use gen::WorldGen;
 
 // pub struct ChunkRef<'a> {
 //   pos:    ChunkPos,
@@ -85,7 +86,8 @@ use chunks::ChunksToLoad;
 /// [block]/[item]/[entity] type converters, and the [`WorldManager`].
 pub struct World {
   regions:          RegionMap,
-  generator:        String,
+  // generator:        String,
+  gen:              WorldGen,
   players:          RwLock<PlayersMap>,
   entities:         RwLock<EntitiesMap>,
   eid:              AtomicI32,
@@ -149,7 +151,7 @@ impl World {
     wm: Arc<WorldManager>,
   ) -> Arc<Self> {
     let config = wm.config().section("world");
-    // let gen = WorldGen::from_config(&config);
+    let gen = WorldGen::from_config(&config);
     /*
     for schematic in config.get::<_, Vec<String>>("schematics") {
       let path = schematic.get("path");
@@ -162,7 +164,8 @@ impl World {
     */
     let world = Arc::new(World {
       regions: RegionMap::new(wm.clone()),
-      generator: config.get("generator"),
+      // generator: config.get("generator"),
+      gen,
       players: RwLock::new(PlayersMap::new()),
       entities: RwLock::new(EntitiesMap::new()),
       eid: 1.into(),
@@ -365,6 +368,10 @@ impl World {
   /// have a list of chunks to generate, and you would like to generate them in
   /// parallel.
   pub fn pre_generate_chunk(&self, pos: ChunkPos) -> MultiChunk {
+    let mut c = MultiChunk::new(self.world_manager().clone(), true);
+    self.gen.generate(pos, &mut c);
+    c
+    /*
     let mut c = Arc::new(Mutex::new(MultiChunk::new(self.world_manager().clone(), true)));
     self.plugins.on_generate_chunk(&self.generator, c.clone(), pos);
     loop {
@@ -377,6 +384,7 @@ impl World {
         }
       }
     }
+    */
   }
 
   /// Checks if the given chunk position is loaded. This will not check for any
