@@ -2,7 +2,7 @@ use super::{Block, Data, Kind, Type};
 use crate::{
   item::Stack,
   player::{BlockClick, Player},
-  world::World,
+  world::{EventFlow, World},
 };
 use bb_common::math::Pos;
 use std::{any::Any, sync::Arc};
@@ -40,9 +40,9 @@ pub trait Behavior: Send + Sync {
 
   /// Called when a player right clicks on this block. If this returns `true`,
   /// the event was handled, and a block should not be placed.
-  fn interact(&self, block: Block, player: &Arc<Player>) -> bool {
+  fn interact(&self, block: Block, player: &Arc<Player>) -> EventFlow {
     let _ = (block, player);
-    false
+    EventFlow::Continue
   }
   /// Returns the drops for the given block. The default drops for this block
   /// are collected from the vanilla client, but this may require some

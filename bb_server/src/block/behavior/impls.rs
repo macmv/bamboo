@@ -6,7 +6,10 @@ use crate::{
   entity,
   item::SharedInventory,
   player::{BlockClick, Player, Window},
-  world::World,
+  world::{
+    EventFlow::{self, *},
+    World,
+  },
 };
 use bb_common::{
   math::Pos,
@@ -46,7 +49,7 @@ impl Behavior for Falling {
 
 pub struct CraftingTable;
 impl Behavior for CraftingTable {
-  fn interact(&self, _: Block, player: &Arc<Player>) -> bool {
+  fn interact(&self, _: Block, player: &Arc<Player>) -> EventFlow {
     let grid = SharedInventory::new();
     let output = SharedInventory::new();
     player.show_inventory(
@@ -57,7 +60,7 @@ impl Behavior for CraftingTable {
       }),
       &Chat::new("Crafting Table"),
     );
-    true
+    Handled
   }
 }
 
@@ -107,13 +110,13 @@ impl Behavior for Chest {
   fn create_te(&self) -> Option<Arc<dyn TileEntity>> {
     Some(Arc::new(ChestTE { inv: SharedInventory::new() }))
   }
-  fn interact(&self, block: Block, player: &Arc<Player>) -> bool {
+  fn interact(&self, block: Block, player: &Arc<Player>) -> EventFlow {
     block.te(|chest: &ChestTE| {
       player.show_inventory(
         Window::Generic9x3(crate::player::window::GenericWindow { inv: chest.inv.clone() }),
         &Chat::new("Chest"),
       );
-      true
+      Handled
     })
   }
 }

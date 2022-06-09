@@ -1,5 +1,7 @@
 use super::WorldManager;
-use crate::{item::Stack, player::Click};
+use crate::player::{Click, Player};
+use bb_common::util::Hand;
+use std::sync::Arc;
 
 pub struct Events<'a> {
   wm: &'a WorldManager,
@@ -24,12 +26,20 @@ impl WorldManager {
 
 use EventFlow::*;
 impl Events<'_> {
-  pub fn interact(&self, stack: Stack, click: Click) -> EventFlow {
+  pub fn interact(&self, player: &Arc<Player>, _hand: Hand, click: Click) -> EventFlow {
+    let stack = player.lock_inventory().main_hand().clone();
     try_event!(self
       .wm
       .item_behaviors()
-      .call(stack.item(), |b| b.interact(click))
+      .call(stack.item(), |i| i.interact(click))
       .unwrap_or(Continue));
+    if let Click::Block(click) = click {
+      try_event!(self
+        .wm
+        .block_behaviors()
+        .call(click.block.kind(), |b| b.interact(click.block, player))
+        .unwrap_or(Continue));
+    }
     Continue
   }
 }

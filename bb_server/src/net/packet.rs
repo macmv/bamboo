@@ -124,14 +124,14 @@ pub(crate) fn handle(wm: &Arc<WorldManager>, mut player: &Arc<Player>, p: sb::Pa
     sb::Packet::ChangeHeldItem { slot } => {
       player.lock_inventory().set_selected(slot);
     }
-    sb::Packet::UseItem { hand: _ } => {
-      let inv = player.lock_inventory();
-      // TODO: Use `hand`.
-      let stack = inv.main_hand();
-      let click = Click::Air(AirClick { dir: player.look_as_vec(), player });
-      wm.item_behaviors().call(stack.item(), |b| b.interact(click)).unwrap_or(EventFlow::Continue);
+    sb::Packet::UseItem { hand } => {
+      wm.events().interact(
+        player,
+        hand,
+        Click::Air(AirClick { dir: player.look_as_vec(), player }),
+      );
     }
-    sb::Packet::BlockPlace { mut pos, face, hand: _ } => {
+    sb::Packet::BlockPlace { mut pos, face, hand } => {
       /*
       let direction: i32 = if player.ver() == ProtocolVersion::V1_8 {
         // direction_v1_8 is an i8 (not a u8), so the sign stays correct
@@ -154,37 +154,16 @@ pub(crate) fn handle(wm: &Arc<WorldManager>, mut player: &Arc<Player>, p: sb::Pa
               dir: player.look_as_vec(),
               block: Block::new(player.world(), pos, looking_at.ty()),
             };
-            // TODO: Data generator should store which items are blockitems, and what blocks
-            // they place.
-            {
-              let inv = player.lock_inventory();
-              // TODO: Use `hand`.
-              let stack = inv.main_hand();
-              if !stack.is_empty() {
-                let stack = stack.clone();
-                drop(inv); // Don't have inv locked on this event.
-                if wm.events().interact(stack, Click::Block(click)).is_handled() {
-                  player.sync_block_at(pos);
-                  player.sync_block_at(pos + face);
-                  return;
-                }
+            if !player.is_crouching() {
+              if wm.events().interact(player, hand, Click::Block(click)).is_handled() {
+                player.sync_block_at(pos);
+                player.sync_block_at(pos + face);
+                return;
               }
             }
 
-            // `inv` cannot be locked here.
-            let handled = wm
-              .block_behaviors()
-              .call(looking_at.kind(), |b| {
-                b.interact(Block::new(player.world(), pos, looking_at.ty()), player)
-              })
-              .unwrap_or(false);
-
-            if handled {
-              player.sync_block_at(pos);
-              player.sync_block_at(pos + face);
-              return;
-            }
-
+            // TODO: Data generator should store which items are blockitems, and what blocks
+            // they place.
             let mut inv = player.lock_inventory();
             let stack = inv.main_hand();
             let item_data = player.world().item_converter().get_data(stack.item());
