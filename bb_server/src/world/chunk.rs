@@ -139,7 +139,9 @@ impl MultiChunk {
   /// call this function without sending any updates yourself, no one in render
   /// distance will see any of these changes!
   pub fn set_type(&mut self, p: RelPos, ty: block::Type) -> Result<(), PosError> {
-    self.inner.set_type_id(p, ty.id(), ty.kind(), &self.wm.block_behaviors())
+    let p = self.transform_pos(p)?;
+    self.inner.set_type_id(p, ty.id(), ty.kind(), &self.wm.block_behaviors()).unwrap();
+    Ok(())
   }
 
   pub fn set_type_with_conv(
@@ -147,8 +149,10 @@ impl MultiChunk {
     p: RelPos,
     f: impl FnOnce(&block::TypeConverter) -> block::Type,
   ) -> Result<(), PosError> {
+    let p = self.transform_pos(p)?;
     let ty = f(self.wm.block_converter());
-    self.inner.set_type_id(p, ty.id(), ty.kind(), &self.wm.block_behaviors())
+    self.inner.set_type_id(p, ty.id(), ty.kind(), &self.wm.block_behaviors()).unwrap();
+    Ok(())
   }
 
   /// Sets a block within this chunk. This is the same as
@@ -162,8 +166,10 @@ impl MultiChunk {
   /// call this function without sending any updates yourself, no one in render
   /// distance will see any of these changes!
   pub fn set_kind(&mut self, p: RelPos, kind: block::Kind) -> Result<(), PosError> {
+    let p = self.transform_pos(p)?;
     let ty = self.wm.block_converter().get(kind).default_type();
-    self.inner.set_type_id(p, ty.id(), ty.kind(), &self.wm.block_behaviors())
+    self.inner.set_type_id(p, ty.id(), ty.kind(), &self.wm.block_behaviors()).unwrap();
+    Ok(())
   }
 
   /// Fills the region within this chunk. Min and max must be within the chunk
@@ -178,7 +184,9 @@ impl MultiChunk {
   /// call this function without sending any updates yourself, no one in render
   /// distance will see any of these changes!
   pub fn fill(&mut self, min: RelPos, max: RelPos, ty: block::Type) -> Result<(), PosError> {
-    self.inner.inner.fill(min, max, ty.id())?;
+    let min = self.transform_pos(min)?;
+    let max = self.transform_pos(max)?;
+    self.inner.inner.fill(min, max, ty.id()).unwrap();
     // TODO: Update light correctly.
     self.inner.update_light(min);
     self.inner.update_light(max);
@@ -193,7 +201,16 @@ impl MultiChunk {
   /// call this function without sending any updates yourself, no one in render
   /// distance will see any of these changes!
   pub fn fill_kind(&mut self, min: RelPos, max: RelPos, kind: block::Kind) -> Result<(), PosError> {
-    self.inner.inner.fill(min, max, self.wm.block_converter().get(kind).default_type().id())?;
+    let min = self.transform_pos(min)?;
+    let max = self.transform_pos(max)?;
+    self
+      .inner
+      .inner
+      .fill(min, max, self.wm.block_converter().get(kind).default_type().id())
+      .unwrap();
+    // TODO: Update light correctly.
+    self.inner.update_light(min);
+    self.inner.update_light(max);
     Ok(())
   }
 
@@ -203,30 +220,54 @@ impl MultiChunk {
   /// This returns a specific block type. If you only need to block kind, prefer
   /// [`get_kind`](Self::get_kind).
   pub fn get_type(&self, p: RelPos) -> Result<block::Type, PosError> {
+    let p = self.transform_pos(p)?;
     Ok(
       self
         .wm
         .block_converter()
-        .type_from_id(self.inner.inner.get_block(p)?, BlockVersion::latest()),
+        .type_from_id(self.inner.inner.get_block(p).unwrap(), BlockVersion::latest()),
     )
   }
 
   /// Gets the type of a block within this chunk. Pos must be within the chunk.
   /// See [`set_kind`](Self::set_kind) for more.
   pub fn get_kind(&self, p: RelPos) -> Result<block::Kind, PosError> {
+    let p = self.transform_pos(p)?;
     Ok(
       self
         .wm
         .block_converter()
-        .kind_from_id(self.inner.inner.get_block(p)?, BlockVersion::latest()),
+        .kind_from_id(self.inner.inner.get_block(p).unwrap(), BlockVersion::latest()),
     )
   }
 
-  pub fn get_te(&self, p: RelPos) -> Option<Arc<dyn TileEntity>> { self.inner.tes.get(&p).cloned() }
+  pub fn get_te(&self, p: RelPos) -> Result<Option<Arc<dyn TileEntity>>, PosError> {
+    let p = self.transform_pos(p)?;
+    Ok(self.inner.tes.get(&p).cloned())
+  }
+
+  /// Transforms the given position to be used directly in a `Chunk`. This is
+  /// because a `Chunk` cannot accept positions with a negative Y value, but
+  /// worlds can have negative block positions.
+  pub fn transform_pos(&self, mut p: RelPos) -> Result<RelPos, PosError> {
+    if p.y() < self.inner.min_y || p.y() >= self.inner.height as i32 - self.inner.min_y {
+      Err(p.err("position is outside the world".into()))
+    } else {
+      p = p.add_y(self.inner.min_y);
+      Ok(p)
+    }
+  }
 
   /// Returns the inner paletted chunk in this MultiChunk. This can be used to
   /// access the block data directly. All ids are the latest version block
   /// states.
+  ///
+  /// Before accessing the chunk, [`transform_pos`](Self::transform_pos) should
+  /// be used to translate the blocks to the correct coordinates.
+  ///
+  /// Note that the returned chunk only validates the positions are positive. It
+  /// will allocate all the space it needs to place a block at whatever `Y`
+  /// value you specify.
   pub fn inner(&self) -> &Chunk<PalettedSection> { &self.inner.inner }
   /// Same as [`inner`](Self::inner), but returns a mutable reference.
   pub fn inner_mut(&mut self) -> &mut Chunk<PalettedSection> { &mut self.inner.inner }

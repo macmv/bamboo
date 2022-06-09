@@ -10,7 +10,7 @@ mod ffi;
 pub use behavior::{Behavior, TileEntity};
 pub use material::Material;
 pub use store::TypeStore;
-pub use ty::{Data, ItemDrop, Kind, Prop, PropValue, Type, PropKind};
+pub use ty::{Data, ItemDrop, Kind, Prop, PropKind, PropValue, Type};
 pub use version::TypeConverter;
 
 use crate::world::World;
@@ -42,7 +42,7 @@ impl<'a> Block<'a> {
   pub fn te<T: TileEntity, F: FnOnce(&T) -> R, R>(&self, f: F) -> R {
     let te_box = self
       .world
-      .chunk(self.pos.chunk(), |c| c.get_te(self.pos.chunk_rel()))
+      .chunk(self.pos.chunk(), |c| c.get_te(self.pos.chunk_rel()).unwrap())
       .unwrap_or_else(|| panic!("block at {} does not have tile entity", self.pos));
     let te = te_box
       .as_any()
