@@ -447,10 +447,12 @@ impl World {
     self.chunk(pos, |c| {
       let inner = c.inner();
 
+      let mut sections: Vec<_> = inner.sections().cloned().collect();
+      sections.resize((self.height as usize + 15) / 16, None);
       cb::Packet::Chunk {
         pos,
         full: true,
-        sections: inner.sections().cloned().collect(),
+        sections,
         sky_light: c.sky_light().clone(),
         block_light: c.block_light().clone(),
       }
@@ -472,14 +474,16 @@ impl World {
     self.chunk(pos, |c| {
       let inner = c.inner();
 
+      let mut sections: Vec<_> = inner
+        .sections()
+        .enumerate()
+        .map(|(y, s)| if (y as u32) < min || y as u32 > max { None } else { s.clone() })
+        .collect();
+      sections.resize((self.height as usize + 15) / 16, None);
       cb::Packet::Chunk {
         pos,
         full: false,
-        sections: inner
-          .sections()
-          .enumerate()
-          .map(|(y, s)| if (y as u32) < min || y as u32 > max { None } else { s.clone() })
-          .collect(),
+        sections,
         // TODO: Only clone the sections we care about
         sky_light: c.sky_light().clone(),
         block_light: c.block_light().clone(),
