@@ -110,6 +110,15 @@ impl Behavior for Chest {
   fn create_te(&self) -> Option<Arc<dyn TileEntity>> {
     Some(Arc::new(ChestTE { inv: SharedInventory::new() }))
   }
+  fn load_te(
+    &self,
+    r: &mut bb_transfer::MessageReader,
+  ) -> Option<Result<Arc<dyn TileEntity>, bb_transfer::ReadError>> {
+    Some(match ChestTE::read(r) {
+      Ok(v) => Ok(Arc::new(v)),
+      Err(e) => Err(e),
+    })
+  }
   fn interact(&self, block: Block, player: &Arc<Player>) -> EventFlow {
     block.te(|chest: &ChestTE| {
       player.show_inventory(
@@ -121,7 +130,6 @@ impl Behavior for Chest {
   }
 }
 impl TileEntity for ChestTE {
-  fn load(r: &mut MessageReader) -> Result<Self, bb_transfer::ReadError> { Self::read(r) }
   fn save(&self, w: &mut MessageWriter<&mut Vec<u8>>) -> Result<(), bb_transfer::WriteError> {
     self.write(w)
   }

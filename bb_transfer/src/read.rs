@@ -577,6 +577,37 @@ impl<'a> MessageReader<'a> {
       }
     }
   }
+  /// Reads a struct. This will return an error if the header read is not a
+  /// `Struct` header, or if any of the fields of the struct are invalid.
+  pub fn read_struct_with<S>(
+    &mut self,
+    f: impl FnOnce(StructReader<'a>) -> Result<S>,
+  ) -> Result<S> {
+    let (header, extra) = self.read_header()?;
+    match header {
+      Header::Struct => {
+        let max_fields = self.read_varint(extra)?;
+        let start_idx = self.idx;
+        // Advance out `self.idx` ahead to the end of this struct, before passing it to
+        // `read_struct`. This ensures that we stay in a valid state, even if the
+        // StructReader is dropped before reading all fields.
+        self.skip_fields(max_fields)?;
+        f(StructReader {
+          reader: MessageReader { data: self.data, idx: start_idx },
+          current_field: 0,
+          max_fields,
+        })
+      }
+      m => {
+        // We must keep the buffer at a valid state, so we undo the `read_header` call
+        // above. We also want to skip this field (whatever it might be), so that the
+        // next call can get the next field.
+        self.undo_read_byte();
+        self.skip_field()?;
+        Err(ValidReadError::WrongMessage(m, Header::Struct).into())
+      }
+    }
+  }
   pub fn read_enum<E: EnumRead<'a>>(&mut self) -> Result<E> {
     let (header, extra) = self.read_header()?;
     match header {
@@ -592,6 +623,45 @@ impl<'a> MessageReader<'a> {
             // StructReader is dropped before reading all fields.
             self.skip_fields(max_fields)?;
             E::read_enum(EnumReader {
+              reader: MessageReader { data: self.data, idx: start_idx },
+              variant,
+              current_field: 0,
+              max_fields,
+            })
+          }
+          m => {
+            // We must keep the buffer at a valid state, so we undo the `read_header` call
+            // above.
+            self.undo_read_byte();
+            self.skip_field()?;
+            Err(ValidReadError::WrongMessage(m, Header::Struct).into())
+          }
+        }
+      }
+      m => {
+        // We must keep the buffer at a valid state, so we undo the `read_header` call
+        // above.
+        self.undo_read_byte();
+        self.skip_field()?;
+        Err(ValidReadError::WrongMessage(m, Header::Enum).into())
+      }
+    }
+  }
+  pub fn read_enum_with<T>(&mut self, f: impl FnOnce(EnumReader) -> Result<T>) -> Result<T> {
+    let (header, extra) = self.read_header()?;
+    match header {
+      Header::Enum => {
+        let variant = self.read_varint(extra)?;
+        let (header, extra) = self.read_header()?;
+        match header {
+          Header::Struct => {
+            let max_fields = self.read_varint(extra)?;
+            let start_idx = self.idx;
+            // Advance out `self.idx` ahead to the end of this struct, before passing it to
+            // `read_struct`. This ensures that we stay in a valid state, even if the
+            // StructReader is dropped before reading all fields.
+            self.skip_fields(max_fields)?;
+            f(EnumReader {
               reader: MessageReader { data: self.data, idx: start_idx },
               variant,
               current_field: 0,
@@ -649,6 +719,25 @@ impl<'a> MessageReader<'a> {
       Ok(reader)
     }
   }
+
+  /// Reads a list of type `T`. `f` will be called for every element in the
+  /// list.
+  pub fn read_list_with<T>(
+    &mut self,
+    mut f: impl FnMut(&mut MessageReader) -> Result<T>,
+  ) -> Result<Vec<T>> {
+    let (header, extra) = self.read_header()?;
+    if header != Header::List {
+      Err(ValidReadError::WrongMessage(header, Header::Bytes).into())
+    } else {
+      let len = self.read_varint(extra)?;
+      let mut list = vec![];
+      for _ in 0..len {
+        list.push(f(self)?);
+      }
+      Ok(list)
+    }
+  }
 }
 
 impl<'a> StructReader<'a> {
@@ -679,6 +768,68 @@ impl<'a> StructReader<'a> {
         Err(ReadError::Valid(_)) => Ok(T::default()),
         Err(ReadError::Invalid(e)) => Err(e.into()),
       }
+    }
+  }
+  /// Reads a single field. Returns a default value if the field is not present.
+  ///
+  /// # Panics
+  /// - The `field` must be larger than the previous field.
+  pub fn read_with<T: Default>(
+    &mut self,
+    field: u64,
+    f: impl FnOnce(&mut MessageReader) -> Result<T>,
+  ) -> Result<T> {
+    if field < self.current_field {
+      panic!(
+        "cannot read field that is < current field: {field} (current_field: {})",
+        self.current_field,
+      );
+    }
+    self.current_field += 1;
+    while self.current_field <= field {
+      self.reader.skip_field()?;
+      if self.current_field >= self.max_fields {
+        return Ok(T::default());
+      }
+      self.current_field += 1;
+    }
+    if field >= self.max_fields {
+      Ok(T::default())
+    } else {
+      match f(&mut self.reader) {
+        Ok(v) => Ok(v),
+        Err(ReadError::Valid(_)) => Ok(T::default()),
+        Err(ReadError::Invalid(e)) => Err(e.into()),
+      }
+    }
+  }
+  /// Reads a single list field. Returns an empty list if not present.
+  ///
+  /// # Panics
+  /// - The `field` must be larger than the previous field.
+  pub fn read_list_with<T>(
+    &mut self,
+    field: u64,
+    mut f: impl FnMut(&mut MessageReader) -> Result<T>,
+  ) -> Result<Vec<T>> {
+    if field < self.current_field {
+      panic!(
+        "cannot read field that is < current field: {field} (current_field: {})",
+        self.current_field,
+      );
+    }
+    self.current_field += 1;
+    while self.current_field <= field {
+      self.reader.skip_field()?;
+      if self.current_field >= self.max_fields {
+        return Ok(vec![]);
+      }
+      self.current_field += 1;
+    }
+    if field >= self.max_fields {
+      Ok(vec![])
+    } else {
+      Ok(self.reader.read_list_with(|r| f(r))?)
     }
   }
   /// Reads a single field. The [`read`](Self::read) function will simply return
@@ -755,6 +906,39 @@ impl<'a> EnumReader<'a> {
       }
     }
   }
+  /// Reads a single field, using the given reader function.
+  ///
+  /// # Panics
+  /// - If `field` is less than the previous field.
+  pub fn read_with<T: Default>(
+    &mut self,
+    field: u64,
+    f: impl FnOnce(&mut MessageReader) -> Result<T>,
+  ) -> Result<T> {
+    if field < self.current_field {
+      panic!(
+        "cannot read field that is < current field: {field} (current_field: {})",
+        self.current_field,
+      );
+    }
+    self.current_field += 1;
+    while self.current_field <= field {
+      self.reader.skip_field()?;
+      if self.current_field >= self.max_fields {
+        return Ok(T::default());
+      }
+      self.current_field += 1;
+    }
+    if field >= self.max_fields {
+      Ok(T::default())
+    } else {
+      match f(&mut self.reader) {
+        Ok(v) => Ok(v),
+        Err(ReadError::Valid(_)) => Ok(T::default()),
+        Err(ReadError::Invalid(e)) => Err(e.into()),
+      }
+    }
+  }
 
   /// Reads a single field. Returns an error if it is not present.
   ///
@@ -779,6 +963,39 @@ impl<'a> EnumReader<'a> {
       Err(ValidReadError::MissingField(field).into())
     } else {
       match T::read(&mut self.reader) {
+        Ok(v) => Ok(v),
+        Err(ReadError::Valid(_)) => Err(ValidReadError::MissingField(field).into()),
+        Err(ReadError::Invalid(e)) => Err(e.into()),
+      }
+    }
+  }
+  /// Reads a single field. Returns an error if it is not present.
+  ///
+  /// # Panics
+  /// - If `field` is less than the previous field.
+  pub fn must_read_with<T>(
+    &mut self,
+    field: u64,
+    f: impl FnOnce(&mut MessageReader) -> Result<T>,
+  ) -> Result<T> {
+    if field < self.current_field {
+      panic!(
+        "cannot read field that is < current field: {field} (current_field: {})",
+        self.current_field,
+      );
+    }
+    self.current_field += 1;
+    while self.current_field <= field {
+      self.reader.skip_field()?;
+      if self.current_field >= self.max_fields {
+        return Err(ValidReadError::MissingField(field).into());
+      }
+      self.current_field += 1;
+    }
+    if field >= self.max_fields {
+      Err(ValidReadError::MissingField(field).into())
+    } else {
+      match f(&mut self.reader) {
         Ok(v) => Ok(v),
         Err(ReadError::Valid(_)) => Err(ValidReadError::MissingField(field).into()),
         Err(ReadError::Invalid(e)) => Err(e.into()),

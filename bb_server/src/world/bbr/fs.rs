@@ -9,7 +9,7 @@ use crate::{
 use bb_common::{
   chunk::{paletted, Section},
   flate2::{read::GzDecoder, write::GzEncoder, Compression},
-  math::RelPos,
+  math::{Pos, RelPos},
   version::BlockVersion,
 };
 use bb_transfer::{
@@ -80,6 +80,39 @@ impl Region {
         };
 
         let mut reader = MessageReader::new(&region_cache[..n]);
+        for i in 0_usize..1024 {
+          let res = reader.read_struct_with(|mut s| {
+            s.read_with(i as u64, |r| {
+              r.read_enum_with(|mut e| match e.variant() {
+                0 => {
+                  self.chunks[i] = None;
+                  Ok(())
+                }
+                1 => {
+                  if self.chunks[i].is_none() {
+                    self.chunks[i] = Some(CountedChunk::new(MultiChunk::new(
+                      self.world.world_manager().clone(),
+                      true,
+                      self.world.height,
+                      self.world.min_y,
+                    )));
+                  }
+                  e.must_read_with(1, |r| ReadableChunk(self.chunks[i].as_mut().unwrap()).read(r))?;
+                  Ok(())
+                }
+                _ => Err(e.invalid_variant()),
+              })
+            })
+          });
+          match res {
+            Ok(()) => {}
+            Err(e) => {
+              error!("could not load region: {e}");
+              break;
+            }
+          }
+        }
+        /*
         let data: RegionData = reader.read_struct().unwrap();
         for (chunk, data) in self.chunks.iter_mut().zip(data.0.into_iter()) {
           if let Some(data) = data {
@@ -99,6 +132,7 @@ impl Region {
             *chunk = None;
           }
         }
+        */
 
         self.print_summary();
       }
@@ -149,6 +183,7 @@ impl Region {
   }
 }
 
+/*
 #[derive(Debug)]
 struct RegionData([Option<ReadableChunk>; 1024]);
 impl StructRead<'_> for RegionData {
@@ -161,10 +196,12 @@ impl StructRead<'_> for RegionData {
     Ok(RegionData(chunks))
   }
 }
+
 #[derive(Debug)]
 struct ReadableChunk {
   sections: Vec<Option<paletted::Section>>,
   version:  BlockVersion,
+  tes:      Vec<(RelPos, Arc<dyn TileEntity>)>,
 }
 impl MessageRead<'_> for ReadableChunk {
   fn read(r: &mut MessageReader) -> Result<Self, ReadError> { r.read_struct() }
@@ -197,6 +234,62 @@ impl ReadableChunk {
         lock.inner_mut().clear_section(y as u32);
       }
     }
+  }
+}
+*/
+
+struct ReadableChunk<'a>(&'a mut CountedChunk);
+
+impl ReadableChunk<'_> {
+  fn read(&self, r: &mut MessageReader) -> Result<(), ReadError> {
+    r.read_struct_with(|mut s| {
+      let sections: Vec<Option<paletted::Section>> = s.must_read(0)?;
+      let version = BlockVersion::from_index(s.must_read(1)?);
+
+      let mut lock = self.0.lock();
+      for (y, section) in sections.into_iter().enumerate() {
+        if let Some(sec) = section {
+          let (old_palette, data) = sec.into_palette_data();
+          if version == BlockVersion::latest() {
+            lock.inner_mut().section_mut(y as u32).set_from(old_palette, data);
+          } else {
+            let mut new_palette = Vec::with_capacity(old_palette.len());
+            for id in old_palette {
+              new_palette.push(lock.wm().block_converter().to_old(id, version));
+            }
+            lock.inner_mut().section_mut(y as u32).set_from(new_palette, data);
+          }
+        } else {
+          lock.inner_mut().clear_section(y as u32);
+        }
+      }
+
+      s.read_list_with(2, |r| {
+        r.read_struct_with(|mut s| {
+          let pos: Pos = s.read(0)?;
+          let pos = RelPos::new(pos.x.try_into().unwrap(), pos.y, pos.z.try_into().unwrap());
+          let kind = lock.get_kind(pos).unwrap();
+          let behaviors = lock.wm().block_behaviors();
+          match behaviors.call(kind, |b| s.read_with(1, |r| Ok(b.load_te(r)))) {
+            // No behavior for this block
+            None => {}
+            // Some behavior, no te
+            Some(Ok(None)) => {}
+            // Some behavior, valid te
+            Some(Ok(Some(Ok(te)))) => {
+              drop(behaviors);
+              lock.tes_mut().insert(pos, te);
+            }
+            // // Some behavior, invalid te
+            Some(Ok(Some(Err(e)))) => return Err(e),
+            Some(Err(e)) => return Err(e),
+          }
+          Ok(())
+        })
+      })?;
+
+      Ok(())
+    })
   }
 }
 

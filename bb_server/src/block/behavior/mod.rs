@@ -38,7 +38,21 @@ pub trait Behavior: Send + Sync {
   ///
   /// Blocks such as chests, juke boxes, and furnaces should return a tile
   /// entity here.
+  ///
+  /// If a block returns `Some` from this, it should also return `Some`
+  /// from [`load_te`](Self::load_te).
   fn create_te(&self) -> Option<Arc<dyn TileEntity>> { None }
+  /// Loads the tile entity for this block from the given message reader.
+  ///
+  /// If a block returns `Some` from `create_te`, it should return `Some`
+  /// from this function.
+  fn load_te(
+    &self,
+    r: &mut MessageReader,
+  ) -> Option<Result<Arc<dyn TileEntity>, bb_transfer::ReadError>> {
+    let _ = r;
+    None
+  }
 
   /// Called when a player right clicks on this block. If this returns `true`,
   /// the event was handled, and a block should not be placed.
@@ -58,9 +72,6 @@ pub trait Behavior: Send + Sync {
 }
 
 pub trait TileEntity: Any + Send + Sync {
-  fn load(r: &mut MessageReader) -> Result<Self, bb_transfer::ReadError>
-  where
-    Self: Sized;
   fn save(&self, w: &mut MessageWriter<&mut Vec<u8>>) -> Result<(), bb_transfer::WriteError>;
   fn as_any(&self) -> &dyn Any;
 }
