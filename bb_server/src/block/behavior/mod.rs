@@ -6,6 +6,7 @@ use crate::{
   world::World,
 };
 use bb_common::math::Pos;
+use bb_transfer::{MessageReader, MessageWriter};
 use std::{any::Any, sync::Arc};
 
 mod impls;
@@ -56,8 +57,11 @@ pub trait Behavior: Send + Sync {
   }
 }
 
-// TODO: This needs to be able to store it's data to disk.
 pub trait TileEntity: Any + Send + Sync {
+  fn load(r: &mut MessageReader) -> Result<Self, bb_transfer::ReadError>
+  where
+    Self: Sized;
+  fn save(&self, w: &mut MessageWriter<&mut Vec<u8>>) -> Result<(), bb_transfer::WriteError>;
   fn as_any(&self) -> &dyn Any;
 }
 
@@ -118,4 +122,23 @@ pub enum BlockDrops {
 
 impl Drops {
   pub fn empty() -> Self { Drops::default() }
+}
+
+#[cfg(test)]
+mod tests {
+  use super::*;
+
+  #[test]
+  fn read_write_chest() {
+    let te = impls::ChestTE::default();
+    let mut data = vec![];
+    let mut w = MessageWriter::new(&mut data);
+    te.save(&mut w).unwrap();
+    dbg!(&data);
+    let mut r = MessageReader::new(&data);
+    dbg!(&r);
+    let te2 = impls::ChestTE::load(&mut r).unwrap();
+    dbg!(te);
+    dbg!(te2);
+  }
 }

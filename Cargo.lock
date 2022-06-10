@@ -307,6 +307,7 @@ dependencies = [
  "bb_common",
  "bb_data",
  "bb_ffi",
+ "bb_macros",
  "bb_plugin_macros",
  "bb_transfer",
  "byteorder",

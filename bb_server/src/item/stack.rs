@@ -1,5 +1,9 @@
 use super::Type;
 use bb_common::{nbt::NBT, util::Item};
+use bb_transfer::{
+  MessageRead, MessageReader, MessageWrite, MessageWriter, ReadError, StructRead, StructReader,
+  WriteError,
+};
 use std::num::NonZeroU8;
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
@@ -21,6 +25,23 @@ const ONE: NonZeroU8 = unsafe { NonZeroU8::new_unchecked(1) };
 
 impl Default for Stack {
   fn default() -> Self { Self::empty() }
+}
+
+impl MessageRead<'_> for Stack {
+  fn read(r: &mut MessageReader) -> Result<Self, ReadError> { r.read_struct() }
+}
+impl StructRead<'_> for Stack {
+  fn read_struct(mut r: StructReader) -> Result<Self, ReadError> {
+    Ok(Stack::new(Type::from_u32(r.read(0)?)).with_amount(r.read(1)?))
+  }
+}
+impl MessageWrite for Stack {
+  fn write<W: std::io::Write>(&self, w: &mut MessageWriter<W>) -> Result<(), WriteError> {
+    w.write_struct(2, |w| {
+      w.write(&self.item.id())?;
+      w.write(&self.amount())
+    })
+  }
 }
 
 impl Stack {

@@ -13,6 +13,7 @@ use bb_common::{
   math::Pos,
   util::{Chat, Face},
 };
+use bb_transfer::{MessageRead, MessageReader, MessageWrite, MessageWriter};
 use std::{any::Any, sync::Arc};
 
 pub struct Log;
@@ -101,6 +102,7 @@ impl Behavior for Bed {
 }
 
 pub struct Chest;
+#[derive(bb_macros::Transfer, Default, Debug, Clone)]
 pub struct ChestTE {
   inv: SharedInventory<27>,
 }
@@ -119,5 +121,9 @@ impl Behavior for Chest {
   }
 }
 impl TileEntity for ChestTE {
+  fn load(r: &mut MessageReader) -> Result<Self, bb_transfer::ReadError> { Self::read(r) }
+  fn save(&self, w: &mut MessageWriter<&mut Vec<u8>>) -> Result<(), bb_transfer::WriteError> {
+    self.write(w)
+  }
   fn as_any(&self) -> &dyn Any { self }
 }
