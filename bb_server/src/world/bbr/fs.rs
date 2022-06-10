@@ -80,8 +80,8 @@ impl Region {
         };
 
         let mut reader = MessageReader::new(&region_cache[..n]);
-        for i in 0_usize..1024 {
-          let res = reader.read_struct_with(|mut s| {
+        let res = reader.read_struct_with(|mut s| {
+          for i in 0_usize..1024 {
             s.read_with(i as u64, |r| {
               r.read_enum_with(|mut e| match e.variant() {
                 0 => {
@@ -97,19 +97,19 @@ impl Region {
                       self.world.min_y,
                     )));
                   }
-                  e.must_read_with(1, |r| ReadableChunk(self.chunks[i].as_mut().unwrap()).read(r))?;
+                  e.must_read_with(0, |r| ReadableChunk(self.chunks[i].as_mut().unwrap()).read(r))?;
                   Ok(())
                 }
                 _ => Err(e.invalid_variant()),
               })
-            })
-          });
-          match res {
-            Ok(()) => {}
-            Err(e) => {
-              error!("could not load region: {e}");
-              break;
-            }
+            })?;
+          }
+          Ok(())
+        });
+        match res {
+          Ok(()) => {}
+          Err(e) => {
+            error!("could not load region: {e}");
           }
         }
         /*
@@ -297,7 +297,7 @@ struct WriteableChunk<'a>(&'a CountedChunk);
 impl WriteableChunk<'_> {
   fn write(&self, w: &mut MessageWriter<&mut Vec<u8>>) -> Result<(), WriteError> {
     // TODO: Write light
-    w.write_struct(2, |w| {
+    w.write_struct(3, |w| {
       let lock = self.0.chunk.lock();
       w.write_list(lock.inner().sections())?;
       w.write_u32(BlockVersion::latest().to_index())?;
