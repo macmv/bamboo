@@ -382,7 +382,7 @@ impl Player {
       }
     }
     if finished {
-      if self.world().plugins().on_block_break(
+      if self.world().events().block_break(
         self.clone(),
         pos,
         self.world().get_block(pos).unwrap().ty(),
@@ -451,7 +451,7 @@ impl Player {
       }
     }
     if let Some(pos) = finish {
-      if self.world().plugins().on_block_break(
+      if self.world().events().block_break(
         self.clone(),
         pos,
         self.world().get_block(pos).unwrap().ty(),

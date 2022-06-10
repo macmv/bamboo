@@ -1,28 +1,3 @@
-//! There are six kinds of messages:
-//!
-//! - [PluginMessage], which stores all the below types:
-//!   - [PluginEvent], for a message that doesn't need a reply.
-//!   - [PluginRequest], for a message that needs the server to reply.
-//!   - [PluginReply], for a reply to a message from the server.
-//! - [ServerMessage], which stores all the below types:
-//!   - [ServerEvent], for a message that doesn't need a reply.
-//!   - [ServerRequest], for a message that needs the plugin to reply.
-//!   - [ServerReply], for a reply to a message from the plugin.
-//!
-//! # Examples
-//!
-//! ```text
-//!     Server <-- PluginRequest::GetBlock Plugin
-//!     Server   ServerReply::Block -->    Plugin
-//! ```
-//! ```text
-//!     Server ServerRequest::PlaceBlock --> Plugin
-//!     Server   <-- PluginReply::Cancel     Plugin
-//! ```
-//! ```text
-//!     Server <-- ServerRequest::Chat Plugin
-//! ```
-
 use super::json::*;
 use crate::{block, player::Player, world::MultiChunk};
 use bb_common::{

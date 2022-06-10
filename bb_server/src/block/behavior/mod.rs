@@ -1,8 +1,9 @@
 use super::{Block, Data, Kind, Type};
 use crate::{
+  event::EventFlow,
   item::Stack,
   player::{BlockClick, Player},
-  world::{EventFlow, World},
+  world::World,
 };
 use bb_common::math::Pos;
 use std::{any::Any, sync::Arc};

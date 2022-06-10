@@ -2,17 +2,8 @@
 use super::PandaPlugin;
 
 use super::{GlobalServerEvent, Plugin, ServerEvent, ServerRequest};
-use crate::{
-  block,
-  player::Player,
-  world::{MultiChunk, WorldManager},
-};
-use bb_common::{
-  config::Config,
-  math::{ChunkPos, Pos},
-  net::sb::ClickWindow,
-  util::Chat,
-};
+use crate::{player::Player, world::WorldManager};
+use bb_common::config::Config;
 use crossbeam_channel::Select;
 use parking_lot::Mutex;
 use std::{
@@ -156,19 +147,19 @@ impl PluginManager {
     }
   }
 
-  fn event(&self, player: Arc<Player>, event: ServerEvent) {
+  pub(crate) fn event(&self, player: Arc<Player>, event: ServerEvent) {
     self.plugins.lock().retain(|p| match p.call(player.clone(), event.clone()) {
       Ok(_) => true,
       Err(e) => e.keep,
     });
   }
-  fn global_event(&self, event: GlobalServerEvent) {
+  pub(crate) fn global_event(&self, event: GlobalServerEvent) {
     self.plugins.lock().retain(|p| match p.call_global(event.clone()) {
       Ok(_) => true,
       Err(e) => e.keep,
     });
   }
-  fn req(&self, player: Arc<Player>, request: ServerRequest) -> bool {
+  pub(crate) fn req(&self, player: Arc<Player>, request: ServerRequest) -> bool {
     let reply_id = self.start.elapsed().as_micros() as u32;
     let mut plugins = self.plugins.lock();
     // Send all the events first.
@@ -206,27 +197,5 @@ impl PluginManager {
     }
 
     allow
-  }
-  pub fn on_tick(&self) { self.global_event(GlobalServerEvent::Tick); }
-  pub fn on_generate_chunk(&self, generator: &str, chunk: Arc<Mutex<MultiChunk>>, pos: ChunkPos) {
-    self.global_event(GlobalServerEvent::GenerateChunk { generator: generator.into(), chunk, pos });
-  }
-  pub fn on_block_place(&self, player: Arc<Player>, pos: Pos, block: block::Type) -> bool {
-    self.req(player, ServerRequest::BlockPlace { pos, block: block.to_store() })
-  }
-  pub fn on_block_break(&self, player: Arc<Player>, pos: Pos, block: block::Type) -> bool {
-    self.req(player, ServerRequest::BlockBreak { pos, block: block.to_store() })
-  }
-  pub fn on_chat_message(&self, player: Arc<Player>, message: Chat) {
-    self.event(player, ServerEvent::Chat { text: message.to_plain() });
-  }
-  pub fn on_player_join(&self, player: Arc<Player>) {
-    self.event(player, ServerEvent::PlayerJoin {});
-  }
-  pub fn on_player_leave(&self, player: Arc<Player>) {
-    self.event(player, ServerEvent::PlayerLeave {});
-  }
-  pub fn on_click_window(&self, player: Arc<Player>, slot: i32, mode: ClickWindow) -> bool {
-    self.req(player, ServerRequest::ClickWindow { slot, mode })
   }
 }

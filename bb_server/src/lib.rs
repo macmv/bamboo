@@ -10,6 +10,7 @@ pub mod block;
 pub mod command;
 pub mod data;
 pub mod entity;
+pub mod event;
 pub mod item;
 pub mod math;
 pub mod net;

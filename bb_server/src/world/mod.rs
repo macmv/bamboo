@@ -16,7 +16,6 @@ mod blocks;
 mod chunk;
 mod chunks;
 mod entities;
-mod events;
 pub mod gen;
 mod init;
 mod players;
@@ -60,7 +59,6 @@ use crate::{
 
 pub use chunk::{CountedChunk, MultiChunk};
 pub use entities::{EntitiesIter, EntitiesMap, EntitiesMapRef};
-pub use events::{EventFlow, Events};
 pub use players::{PlayersIter, PlayersMap};
 
 use bbr::{RegionMap, RegionRelPos};
@@ -342,7 +340,7 @@ impl World {
     // We want our plugin stuff to trigger after the player has received all the
     // chunks and whatever other initialization stuff. This means we can't screw
     // anything up with the loading process (like trying to teleport the player).
-    self.plugins().on_player_join(player);
+    self.events().player_join(player);
   }
 
   /// Returns a new, unique EID.
@@ -565,7 +563,7 @@ impl World {
       drop(lock);
 
       self.entities.write().remove(&p.eid());
-      self.plugins().on_player_leave(p.clone());
+      self.events().player_leave(p.clone());
       info!("{} left the game", p.username());
 
       if self.world_manager().config().get("leave-messages") {
@@ -860,7 +858,7 @@ impl WorldManager {
   fn global_tick_loop(self: Arc<Self>) {
     let mut start = Instant::now();
     loop {
-      self.plugins.on_tick();
+      self.events().tick();
       let passed = Instant::now().duration_since(start);
       start += TICK_TIME;
       match TICK_TIME.checked_sub(passed) {

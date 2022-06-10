@@ -33,20 +33,21 @@ mod types {
   }
 }
 
-pub mod json;
 mod manager;
-mod message;
 
 pub use manager::PluginManager;
-pub use message::{
-  GlobalServerEvent, PluginEvent, PluginMessage, PluginReply, PluginRequest, ServerEvent,
-  ServerMessage, ServerReply, ServerRequest,
-};
 
 #[cfg(feature = "socket_plugins")]
 use socket::SocketManager;
 
-use crate::{block, player::Player, world::WorldManager};
+use crate::{
+  block,
+  event::{
+    GlobalServerEvent, PluginMessage, PluginReply, ServerEvent, ServerMessage, ServerRequest,
+  },
+  player::Player,
+  world::WorldManager,
+};
 use ::panda::runtime::VarSend;
 use bb_common::{config::Config, math::Pos};
 use crossbeam_channel::{Receiver, Sender};

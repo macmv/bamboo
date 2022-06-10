@@ -4,12 +4,10 @@ use super::{
 };
 use crate::{
   entity,
+  event::EventFlow::{self, *},
   item::SharedInventory,
   player::{BlockClick, Player, Window},
-  world::{
-    EventFlow::{self, *},
-    World,
-  },
+  world::World,
 };
 use bb_common::{
   math::Pos,

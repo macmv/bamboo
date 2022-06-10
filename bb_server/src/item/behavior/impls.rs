@@ -1,8 +1,8 @@
 use super::Behavior;
 use crate::{
   block, entity,
+  event::EventFlow::{self, *},
   player::{BlockClick, Click},
-  world::EventFlow::{self, *},
 };
 use bb_common::{math::FPos, util::Chat};
 

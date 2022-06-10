@@ -1,8 +1,8 @@
 use super::Type;
 use crate::{
   block,
+  event::EventFlow,
   player::{BlockClick, Click},
-  world::EventFlow,
 };
 
 mod impls;
