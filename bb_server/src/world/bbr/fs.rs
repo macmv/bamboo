@@ -2,10 +2,14 @@
 //! and `Region::load`.
 
 use super::Region;
-use crate::world::{CountedChunk, MultiChunk};
+use crate::{
+  block::TileEntity,
+  world::{CountedChunk, MultiChunk},
+};
 use bb_common::{
   chunk::{paletted, Section},
   flate2::{read::GzDecoder, write::GzEncoder, Compression},
+  math::RelPos,
   version::BlockVersion,
 };
 use bb_transfer::{
@@ -14,10 +18,12 @@ use bb_transfer::{
 };
 use std::{
   cell::RefCell,
+  collections::HashMap,
   fs,
   fs::File,
   io::{Read, Write},
   path::PathBuf,
+  sync::Arc,
 };
 
 thread_local! {
@@ -33,7 +39,7 @@ impl Region {
 
       region_cache.clear();
       let mut writer = MessageWriter::<&mut Vec<u8>>::new(&mut region_cache);
-      writer.write(&self).unwrap();
+      self.write(&mut writer).unwrap();
 
       compression_cache.clear();
       let mut encoder =
@@ -125,11 +131,18 @@ impl Region {
   }
 }
 
-impl MessageWrite for Region {
-  fn write<W: Write>(&self, w: &mut MessageWriter<W>) -> Result<(), WriteError> {
+impl Region {
+  fn write(&self, w: &mut MessageWriter<&mut Vec<u8>>) -> Result<(), WriteError> {
     w.write_struct(1024, |w| {
       for chunk in &self.chunks {
-        w.write(&chunk.as_ref().map(WriteableChunk))?;
+        let c = chunk.as_ref().map(WriteableChunk);
+        w.write_enum(if c.is_some() { 1 } else { 0 }, if c.is_some() { 1 } else { 0 }, |w| {
+          if let Some(c) = c {
+            c.write(w)
+          } else {
+            Ok(())
+          }
+        })?;
       }
       Ok(())
     })
@@ -188,12 +201,20 @@ impl ReadableChunk {
 }
 
 struct WriteableChunk<'a>(&'a CountedChunk);
-impl MessageWrite for WriteableChunk<'_> {
-  fn write<W: Write>(&self, w: &mut MessageWriter<W>) -> Result<(), WriteError> {
+impl WriteableChunk<'_> {
+  fn write(&self, w: &mut MessageWriter<&mut Vec<u8>>) -> Result<(), WriteError> {
     // TODO: Write light
     w.write_struct(2, |w| {
-      w.write_list(self.0.chunk.lock().inner().sections())?;
+      let lock = self.0.chunk.lock();
+      w.write_list(lock.inner().sections())?;
       w.write_u32(BlockVersion::latest().to_index())?;
+      w.write_list_with(lock.tes().iter(), |w, (pos, te)| {
+        w.write_struct(2, |w| {
+          w.write(&pos.as_pos())?;
+          te.save(w)?;
+          Ok(())
+        })
+      })?;
       Ok(())
     })
   }

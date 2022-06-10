@@ -274,6 +274,21 @@ where
     }
     Ok(())
   }
+  /// Writes a list of type `T`, and calls `f` for every element in the
+  /// iterator. The length is retrieved from [`ExactSizeIterator::len`].
+  pub fn write_list_with<T>(
+    &mut self,
+    iter: impl ExactSizeIterator<Item = T>,
+    f: impl Fn(&mut Self, T) -> Result,
+  ) -> Result {
+    let len = iter.len() as u64;
+    self.write_header(Header::List, len)?;
+    self.write_varint(len)?;
+    for v in iter {
+      f(self, v)?;
+    }
+    Ok(())
+  }
 }
 
 #[cfg(test)]

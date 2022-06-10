@@ -241,6 +241,8 @@ impl MultiChunk {
     )
   }
 
+  pub fn tes(&self) -> &HashMap<RelPos, Arc<dyn TileEntity>> { &self.inner.tes }
+
   pub fn get_te(&self, p: RelPos) -> Result<Option<Arc<dyn TileEntity>>, PosError> {
     let p = self.transform_pos(p)?;
     Ok(self.inner.tes.get(&p).cloned())
