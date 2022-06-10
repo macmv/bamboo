@@ -8,9 +8,7 @@ use syn::{
 pub fn window(input: TokenStream) -> TokenStream {
   let input = parse_macro_input!(input as ItemStruct);
   let mut field_names = vec![];
-  let mut index = 0;
-  let mut starts = vec![];
-  let mut ends = vec![];
+  let mut sizes = vec![];
   let mut non_outputs = vec![];
   'fields: for field in &input.fields {
     let mut output = false;
@@ -27,6 +25,7 @@ pub fn window(input: TokenStream) -> TokenStream {
     if !output {
       non_outputs.push(&field.ident);
     }
+    let mut found_size = false;
     match &field.ty {
       Type::Path(p) => match &p.path.segments.first().unwrap().arguments {
         PathArguments::AngleBracketed(args) => match args.args.first().unwrap() {
@@ -34,53 +33,77 @@ pub fn window(input: TokenStream) -> TokenStream {
             Expr::Lit(lit) => match &lit.lit {
               Lit::Int(int) => {
                 let size = int.base10_parse::<u32>().unwrap();
-                starts.push(index);
-                ends.push(index + size - 1);
-                index += size;
+                sizes.push(quote!(#size));
+                found_size = true;
               }
               _ => {}
             },
             _ => {}
           },
+          GenericArgument::Type(Type::Path(ty)) => {
+            let size = ty.path.get_ident().unwrap();
+            sizes.push(quote!(#size as u32));
+            found_size = true;
+          }
           _ => {}
         },
         _ => {}
       },
       _ => {}
     }
+
+    if !found_size {
+      panic!();
+    }
   }
 
   let ty = &input.ident;
-  let size = index;
   let (impl_generics, ty_generics, where_clause) = input.generics.split_for_impl();
 
   let out = quote! {
     impl #impl_generics WindowData for #ty #ty_generics #where_clause {
-      fn access<R>(&self, index: u32, f: impl FnOnce(&Stack) -> R) -> Option<R> {
-        match index {
-          #(
-            #starts..=#ends => self.#field_names.lock().get(index - #starts).map(|s| f(s)),
-          )*
-          _ => None,
-        }
+      fn access<F, R>(&self, index: u32, f: F) -> Option<R>
+        where F: FnOnce(&Stack) -> R,
+      {
+        let mut i = 0;
+        #(
+          if index >= i && index < i + #sizes {
+            return self.#field_names.lock().get(index - i).map(|s| f(s));
+          } else {
+            i += #sizes;
+          }
+        )*
+        None
       }
-      fn access_mut<R>(&mut self, index: u32, f: impl FnOnce(&mut Stack) -> R) -> Option<R> {
-        let ret = match index {
+      fn access_mut<F, R>(&mut self, index: u32, f: F) -> Option<R>
+        where F: FnOnce(&mut Stack) -> R,
+      {
+        let handle = |slf: &mut Self, index: u32, f: F| {
+        // fn handle(slf: &mut #ty #ty_generics, index: u32, f: impl FnOnce(&mut Stack) -> R) -> Option<R> {
+          let mut i = 0;
           #(
-            #starts..=#ends => self.#field_names.lock().get_mut(index - #starts).map(|s| f(s)),
+            if index >= i && index < i + #sizes {
+              return slf.#field_names.lock().get_mut(index - i).map(|s| f(s));
+            } else {
+              i += #sizes;
+            }
           )*
-          _ => None,
+          None
         };
+        let ret = handle(self, index, f);
         <Self as WindowHandler>::on_update(self, Some(index));
         ret
       }
       fn sync(&self, index: u32) {
-        match index {
-          #(
-            #starts..=#ends => self.#field_names.lock().sync(index - #starts),
-          )*
-          _ => panic!("cannot sync index out of bounds {}", index),
-        }
+        let mut i = 0;
+        #(
+          if index >= i && index < i + #sizes {
+            return self.#field_names.lock().sync(index - i);
+          } else {
+            i += #sizes;
+          }
+        )*
+        panic!("cannot sync index out of bounds {}", index);
       }
       fn open(&self, id: UUID, conn: &ConnSender) {
         #(
@@ -105,7 +128,11 @@ pub fn window(input: TokenStream) -> TokenStream {
         stack.amount()
       }
       fn size(&self) -> u32 {
-        #size
+        let mut i = 0;
+        #(
+          i += #sizes;
+        )*
+        i
       }
     }
   };

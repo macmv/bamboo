@@ -8,8 +8,12 @@ use std::sync::Arc;
 
 trait WindowData {
   fn sync(&self, index: u32);
-  fn access<R>(&self, index: u32, f: impl FnOnce(&Stack) -> R) -> Option<R>;
-  fn access_mut<R>(&mut self, index: u32, f: impl FnOnce(&mut Stack) -> R) -> Option<R>;
+  fn access<F, R>(&self, index: u32, f: F) -> Option<R>
+  where
+    F: FnOnce(&Stack) -> R;
+  fn access_mut<F, R>(&mut self, index: u32, f: F) -> Option<R>
+  where
+    F: FnOnce(&mut Stack) -> R;
   fn size(&self) -> u32;
   fn add(&mut self, stack: Stack) -> u8;
   fn open(&self, id: UUID, conn: &ConnSender);
@@ -182,4 +186,25 @@ impl Window {
     self.sync(index);
   }
   pub fn items(&self) -> ItemsIter<'_> { ItemsIter { win: self, index: 0 } }
+}
+
+#[cfg(test)]
+mod tests {
+  use super::*;
+
+  #[test]
+  fn test_window_size() {
+    let win = GenericWindow::<0> { inv: SharedInventory::new() };
+    assert_eq!(win.size(), 0);
+    let win = GenericWindow::<3> { inv: SharedInventory::new() };
+    assert_eq!(win.size(), 3);
+    let win = GenericWindow::<1234> { inv: SharedInventory::new() };
+    assert_eq!(win.size(), 1234);
+
+    let win = GenericWindow::<3> { inv: SharedInventory::new() };
+    assert_eq!(win.access(0, |it| it.clone()), Some(Stack::empty()));
+    assert_eq!(win.access(1, |it| it.clone()), Some(Stack::empty()));
+    assert_eq!(win.access(2, |it| it.clone()), Some(Stack::empty()));
+    assert_eq!(win.access(3, |it| it.clone()), None);
+  }
 }
