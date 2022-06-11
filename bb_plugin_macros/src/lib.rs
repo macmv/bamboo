@@ -18,6 +18,25 @@ pub fn define_ty(args: TokenStream, input: TokenStream) -> TokenStream {
 /// The syntax is as follows (comments are ignored):
 ///
 /// ```
+/// # trait Behavior {}
+/// # mod impls {
+/// #   pub struct Chest;
+/// #   pub struct Falling;
+/// #   pub struct Log;
+/// # }
+/// # impl Behavior for impls::Chest {}
+/// # impl Behavior for impls::Falling {}
+/// # impl Behavior for impls::Log {}
+/// # enum Kind {
+/// #   Chest,
+/// #   Sand, RedSand, Gravel,
+/// #   OakLog, BirchLog, SpruceLog, DarkOakLog, AcaciaLog, JungleLog,
+/// # }
+/// # struct MockBehaviors;
+/// # impl MockBehaviors {
+/// #   fn set(&mut self, kind: Kind, behavior: Box<dyn Behavior>) {}
+/// # }
+/// # let mut out = MockBehaviors;
 /// bb_plugin_macros::behavior! {
 ///   // Sets the base enum name for everything. `Kind::` will be appended to the mappings below.
 ///   :Kind:
