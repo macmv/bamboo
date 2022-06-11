@@ -1,4 +1,4 @@
-use super::{ty::STATE_PROPS_LEN, Kind, Type};
+use super::{ty::STATE_PROPS_LEN, Type};
 use std::collections::HashMap;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -23,10 +23,51 @@ impl CustomBlockBuilder {
   }
 
   pub fn build<'a>(
-    self,
+    mut self,
     mapper: impl Fn(&HashMap<String, CustomPropValue>) -> Type<'a>,
   ) -> CustomData {
-    todo!()
+    self.props.sort_unstable_by(|(a, _), (b, _)| a.cmp(b));
+    let mut props = Vec::with_capacity(self.props.len());
+    let mut defaults = Vec::with_capacity(self.props.len());
+    for (name, prop) in self.props {
+      props.push(CustomProp { name, kind: prop.kind });
+      defaults.push(prop.default);
+    }
+    let mut vanilla_states = vec![];
+    let mut indices = vec![0; props.len()];
+    let mut tmp = HashMap::new();
+    // These are all the base properties
+    for i in 0..indices.len() {
+      tmp.insert(props[i].name.clone(), props[i].from_id(indices[i]));
+    }
+    loop {
+      let mut incremented = false;
+      for i in 0..indices.len() {
+        // Any time we update `indices`, we update `tmp`, so that the `mapper` call
+        // below gets the correct properties.
+        if indices[i] >= props[i].len() - 1 {
+          indices[i] = 0;
+          tmp.insert(props[i].name.clone(), props[i].from_id(indices[i]));
+        } else {
+          indices[i] += 1;
+          tmp.insert(props[i].name.clone(), props[i].from_id(indices[i]));
+          incremented = true;
+          break;
+        }
+      }
+      if !incremented {
+        break;
+      }
+      vanilla_states.push(mapper(&tmp).id());
+    }
+    CustomData {
+      kind: CustomKind(0),
+      name: self.name,
+      props,
+      default_props: defaults,
+      state: 0,
+      vanilla_states,
+    }
   }
 }
 
@@ -69,6 +110,7 @@ impl From<(RangeInclusive<u32>, u32)> for CustomPropWithDefault {
 #[cfg(test)]
 mod tests {
   use super::*;
+  use crate::block;
 
   #[test]
   fn build_block() {
@@ -76,14 +118,14 @@ mod tests {
     let block = CustomData::builder("my_block")
       .prop("axis", (["x", "y", "z"], "y"))
       .prop("oak", false)
-      .prop("distance", (0..=5, 4))
+      .prop("distance", (0..=5, 0))
       .build(|ty| match (ty["axis"].str(), ty["oak"].bool()) {
-        ("x", false) => vanilla.ty(Kind::SpruceLog).with("axis", "x"),
-        ("y", false) => vanilla.ty(Kind::SpruceLog).with("axis", "y"),
-        ("z", false) => vanilla.ty(Kind::SpruceLog).with("axis", "z"),
-        ("x", true) => vanilla.ty(Kind::OakLog).with("axis", "x"),
-        ("y", true) => vanilla.ty(Kind::OakLog).with("axis", "y"),
-        ("z", true) => vanilla.ty(Kind::OakLog).with("axis", "z"),
+        ("x", false) => vanilla.ty(block::Kind::SpruceLog).with("axis", "X"),
+        ("y", false) => vanilla.ty(block::Kind::SpruceLog).with("axis", "Y"),
+        ("z", false) => vanilla.ty(block::Kind::SpruceLog).with("axis", "Z"),
+        ("x", true) => vanilla.ty(block::Kind::OakLog).with("axis", "X"),
+        ("y", true) => vanilla.ty(block::Kind::OakLog).with("axis", "Y"),
+        ("z", true) => vanilla.ty(block::Kind::OakLog).with("axis", "Z"),
         _ => unreachable!(),
       });
     dbg!(block);
@@ -219,6 +261,32 @@ impl CustomPropValue {
       Self::Int(val) => {
         matches!(kind, CustomPropKind::Int { min, max } if val >= min && val <= max)
       }
+    }
+  }
+}
+
+impl CustomProp {
+  #[allow(clippy::len_without_is_empty)]
+  pub fn len(&self) -> u32 {
+    match &self.kind {
+      CustomPropKind::Bool => 2,
+      CustomPropKind::Enum(v) => v.len() as u32,
+      CustomPropKind::Int { min, max } => max - min + 1,
+    }
+  }
+
+  pub fn from_id(&self, id: u32) -> CustomPropValue {
+    if id >= self.len() {
+      panic!("id is {}, but len is {}", id, self.len());
+    }
+    match &self.kind {
+      CustomPropKind::Bool => match id {
+        0 => CustomPropValue::Bool(true),
+        1 => CustomPropValue::Bool(false),
+        _ => unreachable!(),
+      },
+      CustomPropKind::Enum(v) => CustomPropValue::Enum(v[id as usize].clone()),
+      CustomPropKind::Int { min, .. } => CustomPropValue::Int(id + min),
     }
   }
 }
