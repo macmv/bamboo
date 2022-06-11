@@ -99,7 +99,7 @@ impl BehaviorList {
 
 pub fn make_behaviors() -> BehaviorList {
   let mut out = BehaviorList::new();
-  bb_plugin_macros::behavior! {
+  bb_server_macros::behavior! {
     :Kind:
 
     *wood* = Oak, Birch, Spruce, DarkOak, Acacia, Jungle;

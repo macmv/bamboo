@@ -4,6 +4,7 @@ use crate::{
   world::WorldManager,
 };
 use bb_common::util::UUID;
+use bb_server_macros::Window;
 use std::sync::Arc;
 
 trait WindowData {
@@ -24,12 +25,12 @@ trait WindowHandler {
   fn on_update(&self, clicked: Option<u32>) { let _ = clicked; }
 }
 
-#[derive(bb_plugin_macros::Window, Debug, Clone)]
+#[derive(Window, Debug, Clone)]
 pub struct GenericWindow<const N: usize> {
   pub inv: SharedInventory<N>,
 }
 
-#[derive(bb_plugin_macros::Window, Debug, Clone)]
+#[derive(Window, Debug, Clone)]
 pub struct SmeltingWindow {
   pub input:  SharedInventory<1>,
   // #[filter(fuel)]
@@ -38,7 +39,7 @@ pub struct SmeltingWindow {
   pub output: SharedInventory<1>,
 }
 
-#[derive(bb_plugin_macros::Window, Debug, Clone)]
+#[derive(Window, Debug, Clone)]
 pub struct CraftingWindow {
   #[output]
   pub output: SharedInventory<1>,
@@ -69,7 +70,7 @@ impl WindowHandler for CraftingWindow {
   }
 }
 
-#[derive(bb_plugin_macros::WindowEnum, Debug, Clone)]
+#[derive(bb_server_macros::WindowEnum, Debug, Clone)]
 pub enum Window {
   #[name("minecraft:generic_9x1")]
   Generic9x1(GenericWindow<9>),

@@ -261,16 +261,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "bb_plugin_macros"
-version = "0.2.0"
-dependencies = [
- "proc-macro-error",
- "proc-macro2",
- "quote",
- "syn",
-]
-
-[[package]]
 name = "bb_proxy"
 version = "0.2.0"
 dependencies = [
@@ -308,7 +298,7 @@ dependencies = [
  "bb_data",
  "bb_ffi",
  "bb_macros",
- "bb_plugin_macros",
+ "bb_server_macros",
  "bb_transfer",
  "byteorder",
  "clap 3.1.9",
@@ -332,6 +322,16 @@ dependencies = [
  "spin_sleep",
  "thiserror",
  "wasmer",
+]
+
+[[package]]
+name = "bb_server_macros"
+version = "0.2.0"
+dependencies = [
+ "proc-macro-error",
+ "proc-macro2",
+ "quote",
+ "syn",
 ]
 
 [[package]]

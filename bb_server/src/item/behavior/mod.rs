@@ -49,7 +49,7 @@ impl BehaviorList {
 
 pub fn make_behaviors() -> BehaviorList {
   let mut out = BehaviorList::new();
-  bb_plugin_macros::behavior! {
+  bb_server_macros::behavior! {
     :Type:
 
     DebugStick => impls::DebugStick;

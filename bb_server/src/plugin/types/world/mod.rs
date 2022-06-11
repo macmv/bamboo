@@ -6,7 +6,7 @@ use super::{
 };
 use crate::{entity, world::World};
 use bb_common::{math::Pos, metadata::Metadata, net::cb::SoundCategory};
-use bb_plugin_macros::define_ty;
+use bb_server_macros::define_ty;
 use panda::{parse::token::Span, runtime::RuntimeError};
 use std::{fmt, sync::Arc};
 

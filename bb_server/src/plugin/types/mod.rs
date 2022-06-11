@@ -9,7 +9,7 @@
 
 use super::{Bamboo, PandaPlugin};
 use bb_common::util::{chat::Color, Chat};
-use bb_plugin_macros::define_ty;
+use bb_server_macros::define_ty;
 use panda::{
   docs::{markdown, MarkdownSection},
   parse::token::Span,

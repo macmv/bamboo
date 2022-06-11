@@ -1,6 +1,6 @@
 use super::{add_from, wrap};
 use bb_common::util::{chat::Color, Chat};
-use bb_plugin_macros::define_ty;
+use bb_server_macros::define_ty;
 use panda::{parse::token::Span, runtime::RuntimeError};
 use std::{
   str::FromStr,

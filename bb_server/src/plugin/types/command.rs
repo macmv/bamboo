@@ -5,7 +5,7 @@ use super::{
   Callback as BCallback,
 };
 use crate::command::{Arg, Command, Parser};
-use bb_plugin_macros::define_ty;
+use bb_server_macros::define_ty;
 use panda::runtime::Callback;
 use std::{
   fmt,

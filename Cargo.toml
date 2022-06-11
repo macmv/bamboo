@@ -11,17 +11,16 @@ members = [
   # Common utilities. These are things like item parsers, UUIDs,
   # etc. This is anything that both the server and proxy need.
   "bb_common",
-  # Proc macros to generate plugin types on the server. Depended
-  # on only by the server.
-  "bb_plugin_macros",
-  # Generates C compatible structs, which use `WasmPtr<T>` instead of
-  # `*const T` on the host.
+  # Generates C compatible structs, and creates C compatible enums
+  # using a union and a struct.
   "bb_ffi_macros",
   # This defines a bunch of #[repr(C)] structs/functions, which are
   # used in the Wasm api. Depended on by the server and bb_plugin.
   "bb_ffi",
+  # Proc macros to generate only used on the server.
+  "bb_server_macros",
   # The Minecraft server. This is the first binary target. It depends
-  # on bb_common, bb_ffi, bb_transfer, and bb_plugin_macros.
+  # on bb_common, bb_ffi, bb_transfer, and bb_server_macros.
   "bb_server",
   # The proxy. This is required for any clients to connection to
   # the server. It converts the bb_transfer protocol into the

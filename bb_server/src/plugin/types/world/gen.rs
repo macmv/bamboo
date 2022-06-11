@@ -1,5 +1,5 @@
 use crate::world::gen::PBiomeGen;
-use bb_plugin_macros::define_ty;
+use bb_server_macros::define_ty;
 use std::{fmt, sync::Arc};
 
 #[derive(Clone)]

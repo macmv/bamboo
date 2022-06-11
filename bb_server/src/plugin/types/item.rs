@@ -4,7 +4,7 @@ use crate::{
   item::{Inventory, Stack, UI},
 };
 use bb_common::net::sb::ClickWindow;
-use bb_plugin_macros::define_ty;
+use bb_server_macros::define_ty;
 use panda::{parse::token::Span, runtime::RuntimeError};
 use std::str::FromStr;
 

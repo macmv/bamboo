@@ -3,7 +3,7 @@ use bb_common::{
   math::{ChunkPos, FPos, Pos},
   util::UUID,
 };
-use bb_plugin_macros::define_ty;
+use bb_server_macros::define_ty;
 
 wrap_eq!(Pos, PPos);
 wrap_eq!(ChunkPos, PChunkPos);

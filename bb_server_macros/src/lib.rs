@@ -37,7 +37,7 @@ pub fn define_ty(args: TokenStream, input: TokenStream) -> TokenStream {
 /// #   fn set(&mut self, kind: Kind, behavior: Box<dyn Behavior>) {}
 /// # }
 /// # let mut out = MockBehaviors;
-/// bb_plugin_macros::behavior! {
+/// bb_server_macros::behavior! {
 ///   // Sets the base enum name for everything. `Kind::` will be appended to the mappings below.
 ///   :Kind:
 ///
