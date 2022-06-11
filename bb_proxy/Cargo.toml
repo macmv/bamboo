@@ -47,5 +47,8 @@ smallvec = "1.8.0"
 # profiling
 pprof = { version = "0.6.1", features = ["protobuf"], optional = true }
 
+# command line args
+clap = { version = "3.0.6", features = ["derive"] }
+
 [build-dependencies]
 bb_data = { path = "../bb_data" }

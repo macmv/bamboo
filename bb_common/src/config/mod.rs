@@ -80,17 +80,28 @@ fn join_dot<'a, I: Iterator<Item = &'a str>>(key: I) -> String {
 
 impl Config {
   /// Creates a new config for the given path. The path is a runtime path to
-  /// load the config file. The default path is toml source, which should be
-  /// loaded with `include_str!`. The defaul is used whenever a key is not
-  /// present in the main config. When this is created, a file at `default_path`
-  /// will be created, and the default toml source will be written there.
-  /// This is for developers, so they can view the default config as a
-  /// reference. If the file cannot be written, a warning will be printed.
-  pub fn new(path: &str, default_path: &str, default_src: &str) -> Self {
+  /// load the config file. The `default_src` is toml source, which should be
+  /// loaded with `include_str!`. The default is used whenever a key is not
+  /// present in the main config.
+  ///
+  /// If the path doesn't exist, the default config will be written there.
+  pub fn new(path: &str, default_src: &str) -> Self {
+    if !std::path::Path::new(path).exists() {
+      fs::write(path, default_src).unwrap_or_else(|e| {
+        error!("could not write default configuration to disk at `{}`: {}", path, e);
+      });
+    }
+    Config { primary: Self::load_toml(path), default: Self::load_toml_src(default_src) }
+  }
+  /// When this is created, a file at `default_path` will be created, and the
+  /// default toml source will be written there. This is for developers, so they
+  /// can view the default config as a reference. If the file cannot be written,
+  /// a warning will be printed.
+  pub fn new_write_default(path: &str, default_path: &str, default_src: &str) -> Self {
     fs::write(default_path, default_src).unwrap_or_else(|e| {
       warn!("could not write default configuration to disk at `{}`: {}", default_path, e);
     });
-    Config { primary: Self::load_toml(path), default: Self::load_toml_src(default_src) }
+    Config::new(path, default_src)
   }
 
   fn load_toml(path: &str) -> Value {

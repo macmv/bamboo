@@ -18,6 +18,11 @@ struct Args {
   /// be ignored.
   #[clap(long)]
   no_docs:   bool,
+
+  /// Writes the default config to `server-default.toml`. Does not overwrite
+  /// the existing config.
+  #[clap(long)]
+  write_default_config: bool,
 }
 
 // #[derive(Clone)]
@@ -63,7 +68,15 @@ struct Args {
 
 fn main() {
   let args = Args::parse();
-  let config = Config::new("server.toml", "server-default.toml", include_str!("default.toml"));
+  let config = if args.write_default_config {
+    Config::new_write_default(
+      "server.toml",
+      "server-default.toml",
+      include_str!("default.toml"),
+    )
+  } else {
+    Config::new("server.toml", include_str!("default.toml"))
+  };
 
   let level = config.get("log-level");
   bb_common::init_with_level("server", level);

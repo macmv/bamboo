@@ -270,6 +270,7 @@ dependencies = [
  "bb_data",
  "bb_transfer",
  "cfb8",
+ "clap 3.1.9",
  "crossbeam-channel",
  "flate2",
  "image",

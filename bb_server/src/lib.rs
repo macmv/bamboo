@@ -29,7 +29,7 @@ pub fn generate_panda_docs() {
   use std::sync::Arc;
 
   info!("generating panda docs...",);
-  let plugin = PandaPlugin::new(0, "".into(), Arc::new(WorldManager::new()));
+  let plugin = PandaPlugin::new(0, "".into(), Arc::new(WorldManager::new(false)));
   let mut pd = Panda::new();
   plugin.add_builtins(&mut pd);
   plugin.generate_docs(&pd);

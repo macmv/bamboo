@@ -32,9 +32,7 @@ pub fn load_icon(path: &str) -> String {
   "data:image/png;base64,".to_string() + &enc.into_inner()
 }
 
-pub fn run() -> Result<()> {
-  let config = Config::new("proxy.toml", "proxy-default.toml", include_str!("default.toml"));
-
+pub fn run(config: Config) -> Result<()> {
   let level = config.get("log-level");
   bb_common::init_with_level("proxy", level);
 

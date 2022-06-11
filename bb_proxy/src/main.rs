@@ -1,6 +1,18 @@
 #[macro_use]
 extern crate log;
 
+use bb_common::config::Config;
+use clap::Parser;
+
+#[derive(Parser, Debug)]
+#[clap(about, version, author)]
+struct Args {
+  /// Writes the default config to `proxy-default.toml`. Does not overwrite
+  /// the existing config.
+  #[clap(long)]
+  write_default_config: bool,
+}
+
 fn main() {
   /*
   use pprof::protos::Message;
@@ -15,7 +27,14 @@ fn main() {
   };
   */
 
-  match bb_proxy::run() {
+  let args = Args::parse();
+  let config = if args.write_default_config {
+    Config::new_write_default("proxy.toml", "proxy-default.toml", include_str!("default.toml"))
+  } else {
+    Config::new("proxy.toml", include_str!("default.toml"))
+  };
+
+  match bb_proxy::run(config) {
     Ok(_) => (),
     Err(e) => error!("error: {}", e),
   }

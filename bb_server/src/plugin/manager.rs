@@ -49,7 +49,7 @@ impl PluginManager {
       let m = fs::metadata(f.path()).unwrap();
       if m.is_dir() {
         let path = f.path();
-        let config = Config::new(
+        let config = Config::new_write_default(
           path.join("plugin.toml").to_str().unwrap(),
           path.join("plugin-default.toml").to_str().unwrap(),
           include_str!("plugin.toml"),

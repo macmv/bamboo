@@ -20,6 +20,8 @@ perf.data.old
 /server.toml
 /proxy.toml
 
+bb_server/server.toml
+
 # a testing world
 /world
 

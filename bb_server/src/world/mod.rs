@@ -639,10 +639,6 @@ impl World {
   pub fn save(&self) { self.regions.save(); }
 }
 
-impl Default for WorldManager {
-  fn default() -> Self { WorldManager::new() }
-}
-
 impl fmt::Debug for WorldManager {
   fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
     f.debug_struct("WorldManager").field("players", &self.players.read().len()).finish()
@@ -650,8 +646,16 @@ impl fmt::Debug for WorldManager {
 }
 
 impl WorldManager {
-  pub fn new() -> Self {
-    let config = Config::new("server.toml", "server-default.toml", include_str!("../default.toml"));
+  pub fn new(write_default: bool) -> Self {
+    let config = if write_default {
+      Config::new_write_default(
+        "server.toml",
+        "server-default.toml",
+        include_str!("../default.toml"),
+      )
+    } else {
+      Config::new("server.toml", include_str!("../default.toml"))
+    };
     WorldManager::new_with_config(config)
   }
 
@@ -784,7 +788,7 @@ impl WorldManager {
   /// # Example
   /// ```
   /// # use bb_server::world::WorldManager;
-  /// let wm = WorldManager::new();
+  /// # let wm = WorldManager::new(false);
   /// wm.broadcast("Hello world!");
   /// ```
   pub fn broadcast(&self, msg: impl Into<Chat>) {
