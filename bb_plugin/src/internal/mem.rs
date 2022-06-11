@@ -8,7 +8,7 @@
 /// returning null.
 #[no_mangle]
 unsafe extern "C" fn wasm_malloc(size: u32, align: u32) -> *mut u8 {
-  use std::alloc::{alloc, Layout};
+  use std::alloc::alloc;
   if size == 0 {
     align as _
   } else {
@@ -37,7 +37,7 @@ unsafe extern "C" fn wasm_malloc(size: u32, align: u32) -> *mut u8 {
 /// `dealloc` will not be called.
 #[no_mangle]
 unsafe extern "C" fn wasm_free(ptr: *mut u8, size: u32, align: u32) {
-  use std::alloc::{dealloc, Layout};
+  use std::alloc::dealloc;
   if size != 0 {
     dealloc(ptr, Layout::from_size_align(size as usize, align as usize).unwrap())
   }
@@ -49,9 +49,8 @@ struct Alloc;
 
 unsafe impl GlobalAlloc for Alloc {
   unsafe fn alloc(&self, layout: Layout) -> *mut u8 {
-    let ptr = System.alloc(layout);
-
     /*
+    let ptr = System.alloc(layout);
     use std::io::Write;
     let mut data = [0; 64];
     let mut buf: &mut [u8] = &mut data;
@@ -71,7 +70,7 @@ unsafe impl GlobalAlloc for Alloc {
       0,
     );
     */
-    ptr
+    System.alloc(layout)
   }
 
   unsafe fn dealloc(&self, ptr: *mut u8, layout: Layout) {

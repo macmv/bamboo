@@ -70,7 +70,7 @@ fn join_dot<'a, I: Iterator<Item = &'a str>>(key: I) -> String {
     let mut s = String::new();
     for section in key {
       if !s.is_empty() {
-        s.push_str(".");
+        s.push('.');
       }
       s.push_str(section);
     }

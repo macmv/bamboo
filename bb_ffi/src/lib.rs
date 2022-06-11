@@ -1,10 +1,7 @@
 #![deny(improper_ctypes)]
 
 use bb_ffi_macros::{cenum, ctype};
-use std::{
-  fmt,
-  mem::{ManuallyDrop, MaybeUninit},
-};
+use std::{fmt, mem::MaybeUninit};
 
 #[repr(C)]
 #[cfg_attr(feature = "host", derive(Debug, Clone))]
@@ -468,6 +465,9 @@ impl<T> COpt<T> {
   pub fn some(val: T) -> Self { COpt { present: CBool::new(true), value: MaybeUninit::new(val) } }
   pub fn none() -> Self { COpt { present: CBool::new(false), value: MaybeUninit::uninit() } }
 
+  // I'd like to keep explicit lifetimes with unsafe code, to avoid accidental
+  // invalid lifetimes.
+  #[allow(clippy::needless_lifetimes)]
   pub fn as_option<'a>(&'a self) -> Option<&'a T> {
     if self.present.as_bool() {
       Some(unsafe { self.value.assume_init_ref() })
@@ -476,7 +476,7 @@ impl<T> COpt<T> {
     }
   }
   pub fn into_option(self) -> Option<T> {
-    let me = ManuallyDrop::new(self);
+    let me = std::mem::ManuallyDrop::new(self);
     if me.present.as_bool() {
       Some(unsafe { me.value.assume_init_read() })
     } else {
@@ -487,6 +487,7 @@ impl<T> COpt<T> {
 
 #[cfg(feature = "host")]
 impl<T: Copy> COpt<T> {
+  #[allow(clippy::needless_lifetimes)]
   pub fn as_option<'a>(&'a self) -> Option<&'a T> {
     if self.present.as_bool() {
       Some(unsafe { self.value.assume_init_ref() })

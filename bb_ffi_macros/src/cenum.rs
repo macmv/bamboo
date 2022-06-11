@@ -64,7 +64,7 @@ struct CVariant {
 
 enum CVariantType {
   Unit,
-  Single(Type),
+  Single(Box<Type>),
   Struct(Ident, Vec<(Ident, Type)>),
 }
 
@@ -83,7 +83,7 @@ impl CVariant {
   pub fn ty(&self) -> Option<Type> {
     match &self.ty {
       CVariantType::Unit => None,
-      CVariantType::Single(ty) => Some(ty.clone()),
+      CVariantType::Single(ty) => Some(*ty.clone()),
       CVariantType::Struct(name, _) => {
         Some(Type::Path(TypePath { qself: None, path: path(name.clone()) }))
       }
@@ -93,7 +93,7 @@ impl CVariant {
     match &self.ty {
       CVariantType::Unit => true,
       CVariantType::Single(ty) => is_copy(ty),
-      CVariantType::Struct(_, fields) => fields.iter().all(|(_, ty)| is_copy(&ty)),
+      CVariantType::Struct(_, fields) => fields.iter().all(|(_, ty)| is_copy(ty)),
     }
   }
   pub fn lower_name(&self) -> String { to_lower(&self.name.to_string()) }
@@ -111,7 +111,7 @@ impl CEnum {
         Fields::Unit => CVariantType::Unit,
         Fields::Unnamed(unnamed) => {
           if unnamed.unnamed.len() == 1 {
-            CVariantType::Single(unnamed.unnamed.first().unwrap().ty.clone())
+            CVariantType::Single(Box::new(unnamed.unnamed.first().unwrap().ty.clone()))
           } else {
             return Err(quote_spanned!(unnamed.span() => compile_error!("tuple variants are not allowed");))
           }
@@ -155,10 +155,10 @@ impl CEnum {
         colon_token: Some(Token![:](Span::call_site())),
         ty:          match &v.ty {
           CVariantType::Unit => return None,
-          CVariantType::Single(ty) => wrap_manually_drop(ty.clone()),
+          CVariantType::Single(ty) => wrap_manually_drop(*ty.clone()),
           CVariantType::Struct(ty_name, fields) => {
             let ty_path = Type::Path(TypePath { qself: None, path: path(ty_name.clone()) });
-            if fields.iter().all(|(_, ty)| is_copy(&ty)) {
+            if fields.iter().all(|(_, ty)| is_copy(ty)) {
               ty_path
             } else {
               wrap_manually_drop(ty_path)
@@ -286,7 +286,7 @@ impl CEnum {
       })
       .collect()
   }
-  pub fn into_funcs(&self) -> Vec<proc_macro2::TokenStream> {
+  pub fn gen_into_funcs(&self) -> Vec<proc_macro2::TokenStream> {
     self
       .variants
       .iter()
@@ -332,7 +332,7 @@ impl CEnum {
       })
       .collect()
   }
-  pub fn into_cenum(&self) -> proc_macro2::TokenStream {
+  pub fn gen_into_cenum(&self) -> proc_macro2::TokenStream {
     let cenum_name = self.cenum_name();
     let data_name = self.data_name();
     let into_case = self
@@ -380,7 +380,7 @@ impl CEnum {
       }
     }
   }
-  pub fn into_renum(&self) -> proc_macro2::TokenStream {
+  pub fn gen_into_renum(&self) -> proc_macro2::TokenStream {
     let enum_name = self.enum_name();
     let into_case = self.variants.iter().enumerate().map(|(variant, v)| {
       let name = &v.name;
@@ -400,7 +400,7 @@ impl CEnum {
         CVariantType::Struct(_, fields) => {
           let field_name = fields.iter().map(|(name, _)| name).collect::<Vec<_>>();
           let copy_clause =
-            fields.iter().map(|(_, ty)| if is_copy(&ty) { quote!() } else { quote!(.clone()) });
+            fields.iter().map(|(_, ty)| if is_copy(ty) { quote!() } else { quote!(.clone()) });
           quote! {
             #variant => #enum_name::#name {
               #(#field_name: me.data.#field.#field_name #copy_clause,)*
@@ -548,9 +548,9 @@ pub fn cenum(_args: TokenStream, input: TokenStream) -> TokenStream {
   let new_funcs = input.new_funcs();
   let as_funcs = input.as_funcs();
   let is_funcs = input.is_funcs();
-  let into_funcs = input.into_funcs();
-  let into_cenum = input.into_cenum();
-  let into_renum = input.into_renum();
+  let into_funcs = input.gen_into_funcs();
+  let into_cenum = input.gen_into_cenum();
+  let into_renum = input.gen_into_renum();
 
   let enum_name = input.enum_name();
 
