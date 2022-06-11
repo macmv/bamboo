@@ -156,6 +156,9 @@ impl Error for InvalidBlock {}
 
 include!(concat!(env!("OUT_DIR"), "/block/ty.rs"));
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct CustomKind(u32);
+
 /// A kind of bounding box. This is from prismarine data. It is not very
 /// helpful, and will be replaced when I have a better data source.
 #[derive(Debug)]
