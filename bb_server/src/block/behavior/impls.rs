@@ -13,13 +13,13 @@ use bb_common::{
   math::Pos,
   util::{Chat, Face},
 };
-use bb_transfer::{MessageRead, MessageReader, MessageWrite, MessageWriter};
+use bb_transfer::{MessageRead, MessageWrite, MessageWriter};
 use std::{any::Any, sync::Arc};
 
 pub struct Log;
 impl Behavior for Log {
   fn place<'a>(&self, data: &'a Data, _: Pos, click: BlockClick) -> Type<'a> {
-    data.default_type().with_prop(
+    data.default_type().with(
       "axis",
       match click.face {
         Face::West | Face::East => "X",
@@ -76,15 +76,12 @@ impl Bed {
 }
 impl Behavior for Bed {
   fn place<'a>(&self, data: &'a Data, _: Pos, click: BlockClick) -> Type<'a> {
-    data
-      .default_type()
-      .with_prop("part", "FOOT")
-      .with_prop("facing", click.dir.as_horz_face().as_str())
+    data.default_type().with("part", "FOOT").with("facing", click.dir.as_horz_face().as_str())
   }
   fn update_place(&self, world: &Arc<World>, block: Block) {
     if block.ty.prop("part") == "FOOT" {
       let dir = Face::from(block.ty.prop("facing").as_enum());
-      let _ = world.set_block(block.pos + dir, block.ty.with_prop("part", "HEAD"));
+      let _ = world.set_block(block.pos + dir, block.ty.with("part", "HEAD"));
     }
   }
   fn update(&self, world: &Arc<World>, block: Block, old: Block, new: Block) {

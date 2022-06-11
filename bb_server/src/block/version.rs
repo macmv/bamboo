@@ -1,4 +1,4 @@
-use super::{ty, Data, Kind, Type};
+use super::{ty, CustomData, CustomKind, Data, Kind, Type};
 use bb_common::version::BlockVersion;
 
 /// This is the conversion table for a single old version of the game and the
@@ -39,6 +39,9 @@ pub struct TypeConverter {
   versions:     &'static [Version],
   // A list of all latest block states, and which kind they map to.
   block_states: &'static [Kind],
+
+  custom_kinds:  Vec<CustomData>,
+  custom_states: Vec<CustomKind>,
 }
 
 impl TypeConverter {
@@ -50,7 +53,30 @@ impl TypeConverter {
   #[allow(clippy::new_without_default)]
   pub fn new() -> Self {
     let (kinds, block_states) = ty::generate_kinds();
-    Self { kinds, versions: generate_versions(), block_states }
+    Self {
+      kinds,
+      versions: generate_versions(),
+      block_states,
+      custom_kinds: vec![],
+      custom_states: vec![],
+    }
+  }
+
+  /// Returns `true` if the given type id is a custom type.
+  pub fn is_custom(&self, id: u32) -> bool {
+    id >= self.versions[BlockVersion::latest().to_index() as usize].to_new.len() as u32
+  }
+
+  /// Returns the vanilla block id for the given custom type. If the given block
+  /// is a vanilla block, it will simply be returned.
+  pub fn custom_to_vanilla(&self, id: u32) -> u32 {
+    if id < self.versions[BlockVersion::latest().to_index() as usize].to_new.len() as u32 {
+      id
+    } else {
+      let kind = self.custom_kind_from_id(id).unwrap();
+      let data = self.get_custom(kind);
+      data.vanilla_for_state(id - data.state_id())
+    }
   }
 
   /// Takes the given old block id, which is part of `ver`, and returns the new
@@ -84,7 +110,21 @@ impl TypeConverter {
 
   /// Gets all the data for a given block kind. This includes all the types, the
   /// default type, and state ids.
+  ///
+  /// This only works for vanilla blocks. For custom blocks, use
+  /// [`get_custom`](Self::get_custom).
   pub fn get(&self, k: Kind) -> &Data { &self.kinds[k.id() as usize] }
+  /// Gets all the data for a given block kind. This includes all the types, the
+  /// default type, and state ids.
+  ///
+  /// This only works for custom blocks. For vanilla blocks, use
+  /// [`get`](Self::get).
+  pub fn get_custom(&self, k: CustomKind) -> &CustomData { &self.custom_kinds[k.0 as usize] }
+
+  pub fn ty(&self, kind: Kind) -> Type {
+    let data = self.get(kind);
+    data.default_type()
+  }
 
   /// Gets a block type from the given id.
   ///
@@ -109,6 +149,11 @@ impl TypeConverter {
     }
 
     self.block_states.get(id as usize).copied().unwrap_or(Kind::Air)
+  }
+
+  /// Gets a block kind from the given id.
+  pub fn custom_kind_from_id(&self, id: u32) -> Option<CustomKind> {
+    self.custom_states.get(id as usize).copied()
   }
 
   pub fn max_bpe(&self) -> u8 { (self.block_states.len() as f32).log2().ceil() as u8 }

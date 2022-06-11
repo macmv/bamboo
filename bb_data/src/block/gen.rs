@@ -36,6 +36,7 @@ pub fn generate_ty(def: &BlockDef, opts: BlockOpts) -> String {
         gen.write(&b.name.to_case(Case::Pascal));
         gen.write_line(",");
       }
+      gen.write_line("Custom(CustomKind),");
     });
     gen.write_line("");
     gen.write("impl FromStr for Kind ");
@@ -81,6 +82,9 @@ pub fn generate_ty(def: &BlockDef, opts: BlockOpts) -> String {
             gen.write(&id.to_string());
             gen.write_line(",");
           }
+          gen.write("Self::Custom(id) => id.0 + ");
+          gen.write(&def.blocks.len().to_string());
+          gen.write_line(",");
         });
       });
       gen.write("pub fn from_id(id: u32) -> Option<Self>");

@@ -65,7 +65,7 @@ impl TagKind {
   pub fn expand_str(&self, name: &str) -> Vec<i32> {
     match self {
       Self::Block => match block::Kind::from_str(name) {
-        Ok(id) => vec![id as i32],
+        Ok(kind) => vec![kind.id() as i32],
         Err(_) => vec![],
       },
       Self::Item => match item::Type::from_str(name) {

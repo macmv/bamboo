@@ -1,4 +1,5 @@
 mod behavior;
+mod custom;
 mod material;
 mod store;
 mod ty;
@@ -8,6 +9,7 @@ mod version;
 mod ffi;
 
 pub use behavior::{Behavior, TileEntity};
+pub use custom::{CustomData, CustomKind, CustomProp, CustomPropValue};
 pub use material::Material;
 pub use store::TypeStore;
 pub use ty::{Data, ItemDrop, Kind, Prop, PropKind, PropValue, Type};

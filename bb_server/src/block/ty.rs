@@ -1,4 +1,4 @@
-use super::{Material, TypeStore};
+use super::{CustomKind, Material, TypeStore};
 use std::{collections::HashMap, error::Error, fmt, str::FromStr};
 
 pub(super) const STATE_PROPS_LEN: usize = 8;
@@ -103,7 +103,7 @@ impl Type<'_> {
       panic!("no such property {}, valid properties are {:?}", name, self.props);
     }
   }
-  pub fn with_prop<'a>(mut self, name: &str, val: impl Into<PropValue<'a>>) -> Self {
+  pub fn with<'a>(mut self, name: &str, val: impl Into<PropValue<'a>>) -> Self {
     self.set_prop(name, val);
     self
   }
@@ -379,12 +379,12 @@ mod tests {
 
     const ID: u32 = 148;
     let ty = conv.get(Kind::OakLeaves).default_type();
-    assert_eq!(ty.with_prop("distance", 1).with_prop("persistent", true).id(), ID + 0 + 0 * 2);
-    assert_eq!(ty.with_prop("distance", 1).with_prop("persistent", false).id(), ID + 1 + 0 * 2);
-    assert_eq!(ty.with_prop("distance", 2).with_prop("persistent", true).id(), ID + 0 + 1 * 2);
-    assert_eq!(ty.with_prop("distance", 2).with_prop("persistent", false).id(), ID + 1 + 1 * 2);
-    assert_eq!(ty.with_prop("distance", 3).with_prop("persistent", true).id(), ID + 0 + 2 * 2);
-    assert_eq!(ty.with_prop("distance", 3).with_prop("persistent", false).id(), ID + 1 + 2 * 2);
+    assert_eq!(ty.with("distance", 1).with("persistent", true).id(), ID + 0 + 0 * 2);
+    assert_eq!(ty.with("distance", 1).with("persistent", false).id(), ID + 1 + 0 * 2);
+    assert_eq!(ty.with("distance", 2).with("persistent", true).id(), ID + 0 + 1 * 2);
+    assert_eq!(ty.with("distance", 2).with("persistent", false).id(), ID + 1 + 1 * 2);
+    assert_eq!(ty.with("distance", 3).with("persistent", true).id(), ID + 0 + 2 * 2);
+    assert_eq!(ty.with("distance", 3).with("persistent", false).id(), ID + 1 + 2 * 2);
     assert_eq!(ty.id(), ID + 1 + 6 * 2);
   }
 }
