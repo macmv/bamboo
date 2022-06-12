@@ -2,7 +2,6 @@ use super::{FromFfi, ToFfi};
 use crate::{
   block,
   command::{Command, NodeType, Parser},
-  particle,
   particle::Particle,
   world::WorldManager,
 };
@@ -11,9 +10,7 @@ use bb_common::{
   util::Chat,
   version::BlockVersion,
 };
-use bb_ffi::{
-  CBlockData, CChat, CCommand, CCommandArg, CFPos, CList, CParticle, CPos, CStr, CUUID,
-};
+use bb_ffi::{CChat, CCommand, CCommandArg, CFPos, CList, CParticle, CPos, CUUID};
 use log::Level;
 use std::{mem, sync::Arc};
 use wasmer::{
@@ -123,7 +120,7 @@ fn log(
     let s = if u64::from(message_ptr.offset() + message_len) > env.mem().data_size() {
       std::borrow::Cow::Borrowed("")
     } else {
-      let mut ptr = env.mem().data_ptr().add(message_ptr.offset() as usize) as *const u8;
+      let ptr = env.mem().data_ptr().add(message_ptr.offset() as usize) as *const u8;
       let slice = std::slice::from_raw_parts(ptr, message_len as usize);
       String::from_utf8_lossy(slice)
     };
@@ -244,7 +241,7 @@ fn player_world(env: &Env, player: WasmPtr<CUUID>) -> i32 {
   0
 }
 
-fn world_set_block(env: &Env, wid: u32, pos: WasmPtr<CPos>, id: u32) -> i32 {
+fn world_set_block(env: &Env, _wid: u32, pos: WasmPtr<CPos>, id: u32) -> i32 {
   let mem = env.mem();
   let pos = match pos.deref(mem) {
     Some(p) => p.get(),
@@ -257,7 +254,7 @@ fn world_set_block(env: &Env, wid: u32, pos: WasmPtr<CPos>, id: u32) -> i32 {
     Err(_) => -1,
   }
 }
-fn world_players(env: &Env, wid: u32) -> u32 {
+fn world_players(env: &Env, _wid: u32) -> u32 {
   let world = env.wm.default_world();
   let players: Vec<_> = world.players().iter().map(|p| p.id()).collect();
   let cplayers = players.as_slice().to_ffi(env);
@@ -277,7 +274,7 @@ fn world_raycast(env: &Env, from: WasmPtr<CFPos>, to: WasmPtr<CFPos>, water: u8)
   let water = water == 1;
   let world = env.wm.default_world();
   match world.raycast(from, to, water) {
-    Some((pos, res)) => {
+    Some((pos, _res)) => {
       let cpos = pos.to_ffi(env);
       let ptr = env.malloc_store(cpos);
       ptr.offset()
@@ -336,7 +333,7 @@ fn add_command(env: &Env, cmd: WasmPtr<CCommand>) {
   }
 }
 
-fn time_since_start(env: &Env) -> u64 {
+fn time_since_start(_env: &Env) -> u64 {
   use parking_lot::{lock_api::RawMutex, Mutex};
   use std::time::Instant;
 

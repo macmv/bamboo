@@ -1,13 +1,11 @@
 use super::Env;
-use crate::world::WorldManager;
+
 use bb_common::{
   math::{FPos, Pos},
   util::UUID,
-  version::ProtocolVersion,
 };
 use bb_ffi::{CBool, CFPos, CList, COpt, CPos, CStr, CUUID};
 use std::mem;
-use wasmer::Memory;
 
 pub trait FromFfi {
   type Ffi: wasmer::ValueType;
@@ -134,7 +132,7 @@ where
 impl ToFfi for UUID {
   type Ffi = CUUID;
 
-  fn to_ffi(&self, env: &Env) -> CUUID {
+  fn to_ffi(&self, _env: &Env) -> CUUID {
     CUUID {
       bytes: [
         self.as_u128() as u32,

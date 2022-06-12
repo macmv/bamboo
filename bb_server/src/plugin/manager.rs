@@ -95,8 +95,8 @@ impl PluginManager {
               match super::wasm::Plugin::new(
                 name.clone(),
                 &path,
-                config.get::<_, String>("wasm.compile"),
-                config.get::<_, String>("wasm.output"),
+                config.get_at(["wasm", "compile"].into_iter()),
+                config.get_at(["wasm", "output"].into_iter()),
                 wm.clone(),
               ) {
                 Ok(p) => plugins.push(Plugin::new(name.clone(), config, p)),

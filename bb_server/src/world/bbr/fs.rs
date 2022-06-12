@@ -2,28 +2,20 @@
 //! and `Region::load`.
 
 use super::Region;
-use crate::{
-  block::TileEntity,
-  world::{CountedChunk, MultiChunk},
-};
+use crate::world::{CountedChunk, MultiChunk};
 use bb_common::{
   chunk::{paletted, Section},
   flate2::{read::GzDecoder, write::GzEncoder, Compression},
   math::{Pos, RelPos},
   version::BlockVersion,
 };
-use bb_transfer::{
-  MessageRead, MessageReader, MessageWrite, MessageWriter, ReadError, StructRead, StructReader,
-  WriteError,
-};
+use bb_transfer::{MessageReader, MessageWriter, ReadError, WriteError};
 use std::{
   cell::RefCell,
-  collections::HashMap,
   fs,
   fs::File,
   io::{Read, Write},
   path::PathBuf,
-  sync::Arc,
 };
 
 thread_local! {

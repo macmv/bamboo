@@ -61,7 +61,7 @@ macro_rules! try_event {
 
 use EventFlow::*;
 impl Events<'_> {
-  pub fn interact(&self, player: &Arc<Player>, hand: Hand, click: Click) -> EventFlow {
+  pub fn interact(&self, player: &Arc<Player>, _hand: Hand, click: Click) -> EventFlow {
     // self.req(player, ServerRequest::Interact { hand, click });
     let stack = player.lock_inventory().main_hand().clone();
     try_event!(self

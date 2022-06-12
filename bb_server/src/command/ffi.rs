@@ -1,13 +1,7 @@
 use super::{Arg, Parser};
-use crate::{
-  block,
-  plugin::wasm::{Env, FromFfi, ToFfi},
-  world::WorldManager,
-};
-use bb_common::math::FPos;
+use crate::plugin::wasm::{Env, FromFfi, ToFfi};
+
 use bb_ffi::{CCommandArg, CCommandParser};
-use bb_transfer::MessageReader;
-use wasmer::Memory;
 
 impl ToFfi for Arg {
   type Ffi = CCommandArg;
@@ -16,15 +10,15 @@ impl ToFfi for Arg {
     use bb_ffi::CCommandArgEnum as A;
     match self {
       Self::Literal(v) => A::Literal(v.as_str().to_ffi(env)),
-      Self::Bool(v) => todo!(),
-      Self::Double(v) => todo!(),
+      Self::Bool(_v) => todo!(),
+      Self::Double(_v) => todo!(),
       Self::Float(v) => A::Float(*v),
-      Self::Int(v) => todo!(),
-      Self::String(v) => todo!(),
-      Self::BlockPos(v) => todo!(),
-      Self::Vec3(x, y, z) => todo!(),
-      Self::Vec2(x, y) => todo!(),
-      Self::BlockState(v, _, _) => todo!(),
+      Self::Int(_v) => todo!(),
+      Self::String(_v) => todo!(),
+      Self::BlockPos(_v) => todo!(),
+      Self::Vec3(_x, _y, _z) => todo!(),
+      Self::Vec2(_x, _y) => todo!(),
+      Self::BlockState(_v, _, _) => todo!(),
       _ => unimplemented!("command arg to ffi {self:?}"),
     }
     .into_cenum()

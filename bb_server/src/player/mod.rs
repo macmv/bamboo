@@ -10,7 +10,7 @@ use crate::{
   world::World,
 };
 use bb_common::{
-  math::{ChunkPos, FPos, Pos, PosError},
+  math::{ChunkPos, FPos, Pos},
   metadata::{Metadata, Pose},
   net::{cb, sb::PlayerCommand},
   util::{Chat, GameMode, JoinInfo, UUID},

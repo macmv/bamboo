@@ -9,11 +9,7 @@ use crate::{
   player::Player,
   world::World,
 };
-use bb_common::{
-  math::{FPos, Pos},
-  metadata::Metadata,
-  util::UUID,
-};
+use bb_common::{math::FPos, metadata::Metadata, util::UUID};
 use parking_lot::{Mutex, MutexGuard, RwLock};
 use std::sync::Arc;
 

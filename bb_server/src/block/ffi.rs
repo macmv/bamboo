@@ -1,13 +1,7 @@
 use super::{Data, ItemDrop, Prop};
-use crate::{
-  block,
-  plugin::wasm::{Env, ToFfi},
-  world::WorldManager,
-};
-use bb_common::math::FPos;
-use bb_ffi::{CBlockData, CBlockProp, CItemDrop, CStr};
-use bb_transfer::MessageReader;
-use wasmer::Memory;
+use crate::plugin::wasm::{Env, ToFfi};
+
+use bb_ffi::{CBlockData, CBlockProp, CItemDrop};
 
 impl ToFfi for Data {
   type Ffi = CBlockData;
@@ -36,11 +30,11 @@ impl ToFfi for Data {
 impl ToFfi for ItemDrop {
   type Ffi = CItemDrop;
 
-  fn to_ffi(&self, env: &Env) -> CItemDrop { todo!() }
+  fn to_ffi(&self, _: &Env) -> CItemDrop { todo!() }
 }
 
 impl ToFfi for Prop {
   type Ffi = CBlockProp;
 
-  fn to_ffi(&self, env: &Env) -> CBlockProp { todo!() }
+  fn to_ffi(&self, _: &Env) -> CBlockProp { todo!() }
 }

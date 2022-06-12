@@ -254,7 +254,7 @@ impl CustomPropValue {
       },
     }
   }
-  pub(super) fn is(&self, kind: &CustomPropKind) -> bool {
+  pub fn is(&self, kind: &CustomPropKind) -> bool {
     match self {
       Self::Bool(_) => matches!(kind, CustomPropKind::Bool),
       Self::Enum(val) => matches!(kind, CustomPropKind::Enum(variants) if variants.contains(val)),

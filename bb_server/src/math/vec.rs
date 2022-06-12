@@ -139,7 +139,6 @@ impl Vec3 {
   pub fn move_towards(&mut self, delta: Vec3, nearby: &[AABB]) -> Option<CollisionResult> {
     let mut result = None;
     let start = *self;
-    let end = *self + delta;
     let mut time = 1.0;
     for &wall in nearby.iter() {
       // Time to collide with the object, in each axis. We use this to find out which

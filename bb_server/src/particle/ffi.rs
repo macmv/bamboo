@@ -1,13 +1,8 @@
 use super::{Particle, Type};
-use crate::{
-  block,
-  plugin::wasm::{Env, FromFfi},
-  world::WorldManager,
-};
+use crate::plugin::wasm::{Env, FromFfi};
 use bb_common::math::FPos;
 use bb_ffi::{CParticle, CParticleType};
 use bb_transfer::MessageReader;
-use wasmer::Memory;
 
 impl FromFfi for Particle {
   type Ffi = CParticle;
