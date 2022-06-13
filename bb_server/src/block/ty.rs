@@ -28,7 +28,7 @@ impl TypeStore {
 
 impl Type<'_> {
   /// Returns the type for air.
-  pub fn air() -> Type<'static> {
+  pub const fn air() -> Type<'static> {
     Type {
       kind:        Kind::Air,
       state:       0,
@@ -48,7 +48,7 @@ impl Type<'_> {
     }
   }
   /// Returns the block kind that this state comes from.
-  pub fn kind(&self) -> Kind { self.kind }
+  pub const fn kind(&self) -> Kind { self.kind }
   /// Gets the block id of this type. This id is for the latest version of the
   /// game.
   pub fn id(&self) -> u32 {

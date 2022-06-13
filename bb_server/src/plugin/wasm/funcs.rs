@@ -17,14 +17,17 @@ use wasmer::{
   imports, Array, Function, ImportObject, LazyInit, Memory, NativeFunc, Store, WasmPtr, WasmerEnv,
 };
 
+type OnCommand = NativeFunc<(WasmPtr<CUUID>, WasmPtr<CList<CCommandArg>>), ()>;
+type WasmMalloc = NativeFunc<(u32, u32), u32>;
+
 #[derive(WasmerEnv, Clone)]
 pub struct Env {
   #[wasmer(export)]
   pub memory:      LazyInit<Memory>,
   #[wasmer(export)]
-  pub wasm_malloc: LazyInit<NativeFunc<(u32, u32), u32>>,
+  pub wasm_malloc: LazyInit<WasmMalloc>,
   #[wasmer(export)]
-  pub on_command:  LazyInit<NativeFunc<(WasmPtr<CUUID>, WasmPtr<CList<CCommandArg>>), ()>>,
+  pub on_command:  LazyInit<OnCommand>,
   pub wm:          Arc<WorldManager>,
   /// The version of this plugin. Plugins will send us things like block ids,
   /// and we need to know how to convert them to the server's version. This
@@ -95,6 +98,7 @@ fn log_from_level(level: u32) -> Option<Level> {
   })
 }
 
+#[allow(clippy::too_many_arguments)]
 fn log(
   env: &Env,
   level: u32,
@@ -360,19 +364,19 @@ pub fn imports(store: &Store, wm: Arc<WorldManager>, name: String) -> ImportObje
   };
   imports! {
     "env" => {
-      "bb_log" => Function::new_native_with_env(&store, env.clone(), log),
-      "bb_broadcast" => Function::new_native_with_env(&store, env.clone(), broadcast),
-      "bb_player_username" => Function::new_native_with_env(&store, env.clone(), player_username),
-      "bb_player_pos" => Function::new_native_with_env(&store, env.clone(), player_pos),
-      "bb_player_look_as_vec" => Function::new_native_with_env(&store, env.clone(), player_look_as_vec),
-      "bb_player_world" => Function::new_native_with_env(&store, env.clone(), player_world),
-      "bb_player_send_particle" => Function::new_native_with_env(&store, env.clone(), player_send_particle),
-      "bb_world_set_block" => Function::new_native_with_env(&store, env.clone(), world_set_block),
-      "bb_world_players" => Function::new_native_with_env(&store, env.clone(), world_players),
-      "bb_world_raycast" => Function::new_native_with_env(&store, env.clone(), world_raycast),
-      "bb_block_data_for_kind" => Function::new_native_with_env(&store, env.clone(), block_data_for_kind),
-      "bb_add_command" => Function::new_native_with_env(&store, env.clone(), add_command),
-      "bb_time_since_start" => Function::new_native_with_env(&store, env.clone(), time_since_start),
+      "bb_log" => Function::new_native_with_env(store, env.clone(), log),
+      "bb_broadcast" => Function::new_native_with_env(store, env.clone(), broadcast),
+      "bb_player_username" => Function::new_native_with_env(store, env.clone(), player_username),
+      "bb_player_pos" => Function::new_native_with_env(store, env.clone(), player_pos),
+      "bb_player_look_as_vec" => Function::new_native_with_env(store, env.clone(), player_look_as_vec),
+      "bb_player_world" => Function::new_native_with_env(store, env.clone(), player_world),
+      "bb_player_send_particle" => Function::new_native_with_env(store, env.clone(), player_send_particle),
+      "bb_world_set_block" => Function::new_native_with_env(store, env.clone(), world_set_block),
+      "bb_world_players" => Function::new_native_with_env(store, env.clone(), world_players),
+      "bb_world_raycast" => Function::new_native_with_env(store, env.clone(), world_raycast),
+      "bb_block_data_for_kind" => Function::new_native_with_env(store, env.clone(), block_data_for_kind),
+      "bb_add_command" => Function::new_native_with_env(store, env.clone(), add_command),
+      "bb_time_since_start" => Function::new_native_with_env(store, env, time_since_start),
     }
   }
 }

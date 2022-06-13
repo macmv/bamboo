@@ -20,7 +20,7 @@ impl World {
   pub fn players(&self) -> impl Iterator<Item = Player> {
     unsafe {
       let players = Box::from_raw(bb_ffi::bb_world_players(self.wid)).into_vec();
-      players.into_iter().map(|id| Player::new(id))
+      players.into_iter().map(Player::new)
     }
   }
   pub fn raycast(&self, from: FPos, to: FPos, water: bool) -> Option<FPos> {

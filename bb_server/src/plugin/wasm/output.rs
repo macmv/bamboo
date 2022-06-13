@@ -3,7 +3,7 @@ use wasmer::{Memory, WasmPtr};
 
 impl Output for () {
   fn size() -> u32 { 0 }
-  fn from_addr(_: &Memory, _: OUT) -> Self { () }
+  fn from_addr(_: &Memory, _: OUT) -> Self {}
 }
 impl<A: Output> Output for (A,) {
   fn size() -> u32 { A::size() }
@@ -12,26 +12,21 @@ impl<A: Output> Output for (A,) {
 impl<A: Output, B: Output> Output for (A, B) {
   fn size() -> u32 { A::size() + B::size() }
   fn from_addr(mem: &Memory, mut addr: OUT) -> Self {
-    (A::from_addr(mem, addr), {
-      addr += A::size();
-      B::from_addr(mem, addr)
-    })
+    let a = A::from_addr(mem, addr);
+    addr += A::size();
+    let b = B::from_addr(mem, addr);
+    (a, b)
   }
 }
 impl<A: Output, B: Output, C: Output> Output for (A, B, C) {
   fn size() -> u32 { A::size() + B::size() + C::size() }
   fn from_addr(mem: &Memory, mut addr: OUT) -> Self {
-    (
-      A::from_addr(mem, addr),
-      {
-        addr += A::size();
-        B::from_addr(mem, addr)
-      },
-      {
-        addr += B::size();
-        C::from_addr(mem, addr)
-      },
-    )
+    let a = A::from_addr(mem, addr);
+    addr += A::size();
+    let b = B::from_addr(mem, addr);
+    addr += B::size();
+    let c = C::from_addr(mem, addr);
+    (a, b, c)
   }
 }
 impl Output for String {

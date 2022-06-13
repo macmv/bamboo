@@ -14,7 +14,7 @@ impl fmt::Display for TypeStore {
 }
 impl TypeStore {
   /// Returns the type for air.
-  pub fn air() -> TypeStore {
+  pub const fn air() -> TypeStore {
     TypeStore {
       kind:        Kind::Air,
       state:       0,

@@ -156,7 +156,8 @@ pub(crate) fn handle(wm: &Arc<WorldManager>, mut player: &Arc<Player>, p: sb::Pa
               block: Block::new(player.world(), pos, looking_at.ty()),
             };
             if !player.is_crouching() {
-              if wm.events().interact(player, hand, Click::Block(click)).is_handled() {
+              let res = wm.events().interact(player, hand, Click::Block(click));
+              if res.is_handled() {
                 player.sync_block_at(pos);
                 player.sync_block_at(pos + face);
                 return;

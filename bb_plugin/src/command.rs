@@ -46,8 +46,9 @@ impl Arg {
   }
 }
 
-static CALLBACKS: Mutex<Option<HashMap<String, Box<dyn Fn(Option<Player>, Vec<Arg>) + Send>>>> =
-  Mutex::const_new(parking_lot::RawMutex::INIT, None);
+type CommandMap = HashMap<String, Box<dyn Fn(Option<Player>, Vec<Arg>) + Send>>;
+
+static CALLBACKS: Mutex<Option<CommandMap>> = Mutex::const_new(parking_lot::RawMutex::INIT, None);
 pub fn add_command(cmd: &Command, cb: impl Fn(Option<Player>, Vec<Arg>) + Send + 'static) {
   {
     let mut cbs = CALLBACKS.lock();
@@ -119,7 +120,7 @@ extern "C" fn on_command(
   unsafe {
     let player = if player.is_null() { None } else { Some(Box::from_raw(player)) };
     let args = Box::from_raw(args);
-    let args: Vec<_> = args.into_vec().into_iter().map(|carg| Arg::new(carg)).collect();
+    let args: Vec<_> = args.into_vec().into_iter().map(Arg::new).collect();
     let name = args[0].lit();
     let cbs = CALLBACKS.lock();
     if let Some(cbs) = cbs.as_ref() {

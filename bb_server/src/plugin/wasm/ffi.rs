@@ -136,7 +136,7 @@ impl ToFfi for UUID {
     CUUID {
       bytes: [
         self.as_u128() as u32,
-        (self.as_u128() >> (1 * 32)) as u32,
+        (self.as_u128() >> 32) as u32,
         (self.as_u128() >> (2 * 32)) as u32,
         (self.as_u128() >> (3 * 32)) as u32,
       ],

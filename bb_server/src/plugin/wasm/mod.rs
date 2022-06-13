@@ -109,7 +109,10 @@ impl Plugin {
     // Try to get function with int. If this fails, error.
     // If the function doesn't exist, we error.
     match self.inst.exports.get_native_function::<I::WasmArgs, ()>(name) {
-      Ok(func) => Ok(input.call_native(&func).unwrap_or(())),
+      Ok(func) => {
+        input.call_native(&func).unwrap();
+        Ok(())
+      }
       Err(e) => Err(CallError::no_keep(e)),
     }
   }
@@ -151,7 +154,7 @@ impl Plugin {
       let _guard = self.inst_mem_lock.lock();
       let view = mem.data_unchecked();
       let chunk_data = &view[ptr as usize..];
-      let mut reader = bb_transfer::MessageReader::new(&chunk_data);
+      let mut reader = bb_transfer::MessageReader::new(chunk_data);
       match reader.read::<Vec<bb_common::chunk::paletted::Section>>() {
         Ok(sections) => {
           let mut chunk = chunk.lock();
@@ -170,9 +173,12 @@ impl Plugin {
 
 impl PluginImpl for Plugin {
   fn call(&self, _player: Arc<Player>, ev: ServerEvent) -> Result<(), CallError> {
+    warn!("todo: server event {ev:?}");
+    /*
     match ev {
       _ => warn!("todo: ev {ev:?}"),
     }
+    */
     Ok(())
   }
   fn call_global(&self, ev: GlobalServerEvent) -> Result<(), CallError> {

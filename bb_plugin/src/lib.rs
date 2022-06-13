@@ -100,12 +100,11 @@ pub fn init() {
     } else {
       "<no message>"
     };
-    let location = if let Some(loc) = info.location() {
-      let file = loc.file();
-      error!("plugin panic: {msg:?} at {}:{}", file, loc.line());
+    if let Some(loc) = info.location() {
+      error!("plugin panic: {msg:?} at {}:{}", loc.file(), loc.line());
     } else {
       error!("plugin panic: {msg:?} at <no location>");
-    };
+    }
   }));
   log::set_logger(&LOGGER).unwrap();
   log::set_max_level(LevelFilter::Debug);

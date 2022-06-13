@@ -23,7 +23,7 @@ impl Player {
   pub fn id(&self) -> UUID {
     UUID::from_u128(
       (self.id.bytes[0] as u128)
-        | (self.id.bytes[1] as u128) << (1 * 32)
+        | (self.id.bytes[1] as u128) << 32
         | (self.id.bytes[2] as u128) << (2 * 32)
         | (self.id.bytes[3] as u128) << (3 * 32),
     )
