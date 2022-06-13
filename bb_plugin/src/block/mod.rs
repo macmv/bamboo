@@ -11,8 +11,8 @@ pub use prop::{Prop, PropKind, PropValue};
 /// are 32 types for an oak stair, based on it's state (rotation, in this case).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Type {
-  kind:  Kind,
-  state: u32,
+  pub(crate) kind:  Kind,
+  pub(crate) state: u32,
 }
 
 impl Kind {

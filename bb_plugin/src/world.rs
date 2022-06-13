@@ -9,7 +9,17 @@ impl World {
   pub fn new(wid: u32) -> Self { World { wid } }
 
   pub fn get_block(&self, pos: Pos) -> Result<block::Type, PosError> {
-    todo!();
+    unsafe {
+      let id =
+        bb_ffi::bb_world_get_block(self.wid, &bb_ffi::CPos { x: pos.x(), y: pos.y(), z: pos.z() });
+      if id == u32::MAX {
+        Err(pos.err("invalid position".into()))
+      } else {
+        // If the kind is invalid here, then `id` must be invalid, so we can panic.
+        let kind = block::Kind::from_id(bb_ffi::bb_block_kind_for_type(id)).unwrap();
+        Ok(block::Type { kind, state: id })
+      }
+    }
   }
   pub fn set_block(&self, pos: Pos, ty: block::Type) {
     unsafe {

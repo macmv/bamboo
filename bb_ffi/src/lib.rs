@@ -403,6 +403,12 @@ extern "C" {
   /// Adds the command to the server.
   pub fn bb_add_command(command: *const CCommand);
 
+  /// Returns the block data for the given kind.
+  pub fn bb_block_data_for_kind(kind: u32) -> *mut CBlockData;
+  /// Returns the block kind for the given type. Returns `u32::MAX` if the block
+  /// type is invalid.
+  pub fn bb_block_kind_for_type(ty: u32) -> u32;
+
   /// Broadcasts the given chat message to all players.
   pub fn bb_broadcast(message: *const CChat);
   /// Returns the player's username.
@@ -420,14 +426,14 @@ extern "C" {
 
   /// Sets a block in the world. Returns 1 if the block position is invalid.
   pub fn bb_world_set_block(wid: u32, pos: *const CPos, id: u32) -> i32;
-  /// Sets a block in the world. Returns 1 if the block position is invalid.
+  /// Gets a block in the world. Returns `u32::MAX` if the block position is
+  /// invalid.
+  pub fn bb_world_get_block(wid: u32, pos: *const CPos) -> u32;
+  /// Gets a list of all the players in the world.
   pub fn bb_world_players(wid: u32) -> *mut CList<CUUID>;
   /// Raycasts from the `from` position to `to`. Returns null if there is no
   /// collision.
   pub fn bb_world_raycast(from: *const CFPos, to: *const CFPos, water: CBool) -> *mut CFPos;
-
-  /// Returns the block data for the given kind.
-  pub fn bb_block_data_for_kind(kind: u32) -> *mut CBlockData;
 
   /// Returns the number of nanoseconds since this function was called first.
   /// This is used to find the duration of a function.

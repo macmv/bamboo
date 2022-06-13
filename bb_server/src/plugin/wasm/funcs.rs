@@ -258,6 +258,18 @@ fn world_set_block(env: &Env, _wid: u32, pos: WasmPtr<CPos>, id: u32) -> i32 {
     Err(_) => -1,
   }
 }
+fn world_get_block(env: &Env, _wid: u32, pos: WasmPtr<CPos>) -> u32 {
+  let mem = env.mem();
+  let pos = match pos.deref(mem) {
+    Some(p) => p.get(),
+    None => return u32::MAX,
+  };
+  let world = env.wm.default_world();
+  match world.get_block(Pos::new(pos.x, pos.y, pos.z)) {
+    Ok(ty) => ty.id(),
+    Err(_) => u32::MAX,
+  }
+}
 fn world_players(env: &Env, _wid: u32) -> u32 {
   let world = env.wm.default_world();
   let players: Vec<_> = world.players().iter().map(|p| p.id()).collect();
@@ -286,14 +298,19 @@ fn world_raycast(env: &Env, from: WasmPtr<CFPos>, to: WasmPtr<CFPos>, water: u8)
     None => 0,
   }
 }
-fn block_data_for_kind(env: &Env, block: u32) -> u32 {
-  // TODO: Convert block to newer version
-  let data = env.wm.block_converter().get(match block::Kind::from_id(block) {
+fn block_data_for_kind(env: &Env, kind: u32) -> u32 {
+  // TODO: Convert kind to server version
+  let data = env.wm.block_converter().get(match block::Kind::from_id(kind) {
     Some(id) => id,
     None => return 0,
   });
   let cdata = data.to_ffi(env);
   env.malloc_store(cdata).offset()
+}
+fn block_kind_for_type(env: &Env, ty: u32) -> u32 {
+  let kind = env.wm.block_converter().kind_from_id(ty, env.ver);
+  // TODO: Convert kind to plugin version
+  kind.id()
 }
 
 fn add_command(env: &Env, cmd: WasmPtr<CCommand>) {
@@ -365,6 +382,9 @@ pub fn imports(store: &Store, wm: Arc<WorldManager>, name: String) -> ImportObje
   imports! {
     "env" => {
       "bb_log" => Function::new_native_with_env(store, env.clone(), log),
+      "bb_add_command" => Function::new_native_with_env(store, env.clone(), add_command),
+      "bb_block_data_for_kind" => Function::new_native_with_env(store, env.clone(), block_data_for_kind),
+      "bb_block_kind_for_type" => Function::new_native_with_env(store, env.clone(), block_kind_for_type),
       "bb_broadcast" => Function::new_native_with_env(store, env.clone(), broadcast),
       "bb_player_username" => Function::new_native_with_env(store, env.clone(), player_username),
       "bb_player_pos" => Function::new_native_with_env(store, env.clone(), player_pos),
@@ -372,10 +392,9 @@ pub fn imports(store: &Store, wm: Arc<WorldManager>, name: String) -> ImportObje
       "bb_player_world" => Function::new_native_with_env(store, env.clone(), player_world),
       "bb_player_send_particle" => Function::new_native_with_env(store, env.clone(), player_send_particle),
       "bb_world_set_block" => Function::new_native_with_env(store, env.clone(), world_set_block),
+      "bb_world_get_block" => Function::new_native_with_env(store, env.clone(), world_get_block),
       "bb_world_players" => Function::new_native_with_env(store, env.clone(), world_players),
       "bb_world_raycast" => Function::new_native_with_env(store, env.clone(), world_raycast),
-      "bb_block_data_for_kind" => Function::new_native_with_env(store, env.clone(), block_data_for_kind),
-      "bb_add_command" => Function::new_native_with_env(store, env.clone(), add_command),
       "bb_time_since_start" => Function::new_native_with_env(store, env, time_since_start),
     }
   }
