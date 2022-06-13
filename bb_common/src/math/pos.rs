@@ -47,10 +47,10 @@ impl fmt::Display for Pos {
 impl Pos {
   /// Creates a new block position. This can be used to find chunk coordinates,
   /// place blocks, or send a position in a packet.
-  pub fn new(x: i32, y: i32, z: i32) -> Self { Pos { x, y, z } }
+  pub const fn new(x: i32, y: i32, z: i32) -> Self { Pos { x, y, z } }
   /// Converts a block position from a u64 into a Pos. This format of u64 is
   /// used for versions 1.14 and up. This is also the format used with grpc.
-  pub fn from_u64(v: u64) -> Self {
+  pub const fn from_u64(v: u64) -> Self {
     // Rust will carry the negative sign for signed ints on right shift. So, we need
     // to cast to i64 sometimes.
     let x = (v as i64 >> 38) as i32;
@@ -60,7 +60,7 @@ impl Pos {
   }
   /// Converts a block position from a u64 into a Pos. This format of u64 is
   /// used for versions 1.13 and below. This should never be used with grpc.
-  pub fn from_old_u64(v: u64) -> Self {
+  pub const fn from_old_u64(v: u64) -> Self {
     let x = (v as i64 >> 38) as i32;
     let y = ((v << 26) as i64 >> 52) as i32;
     let z = ((v << 38) as i64 >> 38) as i32;
@@ -71,7 +71,7 @@ impl Pos {
   /// byte, and generates a position that is something like (1, 0, 0) or (0, -1,
   /// 0). The result is intended to be added to a block position, to offset it
   /// by one block. If the value is outside if 0..6, then (0, 0, 0) is returned.
-  pub fn dir_from_byte(v: u8) -> Self {
+  pub const fn dir_from_byte(v: u8) -> Self {
     match v {
       0 => Pos::new(0, -1, 0),
       1 => Pos::new(0, 1, 0),
@@ -85,7 +85,7 @@ impl Pos {
   /// Converts the block position into a u64. This is what should be sent to
   /// clients with versions 1.14 and up. This is also what should be used to
   /// encode a position within a grpc packet.
-  pub fn to_u64(self) -> u64 {
+  pub const fn to_u64(self) -> u64 {
     let x = self.x as u64;
     let y = self.y as u64;
     let z = self.z as u64;
@@ -94,7 +94,7 @@ impl Pos {
   /// Converts a block position to a u64. This is what should be used for
   /// clients running 1.13 or below. This should never be used in a grpc
   /// connection.
-  pub fn to_old_u64(self) -> u64 {
+  pub const fn to_old_u64(self) -> u64 {
     let x = self.x as u64;
     let y = self.y as u64;
     let z = self.z as u64;
@@ -102,13 +102,13 @@ impl Pos {
   }
   /// Returns the X value of the position.
   #[inline(always)]
-  pub fn x(&self) -> i32 { self.x }
+  pub const fn x(&self) -> i32 { self.x }
   /// Returns the Y value of the position.
   #[inline(always)]
-  pub fn y(&self) -> i32 { self.y }
+  pub const fn y(&self) -> i32 { self.y }
   /// Returns the Z value of the position.
   #[inline(always)]
-  pub fn z(&self) -> i32 { self.z }
+  pub const fn z(&self) -> i32 { self.z }
   /// Returns self, with x set to the given value.
   #[inline(always)]
   #[must_use = "with_x returns a modified version of self"]
@@ -153,36 +153,36 @@ impl Pos {
   }
   /// Returns the chunk that this block position is in.
   #[inline(always)]
-  pub fn chunk(&self) -> ChunkPos { ChunkPos::new(self.chunk_x(), self.chunk_z()) }
+  pub const fn chunk(&self) -> ChunkPos { ChunkPos::new(self.chunk_x(), self.chunk_z()) }
   /// Returns this position within the 0, 0, 0 chunk cube. That is, the X, Y and
   /// Z are all set to their chunk relative position.
   #[inline(always)]
-  pub fn chunk_rel(&self) -> RelPos {
+  pub const fn chunk_rel(&self) -> RelPos {
     RelPos::new(self.chunk_rel_x() as u8, self.y, self.chunk_rel_z() as u8)
   }
   /// Returns this position within the 0, 0, 0 chunk sectino. That is, the X, Y
   /// and Z are all set to their chunk relative position.
   #[inline(always)]
-  pub fn chunk_section_rel(&self) -> SectionRelPos {
+  pub const fn chunk_section_rel(&self) -> SectionRelPos {
     SectionRelPos::new(self.chunk_rel_x() as u8, self.chunk_rel_y() as u8, self.chunk_rel_z() as u8)
   }
   /// Returns the block X coordinate within 0..16. This is not the same as X %
   /// 16, because that will give negative numbers for negative X values.
   #[inline(always)]
-  pub fn chunk_rel_x(&self) -> i32 { (self.x % 16 + 16) % 16 }
+  pub const fn chunk_rel_x(&self) -> i32 { (self.x % 16 + 16) % 16 }
   /// Returns the block Y coordinate within 0..16. This is not the same as Y %
   /// 16, because that will give negative numbers for negative Y values.
   #[inline(always)]
-  pub fn chunk_rel_y(&self) -> i32 { (self.y % 16 + 16) % 16 }
+  pub const fn chunk_rel_y(&self) -> i32 { (self.y % 16 + 16) % 16 }
   /// Returns the block Z coordinate within 0..16. This is not the same as Z %
   /// 16, because that will give negative numbers for negative Z values.
   #[inline(always)]
-  pub fn chunk_rel_z(&self) -> i32 { (self.z % 16 + 16) % 16 }
+  pub const fn chunk_rel_z(&self) -> i32 { (self.z % 16 + 16) % 16 }
   /// Returns the chunk X of this position. This is X / 16, rounded to negative
   /// infinity. Rust rounds to zero be default, so this is not the same as X /
   /// 16.
   #[inline(always)]
-  pub fn chunk_x(&self) -> i32 {
+  pub const fn chunk_x(&self) -> i32 {
     if self.x < 0 {
       (self.x + 1) / 16 - 1
     } else {
@@ -193,7 +193,7 @@ impl Pos {
   /// infinity. Rust rounds to zero be default, so this is not the same as Y /
   /// 16.
   #[inline(always)]
-  pub fn chunk_y(&self) -> i32 {
+  pub const fn chunk_y(&self) -> i32 {
     if self.y < 0 {
       (self.y + 1) / 16 - 1
     } else {
@@ -204,7 +204,7 @@ impl Pos {
   /// infinity. Rust rounds to zero be default, so this is not the same as Z /
   /// 16.
   #[inline(always)]
-  pub fn chunk_z(&self) -> i32 {
+  pub const fn chunk_z(&self) -> i32 {
     if self.z < 0 {
       (self.z + 1) / 16 - 1
     } else {
@@ -228,7 +228,7 @@ impl Pos {
   }
   /// Returns the squared distance to the other position. Since block postitions
   /// are always ints, this will also always be exactly an int.
-  pub fn dist_squared(&self, other: Pos) -> i32 {
+  pub const fn dist_squared(&self, other: Pos) -> i32 {
     (self.x - other.x).pow(2) + (self.y - other.y).pow(2) + (self.z - other.z).pow(2)
   }
 

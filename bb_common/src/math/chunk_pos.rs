@@ -25,22 +25,22 @@ impl fmt::Display for ChunkPos {
 impl ChunkPos {
   /// Creates a new block position. This can be used to find chunk coordinates,
   /// place blocks, or send a position in a packet.
-  pub fn new(x: i32, z: i32) -> Self { ChunkPos { x, z } }
+  pub const fn new(x: i32, z: i32) -> Self { ChunkPos { x, z } }
   /// Returns the X value of the position.
   #[inline(always)]
-  pub fn x(&self) -> i32 { self.x }
+  pub const fn x(&self) -> i32 { self.x }
   /// Returns the Z value of the position.
   #[inline(always)]
-  pub fn z(&self) -> i32 { self.z }
+  pub const fn z(&self) -> i32 { self.z }
   /// Returns the minimum block X value of the position. This is just x * 16.
   #[inline(always)]
-  pub fn block_x(&self) -> i32 { self.x * 16 }
+  pub const fn block_x(&self) -> i32 { self.x * 16 }
   /// Returns the minimum block Z value of the position. This is just x * 16.
   #[inline(always)]
-  pub fn block_z(&self) -> i32 { self.z * 16 }
+  pub const fn block_z(&self) -> i32 { self.z * 16 }
   /// Returns the minimum block X and Z values of this position. Y will be 0.
   #[inline(always)]
-  pub fn block(&self) -> Pos { Pos::new(self.block_x(), 0, self.block_z()) }
+  pub const fn block(&self) -> Pos { Pos::new(self.block_x(), 0, self.block_z()) }
 
   /// Creates an iterator that will return every column in the chunk. The Y
   /// coordinate in the position will always be 0.

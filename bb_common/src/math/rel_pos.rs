@@ -51,7 +51,7 @@ impl SectionRelPos {
   /// # Panics
   /// If the X, Y, or Z is greater than 15.
   #[track_caller]
-  pub fn new(x: u8, y: u8, z: u8) -> Self {
+  pub const fn new(x: u8, y: u8, z: u8) -> Self {
     if x >= 16 || y >= 16 || z >= 16 {
       panic!("X, Y and Z must be within 0..16");
     }
@@ -59,13 +59,13 @@ impl SectionRelPos {
   }
   /// Returns the X position. This won't return a value above 15.
   #[inline(always)]
-  pub fn x(&self) -> u8 { self.x }
+  pub const fn x(&self) -> u8 { self.x }
   /// Returns the Y position.
   #[inline(always)]
-  pub fn y(&self) -> u8 { self.y }
+  pub const fn y(&self) -> u8 { self.y }
   /// Returns the Z position. This won't return a value above 15.
   #[inline(always)]
-  pub fn z(&self) -> u8 { self.z }
+  pub const fn z(&self) -> u8 { self.z }
 
   /// Creates a new error from this position. This should be used to signify
   /// that an invalid position was passed somewhere.
@@ -106,13 +106,13 @@ impl RelPos {
   ///
   /// # Panics
   /// If the X, or Z is greater than 15.
-  pub fn new(x: u8, y: i32, z: u8) -> Self {
+  pub const fn new(x: u8, y: i32, z: u8) -> Self {
     if x >= 16 || z >= 16 {
       panic!("X and Z must be within 0..16");
     }
     RelPos { x, y, z }
   }
-  pub fn new_opt(x: u8, y: i32, z: u8) -> Option<Self> {
+  pub const fn new_opt(x: u8, y: i32, z: u8) -> Option<Self> {
     if x >= 16 || z >= 16 {
       None
     } else {
@@ -121,13 +121,13 @@ impl RelPos {
   }
   /// Returns the X position. This won't return a value above 15.
   #[inline(always)]
-  pub fn x(&self) -> u8 { self.x }
+  pub const fn x(&self) -> u8 { self.x }
   /// Returns the Y position.
   #[inline(always)]
-  pub fn y(&self) -> i32 { self.y }
+  pub const fn y(&self) -> i32 { self.y }
   /// Returns the Z position. This won't return a value above 15.
   #[inline(always)]
-  pub fn z(&self) -> u8 { self.z }
+  pub const fn z(&self) -> u8 { self.z }
 
   /// Returns self, with x set to self.x plus the given value.
   #[inline(always)]
