@@ -6,17 +6,13 @@ mod prop;
 pub use material::Material;
 pub use prop::{Prop, PropKind, PropValue};
 
-const STATE_PROPS_LEN: usize = 8;
-
 /// A single block type. This is different from a block kind, which is more
 /// general. For example, there is one block kind for oak stairs. However, there
 /// are 32 types for an oak stair, based on it's state (rotation, in this case).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub struct Type<'a> {
-  pub(super) kind: Kind,
-  state:           u32,
-  props:           &'a [Prop],
-  state_props:     [u32; STATE_PROPS_LEN],
+pub struct Type {
+  kind:  Kind,
+  state: u32,
 }
 
 impl Kind {
@@ -41,71 +37,19 @@ impl Kind {
   }
 }
 
-impl Type<'_> {
+impl Type {
   /// Returns the type for air.
-  pub fn air() -> Type<'static> {
-    Type {
-      kind:        Kind::Air,
-      state:       0,
-      props:       &[],
-      state_props: [0; STATE_PROPS_LEN],
-    }
-  }
+  pub const fn air() -> Type { Type { kind: Kind::Air, state: 0 } }
   /// Returns the block kind that this state comes from.
-  pub fn kind(&self) -> Kind { self.kind }
+  pub const fn kind(&self) -> Kind { self.kind }
   /// Gets the block id of this type. This id is for the latest version of the
   /// game.
-  pub fn id(&self) -> u32 {
-    let mut id = 0;
-    for (p, sid) in self.props.iter().zip(self.state_props) {
-      id *= p.len() as u32;
-      id += sid;
-    }
-    self.state + id
-  }
+  pub const fn id(&self) -> u32 { self.state }
   pub fn prop(&self, name: &str) -> PropValue<'_> {
-    let mut idx = None;
-    for (i, p) in self.props.iter().enumerate() {
-      if p.name == name {
-        idx = Some(i);
-        break;
-      }
-    }
-    if let Some(idx) = idx {
-      let state = self.state_props[idx];
-      match self.props[idx].kind {
-        PropKind::Bool => match state {
-          0 => PropValue::Bool(true),
-          _ => PropValue::Bool(false),
-        },
-        PropKind::Enum(values) => PropValue::Enum(values[state as usize]),
-        PropKind::Int { min, max } => PropValue::Int((state + min).min(max)),
-      }
-    } else {
-      panic!("no such property {}, valid properties are {:?}", name, self.props);
-    }
+    todo!();
   }
   pub fn set_prop<'a>(&mut self, name: &str, val: impl Into<PropValue<'a>>) {
-    let mut idx = None;
-    for (i, p) in self.props.iter().enumerate() {
-      if p.name == name {
-        idx = Some(i);
-        break;
-      }
-    }
-    if let Some(idx) = idx {
-      let val = val.into();
-      if val.is(&self.props[idx].kind) {
-        self.state_props[idx] = val.id(&self.props[idx].kind);
-      } else {
-        panic!(
-          "the given property {:?} is not compatible with property {:?}",
-          val, self.props[idx]
-        );
-      }
-    } else {
-      panic!("no such property {}, valid properties are {:?}", name, self.props);
-    }
+    todo!();
   }
   pub fn with_prop<'a>(mut self, name: &str, val: impl Into<PropValue<'a>>) -> Self {
     self.set_prop(name, val);
@@ -113,18 +57,13 @@ impl Type<'_> {
   }
 
   pub fn prop_at(&self, name: &str) -> Option<&Prop> {
-    self.props.iter().find(|prop| prop.name == name)
+    todo!();
   }
   pub fn props(&self) -> HashMap<String, String> {
-    self
-      .props
-      .iter()
-      .enumerate()
-      .map(|(i, prop)| (prop.name.into(), prop.kind.name_at(self.state_props[i])))
-      .collect()
+    todo!();
   }
 }
-impl fmt::Display for Type<'_> {
+impl fmt::Display for Type {
   fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
     write!(f, "{}", self.kind().to_str())?;
     let mut all_props: Vec<_> = self.props().into_iter().collect();

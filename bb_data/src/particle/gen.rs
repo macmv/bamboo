@@ -14,7 +14,7 @@ fn write_enum_data(gen: &mut CodeGen, name: &str, target: Target) {
   match name {
     "block" | "block_marker" | "falling_dust" => match target {
       Target::Host => gen.write("(block::TypeStore)"),
-      Target::Plugin => gen.write("(block::Type<'a>)"),
+      Target::Plugin => gen.write("(block::Type)"),
     },
     "dust" => gen.write("(Color, f32)"),
     "dust_color_transition" => gen.write("(Color, Color, f32)"),
@@ -50,7 +50,7 @@ pub fn generate_ty(def: &ParticleDef, target: Target) -> String {
   gen.write_line("#[derive(Debug, Clone, PartialEq)]");
   match target {
     Target::Host => gen.write("pub enum Type "),
-    Target::Plugin => gen.write("pub enum Type<'a> "),
+    Target::Plugin => gen.write("pub enum Type "),
   }
   gen.write_block(|gen| {
     for b in &def.particles {
@@ -62,7 +62,7 @@ pub fn generate_ty(def: &ParticleDef, target: Target) -> String {
   gen.write_line("");
   match target {
     Target::Host => gen.write("impl FromStr for Type "),
-    Target::Plugin => gen.write("impl FromStr for Type<'_> "),
+    Target::Plugin => gen.write("impl FromStr for Type "),
   }
   gen.write_block(|gen| {
     gen.write_line("type Err = InvalidParticle;");
@@ -85,7 +85,7 @@ pub fn generate_ty(def: &ParticleDef, target: Target) -> String {
   });
   match target {
     Target::Host => gen.write("impl Type "),
-    Target::Plugin => gen.write("impl Type<'_> "),
+    Target::Plugin => gen.write("impl Type "),
   }
   gen.write_block(|gen| {
     gen.write("pub fn to_str(&self) -> &'static str");

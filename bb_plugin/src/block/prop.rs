@@ -1,19 +1,19 @@
-use super::{Data, Type, STATE_PROPS_LEN};
+use super::{Data, Type};
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Prop {
   pub(super) name: &'static str,
   pub(super) kind: PropKind,
 }
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum PropKind {
   Bool,
   Enum(&'static [&'static str]),
   Int { min: u32, max: u32 },
 }
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum PropValue<'a> {
   Bool(bool),
   Enum(&'a str),
@@ -107,6 +107,8 @@ impl Data {
   /// they place the block, as things like their position/rotation affect which
   /// block gets placed.
   pub fn default_type(&self) -> Type {
+    todo!();
+    /*
     if self.default_props.len() > STATE_PROPS_LEN {
       panic!("Type has too many properties: {:?}", self.props);
     }
@@ -115,10 +117,13 @@ impl Data {
       state_props[i] = p.id(&self.props[i].kind);
     }
     Type { kind: self.kind, state: self.state, props: &self.props, state_props }
+    */
   }
 
   /// Returns the type
   pub fn type_from_id(&self, mut id: u32) -> Type {
+    todo!();
+    /*
     let mut state_props = [0; STATE_PROPS_LEN];
     for (i, p) in self.props.iter().enumerate().rev() {
       let len = p.len();
@@ -126,6 +131,7 @@ impl Data {
       id /= len;
     }
     Type { kind: self.kind, state: self.state, props: &self.props, state_props }
+    */
   }
 }
 
@@ -155,4 +161,25 @@ impl Prop {
   }
 
   pub fn id_of(&self, val: &PropValue) -> u32 { val.id(&self.kind) }
+}
+
+impl PropValue<'_> {
+  pub fn bool(&self) -> bool {
+    match self {
+      PropValue::Bool(v) => *v,
+      _ => panic!("not a bool: {self:?}"),
+    }
+  }
+  pub fn str(&self) -> &str {
+    match self {
+      PropValue::Enum(v) => v,
+      _ => panic!("not an enum: {self:?}"),
+    }
+  }
+  pub fn int(&self) -> u32 {
+    match self {
+      PropValue::Int(v) => *v,
+      _ => panic!("not an int: {self:?}"),
+    }
+  }
 }

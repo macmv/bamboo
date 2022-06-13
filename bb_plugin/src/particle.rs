@@ -44,9 +44,9 @@ pub struct Color {
 }
 
 /// A cloud of particles.
-pub struct Particle<'a> {
+pub struct Particle {
   /// The type of particle.
-  pub ty:            Type<'a>,
+  pub ty:            Type,
   /// The center of this cloud of particles.
   pub pos:           FPos,
   /// If set, the particle will be shown to clients up to 65,000 blocks away. If
@@ -62,7 +62,7 @@ pub struct Particle<'a> {
   pub data:          f32,
 }
 
-impl IntoFfi for Particle<'_> {
+impl IntoFfi for Particle {
   type Ffi = bb_ffi::CParticle;
 
   fn into_ffi(self) -> bb_ffi::CParticle {
@@ -76,7 +76,7 @@ impl IntoFfi for Particle<'_> {
     }
   }
 }
-impl IntoFfi for Type<'_> {
+impl IntoFfi for Type {
   type Ffi = bb_ffi::CParticleType;
 
   fn into_ffi(self) -> bb_ffi::CParticleType {

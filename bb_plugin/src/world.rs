@@ -1,5 +1,5 @@
-use crate::player::Player;
-use bb_common::math::{FPos, Pos};
+use crate::{block, player::Player};
+use bb_common::math::{FPos, Pos, PosError};
 
 pub struct World {
   wid: u32,
@@ -8,12 +8,15 @@ pub struct World {
 impl World {
   pub fn new(wid: u32) -> Self { World { wid } }
 
-  pub fn set_block(&self, pos: Pos, id: u32) {
+  pub fn get_block(&self, pos: Pos) -> Result<block::Type, PosError> {
+    todo!();
+  }
+  pub fn set_block(&self, pos: Pos, ty: block::Type) {
     unsafe {
       bb_ffi::bb_world_set_block(
         self.wid,
         &bb_ffi::CPos { x: pos.x(), y: pos.y(), z: pos.z() },
-        id,
+        ty.id(),
       );
     }
   }
