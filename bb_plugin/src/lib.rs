@@ -3,7 +3,6 @@ pub use log::*;
 
 use bb_common::util::Chat;
 use bb_ffi::CChat;
-use parking_lot::Mutex;
 use std::marker::PhantomData;
 
 pub use bb_common::{chunk, math, transfer, util};
@@ -16,6 +15,7 @@ pub mod item;
 pub mod particle;
 pub mod player;
 mod store;
+pub mod sync;
 pub mod time;
 pub mod world;
 
@@ -36,6 +36,8 @@ pub trait IntoFfi {
 
   fn into_ffi(self) -> Self::Ffi;
 }
+
+use sync::ConstLock;
 
 impl Bamboo {
   pub fn broadcast(&self, message: Chat) {
@@ -110,12 +112,9 @@ pub fn init() {
   log::set_max_level(LevelFilter::Debug);
 }
 
-use parking_lot::lock_api::RawMutex;
-
 macro_rules! callback {
   ( $setter:ident, $static:ident, $sig:ty ) => {
-    static $static: Mutex<Option<Box<dyn ($sig) + Send>>> =
-      Mutex::const_new(parking_lot::RawMutex::INIT, None);
+    static $static: ConstLock<Option<Box<dyn ($sig) + Send>>> = ConstLock::new(None);
     pub fn $setter(callback: impl ($sig) + Send + 'static) {
       *$static.lock() = Some(Box::new(callback));
     }
@@ -137,8 +136,8 @@ extern "C" fn on_block_place(id: ffi::CUUID, x: i32, y: i32, z: i32) -> bool {
 callback!(set_on_tick, ON_TICK, Fn());
 #[no_mangle]
 extern "C" fn on_tick() {
-  // If we fail to lock, we just don't process this update. It kinda sucks, but
-  // parking_lot will panic if we block.
+  // If we fail to lock, we just don't process this update. This is intentional,
+  // as it means the old tick handler is still running, which is a Bad Thing.
   if let Some(lock) = ON_TICK.try_lock() {
     if let Some(cb) = lock.as_ref() {
       cb()
