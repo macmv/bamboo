@@ -1,5 +1,6 @@
 use super::ConstLock;
 use std::{
+  fmt,
   marker::PhantomData,
   ops::{Deref, DerefMut},
 };
@@ -59,4 +60,11 @@ impl<'a, T: 'a> Drop for LazyGuard<'a, T> {
     // SAFETY: The mutex must be locked in order to create a guard.
     unsafe { self.lock.lock.unlock() };
   }
+}
+
+impl<'a, T: fmt::Debug + 'a> fmt::Debug for LazyGuard<'a, T> {
+  fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result { (**self).fmt(f) }
+}
+impl<'a, T: fmt::Display + 'a> fmt::Display for LazyGuard<'a, T> {
+  fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result { (**self).fmt(f) }
 }

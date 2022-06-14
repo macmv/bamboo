@@ -11,8 +11,8 @@ use lock::WasmLock;
 mod tests {
   use super::*;
 
-  static LAZY: LazyLock<Vec<u8>> = LazyLock::new(|| vec![3, 4, 5]);
-  static CONST: ConstLock<[u8; 4]> = ConstLock::new([3, 4, 5, 6]);
+  static _LAZY_IS_CONST_FN: LazyLock<Vec<u8>> = LazyLock::new(|| vec![3, 4, 5]);
+  static _CONST_IS_CONST_FN: ConstLock<[u8; 4]> = ConstLock::new([3, 4, 5, 6]);
 
   use std::{sync::Arc, thread};
 
@@ -24,20 +24,20 @@ mod tests {
       let mut handles = vec![];
       for _ in 0..num_threads {
         let m = mutex.clone();
-        handles.push(thread::spawn(|| {
+        handles.push(thread::spawn(move || {
           for _ in 0..500 {
-            let lock = m.lock();
-            lock += 1;
+            let mut lock = m.lock();
+            *lock += 1;
           }
         }));
       }
 
       let expected = num_threads * 500;
       for handle in handles {
-        handle.join();
+        handle.join().unwrap();
       }
       let value = mutex.lock();
-      if value != expected {
+      if *value != expected {
         panic!("expected {expected}, got {value}");
       }
     }
