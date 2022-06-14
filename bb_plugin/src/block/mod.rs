@@ -19,20 +19,18 @@ impl Kind {
   pub fn data(&self) -> Data {
     let data = unsafe { Box::from_raw(bb_ffi::bb_block_data_for_kind(self.id())) };
     Data {
-      kind:          Kind::from_id(data.kind).unwrap(),
-      name:          data.name.into_string(),
-      material:      Material::Air,
-      hardness:      data.hardness,
-      resistance:    data.resistance,
-      drops:         vec![],
-      transparent:   data.transparent.as_bool(),
-      filter_light:  data.filter_light,
-      emit_light:    data.emit_light,
-      state:         data.state,
-      bounding_box:  BoundingBoxKind::Empty,
-      tags:          vec![],
-      props:         vec![],
-      default_props: vec![],
+      kind:         Kind::from_id(data.kind).unwrap(),
+      name:         data.name.into_string(),
+      material:     Material::Air,
+      hardness:     data.hardness,
+      resistance:   data.resistance,
+      drops:        vec![],
+      transparent:  data.transparent.as_bool(),
+      filter_light: data.filter_light,
+      emit_light:   data.emit_light,
+      state:        data.state,
+      bounding_box: BoundingBoxKind::Empty,
+      tags:         vec![],
     }
   }
 }
@@ -73,7 +71,7 @@ impl Type {
     self
   }
 
-  pub fn prop_at(&self, name: &str) -> Option<&Prop> {
+  pub fn prop_at(&self, _name: &str) -> Option<&Prop> {
     todo!();
   }
   pub fn props(&self) -> HashMap<String, String> {
@@ -156,15 +154,10 @@ pub struct Data {
 
   /// The latest version state id. This is the lowest possible state for this
   /// block. It is used to offset the state calculation for properties.
-  pub state:     u32,
+  pub state: u32,
   /// A list of vanilla tags for this block. Plugins should be able to add tags
   /// in the future. These tags don't include `minecraft:` at the start.
-  pub tags:      Vec<String>,
-  /// All the properties on this block. These are stored so that it is easy to
-  /// convert a single property on a block.
-  props:         Vec<Prop>,
-  /// The default type. Each value is an index into that property.
-  default_props: Vec<PropValue<'static>>,
+  pub tags:  Vec<String>,
 }
 
 /// A possible item drop for a block.

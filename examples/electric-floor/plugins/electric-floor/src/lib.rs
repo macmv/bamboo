@@ -1,13 +1,10 @@
-#[macro_use]
-extern crate bb_plugin;
-
 use bb_plugin::{
   block,
   command::{Arg, Command},
   math::Pos,
   player::Player,
 };
-use std::sync::atomic::{AtomicBool, AtomicU32, Ordering};
+use std::sync::atomic::{AtomicBool, Ordering};
 
 const MIN: Pos = Pos::new(-32, 114, -32);
 const MAX: Pos = Pos::new(32, 114, 32);
@@ -76,7 +73,7 @@ fn on_tick() {
     */
     if MIN.to(MAX).contains(pos) && ty.kind() == block::Kind::WhiteStainedGlass {
       let idx = charge_index(pos);
-      let mut charge = unsafe { CHARGE[idx] };
+      let charge = unsafe { CHARGE[idx] };
       if charge == 0 {
         unsafe { CHARGE[idx] = 1 };
       }

@@ -145,7 +145,7 @@ impl Data {
   }
 
   /// Returns the type
-  pub fn type_from_id(&self, mut id: u32) -> Type {
+  pub fn type_from_id(&self, _id: u32) -> Type {
     todo!();
     /*
     let mut state_props = [0; STATE_PROPS_LEN];
