@@ -1,6 +1,5 @@
-use crate::player::Player;
+use crate::{player::Player, sync::LazyLock};
 use bb_ffi::{CBool, COpt};
-use parking_lot::{lock_api::RawMutex, Mutex};
 use std::collections::HashMap;
 
 #[derive(Debug)]
@@ -48,14 +47,11 @@ impl Arg {
 
 type CommandMap = HashMap<String, Box<dyn Fn(Option<Player>, Vec<Arg>) + Send>>;
 
-static CALLBACKS: Mutex<Option<CommandMap>> = Mutex::const_new(parking_lot::RawMutex::INIT, None);
+static CALLBACKS: LazyLock<CommandMap> = LazyLock::new(|| HashMap::new());
 pub fn add_command(cmd: &Command, cb: impl Fn(Option<Player>, Vec<Arg>) + Send + 'static) {
   {
     let mut cbs = CALLBACKS.lock();
-    if cbs.is_none() {
-      *cbs = Some(HashMap::new());
-    }
-    cbs.as_mut().unwrap().insert(cmd.name.clone(), Box::new(cb));
+    cbs.insert(cmd.name.clone(), Box::new(cb));
   }
   unsafe {
     let ffi = cmd.to_ffi();
@@ -123,9 +119,7 @@ extern "C" fn on_command(
     let args: Vec<_> = args.into_vec().into_iter().map(Arg::new).collect();
     let name = args[0].lit();
     let cbs = CALLBACKS.lock();
-    if let Some(cbs) = cbs.as_ref() {
-      cbs[name](player.map(|id| Player::new(*id)), args);
-    }
+    cbs[name](player.map(|id| Player::new(*id)), args);
   }
 }
 

@@ -1,5 +1,5 @@
+use crate::sync::{LazyGuard, LazyLock};
 use bb_common::util::UUID;
-use parking_lot::{lock_api::RawMutex, MappedMutexGuard, Mutex, MutexGuard};
 use std::{any::Any, collections::HashMap};
 
 pub trait PlayerStore: Any + Send {
@@ -21,15 +21,5 @@ impl PluginStore {
   }
 }
 
-static STORE: Mutex<Option<PluginStore>> = Mutex::const_new(parking_lot::RawMutex::INIT, None);
-
-pub fn store<'a>() -> MappedMutexGuard<'a, PluginStore> {
-  loop {
-    if let Some(mut lock) = STORE.try_lock() {
-      if lock.is_none() {
-        *lock = Some(PluginStore::new());
-      }
-      break MutexGuard::map(lock, |opt| opt.as_mut().unwrap());
-    }
-  }
-}
+static STORE: LazyLock<PluginStore> = LazyLock::new(|| PluginStore::new());
+pub fn store<'a>() -> LazyGuard<'a, PluginStore> { STORE.lock() }
