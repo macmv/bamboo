@@ -5,21 +5,22 @@ use bb_common::util::Chat;
 use bb_ffi::CChat;
 use std::marker::PhantomData;
 
-pub use bb_common::{chunk, math, transfer, util};
+pub use bb_common::{chunk, transfer, util};
+
+mod ffi_impls;
+mod store;
+mod internal;
 
 pub mod block;
+pub mod math;
 pub mod command;
 pub mod entity;
-mod ffi_impls;
 pub mod item;
 pub mod particle;
 pub mod player;
-mod store;
 pub mod sync;
 pub mod time;
 pub mod world;
-
-mod internal;
 
 pub use command::add_command;
 pub use internal::gen::add_world_generator;
@@ -35,6 +36,12 @@ pub trait IntoFfi {
   type Ffi;
 
   fn into_ffi(self) -> Self::Ffi;
+}
+
+pub trait FromFfi {
+  type Ffi;
+
+  fn from_ffi(f: Self::Ffi) -> Self;
 }
 
 use sync::ConstLock;
@@ -125,7 +132,7 @@ callback!(set_on_block_place, ON_BLOCK_PLACE, Fn(player::Player, math::Pos) -> b
 #[no_mangle]
 extern "C" fn on_block_place(id: ffi::CUUID, x: i32, y: i32, z: i32) -> bool {
   if let Some(cb) = ON_BLOCK_PLACE.lock().as_ref() {
-    let p = player::Player::new(id);
+    let p = player::Player::from_ffi(id);
     let pos = math::Pos { x, y, z };
     cb(p, pos)
   } else {

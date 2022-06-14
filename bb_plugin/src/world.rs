@@ -1,4 +1,4 @@
-use crate::{block, particle::Particle, player::Player, IntoFfi};
+use crate::{block, particle::Particle, player::Player, FromFfi, IntoFfi};
 use bb_common::math::{FPos, Pos, PosError};
 
 pub struct World {
@@ -23,26 +23,18 @@ impl World {
   }
   pub fn set_block(&self, pos: Pos, ty: block::Type) {
     unsafe {
-      bb_ffi::bb_world_set_block(
-        self.wid,
-        &bb_ffi::CPos { x: pos.x(), y: pos.y(), z: pos.z() },
-        ty.id(),
-      );
+      bb_ffi::bb_world_set_block(self.wid, &pos.into_ffi(), ty.id());
     }
   }
   pub fn set_block_kind(&self, pos: Pos, kind: block::Kind) {
     unsafe {
-      bb_ffi::bb_world_set_block_kind(
-        self.wid,
-        &bb_ffi::CPos { x: pos.x(), y: pos.y(), z: pos.z() },
-        kind.id(),
-      );
+      bb_ffi::bb_world_set_block_kind(self.wid, &pos.into_ffi(), kind.id());
     }
   }
   pub fn players(&self) -> impl Iterator<Item = Player> {
     unsafe {
       let players = Box::from_raw(bb_ffi::bb_world_players(self.wid)).into_vec();
-      players.into_iter().map(Player::new)
+      players.into_iter().map(Player::from_ffi)
     }
   }
   /// Spawns a particle in the world. Everyone in render distance will be able

@@ -1,4 +1,4 @@
-use crate::{player::Player, sync::LazyLock};
+use crate::{player::Player, sync::LazyLock, FromFfi};
 use bb_ffi::{CBool, COpt};
 use std::collections::HashMap;
 
@@ -119,7 +119,7 @@ extern "C" fn on_command(
     let args: Vec<_> = args.into_vec().into_iter().map(Arg::new).collect();
     let name = args[0].lit();
     let cbs = CALLBACKS.lock();
-    cbs[name](player.map(|id| Player::new(*id)), args);
+    cbs[name](player.map(|id| Player::from_ffi(*id)), args);
   }
 }
 

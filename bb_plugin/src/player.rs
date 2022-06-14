@@ -1,41 +1,40 @@
-use crate::{particle::Particle, world::World, IntoFfi};
+use crate::{math::Vec3, particle::Particle, world::World, FromFfi, IntoFfi};
 use bb_common::{math::FPos, util::UUID};
 use bb_ffi::CUUID;
 
 #[derive(Debug)]
 pub struct Player {
-  id: CUUID,
+  id: UUID,
+}
+
+impl FromFfi for Player {
+  type Ffi = CUUID;
+
+  fn from_ffi(c: CUUID) -> Self { Player { id: UUID::from_ffi(c) } }
 }
 
 impl Player {
-  pub fn new(id: CUUID) -> Self { Player { id } }
-
+  /// Returns the world this player is in.
   pub fn world(&self) -> World {
+    // TODO: What to do if the player has disconnected?
     unsafe {
-      let wid = bb_ffi::bb_player_world(&self.id);
+      let wid = bb_ffi::bb_player_world(&self.id.into_ffi());
       if wid >= 0 {
         World::new(wid as u32)
       } else {
-        panic!()
+        panic!("player is not in a world")
       }
     }
   }
   /// Returns the id of this player.
   ///
   /// This will always return their UUID, even if this player has disconnected.
-  pub fn id(&self) -> UUID {
-    UUID::from_u128(
-      (self.id.bytes[0] as u128)
-        | (self.id.bytes[1] as u128) << 32
-        | (self.id.bytes[2] as u128) << (2 * 32)
-        | (self.id.bytes[3] as u128) << (3 * 32),
-    )
-  }
+  pub fn id(&self) -> UUID { self.id }
   /// Returns the username of this player.
   pub fn username(&self) -> String {
     // TODO: What to do if the player has disconnected?
     unsafe {
-      let cstr = Box::from_raw(bb_ffi::bb_player_username(&self.id));
+      let cstr = Box::from_raw(bb_ffi::bb_player_username(&self.id.into_ffi()));
       cstr.into_string()
     }
   }
@@ -45,24 +44,23 @@ impl Player {
   /// This will do nothing if the player has logged off.
   pub fn send_particle(&self, particle: Particle) {
     unsafe {
-      let cparticle = particle.into_ffi();
-      bb_ffi::bb_player_send_particle(&self.id, &cparticle);
+      bb_ffi::bb_player_send_particle(&self.id.into_ffi(), &particle.into_ffi());
     }
   }
   /// Returns the player's position.
   pub fn pos(&self) -> FPos {
     // TODO: What to do if the player has disconnected?
     unsafe {
-      let cpos = Box::from_raw(bb_ffi::bb_player_pos(&self.id));
-      FPos { x: cpos.x, y: cpos.y, z: cpos.z }
+      let cpos = Box::from_raw(bb_ffi::bb_player_pos(&self.id.into_ffi()));
+      FPos::from_ffi(*cpos)
     }
   }
   /// Returns the player's looking direction, as a unit vector.
-  pub fn look_as_vec(&self) -> FPos {
+  pub fn look_as_vec(&self) -> Vec3 {
     // TODO: What to do if the player has disconnected?
     unsafe {
-      let cpos = Box::from_raw(bb_ffi::bb_player_look_as_vec(&self.id));
-      FPos { x: cpos.x, y: cpos.y, z: cpos.z }
+      let cpos = Box::from_raw(bb_ffi::bb_player_look_as_vec(&self.id.into_ffi()));
+      Vec3::from_ffi(*cpos)
     }
   }
 }
