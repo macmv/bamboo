@@ -46,7 +46,14 @@ impl Type {
   /// game.
   pub const fn id(&self) -> u32 { self.state }
   pub fn prop(&self, name: &str) -> PropValue<'_> {
-    todo!();
+    unsafe {
+      let ptr = bb_ffi::bb_block_prop(self.state, name.as_ptr(), name.len() as u32);
+      if ptr.is_null() {
+        panic!("unknown property {name}")
+      } else {
+        PropValue::new(*Box::from_raw(ptr))
+      }
+    }
   }
   pub fn set_prop<'a>(&mut self, name: &str, val: impl Into<PropValue<'a>>) {
     todo!();

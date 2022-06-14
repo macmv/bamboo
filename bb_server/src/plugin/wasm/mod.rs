@@ -93,7 +93,7 @@ impl Plugin {
     // Try to get function with int. If this fails, error.
     // If the function doesn't exist, we error.
     match self.inst.exports.get_native_function::<I::WasmArgs, u8>(name) {
-      Ok(func) => Ok(input.call_native(&func).unwrap() != 0),
+      Ok(func) => input.call_native(&func).map(|v| v != 0).map_err(CallError::keep),
       Err(e) => Err(CallError::no_keep(e)),
     }
   }
@@ -101,7 +101,7 @@ impl Plugin {
     // Try to get function with int. If this fails, error.
     // If the function doesn't exist, we error.
     match self.inst.exports.get_native_function::<I::WasmArgs, i32>(name) {
-      Ok(func) => Ok(input.call_native(&func).unwrap()),
+      Ok(func) => input.call_native(&func).map_err(CallError::keep),
       Err(e) => Err(CallError::no_keep(e)),
     }
   }

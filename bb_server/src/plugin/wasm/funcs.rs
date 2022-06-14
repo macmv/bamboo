@@ -312,6 +312,14 @@ fn block_kind_for_type(env: &Env, ty: u32) -> u32 {
   // TODO: Convert kind to plugin version
   kind.id()
 }
+fn block_prop(env: &Env, ty: u32, name_ptr: WasmPtr<u8, Array>, name_len: u32) -> u32 {
+  let ty = env.wm.block_converter().type_from_id(ty, env.ver);
+  let name = unsafe { name_ptr.get_utf8_str(env.mem(), name_len).unwrap() };
+  let prop = ty.prop(name);
+  let cprop = prop.to_ffi(env);
+  let ptr = env.malloc_store(cprop);
+  ptr.offset()
+}
 
 fn add_command(env: &Env, cmd: WasmPtr<CCommand>) {
   fn command_from_env(env: &Env, cmd: WasmPtr<CCommand>) -> Option<Command> {
@@ -385,6 +393,7 @@ pub fn imports(store: &Store, wm: Arc<WorldManager>, name: String) -> ImportObje
       "bb_add_command" => Function::new_native_with_env(store, env.clone(), add_command),
       "bb_block_data_for_kind" => Function::new_native_with_env(store, env.clone(), block_data_for_kind),
       "bb_block_kind_for_type" => Function::new_native_with_env(store, env.clone(), block_kind_for_type),
+      "bb_block_prop" => Function::new_native_with_env(store, env.clone(), block_prop),
       "bb_broadcast" => Function::new_native_with_env(store, env.clone(), broadcast),
       "bb_player_username" => Function::new_native_with_env(store, env.clone(), player_username),
       "bb_player_pos" => Function::new_native_with_env(store, env.clone(), player_pos),

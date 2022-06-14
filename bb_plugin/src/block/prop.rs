@@ -164,6 +164,15 @@ impl Prop {
 }
 
 impl PropValue<'_> {
+  pub(super) fn new(prop: bb_ffi::CBlockPropValue) -> Self {
+    match prop.into_renum() {
+      bb_ffi::CBlockPropValueEnum::Bool(v) => Self::Bool(v.as_bool()),
+      bb_ffi::CBlockPropValueEnum::Enum(v) => {
+        Self::Enum(Box::leak(v.into_string().into_boxed_str()))
+      }
+      bb_ffi::CBlockPropValueEnum::Int(v) => Self::Int(v),
+    }
+  }
   pub fn bool(&self) -> bool {
     match self {
       PropValue::Bool(v) => *v,

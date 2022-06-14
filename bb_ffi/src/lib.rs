@@ -189,6 +189,13 @@ pub struct CBlockPropKindInt {
   max: u32,
 }
 
+#[cenum]
+pub enum CBlockPropValue {
+  Bool(CBool),
+  Enum(CStr),
+  Int(u32),
+}
+
 #[cfg(feature = "host")]
 #[repr(C)]
 #[derive(Clone, Debug)]
@@ -408,6 +415,8 @@ extern "C" {
   /// Returns the block kind for the given type. Returns `u32::MAX` if the block
   /// type is invalid.
   pub fn bb_block_kind_for_type(ty: u32) -> u32;
+  /// Returns a property, if the name is valid. Returns `null` if invalid.
+  pub fn bb_block_prop(ty: u32, prop_ptr: *const u8, prop_len: u32) -> *mut CBlockPropValue;
 
   /// Broadcasts the given chat message to all players.
   pub fn bb_broadcast(message: *const CChat);
