@@ -32,9 +32,7 @@ fn on_tick() {
   if t % 10 == 0 {
     let world = bb_plugin::world::World::new(0);
     for pos in MIN.to(MAX) {
-      info!("pos: {pos:?}");
       let ty = world.get_block(pos).unwrap();
-      info!("ty: {ty:?}");
       if ty.prop("stage") != 0 && ty.prop("stage").int() < 5 {
         world.set_block(pos, ty.with_prop("stage", ty.prop("stage").int() + 1));
       }

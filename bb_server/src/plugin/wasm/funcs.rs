@@ -413,7 +413,8 @@ pub fn imports(store: &Store, wm: Arc<WorldManager>, name: String) -> ImportObje
     wasm_malloc: LazyInit::new(),
     on_command: LazyInit::new(),
     wm,
-    ver: BlockVersion::V1_8,
+    // TODO: Fetch this from the plugin
+    ver: BlockVersion::latest(),
     name: Arc::new(name),
   };
   imports! {
