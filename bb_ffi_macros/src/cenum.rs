@@ -212,6 +212,7 @@ impl CEnum {
       .iter()
       .enumerate()
       .map(|(variant, v)| {
+        let variant: u32 = variant.try_into().unwrap();
         let field = v.field_name();
         let new_name = Ident::new(&format!("new_{}", v.lower_name()), v.name.span());
         if let Some(ty) = v.ty() {
@@ -245,6 +246,7 @@ impl CEnum {
       .iter()
       .enumerate()
       .map(|(variant, v)| {
+        let variant: u32 = variant.try_into().unwrap();
         let field = v.field_name();
         let as_name = Ident::new(&format!("as_{}", v.lower_name()), v.name.span());
         if let Some(ty) = v.ty() {
@@ -279,6 +281,7 @@ impl CEnum {
       .iter()
       .enumerate()
       .map(|(variant, v)| {
+        let variant: u32 = variant.try_into().unwrap();
         let is_name = Ident::new(&format!("is_{}", v.lower_name()), v.name.span());
         quote!(
           pub fn #is_name(&self) -> bool { self.variant == #variant }
@@ -292,6 +295,7 @@ impl CEnum {
       .iter()
       .enumerate()
       .map(|(variant, v)| {
+        let variant: u32 = variant.try_into().unwrap();
         let field = v.field_name();
         let into_name = Ident::new(&format!("into_{}", v.lower_name()), v.name.span());
         if let Some(ty) = v.ty() {
@@ -340,6 +344,7 @@ impl CEnum {
       .iter()
       .enumerate()
       .map(|(variant, v)| {
+        let variant: u32 = variant.try_into().unwrap();
         let name = &v.name;
         let field = v.field_name();
         match &v.ty {
@@ -383,6 +388,7 @@ impl CEnum {
   pub fn gen_into_renum(&self) -> proc_macro2::TokenStream {
     let enum_name = self.enum_name();
     let into_case = self.variants.iter().enumerate().map(|(variant, v)| {
+      let variant: u32 = variant.try_into().unwrap();
       let name = &v.name;
       let field = v.field_name();
       match &v.ty {
@@ -467,6 +473,7 @@ pub fn cenum(_args: TokenStream, input: TokenStream) -> TokenStream {
   let name = input.cenum_name();
   let data_name = input.data_name();
   let clone_match_cases = input.variants.iter().enumerate().map(|(variant, v)| {
+    let variant: u32 = variant.try_into().unwrap();
     let field = v.field_name();
     if v.ty().is_some() {
       quote!(
@@ -479,6 +486,7 @@ pub fn cenum(_args: TokenStream, input: TokenStream) -> TokenStream {
     }
   });
   let drop_match_cases = input.variants.iter().enumerate().flat_map(|(variant, v)| {
+    let variant: u32 = variant.try_into().unwrap();
     if v.is_copy() {
       None
     } else {
@@ -489,6 +497,7 @@ pub fn cenum(_args: TokenStream, input: TokenStream) -> TokenStream {
     }
   });
   let debug_match_cases = input.variants.iter().enumerate().map(|(variant, v)| {
+    let variant: u32 = variant.try_into().unwrap();
     let field = v.field_name();
     let fmt_str = format!("{}({{:?}})", v.name);
     if v.ty().is_some() {
@@ -520,7 +529,7 @@ pub fn cenum(_args: TokenStream, input: TokenStream) -> TokenStream {
       where_clause: None,
     },
     fields:       Fields::Named(fields_named! {
-      variant: Type::Path(TypePath { qself: None, path: path!(usize) }),
+      variant: Type::Path(TypePath { qself: None, path: path!(u32) }),
       data: Type::Path(TypePath { qself: None, path: data_name.clone().into() }),
     }),
     semi_token:   None,
