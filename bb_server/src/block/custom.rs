@@ -2,7 +2,15 @@ use super::{ty::STATE_PROPS_LEN, Type};
 use std::collections::HashMap;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct CustomKind(pub(super) u32);
+pub struct CustomKind {
+  pub(super) kind: u32,
+  pub(super) zero: u32,
+}
+
+impl CustomKind {
+  pub const fn kind_id(&self) -> u32 { self.kind }
+  pub const fn zero_state(&self) -> u32 { self.zero }
+}
 
 pub struct CustomBlockBuilder {
   name:  String,
@@ -61,7 +69,7 @@ impl CustomBlockBuilder {
       vanilla_states.push(mapper(&tmp).id());
     }
     CustomData {
-      kind: CustomKind(0),
+      kind: CustomKind { kind: 0, zero: 0 },
       name: self.name,
       props,
       default_props: defaults,

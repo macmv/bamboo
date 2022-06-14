@@ -119,7 +119,9 @@ impl TypeConverter {
   ///
   /// This only works for custom blocks. For vanilla blocks, use
   /// [`get`](Self::get).
-  pub fn get_custom(&self, k: CustomKind) -> &CustomData { &self.custom_kinds[k.0 as usize] }
+  pub fn get_custom(&self, k: CustomKind) -> &CustomData {
+    &self.custom_kinds[k.kind_id() as usize]
+  }
 
   pub fn ty(&self, kind: Kind) -> Type {
     let data = self.get(kind);

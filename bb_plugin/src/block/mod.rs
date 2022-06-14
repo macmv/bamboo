@@ -12,6 +12,8 @@ pub use prop::{Prop, PropKind, PropValue, PropValueStore};
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Type {
   pub(crate) kind:  Kind,
+  // This is an offset from the kind. The first, or zero state will have a state of `0`, but the
+  // *default* state will have whatever state the default properties create.
   pub(crate) state: u32,
 }
 
@@ -36,18 +38,16 @@ impl Kind {
 }
 
 impl Type {
-  /// Creates a block type from the given numerical id.
-  pub const fn from_id(id: u32) -> Type { Type { kind: Kind::Air, state: id } }
   /// Returns the type for air.
   pub const fn air() -> Type { Type { kind: Kind::Air, state: 0 } }
   /// Returns the block kind that this state comes from.
   pub const fn kind(&self) -> Kind { self.kind }
   /// Gets the block id of this type. This id is for the latest version of the
   /// game.
-  pub const fn id(&self) -> u32 { self.state }
+  pub const fn id(&self) -> u32 { self.kind.zero_state() + self.state }
   pub fn prop(&self, name: &str) -> PropValueStore {
     unsafe {
-      let ptr = bb_ffi::bb_block_prop(self.state, name.as_ptr(), name.len() as u32);
+      let ptr = bb_ffi::bb_block_prop(self.id(), name.as_ptr(), name.len() as u32);
       if ptr.is_null() {
         panic!("unknown property {name}")
       } else {
@@ -63,7 +63,8 @@ impl Type {
         PropValue::Int(v) => bb_ffi::CBlockPropValueEnum::Int(v),
       }
       .into_cenum();
-      self.state = bb_ffi::bb_block_set_prop(self.state, name.as_ptr(), name.len() as u32, &cenum);
+      // This is intentional; bb_block_set_prop returns an offset from the zero state.
+      self.state = bb_ffi::bb_block_set_prop(self.id(), name.as_ptr(), name.len() as u32, &cenum);
     }
   }
   pub fn with_prop<'a>(mut self, name: &str, val: impl Into<PropValue<'a>>) -> Self {
@@ -111,7 +112,15 @@ impl Error for InvalidBlock {}
 include!(concat!(env!("OUT_DIR"), "/block/ty.rs"));
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct CustomKind(u32);
+pub struct CustomKind {
+  kind: u32,
+  zero: u32,
+}
+
+impl CustomKind {
+  pub const fn kind_id(&self) -> u32 { self.kind }
+  pub const fn zero_state(&self) -> u32 { self.zero }
+}
 
 /// A kind of bounding box. This is from prismarine data. It is not very
 /// helpful, and will be replaced when I have a better data source.

@@ -60,7 +60,7 @@ pub fn generate_ty(def: &BlockDef, opts: BlockOpts) -> String {
     });
     gen.write("impl Kind ");
     gen.write_block(|gen| {
-      gen.write("pub fn to_str(&self) -> &'static str ");
+      gen.write("pub const fn to_str(&self) -> &'static str ");
       gen.write_block(|gen| {
         gen.write("[");
         for b in &def.blocks {
@@ -71,7 +71,10 @@ pub fn generate_ty(def: &BlockDef, opts: BlockOpts) -> String {
         gen.write_line("]");
         gen.write_line("[self.id() as usize]");
       });
-      gen.write("pub fn id(&self) -> u32");
+      gen.write_line("/// Returns the kind id. This is used to index into arrays of all kinds. It");
+      gen.write_line("/// is not cross version compatible. If you want the first *state* id, use");
+      gen.write_line("/// [`zero_state`](Kind::zero_state) instead.");
+      gen.write("pub const fn id(&self) -> u32");
       gen.write_block(|gen| {
         gen.write("match self");
         gen.write_block(|gen| {
@@ -82,12 +85,14 @@ pub fn generate_ty(def: &BlockDef, opts: BlockOpts) -> String {
             gen.write(&id.to_string());
             gen.write_line(",");
           }
-          gen.write("Self::Custom(id) => id.0 + ");
+          gen.write("Self::Custom(id) => id.kind_id() + ");
           gen.write(&def.blocks.len().to_string());
           gen.write_line(",");
         });
       });
-      gen.write("pub fn from_id(id: u32) -> Option<Self>");
+      gen.write_line("/// Returns the kind for the given id. This is the id from");
+      gen.write_line("/// [`id`](Kind::id), not the state returned from `zero_state`.");
+      gen.write("pub const fn from_id(id: u32) -> Option<Self>");
       gen.write_block(|gen| {
         gen.write("match id");
         gen.write_block(|gen| {
@@ -99,6 +104,24 @@ pub fn generate_ty(def: &BlockDef, opts: BlockOpts) -> String {
             gen.write_line("),");
           }
           gen.write_line("_ => None,");
+        });
+      });
+      gen.write_line("/// Returns the first state that this block has. This is not the default");
+      gen.write_line("/// state.");
+      gen.write_line("///");
+      gen.write_line("/// There is currently no way to convert a zero state back into a `Kind`.");
+      gen.write("pub const fn zero_state(&self) -> u32");
+      gen.write_block(|gen| {
+        gen.write("match self");
+        gen.write_block(|gen| {
+          for b in def.blocks.iter() {
+            gen.write("Self::");
+            gen.write(&b.name.to_case(Case::Pascal));
+            gen.write(" => ");
+            gen.write(&b.id.to_string());
+            gen.write_line(",");
+          }
+          gen.write_line("Self::Custom(id) => id.zero_state(),");
         });
       });
     });
