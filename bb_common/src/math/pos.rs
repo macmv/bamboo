@@ -394,6 +394,17 @@ impl PosIter {
     }
     PosIter { curr: start, start, end }
   }
+
+  /// Returns true if the given position is within the iterator. Like the
+  /// iterator, this is inclusive for the minimum and maximum.
+  pub fn contains(&self, pos: Pos) -> bool {
+    pos.x >= self.start.x
+      && pos.y >= self.start.y
+      && pos.z >= self.start.z
+      && pos.x <= self.end.x
+      && pos.y <= self.end.y
+      && pos.z <= self.end.z
+  }
 }
 
 impl From<Range<Pos>> for PosIter {
