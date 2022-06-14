@@ -440,8 +440,11 @@ extern "C" {
   /// Sends the given particle to the player.
   pub fn bb_player_send_particle(player: *const CUUID, particle: *const CParticle);
 
-  /// Sets a block in the world. Returns 1 if the block position is invalid.
+  /// Sets a block in the world. Returns -1 if the block position is invalid.
   pub fn bb_world_set_block(wid: u32, pos: *const CPos, id: u32) -> i32;
+  /// Sets a block in the world, using a kind id. Returns -1 if the block
+  /// position is invalid.
+  pub fn bb_world_set_block_kind(wid: u32, pos: *const CPos, kind: u32) -> i32;
   /// Gets a block in the world. Returns `u32::MAX` if the block position is
   /// invalid.
   pub fn bb_world_get_block(wid: u32, pos: *const CPos) -> u32;

@@ -30,6 +30,15 @@ impl World {
       );
     }
   }
+  pub fn set_block_kind(&self, pos: Pos, kind: block::Kind) {
+    unsafe {
+      bb_ffi::bb_world_set_block_kind(
+        self.wid,
+        &bb_ffi::CPos { x: pos.x(), y: pos.y(), z: pos.z() },
+        kind.id(),
+      );
+    }
+  }
   pub fn players(&self) -> impl Iterator<Item = Player> {
     unsafe {
       let players = Box::from_raw(bb_ffi::bb_world_players(self.wid)).into_vec();

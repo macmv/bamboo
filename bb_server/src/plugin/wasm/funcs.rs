@@ -258,6 +258,19 @@ fn world_set_block(env: &Env, _wid: u32, pos: WasmPtr<CPos>, id: u32) -> i32 {
     Err(_) => -1,
   }
 }
+fn world_set_block_kind(env: &Env, _wid: u32, pos: WasmPtr<CPos>, kind: u32) -> i32 {
+  let mem = env.mem();
+  let pos = match pos.deref(mem) {
+    Some(p) => p.get(),
+    None => return -1,
+  };
+  let world = env.wm.default_world();
+  let kind = block::Kind::from_id(kind).unwrap_or(block::Kind::Air);
+  match world.set_kind(Pos::new(pos.x, pos.y, pos.z), kind) {
+    Ok(_) => 0,
+    Err(_) => -1,
+  }
+}
 fn world_get_block(env: &Env, _wid: u32, pos: WasmPtr<CPos>) -> u32 {
   let mem = env.mem();
   let pos = match pos.deref(mem) {
@@ -432,6 +445,7 @@ pub fn imports(store: &Store, wm: Arc<WorldManager>, name: String) -> ImportObje
       "bb_player_world" => Function::new_native_with_env(store, env.clone(), player_world),
       "bb_player_send_particle" => Function::new_native_with_env(store, env.clone(), player_send_particle),
       "bb_world_set_block" => Function::new_native_with_env(store, env.clone(), world_set_block),
+      "bb_world_set_block_kind" => Function::new_native_with_env(store, env.clone(), world_set_block_kind),
       "bb_world_get_block" => Function::new_native_with_env(store, env.clone(), world_get_block),
       "bb_world_players" => Function::new_native_with_env(store, env.clone(), world_players),
       "bb_world_raycast" => Function::new_native_with_env(store, env.clone(), world_raycast),

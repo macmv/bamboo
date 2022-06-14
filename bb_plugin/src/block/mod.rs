@@ -4,7 +4,7 @@ mod material;
 mod prop;
 
 pub use material::Material;
-pub use prop::{Prop, PropKind, PropValue};
+pub use prop::{Prop, PropKind, PropValue, PropValueStore};
 
 /// A single block type. This is different from a block kind, which is more
 /// general. For example, there is one block kind for oak stairs. However, there
@@ -38,6 +38,8 @@ impl Kind {
 }
 
 impl Type {
+  /// Creates a block type from the given numerical id.
+  pub const fn from_id(id: u32) -> Type { Type { kind: Kind::Air, state: id } }
   /// Returns the type for air.
   pub const fn air() -> Type { Type { kind: Kind::Air, state: 0 } }
   /// Returns the block kind that this state comes from.
@@ -45,29 +47,25 @@ impl Type {
   /// Gets the block id of this type. This id is for the latest version of the
   /// game.
   pub const fn id(&self) -> u32 { self.state }
-  pub fn prop(&self, name: &str) -> PropValue<'_> {
+  pub fn prop(&self, name: &str) -> PropValueStore {
     unsafe {
       let ptr = bb_ffi::bb_block_prop(self.state, name.as_ptr(), name.len() as u32);
       if ptr.is_null() {
         panic!("unknown property {name}")
       } else {
-        PropValue::new(*Box::from_raw(ptr))
+        PropValueStore::new(*Box::from_raw(ptr))
       }
     }
   }
   pub fn set_prop<'a>(&mut self, name: &str, val: impl Into<PropValue<'a>>) {
     unsafe {
-      self.state = bb_ffi::bb_block_set_prop(
-        self.state,
-        name.as_ptr(),
-        name.len() as u32,
-        &match val.into() {
-          PropValue::Bool(v) => bb_ffi::CBlockPropValueEnum::Bool(bb_ffi::CBool::new(v)),
-          PropValue::Enum(v) => bb_ffi::CBlockPropValueEnum::Enum(bb_ffi::CStr::new(v.into())),
-          PropValue::Int(v) => bb_ffi::CBlockPropValueEnum::Int(v),
-        }
-        .into_cenum(),
-      )
+      let cenum = match val.into() {
+        PropValue::Bool(v) => bb_ffi::CBlockPropValueEnum::Bool(bb_ffi::CBool::new(v)),
+        PropValue::Enum(v) => bb_ffi::CBlockPropValueEnum::Enum(bb_ffi::CStr::new(v.into())),
+        PropValue::Int(v) => bb_ffi::CBlockPropValueEnum::Int(v),
+      }
+      .into_cenum();
+      self.state = bb_ffi::bb_block_set_prop(self.state, name.as_ptr(), name.len() as u32, &cenum);
     }
   }
   pub fn with_prop<'a>(mut self, name: &str, val: impl Into<PropValue<'a>>) -> Self {

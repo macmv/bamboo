@@ -19,6 +19,12 @@ pub enum PropValue<'a> {
   Enum(&'a str),
   Int(u32),
 }
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum PropValueStore {
+  Bool(bool),
+  Enum(String),
+  Int(u32),
+}
 
 impl PropKind {
   pub fn name_at(&self, id: u32) -> String {
@@ -87,6 +93,11 @@ impl From<u32> for PropValue<'_> {
 impl<'a> From<&'a str> for PropValue<'a> {
   fn from(v: &'a str) -> Self { PropValue::Enum(v) }
 }
+
+impl From<String> for PropValueStore {
+  fn from(v: String) -> Self { PropValueStore::Enum(v) }
+}
+
 impl PartialEq<bool> for PropValue<'_> {
   fn eq(&self, other: &bool) -> bool { matches!(self, PropValue::Bool(v) if v == other) }
 }
@@ -98,6 +109,19 @@ impl PartialEq<&str> for PropValue<'_> {
 }
 impl PartialEq<str> for PropValue<'_> {
   fn eq(&self, other: &str) -> bool { matches!(self, PropValue::Enum(v) if *v == other) }
+}
+
+impl PartialEq<bool> for PropValueStore {
+  fn eq(&self, other: &bool) -> bool { matches!(self, PropValueStore::Bool(v) if v == other) }
+}
+impl PartialEq<u32> for PropValueStore {
+  fn eq(&self, other: &u32) -> bool { matches!(self, PropValueStore::Int(v) if v == other) }
+}
+impl PartialEq<&str> for PropValueStore {
+  fn eq(&self, other: &&str) -> bool { matches!(self, PropValueStore::Enum(v) if v == other) }
+}
+impl PartialEq<str> for PropValueStore {
+  fn eq(&self, other: &str) -> bool { matches!(self, PropValueStore::Enum(v) if *v == other) }
 }
 
 impl Data {
@@ -163,31 +187,53 @@ impl Prop {
   pub fn id_of(&self, val: &PropValue) -> u32 { val.id(&self.kind) }
 }
 
-impl PropValue<'_> {
+impl PropValueStore {
   pub(super) fn new(prop: bb_ffi::CBlockPropValue) -> Self {
     match prop.into_renum() {
       bb_ffi::CBlockPropValueEnum::Bool(v) => Self::Bool(v.as_bool()),
-      bb_ffi::CBlockPropValueEnum::Enum(v) => {
-        Self::Enum(Box::leak(v.into_string().into_boxed_str()))
-      }
+      bb_ffi::CBlockPropValueEnum::Enum(v) => Self::Enum(v.into_string()),
       bb_ffi::CBlockPropValueEnum::Int(v) => Self::Int(v),
     }
   }
+}
+
+impl PropValue<'_> {
   pub fn bool(&self) -> bool {
     match self {
-      PropValue::Bool(v) => *v,
+      Self::Bool(v) => *v,
       _ => panic!("not a bool: {self:?}"),
     }
   }
   pub fn str(&self) -> &str {
     match self {
-      PropValue::Enum(v) => v,
+      Self::Enum(v) => v,
       _ => panic!("not an enum: {self:?}"),
     }
   }
   pub fn int(&self) -> u32 {
     match self {
-      PropValue::Int(v) => *v,
+      Self::Int(v) => *v,
+      _ => panic!("not an int: {self:?}"),
+    }
+  }
+}
+
+impl PropValueStore {
+  pub fn bool(&self) -> bool {
+    match self {
+      Self::Bool(v) => *v,
+      _ => panic!("not a bool: {self:?}"),
+    }
+  }
+  pub fn str(&self) -> &str {
+    match self {
+      Self::Enum(v) => v,
+      _ => panic!("not an enum: {self:?}"),
+    }
+  }
+  pub fn int(&self) -> u32 {
+    match self {
+      Self::Int(v) => *v,
       _ => panic!("not an int: {self:?}"),
     }
   }
