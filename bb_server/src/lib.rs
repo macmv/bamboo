@@ -2,6 +2,8 @@
 
 #[macro_use]
 extern crate log;
+#[macro_use]
+extern crate thiserror;
 
 use rand::rngs::ThreadRng;
 use std::cell::RefCell;

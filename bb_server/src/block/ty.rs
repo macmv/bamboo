@@ -15,6 +15,13 @@ pub struct Type<'a> {
   state_props:     [u32; STATE_PROPS_LEN],
 }
 
+#[derive(Debug, Clone, Error, PartialEq)]
+#[error("no such property {name}, valid properties are: {props:?}")]
+pub struct PropError {
+  name:  String,
+  props: Vec<Prop>,
+}
+
 impl TypeStore {
   pub fn ty(&self) -> Type {
     Type {
@@ -60,6 +67,9 @@ impl Type<'_> {
     self.state + id
   }
   pub fn prop(&self, name: &str) -> PropValue<'_> {
+    self.try_prop(name).unwrap_or_else(|e| panic!("{e}"))
+  }
+  pub fn try_prop(&self, name: &str) -> Result<PropValue<'_>, PropError> {
     let mut idx = None;
     for (i, p) in self.props.iter().enumerate() {
       if p.name == name {
@@ -69,16 +79,16 @@ impl Type<'_> {
     }
     if let Some(idx) = idx {
       let state = self.state_props[idx];
-      match self.props[idx].kind {
+      Ok(match self.props[idx].kind {
         PropKind::Bool => match state {
           0 => PropValue::Bool(true),
           _ => PropValue::Bool(false),
         },
         PropKind::Enum(values) => PropValue::Enum(values[state as usize]),
         PropKind::Int { min, max } => PropValue::Int((state + min).min(max)),
-      }
+      })
     } else {
-      panic!("no such property {}, valid properties are {:?}", name, self.props);
+      Err(PropError { name: name.into(), props: self.props.to_vec() })
     }
   }
   pub fn set_prop<'a>(&mut self, name: &str, val: impl Into<PropValue<'a>>) {

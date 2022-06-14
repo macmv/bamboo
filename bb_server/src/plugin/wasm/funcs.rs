@@ -315,10 +315,17 @@ fn block_kind_for_type(env: &Env, ty: u32) -> u32 {
 fn block_prop(env: &Env, ty: u32, name_ptr: WasmPtr<u8, Array>, name_len: u32) -> u32 {
   let ty = env.wm.block_converter().type_from_id(ty, env.ver);
   let name = unsafe { name_ptr.get_utf8_str(env.mem(), name_len).unwrap() };
-  let prop = ty.prop(name);
-  let cprop = prop.to_ffi(env);
-  let ptr = env.malloc_store(cprop);
-  ptr.offset()
+  match ty.try_prop(name) {
+    Ok(prop) => {
+      let cprop = prop.to_ffi(env);
+      let ptr = env.malloc_store(cprop);
+      ptr.offset()
+    }
+    Err(e) => {
+      warn!("plugin failed to lookup property: {e}");
+      0
+    }
+  }
 }
 
 fn add_command(env: &Env, cmd: WasmPtr<CCommand>) {
