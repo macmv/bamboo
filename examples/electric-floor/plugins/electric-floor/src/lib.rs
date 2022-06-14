@@ -3,6 +3,7 @@ use bb_plugin::{
   command::{Arg, Command},
   math::Pos,
   player::Player,
+  sync::ConstLock,
 };
 use std::sync::atomic::{AtomicBool, Ordering};
 
@@ -10,8 +11,8 @@ const MIN: Pos = Pos::new(-32, 114, -32);
 const MAX: Pos = Pos::new(32, 114, 32);
 
 static STARTED: AtomicBool = AtomicBool::new(false);
-static mut CHARGE: [u32; ((MAX.x - MIN.x + 1) * (MAX.z - MIN.z + 1)) as usize] =
-  [0; ((MAX.x - MIN.x + 1) * (MAX.z - MIN.z + 1)) as usize];
+static CHARGE: ConstLock<[u32; ((MAX.x - MIN.x + 1) * (MAX.z - MIN.z + 1)) as usize]> =
+  ConstLock::new([0; ((MAX.x - MIN.x + 1) * (MAX.z - MIN.z + 1)) as usize]);
 
 #[no_mangle]
 extern "C" fn init() {
@@ -40,13 +41,14 @@ fn on_tick() {
     return;
   }
   let world = bb_plugin::world::World::new(0);
+  let mut charges = CHARGE.lock();
 
   for pos in MIN.to(MAX) {
     let idx = charge_index(pos);
-    let mut charge = unsafe { CHARGE[idx] };
+    let mut charge = charges[idx];
     if charge > 0 && charge < 100 {
       charge += 1;
-      unsafe { CHARGE[idx] = charge };
+      charges[idx] = charge;
     }
     let ty = world.get_block(pos).unwrap();
     let new_kind = charge_kind(charge);
@@ -73,9 +75,9 @@ fn on_tick() {
     */
     if MIN.to(MAX).contains(pos) && ty.kind() == block::Kind::WhiteStainedGlass {
       let idx = charge_index(pos);
-      let charge = unsafe { CHARGE[idx] };
+      let charge = charges[idx];
       if charge == 0 {
-        unsafe { CHARGE[idx] = 1 };
+        charges[idx] = 1;
       }
     }
   }
