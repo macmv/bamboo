@@ -154,3 +154,10 @@ impl ToFfi for &'_ str {
     CStr { ptr, len: self.len() as u32 }
   }
 }
+impl FromFfi for String {
+  type Ffi = CStr;
+
+  fn from_ffi(env: &Env, cstr: CStr) -> String {
+    cstr.ptr.get_utf8_string(env.mem(), cstr.len).unwrap()
+  }
+}

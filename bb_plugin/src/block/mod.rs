@@ -56,7 +56,19 @@ impl Type {
     }
   }
   pub fn set_prop<'a>(&mut self, name: &str, val: impl Into<PropValue<'a>>) {
-    todo!();
+    unsafe {
+      self.state = bb_ffi::bb_block_set_prop(
+        self.state,
+        name.as_ptr(),
+        name.len() as u32,
+        &match val.into() {
+          PropValue::Bool(v) => bb_ffi::CBlockPropValueEnum::Bool(bb_ffi::CBool::new(v)),
+          PropValue::Enum(v) => bb_ffi::CBlockPropValueEnum::Enum(bb_ffi::CStr::new(v.into())),
+          PropValue::Int(v) => bb_ffi::CBlockPropValueEnum::Int(v),
+        }
+        .into_cenum(),
+      )
+    }
   }
   pub fn with_prop<'a>(mut self, name: &str, val: impl Into<PropValue<'a>>) -> Self {
     self.set_prop(name, val);

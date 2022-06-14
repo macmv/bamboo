@@ -10,7 +10,7 @@ use bb_common::{
   util::Chat,
   version::BlockVersion,
 };
-use bb_ffi::{CChat, CCommand, CCommandArg, CFPos, CList, CParticle, CPos, CUUID};
+use bb_ffi::{CBlockPropValue, CChat, CCommand, CCommandArg, CFPos, CList, CParticle, CPos, CUUID};
 use log::Level;
 use std::{mem, sync::Arc};
 use wasmer::{
@@ -327,6 +327,28 @@ fn block_prop(env: &Env, ty: u32, name_ptr: WasmPtr<u8, Array>, name_len: u32) -
     }
   }
 }
+fn block_set_prop(
+  env: &Env,
+  ty: u32,
+  name_ptr: WasmPtr<u8, Array>,
+  name_len: u32,
+  prop: WasmPtr<CBlockPropValue>,
+) -> u32 {
+  let mut ty = env.wm.block_converter().type_from_id(ty, env.ver);
+  let name = unsafe { name_ptr.get_utf8_str(env.mem(), name_len).unwrap() };
+  let mem = env.mem();
+  let prop = match prop.deref(mem) {
+    Some(p) => p.get(),
+    None => return ty.id(),
+  };
+  match ty.try_set_prop(name, &block::PropValueStore::from_ffi(env, prop)) {
+    Ok(()) => env.wm.block_converter().to_old(ty.id(), env.ver),
+    Err(e) => {
+      error!("plugin tried to set invalid property: {e}");
+      ty.id()
+    }
+  }
+}
 
 fn add_command(env: &Env, cmd: WasmPtr<CCommand>) {
   fn command_from_env(env: &Env, cmd: WasmPtr<CCommand>) -> Option<Command> {
@@ -401,6 +423,7 @@ pub fn imports(store: &Store, wm: Arc<WorldManager>, name: String) -> ImportObje
       "bb_block_data_for_kind" => Function::new_native_with_env(store, env.clone(), block_data_for_kind),
       "bb_block_kind_for_type" => Function::new_native_with_env(store, env.clone(), block_kind_for_type),
       "bb_block_prop" => Function::new_native_with_env(store, env.clone(), block_prop),
+      "bb_block_set_prop" => Function::new_native_with_env(store, env.clone(), block_set_prop),
       "bb_broadcast" => Function::new_native_with_env(store, env.clone(), broadcast),
       "bb_player_username" => Function::new_native_with_env(store, env.clone(), player_username),
       "bb_player_pos" => Function::new_native_with_env(store, env.clone(), player_pos),

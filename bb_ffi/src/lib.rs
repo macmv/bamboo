@@ -417,6 +417,13 @@ extern "C" {
   pub fn bb_block_kind_for_type(ty: u32) -> u32;
   /// Returns a property, if the name is valid. Returns `null` if invalid.
   pub fn bb_block_prop(ty: u32, prop_ptr: *const u8, prop_len: u32) -> *mut CBlockPropValue;
+  /// Returns the new block type, after changing the given property.
+  pub fn bb_block_set_prop(
+    ty: u32,
+    prop_ptr: *const u8,
+    prop_len: u32,
+    value: *const CBlockPropValue,
+  ) -> u32;
 
   /// Broadcasts the given chat message to all players.
   pub fn bb_broadcast(message: *const CChat);

@@ -21,6 +21,13 @@ pub struct PropError {
   name:  String,
   props: Vec<Prop>,
 }
+#[derive(Debug, Error, PartialEq)]
+pub enum SetPropError<'a> {
+  #[error("{0}")]
+  Missing(PropError),
+  #[error("the given property {0:?} is not compatible with property {1:?}")]
+  WrongType(PropValue<'a>, Prop),
+}
 
 impl TypeStore {
   pub fn ty(&self) -> Type {
@@ -92,6 +99,13 @@ impl Type<'_> {
     }
   }
   pub fn set_prop<'a>(&mut self, name: &str, val: impl Into<PropValue<'a>>) {
+    self.try_set_prop(name, val).unwrap_or_else(|e| panic!("{e}"))
+  }
+  pub fn try_set_prop<'a>(
+    &mut self,
+    name: &str,
+    val: impl Into<PropValue<'a>>,
+  ) -> Result<(), SetPropError<'a>> {
     let mut idx = None;
     for (i, p) in self.props.iter().enumerate() {
       if p.name == name {
@@ -104,14 +118,15 @@ impl Type<'_> {
       if val.is(&self.props[idx].kind) {
         self.state_props[idx] = val.id(&self.props[idx].kind);
       } else {
-        panic!(
-          "the given property {:?} is not compatible with property {:?}",
-          val, self.props[idx]
-        );
+        return Err(SetPropError::WrongType(val, self.props[idx].clone()));
       }
     } else {
-      panic!("no such property {}, valid properties are {:?}", name, self.props);
+      return Err(SetPropError::Missing(PropError {
+        name:  name.into(),
+        props: self.props.to_vec(),
+      }));
     }
+    Ok(())
   }
   pub fn with<'a>(mut self, name: &str, val: impl Into<PropValue<'a>>) -> Self {
     self.set_prop(name, val);
@@ -240,6 +255,22 @@ pub enum PropValue<'a> {
   Bool(bool),
   Enum(&'a str),
   Int(u32),
+}
+#[derive(Debug, PartialEq, Eq)]
+pub enum PropValueStore {
+  Bool(bool),
+  Enum(String),
+  Int(u32),
+}
+
+impl<'a> From<&'a PropValueStore> for PropValue<'a> {
+  fn from(v: &'a PropValueStore) -> PropValue {
+    match v {
+      PropValueStore::Bool(v) => Self::Bool(*v),
+      PropValueStore::Enum(v) => Self::Enum(v),
+      PropValueStore::Int(v) => Self::Int(*v),
+    }
+  }
 }
 
 impl PropKind {

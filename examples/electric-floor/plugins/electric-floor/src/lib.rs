@@ -8,8 +8,8 @@ use bb_plugin::{
 };
 use std::sync::atomic::{AtomicBool, AtomicU32, Ordering};
 
-const MIN: Pos = Pos::new(-32, 80, -32);
-const MAX: Pos = Pos::new(32, 80, 32);
+const MIN: Pos = Pos::new(-1, 114, -1);
+const MAX: Pos = Pos::new(1, 114, 1);
 
 static STARTED: AtomicBool = AtomicBool::new(false);
 static TICK: AtomicU32 = AtomicU32::new(0);
@@ -32,7 +32,9 @@ fn on_tick() {
   if t % 10 == 0 {
     let world = bb_plugin::world::World::new(0);
     for pos in MIN.to(MAX) {
+      info!("pos: {pos:?}");
       let ty = world.get_block(pos).unwrap();
+      info!("ty: {ty:?}");
       if ty.prop("stage") != 0 && ty.prop("stage").int() < 5 {
         world.set_block(pos, ty.with_prop("stage", ty.prop("stage").int() + 1));
       }

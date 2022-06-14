@@ -12,7 +12,7 @@ pub use behavior::{Behavior, TileEntity};
 pub use custom::{CustomData, CustomKind, CustomProp, CustomPropValue};
 pub use material::Material;
 pub use store::TypeStore;
-pub use ty::{Data, ItemDrop, Kind, Prop, PropKind, PropValue, Type};
+pub use ty::{Data, ItemDrop, Kind, Prop, PropKind, PropValue, PropValueStore, Type};
 pub use version::TypeConverter;
 
 use crate::world::World;

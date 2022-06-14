@@ -1,5 +1,5 @@
-use super::{Data, ItemDrop, Prop, PropValue};
-use crate::plugin::wasm::{Env, ToFfi};
+use super::{Data, ItemDrop, Prop, PropValue, PropValueStore};
+use crate::plugin::wasm::{Env, FromFfi, ToFfi};
 
 use bb_ffi::{CBlockData, CBlockProp, CBlockPropValue, CBlockPropValueEnum, CItemDrop};
 
@@ -49,5 +49,16 @@ impl ToFfi for PropValue<'_> {
       Self::Int(v) => CBlockPropValueEnum::Int(v.to_ffi(env)),
     }
     .into_cenum()
+  }
+}
+impl FromFfi for PropValueStore {
+  type Ffi = CBlockPropValue;
+
+  fn from_ffi(env: &Env, prop: CBlockPropValue) -> Self {
+    match prop.into_renum() {
+      CBlockPropValueEnum::Bool(v) => Self::Bool(v.as_bool()),
+      CBlockPropValueEnum::Enum(v) => Self::Enum(String::from_ffi(env, v)),
+      CBlockPropValueEnum::Int(v) => Self::Int(v),
+    }
   }
 }
