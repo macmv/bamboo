@@ -450,6 +450,8 @@ extern "C" {
   pub fn bb_world_get_block(wid: u32, pos: *const CPos) -> u32;
   /// Gets a list of all the players in the world.
   pub fn bb_world_players(wid: u32) -> *mut CList<CUUID>;
+  /// Spawns a particle in the world.
+  pub fn bb_world_spawn_particle(wid: u32, particle: *const CParticle);
   /// Raycasts from the `from` position to `to`. Returns null if there is no
   /// collision.
   pub fn bb_world_raycast(from: *const CFPos, to: *const CFPos, water: CBool) -> *mut CFPos;

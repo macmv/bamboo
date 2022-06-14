@@ -284,11 +284,23 @@ fn world_get_block(env: &Env, _wid: u32, pos: WasmPtr<CPos>) -> u32 {
   }
 }
 fn world_players(env: &Env, _wid: u32) -> u32 {
+  // TODO: Use the world id.
   let world = env.wm.default_world();
   let players: Vec<_> = world.players().iter().map(|p| p.id()).collect();
   let cplayers = players.as_slice().to_ffi(env);
   let ptr = env.malloc_store(cplayers);
   ptr.offset()
+}
+fn world_spawn_particle(env: &Env, _wid: u32, particle: WasmPtr<CParticle>) {
+  // TODO: Use the world id.
+  let world = env.wm.default_world();
+  let mem = env.mem();
+  let cparticle = match particle.deref(mem) {
+    Some(p) => p.get(),
+    None => return,
+  };
+  let particle = Particle::from_ffi(env, cparticle);
+  world.spawn_particle(particle);
 }
 fn world_raycast(env: &Env, from: WasmPtr<CFPos>, to: WasmPtr<CFPos>, water: u8) -> u32 {
   let mem = env.mem();
@@ -448,6 +460,7 @@ pub fn imports(store: &Store, wm: Arc<WorldManager>, name: String) -> ImportObje
       "bb_world_set_block_kind" => Function::new_native_with_env(store, env.clone(), world_set_block_kind),
       "bb_world_get_block" => Function::new_native_with_env(store, env.clone(), world_get_block),
       "bb_world_players" => Function::new_native_with_env(store, env.clone(), world_players),
+      "bb_world_spawn_particle" => Function::new_native_with_env(store, env.clone(), world_spawn_particle),
       "bb_world_raycast" => Function::new_native_with_env(store, env.clone(), world_raycast),
       "bb_time_since_start" => Function::new_native_with_env(store, env, time_since_start),
     }

@@ -52,6 +52,7 @@ use crate::{
   entity::Entity,
   item,
   net::ConnSender,
+  particle::Particle,
   player::{Player, Team},
   plugin,
   tags::Tags,
@@ -617,6 +618,12 @@ impl World {
     let out = cb::Packet::PlaySound { name: sound, category, pos, volume, pitch };
     for p in self.players().iter().in_view(pos.block().chunk()) {
       p.send(out.clone());
+    }
+  }
+
+  pub fn spawn_particle(&self, particle: Particle) {
+    for p in self.players().iter().in_view(particle.pos.chunk()) {
+      p.send_particle(particle.clone());
     }
   }
 

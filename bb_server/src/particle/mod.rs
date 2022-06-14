@@ -11,6 +11,7 @@ use crate::block;
 use bb_common::{math::FPos, net::cb, version::ProtocolVersion};
 
 /// A cloud of particles.
+#[derive(Clone, Debug)]
 pub struct Particle {
   /// The type of particle.
   pub ty:            Type,

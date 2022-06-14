@@ -1,9 +1,11 @@
 use bb_plugin::{
   block,
   command::{Arg, Command},
-  math::Pos,
+  math::{FPos, Pos},
+  particle,
   player::Player,
   sync::ConstLock,
+  world::World,
 };
 use std::sync::atomic::{AtomicBool, Ordering};
 
@@ -67,20 +69,32 @@ fn on_tick() {
       break;
     }
     let pos = pos.add_y(-1.0).block();
-    let ty = world.get_block(pos).unwrap();
     /*
     if ty.kind() == block::Kind::Wheat && ty.prop("age") == 0 {
       world.set_block(pos, ty.with_prop("age", 1));
     }
     */
-    if MIN.to(MAX).contains(pos) && ty.kind() == block::Kind::WhiteStainedGlass {
+    if MIN.to(MAX).contains(pos) {
       let idx = charge_index(pos);
       let charge = charges[idx];
       if charge == 0 {
         charges[idx] = 1;
+      } else if charge == 100 {
+        kill(&world, &p);
       }
     }
   }
+}
+
+fn kill(world: &World, player: &Player) {
+  world.spawn_particle(particle::Particle {
+    pos:           player.pos(),
+    offset:        FPos::new(0.5, 0.5, 0.5),
+    ty:            particle::Type::Lava,
+    count:         10,
+    data:          0.0,
+    long_distance: false,
+  });
 }
 
 fn charge_kind(charge: u32) -> block::Kind {

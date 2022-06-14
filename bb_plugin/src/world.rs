@@ -1,4 +1,4 @@
-use crate::{block, player::Player};
+use crate::{block, particle::Particle, player::Player, IntoFfi};
 use bb_common::math::{FPos, Pos, PosError};
 
 pub struct World {
@@ -43,6 +43,14 @@ impl World {
     unsafe {
       let players = Box::from_raw(bb_ffi::bb_world_players(self.wid)).into_vec();
       players.into_iter().map(Player::new)
+    }
+  }
+  /// Spawns a particle in the world. Everyone in render distance will be able
+  /// to see this particle.
+  pub fn spawn_particle(&self, particle: Particle) {
+    unsafe {
+      let cparticle = particle.into_ffi();
+      bb_ffi::bb_world_spawn_particle(self.wid, &cparticle);
     }
   }
   pub fn raycast(&self, from: FPos, to: FPos, water: bool) -> Option<FPos> {
