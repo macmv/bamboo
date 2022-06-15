@@ -4,7 +4,10 @@ use crate::{
   event::EventFlow::{self, *},
   player::{BlockClick, Click},
 };
-use bb_common::{math::FPos, util::Chat};
+use bb_common::{
+  math::FPos,
+  util::{Chat, Face},
+};
 
 pub struct DebugStick;
 impl Behavior for DebugStick {
@@ -80,5 +83,27 @@ impl Behavior for Snowball {
       ent.set_vel(click.dir() * 1.5);
     }
     Continue
+  }
+}
+
+pub struct Torch {
+  pub normal: block::Kind,
+  pub wall:   block::Kind,
+}
+impl Behavior for Torch {
+  fn interact(&self, click: Click) -> EventFlow {
+    if let Click::Block(mut click) = click {
+      click.block.pos += click.face;
+      if click.face == Face::Top {
+        click.block.set(click.block.world.block_converter().ty(self.normal));
+      } else if click.face != Face::Bottom {
+        click.block.set(
+          click.block.world.block_converter().ty(self.wall).with("facing", click.face.as_str()),
+        );
+      }
+      Handled
+    } else {
+      Continue
+    }
   }
 }

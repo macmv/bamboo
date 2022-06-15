@@ -57,6 +57,8 @@ pub fn make_behaviors() -> BehaviorList {
     LavaBucket => impls::Bucket(Some(block::Kind::Lava));
     Bucket => impls::Bucket(None);
     Snowball => impls::Snowball;
+    Torch => impls::Torch { normal: block::Kind::Torch, wall: block::Kind::WallTorch };
+    SoulTorch => impls::Torch { normal: block::Kind::SoulTorch, wall: block::Kind::SoulWallTorch };
   };
   out
 }
