@@ -108,7 +108,8 @@ pub fn make_behaviors() -> BehaviorList {
     *wood*Log => impls::Log;
     Stripped*wood*Log => impls::Log;
 
-    *wood*Trapdoor => impls::Trapdoor;
+    *wood*Trapdoor | WarpedTrapdoor => impls::Trapdoor;
+    *wood*Door | WarpedDoor => impls::Door;
 
     Sand | RedSand | Gravel => impls::Falling;
 

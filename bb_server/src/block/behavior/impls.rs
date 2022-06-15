@@ -140,3 +140,29 @@ impl Behavior for Trapdoor {
     Handled
   }
 }
+
+pub struct Door;
+impl Behavior for Door {
+  fn place<'a>(&self, data: &'a Data, _: Pos, click: BlockClick) -> Type<'a> {
+    data.default_type().with("half", "LOWER").with("facing", click.dir.as_horz_face().as_str())
+  }
+  fn update_place(&self, world: &Arc<World>, block: Block) {
+    if block.ty.prop("half") == "LOWER" {
+      let _ = world.set_block(block.pos.add_y(1), block.ty.with("half", "UPPER"));
+    }
+  }
+  fn interact(&self, mut block: Block, _: &Arc<Player>) -> EventFlow {
+    let new_open = !block.ty.prop("open").bool();
+    block.set(block.ty.with("open", new_open));
+    let other = match block.ty.prop("half").str() {
+      "UPPER" => block.pos.add_y(-1),
+      "LOWER" => block.pos.add_y(1),
+      v => unreachable!("door half {v}"),
+    };
+    let other_ty = block.world.get_block(other).unwrap();
+    if other_ty.kind == block.ty.kind() {
+      let _ = block.world.set_block(other, other_ty.with("open", new_open).ty());
+    }
+    Handled
+  }
+}

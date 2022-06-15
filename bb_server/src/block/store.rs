@@ -78,7 +78,7 @@ impl TypeStore {
       panic!("no such property {}, valid properties are {:?}", name, self.props);
     }
   }
-  pub fn with_prop<'a>(mut self, name: &str, val: impl Into<PropValue<'a>>) -> Self {
+  pub fn with<'a>(mut self, name: &str, val: impl Into<PropValue<'a>>) -> Self {
     self.set_prop(name, val);
     self
   }
