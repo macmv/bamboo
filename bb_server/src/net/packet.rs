@@ -143,77 +143,73 @@ pub(crate) fn handle(wm: &Arc<WorldManager>, mut player: &Arc<Player>, p: sb::Pa
       };
       */
 
-      if pos == Pos::new(-1, -1, -1)
-      /* && face == -1 */
-      {
-        // self.use_item(player, hand);
-      } else {
-        match player.world().get_block(pos) {
-          Ok(looking_at) => {
-            let click = BlockClick {
-              player,
-              face,
-              dir: player.look_as_vec(),
-              block: Block::new(player.world(), pos, looking_at.ty()),
-            };
-            if !player.is_crouching() {
-              let res = wm.events().interact(player, hand, Click::Block(click));
-              if res.is_handled() {
-                player.sync_block_at(pos);
-                player.sync_block_at(pos + face);
-                return;
-              }
-            }
-
-            // TODO: Data generator should store which items are blockitems, and what blocks
-            // they place.
-            let mut inv = player.lock_inventory();
-            let stack = inv.main_hand();
-            let item_data = player.world().item_converter().get_data(stack.item());
-            let kind = block::Kind::from_str(item_data.name()).unwrap_or_else(|_| {
-              player.send_message(Chat::new(format!("ah! {} is confusing", item_data.name())));
-              block::Kind::Air
-            });
-
-            let placing_data = wm.block_converter().get(kind);
-            let ty = wm
-              .block_behaviors()
-              .call(kind, |b| b.place(placing_data, pos, click))
-              .unwrap_or_else(|| placing_data.default_type());
-
-            let looking_data = wm.block_converter().get(looking_at.kind());
-            if !looking_data.material.is_replaceable() {
+      dbg!(cursor);
+      match player.world().get_block(pos) {
+        Ok(looking_at) => {
+          let click = BlockClick {
+            player,
+            face,
+            dir: player.look_as_vec(),
+            block: Block::new(player.world(), pos, looking_at.ty()),
+            cursor,
+          };
+          if !player.is_crouching() {
+            let res = wm.events().interact(player, hand, Click::Block(click));
+            if res.is_handled() {
               player.sync_block_at(pos);
-              pos += face;
+              player.sync_block_at(pos + face);
+              return;
             }
+          }
 
-            match player.world().set_block(pos, ty) {
-              Ok(_) => {
-                if player.game_mode() != GameMode::Creative {
-                  let idx = inv.selected_index() as u32;
-                  let stack = inv.hotbar_mut().get_raw_mut(idx).unwrap();
-                  if stack.amount() >= 1 {
-                    stack.set_amount(stack.amount() - 1);
-                    inv.hotbar().sync_raw(idx);
-                  }
+          // TODO: Data generator should store which items are blockitems, and what blocks
+          // they place.
+          let mut inv = player.lock_inventory();
+          let stack = inv.main_hand();
+          let item_data = player.world().item_converter().get_data(stack.item());
+          let kind = block::Kind::from_str(item_data.name()).unwrap_or_else(|_| {
+            player.send_message(Chat::new(format!("ah! {} is confusing", item_data.name())));
+            block::Kind::Air
+          });
+
+          let placing_data = wm.block_converter().get(kind);
+          let ty = wm
+            .block_behaviors()
+            .call(kind, |b| b.place(placing_data, pos, click))
+            .unwrap_or_else(|| placing_data.default_type());
+
+          let looking_data = wm.block_converter().get(looking_at.kind());
+          if !looking_data.material.is_replaceable() {
+            player.sync_block_at(pos);
+            pos += face;
+          }
+
+          match player.world().set_block(pos, ty) {
+            Ok(_) => {
+              if player.game_mode() != GameMode::Creative {
+                let idx = inv.selected_index() as u32;
+                let stack = inv.hotbar_mut().get_raw_mut(idx).unwrap();
+                if stack.amount() >= 1 {
+                  stack.set_amount(stack.amount() - 1);
+                  inv.hotbar().sync_raw(idx);
                 }
-                drop(inv);
-                // TODO: Handle plugins cancelling this place.
-                player.world().events().block_place(player.clone(), pos, ty);
               }
-              Err(e) => {
-                player.send_hotbar(Chat::new(e.to_string()));
-                player.sync_block_at(pos);
-              }
+              drop(inv);
+              // TODO: Handle plugins cancelling this place.
+              player.world().events().block_place(player.clone(), pos, ty);
+            }
+            Err(e) => {
+              player.send_hotbar(Chat::new(e.to_string()));
+              player.sync_block_at(pos);
             }
           }
-          Err(e) => {
-            player.send_hotbar(Chat::new(e.to_string()));
-            player.sync_block_at(pos);
-            player.sync_block_at(pos + face);
-          }
-        };
-      }
+        }
+        Err(e) => {
+          player.send_hotbar(Chat::new(e.to_string()));
+          player.sync_block_at(pos);
+          player.sync_block_at(pos + face);
+        }
+      };
     }
     sb::Packet::PlayerPos { x, y, z, .. } => {
       player.set_next_pos(x, y, z);
