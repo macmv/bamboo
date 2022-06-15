@@ -9,7 +9,7 @@ use crate::block;
 use bb_common::{
   chunk::Section,
   math::{ChunkPos, SectionRelPos},
-  nbt::NBT,
+  nbt::{Tag, NBT},
   util::ThreadPool,
 };
 use std::{fs, io, path::Path, str::FromStr, sync::Arc};
@@ -68,13 +68,15 @@ impl World {
       let start = id * 4;
       let num = u32::from_be_bytes(header[start..start + 4].try_into().unwrap());
       let offset: usize = ((num >> 8) & 0xffffff) as usize * 4096;
-      let size: usize = (num & 0xff) as usize * 4096;
+      let mut size: usize = (num & 0xff) as usize * 4096;
       if size == 0 {
         continue;
       }
 
-      if offset + size >= chunks.len() {
-        warn!("section had invalid index: {offset:#x} size {offset:#x}");
+      if offset + size > chunks.len() {
+        size = chunks.len() - offset;
+      } else if offset >= chunks.len() {
+        error!("section had invalid index: {offset:#x} size {size:#x} (len: {:#x})", chunks.len());
         continue;
       }
 
@@ -84,8 +86,9 @@ impl World {
       let _compression = header[4];
       let nbt = NBT::deserialize_file(chunk[5..5 + len - 1].to_vec()).unwrap().into_tag();
 
-      // 1.8, and 1.13+ use capitalized names.
+      // 1.8 uses capitalized names
       // 1.12.2 uses lowercase names.
+      // 1.18 uses a mix of both (wtf???)
       let is_capital_names;
       let nbt = if nbt.unwrap_compound().contains_key("Level") {
         is_capital_names = true;
@@ -133,7 +136,7 @@ impl World {
                 }
               }
             } else {
-              // is 1.13+
+              // is 1.12+
               // Skip air sections
               if !section.contains_key("BlockStates") {
                 continue;
@@ -143,45 +146,54 @@ impl World {
               let palette: Vec<_> = section["Palette"]
                 .unwrap_list()
                 .iter()
-                .map(|item| {
-                  let item = item.unwrap_compound();
-                  // TODO: Read properties
-                  let name = item["Name"].unwrap_string();
-                  let name = name.strip_prefix("minecraft:").unwrap();
-                  self
-                    .block_converter()
-                    .get(block::Kind::from_str(name).unwrap())
-                    .default_type()
-                    .id()
-                })
+                .map(|it| parse_state(self.block_converter(), it))
                 .collect();
               let section = chunk.inner_mut().section_mut(y);
               section.set_from(palette, block_states);
             }
           } else {
+            // is 1.12+
             let block_states = section["block_states"].unwrap_compound();
-            // Skip air sections
-            if !block_states.contains_key("data") {
-              continue;
-            }
-            let data = block_states["data"].unwrap_long_arr().iter().map(|v| *v as u64).collect();
             let palette: Vec<_> = block_states["palette"]
               .unwrap_list()
               .iter()
-              .map(|item| {
-                let item = item.unwrap_compound();
-                // TODO: Read properties
-                let name = item["Name"].unwrap_string();
-                let name = name.strip_prefix("minecraft:").unwrap();
-                self.block_converter().get(block::Kind::from_str(name).unwrap()).default_type().id()
-              })
+              .map(|it| parse_state(self.block_converter(), it))
               .collect();
+            // The section will be full of one type
             let section = chunk.inner_mut().section_mut(y);
-            section.set_from(palette, data);
+            if !block_states.contains_key("data") {
+              assert_eq!(palette.len(), 1);
+              section.fill(SectionRelPos::new(0, 0, 0), SectionRelPos::new(15, 15, 15), palette[0]);
+            } else {
+              let data = block_states["data"].unwrap_long_arr().iter().map(|v| *v as u64).collect();
+              section.set_from(palette, data);
+            }
           }
         }
       });
     }
     Ok(())
   }
+}
+
+fn parse_state(conv: &block::TypeConverter, item: &Tag) -> u32 {
+  let item = item.unwrap_compound();
+  let name = item["Name"].unwrap_string();
+  let name = name.strip_prefix("minecraft:").unwrap();
+  let mut ty = conv.get(block::Kind::from_str(name).unwrap()).default_type();
+
+  if item.contains_key("Properties") {
+    let props = item["Properties"].unwrap_compound();
+    for (key, val) in props {
+      match val {
+        Tag::String(v) if v == "true" => ty.set_prop(key, true),
+        Tag::String(v) if v == "false" => ty.set_prop(key, false),
+        Tag::String(v) if v.parse::<u32>().is_ok() => ty.set_prop(key, v.parse::<u32>().unwrap()),
+        Tag::String(v) => ty.set_prop(key, v.to_uppercase().as_str()),
+        _ => unreachable!(),
+      }
+    }
+  }
+
+  ty.id()
 }

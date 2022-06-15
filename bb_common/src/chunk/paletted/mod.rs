@@ -308,14 +308,18 @@ impl ChunkSection for Section {
   fn set_from(&mut self, palette: Vec<u32>, data: Vec<u64>) {
     let bpe = bpe_from_palette(palette.len(), self.max_bpe);
     let mut sorted = true;
-    for (i, curr) in palette.iter().enumerate() {
-      if i == 0 {
-        continue;
-      }
-      let prev = palette[i - 1];
-      if prev > *curr {
-        sorted = false;
-        break;
+    if palette[0] != 0 {
+      sorted = false;
+    } else {
+      for (i, curr) in palette.iter().enumerate() {
+        if i == 0 {
+          continue;
+        }
+        let prev = palette[i - 1];
+        if prev > *curr {
+          sorted = false;
+          break;
+        }
       }
     }
     if sorted {
@@ -342,6 +346,9 @@ impl ChunkSection for Section {
       // everything in `data`.
       let mut sorted_palette = palette.clone();
       sorted_palette.sort_unstable();
+      if sorted_palette[0] != 0 {
+        sorted_palette.insert(0, 0);
+      }
 
       self.palette = sorted_palette;
       self.reverse_palette =
