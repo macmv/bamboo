@@ -194,8 +194,7 @@ impl Packet {
         dbg!(id, damage);
         // Quirk with NBT here; if there is a single `0` byte, then there is no NBT
         // data. This is fixed in 1.13+
-        let remaining = self.read_all();
-        if remaining.get(0) == Some(&0) {
+        if self.buf.get(0) == Some(&0) {
           nbt = NBT::empty("");
         } else {
           match NBT::deserialize_buf(&mut self.buf) {
