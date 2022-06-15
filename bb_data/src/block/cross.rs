@@ -276,6 +276,30 @@ fn old_state(b: &Block, state: &State, old_map: &HashMap<String, Block>) -> u32 
 
     "dead_bush" => old_map["tallgrass"].id + 0,
     "fern" => old_map["tallgrass"].id + 2,
+
+    "oak_door" => {
+      match (
+        state.bool_prop("powered"),
+        state.enum_prop("hinge"),
+        state.enum_prop("half"),
+        state.bool_prop("open"),
+        state.enum_prop("facing"),
+      ) {
+        (_, _, "LOWER", false, "EAST") => old_map["wooden_door"].id + 0,
+        (_, _, "LOWER", false, "SOUTH") => old_map["wooden_door"].id + 1,
+        (_, _, "LOWER", false, "WEST") => old_map["wooden_door"].id + 2,
+        (_, _, "LOWER", false, "NORTH") => old_map["wooden_door"].id + 3,
+        (_, _, "LOWER", true, "EAST") => old_map["wooden_door"].id + 4 + 0,
+        (_, _, "LOWER", true, "SOUTH") => old_map["wooden_door"].id + 4 + 1,
+        (_, _, "LOWER", true, "WEST") => old_map["wooden_door"].id + 4 + 2,
+        (_, _, "LOWER", true, "NORTH") => old_map["wooden_door"].id + 4 + 3,
+        (false, "LEFT", "UPPER", _, _) => old_map["wooden_door"].id + 8,
+        (false, "RIGHT", "UPPER", _, _) => old_map["wooden_door"].id + 9,
+        (true, "LEFT", "UPPER", _, _) => old_map["wooden_door"].id + 10,
+        (true, "RIGHT", "UPPER", _, _) => old_map["wooden_door"].id + 11,
+        _ => unreachable!("invalid state {state:?}"),
+      }
+    }
     _ => old_map.get(&b.name).unwrap_or(&old_map["air"]).id,
   }
 }
