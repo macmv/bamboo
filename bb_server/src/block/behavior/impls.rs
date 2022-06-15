@@ -132,3 +132,11 @@ impl TileEntity for ChestTE {
   }
   fn as_any(&self) -> &dyn Any { self }
 }
+
+pub struct Trapdoor;
+impl Behavior for Trapdoor {
+  fn interact(&self, mut block: Block, _: &Arc<Player>) -> EventFlow {
+    block.set(block.ty.with("open", !block.ty.prop("open").bool()));
+    Handled
+  }
+}

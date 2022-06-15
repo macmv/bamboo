@@ -290,6 +290,24 @@ impl PropKind {
 }
 
 impl PropValue<'_> {
+  pub fn bool(&self) -> bool {
+    match self {
+      Self::Bool(v) => *v,
+      _ => panic!("not a bool: {self:?}"),
+    }
+  }
+  pub fn str(&self) -> &str {
+    match self {
+      Self::Enum(v) => v,
+      _ => panic!("not an enum: {self:?}"),
+    }
+  }
+  pub fn int(&self) -> u32 {
+    match self {
+      Self::Int(v) => *v,
+      _ => panic!("not an int: {self:?}"),
+    }
+  }
   pub fn as_enum(&self) -> &str {
     match self {
       Self::Enum(v) => v,

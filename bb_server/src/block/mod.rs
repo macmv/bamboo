@@ -52,6 +52,11 @@ impl<'a> Block<'a> {
       .unwrap_or_else(|| panic!("tile entity at {} has the wrong type", self.pos));
     f(te)
   }
+
+  pub fn set(&mut self, ty: Type<'a>) {
+    self.world.set_block(self.pos, ty).unwrap();
+    self.ty = ty;
+  }
 }
 
 pub struct BehaviorStore {
