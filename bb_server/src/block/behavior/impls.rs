@@ -135,6 +135,12 @@ impl TileEntity for ChestTE {
 
 pub struct Trapdoor;
 impl Behavior for Trapdoor {
+  fn place<'a>(&self, data: &'a Data, _: Pos, click: BlockClick) -> Type<'a> {
+    data
+      .default_type()
+      .with("half", if click.cursor.y > 0.5 { "TOP" } else { "BOTTOM" })
+      .with("facing", click.dir.as_horz_face().as_str())
+  }
   fn interact(&self, mut block: Block, _: &Arc<Player>) -> EventFlow {
     block.set(block.ty.with("open", !block.ty.prop("open").bool()));
     Handled
