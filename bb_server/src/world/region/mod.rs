@@ -10,8 +10,9 @@ use bb_common::{
   chunk::Section,
   math::{ChunkPos, SectionRelPos},
   nbt::NBT,
+  util::ThreadPool,
 };
-use std::{fs, io, path::Path, str::FromStr};
+use std::{fs, io, path::Path, str::FromStr, sync::Arc};
 
 use super::World;
 
@@ -32,8 +33,9 @@ fn parse_region_name(name: &str) -> Option<(i32, i32)> {
 }
 
 impl World {
-  pub fn load_from_disk(&self, path: &Path) -> io::Result<()> {
+  pub fn load_from_disk(self: &Arc<Self>, path: &Path) -> io::Result<()> {
     let chunks = path.join("region");
+    let pool = ThreadPool::auto("vanilla regions", || ());
     for f in fs::read_dir(chunks)? {
       let f = f?;
       if f.metadata()?.is_file() {
@@ -46,9 +48,14 @@ impl World {
           Some(v) => v,
           None => continue,
         };
-        self.load_region_file(&path)?;
+        let w = self.clone();
+        pool.execute(move |_| match w.load_region_file(&path) {
+          Ok(_) => {}
+          Err(e) => error!("invalid vanilla region file at {}: {}", path.display(), e),
+        });
       }
     }
+    pool.wait();
     Ok(())
   }
 
@@ -66,22 +73,29 @@ impl World {
         continue;
       }
 
+      if offset + size >= chunks.len() {
+        warn!("section had invalid index: {offset:#x} size {offset:#x}");
+        continue;
+      }
+
       let chunk = &chunks[offset..offset + size];
       let header = &chunk[..5];
       let len = u32::from_be_bytes(header[..4].try_into().unwrap()) as usize;
       let _compression = header[4];
       let nbt = NBT::deserialize_file(chunk[5..5 + len - 1].to_vec()).unwrap().into_tag();
 
-      let is_v8;
+      // 1.8, and 1.13+ use capitalized names.
+      // 1.12.2 uses lowercase names.
+      let is_capital_names;
       let nbt = if nbt.unwrap_compound().contains_key("Level") {
-        is_v8 = true;
+        is_capital_names = true;
         &nbt.unwrap_compound()["Level"]
       } else {
-        is_v8 = false;
+        is_capital_names = false;
         &nbt
       };
       let level = nbt.unwrap_compound();
-      let sections_key = if is_v8 { "Sections" } else { "sections" };
+      let sections_key = if is_capital_names { "Sections" } else { "sections" };
       if !level.contains_key(sections_key) {
         continue;
       }
@@ -100,21 +114,49 @@ impl World {
             continue;
           }
           let y = y as u32;
-          if is_v8 {
-            let blocks = section["Blocks"].unwrap_byte_arr();
-            let data = section["Data"].unwrap_byte_arr();
-            let section = chunk.inner_mut().section_mut(y);
-            for y in 0..16 {
-              for z in 0..16 {
-                for x in 0..16 {
-                  let index = ((y as usize * 16) + z as usize) * 16 + x as usize;
-                  let mask = 0x0f << ((x as u8 % 2) * 4);
-                  let id = (blocks[index] as u32) << 4 | (data[index / 2] & mask) as u32;
-                  let old =
-                    self.block_converter().to_latest(id, bb_common::version::BlockVersion::V1_8);
-                  section.set_block(SectionRelPos::new(x, y, z), old);
+          if is_capital_names {
+            if section.contains_key("Blocks") {
+              // is 1.8
+              let blocks = section["Blocks"].unwrap_byte_arr();
+              let data = section["Data"].unwrap_byte_arr();
+              let section = chunk.inner_mut().section_mut(y);
+              for y in 0..16 {
+                for z in 0..16 {
+                  for x in 0..16 {
+                    let index = ((y as usize * 16) + z as usize) * 16 + x as usize;
+                    let mask = 0x0f << ((x as u8 % 2) * 4);
+                    let id = (blocks[index] as u32) << 4 | (data[index / 2] & mask) as u32;
+                    let old =
+                      self.block_converter().to_latest(id, bb_common::version::BlockVersion::V1_8);
+                    section.set_block(SectionRelPos::new(x, y, z), old);
+                  }
                 }
               }
+            } else {
+              // is 1.13+
+              // Skip air sections
+              if !section.contains_key("BlockStates") {
+                continue;
+              }
+              let block_states =
+                section["BlockStates"].unwrap_long_arr().iter().map(|v| *v as u64).collect();
+              let palette: Vec<_> = section["Palette"]
+                .unwrap_list()
+                .iter()
+                .map(|item| {
+                  let item = item.unwrap_compound();
+                  // TODO: Read properties
+                  let name = item["Name"].unwrap_string();
+                  let name = name.strip_prefix("minecraft:").unwrap();
+                  self
+                    .block_converter()
+                    .get(block::Kind::from_str(name).unwrap())
+                    .default_type()
+                    .id()
+                })
+                .collect();
+              let section = chunk.inner_mut().section_mut(y);
+              section.set_from(palette, block_states);
             }
           } else {
             let block_states = section["block_states"].unwrap_compound();
