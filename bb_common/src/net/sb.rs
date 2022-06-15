@@ -12,7 +12,7 @@ pub enum Packet {
   #[id = 0]
   BlockDig { pos: Pos, status: DigStatus, face: Face },
   #[id = 1]
-  BlockPlace { pos: Pos, face: Face, hand: Hand },
+  BlockPlace { pos: Pos, face: Face, hand: Hand, cursor: FPos },
   #[id = 2]
   CreativeInventoryUpdate { slot: i8, item: Item },
   #[id = 3]

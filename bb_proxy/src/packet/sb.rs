@@ -115,32 +115,54 @@ impl FromTcp for Packet {
           _ => return Err(io::Error::new(ErrorKind::Other, "invalid player dig action").into()),
         }
       }
-      GPacket::PlayerBlockPlacementV8 { position, placed_block_direction, unknown: _, .. } => {
+      GPacket::PlayerBlockPlacementV8 { position, placed_block_direction, unknown } => {
         // let mut buf = Buffer::new(unknown);
+        let mut buf = tcp::Packet::from_buf_id(unknown, 0, ver);
         if position == Pos::new(-1, -1, -1) && placed_block_direction == 255 {
           Packet::UseItem { hand: Hand::Main }
         } else {
+          let _slot = buf.read_item(&conv)?;
+          let cursor_x = buf.read_u8()?;
+          let cursor_y = buf.read_u8()?;
+          let cursor_z = buf.read_u8()?;
           Packet::BlockPlace {
-            pos:  position,
-            face: Face::from_id(placed_block_direction as u8),
-            hand: Hand::Main,
+            pos:    position,
+            face:   Face::from_id(placed_block_direction as u8),
+            hand:   Hand::Main,
+            cursor: FPos::new(
+              cursor_x as f64 / 128.0,
+              cursor_y as f64 / 128.0,
+              cursor_z as f64 / 128.0,
+            ),
           }
         }
       }
-      GPacket::PlayerInteractBlockV9 { position, placed_block_direction, hand, .. } => {
-        Packet::BlockPlace {
-          pos:  position,
-          face: Face::from_id(placed_block_direction as u8),
-          hand: Hand::from_id(hand as u8),
-        }
-      }
-      GPacket::PlayerInteractBlockV11 { position, placed_block_direction, hand, .. } => {
-        Packet::BlockPlace {
-          pos:  position,
-          face: Face::from_id(placed_block_direction as u8),
-          hand: Hand::from_id(hand as u8),
-        }
-      }
+      GPacket::PlayerInteractBlockV9 {
+        position,
+        placed_block_direction,
+        hand,
+        facing_x,
+        facing_y,
+        facing_z,
+      } => Packet::BlockPlace {
+        pos:    position,
+        face:   Face::from_id(placed_block_direction as u8),
+        hand:   Hand::from_id(hand as u8),
+        cursor: FPos::new(facing_x.into(), facing_y.into(), facing_z.into()),
+      },
+      GPacket::PlayerInteractBlockV11 {
+        position,
+        placed_block_direction,
+        hand,
+        facing_x,
+        facing_y,
+        facing_z,
+      } => Packet::BlockPlace {
+        pos:    position,
+        face:   Face::from_id(placed_block_direction as u8),
+        hand:   Hand::from_id(hand as u8),
+        cursor: FPos::new(facing_x.into(), facing_y.into(), facing_z.into()),
+      },
       GPacket::PlayerInteractBlockV14 { hand, unknown, .. } => {
         let mut buf = tcp::Packet::from_buf_id(unknown, 0, ver);
         // `unknown` has these fields:
@@ -151,9 +173,10 @@ impl FromTcp for Packet {
         // - cursor z (float)
         // - inside block (bool)
         Packet::BlockPlace {
-          pos:  buf.read_pos()?,
-          face: Face::from_id(buf.read_varint()? as u8),
-          hand: Hand::from_id(hand as u8),
+          pos:    buf.read_pos()?,
+          face:   Face::from_id(buf.read_varint()? as u8),
+          hand:   Hand::from_id(hand as u8),
+          cursor: FPos::new(buf.read_f32()?.into(), buf.read_f32()?.into(), buf.read_f32()?.into()),
         }
       }
       GPacket::UseEntityV8 { entity_id, action, unknown } => {

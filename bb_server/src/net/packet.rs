@@ -79,6 +79,7 @@ pub(crate) fn handle(wm: &Arc<WorldManager>, mut player: &Arc<Player>, p: sb::Pa
                 face,
                 dir: player.look_as_vec(),
                 block: Block::new(player.world(), pos, looking_at.ty()),
+                cursor: FPos::new(0.0, 0.0, 0.0),
               };
               let inv = player.lock_inventory();
               let stack = inv.main_hand();
@@ -132,7 +133,7 @@ pub(crate) fn handle(wm: &Arc<WorldManager>, mut player: &Arc<Player>, p: sb::Pa
         Click::Air(AirClick { dir: player.look_as_vec(), player }),
       );
     }
-    sb::Packet::BlockPlace { mut pos, face, hand } => {
+    sb::Packet::BlockPlace { mut pos, face, hand, cursor } => {
       /*
       let direction: i32 = if player.ver() == ProtocolVersion::V1_8 {
         // direction_v1_8 is an i8 (not a u8), so the sign stays correct
