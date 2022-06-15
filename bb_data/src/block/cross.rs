@@ -133,173 +133,202 @@ fn update_old_blocks(def: &mut BlockDef) {
 // Adding `+ 0` makes this section look nice, so clippy can be ignored here.
 #[allow(clippy::identity_op)]
 fn old_state(b: &Block, state: &State, old_map: &HashMap<String, Block>) -> u32 {
-  match b.name.as_str() {
-    "granite" => old_map["stone"].id + 1,
-    "polished_granite" => old_map["stone"].id + 2,
-    "diorite" => old_map["stone"].id + 3,
-    "polished_diorite" => old_map["stone"].id + 4,
-    "andesite" => old_map["stone"].id + 5,
-    "polished_andesite" => old_map["stone"].id + 6,
+  let matcher = Matcher { block: b, state, old: old_map };
+  matcher.find()
+}
 
-    "coarse_dirt" => old_map["dirt"].id + 1,
-    "podzol" => old_map["dirt"].id + 2,
+struct Matcher<'a> {
+  block: &'a Block,
+  state: &'a State,
+  old:   &'a HashMap<String, Block>,
+}
 
-    "oak_planks" => old_map["planks"].id + 0,
-    "spruce_planks" => old_map["planks"].id + 1,
-    "birch_planks" => old_map["planks"].id + 2,
-    "jungle_planks" => old_map["planks"].id + 3,
-    "acacia_planks" => old_map["planks"].id + 4,
-    "dark_oak_planks" => old_map["planks"].id + 5,
+impl Matcher<'_> {
+  fn bool_prop(&self, name: &str) -> bool { self.state.bool_prop(name) }
+  fn enum_prop(&self, name: &str) -> &str { self.state.enum_prop(name) }
+  fn int_prop(&self, name: &str) -> i32 { self.state.int_prop(name) }
+  fn old(&self, name: &str) -> u32 { self.old[name].id }
+  #[rustfmt::skip]
+  fn find(&self) -> u32 {
+    // this will help formatting:
+    // :'<,'>s/\(\S*\)\s*=>/\=submatch(1) . repeat(' ', 30 - len(submatch(1))) . '=>'
+    //                                                  ^^ change this for indent amount
+    match self.block.name.as_str() {
+      "granite"           => self.old("stone") + 1,
+      "polished_granite"  => self.old("stone") + 2,
+      "diorite"           => self.old("stone") + 3,
+      "polished_diorite"  => self.old("stone") + 4,
+      "andesite"          => self.old("stone") + 5,
+      "polished_andesite" => self.old("stone") + 6,
 
-    "oak_sapling" => old_map["sapling"].id + 0,
-    "spruce_sapling" => old_map["sapling"].id + 1,
-    "birch_sapling" => old_map["sapling"].id + 2,
-    "jungle_sapling" => old_map["sapling"].id + 3,
-    "acacia_sapling" => old_map["sapling"].id + 4,
-    "dark_oak_sapling" => old_map["sapling"].id + 5,
+      "coarse_dirt" => self.old("dirt") + 1,
+      "podzol"      => self.old("dirt") + 2,
 
-    "water" => match state.int_prop("level") {
-      0 => old_map["water"].id,
-      // Only levels 1 through 7 are valid. 8 through 15 produce a full water section, which
-      // dissapears after a liquid update. This happens in every version from 1.8-1.18. It is
-      // unclear why this property spans from 0 to 15, but it does.
-      level @ 1..=15 => old_map["flowing_water"].id + level as u32 - 1,
-      _ => unreachable!(),
-    },
-    "lava" => match state.int_prop("level") {
-      0 => old_map["lava"].id,
-      // Same thing with flowing as water
-      level @ 1..=15 => old_map["flowing_lava"].id + level as u32 - 1,
-      _ => unreachable!(),
-    },
+      "oak_planks"      => self.old("planks") + 0,
+      "spruce_planks"   => self.old("planks") + 1,
+      "birch_planks"    => self.old("planks") + 2,
+      "jungle_planks"   => self.old("planks") + 3,
+      "acacia_planks"   => self.old("planks") + 4,
+      "dark_oak_planks" => self.old("planks") + 5,
 
-    "red_sand" => old_map["sand"].id + 1,
+      "oak_sapling"      => self.old("sapling") + 0,
+      "spruce_sapling"   => self.old("sapling") + 1,
+      "birch_sapling"    => self.old("sapling") + 2,
+      "jungle_sapling"   => self.old("sapling") + 3,
+      "acacia_sapling"   => self.old("sapling") + 4,
+      "dark_oak_sapling" => self.old("sapling") + 5,
 
-    "oak_log" => match state.enum_prop("axis") {
-      "X" => old_map["log"].id + 0 + 4,
-      "Y" => old_map["log"].id + 0 + 0,
-      "Z" => old_map["log"].id + 0 + 8,
-      _ => unreachable!(),
-    },
-    "spruce_log" => match state.enum_prop("axis") {
-      "X" => old_map["log"].id + 1 + 4,
-      "Y" => old_map["log"].id + 1 + 0,
-      "Z" => old_map["log"].id + 1 + 8,
-      _ => unreachable!(),
-    },
-    "birch_log" => match state.enum_prop("axis") {
-      "X" => old_map["log"].id + 2 + 4,
-      "Y" => old_map["log"].id + 2 + 0,
-      "Z" => old_map["log"].id + 2 + 8,
-      _ => unreachable!(),
-    },
-    "jungle_log" => match state.enum_prop("axis") {
-      "X" => old_map["log"].id + 3 + 4,
-      "Y" => old_map["log"].id + 3 + 0,
-      "Z" => old_map["log"].id + 3 + 8,
-      _ => unreachable!(),
-    },
-    "oak_wood" => old_map["log"].id + 12 + 0,
-    "spruce_wood" => old_map["log"].id + 12 + 1,
-    "birch_wood" => old_map["log"].id + 12 + 2,
-    "jungle_wood" => old_map["log"].id + 12 + 3,
+      "water" => match self.int_prop("level") {
+        0 => self.old("water"),
+        // Only levels 1 through 7 are valid. 8 through 15 produce a full water section, which
+        // dissapears after a liquid update. This happens in every version from 1.8-1.18. It is
+        // unclear why this property spans from 0 to 15, but it does.
+        level @ 1..=15 => self.old("flowing_water") + level as u32 - 1,
+        _ => unreachable!(),
+      },
+      "lava" => match self.int_prop("level") {
+        0 => self.old("lava"),
+        // Same thing with flowing as water
+        level @ 1..=15 => self.old("flowing_lava") + level as u32 - 1,
+        _ => unreachable!(),
+      },
 
-    "oak_leaves" => match state.bool_prop("persistent") {
-      true => old_map["leaves"].id + 0 + 0,
-      false => old_map["leaves"].id + 0 + 8,
-    },
-    "spruce_leaves" => match state.bool_prop("persistent") {
-      true => old_map["leaves"].id + 1 + 0,
-      false => old_map["leaves"].id + 1 + 8,
-    },
-    "birch_leaves" => match state.bool_prop("persistent") {
-      true => old_map["leaves"].id + 2 + 0,
-      false => old_map["leaves"].id + 2 + 8,
-    },
-    "jungle_leaves" => match state.bool_prop("persistent") {
-      true => old_map["leaves"].id + 3 + 0,
-      false => old_map["leaves"].id + 3 + 8,
-    },
+      "red_sand" => self.old("sand") + 1,
 
-    "wet_sponge" => old_map["sponge"].id + 1,
+      "oak_log" => match self.enum_prop("axis") {
+        "X" => self.old("log") + 0 + 4,
+        "Y" => self.old("log") + 0 + 0,
+        "Z" => self.old("log") + 0 + 8,
+        _ => unreachable!(),
+      },
+      "spruce_log" => match self.enum_prop("axis") {
+        "X" => self.old("log") + 1 + 4,
+        "Y" => self.old("log") + 1 + 0,
+        "Z" => self.old("log") + 1 + 8,
+        _ => unreachable!(),
+      },
+      "birch_log" => match self.enum_prop("axis") {
+        "X" => self.old("log") + 2 + 4,
+        "Y" => self.old("log") + 2 + 0,
+        "Z" => self.old("log") + 2 + 8,
+        _ => unreachable!(),
+      },
+      "jungle_log" => match self.enum_prop("axis") {
+        "X" => self.old("log") + 3 + 4,
+        "Y" => self.old("log") + 3 + 0,
+        "Z" => self.old("log") + 3 + 8,
+        _ => unreachable!(),
+      },
+      "oak_wood"    => self.old("log") + 12 + 0,
+      "spruce_wood" => self.old("log") + 12 + 1,
+      "birch_wood"  => self.old("log") + 12 + 2,
+      "jungle_wood" => self.old("log") + 12 + 3,
 
-    "dispenser" => match state.enum_prop("facing") {
-      "DOWN" => old_map["dispenser"].id + 0,
-      "UP" => old_map["dispenser"].id + 1,
-      "NORTH" => old_map["dispenser"].id + 2,
-      "SOUTH" => old_map["dispenser"].id + 3,
-      "WEST" => old_map["dispenser"].id + 4,
-      "EAST" => old_map["dispenser"].id + 5,
-      _ => unreachable!(),
-    },
+      "oak_leaves" => match self.bool_prop("persistent") {
+        true => self.old("leaves") + 0 + 0,
+        false => self.old("leaves") + 0 + 8,
+      },
+      "spruce_leaves" => match self.bool_prop("persistent") {
+        true => self.old("leaves") + 1 + 0,
+        false => self.old("leaves") + 1 + 8,
+      },
+      "birch_leaves" => match self.bool_prop("persistent") {
+        true => self.old("leaves") + 2 + 0,
+        false => self.old("leaves") + 2 + 8,
+      },
+      "jungle_leaves" => match self.bool_prop("persistent") {
+        true => self.old("leaves") + 3 + 0,
+        false => self.old("leaves") + 3 + 8,
+      },
 
-    "chiseled_sandstone" => old_map["sandstone"].id + 1,
-    "smooth_sandstone" => old_map["sandstone"].id + 2,
+      "wet_sponge" => self.old("sponge") + 1,
 
-    "white_wool" => old_map["wool"].id + 0,
-    "orange_wool" => old_map["wool"].id + 1,
-    "magenta_wool" => old_map["wool"].id + 2,
-    "light_blue_wool" => old_map["wool"].id + 3,
-    "yellow_wool" => old_map["wool"].id + 4,
-    "lime_wool" => old_map["wool"].id + 5,
-    "pink_wool" => old_map["wool"].id + 6,
-    "gray_wool" => old_map["wool"].id + 7,
-    "light_gray_wool" => old_map["wool"].id + 8,
-    "cyan_wool" => old_map["wool"].id + 9,
-    "purple_wool" => old_map["wool"].id + 10,
-    "blue_wool" => old_map["wool"].id + 11,
-    "brown_wool" => old_map["wool"].id + 12,
-    "green_wool" => old_map["wool"].id + 13,
-    "red_wool" => old_map["wool"].id + 14,
-    "black_wool" => old_map["wool"].id + 15,
+      "dispenser" => match self.enum_prop("facing") {
+        "DOWN"  => self.old("dispenser") + 0,
+        "UP"    => self.old("dispenser") + 1,
+        "NORTH" => self.old("dispenser") + 2,
+        "SOUTH" => self.old("dispenser") + 3,
+        "WEST"  => self.old("dispenser") + 4,
+        "EAST"  => self.old("dispenser") + 5,
+        _ => unreachable!(),
+      },
 
-    "dandelion" => old_map["yellow_flower"].id,
-    "poppy" => old_map["red_flower"].id + 0,
-    "blue_orchid" => old_map["red_flower"].id + 1,
-    "allium" => old_map["red_flower"].id + 2,
-    "azure_bluet" => old_map["red_flower"].id + 3,
-    "red_tulip" => old_map["red_flower"].id + 4,
-    "orange_tulip" => old_map["red_flower"].id + 5,
-    "white_tulip" => old_map["red_flower"].id + 6,
-    "pink_tulip" => old_map["red_flower"].id + 7,
-    "oxeye_daisy" => old_map["red_flower"].id + 8,
+      "chiseled_sandstone" => self.old("sandstone") + 1,
+      "smooth_sandstone"   => self.old("sandstone") + 2,
 
-    "sandstone_slab" => old_map["stone_slab"].id + 1,
-    "oak_slab" => old_map["stone_slab"].id + 2,
-    "cobblestone_slab" => old_map["stone_slab"].id + 3,
-    "brick_slab" => old_map["stone_slab"].id + 4,
-    "stone_brick_slab" => old_map["stone_slab"].id + 5,
+      "white_wool"      => self.old("wool") + 0,
+      "orange_wool"     => self.old("wool") + 1,
+      "magenta_wool"    => self.old("wool") + 2,
+      "light_blue_wool" => self.old("wool") + 3,
+      "yellow_wool"     => self.old("wool") + 4,
+      "lime_wool"       => self.old("wool") + 5,
+      "pink_wool"       => self.old("wool") + 6,
+      "gray_wool"       => self.old("wool") + 7,
+      "light_gray_wool" => self.old("wool") + 8,
+      "cyan_wool"       => self.old("wool") + 9,
+      "purple_wool"     => self.old("wool") + 10,
+      "blue_wool"       => self.old("wool") + 11,
+      "brown_wool"      => self.old("wool") + 12,
+      "green_wool"      => self.old("wool") + 13,
+      "red_wool"        => self.old("wool") + 14,
+      "black_wool"      => self.old("wool") + 15,
 
-    // MINECRAFT GO BRRRRRR
-    "grass_block" => old_map["grass"].id,
-    "grass" => old_map["tallgrass"].id + 1,
+      "dandelion"    => self.old("yellow_flower"),
+      "poppy"        => self.old("red_flower") + 0,
+      "blue_orchid"  => self.old("red_flower") + 1,
+      "allium"       => self.old("red_flower") + 2,
+      "azure_bluet"  => self.old("red_flower") + 3,
+      "red_tulip"    => self.old("red_flower") + 4,
+      "orange_tulip" => self.old("red_flower") + 5,
+      "white_tulip"  => self.old("red_flower") + 6,
+      "pink_tulip"   => self.old("red_flower") + 7,
+      "oxeye_daisy"  => self.old("red_flower") + 8,
 
-    "dead_bush" => old_map["tallgrass"].id + 0,
-    "fern" => old_map["tallgrass"].id + 2,
+      "sandstone_slab"   => self.old("stone_slab") + 1,
+      "oak_slab"         => self.old("stone_slab") + 2,
+      "cobblestone_slab" => self.old("stone_slab") + 3,
+      "brick_slab"       => self.old("stone_slab") + 4,
+      "stone_brick_slab" => self.old("stone_slab") + 5,
 
-    "oak_door" => {
-      match (
-        state.bool_prop("powered"),
-        state.enum_prop("hinge"),
-        state.enum_prop("half"),
-        state.bool_prop("open"),
-        state.enum_prop("facing"),
-      ) {
-        (_, _, "LOWER", false, "EAST") => old_map["wooden_door"].id + 0,
-        (_, _, "LOWER", false, "SOUTH") => old_map["wooden_door"].id + 1,
-        (_, _, "LOWER", false, "WEST") => old_map["wooden_door"].id + 2,
-        (_, _, "LOWER", false, "NORTH") => old_map["wooden_door"].id + 3,
-        (_, _, "LOWER", true, "EAST") => old_map["wooden_door"].id + 4 + 0,
-        (_, _, "LOWER", true, "SOUTH") => old_map["wooden_door"].id + 4 + 1,
-        (_, _, "LOWER", true, "WEST") => old_map["wooden_door"].id + 4 + 2,
-        (_, _, "LOWER", true, "NORTH") => old_map["wooden_door"].id + 4 + 3,
-        (false, "LEFT", "UPPER", _, _) => old_map["wooden_door"].id + 8,
-        (false, "RIGHT", "UPPER", _, _) => old_map["wooden_door"].id + 9,
-        (true, "LEFT", "UPPER", _, _) => old_map["wooden_door"].id + 10,
-        (true, "RIGHT", "UPPER", _, _) => old_map["wooden_door"].id + 11,
-        _ => unreachable!("invalid state {state:?}"),
-      }
+      // MINECRAFT GO BRRRRRR
+      "grass_block" => self.old("grass"),
+      "grass"       => self.old("tallgrass") + 1,
+
+      "dead_bush" => self.old("tallgrass") + 0,
+      "fern"      => self.old("tallgrass") + 2,
+
+      "oak_door"    => self.door("wooden_door"),
+      "spruce_door" => self.door("spruce_door"),
+      "birch_door"  => self.door("birch_door"),
+      "jungle_door" => self.door("jungle_door"),
+
+      // Otherwise, lookup the old block, and if we still don't find anything, use air.
+      _ => self.old.get(&self.block.name).unwrap_or(&self.old["air"]).id,
     }
-    _ => old_map.get(&b.name).unwrap_or(&old_map["air"]).id,
+  }
+
+  #[rustfmt::skip]
+  fn door(&self, name: &str) -> u32 {
+    match (
+      self.state.bool_prop("powered"),
+      self.state.enum_prop("hinge"),
+      self.state.enum_prop("half"),
+      self.state.bool_prop("open"),
+      self.state.enum_prop("facing"),
+    ) {
+      (_, _, "LOWER", false, "EAST")  => self.old(name) + 0,
+      (_, _, "LOWER", false, "SOUTH") => self.old(name) + 1,
+      (_, _, "LOWER", false, "WEST")  => self.old(name) + 2,
+      (_, _, "LOWER", false, "NORTH") => self.old(name) + 3,
+      (_, _, "LOWER", true, "EAST")   => self.old(name) + 4 + 0,
+      (_, _, "LOWER", true, "SOUTH")  => self.old(name) + 4 + 1,
+      (_, _, "LOWER", true, "WEST")   => self.old(name) + 4 + 2,
+      (_, _, "LOWER", true, "NORTH")  => self.old(name) + 4 + 3,
+      (false, "LEFT", "UPPER", _, _)  => self.old(name) + 8,
+      (false, "RIGHT", "UPPER", _, _) => self.old(name) + 9,
+      (true, "LEFT", "UPPER", _, _)   => self.old(name) + 10,
+      (true, "RIGHT", "UPPER", _, _)  => self.old(name) + 11,
+      _ => unreachable!("invalid state {:?}", self.state),
+    }
   }
 }
