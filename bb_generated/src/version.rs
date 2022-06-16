@@ -27,7 +27,7 @@ macro_rules! block_version {
       /// Returns the protocol version for this block version. This will always
       /// return the latest version that uses this block version.
       pub fn protocol(&self) -> ProtocolVersion {
-        // This should always be exaustive, so that new versions don't get missed.
+        // This should always be exhaustive, so that new versions don't get missed.
         match self {
           Self::Invalid => ProtocolVersion::Invalid,
           $(
@@ -177,7 +177,7 @@ impl ProtocolVersion {
   /// Returns the block version that this protocol version uses.
   pub fn block(&self) -> BlockVersion {
     match self {
-      // Should always be exaustive, so that new versions aren't missed.
+      // Should always be exhaustive, so that new versions aren't missed.
       Self::Invalid => BlockVersion::Invalid,
       Self::V1_8 => BlockVersion::V1_8,
       Self::V1_9 => BlockVersion::V1_9,

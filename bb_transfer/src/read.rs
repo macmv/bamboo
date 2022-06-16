@@ -241,7 +241,7 @@ pub struct MessageReader<'a> {
 /// `None` fields as placeholders.
 ///
 /// This will also track the current field read, and the total number of fields.
-/// This will automically return a default value if you try to read past the
+/// This will automatically return a default value if you try to read past the
 /// maximum amount of fields.
 ///
 /// This is the core of th forwards compatibility in this protocol.
@@ -834,7 +834,7 @@ impl<'a> StructReader<'a> {
   }
   /// Reads a single field. The [`read`](Self::read) function will simply return
   /// a default value if the field is not present. For forwards compatibility,
-  /// that should always be prefered. However, if you cannot implement
+  /// that should always be preferred. However, if you cannot implement
   /// [`Default`] for a field, this function can be used instead. This will
   /// return an error if the field is not present.
   ///

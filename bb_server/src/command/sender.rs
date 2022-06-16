@@ -16,7 +16,7 @@ pub enum ErrorFormat {
 pub trait CommandSender {
   /// If this command sender has a position in the world, it should be returned.
   /// If it does not have a position, None should be returned, and relative
-  /// coordinates will not be avalible to this sender.
+  /// coordinates will not be available to this sender.
   fn block_pos(&self) -> Option<Pos>;
 
   /// If this is a player, returns the player.

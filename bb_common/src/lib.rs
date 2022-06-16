@@ -31,7 +31,7 @@ pub use flate2;
 // }
 //
 // impl KeepAlivePolicy {
-//   pub fn new(age: Durationn) -> Self {
+//   pub fn new(age: Duration) -> Self {
 //     KeepAlivePolicy { age }
 //   }
 // }

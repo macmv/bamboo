@@ -146,7 +146,7 @@ impl Pos {
   /// are both set to their chunk relative position. The Y value is unchanged.
   #[inline(always)]
   pub fn chunk_rel(&self) -> Pos { Pos { x: self.chunk_rel_x(), y: self.y, z: self.chunk_rel_z() } }
-  /// Returns this position within the 0, 0, 0 chunk sectino. That is, the X, Y
+  /// Returns this position within the 0, 0, 0 chunk section. That is, the X, Y
   /// and Z are all set to their chunk relative position.
   #[inline(always)]
   pub fn chunk_section_rel(&self) -> Pos {
@@ -212,7 +212,7 @@ impl Pos {
     (((self.x - other.x).pow(2) + (self.y - other.y).pow(2) + (self.z - other.z).pow(2)) as f64)
       .sqrt()
   }
-  /// Returns the squared distance to the other position. Since block postitions
+  /// Returns the squared distance to the other position. Since block positions
   /// are always ints, this will also always be exactly an int.
   pub fn dist_squared(&self, other: Pos) -> i32 {
     (self.x - other.x).pow(2) + (self.y - other.y).pow(2) + (self.z - other.z).pow(2)

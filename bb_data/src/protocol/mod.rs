@@ -53,7 +53,7 @@ pub struct Packet {
   pub extends: String,
   /// The class of this packet.
   pub class:   String,
-  /// The standarized name for this packet.
+  /// The standardized name for this packet.
   pub name:    String,
   /// A list of the fields in this packet.
   pub fields:  Vec<Field>,
@@ -121,14 +121,14 @@ pub enum Value {
   /// A packet field. Similar to a local variable, but may require `self.` or
   /// `this.` depending on the language.
   Field(String),
-  /// A static field `1` on classs `0`.
+  /// A static field `1` on class `0`.
   Static(String, String),
   /// An array, with a pre-determined length.
   Array(Box<Expr>),
   /// A static function call. The first item is the class, the second is the
   /// function, and the third is the arguments.
   CallStatic(String, String, Vec<Expr>),
-  /// A refernce to a static method.
+  /// A reference to a static method.
   MethodRef(String, String),
   /// A closure call. The first list is a list of arguments for the closure, and
   /// the second list is the instructions inside the closure.
@@ -200,11 +200,11 @@ pub enum Instr {
   /// Make sure the given string (the first item) is less than the given length
   /// (the second item). Any time you read a string, there is a max length.
   /// So, when writing, we should also verify the length. Making this a
-  /// seperate instruction makes it easy to, for example, remove all the
+  /// separate instruction makes it easy to, for example, remove all the
   /// length checks in release mode.
   CheckStrLen(Expr, Value),
 
-  /// Invokes the given expresison, and ignores the result. Used when we do
+  /// Invokes the given expression, and ignores the result. Used when we do
   /// things like call a function that returns void.
   Expr(Expr),
 
@@ -250,7 +250,7 @@ pub struct Expr {
   /// The initial value of this expression. This won't change, but at runtime is
   /// the initial value that will be used when processing the given operators.
   initial: Value,
-  /// The operators applied to this expresion. Each operator should be applied
+  /// The operators applied to this expression. Each operator should be applied
   /// in order, and will mutate the value of this expression.
   #[serde(default = "Vec::new")]
   ops:     Vec<Op>,

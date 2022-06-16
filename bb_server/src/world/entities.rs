@@ -281,7 +281,7 @@ impl World {
         vel_y: p.vel.fixed_y(),
         vel_z: p.vel.fixed_z(),
         meta:  ent.metadata().clone(),
-        // We can't reallt check if its a falling block on the proxy, so we do cross-versioning
+        // We can't really check if its a falling block on the proxy, so we do cross-versioning
         // this here.
         data:  if ent.ty() == entity::Type::FallingBlock {
           let bid = player.world().block_converter().to_old(data as u32, player.ver().block());

@@ -52,7 +52,7 @@ pub struct BlockDef {
 pub struct Block {
   /// The id of the block.
   id:               u32,
-  /// The name id, used everywhere imporant.
+  /// The name id, used everywhere important.
   name:             String,
   /// The name used in lang files.
   unlocalized_name: String,

@@ -239,7 +239,7 @@ impl<K: Eq + Hash + Debug + Clone + Copy, V: Clone> CloningRegistry<K, V> {
 type CloningRegRef<K, V> = Rc<RefCell<CloningRegistry<K, Rc<V>>>>;
 
 /// This is a registry setup such that a single item/block can be added to an
-/// older version, which will then propogate through all the newer versions.
+/// older version, which will then propagate through all the newer versions.
 /// This is primarily used to build the block table. It makes it very easy to
 /// generate all block ids for all versions at the same time.
 #[derive(Debug)]

@@ -1,5 +1,5 @@
 // /// Creates a type url from the given keyword. This should be used to
-// /// endcode/decode Any types.
+// /// encode/decode Any types.
 // macro_rules! create_type_url {
 //   ($ty: expr) => {
 //     concat!("type.googleapis.com/google.rpc.", stringify!($ty))

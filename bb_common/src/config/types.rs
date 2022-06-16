@@ -27,7 +27,7 @@ impl TomlValue<'_> for FPos {
       None
     }
   }
-  fn name() -> String { "posititon".into() }
+  fn name() -> String { "position".into() }
 }
 impl TomlValue<'_> for Level {
   fn from_toml(v: &Value) -> Option<Self> { Level::from_str(v.as_str()?).ok() }

@@ -139,7 +139,7 @@ fn purchase(player, item) {
   } else if !player.try_remove_item(Stack::new("diamond").with_amount(price.diamond)) {
     player.send_message(Chat::new("Not enough diamonds (need " + price.diamond.to_s() + ")"))
   } else if !player.try_remove_item(Stack::new("emerald").with_amount(price.emerald)) {
-    player.send_message(Chat::new("Not enough emerals (need " + price.emerald.to_s() + ")"))
+    player.send_message(Chat::new("Not enough emeralds (need " + price.emerald.to_s() + ")"))
   } else {
     bamboo::info(item)
     player.give(item)

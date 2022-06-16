@@ -181,7 +181,7 @@ impl Matcher<'_> {
       "water" => match self.int_prop("level") {
         0 => self.old("water"),
         // Only levels 1 through 7 are valid. 8 through 15 produce a full water section, which
-        // dissapears after a liquid update. This happens in every version from 1.8-1.18. It is
+        // disappears after a liquid update. This happens in every version from 1.8-1.18. It is
         // unclear why this property spans from 0 to 15, but it does.
         level @ 1..=15 => self.old("flowing_water") + level as u32 - 1,
         _ => unreachable!(),

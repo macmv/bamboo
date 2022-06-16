@@ -157,7 +157,7 @@ impl World {
       }
     });
 
-    info!("generating train...");
+    info!("generating terrain...");
     /*
     let chunks = Mutex::new(vec![]);
     let loaded = AtomicU32::new(0);

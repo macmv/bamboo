@@ -302,7 +302,7 @@ impl Connection {
   }
 
   // This waits for the a login packet from the proxy. If any other packet is
-  // recieved, this will panic. This should only be called right after a
+  // received, this will panic. This should only be called right after a
   // connection is created.
   //
   // pub(crate) async fn wait_for_login(&mut self) -> (String, UUID,

@@ -102,7 +102,7 @@ impl PlayerInventory {
   /// [`main_hand`](Self::main_hand) will do the same thing.
   pub fn selected_index(&self) -> u8 { self.selected_index }
 
-  /// Sets the selected index. Should only be used when recieving a held item
+  /// Sets the selected index. Should only be used when receiving a held item
   /// slot packet.
   ///
   /// This will send equipment updates.

@@ -147,7 +147,7 @@ impl TypeConverter {
   /// Converts an entity id into the latest version. It should work the same as
   /// [`block_to_new`](Self::block_to_new).
   pub fn entity_to_new(&self, id: u32, ver: BlockVersion) -> u32 {
-    // Air alwas maps to air. Since multiple latest blocks convert to air, we need
+    // Air always maps to air. Since multiple latest blocks convert to air, we need
     // this check
     if id == 0 {
       return 0;
@@ -294,7 +294,7 @@ mod entity_types {
     /// to find the end of this field.
     NBT,
     /// A VarInt for the particle ID, followed by some data. The data following
-    /// must be infered from the particle ID.
+    /// must be inferred from the particle ID.
     Particle,
     /// 3 VarInts: villager type, villager profession, and villager level.
     VillagerData,
@@ -304,7 +304,7 @@ mod entity_types {
     /// - 0: Standing
     /// - 1: Fall flying
     /// - 2: Sleeping
-    /// - 3: Swiming
+    /// - 3: Swimming
     /// - 4: Spin attack
     /// - 5: Sneaking
     /// - 6: Long jumping

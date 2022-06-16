@@ -469,7 +469,7 @@ impl<'a> InstrWriter<'a> {
         }
         // This might break things. However, everything single SetArr I can find has
         // just used the for loop value in the index. So, I am going to go ahead and
-        // assume thats always the case. Modern versions don't use for loops very much
+        // assume that's always the case. Modern versions don't use for loops very much
         // at all, and they never use SetArr. So if this works now, it should continue
         // working in the future.
         self.write_expr(arr);

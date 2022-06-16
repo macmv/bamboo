@@ -118,7 +118,7 @@ impl VersionedPacket {
     // - B
     // - C
     //
-    // Then add another version which removes A, and addes D:
+    // Then add another version which removes A, and adds D:
     //
     // - B
     // - C

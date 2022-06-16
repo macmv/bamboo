@@ -48,7 +48,7 @@ const LOOKUP_F32: [f32; TABLE_SIZE] =
 
 macro_rules! fast_math_impl {
   ($mod_name:ident, $ty:ident, $lookup:ident) => {
-    // Make a seperate module, so that we can have PI constants and such not
+    // Make a separate module, so that we can have PI constants and such not
     // interfere with f64 vs f32.
     mod $mod_name {
       use super::{$lookup, FastMath, TABLE_SIZE};
@@ -82,7 +82,7 @@ macro_rules! fast_math_impl {
           //
           // We multiple M by EXPI a second time, which is removed by / PI_0_5. The
           // remaining EXPI is removed at the end. This means we will have problems with
-          // floats above 1 << 42, but at that point this function is probbaly innacurate
+          // floats above 1 << 42, but at that point this function is probably inaccurate
           // anyways.
           let mut idx = ((((m * EXPI) / PI_0_5) * TABLE_SIZE as i64 + (EXPI / 2)) / EXPI) as usize;
           // Quadrants:

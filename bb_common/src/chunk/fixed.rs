@@ -29,7 +29,7 @@ impl ChunkSection for Section {
   /// In release mode, the position is not checked. In any other mode, a
   /// PosError will be returned if any of the x, y, or z are outside of 0..16
   fn set_block(&mut self, pos: SectionRelPos, ty: u32) {
-    // SAFETY: By defintion, pos.{x,y,z} are all within 0..16, so
+    // SAFETY: By definition, pos.{x,y,z} are all within 0..16, so
     // the position passed to set_block_unchecked is safe
     unsafe {
       self.set_block_unchecked(pos, ty);
@@ -40,7 +40,7 @@ impl ChunkSection for Section {
       for z in min.z()..=max.z() {
         for x in min.x()..=max.x() {
           unsafe {
-            // SAFETY: By defintion, pos.{x,y,z} are all within 0..16, so
+            // SAFETY: By definition, pos.{x,y,z} are all within 0..16, so
             // the position passed to set_block_unchecked is safe
             self.set_block_unchecked(SectionRelPos::new(x, y, z), ty);
           }
@@ -53,7 +53,7 @@ impl ChunkSection for Section {
   /// PosError will be returned if any of the x, y, or z are outside of 0..16
   fn get_block(&self, pos: SectionRelPos) -> u32 {
     unsafe {
-      // SAFETY: By defintion, pos.{x,y,z} are all within 0..16, so
+      // SAFETY: By definition, pos.{x,y,z} are all within 0..16, so
       // the position passed to set_block_unchecked is safe
       u32::from(
         *self

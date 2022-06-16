@@ -110,7 +110,7 @@ fn old_particle(old: &str) -> Option<String> {
     "enchantmenttable" => "enchant",              // weird letters floating
     "flame" => "flame",                           // small fire icons
     "lava" => "lava",                             // orange embers with smoke flying out
-    "footstep" => return None,                    // doens't exist on new versions
+    "footstep" => return None,                    // doesn't exist on new versions
     "cloud" => "cloud",                           // similar to poof
     "reddust" => "dust",                          // redstone dust
     "snowballpoof" => "item_snowball",            // snowball collision particle
@@ -122,7 +122,7 @@ fn old_particle(old: &str) -> Option<String> {
     "blockcrack_" => "block",                     // block break particles
     "blockdust_" => "block",                      // particles which appear underfoot
     "droplet" => "rain",                          // rain splash on ground
-    "take" => return None,                        // doens't render
+    "take" => return None,                        // doesn't render
     "mobappearance" => "elder_guardian",          // elder guardian appearing onscreen
     _ => return None,
   };

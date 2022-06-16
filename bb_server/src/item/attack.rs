@@ -27,7 +27,7 @@ pub enum WeaponGrade {
 
 impl Type {
   /// If this is a weapon, this returns the weapon type and weapon grade. This
-  /// only applies to melee weaons, which will deal extra damage. For example,
+  /// only applies to melee weapons, which will deal extra damage. For example,
   /// bows do not count as a weapon here.
   pub fn weapon(&self) -> Option<Weapon> {
     let (ty, grade) = match self {

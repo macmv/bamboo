@@ -512,7 +512,7 @@ impl<'a> ReaderTypes<'a> {
             }
             // Right now, we assume that we have a BitAnd like so: `v & 8 != 0` or `v & 8 == 8`.
             // This is easy to check with eq/neq to 0, but fails if we have something like this: `v
-            // & 8 != 5`. This last check makes no sense, and doesn't appear in our usecase, so I am
+            // & 8 != 5`. This last check makes no sense, and doesn't appear in our use case, so I am
             // going to ignore it.
             Cond::Neq(lhs, rhs) => (lhs, rhs != &Expr::new(Value::Lit(0.into()))),
             Cond::Eq(lhs, rhs) => (lhs, rhs == &Expr::new(Value::Lit(0.into()))),

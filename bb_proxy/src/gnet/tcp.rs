@@ -131,7 +131,7 @@ impl Packet {
     }
   }
 
-  /// This parses a postition from the internal buffer (format depends on the
+  /// This parses a position from the internal buffer (format depends on the
   /// version), and then returns that as a Pos struct.
   pub fn read_pos(&mut self) -> Result<Pos> {
     let num = self.read_u64()?;

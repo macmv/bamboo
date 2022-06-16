@@ -35,7 +35,7 @@ pub(crate) fn handle(wm: &Arc<WorldManager>, mut player: &Arc<Player>, p: sb::Pa
   */
   match p {
     sb::Packet::KeepAlive { id: _ } => {
-      // TODO Keep aliev packets
+      // TODO Keep alive packets
     }
     sb::Packet::Chat { msg } => {
       /*

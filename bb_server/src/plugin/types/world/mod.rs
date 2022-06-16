@@ -85,7 +85,7 @@ impl PWorld {
     Ok(self.inner.get_block(pos.inner).unwrap().into())
   }
 
-  /// Summons a dropped item at the given posision.
+  /// Summons a dropped item at the given position.
   pub fn summon_item(&self, pos: &PFPos, stack: &PStack) {
     let mut meta = Metadata::new();
     meta.set_item(8, stack.inner.to_item());

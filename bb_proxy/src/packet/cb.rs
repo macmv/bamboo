@@ -714,7 +714,7 @@ impl ToTcp for Packet {
         }
       }
       Packet::PluginMessage { channel, data } => {
-        // No length prefix for data, it is infered from packet length.
+        // No length prefix for data, it is inferred from packet length.
         if ver < ProtocolVersion::V1_14_4 {
           GPacket::CustomPayloadV8 { channel, unknown: data }
         } else {

@@ -29,7 +29,7 @@ impl NBT {
   /// where this buffer is currently placed, and will advance the reader to be
   /// right after the nbt data. If this function returns an error, then the
   /// buffer will be in an undefined state (it will still be safe, but there are
-  /// no gauruntees as too how far ahead the buffer will have been advanced).
+  /// no guarantees as too how far ahead the buffer will have been advanced).
   pub fn deserialize_buf(buf: &mut Buffer) -> Result<Self, ParseError> {
     let ty = buf.read_u8();
     let len = buf.read_u16();

@@ -160,7 +160,7 @@ impl Pos {
   pub const fn chunk_rel(&self) -> RelPos {
     RelPos::new(self.chunk_rel_x() as u8, self.y, self.chunk_rel_z() as u8)
   }
-  /// Returns this position within the 0, 0, 0 chunk sectino. That is, the X, Y
+  /// Returns this position within the 0, 0, 0 chunk section. That is, the X, Y
   /// and Z are all set to their chunk relative position.
   #[inline(always)]
   pub const fn chunk_section_rel(&self) -> SectionRelPos {
@@ -226,7 +226,7 @@ impl Pos {
     (((self.x - other.x).pow(2) + (self.y - other.y).pow(2) + (self.z - other.z).pow(2)) as f64)
       .sqrt()
   }
-  /// Returns the squared distance to the other position. Since block postitions
+  /// Returns the squared distance to the other position. Since block positions
   /// are always ints, this will also always be exactly an int.
   pub const fn dist_squared(&self, other: Pos) -> i32 {
     (self.x - other.x).pow(2) + (self.y - other.y).pow(2) + (self.z - other.z).pow(2)
@@ -236,7 +236,7 @@ impl Pos {
   ///
   /// This doesn't use [`std::cmp::Ord`], as two positions aren't really
   /// "larger" or "smaller" than one another. Instead, this just acts on `X`,
-  /// `Y`, and `Z` independantly.
+  /// `Y`, and `Z` independently.
   ///
   /// # Example
   ///
@@ -251,7 +251,7 @@ impl Pos {
   /// let new_pos = pos + Pos::new(3, 3, 3);
   /// // `new_pos` is be outside a chunk, and might break something
   /// assert_eq!(new_pos, Pos::new(5, 37, 17));
-  /// // This would clamp the `new_pos` within the chunk boundries
+  /// // This would clamp the `new_pos` within the chunk boundaries
   /// assert_eq!(new_pos.min(Pos::new(15, 255, 15)), Pos::new(5, 37, 15));
   /// ```
   pub fn min(&self, other: Pos) -> Pos {
@@ -262,7 +262,7 @@ impl Pos {
   ///
   /// This doesn't use [`std::cmp::Ord`], as two positions aren't really
   /// "larger" or "smaller" than one another. Instead, this just acts on `X`,
-  /// `Y`, and `Z` independantly.
+  /// `Y`, and `Z` independently.
   ///
   /// # Example
   ///

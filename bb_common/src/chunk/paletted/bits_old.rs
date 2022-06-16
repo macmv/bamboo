@@ -22,13 +22,13 @@
 //!
 //! NEVERMIND. I have just spent half an hour reading the Minecraft source code,
 //! in order to figure out how to index into the new format. They simply
-//! hardocoded 64 multiply, offset, and shift values which (through some integer
+//! hardcoded 64 multiply, offset, and shift values which (through some integer
 //! overflow bullshit) magically work. They just hardcoded the numbers for every
 //! possible BPE. This makes the whole thing far more annoying to recreate, and
 //! it uses up more memory. Mojang is smoking some ~other~ shit.
 //!
 //! Update 3: Mojang is still smoking some crazy shit, because their complex
-//! nonsense algorithm is completely uneeded. So the new system is simpler and
+//! nonsense algorithm is completely unneeded. So the new system is simpler and
 //! probably faster, but is still implemented terribly in vanilla.
 
 use std::fmt;

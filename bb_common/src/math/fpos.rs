@@ -130,7 +130,7 @@ impl FPos {
     (((self.x - other.x).powi(2) + (self.y - other.y).powi(2) + (self.z - other.z).powi(2)) as f64)
       .sqrt()
   }
-  /// Returns the squared distance to the other position. Since block postitions
+  /// Returns the squared distance to the other position. Since block positions
   /// are always ints, this will also always be exactly an int.
   pub fn dist_squared(&self, other: FPos) -> f64 {
     (self.x - other.x).powi(2) + (self.y - other.y).powi(2) + (self.z - other.z).powi(2)

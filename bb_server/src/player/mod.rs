@@ -54,8 +54,8 @@ pub(crate) struct PlayerPosition {
   // This is the position on the previous tick. It is only updated once per tick.
   pub(crate) prev: FPos,
 
-  // This is the most recently recieved position packet. It is updated whenever a position packet
-  // is recieved. It is also used to set x,y,z on the next tick.
+  // This is the most recently received position packet. It is updated whenever a position packet
+  // is received. It is also used to set x,y,z on the next tick.
   pub(crate) next: FPos,
 
   vel: Vec3,
@@ -259,14 +259,14 @@ impl Player {
   pub fn world(&self) -> &Arc<World> { &self.world }
 
   /// This will move the player on the next player tick. Used whenever a
-  /// position packet is recieved.
+  /// position packet is received.
   pub(crate) fn set_next_pos(&self, x: f64, y: f64, z: f64) {
     let mut pos = self.pos.lock();
     pos.next = FPos::new(x, y, z);
   }
 
   /// This will set the player's look direction on the next player tick. Used
-  /// whenever a player look packet is recieved.
+  /// whenever a player look packet is received.
   pub(crate) fn set_next_look(&self, yaw: f32, pitch: f32) {
     let mut pos = self.pos.lock();
     pos.next_yaw = yaw;
@@ -357,7 +357,7 @@ impl Player {
   ///
   /// This may not have an effect immediately. This only sends a disconnect
   /// packet. Assuming normal operation, the client will then disconnect after
-  /// they have recieved this packet.
+  /// they have received this packet.
   ///
   /// TODO: This should terminate the connection after this packet is sent.
   /// Closing the channel will drop the packet before it can be sent, so we need
@@ -523,7 +523,7 @@ impl Player {
     self.send_abilities();
   }
 
-  /// Returns the fly speed of the client. This is a multipler, so a fly speed
+  /// Returns the fly speed of the client. This is a multiplier, so a fly speed
   /// of 1.0 is the default flying speed.
   pub fn fly_speed(&self) -> f32 { self.abilities.lock().fly_speed }
 
@@ -559,7 +559,7 @@ impl Player {
   /// block, then the position you clicked on is not the same as the position
   /// where the new block is. However, if you click on tall grass, then the tall
   /// grass will be replaced by the new block. The client assumes this, and it
-  /// ends up becoming desyncronized from the server. So this function is called
+  /// ends up becoming desynchronized from the server. So this function is called
   /// on that tall grass block, to prevent the client from showing the wrong
   /// block.
   pub fn sync_block_at(&self, pos: Pos) {

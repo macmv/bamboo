@@ -1,6 +1,6 @@
 use super::{Point, PointGrid, Vector};
 
-/// This is an infinitley expanding voronoi map. It returns a unique id for
+/// This is an infinitely expanding voronoi map. It returns a unique id for
 /// every region that is retrieved. It should be used to choose which biome to
 /// generate at each block.
 pub struct Voronoi {

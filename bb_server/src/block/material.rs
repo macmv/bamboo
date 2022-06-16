@@ -19,7 +19,7 @@
 ///   piston will extend, and the block will drop as an item).
 /// - Translucent: If there is an `x` in this column, then this block is considered
 ///   transparent by the game. This means the clients can see through it, mobs
-///   cannot spawn ontop of it, etc.
+///   cannot spawn on top of it, etc.
 /// - Replaceable: If there is an `x` in this column, then the block will be
 ///   replaced when right-clicked on. The normal operation is to have the new block
 ///   be placed next to the block you click on. If the block is replaceable (for

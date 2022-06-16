@@ -52,7 +52,7 @@ impl PWindow {}
 /// A Player. This struct is for online players. There is currently no way to
 /// lookup an offline player.
 ///
-/// Offline players are difficult to handle. This struct cannot be consutructed
+/// Offline players are difficult to handle. This struct cannot be constructed
 /// for a player who is offline, but it can stay alive after a player has
 /// disconnected. For this reason, some functions simply do nothing if a player
 /// has logged off, while others will cause an error.

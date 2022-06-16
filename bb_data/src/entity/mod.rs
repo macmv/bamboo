@@ -103,7 +103,7 @@ pub enum MetadataType {
   /// find the end of this field.
   NBT,
   /// A VarInt for the particle ID, followed by some data. The data following
-  /// must be infered from the particle ID.
+  /// must be inferred from the particle ID.
   Particle,
   /// 3 VarInts: villager type, villager profession, and villager level.
   VillagerData,

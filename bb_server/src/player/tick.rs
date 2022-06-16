@@ -130,7 +130,7 @@ impl Player {
           let dz = pos.curr.z() - pos.prev.z();
           // On 1.8, we send EntityMove packets with the following value: delta * 32. On
           // 1.9+, we send it like so: delta * 4096. On 1.8, we use a single byte for the
-          // delta, wheras on 1.9+, we use a short.This means the total blocks you can
+          // delta, whereas on 1.9+, we use a short.This means the total blocks you can
           // represent in each of these forms can be calculated like so:
           //
           // 1.8:  (1 << 8) / 32 = 8

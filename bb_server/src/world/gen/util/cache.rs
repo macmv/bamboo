@@ -96,7 +96,7 @@ where
     &self.data.get(&key).unwrap().0
   }
 
-  /// This will lookup a value within the cache without the possibilty to insert
+  /// This will lookup a value within the cache without the possibility to insert
   /// it. If you are using this often, it might be best to just use a
   /// [`HashMap`].
   pub fn get_no_insert<Q: ?Sized>(&self, key: &Q) -> Option<&V>

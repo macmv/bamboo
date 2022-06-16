@@ -63,7 +63,7 @@ fn assert_plane_matches(a: &mut LightChunk<BlockLight>, b: &mut LightChunk<Block
 }
 
 #[test]
-fn basic_propogate() {
+fn basic_propagate() {
   #[rustfmt::skip]
   let (chunk, expected) = chunk_from_str(&[
     &[

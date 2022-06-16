@@ -51,7 +51,7 @@ pub fn define_ty(args: TokenStream, input: TokenStream) -> TokenStream {
 ///   // Defines a set. This is a collection of other items.
 ///   *wood* = Oak, Birch, Spruce, DarkOak, Acacia, Jungle;
 ///
-///   // Defins a mapping. This will map all possible concatenations of the `wood` set, appended
+///   // Defines a mapping. This will map all possible concatenations of the `wood` set, appended
 ///   // with `Log`. So this will match `Kind::OakLog | Kind::BirchLog | Kind::SpruceLog ...` to
 ///   // `Box::new(impls::Log)`.
 ///   *wood*Log => impls::Log;

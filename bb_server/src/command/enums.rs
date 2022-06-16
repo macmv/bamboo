@@ -141,7 +141,7 @@ pub enum Parser {
 pub enum EntitySelector {
   /// A username
   Name(String),
-  /// All entites, with the given restrictions
+  /// All entities, with the given restrictions
   Entities(HashMap<String, String>), //
   /// All players, with the given restrictions
   Players(HashMap<String, String>),
@@ -288,7 +288,7 @@ impl Arg {
 pub enum EntityIter<'a> {
   /// A player
   Player(Option<Arc<Player>>),
-  /// All entites, with the given restrictions
+  /// All entities, with the given restrictions
   Entities { props: HashMap<String, String>, iter: EntitiesIter<'a> },
   /// All players, with the given restrictions
   Players { props: HashMap<String, String>, iter: EntitiesIter<'a> },

@@ -30,7 +30,7 @@ include!(concat!(env!("OUT_DIR"), "/block/version.rs"));
 ///
 /// This type does not implement [`Default`], because it is very expensive to
 /// create one of these. A new one should only be constructed explicitly, and
-/// should never be neccessary.
+/// should never be necessary.
 pub struct TypeConverter {
   // Each index into the outer vec is a kind id. Indexing into the inner vec is each variant of the
   // given kind. These are in such an order that iterating through both of them will get all block

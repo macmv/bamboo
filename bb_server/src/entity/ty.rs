@@ -143,7 +143,7 @@ impl Type {
   /// converter's internal table of entity types.
   pub fn id(self) -> u32 { num::ToPrimitive::to_u32(&self).unwrap() }
   /// Returns the entity with the given id. If the id is invalid, this returns
-  /// `None`. This differes from items and blocks, as those both have defaults
+  /// `None`. This differs from items and blocks, as those both have defaults
   /// (air). There is no 'air' like entity, so we need to return an Option here.
   pub fn from_u32(v: u32) -> Option<Type> { num::FromPrimitive::from_u32(v) }
 }

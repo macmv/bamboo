@@ -24,7 +24,7 @@ pub enum FloatType {
 pub enum CountType {
   // A typed count
   Typed(IntType),
-  // A hardocded count
+  // A hardcoded count
   Fixed(u32),
   // Another protocol field should be used as the count
   Named(String),

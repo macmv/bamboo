@@ -53,7 +53,7 @@ impl PPos {
 impl PChunkPos {
   /// Creates a new chunk position, with the given X and Z coordinates.
   pub fn new(x: i32, z: i32) -> Self { PChunkPos { inner: ChunkPos::new(x, z) } }
-  /// Returns the X position of this chuk.
+  /// Returns the X position of this chunk.
   ///
   /// # Example
   ///
@@ -62,7 +62,7 @@ impl PChunkPos {
   /// pos.x() // returns 5
   /// ```
   pub fn x(&self) -> i32 { self.inner.x() }
-  /// Returns the Z position of this chuk.
+  /// Returns the Z position of this chunk.
   ///
   /// # Example
   ///

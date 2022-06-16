@@ -138,7 +138,7 @@ pub fn generate_ty(def: &BlockDef, opts: BlockOpts) -> String {
     gen.write_line("///");
     gen.write_line("/// This should only be called once, and will be done internally in the");
     gen.write_line("/// [`WorldManager`](crate::world::WorldManager). This is left public as");
-    gen.write_line("/// it may be moved to a seperate crate in the future, as it takes a long");
+    gen.write_line("/// it may be moved to a separate crate in the future, as it takes a long");
     gen.write_line("/// time to generate the source files for this.");
     gen.write_line("///");
     gen.write_line("/// This function is generated at compile time. See");

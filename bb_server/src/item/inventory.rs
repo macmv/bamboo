@@ -4,11 +4,11 @@ use bb_common::{net::cb, util::UUID};
 use std::{collections::HashMap, mem};
 
 /// An inventory. This is a very abstract concept in Bamboo. Unlike vanilla,
-/// which uses a bunch of hardocoded offsets into one inventory, we use multiple
+/// which uses a bunch of hardcoded offsets into one inventory, we use multiple
 /// inventories in 1 window for bamboo. Each inventory has an offset, so that it
 /// can send packets with the correct ids.
 ///
-/// The inventories are seperated to make shift-click logic very simple to
+/// The inventories are separated to make shift-click logic very simple to
 /// write.
 #[derive(Debug, Clone)]
 pub struct Inventory<const N: usize> {

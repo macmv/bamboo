@@ -124,7 +124,7 @@ pub enum MetadataType {
   /// find the end of this field.
   NBT,
   /// A VarInt for the particle ID, followed by some data. The data following
-  /// must be infered from the particle ID.
+  /// must be inferred from the particle ID.
   Particle,
   /// 3 VarInts: villager type, villager profession, and villager level.
   VillagerData,
@@ -133,8 +133,8 @@ pub enum MetadataType {
   /// A VarInt, from 0-7 (inclusive). The numbers map to these poses:
   /// - 0: Standing
   /// - 1: Fall flying
-  /// - 2: Pdeeping
-  /// - 3: Swiming
+  /// - 2: Sleeping
+  /// - 3: Swimming
   /// - 4: Spin attack
   /// - 5: Sneaking
   /// - 6: Long jumping

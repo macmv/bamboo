@@ -83,7 +83,7 @@ include!(concat!(env!("OUT_DIR"), "/item/version.rs"));
 ///
 /// This should only be called once, and will be done internally in the
 /// [`WorldManager`](crate::world::WorldManager). This is left public as it may
-/// be moved to a seperate crate in the future, as it takes a long time to
+/// be moved to a separate crate in the future, as it takes a long time to
 /// generate the source files for this.
 ///
 /// Most of this function is generated at compile time. See

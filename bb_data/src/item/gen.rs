@@ -62,7 +62,7 @@ pub fn generate_ty(def: &ItemDef) -> String {
   gen.write_line("///");
   gen.write_line("/// This should only be called once, and will be done internally in the");
   gen.write_line("/// [`WorldManager`](crate::world::WorldManager). This is left public as it may");
-  gen.write_line("/// be moved to a seperate crate in the future, as it takes a long time to");
+  gen.write_line("/// be moved to a separate crate in the future, as it takes a long time to");
   gen.write_line("/// generate the source files for this.");
   gen.write_line("///");
   gen.write_line("/// This function is generated at compile time. See");

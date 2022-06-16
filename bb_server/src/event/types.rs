@@ -135,7 +135,7 @@ pub enum ServerRequest {
   },
 }
 
-/// A reply from the server to the plugin. This is a reponse to a
+/// A reply from the server to the plugin. This is a response to a
 /// [PluginRequest].
 #[non_exhaustive]
 #[derive(Debug, Clone, serde::Serialize)]

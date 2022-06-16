@@ -103,7 +103,7 @@ pub enum Window {
   },
   #[name("minecraft:enchantment")]
   Enchantment { book: SharedInventory<1>, lapis: SharedInventory<1> },
-  #[name("minecraft:furance")]
+  #[name("minecraft:furnace")]
   Furnace {
     input:  SharedInventory<1>,
     #[filter(fuel)]

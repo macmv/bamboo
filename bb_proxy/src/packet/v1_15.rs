@@ -7,7 +7,7 @@ use bb_common::{
 };
 
 // CHANGES:
-// Added biomes as a seperate field, which is 1024 elements, instead of 256
+// Added biomes as a separate field, which is 1024 elements, instead of 256
 // elements.
 pub fn chunk(chunk: ChunkWithPos, conv: &TypeConverter) -> Packet {
   let biomes = chunk.full;

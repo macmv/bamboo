@@ -6,12 +6,12 @@ changes, although major version bumps will require more intervention. This shoul
 be kept up to date, so that any maintainer can upgrade bamboo to a new Minecraft
 version with relative ease.
 
-### TDLR:
+### TLDR:
 - Update `bamboo-data`, and push new json files to the website.
 - Update `bb_data/src/main.rs` to have a new entry in `VERSIONS`.
 - Update `bb_common/src/version.rs` to have a new entry in `ProcolVersion` and `BlockVersion`.
 - Update the `latest` functions for `ProcolVersion` and `BlockVersion`.
-- Recompile, see whats broken.
+- Recompile, see what's broken.
 
 ### Details
 

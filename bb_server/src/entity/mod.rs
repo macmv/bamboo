@@ -65,7 +65,7 @@ pub enum Entity {
   Player(UUID),
 }
 
-/// The data for a server-controlled entity. This is seperate from an
+/// The data for a server-controlled entity. This is separate from an
 /// [`Entity`], as it cannot represent a client player. It can represent an NPC
 /// (non player character) that looks like a player, but it cannot be controlled
 /// by a client.

@@ -28,7 +28,7 @@ pub struct ItemDef {
 pub struct Item {
   /// The id of the item.
   id:    u32,
-  /// The name id, used everywhere imporant.
+  /// The name id, used everywhere important.
   name:  String,
   /// The full class of this item
   class: String,

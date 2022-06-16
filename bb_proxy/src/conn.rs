@@ -678,16 +678,16 @@ impl<'a, S: PacketStream + Send + Sync> Conn<'a, S> {
               );
             }
             let len = p.read_varint()?;
-            let recieved_secret = p.read_buf(len.try_into().unwrap())?;
+            let received_secret = p.read_buf(len.try_into().unwrap())?;
             let len = p.read_varint()?;
-            let recieved_token = p.read_buf(len.try_into().unwrap())?;
+            let received_token = p.read_buf(len.try_into().unwrap())?;
 
             let decrypted_secret =
-              self.key.decrypt(PaddingScheme::PKCS1v15Encrypt, &recieved_secret).map_err(|e| {
+              self.key.decrypt(PaddingScheme::PKCS1v15Encrypt, &received_secret).map_err(|e| {
                 io::Error::new(ErrorKind::InvalidInput, format!("unable to decrypt secret: {}", e))
               })?;
             let decrypted_token =
-              self.key.decrypt(PaddingScheme::PKCS1v15Encrypt, &recieved_token).map_err(|e| {
+              self.key.decrypt(PaddingScheme::PKCS1v15Encrypt, &received_token).map_err(|e| {
                 io::Error::new(ErrorKind::InvalidInput, format!("unable to decrypt token: {}", e))
               })?;
 
@@ -697,7 +697,7 @@ impl<'a, S: PacketStream + Send + Sync> Conn<'a, S> {
                 io::Error::new(
                   ErrorKind::InvalidInput,
                   format!(
-                    "invalid verify token recieved from client (len: {})",
+                    "invalid verify token received from client (len: {})",
                     decrypted_token.len()
                   ),
                 )
@@ -711,7 +711,7 @@ impl<'a, S: PacketStream + Send + Sync> Conn<'a, S> {
                 return Err(
                   io::Error::new(
                     ErrorKind::InvalidInput,
-                    format!("invalid secret recieved from client (len: {}, expected len 16)", len,),
+                    format!("invalid secret received from client (len: {}, expected len 16)", len,),
                   )
                   .into(),
                 )
@@ -745,7 +745,7 @@ impl<'a, S: PacketStream + Send + Sync> Conn<'a, S> {
                   Ok(v) => Some(v),
                   Err(e) => return Err(io::Error::new(
                     ErrorKind::InvalidData,
-                    format!("invalid json data recieved from session server: {}", e),
+                    format!("invalid json data received from session server: {}", e),
                   ).into())
                 }
               },

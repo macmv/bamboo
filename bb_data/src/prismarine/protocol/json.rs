@@ -105,7 +105,7 @@ pub(crate) enum TypeValue {
   Option(Type),
   // This is a value that may or may not exist
   BitField(Vec<BitField>),
-  // This is an array of elements, where each element is a contianer. The first element in that
+  // This is an array of elements, where each element is a container. The first element in that
   // container must be a number type. The highest bit in that number will be set if another entry
   // continues. Otherwise, the given container is the last item in the array.
   //
@@ -264,7 +264,7 @@ pub(crate) enum CountType {
   // [`Array`] for more.
   #[serde(skip)]
   Typed(String),
-  // A hardocded count
+  // A hardcoded count
   Fixed(u32),
   // Another protocol field should be used as the count
   Named(String),

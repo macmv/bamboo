@@ -31,7 +31,7 @@ impl CaveWorm {
     }
   }
 
-  /// Generates a cave path. This will recursivly spawn children, which will
+  /// Generates a cave path. This will recursively spawn children, which will
   /// carve shorter paths. All children's paths will be appended to
   /// `self.steps`.
   pub fn carve(&mut self, offset: u32) {

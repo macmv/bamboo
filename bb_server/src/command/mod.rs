@@ -14,7 +14,7 @@
 //!
 //! This would create a fill command, which would take three arguments: two
 //! block positions, and a block type. The block positions are 3 numbers
-//! seperated by spaces. However, they also support relative coordinates: `~10`
+//! separated by spaces. However, they also support relative coordinates: `~10`
 //! means 10 blocks up/right/forward of your current position. See the
 //! [`Parser`] type for details on the various parsers.
 mod enums;
@@ -98,7 +98,7 @@ impl CommandTree {
 /// it is also used to represent an argument of a command. When you call
 /// [`add_arg`](Self::add_arg) or [`add_lit`](Self::add_lit), these functions
 /// will add a new argument to the command. But they will also return a command.
-/// This is a seperate struct, and is a reference into the command this was
+/// This is a separate struct, and is a reference into the command this was
 /// called on. This makes chaining [`add_arg`](Self::add_arg) add arguments
 /// one-after-another.
 #[derive(Debug, Clone)]
@@ -175,7 +175,7 @@ impl Command {
   ///   .add_arg("block", Parser::BlockState);
   /// ```
   ///
-  /// Note that the `&mut Command` returned by this function is not a refernce
+  /// Note that the `&mut Command` returned by this function is not a reference
   /// to `self`. It is a new struct, created by this function. It is returned so
   /// that you can chain arguments, and add multiple arguments after each other
   /// easily.

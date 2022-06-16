@@ -128,7 +128,7 @@ impl UUID {
   /// characters.
   pub fn as_str(&self) -> String { format!("{:x}", self.0) }
   /// Returns the uuid represented as a string with dashes. This is used
-  /// sometimes when refering to player in json, and is a useful function to
+  /// sometimes when referring to player in json, and is a useful function to
   /// have.
   pub fn as_dashed_str(&self) -> String {
     format!(

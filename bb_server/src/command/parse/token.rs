@@ -9,9 +9,9 @@ pub struct Tokenizer<'a> {
   pos:   usize,
 }
 
-/// A region of text in a commmand. The start is inclusive, and the end is
+/// A region of text in a command. The start is inclusive, and the end is
 /// exclusive. Both indices are in bytes, not chars. It is considered invalid
-/// state for a Span's start or end to not be on a utf8 boundry.
+/// state for a Span's start or end to not be on a utf8 boundary.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct Span {
   pub start: usize,
@@ -197,7 +197,7 @@ impl Word {
   /// Returns the position of this word.
   pub fn pos(&self) -> Span { self.pos }
 
-  /// Upates the internal text of this word, without changing the span.
+  /// Updates the internal text of this word, without changing the span.
   pub fn set_text(&mut self, new_text: String) { self.text = new_text; }
 
   pub fn as_str(&self) -> &str { &self.text }
@@ -205,7 +205,7 @@ impl Word {
 
 impl Span {
   /// Creates a new span that wraps the text between the two indices. The
-  /// `start` is inclusive, and the `end` is exlusive.
+  /// `start` is inclusive, and the `end` is exclusive.
   pub fn new(start: usize, end: usize) -> Self { Span { start, end } }
   /// Creates a span that wraps a single char at index `char_index`.
   pub fn single(char_index: usize) -> Self { Span { start: char_index, end: char_index + 1 } }

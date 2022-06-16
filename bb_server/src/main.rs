@@ -39,7 +39,7 @@ struct Args {
 //   ) -> Result<Response<Self::ConnectionStream>, Status> {
 //     let (tx, rx) = mpsc::channel(8);
 //
-//     // We need to wait for a packet to be recieved from the proxy before we
+//     // We need to wait for a packet to be received from the proxy before we
 // can     // create the player (we need a username and uuid). Therefore, we
 // need to do     // this on another task.
 //     let worlds = self.worlds.clone();

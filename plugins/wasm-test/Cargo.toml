@@ -9,7 +9,7 @@ crate-type = ["cdylib"]
 [dependencies]
 bb_plugin = { path = "../../bb_plugin" }
 
-# Seperate workspace
+# Separate workspace
 [workspace]
 
 [profile.release]

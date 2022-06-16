@@ -39,7 +39,7 @@ impl PandaPlugin {
 
   pub fn name(&self) -> &String { &self.name }
 
-  /// This replaces the plugins envrionment with a new one, and then parses the
+  /// This replaces the plugins environment with a new one, and then parses the
   /// given file as a panda source file.
   pub fn load_from_file(&mut self, path: &Path, manager: &PluginManager) {
     self.sl = None;
@@ -65,7 +65,7 @@ impl PandaPlugin {
     }
   }
 
-  /// This replaces the plugin envrionment with a new one, and then parses all
+  /// This replaces the plugin environment with a new one, and then parses all
   /// of the files ending in `.sug` in the given directory.
   pub fn load_from_dir(&mut self, dir: &Path, manager: &PluginManager) {
     self.sl = None;

@@ -59,7 +59,7 @@ pub use write::{MessageWrite, MessageWriter, WriteError};
 /// that all small number only take up one byte (including the header).
 ///
 /// [`VarInt`] doesn't specify the sign of the number. This is because we
-/// read/write everyting as an unsigned number, and then use zigzag
+/// read/write everything as an unsigned number, and then use zigzag
 /// encoding/decoding after the fact. It is up to the reader to determine if it
 /// is expecting a signed or unsigned number.
 ///

@@ -60,7 +60,7 @@ impl Chat {
   }
   /// Creates a new Chat message, with 1 empty section.
   ///
-  /// There are numerous problesm with having no sections, so the sections list
+  /// There are numerous problems with having no sections, so the sections list
   /// can never be empty.
   pub fn empty() -> Self { Chat::new("") }
 
@@ -329,7 +329,7 @@ impl Section {
     self.hover_event = Some(e);
     self
   }
-  /// This adds a child section to this chat section. Any properities left blank
+  /// This adds a child section to this chat section. Any properties left blank
   /// on that child will be filled in from this section. If you want multiple
   /// chat sections in a row, you probably want to use [`Chat::add`] instead.
   /// This is instead useful for something like a hyperlink, where part of it

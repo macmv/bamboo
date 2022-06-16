@@ -10,7 +10,7 @@ use bb_common::{
 };
 
 // CHANGES:
-// Added biomes as a seperate field, which is 1024 elements, instead of 256
+// Added biomes as a separate field, which is 1024 elements, instead of 256
 // elements.
 pub fn serialize_chunk(pos: ChunkPos, c: &MultiChunk) -> cb::Packet {
   let types = c.type_converter();
