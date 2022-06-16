@@ -23,6 +23,16 @@ impl FromTcp for Packet {
       GPacket::AnimationV8 { unknown: _ } => Packet::Animation { hand: Hand::Main },
       GPacket::AnimationV9 { hand } => Packet::Animation { hand: Hand::from_id(hand as u8) },
       GPacket::ChatV8 { message } | GPacket::ChatV11 { message } => Packet::Chat { msg: message },
+      GPacket::ChatV19 { chat_message, unknown: _ } => Packet::Chat { msg: chat_message },
+      GPacket::CommandExecutionV19 { unknown } => {
+        let mut buf = tcp::Packet::from_buf_id(unknown, 0, ver);
+        let msg = buf.read_str(256)?;
+        let _time = buf.read_u64()?;
+        let _salt = buf.read_u64()?;
+        let _args_map_len = buf.read_varint()?;
+        let _signed = buf.read_bool()?;
+        Packet::Chat { msg: format!("/{msg}") }
+      }
       GPacket::ClickWindowV8 {
         window_id,
         mut slot_id,
