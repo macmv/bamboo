@@ -269,7 +269,7 @@ impl Prop {
     StateProp {
       name: self.name.clone(),
       kind: match &self.kind {
-        PropKind::Bool => StatePropKind::Bool(id != 0),
+        PropKind::Bool => StatePropKind::Bool(id == 0),
         PropKind::Enum(v) => StatePropKind::Enum(id as usize, v[id as usize].clone()),
         PropKind::Int { .. } => StatePropKind::Int(id as i32),
       },
@@ -288,14 +288,14 @@ impl Block {
       states.push(State {
         props: prop_ids.iter().enumerate().map(|(i, id)| self.properties[i].state(*id)).collect(),
       });
-      prop_ids[0] += 1;
-      for i in 0..prop_ids.len() {
+      prop_ids[self.properties.len() - 1] += 1;
+      for i in (0..prop_ids.len()).rev() {
         if prop_ids[i] >= self.properties[i].len() {
-          if i >= prop_ids.len() - 1 {
+          if i == 0 {
             break 'all;
           }
           prop_ids[i] = 0;
-          prop_ids[i + 1] += 1;
+          prop_ids[i - 1] += 1;
         } else {
           break;
         }
@@ -332,6 +332,31 @@ impl State {
     match &p.kind {
       StatePropKind::Int(v) => *v,
       _ => panic!("not an int: {:?}", p),
+    }
+  }
+}
+
+impl fmt::Display for State {
+  fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    let mut all_props: Vec<_> = self.props.iter().collect();
+    all_props.sort_unstable_by(|a, b| a.name.cmp(&b.name));
+    write!(f, "[")?;
+    for (i, prop) in all_props.iter().enumerate() {
+      write!(f, "{}={}", prop.name, prop.kind)?;
+      if i != all_props.len() - 1 {
+        write!(f, ",")?;
+      }
+    }
+    write!(f, "]")?;
+    Ok(())
+  }
+}
+impl fmt::Display for StatePropKind {
+  fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    match self {
+      Self::Bool(v) => v.fmt(f),
+      Self::Enum(_, v) => v.fmt(f),
+      Self::Int(v) => v.fmt(f),
     }
   }
 }
