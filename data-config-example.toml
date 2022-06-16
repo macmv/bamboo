@@ -1,0 +1,14 @@
+# This is the default configuration for `bb_data`. Unlike the other
+# configurations, this is not loaded through `bb_common`, so we have
+# the default stored here, and not included in the `bb_data` binary.
+
+# This can be "remote" or "local"
+sources = "remote"
+
+# This must be present when the sources are set to "remote"
+url = "https://macmv.gitlab.io/bamboo-data"
+
+# This must be present when the sources are set to "local". If you
+# have `bamboo-data` cloned locally, this should be set to that path
+# and then the webpage path.
+path = "<bamboo-data-path>/build/webpage"

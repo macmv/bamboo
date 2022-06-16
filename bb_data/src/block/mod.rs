@@ -1,25 +1,25 @@
-use crate::dl;
+use crate::Collector;
 use serde::{de, de::Visitor, Deserialize, Deserializer};
-use std::{fmt, fs, io, path::Path};
+use std::{fmt, fs, io};
 
 mod cross;
 mod gen;
 
 pub use gen::BlockOpts;
 
-pub fn generate(out_dir: &Path, opts: BlockOpts) -> io::Result<()> {
-  fs::create_dir_all(out_dir.join("block"))?;
+pub fn generate(c: &Collector, opts: BlockOpts) -> io::Result<()> {
+  fs::create_dir_all(c.out.join("block"))?;
   let versions = crate::VERSIONS
     .iter()
     .map(|&ver| {
-      let mut def: BlockDef = dl::get("blocks", ver);
+      let mut def: BlockDef = c.dl.get("blocks", ver);
       for block in &mut def.blocks {
         block.properties.sort_unstable_by(|a, b| a.name.cmp(&b.name));
       }
       (ver, def)
     })
     .collect();
-  gen::generate(versions, opts, &out_dir.join("block"))?;
+  gen::generate(versions, opts, &c.out.join("block"))?;
   Ok(())
 }
 
@@ -27,10 +27,11 @@ pub fn generate(out_dir: &Path, opts: BlockOpts) -> io::Result<()> {
 #[test]
 fn test_all() {
   println!("generating versions...");
+  let c = Collector::new();
   let versions = crate::VERSIONS
     .iter()
     .map(|&ver| {
-      let def: BlockDef = dl::get("blocks", ver);
+      let def: BlockDef = c.dl.get("blocks", ver);
       (ver, def)
     })
     .collect();

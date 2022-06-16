@@ -1,20 +1,20 @@
-use crate::{dl, Target};
+use crate::{Collector, Target};
 use serde::Deserialize;
-use std::{fs, io, path::Path};
+use std::{fs, io};
 
 mod cross;
 mod gen;
 
-pub fn generate(out_dir: &Path, target: Target) -> io::Result<()> {
-  fs::create_dir_all(out_dir.join("particle"))?;
+pub fn generate(c: &Collector, target: Target) -> io::Result<()> {
+  fs::create_dir_all(c.out.join("particle"))?;
   let versions = crate::VERSIONS
     .iter()
     .map(|&ver| {
-      let def: ParticleDef = dl::get("particles", ver);
+      let def: ParticleDef = c.dl.get("particles", ver);
       (ver, def)
     })
     .collect();
-  gen::generate(versions, target, &out_dir.join("particle"))?;
+  gen::generate(versions, target, &c.out.join("particle"))?;
   Ok(())
 }
 

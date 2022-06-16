@@ -1,6 +1,6 @@
-use crate::dl;
+use crate::Collector;
 use serde::Deserialize;
-use std::{fmt, io, path::Path};
+use std::{fmt, io};
 
 pub mod convert;
 mod extend;
@@ -11,13 +11,13 @@ mod type_analysis;
 #[cfg(test)]
 mod tests;
 
-pub fn generate(out_dir: &Path) -> io::Result<()> {
+pub fn generate(c: &Collector) -> io::Result<()> {
   let mut versions = vec![];
   for &ver in crate::VERSIONS {
-    let def: PacketDef = dl::get("protocol", ver);
+    let def: PacketDef = c.dl.get("protocol", ver);
     versions.push((ver, def));
   }
-  gen::generate(versions, &out_dir.join("protocol"))?;
+  gen::generate(versions, &c.out.join("protocol"))?;
   Ok(())
 }
 

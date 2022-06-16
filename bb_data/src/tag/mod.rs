@@ -1,19 +1,19 @@
-use crate::dl;
+use crate::Collector;
 use serde::Deserialize;
-use std::{fs, io, path::Path};
+use std::{fs, io};
 
 mod gen;
 
-pub fn generate(out_dir: &Path) -> io::Result<()> {
-  fs::create_dir_all(out_dir.join("tag"))?;
+pub fn generate(c: &Collector) -> io::Result<()> {
+  fs::create_dir_all(c.out.join("tag"))?;
   let versions = crate::VERSIONS
     .iter()
     .map(|&ver| {
-      let def: TagsDef = dl::get("tags", ver);
+      let def: TagsDef = c.dl.get("tags", ver);
       (ver, def)
     })
     .collect();
-  gen::generate(versions, &out_dir.join("tag"))?;
+  gen::generate(versions, &c.out.join("tag"))?;
   Ok(())
 }
 

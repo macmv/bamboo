@@ -1,8 +1,9 @@
 use bb_data::Target::Plugin;
 
 fn main() {
-  bb_data::generate_blocks(bb_data::BlockOpts { versions: false, data: false, kinds: true });
-  bb_data::generate_items();
-  bb_data::generate_entities();
-  bb_data::generate_particles(Plugin);
+  let c = bb_data::Collector::new();
+  c.generate_blocks(bb_data::BlockOpts { versions: false, data: false, kinds: true });
+  c.generate_items();
+  c.generate_entities();
+  c.generate_particles(Plugin);
 }

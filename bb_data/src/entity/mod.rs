@@ -1,22 +1,22 @@
-use crate::dl;
+use crate::Collector;
 use convert_case::{Case, Casing};
 use serde::Deserialize;
-use std::{collections::HashMap, fs, io, path::Path};
+use std::{collections::HashMap, fs, io};
 
 mod cross;
 mod gen;
 
-pub fn generate(out_dir: &Path) -> io::Result<()> {
-  fs::create_dir_all(out_dir.join("entity"))?;
+pub fn generate(c: &Collector) -> io::Result<()> {
+  fs::create_dir_all(c.out.join("entity"))?;
   let versions = crate::VERSIONS
     .iter()
     .map(|&ver| {
-      let mut def: EntityDef = dl::get("entities", ver);
+      let mut def: EntityDef = c.dl.get("entities", ver);
       def.init();
       (ver, def)
     })
     .collect();
-  gen::generate(versions, &out_dir.join("entity"))?;
+  gen::generate(versions, &c.out.join("entity"))?;
   Ok(())
 }
 

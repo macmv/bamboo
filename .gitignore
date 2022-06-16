@@ -19,6 +19,7 @@ perf.data.old
 # these to get checked in.
 /server.toml
 /proxy.toml
+/data-config.toml
 
 bb_server/server.toml
 

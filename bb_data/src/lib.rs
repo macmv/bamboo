@@ -1,3 +1,4 @@
+use dl::Downloader;
 use std::{env, fmt, path::PathBuf};
 
 mod block;
@@ -32,22 +33,30 @@ impl fmt::Display for Version {
   }
 }
 
-fn out_dir() -> PathBuf {
-  PathBuf::new().join(&env::var("OUT_DIR").expect("could not get out dir"))
-}
-
 #[derive(Debug, Clone, Copy)]
 pub enum Target {
   Host,
   Plugin,
 }
 
-pub fn generate_blocks(opts: BlockOpts) { block::generate(&out_dir(), opts).unwrap(); }
-pub fn generate_items() { item::generate(&out_dir()).unwrap(); }
-pub fn generate_entities() { entity::generate(&out_dir()).unwrap(); }
-pub fn generate_protocol() { protocol::generate(&out_dir()).unwrap(); }
-pub fn generate_particles(target: Target) { particle::generate(&out_dir(), target).unwrap(); }
-pub fn generate_tags() { tag::generate(&out_dir()).unwrap(); }
+pub struct Collector {
+  dl:  Downloader,
+  out: PathBuf,
+}
+
+impl Collector {
+  pub fn new() -> Self {
+    let out = PathBuf::new().join(&env::var("OUT_DIR").expect("could not get out dir"));
+    Collector { dl: Downloader::new(out.clone()), out }
+  }
+
+  pub fn generate_blocks(&self, opts: BlockOpts) { block::generate(&self, opts).unwrap(); }
+  pub fn generate_items(&self) { item::generate(&self).unwrap(); }
+  pub fn generate_entities(&self) { entity::generate(&self).unwrap(); }
+  pub fn generate_protocol(&self) { protocol::generate(&self).unwrap(); }
+  pub fn generate_particles(&self, target: Target) { particle::generate(&self, target).unwrap(); }
+  pub fn generate_tags(&self) { tag::generate(&self).unwrap(); }
+}
 
 pub static VERSIONS: &[Version] = &[
   Version::new(8, 9, 47),
