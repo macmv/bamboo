@@ -25,6 +25,8 @@ bb_server/server.toml
 
 # a testing world
 /world
+# more testing worlds
+/worlds
 
 # Vanilla datapack. Contains recipies
 /data
