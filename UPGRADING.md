@@ -47,3 +47,22 @@ in `bb_proxy/src/packet/cb.rs`, and then everything worked!
 At the time of writing, 1.19 is not out yet (just in snapshots), so I'm not going to try
 to do a major version bump. However, once I do upgrade to 1.19, I will update this file to
 include all the steps that need to be completed.
+
+EDIT:
+
+I'm updating to 1.19 now. I'm already updated `bamboo-data`. The next step is to update
+`bb_data::VERSIONS`, to have it pull the latest versions. This immediately fails, as there
+is an extra enum variant added to the entity metadata. After fixing this, `bb_data` compiles,
+and I updated the version in `bb_common`.
+
+After fixing this, the server needed to be updated in two places: the `entity::MetadataType`
+enum needs to match the one in `bb_data`, and the `entity::Type::is_living` function needed
+to be updated for the new entities. After this, the server compiled.
+
+The proxy got an invalid packet reader function, called `read_registry_value`. I fixed this,
+along with a few other `read_` functions.
+
+The next thing was to fix the protocol reader. A bunch of things in `bb_proxy` need manual
+intervention, simply because of the nature of things like join game packets and chunks.
+
+Long story short, just connect with a vanilla client, and fix all the bugs.

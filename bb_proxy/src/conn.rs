@@ -359,7 +359,7 @@ impl<'a, S: PacketStream + Send + Sync> Conn<'a, S> {
   /// Tries to send the packet to the client, and buffers it if that is not
   /// possible.
   fn send_to_client(&mut self, p: gcb::Packet) -> Result<()> {
-    debug!("sending packet {:?} (tcp id: {1} {1:#x})", p, p.tcp_id(self.ver));
+    debug!("sending packet (tcp id: {0} {0:#x}) {1:?}", p.tcp_id(self.ver), p,);
     let mut tcp = tcp::Packet::new(p.tcp_id(self.ver).try_into().unwrap(), self.ver);
     p.to_tcp(&mut tcp);
     // debug!("sending bytes {:?}", tcp);

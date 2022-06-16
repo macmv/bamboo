@@ -46,7 +46,7 @@ pub fn chunk(
     BlockVersion::V1_15 => v1_15::chunk(chunk, conv),
     BlockVersion::V1_16 => v1_16::chunk(chunk, conv),
     BlockVersion::V1_17 => v1_17::chunk(chunk, conv),
-    BlockVersion::V1_18 => v1_18::chunk(chunk, conv),
+    BlockVersion::V1_18 | BlockVersion::V1_19 => v1_18::chunk(chunk, conv),
     _ => todo!("chunk on version {}", ver),
   }]
 }

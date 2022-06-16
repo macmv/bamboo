@@ -168,16 +168,44 @@ impl ToTcp for Packet {
         }
       }
       Packet::Chat { msg, ty } => {
-        if ver < ProtocolVersion::V1_12_2 {
-          GPacket::ChatV8 { chat_component: msg.to_json(), ty: ty as i8 }
-        } else if ver < ProtocolVersion::V1_16_5 {
-          GPacket::ChatV12 { chat_component: msg.to_json(), unknown: vec![ty] }
-        } else {
+        if ver >= ProtocolVersion::V1_19 {
+          let mut data = vec![];
+          let mut buf = Buffer::new(&mut data);
+          let s = msg.to_json();
+          debug!("{}", s.len());
+          buf.write_str(&s); // signed content
+
+          // TODO: These extra fields are going to be used in 1.19.1
+          buf.write_bool(true);
+          // buf.write_str(&s);
+          // buf.write_option(&Some(s), |b, m| b.write_str(&m)); // unsigned content
+
+          /*
+          buf.write_varint(ty.into()); // chat type
+          */
+
+          /*
+          buf.write_uuid(UUID::from_u128(0)); // sent by user 0
+          buf.write_str(""); // sent by user with name ""
+          buf.write_option(&None, |_, _: &()| {}); // sent by user on no team
+
+          buf.write_u64(0); // sent at instant 0
+
+          buf.write_u64(0); // signature of 0
+          buf.write_varint(0); // with length 0
+          GPacket::ChatV19 { unknown: data }
+          */
+          return Ok(smallvec![]);
+        } else if ver >= ProtocolVersion::V1_16_5 {
           let mut data = vec![];
           let mut buf = Buffer::new(&mut data);
           buf.write_u8(ty);
           buf.write_uuid(UUID::from_u128(0));
           GPacket::ChatV12 { chat_component: msg.to_json(), unknown: data }
+        } else if ver >= ProtocolVersion::V1_12_2 {
+          GPacket::ChatV12 { chat_component: msg.to_json(), unknown: vec![ty] }
+        } else {
+          GPacket::ChatV8 { chat_component: msg.to_json(), ty: ty as i8 }
         }
       }
       Packet::Chunk { pos, full, sections, sky_light, block_light } => {
@@ -225,7 +253,10 @@ impl ToTcp for Packet {
           }
         });
         buf.write_varint(root as i32);
-        if ver >= ProtocolVersion::V1_16_5 {
+        if ver >= ProtocolVersion::V1_19 {
+          // GPacket::CommandTreeV19 { unknown: data }
+          return Ok(smallvec![]);
+        } else if ver >= ProtocolVersion::V1_16_5 {
           GPacket::CommandTreeV16 { unknown: data }
         } else {
           GPacket::CommandTreeV14 { unknown: data }
@@ -444,7 +475,7 @@ impl ToTcp for Packet {
           buf.write_varint(1);
           buf.write_str("minecraft:overworld");
 
-          write_dimensions(&mut buf, world_height, world_min_y);
+          write_dimensions(&mut buf, ver, world_height, world_min_y);
 
           // Hashed world seed, used for biomes client side.
           buf.write_u64(0);
@@ -460,6 +491,10 @@ impl ToTcp for Packet {
           buf.write_bool(enable_respawn_screen);
           buf.write_bool(false); // Is debug; cannot be modified, has preset blocks
           buf.write_bool(false); // Is flat; changes fog
+          if ver >= ProtocolVersion::V1_19 {
+            // Last death location.
+            buf.write_option(&None, |_, _: &()| {});
+          }
         } else if ver >= ProtocolVersion::V1_15_2 {
           buf.write_i32(dimension.into());
           // Hashed world seed, used for biomes
@@ -519,7 +554,7 @@ impl ToTcp for Packet {
             hardcore:         hardcore_mode,
             unknown:          data,
           },
-          18 => GPacket::JoinGameV18 { unknown: data },
+          18 | 19 => GPacket::JoinGameV18 { unknown: data },
           _ => unimplemented!(),
         }
       }
@@ -585,6 +620,10 @@ impl ToTcp for Packet {
               buf.write_varint(v.game_mode.id().into());
               buf.write_varint(v.ping);
               buf.write_option(&v.display_name, |buf, v| buf.write_str(v));
+              // The user's public key
+              if ver >= ProtocolVersion::V1_19 {
+                buf.write_option(&None, |_, _: &()| {});
+              }
             });
           }
           cb::PlayerListAction::UpdateGameMode(v) => {
@@ -1076,7 +1115,8 @@ impl ToTcp for Packet {
           tag!("minecraft:fluid", fluid);
           tag!("minecraft:entity_type", entity_type);
           tag!("minecraft:game_event", game_event);
-          GPacket::SynchronizeTagsV14 { unknown: data }
+          // GPacket::SynchronizeTagsV14 { unknown: data }
+          return Ok(smallvec![]);
         } else {
           return Err(WriteError::InvalidVer);
         }
@@ -1367,6 +1407,10 @@ struct Dimension {
   fixed_time:           i64,
   respawn_anchor_works: bool,
   ultrawarm:            bool,
+
+  // 1.19+
+  monster_spawn_light_level:       i32,
+  monster_spawn_block_light_limit: i32,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -1420,8 +1464,12 @@ struct CodecItem<T> {
   element: T,
 }
 
-fn write_dimensions<T>(out: &mut Buffer<T>, world_height: u32, world_min_y: i32)
-where
+fn write_dimensions<T>(
+  out: &mut Buffer<T>,
+  ver: ProtocolVersion,
+  world_height: u32,
+  world_min_y: i32,
+) where
   std::io::Cursor<T>: std::io::Write,
 {
   let dimension = Dimension {
@@ -1441,6 +1489,9 @@ where
     has_ceiling:          false,
     min_y:                world_min_y,
     height:               (world_height as i32 + 15) / 16 * 16,
+
+    monster_spawn_light_level:       7,
+    monster_spawn_block_light_limit: 7,
   };
   let biome = Biome {
     precipitation: "rain".into(),
@@ -1488,10 +1539,19 @@ where
     },
   };
 
+  // Dimension codec
   out.write_buf(&nbt::to_nbt("", &info).unwrap().serialize());
-  out.write_buf(&dimension_tag.serialize());
-  // Current world
-  out.write_str("minecraft:overworld");
+  if ver >= ProtocolVersion::V1_19 {
+    // Current dimension type (key in dimension codec)
+    out.write_str("minecraft:overworld");
+    // Current world
+    out.write_str("minecraft:overworld");
+  } else {
+    // World codec (included in dimension)
+    out.write_buf(&dimension_tag.serialize());
+    // Current world
+    out.write_str("minecraft:overworld");
+  }
 }
 
 #[test]
