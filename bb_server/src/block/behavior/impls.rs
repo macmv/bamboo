@@ -22,9 +22,9 @@ impl Behavior for Log {
     data.default_type().with(
       "axis",
       match click.face {
-        Face::West | Face::East => "X",
-        Face::Top | Face::Bottom => "Y",
-        Face::North | Face::South => "Z",
+        Face::West | Face::East => "x",
+        Face::Top | Face::Bottom => "y",
+        Face::North | Face::South => "z",
       },
     )
   }
@@ -67,7 +67,7 @@ pub struct Bed;
 impl Bed {
   fn other_half(&self, block: Block) -> Pos {
     let face = Face::from(block.ty.prop("facing").as_enum());
-    if block.ty.prop("part") == "FOOT" {
+    if block.ty.prop("part") == "foot" {
       block.pos + face
     } else {
       block.pos - face
@@ -76,12 +76,12 @@ impl Bed {
 }
 impl Behavior for Bed {
   fn place<'a>(&self, data: &'a Data, _: Pos, click: BlockClick) -> Type<'a> {
-    data.default_type().with("part", "FOOT").with("facing", click.dir.as_horz_face().as_str())
+    data.default_type().with("part", "foot").with("facing", click.dir.as_horz_face().as_str())
   }
   fn update_place(&self, world: &Arc<World>, block: Block) {
-    if block.ty.prop("part") == "FOOT" {
+    if block.ty.prop("part") == "foot" {
       let dir = Face::from(block.ty.prop("facing").as_enum());
-      let _ = world.set_block(block.pos + dir, block.ty.with("part", "HEAD"));
+      let _ = world.set_block(block.pos + dir, block.ty.with("part", "head"));
     }
   }
   fn update(&self, world: &Arc<World>, block: Block, old: Block, new: Block) {
@@ -90,7 +90,7 @@ impl Behavior for Bed {
     }
   }
   fn drops(&self, block: Block) -> BlockDrops {
-    if block.ty.prop("part") == "FOOT" {
+    if block.ty.prop("part") == "foot" {
       BlockDrops::Normal
     } else {
       BlockDrops::Custom(Drops::empty())
@@ -138,7 +138,7 @@ impl Behavior for Trapdoor {
   fn place<'a>(&self, data: &'a Data, _: Pos, click: BlockClick) -> Type<'a> {
     data
       .default_type()
-      .with("half", if click.cursor.y > 0.5 { "TOP" } else { "BOTTOM" })
+      .with("half", if click.cursor.y > 0.5 { "top" } else { "bottom" })
       .with("facing", click.dir.as_horz_face().as_str())
   }
   fn interact(&self, mut block: Block, _: &Arc<Player>) -> EventFlow {
@@ -150,19 +150,19 @@ impl Behavior for Trapdoor {
 pub struct Door;
 impl Behavior for Door {
   fn place<'a>(&self, data: &'a Data, _: Pos, click: BlockClick) -> Type<'a> {
-    data.default_type().with("half", "LOWER").with("facing", click.dir.as_horz_face().as_str())
+    data.default_type().with("half", "lower").with("facing", click.dir.as_horz_face().as_str())
   }
   fn update_place(&self, world: &Arc<World>, block: Block) {
-    if block.ty.prop("half") == "LOWER" {
-      let _ = world.set_block(block.pos.add_y(1), block.ty.with("half", "UPPER"));
+    if block.ty.prop("half") == "lower" {
+      let _ = world.set_block(block.pos.add_y(1), block.ty.with("half", "upper"));
     }
   }
   fn interact(&self, mut block: Block, _: &Arc<Player>) -> EventFlow {
     let new_open = !block.ty.prop("open").bool();
     block.set(block.ty.with("open", new_open));
     let other = match block.ty.prop("half").str() {
-      "UPPER" => block.pos.add_y(-1),
-      "LOWER" => block.pos.add_y(1),
+      "upper" => block.pos.add_y(-1),
+      "lower" => block.pos.add_y(1),
       v => unreachable!("door half {v}"),
     };
     let other_ty = block.world.get_block(other).unwrap();

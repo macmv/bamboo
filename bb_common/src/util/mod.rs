@@ -243,24 +243,24 @@ impl Face {
 
   pub fn as_str(&self) -> &str {
     match self {
-      Self::Bottom => "BOTTOM",
-      Self::Top => "TOP",
-      Self::North => "NORTH",
-      Self::South => "SOUTH",
-      Self::West => "WEST",
-      Self::East => "EAST",
+      Self::Bottom => "bottom",
+      Self::Top => "top",
+      Self::North => "north",
+      Self::South => "south",
+      Self::West => "west",
+      Self::East => "east",
     }
   }
 }
 impl From<&str> for Face {
   fn from(s: &str) -> Face {
     match s {
-      "BOTTOM" => Self::Bottom,
-      "TOP" => Self::Top,
-      "NORTH" => Self::North,
-      "SOUTH" => Self::South,
-      "WEST" => Self::West,
-      "EAST" => Self::East,
+      "bottom" => Self::Bottom,
+      "top" => Self::Top,
+      "north" => Self::North,
+      "south" => Self::South,
+      "west" => Self::West,
+      "east" => Self::East,
       _ => Self::North,
     }
   }
