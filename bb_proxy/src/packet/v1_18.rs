@@ -4,7 +4,7 @@ use bb_common::{
   chunk::Chunk,
   nbt::{Tag, NBT},
   util::Buffer,
-  version::BlockVersion,
+  version::ProtocolVersion,
 };
 
 // CHANGES:
@@ -12,7 +12,7 @@ use bb_common::{
 // - Biome array now uses paletted section format, and is part of each chunk
 //   section (before it was part of the chunk column).
 // - Light update packet was merged into this packet.
-pub fn chunk(chunk: ChunkWithPos, conv: &TypeConverter) -> Packet {
+pub fn chunk(chunk: ChunkWithPos, ver: ProtocolVersion, conv: &TypeConverter) -> Packet {
   let biomes = chunk.full;
   let _skylight = true; // Assume overworld
 
@@ -33,7 +33,7 @@ pub fn chunk(chunk: ChunkWithPos, conv: &TypeConverter) -> Packet {
       if s.data().bpe() <= 8 {
         chunk_buf.write_varint(s.palette().len() as i32);
         for g in s.palette() {
-          chunk_buf.write_varint(conv.block_to_old(*g as u32, BlockVersion::V1_18) as i32);
+          chunk_buf.write_varint(conv.block_to_old(*g as u32, ver.block()) as i32);
         }
       }
       let longs = s.data().long_array();
