@@ -459,12 +459,17 @@ impl<'a, S: PacketStream + Send + Sync> Conn<'a, S> {
     let info = self.info.as_ref().unwrap();
     let ver = self.ver();
     let mut out = tcp::Packet::new(2, ver);
-    if ver >= ProtocolVersion::V1_16 {
+    if ver >= ProtocolVersion::V1_19 {
       out.write_uuid(info.id);
+      out.write_str(&info.name);
+      out.write_varint(0); // no properties. TODO: Skins
+    } else if ver >= ProtocolVersion::V1_16 {
+      out.write_uuid(info.id);
+      out.write_str(&info.name);
     } else {
       out.write_str(&info.id.as_dashed_str());
+      out.write_str(&info.name);
     }
-    out.write_str(&info.name);
     self.client_stream.write(out);
 
     self.state = State::Play;

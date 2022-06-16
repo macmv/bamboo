@@ -254,8 +254,16 @@ fn simplify_expr_overwrite(expr: &mut Expr) -> (bool, Option<Instr>) {
             Some(Op::Call(_class, name, _args)) => match name.as_str() {
               "read_varint" | "read_i8" | "read_u8" | "read_i16" | "read_i32" | "read_i64"
               | "read_f32" | "read_f64" | "read_str" | "read_pos" | "read_uuid" | "remaining"
-              | "read_varint_arr" | "read_i32_arr" => res,
-              "read_item" | "read_block_hit" | "read_nbt" | "read_bits" => return (true, None),
+              | "read_varint_arr" | "read_i32_arr" | "read_text" => res,
+              "read_item"
+              | "read_block_hit"
+              | "read_nbt"
+              | "read_bits"
+              | "read_registry_key"
+              | "read_registry_value"
+              | "read_option"
+              | "read_instant"
+              | "read_nullable" => return (true, None),
               name => panic!("{}", name),
               // _ => return (true, None),
             },

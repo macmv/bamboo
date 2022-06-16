@@ -283,6 +283,12 @@ impl Type {
       Self::GlowSquid => true,
       Self::Goat => true,
       Self::Marker => false,
+
+      Self::Allay => true,
+      Self::ChestBoat => false,
+      Self::Frog => true,
+      Self::Tadpole => true,
+      Self::Warden => true,
     }
   }
 }

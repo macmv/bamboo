@@ -313,5 +313,11 @@ mod entity_types {
 
     /// TODO: Figure out what this is!
     FireworkData,
+    /// A varint
+    CatVariant,
+    /// A varint
+    FrogVariant,
+    /// A varint
+    PaintingVariant,
   }
 }

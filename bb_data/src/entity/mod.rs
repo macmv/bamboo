@@ -122,6 +122,12 @@ pub enum MetadataType {
 
   /// TODO: Figure out what this is!
   FireworkData,
+  /// A varint
+  CatVariant,
+  /// A varint
+  FrogVariant,
+  /// A varint
+  PaintingVariant,
 }
 
 impl EntityDef {
