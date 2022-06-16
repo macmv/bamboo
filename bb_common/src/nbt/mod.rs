@@ -214,4 +214,22 @@ mod tests {
     list.list_add(Tag::Int(5));
     list.list_add(Tag::Int(7));
   }
+
+  #[test]
+  fn test_bananarama() {
+    /*
+    00000000  0a 00 0b 68 65 6c 6c 6f  20 77 6f 72 6c 64 08 00  |...hello world..|
+    00000010  04 6e 61 6d 65 00 09 42  61 6e 61 6e 72 61 6d 61  |.name..Bananrama|
+    00000020  00                                                |.|
+    */
+    let hello_world: Vec<_> = "0a 00 0b 68 65 6c 6c 6f 20 77 6f 72 6c 64 08 00 04 6e 61 6d 65 00 09 42 61 6e 61 6e 72 61 6d 61 00"
+      .split(' ').map(|s| u8::from_str_radix(s, 16).unwrap()).collect();
+
+    let nbt = NBT::deserialize(hello_world).unwrap();
+    dbg!(&nbt);
+    assert_eq!(
+      nbt,
+      NBT::new("hello world", Tag::compound(&[("name", Tag::String("Bananrama".into()))]))
+    );
+  }
 }
