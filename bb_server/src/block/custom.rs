@@ -128,12 +128,12 @@ mod tests {
       .prop("oak", false)
       .prop("distance", (0..=5, 0))
       .build(|ty| match (ty["axis"].str(), ty["oak"].bool()) {
-        ("x", false) => vanilla.ty(block::Kind::SpruceLog).with("axis", "X"),
-        ("y", false) => vanilla.ty(block::Kind::SpruceLog).with("axis", "Y"),
-        ("z", false) => vanilla.ty(block::Kind::SpruceLog).with("axis", "Z"),
-        ("x", true) => vanilla.ty(block::Kind::OakLog).with("axis", "X"),
-        ("y", true) => vanilla.ty(block::Kind::OakLog).with("axis", "Y"),
-        ("z", true) => vanilla.ty(block::Kind::OakLog).with("axis", "Z"),
+        ("x", false) => vanilla.ty(block::Kind::SpruceLog).with("axis", "x"),
+        ("y", false) => vanilla.ty(block::Kind::SpruceLog).with("axis", "y"),
+        ("z", false) => vanilla.ty(block::Kind::SpruceLog).with("axis", "z"),
+        ("x", true) => vanilla.ty(block::Kind::OakLog).with("axis", "x"),
+        ("y", true) => vanilla.ty(block::Kind::OakLog).with("axis", "y"),
+        ("z", true) => vanilla.ty(block::Kind::OakLog).with("axis", "z"),
         _ => unreachable!(),
       });
     dbg!(block);

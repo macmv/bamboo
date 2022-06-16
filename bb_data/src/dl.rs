@@ -43,6 +43,14 @@ impl Downloader {
     }
   }
 
+  #[cfg(test)]
+  pub fn get<T: DeserializeOwned>(&self, name: &str, ver: Version) -> T {
+    let url = format!("https://macmv.gitlab.io/bamboo-data/{}-{}.json", name, ver);
+    let data = ureq::get(&url).call().unwrap();
+    serde_json::from_reader(data.into_reader()).unwrap()
+  }
+
+  #[cfg(not(test))]
   pub fn get<T: DeserializeOwned>(&self, name: &str, ver: Version) -> T {
     let cache_dir = self.out.join("data");
     if !cache_dir.exists() {
@@ -92,11 +100,3 @@ impl Downloader {
     serde_json::from_reader(f).unwrap()
   }
 }
-
-/*
-pub fn get_slow<T: DeserializeOwned>(name: &str, ver: Version) -> T {
-  let url = format!("https://macmv.gitlab.io/bamboo-data/{}-{}.json", name, ver);
-  let data = ureq::get(&url).call().unwrap();
-  serde_json::from_reader(data.into_reader()).unwrap()
-}
-*/

@@ -46,7 +46,10 @@ pub struct Collector {
 
 impl Collector {
   pub fn new() -> Self {
+    #[cfg(not(test))]
     let out = PathBuf::new().join(&env::var("OUT_DIR").expect("could not get out dir"));
+    #[cfg(test)]
+    let out = PathBuf::new();
     Collector { dl: Downloader::new(out.clone()), out }
   }
 
