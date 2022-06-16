@@ -2,10 +2,13 @@ use super::{super::chunk::MultiChunk, WorldGen};
 use crate::block;
 use bb_common::{
   math::{ChunkPos, Pos, RelPos},
-  version::BlockVersion,
+  version::{BlockVersion, ProtocolVersion},
 };
 
-const MAX_VER: i32 = 18;
+const MAX_VER: i32 = match ProtocolVersion::latest().maj() {
+  Some(v) => v as i32,
+  None => panic!(),
+};
 const Y: i32 = 64;
 const FILL: block::Kind = block::Kind::WhiteWool;
 const EDGE: block::Kind = block::Kind::RedWool;

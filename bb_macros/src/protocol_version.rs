@@ -74,7 +74,7 @@ pub fn protocol_version(input: TokenStream) -> TokenStream {
     }
 
     impl #name {
-      pub fn maj(&self) -> Option<u32> {
+      pub const fn maj(&self) -> Option<u32> {
         Some(match self {
           Self::Invalid => return None,
           #(
@@ -82,7 +82,7 @@ pub fn protocol_version(input: TokenStream) -> TokenStream {
           )*
         })
       }
-      pub fn min(&self) -> Option<u32> {
+      pub const fn min(&self) -> Option<u32> {
         Some(match self {
           Self::Invalid => return None,
           #(

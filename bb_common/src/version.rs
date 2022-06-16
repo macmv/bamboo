@@ -61,7 +61,7 @@ block_version![
 impl BlockVersion {
   /// Returns the latest version. This is the version that block ids are stored
   /// in.
-  pub fn latest() -> Self { Self::V1_19 }
+  pub const fn latest() -> Self { Self::V1_19 }
 
   /// Returns the protocol version from the given index. 0 -> latest, 1 -> one
   /// before latest, etc.
@@ -153,7 +153,7 @@ pub enum ProtocolVersion {
 
 impl ProtocolVersion {
   /// Returns the latest protocol version.
-  pub fn latest() -> Self { Self::V1_19 }
+  pub const fn latest() -> Self { Self::V1_19 }
 
   /// Creates a new protocol version from the given id. If the version is
   /// invalid, then this returns `VInvalid`.
