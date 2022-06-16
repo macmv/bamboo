@@ -2,12 +2,14 @@ use crate::Version;
 use serde::{de::DeserializeOwned, Deserialize};
 use std::{
   fs,
-  fs::File,
-  io,
   path::{Path, PathBuf},
 };
 
+#[cfg(not(test))]
+use std::{fs::File, io};
+
 #[derive(Deserialize)]
+#[cfg_attr(test, allow(dead_code))]
 struct Config {
   sources: SourcesMode,
 
@@ -16,6 +18,7 @@ struct Config {
 }
 
 #[derive(Deserialize)]
+#[cfg_attr(test, allow(dead_code))]
 enum SourcesMode {
   #[serde(rename = "local")]
   Local,
@@ -23,6 +26,7 @@ enum SourcesMode {
   Remote,
 }
 
+#[cfg_attr(test, allow(dead_code))]
 pub struct Downloader {
   config: Config,
   out:    PathBuf,

@@ -8,7 +8,7 @@ use crate::{
   world::WorldManager,
 };
 use bb_common::{
-  math::{FPos, Pos},
+  math::FPos,
   net::{cb, sb},
   util::{
     chat::{Chat, Color, HoverEvent},

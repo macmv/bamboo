@@ -421,25 +421,23 @@ mod tests {
     dbg!(&reg);
     let current = reg.get(2).unwrap();
     for (i, v) in current.iter().enumerate() {
-      let e;
-      match i {
-        0 => e = ("first", Rc::new(5)),
-        1 => e = ("second", Rc::new(10)),
+      let e = match i {
+        0 => ("first", Rc::new(5)),
+        1 => ("second", Rc::new(10)),
         _ => unreachable!("should not have added more than 2 items to v2"),
-      }
+      };
       assert_eq!(v, &e);
       assert_eq!(current.get_index(i).unwrap(), &e);
       current.validate_index(i);
     }
     let current = reg.get(3).unwrap();
     for (i, v) in current.iter().enumerate() {
-      let e;
-      match i {
-        0 => e = ("first", Rc::new(5)),
-        1 => e = ("second", Rc::new(10)),
-        2 => e = ("third", Rc::new(20)),
+      let e = match i {
+        0 => ("first", Rc::new(5)),
+        1 => ("second", Rc::new(10)),
+        2 => ("third", Rc::new(20)),
         _ => unreachable!("should not have added more than 3 items to v3"),
-      }
+      };
       assert_eq!(v, &e);
       assert_eq!(current.get_index(i).unwrap(), &e);
       current.validate_index(i);

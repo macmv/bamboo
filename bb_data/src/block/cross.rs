@@ -149,6 +149,7 @@ impl Matcher<'_> {
   fn int_prop(&self, name: &str) -> i32 { self.state.int_prop(name) }
   fn old(&self, name: &str) -> u32 { self.old[name].id }
   #[rustfmt::skip]
+  #[allow(clippy::identity_op)]
   fn find(&self) -> u32 {
     // this will help formatting:
     // :'<,'>s/\(\S*\)\s*=>/\=submatch(1) . repeat(' ', 30 - len(submatch(1))) . '=>'
@@ -308,6 +309,7 @@ impl Matcher<'_> {
   }
 
   #[rustfmt::skip]
+  #[allow(clippy::identity_op)]
   fn door(&self, name: &str) -> u32 {
     match (
       self.state.bool_prop("powered"),

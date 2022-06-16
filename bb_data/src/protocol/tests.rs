@@ -51,14 +51,14 @@ fn generate(p: &mut Packet, mut writer: Vec<Instr>) {
 
   let mut gen = crate::gen::CodeGen::new();
   gen.write_line("READER:");
-  super::gen::write_from_tcp(&mut gen, &p, crate::VERSIONS[0]);
+  super::gen::write_from_tcp(&mut gen, p, crate::VERSIONS[0]);
   gen.write_line("");
   gen.write_line("WRITER:");
-  super::gen::write_to_tcp(&mut gen, &p, crate::VERSIONS[0]);
+  super::gen::write_to_tcp(&mut gen, p, crate::VERSIONS[0]);
   gen.write_line("");
   gen.write_line("EXPECTED WRITER:");
   mem::swap(&mut p.writer.block, &mut writer);
-  super::gen::write_to_tcp(&mut gen, &p, crate::VERSIONS[0]);
+  super::gen::write_to_tcp(&mut gen, p, crate::VERSIONS[0]);
   mem::swap(&mut p.writer.block, &mut writer);
 
   println!("{}", gen.into_output());

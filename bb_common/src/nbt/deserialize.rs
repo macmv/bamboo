@@ -189,8 +189,8 @@ mod tests {
         ("shortTest", Tag::Short(32767)),
         ("intTest", Tag::Int(2147483647)),
         ("longTest", Tag::Long(9223372036854775807)),
-        ("floatTest", Tag::Float(0.49823147058486938)),
-        ("doubleTest", Tag::Double(0.49312871321823148)),
+        ("floatTest", Tag::Float(0.498_231_47)),
+        ("doubleTest", Tag::Double(0.493_128_713_218_231_5)),
         (
           "stringTest",
           Tag::String(

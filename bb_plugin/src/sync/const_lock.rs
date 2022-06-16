@@ -32,6 +32,9 @@ impl<T> ConstLock<T> {
   unsafe fn guard(&self) -> ConstGuard<T> { ConstGuard { lock: self, marker: PhantomData } }
 
   /// Locks the mutex.
+  // I'd like to keep this lifetime, simply because explicit lifetimes are nice when dealing with
+  // unsafe code.
+  #[allow(clippy::needless_lifetimes)]
   pub fn lock<'a>(&'a self) -> ConstGuard<'a, T> {
     self.lock.lock();
     // SAFETY: We know the lock is held, so this is safe.

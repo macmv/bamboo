@@ -131,7 +131,7 @@ impl FromTcp for Packet {
         if position == Pos::new(-1, -1, -1) && placed_block_direction == 255 {
           Packet::UseItem { hand: Hand::Main }
         } else {
-          let _slot = buf.read_item(&conv)?;
+          let _slot = buf.read_item(conv)?;
           let cursor_x = buf.read_u8()?;
           let cursor_y = buf.read_u8()?;
           let cursor_z = buf.read_u8()?;

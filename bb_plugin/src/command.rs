@@ -47,7 +47,7 @@ impl Arg {
 
 type CommandMap = HashMap<String, Box<dyn Fn(Option<Player>, Vec<Arg>) + Send>>;
 
-static CALLBACKS: LazyLock<CommandMap> = LazyLock::new(|| HashMap::new());
+static CALLBACKS: LazyLock<CommandMap> = LazyLock::new(HashMap::new);
 pub fn add_command(cmd: &Command, cb: impl Fn(Option<Player>, Vec<Arg>) + Send + 'static) {
   {
     let mut cbs = CALLBACKS.lock();

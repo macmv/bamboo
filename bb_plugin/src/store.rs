@@ -21,5 +21,5 @@ impl PluginStore {
   }
 }
 
-static STORE: LazyLock<PluginStore> = LazyLock::new(|| PluginStore::new());
+static STORE: LazyLock<PluginStore> = LazyLock::new(PluginStore::new);
 pub fn store<'a>() -> LazyGuard<'a, PluginStore> { STORE.lock() }

@@ -8,7 +8,8 @@ pub struct WasmLock {
 impl WasmLock {
   pub const fn new() -> Self { WasmLock { state: AtomicU8::new(0) } }
   pub fn lock(&self) {
-    while let Err(_) = self.state.compare_exchange(0, 1, Ordering::SeqCst, Ordering::SeqCst) {}
+    // TODO: Spin locking, or something smarter than this?
+    while self.state.compare_exchange(0, 1, Ordering::SeqCst, Ordering::SeqCst).is_err() {}
   }
   pub fn try_lock(&self) -> bool {
     self.state.compare_exchange(0, 1, Ordering::SeqCst, Ordering::SeqCst).is_ok()

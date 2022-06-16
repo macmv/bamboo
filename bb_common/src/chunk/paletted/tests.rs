@@ -242,7 +242,7 @@ fn test_fill() {
     for y in 0..16 {
       for z in 0..16 {
         let expected =
-          if x >= 3 && x <= 8 && y >= 4 && y <= 9 && z >= 5 && z <= 10 { 20 } else { 0 };
+          if (3..=8).contains(&x) && y >= 4 && y <= 9 && z >= 5 && z <= 10 { 20 } else { 0 };
         assert_eq!(s.get_block(SectionRelPos::new(x, y, z)), expected);
       }
     }

@@ -1,5 +1,5 @@
 use dl::Downloader;
-use std::{env, fmt, path::PathBuf};
+use std::{fmt, path::PathBuf};
 
 mod block;
 mod dl;
@@ -45,20 +45,21 @@ pub struct Collector {
 }
 
 impl Collector {
+  #[allow(clippy::new_without_default)]
   pub fn new() -> Self {
     #[cfg(not(test))]
-    let out = PathBuf::new().join(&env::var("OUT_DIR").expect("could not get out dir"));
+    let out = PathBuf::new().join(&std::env::var("OUT_DIR").expect("could not get out dir"));
     #[cfg(test)]
     let out = PathBuf::new();
     Collector { dl: Downloader::new(out.clone()), out }
   }
 
-  pub fn generate_blocks(&self, opts: BlockOpts) { block::generate(&self, opts).unwrap(); }
-  pub fn generate_items(&self) { item::generate(&self).unwrap(); }
-  pub fn generate_entities(&self) { entity::generate(&self).unwrap(); }
-  pub fn generate_protocol(&self) { protocol::generate(&self).unwrap(); }
-  pub fn generate_particles(&self, target: Target) { particle::generate(&self, target).unwrap(); }
-  pub fn generate_tags(&self) { tag::generate(&self).unwrap(); }
+  pub fn generate_blocks(&self, opts: BlockOpts) { block::generate(self, opts).unwrap(); }
+  pub fn generate_items(&self) { item::generate(self).unwrap(); }
+  pub fn generate_entities(&self) { entity::generate(self).unwrap(); }
+  pub fn generate_protocol(&self) { protocol::generate(self).unwrap(); }
+  pub fn generate_particles(&self, target: Target) { particle::generate(self, target).unwrap(); }
+  pub fn generate_tags(&self) { tag::generate(self).unwrap(); }
 }
 
 pub static VERSIONS: &[Version] = &[
