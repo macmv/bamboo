@@ -171,31 +171,9 @@ impl ToTcp for Packet {
         if ver >= ProtocolVersion::V1_19 {
           let mut data = vec![];
           let mut buf = Buffer::new(&mut data);
-          let s = msg.to_json();
-          debug!("{}", s.len());
-          buf.write_str(&s); // signed content
-
-          // TODO: These extra fields are going to be used in 1.19.1
-          buf.write_bool(true);
-          // buf.write_str(&s);
-          // buf.write_option(&Some(s), |b, m| b.write_str(&m)); // unsigned content
-
-          /*
-          buf.write_varint(ty.into()); // chat type
-          */
-
-          /*
-          buf.write_uuid(UUID::from_u128(0)); // sent by user 0
-          buf.write_str(""); // sent by user with name ""
-          buf.write_option(&None, |_, _: &()| {}); // sent by user on no team
-
-          buf.write_u64(0); // sent at instant 0
-
-          buf.write_u64(0); // signature of 0
-          buf.write_varint(0); // with length 0
-          GPacket::ChatV19 { unknown: data }
-          */
-          return Ok(smallvec![]);
+          buf.write_str(&msg.to_json()); // content
+          buf.write_varint(1); // type
+          GPacket::SystemChatV19 { unknown: data }
         } else if ver >= ProtocolVersion::V1_16_5 {
           let mut data = vec![];
           let mut buf = Buffer::new(&mut data);
