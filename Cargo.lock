@@ -174,13 +174,11 @@ dependencies = [
 name = "bb_common"
 version = "0.2.0"
 dependencies = [
- "anyhow",
  "asn1",
  "bb_data",
  "bb_macros",
  "bb_transfer",
  "byteorder",
- "bytes",
  "chrono",
  "criterion",
  "crossbeam-channel",
@@ -212,7 +210,6 @@ name = "bb_data"
 version = "0.2.0"
 dependencies = [
  "convert_case",
- "itertools 0.10.3",
  "pretty_assertions",
  "serde",
  "serde_json",
