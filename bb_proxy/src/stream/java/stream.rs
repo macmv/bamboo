@@ -14,6 +14,11 @@ use std::{
   io::{ErrorKind, Read, Write},
 };
 
+/// The largest size that an uncompressed or compressed packet can be. Only used
+/// when reading packets. This is about 2 mb, and is the same size used in
+/// vanilla.
+const MAX_PACKET_SIZE: usize = 0x1fffff;
+
 pub struct JavaStream {
   stream: TcpStream,
 
@@ -107,10 +112,23 @@ impl PacketStream for JavaStream {
     if read < 0 {
       return Err(io::Error::new(ErrorKind::InvalidData, "invalid varint").into());
     }
-    // Incomplete varint, or an incomplete packet
-    if read == 0 || (self.recv_cons.len() as isize) < len + read {
+    // Incomplete varint
+    if read == 0 {
       return Ok(None);
     }
+    // Now that we have a valid varint, we make sure the packet isn't too large.
+    //
+    // `len as usize` means that negative lengths will also be considered too long,
+    // which is intentional.
+    if len as usize > MAX_PACKET_SIZE {
+      // Packet is too long! We want to kick this client now.
+      return Err(io::Error::new(ErrorKind::InvalidData, "packet too long").into());
+    }
+    // Incomplete packet, but a valid length
+    if (self.recv_cons.len() as isize) < len + read {
+      return Ok(None);
+    }
+
     // Now that we know we have a valid packet, we pop the length bytes
     self.recv_cons.discard(read as usize);
     let mut vec = vec![0; len as usize];
@@ -119,6 +137,13 @@ impl PacketStream for JavaStream {
     if self.compression >= 0 {
       let mut buf = Buffer::new(&mut vec);
       let uncompressed_length = buf.read_varint()?;
+      // `uncompressed_length as usize` isn't going to be as consitent here, because
+      // `uncompressed_length` is an `i32`, not an `isize`. So, we just check for `<
+      // 0` as well as over the length threshold.
+      if uncompressed_length < 0 || uncompressed_length as usize > MAX_PACKET_SIZE {
+        // Packet is too long! We want to kick this client now.
+        return Err(io::Error::new(ErrorKind::InvalidData, "uncompressed packet too long").into());
+      }
       if uncompressed_length == 0 {
         Ok(Some(tcp::Packet::from_buf(buf.read_all(), ver)?))
       } else {
