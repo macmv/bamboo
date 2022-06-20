@@ -39,11 +39,18 @@ pub fn load_icon(path: &str) -> String {
 const JAVA_LISTENER: Token = Token(0xffffffff);
 const BEDROCK_LISTENER: Token = Token(0xfffffffe);
 
-pub struct Listener<'a> {
+type ClientMap<'listener> = HashMap<Token, Conn<'listener, JavaStream>>;
+
+pub struct Listener<'listener> {
   java_listener: TcpListener,
   poll:          Poll,
   next_token:    usize,
-  clients:       HashMap<Token, Conn<'a, JavaStream>>,
+  clients:       ClientMap<'listener>,
+}
+
+struct TokenHandler<'listener, 'a> {
+  token:   Token,
+  clients: &'a mut ClientMap<'listener>,
 }
 
 pub fn run(config: Config) -> Result<()> {
@@ -144,45 +151,36 @@ impl<'a> Listener<'a> {
         let is_server = token.0 % 2 != 0;
         let token = Token(token.0 / 2 * 2);
 
+        let mut handler = TokenHandler { token, clients: &mut self.clients };
+
         if is_server {
           if event.is_readable() {
-            let conn = self.clients.get_mut(&token).expect("client doesn't exist!");
-            match conn.read_server() {
-              Ok(_) => {}
-              Err(e) => self.handle_err(e, token),
+            if let Some(conn) = handler.get() {
+              let res = conn.read_server();
+              handler.handle_bool(res);
             }
           }
 
           if event.is_writable() {
-            if let Some(conn) = self.clients.get_mut(&token) {
-              match conn.write_server() {
-                Ok(_) => {}
-                Err(e) => self.handle_err(e, token),
-              }
+            if let Some(conn) = handler.get() {
+              let res = conn.write_server();
+              handler.handle_unit(res);
             }
           }
         } else {
           if event.is_readable() {
-            let conn = self.clients.get_mut(&token).expect("client doesn't exist!");
-            match conn.read_client(self.poll.registry()) {
-              Ok(false) => {}
-              Ok(true) => {
-                // This means the server wants to remove the client, and we have already logged
-                // anything if needed, so we don' use `handle_and_should_close` here.
-                self.clients.remove(&token);
-              }
-              Err(e) => self.handle_err(e, token),
+            if let Some(conn) = handler.get() {
+              let res = conn.read_client(self.poll.registry());
+              handler.handle_bool(res);
             }
           }
           // The order here is important. If we are handshaking, then reading a packet
           // will probably prompt a direct response. In this arrangement, we can send more
           // packets before going back to poll().
           if event.is_writable() {
-            if let Some(conn) = self.clients.get_mut(&token) {
-              match conn.write_client() {
-                Ok(_) => {}
-                Err(e) => self.handle_err(e, token),
-              }
+            if let Some(conn) = handler.get() {
+              let res = conn.write_client();
+              handler.handle_unit(res);
             }
           }
         }
@@ -190,22 +188,43 @@ impl<'a> Listener<'a> {
     }
     Ok(())
   }
+}
+
+impl<'listener: 'b, 'b> TokenHandler<'listener, 'b> {
+  pub fn get(&mut self) -> Option<&mut Conn<'listener, JavaStream>> {
+    self.clients.get_mut(&self.token)
+  }
+  pub fn handle_unit(&mut self, res: Result<()>) {
+    match res {
+      Ok(()) => {}
+      Err(e) => self.handle_err(e),
+    }
+  }
+  pub fn handle_bool(&mut self, res: Result<bool>) {
+    match res {
+      Ok(false) => {}
+      Ok(true) => {
+        self.clients.remove(&self.token);
+      }
+      Err(e) => self.handle_err(e),
+    }
+  }
 
   /// Logs any errors that need to be logged, and removes the client if needed.
-  fn handle_err(&mut self, e: Error, token: Token) {
+  fn handle_err(&mut self, e: Error) {
     let remove = match e.io_kind() {
       Some(io::ErrorKind::WouldBlock) => false,
       Some(io::ErrorKind::ConnectionAborted) => {
-        info!("client {:?} has disconnected", token);
+        info!("client {:?} has disconnected", self.token);
         true
       }
       _ => {
-        error!("error while flushing packets to the client {:?}: {}", token, e);
+        error!("error while flushing packets to the client {:?}: {}", self.token, e);
         true
       }
     };
     if remove {
-      self.clients.remove(&token);
+      self.clients.remove(&self.token);
     }
   }
 }
