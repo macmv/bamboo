@@ -127,10 +127,10 @@ pub fn run(config: Config) -> Result<()> {
               let conn = clients.get_mut(&token).expect("client doesn't exist!");
               match conn.read_server() {
                 Ok(_) => {}
-                Err(ref e) if e.is_would_block() => {}
                 Err(e) => {
-                  error!("error while parsing packet from server {:?}: {}", token, e);
-                  clients.remove(&token);
+                  if handle_and_should_close(e, token) {
+                    clients.remove(&token);
+                  }
                 }
               }
             }
@@ -139,10 +139,10 @@ pub fn run(config: Config) -> Result<()> {
               if let Some(conn) = clients.get_mut(&token) {
                 match conn.write_server() {
                   Ok(_) => {}
-                  Err(ref e) if e.is_would_block() => {}
                   Err(e) => {
-                    error!("error while flushing packets to the client {:?}: {}", token, e);
-                    clients.remove(&token);
+                    if handle_and_should_close(e, token) {
+                      clients.remove(&token);
+                    }
                   }
                 }
               }
@@ -153,11 +153,14 @@ pub fn run(config: Config) -> Result<()> {
               match conn.read_client(poll.registry()) {
                 Ok(false) => {}
                 Ok(true) => {
+                  // This means the server wants to remove the client, and we have already logged
+                  // anything if needed, so we don' use `handle_and_should_close` here.
                   clients.remove(&token);
                 }
                 Err(e) => {
-                  error!("error while parsing packet from client {:?}: {}", token, e);
-                  clients.remove(&token);
+                  if handle_and_should_close(e, token) {
+                    clients.remove(&token);
+                  }
                 }
               }
             }
@@ -168,10 +171,10 @@ pub fn run(config: Config) -> Result<()> {
               if let Some(conn) = clients.get_mut(&token) {
                 match conn.write_client() {
                   Ok(_) => {}
-                  Err(ref e) if e.is_would_block() => {}
                   Err(e) => {
-                    error!("error while flushing packets to the client {:?}: {}", token, e);
-                    clients.remove(&token);
+                    if handle_and_should_close(e, token) {
+                      clients.remove(&token);
+                    }
                   }
                 }
               }
@@ -179,6 +182,22 @@ pub fn run(config: Config) -> Result<()> {
           }
         }
       }
+    }
+  }
+}
+
+/// Logs any errors that need to be logged, and returns `true` if the client
+/// should be removed.
+fn handle_and_should_close(e: Error, token: Token) -> bool {
+  match e.io_kind() {
+    Some(io::ErrorKind::WouldBlock) => false,
+    Some(io::ErrorKind::ConnectionAborted) => {
+      info!("client {:?} has disconnected", token);
+      true
+    }
+    _ => {
+      error!("error while flushing packets to the client {:?}: {}", token, e);
+      true
     }
   }
 }

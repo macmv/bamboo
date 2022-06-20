@@ -327,7 +327,7 @@ impl<'a, S: PacketStream + Send + Sync> Conn<'a, S> {
           }
           Err(e) => return Err(e),
         },
-        Err(ref e) if e.is_would_block() => return Ok(false),
+        Err(ref e) if e.io_kind() == Some(io::ErrorKind::WouldBlock) => return Ok(false),
         Err(e) => return Err(e),
       }
     }

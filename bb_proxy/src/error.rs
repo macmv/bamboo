@@ -61,10 +61,10 @@ impl From<bb_transfer::WriteError> for Error {
 }
 
 impl Error {
-  pub fn is_would_block(&self) -> bool {
+  pub fn io_kind(&self) -> Option<io::ErrorKind> {
     match self {
-      Self::IO(e) => matches!(e.kind(), io::ErrorKind::WouldBlock),
-      _ => false,
+      Self::IO(e) => Some(e.kind()),
+      _ => None,
     }
   }
 }
