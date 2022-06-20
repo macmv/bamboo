@@ -149,11 +149,7 @@ impl<'a> Listener<'a> {
             let conn = self.clients.get_mut(&token).expect("client doesn't exist!");
             match conn.read_server() {
               Ok(_) => {}
-              Err(e) => {
-                if handle_and_should_close(e, token) {
-                  self.clients.remove(&token);
-                }
-              }
+              Err(e) => self.handle_err(e, token),
             }
           }
 
@@ -161,11 +157,7 @@ impl<'a> Listener<'a> {
             if let Some(conn) = self.clients.get_mut(&token) {
               match conn.write_server() {
                 Ok(_) => {}
-                Err(e) => {
-                  if handle_and_should_close(e, token) {
-                    self.clients.remove(&token);
-                  }
-                }
+                Err(e) => self.handle_err(e, token),
               }
             }
           }
@@ -179,11 +171,7 @@ impl<'a> Listener<'a> {
                 // anything if needed, so we don' use `handle_and_should_close` here.
                 self.clients.remove(&token);
               }
-              Err(e) => {
-                if handle_and_should_close(e, token) {
-                  self.clients.remove(&token);
-                }
-              }
+              Err(e) => self.handle_err(e, token),
             }
           }
           // The order here is important. If we are handshaking, then reading a packet
@@ -193,11 +181,7 @@ impl<'a> Listener<'a> {
             if let Some(conn) = self.clients.get_mut(&token) {
               match conn.write_client() {
                 Ok(_) => {}
-                Err(e) => {
-                  if handle_and_should_close(e, token) {
-                    self.clients.remove(&token);
-                  }
-                }
+                Err(e) => self.handle_err(e, token),
               }
             }
           }
@@ -206,20 +190,22 @@ impl<'a> Listener<'a> {
     }
     Ok(())
   }
-}
 
-/// Logs any errors that need to be logged, and returns `true` if the client
-/// should be removed.
-fn handle_and_should_close(e: Error, token: Token) -> bool {
-  match e.io_kind() {
-    Some(io::ErrorKind::WouldBlock) => false,
-    Some(io::ErrorKind::ConnectionAborted) => {
-      info!("client {:?} has disconnected", token);
-      true
-    }
-    _ => {
-      error!("error while flushing packets to the client {:?}: {}", token, e);
-      true
+  /// Logs any errors that need to be logged, and removes the client if needed.
+  fn handle_err(&mut self, e: Error, token: Token) {
+    let remove = match e.io_kind() {
+      Some(io::ErrorKind::WouldBlock) => false,
+      Some(io::ErrorKind::ConnectionAborted) => {
+        info!("client {:?} has disconnected", token);
+        true
+      }
+      _ => {
+        error!("error while flushing packets to the client {:?}: {}", token, e);
+        true
+      }
+    };
+    if remove {
+      self.clients.remove(&token);
     }
   }
 }
