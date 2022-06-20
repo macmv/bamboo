@@ -41,7 +41,6 @@ cfb8 = "0.7.1"
 aes = "0.7.2"
 miniz_oxide = "0.4.4"
 flate2 = "1.0"
-ringbuf = "0.2.4"
 smallvec = "1.8.0"
 
 # profiling

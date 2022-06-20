@@ -8,8 +8,8 @@ use bb_common::{util, util::Buffer, version::ProtocolVersion};
 use cfb8::Cfb8;
 use miniz_oxide::{deflate::compress_to_vec_zlib, inflate::decompress_to_vec_zlib};
 use mio::net::TcpStream;
-use ringbuf::{Consumer, Producer, RingBuffer};
 use std::{
+  collections::VecDeque,
   fmt, io,
   io::{ErrorKind, Read, Write},
 };
@@ -22,8 +22,7 @@ const MAX_PACKET_SIZE: usize = 0x1fffff;
 pub struct JavaStream {
   stream: TcpStream,
 
-  recv_prod: Producer<u8>,
-  recv_cons: Consumer<u8>,
+  recv: VecDeque<u8>,
 
   outgoing: Vec<u8>,
 
@@ -42,12 +41,9 @@ impl fmt::Debug for JavaStream {
 
 impl JavaStream {
   pub fn new(stream: TcpStream) -> Self {
-    let buf = RingBuffer::new(64 * 1024);
-    let (recv_prod, recv_cons) = buf.split();
     JavaStream {
       stream,
-      recv_prod,
-      recv_cons,
+      recv: VecDeque::new(),
       outgoing: Vec::with_capacity(1024),
       compression: -1,
       read_cipher: None,
@@ -78,68 +74,46 @@ impl PacketStream for JavaStream {
     if let Some(c) = &mut self.read_cipher {
       c.decrypt(msg);
     }
-    self.recv_prod.push_slice(msg);
+    self.recv.extend(msg.iter());
     Ok(())
   }
   fn read(&mut self, ver: ProtocolVersion) -> Result<Option<tcp::Packet>> {
-    let mut len = 0;
-    let mut read = -1;
-    self.recv_cons.access(|left, right| {
-      let mut bytes: &mut [u8] = &mut [0; 5];
-      let mut on_left = true;
-      for i in 0..5 {
-        if on_left {
-          match left.get(i) {
-            Some(b) => bytes[i] = *b,
-            None => on_left = false,
-          }
-        }
-        if !on_left {
-          match right.get(i - left.len()) {
-            Some(b) => bytes[i] = *b,
-            None => {
-              bytes = &mut bytes[..i];
-              break;
-            }
-          }
-        }
-      }
-      let (a, b) = util::read_varint(bytes);
-      len = a as isize;
-      read = b;
-    });
+    let mut bytes = [0; 5];
+    let end = self.recv.len().min(5);
+    for (i, b) in self.recv.range(0..end).enumerate() {
+      bytes[i] = *b;
+    }
+    let (len, read) = util::read_varint(&bytes);
     // Varint that is more than 5 bytes long.
     if read < 0 {
       return Err(io::Error::new(ErrorKind::InvalidData, "invalid varint").into());
     }
+    let read = read as usize;
     // Incomplete varint
     if read == 0 {
       return Ok(None);
     }
     // Now that we have a valid varint, we make sure the packet isn't too large.
-    //
-    // `len as usize` means that negative lengths will also be considered too long,
-    // which is intentional.
-    if len as usize > MAX_PACKET_SIZE {
+    if len < 0 || len as usize > MAX_PACKET_SIZE {
       // Packet is too long! We want to kick this client now.
       return Err(io::Error::new(ErrorKind::InvalidData, "packet too long").into());
     }
+    let len = len as usize;
     // Incomplete packet, but a valid length
-    if (self.recv_cons.len() as isize) < len + read {
+    if self.recv.len() < len + read {
       return Ok(None);
     }
 
-    // Now that we know we have a valid packet, we pop the length bytes
-    self.recv_cons.discard(read as usize);
-    let mut vec = vec![0; len as usize];
-    self.recv_cons.pop_slice(&mut vec);
+    // Now that we know we have a valid packet, we pop the whole packet
+    self.recv.drain(0..read);
+    let mut vec = Vec::with_capacity(len);
+    for v in self.recv.drain(0..len) {
+      vec.push(v);
+    }
     // And parse it
     if self.compression >= 0 {
       let mut buf = Buffer::new(&mut vec);
       let uncompressed_length = buf.read_varint()?;
-      // `uncompressed_length as usize` isn't going to be as consitent here, because
-      // `uncompressed_length` is an `i32`, not an `isize`. So, we just check for `<
-      // 0` as well as over the length threshold.
       if uncompressed_length < 0 || uncompressed_length as usize > MAX_PACKET_SIZE {
         // Packet is too long! We want to kick this client now.
         return Err(io::Error::new(ErrorKind::InvalidData, "uncompressed packet too long").into());
