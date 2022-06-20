@@ -14,7 +14,11 @@ pub mod stream;
 pub use error::{Error, Result};
 
 use bb_common::{config::Config, math::der};
-use mio::{net::TcpListener, Events, Interest, Poll, Token};
+use mio::{
+  event::Event,
+  net::{TcpListener, TcpStream},
+  Events, Interest, Poll, Token,
+};
 use rand::rngs::OsRng;
 use rsa::RSAPrivateKey;
 use std::{collections::HashMap, io, net::SocketAddr, sync::Arc};
@@ -32,16 +36,25 @@ pub fn load_icon(path: &str) -> String {
   "data:image/png;base64,".to_string() + &enc.into_inner()
 }
 
+const JAVA_LISTENER: Token = Token(0xffffffff);
+const BEDROCK_LISTENER: Token = Token(0xfffffffe);
+
+pub struct Listener<'a> {
+  java_listener: TcpListener,
+  poll:          Poll,
+  next_token:    usize,
+  clients:       HashMap<Token, Conn<'a, JavaStream>>,
+}
+
 pub fn run(config: Config) -> Result<()> {
   let level = config.get("log-level");
   bb_common::init_with_level("proxy", level);
 
-  const JAVA_LISTENER: Token = Token(0xffffffff);
-  const BEDROCK_LISTENER: Token = Token(0xfffffffe);
+  let icon = Arc::new(load_icon(config.get("icon")));
 
   let addr = config.get::<&str>("address");
   info!("listening for java clients on {}", addr);
-  let mut java_listener = TcpListener::bind(addr.parse()?)?;
+  let mut listener = Listener::new(addr)?;
 
   // let addr = "0.0.0.0:19132";
   // info!("listening for bedrock clients on {}", addr);
@@ -50,23 +63,16 @@ pub fn run(config: Config) -> Result<()> {
   // The vanilla server uses 1024 bits for this.
   let key = Arc::new(RSAPrivateKey::new(&mut OsRng, 1024).expect("failed to generate a key"));
   let der_key = if config.get("encryption") { Some(der::encode(&key)) } else { None };
-  let icon = Arc::new(load_icon(config.get("icon")));
   let server_ip: SocketAddr = config.get::<&str>("server").parse().unwrap();
   let compression = config.get("compression-thresh");
 
-  let mut poll = Poll::new()?;
   let mut events = Events::with_capacity(1024);
-  let mut clients = HashMap::new();
-
-  poll.registry().register(&mut java_listener, JAVA_LISTENER, Interest::READABLE)?;
-
-  let mut next_token = 0;
 
   let conv = Arc::new(TypeConverter::new());
 
   loop {
     loop {
-      match poll.poll(&mut events, None) {
+      match listener.poll.poll(&mut events, None) {
         Ok(()) => break,
         Err(e) if e.kind() == io::ErrorKind::Interrupted => continue,
         Err(e) => return Err(e.into()),
@@ -74,107 +80,122 @@ pub fn run(config: Config) -> Result<()> {
     }
 
     for event in &events {
-      match event.token() {
-        JAVA_LISTENER => {
-          loop {
-            match java_listener.accept() {
-              Ok((mut client, _)) => {
-                // This is the tcp stream connected to the client
-                let client_token = Token(next_token);
-                // This is the tcp stream connected to the server
-                let server_token = Token(next_token + 1);
-                next_token += 2;
+      listener.handle(event, |client, server_token| {
+        Conn::new(
+          JavaStream::new(client),
+          server_ip,
+          key.clone(),
+          der_key.clone(),
+          server_token,
+          conv.clone(),
+        )
+        .with_icon(&icon)
+        .with_compression(compression)
+      })?;
+    }
+  }
+}
 
-                // Register this client for events
-                poll.registry().register(
-                  &mut client,
-                  client_token,
-                  Interest::READABLE | Interest::WRITABLE,
-                )?;
-                // We will register the server tcp connection later, once we are done
-                // handshaking.
-                clients.insert(
-                  client_token,
-                  Conn::new(
-                    JavaStream::new(client),
-                    server_ip,
-                    key.clone(),
-                    der_key.clone(),
-                    server_token,
-                    conv.clone(),
-                  )
-                  .with_icon(&icon)
-                  .with_compression(compression),
-                );
-              }
-              Err(ref e) if e.kind() == io::ErrorKind::WouldBlock => {
-                // Socket is not ready anymore, stop accepting
-                break;
-              }
-              Err(e) => error!("error while listening: {}", e),
+impl<'a> Listener<'a> {
+  pub fn new(addr: &str) -> Result<Self> {
+    let mut java_listener = TcpListener::bind(addr.parse()?)?;
+    let poll = Poll::new()?;
+    poll.registry().register(&mut java_listener, JAVA_LISTENER, Interest::READABLE)?;
+    Ok(Listener { java_listener, poll, next_token: 0, clients: HashMap::new() })
+  }
+  pub fn handle(
+    &mut self,
+    event: &Event,
+    new_client: impl Fn(TcpStream, Token) -> Conn<'a, JavaStream>,
+  ) -> io::Result<()> {
+    match event.token() {
+      JAVA_LISTENER => {
+        loop {
+          match self.java_listener.accept() {
+            Ok((mut client, _)) => {
+              // This is the tcp stream connected to the client
+              let client_token = Token(self.next_token);
+              // This is the tcp stream connected to the server
+              let server_token = Token(self.next_token + 1);
+              self.next_token += 2;
+
+              // Register this client for events
+              self.poll.registry().register(
+                &mut client,
+                client_token,
+                Interest::READABLE | Interest::WRITABLE,
+              )?;
+              // We will register the server tcp connection later, once we are done
+              // handshaking.
+              self.clients.insert(client_token, new_client(client, server_token));
             }
+            Err(ref e) if e.kind() == io::ErrorKind::WouldBlock => {
+              // Socket is not ready anymore, stop accepting
+              break;
+            }
+            Err(e) => error!("error while listening: {}", e),
           }
         }
-        BEDROCK_LISTENER => {
-          unimplemented!();
-        }
-        token => {
-          let is_server = token.0 % 2 != 0;
-          let token = Token(token.0 / 2 * 2);
+      }
+      BEDROCK_LISTENER => {
+        unimplemented!();
+      }
+      token => {
+        let is_server = token.0 % 2 != 0;
+        let token = Token(token.0 / 2 * 2);
 
-          if is_server {
-            if event.is_readable() {
-              let conn = clients.get_mut(&token).expect("client doesn't exist!");
-              match conn.read_server() {
+        if is_server {
+          if event.is_readable() {
+            let conn = self.clients.get_mut(&token).expect("client doesn't exist!");
+            match conn.read_server() {
+              Ok(_) => {}
+              Err(e) => {
+                if handle_and_should_close(e, token) {
+                  self.clients.remove(&token);
+                }
+              }
+            }
+          }
+
+          if event.is_writable() {
+            if let Some(conn) = self.clients.get_mut(&token) {
+              match conn.write_server() {
                 Ok(_) => {}
                 Err(e) => {
                   if handle_and_should_close(e, token) {
-                    clients.remove(&token);
+                    self.clients.remove(&token);
                   }
                 }
               }
             }
-
-            if event.is_writable() {
-              if let Some(conn) = clients.get_mut(&token) {
-                match conn.write_server() {
-                  Ok(_) => {}
-                  Err(e) => {
-                    if handle_and_should_close(e, token) {
-                      clients.remove(&token);
-                    }
-                  }
+          }
+        } else {
+          if event.is_readable() {
+            let conn = self.clients.get_mut(&token).expect("client doesn't exist!");
+            match conn.read_client(self.poll.registry()) {
+              Ok(false) => {}
+              Ok(true) => {
+                // This means the server wants to remove the client, and we have already logged
+                // anything if needed, so we don' use `handle_and_should_close` here.
+                self.clients.remove(&token);
+              }
+              Err(e) => {
+                if handle_and_should_close(e, token) {
+                  self.clients.remove(&token);
                 }
               }
             }
-          } else {
-            if event.is_readable() {
-              let conn = clients.get_mut(&token).expect("client doesn't exist!");
-              match conn.read_client(poll.registry()) {
-                Ok(false) => {}
-                Ok(true) => {
-                  // This means the server wants to remove the client, and we have already logged
-                  // anything if needed, so we don' use `handle_and_should_close` here.
-                  clients.remove(&token);
-                }
+          }
+          // The order here is important. If we are handshaking, then reading a packet
+          // will probably prompt a direct response. In this arrangement, we can send more
+          // packets before going back to poll().
+          if event.is_writable() {
+            if let Some(conn) = self.clients.get_mut(&token) {
+              match conn.write_client() {
+                Ok(_) => {}
                 Err(e) => {
                   if handle_and_should_close(e, token) {
-                    clients.remove(&token);
-                  }
-                }
-              }
-            }
-            // The order here is important. If we are handshaking, then reading a packet
-            // will probably prompt a direct response. In this arrangement, we can send more
-            // packets before going back to poll().
-            if event.is_writable() {
-              if let Some(conn) = clients.get_mut(&token) {
-                match conn.write_client() {
-                  Ok(_) => {}
-                  Err(e) => {
-                    if handle_and_should_close(e, token) {
-                      clients.remove(&token);
-                    }
+                    self.clients.remove(&token);
                   }
                 }
               }
@@ -183,6 +204,7 @@ pub fn run(config: Config) -> Result<()> {
         }
       }
     }
+    Ok(())
   }
 }
 
