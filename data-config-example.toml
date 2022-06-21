@@ -6,9 +6,9 @@
 sources = "remote"
 
 # This must be present when the sources are set to "remote"
-url = "https://macmv.gitlab.io/bamboo-data"
+url = "https://macmv.gitlab.io/bamboo-data/data"
 
 # This must be present when the sources are set to "local". If you
 # have `bamboo-data` cloned locally, this should be set to that path
 # and then the webpage path.
-path = "<bamboo-data-path>/build/webpage"
+path = "<bamboo-data-path>/build/webpage/data"

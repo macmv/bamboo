@@ -49,7 +49,7 @@ impl Downloader {
 
   #[cfg(test)]
   pub fn get<T: DeserializeOwned>(&self, name: &str, ver: Version) -> T {
-    let url = format!("https://macmv.gitlab.io/bamboo-data/{}-{}.json", name, ver);
+    let url = format!("https://macmv.gitlab.io/bamboo-data/data/{}-{}.json", name, ver);
     let data = ureq::get(&url).call().unwrap();
     serde_json::from_reader(data.into_reader()).unwrap()
   }
