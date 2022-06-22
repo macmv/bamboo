@@ -197,6 +197,9 @@ impl ToTcp for Packet {
         if ver < ProtocolVersion::V1_13 {
           panic!("command tree doesn't exist for version {}", ver);
         }
+        if ver >= ProtocolVersion::V1_19 {
+          return Ok(smallvec![]);
+        }
         let mut data = vec![];
         let mut buf = Buffer::new(&mut data);
         buf.write_list(&nodes, |buf, node| {
@@ -223,7 +226,12 @@ impl ToTcp for Packet {
             buf.write_str(&node.name);
           }
           if node.ty == CommandType::Argument {
-            buf.write_str(&node.parser);
+            if ver >= ProtocolVersion::V1_19 {
+              // buf.write_varint(conn.conv().command_to_old(node.parser.id(),
+              // ver));
+            } else {
+              buf.write_str(&node.parser);
+            }
             buf.write_buf(&node.properties);
           }
           if let Some(suggestion) = &node.suggestion {
@@ -232,8 +240,7 @@ impl ToTcp for Packet {
         });
         buf.write_varint(root as i32);
         if ver >= ProtocolVersion::V1_19 {
-          // GPacket::CommandTreeV19 { unknown: data }
-          return Ok(smallvec![]);
+          GPacket::CommandTreeV19 { unknown: data }
         } else if ver >= ProtocolVersion::V1_16_5 {
           GPacket::CommandTreeV16 { unknown: data }
         } else {

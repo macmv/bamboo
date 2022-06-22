@@ -2,6 +2,7 @@ use dl::Downloader;
 use std::{fmt, path::PathBuf};
 
 mod block;
+mod command;
 mod dl;
 mod entity;
 pub mod gen;
@@ -55,6 +56,7 @@ impl Collector {
   }
 
   pub fn generate_blocks(&self, opts: BlockOpts) { block::generate(self, opts).unwrap(); }
+  pub fn generate_commands(&self, target: Target) { command::generate(self, target).unwrap(); }
   pub fn generate_items(&self) { item::generate(self).unwrap(); }
   pub fn generate_entities(&self) { entity::generate(self).unwrap(); }
   pub fn generate_protocol(&self) { protocol::generate(self).unwrap(); }
