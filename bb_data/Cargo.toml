@@ -12,6 +12,7 @@ toml = "0.5"
 convert_case = "0.4.0"
 
 ureq = "2"
+flate2 = "1.0.24"
 
 [dev-dependencies]
 pretty_assertions = "1.2.0"

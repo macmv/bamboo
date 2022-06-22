@@ -1,12 +1,6 @@
 use crate::Version;
 use serde::{de::DeserializeOwned, Deserialize};
-use std::{
-  fs,
-  path::{Path, PathBuf},
-};
-
-#[cfg(not(test))]
-use std::{fs::File, io};
+use std::{collections::HashMap, fs, fs::File, io, io::Read, path::Path};
 
 #[derive(Deserialize)]
 #[cfg_attr(test, allow(dead_code))]
@@ -28,34 +22,50 @@ enum SourcesMode {
 
 #[cfg_attr(test, allow(dead_code))]
 pub struct Downloader {
-  config: Config,
-  out:    PathBuf,
+  files: HashMap<String, HashMap<String, serde_json::Value>>,
 }
 
 impl Downloader {
-  pub fn new(out: PathBuf) -> Self {
+  pub fn new() -> Self {
     // Our current directory is within the project we are building for (for example,
     // we would be inside the `bb_server` directory if compiling for `bb_server`).
     // The config is outside that, so we prefix with `../`.
-    Downloader {
-      config: if Path::new("../data-config.toml").exists() {
-        toml::from_str(&fs::read_to_string("../data-config.toml").unwrap()).unwrap()
-      } else {
-        toml::from_str(&fs::read_to_string("../data-config-example.toml").unwrap()).unwrap()
-      },
-      out,
-    }
+    let config: Config = if Path::new("../data-config.toml").exists() {
+      toml::from_str(&fs::read_to_string("../data-config.toml").unwrap()).unwrap()
+    } else {
+      toml::from_str(&fs::read_to_string("../data-config-example.toml").unwrap()).unwrap()
+    };
+    let mut buf = vec![];
+    match config.sources {
+      SourcesMode::Remote => {
+        let url = config.url.as_ref().expect("url must be present for remote bamboo-data");
+        let url = format!("{url}/all-releases.json.gz");
+
+        let data = ureq::get(&url).call().unwrap();
+
+        io::copy(&mut data.into_reader(), &mut buf)
+          .unwrap_or_else(|e| panic!("could not download bamboo-data json: {e}"));
+      }
+      SourcesMode::Local => {
+        let path = config.path.as_ref().expect("path must be present for local bamboo-data");
+        let path = Path::new("../").join(path).join("all-releases.json.gz");
+
+        let mut data = File::open(&path).unwrap();
+
+        io::copy(&mut data, &mut buf)
+          .unwrap_or_else(|e| panic!("could not copy bamboo-data json: {e}"));
+      }
+    };
+
+    let mut reader = flate2::read::GzDecoder::new(&*buf);
+    let mut uncompressed = vec![];
+    reader.read_to_end(&mut uncompressed).expect("could not decompress bamboo-data json");
+
+    Downloader { files: serde_json::from_reader(&*uncompressed).unwrap() }
   }
 
-  #[cfg(test)]
   pub fn get<T: DeserializeOwned>(&self, name: &str, ver: Version) -> T {
-    let url = format!("https://macmv.gitlab.io/bamboo-data/data/{}-{}.json", name, ver);
-    let data = ureq::get(&url).call().unwrap();
-    serde_json::from_reader(data.into_reader()).unwrap()
-  }
-
-  #[cfg(not(test))]
-  pub fn get<T: DeserializeOwned>(&self, name: &str, ver: Version) -> T {
+    /*
     let cache_dir = self.out.join("data");
     if !cache_dir.exists() {
       fs::create_dir_all(&cache_dir)
@@ -72,35 +82,8 @@ impl Downloader {
         println!("file {} has invalid json, redownloading", p.display());
       }
     }
+    */
 
-    match self.config.sources {
-      SourcesMode::Remote => {
-        let url = self.config.url.as_ref().expect("url must be present for remote download");
-        let url = format!("{url}/{name}-{ver}.json");
-
-        let data = ureq::get(&url).call().unwrap();
-
-        println!("download file {} from {}", p.display(), url);
-        let mut f = File::create(&p)
-          .unwrap_or_else(|e| panic!("cannot create file at {}: {}", p.display(), e));
-        io::copy(&mut data.into_reader(), &mut f)
-          .unwrap_or_else(|e| panic!("could not write file {}: {}", p.display(), e));
-      }
-      SourcesMode::Local => {
-        let path = self.config.path.as_ref().expect("path must be present for local sources");
-        let path = Path::new("../").join(path).join(format!("{name}-{ver}.json"));
-
-        let mut data = File::open(&path).unwrap();
-
-        println!("copying file {} from {}", p.display(), path.display());
-        let mut f = File::create(&p)
-          .unwrap_or_else(|e| panic!("cannot create file at {}: {}", p.display(), e));
-        io::copy(&mut data, &mut f)
-          .unwrap_or_else(|e| panic!("could not write file {}: {}", p.display(), e));
-      }
-    }
-
-    let f = File::open(&p).unwrap_or_else(|e| panic!("cannot open file at {}: {}", p.display(), e));
-    serde_json::from_reader(f).unwrap()
+    serde_json::from_value(self.files[&ver.to_string()][name].clone()).unwrap()
   }
 }

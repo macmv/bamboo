@@ -51,7 +51,7 @@ impl Collector {
     let out = PathBuf::new().join(&std::env::var("OUT_DIR").expect("could not get out dir"));
     #[cfg(test)]
     let out = PathBuf::new();
-    Collector { dl: Downloader::new(out.clone()), out }
+    Collector { dl: Downloader::new(), out }
   }
 
   pub fn generate_blocks(&self, opts: BlockOpts) { block::generate(self, opts).unwrap(); }
