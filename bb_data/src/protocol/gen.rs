@@ -416,24 +416,19 @@ pub fn write_from_tcp_all(gen: &mut CodeGen, packets: &[Vec<(Version, Packet)>])
     gen.write_match("to_sug_id(p.id(), ver)", |gen| {
       for (id, versions) in packets.iter().enumerate() {
         let (ver, first) = versions.first().unwrap();
-        let needs_block = ver.maj != 8;
-        if needs_block {
-          gen.write_comment(&first.name);
-        }
+        gen.write_comment(&first.name);
         gen.write(&id.to_string());
         gen.write(" => ");
-        if needs_block {
+        if ver.maj != 8 {
           gen.write_block(|gen| {
-            if ver.maj != 8 {
-              gen.write("if ver < ");
-              gen.write(&ver.to_protocol());
-              gen.write(" ");
-              gen.write_block(|gen| {
-                gen.write(r#"panic!("version {} is below the minimum version for packet "#);
-                gen.write(&first.name);
-                gen.write_line(r#"", ver);"#);
-              });
-            }
+            gen.write("if ver < ");
+            gen.write(&ver.to_protocol());
+            gen.write(" ");
+            gen.write_block(|gen| {
+              gen.write(r#"panic!("version {} is below the minimum version for packet "#);
+              gen.write(&first.name);
+              gen.write_line(r#"", ver);"#);
+            });
             write_if_chain(gen, versions);
           });
         } else {
