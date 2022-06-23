@@ -151,6 +151,7 @@ impl PacketCollection {
     });
 
     gen.write_mod("packet", |gen| {
+      gen.write_line("use super::*;");
       for versions in &packets {
         for (ver, p) in versions {
           let name = format!("{}V{}", p.name, ver.maj);
@@ -195,18 +196,7 @@ impl PacketCollection {
         });
       });
       write_from_tcp_all(gen, &packets);
-      gen.write_line("#[allow(unused_mut, unused_variables, unused_assignments)]");
-      gen.write_line("#[allow(clippy::assign_op_pattern)]");
-      gen.write("pub fn to_tcp(&self, p: &mut tcp::Packet) ");
-      gen.write_block(|gen| {
-        gen.write_match("self", |gen| {
-          for (_id, versions) in packets.iter().enumerate() {
-            for (_, p) in versions.iter() {
-              write_to_tcp(gen, p);
-            }
-          }
-        });
-      });
+      write_to_tcp_all(gen, &packets);
     });
 
     gen.write_line("/// Unreachable patterns mean the packet has been removed in that version.");
@@ -278,12 +268,19 @@ fn write_packet(gen: &mut CodeGen, name: &str, p: &Packet, ver: Version) {
 }
 
 fn write_def(gen: &mut CodeGen, name: &str, p: &Packet) {
+  gen.write_line("#[derive(Debug, Clone)]");
   gen.write("pub struct ");
   gen.write(name);
   gen.write_line(" {");
   gen.add_indent();
   for f in &p.fields {
-    gen.write("pub ");
+    gen.write("/// Reader type: `");
+    gen.write(&format!("{:?}", f.reader_type));
+    gen.write_line("`,");
+    gen.write("/// java type: `");
+    gen.write(&format!("{:?}", f.ty));
+    gen.write_line("`.");
+
     gen.write(&f.name);
     gen.write(": ");
     if f.option {
@@ -308,9 +305,10 @@ fn write_def(gen: &mut CodeGen, name: &str, p: &Packet) {
 }
 
 pub fn write_from_tcp(gen: &mut CodeGen, p: &Packet, ver: Version) {
-  gen.write_line("fn from_tcp(p: &mut tcp::Packet) -> Self {");
+  gen.write_line("pub fn from_tcp(p: &mut tcp::Packet) -> Result<Self, Error> {");
   gen.add_indent();
 
+  // Declare the variables we need.
   for f in &p.fields {
     // Used for local variable fields, where we don't want this variable defined.
     if f.ty == Type::Void {
@@ -331,12 +329,15 @@ pub fn write_from_tcp(gen: &mut CodeGen, p: &Packet, ver: Version) {
     }
     gen.write_line(";");
   }
+  // Write the actual reader.
   let mut p2 = p.clone();
   let mut writer = InstrWriter::new(gen, &mut p2);
   for i in &p.reader.block {
     writer.write_instr(i);
   }
   let p = p2;
+  // Write the struct literal.
+  gen.write("Ok(");
   gen.write(&p.name);
   gen.write("V");
   gen.write(&ver.maj.to_string());
@@ -353,14 +354,24 @@ pub fn write_from_tcp(gen: &mut CodeGen, p: &Packet, ver: Version) {
     gen.write_line(",");
   }
   gen.remove_indent();
-  gen.write_line("}");
+  gen.write_line("})");
 
   gen.remove_indent();
   gen.write_line("}");
 }
 pub fn write_to_tcp(gen: &mut CodeGen, p: &Packet) {
-  gen.write_line("fn to_tcp(&self, p: &mut tcp::Packet) {");
+  gen.write_line("pub fn to_tcp(&self, p: &mut tcp::Packet) {");
   gen.add_indent();
+
+  for f in &p.fields {
+    if f.ty == Type::Void {
+      gen.write("let ");
+      gen.write(&f.name);
+      gen.write(" = self.");
+      gen.write(&f.name);
+      gen.write_line(";");
+    }
+  }
 
   let mut p2 = p.clone();
   let mut writer = InstrWriter::new(gen, &mut p2);
@@ -405,7 +416,7 @@ pub fn write_from_tcp_all(gen: &mut CodeGen, packets: &[Vec<(Version, Packet)>])
     gen.write(&name);
     gen.write("(packet::");
     gen.write(&name);
-    gen.write("::from_tcp(p))");
+    gen.write("::from_tcp(p)?)");
   }
 
   gen.write_line("#[allow(unused_mut, unused_variables)]");
@@ -438,6 +449,26 @@ pub fn write_from_tcp_all(gen: &mut CodeGen, packets: &[Vec<(Version, Packet)>])
       gen.write_line(r#"v => panic!("invalid protocol version {}", v),"#);
     });
     gen.write(")"); // Close the `Ok(` from above the match
+  });
+}
+
+pub fn write_to_tcp_all(gen: &mut CodeGen, packets: &[Vec<(Version, Packet)>]) {
+  gen.write_line("#[allow(unused_mut, unused_variables, unused_assignments)]");
+  gen.write_line("#[allow(clippy::assign_op_pattern)]");
+  gen.write("pub fn to_tcp(&self, p: &mut tcp::Packet) ");
+  gen.write_block(|gen| {
+    gen.write_match("self", |gen| {
+      for (_id, versions) in packets.iter().enumerate() {
+        for (ver, p) in versions.iter() {
+          let name = &format!("{}V{}", p.name, ver.maj);
+          gen.write("Self::");
+          gen.write(&name);
+          gen.write("(packet::");
+          gen.write(&name);
+          gen.write_line("::to_tcp(p)),");
+        }
+      }
+    });
   });
 }
 
@@ -808,6 +839,10 @@ impl<'a> InstrWriter<'a> {
 
       Op::Deref => {
         self.gen.write("*");
+        self.gen.write(val);
+      }
+      Op::Ref => {
+        self.gen.write("&");
         self.gen.write(val);
       }
       Op::Not => {

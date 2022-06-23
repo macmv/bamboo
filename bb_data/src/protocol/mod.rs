@@ -325,6 +325,8 @@ pub enum Op {
 
   /// Puts a `*` in front. Not present in json.
   Deref,
+  /// Puts a `&` in front. Not present in json.
+  Ref,
   /// Puts a `!` in front. Not present in json.
   Not,
   /// Puts a `?` after. Not present in json.
@@ -431,6 +433,7 @@ impl Op {
       Op::Field(_) => 0,
 
       Op::Deref => 0,
+      Op::Ref => 0,
       Op::Not => 0,
       Op::Try => 0,
 

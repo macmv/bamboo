@@ -511,7 +511,7 @@ impl<'a> ReaderTypes<'a> {
       }
       Value::Var(v) => {
         if self.var_to_write.map(|var| var == *v) == Some(true) && expr.ops.is_empty() {
-          self.var_init_to_write = Some(field.clone().op(Op::Deref));
+          self.var_init_to_write = Some(field.clone());
           return None;
         }
       }
@@ -531,7 +531,7 @@ impl<'a> ReaderTypes<'a> {
             Cond::Eq(lhs, rhs) => (lhs, rhs == &Expr::new(Value::Lit(0.into()))),
             _ => unimplemented!("cond {:?}", cond),
           };
-          let mut cond = field.clone().op(Op::Deref);
+          let mut cond = field.clone();
           if inverted {
             cond.add_op(Op::Not);
           }
@@ -571,7 +571,7 @@ impl<'a> ReaderTypes<'a> {
               return Some(Instr::Expr(Expr::new(Value::packet_var()).op(Op::Call(
                 "tcp::Packet".into(),
                 "write_bool".into(),
-                vec![field.clone().op(Op::Deref)],
+                vec![field.clone()],
               ))));
             }
             _ => unimplemented!(),
@@ -632,22 +632,8 @@ impl<'a> ReaderTypes<'a> {
       let len = expr.ops.len();
       expr.ops.remove(len - 2);
     }
-    if field_ty.is_copy()
-      && expr
-        .ops
-        .get(1)
-        // For Option::is_some()
-        .map(|v| matches!(v, Op::Call(class, _, _) if class != "Option"))
-        .unwrap_or(true)
-      && !expr
-        .ops
-        .last()
-        // For Option::unwrap(). This derefs for us
-        .map(|v| matches!(v, Op::Call(class, name, _) if class == "Option" && name == "unwrap"))
-        .unwrap_or(false)
-      && matches!(expr.initial, Value::Field(_))
-    {
-      expr.ops.insert(0, Op::Deref);
+    if !field_ty.is_copy() {
+      expr.ops.insert(0, Op::Ref);
     }
     expr
   }
