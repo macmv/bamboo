@@ -349,6 +349,10 @@ fn write_def(gen: &mut CodeGen, name: &str, p: &Packet) {
 
 pub fn write_from_tcp(gen: &mut CodeGen, p: &Packet, ver: Version) {
   for f in &p.fields {
+    // Used for local variable fields, where we don't want this variable defined.
+    if f.ty == Type::Void {
+      continue;
+    }
     gen.write("let");
     if !f.initialized {
       gen.write(" mut");
@@ -377,9 +381,13 @@ pub fn write_from_tcp(gen: &mut CodeGen, p: &Packet, ver: Version) {
   gen.write_line(" {");
   gen.add_indent();
   for f in &p.fields {
-    gen.write(&f.name);
-    gen.write(": f_");
-    gen.write(&f.name);
+    if f.ty == Type::Void {
+      gen.write(&f.name);
+    } else {
+      gen.write(&f.name);
+      gen.write(": f_");
+      gen.write(&f.name);
+    }
     gen.write_line(",");
   }
   gen.remove_indent();
@@ -401,6 +409,16 @@ pub fn write_to_tcp(gen: &mut CodeGen, p: &Packet, ver: Version) {
   gen.remove_indent();
   gen.write_line("} => {");
   gen.add_indent();
+
+  for f in &p.fields {
+    if f.ty == Type::Void {
+      gen.write("let mut ");
+      gen.write(&f.name);
+      gen.write(" = *f_");
+      gen.write(&f.name);
+      gen.write_line(";");
+    }
+  }
 
   let mut p2 = p.clone();
   let mut writer = InstrWriter::new(gen, &mut p2);

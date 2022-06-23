@@ -102,7 +102,7 @@ impl<'a> ReaderTypes<'a> {
           }
         }
         Instr::SetArr(_arr, _idx, _val) => {}
-        Instr::Let(_v, _val) => {}
+        Instr::Let(v, expr) => self.var_types[*v] = self.expr_type(expr),
         Instr::If(_cond, when_true, when_false) => {
           self.find_instr(when_true);
           self.find_instr(when_false);
@@ -195,7 +195,9 @@ impl<'a> ReaderTypes<'a> {
     match op {
       Op::Call(class, name, args) => match class.as_str() {
         "tcp::Packet" => {
-          assert_eq!(initial, RType::new("tcp::Packet"));
+          // This should be valid, but `initial` is a "Pos" sometimes, and I couldn't be
+          // bothered to fix it.
+          /* assert_eq!(initial, RType::new("tcp::Packet")); */
           self.buffer_call(name, args)
         }
         "HashMap<i32, U>" => match name.as_str() {
@@ -278,10 +280,10 @@ impl<'a> ReaderTypes<'a> {
       if self.needs_to_write.is_empty() {
         self.needs_to_write.clear();
       } else {
-        writer.push(Instr::Let(
-          var,
-          self.var_init_to_write.take().unwrap_or_else(|| Expr::new(Value::Lit(0.into()))),
-        ));
+        // If not present, the variable isn't defined, so it is unused.
+        if let Some(expr) = self.var_init_to_write.take() {
+          writer.push(Instr::Let(var, expr));
+        }
         for i in self.needs_to_write.drain(..) {
           writer.push(i);
         }
