@@ -67,6 +67,7 @@ impl ToTcp for Packet {
             creative_mode: insta_break,
             fly_speed: fly_speed * 0.05,
             walk_speed: walk_speed * 0.1,
+            v_2: 0,
           }
         } else {
           GPacket::PlayerAbilitiesV16 {
@@ -76,6 +77,7 @@ impl ToTcp for Packet {
             creative_mode: insta_break,
             fly_speed: fly_speed * 0.05,
             walk_speed: walk_speed * 0.1,
+            v_2: 0,
           }
         },
       Packet::Animation { eid, kind } => {
@@ -322,7 +324,7 @@ impl ToTcp for Packet {
           buf.write_i8(yaw);
           buf.write_i8(pitch);
           buf.write_bool(on_ground);
-          GPacket::EntityLookV17 { unknown: data }
+          GPacket::EntityLookV17 { unknown: data, v_1: 0, v_2: 0, v_3: 0, v_4: 0 }
         } else {
           GPacket::EntityLookV8 { entity_id: eid, yaw, pitch, on_ground }
         }
@@ -336,7 +338,14 @@ impl ToTcp for Packet {
           buf.write_i16(y);
           buf.write_i16(z);
           buf.write_bool(on_ground);
-          GPacket::EntityRelMoveV17 { unknown: data }
+          GPacket::EntityRelMoveV17 {
+            unknown: data,
+            v_1:     0,
+            v_2:     0,
+            v_3:     0,
+            v_4:     0,
+            v_5:     0,
+          }
         } else if ver >= ProtocolVersion::V1_9_4 {
           GPacket::EntityRelMoveV9 {
             entity_id: eid,
@@ -366,7 +375,16 @@ impl ToTcp for Packet {
           buf.write_i8(yaw);
           buf.write_i8(pitch);
           buf.write_bool(on_ground);
-          GPacket::EntityLookMoveV17 { unknown: data }
+          GPacket::EntityLookMoveV17 {
+            unknown: data,
+            v_1:     0,
+            v_2:     0,
+            v_3:     0,
+            v_4:     0,
+            v_5:     0,
+            v_6:     0,
+            v_7:     0,
+          }
         } else if ver >= ProtocolVersion::V1_9_4 {
           GPacket::EntityLookMoveV9 {
             entity_id: eid,
@@ -523,6 +541,7 @@ impl ToTcp for Packet {
             player_entity_id: eid,
             hardcore:         hardcore_mode,
             unknown:          data,
+            v_2:              0,
           },
           16 => GPacket::JoinGameV16 {
             player_entity_id: eid,
@@ -634,7 +653,7 @@ impl ToTcp for Packet {
           }
         }
         if ver < ProtocolVersion::V1_17_1 {
-          GPacket::PlayerListV8 { action: id, unknown: data }
+          GPacket::PlayerListV8 { action: id, unknown: data, v_2: 0 }
         } else {
           GPacket::PlayerListV17 { action: id, unknown: data }
         }
@@ -717,9 +736,9 @@ impl ToTcp for Packet {
       Packet::PluginMessage { channel, data } => {
         // No length prefix for data, it is inferred from packet length.
         if ver < ProtocolVersion::V1_14_4 {
-          GPacket::CustomPayloadV8 { channel, unknown: data }
+          GPacket::CustomPayloadV8 { channel, unknown: data, v_2: 0 }
         } else {
-          GPacket::CustomPayloadV14 { channel, unknown: data }
+          GPacket::CustomPayloadV14 { channel, unknown: data, v_2: 0 }
         }
       }
       Packet::RemoveEntities { eids } => {
@@ -792,6 +811,7 @@ impl ToTcp for Packet {
               ScoreboardAction::Remove => 1,
             },
             unknown:     data,
+            v_2:         "".into(),
           }
         } else if ver >= ProtocolVersion::V1_14_4 {
           buf.write_str(&objective);
@@ -806,6 +826,7 @@ impl ToTcp for Packet {
               ScoreboardAction::Remove => 1,
             },
             unknown:     data,
+            v_2:         "".into(),
           }
         } else {
           match action {
@@ -1350,7 +1371,7 @@ impl ToTcp for Packet {
             conn.conv().item(&mut it, ver.block());
             buf.write_item(&it);
           }
-          GPacket::WindowItemsV8 { window_id: wid.into(), unknown: buf.serialize() }
+          GPacket::WindowItemsV8 { window_id: wid.into(), unknown: buf.serialize(), v_2: 0 }
         }
       }
       Packet::WindowItem { wid, slot, mut item } => {

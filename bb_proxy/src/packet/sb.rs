@@ -226,45 +226,33 @@ impl FromTcp for Packet {
       GPacket::PlayerV8 { on_ground, .. } | GPacket::PlayerOnGroundV14 { on_ground } => {
         Packet::PlayerOnGround { on_ground }
       }
-      GPacket::PlayerOnGroundV17 { unknown } => {
-        let mut buf = Buffer::new(&unknown);
-        Packet::PlayerOnGround { on_ground: buf.read_bool()? }
-      }
+      GPacket::PlayerOnGroundV17 { v_1, unknown: _ } => Packet::PlayerOnGround { on_ground: v_1 },
       GPacket::PlayerLookV8 { yaw, pitch, on_ground, .. }
       | GPacket::PlayerRotationV9 { yaw, pitch, on_ground, .. } => {
         Packet::PlayerLook { yaw, pitch, on_ground }
       }
-      GPacket::PlayerRotationV17 { unknown, .. } => {
-        let mut buf = Buffer::new(&unknown);
-        Packet::PlayerLook {
-          yaw:       buf.read_f32()?,
-          pitch:     buf.read_f32()?,
-          on_ground: buf.read_bool()?,
-        }
+      GPacket::PlayerRotationV17 { unknown: _, v_1, v_2, v_3 } => {
+        Packet::PlayerLook { yaw: v_1, pitch: v_2, on_ground: v_3 }
       }
       GPacket::PlayerPosLookV8 { x, y, z, yaw, pitch, on_ground, .. }
       | GPacket::PlayerPositionRotationV9 { x, y, z, yaw, pitch, on_ground, .. } => {
         Packet::PlayerPosLook { x, y, z, yaw, pitch, on_ground }
       }
-      GPacket::PlayerPositionRotationV17 { mut unknown, .. } => {
-        let mut buf = Buffer::new(&mut unknown);
-        let x = buf.read_f64()?;
-        let y = buf.read_f64()?;
-        let z = buf.read_f64()?;
-        let yaw = buf.read_f32()?;
-        let pitch = buf.read_f32()?;
-        let on_ground = buf.read_bool()?;
-        Packet::PlayerPosLook { x, y, z, yaw, pitch, on_ground }
+      GPacket::PlayerPositionRotationV17 { unknown: _, v_1, v_3, v_5, v_7, v_8, v_9 } => {
+        Packet::PlayerPosLook {
+          x:         v_1,
+          y:         v_3,
+          z:         v_5,
+          yaw:       v_7,
+          pitch:     v_8,
+          on_ground: v_9,
+        }
       }
       GPacket::PlayerPositionV8 { x, y, z, on_ground, .. } => {
         Packet::PlayerPos { x, y, z, on_ground }
       }
-      GPacket::PlayerPositionV17 { mut unknown, .. } => {
-        let mut buf = Buffer::new(&mut unknown);
-        let x = buf.read_f64()?;
-        let y = buf.read_f64()?;
-        let z = buf.read_f64()?;
-        Packet::PlayerPos { x, y, z, on_ground: false }
+      GPacket::PlayerPositionV17 { unknown: _, v_1, v_3, v_5, v_7 } => {
+        Packet::PlayerPos { x: v_1, y: v_3, z: v_5, on_ground: v_7 }
       }
       GPacket::PlayerAbilitiesV8 { flying, .. }
       | GPacket::UpdatePlayerAbilitiesV14 { flying, .. }

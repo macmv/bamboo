@@ -54,5 +54,6 @@ pub fn chunk(chunk: ChunkWithPos, ver: ProtocolVersion, conv: &TypeConverter) ->
     load_chunk:         chunk.full,
     available_sections: chunk.old_bit_map().into(),
     unknown:            data,
+    v_2:                0,
   }
 }

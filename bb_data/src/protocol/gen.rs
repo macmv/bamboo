@@ -414,7 +414,11 @@ pub fn write_to_tcp(gen: &mut CodeGen, p: &Packet, ver: Version) {
     if f.ty == Type::Void {
       gen.write("let mut ");
       gen.write(&f.name);
-      gen.write(" = *f_");
+      gen.write(" = ");
+      if f.reader_type.as_ref().unwrap().is_copy() {
+        gen.write("*");
+      }
+      gen.write("f_");
       gen.write(&f.name);
       gen.write_line(";");
     }

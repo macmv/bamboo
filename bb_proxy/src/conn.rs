@@ -372,7 +372,7 @@ impl<'a, S: PacketStream + Send + Sync> Conn<'a, S> {
   fn send_to_server(&mut self, p: gsb::Packet) -> Result<()> {
     self.write_data_to_server(|s, m| {
       // An error here is for an unimplemented packet
-      let common = match csb::Packet::from_tcp(dbg!(p), s.ver, s.conv.as_ref()) {
+      let common = match csb::Packet::from_tcp(p, s.ver, s.conv.as_ref()) {
         Ok(p) => p,
         Err(e) => {
           warn!("{e}");
