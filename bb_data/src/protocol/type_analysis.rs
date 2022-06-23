@@ -78,10 +78,18 @@ impl<'a> ReaderTypes<'a> {
   fn get_field_mut(&mut self, name: &str) -> Option<&mut Field> {
     self.fields.iter_mut().find(|field| field.name == name)
   }
+  fn use_expr(&mut self, expr: &Expr) {
+    if let Value::Var(v) = expr.initial {
+      if expr.initial != Value::packet_var() {
+        self.vars[v].0 = true;
+      }
+    }
+  }
   fn find_instr(&mut self, instr: &[Instr]) {
     for i in instr {
       match i {
         Instr::Set(field, expr) => {
+          self.use_expr(expr);
           let ty = self.expr_type(expr);
           if let Some(f) = self.get_field_mut(field) {
             let rs_ty = f.ty.to_rust();
@@ -499,10 +507,7 @@ impl<'a> ReaderTypes<'a> {
           new_args,
         ))));
       }
-      value @ Value::Var(v) => {
-        if value != &Value::packet_var() {
-          self.vars[*v].0 = true;
-        }
+      Value::Var(v) => {
         if self.var_to_write.map(|var| var == *v) == Some(true) && expr.ops.is_empty() {
           self.var_init_to_write = Some(field.clone().op(Op::Deref));
           return None;
