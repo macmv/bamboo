@@ -380,21 +380,21 @@ pub fn write_from_tcp_all(gen: &mut CodeGen, packets: &[Vec<(Version, Packet)>])
       packet_from_tcp(gen, &first, *ver);
       gen.write_line("");
     } else {
-      for (i, (ver, p)) in versions.iter().enumerate() {
-        if let Some(next_ver) = versions.get(i + 1) {
-          gen.write("if ver < ");
-          gen.write(&next_ver.0.to_protocol());
+      for (i, (ver, p)) in versions.iter().enumerate().rev() {
+        if i == 0 {
+          gen.write_block(|gen| {
+            packet_from_tcp(gen, p, *ver);
+            gen.write_line("");
+          });
+        } else {
+          gen.write("if ver >= ");
+          gen.write(&ver.to_protocol());
           gen.write_line(" {");
           gen.add_indent();
           packet_from_tcp(gen, p, *ver);
           gen.write_line("");
           gen.remove_indent();
           gen.write("} else ");
-        } else {
-          gen.write_block(|gen| {
-            packet_from_tcp(gen, p, *ver);
-            gen.write_line("");
-          });
         }
       }
     }
