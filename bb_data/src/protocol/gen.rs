@@ -141,7 +141,20 @@ impl PacketCollection {
     gen.write_block(|gen| {
       for versions in &packets {
         for (ver, p) in versions {
-          write_packet(gen, &format!("{}V{}", p.name, ver.maj), p, *ver);
+          let name = format!("{}V{}", p.name, ver.maj);
+          gen.write(&name);
+          gen.write("(packet::");
+          gen.write(&name);
+          gen.write_line("),");
+        }
+      }
+    });
+
+    gen.write_mod("packet", |gen| {
+      for versions in &packets {
+        for (ver, p) in versions {
+          let name = format!("{}V{}", p.name, ver.maj);
+          write_packet(gen, &name, p, *ver);
         }
       }
     });
@@ -190,23 +203,18 @@ impl PacketCollection {
         gen.write("Ok(");
         gen.write_match("to_sug_id(p.id(), ver)", |gen| {
           for (id, versions) in packets.iter().enumerate() {
+            let (ver, first) = versions.first().unwrap();
+            let needs_block = ver.maj != 8;
+            if needs_block {
+              gen.write_comment(&first.name);
+            }
             gen.write(&id.to_string());
             gen.write(" => ");
-            gen.write_block(|gen| {
+            fn write_if_chain(gen: &mut CodeGen, versions: &[(Version, Packet)]) {
               let (ver, first) = versions.first().unwrap();
-              gen.write_comment(&first.name);
-              if ver.maj != 8 {
-                gen.write("if ver < ");
-                gen.write(&ver.to_protocol());
-                gen.write(" ");
-                gen.write_block(|gen| {
-                  gen.write(r#"panic!("version {} is below the minimum version for packet "#);
-                  gen.write(&first.name);
-                  gen.write_line(r#"", ver);"#);
-                });
-              }
               if versions.len() == 1 {
-                write_from_tcp(gen, first, *ver);
+                packet_from_tcp(gen, &first, *ver);
+                gen.write_line("");
               } else {
                 for (i, (ver, p)) in versions.iter().enumerate() {
                   if let Some(next_ver) = versions.get(i + 1) {
@@ -214,17 +222,44 @@ impl PacketCollection {
                     gen.write(&next_ver.0.to_protocol());
                     gen.write_line(" {");
                     gen.add_indent();
-                    write_from_tcp(gen, p, *ver);
+                    packet_from_tcp(gen, p, *ver);
+                    gen.write_line("");
                     gen.remove_indent();
                     gen.write("} else ");
                   } else {
                     gen.write_block(|gen| {
-                      write_from_tcp(gen, p, *ver);
+                      packet_from_tcp(gen, p, *ver);
+                      gen.write_line("");
                     });
                   }
                 }
               }
-            });
+            }
+            fn packet_from_tcp(gen: &mut CodeGen, p: &Packet, ver: Version) {
+              let name = format!("{}V{}", p.name, ver.maj);
+              gen.write("Self::");
+              gen.write(&name);
+              gen.write("(packet::");
+              gen.write(&name);
+              gen.write("::from_tcp(p))");
+            }
+            if needs_block {
+              gen.write_block(|gen| {
+                if ver.maj != 8 {
+                  gen.write("if ver < ");
+                  gen.write(&ver.to_protocol());
+                  gen.write(" ");
+                  gen.write_block(|gen| {
+                    gen.write(r#"panic!("version {} is below the minimum version for packet "#);
+                    gen.write(&first.name);
+                    gen.write_line(r#"", ver);"#);
+                  });
+                }
+                write_if_chain(gen, versions);
+              });
+            } else {
+              write_if_chain(gen, versions);
+            }
           }
           gen.write_line(r#"v => panic!("invalid protocol version {}", v),"#);
         });
@@ -290,40 +325,35 @@ fn write_packet(gen: &mut CodeGen, name: &str, p: &Packet, ver: Version) {
   gen.write_line("```rust,ignore");
   write_def(gen, name, p);
   gen.write_line("```");
-
-  gen.write_line("Both these code blocks use [`tcp::Packet`](crate::gnet::tcp::Packet) for");
-  gen.write_line("reading/writing fields.");
-  gen.write_line("");
-
-  gen.write_line("[`from_tcp`](Self::from_tcp) (packet reader):");
-  gen.write_line("```rust,ignore");
-  gen.write_line("let p = tcp::Packet::new(vec![]);");
-  gen.write_line("");
-  write_from_tcp(gen, p, ver);
-  gen.write_line("```");
-  gen.write_line("");
-
-  gen.write_line("[`to_tcp`](Self::to_tcp) (packet writer):");
-  gen.write_line("```rust,ignore");
-  gen.write_line("let p = tcp::Packet::new(vec![]);");
-  gen.write_line("");
-  gen.write_line("match self {");
-  gen.add_indent();
-  write_to_tcp(gen, p, ver);
-  gen.write_line("_ => { /* ... */ }");
-  gen.remove_indent();
-  gen.write_line("}");
-  gen.write_line("```");
   gen.set_doc_comment(false);
-
   write_def(gen, name, p);
+
+  gen.write_impl(name, |gen| {
+    gen.set_doc_comment(true);
+    gen.write_line("Packet reader. Source:");
+    gen.write_line("```rust,ignore");
+    write_from_tcp(gen, p, ver);
+    gen.write_line("```");
+    gen.set_doc_comment(false);
+    write_from_tcp(gen, p, ver);
+
+    gen.set_doc_comment(true);
+    gen.write_line("Packet writer. Source:");
+    gen.write_line("```rust,ignore");
+    write_to_tcp(gen, p, ver);
+    gen.write_line("```");
+    gen.set_doc_comment(false);
+    write_to_tcp(gen, p, ver);
+  });
 }
 
 fn write_def(gen: &mut CodeGen, name: &str, p: &Packet) {
+  gen.write("pub struct ");
   gen.write(name);
   gen.write_line(" {");
   gen.add_indent();
   for f in &p.fields {
+    gen.write("pub ");
     gen.write(&f.name);
     gen.write(": ");
     if f.option {
@@ -344,10 +374,13 @@ fn write_def(gen: &mut CodeGen, name: &str, p: &Packet) {
     gen.write_line(",");
   }
   gen.remove_indent();
-  gen.write_line("},");
+  gen.write_line("}");
 }
 
 pub fn write_from_tcp(gen: &mut CodeGen, p: &Packet, ver: Version) {
+  gen.write_line("fn from_tcp(p: &mut tcp::Packet) -> Self {");
+  gen.add_indent();
+
   for f in &p.fields {
     // Used for local variable fields, where we don't want this variable defined.
     if f.ty == Type::Void {
@@ -374,7 +407,6 @@ pub fn write_from_tcp(gen: &mut CodeGen, p: &Packet, ver: Version) {
     writer.write_instr(i);
   }
   let p = p2;
-  gen.write("Packet::");
   gen.write(&p.name);
   gen.write("V");
   gen.write(&ver.maj.to_string());
@@ -392,37 +424,13 @@ pub fn write_from_tcp(gen: &mut CodeGen, p: &Packet, ver: Version) {
   }
   gen.remove_indent();
   gen.write_line("}");
+
+  gen.remove_indent();
+  gen.write_line("}");
 }
 pub fn write_to_tcp(gen: &mut CodeGen, p: &Packet, ver: Version) {
-  gen.write("Packet::");
-  gen.write(&p.name);
-  gen.write("V");
-  gen.write(&ver.maj.to_string());
-  gen.write_line(" {");
+  gen.write_line("fn to_tcp(&self, p: &mut tcp::Packet) {");
   gen.add_indent();
-  for f in &p.fields {
-    gen.write(&f.name);
-    gen.write(": f_");
-    gen.write(&f.name);
-    gen.write_line(",");
-  }
-  gen.remove_indent();
-  gen.write_line("} => {");
-  gen.add_indent();
-
-  for f in &p.fields {
-    if f.ty == Type::Void {
-      gen.write("let mut ");
-      gen.write(&f.name);
-      gen.write(" = ");
-      if f.reader_type.as_ref().unwrap().is_copy() {
-        gen.write("*");
-      }
-      gen.write("f_");
-      gen.write(&f.name);
-      gen.write_line(";");
-    }
-  }
 
   let mut p2 = p.clone();
   let mut writer = InstrWriter::new(gen, &mut p2);
@@ -676,7 +684,11 @@ impl<'a> InstrWriter<'a> {
         self.gen.write(name);
       }
       Value::Field(name) => {
-        self.gen.write("f_");
+        if self.needs_deref {
+          self.gen.write("self.");
+        } else {
+          self.gen.write("f_");
+        }
         self.gen.write(name);
       }
       Value::Array(len) => {

@@ -153,6 +153,39 @@ impl CodeGen {
     self.remove_indent();
     self.write_line("}");
   }
+  /// Writes a `mod` block. Example:
+  /// ```
+  /// # use bb_data::gen::{CodeGen, EnumVariant};
+  /// # let mut gen = CodeGen::new();
+  /// gen.write_mod("foo", |gen| {
+  ///   gen.write_line("pub fn hello_world() {}");
+  /// });
+  /// # let out = gen.into_output();
+  /// # eprintln!("OUTPUT: {}", out);
+  /// # assert_eq!(out,
+  /// # r#"mod foo {
+  /// #   pub fn hello_world() {}
+  /// # }
+  /// # "#);
+  /// ```
+  /// That will produce:
+  /// ```ignore
+  /// mod foo {
+  ///   pub fn hello_world() {}
+  /// }
+  /// ```
+  pub fn write_mod<F>(&mut self, name: &str, write_body: F)
+  where
+    F: FnOnce(&mut CodeGen),
+  {
+    self.write("mod ");
+    self.write(name);
+    self.write_line(" {");
+    self.add_indent();
+    write_body(self);
+    self.remove_indent();
+    self.write_line("}");
+  }
   /// Writes a function. Example:
   /// ```
   /// # use bb_data::gen::{CodeGen, FuncArg};
