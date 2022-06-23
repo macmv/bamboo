@@ -389,14 +389,15 @@ pub fn write_from_tcp_all(gen: &mut CodeGen, packets: &[Vec<(Version, Packet)>])
     let (ver, first) = versions.first().unwrap();
     if versions.len() == 1 {
       packet_from_tcp(gen, &first, *ver);
-      gen.write_line("");
     } else {
       for (i, (ver, p)) in versions.iter().enumerate().rev() {
         if i == 0 {
-          gen.write_block(|gen| {
-            packet_from_tcp(gen, p, *ver);
-            gen.write_line("");
-          });
+          gen.write_line("{");
+          gen.add_indent();
+          packet_from_tcp(gen, p, *ver);
+          gen.write_line("");
+          gen.remove_indent();
+          gen.write("}");
         } else {
           gen.write("if ver >= ");
           gen.write(&ver.to_protocol());
@@ -441,9 +442,11 @@ pub fn write_from_tcp_all(gen: &mut CodeGen, packets: &[Vec<(Version, Packet)>])
               gen.write_line(r#"", ver);"#);
             });
             write_if_chain(gen, versions);
+            gen.write_line("");
           });
         } else {
           write_if_chain(gen, versions);
+          gen.write_line(",");
         }
       }
       gen.write_line(r#"v => panic!("invalid protocol version {}", v),"#);
