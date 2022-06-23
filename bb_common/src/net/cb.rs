@@ -21,6 +21,10 @@ pub enum Packet {
   },
   #[id = 32]
   Animation { eid: i32, kind: Animation },
+  /// Sent to 1.19+ clients to acknowledge a block change. This prevents a lot
+  /// of ghost blocks.
+  #[id = 43]
+  AckBlockUpdate { sequence: i32 },
   #[id = 1]
   BlockUpdate { pos: Pos, state: u32 },
   #[id = 38]

@@ -79,7 +79,7 @@ impl PacketCollection {
           // TODO: We still might be missing fields from this packet.
           p.extend_from_none();
         } else {
-          dbg!(&p);
+          // dbg!(&p);
           p.extend_from(&self.classes[ver][&p.extends]);
         }
       }
@@ -328,10 +328,18 @@ fn write_def(gen: &mut CodeGen, name: &str, p: &Packet) {
     gen.write(": ");
     if f.option {
       gen.write("Option<");
-      gen.write(&f.ty.to_rust().to_string());
+      if f.ty == Type::Void {
+        gen.write(&f.reader_type.as_ref().unwrap().to_string());
+      } else {
+        gen.write(&f.ty.to_rust().to_string());
+      }
       gen.write(">");
     } else {
-      gen.write(&f.ty.to_rust().to_string());
+      if f.ty == Type::Void {
+        gen.write(&f.reader_type.as_ref().unwrap().to_string());
+      } else {
+        gen.write(&f.ty.to_rust().to_string());
+      }
     }
     gen.write_line(",");
   }

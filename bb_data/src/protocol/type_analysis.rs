@@ -3,11 +3,13 @@ use super::{convert, Cond, Expr, Field, Instr, Lit, Op, Packet, RType, Type, Val
 #[derive(Debug)]
 struct ReaderTypes<'a> {
   var_types: Vec<RType>,
-  fields:    &'a mut [Field],
+  fields:    &'a mut Vec<Field>,
   packet:    &'a str,
 
   // For writer gen.
-  vars: Vec<Expr>,
+  //
+  // The bool is `true` if the variable is used.
+  vars: Vec<(bool, Expr)>,
 
   // Stores a read instruction that needs to be inverted. For example:
   // ```
@@ -50,7 +52,7 @@ impl Packet {
   }
 }
 impl<'a> ReaderTypes<'a> {
-  pub fn new(vars: &[VarKind], fields: &'a mut [Field], name: &'a str) -> Self {
+  pub fn new(vars: &[VarKind], fields: &'a mut Vec<Field>, name: &'a str) -> Self {
     let mut var_types = Vec::with_capacity(vars.len());
     for v in vars {
       match v {
@@ -62,7 +64,7 @@ impl<'a> ReaderTypes<'a> {
     ReaderTypes {
       var_types,
       fields,
-      vars: vars.iter().map(|_| Expr::new(Value::Null)).collect(),
+      vars: vars.iter().map(|_| (false, Expr::new(Value::Null))).collect(),
       packet: name,
       var_to_write: None,
       var_init_to_write: None,
@@ -174,7 +176,7 @@ impl<'a> ReaderTypes<'a> {
           _ => unreachable!(),
         })
       }
-      Value::Cond(_) => todo!(),
+      Value::Cond(_) => RType::new("bool"),
     }
   }
   fn var_type(&self, var: usize) -> RType {
@@ -257,6 +259,7 @@ impl<'a> ReaderTypes<'a> {
         RType::new("HashMap").generic(self.expr_type(&args[0])).generic(self.expr_type(&args[1]))
       }
       "read_list" => RType::new("Vec").generic(self.expr_type(&args[0])),
+      "remaining" => RType::new("usize"),
       _ => todo!("call `{name}`"),
     }
   }
@@ -312,7 +315,7 @@ impl<'a> ReaderTypes<'a> {
           }
         }
         Instr::Let(i, expr) => {
-          self.vars[*i] = expr.clone();
+          self.vars[*i] = (false, expr.clone());
           if let Some(func) = self.reverse_set(expr) {
             self.var_to_write = Some(*i);
             self.var_func_to_write = Some(func);
@@ -496,7 +499,10 @@ impl<'a> ReaderTypes<'a> {
           new_args,
         ))));
       }
-      Value::Var(v) => {
+      value @ Value::Var(v) => {
+        if value != &Value::packet_var() {
+          self.vars[*v].0 = true;
+        }
         if self.var_to_write.map(|var| var == *v) == Some(true) && expr.ops.is_empty() {
           self.var_init_to_write = Some(field.clone().op(Op::Deref));
           return None;
@@ -512,8 +518,8 @@ impl<'a> ReaderTypes<'a> {
             }
             // Right now, we assume that we have a BitAnd like so: `v & 8 != 0` or `v & 8 == 8`.
             // This is easy to check with eq/neq to 0, but fails if we have something like this: `v
-            // & 8 != 5`. This last check makes no sense, and doesn't appear in our use case, so I am
-            // going to ignore it.
+            // & 8 != 5`. This last check makes no sense, and doesn't appear in our use case, so I
+            // am going to ignore it.
             Cond::Neq(lhs, rhs) => (lhs, rhs != &Expr::new(Value::Lit(0.into()))),
             Cond::Eq(lhs, rhs) => (lhs, rhs == &Expr::new(Value::Lit(0.into()))),
             _ => unimplemented!("cond {:?}", cond),
@@ -601,7 +607,7 @@ impl<'a> ReaderTypes<'a> {
 
   fn value_of(&self, v: &Expr) -> Expr {
     match v.initial {
-      Value::Var(idx) if idx != 1 => self.vars[idx].clone(),
+      Value::Var(idx) if idx != 1 => self.vars[idx].1.clone(),
       _ => v.clone(),
     }
   }
@@ -649,18 +655,45 @@ impl<'a> ReaderTypes<'a> {
   }
 
   fn simplify_conditionals(&mut self, instr: &mut [Instr]) {
+    let mut assigned_and_unused = vec![None; self.vars.len()];
     for i in instr {
-      if let Instr::Set(name, expr) = i {
-        if let Some(field) = self.get_field_mut(name) {
-          if field.reader_type == Some(RType::new("i32")) {
-            if let Some(Op::If(cond, _)) = expr.ops.last() {
-              // expr.ops.pop();
-              field.reader_type = Some(RType::new("bool"));
-              *expr = Expr::new(Value::Cond(cond.clone()));
-              // expr = Expr::Cond(cond);
+      match i {
+        Instr::Set(name, expr) => {
+          if let Some(field) = self.get_field_mut(name) {
+            if field.reader_type == Some(RType::new("i32")) {
+              if let Some(Op::If(cond, _)) = expr.ops.last() {
+                // expr.ops.pop();
+                field.reader_type = Some(RType::new("bool"));
+                *expr = Expr::new(Value::Cond(cond.clone()));
+                // expr = Expr::Cond(cond);
+              }
             }
           }
         }
+        Instr::Let(var, expr) => {
+          if let Some(Op::If(cond, _)) = expr.ops.last() {
+            // expr.ops.pop();
+            self.vars[*var].1 = Expr::new(Value::Cond(cond.clone()));
+            *expr = Expr::new(Value::Cond(cond.clone()));
+            // expr = Expr::Cond(cond);
+          }
+          if !self.vars[*var].0 {
+            assigned_and_unused[*var] = Some(&*expr);
+          }
+        }
+        _ => {}
+      }
+    }
+    for (var, expr) in assigned_and_unused.into_iter().enumerate() {
+      if let Some(e) = expr {
+        let rty = self.expr_type(e);
+        self.fields.push(Field {
+          name:        format!("v_{var}"),
+          ty:          Type::Void,
+          reader_type: Some(rty),
+          option:      false,
+          initialized: true,
+        });
       }
     }
   }

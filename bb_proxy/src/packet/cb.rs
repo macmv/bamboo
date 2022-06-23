@@ -169,11 +169,10 @@ impl ToTcp for Packet {
       }
       Packet::Chat { msg, ty } => {
         if ver >= ProtocolVersion::V1_19 {
-          let mut data = vec![];
-          let mut buf = Buffer::new(&mut data);
-          buf.write_str(&msg.to_json()); // content
-          buf.write_varint(1); // type
-          GPacket::SystemChatV19 { unknown: data }
+          GPacket::SystemChatV19 {
+            a: msg.to_json(), // content
+            b: 1,             // type
+          }
         } else if ver >= ProtocolVersion::V1_16_5 {
           let mut data = vec![];
           let mut buf = Buffer::new(&mut data);
@@ -448,10 +447,6 @@ impl ToTcp for Packet {
       } => {
         let mut data = vec![];
         let mut buf = Buffer::new(&mut data);
-        if ver >= ProtocolVersion::V1_18 {
-          buf.write_i32(eid);
-          buf.write_bool(hardcore_mode);
-        }
         if ver >= ProtocolVersion::V1_16_5 {
           buf.write_u8(game_mode.id());
           buf.write_i8(-1); // no previous_game_mode
@@ -534,12 +529,11 @@ impl ToTcp for Packet {
             hardcore:         hardcore_mode,
             unknown:          data,
           },
-          17 => GPacket::JoinGameV17 {
+          17 | 18 | 19 => GPacket::JoinGameV17 {
             player_entity_id: eid,
             hardcore:         hardcore_mode,
             unknown:          data,
           },
-          18 | 19 => GPacket::JoinGameV18 { unknown: data },
           _ => unimplemented!(),
         }
       }

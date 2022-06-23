@@ -198,12 +198,15 @@ fn simplify_expr_overwrite(expr: &mut Expr) -> (bool, Option<Instr>) {
     expr.ops.extend(simplify_val(&mut expr.initial));
     let len = expr.ops.len();
     let old_ops = std::mem::replace(&mut expr.ops, Vec::with_capacity(len));
-    for mut op in old_ops {
-      let (skip, extra_ops) = simplify_op(&mut op);
+    for op in old_ops {
+      let mut new_op = Some(op);
+      let (skip, extra_ops) = simplify_op(&mut new_op);
       if skip {
         return (true, None);
       }
-      expr.ops.push(op);
+      if let Some(op) = new_op {
+        expr.ops.push(op);
+      }
       expr.ops.extend(extra_ops);
     }
     (false, convert::overwrite(expr))
@@ -252,8 +255,12 @@ fn simplify_expr_overwrite(expr: &mut Expr) -> (bool, Option<Instr>) {
           let res = simplify(expr);
           match expr.ops.first() {
             Some(Op::Call(_class, name, _args)) => match name.as_str() {
+              "read_pos" => {
+                dbg!(&expr);
+                res
+              }
               "read_varint" | "read_i8" | "read_u8" | "read_i16" | "read_i32" | "read_i64"
-              | "read_f32" | "read_f64" | "read_str" | "read_pos" | "read_uuid" | "remaining"
+              | "read_f32" | "read_f64" | "read_str" | "read_uuid" | "remaining"
               | "read_varint_arr" | "read_i32_arr" | "read_text" => res,
               "read_item"
               | "read_block_hit"
@@ -317,8 +324,8 @@ fn simplify_val(val: &mut Value) -> Vec<Op> {
   }
   vec![]
 }
-fn simplify_op(op: &mut Op) -> (bool, Vec<Op>) {
-  match op {
+fn simplify_op(op: &mut Option<Op>) -> (bool, Vec<Op>) {
+  match op.as_mut().unwrap() {
     Op::BitAnd(rhs) => {
       simplify_expr(rhs);
       // For the join game packet.
@@ -358,6 +365,10 @@ fn simplify_op(op: &mut Op) -> (bool, Vec<Op>) {
     Op::Call(class, name, args) => {
       *class = convert::class(class).to_string();
       simplify_name(name);
+      if name == "to_immutable" {
+        *op = None;
+        return (false, vec![]);
+      }
       let (new_name, new_args, needs_try) = convert::member_call(class, name);
       *name = new_name.into();
       if let Some(a) = new_args {
