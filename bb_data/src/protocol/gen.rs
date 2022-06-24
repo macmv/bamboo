@@ -343,6 +343,7 @@ fn write_def(gen: &mut CodeGen, name: &str, p: &Packet) {
     gen.write(&format!("{:?}", f.ty));
     gen.write_line("`.");
 
+    gen.write("pub ");
     gen.write(&f.name);
     gen.write(": ");
     if f.option {
