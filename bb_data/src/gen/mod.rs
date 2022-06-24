@@ -163,14 +163,14 @@ impl CodeGen {
   /// # let out = gen.into_output();
   /// # eprintln!("OUTPUT: {}", out);
   /// # assert_eq!(out,
-  /// # r#"mod foo {
+  /// # r#"pub mod foo {
   /// #   pub fn hello_world() {}
   /// # }
   /// # "#);
   /// ```
   /// That will produce:
   /// ```ignore
-  /// mod foo {
+  /// pub mod foo {
   ///   pub fn hello_world() {}
   /// }
   /// ```
@@ -178,7 +178,7 @@ impl CodeGen {
   where
     F: FnOnce(&mut CodeGen),
   {
-    self.write("mod ");
+    self.write("pub mod ");
     self.write(name);
     self.write_line(" {");
     self.add_indent();
@@ -364,10 +364,12 @@ impl CodeGen {
   pub fn write_line(&mut self, src: &str) {
     // If we want a blank line, only add indents before doc_comment
     if src.is_empty() {
-      if let Some(doc_comment) = self.doc_comment {
-        self.current.push_str(&"  ".repeat(doc_comment));
-        // Note there is no trailing whitespace here
-        self.current.push_str("///");
+      if self.current.is_empty() {
+        if let Some(doc_comment) = self.doc_comment {
+          self.current.push_str(&"  ".repeat(doc_comment));
+          // Note there is no trailing whitespace here
+          self.current.push_str("///");
+        }
       }
       self.current.push('\n');
       self.needs_indent = true;

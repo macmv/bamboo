@@ -140,13 +140,11 @@ impl PacketCollection {
     gen.write("pub enum Packet ");
     gen.write_block(|gen| {
       for versions in &packets {
-        for (ver, p) in versions {
-          let name = format!("{}V{}", p.name, ver.maj);
-          gen.write(&name);
-          gen.write("(packet::");
-          gen.write(&name);
-          gen.write_line("),");
-        }
+        let (_, p) = &versions[0];
+        gen.write(&p.name);
+        gen.write("(packet::");
+        gen.write(&p.name);
+        gen.write_line("),");
       }
     });
 
@@ -181,9 +179,11 @@ impl PacketCollection {
                   }
                   gen.write("Packet::");
                   gen.write(&p.name);
-                  gen.write("V");
+                  gen.write("(packet::");
+                  gen.write(&p.name);
+                  gen.write("::V");
                   gen.write(&ver.maj.to_string());
-                  gen.write(" { .. } => ");
+                  gen.write("(_)) => ");
                   gen.write(&id.to_string());
                   gen.write(", // ");
                   gen.write_line(&format!("{:#x}", id));
@@ -282,6 +282,24 @@ fn write_general_packet(gen: &mut CodeGen, versions: &[(Version, Packet)]) {
   }
   gen.remove_indent();
   gen.write_line("}");
+
+  gen.write_impl(&versions[0].1.name, |gen| {
+    gen.set_doc_comment(true);
+    gen.write_line("Packet reader. Source:");
+    gen.write_line("```rust,ignore");
+    write_general_from_tcp(gen, versions);
+    gen.write_line("```");
+    gen.set_doc_comment(false);
+    write_general_from_tcp(gen, versions);
+
+    gen.set_doc_comment(true);
+    gen.write_line("Packet writer. Source:");
+    gen.write_line("```rust,ignore");
+    write_general_to_tcp(gen, versions);
+    gen.write_line("```");
+    gen.set_doc_comment(false);
+    write_general_to_tcp(gen, versions);
+  });
 }
 fn write_versioned_packet(gen: &mut CodeGen, name: &str, p: &Packet, ver: Version) {
   gen.set_doc_comment(true);
@@ -348,6 +366,78 @@ fn write_def(gen: &mut CodeGen, name: &str, p: &Packet) {
   gen.write_line("}");
 }
 
+pub fn write_general_from_tcp(gen: &mut CodeGen, versions: &[(Version, Packet)]) {
+  gen.write_line(
+    "pub fn from_tcp(p: &mut tcp::Packet, ver: ProtocolVersion) -> Result<Self, Error> {",
+  );
+  gen.add_indent();
+
+  fn packet_from_tcp(gen: &mut CodeGen, p: &Packet, ver: Version) {
+    gen.write("Self::V");
+    gen.write(&ver.maj.to_string());
+    gen.write("(packet::");
+    gen.write(&p.name);
+    gen.write("V");
+    gen.write(&ver.maj.to_string());
+    gen.write("::from_tcp(p)?)");
+  }
+  let (first_ver, first) = versions.first().unwrap();
+  if first_ver.maj != 8 {
+    gen.write("if ver < ");
+    gen.write(&first_ver.to_protocol());
+    gen.write(" ");
+    gen.write_block(|gen| {
+      gen.write(r#"panic!("version {} is below the minimum version for packet "#);
+      gen.write(&first.name);
+      gen.write_line(r#"", ver);"#);
+    });
+  }
+  gen.write("Ok(");
+  if versions.len() == 1 {
+    packet_from_tcp(gen, &first, *first_ver);
+    gen.write_line(")");
+  } else {
+    for (i, (ver, p)) in versions.iter().enumerate().rev() {
+      if i == 0 {
+        gen.write_line("{");
+        gen.add_indent();
+        packet_from_tcp(gen, p, *ver);
+        gen.write_line("");
+        gen.remove_indent();
+        gen.write_line("})");
+      } else {
+        gen.write("if ver >= ");
+        gen.write(&ver.to_protocol());
+        gen.write_line(" {");
+        gen.add_indent();
+        packet_from_tcp(gen, p, *ver);
+        gen.write_line("");
+        gen.remove_indent();
+        gen.write("} else ");
+      }
+    }
+  }
+
+  gen.remove_indent();
+  gen.write_line("}");
+}
+pub fn write_general_to_tcp(gen: &mut CodeGen, versions: &[(Version, Packet)]) {
+  gen.write_line("pub fn to_tcp(&mut self, p: &mut tcp::Packet) {");
+  gen.add_indent();
+
+  gen.write_line("match self {");
+  gen.add_indent();
+  for (ver, _) in versions {
+    gen.write("Self::V");
+    gen.write(&ver.maj.to_string());
+    gen.write_line("(g) => g.to_tcp(p),");
+  }
+  gen.remove_indent();
+  gen.write_line("}");
+
+  gen.remove_indent();
+  gen.write_line("}");
+}
 pub fn write_from_tcp(gen: &mut CodeGen, p: &Packet, ver: Version) {
   gen.write_line("pub fn from_tcp(p: &mut tcp::Packet) -> Result<Self, Error> {");
   gen.add_indent();
@@ -429,41 +519,6 @@ pub fn write_to_tcp(gen: &mut CodeGen, p: &Packet) {
 }
 
 pub fn write_from_tcp_all(gen: &mut CodeGen, packets: &[Vec<(Version, Packet)>]) {
-  fn write_if_chain(gen: &mut CodeGen, versions: &[(Version, Packet)]) {
-    let (ver, first) = versions.first().unwrap();
-    if versions.len() == 1 {
-      packet_from_tcp(gen, &first, *ver);
-    } else {
-      for (i, (ver, p)) in versions.iter().enumerate().rev() {
-        if i == 0 {
-          gen.write_line("{");
-          gen.add_indent();
-          packet_from_tcp(gen, p, *ver);
-          gen.write_line("");
-          gen.remove_indent();
-          gen.write("}");
-        } else {
-          gen.write("if ver >= ");
-          gen.write(&ver.to_protocol());
-          gen.write_line(" {");
-          gen.add_indent();
-          packet_from_tcp(gen, p, *ver);
-          gen.write_line("");
-          gen.remove_indent();
-          gen.write("} else ");
-        }
-      }
-    }
-  }
-  fn packet_from_tcp(gen: &mut CodeGen, p: &Packet, ver: Version) {
-    let name = format!("{}V{}", p.name, ver.maj);
-    gen.write("Self::");
-    gen.write(&name);
-    gen.write("(packet::");
-    gen.write(&name);
-    gen.write("::from_tcp(p)?)");
-  }
-
   gen.write_line("#[allow(unused_mut, unused_variables)]");
   gen.write_line("#[allow(clippy::needless_late_init)]");
   gen.write("pub fn from_tcp(p: &mut tcp::Packet, ver: ProtocolVersion) -> Result<Self, Error> ");
@@ -471,49 +526,31 @@ pub fn write_from_tcp_all(gen: &mut CodeGen, packets: &[Vec<(Version, Packet)>])
     gen.write("Ok(");
     gen.write_match("to_sug_id(p.id(), ver)", |gen| {
       for (id, versions) in packets.iter().enumerate() {
-        let (ver, first) = versions.first().unwrap();
-        gen.write_comment(&first.name);
+        let (_, first) = versions.first().unwrap();
         gen.write(&id.to_string());
         gen.write(" => ");
-        if ver.maj != 8 {
-          gen.write_block(|gen| {
-            gen.write("if ver < ");
-            gen.write(&ver.to_protocol());
-            gen.write(" ");
-            gen.write_block(|gen| {
-              gen.write(r#"panic!("version {} is below the minimum version for packet "#);
-              gen.write(&first.name);
-              gen.write_line(r#"", ver);"#);
-            });
-            write_if_chain(gen, versions);
-            gen.write_line("");
-          });
-        } else {
-          write_if_chain(gen, versions);
-          gen.write_line(",");
-        }
+        gen.write("Self::");
+        gen.write(&first.name);
+        gen.write("(packet::");
+        gen.write(&first.name);
+        gen.write_line("::from_tcp(p, ver)?),");
       }
       gen.write_line(r#"v => panic!("invalid protocol version {}", v),"#);
     });
     gen.write(")"); // Close the `Ok(` from above the match
   });
 }
-
 pub fn write_to_tcp_all(gen: &mut CodeGen, packets: &[Vec<(Version, Packet)>]) {
   gen.write_line("#[allow(unused_mut, unused_variables, unused_assignments)]");
   gen.write_line("#[allow(clippy::assign_op_pattern)]");
   gen.write("pub fn to_tcp(&self, p: &mut tcp::Packet) ");
   gen.write_block(|gen| {
     gen.write_match("self", |gen| {
-      for (_id, versions) in packets.iter().enumerate() {
-        for (ver, p) in versions.iter() {
-          let name = &format!("{}V{}", p.name, ver.maj);
-          gen.write("Self::");
-          gen.write(&name);
-          gen.write("(packet::");
-          gen.write(&name);
-          gen.write_line("::to_tcp(p)),");
-        }
+      for versions in packets {
+        let (_, p) = versions.first().unwrap();
+        gen.write("Self::");
+        gen.write(&p.name);
+        gen.write_line("(g) => g.to_tcp(p),");
       }
     });
   });
