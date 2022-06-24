@@ -153,9 +153,12 @@ impl PacketCollection {
     gen.write_mod("packet", |gen| {
       gen.write_line("use super::*;");
       for versions in &packets {
+        write_general_packet(gen, versions);
+      }
+      for versions in &packets {
         for (ver, p) in versions {
           let name = format!("{}V{}", p.name, ver.maj);
-          write_packet(gen, &name, p, *ver);
+          write_versioned_packet(gen, &name, p, *ver);
         }
       }
     });
@@ -238,8 +241,49 @@ impl PacketCollection {
     gen.into_output()
   }
 }
+fn write_general_packet(gen: &mut CodeGen, versions: &[(Version, Packet)]) {
+  gen.set_doc_comment(true);
+  gen.write_line("Versions:");
+  for (i, (ver, _)) in versions.iter().enumerate() {
+    gen.write("  - ");
+    if let Some((next_ver, _next)) = versions.get(i + 1) {
+      gen.write("`");
+      gen.write(&ver.to_string());
+      gen.write("`..`");
+      gen.write(&next_ver.to_string());
+      gen.write("`: [`");
+      gen.write(&versions[0].1.name);
+      gen.write("V");
+      gen.write(&ver.maj.to_string());
+      gen.write_line("`]");
+    } else {
+      gen.write("`");
+      gen.write(&ver.to_string());
+      gen.write("`+: [`");
+      gen.write(&versions[0].1.name);
+      gen.write("V");
+      gen.write(&ver.maj.to_string());
+      gen.write_line("`]");
+    }
+  }
+  gen.set_doc_comment(false);
 
-fn write_packet(gen: &mut CodeGen, name: &str, p: &Packet, ver: Version) {
+  gen.write_line("#[derive(Debug, Clone)]");
+  gen.write("pub enum ");
+  gen.write(&versions[0].1.name);
+  gen.write_line(" {");
+  gen.add_indent();
+  for (ver, p) in versions {
+    gen.write("V");
+    gen.write(&format!("{}", ver.maj));
+    gen.write("(");
+    gen.write(&format!("{}V{}", p.name, ver.maj));
+    gen.write_line("),");
+  }
+  gen.remove_indent();
+  gen.write_line("}");
+}
+fn write_versioned_packet(gen: &mut CodeGen, name: &str, p: &Packet, ver: Version) {
   gen.set_doc_comment(true);
   gen.write_line("Definition:");
   gen.write_line("```rust,ignore");
