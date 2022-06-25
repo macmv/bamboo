@@ -136,7 +136,7 @@ impl FromTcp<gpacket::ClickSlot> for Packet {
   fn from_tcp(p: gpacket::ClickSlot, ver: ProtocolVersion, conv: &TypeConverter) -> Result<Self> {
     use gpacket::ClickSlot::*;
     Ok(match p {
-      V16(g) => {
+      V16(mut g) => {
         let mut buf = tcp::Packet::from_buf_id(g.unknown, 0, ver);
         let slots = buf.read_varint()?;
         for _ in 0..slots {
@@ -153,7 +153,7 @@ impl FromTcp<gpacket::ClickSlot> for Packet {
           mode: click_window(g.action_type, g.button)?,
         }
       }
-      V17(g) => {
+      V17(mut g) => {
         let mut buf = tcp::Packet::from_buf_id(g.unknown, 0, ver);
         let slots = buf.read_varint()?;
         for _ in 0..slots {

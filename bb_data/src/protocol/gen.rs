@@ -148,6 +148,7 @@ impl PacketCollection {
       }
     });
 
+    gen.write_line("#[allow(unused_mut)]");
     gen.write_mod("packet", |gen| {
       gen.write_line("use super::*;");
       for versions in &packets {
@@ -423,7 +424,7 @@ pub fn write_general_from_tcp(gen: &mut CodeGen, versions: &[(Version, Packet)])
   gen.write_line("}");
 }
 pub fn write_general_to_tcp(gen: &mut CodeGen, versions: &[(Version, Packet)]) {
-  gen.write_line("pub fn to_tcp(&mut self, p: &mut tcp::Packet) {");
+  gen.write_line("pub fn to_tcp(&self, p: &mut tcp::Packet) {");
   gen.add_indent();
 
   gen.write_line("match self {");
@@ -500,9 +501,13 @@ pub fn write_to_tcp(gen: &mut CodeGen, p: &Packet) {
 
   for f in &p.fields {
     if f.ty == Type::Void {
-      gen.write("let ");
+      gen.write("let mut ");
       gen.write(&f.name);
-      gen.write(" = self.");
+      gen.write(" = ");
+      if !f.reader_type.as_ref().unwrap().is_copy() {
+        gen.write("&");
+      }
+      gen.write("self.");
       gen.write(&f.name);
       gen.write_line(";");
     }
