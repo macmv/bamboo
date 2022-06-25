@@ -162,6 +162,20 @@ impl PacketCollection {
       }
     });
 
+    gen.write("pub fn tcp_name(p: &tcp::Packet, ver: ProtocolVersion) -> &'static str ");
+    gen.write_block(|gen| {
+      gen.write_match("to_sug_id(p.id(), ver)", |gen| {
+        for (id, versions) in packets.iter().enumerate() {
+          let (_, first) = versions.first().unwrap();
+          gen.write(&id.to_string());
+          gen.write(" => \"");
+          gen.write(&first.name);
+          gen.write_line("\",");
+        }
+        gen.write_line(r#"v => panic!("invalid protocol version {}", v),"#);
+      });
+    });
+
     gen.write_impl("Packet", |gen| {
       gen.write("pub fn tcp_id(&self, ver: ProtocolVersion) -> u32 ");
       gen.write_block(|gen| {
