@@ -48,12 +48,13 @@ pub fn chunk(chunk: ChunkWithPos, ver: ProtocolVersion, conv: &TypeConverter) ->
     buf.write_varint(0);
   }
 
-  Packet::ChunkData(packet::ChunkData::V9(packet::ChunkDataV9 {
+  packet::ChunkDataV9 {
     chunk_x:            chunk.pos.x(),
     chunk_z:            chunk.pos.z(),
     load_chunk:         chunk.full,
     available_sections: chunk.old_bit_map().into(),
     unknown:            data,
     v_2:                0,
-  }))
+  }
+  .into()
 }

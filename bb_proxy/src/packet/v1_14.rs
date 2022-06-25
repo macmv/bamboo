@@ -49,11 +49,12 @@ pub fn chunk(chunk: ChunkWithPos, conv: &TypeConverter) -> Packet {
   buf.write_buf(&chunk_data);
   buf.write_varint(0); // No block entities
 
-  Packet::ChunkData(packet::ChunkData::V14(packet::ChunkDataV14 {
+  packet::ChunkDataV14 {
     chunk_x:                chunk.pos.x(),
     chunk_z:                chunk.pos.z(),
     is_full_chunk:          chunk.full,
     vertical_strip_bitmask: chunk.old_bit_map().into(),
     unknown:                data,
-  }))
+  }
+  .into()
 }

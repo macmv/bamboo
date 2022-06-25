@@ -54,9 +54,5 @@ pub fn chunk(chunk: ChunkWithPos, conv: &TypeConverter) -> Packet {
   buf.write_varint(chunk_buf.len() as i32);
   buf.write_buf(&chunk_data);
   buf.write_varint(0); // No block entities
-  Packet::ChunkData(packet::ChunkData::V17(packet::ChunkDataV17 {
-    chunk_x: chunk.pos.x(),
-    chunk_z: chunk.pos.z(),
-    unknown: data,
-  }))
+  packet::ChunkDataV17 { chunk_x: chunk.pos.x(), chunk_z: chunk.pos.z(), unknown: data }.into()
 }

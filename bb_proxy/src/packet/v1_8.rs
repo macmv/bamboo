@@ -98,7 +98,5 @@ pub fn multi_block_change(
     buf.write_u8(y as u8);
     buf.write_varint(old_id as i32);
   }
-  Packet::MultiBlockChange(packet::MultiBlockChange::V8(packet::MultiBlockChangeV8 {
-    unknown: data,
-  }))
+  packet::MultiBlockChangeV8 { unknown: data }.into()
 }
