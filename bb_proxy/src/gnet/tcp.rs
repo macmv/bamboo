@@ -16,6 +16,7 @@ pub struct Packet {
   buf: Buffer<Vec<u8>>,
   id:  i32,
   ver: ProtocolVersion,
+  sb:  bool,
 }
 
 macro_rules! add_writer {
@@ -34,14 +35,14 @@ macro_rules! add_reader {
 impl Packet {
   /// Creates a new packet. Writes the given id into the internal buffer.
   pub fn new(id: i32, ver: ProtocolVersion) -> Self {
-    let mut p = Packet { buf: Buffer::new(vec![]), id, ver };
+    let mut p = Packet { buf: Buffer::new(vec![]), id, ver, sb: false };
     p.write_varint(id);
     p
   }
   /// Creates a new TCP packet from the given data. This will read a varint from
   /// the data to get the packet's ID.
   pub fn from_buf(data: Vec<u8>, ver: ProtocolVersion) -> Result<Self> {
-    let mut p = Packet { buf: Buffer::new(data), id: 0, ver };
+    let mut p = Packet { buf: Buffer::new(data), id: 0, ver, sb: true };
     let id = p.read_varint()?;
     p.id = id;
     Ok(p)
@@ -49,14 +50,21 @@ impl Packet {
   /// Creates a new TCP packet from the given data. This will not read anything
   /// from the data, as the ID is supplied.
   pub fn from_buf_id(data: Vec<u8>, id: i32, ver: ProtocolVersion) -> Self {
-    Packet { buf: Buffer::new(data), id, ver }
+    Packet { buf: Buffer::new(data), id, ver, sb: true }
   }
 
   pub fn buf(&mut self) -> &mut Buffer<Vec<u8>> { &mut self.buf }
 
   pub fn id(&self) -> i32 { self.id }
   pub fn err(&self, e: impl std::error::Error + 'static, msg: &'static str) -> Error {
-    Error::ParseError { pos: self.buf.index(), id: self.id, ver: self.ver, msg, err: Box::new(e) }
+    Error::ParseError {
+      pos: self.buf.index(),
+      id: self.id,
+      ver: self.ver,
+      sb: self.sb,
+      msg,
+      err: Box::new(e),
+    }
   }
   pub fn serialize(self) -> Vec<u8> { self.buf.into_inner() }
 

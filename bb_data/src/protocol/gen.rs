@@ -162,9 +162,9 @@ impl PacketCollection {
       }
     });
 
-    gen.write("pub fn tcp_name(p: &tcp::Packet, ver: ProtocolVersion) -> &'static str ");
+    gen.write("pub fn tcp_name(id: i32, ver: ProtocolVersion) -> &'static str ");
     gen.write_block(|gen| {
-      gen.write_match("to_sug_id(p.id(), ver)", |gen| {
+      gen.write_match("to_sug_id(id, ver)", |gen| {
         for (id, versions) in packets.iter().enumerate() {
           let (_, first) = versions.first().unwrap();
           gen.write(&id.to_string());

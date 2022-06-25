@@ -17,6 +17,7 @@ pub enum Error {
     id:  i32,
     ver: ProtocolVersion,
     pos: usize,
+    sb:  bool,
   },
 }
 
@@ -32,10 +33,12 @@ impl fmt::Display for Error {
       Self::TransferWrite(e) => write!(f, "while writing to server: {e}"),
       Self::UnknownCB(p) => write!(f, "unknown clientbound packet {p:?}"),
       Self::UnknownSB(p) => write!(f, "unknown serverbound packet {p:?}"),
-      Self::ParseError { msg, err, id, ver, pos } => {
+      Self::ParseError { msg, err, id, ver, pos, sb } => {
         write!(
           f,
-          "parse error for packet {id:#x} on version {ver:?} (at byte {pos:#x}): while in {msg}, got error: {err}",
+          "parse error for {} packet {id:#x} (name: {}) on version {ver:?} (at byte {pos:#x}): while in {msg}, got error: {err}",
+          if *sb { "serverbound" } else { "clientbound" },
+          if *sb { sb::tcp_name(*id, *ver) } else { cb::tcp_name(*id, *ver) },
         )
       }
     }

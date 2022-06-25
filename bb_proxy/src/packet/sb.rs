@@ -54,12 +54,23 @@ impl FromTcp<GPacket> for Packet {
 }
 
 macro_rules! from_tcp {
-  ( $packet:ident, $ver:ident, $conv:ident, { $( $match:ident($match_var:pat) => $value:expr, )* } ) => {
+  (
+    $packet:ident, $ver:ident, $conv:ident,
+    {
+      $( $match:ident($match_var:pat) $( $buf:ident = $unknown:expr )? => $value:expr, )*
+    }
+  ) => {
     impl FromTcp<gpacket::$packet> for Packet {
       fn from_tcp(p: gpacket::$packet, $ver: ProtocolVersion, $conv: &TypeConverter) -> Result<Self> {
+        let wrapped = GPacket::$packet(p);
+        let _tcp_id = wrapped.tcp_id($ver) as i32;
+        let p = match wrapped { GPacket::$packet(p) => p, _ => unreachable!() };
         Ok(match p {
           $(
-            gpacket::$packet::$match($match_var) => $value,
+            gpacket::$packet::$match($match_var) => {
+              $( let mut $buf = tcp::Packet::from_buf_id($unknown, _tcp_id, $ver); )?
+              $value
+            }
           )*
         })
       }
@@ -77,8 +88,7 @@ from_tcp!(Chat, _ver, _conv, {
   V19(g) => Packet::Chat { msg: g.chat_message },
 });
 from_tcp!(CommandExecution, ver, _conv, {
-  V19(g) => {
-    let mut buf = tcp::Packet::from_buf_id(g.unknown, 0, ver);
+  V19(g) buf = g.unknown => {
     let msg = buf.read_str(256)?;
     let _time = buf.read_u64()?;
     let _salt = buf.read_u64()?;
@@ -88,8 +98,7 @@ from_tcp!(CommandExecution, ver, _conv, {
   },
 });
 from_tcp!(ClickWindow, ver, conv, {
-  V8(mut g) => {
-    let mut buf = tcp::Packet::from_buf_id(g.unknown, 0, ver);
+  V8(mut g) buf = g.unknown => {
     let _item = buf.read_item(conv)?;
     if g.slot_id == -1 {
       g.slot_id = -999;
@@ -100,8 +109,7 @@ from_tcp!(ClickWindow, ver, conv, {
       mode: click_window(g.mode, g.used_button)?,
     }
   },
-  V9(mut g) => {
-    let mut buf = tcp::Packet::from_buf_id(g.unknown, 0, ver);
+  V9(mut g) buf = g.unknown => {
     let _item = buf.read_item(conv)?;
     if g.slot_id == -1 {
       g.slot_id = -999;
@@ -120,8 +128,7 @@ from_tcp!(CloseHandledScreen, _ver, _conv, {
   V16(g) => Packet::WindowClose { wid: g.sync_id.try_into().unwrap() },
 });
 from_tcp!(ClickSlot, ver, conv, {
-  V16(mut g) => {
-    let mut buf = tcp::Packet::from_buf_id(g.unknown, 0, ver);
+  V16(mut g) buf = g.unknown => {
     let slots = buf.read_varint()?;
     for _ in 0..slots {
       let _slot = buf.read_u16()?;
@@ -137,8 +144,7 @@ from_tcp!(ClickSlot, ver, conv, {
       mode: click_window(g.action_type, g.button)?,
     }
   },
-  V17(mut g) => {
-    let mut buf = tcp::Packet::from_buf_id(g.unknown, 0, ver);
+  V17(mut g) buf = g.unknown => {
     let slots = buf.read_varint()?;
     for _ in 0..slots {
       let _slot = buf.read_u16()?;
@@ -156,12 +162,9 @@ from_tcp!(ClickSlot, ver, conv, {
   },
 });
 from_tcp!(CreativeInventoryAction, ver, conv, {
-  V8(g) => {
-    let mut buf = tcp::Packet::from_buf_id(g.unknown, 0, ver);
-    Packet::CreativeInventoryUpdate {
-      slot: g.slot_id.try_into().unwrap(),
-      item: buf.read_item(conv)?,
-    }
+  V8(g) buf = g.unknown => Packet::CreativeInventoryUpdate {
+    slot: g.slot_id.try_into().unwrap(),
+    item: buf.read_item(conv)?,
   },
 });
 from_tcp!(HeldItemChange, _ver, _conv, {
@@ -172,32 +175,27 @@ from_tcp!(KeepAlive, _ver, _conv, {
   V12(g) => Packet::KeepAlive { id: g.key as i32 },
 });
 from_tcp!(PlayerDig, ver, _conv, {
-  V8(g) => {
-    let mut buf = tcp::Packet::from_buf_id(g.unknown, 0, ver);
-    match g.status {
-      0 | 1 | 2 => Packet::BlockDig {
-        pos:    g.position,
-        status: DigStatus::from_id(g.status as u8),
-        face:   Face::from_id(buf.read_varint()? as u8),
-      },
-      3 => Packet::ClickWindow { wid: u8::MAX, slot: 0, mode: ClickWindow::DropAll },
-      4 => Packet::ClickWindow { wid: u8::MAX, slot: 0, mode: ClickWindow::Drop },
-      5 => {
-        return Err(io::Error::new(ErrorKind::Other, "need to implement eating packet").into())
-      }
-      6 => {
-        return Err(
-          io::Error::new(ErrorKind::Other, "need to implement swap item packet").into(),
-        )
-      }
-      _ => return Err(io::Error::new(ErrorKind::Other, "invalid player dig action").into()),
+  V8(g) buf = g.unknown => match g.status {
+    0 | 1 | 2 => Packet::BlockDig {
+      pos:    g.position,
+      status: DigStatus::from_id(g.status as u8),
+      face:   Face::from_id(buf.read_varint()? as u8),
+    },
+    3 => Packet::ClickWindow { wid: u8::MAX, slot: 0, mode: ClickWindow::DropAll },
+    4 => Packet::ClickWindow { wid: u8::MAX, slot: 0, mode: ClickWindow::Drop },
+    5 => {
+      return Err(io::Error::new(ErrorKind::Other, "need to implement eating packet").into())
     }
+    6 => {
+      return Err(
+        io::Error::new(ErrorKind::Other, "need to implement swap item packet").into(),
+      )
+    }
+    _ => return Err(io::Error::new(ErrorKind::Other, "invalid player dig action").into()),
   },
 });
 from_tcp!(PlayerBlockPlacement, ver, conv, {
-  V8(g) => {
-    // let mut buf = Buffer::new(unknown);
-    let mut buf = tcp::Packet::from_buf_id(g.unknown, 0, ver);
+  V8(g) buf = g.unknown => {
     if g.position == Pos::new(-1, -1, -1) && g.placed_block_direction == 255 {
       Packet::UseItem { hand: Hand::Main }
     } else {
@@ -231,8 +229,7 @@ from_tcp!(PlayerInteractBlock, ver, _conv, {
     hand:   Hand::from_id(g.hand as u8),
     cursor: FPos::new(g.facing_x.into(), g.facing_y.into(), g.facing_z.into()),
   },
-  V14(g) => {
-    let mut buf = tcp::Packet::from_buf_id(g.unknown, 0, ver);
+  V14(g) buf = g.unknown => {
     let pos = buf.read_pos()?;
     let face = Face::from_id(buf.read_varint()? as u8);
     let cursor =
@@ -243,44 +240,38 @@ from_tcp!(PlayerInteractBlock, ver, _conv, {
   },
 });
 from_tcp!(UseEntity, ver, _conv, {
-  V8(g) => {
-    let mut buf = tcp::Packet::from_buf_id(g.unknown, 0, ver);
-    Packet::UseEntity {
-      eid:      g.entity_id,
-      action:   match g.action {
-        0 => UseEntityAction::Interact(if ver == ProtocolVersion::V1_8 {
-          Hand::Main
-        } else {
-          Hand::from_id(buf.read_u8()?)
-        }),
-        1 => UseEntityAction::Attack,
-        2 => UseEntityAction::InteractAt(
-          FPos::new(buf.read_f32()?.into(), buf.read_f32()?.into(), buf.read_f32()?.into()),
-          if ver == ProtocolVersion::V1_8 { Hand::Main } else { Hand::from_id(buf.read_u8()?) },
-        ),
-        _ => return Err(io::Error::new(ErrorKind::Other, "invalid use entity action").into()),
-      },
-      sneaking: match ver >= ProtocolVersion::V1_16_5 {
-        true => Some(buf.read_bool()?),
-        false => None,
-      },
-    }
+  V8(g) buf = g.unknown => Packet::UseEntity {
+    eid:      g.entity_id,
+    action:   match g.action {
+      0 => UseEntityAction::Interact(if ver == ProtocolVersion::V1_8 {
+        Hand::Main
+      } else {
+        Hand::from_id(buf.read_u8()?)
+      }),
+      1 => UseEntityAction::Attack,
+      2 => UseEntityAction::InteractAt(
+        FPos::new(buf.read_f32()?.into(), buf.read_f32()?.into(), buf.read_f32()?.into()),
+        if ver == ProtocolVersion::V1_8 { Hand::Main } else { Hand::from_id(buf.read_u8()?) },
+      ),
+      _ => return Err(io::Error::new(ErrorKind::Other, "invalid use entity action").into()),
+    },
+    sneaking: match ver >= ProtocolVersion::V1_16_5 {
+      true => Some(buf.read_bool()?),
+      false => None,
+    },
   },
-  V17(g) => {
-    let mut buf = tcp::Packet::from_buf_id(g.unknown, 0, ver);
-    Packet::UseEntity {
-      eid:      g.entity_id,
-      action:   match g.v_2 {
-        0 => UseEntityAction::Interact(Hand::from_id(buf.read_u8()?)),
-        1 => UseEntityAction::Attack,
-        2 => UseEntityAction::InteractAt(
-          FPos::new(buf.read_f32()?.into(), buf.read_f32()?.into(), buf.read_f32()?.into()),
-          if ver == ProtocolVersion::V1_8 { Hand::Main } else { Hand::from_id(buf.read_u8()?) },
-        ),
-        _ => return Err(io::Error::new(ErrorKind::Other, "invalid use entity action").into()),
-      },
-      sneaking: Some(buf.read_bool()?),
-    }
+  V17(g) buf = g.unknown => Packet::UseEntity {
+    eid:      g.entity_id,
+    action:   match g.v_2 {
+      0 => UseEntityAction::Interact(Hand::from_id(buf.read_u8()?)),
+      1 => UseEntityAction::Attack,
+      2 => UseEntityAction::InteractAt(
+        FPos::new(buf.read_f32()?.into(), buf.read_f32()?.into(), buf.read_f32()?.into()),
+        if ver == ProtocolVersion::V1_8 { Hand::Main } else { Hand::from_id(buf.read_u8()?) },
+      ),
+      _ => return Err(io::Error::new(ErrorKind::Other, "invalid use entity action").into()),
+    },
+    sneaking: Some(buf.read_bool()?),
   },
 });
 from_tcp!(PlayerCommand, _ver, _conv, {
