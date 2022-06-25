@@ -37,412 +37,322 @@ impl FromTcp<GPacket> for Packet {
       GPacket::PlayerBlockPlacement(g) => Packet::from_tcp(g, ver, conv),
       GPacket::PlayerInteractBlock(g) => Packet::from_tcp(g, ver, conv),
       GPacket::UseEntity(g) => Packet::from_tcp(g, ver, conv),
+      GPacket::PlayerCommand(g) => Packet::from_tcp(g, ver, conv),
+      GPacket::PlayerInteractItem(g) => Packet::from_tcp(g, ver, conv),
+      GPacket::Player(g) => Packet::from_tcp(g, ver, conv),
+      GPacket::PlayerOnGround(g) => Packet::from_tcp(g, ver, conv),
+      GPacket::PlayerLook(g) => Packet::from_tcp(g, ver, conv),
+      GPacket::PlayerRotation(g) => Packet::from_tcp(g, ver, conv),
+      GPacket::PlayerPosLook(g) => Packet::from_tcp(g, ver, conv),
+      GPacket::PlayerPositionRotation(g) => Packet::from_tcp(g, ver, conv),
+      GPacket::PlayerPosition(g) => Packet::from_tcp(g, ver, conv),
+      GPacket::PlayerAbilities(g) => Packet::from_tcp(g, ver, conv),
+      GPacket::UpdatePlayerAbilities(g) => Packet::from_tcp(g, ver, conv),
       gpacket => Err(Error::UnknownSB(Box::new(gpacket))),
     }
   }
 }
 
-impl FromTcp<gpacket::Animation> for Packet {
-  fn from_tcp(p: gpacket::Animation, ver: ProtocolVersion, conv: &TypeConverter) -> Result<Self> {
-    use gpacket::Animation::*;
-    Ok(match p {
-      V8(g) => Packet::Animation { hand: Hand::Main },
-      V9(g) => Packet::Animation { hand: Hand::from_id(g.hand as u8) },
-    })
-  }
-}
-impl FromTcp<gpacket::Chat> for Packet {
-  fn from_tcp(p: gpacket::Chat, ver: ProtocolVersion, conv: &TypeConverter) -> Result<Self> {
-    use gpacket::Chat::*;
-    Ok(match p {
-      V8(g) => Packet::Chat { msg: g.message },
-      V11(g) => Packet::Chat { msg: g.message },
-      V19(g) => Packet::Chat { msg: g.chat_message },
-    })
-  }
-}
-impl FromTcp<gpacket::CommandExecution> for Packet {
-  fn from_tcp(
-    p: gpacket::CommandExecution,
-    ver: ProtocolVersion,
-    conv: &TypeConverter,
-  ) -> Result<Self> {
-    use gpacket::CommandExecution::*;
-    Ok(match p {
-      V19(g) => {
-        let mut buf = tcp::Packet::from_buf_id(g.unknown, 0, ver);
-        let msg = buf.read_str(256)?;
-        let _time = buf.read_u64()?;
-        let _salt = buf.read_u64()?;
-        let _args_map_len = buf.read_varint()?;
-        let _signed = buf.read_bool()?;
-        Packet::Chat { msg: format!("/{msg}") }
+macro_rules! from_tcp {
+  ( $packet:ident, $ver:ident, $conv:ident, { $( $match:ident($match_var:pat) => $value:expr, )* } ) => {
+    impl FromTcp<gpacket::$packet> for Packet {
+      fn from_tcp(p: gpacket::$packet, $ver: ProtocolVersion, $conv: &TypeConverter) -> Result<Self> {
+        Ok(match p {
+          $(
+            gpacket::$packet::$match($match_var) => $value,
+          )*
+        })
       }
-    })
+    }
   }
 }
-impl FromTcp<gpacket::ClickWindow> for Packet {
-  fn from_tcp(p: gpacket::ClickWindow, ver: ProtocolVersion, conv: &TypeConverter) -> Result<Self> {
-    use gpacket::ClickWindow::*;
-    Ok(match p {
-      V8(mut g) => {
-        let mut buf = tcp::Packet::from_buf_id(g.unknown, 0, ver);
-        let _item = buf.read_item(conv)?;
-        if g.slot_id == -1 {
-          g.slot_id = -999;
-        }
-        Packet::ClickWindow {
-          wid:  g.window_id.try_into().unwrap(),
-          slot: g.slot_id.try_into().unwrap(),
-          mode: click_window(g.mode, g.used_button)?,
-        }
+
+from_tcp!(Animation, _ver, _conv, {
+  V8(_g) => Packet::Animation { hand: Hand::Main },
+  V9(g) => Packet::Animation { hand: Hand::from_id(g.hand as u8) },
+});
+from_tcp!(Chat, _ver, _conv, {
+  V8(g) => Packet::Chat { msg: g.message },
+  V11(g) => Packet::Chat { msg: g.message },
+  V19(g) => Packet::Chat { msg: g.chat_message },
+});
+from_tcp!(CommandExecution, ver, _conv, {
+  V19(g) => {
+    let mut buf = tcp::Packet::from_buf_id(g.unknown, 0, ver);
+    let msg = buf.read_str(256)?;
+    let _time = buf.read_u64()?;
+    let _salt = buf.read_u64()?;
+    let _args_map_len = buf.read_varint()?;
+    let _signed = buf.read_bool()?;
+    Packet::Chat { msg: format!("/{msg}") }
+  },
+});
+from_tcp!(ClickWindow, ver, conv, {
+  V8(mut g) => {
+    let mut buf = tcp::Packet::from_buf_id(g.unknown, 0, ver);
+    let _item = buf.read_item(conv)?;
+    if g.slot_id == -1 {
+      g.slot_id = -999;
+    }
+    Packet::ClickWindow {
+      wid:  g.window_id.try_into().unwrap(),
+      slot: g.slot_id.try_into().unwrap(),
+      mode: click_window(g.mode, g.used_button)?,
+    }
+  },
+  V9(mut g) => {
+    let mut buf = tcp::Packet::from_buf_id(g.unknown, 0, ver);
+    let _item = buf.read_item(conv)?;
+    if g.slot_id == -1 {
+      g.slot_id = -999;
+    }
+    Packet::ClickWindow {
+      wid:  g.window_id.try_into().unwrap(),
+      slot: g.slot_id.try_into().unwrap(),
+      mode: click_window(g.mode, g.used_button)?,
+    }
+  },
+});
+from_tcp!(CloseWindow, _ver, _conv, {
+  V8(g) => Packet::WindowClose { wid: g.window_id.try_into().unwrap() },
+});
+from_tcp!(CloseHandledScreen, _ver, _conv, {
+  V16(g) => Packet::WindowClose { wid: g.sync_id.try_into().unwrap() },
+});
+from_tcp!(ClickSlot, ver, conv, {
+  V16(mut g) => {
+    let mut buf = tcp::Packet::from_buf_id(g.unknown, 0, ver);
+    let slots = buf.read_varint()?;
+    for _ in 0..slots {
+      let _slot = buf.read_u16()?;
+      let _item = buf.read_item(conv)?;
+    }
+    let _item = buf.read_item(conv)?;
+    if g.slot == -1 {
+      g.slot = -999;
+    }
+    Packet::ClickWindow {
+      wid:  g.sync_id.try_into().unwrap(),
+      slot: g.slot.try_into().unwrap(),
+      mode: click_window(g.action_type, g.button)?,
+    }
+  },
+  V17(mut g) => {
+    let mut buf = tcp::Packet::from_buf_id(g.unknown, 0, ver);
+    let slots = buf.read_varint()?;
+    for _ in 0..slots {
+      let _slot = buf.read_u16()?;
+      let _item = buf.read_item(conv)?;
+    }
+    let _item = buf.read_item(conv)?;
+    if g.slot == -1 {
+      g.slot = -999;
+    }
+    Packet::ClickWindow {
+      wid:  g.sync_id.try_into().unwrap(),
+      slot: g.slot.try_into().unwrap(),
+      mode: click_window(g.action_type, g.button)?,
+    }
+  },
+});
+from_tcp!(CreativeInventoryAction, ver, conv, {
+  V8(g) => {
+    let mut buf = tcp::Packet::from_buf_id(g.unknown, 0, ver);
+    Packet::CreativeInventoryUpdate {
+      slot: g.slot_id.try_into().unwrap(),
+      item: buf.read_item(conv)?,
+    }
+  },
+});
+from_tcp!(HeldItemChange, _ver, _conv, {
+  V8(g) => Packet::ChangeHeldItem { slot: g.slot_id as u8 },
+});
+from_tcp!(KeepAlive, _ver, _conv, {
+  V8(g) => Packet::KeepAlive { id: g.key },
+  V12(g) => Packet::KeepAlive { id: g.key as i32 },
+});
+from_tcp!(PlayerDig, ver, _conv, {
+  V8(g) => {
+    let mut buf = tcp::Packet::from_buf_id(g.unknown, 0, ver);
+    match g.status {
+      0 | 1 | 2 => Packet::BlockDig {
+        pos:    g.position,
+        status: DigStatus::from_id(g.status as u8),
+        face:   Face::from_id(buf.read_varint()? as u8),
+      },
+      3 => Packet::ClickWindow { wid: u8::MAX, slot: 0, mode: ClickWindow::DropAll },
+      4 => Packet::ClickWindow { wid: u8::MAX, slot: 0, mode: ClickWindow::Drop },
+      5 => {
+        return Err(io::Error::new(ErrorKind::Other, "need to implement eating packet").into())
       }
-      V9(mut g) => {
-        let mut buf = tcp::Packet::from_buf_id(g.unknown, 0, ver);
-        let _item = buf.read_item(conv)?;
-        if g.slot_id == -1 {
-          g.slot_id = -999;
-        }
-        Packet::ClickWindow {
-          wid:  g.window_id.try_into().unwrap(),
-          slot: g.slot_id.try_into().unwrap(),
-          mode: click_window(g.mode, g.used_button)?,
-        }
+      6 => {
+        return Err(
+          io::Error::new(ErrorKind::Other, "need to implement swap item packet").into(),
+        )
       }
-    })
-  }
-}
-impl FromTcp<gpacket::CloseWindow> for Packet {
-  fn from_tcp(p: gpacket::CloseWindow, ver: ProtocolVersion, conv: &TypeConverter) -> Result<Self> {
-    use gpacket::CloseWindow::*;
-    Ok(match p {
-      V8(g) => Packet::WindowClose { wid: g.window_id.try_into().unwrap() },
-    })
-  }
-}
-impl FromTcp<gpacket::CloseHandledScreen> for Packet {
-  fn from_tcp(
-    p: gpacket::CloseHandledScreen,
-    ver: ProtocolVersion,
-    conv: &TypeConverter,
-  ) -> Result<Self> {
-    use gpacket::CloseHandledScreen::*;
-    Ok(match p {
-      V16(g) => Packet::WindowClose { wid: g.sync_id.try_into().unwrap() },
-    })
-  }
-}
-impl FromTcp<gpacket::ClickSlot> for Packet {
-  fn from_tcp(p: gpacket::ClickSlot, ver: ProtocolVersion, conv: &TypeConverter) -> Result<Self> {
-    use gpacket::ClickSlot::*;
-    Ok(match p {
-      V16(mut g) => {
-        let mut buf = tcp::Packet::from_buf_id(g.unknown, 0, ver);
-        let slots = buf.read_varint()?;
-        for _ in 0..slots {
-          let _slot = buf.read_u16()?;
-          let _item = buf.read_item(conv)?;
-        }
-        let _item = buf.read_item(conv)?;
-        if g.slot == -1 {
-          g.slot = -999;
-        }
-        Packet::ClickWindow {
-          wid:  g.sync_id.try_into().unwrap(),
-          slot: g.slot.try_into().unwrap(),
-          mode: click_window(g.action_type, g.button)?,
-        }
+      _ => return Err(io::Error::new(ErrorKind::Other, "invalid player dig action").into()),
+    }
+  },
+});
+from_tcp!(PlayerBlockPlacement, ver, conv, {
+  V8(g) => {
+    // let mut buf = Buffer::new(unknown);
+    let mut buf = tcp::Packet::from_buf_id(g.unknown, 0, ver);
+    if g.position == Pos::new(-1, -1, -1) && g.placed_block_direction == 255 {
+      Packet::UseItem { hand: Hand::Main }
+    } else {
+      let _slot = buf.read_item(conv)?;
+      let cursor_x = buf.read_u8()?;
+      let cursor_y = buf.read_u8()?;
+      let cursor_z = buf.read_u8()?;
+      Packet::BlockPlace {
+        pos:    g.position,
+        face:   Face::from_id(g.placed_block_direction as u8),
+        hand:   Hand::Main,
+        cursor: FPos::new(
+          cursor_x as f64 / 128.0,
+          cursor_y as f64 / 128.0,
+          cursor_z as f64 / 128.0,
+        ),
       }
-      V17(mut g) => {
-        let mut buf = tcp::Packet::from_buf_id(g.unknown, 0, ver);
-        let slots = buf.read_varint()?;
-        for _ in 0..slots {
-          let _slot = buf.read_u16()?;
-          let _item = buf.read_item(conv)?;
-        }
-        let _item = buf.read_item(conv)?;
-        if g.slot == -1 {
-          g.slot = -999;
-        }
-        Packet::ClickWindow {
-          wid:  g.sync_id.try_into().unwrap(),
-          slot: g.slot.try_into().unwrap(),
-          mode: click_window(g.action_type, g.button)?,
-        }
-      }
-    })
-  }
-}
-impl FromTcp<gpacket::CreativeInventoryAction> for Packet {
-  fn from_tcp(
-    p: gpacket::CreativeInventoryAction,
-    ver: ProtocolVersion,
-    conv: &TypeConverter,
-  ) -> Result<Self> {
-    use gpacket::CreativeInventoryAction::*;
-    Ok(match p {
-      V8(g) => {
-        let mut buf = tcp::Packet::from_buf_id(g.unknown, 0, ver);
-        Packet::CreativeInventoryUpdate {
-          slot: g.slot_id.try_into().unwrap(),
-          item: buf.read_item(conv)?,
-        }
-      }
-    })
-  }
-}
-impl FromTcp<gpacket::HeldItemChange> for Packet {
-  fn from_tcp(
-    p: gpacket::HeldItemChange,
-    ver: ProtocolVersion,
-    conv: &TypeConverter,
-  ) -> Result<Self> {
-    use gpacket::HeldItemChange::*;
-    Ok(match p {
-      V8(g) => Packet::ChangeHeldItem { slot: g.slot_id as u8 },
-    })
-  }
-}
-impl FromTcp<gpacket::KeepAlive> for Packet {
-  fn from_tcp(p: gpacket::KeepAlive, ver: ProtocolVersion, conv: &TypeConverter) -> Result<Self> {
-    use gpacket::KeepAlive::*;
-    Ok(match p {
-      V8(g) => Packet::KeepAlive { id: g.key },
-      V12(g) => Packet::KeepAlive { id: g.key as i32 },
-    })
-  }
-}
-impl FromTcp<gpacket::PlayerDig> for Packet {
-  fn from_tcp(p: gpacket::PlayerDig, ver: ProtocolVersion, conv: &TypeConverter) -> Result<Self> {
-    use gpacket::PlayerDig::*;
-    Ok(match p {
-      V8(g) => {
-        let mut buf = tcp::Packet::from_buf_id(g.unknown, 0, ver);
-        match g.status {
-          0 | 1 | 2 => Packet::BlockDig {
-            pos:    g.position,
-            status: DigStatus::from_id(g.status as u8),
-            face:   Face::from_id(buf.read_varint()? as u8),
-          },
-          3 => Packet::ClickWindow { wid: u8::MAX, slot: 0, mode: ClickWindow::DropAll },
-          4 => Packet::ClickWindow { wid: u8::MAX, slot: 0, mode: ClickWindow::Drop },
-          5 => {
-            return Err(io::Error::new(ErrorKind::Other, "need to implement eating packet").into())
-          }
-          6 => {
-            return Err(
-              io::Error::new(ErrorKind::Other, "need to implement swap item packet").into(),
-            )
-          }
-          _ => return Err(io::Error::new(ErrorKind::Other, "invalid player dig action").into()),
-        }
-      }
-    })
-  }
-}
-impl FromTcp<gpacket::PlayerBlockPlacement> for Packet {
-  fn from_tcp(
-    p: gpacket::PlayerBlockPlacement,
-    ver: ProtocolVersion,
-    conv: &TypeConverter,
-  ) -> Result<Self> {
-    use gpacket::PlayerBlockPlacement::*;
-    Ok(match p {
-      V8(g) => {
-        // let mut buf = Buffer::new(unknown);
-        let mut buf = tcp::Packet::from_buf_id(g.unknown, 0, ver);
-        if g.position == Pos::new(-1, -1, -1) && g.placed_block_direction == 255 {
-          Packet::UseItem { hand: Hand::Main }
+    }
+  },
+});
+from_tcp!(PlayerInteractBlock, ver, _conv, {
+  V9(g) => Packet::BlockPlace {
+    pos:    g.position,
+    face:   Face::from_id(g.placed_block_direction as u8),
+    hand:   Hand::from_id(g.hand as u8),
+    cursor: FPos::new(g.facing_x.into(), g.facing_y.into(), g.facing_z.into()),
+  },
+  V11(g) => Packet::BlockPlace {
+    pos:    g.position,
+    face:   Face::from_id(g.placed_block_direction as u8),
+    hand:   Hand::from_id(g.hand as u8),
+    cursor: FPos::new(g.facing_x.into(), g.facing_y.into(), g.facing_z.into()),
+  },
+  V14(g) => {
+    let mut buf = tcp::Packet::from_buf_id(g.unknown, 0, ver);
+    let pos = buf.read_pos()?;
+    let face = Face::from_id(buf.read_varint()? as u8);
+    let cursor =
+      FPos::new(buf.read_f32()?.into(), buf.read_f32()?.into(), buf.read_f32()?.into());
+    let _in_head = buf.read_bool()?;
+    let _sequence = if ver >= ProtocolVersion::V1_19 { Some(buf.read_varint()?) } else { None };
+    Packet::BlockPlace { hand: Hand::from_id(g.hand as u8), pos, face, cursor }
+  },
+});
+from_tcp!(UseEntity, ver, _conv, {
+  V8(g) => {
+    let mut buf = tcp::Packet::from_buf_id(g.unknown, 0, ver);
+    Packet::UseEntity {
+      eid:      g.entity_id,
+      action:   match g.action {
+        0 => UseEntityAction::Interact(if ver == ProtocolVersion::V1_8 {
+          Hand::Main
         } else {
-          let _slot = buf.read_item(conv)?;
-          let cursor_x = buf.read_u8()?;
-          let cursor_y = buf.read_u8()?;
-          let cursor_z = buf.read_u8()?;
-          Packet::BlockPlace {
-            pos:    g.position,
-            face:   Face::from_id(g.placed_block_direction as u8),
-            hand:   Hand::Main,
-            cursor: FPos::new(
-              cursor_x as f64 / 128.0,
-              cursor_y as f64 / 128.0,
-              cursor_z as f64 / 128.0,
-            ),
-          }
-        }
-      }
-    })
-  }
-}
-impl FromTcp<gpacket::PlayerInteractBlock> for Packet {
-  fn from_tcp(
-    p: gpacket::PlayerInteractBlock,
-    ver: ProtocolVersion,
-    conv: &TypeConverter,
-  ) -> Result<Self> {
-    use gpacket::PlayerInteractBlock::*;
-    Ok(match p {
-      V9(g) => Packet::BlockPlace {
-        pos:    g.position,
-        face:   Face::from_id(g.placed_block_direction as u8),
-        hand:   Hand::from_id(g.hand as u8),
-        cursor: FPos::new(g.facing_x.into(), g.facing_y.into(), g.facing_z.into()),
+          Hand::from_id(buf.read_u8()?)
+        }),
+        1 => UseEntityAction::Attack,
+        2 => UseEntityAction::InteractAt(
+          FPos::new(buf.read_f32()?.into(), buf.read_f32()?.into(), buf.read_f32()?.into()),
+          if ver == ProtocolVersion::V1_8 { Hand::Main } else { Hand::from_id(buf.read_u8()?) },
+        ),
+        _ => return Err(io::Error::new(ErrorKind::Other, "invalid use entity action").into()),
       },
-      V11(g) => Packet::BlockPlace {
-        pos:    g.position,
-        face:   Face::from_id(g.placed_block_direction as u8),
-        hand:   Hand::from_id(g.hand as u8),
-        cursor: FPos::new(g.facing_x.into(), g.facing_y.into(), g.facing_z.into()),
+      sneaking: match ver >= ProtocolVersion::V1_16_5 {
+        true => Some(buf.read_bool()?),
+        false => None,
       },
-      V14(g) => {
-        let mut buf = tcp::Packet::from_buf_id(g.unknown, 0, ver);
-        let pos = buf.read_pos()?;
-        let face = Face::from_id(buf.read_varint()? as u8);
-        let cursor =
-          FPos::new(buf.read_f32()?.into(), buf.read_f32()?.into(), buf.read_f32()?.into());
-        let _in_head = buf.read_bool()?;
-        let _sequence = if ver >= ProtocolVersion::V1_19 { Some(buf.read_varint()?) } else { None };
-        Packet::BlockPlace { hand: Hand::from_id(g.hand as u8), pos, face, cursor }
-      }
-    })
-  }
-}
-impl FromTcp<gpacket::UseEntity> for Packet {
-  fn from_tcp(p: gpacket::UseEntity, ver: ProtocolVersion, conv: &TypeConverter) -> Result<Self> {
-    use gpacket::UseEntity::*;
-    Ok(match p {
-      V8(g) => {
-        let mut buf = tcp::Packet::from_buf_id(g.unknown, 0, ver);
-        Packet::UseEntity {
-          eid:      g.entity_id,
-          action:   match g.action {
-            0 => UseEntityAction::Interact(if ver == ProtocolVersion::V1_8 {
-              Hand::Main
-            } else {
-              Hand::from_id(buf.read_u8()?)
-            }),
-            1 => UseEntityAction::Attack,
-            2 => UseEntityAction::InteractAt(
-              FPos::new(buf.read_f32()?.into(), buf.read_f32()?.into(), buf.read_f32()?.into()),
-              if ver == ProtocolVersion::V1_8 { Hand::Main } else { Hand::from_id(buf.read_u8()?) },
-            ),
-            _ => return Err(io::Error::new(ErrorKind::Other, "invalid use entity action").into()),
-          },
-          sneaking: match ver >= ProtocolVersion::V1_16_5 {
-            true => Some(buf.read_bool()?),
-            false => None,
-          },
-        }
-      }
-      V17(g) => {
-        let mut buf = tcp::Packet::from_buf_id(g.unknown, 0, ver);
-        Packet::UseEntity {
-          eid:      g.entity_id,
-          action:   match g.v_2 {
-            0 => UseEntityAction::Interact(Hand::from_id(buf.read_u8()?)),
-            1 => UseEntityAction::Attack,
-            2 => UseEntityAction::InteractAt(
-              FPos::new(buf.read_f32()?.into(), buf.read_f32()?.into(), buf.read_f32()?.into()),
-              if ver == ProtocolVersion::V1_8 { Hand::Main } else { Hand::from_id(buf.read_u8()?) },
-            ),
-            _ => return Err(io::Error::new(ErrorKind::Other, "invalid use entity action").into()),
-          },
-          sneaking: Some(buf.read_bool()?),
-        }
-      }
-    })
-  }
-}
-/*
-impl FromTcp<> for Packet {
-  fn from_tcp(p: gpacket::Chat) -> Result<Self> {
-      GPacket::PlayerCommandV8 { entity_id: _, action, aux_data: _ } => Packet::PlayerCommand {
-        command: match action {
-          0 => PlayerCommand::StartSneak,
-          1 => PlayerCommand::StopSneak,
-          2 => PlayerCommand::LeaveBed,
-          3 => PlayerCommand::StartSprint,
-          4 => PlayerCommand::StopSprint,
-          _ => return Err(io::Error::new(ErrorKind::Other, "invalid player action").into()),
-        },
+    }
+  },
+  V17(g) => {
+    let mut buf = tcp::Packet::from_buf_id(g.unknown, 0, ver);
+    Packet::UseEntity {
+      eid:      g.entity_id,
+      action:   match g.v_2 {
+        0 => UseEntityAction::Interact(Hand::from_id(buf.read_u8()?)),
+        1 => UseEntityAction::Attack,
+        2 => UseEntityAction::InteractAt(
+          FPos::new(buf.read_f32()?.into(), buf.read_f32()?.into(), buf.read_f32()?.into()),
+          if ver == ProtocolVersion::V1_8 { Hand::Main } else { Hand::from_id(buf.read_u8()?) },
+        ),
+        _ => return Err(io::Error::new(ErrorKind::Other, "invalid use entity action").into()),
       },
-  }
-}
-impl FromTcp<> for Packet {
-  fn from_tcp(p: gpacket::Chat) -> Result<Self> {
-      GPacket::PlayerInteractItemV9 { hand } => Packet::UseItem { hand: Hand::from_id(hand as u8) },
-  }
-}
-impl FromTcp<> for Packet {
-  fn from_tcp(p: gpacket::Chat) -> Result<Self> {
-      GPacket::PlayerV8 { on_ground, .. } | GPacket::PlayerOnGroundV14 { on_ground } => {
-        Packet::PlayerOnGround { on_ground }
-      }
-  }
-}
-impl FromTcp<> for Packet {
-  fn from_tcp(p: gpacket::Chat) -> Result<Self> {
-      GPacket::PlayerOnGroundV17 { v_1, unknown: _ } => Packet::PlayerOnGround { on_ground: v_1 },
-  }
-}
-impl FromTcp<> for Packet {
-  fn from_tcp(p: gpacket::Chat) -> Result<Self> {
-      GPacket::PlayerLookV8 { yaw, pitch, on_ground, .. }
-      | GPacket::PlayerRotationV9 { yaw, pitch, on_ground, .. } => {
-        Packet::PlayerLook { yaw, pitch, on_ground }
-      }
-  }
-}
-impl FromTcp<> for Packet {
-  fn from_tcp(p: gpacket::Chat) -> Result<Self> {
-      GPacket::PlayerRotationV17 { unknown: _, v_1, v_2, v_3 } => {
-        Packet::PlayerLook { yaw: v_1, pitch: v_2, on_ground: v_3 }
-      }
-  }
-}
-impl FromTcp<> for Packet {
-  fn from_tcp(p: gpacket::Chat) -> Result<Self> {
-      GPacket::PlayerPosLookV8 { x, y, z, yaw, pitch, on_ground, .. }
-      | GPacket::PlayerPositionRotationV9 { x, y, z, yaw, pitch, on_ground, .. } => {
-        Packet::PlayerPosLook { x, y, z, yaw, pitch, on_ground }
-      }
-  }
-}
-impl FromTcp<> for Packet {
-  fn from_tcp(p: gpacket::Chat) -> Result<Self> {
-      GPacket::PlayerPositionRotationV17 { unknown: _, v_1, v_3, v_5, v_7, v_8, v_9 } => {
-        Packet::PlayerPosLook {
-          x:         v_1,
-          y:         v_3,
-          z:         v_5,
-          yaw:       v_7,
-          pitch:     v_8,
-          on_ground: v_9,
-        }
-      }
-  }
-}
-impl FromTcp<> for Packet {
-  fn from_tcp(p: gpacket::Chat) -> Result<Self> {
-      GPacket::PlayerPositionV8 { x, y, z, on_ground, .. } => {
-        Packet::PlayerPos { x, y, z, on_ground }
-      }
-  }
-}
-impl FromTcp<> for Packet {
-  fn from_tcp(p: gpacket::Chat) -> Result<Self> {
-      GPacket::PlayerPositionV17 { unknown: _, v_1, v_3, v_5, v_7 } => {
-        Packet::PlayerPos { x: v_1, y: v_3, z: v_5, on_ground: v_7 }
-      }
-  }
-}
-impl FromTcp<> for Packet {
-  fn from_tcp(p: gpacket::Chat) -> Result<Self> {
-      GPacket::PlayerAbilitiesV8 { flying, .. }
-      | GPacket::UpdatePlayerAbilitiesV14 { flying, .. }
-      | GPacket::UpdatePlayerAbilitiesV16 { flying, .. } => Packet::Flying { flying },
-  }
-}
-*/
+      sneaking: Some(buf.read_bool()?),
+    }
+  },
+});
+from_tcp!(PlayerCommand, _ver, _conv, {
+  V8(g) => Packet::PlayerCommand {
+    command: match g.action {
+      0 => PlayerCommand::StartSneak,
+      1 => PlayerCommand::StopSneak,
+      2 => PlayerCommand::LeaveBed,
+      3 => PlayerCommand::StartSprint,
+      4 => PlayerCommand::StopSprint,
+      _ => return Err(io::Error::new(ErrorKind::Other, "invalid player action").into()),
+    },
+  },
+});
+from_tcp!(PlayerInteractItem, _ver, _conv, {
+  V9(g) => Packet::UseItem { hand: Hand::from_id(g.hand as u8) },
+  // TODO: Use `g.sequence`.
+  V19(g) => Packet::UseItem { hand: Hand::from_id(g.hand as u8) },
+});
+from_tcp!(Player, _ver, _conv, {
+  V8(g) => Packet::PlayerOnGround { on_ground: g.on_ground },
+});
+from_tcp!(PlayerOnGround, _ver, _conv, {
+  V14(g) => Packet::PlayerOnGround { on_ground: g.on_ground },
+  V17(g) => Packet::PlayerOnGround { on_ground: g.v_1 },
+});
+from_tcp!(PlayerLook, _ver, _conv, {
+  V8(g) => Packet::PlayerLook { yaw: g.yaw, pitch: g.pitch, on_ground: g.on_ground },
+});
+from_tcp!(PlayerRotation, _ver, _conv, {
+  V9(g) => Packet::PlayerLook { yaw: g.yaw, pitch: g.pitch, on_ground: g.on_ground },
+  V17(g) => Packet::PlayerLook { yaw: g.v_1, pitch: g.v_2, on_ground: g.v_3 },
+});
+from_tcp!(PlayerPosLook, _ver, _conv, {
+  V8(g) => Packet::PlayerPosLook {
+    x: g.x,
+    y: g.y,
+    z: g.z,
+    yaw: g.yaw,
+    pitch: g.pitch,
+    on_ground: g.on_ground,
+  },
+});
+from_tcp!(PlayerPositionRotation, _ver, _conv, {
+  V9(g) => Packet::PlayerPosLook {
+    x: g.x,
+    y: g.y,
+    z: g.z,
+    yaw: g.yaw,
+    pitch: g.pitch,
+    on_ground: g.on_ground,
+  },
+  V17(g) => Packet::PlayerPosLook {
+    x:         g.v_1,
+    y:         g.v_3,
+    z:         g.v_5,
+    yaw:       g.v_7,
+    pitch:     g.v_8,
+    on_ground: g.v_9,
+  },
+});
+from_tcp!(PlayerPosition, _ver, _conv, {
+  V8(g) => Packet::PlayerPos { x: g.x, y: g.y, z: g.z, on_ground: g.on_ground },
+  V17(g) => Packet::PlayerPos { x: g.v_1, y: g.v_3, z: g.v_5, on_ground: g.v_7 },
+});
+from_tcp!(PlayerAbilities, _ver, _conv, {
+  V8(g) => Packet::Flying { flying: g.flying },
+});
+from_tcp!(UpdatePlayerAbilities, _ver, _conv, {
+  V14(g) => Packet::Flying { flying: g.flying },
+  V16(g) => Packet::Flying { flying: g.flying },
+});
 
 fn click_window(mode: i32, bt: i32) -> Result<ClickWindow> {
   Ok(match mode {
