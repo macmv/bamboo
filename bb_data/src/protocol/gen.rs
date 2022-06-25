@@ -148,7 +148,7 @@ impl PacketCollection {
       }
     });
 
-    gen.write_line("#[allow(unused_mut)]");
+    gen.write_line("#[allow(unused_mut, unused_variables, unused_assignments)]");
     gen.write_mod("packet", |gen| {
       gen.write_line("use super::*;");
       for versions in &packets {
@@ -328,6 +328,34 @@ fn write_versioned_packet(gen: &mut CodeGen, name: &str, p: &Packet, ver: Versio
     gen.set_doc_comment(false);
     write_to_tcp(gen, p);
   });
+
+  write_from(gen, name, p, ver);
+}
+
+fn write_from(gen: &mut CodeGen, name: &str, p: &Packet, ver: Version) {
+  gen.write("impl From<");
+  gen.write(name);
+  gen.write_line("> for Packet {");
+  gen.add_indent();
+
+  gen.write("fn from(p: ");
+  gen.write(name);
+  gen.write_line(") -> Self {");
+  gen.add_indent();
+
+  gen.write("Packet::");
+  gen.write(&p.name);
+  gen.write("(");
+  gen.write(&p.name);
+  gen.write("::V");
+  gen.write(&ver.maj.to_string());
+  gen.write_line("(p))");
+
+  gen.remove_indent();
+  gen.write_line("}");
+
+  gen.remove_indent();
+  gen.write_line("}");
 }
 
 fn write_def(gen: &mut CodeGen, name: &str, p: &Packet) {
