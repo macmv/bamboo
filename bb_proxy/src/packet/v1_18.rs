@@ -1,5 +1,5 @@
 use super::{ChunkWithPos, TypeConverter};
-use crate::gnet::cb::Packet;
+use crate::gnet::cb::{packet, Packet};
 use bb_common::{
   chunk::Chunk,
   nbt::{Tag, NBT},
@@ -154,5 +154,9 @@ pub fn chunk(chunk: ChunkWithPos, ver: ProtocolVersion, conv: &TypeConverter) ->
     buf.write_buf(s.data());
   }
 
-  Packet::ChunkDataV17 { chunk_x: chunk.pos.x(), chunk_z: chunk.pos.z(), unknown: data }
+  Packet::ChunkData(packet::ChunkData::V17(packet::ChunkDataV17 {
+    chunk_x: chunk.pos.x(),
+    chunk_z: chunk.pos.z(),
+    unknown: data,
+  }))
 }

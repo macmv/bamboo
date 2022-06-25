@@ -496,7 +496,9 @@ impl<'a, S: PacketStream + Send + Sync> Conn<'a, S> {
         self.client_stream.write(out);
       }
       State::Play => {
-        let out = gcb::Packet::DisconnectV8 { reason: reason.into().to_json() };
+        let out = gcb::Packet::Disconnect(gcb::packet::Disconnect::V8(gcb::packet::DisconnectV8 {
+          reason: reason.into().to_json(),
+        }));
         let mut tcp = tcp::Packet::new(out.tcp_id(self.ver) as i32, self.ver);
         out.to_tcp(&mut tcp);
         self.client_stream.write(tcp);

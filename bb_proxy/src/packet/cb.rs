@@ -1,6 +1,9 @@
 use super::metadata;
 use crate::{
-  gnet::{cb::Packet as GPacket, tcp},
+  gnet::{
+    cb::{packet as gpacket, Packet as GPacket},
+    tcp,
+  },
   stream::PacketStream,
   Conn,
 };
@@ -43,6 +46,18 @@ pub trait ToTcp {
   ) -> Result<SmallVec<[GPacket; 2]>, WriteError>;
 }
 
+macro_rules! gpacket {
+  ( $name:ident $ver:ident { $( $field:ident $(: $value:expr)? ),* $(,)? } ) => {
+    concat_idents::concat_idents!(packet_name = $name,$ver {
+      GPacket::$name(gpacket::$name::$ver(gpacket::packet_name {
+        $(
+          $field $(: $value)?,
+        )*
+      }))
+    })
+  }
+}
+
 impl ToTcp for Packet {
   fn to_tcp<S: PacketStream + Send + Sync>(
     self,
@@ -60,7 +75,7 @@ impl ToTcp for Packet {
         walk_speed,
       } =>
         if ver < ProtocolVersion::V1_16_5 {
-          GPacket::PlayerAbilitiesV8 {
+          gpacket!(PlayerAbilities V8 {
             invulnerable,
             flying,
             allow_flying,
@@ -68,9 +83,9 @@ impl ToTcp for Packet {
             fly_speed: fly_speed * 0.05,
             walk_speed: walk_speed * 0.1,
             v_2: 0,
-          }
+          })
         } else {
-          GPacket::PlayerAbilitiesV16 {
+          gpacket!(PlayerAbilities V16 {
             invulnerable,
             flying,
             allow_flying,
@@ -78,11 +93,11 @@ impl ToTcp for Packet {
             fly_speed: fly_speed * 0.05,
             walk_speed: walk_speed * 0.1,
             v_2: 0,
-          }
+          })
         },
       Packet::Animation { eid, kind } => {
         if ver == ProtocolVersion::V1_8 {
-          GPacket::AnimationV8 {
+          gpacket!(Animation V8 {
             entity_id: eid,
             ty:        match kind {
               Animation::Swing(_) => 0,
@@ -91,9 +106,9 @@ impl ToTcp for Packet {
               Animation::Crit => 4,
               Animation::MagicCrit => 5,
             },
-          }
+          })
         } else {
-          GPacket::AnimationV8 {
+          gpacket!(Animation V8 {
             entity_id: eid,
             ty:        match kind {
               Animation::Swing(Hand::Main) => 0,
@@ -103,14 +118,14 @@ impl ToTcp for Packet {
               Animation::Crit => 4,
               Animation::MagicCrit => 5,
             },
-          }
+          })
         }
       }
       Packet::BlockUpdate { pos, state } => {
         let mut data = vec![];
         let mut buf = Buffer::new(&mut data);
         buf.write_varint(state as i32);
-        GPacket::BlockUpdateV8 { block_position: pos, unknown: data }
+        gpacket!(BlockUpdate V8 { block_position: pos, unknown: data })
       }
       Packet::ChangeGameState { action } => {
         use bb_common::net::cb::ChangeGameState as Action;
@@ -164,27 +179,27 @@ impl ToTcp for Packet {
           let mut buf = Buffer::new(&mut data);
           buf.write_u8(reason);
           buf.write_f32(value);
-          GPacket::ChangeGameStateV16 { unknown: data }
+          gpacket!(ChangeGameState V16 { unknown: data })
         } else {
-          GPacket::ChangeGameStateV8 { state: reason.into(), field_149141_c: value }
+          gpacket!(ChangeGameState V8 { state: reason.into(), field_149141_c: value })
         }
       }
       Packet::Chat { msg, ty } => {
         if ver >= ProtocolVersion::V1_19 {
-          GPacket::SystemChatV19 {
+          gpacket!(SystemChat V19 {
             a: msg.to_json(), // content
             b: 1,             // type
-          }
+          })
         } else if ver >= ProtocolVersion::V1_16_5 {
           let mut data = vec![];
           let mut buf = Buffer::new(&mut data);
           buf.write_u8(ty);
           buf.write_uuid(UUID::from_u128(0));
-          GPacket::ChatV12 { chat_component: msg.to_json(), unknown: data }
+          gpacket!(Chat V12 { chat_component: msg.to_json(), unknown: data })
         } else if ver >= ProtocolVersion::V1_12_2 {
-          GPacket::ChatV12 { chat_component: msg.to_json(), unknown: vec![ty] }
+          gpacket!(Chat V12 { chat_component: msg.to_json(), unknown: vec![ty] })
         } else {
-          GPacket::ChatV8 { chat_component: msg.to_json(), ty: ty as i8 }
+          gpacket!(Chat V8 { chat_component: msg.to_json(), ty: ty as i8 })
         }
       }
       Packet::Chunk { pos, full, sections, sky_light, block_light } => {
@@ -241,25 +256,25 @@ impl ToTcp for Packet {
         });
         buf.write_varint(root as i32);
         if ver >= ProtocolVersion::V1_19 {
-          GPacket::CommandTreeV19 { unknown: data }
+          gpacket!(CommandTree V19 { unknown: data })
         } else if ver >= ProtocolVersion::V1_16_5 {
-          GPacket::CommandTreeV16 { unknown: data }
+          gpacket!(CommandTree V16 { unknown: data })
         } else {
-          GPacket::CommandTreeV14 { unknown: data }
+          gpacket!(CommandTree V14 { unknown: data })
         }
       }
       Packet::CollectItem { item_eid, player_eid, amount } => {
         if ver >= ProtocolVersion::V1_11_2 {
-          GPacket::CollectItemV11 {
+          gpacket!(CollectItem V11 {
             collected_item_entity_id: item_eid,
             entity_id:                player_eid,
             field_191209_c:           amount.into(),
-          }
+          })
         } else {
-          GPacket::CollectItemV8 {
+          gpacket!(CollectItem V8 {
             collected_item_entity_id: item_eid,
             entity_id:                player_eid,
-          }
+          })
         }
       }
       Packet::EntityEquipment { eid, slot, mut item } => {
@@ -279,11 +294,11 @@ impl ToTcp for Packet {
             EquipmentSlot::Armor(ArmorSlot::Helmet) => 5,
           });
           buf.write_item(&item);
-          GPacket::EntityEquipmentV16 { id: eid, unknown: buf.serialize() }
+          gpacket!(EntityEquipment V16 { id: eid, unknown: buf.serialize() })
         } else if ver >= ProtocolVersion::V1_9_4 {
           let mut buf = tcp::Packet::from_buf_id(vec![], 0, ver);
           buf.write_item(&item);
-          GPacket::EntityEquipmentV9 {
+          gpacket!(EntityEquipment V9 {
             entity_id:      eid,
             equipment_slot: match slot {
               EquipmentSlot::Hand(Hand::Main) => 0,
@@ -294,11 +309,11 @@ impl ToTcp for Packet {
               EquipmentSlot::Armor(ArmorSlot::Helmet) => 5,
             },
             unknown:        buf.serialize(),
-          }
+          })
         } else {
           let mut buf = tcp::Packet::from_buf_id(vec![], 0, ver);
           buf.write_item(&item);
-          GPacket::EntityEquipmentV8 {
+          gpacket!(EntityEquipment V8 {
             entity_id:      eid,
             equipment_slot: match slot {
               EquipmentSlot::Hand(Hand::Main) => 0,
@@ -310,11 +325,11 @@ impl ToTcp for Packet {
               EquipmentSlot::Armor(ArmorSlot::Helmet) => 4,
             },
             unknown:        buf.serialize(),
-          }
+          })
         }
       }
       Packet::EntityHeadLook { eid, yaw } => {
-        GPacket::EntityHeadLookV8 { entity_id: eid, yaw }
+        gpacket!(EntityHeadLook V8 { entity_id: eid, yaw })
       }
       Packet::EntityLook { eid, yaw, pitch, on_ground } => {
         if ver >= ProtocolVersion::V1_17_1 {
@@ -324,9 +339,9 @@ impl ToTcp for Packet {
           buf.write_i8(yaw);
           buf.write_i8(pitch);
           buf.write_bool(on_ground);
-          GPacket::EntityLookV17 { unknown: data, v_1: 0, v_2: 0, v_3: 0, v_4: 0 }
+          gpacket!(EntityLook V17 { unknown: data, v_1: 0, v_2: 0, v_3: 0, v_4: 0 })
         } else {
-          GPacket::EntityLookV8 { entity_id: eid, yaw, pitch, on_ground }
+          gpacket!(EntityLook V8 { entity_id: eid, yaw, pitch, on_ground })
         }
       }
       Packet::EntityMove { eid, x, y, z, on_ground } => {
@@ -338,30 +353,30 @@ impl ToTcp for Packet {
           buf.write_i16(y);
           buf.write_i16(z);
           buf.write_bool(on_ground);
-          GPacket::EntityRelMoveV17 {
+          gpacket!(EntityRelMove V17 {
             unknown: data,
             v_1:     0,
             v_2:     0,
             v_3:     0,
             v_4:     0,
             v_5:     0,
-          }
+          })
         } else if ver >= ProtocolVersion::V1_9_4 {
-          GPacket::EntityRelMoveV9 {
+          gpacket!(EntityRelMove V9 {
             entity_id: eid,
             pos_x: x.into(),
             pos_y: y.into(),
             pos_z: z.into(),
             on_ground,
-          }
+          })
         } else {
-          GPacket::EntityRelMoveV8 {
+          gpacket!(EntityRelMove V8 {
             entity_id: eid,
             pos_x: (x / (4096 / 32)) as i8,
             pos_y: (y / (4096 / 32)) as i8,
             pos_z: (z / (4096 / 32)) as i8,
             on_ground,
-          }
+          })
         }
       }
       Packet::EntityMoveLook { eid, x, y, z, yaw, pitch, on_ground } => {
@@ -375,7 +390,7 @@ impl ToTcp for Packet {
           buf.write_i8(yaw);
           buf.write_i8(pitch);
           buf.write_bool(on_ground);
-          GPacket::EntityLookMoveV17 {
+          gpacket!(EntityLookMove V17 {
             unknown: data,
             v_1:     0,
             v_2:     0,
@@ -384,9 +399,9 @@ impl ToTcp for Packet {
             v_5:     0,
             v_6:     0,
             v_7:     0,
-          }
+          })
         } else if ver >= ProtocolVersion::V1_9_4 {
-          GPacket::EntityLookMoveV9 {
+          gpacket!(EntityLookMove V9 {
             entity_id: eid,
             pos_x: x.into(),
             pos_y: y.into(),
@@ -394,9 +409,9 @@ impl ToTcp for Packet {
             yaw,
             pitch,
             on_ground,
-          }
+          })
         } else {
-          GPacket::EntityLookMoveV8 {
+          gpacket!(EntityLookMove V8 {
             entity_id: eid,
             pos_x: (x / (4096 / 32)) as i8,
             pos_y: (y / (4096 / 32)) as i8,
@@ -404,12 +419,12 @@ impl ToTcp for Packet {
             yaw,
             pitch,
             on_ground,
-          }
+          })
         }
       }
       Packet::EntityPos { eid, x, y, z, yaw, pitch, on_ground } => {
         if ver == ProtocolVersion::V1_8 {
-          GPacket::EntityTeleportV8 {
+          gpacket!(EntityTeleport V8 {
             entity_id: eid,
             pos_x: (x * 32.0) as i32,
             pos_y: (y * 32.0) as i32,
@@ -417,9 +432,9 @@ impl ToTcp for Packet {
             yaw,
             pitch,
             on_ground,
-          }
+          })
         } else {
-          GPacket::EntityTeleportV9 {
+          gpacket!(EntityTeleport V9 {
             entity_id: eid,
             pos_x: x,
             pos_y: y,
@@ -427,28 +442,28 @@ impl ToTcp for Packet {
             yaw,
             pitch,
             on_ground,
-          }
+          })
         }
       }
       Packet::EntityStatus { eid, status } => {
-        GPacket::EntityStatusV8 { entity_id: eid, logic_opcode: status as i8 }
+        gpacket!(EntityStatus V8 { entity_id: eid, logic_opcode: status as i8 })
       }
       Packet::EntityMetadata { eid, ty, meta } => {
-        GPacket::EntityMetadataV8 {
+        gpacket!(EntityMetadata V8 {
           entity_id: eid,
           unknown:   match metadata(ty, &meta, ver, conn.conv()) {
             Some(m) => m,
             None => return Ok(smallvec![]),
           },
-        }
+        })
       }
       Packet::EntityVelocity { eid, x, y, z } => {
-        GPacket::EntityVelocityV8 {
+        gpacket!(EntityVelocity V8 {
           entity_id: eid,
           motion_x:  x.into(),
           motion_y:  y.into(),
           motion_z:  z.into(),
-        }
+        })
       }
       Packet::JoinGame {
         eid,
@@ -517,7 +532,7 @@ impl ToTcp for Packet {
         }
 
         match ver.maj().unwrap() {
-          8 => GPacket::JoinGameV8 {
+          8 => gpacket!(JoinGame V8 {
             entity_id: eid,
             hardcore_mode,
             game_type: game_mode.id(),
@@ -526,8 +541,8 @@ impl ToTcp for Packet {
             max_players: 0,
             world_type: level_type,
             unknown: data,
-          },
-          9..=13 => GPacket::JoinGameV9 {
+          }),
+          9..=13 => gpacket!(JoinGame V9 {
             player_id: eid,
             hardcore_mode,
             game_type: game_mode.id(),
@@ -536,31 +551,31 @@ impl ToTcp for Packet {
             max_players: 0,
             world_type: level_type,
             unknown: data,
-          },
-          14..=15 => GPacket::JoinGameV14 {
+          }),
+          14..=15 => gpacket!(JoinGame V14 {
             player_entity_id: eid,
             hardcore:         hardcore_mode,
             unknown:          data,
             v_2:              0,
-          },
-          16 => GPacket::JoinGameV16 {
+          }),
+          16 => gpacket!(JoinGame V16 {
             player_entity_id: eid,
             hardcore:         hardcore_mode,
             unknown:          data,
-          },
-          17 | 18 | 19 => GPacket::JoinGameV17 {
+          }),
+          17 | 18 | 19 => gpacket!(JoinGame V17 {
             player_entity_id: eid,
             hardcore:         hardcore_mode,
             unknown:          data,
-          },
+          }),
           _ => unimplemented!(),
         }
       }
       Packet::KeepAlive { id } => {
         if ver < ProtocolVersion::V1_12_2 {
-          GPacket::KeepAliveV8 { id: id as i32 }
+          gpacket!(KeepAlive V8 { id: id as i32 })
         } else {
-          GPacket::KeepAliveV12 { id: id.into() }
+          gpacket!(KeepAlive V12 { id: id.into() })
         }
       }
       Packet::MultiBlockChange { pos, y, changes } => {
@@ -585,7 +600,7 @@ impl ToTcp for Packet {
           buf.write_f32(data_float);
           buf.write_i32(count);
           buf.write_buf(&particle_data);
-          GPacket::ParticleV14 { unknown: data }
+          gpacket!(Particle V14 { unknown: data })
         } else {
           buf.write_i32(old_id);
           buf.write_bool(long);
@@ -598,11 +613,11 @@ impl ToTcp for Packet {
           buf.write_f32(data_float);
           buf.write_i32(count);
           buf.write_buf(&particle_data);
-          GPacket::ParticleV8 { unknown: data }
+          gpacket!(Particle V8 { unknown: data })
         }
       }
       Packet::PlayerHeader { header, footer } => {
-        GPacket::PlayerListHeaderV8 { header, footer }
+        gpacket!(PlayerListHeader V8 { header, footer })
       }
       Packet::PlayerList { action } => {
         let id;
@@ -653,14 +668,14 @@ impl ToTcp for Packet {
           }
         }
         if ver < ProtocolVersion::V1_17_1 {
-          GPacket::PlayerListV8 { action: id, unknown: data, v_2: 0 }
+          gpacket!(PlayerList V8 { action: id, unknown: data, v_2: 0 })
         } else {
-          GPacket::PlayerListV17 { action: id, unknown: data }
+          gpacket!(PlayerList V17 { action: id, unknown: data })
         }
       }
       Packet::PlaySound { name, category, pos, volume, pitch } => {
         if ver >= ProtocolVersion::V1_14_4 {
-          GPacket::CustomSoundV14 {
+          gpacket!(CustomSound V14 {
             id: name,
             category: match category {
               SoundCategory::Master => 0,
@@ -679,9 +694,9 @@ impl ToTcp for Packet {
             fixed_z: (pos.z() * 8.0) as i32,
             volume,
             pitch,
-          }
+          })
         } else if ver >= ProtocolVersion::V1_10_2 {
-          GPacket::CustomSoundV10 {
+          gpacket!(CustomSound V10 {
             sound_name: name,
             category: match category {
               SoundCategory::Master => 0,
@@ -700,9 +715,9 @@ impl ToTcp for Packet {
             z: (pos.z() * 8.0) as i32,
             volume,
             pitch,
-          }
+          })
         } else if ver >= ProtocolVersion::V1_9_4 {
-          GPacket::CustomSoundV9 {
+          gpacket!(CustomSound V9 {
             sound_name: name,
             category: match category {
               SoundCategory::Master => 0,
@@ -721,34 +736,34 @@ impl ToTcp for Packet {
             z: (pos.z() * 8.0) as i32,
             volume,
             pitch: (pitch * 128.0) as i32,
-          }
+          })
         } else {
-          GPacket::PlaySoundV8 {
+          gpacket!(PlaySound V8 {
             sound_name:   name,
             pos_x:        (pos.x() * 8.0) as i32,
             pos_y:        (pos.y() * 8.0) as i32,
             pos_z:        (pos.z() * 8.0) as i32,
             sound_volume: volume,
             sound_pitch:  (pitch * 128.0) as i32,
-          }
+          })
         }
       }
       Packet::PluginMessage { channel, data } => {
         // No length prefix for data, it is inferred from packet length.
         if ver < ProtocolVersion::V1_14_4 {
-          GPacket::CustomPayloadV8 { channel, unknown: data, v_2: 0 }
+          gpacket!(CustomPayload V8 { channel, unknown: data, v_2: 0 })
         } else {
-          GPacket::CustomPayloadV14 { channel, unknown: data, v_2: 0 }
+          gpacket!(CustomPayload V14 { channel, unknown: data, v_2: 0 })
         }
       }
       Packet::RemoveEntities { eids } => {
         if ver >= ProtocolVersion::V1_17_1 {
-          GPacket::DestroyEntitiesV17 { entity_ids: eids }
+          gpacket!(DestroyEntities V17 { entity_ids: eids })
         } else {
           let mut data = vec![];
           let mut buf = Buffer::new(&mut data);
           buf.write_list(&eids, |buf, &e| buf.write_varint(e));
-          GPacket::DestroyEntitiesV8 { unknown: data }
+          gpacket!(DestroyEntities V8 { unknown: data })
         }
       }
       Packet::ScoreboardDisplay { position, objective } => {
@@ -758,9 +773,9 @@ impl ToTcp for Packet {
           ScoreboardDisplay::BelowName => 2,
         };
         if ver < ProtocolVersion::V1_18 {
-          GPacket::ScoreboardDisplayV8 { position: pos, score_name: objective }
+          gpacket!(ScoreboardDisplay V8 { position: pos, score_name: objective })
         } else {
-          GPacket::ScoreboardDisplayV18 { slot: pos, name: objective }
+          gpacket!(ScoreboardDisplay V18 { slot: pos, name: objective })
         }
       }
       Packet::ScoreboardObjective { mode, objective } => {
@@ -786,13 +801,13 @@ impl ToTcp for Packet {
           _ => {}
         }
         if ver < ProtocolVersion::V1_18 {
-          GPacket::ScoreboardObjectiveV8 {
+          gpacket!(ScoreboardObjective V8 {
             objective_name: objective,
             field_149342_c: m,
             unknown:        data,
-          }
+          })
         } else {
-          GPacket::ScoreboardObjectiveV18 { name: objective, mode: m, unknown: data }
+          gpacket!(ScoreboardObjective V18 { name: objective, mode: m, unknown: data })
         }
       }
       Packet::ScoreboardUpdate { username, objective, action } => {
@@ -804,7 +819,7 @@ impl ToTcp for Packet {
             ScoreboardAction::Create(score) => buf.write_varint(score),
             ScoreboardAction::Remove => {}
           }
-          GPacket::UpdateScoreV18 {
+          gpacket!(UpdateScore V18 {
             player_name: username,
             mode:        match action {
               ScoreboardAction::Create(_) => 0,
@@ -812,14 +827,14 @@ impl ToTcp for Packet {
             },
             unknown:     data,
             v_2:         "".into(),
-          }
+          })
         } else if ver >= ProtocolVersion::V1_14_4 {
           buf.write_str(&objective);
           match action {
             ScoreboardAction::Create(score) => buf.write_varint(score),
             ScoreboardAction::Remove => {}
           }
-          GPacket::UpdateScoreV14 {
+          gpacket!(UpdateScore V14 {
             player_name: username,
             mode:        match action {
               ScoreboardAction::Create(_) => 0,
@@ -827,13 +842,13 @@ impl ToTcp for Packet {
             },
             unknown:     data,
             v_2:         "".into(),
-          }
+          })
         } else {
           match action {
             ScoreboardAction::Create(score) => buf.write_varint(score),
             ScoreboardAction::Remove => {}
           }
-          GPacket::UpdateScoreV8 {
+          gpacket!(UpdateScore V8 {
             name: username,
             objective,
             action: match action {
@@ -841,7 +856,7 @@ impl ToTcp for Packet {
               ScoreboardAction::Remove => 1,
             },
             unknown: data,
-          }
+          })
         }
       }
       Packet::SetPosLook { pos, yaw, pitch, flags, teleport_id, should_dismount } => {
@@ -854,7 +869,7 @@ impl ToTcp for Packet {
         if ver >= ProtocolVersion::V1_17_1 {
           buf.write_bool(should_dismount);
         }
-        GPacket::PlayerPosLookV8 { x: pos.x(), y: pos.y(), z: pos.z(), yaw, pitch, unknown: data }
+        gpacket!(PlayerPosLook V8 { x: pos.x(), y: pos.y(), z: pos.z(), yaw, pitch, unknown: data })
       }
       Packet::SpawnLivingEntity {
         eid,
@@ -872,7 +887,7 @@ impl ToTcp for Packet {
         let new_ty = ty;
         let ty = conn.conv().entity_to_old(ty, ver.block()) as i32;
         if ver >= ProtocolVersion::V1_15_2 {
-          let spawn = GPacket::SpawnMobV15 {
+          let spawn = gpacket!(SpawnMob V15 {
             id: eid,
             uuid: id,
             entity_type_id: ty,
@@ -885,13 +900,13 @@ impl ToTcp for Packet {
             yaw,
             pitch,
             head_yaw,
-          };
+          });
           if !meta.fields.is_empty() {
             match metadata(new_ty, &meta, ver, conn.conv()) {
               Some(data) => {
                 return Ok(smallvec![
                   spawn,
-                  GPacket::EntityMetadataV8 { entity_id: eid, unknown: data }
+                  gpacket!(EntityMetadata V8 { entity_id: eid, unknown: data })
                 ])
               }
               None => spawn,
@@ -900,7 +915,7 @@ impl ToTcp for Packet {
             spawn
           }
         } else if ver >= ProtocolVersion::V1_11 {
-          GPacket::SpawnMobV11 {
+          gpacket!(SpawnMob V11 {
             entity_id: eid,
             unique_id: id,
             ty,
@@ -917,9 +932,9 @@ impl ToTcp for Packet {
               Some(m) => m,
               None => return Ok(smallvec![]),
             },
-          }
+          })
         } else if ver >= ProtocolVersion::V1_9 {
-          GPacket::SpawnMobV9 {
+          gpacket!(SpawnMob V9 {
             entity_id: eid,
             unique_id: id,
             ty,
@@ -936,9 +951,9 @@ impl ToTcp for Packet {
               Some(m) => m,
               None => return Ok(smallvec![]),
             },
-          }
+          })
         } else {
-          GPacket::SpawnMobV8 {
+          gpacket!(SpawnMob V8 {
             entity_id: eid,
             ty,
             x: (pos.x() * 32.0) as i32,
@@ -954,7 +969,7 @@ impl ToTcp for Packet {
               Some(m) => m,
               None => return Ok(smallvec![]),
             },
-          }
+          })
         }
       }
       Packet::SpawnEntity {
@@ -985,9 +1000,9 @@ impl ToTcp for Packet {
           buf.write_i16(vel_x);
           buf.write_i16(vel_y);
           buf.write_i16(vel_z);
-          GPacket::SpawnObjectV14 { id: eid, uuid: id, unknown: data }
+          gpacket!(SpawnObject V14 { id: eid, uuid: id, unknown: data })
         } else if ver >= ProtocolVersion::V1_9 {
-          GPacket::SpawnObjectV9 {
+          gpacket!(SpawnObject V9 {
             entity_id: eid,
             unique_id: id,
             ty:        object_ty(ty),
@@ -1000,14 +1015,14 @@ impl ToTcp for Packet {
             speed_y:   vel_y.into(),
             speed_z:   vel_z.into(),
             data:      data_int,
-          }
+          })
         } else {
           let mut data = vec![];
           let mut buf = Buffer::new(&mut data);
           buf.write_i16(vel_x);
           buf.write_i16(vel_y);
           buf.write_i16(vel_z);
-          GPacket::SpawnObjectV8 {
+          gpacket!(SpawnObject V8 {
             entity_id:      eid,
             ty:             object_ty(ty),
             x:              (pos.x() * 32.0) as i32,
@@ -1017,14 +1032,14 @@ impl ToTcp for Packet {
             pitch:          pitch.into(),
             field_149020_k: data_int,
             unknown:        data,
-          }
+          })
         };
         if !meta.fields.is_empty() {
           match metadata(new_ty, &meta, ver, conn.conv()) {
             Some(data) => {
               return Ok(smallvec![
                 spawn,
-                GPacket::EntityMetadataV8 { entity_id: eid, unknown: data }
+                gpacket!(EntityMetadata V8 { entity_id: eid, unknown: data })
               ])
             }
             None => spawn,
@@ -1035,7 +1050,7 @@ impl ToTcp for Packet {
       }
       Packet::SpawnPlayer { eid, id, ty, pos, yaw, pitch, meta } => {
         if ver == ProtocolVersion::V1_8 {
-          GPacket::SpawnPlayerV8 {
+          gpacket!(SpawnPlayer V8 {
             entity_id: eid,
             player_id: id,
             x: (pos.x() * 32.0) as i32,
@@ -1048,9 +1063,9 @@ impl ToTcp for Packet {
               Some(m) => m,
               None => return Ok(smallvec![]),
             },
-          }
+          })
         } else if ver < ProtocolVersion::V1_15_2 {
-          GPacket::SpawnPlayerV9 {
+          gpacket!(SpawnPlayer V9 {
             entity_id: eid,
             unique_id: id,
             x: pos.x(),
@@ -1062,9 +1077,9 @@ impl ToTcp for Packet {
               Some(m) => m,
               None => return Ok(smallvec![]),
             },
-          }
+          })
         } else {
-          let spawn = GPacket::SpawnPlayerV15 {
+          let spawn = gpacket!(SpawnPlayer V15 {
             id: eid,
             uuid: id,
             x: pos.x(),
@@ -1072,13 +1087,13 @@ impl ToTcp for Packet {
             z: pos.z(),
             yaw,
             pitch,
-          };
+          });
           if !meta.fields.is_empty() {
             match metadata(ty, &meta, ver, conn.conv()) {
               Some(data) => {
                 return Ok(smallvec![
                   spawn,
-                  GPacket::EntityMetadataV8 { entity_id: eid, unknown: data }
+                  gpacket!(EntityMetadata V8 { entity_id: eid, unknown: data })
                 ])
               }
               None => spawn,
@@ -1115,7 +1130,7 @@ impl ToTcp for Packet {
           tag!("minecraft:fluid", fluid);
           tag!("minecraft:entity_type", entity_type);
           tag!("minecraft:game_event", game_event);
-          // GPacket::SynchronizeTagsV14 { unknown: data }
+          // gpacket!(SynchronizeTagsV14 { unknown: data }
           return Ok(smallvec![]);
         } else {
           return Err(WriteError::InvalidVer);
@@ -1124,14 +1139,14 @@ impl ToTcp for Packet {
       Packet::Title { action } => {
         if ver >= ProtocolVersion::V1_17_1 {
           match action {
-            TitleAction::Title(chat) => GPacket::TitleV17 { title: chat.to_json() },
-            TitleAction::Subtitle(chat) => GPacket::SubtitleV17 { subtitle: chat.to_json() },
-            TitleAction::Times { fade_in, stay, fade_out } => GPacket::TitleFadeV17 {
+            TitleAction::Title(chat) => gpacket!(Title V17 { title: chat.to_json() }),
+            TitleAction::Subtitle(chat) => gpacket!(Subtitle V17 { subtitle: chat.to_json() }),
+            TitleAction::Times { fade_in, stay, fade_out } => gpacket!(TitleFade V17 {
               fade_in_ticks:  fade_in as i32,
               remain_ticks:   stay as i32,
               fade_out_ticks: fade_out as i32,
-            },
-            TitleAction::Clear(reset) => GPacket::ClearTitleV17 { reset },
+            }),
+            TitleAction::Clear(reset) => gpacket!(ClearTitle V17 { reset }),
           }
         } else {
           let mut data = vec![];
@@ -1146,7 +1161,7 @@ impl ToTcp for Packet {
             }
             _ => {}
           }
-          GPacket::TitleV8 {
+          gpacket!(Title V8 {
             ty:      if ver >= ProtocolVersion::V1_12_2 {
               match action {
                 TitleAction::Title(_) => 0,
@@ -1165,7 +1180,7 @@ impl ToTcp for Packet {
               }
             },
             unknown: data,
-          }
+          })
         }
       }
       Packet::Teams { team, action } => {
@@ -1272,32 +1287,32 @@ impl ToTcp for Packet {
           TeamAction::RemoveEntities { .. } => 4,
         };
         if ver >= ProtocolVersion::V1_18 {
-          GPacket::TeamsV18 { packet_type: ty, team_name: team, unknown: data }
+          gpacket!(Teams V18 { packet_type: ty, team_name: team, unknown: data })
         } else if ver >= ProtocolVersion::V1_17_1 {
-          GPacket::TeamsV17 { packet_type: ty, team_name: team, unknown: data }
+          gpacket!(Teams V17 { packet_type: ty, team_name: team, unknown: data })
         } else {
-          GPacket::TeamsV8 { field_149314_f: ty, field_149320_a: team, unknown: data }
+          gpacket!(Teams V8 { field_149314_f: ty, field_149320_a: team, unknown: data })
         }
       }
       Packet::UnloadChunk { pos } => {
         if ver >= ProtocolVersion::V1_9 {
-          GPacket::UnloadChunkV9 { x: pos.x(), z: pos.z() }
+          gpacket!(UnloadChunk V9 { x: pos.x(), z: pos.z() })
         } else {
-          GPacket::ChunkDataV8 {
+          gpacket!(ChunkData V8 {
             chunk_x:        pos.x(),
             chunk_z:        pos.z(),
             field_149279_g: true,
             // Zero bit mask, then zero length varint
             unknown:        vec![0, 0, 0],
-          }
+          })
         }
       }
       Packet::UpdateHealth { health, food, saturation } => {
-        GPacket::UpdateHealthV8 { health, food_level: food, saturation_level: saturation }
+        gpacket!(UpdateHealth V8 { health, food_level: food, saturation_level: saturation })
       }
       Packet::UpdateViewPos { pos } => {
         if ver >= ProtocolVersion::V1_14 {
-          GPacket::ChunkRenderDistanceCenterV14 { chunk_x: pos.x(), chunk_z: pos.z() }
+          gpacket!(ChunkRenderDistanceCenter V14 { chunk_x: pos.x(), chunk_z: pos.z() })
         } else {
           panic!("cannot send UpdateViewPos for version {}", ver);
         }
@@ -1332,26 +1347,26 @@ impl ToTcp for Packet {
             _ => 0,
           };
           if ver >= ProtocolVersion::V1_16_5 {
-            GPacket::OpenScreenV16 {
+            gpacket!(OpenScreen V16 {
               sync_id:           wid.into(),
               screen_handler_id: id,
               name:              title,
-            }
+            })
           } else {
-            GPacket::OpenWindowV14 {
+            gpacket!(OpenWindow V14 {
               sync_id:      wid.into(),
               container_id: id,
               name:         title,
-            }
+            })
           }
         } else {
-          GPacket::OpenWindowV8 {
+          gpacket!(OpenWindow V8 {
             window_id:      wid.into(),
             inventory_type: ty,
             window_title:   title,
             slot_count:     size as i32,
             unknown:        vec![],
-          }
+          })
         }
       }
       Packet::WindowItems { wid, items, held } => {
@@ -1363,7 +1378,7 @@ impl ToTcp for Packet {
             buf.write_item(&it);
           }
           buf.write_item(&held);
-          GPacket::WindowItemsV17 { sync_id: wid.into(), revision: 0, unknown: buf.serialize() }
+          gpacket!(WindowItems V17 { sync_id: wid.into(), revision: 0, unknown: buf.serialize() })
         } else {
           let mut buf = tcp::Packet::from_buf_id(vec![], 0, ver);
           buf.write_i16(items.len() as i16);
@@ -1371,7 +1386,7 @@ impl ToTcp for Packet {
             conn.conv().item(&mut it, ver.block());
             buf.write_item(&it);
           }
-          GPacket::WindowItemsV8 { window_id: wid.into(), unknown: buf.serialize(), v_2: 0 }
+          gpacket!(WindowItems V8 { window_id: wid.into(), unknown: buf.serialize(), v_2: 0 })
         }
       }
       Packet::WindowItem { wid, slot, mut item } => {
@@ -1379,9 +1394,9 @@ impl ToTcp for Packet {
         conn.conv().item(&mut item, ver.block());
         buf.write_item(&item);
         if ver >= ProtocolVersion::V1_17_1 {
-          GPacket::SetSlotV17 { sync_id: wid.into(), revision: 0, slot, unknown: buf.serialize() }
+          gpacket!(SetSlot V17 { sync_id: wid.into(), revision: 0, slot, unknown: buf.serialize() })
         } else {
-          GPacket::SetSlotV8 { window_id: wid.into(), slot, unknown: buf.serialize() }
+          gpacket!(SetSlot V8 { window_id: wid.into(), slot, unknown: buf.serialize() })
         }
       }
       _ => todo!("convert {:?} into generated packet", self),

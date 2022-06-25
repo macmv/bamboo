@@ -1,5 +1,5 @@
 use super::{ChunkWithPos, TypeConverter};
-use crate::gnet::cb::Packet;
+use crate::gnet::cb::{packet, Packet};
 use bb_common::{util::Buffer, version::ProtocolVersion};
 
 // Applies to 1.9 - 1.12, but 1.10 doesn't work, so idk
@@ -48,12 +48,12 @@ pub fn chunk(chunk: ChunkWithPos, ver: ProtocolVersion, conv: &TypeConverter) ->
     buf.write_varint(0);
   }
 
-  Packet::ChunkDataV9 {
+  Packet::ChunkData(packet::ChunkData::V9(packet::ChunkDataV9 {
     chunk_x:            chunk.pos.x(),
     chunk_z:            chunk.pos.z(),
     load_chunk:         chunk.full,
     available_sections: chunk.old_bit_map().into(),
     unknown:            data,
     v_2:                0,
-  }
+  }))
 }

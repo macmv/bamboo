@@ -1,5 +1,5 @@
 use super::{ChunkWithPos, TypeConverter};
-use crate::gnet::cb::Packet;
+use crate::gnet::cb::{packet, Packet};
 use bb_common::{
   chunk::Section as _,
   math::{ChunkPos, SectionRelPos},
@@ -66,12 +66,12 @@ pub fn chunk(chunk: ChunkWithPos, conv: &TypeConverter) -> Packet {
   }
   assert_eq!(chunk_data.len() - prefix_len, data_len, "unexpected chunk data len");
 
-  Packet::ChunkDataV8 {
+  Packet::ChunkData(packet::ChunkData::V8(packet::ChunkDataV8 {
     chunk_x:        chunk.pos.x(),
     chunk_z:        chunk.pos.z(),
     field_149279_g: chunk.full,
     unknown:        chunk_data,
-  }
+  }))
 }
 
 pub fn multi_block_change(
@@ -98,5 +98,7 @@ pub fn multi_block_change(
     buf.write_u8(y as u8);
     buf.write_varint(old_id as i32);
   }
-  Packet::MultiBlockChangeV8 { unknown: data }
+  Packet::MultiBlockChange(packet::MultiBlockChange::V8(packet::MultiBlockChangeV8 {
+    unknown: data,
+  }))
 }

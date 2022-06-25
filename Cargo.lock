@@ -269,6 +269,7 @@ dependencies = [
  "bb_transfer",
  "cfb8",
  "clap 3.1.9",
+ "concat-idents",
  "crossbeam-channel",
  "flate2",
  "image",
@@ -555,6 +556,16 @@ name = "color_quant"
 version = "1.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3d7b894f5411737b7867f4827955924d7c254fc9f4d91a6aad6b097804b1018b"
+
+[[package]]
+name = "concat-idents"
+version = "1.1.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4b6f90860248d75014b7b103db8fee4f291c07bfb41306cdf77a0a5ab7a10d2f"
+dependencies = [
+ "quote",
+ "syn",
+]
 
 [[package]]
 name = "convert_case"
