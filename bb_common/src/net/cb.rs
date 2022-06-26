@@ -7,9 +7,50 @@ use crate::{
 use bb_macros::Transfer;
 use std::{collections::HashMap, net::SocketAddr};
 
-#[derive(Transfer, Debug, Clone, PartialEq)]
-#[non_exhaustive]
-pub enum Packet {
+macro_rules! packets {
+  {
+    $(
+      $( #[$meta:meta] )*
+      $name:ident {
+        $(
+          $( #[$field_meta:meta] )*
+          $field_name:ident: $field_ty:ty
+        ),* $(,)?
+      },
+    )*
+  } => {
+    #[derive(Transfer, Debug, Clone, PartialEq)]
+    #[non_exhaustive]
+    pub enum Packet {
+      $(
+        $( #[$meta] )*
+        $name(#[must_exist] packet::$name),
+      )*
+    }
+
+    pub mod packet {
+      use super::*;
+      $(
+        #[derive(Transfer, Debug, Clone, PartialEq)]
+        pub struct $name {
+          $(
+            $( #[$field_meta] )*
+            pub $field_name: $field_ty,
+          )*
+        }
+
+        impl $name {
+          /// Converts this packet into a variant of the outer [`Packet`] enum.
+          pub fn into_packet(self) -> Packet {
+            Packet::$name(self)
+          }
+        }
+      )*
+    }
+  }
+}
+
+packets! {
   #[id = 0]
   Abilities {
     invulnerable: bool,
@@ -20,7 +61,7 @@ pub enum Packet {
     walk_speed:   f32,
   },
   #[id = 32]
-  Animation { eid: i32, kind: Animation },
+  Animation { eid: i32, kind: AnimationKind },
   /// Sent to 1.19+ clients to acknowledge a block change. This prevents a lot
   /// of ghost blocks.
   #[id = 43]
@@ -30,10 +71,10 @@ pub enum Packet {
   #[id = 38]
   ChangeGameState {
     #[must_exist]
-    action: ChangeGameState,
+    action: ChangeGameStateKind,
   },
   #[id = 2]
-  Chat { msg: Chat, ty: u8 },
+  ChatMessage { msg: Chat, ty: u8 },
   #[id = 3]
   Chunk {
     pos:         ChunkPos,
@@ -161,7 +202,7 @@ pub enum Packet {
   #[id = 25]
   ScoreboardDisplay {
     #[must_exist]
-    position:  ScoreboardDisplay,
+    position:  ScoreboardDisplayData,
     objective: String,
   },
   #[id = 26]
@@ -276,7 +317,7 @@ pub enum Packet {
 }
 
 #[derive(Transfer, Debug, Clone, PartialEq)]
-pub enum ChangeGameState {
+pub enum ChangeGameStateKind {
   #[id = 0]
   InvalidBed,
   #[id = 1]
@@ -446,7 +487,7 @@ pub struct CommandNode {
 }
 
 #[derive(Transfer, Debug, Clone, Copy, PartialEq, Eq)]
-pub enum Animation {
+pub enum AnimationKind {
   #[id = 0]
   Swing(Hand),
   #[id = 1]
@@ -459,8 +500,8 @@ pub enum Animation {
   MagicCrit,
 }
 
-impl Default for Animation {
-  fn default() -> Self { Animation::Swing(Hand::Main) }
+impl Default for AnimationKind {
+  fn default() -> Self { AnimationKind::Swing(Hand::Main) }
 }
 
 #[derive(Transfer, Debug, Clone, Copy, PartialEq, Eq)]
@@ -502,7 +543,7 @@ pub enum CommandType {
 }
 
 #[derive(Transfer, Debug, Clone, Copy, PartialEq, Eq)]
-pub enum ScoreboardDisplay {
+pub enum ScoreboardDisplayData {
   #[id = 0]
   List,
   #[id = 1]
