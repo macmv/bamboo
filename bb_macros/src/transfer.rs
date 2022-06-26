@@ -184,9 +184,13 @@ fn create_setter(f: &Fields, has_self: bool) -> (TokenStream2, u64, TokenStream2
     Fields::Unnamed(fields) => {
       let mut read = quote!();
       let mut write = quote!();
-      for (i, _) in fields.unnamed.iter().enumerate() {
+      for (i, f) in fields.unnamed.iter().enumerate() {
         let i = i as u64;
-        read.extend(quote!(m.read(#i)?,));
+        let reader_name = match find_must_exist(&f.attrs) {
+          Some(_) => quote!(must_read),
+          None => quote!(read),
+        };
+        read.extend(quote!(m.#reader_name(#i)?,));
         if has_self {
           write.extend(quote!(m.write(&self.#i)?;));
         } else {
