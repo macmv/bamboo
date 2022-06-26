@@ -25,7 +25,7 @@ pub fn class(name: &str) -> RType {
     "Block" => "u32", // block id
     "EntityType" => "u32",
     "Vibration" => "U",
-    "IBlockState" | "BlockState" => "(u32, String)",
+    "IBlockState" | "BlockState" => "i32",
     "Formatting" => "i32",
     "Text" | "Identifier" | "IChatComponent" | "ResourceLocation" | "ITextComponent" => "String",
     "Difficulty" | "EnumDifficulty" => "u32",
@@ -134,6 +134,15 @@ pub fn member_call<'a>(class: &str, name: &'a str) -> (&'a str, Option<Vec<Expr>
       },
       "put" => "insert",
       "read_var_int" | "read_var_int_from_buffer" => "read_varint",
+
+      // TODO: Registry values should be read as enums
+      /*
+      "read_registry_value" => "read_registry",
+      */
+      "read_enum_constant" | "read_enum_value" | "read_registry_value" => {
+        return ("read_varint", Some(vec![]), true)
+      }
+
       // TODO: Might want to implement varlongs.
       "read_var_long" => "read_varint",
       // Booleans are always converted with `!= 0`, so it is best to read them as bytes.
@@ -151,7 +160,6 @@ pub fn member_call<'a>(class: &str, name: &'a str) -> (&'a str, Option<Vec<Expr>
       "read_bytes" => "read_buf",           // Fixed length
       "read_byte_array" => "read_byte_arr", // Variable length
       "read_bit_set" => "read_bits",
-      "read_enum_constant" | "read_enum_value" => return ("read_varint", Some(vec![]), true),
       "read_text_component"
       | "read_text"
       | "read_identifier"
@@ -275,15 +283,14 @@ pub fn type_cast(from: &RType, to: &RType) -> Vec<Op> {
     },
     "u32" => match from.name.as_str() {
       "u8" | "i8" | "i16" => into(),
-      "i64" => return try_into("u32"),
+      "i32" | "i64" => return try_into("u32"),
       "U" => return vec![],
       _ => panic!("cannot convert `{}` into `{}`", from, to),
     },
     "i32" => match from.name.as_str() {
-      "bool" => Op::As(RType::new("i32")),
-      "f32" => Op::As(RType::new("i32")),
+      "bool" | "f32" => Op::As(RType::new("i32")),
       "u8" | "i8" | "i16" => into(),
-      "i64" => return try_into("i32"),
+      "u32" | "i64" => return try_into("i32"),
       "U" => return vec![],
       "Option" => return vec![],
       _ => panic!("cannot convert `{}` into `{}`", from, to),
@@ -317,7 +324,7 @@ fn try_into(name: &str) -> Vec<Op> {
 }
 
 pub fn this_call(name: &str, args: &mut Vec<Expr>) -> Option<Instr> {
-  assert_eq!(args.len(), 1);
+  assert!(args.len() == 1 || args.len() == 2);
   Some(Instr::Set(
     match name {
       "setInvulnerable" => "invulnerable",
