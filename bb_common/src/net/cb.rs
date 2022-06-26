@@ -45,6 +45,12 @@ macro_rules! packets {
             Packet::$name(self)
           }
         }
+
+        impl From<$name> for Packet {
+          fn from(p: $name) -> Self {
+            Packet::$name(p)
+          }
+        }
       )*
     }
   }
@@ -202,7 +208,7 @@ packets! {
   #[id = 25]
   ScoreboardDisplay {
     #[must_exist]
-    position:  ScoreboardDisplayData,
+    position:  ScoreboardDisplayPosition,
     objective: String,
   },
   #[id = 26]
@@ -543,7 +549,7 @@ pub enum CommandType {
 }
 
 #[derive(Transfer, Debug, Clone, Copy, PartialEq, Eq)]
-pub enum ScoreboardDisplayData {
+pub enum ScoreboardDisplayPosition {
   #[id = 0]
   List,
   #[id = 1]
