@@ -189,19 +189,22 @@ pub enum Packet {
     should_dismount: bool,
   },
   #[id = 21]
-  SpawnLivingEntity {
+  SpawnEntity {
     eid:      i32,
     id:       UUID,
     ty:       u32,
     pos:      FPos,
     yaw:      i8,
     pitch:    i8,
-    head_yaw: i8,
     vel_x:    i16,
     vel_y:    i16,
     vel_z:    i16,
     meta:     Metadata,
+    living:   bool,
+    head_yaw: i8,
+    data:     i32,
   },
+  /*
   #[id = 28]
   SpawnEntity {
     eid:   i32,
@@ -216,6 +219,7 @@ pub enum Packet {
     meta:  Metadata,
     data:  i32,
   },
+  */
   #[id = 17]
   SpawnPlayer {
     eid:   i32,

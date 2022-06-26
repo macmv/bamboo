@@ -249,8 +249,12 @@ impl World {
       //   direction:        (p.yaw / 360.0 * 8.0 + 4.0) as u8,
       // });
       todo!();
-    } else if ent.ty().is_living() {
-      player.send(cb::Packet::SpawnLivingEntity {
+    } else {
+      let data: i32 = match ent {
+        EntityRef::Entity(e) => e.data(),
+        _ => 1,
+      };
+      player.send(cb::Packet::SpawnEntity {
         eid:      ent.eid(),
         // 1.18 clients will not render mobs that have the same UUID
         id:       UUID::random(),
@@ -258,29 +262,12 @@ impl World {
         pos:      p.aabb.pos,
         yaw:      (p.yaw / 360.0 * 256.0) as i8,
         pitch:    (p.pitch / 360.0 * 256.0) as i8,
-        head_yaw: 0,
         vel_x:    p.vel.fixed_x(),
         vel_y:    p.vel.fixed_y(),
         vel_z:    p.vel.fixed_z(),
         meta:     ent.metadata().clone(),
-      });
-    } else {
-      let data: i32 = match ent {
-        EntityRef::Entity(e) => e.data(),
-        _ => 1,
-      };
-      player.send(cb::Packet::SpawnEntity {
-        eid:   ent.eid(),
-        // 1.18 clients will not render mobs that have the same UUID
-        id:    UUID::random(),
-        ty:    ent.ty().id(),
-        pos:   p.aabb.pos,
-        yaw:   (p.yaw / 360.0 * 256.0) as i8,
-        pitch: (p.pitch / 360.0 * 256.0) as i8,
-        vel_x: p.vel.fixed_x(),
-        vel_y: p.vel.fixed_y(),
-        vel_z: p.vel.fixed_z(),
-        meta:  ent.metadata().clone(),
+        living:   ent.ty().is_living(),
+        head_yaw: (p.yaw / 360.0 * 256.0) as i8,
         // We can't really check if its a falling block on the proxy, so we do cross-versioning
         // this here.
         data:  if ent.ty() == entity::Type::FallingBlock {
@@ -297,25 +284,6 @@ impl World {
           data
         },
       });
-      // player.send(cb::Packet::SpawnEntity {
-      //   entity_id:        ent.eid(),
-      //   object_uuid_v1_9: Some(UUID::from_u128(0)),
-      //   type_v1_8:        Some(old_id as i8),
-      //   type_v1_14:       Some(old_id as i32),
-      //   x_v1_8:           Some(p.aabb.pos.fixed_x()),
-      //   x_v1_9:           Some(p.aabb.pos.x()),
-      //   y_v1_8:           Some(p.aabb.pos.fixed_y()),
-      //   y_v1_9:           Some(p.aabb.pos.y()),
-      //   z_v1_8:           Some(p.aabb.pos.fixed_z()),
-      //   z_v1_9:           Some(p.aabb.pos.z()),
-      //   pitch:            (p.pitch / 360.0 * 256.0) as i8,
-      //   yaw:              (p.yaw / 360.0 * 256.0) as i8,
-      //   object_data_v1_8: Some(data.to_le_bytes().to_vec()),
-      //   object_data_v1_9: Some(data),
-      //   velocity_x_v1_9:  Some(p.vel.fixed_x()),
-      //   velocity_y_v1_9:  Some(p.vel.fixed_y()),
-      //   velocity_z_v1_9:  Some(p.vel.fixed_z()),
-      // });
     }
   }
 }

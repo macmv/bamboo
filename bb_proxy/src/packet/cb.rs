@@ -871,36 +871,86 @@ impl ToTcp for Packet {
         }
         gpacket!(PlayerPosLook V8 { x: pos.x(), y: pos.y(), z: pos.z(), yaw, pitch, unknown: data })
       }
-      Packet::SpawnLivingEntity {
+      Packet::SpawnEntity {
         eid,
         id,
         ty,
         pos,
         yaw,
         pitch,
-        head_yaw,
         vel_x,
         vel_y,
         vel_z,
         meta,
+        living,
+        data: data_int,
+        head_yaw,
       } => {
         let new_ty = ty;
         let ty = conn.conv().entity_to_old(ty, ver.block()) as i32;
-        if ver >= ProtocolVersion::V1_15_2 {
-          let spawn = gpacket!(SpawnMob V15 {
-            id: eid,
-            uuid: id,
-            entity_type_id: ty,
-            x: pos.x(),
-            y: pos.y(),
-            z: pos.z(),
-            velocity_x: vel_x.into(),
-            velocity_y: vel_y.into(),
-            velocity_z: vel_z.into(),
-            yaw,
-            pitch,
-            head_yaw,
-          });
+        if ver >= ProtocolVersion::V1_19 {
+          let mut data = vec![];
+          let mut buf = Buffer::new(&mut data);
+          buf.write_varint(ty);
+          buf.write_f64(pos.x());
+          buf.write_f64(pos.y());
+          buf.write_f64(pos.z());
+          buf.write_i8(pitch);
+          buf.write_i8(yaw);
+          buf.write_i8(head_yaw);
+          buf.write_varint(data_int);
+          buf.write_i16(vel_x);
+          buf.write_i16(vel_y);
+          buf.write_i16(vel_z);
+          gpacket!(SpawnObject V14 { id: eid, uuid: id, unknown: data })
+        } else if living {
+          let spawn = if ver >= ProtocolVersion::V1_14_4 {
+            let mut data = vec![];
+            let mut buf = Buffer::new(&mut data);
+            buf.write_varint(ty);
+            buf.write_f64(pos.x());
+            buf.write_f64(pos.y());
+            buf.write_f64(pos.z());
+            buf.write_i8(pitch);
+            buf.write_i8(yaw);
+            buf.write_i32(data_int); // data
+            buf.write_i16(vel_x);
+            buf.write_i16(vel_y);
+            buf.write_i16(vel_z);
+            gpacket!(SpawnObject V14 { id: eid, uuid: id, unknown: data })
+          } else if ver >= ProtocolVersion::V1_9 {
+            gpacket!(SpawnObject V9 {
+              entity_id: eid,
+              unique_id: id,
+              ty:        object_ty(ty),
+              x:         pos.x(),
+              y:         pos.y(),
+              z:         pos.z(),
+              yaw:       yaw.into(),
+              pitch:     pitch.into(),
+              speed_x:   vel_x.into(),
+              speed_y:   vel_y.into(),
+              speed_z:   vel_z.into(),
+              data:      data_int,
+            })
+          } else {
+            let mut data = vec![];
+            let mut buf = Buffer::new(&mut data);
+            buf.write_i16(vel_x);
+            buf.write_i16(vel_y);
+            buf.write_i16(vel_z);
+            gpacket!(SpawnObject V8 {
+              entity_id:      eid,
+              ty:             object_ty(ty),
+              x:              (pos.x() * 32.0) as i32,
+              y:              (pos.y() * 32.0) as i32,
+              z:              (pos.z() * 32.0) as i32,
+              yaw:            yaw.into(),
+              pitch:          pitch.into(),
+              field_149020_k: data_int,
+              unknown:        data,
+            })
+          };
           if !meta.fields.is_empty() {
             match metadata(new_ty, &meta, ver, conn.conv()) {
               Some(data) => {
@@ -914,138 +964,92 @@ impl ToTcp for Packet {
           } else {
             spawn
           }
-        } else if ver >= ProtocolVersion::V1_11 {
-          gpacket!(SpawnMob V11 {
-            entity_id: eid,
-            unique_id: id,
-            ty,
-            x: pos.x(),
-            y: pos.y(),
-            z: pos.z(),
-            velocity_x: vel_x.into(),
-            velocity_y: vel_y.into(),
-            velocity_z: vel_z.into(),
-            yaw,
-            pitch,
-            head_pitch: head_yaw,
-            unknown: match metadata(new_ty, &meta, ver, conn.conv()) {
-              Some(m) => m,
-              None => return Ok(smallvec![]),
-            },
-          })
-        } else if ver >= ProtocolVersion::V1_9 {
-          gpacket!(SpawnMob V9 {
-            entity_id: eid,
-            unique_id: id,
-            ty,
-            x: pos.x(),
-            y: pos.y(),
-            z: pos.z(),
-            velocity_x: vel_x.into(),
-            velocity_y: vel_y.into(),
-            velocity_z: vel_z.into(),
-            yaw,
-            pitch,
-            head_pitch: head_yaw,
-            unknown: match metadata(new_ty, &meta, ver, conn.conv()) {
-              Some(m) => m,
-              None => return Ok(smallvec![]),
-            },
-          })
         } else {
-          gpacket!(SpawnMob V8 {
-            entity_id: eid,
-            ty,
-            x: (pos.x() * 32.0) as i32,
-            y: (pos.y() * 32.0) as i32,
-            z: (pos.z() * 32.0) as i32,
-            velocity_x: vel_x.into(),
-            velocity_y: vel_y.into(),
-            velocity_z: vel_z.into(),
-            yaw,
-            pitch,
-            head_pitch: head_yaw,
-            unknown: match metadata(new_ty, &meta, ver, conn.conv()) {
-              Some(m) => m,
-              None => return Ok(smallvec![]),
-            },
-          })
-        }
-      }
-      Packet::SpawnEntity {
-        eid,
-        id,
-        ty,
-        pos,
-        yaw,
-        pitch,
-        vel_x,
-        vel_y,
-        vel_z,
-        meta,
-        data: data_int,
-      } => {
-        let new_ty = ty;
-        let ty = conn.conv().entity_to_old(ty, ver.block()) as i32;
-        let spawn = if ver >= ProtocolVersion::V1_14_4 {
-          let mut data = vec![];
-          let mut buf = Buffer::new(&mut data);
-          buf.write_varint(ty);
-          buf.write_f64(pos.x());
-          buf.write_f64(pos.y());
-          buf.write_f64(pos.z());
-          buf.write_i8(pitch);
-          buf.write_i8(yaw);
-          buf.write_i32(data_int); // data
-          buf.write_i16(vel_x);
-          buf.write_i16(vel_y);
-          buf.write_i16(vel_z);
-          gpacket!(SpawnObject V14 { id: eid, uuid: id, unknown: data })
-        } else if ver >= ProtocolVersion::V1_9 {
-          gpacket!(SpawnObject V9 {
-            entity_id: eid,
-            unique_id: id,
-            ty:        object_ty(ty),
-            x:         pos.x(),
-            y:         pos.y(),
-            z:         pos.z(),
-            yaw:       yaw.into(),
-            pitch:     pitch.into(),
-            speed_x:   vel_x.into(),
-            speed_y:   vel_y.into(),
-            speed_z:   vel_z.into(),
-            data:      data_int,
-          })
-        } else {
-          let mut data = vec![];
-          let mut buf = Buffer::new(&mut data);
-          buf.write_i16(vel_x);
-          buf.write_i16(vel_y);
-          buf.write_i16(vel_z);
-          gpacket!(SpawnObject V8 {
-            entity_id:      eid,
-            ty:             object_ty(ty),
-            x:              (pos.x() * 32.0) as i32,
-            y:              (pos.y() * 32.0) as i32,
-            z:              (pos.z() * 32.0) as i32,
-            yaw:            yaw.into(),
-            pitch:          pitch.into(),
-            field_149020_k: data_int,
-            unknown:        data,
-          })
-        };
-        if !meta.fields.is_empty() {
-          match metadata(new_ty, &meta, ver, conn.conv()) {
-            Some(data) => {
-              return Ok(smallvec![
-                spawn,
-                gpacket!(EntityMetadata V8 { entity_id: eid, unknown: data })
-              ])
+          if ver >= ProtocolVersion::V1_15_2 {
+            let spawn = gpacket!(SpawnMob V15 {
+              id: eid,
+              uuid: id,
+              entity_type_id: ty,
+              x: pos.x(),
+              y: pos.y(),
+              z: pos.z(),
+              velocity_x: vel_x.into(),
+              velocity_y: vel_y.into(),
+              velocity_z: vel_z.into(),
+              yaw,
+              pitch,
+              head_yaw,
+            });
+            if !meta.fields.is_empty() {
+              match metadata(new_ty, &meta, ver, conn.conv()) {
+                Some(data) => {
+                  return Ok(smallvec![
+                    spawn,
+                    gpacket!(EntityMetadata V8 { entity_id: eid, unknown: data })
+                  ])
+                }
+                None => spawn,
+              }
+            } else {
+              spawn
             }
-            None => spawn,
+          } else if ver >= ProtocolVersion::V1_11 {
+            gpacket!(SpawnMob V11 {
+              entity_id: eid,
+              unique_id: id,
+              ty,
+              x: pos.x(),
+              y: pos.y(),
+              z: pos.z(),
+              velocity_x: vel_x.into(),
+              velocity_y: vel_y.into(),
+              velocity_z: vel_z.into(),
+              yaw,
+              pitch,
+              head_pitch: head_yaw,
+              unknown: match metadata(new_ty, &meta, ver, conn.conv()) {
+                Some(m) => m,
+                None => return Ok(smallvec![]),
+              },
+            })
+          } else if ver >= ProtocolVersion::V1_9 {
+            gpacket!(SpawnMob V9 {
+              entity_id: eid,
+              unique_id: id,
+              ty,
+              x: pos.x(),
+              y: pos.y(),
+              z: pos.z(),
+              velocity_x: vel_x.into(),
+              velocity_y: vel_y.into(),
+              velocity_z: vel_z.into(),
+              yaw,
+              pitch,
+              head_pitch: head_yaw,
+              unknown: match metadata(new_ty, &meta, ver, conn.conv()) {
+                Some(m) => m,
+                None => return Ok(smallvec![]),
+              },
+            })
+          } else {
+            gpacket!(SpawnMob V8 {
+              entity_id: eid,
+              ty,
+              x: (pos.x() * 32.0) as i32,
+              y: (pos.y() * 32.0) as i32,
+              z: (pos.z() * 32.0) as i32,
+              velocity_x: vel_x.into(),
+              velocity_y: vel_y.into(),
+              velocity_z: vel_z.into(),
+              yaw,
+              pitch,
+              head_pitch: head_yaw,
+              unknown: match metadata(new_ty, &meta, ver, conn.conv()) {
+                Some(m) => m,
+                None => return Ok(smallvec![]),
+              },
+            })
           }
-        } else {
-          spawn
         }
       }
       Packet::SpawnPlayer { eid, id, ty, pos, yaw, pitch, meta } => {
