@@ -122,10 +122,14 @@ impl ToTcp for Packet {
         }
       }
       Packet::BlockUpdate { pos, state } => {
-        let mut data = vec![];
-        let mut buf = Buffer::new(&mut data);
-        buf.write_varint(state as i32);
-        gpacket!(BlockUpdate V8 { block_position: pos, unknown: data })
+        if ver >= ProtocolVersion::V1_19 {
+          gpacket!(BlockUpdate V19 { pos, state: state as i32 })
+        } else {
+          let mut data = vec![];
+          let mut buf = Buffer::new(&mut data);
+          buf.write_varint(state as i32);
+          gpacket!(BlockUpdate V8 { block_position: pos, unknown: data })
+        }
       }
       Packet::ChangeGameState { action } => {
         use bb_common::net::cb::ChangeGameState as Action;
@@ -889,20 +893,21 @@ impl ToTcp for Packet {
         let new_ty = ty;
         let ty = conn.conv().entity_to_old(ty, ver.block()) as i32;
         if ver >= ProtocolVersion::V1_19 {
-          let mut data = vec![];
-          let mut buf = Buffer::new(&mut data);
-          buf.write_varint(ty);
-          buf.write_f64(pos.x());
-          buf.write_f64(pos.y());
-          buf.write_f64(pos.z());
-          buf.write_i8(pitch);
-          buf.write_i8(yaw);
-          buf.write_i8(head_yaw);
-          buf.write_varint(data_int);
-          buf.write_i16(vel_x);
-          buf.write_i16(vel_y);
-          buf.write_i16(vel_z);
-          gpacket!(SpawnObject V14 { id: eid, uuid: id, unknown: data })
+          gpacket!(SpawnObject V19 {
+            id: eid,
+            uuid: id,
+            entity_type_id: ty as u32,
+            x: pos.x(),
+            y: pos.y(),
+            z: pos.z(),
+            pitch,
+            yaw,
+            head_yaw,
+            entity_data: data_int,
+            velocity_x: vel_x.into(),
+            velocity_y: vel_y.into(),
+            velocity_z: vel_z.into(),
+          })
         } else if living {
           let spawn = if ver >= ProtocolVersion::V1_14_4 {
             let mut data = vec![];
