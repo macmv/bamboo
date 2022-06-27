@@ -188,6 +188,9 @@ fn test_codec() {
     // 1.17+
     ("min_y", Tag::Int(0)),
     ("height", Tag::Int(256)),
+    // 1.19+
+    ("monster_spawn_light_level", Tag::Int(7)),
+    ("monster_spawn_block_light_limit", Tag::Int(7)),
   ]);
   let dimension = Dimension {
     piglin_safe:          false,
