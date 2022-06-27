@@ -72,9 +72,9 @@ fn simple_writer_test() {
     Instr::Set("baz".into(), packet().op(call!(read_i32[]))),
   ];
   let writer = vec![
-    Instr::Expr(packet().op(call!(write_i8[field("foo").op(Op::Deref).op(as_("i8"))]))),
-    Instr::Expr(packet().op(call!(write_i16[field("bar").op(Op::Deref).op(as_("i16"))]))),
-    Instr::Expr(packet().op(call!(write_i32[field("baz").op(Op::Deref)]))),
+    Instr::Expr(packet().op(call!(write_i8[field("foo").op(as_("i8"))]))),
+    Instr::Expr(packet().op(call!(write_i16[field("bar").op(as_("i16"))]))),
+    Instr::Expr(packet().op(call!(write_i32[field("baz")]))),
   ];
   let fields = vec![
     Field {
@@ -124,7 +124,7 @@ fn conditional_writer_test() {
     ),
   ];
   let writer = vec![
-    Instr::Expr(packet().op(call!(write_i32[field("foo").op(Op::Deref)]))),
+    Instr::Expr(packet().op(call!(write_i32[field("foo")]))),
     Instr::If(
       Cond::Greater(field("foo"), lit(0)),
       vec![Instr::Expr(packet().op(call!(write_i32[field("baz").op(call!(Option::unwrap[]))])))],
@@ -178,13 +178,23 @@ fn conditional_writer_test() {
       vec![],
     ),
   ];
-  let fields = vec![Field {
-    name:        "baz".into(),
-    ty:          Type::Int,
-    reader_type: Some(RType::new("i32")),
-    initialized: false,
-    option:      true,
-  }];
+  let fields = vec![
+    Field {
+      name:        "baz".into(),
+      ty:          Type::Int,
+      reader_type: Some(RType::new("i32")),
+      initialized: false,
+      option:      true,
+    },
+    // v_2 is only partially used, so it will be added as a field.
+    Field {
+      name:        "v_2".into(),
+      ty:          Type::Void,
+      reader_type: Some(RType::new("i32")),
+      initialized: true,
+      option:      false,
+    },
+  ];
   let mut p = Packet {
     extends: "".into(),
     class:   "".into(),
@@ -300,6 +310,14 @@ fn multi_conditional_writer_test() {
       reader_type: Some(RType::new("i32")),
       initialized: false,
       option:      true,
+    },
+    // v_2 is only partially used, so it will be added as a field
+    Field {
+      name:        "v_2".into(),
+      ty:          Type::Void,
+      reader_type: Some(RType::new("u8")),
+      initialized: true,
+      option:      false,
     },
   ];
   let mut p = Packet {
