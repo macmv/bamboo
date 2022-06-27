@@ -79,7 +79,7 @@ pub fn chunk(chunk: ChunkWithPos, ver: ProtocolVersion, conv: &TypeConverter) ->
     }
   }
 
-  let c = Chunk::from_sections(chunk.sections, 15);
+  let c = Chunk::from_sections(chunk.packet.sections, 15);
   let heightmap = c.build_heightmap_new();
   let heightmap = NBT::new("", Tag::compound(&[("MOTION_BLOCKING", Tag::LongArray(heightmap))]));
 
@@ -99,7 +99,7 @@ pub fn chunk(chunk: ChunkWithPos, ver: ProtocolVersion, conv: &TypeConverter) ->
   let mut sky_empty_bitmap: u64 = 0;
   let mut sky_len = 0;
   for y in 0..16 {
-    if let Some(sky) = &chunk.sky_light {
+    if let Some(sky) = &chunk.packet.sky_light {
       if sky.get_section_opt(y).is_some() {
         sky_bitmap |= 1 << y as u64;
         sky_len += 1;
@@ -112,7 +112,7 @@ pub fn chunk(chunk: ChunkWithPos, ver: ProtocolVersion, conv: &TypeConverter) ->
   let mut block_empty_bitmap: u64 = 0;
   let mut block_len = 0;
   for y in 0..16 {
-    if chunk.block_light.get_section_opt(y).is_some() {
+    if chunk.packet.block_light.get_section_opt(y).is_some() {
       block_bitmap |= 1 << y as u64;
       block_len += 1;
     } else {
@@ -141,7 +141,7 @@ pub fn chunk(chunk: ChunkWithPos, ver: ProtocolVersion, conv: &TypeConverter) ->
   buf.write_u64(block_empty_bitmap);
   // Sky light length
   buf.write_varint(sky_len);
-  if let Some(sky) = chunk.sky_light {
+  if let Some(sky) = chunk.packet.sky_light {
     for s in sky.sections().iter().flatten() {
       buf.write_varint(s.data().len() as i32);
       buf.write_buf(s.data());
@@ -149,10 +149,15 @@ pub fn chunk(chunk: ChunkWithPos, ver: ProtocolVersion, conv: &TypeConverter) ->
   }
   // Block light length
   buf.write_varint(block_len);
-  for s in chunk.block_light.sections().iter().flatten() {
+  for s in chunk.packet.block_light.sections().iter().flatten() {
     buf.write_varint(s.data().len() as i32);
     buf.write_buf(s.data());
   }
 
-  packet::ChunkDataV17 { chunk_x: chunk.pos.x(), chunk_z: chunk.pos.z(), unknown: data }.into()
+  packet::ChunkDataV17 {
+    chunk_x: chunk.packet.pos.x(),
+    chunk_z: chunk.packet.pos.z(),
+    unknown: data,
+  }
+  .into()
 }

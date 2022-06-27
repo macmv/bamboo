@@ -59,20 +59,31 @@ macro_rules! gpacket {
 
 macro_rules! to_tcp {
   (
-    $packet:ident, $self:ident, $conn:ident,
-    {
-      $( $expr:expr )*
-    }
+    $packet:ident => ($self:ident, $conn:ident) $block:block
   ) => {
     impl ToTcp for packet::$packet {
       fn to_tcp<S: PacketStream + Send + Sync>(
         $self: Self,
         $conn: &mut Conn<S>,
       ) -> Result<SmallVec<[GPacket; 2]>, WriteError> {
-        Ok(smallvec![{ $( $expr )* }])
+        Ok(smallvec![$block])
       }
     }
-  }
+  };
+}
+macro_rules! to_tcp_manual {
+  (
+    $packet:ident => ($self:ident, $conn:ident) $block:block
+  ) => {
+    impl ToTcp for packet::$packet {
+      fn to_tcp<S: PacketStream + Send + Sync>(
+        $self: Self,
+        $conn: &mut Conn<S>,
+      ) -> Result<SmallVec<[GPacket; 2]>, WriteError> {
+        $block
+      }
+    }
+  };
 }
 
 impl ToTcp for Packet {
@@ -83,6 +94,7 @@ impl ToTcp for Packet {
     match self {
       Packet::Abilities(p) => p.to_tcp(conn),
       Packet::Animation(p) => p.to_tcp(conn),
+      Packet::Chunk(p) => p.to_tcp(conn),
       /*
       Packet::BlockUpdate { pos, state } => {
         if ver >= ProtocolVersion::V1_19 {
@@ -168,13 +180,6 @@ impl ToTcp for Packet {
         } else {
           gpacket!(Chat V8 { chat_component: msg.to_json(), ty: ty as i8 })
         }
-      }
-      Packet::Chunk { pos, full, sections, sky_light, block_light } => {
-        return Ok(super::chunk(
-          super::ChunkWithPos { pos, full, sections, sky_light, block_light },
-          ver,
-          conn.conv(),
-        ));
       }
       Packet::CommandList { nodes, root } => {
         if ver < ProtocolVersion::V1_13 {
@@ -1380,7 +1385,7 @@ impl ToTcp for Packet {
   }
 }
 
-to_tcp!(Abilities, self, conn, {
+to_tcp!(Abilities => (self, conn) {
   if conn.ver() < ProtocolVersion::V1_16_5 {
     gpacket!(PlayerAbilities V8 {
       invulnerable:  self.invulnerable,
@@ -1403,7 +1408,7 @@ to_tcp!(Abilities, self, conn, {
     })
   }
 });
-to_tcp!(Animation, self, conn, {
+to_tcp!(Animation => (self, conn) {
   if conn.ver() == ProtocolVersion::V1_8 {
     gpacket!(Animation V8 {
       entity_id: self.eid,
@@ -1428,6 +1433,13 @@ to_tcp!(Animation, self, conn, {
       },
     })
   }
+});
+to_tcp_manual!(Chunk => (self, conn) {
+  Ok(super::chunk(
+    self,
+    conn.ver(),
+    conn.conv(),
+  ))
 });
 
 #[derive(Debug, Clone, Serialize)]

@@ -26,18 +26,15 @@ pub use sb::FromTcp;
 pub use metadata::metadata;
 
 pub struct ChunkWithPos {
-  pos:         ChunkPos,
-  full:        bool,
-  sections:    Vec<Option<Section>>,
-  sky_light:   Option<LightChunk<SkyLight>>,
-  block_light: LightChunk<BlockLight>,
+  packet: bb_common::net::cb::packet::Chunk,
 }
 
 pub fn chunk(
-  chunk: ChunkWithPos,
+  packet: bb_common::net::cb::packet::Chunk,
   ver: ProtocolVersion,
   conv: &TypeConverter,
 ) -> SmallVec<[Packet; 2]> {
+  let chunk = ChunkWithPos { packet };
   smallvec![match ver.block() {
     BlockVersion::V1_8 => v1_8::chunk(chunk, conv),
     BlockVersion::V1_9 | BlockVersion::V1_12 => v1_9::chunk(chunk, ver, conv),
@@ -76,11 +73,17 @@ impl ChunkWithPos {
   /// a few bytes.
   pub fn old_bit_map(&self) -> u16 {
     let mut bit_map = 0;
-    for (y, section) in self.sections.iter().enumerate() {
+    for (y, section) in self.packet.sections.iter().enumerate() {
       if section.is_some() {
         bit_map |= 1 << y;
       }
     }
     bit_map
   }
+}
+
+impl std::ops::Deref for ChunkWithPos {
+  type Target = bb_common::net::cb::packet::Chunk;
+
+  fn deref(&self) -> &Self::Target { &self.packet }
 }
