@@ -433,17 +433,43 @@ mod tests {
   use super::{super::TypeConverter, *};
 
   #[test]
-  fn test_generate() {
+  fn test_oak_leaves() {
     let conv = TypeConverter::new();
 
-    const ID: u32 = 148;
+    // Properties are stored in reverse direction. So the last element will be the
+    // least significant bits, and the first element will have the most significant
+    // bits.
+    //
+    // The values themselves are sometimes backwards. Booleans serialize `true` as
+    // `0` and `false` as `1`, for no apparent reason. Integers are serialized as
+    // `value - min`. In this example, `min` is 1, so the serialized value would be
+    // `0` for a distance of `1`.
+
+    let id = conv.get(Kind::OakLeaves).type_from_id(0).id();
+    let ty = conv.get(Kind::OakLeaves).default_type().with("waterlogged", true);
+    assert_eq!(ty.with("distance", 1).with("persistent", true).id(), id + 0 + 0 * 2 + 0 * 4);
+    assert_eq!(ty.with("distance", 1).with("persistent", false).id(), id + 0 + 1 * 2 + 0 * 4);
+    assert_eq!(ty.with("distance", 2).with("persistent", true).id(), id + 0 + 0 * 2 + 1 * 4);
+    assert_eq!(ty.with("distance", 2).with("persistent", false).id(), id + 0 + 1 * 2 + 1 * 4);
+    assert_eq!(ty.with("distance", 3).with("persistent", true).id(), id + 0 + 0 * 2 + 2 * 4);
+    assert_eq!(ty.with("distance", 3).with("persistent", false).id(), id + 0 + 1 * 2 + 2 * 4);
+    /*
+                                                                           ^   ^^^^^   ^^^^^
+                                                                           |   |       | distance
+                                                                           |   | persistent
+                                                                           | waterlogged
+    */
+    // This tests the default properties.
     let ty = conv.get(Kind::OakLeaves).default_type();
-    assert_eq!(ty.with("distance", 1).with("persistent", true).id(), ID + 0 + 0 * 2);
-    assert_eq!(ty.with("distance", 1).with("persistent", false).id(), ID + 1 + 0 * 2);
-    assert_eq!(ty.with("distance", 2).with("persistent", true).id(), ID + 0 + 1 * 2);
-    assert_eq!(ty.with("distance", 2).with("persistent", false).id(), ID + 1 + 1 * 2);
-    assert_eq!(ty.with("distance", 3).with("persistent", true).id(), ID + 0 + 2 * 2);
-    assert_eq!(ty.with("distance", 3).with("persistent", false).id(), ID + 1 + 2 * 2);
-    assert_eq!(ty.id(), ID + 1 + 6 * 2);
+    assert_eq!(ty.prop("waterlogged"), false);
+    assert_eq!(ty.prop("persistent"), false);
+    assert_eq!(ty.prop("distance"), 7);
+    assert_eq!(ty.id(), id + 1 + 1 * 2 + 6 * 4);
+    /*
+                             ^   ^^^^^   ^^^^^
+                             |   |       | distance (7 -> 6)
+                             |   | persistent (false -> 1)
+                             | waterlogged (false -> 1)
+    */
   }
 }
