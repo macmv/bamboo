@@ -23,6 +23,9 @@ use serde::Serialize;
 use smallvec::SmallVec;
 use std::{error::Error, fmt};
 
+pub mod dimensions;
+mod impls;
+
 #[derive(Debug, Clone)]
 pub enum WriteError {
   InvalidVer,
@@ -45,47 +48,6 @@ pub trait ToTcp {
   ) -> Result<SmallVec<[GPacket; 2]>, WriteError>;
 }
 
-macro_rules! gpacket {
-  ( $name:ident $ver:ident { $( $field:ident $(: $value:expr)? ),* $(,)? } ) => {
-    concat_idents::concat_idents!(packet_name = $name,$ver {
-      GPacket::$name(gpacket::$name::$ver(gpacket::packet_name {
-        $(
-          $field $(: $value)?,
-        )*
-      }))
-    })
-  }
-}
-
-macro_rules! to_tcp {
-  (
-    $packet:ident => ($self:ident, $conn:ident) $block:block
-  ) => {
-    impl ToTcp for packet::$packet {
-      fn to_tcp<S: PacketStream + Send + Sync>(
-        $self: Self,
-        $conn: &mut Conn<S>,
-      ) -> Result<SmallVec<[GPacket; 2]>, WriteError> {
-        Ok(smallvec![$block])
-      }
-    }
-  };
-}
-macro_rules! to_tcp_manual {
-  (
-    $packet:ident => ($self:ident, $conn:ident) $block:block
-  ) => {
-    impl ToTcp for packet::$packet {
-      fn to_tcp<S: PacketStream + Send + Sync>(
-        $self: Self,
-        $conn: &mut Conn<S>,
-      ) -> Result<SmallVec<[GPacket; 2]>, WriteError> {
-        $block
-      }
-    }
-  };
-}
-
 impl ToTcp for Packet {
   fn to_tcp<S: PacketStream + Send + Sync>(
     self,
@@ -95,6 +57,18 @@ impl ToTcp for Packet {
       Packet::Abilities(p) => p.to_tcp(conn),
       Packet::Animation(p) => p.to_tcp(conn),
       Packet::Chunk(p) => p.to_tcp(conn),
+      /*
+      Packet::BlockUpdate(p) => p.to_tcp(conn),
+      Packet::ChangeGameState(p) => p.to_tcp(conn),
+      Packet::Chat(p) => p.to_tcp(conn),
+      Packet::CommandList(p) => p.to_tcp(conn),
+      Packet::CollectItem(p) => p.to_tcp(conn),
+      Packet::EntityEquipment(p) => p.to_tcp(conn),
+      Packet::EntityHeadLook(p) => p.to_tcp(conn),
+      Packet::EntityLook(p) => p.to_tcp(conn),
+      Packet::EntityMove(p) => p.to_tcp(conn),
+      Packet::EntityMoveLook(p) => p.to_tcp(conn),
+      */
       /*
       Packet::BlockUpdate { pos, state } => {
         if ver >= ProtocolVersion::V1_19 {
@@ -1383,323 +1357,6 @@ impl ToTcp for Packet {
       }
     }
   }
-}
-
-to_tcp!(Abilities => (self, conn) {
-  if conn.ver() < ProtocolVersion::V1_16_5 {
-    gpacket!(PlayerAbilities V8 {
-      invulnerable:  self.invulnerable,
-      flying:        self.flying,
-      allow_flying:  self.allow_flying,
-      creative_mode: self.insta_break,
-      fly_speed:     self.fly_speed * 0.05,
-      walk_speed:    self.walk_speed * 0.1,
-      v_2:           0,
-    })
-  } else {
-    gpacket!(PlayerAbilities V16 {
-      invulnerable:  self.invulnerable,
-      flying:        self.flying,
-      allow_flying:  self.allow_flying,
-      creative_mode: self.insta_break,
-      fly_speed:     self.fly_speed * 0.05,
-      walk_speed:    self.walk_speed * 0.1,
-      v_2:           0,
-    })
-  }
-});
-to_tcp!(Animation => (self, conn) {
-  if conn.ver() == ProtocolVersion::V1_8 {
-    gpacket!(Animation V8 {
-      entity_id: self.eid,
-      ty:        match self.kind {
-        cb::AnimationKind::Swing(_) => 0,
-        cb::AnimationKind::Damage => 1,
-        cb::AnimationKind::LeaveBed => 2,
-        cb::AnimationKind::Crit => 4,
-        cb::AnimationKind::MagicCrit => 5,
-      },
-    })
-  } else {
-    gpacket!(Animation V8 {
-      entity_id: self.eid,
-      ty:        match self.kind {
-        cb::AnimationKind::Swing(Hand::Main) => 0,
-        cb::AnimationKind::Damage => 1,
-        cb::AnimationKind::LeaveBed => 2,
-        cb::AnimationKind::Swing(Hand::Off) => 0,
-        cb::AnimationKind::Crit => 4,
-        cb::AnimationKind::MagicCrit => 5,
-      },
-    })
-  }
-});
-to_tcp_manual!(Chunk => (self, conn) {
-  Ok(super::chunk(
-    self,
-    conn.ver(),
-    conn.conv(),
-  ))
-});
-
-#[derive(Debug, Clone, Serialize)]
-struct Dimension {
-  ambient_light:        f32,
-  bed_works:            bool,
-  coordinate_scale:     f32,
-  effects:              String,
-  has_ceiling:          bool,
-  has_raids:            bool,
-  has_skylight:         bool,
-  height:               i32, // 1.17+
-  infiniburn:           String,
-  logical_height:       i32,
-  min_y:                i32, // 1.17+
-  natural:              bool,
-  piglin_safe:          bool,
-  fixed_time:           i64,
-  respawn_anchor_works: bool,
-  ultrawarm:            bool,
-
-  // 1.19+
-  monster_spawn_light_level:       i32,
-  monster_spawn_block_light_limit: i32,
-}
-
-#[derive(Debug, Clone, Serialize)]
-struct Biome {
-  category:      String,
-  depth:         f32,
-  downfall:      f32,
-  effects:       BiomeEffects,
-  precipitation: String,
-  scale:         f32,
-  temperature:   f32,
-}
-#[derive(Debug, Clone, Serialize)]
-struct BiomeEffects {
-  sky_color:       i32,
-  fog_color:       i32,
-  water_fog_color: i32,
-  water_color:     i32,
-  #[serde(skip_serializing_if = "Option::is_none")]
-  foliage_color:   Option<i32>,
-  #[serde(skip_serializing_if = "Option::is_none")]
-  grass_color:     Option<i32>,
-  #[serde(skip_serializing_if = "Option::is_none")]
-  mood_sound:      Option<MoodSound>, // 1.18.2+
-}
-#[derive(Debug, Clone, Serialize)]
-struct MoodSound {
-  block_search_extent: i32,
-  offset:              f64,
-  sound:               String,
-  tick_delay:          i32,
-}
-
-#[derive(Debug, Clone, Serialize)]
-struct LoginInfo {
-  #[serde(rename = "minecraft:dimension_type")]
-  dimensions: Codec<Dimension>,
-  #[serde(rename = "minecraft:worldgen/biome")]
-  biomes:     Codec<Biome>,
-}
-#[derive(Debug, Clone, Serialize)]
-struct Codec<T> {
-  #[serde(rename = "type")]
-  ty:    String,
-  value: Vec<CodecItem<T>>,
-}
-#[derive(Debug, Clone, Serialize)]
-struct CodecItem<T> {
-  name:    String,
-  id:      i32,
-  element: T,
-}
-
-fn write_dimensions<T>(
-  out: &mut Buffer<T>,
-  ver: ProtocolVersion,
-  world_height: u32,
-  world_min_y: i32,
-) where
-  std::io::Cursor<T>: std::io::Write,
-{
-  let dimension = Dimension {
-    piglin_safe:          false,
-    natural:              true,
-    ambient_light:        0.0,
-    fixed_time:           6000,
-    infiniburn:           "#minecraft:infiniburn_overworld".into(),
-    respawn_anchor_works: false,
-    has_skylight:         true,
-    bed_works:            true,
-    effects:              "minecraft:overworld".into(),
-    has_raids:            false,
-    logical_height:       128,
-    coordinate_scale:     1.0,
-    ultrawarm:            false,
-    has_ceiling:          false,
-    min_y:                world_min_y,
-    height:               (world_height as i32 + 15) / 16 * 16,
-
-    monster_spawn_light_level:       7,
-    monster_spawn_block_light_limit: 7,
-  };
-  let biome = Biome {
-    precipitation: "rain".into(),
-    depth:         1.0,
-    temperature:   1.0,
-    scale:         1.0,
-    downfall:      1.0,
-    category:      "none".into(),
-    effects:       BiomeEffects {
-      sky_color:       0x78a7ff,
-      fog_color:       0xc0d8ff,
-      water_fog_color: 0x050533,
-      water_color:     0x3f76e4,
-      foliage_color:   None,
-      grass_color:     None,
-      mood_sound:      Some(MoodSound {
-        block_search_extent: 8,
-        offset:              2.0,
-        sound:               "minecraft:ambient.cave".into(),
-        tick_delay:          6000,
-      }),
-      // sky_color:       0xff00ff,
-      // water_color:     0xff00ff,
-      // fog_color:       0xff00ff,
-      // water_fog_color: 0xff00ff,
-      // grass_color:     0xff00ff,
-      // foliage_color:   0x00ffe5,
-      // grass_color:     0xff5900,
-    },
-  };
-  let dimension_tag = nbt::to_nbt("", &dimension).unwrap();
-
-  let info = LoginInfo {
-    dimensions: Codec {
-      ty:    "minecraft:dimension_type".into(),
-      value: vec![CodecItem {
-        name:    "minecraft:overworld".into(),
-        id:      0,
-        element: dimension,
-      }],
-    },
-    biomes:     Codec {
-      ty:    "minecraft:worldgen/biome".into(),
-      value: vec![CodecItem { name: "minecraft:plains".into(), id: 0, element: biome }],
-    },
-  };
-
-  // Dimension codec
-  out.write_buf(&nbt::to_nbt("", &info).unwrap().serialize());
-  if ver >= ProtocolVersion::V1_19 {
-    // Current dimension type (key in dimension codec)
-    out.write_str("minecraft:overworld");
-    // Current world
-    out.write_str("minecraft:overworld");
-  } else {
-    // World codec (included in dimension)
-    out.write_buf(&dimension_tag.serialize());
-    // Current world
-    out.write_str("minecraft:overworld");
-  }
-}
-
-#[test]
-fn test_codec() {
-  use bb_common::nbt::Tag;
-
-  let expected = Tag::compound(&[
-    ("piglin_safe", Tag::Byte(0)),
-    ("natural", Tag::Byte(1)),
-    ("ambient_light", Tag::Float(0.0)),
-    ("fixed_time", Tag::Long(6000)),
-    ("infiniburn", Tag::String("".into())),
-    ("respawn_anchor_works", Tag::Byte(0)),
-    ("has_skylight", Tag::Byte(1)),
-    ("bed_works", Tag::Byte(1)),
-    ("effects", Tag::String("minecraft:overworld".into())),
-    ("has_raids", Tag::Byte(0)),
-    ("logical_height", Tag::Int(128)),
-    ("coordinate_scale", Tag::Float(1.0)),
-    ("ultrawarm", Tag::Byte(0)),
-    ("has_ceiling", Tag::Byte(0)),
-    // 1.17+
-    ("min_y", Tag::Int(0)),
-    ("height", Tag::Int(256)),
-  ]);
-  let dimension = Dimension {
-    piglin_safe:          false,
-    natural:              true,
-    ambient_light:        0.0,
-    fixed_time:           6000,
-    infiniburn:           "".into(),
-    respawn_anchor_works: false,
-    has_skylight:         true,
-    bed_works:            true,
-    effects:              "minecraft:overworld".into(),
-    has_raids:            false,
-    logical_height:       128,
-    coordinate_scale:     1.0,
-    ultrawarm:            false,
-    has_ceiling:          false,
-    min_y:                0,
-    height:               256,
-  };
-  assert_eq!(expected, nbt::to_tag(&dimension).unwrap());
-  let expected = Tag::compound(&[
-    ("precipitation", Tag::String("rain".into())),
-    ("depth", Tag::Float(1.0)),
-    ("temperature", Tag::Float(1.0)),
-    ("scale", Tag::Float(1.0)),
-    ("downfall", Tag::Float(1.0)),
-    ("category", Tag::String("none".into())),
-    (
-      "effects",
-      Tag::compound(&[
-        ("sky_color", Tag::Int(0x78a7ff)),
-        ("fog_color", Tag::Int(0xc0d8ff)),
-        ("water_fog_color", Tag::Int(0x050533)),
-        ("water_color", Tag::Int(0x3f76e4)),
-        // ("sky_color", Tag::Int(0xff00ff)),
-        // ("water_color", Tag::Int(0xff00ff)),
-        // ("fog_color", Tag::Int(0xff00ff)),
-        // ("water_fog_color", Tag::Int(0xff00ff)),
-        // ("grass_color", Tag::Int(0xff00ff)),
-        // ("foliage_color", Tag::Int(0x00ffe5)),
-        // ("grass_color", Tag::Int(0xff5900)),
-      ]),
-    ),
-  ]);
-  let biome = Biome {
-    precipitation: "rain".into(),
-    depth:         1.0,
-    temperature:   1.0,
-    scale:         1.0,
-    downfall:      1.0,
-    category:      "none".into(),
-    effects:       BiomeEffects {
-      sky_color:       0x78a7ff,
-      fog_color:       0xc0d8ff,
-      water_fog_color: 0x050533,
-      water_color:     0x3f76e4,
-      foliage_color:   None,
-      grass_color:     None,
-      mood_sound:      None,
-      // sky_color:       0xff00ff,
-      // water_color:     0xff00ff,
-      // fog_color:       0xff00ff,
-      // water_fog_color: 0xff00ff,
-      // grass_color:     0xff00ff,
-      // foliage_color:   0x00ffe5,
-      // grass_color:     0xff5900,
-    },
-  };
-  dbg!(&expected);
-  dbg!(&nbt::to_tag(&biome).unwrap());
-  assert_eq!(expected, nbt::to_tag(&biome).unwrap());
 }
 
 fn object_ty(entity: i32) -> i32 {
