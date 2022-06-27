@@ -12,9 +12,8 @@ use bb_common::{
   net::{
     cb,
     cb::{
-      Animation, ArmorSlot, CommandType, EquipmentSlot, ObjectiveAction, ObjectiveType, Packet,
-      ScoreboardAction, ScoreboardDisplay, SoundCategory, TeamAction, TeamInfo, TeamRule,
-      TitleAction,
+      packet, ArmorSlot, CommandType, EquipmentSlot, ObjectiveAction, ObjectiveType, Packet,
+      ScoreboardAction, SoundCategory, TeamAction, TeamInfo, TeamRule, TitleAction,
     },
   },
   util::{chat, Buffer, GameMode, Hand, UUID},
@@ -58,69 +57,33 @@ macro_rules! gpacket {
   }
 }
 
+macro_rules! to_tcp {
+  (
+    $packet:ident, $self:ident, $conn:ident,
+    {
+      $( $expr:expr )*
+    }
+  ) => {
+    impl ToTcp for packet::$packet {
+      fn to_tcp<S: PacketStream + Send + Sync>(
+        $self: Self,
+        $conn: &mut Conn<S>,
+      ) -> Result<SmallVec<[GPacket; 2]>, WriteError> {
+        Ok(smallvec![{ $( $expr )* }])
+      }
+    }
+  }
+}
+
 impl ToTcp for Packet {
   fn to_tcp<S: PacketStream + Send + Sync>(
     self,
     conn: &mut Conn<S>,
   ) -> Result<SmallVec<[GPacket; 2]>, WriteError> {
-    let ver = conn.ver();
-
-    Ok(smallvec![match self {
-      Packet::Abilities {
-        invulnerable,
-        flying,
-        allow_flying,
-        insta_break,
-        fly_speed,
-        walk_speed,
-      } =>
-        if ver < ProtocolVersion::V1_16_5 {
-          gpacket!(PlayerAbilities V8 {
-            invulnerable,
-            flying,
-            allow_flying,
-            creative_mode: insta_break,
-            fly_speed: fly_speed * 0.05,
-            walk_speed: walk_speed * 0.1,
-            v_2: 0,
-          })
-        } else {
-          gpacket!(PlayerAbilities V16 {
-            invulnerable,
-            flying,
-            allow_flying,
-            creative_mode: insta_break,
-            fly_speed: fly_speed * 0.05,
-            walk_speed: walk_speed * 0.1,
-            v_2: 0,
-          })
-        },
-      Packet::Animation { eid, kind } => {
-        if ver == ProtocolVersion::V1_8 {
-          gpacket!(Animation V8 {
-            entity_id: eid,
-            ty:        match kind {
-              Animation::Swing(_) => 0,
-              Animation::Damage => 1,
-              Animation::LeaveBed => 2,
-              Animation::Crit => 4,
-              Animation::MagicCrit => 5,
-            },
-          })
-        } else {
-          gpacket!(Animation V8 {
-            entity_id: eid,
-            ty:        match kind {
-              Animation::Swing(Hand::Main) => 0,
-              Animation::Damage => 1,
-              Animation::LeaveBed => 2,
-              Animation::Swing(Hand::Off) => 0,
-              Animation::Crit => 4,
-              Animation::MagicCrit => 5,
-            },
-          })
-        }
-      }
+    match self {
+      Packet::Abilities(p) => p.to_tcp(conn),
+      Packet::Animation(p) => p.to_tcp(conn),
+      /*
       Packet::BlockUpdate { pos, state } => {
         if ver >= ProtocolVersion::V1_19 {
           gpacket!(BlockUpdate V19 { pos, state: state as i32 })
@@ -1408,10 +1371,64 @@ impl ToTcp for Packet {
           gpacket!(SetSlot V8 { window_id: wid.into(), slot, unknown: buf.serialize() })
         }
       }
-      _ => todo!("convert {:?} into generated packet", self),
-    }])
+      */
+      _ => {
+        warn!("convert {:?} into generated packet", self);
+        Ok(smallvec![])
+      }
+    }
   }
 }
+
+to_tcp!(Abilities, self, conn, {
+  if conn.ver() < ProtocolVersion::V1_16_5 {
+    gpacket!(PlayerAbilities V8 {
+      invulnerable:  self.invulnerable,
+      flying:        self.flying,
+      allow_flying:  self.allow_flying,
+      creative_mode: self.insta_break,
+      fly_speed:     self.fly_speed * 0.05,
+      walk_speed:    self.walk_speed * 0.1,
+      v_2:           0,
+    })
+  } else {
+    gpacket!(PlayerAbilities V16 {
+      invulnerable:  self.invulnerable,
+      flying:        self.flying,
+      allow_flying:  self.allow_flying,
+      creative_mode: self.insta_break,
+      fly_speed:     self.fly_speed * 0.05,
+      walk_speed:    self.walk_speed * 0.1,
+      v_2:           0,
+    })
+  }
+});
+to_tcp!(Animation, self, conn, {
+  if conn.ver() == ProtocolVersion::V1_8 {
+    gpacket!(Animation V8 {
+      entity_id: self.eid,
+      ty:        match self.kind {
+        cb::AnimationKind::Swing(_) => 0,
+        cb::AnimationKind::Damage => 1,
+        cb::AnimationKind::LeaveBed => 2,
+        cb::AnimationKind::Crit => 4,
+        cb::AnimationKind::MagicCrit => 5,
+      },
+    })
+  } else {
+    gpacket!(Animation V8 {
+      entity_id: self.eid,
+      ty:        match self.kind {
+        cb::AnimationKind::Swing(Hand::Main) => 0,
+        cb::AnimationKind::Damage => 1,
+        cb::AnimationKind::LeaveBed => 2,
+        cb::AnimationKind::Swing(Hand::Off) => 0,
+        cb::AnimationKind::Crit => 4,
+        cb::AnimationKind::MagicCrit => 5,
+      },
+    })
+  }
+});
 
 #[derive(Debug, Clone, Serialize)]
 struct Dimension {
