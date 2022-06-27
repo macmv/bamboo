@@ -206,6 +206,9 @@ fn test_codec() {
     has_ceiling:          false,
     min_y:                0,
     height:               256,
+
+    monster_spawn_light_level:       7,
+    monster_spawn_block_light_limit: 7,
   };
   assert_eq!(expected, nbt::to_tag(&dimension).unwrap());
   let expected = Tag::compound(&[
