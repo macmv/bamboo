@@ -121,7 +121,7 @@ fn run(rows: u16) -> Result<(), Box<dyn Error>> {
                 break;
               }
             }
-            Err(ref e) if e.is_would_block() => break,
+            Err(ref e) if e.io_kind() == Some(io::ErrorKind::WouldBlock) => break,
             Err(e) => {
               error!("error while listening to client {:?}: {}", tok, e);
               closed = true;
@@ -138,7 +138,7 @@ fn run(rows: u16) -> Result<(), Box<dyn Error>> {
         while conn.needs_flush() {
           match conn.flush() {
             Ok(_) => {}
-            Err(ref e) if e.is_would_block() => break,
+            Err(ref e) if e.io_kind() == Some(io::ErrorKind::WouldBlock) => break,
             Err(e) => {
               error!("error while flushing packets to the client {:?}: {}", tok, e);
               break;

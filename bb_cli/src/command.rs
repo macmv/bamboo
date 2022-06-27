@@ -16,7 +16,7 @@ pub fn handle(
     "say" => {
       let saying = args.join(" ");
       writeln!(l, "saying {}", saying)?;
-      stream.write(sb::Packet::ChatV8 { message: saying });
+      stream.send(sb::packet::ChatV8 { message: saying });
     }
     "move" => {
       if args.len() != 3 {
@@ -36,13 +36,13 @@ pub fn handle(
         Err(_) => return Ok(()),
       };
       writeln!(l, "moving to {} {} {}", x, y, z)?;
-      stream.write(sb::Packet::PlayerPositionV8 { x, y, z, on_ground: true });
+      stream.send(sb::packet::PlayerPositionV8 { x, y, z, on_ground: true });
     }
     c if c.starts_with('/') => {
       let mut out = command.to_string();
       out.push_str(&args.join(" "));
       writeln!(l, "sending command {}", out)?;
-      stream.write(sb::Packet::ChatV8 { message: out });
+      stream.send(sb::packet::ChatV8 { message: out });
     }
     _ => {
       writeln!(l, "unknown command: {}", command)?;

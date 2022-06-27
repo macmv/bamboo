@@ -12,10 +12,10 @@ use std::time::Instant;
 
 pub fn handle_packet(stream: &mut ConnStream, status: &Mutex<Status>, p: cb::Packet) -> Result<()> {
   match p {
-    cb::Packet::JoinGameV8 { .. } => {}
-    cb::Packet::ChatV8 { chat_component, ty } => match Chat::from_json(&chat_component) {
+    cb::Packet::JoinGame(cb::packet::JoinGame::V8(_)) => {}
+    cb::Packet::Chat(cb::packet::Chat::V8(p)) => match Chat::from_json(&p.chat_component) {
       Ok(m) => {
-        if ty == 0 {
+        if p.ty == 0 {
           info!("chat: {}", m.to_plain())
         } else {
           status.lock().hotbar = m.to_plain();
@@ -23,18 +23,18 @@ pub fn handle_packet(stream: &mut ConnStream, status: &Mutex<Status>, p: cb::Pac
       }
       Err(e) => warn!("invalid chat: {}", e),
     },
-    cb::Packet::DisconnectV8 { reason } => {
-      error!("disconnected: {}", reason);
+    cb::Packet::Disconnect(cb::packet::Disconnect::V8(p)) => {
+      error!("disconnected: {}", p.reason);
       // TODO: disconnect
     }
-    cb::Packet::KeepAliveV8 { id } => {
-      stream.write(sb::Packet::KeepAliveV8 { key: id });
+    cb::Packet::KeepAlive(cb::packet::KeepAlive::V8(p)) => {
+      stream.send(sb::packet::KeepAliveV8 { key: p.id });
       status.lock().last_keep_alive = Instant::now();
     }
-    cb::Packet::ChunkDataV8 { chunk_x, chunk_z, unknown, .. } => {
+    cb::Packet::ChunkData(cb::packet::ChunkData::V8(p)) => {
       let mut lock = status.lock();
-      let pos = ChunkPos::new(chunk_x, chunk_z);
-      let mut buf = Buffer::new(unknown);
+      let pos = ChunkPos::new(p.chunk_x, p.chunk_z);
+      let mut buf = Buffer::new(p.unknown);
       let bit_map = buf.read_u16()?;
       let len = buf.read_varint()?;
       if bit_map == 0 && len == 0 {
@@ -46,18 +46,18 @@ pub fn handle_packet(stream: &mut ConnStream, status: &Mutex<Status>, p: cb::Pac
         lock.loaded_chunks.insert(pos);
       }
     }
-    cb::Packet::PlayerListHeaderV8 { header, footer } => {
+    cb::Packet::PlayerListHeader(cb::packet::PlayerListHeader::V8(p)) => {
       let mut lock = status.lock();
-      match Chat::from_json(&header) {
+      match Chat::from_json(&p.header) {
         Ok(m) => lock.header = m.to_plain().replace('\n', ""),
         Err(e) => warn!("invalid header: {}", e),
       }
-      match Chat::from_json(&footer) {
+      match Chat::from_json(&p.footer) {
         Ok(m) => lock.footer = m.to_plain().replace('\n', ""),
         Err(e) => warn!("invalid footer: {}", e),
       }
     }
-    cb::Packet::ParticleV8 { .. } => {}
+    cb::Packet::Particle(cb::packet::Particle::V8(p)) => {}
     p => warn!("unhandled packet {}...", &format!("{:?}", p)[..40]),
   }
   Ok(())

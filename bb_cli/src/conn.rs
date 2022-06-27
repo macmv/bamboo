@@ -32,7 +32,8 @@ impl ConnStream {
     out.write_str("macmv");
     self.stream.write(out);
   }
-  pub fn write(&mut self, p: sb::Packet) {
+  pub fn send(&mut self, p: impl Into<sb::Packet>) {
+    let p = p.into();
     let mut tcp = tcp::Packet::new(p.tcp_id(self.ver) as i32, self.ver);
     p.to_tcp(&mut tcp);
     self.stream.write(tcp);
