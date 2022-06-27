@@ -8,14 +8,14 @@ use std::marker::PhantomData;
 pub use bb_common::{chunk, transfer, util};
 
 mod ffi_impls;
-mod store;
 mod internal;
+mod store;
 
 pub mod block;
-pub mod math;
 pub mod command;
 pub mod entity;
 pub mod item;
+pub mod math;
 pub mod particle;
 pub mod player;
 pub mod sync;

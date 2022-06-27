@@ -270,7 +270,7 @@ impl World {
         head_yaw: (p.yaw / 360.0 * 256.0) as i8,
         // We can't really check if its a falling block on the proxy, so we do cross-versioning
         // this here.
-        data:  if ent.ty() == entity::Type::FallingBlock {
+        data:     if ent.ty() == entity::Type::FallingBlock {
           let bid = player.world().block_converter().to_old(data as u32, player.ver().block());
           if player.ver().block() <= bb_common::version::BlockVersion::V1_12 {
             // Reason for switching metadata in this one location: no idea whatsoever.

@@ -559,9 +559,9 @@ impl Player {
   /// block, then the position you clicked on is not the same as the position
   /// where the new block is. However, if you click on tall grass, then the tall
   /// grass will be replaced by the new block. The client assumes this, and it
-  /// ends up becoming desynchronized from the server. So this function is called
-  /// on that tall grass block, to prevent the client from showing the wrong
-  /// block.
+  /// ends up becoming desynchronized from the server. So this function is
+  /// called on that tall grass block, to prevent the client from showing the
+  /// wrong block.
   pub fn sync_block_at(&self, pos: Pos) {
     let ty = self.world().get_block(pos).unwrap_or(block::TypeStore::air());
     self.send(cb::packet::BlockUpdate {
