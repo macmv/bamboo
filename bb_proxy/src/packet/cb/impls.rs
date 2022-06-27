@@ -6,7 +6,7 @@ use crate::{
 };
 use bb_common::{
   net::{cb, cb::packet},
-  util::Hand,
+  util::{Buffer, GameMode, Hand, UUID},
   version::ProtocolVersion,
 };
 use smallvec::SmallVec;
@@ -107,4 +107,146 @@ to_tcp_manual!(Chunk => (self, conn) {
     conn.ver(),
     conn.conv(),
   ))
+});
+to_tcp!(BlockUpdate => (self, conn) {
+  if conn.ver() >= ProtocolVersion::V1_19 {
+    gpacket!(BlockUpdate V19 { pos: self.pos, state: self.state as i32 })
+  } else {
+    let mut data = vec![];
+    let mut buf = Buffer::new(&mut data);
+    buf.write_varint(self.state as i32);
+    gpacket!(BlockUpdate V8 { block_position: self.pos, unknown: data })
+  }
+});
+to_tcp!(ChangeGameState => (self, conn) {
+  use bb_common::net::cb::ChangeGameStateKind as Action;
+
+  let reason = match self.action {
+    Action::InvalidBed => 0,
+    Action::EndRaining => 1,
+    Action::BeginRaining => 2,
+    Action::GameMode(_) => 3,
+    Action::EnterCredits => 4,
+    Action::DemoMessage(_) => 5,
+    Action::ArrowHitPlayer => 6,
+    Action::FadeValue(_) => 7,
+    Action::FadeTime(_) => 8,
+    Action::PufferfishSting => {
+      if conn.ver() < ProtocolVersion::V1_14_4 {
+        return Err(WriteError::InvalidVer);
+      } else {
+        9
+      }
+    }
+    Action::ElderGuardianAppear => 10,
+    Action::EnableRespawnScreen(_) => {
+      if conn.ver() < ProtocolVersion::V1_15_2 {
+        return Err(WriteError::InvalidVer);
+      } else {
+        9
+      }
+    }
+  };
+  let value = match self.action {
+    Action::GameMode(mode) => match mode {
+      GameMode::Survival => 0.0,
+      GameMode::Creative => 1.0,
+      GameMode::Adventure => 2.0,
+      GameMode::Spectator => 3.0,
+    },
+    Action::DemoMessage(v) => v,
+    Action::FadeValue(v) => v,
+    Action::FadeTime(v) => v,
+    Action::EnableRespawnScreen(enable) => {
+      if enable {
+        0.0
+      } else {
+        1.0
+      }
+    }
+    _ => 0.0,
+  };
+  if conn.ver() >= ProtocolVersion::V1_16_5 {
+    let mut data = vec![];
+    let mut buf = Buffer::new(&mut data);
+    buf.write_u8(reason);
+    buf.write_f32(value);
+    gpacket!(ChangeGameState V16 { unknown: data })
+  } else {
+    gpacket!(ChangeGameState V8 { state: reason.into(), field_149141_c: value })
+  }
+});
+to_tcp!(ChatMessage => (self, conn) {
+  if conn.ver() >= ProtocolVersion::V1_19 {
+    gpacket!(SystemChat V19 {
+      a: self.msg.to_json(), // content
+      b: 1,                  // type
+    })
+  } else if conn.ver() >= ProtocolVersion::V1_16_5 {
+    let mut data = vec![];
+    let mut buf = Buffer::new(&mut data);
+    buf.write_u8(self.ty);
+    buf.write_uuid(UUID::from_u128(0));
+    gpacket!(Chat V12 { chat_component: self.msg.to_json(), unknown: data })
+  } else if conn.ver() >= ProtocolVersion::V1_12_2 {
+    gpacket!(Chat V12 { chat_component: self.msg.to_json(), unknown: vec![self.ty] })
+  } else {
+    gpacket!(Chat V8 { chat_component: self.msg.to_json(), ty: self.ty as i8 })
+  }
+});
+to_tcp!(CommandList => (self, conn) {
+  use bb_common::net::cb::CommandType;
+
+  if conn.ver() < ProtocolVersion::V1_13 {
+    panic!("command tree doesn't exist for version {}", conn.ver());
+  }
+  if conn.ver() >= ProtocolVersion::V1_19 {
+    return Ok(smallvec![]);
+  }
+  let mut data = vec![];
+  let mut buf = Buffer::new(&mut data);
+  buf.write_list(&self.nodes, |buf, node| {
+    let mut flags = match node.ty {
+      CommandType::Root => 0,
+      CommandType::Literal => 1,
+      CommandType::Argument => 2,
+    };
+    if node.executable {
+      flags |= 0x04;
+    }
+    if node.redirect.is_some() {
+      flags |= 0x08;
+    }
+    if node.suggestion.is_some() {
+      flags |= 0x10;
+    }
+    buf.write_u8(flags);
+    buf.write_list(&node.children, |buf, child| buf.write_varint(*child as i32));
+    if let Some(redirect) = node.redirect {
+      buf.write_varint(redirect as i32);
+    }
+    if node.ty == CommandType::Literal || node.ty == CommandType::Argument {
+      buf.write_str(&node.name);
+    }
+    if node.ty == CommandType::Argument {
+      if conn.ver() >= ProtocolVersion::V1_19 {
+        // buf.write_varint(conn.conv().command_to_old(node.parser.id(),
+        // ver));
+      } else {
+        buf.write_str(&node.parser);
+      }
+      buf.write_buf(&node.properties);
+    }
+    if let Some(suggestion) = &node.suggestion {
+      buf.write_str(suggestion);
+    }
+  });
+  buf.write_varint(self.root as i32);
+  if conn.ver() >= ProtocolVersion::V1_19 {
+    gpacket!(CommandTree V19 { unknown: data })
+  } else if conn.ver() >= ProtocolVersion::V1_16_5 {
+    gpacket!(CommandTree V16 { unknown: data })
+  } else {
+    gpacket!(CommandTree V14 { unknown: data })
+  }
 });
