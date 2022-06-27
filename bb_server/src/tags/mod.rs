@@ -22,8 +22,8 @@ impl Tags {
   #[allow(clippy::new_without_default)]
   pub fn new() -> Self { Tags { categories: generate_tags() } }
 
-  pub fn serialize(&self) -> cb::Packet {
-    cb::Packet::Tags {
+  pub fn serialize(&self) -> cb::packet::Tags {
+    cb::packet::Tags {
       block:       self.categories.block.serialize(TagKind::Block),
       item:        self.categories.item.serialize(TagKind::Item),
       fluid:       self.categories.fluid.serialize(TagKind::Fluid),

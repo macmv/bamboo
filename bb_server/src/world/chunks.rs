@@ -108,7 +108,7 @@ impl World {
   }
   pub fn queue_chunk(&self, pos: ChunkPos, player: &Arc<Player>) {
     if self.regions.region(pos, |region| region.has_chunk(pos)) {
-      player.send_chunk(pos, || self.serialize_chunk(pos));
+      player.send_chunk(pos, || self.serialize_chunk(pos).into());
       return;
     }
     self.chunks_to_load.lock().add(pos, player);
@@ -134,7 +134,7 @@ impl World {
               let out = s.world.serialize_chunk(pos);
               for weak in chunk.players.values() {
                 if let Some(p) = weak.upgrade() {
-                  p.send_chunk(pos, || out.clone());
+                  p.send_chunk(pos, || out.clone().into());
                 }
               }
             }

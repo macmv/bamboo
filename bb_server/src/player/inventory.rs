@@ -109,7 +109,7 @@ impl PlayerInventory {
   pub(crate) fn set_selected(&mut self, index: u8) {
     if self.hotbar.get_raw(index as u32) != self.hotbar.get_raw(self.selected_index as u32) {
       let p = self.player.upgrade().unwrap();
-      p.send_to_in_view(cb::Packet::EntityEquipment {
+      p.send_to_in_view(cb::packet::EntityEquipment {
         eid:  p.eid(),
         slot: cb::EquipmentSlot::Hand(Hand::Main),
         item: self.hotbar.get_raw(index as u32).unwrap().to_item(),
@@ -240,7 +240,7 @@ impl PlayerInventory {
       items.push(it.to_item());
     }
     let held = self.held.to_item();
-    self.main.conn.send(cb::Packet::WindowItems { wid: 1, items, held });
+    self.main.conn.send(cb::packet::WindowItems { wid: 1, items, held });
   }
   /// Sends an item update for the given slot. This shouldn't every be needed,
   /// as functions like [`set`](Self::set) and [`replace`](Self::replace) will
@@ -248,14 +248,14 @@ impl PlayerInventory {
   pub fn sync(&self, index: i32) {
     if index == self.selected_index as i32 + 36 {
       let p = self.player.upgrade().unwrap();
-      p.send_to_in_view(cb::Packet::EntityEquipment {
+      p.send_to_in_view(cb::packet::EntityEquipment {
         eid:  p.eid(),
         slot: cb::EquipmentSlot::Hand(Hand::Main),
         item: self.get(index).unwrap().to_item(),
       });
     }
     if index == -999 {
-      self.main.conn.send(cb::Packet::WindowItem {
+      self.main.conn.send(cb::packet::WindowItem {
         wid:  u8::MAX,
         slot: -1,
         item: self.held.to_item(),

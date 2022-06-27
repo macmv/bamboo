@@ -45,7 +45,7 @@ impl Team {
       postfix: Chat::new(" whaa"),
       wm,
     };
-    let out = cb::Packet::Teams {
+    let out = cb::packet::Teams {
       team:   name,
       action: TeamAction::Create { info: t.info(), entities: vec![] },
     };
@@ -71,7 +71,7 @@ impl Team {
 
   pub fn add(&mut self, player: &Player) {
     self.members.insert(player.id());
-    let out = cb::Packet::Teams {
+    let out = cb::packet::Teams {
       team:   self.name.clone(),
       action: TeamAction::AddEntities { entities: vec![player.username().clone()] },
     };
@@ -79,7 +79,7 @@ impl Team {
   }
 
   fn update_info(&self) {
-    let out = cb::Packet::Teams {
+    let out = cb::packet::Teams {
       team:   self.name.clone(),
       action: TeamAction::UpdateInfo { info: self.info() },
     };
@@ -102,7 +102,7 @@ impl Team {
 
   /// Creates the team for the player that has just joined.
   pub(crate) fn send_join(&self, player: &Player) {
-    player.send(cb::Packet::Teams {
+    player.send(cb::packet::Teams {
       team:   self.name.clone(),
       action: TeamAction::Create {
         info:     self.info(),

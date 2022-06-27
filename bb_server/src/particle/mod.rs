@@ -31,8 +31,8 @@ pub struct Particle {
 }
 
 impl Particle {
-  pub fn to_packet(&self, blocks: &block::TypeConverter, ver: ProtocolVersion) -> cb::Packet {
-    cb::Packet::Particle {
+  pub fn to_packet(&self, blocks: &block::TypeConverter, ver: ProtocolVersion) -> cb::packet::Particle {
+    cb::packet::Particle {
       id:         self.ty.id() as i32,
       long:       self.long_distance,
       pos:        self.pos,

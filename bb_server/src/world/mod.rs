@@ -234,7 +234,7 @@ impl World {
           Color::BrightGreen
         });
 
-        let out = cb::Packet::PlayerHeader { header: header.to_json(), footer: footer.to_json() };
+        let out = cb::packet::PlayerHeader { header: header.to_json(), footer: footer.to_json() };
         for p in self.players().values() {
           p.send(out.clone());
         }
@@ -267,7 +267,7 @@ impl World {
           // Do player collision and packets and stuff
           // Once per second, send keep alive packet
           if tick % 20 == 0 {
-            p.send(cb::Packet::KeepAlive { id: 1234556 });
+            p.send(cb::packet::KeepAlive { id: 1234556 });
           }
           s.uspt.fetch_add(start.elapsed().as_micros().try_into().unwrap(), Ordering::SeqCst);
         });
@@ -282,7 +282,7 @@ impl World {
             if ent.tick() {
               s.world.entities.write().remove(&eid);
               for p in s.world.players().iter().in_view(ent.pos().block().chunk()) {
-                p.send(cb::Packet::RemoveEntities { eids: vec![eid] });
+                p.send(cb::packet::RemoveEntities { eids: vec![eid] });
               }
             }
             s.uspt.fetch_add(start.elapsed().as_micros().try_into().unwrap(), Ordering::SeqCst);
@@ -442,13 +442,13 @@ impl World {
   ///
   /// If you are trying to produce a large block change packet, use
   /// [`serialize_partial_chunk`](Self::serialize_partial_chunk).
-  pub fn serialize_chunk(&self, pos: ChunkPos) -> cb::Packet {
+  pub fn serialize_chunk(&self, pos: ChunkPos) -> cb::packet::Chunk {
     self.chunk(pos, |c| {
       let inner = c.inner();
 
       let mut sections: Vec<_> = inner.sections().cloned().collect();
       sections.resize((self.height as usize + 15) / 16, None);
-      cb::Packet::Chunk {
+      cb::packet::Chunk {
         pos,
         full: true,
         sections,
@@ -469,7 +469,7 @@ impl World {
   /// be sent to the client. If that second does not exist, this function will
   /// panic. `min` and `max` should not be outside of 0..15, unless you are
   /// sending this to a 1.17+ client.
-  pub fn serialize_partial_chunk(&self, pos: ChunkPos, min: u32, max: u32) -> cb::Packet {
+  pub fn serialize_partial_chunk(&self, pos: ChunkPos, min: u32, max: u32) -> cb::packet::Chunk {
     self.chunk(pos, |c| {
       let inner = c.inner();
 
@@ -479,7 +479,7 @@ impl World {
         .map(|(y, s)| if (y as u32) < min || y as u32 > max { None } else { s.clone() })
         .collect();
       sections.resize((self.height as usize + 15) / 16, None);
-      cb::Packet::Chunk {
+      cb::packet::Chunk {
         pos,
         full: false,
         sections,
@@ -501,8 +501,8 @@ impl World {
     pos: ChunkPos,
     chunk_y: i32,
     changes: impl Iterator<Item = (SectionRelPos, u32)>,
-  ) -> cb::Packet {
-    cb::Packet::MultiBlockChange {
+  ) -> cb::packet::MultiBlockChange {
+    cb::packet::MultiBlockChange {
       pos,
       y: chunk_y,
       changes: changes
@@ -575,8 +575,8 @@ impl World {
         self.world_manager().broadcast(msg);
       }
 
-      let entity_remove = cb::Packet::RemoveEntities { eids: vec![p.eid()] };
-      let list_remove = cb::Packet::PlayerList {
+      let entity_remove = cb::packet::RemoveEntities { eids: vec![p.eid()] };
+      let list_remove = cb::packet::PlayerList {
         action: cb::PlayerListAction::Remove(vec![cb::PlayerListRemove { id: p.id() }]),
       };
       for other in p.world().players().iter().in_view(p.pos().block().chunk()).not(p.id()) {
@@ -615,7 +615,7 @@ impl World {
     volume: f32,
     pitch: f32,
   ) {
-    let out = cb::Packet::PlaySound { name: sound, category, pos, volume, pitch };
+    let out = cb::packet::PlaySound { name: sound, category, pos, volume, pitch };
     for p in self.players().iter().in_view(pos.block().chunk()) {
       p.send(out.clone());
     }
@@ -879,7 +879,8 @@ impl WorldManager {
     }
   }
 
-  pub fn send_to_all(&self, out: cb::Packet) {
+  pub fn send_to_all(&self, out: impl Into<cb::Packet>) {
+    let out = out.into();
     for w in self.worlds.read().iter() {
       for p in w.players().iter() {
         p.send(out.clone());

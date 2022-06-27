@@ -4,7 +4,7 @@ use bb_common::{net::cb, util::Chat};
 #[derive(Debug)]
 pub struct Scoreboard {
   conn:     ConnSender,
-  position: cb::ScoreboardDisplay,
+  position: cb::ScoreboardDisplayPosition,
   shown:    bool,
   lines:    Vec<String>,
 }
@@ -13,7 +13,7 @@ impl Scoreboard {
   pub fn new(conn: ConnSender) -> Self {
     Scoreboard {
       conn,
-      position: cb::ScoreboardDisplay::Sidebar,
+      position: cb::ScoreboardDisplayPosition::Sidebar,
       shown: false,
       lines: vec!["".into(); 15],
     }
@@ -21,14 +21,14 @@ impl Scoreboard {
 
   pub fn show(&mut self) {
     if !self.shown {
-      self.conn.send(cb::Packet::ScoreboardObjective {
+      self.conn.send(cb::packet::ScoreboardObjective {
         objective: "scoreboard".into(),
         mode:      cb::ObjectiveAction::Create {
           value: Chat::new("Scoreboard"),
           ty:    cb::ObjectiveType::Integer,
         },
       });
-      self.conn.send(cb::Packet::ScoreboardDisplay {
+      self.conn.send(cb::packet::ScoreboardDisplay {
         position:  self.position,
         objective: "scoreboard".into(),
       });
@@ -38,7 +38,7 @@ impl Scoreboard {
 
   pub fn hide(&mut self) {
     if !self.shown {
-      self.conn.send(cb::Packet::ScoreboardObjective {
+      self.conn.send(cb::packet::ScoreboardObjective {
         objective: "scoreboard".into(),
         mode:      cb::ObjectiveAction::Remove,
       });
@@ -46,17 +46,17 @@ impl Scoreboard {
     }
   }
 
-  pub fn display(&mut self, position: cb::ScoreboardDisplay) {
+  pub fn display(&mut self, position: cb::ScoreboardDisplayPosition) {
     if position != self.position {
       self.position = position;
       if self.shown {
-        self.conn.send(cb::Packet::ScoreboardDisplay { position, objective: "scoreboard".into() });
+        self.conn.send(cb::packet::ScoreboardDisplay { position, objective: "scoreboard".into() });
       }
     }
   }
 
   pub fn clear_line(&mut self, line: u8) {
-    self.conn.send(cb::Packet::ScoreboardUpdate {
+    self.conn.send(cb::packet::ScoreboardUpdate {
       username:  self.lines[line as usize].clone(),
       objective: "scoreboard".into(),
       action:    cb::ScoreboardAction::Remove,
@@ -71,13 +71,13 @@ impl Scoreboard {
     while self.lines.contains(&text) {
       text.push(' ');
     }
-    self.conn.send(cb::Packet::ScoreboardUpdate {
+    self.conn.send(cb::packet::ScoreboardUpdate {
       username:  self.lines[line as usize].clone(),
       objective: "scoreboard".into(),
       action:    cb::ScoreboardAction::Remove,
     });
     self.lines[line as usize] = text;
-    self.conn.send(cb::Packet::ScoreboardUpdate {
+    self.conn.send(cb::packet::ScoreboardUpdate {
       username:  self.lines[line as usize].clone(),
       objective: "scoreboard".into(),
       action:    cb::ScoreboardAction::Create(line.into()),

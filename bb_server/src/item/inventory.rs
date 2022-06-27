@@ -145,7 +145,7 @@ impl<const N: usize> SingleInventory<N> {
   /// Syncs the item at the given slot with the client.
   #[track_caller]
   pub fn sync_raw(&self, index: u32) {
-    self.conn.send(cb::Packet::WindowItem {
+    self.conn.send(cb::packet::WindowItem {
       wid:  self.wid,
       slot: (index + self.offset) as i32,
       item: self.get_raw(index).unwrap().to_item(),
@@ -155,7 +155,7 @@ impl<const N: usize> SingleInventory<N> {
   /// index, to get the actual inventory offset.
   #[track_caller]
   pub(crate) fn sync(&self, index: u32) {
-    self.conn.send(cb::Packet::WindowItem {
+    self.conn.send(cb::packet::WindowItem {
       wid:  self.wid,
       slot: index as i32,
       item: self.get(index).unwrap().to_item(),
@@ -174,7 +174,7 @@ impl<const N: usize> SingleInventory<N> {
     // because we iterate through the inventory with `items_mut`, so the inventory
     // is mutably borrowed for the entire loop.
     let sync = |index: u32, item: &Stack| {
-      self.conn.send(cb::Packet::WindowItem {
+      self.conn.send(cb::packet::WindowItem {
         wid:  self.wid,
         slot: (index + self.offset) as i32,
         item: item.to_item(),
@@ -306,7 +306,7 @@ impl<const N: usize> WrappedInventory<N> {
   #[track_caller]
   pub fn sync_raw(&self, index: u32) {
     for conn in self.viewers.values() {
-      conn.send(cb::Packet::WindowItem {
+      conn.send(cb::packet::WindowItem {
         wid:  self.wid,
         slot: (index + self.offset) as i32,
         item: self.get_raw(index).unwrap().to_item(),
@@ -318,7 +318,7 @@ impl<const N: usize> WrappedInventory<N> {
   #[track_caller]
   pub(crate) fn sync(&self, index: u32) {
     for conn in self.viewers.values() {
-      conn.send(cb::Packet::WindowItem {
+      conn.send(cb::packet::WindowItem {
         wid:  self.wid,
         slot: index as i32,
         item: self.get(index).unwrap().to_item(),
@@ -339,7 +339,7 @@ impl<const N: usize> WrappedInventory<N> {
     // is mutably borrowed for the entire loop.
     let sync = |index: u32, item: &Stack| {
       for conn in self.viewers.values() {
-        conn.send(cb::Packet::WindowItem {
+        conn.send(cb::packet::WindowItem {
           wid:  self.wid,
           slot: (index + self.offset) as i32,
           item: item.to_item(),

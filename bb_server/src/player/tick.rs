@@ -54,7 +54,7 @@ impl Player {
           "{} moved too fast (pos: {} {} {})",
           self.username, pos.curr.x, pos.curr.y, pos.curr.z
         );
-        invalid_move = Some(cb::Packet::SetPosLook {
+        invalid_move = Some(cb::packet::SetPosLook {
           pos:             pos.curr,
           yaw:             pos.yaw,
           pitch:           pos.pitch,
@@ -114,7 +114,7 @@ impl Player {
         let pitch;
         let on_ground = true;
         if look_changed {
-          // other.send(cb::Packet::EntityHeadRotation {
+          // other.send(cb::packet::EntityHeadRotation {
           //   entity_id: self.eid,
           //   head_yaw:  (pos.yaw / 360.0 * 256.0).round() as i8,
           // });
@@ -155,7 +155,7 @@ impl Player {
               yaw = pos.yaw as i8;
               pitch = pos.pitch as i8;
             }
-            other.send(cb::Packet::EntityPos {
+            other.send(cb::packet::EntityPos {
               eid: self.eid,
               x: pos.curr.x(),
               y: pos.curr.y(),
@@ -167,7 +167,7 @@ impl Player {
           } else {
             // Can use relative move, and we know that pos_changed is true
             if look_changed {
-              other.send(cb::Packet::EntityMoveLook {
+              other.send(cb::packet::EntityMoveLook {
                 eid: self.eid,
                 x: (dx * 4096.0) as i16,
                 y: (dy * 4096.0) as i16,
@@ -176,9 +176,9 @@ impl Player {
                 pitch,
                 on_ground,
               });
-              other.send(cb::Packet::EntityHeadLook { eid: self.eid, yaw });
+              other.send(cb::packet::EntityHeadLook { eid: self.eid, yaw });
             } else {
-              other.send(cb::Packet::EntityMove {
+              other.send(cb::packet::EntityMove {
                 eid: self.eid,
                 x: (dx * 4096.0) as i16,
                 y: (dy * 4096.0) as i16,
@@ -189,14 +189,14 @@ impl Player {
           }
         } else {
           // Pos changed is false, so look_changed must be true
-          other.send(cb::Packet::EntityLook { eid: self.eid, yaw, pitch, on_ground });
-          other.send(cb::Packet::EntityHeadLook { eid: self.eid, yaw });
+          other.send(cb::packet::EntityLook { eid: self.eid, yaw, pitch, on_ground });
+          other.send(cb::packet::EntityHeadLook { eid: self.eid, yaw });
         }
       }
     }
     if old_chunk != new_chunk {
       if self.ver() >= ProtocolVersion::V1_14 {
-        self.send(cb::Packet::UpdateViewPos { pos: new_chunk });
+        self.send(cb::packet::UpdateViewPos { pos: new_chunk });
       }
       let delta = new_chunk - old_chunk;
       let v = self.view_distance as i32;
@@ -279,7 +279,7 @@ impl Player {
       for z in min.z()..=max.z() {
         let pos = ChunkPos::new(x, z);
         if self.world.has_loaded_chunk(pos) {
-          self.send_chunk(pos, || self.world.serialize_chunk(pos));
+          self.send_chunk(pos, || self.world.serialize_chunk(pos).into());
         } else {
           self.world.queue_chunk(pos, self);
         }
@@ -306,7 +306,7 @@ impl Player {
     if lock.remove(&pos) {
       drop(lock);
       self.world.dec_view(pos);
-      self.send(cb::Packet::UnloadChunk { pos });
+      self.send(cb::packet::UnloadChunk { pos });
     }
   }
   /// Unloads all the chunks that this player can see from the world. This will

@@ -277,7 +277,7 @@ impl Player {
   /// direction to the given yaw/pitch. You cannot teleport a player without
   /// also setting their yaw/pitch.
   pub fn teleport(&self, pos: FPos, yaw: f32, pitch: f32) {
-    self.send(cb::Packet::SetPosLook {
+    self.send(cb::packet::SetPosLook {
       pos,
       yaw,
       pitch,
@@ -293,14 +293,14 @@ impl Player {
 
   /// Sends the player a chat message.
   pub fn send_message(&self, msg: Chat) {
-    self.send(cb::Packet::Chat {
+    self.send(cb::packet::ChatMessage {
       msg,
       ty: 0, // Chat box, not system message or over hotbar
     });
   }
   /// Sends the player a chat message, which will appear over their hotbar.
   pub fn send_hotbar(&self, msg: Chat) {
-    self.send(cb::Packet::Chat {
+    self.send(cb::packet::ChatMessage {
       msg,
       ty: 2, // Hotbar, not chat box or system message
     });
@@ -322,29 +322,29 @@ impl Player {
   /// Sets the title for this player. To show the title and subtitle, call
   /// [`show_title`](Self::show_title).
   pub fn set_title(&self, title: Chat) {
-    self.send(cb::Packet::Title { action: cb::TitleAction::Title(title) });
+    self.send(cb::packet::Title { action: cb::TitleAction::Title(title) });
   }
   /// Sets the subtitle for this player. To show the title and subtitle, call
   /// [`show_title`](Self::show_title).
   pub fn set_subtitle(&self, subtitle: Chat) {
-    self.send(cb::Packet::Title { action: cb::TitleAction::Subtitle(subtitle) });
+    self.send(cb::packet::Title { action: cb::TitleAction::Subtitle(subtitle) });
   }
   /// Shows the current title to the player. The `fade_in`, `stay`, and
   /// `fade_out` arguments are all in ticks.
   pub fn show_title(&self, fade_in: u32, stay: u32, fade_out: u32) {
-    self.send(cb::Packet::Title { action: cb::TitleAction::Times { fade_in, stay, fade_out } });
+    self.send(cb::packet::Title { action: cb::TitleAction::Times { fade_in, stay, fade_out } });
   }
 
   /// Shows the given inventory to the client. The title will be shown in the
   /// top left of the window.
   pub fn show_inventory(&self, win: Window, title: &Chat) {
-    self.send(cb::Packet::WindowOpen {
+    self.send(cb::packet::WindowOpen {
       wid:   1,
       ty:    win.ty().into(),
       size:  win.size(),
       title: title.to_json(),
     });
-    self.send(cb::Packet::WindowItems {
+    self.send(cb::packet::WindowItems {
       wid:   1,
       items: win.items().map(|i| i.to_item()).collect(),
       held:  Stack::empty().to_item(),
@@ -363,7 +363,7 @@ impl Player {
   /// Closing the channel will drop the packet before it can be sent, so we need
   /// some other way of closing it later.
   pub fn disconnect<C: Into<Chat>>(&self, _msg: C) {
-    // self.send(cb::Packet::KickDisconnect { reason: msg.into().to_json() });
+    // self.send(cb::packet::KickDisconnect { reason: msg.into().to_json() });
     self.remove();
   }
 
@@ -471,7 +471,7 @@ impl Player {
   pub(crate) fn send_abilities(&self) {
     let out = {
       let abilities = self.abilities.lock();
-      cb::Packet::Abilities {
+      cb::packet::Abilities {
         invulnerable: abilities.invulnerable,
         flying:       abilities.flying,
         allow_flying: abilities.flying_allowed,
@@ -537,7 +537,7 @@ impl Player {
   /// use if needed. Using teams is going to be more reliable.
   pub fn set_tab_name(&self, name: Option<Chat>) {
     *self.tab_name.lock() = name.clone();
-    let update = cb::Packet::PlayerList {
+    let update = cb::packet::PlayerList {
       action: cb::PlayerListAction::UpdateDisplayName(vec![cb::PlayerListDisplay {
         id:           self.id(),
         display_name: name,
@@ -564,7 +564,7 @@ impl Player {
   /// block.
   pub fn sync_block_at(&self, pos: Pos) {
     let ty = self.world().get_block(pos).unwrap_or(block::TypeStore::air());
-    self.send(cb::Packet::BlockUpdate {
+    self.send(cb::packet::BlockUpdate {
       pos,
       state: self.world().block_converter().to_old(ty.id(), self.ver().block()),
     });
@@ -576,12 +576,13 @@ impl Player {
   /// technically can result in deadlocks, but the way the threads are setup
   /// right now mean that no channel will block another channel, so in practice
   /// this will only produce slow downs, never deadlocks.
-  pub fn send(&self, p: cb::Packet) { self.conn.send(p); }
+  pub fn send(&self, p: impl Into<cb::Packet>) { self.conn.send(p.into()); }
 
   /// Sends the given packet to all players in view of this player, *not
   /// including* `self`. If you want to also send the packet to `self`,
   /// call [`send_all_in_view`](Self::send_all_in_view).
-  pub fn send_to_in_view(&self, p: cb::Packet) {
+  pub fn send_to_in_view(&self, p: impl Into<cb::Packet>) {
+    let p = p.into();
     for other in self.world.players().iter().in_view(self.pos().chunk()).not(self.uuid) {
       other.send(p.clone());
     }
@@ -589,7 +590,8 @@ impl Player {
   /// Sends the given packet to all players in view of this player, *including*
   /// `self`. If you don't wnat to send the packet to `self`, call
   /// [`send_to_in_view`](Self::send_to_in_view).
-  pub fn send_all_in_view(&self, p: cb::Packet) {
+  pub fn send_all_in_view(&self, p: impl Into<cb::Packet>) {
+    let p = p.into();
     for other in self.world.players().iter().in_view(self.pos().chunk()) {
       other.send(p.clone());
     }
@@ -608,11 +610,11 @@ impl Player {
   /// Updates the player's game mode. This can be retrieved with
   /// [`game_mode`](Self::game_mode).
   pub fn set_game_mode(&self, mode: GameMode) {
-    self.send(cb::Packet::ChangeGameState { action: cb::ChangeGameState::GameMode(mode) });
+    self.send(cb::packet::ChangeGameState { action: cb::ChangeGameStateKind::GameMode(mode) });
     *self.game_mode.lock() = mode;
     self.abilities.lock().set_from_game_mode(mode);
     self.send_abilities();
-    self.send(cb::Packet::PlayerList {
+    self.send(cb::packet::PlayerList {
       action: cb::PlayerListAction::UpdateGameMode(vec![cb::PlayerListGameMode {
         id:        self.id(),
         game_mode: mode,
@@ -646,7 +648,7 @@ impl Player {
   /// When `self` receives this, it will modify the player's velocity. This is
   /// mostly used for knockback.
   fn send_vel(&self, vel: Vec3) {
-    self.send_all_in_view(cb::Packet::EntityVelocity {
+    self.send_all_in_view(cb::packet::EntityVelocity {
       eid: self.eid(),
       x:   vel.fixed_x(),
       y:   vel.fixed_y(),
@@ -667,7 +669,7 @@ impl Player {
   /// The order of `ips` matters. The first one will be tried first, then the
   /// second one, etc. This is expected to be the result of
   /// [`ToSocketAddrs`](std::net::ToSocketAddrs).
-  pub fn switch_to(&self, ips: Vec<SocketAddr>) { self.send(cb::Packet::SwitchServer { ips }); }
+  pub fn switch_to(&self, ips: Vec<SocketAddr>) { self.send(cb::packet::SwitchServer { ips }); }
 
   pub(super) fn handle_command(&self, command: PlayerCommand) {
     let mut needs_update = false;
@@ -689,7 +691,7 @@ impl Player {
     if needs_update {
       let mut meta = Metadata::new();
       meta.set_byte(0, self.status_byte());
-      self.send_to_in_view(cb::Packet::EntityMetadata {
+      self.send_to_in_view(cb::packet::EntityMetadata {
         eid: self.eid(),
         ty: entity::Type::Player.id(),
         meta,
@@ -706,7 +708,7 @@ impl Player {
       let mut meta = Metadata::new();
       meta.set_byte(0, self.status_byte());
       meta.set_pose(6, if crouching { Pose::Sneaking } else { Pose::Standing });
-      self.send_to_in_view(cb::Packet::EntityMetadata {
+      self.send_to_in_view(cb::packet::EntityMetadata {
         eid: self.eid(),
         ty: entity::Type::Player.id(),
         meta,
@@ -782,7 +784,7 @@ impl Player {
         health.absorption -= amount;
       }
 
-      self.send(cb::Packet::UpdateHealth {
+      self.send(cb::packet::UpdateHealth {
         health:     health.health,
         food:       food.food,
         saturation: food.saturation,
@@ -802,7 +804,7 @@ impl Player {
     let pos = self.pos();
     for p in self.world().players().iter().in_view(self.pos().chunk()) {
       if p.id() != self.id() {
-        p.send(cb::Packet::Animation { eid: self.eid(), kind: cb::Animation::Damage });
+        p.send(cb::packet::Animation { eid: self.eid(), kind: cb::AnimationKind::Damage });
       }
       // - player.attack.weak is failing a hit (hitting an invuln player)
       // - player.attack.strong is hitting a shield
@@ -813,7 +815,7 @@ impl Player {
       // - player.hurt is the base hurt sound
       //
       // Note that the proxy will convert all of these to the 1.8 names
-      p.send(cb::Packet::PlaySound {
+      p.send(cb::packet::PlaySound {
         name: "entity.player.hurt".into(),
         category: cb::SoundCategory::Players,
         pos,

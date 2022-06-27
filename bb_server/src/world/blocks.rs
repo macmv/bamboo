@@ -73,7 +73,7 @@ impl World {
     if self.is_locked() {
       let id = self.get_block(pos)?.id();
       for p in self.players().iter().in_view(pos.chunk()) {
-        p.send(cb::Packet::BlockUpdate {
+        p.send(cb::packet::BlockUpdate {
           pos,
           state: self.block_converter.to_old(id, p.ver().block()),
         });
@@ -118,7 +118,7 @@ impl World {
 
     let id = ty.id();
     for p in self.players().iter().in_view(pos.chunk()) {
-      p.send(cb::Packet::BlockUpdate {
+      p.send(cb::packet::BlockUpdate {
         pos,
         state: self.block_converter.to_old(id, p.ver().block()),
       });
@@ -130,7 +130,7 @@ impl World {
     if self.is_locked() {
       let id = self.get_block(pos)?.id();
       for p in self.players().iter().in_view(pos.chunk()) {
-        p.send(cb::Packet::BlockUpdate {
+        p.send(cb::packet::BlockUpdate {
           pos,
           state: self.block_converter.to_old(id, p.ver().block()),
         });
@@ -142,7 +142,7 @@ impl World {
 
     let id = ty.id();
     for p in self.players().iter().in_view(pos.chunk()) {
-      p.send(cb::Packet::BlockUpdate {
+      p.send(cb::packet::BlockUpdate {
         pos,
         state: self.block_converter.to_old(id, p.ver().block()),
       });

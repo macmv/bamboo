@@ -146,7 +146,7 @@ impl World {
   /// Sends entity velocity packets to everyone in view of `pos`.
   pub(crate) fn send_entity_vel(&self, pos: ChunkPos, eid: i32, vel: Vec3) {
     for p in self.players().iter().in_view(pos) {
-      p.send(cb::Packet::EntityVelocity {
+      p.send(cb::packet::EntityVelocity {
         eid,
         x: vel.fixed_x(),
         y: vel.fixed_y(),
@@ -195,7 +195,7 @@ impl World {
         }
       };
       */
-      p.send(cb::Packet::EntityMove { eid, x, y, z, on_ground });
+      p.send(cb::packet::EntityMove { eid, x, y, z, on_ground });
     }
   }
 
@@ -206,8 +206,8 @@ impl World {
   pub fn respawn_player(self: &Arc<Self>, player: &Player) {
     let (pos, pitch, yaw) = player.pos_look();
     let chunk = pos.block().chunk();
-    let remove = cb::Packet::RemoveEntities { eids: vec![player.eid()] };
-    let add = cb::Packet::SpawnPlayer {
+    let remove = cb::packet::RemoveEntities { eids: vec![player.eid()] };
+    let add = cb::packet::SpawnPlayer {
       eid: player.eid(),
       id: player.id(),
       ty: entity::Type::Player.id(),
@@ -228,7 +228,7 @@ impl World {
   pub(super) fn send_entity_spawn(&self, player: &Player, ent: &EntityRef) {
     let p = ent.aabb();
     if ent.ty() == entity::Type::ExperienceOrb {
-      // player.send(cb::Packet::SpawnEntityExperienceOrb {
+      // player.send(cb::packet::SpawnEntityExperienceOrb {
       //   entity_id: ent.eid(),
       //   x_v1_8:    Some(p.aabb.pos.fixed_x()),
       //   x_v1_9:    Some(p.aabb.pos.x()),
@@ -240,7 +240,7 @@ impl World {
       // });
       todo!();
     } else if ent.ty() == entity::Type::Painting {
-      // player.send(cb::Packet::SpawnEntityPainting {
+      // player.send(cb::packet::SpawnEntityPainting {
       //   entity_id:        ent.eid(),
       //   entity_uuid_v1_9: Some(UUID::from_u128(0)),
       //   title_v1_8:       Some("hello".into()),
@@ -254,7 +254,7 @@ impl World {
         EntityRef::Entity(e) => e.data(),
         _ => 1,
       };
-      player.send(cb::Packet::SpawnEntity {
+      player.send(cb::packet::SpawnEntity {
         eid:      ent.eid(),
         // 1.18 clients will not render mobs that have the same UUID
         id:       UUID::random(),

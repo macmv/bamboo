@@ -10,7 +10,7 @@ use bb_common::{
 impl CommandTree {
   /// Serializes the entire command tree. This will be called any time a player
   /// joins.
-  pub fn serialize(&self) -> cb::Packet {
+  pub fn serialize(&self) -> cb::packet::CommandList {
     // This is a reverse-order list of all the nodes. The highest level node (the
     // root node) will be last.
     let mut nodes = vec![];
@@ -24,7 +24,7 @@ impl CommandTree {
     };
     c.write_nodes(&mut nodes);
 
-    cb::Packet::CommandList { root: nodes.len() as u32 - 1, nodes }
+    cb::packet::CommandList { root: nodes.len() as u32 - 1, nodes }
   }
 }
 

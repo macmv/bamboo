@@ -101,8 +101,8 @@ impl ConnSender {
   ///
   /// This will panic if the waker thread used globally has been closed. The
   /// only way for this to close is if the network manager stops working.
-  pub fn send(&self, p: cb::Packet) {
-    if let Ok(()) = self.tx.send(p) {
+  pub fn send(&self, p: impl Into<cb::Packet>) {
+    if let Ok(()) = self.tx.send(p.into()) {
       self.wake.send(WakeEvent::Clientbound(self.tok)).unwrap();
       self.waker.wake().unwrap();
     }

@@ -227,9 +227,9 @@ pub(crate) fn handle(wm: &Arc<WorldManager>, mut player: &Arc<Player>, p: sb::Pa
     // Just contains on_ground
     sb::Packet::PlayerOnGround { .. } => {}
     sb::Packet::PlayerCommand { command } => player.handle_command(command),
-    sb::Packet::Animation { hand } => player.send_to_in_view(cb::Packet::Animation {
+    sb::Packet::Animation { hand } => player.send_to_in_view(cb::packet::Animation {
       eid:  player.eid(),
-      kind: cb::Animation::Swing(hand),
+      kind: cb::AnimationKind::Swing(hand),
     }),
     sb::Packet::UseEntity { eid, action, sneaking } => {
       if let Some(crouching) = sneaking {

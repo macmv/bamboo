@@ -35,7 +35,7 @@ impl Behavior for ItemBehavior {
 
           if remaining == 0 {
             let collect =
-              cb::Packet::CollectItem { item_eid: ent.eid(), player_eid: player.eid(), amount };
+              cb::packet::CollectItem { item_eid: ent.eid(), player_eid: player.eid(), amount };
             // We want to include `player` in this loop, as they should also see the pickup
             // animation
             for other in player.world().players().iter().in_view(chunk) {

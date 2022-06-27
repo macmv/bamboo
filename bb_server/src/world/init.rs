@@ -193,7 +193,7 @@ impl World {
   }
 
   pub(super) fn player_init(self: &Arc<Self>, player: &Player, _info: JoinInfo) {
-    let out = cb::Packet::JoinGame {
+    let out = cb::packet::JoinGame {
       // entity_id:                self.eid(),
       // game_mode:                1,       // Creative
       // difficulty_removed_v1_14: Some(1), // Normal
@@ -244,7 +244,7 @@ impl World {
       player.send(self.commands().serialize());
     }
 
-    player.send(cb::Packet::EntityStatus {
+    player.send(cb::packet::EntityStatus {
       eid:    player.eid(),
       // Set op permission to level 4
       // Note that 24 is op permission 0, 25 is op permission 1, etc.
@@ -256,17 +256,17 @@ impl World {
       for z in -d..=d {
         let pos = ChunkPos::new(x, z);
         self.inc_view(pos);
-        player.send_chunk(pos, || self.serialize_chunk(pos));
+        player.send_chunk(pos, || self.serialize_chunk(pos).into());
       }
     }
 
     let mut data = vec![];
     let mut buf = Buffer::new(&mut data);
     buf.write_str("Bamboo");
-    player.send(cb::Packet::PluginMessage { channel: "minecraft:brand".into(), data });
+    player.send(cb::packet::PluginMessage { channel: "minecraft:brand".into(), data });
 
     let pos = player.pos();
-    player.send(cb::Packet::SetPosLook {
+    player.send(cb::packet::SetPosLook {
       pos,
       yaw: 0.0,
       pitch: 0.0,
@@ -283,7 +283,7 @@ impl World {
       display_name: player.tab_name().clone().map(|c| c.to_json()),
     };
     let my_info_packet =
-      cb::Packet::PlayerList { action: cb::PlayerListAction::Add(vec![my_info.clone()]) };
+      cb::packet::PlayerList { action: cb::PlayerListAction::Add(vec![my_info.clone()]) };
 
     // We need to add my info into the packet going to me, because minecraft is
     // weird.
@@ -301,7 +301,7 @@ impl World {
         display_name: other.tab_name().clone().map(|c| c.to_json()),
       });
     }
-    player.send(cb::Packet::PlayerList { action: cb::PlayerListAction::Add(info) });
+    player.send(cb::packet::PlayerList { action: cb::PlayerListAction::Add(info) });
 
     for other in self.entities().iter() {
       if !player.in_view(other.pos().block().chunk()) {
@@ -314,7 +314,7 @@ impl World {
         }
         // Create a packet that will spawn me for `other`
         let (pos, pitch, yaw) = player.pos_look();
-        other.send(cb::Packet::SpawnPlayer {
+        other.send(cb::packet::SpawnPlayer {
           eid: player.eid(),
           id: player.id(),
           ty: entity::Type::Player.id(),
@@ -326,7 +326,7 @@ impl World {
 
         // Create a packet that will spawn `other` for me
         let (pos, pitch, yaw) = other.pos_look();
-        player.send(cb::Packet::SpawnPlayer {
+        player.send(cb::packet::SpawnPlayer {
           eid: other.eid(),
           id: other.id(),
           ty: entity::Type::Player.id(),
