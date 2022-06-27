@@ -76,7 +76,7 @@ struct CodecItem<T> {
   element: T,
 }
 
-fn write_dimensions<T>(
+pub fn write_dimensions<T>(
   out: &mut Buffer<T>,
   ver: ProtocolVersion,
   world_height: u32,
