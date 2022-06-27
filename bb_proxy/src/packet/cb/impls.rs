@@ -1,15 +1,12 @@
 use super::{ToTcp, WriteError};
 use crate::{
-  gnet::{
-    cb::{packet as gpacket, Packet as GPacket},
-    tcp,
-  },
+  gnet::cb::{packet as gpacket, Packet as GPacket},
   stream::PacketStream,
   Conn,
 };
 use bb_common::{
   net::{cb, cb::packet},
-  util::{Buffer, Hand},
+  util::Hand,
   version::ProtocolVersion,
 };
 use smallvec::SmallVec;

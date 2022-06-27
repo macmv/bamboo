@@ -1,8 +1,4 @@
-use bb_common::{
-  nbt,
-  util::{Buffer, Hand},
-  version::ProtocolVersion,
-};
+use bb_common::{nbt, util::Buffer, version::ProtocolVersion};
 use serde::Serialize;
 
 #[derive(Debug, Clone, Serialize)]

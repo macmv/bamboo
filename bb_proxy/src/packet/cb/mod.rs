@@ -1,25 +1,6 @@
-use super::metadata;
-use crate::{
-  gnet::{
-    cb::{packet as gpacket, Packet as GPacket},
-    tcp,
-  },
-  stream::PacketStream,
-  Conn,
-};
-use bb_common::{
-  nbt,
-  net::{
-    cb,
-    cb::{
-      packet, ArmorSlot, CommandType, EquipmentSlot, ObjectiveAction, ObjectiveType, Packet,
-      ScoreboardAction, SoundCategory, TeamAction, TeamInfo, TeamRule, TitleAction,
-    },
-  },
-  util::{chat, Buffer, GameMode, Hand, UUID},
-  version::ProtocolVersion,
-};
-use serde::Serialize;
+use crate::{gnet::cb::Packet as GPacket, stream::PacketStream, Conn};
+use bb_common::net::cb::Packet;
+
 use smallvec::SmallVec;
 use std::{error::Error, fmt};
 
