@@ -147,6 +147,10 @@ impl AABB {
 fn in_range(val: (f64, f64), range: (f64, f64)) -> bool {
   let (a, b) = val;
   let (min, max) = range;
+  // Handle empty hitboxes
+  if (min == max) || (a == b) {
+    return false;
+  }
   // this is a collision:
   // val   ->   ####
   // range -> ####

@@ -443,7 +443,13 @@ impl World {
   /// perform collision checks.
   ///
   /// For things like stairs, multiple items will be added to the output vector.
-  pub fn nearby_colliders(&self, from: FPos, to: FPos, radius: f64, water: bool) -> Vec<AABB> {
+  pub fn nearby_colliders(
+    self: &Arc<World>,
+    from: FPos,
+    to: FPos,
+    radius: f64,
+    water: bool,
+  ) -> Vec<AABB> {
     let (min, max) = from.min_max(to);
     let mut min = min.floor().block();
     let mut max = max.ceil().block();
@@ -487,16 +493,17 @@ impl World {
                 let pos = RelPos::new(x, y, z);
                 // Some basic flamegraph tests show that it is faster to check the block kind
                 // before checking radius.
-                let kind = c.get_kind(pos).unwrap();
+                let ty = c.get_type(pos).unwrap();
                 let world_pos = Pos::new(pos.x().into(), pos.y(), pos.z().into()) + chunk.block();
-                if kind != block::Kind::Air
-                  && (!water || kind != block::Kind::Water)
-                  && radius!(world_pos) < radius
-                {
-                  out.push(AABB::new(
-                    FPos::from(world_pos) + FPos::new(0.5, 0.0, 0.5),
-                    Vec3::new(1.0, 1.0, 1.0),
-                  ));
+                if ty.kind() != block::Kind::Air && radius!(world_pos) < radius {
+                  let mut aabb = self
+                    .wm
+                    .block_behaviors()
+                    .call(ty.kind(), |b| b.hitbox(Block::new(self, world_pos, ty)))
+                    .unwrap_or(AABB::new(FPos::new(0.5, 0.0, 0.5), Vec3::new(1.0, 1.0, 1.0)));
+                  aabb.pos += FPos::from(world_pos);
+
+                  out.push(aabb);
                 }
               }
             }
@@ -507,7 +514,12 @@ impl World {
     out
   }
 
-  pub fn raycast(&self, from: FPos, to: FPos, water: bool) -> Option<(FPos, CollisionResult)> {
+  pub fn raycast(
+    self: &Arc<World>,
+    from: FPos,
+    to: FPos,
+    water: bool,
+  ) -> Option<(FPos, CollisionResult)> {
     let mut from_vec = Vec3::from(from);
     let to_vec = Vec3::from(to);
     let colliders = self.nearby_colliders(from, to, 1.0, water);

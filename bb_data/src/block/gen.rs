@@ -239,7 +239,11 @@ fn block_data(gen: &mut CodeGen, b: &Block) {
   gen.write("drops: ");
   b.drops.to_lit(gen);
   gen.write_line(",");
-  gen.write_line("bounding_box: BoundingBoxKind::Block,");
+  if b.no_collision {
+    gen.write_line("bounding_box: BoundingBoxKind::Empty,");
+  } else {
+    gen.write_line("bounding_box: BoundingBoxKind::Block,");
+  }
   gen.write_line("transparent: false,");
   gen.write("tags: ");
   b.tags.to_lit(gen);

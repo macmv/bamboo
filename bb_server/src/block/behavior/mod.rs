@@ -2,10 +2,11 @@ use super::{Block, Data, Kind, Type};
 use crate::{
   event::EventFlow,
   item::Stack,
+  math::{Vec3, AABB},
   player::{BlockClick, Player},
   world::World,
 };
-use bb_common::math::Pos;
+use bb_common::math::{FPos, Pos};
 use bb_transfer::{MessageReader, MessageWriter};
 use std::{any::Any, sync::Arc};
 
@@ -69,7 +70,25 @@ pub trait Behavior: Send + Sync {
     let _ = block;
     BlockDrops::Normal
   }
+
+  fn hitbox(&self, block: Block) -> AABB {
+    let data = block.world.block_converter().get(block.ty.kind());
+    if block.ty.kind() == Kind::Grass {
+      info!("data: {data:?}");
+    }
+    match data.bounding_box {
+      super::ty::BoundingBoxKind::Block => {
+        AABB::new(FPos::new(0.5, 0.0, 0.5), Vec3::new(1.0, 1.0, 1.0))
+      }
+      super::ty::BoundingBoxKind::Empty => {
+        AABB::new(FPos::new(0.0, 0.0, 0.0), Vec3::new(0.0, 0.0, 0.0))
+      }
+    }
+  }
 }
+
+struct DefaultBehavior;
+impl Behavior for DefaultBehavior {}
 
 pub trait TileEntity: Any + Send + Sync {
   fn save(&self, w: &mut MessageWriter<&mut Vec<u8>>) -> Result<(), bb_transfer::WriteError>;
@@ -118,6 +137,8 @@ pub fn make_behaviors() -> BehaviorList {
     *color*Bed => impls::Bed;
 
     Chest => impls::Chest;
+
+    Grass | Torch => DefaultBehavior;
   };
   out
 }
