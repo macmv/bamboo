@@ -66,6 +66,7 @@ impl Parser {
         let num = parse_num(&w, min, max)?;
         Ok(Arg::Int(num))
       }
+      Self::String(StringType::Word) => Ok(Arg::String(tokens.read_spaced_word()?.to_string())),
       Self::BlockPos => {
         if let Some(pos) = sender.block_pos() {
           let mut w_x = tokens.read_spaced_text()?;
