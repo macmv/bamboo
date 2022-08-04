@@ -176,6 +176,30 @@ impl Behavior for Door {
 
 pub struct Slab;
 impl Behavior for Slab {
+  fn place<'a>(&self, data: &'a Data, _: Pos, click: BlockClick) -> Type<'a> {
+    data.default_type().with(
+      "type",
+      if click.dir.as_face().is_side() {
+        if click.dir.y > 0.5 {
+          "top"
+        } else {
+          "bottom"
+        }
+      } else if click.dir.as_face() == Face::Top {
+        if click.block.ty.kind() == data.kind && click.block.ty.prop("type") == "bottom" {
+          "double"
+        } else {
+          "bottom"
+        }
+      } else {
+        if click.block.ty.kind() == data.kind && click.block.ty.prop("type") == "top" {
+          "double"
+        } else {
+          "top"
+        }
+      },
+    )
+  }
   fn hitbox(&self, block: Block) -> AABB {
     match block.ty.prop("type").str() {
       "top" => AABB::new(FPos::new(0.5, 0.5, 0.5), Vec3::new(1.0, 0.5, 1.0)),
