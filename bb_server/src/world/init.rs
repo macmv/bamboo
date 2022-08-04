@@ -145,6 +145,7 @@ impl World {
         p.set_flyspeed(v);
       }
     });
+
     let mut c = Command::new("summon");
     c.add_arg("entity", Parser::EntitySummon);
     self.commands().add(c, |_, player, args| {
@@ -154,6 +155,21 @@ impl World {
         let eid = p.world().summon(ty, p.pos());
         info!("eid of mob: {}", eid);
         p.send_message(Chat::new(format!("summoned {:?}", ty)));
+      }
+    });
+
+    let mut c = Command::new("join");
+    c.add_arg("addr", Parser::String(StringType::Word));
+    self.commands().add(c, |_, player, args| {
+      if let Some(p) = player {
+        let addr = match args[1].str().parse::<std::net::SocketAddr>() {
+          Ok(a) => a,
+          Err(e) => {
+            p.send_message(Chat::new(e.to_string()));
+            return;
+          }
+        };
+        p.switch_to(vec![addr]);
       }
     });
 
