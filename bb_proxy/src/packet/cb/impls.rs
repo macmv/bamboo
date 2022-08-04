@@ -1110,10 +1110,6 @@ to_tcp!(SpawnPlayer => (self, conn, ver) {
     })
   }
 });
-to_tcp_manual!(SwitchServer => (self, conn, _ver) {
-  conn.switch_to(self.ips);
-  Ok(smallvec![])
-});
 to_tcp_manual!(Tags => (self, conn, ver) {
   if ver >= ProtocolVersion::V1_14_4 {
     let mut data = vec![];

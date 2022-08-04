@@ -156,7 +156,7 @@ impl<'a> Listener<'a> {
         if is_server {
           if event.is_readable() {
             if let Some(conn) = handler.get() {
-              let res = conn.read_server();
+              let res = conn.read_server(self.poll.registry());
               handler.handle_bool(res);
             }
           }

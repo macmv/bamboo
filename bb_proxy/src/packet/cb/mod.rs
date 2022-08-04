@@ -67,7 +67,6 @@ impl ToTcp for Packet {
       Packet::SetPosLook(p) => p.to_tcp(conn),
       Packet::SpawnEntity(p) => p.to_tcp(conn),
       Packet::SpawnPlayer(p) => p.to_tcp(conn),
-      Packet::SwitchServer(p) => p.to_tcp(conn),
       Packet::Tags(p) => p.to_tcp(conn),
       Packet::Title(p) => p.to_tcp(conn),
       Packet::Teams(p) => p.to_tcp(conn),

@@ -218,12 +218,12 @@ impl<'a, S: PacketStream + Send + Sync> Conn<'a, S> {
 
   /// Reads as much data as possible from the server. Returns Ok(true) or Err(_)
   /// if the connection should be terminated.
-  pub fn read_server(&mut self) -> Result<bool> {
+  pub fn read_server(&mut self, reg: &Registry) -> Result<bool> {
     loop {
       match self.poll_server() {
         Ok(true) => return Ok(true),
         Ok(false) => loop {
-          match self.read_server_packet() {
+          match self.read_server_packet(reg) {
             Ok(true) => {}
             Ok(false) => break,
             Err(e) => return Err(e),
@@ -253,7 +253,7 @@ impl<'a, S: PacketStream + Send + Sync> Conn<'a, S> {
 
   /// Returns true if there are more packets, false if there is an empty or
   /// partial packet.
-  fn read_server_packet(&mut self) -> Result<bool> {
+  fn read_server_packet(&mut self, reg: &Registry) -> Result<bool> {
     let mut m = MessageReader::new(&self.from_server);
     match m.read_u32() {
       Ok(len) => {
@@ -273,18 +273,23 @@ impl<'a, S: PacketStream + Send + Sync> Conn<'a, S> {
           };
           let parsed = m.index();
           self.from_server.drain(0..parsed);
-          let packets = common.to_tcp(self).unwrap();
-          if len as usize != parsed {
-            return Err(io::Error::new(
-              io::ErrorKind::InvalidData,
-              format!(
-                "did not read all the packet data (expected to read {} bytes, but only read {} bytes)",
-                len, parsed
-              ),
-            ).into());
-          }
-          for p in packets {
-            self.send_to_client(p)?;
+          match common {
+            ccb::Packet::SwitchServer(p) => self.switch_to(reg, p.ips),
+            common => {
+              let packets = common.to_tcp(self).unwrap();
+              if len as usize != parsed {
+                return Err(io::Error::new(
+                  io::ErrorKind::InvalidData,
+                  format!(
+                    "did not read all the packet data (expected to read {} bytes, but only read {} bytes)",
+                    len, parsed
+                  ),
+                ).into());
+              }
+              for p in packets {
+                self.send_to_client(p)?;
+              }
+            }
           }
           Ok(true)
         } else {
@@ -427,13 +432,13 @@ impl<'a, S: PacketStream + Send + Sync> Conn<'a, S> {
 
   /// Switches this connection to a new server. If all of the ips are bad, this
   /// doesn't change anything.
-  pub fn switch_to(&mut self, addrs: Vec<SocketAddr>) {
+  pub fn switch_to(&mut self, reg: &Registry, addrs: Vec<SocketAddr>) {
     for addr in addrs {
       let conn = match TcpStream::connect(addr) {
         Ok(v) => v,
         Err(_) => continue,
       };
-      let old_stream = std::mem::replace(&mut self.server_stream, Some(conn));
+      let mut old_stream = std::mem::replace(&mut self.server_stream, Some(conn));
       match self.write_data_to_server(|s, m| {
         m.write(&JoinInfo {
           mode:     JoinMode::Switch,
@@ -443,7 +448,14 @@ impl<'a, S: PacketStream + Send + Sync> Conn<'a, S> {
         })?;
         Ok(())
       }) {
-        Ok(()) => break,
+        Ok(()) => {
+          let conn = self.server_stream.as_mut().unwrap();
+          reg.deregister(old_stream.as_mut().unwrap()).unwrap();
+          reg.register(conn, self.server_token, Interest::READABLE | Interest::WRITABLE).unwrap();
+          self.to_server.clear();
+          self.from_server.clear();
+          break;
+        }
         Err(_) => {
           self.server_stream = old_stream;
           continue;
