@@ -6,11 +6,12 @@ use crate::{
   entity,
   event::EventFlow::{self, *},
   item::SharedInventory,
+  math::{Vec3, AABB},
   player::{BlockClick, Player, Window},
   world::World,
 };
 use bb_common::{
-  math::Pos,
+  math::{FPos, Pos},
   util::{Chat, Face},
 };
 use bb_transfer::{MessageRead, MessageWrite, MessageWriter};
@@ -170,5 +171,17 @@ impl Behavior for Door {
       let _ = block.world.set_block(other, other_ty.with("open", new_open).ty());
     }
     Handled
+  }
+}
+
+pub struct Slab;
+impl Behavior for Slab {
+  fn hitbox(&self, block: Block) -> AABB {
+    match block.ty.prop("type").str() {
+      "top" => AABB::new(FPos::new(0.5, 0.5, 0.5), Vec3::new(1.0, 0.5, 1.0)),
+      "bottom" => AABB::new(FPos::new(0.5, 0.0, 0.5), Vec3::new(1.0, 0.5, 1.0)),
+      "double" => AABB::new(FPos::new(0.5, 0.0, 0.5), Vec3::new(1.0, 1.0, 1.0)),
+      v => unreachable!("slab type {v}"),
+    }
   }
 }

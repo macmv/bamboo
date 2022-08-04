@@ -30,7 +30,7 @@ impl Behavior for FallingBlock {
       // This new position is at the center of the block, which will be the most
       // accurate for converting to a block position. If we don't add 0.5, then chains
       // of falling blocks can sometimes overlap.
-      let block_pos = (p.aabb.pos + FPos::new(0.0, 0.5, 0.0)).block();
+      let block_pos = (p.aabb.pos + FPos::new(0.0, 0.0, 0.0)).block();
       let kind = world.get_kind(block_pos).unwrap_or(block::Kind::Air);
       if kind == block::Kind::Air || world.block_converter().get(kind).material.is_replaceable() {
         let _ = world.set_block(block_pos, ty);

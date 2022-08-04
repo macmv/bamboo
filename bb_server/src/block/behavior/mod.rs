@@ -126,6 +126,8 @@ impl BehaviorList {
       *wood*Trapdoor | WarpedTrapdoor => impls::Trapdoor;
       *wood*Door | WarpedDoor => impls::Door;
 
+      *wood*Slab | StoneSlab => impls::Slab;
+
       Sand | RedSand | Gravel => impls::Falling;
 
       CraftingTable => impls::CraftingTable;
