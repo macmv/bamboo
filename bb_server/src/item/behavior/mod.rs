@@ -36,6 +36,8 @@ pub struct BehaviorList {
 
 impl BehaviorList {
   pub fn new() -> Self { BehaviorList::default() }
+  // TODO: Use this in plugins with custom blocks
+  #[allow(unused)]
   pub fn set(&mut self, ty: Type, imp: Box<dyn Behavior>) {
     while ty.id() as usize >= self.behaviors.len() {
       self.behaviors.push(None);
@@ -57,9 +59,4 @@ impl BehaviorList {
       _ => DefaultBehavior;
     }
   }
-}
-
-pub fn make_behaviors() -> BehaviorList {
-  let out = BehaviorList::new();
-  out
 }

@@ -495,7 +495,10 @@ impl World {
                 // before checking radius.
                 let ty = c.get_type(pos).unwrap();
                 let world_pos = Pos::new(pos.x().into(), pos.y(), pos.z().into()) + chunk.block();
-                if ty.kind() != block::Kind::Air && radius!(world_pos) < radius {
+                if ty.kind() != block::Kind::Air
+                  && (!water || ty.kind() != block::Kind::Water)
+                  && radius!(world_pos) < radius
+                {
                   let mut aabb = self
                     .wm
                     .block_behaviors()

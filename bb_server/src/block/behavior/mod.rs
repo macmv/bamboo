@@ -71,11 +71,14 @@ pub trait Behavior: Send + Sync {
     BlockDrops::Normal
   }
 
+  /// Returns the hitbox for this block. This hitbox should be relative the
+  /// position 0, 0, 0. AABBs are centered, so a full block hitbox would be
+  /// this:
+  /// ```rust
+  /// AABB::new(FPos::new(0.5, 0.0, 0.5), Vec3::new(1.0, 1.0, 1.0));
+  /// ```
   fn hitbox(&self, block: Block) -> AABB {
     let data = block.world.block_converter().get(block.ty.kind());
-    if block.ty.kind() == Kind::Grass {
-      info!("data: {data:?}");
-    }
     match data.bounding_box {
       super::ty::BoundingBoxKind::Block => {
         AABB::new(FPos::new(0.5, 0.0, 0.5), Vec3::new(1.0, 1.0, 1.0))
@@ -102,6 +105,8 @@ pub struct BehaviorList {
 
 impl BehaviorList {
   pub fn new() -> Self { BehaviorList::default() }
+  // TODO: Use this in plugins with custom blocks
+  #[allow(unused)]
   pub fn set(&mut self, kind: Kind, imp: Box<dyn Behavior>) {
     while kind.id() as usize >= self.behaviors.len() {
       self.behaviors.push(None);
@@ -132,11 +137,6 @@ impl BehaviorList {
       _ => DefaultBehavior;
     }
   }
-}
-
-pub fn make_behaviors() -> BehaviorList {
-  let mut out = BehaviorList::new();
-  out
 }
 
 /// A collection of things to drop from a block or entity.
