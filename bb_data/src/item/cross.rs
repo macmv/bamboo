@@ -172,6 +172,9 @@ fn old_item(i: &Item, old_map: &HashMap<String, Item>) -> (u32, u32) {
     "red_stained_glass_pane" => (old_map["stained_glass_pane"].id, 14),
     "black_stained_glass_pane" => (old_map["stained_glass_pane"].id, 15),
 
+    "oak_slab" => (old_map["wooden_slab"].id, 0),
+    "cobblestone_slab" => (old_map["stone_slab"].id, 3),
+
     _ => (old_map.get(&i.name).unwrap_or(&old_map["air"]).id, 0),
   }
 }

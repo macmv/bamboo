@@ -295,12 +295,6 @@ impl Matcher<'_> {
       "pink_tulip"   => self.old("red_flower") + 7,
       "oxeye_daisy"  => self.old("red_flower") + 8,
 
-      "sandstone_slab"   => self.old("stone_slab") + 1,
-      "oak_slab"         => self.old("stone_slab") + 2,
-      "cobblestone_slab" => self.old("stone_slab") + 3,
-      "brick_slab"       => self.old("stone_slab") + 4,
-      "stone_brick_slab" => self.old("stone_slab") + 5,
-
       // MINECRAFT GO BRRRRRR
       "grass_block" => self.old("grass"),
       "grass"       => self.old("tallgrass") + 1,
@@ -308,13 +302,41 @@ impl Matcher<'_> {
       "dead_bush" => self.old("tallgrass") + 0,
       "fern"      => self.old("tallgrass") + 2,
 
+      "smooth_stone_slab"  => self.slab("stone_slab", "double_stone_slab") + 0,
+      "sandstone_slab"     => self.slab("stone_slab", "double_stone_slab") + 1,
+      "petrified_oak_slab" => self.slab("stone_slab", "double_stone_slab") + 2,
+      "cobblestone_slab"   => self.slab("stone_slab", "double_stone_slab") + 3,
+      "brick_slab"         => self.slab("stone_slab", "double_stone_slab") + 4,
+      "stone_brick_slab"   => self.slab("stone_slab", "double_stone_slab") + 5,
+      "nether_brick_slab"  => self.slab("stone_slab", "double_stone_slab") + 6,
+      "quartz_slab"        => self.slab("stone_slab", "double_stone_slab") + 6,
+      "red_sandstone_slab" => self.slab("stone_slab2", "double_stone_slab2") + 0,
+
       "oak_door"    => self.door("wooden_door"),
       "spruce_door" => self.door("spruce_door"),
       "birch_door"  => self.door("birch_door"),
       "jungle_door" => self.door("jungle_door"),
 
+      "oak_slab"      => self.slab("wooden_slab", "double_wooden_slab") + 0,
+      "spruce_slab"   => self.slab("wooden_slab", "double_wooden_slab") + 1,
+      "birch_slab"    => self.slab("wooden_slab", "double_wooden_slab") + 2,
+      "jungle_slab"   => self.slab("wooden_slab", "double_wooden_slab") + 3,
+      "acacia_slab"   => self.slab("wooden_slab", "double_wooden_slab") + 4,
+      "dark_oak_slab" => self.slab("wooden_slab", "double_wooden_slab") + 5,
+
       // Otherwise, lookup the old block, and if we still don't find anything, use air.
       _ => self.old.get(&self.block.name).unwrap_or(&self.old["air"]).id,
+    }
+  }
+
+  #[rustfmt::skip]
+  #[allow(clippy::identity_op)]
+  fn slab(&self, name: &str, double_name: &str) -> u32 {
+    match self.state.enum_prop("type") {
+      "bottom" => self.old(name) + 0,
+      "top"    => self.old(name) + 8,
+      "double" => self.old(double_name) + 0,
+      _ => unreachable!("invalid state {:?}", self.state),
     }
   }
 

@@ -177,15 +177,16 @@ impl Behavior for Door {
 pub struct Slab;
 impl Behavior for Slab {
   fn place<'a>(&self, data: &'a Data, _: Pos, click: BlockClick) -> Type<'a> {
+    dbg!(&click);
     data.default_type().with(
       "type",
-      if click.dir.as_face().is_side() {
-        if click.dir.y > 0.5 {
+      if click.face.is_side() {
+        if click.cursor.y > 0.5 {
           "top"
         } else {
           "bottom"
         }
-      } else if click.dir.as_face() == Face::Top {
+      } else if click.face == Face::Top {
         if click.block.ty.kind() == data.kind && click.block.ty.prop("type") == "bottom" {
           "double"
         } else {
