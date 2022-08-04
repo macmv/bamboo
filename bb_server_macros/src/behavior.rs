@@ -8,7 +8,7 @@ use syn::{
   parse::{Parse, ParseStream, Result},
   parse_macro_input,
   punctuated::Punctuated,
-  Expr, Ident, Token,
+  Error, Expr, Ident, Token,
 };
 
 struct Behaviors {
@@ -158,6 +158,7 @@ impl Parse for KeyDef {
 
 impl Behaviors {
   pub fn expand(self) -> TokenStream {
+    let mut errors = quote!();
     let mut out = vec![];
     let kind = &self.kind;
     let func = &self.func;
@@ -165,11 +166,17 @@ impl Behaviors {
       let expr = mapping.value;
       for key in mapping.keys {
         let mut list = vec![];
-        key.all_keys(&self.def_map, &mut list);
+        match key.all_keys(&self.def_map, &mut list) {
+          Ok(()) => {}
+          Err(e) => errors.extend(e.to_compile_error()),
+        };
         for key in list {
           out.push(quote!(#kind::#key => #func(&#expr)));
         }
       }
+    }
+    if !errors.is_empty() {
+      return errors.into();
     }
     let key = self.key;
     let def = self.def;
@@ -186,28 +193,32 @@ impl Behaviors {
 }
 
 impl MapKey {
-  fn all_keys(self, defs: &HashMap<String, Vec<Ident>>, out: &mut Vec<Ident>) {
-    self.all_keys_inner("".into(), defs, out);
+  fn all_keys(self, defs: &HashMap<String, Vec<Ident>>, out: &mut Vec<Ident>) -> Result<()> {
+    self.all_keys_inner("".into(), defs, out)
   }
   fn all_keys_inner(
     mut self,
     prefix: String,
     defs: &HashMap<String, Vec<Ident>>,
     out: &mut Vec<Ident>,
-  ) {
+  ) -> Result<()> {
     if self.sections.is_empty() {
       out.push(Ident::new(&prefix, self.span));
-      return;
+      return Ok(());
     }
     let first = self.sections.remove(0);
     match first {
-      KeySection::Lit(lit) => self.all_keys_inner(prefix + &lit.to_string(), defs, out),
-      KeySection::Def(def) => {
-        for val in &defs[&def.key.to_string()] {
-          self.clone().all_keys_inner(prefix.clone() + &val.to_string(), defs, out)
+      KeySection::Lit(lit) => self.all_keys_inner(prefix + &lit.to_string(), defs, out)?,
+      KeySection::Def(def) => match defs.get(&def.key.to_string()) {
+        Some(values) => {
+          for val in values {
+            self.clone().all_keys_inner(prefix.clone() + &val.to_string(), defs, out)?;
+          }
         }
-      }
+        None => return Err(Error::new(def.key.span(), "invalid key")),
+      },
     }
+    Ok(())
   }
 }
 
