@@ -35,6 +35,7 @@ struct Mapping {
 }
 #[derive(Clone)]
 struct MapKey {
+  span:     Span,
   sections: Vec<KeySection>,
 }
 
@@ -44,11 +45,24 @@ enum KeySection {
   Lit(Ident),
 }
 
+impl KeySection {
+  pub fn span(&self) -> Span {
+    match self {
+      Self::Def(def) => def.span(),
+      Self::Lit(lit) => lit.span(),
+    }
+  }
+}
+
 #[derive(Clone)]
 struct KeyDef {
   star:  Token![*],
   key:   Ident,
   star2: Token![*],
+}
+
+impl KeyDef {
+  pub fn span(&self) -> Span { self.star.spans[0].join(self.star2.spans[0]).unwrap() }
 }
 
 impl Parse for Behaviors {
@@ -122,6 +136,7 @@ impl Parse for Behaviors {
 impl Parse for MapKey {
   fn parse(input: ParseStream) -> Result<Self> {
     let mut sections = vec![];
+    let start = input.span();
     loop {
       let look = input.lookahead1();
       if look.peek(Token![*]) {
@@ -129,7 +144,7 @@ impl Parse for MapKey {
       } else if look.peek(Ident) {
         sections.push(KeySection::Lit(input.parse()?));
       } else {
-        return Ok(MapKey { sections });
+        return Ok(MapKey { span: start.join(sections.last().unwrap().span()).unwrap(), sections });
       }
     }
   }
@@ -181,7 +196,7 @@ impl MapKey {
     out: &mut Vec<Ident>,
   ) {
     if self.sections.is_empty() {
-      out.push(Ident::new(&prefix, Span::call_site()));
+      out.push(Ident::new(&prefix, self.span));
       return;
     }
     let first = self.sections.remove(0);
