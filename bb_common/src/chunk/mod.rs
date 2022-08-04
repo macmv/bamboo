@@ -116,6 +116,13 @@ impl<S: Section> Chunk<S> {
   pub fn sections(&self) -> impl ExactSizeIterator<Item = &Option<S>> { self.sections.iter() }
 
   /// Returns the section at the given index. If it doesn't exist, this will
+  /// return `None`.
+  pub fn section(&self, y: u32) -> Option<&S> {
+    let index = y as usize;
+    self.sections.get(index).map(|o| o.as_ref()).unwrap_or(None)
+  }
+
+  /// Returns the section at the given index. If it doesn't exist, this will
   /// create an empty section.
   pub fn section_mut(&mut self, y: u32) -> &mut S {
     let index = y as usize;

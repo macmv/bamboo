@@ -241,15 +241,14 @@ impl ReadableChunk<'_> {
       let mut lock = self.0.lock();
       for (y, section) in sections.into_iter().enumerate() {
         if let Some(sec) = section {
-          let (old_palette, data) = sec.into_palette_data();
+          let (mut palette, data) = sec.into_palette_data();
           if version == BlockVersion::latest() {
-            lock.inner_mut().section_mut(y as u32).set_from(old_palette, data);
+            lock.inner_mut().section_mut(y as u32).set_from(palette, data);
           } else {
-            let mut new_palette = Vec::with_capacity(old_palette.len());
-            for id in old_palette {
-              new_palette.push(lock.wm().block_converter().to_old(id, version));
+            for id in &mut palette {
+              *id = lock.wm().block_converter().to_latest(*id, version);
             }
-            lock.inner_mut().section_mut(y as u32).set_from(new_palette, data);
+            lock.inner_mut().section_mut(y as u32).set_from(palette, data);
           }
         } else {
           lock.inner_mut().clear_section(y as u32);
@@ -300,5 +299,62 @@ impl WriteableChunk<'_> {
       })?;
       Ok(())
     })
+  }
+}
+
+#[cfg(test)]
+mod tests {
+  use super::{super::RegionPos, *};
+  use crate::{block, world::WorldManager};
+  use bb_common::math::ChunkPos;
+  use std::sync::Arc;
+
+  #[test]
+  fn read_write_max_bpe() {
+    let wm = Arc::new(WorldManager::new(false));
+    let world = wm.add_world();
+    let region = Region::new(world.clone(), RegionPos::new(ChunkPos::new(0, 0)));
+    for x in 0..16 {
+      for z in 0..16 {
+        let index = x * 16 + z;
+        world
+          .set_block(
+            Pos::new(x, 0, z),
+            world.block_converter().type_from_id(index as u32, BlockVersion::latest()),
+          )
+          .unwrap();
+      }
+    }
+    world.chunk(ChunkPos::new(0, 0), |c| {
+      let section = c.inner().section(0).unwrap();
+      assert_eq!(section.palette().len(), 0);
+      assert!(section.data().bpe() > 8);
+    });
+    drop(region);
+    let mut region = Region::new(world.clone(), RegionPos::new(ChunkPos::new(0, 0)));
+    region.load();
+    world.chunk(ChunkPos::new(0, 0), |c| {
+      let section = c.inner().section(0).unwrap();
+      assert_eq!(section.palette().len(), 0);
+      assert!(section.data().bpe() > 8);
+    });
+    for x in 0..16 {
+      for z in 0..16 {
+        let index = x * 16 + z;
+        assert_eq!(
+          world.get_block(Pos::new(x, 0, z)).unwrap().ty(),
+          world.block_converter().type_from_id(index as u32, BlockVersion::latest()),
+        );
+      }
+    }
+    world.set_kind(Pos::new(0, 0, 0), block::Kind::Air).unwrap();
+    world.set_kind(Pos::new(1, 0, 0), block::Kind::Air).unwrap();
+    world.set_kind(Pos::new(2, 0, 0), block::Kind::Air).unwrap();
+    world.set_kind(Pos::new(3, 0, 0), block::Kind::Air).unwrap();
+    world.chunk(ChunkPos::new(0, 0), |c| {
+      let section = c.inner().section(0).unwrap();
+      assert!(section.palette().len() == 0);
+      assert!(section.data().bpe() > 8);
+    });
   }
 }

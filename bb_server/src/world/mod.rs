@@ -709,7 +709,7 @@ impl WorldManager {
   pub fn run(self: Arc<Self>) { self.global_tick_loop(); }
 
   /// Adds a new world.
-  pub fn add_world(self: &Arc<Self>) {
+  pub fn add_world(self: &Arc<Self>) -> Arc<World> {
     let world = World::new(
       self.block_converter.clone(),
       self.item_converter.clone(),
@@ -722,7 +722,9 @@ impl WorldManager {
     thread::spawn(move || {
       w.global_tick_loop();
     });
+    let w2 = Arc::clone(&world);
     self.worlds.write().push(world);
+    w2
   }
   #[cfg(test)]
   pub(crate) fn add_world_no_tick(self: &Arc<Self>) {

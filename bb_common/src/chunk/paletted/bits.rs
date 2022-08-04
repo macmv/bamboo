@@ -98,6 +98,7 @@ impl BitArray {
   ///
   /// These are both checked all the time, as this function is typically used to
   /// convert data from protobufs, which can have any data in them.
+  #[track_caller]
   pub fn from_data(bpe: u8, data: Vec<u64>) -> Self {
     assert!(bpe < 32, "bpe of {} is too large (must be less than 32)", bpe);
     let epl = 64 / bpe as usize;
