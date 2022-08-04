@@ -7,7 +7,7 @@ use crate::{
 use bb_common::{
   math::ChunkPos,
   net::cb,
-  util::{Buffer, Chat, GameMode, JoinInfo},
+  util::{Buffer, Chat, GameMode, JoinInfo, JoinMode},
   version::ProtocolVersion,
 };
 use std::sync::Arc;
@@ -169,6 +169,12 @@ impl World {
             return;
           }
         };
+        let pos = p.pos().chunk();
+        for x in -(p.view_distance() as i32)..=p.view_distance() as i32 {
+          for z in -(p.view_distance() as i32)..=p.view_distance() as i32 {
+            p.send(cb::packet::UnloadChunk { pos: pos + ChunkPos::new(x, z) });
+          }
+        }
         p.switch_to(vec![addr]);
       }
     });
@@ -208,50 +214,57 @@ impl World {
     info!("done generating terrain");
   }
 
-  pub(super) fn player_init(self: &Arc<Self>, player: &Player, _info: JoinInfo) {
-    let out = cb::packet::JoinGame {
-      // entity_id:                self.eid(),
-      // game_mode:                1,       // Creative
-      // difficulty_removed_v1_14: Some(1), // Normal
-      // dimension_v1_8:           Some(0), // Overworld
-      // dimension_v1_9_2:         Some(0), // Overworld
-      // level_type_removed_v1_16: Some("default".into()),
-      // max_players_v1_8:         Some(0), // Ignored
-      // max_players_v1_16_2:      Some(0), // Not sure if ignored
-      // reduced_debug_info:       false,   // Don't reduce debug info
-      //
-      // // 1.14+
-      // view_distance_v1_14: Some(10), // 10 chunk view distance TODO: Per player view distance
-      //
-      // // 1.15+
-      // hashed_seed_v1_15:           Some(0),
-      // enable_respawn_screen_v1_15: Some(true),
-      //
-      // // 1.16+
-      // is_hardcore_v1_16_2:      Some(false),
-      // is_flat_v1_16:            Some(false), // Changes the horizon line
-      // previous_game_mode_v1_16: Some(1),
-      // world_name_v1_16:         Some("overworld".into()),
-      // is_debug_v1_16:           Some(false), /* This is not reduced_debug_info, this is for the
-      //                                         * world being a debug world */
-      // dimension_codec_v1_16:    Some(codec.serialize()),
-      // dimension_v1_16:          Some("".into()),
-      // dimension_v1_16_2:        Some(NBT::new("", dimension).serialize()),
-      // world_names_v1_16:        Some(world_names.into_inner()),
-      eid:                   player.eid(),
-      hardcore_mode:         false,
-      game_mode:             player.game_mode(),
-      dimension:             0, // Overworld
-      level_type:            "default".into(),
-      difficulty:            1, // Normal
-      view_distance:         player.view_distance() as u16,
-      reduced_debug_info:    false,
-      enable_respawn_screen: true,
-      world_height:          self.height,
-      world_min_y:           self.min_y,
-    };
+  pub(super) fn player_init(self: &Arc<Self>, player: &Player, info: JoinInfo) {
+    if matches!(info.mode, JoinMode::New) {
+      let out = cb::packet::JoinGame {
+        // entity_id:                self.eid(),
+        // game_mode:                1,       // Creative
+        // difficulty_removed_v1_14: Some(1), // Normal
+        // dimension_v1_8:           Some(0), // Overworld
+        // dimension_v1_9_2:         Some(0), // Overworld
+        // level_type_removed_v1_16: Some("default".into()),
+        // max_players_v1_8:         Some(0), // Ignored
+        // max_players_v1_16_2:      Some(0), // Not sure if ignored
+        // reduced_debug_info:       false,   // Don't reduce debug info
+        //
+        // // 1.14+
+        // view_distance_v1_14: Some(10), // 10 chunk view distance TODO: Per player view distance
+        //
+        // // 1.15+
+        // hashed_seed_v1_15:           Some(0),
+        // enable_respawn_screen_v1_15: Some(true),
+        //
+        // // 1.16+
+        // is_hardcore_v1_16_2:      Some(false),
+        // is_flat_v1_16:            Some(false), // Changes the horizon line
+        // previous_game_mode_v1_16: Some(1),
+        // world_name_v1_16:         Some("overworld".into()),
+        // is_debug_v1_16:           Some(false), /* This is not reduced_debug_info, this is for
+        // the
+        //                                         * world being a debug world */
+        // dimension_codec_v1_16:    Some(codec.serialize()),
+        // dimension_v1_16:          Some("".into()),
+        // dimension_v1_16_2:        Some(NBT::new("", dimension).serialize()),
+        // world_names_v1_16:        Some(world_names.into_inner()),
 
-    player.send(out);
+        // Every player thinks they are EID 1, and no player is
+        // actually EID 1. This makes switching servers very easy.
+        eid:                   1,
+        hardcore_mode:         false,
+        game_mode:             player.game_mode(),
+        dimension:             0, // Overworld
+        level_type:            "default".into(),
+        difficulty:            1, // Normal
+        view_distance:         player.view_distance() as u16,
+        reduced_debug_info:    false,
+        enable_respawn_screen: true,
+        world_height:          self.height,
+        world_min_y:           self.min_y,
+      };
+
+      player.send(out);
+    }
+
     if player.ver() >= ProtocolVersion::V1_13 {
       // TODO: Fix tags for older versions.
       if player.ver() >= ProtocolVersion::V1_18_2 {
@@ -261,7 +274,8 @@ impl World {
     }
 
     player.send(cb::packet::EntityStatus {
-      eid:    player.eid(),
+      // Players think they are EID 1.
+      eid:    1,
       // Set op permission to level 4
       // Note that 24 is op permission 0, 25 is op permission 1, etc.
       status: 28,

@@ -172,7 +172,8 @@ impl World {
       gen,
       players: RwLock::new(PlayersMap::new()),
       entities: RwLock::new(EntitiesMap::new()),
-      eid: 1.into(),
+      // All player's think they are EID 1, so we start at 2. EID 0 is invalid.
+      eid: 2.into(),
       block_converter,
       item_converter,
       entity_converter,
