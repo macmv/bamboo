@@ -74,108 +74,134 @@ fn find_ids(
   (to_old, to_new)
 }
 
+struct OldItem {
+  id:   u32,
+  meta: u32,
+}
+
+impl OldItem {
+  pub fn new(id: u32) -> Self { OldItem { id, meta: 0 } }
+  pub fn meta(mut self, meta: u32) -> Self {
+    self.meta = meta;
+    self
+  }
+}
 fn old_item(i: &Item, old_map: &HashMap<String, Item>) -> (u32, u32) {
-  match i.name.as_str() {
-    "granite" => (old_map["stone"].id, 1),
-    "polished_granite" => (old_map["stone"].id, 2),
-    "diorite" => (old_map["stone"].id, 3),
-    "polished_diorite" => (old_map["stone"].id, 4),
-    "andesite" => (old_map["stone"].id, 5),
-    "polished_andesite" => (old_map["stone"].id, 6),
+  let matcher = Matcher { item: i, old: old_map };
+  let old = matcher.find();
+  (old.id, old.meta)
+}
+struct Matcher<'a> {
+  item: &'a Item,
+  old:  &'a HashMap<String, Item>,
+}
+impl Matcher<'_> {
+  fn old(&self, name: &str) -> OldItem { OldItem::new(self.old[name].id) }
+  #[rustfmt::skip]
+  #[allow(clippy::identity_op)]
+  fn find(&self) -> OldItem {
+    match self.item.name.as_str() {
+      "granite"           => self.old("stone").meta(1),
+      "polished_granite"  => self.old("stone").meta(2),
+      "polished_diorite"  => self.old("stone").meta(4),
+      "diorite"           => self.old("stone").meta(3),
+      "andesite"          => self.old("stone").meta(5),
+      "polished_andesite" => self.old("stone").meta(6),
 
-    "grass_block" => (old_map["grass"].id, 0),
+      "grass_block" => self.old("grass"),
 
-    "coarse_dirt" => (old_map["dirt"].id, 1),
-    "podzol" => (old_map["dirt"].id, 2),
+      "coarse_dirt" => self.old("dirt").meta(1),
+      "podzol"      => self.old("dirt").meta(2),
 
-    "oak_planks" => (old_map["planks"].id, 0),
-    "spruce_planks" => (old_map["planks"].id, 1),
-    "birch_planks" => (old_map["planks"].id, 2),
-    "jungle_planks" => (old_map["planks"].id, 3),
-    "acacia_planks" => (old_map["planks"].id, 4),
-    "dark_oak_planks" => (old_map["planks"].id, 5),
+      "oak_planks"      => self.old("planks").meta(0),
+      "spruce_planks"   => self.old("planks").meta(1),
+      "birch_planks"    => self.old("planks").meta(2),
+      "jungle_planks"   => self.old("planks").meta(3),
+      "acacia_planks"   => self.old("planks").meta(4),
+      "dark_oak_planks" => self.old("planks").meta(5),
 
-    "oak_sapling" => (old_map["sapling"].id, 0),
-    "spruce_sapling" => (old_map["sapling"].id, 1),
-    "birch_sapling" => (old_map["sapling"].id, 2),
-    "jungle_sapling" => (old_map["sapling"].id, 3),
-    "acacia_sapling" => (old_map["sapling"].id, 4),
-    "dark_oak_sapling" => (old_map["sapling"].id, 5),
+      "oak_sapling"      => self.old("sapling").meta(0),
+      "spruce_sapling"   => self.old("sapling").meta(1),
+      "birch_sapling"    => self.old("sapling").meta(2),
+      "jungle_sapling"   => self.old("sapling").meta(3),
+      "acacia_sapling"   => self.old("sapling").meta(4),
+      "dark_oak_sapling" => self.old("sapling").meta(5),
 
-    "red_sand" => (old_map["sand"].id, 1),
+      "red_sand" => self.old("sand").meta(1),
 
-    "oak_log" => (old_map["log"].id, 0),
-    "spruce_log" => (old_map["log"].id, 1),
-    "birch_log" => (old_map["log"].id, 2),
-    "jungle_log" => (old_map["log"].id, 3),
-    "acacia_log" => (old_map["log"].id, 4),
-    "dark_oak_log" => (old_map["log"].id, 5),
+      "oak_log"      => self.old("log").meta(0),
+      "spruce_log"   => self.old("log").meta(1),
+      "birch_log"    => self.old("log").meta(2),
+      "jungle_log"   => self.old("log").meta(3),
+      "acacia_log"   => self.old("log").meta(4),
+      "dark_oak_log" => self.old("log").meta(5),
 
-    "oak_leaves" => (old_map["leaves"].id, 0),
-    "spruce_leaves" => (old_map["leaves"].id, 1),
-    "birch_leaves" => (old_map["leaves"].id, 2),
-    "jungle_leaves" => (old_map["leaves"].id, 3),
-    "acacia_leaves" => (old_map["leaves"].id, 4),
-    "dark_oak_leaves" => (old_map["leaves"].id, 5),
+      "oak_leaves"      => self.old("leaves").meta(0),
+      "spruce_leaves"   => self.old("leaves").meta(1),
+      "birch_leaves"    => self.old("leaves").meta(2),
+      "jungle_leaves"   => self.old("leaves").meta(3),
+      "acacia_leaves"   => self.old("leaves").meta(4),
+      "dark_oak_leaves" => self.old("leaves").meta(5),
 
-    "wet_sponge" => (old_map["sponge"].id, 1),
+      "wet_sponge" => self.old("sponge").meta(1),
 
-    "chiseled_sandstone" => (old_map["sandstone"].id, 1),
-    "smooth_sandstone" => (old_map["sandstone"].id, 2),
+      "chiseled_sandstone" => self.old("sandstone").meta(1),
+      "smooth_sandstone"   => self.old("sandstone").meta(2),
 
-    "dead_bush" => (old_map["tallgrass"].id, 0),
-    "grass" => (old_map["tallgrass"].id, 1),
-    "fern" => (old_map["tallgrass"].id, 2),
+      "dead_bush" => self.old("tallgrass").meta(0),
+      "grass"     => self.old("tallgrass").meta(1),
+      "fern"      => self.old("tallgrass").meta(2),
 
-    "white_wool" => (old_map["wool"].id, 0),
-    "orange_wool" => (old_map["wool"].id, 1),
-    "magenta_wool" => (old_map["wool"].id, 2),
-    "light_blue_wool" => (old_map["wool"].id, 3),
-    "yellow_wool" => (old_map["wool"].id, 4),
-    "lime_wool" => (old_map["wool"].id, 5),
-    "pink_wool" => (old_map["wool"].id, 6),
-    "gray_wool" => (old_map["wool"].id, 7),
-    "light_gray_wool" => (old_map["wool"].id, 8),
-    "cyan_wool" => (old_map["wool"].id, 9),
-    "purple_wool" => (old_map["wool"].id, 10),
-    "blue_wool" => (old_map["wool"].id, 11),
-    "brown_wool" => (old_map["wool"].id, 12),
-    "green_wool" => (old_map["wool"].id, 13),
-    "red_wool" => (old_map["wool"].id, 14),
-    "black_wool" => (old_map["wool"].id, 15),
+      "white_wool"      => self.old("wool").meta(0),
+      "orange_wool"     => self.old("wool").meta(1),
+      "magenta_wool"    => self.old("wool").meta(2),
+      "light_blue_wool" => self.old("wool").meta(3),
+      "yellow_wool"     => self.old("wool").meta(4),
+      "lime_wool"       => self.old("wool").meta(5),
+      "pink_wool"       => self.old("wool").meta(6),
+      "gray_wool"       => self.old("wool").meta(7),
+      "light_gray_wool" => self.old("wool").meta(8),
+      "cyan_wool"       => self.old("wool").meta(9),
+      "purple_wool"     => self.old("wool").meta(10),
+      "blue_wool"       => self.old("wool").meta(11),
+      "brown_wool"      => self.old("wool").meta(12),
+      "green_wool"      => self.old("wool").meta(13),
+      "red_wool"        => self.old("wool").meta(14),
+      "black_wool"      => self.old("wool").meta(15),
 
-    "dandelion" => (old_map["yellow_flower"].id, 0),
-    "poppy" => (old_map["red_flower"].id, 0),
-    "blue_orchid" => (old_map["red_flower"].id, 1),
-    "allium" => (old_map["red_flower"].id, 2),
-    "azure_bluet" => (old_map["red_flower"].id, 3),
-    "red_tulip" => (old_map["red_flower"].id, 4),
-    "orange_tulip" => (old_map["red_flower"].id, 5),
-    "white_tulip" => (old_map["red_flower"].id, 6),
-    "pink_tulip" => (old_map["red_flower"].id, 7),
-    "oxeye_daisy" => (old_map["red_flower"].id, 8),
+      "dandelion"    => self.old("yellow_flower").meta(0),
+      "poppy"        => self.old("red_flower").meta(0),
+      "blue_orchid"  => self.old("red_flower").meta(1),
+      "allium"       => self.old("red_flower").meta(2),
+      "azure_bluet"  => self.old("red_flower").meta(3),
+      "red_tulip"    => self.old("red_flower").meta(4),
+      "orange_tulip" => self.old("red_flower").meta(5),
+      "white_tulip"  => self.old("red_flower").meta(6),
+      "pink_tulip"   => self.old("red_flower").meta(7),
+      "oxeye_daisy"  => self.old("red_flower").meta(8),
 
-    "white_stained_glass_pane" => (old_map["stained_glass_pane"].id, 0),
-    "orange_stained_glass_pane" => (old_map["stained_glass_pane"].id, 1),
-    "magenta_stained_glass_pane" => (old_map["stained_glass_pane"].id, 2),
-    "light_blue_stained_glass_pane" => (old_map["stained_glass_pane"].id, 3),
-    "yellow_stained_glass_pane" => (old_map["stained_glass_pane"].id, 4),
-    "lime_stained_glass_pane" => (old_map["stained_glass_pane"].id, 5),
-    "pink_stained_glass_pane" => (old_map["stained_glass_pane"].id, 6),
-    "gray_stained_glass_pane" => (old_map["stained_glass_pane"].id, 7),
-    "light_gray_stained_glass_pane" => (old_map["stained_glass_pane"].id, 8),
-    "cyan_stained_glass_pane" => (old_map["stained_glass_pane"].id, 9),
-    "purple_stained_glass_pane" => (old_map["stained_glass_pane"].id, 10),
-    "blue_stained_glass_pane" => (old_map["stained_glass_pane"].id, 11),
-    "brown_stained_glass_pane" => (old_map["stained_glass_pane"].id, 12),
-    "green_stained_glass_pane" => (old_map["stained_glass_pane"].id, 13),
-    "red_stained_glass_pane" => (old_map["stained_glass_pane"].id, 14),
-    "black_stained_glass_pane" => (old_map["stained_glass_pane"].id, 15),
+      "white_stained_glass_pane"      => self.old("stained_glass_pane").meta(0),
+      "orange_stained_glass_pane"     => self.old("stained_glass_pane").meta(1),
+      "magenta_stained_glass_pane"    => self.old("stained_glass_pane").meta(2),
+      "light_blue_stained_glass_pane" => self.old("stained_glass_pane").meta(3),
+      "yellow_stained_glass_pane"     => self.old("stained_glass_pane").meta(4),
+      "lime_stained_glass_pane"       => self.old("stained_glass_pane").meta(5),
+      "pink_stained_glass_pane"       => self.old("stained_glass_pane").meta(6),
+      "gray_stained_glass_pane"       => self.old("stained_glass_pane").meta(7),
+      "light_gray_stained_glass_pane" => self.old("stained_glass_pane").meta(8),
+      "cyan_stained_glass_pane"       => self.old("stained_glass_pane").meta(9),
+      "purple_stained_glass_pane"     => self.old("stained_glass_pane").meta(10),
+      "blue_stained_glass_pane"       => self.old("stained_glass_pane").meta(11),
+      "brown_stained_glass_pane"      => self.old("stained_glass_pane").meta(12),
+      "green_stained_glass_pane"      => self.old("stained_glass_pane").meta(13),
+      "red_stained_glass_pane"        => self.old("stained_glass_pane").meta(14),
+      "black_stained_glass_pane"      => self.old("stained_glass_pane").meta(15),
 
-    "oak_slab" => (old_map["wooden_slab"].id, 0),
-    "cobblestone_slab" => (old_map["stone_slab"].id, 3),
+      "oak_slab"         => self.old("wooden_slab").meta(0),
+      "cobblestone_slab" => self.old("stone_slab").meta(3),
 
-    _ => (old_map.get(&i.name).unwrap_or(&old_map["air"]).id, 0),
+      _ => OldItem::new(self.old.get(&self.item.name).map(|it| it.id).unwrap_or(0)),
+    }
   }
 }
 
