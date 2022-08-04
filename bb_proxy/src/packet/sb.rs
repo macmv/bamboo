@@ -208,9 +208,9 @@ from_tcp!(PlayerBlockPlacement, ver, conv, {
         face:   Face::from_id(g.placed_block_direction as u8),
         hand:   Hand::Main,
         cursor: FPos::new(
-          cursor_x as f64 / 128.0,
-          cursor_y as f64 / 128.0,
-          cursor_z as f64 / 128.0,
+          cursor_x as f64 / 16.0,
+          cursor_y as f64 / 16.0,
+          cursor_z as f64 / 16.0,
         ),
       }
     }
