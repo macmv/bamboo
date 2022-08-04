@@ -108,38 +108,34 @@ impl BehaviorList {
     }
     self.behaviors[kind.id() as usize] = Some(imp);
   }
-  pub fn get(&self, kind: Kind) -> Option<&dyn Behavior> {
-    match self.behaviors.get(kind.id() as usize) {
-      Some(Some(b)) => Some(b.as_ref()),
-      _ => None,
+  pub fn call<R>(&self, kind: Kind, f: impl FnOnce(&dyn Behavior) -> R) -> R {
+    bb_server_macros::behavior! {
+      kind, f -> :Kind:
+
+      *wood* = Oak, Birch, Spruce, DarkOak, Acacia, Jungle;
+      *color* = White, Orange, Magenta, LightBlue, Yellow, Lime, Pink, Gray, LightGray, Cyan, Purple, Blue, Brown, Green, Red, Black;
+
+      *wood*Log => impls::Log;
+      Stripped*wood*Log => impls::Log;
+
+      *wood*Trapdoor | WarpedTrapdoor => impls::Trapdoor;
+      *wood*Door | WarpedDoor => impls::Door;
+
+      Sand | RedSand | Gravel => impls::Falling;
+
+      CraftingTable => impls::CraftingTable;
+
+      *color*Bed => impls::Bed;
+
+      Chest => impls::Chest;
+
+      _ => DefaultBehavior;
     }
   }
 }
 
 pub fn make_behaviors() -> BehaviorList {
   let mut out = BehaviorList::new();
-  bb_server_macros::behavior! {
-    :Kind:
-
-    *wood* = Oak, Birch, Spruce, DarkOak, Acacia, Jungle;
-    *color* = White, Orange, Magenta, LightBlue, Yellow, Lime, Pink, Gray, LightGray, Cyan, Purple, Blue, Brown, Green, Red, Black;
-
-    *wood*Log => impls::Log;
-    Stripped*wood*Log => impls::Log;
-
-    *wood*Trapdoor | WarpedTrapdoor => impls::Trapdoor;
-    *wood*Door | WarpedDoor => impls::Door;
-
-    Sand | RedSand | Gravel => impls::Falling;
-
-    CraftingTable => impls::CraftingTable;
-
-    *color*Bed => impls::Bed;
-
-    Chest => impls::Chest;
-
-    Grass | Torch => DefaultBehavior;
-  };
   out
 }
 

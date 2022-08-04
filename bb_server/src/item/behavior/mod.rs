@@ -26,6 +26,9 @@ pub trait Behavior: Send + Sync {
   }
 }
 
+struct DefaultBehavior;
+impl Behavior for DefaultBehavior {}
+
 #[derive(Default)]
 pub struct BehaviorList {
   behaviors: Vec<Option<Box<dyn Behavior>>>,
@@ -39,26 +42,24 @@ impl BehaviorList {
     }
     self.behaviors[ty.id() as usize] = Some(imp);
   }
-  pub fn get(&self, ty: Type) -> Option<&dyn Behavior> {
-    match self.behaviors.get(ty.id() as usize) {
-      Some(Some(b)) => Some(b.as_ref()),
-      _ => None,
+  pub fn call<R>(&self, ty: Type, f: impl FnOnce(&dyn Behavior) -> R) -> R {
+    bb_server_macros::behavior! {
+
+      ty, f -> :Type:
+      DebugStick => impls::DebugStick;
+      WaterBucket => impls::Bucket(Some(block::Kind::Water));
+      LavaBucket => impls::Bucket(Some(block::Kind::Lava));
+      Bucket => impls::Bucket(None);
+      Snowball => impls::Snowball;
+      Torch => impls::Torch { normal: block::Kind::Torch, wall: block::Kind::WallTorch };
+      SoulTorch => impls::Torch { normal: block::Kind::SoulTorch, wall: block::Kind::SoulWallTorch };
+
+      _ => DefaultBehavior;
     }
   }
 }
 
 pub fn make_behaviors() -> BehaviorList {
-  let mut out = BehaviorList::new();
-  bb_server_macros::behavior! {
-    :Type:
-
-    DebugStick => impls::DebugStick;
-    WaterBucket => impls::Bucket(Some(block::Kind::Water));
-    LavaBucket => impls::Bucket(Some(block::Kind::Lava));
-    Bucket => impls::Bucket(None);
-    Snowball => impls::Snowball;
-    Torch => impls::Torch { normal: block::Kind::Torch, wall: block::Kind::WallTorch };
-    SoulTorch => impls::Torch { normal: block::Kind::SoulTorch, wall: block::Kind::SoulWallTorch };
-  };
+  let out = BehaviorList::new();
   out
 }

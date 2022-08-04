@@ -499,8 +499,7 @@ impl World {
                   let mut aabb = self
                     .wm
                     .block_behaviors()
-                    .call(ty.kind(), |b| b.hitbox(Block::new(self, world_pos, ty)))
-                    .unwrap_or(AABB::new(FPos::new(0.5, 0.0, 0.5), Vec3::new(1.0, 1.0, 1.0)));
+                    .call(ty.kind(), |b| b.hitbox(Block::new(self, world_pos, ty)));
                   aabb.pos += FPos::from(world_pos);
 
                   out.push(aabb);

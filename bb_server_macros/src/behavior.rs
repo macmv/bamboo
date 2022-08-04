@@ -12,7 +12,10 @@ use syn::{
 };
 
 struct Behaviors {
+  key:      Ident,
+  func:     Ident,
   kind:     Ident,
+  def:      Option<Expr>,
   defs:     Vec<Def>,
   def_map:  HashMap<String, Vec<Ident>>,
   mappings: Vec<Mapping>,
@@ -52,13 +55,21 @@ impl Parse for Behaviors {
   fn parse(input: ParseStream) -> Result<Self> {
     let mut defs: Vec<Def> = vec![];
     let mut mappings = vec![];
+    let key = input.parse()?;
+    let _: Token![,] = input.parse()?;
+    let func = input.parse()?;
+    let _: Token![->] = input.parse()?;
     let _: Token![:] = input.parse()?;
     let kind = input.parse()?;
+    let mut def = None;
     let _: Token![:] = input.parse()?;
     loop {
       if input.is_empty() {
         break Ok(Behaviors {
+          key,
+          func,
           kind,
+          def,
           def_map: defs
             .iter()
             .map(|def| (def.key.key.to_string(), def.values.iter().cloned().collect()))
@@ -66,6 +77,21 @@ impl Parse for Behaviors {
           defs,
           mappings,
         });
+      }
+      let look = input.lookahead1();
+      if look.peek(Token![_]) {
+        if def.is_some() {
+          return Err(look.error());
+        } else {
+          let _: Token![_] = input.parse()?;
+          let _: Token![=>] = input.parse()?;
+          def = Some(input.parse()?);
+          let _: Token![;] = input.parse()?;
+          if !input.is_empty() {
+            return Err(input.error("wildcard must be the last case"));
+          }
+          continue;
+        }
       }
       let mut keys: Punctuated<MapKey, Token![|]> = Punctuated::parse_separated_nonempty(input)?;
       let look = input.lookahead1();
@@ -119,20 +145,26 @@ impl Behaviors {
   pub fn expand(self) -> TokenStream {
     let mut out = vec![];
     let kind = &self.kind;
+    let func = &self.func;
     for mapping in self.mappings {
       let expr = mapping.value;
       for key in mapping.keys {
         let mut list = vec![];
         key.all_keys(&self.def_map, &mut list);
         for key in list {
-          out.push(quote!(out.set(#kind::#key, Box::new(#expr))));
+          out.push(quote!(#kind::#key => #func(&#expr)));
         }
       }
     }
+    let key = self.key;
+    let def = self.def;
     quote! {
-      #(
-        #out;
-      )*
+      match #key {
+        #(
+          #out,
+        )*
+        _ => #func(&#def),
+      }
     }
     .into()
   }

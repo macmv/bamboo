@@ -263,18 +263,16 @@ impl ReadableChunk<'_> {
           let kind = lock.get_kind(pos).unwrap();
           let behaviors = lock.wm().block_behaviors();
           match behaviors.call(kind, |b| s.read_with(1, |r| Ok(b.load_te(r)))) {
-            // No behavior for this block
-            None => {}
-            // Some behavior, no te
-            Some(Ok(None)) => {}
-            // Some behavior, valid te
-            Some(Ok(Some(Ok(te)))) => {
+            // no te
+            Ok(None) => {}
+            // valid te
+            Ok(Some(Ok(te))) => {
               drop(behaviors);
               lock.tes_mut().insert(pos, te);
             }
             // // Some behavior, invalid te
-            Some(Ok(Some(Err(e)))) => return Err(e),
-            Some(Err(e)) => return Err(e),
+            Ok(Some(Err(e))) => return Err(e),
+            Err(e) => return Err(e),
           }
           Ok(())
         })

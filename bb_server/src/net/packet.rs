@@ -1,9 +1,7 @@
 use crate::{
   block,
   block::Block,
-  entity,
-  event::EventFlow,
-  item,
+  entity, item,
   player::{AirClick, BlockClick, Click, Player},
   world::WorldManager,
 };
@@ -84,10 +82,7 @@ pub(crate) fn handle(wm: &Arc<WorldManager>, mut player: &Arc<Player>, p: sb::Pa
               let inv = player.lock_inventory();
               let stack = inv.main_hand();
               if !stack.is_empty() {
-                let flow = wm
-                  .item_behaviors()
-                  .call(stack.item(), |b| b.break_block(click))
-                  .unwrap_or(EventFlow::Continue);
+                let flow = wm.item_behaviors().call(stack.item(), |b| b.break_block(click));
                 if flow.is_handled() {
                   player.sync_block_at(pos);
                   player.sync_block_at(pos + face);
@@ -173,10 +168,7 @@ pub(crate) fn handle(wm: &Arc<WorldManager>, mut player: &Arc<Player>, p: sb::Pa
           });
 
           let placing_data = wm.block_converter().get(kind);
-          let ty = wm
-            .block_behaviors()
-            .call(kind, |b| b.place(placing_data, pos, click))
-            .unwrap_or_else(|| placing_data.default_type());
+          let ty = wm.block_behaviors().call(kind, |b| b.place(placing_data, pos, click));
 
           let looking_data = wm.block_converter().get(looking_at.kind());
           if !looking_data.material.is_replaceable() {

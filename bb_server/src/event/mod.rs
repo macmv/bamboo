@@ -64,17 +64,12 @@ impl Events<'_> {
   pub fn interact(&self, player: &Arc<Player>, _hand: Hand, click: Click) -> EventFlow {
     // self.req(player, ServerRequest::Interact { hand, click });
     let stack = player.lock_inventory().main_hand().clone();
-    try_event!(self
-      .wm
-      .item_behaviors()
-      .call(stack.item(), |i| i.interact(click))
-      .unwrap_or(Continue));
+    try_event!(self.wm.item_behaviors().call(stack.item(), |i| i.interact(click)));
     if let Click::Block(click) = click {
       try_event!(self
         .wm
         .block_behaviors()
-        .call(click.block.kind(), |b| b.interact(click.block, player))
-        .unwrap_or(Continue));
+        .call(click.block.kind(), |b| b.interact(click.block, player)));
     }
     Continue
   }

@@ -66,7 +66,7 @@ pub struct BehaviorStore {
 impl BehaviorStore {
   #[allow(clippy::new_without_default)]
   pub fn new() -> Self { BehaviorStore { behaviors: behavior::make_behaviors() } }
-  pub fn call<R>(&self, kind: Kind, f: impl FnOnce(&dyn Behavior) -> R) -> Option<R> {
-    self.behaviors.get(kind).map(f)
+  pub fn call<R>(&self, kind: Kind, f: impl FnOnce(&dyn Behavior) -> R) -> R {
+    self.behaviors.call(kind, f)
   }
 }

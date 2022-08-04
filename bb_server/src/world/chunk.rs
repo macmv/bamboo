@@ -88,7 +88,7 @@ impl ChunkData {
   ) -> Result<(), PosError> {
     self.inner.set_block(p, ty)?;
     self.update_light(p);
-    if let Some(Some(te)) = behaviors.call(kind, |b| b.create_te()) {
+    if let Some(te) = behaviors.call(kind, |b| b.create_te()) {
       self.tes.insert(p, te);
     }
     Ok(())
