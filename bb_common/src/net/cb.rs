@@ -2,7 +2,7 @@ use crate::{
   chunk::{paletted::Section, BlockLight, LightChunk, SkyLight},
   math::{ChunkPos, FPos, Pos},
   metadata::Metadata,
-  util::{chat::Color, Chat, GameMode, Hand, Item, UUID},
+  util::{chat::Color, Chat, GameMode, Hand, Item, SwitchMode, UUID},
 };
 use bb_macros::Transfer;
 use std::{collections::HashMap, net::SocketAddr};
@@ -282,7 +282,7 @@ packets! {
   /// simply disconnect the player from the old server. If the connection
   /// failed, then a `sb::SwitchServerFailed` packet will be sent to the server.
   #[id = 18]
-  SwitchServer { ips: Vec<SocketAddr> },
+  SwitchServer { mode: SwitchMode, ips: Vec<SocketAddr> },
   /// The ids are for the latest version. It is up to the proxy to convert them
   /// to older versions.
   #[id = 41]

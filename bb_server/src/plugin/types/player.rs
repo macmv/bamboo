@@ -10,7 +10,7 @@ use crate::{
   item::Stack,
   player::{Player, Team, Window},
 };
-use bb_common::util::{chat::Color, Chat, UUID};
+use bb_common::util::{chat::Color, Chat, SwitchMode, UUID};
 use bb_server_macros::define_ty;
 use panda::{
   parse::token::Span,
@@ -165,7 +165,7 @@ impl PPlayer {
       .map_err(|e| RuntimeError::custom(format!("invalid ip '{ip}': {e}"), Span::call_site()))?
       .collect();
     if let Ok(i) = self.inner() {
-      i.switch_to(ips);
+      i.switch_to(SwitchMode::Loading, ips);
     }
     Ok(())
   }

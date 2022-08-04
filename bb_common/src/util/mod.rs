@@ -403,7 +403,20 @@ pub enum JoinMode {
   #[id = 0]
   New,
   #[id = 1]
-  Switch,
+  Switch(SwitchMode),
+}
+
+#[derive(Default, Transfer, Debug, Clone, Copy, PartialEq)]
+pub enum SwitchMode {
+  /// Does not display a loading screen. This requires the same world on both
+  /// servers.
+  #[id = 0]
+  Seemless,
+  /// Displays a loading screen. This is more versatile, and allows for
+  /// dimension/position changes.
+  #[id = 1]
+  #[default]
+  Loading,
 }
 
 #[cfg(test)]

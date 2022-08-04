@@ -7,7 +7,7 @@ use crate::{
 use bb_common::{
   math::ChunkPos,
   net::cb,
-  util::{Buffer, Chat, GameMode, JoinInfo, JoinMode},
+  util::{Buffer, Chat, GameMode, JoinInfo, JoinMode, SwitchMode},
   version::ProtocolVersion,
 };
 use std::sync::Arc;
@@ -175,7 +175,7 @@ impl World {
             p.send(cb::packet::UnloadChunk { pos: pos + ChunkPos::new(x, z) });
           }
         }
-        p.switch_to(vec![addr]);
+        p.switch_to(SwitchMode::Loading, vec![addr]);
       }
     });
 

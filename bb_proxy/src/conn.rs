@@ -274,7 +274,7 @@ impl<'a, S: PacketStream + Send + Sync> Conn<'a, S> {
           let parsed = m.index();
           self.from_server.drain(0..parsed);
           match common {
-            ccb::Packet::SwitchServer(p) => self.switch_to(reg, p.ips),
+            ccb::Packet::SwitchServer(p) => self.switch_to(reg, p),
             common => {
               let packets = common.to_tcp(self).unwrap();
               if len as usize != parsed {
@@ -432,8 +432,8 @@ impl<'a, S: PacketStream + Send + Sync> Conn<'a, S> {
 
   /// Switches this connection to a new server. If all of the ips are bad, this
   /// doesn't change anything.
-  pub fn switch_to(&mut self, reg: &Registry, addrs: Vec<SocketAddr>) {
-    for addr in addrs {
+  pub fn switch_to(&mut self, reg: &Registry, p: ccb::packet::SwitchServer) {
+    for addr in p.ips {
       let conn = match TcpStream::connect(addr) {
         Ok(v) => v,
         Err(_) => continue,
@@ -441,7 +441,7 @@ impl<'a, S: PacketStream + Send + Sync> Conn<'a, S> {
       let mut old_stream = std::mem::replace(&mut self.server_stream, Some(conn));
       match self.write_data_to_server(|s, m| {
         m.write(&JoinInfo {
-          mode:     JoinMode::Switch,
+          mode:     JoinMode::Switch(p.mode),
           username: s.username.clone().unwrap(),
           uuid:     s.info.as_ref().unwrap().id,
           ver:      s.ver.id(),

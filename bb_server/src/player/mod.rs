@@ -13,7 +13,7 @@ use bb_common::{
   math::{ChunkPos, FPos, Pos},
   metadata::{Metadata, Pose},
   net::{cb, sb::PlayerCommand},
-  util::{Chat, GameMode, JoinInfo, UUID},
+  util::{Chat, GameMode, JoinInfo, SwitchMode, UUID},
   version::ProtocolVersion,
 };
 use parking_lot::{Mutex, MutexGuard};
@@ -669,7 +669,14 @@ impl Player {
   /// The order of `ips` matters. The first one will be tried first, then the
   /// second one, etc. This is expected to be the result of
   /// [`ToSocketAddrs`](std::net::ToSocketAddrs).
-  pub fn switch_to(&self, ips: Vec<SocketAddr>) { self.send(cb::packet::SwitchServer { ips }); }
+  ///
+  /// Note that if the proxy finds a valid server, it will stop reading all
+  /// packets from this server immediately. So, in the happy case, the proxy
+  /// will ignore every packet sent after this one. Therefore, this packet must
+  /// be the last one sent to the destination.
+  pub fn switch_to(&self, mode: SwitchMode, ips: Vec<SocketAddr>) {
+    self.send(cb::packet::SwitchServer { mode, ips });
+  }
 
   pub(super) fn handle_command(&self, command: PlayerCommand) {
     let mut needs_update = false;
