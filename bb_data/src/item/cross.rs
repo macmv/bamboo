@@ -197,8 +197,22 @@ impl Matcher<'_> {
       "red_stained_glass_pane"        => self.old("stained_glass_pane").meta(14),
       "black_stained_glass_pane"      => self.old("stained_glass_pane").meta(15),
 
-      "oak_slab"         => self.old("wooden_slab").meta(0),
-      "cobblestone_slab" => self.old("stone_slab").meta(3),
+      "smooth_stone_slab"  => self.old("stone_slab").meta(0),
+      "sandstone_slab"     => self.old("stone_slab").meta(1),
+      "petrified_oak_slab" => self.old("stone_slab").meta(2),
+      "cobblestone_slab"   => self.old("stone_slab").meta(3),
+      "brick_slab"         => self.old("stone_slab").meta(4),
+      "stone_brick_slab"   => self.old("stone_slab").meta(5),
+      "nether_brick_slab"  => self.old("stone_slab").meta(6),
+      "quartz_slab"        => self.old("stone_slab").meta(7),
+      "red_sandstone_slab" => self.old("stone_slab2").meta(0),
+
+      "oak_slab"      => self.old("wooden_slab").meta(0),
+      "spruce_slab"   => self.old("wooden_slab").meta(1),
+      "birch_slab"    => self.old("wooden_slab").meta(2),
+      "jungle_slab"   => self.old("wooden_slab").meta(3),
+      "acacia_slab"   => self.old("wooden_slab").meta(4),
+      "dark_oak_slab" => self.old("wooden_slab").meta(5),
 
       _ => OldItem::new(self.old.get(&self.item.name).map(|it| it.id).unwrap_or(0)),
     }

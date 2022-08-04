@@ -309,7 +309,7 @@ impl Matcher<'_> {
       "brick_slab"         => self.slab("stone_slab", "double_stone_slab") + 4,
       "stone_brick_slab"   => self.slab("stone_slab", "double_stone_slab") + 5,
       "nether_brick_slab"  => self.slab("stone_slab", "double_stone_slab") + 6,
-      "quartz_slab"        => self.slab("stone_slab", "double_stone_slab") + 6,
+      "quartz_slab"        => self.slab("stone_slab", "double_stone_slab") + 7,
       "red_sandstone_slab" => self.slab("stone_slab2", "double_stone_slab2") + 0,
 
       "oak_door"    => self.door("wooden_door"),
