@@ -54,7 +54,7 @@ impl Section {
     if self.palette.is_empty() {
       panic!("cannot insert into palette with direct block ids");
     }
-    if self.palette.len() + 1 >= 1 << self.data.bpe() as usize {
+    if self.palette.len() >= 1 << self.data.bpe() as usize {
       if self.data.bpe() >= 8 {
         info!(
           "palette has {} entries, increasing from {} to {} bpe",

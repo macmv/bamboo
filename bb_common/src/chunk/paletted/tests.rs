@@ -197,6 +197,19 @@ fn test_set_get_block() {
   assert_eq!(s.get_block(SectionRelPos::new(15, 15, 15)), 420);
 }
 #[test]
+fn test_set_block_increases_bpe() {
+  // This validates that `set_block` will expand the bits per block when needed.
+
+  let mut s = Section::new(MAX_BPE);
+  assert_eq!(s.data().bpe(), 4);
+  for x in 0..16 {
+    s.set_block(SectionRelPos::new(x, 0, 0), x.into());
+  }
+  assert_eq!(s.data().bpe(), 4);
+  s.set_block(SectionRelPos::new(0, 1, 0), 20);
+  assert_eq!(s.data().bpe(), 5);
+}
+#[test]
 fn test_set_all() {
   let mut s = Section::new(MAX_BPE);
   for x in 0..16 {
