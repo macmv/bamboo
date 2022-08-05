@@ -265,14 +265,14 @@ impl World {
           difficulty: 1,
           dimension:  1,
           game_mode:  player.game_mode(),
-          level_type: "nether".into(),
+          level_type: "default".into(),
           reset_meta: true,
         });
         player.send(cb::packet::Respawn {
           difficulty: 1,
           dimension:  0,
           game_mode:  player.game_mode(),
-          level_type: "overworld".into(),
+          level_type: "default".into(),
           reset_meta: true,
         });
         let pos = player.pos().chunk();
