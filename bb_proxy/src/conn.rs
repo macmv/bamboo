@@ -438,7 +438,16 @@ impl<'a, S: PacketStream + Send + Sync> Conn<'a, S> {
         Ok(v) => v,
         Err(_) => continue,
       };
+
       let mut old_stream = std::mem::replace(&mut self.server_stream, Some(conn));
+      let new_stream = self.server_stream.as_mut().unwrap();
+      reg.deregister(old_stream.as_mut().unwrap()).unwrap();
+      reg.register(new_stream, self.server_token, Interest::READABLE | Interest::WRITABLE).unwrap();
+      let old_to_server = self.to_server.clone();
+      let old_from_server = self.from_server.clone();
+      self.to_server.clear();
+      self.from_server.clear();
+
       match self.write_data_to_server(|s, m| {
         m.write(&JoinInfo {
           mode:     JoinMode::Switch(p.mode),
@@ -448,16 +457,19 @@ impl<'a, S: PacketStream + Send + Sync> Conn<'a, S> {
         })?;
         Ok(())
       }) {
-        Ok(()) => {
-          let conn = self.server_stream.as_mut().unwrap();
-          reg.deregister(old_stream.as_mut().unwrap()).unwrap();
-          reg.register(conn, self.server_token, Interest::READABLE | Interest::WRITABLE).unwrap();
+        Ok(()) => break,
+        Err(_) => {
+          // new_stream is the one we created above, and we now want to deregister it.
+          let mut new_stream = std::mem::replace(&mut self.server_stream, old_stream);
+          let old_stream = self.server_stream.as_mut().unwrap();
+          reg.deregister(new_stream.as_mut().unwrap()).unwrap();
+          reg
+            .register(old_stream, self.server_token, Interest::READABLE | Interest::WRITABLE)
+            .unwrap();
           self.to_server.clear();
           self.from_server.clear();
-          break;
-        }
-        Err(_) => {
-          self.server_stream = old_stream;
+          self.to_server.extend_from_slice(&old_to_server);
+          self.from_server.extend_from_slice(&old_from_server);
           continue;
         }
       }
