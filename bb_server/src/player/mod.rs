@@ -675,22 +675,6 @@ impl Player {
   /// will ignore every packet sent after this one. Therefore, this packet must
   /// be the last one sent to the destination.
   pub fn switch_to(&self, mode: SwitchMode, ips: Vec<SocketAddr>) {
-    if mode == SwitchMode::Loading {
-      self.send(cb::packet::Respawn {
-        difficulty: 1,
-        dimension:  1,
-        game_mode:  self.game_mode(),
-        level_type: "nether".into(),
-        reset_meta: true,
-      });
-      self.send(cb::packet::Respawn {
-        difficulty: 1,
-        dimension:  0,
-        game_mode:  self.game_mode(),
-        level_type: "overworld".into(),
-        reset_meta: true,
-      });
-    }
     self.send(cb::packet::SwitchServer { mode, ips });
   }
 

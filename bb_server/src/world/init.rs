@@ -169,12 +169,6 @@ impl World {
             return;
           }
         };
-        let pos = p.pos().chunk();
-        for x in -(p.view_distance() as i32)..=p.view_distance() as i32 {
-          for z in -(p.view_distance() as i32)..=p.view_distance() as i32 {
-            p.send(cb::packet::UnloadChunk { pos: pos + ChunkPos::new(x, z) });
-          }
-        }
         p.switch_to(SwitchMode::Loading, vec![addr]);
       }
     });
@@ -215,54 +209,80 @@ impl World {
   }
 
   pub(super) fn player_init(self: &Arc<Self>, player: &Player, info: JoinInfo) {
-    if matches!(info.mode, JoinMode::New) {
-      let out = cb::packet::JoinGame {
-        // entity_id:                self.eid(),
-        // game_mode:                1,       // Creative
-        // difficulty_removed_v1_14: Some(1), // Normal
-        // dimension_v1_8:           Some(0), // Overworld
-        // dimension_v1_9_2:         Some(0), // Overworld
-        // level_type_removed_v1_16: Some("default".into()),
-        // max_players_v1_8:         Some(0), // Ignored
-        // max_players_v1_16_2:      Some(0), // Not sure if ignored
-        // reduced_debug_info:       false,   // Don't reduce debug info
-        //
-        // // 1.14+
-        // view_distance_v1_14: Some(10), // 10 chunk view distance TODO: Per player view distance
-        //
-        // // 1.15+
-        // hashed_seed_v1_15:           Some(0),
-        // enable_respawn_screen_v1_15: Some(true),
-        //
-        // // 1.16+
-        // is_hardcore_v1_16_2:      Some(false),
-        // is_flat_v1_16:            Some(false), // Changes the horizon line
-        // previous_game_mode_v1_16: Some(1),
-        // world_name_v1_16:         Some("overworld".into()),
-        // is_debug_v1_16:           Some(false), /* This is not reduced_debug_info, this is for
-        // the
-        //                                         * world being a debug world */
-        // dimension_codec_v1_16:    Some(codec.serialize()),
-        // dimension_v1_16:          Some("".into()),
-        // dimension_v1_16_2:        Some(NBT::new("", dimension).serialize()),
-        // world_names_v1_16:        Some(world_names.into_inner()),
+    match info.mode {
+      JoinMode::New => {
+        let out = cb::packet::JoinGame {
+          // entity_id:                self.eid(),
+          // game_mode:                1,       // Creative
+          // difficulty_removed_v1_14: Some(1), // Normal
+          // dimension_v1_8:           Some(0), // Overworld
+          // dimension_v1_9_2:         Some(0), // Overworld
+          // level_type_removed_v1_16: Some("default".into()),
+          // max_players_v1_8:         Some(0), // Ignored
+          // max_players_v1_16_2:      Some(0), // Not sure if ignored
+          // reduced_debug_info:       false,   // Don't reduce debug info
+          //
+          // // 1.14+
+          // view_distance_v1_14: Some(10), // 10 chunk view distance TODO: Per player view
+          // distance
+          //
+          // // 1.15+
+          // hashed_seed_v1_15:           Some(0),
+          // enable_respawn_screen_v1_15: Some(true),
+          //
+          // // 1.16+
+          // is_hardcore_v1_16_2:      Some(false),
+          // is_flat_v1_16:            Some(false), // Changes the horizon line
+          // previous_game_mode_v1_16: Some(1),
+          // world_name_v1_16:         Some("overworld".into()),
+          // is_debug_v1_16:           Some(false), /* This is not reduced_debug_info, this is for
+          // the
+          //                                         * world being a debug world */
+          // dimension_codec_v1_16:    Some(codec.serialize()),
+          // dimension_v1_16:          Some("".into()),
+          // dimension_v1_16_2:        Some(NBT::new("", dimension).serialize()),
+          // world_names_v1_16:        Some(world_names.into_inner()),
 
-        // Every player thinks they are EID 1, and no player is
-        // actually EID 1. This makes switching servers very easy.
-        eid:                   1,
-        hardcore_mode:         false,
-        game_mode:             player.game_mode(),
-        dimension:             0, // Overworld
-        level_type:            "default".into(),
-        difficulty:            1, // Normal
-        view_distance:         player.view_distance() as u16,
-        reduced_debug_info:    false,
-        enable_respawn_screen: true,
-        world_height:          self.height,
-        world_min_y:           self.min_y,
-      };
+          // Every player thinks they are EID 1, and no player is
+          // actually EID 1. This makes switching servers very easy.
+          eid:                   1,
+          hardcore_mode:         false,
+          game_mode:             player.game_mode(),
+          dimension:             0, // Overworld
+          level_type:            "default".into(),
+          difficulty:            1, // Normal
+          view_distance:         player.view_distance() as u16,
+          reduced_debug_info:    false,
+          enable_respawn_screen: true,
+          world_height:          self.height,
+          world_min_y:           self.min_y,
+        };
 
-      player.send(out);
+        player.send(out);
+      }
+      JoinMode::Switch(SwitchMode::Loading) => {
+        player.send(cb::packet::Respawn {
+          difficulty: 1,
+          dimension:  1,
+          game_mode:  player.game_mode(),
+          level_type: "nether".into(),
+          reset_meta: true,
+        });
+        player.send(cb::packet::Respawn {
+          difficulty: 1,
+          dimension:  0,
+          game_mode:  player.game_mode(),
+          level_type: "overworld".into(),
+          reset_meta: true,
+        });
+        let pos = player.pos().chunk();
+        for x in -(player.view_distance() as i32)..=player.view_distance() as i32 {
+          for z in -(player.view_distance() as i32)..=player.view_distance() as i32 {
+            player.send(cb::packet::UnloadChunk { pos: pos + ChunkPos::new(x, z) });
+          }
+        }
+      }
+      JoinMode::Switch(SwitchMode::Seemless) => {}
     }
 
     if player.ver() >= ProtocolVersion::V1_13 {
