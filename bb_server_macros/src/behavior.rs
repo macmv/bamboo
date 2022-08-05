@@ -62,7 +62,9 @@ struct KeyDef {
 }
 
 impl KeyDef {
-  pub fn span(&self) -> Span { self.star.spans[0].join(self.star2.spans[0]).unwrap() }
+  pub fn span(&self) -> Span {
+    self.star.spans[0].join(self.star2.spans[0]).unwrap_or(self.key.span())
+  }
 }
 
 impl Parse for Behaviors {
