@@ -205,6 +205,14 @@ packets! {
   PluginMessage { channel: String, data: Vec<u8> },
   #[id = 30]
   RemoveEntities { eids: Vec<i32> },
+  #[id = 44]
+  Respawn {
+    game_mode:  GameMode,
+    dimension:  i8,
+    level_type: String,
+    difficulty: u8,
+    reset_meta: bool,
+  },
   #[id = 25]
   ScoreboardDisplay {
     #[must_exist]

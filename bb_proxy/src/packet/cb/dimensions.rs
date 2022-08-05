@@ -76,15 +76,8 @@ struct CodecItem<T> {
   element: T,
 }
 
-pub fn write_dimensions<T>(
-  out: &mut Buffer<T>,
-  ver: ProtocolVersion,
-  world_height: u32,
-  world_min_y: i32,
-) where
-  std::io::Cursor<T>: std::io::Write,
-{
-  let dimension = Dimension {
+fn single_dimension(world_min_y: i32, world_height: u32) -> Dimension {
+  Dimension {
     piglin_safe:          false,
     natural:              true,
     ambient_light:        0.0,
@@ -104,7 +97,30 @@ pub fn write_dimensions<T>(
 
     monster_spawn_light_level:       7,
     monster_spawn_block_light_limit: 7,
-  };
+  }
+}
+
+pub fn write_single_dimension<T>(
+  out: &mut Buffer<T>,
+  _ver: ProtocolVersion,
+  world_min_y: i32,
+  world_height: u32,
+) where
+  std::io::Cursor<T>: std::io::Write,
+{
+  let dimension = single_dimension(world_min_y, world_height);
+  out.write_buf(&nbt::to_nbt("", &dimension).unwrap().serialize());
+}
+
+pub fn write_dimensions<T>(
+  out: &mut Buffer<T>,
+  ver: ProtocolVersion,
+  world_min_y: i32,
+  world_height: u32,
+) where
+  std::io::Cursor<T>: std::io::Write,
+{
+  let dimension = single_dimension(world_min_y, world_height);
   let biome = Biome {
     precipitation: "rain".into(),
     depth:         1.0,

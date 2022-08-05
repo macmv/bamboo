@@ -61,6 +61,7 @@ impl ToTcp for Packet {
       Packet::PlaySound(p) => p.to_tcp(conn),
       Packet::PluginMessage(p) => p.to_tcp(conn),
       Packet::RemoveEntities(p) => p.to_tcp(conn),
+      Packet::Respawn(p) => p.to_tcp(conn),
       Packet::ScoreboardDisplay(p) => p.to_tcp(conn),
       Packet::ScoreboardObjective(p) => p.to_tcp(conn),
       Packet::ScoreboardUpdate(p) => p.to_tcp(conn),

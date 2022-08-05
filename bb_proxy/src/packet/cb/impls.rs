@@ -488,7 +488,7 @@ to_tcp!(JoinGame => (self, conn, ver) {
     buf.write_varint(1);
     buf.write_str("minecraft:overworld");
 
-    super::dimensions::write_dimensions(&mut buf, ver, self.world_height, self.world_min_y);
+    super::dimensions::write_dimensions(&mut buf, ver, self.world_min_y, self.world_height);
 
     // Hashed world seed, used for biomes client side.
     buf.write_u64(0);
@@ -766,6 +766,42 @@ to_tcp!(RemoveEntities => (self, conn, ver) {
     let mut buf = Buffer::new(&mut data);
     buf.write_list(&self.eids, |buf, &e| buf.write_varint(e));
     gpacket!(DestroyEntities V8 { unknown: data })
+  }
+});
+to_tcp!(Respawn => (self, conn, ver) {
+  if ver >= ProtocolVersion::V1_14 {
+    let mut data = vec![];
+    let mut buf = Buffer::new(&mut data);
+    buf.write_i32(self.dimension.into());
+    if ver >= ProtocolVersion::V1_16_5 {
+      super::dimensions::write_single_dimension(&mut buf, ver, 0, 256);
+      buf.write_str("minecraft:overworld");
+    }
+    if ver >= ProtocolVersion::V1_15_2 {
+      // hashed seed, same as join game
+      buf.write_u64(0);
+    }
+    buf.write_u8(self.game_mode.id());
+    // previous game mode
+    if ver >= ProtocolVersion::V1_16_5 {
+      buf.write_u8(self.game_mode.id());
+      buf.write_bool(false); // Is debug; cannot be modified, has preset blocks
+      buf.write_bool(false); // Is flat; changes fog
+      buf.write_bool(self.reset_meta);
+    } else {
+      buf.write_str(&self.level_type);
+    }
+    gpacket!(Respawn V14 {
+      unknown: data,
+    })
+  } else {
+    gpacket!(Respawn V8 {
+      dimension_id: self.dimension.into(),
+      difficulty:   self.difficulty.into(),
+      game_type:    self.game_mode.id(),
+      world_type:   self.level_type,
+      unknown:      vec![],
+    })
   }
 });
 to_tcp!(ScoreboardDisplay => (self, conn, ver) {
