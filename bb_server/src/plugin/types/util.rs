@@ -10,6 +10,12 @@ wrap_eq!(ChunkPos, PChunkPos);
 wrap!(FPos, PFPos);
 wrap_eq!(UUID, PUUID);
 
+#[derive(Clone, Debug, PartialEq)]
+#[cfg_attr(feature = "python_plugins", ::pyo3::pyclass)]
+pub struct PDuration {
+  pub ticks: u32,
+}
+
 /// A block position. This stores X, Y, and Z coordinates as ints.
 ///
 /// If you need a player position, use `FPos` (for float position) instead.
@@ -115,4 +121,14 @@ impl PFPos {
 impl PUUID {
   /// Returns the UUID as a string, with dashes inserted.
   pub fn to_s(&self) -> String { self.inner.as_dashed_str() }
+}
+
+/// A duration. This is a number of ticks internally, and can be created from
+/// a number of ticks, seconds, or minutes.
+#[define_ty(panda_path = "bamboo::util::Duration")]
+impl PDuration {
+  /// Returns a duration for the number of seconds specified.
+  pub fn from_secs(secs: u32) -> Self { PDuration { ticks: secs * 20 } }
+  /// Returns a duration for the number of minutes specified.
+  pub fn from_minutes(minutes: u32) -> Self { PDuration { ticks: minutes * 20 * 60 } }
 }
