@@ -1,0 +1,50 @@
+use bamboo::util::{Duration, Pos}
+
+let phase = "starting"
+let SPAWN = Pos::new(0, 60, 0)
+
+on tick() when phase == "playing" {
+  for player in @players.filter(|p| p.game_mode() == "survival") {
+    if player.on_ground() {
+      pos = player.pos()
+      // after(0.5 seconds, || {
+      //   // world.set_block(pos - Pos::new(0, 1, 0), #minecraft:air)
+      //   // world.set_block(pos - Pos::new(0, 2, 0), #minecraft:air)
+      // })
+    }
+    if player.pos().y < 0 {
+      player.set_game_mode("spectator")
+      player.teleport(SPAWN)
+    }
+  }
+  let alive_players = @players.filter(|p| p.game_mode() == "survival")
+  if alive_players.len() < 2 {
+    alive_players[0].set_game_mode("spectator")
+    for player in @players {
+      player.send_title("Game Over")
+      player.send_subtitle(alive_players[0].name + " won!")
+    }
+    phase = "done"
+  }
+}
+
+let count = Countdown::new(Duration::from_minutes(2), || {
+  for player in @players {
+    player.teleport(SPAWN)
+    player.send_title("Start!")
+  }
+  phase = "playing"
+})
+
+on player_join(player) when phase == "starting" {
+  if @players.len() > 10 {
+    count.set_time_left(Duration::from_secs(10))
+  } else if @players.len() > 5 {
+    count.set_time_left(Duration::from_secs(60))
+  } else if @players.len() > 2 {
+    count.start()
+  }
+}
+on player_join(player) when phase != "starting" {
+  player.set_game_mode("spectator")
+}
