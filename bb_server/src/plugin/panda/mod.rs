@@ -5,7 +5,8 @@ use super::{
 use crate::{block, player::Player, world::WorldManager};
 use bb_common::{math::Pos, net::sb::ClickWindow};
 use panda::{
-  runtime::{Callback, LockedEnv, Path as PdPath, Path as TyPath, Var},
+  parse::Path as PdPath,
+  runtime::{Callback, LockedEnv, Var},
   Panda, PdError,
 };
 use std::{fs, path::Path, sync::Arc};
@@ -153,7 +154,7 @@ impl PandaPlugin {
   }
   pub fn call_on_tick(&self) { self.call(self.path("on_tick"), vec![]); }
 
-  pub fn call(&self, path: TyPath, args: Vec<Var>) -> Var {
+  pub fn call(&self, path: PdPath, args: Vec<Var>) -> Var {
     match &self.sl {
       Some(sl) => {
         if !sl.has_func(&path) {
