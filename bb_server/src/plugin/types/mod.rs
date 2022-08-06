@@ -7,6 +7,8 @@
 //! to differentiate from the server types. In the scripting languages, the
 //! types do not start with a `P`.
 
+use self::player::PPlayer;
+
 use super::{Bamboo, PandaPlugin};
 use bb_common::util::{chat::Color, Chat};
 use bb_server_macros::define_ty;
@@ -28,7 +30,7 @@ pub mod world;
 
 use command::PCommand;
 use player::PTeam;
-use std::fmt;
+use std::{fmt, sync::Arc};
 use world::{gen::PBiome, PWorld};
 
 pub trait Callback: fmt::Debug + Send + Sync {
@@ -281,12 +283,32 @@ impl PandaPlugin {
     sl.def_callback("player_leave");
     sl.def_callback("tick");
 
-    let bb = self.bb();
+    {
+      let bb = self.bb();
+      sl.predefine("players", move || {
+        bb.wm
+          .all_players()
+          .iter()
+          .map(|(_, (_, player))| {
+            PPlayer {
+              username: player.username().clone(),
+              uuid:     player.id(),
+              inner:    Arc::downgrade(player),
+            }
+            .into()
+          })
+          .collect::<Vec<Var>>()
+          .into()
+      });
+    }
 
-    sl.add_builtin_fn(path!(bamboo::instance), false, move |_env, _slf, args, pos| {
-      RuntimeError::check_arg_len(&args, 0, pos)?;
-      Ok(bb.clone().into())
-    });
+    {
+      let bb = self.bb();
+      sl.add_builtin_fn(path!(bamboo::instance), false, move |_env, _slf, args, pos| {
+        RuntimeError::check_arg_len(&args, 0, pos)?;
+        Ok(bb.clone().into())
+      });
+    }
     {
       let name = self.name().clone();
       sl.add_builtin_fn(path!(bamboo::trace), false, move |_env, _slf, args, _pos| {

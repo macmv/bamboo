@@ -869,6 +869,11 @@ impl WorldManager {
     self.players.write().remove(&id);
   }
 
+  /// Returns a read lock on the players map.
+  pub fn all_players(&self) -> RwLockReadGuard<'_, HashMap<UUID, (usize, Arc<Player>)>> {
+    self.players.read()
+  }
+
   fn global_tick_loop(self: Arc<Self>) {
     let mut start = Instant::now();
     loop {
