@@ -94,81 +94,58 @@ impl PandaPlugin {
   /// functions.
   pub fn bb(&self) -> Bamboo { self.bb.clone() }
 
-  fn path(&self, name: &str) -> PdPath {
-    PdPath::new(vec![self.name.clone(), "main".into(), name.into()])
-  }
-
-  pub fn call_init(&self) { self.call(self.path("init"), vec![]); }
+  pub fn call_init(&self) { self.call("init", vec![]); }
   pub fn call_on_block_place(&self, player: Arc<Player>, pos: Pos, ty: block::Type) -> bool {
-    if let Var::Bool(allow) = self.call(
-      self.path("on_block_place"),
+    self.call(
+      "block_place",
       vec![
         types::player::PPlayer::from(player).into(),
         types::util::PPos::from(pos).into(),
         types::block::PBlockKind::from(ty.kind()).into(),
       ],
-    ) {
-      allow
-    } else {
-      true
-    }
+    );
+    true
   }
   pub fn call_on_block_break(&self, player: Arc<Player>, pos: Pos, ty: block::Type) -> bool {
-    if let Var::Bool(allow) = self.call(
-      self.path("on_block_break"),
+    self.call(
+      "block_break",
       vec![
         types::player::PPlayer::from(player).into(),
         types::util::PPos::from(pos).into(),
         types::block::PBlockKind::from(ty.kind()).into(),
       ],
-    ) {
-      allow
-    } else {
-      true
-    }
+    );
+    true
   }
   pub fn call_on_click_window(&self, player: Arc<Player>, slot: i32, mode: ClickWindow) -> bool {
-    match self.call(
-      self.path("on_click_window"),
+    self.call(
+      "click_window",
       vec![
         types::player::PPlayer::from(player).into(),
         slot.into(),
         types::item::PClickWindow::from(mode).into(),
       ],
-    ) {
-      Var::Bool(v) => v,
-      _ => true,
-    }
+    );
+    true
   }
   pub fn call_on_chat_message(&self, player: Arc<Player>, text: String) {
-    self.call(
-      self.path("on_chat_message"),
-      vec![types::player::PPlayer::from(player).into(), text.into()],
-    );
+    self.call("chat_message", vec![types::player::PPlayer::from(player).into(), text.into()]);
   }
   pub fn call_on_player_join(&self, player: Arc<Player>) {
-    self.call(self.path("on_player_join"), vec![types::player::PPlayer::from(player).into()]);
+    self.call("player_join", vec![types::player::PPlayer::from(player).into()]);
   }
   pub fn call_on_player_leave(&self, player: Arc<Player>) {
-    self.call(self.path("on_player_leave"), vec![types::player::PPlayer::from(player).into()]);
+    self.call("player_leave", vec![types::player::PPlayer::from(player).into()]);
   }
-  pub fn call_on_tick(&self) { self.call(self.path("on_tick"), vec![]); }
+  pub fn call_on_tick(&self) { self.call("tick", vec![]); }
 
-  pub fn call(&self, path: PdPath, args: Vec<Var>) -> Var {
+  pub fn call(&self, name: &str, args: Vec<Var>) {
     match &self.sl {
-      Some(sl) => {
-        if !sl.has_func(&path) {
-          return Var::None;
-        }
-        match sl.call_args(&path, args) {
-          Ok(v) => v,
-          Err(e) => {
-            self.print_err(e);
-            Var::None
-          }
-        }
-      }
-      None => Var::None,
+      Some(sl) => match sl.run_callback(name, args) {
+        Ok(v) => v,
+        Err(e) => self.print_err(e),
+      },
+      None => {}
     }
   }
 

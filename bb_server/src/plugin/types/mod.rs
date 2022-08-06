@@ -272,7 +272,17 @@ fn format(args: &[Var]) -> String {
 
 impl PandaPlugin {
   pub fn add_builtins(&self, sl: &mut Panda) {
+    sl.def_callback("init");
+    sl.def_callback("block_place");
+    sl.def_callback("block_break");
+    sl.def_callback("click_window");
+    sl.def_callback("chat_message");
+    sl.def_callback("player_join");
+    sl.def_callback("player_leave");
+    sl.def_callback("tick");
+
     let bb = self.bb();
+
     sl.add_builtin_fn(path!(bamboo::instance), false, move |_env, _slf, args, pos| {
       RuntimeError::check_arg_len(&args, 0, pos)?;
       Ok(bb.clone().into())
