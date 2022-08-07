@@ -138,7 +138,6 @@ pub(crate) fn handle(wm: &Arc<WorldManager>, mut player: &Arc<Player>, p: sb::Pa
       };
       */
 
-      dbg!(cursor);
       match player.world().get_block(pos) {
         Ok(looking_at) => {
           let click = BlockClick {
