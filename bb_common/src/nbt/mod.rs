@@ -49,6 +49,10 @@ pub enum Tag {
   LongArray(Vec<i64>),
 }
 
+impl From<&str> for Tag {
+  fn from(s: &str) -> Self { Tag::String(s.into()) }
+}
+
 impl NBT {
   /// Creates a new nbt tag. The tag value can be anything.
   ///
@@ -109,6 +113,16 @@ impl NBT {
       inner
     } else {
       panic!("called compound on non-compound type: {:?}", self);
+    }
+  }
+
+  /// If `self` is a compound tag, this will create a new compound child for
+  /// this tag, and return it. Otherwise, this panics.
+  pub fn get_or_create_compound(&mut self, key: &str) -> &mut HashMap<String, Tag> {
+    if let Tag::Compound(inner) = &mut self.tag {
+      inner.entry(key.into()).or_insert_with(|| Tag::compound(&[])).unwrap_compound_mut()
+    } else {
+      panic!("called get_or_create_compount on non-compound type");
     }
   }
 
@@ -190,6 +204,13 @@ impl Tag {
   }
   #[track_caller]
   pub fn unwrap_compound(&self) -> &HashMap<String, Tag> {
+    match self {
+      Self::Compound(v) => v,
+      _ => panic!("not a compound: {:?}", self),
+    }
+  }
+  #[track_caller]
+  pub fn unwrap_compound_mut(&mut self) -> &mut HashMap<String, Tag> {
     match self {
       Self::Compound(v) => v,
       _ => panic!("not a compound: {:?}", self),
