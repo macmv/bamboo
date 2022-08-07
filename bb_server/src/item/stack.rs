@@ -6,10 +6,11 @@ use bb_transfer::{
 };
 use std::num::NonZeroU8;
 
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct Stack {
   item:   Type,
   amount: NonZeroU8,
+  nbt:    NBT,
 }
 
 impl From<Item> for Stack {
@@ -50,9 +51,9 @@ impl Stack {
   pub const EMPTY: Stack = Stack::empty();
   /// Creates an empty item stck. This has the type set to air, and the count
   /// set to 0.
-  pub const fn empty() -> Self { Stack { item: Type::Air, amount: ONE } }
+  pub const fn empty() -> Self { Stack { item: Type::Air, amount: ONE, nbt: NBT::empty("") } }
   /// Creates an item stack containing a single item with the given type.
-  pub fn new(item: Type) -> Self { Stack { item, amount: ONE } }
+  pub fn new(item: Type) -> Self { Stack { item, amount: ONE, nbt: NBT::empty("") } }
 
   /// Sets the amount in self, and returns the modified self. If the stack is
   /// air, this will do nothing.

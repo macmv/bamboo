@@ -6,14 +6,37 @@ use serde::Deserialize;
 use std::{
   collections::HashMap,
   fs, io, mem,
+  num::NonZeroU8,
   ops::{Index, IndexMut},
   path::Path,
   str::FromStr,
 };
 
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+pub struct StackEq {
+  item:   item::Type,
+  amount: NonZeroU8,
+}
+
+impl Default for StackEq {
+  fn default() -> Self { StackEq { item: item::Type::Air, amount: NonZeroU8::new(1).unwrap() } }
+}
+impl From<Stack> for StackEq {
+  fn from(v: Stack) -> Self {
+    StackEq {
+      item:   v.item(),
+      amount: NonZeroU8::new(v.amount()).unwrap_or(NonZeroU8::new(1).unwrap()),
+    }
+  }
+}
+impl StackEq {
+  pub fn empty() -> Self { Self::default() }
+  pub fn is_empty(&self) -> bool { self.item == item::Type::Air }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Recipe {
-  items: Grid<Stack>,
+  items: Grid<StackEq>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -190,15 +213,15 @@ impl CraftingData {
   pub fn craft(&self, input: &Inventory<9>) -> Option<Stack> {
     let mut width = 3;
     let mut height = 3;
-    let mut grid = Grid::new(3, 3);
+    let mut grid = Grid::<StackEq>::new(3, 3);
     for (i, it) in input.items().iter().enumerate() {
-      grid.items[i] = it.clone();
+      grid.items[i] = it.clone().into();
     }
     while height > 0 {
       if grid[(0, 0)].is_empty() && grid[(1, 0)].is_empty() && grid[(2, 0)].is_empty() {
         for y in 1..3 {
           for x in 0..3 {
-            grid[(x, y - 1)] = mem::replace(&mut grid[(x, y)], Stack::empty());
+            grid[(x, y - 1)] = mem::replace(&mut grid[(x, y)], StackEq::empty());
           }
         }
         height -= 1;
@@ -215,7 +238,7 @@ impl CraftingData {
       if grid[(0, 0)].is_empty() && grid[(0, 1)].is_empty() && grid[(0, 2)].is_empty() {
         for x in 1..3 {
           for y in 0..3 {
-            grid[(x - 1, y)] = mem::replace(&mut grid[(x, y)], Stack::empty());
+            grid[(x - 1, y)] = mem::replace(&mut grid[(x, y)], StackEq::empty());
           }
         }
         width -= 1;
@@ -263,7 +286,7 @@ impl Recipe {
     for (i, row) in pattern.iter().enumerate() {
       for (j, c) in row.chars().enumerate() {
         if c != ' ' {
-          grid.set(j, i, key[&c].to_stack()?);
+          grid.set(j, i, key[&c].to_stack()?.into());
         }
       }
     }
