@@ -305,10 +305,7 @@ impl PandaPlugin {
 
     {
       let bb = self.bb();
-      sl.add_builtin_fn(path!(bamboo::instance), false, move |_env, _slf, args, pos| {
-        RuntimeError::check_arg_len(&args, 0, pos)?;
-        Ok(bb.clone().into())
-      });
+      sl.predefine("bamboo", move || bb.clone().into());
     }
     {
       let name = self.name().clone();

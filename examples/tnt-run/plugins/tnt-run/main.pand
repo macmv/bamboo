@@ -37,6 +37,7 @@ on player_join(player) {
   if @players.len() >= 2 {
     start()
   }
+  @bamboo.broadcast(Chat::new("player " + player.username() + " joined"))
 }
 
 fn start() {
