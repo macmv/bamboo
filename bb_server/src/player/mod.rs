@@ -66,6 +66,8 @@ pub(crate) struct PlayerPosition {
   next_yaw:   f32,
   next_pitch: f32,
 
+  on_ground: bool,
+
   last_set_pos: Instant,
 
   crouching: bool,
@@ -214,6 +216,7 @@ impl Player {
         pitch:        0.0,
         next_yaw:     0.0,
         next_pitch:   0.0,
+        on_ground:    false,
         last_set_pos: Instant::now(),
         crouching:    false,
         sprinting:    false,
@@ -414,6 +417,13 @@ impl Player {
     pos.curr
   }
 
+  /// Returns `true` if the player is on the ground. This is both sent
+  /// to us by the client, and validated by collision detection each
+  /// tick.
+  pub fn on_ground(&self) -> bool {
+    let pos = self.pos.lock();
+    pos.on_ground
+  }
   /// Returns `true` if the player is crouching.
   pub fn is_crouching(&self) -> bool { self.pos.lock().crouching }
   /// Returns `true` if the player is sprinting.

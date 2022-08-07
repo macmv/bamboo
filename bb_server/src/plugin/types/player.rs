@@ -10,7 +10,7 @@ use crate::{
   item::Stack,
   player::{Player, Team, Window},
 };
-use bb_common::util::{chat::Color, Chat, SwitchMode, UUID};
+use bb_common::util::{chat::Color, Chat, GameMode, SwitchMode, UUID};
 use bb_server_macros::define_ty;
 use panda::{
   parse::token::Span,
@@ -73,14 +73,41 @@ impl PPlayer {
   /// online mode.
   pub fn uuid(&self) -> PUUID { PUUID { inner: self.uuid } }
 
+  /// Returns the game mode of the player.
+  ///
+  /// This will return "survival" if they are offline.
+  pub fn game_mode(&self) -> String {
+    self.inner().map(|p| p.game_mode()).unwrap_or(GameMode::Survival).to_string()
+  }
+
   /// Teleports the player to the given position, with a yaw and pitch.
   ///
   /// This will do nothing if the player is offline.
-  pub fn teleport(&self, pos: &PFPos, yaw: f32, pitch: f32) {
+  pub fn teleport_look(&self, pos: &PFPos, yaw: f32, pitch: f32) {
     if let Ok(i) = self.inner() {
       i.teleport(pos.inner, yaw, pitch);
     }
   }
+  /// Teleports the player to the given position. Yaw and pitch will be `0`.
+  ///
+  /// This will do nothing if the player is offline.
+  pub fn teleport(&self, pos: &PFPos) {
+    if let Ok(i) = self.inner() {
+      i.teleport(pos.inner, 0.0, 0.0);
+    }
+  }
+
+  /// Returns `true` if the player is touching the ground. This is verified by
+  /// server, so the result can be trusted. The result will only change once per
+  /// tick.
+  ///
+  /// Returns `false` if the player is offline.
+  pub fn on_ground(&self) -> bool { self.inner().map(|p| p.on_ground()).unwrap_or(false) }
+
+  /// Returns the player's current position.
+  ///
+  /// TODO: What to return if they aren't online?
+  pub fn pos(&self) -> Result<PFPos> { Ok(self.inner()?.pos().into()) }
 
   /// Sends the given chat message to a player. This accepts exactly one
   /// argument, which can be any type. If it is a `PChat`, then it will be

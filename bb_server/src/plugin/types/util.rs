@@ -50,6 +50,62 @@ impl PPos {
   /// pos.z() // returns 7
   /// ```
   pub fn z(&self) -> i32 { self.inner.z() }
+
+  /// Returns a new position, with the X set to the given value.
+  ///
+  /// # Example
+  ///
+  /// ```
+  /// pos = Pos::new(5, 6, 7)
+  /// pos.with_x(10) // returns Pos::new(10, 6, 7)
+  /// ```
+  pub fn with_x(&self, new_x: i32) -> Self { self.inner.with_x(new_x).into() }
+  /// Returns a new position, with the Y set to the given value.
+  ///
+  /// # Example
+  ///
+  /// ```
+  /// pos = Pos::new(5, 6, 7)
+  /// pos.with_y(10) // returns Pos::new(5, 10, 7)
+  /// ```
+  pub fn with_y(&self, new_y: i32) -> Self { self.inner.with_y(new_y).into() }
+  /// Returns a new position, with the Z set to the given value.
+  ///
+  /// # Example
+  ///
+  /// ```
+  /// pos = Pos::new(5, 6, 7)
+  /// pos.with_z(10) // returns Pos::new(5, 6, 10)
+  /// ```
+  pub fn with_z(&self, new_z: i32) -> Self { self.inner.with_z(new_z).into() }
+
+  /// Adds the given number in the X axis, and returns the new position.
+  ///
+  /// # Example
+  ///
+  /// ```
+  /// pos = Pos::new(5, 6, 7)
+  /// pos.add_x(10) // returns Pos::new(15, 6, 7)
+  /// ```
+  pub fn add_x(&self, offset: i32) -> Self { self.inner.add_x(offset).into() }
+  /// Adds the given number in the Y axis, and returns the new position.
+  ///
+  /// # Example
+  ///
+  /// ```
+  /// pos = Pos::new(5, 6, 7)
+  /// pos.add_y(10) // returns Pos::new(5, 16, 7)
+  /// ```
+  pub fn add_y(&self, offset: i32) -> Self { self.inner.add_y(offset).into() }
+  /// Adds the given number in the Z axis, and returns the new position.
+  ///
+  /// # Example
+  ///
+  /// ```
+  /// pos = Pos::new(5, 6, 7)
+  /// pos.add_z(10) // returns Pos::new(5, 6, 17)
+  /// ```
+  pub fn add_z(&self, offset: i32) -> Self { self.inner.add_z(offset).into() }
 }
 
 /// A chunk position. This stores X and Z coordinates.
@@ -77,6 +133,44 @@ impl PChunkPos {
   /// pos.z() // returns 7
   /// ```
   pub fn z(&self) -> i32 { self.inner.z() }
+
+  /// Returns a new position, with the X set to the given value.
+  ///
+  /// # Example
+  ///
+  /// ```
+  /// pos = ChunkPos::new(5, 7)
+  /// pos.with_x(10) // returns ChunkPos::new(10, 7)
+  /// ```
+  pub fn with_x(&self, new_x: i32) -> Self { self.inner.with_x(new_x).into() }
+  /// Returns a new position, with the Z set to the given value.
+  ///
+  /// # Example
+  ///
+  /// ```
+  /// pos = ChunkPos::new(5, 7)
+  /// pos.with_z(10) // returns ChunkPos::new(5, 10)
+  /// ```
+  pub fn with_z(&self, new_z: i32) -> Self { self.inner.with_z(new_z).into() }
+
+  /// Adds the given number in the X axis, and returns the new position.
+  ///
+  /// # Example
+  ///
+  /// ```
+  /// pos = ChunkPos::new(5, 7)
+  /// pos.add_x(10) // returns ChunkPos::new(15, 7)
+  /// ```
+  pub fn add_x(&self, offset: i32) -> Self { self.inner.add_x(offset).into() }
+  /// Adds the given number in the Z axis, and returns the new position.
+  ///
+  /// # Example
+  ///
+  /// ```
+  /// pos = ChunkPos::new(5, 7)
+  /// pos.add_z(10) // returns ChunkPos::new(5, 17)
+  /// ```
+  pub fn add_z(&self, offset: i32) -> Self { self.inner.add_z(offset).into() }
 }
 
 /// An entity position. This stores X, Y, and Z coordinates as floats.
@@ -87,6 +181,7 @@ impl PFPos {
   /// Creates a new floating point position, with the given X, Y, and Z
   /// coordinates.
   pub fn new(x: f64, y: f64, z: f64) -> Self { PFPos { inner: FPos::new(x, y, z) } }
+
   /// Returns the X position of this entity.
   ///
   /// # Example
@@ -114,6 +209,73 @@ impl PFPos {
   /// pos.z() // returns 7.2
   /// ```
   pub fn z(&self) -> f64 { self.inner.z() }
+
+  /// Returns a new position, with the X set to the given value.
+  ///
+  /// # Example
+  ///
+  /// ```
+  /// pos = FPos::new(5.5, 6.0, 7.2)
+  /// pos.with_x(10.0) // returns FPos::new(10.0, 6.0, 7.2)
+  /// ```
+  pub fn with_x(&self, new_x: f64) -> Self { self.inner.with_x(new_x).into() }
+  /// Returns a new position, with the Y set to the given value.
+  ///
+  /// # Example
+  ///
+  /// ```
+  /// pos = FPos::new(5.5, 6.0, 7.2)
+  /// pos.with_y(10.0) // returns FPos::new(5.5, 10.0, 7.2)
+  /// ```
+  pub fn with_y(&self, new_y: f64) -> Self { self.inner.with_y(new_y).into() }
+  /// Returns a new position, with the Z set to the given value.
+  ///
+  /// # Example
+  ///
+  /// ```
+  /// pos = FPos::new(5.5, 6.0, 7.2)
+  /// pos.with_z(10.0) // returns FPos::new(5.5, 6.0, 10.0)
+  /// ```
+  pub fn with_z(&self, new_z: f64) -> Self { self.inner.with_z(new_z).into() }
+
+  /// Adds the given number in the X axis, and returns the new position.
+  ///
+  /// # Example
+  ///
+  /// ```
+  /// pos = FPos::new(5.5, 6.0, 7.2)
+  /// pos.add_x(100.0) // returns FPos::new(105.5, 6.0, 7.2)
+  /// ```
+  pub fn add_x(&self, offset: f64) -> Self { self.inner.add_x(offset).into() }
+  /// Adds the given number in the Y axis, and returns the new position.
+  ///
+  /// # Example
+  ///
+  /// ```
+  /// pos = FPos::new(5.5, 6.0, 7.2)
+  /// pos.add_y(100.0) // returns FPos::new(5.5, 106.0, 7.2)
+  /// ```
+  pub fn add_y(&self, offset: f64) -> Self { self.inner.add_y(offset).into() }
+  /// Adds the given number in the Z axis, and returns the new position.
+  ///
+  /// # Example
+  ///
+  /// ```
+  /// pos = FPos::new(5.5, 6.0, 7.2)
+  /// pos.add_z(100.0) // returns FPos::new(5.5, 6.0, 107.2)
+  /// ```
+  pub fn add_z(&self, offset: f64) -> Self { self.inner.add_z(offset).into() }
+
+  /// Returns the block that this position is in. This will round all 3 axis
+  /// down.
+  ///
+  /// # Example
+  ///
+  /// ```
+  /// pos = FPos::new(5.5, 6.0, 7.2)
+  /// pos.block() // returns Pos::new(5, 6, 7)
+  /// ```
+  pub fn block(&self) -> PPos { self.inner.block().into() }
 }
 
 /// A UUID. This is used as a unique identifier for players and entities.

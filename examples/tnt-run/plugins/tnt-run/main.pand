@@ -1,18 +1,23 @@
-use bamboo::util::{Duration, Pos}
+use bamboo::{
+  block,
+  chat::Chat,
+  util::{Duration, Pos, FPos}
+}
 
-let phase = "starting"
-let SPAWN = Pos::new(0, 60, 0)
+let phase = "waiting"
+let SPAWN = FPos::new(0.0, 60.0, 0.0)
 
 on tick() when phase == "playing" {
   for player in @players.filter(|p| p.game_mode() == "survival") {
-    if player.on_ground() {
-      pos = player.pos()
+    if !player.on_ground() {
+      let pos = player.pos().block()
+      player.world().set_kind(pos.add_y(-1), block::Kind::from_s("air"))
       // after(0.5 seconds, || {
-      //   // world.set_block(pos - Pos::new(0, 1, 0), #minecraft:air)
-      //   // world.set_block(pos - Pos::new(0, 2, 0), #minecraft:air)
+      //   world.set_block(pos - Pos::new(0, 1, 0), #minecraft:air)
+      //   world.set_block(pos - Pos::new(0, 2, 0), #minecraft:air)
       // })
     }
-    if player.pos().y < 0 {
+    if player.pos().y() < 0.0 {
       player.set_game_mode("spectator")
       player.teleport(SPAWN)
     }
@@ -28,6 +33,22 @@ on tick() when phase == "playing" {
   }
 }
 
+on player_join(player) {
+  if @players.len() >= 2 {
+    start()
+  }
+}
+
+fn start() {
+  phase = "playing"
+  for player in @players {
+    player.teleport(SPAWN)
+    player.set_title(Chat::new("Start!"))
+    player.show_title(0, 20, 0)
+  }
+}
+
+/*
 let count = Countdown::new(Duration::from_minutes(2), || {
   for player in @players {
     player.teleport(SPAWN)
@@ -48,3 +69,4 @@ on player_join(player) when phase == "starting" {
 on player_join(player) when phase != "starting" {
   player.set_game_mode("spectator")
 }
+*/

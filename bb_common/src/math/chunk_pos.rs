@@ -42,6 +42,35 @@ impl ChunkPos {
   #[inline(always)]
   pub const fn block(&self) -> Pos { Pos::new(self.block_x(), 0, self.block_z()) }
 
+  /// Returns self, with x set to the given value.
+  #[inline(always)]
+  #[must_use = "with_x returns a modified version of self"]
+  pub fn with_x(mut self, x: i32) -> Self {
+    self.x = x;
+    self
+  }
+  /// Returns self, with z set to the given value.
+  #[inline(always)]
+  #[must_use = "with_z returns a modified version of self"]
+  pub fn with_z(mut self, z: i32) -> Self {
+    self.z = z;
+    self
+  }
+  /// Returns self, with x set to self.x plus the given value.
+  #[inline(always)]
+  #[must_use = "add_x returns a modified version of self"]
+  pub fn add_x(mut self, x: i32) -> Self {
+    self.x += x;
+    self
+  }
+  /// Returns self, with z set to self.z plus the given value.
+  #[inline(always)]
+  #[must_use = "add_z returns a modified version of self"]
+  pub fn add_z(mut self, z: i32) -> Self {
+    self.z += z;
+    self
+  }
+
   /// Creates an iterator that will return every column in the chunk. The Y
   /// coordinate in the position will always be 0.
   #[inline(always)]

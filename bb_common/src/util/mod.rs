@@ -161,6 +161,17 @@ impl GameMode {
   }
 }
 
+impl fmt::Display for GameMode {
+  fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    match self {
+      Self::Survival => write!(f, "survival"),
+      Self::Creative => write!(f, "creative"),
+      Self::Adventure => write!(f, "adventure"),
+      Self::Spectator => write!(f, "spectator"),
+    }
+  }
+}
+
 #[derive(Debug)]
 pub struct InvalidGameMode(String);
 
