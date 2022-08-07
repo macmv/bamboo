@@ -282,7 +282,6 @@ dependencies = [
  "rand 0.8.4",
  "rsa",
  "serde",
- "serde_derive",
  "serde_json",
  "sha-1",
  "smallvec",

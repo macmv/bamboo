@@ -16,7 +16,7 @@ use bb_transfer::{
 use mio::{net::TcpStream, Interest, Registry, Token};
 use rand::{rngs::OsRng, RngCore};
 use rsa::{padding::PaddingScheme, RSAPrivateKey};
-use serde_derive::{Deserialize, Serialize};
+use serde::{Deserialize, Serialize};
 use sha1::{Digest, Sha1};
 use std::{
   cell::RefCell,
