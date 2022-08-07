@@ -1,7 +1,6 @@
 #[macro_use]
 extern crate log;
 
-use bb_common::config::Config;
 use bb_server::{net::ConnectionManager, rcon::RCon, world::WorldManager};
 use clap::Parser;
 use std::{sync::Arc, thread};
