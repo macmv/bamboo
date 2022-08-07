@@ -48,7 +48,7 @@ use crate::{
   player::Player,
   world::WorldManager,
 };
-use ::panda::runtime::VarSend;
+use ::panda::runtime::{tree::Closure, VarSend};
 use bb_common::{config::Config, math::Pos};
 use crossbeam_channel::{Receiver, Sender};
 use parking_lot::{Mutex, MutexGuard};
@@ -60,23 +60,34 @@ pub enum Event {
   OnBlockPlace(Arc<Player>, Pos, block::Kind),
 }
 
+struct Scheduled {
+  closure:   Closure,
+  time_left: u32,
+}
+
 #[derive(Clone)]
 #[cfg_attr(feature = "python_plugins", ::pyo3::pyclass)]
 pub struct Bamboo {
   // Index into plugins array
-  idx:  usize,
-  wm:   Arc<WorldManager>,
+  idx:       usize,
+  wm:        Arc<WorldManager>,
   // Locking this removes the value. If the value is none, then this enters a wait loop until there
   // is a value present.
   //
   // This is not by any means "fast", but it will work as long as a thread doesn't lock this for
   // too long.
-  data: Arc<Mutex<Option<VarSend>>>,
+  data:      Arc<Mutex<Option<VarSend>>>,
+  scheduled: Arc<Mutex<Vec<Scheduled>>>,
 }
 
 impl Bamboo {
   pub fn new(idx: usize, wm: Arc<WorldManager>) -> Self {
-    Bamboo { idx, wm, data: Arc::new(Mutex::new(Some(VarSend::None))) }
+    Bamboo {
+      idx,
+      wm,
+      data: Arc::new(Mutex::new(Some(VarSend::None))),
+      scheduled: Arc::new(Mutex::new(vec![])),
+    }
   }
 }
 
@@ -176,6 +187,23 @@ impl Plugin {
       }
     });
     Plugin { config, name, imp, tx: server_tx, rx: plugin_rx, plugin_tx: ptx }
+  }
+  pub fn tick(&self) {
+    if let Some(pd) = self.imp.lock().panda() {
+      let bb = pd.bb();
+      bb.scheduled.lock().retain_mut(|s| {
+        s.time_left -= 1;
+        if s.time_left == 0 {
+          match s.closure.call(&mut pd.lock_env(), vec![]) {
+            Ok(_) => {}
+            Err(e) => pd.print_err(e),
+          }
+          false
+        } else {
+          true
+        }
+      });
+    }
   }
   pub fn call(&self, player: Arc<Player>, event: ServerEvent) -> Result<(), CallError> {
     self.tx.send(ServerMessage::Event { player, event }).unwrap();

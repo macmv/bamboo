@@ -878,6 +878,7 @@ impl WorldManager {
     let mut start = Instant::now();
     loop {
       self.events().tick();
+      self.plugins().tick();
       let passed = Instant::now().duration_since(start);
       start += TICK_TIME;
       match TICK_TIME.checked_sub(passed) {

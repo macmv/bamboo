@@ -29,6 +29,13 @@ impl PluginManager {
   /// Returns true if plugins should print error messages with colors.
   pub fn use_color(&self) -> bool { true }
 
+  /// Ticks all plugins. This will run scheduled events.
+  pub fn tick(&self) {
+    for plugin in self.plugins.lock().iter() {
+      plugin.tick();
+    }
+  }
+
   /// Loads all plugins from disk. Call this to reload all plugins.
   pub fn load(&self, wm: Arc<WorldManager>) {
     let mut plugins = self.plugins.lock();
