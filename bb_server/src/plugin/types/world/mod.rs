@@ -40,41 +40,34 @@ impl PWorld {
   /// is outside of the world.
   ///
   /// If you need to set multiple blocks at all, you should always use
-  /// `fill_kind` instead. It is faster in every situation except for single
+  /// `fill_rect` instead. It is faster in every situation except for single
   /// blocks (where it is the same speed).
   ///
   /// This function will do everything you want in a block place. It will update
   /// the blocks stored in the world, and send block updates to all clients in
   /// render distance.
-  pub fn set_kind(&self, pos: &PPos, kind: &PBlockKind) -> Result<(), RuntimeError> {
+  pub fn set_block(&self, pos: &PPos, kind: &PBlockKind) -> Result<(), RuntimeError> {
     self.check_pos(pos.inner)?;
     self.inner.set_kind(pos.inner, kind.inner).unwrap();
     Ok(())
   }
+  /// Tries to set a block at the given position. This will return `false` if
+  /// the block is outside the world, and `true` if the block is in the world.
+  pub fn try_set_block(&self, pos: &PPos, kind: &PBlockKind) -> bool {
+    self.inner.set_kind(pos.inner, kind.inner).is_ok()
+  }
+
   /// Fills a rectangle of blocks in the world. This will return an error if the
   /// min or max are outside of the world.
   ///
   /// This function will do everything you want when filling blocks.. It will
   /// update the blocks stored in the world, and send block updates to all
   /// clients in render distance.
-  pub fn fill_rect_kind(
-    &self,
-    min: &PPos,
-    max: &PPos,
-    kind: &PBlockKind,
-  ) -> Result<(), RuntimeError> {
+  pub fn fill_rect(&self, min: &PPos, max: &PPos, kind: &PBlockKind) -> Result<(), RuntimeError> {
     self.check_pos(min.inner)?;
     self.check_pos(max.inner)?;
     self.inner.fill_rect_kind(min.inner, max.inner, kind.inner).unwrap();
     Ok(())
-  }
-
-  /// Returns the kind of block at the given position.
-  ///
-  /// This will return an error if the position is outside the world.
-  pub fn get_kind(&self, pos: &PPos) -> Result<PBlockKind, RuntimeError> {
-    self.check_pos(pos.inner)?;
-    Ok(self.inner.get_kind(pos.inner).unwrap().into())
   }
 
   /// Returns the block type at the given position.
