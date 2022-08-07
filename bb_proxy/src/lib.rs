@@ -153,6 +153,15 @@ impl Proxy {
     self.icon = Some(load_icon(path));
     self
   }
+  /// Sets the status builder. This will be called every time a client requests
+  /// the server status, so this should be heavily cached.
+  pub fn with_status_builder(
+    mut self,
+    builder: impl for<'a> Fn(&'a str, ProtocolVersion) -> JsonStatus<'a> + 'static,
+  ) -> Self {
+    self.status_builder = Arc::new(builder);
+    self
+  }
 
   /// Creates a new connection for the given stream.
   fn new_conn(&self, stream: JavaStream, server_token: Token) -> Conn<JavaStream> {
