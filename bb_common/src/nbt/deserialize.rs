@@ -57,7 +57,7 @@ impl NBT {
   pub fn deserialize_buf<T: AsRef<[u8]>>(buf: &mut Buffer<T>) -> Result<Self, ParseError> {
     let ty = buf.read_u8()?;
     if ty == 0 {
-      Ok(NBT::empty(""))
+      Ok(NBT::empty())
     } else {
       let len = buf.read_u16()?;
       let name = String::from_utf8(buf.read_buf(len as usize)?)?;

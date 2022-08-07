@@ -9,11 +9,10 @@ use bamboo::{
 
 fn init() {
   bamboo::info("hello world")
-  let bb = bamboo::instance()
 
   let c = Command::new("getblock", handle_getblock)
   c.add_arg_block_pos("pos")
-  bb.add_command(c)
+  @bamboo.add_command(c)
 }
 
 fn handle_getblock(player, args) {
@@ -23,4 +22,10 @@ fn handle_getblock(player, args) {
   c.add("block: ")
   c.add(player.world().get_block(args[1]).to_s())
   player.send_message(c)
+}
+
+on player_join(player) {
+  let it = Stack::new("stick")
+  it.set_display_name("My Stick")
+  player.set_item(36, it)
 }

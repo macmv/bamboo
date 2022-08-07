@@ -75,7 +75,7 @@ impl NBT {
   }
 
   /// Creates an empty nbt tag.
-  pub fn empty(name: &str) -> Self { NBT { tag: Tag::End, name: name.into() } }
+  pub const fn empty() -> Self { NBT { tag: Tag::End, name: String::new() } }
 
   /// Appends the given element to the list. This will panic if self is not a
   /// list, or if tag does not match the type of the existing elements.
@@ -126,6 +126,7 @@ impl NBT {
     }
   }
 
+  pub fn tag(&self) -> &Tag { &self.tag }
   pub fn into_tag(self) -> Tag { self.tag }
 }
 

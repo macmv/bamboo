@@ -1,10 +1,13 @@
 use super::Type;
-use bb_common::{nbt::NBT, util::Item};
+use bb_common::{
+  nbt::{Tag, NBT},
+  util::Item,
+};
 use bb_transfer::{
   MessageRead, MessageReader, MessageWrite, MessageWriter, ReadError, StructRead, StructReader,
   WriteError,
 };
-use std::num::NonZeroU8;
+use std::{collections::HashMap, num::NonZeroU8};
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct Stack {
@@ -51,9 +54,9 @@ impl Stack {
   pub const EMPTY: Stack = Stack::empty();
   /// Creates an empty item stck. This has the type set to air, and the count
   /// set to 0.
-  pub const fn empty() -> Self { Stack { item: Type::Air, amount: ONE, nbt: NBT::empty("") } }
+  pub const fn empty() -> Self { Stack { item: Type::Air, amount: ONE, nbt: NBT::empty() } }
   /// Creates an item stack containing a single item with the given type.
-  pub fn new(item: Type) -> Self { Stack { item, amount: ONE, nbt: NBT::empty("") } }
+  pub fn new(item: Type) -> Self { Stack { item, amount: ONE, nbt: NBT::empty() } }
 
   /// Sets the amount in self, and returns the modified self. If the stack is
   /// air, this will do nothing.
@@ -88,12 +91,22 @@ impl Stack {
   /// whenever the type is Air, or the count is zero.
   pub fn is_empty(&self) -> bool { self.item == Type::Air }
 
+  /// Returns a reference to the NBT for this item.
+  pub fn nbt(&self) -> &NBT { &self.nbt }
+  /// Returns a mutable reference to the NBT for this item.
+  pub fn nbt_mut(&mut self) -> &mut NBT {
+    if self.nbt.tag() == &Tag::End {
+      self.nbt = NBT::new("", Tag::Compound(HashMap::new()));
+    }
+    &mut self.nbt
+  }
+
   pub fn to_item(&self) -> Item {
     Item {
       id:     self.item().id() as i32,
       count:  self.amount(),
       damage: 0,
-      nbt:    NBT::empty(""),
+      nbt:    self.nbt.clone(),
     }
   }
 }

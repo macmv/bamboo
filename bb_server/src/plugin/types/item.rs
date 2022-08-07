@@ -34,7 +34,12 @@ impl PStack {
     PStack { inner: self.inner.clone().with_amount(amount) }
   }
 
-  pub fn name(&self) -> String { self.inner.item().to_str().into() }
+  pub fn item_name(&self) -> String { self.inner.item().to_str().into() }
+
+  /// Sets the display name of this item stack.
+  pub fn set_display_name(&mut self, name: &str) {
+    self.inner.nbt_mut().get_or_create_compound("display").insert("Name".into(), name.into());
+  }
 }
 
 /// An inventory UI.
