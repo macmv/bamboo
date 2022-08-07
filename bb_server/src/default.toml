@@ -82,21 +82,21 @@ min_y = 0
 
 # Vanilla world loading settings
 [world.vanilla]
-  # If set, then the world will be a void world, and a vanilla world will
-  # be loaded when the server starts. This loads first, so schematics will
-  # replace any blocks set by the vanilla world.
-  enabled = false
-  # The path to the world. This should be a path to a world containing a
-  # `chunks` folder, which should contain all of the chunks of the world.
-  # The value of this path is ignored if vanilla loading is not enabled.
-  path = ""
+# If set, then the world will be a void world, and a vanilla world will
+# be loaded when the server starts. This loads first, so schematics will
+# replace any blocks set by the vanilla world.
+enabled = false
+# The path to the world. This should be a path to a world containing a
+# `chunks` folder, which should contain all of the chunks of the world.
+# The value of this path is ignored if vanilla loading is not enabled.
+path = ""
 
 # Schematic reading settings.
 [world.schematic]
-  # If set, then the world will be a void world, and a schematic will be
-  # loaded from the given path on server startup. This overrides any of
-  # the options below.
-  enabled = false
-  # The path to the schematic file. The value of this path is ignored
-  # if schematic loading is not enabled.
-  path = ""
+# If set, then the world will be a void world, and a schematic will be
+# loaded from the given path on server startup. This overrides any of
+# the options below.
+enabled = false
+# The path to the schematic file. The value of this path is ignored
+# if schematic loading is not enabled.
+path = ""
