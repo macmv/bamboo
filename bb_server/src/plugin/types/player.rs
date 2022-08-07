@@ -161,18 +161,18 @@ impl PPlayer {
   /// [`show_title`].
   ///
   /// This will do nothing if the player is offline.
-  pub fn set_title(&self, title: &PChat) {
+  pub fn set_title(&self, title: Var) {
     if let Ok(i) = self.inner() {
-      i.set_title(title.inner.lock().clone());
+      i.set_title(PChat::from_var(title));
     }
   }
   /// Sets the subtitle for this player. To show the title and subtitle, call
   /// [`show_title`].
   ///
   /// This will do nothing if the player is offline.
-  pub fn set_subtitle(&self, subtitle: &PChat) {
+  pub fn set_subtitle(&self, subtitle: Var) {
     if let Ok(i) = self.inner() {
-      i.set_subtitle(subtitle.inner.lock().clone());
+      i.set_subtitle(PChat::from_var(subtitle));
     }
   }
   /// Shows the current title to the player. The `fade_in`, `stay`, and
@@ -210,9 +210,9 @@ impl PPlayer {
   /// Shows an inventory to the player.
   ///
   /// This will do nothing if the player is offline.
-  pub fn show_inventory(&self, inv: &PWindow, title: &PChat) {
+  pub fn show_inventory(&self, inv: &PWindow, title: Var) {
     if let Ok(i) = self.inner() {
-      i.show_inventory(inv.inner.clone(), &title.inner.lock());
+      i.show_inventory(inv.inner.clone(), &PChat::from_var(title));
     }
   }
   /// Returns true if the player is in an inventory. This does not include their
@@ -308,9 +308,9 @@ impl PPlayer {
   /// the updated lines will show when the scoreboard is shown again.
   ///
   /// This will do nothing if the player is offline.
-  pub fn set_scoreboard_line(&self, line: u8, message: &PChat) {
+  pub fn set_scoreboard_line(&self, line: u8, message: Var) {
     if let Ok(i) = self.inner() {
-      i.lock_scoreboard().set_line(line, &message.inner.lock());
+      i.lock_scoreboard().set_line(line, &PChat::from_var(message));
     }
   }
   /// Clears a line in the scoreboard. If it is hidden, this will still work,
@@ -332,9 +332,9 @@ impl PPlayer {
   /// use if needed. Using teams is going to be more reliable.
   ///
   /// This will do nothing if the player is offline.
-  pub fn set_tab_name(&self, name: &PChat) {
+  pub fn set_tab_name(&self, name: Var) {
     if let Ok(i) = self.inner() {
-      i.set_tab_name(Some(name.inner.lock().clone()));
+      i.set_tab_name(Some(PChat::from_var(name)));
     }
   }
   /// Removes the player's tab list name.

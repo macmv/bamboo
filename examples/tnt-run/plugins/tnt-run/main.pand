@@ -24,12 +24,13 @@ on tick() when phase == "playing" {
   }
   let alive_players = @players.filter(|p| p.game_mode() == "survival")
   if alive_players.len() < 2 {
+    phase = "done"
     alive_players[0].set_game_mode("spectator")
     for player in @players {
-      player.send_title("Game Over")
-      player.send_subtitle(alive_players[0].name + " won!")
+      player.set_title("Game Over")
+      player.set_subtitle(alive_players[0].username() + " won!")
+      player.show_title(0, 100, 0)
     }
-    phase = "done"
   }
 }
 
@@ -44,8 +45,8 @@ fn start() {
   phase = "playing"
   for player in @players {
     player.teleport(SPAWN)
-    player.set_title(Chat::new("Start!"))
-    player.show_title(0, 20, 0)
+    player.set_title("Start!")
+    player.show_title(0, 60, 0)
   }
 }
 
