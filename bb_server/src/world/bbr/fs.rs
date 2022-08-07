@@ -308,7 +308,7 @@ impl WriteableChunk<'_> {
 #[cfg(test)]
 mod tests {
   use super::{super::RegionPos, *};
-  use crate::{block, world::WorldManager};
+  use crate::world::WorldManager;
   use bb_common::math::ChunkPos;
   use std::sync::Arc;
 
@@ -316,16 +316,19 @@ mod tests {
   fn read_write_max_bpe() {
     let wm = Arc::new(WorldManager::new(false));
     let world = wm.add_world();
-    let region = Region::new(world.clone(), RegionPos::new(ChunkPos::new(0, 0)));
+    // we're testing saving, so we pass `true` to save this.
+    let region = Region::new(world.clone(), RegionPos::new(ChunkPos::new(0, 0)), true);
     for x in 0..16 {
-      for z in 0..16 {
-        let index = x * 16 + z;
-        world
-          .set_block(
-            Pos::new(x, 0, z),
-            world.block_converter().type_from_id(index as u32, BlockVersion::latest()),
-          )
-          .unwrap();
+      for y in 0..2 {
+        for z in 0..16 {
+          let index = (y * 16 + x) * 16 + z;
+          world
+            .set_block(
+              Pos::new(x, y, z),
+              world.block_converter().type_from_id(index as u32, BlockVersion::latest()),
+            )
+            .unwrap();
+        }
       }
     }
     world.chunk(ChunkPos::new(0, 0), |c| {
@@ -334,7 +337,8 @@ mod tests {
       assert!(section.data().bpe() > 8);
     });
     drop(region);
-    let mut region = Region::new(world.clone(), RegionPos::new(ChunkPos::new(0, 0)));
+    // this one only loads, so don't save it when it drops
+    let mut region = Region::new(world.clone(), RegionPos::new(ChunkPos::new(0, 0)), false);
     region.load();
     world.chunk(ChunkPos::new(0, 0), |c| {
       let section = c.inner().section(0).unwrap();
@@ -342,18 +346,32 @@ mod tests {
       assert!(section.data().bpe() > 8);
     });
     for x in 0..16 {
-      for z in 0..16 {
-        let index = x * 16 + z;
-        assert_eq!(
-          world.get_block(Pos::new(x, 0, z)).unwrap().ty(),
-          world.block_converter().type_from_id(index as u32, BlockVersion::latest()),
-        );
+      for y in 0..2 {
+        for z in 0..16 {
+          let index = (y * 16 + x) * 16 + z;
+          assert_eq!(
+            world.get_block(Pos::new(x, y, z)).unwrap().ty(),
+            world.block_converter().type_from_id(index as u32, BlockVersion::latest()),
+          );
+        }
       }
     }
-    world.set_kind(Pos::new(0, 0, 0), block::Kind::Air).unwrap();
-    world.set_kind(Pos::new(1, 0, 0), block::Kind::Air).unwrap();
-    world.set_kind(Pos::new(2, 0, 0), block::Kind::Air).unwrap();
-    world.set_kind(Pos::new(3, 0, 0), block::Kind::Air).unwrap();
+    // this checks that we don't reduce the bpe after reducing the number of blocks,
+    // because this is expensive and not really worth implemeting. If they had 256
+    // blocks at one point, they'll probably go back to 256 blocks again, so we
+    // don't bother compressing.
+    for x in 0..16 {
+      for y in 0..2 {
+        for z in 0..16 {
+          world
+            .set_block(
+              Pos::new(x, y, z),
+              world.block_converter().type_from_id(0, BlockVersion::latest()),
+            )
+            .unwrap();
+        }
+      }
+    }
     world.chunk(ChunkPos::new(0, 0), |c| {
       let section = c.inner().section(0).unwrap();
       assert!(section.palette().len() == 0);

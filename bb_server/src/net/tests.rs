@@ -57,6 +57,8 @@ impl TestHandler {
       panic!("got packets, but expected none");
     }
   }
+  // This is a useful but unused function.
+  #[allow(unused)]
   pub fn assert_sent(&self, expected_packets: &[cb::Packet]) {
     let mut actual_packets = vec![];
     while let Ok(p) = self.rx.try_recv() {

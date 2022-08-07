@@ -23,10 +23,10 @@ perf.data.old
 
 bb_server/server.toml
 
-# a testing world
+# testing worlds
 /world
-# more testing worlds
 /worlds
+/bb_server/world
 
 # Vanilla datapack. Contains recipies
 /data

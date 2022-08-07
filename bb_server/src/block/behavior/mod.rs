@@ -75,6 +75,8 @@ pub trait Behavior: Send + Sync {
   /// position 0, 0, 0. AABBs are centered, so a full block hitbox would be
   /// this:
   /// ```rust
+  /// # use bb_server::math::{AABB, Vec3};
+  /// # use bb_common::math::FPos;
   /// AABB::new(FPos::new(0.5, 0.0, 0.5), Vec3::new(1.0, 1.0, 1.0));
   /// ```
   fn hitbox(&self, block: Block) -> AABB {

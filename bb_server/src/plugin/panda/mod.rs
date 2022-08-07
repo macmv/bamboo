@@ -1,8 +1,6 @@
 use super::{
-  types,
-  types::{player::PPlayer, Callback as BCallback},
-  Bamboo, CallError, GlobalServerEvent, PluginImpl, PluginManager, PluginReply, ServerEvent,
-  ServerRequest,
+  types, types::Callback as BCallback, Bamboo, CallError, GlobalServerEvent, PluginImpl,
+  PluginManager, PluginReply, ServerEvent, ServerRequest,
 };
 use crate::{player::Player, world::WorldManager};
 use panda::{
@@ -131,10 +129,14 @@ impl PluginImpl for PandaPlugin {
   fn call(&self, player: Arc<Player>, ev: ServerEvent) -> Result<(), CallError> {
     match ev {
       ServerEvent::Chat { text } => {
-        self.call("chat_message", vec![PPlayer::from(player).into(), text.into()])
+        self.call("chat_message", vec![types::player::PPlayer::from(player).into(), text.into()])
       }
-      ServerEvent::PlayerJoin {} => self.call("player_join", vec![PPlayer::from(player).into()]),
-      ServerEvent::PlayerLeave {} => self.call("player_leave", vec![PPlayer::from(player).into()]),
+      ServerEvent::PlayerJoin {} => {
+        self.call("player_join", vec![types::player::PPlayer::from(player).into()])
+      }
+      ServerEvent::PlayerLeave {} => {
+        self.call("player_leave", vec![types::player::PPlayer::from(player).into()])
+      }
     }
     Ok(())
   }
