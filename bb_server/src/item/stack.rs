@@ -19,7 +19,9 @@ pub struct Stack {
 impl From<Item> for Stack {
   /// Creates an item stack from the given item. This is how we convert protocol
   /// items into server storage.
-  fn from(it: Item) -> Self { Stack::new(Type::from_u32(it.id() as u32)).with_amount(it.count()) }
+  fn from(it: Item) -> Self {
+    Stack::new(Type::from_u32(it.id() as u32)).with_amount(it.count()).with_nbt(it.nbt)
+  }
 }
 
 // This is required for `Stack::empty` to be `const`.
@@ -99,6 +101,11 @@ impl Stack {
       self.nbt = NBT::new("", Tag::Compound(HashMap::new()));
     }
     &mut self.nbt
+  }
+  pub fn set_nbt(&mut self, nbt: NBT) { self.nbt = nbt; }
+  pub fn with_nbt(mut self, nbt: NBT) -> Self {
+    self.set_nbt(nbt);
+    self
   }
 
   pub fn to_item(&self) -> Item {
