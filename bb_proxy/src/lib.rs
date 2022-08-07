@@ -63,61 +63,113 @@ pub fn load_config_write_default(path: &str, default: &str) -> Config {
   Config::new_write_default(path, default, include_str!("default.toml"))
 }
 
-/// Runs the proxy with the given config. This will block until the proxy
-/// disconnects.
-pub fn run(config: Config) -> Result<()> {
-  let level = config.get("log-level");
-  bb_common::init_with_level("proxy", level);
+pub struct Proxy {
+  icon:        Option<String>,
+  key:         Arc<RSAPrivateKey>,
+  der_key:     Option<Vec<u8>>,
+  addr:        SocketAddr,
+  server_addr: SocketAddr,
+  compression: i32,
+  conv:        Arc<TypeConverter>,
+}
 
-  let icon = Arc::new(load_icon(config.get("icon")));
-
-  let addr = config.get::<&str>("address");
-  info!("listening for java clients on {}", addr);
-  let mut listener = Listener::new(addr)?;
-
-  // let addr = "0.0.0.0:19132";
-  // info!("listening for bedrock clients on {}", addr);
-  // let mut bedrock_listener = bedrock::Listener::bind(addr).await?;
-
-  // The vanilla server uses 1024 bits for this.
-  let key = Arc::new(RSAPrivateKey::new(&mut OsRng, 1024).expect("failed to generate a key"));
-  let der_key = if config.get("encryption") { Some(der::encode(&key)) } else { None };
-  let server_ip: SocketAddr = config.get::<&str>("server").parse().unwrap();
-  let compression = config.get("compression-thresh");
-
-  let mut events = Events::with_capacity(1024);
-
-  let conv = Arc::new(TypeConverter::new());
-
-  loop {
-    loop {
-      match listener.poll.poll(&mut events, None) {
-        Ok(()) => break,
-        Err(e) if e.kind() == io::ErrorKind::Interrupted => continue,
-        Err(e) => return Err(e.into()),
-      }
+impl Proxy {
+  /// Creates a proxy with default settings.
+  pub fn new(addr: SocketAddr, server_addr: SocketAddr) -> Self {
+    Proxy {
+      icon: None,
+      key: Arc::new(RSAPrivateKey::new(&mut OsRng, 1024).expect("failed to generate a key")),
+      der_key: None,
+      addr,
+      server_addr,
+      compression: 256,
+      conv: Arc::new(TypeConverter::new()),
     }
+    .with_encryption(true)
+  }
+  /// Creates a proxy from the given config.
+  pub fn from_config(config: Config) -> Result<Self> {
+    Ok(
+      Self::new(config.get::<&str>("address").parse()?, config.get::<&str>("server").parse()?)
+        .with_encryption(config.get("encryption"))
+        .with_compression(config.get("compression-thresh"))
+        .with_icon(config.get("icon")),
+    )
+  }
+  /// Enables or disables encryption for this connection.
+  pub fn with_encryption(mut self, encryption: bool) -> Self {
+    if encryption {
+      self.der_key = Some(der::encode(&self.key));
+    } else {
+      self.der_key = None
+    }
+    self
+  }
+  /// Sets the compression threshold for the proxy. Set to `-1` to disable
+  /// compression, and set to `0` to compress all packets.
+  pub fn with_compression(mut self, compression: i32) -> Self {
+    self.compression = compression;
+    self
+  }
+  /// Sets the icon path for the proxy. This will be shown to all clients on
+  /// the server list screen.
+  pub fn with_icon(mut self, path: &str) -> Self {
+    self.icon = Some(load_icon(path));
+    self
+  }
 
-    for event in &events {
-      listener.handle(event, |client, server_token| {
-        Conn::new(
-          JavaStream::new(client),
-          server_ip,
-          key.clone(),
-          der_key.clone(),
-          server_token,
-          conv.clone(),
-        )
-        .with_icon(&icon)
-        .with_compression(compression)
-      })?;
+  /// Creates a new connection for the given stream.
+  fn new_conn(&self, stream: JavaStream, server_token: Token) -> Conn<JavaStream> {
+    let conn = Conn::new(
+      stream,
+      self.server_addr,
+      self.key.clone(),
+      self.der_key.clone(),
+      server_token,
+      self.conv.clone(),
+    )
+    .with_compression(self.compression);
+    if let Some(icon) = &self.icon {
+      conn.with_icon(icon)
+    } else {
+      conn
+    }
+  }
+
+  /// Runs the proxy with the given config. This will block until the proxy
+  /// disconnects.
+  pub fn run(&self) -> Result<()> {
+    info!("listening for java clients on {}", self.addr);
+    let mut listener = Listener::new(self.addr)?;
+
+    // let addr = "0.0.0.0:19132";
+    // info!("listening for bedrock clients on {}", addr);
+    // let mut bedrock_listener = bedrock::Listener::bind(addr).await?;
+
+    // The vanilla server uses 1024 bits for this.
+    let mut events = Events::with_capacity(1024);
+
+    loop {
+      loop {
+        match listener.poll.poll(&mut events, None) {
+          Ok(()) => break,
+          Err(e) if e.kind() == io::ErrorKind::Interrupted => continue,
+          Err(e) => return Err(e.into()),
+        }
+      }
+
+      for event in &events {
+        listener.handle(event, |client, server_token| {
+          self.new_conn(JavaStream::new(client), server_token)
+        })?;
+      }
     }
   }
 }
 
 impl<'a> Listener<'a> {
-  pub fn new(addr: &str) -> Result<Self> {
-    let mut java_listener = TcpListener::bind(addr.parse()?)?;
+  pub fn new(addr: SocketAddr) -> Result<Self> {
+    let mut java_listener = TcpListener::bind(addr)?;
     let poll = Poll::new()?;
     poll.registry().register(&mut java_listener, JAVA_LISTENER, Interest::READABLE)?;
     Ok(Listener { java_listener, poll, next_token: 0, clients: HashMap::new() })

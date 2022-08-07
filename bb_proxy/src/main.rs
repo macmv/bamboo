@@ -1,6 +1,7 @@
 #[macro_use]
 extern crate log;
 
+use bb_proxy::Proxy;
 use clap::Parser;
 
 #[derive(Parser, Debug)]
@@ -33,7 +34,17 @@ fn main() {
     bb_proxy::load_config("proxy.toml")
   };
 
-  match bb_proxy::run(config) {
+  let level = config.get("log-level");
+  bb_common::init_with_level("proxy", level);
+
+  let proxy = match Proxy::from_config(config) {
+    Ok(v) => v,
+    Err(e) => {
+      error!("error in setup: {}", e);
+      return;
+    }
+  };
+  match proxy.run() {
     Ok(_) => (),
     Err(e) => error!("error: {}", e),
   }
