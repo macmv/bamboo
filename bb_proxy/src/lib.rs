@@ -53,6 +53,18 @@ struct TokenHandler<'listener, 'a> {
   clients: &'a mut ClientMap<'listener>,
 }
 
+/// Loads the config at the given path, using the server-provided default
+/// config.
+pub fn load_config(path: &str) -> Config { Config::new(path, include_str!("default.toml")) }
+/// Loads the config at the given path, using the server-provided default
+/// config. This will then write the default config to the `default` path
+/// provided.
+pub fn load_config_write_default(path: &str, default: &str) -> Config {
+  Config::new_write_default(path, default, include_str!("default.toml"))
+}
+
+/// Runs the proxy with the given config. This will block until the proxy
+/// disconnects.
 pub fn run(config: Config) -> Result<()> {
   let level = config.get("log-level");
   bb_common::init_with_level("proxy", level);

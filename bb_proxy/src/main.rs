@@ -1,7 +1,6 @@
 #[macro_use]
 extern crate log;
 
-use bb_common::config::Config;
 use clap::Parser;
 
 #[derive(Parser, Debug)]
@@ -29,9 +28,9 @@ fn main() {
 
   let args = Args::parse();
   let config = if args.write_default_config {
-    Config::new_write_default("proxy.toml", "proxy-default.toml", include_str!("default.toml"))
+    bb_proxy::load_config_write_default("proxy.toml", "proxy-default.toml")
   } else {
-    Config::new("proxy.toml", include_str!("default.toml"))
+    bb_proxy::load_config("proxy.toml")
   };
 
   match bb_proxy::run(config) {
