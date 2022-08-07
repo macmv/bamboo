@@ -1,6 +1,8 @@
 use super::{
-  types, types::Callback as BCallback, Bamboo, CallError, GlobalServerEvent, PluginImpl,
-  PluginManager, PluginReply, ServerEvent, ServerRequest,
+  types,
+  types::{player::PPlayer, Callback as BCallback},
+  Bamboo, CallError, GlobalServerEvent, PluginImpl, PluginManager, PluginReply, ServerEvent,
+  ServerRequest,
 };
 use crate::{block, player::Player, world::WorldManager};
 use bb_common::{math::Pos, net::sb::ClickWindow};
