@@ -345,7 +345,7 @@ impl PandaPlugin {
     sl.add_builtin_ty::<util::PFPos>();
     sl.add_builtin_ty::<util::PUUID>();
     sl.add_builtin_ty::<util::PDuration>();
-    sl.add_builtin_ty::<event::Event>();
+    sl.add_builtin_ty::<event::PEvent>();
     sl.add_builtin_ty::<block::PBlockKind>();
     sl.add_builtin_ty::<block::PBlockType>();
     sl.add_builtin_ty::<chat::PChat>();

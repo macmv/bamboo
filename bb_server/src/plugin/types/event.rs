@@ -1,18 +1,18 @@
-use super::{add_from, wrap, wrap_eq};
-use bb_common::{
-  math::{ChunkPos, FPos, Pos},
-  util::UUID,
-};
 use bb_server_macros::define_ty;
+use parking_lot::Mutex;
+use std::sync::Arc;
 
+#[derive(Debug, Clone)]
 pub struct PEvent {
-  data:      HashMap<String, Var>,
-  cancelled: bool,
+  pub cancelled: Arc<Mutex<bool>>,
+}
+
+impl PEvent {
+  pub fn new() -> Self { PEvent { cancelled: Arc::new(Mutex::new(false)) } }
 }
 
 #[define_ty(panda_path = "bamboo::event::Event")]
 impl PEvent {
-  pub fn data(&self) -> HashMap<String, Var> { self.data.clone() }
-
-  pub fn cancel(&mut self) { self.cancelled = true; }
+  pub fn cancel(&self) { *self.cancelled.lock() = true; }
+  pub fn is_cancelled(&self) -> bool { *self.cancelled.lock() }
 }

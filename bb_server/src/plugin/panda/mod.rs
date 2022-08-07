@@ -4,8 +4,7 @@ use super::{
   Bamboo, CallError, GlobalServerEvent, PluginImpl, PluginManager, PluginReply, ServerEvent,
   ServerRequest,
 };
-use crate::{block, player::Player, world::WorldManager};
-use bb_common::{math::Pos, net::sb::ClickWindow};
+use crate::{player::Player, world::WorldManager};
 use panda::{
   parse::Path as PdPath,
   runtime::{Callback, LockedEnv, Var},
@@ -108,8 +107,8 @@ impl PandaPlugin {
     }
   }
   pub fn req(&self, name: &str, mut args: Vec<Var>) -> bool {
-    let event = PEvent { cancelled: false };
-    args.insert(0, event);
+    let event = super::types::event::PEvent::new();
+    args.insert(0, event.clone().into());
     match &self.sl {
       Some(sl) => match sl.run_callback(name, args) {
         Ok(_) => {}
@@ -117,7 +116,7 @@ impl PandaPlugin {
       },
       None => {}
     }
-    event.cancelled
+    event.is_cancelled()
   }
 
   pub fn print_err<E: PdError>(&self, err: E) {
@@ -154,7 +153,7 @@ impl PluginImpl for PandaPlugin {
           vec![
             types::player::PPlayer::from(player).into(),
             types::util::PPos::from(pos).into(),
-            types::block::PBlockKind::from(ty.kind()).into(),
+            types::block::PBlockKind::from(block.ty().kind()).into(),
           ],
         ),
         ServerRequest::BlockBreak { pos, block } => self.req(
@@ -165,7 +164,7 @@ impl PluginImpl for PandaPlugin {
             types::block::PBlockKind::from(block.ty().kind()).into(),
           ],
         ),
-        ServerRequest::PlayerDamage { amount, blockable, knockback } => {
+        ServerRequest::PlayerDamage { amount, blockable, knockback: _ } => {
           self.req("player_damage", vec![amount.into(), blockable.into()])
         }
         ServerRequest::ClickWindow { slot, mode } => self.req(
