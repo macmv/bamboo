@@ -29,6 +29,7 @@ pub struct RegionRelPos {
 pub struct RegionMap {
   world:   Weak<World>,
   regions: RwLock<HashMap<RegionPos, Mutex<Region>>>,
+  save:    bool,
 }
 
 pub struct Region {
@@ -36,11 +37,12 @@ pub struct Region {
   pos:    RegionPos,
   /// An array of `32*32 = 1024` chunks. The index is `x + z * 32`.
   chunks: [Option<CountedChunk>; 1024],
+  save:   bool,
 }
 
 impl RegionMap {
-  pub fn new(world: Weak<World>) -> Self {
-    RegionMap { world, regions: RwLock::new(HashMap::new()) }
+  pub fn new(world: Weak<World>, save: bool) -> Self {
+    RegionMap { world, regions: RwLock::new(HashMap::new()), save }
   }
 
   pub fn region<F: FnOnce(MutexGuard<Region>) -> R, R>(&self, pos: ChunkPos, f: F) -> R {
@@ -51,9 +53,9 @@ impl RegionMap {
       let mut write = self.regions.write();
       // If someone else got the write lock, and wrote this region, we don't
       // want to write it twice.
-      write
-        .entry(region_pos)
-        .or_insert_with(|| Mutex::new(Region::new_load(self.world.upgrade().unwrap(), region_pos)));
+      write.entry(region_pos).or_insert_with(|| {
+        Mutex::new(Region::new_load(self.world.upgrade().unwrap(), region_pos, self.save))
+      });
       RwLockWriteGuard::downgrade(write)
     } else {
       lock
@@ -90,20 +92,26 @@ impl RegionMap {
   }
 
   pub fn save(&self) {
+    if !self.save {
+      info!("saving disabled, skipping");
+      return;
+    }
+    info!("saving world...");
     let lock = self.regions.read();
     for region in lock.values() {
       region.lock().save();
     }
+    info!("saved");
   }
 }
 
 impl Region {
-  fn new(world: Arc<World>, pos: RegionPos) -> Self {
+  fn new(world: Arc<World>, pos: RegionPos, save: bool) -> Self {
     const NONE: Option<CountedChunk> = None;
-    Region { world, pos, chunks: [NONE; 1024] }
+    Region { world, pos, chunks: [NONE; 1024], save }
   }
-  pub fn new_load(world: Arc<World>, pos: RegionPos) -> Self {
-    let mut region = Region::new(world, pos);
+  pub fn new_load(world: Arc<World>, pos: RegionPos, save: bool) -> Self {
+    let mut region = Region::new(world, pos, save);
     region.load();
     region
   }

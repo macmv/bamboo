@@ -63,6 +63,8 @@ password = ""
 # If set, the world cannot be modified. This can be used in minigame
 # lobbies, for example.
 locked = false
+# If set, the world will be saved to disk.
+save = true
 
 # Generation settings
 

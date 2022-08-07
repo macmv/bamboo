@@ -25,6 +25,9 @@ thread_local! {
 impl Region {
   /// Writes all the stored chunks to disk.
   pub(super) fn save(&self) {
+    if !self.save {
+      return;
+    }
     CACHE.with(|(region_cache, compression_cache)| {
       let mut region_cache = region_cache.borrow_mut();
       let mut compression_cache = compression_cache.borrow_mut();

@@ -167,7 +167,7 @@ impl World {
     }
     */
     let world = Arc::new_cyclic(|weak| World {
-      regions: RegionMap::new(weak.clone()),
+      regions: RegionMap::new(weak.clone(), config.get("save")),
       // generator: config.get("generator"),
       gen,
       players: RwLock::new(PlayersMap::new()),
@@ -941,9 +941,7 @@ impl WorldManager {
       let lock = CTRLC.lock();
       println!();
       if let Some(wm) = &*lock {
-        info!("saving world...");
         wm.save_all();
-        info!("saved");
       }
       std::process::exit(0);
     }
