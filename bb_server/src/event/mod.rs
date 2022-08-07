@@ -29,6 +29,7 @@ mod world;
 
 use crate::{
   block,
+  math::Vec3,
   player::{Click, Player},
   world::{MultiChunk, WorldManager},
 };
@@ -98,6 +99,16 @@ impl Events<'_> {
     self.event(player, ServerEvent::Chat { text: message.to_plain() });
   }
   pub fn player_join(&self, player: Arc<Player>) { self.event(player, ServerEvent::PlayerJoin {}); }
+  pub fn player_damage(
+    &self,
+    player: Arc<Player>,
+    amount: f32,
+    blockable: bool,
+    knockback: Vec3,
+  ) -> bool {
+    self.req(player, ServerRequest::PlayerDamage { amount, blockable, knockback });
+    true
+  }
   pub fn player_leave(&self, player: Arc<Player>) {
     self.event(player, ServerEvent::PlayerLeave {});
   }

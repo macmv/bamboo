@@ -759,10 +759,12 @@ impl Player {
   /// Returns if the entity has been successfully damaged. 0 damage will still
   /// return `true`. This will only return `false` if [`Player::damageable`] is
   /// `false`.
-  pub fn damage(&self, mut amount: f32, blockable: bool, knockback: Vec3) -> bool {
+  pub fn damage(self: &Arc<Player>, mut amount: f32, blockable: bool, knockback: Vec3) -> bool {
     if !self.damageable() {
       return false;
     }
+
+    self.world.events().player_damage(self.clone(), amount, blockable, knockback);
 
     let mut health = self.health.lock();
     let food = self.food.lock();

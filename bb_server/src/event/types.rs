@@ -1,5 +1,5 @@
 use super::json::*;
-use crate::{block, player::Player, world::MultiChunk};
+use crate::{block, math::Vec3, player::Player, world::MultiChunk};
 use bb_common::{
   math::{ChunkPos, Pos},
   net::sb::ClickWindow,
@@ -132,6 +132,12 @@ pub enum ServerRequest {
     slot: i32,
     #[serde(skip)]
     mode: ClickWindow,
+  },
+  PlayerDamage {
+    amount:    f32,
+    blockable: bool,
+    #[serde(skip)]
+    knockback: Vec3,
   },
 }
 
