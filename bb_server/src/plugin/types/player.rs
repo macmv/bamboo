@@ -225,6 +225,17 @@ impl PPlayer {
       false
     }
   }
+  /// Sets the item at the given slot.
+  ///
+  /// This does nothing if the player is offline.
+  pub fn set_item(&self, slot: i32, stack: &PStack) {
+    if let Ok(i) = self.inner() {
+      i.lock_inventory().set(slot, stack.inner.clone());
+    }
+  }
+  /// Gets the item at the given slot.
+  ///
+  /// Returns an empty stack if they are offline.
   pub fn get_item(&self, slot: i32) -> PStack {
     if let Ok(i) = self.inner() {
       i.lock_inventory().get(slot).unwrap_or(Stack::EMPTY).into()
