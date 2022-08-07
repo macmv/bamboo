@@ -27,35 +27,38 @@ pub fn define_ty(args: TokenStream, input: TokenStream) -> TokenStream {
 /// # impl Behavior for impls::Chest {}
 /// # impl Behavior for impls::Falling {}
 /// # impl Behavior for impls::Log {}
+/// # struct DefaultBehavior;
+/// # impl Behavior for DefaultBehavior {}
 /// # enum Kind {
 /// #   Chest,
 /// #   Sand, RedSand, Gravel,
 /// #   OakLog, BirchLog, SpruceLog, DarkOakLog, AcaciaLog, JungleLog,
 /// # }
-/// # struct MockBehaviors;
-/// # impl MockBehaviors {
-/// #   fn set(&mut self, kind: Kind, behavior: Box<dyn Behavior>) {}
-/// # }
-/// # let mut out = MockBehaviors;
-/// bb_server_macros::behavior! {
-///   // Sets the base enum name for everything. `Kind::` will be appended to the mappings below.
-///   :Kind:
+/// fn call<R>(kind: Kind, f: impl FnOnce(&dyn Behavior) -> R) -> R {
+///   bb_server_macros::behavior! {
+///     // `kind` and `f` are the variables passed to this function.
+///     // `Kind` is the enum we are matching against.
+///     kind, f -> :Kind:
 ///
-///   // Defines a mapping. This says `Kind::Chest` should return a `Box::new(impls::Chest)`. The
-///   // right side is any expression.
-///   Chest => impls::Chest;
+///     // Defines a mapping. This says `Kind::Chest` should call `f(&impls::Chest)`. The
+///     // right side is any expression.
+///     Chest => impls::Chest;
 ///
-///   // Defines a mapping that matches `Kind::Sand | Kind::RedSand ...` to `Box::new(impls::Falling)`.
-///   Sand | RedSand | Gravel => impls::Falling;
+///     // Defines a mapping that matches `Kind::Sand | Kind::RedSand ...` to `f(&impls::Falling)`.
+///     Sand | RedSand | Gravel => impls::Falling;
 ///
-///   // Defines a set. This is a collection of other items.
-///   *wood* = Oak, Birch, Spruce, DarkOak, Acacia, Jungle;
+///     // Defines a set. This is a collection of other items.
+///     *wood* = Oak, Birch, Spruce, DarkOak, Acacia, Jungle;
 ///
-///   // Defines a mapping. This will map all possible concatenations of the `wood` set, appended
-///   // with `Log`. So this will match `Kind::OakLog | Kind::BirchLog | Kind::SpruceLog ...` to
-///   // `Box::new(impls::Log)`.
-///   *wood*Log => impls::Log;
-/// };
+///     // Defines a mapping. This will map all possible concatenations of the `wood` set, appended
+///     // with `Log`. So this will match `Kind::OakLog | Kind::BirchLog | Kind::SpruceLog ...` to
+///     // `f(&impls::Log)`.
+///     *wood*Log => impls::Log;
+///
+///     // Defines the default behavior for any `Kind` that isn't matched above.
+///     _ => DefaultBehavior;
+///   }
+/// }
 /// ```
 #[proc_macro]
 pub fn behavior(input: TokenStream) -> TokenStream { behavior::behavior(input) }
