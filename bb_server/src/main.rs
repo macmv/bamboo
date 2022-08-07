@@ -69,9 +69,9 @@ struct Args {
 fn main() {
   let args = Args::parse();
   let config = if args.write_default_config {
-    Config::new_write_default("server.toml", "server-default.toml", include_str!("default.toml"))
+    bb_server::load_config_write_default("server.toml", "server-default.toml")
   } else {
-    Config::new("server.toml", include_str!("default.toml"))
+    bb_server::load_config("server.toml")
   };
 
   let level = config.get("log-level");
