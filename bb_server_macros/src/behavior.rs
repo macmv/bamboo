@@ -146,7 +146,10 @@ impl Parse for MapKey {
       } else if look.peek(Ident) {
         sections.push(KeySection::Lit(input.parse()?));
       } else {
-        return Ok(MapKey { span: start.join(sections.last().unwrap().span()).unwrap(), sections });
+        return Ok(MapKey {
+          span: start.join(sections.last().unwrap().span()).unwrap_or(start),
+          sections,
+        });
       }
     }
   }
