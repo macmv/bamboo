@@ -80,9 +80,9 @@ impl PPlayer {
     self.inner().map(|p| p.game_mode()).unwrap_or(GameMode::Survival).to_string()
   }
 
-  /// Returns the game mode of the player.
+  /// Sets the game mode of the player.
   ///
-  /// This will do nothing if they are offline
+  /// This will do nothing if they are offline.
   pub fn set_game_mode(&self, game_mode: &str) -> Result<()> {
     if let Ok(i) = self.inner() {
       i.set_game_mode(match game_mode {
