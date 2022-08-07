@@ -57,6 +57,8 @@ pretty_assertions = "1.2.0"
 [features]
 default = ["host"]
 host = ["chrono", "flate2", "rsa", "rand", "rand_core", "parking_lot"]
+# If set, then logs will use UTC. If disabled, then logs will use the local timezone.
+utclogs = []
 
 [[bench]]
 name = "chunk"

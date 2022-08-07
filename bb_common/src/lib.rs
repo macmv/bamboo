@@ -106,7 +106,11 @@ pub fn init_with_level_writer<W: std::io::Write + Send + Sync + 'static>(
 
   impl<W: io::Write> Logger<W> {
     fn log_inner(&self, record: &Record) -> io::Result<()> {
+      #[cfg(not(feature = "utclogs"))]
       let now = chrono::Local::now();
+      #[cfg(feature = "utclogs")]
+      let now = chrono::Utc::now();
+
       let mut w = self.writer.lock();
       write!(w, "{} ", now.format("%Y-%m-%d %H:%M:%S%.3f"))?;
       #[cfg(debug_assertions)]
