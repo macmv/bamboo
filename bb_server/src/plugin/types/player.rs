@@ -80,6 +80,27 @@ impl PPlayer {
     self.inner().map(|p| p.game_mode()).unwrap_or(GameMode::Survival).to_string()
   }
 
+  /// Sets the game mode of the player.
+  ///
+  /// This will do nothing if they are offline.
+  pub fn set_game_mode(&self, game_mode: &str) -> Result<()> {
+    if let Ok(i) = self.inner() {
+      i.set_game_mode(match game_mode {
+        "survival" => GameMode::Survival,
+        "creative" => GameMode::Creative,
+        "spectator" => GameMode::Spectator,
+        "adventure" => GameMode::Adventure,
+        _ => {
+          return Err(RuntimeError::custom(
+            format!("`{}` is offline", self.username),
+            Span::call_site(),
+          ))
+        }
+      })
+    }
+    Ok(())
+  }
+
   /// Teleports the player to the given position, with a yaw and pitch.
   ///
   /// This will do nothing if the player is offline.
