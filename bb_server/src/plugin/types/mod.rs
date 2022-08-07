@@ -252,10 +252,8 @@ impl Bamboo {
     }
   }
 
-  /// Broadcasts the given chat message.
-  pub fn broadcast(&self, chat: &chat::PChat) {
-    self.wm.broadcast(chat.inner.lock().unwrap().clone());
-  }
+  /// Broadcasts the given chat message to all players.
+  pub fn broadcast(&self, msg: Var) { self.wm.broadcast(chat::PChat::from_var(msg)); }
 
   /// Returns the default world.
   pub fn default_world(&self) -> PWorld { self.wm.default_world().into() }

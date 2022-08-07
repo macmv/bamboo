@@ -1,14 +1,32 @@
 use super::{add_from, wrap};
 use bb_common::util::{chat::Color, Chat};
 use bb_server_macros::define_ty;
-use panda::{parse::token::Span, runtime::RuntimeError};
-use std::{
-  str::FromStr,
-  sync::{Arc, Mutex},
+use panda::{
+  parse::token::Span,
+  runtime::{RuntimeError, Var},
 };
+use parking_lot::Mutex;
+use std::{str::FromStr, sync::Arc};
 
 wrap!(Arc<Mutex<Chat>>, PChat);
 wrap!(Arc<Mutex<Chat>>, PChatSection, idx: usize);
+
+impl From<Chat> for PChat {
+  fn from(c: Chat) -> PChat { PChat { inner: Arc::new(Mutex::new(c)) } }
+}
+
+impl PChat {
+  pub fn from_var(var: Var) -> Chat {
+    match var {
+      Var::Builtin(_, ref data) => {
+        let borrow = data.borrow();
+        let chat = borrow.as_any().downcast_ref::<PChat>();
+        chat.map(|c| c.inner.lock().clone()).unwrap_or_else(|| Chat::new(var.to_string()))
+      }
+      _ => Chat::new(var.to_string()),
+    }
+  }
+}
 
 /// A chat message. This is how you can send formatted chat message to players.
 #[define_ty(panda_path = "bamboo::chat::Chat")]
@@ -31,7 +49,7 @@ impl PChat {
   /// //    \ Adds the section "hello"
   /// ```
   pub fn add(&self, msg: &str) -> PChatSection {
-    let mut lock = self.inner.lock().unwrap();
+    let mut lock = self.inner.lock();
     lock.add(msg);
     PChatSection { inner: self.inner.clone(), idx: lock.sections_len() - 1 }
   }
@@ -55,7 +73,7 @@ impl PChatSection {
   /// chat.add("hello").color("red")
   /// ```
   pub fn color(&self, color: &str) -> Result<(), RuntimeError> {
-    self.inner.lock().unwrap().get_section(self.idx).unwrap().color(
+    self.inner.lock().get_section(self.idx).unwrap().color(
       Color::from_str(color)
         .map_err(|err| RuntimeError::custom(err.to_string(), Span::call_site()))?,
     );

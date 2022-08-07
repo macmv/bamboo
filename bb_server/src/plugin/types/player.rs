@@ -10,7 +10,7 @@ use crate::{
   item::Stack,
   player::{Player, Team, Window},
 };
-use bb_common::util::{chat::Color, Chat, GameMode, SwitchMode, UUID};
+use bb_common::util::{chat::Color, GameMode, SwitchMode, UUID};
 use bb_server_macros::define_ty;
 use panda::{
   parse::token::Span,
@@ -151,20 +151,9 @@ impl PPlayer {
   /// p.send_message(chat)
   /// ```
   pub fn send_message(&self, msg: Var) {
-    let out = match &msg {
-      Var::Builtin(_, data) => {
-        let borrow = data.borrow();
-        let chat = borrow.as_any().downcast_ref::<PChat>();
-        if let Some(chat) = chat {
-          chat.inner.lock().unwrap().clone()
-        } else {
-          Chat::new(msg.to_string())
-        }
-      }
-      _ => Chat::new(msg.to_string()),
-    };
+    let out = PChat::from_var(msg);
     if let Ok(i) = self.inner() {
-      i.send_message(out);
+      i.send_message(out.clone());
     }
   }
 
@@ -174,7 +163,7 @@ impl PPlayer {
   /// This will do nothing if the player is offline.
   pub fn set_title(&self, title: &PChat) {
     if let Ok(i) = self.inner() {
-      i.set_title(title.inner.lock().unwrap().clone());
+      i.set_title(title.inner.lock().clone());
     }
   }
   /// Sets the subtitle for this player. To show the title and subtitle, call
@@ -183,7 +172,7 @@ impl PPlayer {
   /// This will do nothing if the player is offline.
   pub fn set_subtitle(&self, subtitle: &PChat) {
     if let Ok(i) = self.inner() {
-      i.set_subtitle(subtitle.inner.lock().unwrap().clone());
+      i.set_subtitle(subtitle.inner.lock().clone());
     }
   }
   /// Shows the current title to the player. The `fade_in`, `stay`, and
@@ -223,7 +212,7 @@ impl PPlayer {
   /// This will do nothing if the player is offline.
   pub fn show_inventory(&self, inv: &PWindow, title: &PChat) {
     if let Ok(i) = self.inner() {
-      i.show_inventory(inv.inner.clone(), &title.inner.lock().unwrap());
+      i.show_inventory(inv.inner.clone(), &title.inner.lock());
     }
   }
   /// Returns true if the player is in an inventory. This does not include their
@@ -321,7 +310,7 @@ impl PPlayer {
   /// This will do nothing if the player is offline.
   pub fn set_scoreboard_line(&self, line: u8, message: &PChat) {
     if let Ok(i) = self.inner() {
-      i.lock_scoreboard().set_line(line, &message.inner.lock().unwrap());
+      i.lock_scoreboard().set_line(line, &message.inner.lock());
     }
   }
   /// Clears a line in the scoreboard. If it is hidden, this will still work,
@@ -345,7 +334,7 @@ impl PPlayer {
   /// This will do nothing if the player is offline.
   pub fn set_tab_name(&self, name: &PChat) {
     if let Ok(i) = self.inner() {
-      i.set_tab_name(Some(name.inner.lock().unwrap().clone()));
+      i.set_tab_name(Some(name.inner.lock().clone()));
     }
   }
   /// Removes the player's tab list name.
