@@ -97,49 +97,6 @@ impl PandaPlugin {
   pub fn bb(&self) -> Bamboo { self.bb.clone() }
 
   pub fn call_init(&self) { self.call("init", vec![]); }
-  pub fn call_on_block_place(&self, player: Arc<Player>, pos: Pos, ty: block::Type) -> bool {
-    self.call(
-      "block_place",
-      vec![
-        types::player::PPlayer::from(player).into(),
-        types::util::PPos::from(pos).into(),
-        types::block::PBlockKind::from(ty.kind()).into(),
-      ],
-    );
-    true
-  }
-  pub fn call_on_block_break(&self, player: Arc<Player>, pos: Pos, ty: block::Type) -> bool {
-    self.call(
-      "block_break",
-      vec![
-        types::player::PPlayer::from(player).into(),
-        types::util::PPos::from(pos).into(),
-        types::block::PBlockKind::from(ty.kind()).into(),
-      ],
-    );
-    true
-  }
-  pub fn call_on_click_window(&self, player: Arc<Player>, slot: i32, mode: ClickWindow) -> bool {
-    self.call(
-      "click_window",
-      vec![
-        types::player::PPlayer::from(player).into(),
-        slot.into(),
-        types::item::PClickWindow::from(mode).into(),
-      ],
-    );
-    true
-  }
-  pub fn call_on_chat_message(&self, player: Arc<Player>, text: String) {
-    self.call("chat_message", vec![types::player::PPlayer::from(player).into(), text.into()]);
-  }
-  pub fn call_on_player_join(&self, player: Arc<Player>) {
-    self.call("player_join", vec![types::player::PPlayer::from(player).into()]);
-  }
-  pub fn call_on_player_leave(&self, player: Arc<Player>) {
-    self.call("player_leave", vec![types::player::PPlayer::from(player).into()]);
-  }
-  pub fn call_on_tick(&self) { self.call("tick", vec![]); }
 
   pub fn call(&self, name: &str, args: Vec<Var>) {
     match &self.sl {
@@ -149,6 +106,18 @@ impl PandaPlugin {
       },
       None => {}
     }
+  }
+  pub fn req(&self, name: &str, mut args: Vec<Var>) -> bool {
+    let event = PEvent { cancelled: false };
+    args.insert(0, event);
+    match &self.sl {
+      Some(sl) => match sl.run_callback(name, args) {
+        Ok(_) => {}
+        Err(e) => self.print_err(e),
+      },
+      None => {}
+    }
+    event.cancelled
   }
 
   pub fn print_err<E: PdError>(&self, err: E) {
@@ -162,15 +131,17 @@ impl PandaPlugin {
 impl PluginImpl for PandaPlugin {
   fn call(&self, player: Arc<Player>, ev: ServerEvent) -> Result<(), CallError> {
     match ev {
-      ServerEvent::Chat { text } => self.call_on_chat_message(player, text),
-      ServerEvent::PlayerJoin {} => self.call_on_player_join(player),
-      ServerEvent::PlayerLeave {} => self.call_on_player_leave(player),
+      ServerEvent::Chat { text } => {
+        self.call("chat_message", vec![PPlayer::from(player).into(), text.into()])
+      }
+      ServerEvent::PlayerJoin {} => self.call("player_join", vec![PPlayer::from(player).into()]),
+      ServerEvent::PlayerLeave {} => self.call("player_leave", vec![PPlayer::from(player).into()]),
     }
     Ok(())
   }
   fn call_global(&self, ev: GlobalServerEvent) -> Result<(), CallError> {
     match ev {
-      GlobalServerEvent::Tick => self.call_on_tick(),
+      GlobalServerEvent::Tick => self.call("tick", vec![]),
       _ => todo!("global event {ev:?}"),
     }
     Ok(())
@@ -178,13 +149,33 @@ impl PluginImpl for PandaPlugin {
   fn req(&self, player: Arc<Player>, request: ServerRequest) -> Result<PluginReply, CallError> {
     Ok(PluginReply::Cancel {
       allow: match request {
-        ServerRequest::BlockPlace { pos, block } => {
-          self.call_on_block_place(player, pos, block.ty())
+        ServerRequest::BlockPlace { pos, block } => self.req(
+          "block_place",
+          vec![
+            types::player::PPlayer::from(player).into(),
+            types::util::PPos::from(pos).into(),
+            types::block::PBlockKind::from(ty.kind()).into(),
+          ],
+        ),
+        ServerRequest::BlockBreak { pos, block } => self.req(
+          "block_break",
+          vec![
+            types::player::PPlayer::from(player).into(),
+            types::util::PPos::from(pos).into(),
+            types::block::PBlockKind::from(block.ty().kind()).into(),
+          ],
+        ),
+        ServerRequest::PlayerDamage { amount, blockable, knockback } => {
+          self.req("player_damage", vec![amount.into(), blockable.into()])
         }
-        ServerRequest::BlockBreak { pos, block } => {
-          self.call_on_block_break(player, pos, block.ty())
-        }
-        ServerRequest::ClickWindow { slot, mode } => self.call_on_click_window(player, slot, mode),
+        ServerRequest::ClickWindow { slot, mode } => self.req(
+          "click_window",
+          vec![
+            types::player::PPlayer::from(player).into(),
+            slot.into(),
+            types::item::PClickWindow::from(mode).into(),
+          ],
+        ),
       },
     })
   }
