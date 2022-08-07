@@ -195,7 +195,7 @@ impl Packet {
       if id == -1 {
         count = 0;
         damage = 0;
-        nbt = NBT::empty("");
+        nbt = NBT::empty();
       } else {
         count = self.read_u8()?;
         damage = self.read_i16()?;
@@ -203,7 +203,7 @@ impl Packet {
         // data. This is fixed in 1.13+
         if self.buf.get(0) == Some(&0) {
           self.read_u8()?; // Read the u8 we just found was 0.
-          nbt = NBT::empty("");
+          nbt = NBT::empty();
         } else {
           match NBT::deserialize_buf(&mut self.buf) {
             Ok(v) => nbt = v,
@@ -226,7 +226,7 @@ impl Packet {
       let nbt = self.read_nbt()?;
       Item::new(conv.item_to_new(id as u32, 0, self.ver.block()) as i32, count, 0, nbt)
     } else {
-      Item::new(0, 0, 0, NBT::empty(""))
+      Item::new(0, 0, 0, NBT::empty())
     })
   }
 
@@ -241,7 +241,7 @@ impl Packet {
         if item.id() != -1 {
           self.write_u8(item.count());
           self.write_i16(item.damage);
-          self.write_u8(0); // TODO: Write nbt data
+          NBT::serialize_buf(&item.nbt, &mut self.buf);
         }
       }
     } else {
@@ -250,7 +250,7 @@ impl Packet {
       if present {
         self.write_varint(item.id());
         self.write_u8(item.count());
-        self.write_u8(0x00); // TODO: Write nbt data
+        NBT::serialize_buf(&item.nbt, &mut self.buf);
       }
     }
   }

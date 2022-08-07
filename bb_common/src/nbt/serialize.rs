@@ -3,7 +3,7 @@ use crate::util::Buffer;
 use super::{Tag, NBT};
 
 impl NBT {
-  pub fn serialize_buf(&self, out: &mut Buffer<&mut Vec<u8>>) {
+  pub fn serialize_buf(&self, out: &mut Buffer<Vec<u8>>) {
     out.write_u8(self.tag.ty());
     if matches!(self.tag, Tag::End) {
       return;
@@ -13,10 +13,9 @@ impl NBT {
     self.tag.serialize(out);
   }
   pub fn serialize(&self) -> Vec<u8> {
-    let mut data = vec![];
-    let mut out = Buffer::new(&mut data);
+    let mut out = Buffer::new(vec![]);
     self.serialize_buf(&mut out);
-    data
+    out.into_inner()
   }
 }
 
@@ -41,7 +40,7 @@ impl Tag {
   }
 
   /// Serializes the data of the tag. Does not add type byte.
-  fn serialize(&self, out: &mut Buffer<&mut Vec<u8>>) {
+  fn serialize(&self, out: &mut Buffer<Vec<u8>>) {
     match self {
       Self::End => (),
       Self::Byte(v) => out.write_i8(*v),
