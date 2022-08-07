@@ -11,9 +11,15 @@ pub mod gnet;
 pub mod packet;
 pub mod stream;
 
+pub use conn::{JsonPlayer, JsonPlayers, JsonStatus, JsonVersion};
 pub use error::{Error, Result};
 
-use bb_common::{config::Config, math::der};
+use bb_common::{
+  config::Config,
+  math::der,
+  util::chat::{Chat, Color},
+  version::ProtocolVersion,
+};
 use mio::{
   event::Event,
   net::{TcpListener, TcpStream},
@@ -64,13 +70,14 @@ pub fn load_config_write_default(path: &str, default: &str) -> Config {
 }
 
 pub struct Proxy {
-  icon:        Option<String>,
-  key:         Arc<RSAPrivateKey>,
-  der_key:     Option<Vec<u8>>,
-  addr:        SocketAddr,
-  server_addr: SocketAddr,
-  compression: i32,
-  conv:        Arc<TypeConverter>,
+  icon:           Option<String>,
+  key:            Arc<RSAPrivateKey>,
+  der_key:        Option<Vec<u8>>,
+  addr:           SocketAddr,
+  server_addr:    SocketAddr,
+  compression:    i32,
+  conv:           Arc<TypeConverter>,
+  status_builder: Arc<dyn for<'a> Fn(&'a str, ProtocolVersion) -> JsonStatus<'a>>,
 }
 
 impl Proxy {
@@ -84,6 +91,35 @@ impl Proxy {
       server_addr,
       compression: 256,
       conv: Arc::new(TypeConverter::new()),
+      status_builder: Arc::new(|icon, ver| {
+        let mut description = Chat::empty();
+        description.add("Bamboo").color(Color::BrightGreen);
+        description.add(" -- ").color(Color::Gray);
+        #[cfg(debug_assertions)]
+        description.add("Development mode").color(Color::Blue);
+        #[cfg(not(debug_assertions))]
+        description.add("Release mode").color(Color::Red);
+        JsonStatus {
+          version: JsonVersion {
+            name:     format!("1.8 - {}", ProtocolVersion::latest()),
+            protocol: if ver == ProtocolVersion::Invalid {
+              ProtocolVersion::latest().id()
+            } else {
+              ver.id()
+            } as i32,
+          },
+          players: JsonPlayers {
+            max:    69,
+            online: 420,
+            sample: vec![JsonPlayer {
+              name: "macmv".into(),
+              id:   "a0ebbc8d-e0b0-4c23-a965-efba61ff0ae8".into(),
+            }],
+          },
+          description,
+          favicon: icon,
+        }
+      }),
     }
     .with_encryption(true)
   }
@@ -127,6 +163,7 @@ impl Proxy {
       self.der_key.clone(),
       server_token,
       self.conv.clone(),
+      self.status_builder.clone(),
     )
     .with_compression(self.compression);
     if let Some(icon) = &self.icon {

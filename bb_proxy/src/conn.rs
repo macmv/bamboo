@@ -85,7 +85,8 @@ pub struct Conn<'a, S> {
   /// packet yet.
   from_server:   Vec<u8>,
 
-  conv: Arc<TypeConverter>,
+  conv:           Arc<TypeConverter>,
+  status_builder: Arc<dyn for<'b> Fn(&'b str, ProtocolVersion) -> JsonStatus<'b>>,
 }
 thread_local! {
   // Used when reading from the server.
@@ -126,30 +127,30 @@ pub struct LoginProperty {
 }
 
 #[derive(Serialize)]
-struct JsonStatus<'a> {
-  version:     JsonVersion,
-  players:     JsonPlayers,
-  description: Chat,
-  favicon:     &'a str,
+pub struct JsonStatus<'a> {
+  pub version:     JsonVersion,
+  pub players:     JsonPlayers,
+  pub description: Chat,
+  pub favicon:     &'a str,
 }
 
 #[derive(Serialize)]
-struct JsonVersion {
-  name:     String,
-  protocol: i32,
+pub struct JsonVersion {
+  pub name:     String,
+  pub protocol: i32,
 }
 
 #[derive(Serialize)]
-struct JsonPlayers {
-  max:    i32,
-  online: i32,
-  sample: Vec<JsonPlayer>,
+pub struct JsonPlayers {
+  pub max:    i32,
+  pub online: i32,
+  pub sample: Vec<JsonPlayer>,
 }
 
 #[derive(Serialize)]
-struct JsonPlayer {
-  name: String,
-  id:   String,
+pub struct JsonPlayer {
+  pub name: String,
+  pub id:   String,
 }
 
 impl<'a, S: PacketStream + Send + Sync> Conn<'a, S> {
@@ -160,6 +161,7 @@ impl<'a, S: PacketStream + Send + Sync> Conn<'a, S> {
     der_key: Option<Vec<u8>>,
     server_token: Token,
     conv: Arc<TypeConverter>,
+    status_builder: Arc<dyn for<'b> Fn(&'b str, ProtocolVersion) -> JsonStatus<'b>>,
   ) -> Self {
     Conn {
       client_stream,
@@ -179,6 +181,7 @@ impl<'a, S: PacketStream + Send + Sync> Conn<'a, S> {
       to_server: Vec::with_capacity(16 * 1024),
       from_server: Vec::with_capacity(16 * 1024),
       conv,
+      status_builder,
     }
   }
   pub fn with_compression(mut self, compression_target: i32) -> Self {
@@ -530,35 +533,7 @@ impl<'a, S: PacketStream + Send + Sync> Conn<'a, S> {
   }
 
   /// Generates the json status for the server
-  fn build_status(&self) -> JsonStatus {
-    let mut description = Chat::empty();
-    description.add("Bamboo").color(Color::BrightGreen);
-    description.add(" -- ").color(Color::Gray);
-    #[cfg(debug_assertions)]
-    description.add("Development mode").color(Color::Blue);
-    #[cfg(not(debug_assertions))]
-    description.add("Release mode").color(Color::Red);
-    JsonStatus {
-      version: JsonVersion {
-        name:     format!("1.8 - {}", ProtocolVersion::latest()),
-        protocol: if self.ver == ProtocolVersion::Invalid {
-          ProtocolVersion::latest().id()
-        } else {
-          self.ver.id()
-        } as i32,
-      },
-      players: JsonPlayers {
-        max:    69,
-        online: 420,
-        sample: vec![JsonPlayer {
-          name: "macmv".into(),
-          id:   "a0ebbc8d-e0b0-4c23-a965-efba61ff0ae8".into(),
-        }],
-      },
-      description,
-      favicon: self.icon,
-    }
-  }
+  fn build_status(&self) -> JsonStatus { (self.status_builder)(&self.icon, self.ver) }
 
   /// Runs the entire login process with the client. If compression is 0, then
   /// compression will not be enabled. The key should always be the server's
