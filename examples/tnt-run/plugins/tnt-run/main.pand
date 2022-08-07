@@ -11,7 +11,6 @@ on tick() when phase == "playing" {
   for player in @players.filter(|p| p.game_mode() == "survival") {
     if !player.on_ground() {
       let pos = player.pos().block()
-      player.world().try_set_block(pos.add_y(-1), block::Kind::from_s("air"))
       let world = player.world()
       @bamboo.after(10, || {
         world.try_set_block(pos.add_y(-1), block::Kind::from_s("air"))

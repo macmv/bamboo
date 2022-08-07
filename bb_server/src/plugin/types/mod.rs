@@ -257,6 +257,15 @@ impl Bamboo {
 
   /// Returns the default world.
   pub fn default_world(&self) -> PWorld { self.wm.default_world().into() }
+
+  /// Runs the given closure after the given number of ticks.
+  pub fn after(&self, ticks: u32, closure: Var) -> Result<(), RuntimeError> {
+    self.scheduled.lock().push(super::Scheduled {
+      time_left: ticks,
+      closure:   closure.closure(Span::call_site())?.clone(),
+    });
+    Ok(())
+  }
 }
 
 fn format(args: &[Var]) -> String {
