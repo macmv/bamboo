@@ -790,18 +790,14 @@ impl Player {
     // doesn't make any sense, as other players (with a hacked client) can see
     // our health. So, I simply don't send the health to other clients here.
     {
-      let amount_original = amount;
-
-      amount -= health.absorption;
-      if amount < 0.0 {
+      if amount > health.absorption {
+        amount -= health.absorption;
+        health.absorption = 0.0;
+      } else {
+        health.absorption -= amount;
         amount = 0.0;
       }
-      health.absorption -= amount_original - amount;
-      if amount != 0.0 {
-        let h = health.health;
-        health.health = h - amount;
-        health.absorption -= amount;
-      }
+      health.health -= amount;
 
       self.send(cb::packet::UpdateHealth {
         health:     health.health,

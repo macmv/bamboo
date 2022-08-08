@@ -114,7 +114,7 @@ impl PandaPlugin {
       },
       None => {}
     }
-    event.is_cancelled()
+    !event.is_cancelled()
   }
 
   pub fn print_err<E: PdError>(&self, err: E) {
