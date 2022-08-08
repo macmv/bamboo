@@ -282,16 +282,15 @@ fn format(args: &[Var]) -> String {
 
 impl PandaPlugin {
   pub fn add_builtins(&self, sl: &mut Panda) {
-    sl.def_callback("init");
-    sl.def_callback("block_place");
-    sl.def_callback("block_break");
-    sl.def_callback("click_window");
-    sl.def_callback("chat_message");
-    sl.def_callback("player_join");
-    sl.def_callback("player_leave");
-    sl.def_callback("player_damage");
-    sl.def_callback("interact");
-    sl.def_callback("tick");
+    for name in crate::event::ServerEvent::all_names() {
+      sl.def_callback(name);
+    }
+    for name in crate::event::PlayerEvent::all_names() {
+      sl.def_callback(name);
+    }
+    for name in crate::event::PlayerRequest::all_names() {
+      sl.def_callback(name);
+    }
 
     {
       let bb = self.bb();

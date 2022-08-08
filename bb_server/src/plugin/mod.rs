@@ -35,6 +35,7 @@ mod types {
 
 mod manager;
 
+pub use self::panda::IntoPanda;
 pub use manager::PluginManager;
 
 #[cfg(feature = "socket_plugins")]
@@ -42,7 +43,7 @@ use socket::SocketManager;
 
 use crate::{
   block,
-  event::{Event, GlobalEvent, PluginMessage, PluginReply, Request, ServerMessage},
+  event::{GlobalEvent, PlayerEvent, PlayerRequest, PluginMessage, PluginReply, ServerMessage},
   player::Player,
   world::WorldManager,
 };
@@ -91,13 +92,14 @@ impl fmt::Debug for Bamboo {
 use self::panda::PandaPlugin;
 
 pub trait PluginImpl: std::any::Any {
-  /// Calls an event. There is no reply for `ServerEvent`. If an error is
+  /// Calls an event. There is no reply for `GlobalEvent`.
+  fn call_global(&self, event: GlobalEvent) -> Result<(), CallError>;
+  /// Calls an event. There is no reply for `PlayerEvent`. If an error is
   /// thrown, it will be logged, and the plugin will be removed if `keep` is
   /// `false`.
-  fn call(&self, player: Arc<Player>, event: ServerEvent) -> Result<(), CallError>;
-  fn call_global(&self, event: GlobalServerEvent) -> Result<(), CallError>;
+  fn call(&self, player: Arc<Player>, event: PlayerEvent) -> Result<(), CallError>;
   /// Calls an event. This should block until it gets a reply.
-  fn req(&self, player: Arc<Player>, event: ServerRequest) -> Result<PluginReply, CallError>;
+  fn req(&self, player: Arc<Player>, event: PlayerRequest) -> Result<PluginReply, CallError>;
   #[cfg(feature = "panda_plugins")]
   fn panda(&mut self) -> Option<&mut PandaPlugin> { None }
 }
@@ -159,11 +161,11 @@ impl Plugin {
     thread::spawn(move || {
       while let Ok(ev) = server_rx.recv() {
         let res = match ev {
-          ServerMessage::Request { reply_id, player, request } => i
+          ServerMessage::PlayerRequest { reply_id, player, request } => i
             .lock()
             .req(player, request)
             .map(|reply| plugin_tx.send(PluginMessage::Reply { reply_id, reply }).unwrap()),
-          ServerMessage::Event { player, event } => i.lock().call(player, event),
+          ServerMessage::PlayerEvent { player, event } => i.lock().call(player, event),
           ServerMessage::GlobalEvent { event } => i.lock().call_global(event),
           ServerMessage::Reply { .. } => Ok(()),
         };
@@ -197,21 +199,21 @@ impl Plugin {
       });
     }
   }
-  pub fn call(&self, player: Arc<Player>, event: ServerEvent) -> Result<(), CallError> {
-    self.tx.send(ServerMessage::Event { player, event }).unwrap();
+  pub fn call_global(&self, event: GlobalEvent) -> Result<(), CallError> {
+    self.tx.send(ServerMessage::GlobalEvent { event }).unwrap();
     Ok(())
   }
-  pub fn call_global(&self, event: GlobalServerEvent) -> Result<(), CallError> {
-    self.tx.send(ServerMessage::GlobalEvent { event }).unwrap();
+  pub fn call(&self, player: Arc<Player>, event: PlayerEvent) -> Result<(), CallError> {
+    self.tx.send(ServerMessage::PlayerEvent { player, event }).unwrap();
     Ok(())
   }
   pub fn req(
     &self,
     reply_id: u32,
     player: Arc<Player>,
-    request: ServerRequest,
+    request: PlayerRequest,
   ) -> Result<(), CallError> {
-    self.tx.send(ServerMessage::Request { reply_id, player, request }).unwrap();
+    self.tx.send(ServerMessage::PlayerRequest { reply_id, player, request }).unwrap();
     Ok(())
   }
   pub fn rx(&self) -> &Receiver<PluginMessage> { &self.rx }

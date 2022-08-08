@@ -1,9 +1,11 @@
 use super::json::*;
-use crate::{block, math::Vec3, player::Player, world::MultiChunk};
+use crate::{block, math::Vec3, player::Player, plugin::IntoPanda, world::MultiChunk};
 use bb_common::{
   math::{ChunkPos, Pos},
   net::sb::ClickWindow,
 };
+use bb_server_macros::define_ty;
+use panda::runtime::Var;
 use parking_lot::Mutex;
 use std::sync::Arc;
 
@@ -88,7 +90,7 @@ macro_rules! event {
     $( #[$event_attr:meta] )*
     $event_name:ident:
     $(
-      $name:ident {
+      $name:ident: $str_name:literal {
         $(
           $( #[$attr:meta] )*
           $field:ident: $ty:ty,
@@ -105,9 +107,25 @@ macro_rules! event {
         )*
       }
 
+      #[define_ty]
+      impl $name {
+        $(
+          #[field]
+          fn $field(&self) -> &$ty {
+            &self.$field
+          }
+        )*
+      }
+
       impl From<$name> for $event_name {
         fn from(v: $name) -> Self {
           $event_name::$name(v)
+        }
+      }
+
+      impl IntoPanda for $name {
+        fn into_panda(&self) -> Var {
+          self.into()
         }
       }
     )*
@@ -120,6 +138,27 @@ macro_rules! event {
         $name($name),
       )*
     }
+    impl $event_name {
+      pub fn name(&self) -> &'static str {
+        match self {
+          $(
+            Self::$name(_) => $str_name,
+          )*
+        }
+      }
+      pub fn all_names() -> &'static [&'static str] {
+        &[$( $str_name, )*]
+      }
+    }
+    impl IntoPanda for $event_name {
+      fn into_panda(&self) -> Var {
+        match self {
+          $(
+            Self::$name(v) => v.into_panda(),
+          )*
+        }
+      }
+    }
   }
 }
 
@@ -127,16 +166,16 @@ event! {
   /// An event from the server to the plugin. There is also a player listed with
   /// this event.
   PlayerEvent:
-  Chat { text: String, },
-  PlayerJoin {},
-  PlayerLeave {},
+  Chat: "chat" { text: String, },
+  PlayerJoin: "player_join" {},
+  PlayerLeave: "player_leave" {},
 }
 event! {
   /// An event from the server to the plugin. This is very similar to
   /// [ServerEvent], but there is no player specified with this event.
   GlobalEvent:
-  Tick {},
-  GenerateChunk {
+  Tick: "tick" {},
+  GenerateChunk: "generate_chunk" {
     generator: String,
     #[serde(skip)]
     chunk:     Arc<Mutex<MultiChunk>>,
@@ -149,30 +188,30 @@ event! {
   /// A request from the server to the plugin. The server should expect a reply
   /// within a certain timeout from the plugin. See also [PluginReply].
   PlayerRequest:
-  BlockPlace {
+  BlockPlace: "block_place" {
     #[serde(serialize_with = "to_json_ty::<_, JsonPos, _>")]
     pos:   Pos,
     #[serde(serialize_with = "to_json_ty::<_, JsonBlock, _>")]
     block: block::TypeStore,
   },
-  BlockBreak {
+  BlockBreak: "block_break" {
     #[serde(serialize_with = "to_json_ty::<_, JsonPos, _>")]
     pos:   Pos,
     #[serde(serialize_with = "to_json_ty::<_, JsonBlock, _>")]
     block: block::TypeStore,
   },
-  ClickWindowEvent {
+  ClickWindowEvent: "click_window" {
     slot: i32,
     #[serde(skip)]
     mode: ClickWindow,
   },
-  PlayerDamage {
+  PlayerDamage: "player_damage" {
     amount:    f32,
     blockable: bool,
     #[serde(skip)]
     knockback: Vec3,
   },
-  Interact {
+  Interact: "interact" {
     slot: i32,
   },
 }

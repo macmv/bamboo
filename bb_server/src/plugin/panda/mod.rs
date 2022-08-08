@@ -18,6 +18,10 @@ pub struct PandaPlugin {
   bb:   Bamboo,
 }
 
+pub trait IntoPanda {
+  fn into_panda(&self) -> Var;
+}
+
 impl BCallback for Callback {
   fn call_panda(
     &self,
@@ -134,11 +138,11 @@ impl PluginImpl for PandaPlugin {
     Ok(())
   }
   fn call(&self, player: Arc<Player>, ev: PlayerEvent) -> Result<(), CallError> {
-    self.call(ev.name(), vec![ev]);
+    self.call(ev.name(), vec![ev.into_panda()]);
     Ok(())
   }
-  fn req(&self, player: Arc<Player>, request: PlayerRequest) -> Result<PluginReply, CallError> {
-    Ok(PluginReply::Cancel { allow: self.req(request.name(), vec![request]) })
+  fn req(&self, player: Arc<Player>, req: PlayerRequest) -> Result<PluginReply, CallError> {
+    Ok(PluginReply::Cancel { allow: self.req(req.name(), vec![req.into_panda()]) })
   }
   fn panda(&mut self) -> Option<&mut PandaPlugin> { Some(self) }
 }
