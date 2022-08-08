@@ -1,13 +1,13 @@
 use super::Type;
 use bb_common::{
-  nbt::{Tag, NBT},
+  nbt::{Compound, Tag, NBT},
   util::Item,
 };
 use bb_transfer::{
   MessageRead, MessageReader, MessageWrite, MessageWriter, ReadError, StructRead, StructReader,
   WriteError,
 };
-use std::{collections::HashMap, num::NonZeroU8};
+use std::num::NonZeroU8;
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct Stack {
@@ -96,11 +96,11 @@ impl Stack {
   /// Returns a reference to the NBT for this item.
   pub fn nbt(&self) -> &NBT { &self.nbt }
   /// Returns a mutable reference to the NBT for this item.
-  pub fn nbt_mut(&mut self) -> &mut NBT {
+  pub fn nbt_mut(&mut self) -> &mut Compound {
     if self.nbt.tag() == &Tag::End {
-      self.nbt = NBT::new("", Tag::Compound(HashMap::new()));
+      self.nbt = NBT::new("", Tag::Compound(Compound::new()));
     }
-    &mut self.nbt
+    self.nbt.compound_mut()
   }
   pub fn set_nbt(&mut self, nbt: NBT) { self.nbt = nbt; }
   pub fn with_nbt(mut self, nbt: NBT) -> Self {

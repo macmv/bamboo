@@ -65,7 +65,7 @@ impl Tag {
         }
       }
       Self::Compound(v) => {
-        for (name, tag) in v {
+        for (name, tag) in &v.inner {
           // Each element in the HashMap is essentially a NBT, but we store it in a
           // separated form, so we have a manual implementation of serialize() here.
           out.write_u8(tag.ty());

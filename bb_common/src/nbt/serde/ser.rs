@@ -366,7 +366,7 @@ impl<'a> ser::SerializeMap for MapSerializer<'a> {
   }
 
   fn end(self) -> Result<()> {
-    self.ser.tag = Tag::Compound(self.items);
+    self.ser.tag = self.items.into();
     Ok(())
   }
 }
@@ -388,7 +388,7 @@ impl<'a> ser::SerializeStruct for MapSerializer<'a> {
   }
 
   fn end(self) -> Result<()> {
-    self.ser.tag = Tag::Compound(self.items);
+    self.ser.tag = self.items.into();
     Ok(())
   }
 }
@@ -410,7 +410,7 @@ impl<'a> ser::SerializeStructVariant for MapSerializer<'a> {
   }
 
   fn end(self) -> Result<()> {
-    self.ser.tag = Tag::Compound(self.items);
+    self.ser.tag = self.items.into();
     Ok(())
   }
 }

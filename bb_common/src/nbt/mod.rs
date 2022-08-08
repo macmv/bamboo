@@ -8,7 +8,7 @@ mod serialize;
 pub use self::serde::{to_nbt, to_tag};
 
 use crate::util::BufferError;
-use std::{collections::HashMap, io, string::FromUtf8Error};
+use std::{collections::HashMap, io, ops::Index, string::FromUtf8Error};
 
 #[derive(Debug)]
 pub enum ParseError {
@@ -43,10 +43,64 @@ pub enum Tag {
   Double(f64),
   ByteArr(Vec<u8>),
   String(String),
-  List(Vec<Tag>),                 // All elements must be the same type, and un-named.
-  Compound(HashMap<String, Tag>), // Types can be any kind, and are named. Order is not defined.
+  List(Vec<Tag>),     // All elements must be the same type, and un-named.
+  Compound(Compound), // Types can be any kind, and are named. Order is not defined.
   IntArray(Vec<i32>),
   LongArray(Vec<i64>),
+}
+
+/// An NBT Compound tag. This is essentially a map, with some extra helper
+/// functions.
+#[derive(Debug, Clone, PartialEq)]
+pub struct Compound {
+  pub inner: HashMap<String, Tag>,
+}
+
+impl Compound {
+  pub fn new() -> Self { Compound { inner: HashMap::new() } }
+  pub fn insert(&mut self, key: impl Into<String>, value: impl Into<Tag>) {
+    self.inner.insert(key.into(), value.into());
+  }
+  pub fn get_or_create_compound(&mut self, key: impl Into<String>) -> &mut Compound {
+    self
+      .inner
+      .entry(key.into())
+      .or_insert_with(|| Tag::Compound(Compound::new()))
+      .unwrap_compound_mut()
+  }
+
+  pub fn contains_key(&self, key: impl AsRef<str>) -> bool { self.inner.contains_key(key.as_ref()) }
+
+  pub fn iter(&self) -> std::collections::hash_map::Iter<String, Tag> { self.inner.iter() }
+  pub fn iter_mut(&mut self) -> std::collections::hash_map::IterMut<String, Tag> {
+    self.inner.iter_mut()
+  }
+}
+impl IntoIterator for Compound {
+  type Item = (String, Tag);
+  type IntoIter = std::collections::hash_map::IntoIter<String, Tag>;
+
+  fn into_iter(self) -> Self::IntoIter { self.inner.into_iter() }
+}
+impl<'a> IntoIterator for &'a Compound {
+  type Item = (&'a String, &'a Tag);
+  type IntoIter = std::collections::hash_map::Iter<'a, String, Tag>;
+
+  fn into_iter(self) -> Self::IntoIter { self.inner.iter() }
+}
+impl<'a> IntoIterator for &'a mut Compound {
+  type Item = (&'a String, &'a mut Tag);
+  type IntoIter = std::collections::hash_map::IterMut<'a, String, Tag>;
+
+  fn into_iter(self) -> Self::IntoIter { self.inner.iter_mut() }
+}
+impl From<HashMap<String, Tag>> for Compound {
+  fn from(v: HashMap<String, Tag>) -> Self { Compound { inner: v } }
+}
+
+impl Index<&str> for Compound {
+  type Output = Tag;
+  fn index(&self, index: &str) -> &Tag { &self.inner[index] }
 }
 
 impl From<bool> for Tag {
@@ -57,6 +111,9 @@ impl From<&str> for Tag {
 }
 impl From<String> for Tag {
   fn from(s: String) -> Self { Tag::String(s) }
+}
+impl From<HashMap<String, Tag>> for Tag {
+  fn from(v: HashMap<String, Tag>) -> Self { Tag::Compound(Compound::from(v)) }
 }
 
 impl<T> From<Vec<T>> for Tag
@@ -121,7 +178,7 @@ impl NBT {
 
   /// If this is a compound tag, this returns the inner data of the tag.
   /// Otherwise, this panics.
-  pub fn compound(&self) -> &HashMap<String, Tag> {
+  pub fn compound(&self) -> &Compound {
     if let Tag::Compound(inner) = &self.tag {
       inner
     } else {
@@ -130,21 +187,11 @@ impl NBT {
   }
   /// If this is a compound tag, this returns the inner data of the tag.
   /// Otherwise, this panics.
-  pub fn compound_mut(&mut self) -> &mut HashMap<String, Tag> {
+  pub fn compound_mut(&mut self) -> &mut Compound {
     if let Tag::Compound(inner) = &mut self.tag {
       inner
     } else {
       panic!("called compound on non-compound type");
-    }
-  }
-
-  /// If `self` is a compound tag, this will create a new compound child for
-  /// this tag, and return it. Otherwise, this panics.
-  pub fn get_or_create_compound(&mut self, key: &str) -> &mut HashMap<String, Tag> {
-    if let Tag::Compound(inner) = &mut self.tag {
-      inner.entry(key.into()).or_insert_with(|| Tag::compound(&[])).unwrap_compound_mut()
-    } else {
-      panic!("called get_or_create_compount on non-compound type");
     }
   }
 
@@ -159,7 +206,7 @@ impl Tag {
     for (name, tag) in value {
       inner.insert(name.to_string(), tag.clone());
     }
-    Self::Compound(inner)
+    inner.into()
   }
 
   #[track_caller]
@@ -226,14 +273,14 @@ impl Tag {
     }
   }
   #[track_caller]
-  pub fn unwrap_compound(&self) -> &HashMap<String, Tag> {
+  pub fn unwrap_compound(&self) -> &Compound {
     match self {
       Self::Compound(v) => v,
       _ => panic!("not a compound: {:?}", self),
     }
   }
   #[track_caller]
-  pub fn unwrap_compound_mut(&mut self) -> &mut HashMap<String, Tag> {
+  pub fn unwrap_compound_mut(&mut self) -> &mut Compound {
     match self {
       Self::Compound(v) => v,
       _ => panic!("not a compound: {:?}", self),

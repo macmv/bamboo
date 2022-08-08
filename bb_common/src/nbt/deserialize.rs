@@ -108,7 +108,7 @@ impl Tag {
           let tag = Tag::deserialize(ty, buf)?;
           inner.insert(name, tag);
         }
-        Ok(Self::Compound(inner))
+        Ok(inner.into())
       }
       11 => {
         let len = buf.read_i32()?;
