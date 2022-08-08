@@ -2,7 +2,7 @@
 use super::PandaPlugin;
 
 use super::{GlobalEvent, PlayerEvent, PlayerRequest, Plugin};
-use crate::{event::EventFlow, player::Player, world::WorldManager};
+use crate::{event::EventFlow, world::WorldManager};
 use bb_common::config::Config;
 use crossbeam_channel::Select;
 use parking_lot::Mutex;

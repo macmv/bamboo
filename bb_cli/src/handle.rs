@@ -57,7 +57,7 @@ pub fn handle_packet(stream: &mut ConnStream, status: &Mutex<Status>, p: cb::Pac
         Err(e) => warn!("invalid footer: {}", e),
       }
     }
-    cb::Packet::Particle(cb::packet::Particle::V8(p)) => {}
+    cb::Packet::Particle(cb::packet::Particle::V8(_p)) => {}
     p => warn!("unhandled packet {}...", &format!("{:?}", p)[..40]),
   }
   Ok(())

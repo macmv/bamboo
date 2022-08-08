@@ -1,11 +1,11 @@
 use super::json::*;
-use crate::{block, math::Vec3, player::Player, plugin::IntoPanda, world::MultiChunk};
+use crate::{block, math::Vec3, player::Player, plugin::IntoPanda};
 use bb_common::{
   math::{ChunkPos, Pos},
   net::sb::ClickWindow,
 };
 use panda::{define_ty, runtime::Var, Panda};
-use parking_lot::Mutex;
+
 use std::sync::Arc;
 
 /// A message going from the plugin to the server.

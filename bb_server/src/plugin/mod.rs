@@ -42,13 +42,11 @@ pub use manager::PluginManager;
 use socket::SocketManager;
 
 use crate::{
-  block,
   event::{GlobalEvent, PlayerEvent, PlayerRequest, PluginMessage, PluginReply, ServerMessage},
-  player::Player,
   world::WorldManager,
 };
 use ::panda::runtime::{tree::Closure, VarSend};
-use bb_common::{config::Config, math::Pos};
+use bb_common::config::Config;
 use crossbeam_channel::{Receiver, Sender};
 use parking_lot::{Mutex, MutexGuard};
 use std::{error::Error, fmt, sync::Arc, thread};

@@ -2,7 +2,7 @@ use super::{
   types::Callback as BCallback, Bamboo, CallError, GlobalEvent, PlayerEvent, PlayerRequest,
   PluginImpl, PluginManager, PluginReply,
 };
-use crate::{player::Player, world::WorldManager};
+use crate::world::WorldManager;
 use panda::{
   parse::Path as PdPath,
   runtime::{Callback, LockedEnv, Var},
