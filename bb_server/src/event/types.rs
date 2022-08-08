@@ -59,22 +59,22 @@ pub enum PluginReply {
 #[derive(Debug, Clone, serde::Serialize)]
 #[serde(tag = "kind")]
 pub enum ServerMessage {
-  Event {
+  GlobalEvent {
+    #[serde(flatten)]
+    event: GlobalEvent,
+  },
+  PlayerEvent {
     #[serde(serialize_with = "to_json_ty::<_, JsonPlayer, _>")]
     player: Arc<Player>,
     #[serde(flatten)]
-    event:  ServerEvent,
+    event:  PlayerEvent,
   },
-  GlobalEvent {
-    #[serde(flatten)]
-    event: GlobalServerEvent,
-  },
-  Request {
+  PlayerRequest {
     reply_id: u32,
     #[serde(serialize_with = "to_json_ty::<_, JsonPlayer, _>")]
     player:   Arc<Player>,
     #[serde(flatten)]
-    request:  ServerRequest,
+    request:  PlayerRequest,
   },
   Reply {
     reply_id: u32,
@@ -83,25 +83,59 @@ pub enum ServerMessage {
   },
 }
 
-/// An event from the server to the plugin. There is also a player listed with
-/// this event.
-#[non_exhaustive]
-#[derive(Debug, Clone, serde::Serialize)]
-#[serde(tag = "type")]
-pub enum ServerEvent {
-  Chat { text: String },
-  PlayerJoin,
-  PlayerLeave,
+macro_rules! event {
+  (
+    $( #[$event_attr:meta] )*
+    $event_name:ident:
+    $(
+      $name:ident {
+        $(
+          $( #[$attr:meta] )*
+          $field:ident: $ty:ty,
+        )*
+      },
+    )*
+  ) => {
+    $(
+      #[derive(Debug, Clone, serde::Serialize)]
+      pub struct $name {
+        $(
+          $( #[$attr] )*
+          $field: $ty,
+        )*
+      }
+
+      impl From<$name> for $event_name {
+        fn from(v: $name) -> Self {
+          $event_name::$name(v)
+        }
+      }
+    )*
+    $( #[$event_attr] )*
+    #[non_exhaustive]
+    #[derive(Debug, Clone, serde::Serialize)]
+    #[serde(tag = "type")]
+    pub enum $event_name {
+      $(
+        $name($name),
+      )*
+    }
+  }
 }
-/// An event from the server to the plugin. This is very similar to
-/// [ServerEvent], but there is no player specified with this event.
-#[non_exhaustive]
-#[derive(Debug, Clone, serde::Serialize)]
-#[serde(tag = "type")]
-pub enum GlobalServerEvent {
-  Tick,
-  /// The plugin should fill the given chunk with the terrain for the given
-  /// generator. MultiChunk is an arc, so this should be mutated.
+
+event! {
+  /// An event from the server to the plugin. There is also a player listed with
+  /// this event.
+  PlayerEvent:
+  Chat { text: String, },
+  PlayerJoin {},
+  PlayerLeave {},
+}
+event! {
+  /// An event from the server to the plugin. This is very similar to
+  /// [ServerEvent], but there is no player specified with this event.
+  GlobalEvent:
+  Tick {},
   GenerateChunk {
     generator: String,
     #[serde(skip)]
@@ -110,12 +144,11 @@ pub enum GlobalServerEvent {
     pos:       ChunkPos,
   },
 }
-/// A request from the server to the plugin. The server should expect a reply
-/// within a certain timeout from the plugin. See also [PluginReply].
-#[non_exhaustive]
-#[derive(Debug, Clone, serde::Serialize)]
-#[serde(tag = "type")]
-pub enum ServerRequest {
+
+event! {
+  /// A request from the server to the plugin. The server should expect a reply
+  /// within a certain timeout from the plugin. See also [PluginReply].
+  PlayerRequest:
   BlockPlace {
     #[serde(serialize_with = "to_json_ty::<_, JsonPos, _>")]
     pos:   Pos,
@@ -128,7 +161,7 @@ pub enum ServerRequest {
     #[serde(serialize_with = "to_json_ty::<_, JsonBlock, _>")]
     block: block::TypeStore,
   },
-  ClickWindow {
+  ClickWindowEvent {
     slot: i32,
     #[serde(skip)]
     mode: ClickWindow,

@@ -1,5 +1,5 @@
 use super::{DigProgress, Player, PlayerPosition};
-use crate::{block, math::Vec3};
+use crate::{block, event, math::Vec3};
 use bb_common::{
   math::{ChunkPos, Pos},
   net::cb,
@@ -382,11 +382,15 @@ impl Player {
       }
     }
     if finished {
-      if self.world().events().block_break(
-        self.clone(),
-        pos,
-        self.world().get_block(pos).unwrap().ty(),
-      ) {
+      if self
+        .world()
+        .events()
+        .player_request(
+          self.clone(),
+          event::BlockBreak { pos, block: self.world().get_block(pos).unwrap().ty().to_store() },
+        )
+        .is_continue()
+      {
         if !self.world().break_block(pos).unwrap() {
           self.sync_block_at(pos);
         }

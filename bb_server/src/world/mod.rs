@@ -50,7 +50,7 @@ use crate::{
   data::Data,
   entity,
   entity::Entity,
-  item,
+  event, item,
   net::ConnSender,
   particle::Particle,
   player::{Player, Team},
@@ -342,7 +342,7 @@ impl World {
     // We want our plugin stuff to trigger after the player has received all the
     // chunks and whatever other initialization stuff. This means we can't screw
     // anything up with the loading process (like trying to teleport the player).
-    self.events().player_join(player);
+    self.events().player_event(player, event::PlayerJoin {});
   }
 
   /// Returns a new, unique EID.
@@ -565,7 +565,7 @@ impl World {
       drop(lock);
 
       self.entities.write().remove(&p.eid());
-      self.events().player_leave(p.clone());
+      self.events().player_event(p.clone(), event::PlayerLeave {});
       info!("{} left the game", p.username());
 
       if self.world_manager().config().get("leave-messages") {
@@ -877,7 +877,9 @@ impl WorldManager {
   fn global_tick_loop(self: Arc<Self>) {
     let mut start = Instant::now();
     loop {
-      self.events().tick();
+      // runs on tick() for plugins
+      self.events().global_event(event::Tick {});
+      // updates after() things
       self.plugins().tick();
       let passed = Instant::now().duration_since(start);
       start += TICK_TIME;

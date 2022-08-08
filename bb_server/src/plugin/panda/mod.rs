@@ -1,6 +1,6 @@
 use super::{
-  types, types::Callback as BCallback, Bamboo, CallError, GlobalServerEvent, PluginImpl,
-  PluginManager, PluginReply, ServerEvent, ServerRequest,
+  types, types::Callback as BCallback, Bamboo, CallError, GlobalEvent, PlayerEvent, PlayerRequest,
+  PluginImpl, PluginManager, PluginReply,
 };
 use crate::{player::Player, world::WorldManager};
 use panda::{
@@ -126,67 +126,19 @@ impl PandaPlugin {
 }
 
 impl PluginImpl for PandaPlugin {
-  fn call(&self, player: Arc<Player>, ev: ServerEvent) -> Result<(), CallError> {
+  fn call_global(&self, ev: GlobalEvent) -> Result<(), CallError> {
     match ev {
-      ServerEvent::Chat { text } => {
-        self.call("chat_message", vec![types::player::PPlayer::from(player).into(), text.into()])
-      }
-      ServerEvent::PlayerJoin {} => {
-        self.call("player_join", vec![types::player::PPlayer::from(player).into()])
-      }
-      ServerEvent::PlayerLeave {} => {
-        self.call("player_leave", vec![types::player::PPlayer::from(player).into()])
-      }
-    }
-    Ok(())
-  }
-  fn call_global(&self, ev: GlobalServerEvent) -> Result<(), CallError> {
-    match ev {
-      GlobalServerEvent::Tick => self.call("tick", vec![]),
+      GlobalEvent::Tick(_) => self.call("tick", vec![]),
       _ => todo!("global event {ev:?}"),
     }
     Ok(())
   }
-  fn req(&self, player: Arc<Player>, request: ServerRequest) -> Result<PluginReply, CallError> {
-    Ok(PluginReply::Cancel {
-      allow: match request {
-        ServerRequest::BlockPlace { pos, block } => self.req(
-          "block_place",
-          vec![
-            types::player::PPlayer::from(player).into(),
-            types::util::PPos::from(pos).into(),
-            types::block::PBlockKind::from(block.ty().kind()).into(),
-          ],
-        ),
-        ServerRequest::BlockBreak { pos, block } => self.req(
-          "block_break",
-          vec![
-            types::player::PPlayer::from(player).into(),
-            types::util::PPos::from(pos).into(),
-            types::block::PBlockKind::from(block.ty().kind()).into(),
-          ],
-        ),
-        ServerRequest::PlayerDamage { amount, blockable, knockback: _ } => {
-          self.req("player_damage", vec![amount.into(), blockable.into()])
-        }
-        ServerRequest::Interact { slot } => self.req(
-          "interact",
-          vec![
-            types::player::PPlayer::from(player.clone()).into(),
-            slot.into(),
-            types::item::PStack::from(player.lock_inventory().get(slot).unwrap()).into(),
-          ],
-        ),
-        ServerRequest::ClickWindow { slot, mode } => self.req(
-          "click_window",
-          vec![
-            types::player::PPlayer::from(player).into(),
-            slot.into(),
-            types::item::PClickWindow::from(mode).into(),
-          ],
-        ),
-      },
-    })
+  fn call(&self, player: Arc<Player>, ev: PlayerEvent) -> Result<(), CallError> {
+    self.call(ev.name(), vec![ev]);
+    Ok(())
+  }
+  fn req(&self, player: Arc<Player>, request: PlayerRequest) -> Result<PluginReply, CallError> {
+    Ok(PluginReply::Cancel { allow: self.req(request.name(), vec![request]) })
   }
   fn panda(&mut self) -> Option<&mut PandaPlugin> { Some(self) }
 }

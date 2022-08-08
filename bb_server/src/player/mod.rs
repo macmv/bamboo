@@ -3,6 +3,7 @@ use crate::{
   command::{CommandSender, ErrorFormat},
   entity,
   entity::EntityRef,
+  event,
   item::Stack,
   math::Vec3,
   net::ConnSender,
@@ -764,7 +765,10 @@ impl Player {
       return false;
     }
 
-    self.world.events().player_damage(self.clone(), amount, blockable, knockback);
+    self
+      .world
+      .events()
+      .player_event(self.clone(), event::PlayerDamage { amount, blockable, knockback });
 
     let mut health = self.health.lock();
     let food = self.food.lock();

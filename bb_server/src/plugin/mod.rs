@@ -42,9 +42,7 @@ use socket::SocketManager;
 
 use crate::{
   block,
-  event::{
-    GlobalServerEvent, PluginMessage, PluginReply, ServerEvent, ServerMessage, ServerRequest,
-  },
+  event::{Event, GlobalEvent, PluginMessage, PluginReply, Request, ServerMessage},
   player::Player,
   world::WorldManager,
 };
@@ -53,12 +51,6 @@ use bb_common::{config::Config, math::Pos};
 use crossbeam_channel::{Receiver, Sender};
 use parking_lot::{Mutex, MutexGuard};
 use std::{error::Error, fmt, sync::Arc, thread};
-
-#[derive(Debug)]
-pub enum Event {
-  Init,
-  OnBlockPlace(Arc<Player>, Pos, block::Kind),
-}
 
 struct Scheduled {
   closure:   Closure,
