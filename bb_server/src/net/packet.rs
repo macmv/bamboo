@@ -159,7 +159,7 @@ pub(crate) fn handle(wm: &Arc<WorldManager>, mut player: &Arc<Player>, p: sb::Pa
           // TODO: Data generator should store which items are blockitems, and what blocks
           // they place.
           let mut inv = player.lock_inventory();
-          let stack = inv.main_hand();
+          let stack = inv.in_hand(hand);
           let item_data = player.world().item_converter().get_data(stack.item());
           let kind = block::Kind::from_str(item_data.name()).unwrap_or_else(|_| {
             player.send_message(Chat::new(format!("ah! {} is confusing", item_data.name())));

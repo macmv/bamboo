@@ -25,7 +25,7 @@ pub struct PlayerInventory {
   crafting:       SingleInventory<5>,
   main:           SingleInventory<27>,
   hotbar:         SingleInventory<9>,
-  offhand:        SingleInventory<1>,
+  off_hand:       SingleInventory<1>,
   // An index into the hotbar (0..=8)
   selected_index: u8,
   // Open window and held item
@@ -56,7 +56,7 @@ impl PlayerInventory {
       crafting:       SingleInventory::new(conn.clone(), 0, 4),
       main:           SingleInventory::new(conn.clone(), 0, 9),
       hotbar:         SingleInventory::new(conn.clone(), 0, 36),
-      offhand:        SingleInventory::new(conn, 0, 45),
+      off_hand:       SingleInventory::new(conn, 0, 45),
       selected_index: 0,
       window:         None,
       held:           Stack::empty(),
@@ -98,6 +98,15 @@ impl PlayerInventory {
 
   /// Returns the item in the player's main hand.
   pub fn main_hand(&self) -> &Stack { self.hotbar().get_raw(self.selected_index as u32).unwrap() }
+  /// Returns the item in the player's off hand.
+  pub fn off_hand(&self) -> &Stack { self.off_hand.get_raw(0).unwrap() }
+  /// Returns the item in the given hand.
+  pub fn in_hand(&self, hand: Hand) -> &Stack {
+    match hand {
+      Hand::Main => self.main_hand(),
+      Hand::Off => self.off_hand(),
+    }
+  }
 
   /// Returns the currently selected hotbar index. Can be used with
   /// [`hotbar`](Self::hotbar) and `get_raw` to get the item player is holding.
@@ -157,7 +166,7 @@ impl PlayerInventory {
         4..=8 => self.crafting.get(idx),
         9..=35 => self.main.get(idx),
         36..=44 => self.hotbar.get(idx),
-        45 => self.offhand.get(idx),
+        45 => self.off_hand.get(idx),
         _ => None,
       }
       .cloned()
@@ -188,7 +197,7 @@ impl PlayerInventory {
         4..=8 => self.crafting.get_mut(idx),
         9..=35 => self.main.get_mut(idx),
         36..=44 => self.hotbar.get_mut(idx),
-        45 => self.offhand.get_mut(idx),
+        45 => self.off_hand.get_mut(idx),
         _ => None,
       }
       .map(f)
@@ -286,7 +295,7 @@ impl PlayerInventory {
         4..=8 => self.crafting.sync(idx),
         9..=35 => self.main.sync(idx),
         36..=44 => self.hotbar.sync(idx),
-        45 => self.offhand.sync(idx),
+        45 => self.off_hand.sync(idx),
         _ => panic!(),
       }
     }
