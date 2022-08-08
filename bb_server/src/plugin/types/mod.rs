@@ -288,15 +288,10 @@ fn format(args: &[Var]) -> String {
 impl PandaPlugin {
   pub fn add_builtins(&self, sl: &mut Panda) {
     sl.def_callback("init");
-    for name in crate::event::GlobalEvent::all_names() {
-      sl.def_callback(name);
-    }
-    for name in crate::event::PlayerEvent::all_names() {
-      sl.def_callback(name);
-    }
-    for name in crate::event::PlayerRequest::all_names() {
-      sl.def_callback(name);
-    }
+
+    crate::event::GlobalEvent::add_builtins(sl);
+    crate::event::PlayerEvent::add_builtins(sl);
+    crate::event::PlayerRequest::add_builtins(sl);
 
     {
       let bb = self.bb();

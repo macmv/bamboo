@@ -4,7 +4,7 @@ use bb_common::{
   math::{ChunkPos, Pos},
   net::sb::ClickWindow,
 };
-use panda::{define_ty, runtime::Var};
+use panda::{define_ty, runtime::Var, Panda};
 use parking_lot::Mutex;
 use std::sync::Arc;
 
@@ -146,8 +146,11 @@ macro_rules! event {
           )*
         }
       }
-      pub fn all_names() -> &'static [&'static str] {
-        &[$( $str_name, )*]
+      pub fn add_builtins(pd: &mut Panda) {
+        $(
+          pd.def_callback($str_name);
+          pd.add_builtin_ty::<$name>();
+        )*
       }
     }
     impl IntoPanda for $event_name {
