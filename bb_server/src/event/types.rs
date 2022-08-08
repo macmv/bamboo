@@ -139,6 +139,9 @@ pub enum ServerRequest {
     #[serde(skip)]
     knockback: Vec3,
   },
+  Interact {
+    slot: i32,
+  },
 }
 
 /// A reply from the server to the plugin. This is a response to a

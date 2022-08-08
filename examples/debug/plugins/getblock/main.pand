@@ -31,3 +31,7 @@ on player_join(player) {
   it.set_unbreakable(true)
   player.set_item(36, it)
 }
+
+on interact(event, player, slot, item) {
+  player.send_message("Using item!")
+}

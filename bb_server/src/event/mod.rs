@@ -65,6 +65,7 @@ impl Events<'_> {
   pub fn interact(&self, player: &Arc<Player>, _hand: Hand, click: Click) -> EventFlow {
     // self.req(player, ServerRequest::Interact { hand, click });
     let stack = player.lock_inventory().main_hand().clone();
+    try_event!(self.req(player.clone(), ServerRequest::Interact { slot: 36 }));
     try_event!(self.wm.item_behaviors().call(stack.item(), |i| i.interact(click)));
     if let Click::Block(click) = click {
       try_event!(self
@@ -76,7 +77,9 @@ impl Events<'_> {
   }
 
   fn global_event(&self, ev: GlobalServerEvent) { self.wm.plugins().global_event(ev); }
-  fn req(&self, player: Arc<Player>, req: ServerRequest) { self.wm.plugins().req(player, req); }
+  fn req(&self, player: Arc<Player>, req: ServerRequest) -> EventFlow {
+    self.wm.plugins().req(player, req)
+  }
   fn event(&self, player: Arc<Player>, ev: ServerEvent) { self.wm.plugins().event(player, ev); }
 
   pub fn tick(&self) { self.global_event(GlobalServerEvent::Tick); }
@@ -108,6 +111,9 @@ impl Events<'_> {
   ) -> bool {
     self.req(player, ServerRequest::PlayerDamage { amount, blockable, knockback });
     true
+  }
+  pub fn use_item(&self, player: Arc<Player>, slot: i32) -> EventFlow {
+    self.req(player, ServerRequest::Interact { slot })
   }
   pub fn player_leave(&self, player: Arc<Player>) {
     self.event(player, ServerEvent::PlayerLeave {});

@@ -169,6 +169,14 @@ impl PluginImpl for PandaPlugin {
         ServerRequest::PlayerDamage { amount, blockable, knockback: _ } => {
           self.req("player_damage", vec![amount.into(), blockable.into()])
         }
+        ServerRequest::Interact { slot } => self.req(
+          "interact",
+          vec![
+            types::player::PPlayer::from(player.clone()).into(),
+            slot.into(),
+            types::item::PStack::from(player.lock_inventory().get(slot).unwrap()).into(),
+          ],
+        ),
         ServerRequest::ClickWindow { slot, mode } => self.req(
           "click_window",
           vec![

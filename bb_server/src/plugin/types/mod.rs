@@ -289,6 +289,7 @@ impl PandaPlugin {
     sl.def_callback("chat_message");
     sl.def_callback("player_join");
     sl.def_callback("player_leave");
+    sl.def_callback("interact");
     sl.def_callback("tick");
 
     {

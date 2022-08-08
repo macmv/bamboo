@@ -2,7 +2,7 @@
 use super::PandaPlugin;
 
 use super::{GlobalServerEvent, Plugin, ServerEvent, ServerRequest};
-use crate::{player::Player, world::WorldManager};
+use crate::{event::EventFlow, player::Player, world::WorldManager};
 use bb_common::config::Config;
 use crossbeam_channel::Select;
 use parking_lot::Mutex;
@@ -166,7 +166,7 @@ impl PluginManager {
       Err(e) => e.keep,
     });
   }
-  pub(crate) fn req(&self, player: Arc<Player>, request: ServerRequest) -> bool {
+  pub(crate) fn req(&self, player: Arc<Player>, request: ServerRequest) -> EventFlow {
     let reply_id = self.start.elapsed().as_micros() as u32;
     let mut plugins = self.plugins.lock();
     // Send all the events first.
@@ -191,7 +191,7 @@ impl PluginManager {
           let plugin = &plugins_left[index];
           message = op.recv(plugin.rx()).unwrap();
         }
-        Err(_) => return allow,
+        Err(_) => return if allow { EventFlow::Continue } else { EventFlow::Handled },
       }
       let plugin = &mut plugins_left[index];
       let now = self.start.elapsed().as_micros() as u32;
@@ -203,6 +203,10 @@ impl PluginManager {
       plugins_left.remove(index);
     }
 
-    allow
+    if allow {
+      EventFlow::Continue
+    } else {
+      EventFlow::Handled
+    }
   }
 }
