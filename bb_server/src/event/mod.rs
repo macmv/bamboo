@@ -65,7 +65,7 @@ impl Events<'_> {
   pub fn interact(&self, player: &Arc<Player>, _hand: Hand, click: Click) -> EventFlow {
     // self.req(player, ServerRequest::Interact { hand, click });
     let stack = player.lock_inventory().main_hand().clone();
-    try_event!(self.player_request(player.clone(), Interact { slot: 36 }));
+    try_event!(self.player_request(Interact { player: player.clone(), slot: 36 }));
     try_event!(self.wm.item_behaviors().call(stack.item(), |i| i.interact(click)));
     if let Click::Block(click) = click {
       try_event!(self
@@ -83,13 +83,13 @@ impl Events<'_> {
   }
   /// Send an [`Event`]. All plugins will receive this event, and cannot cancel
   /// it.
-  pub fn player_event(&self, player: Arc<Player>, ev: impl Into<PlayerEvent>) {
-    self.wm.plugins().player_event(player, ev.into());
+  pub fn player_event(&self, ev: impl Into<PlayerEvent>) {
+    self.wm.plugins().player_event(ev.into());
   }
   /// Send a [`Request`]. All plugins will receive this event, and can cancel
   /// it.
-  pub fn player_request(&self, player: Arc<Player>, req: impl Into<PlayerRequest>) -> EventFlow {
-    self.wm.plugins().player_request(player, req.into())
+  pub fn player_request(&self, req: impl Into<PlayerRequest>) -> EventFlow {
+    self.wm.plugins().player_request(req.into())
   }
 }
 

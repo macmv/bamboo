@@ -65,15 +65,11 @@ pub enum ServerMessage {
     event: GlobalEvent,
   },
   PlayerEvent {
-    #[serde(serialize_with = "to_json_ty::<_, JsonPlayer, _>")]
-    player: Arc<Player>,
     #[serde(flatten)]
-    event:  PlayerEvent,
+    event: PlayerEvent,
   },
   PlayerRequest {
     reply_id: u32,
-    #[serde(serialize_with = "to_json_ty::<_, JsonPlayer, _>")]
-    player:   Arc<Player>,
     #[serde(flatten)]
     request:  PlayerRequest,
   },
@@ -131,6 +127,7 @@ macro_rules! define_events {
   (
     $event_name:ident,
     { $(
+      $( #[$extra_attr:meta] )*
       $extra:ident: $extra_ty:ty,
     )* },
     $name:ident: $str_name:literal {
@@ -141,16 +138,17 @@ macro_rules! define_events {
     },
     $( $args:tt )*
   ) => {
-    define_event!($name, $str_name, $event_name, $( $extra: $extra_ty, )* $( $( #[$attr] )* $field: $ty, )*);
+    define_event!($name, $str_name, $event_name, $( $( #[$extra_attr] )* $extra: $extra_ty, )* $( $( #[$attr] )* $field: $ty, )*);
     define_events!(
       $event_name,
-      { $( $extra: $extra_ty, )* },
+      { $( $( #[$extra_attr] )* $extra: $extra_ty, )* },
       $( $args )*
     );
   };
   (
     $event_name:ident,
     { $(
+      $( #[$extra_attr:meta] )*
       $extra:ident: $extra_ty:ty,
     )* },
   ) => {}
@@ -159,14 +157,17 @@ macro_rules! define_events {
 macro_rules! event {
   (
     $( #[$event_attr:meta] )*
-    $event_name:ident: { $( $extra:ident: $extra_ty:ty )* }
+    $event_name:ident: { $(
+      $( #[$extra_attr:meta] )*
+      $extra:ident: $extra_ty:ty
+    )* }
     $(
       $name:ident: $str_name:literal {
         $( $args:tt )*
       },
     )*
   ) => {
-    define_events!($event_name, { $($extra: $extra_ty,)* }, $( $name: $str_name { $( $args )* }, )*);
+    define_events!($event_name, { $( $( #[$extra_attr] )* $extra: $extra_ty,)* }, $( $name: $str_name { $( $args )* }, )*);
 
     $( #[$event_attr] )*
     #[non_exhaustive]
@@ -208,7 +209,10 @@ macro_rules! event {
 event! {
   /// An event from the server to the plugin. There is also a player listed with
   /// this event.
-  PlayerEvent: { player: Player }
+  PlayerEvent: {
+    #[serde(serialize_with = "to_json_ty::<_, JsonPlayer, _>")]
+    player: Arc<Player>
+  }
 
   Chat: "chat" { text: String, },
   PlayerJoin: "player_join" {},
@@ -232,7 +236,10 @@ event! {
 event! {
   /// A request from the server to the plugin. The server should expect a reply
   /// within a certain timeout from the plugin. See also [PluginReply].
-  PlayerRequest: { player: Player }
+  PlayerRequest: {
+    #[serde(skip)]
+    player: Arc<Player>
+  }
 
   BlockPlace: "block_place" {
     #[serde(serialize_with = "to_json_ty::<_, JsonPos, _>")]

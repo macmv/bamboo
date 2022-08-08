@@ -385,10 +385,11 @@ impl Player {
       if self
         .world()
         .events()
-        .player_request(
-          self.clone(),
-          event::BlockBreak { pos, block: self.world().get_block(pos).unwrap().ty().to_store() },
-        )
+        .player_request(event::BlockBreak {
+          player: self.clone(),
+          pos,
+          block: self.world().get_block(pos).unwrap().ty().to_store(),
+        })
         .is_continue()
       {
         if !self.world().break_block(pos).unwrap() {
@@ -458,10 +459,11 @@ impl Player {
       if self
         .world()
         .events()
-        .player_request(
-          self.clone(),
-          event::BlockBreak { pos, block: self.world().get_block(pos).unwrap().ty().to_store() },
-        )
+        .player_request(event::BlockBreak {
+          player: self.clone(),
+          pos,
+          block: self.world().get_block(pos).unwrap().ty().to_store(),
+        })
         .is_continue()
       {
         if !self.world().break_block(pos).unwrap() {

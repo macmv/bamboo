@@ -154,23 +154,23 @@ impl PluginManager {
     }
   }
 
-  pub(crate) fn player_event(&self, player: Arc<Player>, event: PlayerEvent) {
-    self.plugins.lock().retain(|p| match p.call(player.clone(), event.clone()) {
-      Ok(_) => true,
-      Err(e) => e.keep,
-    });
-  }
   pub(crate) fn global_event(&self, event: GlobalEvent) {
     self.plugins.lock().retain(|p| match p.call_global(event.clone()) {
       Ok(_) => true,
       Err(e) => e.keep,
     });
   }
-  pub(crate) fn player_request(&self, player: Arc<Player>, request: PlayerRequest) -> EventFlow {
+  pub(crate) fn player_event(&self, event: PlayerEvent) {
+    self.plugins.lock().retain(|p| match p.call(event.clone()) {
+      Ok(_) => true,
+      Err(e) => e.keep,
+    });
+  }
+  pub(crate) fn player_request(&self, request: PlayerRequest) -> EventFlow {
     let reply_id = self.start.elapsed().as_micros() as u32;
     let mut plugins = self.plugins.lock();
     // Send all the events first.
-    plugins.retain(|p| match p.req(reply_id, player.clone(), request.clone()) {
+    plugins.retain(|p| match p.req(reply_id, request.clone()) {
       Ok(_) => true,
       Err(e) => e.keep,
     });

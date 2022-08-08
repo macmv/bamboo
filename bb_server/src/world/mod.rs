@@ -342,7 +342,7 @@ impl World {
     // We want our plugin stuff to trigger after the player has received all the
     // chunks and whatever other initialization stuff. This means we can't screw
     // anything up with the loading process (like trying to teleport the player).
-    self.events().player_event(player, event::PlayerJoin {});
+    self.events().player_event(event::PlayerJoin { player });
   }
 
   /// Returns a new, unique EID.
@@ -565,7 +565,7 @@ impl World {
       drop(lock);
 
       self.entities.write().remove(&p.eid());
-      self.events().player_event(p.clone(), event::PlayerLeave {});
+      self.events().player_event(event::PlayerLeave { player: p.clone() });
       info!("{} left the game", p.username());
 
       if self.world_manager().config().get("leave-messages") {

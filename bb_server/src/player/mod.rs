@@ -768,7 +768,7 @@ impl Player {
     if self
       .world
       .events()
-      .player_request(self.clone(), event::PlayerDamage { amount, blockable, knockback })
+      .player_request(event::PlayerDamage { player: self.clone(), amount, blockable, knockback })
       .is_handled()
     {
       return false;

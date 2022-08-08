@@ -118,10 +118,11 @@ pub(crate) fn handle(wm: &Arc<WorldManager>, mut player: &Arc<Player>, p: sb::Pa
       let allow = player
         .world()
         .events()
-        .player_request(
-          player.clone(),
-          event::ClickWindowEvent { slot: slot.into(), mode: mode.clone() },
-        )
+        .player_request(event::ClickWindowEvent {
+          player: player.clone(),
+          slot:   slot.into(),
+          mode:   mode.clone(),
+        })
         .is_continue();
       player.lock_inventory().click_window(slot.into(), mode, allow);
     }
@@ -203,10 +204,11 @@ pub(crate) fn handle(wm: &Arc<WorldManager>, mut player: &Arc<Player>, p: sb::Pa
               }
               drop(inv);
               // TODO: Handle plugins cancelling this place.
-              player
-                .world()
-                .events()
-                .player_request(player.clone(), event::BlockPlace { pos, block: ty.to_store() });
+              player.world().events().player_request(event::BlockPlace {
+                player: player.clone(),
+                pos,
+                block: ty.to_store(),
+              });
             }
             Err(e) => {
               player.send_hotbar(Chat::new(e.to_string()));

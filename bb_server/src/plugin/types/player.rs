@@ -46,6 +46,11 @@ impl PPlayer {
   }
 }
 
+impl crate::plugin::IntoPanda for Arc<Player> {
+  type Panda = PPlayer;
+  fn into_panda(self) -> PPlayer { PPlayer::from(self) }
+}
+
 #[define_ty(panda_path = "bamboo::player::Window")]
 impl PWindow {}
 

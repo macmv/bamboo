@@ -140,11 +140,11 @@ impl PluginImpl for PandaPlugin {
     }
     Ok(())
   }
-  fn call(&self, player: Arc<Player>, ev: PlayerEvent) -> Result<(), CallError> {
+  fn call(&self, ev: PlayerEvent) -> Result<(), CallError> {
     self.call(ev.name(), vec![ev.into_panda()]);
     Ok(())
   }
-  fn req(&self, player: Arc<Player>, req: PlayerRequest) -> Result<PluginReply, CallError> {
+  fn req(&self, req: PlayerRequest) -> Result<PluginReply, CallError> {
     Ok(PluginReply::Cancel { allow: self.req(req.name(), vec![req.into_panda()]) })
   }
   fn panda(&mut self) -> Option<&mut PandaPlugin> { Some(self) }

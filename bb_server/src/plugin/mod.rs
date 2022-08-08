@@ -97,9 +97,9 @@ pub trait PluginImpl: std::any::Any {
   /// Calls an event. There is no reply for `PlayerEvent`. If an error is
   /// thrown, it will be logged, and the plugin will be removed if `keep` is
   /// `false`.
-  fn call(&self, player: Arc<Player>, event: PlayerEvent) -> Result<(), CallError>;
+  fn call(&self, event: PlayerEvent) -> Result<(), CallError>;
   /// Calls an event. This should block until it gets a reply.
-  fn req(&self, player: Arc<Player>, event: PlayerRequest) -> Result<PluginReply, CallError>;
+  fn req(&self, event: PlayerRequest) -> Result<PluginReply, CallError>;
   #[cfg(feature = "panda_plugins")]
   fn panda(&mut self) -> Option<&mut PandaPlugin> { None }
 }
@@ -161,11 +161,11 @@ impl Plugin {
     thread::spawn(move || {
       while let Ok(ev) = server_rx.recv() {
         let res = match ev {
-          ServerMessage::PlayerRequest { reply_id, player, request } => i
+          ServerMessage::PlayerRequest { reply_id, request } => i
             .lock()
-            .req(player, request)
+            .req(request)
             .map(|reply| plugin_tx.send(PluginMessage::Reply { reply_id, reply }).unwrap()),
-          ServerMessage::PlayerEvent { player, event } => i.lock().call(player, event),
+          ServerMessage::PlayerEvent { event } => i.lock().call(event),
           ServerMessage::GlobalEvent { event } => i.lock().call_global(event),
           ServerMessage::Reply { .. } => Ok(()),
         };
@@ -203,17 +203,12 @@ impl Plugin {
     self.tx.send(ServerMessage::GlobalEvent { event }).unwrap();
     Ok(())
   }
-  pub fn call(&self, player: Arc<Player>, event: PlayerEvent) -> Result<(), CallError> {
-    self.tx.send(ServerMessage::PlayerEvent { player, event }).unwrap();
+  pub fn call(&self, event: PlayerEvent) -> Result<(), CallError> {
+    self.tx.send(ServerMessage::PlayerEvent { event }).unwrap();
     Ok(())
   }
-  pub fn req(
-    &self,
-    reply_id: u32,
-    player: Arc<Player>,
-    request: PlayerRequest,
-  ) -> Result<(), CallError> {
-    self.tx.send(ServerMessage::PlayerRequest { reply_id, player, request }).unwrap();
+  pub fn req(&self, reply_id: u32, request: PlayerRequest) -> Result<(), CallError> {
+    self.tx.send(ServerMessage::PlayerRequest { reply_id, request }).unwrap();
     Ok(())
   }
   pub fn rx(&self) -> &Receiver<PluginMessage> { &self.rx }
