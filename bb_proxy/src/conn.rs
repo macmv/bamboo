@@ -515,9 +515,8 @@ impl<'a, S: PacketStream + Send + Sync> Conn<'a, S> {
 
   // Disconnects the client during authentication. The stream will not be flushed.
   fn send_disconnect<C: Into<Chat>>(&mut self, reason: C) {
-    // Disconnect
     match self.state {
-      State::Handshake => {
+      State::Login => {
         let mut out = tcp::Packet::new(0, self.ver);
         out.write_str(&reason.into().to_json());
         self.client_stream.write(out);
