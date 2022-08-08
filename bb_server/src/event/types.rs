@@ -84,51 +84,90 @@ pub enum ServerMessage {
   },
 }
 
+macro_rules! define_event {
+  (
+    $name:ident,
+    $str_name:literal,
+    $event_name:ident,
+    $(
+      $( #[$attr:meta] )*
+      $field:ident: $ty:ty,
+    )*
+  ) => {
+    #[derive(Debug, Clone, serde::Serialize)]
+    pub struct $name {
+      $(
+        $( #[$attr] )*
+        pub $field: $ty,
+      )*
+    }
+
+    #[define_ty]
+    impl $name {
+      $(
+        #[field]
+        fn $field(&self) -> <$ty as IntoPanda>::Panda {
+          self.$field.clone().into_panda()
+        }
+      )*
+    }
+
+    impl From<$name> for $event_name {
+      fn from(v: $name) -> Self {
+        $event_name::$name(v)
+      }
+    }
+
+    impl IntoPanda for $name {
+      type Panda = Self;
+      fn into_panda(self) -> Self {
+        self
+      }
+    }
+  }
+}
+
+macro_rules! define_events {
+  (
+    $event_name:ident,
+    { $(
+      $extra:ident: $extra_ty:ty,
+    )* },
+    $name:ident: $str_name:literal {
+      $(
+        $( #[$attr:meta] )*
+        $field:ident: $ty:ty,
+      )*
+    },
+    $( $args:tt )*
+  ) => {
+    define_event!($name, $str_name, $event_name, $( $extra: $extra_ty, )* $( $( #[$attr] )* $field: $ty, )*);
+    define_events!(
+      $event_name,
+      { $( $extra: $extra_ty, )* },
+      $( $args )*
+    );
+  };
+  (
+    $event_name:ident,
+    { $(
+      $extra:ident: $extra_ty:ty,
+    )* },
+  ) => {}
+}
+
 macro_rules! event {
   (
     $( #[$event_attr:meta] )*
-    $event_name:ident:
+    $event_name:ident: { $( $extra:ident: $extra_ty:ty )* }
     $(
       $name:ident: $str_name:literal {
-        $(
-          $( #[$attr:meta] )*
-          $field:ident: $ty:ty,
-        )*
+        $( $args:tt )*
       },
     )*
   ) => {
-    $(
-      #[derive(Debug, Clone, serde::Serialize)]
-      pub struct $name {
-        $(
-          $( #[$attr] )*
-          pub $field: $ty,
-        )*
-      }
+    define_events!($event_name, { $($extra: $extra_ty,)* }, $( $name: $str_name { $( $args )* }, )*);
 
-      #[define_ty]
-      impl $name {
-        $(
-          #[field]
-          fn $field(&self) -> <$ty as IntoPanda>::Panda {
-            self.$field.clone().into_panda()
-          }
-        )*
-      }
-
-      impl From<$name> for $event_name {
-        fn from(v: $name) -> Self {
-          $event_name::$name(v)
-        }
-      }
-
-      impl IntoPanda for $name {
-        type Panda = Self;
-        fn into_panda(self) -> Self {
-          self
-        }
-      }
-    )*
     $( #[$event_attr] )*
     #[non_exhaustive]
     #[derive(Debug, Clone, serde::Serialize)]
@@ -169,7 +208,8 @@ macro_rules! event {
 event! {
   /// An event from the server to the plugin. There is also a player listed with
   /// this event.
-  PlayerEvent:
+  PlayerEvent: { player: Player }
+
   Chat: "chat" { text: String, },
   PlayerJoin: "player_join" {},
   PlayerLeave: "player_leave" {},
@@ -177,7 +217,8 @@ event! {
 event! {
   /// An event from the server to the plugin. This is very similar to
   /// [ServerEvent], but there is no player specified with this event.
-  GlobalEvent:
+  GlobalEvent: {}
+
   Tick: "tick" {},
   GenerateChunk: "generate_chunk" {
     generator: String,
@@ -191,7 +232,8 @@ event! {
 event! {
   /// A request from the server to the plugin. The server should expect a reply
   /// within a certain timeout from the plugin. See also [PluginReply].
-  PlayerRequest:
+  PlayerRequest: { player: Player }
+
   BlockPlace: "block_place" {
     #[serde(serialize_with = "to_json_ty::<_, JsonPos, _>")]
     pos:   Pos,
