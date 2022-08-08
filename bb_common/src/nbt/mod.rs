@@ -52,6 +52,9 @@ pub enum Tag {
 impl From<&str> for Tag {
   fn from(s: &str) -> Self { Tag::String(s.into()) }
 }
+impl From<String> for Tag {
+  fn from(s: String) -> Self { Tag::String(s) }
+}
 
 impl NBT {
   /// Creates a new nbt tag. The tag value can be anything.

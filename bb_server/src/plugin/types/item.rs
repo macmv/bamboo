@@ -1,11 +1,14 @@
-use super::{add_from, wrap};
+use super::{add_from, chat::PChat, wrap};
 use crate::{
   item,
   item::{Inventory, Stack, UI},
 };
-use bb_common::net::sb::ClickWindow;
+use bb_common::{net::sb::ClickWindow, util::chat};
 use bb_server_macros::define_ty;
-use panda::{parse::token::Span, runtime::RuntimeError};
+use panda::{
+  parse::token::Span,
+  runtime::{RuntimeError, Var},
+};
 use std::str::FromStr;
 
 wrap!(UI, PUI);
@@ -37,8 +40,9 @@ impl PStack {
   pub fn item_name(&self) -> String { self.inner.item().to_str().into() }
 
   /// Sets the display name of this item stack.
-  pub fn set_display_name(&mut self, name: &str) {
-    self.inner.nbt_mut().get_or_create_compound("display").insert("Name".into(), name.into());
+  pub fn set_display_name(&mut self, name: Var) {
+    let msg = format!("{}r{}", chat::CODE_SEP, PChat::from_var(name).to_codes());
+    self.inner.nbt_mut().get_or_create_compound("display").insert("Name".into(), msg.into());
   }
 }
 
