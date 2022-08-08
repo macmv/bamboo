@@ -1,7 +1,7 @@
 #[cfg(feature = "panda_plugins")]
 use super::PandaPlugin;
 
-use super::{Event, GlobalEvent, Plugin, Request};
+use super::{GlobalEvent, PlayerEvent, PlayerRequest, Plugin};
 use crate::{event::EventFlow, player::Player, world::WorldManager};
 use bb_common::config::Config;
 use crossbeam_channel::Select;
@@ -154,7 +154,7 @@ impl PluginManager {
     }
   }
 
-  pub(crate) fn event(&self, player: Arc<Player>, event: Event) {
+  pub(crate) fn player_event(&self, player: Arc<Player>, event: PlayerEvent) {
     self.plugins.lock().retain(|p| match p.call(player.clone(), event.clone()) {
       Ok(_) => true,
       Err(e) => e.keep,
@@ -166,7 +166,7 @@ impl PluginManager {
       Err(e) => e.keep,
     });
   }
-  pub(crate) fn req(&self, player: Arc<Player>, request: Request) -> EventFlow {
+  pub(crate) fn player_request(&self, player: Arc<Player>, request: PlayerRequest) -> EventFlow {
     let reply_id = self.start.elapsed().as_micros() as u32;
     let mut plugins = self.plugins.lock();
     // Send all the events first.

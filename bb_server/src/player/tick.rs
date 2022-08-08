@@ -455,11 +455,15 @@ impl Player {
       }
     }
     if let Some(pos) = finish {
-      if self.world().events().block_break(
-        self.clone(),
-        pos,
-        self.world().get_block(pos).unwrap().ty(),
-      ) {
+      if self
+        .world()
+        .events()
+        .player_request(
+          self.clone(),
+          event::BlockBreak { pos, block: self.world().get_block(pos).unwrap().ty().to_store() },
+        )
+        .is_continue()
+      {
         if !self.world().break_block(pos).unwrap() {
           self.sync_block_at(pos);
         }

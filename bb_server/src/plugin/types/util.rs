@@ -1,4 +1,5 @@
 use super::{add_from, wrap, wrap_eq};
+use crate::math::Vec3;
 use bb_common::{
   math::{ChunkPos, FPos, Pos},
   util::UUID,
@@ -8,6 +9,7 @@ use bb_server_macros::define_ty;
 wrap_eq!(Pos, PPos);
 wrap_eq!(ChunkPos, PChunkPos);
 wrap!(FPos, PFPos);
+wrap!(Vec3, PVec3);
 wrap_eq!(UUID, PUUID);
 
 #[derive(Clone, Debug, PartialEq)]
@@ -276,6 +278,48 @@ impl PFPos {
   /// pos.block() // returns Pos::new(5, 6, 7)
   /// ```
   pub fn block(&self) -> PPos { self.inner.block().into() }
+}
+
+/// A vector. This stores X, Y, and Z coordinates as floats.
+///
+/// If you need a position in the world, use `FPos` instead. This is used for
+/// entity velocities, and raycasting math.
+#[define_ty(panda_path = "bamboo::util::Vec3")]
+impl PVec3 {
+  /// Creates a new floating point position, with the given X, Y, and Z
+  /// coordinates.
+  pub fn new(x: f64, y: f64, z: f64) -> Self { PVec3 { inner: Vec3::new(x, y, z) } }
+
+  /// Returns the X axis of this vector.
+  ///
+  /// # Example
+  ///
+  /// ```
+  /// pos = Vec3::new(5.5, 6.0, 7.2)
+  /// pos.x // returns 5.5
+  /// ```
+  #[field]
+  pub fn x(&self) -> f64 { self.inner.x }
+  /// Returns the Y axis of this vector.
+  ///
+  /// # Example
+  ///
+  /// ```
+  /// pos = FPos::new(5.5, 6.0, 7.2)
+  /// pos.y() // returns 6.0
+  /// ```
+  #[field]
+  pub fn y(&self) -> f64 { self.inner.y }
+  /// Returns the Z axis of this vector.
+  ///
+  /// # Example
+  ///
+  /// ```
+  /// pos = Vec3::new(5.5, 6.0, 7.2)
+  /// pos.z() // returns 7.2
+  /// ```
+  #[field]
+  pub fn z(&self) -> f64 { self.inner.z }
 }
 
 /// A UUID. This is used as a unique identifier for players and entities.

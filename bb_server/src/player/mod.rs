@@ -765,10 +765,14 @@ impl Player {
       return false;
     }
 
-    self
+    if self
       .world
       .events()
-      .player_event(self.clone(), event::PlayerDamage { amount, blockable, knockback });
+      .player_request(self.clone(), event::PlayerDamage { amount, blockable, knockback })
+      .is_handled()
+    {
+      return false;
+    };
 
     let mut health = self.health.lock();
     let food = self.food.lock();

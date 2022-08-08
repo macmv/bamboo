@@ -4,8 +4,7 @@ use bb_common::{
   math::{ChunkPos, Pos},
   net::sb::ClickWindow,
 };
-use bb_server_macros::define_ty;
-use panda::runtime::Var;
+use panda::{define_ty, runtime::Var};
 use parking_lot::Mutex;
 use std::sync::Arc;
 
@@ -103,7 +102,7 @@ macro_rules! event {
       pub struct $name {
         $(
           $( #[$attr] )*
-          $field: $ty,
+          pub $field: $ty,
         )*
       }
 
@@ -111,8 +110,8 @@ macro_rules! event {
       impl $name {
         $(
           #[field]
-          fn $field(&self) -> &$ty {
-            &self.$field
+          fn $field(&self) -> <$ty as IntoPanda>::Panda {
+            self.$field.clone().into_panda()
           }
         )*
       }
@@ -124,8 +123,9 @@ macro_rules! event {
       }
 
       impl IntoPanda for $name {
-        fn into_panda(&self) -> Var {
-          self.into()
+        type Panda = Self;
+        fn into_panda(self) -> Self {
+          self
         }
       }
     )*
@@ -151,10 +151,11 @@ macro_rules! event {
       }
     }
     impl IntoPanda for $event_name {
-      fn into_panda(&self) -> Var {
+      type Panda = Var;
+      fn into_panda(self) -> Var {
         match self {
           $(
-            Self::$name(v) => v.into_panda(),
+            Self::$name(v) => v.into_panda().into(),
           )*
         }
       }
@@ -177,8 +178,8 @@ event! {
   Tick: "tick" {},
   GenerateChunk: "generate_chunk" {
     generator: String,
-    #[serde(skip)]
-    chunk:     Arc<Mutex<MultiChunk>>,
+    // #[serde(skip)]
+    // chunk:     Arc<Mutex<MultiChunk>>,
     #[serde(skip)]
     pos:       ChunkPos,
   },

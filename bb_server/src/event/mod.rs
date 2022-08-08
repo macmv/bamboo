@@ -84,12 +84,12 @@ impl Events<'_> {
   /// Send an [`Event`]. All plugins will receive this event, and cannot cancel
   /// it.
   pub fn player_event(&self, player: Arc<Player>, ev: impl Into<PlayerEvent>) {
-    self.wm.plugins().event(player, ev.into());
+    self.wm.plugins().player_event(player, ev.into());
   }
   /// Send a [`Request`]. All plugins will receive this event, and can cancel
   /// it.
   pub fn player_request(&self, player: Arc<Player>, req: impl Into<PlayerRequest>) -> EventFlow {
-    self.wm.plugins().req(player, req.into())
+    self.wm.plugins().player_request(player, req.into())
   }
 }
 

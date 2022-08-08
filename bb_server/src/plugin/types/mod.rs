@@ -57,6 +57,11 @@ macro_rules! add_from {
     impl From<$ty> for $new_ty {
       fn from(inner: $ty) -> $new_ty { $new_ty { inner } }
     }
+
+    impl crate::plugin::IntoPanda for $ty {
+      type Panda = $new_ty;
+      fn into_panda(self) -> $new_ty { self.into() }
+    }
   };
 }
 
@@ -282,7 +287,8 @@ fn format(args: &[Var]) -> String {
 
 impl PandaPlugin {
   pub fn add_builtins(&self, sl: &mut Panda) {
-    for name in crate::event::ServerEvent::all_names() {
+    sl.def_callback("init");
+    for name in crate::event::GlobalEvent::all_names() {
       sl.def_callback(name);
     }
     for name in crate::event::PlayerEvent::all_names() {

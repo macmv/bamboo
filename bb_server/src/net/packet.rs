@@ -1,7 +1,7 @@
 use crate::{
   block,
   block::Block,
-  entity, item,
+  entity, event, item,
   player::{AirClick, BlockClick, Click, Player},
   world::WorldManager,
 };
@@ -115,7 +115,14 @@ pub(crate) fn handle(wm: &Arc<WorldManager>, mut player: &Arc<Player>, p: sb::Pa
       if wid == u8::MAX {
         slot = i16::from(player.lock_inventory().selected_index()) + 36;
       }
-      let allow = player.world().events().click_window(player.clone(), slot.into(), mode.clone());
+      let allow = player
+        .world()
+        .events()
+        .player_request(
+          player.clone(),
+          event::ClickWindowEvent { slot: slot.into(), mode: mode.clone() },
+        )
+        .is_continue();
       player.lock_inventory().click_window(slot.into(), mode, allow);
     }
     sb::Packet::ChangeHeldItem { slot } => {
@@ -196,7 +203,10 @@ pub(crate) fn handle(wm: &Arc<WorldManager>, mut player: &Arc<Player>, p: sb::Pa
               }
               drop(inv);
               // TODO: Handle plugins cancelling this place.
-              player.world().events().block_place(player.clone(), pos, ty);
+              player
+                .world()
+                .events()
+                .player_request(player.clone(), event::BlockPlace { pos, block: ty.to_store() });
             }
             Err(e) => {
               player.send_hotbar(Chat::new(e.to_string()));

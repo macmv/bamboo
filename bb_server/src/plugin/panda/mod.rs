@@ -1,5 +1,5 @@
 use super::{
-  types, types::Callback as BCallback, Bamboo, CallError, GlobalEvent, PlayerEvent, PlayerRequest,
+  types::Callback as BCallback, Bamboo, CallError, GlobalEvent, PlayerEvent, PlayerRequest,
   PluginImpl, PluginManager, PluginReply,
 };
 use crate::{player::Player, world::WorldManager};
@@ -10,6 +10,8 @@ use panda::{
 };
 use std::{fs, path::Path, sync::Arc};
 
+mod impls;
+
 /// A wrapper struct for a Panda plugin. This is used to execute Panda code
 /// whenever an event happens.
 pub struct PandaPlugin {
@@ -19,7 +21,8 @@ pub struct PandaPlugin {
 }
 
 pub trait IntoPanda {
-  fn into_panda(&self) -> Var;
+  type Panda: Into<Var>;
+  fn into_panda(self) -> Self::Panda;
 }
 
 impl BCallback for Callback {

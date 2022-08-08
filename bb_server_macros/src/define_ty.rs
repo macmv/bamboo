@@ -103,16 +103,16 @@ fn python_args<'a>(args: impl Iterator<Item = &'a FnArg>) -> Vec<impl quote::ToT
             "Box" => quote!(#name: ::pyo3::PyObject),
             "Var" => quote!(#name: i32),
             "Callback" => quote!(#name: Callback),
-            _ => abort!(ty.ty, "cannot handle type"),
+            _ => quote!(#name: #path),
           },
           Type::Reference(path) => match &*path.elem {
             Type::Path(path) => match path.path.segments[0].ident.to_string().as_str() {
               "str" => quote!(#name: String),
               _ => quote!(#name: #path),
             },
-            _ => abort!(ty.ty, "cannot handle type"),
+            _ => quote!(#name: #path),
           },
-          _ => abort!(ty.ty, "cannot handle type"),
+          _ => quote!(#name: #ty),
         }
       }
     })
@@ -167,7 +167,7 @@ fn python_ret(out: &ReturnType) -> (impl quote::ToTokens, Option<impl quote::ToT
           "Var" => quote!(-> ::pyo3::PyObject),
           _ => quote!(#out),
         },
-        _ => abort!(out, "cannot handle ret"),
+        _ => quote!(#out),
       },
       _ => quote!(),
     },
