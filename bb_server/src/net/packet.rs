@@ -166,6 +166,15 @@ pub(crate) fn handle(wm: &Arc<WorldManager>, mut player: &Arc<Player>, p: sb::Pa
             block::Kind::Air
           });
 
+          // This is what we want for off-hand block places, but causes desyncs for
+          // unimplemented items. Off-hand is very rarely used in practice, so
+          // I'm leaving this commented out.
+          /*
+          if kind == block::Kind::Air {
+            return;
+          }
+          */
+
           let placing_data = wm.block_converter().get(kind);
           let ty = wm.block_behaviors().call(kind, |b| b.place(placing_data, pos, click));
 
