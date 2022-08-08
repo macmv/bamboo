@@ -27,5 +27,6 @@ fn handle_getblock(player, args) {
 on player_join(player) {
   let it = Stack::new("stick")
   it.set_display_name("My Stick")
+  it.set_lore(["hello", "world"])
   player.set_item(36, it)
 }

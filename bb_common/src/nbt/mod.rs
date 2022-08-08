@@ -56,6 +56,13 @@ impl From<String> for Tag {
   fn from(s: String) -> Self { Tag::String(s) }
 }
 
+impl<T> From<Vec<T>> for Tag
+where
+  Tag: From<T>,
+{
+  fn from(list: Vec<T>) -> Self { Tag::List(list.into_iter().map(|it| it.into()).collect()) }
+}
+
 impl NBT {
   /// Creates a new nbt tag. The tag value can be anything.
   ///

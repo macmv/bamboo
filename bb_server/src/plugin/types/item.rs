@@ -44,6 +44,18 @@ impl PStack {
     let msg = format!("{}r{}", chat::CODE_SEP, PChat::from_var(name).to_codes());
     self.inner.nbt_mut().get_or_create_compound("display").insert("Name".into(), msg.into());
   }
+  /// Sets the lore for this item stack. These are lines of text that show up
+  /// below the item name, when hovering over the item in an inventory.
+  pub fn set_lore(&mut self, lines: Vec<Var>) {
+    self.inner.nbt_mut().get_or_create_compound("display").insert(
+      "Lore".into(),
+      lines
+        .into_iter()
+        .map(|msg| format!("{}r{}", chat::CODE_SEP, PChat::from_var(msg).to_codes()))
+        .collect::<Vec<String>>()
+        .into(),
+    );
+  }
 }
 
 /// An inventory UI.
