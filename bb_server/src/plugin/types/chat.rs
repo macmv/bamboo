@@ -3,7 +3,7 @@ use bb_common::util::{chat::Color, Chat};
 use bb_server_macros::define_ty;
 use panda::{
   parse::token::Span,
-  runtime::{RuntimeError, Var},
+  runtime::{Result, RuntimeError, Var},
 };
 use parking_lot::Mutex;
 use std::{str::FromStr, sync::Arc};
@@ -33,6 +33,26 @@ impl PChat {
 impl PChat {
   /// Creates a new chat message with the given text.
   pub fn new(text: &str) -> PChat { PChat { inner: Arc::new(Mutex::new(Chat::new(text))) } }
+  /// Sets the color of the chat message. This won't do anything if the chat
+  /// message has multiple sections.
+  ///
+  /// This is intended to be used with `new`, like so:
+  /// ```
+  /// chat = Chat::new("hello").color("green")
+  /// //     ^^^^^^^^^^^^^^^^^^ -------------- This function
+  /// //     |
+  /// //      \ Creates the chat messaage "hello"
+  /// ```
+  pub fn color(&self, color: &str) -> Result<Self> {
+    let mut lock = self.inner.lock();
+    if lock.sections_len() == 1 {
+      lock.get_section(0).unwrap().color(
+        Color::from_str(color)
+          .map_err(|err| RuntimeError::custom(err.to_string(), Span::call_site()))?,
+      );
+    }
+    Ok(self.clone())
+  }
   /// Creates an empty chat message. This can have sections added using `add`.
   pub fn empty() -> PChat { PChat { inner: Arc::new(Mutex::new(Chat::empty())) } }
   /// Adds a new chat section. This will return the section that was just added,
@@ -72,11 +92,11 @@ impl PChatSection {
   /// // Adds a new section, with the color set to red.
   /// chat.add("hello").color("red")
   /// ```
-  pub fn color(&self, color: &str) -> Result<(), RuntimeError> {
+  pub fn color(&self, color: &str) -> Result<Self> {
     self.inner.lock().get_section(self.idx).unwrap().color(
       Color::from_str(color)
         .map_err(|err| RuntimeError::custom(err.to_string(), Span::call_site()))?,
     );
-    Ok(())
+    Ok(self.clone())
   }
 }
