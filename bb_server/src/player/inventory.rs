@@ -25,6 +25,7 @@ pub struct PlayerInventory {
   crafting:       SingleInventory<5>,
   main:           SingleInventory<27>,
   hotbar:         SingleInventory<9>,
+  offhand:        SingleInventory<1>,
   // An index into the hotbar (0..=8)
   selected_index: u8,
   // Open window and held item
@@ -54,7 +55,8 @@ impl PlayerInventory {
       feet:           SingleInventory::new(conn.clone(), 0, 3),
       crafting:       SingleInventory::new(conn.clone(), 0, 4),
       main:           SingleInventory::new(conn.clone(), 0, 9),
-      hotbar:         SingleInventory::new(conn, 0, 36),
+      hotbar:         SingleInventory::new(conn.clone(), 0, 36),
+      offhand:        SingleInventory::new(conn, 0, 45),
       selected_index: 0,
       window:         None,
       held:           Stack::empty(),
@@ -155,6 +157,7 @@ impl PlayerInventory {
         4..=8 => self.crafting.get(idx),
         9..=35 => self.main.get(idx),
         36..=44 => self.hotbar.get(idx),
+        45 => self.offhand.get(idx),
         _ => None,
       }
       .cloned()
@@ -185,6 +188,7 @@ impl PlayerInventory {
         4..=8 => self.crafting.get_mut(idx),
         9..=35 => self.main.get_mut(idx),
         36..=44 => self.hotbar.get_mut(idx),
+        45 => self.offhand.get_mut(idx),
         _ => None,
       }
       .map(f)
@@ -282,6 +286,7 @@ impl PlayerInventory {
         4..=8 => self.crafting.sync(idx),
         9..=35 => self.main.sync(idx),
         36..=44 => self.hotbar.sync(idx),
+        45 => self.offhand.sync(idx),
         _ => panic!(),
       }
     }
