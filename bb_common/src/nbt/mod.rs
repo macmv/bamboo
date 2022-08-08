@@ -49,6 +49,9 @@ pub enum Tag {
   LongArray(Vec<i64>),
 }
 
+impl From<bool> for Tag {
+  fn from(v: bool) -> Self { Tag::Byte(v as i8) }
+}
 impl From<&str> for Tag {
   fn from(s: &str) -> Self { Tag::String(s.into()) }
 }
@@ -123,6 +126,15 @@ impl NBT {
       inner
     } else {
       panic!("called compound on non-compound type: {:?}", self);
+    }
+  }
+  /// If this is a compound tag, this returns the inner data of the tag.
+  /// Otherwise, this panics.
+  pub fn compound_mut(&mut self) -> &mut HashMap<String, Tag> {
+    if let Tag::Compound(inner) = &mut self.tag {
+      inner
+    } else {
+      panic!("called compound on non-compound type");
     }
   }
 

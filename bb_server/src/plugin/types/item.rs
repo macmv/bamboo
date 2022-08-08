@@ -56,6 +56,12 @@ impl PStack {
         .into(),
     );
   }
+
+  /// Sets the item to be unbreakable. If unbreakable is `true`, the item will
+  /// not lose durability.
+  pub fn set_unbreakable(&mut self, unbreakable: bool) {
+    self.inner.nbt_mut().compound_mut().insert("Unbreakable".into(), unbreakable.into());
+  }
 }
 
 /// An inventory UI.

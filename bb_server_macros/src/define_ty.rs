@@ -95,8 +95,8 @@ fn python_args<'a>(args: impl Iterator<Item = &'a FnArg>) -> Vec<impl quote::ToT
         let name = &ty.pat;
         match &*ty.ty {
           Type::Path(path) => match path.path.segments[0].ident.to_string().as_str() {
-            "u8" | "i8" | "u16" | "i16" | "u32" | "i32" | "u64" | "i64" | "u128" | "i128"
-            | "f32" | "f64" | "Vec" => {
+            "bool" | "u8" | "i8" | "u16" | "i16" | "u32" | "i32" | "u64" | "i64" | "u128"
+            | "i128" | "f32" | "f64" | "Vec" => {
               quote!(#name: #path)
             }
             // Assume this is a Box<dyn Callback>
@@ -126,8 +126,8 @@ fn python_arg_names<'a>(args: impl Iterator<Item = &'a FnArg>) -> Vec<impl quote
         let name = &ty.pat;
         match &*ty.ty {
           Type::Path(path) => match path.path.segments[0].ident.to_string().as_str() {
-            "u8" | "i8" | "u16" | "i16" | "u32" | "i32" | "u64" | "i64" | "u128" | "i128"
-            | "f32" | "f64" | "Vec" => {
+            "bool" | "u8" | "i8" | "u16" | "i16" | "u32" | "i32" | "u64" | "i64" | "u128"
+            | "i128" | "f32" | "f64" | "Vec" => {
               quote!(#name)
             }
             "Box" => quote!(Box::new(#name)),
