@@ -4,7 +4,12 @@ use bb_common::{
   math::{ChunkPos, Pos},
   net::sb::ClickWindow,
 };
-use panda::{define_ty, docs::markdown, runtime::Var, Panda};
+use panda::{
+  define_ty,
+  docs::markdown,
+  runtime::{Var, VarSend},
+  Panda,
+};
 
 use std::sync::Arc;
 
@@ -216,7 +221,6 @@ event! {
   }
 
   /// Called when a chat message is sent by a player.
-  Chat: "chat" { text: String, },
   PlayerJoin: "player_join" {},
   PlayerLeave: "player_leave" {},
 }
@@ -280,6 +284,13 @@ event! {
   },
   ReceivePacket: "packet" {
     data: String,
+  },
+  ChangeGameMode: "change_game_mode" {},
+  InvDoubleClick: "double_click" {
+    slot: i32,
+  },
+  CommandSent: "command" {
+    args: Vec<VarSend>,
   },
 }
 
