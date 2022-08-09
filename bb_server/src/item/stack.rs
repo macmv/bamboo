@@ -147,11 +147,11 @@ mod tests {
       assert_eq!(stack.to_item(), item);
       assert_eq!(Stack::from(item), stack);
     }
-    item_eq(Stack::empty(), Item { id: 0, count: 0, damage: 0, nbt: NBT::empty("") });
+    item_eq(Stack::empty(), Item { id: 0, count: 0, damage: 0, nbt: NBT::empty() });
     item_eq(
       Stack::new(Type::Air).with_amount(10),
-      Item { id: 0, count: 0, damage: 0, nbt: NBT::empty("") },
+      Item { id: 0, count: 0, damage: 0, nbt: NBT::empty() },
     );
-    item_eq(Stack::new(Type::Stone), Item { id: 1, count: 1, damage: 0, nbt: NBT::empty("") });
+    item_eq(Stack::new(Type::Stone), Item { id: 1, count: 1, damage: 0, nbt: NBT::empty() });
   }
 }
