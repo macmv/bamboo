@@ -30,7 +30,7 @@ pages:
     # Make our webpage
     - mkdir -p public/
     - rm -rf public/*
-    - mkdir -p public/doc/sugarlang/ public/doc/rust
+    - mkdir -p public/doc/panda/ public/doc/rust
     - cp -r bb_server/target/panda_docs/* public/doc/panda/
     - cp -r target/doc/* public/doc/rust/
 
