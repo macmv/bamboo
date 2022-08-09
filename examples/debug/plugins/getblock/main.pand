@@ -59,3 +59,7 @@ on double_click(flow, event) {
 on command(flow, event) {
   event.player.send_message("neil moment")
 }
+
+on change_game_mode(flow, event) {
+  event.player.send_message("HHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHh")
+}
