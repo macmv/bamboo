@@ -40,6 +40,7 @@ pub use types::*;
 pub struct Events<'a> {
   wm: &'a WorldManager,
 }
+#[derive(Debug, Clone, Copy)]
 pub enum EventFlow {
   Handled,
   Continue,

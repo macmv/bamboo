@@ -13,7 +13,7 @@ use super::{Bamboo, PandaPlugin};
 use bb_common::util::{chat::Color, Chat};
 use bb_server_macros::define_ty;
 use panda::{
-  docs::{markdown, MarkdownSection},
+  docs::markdown,
   parse::token::Span,
   path,
   runtime::{RuntimeError, Var},
@@ -287,7 +287,12 @@ fn format(args: &[Var]) -> String {
 
 impl PandaPlugin {
   pub fn add_builtins(&self, sl: &mut Panda) {
-    sl.def_callback("init");
+    sl.def_callback(
+      "init",
+      markdown!(
+        /// Called when the server is starting.
+      ),
+    );
 
     crate::event::GlobalEvent::add_builtins(sl);
     crate::event::PlayerEvent::add_builtins(sl);
@@ -295,68 +300,124 @@ impl PandaPlugin {
 
     {
       let bb = self.bb();
-      sl.predefine("players", move || {
-        bb.wm
-          .all_players()
-          .iter()
-          .map(|(_, (_, player))| {
-            PPlayer {
-              username: player.username().clone(),
-              uuid:     player.id(),
-              inner:    Arc::downgrade(player),
-            }
+      sl.predefine(
+        "players",
+        markdown!(
+          /// An array of all players on the server.
+        ),
+        move || {
+          bb.wm
+            .all_players()
+            .iter()
+            .map(|(_, (_, player))| {
+              PPlayer {
+                username: player.username().clone(),
+                uuid:     player.id(),
+                inner:    Arc::downgrade(player),
+              }
+              .into()
+            })
+            .collect::<Vec<Var>>()
             .into()
-          })
-          .collect::<Vec<Var>>()
-          .into()
-      });
+        },
+      );
     }
 
     {
       let bb = self.bb();
-      sl.predefine("bamboo", move || bb.clone().into());
+      sl.predefine(
+        "bamboo",
+        markdown!(
+          /// The Bamboo server instance. Can be used to access players,
+          /// worlds, broadcast messages, and more.
+        ),
+        move || bb.clone().into(),
+      );
     }
     {
       let name = self.name().clone();
-      sl.add_builtin_fn(path!(bamboo::trace), false, move |_env, _slf, args, _pos| {
-        trace!("`{}`: {}", name, format(&args));
-        Ok(Var::None)
-      });
+      sl.add_builtin_fn(
+        path!(bamboo::trace),
+        markdown!(
+          /// Prints out the given arguments as a `trace` log message.
+        ),
+        false,
+        move |_env, _slf, args, _pos| {
+          trace!("`{}`: {}", name, format(&args));
+          Ok(Var::None)
+        },
+      );
     }
     {
       let name = self.name().clone();
-      sl.add_builtin_fn(path!(bamboo::debug), false, move |_env, _slf, args, _pos| {
-        debug!("`{}`: {}", name, format(&args));
-        Ok(Var::None)
-      });
+      sl.add_builtin_fn(
+        path!(bamboo::debug),
+        markdown!(
+          /// Prints out the given arguments as a `debug` log message.
+        ),
+        false,
+        move |_env, _slf, args, _pos| {
+          debug!("`{}`: {}", name, format(&args));
+          Ok(Var::None)
+        },
+      );
     }
     {
       let name = self.name().clone();
-      sl.add_builtin_fn(path!(bamboo::info), false, move |_env, _slf, args, _pos| {
-        info!("`{}`: {}", name, format(&args));
-        Ok(Var::None)
-      });
+      sl.add_builtin_fn(
+        path!(bamboo::info),
+        markdown!(
+          /// Prints out the given arguments as an `info` log message.
+          ///
+          /// # Example
+          ///
+          /// ```
+          /// bamboo::info("some information")
+          /// bamboo::info(5, 6)
+          /// bamboo::info(my_vars, other, info)
+          /// ```
+        ),
+        false,
+        move |_env, _slf, args, _pos| {
+          info!("`{}`: {}", name, format(&args));
+          Ok(Var::None)
+        },
+      );
     }
     {
       let name = self.name().clone();
-      sl.add_builtin_fn(path!(bamboo::warn), false, move |_env, _slf, args, _pos| {
-        warn!("`{}`: {}", name, format(&args));
-        Ok(Var::None)
-      });
+      sl.add_builtin_fn(
+        path!(bamboo::warn),
+        markdown!(
+          /// Prints out the given arguments as a `warn` log message.
+        ),
+        false,
+        move |_env, _slf, args, _pos| {
+          warn!("`{}`: {}", name, format(&args));
+          Ok(Var::None)
+        },
+      );
     }
     {
       let name = self.name().clone();
-      sl.add_builtin_fn(path!(bamboo::error), false, move |_env, _slf, args, _pos| {
-        error!("`{}`: {}", name, format(&args));
-        Ok(Var::None)
-      });
+      sl.add_builtin_fn(
+        path!(bamboo::error),
+        markdown!(
+          /// Prints out the given arguments as an `error` log message.
+        ),
+        false,
+        move |_env, _slf, args, _pos| {
+          error!("`{}`: {}", name, format(&args));
+          Ok(Var::None)
+        },
+      );
     }
     sl.add_builtin_ty::<Bamboo>();
     sl.add_builtin_ty::<util::PPos>();
     sl.add_builtin_ty::<util::PFPos>();
     sl.add_builtin_ty::<util::PUUID>();
     sl.add_builtin_ty::<util::PDuration>();
-    sl.add_builtin_ty::<event::PEvent>();
+    sl.add_builtin_ty::<event::PEventFlow>();
     sl.add_builtin_ty::<block::PBlockKind>();
     sl.add_builtin_ty::<block::PBlockType>();
     sl.add_builtin_ty::<chat::PChat>();
@@ -379,13 +440,15 @@ impl PandaPlugin {
           path!(bamboo),
           markdown!(
             /// The Bamboo API. This is how all panda code can interact
-            /// with the Bamboo minecraft server. To get started with writing
-            /// a plugin, create a directory called `plugins` next to the server.
-            /// Inside that directory, create a file named something like `hello.sug`.
-            /// In that file, put the following code:
+            /// with the Bamboo minecraft server.
+
+            /// To get started with writing a plugin, create a directory called
+            /// `plugins` next to the server. Inside that directory, create a
+            /// file named something like `hello.sug`. In that file, put the
+            /// following code:
             ///
             /// ```
-            /// fn init() {
+            /// on init() {
             ///   bamboo::info("Hello world")
             /// }
             /// ```
@@ -394,9 +457,8 @@ impl PandaPlugin {
             /// for the `Bamboo` type. You can access an instance of it like so:
             ///
             /// ```
-            /// fn init() {
-            ///   bb = bamboo::instance()
-            ///   bb.broadcast("This will show up in chat for everyone!")
+            /// on init() {
+            ///   @bamboo.broadcast("This will show up in chat for everyone!")
             /// }
             /// ```
           ),
@@ -512,46 +574,7 @@ impl PandaPlugin {
           ),
         ),
       ],
-      &[
-        (
-          path!(bamboo::trace),
-          markdown!(
-            /// Prints out the given arguments as a `trace` log message.
-          ),
-        ),
-        (
-          path!(bamboo::debug),
-          markdown!(
-            /// Prints out the given arguments as a `debug` log message.
-          ),
-        ),
-        (
-          path!(bamboo::info),
-          markdown!(
-            /// Prints out the given arguments as an `info` log message.
-            ///
-            /// # Example
-            ///
-            /// ```
-            /// bamboo::info("some information")
-            /// bamboo::info(5, 6)
-            /// bamboo::info(my_vars, other, info)
-            /// ```
-          ),
-        ),
-        (
-          path!(bamboo::warn),
-          markdown!(
-            /// Prints out the given arguments as a `warn` log message.
-          ),
-        ),
-        (
-          path!(bamboo::error),
-          markdown!(
-            /// Prints out the given arguments as an `error` log message.
-          ),
-        ),
-      ],
+      &[],
     );
     docs.save("target/sl_docs");
   }

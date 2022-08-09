@@ -112,7 +112,7 @@ impl PandaPlugin {
     }
   }
   pub fn req(&self, name: &str, mut args: Vec<Var>) -> bool {
-    let event = super::types::event::PEvent::new();
+    let event = super::types::event::PEventFlow::new();
     args.insert(0, event.clone().into());
     match &self.sl {
       Some(sl) => match sl.run_callback(name, args) {
@@ -121,7 +121,7 @@ impl PandaPlugin {
       },
       None => {}
     }
-    !event.is_cancelled()
+    !event.is_allowed()
   }
 
   pub fn print_err<E: PdError>(&self, err: E) {
@@ -134,10 +134,7 @@ impl PandaPlugin {
 
 impl PluginImpl for PandaPlugin {
   fn call_global(&self, ev: GlobalEvent) -> Result<(), CallError> {
-    match ev {
-      GlobalEvent::Tick(_) => self.call("tick", vec![]),
-      _ => todo!("global event {ev:?}"),
-    }
+    self.call(ev.name(), vec![ev.into_panda()]);
     Ok(())
   }
   fn call(&self, ev: PlayerEvent) -> Result<(), CallError> {

@@ -4,7 +4,7 @@ use bb_common::{
   math::{ChunkPos, Pos},
   net::sb::ClickWindow,
 };
-use panda::{define_ty, runtime::Var, Panda};
+use panda::{define_ty, docs::markdown, runtime::Var, Panda};
 
 use std::sync::Arc;
 
@@ -162,6 +162,7 @@ macro_rules! event {
       $extra:ident: $extra_ty:ty
     )* }
     $(
+      $( #[$specific_event_attr:meta] )*
       $name:ident: $str_name:literal {
         $( $args:tt )*
       },
@@ -188,7 +189,7 @@ macro_rules! event {
       }
       pub fn add_builtins(pd: &mut Panda) {
         $(
-          pd.def_callback($str_name);
+          pd.def_callback($str_name, markdown!($( #[$specific_event_attr] )*));
           pd.add_builtin_ty::<$name>();
         )*
       }
@@ -214,6 +215,7 @@ event! {
     player: Arc<Player>
   }
 
+  /// Called when a chat message is sent by a player.
   Chat: "chat" { text: String, },
   PlayerJoin: "player_join" {},
   PlayerLeave: "player_leave" {},
@@ -223,6 +225,7 @@ event! {
   /// [ServerEvent], but there is no player specified with this event.
   GlobalEvent: {}
 
+  /// Called every server tick.
   Tick: "tick" {},
   GenerateChunk: "generate_chunk" {
     generator: String,
@@ -241,12 +244,14 @@ event! {
     player: Arc<Player>
   }
 
+  /// Called every time a client places a block.
   BlockPlace: "block_place" {
     #[serde(serialize_with = "to_json_ty::<_, JsonPos, _>")]
     pos:   Pos,
     #[serde(serialize_with = "to_json_ty::<_, JsonBlock, _>")]
     block: block::TypeStore,
   },
+  /// Called every time a client breaks a block.
   BlockBreak: "block_break" {
     #[serde(serialize_with = "to_json_ty::<_, JsonPos, _>")]
     pos:   Pos,
