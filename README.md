@@ -22,36 +22,47 @@ git clone https://gitlab.com/macmv/bamboo.git
 cd bamboo
 ```
 
-Now you need to build the server and proxy. You can run the server with this
-command:
+Now you need to run the server and proxy. Start the server with this command:
 
 ```
 cargo run --bin bb_server --release
 ```
 
-And you can run the proxy with this command:
+And run the proxy with this command:
 
 ```
 cargo run --bin bb_proxy --release
 ```
 
-You need the server and proxy to be running at the same time in order to connect!
-The port for the server is `25565`, and the proxy/server combo talk on the
-`8483` port. So if you get errors when starting the server, make sure nothing
-else is using that port.
+You need the server and proxy to be running at the same time in order to connect.
+The proxy will listen for Minecraft clients on port `25565`, and then it will
+connect to the server on port `8483`. If you get errors when starting the server,
+make sure nothing else is using that port.
 
 The `--release` flag will make the server/proxy faster at runtime, but take
-longer to compile. I recommend it for both, unless you are developing the
-server/proxy.
+longer to compile. I recommend using the flag for both, unless you are developing
+the server or proxy.
 
-After running the server or proxy, a file named `server-default.yml` and
-`proxy-default.yml` will be created. These files are written when the
-server/proxy start, and will not be read. Instead, modify `server.yml`
-and `proxy.yml` to override settings in the default config. Here you can
-do things like change the world generation, enable/disable plugins, and
-enable online mode for the proxy.
+After running the server or proxy, a file named `server.toml` and `proxy.toml`
+will be created. These files will have the default configuration for the server
+and proxy. Here you can do things like change the world generation, enable/disable
+plugins, and change online mode for the proxy.
 
 Feel free to ask questions in the [discord](https://discord.gg/8CTr3N9yzU)!
+
+### Writing a Minigame
+
+Panda is the language used for plugins in this server. See the
+[examples](https://gitlab.com/macmv/bamboo/-/tree/main/examples) directory
+for some examples.
+
+The [docs](https://macmv.gitlab.io/bamboo/doc/panda/index.html) are
+kept up to date by pipelines, and those should be helpful when writing plugins.
+
+This language is mostly complete, but the actual interface with the server from
+Panda is not complete at all. These plugins are mostly there to test the
+API that I'm writing, and they should contain examples of the newest features
+as I develop them.
 
 ### Features
 
@@ -211,20 +222,6 @@ your IDE to use a different profile. Any time my IDE builds, I pass the flag
 `--profile rust-analyzer` to cargo. This makes code validation much faster, as
 the dev profile uses opt-level 2 (instead of the default 0). This is because
 terrain generation is terribly slow with opt-level set to 0.
-
-### For Panda developers
-
-Panda is the language used for plugins in this server. See the
-[examples](https://gitlab.com/macmv/bamboo/-/tree/main/examples) directory
-for some examples.
-
-The [docs](https://macmv.gitlab.io/bamboo/doc/sugarlang/bamboo/index.html) are
-kept up to date by pipelines, and those should be helpful when writing plugins.
-
-This language is mostly complete, but the actual interface with the server from
-Panda is not complete at all. These plugins are mostly there to test the
-API that I'm writing, and they should contain examples of the newest features
-as I develop them.
 
 ### What happened to [Sugarcane](https://gitlab.com/macmv/sugarcane-go)?
 
