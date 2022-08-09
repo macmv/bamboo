@@ -49,6 +49,7 @@ pub(crate) fn handle(wm: &Arc<WorldManager>, mut player: &Arc<Player>, p: sb::Pa
         player.world().commands().execute(wm, &mut player, command);
       } else {
         let text = msg;
+        wm.events().player_event(event::Chat { player: player.clone(), text: text.clone() });
         let mut msg = Chat::empty();
         msg.add("<");
         msg.add(player.username()).color(Color::BrightGreen).on_hover(HoverEvent::ShowText(
