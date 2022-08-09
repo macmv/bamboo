@@ -55,3 +55,7 @@ on packet(flow, event) {
 on double_click(flow, event) {
   event.player.send_message("WOah! You just double clicked on slot " + event.slot.to_string())
 }
+
+on command(flow, event) {
+  event.player.send_message("neil moment")
+}

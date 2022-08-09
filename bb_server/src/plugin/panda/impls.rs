@@ -18,7 +18,7 @@ unit_impls![bool, u8, i8, u16, i16, u32, i32, i64, f32, f64, String, Vec<Var>];
 
 impl IntoPanda for VarSend {
   type Panda = Var;
-  fn into_panda(self) -> Var { self.into_var() }
+  fn into_panda(self) -> Var { self.into() }
 }
 
 impl<T, U> IntoPanda for Vec<T>

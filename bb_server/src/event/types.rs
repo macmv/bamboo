@@ -290,6 +290,7 @@ event! {
     slot: i32,
   },
   CommandSent: "command" {
+    #[serde(skip)]
     args: Vec<VarSend>,
   },
 }

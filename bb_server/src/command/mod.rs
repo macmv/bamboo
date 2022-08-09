@@ -31,7 +31,7 @@ use parse::{ChildError, Span};
 pub use parse::{ErrorKind, ParseError, Tokenizer};
 pub use sender::{CommandSender, ErrorFormat};
 
-use crate::{event, player::Player, world::WorldManager};
+use crate::{event, player::Player, plugin::types, world::WorldManager};
 use bb_common::util::chat::{Chat, Color};
 use parking_lot::Mutex;
 use reader::CommandReader;
@@ -90,12 +90,17 @@ impl CommandTree {
         return;
       }
     };
-    if world
-      .events()
-      .player_request(event::CommandSent { player: sender.as_player().cloned(), args })
-      .is_handled()
-    {
-      return;
+    if let Some(player) = sender.as_player() {
+      if world
+        .events()
+        .player_request(event::CommandSent {
+          player: player.clone(),
+          args:   args.iter().map(|arg| types::command::sl_from_arg(arg.clone()).into()).collect(),
+        })
+        .is_handled()
+      {
+        return;
+      }
     }
     handler(world, sender.as_player(), args);
   }
