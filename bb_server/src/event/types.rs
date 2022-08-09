@@ -98,7 +98,7 @@ macro_rules! define_event {
       )*
     }
 
-    #[define_ty]
+    #[define_ty(prefix = "bamboo::event")]
     impl $name {
       $(
         #[field]
