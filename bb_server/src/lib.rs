@@ -39,7 +39,7 @@ pub fn generate_panda_docs() {
 
   info!(
     "generated docs at {}",
-    std::env::current_dir().unwrap().join("target/sl_docs/bamboo/index.html").display()
+    std::env::current_dir().unwrap().join("target/panda_docs/bamboo/index.html").display()
   );
 }
 

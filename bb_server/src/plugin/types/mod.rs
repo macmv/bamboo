@@ -576,6 +576,6 @@ impl PandaPlugin {
       ],
       &[],
     );
-    docs.save("target/sl_docs");
+    docs.save("target/panda_docs");
   }
 }
