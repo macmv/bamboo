@@ -25,7 +25,7 @@ pages:
     - curl -L https://github.com/xd009642/tarpaulin/releases/download/0.20.0/cargo-tarpaulin-0.20.0-travis.tar.gz | tar xvz -C $HOME/.cargo/bin
 
     # Generate coverage report, and panda docs
-    - cargo tarpaulin --out html xml
+    - cargo tarpaulin --out html xml -p bb_common -p bb_proxy -p bb_server
 
     # Make our webpage
     - mkdir -p public/
