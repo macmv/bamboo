@@ -278,6 +278,9 @@ event! {
     stack: Stack,
     full_stack: bool,
   },
+  ReceivePacket: "packet" {
+    data: String,
+  },
 }
 
 /// A reply from the server to the plugin.
