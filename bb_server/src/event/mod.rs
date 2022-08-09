@@ -1,27 +1,8 @@
-//! There are six kinds of messages:
+//! There are three kinds of messages:
 //!
-//! - [PluginMessage], which stores all the below types:
-//!   - [PluginEvent], for a message that doesn't need a reply.
-//!   - [PluginRequest], for a message that needs the server to reply.
-//!   - [PluginReply], for a reply to a message from the server.
-//! - [ServerMessage], which stores all the below types:
-//!   - [ServerEvent], for a message that doesn't need a reply.
-//!   - [ServerRequest], for a message that needs the plugin to reply.
-//!   - [ServerReply], for a reply to a message from the plugin.
-//!
-//! # Examples
-//!
-//! ```text
-//!     Server <-- PluginRequest::GetBlock Plugin
-//!     Server   ServerReply::Block -->    Plugin
-//! ```
-//! ```text
-//!     Server ServerRequest::PlaceBlock --> Plugin
-//!     Server   <-- PluginReply::Cancel     Plugin
-//! ```
-//! ```text
-//!     Server <-- ServerRequest::Chat Plugin
-//! ```
+//! - [GlobalEvent], for a non-cancellable event.
+//! - [PlayerEvent], for a non-cancellable event with a player.
+//! - [PlayerRequest], for a cancellable event with a player.
 
 mod json;
 mod types;
@@ -76,13 +57,13 @@ impl Events<'_> {
   pub fn global_event(&self, ev: impl Into<GlobalEvent>) {
     self.wm.plugins().global_event(ev.into());
   }
-  /// Send an [`Event`]. All plugins will receive this event, and cannot cancel
-  /// it.
+  /// Send an [`PlayerEvent`]. All plugins will receive this event, and cannot
+  /// cancel it.
   pub fn player_event(&self, ev: impl Into<PlayerEvent>) {
     self.wm.plugins().player_event(ev.into());
   }
-  /// Send a [`Request`]. All plugins will receive this event, and can cancel
-  /// it.
+  /// Send a [`PlayerRequest`]. All plugins will receive this event, and can
+  /// cancel it.
   pub fn player_request(&self, req: impl Into<PlayerRequest>) -> EventFlow {
     self.wm.plugins().player_request(req.into())
   }

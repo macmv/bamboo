@@ -8,8 +8,8 @@ mod version;
 #[cfg(feature = "wasm_plugins")]
 mod ffi;
 
-pub use behavior::{Behavior, TileEntity};
-pub use custom::{CustomData, CustomKind, CustomProp, CustomPropValue};
+pub use behavior::{Behavior, BlockDrops, TileEntity};
+pub use custom::{CustomBlockBuilder, CustomData, CustomKind, CustomProp, CustomPropValue};
 pub use material::Material;
 pub use store::TypeStore;
 pub use ty::{Data, ItemDrop, Kind, Prop, PropKind, PropValue, PropValueStore, Type};

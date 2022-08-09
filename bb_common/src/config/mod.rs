@@ -126,8 +126,6 @@ impl Config {
   /// type), then it will use the default config. If it doesn't exist there (or
   /// if it's the wrong type), this function will panic.
   ///
-  /// See [`YamlKey`] for details on how that is parsed.
-  ///
   /// In my opinion, a key should always exist when you try to load it. If there
   /// was a function like `get_opt`, which would only return a value when
   /// present, that would make it much more difficult for users to find out what
@@ -135,7 +133,7 @@ impl Config {
   /// default config, so that it is easy for users to edit the config
   /// themselves.
   ///
-  /// If you really need to get around this, you can implement YamlValue for
+  /// If you really need to get around this, you can implement [`TomlValue`] for
   /// your own type. I hightly recommend against this, as that will just cause
   /// confusion for your users. I will not be adding any more implementations
   /// than the ones present in this file.
@@ -146,6 +144,9 @@ impl Config {
     self.get_at([key].into_iter())
   }
 
+  /// Gets the value at the given path. This allows you to pass in a nested key,
+  /// which can be useful at times, but is usually less idiomatic than calling
+  /// [`get`](Self::get).
   pub fn get_at<'a, 'b, I, T>(&'a self, key: I) -> T
   where
     I: Iterator<Item = &'b str> + Clone,

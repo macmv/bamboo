@@ -65,7 +65,7 @@ pub trait Behavior: Send + Sync {
   /// are collected from the vanilla client, but this may require some
   /// overrides. Returning [`BlockDrops::Normal`] will use the vanilla drops,
   /// and returning [`BlockDrops::Custom`] will override the vanilla drops
-  /// with the given [`Drops`].
+  /// with the given [`BlockDrops`].
   fn drops(&self, block: Block) -> BlockDrops {
     let _ = block;
     BlockDrops::Normal

@@ -48,7 +48,7 @@ pub enum PluginEvent {
 pub enum PluginRequest {
   GetBlock { pos: JsonPos },
 }
-/// A response to a request from the server. See also [ServerRequest].
+/// A response to a request from the server. See also [`PlayerRequest`].
 #[non_exhaustive]
 #[derive(Debug, Clone, serde::Deserialize)]
 #[serde(tag = "type")]
@@ -222,7 +222,7 @@ event! {
 }
 event! {
   /// An event from the server to the plugin. This is very similar to
-  /// [ServerEvent], but there is no player specified with this event.
+  /// [`PlayerEvent`], but there is no player specified with this event.
   GlobalEvent: {}
 
   /// Called every server tick.
@@ -238,7 +238,7 @@ event! {
 
 event! {
   /// A request from the server to the plugin. The server should expect a reply
-  /// within a certain timeout from the plugin. See also [PluginReply].
+  /// within a certain timeout from the plugin.
   PlayerRequest: {
     #[serde(skip)]
     player: Arc<Player>
@@ -274,8 +274,7 @@ event! {
   },
 }
 
-/// A reply from the server to the plugin. This is a response to a
-/// [PluginRequest].
+/// A reply from the server to the plugin.
 #[non_exhaustive]
 #[derive(Debug, Clone, serde::Serialize)]
 #[serde(tag = "type")]

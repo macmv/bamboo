@@ -12,10 +12,7 @@ pub struct TypeConverter {
 
 impl TypeConverter {
   /// Creates a new converter. This will allocate a bunch. Do not call this
-  /// unless you have a very good reason. Instead, use
-  /// [`WorldManager::particle_converter`].
-  ///
-  /// [`WorldManager::particle_converter`]: crate::world::WorldManager::particle_converter
+  /// unless you have a very good reason.
   #[allow(clippy::new_without_default)]
   pub fn new() -> Self { Self { types: ty::generate_kinds(), versions: generate_versions() } }
 
