@@ -1,10 +1,15 @@
 use super::json::*;
-use crate::{block, math::Vec3, player::Player, plugin::IntoPanda};
+use crate::{block, item::Stack, math::Vec3, player::Player, plugin::IntoPanda};
 use bb_common::{
   math::{ChunkPos, Pos},
   net::sb::ClickWindow,
 };
-use panda::{define_ty, docs::markdown, runtime::Var, Panda};
+use panda::{
+  define_ty,
+  docs::markdown,
+  runtime::{Var, VarSend},
+  Panda,
+};
 
 use std::sync::Arc;
 
@@ -216,7 +221,6 @@ event! {
   }
 
   /// Called when a chat message is sent by a player.
-  Chat: "chat" { text: String, },
   PlayerJoin: "player_join" {},
   PlayerLeave: "player_leave" {},
 }
@@ -271,6 +275,23 @@ event! {
   },
   Interact: "interact" {
     slot: i32,
+  },
+  Chat: "chat" { text: String, },
+  ItemDrop: "item_drop" {
+    #[serde(skip)]
+    stack: Stack,
+    full_stack: bool,
+  },
+  ReceivePacket: "packet" {
+    data: String,
+  },
+  ChangeGameMode: "change_game_mode" {},
+  InvDoubleClick: "double_click" {
+    slot: i32,
+  },
+  CommandSent: "command" {
+    #[serde(skip)]
+    args: Vec<VarSend>,
   },
 }
 

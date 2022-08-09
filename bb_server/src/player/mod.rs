@@ -620,7 +620,15 @@ impl Player {
 
   /// Updates the player's game mode. This can be retrieved with
   /// [`game_mode`](Self::game_mode).
-  pub fn set_game_mode(&self, mode: GameMode) {
+  pub fn set_game_mode(self: &Arc<Self>, mode: GameMode) {
+    if self
+      .world()
+      .events()
+      .player_request(event::ChangeGameMode { player: self.clone() })
+      .is_handled()
+    {
+      return;
+    }
     self.send(cb::packet::ChangeGameState { action: cb::ChangeGameStateKind::GameMode(mode) });
     *self.game_mode.lock() = mode;
     self.abilities.lock().set_from_game_mode(mode);

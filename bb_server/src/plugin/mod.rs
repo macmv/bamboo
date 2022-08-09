@@ -8,7 +8,7 @@ pub mod socket;
 pub mod wasm;
 
 #[cfg(not(doctest))]
-mod types;
+pub mod types;
 
 #[cfg(doctest)]
 mod types {

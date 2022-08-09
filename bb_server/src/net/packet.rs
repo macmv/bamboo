@@ -31,6 +31,14 @@ pub(crate) fn handle(wm: &Arc<WorldManager>, mut player: &Arc<Player>, p: sb::Pa
     }
   }
   */
+  if wm
+    .events()
+    .player_request(event::ReceivePacket { player: player.clone(), data: format!("{:?}", p) })
+    .is_handled()
+  {
+    return;
+  }
+
   match p {
     sb::Packet::KeepAlive { id: _ } => {
       // TODO Keep alive packets
@@ -49,6 +57,13 @@ pub(crate) fn handle(wm: &Arc<WorldManager>, mut player: &Arc<Player>, p: sb::Pa
         player.world().commands().execute(wm, &mut player, command);
       } else {
         let text = msg;
+        if wm
+          .events()
+          .player_request(event::Chat { player: player.clone(), text: text.clone() })
+          .is_handled()
+        {
+          return;
+        }
         let mut msg = Chat::empty();
         msg.add("<");
         msg.add(player.username()).color(Color::BrightGreen).on_hover(HoverEvent::ShowText(

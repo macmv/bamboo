@@ -32,6 +32,34 @@ on player_join(player) {
   player.set_item(36, it)
 }
 
-on interact(event, player, slot, item) {
-  player.send_message("Using item!")
+on interact(flow, event) {
+  event.player.send_message("Using item!")
+}
+
+on chat(flow, event) {
+  event.player.send_message("Shut up!")
+}
+
+on item_drop(flow, event) {
+  if event.full_stack {
+    event.player.send_message("Oh shit! That's a lot of items you're dropping!")
+  } else {
+    event.player.send_message("Weak! You dropped a " + event.stack.item_name())
+  }
+}
+
+on packet(flow, event) {
+  //event.player.send_message(event.data)
+}
+
+on double_click(flow, event) {
+  event.player.send_message("WOah! You just double clicked on slot " + event.slot.to_string())
+}
+
+on command(flow, event) {
+  event.player.send_message("neil moment")
+}
+
+on change_game_mode(flow, event) {
+  event.player.send_message("HHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHh")
 }

@@ -1,6 +1,6 @@
 use super::Window;
 use crate::{
-  entity, item,
+  entity, event, item,
   item::{SingleInventory, Stack},
   net::ConnSender,
   player::Player,
@@ -462,6 +462,21 @@ impl PlayerInventory {
     if it.is_empty() || it.amount() == 0 {
       return;
     }
+    if let Some(p) = self.player.upgrade() {
+      if p
+        .world
+        .events()
+        .player_request(event::ItemDrop {
+          player:     p.clone(),
+          stack:      it.clone(),
+          full_stack: false,
+        })
+        .is_handled()
+      {
+        self.sync(slot);
+        return;
+      }
+    }
     let removed = it.clone().with_amount(1);
     if it.amount() == 1 {
       self.replace(slot, Stack::empty());
@@ -476,6 +491,21 @@ impl PlayerInventory {
 
   /// Removes the entire stack at the given slot.
   pub fn drop_all(&mut self, slot: i32) {
+    let it = self.get(slot).unwrap();
+    if it.is_empty() || it.amount() == 0 {
+      return;
+    }
+    if let Some(p) = self.player.upgrade() {
+      if p
+        .world
+        .events()
+        .player_request(event::ItemDrop { player: p.clone(), stack: it, full_stack: true })
+        .is_handled()
+      {
+        self.sync(slot);
+        return;
+      }
+    }
     let removed = self.replace(slot, Stack::empty());
     if let Some(p) = self.player.upgrade() {
       Self::spawn_dropped_item(&p, &removed);
@@ -493,7 +523,17 @@ impl PlayerInventory {
 
   /// Grabs up to a full stack of whatever item is at the given slot, and moves
   /// it to the cursor slot.
-  pub fn double_click(&mut self, _slot: i32) {
+  pub fn double_click(&mut self, slot: i32) {
+    if let Some(p) = self.player.upgrade() {
+      if p
+        .world()
+        .events()
+        .player_request(event::InvDoubleClick { player: p.clone(), slot })
+        .is_handled()
+      {
+        return;
+      }
+    }
     let mut held = self.replace(-999, Stack::empty());
     let start = if self.win().is_some() { 0 } else { 9 };
     let end = if let Some(win) = self.win() { win.size() + 36 } else { 45 };
