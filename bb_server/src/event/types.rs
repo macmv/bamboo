@@ -1,5 +1,5 @@
 use super::json::*;
-use crate::{block, math::Vec3, player::Player, plugin::IntoPanda};
+use crate::{block, item::Stack, math::Vec3, player::Player, plugin::IntoPanda};
 use bb_common::{
   math::{ChunkPos, Pos},
   net::sb::ClickWindow,
@@ -271,6 +271,12 @@ event! {
   },
   Interact: "interact" {
     slot: i32,
+  },
+  Chat: "chat" { text: String, },
+  ItemDrop: "item_drop" {
+    #[serde(skip)]
+    stack: Stack,
+    full_stack: bool,
   },
 }
 

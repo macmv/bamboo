@@ -1,6 +1,6 @@
 use super::Window;
 use crate::{
-  entity, item,
+  entity, event, item,
   item::{SingleInventory, Stack},
   net::ConnSender,
   player::Player,
@@ -462,6 +462,20 @@ impl PlayerInventory {
     if it.is_empty() || it.amount() == 0 {
       return;
     }
+    if let Some(p) = self.player.upgrade() {
+      if p
+        .world
+        .events()
+        .player_request(event::ItemDrop {
+          player:     p.clone(),
+          stack:      it.clone(),
+          full_stack: false,
+        })
+        .is_handled()
+      {
+        return;
+      }
+    }
     let removed = it.clone().with_amount(1);
     if it.amount() == 1 {
       self.replace(slot, Stack::empty());
@@ -476,6 +490,20 @@ impl PlayerInventory {
 
   /// Removes the entire stack at the given slot.
   pub fn drop_all(&mut self, slot: i32) {
+    let it = self.get(slot).unwrap();
+    if it.is_empty() || it.amount() == 0 {
+      return;
+    }
+    if let Some(p) = self.player.upgrade() {
+      if p
+        .world
+        .events()
+        .player_request(event::ItemDrop { player: p.clone(), stack: it, full_stack: true })
+        .is_handled()
+      {
+        return;
+      }
+    }
     let removed = self.replace(slot, Stack::empty());
     if let Some(p) = self.player.upgrade() {
       Self::spawn_dropped_item(&p, &removed);
