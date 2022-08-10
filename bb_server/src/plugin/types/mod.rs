@@ -289,6 +289,7 @@ impl PandaPlugin {
   pub fn add_builtins(&self, sl: &mut Panda) {
     sl.def_callback(
       "init",
+      vec![],
       markdown!(
         /// Called when the server is starting.
       ),

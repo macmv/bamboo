@@ -7,7 +7,7 @@ use bb_common::{
 use panda::{
   define_ty,
   docs::markdown,
-  runtime::{Var, VarSend},
+  runtime::{PandaType, Var, VarSend},
   Panda,
 };
 
@@ -159,13 +159,30 @@ macro_rules! define_events {
   ) => {}
 }
 
+macro_rules! add_builtins {
+  (
+    $pd:ident;
+    $( $extra_arg:ty ),*;
+    [ $str_name:expr, $name:ident, $( #[$specific_event_attr:meta] )* ]
+    $( $extra:tt )*
+  ) => {
+    $pd.def_callback($str_name, vec![$name::var_type() $(, <$extra_arg>::var_type() )*], markdown!($( #[$specific_event_attr] )*));
+    $pd.add_builtin_ty::<$name>();
+    add_builtins!($pd; $( $extra_arg ),*; $( $extra )*);
+  };
+  (
+    $pd:ident;
+    $( $extra_arg:ty ),*;
+  ) => {};
+}
+
 macro_rules! event {
   (
     $( #[$event_attr:meta] )*
     $event_name:ident: { $(
       $( #[$extra_attr:meta] )*
       $extra:ident: $extra_ty:ty
-    )* }
+    )* } -> ( $( $extra_arg:ty ),* )
     $(
       $( #[$specific_event_attr:meta] )*
       $name:ident: $str_name:literal {
@@ -193,10 +210,7 @@ macro_rules! event {
         }
       }
       pub fn add_builtins(pd: &mut Panda) {
-        $(
-          pd.def_callback($str_name, markdown!($( #[$specific_event_attr] )*));
-          pd.add_builtin_ty::<$name>();
-        )*
+        add_builtins!(pd; $( $extra_arg ),*; $( [ $str_name, $name, $( #[$specific_event_attr] )* ] )*);
       }
     }
     impl IntoPanda for $event_name {
@@ -218,7 +232,7 @@ event! {
   PlayerEvent: {
     #[serde(serialize_with = "to_json_ty::<_, JsonPlayer, _>")]
     player: Arc<Player>
-  }
+  } -> ()
 
   /// Called when a chat message is sent by a player.
   PlayerJoin: "player_join" {},
@@ -227,7 +241,7 @@ event! {
 event! {
   /// An event from the server to the plugin. This is very similar to
   /// [`PlayerEvent`], but there is no player specified with this event.
-  GlobalEvent: {}
+  GlobalEvent: {} -> ()
 
   /// Called every server tick.
   Tick: "tick" {},
@@ -246,7 +260,7 @@ event! {
   PlayerRequest: {
     #[serde(skip)]
     player: Arc<Player>
-  }
+  } -> (crate::plugin::types::event::PEventFlow)
 
   /// Called every time a client places a block.
   BlockPlace: "block_place" {
