@@ -113,7 +113,7 @@ impl PandaPlugin {
   }
   pub fn req(&self, name: &str, mut args: Vec<Var>) -> bool {
     let event = super::types::event::PEventFlow::new();
-    args.insert(0, event.clone().into());
+    args.push(event.clone().into());
     match &self.sl {
       Some(sl) => match sl.run_callback(name, args) {
         Ok(_) => {}
