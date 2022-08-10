@@ -24,12 +24,12 @@ fn handle_getblock(player, args) {
   player.send_message(c)
 }
 
-on player_join(player) {
+on player_join(event) {
   let it = Stack::new("stick")
   it.set_display_name(Chat::new("My Stick").color("green"))
   it.set_lore(["hello", "world"])
   it.set_unbreakable(true)
-  player.set_item(36, it)
+  event.player.set_item(36, it)
 }
 
 on interact(flow, event) {
