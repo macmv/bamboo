@@ -11,8 +11,12 @@ pub mod wasm;
 pub mod types;
 
 #[cfg(doctest)]
-mod types {
+pub mod types {
   use std::fmt;
+
+  pub mod event {
+    pub struct EventFlow;
+  }
 
   pub trait Callback: fmt::Debug + Send + Sync {
     #[cfg(feature = "panda_plugins")]
