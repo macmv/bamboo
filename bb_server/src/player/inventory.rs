@@ -523,17 +523,7 @@ impl PlayerInventory {
 
   /// Grabs up to a full stack of whatever item is at the given slot, and moves
   /// it to the cursor slot.
-  pub fn double_click(&mut self, slot: i32) {
-    if let Some(p) = self.player.upgrade() {
-      if p
-        .world()
-        .events()
-        .player_request(event::InvDoubleClick { player: p.clone(), slot })
-        .is_handled()
-      {
-        return;
-      }
-    }
+  pub fn double_click(&mut self, _slot: i32) {
     let mut held = self.replace(-999, Stack::empty());
     let start = if self.win().is_some() { 0 } else { 9 };
     let end = if let Some(win) = self.win() { win.size() + 36 } else { 45 };

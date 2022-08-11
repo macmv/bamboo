@@ -1,8 +1,9 @@
 use super::json::*;
 use crate::{block, item::Stack, math::Vec3, player::Player, plugin::IntoPanda};
 use bb_common::{
-  math::{ChunkPos, Pos},
+  math::{ChunkPos, FPos, Pos},
   net::sb::ClickWindow,
+  util::GameMode,
 };
 use panda::{
   define_ty,
@@ -237,6 +238,12 @@ event! {
   /// Called when a chat message is sent by a player.
   PlayerJoin: "player_join" {},
   PlayerLeave: "player_leave" {},
+  PlayerMove: "player_move" {
+    #[serde(skip)]
+    old_pos: FPos,
+    #[serde(skip)]
+    new_pos: FPos,
+  },
 }
 event! {
   /// An event from the server to the plugin. This is very similar to
@@ -262,13 +269,6 @@ event! {
     player: Arc<Player>
   } -> (crate::plugin::types::event::PEventFlow)
 
-  /// Called every time a client places a block.
-  BlockPlace: "block_place" {
-    #[serde(serialize_with = "to_json_ty::<_, JsonPos, _>")]
-    pos:   Pos,
-    #[serde(serialize_with = "to_json_ty::<_, JsonBlock, _>")]
-    block: block::TypeStore,
-  },
   /// Called every time a client breaks a block.
   BlockBreak: "block_break" {
     #[serde(serialize_with = "to_json_ty::<_, JsonPos, _>")]
@@ -276,36 +276,94 @@ event! {
     #[serde(serialize_with = "to_json_ty::<_, JsonBlock, _>")]
     block: block::TypeStore,
   },
+  /// Called every time a client places a block.
+  BlockPlace: "block_place" {
+    #[serde(serialize_with = "to_json_ty::<_, JsonPos, _>")]
+    pos:   Pos,
+    #[serde(serialize_with = "to_json_ty::<_, JsonBlock, _>")]
+    block: block::TypeStore,
+  },
+  /// Called when a client clicks on an item in an inventory.
   ClickWindowEvent: "click_window" {
     slot: i32,
     #[serde(skip)]
     mode: ClickWindow,
   },
+  /// Called when a player switches game mode.
+  ///
+  /// This can be from commands or another plugin switching the player's
+  /// game mode. Cancelling this will undo the game mode switch.
+  ChangeGameMode: "change_game_mode" {
+    /// The player's game mode before the switch.
+    #[serde(skip)]
+    old_mode: GameMode,
+    /// The player's game mode after the switch.
+    #[serde(skip)]
+    new_mode: GameMode,
+  },
+  /// Called when a client sends a chat message.
+  ///
+  /// Commands are parsed seperately, and will not trigger this event.
+  Chat: "chat" {
+    /// The entire contents of the chat message, as entered on the client.
+    text: String,
+  },
+  /// Called when a client sends a command.
+  ///
+  /// Generally, commands should be handled by the parser function given
+  /// when creating the command. However, if you need to cancel another
+  /// plugin's command, or override some functionality, this will work.
+  CommandSent: "command" {
+    /// The arguments to the command. This includes a literal at the start
+    /// which is the command name.
+    #[serde(skip)]
+    args: Vec<VarSend>,
+  },
+  /// Called when a player interacts with something.
+  ///
+  /// This could be a player right clicking or left clicking on a block
+  /// or an entity.
+  Interact: "interact" {
+    /// The slot the player interacted with.
+    slot: i32,
+  },
+  /// Called when a player drops an item.
+  ///
+  /// Cancelling this event will keep the item in their inventory.
+  ItemDrop: "item_drop" {
+    /// The stack that the player is dropping.
+    #[serde(skip)]
+    stack: Stack,
+    /// This will be `true` if the player dropped the entire stack.
+    /// If there is only one item in the stack, then this can either
+    /// be `true` or `false`.
+    full_stack: bool,
+  },
+  /// Called when a player is damaged.
+  ///
+  /// Cancelling this will cause the player to not be damaged at all.
   PlayerDamage: "player_damage" {
+    /// The amount of damage the player is being hit by. This is not
+    /// the amount of health they will lose, as armor and other effects
+    /// will decrease this amount.
     amount:    f32,
+    /// If true, then armor and other effects will decrease the amount
+    /// of damage. If false, the `amount` is the direct amount delt to
+    /// the player's health.
+    ///
+    /// This is mostly used for splash potitions of instant damage.
     blockable: bool,
+    /// The knockback vector. This will be added to the player's velocity
+    /// after damage is applied.
     #[serde(skip)]
     knockback: Vec3,
   },
-  Interact: "interact" {
-    slot: i32,
-  },
-  Chat: "chat" { text: String, },
-  ItemDrop: "item_drop" {
-    #[serde(skip)]
-    stack: Stack,
-    full_stack: bool,
-  },
+  /// Called when the server receives a packet from a client.
+  ///
+  /// Cancelling this packet will make it appear as if the packet were
+  /// never sent.
   ReceivePacket: "packet" {
     data: String,
-  },
-  ChangeGameMode: "change_game_mode" {},
-  InvDoubleClick: "double_click" {
-    slot: i32,
-  },
-  CommandSent: "command" {
-    #[serde(skip)]
-    args: Vec<VarSend>,
   },
 }
 

@@ -2,12 +2,13 @@ use super::{add_from, wrap, wrap_eq};
 use crate::math::Vec3;
 use bb_common::{
   math::{ChunkPos, FPos, Pos},
-  util::UUID,
+  util::{GameMode, UUID},
 };
 use bb_server_macros::define_ty;
 
 wrap_eq!(Pos, PPos);
 wrap_eq!(ChunkPos, PChunkPos);
+wrap!(GameMode, PGameMode);
 wrap!(FPos, PFPos);
 wrap!(Vec3, PVec3);
 wrap_eq!(UUID, PUUID);
@@ -338,3 +339,6 @@ impl PDuration {
   /// Returns a duration for the number of minutes specified.
   pub fn from_minutes(minutes: u32) -> Self { PDuration { ticks: minutes * 20 * 60 } }
 }
+
+#[define_ty(panda_path = "bamboo::util::GameMode")]
+impl PGameMode {}

@@ -624,7 +624,11 @@ impl Player {
     if self
       .world()
       .events()
-      .player_request(event::ChangeGameMode { player: self.clone() })
+      .player_request(event::ChangeGameMode {
+        player:   self.clone(),
+        old_mode: *self.game_mode.lock(),
+        new_mode: mode,
+      })
       .is_handled()
     {
       return;
