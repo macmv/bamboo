@@ -57,13 +57,16 @@ impl PStack {
   }
   /// Sets the given enchantment to the given level for this stack. If set to 0,
   /// the enchantment will be removed.
-  pub fn set_enchantment(&mut self, _enchantment: &str, level: u8) {
+  pub fn set_enchantment(&mut self, enchantment: &str, level: u8) -> Result<(), RuntimeError> {
+    let enchantment = crate::enchantment::Type::from_str(enchantment)
+      .map_err(|e| RuntimeError::Custom(e.to_string(), Span::call_site()))?;
     let enchantments = self.inner.data_mut().enchantments_mut();
     if let Some(level) = std::num::NonZeroU8::new(level) {
-      enchantments.insert(crate::enchantment::Type::Sharpness.id(), level);
+      enchantments.insert(enchantment.id(), level);
     } else {
-      enchantments.remove(&crate::enchantment::Type::Sharpness.id());
+      enchantments.remove(&enchantment.id());
     }
+    Ok(())
   }
 }
 

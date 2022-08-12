@@ -29,7 +29,7 @@ on player_join(event) {
   it.set_display_name(Chat::new("My Stick").color("green"))
   it.set_lore(["hello", "world"])
   it.set_unbreakable(true)
-  it.set_enchantment("sharpness", 3)
+  it.set_enchantment("knockback", 2)
   event.player.set_item(36, it)
 }
 
