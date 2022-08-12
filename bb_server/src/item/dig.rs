@@ -116,8 +116,8 @@ impl ToolGrade {
       ToolGrade::Wood => 2.0,
       ToolGrade::Stone => 4.0,
       ToolGrade::Iron => 6.0,
-      ToolGrade::Gold => 8.0,
-      ToolGrade::Diamond => 12.0,
+      ToolGrade::Diamond => 8.0,
+      ToolGrade::Gold => 12.0,
     }
   }
 }
