@@ -1,7 +1,7 @@
 //! Implements [`Stack::mining_speed`]
 
 use super::{Stack, Type};
-use crate::{block, block::Material};
+use crate::{block, block::Material, enchantment};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Tool {
@@ -126,7 +126,7 @@ impl Stack {
   /// Using the item type, the block being mined, and the efficiency of this
   /// item stack, this returns the base speed to mine a block of the given type.
   pub fn mining_speed(&self, block: &block::Data) -> f64 {
-    let speed = if !block.material.requires_tool() {
+    let mut speed = if !block.material.requires_tool() {
       // doesn't require tool
       1.0 / 30.0
     } else {
@@ -143,6 +143,10 @@ impl Stack {
         1.0 / 100.0
       }
     };
+    let efficiency = self.enchantment(enchantment::Type::Efficiency);
+    if efficiency != 0 {
+      speed += efficiency as f64 * efficiency as f64 + 1.0 / 30.0;
+    }
     speed / block.hardness as f64
   }
 }

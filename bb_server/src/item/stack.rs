@@ -1,4 +1,5 @@
 use super::Type;
+use crate::enchantment;
 use bb_common::util::{Item, ItemData};
 use bb_transfer::{
   MessageRead, MessageReader, MessageWrite, MessageWriter, ReadError, StructRead, StructReader,
@@ -100,6 +101,16 @@ impl Stack {
   pub fn with_data(mut self, data: ItemData) -> Self {
     self.data = data;
     self
+  }
+
+  /// Returns the level of enchantment, or `0` if the stack doesn't have that
+  /// enchantment.
+  pub fn enchantment(&self, ty: enchantment::Type) -> u8 {
+    if let Some(ench) = &self.data.enchantments {
+      ench.get(&ty.id()).map(|num| num.get()).unwrap_or(0)
+    } else {
+      0
+    }
   }
 
   pub fn to_item(&self) -> Item {
