@@ -1,8 +1,8 @@
 use crate::{packet::TypeConverter, Error, Result};
 use bb_common::{
   math::{ChunkPos, Pos},
-  nbt::{Tag, NBT},
-  util::{Buffer, BufferErrorKind, Item, ItemData, Mode, UUID},
+  nbt::{Compound, Tag, NBT},
+  util::{Buffer, BufferErrorKind, Chat, Item, ItemData, Mode, UUID},
   version::ProtocolVersion,
 };
 use std::{
@@ -49,10 +49,17 @@ fn item_from_nbt(nbt: &NBT, ver: ProtocolVersion, conv: &TypeConverter) -> ItemD
   if tag.inner.get("Unbreakable").map(|t| t.unwrap_byte() != 0) == Some(true) {
     data.unbreakable = true;
   }
+  if let Some(tag) = tag.inner.get("display") {
+    let tag = tag.unwrap_compound();
+    if let Some(lore) = tag.inner.get("Lore") {
+      data.display.lore =
+        lore.unwrap_list().iter().map(|msg| Chat::new(msg.unwrap_string())).collect();
+    }
+  }
   data
 }
 fn item_to_nbt(data: &ItemData, ver: ProtocolVersion, conv: &TypeConverter) -> NBT {
-  let mut tag = Tag::compound(&[]);
+  let mut tag = Compound::new();
   if let Some(ench) = &data.enchantments {
     if ver.maj().unwrap() <= 12 {
       let mut enchantments = vec![];
@@ -64,14 +71,22 @@ fn item_to_nbt(data: &ItemData, ver: ProtocolVersion, conv: &TypeConverter) -> N
           ]));
         }
       }
-      tag.unwrap_compound_mut().insert("ench", Tag::List(enchantments));
+      tag.insert("ench", Tag::List(enchantments));
     } else {
     }
   }
   if data.unbreakable {
-    tag.unwrap_compound_mut().insert("Unbreakable", true);
+    tag.insert("Unbreakable", true);
   }
-  NBT::new("", tag)
+  let display = tag.get_or_create_compound("display");
+  if !data.display.lore.is_empty() {
+    let mut lore = vec![];
+    for line in &data.display.lore {
+      lore.push(line.to_codes().into());
+    }
+    display.inner.insert("Lore".into(), Tag::List(lore));
+  }
+  NBT::new("", Tag::Compound(tag))
 }
 
 impl Packet {
