@@ -55,6 +55,9 @@ fn item_from_nbt(nbt: &NBT, ver: ProtocolVersion, conv: &TypeConverter) -> ItemD
       data.display.lore =
         lore.unwrap_list().iter().map(|msg| Chat::new(msg.unwrap_string())).collect();
     }
+    if let Some(name) = tag.inner.get("Name") {
+      data.display.name = Some(Chat::new(name.unwrap_string()));
+    }
   }
   data
 }
@@ -85,6 +88,9 @@ fn item_to_nbt(data: &ItemData, ver: ProtocolVersion, conv: &TypeConverter) -> N
       lore.push(line.to_codes().into());
     }
     display.inner.insert("Lore".into(), Tag::List(lore));
+  }
+  if let Some(name) = &data.display.name {
+    display.inner.insert("Name".into(), Tag::String(name.to_codes()));
   }
   NBT::new("", Tag::Compound(tag))
 }
