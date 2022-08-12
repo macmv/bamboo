@@ -3,7 +3,7 @@ use crate::{
   item,
   item::{Inventory, Stack, UI},
 };
-use bb_common::{net::sb::ClickWindow, util::chat};
+use bb_common::net::sb::ClickWindow;
 use bb_server_macros::define_ty;
 use panda::{
   parse::token::Span,
@@ -41,30 +41,29 @@ impl PStack {
 
   /// Sets the display name of this item stack.
   pub fn set_display_name(&mut self, name: Var) {
-    let msg = format!("{}r{}", chat::CODE_SEP, PChat::from_var(name).to_codes());
-    self.inner.nbt_mut().get_or_create_compound("display").insert("Name", msg);
+    self.inner.data_mut().display.name = Some(PChat::from_var(name));
   }
   /// Sets the lore for this item stack. These are lines of text that show up
   /// below the item name, when hovering over the item in an inventory.
   pub fn set_lore(&mut self, lines: Vec<Var>) {
-    self.inner.nbt_mut().get_or_create_compound("display").insert(
-      "Lore",
-      lines
-        .into_iter()
-        .map(|msg| format!("{}r{}", chat::CODE_SEP, PChat::from_var(msg).to_codes()))
-        .collect::<Vec<String>>(),
-    );
+    self.inner.data_mut().display.lore =
+      lines.into_iter().map(|msg| PChat::from_var(msg)).collect::<Vec<bb_common::util::Chat>>();
   }
 
   /// Sets the item to be unbreakable. If unbreakable is `true`, the item will
   /// not lose durability.
   pub fn set_unbreakable(&mut self, unbreakable: bool) {
-    self.inner.nbt_mut().insert("Unbreakable", unbreakable);
+    self.inner.data_mut().unbreakable = unbreakable;
   }
   /// Sets the given enchantment to the given level for this stack. If set to 0,
   /// the enchantment will be removed.
   pub fn set_enchantment(&mut self, _enchantment: &str, level: u8) {
-    self.inner.set_enchantment(crate::enchantment::Type::Sharpness, level);
+    let enchantments = self.inner.data_mut().enchantments_mut();
+    if let Some(level) = std::num::NonZeroU8::new(level) {
+      enchantments.insert(crate::enchantment::Type::Sharpness.id(), level);
+    } else {
+      enchantments.remove(&crate::enchantment::Type::Sharpness.id());
+    }
   }
 }
 

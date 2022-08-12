@@ -1,29 +1,23 @@
 use super::Type;
-use crate::enchantment;
-use bb_common::{
-  nbt::{Compound, Tag, NBT},
-  util::Item,
-};
+use bb_common::util::{Item, ItemData};
 use bb_transfer::{
   MessageRead, MessageReader, MessageWrite, MessageWriter, ReadError, StructRead, StructReader,
   WriteError,
 };
-use std::{collections::HashMap, num::NonZeroU8};
+use std::num::NonZeroU8;
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct Stack {
   item:   Type,
   amount: NonZeroU8,
-  nbt:    NBT,
-
-  enchantments: Option<HashMap<enchantment::Type, NonZeroU8>>,
+  data:   ItemData,
 }
 
 impl From<Item> for Stack {
   /// Creates an item stack from the given item. This is how we convert protocol
   /// items into server storage.
   fn from(it: Item) -> Self {
-    Stack::new(Type::from_u32(it.id() as u32)).with_amount(it.count()).with_nbt(it.nbt)
+    Stack::new(Type::from_u32(it.id() as u32)).with_amount(it.count()).with_data(it.data)
   }
 }
 
@@ -59,18 +53,9 @@ impl Stack {
   pub const EMPTY: Stack = Stack::empty();
   /// Creates an empty item stck. This has the type set to air, and the count
   /// set to 0.
-  pub const fn empty() -> Self {
-    Stack {
-      item:         Type::Air,
-      amount:       ONE,
-      nbt:          NBT::empty(),
-      enchantments: None,
-    }
-  }
+  pub const fn empty() -> Self { Stack { item: Type::Air, amount: ONE, data: ItemData::new() } }
   /// Creates an item stack containing a single item with the given type.
-  pub fn new(item: Type) -> Self {
-    Stack { item, amount: ONE, nbt: NBT::empty(), enchantments: None }
-  }
+  pub fn new(item: Type) -> Self { Stack { item, amount: ONE, data: ItemData::new() } }
 
   /// Sets the amount in self, and returns the modified self. If the stack is
   /// air, this will do nothing.
@@ -105,43 +90,25 @@ impl Stack {
   /// whenever the type is Air, or the count is zero.
   pub fn is_empty(&self) -> bool { self.item == Type::Air }
 
-  /// Returns a reference to the NBT for this item.
-  pub fn nbt(&self) -> &NBT { &self.nbt }
-  /// Returns a mutable reference to the NBT for this item.
-  pub fn nbt_mut(&mut self) -> &mut Compound {
-    if self.nbt.tag() == &Tag::End {
-      self.nbt = NBT::new("", Tag::Compound(Compound::new()));
-    }
-    self.nbt.compound_mut()
-  }
-  pub fn set_nbt(&mut self, nbt: NBT) { self.nbt = nbt; }
-  pub fn with_nbt(mut self, nbt: NBT) -> Self {
-    self.set_nbt(nbt);
+  /// Returns a reference to the data for this item. This stores the same
+  /// content as NBT, but in a version-agnostic manner.
+  pub fn data(&self) -> &ItemData { &self.data }
+  /// Returns a mutable reference to the data for this item. This stores the
+  /// same content as NBT, but in a version-agnostic manner.
+  pub fn data_mut(&mut self) -> &mut ItemData { &mut self.data }
+  /// Sets the item data to the given value.
+  pub fn with_data(mut self, data: ItemData) -> Self {
+    self.data = data;
     self
   }
 
-  pub fn set_enchantment(&mut self, enchantment: enchantment::Type, level: u8) {
-    let data = self.enchantments.get_or_insert_with(|| HashMap::new());
-    if let Some(level) = NonZeroU8::new(level) {
-      data.insert(enchantment, level);
-    } else {
-      data.remove(&enchantment);
-    }
-  }
-
   pub fn to_item(&self) -> Item {
-    let mut nbt = self.nbt.clone();
-    if let Some(ench) = &self.enchantments {
-      nbt.compound_mut().inner.entry("ench".into()).or_insert_with(|| Tag::List(vec![]));
-      for (_id, lvl) in ench {
-        let tag = Tag::compound(&[("id", Tag::Int(16)), ("lvl", Tag::Int(lvl.get().into()))]);
-        match nbt.compound_mut().inner.get_mut("ench").unwrap() {
-          Tag::List(list) => list.push(tag),
-          _ => {}
-        }
-      }
+    Item {
+      id:     self.item().id() as i32,
+      count:  self.amount(),
+      damage: 0,
+      data:   self.data.clone(),
     }
-    Item { id: self.item().id() as i32, count: self.amount(), damage: 0, nbt }
   }
 }
 
