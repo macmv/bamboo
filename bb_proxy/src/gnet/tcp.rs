@@ -9,6 +9,7 @@ use std::{
   collections::{HashMap, HashSet},
   convert::TryInto,
   hash::Hash,
+  num::NonZeroU8,
 };
 
 #[derive(Debug)]
@@ -32,9 +33,20 @@ macro_rules! add_reader {
   };
 }
 
-// TODO: ItemData from NBT
-fn item_from_nbt(_nbt: &NBT, _ver: ProtocolVersion, _conv: &TypeConverter) -> ItemData {
-  Default::default()
+fn item_from_nbt(nbt: &NBT, ver: ProtocolVersion, conv: &TypeConverter) -> ItemData {
+  let mut data = ItemData::new();
+  let tag = nbt.compound();
+  if let Some(tag) = tag.inner.get("ench") {
+    let enchantments = data.enchantments_mut();
+    for tag in tag.unwrap_list() {
+      let t = tag.unwrap_compound();
+      enchantments.insert(
+        conv.enchantment_to_new(t["id"].unwrap_int() as u32, ver.block()).unwrap(),
+        NonZeroU8::new(t["lvl"].unwrap_int() as u8).unwrap(),
+      );
+    }
+  }
+  data
 }
 fn item_to_nbt(data: &ItemData, ver: ProtocolVersion, conv: &TypeConverter) -> NBT {
   let mut tag = Tag::compound(&[]);
