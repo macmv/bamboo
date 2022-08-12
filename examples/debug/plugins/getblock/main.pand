@@ -30,11 +30,28 @@ on player_join(event) {
   it.set_lore(["hello", "world"])
   it.set_unbreakable(true)
   it.set_enchantment("knockback", 2)
-  event.player.set_item(37, it)
+  event.player.set_item(44, it)
 
-  it = Stack::new("diamond_shovel")
-  it.set_enchantment("efficiency", 5)
+  it = Stack::new("diamond_pickaxe")
   event.player.set_item(36, it)
+  it = Stack::new("diamond_pickaxe")
+  it.set_enchantment("efficiency", 1)
+  event.player.set_item(37, it)
+  it = Stack::new("diamond_pickaxe")
+  it.set_enchantment("efficiency", 2)
+  event.player.set_item(38, it)
+  it = Stack::new("diamond_pickaxe")
+  it.set_enchantment("efficiency", 3)
+  event.player.set_item(39, it)
+  it = Stack::new("diamond_pickaxe")
+  it.set_enchantment("efficiency", 4)
+  event.player.set_item(40, it)
+  it = Stack::new("diamond_pickaxe")
+  it.set_enchantment("efficiency", 5)
+  event.player.set_item(41, it)
+
+  it = Stack::new("obsidian").with_amount(64)
+  event.player.set_item(42, it)
 }
 
 on interact(event, flow) {
