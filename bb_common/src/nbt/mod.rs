@@ -8,7 +8,7 @@ mod serialize;
 pub use self::serde::{to_nbt, to_tag};
 
 use crate::util::BufferError;
-use std::{collections::HashMap, io, ops::Index, string::FromUtf8Error};
+use std::{collections::HashMap, fmt, io, ops::Index, string::FromUtf8Error};
 
 #[derive(Debug)]
 pub enum ParseError {
@@ -17,6 +17,15 @@ pub enum ParseError {
   IO(io::Error),
   BufferError(BufferError),
 }
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct WrongTag(Tag);
+
+impl fmt::Display for WrongTag {
+  fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result { write!(f, "wrong tag: {:?}", self.0) }
+}
+
+impl std::error::Error for WrongTag {}
 
 /// This is an nbt tag. It has a name, and any amount of data. This can be used
 /// to store item data, entity data, level data, and more.
@@ -27,7 +36,7 @@ pub struct NBT {
 }
 
 impl Default for NBT {
-  fn default() -> Self { NBT::new("", Tag::compound(&[])) }
+  fn default() -> Self { NBT::new("", Tag::new_compound(&[])) }
 }
 
 /// This is a single tag. It does not contain a name, but has the actual data
@@ -66,7 +75,8 @@ impl Compound {
       .inner
       .entry(key.into())
       .or_insert_with(|| Tag::Compound(Compound::new()))
-      .unwrap_compound_mut()
+      .compound_mut()
+      .unwrap()
   }
 
   pub fn contains_key(&self, key: impl AsRef<str>) -> bool { self.inner.contains_key(key.as_ref()) }
@@ -178,20 +188,20 @@ impl NBT {
 
   /// If this is a compound tag, this returns the inner data of the tag.
   /// Otherwise, this panics.
-  pub fn compound(&self) -> &Compound {
+  pub fn compound(&self) -> Option<&Compound> {
     if let Tag::Compound(inner) = &self.tag {
-      inner
+      Some(inner)
     } else {
-      panic!("called compound on non-compound type: {:?}", self);
+      None
     }
   }
   /// If this is a compound tag, this returns the inner data of the tag.
   /// Otherwise, this panics.
-  pub fn compound_mut(&mut self) -> &mut Compound {
+  pub fn compound_mut(&mut self) -> Option<&mut Compound> {
     if let Tag::Compound(inner) = &mut self.tag {
-      inner
+      Some(inner)
     } else {
-      panic!("called compound on non-compound type");
+      None
     }
   }
 
@@ -199,9 +209,20 @@ impl NBT {
   pub fn into_tag(self) -> Tag { self.tag }
 }
 
+macro_rules! getter {
+  ( $(: $conv:tt)? $name:ident -> $variant:ident ( $ty:ty ) ) => {
+    pub fn $name(&self) -> Result<$ty, WrongTag> {
+      match self {
+        Self::$variant(v) => Ok($($conv)? v),
+        _ => Err(WrongTag(self.clone())),
+      }
+    }
+  };
+}
+
 impl Tag {
   /// A simpler way to construct compound tags inline.
-  pub fn compound(value: &[(&str, Tag)]) -> Self {
+  pub fn new_compound(value: &[(&str, Tag)]) -> Self {
     let mut inner = HashMap::new();
     for (name, tag) in value {
       inner.insert(name.to_string(), tag.clone());
@@ -209,88 +230,22 @@ impl Tag {
     inner.into()
   }
 
-  #[track_caller]
-  pub fn unwrap_byte(&self) -> i8 {
+  getter!(:*byte -> Byte(i8));
+  getter!(:*short -> Short(i16));
+  getter!(:*int -> Int(i32));
+  getter!(:*long -> Long(i64));
+  getter!(:*float -> Float(f32));
+  getter!(:*double -> Double(f64));
+  getter!(string -> String(&str));
+  getter!(byte_arr -> ByteArr(&[u8]));
+  getter!(list -> List(&Vec<Tag>));
+  getter!(compound -> Compound(&Compound));
+  getter!(long_arr -> LongArray(&Vec<i64>));
+
+  pub fn compound_mut(&mut self) -> Result<&mut Compound, WrongTag> {
     match self {
-      Self::Byte(v) => *v,
-      _ => panic!("not a byte: {:?}", self),
-    }
-  }
-  #[track_caller]
-  pub fn unwrap_short(&self) -> i16 {
-    match self {
-      Self::Short(v) => *v,
-      _ => panic!("not a short: {:?}", self),
-    }
-  }
-  #[track_caller]
-  pub fn unwrap_int(&self) -> i32 {
-    match self {
-      Self::Int(v) => *v,
-      _ => panic!("not an int: {:?}", self),
-    }
-  }
-  #[track_caller]
-  pub fn unwrap_long(&self) -> i64 {
-    match self {
-      Self::Long(v) => *v,
-      _ => panic!("not a long: {:?}", self),
-    }
-  }
-  #[track_caller]
-  pub fn unwrap_float(&self) -> f32 {
-    match self {
-      Self::Float(v) => *v,
-      _ => panic!("not a float: {:?}", self),
-    }
-  }
-  #[track_caller]
-  pub fn unwrap_double(&self) -> f64 {
-    match self {
-      Self::Double(v) => *v,
-      _ => panic!("not a double: {:?}", self),
-    }
-  }
-  #[track_caller]
-  pub fn unwrap_string(&self) -> &str {
-    match self {
-      Self::String(v) => v,
-      _ => panic!("not a string: {:?}", self),
-    }
-  }
-  #[track_caller]
-  pub fn unwrap_byte_arr(&self) -> &[u8] {
-    match self {
-      Self::ByteArr(v) => v,
-      _ => panic!("not a string: {:?}", self),
-    }
-  }
-  #[track_caller]
-  pub fn unwrap_list(&self) -> &Vec<Tag> {
-    match self {
-      Self::List(v) => v,
-      _ => panic!("not a list: {:?}", self),
-    }
-  }
-  #[track_caller]
-  pub fn unwrap_compound(&self) -> &Compound {
-    match self {
-      Self::Compound(v) => v,
-      _ => panic!("not a compound: {:?}", self),
-    }
-  }
-  #[track_caller]
-  pub fn unwrap_compound_mut(&mut self) -> &mut Compound {
-    match self {
-      Self::Compound(v) => v,
-      _ => panic!("not a compound: {:?}", self),
-    }
-  }
-  #[track_caller]
-  pub fn unwrap_long_arr(&self) -> &Vec<i64> {
-    match self {
-      Self::LongArray(v) => v,
-      _ => panic!("not a long array: {:?}", self),
+      Self::Compound(v) => Ok(v),
+      _ => Err(WrongTag(self.clone())),
     }
   }
 }

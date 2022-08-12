@@ -40,7 +40,8 @@ pub fn chunk(chunk: ChunkWithPos, conv: &TypeConverter) -> Packet {
   }
 
   let heightmap = vec![];
-  let heightmap = NBT::new("", Tag::compound(&[("MOTION_BLOCKING", Tag::LongArray(heightmap))]));
+  let heightmap =
+    NBT::new("", Tag::new_compound(&[("MOTION_BLOCKING", Tag::LongArray(heightmap))]));
 
   let mut data = Vec::with_capacity(chunk_buf.len());
   let mut buf = Buffer::new(&mut data);

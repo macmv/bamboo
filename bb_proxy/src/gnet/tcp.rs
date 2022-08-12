@@ -1,7 +1,7 @@
 use crate::{packet::TypeConverter, Error, Result};
 use bb_common::{
   math::{ChunkPos, Pos},
-  nbt::{Compound, Tag, NBT},
+  nbt::{Compound, Tag, WrongTag, NBT},
   util::{Buffer, BufferErrorKind, Chat, Item, ItemData, Mode, UUID},
   version::ProtocolVersion,
 };
@@ -33,33 +33,41 @@ macro_rules! add_reader {
   };
 }
 
-fn item_from_nbt(nbt: &NBT, ver: ProtocolVersion, conv: &TypeConverter) -> ItemData {
+fn item_from_nbt(
+  nbt: &NBT,
+  ver: ProtocolVersion,
+  conv: &TypeConverter,
+) -> std::result::Result<ItemData, WrongTag> {
   let mut data = ItemData::new();
-  let tag = nbt.compound();
-  if let Some(tag) = tag.inner.get("ench") {
-    let enchantments = data.enchantments_mut();
-    for tag in tag.unwrap_list() {
-      let t = tag.unwrap_compound();
-      enchantments.insert(
-        conv.enchantment_to_new(t["id"].unwrap_int() as u32, ver.block()).unwrap(),
-        NonZeroU8::new(t["lvl"].unwrap_int() as u8).unwrap(),
-      );
+  if let Some(tag) = nbt.compound() {
+    if let Some(tag) = tag.inner.get("ench") {
+      let enchantments = data.enchantments_mut();
+      for tag in tag.list()? {
+        let t = tag.compound()?;
+        enchantments.insert(
+          conv.enchantment_to_new(t["id"].int()? as u32, ver.block()).unwrap(),
+          NonZeroU8::new(t["lvl"].int()? as u8).unwrap(),
+        );
+      }
+    }
+    if tag.inner.get("Unbreakable").map(|t| t.byte().map(|v| v != 0)) == Some(Ok(true)) {
+      data.unbreakable = true;
+    }
+    if let Some(tag) = tag.inner.get("display") {
+      let tag = tag.compound()?;
+      if let Some(lore) = tag.inner.get("Lore") {
+        data.display.lore = lore
+          .list()?
+          .iter()
+          .map(|msg| Ok(Chat::new(msg.string()?)))
+          .collect::<std::result::Result<_, _>>()?;
+      }
+      if let Some(name) = tag.inner.get("Name") {
+        data.display.name = Some(Chat::new(name.string()?));
+      }
     }
   }
-  if tag.inner.get("Unbreakable").map(|t| t.unwrap_byte() != 0) == Some(true) {
-    data.unbreakable = true;
-  }
-  if let Some(tag) = tag.inner.get("display") {
-    let tag = tag.unwrap_compound();
-    if let Some(lore) = tag.inner.get("Lore") {
-      data.display.lore =
-        lore.unwrap_list().iter().map(|msg| Chat::new(msg.unwrap_string())).collect();
-    }
-    if let Some(name) = tag.inner.get("Name") {
-      data.display.name = Some(Chat::new(name.unwrap_string()));
-    }
-  }
-  data
+  Ok(data)
 }
 fn item_to_nbt(data: &ItemData, ver: ProtocolVersion, conv: &TypeConverter) -> NBT {
   let mut tag = Compound::new();
@@ -68,7 +76,7 @@ fn item_to_nbt(data: &ItemData, ver: ProtocolVersion, conv: &TypeConverter) -> N
       let mut enchantments = vec![];
       for (new_id, level) in ench {
         if let Some(old_id) = conv.enchantment_to_old(*new_id, ver.block()) {
-          enchantments.push(Tag::compound(&[
+          enchantments.push(Tag::new_compound(&[
             ("id", Tag::Int(old_id as i32)),
             ("lvl", Tag::Int(level.get().into())),
           ]));
@@ -282,14 +290,14 @@ impl Packet {
         count,
         damage,
       );
-      item.data = item_from_nbt(&nbt, self.ver, conv);
+      item.data = item_from_nbt(&nbt, self.ver, conv).map_err(|e| self.err(e, "read_nbt"))?;
       item
     } else if self.read_bool()? {
       let id = self.read_varint()?;
       let count = self.read_u8()?;
       let nbt = self.read_nbt()?;
       let mut item = Item::new(conv.item_to_new(id as u32, 0, self.ver.block()) as i32, count, 0);
-      item.data = item_from_nbt(&nbt, self.ver, conv);
+      item.data = item_from_nbt(&nbt, self.ver, conv).map_err(|e| self.err(e, "read_nbt"))?;
       item
     } else {
       Item::new(0, 0, 0)
