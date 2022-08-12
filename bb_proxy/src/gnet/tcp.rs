@@ -46,6 +46,9 @@ fn item_from_nbt(nbt: &NBT, ver: ProtocolVersion, conv: &TypeConverter) -> ItemD
       );
     }
   }
+  if tag.inner.get("Unbreakable").map(|t| t.unwrap_byte() != 0) == Some(true) {
+    data.unbreakable = true;
+  }
   data
 }
 fn item_to_nbt(data: &ItemData, ver: ProtocolVersion, conv: &TypeConverter) -> NBT {
@@ -64,6 +67,9 @@ fn item_to_nbt(data: &ItemData, ver: ProtocolVersion, conv: &TypeConverter) -> N
       tag.unwrap_compound_mut().insert("ench", Tag::List(enchantments));
     } else {
     }
+  }
+  if data.unbreakable {
+    tag.unwrap_compound_mut().insert("Unbreakable", true);
   }
   NBT::new("", tag)
 }
