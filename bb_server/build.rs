@@ -8,5 +8,6 @@ fn main() {
   c.generate_items();
   c.generate_entities();
   c.generate_particles(Host);
+  c.generate_enchantments();
   c.generate_tags();
 }
