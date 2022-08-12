@@ -4,6 +4,7 @@ use std::{fmt, path::PathBuf};
 mod block;
 mod command;
 mod dl;
+mod enchantment;
 mod entity;
 pub mod gen;
 mod item;
@@ -61,6 +62,7 @@ impl Collector {
   pub fn generate_entities(&self) { entity::generate(self).unwrap(); }
   pub fn generate_protocol(&self) { protocol::generate(self).unwrap(); }
   pub fn generate_particles(&self, target: Target) { particle::generate(self, target).unwrap(); }
+  pub fn generate_enchantments(&self) { enchantment::generate(self).unwrap(); }
   pub fn generate_tags(&self) { tag::generate(self).unwrap(); }
 }
 
