@@ -9,12 +9,33 @@ use crate::block;
 use bb_common::{
   chunk::Section,
   math::{ChunkPos, SectionRelPos},
-  nbt::{Tag, NBT},
+  nbt::{Tag, WrongTag, NBT},
   util::ThreadPool,
 };
-use std::{fs, io, path::Path, str::FromStr, sync::Arc};
+use std::{fmt, fs, io, path::Path, str::FromStr, sync::Arc};
 
 use super::World;
+
+pub enum RegionError {
+  IO(io::Error),
+  WrongTag(WrongTag),
+}
+
+impl From<io::Error> for RegionError {
+  fn from(e: io::Error) -> Self { RegionError::IO(e) }
+}
+impl From<WrongTag> for RegionError {
+  fn from(e: WrongTag) -> Self { RegionError::WrongTag(e) }
+}
+
+impl fmt::Display for RegionError {
+  fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+    match self {
+      Self::IO(e) => write!(f, "{e}"),
+      Self::WrongTag(e) => write!(f, "{e}"),
+    }
+  }
+}
 
 fn parse_region_name(name: &str) -> Option<(i32, i32)> {
   let mut sections = name.split('.');
@@ -59,7 +80,7 @@ impl World {
     Ok(())
   }
 
-  fn load_region_file(&self, path: &Path) -> io::Result<()> {
+  fn load_region_file(&self, path: &Path) -> Result<(), RegionError> {
     let data = fs::read(path)?;
     let header = &data[..8192];
     // `offset` is an offset into the file, not an offset into the chunks table.
@@ -90,28 +111,28 @@ impl World {
       // 1.12.2 uses lowercase names.
       // 1.18 uses a mix of both (wtf???)
       let is_capital_names;
-      let nbt = if nbt.unwrap_compound().contains_key("Level") {
+      let nbt = if nbt.compound()?.contains_key("Level") {
         is_capital_names = true;
-        &nbt.unwrap_compound()["Level"]
+        &nbt.compound()?["Level"]
       } else {
         is_capital_names = false;
         &nbt
       };
-      let level = nbt.unwrap_compound();
+      let level = nbt.compound()?;
       let sections_key = if is_capital_names { "Sections" } else { "sections" };
       if !level.contains_key(sections_key) {
         continue;
       }
 
       // the chunk_x and chunk_z values are absolute.
-      let chunk_x = level["xPos"].unwrap_int();
-      let chunk_z = level["zPos"].unwrap_int();
+      let chunk_x = level["xPos"].int()?;
+      let chunk_z = level["zPos"].int()?;
       let pos = ChunkPos::new(chunk_x, chunk_z);
 
       self.chunk(pos, |mut chunk| {
-        for s in level[sections_key].unwrap_list() {
-          let section = s.unwrap_compound();
-          let y = section["Y"].unwrap_byte();
+        for s in level[sections_key].list()? {
+          let section = s.compound()?;
+          let y = section["Y"].byte()?;
           if y < 0 {
             // TODO: Handle negative chunks
             continue;
@@ -120,8 +141,8 @@ impl World {
           if is_capital_names {
             if section.contains_key("Blocks") {
               // is 1.8
-              let blocks = section["Blocks"].unwrap_byte_arr();
-              let data = section["Data"].unwrap_byte_arr();
+              let blocks = section["Blocks"].byte_arr()?;
+              let data = section["Data"].byte_arr()?;
               let section = chunk.inner_mut().section_mut(y);
               for y in 0..16 {
                 for z in 0..16 {
@@ -142,48 +163,49 @@ impl World {
                 continue;
               }
               let block_states =
-                section["BlockStates"].unwrap_long_arr().iter().map(|v| *v as u64).collect();
+                section["BlockStates"].long_arr()?.iter().map(|v| *v as u64).collect();
               let palette: Vec<_> = section["Palette"]
-                .unwrap_list()
+                .list()?
                 .iter()
                 .map(|it| parse_state(self.block_converter(), it))
-                .collect();
+                .collect::<Result<_, _>>()?;
               let section = chunk.inner_mut().section_mut(y);
               section.set_from(palette, block_states);
             }
           } else {
             // is 1.12+
-            let block_states = section["block_states"].unwrap_compound();
+            let block_states = section["block_states"].compound()?;
             let palette: Vec<_> = block_states["palette"]
-              .unwrap_list()
+              .list()?
               .iter()
               .map(|it| parse_state(self.block_converter(), it))
-              .collect();
+              .collect::<Result<_, _>>()?;
             // The section will be full of one type
             let section = chunk.inner_mut().section_mut(y);
             if !block_states.contains_key("data") {
               assert_eq!(palette.len(), 1);
               section.fill(SectionRelPos::new(0, 0, 0), SectionRelPos::new(15, 15, 15), palette[0]);
             } else {
-              let data = block_states["data"].unwrap_long_arr().iter().map(|v| *v as u64).collect();
+              let data = block_states["data"].long_arr()?.iter().map(|v| *v as u64).collect();
               section.set_from(palette, data);
             }
           }
         }
-      });
+        Ok::<(), RegionError>(())
+      })?;
     }
     Ok(())
   }
 }
 
-fn parse_state(conv: &block::TypeConverter, item: &Tag) -> u32 {
-  let item = item.unwrap_compound();
-  let name = item["Name"].unwrap_string();
+fn parse_state(conv: &block::TypeConverter, item: &Tag) -> Result<u32, RegionError> {
+  let item = item.compound()?;
+  let name = item["Name"].string()?;
   let name = name.strip_prefix("minecraft:").unwrap();
   let mut ty = conv.get(block::Kind::from_str(name).unwrap()).default_type();
 
   if item.contains_key("Properties") {
-    let props = item["Properties"].unwrap_compound();
+    let props = item["Properties"].compound()?;
     for (key, val) in props {
       match val {
         Tag::String(v) if v == "true" => ty.set_prop(key, true),
@@ -195,5 +217,5 @@ fn parse_state(conv: &block::TypeConverter, item: &Tag) -> u32 {
     }
   }
 
-  ty.id()
+  Ok(ty.id())
 }

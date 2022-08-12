@@ -2,24 +2,36 @@ use super::CountedChunk;
 use crate::block;
 use bb_common::{
   math::{ChunkPos, Pos},
-  nbt::{ParseError, NBT},
+  nbt::{ParseError, WrongTag, NBT},
   version::BlockVersion,
 };
 use std::{collections::HashMap, fs, fs::File, io::Read, str::FromStr};
+
+pub enum SchematicError {
+  Parse(ParseError),
+  WrongTag(WrongTag),
+}
+
+impl From<ParseError> for SchematicError {
+  fn from(e: ParseError) -> Self { SchematicError::Parse(e) }
+}
+impl From<WrongTag> for SchematicError {
+  fn from(e: WrongTag) -> Self { SchematicError::WrongTag(e) }
+}
 
 pub fn load_from_file(
   chunks: &mut HashMap<ChunkPos, CountedChunk>,
   path: &str,
   types: &block::TypeConverter,
   new_func: impl Fn() -> CountedChunk + Copy,
-) -> Result<(), ParseError> {
+) -> Result<(), SchematicError> {
   let mut f = File::open(path).expect("no file found");
   let metadata = fs::metadata(path).expect("unable to read metadata");
   let mut buf = vec![0; metadata.len() as usize];
   f.read_exact(&mut buf).expect("file was too large");
 
   let tag = NBT::deserialize_file(buf)?;
-  let compound = tag.compound();
+  let compound = tag.compound().unwrap();
   // dbg!(&compound.keys());
   //
   // dbg!(&compound["Width"]);
@@ -42,25 +54,22 @@ pub fn load_from_file(
   // dbg!(&compound["Data"]);
   // dbg!(&compound["Blocks"]);
 
-  let width: usize = compound["Width"].unwrap_short().try_into().unwrap();
-  let length: usize = compound["Length"].unwrap_short().try_into().unwrap();
-  let height: usize = compound["Height"].unwrap_short().try_into().unwrap();
+  let width: usize = compound["Width"].short()?.try_into().unwrap();
+  let length: usize = compound["Length"].short()?.try_into().unwrap();
+  let height: usize = compound["Height"].short()?.try_into().unwrap();
 
-  let material = tag.compound()["Materials"].unwrap_string();
+  let material = tag.compound().unwrap()["Materials"].string()?;
   match material {
     "Alpha" => {
       if compound.contains_key("SchematicaMapping") {
         let names: HashMap<i16, String> = compound["SchematicaMapping"]
-          .unwrap_compound()
+          .compound()?
           .iter()
           .map(|(name, val)| {
-            (
-              val.unwrap_short(),
-              convert_alpha_name(name.strip_prefix("minecraft:").unwrap().into()),
-            )
+            Ok((val.short()?, convert_alpha_name(name.strip_prefix("minecraft:").unwrap().into())))
           })
-          .collect();
-        let blocks = tag.compound()["Blocks"].unwrap_byte_arr().to_vec();
+          .collect::<Result<_, WrongTag>>()?;
+        let blocks = tag.compound().unwrap()["Blocks"].byte_arr()?.to_vec();
         // TODO: `data` should be used! It should look something like this:
         // ```
         // let name = names[blocks[i]];
@@ -88,7 +97,7 @@ pub fn load_from_file(
         }
       } else {
         // World edit
-        let blocks = tag.compound()["Blocks"].unwrap_byte_arr().to_vec();
+        let blocks = tag.compound().unwrap()["Blocks"].byte_arr()?.to_vec();
         // let data = tag.compound()["Data"].unwrap_byte_arr().to_vec();
         for y in 0..height {
           for z in 0..length {
