@@ -1,7 +1,7 @@
 use crate::{packet::TypeConverter, Error, Result};
 use bb_common::{
   math::{ChunkPos, Pos},
-  nbt::NBT,
+  nbt::{Tag, NBT},
   util::{Buffer, BufferErrorKind, Item, ItemData, Mode, UUID},
   version::ProtocolVersion,
 };
@@ -32,11 +32,28 @@ macro_rules! add_reader {
   };
 }
 
-fn item_from_nbt(nbt: &NBT, ver: ProtocolVersion, conv: &TypeConverter) -> ItemData {
+// TODO: ItemData from NBT
+fn item_from_nbt(_nbt: &NBT, _ver: ProtocolVersion, _conv: &TypeConverter) -> ItemData {
   Default::default()
 }
 fn item_to_nbt(data: &ItemData, ver: ProtocolVersion, conv: &TypeConverter) -> NBT {
-  Default::default()
+  let mut tag = Tag::compound(&[]);
+  if let Some(ench) = &data.enchantments {
+    if ver.maj().unwrap() <= 12 {
+      let mut enchantments = vec![];
+      for (new_id, level) in ench {
+        if let Some(old_id) = conv.enchantment_to_old(*new_id, ver.block()) {
+          enchantments.push(Tag::compound(&[
+            ("id", Tag::Int(old_id as i32)),
+            ("lvl", Tag::Int(level.get().into())),
+          ]));
+        }
+      }
+      tag.unwrap_compound_mut().insert("ench", Tag::List(enchantments));
+    } else {
+    }
+  }
+  NBT::new("", tag)
 }
 
 impl Packet {
