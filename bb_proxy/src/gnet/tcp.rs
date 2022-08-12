@@ -2,7 +2,7 @@ use crate::{packet::TypeConverter, Error, Result};
 use bb_common::{
   math::{ChunkPos, Pos},
   nbt::NBT,
-  util::{Buffer, BufferErrorKind, Item, Mode, UUID},
+  util::{Buffer, BufferErrorKind, Item, ItemData, Mode, UUID},
   version::ProtocolVersion,
 };
 use std::{
@@ -30,6 +30,13 @@ macro_rules! add_reader {
       self.buf.$name().map_err(|e| self.err(e, stringify!($name)))
     }
   };
+}
+
+fn item_from_nbt(nbt: &NBT, ver: ProtocolVersion, conv: &TypeConverter) -> ItemData {
+  Default::default()
+}
+fn item_to_nbt(data: &ItemData, ver: ProtocolVersion, conv: &TypeConverter) -> NBT {
+  Default::default()
 }
 
 impl Packet {
@@ -214,25 +221,28 @@ impl Packet {
           };
         }
       }
-      Item::new(
+      let mut item = Item::new(
         conv.item_to_new(id as u32, damage as u32, self.ver.block()) as i32,
         count,
         damage,
-        nbt,
-      )
+      );
+      item.data = item_from_nbt(&nbt, self.ver, conv);
+      item
     } else if self.read_bool()? {
       let id = self.read_varint()?;
       let count = self.read_u8()?;
       let nbt = self.read_nbt()?;
-      Item::new(conv.item_to_new(id as u32, 0, self.ver.block()) as i32, count, 0, nbt)
+      let mut item = Item::new(conv.item_to_new(id as u32, 0, self.ver.block()) as i32, count, 0);
+      item.data = item_from_nbt(&nbt, self.ver, conv);
+      item
     } else {
-      Item::new(0, 0, 0, NBT::empty())
+      Item::new(0, 0, 0)
     })
   }
 
   /// This writes the given item to the internal buffer (format depends on the
   /// version).
-  pub fn write_item(&mut self, item: &Item) {
+  pub fn write_item(&mut self, item: &Item, conv: &TypeConverter) {
     if self.ver < ProtocolVersion::V1_13 {
       if item.count() == 0 {
         self.write_i16(-1);
@@ -241,7 +251,7 @@ impl Packet {
         if item.id() != -1 {
           self.write_u8(item.count());
           self.write_i16(item.damage);
-          NBT::serialize_buf(&item.nbt, &mut self.buf);
+          NBT::serialize_buf(&item_to_nbt(&item.data, self.ver, conv), &mut self.buf);
         }
       }
     } else {
@@ -250,7 +260,7 @@ impl Packet {
       if present {
         self.write_varint(item.id());
         self.write_u8(item.count());
-        NBT::serialize_buf(&item.nbt, &mut self.buf);
+        NBT::serialize_buf(&item_to_nbt(&item.data, self.ver, conv), &mut self.buf);
       }
     }
   }

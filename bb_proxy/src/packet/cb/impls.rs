@@ -300,11 +300,11 @@ to_tcp!(EntityEquipment => (mut self, conn, ver) {
       EquipmentSlot::Armor(ArmorSlot::Chestplate) => 4,
       EquipmentSlot::Armor(ArmorSlot::Helmet) => 5,
     });
-    buf.write_item(&self.item);
+    buf.write_item(&self.item, conn.conv());
     gpacket!(EntityEquipment V16 { id: self.eid, unknown: buf.serialize() })
   } else if ver >= ProtocolVersion::V1_9_4 {
     let mut buf = tcp::Packet::from_buf_id(vec![], 0, ver);
-    buf.write_item(&self.item);
+    buf.write_item(&self.item, conn.conv());
     gpacket!(EntityEquipment V9 {
       entity_id:      self.eid,
       equipment_slot: match self.slot {
@@ -319,7 +319,7 @@ to_tcp!(EntityEquipment => (mut self, conn, ver) {
     })
   } else {
     let mut buf = tcp::Packet::from_buf_id(vec![], 0, ver);
-    buf.write_item(&self.item);
+    buf.write_item(&self.item, conn.conv());
     gpacket!(EntityEquipment V8 {
       entity_id:      self.eid,
       equipment_slot: match self.slot {
@@ -1422,16 +1422,16 @@ to_tcp!(WindowItems => (self, conn, ver) {
     buf.write_varint(self.items.len() as i32);
     for mut it in self.items {
       conn.conv().item(&mut it, ver.block());
-      buf.write_item(&it);
+      buf.write_item(&it, conn.conv());
     }
-    buf.write_item(&self.held);
+    buf.write_item(&self.held, conn.conv());
     gpacket!(WindowItems V17 { sync_id: self.wid.into(), revision: 0, unknown: buf.serialize() })
   } else {
     let mut buf = tcp::Packet::from_buf_id(vec![], 0, ver);
     buf.write_i16(self.items.len() as i16);
     for mut it in self.items {
       conn.conv().item(&mut it, ver.block());
-      buf.write_item(&it);
+      buf.write_item(&it, conn.conv());
     }
     gpacket!(WindowItems V8 { window_id: self.wid.into(), unknown: buf.serialize(), v_2: 0 })
   }
@@ -1439,7 +1439,7 @@ to_tcp!(WindowItems => (self, conn, ver) {
 to_tcp!(WindowItem => (mut self, conn, ver) {
   let mut buf = tcp::Packet::from_buf_id(vec![], 0, ver);
   conn.conv().item(&mut self.item, ver.block());
-  buf.write_item(&self.item);
+  buf.write_item(&self.item, conn.conv());
   if ver >= ProtocolVersion::V1_17_1 {
     gpacket!(SetSlot V17 {
       sync_id: self.wid.into(),
