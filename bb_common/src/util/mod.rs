@@ -15,7 +15,7 @@ use serde::de::{self, Deserialize, Deserializer, Unexpected, Visitor};
 use std::{error::Error, fmt, io::Write, num::ParseIntError, str::FromStr};
 
 pub use buffer::{Buffer, BufferError, BufferErrorKind, Mode};
-pub use item::Item;
+pub use item::{Item, ItemData, ItemDisplay};
 
 pub use num_cpus::get as num_cpus;
 
