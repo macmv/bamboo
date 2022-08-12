@@ -61,6 +61,11 @@ impl PStack {
   pub fn set_unbreakable(&mut self, unbreakable: bool) {
     self.inner.nbt_mut().insert("Unbreakable", unbreakable);
   }
+  /// Sets the given enchantment to the given level for this stack. If set to 0,
+  /// the enchantment will be removed.
+  pub fn set_enchantment(&mut self, _enchantment: &str, level: u8) {
+    self.inner.set_enchantment(crate::enchantment::Type::Sharpness, level);
+  }
 }
 
 /// An inventory UI.

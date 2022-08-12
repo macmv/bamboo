@@ -12,9 +12,9 @@ pub fn generate(def: Vec<(Version, EnchantmentDef)>, dir: &Path) -> io::Result<(
 
 pub fn generate_ty(def: &EnchantmentDef) -> String {
   let mut gen = CodeGen::new();
-  gen.write_line("/// Auto generated particle kind. This is directly generated");
+  gen.write_line("/// Auto generated enchantment kind. This is directly generated");
   gen.write_line("/// from bamboo data.");
-  gen.write_line("#[derive(Debug, Clone, PartialEq)]");
+  gen.write_line("#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]");
   gen.write("pub enum Type ");
   gen.write_block(|gen| {
     for b in &def.enchantments {

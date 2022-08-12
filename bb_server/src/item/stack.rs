@@ -1,4 +1,5 @@
 use super::Type;
+use crate::enchantment;
 use bb_common::{
   nbt::{Compound, Tag, NBT},
   util::Item,
@@ -7,13 +8,15 @@ use bb_transfer::{
   MessageRead, MessageReader, MessageWrite, MessageWriter, ReadError, StructRead, StructReader,
   WriteError,
 };
-use std::num::NonZeroU8;
+use std::{collections::HashMap, num::NonZeroU8};
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct Stack {
   item:   Type,
   amount: NonZeroU8,
   nbt:    NBT,
+
+  enchantments: Option<HashMap<enchantment::Type, NonZeroU8>>,
 }
 
 impl From<Item> for Stack {
@@ -56,9 +59,18 @@ impl Stack {
   pub const EMPTY: Stack = Stack::empty();
   /// Creates an empty item stck. This has the type set to air, and the count
   /// set to 0.
-  pub const fn empty() -> Self { Stack { item: Type::Air, amount: ONE, nbt: NBT::empty() } }
+  pub const fn empty() -> Self {
+    Stack {
+      item:         Type::Air,
+      amount:       ONE,
+      nbt:          NBT::empty(),
+      enchantments: None,
+    }
+  }
   /// Creates an item stack containing a single item with the given type.
-  pub fn new(item: Type) -> Self { Stack { item, amount: ONE, nbt: NBT::empty() } }
+  pub fn new(item: Type) -> Self {
+    Stack { item, amount: ONE, nbt: NBT::empty(), enchantments: None }
+  }
 
   /// Sets the amount in self, and returns the modified self. If the stack is
   /// air, this will do nothing.
@@ -108,13 +120,28 @@ impl Stack {
     self
   }
 
-  pub fn to_item(&self) -> Item {
-    Item {
-      id:     self.item().id() as i32,
-      count:  self.amount(),
-      damage: 0,
-      nbt:    self.nbt.clone(),
+  pub fn set_enchantment(&mut self, enchantment: enchantment::Type, level: u8) {
+    let data = self.enchantments.get_or_insert_with(|| HashMap::new());
+    if let Some(level) = NonZeroU8::new(level) {
+      data.insert(enchantment, level);
+    } else {
+      data.remove(&enchantment);
     }
+  }
+
+  pub fn to_item(&self) -> Item {
+    let mut nbt = self.nbt.clone();
+    if let Some(ench) = &self.enchantments {
+      nbt.compound_mut().inner.entry("ench".into()).or_insert_with(|| Tag::List(vec![]));
+      for (_id, lvl) in ench {
+        let tag = Tag::compound(&[("id", Tag::Int(16)), ("lvl", Tag::Int(lvl.get().into()))]);
+        match nbt.compound_mut().inner.get_mut("ench").unwrap() {
+          Tag::List(list) => list.push(tag),
+          _ => {}
+        }
+      }
+    }
+    Item { id: self.item().id() as i32, count: self.amount(), damage: 0, nbt }
   }
 }
 
