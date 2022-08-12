@@ -40,6 +40,8 @@ pub enum ValidReadError {
   /// when calling [`must_read`](StructReader::must_read). This function should
   /// be avoided, as it doesn't allow for any forwards compatibility.
   MissingField(u64),
+  /// We read a `NonZero*`, and got zero.
+  InvalidNonZero,
 }
 
 #[derive(Debug)]
@@ -80,6 +82,9 @@ impl fmt::Display for ValidReadError {
       }
       Self::MissingField(field) => {
         write!(f, "missing struct field {field}")
+      }
+      Self::InvalidNonZero => {
+        write!(f, "while reading a nonzero number, got zero")
       }
     }
   }

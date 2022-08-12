@@ -44,6 +44,30 @@ num_impl!(i64, read_i64, write_i64);
 num_impl!(f32, read_f32, write_f32);
 num_impl!(f64, read_f64, write_f64);
 
+macro_rules! num_nonzero_impl {
+  ($ty:ty, $read:ident, $write:ident) => {
+    impl MessageRead<'_> for $ty {
+      fn read(m: &mut MessageReader) -> Result<Self, ReadError> {
+        m.$read().map(|num| <$ty>::new(num))?.ok_or(crate::ValidReadError::InvalidNonZero.into())
+      }
+    }
+    impl MessageWrite for $ty {
+      fn write<W: Write>(&self, m: &mut MessageWriter<W>) -> Result<(), WriteError> {
+        m.$write(self.get())
+      }
+    }
+  };
+}
+
+num_nonzero_impl!(std::num::NonZeroU8, read_u8, write_u8);
+num_nonzero_impl!(std::num::NonZeroI8, read_i8, write_i8);
+num_nonzero_impl!(std::num::NonZeroU16, read_u16, write_u16);
+num_nonzero_impl!(std::num::NonZeroI16, read_i16, write_i16);
+num_nonzero_impl!(std::num::NonZeroU32, read_u32, write_u32);
+num_nonzero_impl!(std::num::NonZeroI32, read_i32, write_i32);
+num_nonzero_impl!(std::num::NonZeroU64, read_u64, write_u64);
+num_nonzero_impl!(std::num::NonZeroI64, read_i64, write_i64);
+
 impl<'a> MessageRead<'a> for &'a str {
   fn read(m: &mut MessageReader<'a>) -> Result<Self, ReadError> { m.read_str() }
 }
