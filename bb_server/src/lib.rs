@@ -12,6 +12,7 @@ use std::cell::RefCell;
 pub mod block;
 pub mod command;
 pub mod data;
+pub mod enchantment;
 pub mod entity;
 pub mod event;
 pub mod item;

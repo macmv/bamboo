@@ -25,7 +25,7 @@ pub fn generate_ty(def: &EnchantmentDef) -> String {
   gen.write_line("");
   gen.write("impl FromStr for Type ");
   gen.write_block(|gen| {
-    gen.write_line("type Err = InvalidParticle;");
+    gen.write_line("type Err = InvalidEnchantment;");
     gen.write("fn from_str(s: &str) -> Result<Self, Self::Err> ");
     gen.write_block(|gen| {
       gen.write_line("Ok(match s {");
@@ -37,7 +37,7 @@ pub fn generate_ty(def: &EnchantmentDef) -> String {
         gen.write(&b.name.to_case(Case::Pascal));
         gen.write_line(",");
       }
-      gen.write_line("_ => return Err(InvalidParticle(s.into())),");
+      gen.write_line("_ => return Err(InvalidEnchantment(s.into())),");
       gen.remove_indent();
       gen.write_line("})");
     });
