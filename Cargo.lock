@@ -1693,7 +1693,7 @@ dependencies = [
 [[package]]
 name = "panda"
 version = "0.1.0"
-source = "git+https://gitlab.com/macmv/panda#0b16e9b9c6028d48386603e40a1086d1a7b62b75"
+source = "git+https://gitlab.com/macmv/panda#34619c0f95faf96d8bc2f9dc2a2aee91dfa03f9b"
 dependencies = [
  "panda_derive",
  "panda_docs",
@@ -1704,7 +1704,7 @@ dependencies = [
 [[package]]
 name = "panda_derive"
 version = "0.1.0"
-source = "git+https://gitlab.com/macmv/panda#0b16e9b9c6028d48386603e40a1086d1a7b62b75"
+source = "git+https://gitlab.com/macmv/panda#34619c0f95faf96d8bc2f9dc2a2aee91dfa03f9b"
 dependencies = [
  "proc-macro-error",
  "proc-macro2",
@@ -1715,7 +1715,7 @@ dependencies = [
 [[package]]
 name = "panda_docs"
 version = "0.1.0"
-source = "git+https://gitlab.com/macmv/panda#0b16e9b9c6028d48386603e40a1086d1a7b62b75"
+source = "git+https://gitlab.com/macmv/panda#34619c0f95faf96d8bc2f9dc2a2aee91dfa03f9b"
 dependencies = [
  "html-builder",
 ]
@@ -1723,7 +1723,7 @@ dependencies = [
 [[package]]
 name = "panda_parse"
 version = "0.1.0"
-source = "git+https://gitlab.com/macmv/panda#0b16e9b9c6028d48386603e40a1086d1a7b62b75"
+source = "git+https://gitlab.com/macmv/panda#34619c0f95faf96d8bc2f9dc2a2aee91dfa03f9b"
 dependencies = [
  "ansi_term",
  "smallvec",
@@ -1733,7 +1733,7 @@ dependencies = [
 [[package]]
 name = "panda_runtime"
 version = "0.1.0"
-source = "git+https://gitlab.com/macmv/panda#0b16e9b9c6028d48386603e40a1086d1a7b62b75"
+source = "git+https://gitlab.com/macmv/panda#34619c0f95faf96d8bc2f9dc2a2aee91dfa03f9b"
 dependencies = [
  "instant",
  "panda_derive",
