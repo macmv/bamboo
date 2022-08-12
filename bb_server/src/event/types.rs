@@ -100,6 +100,7 @@ macro_rules! define_event {
     pub struct $name {
       $(
         $( #[$attr] )*
+        #[serde(skip)]
         pub $field: $ty,
       )*
     }
@@ -107,6 +108,7 @@ macro_rules! define_event {
     #[define_ty(prefix = "bamboo::event")]
     impl $name {
       $(
+        $( #[$attr] )*
         #[field]
         fn $field(&self) -> <$ty as IntoPanda>::Panda {
           self.$field.clone().into_panda()
@@ -231,7 +233,7 @@ event! {
   /// An event from the server to the plugin. There is also a player listed with
   /// this event.
   PlayerEvent: {
-    #[serde(serialize_with = "to_json_ty::<_, JsonPlayer, _>")]
+    // #[serde(serialize_with = "to_json_ty::<_, JsonPlayer, _>")]
     player: Arc<Player>
   } -> ()
 
@@ -239,9 +241,7 @@ event! {
   PlayerJoin: "player_join" {},
   PlayerLeave: "player_leave" {},
   PlayerMove: "player_move" {
-    #[serde(skip)]
     old_pos: FPos,
-    #[serde(skip)]
     new_pos: FPos,
   },
 }
@@ -256,7 +256,6 @@ event! {
     generator: String,
     // #[serde(skip)]
     // chunk:     Arc<Mutex<MultiChunk>>,
-    #[serde(skip)]
     pos:       ChunkPos,
   },
 }
@@ -265,28 +264,29 @@ event! {
   /// A request from the server to the plugin. The server should expect a reply
   /// within a certain timeout from the plugin.
   PlayerRequest: {
-    #[serde(skip)]
+    /// The player for this event.
     player: Arc<Player>
   } -> (crate::plugin::types::event::PEventFlow)
 
   /// Called every time a client breaks a block.
   BlockBreak: "block_break" {
-    #[serde(serialize_with = "to_json_ty::<_, JsonPos, _>")]
+    /// The position of the block being broken.
     pos:   Pos,
-    #[serde(serialize_with = "to_json_ty::<_, JsonBlock, _>")]
+    /// The type of the block being broken.
     block: block::TypeStore,
   },
   /// Called every time a client places a block.
   BlockPlace: "block_place" {
-    #[serde(serialize_with = "to_json_ty::<_, JsonPos, _>")]
+    /// The position of the block being placed.
     pos:   Pos,
-    #[serde(serialize_with = "to_json_ty::<_, JsonBlock, _>")]
+    /// The type of the block being placed.
     block: block::TypeStore,
   },
   /// Called when a client clicks on an item in an inventory.
   ClickWindowEvent: "click_window" {
+    /// The inventory slot of the click.
     slot: i32,
-    #[serde(skip)]
+    /// The type of window click.
     mode: ClickWindow,
   },
   /// Called when a player switches game mode.
@@ -295,10 +295,8 @@ event! {
   /// game mode. Cancelling this will undo the game mode switch.
   ChangeGameMode: "change_game_mode" {
     /// The player's game mode before the switch.
-    #[serde(skip)]
     old_mode: GameMode,
     /// The player's game mode after the switch.
-    #[serde(skip)]
     new_mode: GameMode,
   },
   /// Called when a client sends a chat message.
@@ -316,7 +314,6 @@ event! {
   CommandSent: "command" {
     /// The arguments to the command. This includes a literal at the start
     /// which is the command name.
-    #[serde(skip)]
     args: Vec<VarSend>,
   },
   /// Called when a player interacts with something.
@@ -325,6 +322,8 @@ event! {
   /// or an entity.
   Interact: "interact" {
     /// The slot the player interacted with.
+    ///
+    /// TODO: Fix.
     slot: i32,
   },
   /// Called when a player drops an item.
@@ -332,7 +331,6 @@ event! {
   /// Cancelling this event will keep the item in their inventory.
   ItemDrop: "item_drop" {
     /// The stack that the player is dropping.
-    #[serde(skip)]
     stack: Stack,
     /// This will be `true` if the player dropped the entire stack.
     /// If there is only one item in the stack, then this can either
@@ -355,7 +353,6 @@ event! {
     blockable: bool,
     /// The knockback vector. This will be added to the player's velocity
     /// after damage is applied.
-    #[serde(skip)]
     knockback: Vec3,
   },
   /// Called when the server receives a packet from a client.
