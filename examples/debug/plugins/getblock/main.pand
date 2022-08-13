@@ -3,14 +3,18 @@ use bamboo::{
   chat::Chat,
   command::Command,
   world::gen,
-  util::Pos,
+  util::{FPos, Pos},
   item::{Stack, UI},
 }
 
-fn init() {
+on init() {
   bamboo::info("hello world")
 
   let c = Command::new("getblock", handle_getblock)
+  c.add_arg_block_pos("pos")
+  @bamboo.add_command(c)
+
+  c = Command::new("tp", handle_tp)
   c.add_arg_block_pos("pos")
   @bamboo.add_command(c)
 }
@@ -22,6 +26,12 @@ fn handle_getblock(player, args) {
   c.add("block: ")
   c.add(player.world().get_block(args[1]).to_s())
   player.send_message(c)
+}
+
+fn handle_tp(player, args) {
+  // args[0] is `tp`
+  // args[1] is the position
+  player.teleport(FPos::new(args[1].x().to_f(), args[1].y().to_f(), args[1].z().to_f()))
 }
 
 on player_join(event) {

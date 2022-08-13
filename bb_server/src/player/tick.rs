@@ -36,36 +36,49 @@ impl Player {
       look_changed = pos.yaw != pos.next_yaw || pos.pitch != pos.next_pitch;
       pos_changed = pos.curr != pos.next;
 
-      // This uses the position from the previous tick to find the velocity on that
-      // tick, and finds what we expected the client to move on that tick.
-      let expected_move = Vec3::from(pos.curr - pos.prev);
-      // This uses the new position to find the velocity that the client moved this
-      // tick.
-      let actual_move = Vec3::from(pos.next - pos.curr);
-      // The player's acceleration.
-      let accel = expected_move - actual_move;
+      let mut teleported = false;
+      if let Some(tp) = pos.teleport_to {
+        if pos.next == tp {
+          pos.prev = pos.curr;
+          pos.curr = pos.next;
+          pos.teleport_to = None;
+          teleported = true;
+        }
+      }
 
-      // In 1.8, on the client, I never saw this go above 1.5. On the server, this
-      // goes above 2 every now and then.
-      let flying = self.flying();
-      let accel_len = accel.len();
-      if (!flying && accel_len > 3.0) || (flying && accel_len > f64::from(self.fly_speed()) * 5.0) {
-        warn!(
-          "{} moved too fast (pos: {} {} {})",
-          self.username, pos.curr.x, pos.curr.y, pos.curr.z
-        );
-        invalid_move = Some(cb::packet::SetPosLook {
-          pos:             pos.curr,
-          yaw:             pos.yaw,
-          pitch:           pos.pitch,
-          flags:           0,
-          teleport_id:     0,
-          should_dismount: false,
-        });
-        pos.prev = pos.curr;
-      } else {
-        pos.prev = pos.curr;
-        pos.curr = pos.next;
+      if !teleported {
+        // This uses the position from the previous tick to find the velocity on that
+        // tick, and finds what we expected the client to move on that tick.
+        let expected_move = Vec3::from(pos.curr - pos.prev);
+        // This uses the new position to find the velocity that the client moved this
+        // tick.
+        let actual_move = Vec3::from(pos.next - pos.curr);
+        // The player's acceleration.
+        let accel = expected_move - actual_move;
+
+        // In 1.8, on the client, I never saw this go above 1.5. On the server, this
+        // goes above 2 every now and then.
+        let flying = self.flying();
+        let accel_len = accel.len();
+        if (!flying && accel_len > 3.0) || (flying && accel_len > f64::from(self.fly_speed()) * 5.0)
+        {
+          warn!(
+            "{} moved too fast (pos: {} {} {})",
+            self.username, pos.curr.x, pos.curr.y, pos.curr.z
+          );
+          invalid_move = Some(cb::packet::SetPosLook {
+            pos:             pos.curr,
+            yaw:             pos.yaw,
+            pitch:           pos.pitch,
+            flags:           0,
+            teleport_id:     0,
+            should_dismount: false,
+          });
+          pos.prev = pos.curr;
+        } else {
+          pos.prev = pos.curr;
+          pos.curr = pos.next;
+        }
       }
 
       pos.yaw = pos.next_yaw;

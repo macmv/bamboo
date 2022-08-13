@@ -59,6 +59,9 @@ pub(crate) struct PlayerPosition {
   // is received. It is also used to set x,y,z on the next tick.
   pub(crate) next: FPos,
 
+  // Set after the player teleports. Only cleared once the player moves to this position.
+  teleport_to: Option<FPos>,
+
   vel: Vec3,
 
   yaw:   f32,
@@ -212,6 +215,7 @@ impl Player {
         curr:         pos,
         prev:         pos,
         next:         pos,
+        teleport_to:  None,
         vel:          Vec3::new(0.0, 0.0, 0.0),
         yaw:          0.0,
         pitch:        0.0,
@@ -303,9 +307,7 @@ impl Player {
       should_dismount: true,
     });
     let mut p = self.pos.lock();
-    p.next_yaw = yaw;
-    p.next_pitch = pitch;
-    p.next = pos;
+    p.teleport_to = Some(pos);
   }
 
   /// Sends the player a chat message.
