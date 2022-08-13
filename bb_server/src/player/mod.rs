@@ -857,11 +857,19 @@ impl Player {
       self.send_vel(vel);
     }
 
-    let pos = self.pos();
-    for p in self.world().players().iter().in_view(self.pos().chunk()) {
-      if p.id() != self.id() {
-        p.send(cb::packet::Animation { eid: self.eid(), kind: cb::AnimationKind::Damage });
-      }
+    self.send(cb::packet::EntityStatus { eid: 1, status: 2 });
+    self.send_to_in_view(cb::packet::PlaySound {
+      name:     "game.player.hurt".into(),
+      category: cb::SoundCategory::Players,
+      pos:      self.pos(),
+      volume:   1.0,
+      pitch:    0.5,
+    });
+
+    /*
+    for p in self.world().players().iter().in_view(self.pos().chunk()).not(self.id()) {
+      // p.send(cb::packet::Animation { eid: self.eid(), kind:
+      // cb::AnimationKind::Damage });
       // - player.attack.weak is failing a hit (hitting an invuln player)
       // - player.attack.strong is hitting a shield
       // - player.attack.sweep is played with player.hurt (and optionally
@@ -871,14 +879,9 @@ impl Player {
       // - player.hurt is the base hurt sound
       //
       // Note that the proxy will convert all of these to the 1.8 names
-      p.send(cb::packet::PlaySound {
-        name: "entity.player.hurt".into(),
-        category: cb::SoundCategory::Players,
-        pos,
-        volume: 1.0,
-        pitch: 1.0,
-      });
+      p.send();
     }
+    */
 
     health.hit_delay = 10;
 
