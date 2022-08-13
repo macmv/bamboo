@@ -686,8 +686,14 @@ impl Player {
   /// When `self` receives this, it will modify the player's velocity. This is
   /// mostly used for knockback.
   fn send_vel(&self, vel: Vec3) {
-    self.send_all_in_view(cb::packet::EntityVelocity {
+    self.send_to_in_view(cb::packet::EntityVelocity {
       eid: self.eid(),
+      x:   vel.fixed_x(),
+      y:   vel.fixed_y(),
+      z:   vel.fixed_z(),
+    });
+    self.send(cb::packet::EntityVelocity {
+      eid: 1,
       x:   vel.fixed_x(),
       y:   vel.fixed_y(),
       z:   vel.fixed_z(),
