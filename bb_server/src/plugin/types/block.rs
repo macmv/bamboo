@@ -41,4 +41,6 @@ impl PBlockKind {
 impl PBlockType {
   /// Returns the name of this block. This is the same name passed to `from_s`.
   pub fn to_s(&self) -> String { self.inner.to_string() }
+  /// Returns the kind of this block.
+  pub fn kind(&self) -> PBlockKind { self.inner.kind().into() }
 }
