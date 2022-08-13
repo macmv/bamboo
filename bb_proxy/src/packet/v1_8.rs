@@ -11,7 +11,9 @@ pub fn chunk(chunk: ChunkWithPos, conv: &TypeConverter) -> Packet {
   let biomes = chunk.full;
   let skylight = true; // Assume overworld
 
-  let total_sections = chunk.sections.iter().flatten().count();
+  // Don't send unload chunks when we really want an empty chunk.
+  let actual_sections = chunk.sections.iter().flatten().count();
+  let total_sections = if actual_sections == 0 { 1 } else { actual_sections };
 
   let data_len = total_sections * 16 * 16 * 16 * 2 // Chunk data
     + (total_sections * 16 * 16 * 16 / 2) // Block light
@@ -22,23 +24,33 @@ pub fn chunk(chunk: ChunkWithPos, conv: &TypeConverter) -> Packet {
   let mut chunk_data = vec![0; data_len + 2 + 5];
   let mut chunk_buf = Buffer::new(&mut chunk_data);
 
-  chunk_buf.write_u16(chunk.old_bit_map());
+  if actual_sections == 0 {
+    // Only the first bit set.
+    chunk_buf.write_u16(1);
+  } else {
+    chunk_buf.write_u16(chunk.old_bit_map());
+  }
   chunk_buf.write_varint(data_len.try_into().unwrap());
   let prefix_len = chunk_buf.index();
 
-  for s in chunk.sections.iter().flatten() {
-    for y in 0..16 {
-      for z in 0..16 {
-        for x in 0..16 {
-          let b = s.get_block(SectionRelPos::new(x, y, z));
-          // Theres a lot of air. Profiling says this helps a lot (~20% improvement for a
-          // superflat world).
-          if b == 0 {
-            chunk_buf.skip(2);
-            continue;
+  if actual_sections == 0 {
+    // We just want 4096 0_u16s for this section.
+    chunk_buf.skip(16 * 16 * 16 * 2);
+  } else {
+    for s in chunk.sections.iter().flatten() {
+      for y in 0..16 {
+        for z in 0..16 {
+          for x in 0..16 {
+            let b = s.get_block(SectionRelPos::new(x, y, z));
+            // Theres a lot of air. Profiling says this helps a lot (~20% improvement for a
+            // superflat world).
+            if b == 0 {
+              chunk_buf.skip(2);
+              continue;
+            }
+            let old_id = conv.block_to_old(b, BlockVersion::V1_8);
+            chunk_buf.write_buf(&(old_id as u16).to_le_bytes());
           }
-          let old_id = conv.block_to_old(b, BlockVersion::V1_8);
-          chunk_buf.write_buf(&(old_id as u16).to_le_bytes());
         }
       }
     }
