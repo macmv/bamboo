@@ -39,8 +39,7 @@ impl Player {
       let mut teleported = false;
       if let Some(tp) = pos.teleport_to {
         if pos.next.dist_squared(tp) < 1.0 {
-          // Set both to next, so we don't get a moved to fast warning next tick.
-          pos.prev = pos.next;
+          pos.prev = pos.curr;
           pos.curr = pos.next;
           pos.teleport_to = None;
           teleported = true;
