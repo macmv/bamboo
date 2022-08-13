@@ -80,6 +80,7 @@ impl Player {
           pos.curr = pos.next;
         }
       }
+      pos.vel = (pos.curr - pos.prev).into();
 
       pos.yaw = pos.next_yaw;
       // We want to keep yaw within -180..=180
