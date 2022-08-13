@@ -348,12 +348,18 @@ impl Player {
     // Silently ignore dig packets outside the world.
     if let Ok(kind) = self.world.get_kind(pos) {
       let mut ppos = self.pos.lock();
-      ppos.dig_progress = Some(DigProgress::new(pos, kind));
-      // For some reason, I end up being around a tick behind the client when they
-      // send a finish dig packet. This is probably because they expect me to handle
-      // the finish dig in the tick loop, not in a network thread. Regardless, this
-      // fixes the problem.
-      self.update_dig_progress(&mut ppos);
+      let speed = self.mining_speed(ppos.curr.block(), kind);
+      if speed >= 1.0 {
+        // Insta-break the block
+        drop(ppos); // drop the player position lock, so this can clear ppos.dig_progress
+        let _ = self.world.break_block(pos);
+      } else {
+        let mut progress = DigProgress::new(pos, kind);
+        // The client does this twice on the first tick, as they need to get mining
+        // speed to check for insta-break.
+        progress.progress += speed;
+        ppos.dig_progress = Some(progress);
+      }
     }
   }
   pub(crate) fn cancel_digging(&self) { self.pos.lock().dig_progress = None; }
@@ -403,42 +409,44 @@ impl Player {
     }
   }
 
-  /// Returns true if a dig finish needs to be sent. This is an edge case, for
-  /// after the client sends a DigStatus::Finish packet too early.
+  fn mining_speed(&self, curr_pos: Pos, kind: block::Kind) -> f64 {
+    // Handles block/item type, and efficiency levels
+    let mut speed = self
+      .lock_inventory()
+      .main_hand()
+      .mining_speed(self.world.world_manager().block_converter().get(kind));
+
+    // TODO: Multiply by haste:
+    // if self.has_haste() {
+    //   speed *= 1.0 + (haste_level + 1) * 0.2;
+    // }
+
+    // TODO: Multiply by mining fatigue:
+    // match mining_fatigue {
+    //   0 => speed * 0.3,
+    //   1 => speed * 0.09,
+    //   2 => speed * 0.0027,
+    //   _ => speed * 0.00081,
+    // }
+
+    // If we are standing in water, digging is 5 times slower.
+    if self.world.get_kind(curr_pos) == Ok(block::Kind::Water) {
+      speed *= 0.2;
+    }
+
+    // TODO: Multiply by on ground:
+    // if pos.on_ground {
+    //   speed *= 0.2;
+    // }
+    // We can't really trust the client for this, as they can say they're on
+    // ground at any point. This means we need to do a bit of physics on the
+    // player to figure out if they are on ground.
+    speed
+  }
+
   fn update_dig_progress(&self, pos: &mut PlayerPosition) {
     if let Some(p) = &mut pos.dig_progress {
-      // Handles block/item type, and efficiency levels
-      let mut speed = self
-        .lock_inventory()
-        .main_hand()
-        .mining_speed(self.world.world_manager().block_converter().get(p.kind));
-
-      // TODO: Multiply by haste:
-      // if self.has_haste() {
-      //   speed *= 1.0 + (haste_level + 1) * 0.2;
-      // }
-
-      // TODO: Multiply by mining fatigue:
-      // match mining_fatigue {
-      //   0 => speed * 0.3,
-      //   1 => speed * 0.09,
-      //   2 => speed * 0.0027,
-      //   _ => speed * 0.00081,
-      // }
-
-      if self.world.get_kind(pos.curr.block()) == Ok(block::Kind::Water) {
-        speed *= 0.2;
-      }
-
-      // TODO: Multiply by on ground:
-      // if pos.on_ground {
-      //   speed *= 0.2;
-      // }
-      // We can't really trust the client for this, as they can say they're on ground
-      // at any point. This means we need to do a bit of physics on the player to
-      // figure out if they are on ground.
-
-      p.progress += speed;
+      p.progress += self.mining_speed(pos.curr.block(), p.kind);
     }
   }
 
