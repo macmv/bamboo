@@ -62,6 +62,8 @@ on player_join(event) {
 
   it = Stack::new("obsidian").with_amount(64)
   event.player.set_item(42, it)
+
+  @bamboo.default_world().set_block(Pos::new(0, 63, 0), block::Kind::from_s("stone"))
 }
 
 on interact(event, flow) {

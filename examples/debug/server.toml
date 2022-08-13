@@ -1,3 +1,4 @@
 [world]
-debug = true
+debug = false
+void = true
 save = false
