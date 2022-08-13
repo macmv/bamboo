@@ -88,6 +88,12 @@ pub struct WrappedInventory<const N: usize> {
   pub(crate) offset:  u32,
 }
 
+impl<const N: usize> From<Inventory<N>> for WrappedInventory<N> {
+  fn from(inv: Inventory<N>) -> WrappedInventory<N> {
+    WrappedInventory { inv, viewers: HashMap::new(), wid: 1, offset: 0 }
+  }
+}
+
 impl<const N: usize> SingleInventory<N> {
   pub fn new(conn: ConnSender, wid: u8, offset: u32) -> Self {
     SingleInventory { inv: Inventory::new(), conn, wid, offset }

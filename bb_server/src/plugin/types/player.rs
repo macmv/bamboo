@@ -52,7 +52,12 @@ impl crate::plugin::IntoPanda for Arc<Player> {
 }
 
 #[define_ty(panda_path = "bamboo::player::Window")]
-impl PWindow {}
+impl PWindow {
+  pub fn new(inv: &super::item::PInventory) -> Self {
+    Window::Generic9x3(crate::player::window::GenericWindow { inv: inv.inner.clone().into() })
+      .into()
+  }
+}
 
 /// A Player. This struct is for online players. There is currently no way to
 /// lookup an offline player.
