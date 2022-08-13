@@ -38,7 +38,7 @@ impl Player {
 
       let mut teleported = false;
       if let Some(tp) = pos.teleport_to {
-        if pos.next == tp {
+        if pos.next.dist_squared(tp) < 1.0 {
           pos.prev = pos.curr;
           pos.curr = pos.next;
           pos.teleport_to = None;
