@@ -220,6 +220,7 @@ pub(crate) fn handle(wm: &Arc<WorldManager>, mut player: &Arc<Player>, p: sb::Pa
             .is_handled()
           {
             player.sync_block_at(pos);
+            inv.sync_main_hand();
             return;
           }
 

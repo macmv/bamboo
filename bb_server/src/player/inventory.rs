@@ -107,6 +107,8 @@ impl PlayerInventory {
       Hand::Off => self.off_hand(),
     }
   }
+  /// Syncs the slot in the main hand of the player.
+  pub fn sync_main_hand(&self) { self.sync(self.selected_index as i32 + 36); }
 
   /// Returns the currently selected hotbar index. Can be used with
   /// [`hotbar`](Self::hotbar) and `get_raw` to get the item player is holding.
