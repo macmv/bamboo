@@ -249,6 +249,19 @@ impl Player {
 
   /// Returns the player's health.
   pub fn health(&self) -> f32 { self.lock_health().health }
+  /// Sets the player's health.
+  pub fn set_health(&self, new_health: f32) {
+    let mut health = self.health.lock();
+    let food = self.food.lock();
+
+    health.health = new_health;
+
+    self.send(cb::packet::UpdateHealth {
+      health:     health.health,
+      food:       food.food,
+      saturation: food.saturation,
+    });
+  }
 
   /// Returns the version that this client connected with. This will only change
   /// if the player disconnects and logs in with another client.

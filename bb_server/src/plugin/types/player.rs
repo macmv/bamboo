@@ -140,6 +140,19 @@ impl PPlayer {
   /// TODO: What to return if they aren't online?
   pub fn pos(&self) -> Result<PFPos> { Ok(self.inner()?.pos().into()) }
 
+  /// Returns the player's current health.
+  ///
+  /// Returns an error if the player is offline.
+  pub fn health(&self) -> Result<f32> { Ok(self.inner()?.health()) }
+  /// Sets the player's health to the given amount.
+  ///
+  /// Does nothing if the player is offline.
+  pub fn set_health(&self, health: f32) {
+    if let Ok(i) = self.inner() {
+      i.set_health(health)
+    }
+  }
+
   /// Sends the given chat message to a player. This accepts exactly one
   /// argument, which can be any type. If it is a `PChat`, then it will be
   /// formatted correctly. Anything else will show up with debug formatting.
