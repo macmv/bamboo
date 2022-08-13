@@ -1,5 +1,5 @@
 use super::{DigProgress, Player, PlayerPosition};
-use crate::{block, event, math::Vec3};
+use crate::{block, event, event::EventFlow, math::Vec3};
 use bb_common::{
   math::{ChunkPos, Pos},
   net::cb,
@@ -344,7 +344,7 @@ impl Player {
     }
   }
 
-  pub(crate) fn start_digging(&self, pos: Pos) {
+  pub(crate) fn start_digging(self: &Arc<Self>, pos: Pos) {
     // Silently ignore dig packets outside the world.
     if let Ok(kind) = self.world.get_kind(pos) {
       let mut ppos = self.pos.lock();
@@ -352,7 +352,11 @@ impl Player {
       if speed >= 1.0 {
         // Insta-break the block
         drop(ppos); // drop the player position lock, so this can clear ppos.dig_progress
-        let _ = self.world.break_block(pos);
+        if self.block_break_event(pos).is_handled() {
+          self.sync_block_at(pos);
+        } else {
+          let _ = self.world.break_block(pos);
+        }
       } else {
         let mut progress = DigProgress::new(pos, kind);
         // The client does this twice on the first tick, as they need to get mining
@@ -388,16 +392,7 @@ impl Player {
       }
     }
     if finished {
-      if self
-        .world()
-        .events()
-        .player_request(event::BlockBreak {
-          player: self.clone(),
-          pos,
-          block: self.world().get_block(pos).unwrap().ty().to_store(),
-        })
-        .is_continue()
-      {
+      if self.block_break_event(pos).is_continue() {
         if !self.world().break_block(pos).unwrap() {
           self.sync_block_at(pos);
         }
@@ -407,6 +402,13 @@ impl Player {
     } else if sync {
       self.sync_block_at(pos);
     }
+  }
+  pub(crate) fn block_break_event(self: &Arc<Player>, pos: Pos) -> EventFlow {
+    self.world().events().player_request(event::BlockBreak {
+      player: self.clone(),
+      pos,
+      block: self.world().get_block(pos).unwrap().ty().to_store(),
+    })
   }
 
   fn mining_speed(&self, curr_pos: Pos, kind: block::Kind) -> f64 {

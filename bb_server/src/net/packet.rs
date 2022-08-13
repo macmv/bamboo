@@ -105,6 +105,10 @@ pub(crate) fn handle(wm: &Arc<WorldManager>, mut player: &Arc<Player>, p: sb::Pa
                 }
               }
             }
+            if player.block_break_event(pos).is_handled() {
+              player.sync_block_at(pos);
+              return;
+            }
             // Make sure to sync this block if the world is locked, or if the position is
             // invalid.
             if matches!(player.world().set_kind(pos, block::Kind::Air), Ok(false) | Err(_)) {

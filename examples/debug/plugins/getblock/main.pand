@@ -85,3 +85,6 @@ on change_game_mode(event, flow) {
 on block_place(event, flow) {
   flow.cancel()
 }
+on block_break(event, flow) {
+  flow.cancel()
+}
