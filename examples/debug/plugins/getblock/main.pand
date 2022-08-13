@@ -81,3 +81,7 @@ on command(event, flow) {
 on change_game_mode(event, flow) {
   event.player.send_message("HHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHh")
 }
+
+on block_place(event, flow) {
+  flow.cancel()
+}

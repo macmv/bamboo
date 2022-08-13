@@ -277,8 +277,12 @@ event! {
   },
   /// Called every time a client places a block.
   BlockPlace: "block_place" {
-    /// The position of the block being placed.
-    pos:   Pos,
+    /// The position of the block that was clicked on.
+    clicked_pos: Pos,
+    /// The position of the block being placed. This will be one block away from
+    /// the clicked block, or the same as the clicked block for blocks that are
+    /// replacable (such as tall grass).
+    placed_pos:   Pos,
     /// The type of the block being placed.
     block: block::TypeStore,
   },

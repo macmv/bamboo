@@ -201,10 +201,26 @@ pub(crate) fn handle(wm: &Arc<WorldManager>, mut player: &Arc<Player>, p: sb::Pa
           let placing_data = wm.block_converter().get(kind);
           let ty = wm.block_behaviors().call(kind, |b| b.place(placing_data, pos, click));
 
+          let clicked_pos = pos;
           let looking_data = wm.block_converter().get(looking_at.kind());
           if !looking_data.material.is_replaceable() {
             player.sync_block_at(pos);
             pos += face;
+          }
+
+          if player
+            .world()
+            .events()
+            .player_request(event::BlockPlace {
+              player: player.clone(),
+              clicked_pos,
+              placed_pos: pos,
+              block: ty.to_store(),
+            })
+            .is_handled()
+          {
+            player.sync_block_at(pos);
+            return;
           }
 
           match player.world().set_block(pos, ty) {
@@ -218,12 +234,6 @@ pub(crate) fn handle(wm: &Arc<WorldManager>, mut player: &Arc<Player>, p: sb::Pa
                 }
               }
               drop(inv);
-              // TODO: Handle plugins cancelling this place.
-              player.world().events().player_request(event::BlockPlace {
-                player: player.clone(),
-                pos,
-                block: ty.to_store(),
-              });
             }
             Err(e) => {
               player.send_hotbar(Chat::new(e.to_string()));
