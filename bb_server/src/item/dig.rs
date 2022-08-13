@@ -126,27 +126,35 @@ impl Stack {
   /// Using the item type, the block being mined, and the efficiency of this
   /// item stack, this returns the base speed to mine a block of the given type.
   pub fn mining_speed(&self, block: &block::Data) -> f64 {
-    let mut speed = if !block.material.requires_tool() {
-      // doesn't require tool
-      1.0 / 30.0
-    } else {
+    // If we can harvest the block, this is 30. Otherwise, this is 100.
+    let div;
+    let mut speed = if block.material.requires_tool() {
       // requires tool
       if let Some(tool) = self.item().tool() {
         if tool.does_mine(block) {
-          tool.grade.base_speed() / 30.0
+          div = 30.0;
+          tool.grade.base_speed()
         } else {
           // the tool we have isn't correct
-          1.0 / 100.0
+          div = 100.0;
+          1.0
         }
       } else {
         // we don't have a tool
-        1.0 / 100.0
+        div = 100.0;
+        1.0
       }
+    } else {
+      // doesn't require tool
+      div = 30.0;
+      1.0
     };
+
     let efficiency = self.enchantment(enchantment::Type::Efficiency);
     if efficiency != 0 {
-      speed += efficiency as f64 * efficiency as f64 + 1.0 / 30.0;
+      speed += (efficiency as i32 * efficiency as i32 + 1) as f64;
     }
-    speed / block.hardness as f64
+
+    speed / block.hardness as f64 / div
   }
 }
