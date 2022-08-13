@@ -430,6 +430,7 @@ impl PandaPlugin {
     sl.add_builtin_ty::<command::PCommand>();
     sl.add_builtin_ty::<player::PPlayer>();
     sl.add_builtin_ty::<player::PTeam>();
+    sl.add_builtin_ty::<player::PWindow>();
     sl.add_builtin_ty::<world::PWorld>();
     sl.add_builtin_ty::<world::gen::PBiome>();
   }
