@@ -26,7 +26,7 @@ mod serialize;
 #[cfg(feature = "wasm_plugins")]
 mod ffi;
 
-pub use enums::{Arg, Parser, StringType};
+pub use enums::{Arg, EntitySelector, Parser, StringType};
 use parse::{ChildError, Span};
 pub use parse::{ErrorKind, ParseError, Tokenizer};
 pub use sender::{CommandSender, ErrorFormat};
@@ -95,7 +95,12 @@ impl CommandTree {
         .events()
         .player_request(event::CommandSent {
           player: player.clone(),
-          args:   args.iter().map(|arg| types::command::sl_from_arg(arg.clone()).into()).collect(),
+          args:   args
+            .iter()
+            .map(|arg| {
+              types::command::sl_from_arg(arg.clone(), player.world(), Some(player)).into()
+            })
+            .collect(),
         })
         .is_handled()
       {

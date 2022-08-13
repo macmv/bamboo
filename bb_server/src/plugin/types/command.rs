@@ -4,12 +4,16 @@ use super::{
   util::{PChunkPos, PPos},
   Callback as BCallback,
 };
-use crate::command::{Arg, Command, Parser};
+use crate::{
+  command::{Arg, Command, EntitySelector, Parser},
+  player::Player,
+  world::World,
+};
 use bb_server_macros::define_ty;
-use panda::runtime::Callback;
+use panda::runtime::{Callback, Var};
 use std::{
   fmt,
-  sync::{Arc, Mutex},
+  sync::{Arc, Mutex, Weak},
 };
 
 #[cfg_attr(feature = "python_plugins", ::pyo3::pyclass)]
@@ -17,6 +21,13 @@ pub struct PCommand {
   pub(super) inner:    Arc<Mutex<Command>>,
   pub(super) callback: Option<Box<dyn BCallback>>,
   pub(super) idx:      Vec<usize>,
+}
+#[cfg_attr(feature = "python_plugins", ::pyo3::pyclass)]
+#[derive(Clone)]
+pub struct PEntitySelector {
+  pub(super) inner:  EntitySelector,
+  pub(super) runner: Option<Weak<Player>>,
+  pub(super) world:  Arc<World>,
 }
 
 impl Clone for PCommand {
@@ -37,6 +48,14 @@ impl fmt::Debug for PCommand {
       .finish()
   }
 }
+impl fmt::Debug for PEntitySelector {
+  fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    f.debug_struct("PEntitySelector")
+      .field("inner", &self.inner)
+      .field("runner", &self.runner)
+      .finish()
+  }
+}
 
 impl PCommand {
   fn command<'a>(&self, inner: &'a mut Command) -> &'a mut Command {
@@ -48,7 +67,11 @@ impl PCommand {
   }
 }
 
-pub fn sl_from_arg(arg: Arg) -> panda::runtime::Var {
+pub fn sl_from_arg(
+  arg: Arg,
+  world: &Arc<World>,
+  runner: Option<&Arc<Player>>,
+) -> panda::runtime::Var {
   match arg {
     Arg::Literal(text) => text.into(),
     Arg::Bool(v) => v.into(),
@@ -56,8 +79,10 @@ pub fn sl_from_arg(arg: Arg) -> panda::runtime::Var {
     Arg::Float(v) => v.into(),
     Arg::Int(v) => v.into(),
     Arg::String(v) => v.into(),
+    Arg::Entity(inner) => {
+      PEntitySelector { inner, runner: runner.map(Arc::downgrade), world: world.clone() }.into()
+    }
     /*
-    Arg::Entity(EntitySelector),
     Arg::ScoreHolder(String),
     Arg::GameProfile(EntitySelector),
     */
@@ -227,5 +252,28 @@ impl PCommand {
     let mut idx = self.idx.clone();
     idx.push(self.command(&mut lock).children_len() - 1);
     PCommand { inner: self.inner.clone(), callback: None, idx }
+  }
+}
+
+/// An entity selector. This is the parsed version of either a player username,
+/// `@a`, `@e`, `@p`, or another selection of entities.
+#[define_ty(panda_path = "bamboo::command::EntitySelector")]
+impl PEntitySelector {
+  /// Returns all the players selected by this selector.
+  ///
+  /// This iterates through the players, so calling this function is when the
+  /// players list is captured. This means that storing the entity selector, and
+  /// then calling `players` later will give different results from the first
+  /// call.
+  pub fn players(&self) -> Vec<Var> {
+    self
+      .inner
+      .clone()
+      .iter(
+        &self.world.entities(),
+        self.runner.as_ref().map(|weak| weak.upgrade()).unwrap_or(None).as_ref(),
+      )
+      .flat_map(|ent| ent.as_player().cloned().map(super::player::PPlayer::from).map(Into::into))
+      .collect()
   }
 }

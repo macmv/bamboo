@@ -172,11 +172,22 @@ impl Bamboo {
           let plugin = &mut lock[idx];
           let mut imp = plugin.lock_imp();
           let panda = imp.panda().unwrap();
+          let default_world = wm.default_world();
           if let Err(e) = cb.call_panda(
             &mut panda.lock_env(),
             vec![
               player.map(|p| player::PPlayer::from(p.clone()).into()).unwrap_or(Var::None),
-              args.iter().map(|arg| command::sl_from_arg(arg.clone())).collect::<Vec<Var>>().into(),
+              args
+                .iter()
+                .map(|arg| {
+                  command::sl_from_arg(
+                    arg.clone(),
+                    player.map(|p| p.world()).unwrap_or(&default_world),
+                    player,
+                  )
+                })
+                .collect::<Vec<Var>>()
+                .into(),
             ],
           ) {
             err = Some(e);

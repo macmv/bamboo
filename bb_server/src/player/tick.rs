@@ -112,7 +112,15 @@ impl Player {
         needs_set_pos = false;
       }
 
-      pos.clone()
+      // If we teleported, we want out move history to look like we've just been
+      // standing here, so that movement checks pass next tick. However, we want the
+      // returned `prev` to be the actual previous position, as that is used for
+      // sending movement deltas.
+      let ret = pos.clone();
+      if teleported {
+        pos.prev = pos.curr;
+      }
+      ret
     };
 
     // We don't want `pos` locked while sending packets
