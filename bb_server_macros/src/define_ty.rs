@@ -133,7 +133,8 @@ fn python_arg_names<'a>(args: impl Iterator<Item = &'a FnArg>) -> Vec<impl quote
             "Box" => quote!(Box::new(#name)),
             "Var" => quote!(#name),
             "Callback" => quote!(#name),
-            _ => abort!(ty.ty, "cannot handle type"),
+            // _ => abort!(ty.ty, "cannot handle type"),
+            _ => quote!(#name),
           },
           Type::Reference(path) => match &*path.elem {
             Type::Path(path) => match path.path.segments[0].ident.to_string().as_str() {

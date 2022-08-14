@@ -5,6 +5,7 @@ use bb_common::{
   util::{GameMode, UUID},
 };
 use bb_server_macros::define_ty;
+use panda::runtime::tree::Closure;
 
 wrap_eq!(Pos, PPos);
 wrap_eq!(ChunkPos, PChunkPos);
@@ -330,6 +331,9 @@ impl PUUID {
   pub fn to_s(&self) -> String { self.inner.as_dashed_str() }
 }
 
+#[define_ty(panda_path = "bamboo::util::GameMode")]
+impl PGameMode {}
+
 /// A duration. This is a number of ticks internally, and can be created from
 /// a number of ticks, seconds, or minutes.
 #[define_ty(panda_path = "bamboo::util::Duration")]
@@ -340,5 +344,59 @@ impl PDuration {
   pub fn from_minutes(minutes: u32) -> Self { PDuration { ticks: minutes * 20 * 60 } }
 }
 
-#[define_ty(panda_path = "bamboo::util::GameMode")]
-impl PGameMode {}
+#[derive(Debug, Clone)]
+pub struct PCountdown {
+  /// Time left in seconds.
+  time_left: u32,
+  active:    bool,
+  callback:  Option<Closure>,
+}
+
+impl PCountdown {
+  fn update(&self) {
+    /*
+    if let Some(closure) = self.callback {
+      closure.call(env, vec![self.time_left.into()]);
+    }
+    */
+  }
+  fn tick(&self) {
+    /*
+    self.bamboo.after(20, || {
+      self.time_left -= 1;
+      if self.active {
+        self.update();
+      }
+      self.tick();
+    });
+    */
+  }
+}
+
+/// This is a timer, designed to be used for a minigame start countdown.
+///
+/// It can be easily set to decrease when more players have joined, and it can
+/// also run a callback every time the timer changes.
+#[define_ty(panda_path = "bamboo::util::Countdown")]
+impl PCountdown {
+  /// Creates a new countdown, with the time set to the given number of seconds.
+  ///
+  /// The timer will not start counting. Call `start` to begin the countdown.
+  pub fn new(time_left: u32) -> Self {
+    let c = PCountdown { time_left, active: false, callback: None };
+    c.tick();
+    c
+  }
+  /// On each timer update, the given closure will be called.
+  pub fn on_change(&mut self, closure: Closure) { self.callback = Some(closure); }
+  /// If the given time is less than the current time left, the time left will
+  /// be set to the given value.
+  pub fn set_at_least(&mut self, time_left: u32) {
+    if time_left < self.time_left {
+      self.time_left = time_left;
+      self.update();
+    }
+  }
+  pub fn start(&mut self) { self.active = true; }
+  pub fn stop(&mut self) { self.active = false; }
+}
