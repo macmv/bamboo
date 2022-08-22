@@ -74,7 +74,7 @@ pub struct Proxy {
   key:            Arc<RSAPrivateKey>,
   der_key:        Option<Vec<u8>>,
   addr:           SocketAddr,
-  server_addr:    SocketAddr,
+  server_addr:    Box<dyn Fn() -> SocketAddr>,
   compression:    i32,
   conv:           Arc<TypeConverter>,
   status_builder: Arc<dyn for<'a> Fn(&'a str, ProtocolVersion) -> JsonStatus<'a>>,
@@ -88,7 +88,7 @@ impl Proxy {
       key: Arc::new(RSAPrivateKey::new(&mut OsRng, 1024).expect("failed to generate a key")),
       der_key: None,
       addr,
-      server_addr,
+      server_addr: Box::new(move || server_addr),
       compression: 256,
       conv: Arc::new(TypeConverter::new()),
       status_builder: Arc::new(|icon, ver| {
@@ -162,12 +162,19 @@ impl Proxy {
     self.status_builder = Arc::new(builder);
     self
   }
+  /// Sets the server address supplier for the proxy. This function will be
+  /// called every time a client connects, and the address will be used as the
+  /// backend server ip.
+  pub fn with_server_addr(mut self, addr: impl Fn() -> SocketAddr + 'static) -> Self {
+    self.server_addr = Box::new(addr);
+    self
+  }
 
   /// Creates a new connection for the given stream.
   fn new_conn(&self, stream: JavaStream, server_token: Token) -> Conn<JavaStream> {
     let conn = Conn::new(
       stream,
-      self.server_addr,
+      (self.server_addr)(),
       self.key.clone(),
       self.der_key.clone(),
       server_token,
