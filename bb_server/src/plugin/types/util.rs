@@ -417,14 +417,58 @@ impl PCountdown {
   }
   /// On each timer update, the given closure will be called.
   pub fn on_change(&mut self, closure: Closure) { self.data.lock().callback = closure; }
-  /// If the given time is less than the current time left, the time left will
+  /// Sets the timer to have the given amount of time left.
+  pub fn set(&mut self, time_left: u32) {
+    let mut lock = self.data.lock();
+    lock.time_left = time_left;
+
+    let d = self.data.clone();
+    lock.bamboo.after_native(0, move |env| d.lock().update(env));
+  }
+  /// If the given time is larger than the current time left, the time left will
   /// be set to the given value.
+  ///
+  /// This can be used when a player leaves, and you need to increase the amount
+  /// of time until a game starts, but you don't want to decrease the time at
+  /// all.
+  ///
+  /// # Example
+  ///
+  /// ```
+  /// let count = Countdown::new(@bamboo, 20, |count| bamboo::info(count.to_s()))
+  /// count.set_at_least(30) // time_left is now 30 seconds
+  /// count.set_at_least(10) // time_left is still 30 seconds
+  /// count.set_at_least(50) // time_left is now 50 seconds
+  /// ```
+  pub fn set_at_least(&mut self, time_left: u32) {
+    let mut lock = self.data.lock();
+    if time_left > lock.time_left {
+      lock.time_left = time_left;
+
+      let d = self.data.clone();
+      lock.bamboo.after_native(0, move |env| d.lock().update(env));
+    }
+  }
+  /// If the given time is smaller than the current time left, the time left
+  /// will be set to the given value.
+  ///
+  /// This can be used when a player joines, and you need to decrease the amount
+  /// of time until a game starts, but you don't want to increase the time at
+  /// all.
+  ///
+  /// # Example
+  ///
+  /// ```
+  /// let count = Countdown::new(@bamboo, 20, |count| bamboo::info(count.to_s()))
+  /// count.set_at_most(30) // time_left is still 20 seconds
+  /// count.set_at_most(10) // time_left is now 10 seconds
+  /// count.set_at_most(50) // time_left is still 10 seconds
+  /// ```
   pub fn set_at_most(&mut self, time_left: u32) {
     let mut lock = self.data.lock();
     if time_left < lock.time_left {
       lock.time_left = time_left;
-      // Run on the next tick. This is so that scheduled callbacks always happen on a
-      // plugin tick.
+
       let d = self.data.clone();
       lock.bamboo.after_native(0, move |env| d.lock().update(env));
     }
