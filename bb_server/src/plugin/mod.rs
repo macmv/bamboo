@@ -78,15 +78,20 @@ impl fmt::Debug for Runnable {
 #[cfg_attr(feature = "python_plugins", ::pyo3::pyclass)]
 pub struct Bamboo {
   // Index into plugins array
-  idx:       usize,
-  wm:        Arc<WorldManager>,
+  idx:  usize,
+  wm:   Arc<WorldManager>,
   // Locking this removes the value. If the value is none, then this enters a wait loop until there
   // is a value present.
   //
   // This is not by any means "fast", but it will work as long as a thread doesn't lock this for
   // too long.
-  data:      Arc<Mutex<Option<VarSend>>>,
-  scheduled: Arc<Mutex<Vec<Scheduled>>>,
+  data: Arc<Mutex<Option<VarSend>>>,
+
+  scheduled:        Arc<Mutex<Vec<Scheduled>>>,
+  /// Used as a backup if scheduled is locked. This is so that we can schedule
+  /// things within a scheduled callback. This will never be locked while
+  /// `scheduled` is locked.
+  scheduled_backup: Arc<Mutex<Vec<Scheduled>>>,
 }
 
 impl Bamboo {
@@ -96,6 +101,7 @@ impl Bamboo {
       wm,
       data: Arc::new(Mutex::new(Some(VarSend::None))),
       scheduled: Arc::new(Mutex::new(vec![])),
+      scheduled_backup: Arc::new(Mutex::new(vec![])),
     }
   }
 }
@@ -201,7 +207,8 @@ impl Plugin {
   pub fn tick(&self) {
     if let Some(pd) = self.imp.lock().panda() {
       let bb = pd.bb();
-      bb.scheduled.lock().retain_mut(|s| {
+      let mut lock = bb.scheduled.lock();
+      lock.retain_mut(|s| {
         s.time_left -= 1;
         if s.time_left == 0 {
           match &s.runnable {
@@ -216,6 +223,10 @@ impl Plugin {
           true
         }
       });
+      // During the above calls, more tasks may have been scheduled, in which case
+      // they will have been added to scheduled_backup. Here we drain those elements
+      // into the normal `scheduled` list.
+      lock.extend(bb.scheduled_backup.lock().drain(..));
     }
   }
   pub fn call_global(&self, event: GlobalEvent) -> Result<(), CallError> {

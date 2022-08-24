@@ -113,10 +113,17 @@ impl Bamboo {
     ticks: u32,
     callback: impl Fn(&mut LockedEnv) + Send + Sync + 'static,
   ) {
-    self.scheduled.lock().push(super::Scheduled {
+    self.schedule(super::Scheduled {
       time_left: ticks,
       runnable:  super::Runnable::Fn(Box::new(callback)),
     });
+  }
+
+  fn schedule(&self, scheduled: super::Scheduled) {
+    match self.scheduled.try_lock() {
+      Some(mut lock) => lock.push(scheduled),
+      None => self.scheduled_backup.lock().push(scheduled),
+    }
   }
 }
 
@@ -290,7 +297,7 @@ impl Bamboo {
 
   /// Runs the given closure after the given number of ticks.
   pub fn after(&self, ticks: u32, closure: Var) -> Result<(), RuntimeError> {
-    self.scheduled.lock().push(super::Scheduled {
+    self.schedule(super::Scheduled {
       time_left: ticks,
       runnable:  super::Runnable::Closure(closure.closure(Span::call_site())?.clone()),
     });

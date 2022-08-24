@@ -18,7 +18,7 @@ on init() {
   c.add_arg_block_pos("pos")
   @bamboo.add_command(c)
 
-  Countdown::new(@bamboo, 1000, |count| {
+  Countdown::new(@bamboo, 60, |count| {
     bamboo::info("count: " + count.to_s())
   })
 }
