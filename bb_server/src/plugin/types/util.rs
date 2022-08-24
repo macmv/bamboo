@@ -419,13 +419,19 @@ impl PCountdown {
   pub fn on_change(&mut self, closure: Closure) { self.data.lock().callback = closure; }
   /// If the given time is less than the current time left, the time left will
   /// be set to the given value.
-  pub fn set_at_least(&mut self, time_left: u32) {
+  pub fn set_at_most(&mut self, time_left: u32) {
     let mut lock = self.data.lock();
     if time_left < lock.time_left {
       lock.time_left = time_left;
-      // lock.update();
+      // Run on the next tick. This is so that scheduled callbacks always happen on a
+      // plugin tick.
+      let d = self.data.clone();
+      lock.bamboo.after_native(0, move |env| d.lock().update(env));
     }
   }
+  /// Starts the countdown. This will do nothing if the countdown is already
+  /// running.
   pub fn start(&mut self) { self.data.lock().active = true; }
+  /// Stops the countdown. This will do nothing if the countdown isn't running.
   pub fn stop(&mut self) { self.data.lock().active = false; }
 }
