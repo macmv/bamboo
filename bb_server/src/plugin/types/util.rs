@@ -377,9 +377,7 @@ impl PCountdown {
   // A constantly running tick loop
   fn tick(data: Arc<Mutex<CountdownData>>) {
     let d = data.clone();
-    info!("outer");
     data.lock().bamboo.after_native(20, move |env| {
-      info!("inner");
       let mut lock = d.lock();
       if lock.active {
         if lock.time_left > 0 {
@@ -388,7 +386,6 @@ impl PCountdown {
         }
       }
       drop(lock);
-      info!("calling tick again");
       Self::tick(d.clone());
     });
   }
