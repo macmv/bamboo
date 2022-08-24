@@ -3,8 +3,8 @@ use bamboo::{
   chat::Chat,
   command::Command,
   world::gen,
-  util::{FPos, Pos},
   item::{Stack, UI},
+  util::{Countdown, FPos, Pos},
 }
 
 on init() {
@@ -17,6 +17,10 @@ on init() {
   c = Command::new("tp", handle_tp)
   c.add_arg_block_pos("pos")
   @bamboo.add_command(c)
+
+  Countdown::new(@bamboo, 1000, |count| {
+    bamboo::info("count: " + count.to_s())
+  })
 }
 
 fn handle_getblock(player, args) {

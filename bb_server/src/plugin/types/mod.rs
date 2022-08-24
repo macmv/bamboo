@@ -16,7 +16,7 @@ use panda::{
   docs::markdown,
   parse::token::Span,
   path,
-  runtime::{RuntimeError, Var},
+  runtime::{LockedEnv, RuntimeError, Var},
   Panda,
 };
 
@@ -105,6 +105,20 @@ macro_rules! wrap_eq {
 use add_from;
 use wrap;
 use wrap_eq;
+
+impl Bamboo {
+  /// Runs the given closure after the given number of ticks.
+  pub fn after_native(
+    &self,
+    ticks: u32,
+    callback: impl Fn(&mut LockedEnv) + Send + Sync + 'static,
+  ) {
+    self.scheduled.lock().push(super::Scheduled {
+      time_left: ticks,
+      runnable:  super::Runnable::Fn(Box::new(callback)),
+    });
+  }
+}
 
 /// This is a handle into the Bamboo server. It allows you to modify the
 /// world, add commands, lookup players, and more. It will be passed to every
@@ -278,7 +292,7 @@ impl Bamboo {
   pub fn after(&self, ticks: u32, closure: Var) -> Result<(), RuntimeError> {
     self.scheduled.lock().push(super::Scheduled {
       time_left: ticks,
-      closure:   closure.closure(Span::call_site())?.clone(),
+      runnable:  super::Runnable::Closure(closure.closure(Span::call_site())?.clone()),
     });
     Ok(())
   }
@@ -428,6 +442,7 @@ impl PandaPlugin {
     sl.add_builtin_ty::<util::PPos>();
     sl.add_builtin_ty::<util::PFPos>();
     sl.add_builtin_ty::<util::PUUID>();
+    sl.add_builtin_ty::<util::PCountdown>();
     sl.add_builtin_ty::<util::PDuration>();
     sl.add_builtin_ty::<event::PEventFlow>();
     sl.add_builtin_ty::<block::PBlockKind>();

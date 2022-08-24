@@ -49,15 +49,29 @@ use crate::{
   event::{GlobalEvent, PlayerEvent, PlayerRequest, PluginMessage, PluginReply, ServerMessage},
   world::WorldManager,
 };
-use ::panda::runtime::{tree::Closure, VarSend};
+use ::panda::runtime::{tree::Closure, LockedEnv, VarSend};
 use bb_common::config::Config;
 use crossbeam_channel::{Receiver, Sender};
 use parking_lot::{Mutex, MutexGuard};
 use std::{error::Error, fmt, sync::Arc, thread};
 
+#[derive(Debug)]
 struct Scheduled {
-  closure:   Closure,
+  runnable:  Runnable,
   time_left: u32,
+}
+enum Runnable {
+  Fn(Box<dyn Fn(&mut LockedEnv) + Send + Sync>),
+  Closure(Closure),
+}
+
+impl fmt::Debug for Runnable {
+  fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+    match self {
+      Self::Fn(_) => write!(f, "Fn(..)"),
+      Self::Closure(_) => write!(f, "Closure(..)"),
+    }
+  }
 }
 
 #[derive(Clone)]
@@ -190,9 +204,12 @@ impl Plugin {
       bb.scheduled.lock().retain_mut(|s| {
         s.time_left -= 1;
         if s.time_left == 0 {
-          match s.closure.call(&mut pd.lock_env(), vec![]) {
-            Ok(_) => {}
-            Err(e) => pd.print_err(e),
+          match &s.runnable {
+            Runnable::Closure(c) => match c.call(&mut pd.lock_env(), vec![]) {
+              Ok(_) => {}
+              Err(e) => pd.print_err(e),
+            },
+            Runnable::Fn(f) => f(&mut pd.lock_env()),
           }
           false
         } else {

@@ -1,11 +1,13 @@
-use super::{add_from, wrap, wrap_eq};
+use super::{add_from, wrap, wrap_eq, Bamboo};
 use crate::math::Vec3;
 use bb_common::{
   math::{ChunkPos, FPos, Pos},
   util::{GameMode, UUID},
 };
 use bb_server_macros::define_ty;
-use panda::runtime::tree::Closure;
+use panda::runtime::{tree::Closure, LockedEnv};
+use parking_lot::Mutex;
+use std::sync::Arc;
 
 wrap_eq!(Pos, PPos);
 wrap_eq!(ChunkPos, PChunkPos);
@@ -346,30 +348,49 @@ impl PDuration {
 
 #[derive(Debug, Clone)]
 pub struct PCountdown {
-  /// Time left in seconds.
-  time_left: u32,
-  active:    bool,
-  callback:  Option<Closure>,
+  data: Arc<Mutex<CountdownData>>,
 }
 
-impl PCountdown {
-  fn update(&self) {
-    /*
-    if let Some(closure) = self.callback {
-      closure.call(env, vec![self.time_left.into()]);
-    }
-    */
-  }
-  fn tick(&self) {
-    /*
-    self.bamboo.after(20, || {
-      self.time_left -= 1;
-      if self.active {
-        self.update();
+#[derive(Debug, Clone)]
+struct CountdownData {
+  active:    bool,
+  /// Time left in seconds.
+  time_left: u32,
+  bamboo:    Bamboo,
+  callback:  Closure,
+}
+
+impl CountdownData {
+  fn update(&mut self, env: &mut LockedEnv) {
+    match self.callback.call(env, vec![self.time_left.into()]) {
+      Ok(_) => {}
+      Err(e) => {
+        // TODO: Log the error better
+        // Stop the countdown, so that we don't emit a bunch of errors.
+        error!("{e}");
+        self.active = false;
       }
-      self.tick();
+    }
+  }
+}
+impl PCountdown {
+  // A constantly running tick loop
+  fn tick(data: Arc<Mutex<CountdownData>>) {
+    let d = data.clone();
+    info!("outer");
+    data.lock().bamboo.after_native(20, move |env| {
+      info!("inner");
+      let mut lock = d.lock();
+      if lock.active {
+        if lock.time_left > 0 {
+          lock.time_left -= 1;
+          lock.update(env);
+        }
+      }
+      drop(lock);
+      info!("calling tick again");
+      Self::tick(d.clone());
     });
-    */
   }
 }
 
@@ -381,22 +402,33 @@ impl PCountdown {
 impl PCountdown {
   /// Creates a new countdown, with the time set to the given number of seconds.
   ///
-  /// The timer will not start counting. Call `start` to begin the countdown.
-  pub fn new(time_left: u32) -> Self {
-    let c = PCountdown { time_left, active: false, callback: None };
-    c.tick();
+  /// The timer will call the given closure each second it decreases.
+  ///
+  /// The timer will be started. This means that in 1 second, the given closure
+  /// will be called.
+  pub fn new(bamboo: &Bamboo, time_left: u32, closure: Closure) -> Self {
+    let c = PCountdown {
+      data: Arc::new(Mutex::new(CountdownData {
+        active: true,
+        time_left,
+        bamboo: bamboo.clone(),
+        callback: closure,
+      })),
+    };
+    Self::tick(c.data.clone());
     c
   }
   /// On each timer update, the given closure will be called.
-  pub fn on_change(&mut self, closure: Closure) { self.callback = Some(closure); }
+  pub fn on_change(&mut self, closure: Closure) { self.data.lock().callback = closure; }
   /// If the given time is less than the current time left, the time left will
   /// be set to the given value.
   pub fn set_at_least(&mut self, time_left: u32) {
-    if time_left < self.time_left {
-      self.time_left = time_left;
-      self.update();
+    let mut lock = self.data.lock();
+    if time_left < lock.time_left {
+      lock.time_left = time_left;
+      // lock.update();
     }
   }
-  pub fn start(&mut self) { self.active = true; }
-  pub fn stop(&mut self) { self.active = false; }
+  pub fn start(&mut self) { self.data.lock().active = true; }
+  pub fn stop(&mut self) { self.data.lock().active = false; }
 }
