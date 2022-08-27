@@ -79,6 +79,12 @@ impl PandaPlugin {
     let mut sl = Panda::new();
     sl.set_color(manager.use_color());
     self.add_builtins(&mut sl);
+    {
+      let lock = manager.panda_preload.lock();
+      if let Some(preload) = lock.as_ref() {
+        preload(&mut sl);
+      }
+    }
     match sl.parse_dir(dir, &PdPath::new(vec![self.name.clone()])) {
       Ok(_) => {
         self.sl = Some(sl);

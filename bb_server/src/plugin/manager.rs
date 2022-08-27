@@ -5,6 +5,7 @@ use super::{GlobalEvent, PlayerEvent, PlayerRequest, Plugin};
 use crate::{event::EventFlow, world::WorldManager};
 use bb_common::config::Config;
 use crossbeam_channel::Select;
+use panda::Panda;
 use parking_lot::Mutex;
 use std::{
   fs,
@@ -16,18 +17,31 @@ use std::{
 /// source files on `/reload`, and will also send events to all the plugins when
 /// needed.
 pub struct PluginManager {
-  start:              Instant,
-  pub(super) plugins: Mutex<Vec<Plugin>>,
+  start:                    Instant,
+  pub(super) panda_preload: Mutex<Option<Box<dyn Fn(&mut Panda) + Send + Sync>>>,
+  pub(super) plugins:       Mutex<Vec<Plugin>>,
 }
 
 impl PluginManager {
   /// Creates a new plugin manager. This will initialize the Ruby interpreter,
   /// and load all plugins from disk. Do not call this multiple times.
   #[allow(clippy::new_without_default)]
-  pub fn new() -> Self { PluginManager { start: Instant::now(), plugins: Mutex::new(vec![]) } }
+  pub fn new() -> Self {
+    PluginManager {
+      start:         Instant::now(),
+      panda_preload: None.into(),
+      plugins:       Mutex::new(vec![]),
+    }
+  }
 
   /// Returns true if plugins should print error messages with colors.
   pub fn use_color(&self) -> bool { true }
+
+  /// `func` will be called before every panda plugin. This can be used to add
+  /// custom library functionality.
+  pub fn panda_preload(&self, func: impl Fn(&mut Panda) + Send + Sync + 'static) {
+    *self.panda_preload.lock() = Some(Box::new(func));
+  }
 
   /// Ticks all plugins. This will run scheduled events.
   pub fn tick(&self) {
