@@ -308,7 +308,7 @@ impl Packet {
   /// version).
   pub fn write_item(&mut self, item: &Item, conv: &TypeConverter) {
     if self.ver < ProtocolVersion::V1_13 {
-      if item.count() == 0 {
+      if item.count() == 0 || item.id() == 0 {
         self.write_i16(-1);
       } else {
         self.write_i16(item.id() as i16);
