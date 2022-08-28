@@ -121,4 +121,8 @@ impl PWorld {
     );
     Ok(())
   }
+
+  /// Saves the world to disk. If saving is disabled, the world will not be
+  /// saved.
+  pub fn save(&self) { self.inner.save(); }
 }
