@@ -113,31 +113,30 @@ pub struct Slab {
 }
 impl Behavior for Slab {
   fn interact(&self, click: Click) -> EventFlow {
-    if let Click::Block(mut click) = click {
+    if let Click::Block(click) = click {
       let ty = click.block.world.block_converter().ty(self.kind);
-      let clicked_pos = click.block.pos;
-      click.block.pos += click.face;
+      let mut pos = click.block.pos + click.face;
       let ty = ty.with(
         "type",
         if click.face == Face::Top {
           if click.block.ty.kind() == self.kind && click.block.ty.prop("type") == "bottom" {
-            click.block.pos -= click.face;
+            pos -= click.face;
             "double"
           } else {
             "bottom"
           }
         } else if click.face == Face::Bottom {
           if click.block.ty.kind() == self.kind && click.block.ty.prop("type") == "top" {
-            click.block.pos -= click.face;
+            pos -= click.face;
             "double"
           } else {
             "top"
           }
         } else {
-          // This is after adding face, so this is getting the block that we are placing
-          // on. This makes sure that clicking on the side of a block will merge slabs,
-          // instead of replacing the existing one.
-          if click.block.world.get_block(click.block.pos).map(|b| b.kind()) == Ok(self.kind) {
+          // This `pos` is after adding face, so this is getting the block that we are
+          // placing on. This makes sure that clicking on the side of a block will merge
+          // slabs, instead of replacing the existing one.
+          if click.block.world.get_block(pos).map(|b| b.kind()) == Ok(self.kind) {
             "double"
           } else {
             if click.cursor.y > 0.5 {
@@ -148,7 +147,7 @@ impl Behavior for Slab {
           }
         },
       );
-      click.player.place_block(clicked_pos, click.block.pos, ty);
+      click.place(pos, ty);
       Handled
     } else {
       Continue

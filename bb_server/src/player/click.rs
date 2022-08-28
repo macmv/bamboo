@@ -61,6 +61,17 @@ impl Click<'_> {
   }
 }
 
+impl BlockClick<'_> {
+  /// Places the given block as the player. This will use `block.pos` as the
+  /// `clicked_pos`, and the given position as `placed_pos`.
+  ///
+  /// This is intended for item handlers which override block placements, and
+  /// need to place a seperate kind of block.
+  pub fn place(&self, pos: Pos, ty: block::Type) {
+    self.player.place_block(self.block.pos, pos, ty);
+  }
+}
+
 impl Player {
   /// Places a block as the given player. This will send a block place event,
   /// remove an item from their hotbar, and send a hotbar message if the
