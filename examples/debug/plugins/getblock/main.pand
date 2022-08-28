@@ -47,19 +47,21 @@ on player_join(event) {
 }
 
 on interact(event, flow) {
-  event.player.send_message("Using item!")
+  // event.player.send_message("Using item!")
 }
 
 on chat(event, flow) {
-  event.player.send_message("Shut up!")
+  // event.player.send_message("Shut up!")
 }
 
 on item_drop(event, flow) {
+  /*
   if event.full_stack {
     event.player.send_message("Oh shit! That's a lot of items you're dropping!")
   } else {
     event.player.send_message("Weak! You dropped a " + event.stack.item_name())
   }
+  */
 }
 
 on packet(event, flow) {
@@ -67,16 +69,18 @@ on packet(event, flow) {
 }
 
 on command(event, flow) {
-  event.player.send_message("neil moment")
+  // event.player.send_message("neil moment")
 }
 
 on change_game_mode(event, flow) {
-  event.player.send_message("HHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHh")
+  // event.player.send_message("HHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHh")
 }
 
+/*
 on block_place(event, flow) {
   flow.cancel()
 }
 on block_break(event, flow) {
   flow.cancel()
 }
+*/
