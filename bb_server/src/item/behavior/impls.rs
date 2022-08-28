@@ -133,11 +133,17 @@ impl Behavior for Slab {
             "top"
           }
         } else {
-          dbg!(click.cursor);
-          if click.cursor.y > 0.5 {
-            "top"
+          // This is after adding face, so this is getting the block that we are placing
+          // on. This makes sure that clicking on the side of a block will merge slabs,
+          // instead of replacing the existing one.
+          if click.block.world.get_block(click.block.pos).map(|b| b.kind()) == Ok(self.kind) {
+            "double"
           } else {
-            "bottom"
+            if click.cursor.y > 0.5 {
+              "top"
+            } else {
+              "bottom"
+            }
           }
         },
       );
