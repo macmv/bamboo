@@ -212,39 +212,7 @@ pub(crate) fn handle(wm: &Arc<WorldManager>, mut player: &Arc<Player>, p: sb::Pa
             pos += face;
           }
 
-          if player
-            .world()
-            .events()
-            .player_request(event::BlockPlace {
-              player: player.clone(),
-              clicked_pos,
-              placed_pos: pos,
-              block: ty.to_store(),
-            })
-            .is_handled()
-          {
-            player.sync_block_at(pos);
-            inv.sync_main_hand();
-            return;
-          }
-
-          match player.world().set_block(pos, ty) {
-            Ok(_) => {
-              if player.game_mode() != GameMode::Creative {
-                let idx = inv.selected_index() as u32;
-                let stack = inv.hotbar_mut().get_raw_mut(idx).unwrap();
-                if stack.amount() >= 1 {
-                  stack.set_amount(stack.amount() - 1);
-                  inv.hotbar().sync_raw(idx);
-                }
-              }
-              drop(inv);
-            }
-            Err(e) => {
-              player.send_hotbar(Chat::new(e.to_string()));
-              player.sync_block_at(pos);
-            }
-          }
+          player.place_block_lock(&mut inv, clicked_pos, pos, ty);
         }
         Err(e) => {
           player.send_hotbar(Chat::new(e.to_string()));

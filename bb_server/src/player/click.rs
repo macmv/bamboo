@@ -1,9 +1,14 @@
-use super::Player;
+use super::{Player, PlayerInventory};
 use crate::{
+  block,
   block::Block,
+  event,
   math::{CollisionResult, Vec3},
 };
-use bb_common::{math::FPos, util::Face};
+use bb_common::{
+  math::{FPos, Pos},
+  util::{Chat, Face, GameMode},
+};
 use std::sync::Arc;
 
 #[derive(Debug, Clone, Copy)]
@@ -52,6 +57,61 @@ impl Click<'_> {
     match self {
       Self::Air(air) => air.dir,
       Self::Block(block) => block.dir,
+    }
+  }
+}
+
+impl Player {
+  /// Places a block as the given player. This will send a block place event,
+  /// remove an item from their hotbar, and send a hotbar message if the
+  /// position is outside of the world.
+  pub fn place_block(self: &Arc<Player>, clicked_pos: Pos, placed_pos: Pos, ty: block::Type) {
+    self.place_block_lock(&mut self.lock_inventory(), clicked_pos, placed_pos, ty);
+  }
+
+  /// Same as [`place_block`](Self::place_block), but this uses an inventory
+  /// that has already been locked. This should be preferred, as it means the
+  /// item in the player's hotbar won't change between the lookup and the block
+  /// place.
+  pub fn place_block_lock(
+    self: &Arc<Player>,
+    inv: &mut PlayerInventory,
+    clicked_pos: Pos,
+    placed_pos: Pos,
+    ty: block::Type,
+  ) {
+    if self
+      .world()
+      .events()
+      .player_request(event::BlockPlace {
+        player: self.clone(),
+        clicked_pos,
+        placed_pos,
+        block: ty.to_store(),
+      })
+      .is_handled()
+    {
+      self.sync_block_at(placed_pos);
+      inv.sync_main_hand();
+      return;
+    }
+
+    match self.world().set_block(placed_pos, ty) {
+      Ok(_) => {
+        if self.game_mode() != GameMode::Creative {
+          let idx = inv.selected_index() as u32;
+          let stack = inv.hotbar_mut().get_raw_mut(idx).unwrap();
+          // Don't overflow if they just placed a block while holding nothing.
+          if stack.amount() >= 1 {
+            stack.set_amount(stack.amount() - 1);
+            inv.hotbar().sync_raw(idx);
+          }
+        }
+      }
+      Err(e) => {
+        self.send_hotbar(Chat::new(e.to_string()));
+        self.sync_block_at(placed_pos);
+      }
     }
   }
 }

@@ -115,6 +115,7 @@ impl Behavior for Slab {
   fn interact(&self, click: Click) -> EventFlow {
     if let Click::Block(mut click) = click {
       let ty = click.block.world.block_converter().ty(self.kind);
+      let clicked_pos = click.block.pos;
       click.block.pos += click.face;
       let ty = ty.with(
         "type",
@@ -147,7 +148,7 @@ impl Behavior for Slab {
           }
         },
       );
-      click.block.set(ty);
+      click.player.place_block(clicked_pos, click.block.pos, ty);
       Handled
     } else {
       Continue
