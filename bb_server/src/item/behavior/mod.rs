@@ -56,6 +56,15 @@ impl BehaviorList {
       Torch => impls::Torch { normal: block::Kind::Torch, wall: block::Kind::WallTorch };
       SoulTorch => impls::Torch { normal: block::Kind::SoulTorch, wall: block::Kind::SoulWallTorch };
 
+      OakSlab         => impls::Slab { kind: block::Kind::OakSlab };
+      BirchSlab       => impls::Slab { kind: block::Kind::BirchSlab };
+      SpruceSlab      => impls::Slab { kind: block::Kind::SpruceSlab };
+      DarkOakSlab     => impls::Slab { kind: block::Kind::DarkOakSlab };
+      AcaciaSlab      => impls::Slab { kind: block::Kind::AcaciaSlab };
+      JungleSlab      => impls::Slab { kind: block::Kind::JungleSlab };
+      StoneSlab       => impls::Slab { kind: block::Kind::StoneSlab };
+      SmoothStoneSlab => impls::Slab { kind: block::Kind::SmoothStoneSlab };
+
       _ => DefaultBehavior;
     }
   }

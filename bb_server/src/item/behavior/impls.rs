@@ -107,3 +107,44 @@ impl Behavior for Torch {
     }
   }
 }
+
+pub struct Slab {
+  pub kind: block::Kind,
+}
+impl Behavior for Slab {
+  fn interact(&self, click: Click) -> EventFlow {
+    if let Click::Block(mut click) = click {
+      let ty = click.block.world.block_converter().ty(self.kind);
+      click.block.pos += click.face;
+      let ty = ty.with(
+        "type",
+        if click.face == Face::Top {
+          if click.block.ty.kind() == self.kind && click.block.ty.prop("type") == "bottom" {
+            click.block.pos -= click.face;
+            "double"
+          } else {
+            "bottom"
+          }
+        } else if click.face == Face::Bottom {
+          if click.block.ty.kind() == self.kind && click.block.ty.prop("type") == "top" {
+            click.block.pos -= click.face;
+            "double"
+          } else {
+            "top"
+          }
+        } else {
+          dbg!(click.cursor);
+          if click.cursor.y > 0.5 {
+            "top"
+          } else {
+            "bottom"
+          }
+        },
+      );
+      click.block.set(ty);
+      Handled
+    } else {
+      Continue
+    }
+  }
+}
