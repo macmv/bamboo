@@ -214,6 +214,10 @@ impl Matcher<'_> {
       "acacia_slab"   => self.old("wooden_slab").meta(4),
       "dark_oak_slab" => self.old("wooden_slab").meta(5),
 
+      // Special case. We add some enchantments to a normal stick in the proxy,
+      // so that it looks like a debug stick.
+      "debug_stick" => self.old("stick").meta(1),
+
       _ => OldItem::new(self.old.get(&self.item.name).map(|it| it.id).unwrap_or(0)),
     }
   }

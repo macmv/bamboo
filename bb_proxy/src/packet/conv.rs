@@ -1,4 +1,7 @@
-use bb_common::{util::Item, version::BlockVersion};
+use bb_common::{
+  util::{chat, Item},
+  version::BlockVersion,
+};
 
 pub struct TypeConverter {
   blocks:       &'static [block::Version],
@@ -157,6 +160,33 @@ impl TypeConverter {
     let (id, damage) = self.item_to_old(item.id as u32, ver);
     item.id = id as i32;
     item.damage = damage as i16;
+
+    // Special case for debug stick
+    if ver <= BlockVersion::V1_12 && item.id == 280 && item.damage == 1 {
+      item.damage = 0;
+      // Set the name to `Debug Stick`, which is checked below when converting the
+      // item back to the modern version.
+      let mut chat = chat::Chat::new(format!("{}r", chat::CODE_SEP));
+      chat.add("Debug Stick").color(chat::Color::Pink);
+      item.data.display.name = Some(chat);
+      // Give it a random enchantment, so that it is shiny
+      let mut ench = std::collections::HashMap::new();
+      ench.insert(0, std::num::NonZeroU8::new(1).unwrap());
+      item.data.enchantments = Some(ench);
+    }
+  }
+  pub fn check_debug_stick(&self, item: &mut Item, ver: BlockVersion) {
+    // This is the id of stick
+    let (id, _) = self.item_to_old(item.id as u32, ver);
+    if id == 280 {
+      let mut chat = chat::Chat::new(format!("{}r", chat::CODE_SEP));
+      chat.add("Debug Stick").color(chat::Color::Pink);
+      if item.data.display.name == Some(chat::Chat::new(chat.to_codes())) {
+        // This is a debug stick, so we convert it from the "old id" for debug stick,
+        // which is stick:1
+        item.id = self.item_to_new(280, 1, ver) as i32;
+      }
+    }
   }
 
   /// Converts an entity id into the latest version. It should work the same as

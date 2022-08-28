@@ -291,6 +291,7 @@ impl Packet {
         damage,
       );
       item.data = item_from_nbt(&nbt, self.ver, conv).map_err(|e| self.err(e, "read_nbt"))?;
+      conv.check_debug_stick(&mut item, self.ver.block());
       item
     } else if self.read_bool()? {
       let id = self.read_varint()?;
