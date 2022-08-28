@@ -92,15 +92,16 @@ pub struct Torch {
 }
 impl Behavior for Torch {
   fn interact(&self, click: Click) -> EventFlow {
-    if let Click::Block(mut click) = click {
-      click.block.pos += click.face;
-      if click.face == Face::Top {
-        click.block.set(click.block.world.block_converter().ty(self.normal));
-      } else if click.face != Face::Bottom {
-        click.block.set(
-          click.block.world.block_converter().ty(self.wall).with("facing", click.face.as_str()),
-        );
-      }
+    if let Click::Block(click) = click {
+      let pos = click.block.pos + click.face;
+      let ty = if click.face == Face::Top {
+        click.block.world.block_converter().ty(self.normal)
+      } else if click.face == Face::Bottom {
+        return Handled;
+      } else {
+        click.block.world.block_converter().ty(self.wall).with("facing", click.face.as_str())
+      };
+      click.place(pos, ty);
       Handled
     } else {
       Continue
