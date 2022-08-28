@@ -172,6 +172,8 @@ impl Matcher<'_> {
       "andesite"          => self.old("stone") + 5,
       "polished_andesite" => self.old("stone") + 6,
 
+      "grass_block" => self.old("grass"),
+
       "coarse_dirt" => self.old("dirt") + 1,
       "podzol"      => self.old("dirt") + 2,
 
@@ -267,6 +269,37 @@ impl Matcher<'_> {
       "chiseled_sandstone" => self.old("sandstone") + 1,
       "smooth_sandstone"   => self.old("sandstone") + 2,
 
+      "note_block" => self.old("noteblock"),
+
+      "white_bed"      => self.old("bed"),
+      "orange_bed"     => self.old("bed"),
+      "magenta_bed"    => self.old("bed"),
+      "light_blue_bed" => self.old("bed"),
+      "yellow_bed"     => self.old("bed"),
+      "lime_bed"       => self.old("bed"),
+      "pink_bed"       => self.old("bed"),
+      "gray_bed"       => self.old("bed"),
+      "light_gray_bed" => self.old("bed"),
+      "cyan_bed"       => self.old("bed"),
+      "purple_bed"     => self.old("bed"),
+      "blue_bed"       => self.old("bed"),
+      "brown_bed"      => self.old("bed"),
+      "green_bed"      => self.old("bed"),
+      "red_bed"        => self.old("bed"),
+      "black_bed"      => self.old("bed"),
+
+      "powered_rail" => self.old("golden_rail"),
+
+      "sticky_piston" => self.piston("sticky_piston"),
+
+      "cobweb" => self.old("web"),
+
+      "grass"     => self.old("tallgrass") + 1,
+      "fern"      => self.old("tallgrass") + 2,
+      "dead_bush" => self.old("deadbush"),
+
+      "piston" => self.piston("piston"),
+
       "white_wool"      => self.old("wool") + 0,
       "orange_wool"     => self.old("wool") + 1,
       "magenta_wool"    => self.old("wool") + 2,
@@ -295,13 +328,6 @@ impl Matcher<'_> {
       "pink_tulip"   => self.old("red_flower") + 7,
       "oxeye_daisy"  => self.old("red_flower") + 8,
 
-      // MINECRAFT GO BRRRRRR
-      "grass_block" => self.old("grass"),
-      "grass"       => self.old("tallgrass") + 1,
-
-      "dead_bush" => self.old("tallgrass") + 0,
-      "fern"      => self.old("tallgrass") + 2,
-
       "smooth_stone_slab"  => self.slab("stone_slab", "double_stone_slab") + 0,
       "sandstone_slab"     => self.slab("stone_slab", "double_stone_slab") + 1,
       "petrified_oak_slab" => self.slab("stone_slab", "double_stone_slab") + 2,
@@ -324,8 +350,101 @@ impl Matcher<'_> {
       "acacia_slab"   => self.slab("wooden_slab", "double_wooden_slab") + 4,
       "dark_oak_slab" => self.slab("wooden_slab", "double_wooden_slab") + 5,
 
+      "oak_pressure_plate"      => self.pressure_plate("wooden_pressure_plate"),
+      "spruce_pressure_plate"   => self.pressure_plate("wooden_pressure_plate"),
+      "birch_pressure_plate"    => self.pressure_plate("wooden_pressure_plate"),
+      "jungle_pressure_plate"   => self.pressure_plate("wooden_pressure_plate"),
+      "acacia_pressure_plate"   => self.pressure_plate("wooden_pressure_plate"),
+      "dark_oak_pressure_plate" => self.pressure_plate("wooden_pressure_plate"),
+
+      "redstone_ore" => match self.bool_prop("lit") {
+        true => self.old("lit_redstone_ore"),
+        false => self.old("redstone_ore"),
+      },
+
+      "stone_button" => self.button("stone_button"),
+
+      "snow" => self.old("snow_layer") + self.int_prop("layers") as u32,
+      "snow_block" => self.old("snow"),
+
+      "sugar_cane" => self.old("reeds"),
+
+      "oak_fence" => self.old("fence"),
+
+      "white_stained_glass"      => self.old("stained_glass") + 0,
+      "orange_stained_glass"     => self.old("stained_glass") + 1,
+      "magenta_stained_glass"    => self.old("stained_glass") + 2,
+      "light_blue_stained_glass" => self.old("stained_glass") + 3,
+      "yellow_stained_glass"     => self.old("stained_glass") + 4,
+      "lime_stained_glass"       => self.old("stained_glass") + 5,
+      "pink_stained_glass"       => self.old("stained_glass") + 6,
+      "gray_stained_glass"       => self.old("stained_glass") + 7,
+      "light_gray_stained_glass" => self.old("stained_glass") + 8,
+      "cyan_stained_glass"       => self.old("stained_glass") + 9,
+      "purple_stained_glass"     => self.old("stained_glass") + 10,
+      "blue_stained_glass"       => self.old("stained_glass") + 11,
+      "brown_stained_glass"      => self.old("stained_glass") + 12,
+      "green_stained_glass"      => self.old("stained_glass") + 13,
+      "red_stained_glass"        => self.old("stained_glass") + 14,
+      "black_stained_glass"      => self.old("stained_glass") + 15,
+
+      "oak_stairs"      => self.stairs("oak_stairs"),
+      "spruce_stairs"   => self.stairs("spruce_stairs"),
+      "birch_stairs"    => self.stairs("birch_stairs"),
+      "jungle_stairs"   => self.stairs("jungle_stairs"),
+      "acacia_stairs"   => self.stairs("acacia_stairs"),
+      "dark_oak_stairs" => self.stairs("dark_oak_stairs"),
+
       // Otherwise, lookup the old block, and if we still don't find anything, use air.
       _ => self.old.get(&self.block.name).unwrap_or(&self.old["air"]).id,
+    }
+  }
+
+  #[rustfmt::skip]
+  #[allow(clippy::identity_op)]
+  fn piston(&self, name: &str) -> u32 {
+    match (self.state.enum_prop("facing"), self.state.bool_prop("extended")) {
+      ("down",  false) => self.old(name) + 0,
+      ("up",    false) => self.old(name) + 1,
+      ("north", false) => self.old(name) + 2,
+      ("south", false) => self.old(name) + 3,
+      ("west",  false) => self.old(name) + 4,
+      ("east",  false) => self.old(name) + 5,
+      ("down",  true) => self.old(name) + 0 + 8,
+      ("up",    true) => self.old(name) + 1 + 8,
+      ("north", true) => self.old(name) + 2 + 8,
+      ("south", true) => self.old(name) + 3 + 8,
+      ("west",  true) => self.old(name) + 4 + 8,
+      ("east",  true) => self.old(name) + 5 + 8,
+      _ => unreachable!("invalid state {:?}", self.state),
+    }
+  }
+  #[rustfmt::skip]
+  #[allow(clippy::identity_op)]
+  fn button(&self, name: &str) -> u32 {
+    // I'm amazed at how many ways one can represent a 6-way facing enum.
+    match (self.state.enum_prop("face"), self.state.enum_prop("facing"), self.state.bool_prop("powered")) {
+      ("ceiling", _,       false) => self.old(name) + 0,
+      ("wall",    "east",  false) => self.old(name) + 1,
+      ("wall",    "west",  false) => self.old(name) + 2,
+      ("wall",    "south", false) => self.old(name) + 3,
+      ("wall",    "north", false) => self.old(name) + 4,
+      ("floor",   _,       false) => self.old(name) + 5,
+      ("ceiling", _,       true) => self.old(name) + 0 + 8,
+      ("wall",    "east",  true) => self.old(name) + 1 + 8,
+      ("wall",    "west",  true) => self.old(name) + 2 + 8,
+      ("wall",    "south", true) => self.old(name) + 3 + 8,
+      ("wall",    "north", true) => self.old(name) + 4 + 8,
+      ("floor",   _,       true) => self.old(name) + 5 + 8,
+      _ => unreachable!("invalid state {:?}", self.state),
+    }
+  }
+  #[rustfmt::skip]
+  #[allow(clippy::identity_op)]
+  fn pressure_plate(&self, name: &str) -> u32 {
+    match self.state.bool_prop("powered") {
+      false => self.old(name) + 0,
+      true  => self.old(name) + 1,
     }
   }
 
@@ -336,6 +455,22 @@ impl Matcher<'_> {
       "bottom" => self.old(name) + 0,
       "top"    => self.old(name) + 8,
       "double" => self.old(double_name) + 0,
+      _ => unreachable!("invalid state {:?}", self.state),
+    }
+  }
+
+  #[rustfmt::skip]
+  #[allow(clippy::identity_op)]
+  fn stairs(&self, name: &str) -> u32 {
+    match (self.state.enum_prop("facing"), self.state.enum_prop("half")) {
+      ("east",  "bottom") => self.old(name) + 0,
+      ("west",  "bottom") => self.old(name) + 1,
+      ("south", "bottom") => self.old(name) + 2,
+      ("north", "bottom") => self.old(name) + 3,
+      ("east",  "top") => self.old(name) + 0 + 4,
+      ("west",  "top") => self.old(name) + 1 + 4,
+      ("south", "top") => self.old(name) + 2 + 4,
+      ("north", "top") => self.old(name) + 3 + 4,
       _ => unreachable!("invalid state {:?}", self.state),
     }
   }

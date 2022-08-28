@@ -307,13 +307,14 @@ impl Block {
 }
 
 impl State {
+  #[track_caller]
   pub fn prop(&self, name: &str) -> &StateProp {
-    self
-      .props
-      .iter()
-      .find(|p| p.name == name)
-      .unwrap_or_else(|| panic!("could not find property {}. valid properties: {:?}", name, self))
+    match self.props.iter().find(|p| p.name == name) {
+      Some(prop) => prop,
+      None => panic!("could not find property {}. valid properties: {:?}", name, self),
+    }
   }
+  #[track_caller]
   pub fn enum_prop(&self, name: &str) -> &str {
     let p = self.prop(name);
     match &p.kind {
@@ -321,6 +322,7 @@ impl State {
       _ => panic!("not an enum: {:?}", p),
     }
   }
+  #[track_caller]
   pub fn bool_prop(&self, name: &str) -> bool {
     let p = self.prop(name);
     match &p.kind {
@@ -328,6 +330,7 @@ impl State {
       _ => panic!("not a bool: {:?}", p),
     }
   }
+  #[track_caller]
   pub fn int_prop(&self, name: &str) -> i32 {
     let p = self.prop(name);
     match &p.kind {
