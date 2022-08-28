@@ -121,6 +121,14 @@ impl Config {
     })
   }
 
+  /// Reads the entire config as the given type `T`.
+  pub fn all<'a, T>(&'a self) -> T
+  where
+    T: TomlValue<'a>,
+  {
+    self.get_at([].into_iter())
+  }
+
   /// Reads the toml value at the given key. This will always return a value. If
   /// the value doesn't exist in the primary config (or the value is the wrong
   /// type), then it will use the default config. If it doesn't exist there (or
