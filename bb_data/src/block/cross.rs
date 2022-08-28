@@ -328,6 +328,15 @@ impl Matcher<'_> {
       "pink_tulip"   => self.old("red_flower") + 7,
       "oxeye_daisy"  => self.old("red_flower") + 8,
 
+      "torch" => self.old("torch") + 0,
+      "wall_torch" => match self.enum_prop("facing") {
+        "east"  => self.old("torch") + 1,
+        "west"  => self.old("torch") + 2,
+        "south" => self.old("torch") + 3,
+        "north" => self.old("torch") + 4,
+        _ => unreachable!("invalid state {:?}", self.state),
+      }
+
       "smooth_stone_slab"  => self.slab("stone_slab", "double_stone_slab") + 0,
       "sandstone_slab"     => self.slab("stone_slab", "double_stone_slab") + 1,
       "petrified_oak_slab" => self.slab("stone_slab", "double_stone_slab") + 2,
