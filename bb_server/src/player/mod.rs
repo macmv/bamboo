@@ -433,6 +433,20 @@ impl Player {
     pos.curr
   }
 
+  // Returns the player's eyesight offset in the Y axis. This depends on the player's client
+  // version and whether the player is crouching.
+  pub fn eyes_offset(&self) -> f64 {
+    if self.is_crouching() {
+      if self.ver >= ProtocolVersion::V1_14 {
+        return 1.27;
+      } else {
+        return 1.54;
+      }
+    } else {
+      return 1.62;
+    }
+  }
+
   /// Returns `true` if the player is on the ground. This is both sent
   /// to us by the client, and validated by collision detection each
   /// tick.
