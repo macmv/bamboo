@@ -20,12 +20,12 @@ fn test_config() -> Arc<Config> {
 fn parse_simple_values() {
   let config = test_config();
 
-  assert_eq!(config.get::<i32>("foo"), 3);
-  assert_eq!(config.get::<i32>("bar"), 4);
+  assert_eq!(config.get::<i32>("foo").unwrap(), 3);
+  assert_eq!(config.get::<i32>("bar").unwrap(), 4);
 
   let section = config.section("options");
-  assert_eq!(section.get::<i32>("baz"), 2);
-  assert_eq!(section.get::<i32>("other"), 100);
+  assert_eq!(section.get::<i32>("baz").unwrap(), 2);
+  assert_eq!(section.get::<i32>("other").unwrap(), 100);
 }
 
 #[derive(Config)]
@@ -44,7 +44,7 @@ struct MyOptions {
 fn parse_derived_values() {
   let config = test_config();
 
-  let config = config.all::<MyConfig>();
+  let config = config.all::<MyConfig>().unwrap();
 
   assert_eq!(config.foo, 3);
   assert_eq!(config.bar, 4);
@@ -66,7 +66,7 @@ fn parse_derived_enum() {
     "#,
     "",
   ));
-  let color = config.get::<Color>("color");
+  let color = config.get::<Color>("color").unwrap();
 
   assert_eq!(color, Color::Green);
 }

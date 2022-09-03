@@ -17,9 +17,42 @@ pub struct ConfigSection {
   path:   Vec<String>,
 }
 
+pub type Result<T> = std::result::Result<T, ConfigError>;
+
+#[derive(Clone, Debug, PartialEq)]
+pub struct ConfigError {
+  pub path:    Vec<String>,
+  pub message: String,
+}
+
+impl ConfigError {
+  pub fn new<'a>(path: impl Iterator<Item = &'a str>, message: String) -> Self {
+    ConfigError { path: path.map(|s| s.to_string()).collect(), message }
+  }
+  pub fn from_value<T: TomlValue>(value: &Value) -> Self {
+    Self::new([].into_iter(), format!("expected {}, got {value:?}", T::name()))
+  }
+  pub fn from_option<T: TomlValue>(value: &Value, opt: Option<T>) -> Result<T> {
+    match opt {
+      Some(v) => Ok(v),
+      None => Err(Self::from_value::<T>(value)),
+    }
+  }
+  pub fn prepend(mut self, element: impl Into<String>) -> Self {
+    self.path.insert(0, element.into());
+    self
+  }
+  pub fn prepend_list<'a>(mut self, path: impl Iterator<Item = &'a str>) -> Self {
+    for (i, element) in path.enumerate() {
+      self.path.insert(i, element.into());
+    }
+    self
+  }
+}
+
 pub trait TomlValue {
   /// If this current type matches the toml value, this returns Some(v).
-  fn from_toml(v: &Value) -> Option<Self>
+  fn from_toml(v: &Value) -> Result<Self>
   where
     Self: Sized;
 
@@ -135,7 +168,7 @@ impl Config {
   }
 
   /// Reads the entire config as the given type `T`.
-  pub fn all<T>(&self) -> T
+  pub fn all<T>(&self) -> Result<T>
   where
     T: TomlValue,
   {
@@ -158,7 +191,7 @@ impl Config {
   /// your own type. I hightly recommend against this, as that will just cause
   /// confusion for your users. I will not be adding any more implementations
   /// than the ones present in this file.
-  pub fn get<T>(&self, key: &str) -> T
+  pub fn get<T>(&self, key: &str) -> Result<T>
   where
     T: TomlValue,
   {
@@ -168,48 +201,27 @@ impl Config {
   /// Gets the value at the given path. This allows you to pass in a nested key,
   /// which can be useful at times, but is usually less idiomatic than calling
   /// [`get`](Self::get).
-  pub fn get_at<'b, I, T>(&self, key: I) -> T
+  pub fn get_at<'b, I, T>(&self, key: I) -> Result<T>
   where
     I: Iterator<Item = &'b str> + Clone,
     T: TomlValue,
   {
     match Self::get_val(&self.primary, key.clone()) {
-      Some(val) => match T::from_toml(val) {
-        Some(v) => v,
-        None => {
-          warn!(
-            "unexpected value at `{}`: {:?}, expected a {}",
-            join_dot(key.clone()),
-            val,
-            T::name()
-          );
-          self.get_default_at(key)
-        }
-      },
+      Some(val) => T::from_toml(val).map_err(|e| e.prepend_list(key)),
       None => self.get_default_at(key),
     }
   }
 
   /// Gets the default value at the given key. This will panic if the key does
   /// not exist, or if it was the wrong type.
-  fn get_default_at<'b, I, T>(&self, key: I) -> T
+  fn get_default_at<'b, I, T>(&self, key: I) -> Result<T>
   where
     I: Iterator<Item = &'b str> + Clone,
     T: TomlValue,
   {
     match Self::get_val(&self.default, key.clone()) {
-      Some(val) => match T::from_toml(val) {
-        Some(v) => v,
-        None => {
-          panic!(
-            "default had wrong type for key `{}`: {:?}, expected a {}",
-            join_dot(key),
-            val,
-            T::name(),
-          );
-        }
-      },
-      None => panic!("default does not have key `{}`", join_dot(key)),
+      Some(val) => T::from_toml(val).map_err(|e| e.prepend_list(key)),
+      None => Err(ConfigError::new(key, "default does not have key".to_string())),
     }
   }
 
@@ -248,7 +260,7 @@ impl Config {
 
 impl ConfigSection {
   /// Gets the config value at the given key, prefixed by this reference's path.
-  pub fn get<T>(&self, key: &str) -> T
+  pub fn get<T>(&self, key: &str) -> Result<T>
   where
     T: TomlValue,
   {
