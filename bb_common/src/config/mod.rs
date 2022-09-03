@@ -1,5 +1,7 @@
 use std::{fs, sync::Arc};
-use toml::{map::Map, Value};
+use toml::map::Map;
+
+pub use toml::Value;
 
 #[cfg(test)]
 mod tests;
