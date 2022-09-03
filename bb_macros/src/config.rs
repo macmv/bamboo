@@ -1,27 +1,26 @@
 use proc_macro::TokenStream;
-use proc_macro2::{Ident, TokenStream as TokenStream2};
+use proc_macro2::{Ident, Span, TokenStream as TokenStream2};
 use quote::{quote, quote_spanned};
 
 use syn::{parse_macro_input, punctuated::Punctuated, Fields, Item, Token};
 
+fn error_at(v: &Ident, pos: Span, error: &str) -> TokenStream {
+  let err = quote_spanned!(pos => compile_error!(#error));
+  // Provide a dummy impl, in order to produce less errors.
+  quote!(
+    #err;
+    impl crate::config::TomlValue for #v {
+      fn from_toml(c: &crate::config::Value) -> Option<Self> { todo!() }
+      fn name() -> String { todo!() }
+    }
+  )
+  .into()
+}
 fn error(value: Option<&Ident>, error: &str) -> TokenStream {
   match value {
-    Some(v) => {
-      let err = quote_spanned!(v.span() => compile_error!(#error));
-      // Provide a dummy impl, in order to produce less errors.
-      quote!(
-        #err;
-        impl crate::config::Config for #v {
-          fn from_config(c: &crate::config::Value) -> Option<Self> { todo!() }
-          fn name() -> String { todo!() }
-        }
-      )
-    }
-    None => {
-      quote!(compile_error!(#error);)
-    }
+    Some(v) => error_at(v, v.span(), error),
+    None => quote!(compile_error!(#error);).into(),
   }
-  .into()
 }
 
 pub fn config(input: TokenStream) -> TokenStream {
@@ -58,6 +57,20 @@ pub fn config(input: TokenStream) -> TokenStream {
           fn name() -> String { todo!() }
         }
       )
+    }
+    Item::Enum(en) => {
+      let variants = en
+        .variants
+        .iter()
+        .map(|variant| match variant.fields {
+          Fields::Unit => Ok(&variant.ident),
+          _ => Err(variant),
+        })
+        .collect::<Result<Punctuated<&Ident, Token![,]>, _>>();
+      match variants {
+        Ok(variants) => quote!(),
+        Err(e) => return error_at(&en.ident, e.ident.span(), "expected a unit variant"),
+      }
     }
     _ => return error(None, "expected a struct or enum"),
   };
