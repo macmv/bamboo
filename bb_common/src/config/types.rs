@@ -65,12 +65,11 @@ macro_rules! toml_number {
           ConfigError::from_option(v, v.as_integer())
             .and_then(|v| v
               .try_into()
-              .map_err(
-                |_| ConfigError::new(
-                  [].into_iter(),
+              .map_err(|_| {
+                ConfigError::other(
                   format!("integer {v} does not fit into {}", Self::name()),
                 )
-              )
+              })
             )
         }
 

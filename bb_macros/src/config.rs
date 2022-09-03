@@ -1,6 +1,7 @@
 use proc_macro::TokenStream;
 use proc_macro2::{Ident, Span, TokenStream as TokenStream2};
 use quote::{quote, quote_spanned};
+use std::{fmt, fmt::Write};
 
 use syn::{parse_macro_input, punctuated::Punctuated, Fields, Item, Token};
 
@@ -23,6 +24,35 @@ fn error(value: Option<&Ident>, error: &str) -> TokenStream {
   }
 }
 
+struct VariantsTemplate<'a>(&'a [String]);
+
+impl fmt::Display for VariantsTemplate<'_> {
+  fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+    write!(f, "got invalid option '{{}}', valid options are")?;
+    if self.0.len() == 1 {
+      write!(f, " '{}'", self.0[0])
+    } else if self.0.len() == 2 {
+      write!(f, " '{}' or '{}'", self.0[0], self.0[1])
+    } else {
+      let has_too_many = self.0.len() > 20;
+      let variants = if has_too_many { &self.0[..20] } else { &self.0[..] };
+      for (i, variant) in variants.iter().enumerate() {
+        if i == variants.len() - 1 {
+          write!(f, " or")?;
+        }
+        write!(f, " '{variant}'")?;
+        if i != variants.len() - 1 {
+          write!(f, ",")?;
+        }
+      }
+      if has_too_many {
+        write!(f, " (skipping {} options)", self.0.len() - 20)?;
+      }
+      Ok(())
+    }
+  }
+}
+
 pub fn config(input: TokenStream) -> TokenStream {
   let args = parse_macro_input!(input as Item);
 
@@ -39,8 +69,7 @@ pub fn config(input: TokenStream) -> TokenStream {
             let ty = field.ty;
             quote!(
               #name: <#ty as crate::config::TomlValue>::from_toml(
-                t.get(#name_str).ok_or(crate::config::ConfigError::new(
-                  [].into_iter(),
+                t.get(#name_str).ok_or(crate::config::ConfigError::other(
                   concat!("missing field ", #name_str).to_string(),
                 ))?)?
             )
@@ -63,6 +92,7 @@ pub fn config(input: TokenStream) -> TokenStream {
       )
     }
     Item::Enum(en) => {
+      let mut variant_strings = vec![];
       let variants = en
         .variants
         .iter()
@@ -70,6 +100,7 @@ pub fn config(input: TokenStream) -> TokenStream {
           Fields::Unit => {
             let ident = &variant.ident;
             let ident_str = variant.ident.to_string().to_lowercase();
+            variant_strings.push(ident_str.clone());
             Ok(quote!(#ident_str => Ok(Self::#ident)))
           }
           _ => Err(variant),
@@ -77,20 +108,23 @@ pub fn config(input: TokenStream) -> TokenStream {
         .collect::<Result<Punctuated<TokenStream2, Token![,]>, _>>();
       let name = &en.ident;
       match variants {
-        Ok(variants) => quote!(
-          impl crate::config::TomlValue for #name {
-            fn from_toml(value: &crate::config::Value) -> crate::config::Result<Self> {
-              match value {
-                crate::config::Value::String(s) => match s.as_str() {
-                  #variants,
-                  _ => Err(crate::config::ConfigError::new([].into_iter(), format!("invalid variant {}", s))),
-                },
-                _ => Err(crate::config::ConfigError::from_value::<Self>(value)),
+        Ok(variants) => {
+          let error_template = VariantsTemplate(&variant_strings).to_string();
+          quote!(
+            impl crate::config::TomlValue for #name {
+              fn from_toml(value: &crate::config::Value) -> crate::config::Result<Self> {
+                match value {
+                  crate::config::Value::String(s) => match s.as_str() {
+                    #variants,
+                    _ => Err(crate::config::ConfigError::other(format!(#error_template, s))),
+                  },
+                  _ => Err(crate::config::ConfigError::from_value::<Self>(value)),
+                }
               }
+              fn name() -> String { stringify!(#name).into() }
             }
-            fn name() -> String { stringify!(#name).into() }
-          }
-        ),
+          )
+        }
         Err(e) => return error_at(name, e.ident.span(), "expected a unit variant"),
       }
     }

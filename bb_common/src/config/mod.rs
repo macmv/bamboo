@@ -1,4 +1,4 @@
-use std::{fs, sync::Arc};
+use std::{fmt, fs, sync::Arc};
 use toml::map::Map;
 
 pub use toml::Value;
@@ -21,16 +21,54 @@ pub type Result<T> = std::result::Result<T, ConfigError>;
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct ConfigError {
-  pub path:    Vec<String>,
-  pub message: String,
+  pub path: Vec<String>,
+  pub kind: ConfigErrorKind,
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub enum ConfigErrorKind {
+  Missing,
+  WrongType(String, Value),
+  Other(String),
+}
+
+struct Path<'a>(&'a Vec<String>);
+
+impl fmt::Display for Path<'_> {
+  fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+    write!(f, "`")?;
+    for (i, segment) in self.0.iter().enumerate() {
+      if i != 0 {
+        write!(f, "::")?;
+      }
+      write!(f, "{segment}")?;
+    }
+    write!(f, "`")
+  }
+}
+
+impl fmt::Display for ConfigError {
+  fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+    match &self.kind {
+      ConfigErrorKind::Missing => write!(f, "missing field {}", Path(&self.path)),
+      ConfigErrorKind::WrongType(expected, actual) => {
+        write!(f, "expected {expected} at {}, got {actual}", Path(&self.path))
+      }
+      ConfigErrorKind::Other(msg) => write!(f, "at {}, {msg}", Path(&self.path)),
+    }
+  }
 }
 
 impl ConfigError {
-  pub fn new<'a>(path: impl Iterator<Item = &'a str>, message: String) -> Self {
-    ConfigError { path: path.map(|s| s.to_string()).collect(), message }
+  pub fn new(kind: ConfigErrorKind) -> Self { ConfigError { path: vec![], kind } }
+  pub fn other(msg: String) -> Self {
+    ConfigError { path: vec![], kind: ConfigErrorKind::Other(msg) }
+  }
+  pub fn from_path<'a>(path: impl Iterator<Item = &'a str>, kind: ConfigErrorKind) -> Self {
+    ConfigError { path: path.map(|s| s.to_string()).collect(), kind }
   }
   pub fn from_value<T: TomlValue>(value: &Value) -> Self {
-    Self::new([].into_iter(), format!("expected {}, got {value:?}", T::name()))
+    Self::new(ConfigErrorKind::WrongType(T::name(), value.clone()))
   }
   pub fn from_option<T: TomlValue>(value: &Value, opt: Option<T>) -> Result<T> {
     match opt {
@@ -221,7 +259,7 @@ impl Config {
   {
     match Self::get_val(&self.default, key.clone()) {
       Some(val) => T::from_toml(val).map_err(|e| e.prepend_list(key)),
-      None => Err(ConfigError::new(key, "default does not have key".to_string())),
+      None => Err(ConfigError::from_path(key, ConfigErrorKind::Missing)),
     }
   }
 

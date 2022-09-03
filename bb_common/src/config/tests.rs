@@ -73,7 +73,21 @@ fn parse_derived_enum() {
 
 #[test]
 fn error_messages() {
-  let config = Arc::new(Config::new_src("", ""));
-  let color =
-    assert_eq!(config.get::<i32>("number").unwrap_err().to_string(), "missing field `number`",);
+  let config = test_config();
+  assert_eq!(config.get::<i32>("number").unwrap_err().to_string(), "missing field `number`",);
+  assert_eq!(
+    config.get::<String>("foo").unwrap_err().to_string(),
+    "expected string at `foo`, got 3",
+  );
+
+  let config = Arc::new(Config::new_src(
+    r#"
+    color = "invalid_color"
+    "#,
+    "",
+  ));
+  assert_eq!(
+    config.get::<Color>("color").unwrap_err().to_string(),
+    "at `color`, got invalid option 'invalid_color', valid options are 'red', 'green', or 'blue'",
+  );
 }
