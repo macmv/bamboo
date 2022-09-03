@@ -275,7 +275,7 @@ mod tests {
     dbg!(&nbt);
     assert_eq!(
       nbt,
-      NBT::new("hello world", Tag::compound(&[("name", Tag::String("Bananrama".into()))]))
+      NBT::new("hello world", Tag::new_compound(&[("name", Tag::String("Bananrama".into()))]))
     );
   }
 }

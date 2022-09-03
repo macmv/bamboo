@@ -426,7 +426,7 @@ fn test_struct() {
   }
 
   let test = Test { int: 5, seq: vec!["a", "b"] };
-  let expected = Tag::compound(&[
+  let expected = Tag::new_compound(&[
     ("int", Tag::Int(5)),
     ("seq", Tag::List(vec![Tag::String("a".into()), Tag::String("b".into())])),
   ]);
