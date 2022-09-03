@@ -10,7 +10,7 @@ fn error_at(v: &Ident, pos: Span, error: &str) -> TokenStream {
   quote!(
     #err;
     impl crate::config::TomlValue for #v {
-      fn from_toml(c: &crate::config::Value) -> Option<Self> { todo!() }
+      fn from_toml(c: &crate::config::Value) -> crate::config::Result<Self> { todo!() }
       fn name() -> String { todo!() }
     }
   )
@@ -38,7 +38,11 @@ pub fn config(input: TokenStream) -> TokenStream {
             let name_str = name.to_string();
             let ty = field.ty;
             quote!(
-              #name: <#ty as crate::config::TomlValue>::from_toml(t.get(#name_str)?)?
+              #name: <#ty as crate::config::TomlValue>::from_toml(
+                t.get(#name_str).ok_or(crate::config::ConfigError::new(
+                  [].into_iter(),
+                  concat!("missing field ", #name_str).to_string(),
+                ))?)?
             )
           })
           .collect::<Punctuated<TokenStream2, Token![,]>>(),
@@ -46,12 +50,12 @@ pub fn config(input: TokenStream) -> TokenStream {
       };
       quote!(
         impl crate::config::TomlValue for #name {
-          fn from_toml(value: &crate::config::Value) -> Option<Self> {
+          fn from_toml(value: &crate::config::Value) -> crate::config::Result<Self> {
             match value {
-              crate::config::Value::Table(t) => Some(Self {
+              crate::config::Value::Table(t) => Ok(Self {
                 #fields
               }),
-              _ => None,
+              _ => Err(crate::config::ConfigError::from_value::<Self>(value)),
             }
           }
           fn name() -> String { stringify!(#name).into() }
@@ -66,7 +70,7 @@ pub fn config(input: TokenStream) -> TokenStream {
           Fields::Unit => {
             let ident = &variant.ident;
             let ident_str = variant.ident.to_string().to_lowercase();
-            Ok(quote!(#ident_str => Some(Self::#ident)))
+            Ok(quote!(#ident_str => Ok(Self::#ident)))
           }
           _ => Err(variant),
         })
@@ -75,13 +79,13 @@ pub fn config(input: TokenStream) -> TokenStream {
       match variants {
         Ok(variants) => quote!(
           impl crate::config::TomlValue for #name {
-            fn from_toml(value: &crate::config::Value) -> Option<Self> {
+            fn from_toml(value: &crate::config::Value) -> crate::config::Result<Self> {
               match value {
                 crate::config::Value::String(s) => match s.as_str() {
                   #variants,
-                  _ => None,
+                  _ => Err(crate::config::ConfigError::new([].into_iter(), format!("invalid variant {}", s))),
                 },
-                _ => None,
+                _ => Err(crate::config::ConfigError::from_value::<Self>(value)),
               }
             }
             fn name() -> String { stringify!(#name).into() }
