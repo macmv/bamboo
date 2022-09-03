@@ -51,3 +51,22 @@ fn parse_derived_values() {
   assert_eq!(config.options.baz, 2);
   assert_eq!(config.options.other, 100);
 }
+
+#[derive(Debug, PartialEq, Config)]
+enum Color {
+  Red,
+  Green,
+  Blue,
+}
+#[test]
+fn parse_derived_enum() {
+  let config = Arc::new(Config::new_src(
+    r#"
+    color = "green"
+    "#,
+    "",
+  ));
+  let color = config.get::<Color>("color");
+
+  assert_eq!(color, Color::Green);
+}

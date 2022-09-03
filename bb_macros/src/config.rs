@@ -18,7 +18,7 @@ fn error(value: Option<&Ident>, error: &str) -> TokenStream {
       )
     }
     None => {
-      quote!(compile_error!(#error))
+      quote!(compile_error!(#error);)
     }
   }
   .into()
