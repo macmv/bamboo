@@ -54,7 +54,7 @@ pub fn config(input: TokenStream) -> TokenStream {
               _ => None,
             }
           }
-          fn name() -> String { todo!() }
+          fn name() -> String { stringify!(#name).into() }
         }
       )
     }
@@ -63,13 +63,31 @@ pub fn config(input: TokenStream) -> TokenStream {
         .variants
         .iter()
         .map(|variant| match variant.fields {
-          Fields::Unit => Ok(&variant.ident),
+          Fields::Unit => {
+            let ident = &variant.ident;
+            let ident_str = variant.ident.to_string().to_lowercase();
+            Ok(quote!(#ident_str => Some(Self::#ident)))
+          }
           _ => Err(variant),
         })
-        .collect::<Result<Punctuated<&Ident, Token![,]>, _>>();
+        .collect::<Result<Punctuated<TokenStream2, Token![,]>, _>>();
+      let name = &en.ident;
       match variants {
-        Ok(variants) => quote!(),
-        Err(e) => return error_at(&en.ident, e.ident.span(), "expected a unit variant"),
+        Ok(variants) => quote!(
+          impl crate::config::TomlValue for #name {
+            fn from_toml(value: &crate::config::Value) -> Option<Self> {
+              match value {
+                crate::config::Value::String(s) => match s.as_str() {
+                  #variants,
+                  _ => None,
+                },
+                _ => None,
+              }
+            }
+            fn name() -> String { stringify!(#name).into() }
+          }
+        ),
+        Err(e) => return error_at(name, e.ident.span(), "expected a unit variant"),
       }
     }
     _ => return error(None, "expected a struct or enum"),

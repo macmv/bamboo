@@ -56,7 +56,7 @@ fn parse_derived_values() {
 enum Color {
   Red,
   Green,
-  Blue(i32),
+  Blue,
 }
 #[test]
 fn parse_derived_enum() {
