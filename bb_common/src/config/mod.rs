@@ -1,6 +1,8 @@
 use std::{fs, sync::Arc};
 use toml::{map::Map, Value};
 
+#[cfg(test)]
+mod tests;
 mod types;
 
 pub struct Config {
@@ -79,6 +81,15 @@ fn join_dot<'a, I: Iterator<Item = &'a str>>(key: I) -> String {
 }
 
 impl Config {
+  /// Creates a new config for the given source. The `src` is toml source, which
+  /// will be parsed when this is called. The `default_src` is toml source,
+  /// which should be loaded with `include_str!`. The default is used whenever
+  /// a key is not present in the main config.
+  ///
+  /// If the path doesn't exist, the default config will be written there.
+  pub fn new_src(src: &str, default_src: &str) -> Self {
+    Config { primary: Self::load_toml_src(src), default: Self::load_toml_src(default_src) }
+  }
   /// Creates a new config for the given path. The path is a runtime path to
   /// load the config file. The `default_src` is toml source, which should be
   /// loaded with `include_str!`. The default is used whenever a key is not
