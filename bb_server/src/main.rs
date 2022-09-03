@@ -83,7 +83,7 @@ fn main() {
     }
   }
 
-  let addr = match config.get::<&str>("address").parse() {
+  let addr = match config.get::<String>("address").parse() {
     Ok(v) => v,
     Err(e) => {
       error!("invalid address: {e}");

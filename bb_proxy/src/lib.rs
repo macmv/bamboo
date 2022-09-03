@@ -126,10 +126,10 @@ impl Proxy {
   /// Creates a proxy from the given config.
   pub fn from_config(config: Config) -> Result<Self> {
     Ok(
-      Self::new(config.get::<&str>("address").parse()?, config.get::<&str>("server").parse()?)
+      Self::new(config.get::<String>("address").parse()?, config.get::<String>("server").parse()?)
         .with_encryption(config.get("encryption"))
         .with_compression(config.get("compression-thresh"))
-        .with_icon(config.get("icon")),
+        .with_icon(config.get::<String>("icon").as_str()),
     )
   }
   /// Enables or disables encryption for this connection.

@@ -189,7 +189,7 @@ impl World {
     });
     let vanilla = world.config().section("vanilla");
     if vanilla.get("enabled") {
-      world.load_from_disk(&std::path::PathBuf::new().join(vanilla.get::<&str>("path"))).unwrap();
+      world.load_from_disk(&std::path::PathBuf::new().join(vanilla.get::<String>("path"))).unwrap();
     }
     // Note that the world is not initialized yet, as we want to load plugins before
     // initializing.
@@ -677,7 +677,7 @@ impl WorldManager {
       tags:              Arc::new(Tags::new()),
       block_behaviors:   RwLock::new(block::BehaviorStore::new()),
       item_behaviors:    RwLock::new(item::BehaviorStore::new()),
-      data:              Arc::new(Data::load(config.get("data-path"))),
+      data:              Arc::new(Data::load(config.get::<String>("data-path").as_str())),
       worlds:            RwLock::new(vec![]),
       players:           RwLock::new(HashMap::new()),
       teams:             RwLock::new(HashMap::new()),

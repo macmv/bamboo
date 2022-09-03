@@ -4,17 +4,17 @@ use log::{Level, LevelFilter};
 use std::str::FromStr;
 use toml::Value;
 
-impl TomlValue<'_> for bool {
+impl TomlValue for bool {
   fn from_toml(v: &Value) -> Option<Self> { v.as_bool() }
 
   fn name() -> String { "bool".into() }
 }
-impl TomlValue<'_> for GameMode {
+impl TomlValue for GameMode {
   fn from_toml(v: &Value) -> Option<Self> { GameMode::from_str(v.as_str()?).ok() }
 
   fn name() -> String { "game mode".into() }
 }
-impl TomlValue<'_> for FPos {
+impl TomlValue for FPos {
   fn from_toml(v: &Value) -> Option<Self> {
     let map = v.as_table()?;
     if map.len() == 3 {
@@ -29,20 +29,20 @@ impl TomlValue<'_> for FPos {
   }
   fn name() -> String { "position".into() }
 }
-impl TomlValue<'_> for Level {
+impl TomlValue for Level {
   fn from_toml(v: &Value) -> Option<Self> { Level::from_str(v.as_str()?).ok() }
   fn name() -> String { "log level".into() }
 }
-impl TomlValue<'_> for LevelFilter {
+impl TomlValue for LevelFilter {
   fn from_toml(v: &Value) -> Option<Self> { LevelFilter::from_str(v.as_str()?).ok() }
   fn name() -> String { "log level filter".into() }
 }
 
-impl<'a, T> TomlValue<'a> for Vec<T>
+impl<T> TomlValue for Vec<T>
 where
-  T: TomlValue<'a>,
+  T: TomlValue,
 {
-  fn from_toml(v: &'a Value) -> Option<Self> {
+  fn from_toml(v: &Value) -> Option<Self> {
     v.as_array().and_then(|v| v.iter().map(|v| T::from_toml(v)).collect::<Option<Vec<T>>>())
   }
 
@@ -52,7 +52,7 @@ where
 macro_rules! toml_number {
   ($name:expr, $($ty:ty),*) => {
     $(
-      impl TomlValue<'_> for $ty {
+      impl TomlValue for $ty {
         fn from_toml(v: &Value) -> Option<Self> {
           v.as_integer().and_then(|v| v.try_into().ok())
         }
@@ -67,25 +67,19 @@ macro_rules! toml_number {
 
 toml_number!("integer", u8, u16, u32, u64, i8, i16, i32, i64);
 
-impl<'a> TomlValue<'a> for &'a str {
-  fn from_toml(v: &'a Value) -> Option<Self> { v.as_str() }
-
-  fn name() -> String { "string".into() }
-}
-
-impl TomlValue<'_> for String {
+impl TomlValue for String {
   fn from_toml(v: &Value) -> Option<Self> { v.as_str().map(|v| v.into()) }
 
   fn name() -> String { "string".into() }
 }
 
-impl TomlValue<'_> for f32 {
+impl TomlValue for f32 {
   fn from_toml(v: &Value) -> Option<Self> { v.as_float().map(|v| v as f32) }
 
   fn name() -> String { "float".into() }
 }
 
-impl TomlValue<'_> for f64 {
+impl TomlValue for f64 {
   fn from_toml(v: &Value) -> Option<Self> { v.as_float() }
 
   fn name() -> String { "float".into() }

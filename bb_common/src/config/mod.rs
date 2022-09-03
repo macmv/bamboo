@@ -13,9 +13,9 @@ pub struct ConfigSection {
   path:   Vec<String>,
 }
 
-pub trait TomlValue<'a> {
+pub trait TomlValue {
   /// If this current type matches the toml value, this returns Some(v).
-  fn from_toml(v: &'a Value) -> Option<Self>
+  fn from_toml(v: &Value) -> Option<Self>
   where
     Self: Sized;
 
@@ -122,9 +122,9 @@ impl Config {
   }
 
   /// Reads the entire config as the given type `T`.
-  pub fn all<'a, T>(&'a self) -> T
+  pub fn all<T>(&self) -> T
   where
-    T: TomlValue<'a>,
+    T: TomlValue,
   {
     self.get_at([].into_iter())
   }
@@ -145,9 +145,9 @@ impl Config {
   /// your own type. I hightly recommend against this, as that will just cause
   /// confusion for your users. I will not be adding any more implementations
   /// than the ones present in this file.
-  pub fn get<'a, T>(&'a self, key: &str) -> T
+  pub fn get<T>(&self, key: &str) -> T
   where
-    T: TomlValue<'a>,
+    T: TomlValue,
   {
     self.get_at([key].into_iter())
   }
@@ -155,10 +155,10 @@ impl Config {
   /// Gets the value at the given path. This allows you to pass in a nested key,
   /// which can be useful at times, but is usually less idiomatic than calling
   /// [`get`](Self::get).
-  pub fn get_at<'a, 'b, I, T>(&'a self, key: I) -> T
+  pub fn get_at<'b, I, T>(&self, key: I) -> T
   where
     I: Iterator<Item = &'b str> + Clone,
-    T: TomlValue<'a>,
+    T: TomlValue,
   {
     match Self::get_val(&self.primary, key.clone()) {
       Some(val) => match T::from_toml(val) {
@@ -179,10 +179,10 @@ impl Config {
 
   /// Gets the default value at the given key. This will panic if the key does
   /// not exist, or if it was the wrong type.
-  fn get_default_at<'a, 'b, I, T>(&'a self, key: I) -> T
+  fn get_default_at<'b, I, T>(&self, key: I) -> T
   where
     I: Iterator<Item = &'b str> + Clone,
-    T: TomlValue<'a>,
+    T: TomlValue,
   {
     match Self::get_val(&self.default, key.clone()) {
       Some(val) => match T::from_toml(val) {
@@ -235,9 +235,9 @@ impl Config {
 
 impl ConfigSection {
   /// Gets the config value at the given key, prefixed by this reference's path.
-  pub fn get<'a, T>(&'a self, key: &str) -> T
+  pub fn get<T>(&self, key: &str) -> T
   where
-    T: TomlValue<'a>,
+    T: TomlValue,
   {
     self.config.get_at(self.path.iter().map(String::as_str).chain([key]))
   }
