@@ -1,4 +1,4 @@
-use super::Config;
+use super::{Config, ConfigError};
 use bb_macros::Config;
 use std::sync::Arc;
 
@@ -69,4 +69,11 @@ fn parse_derived_enum() {
   let color = config.get::<Color>("color").unwrap();
 
   assert_eq!(color, Color::Green);
+}
+
+#[test]
+fn error_messages() {
+  let config = Arc::new(Config::new_src("", ""));
+  let color =
+    assert_eq!(config.get::<i32>("number").unwrap_err().to_string(), "missing field `number`",);
 }
