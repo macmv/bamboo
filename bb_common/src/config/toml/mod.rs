@@ -267,7 +267,7 @@ impl<'a> Tokenizer<'a> {
         loop {
           match self.next()? {
             Token::CloseArr => break,
-            _ => {}
+            t => self.peeked = Some(t),
           }
           let value = self.parse_value()?;
           values.push(Value::new(self.line, value));
