@@ -21,6 +21,17 @@ fn tokens() {
   assert_eq!(tok.next(), Ok(Eq));
   assert_eq!(tok.next(), Ok(Integer(3)));
   assert_eq!(tok.next(), Err(tok.err(UnexpectedEOF)));
+
+  let mut tok = Tokenizer::new("a = [1, 2]");
+
+  assert_eq!(tok.next(), Ok(Word("a")));
+  assert_eq!(tok.next(), Ok(Eq));
+  assert_eq!(tok.next(), Ok(OpenArr));
+  assert_eq!(tok.next(), Ok(Integer(1)));
+  assert_eq!(tok.next(), Ok(Comma));
+  assert_eq!(tok.next(), Ok(Integer(2)));
+  assert_eq!(tok.next(), Ok(CloseArr));
+  assert_eq!(tok.next(), Err(tok.err(UnexpectedEOF)));
 }
 
 #[track_caller]

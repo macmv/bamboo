@@ -28,22 +28,6 @@ pub enum ValueInner {
   Table(Map),
 }
 
-#[derive(Debug, Clone, PartialEq)]
-pub struct ParseError {
-  pub line: usize,
-  pub kind: ParseErrorKind,
-}
-#[derive(Debug, Clone, PartialEq)]
-pub enum ParseErrorKind {
-  MissingValue,
-  MissingEq,
-  UnexpectedEOF,
-  UnexpectedToken(char),
-  InvalidInteger(std::num::ParseIntError),
-  InvalidFloat(std::num::ParseFloatError),
-  Other(String),
-}
-
 impl From<&str> for ValueInner {
   fn from(s: &str) -> Self { ValueInner::String(s.into()) }
 }
@@ -109,6 +93,25 @@ impl Value {
   }
 }
 
+#[derive(Debug, Clone, PartialEq)]
+pub struct ParseError {
+  pub line: usize,
+  pub kind: ParseErrorKind,
+}
+#[derive(Debug, Clone, PartialEq)]
+pub enum ParseErrorKind {
+  MissingValue,
+  MissingEq,
+  MissingComma,
+  MissingCloseArr,
+  MissingCloseBrace,
+  UnexpectedEOF,
+  UnexpectedToken(char),
+  InvalidInteger(std::num::ParseIntError),
+  InvalidFloat(std::num::ParseFloatError),
+  Other(String),
+}
+
 impl fmt::Display for ParseError {
   fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
     write!(f, "line {}: {}", self.line, self.kind)
@@ -119,6 +122,9 @@ impl fmt::Display for ParseErrorKind {
     match self {
       Self::MissingValue => write!(f, "missing value after `=`"),
       Self::MissingEq => write!(f, "missing `=`"),
+      Self::MissingComma => write!(f, "missing `,`"),
+      Self::MissingCloseArr => write!(f, "missing `]`"),
+      Self::MissingCloseBrace => write!(f, "missing `}}`"),
       Self::UnexpectedEOF => write!(f, "unexpected end of file"),
       Self::UnexpectedToken(c) => write!(f, "unexpected token `{c}`"),
       Self::InvalidInteger(e) => write!(f, "invalid integer: {e}"),
@@ -150,6 +156,11 @@ enum Token<'a> {
   Boolean(bool),
 
   Eq,
+  Comma,
+  OpenArr,
+  CloseArr,
+  OpenBrace,
+  CloseBrace,
 }
 impl<'a> Tokenizer<'a> {
   pub fn new(s: &'a str) -> Self { Tokenizer { s, peeked: None, index: 0, line: 1 } }
@@ -213,6 +224,11 @@ impl<'a> Tokenizer<'a> {
         Some(c) if c.is_ascii_alphabetic() => found_word = true,
 
         Some('=') => return Ok(Token::Eq),
+        Some(',') => return Ok(Token::Comma),
+        Some('[') => return Ok(Token::OpenArr),
+        Some(']') => return Ok(Token::CloseArr),
+        Some('{') => return Ok(Token::OpenBrace),
+        Some('}') => return Ok(Token::CloseBrace),
 
         Some('\n') => self.line += 1,
         Some(c) if c.is_whitespace() => continue,
@@ -236,15 +252,42 @@ impl<'a> Tokenizer<'a> {
       }
     }
   }
-  // Parses a value after an `=`
-  fn parse_value(&mut self) -> Result<ValueInner, ParseError> {
-    Ok(match self.next()? {
+  // Parses a value after a `=`, and returns None if it finds an invalid token.
+  fn parse_value_opt(&mut self) -> Result<Option<ValueInner>, ParseError> {
+    Ok(Some(match self.next()? {
       Token::String(s) => ValueInner::String(s),
       Token::Integer(v) => ValueInner::Integer(v),
       Token::Float(v) => ValueInner::Float(v),
       Token::Boolean(v) => ValueInner::Boolean(v),
-      _ => return Err(self.err(ParseErrorKind::MissingValue)),
-    })
+      Token::OpenArr => {
+        let mut values = vec![];
+        loop {
+          match self.next()? {
+            Token::CloseArr => break,
+            _ => {}
+          }
+          let value = self.parse_value()?;
+          values.push(Value::new(self.line, value));
+          match self.next()? {
+            Token::Comma => {}
+            Token::CloseArr => break,
+            _ => return Err(self.err(ParseErrorKind::MissingComma)),
+          }
+        }
+        ValueInner::Array(values)
+      }
+      t => {
+        self.peeked = Some(t);
+        return Ok(None);
+      }
+    }))
+  }
+  // Parses a value after an `=`
+  fn parse_value(&mut self) -> Result<ValueInner, ParseError> {
+    match self.parse_value_opt()? {
+      Some(v) => Ok(v),
+      None => Err(self.err(ParseErrorKind::MissingValue)),
+    }
   }
   // Parses a list of key-value pairs, seperated by newlines
   fn parse_map(&mut self) -> Result<Map, ParseError> {
