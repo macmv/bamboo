@@ -195,13 +195,13 @@ impl Config {
     });
     src.parse().unwrap_or_else(|e| {
       error!("error loading toml at `{path}`: {e}");
-      Value::new_table(0, Map::new())
+      Value::new(0, Map::new())
     })
   }
   fn load_toml_src(src: &str) -> Value {
     src.parse().unwrap_or_else(|e| {
       error!("error loading toml: {e}");
-      Value::new_table(0, Map::new())
+      Value::new(0, Map::new())
     })
   }
 

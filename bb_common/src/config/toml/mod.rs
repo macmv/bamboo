@@ -56,11 +56,17 @@ impl From<f64> for ValueInner {
 impl From<i64> for ValueInner {
   fn from(v: i64) -> Self { ValueInner::Integer(v) }
 }
+impl From<Array> for ValueInner {
+  fn from(v: Array) -> Self { ValueInner::Array(v) }
+}
+impl From<Map> for ValueInner {
+  fn from(v: Map) -> Self { ValueInner::Table(v) }
+}
 
 impl Value {
-  pub fn new(line: usize, value: ValueInner) -> Self { Value { comments: vec![], line, value } }
-  pub fn new_array(line: usize, arr: Array) -> Self { Self::new(line, ValueInner::Array(arr)) }
-  pub fn new_table(line: usize, map: Map) -> Self { Self::new(line, ValueInner::Table(map)) }
+  pub fn new(line: usize, value: impl Into<ValueInner>) -> Self {
+    Value { comments: vec![], line, value: value.into() }
+  }
 
   pub fn is_array(&self) -> bool { matches!(self.value, ValueInner::Array(_)) }
   pub fn is_table(&self) -> bool { matches!(self.value, ValueInner::Table(_)) }
@@ -230,6 +236,17 @@ impl<'a> Tokenizer<'a> {
       }
     }
   }
+  // Parses a value after an `=`
+  fn parse_value(&mut self) -> Result<ValueInner, ParseError> {
+    Ok(match self.next()? {
+      Token::String(s) => ValueInner::String(s),
+      Token::Integer(v) => ValueInner::Integer(v),
+      Token::Float(v) => ValueInner::Float(v),
+      Token::Boolean(v) => ValueInner::Boolean(v),
+      _ => return Err(self.err(ParseErrorKind::MissingValue)),
+    })
+  }
+  // Parses a list of key-value pairs, seperated by newlines
   fn parse_map(&mut self) -> Result<Map, ParseError> {
     let mut comments = self.parse_comments()?;
     let mut map = Map::new();
@@ -240,13 +257,7 @@ impl<'a> Tokenizer<'a> {
             Token::Eq => {}
             _ => break Err(self.err(ParseErrorKind::MissingEq)),
           }
-          let value = match self.next()? {
-            Token::String(s) => ValueInner::String(s),
-            Token::Integer(v) => ValueInner::Integer(v),
-            Token::Float(v) => ValueInner::Float(v),
-            Token::Boolean(v) => ValueInner::Boolean(v),
-            _ => break Err(self.err(ParseErrorKind::MissingValue)),
-          };
+          let value = self.parse_value()?;
           map.insert(
             key.into(),
             Value {
@@ -268,7 +279,7 @@ impl FromStr for Value {
   fn from_str(s: &str) -> Result<Self, Self::Err> {
     let mut tok = Tokenizer::new(s);
 
-    Ok(Value::new_table(0, tok.parse_map()?))
+    Ok(Value::new(0, tok.parse_map()?))
   }
 }
 
