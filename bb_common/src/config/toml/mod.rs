@@ -106,7 +106,7 @@ pub struct ParseError {
 pub enum ParseErrorKind {
   MissingValue,
   MissingKey,
-  Missing(TokenKind),
+  Missing(Vec<TokenKind>),
   UnexpectedEOF,
   UnexpectedEOL,
   UnexpectedToken(char),
@@ -125,7 +125,27 @@ impl fmt::Display for ParseErrorKind {
     match self {
       Self::MissingValue => write!(f, "missing value after `=`"),
       Self::MissingKey => write!(f, "missing map key"),
-      Self::Missing(tok) => write!(f, "missing {tok}"),
+      Self::Missing(tok) => {
+        if tok.is_empty() {
+          panic!("cannot have empty missing list")
+        } else if tok.len() == 1 {
+          write!(f, "missing {}", tok[0])
+        } else if tok.len() == 2 {
+          write!(f, "missing {} or {}", tok[0], tok[1])
+        } else {
+          write!(f, "missing ")?;
+          for (i, t) in tok.iter().enumerate() {
+            write!(f, " {t}")?;
+            if i != tok.len() - 1 {
+              write!(f, ",")?;
+            }
+            if i == tok.len() - 2 {
+              write!(f, " or")?;
+            }
+          }
+          Ok(())
+        }
+      }
       Self::UnexpectedEOF => write!(f, "unexpected end of file"),
       Self::UnexpectedEOL => write!(f, "unexpected end of line"),
       Self::UnexpectedToken(c) => write!(f, "unexpected token `{c}`"),
@@ -230,7 +250,7 @@ impl<'a> Tokenizer<'a> {
     if actual == tok {
       Ok(())
     } else {
-      Err(self.err(ParseErrorKind::Missing(tok.kind())))
+      Err(self.err(ParseErrorKind::Missing(vec![tok.kind()])))
     }
   }
   pub fn next_opt(&mut self) -> Result<Option<Token<'a>>, ParseError> {
@@ -357,7 +377,11 @@ impl<'a> Tokenizer<'a> {
           match self.next()? {
             Token::Comma => {}
             Token::CloseArr => break,
-            _ => return Err(self.err(ParseErrorKind::Missing(TokenKind::Comma))),
+            _ => {
+              return Err(
+                self.err(ParseErrorKind::Missing(vec![TokenKind::Comma, TokenKind::CloseArr])),
+              )
+            }
           }
         }
         ValueInner::Array(values)
@@ -379,7 +403,11 @@ impl<'a> Tokenizer<'a> {
           match self.next()? {
             Token::Comma => {}
             Token::CloseBrace => break,
-            _ => return Err(self.err(ParseErrorKind::Missing(TokenKind::Comma))),
+            _ => {
+              return Err(
+                self.err(ParseErrorKind::Missing(vec![TokenKind::Comma, TokenKind::CloseBrace])),
+              )
+            }
           }
         }
         ValueInner::Table(values)
@@ -417,7 +445,9 @@ impl<'a> Tokenizer<'a> {
             },
           );
         }
-        Some(t) => return Err(self.err(ParseErrorKind::Missing(TokenKind::Word))),
+        Some(t) => {
+          return Err(self.err(ParseErrorKind::Missing(vec![TokenKind::Word, TokenKind::OpenArr])))
+        }
         None => return Ok(map),
       }
     }
