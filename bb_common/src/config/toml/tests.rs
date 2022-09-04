@@ -73,6 +73,24 @@ fn parsing() {
     },
   );
   assert_value("# hello\na = 2", Value::new(2, 2).with_comment("hello"));
+  assert_value(
+    r#"
+    a = 2
+    b = 3
+
+    [options]
+    foo = 3"#,
+    Value::new(
+      0,
+      indexmap! {
+        "a".into() => Value::new(1, 2),
+        "b".into() => Value::new(2, 2),
+        "options".into() => Value::new(4, indexmap! {
+          "foo".into() => Value::new(3, 5),
+        }),
+      },
+    ),
+  );
 
   assert_fail("a = \n1", "line 1: unexpected end of line");
   assert_fail("a =\n", "line 1: unexpected end of line");
