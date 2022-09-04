@@ -44,6 +44,15 @@ pub enum ParseErrorKind {
   Other(String),
 }
 
+impl From<&str> for ValueInner {
+  fn from(s: &str) -> Self { ValueInner::String(s.into()) }
+}
+impl From<bool> for ValueInner {
+  fn from(v: bool) -> Self { ValueInner::Boolean(v) }
+}
+impl From<f64> for ValueInner {
+  fn from(v: f64) -> Self { ValueInner::Float(v) }
+}
 impl From<i64> for ValueInner {
   fn from(v: i64) -> Self { ValueInner::Integer(v) }
 }
@@ -152,28 +161,31 @@ impl<'a> Tokenizer<'a> {
     let mut found_number = false;
     let mut found_string = false;
     let start = self.index;
-    while self.index < self.s.len() {
+    loop {
       let c = match self.s.get(self.index..) {
-        Some(s) => match s.chars().next() {
-          Some(c) => c,
-          None => break,
-        },
+        Some(s) => s.chars().next(),
         None => {
           self.index += 1;
           continue;
         }
       };
-      self.index += c.len_utf8();
+      if let Some(c) = c {
+        self.index += c.len_utf8();
+      }
       match c {
-        '"' if !found_string => found_string = true,
-        '"' if found_string => {
+        Some('"') if !found_string => found_string = true,
+        Some('"') if found_string => {
           return Ok(Token::String(self.s[start + 1..self.index - 1].trim().into()))
         }
-        _ if found_string => continue,
+        Some(_) if found_string => continue,
 
-        c if c.is_ascii_alphabetic() && !found_word => found_word = true,
-        c if !c.is_ascii_alphabetic() && found_word => {
-          let word = self.s[start..self.index - 1].trim();
+        c if c.map(|c| !c.is_ascii_digit()).unwrap_or(true) && found_number => {
+          return Ok(Token::Integer(
+            self.s[start..self.index].trim().parse::<i64>().map_err(|e| self.err(e.into()))?,
+          ));
+        }
+        c if c.map(|c| !c.is_ascii_alphabetic()).unwrap_or(true) && found_word => {
+          let word = self.s[start..self.index].trim();
           match word {
             "true" => return Ok(Token::Boolean(true)),
             "false" => return Ok(Token::Boolean(true)),
@@ -181,26 +193,17 @@ impl<'a> Tokenizer<'a> {
           }
         }
 
-        c if c.is_ascii_digit() => found_number = true,
-        c if !c.is_ascii_digit() && found_number => {
-          return Ok(Token::Integer(
-            self.s[start..self.index - 1].trim().parse::<i64>().map_err(|e| self.err(e.into()))?,
-          ))
-        }
+        Some(c) if c.is_ascii_digit() => found_number = true,
+        Some(c) if c.is_ascii_alphabetic() => found_word = true,
 
-        '=' => return Ok(Token::Eq),
+        Some('=') => return Ok(Token::Eq),
 
-        '\n' => self.line += 1,
-        c if c.is_whitespace() => continue,
-        _ => return Err(self.err(ParseErrorKind::UnexpectedToken(c))),
+        Some('\n') => self.line += 1,
+        Some(c) if c.is_whitespace() => continue,
+        Some(c) => return Err(self.err(ParseErrorKind::UnexpectedToken(c))),
+        None => return Err(self.err(ParseErrorKind::UnexpectedEOF)),
       }
     }
-    if found_number {
-      return Ok(Token::Integer(
-        self.s[start..self.index].trim().parse::<i64>().map_err(|e| self.err(e.into()))?,
-      ));
-    }
-    Err(self.err(ParseErrorKind::UnexpectedEOF))
   }
   pub fn err(&self, kind: ParseErrorKind) -> ParseError { ParseError { line: self.line, kind } }
 
@@ -230,6 +233,7 @@ impl<'a> Tokenizer<'a> {
           let value = match self.next()? {
             Token::String(s) => ValueInner::String(s),
             Token::Integer(v) => ValueInner::Integer(v),
+            Token::Boolean(v) => ValueInner::Boolean(v),
             _ => break Err(self.err(ParseErrorKind::MissingValue)),
           };
           map.insert(
