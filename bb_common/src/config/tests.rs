@@ -54,10 +54,7 @@ fn parse_derived_values() {
 
   let config = config.all::<MyConfig>().unwrap();
 
-  assert_eq!(config.foo, 3);
-  assert_eq!(config.bar, 4);
-  assert_eq!(config.options.baz, 2);
-  assert_eq!(config.options.other, 100);
+  assert_eq!(config, MyConfig { foo: 3, bar: 4, options: MyOptions { baz: 2, other: 100 } });
 }
 
 /*
