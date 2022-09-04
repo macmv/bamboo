@@ -69,7 +69,7 @@ pub fn config(input: TokenStream) -> TokenStream {
             let ty = field.ty;
             quote!(
               #name: match t.get(#name_str) {
-                Some(v) => <#ty as crate::config::TomlValue>::from_toml(v)?,
+                Some(v) => <#ty as crate::config::TomlValue>::from_toml(v).map_err(|e| e.prepend(#name_str))?,
                 None    => def.#name,
               }
             )
