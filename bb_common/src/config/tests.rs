@@ -94,12 +94,9 @@ fn error_messages() {
   ));
   assert_eq!(
     config.get::<Color>("color").unwrap_err().to_string(),
-    "at `color`, got invalid option 'invalid_color', valid options are 'red', 'green', or 'blue'",
+    "at `color`, got invalid option \"invalid_color\", valid options are \"red\", \"green\", or \"blue\"",
   );
-}
 
-#[test]
-fn default_struct_values() {
   let config = Arc::new(Config::new_src(
     r#"
     baz = "hello"
@@ -107,5 +104,32 @@ fn default_struct_values() {
     "#,
     "",
   ));
-  assert_eq!(config.all::<MyOptions>().unwrap(), MyOptions { baz: 3, other: 10 },);
+  assert_eq!(
+    config.all::<MyOptions>().unwrap_err().to_string(),
+    "expected integer at `baz`, got \"hello\""
+  );
+
+  let config = Arc::new(Config::new_src(
+    r#"
+    [options]
+    baz = "hello"
+    other = 10
+    "#,
+    "",
+  ));
+  assert_eq!(
+    config.get::<MyOptions>("options").unwrap_err().to_string(),
+    "expected integer at `options::baz`, got \"hello\""
+  );
+}
+
+#[test]
+fn default_struct_values() {
+  let config = Arc::new(Config::new_src(
+    r#"
+    other = 10
+    "#,
+    "",
+  ));
+  assert_eq!(config.all::<MyOptions>().unwrap(), MyOptions { baz: 3, other: 10 });
 }

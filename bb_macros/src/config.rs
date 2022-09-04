@@ -28,11 +28,11 @@ struct VariantsTemplate<'a>(&'a [String]);
 
 impl fmt::Display for VariantsTemplate<'_> {
   fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-    write!(f, "got invalid option '{{}}', valid options are")?;
+    write!(f, "got invalid option \"{{}}\", valid options are")?;
     if self.0.len() == 1 {
-      write!(f, " '{}'", self.0[0])
+      write!(f, " \"{}\"", self.0[0])
     } else if self.0.len() == 2 {
-      write!(f, " '{}' or '{}'", self.0[0], self.0[1])
+      write!(f, " \"{}\" or \"{}\"", self.0[0], self.0[1])
     } else {
       let has_too_many = self.0.len() > 20;
       let variants = if has_too_many { &self.0[..20] } else { &self.0[..] };
@@ -40,7 +40,7 @@ impl fmt::Display for VariantsTemplate<'_> {
         if i == variants.len() - 1 {
           write!(f, " or")?;
         }
-        write!(f, " '{variant}'")?;
+        write!(f, " \"{variant}\"")?;
         if i != variants.len() - 1 {
           write!(f, ",")?;
         }
