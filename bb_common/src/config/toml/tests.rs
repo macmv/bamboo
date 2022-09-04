@@ -37,4 +37,5 @@ fn parsing() {
   assert_value("a = 2", 2);
   assert_value("a = 1.2", 1.2);
   assert_value("a = true", true);
+  assert_value("a = false", false);
 }

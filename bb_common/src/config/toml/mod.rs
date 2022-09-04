@@ -196,7 +196,7 @@ impl<'a> Tokenizer<'a> {
           let word = self.s[start..self.index].trim();
           match word {
             "true" => return Ok(Token::Boolean(true)),
-            "false" => return Ok(Token::Boolean(true)),
+            "false" => return Ok(Token::Boolean(false)),
             _ => return Ok(Token::Word(word)),
           }
         }
