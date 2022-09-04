@@ -184,6 +184,7 @@ impl<'a> Tokenizer<'a> {
     if let Some(t) = self.peeked.take() {
       return Ok(t);
     }
+    let mut found_comment = false;
     let mut found_word = false;
     let mut found_number = false;
     let mut found_float = false;
@@ -201,6 +202,15 @@ impl<'a> Tokenizer<'a> {
         self.index += c.len_utf8();
       }
       match c {
+        Some('#') if !found_comment => found_comment = true,
+        Some('\n') if found_comment => {
+          // First, remove the newline with self.index - 1. Then, trim whitespace from
+          // before the #. Then trim the # with [1..]. Finally, trim whitespace on the
+          // actual comment.
+          return Ok(Token::Comment(self.s[start..self.index - 1].trim()[1..].trim()));
+        }
+        Some(_) if found_comment => continue,
+
         Some('"') if !found_string => found_string = true,
         Some('"') if found_string => {
           return Ok(Token::String(self.s[start + 1..self.index - 1].trim().into()))
