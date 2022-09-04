@@ -10,6 +10,9 @@ pub struct Value {
   pub value:    ValueInner,
 }
 
+pub type Array = Vec<Value>;
+pub type Map = IndexMap<String, Value>;
+
 #[derive(Clone, Debug, PartialEq)]
 pub enum ValueInner {
   String(String),
@@ -17,12 +20,12 @@ pub enum ValueInner {
   Float(f64),
   Boolean(bool),
   // Datetime(Datetime),
-  Array(Vec<Value>),
-  Table(IndexMap<String, Value>),
+  Array(Array),
+  Table(Map),
 }
 
 pub struct ParseError {
-  pub line: u32,
+  pub line: usize,
   pub kind: ParseErrorKind,
 }
 pub enum ParseErrorKind {
@@ -38,6 +41,43 @@ impl Value {
 
   pub fn is_array(&self) -> bool { matches!(self.value, ValueInner::Array(_)) }
   pub fn is_table(&self) -> bool { matches!(self.value, ValueInner::Table(_)) }
+
+  pub fn as_str(&self) -> Option<&String> {
+    match &self.value {
+      ValueInner::String(a) => Some(a),
+      _ => None,
+    }
+  }
+  pub fn as_integer(&self) -> Option<i64> {
+    match &self.value {
+      ValueInner::Integer(v) => Some(*v),
+      _ => None,
+    }
+  }
+  pub fn as_float(&self) -> Option<f64> {
+    match &self.value {
+      ValueInner::Float(v) => Some(*v),
+      _ => None,
+    }
+  }
+  pub fn as_bool(&self) -> Option<bool> {
+    match &self.value {
+      ValueInner::Boolean(v) => Some(*v),
+      _ => None,
+    }
+  }
+  pub fn as_array(&self) -> Option<&Array> {
+    match &self.value {
+      ValueInner::Array(a) => Some(a),
+      _ => None,
+    }
+  }
+  pub fn as_table(&self) -> Option<&Map> {
+    match &self.value {
+      ValueInner::Table(t) => Some(t),
+      _ => None,
+    }
+  }
 }
 
 impl fmt::Display for ParseError {
@@ -106,6 +146,7 @@ impl<'a> Tokenizer<'a> {
     }
     None
   }
+  pub fn err(&self, kind: ParseErrorKind) -> ParseError { ParseError { line: self.line, kind } }
 }
 
 impl FromStr for Value {
@@ -119,7 +160,7 @@ impl FromStr for Value {
       match tok.next() {
         Some(Token::Comment(c)) => comments.push(c),
         Some(_) => todo!(),
-        None => break,
+        None => break Err(tok.err(ParseErrorKind::UnexpectedEOF)),
       }
     }
   }
@@ -164,7 +205,7 @@ impl fmt::Display for Path {
 }
 
 impl Value {
-  fn fmt_long(&self, path: Path, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+  fn fmt_long(&self, path: &mut Path, f: &mut fmt::Formatter<'_>) -> fmt::Result {
     for line in &self.comments {
       write!(f, "# {line}")?;
     }
@@ -172,7 +213,7 @@ impl Value {
   }
 }
 impl ValueInner {
-  fn fmt_long(&self, path: Path, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+  fn fmt_long(&self, path: &mut Path, f: &mut fmt::Formatter<'_>) -> fmt::Result {
     match self {
       Self::String(v) => write!(f, "\"{v}\""),
       Self::Integer(v) => write!(f, "{v}"),

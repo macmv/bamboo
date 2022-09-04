@@ -81,11 +81,12 @@ pub fn config(input: TokenStream) -> TokenStream {
         impl crate::config::TomlValue for #name {
           fn from_toml(value: &crate::config::Value) -> crate::config::Result<Self> {
             let def = <Self as std::default::Default>::default();
-            match value {
-              crate::config::Value::Table(t) => Ok(Self {
+            if let Some(t) = value.as_table() {
+              Ok(Self {
                 #fields
-              }),
-              _ => Err(crate::config::ConfigError::from_value::<Self>(value)),
+              })
+            } else {
+              Err(crate::config::ConfigError::from_value::<Self>(value))
             }
           }
           fn name() -> String { stringify!(#name).into() }
