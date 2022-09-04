@@ -1,5 +1,5 @@
 use super::{Config, ConfigError};
-use bb_macros::Config;
+use bb_macros::{Config, Default};
 use std::sync::Arc;
 
 fn test_config() -> Arc<Config> {
@@ -28,16 +28,22 @@ fn parse_simple_values() {
   assert_eq!(section.get::<i32>("other").unwrap(), 100);
 }
 
-#[derive(Config)]
+#[derive(Config, Default)]
 struct MyConfig {
   pub foo:     i32,
   pub bar:     i32,
   pub options: MyOptions,
 }
-#[derive(Config)]
+#[derive(Debug, Clone, Config, Default, PartialEq)]
 struct MyOptions {
+  #[default = 3]
   pub baz:   i32,
   pub other: i32,
+}
+
+#[test]
+fn default_values() {
+  assert_eq!(MyOptions::default(), MyOptions { baz: 3, other: 0 });
 }
 
 #[test]
