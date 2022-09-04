@@ -36,11 +36,18 @@ fn tokens() {
 }
 
 #[track_caller]
-fn assert_value(toml: &str, value: impl Into<ValueInner>) {
+fn assert_val(toml: &str, value: impl Into<ValueInner>) {
   let val: Value = toml.parse().unwrap();
 
   let mut map = Map::new();
   map.insert("a".into(), Value::new(1, value.into()));
+  assert_eq!(val, Value::new(0, map));
+}
+fn assert_value(toml: &str, value: Value) {
+  let val: Value = toml.parse().unwrap();
+
+  let mut map = Map::new();
+  map.insert("a".into(), value);
   assert_eq!(val, Value::new(0, map));
 }
 #[track_caller]
@@ -50,14 +57,14 @@ fn assert_fail(toml: &str, error: &str) {
 
 #[test]
 fn parsing() {
-  assert_value("a = 2", 2);
-  assert_value("a = 1.2", 1.2);
-  assert_value("a = true", true);
-  assert_value("a = false", false);
-  assert_value("a = []", vec![]);
-  assert_value("a = {}", indexmap! {});
-  assert_value("a = [1, 2, 3]", vec![Value::new(1, 1), Value::new(1, 2), Value::new(1, 3)]);
-  assert_value(
+  assert_val("a = 2", 2);
+  assert_val("a = 1.2", 1.2);
+  assert_val("a = true", true);
+  assert_val("a = false", false);
+  assert_val("a = []", vec![]);
+  assert_val("a = {}", indexmap! {});
+  assert_val("a = [1, 2, 3]", vec![Value::new(1, 1), Value::new(1, 2), Value::new(1, 3)]);
+  assert_val(
     "a = { x = 2, y = 3, z = 4 }",
     indexmap! {
       "x".to_string() => Value::new(1, 2),
@@ -65,7 +72,7 @@ fn parsing() {
       "z".to_string() => Value::new(1, 4),
     },
   );
-  assert_value("# hello\na = 2", 2);
+  assert_value("# hello\na = 2", Value::new(2, 2).with_comment("hello"));
 
   assert_fail("a = \n1", "line 1: unexpected end of line");
   assert_fail("a =\n", "line 1: unexpected end of line");

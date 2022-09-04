@@ -51,6 +51,10 @@ impl Value {
   pub fn new(line: usize, value: impl Into<ValueInner>) -> Self {
     Value { comments: vec![], line, value: value.into() }
   }
+  pub fn with_comment(mut self, comment: impl Into<String>) -> Self {
+    self.comments.push(comment.into());
+    self
+  }
 
   pub fn is_array(&self) -> bool { matches!(self.value, ValueInner::Array(_)) }
   pub fn is_table(&self) -> bool { matches!(self.value, ValueInner::Table(_)) }
