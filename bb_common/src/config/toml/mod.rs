@@ -1,12 +1,16 @@
 use indexmap::IndexMap;
 use std::{fmt, str::FromStr};
 
+#[cfg(test)]
+mod tests;
+
 // This uses very similar techniques to the `toml` crate, but adds support for
 // serializing comments from values.
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct Value {
   pub comments: Vec<String>,
+  pub line:     usize,
   pub value:    ValueInner,
 }
 
@@ -24,20 +28,26 @@ pub enum ValueInner {
   Table(Map),
 }
 
+#[derive(Debug, Clone, PartialEq)]
 pub struct ParseError {
   pub line: usize,
   pub kind: ParseErrorKind,
 }
+#[derive(Debug, Clone, PartialEq)]
 pub enum ParseErrorKind {
   MissingValue,
   UnexpectedEOF,
   Other(String),
 }
 
+impl From<i64> for ValueInner {
+  fn from(v: i64) -> Self { ValueInner::Integer(v) }
+}
+
 impl Value {
-  pub fn new(value: ValueInner) -> Self { Value { comments: vec![], value } }
-  pub fn new_array() -> Self { Self::new(ValueInner::Array(vec![])) }
-  pub fn new_table() -> Self { Self::new(ValueInner::Table(IndexMap::new())) }
+  pub fn new(line: usize, value: ValueInner) -> Self { Value { comments: vec![], line, value } }
+  pub fn new_array(line: usize, arr: Array) -> Self { Self::new(line, ValueInner::Array(arr)) }
+  pub fn new_table(line: usize, map: Map) -> Self { Self::new(line, ValueInner::Table(map)) }
 
   pub fn is_array(&self) -> bool { matches!(self.value, ValueInner::Array(_)) }
   pub fn is_table(&self) -> bool { matches!(self.value, ValueInner::Table(_)) }
