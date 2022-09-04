@@ -106,7 +106,7 @@ pub struct ParseError {
 pub enum ParseErrorKind {
   MissingValue,
   MissingKey,
-  Missing(Vec<TokenKind>),
+  Expected(Vec<TokenKind>),
   UnexpectedEOF,
   UnexpectedEOL,
   UnexpectedToken(char),
@@ -125,15 +125,15 @@ impl fmt::Display for ParseErrorKind {
     match self {
       Self::MissingValue => write!(f, "missing value after `=`"),
       Self::MissingKey => write!(f, "missing map key"),
-      Self::Missing(tok) => {
+      Self::Expected(tok) => {
         if tok.is_empty() {
           panic!("cannot have empty missing list")
         } else if tok.len() == 1 {
-          write!(f, "missing {}", tok[0])
+          write!(f, "expected {}", tok[0])
         } else if tok.len() == 2 {
-          write!(f, "missing {} or {}", tok[0], tok[1])
+          write!(f, "expected {} or {}", tok[0], tok[1])
         } else {
-          write!(f, "missing ")?;
+          write!(f, "expected ")?;
           for (i, t) in tok.iter().enumerate() {
             write!(f, " {t}")?;
             if i != tok.len() - 1 {
@@ -250,7 +250,7 @@ impl<'a> Tokenizer<'a> {
     if actual == tok {
       Ok(())
     } else {
-      Err(self.err(ParseErrorKind::Missing(vec![tok.kind()])))
+      Err(self.err(ParseErrorKind::Expected(vec![tok.kind()])))
     }
   }
   pub fn next_opt(&mut self) -> Result<Option<Token<'a>>, ParseError> {
@@ -379,7 +379,7 @@ impl<'a> Tokenizer<'a> {
             Token::CloseArr => break,
             _ => {
               return Err(
-                self.err(ParseErrorKind::Missing(vec![TokenKind::Comma, TokenKind::CloseArr])),
+                self.err(ParseErrorKind::Expected(vec![TokenKind::Comma, TokenKind::CloseArr])),
               )
             }
           }
@@ -405,7 +405,7 @@ impl<'a> Tokenizer<'a> {
             Token::CloseBrace => break,
             _ => {
               return Err(
-                self.err(ParseErrorKind::Missing(vec![TokenKind::Comma, TokenKind::CloseBrace])),
+                self.err(ParseErrorKind::Expected(vec![TokenKind::Comma, TokenKind::CloseBrace])),
               )
             }
           }
@@ -446,7 +446,7 @@ impl<'a> Tokenizer<'a> {
           );
         }
         Some(t) => {
-          return Err(self.err(ParseErrorKind::Missing(vec![TokenKind::Word, TokenKind::OpenArr])))
+          return Err(self.err(ParseErrorKind::Expected(vec![TokenKind::Word, TokenKind::OpenArr])))
         }
         None => return Ok(map),
       }
