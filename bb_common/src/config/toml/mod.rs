@@ -36,7 +36,11 @@ pub struct ParseError {
 #[derive(Debug, Clone, PartialEq)]
 pub enum ParseErrorKind {
   MissingValue,
+  MissingEq,
   UnexpectedEOF,
+  UnexpectedToken(char),
+  InvalidInteger(std::num::ParseIntError),
+  InvalidFloat(std::num::ParseFloatError),
   Other(String),
 }
 
@@ -99,34 +103,61 @@ impl fmt::Display for ParseErrorKind {
   fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
     match self {
       Self::MissingValue => write!(f, "missing value after `=`"),
+      Self::MissingEq => write!(f, "missing `=`"),
       Self::UnexpectedEOF => write!(f, "unexpected end of file"),
+      Self::UnexpectedToken(c) => write!(f, "unexpected token `{c}`"),
+      Self::InvalidInteger(e) => write!(f, "invalid integer: {e}"),
+      Self::InvalidFloat(e) => write!(f, "invalid float: {e}"),
       Self::Other(s) => write!(f, "{s}"),
     }
   }
 }
+impl From<std::num::ParseIntError> for ParseErrorKind {
+  fn from(e: std::num::ParseIntError) -> Self { ParseErrorKind::InvalidInteger(e) }
+}
+impl From<std::num::ParseFloatError> for ParseErrorKind {
+  fn from(e: std::num::ParseFloatError) -> Self { ParseErrorKind::InvalidFloat(e) }
+}
 
 struct Tokenizer<'a> {
-  s:     &'a str,
-  index: usize,
-  line:  usize,
+  s:      &'a str,
+  peeked: Option<Token<'a>>,
+  index:  usize,
+  line:   usize,
 }
+#[derive(Debug, Clone, PartialEq)]
 enum Token<'a> {
   Comment(&'a str),
   Word(&'a str),
   String(String),
   Integer(i64),
   Boolean(bool),
+
+  Eq,
 }
 impl<'a> Tokenizer<'a> {
-  pub fn new(s: &'a str) -> Self { Tokenizer { s, index: 0, line: 0 } }
-  pub fn next(&mut self) -> Option<Token<'a>> {
+  pub fn new(s: &'a str) -> Self { Tokenizer { s, peeked: None, index: 0, line: 1 } }
+  pub fn next_opt(&mut self) -> Result<Option<Token<'a>>, ParseError> {
+    match self.next() {
+      Ok(t) => Ok(Some(t)),
+      Err(e) if e.kind == ParseErrorKind::UnexpectedEOF => Ok(None),
+      Err(e) => Err(e),
+    }
+  }
+  pub fn next(&mut self) -> Result<Token<'a>, ParseError> {
+    if let Some(t) = self.peeked.take() {
+      return Ok(t);
+    }
     let mut found_word = false;
     let mut found_number = false;
     let mut found_string = false;
     let start = self.index;
     while self.index < self.s.len() {
       let c = match self.s.get(self.index..) {
-        Some(s) => s.chars().next()?,
+        Some(s) => match s.chars().next() {
+          Some(c) => c,
+          None => break,
+        },
         None => {
           self.index += 1;
           continue;
@@ -134,29 +165,86 @@ impl<'a> Tokenizer<'a> {
       };
       self.index += c.len_utf8();
       match c {
-        s if s.is_ascii_alphabetic() => found_word = true,
-        s if s.is_ascii_digit() => found_number = true,
         '"' if !found_string => found_string = true,
         '"' if found_string => {
-          return Some(Token::String(self.s[start + 1..self.index - 1].into()))
+          return Ok(Token::String(self.s[start + 1..self.index - 1].trim().into()))
         }
-        _ => {
-          if c == '\n' {
-            self.line += 1;
-          }
-          if found_word {
-            return Some(Token::Word(&self.s[start..self.index - 1]));
-          } else if found_number {
-            return Some(Token::Integer(self.s[start..self.index - 1].parse().ok()?));
-          } else {
-            continue;
+        _ if found_string => continue,
+
+        c if c.is_ascii_alphabetic() && !found_word => found_word = true,
+        c if !c.is_ascii_alphabetic() && found_word => {
+          let word = self.s[start..self.index - 1].trim();
+          match word {
+            "true" => return Ok(Token::Boolean(true)),
+            "false" => return Ok(Token::Boolean(true)),
+            _ => return Ok(Token::Word(word)),
           }
         }
+
+        c if c.is_ascii_digit() => found_number = true,
+        c if !c.is_ascii_digit() && found_number => {
+          return Ok(Token::Integer(
+            self.s[start..self.index - 1].trim().parse::<i64>().map_err(|e| self.err(e.into()))?,
+          ))
+        }
+
+        '=' => return Ok(Token::Eq),
+
+        '\n' => self.line += 1,
+        c if c.is_whitespace() => continue,
+        _ => return Err(self.err(ParseErrorKind::UnexpectedToken(c))),
       }
     }
-    None
+    if found_number {
+      return Ok(Token::Integer(
+        self.s[start..self.index].trim().parse::<i64>().map_err(|e| self.err(e.into()))?,
+      ));
+    }
+    Err(self.err(ParseErrorKind::UnexpectedEOF))
   }
   pub fn err(&self, kind: ParseErrorKind) -> ParseError { ParseError { line: self.line, kind } }
+
+  fn parse_comments(&mut self) -> Result<Vec<String>, ParseError> {
+    let mut comments = vec![];
+    loop {
+      match self.next_opt()? {
+        Some(Token::Comment(c)) => comments.push(c.into()),
+        Some(v) => {
+          self.peeked = Some(v);
+          return Ok(comments);
+        }
+        None => return Ok(comments),
+      }
+    }
+  }
+  fn parse_map(&mut self) -> Result<Map, ParseError> {
+    let mut comments = self.parse_comments()?;
+    let mut map = Map::new();
+    loop {
+      match self.next_opt()? {
+        Some(Token::Word(key)) => {
+          match self.next()? {
+            Token::Eq => {}
+            _ => break Err(self.err(ParseErrorKind::MissingEq)),
+          }
+          let value = match self.next()? {
+            Token::String(s) => ValueInner::String(s),
+            Token::Integer(v) => ValueInner::Integer(v),
+            _ => break Err(self.err(ParseErrorKind::MissingValue)),
+          };
+          map.insert(
+            key.into(),
+            Value {
+              comments: std::mem::replace(&mut comments, self.parse_comments()?),
+              line: self.line,
+              value,
+            },
+          );
+        }
+        _ => return Ok(map),
+      }
+    }
+  }
 }
 
 impl FromStr for Value {
@@ -165,14 +253,7 @@ impl FromStr for Value {
   fn from_str(s: &str) -> Result<Self, Self::Err> {
     let mut tok = Tokenizer::new(s);
 
-    let mut comments = vec![];
-    loop {
-      match tok.next() {
-        Some(Token::Comment(c)) => comments.push(c),
-        Some(_) => todo!(),
-        None => break Err(tok.err(ParseErrorKind::UnexpectedEOF)),
-      }
-    }
+    Ok(Value::new_table(0, tok.parse_map()?))
   }
 }
 
