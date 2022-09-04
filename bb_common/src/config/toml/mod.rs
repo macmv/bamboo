@@ -333,6 +333,7 @@ impl<'a> Tokenizer<'a> {
         Some(c) if c.is_ascii_alphabetic() => found_word = true,
 
         Some('=') => return Ok(Token::Eq),
+        Some('.') => return Ok(Token::Dot),
         Some(',') => return Ok(Token::Comma),
         Some('[') => return Ok(Token::OpenArr),
         Some(']') => return Ok(Token::CloseArr),
