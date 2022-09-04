@@ -5,6 +5,7 @@ pub use toml::Value;
 
 #[cfg(test)]
 mod tests;
+mod toml;
 mod types;
 
 pub struct Config {
