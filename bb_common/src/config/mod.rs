@@ -1,7 +1,6 @@
 use std::{fmt, fs, sync::Arc};
-use toml::map::Map;
 
-pub use toml::Value;
+pub use toml::*;
 
 #[cfg(test)]
 mod tests;
@@ -196,13 +195,13 @@ impl Config {
     });
     src.parse().unwrap_or_else(|e| {
       error!("error loading toml at `{path}`: {e}");
-      Value::Table(Map::new())
+      Value::new_table()
     })
   }
   fn load_toml_src(src: &str) -> Value {
     src.parse().unwrap_or_else(|e| {
       error!("error loading toml: {e}");
-      Value::Table(Map::new())
+      Value::new_table()
     })
   }
 
@@ -211,114 +210,6 @@ impl Config {
   where
     T: TomlValue,
   {
-    self.get_at([].into_iter())
-  }
-
-  /// Reads the toml value at the given key. This will always return a value. If
-  /// the value doesn't exist in the primary config (or the value is the wrong
-  /// type), then it will use the default config. If it doesn't exist there (or
-  /// if it's the wrong type), this function will panic.
-  ///
-  /// In my opinion, a key should always exist when you try to load it. If there
-  /// was a function like `get_opt`, which would only return a value when
-  /// present, that would make it much more difficult for users to find out what
-  /// that key was. All the keys that can be loaded should be present in the
-  /// default config, so that it is easy for users to edit the config
-  /// themselves.
-  ///
-  /// If you really need to get around this, you can implement [`TomlValue`] for
-  /// your own type. I hightly recommend against this, as that will just cause
-  /// confusion for your users. I will not be adding any more implementations
-  /// than the ones present in this file.
-  pub fn get<T>(&self, key: &str) -> Result<T>
-  where
-    T: TomlValue,
-  {
-    self.get_at([key].into_iter())
-  }
-
-  /// Gets the value at the given path. This allows you to pass in a nested key,
-  /// which can be useful at times, but is usually less idiomatic than calling
-  /// [`get`](Self::get).
-  pub fn get_at<'b, I, T>(&self, key: I) -> Result<T>
-  where
-    I: Iterator<Item = &'b str> + Clone,
-    T: TomlValue,
-  {
-    match Self::get_val(&self.primary, key.clone()) {
-      Some(val) => T::from_toml(val).map_err(|e| e.prepend_list(key)),
-      None => self.get_default_at(key),
-    }
-  }
-
-  /// Gets the default value at the given key. This will panic if the key does
-  /// not exist, or if it was the wrong type.
-  fn get_default_at<'b, I, T>(&self, key: I) -> Result<T>
-  where
-    I: Iterator<Item = &'b str> + Clone,
-    T: TomlValue,
-  {
-    match Self::get_val(&self.default, key.clone()) {
-      Some(val) => T::from_toml(val).map_err(|e| e.prepend_list(key)),
-      None => Err(ConfigError::from_path(key, ConfigErrorKind::Missing)),
-    }
-  }
-
-  fn get_val<'a, 'b, I>(toml: &'a Value, key: I) -> Option<&'a Value>
-  where
-    I: Iterator<Item = &'b str>,
-  {
-    let mut val = toml;
-    for s in key {
-      match val {
-        Value::Table(map) => match map.get(s) {
-          Some(v) => val = v,
-          None => return None,
-        },
-        Value::Array(arr) => match s.parse::<usize>() {
-          Ok(idx) => val = &arr[idx],
-          Err(_) => return None,
-        },
-        _ => return None,
-      }
-    }
-    Some(val)
-  }
-
-  /// Returns a config section for the given key.
-  pub fn section<K: ?Sized>(self: &Arc<Self>, key: &K) -> ConfigSection
-  where
-    K: Key,
-  {
-    ConfigSection {
-      config: self.clone(),
-      path:   key.sections().iter().map(|v| v.to_string()).collect(),
-    }
-  }
-}
-
-impl ConfigSection {
-  /// Gets the config value at the given key, prefixed by this reference's path.
-  pub fn get<T>(&self, key: &str) -> Result<T>
-  where
-    T: TomlValue,
-  {
-    self.config.get_at(self.path.iter().map(String::as_str).chain([key]))
-  }
-
-  /// Returns a config section for the given key. This new key will be appended
-  /// to the current section's key.
-  pub fn section<K: ?Sized>(&self, key: &K) -> ConfigSection
-  where
-    K: Key,
-  {
-    ConfigSection {
-      config: self.config.clone(),
-      path:   {
-        let mut path = self.path.clone();
-        path.extend(key.sections().iter().map(|v| v.to_string()));
-        path
-      },
-    }
+    T::from_toml(&self.primary)
   }
 }
