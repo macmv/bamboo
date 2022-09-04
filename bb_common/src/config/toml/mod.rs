@@ -335,7 +335,11 @@ impl<'a> Tokenizer<'a> {
         Some('{') => return Ok(Token::OpenBrace),
         Some('}') => return Ok(Token::CloseBrace),
 
-        Some('\n') if !self.allow_newlines => return Err(self.err(ParseErrorKind::UnexpectedEOL)),
+        Some('\n') if !self.allow_newlines => {
+          let mut err = self.err(ParseErrorKind::UnexpectedEOL);
+          err.line -= 1;
+          return Err(err);
+        }
         Some(c) if c.is_whitespace() => continue,
         Some(c) => return Err(self.err(ParseErrorKind::UnexpectedToken(c))),
         None => return Err(self.err(ParseErrorKind::UnexpectedEOF)),
