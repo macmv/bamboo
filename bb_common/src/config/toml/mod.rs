@@ -101,6 +101,7 @@ pub struct ParseError {
 #[derive(Debug, Clone, PartialEq)]
 pub enum ParseErrorKind {
   MissingValue,
+  MissingKey,
   MissingEq,
   MissingComma,
   MissingCloseArr,
@@ -122,6 +123,7 @@ impl fmt::Display for ParseErrorKind {
   fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
     match self {
       Self::MissingValue => write!(f, "missing value after `=`"),
+      Self::MissingKey => write!(f, "missing map key"),
       Self::MissingEq => write!(f, "missing `=`"),
       Self::MissingComma => write!(f, "missing `,`"),
       Self::MissingCloseArr => write!(f, "missing `]`"),
@@ -287,6 +289,31 @@ impl<'a> Tokenizer<'a> {
           }
         }
         ValueInner::Array(values)
+      }
+      Token::OpenBrace => {
+        let mut values = Map::new();
+        loop {
+          match self.next()? {
+            Token::CloseBrace => break,
+            t => self.peeked = Some(t),
+          }
+          let key = match self.next()? {
+            Token::Word(w) => w.to_string(),
+            _ => return Err(self.err(ParseErrorKind::MissingKey)),
+          };
+          match self.next()? {
+            Token::Eq => {}
+            _ => return Err(self.err(ParseErrorKind::MissingEq)),
+          }
+          let value = self.parse_value()?;
+          values.insert(key, Value::new(self.line, value));
+          match self.next()? {
+            Token::Comma => {}
+            Token::CloseBrace => break,
+            _ => return Err(self.err(ParseErrorKind::MissingComma)),
+          }
+        }
+        ValueInner::Table(values)
       }
       t => {
         self.peeked = Some(t);

@@ -54,13 +54,15 @@ fn parsing() {
   assert_value("a = 1.2", 1.2);
   assert_value("a = true", true);
   assert_value("a = false", false);
+  assert_value("a = []", vec![]);
+  assert_value("a = {}", indexmap! {});
   assert_value("a = [1, 2, 3]", vec![Value::new(1, 1), Value::new(1, 2), Value::new(1, 3)]);
   assert_value(
     "a = { x = 2, y = 3, z = 4 }",
     indexmap! {
-      "x".to_string() => Value::new(1, 1),
-      "y".to_string() => Value::new(1, 2),
-      "z".to_string() => Value::new(1, 3),
+      "x".to_string() => Value::new(1, 2),
+      "y".to_string() => Value::new(1, 3),
+      "z".to_string() => Value::new(1, 4),
     },
   );
 
