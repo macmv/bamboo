@@ -28,13 +28,13 @@ fn parse_simple_values() {
   assert_eq!(section.get::<i32>("other").unwrap(), 100);
 }
 
-#[derive(Config, Default)]
+#[derive(Debug, Default, Clone, Config, PartialEq)]
 struct MyConfig {
   pub foo:     i32,
   pub bar:     i32,
   pub options: MyOptions,
 }
-#[derive(Debug, Clone, Config, Default, PartialEq)]
+#[derive(Debug, Default, Clone, Config, PartialEq)]
 struct MyOptions {
   #[default = 3]
   pub baz:   i32,
@@ -96,4 +96,16 @@ fn error_messages() {
     config.get::<Color>("color").unwrap_err().to_string(),
     "at `color`, got invalid option 'invalid_color', valid options are 'red', 'green', or 'blue'",
   );
+}
+
+#[test]
+fn default_struct_values() {
+  let config = Arc::new(Config::new_src(
+    r#"
+    baz = "hello"
+    other = 10
+    "#,
+    "",
+  ));
+  assert_eq!(config.all::<MyOptions>().unwrap(), MyOptions { baz: 3, other: 10 },);
 }

@@ -68,10 +68,10 @@ pub fn config(input: TokenStream) -> TokenStream {
             let name_str = name.to_string();
             let ty = field.ty;
             quote!(
-              #name: <#ty as crate::config::TomlValue>::from_toml(
-                t.get(#name_str).ok_or(crate::config::ConfigError::other(
-                  concat!("missing field ", #name_str).to_string(),
-                ))?)?
+              #name: match t.get(#name_str) {
+                Some(v) => <#ty as crate::config::TomlValue>::from_toml(v)?,
+                None    => def.#name,
+              }
             )
           })
           .collect::<Punctuated<TokenStream2, Token![,]>>(),
@@ -80,6 +80,7 @@ pub fn config(input: TokenStream) -> TokenStream {
       quote!(
         impl crate::config::TomlValue for #name {
           fn from_toml(value: &crate::config::Value) -> crate::config::Result<Self> {
+            let def = <Self as std::default::Default>::default();
             match value {
               crate::config::Value::Table(t) => Ok(Self {
                 #fields
