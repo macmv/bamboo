@@ -140,6 +140,7 @@ enum Token<'a> {
   Word(&'a str),
   String(String),
   Integer(i64),
+  Float(f64),
   Boolean(bool),
 
   Eq,
@@ -159,6 +160,7 @@ impl<'a> Tokenizer<'a> {
     }
     let mut found_word = false;
     let mut found_number = false;
+    let mut found_float = false;
     let mut found_string = false;
     let start = self.index;
     loop {
@@ -179,10 +181,16 @@ impl<'a> Tokenizer<'a> {
         }
         Some(_) if found_string => continue,
 
-        c if c.map(|c| !c.is_ascii_digit()).unwrap_or(true) && found_number => {
-          return Ok(Token::Integer(
-            self.s[start..self.index].trim().parse::<i64>().map_err(|e| self.err(e.into()))?,
-          ));
+        c if c.map(|c| !c.is_ascii_digit() && c != '.').unwrap_or(true) && found_number => {
+          if found_float {
+            return Ok(Token::Float(
+              self.s[start..self.index].trim().parse::<f64>().map_err(|e| self.err(e.into()))?,
+            ));
+          } else {
+            return Ok(Token::Integer(
+              self.s[start..self.index].trim().parse::<i64>().map_err(|e| self.err(e.into()))?,
+            ));
+          }
         }
         c if c.map(|c| !c.is_ascii_alphabetic()).unwrap_or(true) && found_word => {
           let word = self.s[start..self.index].trim();
@@ -194,6 +202,8 @@ impl<'a> Tokenizer<'a> {
         }
 
         Some(c) if c.is_ascii_digit() => found_number = true,
+        Some('.') if found_number => found_float = true,
+
         Some(c) if c.is_ascii_alphabetic() => found_word = true,
 
         Some('=') => return Ok(Token::Eq),
@@ -233,6 +243,7 @@ impl<'a> Tokenizer<'a> {
           let value = match self.next()? {
             Token::String(s) => ValueInner::String(s),
             Token::Integer(v) => ValueInner::Integer(v),
+            Token::Float(v) => ValueInner::Float(v),
             Token::Boolean(v) => ValueInner::Boolean(v),
             _ => break Err(self.err(ParseErrorKind::MissingValue)),
           };
