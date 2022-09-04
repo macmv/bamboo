@@ -199,17 +199,20 @@ impl<'a> Tokenizer<'a> {
         Some(_) if found_string => continue,
 
         c if c.map(|c| !c.is_ascii_digit() && c != '.').unwrap_or(true) && found_number => {
+          if c.is_some() {
+            self.index -= 1;
+          }
+          let text = self.s[start..self.index].trim();
           if found_float {
-            return Ok(Token::Float(
-              self.s[start..self.index].trim().parse::<f64>().map_err(|e| self.err(e.into()))?,
-            ));
+            return Ok(Token::Float(text.parse::<f64>().map_err(|e| self.err(e.into()))?));
           } else {
-            return Ok(Token::Integer(
-              self.s[start..self.index].trim().parse::<i64>().map_err(|e| self.err(e.into()))?,
-            ));
+            return Ok(Token::Integer(text.parse::<i64>().map_err(|e| self.err(e.into()))?));
           }
         }
         c if c.map(|c| !c.is_ascii_alphabetic()).unwrap_or(true) && found_word => {
+          if c.is_some() {
+            self.index -= 1;
+          }
           let word = self.s[start..self.index].trim();
           match word {
             "true" => return Ok(Token::Boolean(true)),
