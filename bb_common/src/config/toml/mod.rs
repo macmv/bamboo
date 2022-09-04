@@ -106,6 +106,7 @@ pub enum ParseErrorKind {
   MissingCloseArr,
   MissingCloseBrace,
   UnexpectedEOF,
+  UnexpectedEOL,
   UnexpectedToken(char),
   InvalidInteger(std::num::ParseIntError),
   InvalidFloat(std::num::ParseFloatError),
@@ -126,6 +127,7 @@ impl fmt::Display for ParseErrorKind {
       Self::MissingCloseArr => write!(f, "missing `]`"),
       Self::MissingCloseBrace => write!(f, "missing `}}`"),
       Self::UnexpectedEOF => write!(f, "unexpected end of file"),
+      Self::UnexpectedEOL => write!(f, "unexpected end of line"),
       Self::UnexpectedToken(c) => write!(f, "unexpected token `{c}`"),
       Self::InvalidInteger(e) => write!(f, "invalid integer: {e}"),
       Self::InvalidFloat(e) => write!(f, "invalid float: {e}"),
@@ -145,6 +147,9 @@ struct Tokenizer<'a> {
   peeked: Option<Token<'a>>,
   index:  usize,
   line:   usize,
+
+  /// Changed based on if we are within an array literal, or within a table.
+  allow_newlines: bool,
 }
 #[derive(Debug, Clone, PartialEq)]
 enum Token<'a> {
@@ -163,7 +168,9 @@ enum Token<'a> {
   CloseBrace,
 }
 impl<'a> Tokenizer<'a> {
-  pub fn new(s: &'a str) -> Self { Tokenizer { s, peeked: None, index: 0, line: 1 } }
+  pub fn new(s: &'a str) -> Self {
+    Tokenizer { s, peeked: None, index: 0, line: 1, allow_newlines: false }
+  }
   pub fn next_opt(&mut self) -> Result<Option<Token<'a>>, ParseError> {
     match self.next() {
       Ok(t) => Ok(Some(t)),
@@ -233,7 +240,8 @@ impl<'a> Tokenizer<'a> {
         Some('{') => return Ok(Token::OpenBrace),
         Some('}') => return Ok(Token::CloseBrace),
 
-        Some('\n') => self.line += 1,
+        Some('\n') if self.allow_newlines => self.line += 1,
+        Some('\n') if !self.allow_newlines => return Err(self.err(ParseErrorKind::UnexpectedEOL)),
         Some(c) if c.is_whitespace() => continue,
         Some(c) => return Err(self.err(ParseErrorKind::UnexpectedToken(c))),
         None => return Err(self.err(ParseErrorKind::UnexpectedEOF)),
@@ -257,6 +265,7 @@ impl<'a> Tokenizer<'a> {
   }
   // Parses a value after a `=`, and returns None if it finds an invalid token.
   fn parse_value_opt(&mut self) -> Result<Option<ValueInner>, ParseError> {
+    self.allow_newlines = false;
     Ok(Some(match self.next()? {
       Token::String(s) => ValueInner::String(s),
       Token::Integer(v) => ValueInner::Integer(v),
@@ -294,6 +303,7 @@ impl<'a> Tokenizer<'a> {
   }
   // Parses a list of key-value pairs, seperated by newlines
   fn parse_map(&mut self) -> Result<Map, ParseError> {
+    self.allow_newlines = true;
     let mut comments = self.parse_comments()?;
     let mut map = Map::new();
     loop {
