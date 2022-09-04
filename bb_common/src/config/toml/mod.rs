@@ -206,6 +206,11 @@ impl<'a> Tokenizer<'a> {
         self.index += c.len_utf8();
       }
       match c {
+        Some('\n') if self.allow_newlines => self.line += 1,
+        Some('\n') if !self.allow_newlines => return Err(self.err(ParseErrorKind::UnexpectedEOL)),
+        _ => {}
+      }
+      match c {
         Some('#') if !found_comment => found_comment = true,
         Some('\n') if found_comment => {
           // First, remove the newline with self.index - 1. Then, trim whitespace from
@@ -256,8 +261,6 @@ impl<'a> Tokenizer<'a> {
         Some('{') => return Ok(Token::OpenBrace),
         Some('}') => return Ok(Token::CloseBrace),
 
-        Some('\n') if self.allow_newlines => self.line += 1,
-        Some('\n') if !self.allow_newlines => return Err(self.err(ParseErrorKind::UnexpectedEOL)),
         Some(c) if c.is_whitespace() => continue,
         Some(c) => return Err(self.err(ParseErrorKind::UnexpectedToken(c))),
         None => return Err(self.err(ParseErrorKind::UnexpectedEOF)),
