@@ -205,10 +205,8 @@ impl<'a> Tokenizer<'a> {
       if let Some(c) = c {
         self.index += c.len_utf8();
       }
-      match c {
-        Some('\n') if self.allow_newlines => self.line += 1,
-        Some('\n') if !self.allow_newlines => return Err(self.err(ParseErrorKind::UnexpectedEOL)),
-        _ => {}
+      if c == Some('\n') {
+        self.line += 1;
       }
       match c {
         Some('#') if !found_comment => found_comment = true,
@@ -261,6 +259,7 @@ impl<'a> Tokenizer<'a> {
         Some('{') => return Ok(Token::OpenBrace),
         Some('}') => return Ok(Token::CloseBrace),
 
+        Some('\n') if !self.allow_newlines => return Err(self.err(ParseErrorKind::UnexpectedEOL)),
         Some(c) if c.is_whitespace() => continue,
         Some(c) => return Err(self.err(ParseErrorKind::UnexpectedToken(c))),
         None => return Err(self.err(ParseErrorKind::UnexpectedEOF)),
@@ -351,13 +350,14 @@ impl<'a> Tokenizer<'a> {
     let mut comments = self.parse_comments()?;
     let mut map = Map::new();
     loop {
-      match self.next_opt()? {
+      match dbg!(self.next_opt())? {
         Some(Token::Word(key)) => {
-          match self.next()? {
+          match dbg!(self.next())? {
             Token::Eq => {}
             _ => break Err(self.err(ParseErrorKind::MissingEq)),
           }
-          let value = self.parse_value()?;
+          let value = dbg!(self.parse_value())?;
+          self.allow_newlines = true;
           map.insert(
             key.into(),
             Value {

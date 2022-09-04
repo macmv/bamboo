@@ -73,6 +73,16 @@ fn parsing() {
     },
   );
   assert_value("# hello\na = 2", Value::new(2, 2).with_comment("hello"));
+
+  assert_fail("a = \n1", "line 1: unexpected end of line");
+  assert_fail("a =\n", "line 1: unexpected end of line");
+  assert_fail("a =$", "line 1: unexpected token `$`");
+  assert_fail("a = [1,\n2, 3]", "line 1: unexpected end of line");
+  assert_fail("\na =", "line 2: unexpected end of file");
+}
+
+#[test]
+fn parse_map() {
   assert_value(
     r#"
     a = 2
@@ -91,10 +101,4 @@ fn parsing() {
       },
     ),
   );
-
-  assert_fail("a = \n1", "line 1: unexpected end of line");
-  assert_fail("a =\n", "line 1: unexpected end of line");
-  assert_fail("a =$", "line 1: unexpected token `$`");
-  assert_fail("a = [1,\n2, 3]", "line 1: unexpected end of line");
-  assert_fail("\na =", "line 2: unexpected end of file");
 }
