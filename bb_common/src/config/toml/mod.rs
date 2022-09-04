@@ -106,10 +106,7 @@ pub struct ParseError {
 pub enum ParseErrorKind {
   MissingValue,
   MissingKey,
-  MissingEq,
-  MissingComma,
-  MissingCloseArr,
-  MissingCloseBrace,
+  Missing(TokenKind),
   UnexpectedEOF,
   UnexpectedEOL,
   UnexpectedToken(char),
@@ -128,10 +125,7 @@ impl fmt::Display for ParseErrorKind {
     match self {
       Self::MissingValue => write!(f, "missing value after `=`"),
       Self::MissingKey => write!(f, "missing map key"),
-      Self::MissingEq => write!(f, "missing `=`"),
-      Self::MissingComma => write!(f, "missing `,`"),
-      Self::MissingCloseArr => write!(f, "missing `]`"),
-      Self::MissingCloseBrace => write!(f, "missing `}}`"),
+      Self::Missing(tok) => write!(f, "missing {tok}"),
       Self::UnexpectedEOF => write!(f, "unexpected end of file"),
       Self::UnexpectedEOL => write!(f, "unexpected end of line"),
       Self::UnexpectedToken(c) => write!(f, "unexpected token `{c}`"),
@@ -173,9 +167,71 @@ enum Token<'a> {
   OpenBrace,
   CloseBrace,
 }
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub enum TokenKind {
+  Comment,
+  Word,
+  String,
+  Integer,
+  Float,
+  Boolean,
+
+  Eq,
+  Comma,
+  OpenArr,
+  CloseArr,
+  OpenBrace,
+  CloseBrace,
+}
+impl fmt::Display for TokenKind {
+  fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+    match self {
+      Self::Comment => write!(f, "comment"),
+      Self::Word => write!(f, "word"),
+      Self::String => write!(f, "string"),
+      Self::Integer => write!(f, "integer"),
+      Self::Float => write!(f, "float"),
+      Self::Boolean => write!(f, "boolean"),
+
+      Self::Eq => write!(f, "`=`"),
+      Self::Comma => write!(f, "`,`"),
+      Self::OpenArr => write!(f, "`[`"),
+      Self::CloseArr => write!(f, "`]`"),
+      Self::OpenBrace => write!(f, "`{{`"),
+      Self::CloseBrace => write!(f, "`}}`"),
+    }
+  }
+}
+impl Token<'_> {
+  pub fn kind(&self) -> TokenKind {
+    match self {
+      Self::Comment(_) => TokenKind::Comment,
+      Self::Word(_) => TokenKind::Word,
+      Self::String(_) => TokenKind::String,
+      Self::Integer(_) => TokenKind::Integer,
+      Self::Float(_) => TokenKind::Float,
+      Self::Boolean(_) => TokenKind::Boolean,
+
+      Self::Eq => TokenKind::Eq,
+      Self::Comma => TokenKind::Comma,
+      Self::OpenArr => TokenKind::OpenArr,
+      Self::CloseArr => TokenKind::CloseArr,
+      Self::OpenBrace => TokenKind::OpenBrace,
+      Self::CloseBrace => TokenKind::CloseBrace,
+    }
+  }
+}
 impl<'a> Tokenizer<'a> {
   pub fn new(s: &'a str) -> Self {
     Tokenizer { s, peeked: None, index: 0, line: 1, allow_newlines: false }
+  }
+  pub fn expect(&mut self, tok: Token<'_>) -> Result<(), ParseError> {
+    let actual = self.next()?;
+    if actual == tok {
+      Ok(())
+    } else {
+      Err(self.err(ParseErrorKind::Missing(tok.kind())))
+    }
   }
   pub fn next_opt(&mut self) -> Result<Option<Token<'a>>, ParseError> {
     match self.next() {
@@ -301,7 +357,7 @@ impl<'a> Tokenizer<'a> {
           match self.next()? {
             Token::Comma => {}
             Token::CloseArr => break,
-            _ => return Err(self.err(ParseErrorKind::MissingComma)),
+            _ => return Err(self.err(ParseErrorKind::Missing(TokenKind::Comma))),
           }
         }
         ValueInner::Array(values)
@@ -317,16 +373,13 @@ impl<'a> Tokenizer<'a> {
             Token::Word(w) => w.to_string(),
             _ => return Err(self.err(ParseErrorKind::MissingKey)),
           };
-          match self.next()? {
-            Token::Eq => {}
-            _ => return Err(self.err(ParseErrorKind::MissingEq)),
-          }
+          self.expect(Token::Eq)?;
           let value = self.parse_value()?;
           values.insert(key, Value::new(self.line, value));
           match self.next()? {
             Token::Comma => {}
             Token::CloseBrace => break,
-            _ => return Err(self.err(ParseErrorKind::MissingComma)),
+            _ => return Err(self.err(ParseErrorKind::Missing(TokenKind::Comma))),
           }
         }
         ValueInner::Table(values)
@@ -352,10 +405,7 @@ impl<'a> Tokenizer<'a> {
     loop {
       match dbg!(self.next_opt())? {
         Some(Token::Word(key)) => {
-          match dbg!(self.next())? {
-            Token::Eq => {}
-            _ => break Err(self.err(ParseErrorKind::MissingEq)),
-          }
+          self.expect(Token::Eq)?;
           let value = dbg!(self.parse_value())?;
           self.allow_newlines = true;
           map.insert(
@@ -367,7 +417,8 @@ impl<'a> Tokenizer<'a> {
             },
           );
         }
-        _ => return Ok(map),
+        Some(t) => return Err(self.err(ParseErrorKind::Missing(TokenKind::Word))),
+        None => return Ok(map),
       }
     }
   }
