@@ -181,6 +181,7 @@ enum Token<'a> {
   Boolean(bool),
 
   Eq,
+  Dot,
   Comma,
   OpenArr,
   CloseArr,
@@ -197,6 +198,7 @@ pub enum TokenKind {
   Boolean,
 
   Eq,
+  Dot,
   Comma,
   OpenArr,
   CloseArr,
@@ -214,6 +216,7 @@ impl fmt::Display for TokenKind {
       Self::Boolean => write!(f, "boolean"),
 
       Self::Eq => write!(f, "`=`"),
+      Self::Dot => write!(f, "`.`"),
       Self::Comma => write!(f, "`,`"),
       Self::OpenArr => write!(f, "`[`"),
       Self::CloseArr => write!(f, "`]`"),
@@ -233,6 +236,7 @@ impl Token<'_> {
       Self::Boolean(_) => TokenKind::Boolean,
 
       Self::Eq => TokenKind::Eq,
+      Self::Dot => TokenKind::Dot,
       Self::Comma => TokenKind::Comma,
       Self::OpenArr => TokenKind::OpenArr,
       Self::CloseArr => TokenKind::CloseArr,
@@ -245,12 +249,12 @@ impl<'a> Tokenizer<'a> {
   pub fn new(s: &'a str) -> Self {
     Tokenizer { s, peeked: None, index: 0, line: 1, allow_newlines: false }
   }
-  pub fn expect(&mut self, tok: Token<'_>) -> Result<(), ParseError> {
+  pub fn expect(&mut self, tok: TokenKind) -> Result<Token<'a>, ParseError> {
     let actual = self.next()?;
-    if actual == tok {
-      Ok(())
+    if actual.kind() == tok {
+      Ok(actual)
     } else {
-      Err(self.err(ParseErrorKind::Expected(vec![tok.kind()])))
+      Err(self.err(ParseErrorKind::Expected(vec![tok])))
     }
   }
   pub fn next_opt(&mut self) -> Result<Option<Token<'a>>, ParseError> {
@@ -401,7 +405,7 @@ impl<'a> Tokenizer<'a> {
             Token::Word(w) => w.to_string(),
             _ => return Err(self.err(ParseErrorKind::MissingKey)),
           };
-          self.expect(Token::Eq)?;
+          self.expect(TokenKind::Eq)?;
           let value = self.parse_value()?;
           values.insert(key, Value::new(self.line, value));
           match self.next()? {
@@ -429,15 +433,39 @@ impl<'a> Tokenizer<'a> {
       None => Err(self.err(ParseErrorKind::MissingValue)),
     }
   }
+  // Parses a path between braces, like `foo.bar.baz`.
+  fn parse_path(&mut self) -> Result<Vec<String>, ParseError> {
+    let first = match self.expect(TokenKind::Word)? {
+      Token::Word(w) => w,
+      _ => unreachable!(),
+    };
+    let mut segments = vec![first.into()];
+    loop {
+      match self.next()? {
+        Token::Dot => {
+          let segment = match self.expect(TokenKind::Word)? {
+            Token::Word(w) => w,
+            _ => unreachable!(),
+          };
+          segments.push(segment.into());
+        }
+        Token::CloseArr => return Ok(segments),
+        _ => {
+          return Err(self.err(ParseErrorKind::Expected(vec![TokenKind::Dot, TokenKind::CloseArr])))
+        }
+      }
+    }
+  }
   // Parses a list of key-value pairs, seperated by newlines
   fn parse_map(&mut self) -> Result<Map, ParseError> {
     self.allow_newlines = true;
     let mut comments = self.parse_comments()?;
+    let mut path = vec![];
     let mut map = Map::new();
     loop {
       match dbg!(self.next_opt())? {
         Some(Token::Word(key)) => {
-          self.expect(Token::Eq)?;
+          self.expect(TokenKind::Eq)?;
           let value = dbg!(self.parse_value())?;
           self.allow_newlines = true;
           map.insert(
@@ -449,7 +477,8 @@ impl<'a> Tokenizer<'a> {
             },
           );
         }
-        Some(t) => {
+        Some(Token::OpenArr) => path = self.parse_path()?,
+        Some(_) => {
           return Err(self.err(ParseErrorKind::Expected(vec![TokenKind::Word, TokenKind::OpenArr])))
         }
         None => return Ok(map),
