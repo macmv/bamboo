@@ -54,6 +54,18 @@ enum Color {
   Green,
   Blue,
 }
+
+#[derive(Default, Debug, PartialEq, Config)]
+struct OtherColorConfig {
+  #[default = OtherColor::Green]
+  color: OtherColor,
+}
+#[derive(Debug, PartialEq, Config)]
+enum OtherColor {
+  Red,
+  Green,
+  Blue,
+}
 #[test]
 fn parse_derived_enum() {
   let config = Arc::new(Config::new_src(
