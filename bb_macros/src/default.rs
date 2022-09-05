@@ -1,6 +1,7 @@
 use proc_macro::TokenStream;
 use proc_macro2::{Ident, Span, TokenStream as TokenStream2};
 use quote::{quote, quote_spanned};
+use syn::spanned::Spanned;
 
 use syn::{parse::Parse, parse_macro_input, punctuated::Punctuated, Expr, Fields, Item, Token};
 
@@ -50,7 +51,8 @@ pub fn default(input: TokenStream) -> TokenStream {
               }
             }
             let ty = field.ty;
-            quote!(#name: <#ty as std::default::Default>::default())
+            // Produce the default error at the location of the type in the struct.
+            quote_spanned!(ty.span() => #name: <#ty as std::default::Default>::default())
           })
           .collect::<Punctuated<TokenStream2, Token![,]>>(),
         _ => return error(Some(name), "expected named fields"),
