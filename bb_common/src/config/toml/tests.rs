@@ -46,9 +46,7 @@ fn assert_val(toml: &str, value: impl Into<ValueInner>) {
 fn assert_value(toml: &str, value: Value) {
   let val: Value = toml.parse().unwrap();
 
-  let mut map = Map::new();
-  map.insert("a".into(), value);
-  assert_eq!(val, Value::new(0, map));
+  assert_eq!(val, value);
 }
 #[track_caller]
 fn assert_fail(toml: &str, error: &str) {
@@ -72,7 +70,15 @@ fn parsing() {
       "z".to_string() => Value::new(1, 4),
     },
   );
-  assert_value("# hello\na = 2", Value::new(2, 2).with_comment("hello"));
+  assert_value(
+    "# hello\na = 2",
+    Value::new(
+      0,
+      indexmap! {
+        "a".into() => Value::new(2, 2).with_comment("hello"),
+      },
+    ),
+  );
 
   assert_fail("a = \n1", "line 1: unexpected end of line");
   assert_fail("a =\n", "line 1: unexpected end of line");
@@ -92,14 +98,15 @@ fn parse_map() {
     b = 3
 
     [options]
-    foo = 3"#,
+    foo = 5
+    "#,
     Value::new(
       0,
       indexmap! {
-        "a".into() => Value::new(1, 2),
-        "b".into() => Value::new(2, 2),
-        "options".into() => Value::new(4, indexmap! {
-          "foo".into() => Value::new(3, 5),
+        "a".into() => Value::new(2, 2),
+        "b".into() => Value::new(3, 3),
+        "options".into() => Value::new(5, indexmap! {
+          "foo".into() => Value::new(6, 5),
         }),
       },
     ),

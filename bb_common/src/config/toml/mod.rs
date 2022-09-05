@@ -305,8 +305,11 @@ impl<'a> Tokenizer<'a> {
         Some(_) if found_string => continue,
 
         c if c.map(|c| !c.is_ascii_digit() && c != '.').unwrap_or(true) && found_number => {
-          if c.is_some() {
+          if let Some(c) = c {
             self.index -= 1;
+            if c == '\n' {
+              self.line -= 1;
+            }
           }
           let text = self.s[start..self.index].trim();
           if found_float {
@@ -316,8 +319,11 @@ impl<'a> Tokenizer<'a> {
           }
         }
         c if c.map(|c| !c.is_ascii_alphabetic()).unwrap_or(true) && found_word => {
-          if c.is_some() {
+          if let Some(c) = c {
             self.index -= 1;
+            if c == '\n' {
+              self.line -= 1;
+            }
           }
           let word = self.s[start..self.index].trim();
           match word {
@@ -468,12 +474,13 @@ impl<'a> Tokenizer<'a> {
         Some(Token::Word(key)) => {
           self.expect(TokenKind::Eq)?;
           let value = dbg!(self.parse_value())?;
+          let line = self.line;
           self.allow_newlines = true;
           map.insert(
             key.into(),
             Value {
               comments: std::mem::replace(&mut comments, self.parse_comments()?),
-              line: self.line,
+              line,
               value,
             },
           );
