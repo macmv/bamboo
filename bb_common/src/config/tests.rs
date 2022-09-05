@@ -16,20 +16,6 @@ fn test_config() -> Arc<Config> {
   ))
 }
 
-/*
-#[test]
-fn parse_simple_values() {
-  let config = test_config();
-
-  assert_eq!(config.get::<i32>("foo").unwrap(), 3);
-  assert_eq!(config.get::<i32>("bar").unwrap(), 4);
-
-  let section = config.section("options");
-  assert_eq!(section.get::<i32>("baz").unwrap(), 2);
-  assert_eq!(section.get::<i32>("other").unwrap(), 100);
-}
-*/
-
 #[derive(Debug, Default, Clone, Config, PartialEq)]
 struct MyConfig {
   pub foo:     i32,
@@ -57,8 +43,11 @@ fn parse_derived_values() {
   assert_eq!(config, MyConfig { foo: 3, bar: 4, options: MyOptions { baz: 2, other: 100 } });
 }
 
-/*
-#[derive(Debug, PartialEq, Config)]
+#[derive(Default, Debug, PartialEq, Config)]
+struct ColorConfig {
+  color: Color,
+}
+#[derive(Default, Debug, PartialEq, Config)]
 enum Color {
   Red,
   Green,
@@ -72,21 +61,7 @@ fn parse_derived_enum() {
     "#,
     "",
   ));
-  let color = config.get::<Color>("color").unwrap();
-
-  assert_eq!(color, Color::Green);
-}
-*/
-
-#[test]
-fn error_messages() {
-  /*
-  let config = test_config();
-  assert_eq!(config.get::<i32>("number").unwrap_err().to_string(), "missing field `number`",);
-  assert_eq!(
-    config.get::<String>("foo").unwrap_err().to_string(),
-    "expected string at `foo`, got 3",
-  );
+  assert_eq!(config.all::<ColorConfig>().unwrap(), ColorConfig { color: Color::Green });
 
   let config = Arc::new(Config::new_src(
     r#"
@@ -95,11 +70,13 @@ fn error_messages() {
     "",
   ));
   assert_eq!(
-    config.get::<Color>("color").unwrap_err().to_string(),
+    config.all::<ColorConfig>().unwrap_err().to_string(), 
     "at `color`, got invalid option \"invalid_color\", valid options are \"red\", \"green\", or \"blue\"",
   );
-  */
+}
 
+#[test]
+fn error_messages() {
   let config = Arc::new(Config::new_src(
     r#"
     baz = "hello"
