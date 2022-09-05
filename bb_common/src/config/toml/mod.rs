@@ -302,7 +302,9 @@ impl<'a> Tokenizer<'a> {
 
         Some('"') if !found_string => found_string = true,
         Some('"') if found_string => {
-          return Ok(Token::String(self.s[start + 1..self.index - 1].trim().into()))
+          // First, remove the final " with self.index - 1. Then trim whitespace from the
+          // start with .trim(). Then trim the starting " with [1..].
+          return Ok(Token::String(self.s[start..self.index - 1].trim()[1..].into()));
         }
         Some(_) if found_string => continue,
 
