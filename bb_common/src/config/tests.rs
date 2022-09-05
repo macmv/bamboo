@@ -49,6 +49,7 @@ struct ColorConfig {
 }
 #[derive(Default, Debug, PartialEq, Config)]
 enum Color {
+  #[default]
   Red,
   Green,
   Blue,

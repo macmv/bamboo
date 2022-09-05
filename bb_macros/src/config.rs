@@ -115,12 +115,13 @@ pub fn config(input: TokenStream) -> TokenStream {
           quote!(
             impl crate::config::TomlValue for #name {
               fn from_toml(value: &crate::config::Value) -> crate::config::Result<Self> {
-                match value {
-                  crate::config::Value::String(s) => match s.as_str() {
+                if let Some(s) = value.as_str() {
+                  match s.as_str() {
                     #variants,
                     _ => Err(crate::config::ConfigError::other(format!(#error_template, s))),
-                  },
-                  _ => Err(crate::config::ConfigError::from_value::<Self>(value)),
+                  }
+                } else {
+                  Err(crate::config::ConfigError::from_value::<Self>(value))
                 }
               }
               fn name() -> String { stringify!(#name).into() }
