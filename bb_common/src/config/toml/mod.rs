@@ -112,6 +112,7 @@ pub enum ParseErrorKind {
   UnexpectedToken(char),
   InvalidInteger(std::num::ParseIntError),
   InvalidFloat(std::num::ParseFloatError),
+  DuplicateKey(String),
   Other(String),
 }
 
@@ -151,6 +152,7 @@ impl fmt::Display for ParseErrorKind {
       Self::UnexpectedToken(c) => write!(f, "unexpected token `{c}`"),
       Self::InvalidInteger(e) => write!(f, "invalid integer: {e}"),
       Self::InvalidFloat(e) => write!(f, "invalid float: {e}"),
+      Self::DuplicateKey(key) => write!(f, "duplicate key '{key}'"),
       Self::Other(s) => write!(f, "{s}"),
     }
   }
@@ -467,15 +469,26 @@ impl<'a> Tokenizer<'a> {
   fn parse_map(&mut self) -> Result<Map, ParseError> {
     self.allow_newlines = true;
     let mut comments = self.parse_comments()?;
-    let mut path = vec![];
+    let mut path: Vec<String> = vec![];
     let mut map = Map::new();
     loop {
-      match dbg!(self.next_opt())? {
+      match self.next_opt()? {
         Some(Token::Word(key)) => {
           self.expect(TokenKind::Eq)?;
           let value = dbg!(self.parse_value())?;
           let line = self.line;
           self.allow_newlines = true;
+          let mut map = &mut map;
+          for key in path.iter().map(|s| s.as_str()).chain([key].into_iter()) {
+            if map.contains_key(key) {
+              map = match &mut map.get_mut(key).unwrap().value {
+                ValueInner::Table(t) => t,
+                _ => return Err(self.err(ParseErrorKind::DuplicateKey(key.into()))),
+              }
+            } else {
+              map.insert(key.to_string(), Value::new(line, Map::new()));
+            }
+          }
           map.insert(
             key.into(),
             Value {
@@ -485,7 +498,20 @@ impl<'a> Tokenizer<'a> {
             },
           );
         }
-        Some(Token::OpenArr) => path = self.parse_path()?,
+        Some(Token::OpenArr) => {
+          path = self.parse_path()?;
+          let mut map = &mut map;
+          for key in path.iter() {
+            if map.contains_key(key) {
+              map = match &mut map.get_mut(key).unwrap().value {
+                ValueInner::Table(t) => t,
+                _ => return Err(self.err(ParseErrorKind::DuplicateKey(key.into()))),
+              }
+            } else {
+              map.insert(key.to_string(), Value::new(self.line, Map::new()));
+            }
+          }
+        }
         Some(_) => {
           return Err(self.err(ParseErrorKind::Expected(vec![TokenKind::Word, TokenKind::OpenArr])))
         }
