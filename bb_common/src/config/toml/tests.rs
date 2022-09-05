@@ -112,3 +112,9 @@ fn parse_map() {
     ),
   );
 }
+
+#[test]
+fn display() {
+  assert_eq!(ValueInner::from(3).to_string(), "3");
+  assert_eq!(ValueInner::from("hello").to_string(), "\"hello\"");
+}

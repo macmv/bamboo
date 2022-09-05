@@ -52,6 +52,7 @@ impl fmt::Display for ConfigError {
     match &self.kind {
       ConfigErrorKind::Missing => write!(f, "missing field {}", Path(&self.path)),
       ConfigErrorKind::WrongType(expected, actual) => {
+        dbg!(&actual);
         write!(f, "expected {expected} at {}, got {actual}", Path(&self.path))
       }
       ConfigErrorKind::Other(msg) => write!(f, "at {}, {msg}", Path(&self.path)),
