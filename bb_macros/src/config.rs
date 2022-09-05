@@ -28,11 +28,11 @@ struct VariantsTemplate<'a>(&'a [String]);
 
 impl fmt::Display for VariantsTemplate<'_> {
   fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-    write!(f, "got invalid option '{{}}', valid options are")?;
+    write!(f, "got invalid option \"{{}}\", valid options are")?;
     if self.0.len() == 1 {
-      write!(f, " '{}'", self.0[0])
+      write!(f, " \"{}\"", self.0[0])
     } else if self.0.len() == 2 {
-      write!(f, " '{}' or '{}'", self.0[0], self.0[1])
+      write!(f, " \"{}\" or \"{}\"", self.0[0], self.0[1])
     } else {
       let has_too_many = self.0.len() > 20;
       let variants = if has_too_many { &self.0[..20] } else { &self.0[..] };
@@ -40,7 +40,7 @@ impl fmt::Display for VariantsTemplate<'_> {
         if i == variants.len() - 1 {
           write!(f, " or")?;
         }
-        write!(f, " '{variant}'")?;
+        write!(f, " \"{variant}\"")?;
         if i != variants.len() - 1 {
           write!(f, ",")?;
         }
@@ -68,10 +68,10 @@ pub fn config(input: TokenStream) -> TokenStream {
             let name_str = name.to_string();
             let ty = field.ty;
             quote!(
-              #name: <#ty as crate::config::TomlValue>::from_toml(
-                t.get(#name_str).ok_or(crate::config::ConfigError::other(
-                  concat!("missing field ", #name_str).to_string(),
-                ))?)?
+              #name: match t.get(#name_str) {
+                Some(v) => <#ty as crate::config::TomlValue>::from_toml(v).map_err(|e| e.prepend(#name_str))?,
+                None    => def.#name,
+              }
             )
           })
           .collect::<Punctuated<TokenStream2, Token![,]>>(),
@@ -80,11 +80,13 @@ pub fn config(input: TokenStream) -> TokenStream {
       quote!(
         impl crate::config::TomlValue for #name {
           fn from_toml(value: &crate::config::Value) -> crate::config::Result<Self> {
-            match value {
-              crate::config::Value::Table(t) => Ok(Self {
+            let def = <Self as std::default::Default>::default();
+            if let Some(t) = value.as_table() {
+              Ok(Self {
                 #fields
-              }),
-              _ => Err(crate::config::ConfigError::from_value::<Self>(value)),
+              })
+            } else {
+              Err(crate::config::ConfigError::from_value::<Self>(value))
             }
           }
           fn name() -> String { stringify!(#name).into() }
@@ -113,12 +115,13 @@ pub fn config(input: TokenStream) -> TokenStream {
           quote!(
             impl crate::config::TomlValue for #name {
               fn from_toml(value: &crate::config::Value) -> crate::config::Result<Self> {
-                match value {
-                  crate::config::Value::String(s) => match s.as_str() {
+                if let Some(s) = value.as_str() {
+                  match s.as_str() {
                     #variants,
                     _ => Err(crate::config::ConfigError::other(format!(#error_template, s))),
-                  },
-                  _ => Err(crate::config::ConfigError::from_value::<Self>(value)),
+                  }
+                } else {
+                  Err(crate::config::ConfigError::from_value::<Self>(value))
                 }
               }
               fn name() -> String { stringify!(#name).into() }

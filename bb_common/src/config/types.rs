@@ -1,8 +1,7 @@
-use super::{ConfigError, Result, TomlValue};
+use super::{ConfigError, Result, TomlValue, Value};
 use crate::{math::FPos, util::GameMode};
 use log::{Level, LevelFilter};
 use std::str::FromStr;
-use toml::Value;
 
 impl TomlValue for bool {
   fn from_toml(v: &Value) -> Result<Self> { ConfigError::from_option(v, v.as_bool()) }
