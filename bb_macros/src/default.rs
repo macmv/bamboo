@@ -66,24 +66,35 @@ pub fn default(input: TokenStream) -> TokenStream {
       )
     }
     Item::Enum(en) => {
-      /*
-      let mut variant_strings = vec![];
       let variants = en
         .variants
         .iter()
         .map(|variant| match variant.fields {
           Fields::Unit => {
-            let ident = &variant.ident;
-            let ident_str = variant.ident.to_string().to_lowercase();
-            variant_strings.push(ident_str.clone());
-            Ok(quote!(#ident_str => Ok(Self::#ident)))
+            for attr in &variant.attrs {
+              if attr.path.get_ident().map(|i| i == "default").unwrap_or(false) {
+                return Ok(Some(&variant.ident));
+              }
+            }
+            Ok(None)
           }
           _ => Err(variant),
         })
-        .collect::<Result<Punctuated<TokenStream2, Token![,]>, _>>();
+        .collect::<Result<Vec<Option<&Ident>>, _>>();
       let name = &en.ident;
       match variants {
         Ok(variants) => {
+          let variants = variants.into_iter().flatten().collect::<Vec<&Ident>>();
+          if variants.is_empty() {
+            return error(Some(name), "one variant must have the #[default] attribute");
+          } else if variants.len() != 1 {
+            return error_at(
+              name,
+              variants[0].span(),
+              "only one variant can have the #[default] attribute",
+            );
+          }
+          let default_variant = variants[0];
           quote!(
             impl std::default::Default for #name {
               fn default() -> Self {
@@ -94,8 +105,6 @@ pub fn default(input: TokenStream) -> TokenStream {
         }
         Err(e) => return error_at(name, e.ident.span(), "expected a unit variant"),
       }
-      */
-      return error(None, "expected a struct or enum");
     }
     _ => return error(None, "expected a struct or enum"),
   };
