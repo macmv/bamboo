@@ -435,7 +435,7 @@ impl Player {
 
   // Returns the player's eyesight offset in the Y axis. This depends on the player's client
   // version and whether the player is crouching.
-  pub fn eyes_offset(&self) -> f64 {
+  pub fn view_offset(&self) -> f64 {
     if self.is_crouching() {
       if self.ver >= ProtocolVersion::V1_14 {
         return 1.27;
@@ -449,8 +449,8 @@ impl Player {
 
   // Returns the player's eyesight position. This depends on the player's client
   // version and whether the player is crouching.
-  pub fn eyes_pos(&self) -> FPos {
-    return self.pos() + FPos::new(0.0, self.eyes_offset(), 0.0);
+  pub fn view_pos(&self) -> FPos {
+    return self.pos() + FPos::new(0.0, self.view_offset(), 0.0);
   }
 
   /// Returns `true` if the player is on the ground. This is both sent

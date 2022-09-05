@@ -74,7 +74,7 @@ impl Behavior for Snowball {
     let eid = click
       .player()
       .world()
-      .summon(entity::Type::Snowball, click.player().eyes_pos());
+      .summon(entity::Type::Snowball, click.player().view_pos());
 
     // If the entity doesn't exist, it already despawned, so we do nothing if
     // it isn't in the world.
