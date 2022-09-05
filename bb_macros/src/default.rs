@@ -3,7 +3,9 @@ use proc_macro2::{Ident, Span, TokenStream as TokenStream2};
 use quote::{quote, quote_spanned};
 use syn::spanned::Spanned;
 
-use syn::{parse::Parse, parse_macro_input, punctuated::Punctuated, Expr, Fields, Item, Token};
+use syn::{
+  parenthesized, parse::Parse, parse_macro_input, punctuated::Punctuated, Expr, Fields, Item, Token,
+};
 
 fn error_at(v: &Ident, pos: Span, error: &str) -> TokenStream {
   let err = quote_spanned!(pos => compile_error!(#error));
@@ -27,8 +29,9 @@ struct DefaultValue(Expr);
 
 impl Parse for DefaultValue {
   fn parse(input: syn::parse::ParseStream) -> syn::Result<Self> {
-    let _: Token![=] = input.parse()?;
-    Ok(DefaultValue(input.parse()?))
+    let content;
+    parenthesized!(content in input);
+    Ok(DefaultValue(content.parse()?))
   }
 }
 

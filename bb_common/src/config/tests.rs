@@ -24,7 +24,7 @@ struct MyConfig {
 }
 #[derive(Debug, Default, Clone, Config, PartialEq)]
 struct MyOptions {
-  #[default = 3]
+  #[default(3)]
   pub baz:   i32,
   pub other: i32,
 }
@@ -57,7 +57,7 @@ enum Color {
 
 #[derive(Default, Debug, PartialEq, Config)]
 struct OtherColorConfig {
-  #[default = OtherColor::Green]
+  #[default(OtherColor::Green)]
   color: OtherColor,
 }
 #[derive(Debug, PartialEq, Config)]
