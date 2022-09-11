@@ -183,7 +183,6 @@ dependencies = [
  "criterion",
  "crossbeam-channel",
  "flate2",
- "indexmap",
  "libc",
  "log",
  "num",
@@ -202,6 +201,7 @@ dependencies = [
  "sha-1",
  "strum",
  "strum_macros",
+ "toml",
  "wyhash",
 ]
 
@@ -1160,12 +1160,12 @@ dependencies = [
 
 [[package]]
 name = "indexmap"
-version = "1.9.1"
+version = "1.8.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "10a35a97730320ffe8e2d410b5d3b69279b98d2c14bdb8b70ea89ecf7888d41e"
+checksum = "282a6247722caba404c065016bbfa522806e51714c34f5dfc3e4a3a46fcb4223"
 dependencies = [
  "autocfg 1.1.0",
- "hashbrown 0.12.0",
+ "hashbrown 0.11.2",
  "serde",
 ]
 

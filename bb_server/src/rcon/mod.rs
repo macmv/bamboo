@@ -41,7 +41,7 @@ impl RCon {
     if !config.get::<bool>("enabled") {
       return None;
     }
-    let addr = match config.get::<String>("addr").parse() {
+    let addr = match config.get::<&str>("addr").parse() {
       Ok(a) => a,
       Err(e) => {
         error!("invalid rcon address: {e}");

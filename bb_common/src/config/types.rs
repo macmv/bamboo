@@ -1,56 +1,49 @@
-use super::{ConfigError, Result, TomlValue, Value};
+use super::TomlValue;
 use crate::{math::FPos, util::GameMode};
 use log::{Level, LevelFilter};
 use std::str::FromStr;
+use toml::Value;
 
-impl TomlValue for bool {
-  fn from_toml(v: &Value) -> Result<Self> { ConfigError::from_option(v, v.as_bool()) }
+impl TomlValue<'_> for bool {
+  fn from_toml(v: &Value) -> Option<Self> { v.as_bool() }
 
   fn name() -> String { "bool".into() }
 }
-/*
-impl TomlValue for GameMode {
-  fn from_toml(v: &Value) -> Result<Self> {
-    ConfigError::from_option(v, GameMode::from_str(v.as_str()?).ok())
-  }
+impl TomlValue<'_> for GameMode {
+  fn from_toml(v: &Value) -> Option<Self> { GameMode::from_str(v.as_str()?).ok() }
 
   fn name() -> String { "game mode".into() }
 }
-impl TomlValue for FPos {
-  fn from_toml(v: &Value) -> Result<Self> {
+impl TomlValue<'_> for FPos {
+  fn from_toml(v: &Value) -> Option<Self> {
     let map = v.as_table()?;
     if map.len() == 3 {
-      Ok(FPos::new(map.get("x")?.as_float()?, map.get("y")?.as_float()?, map.get("z")?.as_float()?))
+      Some(FPos::new(
+        map.get("x")?.as_float()?,
+        map.get("y")?.as_float()?,
+        map.get("z")?.as_float()?,
+      ))
     } else {
-      ConfigError::from_value(
+      None
     }
   }
   fn name() -> String { "position".into() }
 }
-impl TomlValue for Level {
+impl TomlValue<'_> for Level {
   fn from_toml(v: &Value) -> Option<Self> { Level::from_str(v.as_str()?).ok() }
   fn name() -> String { "log level".into() }
 }
-impl TomlValue for LevelFilter {
+impl TomlValue<'_> for LevelFilter {
   fn from_toml(v: &Value) -> Option<Self> { LevelFilter::from_str(v.as_str()?).ok() }
   fn name() -> String { "log level filter".into() }
 }
-*/
 
-impl<T> TomlValue for Vec<T>
+impl<'a, T> TomlValue<'a> for Vec<T>
 where
-  T: TomlValue,
+  T: TomlValue<'a>,
 {
-  fn from_toml(v: &Value) -> Result<Self> {
-    // Prepend the index in the iterator, so that the error has the correct path.
-    match v.as_array() {
-      Some(arr) => arr
-        .iter()
-        .enumerate()
-        .map(|(i, v)| T::from_toml(v).map_err(|e| e.prepend(i.to_string())))
-        .collect::<Result<Vec<T>>>(),
-      None => Err(ConfigError::from_value::<Self>(v)),
-    }
+  fn from_toml(v: &'a Value) -> Option<Self> {
+    v.as_array().and_then(|v| v.iter().map(|v| T::from_toml(v)).collect::<Option<Vec<T>>>())
   }
 
   fn name() -> String { format!("array of {}", T::name()) }
@@ -59,17 +52,9 @@ where
 macro_rules! toml_number {
   ($name:expr, $($ty:ty),*) => {
     $(
-      impl TomlValue for $ty {
-        fn from_toml(v: &Value) -> Result<Self> {
-          ConfigError::from_option(v, v.as_integer())
-            .and_then(|v| v
-              .try_into()
-              .map_err(|_| {
-                ConfigError::other(
-                  format!("integer {v} does not fit into {}", Self::name()),
-                )
-              })
-            )
+      impl TomlValue<'_> for $ty {
+        fn from_toml(v: &Value) -> Option<Self> {
+          v.as_integer().and_then(|v| v.try_into().ok())
         }
 
         fn name() -> String {
@@ -82,24 +67,26 @@ macro_rules! toml_number {
 
 toml_number!("integer", u8, u16, u32, u64, i8, i16, i32, i64);
 
-impl TomlValue for String {
-  fn from_toml(v: &Value) -> Result<Self> {
-    ConfigError::from_option(v, v.as_str().map(|v| v.into()))
-  }
+impl<'a> TomlValue<'a> for &'a str {
+  fn from_toml(v: &'a Value) -> Option<Self> { v.as_str() }
 
   fn name() -> String { "string".into() }
 }
 
-impl TomlValue for f32 {
-  fn from_toml(v: &Value) -> Result<Self> {
-    ConfigError::from_option(v, v.as_float().map(|v| v as f32))
-  }
+impl TomlValue<'_> for String {
+  fn from_toml(v: &Value) -> Option<Self> { v.as_str().map(|v| v.into()) }
+
+  fn name() -> String { "string".into() }
+}
+
+impl TomlValue<'_> for f32 {
+  fn from_toml(v: &Value) -> Option<Self> { v.as_float().map(|v| v as f32) }
 
   fn name() -> String { "float".into() }
 }
 
-impl TomlValue for f64 {
-  fn from_toml(v: &Value) -> Result<Self> { ConfigError::from_option(v, v.as_float()) }
+impl TomlValue<'_> for f64 {
+  fn from_toml(v: &Value) -> Option<Self> { v.as_float() }
 
   fn name() -> String { "float".into() }
 }

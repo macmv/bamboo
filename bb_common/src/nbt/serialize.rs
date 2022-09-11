@@ -101,6 +101,6 @@ mod tests {
 
   #[test]
   fn test_serialize() {
-    let _nbt = NBT::new("", Tag::new_compound(&[("MOTION_BLOCKING", Tag::LongArray(vec![5, 7]))]));
+    let _nbt = NBT::new("", Tag::compound(&[("MOTION_BLOCKING", Tag::LongArray(vec![5, 7]))]));
   }
 }

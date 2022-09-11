@@ -139,7 +139,7 @@ mod tests {
   fn deserialize() -> Result<(), ParseError> {
     let v = NBT::new(
       "hello",
-      Tag::new_compound(&[
+      Tag::compound(&[
         ("small", Tag::Byte(5)),
         ("i is short", Tag::Short(7)),
         ("int time", Tag::Int(12)),
@@ -158,9 +158,9 @@ mod tests {
         ),
         (
           "nested compound",
-          Tag::new_compound(&[
-            ("inner 1", Tag::new_compound(&[("num", Tag::Int(5))])),
-            ("inner 2", Tag::new_compound(&[("str", Tag::String("words".into()))])),
+          Tag::compound(&[
+            ("inner 1", Tag::compound(&[("num", Tag::Int(5))])),
+            ("inner 2", Tag::compound(&[("str", Tag::String("words".into()))])),
             ("compound more", Tag::Long(12313)),
           ]),
         ),
@@ -171,17 +171,17 @@ mod tests {
 
     let _expected = NBT::new(
       "Level",
-      Tag::new_compound(&[
+      Tag::compound(&[
         (
           "nested compound test",
-          Tag::new_compound(&[
+          Tag::compound(&[
             (
               "egg",
-              Tag::new_compound(&[("name", Tag::String("Eggbert".into())), ("value", Tag::Float(0.5))]),
+              Tag::compound(&[("name", Tag::String("Eggbert".into())), ("value", Tag::Float(0.5))]),
             ),
             (
               "ham",
-              Tag::new_compound(&[("name", Tag::String("Hampus".into())), ("value", Tag::Float(0.75))]),
+              Tag::compound(&[("name", Tag::String("Hampus".into())), ("value", Tag::Float(0.75))]),
             ),
           ]),
         ),
@@ -210,11 +210,11 @@ mod tests {
         (
           "listTest (compound)",
           Tag::List(vec![
-            Tag::new_compound(&[
+            Tag::compound(&[
               ("created-on", Tag::Long(1264099775885)),
               ("name", Tag::String("Compound tag #0".into())),
             ]),
-            Tag::new_compound(&[
+            Tag::compound(&[
               ("created-on", Tag::Long(1264099775885)),
               ("name", Tag::String("Compound tag #1".into())),
             ]),
