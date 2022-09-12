@@ -1,7 +1,5 @@
 use proc_macro::TokenStream;
 
-mod config;
-mod default;
 mod lookup_table;
 mod protocol_version;
 mod transfer;
@@ -17,9 +15,3 @@ pub fn protocol_version(_args: TokenStream, input: TokenStream) -> TokenStream {
 
 #[proc_macro_derive(Transfer, attributes(id, must_exist))]
 pub fn transfer(input: TokenStream) -> TokenStream { transfer::transfer(input) }
-
-#[proc_macro_derive(Config)]
-pub fn config(input: TokenStream) -> TokenStream { config::config(input) }
-
-#[proc_macro_derive(Default, attributes(default))]
-pub fn default(input: TokenStream) -> TokenStream { default::default(input) }
