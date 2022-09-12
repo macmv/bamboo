@@ -186,7 +186,7 @@ pub fn write_dimensions<T>(
 fn test_codec() {
   use bb_common::nbt::Tag;
 
-  let expected = Tag::compound(&[
+  let expected = Tag::new_compound(&[
     ("piglin_safe", Tag::Byte(0)),
     ("natural", Tag::Byte(1)),
     ("ambient_light", Tag::Float(0.0)),
@@ -230,7 +230,7 @@ fn test_codec() {
     monster_spawn_block_light_limit: 7,
   };
   assert_eq!(expected, nbt::to_tag(&dimension).unwrap());
-  let expected = Tag::compound(&[
+  let expected = Tag::new_compound(&[
     ("precipitation", Tag::String("rain".into())),
     ("depth", Tag::Float(1.0)),
     ("temperature", Tag::Float(1.0)),
@@ -239,7 +239,7 @@ fn test_codec() {
     ("category", Tag::String("none".into())),
     (
       "effects",
-      Tag::compound(&[
+      Tag::new_compound(&[
         ("sky_color", Tag::Int(0x78a7ff)),
         ("fog_color", Tag::Int(0xc0d8ff)),
         ("water_fog_color", Tag::Int(0x050533)),
