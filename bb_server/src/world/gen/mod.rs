@@ -103,13 +103,14 @@ pub trait BiomeGen {
   /// something like a mountain, and [`layers`](Self::layers) should be
   /// overriden if you need something like a desert.
   fn fill_chunk(&self, world: &WorldGen, pos: ChunkPos, c: &mut MultiChunk) {
-    let average_min_height = self.height_at(world, pos.block() + Pos::new(8, 0, 8));
+    let average_min_height = self.min_height_at(world, pos.block() + Pos::new(8, 0, 8));
     let layers = self.layers();
     c.fill_kind(RelPos::new(0, 0, 0), RelPos::new(15, average_min_height, 15), layers.main_area)
       .unwrap();
     for x in 0..16 {
       for z in 0..16 {
-        let height = self.height_at(world, pos.block() + Pos::new(x as i32, 0, z as i32)) as i32;
+        let height =
+          self.min_height_at(world, pos.block() + Pos::new(x as i32, 0, z as i32)) as i32;
         let min_height = height - layers.total_height() as i32;
         match min_height.cmp(&average_min_height) {
           Ordering::Less => {
@@ -150,7 +151,7 @@ pub trait BiomeGen {
   /// This should be overriden. Instead, set the biome [`layers`](Self::layers),
   /// and use [`decorate`](Self::decorate).
   fn fill_column(&self, world: &WorldGen, pos: Pos, c: &mut MultiChunk) {
-    let height = self.height_at(world, pos);
+    let height = self.min_height_at(world, pos);
     let pos = pos.chunk_rel();
     let layers = self.layers();
     let min_height = height - layers.total_height() as i32;
@@ -191,9 +192,12 @@ pub trait BiomeGen {
     layers.add(block::Kind::GrassBlock, 1);
     layers
   }
-  /// Returns this biome's height at the given position. By default, this just
-  /// uses the world height at the given position.
-  fn height_at(&self, _world: &WorldGen, _pos: Pos) -> i32 { 64 }
+  /// Returns this biome's minimum height at the given position. By default,
+  /// this is `56`.
+  fn min_height_at(&self, _world: &WorldGen, _pos: Pos) -> i32 { 56 }
+  /// Returns this biome's maximum height at the given position. By default,
+  /// this is `72`.
+  fn max_height_at(&self, _world: &WorldGen, _pos: Pos) -> i32 { 80 }
 }
 
 impl Default for WorldGen {
@@ -217,7 +221,8 @@ impl WorldGen {
     stone.octaves = 3;
     let mut max_height = BasicMulti::new();
     max_height.octaves = 1;
-    let seed = 3210471203948712039;
+    // let seed = 3210471203948712039;
+    let seed = 3;
     WorldGen {
       seed,
       biome_map: WarpedVoronoi::new(seed),
@@ -264,21 +269,56 @@ impl WorldGen {
     }
     c.enable_lighting(false);
     let div = 32.0;
-    let min_height = 40.0_f64;
-    let b_min_height = min_height.floor() as i32;
-    c.fill_kind(RelPos::new(0, 0, 0), RelPos::new(15, b_min_height, 15), block::Kind::Stone)
-      .unwrap();
+    let sea_level = 64.0_f64;
+    // c.fill_kind(RelPos::new(0, 0, 0), RelPos::new(15, b_min_height, 15),
+    // block::Kind::Stone)   .unwrap();
     let mut biomes = HashSet::new();
     let mut tops = HashMap::new();
     for p in pos.columns() {
       let x = p.x() as f64 / 64.0;
       let z = p.z() as f64 / 64.0;
-      let max_height = (self.max_height.get([x, z]) * 1.0) / 2.0 * 50.0 + 200.0;
-      let b_max_height = max_height.ceil() as i32;
+      // let max_height = (self.max_height.get([x, z]) * 1.0) / 2.0 * 50.0 + 200.0;
+      // let b_max_height = max_height.ceil() as i32;
       let biome = self.biome_id_at(p);
       let layers = self.biomes[biome].layers();
+
+      let min_height = self.biomes[biome].min_height_at(self, p) as f64;
+      let max_height = self.biomes[biome].max_height_at(self, p) as f64;
+
+      let dist = self.dist_to_border(p);
+      let mut river = false;
+      let (min_height, max_height) = if dist < 4.0 {
+        river = true;
+        (sea_level, sea_level)
+      } else if dist < 5.0 {
+        (sea_level, sea_level)
+      } else if dist < 12.0 {
+        (
+          (min_height - sea_level) * ((dist - 5.0) / 7.0) + sea_level,
+          (max_height - sea_level) * ((dist - 5.0) / 7.0) + sea_level,
+        )
+      } else {
+        (min_height, max_height)
+      };
+      let b_min_height = min_height.floor() as i32;
+      let b_max_height = max_height.ceil() as i32;
+
       biomes.insert(biome);
       let mut depth = 0;
+      if river {
+        c.fill_kind(
+          p.with_y(0).chunk_rel(),
+          p.with_y(b_min_height.saturating_sub(8)).chunk_rel(),
+          block::Kind::Stone,
+        )
+        .unwrap();
+        c.fill_kind(
+          p.with_y(b_min_height.saturating_sub(7)).chunk_rel(),
+          p.with_y(b_min_height).chunk_rel(),
+          block::Kind::Water,
+        )
+        .unwrap();
+      }
       for y in (b_min_height..=b_max_height).rev() {
         let rel = p.chunk_rel().with_y(y);
         let val = {
@@ -297,6 +337,14 @@ impl WorldGen {
           depth += 1;
         } else {
           depth = 0;
+        }
+      }
+      if !river {
+        let mut y = b_min_height as i32;
+        while depth < layers.total_height && y > 0 {
+          c.set_kind(p.with_y(y).chunk_rel(), layers.get(depth)).unwrap();
+          y -= 1;
+          depth += 1;
         }
       }
     }
