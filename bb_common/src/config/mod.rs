@@ -1,23 +1,124 @@
-use std::{fs, sync::Arc};
-use toml::{map::Map, Value};
+use std::{fmt, fs, io};
 
+pub use toml::*;
+
+mod toml;
 mod types;
 
-pub struct Config {
-  primary: Value,
-  default: Value,
+pub type Result<T> = std::result::Result<T, ConfigError>;
+
+#[derive(Debug)]
+pub enum ConfigError {
+  IO(std::io::Error),
+  Parse(ParseError),
+  Value(ValueError),
 }
 
-pub struct ConfigSection {
-  config: Arc<Config>,
-  path:   Vec<String>,
+#[derive(Clone, Debug, PartialEq)]
+pub struct ValueError {
+  pub path: Vec<String>,
+  pub kind: ValueErrorKind,
 }
 
-pub trait TomlValue<'a> {
+#[derive(Clone, Debug, PartialEq)]
+pub enum ValueErrorKind {
+  Missing,
+  WrongType(String, Value),
+  Other(String),
+}
+
+struct Path<'a>(&'a Vec<String>);
+
+impl fmt::Display for Path<'_> {
+  fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+    write!(f, "`")?;
+    for (i, segment) in self.0.iter().enumerate() {
+      if i != 0 {
+        write!(f, "::")?;
+      }
+      write!(f, "{segment}")?;
+    }
+    write!(f, "`")
+  }
+}
+
+impl fmt::Display for ValueError {
+  fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+    match &self.kind {
+      ValueErrorKind::Missing => write!(f, "missing field {}", Path(&self.path)),
+      ValueErrorKind::WrongType(expected, actual) => {
+        write!(f, "expected {expected} at {}, got {actual}", Path(&self.path))
+      }
+      ValueErrorKind::Other(msg) => write!(f, "at {}, {msg}", Path(&self.path)),
+    }
+  }
+}
+
+impl fmt::Display for ConfigError {
+  fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+    match &self {
+      Self::IO(e) => write!(f, "io error: {e}"),
+      Self::Parse(e) => write!(f, "parse error: {e}"),
+      Self::Value(e) => write!(f, "value error: {e}"),
+    }
+  }
+}
+
+impl From<io::Error> for ConfigError {
+  fn from(v: io::Error) -> Self { ConfigError::IO(v) }
+}
+impl From<ParseError> for ConfigError {
+  fn from(v: ParseError) -> Self { ConfigError::Parse(v) }
+}
+impl From<ValueError> for ConfigError {
+  fn from(v: ValueError) -> Self { ConfigError::Value(v) }
+}
+
+impl ConfigError {
+  pub fn new(kind: ValueErrorKind) -> Self { ValueError { path: vec![], kind }.into() }
+  pub fn other(msg: impl std::fmt::Display) -> Self {
+    ValueError { path: vec![], kind: ValueErrorKind::Other(msg.to_string()) }.into()
+  }
+  pub fn from_path<'a>(path: impl Iterator<Item = &'a str>, kind: ValueErrorKind) -> Self {
+    ValueError { path: path.map(|s| s.to_string()).collect(), kind }.into()
+  }
+  pub fn from_value<T: TomlValue>(value: &Value) -> Self {
+    Self::new(ValueErrorKind::WrongType(T::name(), value.clone()))
+  }
+  pub fn from_option<T: TomlValue>(value: &Value, opt: Option<T>) -> Result<T> {
+    match opt {
+      Some(v) => Ok(v),
+      None => Err(Self::from_value::<T>(value)),
+    }
+  }
+  pub fn prepend(mut self, element: impl Into<String>) -> Self {
+    match &mut self {
+      Self::Value(v) => v.path.insert(0, element.into()),
+      _ => {}
+    }
+    self
+  }
+  pub fn prepend_list<'a>(mut self, path: impl Iterator<Item = &'a str>) -> Self {
+    match &mut self {
+      Self::Value(v) => {
+        for (i, element) in path.enumerate() {
+          v.path.insert(i, element.into());
+        }
+      }
+      _ => {}
+    }
+    self
+  }
+}
+
+pub trait TomlValue {
   /// If this current type matches the toml value, this returns Some(v).
-  fn from_toml(v: &'a Value) -> Option<Self>
+  fn from_toml(v: &Value) -> Result<Self>
   where
     Self: Sized;
+
+  /// Returns this struct as a toml value. This should include doc comments.
+  fn to_toml(&self) -> Value;
 
   /// Returns the name of this toml value (string, integer, etc).
   fn name() -> String
@@ -65,196 +166,78 @@ impl Key for [&str] {
   fn sections(&self) -> Vec<&str> { self.to_vec() }
 }
 
-fn join_dot<'a, I: Iterator<Item = &'a str>>(key: I) -> String {
-  {
-    let mut s = String::new();
-    for section in key {
-      if !s.is_empty() {
-        s.push('.');
+/// Loads a config from the given path.
+///
+/// If the path does not exist, the default config will be returned. Use
+/// [`new_write_default`] to write the default config to the path if it is not
+/// present.
+///
+/// If the path does exist, and the config is valid, then the config will be
+/// loaded and returned. Any missing fields will use the default value.
+///
+/// If the path does exist, and the config is invalid, then an error will be
+/// logged, and the default config will be returned.
+pub fn new_at_default<T: TomlValue + Default>(path: &str) -> T {
+  let p = std::path::Path::new(path);
+  if p.exists() {
+    match new_at_err(path) {
+      Ok(v) => return v,
+      Err(e) => {
+        error!("invalid config at `{path}`: {e}");
+        std::process::exit(1);
       }
-      s.push_str(section);
     }
-    s
+  }
+  T::default()
+}
+
+/// Loads the config from the given path, and writes the config if the file
+/// doesn't exist.
+pub fn new_at_write_default<T: TomlValue + Default>(path: &str) -> T {
+  let p = std::path::Path::new(path);
+  if p.exists() {
+    match new_at_err(path) {
+      Ok(v) => return v,
+      Err(e) => {
+        error!("invalid config at `{path}`: {e}");
+        std::process::exit(1);
+      }
+    }
+  }
+  let config = T::default();
+  write_to(&config, path);
+  config
+}
+
+/// Loads the config from `path`, and writes the default to `default_path`.
+pub fn new_at_write_default_to<T: TomlValue + Default>(path: &str, default_path: &str) -> T {
+  write_to(&T::default(), default_path);
+
+  new_at_default(path)
+}
+
+/// Writes the config to the given path.
+pub fn write_to<T: TomlValue>(config: &T, path: &str) {
+  match write_to_err(config, path) {
+    Ok(()) => {}
+    Err(e) => error!("could not write config to `{path}`: {e}"),
   }
 }
 
-impl Config {
-  /// Creates a new config for the given path. The path is a runtime path to
-  /// load the config file. The `default_src` is toml source, which should be
-  /// loaded with `include_str!`. The default is used whenever a key is not
-  /// present in the main config.
-  ///
-  /// If the path doesn't exist, the default config will be written there.
-  pub fn new(path: &str, default_src: &str) -> Self {
-    if !std::path::Path::new(path).exists() {
-      fs::write(path, default_src).unwrap_or_else(|e| {
-        error!("could not write default configuration to disk at `{}`: {}", path, e);
-      });
-    }
-    Config { primary: Self::load_toml(path), default: Self::load_toml_src(default_src) }
-  }
-  /// When this is created, a file at `default_path` will be created, and the
-  /// default toml source will be written there. This is for developers, so they
-  /// can view the default config as a reference. If the file cannot be written,
-  /// a warning will be printed.
-  pub fn new_write_default(path: &str, default_path: &str, default_src: &str) -> Self {
-    fs::write(default_path, default_src).unwrap_or_else(|e| {
-      warn!("could not write default configuration to disk at `{}`: {}", default_path, e);
-    });
-    Config::new(path, default_src)
-  }
-
-  fn load_toml(path: &str) -> Value {
-    let src = fs::read_to_string(path).unwrap_or_else(|e| {
-      error!("error loading toml at `{path}`: {e}");
-      "".into()
-    });
-    src.parse().unwrap_or_else(|e| {
-      error!("error loading toml at `{path}`: {e}");
-      Value::Table(Map::new())
-    })
-  }
-  fn load_toml_src(src: &str) -> Value {
-    src.parse().unwrap_or_else(|e| {
-      error!("error loading toml: {e}");
-      Value::Table(Map::new())
-    })
-  }
-
-  /// Reads the entire config as the given type `T`.
-  pub fn all<'a, T>(&'a self) -> T
-  where
-    T: TomlValue<'a>,
-  {
-    self.get_at([].into_iter())
-  }
-
-  /// Reads the toml value at the given key. This will always return a value. If
-  /// the value doesn't exist in the primary config (or the value is the wrong
-  /// type), then it will use the default config. If it doesn't exist there (or
-  /// if it's the wrong type), this function will panic.
-  ///
-  /// In my opinion, a key should always exist when you try to load it. If there
-  /// was a function like `get_opt`, which would only return a value when
-  /// present, that would make it much more difficult for users to find out what
-  /// that key was. All the keys that can be loaded should be present in the
-  /// default config, so that it is easy for users to edit the config
-  /// themselves.
-  ///
-  /// If you really need to get around this, you can implement [`TomlValue`] for
-  /// your own type. I hightly recommend against this, as that will just cause
-  /// confusion for your users. I will not be adding any more implementations
-  /// than the ones present in this file.
-  pub fn get<'a, T>(&'a self, key: &str) -> T
-  where
-    T: TomlValue<'a>,
-  {
-    self.get_at([key].into_iter())
-  }
-
-  /// Gets the value at the given path. This allows you to pass in a nested key,
-  /// which can be useful at times, but is usually less idiomatic than calling
-  /// [`get`](Self::get).
-  pub fn get_at<'a, 'b, I, T>(&'a self, key: I) -> T
-  where
-    I: Iterator<Item = &'b str> + Clone,
-    T: TomlValue<'a>,
-  {
-    match Self::get_val(&self.primary, key.clone()) {
-      Some(val) => match T::from_toml(val) {
-        Some(v) => v,
-        None => {
-          warn!(
-            "unexpected value at `{}`: {:?}, expected a {}",
-            join_dot(key.clone()),
-            val,
-            T::name()
-          );
-          self.get_default_at(key)
-        }
-      },
-      None => self.get_default_at(key),
-    }
-  }
-
-  /// Gets the default value at the given key. This will panic if the key does
-  /// not exist, or if it was the wrong type.
-  fn get_default_at<'a, 'b, I, T>(&'a self, key: I) -> T
-  where
-    I: Iterator<Item = &'b str> + Clone,
-    T: TomlValue<'a>,
-  {
-    match Self::get_val(&self.default, key.clone()) {
-      Some(val) => match T::from_toml(val) {
-        Some(v) => v,
-        None => {
-          panic!(
-            "default had wrong type for key `{}`: {:?}, expected a {}",
-            join_dot(key),
-            val,
-            T::name(),
-          );
-        }
-      },
-      None => panic!("default does not have key `{}`", join_dot(key)),
-    }
-  }
-
-  fn get_val<'a, 'b, I>(toml: &'a Value, key: I) -> Option<&'a Value>
-  where
-    I: Iterator<Item = &'b str>,
-  {
-    let mut val = toml;
-    for s in key {
-      match val {
-        Value::Table(map) => match map.get(s) {
-          Some(v) => val = v,
-          None => return None,
-        },
-        Value::Array(arr) => match s.parse::<usize>() {
-          Ok(idx) => val = &arr[idx],
-          Err(_) => return None,
-        },
-        _ => return None,
-      }
-    }
-    Some(val)
-  }
-
-  /// Returns a config section for the given key.
-  pub fn section<K: ?Sized>(self: &Arc<Self>, key: &K) -> ConfigSection
-  where
-    K: Key,
-  {
-    ConfigSection {
-      config: self.clone(),
-      path:   key.sections().iter().map(|v| v.to_string()).collect(),
-    }
-  }
+pub fn write_to_err<T: TomlValue>(
+  config: &T,
+  path: &str,
+) -> std::result::Result<(), std::io::Error> {
+  let src = config.to_toml().to_toml();
+  fs::write(path, src)
 }
 
-impl ConfigSection {
-  /// Gets the config value at the given key, prefixed by this reference's path.
-  pub fn get<'a, T>(&'a self, key: &str) -> T
-  where
-    T: TomlValue<'a>,
-  {
-    self.config.get_at(self.path.iter().map(String::as_str).chain([key]))
-  }
+pub fn new_at_err<T: TomlValue>(path: &str) -> Result<T> {
+  let src = fs::read_to_string(path).unwrap();
+  new_err(&src)
+}
 
-  /// Returns a config section for the given key. This new key will be appended
-  /// to the current section's key.
-  pub fn section<K: ?Sized>(&self, key: &K) -> ConfigSection
-  where
-    K: Key,
-  {
-    ConfigSection {
-      config: self.config.clone(),
-      path:   {
-        let mut path = self.path.clone();
-        path.extend(key.sections().iter().map(|v| v.to_string()));
-        path
-      },
-    }
-  }
+pub fn new_err<T: TomlValue>(src: &str) -> Result<T> {
+  let value = src.parse::<Value>()?;
+  Ok(T::from_toml(&value)?)
 }

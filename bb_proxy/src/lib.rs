@@ -5,6 +5,7 @@ extern crate log;
 #[macro_use]
 extern crate smallvec;
 
+pub mod config;
 pub mod conn;
 mod error;
 pub mod gnet;
@@ -15,11 +16,11 @@ pub use conn::{JsonPlayer, JsonPlayers, JsonStatus, JsonVersion};
 pub use error::{Error, Result};
 
 use bb_common::{
-  config::Config,
   math::der,
   util::chat::{Chat, Color},
   version::ProtocolVersion,
 };
+use config::Config;
 use mio::{
   event::Event,
   net::{TcpListener, TcpStream},
@@ -63,12 +64,12 @@ struct TokenHandler<'listener, 'a> {
 
 /// Loads the config at the given path, using the server-provided default
 /// config.
-pub fn load_config(path: &str) -> Config { Config::new(path, include_str!("default.toml")) }
+pub fn load_config(path: &str) -> Config { bb_common::config::new_at_write_default(path) }
 /// Loads the config at the given path, using the server-provided default
 /// config. This will then write the default config to the `default` path
 /// provided.
 pub fn load_config_write_default(path: &str, default: &str) -> Config {
-  Config::new_write_default(path, default, include_str!("default.toml"))
+  bb_common::config::new_at_write_default_to(path, default)
 }
 
 pub struct Proxy {
@@ -77,7 +78,7 @@ pub struct Proxy {
   der_key:        Option<Vec<u8>>,
   addr:           SocketAddr,
   server_addr:    Box<dyn Fn() -> SocketAddr>,
-  forwarding:     String,
+  forwarding:     config::Forwarding,
   compression:    i32,
   conv:           Arc<TypeConverter>,
   status_builder: Arc<dyn for<'a> Fn(&'a str, ProtocolVersion) -> JsonStatus<'a>>,
@@ -92,7 +93,7 @@ impl Proxy {
       der_key: None,
       addr,
       server_addr: Box::new(move || server_addr),
-      forwarding: "NONE".into(),
+      forwarding: config::Forwarding::default(),
       compression: 256,
       conv: Arc::new(TypeConverter::new()),
       status_builder: Arc::new(|icon, ver| {
@@ -129,19 +130,16 @@ impl Proxy {
   }
   /// Creates a proxy from the given config.
   pub fn from_config(config: Config) -> Result<Self> {
-    let encryption = config.get("encryption");
-    let forwarding = config.get("forwarding");
-
-    if encryption && forwarding != "NONE" {
+    if config.encryption && config.forwarding != config::Forwarding::None {
       return Err(BungeecordError { msg: "cannot receive with encryption enabled" });
     }
 
     Ok(
-      Self::new(config.get::<&str>("address").parse()?, config.get::<&str>("server").parse()?)
-        .with_encryption(encryption)
-        .with_forwarding(forwarding)
-        .with_compression(config.get("compression-thresh"))
-        .with_icon(config.get("icon")),
+      Self::new(config.address.parse()?, config.server.parse()?)
+        .with_encryption(config.encryption)
+        .with_forwarding(config.forwarding)
+        .with_compression(config.compression_thresh)
+        .with_icon(&config.icon),
     )
   }
   /// Enables or disables encryption for this connection.
@@ -154,7 +152,7 @@ impl Proxy {
     self
   }
   /// Sets the player info forwarding mode for this connection
-  pub fn with_forwarding(mut self, forwarding: String) -> Self {
+  pub fn with_forwarding(mut self, forwarding: config::Forwarding) -> Self {
     self.forwarding = forwarding;
     self
   }
@@ -191,12 +189,12 @@ impl Proxy {
   fn new_conn(&self, stream: JavaStream, server_token: Token) -> Conn<JavaStream> {
     let conn = Conn::new(
       stream,
-      self.forwarding.clone(),
       (self.server_addr)(),
       self.key.clone(),
       self.der_key.clone(),
       server_token,
       self.conv.clone(),
+      self.forwarding.clone(),
       self.status_builder.clone(),
     )
     .with_compression(self.compression);

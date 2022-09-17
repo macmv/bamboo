@@ -208,7 +208,7 @@ impl Player {
       scoreboard: Scoreboard::new(conn.clone()).into(),
       conn,
       ver: ProtocolVersion::from(info.ver as i32),
-      view_distance: world.world_manager().config().get("view-distance"),
+      view_distance: world.world_manager().config().view_distance,
       game_mode: Mutex::new(game_mode),
       world,
       pos: PlayerPosition {

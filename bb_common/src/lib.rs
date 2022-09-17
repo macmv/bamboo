@@ -19,6 +19,7 @@ pub mod registry;
 pub mod util;
 pub mod version;
 
+pub use indexmap::indexmap;
 pub use registry::Registry;
 
 pub use bb_transfer as transfer;
