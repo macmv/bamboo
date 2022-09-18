@@ -89,7 +89,7 @@ impl<'a> Query<'a> {
         }
         let mut modified = false;
         for (pos, ty) in writes {
-          if c.set_type(pos, ty)? {
+          if c.set_type_no_version_bump(pos, ty)? {
             modified = true;
           }
         }

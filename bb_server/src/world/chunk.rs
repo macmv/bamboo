@@ -130,6 +130,15 @@ impl MultiChunk {
   /// Returns a reference to the global world manager.
   pub fn wm(&self) -> &Arc<WorldManager> { &self.wm }
 
+  pub(in crate::world) fn set_type_no_version_bump(
+    &mut self,
+    p: RelPos,
+    ty: block::Type,
+  ) -> Result<bool, PosError> {
+    let p = self.transform_pos(p)?;
+    Ok(self.inner.set_type_id(p, ty.id(), ty.kind(), &self.wm.block_behaviors()).unwrap())
+  }
+
   /// Sets a block within this chunk. `p.x` and `p.z` must be within 0..16. If
   /// the server supports multi-height worlds (not implemented yet), then p.y
   /// needs to be within the world height (whatever that may be). Otherwise,
@@ -139,12 +148,19 @@ impl MultiChunk {
   /// for use by the world directly, or during use terrain generation. If you
   /// call this function without sending any updates yourself, no one in render
   /// distance will see any of these changes!
-  pub fn set_type(&mut self, p: RelPos, ty: block::Type) -> Result<bool, PosError> {
-    let p = self.transform_pos(p)?;
-    Ok(self.inner.set_type_id(p, ty.id(), ty.kind(), &self.wm.block_behaviors()).unwrap())
+  pub(in crate::world) fn set_type(
+    &mut self,
+    p: RelPos,
+    ty: block::Type,
+  ) -> Result<bool, PosError> {
+    let modified = self.set_type_no_version_bump(p, ty)?;
+    if modified {
+      self.bump_version();
+    }
+    Ok(modified)
   }
 
-  pub fn set_type_with_conv(
+  pub(in crate::world) fn set_type_with_conv(
     &mut self,
     p: RelPos,
     f: impl FnOnce(&block::TypeConverter) -> block::Type,
@@ -152,7 +168,18 @@ impl MultiChunk {
     let p = self.transform_pos(p)?;
     let ty = f(self.wm.block_converter());
     self.inner.set_type_id(p, ty.id(), ty.kind(), &self.wm.block_behaviors()).unwrap();
+    self.bump_version();
     Ok(())
+  }
+
+  pub(in crate::world) fn set_kind_no_version_bump(
+    &mut self,
+    p: RelPos,
+    kind: block::Kind,
+  ) -> Result<bool, PosError> {
+    let p = self.transform_pos(p)?;
+    let ty = self.wm.block_converter().get(kind).default_type();
+    Ok(self.inner.set_type_id(p, ty.id(), ty.kind(), &self.wm.block_behaviors()).unwrap())
   }
 
   /// Sets a block within this chunk. This is the same as
@@ -165,11 +192,16 @@ impl MultiChunk {
   /// for use by the world directly, or during use terrain generation. If you
   /// call this function without sending any updates yourself, no one in render
   /// distance will see any of these changes!
-  pub fn set_kind(&mut self, p: RelPos, kind: block::Kind) -> Result<(), PosError> {
-    let p = self.transform_pos(p)?;
-    let ty = self.wm.block_converter().get(kind).default_type();
-    self.inner.set_type_id(p, ty.id(), ty.kind(), &self.wm.block_behaviors()).unwrap();
-    Ok(())
+  pub(in crate::world) fn set_kind(
+    &mut self,
+    p: RelPos,
+    kind: block::Kind,
+  ) -> Result<bool, PosError> {
+    let modified = self.set_kind_no_version_bump(p, kind)?;
+    if modified {
+      self.bump_version();
+    }
+    Ok(modified)
   }
 
   /// Fills the region within this chunk. Min and max must be within the chunk
@@ -190,6 +222,7 @@ impl MultiChunk {
     // TODO: Update light correctly.
     self.inner.update_light(min);
     self.inner.update_light(max);
+    self.bump_version();
     Ok(())
   }
 
@@ -211,6 +244,7 @@ impl MultiChunk {
     // TODO: Update light correctly.
     self.inner.update_light(min);
     self.inner.update_light(max);
+    self.bump_version();
     Ok(())
   }
 

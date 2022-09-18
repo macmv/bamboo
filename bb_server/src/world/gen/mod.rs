@@ -293,7 +293,7 @@ impl WorldGen {
           if depth == 0 {
             tops.insert(p.with_y(y), biome);
           }
-          c.set_kind(rel, layers.get(depth)).unwrap();
+          c.set_kind_no_version_bump(rel, layers.get(depth)).unwrap();
           depth += 1;
         } else {
           depth = 0;
@@ -304,6 +304,7 @@ impl WorldGen {
       self.biomes[*b].decorate(self, pos, c, &tops);
     }
     c.enable_lighting(true);
+    c.bump_version();
     /*
     if biomes.len() == 1 {
       for b in &biomes {
