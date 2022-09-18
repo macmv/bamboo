@@ -1,6 +1,6 @@
 use super::World;
 use crate::{block, world::MultiChunk};
-use bb_common::math::{ChunkPos, Pos, PosError};
+use bb_common::math::{ChunkPos, Pos, PosError, RelPos};
 use parking_lot::MutexGuard;
 use std::collections::HashMap;
 
@@ -8,7 +8,7 @@ pub struct Query<'a> {
   world: &'a World,
 
   reads:  HashMap<ChunkPos, u32>,
-  writes: HashMap<Pos, block::Type<'a>>,
+  writes: HashMap<ChunkPos, HashMap<RelPos, block::Type<'a>>>,
 }
 
 /// We will try each query 3 times before failing
@@ -65,15 +65,46 @@ impl<'a> Query<'a> {
     Query { world, reads: HashMap::new(), writes: HashMap::new() }
   }
 
-  fn apply(self) -> Result<(), QueryError> { Ok(()) }
+  fn apply(self) -> Result<(), QueryError> {
+    // Validate that none of the read-only chunks have changed.
+    for (pos, version) in &self.reads {
+      if self.writes.contains_key(pos) {
+        continue;
+      }
+      self.world.chunk(*pos, |c| {
+        if c.version() != *version {
+          return Err(QueryError::Contention);
+        }
+        Ok(())
+      })?;
+    }
+    // None of the read-only chunks have moved, so we go write everything. If any of
+    // the write chunks are also read chunks, we make sure they haven't changed.
+    for (pos, writes) in self.writes {
+      self.world.chunk(pos, |mut c| {
+        if let Some(ver) = self.reads.get(&pos) {
+          if *ver != c.version() {
+            return Err(QueryError::Contention);
+          }
+        }
+        for (pos, ty) in writes {
+          c.set_type(pos, ty)?;
+        }
+        Ok(())
+      })?;
+    }
+    Ok(())
+  }
 }
 
 /// User-availible functions
 impl<'a> Query<'a> {
   pub fn set_kind(&mut self, pos: Pos, kind: block::Kind) {
-    self.writes.insert(pos, self.world.block_converter().ty(kind));
+    self.set_block(pos, self.world.block_converter().ty(kind));
   }
-  pub fn set_block(&mut self, pos: Pos, ty: block::Type<'a>) { self.writes.insert(pos, ty); }
+  pub fn set_block(&mut self, pos: Pos, ty: block::Type<'a>) {
+    self.writes.entry(pos.chunk()).or_insert_with(|| HashMap::new()).insert(pos.chunk_rel(), ty);
+  }
   pub fn get_block(&mut self, pos: Pos) -> Result<block::TypeStore, QueryError> {
     self.read_chunk(pos.chunk(), |c| Ok(c.get_type(pos.chunk_rel())?.to_store()))
   }
