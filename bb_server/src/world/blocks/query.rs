@@ -14,7 +14,7 @@ pub struct Query<'a> {
 /// We will try each query 3 times before failing
 const CONTENTION_LIMIT: u32 = 3;
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub enum QueryError {
   Contention,
   Pos(PosError),
@@ -135,30 +135,90 @@ impl<'a> Query<'a> {
 mod tests {
   use super::*;
 
+  fn q_ok<R>(world: &World, f: impl Fn(&mut Query) -> Result<R, QueryError>) {
+    world.query(f).unwrap();
+  }
+  fn q_err<R>(world: &World, f: impl Fn(&mut Query) -> Result<R, QueryError>) -> QueryError {
+    match world.query(f) {
+      Ok(_) => panic!("query should have failed"),
+      Err(e) => e,
+    }
+  }
+
   #[test]
   fn basics() {
     let world = World::new_test();
-    world
-      .query(|q| {
-        let b = q.get_block(Pos::new(0, 0, 0))?;
-        assert_eq!(b.kind(), block::Kind::Stone);
+    q_ok(&world, |q| {
+      let b = q.get_block(Pos::new(0, 0, 0))?;
+      assert_eq!(b.kind(), block::Kind::Stone);
 
+      q.set_kind(Pos::new(0, 0, 0), block::Kind::Air);
+
+      let b = q.get_block(Pos::new(0, 0, 0))?;
+      assert_eq!(b.kind(), block::Kind::Stone);
+
+      Ok(())
+    });
+    // After the above transaction is applied, reads should give a new result
+    q_ok(&world, |q| {
+      let b = q.get_block(Pos::new(0, 0, 0))?;
+      assert_eq!(b.kind(), block::Kind::Air);
+
+      Ok(())
+    });
+  }
+
+  #[test]
+  fn contention() {
+    let world = World::new_test();
+    q_ok(&world, |q| {
+      assert_eq!(q.get_kind(Pos::new(0, 0, 0))?, block::Kind::Stone);
+
+      q_ok(&world, |q| {
+        assert_eq!(q.get_kind(Pos::new(0, 0, 0))?, block::Kind::Stone);
+
+        Ok(())
+      });
+
+      Ok(())
+    });
+
+    // This should try once, and the inner query will succeed, and the outer query
+    // will fail. Then it will try again, and everything should work.
+    let tries = std::cell::Cell::new(0);
+    q_ok(&world, |q| {
+      if tries.get() == 0 {
+        assert_eq!(q.get_kind(Pos::new(0, 0, 0))?, block::Kind::Stone);
+      } else {
+        assert_eq!(q.get_kind(Pos::new(0, 0, 0))?, block::Kind::Air);
+      }
+
+      q_ok(&world, |q| {
         q.set_kind(Pos::new(0, 0, 0), block::Kind::Air);
 
-        let b = q.get_block(Pos::new(0, 0, 0))?;
-        assert_eq!(b.kind(), block::Kind::Stone);
+        Ok(())
+      });
+
+      tries.set(tries.get() + 1);
+      Ok(())
+    });
+    assert_eq!(tries.get(), 2);
+
+    assert_eq!(
+      q_err(&world, |q| {
+        world
+          .query(|q| {
+            q.set_kind(Pos::new(0, 0, 0), block::Kind::Air);
+
+            Ok(())
+          })
+          .unwrap();
+
+        assert_eq!(q.get_kind(Pos::new(0, 0, 0))?, block::Kind::Stone);
 
         Ok(())
-      })
-      .unwrap();
-    // After the above transaction is applied, reads should give a new result
-    world
-      .query(|q| {
-        let b = q.get_block(Pos::new(0, 0, 0))?;
-        assert_eq!(b.kind(), block::Kind::Air);
-
-        Ok(())
-      })
-      .unwrap();
+      }),
+      QueryError::Contention
+    );
   }
 }
