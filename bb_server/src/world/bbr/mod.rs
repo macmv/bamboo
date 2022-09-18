@@ -4,7 +4,7 @@ mod fs;
 
 use super::{CountedChunk, World};
 use bb_common::math::ChunkPos;
-use parking_lot::{Mutex, MutexGuard, RwLock, RwLockWriteGuard};
+use parking_lot::{Mutex, RwLock, RwLockReadGuard, RwLockWriteGuard};
 use std::{
   collections::HashMap,
   sync::{Arc, Weak},
@@ -28,7 +28,7 @@ pub struct RegionRelPos {
 
 pub struct RegionMap {
   world:   Weak<World>,
-  regions: RwLock<HashMap<RegionPos, Mutex<Region>>>,
+  regions: RwLock<HashMap<RegionPos, RwLock<Region>>>,
   save:    bool,
 }
 
@@ -45,7 +45,14 @@ impl RegionMap {
     RegionMap { world, regions: RwLock::new(HashMap::new()), save }
   }
 
-  pub fn region<F: FnOnce(MutexGuard<Region>) -> R, R>(&self, pos: ChunkPos, f: F) -> R {
+  pub fn region<F: FnOnce(RwLockReadGuard<Region>) -> R, R>(&self, pos: ChunkPos, f: F) -> R {
+    self.region_inner(pos, |region| f(region.read()))
+  }
+  pub fn region_mut<F: FnOnce(RwLockWriteGuard<Region>) -> R, R>(&self, pos: ChunkPos, f: F) -> R {
+    self.region_inner(pos, |region| f(region.write()))
+  }
+
+  fn region_inner<F: FnOnce(&RwLock<Region>) -> R, R>(&self, pos: ChunkPos, f: F) -> R {
     let lock = self.regions.read();
     let region_pos = RegionPos::new(pos);
     let rlock = if !lock.contains_key(&region_pos) {
@@ -54,20 +61,20 @@ impl RegionMap {
       // If someone else got the write lock, and wrote this region, we don't
       // want to write it twice.
       write.entry(region_pos).or_insert_with(|| {
-        Mutex::new(Region::new_load(self.world.upgrade().unwrap(), region_pos, self.save))
+        RwLock::new(Region::new_load(self.world.upgrade().unwrap(), region_pos, self.save))
       });
       RwLockWriteGuard::downgrade(write)
     } else {
       lock
     };
     let region = rlock.get(&region_pos).unwrap();
-    f(region.lock())
+    f(region)
   }
 
   pub fn has_chunk(&self, pos: ChunkPos) -> bool {
     let lock = self.regions.read();
     if let Some(region) = lock.get(&RegionPos::new(pos)) {
-      region.lock().has_chunk(RegionRelPos::new(pos))
+      region.read().has_chunk(RegionRelPos::new(pos))
     } else {
       false
     }
@@ -78,7 +85,7 @@ impl RegionMap {
     {
       let rl = self.regions.read();
       for (pos, region) in rl.iter() {
-        if region.lock().unload_chunks() {
+        if region.write().unload_chunks() {
           unloadable.push(*pos);
         }
       }
@@ -99,7 +106,7 @@ impl RegionMap {
     info!("saving world...");
     let lock = self.regions.read();
     for region in lock.values() {
-      region.lock().save();
+      region.read().save();
     }
     info!("saved");
   }
