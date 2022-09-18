@@ -408,8 +408,8 @@ impl World {
   /// loaded something from disk, which you don't want to overwrite.
   pub fn store_chunks_no_overwrite(&self, chunks: Vec<(ChunkPos, MultiChunk)>) {
     for (pos, chunk) in chunks {
-      self.regions.region_mut(pos, |mut region| {
-        region.get_or_generate(pos, || CountedChunk::new(chunk));
+      self.regions.region(pos, |region| {
+        region.get_or_generate(pos, || CountedChunk::new(chunk), |_| {});
       });
     }
   }
@@ -426,11 +426,12 @@ impl World {
   where
     F: FnOnce(MutexGuard<MultiChunk>) -> R,
   {
-    self.regions.region_mut(pos, |mut region| {
-      let chunk = region.get_or_generate(RegionRelPos::new(pos), || {
-        CountedChunk::new(self.pre_generate_chunk(pos))
-      });
-      f(chunk.lock())
+    self.regions.region(pos, |region| {
+      region.get_or_generate(
+        RegionRelPos::new(pos),
+        || CountedChunk::new(self.pre_generate_chunk(pos)),
+        |chunk| f(chunk.lock()),
+      )
     })
   }
 
@@ -518,11 +519,12 @@ impl World {
   /// used to track when a chunk should be loaded/unloaded. This will load the
   /// chunk if it is not already present.
   pub fn inc_view(&self, pos: ChunkPos) {
-    self.regions.region_mut(pos, |mut region| {
-      let chunk = region.get_or_generate(RegionRelPos::new(pos), || {
-        CountedChunk::new(self.pre_generate_chunk(pos))
-      });
-      chunk.count.fetch_add(1, Ordering::SeqCst);
+    self.regions.region(pos, |region| {
+      region.get_or_generate(
+        RegionRelPos::new(pos),
+        || CountedChunk::new(self.pre_generate_chunk(pos)),
+        |chunk| chunk.count.fetch_add(1, Ordering::SeqCst),
+      );
     })
   }
 
@@ -530,11 +532,12 @@ impl World {
   /// used to track when a chunk should be loaded/unloaded. If this chunk does
   /// not exist, this will do nothing.
   pub fn dec_view(&self, pos: ChunkPos) {
-    self.regions.region_mut(pos, |mut region| {
-      let chunk = region.get_or_generate(RegionRelPos::new(pos), || {
-        CountedChunk::new(self.pre_generate_chunk(pos))
-      });
-      chunk.count.fetch_sub(1, Ordering::SeqCst);
+    self.regions.region(pos, |region| {
+      region.get_or_generate(
+        RegionRelPos::new(pos),
+        || CountedChunk::new(self.pre_generate_chunk(pos)),
+        |chunk| chunk.count.fetch_sub(1, Ordering::SeqCst),
+      );
     })
   }
 

@@ -75,24 +75,25 @@ impl Region {
         };
 
         let mut reader = MessageReader::new(&region_cache[..n]);
+        let mut chunks = self.chunks.write();
         let res = reader.read_struct_with(|mut s| {
           for i in 0_usize..1024 {
             s.read_with(i as u64, |r| {
               r.read_enum_with(|mut e| match e.variant() {
                 0 => {
-                  self.chunks[i] = None;
+                  chunks[i] = None;
                   Ok(())
                 }
                 1 => {
-                  if self.chunks[i].is_none() {
-                    self.chunks[i] = Some(CountedChunk::new(MultiChunk::new(
+                  if chunks[i].is_none() {
+                    chunks[i] = Some(CountedChunk::new(MultiChunk::new(
                       self.world.world_manager().clone(),
                       true,
                       self.world.height,
                       self.world.min_y,
                     )));
                   }
-                  e.must_read_with(0, |r| ReadableChunk(self.chunks[i].as_mut().unwrap()).read(r))?;
+                  e.must_read_with(0, |r| ReadableChunk(chunks[i].as_mut().unwrap()).read(r))?;
                   Ok(())
                 }
                 _ => Err(e.invalid_variant()),
@@ -163,7 +164,7 @@ impl Region {
 impl Region {
   fn write(&self, w: &mut MessageWriter<&mut Vec<u8>>) -> Result<(), WriteError> {
     w.write_struct(1024, |w| {
-      for chunk in &self.chunks {
+      for chunk in self.chunks.read().iter() {
         let c = chunk.as_ref().map(WriteableChunk);
         w.write_enum(if c.is_some() { 1 } else { 0 }, if c.is_some() { 1 } else { 0 }, |w| {
           if let Some(c) = c {
