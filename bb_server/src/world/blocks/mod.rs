@@ -88,7 +88,6 @@ impl World {
     let old_ty = self.chunk(pos.chunk(), |mut c| {
       let old_ty = c.get_type(pos.chunk_rel())?.to_store();
       c.set_type(pos.chunk_rel(), ty)?;
-      c.bump_version();
       Ok(old_ty)
     })?;
     old_block.ty = old_ty.ty();
@@ -141,11 +140,7 @@ impl World {
       return Ok(false);
     }
 
-    self.chunk(pos.chunk(), |mut c| {
-      c.set_type(pos.chunk_rel(), ty)?;
-      c.bump_version();
-      Ok(())
-    })?;
+    self.chunk(pos.chunk(), |mut c| c.set_type(pos.chunk_rel(), ty))?;
 
     let id = ty.id();
     for p in self.players().iter().in_view(pos.chunk()) {
