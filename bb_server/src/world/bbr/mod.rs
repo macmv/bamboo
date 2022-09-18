@@ -4,7 +4,7 @@ mod fs;
 
 use super::{CountedChunk, World};
 use bb_common::math::ChunkPos;
-use parking_lot::{RwLock, RwLockReadGuard, RwLockWriteGuard};
+use parking_lot::{RwLock, RwLockWriteGuard};
 use std::{
   collections::HashMap,
   sync::{Arc, Weak},

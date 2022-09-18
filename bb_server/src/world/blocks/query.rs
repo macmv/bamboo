@@ -1,7 +1,6 @@
-use super::{super::MultiChunk, World};
+use super::World;
 use crate::block;
 use bb_common::math::{ChunkPos, Pos, PosError};
-use parking_lot::RwLockReadGuard;
 use std::collections::HashMap;
 
 pub struct Query<'a> {
