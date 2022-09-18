@@ -1,11 +1,14 @@
-use super::World;
+use super::{Block, World};
 use crate::{block, world::MultiChunk};
-use bb_common::math::{ChunkPos, Pos, PosError, RelPos};
+use bb_common::{
+  math::{ChunkPos, Pos, PosError, RelPos},
+  net::cb,
+};
 use parking_lot::MutexGuard;
-use std::collections::HashMap;
+use std::{collections::HashMap, sync::Arc};
 
 pub struct Query<'a> {
-  world: &'a World,
+  world: &'a Arc<World>,
 
   reads:  HashMap<ChunkPos, u32>,
   writes: HashMap<ChunkPos, HashMap<RelPos, block::Type<'a>>>,
@@ -41,7 +44,10 @@ impl World {
   /// same block will return the initial state of that block, before it was
   /// written. This also means that reading the same block will always return
   /// the same result.
-  pub fn query<R>(&self, f: impl Fn(&mut Query) -> Result<R, QueryError>) -> Result<R, QueryError> {
+  pub fn query<'a, R>(
+    self: &'a Arc<World>,
+    f: impl Fn(&mut Query<'a>) -> Result<R, QueryError>,
+  ) -> Result<R, QueryError> {
     for _ in 0..CONTENTION_LIMIT {
       let mut query = Query::new(self);
       let res = match f(&mut query) {
@@ -61,7 +67,7 @@ impl World {
 
 /// Internal functions
 impl<'a> Query<'a> {
-  fn new(world: &'a World) -> Self {
+  fn new(world: &'a Arc<World>) -> Self {
     Query { world, reads: HashMap::new(), writes: HashMap::new() }
   }
 
@@ -80,16 +86,20 @@ impl<'a> Query<'a> {
     }
     // None of the read-only chunks have moved, so we go write everything. If any of
     // the write chunks are also read chunks, we make sure they haven't changed.
-    for (pos, writes) in self.writes {
-      self.world.chunk(pos, |mut c| {
+    for (pos, writes) in &self.writes {
+      self.world.chunk(*pos, |mut c| {
         if let Some(ver) = self.reads.get(&pos) {
           if *ver != c.version() {
             return Err(QueryError::Contention);
           }
         }
         let mut modified = false;
-        for (pos, ty) in writes {
-          if c.set_type_no_version_bump(pos, ty)? {
+        for (rel, ty) in writes {
+          if self.set_block_inner(
+            &mut c,
+            pos.block() + Pos::new(rel.x().into(), rel.y().into(), rel.z().into()),
+            *ty,
+          )? {
             modified = true;
           }
         }
@@ -100,6 +110,60 @@ impl<'a> Query<'a> {
       })?;
     }
     Ok(())
+  }
+
+  fn set_block_inner(
+    &self,
+    chunk: &mut MultiChunk,
+    pos: Pos,
+    ty: block::Type,
+  ) -> Result<bool, PosError> {
+    /*
+    let old_ty = chunk.get_type(pos.chunk_rel())?.to_store();
+    let old_block = Block::new(self.world, pos, old_ty.ty());
+    */
+    let new_block = Block::new(self.world, pos, ty);
+    let modified = chunk.set_type_no_version_bump(pos.chunk_rel(), ty)?;
+    if modified {
+      // First, handle the update for the block that was just placed.
+      self
+        .world
+        .world_manager()
+        .block_behaviors()
+        .call(ty.kind(), |b| b.update_place(self.world, new_block));
+      /*
+      // After that, handle updates for neighboring blocks.
+      macro_rules! dir {
+        ( $x:expr, $y:expr, $z:expr ) => {
+          if let Ok(ty) = self.world.get_block(pos + Pos::new($x, $y, $z)) {
+            self.world.world_manager().block_behaviors().call(ty.kind(), |b| {
+              b.update(
+                self.world,
+                Block::new(self.world, pos + Pos::new($x, $y, $z), ty.ty()),
+                old_block,
+                new_block,
+              )
+            });
+          }
+        };
+      }
+      dir!(1, 0, 0);
+      dir!(-1, 0, 0);
+      dir!(0, 1, 0);
+      dir!(0, -1, 0);
+      dir!(0, 0, 1);
+      dir!(0, 0, -1);
+      */
+
+      let id = ty.id();
+      for p in self.world.players().iter().in_view(pos.chunk()) {
+        p.send(cb::packet::BlockUpdate {
+          pos,
+          state: self.world.block_converter.to_old(id, p.ver().block()),
+        });
+      }
+    }
+    Ok(modified)
   }
 }
 
@@ -129,8 +193,9 @@ impl<'a> Query<'a> {
         if c.version() > current {
           return Err(QueryError::Contention);
         }
+      } else {
+        self.reads.insert(pos, c.version());
       }
-      self.reads.insert(pos, c.version());
 
       f(c)
     })
@@ -141,10 +206,12 @@ impl<'a> Query<'a> {
 mod tests {
   use super::*;
 
-  fn q_ok<R>(world: &World, f: impl Fn(&mut Query) -> Result<R, QueryError>) {
+  #[track_caller]
+  fn q_ok<R>(world: &Arc<World>, f: impl Fn(&mut Query) -> Result<R, QueryError>) {
     world.query(f).unwrap();
   }
-  fn q_err<R>(world: &World, f: impl Fn(&mut Query) -> Result<R, QueryError>) -> QueryError {
+  #[track_caller]
+  fn q_err<R>(world: &Arc<World>, f: impl Fn(&mut Query) -> Result<R, QueryError>) -> QueryError {
     match world.query(f) {
       Ok(_) => panic!("query should have failed"),
       Err(e) => e,

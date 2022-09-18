@@ -71,7 +71,9 @@ impl World {
   /// could not be placed. This will only ever return `Ok(false)` if the world
   /// is locked. If the block is the same type as what is already present,
   /// this will still return `Ok(true)` if the world was unlocked.
-  pub fn set_block(self: &Arc<Self>, pos: Pos, ty: block::Type) -> Result<bool, PosError> {
+  pub fn set_block<'a>(self: &Arc<Self>, pos: Pos, ty: block::Type<'a>) -> Result<bool, PosError> {
+    // TODO: Handle locked worlds in queries
+    /*
     if self.is_locked() {
       let id = self.get_block(pos)?.id();
       for p in self.players().iter().in_view(pos.chunk()) {
@@ -82,49 +84,13 @@ impl World {
       }
       return Ok(false);
     }
+    */
 
-    let mut old_block = Block::new(self, pos, ty);
-    let new_block = Block::new(self, pos, ty);
-    let old_ty = self.chunk(pos.chunk(), |mut c| {
-      let old_ty = c.get_type(pos.chunk_rel())?.to_store();
-      c.set_type(pos.chunk_rel(), ty)?;
-      Ok(old_ty)
-    })?;
-    old_block.ty = old_ty.ty();
-    // First, handle the update for the block that was just placed.
-    self
-      .world_manager()
-      .block_behaviors()
-      .call(ty.kind(), |b| b.update_place(self, Block::new(self, pos, ty)));
-    // After that, handle updates for neighboring blocks.
-    macro_rules! dir {
-      ( $x:expr, $y:expr, $z:expr ) => {
-        if let Ok(ty) = self.get_block(pos + Pos::new($x, $y, $z)) {
-          self.world_manager().block_behaviors().call(ty.kind(), |b| {
-            b.update(
-              self,
-              Block::new(&self, pos + Pos::new($x, $y, $z), ty.ty()),
-              old_block,
-              new_block,
-            )
-          });
-        }
-      };
-    }
-    dir!(1, 0, 0);
-    dir!(-1, 0, 0);
-    dir!(0, 1, 0);
-    dir!(0, -1, 0);
-    dir!(0, 0, 1);
-    dir!(0, 0, -1);
+    self.query(|q| {
+      q.set_block(pos, ty);
+      Ok(())
+    });
 
-    let id = ty.id();
-    for p in self.players().iter().in_view(pos.chunk()) {
-      p.send(cb::packet::BlockUpdate {
-        pos,
-        state: self.block_converter.to_old(id, p.ver().block()),
-      });
-    }
     Ok(true)
   }
 
