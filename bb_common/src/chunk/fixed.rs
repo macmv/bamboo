@@ -28,12 +28,12 @@ impl ChunkSection for Section {
   /// This updates the internal data to contain a block at the given position.
   /// In release mode, the position is not checked. In any other mode, a
   /// PosError will be returned if any of the x, y, or z are outside of 0..16
-  fn set_block(&mut self, pos: SectionRelPos, ty: u32) {
+  fn set_block(&mut self, pos: SectionRelPos, ty: u32) -> bool {
     // SAFETY: By definition, pos.{x,y,z} are all within 0..16, so
     // the position passed to set_block_unchecked is safe
-    unsafe {
-      self.set_block_unchecked(pos, ty);
-    }
+    let prev = self.get_block(pos);
+    unsafe { self.set_block_unchecked(pos, ty) };
+    ty != prev
   }
   fn fill(&mut self, min: SectionRelPos, max: SectionRelPos, ty: u32) {
     for y in min.y()..=max.y() {

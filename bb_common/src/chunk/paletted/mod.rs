@@ -148,20 +148,21 @@ impl ChunkSection for Section {
       max_bpe,
     }
   }
-  fn set_block(&mut self, pos: SectionRelPos, ty: u32) {
+  fn set_block(&mut self, pos: SectionRelPos, ty: u32) -> bool {
     // SAFETY: By definition, pos.{x,y,z} will be within 0..16
     let mut prev = unsafe { self.get_palette(pos) };
     let palette_id = match self.reverse_palette.get(&ty) {
       Some(&palette_id) => {
         if prev == palette_id {
           // The same block is being placed, so we do nothing.
-          return;
+          return false;
         }
         unsafe { self.set_palette(pos, palette_id) };
         palette_id
       }
       None => {
         if self.palette.is_empty() {
+          // Direct palette, so we set directly.
           unsafe { self.set_palette(pos, ty) };
           if ty == 0 && prev != 0 {
             self.block_amounts[0] += 1;
@@ -169,10 +170,11 @@ impl ChunkSection for Section {
           if prev == 0 && ty != 0 {
             self.block_amounts[0] -= 1;
           }
-          return;
+          return ty != prev;
         } else {
           let palette_id = self.insert(ty);
           if self.palette.is_empty() {
+            // Chunk just entered direct palette from the above insert() call.
             unsafe { self.set_palette(pos, ty) };
             if ty == 0 && prev != 0 {
               self.block_amounts[0] += 1;
@@ -180,7 +182,7 @@ impl ChunkSection for Section {
             if prev == 0 && ty != 0 {
               self.block_amounts[0] -= 1;
             }
-            return;
+            return ty != prev;
           }
           // If insert() was called, and it inserted before prev, the block_amounts would
           // have been shifted, and prev needs to be shifted as well.
@@ -197,6 +199,7 @@ impl ChunkSection for Section {
     if self.block_amounts[prev as usize] == 0 && prev != 0 {
       self.remove(prev);
     }
+    true
   }
   fn fill(&mut self, min: SectionRelPos, max: SectionRelPos, ty: u32) {
     // This is required to not corrupt the chunk. I don't think this is required for

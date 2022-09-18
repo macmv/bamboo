@@ -12,7 +12,10 @@ pub trait Section: Any {
   /// either a blockstate id or a block id and metadata (for 1.8). Either way,
   /// it will always chop of the higher bits in the id. In release, this
   /// should be done silently, and in debug, this should panic.
-  fn set_block(&mut self, pos: SectionRelPos, ty: u32);
+  ///
+  /// Returns `true` if the block was changed, and `false` if the block stayed
+  /// the same.
+  fn set_block(&mut self, pos: SectionRelPos, ty: u32) -> bool;
   /// This fills the chunk section with the given block. Min and max are
   /// inclusive coordinates, and min must be less than or equal to max. This
   /// function should only validate that if debug assertions are enabled.
