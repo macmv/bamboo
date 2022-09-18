@@ -1,6 +1,7 @@
 use super::World;
-use crate::block;
+use crate::{block, world::MultiChunk};
 use bb_common::math::{ChunkPos, Pos, PosError};
+use parking_lot::MutexGuard;
 use std::collections::HashMap;
 
 pub struct Query<'a> {
@@ -74,16 +75,27 @@ impl<'a> Query<'a> {
   }
   pub fn set_block(&mut self, pos: Pos, ty: block::Type<'a>) { self.writes.insert(pos, ty); }
   pub fn get_block(&mut self, pos: Pos) -> Result<block::TypeStore, QueryError> {
-    let current_version = self.reads.get(&pos.chunk()).copied();
-    self.world.chunk(pos.chunk(), |c| {
+    self.read_chunk(pos.chunk(), |c| Ok(c.get_type(pos.chunk_rel())?.to_store()))
+  }
+  pub fn get_kind(&mut self, pos: Pos) -> Result<block::Kind, QueryError> {
+    self.read_chunk(pos.chunk(), |c| Ok(c.get_kind(pos.chunk_rel())?))
+  }
+
+  fn read_chunk<R>(
+    &mut self,
+    pos: ChunkPos,
+    f: impl FnOnce(MutexGuard<MultiChunk>) -> Result<R, QueryError>,
+  ) -> Result<R, QueryError> {
+    let current_version = self.reads.get(&pos).copied();
+    self.world.chunk(pos, |c| {
       if let Some(current) = current_version {
         if c.version() > current {
           return Err(QueryError::Contention);
         }
       }
-      self.reads.insert(pos.chunk(), c.version());
+      self.reads.insert(pos, c.version());
 
-      Ok(c.get_type(pos.chunk_rel())?.to_store())
+      f(c)
     })
   }
 }
@@ -93,7 +105,7 @@ mod tests {
   use super::*;
 
   #[test]
-  fn basic_reads() {
+  fn basics() {
     let world = World::new_test();
     world
       .query(|q| {
@@ -104,6 +116,15 @@ mod tests {
 
         let b = q.get_block(Pos::new(0, 0, 0))?;
         assert_eq!(b.kind(), block::Kind::Stone);
+
+        Ok(())
+      })
+      .unwrap();
+    // After the above transaction is applied, reads should give a new result
+    world
+      .query(|q| {
+        let b = q.get_block(Pos::new(0, 0, 0))?;
+        assert_eq!(b.kind(), block::Kind::Air);
 
         Ok(())
       })
