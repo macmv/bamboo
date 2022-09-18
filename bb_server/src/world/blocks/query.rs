@@ -69,6 +69,9 @@ impl<'a> Query<'a> {
 
 /// User-availible functions
 impl<'a> Query<'a> {
+  pub fn set_kind(&mut self, pos: Pos, kind: block::Kind) {
+    self.writes.insert(pos, self.world.block_converter().ty(kind));
+  }
   pub fn set_block(&mut self, pos: Pos, ty: block::Type<'a>) { self.writes.insert(pos, ty); }
   pub fn get_block(&mut self, pos: Pos) -> Result<block::TypeStore, QueryError> {
     let current_version = self.reads.get(&pos.chunk()).copied();
@@ -94,6 +97,11 @@ mod tests {
     let world = World::new_test();
     world
       .query(|q| {
+        let b = q.get_block(Pos::new(0, 0, 0))?;
+        assert_eq!(b.kind(), block::Kind::Stone);
+
+        q.set_kind(Pos::new(0, 0, 0), block::Kind::Air);
+
         let b = q.get_block(Pos::new(0, 0, 0))?;
         assert_eq!(b.kind(), block::Kind::Stone);
 
