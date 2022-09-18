@@ -408,7 +408,7 @@ impl World {
   /// loaded something from disk, which you don't want to overwrite.
   pub fn store_chunks_no_overwrite(&self, chunks: Vec<(ChunkPos, MultiChunk)>) {
     for (pos, chunk) in chunks {
-      self.regions.region(pos, |mut region| {
+      self.regions.region_mut(pos, |mut region| {
         region.get_or_generate(pos, || CountedChunk::new(chunk));
       });
     }
@@ -426,7 +426,7 @@ impl World {
   where
     F: FnOnce(MutexGuard<MultiChunk>) -> R,
   {
-    self.regions.region(pos, |mut region| {
+    self.regions.region_mut(pos, |mut region| {
       let chunk = region.get_or_generate(RegionRelPos::new(pos), || {
         CountedChunk::new(self.pre_generate_chunk(pos))
       });
@@ -518,7 +518,7 @@ impl World {
   /// used to track when a chunk should be loaded/unloaded. This will load the
   /// chunk if it is not already present.
   pub fn inc_view(&self, pos: ChunkPos) {
-    self.regions.region(pos, |mut region| {
+    self.regions.region_mut(pos, |mut region| {
       let chunk = region.get_or_generate(RegionRelPos::new(pos), || {
         CountedChunk::new(self.pre_generate_chunk(pos))
       });
@@ -530,7 +530,7 @@ impl World {
   /// used to track when a chunk should be loaded/unloaded. If this chunk does
   /// not exist, this will do nothing.
   pub fn dec_view(&self, pos: ChunkPos) {
-    self.regions.region(pos, |mut region| {
+    self.regions.region_mut(pos, |mut region| {
       let chunk = region.get_or_generate(RegionRelPos::new(pos), || {
         CountedChunk::new(self.pre_generate_chunk(pos))
       });
