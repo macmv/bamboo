@@ -35,8 +35,9 @@ impl fmt::Debug for CountedChunk {
 /// because it used to store all of the other versioning data. It would be a
 /// pain to change it, and I don't really want to bother.
 pub struct MultiChunk {
-  inner: ChunkData,
-  wm:    Arc<WorldManager>,
+  inner:   ChunkData,
+  version: u32,
+  wm:      Arc<WorldManager>,
 }
 
 struct ChunkData {
@@ -123,7 +124,7 @@ impl MultiChunk {
   /// The second argument is for sky light data. Places like the nether do not
   /// contain sky light information, so the sky light data is not present.
   pub fn new(wm: Arc<WorldManager>, sky: bool, height: u32, min_y: i32) -> MultiChunk {
-    MultiChunk { inner: ChunkData::new(sky, height, min_y), wm }
+    MultiChunk { inner: ChunkData::new(sky, height, min_y), wm, version: 0 }
   }
 
   /// Returns a reference to the global world manager.
@@ -141,6 +142,7 @@ impl MultiChunk {
   pub fn set_type(&mut self, p: RelPos, ty: block::Type) -> Result<(), PosError> {
     let p = self.transform_pos(p)?;
     self.inner.set_type_id(p, ty.id(), ty.kind(), &self.wm.block_behaviors()).unwrap();
+    self.bump_version();
     Ok(())
   }
 
@@ -152,6 +154,7 @@ impl MultiChunk {
     let p = self.transform_pos(p)?;
     let ty = f(self.wm.block_converter());
     self.inner.set_type_id(p, ty.id(), ty.kind(), &self.wm.block_behaviors()).unwrap();
+    self.bump_version();
     Ok(())
   }
 
@@ -169,6 +172,7 @@ impl MultiChunk {
     let p = self.transform_pos(p)?;
     let ty = self.wm.block_converter().get(kind).default_type();
     self.inner.set_type_id(p, ty.id(), ty.kind(), &self.wm.block_behaviors()).unwrap();
+    self.bump_version();
     Ok(())
   }
 
@@ -190,6 +194,7 @@ impl MultiChunk {
     // TODO: Update light correctly.
     self.inner.update_light(min);
     self.inner.update_light(max);
+    self.bump_version();
     Ok(())
   }
 
@@ -211,6 +216,7 @@ impl MultiChunk {
     // TODO: Update light correctly.
     self.inner.update_light(min);
     self.inner.update_light(max);
+    self.bump_version();
     Ok(())
   }
 
@@ -292,4 +298,12 @@ impl MultiChunk {
   /// enabled, and if it was previously disabled, all the lighting information
   /// will be recalculated (which is very slow).
   pub fn enable_lighting(&mut self, enabled: bool) { self.inner.enable_lighting(enabled) }
+
+  /// The current version of the chunk. If this changes, the chunk data has
+  /// changed. If this is the same as a previous value, the chunk is garunteed
+  /// to not be modified.
+  pub fn version(&self) -> u32 { self.version }
+
+  /// Increases the version by 1.
+  fn bump_version(&mut self) { self.version += 1; }
 }

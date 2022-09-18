@@ -11,11 +11,6 @@ pub struct Query<'a> {
   writes: HashMap<Pos, block::Type<'a>>,
 }
 
-struct VersionedReadLock<'a> {
-  version: u32,
-  lock:    RwLockReadGuard<'a, MultiChunk>,
-}
-
 /// We will try each query 3 times before failing
 const CONTENTION_LIMIT: u32 = 3;
 
@@ -70,12 +65,8 @@ impl<'a> Query<'a> {
 /// User-availible functions
 impl<'a> Query<'a> {
   pub fn set_block(&mut self, pos: Pos, ty: block::Type<'a>) { self.writes.insert(pos, ty); }
-  pub fn get_block(
-    &mut self,
-    pos: Pos,
-    ty: block::Type<'a>,
-  ) -> Result<block::Type<'a>, QueryError> {
-    let current_version = self.reads.get(&pos.chunk());
+  pub fn get_block(&mut self, pos: Pos) -> Result<block::TypeStore, QueryError> {
+    let current_version = self.reads.get(&pos.chunk()).copied();
     self.world.chunk(pos.chunk(), |c| {
       if let Some(current) = current_version {
         if c.version() > current {
@@ -84,7 +75,7 @@ impl<'a> Query<'a> {
       }
       self.reads.insert(pos.chunk(), c.version());
 
-      Ok(c.get_type(pos.chunk_rel())?)
+      Ok(c.get_type(pos.chunk_rel())?.to_store())
     })
   }
 }
