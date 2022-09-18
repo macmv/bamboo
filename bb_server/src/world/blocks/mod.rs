@@ -15,6 +15,8 @@ use bb_common::{
 use rand::Rng;
 use std::{cmp::Ordering, str::FromStr, sync::Arc};
 
+mod query;
+
 /// General block manipulation functions
 impl World {
   /// Returns the block type at the given position.
