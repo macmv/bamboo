@@ -5,7 +5,6 @@ use crate::{
   player::{BlockClick, Click},
 };
 use bb_common::{
-  math::FPos,
   util::{Chat, Face},
 };
 
@@ -75,7 +74,7 @@ impl Behavior for Snowball {
     let eid = click
       .player()
       .world()
-      .summon(entity::Type::Snowball, click.player().pos() + FPos::new(0.0, 1.0, 0.0));
+      .summon(entity::Type::Snowball, click.player().view_pos());
 
     // If the entity doesn't exist, it already despawned, so we do nothing if
     // it isn't in the world.
