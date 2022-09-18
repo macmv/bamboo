@@ -152,7 +152,6 @@ impl MultiChunk {
     let p = self.transform_pos(p)?;
     let ty = f(self.wm.block_converter());
     self.inner.set_type_id(p, ty.id(), ty.kind(), &self.wm.block_behaviors()).unwrap();
-    self.bump_version();
     Ok(())
   }
 
@@ -170,7 +169,6 @@ impl MultiChunk {
     let p = self.transform_pos(p)?;
     let ty = self.wm.block_converter().get(kind).default_type();
     self.inner.set_type_id(p, ty.id(), ty.kind(), &self.wm.block_behaviors()).unwrap();
-    self.bump_version();
     Ok(())
   }
 
@@ -192,7 +190,6 @@ impl MultiChunk {
     // TODO: Update light correctly.
     self.inner.update_light(min);
     self.inner.update_light(max);
-    self.bump_version();
     Ok(())
   }
 
@@ -214,7 +211,6 @@ impl MultiChunk {
     // TODO: Update light correctly.
     self.inner.update_light(min);
     self.inner.update_light(max);
-    self.bump_version();
     Ok(())
   }
 
