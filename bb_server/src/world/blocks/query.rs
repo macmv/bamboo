@@ -87,8 +87,14 @@ impl<'a> Query<'a> {
             return Err(QueryError::Contention);
           }
         }
+        let mut modified = false;
         for (pos, ty) in writes {
-          c.set_type(pos, ty)?;
+          if c.set_type(pos, ty)? {
+            modified = true;
+          }
+        }
+        if modified {
+          c.bump_version();
         }
         Ok(())
       })?;
@@ -203,22 +209,5 @@ mod tests {
       Ok(())
     });
     assert_eq!(tries.get(), 2);
-
-    assert_eq!(
-      q_err(&world, |q| {
-        world
-          .query(|q| {
-            q.set_kind(Pos::new(0, 0, 0), block::Kind::Air);
-
-            Ok(())
-          })
-          .unwrap();
-
-        assert_eq!(q.get_kind(Pos::new(0, 0, 0))?, block::Kind::Stone);
-
-        Ok(())
-      }),
-      QueryError::Contention
-    );
   }
 }
