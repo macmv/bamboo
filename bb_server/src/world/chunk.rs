@@ -86,13 +86,13 @@ impl ChunkData {
     ty: u32,
     kind: block::Kind,
     behaviors: &block::BehaviorStore,
-  ) -> Result<(), PosError> {
-    self.inner.set_block(p, ty)?;
+  ) -> Result<bool, PosError> {
+    let modified = self.inner.set_block(p, ty)?;
     self.update_light(p);
     if let Some(te) = behaviors.call(kind, |b| b.create_te()) {
       self.tes.insert(p, te);
     }
-    Ok(())
+    Ok(modified)
   }
 
   fn enable_lighting(&mut self, enabled: bool) {
@@ -139,11 +139,9 @@ impl MultiChunk {
   /// for use by the world directly, or during use terrain generation. If you
   /// call this function without sending any updates yourself, no one in render
   /// distance will see any of these changes!
-  pub fn set_type(&mut self, p: RelPos, ty: block::Type) -> Result<(), PosError> {
+  pub fn set_type(&mut self, p: RelPos, ty: block::Type) -> Result<bool, PosError> {
     let p = self.transform_pos(p)?;
-    self.inner.set_type_id(p, ty.id(), ty.kind(), &self.wm.block_behaviors()).unwrap();
-    self.bump_version();
-    Ok(())
+    Ok(self.inner.set_type_id(p, ty.id(), ty.kind(), &self.wm.block_behaviors()).unwrap())
   }
 
   pub fn set_type_with_conv(
@@ -305,5 +303,5 @@ impl MultiChunk {
   pub fn version(&self) -> u32 { self.version }
 
   /// Increases the version by 1.
-  fn bump_version(&mut self) { self.version += 1; }
+  pub(in crate::world) fn bump_version(&mut self) { self.version += 1; }
 }

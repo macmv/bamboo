@@ -33,7 +33,7 @@ impl<S: Section> Chunk<S> {
   /// This updates the internal data to contain a block at the given position.
   /// In release mode, the position is not checked. In any other mode, a
   /// PosError will be returned if any of the x, y, or z are outside of 0..16
-  pub fn set_block(&mut self, pos: RelPos, ty: u32) -> Result<(), PosError> {
+  pub fn set_block(&mut self, pos: RelPos, ty: u32) -> Result<bool, PosError> {
     if pos.y() < 0 {
       return Err(pos.err("Y is negative".into()));
     }
@@ -45,10 +45,7 @@ impl<S: Section> Chunk<S> {
       self.sections[index] = Some(S::new(self.max_bpe));
     }
     match &mut self.sections[index] {
-      Some(s) => {
-        s.set_block(pos.section_rel(), ty);
-        Ok(())
-      }
+      Some(s) => Ok(s.set_block(pos.section_rel(), ty)),
       None => unreachable!(),
     }
   }
