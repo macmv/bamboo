@@ -13,6 +13,7 @@ pub struct Query<'a> {
 /// We will try each query 3 times before failing
 const CONTENTION_LIMIT: u32 = 3;
 
+#[derive(Debug)]
 pub enum QueryError {
   Contention,
   Pos(PosError),
@@ -39,10 +40,14 @@ impl World {
   /// same block will return the initial state of that block, before it was
   /// written. This also means that reading the same block will always return
   /// the same result.
-  pub fn query<R>(&self, f: impl Fn(&mut Query) -> Result<R, PosError>) -> Result<R, QueryError> {
+  pub fn query<R>(&self, f: impl Fn(&mut Query) -> Result<R, QueryError>) -> Result<R, QueryError> {
     for _ in 0..CONTENTION_LIMIT {
       let mut query = Query::new(self);
-      let res = f(&mut query)?;
+      let res = match f(&mut query) {
+        Ok(v) => v,
+        Err(QueryError::Contention) => continue,
+        Err(e) => return Err(e),
+      };
       match query.apply() {
         Ok(()) => return Ok(res),
         Err(QueryError::Contention) => continue,
@@ -53,6 +58,7 @@ impl World {
   }
 }
 
+/// Internal functions
 impl<'a> Query<'a> {
   fn new(world: &'a World) -> Self {
     Query { world, reads: HashMap::new(), writes: HashMap::new() }
@@ -76,5 +82,23 @@ impl<'a> Query<'a> {
 
       Ok(c.get_type(pos.chunk_rel())?.to_store())
     })
+  }
+}
+
+#[cfg(test)]
+mod tests {
+  use super::*;
+
+  #[test]
+  fn basic_reads() {
+    let world = World::new_test();
+    world
+      .query(|q| {
+        let b = q.get_block(Pos::new(0, 0, 0))?;
+        assert_eq!(b.kind(), block::Kind::Stone);
+
+        Ok(())
+      })
+      .unwrap();
   }
 }

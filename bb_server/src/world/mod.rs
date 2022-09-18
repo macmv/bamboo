@@ -145,6 +145,18 @@ struct State {
 const TICK_TIME: Duration = Duration::from_millis(50);
 
 impl World {
+  #[cfg(test)]
+  pub(crate) fn new_test() -> Arc<Self> {
+    World::new(
+      Arc::new(block::TypeConverter::new()),
+      Arc::new(item::TypeConverter::new()),
+      Arc::new(entity::TypeConverter::new()),
+      Arc::new(plugin::PluginManager::new()),
+      Arc::new(CommandTree::new()),
+      Arc::new(WorldManager::new(false)),
+    )
+  }
+
   /// Creates a new world. See also [`WorldManager::add_world`].
   pub(crate) fn new(
     block_converter: Arc<block::TypeConverter>,
