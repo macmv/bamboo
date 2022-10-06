@@ -103,11 +103,7 @@ impl<'a> Query<'a> {
         }
         let mut modified = false;
         for (rel, ty) in writes {
-          if self.set_block_inner(
-            &mut c,
-            pos.block() + Pos::new(rel.x().into(), rel.y().into(), rel.z().into()),
-            *ty,
-          )? {
+          if self.set_block_inner(&mut c, pos.block() + *rel, *ty)? {
             modified = true;
           }
         }

@@ -324,12 +324,25 @@ impl Add for Pos {
     Self { x: self.x + other.x, y: self.y + other.y, z: self.z + other.z }
   }
 }
-
 impl AddAssign for Pos {
   fn add_assign(&mut self, other: Self) {
     self.x += other.x;
     self.y += other.y;
     self.z += other.z;
+  }
+}
+
+impl Sub for Pos {
+  type Output = Self;
+  fn sub(self, other: Self) -> Self {
+    Self { x: self.x - other.x, y: self.y - other.y, z: self.z - other.z }
+  }
+}
+impl SubAssign for Pos {
+  fn sub_assign(&mut self, other: Self) {
+    self.x -= other.x;
+    self.y -= other.y;
+    self.z -= other.z;
   }
 }
 
@@ -349,19 +362,20 @@ impl SubAssign<Face> for Pos {
   fn sub_assign(&mut self, other: Face) { *self -= other.as_dir() }
 }
 
-impl Sub for Pos {
+impl Add<RelPos> for Pos {
   type Output = Self;
-  fn sub(self, other: Self) -> Self {
-    Self { x: self.x - other.x, y: self.y - other.y, z: self.z - other.z }
-  }
+  fn add(self, other: RelPos) -> Self { self + other.as_pos() }
+}
+impl AddAssign<RelPos> for Pos {
+  fn add_assign(&mut self, other: RelPos) { *self += other.as_pos() }
 }
 
-impl SubAssign for Pos {
-  fn sub_assign(&mut self, other: Self) {
-    self.x -= other.x;
-    self.y -= other.y;
-    self.z -= other.z;
-  }
+impl Sub<RelPos> for Pos {
+  type Output = Self;
+  fn sub(self, other: RelPos) -> Self { self - other.as_pos() }
+}
+impl SubAssign<RelPos> for Pos {
+  fn sub_assign(&mut self, other: RelPos) { *self -= other.as_pos() }
 }
 
 pub struct PosIter {
