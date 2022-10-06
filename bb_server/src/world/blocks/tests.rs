@@ -84,4 +84,25 @@ fn contention() {
 
     Ok(())
   });
+
+  // This should try once, and the inner query will succeed, and then the second
+  // read in the outer query will cause the first attempt to fail.
+  q_tries(&world, 2, |tries, q| {
+    if tries == 0 {
+      assert_eq!(q.get_kind(Pos::new(0, 0, 0))?, block::Kind::Stone);
+    } else {
+      assert_eq!(q.get_kind(Pos::new(0, 0, 0))?, block::Kind::Air);
+    }
+
+    q_ok(&world, |q| {
+      q.set_kind(Pos::new(0, 0, 0), block::Kind::Air);
+
+      Ok(())
+    });
+
+    // This read is the only reason the outer query fails.
+    assert_eq!(q.get_kind(Pos::new(0, 0, 0))?, block::Kind::Air);
+
+    Ok(())
+  });
 }
