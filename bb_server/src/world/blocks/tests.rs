@@ -71,14 +71,10 @@ fn contention() {
     Ok(())
   });
 
-  // This should try once, and the inner query will succeed, and the outer query
-  // will fail. Then it will try again, and everything should work.
-  q_tries(&world, 2, |tries, q| {
-    if tries == 0 {
-      assert_eq!(q.get_kind(Pos::new(0, 0, 0))?, block::Kind::Air);
-    } else {
-      assert_eq!(q.get_kind(Pos::new(0, 0, 0))?, block::Kind::Stone);
-    }
+  // This should try once, and the inner query will succeed, and because the outer
+  // query isn't writing, it will also succeed.
+  q_tries(&world, 1, |_, q| {
+    assert_eq!(q.get_kind(Pos::new(0, 0, 0))?, block::Kind::Air);
 
     q_ok(&world, |q| {
       q.set_kind(Pos::new(0, 0, 0), block::Kind::Stone);

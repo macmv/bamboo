@@ -72,7 +72,15 @@ impl<'a> Query<'a> {
   }
 
   fn apply(self) -> Result<(), QueryError> {
-    // Validate that none of the read-only chunks have changed.
+    // If we didn't write anything, we don't validate anything.
+    if self.writes.is_empty() {
+      return Ok(());
+    }
+    // Now that we know some writes are going to be applied, we need to make sure
+    // the reads haven't changed while the query was running.
+    //
+    // This might not be needed, as any chunks that we read and write from will be
+    // in the writes list, so this check could probably be skipped.
     for (pos, version) in &self.reads {
       if self.writes.contains_key(pos) {
         continue;
