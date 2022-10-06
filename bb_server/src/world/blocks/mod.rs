@@ -16,6 +16,8 @@ use rand::Rng;
 use std::{cmp::Ordering, str::FromStr, sync::Arc};
 
 mod query;
+#[cfg(test)]
+mod tests;
 
 /// General block manipulation functions
 impl World {
