@@ -113,10 +113,16 @@ impl Bamboo {
     ticks: u32,
     callback: impl Fn(&mut LockedEnv) + Send + Sync + 'static,
   ) {
-    self.schedule(super::Scheduled {
-      time_left: ticks,
-      runnable:  super::Runnable::Fn(Box::new(callback)),
-    });
+    self.schedule(super::Scheduled::new(ticks, super::Runnable::Fn(Box::new(callback))));
+  }
+  /// Runs the given closure after the given number of ticks, and contiues to
+  /// run it every `ticks` ticks.
+  pub fn after_loop_native(
+    &self,
+    ticks: u32,
+    callback: impl Fn(&mut LockedEnv) + Send + Sync + 'static,
+  ) {
+    self.schedule(super::Scheduled::new_loop(ticks, super::Runnable::Fn(Box::new(callback))));
   }
 
   fn schedule(&self, scheduled: super::Scheduled) {
@@ -297,10 +303,19 @@ impl Bamboo {
 
   /// Runs the given closure after the given number of ticks.
   pub fn after(&self, ticks: u32, closure: Var) -> Result<(), RuntimeError> {
-    self.schedule(super::Scheduled {
-      time_left: ticks,
-      runnable:  super::Runnable::Closure(closure.closure(Span::call_site())?.clone()),
-    });
+    self.schedule(super::Scheduled::new(
+      ticks,
+      super::Runnable::Closure(closure.closure(Span::call_site())?.clone()),
+    ));
+    Ok(())
+  }
+  /// Runs the given closure after the given number of ticks, and then continues
+  /// to run the closure every `ticks` ticks.
+  pub fn after_loop(&self, ticks: u32, closure: Var) -> Result<(), RuntimeError> {
+    self.schedule(super::Scheduled::new_loop(
+      ticks,
+      super::Runnable::Closure(closure.closure(Span::call_site())?.clone()),
+    ));
     Ok(())
   }
 }

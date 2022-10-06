@@ -57,8 +57,10 @@ use std::{error::Error, fmt, sync::Arc, thread};
 
 #[derive(Debug)]
 struct Scheduled {
-  runnable:  Runnable,
-  time_left: u32,
+  runnable:     Runnable,
+  repeat:       bool,
+  initial_time: u32,
+  time_left:    u32,
 }
 enum Runnable {
   Fn(Box<dyn Fn(&mut LockedEnv) + Send + Sync>),
@@ -71,6 +73,15 @@ impl fmt::Debug for Runnable {
       Self::Fn(_) => write!(f, "Fn(..)"),
       Self::Closure(_) => write!(f, "Closure(..)"),
     }
+  }
+}
+
+impl Scheduled {
+  pub fn new(ticks: u32, runnable: Runnable) -> Self {
+    Scheduled { runnable, repeat: false, time_left: ticks, initial_time: ticks }
+  }
+  pub fn new_loop(ticks: u32, runnable: Runnable) -> Self {
+    Scheduled { runnable, repeat: true, time_left: ticks, initial_time: ticks }
   }
 }
 
@@ -218,7 +229,8 @@ impl Plugin {
             },
             Runnable::Fn(f) => f(&mut pd.lock_env()),
           }
-          false
+          s.time_left = s.initial_time;
+          s.repeat
         } else {
           true
         }
