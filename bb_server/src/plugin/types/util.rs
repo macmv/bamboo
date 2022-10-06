@@ -373,23 +373,6 @@ impl CountdownData {
     }
   }
 }
-impl PCountdown {
-  // A constantly running tick loop
-  fn tick(data: Arc<Mutex<CountdownData>>) {
-    let d = data.clone();
-    data.lock().bamboo.after_native(20, move |env| {
-      let mut lock = d.lock();
-      if lock.active {
-        if lock.time_left > 0 {
-          lock.time_left -= 1;
-          lock.update(env);
-        }
-      }
-      drop(lock);
-      Self::tick(d.clone());
-    });
-  }
-}
 
 /// This is a timer, designed to be used for a minigame start countdown.
 ///
@@ -412,7 +395,14 @@ impl PCountdown {
         callback: closure,
       })),
     };
-    Self::tick(c.data.clone());
+    let d = c.data.clone();
+    c.data.lock().bamboo.after_loop_native(20, move |env| {
+      let mut lock = d.lock();
+      if lock.active && lock.time_left > 0 {
+        lock.time_left -= 1;
+        lock.update(env);
+      }
+    });
     c
   }
   /// On each timer update, the given closure will be called.
