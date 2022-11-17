@@ -163,7 +163,7 @@ impl Region {
 impl Region {
   fn write(&self, w: &mut MessageWriter<&mut Vec<u8>>) -> Result<(), WriteError> {
     w.write_struct(1024, |w| {
-      for chunk in &self.chunks {
+      for chunk in self.chunks.iter() {
         let c = chunk.as_ref().map(WriteableChunk);
         w.write_enum(if c.is_some() { 1 } else { 0 }, if c.is_some() { 1 } else { 0 }, |w| {
           if let Some(c) = c {

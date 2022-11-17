@@ -36,7 +36,7 @@ pub struct Region {
   world:  Arc<World>,
   pos:    RegionPos,
   /// An array of `32*32 = 1024` chunks. The index is `x + z * 32`.
-  chunks: [Option<CountedChunk>; 1024],
+  chunks: Box<[Option<CountedChunk>; 1024]>,
   save:   bool,
 }
 
@@ -108,7 +108,7 @@ impl RegionMap {
 impl Region {
   fn new(world: Arc<World>, pos: RegionPos, save: bool) -> Self {
     const NONE: Option<CountedChunk> = None;
-    Region { world, pos, chunks: [NONE; 1024], save }
+    Region { world, pos, chunks: Box::new([NONE; 1024]), save }
   }
   pub fn new_load(world: Arc<World>, pos: RegionPos, save: bool) -> Self {
     let mut region = Region::new(world, pos, save);
