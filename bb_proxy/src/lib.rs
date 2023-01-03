@@ -75,6 +75,7 @@ pub struct Proxy {
   der_key:        Option<Vec<u8>>,
   addr:           SocketAddr,
   server_addr:    Box<dyn Fn() -> SocketAddr>,
+  forwarding:     String,
   compression:    i32,
   conv:           Arc<TypeConverter>,
   status_builder: Arc<dyn for<'a> Fn(&'a str, ProtocolVersion) -> JsonStatus<'a>>,
@@ -89,6 +90,7 @@ impl Proxy {
       der_key: None,
       addr,
       server_addr: Box::new(move || server_addr),
+      forwarding: "NONE".into(),
       compression: 256,
       conv: Arc::new(TypeConverter::new()),
       status_builder: Arc::new(|icon, ver| {
@@ -128,6 +130,7 @@ impl Proxy {
     Ok(
       Self::new(config.get::<&str>("address").parse()?, config.get::<&str>("server").parse()?)
         .with_encryption(config.get("encryption"))
+        .with_forwarding(config.get("forwarding"))
         .with_compression(config.get("compression-thresh"))
         .with_icon(config.get("icon")),
     )
@@ -139,6 +142,11 @@ impl Proxy {
     } else {
       self.der_key = None
     }
+    self
+  }
+  /// Sets the player info forwarding mode for this connection
+  pub fn with_forwarding(mut self, forwarding: String) -> Self {
+    self.forwarding = forwarding;
     self
   }
   /// Sets the compression threshold for the proxy. Set to `-1` to disable
@@ -174,6 +182,7 @@ impl Proxy {
   fn new_conn(&self, stream: JavaStream, server_token: Token) -> Conn<JavaStream> {
     let conn = Conn::new(
       stream,
+      self.forwarding.clone(),
       (self.server_addr)(),
       self.key.clone(),
       self.der_key.clone(),

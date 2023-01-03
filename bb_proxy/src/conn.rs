@@ -26,6 +26,7 @@ use std::{
   net::SocketAddr,
   sync::Arc,
 };
+use std::str::FromStr;
 
 #[derive(Debug, Copy, Clone)]
 pub enum State {
@@ -57,6 +58,7 @@ pub struct Conn<'a, S> {
   /// username; we use this to validate the client info with the mojang auth
   /// info.
   username:      Option<String>,
+  forwarding:    String,
   info:          Option<LoginInfo>,
   /// The four byte verify token, used by the client in encryption.
   verify_token:  [u8; 4],
@@ -153,9 +155,20 @@ pub struct JsonPlayer {
   pub id:   String,
 }
 
+impl LoginInfo {
+  pub fn offline(name: String) -> Self {
+    Self {
+      id: UUID::from_be_bytes(*md5::compute(&name)),
+      name,
+      properties: vec![],
+    }
+  }
+}
+
 impl<'a, S: PacketStream + Send + Sync> Conn<'a, S> {
   pub fn new(
     client_stream: S,
+    forwarding: String,
     addr: SocketAddr,
     key: Arc<RSAPrivateKey>,
     der_key: Option<Vec<u8>>,
@@ -169,6 +182,7 @@ impl<'a, S: PacketStream + Send + Sync> Conn<'a, S> {
       ver: ProtocolVersion::Invalid,
       icon: "",
       username: None,
+      forwarding,
       info: None,
       verify_token: [0u8; 4],
       key,
@@ -534,6 +548,33 @@ impl<'a, S: PacketStream + Send + Sync> Conn<'a, S> {
   /// Generates the json status for the server
   fn build_status(&self) -> JsonStatus { (self.status_builder)(&self.icon, self.ver) }
 
+  /// Parse BungeeCord's player info from address string
+  fn read_bungeecord_info(&self, addr: String) -> Option<LoginInfo> {
+    let mut id = None;
+    let mut properties = None;
+
+    let mut i = 0;
+    for v in addr.split('\0') {
+      match i {
+        2 => { id = Some(UUID::from_str(v).ok()?) }
+        3 => { properties = Some(serde_json::from_str(v).ok()?) }
+        _ => {}
+      }
+
+      i += 1;
+    }
+
+    if id.is_none() {
+      return None
+    }
+
+    Some(LoginInfo {
+      id: id.unwrap(),
+      name: "".to_string(),
+      properties: properties.unwrap(),
+    })
+  }
+
   /// Runs the entire login process with the client. If compression is 0, then
   /// compression will not be enabled. The key should always be the server's
   /// private key, even if it won't be used. The der_key should be the der
@@ -558,11 +599,24 @@ impl<'a, S: PacketStream + Send + Sync> Conn<'a, S> {
         }
         self.ver = ProtocolVersion::from(p.read_varint()?);
 
-        // Max len according to 1.17.1
-        let _addr = p.read_str(255)?;
-        let _port = p.read_u16()?;
-        let next = p.read_varint()?;
-        self.state = State::from_next(next);
+        match self.forwarding.as_str() {
+          "LEGACY" => {
+            // FIXME: not sure what the correct maximum length is
+            let _addr = p.read_str(2048)?;
+            let _port = p.read_u16()?;
+            let next = p.read_varint()?;
+            self.state = State::from_next(next);
+            self.info = self.read_bungeecord_info(_addr.clone());
+          }
+          _ => {
+            // Max len according to 1.17.1
+            let _addr = p.read_str(255)?;
+            let _port = p.read_u16()?;
+            let next = p.read_varint()?;
+            self.state = State::from_next(next);
+            self.info = None;
+          }
+        }
 
         match self.state {
           State::Handshake => {
@@ -635,12 +689,9 @@ impl<'a, S: PacketStream + Send + Sync> Conn<'a, S> {
             let name = p.read_str(16)?;
             self.username = Some(name.to_string());
             if self.der_key.is_none() {
-              self.info = Some(LoginInfo {
-                // Generate uuid if we are in offline mode
-                id: UUID::from_be_bytes(*md5::compute(&name)),
-                name,
-                properties: vec![],
-              });
+              if self.info.is_none() {
+                self.info = Some(LoginInfo::offline(name));
+              }
             }
 
             match &self.der_key {
