@@ -14,7 +14,9 @@ encryption = true
 # Available options:
 # - "NONE":   No player info receiving will be done. All players will have
 #             offline-mode UUIDs if encryption is false.
-# - "LEGACY": Receive player info sent using BungeeCord format.
+# - "LEGACY": Receive player info sent using BungeeCord format. This will
+#             allow any incoming connection to login with arbitrary profiles.
+#             This should only be used if you know what you are doing.
 forwarding = "NONE"
 
 # This is the packet compression threshold. Vanilla clients will perform

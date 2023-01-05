@@ -30,6 +30,7 @@ use rsa::RSAPrivateKey;
 use std::{collections::HashMap, io, net::SocketAddr, sync::Arc};
 
 use crate::{conn::Conn, packet::TypeConverter, stream::java::stream::JavaStream};
+use crate::Error::BungeecordError;
 
 pub fn load_icon(path: &str) -> String {
   let mut icon = match image::open(path).map_err(|e| error!("error loading icon: {}", e)) {
@@ -127,10 +128,19 @@ impl Proxy {
   }
   /// Creates a proxy from the given config.
   pub fn from_config(config: Config) -> Result<Self> {
+    let encryption = config.get("encryption");
+    let forwarding = config.get("forwarding");
+
+    if encryption && forwarding != "NONE" {
+      return Err(BungeecordError {
+        msg: "cannot receive with encryption enabled",
+      })
+    }
+
     Ok(
       Self::new(config.get::<&str>("address").parse()?, config.get::<&str>("server").parse()?)
-        .with_encryption(config.get("encryption"))
-        .with_forwarding(config.get("forwarding"))
+        .with_encryption(encryption)
+        .with_forwarding(forwarding)
         .with_compression(config.get("compression-thresh"))
         .with_icon(config.get("icon")),
     )
