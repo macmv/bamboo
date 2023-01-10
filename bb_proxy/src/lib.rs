@@ -114,14 +114,7 @@ impl Proxy {
               ver.id()
             } as i32,
           },
-          players: JsonPlayers {
-            max:    69,
-            online: 420,
-            sample: vec![JsonPlayer {
-              name: "macmv".into(),
-              id:   "a0ebbc8d-e0b0-4c23-a965-efba61ff0ae8".into(),
-            }],
-          },
+          players: JsonPlayers { max: 0, online: 0, sample: vec![] },
           description,
           favicon: icon,
         }
