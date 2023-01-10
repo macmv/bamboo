@@ -30,6 +30,7 @@ use rsa::RSAPrivateKey;
 use std::{collections::HashMap, io, net::SocketAddr, sync::Arc};
 
 use crate::{conn::Conn, packet::TypeConverter, stream::java::stream::JavaStream};
+use crate::Error::BungeecordError;
 
 pub fn load_icon(path: &str) -> String {
   let mut icon = match image::open(path).map_err(|e| error!("error loading icon: {}", e)) {
@@ -75,6 +76,7 @@ pub struct Proxy {
   der_key:        Option<Vec<u8>>,
   addr:           SocketAddr,
   server_addr:    Box<dyn Fn() -> SocketAddr>,
+  forwarding:     String,
   compression:    i32,
   conv:           Arc<TypeConverter>,
   status_builder: Arc<dyn for<'a> Fn(&'a str, ProtocolVersion) -> JsonStatus<'a>>,
@@ -89,6 +91,7 @@ impl Proxy {
       der_key: None,
       addr,
       server_addr: Box::new(move || server_addr),
+      forwarding: "NONE".into(),
       compression: 256,
       conv: Arc::new(TypeConverter::new()),
       status_builder: Arc::new(|icon, ver| {
@@ -125,9 +128,19 @@ impl Proxy {
   }
   /// Creates a proxy from the given config.
   pub fn from_config(config: Config) -> Result<Self> {
+    let encryption = config.get("encryption");
+    let forwarding = config.get("forwarding");
+
+    if encryption && forwarding != "NONE" {
+      return Err(BungeecordError {
+        msg: "cannot receive with encryption enabled",
+      })
+    }
+
     Ok(
       Self::new(config.get::<&str>("address").parse()?, config.get::<&str>("server").parse()?)
-        .with_encryption(config.get("encryption"))
+        .with_encryption(encryption)
+        .with_forwarding(forwarding)
         .with_compression(config.get("compression-thresh"))
         .with_icon(config.get("icon")),
     )
@@ -139,6 +152,11 @@ impl Proxy {
     } else {
       self.der_key = None
     }
+    self
+  }
+  /// Sets the player info forwarding mode for this connection
+  pub fn with_forwarding(mut self, forwarding: String) -> Self {
+    self.forwarding = forwarding;
     self
   }
   /// Sets the compression threshold for the proxy. Set to `-1` to disable
@@ -174,6 +192,7 @@ impl Proxy {
   fn new_conn(&self, stream: JavaStream, server_token: Token) -> Conn<JavaStream> {
     let conn = Conn::new(
       stream,
+      self.forwarding.clone(),
       (self.server_addr)(),
       self.key.clone(),
       self.der_key.clone(),

@@ -9,9 +9,20 @@ address = "0.0.0.0:25565"
 # This enables authentication with Mojang's servers. This should only be
 # disabled if you know what you are doing.
 encryption = true
+
+# This is for receiving player data from another proxy such as Velocity.
+# Available options:
+# - "NONE":   No player info receiving will be done. All players will have
+#             offline-mode UUIDs if encryption is false.
+# - "LEGACY": Receive player info sent using BungeeCord format. This will
+#             allow any incoming connection to login with arbitrary profiles.
+#             This should only be used if you know what you are doing.
+forwarding = "NONE"
+
 # This is the packet compression threshold. Vanilla clients will perform
 # far worse if this is turned off. Compression can be disabled by setting
 # this to -1. The proxy will compress all packets if this is set to 0.
 compression-thresh = 256
+
 # The path to the icon.
 icon = "icon.png"

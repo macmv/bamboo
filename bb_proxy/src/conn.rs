@@ -1,9 +1,4 @@
-use crate::{
-  gnet::{cb as gcb, sb as gsb, tcp},
-  packet::{FromTcp, ToTcp, TypeConverter},
-  stream::PacketStream,
-  Result,
-};
+use crate::{gnet::{cb as gcb, sb as gsb, tcp}, packet::{FromTcp, ToTcp, TypeConverter}, stream::PacketStream, Result};
 use bb_common::{
   math,
   net::{cb as ccb, sb as csb},
@@ -26,6 +21,8 @@ use std::{
   net::SocketAddr,
   sync::Arc,
 };
+use std::str::FromStr;
+use crate::Error::BungeecordError;
 
 #[derive(Debug, Copy, Clone)]
 pub enum State {
@@ -57,6 +54,7 @@ pub struct Conn<'a, S> {
   /// username; we use this to validate the client info with the mojang auth
   /// info.
   username:      Option<String>,
+  forwarding:    String,
   info:          Option<LoginInfo>,
   /// The four byte verify token, used by the client in encryption.
   verify_token:  [u8; 4],
@@ -153,9 +151,20 @@ pub struct JsonPlayer {
   pub id:   String,
 }
 
+impl LoginInfo {
+  pub fn offline(name: &str) -> Self {
+    Self {
+      id: UUID::from_be_bytes(*md5::compute(name)),
+      name: name.to_string(),
+      properties: vec![],
+    }
+  }
+}
+
 impl<'a, S: PacketStream + Send + Sync> Conn<'a, S> {
   pub fn new(
     client_stream: S,
+    forwarding: String,
     addr: SocketAddr,
     key: Arc<RSAPrivateKey>,
     der_key: Option<Vec<u8>>,
@@ -169,6 +178,7 @@ impl<'a, S: PacketStream + Send + Sync> Conn<'a, S> {
       ver: ProtocolVersion::Invalid,
       icon: "",
       username: None,
+      forwarding,
       info: None,
       verify_token: [0u8; 4],
       key,
@@ -235,7 +245,7 @@ impl<'a, S: PacketStream + Send + Sync> Conn<'a, S> {
             return Ok(true);
           }
         },
-        Err(ref e) if e.kind() == io::ErrorKind::WouldBlock => return Ok(false),
+        Err(ref e) if e.kind() == ErrorKind::WouldBlock => return Ok(false),
         Err(e) => return Err(e.into()),
       }
     }
@@ -282,7 +292,7 @@ impl<'a, S: PacketStream + Send + Sync> Conn<'a, S> {
               let packets = common.to_tcp(self).unwrap();
               if len as usize != parsed {
                 return Err(io::Error::new(
-                  io::ErrorKind::InvalidData,
+                  ErrorKind::InvalidData,
                   format!(
                     "did not read all the packet data (expected to read {} bytes, but only read {} bytes)",
                     len, parsed
@@ -335,7 +345,7 @@ impl<'a, S: PacketStream + Send + Sync> Conn<'a, S> {
           }
           Err(e) => return Err(e),
         },
-        Err(ref e) if e.io_kind() == Some(io::ErrorKind::WouldBlock) => return Ok(false),
+        Err(ref e) if e.io_kind() == Some(ErrorKind::WouldBlock) => return Ok(false),
         Err(e) => return Err(e),
       }
     }
@@ -534,6 +544,56 @@ impl<'a, S: PacketStream + Send + Sync> Conn<'a, S> {
   /// Generates the json status for the server
   fn build_status(&self) -> JsonStatus { (self.status_builder)(&self.icon, self.ver) }
 
+  /// Parse BungeeCord's player info from address string
+  fn read_bungeecord_info(&self, addr: &str) -> Result<LoginInfo> {
+    let mut id = None;
+    let mut properties = None;
+
+    let mut i = 0;
+    for v in addr.split('\0') {
+      match i {
+        2 => {
+          id = match UUID::from_str(v) {
+            Ok(id) => { Some(id) }
+            Err(_) => {
+              return Err(BungeecordError {
+                msg: "when parsing uuid"
+              })
+            }
+          }
+        }
+        3 => {
+          properties = match serde_json::from_str(v) {
+            Ok(properties) => { Some(properties) }
+            Err(_) => {
+              return Err(BungeecordError {
+                msg: "when parsing properties"
+              })
+            }
+          }
+        }
+        _ => {}
+      }
+
+      i += 1;
+    }
+
+    match id {
+      None => {
+        Err(BungeecordError {
+          msg: "missing uuid: make sure to connect from a proxy with bungeecord forwarding enabled",
+        })
+      }
+      Some(v) => {
+        Ok(LoginInfo {
+          id: v,
+          name: "".to_string(),
+          properties: properties.unwrap(),
+        })
+      }
+    }
+  }
+
   /// Runs the entire login process with the client. If compression is 0, then
   /// compression will not be enabled. The key should always be the server's
   /// private key, even if it won't be used. The der_key should be the der
@@ -558,11 +618,33 @@ impl<'a, S: PacketStream + Send + Sync> Conn<'a, S> {
         }
         self.ver = ProtocolVersion::from(p.read_varint()?);
 
-        // Max len according to 1.17.1
-        let _addr = p.read_str(255)?;
-        let _port = p.read_u16()?;
-        let next = p.read_varint()?;
-        self.state = State::from_next(next);
+        match self.forwarding.as_str() {
+          "LEGACY" => {
+            // FIXME: not sure what the correct maximum length is
+            let addr = p.read_str(2048)?;
+            let _port = p.read_u16()?;
+            let next = p.read_varint()?;
+            self.state = State::from_next(next);
+            self.info = match self.read_bungeecord_info(addr.as_str()) {
+              Ok(info) => { Some(info) }
+              Err(err) => {
+                // We can still reply to server list pings
+                match next {
+                  1 => { None }
+                  _ => { return Err(err) }
+                }
+              }
+            }
+          }
+          _ => {
+            // Max len according to 1.17.1
+            let _addr = p.read_str(255)?;
+            let _port = p.read_u16()?;
+            let next = p.read_varint()?;
+            self.state = State::from_next(next);
+            self.info = None;
+          }
+        }
 
         match self.state {
           State::Handshake => {
@@ -635,12 +717,9 @@ impl<'a, S: PacketStream + Send + Sync> Conn<'a, S> {
             let name = p.read_str(16)?;
             self.username = Some(name.to_string());
             if self.der_key.is_none() {
-              self.info = Some(LoginInfo {
-                // Generate uuid if we are in offline mode
-                id: UUID::from_be_bytes(*md5::compute(&name)),
-                name,
-                properties: vec![],
-              });
+              if self.info.is_none() {
+                self.info = Some(LoginInfo::offline(name.as_str()));
+              }
             }
 
             match &self.der_key {
@@ -670,7 +749,7 @@ impl<'a, S: PacketStream + Send + Sync> Conn<'a, S> {
               return Err(
                 io::Error::new(
                   ErrorKind::InvalidInput,
-                  "client did not send login start before sending ecryption response",
+                  "client did not send login start before sending encryption response",
                 )
                 .into(),
               );

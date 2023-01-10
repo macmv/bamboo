@@ -19,6 +19,9 @@ pub enum Error {
     pos: usize,
     sb:  bool,
   },
+  BungeecordError {
+    msg: &'static str,
+  }
 }
 
 pub type Result<T> = std::result::Result<T, Error>;
@@ -39,6 +42,12 @@ impl fmt::Display for Error {
           "parse error for {} packet {id:#x} (name: {}) on version {ver:?} (at byte {pos:#x}): while in {msg}, got error: {err}",
           if *sb { "serverbound" } else { "clientbound" },
           if *sb { sb::tcp_name(*id, *ver) } else { cb::tcp_name(*id, *ver) },
+        )
+      }
+      Self::BungeecordError { msg } => {
+        write!(
+          f,
+          "bungeecord error {msg}",
         )
       }
     }
