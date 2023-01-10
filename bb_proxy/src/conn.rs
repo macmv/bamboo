@@ -1,4 +1,10 @@
-use crate::{gnet::{cb as gcb, sb as gsb, tcp}, packet::{FromTcp, ToTcp, TypeConverter}, stream::PacketStream, Result};
+use crate::{
+  gnet::{cb as gcb, sb as gsb, tcp},
+  packet::{FromTcp, ToTcp, TypeConverter},
+  stream::PacketStream,
+  Error::BungeecordError,
+  Result,
+};
 use bb_common::{
   math,
   net::{cb as ccb, sb as csb},
@@ -19,10 +25,9 @@ use std::{
   fmt, io,
   io::{ErrorKind, Read, Write},
   net::SocketAddr,
+  str::FromStr,
   sync::Arc,
 };
-use std::str::FromStr;
-use crate::Error::BungeecordError;
 
 #[derive(Debug, Copy, Clone)]
 pub enum State {
@@ -154,8 +159,8 @@ pub struct JsonPlayer {
 impl LoginInfo {
   pub fn offline(name: &str) -> Self {
     Self {
-      id: UUID::from_be_bytes(*md5::compute(name)),
-      name: name.to_string(),
+      id:         UUID::from_be_bytes(*md5::compute(name)),
+      name:       name.to_string(),
       properties: vec![],
     }
   }
@@ -554,22 +559,14 @@ impl<'a, S: PacketStream + Send + Sync> Conn<'a, S> {
       match i {
         2 => {
           id = match UUID::from_str(v) {
-            Ok(id) => { Some(id) }
-            Err(_) => {
-              return Err(BungeecordError {
-                msg: "when parsing uuid"
-              })
-            }
+            Ok(id) => Some(id),
+            Err(_) => return Err(BungeecordError { msg: "when parsing uuid" }),
           }
         }
         3 => {
           properties = match serde_json::from_str(v) {
-            Ok(properties) => { Some(properties) }
-            Err(_) => {
-              return Err(BungeecordError {
-                msg: "when parsing properties"
-              })
-            }
+            Ok(properties) => Some(properties),
+            Err(_) => return Err(BungeecordError { msg: "when parsing properties" }),
           }
         }
         _ => {}
@@ -579,17 +576,11 @@ impl<'a, S: PacketStream + Send + Sync> Conn<'a, S> {
     }
 
     match id {
-      None => {
-        Err(BungeecordError {
-          msg: "missing uuid: make sure to connect from a proxy with bungeecord forwarding enabled",
-        })
-      }
+      None => Err(BungeecordError {
+        msg: "missing uuid: make sure to connect from a proxy with bungeecord forwarding enabled",
+      }),
       Some(v) => {
-        Ok(LoginInfo {
-          id: v,
-          name: "".to_string(),
-          properties: properties.unwrap(),
-        })
+        Ok(LoginInfo { id: v, name: "".to_string(), properties: properties.unwrap() })
       }
     }
   }
@@ -626,12 +617,12 @@ impl<'a, S: PacketStream + Send + Sync> Conn<'a, S> {
             let next = p.read_varint()?;
             self.state = State::from_next(next);
             self.info = match self.read_bungeecord_info(addr.as_str()) {
-              Ok(info) => { Some(info) }
+              Ok(info) => Some(info),
               Err(err) => {
                 // We can still reply to server list pings
                 match next {
-                  1 => { None }
-                  _ => { return Err(err) }
+                  1 => None,
+                  _ => return Err(err),
                 }
               }
             }

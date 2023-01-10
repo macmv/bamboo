@@ -21,7 +21,7 @@ pub enum Error {
   },
   BungeecordError {
     msg: &'static str,
-  }
+  },
 }
 
 pub type Result<T> = std::result::Result<T, Error>;
@@ -45,10 +45,7 @@ impl fmt::Display for Error {
         )
       }
       Self::BungeecordError { msg } => {
-        write!(
-          f,
-          "bungeecord error {msg}",
-        )
+        write!(f, "bungeecord error {msg}",)
       }
     }
   }

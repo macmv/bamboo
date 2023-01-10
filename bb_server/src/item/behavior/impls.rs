@@ -4,9 +4,7 @@ use crate::{
   event::EventFlow::{self, *},
   player::{BlockClick, Click},
 };
-use bb_common::{
-  util::{Chat, Face},
-};
+use bb_common::util::{Chat, Face};
 
 pub struct DebugStick;
 impl Behavior for DebugStick {
@@ -71,10 +69,7 @@ impl Behavior for Bucket {
 pub struct Snowball;
 impl Behavior for Snowball {
   fn interact(&self, click: Click) -> EventFlow {
-    let eid = click
-      .player()
-      .world()
-      .summon(entity::Type::Snowball, click.player().view_pos());
+    let eid = click.player().world().summon(entity::Type::Snowball, click.player().view_pos());
 
     // If the entity doesn't exist, it already despawned, so we do nothing if
     // it isn't in the world.
