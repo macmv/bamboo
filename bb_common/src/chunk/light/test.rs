@@ -34,6 +34,7 @@ fn chunk_from_str(lines: &[&[&str]]) -> (Chunk<Section>, LightChunk<BlockLight>)
   (chunk, light)
 }
 
+#[track_caller]
 fn assert_plane_matches(a: &mut LightChunk<BlockLight>, b: &mut LightChunk<BlockLight>) {
   let mut a_str = String::new();
   for y in 0..16 {
@@ -197,6 +198,79 @@ fn basic_propagate() {
     "   1234567876543",
     "    123456765432",
     "     12345654321",
+  ]]);
+  assert_plane_matches(&mut light, &mut expected);
+
+  light.set_light(RelPos::new(10, 11, 0), 0x0);
+  let (_, mut expected) = chunk_from_str(&[&[
+    "    ###         ",
+    "    #a#         ",
+    "    #9#   1     ",
+    "    #8#  121    ",
+    "   1#7#112321   ",
+    "  12#6#2234321  ",
+    " 12345433454321 ",
+    "  12343345654321",
+    "   1233456765432",
+    "   1234567876543",
+    "  12345678987654",
+    " 123456789 98765",
+    "  12345678987654",
+    "   1234567876543",
+    "    123456765432",
+    "     12345654321",
+  ]]);
+  assert_plane_matches(&mut light, &mut expected);
+
+  light.update(&chunk, RelPos::new(10, 11, 0));
+  let (_, mut expected) = chunk_from_str(&[&[
+    "    ###         ",
+    "    #a#         ",
+    "    #9#         ",
+    "    #8#         ",
+    "   1#7#1        ",
+    "  12#6#21       ",
+    " 123454321      ",
+    "  1234321       ",
+    "   12321        ",
+    "    121         ",
+    "     1          ",
+    "                ",
+    "                ",
+    "                ",
+    "                ",
+    "                ",
+  ]]);
+  assert_plane_matches(&mut light, &mut expected);
+}
+
+#[test]
+fn remove_light() {
+  let (chunk, _) = chunk_from_str(&[]);
+
+  let mut light = LightChunk::new();
+  light.set_light(RelPos::new(5, 1, 0), 0xa);
+  light.set_light(RelPos::new(6, 1, 0), 0x9);
+
+  let (_, mut expected) = chunk_from_str(&[&["                ", "     a9         "]]);
+  assert_plane_matches(&mut light, &mut expected);
+
+  light.set_light(RelPos::new(5, 1, 0), 0x0);
+  let (_, mut expected) = chunk_from_str(&[&["                ", "      9         "]]);
+  assert_plane_matches(&mut light, &mut expected);
+
+  light.update(&chunk, RelPos::new(5, 1, 0));
+  let (_, mut expected) = chunk_from_str(&[&[
+    "23456787654321  ",
+    "345678987654321 ",
+    "23456787654321  ",
+    "1234567654321   ",
+    " 12345654321    ",
+    "  123454321     ",
+    "   1234321      ",
+    "    12321       ",
+    "     121        ",
+    "      1         ",
   ]]);
   assert_plane_matches(&mut light, &mut expected);
 }

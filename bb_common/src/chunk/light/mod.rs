@@ -147,9 +147,26 @@ impl LightPropagator for BlockLight {
     let mut queue = vec![(pos, level)];
     let mut other_queue = vec![];
     while !queue.is_empty() {
-      for &(source, level) in &queue {
-        if level == 0 {
-          continue;
+      for &(source, mut level) in &queue {
+        for dir in directions {
+          let new_pos = match source.checked_add(dir) {
+            Some(p) => p,
+            None => continue,
+          };
+          if new_pos.y() < 0 || new_pos.y() > 255 {
+            continue;
+          }
+          if chunk.get_block(new_pos).unwrap() == 0 {
+            let other_level = light.get_light(new_pos);
+            if other_level > level + 1 {
+              println!("CURRENT IS TOO DIM");
+              // The current block is too dim, so fix it, and queue the
+              // neighboring block.
+              level = other_level - 1;
+              light.set_light(pos, other_level - 1);
+              other_queue.push((new_pos, other_level));
+            }
+          }
         }
         for dir in directions {
           let new_pos = match source.checked_add(dir) {
@@ -159,9 +176,14 @@ impl LightPropagator for BlockLight {
           if new_pos.y() < 0 || new_pos.y() > 255 {
             continue;
           }
-          if chunk.get_block(new_pos).unwrap() == 0 && light.get_light(new_pos) < level - 1 {
-            light.set_light(new_pos, level - 1);
-            other_queue.push((new_pos, level - 1));
+          if chunk.get_block(new_pos).unwrap() == 0 {
+            let other_level = light.get_light(new_pos);
+            if level >= 1 && other_level < level - 1 {
+              println!("NEIGHBOR IS TOO DIM");
+              // The neighbor is too dim, queue `new_pos` to be updated.
+              light.set_light(new_pos, level - 1);
+              other_queue.push((new_pos, level - 1));
+            }
           }
         }
       }
