@@ -1,5 +1,5 @@
 use crate::{
-  chunk::{paletted::Section, LightChunkData},
+  chunk::{paletted::Section, LightChunk},
   math::{ChunkPos, FPos, Pos},
   metadata::Metadata,
   util::{chat::Color, Chat, GameMode, Hand, Item, SwitchMode, UUID},
@@ -89,8 +89,8 @@ packets! {
     /// length of the world height. If it is too short, a modern client will
     /// disconnect with an error.
     sections:    Vec<Option<Section>>,
-    sky_light:   Option<LightChunkData>,
-    block_light: LightChunkData,
+    sky_light:   Option<LightChunk>,
+    block_light: LightChunk,
   },
   #[id = 4]
   CommandList {

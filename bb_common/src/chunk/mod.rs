@@ -3,7 +3,7 @@ pub mod light;
 pub mod paletted;
 mod section;
 
-pub use light::{LightChunk, LightChunkData};
+pub use light::LightChunk;
 pub use section::Section;
 
 use crate::math::{PosError, RelPos};

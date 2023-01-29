@@ -2,7 +2,7 @@ use super::WorldManager;
 use crate::{
   block,
   block::{
-    light::{BlockLight, SkyLight},
+    light::{BlockLightChunk, SkyLightChunk},
     TileEntity,
   },
 };
@@ -41,17 +41,19 @@ impl fmt::Debug for CountedChunk {
 /// because it used to store all of the other versioning data. It would be a
 /// pain to change it, and I don't really want to bother.
 pub struct MultiChunk {
-  inner: ChunkData,
-  wm:    Arc<WorldManager>,
-}
+  block:       BlockData,
+  sky_light:   Option<SkyLightChunk>,
+  block_light: BlockLightChunk,
 
-struct ChunkData {
-  inner:        Chunk<PalettedSection>,
-  tes:          HashMap<RelPos, Arc<dyn TileEntity>>,
-  sky:          Option<LightChunk<SkyLight>>,
-  block:        LightChunk<BlockLight>,
   /// Set to false when the world is generating, which makes things much faster.
   update_light: bool,
+}
+
+/// This is the block and tile entity data of a chunk.
+pub struct BlockData {
+  wm:    Arc<WorldManager>,
+  inner: Chunk<PalettedSection>,
+  tes:   HashMap<RelPos, Arc<dyn TileEntity>>,
 
   height: u32,
   min_y:  i32,
@@ -69,57 +71,51 @@ impl CountedChunk {
   pub fn lock(&self) -> MutexGuard<'_, MultiChunk> { self.chunk.lock() }
 }
 
-impl ChunkData {
-  fn new(sky: bool, height: u32, min_y: i32) -> Self {
-    ChunkData {
-      inner: Chunk::new(15),
-      tes: HashMap::new(),
-      sky: if sky { Some(LightChunk::new()) } else { None },
-      block: LightChunk::new(),
-      update_light: true,
-      height,
-      min_y,
-    }
+impl BlockData {
+  pub fn new(wm: Arc<WorldManager>, height: u32, min_y: i32) -> Self {
+    BlockData { wm, inner: Chunk::new(15), tes: HashMap::new(), height, min_y }
   }
 
   /// A `Type<'a>` borrows `self`, so we can't pass that into `set_type`.
   /// Therefore, we use this inner function to avoid allocating a `TypeStore` in
   /// `set_kind`.
-  fn set_type_id(
-    &mut self,
-    p: RelPos,
-    ty: u32,
-    kind: block::Kind,
-    behaviors: &block::BehaviorStore,
-  ) -> Result<(), PosError> {
+  fn set_type_id(&mut self, p: RelPos, ty: u32, kind: block::Kind) -> Result<(), PosError> {
     self.inner.set_block(p, ty)?;
-    self.update_light(p);
+    let behaviors = self.wm.block_behaviors();
     if let Some(te) = behaviors.call(kind, |b| b.create_te()) {
       self.tes.insert(p, te);
     }
     Ok(())
   }
 
-  fn enable_lighting(&mut self, enabled: bool) {
-    if !self.update_light && enabled {
-      self.update_all_light();
-    }
-    self.update_light = enabled;
+  /// Returns a reference to the global world manager.
+  pub fn wm(&self) -> &Arc<WorldManager> { &self.wm }
+
+  /// Sets a block within this chunk.
+  ///
+  /// WARNING: This wil not perform any lighting updates! This can easily break
+  /// the lighting of a chunk.
+  pub fn set_type(&mut self, p: RelPos, ty: block::Type) -> Result<(), PosError> {
+    self.set_type_id(p, ty.id(), ty.kind()).unwrap();
+    Ok(())
   }
 
-  fn update_all_light(&mut self) {
-    if let Some(sky) = &mut self.sky {
-      sky.update_all(&self.inner);
-    }
-    self.block.update_all(&self.inner);
+  /// Sets a block within this chunk.
+  ///
+  /// WARNING: This wil not perform any lighting updates! This can easily break
+  /// the lighting of a chunk.
+  pub fn set_kind(&mut self, p: RelPos, kind: block::Kind) -> Result<(), PosError> {
+    let ty = self.wm().block_converter().get(kind).default_type();
+    self.set_type_id(p, ty.id(), ty.kind()).unwrap();
+    Ok(())
   }
-  fn update_light(&mut self, pos: RelPos) {
-    if self.update_light {
-      if let Some(sky) = &mut self.sky {
-        sky.update(&self.inner, pos);
-      }
-      self.block.update(&self.inner, pos);
-    }
+
+  pub fn get_type(&self, p: RelPos) -> Result<block::Type, PosError> {
+    Ok(self.wm.block_converter().type_from_id(self.inner.get_block(p)?, BlockVersion::latest()))
+  }
+
+  pub fn get_kind(&self, p: RelPos) -> Result<block::Kind, PosError> {
+    Ok(self.wm().block_converter().kind_from_id(self.inner.get_block(p)?, BlockVersion::latest()))
   }
 }
 
@@ -129,11 +125,40 @@ impl MultiChunk {
   /// The second argument is for sky light data. Places like the nether do not
   /// contain sky light information, so the sky light data is not present.
   pub fn new(wm: Arc<WorldManager>, sky: bool, height: u32, min_y: i32) -> MultiChunk {
-    MultiChunk { inner: ChunkData::new(sky, height, min_y), wm }
+    MultiChunk {
+      block:        BlockData::new(wm, height, min_y),
+      sky_light:    if sky { Some(SkyLightChunk::new()) } else { None },
+      block_light:  BlockLightChunk::new(),
+      update_light: true,
+    }
   }
 
   /// Returns a reference to the global world manager.
-  pub fn wm(&self) -> &Arc<WorldManager> { &self.wm }
+  pub fn wm(&self) -> &Arc<WorldManager> { &self.block.wm }
+
+  /// A `Type<'a>` borrows `self`, so we can't pass that into `set_type`.
+  /// Therefore, we use this inner function to avoid allocating a `TypeStore` in
+  /// `set_kind`.
+  fn set_type_id(&mut self, p: RelPos, ty: u32, kind: block::Kind) -> Result<(), PosError> {
+    self.block.set_type_id(p, ty, kind)?;
+    self.update_light(p);
+    Ok(())
+  }
+
+  fn update_all_light(&mut self) {
+    if let Some(sky) = &mut self.sky_light {
+      sky.update_all(&self.block);
+    }
+    self.block_light.update_all(&self.block);
+  }
+  fn update_light(&mut self, pos: RelPos) {
+    if self.update_light {
+      if let Some(sky) = &mut self.sky_light {
+        sky.update(&self.block, pos);
+      }
+      self.block_light.update(&self.block, pos);
+    }
+  }
 
   /// Sets a block within this chunk. `p.x` and `p.z` must be within 0..16. If
   /// the server supports multi-height worlds (not implemented yet), then p.y
@@ -146,7 +171,7 @@ impl MultiChunk {
   /// distance will see any of these changes!
   pub fn set_type(&mut self, p: RelPos, ty: block::Type) -> Result<(), PosError> {
     let p = self.transform_pos(p)?;
-    self.inner.set_type_id(p, ty.id(), ty.kind(), &self.wm.block_behaviors()).unwrap();
+    self.set_type_id(p, ty.id(), ty.kind()).unwrap();
     Ok(())
   }
 
@@ -156,8 +181,8 @@ impl MultiChunk {
     f: impl FnOnce(&block::TypeConverter) -> block::Type,
   ) -> Result<(), PosError> {
     let p = self.transform_pos(p)?;
-    let ty = f(self.wm.block_converter());
-    self.inner.set_type_id(p, ty.id(), ty.kind(), &self.wm.block_behaviors()).unwrap();
+    let ty = f(self.wm().block_converter());
+    self.set_type_id(p, ty.id(), ty.kind()).unwrap();
     Ok(())
   }
 
@@ -173,8 +198,8 @@ impl MultiChunk {
   /// distance will see any of these changes!
   pub fn set_kind(&mut self, p: RelPos, kind: block::Kind) -> Result<(), PosError> {
     let p = self.transform_pos(p)?;
-    let ty = self.wm.block_converter().get(kind).default_type();
-    self.inner.set_type_id(p, ty.id(), ty.kind(), &self.wm.block_behaviors()).unwrap();
+    let ty = self.wm().block_converter().get(kind).default_type();
+    self.set_type_id(p, ty.id(), ty.kind()).unwrap();
     Ok(())
   }
 
@@ -192,10 +217,10 @@ impl MultiChunk {
   pub fn fill(&mut self, min: RelPos, max: RelPos, ty: block::Type) -> Result<(), PosError> {
     let min = self.transform_pos(min)?;
     let max = self.transform_pos(max)?;
-    self.inner.inner.fill(min, max, ty.id()).unwrap();
+    self.block.inner.fill(min, max, ty.id()).unwrap();
     // TODO: Update light correctly.
-    self.inner.update_light(min);
-    self.inner.update_light(max);
+    self.update_light(min);
+    self.update_light(max);
     Ok(())
   }
 
@@ -210,13 +235,13 @@ impl MultiChunk {
     let min = self.transform_pos(min)?;
     let max = self.transform_pos(max)?;
     self
+      .block
       .inner
-      .inner
-      .fill(min, max, self.wm.block_converter().get(kind).default_type().id())
+      .fill(min, max, self.wm().block_converter().get(kind).default_type().id())
       .unwrap();
     // TODO: Update light correctly.
-    self.inner.update_light(min);
-    self.inner.update_light(max);
+    self.update_light(min);
+    self.update_light(max);
     Ok(())
   }
 
@@ -229,9 +254,9 @@ impl MultiChunk {
     let p = self.transform_pos(p)?;
     Ok(
       self
-        .wm
+        .wm()
         .block_converter()
-        .type_from_id(self.inner.inner.get_block(p).unwrap(), BlockVersion::latest()),
+        .type_from_id(self.block.inner.get_block(p).unwrap(), BlockVersion::latest()),
     )
   }
 
@@ -241,30 +266,30 @@ impl MultiChunk {
     let p = self.transform_pos(p)?;
     Ok(
       self
-        .wm
+        .wm()
         .block_converter()
-        .kind_from_id(self.inner.inner.get_block(p).unwrap(), BlockVersion::latest()),
+        .kind_from_id(self.block.inner.get_block(p).unwrap(), BlockVersion::latest()),
     )
   }
 
-  pub fn tes(&self) -> &HashMap<RelPos, Arc<dyn TileEntity>> { &self.inner.tes }
+  pub fn tes(&self) -> &HashMap<RelPos, Arc<dyn TileEntity>> { &self.block.tes }
   pub(crate) fn tes_mut(&mut self) -> &mut HashMap<RelPos, Arc<dyn TileEntity>> {
-    &mut self.inner.tes
+    &mut self.block.tes
   }
 
   pub fn get_te(&self, p: RelPos) -> Result<Option<Arc<dyn TileEntity>>, PosError> {
     let p = self.transform_pos(p)?;
-    Ok(self.inner.tes.get(&p).cloned())
+    Ok(self.block.tes.get(&p).cloned())
   }
 
   /// Transforms the given position to be used directly in a `Chunk`. This is
   /// because a `Chunk` cannot accept positions with a negative Y value, but
   /// worlds can have negative block positions.
   pub fn transform_pos(&self, mut p: RelPos) -> Result<RelPos, PosError> {
-    if p.y() < self.inner.min_y || p.y() >= self.inner.height as i32 - self.inner.min_y {
+    if p.y() < self.block.min_y || p.y() >= self.block.height as i32 - self.block.min_y {
       Err(p.err("is outside the world".into()))
     } else {
-      p = p.add_y(self.inner.min_y);
+      p = p.add_y(self.block.min_y);
       Ok(p)
     }
   }
@@ -279,23 +304,28 @@ impl MultiChunk {
   /// Note that the returned chunk only validates the positions are positive. It
   /// will allocate all the space it needs to place a block at whatever `Y`
   /// value you specify.
-  pub fn inner(&self) -> &Chunk<PalettedSection> { &self.inner.inner }
+  pub fn inner(&self) -> &Chunk<PalettedSection> { &self.block.inner }
   /// Same as [`inner`](Self::inner), but returns a mutable reference.
-  pub fn inner_mut(&mut self) -> &mut Chunk<PalettedSection> { &mut self.inner.inner }
+  pub fn inner_mut(&mut self) -> &mut Chunk<PalettedSection> { &mut self.block.inner }
 
   /// Returns a reference to the global type converter. Used to convert a block
   /// id to/from any version.
-  pub fn type_converter(&self) -> &Arc<block::TypeConverter> { self.wm.block_converter() }
+  pub fn type_converter(&self) -> &Arc<block::TypeConverter> { self.wm().block_converter() }
 
   /// Returns the sky light information for this chunk. Used to send lighting
   /// data to clients.
-  pub fn sky_light(&self) -> &Option<LightChunk<SkyLight>> { &self.inner.sky }
+  pub fn sky_light(&self) -> &Option<SkyLightChunk> { &self.sky_light }
   /// Returns the block light information for this chunk. Used to send lighting
   /// data to clients.
-  pub fn block_light(&self) -> &LightChunk<BlockLight> { &self.inner.block }
+  pub fn block_light(&self) -> &BlockLightChunk { &self.block_light }
 
   /// Will enable/disable lighting. Chunks have lighting enabled by default. If
   /// enabled, and if it was previously disabled, all the lighting information
   /// will be recalculated (which is very slow).
-  pub fn enable_lighting(&mut self, enabled: bool) { self.inner.enable_lighting(enabled) }
+  pub fn enable_lighting(&mut self, enabled: bool) {
+    if !self.update_light && enabled {
+      self.update_all_light();
+    }
+    self.update_light = enabled;
+  }
 }

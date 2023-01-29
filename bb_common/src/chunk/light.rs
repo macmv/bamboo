@@ -1,26 +1,9 @@
-use super::{Chunk, Section};
 use crate::math::{RelPos, SectionRelPos};
 use bb_macros::Transfer;
-use std::{fmt, marker::PhantomData};
-
-pub trait LightPropagator {
-  fn initial_level() -> u8;
-  fn propagate<P: LightPropagator, S: Section>(
-    light: &mut LightChunk<P>,
-    chunk: &Chunk<S>,
-    pos: RelPos,
-  );
-  fn propagate_all<P: LightPropagator, S: Section>(light: &mut LightChunk<P>, chunk: &Chunk<S>);
-}
-
-#[derive(Debug, Clone, PartialEq)]
-pub struct LightChunk<P: LightPropagator> {
-  pub data: LightChunkData,
-  marker:   PhantomData<P>,
-}
+use std::fmt;
 
 #[derive(Transfer, Debug, Clone, PartialEq)]
-pub struct LightChunkData {
+pub struct LightChunk {
   #[id = 0]
   sections: Vec<Option<LightSection>>,
 }
@@ -32,11 +15,7 @@ pub struct LightSection {
   data: Vec<u8>,
 }
 
-impl Default for LightChunkData {
-  fn default() -> Self { LightChunkData::new() }
-}
-
-impl<P: LightPropagator> Default for LightChunk<P> {
+impl Default for LightChunk {
   fn default() -> Self { LightChunk::new() }
 }
 
@@ -78,8 +57,10 @@ impl fmt::Debug for LightSection {
   }
 }
 
-impl LightChunkData {
-  pub fn new() -> Self { LightChunkData { sections: vec![] } }
+impl LightChunk {
+  pub fn new() -> Self { LightChunk { sections: vec![] } }
+
+  pub fn sections(&self) -> &[Option<LightSection>] { &self.sections }
 
   pub fn get_section_opt(&self, idx: usize) -> Option<&LightSection> {
     match self.sections.get(idx) {
@@ -105,42 +86,6 @@ impl LightChunkData {
       self.sections[idx] = Some(LightSection::new(0));
     }
     self.sections.get(idx).unwrap().as_ref().unwrap()
-  }
-}
-
-impl<P: LightPropagator> LightChunk<P> {
-  pub fn new() -> Self {
-    LightChunk { data: LightChunkData::new(), marker: PhantomData::default() }
-  }
-
-  /// Should be called whenever a block is updated.
-  pub fn update<S: Section>(&mut self, chunk: &Chunk<S>, pos: RelPos) {
-    P::propagate(self, chunk, pos)
-  }
-
-  /// Should be called whenever a large portion of the chunk is changed.
-  pub fn update_all<S: Section>(&mut self, chunk: &Chunk<S>) {
-    for (y, _) in chunk.sections().enumerate() {
-      self.get_section(y);
-    }
-    P::propagate_all(self, chunk)
-  }
-
-  pub fn sections(&self) -> &[Option<LightSection>] { &self.data.sections }
-
-  pub fn get_section_mut(&mut self, idx: usize) -> &mut LightSection {
-    let section = self.data.get_section_mut(idx);
-    if P::initial_level() != 0 {
-      section.set_all(P::initial_level());
-    }
-    section
-  }
-  pub fn get_section(&mut self, idx: usize) -> &LightSection {
-    let section = self.data.get_section_mut(idx);
-    if P::initial_level() != 0 {
-      section.set_all(P::initial_level());
-    }
-    section
   }
 
   pub fn get_light(&mut self, pos: RelPos) -> u8 {

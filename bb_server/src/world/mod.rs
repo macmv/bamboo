@@ -58,7 +58,7 @@ use crate::{
   tags::Tags,
 };
 
-pub use chunk::{CountedChunk, MultiChunk};
+pub use chunk::{BlockData, CountedChunk, MultiChunk};
 pub use entities::{EntitiesIter, EntitiesMap, EntitiesMapRef};
 pub use players::{PlayersIter, PlayersMap};
 
