@@ -30,6 +30,7 @@ impl Downloader {
     // Our current directory is within the project we are building for (for example,
     // we would be inside the `bb_server` directory if compiling for `bb_server`).
     // The config is outside that, so we prefix with `../`.
+    println!("cargo:rerun-if-changed=../data-config.toml");
     let config: Config = if Path::new("../data-config.toml").exists() {
       toml::from_str(&fs::read_to_string("../data-config.toml").unwrap()).unwrap()
     } else {
