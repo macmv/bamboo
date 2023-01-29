@@ -120,9 +120,9 @@ pub fn init() {
 }
 
 macro_rules! callback {
-  ( $setter:ident, $static:ident, $sig:ty ) => {
-    static $static: ConstLock<Option<Box<dyn ($sig) + Send>>> = ConstLock::new(None);
-    pub fn $setter(callback: impl ($sig) + Send + 'static) {
+  ( $setter:ident, $static:ident, $($sig:tt)* ) => {
+    static $static: ConstLock<Option<Box<dyn ($($sig)*) + Send>>> = ConstLock::new(None);
+    pub fn $setter(callback: impl ($($sig)*) + Send + 'static) {
       *$static.lock() = Some(Box::new(callback));
     }
   };
