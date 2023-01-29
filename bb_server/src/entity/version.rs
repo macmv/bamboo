@@ -87,6 +87,8 @@ pub enum MetadataType {
   Byte,
   /// A varint (same as protocol).
   VarInt,
+  /// A long. Only present on 1.19.3+
+  Long,
   /// A short. Only present on 1.8-1.12.
   Short,
   /// A 4 byte floating point number

@@ -177,6 +177,7 @@ impl Type {
       Self::Blaze => true,
       Self::Boat => false,
       Self::Cat => true,
+      Self::Camel => true,
       Self::CaveSpider => true,
       Self::Chicken => true,
       Self::Cod => true,

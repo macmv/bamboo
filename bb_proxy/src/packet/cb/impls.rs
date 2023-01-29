@@ -198,7 +198,7 @@ to_tcp!(ChatMessage => (self, conn, ver) {
   if ver >= ProtocolVersion::V1_19 {
     gpacket!(SystemChat V19 {
       a: self.msg.to_json(), // content
-      b: 1,                  // type
+      b: true,               // type
     })
   } else if ver >= ProtocolVersion::V1_16_5 {
     let mut data = vec![];
@@ -926,19 +926,19 @@ to_tcp!(SpawnEntity => (self, conn, ver) {
   let ty = conn.conv().entity_to_old(self.ty, ver.block()) as i32;
   if ver >= ProtocolVersion::V1_19 {
     gpacket!(SpawnObject V19 {
-      id:             self.eid,
-      uuid:           self.id,
-      entity_type_id: ty as u32,
-      x:              self.pos.x(),
-      y:              self.pos.y(),
-      z:              self.pos.z(),
-      pitch:          self.pitch,
-      yaw:            self.yaw,
-      head_yaw:       self.head_yaw,
-      entity_data:    self.data,
-      velocity_x:     self.vel_x.into(),
-      velocity_y:     self.vel_y.into(),
-      velocity_z:     self.vel_z.into(),
+      id:          self.eid,
+      uuid:        self.id,
+      entity_type: ty as u32,
+      x:           self.pos.x(),
+      y:           self.pos.y(),
+      z:           self.pos.z(),
+      pitch:       self.pitch,
+      yaw:         self.yaw,
+      head_yaw:    self.head_yaw,
+      entity_data: self.data,
+      velocity_x:  self.vel_x.into(),
+      velocity_y:  self.vel_y.into(),
+      velocity_z:  self.vel_z.into(),
     })
   } else if self.living {
     // Handle living mobs for 1.8-1.18

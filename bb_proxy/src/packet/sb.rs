@@ -85,7 +85,7 @@ from_tcp!(Animation, _ver, _conv, {
 from_tcp!(Chat, _ver, _conv, {
   V8(g) => Packet::Chat { msg: g.message },
   V11(g) => Packet::Chat { msg: g.message },
-  V19(g) => Packet::Chat { msg: g.chat_message },
+  V19(g) => Packet::Chat { msg: String::from_utf8_lossy(&g.unknown).into() },
 });
 from_tcp!(CommandExecution, ver, _conv, {
   V19(g) buf = g.unknown => {

@@ -266,8 +266,10 @@ fn simplify_expr_overwrite(expr: &mut Expr) -> (bool, Option<Instr>) {
               | "read_block_hit"
               | "read_nbt"
               | "read_bits"
+              | "read_enum_set"
               | "read_registry_key"
               | "read_registry_value"
+              | "read_registry_entry"
               | "read_option"
               | "read_instant"
               | "read_nullable" => return (true, None),

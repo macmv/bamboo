@@ -331,6 +331,8 @@ mod entity_types {
     Byte,
     /// A varint (same as protocol).
     VarInt,
+    /// A long. Only present on 1.19.3+
+    Long,
     /// A short. Only present on 1.8-1.12.
     Short,
     /// An int. Only present on 1.8-1.12.
