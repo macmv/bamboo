@@ -1,5 +1,6 @@
 mod behavior;
 mod custom;
+pub mod light;
 mod material;
 mod store;
 mod ty;

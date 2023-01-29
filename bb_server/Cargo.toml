@@ -70,6 +70,7 @@ bb_data = { path = "../bb_data" }
 [dev-dependencies]
 pprof = { version = "0.4.3", features = ["criterion", "protobuf"] }
 criterion = "0.3.4"
+pretty_assertions = "1.2.0"
 
 [features]
 default = ["panda_plugins"]

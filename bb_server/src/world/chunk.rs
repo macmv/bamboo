@@ -1,7 +1,13 @@
 use super::WorldManager;
-use crate::{block, block::TileEntity};
+use crate::{
+  block,
+  block::{
+    light::{BlockLight, SkyLight},
+    TileEntity,
+  },
+};
 use bb_common::{
-  chunk::{paletted::Section as PalettedSection, BlockLight, Chunk, LightChunk, SkyLight},
+  chunk::{paletted::Section as PalettedSection, Chunk, LightChunk},
   math::{PosError, RelPos},
   version::BlockVersion,
 };

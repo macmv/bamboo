@@ -1,5 +1,8 @@
-use super::{super::paletted::Section, BlockLight, Chunk, LightChunk};
-use crate::math::RelPos;
+use super::BlockLight;
+use bb_common::{
+  chunk::{paletted::Section, Chunk, LightChunk},
+  math::RelPos,
+};
 use pretty_assertions::assert_eq;
 
 #[track_caller]

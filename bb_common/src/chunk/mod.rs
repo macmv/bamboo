@@ -1,9 +1,9 @@
 pub mod fixed;
-mod light;
+pub mod light;
 pub mod paletted;
 mod section;
 
-pub use light::{BlockLight, LightChunk, SkyLight};
+pub use light::{LightChunk, LightChunkData};
 pub use section::Section;
 
 use crate::math::{PosError, RelPos};

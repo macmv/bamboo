@@ -453,8 +453,8 @@ impl World {
         pos,
         full: true,
         sections,
-        sky_light: c.sky_light().clone(),
-        block_light: c.block_light().clone(),
+        sky_light: c.sky_light().as_ref().map(|c| c.data.clone()),
+        block_light: c.block_light().data.clone(),
       }
     })
   }
@@ -485,8 +485,8 @@ impl World {
         full: false,
         sections,
         // TODO: Only clone the sections we care about
-        sky_light: c.sky_light().clone(),
-        block_light: c.block_light().clone(),
+        sky_light: c.sky_light().as_ref().map(|c| c.data.clone()),
+        block_light: c.block_light().data.clone(),
       }
     })
   }
