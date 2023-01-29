@@ -300,45 +300,68 @@ fn write_general_packet(gen: &mut CodeGen, versions: &[(Version, Packet)]) {
 
   gen.write_impl(&versions[0].1.name, |gen| {
     gen.set_doc_comment(true);
-    gen.write_line("Packet reader. Source:");
+    gen.write_line("Packet reader.");
+    // TODO: This generics doc comments for the source code, maybe add an option
+    // to enable this again?
+    /*
     gen.write_line("```rust,ignore");
     write_general_from_tcp(gen, versions);
     gen.write_line("```");
+    */
     gen.set_doc_comment(false);
     write_general_from_tcp(gen, versions);
 
     gen.set_doc_comment(true);
-    gen.write_line("Packet writer. Source:");
+    gen.write_line("Packet writer.");
+    /*
     gen.write_line("```rust,ignore");
     write_general_to_tcp(gen, versions);
     gen.write_line("```");
+    */
     gen.set_doc_comment(false);
     write_general_to_tcp(gen, versions);
   });
 }
 fn write_versioned_packet(gen: &mut CodeGen, name: &str, p: &Packet, ver: Version) {
   gen.set_doc_comment(true);
+  /*
   gen.write_line("Definition:");
   gen.write_line("```rust,ignore");
   write_def(gen, name, p);
   gen.write_line("```");
+  */
+  gen.write_line("| Field | Java type | Reader type |");
+  gen.write_line("| --- | --- | --- |");
+  for f in &p.fields {
+    gen.write("| ");
+    gen.write(&f.name);
+    gen.write(" | `");
+    gen.write(&format!("{:?}", f.ty));
+    gen.write("` | `");
+    gen.write(&format!("{:?}", f.reader_type));
+    gen.write_line("` |");
+  }
   gen.set_doc_comment(false);
   write_def(gen, name, p);
 
   gen.write_impl(name, |gen| {
     gen.set_doc_comment(true);
-    gen.write_line("Packet reader. Source:");
+    gen.write_line("Packet reader.");
+    /*
     gen.write_line("```rust,ignore");
     write_from_tcp(gen, p, ver);
     gen.write_line("```");
+    */
     gen.set_doc_comment(false);
     write_from_tcp(gen, p, ver);
 
     gen.set_doc_comment(true);
-    gen.write_line("Packet writer. Source:");
+    gen.write_line("Packet writer.");
+    /*
     gen.write_line("```rust,ignore");
     write_to_tcp(gen, p);
     gen.write_line("```");
+    */
     gen.set_doc_comment(false);
     write_to_tcp(gen, p);
   });
@@ -379,12 +402,12 @@ fn write_def(gen: &mut CodeGen, name: &str, p: &Packet) {
   gen.write_line(" {");
   gen.add_indent();
   for f in &p.fields {
-    gen.write("/// Reader type: `");
-    gen.write(&format!("{:?}", f.reader_type));
-    gen.write_line("`,");
-    gen.write("/// java type: `");
+    gen.write("/// - java type: `");
     gen.write(&format!("{:?}", f.ty));
-    gen.write_line("`.");
+    gen.write_line("`");
+    gen.write("/// - reader type: `");
+    gen.write(&format!("{:?}", f.reader_type));
+    gen.write_line("`");
 
     gen.write("pub ");
     gen.write(&f.name);
