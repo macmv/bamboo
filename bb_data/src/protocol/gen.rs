@@ -738,7 +738,7 @@ impl<'a> InstrWriter<'a> {
         self.gen.remove_indent();
         self.gen.write_line("}");
       }
-      Instr::Switch(v, items) => {
+      Instr::Switch(v, items, _def) => {
         self.gen.write("match ");
         self.write_expr(v);
         self.gen.write(" ");

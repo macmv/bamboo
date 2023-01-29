@@ -130,7 +130,7 @@ fn simplify_instr(instr: &mut [Instr]) -> Option<usize> {
         // simplify_expr(&mut range.max);
         // simplify_instr(block);
       }
-      Instr::Switch(_val, _items) => {
+      Instr::Switch(_val, _items, _def) => {
         *i = set_unknown();
         return Some(idx + 1);
         // simplify_expr(val);

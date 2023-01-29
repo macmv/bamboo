@@ -108,7 +108,7 @@ impl<'a> ReaderTypes<'a> {
           self.find_instr(when_false);
         }
         Instr::For(_v, _range, _block) => {}
-        Instr::Switch(_v, _tab) => {}
+        Instr::Switch(_v, _tab, _def) => {}
         Instr::CheckStrLen(_val, _len) => {}
         Instr::Expr(_v) => {}
         Instr::Return(_v) => {}
@@ -333,7 +333,7 @@ impl<'a> ReaderTypes<'a> {
         }
         Instr::Return(_) => {}
         Instr::For(_, _range, _) => {}
-        Instr::Switch(_, _table) => {}
+        Instr::Switch(_, _table, _def) => {}
         Instr::If(cond, when_true, when_false) => {
           let mut when_t = vec![];
           let mut when_f = vec![];

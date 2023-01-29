@@ -65,6 +65,7 @@ impl Downloader {
     Downloader { files: serde_json::from_reader(&*uncompressed).unwrap() }
   }
 
+  #[track_caller]
   pub fn get<T: DeserializeOwned>(&self, name: &str, ver: Version) -> T {
     /*
     let cache_dir = self.out.join("data");

@@ -55,7 +55,7 @@ block_version![
   [V1_16, V1_16_5],
   [V1_17, V1_17_1],
   [V1_18, V1_18_2],
-  [V1_19, V1_19],
+  [V1_19, V1_19_3],
 ];
 
 impl BlockVersion {
@@ -101,6 +101,8 @@ impl BlockVersion {
 ///
 /// This will always be non exhaustive, as there will always be new versions
 /// added to the game.
+///
+/// NOTE: Remember to update the versions in `bb_data` as well!
 #[non_exhaustive]
 #[bb_macros::protocol_version]
 #[derive(
@@ -149,11 +151,13 @@ pub enum ProtocolVersion {
   V1_18_2 = 758,
 
   V1_19   = 759,
+  V1_19_2 = 760,
+  V1_19_3 = 761,
 }
 
 impl ProtocolVersion {
   /// Returns the latest protocol version.
-  pub const fn latest() -> Self { Self::V1_19 }
+  pub const fn latest() -> Self { Self::V1_19_3 }
 
   /// Creates a new protocol version from the given id. If the version is
   /// invalid, then this returns `VInvalid`.
@@ -216,6 +220,8 @@ impl ProtocolVersion {
       Self::V1_18 => BlockVersion::V1_18,
       Self::V1_18_2 => BlockVersion::V1_18,
       Self::V1_19 => BlockVersion::V1_19,
+      Self::V1_19_2 => BlockVersion::V1_19,
+      Self::V1_19_3 => BlockVersion::V1_19,
     }
   }
 }

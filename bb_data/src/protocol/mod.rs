@@ -195,7 +195,7 @@ pub enum Instr {
   /// A switch statement. The list is a list of keys to blocks that should be
   /// executed. We require that every java switch block has a `break` call at
   /// the end of it.
-  Switch(Expr, Vec<(i32, Vec<Instr>)>),
+  Switch(Expr, Vec<(i32, Vec<Instr>)>, Option<Vec<Instr>>),
 
   /// Make sure the given string (the first item) is less than the given length
   /// (the second item). Any time you read a string, there is a max length.
@@ -225,7 +225,7 @@ impl PartialEq for Instr {
       (Self::Let(_, a), Self::Let(_, b)) => a == b,
       (Self::If(a, a1, a2), Self::If(b, b1, b2)) => a == b && a1 == b1 && a2 == b2,
       (Self::For(_, a, a1), Self::For(_, b, b1)) => a == b && a1 == b1,
-      (Self::Switch(a, a1), Self::Switch(b, b1)) => a == b && a1 == b1,
+      (Self::Switch(a, a1, a2), Self::Switch(b, b1, b2)) => a == b && a1 == b1 && a2 == b2,
       (Self::CheckStrLen(a, a1), Self::CheckStrLen(b, b1)) => a == b && a1 == b1,
       (Self::Expr(a), Self::Expr(b)) => a == b,
       (Self::Return(a), Self::Return(b)) => a == b,
