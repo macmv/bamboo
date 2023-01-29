@@ -1,5 +1,8 @@
 mod iter;
+mod to_lit;
+
 pub use iter::AppendIters;
+pub use to_lit::ToLit;
 
 /// A code generator. It is used to generate the source files in build.rs
 pub struct CodeGen {
