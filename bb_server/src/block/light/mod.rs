@@ -1,4 +1,4 @@
-use crate::world::{BlockData, MultiChunk};
+use crate::{block, world::BlockData};
 use bb_common::{chunk::LightChunk, math::RelPos, util::Face};
 
 #[cfg(test)]
@@ -25,28 +25,9 @@ impl BlockLightChunk {
     let mut other_queue = vec![];
     while !queue.is_empty() {
       for &(source, emitted) in &queue {
-        /*
-        for dir in directions {
-          let new_pos = match source.checked_add(dir) {
-            Some(p) => p,
-            None => continue,
-          };
-          if new_pos.y() < 0 || new_pos.y() > 255 {
-            continue;
-          }
-          let data = chunk.wm().block_converter().get(chunk.get_kind(new_pos).unwrap());
-          if data.transparent {
-            let other_level = self.data.get_light(new_pos);
-            if other_level > emitted + 1 {
-              // The current block is too dim, so fix it, and queue the
-              // neighboring block.
-              emitted = other_level - 1;
-              self.data.set_light(pos, other_level - 1);
-              other_queue.push((new_pos, other_level));
-            }
-          }
+        if emitted > self.data.get_light(pos) {
+          self.data.set_light(pos, emitted);
         }
-        */
         for dir in directions {
           let new_pos = match source.checked_add(dir) {
             Some(p) => p,
@@ -55,8 +36,9 @@ impl BlockLightChunk {
           if new_pos.y() < 0 || new_pos.y() > 255 {
             continue;
           }
-          let data = chunk.wm().block_converter().get(chunk.get_kind(new_pos).unwrap());
-          if data.transparent {
+          let kind = chunk.get_kind(new_pos).unwrap();
+          let data = chunk.wm().block_converter().get(kind);
+          if kind == block::Kind::Air || data.transparent {
             let other_level = self.data.get_light(new_pos);
             if emitted >= 1 && other_level < emitted - 1 {
               println!("NEIGHBOR IS TOO DIM");

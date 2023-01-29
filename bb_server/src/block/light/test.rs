@@ -30,7 +30,8 @@ fn chunk_from_str(wm: Arc<WorldManager>, lines: &[&[&str]]) -> (BlockData, Block
             pos,
             match c {
               '#' => block::Kind::Stone,
-              'T' => block::Kind::Torch,
+              // This emits light level 10, which is what I use in the tests below.
+              'T' => block::Kind::CryingObsidian,
               _ => block::Kind::Air,
             },
           )
@@ -39,7 +40,11 @@ fn chunk_from_str(wm: Arc<WorldManager>, lines: &[&[&str]]) -> (BlockData, Block
         let string = c.encode_utf8(&mut tmp);
         light.set_light(
           pos,
-          if c != '#' && c != ' ' { u8::from_str_radix(string, 16).unwrap() } else { 0 },
+          match c {
+            '#' | ' ' => 0,
+            'T' => 10,
+            _ => u8::from_str_radix(string, 16).unwrap(),
+          },
         );
       }
     }
@@ -85,7 +90,7 @@ fn basic_propagate() {
   let (chunk, expected) = chunk_from_str(wm.clone(), &[
     &[
       "    ###    ",
-      "    #a#    ",
+      "    #T#    ",
       "    #9#    ",
       "    #8#    ",
       "   1#7#1   ",
