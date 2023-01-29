@@ -382,7 +382,12 @@ impl<'a, S: PacketStream + Send + Sync> Conn<'a, S> {
   /// Tries to send the packet to the client, and buffers it if that is not
   /// possible.
   fn send_to_client(&mut self, p: gcb::Packet) -> Result<()> {
-    debug!("sending packet (tcp id: {0} {0:#x}) {1:?}", p.tcp_id(self.ver), p,);
+    if log::max_level() >= log::LevelFilter::Debug {
+      let debugged = format!("{p:?}");
+      let msg = if debugged.len() > 100 { format!("{}...", &debugged[..100]) } else { debugged };
+      debug!("sending packet (tcp id: {0} {0:#x}) {1}", p.tcp_id(self.ver), msg);
+    }
+
     let mut tcp = tcp::Packet::new(p.tcp_id(self.ver).try_into().unwrap(), self.ver);
     p.to_tcp(&mut tcp);
     // debug!("sending bytes {:?}", tcp);

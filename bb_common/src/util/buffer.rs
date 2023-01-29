@@ -382,6 +382,22 @@ where
   }
 
   pub fn write_varint_arr(&mut self, v: &[i32]) { self.write_list(v, |p, &v| p.write_varint(v)) }
+
+  // This is a BitSet. Note that enums don't use this!
+  pub fn write_bit_set(&mut self, bits: &[u64]) {
+    self.write_varint(bits.len() as i32);
+    for b in bits {
+      self.write_u64(*b);
+    }
+  }
+
+  // This is a BitSet, but when the client knows the number of expected bits. The
+  // only difference from `write_bit_set` is that this won't write the length.
+  pub fn write_const_bit_set(&mut self, bits: &[u8]) {
+    for b in bits {
+      self.write_u8(*b);
+    }
+  }
 }
 
 impl<T> Deref for Buffer<T> {

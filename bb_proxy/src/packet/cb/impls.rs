@@ -626,28 +626,42 @@ to_tcp!(PlayerList => (self, conn, ver) {
   match self.action {
     cb::PlayerListAction::Add(v) => {
       id = 0;
+      if ver >= ProtocolVersion::V1_19_3 {
+        buf.write_const_bit_set(&[0x01]);
+      }
       buf.write_list(&v, |buf, v| {
         buf.write_uuid(v.id);
         buf.write_str(&v.name);
         buf.write_varint(0);
-        buf.write_varint(v.game_mode.id().into());
-        buf.write_varint(v.ping);
-        buf.write_option(&v.display_name, |buf, v| buf.write_str(v));
-        // The user's public key
-        if ver >= ProtocolVersion::V1_19 {
-          buf.write_option(&None, |_, _: &()| {});
+        // This info is no longer sent as of 1.19.3.
+        if ver < ProtocolVersion::V1_19_3 {
+          buf.write_varint(v.game_mode.id().into());
+          buf.write_varint(v.ping);
+          buf.write_option(&v.display_name, |buf, v| buf.write_str(v));
+          // The user's public key
+          if ver >= ProtocolVersion::V1_19 {
+            buf.write_option(&None, |_, _: &()| {});
+          }
         }
       });
     }
+    // TODO: InitializeChat action, which is bit 1 (0x02)
     cb::PlayerListAction::UpdateGameMode(v) => {
       id = 1;
+      if ver >= ProtocolVersion::V1_19_3 {
+        buf.write_const_bit_set(&[0x04]);
+      }
       buf.write_list(&v, |buf, v| {
         buf.write_uuid(v.id);
         buf.write_varint(v.game_mode.id().into());
       });
     }
+    // TODO: UpdateListed action, which is bit 3 (0x08)
     cb::PlayerListAction::UpdateLatency(v) => {
       id = 2;
+      if ver >= ProtocolVersion::V1_19_3 {
+        buf.write_const_bit_set(&[0x10]);
+      }
       buf.write_list(&v, |buf, v| {
         buf.write_uuid(v.id);
         buf.write_varint(v.ping);
@@ -655,6 +669,9 @@ to_tcp!(PlayerList => (self, conn, ver) {
     }
     cb::PlayerListAction::UpdateDisplayName(v) => {
       id = 3;
+      if ver >= ProtocolVersion::V1_19_3 {
+        buf.write_const_bit_set(&[0x20]);
+      }
       buf.write_list(&v, |buf, v| {
         buf.write_uuid(v.id);
         buf.write_option(&v.display_name, |buf, v| buf.write_str(&v.to_json()));
@@ -662,15 +679,21 @@ to_tcp!(PlayerList => (self, conn, ver) {
     }
     cb::PlayerListAction::Remove(v) => {
       id = 4;
+      // There is no remove action in this version.
+      if ver >= ProtocolVersion::V1_19_3 {
+        return Ok(smallvec![]);
+      }
       buf.write_list(&v, |buf, v| {
         buf.write_uuid(v.id);
       });
     }
   }
-  if ver < ProtocolVersion::V1_17_1 {
-    gpacket!(PlayerList V8 { action: id, unknown: data, v_2: 0 })
-  } else {
+  if ver >= ProtocolVersion::V1_19_3 {
+    gpacket!(PlayerList V19 { unknown: data })
+  } else if ver >= ProtocolVersion::V1_17_1 {
     gpacket!(PlayerList V17 { action: id, unknown: data })
+  } else {
+    gpacket!(PlayerList V8 { action: id, unknown: data, v_2: 0 })
   }
 });
 to_tcp!(PlaySound => (self, conn, ver) {
