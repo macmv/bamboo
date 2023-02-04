@@ -27,6 +27,8 @@ fn main() {
   };
   */
 
+  bb_common::init_with_level("proxy", log::LevelFilter::Info);
+
   let args = Args::parse();
   let config = if args.write_default_config {
     bb_proxy::load_config_write_default("proxy.toml", "proxy-default.toml")
@@ -34,8 +36,7 @@ fn main() {
     bb_proxy::load_config("proxy.toml")
   };
 
-  let level = config.get("log-level");
-  bb_common::init_with_level("proxy", level);
+  log::set_max_level(config.log_level);
 
   let proxy = match Proxy::from_config(config) {
     Ok(v) => v,

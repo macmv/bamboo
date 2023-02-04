@@ -1,9 +1,6 @@
 use super::chunk::MultiChunk;
-use crate::{block, math::WarpedVoronoi};
-use bb_common::{
-  config::ConfigSection,
-  math::{ChunkPos, Pos, RelPos, RngCore, WyhashRng},
-};
+use crate::{block, config::WorldConfig, math::WarpedVoronoi};
+use bb_common::math::{ChunkPos, Pos, RelPos, RngCore, WyhashRng};
 use noise::{BasicMulti, NoiseFn};
 use std::{
   cmp::Ordering,
@@ -228,12 +225,12 @@ impl WorldGen {
       debug: false,
     }
   }
-  pub fn from_config(config: &ConfigSection) -> Self {
-    if config.get("debug") {
+  pub fn from_config(config: &WorldConfig) -> Self {
+    if config.debug {
       let mut gen = WorldGen::new();
       gen.debug = true;
       gen
-    } else if config.get("void") {
+    } else if config.void {
       WorldGen::new()
     } else {
       let mut gen = WorldGen::new();

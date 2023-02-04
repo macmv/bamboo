@@ -37,6 +37,7 @@ pub mod types {
   }
 }
 
+pub mod config;
 mod manager;
 
 pub use self::panda::IntoPanda;
@@ -50,7 +51,7 @@ use crate::{
   world::WorldManager,
 };
 use ::panda::runtime::{tree::Closure, LockedEnv, VarSend};
-use bb_common::config::Config;
+use config::Config;
 use crossbeam_channel::{Receiver, Sender};
 use parking_lot::{Mutex, MutexGuard};
 use std::{error::Error, fmt, sync::Arc, thread};

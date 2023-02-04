@@ -1,8 +1,8 @@
 use crate::{
+  config,
   gnet::{cb as gcb, sb as gsb, tcp},
   packet::{FromTcp, ToTcp, TypeConverter},
   stream::PacketStream,
-  Error::BungeecordError,
   Result,
 };
 use bb_common::{
@@ -25,7 +25,6 @@ use std::{
   fmt, io,
   io::{ErrorKind, Read, Write},
   net::SocketAddr,
-  str::FromStr,
   sync::Arc,
 };
 
@@ -59,7 +58,6 @@ pub struct Conn<'a, S> {
   /// username; we use this to validate the client info with the mojang auth
   /// info.
   username:      Option<String>,
-  forwarding:    String,
   info:          Option<LoginInfo>,
   /// The four byte verify token, used by the client in encryption.
   verify_token:  [u8; 4],
@@ -68,6 +66,9 @@ pub struct Conn<'a, S> {
   key:                Arc<RSAPrivateKey>,
   /// The der encoded public key. None if we don't want encryption.
   der_key:            Option<Vec<u8>>,
+  /// Used in handshake. This will skip mojang auth and use a bungee-cord
+  /// formatted login message for player info.
+  forwarding:         config::Forwarding,
   /// Used in handshake. This is different from `stream.compression`
   compression_target: i32,
 
@@ -169,12 +170,12 @@ impl LoginInfo {
 impl<'a, S: PacketStream + Send + Sync> Conn<'a, S> {
   pub fn new(
     client_stream: S,
-    forwarding: String,
     addr: SocketAddr,
     key: Arc<RSAPrivateKey>,
     der_key: Option<Vec<u8>>,
     server_token: Token,
     conv: Arc<TypeConverter>,
+    forwarding: config::Forwarding,
     status_builder: Arc<dyn for<'b> Fn(&'b str, ProtocolVersion) -> JsonStatus<'b>>,
   ) -> Self {
     Conn {
@@ -183,11 +184,11 @@ impl<'a, S: PacketStream + Send + Sync> Conn<'a, S> {
       ver: ProtocolVersion::Invalid,
       icon: "",
       username: None,
-      forwarding,
       info: None,
       verify_token: [0u8; 4],
       key,
       der_key,
+      forwarding,
       compression_target: 0,
       closed: false,
       addr,
@@ -556,10 +557,14 @@ impl<'a, S: PacketStream + Send + Sync> Conn<'a, S> {
 
   /// Parse BungeeCord's player info from address string
   fn read_bungeecord_info(&self, addr: &str) -> Result<LoginInfo> {
+    let _ = addr;
+    // FIXME: implement
+    /*
     let mut id = None;
     let mut properties = None;
 
     let mut i = 0;
+    let sections = addr.split('\0').collect::<Vec<&str>>();
     for v in addr.split('\0') {
       match i {
         2 => {
@@ -588,6 +593,8 @@ impl<'a, S: PacketStream + Send + Sync> Conn<'a, S> {
         Ok(LoginInfo { id: v, name: "".to_string(), properties: properties.unwrap() })
       }
     }
+    */
+    todo!()
   }
 
   /// Runs the entire login process with the client. If compression is 0, then
@@ -614,8 +621,8 @@ impl<'a, S: PacketStream + Send + Sync> Conn<'a, S> {
         }
         self.ver = ProtocolVersion::from(p.read_varint()?);
 
-        match self.forwarding.as_str() {
-          "LEGACY" => {
+        match self.forwarding {
+          config::Forwarding::Legacy => {
             // FIXME: not sure what the correct maximum length is
             let addr = p.read_str(2048)?;
             let _port = p.read_u16()?;
@@ -625,14 +632,14 @@ impl<'a, S: PacketStream + Send + Sync> Conn<'a, S> {
               Ok(info) => Some(info),
               Err(err) => {
                 // We can still reply to server list pings
-                match next {
-                  1 => None,
+                match self.state {
+                  State::Status => None,
                   _ => return Err(err),
                 }
               }
             }
           }
-          _ => {
+          config::Forwarding::None => {
             // Max len according to 1.17.1
             let _addr = p.read_str(255)?;
             let _port = p.read_u16()?;

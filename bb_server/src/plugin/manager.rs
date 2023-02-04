@@ -1,9 +1,8 @@
 #[cfg(feature = "panda_plugins")]
 use super::PandaPlugin;
 
-use super::{GlobalEvent, PlayerEvent, PlayerRequest, Plugin};
+use super::{config::Config, GlobalEvent, PlayerEvent, PlayerRequest, Plugin};
 use crate::{event::EventFlow, world::WorldManager};
-use bb_common::config::Config;
 use crossbeam_channel::Select;
 use panda::Panda;
 use parking_lot::Mutex;
@@ -70,15 +69,14 @@ impl PluginManager {
       let m = fs::metadata(f.path()).unwrap();
       if m.is_dir() {
         let path = f.path();
-        let config = Config::new_write_default(
+        let config: Config = bb_common::config::new_at_write_default_to(
           path.join("plugin.toml").to_str().unwrap(),
           path.join("plugin-default.toml").to_str().unwrap(),
-          include_str!("plugin.toml"),
         );
-        if !config.get::<bool>("enabled") {
+        if !config.enabled {
           continue;
         }
-        let ty: String = config.get("type");
+        let ty = &config.plugin_type;
         let name = path.file_stem().unwrap().to_str().unwrap().to_string();
         match ty.as_str() {
           "socket" => {

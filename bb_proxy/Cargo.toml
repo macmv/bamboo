@@ -15,6 +15,7 @@ path = "src/main.rs"
 
 [dependencies]
 bb_common = { path = "../bb_common" }
+bb_macros = { path = "../bb_macros" }
 bb_transfer = { path = "../bb_transfer" }
 log = "0.4"
 serde = { version = "1.0", features = ["derive"] }

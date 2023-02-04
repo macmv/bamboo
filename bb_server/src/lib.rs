@@ -5,12 +5,12 @@ extern crate log;
 #[macro_use]
 extern crate thiserror;
 
-use bb_common::config::Config;
 use rand::rngs::ThreadRng;
 use std::cell::RefCell;
 
 pub mod block;
 pub mod command;
+pub mod config;
 pub mod data;
 pub mod enchantment;
 pub mod entity;
@@ -25,6 +25,8 @@ pub mod rcon;
 pub mod tags;
 pub mod util;
 pub mod world;
+
+use config::Config;
 
 #[cfg(feature = "panda_plugins")]
 pub fn generate_panda_docs() {
@@ -51,12 +53,12 @@ pub fn generate_panda_docs() {
 
 /// Loads the config at the given path, using the server-provided default
 /// config.
-pub fn load_config(path: &str) -> Config { Config::new(path, include_str!("default.toml")) }
+pub fn load_config(path: &str) -> Config { bb_common::config::new_at_write_default(path) }
 /// Loads the config at the given path, using the server-provided default
 /// config. This will then write the default config to the `default` path
 /// provided.
 pub fn load_config_write_default(path: &str, default: &str) -> Config {
-  Config::new_write_default(path, default, include_str!("default.toml"))
+  bb_common::config::new_at_write_default_to(path, default)
 }
 
 #[cfg(test)]

@@ -67,14 +67,16 @@ struct Args {
 
 fn main() {
   let args = Args::parse();
+
+  bb_common::init_with_level("server", log::LevelFilter::Info);
+
   let config = if args.write_default_config {
     bb_server::load_config_write_default("server.toml", "server-default.toml")
   } else {
     bb_server::load_config("server.toml")
   };
 
-  let level = config.get("log-level");
-  bb_common::init_with_level("server", level);
+  log::set_max_level(config.log_level);
 
   if !args.no_docs {
     bb_server::generate_panda_docs();
@@ -83,7 +85,7 @@ fn main() {
     }
   }
 
-  let addr = match config.get::<&str>("address").parse() {
+  let addr = match config.address.parse() {
     Ok(v) => v,
     Err(e) => {
       error!("invalid address: {e}");

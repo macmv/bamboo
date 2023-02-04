@@ -22,8 +22,8 @@ mod players;
 mod region;
 pub mod schematic;
 
+use crate::config::{Config, WorldConfig};
 use bb_common::{
-  config::{Config, ConfigSection},
   math::{ChunkPos, FPos, Pos, SectionRelPos},
   net::cb,
   util::{
@@ -97,7 +97,7 @@ pub struct World {
   commands:         Arc<CommandTree>,
   uspt:             Arc<AtomicU32>,
   wm:               Arc<WorldManager>,
-  config:           ConfigSection,
+  config:           WorldConfig,
   // If set, then the world cannot be modified.
   locked:           AtomicBool,
 
@@ -128,7 +128,7 @@ pub struct WorldManager {
   plugins:          Arc<plugin::PluginManager>,
   tags:             Arc<Tags>,
   commands:         Arc<CommandTree>,
-  config:           Arc<Config>,
+  config:           Config,
   block_behaviors:  RwLock<block::BehaviorStore>,
   item_behaviors:   RwLock<item::BehaviorStore>,
   data:             Arc<Data>,
@@ -154,7 +154,7 @@ impl World {
     commands: Arc<CommandTree>,
     wm: Arc<WorldManager>,
   ) -> Arc<Self> {
-    let config = wm.config().section("world");
+    let config = wm.config().world.clone();
     let gen = WorldGen::from_config(&config);
     /*
     for schematic in config.get::<_, Vec<String>>("schematics") {
@@ -167,7 +167,7 @@ impl World {
     }
     */
     let world = Arc::new_cyclic(|weak| World {
-      regions: RegionMap::new(weak.clone(), config.get("save")),
+      regions: RegionMap::new(weak.clone(), config.save),
       // generator: config.get("generator"),
       gen,
       players: RwLock::new(PlayersMap::new()),
@@ -180,24 +180,23 @@ impl World {
       plugins,
       commands,
       uspt: Arc::new(0.into()),
-      locked: config.get::<bool>("locked").into(),
-      height: config.get("height"),
-      min_y: config.get("min_y"),
+      locked: config.locked.into(),
+      height: config.height,
+      min_y: config.min_y,
       config,
       wm,
       chunks_to_load: Mutex::new(ChunksToLoad::new()),
     });
-    let vanilla = world.config().section("vanilla");
-    if vanilla.get("enabled") {
-      world.load_from_disk(&std::path::PathBuf::new().join(vanilla.get::<&str>("path"))).unwrap();
+    if world.config().vanilla.enabled {
+      world.load_from_disk(&std::path::PathBuf::new().join(&world.config().vanilla.path)).unwrap();
     }
     // Note that the world is not initialized yet, as we want to load plugins before
     // initializing.
     world
   }
 
-  /// Returns the config used in the whole server.
-  pub fn config(&self) -> &ConfigSection { &self.config }
+  /// Returns the config used for this world.
+  pub fn config(&self) -> &WorldConfig { &self.config }
 
   fn global_tick_loop(self: Arc<Self>) {
     let pool = ThreadPool::auto("global tick loop", || State {
@@ -330,7 +329,7 @@ impl World {
     }
     info!("{} has joined the game", player.username());
 
-    if self.world_manager().config().get("join-messages") {
+    if self.world_manager().config().join_messages {
       // TODO: This message's format should be configurable
       let mut msg = Chat::empty();
       msg.add(player.username()).color(Color::BrightGreen);
@@ -568,7 +567,7 @@ impl World {
       self.events().player_event(event::PlayerLeave { player: p.clone() });
       info!("{} left the game", p.username());
 
-      if self.world_manager().config().get("leave-messages") {
+      if self.world_manager().config().leave_messages {
         // TODO: This message's format should be configurable
         let mut msg = Chat::empty();
         msg.add(p.username()).color(Color::BrightGreen);
@@ -656,18 +655,14 @@ impl fmt::Debug for WorldManager {
 impl WorldManager {
   pub fn new(write_default: bool) -> Self {
     let config = if write_default {
-      Config::new_write_default(
-        "server.toml",
-        "server-default.toml",
-        include_str!("../default.toml"),
-      )
+      bb_common::config::new_at_write_default_to("server.toml", "server-default.toml")
     } else {
-      Config::new("server.toml", include_str!("../default.toml"))
+      bb_common::config::new_at_write_default("server.toml")
     };
     WorldManager::new_with_config(config)
   }
 
-  pub fn new_with_config(config: Config) -> Self {
+  pub fn new_with_config(conf: Config) -> Self {
     WorldManager {
       block_converter:   Arc::new(block::TypeConverter::new()),
       item_converter:    Arc::new(item::TypeConverter::new()),
@@ -677,13 +672,13 @@ impl WorldManager {
       tags:              Arc::new(Tags::new()),
       block_behaviors:   RwLock::new(block::BehaviorStore::new()),
       item_behaviors:    RwLock::new(item::BehaviorStore::new()),
-      data:              Arc::new(Data::load(config.get("data-path"))),
+      data:              Arc::new(Data::load(&conf.data_path)),
       worlds:            RwLock::new(vec![]),
       players:           RwLock::new(HashMap::new()),
       teams:             RwLock::new(HashMap::new()),
-      default_game_mode: config.get("default-gamemode"),
-      spawn_point:       config.get("spawn-point"),
-      config:            Arc::new(config),
+      default_game_mode: conf.default_gamemode,
+      spawn_point:       conf.spawn_point,
+      config:            conf,
     }
   }
 
@@ -703,7 +698,7 @@ impl WorldManager {
   pub fn load_plugins(self: &Arc<Self>) { self.plugins.load(self.clone()) }
 
   /// Returns the config used in the whole server.
-  pub fn config(&self) -> &Arc<Config> { &self.config }
+  pub fn config(&self) -> &Config { &self.config }
 
   /// Runs a global tick loop. This is used for plugin events. This is a
   /// blocking call.
@@ -836,7 +831,7 @@ impl WorldManager {
   /// proxy connects.
   pub fn new_player(&self, conn: ConnSender, info: JoinInfo) -> Arc<Player> {
     let w = self.worlds.read()[0].clone();
-    let spawn = if self.config().get("find-spawn") {
+    let spawn = if self.config().find_spawn {
       w.find_spawn_point(self.spawn_point.block()).into()
     } else {
       self.spawn_point

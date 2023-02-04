@@ -37,11 +37,11 @@ pub struct Conn<'a> {
 
 impl RCon {
   pub fn new(wm: Arc<WorldManager>) -> Option<Self> {
-    let config = wm.config().section("rcon");
-    if !config.get::<bool>("enabled") {
+    let config = &wm.config().rcon;
+    if !config.enabled {
       return None;
     }
-    let addr = match config.get::<&str>("addr").parse() {
+    let addr = match config.addr.parse() {
       Ok(a) => a,
       Err(e) => {
         error!("invalid rcon address: {e}");
@@ -49,7 +49,7 @@ impl RCon {
       }
     };
 
-    Some(RCon { addr, password: config.get("password"), wm })
+    Some(RCon { addr, password: config.password.clone(), wm })
   }
 
   pub fn run(&mut self) {
