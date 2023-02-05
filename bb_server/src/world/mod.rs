@@ -718,11 +718,8 @@ impl WorldManager {
   pub fn run(self: Arc<Self>) { self.global_tick_loop(); }
 
   /// Adds a new world.
-  pub fn add_world(self: &Arc<Self>) -> Arc<World> {
-    self.add_world_config(self.config().world.clone())
-  }
-  pub fn add_world_config(self: &Arc<Self>, config: WorldConfig) -> Arc<World> {
-    let world = Arc::new(self.new_world_config(config));
+  pub fn add_world(self: &Arc<Self>, world: World) -> Arc<World> {
+    let world = Arc::new(world);
     let w = Arc::clone(&world);
     thread::spawn(move || {
       w.global_tick_loop();
