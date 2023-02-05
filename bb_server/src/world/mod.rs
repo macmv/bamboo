@@ -147,6 +147,7 @@ const TICK_TIME: Duration = Duration::from_millis(50);
 impl World {
   /// Creates a new world. See also [`WorldManager::add_world`].
   pub(crate) fn new(
+    config: WorldConfig,
     block_converter: Arc<block::TypeConverter>,
     item_converter: Arc<item::TypeConverter>,
     entity_converter: Arc<entity::TypeConverter>,
@@ -154,7 +155,6 @@ impl World {
     commands: Arc<CommandTree>,
     wm: Arc<WorldManager>,
   ) -> Arc<Self> {
-    let config = wm.config().world.clone();
     let gen = WorldGen::from_config(&config);
     /*
     for schematic in config.get::<_, Vec<String>>("schematics") {
@@ -706,7 +706,11 @@ impl WorldManager {
 
   /// Adds a new world.
   pub fn add_world(self: &Arc<Self>) -> Arc<World> {
+    self.add_world_config(self.config().world.clone())
+  }
+  pub fn add_world_config(self: &Arc<Self>, config: WorldConfig) -> Arc<World> {
     let world = World::new(
+      config,
       self.block_converter.clone(),
       self.item_converter.clone(),
       self.entity_converter.clone(),
@@ -725,7 +729,13 @@ impl WorldManager {
   /// Adds a world, with no tick loop. This world will be frozen, and no updates
   /// will occur in any way.
   pub fn add_world_no_tick(self: &Arc<Self>) {
+    self.add_world_no_tick_config(self.config().world.clone())
+  }
+  /// Adds a world, with no tick loop. This world will be frozen, and no updates
+  /// will occur in any way.
+  pub fn add_world_no_tick_config(self: &Arc<Self>, config: WorldConfig) {
     self.worlds.write().push(World::new(
+      config,
       self.block_converter.clone(),
       self.item_converter.clone(),
       self.entity_converter.clone(),
