@@ -7,7 +7,7 @@ use crate::{
   },
 };
 use bb_common::{
-  chunk::{paletted::Section as PalettedSection, Chunk, LightChunk},
+  chunk::{paletted::Section as PalettedSection, Chunk},
   math::{PosError, RelPos},
   version::BlockVersion,
 };

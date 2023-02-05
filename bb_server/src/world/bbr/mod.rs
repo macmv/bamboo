@@ -2,13 +2,10 @@
 
 mod fs;
 
-use super::{CountedChunk, World};
+use super::CountedChunk;
 use bb_common::math::ChunkPos;
 use parking_lot::{Mutex, MutexGuard, RwLock, RwLockWriteGuard};
-use std::{
-  collections::HashMap,
-  sync::{Arc, Weak},
-};
+use std::collections::HashMap;
 
 /// The same structure as a chunk position, but used to index into a region. Can
 /// be converted to/from a `ChunkPos` by multiplying/dividing its coordinates by
@@ -27,13 +24,11 @@ pub struct RegionRelPos {
 }
 
 pub struct RegionMap {
-  world:   Weak<World>,
   regions: RwLock<HashMap<RegionPos, Mutex<Region>>>,
   save:    bool,
 }
 
 pub struct Region {
-  world:  Arc<World>,
   pos:    RegionPos,
   /// An array of `32*32 = 1024` chunks. The index is `x + z * 32`.
   chunks: Box<[Option<CountedChunk>; 1024]>,
@@ -41,11 +36,14 @@ pub struct Region {
 }
 
 impl RegionMap {
-  pub fn new(world: Weak<World>, save: bool) -> Self {
-    RegionMap { world, regions: RwLock::new(HashMap::new()), save }
-  }
+  pub fn new(save: bool) -> Self { RegionMap { regions: RwLock::new(HashMap::new()), save } }
 
-  pub fn region<F: FnOnce(MutexGuard<Region>) -> R, R>(&self, pos: ChunkPos, f: F) -> R {
+  pub fn region<F: FnOnce(MutexGuard<Region>) -> R, R>(
+    &self,
+    pos: ChunkPos,
+    new_chunk: impl Fn() -> CountedChunk,
+    f: F,
+  ) -> R {
     let lock = self.regions.read();
     let region_pos = RegionPos::new(pos);
     let rlock = if !lock.contains_key(&region_pos) {
@@ -53,9 +51,9 @@ impl RegionMap {
       let mut write = self.regions.write();
       // If someone else got the write lock, and wrote this region, we don't
       // want to write it twice.
-      write.entry(region_pos).or_insert_with(|| {
-        Mutex::new(Region::new_load(self.world.upgrade().unwrap(), region_pos, self.save))
-      });
+      write
+        .entry(region_pos)
+        .or_insert_with(|| Mutex::new(Region::new_load(new_chunk, region_pos, self.save)));
       RwLockWriteGuard::downgrade(write)
     } else {
       lock
@@ -106,13 +104,13 @@ impl RegionMap {
 }
 
 impl Region {
-  fn new(world: Arc<World>, pos: RegionPos, save: bool) -> Self {
+  fn new(pos: RegionPos, save: bool) -> Self {
     const NONE: Option<CountedChunk> = None;
-    Region { world, pos, chunks: Box::new([NONE; 1024]), save }
+    Region { pos, chunks: Box::new([NONE; 1024]), save }
   }
-  pub fn new_load(world: Arc<World>, pos: RegionPos, save: bool) -> Self {
-    let mut region = Region::new(world, pos, save);
-    region.load();
+  pub fn new_load(new_chunk: impl Fn() -> CountedChunk, pos: RegionPos, save: bool) -> Self {
+    let mut region = Region::new(pos, save);
+    region.load(new_chunk);
     region
   }
 

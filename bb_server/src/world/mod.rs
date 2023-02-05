@@ -165,8 +165,8 @@ impl World {
       .unwrap_or_else(|err| error!("could not load schematic file {}: {}", path, err));
     }
     */
-    let world = Arc::new_cyclic(|weak| World {
-      regions: RegionMap::new(weak.clone(), config.save),
+    let world = Arc::new(World {
+      regions: RegionMap::new(config.save),
       // generator: config.get("generator"),
       gen,
       players: RwLock::new(PlayersMap::new()),
@@ -406,9 +406,13 @@ impl World {
   /// loaded something from disk, which you don't want to overwrite.
   pub fn store_chunks_no_overwrite(&self, chunks: Vec<(ChunkPos, MultiChunk)>) {
     for (pos, chunk) in chunks {
-      self.regions.region(pos, |mut region| {
-        region.get_or_generate(pos, || CountedChunk::new(chunk));
-      });
+      self.regions.region(
+        pos,
+        || self.new_chunk(),
+        |mut region| {
+          region.get_or_generate(pos, || CountedChunk::new(chunk));
+        },
+      );
     }
   }
 
@@ -424,12 +428,16 @@ impl World {
   where
     F: FnOnce(MutexGuard<MultiChunk>) -> R,
   {
-    self.regions.region(pos, |mut region| {
-      let chunk = region.get_or_generate(RegionRelPos::new(pos), || {
-        CountedChunk::new(self.pre_generate_chunk(pos))
-      });
-      f(chunk.lock())
-    })
+    self.regions.region(
+      pos,
+      || self.new_chunk(),
+      |mut region| {
+        let chunk = region.get_or_generate(RegionRelPos::new(pos), || {
+          CountedChunk::new(self.pre_generate_chunk(pos))
+        });
+        f(chunk.lock())
+      },
+    )
   }
 
   /// This serializes a chunk for the given version. This packet can be sent
@@ -516,24 +524,36 @@ impl World {
   /// used to track when a chunk should be loaded/unloaded. This will load the
   /// chunk if it is not already present.
   pub fn inc_view(&self, pos: ChunkPos) {
-    self.regions.region(pos, |mut region| {
-      let chunk = region.get_or_generate(RegionRelPos::new(pos), || {
-        CountedChunk::new(self.pre_generate_chunk(pos))
-      });
-      chunk.count.fetch_add(1, Ordering::SeqCst);
-    })
+    self.regions.region(
+      pos,
+      || self.new_chunk(),
+      |mut region| {
+        let chunk = region.get_or_generate(RegionRelPos::new(pos), || {
+          CountedChunk::new(self.pre_generate_chunk(pos))
+        });
+        chunk.count.fetch_add(1, Ordering::SeqCst);
+      },
+    )
   }
 
   /// Decrements how many people are viewing the given chunk. This counter is
   /// used to track when a chunk should be loaded/unloaded. If this chunk does
   /// not exist, this will do nothing.
   pub fn dec_view(&self, pos: ChunkPos) {
-    self.regions.region(pos, |mut region| {
-      let chunk = region.get_or_generate(RegionRelPos::new(pos), || {
-        CountedChunk::new(self.pre_generate_chunk(pos))
-      });
-      chunk.count.fetch_sub(1, Ordering::SeqCst);
-    })
+    self.regions.region(
+      pos,
+      || self.new_chunk(),
+      |mut region| {
+        let chunk = region.get_or_generate(RegionRelPos::new(pos), || {
+          CountedChunk::new(self.pre_generate_chunk(pos))
+        });
+        chunk.count.fetch_sub(1, Ordering::SeqCst);
+      },
+    )
+  }
+
+  fn new_chunk(&self) -> CountedChunk {
+    CountedChunk::new(MultiChunk::new(self.wm.clone(), false, self.height, self.min_y))
   }
 
   /// This broadcasts a chat message to everybody in the world. Note that this
@@ -725,15 +745,13 @@ impl WorldManager {
     self.worlds.write().push(world);
     w2
   }
+  /// Creates a new world, and does nothing with it. This world doesn't have a
+  /// tick loop running yet.
+  pub fn new_world(self: &Arc<Self>) -> World { self.new_world_config(self.config().world.clone()) }
   /// Adds a world, with no tick loop. This world will be frozen, and no updates
   /// will occur in any way.
-  pub fn add_world_no_tick(self: &Arc<Self>) {
-    self.add_world_no_tick_config(self.config().world.clone())
-  }
-  /// Adds a world, with no tick loop. This world will be frozen, and no updates
-  /// will occur in any way.
-  pub fn add_world_no_tick_config(self: &Arc<Self>, config: WorldConfig) {
-    self.worlds.write().push(World::new(
+  pub fn new_world_config(self: &Arc<Self>, config: WorldConfig) -> World {
+    World::new(
       config,
       self.block_converter.clone(),
       self.item_converter.clone(),
@@ -741,7 +759,8 @@ impl WorldManager {
       self.plugins.clone(),
       self.commands.clone(),
       self.clone(),
-    ));
+    );
+    todo!()
   }
   /// Creates a team. Returns `None`, and does nothing, if there is already a
   /// team with the given name.

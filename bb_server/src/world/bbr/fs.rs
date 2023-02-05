@@ -2,7 +2,7 @@
 //! and `Region::load`.
 
 use super::Region;
-use crate::world::{CountedChunk, MultiChunk};
+use crate::world::CountedChunk;
 use bb_common::{
   chunk::{paletted, Section},
   flate2::{read::GzDecoder, write::GzEncoder, Compression},
@@ -53,7 +53,7 @@ impl Region {
 
   /// Overwrites all stored chunks with the file on disk, if present. If not
   /// present, this will clear all loaded chunks.
-  pub(super) fn load(&mut self) {
+  pub(super) fn load(&mut self, new_chunk: impl Fn() -> CountedChunk) {
     CACHE.with(|(region_cache, compression_cache)| {
       let mut region_cache = region_cache.borrow_mut();
       let mut compression_cache = compression_cache.borrow_mut();
@@ -85,12 +85,7 @@ impl Region {
                 }
                 1 => {
                   if self.chunks[i].is_none() {
-                    self.chunks[i] = Some(CountedChunk::new(MultiChunk::new(
-                      self.world.world_manager().clone(),
-                      true,
-                      self.world.height,
-                      self.world.min_y,
-                    )));
+                    self.chunks[i] = Some(new_chunk());
                   }
                   e.must_read_with(0, |r| ReadableChunk(self.chunks[i].as_mut().unwrap()).read(r))?;
                   Ok(())
