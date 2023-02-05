@@ -153,7 +153,7 @@ impl World {
     plugins: Arc<plugin::PluginManager>,
     commands: Arc<CommandTree>,
     wm: Arc<WorldManager>,
-  ) -> Arc<Self> {
+  ) -> Self {
     let gen = WorldGen::from_config(&config);
     /*
     for schematic in config.get::<_, Vec<String>>("schematics") {
@@ -165,7 +165,7 @@ impl World {
       .unwrap_or_else(|err| error!("could not load schematic file {}: {}", path, err));
     }
     */
-    let world = Arc::new(World {
+    World {
       regions: RegionMap::new(config.save),
       // generator: config.get("generator"),
       gen,
@@ -185,13 +185,7 @@ impl World {
       config,
       wm,
       chunks_to_load: Mutex::new(ChunksToLoad::new()),
-    });
-    if world.config().vanilla.enabled {
-      world.load_from_disk(&std::path::PathBuf::new().join(&world.config().vanilla.path)).unwrap();
     }
-    // Note that the world is not initialized yet, as we want to load plugins before
-    // initializing.
-    world
   }
 
   /// Returns the config used for this world.
@@ -728,15 +722,7 @@ impl WorldManager {
     self.add_world_config(self.config().world.clone())
   }
   pub fn add_world_config(self: &Arc<Self>, config: WorldConfig) -> Arc<World> {
-    let world = World::new(
-      config,
-      self.block_converter.clone(),
-      self.item_converter.clone(),
-      self.entity_converter.clone(),
-      self.plugins.clone(),
-      self.commands.clone(),
-      self.clone(),
-    );
+    let world = Arc::new(self.new_world_config(config));
     let w = Arc::clone(&world);
     thread::spawn(move || {
       w.global_tick_loop();
@@ -748,8 +734,8 @@ impl WorldManager {
   /// Creates a new world, and does nothing with it. This world doesn't have a
   /// tick loop running yet.
   pub fn new_world(self: &Arc<Self>) -> World { self.new_world_config(self.config().world.clone()) }
-  /// Adds a world, with no tick loop. This world will be frozen, and no updates
-  /// will occur in any way.
+  /// Creates a new world, and does nothing with it. This world doesn't have a
+  /// tick loop running yet.
   pub fn new_world_config(self: &Arc<Self>, config: WorldConfig) -> World {
     World::new(
       config,
@@ -759,8 +745,7 @@ impl WorldManager {
       self.plugins.clone(),
       self.commands.clone(),
       self.clone(),
-    );
-    todo!()
+    )
   }
   /// Creates a team. Returns `None`, and does nothing, if there is already a
   /// team with the given name.

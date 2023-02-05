@@ -13,7 +13,11 @@ use bb_common::{
 use std::sync::Arc;
 
 impl World {
-  pub fn init(&self) {
+  pub fn init(self: &Arc<World>) {
+    if self.config().vanilla.enabled {
+      self.load_from_disk(&std::path::PathBuf::new().join(&self.config().vanilla.path)).unwrap();
+    }
+
     let mut c = Command::new("say");
     c.add_arg("text", Parser::String(StringType::Greedy));
     self.commands().add(c, |world, _, args| {
