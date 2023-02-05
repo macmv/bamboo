@@ -48,12 +48,14 @@ pub struct Collector {
 
 impl Collector {
   #[allow(clippy::new_without_default)]
-  pub fn new() -> Self {
+  pub fn new() -> Self { Collector::new_at("../data-config.toml", "../data-config-example.toml") }
+
+  pub fn new_at(data_path: &str, data_example_path: &str) -> Self {
     #[cfg(not(test))]
     let out = PathBuf::new().join(&std::env::var("OUT_DIR").expect("could not get out dir"));
     #[cfg(test)]
     let out = PathBuf::new();
-    Collector { dl: Downloader::new(), out }
+    Collector { dl: Downloader::new(data_path, data_example_path), out }
   }
 
   pub fn generate_blocks(&self, opts: BlockOpts) { block::generate(self, opts).unwrap(); }

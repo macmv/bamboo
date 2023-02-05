@@ -26,15 +26,15 @@ pub struct Downloader {
 }
 
 impl Downloader {
-  pub fn new() -> Self {
+  pub fn new(data_path: &str, data_example_path: &str) -> Self {
     // Our current directory is within the project we are building for (for example,
     // we would be inside the `bb_server` directory if compiling for `bb_server`).
     // The config is outside that, so we prefix with `../`.
-    println!("cargo:rerun-if-changed=../data-config.toml");
-    let config: Config = if Path::new("../data-config.toml").exists() {
-      toml::from_str(&fs::read_to_string("../data-config.toml").unwrap()).unwrap()
+    println!("cargo:rerun-if-changed={data_path}");
+    let config: Config = if Path::new(data_path).exists() {
+      toml::from_str(&fs::read_to_string(data_path).unwrap()).unwrap()
     } else {
-      toml::from_str(&fs::read_to_string("../data-config-example.toml").unwrap()).unwrap()
+      toml::from_str(&fs::read_to_string(data_example_path).unwrap()).unwrap()
     };
     let mut buf = vec![];
     match config.sources {
