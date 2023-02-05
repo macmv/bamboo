@@ -722,8 +722,9 @@ impl WorldManager {
     self.worlds.write().push(world);
     w2
   }
-  #[cfg(test)]
-  pub(crate) fn add_world_no_tick(self: &Arc<Self>) {
+  /// Adds a world, with no tick loop. This world will be frozen, and no updates
+  /// will occur in any way.
+  pub fn add_world_no_tick(self: &Arc<Self>) {
     self.worlds.write().push(World::new(
       self.block_converter.clone(),
       self.item_converter.clone(),
