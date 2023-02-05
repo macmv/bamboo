@@ -84,22 +84,21 @@ use gen::WorldGen;
 /// This also contains a bunch of references to other server stuff, such as
 /// [block]/[item]/[entity] type converters, and the [`WorldManager`].
 pub struct World {
-  regions:          RegionMap,
-  // generator:        String,
-  gen:              WorldGen,
-  players:          RwLock<PlayersMap>,
-  entities:         RwLock<EntitiesMap>,
-  eid:              AtomicI32,
-  block_converter:  Arc<block::TypeConverter>,
-  item_converter:   Arc<item::TypeConverter>,
-  entity_converter: Arc<entity::TypeConverter>,
-  plugins:          Arc<plugin::PluginManager>,
-  commands:         Arc<CommandTree>,
-  uspt:             Arc<AtomicU32>,
-  wm:               Arc<WorldManager>,
-  config:           WorldConfig,
+  pub regions:          RegionMap,
+  pub gen:              WorldGen,
+  pub players:          RwLock<PlayersMap>,
+  pub entities:         RwLock<EntitiesMap>,
+  eid:                  AtomicI32,
+  pub block_converter:  Arc<block::TypeConverter>,
+  pub item_converter:   Arc<item::TypeConverter>,
+  pub entity_converter: Arc<entity::TypeConverter>,
+  pub plugins:          Arc<plugin::PluginManager>,
+  pub commands:         Arc<CommandTree>,
+  pub uspt:             Arc<AtomicU32>,
+  pub wm:               Arc<WorldManager>,
+  pub config:           WorldConfig,
   // If set, then the world cannot be modified.
-  locked:           AtomicBool,
+  pub locked:           AtomicBool,
 
   chunks_to_load: Mutex<ChunksToLoad>,
 
