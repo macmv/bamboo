@@ -30,9 +30,7 @@ use rand::rngs::OsRng;
 use rsa::RSAPrivateKey;
 use std::{collections::HashMap, io, net::SocketAddr, sync::Arc};
 
-use crate::{
-  conn::Conn, packet::TypeConverter, stream::java::stream::JavaStream, Error::BungeecordError,
-};
+use crate::{conn::Conn, packet::TypeConverter, stream::java::stream::JavaStream};
 
 pub fn load_icon(path: &str) -> String {
   let mut icon = match image::open(path).map_err(|e| error!("error loading icon: {}", e)) {
@@ -131,7 +129,7 @@ impl Proxy {
   /// Creates a proxy from the given config.
   pub fn from_config(config: Config) -> Result<Self> {
     if config.encryption && config.forwarding != config::Forwarding::None {
-      return Err(BungeecordError { msg: "cannot receive with encryption enabled" });
+      return Err(Error::Bungeecord("cannot enable forwarding and encryption"));
     }
 
     Ok(

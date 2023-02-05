@@ -19,9 +19,8 @@ pub enum Error {
     pos: usize,
     sb:  bool,
   },
-  BungeecordError {
-    msg: &'static str,
-  },
+  // TODO: Find docs on this horrible format and make this less bad
+  Bungeecord(&'static str),
 }
 
 pub type Result<T> = std::result::Result<T, Error>;
@@ -44,8 +43,8 @@ impl fmt::Display for Error {
           if *sb { sb::tcp_name(*id, *ver) } else { cb::tcp_name(*id, *ver) },
         )
       }
-      Self::BungeecordError { msg } => {
-        write!(f, "bungeecord error {msg}",)
+      Self::Bungeecord(msg) => {
+        write!(f, "bungeecord error: {msg}",)
       }
     }
   }

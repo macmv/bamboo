@@ -3,7 +3,7 @@ use crate::{
   gnet::{cb as gcb, sb as gsb, tcp},
   packet::{FromTcp, ToTcp, TypeConverter},
   stream::PacketStream,
-  Result,
+  Error, Result,
 };
 use bb_common::{
   math,
@@ -25,6 +25,7 @@ use std::{
   fmt, io,
   io::{ErrorKind, Read, Write},
   net::SocketAddr,
+  str::FromStr,
   sync::Arc,
 };
 
@@ -557,44 +558,26 @@ impl<'a, S: PacketStream + Send + Sync> Conn<'a, S> {
 
   /// Parse BungeeCord's player info from address string
   fn read_bungeecord_info(&self, addr: &str) -> Result<LoginInfo> {
-    let _ = addr;
-    // FIXME: implement
-    /*
     let mut id = None;
     let mut properties = None;
 
-    let mut i = 0;
-    let sections = addr.split('\0').collect::<Vec<&str>>();
-    for v in addr.split('\0') {
+    for (i, section) in addr.split('\0').enumerate() {
       match i {
-        2 => {
-          id = match UUID::from_str(v) {
-            Ok(id) => Some(id),
-            Err(_) => return Err(BungeecordError { msg: "when parsing uuid" }),
-          }
-        }
+        2 => id = Some(UUID::from_str(section).map_err(|_| Error::Bungeecord("invalid UUID"))?),
         3 => {
-          properties = match serde_json::from_str(v) {
-            Ok(properties) => Some(properties),
-            Err(_) => return Err(BungeecordError { msg: "when parsing properties" }),
-          }
+          properties = Some(
+            serde_json::from_str(section).map_err(|_| Error::Bungeecord("invalid properties"))?,
+          )
         }
         _ => {}
       }
-
-      i += 1;
     }
 
-    match id {
-      None => Err(BungeecordError {
-        msg: "missing uuid: make sure to connect from a proxy with bungeecord forwarding enabled",
-      }),
-      Some(v) => {
-        Ok(LoginInfo { id: v, name: "".to_string(), properties: properties.unwrap() })
-      }
+    match (id, properties) {
+      (Some(id), Some(properties)) => Ok(LoginInfo { id, name: "".to_string(), properties }),
+      // Client sent bad data, just give them some generic message.
+      _ => Err(Error::Bungeecord("invalid data")),
     }
-    */
-    todo!()
   }
 
   /// Runs the entire login process with the client. If compression is 0, then
