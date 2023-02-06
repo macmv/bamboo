@@ -62,6 +62,27 @@ impl RegionMap {
     f(region.lock())
   }
 
+  /// Fetches a region, and calls `f`. If the region doesn't exist, this will
+  /// generate an empty region.
+  pub fn region_no_load<F: FnOnce(MutexGuard<Region>) -> R, R>(&self, pos: ChunkPos, f: F) -> R {
+    let lock = self.regions.read();
+    let region_pos = RegionPos::new(pos);
+    let rlock = if !lock.contains_key(&region_pos) {
+      drop(lock);
+      let mut write = self.regions.write();
+      // If someone else got the write lock, and wrote this region, we don't
+      // want to write it twice.
+      write
+        .entry(region_pos)
+        .or_insert_with(|| Mutex::new(Region::new_no_load(region_pos, self.save)));
+      RwLockWriteGuard::downgrade(write)
+    } else {
+      lock
+    };
+    let region = rlock.get(&region_pos).unwrap();
+    f(region.lock())
+  }
+
   pub fn has_chunk(&self, pos: ChunkPos) -> bool {
     let lock = self.regions.read();
     if let Some(region) = lock.get(&RegionPos::new(pos)) {
@@ -104,12 +125,12 @@ impl RegionMap {
 }
 
 impl Region {
-  fn new(pos: RegionPos, save: bool) -> Self {
+  pub fn new_no_load(pos: RegionPos, save: bool) -> Self {
     const NONE: Option<CountedChunk> = None;
     Region { pos, chunks: Box::new([NONE; 1024]), save }
   }
   pub fn new_load(new_chunk: impl Fn() -> CountedChunk, pos: RegionPos, save: bool) -> Self {
-    let mut region = Region::new(pos, save);
+    let mut region = Region::new_no_load(pos, save);
     region.load(new_chunk);
     region
   }
@@ -117,7 +138,7 @@ impl Region {
   pub fn get(&self, pos: RegionRelPos) -> &Option<CountedChunk> {
     &self.chunks[pos.x as usize + pos.z as usize * 32]
   }
-  fn get_mut(&mut self, pos: RegionRelPos) -> &mut Option<CountedChunk> {
+  pub fn get_mut(&mut self, pos: RegionRelPos) -> &mut Option<CountedChunk> {
     &mut self.chunks[pos.x as usize + pos.z as usize * 32]
   }
   pub fn get_or_generate(
