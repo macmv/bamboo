@@ -131,7 +131,7 @@ impl Section {
   /// Returns a mutable reference to the palette of this chunk.
   ///
   /// For the chunk to be usable, this must be kept in order.
-  pub fn palette_mmut(&mut self) -> &mut [u32] { &mut self.palette }
+  pub fn palette_mut(&mut self) -> &mut [u32] { &mut self.palette }
   // Returns the number of non air blocks in this chunk. Because paletted chunks
   // track all the amounts of blocks within the chunk, this is a single Vec
   // lookup.
