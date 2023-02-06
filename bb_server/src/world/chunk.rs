@@ -76,6 +76,16 @@ impl BlockData {
     BlockData { wm, inner: Chunk::new(15), tes: HashMap::new(), height, min_y }
   }
 
+  pub fn from_data(
+    wm: Arc<WorldManager>,
+    height: u32,
+    min_y: i32,
+    inner: Chunk<PalettedSection>,
+  ) -> Self {
+    // TODO: Create tile entities for the blocks that need it
+    BlockData { wm, inner, tes: HashMap::new(), height, min_y }
+  }
+
   /// A `Type<'a>` borrows `self`, so we can't pass that into `set_type`.
   /// Therefore, we use this inner function to avoid allocating a `TypeStore` in
   /// `set_kind`.
@@ -127,6 +137,22 @@ impl MultiChunk {
   pub fn new(wm: Arc<WorldManager>, sky: bool, height: u32, min_y: i32) -> MultiChunk {
     MultiChunk {
       block:        BlockData::new(wm, height, min_y),
+      sky_light:    if sky { Some(SkyLightChunk::new()) } else { None },
+      block_light:  BlockLightChunk::new(),
+      update_light: true,
+    }
+  }
+
+  /// Creates a chunk from the given raw chunk data.
+  pub fn from_data(
+    wm: Arc<WorldManager>,
+    sky: bool,
+    height: u32,
+    min_y: i32,
+    chunk: Chunk<PalettedSection>,
+  ) -> MultiChunk {
+    MultiChunk {
+      block:        BlockData::from_data(wm, height, min_y, chunk),
       sky_light:    if sky { Some(SkyLightChunk::new()) } else { None },
       block_light:  BlockLightChunk::new(),
       update_light: true,
