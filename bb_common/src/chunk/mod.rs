@@ -114,6 +114,10 @@ impl<S: Section> Chunk<S> {
   }
   /// Returns an iterator through all the internal chunk sections.
   pub fn sections(&self) -> impl ExactSizeIterator<Item = &Option<S>> { self.sections.iter() }
+  /// Returns an iterator through all the internal chunk sections.
+  pub fn sections_mut(&mut self) -> impl ExactSizeIterator<Item = &mut Option<S>> {
+    self.sections.iter_mut()
+  }
 
   /// Returns the section at the given index. If it doesn't exist, this will
   /// return `None`.
