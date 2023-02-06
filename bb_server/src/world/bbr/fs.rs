@@ -310,9 +310,10 @@ mod tests {
   #[test]
   fn read_write_max_bpe() {
     let wm = Arc::new(WorldManager::new(false));
-    let world = wm.add_world();
+    let world = wm.new_world();
+    let world = Arc::new(world);
     // we're testing saving, so we pass `true` to save this.
-    let region = Region::new(world.clone(), RegionPos::new(ChunkPos::new(0, 0)), true);
+    let region = Region::new(RegionPos::new(ChunkPos::new(0, 0)), true);
     for x in 0..16 {
       for y in 0..2 {
         for z in 0..16 {
@@ -333,8 +334,8 @@ mod tests {
     });
     drop(region);
     // this one only loads, so don't save it when it drops
-    let mut region = Region::new(world.clone(), RegionPos::new(ChunkPos::new(0, 0)), false);
-    region.load();
+    let mut region = Region::new(RegionPos::new(ChunkPos::new(0, 0)), false);
+    region.load(|| world.new_chunk());
     world.chunk(ChunkPos::new(0, 0), |c| {
       let section = c.inner().section(0).unwrap();
       assert_eq!(section.palette().len(), 0);

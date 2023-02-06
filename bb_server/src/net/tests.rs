@@ -31,7 +31,9 @@ impl TestHandler {
   pub fn new_with_init() -> Self {
     bb_common::init("test");
     let wm = Arc::new(WorldManager::new(false));
-    wm.add_world_no_tick();
+    let world = wm.new_world();
+    let world = wm.add_world_no_tick(world);
+    world.init();
     let poll = mio::Poll::new().unwrap();
     let (rx, wake_rx, sender) = ConnSender::mock(&poll);
     let info = JoinInfo {

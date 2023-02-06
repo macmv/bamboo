@@ -717,7 +717,7 @@ impl WorldManager {
   /// blocking call.
   pub fn run(self: Arc<Self>) { self.global_tick_loop(); }
 
-  /// Adds a new world.
+  /// Adds a new world. This will spawn a tick loop for this world.
   pub fn add_world(self: &Arc<Self>, world: World) -> Arc<World> {
     let world = Arc::new(world);
     let w = Arc::clone(&world);
@@ -727,6 +727,12 @@ impl WorldManager {
     let w2 = Arc::clone(&world);
     self.worlds.write().push(world);
     w2
+  }
+  /// Adds a new world, without spawning a tick loop.
+  pub fn add_world_no_tick(self: &Arc<Self>, world: World) -> Arc<World> {
+    let world = Arc::new(world);
+    self.worlds.write().push(Arc::clone(&world));
+    world
   }
   /// Creates a new world, and does nothing with it. This world doesn't have a
   /// tick loop running yet.
