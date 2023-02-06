@@ -362,6 +362,9 @@ impl World {
   /// things like what players are all online.
   pub fn world_manager(&self) -> &Arc<WorldManager> { &self.wm }
 
+  pub fn height(&self) -> u32 { self.height }
+  pub fn min_y(&self) -> i32 { self.min_y }
+
   /// Generates a chunk for the given chunk position. This will not store the
   /// chunk, or even look in the chunks table at all. It should be used if you
   /// have a list of chunks to generate, and you would like to generate them in
