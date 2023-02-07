@@ -548,7 +548,7 @@ impl fmt::Display for ValueInner {
     match self {
       Self::String(v) => write!(f, "\"{v}\""),
       Self::Integer(v) => write!(f, "{v}"),
-      Self::Float(v) => write!(f, "{v}"),
+      Self::Float(v) => write!(f, "{v:?}"),
       Self::Boolean(v) => write!(f, "{v}"),
       Self::Array(v) => {
         write!(f, "[{}]", v.iter().map(|v| v.to_string()).collect::<Vec<String>>().join(", "))
@@ -616,20 +616,28 @@ impl ValueInner {
     match self {
       Self::String(v) => write!(w, "\"{v}\""),
       Self::Integer(v) => write!(w, "{v}"),
-      Self::Float(v) => write!(w, "{v}"),
+      Self::Float(v) => write!(w, "{v:?}"),
       Self::Boolean(v) => write!(w, "{v}"),
       Self::Array(v) => {
         write!(w, "[{}]", v.iter().map(|v| v.to_string()).collect::<Vec<String>>().join(", "))
       }
-      Self::Table(v) => {
-        for (k, v) in v {
+      Self::Table(table) => {
+        for (i, (k, v)) in table.iter().enumerate() {
           match &v.value {
-            Self::Table(_) => {
+            // long table
+            Self::Table(_) if table.get_index(i + 1).map(|v| v.1.is_table()).unwrap_or(true) => {
               w.path.push(k.clone());
               v.write_comments(w)?;
               w.write_table_start()?;
               v.write_toml(w)?;
               w.path.pop();
+            }
+            // short table
+            Self::Table(_) => {
+              v.write_comments(w)?;
+              write!(w, "{k} = ")?;
+              std::fmt::write(w, format_args!("{}", v.value))?;
+              writeln!(w)?;
             }
             _ => {
               v.write_comments(w)?;

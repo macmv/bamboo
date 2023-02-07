@@ -154,6 +154,7 @@ fn write_value() {
     .join("\n"),
   );
 
+  // writes nested objects
   let value = Value::new(
     0,
     indexmap! {
@@ -187,6 +188,33 @@ fn write_value() {
 
     [blah]
     c = "hello!"
+    "#
+    .lines()
+    .skip(1)
+    .map(|line| line.trim())
+    .collect::<Vec<&str>>()
+    .join("\n"),
+  );
+
+  // writes nested objects at the top level
+  let value = Value::new(
+    0,
+    indexmap! {
+      "foo".into() => Value::new(0, 3),
+      "options".into() => Value::new(0, indexmap! {
+        "baz".into() => Value::new(0, 2),
+        "other".into() => Value::new(0, 100),
+      }),
+      "bar".into() => Value::new(0, 4),
+    },
+  );
+
+  assert_eq!(
+    value.to_toml(),
+    r#"
+    foo = 3
+    options = { baz = 2, other = 100 }
+    bar = 4
     "#
     .lines()
     .skip(1)
