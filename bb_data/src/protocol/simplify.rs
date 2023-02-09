@@ -197,7 +197,7 @@ fn simplify_expr_overwrite(expr: &mut Expr) -> (bool, Option<Instr>) {
   fn simplify(expr: &mut Expr) -> (bool, Option<Instr>) {
     expr.ops.extend(simplify_val(&mut expr.initial));
     let len = expr.ops.len();
-    let old_ops = mem::replace(&mut expr.ops, Vec::with_capacity(len));
+    let old_ops = std::mem::replace(&mut expr.ops, Vec::with_capacity(len));
     for op in old_ops {
       let mut new_op = Some(op);
       let (skip, extra_ops) = simplify_op(&mut new_op);
@@ -240,10 +240,10 @@ fn simplify_expr_overwrite(expr: &mut Expr) -> (bool, Option<Instr>) {
           None => return (true, None),
         };
         let mut arr = vec![instr];
-        return if simplify_instr(&mut arr).is_some() {
-          (true, None)
+        if simplify_instr(&mut arr).is_some() {
+          return (true, None);
         } else {
-          (false, Some(arr.pop().unwrap()))
+          return (false, Some(arr.pop().unwrap()));
         }
       }
       _ => simplify(expr),

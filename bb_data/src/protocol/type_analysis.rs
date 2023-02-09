@@ -379,7 +379,7 @@ impl<'a> ReaderTypes<'a> {
               match lhs.ops.get(0) {
                 // `if v_2 & 1 != 0 {}`
                 Some(Op::BitAnd(and)) => {
-                  assert_eq!(rhs.clone().unwrap_int(), 0);
+                  assert!(rhs.clone().unwrap_int() == 0);
                   assert!(and.clone().unwrap_int() > 0);
                   if let Some(var) = initial_var {
                     writer.push(Instr::Let(var, Expr::new(Value::Lit(Lit::Int(0)))));
@@ -400,7 +400,7 @@ impl<'a> ReaderTypes<'a> {
                 }
                 // `if p.read_i32() != 0 {}`
                 Some(Op::Call(..)) => {
-                  assert_eq!(rhs.clone().unwrap_int(), 0);
+                  assert!(rhs.clone().unwrap_int() == 0);
                   writer.push(
                     self
                       .set_expr(
@@ -416,7 +416,7 @@ impl<'a> ReaderTypes<'a> {
                 }
                 // `if v_2 != 0 {}`
                 None => {
-                  assert_eq!(rhs.clone().unwrap_int(), 0);
+                  assert!(rhs.clone().unwrap_int() == 0);
                   if let Some(var) = initial_var {
                     writer.push(Instr::Let(var, Expr::new(Value::Lit(Lit::Int(0)))));
                   }

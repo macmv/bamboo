@@ -436,14 +436,14 @@ impl Player {
   // Returns the player's eyesight offset in the Y axis. This depends on the
   // player's client version and whether the player is crouching.
   pub fn view_offset(&self) -> f64 {
-    return if self.is_crouching() {
+    if self.is_crouching() {
       if self.ver >= ProtocolVersion::V1_14 {
-        1.27
+        return 1.27;
       } else {
-        1.54
+        return 1.54;
       }
     } else {
-      1.62
+      return 1.62;
     }
   }
 
@@ -909,9 +909,9 @@ impl Player {
 
 impl CommandSender for &Arc<Player> {
   fn block_pos(&self) -> Option<Pos> { Some(self.as_ref().block_pos()) }
-  fn as_player(&self) -> Option<&Arc<Player>> { Some(self) }
   fn send_message(&mut self, msg: Chat) { self.as_ref().send_message(msg); }
   fn error_format(&self) -> ErrorFormat { ErrorFormat::Minecraft }
+  fn as_player(&self) -> Option<&Arc<Player>> { Some(self) }
 }
 
 #[test]

@@ -112,7 +112,7 @@ impl<'a> Iterator for KeysIter<'a> {
 }
 
 impl World {
-  pub fn entities(self: &Arc<Self>) -> EntitiesMapRef {
+  pub fn entities<'a>(self: &'a Arc<Self>) -> EntitiesMapRef<'a> {
     EntitiesMapRef { inner: self.entities.read(), world: self }
   }
 

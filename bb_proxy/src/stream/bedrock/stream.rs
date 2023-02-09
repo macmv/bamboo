@@ -1,4 +1,4 @@
- use crate::stream::{StreamReader, StreamWriter};
+use crate::stream::{StreamReader, StreamWriter};
 use ringbuf::Consumer;
 use bb_common::{net::tcp, util::Buffer, version::ProtocolVersion};
 use std::{

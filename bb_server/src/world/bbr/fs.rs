@@ -370,7 +370,7 @@ mod tests {
     }
     world.chunk(ChunkPos::new(0, 0), |c| {
       let section = c.inner().section(0).unwrap();
-      assert_eq!(section.palette().len(), 0);
+      assert!(section.palette().len() == 0);
       assert!(section.data().bpe() > 8);
     });
   }

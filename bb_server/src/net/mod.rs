@@ -287,13 +287,13 @@ impl Connection {
         }
         // If this is an EOF, then we have a partial varint, so we are done reading.
         Err(e) => {
-          return if matches!(e, ReadError::Invalid(InvalidReadError::EOF)) {
-            Ok((None, out))
+          if matches!(e, ReadError::Invalid(InvalidReadError::EOF)) {
+            return Ok((None, out));
           } else {
-            Err(io::Error::new(
+            return Err(io::Error::new(
               io::ErrorKind::InvalidData,
               format!("error reading packet id: {}", e),
-            ))
+            ));
           }
         }
       }

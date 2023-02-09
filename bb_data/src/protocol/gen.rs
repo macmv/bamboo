@@ -1090,7 +1090,7 @@ impl<'a> InstrWriter<'a> {
               Value::CallStatic(class, name, inner_args)
                 if class == "tcp::Packet" && name == "get_max_validator" =>
               {
-                assert_eq!(inner_args.len(), 2, "{:?}", args);
+                assert!(inner_args.len() == 2, "{:?}", args);
                 let len = inner_args[1].clone();
                 match &inner_args[0].initial {
                   Value::MethodRef(class, name)
