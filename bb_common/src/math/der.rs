@@ -1,4 +1,4 @@
-use rsa::{PublicKeyParts, RSAPublicKey};
+use rsa::{PublicKeyParts, RsaPrivateKey, RsaPublicKey};
 
 /// Represents an ASN.1 `BIT STRING`. Need this because the constructor is
 /// private in the asn1 crate.
@@ -29,7 +29,7 @@ impl<'a> asn1::SimpleAsn1Writable<'a> for BitString<'a> {
   }
 }
 
-pub fn decode(bytes: &[u8]) -> Option<RSAPublicKey> {
+pub fn decode(bytes: &[u8]) -> Option<RsaPublicKey> {
   let result: asn1::ParseResult<_> = asn1::parse(bytes, |d| {
     d.read_element::<asn1::Sequence>()?.parse(|d| {
       d.read_element::<asn1::Sequence>()?.parse(|d| {
@@ -56,7 +56,7 @@ pub fn decode(bytes: &[u8]) -> Option<RSAPublicKey> {
   let (n, e) = result.unwrap();
 
   Some(
-    RSAPublicKey::new(
+    RsaPublicKey::new(
       rsa::BigUint::from_bytes_be(n.as_bytes()),
       rsa::BigUint::from_bytes_be(e.as_bytes()),
     )
@@ -79,7 +79,7 @@ fn write_big_uint(w: &mut asn1::Writer, int: &rsa::BigUint) {
   w.write_element(&out);
 }
 
-pub fn encode(key: &RSAPublicKey) -> Vec<u8> {
+pub fn encode(key: &RsaPrivateKey) -> Vec<u8> {
   asn1::write(|w| {
     w.write_element(&asn1::SequenceWriter::new(&|w| {
       // A sequence containing the algorithm used.
@@ -108,12 +108,12 @@ pub fn encode(key: &RSAPublicKey) -> Vec<u8> {
 mod tests {
   use super::*;
   use rand::rngs::OsRng;
-  use rsa::RSAPrivateKey;
+  use rsa::{RsaPrivateKey};
 
   #[test]
   fn encode_decode() {
     let mut rng = OsRng;
-    let key = RSAPrivateKey::new(&mut rng, 1024).expect("failed to generate a key");
+    let key = RsaPrivateKey::new(&mut rng, 1024).expect("failed to generate a key");
 
     let bytes = encode(&key);
     let new_key = decode(&bytes).unwrap();

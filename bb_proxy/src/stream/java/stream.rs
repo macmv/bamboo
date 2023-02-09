@@ -61,6 +61,12 @@ impl JavaStream {
 }
 
 impl PacketStream for JavaStream {
+  fn enable_encryption(&mut self, secret: &[u8; 16]) {
+    self.read_cipher = Some(Cfb8::new_from_slices(secret, secret).unwrap());
+    self.write_cipher = Some(Cfb8::new_from_slices(secret, secret).unwrap());
+  }
+  fn set_compression(&mut self, compression: i32) { self.compression = compression; }
+
   fn poll(&mut self) -> Result<()> {
     let mut msg: &mut [u8] = &mut [0; 1024];
 
@@ -129,12 +135,6 @@ impl PacketStream for JavaStream {
     } else {
       Ok(Some(tcp::Packet::from_buf(vec, ver)?))
     }
-  }
-
-  fn set_compression(&mut self, compression: i32) { self.compression = compression; }
-  fn enable_encryption(&mut self, secret: &[u8; 16]) {
-    self.read_cipher = Some(Cfb8::new_from_slices(secret, secret).unwrap());
-    self.write_cipher = Some(Cfb8::new_from_slices(secret, secret).unwrap());
   }
 
   fn write(&mut self, p: tcp::Packet) {

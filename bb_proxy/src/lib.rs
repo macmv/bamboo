@@ -27,8 +27,9 @@ use mio::{
   Events, Interest, Poll, Token,
 };
 use rand::rngs::OsRng;
-use rsa::RSAPrivateKey;
+use rsa::{RsaPrivateKey};
 use std::{collections::HashMap, io, net::SocketAddr, sync::Arc};
+use base64::engine::general_purpose;
 
 use crate::{conn::Conn, packet::TypeConverter, stream::java::stream::JavaStream};
 
@@ -38,7 +39,7 @@ pub fn load_icon(path: &str) -> String {
     Err(_) => return "".into(),
   };
   icon = icon.resize_exact(64, 64, image::imageops::FilterType::Triangle);
-  let mut enc = base64::write::EncoderStringWriter::new(base64::STANDARD);
+  let mut enc = base64::write::EncoderStringWriter::new(&general_purpose::STANDARD);
   icon.write_to(&mut enc, image::ImageFormat::Png).unwrap();
   "data:image/png;base64,".to_string() + &enc.into_inner()
 }
@@ -72,7 +73,7 @@ pub fn load_config_write_default(path: &str, default: &str) -> Config {
 
 pub struct Proxy {
   icon:           Option<String>,
-  key:            Arc<RSAPrivateKey>,
+  key:            Arc<RsaPrivateKey>,
   der_key:        Option<Vec<u8>>,
   addr:           SocketAddr,
   server_addr:    Box<dyn Fn() -> SocketAddr>,
@@ -87,7 +88,7 @@ impl Proxy {
   pub fn new(addr: SocketAddr, server_addr: SocketAddr) -> Self {
     Proxy {
       icon: None,
-      key: Arc::new(RSAPrivateKey::new(&mut OsRng, 1024).expect("failed to generate a key")),
+      key: Arc::new(RsaPrivateKey::new(&mut OsRng, 1024).expect("failed to generate a key")),
       der_key: None,
       addr,
       server_addr: Box::new(move || server_addr),

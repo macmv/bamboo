@@ -2,6 +2,8 @@
 /log
 /tmp
 
+.idea
+
 *.log
 
 # a script to upload release builds to my dev server
