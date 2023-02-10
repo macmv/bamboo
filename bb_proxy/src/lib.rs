@@ -29,6 +29,8 @@ use mio::{
 use rand::rngs::OsRng;
 use rsa::{RsaPrivateKey};
 use std::{collections::HashMap, io, net::SocketAddr, sync::Arc};
+use std::io::{Cursor};
+use base64::Engine;
 use base64::engine::general_purpose;
 
 use crate::{conn::Conn, packet::TypeConverter, stream::java::stream::JavaStream};
@@ -39,9 +41,11 @@ pub fn load_icon(path: &str) -> String {
     Err(_) => return "".into(),
   };
   icon = icon.resize_exact(64, 64, image::imageops::FilterType::Triangle);
-  let mut enc = base64::write::EncoderStringWriter::new(&general_purpose::STANDARD);
-  icon.write_to(&mut enc, image::ImageFormat::Png).unwrap();
-  "data:image/png;base64,".to_string() + &enc.into_inner()
+  let mut image = Vec::new();
+  icon.write_to(&mut Cursor::new(&mut image), image::ImageFormat::Png).unwrap();
+  let mut result = "data:image/png;base64,".to_owned();
+  general_purpose::STANDARD.encode_string(image, &mut result);
+  result
 }
 
 const JAVA_LISTENER: Token = Token(0xffffffff);

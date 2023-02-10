@@ -34,7 +34,7 @@ mio = { version = "0.8.5", default-features = false, features = ["os-poll", "net
 crossbeam-channel = "0.5.1"
 
 # For icon.png
-image = { version = "0.23.14", default-features = false, features = ["png"] }
+image = { version = "0.24.5", default-features = false, features = ["png"] }
 base64 = "0.21.0"
 
 cfb8 = "0.7.1"
