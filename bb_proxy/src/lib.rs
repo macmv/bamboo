@@ -15,7 +15,6 @@ pub mod stream;
 pub use conn::{JsonPlayer, JsonPlayers, JsonStatus, JsonVersion};
 pub use error::{Error, Result};
 
-use base64::{engine::general_purpose, Engine};
 use bb_common::{
   math::der,
   util::chat::{Chat, Color},
@@ -28,8 +27,11 @@ use mio::{
   Events, Interest, Poll, Token,
 };
 use rand::rngs::OsRng;
-use rsa::RsaPrivateKey;
-use std::{collections::HashMap, io, io::Cursor, net::SocketAddr, sync::Arc};
+use rsa::{RsaPrivateKey};
+use std::{collections::HashMap, io, net::SocketAddr, sync::Arc};
+use std::io::{Cursor};
+use base64::Engine;
+use base64::engine::general_purpose;
 
 use crate::{conn::Conn, packet::TypeConverter, stream::java::stream::JavaStream};
 

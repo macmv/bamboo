@@ -108,7 +108,7 @@ pub fn encode(key: &RsaPrivateKey) -> Vec<u8> {
 mod tests {
   use super::*;
   use rand::rngs::OsRng;
-  use rsa::RsaPrivateKey;
+  use rsa::{RsaPrivateKey};
 
   #[test]
   fn encode_decode() {
