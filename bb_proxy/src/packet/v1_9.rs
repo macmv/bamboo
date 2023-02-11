@@ -7,9 +7,7 @@ pub fn chunk(chunk: ChunkWithPos, ver: ProtocolVersion, conv: &TypeConverter) ->
   let biomes = chunk.full;
   let skylight = true; // Assume overworld
 
-  let mut chunk_data = Vec::with_capacity(
-    1024 + chunk.sections.iter().flatten().count() * (19 + 16 * 16 * 16 + 16 * 16 * 16 / 2),
-  );
+  let mut chunk_data = Vec::with_capacity(1024 + chunk.sections.iter().flatten().count() * (19 + 16 * 16 * 16 + 16 * 16 * 16 / 2));
   let mut chunk_buf = Buffer::new(&mut chunk_data);
   for s in chunk.sections.iter().flatten() {
     chunk_buf.write_u8(s.data().bpe() as u8);
@@ -20,9 +18,7 @@ pub fn chunk(chunk: ChunkWithPos, ver: ProtocolVersion, conv: &TypeConverter) ->
     let longs = s.data().old_long_array();
     chunk_buf.write_varint(longs.len() as i32);
     chunk_buf.reserve(longs.len() * 8); // 8 bytes per long
-    chunk_buf.write_buf(unsafe {
-      std::slice::from_raw_parts(longs.as_ptr() as *const u8, longs.len() * 8)
-    });
+    chunk_buf.write_buf(unsafe { std::slice::from_raw_parts(longs.as_ptr() as *const u8, longs.len() * 8) });
     // Light data
     chunk_buf.reserve(16 * 16 * 16 / 2);
     for _ in 0..16 * 16 * 16 / 2 {
@@ -61,5 +57,5 @@ pub fn chunk(chunk: ChunkWithPos, ver: ProtocolVersion, conv: &TypeConverter) ->
     unknown:            data,
     v_2:                0,
   }
-  .into()
+      .into()
 }
