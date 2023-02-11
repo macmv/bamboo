@@ -24,12 +24,7 @@ pub fn chunk(chunk: ChunkWithPos, conv: &TypeConverter) -> Packet {
   let mut chunk_data = vec![0; data_len + 2 + 5];
   let mut chunk_buf = Buffer::new(&mut chunk_data);
 
-  if actual_sections == 0 {
-    // Only the first bit set.
-    chunk_buf.write_u16(1);
-  } else {
-    chunk_buf.write_u16(chunk.old_bit_map());
-  }
+  chunk_buf.write_u16(if actual_sections == 0 { 1 } else { chunk.old_bit_map() });
   chunk_buf.write_varint(data_len.try_into().unwrap());
   let prefix_len = chunk_buf.index();
 
@@ -73,9 +68,7 @@ pub fn chunk(chunk: ChunkWithPos, conv: &TypeConverter) -> Packet {
   }
   // This is going to pop at most 4 elements.
   let len = chunk_buf.index();
-  while chunk_data.len() > len {
-    chunk_data.pop();
-  }
+  chunk_data.truncate(len);
   assert_eq!(chunk_data.len() - prefix_len, data_len, "unexpected chunk data len");
 
   Packet::ChunkData(packet::ChunkData::V8(packet::ChunkDataV8 {
