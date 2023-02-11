@@ -71,7 +71,14 @@ impl ChunkWithPos {
   /// sends all chunks, with a special "empty section" format, which only takes
   /// a few bytes.
   pub fn old_bit_map(&self) -> u16 {
-    self.packet.sections.iter().enumerate().filter(|(_, section)| section.is_some()).map(|(y, _)| 1 << y).sum()
+    self
+      .packet
+      .sections
+      .iter()
+      .enumerate()
+      .filter(|(_, section)| section.is_some())
+      .map(|(y, _)| 1 << y)
+      .sum()
   }
 }
 
