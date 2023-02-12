@@ -1,4 +1,4 @@
-use rsa::{PublicKeyParts, RsaPrivateKey, RsaPublicKey};
+use rsa::{PublicKeyParts, RsaPublicKey};
 
 /// Represents an ASN.1 `BIT STRING`. Need this because the constructor is
 /// private in the asn1 crate.

@@ -7,7 +7,7 @@ pub fn chunk(chunk: ChunkWithPos, ver: ProtocolVersion, conv: &TypeConverter) ->
   let biomes = chunk.full;
   let skylight = true; // Assume overworld
 
-  let mut base = 16 * 16 / 2;
+  let base = 16 * 16 / 2;
   let mut chunk_data = Vec::with_capacity(
     1024 + chunk.sections.iter().flatten().count() * (19 + 16 * 16 * 16 + 16 * base),
   );
