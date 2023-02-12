@@ -85,10 +85,10 @@ impl ConnStream {
           rng.fill(&mut secret);
 
           let enc_secret = key
-            .encrypt(&mut rng, rsa::PaddingScheme::PKCS1v15Encrypt, &secret)
+            .encrypt(&mut rng, rsa::Pkcs1v15Encrypt, &secret)
             .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e.to_string()))?;
           let enc_token = key
-            .encrypt(&mut rng, rsa::PaddingScheme::PKCS1v15Encrypt, &token)
+            .encrypt(&mut rng, rsa::Pkcs1v15Encrypt, &token)
             .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e.to_string()))?;
 
           let mut out = tcp::Packet::new(1, ProtocolVersion::V1_8);

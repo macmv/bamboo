@@ -16,7 +16,7 @@ use bb_transfer::{
 };
 use mio::{net::TcpStream, Interest, Registry, Token};
 use rand::{rngs::OsRng, RngCore};
-use rsa::{padding::PaddingScheme, RsaPrivateKey};
+use rsa::RsaPrivateKey;
 use serde::{Deserialize, Serialize};
 use sha1::{Digest, Sha1};
 use std::{
@@ -746,11 +746,11 @@ impl<'a, S: PacketStream + Send + Sync> Conn<'a, S> {
             let received_token = p.read_buf(len.try_into().unwrap())?;
 
             let decrypted_secret =
-              self.key.decrypt(PaddingScheme::PKCS1v15Encrypt, &received_secret).map_err(|e| {
+              self.key.decrypt(rsa::Pkcs1v15Encrypt, &received_secret).map_err(|e| {
                 io::Error::new(ErrorKind::InvalidInput, format!("unable to decrypt secret: {}", e))
               })?;
             let decrypted_token =
-              self.key.decrypt(PaddingScheme::PKCS1v15Encrypt, &received_token).map_err(|e| {
+              self.key.decrypt(rsa::Pkcs1v15Encrypt, &received_token).map_err(|e| {
                 io::Error::new(ErrorKind::InvalidInput, format!("unable to decrypt token: {}", e))
               })?;
 
