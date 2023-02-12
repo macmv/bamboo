@@ -21,9 +21,7 @@ pub fn chunk(chunk: ChunkWithPos, ver: ProtocolVersion, conv: &TypeConverter) ->
     let longs = s.data().old_long_array();
     chunk_buf.write_varint(longs.len() as i32);
     chunk_buf.reserve(longs.len() * 8); // 8 bytes per long
-    chunk_buf.write_buf(unsafe {
-      std::slice::from_raw_parts(longs.as_ptr() as *const u8, longs.len() * 8)
-    });
+    longs.iter().for_each(|v| chunk_buf.write_buf(&v.to_be_bytes()));
     // Light data
     chunk_buf.reserve(16 * base);
     for _ in 0..16 * 16 * 16 / 2 {

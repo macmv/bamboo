@@ -79,7 +79,7 @@ fn write_big_uint(w: &mut asn1::Writer, int: &rsa::BigUint) {
   w.write_element(&out);
 }
 
-pub fn encode(key: &RsaPrivateKey) -> Vec<u8> {
+pub fn encode(key: &RsaPublicKey) -> Vec<u8> {
   asn1::write(|w| {
     w.write_element(&asn1::SequenceWriter::new(&|w| {
       // A sequence containing the algorithm used.
