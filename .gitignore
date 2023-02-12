@@ -2,7 +2,7 @@
 /log
 /tmp
 
-.idea
+/.idea
 
 *.log
 
