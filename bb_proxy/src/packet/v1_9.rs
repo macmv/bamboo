@@ -7,8 +7,9 @@ pub fn chunk(chunk: ChunkWithPos, ver: ProtocolVersion, conv: &TypeConverter) ->
   let biomes = chunk.full;
   let skylight = true; // Assume overworld
 
+  let mut base = 16 * 16 / 2;
   let mut chunk_data = Vec::with_capacity(
-    1024 + chunk.sections.iter().flatten().count() * (19 + 16 * 16 * 16 + 16 * 16 * 16 / 2),
+    1024 + chunk.sections.iter().flatten().count() * (19 + 16 * 16 * 16 + 16 * base),
   );
   let mut chunk_buf = Buffer::new(&mut chunk_data);
   for s in chunk.sections.iter().flatten() {
@@ -24,13 +25,15 @@ pub fn chunk(chunk: ChunkWithPos, ver: ProtocolVersion, conv: &TypeConverter) ->
       std::slice::from_raw_parts(longs.as_ptr() as *const u8, longs.len() * 8)
     });
     // Light data
-    chunk_buf.reserve(16 * 16 * 16 / 2);
+    chunk_buf.reserve(16 * base);
     for _ in 0..16 * 16 * 16 / 2 {
+      // Each lighting value is 1/2 byte
       chunk_buf.write_u8(0xff);
     }
     if skylight {
-      chunk_buf.reserve(16 * 16 * 16 / 2);
+      chunk_buf.reserve(16 * base);
       for _ in 0..16 * 16 * 16 / 2 {
+        // Each lighting value is 1/2 byte
         chunk_buf.write_u8(0xff);
       }
     }

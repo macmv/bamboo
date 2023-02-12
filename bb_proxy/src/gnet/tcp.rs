@@ -469,7 +469,7 @@ impl Packet {
   pub fn write_varint_arr(&mut self, v: &[i32]) { self.write_list(v, |p, &v| p.write_varint(v)) }
 
   pub fn read_bits(&mut self) -> Result<Vec<u64>> {
-    let longs = self.read_varint()? as usize;
+    let longs = self.read_varint()?.try_into().unwrap();
     let mut out = Vec::with_capacity(longs);
     for _ in 0..longs {
       out.push(self.read_u64()?);

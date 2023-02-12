@@ -46,7 +46,7 @@ impl StreamReader for BedrockStreamReader {
     let id = self.cons.get(0).copied().unwrap_or(0);
     self.cons.discard(1);
 
-    let result = match id {
+    match id {
       // Unconnected Ping
       1 | 2 => {
         // Contains a long, MAGIC, and the client GUID
