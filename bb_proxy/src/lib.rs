@@ -16,11 +16,7 @@ pub use conn::{JsonPlayer, JsonPlayers, JsonStatus, JsonVersion};
 pub use error::{Error, Result};
 
 use base64::{engine::general_purpose, Engine};
-use bb_common::{
-  math::der,
-  util::chat::{Chat},
-  version::ProtocolVersion,
-};
+use bb_common::{math::der, util::chat::Chat, version::ProtocolVersion};
 use config::Config;
 use mio::{
   event::Event,
@@ -87,7 +83,13 @@ pub struct Proxy {
 
 impl Proxy {
   /// Creates a proxy with default settings.
-  pub fn new(addr: SocketAddr, server_addr: SocketAddr, motd: &str, max_players: i32, compression: i32) -> Self {
+  pub fn new(
+    addr: SocketAddr,
+    server_addr: SocketAddr,
+    motd: &str,
+    max_players: i32,
+    compression: i32,
+  ) -> Self {
     let motd = motd.to_owned();
     Proxy {
       icon: None,
@@ -111,7 +113,7 @@ impl Proxy {
             } as i32,
           },
           players: JsonPlayers {
-            max: max_players,
+            max:    max_players,
             online: 0,
             sample: vec![JsonPlayer {
               name: "macmv".into(),
@@ -137,7 +139,7 @@ impl Proxy {
         config.server.parse()?,
         &config.motd,
         config.max_players,
-        config.compression_thresh
+        config.compression_thresh,
       )
       .with_encryption(config.encryption)
       .with_forwarding(config.forwarding)

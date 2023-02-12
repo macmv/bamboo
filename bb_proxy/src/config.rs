@@ -23,10 +23,10 @@ pub struct Config {
   pub forwarding: Forwarding,
 
   #[default("A Bamboo Server".into())]
-  pub motd:  String,
+  pub motd: String,
 
   #[default(20)]
-  pub  max_players:        i32,
+  pub max_players:        i32,
   /// This is the packet compression threshold. Vanilla clients will perform
   /// far worse if this is turned off. Compression can be disabled by setting
   /// this to -1. The proxy will compress all packets if this is set to 0.
