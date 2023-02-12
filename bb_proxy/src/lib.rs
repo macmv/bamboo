@@ -18,7 +18,7 @@ pub use error::{Error, Result};
 use base64::{engine::general_purpose, Engine};
 use bb_common::{
   math::der,
-  util::chat::{Chat, Color},
+  util::chat::{Chat},
   version::ProtocolVersion,
 };
 use config::Config;
@@ -87,7 +87,8 @@ pub struct Proxy {
 
 impl Proxy {
   /// Creates a proxy with default settings.
-  pub fn new(addr: SocketAddr, server_addr: SocketAddr) -> Self {
+  pub fn new(addr: SocketAddr, server_addr: SocketAddr, motd: &str, max_players: i32, compression: i32) -> Self {
+    let motd = motd.to_owned();
     Proxy {
       icon: None,
       key: Arc::new(RsaPrivateKey::new(&mut OsRng, 1024).expect("failed to generate a key")),
@@ -95,16 +96,11 @@ impl Proxy {
       addr,
       server_addr: Box::new(move || server_addr),
       forwarding: config::Forwarding::default(),
-      compression: 256,
+      compression,
       conv: Arc::new(TypeConverter::new()),
-      status_builder: Arc::new(|icon, ver| {
+      status_builder: Arc::new(move |icon, ver| {
         let mut description = Chat::empty();
-        description.add("Bamboo").color(Color::BrightGreen);
-        description.add(" -- ").color(Color::Gray);
-        #[cfg(debug_assertions)]
-        description.add("Development mode").color(Color::Blue);
-        #[cfg(not(debug_assertions))]
-        description.add("Release mode").color(Color::Red);
+        description.add(&motd);
         JsonStatus {
           version: JsonVersion {
             name:     format!("1.8 - {}", ProtocolVersion::latest()),
@@ -115,8 +111,8 @@ impl Proxy {
             } as i32,
           },
           players: JsonPlayers {
-            max:    69,
-            online: 420,
+            max: max_players,
+            online: 0,
             sample: vec![JsonPlayer {
               name: "macmv".into(),
               id:   "a0ebbc8d-e0b0-4c23-a965-efba61ff0ae8".into(),
@@ -136,11 +132,17 @@ impl Proxy {
     }
 
     Ok(
-      Self::new(config.address.parse()?, config.server.parse()?)
-        .with_encryption(config.encryption)
-        .with_forwarding(config.forwarding)
-        .with_compression(config.compression_thresh)
-        .with_icon(&config.icon),
+      Self::new(
+        config.address.parse()?,
+        config.server.parse()?,
+        &config.motd,
+        config.max_players,
+        config.compression_thresh
+      )
+      .with_encryption(config.encryption)
+      .with_forwarding(config.forwarding)
+      .with_compression(config.compression_thresh)
+      .with_icon(&config.icon),
     )
   }
   /// Enables or disables encryption for this connection.
@@ -209,9 +211,10 @@ impl Proxy {
   /// Runs the proxy with the given config. This will block until the proxy
   /// disconnects.
   pub fn run(&self) -> Result<()> {
-    info!("listening for java clients on {}", self.addr);
+    info!("listening for Java clients on {}", self.addr);
     let mut listener = Listener::new(self.addr)?;
 
+    // TODO:
     // let addr = "0.0.0.0:19132";
     // info!("listening for bedrock clients on {}", addr);
     // let mut bedrock_listener = bedrock::Listener::bind(addr).await?;

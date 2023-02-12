@@ -1,0 +1,19 @@
+# Only show info logs by default.
+log-level = "INFO"
+# The Bamboo server's IP.
+server = "0.0.0.0:8483"
+# The IP of the proxy. This is the IP that all clients will connect to.
+address = "0.0.0.0:25565"
+# This enables authentication with Mojang's servers. This should only be
+# disabled if you know what you are doing.
+encryption = true
+# This is for receiving player data from another proxy such as Velocity.
+forwarding = "none"
+motd = "A Bamboo Server"
+max-players = 20
+# This is the packet compression threshold. Vanilla clients will perform
+# far worse if this is turned off. Compression can be disabled by setting
+# this to -1. The proxy will compress all packets if this is set to 0.
+compression-thresh = 256
+# The path to the icon.
+icon = "icon.png"
