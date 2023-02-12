@@ -42,18 +42,16 @@ impl StreamWriter for BedrockStreamWriter {
 impl StreamReader for BedrockStreamReader {
   fn read(&mut self, _ver: ProtocolVersion) -> io::Result<Option<tcp::Packet>> {
     info!("waiting for data...");
-    let mut id = 0;
-    self.cons.access(|a, _| {
-      id = *a.get(0).unwrap_or(&0);
-    });
+
+    let id = self.cons.get(0).copied().unwrap_or(0);
     self.cons.discard(1);
+
     match id {
       // Unconnected Ping
       1 | 2 => {
         // Contains a long, MAGIC, and the client GUID
-        let mut data = vec![0; 8 + MAGIC.len() + 8];
-        self.cons.pop_slice(&mut data);
-        let mut buf = Buffer::new(data);
+        let data = self.cons.pop_slice(8 + MAGIC.len() + 8);
+        let buf = Buffer::new(data);
 
         let time = buf.read_u64(); // time in millis
         buf.expect(MAGIC);
@@ -63,7 +61,7 @@ impl StreamReader for BedrockStreamReader {
       _ => {
         return Err(io::Error::new(ErrorKind::InvalidData, format!("Unknown packet id: {}", id)))
       }
-    }
+    };
     info!("got packet id: {}", id);
     Ok(None)
   }

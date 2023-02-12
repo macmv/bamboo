@@ -14,14 +14,14 @@ pub mod sb {
 mod other;
 pub mod tcp;
 
-pub fn clamp<T: PartialOrd + Copy, N: Into<T>>(mut a: T, min: N, max: N) -> T {
+pub fn clamp<T: PartialOrd + Copy, N: Into<T>>(a: T, min: N, max: N) -> T {
   let min = min.into();
   let max = max.into();
   if a < min {
-    a = min
+    return min;
   }
   if a > max {
-    a = max
+    return max;
   }
   a
 }

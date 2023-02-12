@@ -16,7 +16,7 @@ use bb_transfer::{
 };
 use mio::{net::TcpStream, Interest, Registry, Token};
 use rand::{rngs::OsRng, RngCore};
-use rsa::{padding::PaddingScheme, RSAPrivateKey};
+use rsa::{padding::PaddingScheme, RsaPrivateKey};
 use serde::{Deserialize, Serialize};
 use sha1::{Digest, Sha1};
 use std::{
@@ -64,7 +64,7 @@ pub struct Conn<'a, S> {
   verify_token:  [u8; 4],
 
   /// The private key. Always present, even if encryption is disabled.
-  key:                Arc<RSAPrivateKey>,
+  key:                Arc<RsaPrivateKey>,
   /// The der encoded public key. None if we don't want encryption.
   der_key:            Option<Vec<u8>>,
   /// Used in handshake. This will skip mojang auth and use a bungee-cord
@@ -172,7 +172,7 @@ impl<'a, S: PacketStream + Send + Sync> Conn<'a, S> {
   pub fn new(
     client_stream: S,
     addr: SocketAddr,
-    key: Arc<RSAPrivateKey>,
+    key: Arc<RsaPrivateKey>,
     der_key: Option<Vec<u8>>,
     server_token: Token,
     conv: Arc<TypeConverter>,

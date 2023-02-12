@@ -15,6 +15,7 @@ pub mod stream;
 pub use conn::{JsonPlayer, JsonPlayers, JsonStatus, JsonVersion};
 pub use error::{Error, Result};
 
+use base64::{engine::general_purpose, Engine};
 use bb_common::{
   math::der,
   util::chat::{Chat, Color},
@@ -27,8 +28,8 @@ use mio::{
   Events, Interest, Poll, Token,
 };
 use rand::rngs::OsRng;
-use rsa::RSAPrivateKey;
-use std::{collections::HashMap, io, net::SocketAddr, sync::Arc};
+use rsa::RsaPrivateKey;
+use std::{collections::HashMap, io, io::Cursor, net::SocketAddr, sync::Arc};
 
 use crate::{conn::Conn, packet::TypeConverter, stream::java::stream::JavaStream};
 
@@ -38,9 +39,11 @@ pub fn load_icon(path: &str) -> String {
     Err(_) => return "".into(),
   };
   icon = icon.resize_exact(64, 64, image::imageops::FilterType::Triangle);
-  let mut enc = base64::write::EncoderStringWriter::new(base64::STANDARD);
-  icon.write_to(&mut enc, image::ImageFormat::Png).unwrap();
-  "data:image/png;base64,".to_string() + &enc.into_inner()
+  let mut image = Vec::new();
+  icon.write_to(&mut Cursor::new(&mut image), image::ImageFormat::Png).unwrap();
+  let mut result = "data:image/png;base64,".to_owned();
+  general_purpose::STANDARD.encode_string(image, &mut result);
+  result
 }
 
 const JAVA_LISTENER: Token = Token(0xffffffff);
@@ -72,7 +75,7 @@ pub fn load_config_write_default(path: &str, default: &str) -> Config {
 
 pub struct Proxy {
   icon:           Option<String>,
-  key:            Arc<RSAPrivateKey>,
+  key:            Arc<RsaPrivateKey>,
   der_key:        Option<Vec<u8>>,
   addr:           SocketAddr,
   server_addr:    Box<dyn Fn() -> SocketAddr>,
@@ -87,7 +90,7 @@ impl Proxy {
   pub fn new(addr: SocketAddr, server_addr: SocketAddr) -> Self {
     Proxy {
       icon: None,
-      key: Arc::new(RSAPrivateKey::new(&mut OsRng, 1024).expect("failed to generate a key")),
+      key: Arc::new(RsaPrivateKey::new(&mut OsRng, 1024).expect("failed to generate a key")),
       der_key: None,
       addr,
       server_addr: Box::new(move || server_addr),
