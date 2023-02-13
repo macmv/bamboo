@@ -120,6 +120,7 @@ impl Proxy {
               id:   "a0ebbc8d-e0b0-4c23-a965-efba61ff0ae8".into(),
             }],
           },
+
           description,
           favicon: icon,
         }

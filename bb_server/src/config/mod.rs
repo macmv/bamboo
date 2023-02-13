@@ -62,6 +62,10 @@ pub struct Config {
   #[default("data/".into())]
   pub data_path: String,
 
+  /// Toggle debug info in the player list.
+  #[default(true)]
+  pub debug_playerlist: bool,
+
   /// Configs for rcon. This is a protocol used by vanilla to allow a remote
   /// to execute commands on the server.
   pub rcon: RconConfig,
