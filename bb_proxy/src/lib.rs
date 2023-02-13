@@ -112,6 +112,7 @@ impl Proxy {
               ver.id()
             } as i32,
           },
+
           players: JsonPlayers {
             max:    max_players,
             online: 0,
@@ -120,6 +121,7 @@ impl Proxy {
               id:   "a0ebbc8d-e0b0-4c23-a965-efba61ff0ae8".into(),
             }],
           },
+
           description,
           favicon: icon,
         }

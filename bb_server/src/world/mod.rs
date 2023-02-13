@@ -210,7 +210,7 @@ impl World {
     let mut start = Instant::now();
     let mut needs_to_unload = false;
     loop {
-      if tick % 20 == 0 {
+      if self.wm.config.debug_playerlist && tick % 20 == 0 {
         let mut header = Chat::empty();
         let mut footer = Chat::empty();
 
@@ -232,6 +232,7 @@ impl World {
           p.send(out.clone());
         }
       }
+
       // Every 30 seconds, try to unload chunks we don't need. We do this on another
       // thread, as unloading chunks is expensive. If the chunk pool is full, we just
       // try again next tick. We do all of this before `check_chunks_queue`, as this

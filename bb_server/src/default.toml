@@ -6,6 +6,9 @@ log-level = "info"
 # name (such as "Flying"), which will only log packets with that name.
 log-packets = []
 
+# Toggle debug info in player list
+debug-playerlist = true
+
 # The address the server will listen for connections on. Vanilla clients
 # cannot connect to this address! The proxy must be configured to connect
 # to this address instead.
