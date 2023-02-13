@@ -26,6 +26,7 @@ use mio::{
 use rand::rngs::OsRng;
 use rsa::RsaPrivateKey;
 use std::{collections::HashMap, io, io::Cursor, net::SocketAddr, sync::Arc};
+use clap::builder::Str;
 
 use crate::{conn::Conn, packet::TypeConverter, stream::java::stream::JavaStream};
 
@@ -79,6 +80,7 @@ pub struct Proxy {
   compression:    i32,
   conv:           Arc<TypeConverter>,
   status_builder: Arc<dyn for<'a> Fn(&'a str, ProtocolVersion) -> JsonStatus<'a>>,
+  motd: String
 }
 
 impl Proxy {
@@ -86,7 +88,6 @@ impl Proxy {
   pub fn new(
     addr: SocketAddr,
     server_addr: SocketAddr,
-    motd: &str,
     max_players: i32,
     compression: i32,
   ) -> Self {
@@ -116,16 +117,14 @@ impl Proxy {
           players: JsonPlayers {
             max:    max_players,
             online: 0,
-            sample: vec![JsonPlayer {
-              name: "macmv".into(),
-              id:   "a0ebbc8d-e0b0-4c23-a965-efba61ff0ae8".into(),
-            }],
+            sample: vec![]
           },
 
           description,
           favicon: icon,
         }
       }),
+      motd: String::from("")
     }
     .with_encryption(true)
   }
@@ -139,7 +138,6 @@ impl Proxy {
       Self::new(
         config.address.parse()?,
         config.server.parse()?,
-        &config.motd,
         config.max_players,
         config.compression_thresh,
       )
@@ -158,6 +156,12 @@ impl Proxy {
     }
     self
   }
+
+  pub fn with_motd(mut self, motd: String) -> Self {
+    self.motd = motd;
+    self
+  }
+
   /// Sets the player info forwarding mode for this connection
   pub fn with_forwarding(mut self, forwarding: config::Forwarding) -> Self {
     self.forwarding = forwarding;
