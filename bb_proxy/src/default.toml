@@ -6,8 +6,9 @@ server = "0.0.0.0:8483"
 # The IP of the proxy. This is the IP that all clients will connect to.
 address = "0.0.0.0:25565"
 
-# This enables authentication with Mojang's servers. This should only be
-# disabled if you know what you are doing.
+# This enables authentication with Mojang's servers.
+# This has an impact on performance, but prevents hackers from stealing sessions and pretending to be other players.
+# This should only be disabled if you know what you are doing.
 encryption = true
 
 # This is for receiving player data from another proxy such as Velocity.
@@ -19,6 +20,11 @@ encryption = true
 #             This should only be used if you know what you are doing.
 forwarding = "NONE"
 
+motd = "A Bamboo Server"
+
+# TODO: Maybe This should be only in Servers
+max_players = 20
+
 # This is the packet compression threshold. Vanilla clients will perform
 # far worse if this is turned off. Compression can be disabled by setting
 # this to -1. The proxy will compress all packets if this is set to 0.
@@ -26,3 +32,6 @@ compression-thresh = 256
 
 # The path to the icon.
 icon = "icon.png"
+
+[bedrock]
+address = "0.0.0.0:19132"
