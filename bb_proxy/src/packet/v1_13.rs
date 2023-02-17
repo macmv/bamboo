@@ -19,7 +19,10 @@ pub fn chunk(
   let biomes = true; // Always true with new chunk set
   let skylight = true; // Assume overworld
 
-  let mut chunk_data = Buffer::new(vec![]);
+  let chunk_data_len = 1 + (3 + 16 * 16 * 16 / 2) * sections.len();
+  let biomes_len = if biomes { 256 * 4 } else { 0 };
+
+  let mut chunk_data = Buffer::with_capacity(chunk_data_len + biomes_len);
   // Iterates through chunks in order, from ground up. Flatten removes None
   // sections.
   for s in sections {
@@ -32,7 +35,7 @@ pub fn chunk(
     }
     let longs = s.data().long_array();
     chunk_data.write_varint(longs.len() as i32);
-    longs.iter().for_each(|v| chunk_data.write_buf(&v.to_be_bytes()));
+    chunk_data.write_buf(&longs.to_be_bytes());
     // Light data
     for _ in 0..16 * 16 * 16 / 2 {
       // Each lighting value is 1/2 byte
@@ -52,9 +55,10 @@ pub fn chunk(
     }
   }
 
-  let mut data = Buffer::new(Vec::with_capacity(chunk_data.len()));
+  let mut data = Buffer::with_capacity(chunk_data.len() + 5);
   data.write_varint(chunk_data.len() as i32);
   data.write_buf(&chunk_data.into_inner());
+
   Packet::ChunkDataV14 {
     x:                                     pos.x(),
     z:                                     pos.z(),
