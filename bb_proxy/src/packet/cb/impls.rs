@@ -1440,23 +1440,29 @@ to_tcp!(WindowOpen => (self, conn, ver) {
   }
 });
 to_tcp!(WindowItems => (self, conn, ver) {
+ let mut buf = tcp::Packet::from_buf_id(vec![], 0, ver);
+  let len = self.items.len() as i32;
+  let held = self.held;
+
+  buf.write_varint(len);
+  for mut it in self.items {
+    conn.conv().item(&mut it, ver.block());
+    buf.write_item(&it, conn.conv());
+  }
+
   if ver >= ProtocolVersion::V1_17_1 {
-    let mut buf = tcp::Packet::from_buf_id(vec![], 0, ver);
-    buf.write_varint(self.items.len() as i32);
-    for mut it in self.items {
-      conn.conv().item(&mut it, ver.block());
-      buf.write_item(&it, conn.conv());
-    }
-    buf.write_item(&self.held, conn.conv());
-    gpacket!(WindowItems V17 { sync_id: self.wid.into(), revision: 0, unknown: buf.serialize() })
+    buf.write_item(&held, conn.conv());
+    gpacket!(WindowItems V17 {
+      sync_id: self.wid.into(),
+      revision: 0,
+      unknown: buf.serialize()
+    })
   } else {
-    let mut buf = tcp::Packet::from_buf_id(vec![], 0, ver);
-    buf.write_i16(self.items.len() as i16);
-    for mut it in self.items {
-      conn.conv().item(&mut it, ver.block());
-      buf.write_item(&it, conn.conv());
-    }
-    gpacket!(WindowItems V8 { window_id: self.wid.into(), unknown: buf.serialize(), v_2: 0 })
+    gpacket!(WindowItems V8 {
+      window_id: self.wid.into(),
+      unknown: buf.serialize(),
+      v_2: 0
+    })
   }
 });
 to_tcp!(WindowItem => (mut self, conn, ver) {
