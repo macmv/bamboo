@@ -159,7 +159,25 @@ pub fn define_ty(_: TokenStream, input: TokenStream) -> TokenStream {
   let panda_path = block.info.at(&["panda", "path"]).get_str();
   let panda_map_key =
     block.info.get(&["panda", "map_key"]).and_then(|v| v.as_bool()).unwrap_or(false);
+  let wrapped = block.info.get(&["wrap"]).map(|v| {
+    let wrapped = v.get_type();
+    quote!(
+      #[derive(Clone, Debug)]
+      #[cfg_attr(feature = "python_plugins", ::pyo3::pyclass)]
+      pub struct #ty {
+        inner: #wrapped
+      }
+
+      impl From<#wrapped> for #ty {
+        fn from(v: #wrapped) -> Self {
+          Self { inner: v }
+        }
+      }
+    )
+  });
   let out = quote!(
+    #wrapped
+
     #( #meta )*
     #[cfg(feature = "panda_plugins")]
     #[::panda::define_ty(path = #panda_path, map_key = #panda_map_key)]
