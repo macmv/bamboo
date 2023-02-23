@@ -1,4 +1,9 @@
-use super::{types::Callback, CallError, PluginImpl, ServerMessage};
+use super::{
+  panda::PandaPlugin,
+  types::{Callback, Callback as BCallback},
+  Bamboo, CallError, GlobalEvent, PlayerEvent, PlayerRequest, PluginImpl, PluginManager,
+  PluginReply,
+};
 use crossbeam_channel::{Receiver, Sender};
 use panda::runtime::RuntimeError;
 use pyo3::{exceptions, prelude::*};
@@ -15,7 +20,7 @@ impl Callback for PyObject {
 }
 
 pub struct Plugin {
-  tx: Sender<ServerMessage>,
+  tx: Sender<()>,
 }
 
 struct PyFuncs {
@@ -39,7 +44,8 @@ impl Plugin {
           return;
         }
       };
-      while let Ok(e) = rx.recv() {
+      while let Ok(()) = rx.recv() {
+        /*
         match match e {
           ServerMessage::Event { .. } => Python::with_gil::<_, PyResult<()>>(|py| {
             funcs.init.call0(py)?;
@@ -52,6 +58,7 @@ impl Plugin {
             error!("python plugin encountered error: {e}");
           }
         }
+        */
       }
     });
     Plugin { tx }
@@ -59,7 +66,18 @@ impl Plugin {
 }
 
 impl PluginImpl for Plugin {
-  fn call(&self, event: ServerMessage) -> Result<bool, CallError> {
-    self.tx.send(event).map(|_| true).map_err(CallError::no_keep)
+  fn call_global(&self, ev: GlobalEvent) -> Result<(), CallError> {
+    self.tx.send(()).map_err(CallError::no_keep)?;
+    Ok(())
   }
+  fn call(&self, ev: PlayerEvent) -> Result<(), CallError> {
+    self.tx.send(()).map_err(CallError::no_keep)?;
+    Ok(())
+  }
+  fn req(&self, req: PlayerRequest) -> Result<PluginReply, CallError> {
+    todo!()
+    // Ok(PluginReply::Cancel { allow: self.req(req.name(),
+    // vec![req.into_panda()]) })
+  }
+  fn panda(&mut self) -> Option<&mut PandaPlugin> { None }
 }

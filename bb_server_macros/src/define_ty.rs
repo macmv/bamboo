@@ -269,13 +269,15 @@ fn python_args<'a>(args: impl Iterator<Item = &'a FnArg>) -> Vec<impl quote::ToT
         match &*ty.ty {
           Type::Path(path) => match path.path.segments[0].ident.to_string().as_str() {
             "bool" | "u8" | "i8" | "u16" | "i16" | "u32" | "i32" | "u64" | "i64" | "u128"
-            | "i128" | "f32" | "f64" | "Vec" => {
+            | "i128" | "f32" | "f64" => {
               quote!(#name: #path)
             }
             // Assume this is a Box<dyn Callback>
             "Box" => quote!(#name: ::pyo3::PyObject),
             "Var" => quote!(#name: i32),
-            "Callback" => quote!(#name: Callback),
+            "Callback" => quote!(#name: ::pyo3::PyObject),
+            "Closure" => quote!(#name: ::pyo3::PyObject),
+            "Vec" => quote!(#name: Vec<::pyo3::PyObject>),
             _ => quote!(#name: #path),
           },
           Type::Reference(path) => match &*path.elem {
@@ -300,19 +302,21 @@ fn python_arg_names<'a>(args: impl Iterator<Item = &'a FnArg>) -> Vec<impl quote
         match &*ty.ty {
           Type::Path(path) => match path.path.segments[0].ident.to_string().as_str() {
             "bool" | "u8" | "i8" | "u16" | "i16" | "u32" | "i32" | "u64" | "i64" | "u128"
-            | "i128" | "f32" | "f64" | "Vec" => {
+            | "i128" | "f32" | "f64" => {
               quote!(#name)
             }
             "Box" => quote!(Box::new(#name)),
             "Var" => quote!(#name),
-            "Callback" => quote!(#name),
+            "Callback" => quote!(todo!("callbacks in python")),
+            "Closure" => quote!(todo!("closures in python")),
+            "Vec" => quote!(todo!("vecs in python")),
             // _ => abort!(ty.ty, "cannot handle type"),
             _ => quote!(#name),
           },
           Type::Reference(path) => match &*path.elem {
             Type::Path(path) => match path.path.segments[0].ident.to_string().as_str() {
               "str" => quote!(#name.as_str()),
-              _ => quote!(#name),
+              _ => quote!(&#name),
             },
             _ => abort!(ty.ty, "cannot handle type"),
           },
