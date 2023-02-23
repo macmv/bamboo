@@ -26,6 +26,9 @@ impl PBlockKind {
     panda: {
       path: "bamboo::block::Kind",
     },
+    python: {
+      class: "BlockKind",
+    },
   }
 
   /// Returns the block kind for that string. This will return an error if the
@@ -48,6 +51,9 @@ impl PBlockType {
 
     panda: {
       path: "bamboo::block::Type",
+    },
+    python: {
+      class: "BlockType",
     },
   }
 

@@ -17,6 +17,9 @@ impl PEventFlow {
     panda: {
       path: "bamboo::event::EventFlow",
     },
+    python: {
+      class: "EventFlow",
+    },
   }
 
   /// Cancells this event. This will stop the caller from contining to process

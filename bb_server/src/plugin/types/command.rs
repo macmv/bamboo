@@ -158,6 +158,9 @@ impl PCommand {
     panda: {
       path: "bamboo::command::Command",
     },
+    python: {
+      class: "Command",
+    },
   }
   /// Creates a new command. The callback must be a function, which takes 3
   /// arguments. See the example for details.
@@ -268,6 +271,9 @@ impl PEntitySelector {
 
     panda: {
       path: "bamboo::command::EntitySelector",
+    },
+    python: {
+      class: "EntitySelector",
     },
   }
 

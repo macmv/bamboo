@@ -34,6 +34,9 @@ impl PWorld {
     panda: {
       path: "bamboo::world::World",
     },
+    python: {
+      class: "World",
+    },
   }
   /// Sets a single block in the world. This will return an error if the block
   /// is outside of the world.

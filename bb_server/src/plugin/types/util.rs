@@ -389,6 +389,9 @@ impl PDuration {
     panda: {
       path: "bamboo::util::Duration",
     },
+    python: {
+      class: "Duration",
+    },
   }
   /// Returns a duration for the number of seconds specified.
   pub fn from_secs(secs: u32) -> Self { PDuration { ticks: secs * 20 } }
@@ -432,6 +435,9 @@ impl PCountdown {
 
     panda: {
       path: "bamboo::util::Countdown",
+    },
+    python: {
+      class: "Countdown",
     },
   }
 

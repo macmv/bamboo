@@ -102,5 +102,8 @@ impl PBiome {
     panda: {
       path: "bamboo::world::gen::Biome",
     },
+    python: {
+      class: "Biome",
+    },
   }
 }

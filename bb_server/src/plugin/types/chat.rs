@@ -33,6 +33,9 @@ impl PChat {
     panda: {
       path: "bamboo::chat::Chat",
     },
+    python: {
+      class: "Chat",
+    },
   }
 
   /// Creates a new chat message with the given text.
@@ -92,6 +95,9 @@ impl PChatSection {
 
     panda: {
       path: "bamboo::chat::ChatSection",
+    },
+    python: {
+      class: "ChatSection",
     },
   }
   /// Sets the color of this chat section. Since Panda does not support

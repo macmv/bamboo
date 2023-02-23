@@ -1,6 +1,6 @@
 use proc_macro::TokenStream;
 use proc_macro2::Span;
-use proc_macro_error::abort;
+use proc_macro_error::{abort, emit_error};
 use quote::quote;
 use std::collections::HashMap;
 use syn::{
@@ -186,10 +186,14 @@ pub fn define_ty(_: TokenStream, input: TokenStream) -> TokenStream {
   let struct_def = if block.info.get(&["struct_def"]).map(|v| v.get_bool()).unwrap_or(true) {
     let mut fields =
       block.info.get(&["fields"]).map(|f| f.get_object().clone()).unwrap_or_default();
+    let mut class_name = block.info.get(&["python", "class"]).map(|v| v.get_str().to_string());
     let from_impl = match block.info.get(&["wrap"]) {
       Some(wrapped) => {
         fields.insert("inner".into(), wrapped.clone());
         let wrapped = wrapped.get_type();
+        if class_name.is_none() {
+          class_name = wrapped.get_ident().map(|v| v.to_string());
+        }
         Some(quote!(
           impl From<#wrapped> for #ty {
             fn from(v: #wrapped) -> Self {
@@ -210,9 +214,16 @@ pub fn define_ty(_: TokenStream, input: TokenStream) -> TokenStream {
       let v = v.get_type();
       quote!(pub #k: #v,)
     });
+    let class_name = match class_name {
+      Some(name) => quote!(name = #name),
+      None => {
+        emit_error!(block.ty, "must set python class name");
+        quote!()
+      }
+    };
     Some(quote!(
       #derives
-      #[cfg_attr(feature = "python_plugins", ::pyo3::pyclass)]
+      #[cfg_attr(feature = "python_plugins", ::pyo3::pyclass(#class_name))]
       pub struct #ty {
         #( #fields )*
       }

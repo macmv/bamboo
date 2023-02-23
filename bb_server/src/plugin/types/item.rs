@@ -30,6 +30,9 @@ impl PInventory {
     panda: {
       path: "bamboo::item::Inventory",
     },
+    python: {
+      class: "Inventory",
+    },
   }
 }
 

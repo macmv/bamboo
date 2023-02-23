@@ -75,6 +75,9 @@ impl PPlayer {
     panda: {
       path: "bamboo::player::Player",
     },
+    python: {
+      class: "Player",
+    },
   }
 
   /// Returns the username of the player. This will never change, as long as the
@@ -411,6 +414,9 @@ impl PTeam {
 
     panda: {
       path: "bamboo::player::Team",
+    },
+    python: {
+      class: "Team",
     },
   }
 
