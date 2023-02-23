@@ -106,10 +106,13 @@ macro_rules! define_event {
       )*
     }
 
+    // TODO: Need to swith to proc macro to get the functionality we need with #[getter] :(
     #[define_ty(prefix = "bamboo::event")]
+    // #[cfg_attr(feature = "python_plugins", ::pyo3::pymethods)]
     impl $name {
       $(
         $( #[$attr] )*
+        // #[getter]
         #[field]
         fn $field(&self) -> <$ty as IntoPanda>::Panda {
           self.$field.clone().into_panda()
