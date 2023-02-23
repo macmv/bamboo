@@ -158,8 +158,13 @@ pub fn sl_from_arg(
 
 /// A command. This is how to setup the arguments for a custom commands that
 /// users can run.
-#[define_ty(panda_path = "bamboo::command::Command")]
+#[define_ty]
 impl PCommand {
+  info! {
+    panda: {
+      path: "bamboo::command::Command",
+    },
+  }
   /// Creates a new command. The callback must be a function, which takes 3
   /// arguments. See the example for details.
   ///
@@ -257,8 +262,14 @@ impl PCommand {
 
 /// An entity selector. This is the parsed version of either a player username,
 /// `@a`, `@e`, `@p`, or another selection of entities.
-#[define_ty(panda_path = "bamboo::command::EntitySelector")]
+#[define_ty]
 impl PEntitySelector {
+  info! {
+    panda: {
+      path: "bamboo::command::EntitySelector",
+    },
+  }
+
   /// Returns all the players selected by this selector.
   ///
   /// This iterates through the players, so calling this function is when the

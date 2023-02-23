@@ -1,74 +1,171 @@
 use proc_macro::TokenStream;
 use proc_macro_error::abort;
 use quote::quote;
+use std::collections::HashMap;
 use syn::{
-  parse_macro_input, AttributeArgs, FnArg, Ident, ItemImpl, Lit, Meta, NestedMeta, PathArguments,
-  ReturnType, Type,
+  braced,
+  parse::{Parse, ParseStream},
+  parse_macro_input, Attribute, FnArg, Ident, ItemFn, LitBool, LitStr, Path, PathArguments, Result,
+  ReturnType, Token, Type,
 };
 
-pub fn define_ty(args: TokenStream, input: TokenStream) -> TokenStream {
-  let args = parse_macro_input!(args as AttributeArgs);
-  let mut panda_path = None;
-  let mut panda_map_key = false;
-  for v in args {
-    match v {
-      NestedMeta::Meta(m) => match m {
-        Meta::NameValue(v) => match &v.path.segments[0].ident {
-          n if n == "panda_path" => match v.lit {
-            Lit::Str(l) => panda_path = Some(l.value()),
-            l => abort!(l, "expected str"),
-          },
-          n if n == "panda_map_key" => match v.lit {
-            Lit::Bool(l) => panda_map_key = l.value(),
-            l => abort!(l, "expected bool"),
-          },
-          name => abort!(name, "unknown arg {}", name),
-        },
-        m => abort!(m, "unknown arg {:?}", m),
-      },
-      _ => abort!(v, "unknown arg {:?}", v),
-    }
-  }
-  let block = parse_macro_input!(input as ItemImpl);
-  let ty = &block.self_ty;
-  let mut python_funcs = vec![];
-  for it in &block.items {
-    match it {
-      syn::ImplItem::Method(method) => {
-        let name = &method.sig.ident;
-        let py_name = Ident::new(&format!("py_{}", method.sig.ident), name.span());
-        let py_args = python_args(method.sig.inputs.iter());
-        let py_arg_names = python_arg_names(method.sig.inputs.iter());
-        let (py_ret, conv_ret) = python_ret(&method.sig.output);
-        if name == "new" {
-          python_funcs.push(quote!(
-            #[new]
-            fn #py_name(#(#py_args),*) #py_ret {
-              Self::#name(#(#py_arg_names),*) #conv_ret
-            }
-          ));
-        } else if method.sig.receiver().is_none() {
-          python_funcs.push(quote!(
-            #[staticmethod]
-            fn #py_name(#(#py_args),*) {
-              // Self::#name(#arg_names)
-            }
-          ));
-        } else {
-          python_funcs.push(quote!(
-            fn #py_name(#(#py_args),*) {
-              // Self::#name(#arg_names)
-            }
-          ));
-        }
+struct Impl {
+  meta:  Vec<Attribute>,
+  ty:    Type,
+  info:  Info,
+  funcs: Vec<ItemFn>,
+}
+#[derive(Debug)]
+enum Info {
+  Bool(bool),
+  String(String),
+  Type(Path),
+  Object(HashMap<String, Info>),
+}
+
+impl Parse for Impl {
+  fn parse(input: ParseStream) -> Result<Self> {
+    let meta = input.call(Attribute::parse_outer)?;
+    let _: Token![impl] = input.parse()?;
+    let ty: Type = input.parse()?;
+    let content;
+    braced!(content in input);
+    let mut info = None;
+    let mut funcs = vec![];
+    while !content.is_empty() {
+      let lookahead = content.lookahead1();
+      if lookahead.peek(Ident) {
+        let _: Ident = content.parse()?;
+        let _: Token![!] = content.parse()?;
+        info = Some(content.parse()?);
+      } else {
+        funcs.push(content.parse()?);
       }
-      _ => abort!(it, "only expecting methods"),
+    }
+    Ok(Impl {
+      meta,
+      ty,
+      info: info.unwrap_or_else(|| abort!(content.span(), "need info block")),
+      funcs,
+    })
+  }
+}
+
+impl Parse for Info {
+  fn parse(input: ParseStream) -> Result<Self> {
+    let lookahead = input.lookahead1();
+    if lookahead.peek(Ident) {
+      input.parse().map(Info::Type)
+    } else if lookahead.peek(LitBool) {
+      let lit: LitBool = input.parse()?;
+      Ok(Info::Bool(lit.value()))
+    } else if lookahead.peek(LitStr) {
+      let lit: LitStr = input.parse()?;
+      Ok(Info::String(lit.value()))
+    } else if lookahead.peek(syn::token::Brace) {
+      let mut values = HashMap::new();
+      let content;
+      braced!(content in input);
+      while !content.is_empty() {
+        let ident: Ident = content.parse()?;
+        let _: Token![:] = content.parse()?;
+        let value: Info = content.parse()?;
+        let _: Token![,] = content.parse()?;
+        values.insert(ident.to_string(), value);
+      }
+      Ok(Info::Object(values))
+    } else {
+      Err(lookahead.error())
     }
   }
+}
+
+#[allow(unused)]
+impl Info {
+  fn at(&self, path: &[&str]) -> &Info {
+    self.get(path).unwrap_or_else(|| panic!("no such element at {path:?}"))
+  }
+  fn get(&self, path: &[&str]) -> Option<&Info> {
+    if path.is_empty() {
+      Some(self)
+    } else {
+      match self {
+        Self::Object(v) => v.get(path[0]).and_then(|v| v.get(&path[1..])),
+        _ => None,
+      }
+    }
+  }
+
+  fn get_type(&self) -> &Path { self.as_type().unwrap_or_else(|| panic!("not a type: {self:?}")) }
+  fn as_type(&self) -> Option<&Path> {
+    match self {
+      Self::Type(v) => Some(v),
+      _ => None,
+    }
+  }
+
+  fn get_str(&self) -> &str { self.as_str().unwrap_or_else(|| panic!("not a string: {self:?}")) }
+  fn as_str(&self) -> Option<&str> {
+    match self {
+      Self::String(v) => Some(&v),
+      _ => None,
+    }
+  }
+
+  fn get_bool(&self) -> bool { self.as_bool().unwrap_or_else(|| panic!("not a bool: {self:?}")) }
+  fn as_bool(&self) -> Option<bool> {
+    match self {
+      Self::Bool(v) => Some(*v),
+      _ => None,
+    }
+  }
+}
+
+pub fn define_ty(_: TokenStream, input: TokenStream) -> TokenStream {
+  let block = parse_macro_input!(input as Impl);
+  let ty = &block.ty;
+  let mut python_funcs = vec![];
+  let mut panda_funcs = vec![];
+  for method in &block.funcs {
+    let name = &method.sig.ident;
+    let py_name = Ident::new(&format!("py_{}", method.sig.ident), name.span());
+    let py_args = python_args(method.sig.inputs.iter());
+    let py_arg_names = python_arg_names(method.sig.inputs.iter());
+    let (py_ret, conv_ret) = python_ret(&method.sig.output);
+    panda_funcs.push(method);
+    if name == "new" {
+      python_funcs.push(quote!(
+        #[new]
+        fn #py_name(#(#py_args),*) #py_ret {
+          Self::#name(#(#py_arg_names),*) #conv_ret
+        }
+      ));
+    } else if method.sig.receiver().is_none() {
+      python_funcs.push(quote!(
+        #[staticmethod]
+        fn #py_name(#(#py_args),*) {
+          // Self::#name(#arg_names)
+        }
+      ));
+    } else {
+      python_funcs.push(quote!(
+        fn #py_name(#(#py_args),*) {
+          // Self::#name(#arg_names)
+        }
+      ));
+    }
+  }
+  let meta = block.meta;
+  let panda_path = block.info.at(&["panda", "path"]).get_str();
+  let panda_map_key =
+    block.info.get(&["panda", "map_key"]).and_then(|v| v.as_bool()).unwrap_or(false);
   let out = quote!(
+    #( #meta )*
     #[cfg(feature = "panda_plugins")]
     #[::panda::define_ty(path = #panda_path, map_key = #panda_map_key)]
-    #block
+    impl #ty {
+      #( #panda_funcs )*
+    }
 
     #[cfg(feature = "python_plugins")]
     #[::pyo3::pymethods]

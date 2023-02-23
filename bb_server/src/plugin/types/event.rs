@@ -12,8 +12,14 @@ impl PEventFlow {
   pub fn new() -> Self { PEventFlow { cancelled: Arc::new(Mutex::new(None)) } }
 }
 
-#[define_ty(panda_path = "bamboo::event::EventFlow")]
+#[define_ty]
 impl PEventFlow {
+  info! {
+    panda: {
+      path: "bamboo::event::EventFlow",
+    },
+  }
+
   /// Cancells this event. This will stop the caller from contining to process
   /// this event.
   ///

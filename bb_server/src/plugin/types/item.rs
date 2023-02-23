@@ -16,14 +16,32 @@ wrap!(ClickWindow, PClickWindow);
 wrap!(Inventory<27>, PInventory);
 wrap!(Stack, PStack);
 
-#[define_ty(panda_path = "bamboo::item::ClickWindow")]
-impl PClickWindow {}
+#[define_ty]
+impl PClickWindow {
+  info! {
+    panda: {
+      path: "bamboo::item::ClickWindow",
+    },
+  }
+}
 
-#[define_ty(panda_path = "bamboo::item::Inventory")]
-impl PInventory {}
+#[define_ty]
+impl PInventory {
+  info! {
+    panda: {
+      path: "bamboo::item::Inventory",
+    },
+  }
+}
 
-#[define_ty(panda_path = "bamboo::item::Stack")]
+#[define_ty]
 impl PStack {
+  info! {
+    panda: {
+      path: "bamboo::item::Stack",
+    },
+  }
+
   pub fn new(name: &str) -> Result<Self, RuntimeError> {
     Ok(PStack {
       inner: Stack::new(
@@ -85,8 +103,14 @@ impl PStack {
 ///
 /// If you instead use `Kind` on its own, it is much less clear that this is
 /// a block kind.
-#[define_ty(panda_path = "bamboo::item::UI")]
+#[define_ty]
 impl PUI {
+  info! {
+    panda: {
+      path: "bamboo::item::UI",
+    },
+  }
+
   /// Returns the block kind for that string. This will return an error if the
   /// block name is invalid.
   pub fn new(rows: Vec<String>) -> Result<PUI, RuntimeError> {

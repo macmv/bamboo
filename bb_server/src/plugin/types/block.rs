@@ -22,8 +22,14 @@ wrap!(block::TypeStore, PBlockType);
 ///
 /// If you instead use `Kind` on its own, it is much less clear that this is
 /// a block kind.
-#[define_ty(panda_path = "bamboo::block::Kind")]
+#[define_ty]
 impl PBlockKind {
+  info! {
+    panda: {
+      path: "bamboo::block::Kind",
+    },
+  }
+
   /// Returns the block kind for that string. This will return an error if the
   /// block name is invalid.
   pub fn from_s(name: &str) -> Result<PBlockKind, RuntimeError> {
@@ -39,6 +45,12 @@ impl PBlockKind {
 
 #[define_ty(panda_path = "bamboo::block::Type")]
 impl PBlockType {
+  info! {
+    panda: {
+      path: "bamboo::block::Type",
+    },
+  }
+
   /// Returns the name of this block. This is the same name passed to `from_s`.
   pub fn to_s(&self) -> String { self.inner.to_string() }
   /// Returns the kind of this block.

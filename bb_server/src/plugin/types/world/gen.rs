@@ -98,5 +98,11 @@ impl fmt::Debug for PBiome {
 ///   chunk.fill(pos, pos + Pos::new(0, height, 0), "cactus");
 /// }
 /// ```
-#[define_ty(panda_path = "bamboo::world::gen::Biome")]
-impl PBiome {}
+#[define_ty]
+impl PBiome {
+  info! {
+    panda: {
+      path: "bamboo::world::gen::Biome",
+    },
+  }
+}

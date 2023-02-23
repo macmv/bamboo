@@ -51,8 +51,14 @@ impl crate::plugin::IntoPanda for Arc<Player> {
   fn into_panda(self) -> PPlayer { PPlayer::from(self) }
 }
 
-#[define_ty(panda_path = "bamboo::player::Window")]
+#[define_ty]
 impl PWindow {
+  info! {
+    panda: {
+      path: "bamboo::player::Window",
+    },
+  }
+
   pub fn new(inv: &super::item::PInventory) -> Self {
     Window::Generic9x3(crate::player::window::GenericWindow { inv: inv.inner.clone().into() })
       .into()
@@ -66,8 +72,14 @@ impl PWindow {
 /// for a player who is offline, but it can stay alive after a player has
 /// disconnected. For this reason, some functions simply do nothing if a player
 /// has logged off, while others will cause an error.
-#[define_ty(panda_path = "bamboo::player::Player")]
+#[define_ty]
 impl PPlayer {
+  info! {
+    panda: {
+      path: "bamboo::player::Player",
+    },
+  }
+
   /// Returns the username of the player. This will never change, as long as the
   /// user stays online.
   ///
@@ -395,8 +407,14 @@ impl PPlayer {
 /// friendly fire, showing invisible teammates, and more.
 ///
 /// This can be created through `Bamboo::create_team`.
-#[define_ty(panda_path = "bamboo::player::Team")]
+#[define_ty]
 impl PTeam {
+  info! {
+    panda: {
+      path: "bamboo::player::Team",
+    },
+  }
+
   /// Sets the color of this team. All players in this team will have their
   /// usernames displayed in this color.
   pub fn set_color(&self, name: &str) -> Result<()> {

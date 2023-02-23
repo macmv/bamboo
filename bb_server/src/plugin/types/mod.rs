@@ -137,8 +137,14 @@ impl Bamboo {
 /// world, add commands, lookup players, and more. It will be passed to every
 /// callback, so you should not store this in a global (although you can if you
 /// need to).
-#[define_ty(panda_path = "bamboo::Bamboo")]
+#[define_ty]
 impl Bamboo {
+  info! {
+    panda: {
+      path: "bamboo::Bamboo",
+    },
+  }
+
   /// Creates the given team, if it does not exist. If it exists, this will
   /// return an error.
   pub fn create_team(&self, name: &str) -> Result<PTeam, RuntimeError> {

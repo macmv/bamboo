@@ -25,8 +25,15 @@ pub struct PDuration {
 /// A block position. This stores X, Y, and Z coordinates as ints.
 ///
 /// If you need a player position, use `FPos` (for float position) instead.
-#[define_ty(panda_path = "bamboo::util::Pos", panda_map_key = true)]
+#[define_ty]
 impl PPos {
+  info! {
+    panda: {
+      path: "bamboo::util::Pos",
+      map_key: true,
+    },
+  }
+
   /// Creates a new block position, with the given X, Y, and Z coordinates.
   pub fn new(x: i32, y: i32, z: i32) -> Self { PPos { inner: Pos::new(x, y, z) } }
   /// Returns the X position of this block.
@@ -117,8 +124,15 @@ impl PPos {
 /// A chunk position. This stores X and Z coordinates.
 ///
 /// If you need a block position, use `Pos` instead.
-#[define_ty(panda_path = "bamboo::util::ChunkPos", panda_map_key = true)]
+#[define_ty]
 impl PChunkPos {
+  info! {
+    panda: {
+      path: "bamboo::util::ChunkPos",
+      map_key: true,
+    },
+  }
+
   /// Creates a new chunk position, with the given X and Z coordinates.
   pub fn new(x: i32, z: i32) -> Self { PChunkPos { inner: ChunkPos::new(x, z) } }
   /// Returns the X position of this chunk.
@@ -182,8 +196,14 @@ impl PChunkPos {
 /// An entity position. This stores X, Y, and Z coordinates as floats.
 ///
 /// If you need a block position, use `Pos` instead.
-#[define_ty(panda_path = "bamboo::util::FPos")]
+#[define_ty]
 impl PFPos {
+  info! {
+    panda: {
+      path: "bamboo::util::FPos",
+    },
+  }
+
   /// Creates a new floating point position, with the given X, Y, and Z
   /// coordinates.
   pub fn new(x: f64, y: f64, z: f64) -> Self { PFPos { inner: FPos::new(x, y, z) } }
@@ -288,8 +308,14 @@ impl PFPos {
 ///
 /// If you need a position in the world, use `FPos` instead. This is used for
 /// entity velocities, and raycasting math.
-#[define_ty(panda_path = "bamboo::util::Vec3")]
+#[define_ty]
 impl PVec3 {
+  info! {
+    panda: {
+      path: "bamboo::util::Vec3",
+    },
+  }
+
   /// Creates a new floating point position, with the given X, Y, and Z
   /// coordinates.
   pub fn new(x: f64, y: f64, z: f64) -> Self { PVec3 { inner: Vec3::new(x, y, z) } }
@@ -327,19 +353,37 @@ impl PVec3 {
 }
 
 /// A UUID. This is used as a unique identifier for players and entities.
-#[define_ty(panda_path = "bamboo::util::UUID", panda_map_key = true)]
+#[define_ty]
 impl PUUID {
+  info! {
+    panda: {
+      path: "bamboo::util::UUID",
+      map_key: true,
+    },
+  }
+
   /// Returns the UUID as a string, with dashes inserted.
   pub fn to_s(&self) -> String { self.inner.as_dashed_str() }
 }
 
-#[define_ty(panda_path = "bamboo::util::GameMode")]
-impl PGameMode {}
+#[define_ty]
+impl PGameMode {
+  info! {
+    panda: {
+      path: "bamboo::util::GameMode",
+    },
+  }
+}
 
 /// A duration. This is a number of ticks internally, and can be created from
 /// a number of ticks, seconds, or minutes.
-#[define_ty(panda_path = "bamboo::util::Duration")]
+#[define_ty]
 impl PDuration {
+  info! {
+    panda: {
+      path: "bamboo::util::Duration",
+    },
+  }
   /// Returns a duration for the number of seconds specified.
   pub fn from_secs(secs: u32) -> Self { PDuration { ticks: secs * 20 } }
   /// Returns a duration for the number of minutes specified.
@@ -378,8 +422,14 @@ impl CountdownData {
 ///
 /// It can be easily set to decrease when more players have joined, and it can
 /// also run a callback every time the timer changes.
-#[define_ty(panda_path = "bamboo::util::Countdown")]
+#[define_ty]
 impl PCountdown {
+  info! {
+    panda: {
+      path: "bamboo::util::Countdown",
+    },
+  }
+
   /// Creates a new countdown, with the time set to the given number of seconds.
   ///
   /// The timer will call the given closure each second it decreases.
