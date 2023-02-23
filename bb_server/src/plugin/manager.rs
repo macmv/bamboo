@@ -93,7 +93,8 @@ impl PluginManager {
             }
           }
           "python" => {
-            info!("found python plugin at {}", path.to_str().unwrap());
+            let main_path = f.path().join("main.py");
+            info!("found python plugin at {}", main_path.to_str().unwrap());
             #[cfg(feature = "python_plugins")]
             {
               plugins.push(Plugin::new(

@@ -1,2 +1,2 @@
-type = "python"
+plugin-type = "python"
 enabled = true
