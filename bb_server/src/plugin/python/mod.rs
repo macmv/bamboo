@@ -24,8 +24,7 @@ pub struct Plugin {
 }
 
 struct Event {
-  name:  String,
-  args:  Vec<pyo3::PyObject>,
+  ev:    GlobalEvent,
   reply: bool,
 }
 
@@ -38,12 +37,13 @@ impl Plugin {
       match Python::with_gil::<_, PyResult<_>>(|py| {
         let module = PyModule::from_code(py, &code, "main.py", "main")?;
         while let Ok(e) = rx.recv() {
-          let s = PyString::intern(py, &e.name);
+          let name = format!("on_{}", e.ev.name());
+          let s = PyString::intern(py, &name);
           if !module.hasattr(s)? {
             continue;
           }
           let func = module.getattr(s)?;
-          func.call0()?;
+          e.ev.with_python(py, |arg| func.call1(arg))?;
         }
         Ok(())
       }) {
@@ -60,10 +60,7 @@ impl Plugin {
 
 impl PluginImpl for Plugin {
   fn call_global(&self, ev: GlobalEvent) -> Result<(), CallError> {
-    self
-      .tx
-      .send(Event { name: format!("on_{}", ev.name()), args: vec![], reply: false })
-      .map_err(CallError::no_keep)?;
+    self.tx.send(Event { ev, reply: false }).map_err(CallError::no_keep)?;
     Ok(())
   }
   fn call(&self, ev: PlayerEvent) -> Result<(), CallError> {

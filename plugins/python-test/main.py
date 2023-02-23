@@ -3,6 +3,5 @@ print("Gaming")
 def init():
     print("Hello from python!")
 
-def on_tick():
-    pass
-    # print("big gaming")
+def on_tick(arg):
+    print("big gaming " + str(arg))

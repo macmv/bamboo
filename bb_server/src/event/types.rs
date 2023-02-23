@@ -97,6 +97,7 @@ macro_rules! define_event {
     )*
   ) => {
     #[derive(Debug, Clone, serde::Serialize)]
+    #[cfg_attr(feature = "python_plugins", ::pyo3::pyclass)]
     pub struct $name {
       $(
         $( #[$attr] )*
@@ -222,6 +223,17 @@ macro_rules! event {
         match self {
           $(
             Self::$name(v) => v.into_panda().into(),
+          )*
+        }
+      }
+    }
+    #[cfg(feature = "python_plugins")]
+    impl $event_name {
+      pub fn with_python<R>(self, py: pyo3::Python, f: impl FnOnce((pyo3::PyObject,)) -> R) -> R {
+        use pyo3::IntoPy;
+        match self {
+          $(
+            Self::$name(v) => f((v.into_py(py),)),
           )*
         }
       }
