@@ -1,4 +1,4 @@
-use super::{add_from, chat::PChat, wrap};
+use super::chat::PChat;
 use crate::{
   item,
   item::{Inventory, Stack, UI},
@@ -11,14 +11,11 @@ use panda::{
 };
 use std::str::FromStr;
 
-wrap!(UI, PUI);
-wrap!(ClickWindow, PClickWindow);
-wrap!(Inventory<27>, PInventory);
-wrap!(Stack, PStack);
-
 #[define_ty]
 impl PClickWindow {
   info! {
+    wrap: ClickWindow,
+
     panda: {
       path: "bamboo::item::ClickWindow",
     },
@@ -28,6 +25,8 @@ impl PClickWindow {
 #[define_ty]
 impl PInventory {
   info! {
+    wrap: Inventory<27>,
+
     panda: {
       path: "bamboo::item::Inventory",
     },
@@ -37,6 +36,8 @@ impl PInventory {
 #[define_ty]
 impl PStack {
   info! {
+    wrap: Stack,
+
     panda: {
       path: "bamboo::item::Stack",
     },
@@ -106,6 +107,8 @@ impl PStack {
 #[define_ty]
 impl PUI {
   info! {
+    wrap: UI,
+
     panda: {
       path: "bamboo::item::UI",
     },

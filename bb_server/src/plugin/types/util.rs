@@ -1,4 +1,4 @@
-use super::{add_from, wrap, wrap_eq, Bamboo};
+use super::Bamboo;
 use crate::math::Vec3;
 use bb_common::{
   math::{ChunkPos, FPos, Pos},
@@ -8,13 +8,6 @@ use bb_server_macros::define_ty;
 use panda::runtime::{tree::Closure, LockedEnv};
 use parking_lot::Mutex;
 use std::sync::Arc;
-
-wrap_eq!(Pos, PPos);
-wrap_eq!(ChunkPos, PChunkPos);
-wrap!(GameMode, PGameMode);
-wrap!(FPos, PFPos);
-wrap!(Vec3, PVec3);
-wrap_eq!(UUID, PUUID);
 
 #[derive(Clone, Debug, PartialEq)]
 #[cfg_attr(feature = "python_plugins", ::pyo3::pyclass)]
@@ -28,6 +21,9 @@ pub struct PDuration {
 #[define_ty]
 impl PPos {
   info! {
+    wrap: Pos,
+    eq: true,
+
     panda: {
       path: "bamboo::util::Pos",
       map_key: true,
@@ -127,6 +123,9 @@ impl PPos {
 #[define_ty]
 impl PChunkPos {
   info! {
+    wrap: ChunkPos,
+    eq: true,
+
     panda: {
       path: "bamboo::util::ChunkPos",
       map_key: true,
@@ -199,6 +198,8 @@ impl PChunkPos {
 #[define_ty]
 impl PFPos {
   info! {
+    wrap: FPos,
+
     panda: {
       path: "bamboo::util::FPos",
     },
@@ -311,6 +312,8 @@ impl PFPos {
 #[define_ty]
 impl PVec3 {
   info! {
+    wrap: Vec3,
+
     panda: {
       path: "bamboo::util::Vec3",
     },
@@ -356,6 +359,9 @@ impl PVec3 {
 #[define_ty]
 impl PUUID {
   info! {
+    wrap: UUID,
+    eq: true,
+
     panda: {
       path: "bamboo::util::UUID",
       map_key: true,
@@ -369,6 +375,8 @@ impl PUUID {
 #[define_ty]
 impl PGameMode {
   info! {
+    wrap: GameMode,
+
     panda: {
       path: "bamboo::util::GameMode",
     },

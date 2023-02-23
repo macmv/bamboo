@@ -157,21 +157,31 @@ pub fn define_ty(_: TokenStream, input: TokenStream) -> TokenStream {
   }
   let meta = block.meta;
   let panda_path = block.info.at(&["panda", "path"]).get_str();
-  let panda_map_key =
-    block.info.get(&["panda", "map_key"]).and_then(|v| v.as_bool()).unwrap_or(false);
+  let panda_map_key = block.info.get(&["panda", "map_key"]).map(|v| v.get_bool()).unwrap_or(false);
+  let eq = block.info.get(&["eq"]).map(|v| v.get_bool()).unwrap_or(false);
   let wrapped = block.info.get(&["wrap"]).map(|v| {
     let wrapped = v.get_type();
+    let derives = if eq {
+      quote!(#[derive(Clone, Debug, Hash, PartialEq, Eq)])
+    } else {
+      quote!(#[derive(Clone, Debug)])
+    };
     quote!(
-      #[derive(Clone, Debug)]
+      #derives
       #[cfg_attr(feature = "python_plugins", ::pyo3::pyclass)]
       pub struct #ty {
-        inner: #wrapped
+        pub inner: #wrapped
       }
 
       impl From<#wrapped> for #ty {
         fn from(v: #wrapped) -> Self {
           Self { inner: v }
         }
+      }
+
+      impl crate::plugin::IntoPanda for #wrapped {
+        type Panda = #ty;
+        fn into_panda(self) -> #ty { self.into() }
       }
     )
   });

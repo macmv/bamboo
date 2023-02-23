@@ -1,11 +1,7 @@
-use super::{add_from, wrap};
 use crate::block;
 use bb_server_macros::define_ty;
 use panda::{parse::token::Span, runtime::RuntimeError};
 use std::str::FromStr;
-
-wrap!(block::Kind, PBlockKind);
-wrap!(block::TypeStore, PBlockType);
 
 /// A block kind. This is how you get/set blocks in the world.
 ///
@@ -25,6 +21,8 @@ wrap!(block::TypeStore, PBlockType);
 #[define_ty]
 impl PBlockKind {
   info! {
+    wrap: block::Kind,
+
     panda: {
       path: "bamboo::block::Kind",
     },
@@ -46,6 +44,8 @@ impl PBlockKind {
 #[define_ty(panda_path = "bamboo::block::Type")]
 impl PBlockType {
   info! {
+    wrap: block::TypeStore,
+
     panda: {
       path: "bamboo::block::Type",
     },

@@ -88,23 +88,10 @@ macro_rules! wrap {
     }
   };
 }
-macro_rules! wrap_eq {
-  ( $ty:ty, $new_ty:ident ) => {
-    #[derive(Clone, Debug, Hash, PartialEq, Eq)]
-    #[cfg_attr(feature = "python_plugins", ::pyo3::pyclass)]
-    pub struct $new_ty {
-      #[allow(unused)]
-      pub(super) inner: $ty,
-    }
-
-    add_from!($ty, $new_ty);
-  };
-}
 
 // Only want these to be public to local files.
 use add_from;
 use wrap;
-use wrap_eq;
 
 impl Bamboo {
   /// Runs the given closure after the given number of ticks.
