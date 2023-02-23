@@ -16,20 +16,6 @@ use std::{
   sync::{Arc, Mutex, Weak},
 };
 
-#[cfg_attr(feature = "python_plugins", ::pyo3::pyclass)]
-pub struct PCommand {
-  pub(super) inner:    Arc<Mutex<Command>>,
-  pub(super) callback: Option<Box<dyn BCallback>>,
-  pub(super) idx:      Vec<usize>,
-}
-#[cfg_attr(feature = "python_plugins", ::pyo3::pyclass)]
-#[derive(Clone)]
-pub struct PEntitySelector {
-  pub(super) inner:  EntitySelector,
-  pub(super) runner: Option<Weak<Player>>,
-  pub(super) world:  Arc<World>,
-}
-
 impl Clone for PCommand {
   fn clone(&self) -> Self {
     PCommand {
@@ -161,6 +147,14 @@ pub fn sl_from_arg(
 #[define_ty]
 impl PCommand {
   info! {
+    clone: false,
+    debug: false,
+    fields: {
+      inner:    Arc<Mutex<Command>>,
+      callback: Option<Box<dyn BCallback>>,
+      idx:      Vec<usize>,
+    },
+
     panda: {
       path: "bamboo::command::Command",
     },
@@ -265,6 +259,13 @@ impl PCommand {
 #[define_ty]
 impl PEntitySelector {
   info! {
+    debug: false,
+    fields: {
+      inner:  EntitySelector,
+      runner: Option<Weak<Player>>,
+      world:  Arc<World>,
+    },
+
     panda: {
       path: "bamboo::command::EntitySelector",
     },

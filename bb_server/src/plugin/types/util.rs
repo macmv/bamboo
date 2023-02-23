@@ -9,12 +9,6 @@ use panda::runtime::{tree::Closure, LockedEnv};
 use parking_lot::Mutex;
 use std::sync::Arc;
 
-#[derive(Clone, Debug, PartialEq)]
-#[cfg_attr(feature = "python_plugins", ::pyo3::pyclass)]
-pub struct PDuration {
-  pub ticks: u32,
-}
-
 /// A block position. This stores X, Y, and Z coordinates as ints.
 ///
 /// If you need a player position, use `FPos` (for float position) instead.
@@ -388,6 +382,10 @@ impl PGameMode {
 #[define_ty]
 impl PDuration {
   info! {
+    fields: {
+      ticks: u32,
+    },
+
     panda: {
       path: "bamboo::util::Duration",
     },
@@ -399,12 +397,7 @@ impl PDuration {
 }
 
 #[derive(Debug, Clone)]
-pub struct PCountdown {
-  data: Arc<Mutex<CountdownData>>,
-}
-
-#[derive(Debug, Clone)]
-struct CountdownData {
+pub struct CountdownData {
   active:    bool,
   /// Time left in seconds.
   time_left: u32,
@@ -433,6 +426,10 @@ impl CountdownData {
 #[define_ty]
 impl PCountdown {
   info! {
+    fields: {
+      data: Arc<Mutex<CountdownData>>,
+    },
+
     panda: {
       path: "bamboo::util::Countdown",
     },

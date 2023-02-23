@@ -52,47 +52,6 @@ pub trait Callback: fmt::Debug + Send + Sync {
   fn box_clone(&self) -> Box<dyn Callback>;
 }
 
-macro_rules! add_from {
-  ( $ty:ty, $new_ty:ident ) => {
-    impl From<$ty> for $new_ty {
-      fn from(inner: $ty) -> $new_ty { $new_ty { inner } }
-    }
-
-    impl crate::plugin::IntoPanda for $ty {
-      type Panda = $new_ty;
-      fn into_panda(self) -> $new_ty { self.into() }
-    }
-  };
-}
-
-macro_rules! wrap {
-  ( $ty:ty, $new_ty:ident ) => {
-    #[derive(Clone, Debug)]
-    #[cfg_attr(feature = "python_plugins", ::pyo3::pyclass)]
-    pub struct $new_ty {
-      #[allow(unused)]
-      pub(super) inner: $ty,
-    }
-
-    add_from!($ty, $new_ty);
-  };
-
-  ( $ty:ty, $new_ty:ident, $($extra:ident: $extra_ty:ty),* ) => {
-    #[derive(Clone, Debug)]
-    #[cfg_attr(feature = "python_plugins", ::pyo3::pyclass)]
-    pub struct $new_ty {
-      pub(super) inner:  $ty,
-      $(
-        pub(super) $extra: $extra_ty,
-      )*
-    }
-  };
-}
-
-// Only want these to be public to local files.
-use add_from;
-use wrap;
-
 impl Bamboo {
   /// Runs the given closure after the given number of ticks.
   pub fn after_native(
@@ -127,6 +86,8 @@ impl Bamboo {
 #[define_ty]
 impl Bamboo {
   info! {
+    struct_def: false,
+
     panda: {
       path: "bamboo::Bamboo",
     },

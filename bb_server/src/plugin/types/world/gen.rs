@@ -2,14 +2,6 @@ use crate::world::gen::PBiomeGen;
 use bb_server_macros::define_ty;
 use std::{fmt, sync::Arc};
 
-#[derive(Clone)]
-#[allow(unused)]
-#[cfg_attr(feature = "python_plugins", ::pyo3::pyclass)]
-pub struct PBiome {
-  name:             String,
-  pub(super) inner: Arc<PBiomeGen>,
-}
-
 impl fmt::Debug for PBiome {
   fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
     f.debug_struct("PBiome").field("name", &self.name).finish()
@@ -101,6 +93,12 @@ impl fmt::Debug for PBiome {
 #[define_ty]
 impl PBiome {
   info! {
+    debug: false,
+    fields: {
+      name:  String,
+      inner: Arc<PBiomeGen>,
+    },
+
     panda: {
       path: "bamboo::world::gen::Biome",
     },

@@ -1,4 +1,5 @@
 use proc_macro::TokenStream;
+use proc_macro2::Span;
 use proc_macro_error::abort;
 use quote::quote;
 use std::collections::HashMap;
@@ -15,7 +16,7 @@ struct Impl {
   info:  Info,
   funcs: Vec<ItemFn>,
 }
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 enum Info {
   Bool(bool),
   String(String),
@@ -96,6 +97,16 @@ impl Info {
     }
   }
 
+  fn get_object(&self) -> &HashMap<String, Info> {
+    self.as_object().unwrap_or_else(|| panic!("not an object: {self:?}"))
+  }
+  fn as_object(&self) -> Option<&HashMap<String, Info>> {
+    match self {
+      Self::Object(v) => Some(v),
+      _ => None,
+    }
+  }
+
   fn get_type(&self) -> &Path { self.as_type().unwrap_or_else(|| panic!("not a type: {self:?}")) }
   fn as_type(&self) -> Option<&Path> {
     match self {
@@ -158,35 +169,61 @@ pub fn define_ty(_: TokenStream, input: TokenStream) -> TokenStream {
   let meta = block.meta;
   let panda_path = block.info.at(&["panda", "path"]).get_str();
   let panda_map_key = block.info.get(&["panda", "map_key"]).map(|v| v.get_bool()).unwrap_or(false);
-  let eq = block.info.get(&["eq"]).map(|v| v.get_bool()).unwrap_or(false);
-  let wrapped = block.info.get(&["wrap"]).map(|v| {
-    let wrapped = v.get_type();
-    let derives = if eq {
-      quote!(#[derive(Clone, Debug, Hash, PartialEq, Eq)])
-    } else {
-      quote!(#[derive(Clone, Debug)])
+  let mut derives = vec![];
+  if block.info.get(&["clone"]).map(|v| v.get_bool()).unwrap_or(true) {
+    derives.push("Clone");
+  }
+  if block.info.get(&["debug"]).map(|v| v.get_bool()).unwrap_or(true) {
+    derives.push("Debug");
+  }
+  if block.info.get(&["eq"]).map(|v| v.get_bool()).unwrap_or(false) {
+    derives.push("Hash");
+    derives.push("PartialEq");
+    derives.push("Eq");
+  }
+  let derives = derives.into_iter().map(|i| Ident::new(i, Span::call_site()));
+  let derives = quote!(#[derive(#( #derives ),*)]);
+  let struct_def = if block.info.get(&["struct_def"]).map(|v| v.get_bool()).unwrap_or(true) {
+    let mut fields =
+      block.info.get(&["fields"]).map(|f| f.get_object().clone()).unwrap_or_default();
+    let from_impl = match block.info.get(&["wrap"]) {
+      Some(wrapped) => {
+        fields.insert("inner".into(), wrapped.clone());
+        let wrapped = wrapped.get_type();
+        Some(quote!(
+          impl From<#wrapped> for #ty {
+            fn from(v: #wrapped) -> Self {
+              Self { inner: v }
+            }
+          }
+
+          impl crate::plugin::IntoPanda for #wrapped {
+            type Panda = #ty;
+            fn into_panda(self) -> #ty { self.into() }
+          }
+        ))
+      }
+      None => None,
     };
-    quote!(
+    let fields = fields.into_iter().map(|(k, v)| {
+      let k = Ident::new(&k, Span::call_site());
+      let v = v.get_type();
+      quote!(pub #k: #v,)
+    });
+    Some(quote!(
       #derives
       #[cfg_attr(feature = "python_plugins", ::pyo3::pyclass)]
       pub struct #ty {
-        pub inner: #wrapped
+        #( #fields )*
       }
 
-      impl From<#wrapped> for #ty {
-        fn from(v: #wrapped) -> Self {
-          Self { inner: v }
-        }
-      }
-
-      impl crate::plugin::IntoPanda for #wrapped {
-        type Panda = #ty;
-        fn into_panda(self) -> #ty { self.into() }
-      }
-    )
-  });
+      #from_impl
+    ))
+  } else {
+    None
+  };
   let out = quote!(
-    #wrapped
+    #struct_def
 
     #( #meta )*
     #[cfg(feature = "panda_plugins")]

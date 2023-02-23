@@ -1,4 +1,3 @@
-use super::wrap;
 use bb_common::util::{chat::Color, Chat};
 use bb_server_macros::define_ty;
 use panda::{
@@ -7,8 +6,6 @@ use panda::{
 };
 use parking_lot::Mutex;
 use std::{str::FromStr, sync::Arc};
-
-wrap!(Arc<Mutex<Chat>>, PChatSection, idx: usize);
 
 impl From<Chat> for PChat {
   fn from(c: Chat) -> PChat { PChat { inner: Arc::new(Mutex::new(c)) } }
@@ -88,6 +85,11 @@ impl PChat {
 #[define_ty]
 impl PChatSection {
   info! {
+    fields: {
+      inner: Arc<Mutex<Chat>>,
+      idx: usize,
+    },
+
     panda: {
       path: "bamboo::chat::ChatSection",
     },

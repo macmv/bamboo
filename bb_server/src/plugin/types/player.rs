@@ -1,10 +1,8 @@
 use super::{
-  add_from,
   chat::PChat,
   item::PStack,
   util::{PFPos, PUUID},
   world::PWorld,
-  wrap,
 };
 use crate::{
   item::Stack,
@@ -23,20 +21,11 @@ use std::{
   sync::{Arc, Weak},
 };
 
-#[derive(Clone, Debug)]
-#[cfg_attr(feature = "python_plugins", ::pyo3::pyclass)]
-pub struct PPlayer {
-  pub(super) inner: Weak<Player>,
-  pub username:     String,
-  pub uuid:         UUID,
-}
 impl From<Arc<Player>> for PPlayer {
   fn from(p: Arc<Player>) -> Self {
     PPlayer { username: p.username().clone(), uuid: p.id(), inner: Arc::downgrade(&p) }
   }
 }
-wrap!(Arc<Mutex<Team>>, PTeam);
-wrap!(Window, PWindow);
 
 impl PPlayer {
   pub fn inner(&self) -> Result<Arc<Player>> {
@@ -54,6 +43,8 @@ impl crate::plugin::IntoPanda for Arc<Player> {
 #[define_ty]
 impl PWindow {
   info! {
+    wrap: Window,
+
     panda: {
       path: "bamboo::player::Window",
     },
@@ -75,6 +66,12 @@ impl PWindow {
 #[define_ty]
 impl PPlayer {
   info! {
+    fields: {
+      inner:    Weak<Player>,
+      username: String,
+      uuid:     UUID,
+    },
+
     panda: {
       path: "bamboo::player::Player",
     },
@@ -410,6 +407,8 @@ impl PPlayer {
 #[define_ty]
 impl PTeam {
   info! {
+    wrap: Arc<Mutex<Team>>,
+
     panda: {
       path: "bamboo::player::Team",
     },

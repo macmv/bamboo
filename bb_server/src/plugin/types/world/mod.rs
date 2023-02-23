@@ -1,5 +1,4 @@
 use super::{
-  add_from,
   block::{PBlockKind, PBlockType},
   item::PStack,
   util::{PFPos, PPos},
@@ -11,14 +10,6 @@ use panda::{parse::token::Span, runtime::RuntimeError};
 use std::{fmt, sync::Arc};
 
 pub mod gen;
-
-#[derive(Clone)]
-#[cfg_attr(feature = "python_plugins", ::pyo3::pyclass)]
-pub struct PWorld {
-  pub(super) inner: Arc<World>,
-}
-
-add_from!(Arc<World>, PWorld);
 
 impl fmt::Debug for PWorld {
   fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result { f.debug_struct("PWorld").finish() }
@@ -37,6 +28,9 @@ impl PWorld {
 #[define_ty]
 impl PWorld {
   info! {
+    debug: false,
+    wrap: Arc<World>,
+
     panda: {
       path: "bamboo::world::World",
     },

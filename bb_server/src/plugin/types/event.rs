@@ -3,11 +3,6 @@ use bb_server_macros::define_ty;
 use parking_lot::Mutex;
 use std::sync::Arc;
 
-#[derive(Debug, Clone)]
-pub struct PEventFlow {
-  pub cancelled: Arc<Mutex<Option<EventFlow>>>,
-}
-
 impl PEventFlow {
   pub fn new() -> Self { PEventFlow { cancelled: Arc::new(Mutex::new(None)) } }
 }
@@ -15,6 +10,10 @@ impl PEventFlow {
 #[define_ty]
 impl PEventFlow {
   info! {
+    fields: {
+      cancelled: Arc<Mutex<Option<EventFlow>>>,
+    },
+
     panda: {
       path: "bamboo::event::EventFlow",
     },
