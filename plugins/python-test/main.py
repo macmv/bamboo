@@ -7,4 +7,4 @@ def init():
 
 def on_tick(event):
     bb = bamboo.instance()
-    bb.py_broadcast(5)
+    bb.broadcast(5)

@@ -139,6 +139,7 @@ pub fn define_ty(_: TokenStream, input: TokenStream) -> TokenStream {
   let mut panda_funcs = vec![];
   for method in &block.funcs {
     let name = &method.sig.ident;
+    let name_str = name.to_string();
     let py_name = Ident::new(&format!("py_{}", method.sig.ident), name.span());
     let py_args = python_args(method.sig.inputs.iter());
     let py_arg_names = python_arg_names(method.sig.inputs.iter());
@@ -154,12 +155,14 @@ pub fn define_ty(_: TokenStream, input: TokenStream) -> TokenStream {
     } else if method.sig.receiver().is_none() {
       python_funcs.push(quote!(
         #[staticmethod]
+        #[pyo3(name = #name_str)]
         fn #py_name(#(#py_args),*) #py_ret {
           Self::#name(#(#py_arg_names),*) #conv_ret
         }
       ));
     } else {
       python_funcs.push(quote!(
+        #[pyo3(name = #name_str)]
         fn #py_name(#(#py_args),*) #py_ret {
           Self::#name(#(#py_arg_names),*) #conv_ret
         }
