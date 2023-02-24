@@ -1,6 +1,6 @@
 import bamboo
 
-print("Gaming")
+print("Gaming 2")
 
 def init():
     print("Hello from python 2!")

@@ -53,17 +53,22 @@ impl Plugin {
       pyo3::prepare_freethreaded_python();
       let code = fs::read_to_string(path).unwrap();
       match Python::with_gil::<_, PyResult<_>>(|py| {
-        let module = PyModule::from_code(py, &code, "main.py", "main")?;
-        while let Ok(e) = rx.recv() {
-          let name = format!("on_{}", e.ev.name());
-          let s = PyString::intern(py, &name);
-          if !module.hasattr(s)? {
-            continue;
+        let module = PyModule::from_code(py, &code, "main.py", &name)?;
+        loop {
+          let res = py.allow_threads(|| rx.recv());
+          match res {
+            Ok(ev) => {
+              let name = format!("on_{}", ev.ev.name());
+              let s = PyString::intern(py, &name);
+              if !module.hasattr(s)? {
+                continue;
+              }
+              let func = module.getattr(s)?;
+              ev.ev.with_python(py, |arg| func.call1(arg))?;
+            }
+            Err(e) => return Ok(()),
           }
-          let func = module.getattr(s)?;
-          e.ev.with_python(py, |arg| func.call1(arg))?;
         }
-        Ok(())
       }) {
         Ok(f) => f,
         Err(e) => {
