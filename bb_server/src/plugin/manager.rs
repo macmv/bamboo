@@ -97,8 +97,13 @@ impl PluginManager {
             info!("found python plugin at {}", main_path.to_str().unwrap());
             #[cfg(feature = "python_plugins")]
             {
-              let plugin = super::python::Plugin::new(plugins.len(), name.clone(), wm.clone());
-              plugins.push(Plugin::new(name.clone(), config, plugin));
+              if main_path.exists() && main_path.is_file() {
+                let plugin =
+                  super::python::Plugin::new(plugins.len(), name.clone(), main_path, wm.clone());
+                plugins.push(Plugin::new(name.clone(), config, plugin));
+              } else {
+                error!("plugin `{name}` does not have a `main.py` file");
+              }
             }
             #[cfg(not(feature = "python_plugins"))]
             {

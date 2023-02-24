@@ -8,7 +8,7 @@ use crate::world::WorldManager;
 use crossbeam_channel::{Receiver, Sender};
 use panda::runtime::RuntimeError;
 use pyo3::{exceptions, intern, prelude::*, types::PyString};
-use std::{env, fs, path::Path, sync::Arc, thread};
+use std::{env, fs, path::PathBuf, sync::Arc, thread};
 
 pub struct PyCallback {
   callback: PyObject,
@@ -44,14 +44,14 @@ fn bamboo(py: Python<'_>, m: &PyModule) -> PyResult<()> {
 }
 
 impl Plugin {
-  pub fn new(idx: usize, name: String, wm: Arc<WorldManager>) -> Self {
+  pub fn new(idx: usize, name: String, path: PathBuf, wm: Arc<WorldManager>) -> Self {
     let (tx, rx) = crossbeam_channel::bounded::<Event>(1024);
     thread::spawn(move || {
       // TODO: Handle multiple plugins going brrrrr
       *BAMBOO.lock() = Some(Bamboo::new(idx, wm));
       pyo3::append_to_inittab!(bamboo);
       pyo3::prepare_freethreaded_python();
-      let code = fs::read_to_string(Path::new("plugins/python-test/main.py")).unwrap();
+      let code = fs::read_to_string(path).unwrap();
       match Python::with_gil::<_, PyResult<_>>(|py| {
         let module = PyModule::from_code(py, &code, "main.py", "main")?;
         while let Ok(e) = rx.recv() {
