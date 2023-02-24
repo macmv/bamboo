@@ -4,10 +4,11 @@ use super::{
   Bamboo, CallError, GlobalEvent, PlayerEvent, PlayerRequest, PluginImpl, PluginManager,
   PluginReply,
 };
+use crate::world::WorldManager;
 use crossbeam_channel::{Receiver, Sender};
 use panda::runtime::RuntimeError;
 use pyo3::{exceptions, intern, prelude::*, types::PyString};
-use std::{env, fs, path::Path, thread};
+use std::{env, fs, path::Path, sync::Arc, thread};
 
 pub struct PyCallback {
   callback: PyObject,
@@ -28,10 +29,27 @@ struct Event {
   reply: bool,
 }
 
+use parking_lot::Mutex;
+
+static BAMBOO: Mutex<Option<Bamboo>> = Mutex::new(None);
+
+#[pyfunction]
+fn instance() -> Bamboo { BAMBOO.lock().as_ref().unwrap().clone() }
+
+#[pymodule]
+fn bamboo(py: Python<'_>, m: &PyModule) -> PyResult<()> {
+  m.add_class::<Bamboo>()?;
+  m.add_function(wrap_pyfunction!(instance, m)?)?;
+  Ok(())
+}
+
 impl Plugin {
-  pub fn new(name: String) -> Self {
+  pub fn new(idx: usize, name: String, wm: Arc<WorldManager>) -> Self {
     let (tx, rx) = crossbeam_channel::bounded::<Event>(1024);
     thread::spawn(move || {
+      // TODO: Handle multiple plugins going brrrrr
+      *BAMBOO.lock() = Some(Bamboo::new(idx, wm));
+      pyo3::append_to_inittab!(bamboo);
       pyo3::prepare_freethreaded_python();
       let code = fs::read_to_string(Path::new("plugins/python-test/main.py")).unwrap();
       match Python::with_gil::<_, PyResult<_>>(|py| {
@@ -64,14 +82,13 @@ impl PluginImpl for Plugin {
     Ok(())
   }
   fn call(&self, ev: PlayerEvent) -> Result<(), CallError> {
-    println!("todo");
     // self.tx.send(()).map_err(CallError::no_keep)?;
     Ok(())
   }
   fn req(&self, req: PlayerRequest) -> Result<PluginReply, CallError> {
-    todo!()
     // Ok(PluginReply::Cancel { allow: self.req(req.name(),
     // vec![req.into_panda()]) })
+    Ok(PluginReply::Cancel { allow: true })
   }
   fn panda(&mut self) -> Option<&mut PandaPlugin> { None }
 }

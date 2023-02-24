@@ -154,14 +154,14 @@ pub fn define_ty(_: TokenStream, input: TokenStream) -> TokenStream {
     } else if method.sig.receiver().is_none() {
       python_funcs.push(quote!(
         #[staticmethod]
-        fn #py_name(#(#py_args),*) {
-          // Self::#name(#arg_names)
+        fn #py_name(#(#py_args),*) #py_ret {
+          Self::#name(#(#py_arg_names),*) #conv_ret
         }
       ));
     } else {
       python_funcs.push(quote!(
-        fn #py_name(#(#py_args),*) {
-          // Self::#name(#arg_names)
+        fn #py_name(#(#py_args),*) #py_ret {
+          Self::#name(#(#py_arg_names),*) #conv_ret
         }
       ));
     }
@@ -306,7 +306,7 @@ fn python_arg_names<'a>(args: impl Iterator<Item = &'a FnArg>) -> Vec<impl quote
               quote!(#name)
             }
             "Box" => quote!(Box::new(#name)),
-            "Var" => quote!(#name),
+            "Var" => quote!(#name.into()),
             "Callback" => quote!(todo!("callbacks in python")),
             "Closure" => quote!(todo!("closures in python")),
             "Vec" => quote!(todo!("vecs in python")),
@@ -342,7 +342,12 @@ fn python_ret(out: &ReturnType) -> (impl quote::ToTokens, Option<impl quote::ToT
               Some(quote!(.map_err(crate::plugin::python::conv_err))),
             );
           }
-          "Var" => quote!(-> ::pyo3::PyObject),
+          "Var" => {
+            return (quote!(-> ::pyo3::PyObject), Some(quote!(; todo!("convert var to python"))))
+          }
+          "Vec" => {
+            return (quote!(-> ::pyo3::PyObject), Some(quote!(; todo!("convert vec to python"))))
+          }
           _ => quote!(#out),
         },
         _ => quote!(#out),

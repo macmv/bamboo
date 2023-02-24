@@ -97,11 +97,8 @@ impl PluginManager {
             info!("found python plugin at {}", main_path.to_str().unwrap());
             #[cfg(feature = "python_plugins")]
             {
-              plugins.push(Plugin::new(
-                name.clone(),
-                config,
-                super::python::Plugin::new(name.clone()),
-              ));
+              let plugin = super::python::Plugin::new(plugins.len(), name.clone(), wm.clone());
+              plugins.push(Plugin::new(name.clone(), config, plugin));
             }
             #[cfg(not(feature = "python_plugins"))]
             {
