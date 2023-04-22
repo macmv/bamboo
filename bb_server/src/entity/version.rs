@@ -82,6 +82,7 @@ pub struct Metadata {
 /// An entity metadata type. Note that the documentation for this type is for
 /// 1.18.2. Older versions will have different serializing/deserializing rules.
 #[derive(Debug, Clone)]
+#[allow(unused)]
 pub enum MetadataType {
   /// A single byte.
   Byte,
@@ -151,4 +152,9 @@ pub enum MetadataType {
   FrogVariant,
   /// A varint
   PaintingVariant,
+
+  // 1.19.4+
+  SnifferState,
+  Vector3,
+  Vector4,
 }

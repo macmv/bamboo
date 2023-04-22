@@ -397,5 +397,10 @@ mod entity_types {
     FrogVariant,
     /// A varint
     PaintingVariant,
+
+    // 1.19.4+
+    SnifferState,
+    Vector3,
+    Vector4,
   }
 }

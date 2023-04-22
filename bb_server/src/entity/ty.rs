@@ -290,6 +290,12 @@ impl Type {
       Self::Frog => true,
       Self::Tadpole => true,
       Self::Warden => true,
+
+      Self::BlockDisplay => false,
+      Self::Interaction => false,
+      Self::ItemDisplay => false,
+      Self::Sniffer => true,
+      Self::TextDisplay => false,
     }
   }
 }

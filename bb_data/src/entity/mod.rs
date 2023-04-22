@@ -130,6 +130,11 @@ pub enum MetadataType {
   FrogVariant,
   /// A varint
   PaintingVariant,
+
+  // 1.19.4+
+  SnifferState,
+  Vector3,
+  Vector4,
 }
 
 impl EntityDef {
