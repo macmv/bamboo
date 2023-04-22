@@ -22,7 +22,7 @@ git clone https://gitlab.com/macmv/bamboo.git
 cd bamboo
 ```
 
-Now you need to run the server and proxy. Start the server with this command:
+Now you need to run the server and proxy. Run the server with this command:
 
 ```
 cargo run --bin bb_server --release
@@ -66,7 +66,7 @@ as I develop them.
 
 ### Features
 
-All of these are planned! I have no time frame for doing these things, but here
+All of these are planned. I have no time frame for doing these things, but here
 is what I would like to see in a 1.0 release:
 
 - [ ] Minigame lobbies
@@ -98,6 +98,12 @@ is what I would like to see in a 1.0 release:
 - [ ] (Maybe) support 1000 players on one server
   - Everything is very multithreaded. This is a very general goal, and is put
     here as a reminder that things like tick loops are separate for each player.
+- [x] Plugin loading in Panda (custom language)
+  - I really tried to use another language for plugins. It would have been so
+    much simpler to just deal with Python or JavaScript, but I couldn't stand
+    the awful API. So I wrote an entire language for plugins. It's called Panda,
+    and it's specific to this server. You can check it out
+    [here](https://gitlab.com/macmv/panda).
 - [ ] (Unlikely) Plugin loading in Rust
   - This is a dynamic linking problem. It shouldn't be very difficult, and will
     allow pluggable functionality from multiple plugins, all without
@@ -108,22 +114,6 @@ is what I would like to see in a 1.0 release:
     this, feel free to do so. Just note that it must be compatible with Panda
     plugins. You need to be able to load both Rust and Panda plugins at the
     same time.
-- [x] Drop GRPC. I think GRPC is great. It's the perfect balance of speed and
-  cross-versioning safe, and I think it should be used in place of REST in almost
-  all situations. However, I have generated code. This means that I know the exact
-  protocol on the sender and receiver. This means that I don't really care about
-  how easy the protocol is to debug, because it's all generated code reading/writing
-  to the wire. I also dispose async. It gives you unsized `impl` traits everywhere,
-  and makes it very difficult to work with closures. Dropping GRPC means dropping
-  async, which I really want to do.
-  - This has been dropped. I now use `bb_transfer`, and there is no longer any async
-    within the codebase.
-- [x] Plugin loading in Panda (custom language)
-  - I really tried to use another language for plugins. It would have been so
-    much simpler to just deal with Python or JavaScript, but I couldn't stand
-    the awful API. So I wrote an entire language for plugins. It's called Panda,
-    and it's specific to this server. You can check it out
-    [here](https://gitlab.com/macmv/panda).
 - [ ] Plugin loading via sockets
   - Sending messages over a unix socket is fast, and would work pretty well for
     loading a plugin. At the time of writing, there is a simple python plugin,
@@ -133,9 +123,9 @@ is what I would like to see in a 1.0 release:
 
 ### Progress
 
-At the time of writing, you can join on 1.8, 1.12, and 1.14+. Breaking blocks works,
-and placing blocks works on most versions. You can see other players, and most of the
-animations are working. Things like chunk data work well, and are heavily tested.
+At the time of writing, you can join on 1.8, 1.12, and 1.14+. You can interact
+with the world, send chat messages, run commands, and interact with other players.
+Core concepts like chunk data work well, and are heavily tested.
 
 This is constantly changing, as I don't update this README that much. To see which
 versions work, I recommend cloning the project and running it yourself. I may also
@@ -222,29 +212,3 @@ your IDE to use a different profile. Any time my IDE builds, I pass the flag
 `--profile rust-analyzer` to cargo. This makes code validation much faster, as
 the dev profile uses opt-level 2 (instead of the default 0). This is because
 terrain generation is terribly slow with opt-level set to 0.
-
-### What happened to [Sugarcane](https://gitlab.com/macmv/sugarcane-go)?
-
-Well two things happened. Firstly, this project used to also be called sugarcane,
-but I renamed it due to another minecraft project also being named sugarcane.
-Secondly, before this project, I did the same thing but in Go. I switched once
-I learned Rust, as I cannot think of any reason to use Go anymore.
-
-Here are some reasons why I rewrote the project:
-
-- Manual everything
-  - The Go version did almost everything by hand. This includes packet
-    definitions, block data, items, and the rest. This ended up being a lot of
-    work to write, and most importantly, maintain.
-  - Bamboo fixes that, with a lot of things done at compile time. The `bb_data`
-    crate reads from my own data source, and generates a bunch of Rust source
-    files that are also included at compile time.
-- It's Rust
-  - I didn't know rust when writing the first version, and I was very happy with
-    Go at the time. However, after learning Rust, I couldn't bare to work with
-    Go at all anymore. I think Go is a great language, but for speed, safety,
-    and easy of use, I find Rust much better all around.
-- It's a re-write
-  - Everything is better the second time around. I am able to copy a lot of the
-    code from Go over to Rust, and things like chunk data/encryption can be
-    implemented in a much better manner.
