@@ -41,7 +41,6 @@ impl BlockLightChunk {
           if kind == block::Kind::Air || data.transparent {
             let other_level = self.data.get_light(new_pos);
             if emitted >= 1 && other_level < emitted - 1 {
-              println!("NEIGHBOR IS TOO DIM");
               // The neighbor is too dim, queue `new_pos` to be updated.
               self.data.set_light(new_pos, emitted - 1);
               other_queue.push((new_pos, emitted - 1));
