@@ -99,6 +99,7 @@ pub fn static_ref(class: &str, name: &str) -> Value {
         "read_item_stack" => "read_item",
         "read_identifier" => "read_ident",
         "read_nbt" => "read_nbt",
+        "read_byte_array" => "read_byte_arr",
         "read_string" | "read_text" => "read_str",
         "get_max_validator" => "get_max_validator", // Parsed out later
         _ => panic!("unknown packet function {}", name),

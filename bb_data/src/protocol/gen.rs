@@ -67,7 +67,7 @@ impl PacketCollection {
   pub fn expand_sup(&mut self) {
     for versions in self.packets.values_mut() {
       for (ver, p) in versions {
-        if p.extends == "Object" || p.extends == "Record" {
+        if p.extends == "Object" || p.extends == "Record" || p.extends == "BundlePacket" {
           p.extend_from_none();
         } else if (p.extends == "EntityS2CPacket" || p.extends == "PlayerMoveC2SPacket")
           && !self.classes[ver].contains_key(&p.extends)
