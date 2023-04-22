@@ -488,7 +488,7 @@ to_tcp!(JoinGame => (self, conn, ver) {
     buf.write_varint(1);
     buf.write_str("minecraft:overworld");
 
-    super::dimensions::write_dimensions(&mut buf, ver, self.world_min_y, self.world_height);
+    crate::registry::write_codec(&mut buf, ver, self.world_min_y, self.world_height);
 
     // Hashed world seed, used for biomes client side.
     buf.write_u64(0);
@@ -797,7 +797,7 @@ to_tcp!(Respawn => (self, conn, ver) {
     let mut buf = Buffer::new(&mut data);
     buf.write_i32(self.dimension.into());
     if ver >= ProtocolVersion::V1_16_5 {
-      super::dimensions::write_single_dimension(&mut buf, ver, 0, 256);
+      crate::registry::write_single_dimension(&mut buf, ver, 0, 256);
       buf.write_str("minecraft:overworld");
     }
     if ver >= ProtocolVersion::V1_15_2 {

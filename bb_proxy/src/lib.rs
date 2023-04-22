@@ -10,6 +10,7 @@ pub mod conn;
 mod error;
 pub mod gnet;
 pub mod packet;
+mod registry;
 pub mod stream;
 
 pub use conn::{JsonPlayer, JsonPlayers, JsonStatus, JsonVersion};

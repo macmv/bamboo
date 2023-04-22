@@ -4,7 +4,6 @@ use bb_common::net::cb::Packet;
 use smallvec::SmallVec;
 use std::{error::Error, fmt};
 
-pub mod dimensions;
 mod impls;
 
 #[derive(Debug, Clone)]
