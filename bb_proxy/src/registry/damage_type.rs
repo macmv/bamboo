@@ -1,28 +1,6 @@
 use super::CodecItem;
 use serde::Serialize;
 
-// IN_FIRE
-// LIGHTNING_BOLT
-// ON_FIRE
-// LAVA
-// HOT_FLOOR
-// IN_WALL
-// CRAMMING
-// DROWN
-// STARVE
-// CACTUS
-// FALL
-// FLY_INTO_WALL
-// OUT_OF_WORLD
-// GENERIC
-// MAGIC
-// WITHER
-// DRAGON_BREATH
-// DRY_OUT
-// SWEET_BERRY_BUSH
-// FREEZE
-// STALAGMITE
-
 #[derive(Debug, Clone, Serialize)]
 pub struct DamageType {
   exhaustion: f32,
@@ -32,15 +10,46 @@ pub struct DamageType {
   effects:    Option<String>,
 }
 
+const NAMES: &'static [&'static str] = &[
+  "in_fire",
+  "lightning_bolt",
+  "on_fire",
+  "lava",
+  "hot_floor",
+  "in_wall",
+  "cramming",
+  "drown",
+  "starve",
+  "cactus",
+  "fall",
+  "fly_into_wall",
+  "out_of_world",
+  "generic",
+  "magic",
+  "wither",
+  "dragon_breath",
+  "dry_out",
+  "sweet_berry_bush",
+  "freeze",
+  "stalagmite",
+];
+
 pub(super) fn all() -> Vec<CodecItem<DamageType>> {
-  vec![CodecItem {
-    name:    "minecraft:in_fire".into(),
-    id:      0,
-    element: DamageType {
-      exhaustion: 0.1,
-      message_id: "inFire".into(),
-      scaling:    "when_caused_by_living_non_player".into(),
-      effects:    Some("burning".into()),
-    },
-  }]
+  let mut items: Vec<_> = NAMES
+    .iter()
+    .map(|name| CodecItem {
+      name:    (*name).into(),
+      id:      0,
+      element: DamageType {
+        exhaustion: 0.1,
+        message_id: "inFire".into(),
+        scaling:    "when_caused_by_living_non_player".into(),
+        effects:    None,
+      },
+    })
+    .collect();
+
+  items[1].element.effects = Some("burning".into());
+
+  items
 }
