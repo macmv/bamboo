@@ -933,7 +933,7 @@ to_tcp!(SetPosLook => (self, conn, ver) {
   if ver >= ProtocolVersion::V1_9 {
     buf.write_varint(self.teleport_id as i32);
   }
-  if ver >= ProtocolVersion::V1_17_1 {
+  if ver >= ProtocolVersion::V1_17_1 && ver <= ProtocolVersion::V1_19_3 {
     buf.write_bool(self.should_dismount);
   }
   gpacket!(PlayerPosLook V8 {
