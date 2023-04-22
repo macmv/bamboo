@@ -27,13 +27,14 @@ struct Dimension {
 
 #[derive(Debug, Clone, Serialize)]
 struct Biome {
-  category:      String,
-  depth:         f32,
-  downfall:      f32,
-  effects:       BiomeEffects,
-  precipitation: String,
-  scale:         f32,
-  temperature:   f32,
+  category:          String,
+  depth:             f32,
+  downfall:          f32,
+  effects:           BiomeEffects,
+  precipitation:     String,
+  scale:             f32,
+  temperature:       f32,
+  has_precipitation: bool,
 }
 #[derive(Debug, Clone, Serialize)]
 struct BiomeEffects {
@@ -122,13 +123,14 @@ pub fn write_dimensions<T>(
 {
   let dimension = single_dimension(world_min_y, world_height);
   let biome = Biome {
-    precipitation: "rain".into(),
-    depth:         1.0,
-    temperature:   1.0,
-    scale:         1.0,
-    downfall:      1.0,
-    category:      "none".into(),
-    effects:       BiomeEffects {
+    precipitation:     "rain".into(),
+    depth:             1.0,
+    temperature:       1.0,
+    scale:             1.0,
+    downfall:          1.0,
+    category:          "none".into(),
+    has_precipitation: true,
+    effects:           BiomeEffects {
       sky_color:       0x78a7ff,
       fog_color:       0xc0d8ff,
       water_fog_color: 0x050533,
@@ -237,6 +239,7 @@ fn test_codec() {
     ("scale", Tag::Float(1.0)),
     ("downfall", Tag::Float(1.0)),
     ("category", Tag::String("none".into())),
+    ("has_precipitation", Tag::Bool(true)),
     (
       "effects",
       Tag::new_compound(&[
@@ -255,13 +258,14 @@ fn test_codec() {
     ),
   ]);
   let biome = Biome {
-    precipitation: "rain".into(),
-    depth:         1.0,
-    temperature:   1.0,
-    scale:         1.0,
-    downfall:      1.0,
-    category:      "none".into(),
-    effects:       BiomeEffects {
+    precipitation:     "rain".into(),
+    depth:             1.0,
+    temperature:       1.0,
+    scale:             1.0,
+    downfall:          1.0,
+    category:          "none".into(),
+    has_precipitation: true,
+    effects:           BiomeEffects {
       sky_color:       0x78a7ff,
       fog_color:       0xc0d8ff,
       water_fog_color: 0x050533,
