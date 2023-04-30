@@ -377,8 +377,10 @@ pub enum ChangeGameStateKind {
 }
 
 #[derive(Transfer, Debug, Clone, PartialEq)]
+#[derive(Default)]
 pub enum SoundCategory {
   #[id = 0]
+  #[default]
   Master,
   #[id = 1]
   Music,
@@ -400,9 +402,7 @@ pub enum SoundCategory {
   Voice,
 }
 
-impl Default for SoundCategory {
-  fn default() -> Self { SoundCategory::Master }
-}
+
 
 #[derive(Transfer, Debug, Clone, PartialEq)]
 pub enum TeamAction {
@@ -531,8 +531,10 @@ impl Default for EquipmentSlot {
 }
 
 #[derive(Transfer, Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Default)]
 pub enum ArmorSlot {
   #[id = 0]
+  #[default]
   Helmet,
   #[id = 1]
   Chestplate,
@@ -542,9 +544,7 @@ pub enum ArmorSlot {
   Boots,
 }
 
-impl Default for ArmorSlot {
-  fn default() -> Self { ArmorSlot::Helmet }
-}
+
 
 #[derive(Transfer, Debug, Clone, Copy, PartialEq, Eq)]
 pub enum CommandType {
@@ -575,8 +575,10 @@ pub enum ObjectiveAction {
   Update { value: Chat, ty: ObjectiveType },
 }
 #[derive(Transfer, Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Default)]
 pub enum ObjectiveType {
   #[id = 0]
+  #[default]
   Integer,
   #[id = 1]
   Hearts,
@@ -589,9 +591,7 @@ pub enum ScoreboardAction {
   Remove,
 }
 
-impl Default for ObjectiveType {
-  fn default() -> Self { ObjectiveType::Integer }
-}
+
 
 #[derive(Transfer, Debug, Clone, PartialEq)]
 pub enum PlayerListAction {

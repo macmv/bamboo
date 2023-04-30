@@ -239,5 +239,5 @@ pub fn new_at_err<T: TomlValue>(path: &str) -> Result<T> {
 
 pub fn new_err<T: TomlValue>(src: &str) -> Result<T> {
   let value = src.parse::<Value>()?;
-  Ok(T::from_toml(&value)?)
+  T::from_toml(&value)
 }
