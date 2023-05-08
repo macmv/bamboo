@@ -31,6 +31,24 @@ pub struct Particle {
 }
 
 impl Particle {
+  pub fn new(
+    ty: Type,
+    pos: FPos,
+    long_distance: bool,
+    offset: FPos,
+    count: u32,
+    data: f32,
+  ) -> Self {
+    Self {
+      ty,
+      pos,
+      long_distance,
+      offset,
+      count,
+      data,
+    }
+  }
+
   pub fn to_packet(
     &self,
     blocks: &block::TypeConverter,

@@ -25,6 +25,7 @@ pub mod chat;
 pub mod command;
 pub mod event;
 pub mod item;
+pub mod particle;
 pub mod player;
 pub mod util;
 pub mod world;
@@ -429,6 +430,7 @@ impl PandaPlugin {
     sl.add_builtin_ty::<item::PInventory>();
     sl.add_builtin_ty::<item::PStack>();
     sl.add_builtin_ty::<item::PUI>();
+    sl.add_builtin_ty::<particle::PParticle>();
     sl.add_builtin_ty::<command::PCommand>();
     sl.add_builtin_ty::<player::PPlayer>();
     sl.add_builtin_ty::<player::PTeam>();
