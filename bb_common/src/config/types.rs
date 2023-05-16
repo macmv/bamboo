@@ -61,16 +61,20 @@ impl TomlValue for FPos {
 }
 impl TomlValue for Level {
   fn from_toml(v: &Value) -> Result<Self> {
-    Level::from_str(v.as_str().ok_or(ConfigError::other("not a string"))?)
-        .map_err(ConfigError::other)
+    Ok(
+      Level::from_str(v.as_str().ok_or(ConfigError::other("not a string"))?)
+        .map_err(|e| ConfigError::other(e))?,
+    )
   }
   fn to_toml(&self) -> Value { Value::new(0, self.to_string()) }
   fn name() -> String { "log level".into() }
 }
 impl TomlValue for LevelFilter {
   fn from_toml(v: &Value) -> Result<Self> {
-    LevelFilter::from_str(v.as_str().ok_or(ConfigError::other("not a string"))?)
-        .map_err(ConfigError::other)
+    Ok(
+      LevelFilter::from_str(v.as_str().ok_or(ConfigError::other("not a string"))?)
+        .map_err(|e| ConfigError::other(e))?,
+    )
   }
   fn to_toml(&self) -> Value { Value::new(0, self.to_string()) }
   fn name() -> String { "log level filter".into() }

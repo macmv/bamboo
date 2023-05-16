@@ -12,10 +12,8 @@ pub struct Metadata {
 }
 
 #[derive(Debug, Clone, Copy, Transfer, PartialEq)]
-#[derive(Default)]
 pub enum Pose {
   #[id = 0]
-  #[default]
   Standing,
   #[id = 1]
   FallFlying,
@@ -31,7 +29,9 @@ pub enum Pose {
   Dying,
 }
 
-
+impl Default for Pose {
+  fn default() -> Pose { Pose::Standing }
+}
 
 /// The types for each metadata field. Updated to the latest version of the
 /// game.

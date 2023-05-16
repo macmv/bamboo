@@ -36,7 +36,7 @@ impl fmt::Display for VariantsTemplate<'_> {
       write!(f, " \"{}\" or \"{}\"", self.0[0], self.0[1])
     } else {
       let has_too_many = self.0.len() > 20;
-      let variants = if has_too_many { &self.0[..20] } else { self.0 };
+      let variants = if has_too_many { &self.0[..20] } else { &self.0[..] };
       for (i, variant) in variants.iter().enumerate() {
         if i == variants.len() - 1 {
           write!(f, " or")?;

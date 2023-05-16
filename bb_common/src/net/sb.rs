@@ -61,10 +61,8 @@ pub enum Packet {
 }
 
 #[derive(Transfer, Debug, Clone, Copy, PartialEq, Eq)]
-#[derive(Default)]
 pub enum DigStatus {
   #[id = 0]
-  #[default]
   Start,
   #[id = 1]
   Cancel,
@@ -73,10 +71,8 @@ pub enum DigStatus {
 }
 
 #[derive(Transfer, Debug, Clone, PartialEq)]
-#[derive(Default)]
 pub enum UseEntityAction {
   #[id = 0]
-  #[default]
   Attack,
   #[id = 1]
   Interact(Hand),
@@ -85,10 +81,8 @@ pub enum UseEntityAction {
 }
 
 #[derive(Transfer, Debug, Clone, Copy, PartialEq, Eq)]
-#[derive(Default)]
 pub enum PlayerCommand {
   #[id = 0]
-  #[default]
   StartSneak,
   #[id = 1]
   StopSneak,
@@ -100,9 +94,15 @@ pub enum PlayerCommand {
   LeaveBed,
 }
 
-
-
-
+impl Default for DigStatus {
+  fn default() -> Self { DigStatus::Start }
+}
+impl Default for UseEntityAction {
+  fn default() -> Self { UseEntityAction::Attack }
+}
+impl Default for PlayerCommand {
+  fn default() -> Self { PlayerCommand::StartSneak }
+}
 
 impl DigStatus {
   pub fn from_id(id: u8) -> Self {
@@ -139,14 +139,14 @@ pub enum ClickWindow {
 }
 
 #[derive(Transfer, Clone, Copy, Debug, PartialEq, Eq)]
-#[derive(Default)]
 pub enum Button {
   #[id = 0]
-  #[default]
   Left,
   #[id = 1]
   Middle,
   #[id = 2]
   Right,
 }
-
+impl Default for Button {
+  fn default() -> Self { Button::Left }
+}

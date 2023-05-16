@@ -96,16 +96,16 @@ impl MessageWrite for NBT {
 }
 
 #[derive(Transfer, Debug, Clone, Copy, PartialEq, Eq)]
-#[derive(Default)]
 pub enum Hand {
   #[id = 0]
-  #[default]
   Main,
   #[id = 1]
   Off,
 }
 
-
+impl Default for Hand {
+  fn default() -> Self { Hand::Main }
+}
 
 impl Hand {
   pub fn id(&self) -> u8 {
@@ -125,10 +125,8 @@ impl Hand {
 }
 
 #[derive(Transfer, Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
-#[derive(Default)]
 pub enum GameMode {
   #[id = 0]
-  #[default]
   Survival,
   #[id = 1]
   Creative,
@@ -138,7 +136,9 @@ pub enum GameMode {
   Spectator,
 }
 
-
+impl Default for GameMode {
+  fn default() -> Self { GameMode::Survival }
+}
 
 impl GameMode {
   pub fn id(&self) -> u8 {
@@ -198,10 +198,8 @@ impl FromStr for GameMode {
 }
 
 #[derive(Transfer, Debug, Clone, Copy, PartialEq, Eq)]
-#[derive(Default)]
 pub enum Face {
   #[id = 0]
-  #[default]
   Bottom,
   #[id = 1]
   Top,
@@ -215,7 +213,9 @@ pub enum Face {
   East,
 }
 
-
+impl Default for Face {
+  fn default() -> Self { Face::Bottom }
+}
 
 impl Face {
   pub fn id(&self) -> u8 {

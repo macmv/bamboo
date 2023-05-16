@@ -118,7 +118,7 @@ impl Info {
   fn get_str(&self) -> &str { self.as_str().unwrap_or_else(|| panic!("not a string: {self:?}")) }
   fn as_str(&self) -> Option<&str> {
     match self {
-      Self::String(v) => Some(v),
+      Self::String(v) => Some(&v),
       _ => None,
     }
   }

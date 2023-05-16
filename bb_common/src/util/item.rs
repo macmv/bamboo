@@ -52,7 +52,7 @@ impl ItemData {
     ItemData { display: ItemDisplay::new(), enchantments: None, unbreakable: false }
   }
   pub fn enchantments_mut(&mut self) -> &mut HashMap<u32, NonZeroU8> {
-    self.enchantments.get_or_insert_with(HashMap::new)
+    self.enchantments.get_or_insert_with(|| HashMap::new())
   }
 }
 impl ItemDisplay {
