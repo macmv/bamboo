@@ -60,8 +60,7 @@ pub enum Packet {
   WindowClose { wid: u8 },
 }
 
-#[derive(Transfer, Debug, Clone, Copy, PartialEq, Eq)]
-#[derive(Default)]
+#[derive(Transfer, Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum DigStatus {
   #[id = 0]
   #[default]
@@ -72,8 +71,7 @@ pub enum DigStatus {
   Finish,
 }
 
-#[derive(Transfer, Debug, Clone, PartialEq)]
-#[derive(Default)]
+#[derive(Transfer, Debug, Clone, PartialEq, Default)]
 pub enum UseEntityAction {
   #[id = 0]
   #[default]
@@ -84,8 +82,7 @@ pub enum UseEntityAction {
   InteractAt(FPos, Hand),
 }
 
-#[derive(Transfer, Debug, Clone, Copy, PartialEq, Eq)]
-#[derive(Default)]
+#[derive(Transfer, Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum PlayerCommand {
   #[id = 0]
   #[default]
@@ -99,10 +96,6 @@ pub enum PlayerCommand {
   #[id = 4]
   LeaveBed,
 }
-
-
-
-
 
 impl DigStatus {
   pub fn from_id(id: u8) -> Self {
@@ -138,8 +131,7 @@ pub enum ClickWindow {
   DoubleClick,
 }
 
-#[derive(Transfer, Clone, Copy, Debug, PartialEq, Eq)]
-#[derive(Default)]
+#[derive(Transfer, Clone, Copy, Debug, PartialEq, Eq, Default)]
 pub enum Button {
   #[id = 0]
   #[default]
@@ -149,4 +141,3 @@ pub enum Button {
   #[id = 2]
   Right,
 }
-

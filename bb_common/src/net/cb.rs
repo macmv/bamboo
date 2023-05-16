@@ -376,8 +376,7 @@ pub enum ChangeGameStateKind {
   EnableRespawnScreen(bool),
 }
 
-#[derive(Transfer, Debug, Clone, PartialEq)]
-#[derive(Default)]
+#[derive(Transfer, Debug, Clone, PartialEq, Default)]
 pub enum SoundCategory {
   #[id = 0]
   #[default]
@@ -401,8 +400,6 @@ pub enum SoundCategory {
   #[id = 9]
   Voice,
 }
-
-
 
 #[derive(Transfer, Debug, Clone, PartialEq)]
 pub enum TeamAction {
@@ -530,8 +527,7 @@ impl Default for EquipmentSlot {
   fn default() -> Self { EquipmentSlot::Hand(Hand::Main) }
 }
 
-#[derive(Transfer, Debug, Clone, Copy, PartialEq, Eq)]
-#[derive(Default)]
+#[derive(Transfer, Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum ArmorSlot {
   #[id = 0]
   #[default]
@@ -543,8 +539,6 @@ pub enum ArmorSlot {
   #[id = 3]
   Boots,
 }
-
-
 
 #[derive(Transfer, Debug, Clone, Copy, PartialEq, Eq)]
 pub enum CommandType {
@@ -574,8 +568,7 @@ pub enum ObjectiveAction {
   #[id = 2]
   Update { value: Chat, ty: ObjectiveType },
 }
-#[derive(Transfer, Debug, Clone, Copy, PartialEq, Eq)]
-#[derive(Default)]
+#[derive(Transfer, Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum ObjectiveType {
   #[id = 0]
   #[default]
@@ -590,8 +583,6 @@ pub enum ScoreboardAction {
   #[id = 1]
   Remove,
 }
-
-
 
 #[derive(Transfer, Debug, Clone, PartialEq)]
 pub enum PlayerListAction {

@@ -10,7 +10,7 @@ pub struct DamageType {
   effects:    Option<String>,
 }
 
-const NAMES: &'static [&'static str] = &[
+const NAMES: &[&str] = &[
   "in_fire",
   "lightning_bolt",
   "on_fire",

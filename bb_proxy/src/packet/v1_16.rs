@@ -16,11 +16,11 @@ pub fn chunk(chunk: ChunkWithPos, conv: &TypeConverter) -> Packet {
   let mut chunk_buf = Buffer::new(&mut chunk_data);
   for s in chunk.sections.iter().flatten() {
     chunk_buf.write_u16(s.non_air_blocks() as u16);
-    chunk_buf.write_u8(s.data().bpe() as u8);
+    chunk_buf.write_u8(s.data().bpe());
     if s.data().bpe() <= 8 {
       chunk_buf.write_varint(s.palette().len() as i32);
       for g in s.palette() {
-        chunk_buf.write_varint(conv.block_to_old(*g as u32, BlockVersion::V1_16) as i32);
+        chunk_buf.write_varint(conv.block_to_old(*g, BlockVersion::V1_16) as i32);
       }
     }
     let longs = s.data().long_array();

@@ -58,9 +58,9 @@ impl Behavior for DefaultBehavior {}
 
 pub fn for_entity(ty: Type) -> Box<dyn Behavior + Send> {
   match ty {
-    Type::Snowball => Box::new(SnowballBehavior::default()),
-    Type::Item => Box::new(ItemBehavior::default()),
-    Type::FallingBlock => Box::new(FallingBlock::default()),
-    _ => Box::new(DefaultBehavior::default()),
+    Type::Snowball => Box::<SnowballBehavior>::default(),
+    Type::Item => Box::<ItemBehavior>::default(),
+    Type::FallingBlock => Box::<FallingBlock>::default(),
+    _ => Box::<DefaultBehavior>::default(),
   }
 }

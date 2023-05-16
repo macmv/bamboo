@@ -127,8 +127,7 @@ impl FPos {
 
   /// Returns the distance to the other position.
   pub fn dist(&self, other: FPos) -> f64 {
-    ((self.x - other.x).powi(2) + (self.y - other.y).powi(2) + (self.z - other.z).powi(2))
-      .sqrt()
+    ((self.x - other.x).powi(2) + (self.y - other.y).powi(2) + (self.z - other.z).powi(2)).sqrt()
   }
   /// Returns the squared distance to the other position. Since block positions
   /// are always ints, this will also always be exactly an int.

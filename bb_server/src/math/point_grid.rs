@@ -232,14 +232,14 @@ mod tests {
     let mut expected = vec![vec![(0, 0); 8]; 8];
     let mut y = 0;
     for l in expected_str.lines() {
-      if l == "" {
+      if l.is_empty() {
         continue;
       }
-      for (x, s) in l.trim().split(" ").enumerate() {
+      for (x, s) in l.trim().split(' ').enumerate() {
         match s {
-          "AA" => expected[y][x] = (2 + 0, 2 + 0),
-          "BB" => expected[y][x] = (1 + 4, 1 + 0),
-          "CC" => expected[y][x] = (3 + 0, 0 + 4),
+          "AA" => expected[y][x] = (2, 2),
+          "BB" => expected[y][x] = (1 + 4, 1),
+          "CC" => expected[y][x] = (3, 4),
           "DD" => expected[y][x] = (3 + 4, 3 + 4),
           "XX" => expected[y][x] = (3 - 4, 3 + 4),
           "YY" => expected[y][x] = (1 + 4, 1 + 8),

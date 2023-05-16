@@ -62,7 +62,7 @@ impl Vector {
     ((self.x - other.x).powi(2) + (self.y - other.y).powi(2)).sqrt()
   }
 
-  pub fn slope(&self) -> Pdope { Pdope(self.y as f64 / self.x as f64) }
+  pub fn slope(&self) -> Pdope { Pdope(self.y / self.x) }
 }
 
 impl Pdope {

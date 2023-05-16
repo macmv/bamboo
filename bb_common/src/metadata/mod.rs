@@ -11,8 +11,7 @@ pub struct Metadata {
   pub fields: HashMap<u8, Field>,
 }
 
-#[derive(Debug, Clone, Copy, Transfer, PartialEq)]
-#[derive(Default)]
+#[derive(Debug, Clone, Copy, Transfer, PartialEq, Default)]
 pub enum Pose {
   #[id = 0]
   #[default]
@@ -30,8 +29,6 @@ pub enum Pose {
   #[id = 6]
   Dying,
 }
-
-
 
 /// The types for each metadata field. Updated to the latest version of the
 /// game.

@@ -48,8 +48,8 @@ impl TestHandler {
   pub fn handle(&self, p: sb::Packet) { packet::handle(&self.wm, &self.player, p); }
   pub fn player(&self) -> &Arc<Player> { &self.player }
   pub fn clear(&self) {
-    while let Ok(_) = self.rx.try_recv() {}
-    while let Ok(_) = self.wake_rx.try_recv() {}
+    while self.rx.try_recv().is_ok() {}
+    while self.wake_rx.try_recv().is_ok() {}
   }
   pub fn assert_empty(&self) {
     if !self.rx.is_empty() {

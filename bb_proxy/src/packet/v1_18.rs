@@ -29,11 +29,11 @@ pub fn chunk(chunk: ChunkWithPos, ver: ProtocolVersion, conv: &TypeConverter) ->
       chunk_buf.write_u16(s.non_air_blocks() as u16);
 
       // Paletted container for chunk data
-      chunk_buf.write_u8(s.data().bpe() as u8);
+      chunk_buf.write_u8(s.data().bpe());
       if s.data().bpe() <= 8 {
         chunk_buf.write_varint(s.palette().len() as i32);
         for g in s.palette() {
-          chunk_buf.write_varint(conv.block_to_old(*g as u32, ver.block()) as i32);
+          chunk_buf.write_varint(conv.block_to_old(*g, ver.block()) as i32);
         }
       }
       let longs = s.data().long_array();
