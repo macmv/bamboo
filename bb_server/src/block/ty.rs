@@ -447,7 +447,7 @@ mod tests {
 
     let id = conv.get(Kind::OakLeaves).type_from_id(0).id();
     let ty = conv.get(Kind::OakLeaves).default_type().with("waterlogged", true);
-   assert_eq!(ty.with("distance", 1).with("persistent", true).id(), id + 0 + 0 * 2 + 0 * 4);
+    assert_eq!(ty.with("distance", 1).with("persistent", true).id(), id + 0 + 0 * 2 + 0 * 4);
     assert_eq!(ty.with("distance", 1).with("persistent", false).id(), id + 0 + 1 * 2 + 0 * 4);
     assert_eq!(ty.with("distance", 2).with("persistent", true).id(), id + 0 + 0 * 2 + 1 * 4);
     assert_eq!(ty.with("distance", 2).with("persistent", false).id(), id + 0 + 1 * 2 + 1 * 4);
