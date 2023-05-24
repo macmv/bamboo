@@ -11,9 +11,10 @@ pub struct Metadata {
   pub fields: HashMap<u8, Field>,
 }
 
-#[derive(Debug, Clone, Copy, Transfer, PartialEq)]
+#[derive(Debug, Clone, Copy, Transfer, PartialEq, Default)]
 pub enum Pose {
   #[id = 0]
+  #[default]
   Standing,
   #[id = 1]
   FallFlying,
@@ -27,10 +28,6 @@ pub enum Pose {
   Sneaking,
   #[id = 6]
   Dying,
-}
-
-impl Default for Pose {
-  fn default() -> Pose { Pose::Standing }
 }
 
 /// The types for each metadata field. Updated to the latest version of the

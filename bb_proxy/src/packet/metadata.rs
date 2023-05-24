@@ -188,7 +188,7 @@ pub fn metadata(
             conv.item(&mut item, ver.block());
             out.write_bool(present);
             if present {
-              out.write_varint(item.id as i32);
+              out.write_varint(item.id);
               out.write_u8(item.count());
               out.write_u8(0x00); // TODO: Write nbt data
             }

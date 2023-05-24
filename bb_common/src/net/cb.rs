@@ -376,9 +376,10 @@ pub enum ChangeGameStateKind {
   EnableRespawnScreen(bool),
 }
 
-#[derive(Transfer, Debug, Clone, PartialEq)]
+#[derive(Transfer, Debug, Clone, PartialEq, Default)]
 pub enum SoundCategory {
   #[id = 0]
+  #[default]
   Master,
   #[id = 1]
   Music,
@@ -398,10 +399,6 @@ pub enum SoundCategory {
   Ambient,
   #[id = 9]
   Voice,
-}
-
-impl Default for SoundCategory {
-  fn default() -> Self { SoundCategory::Master }
 }
 
 #[derive(Transfer, Debug, Clone, PartialEq)]
@@ -530,9 +527,10 @@ impl Default for EquipmentSlot {
   fn default() -> Self { EquipmentSlot::Hand(Hand::Main) }
 }
 
-#[derive(Transfer, Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Transfer, Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum ArmorSlot {
   #[id = 0]
+  #[default]
   Helmet,
   #[id = 1]
   Chestplate,
@@ -540,10 +538,6 @@ pub enum ArmorSlot {
   Leggings,
   #[id = 3]
   Boots,
-}
-
-impl Default for ArmorSlot {
-  fn default() -> Self { ArmorSlot::Helmet }
 }
 
 #[derive(Transfer, Debug, Clone, Copy, PartialEq, Eq)]
@@ -574,9 +568,10 @@ pub enum ObjectiveAction {
   #[id = 2]
   Update { value: Chat, ty: ObjectiveType },
 }
-#[derive(Transfer, Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Transfer, Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum ObjectiveType {
   #[id = 0]
+  #[default]
   Integer,
   #[id = 1]
   Hearts,
@@ -587,10 +582,6 @@ pub enum ScoreboardAction {
   Create(i32),
   #[id = 1]
   Remove,
-}
-
-impl Default for ObjectiveType {
-  fn default() -> Self { ObjectiveType::Integer }
 }
 
 #[derive(Transfer, Debug, Clone, PartialEq)]

@@ -87,7 +87,7 @@ fn basic_propagate() {
   let wm = Arc::new(WorldManager::new(false));
 
   #[rustfmt::skip]
-  let (chunk, expected) = chunk_from_str(wm.clone(), &[
+  let (chunk, expected) = chunk_from_str(wm, &[
     &[
       "    ###    ",
       "    #T#    ",

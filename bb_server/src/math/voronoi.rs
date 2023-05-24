@@ -12,7 +12,7 @@ impl Voronoi {
 
   pub fn get(&self, p: Point) -> u32 {
     let p = self.grid.closest_point(p);
-    ((p.x as u32) ^ ((p.y as u32) << 16)) as u32
+    (p.x as u32) ^ ((p.y as u32) << 16)
   }
   pub fn dist_to_center(&self, p: Point) -> f64 { self.grid.closest_point(p).dist(p) }
   /// Returns the closest neighbor of the given point. This is the second

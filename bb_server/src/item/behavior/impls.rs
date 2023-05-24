@@ -133,12 +133,10 @@ impl Behavior for Slab {
           // slabs, instead of replacing the existing one.
           if click.block.world.get_block(pos).map(|b| b.kind()) == Ok(self.kind) {
             "double"
+          } else if click.cursor.y > 0.5 {
+            "top"
           } else {
-            if click.cursor.y > 0.5 {
-              "top"
-            } else {
-              "bottom"
-            }
+            "bottom"
           }
         },
       );

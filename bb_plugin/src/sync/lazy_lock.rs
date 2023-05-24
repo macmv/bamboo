@@ -46,13 +46,13 @@ impl<'a, T: 'a> Deref for LazyGuard<'a, T> {
   type Target = T;
   fn deref(&self) -> &T {
     // SAFETY: We know the mutex is locked, so the `Option<T>` must be `Some`.
-    unsafe { (&*self.lock.value.get()).as_ref().unwrap_unchecked() }
+    unsafe { (*self.lock.value.get()).as_ref().unwrap_unchecked() }
   }
 }
 impl<'a, T: 'a> DerefMut for LazyGuard<'a, T> {
   fn deref_mut(&mut self) -> &mut T {
     // SAFETY: We know the mutex is locked, so the `Option<T>` must be `Some`.
-    unsafe { (&mut *self.lock.value.get()).as_mut().unwrap_unchecked() }
+    unsafe { (*self.lock.value.get()).as_mut().unwrap_unchecked() }
   }
 }
 impl<'a, T: 'a> Drop for LazyGuard<'a, T> {

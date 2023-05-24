@@ -106,7 +106,7 @@ pub trait BiomeGen {
       .unwrap();
     for x in 0..16 {
       for z in 0..16 {
-        let height = self.height_at(world, pos.block() + Pos::new(x as i32, 0, z as i32)) as i32;
+        let height = self.height_at(world, pos.block() + Pos::new(x as i32, 0, z as i32));
         let min_height = height - layers.total_height() as i32;
         match min_height.cmp(&average_min_height) {
           Ordering::Less => {

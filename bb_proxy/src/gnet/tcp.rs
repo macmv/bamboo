@@ -272,7 +272,7 @@ impl Packet {
         damage = self.read_i16()?;
         // Quirk with NBT here; if there is a single `0` byte, then there is no NBT
         // data. This is fixed in 1.13+
-        if self.buf.get(0) == Some(&0) {
+        if self.buf.first() == Some(&0) {
           self.read_u8()?; // Read the u8 we just found was 0.
           nbt = NBT::empty();
         } else {

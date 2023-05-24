@@ -68,7 +68,7 @@ impl Type<'_> {
   pub fn id(&self) -> u32 {
     let mut id = 0;
     for (p, sid) in self.props.iter().zip(self.state_props) {
-      id *= p.len() as u32;
+      id *= p.len();
       id += sid;
     }
     self.state + id

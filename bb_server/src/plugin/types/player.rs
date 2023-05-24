@@ -188,7 +188,7 @@ impl PPlayer {
   pub fn send_message(&self, msg: Var) {
     let out = PChat::from_var(msg);
     if let Ok(i) = self.inner() {
-      i.send_message(out.clone());
+      i.send_message(out);
     }
   }
 

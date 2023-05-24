@@ -69,7 +69,7 @@ impl PStack {
   /// below the item name, when hovering over the item in an inventory.
   pub fn set_lore(&mut self, lines: Vec<Var>) {
     self.inner.data_mut().display.lore =
-      lines.into_iter().map(|msg| PChat::from_var(msg)).collect::<Vec<bb_common::util::Chat>>();
+      lines.into_iter().map(PChat::from_var).collect::<Vec<bb_common::util::Chat>>();
   }
 
   /// Sets the item to be unbreakable. If unbreakable is `true`, the item will

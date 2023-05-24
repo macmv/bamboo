@@ -110,9 +110,7 @@ impl<const N: usize> SingleInventory<N> {
     }
   }
   /// This is private as updating the item doesn't send an update to the client.
-  pub(crate) fn get_raw_mut(&mut self, index: u32) -> Option<&mut Stack> {
-    self.inv.get_mut(index as u32)
-  }
+  pub(crate) fn get_raw_mut(&mut self, index: u32) -> Option<&mut Stack> { self.inv.get_mut(index) }
   /// Given an index with an offset, this will remove the offset, and lookup the
   /// item at that index.
   pub(crate) fn get_mut(&mut self, index: u32) -> Option<&mut Stack> {
@@ -270,9 +268,7 @@ impl<const N: usize> WrappedInventory<N> {
     }
   }
   /// This is private as updating the item doesn't send an update to the client.
-  pub(crate) fn get_raw_mut(&mut self, index: u32) -> Option<&mut Stack> {
-    self.inv.get_mut(index as u32)
-  }
+  pub(crate) fn get_raw_mut(&mut self, index: u32) -> Option<&mut Stack> { self.inv.get_mut(index) }
   /// Given an index with an offset, this will remove the offset, and lookup the
   /// item at that index.
   pub(crate) fn get_mut(&mut self, index: u32) -> Option<&mut Stack> {

@@ -99,7 +99,7 @@ pub fn multi_block_change(
     let old_id = conv.block_to_old(id, ver.block());
     let y = y * 16 + s_y as i32;
 
-    buf.write_u8((s_x as u8) << 4 | s_z as u8);
+    buf.write_u8(s_x << 4 | s_z);
     buf.write_u8(y as u8);
     buf.write_varint(old_id as i32);
   }

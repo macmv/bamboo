@@ -151,7 +151,7 @@ impl Region {
   }
 
   fn fname(&self) -> PathBuf {
-    PathBuf::new().join("world").join("chunks").join(&format!("{}.{}.bbr", self.pos.x, self.pos.z))
+    PathBuf::new().join("world").join("chunks").join(format!("{}.{}.bbr", self.pos.x, self.pos.z))
   }
 }
 
@@ -370,7 +370,7 @@ mod tests {
     }
     world.chunk(ChunkPos::new(0, 0), |c| {
       let section = c.inner().section(0).unwrap();
-      assert!(section.palette().len() == 0);
+      assert!(section.palette().is_empty());
       assert!(section.data().bpe() > 8);
     });
   }

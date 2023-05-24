@@ -554,7 +554,7 @@ impl<'a, S: PacketStream + Send + Sync> Conn<'a, S> {
   }
 
   /// Generates the json status for the server
-  fn build_status(&self) -> JsonStatus { (self.status_builder)(&self.icon, self.ver) }
+  fn build_status(&self) -> JsonStatus { (self.status_builder)(self.icon, self.ver) }
 
   /// Parse BungeeCord's player info from address string
   fn read_bungeecord_info(&self, addr: &str) -> Result<LoginInfo> {
@@ -702,10 +702,8 @@ impl<'a, S: PacketStream + Send + Sync> Conn<'a, S> {
             // Max length according to 1.17.1
             let name = p.read_str(16)?;
             self.username = Some(name.to_string());
-            if self.der_key.is_none() {
-              if self.info.is_none() {
-                self.info = Some(LoginInfo::offline(name.as_str()));
-              }
+            if self.der_key.is_none() && self.info.is_none() {
+              self.info = Some(LoginInfo::offline(name.as_str()));
             }
 
             match &self.der_key {
