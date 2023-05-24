@@ -256,31 +256,31 @@ impl Arg {
   pub fn lit(&self) -> &str {
     match self {
       Arg::Literal(v) => v,
-      _ => panic!("arg is a {:?}, not a literal", self),
+      _ => panic!("arg is a {self:?}, not a literal"),
     }
   }
   pub fn block(&self) -> block::Kind {
     match self {
       Arg::BlockState(kind, _, _) => *kind,
-      _ => panic!("arg is a {:?}, not a block", self),
+      _ => panic!("arg is a {self:?}, not a block"),
     }
   }
   pub fn str(&self) -> &str {
     match self {
       Arg::String(v) => v,
-      _ => panic!("arg is a {:?}, not a string", self),
+      _ => panic!("arg is a {self:?}, not a string"),
     }
   }
   pub fn entity(&self) -> EntitySelector {
     match self {
       Arg::Entity(v) => v.clone(),
-      _ => panic!("arg is a {:?}, not an entity", self),
+      _ => panic!("arg is a {self:?}, not an entity"),
     }
   }
   pub fn entity_summon(&self) -> entity::Type {
     match self {
       Arg::EntitySummon(v) => *v,
-      _ => panic!("arg is a {:?}, not an entity summon", self),
+      _ => panic!("arg is a {self:?}, not an entity summon"),
     }
   }
 }

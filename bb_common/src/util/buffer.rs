@@ -55,17 +55,17 @@ impl fmt::Display for BufferErrorKind {
   fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
     match self {
       Self::VarInt => write!(f, "varint is too long"),
-      Self::IO(e) => write!(f, "{}", e),
-      Self::FromUtf8Error(e) => write!(f, "{}", e),
+      Self::IO(e) => write!(f, "{e}"),
+      Self::FromUtf8Error(e) => write!(f, "{e}"),
       Self::StringTooLong { len, max } => {
-        write!(f, "string is `{}` characters, longer than max `{}`", len, max)
+        write!(f, "string is `{len}` characters, longer than max `{max}`")
       }
       Self::ArrayTooLong { len, max } => {
-        write!(f, "array is `{}` elements, longer than max `{}`", len, max)
+        write!(f, "array is `{len}` elements, longer than max `{max}`")
       }
-      Self::NegativeLen(len) => write!(f, "len `{}` is negative", len),
-      Self::Expected(expected, got) => write!(f, "expected bytes {:x?}, got {:x?}", expected, got),
-      Self::NBT(err) => write!(f, "nbt parse error: {:?}", err),
+      Self::NegativeLen(len) => write!(f, "len `{len}` is negative"),
+      Self::Expected(expected, got) => write!(f, "expected bytes {expected:x?}, got {got:x?}"),
+      Self::NBT(err) => write!(f, "nbt parse error: {err:?}"),
     }
   }
 }
@@ -169,7 +169,7 @@ where
     let mut buf = vec![0; 1024];
     match self.data.read_to_end(&mut buf) {
       Ok(len) => buf[buf.len() - len..].to_vec(),
-      Err(e) => panic!("failed to read all: {:?}", e),
+      Err(e) => panic!("failed to read all: {e:?}"),
     }
   }
 

@@ -120,7 +120,7 @@ pub fn load_from_file(
         }
       }
     }
-    _ => panic!("invalid schematic file {}: unknown material {}", path, material),
+    _ => panic!("invalid schematic file {path}: unknown material {material}"),
   }
 
   Ok(())

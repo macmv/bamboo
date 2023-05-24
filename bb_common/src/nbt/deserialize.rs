@@ -7,10 +7,10 @@ use super::{ParseError, Tag, NBT};
 impl fmt::Display for ParseError {
   fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
     match self {
-      Self::InvalidType(ty) => write!(f, "invalid tag type: {}", ty),
-      Self::InvalidString(e) => write!(f, "invalid string: {}", e),
-      Self::IO(e) => write!(f, "io error: {}", e),
-      Self::BufferError(e) => write!(f, "buffer error: {}", e),
+      Self::InvalidType(ty) => write!(f, "invalid tag type: {ty}"),
+      Self::InvalidString(e) => write!(f, "invalid string: {e}"),
+      Self::IO(e) => write!(f, "io error: {e}"),
+      Self::BufferError(e) => write!(f, "buffer error: {e}"),
     }
   }
 }

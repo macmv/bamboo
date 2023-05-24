@@ -228,15 +228,15 @@ mod tests {
 
   #[track_caller]
   fn assert_close_f64(a: f64, b: f64) {
-    println!("real,fast: {:.5} {:.5}", a, b);
-    assert!(a > b - EPSILON, "values differ: {} {}", a, b);
-    assert!(a < b + EPSILON, "values differ: {} {}", a, b);
+    println!("real,fast: {a:.5} {b:.5}");
+    assert!(a > b - EPSILON, "values differ: {a} {b}");
+    assert!(a < b + EPSILON, "values differ: {a} {b}");
   }
 
   #[track_caller]
   fn assert_close_f32(a: f32, b: f32) {
-    println!("real,fast: {:.5} {:.5}", a, b);
-    assert!(a > b - EPSILON as f32, "values differ: {} {}", a, b);
-    assert!(a < b + EPSILON as f32, "values differ: {} {}", a, b);
+    println!("real,fast: {a:.5} {b:.5}");
+    assert!(a > b - EPSILON as f32, "values differ: {a} {b}");
+    assert!(a < b + EPSILON as f32, "values differ: {a} {b}");
   }
 }

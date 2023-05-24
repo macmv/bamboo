@@ -83,7 +83,7 @@ pub fn transfer(input: TokenStream) -> TokenStream {
               .unnamed
               .iter()
               .enumerate()
-              .map(|(i, _)| Ident::new(&format!("var_{}", i), Span::call_site()));
+              .map(|(i, _)| Ident::new(&format!("var_{i}"), Span::call_site()));
             variant_names.push(quote!(( #( #names ),* )));
           }
           Fields::Named(fields) => {
@@ -194,7 +194,7 @@ fn create_setter(f: &Fields, has_self: bool) -> (TokenStream2, u64, TokenStream2
         if has_self {
           write.extend(quote!(m.write(&self.#i)?;));
         } else {
-          let ident = Ident::new(&format!("var_{}", i), Span::call_site());
+          let ident = Ident::new(&format!("var_{i}"), Span::call_site());
           write.extend(quote!(m.write(#ident)?;));
         }
       }

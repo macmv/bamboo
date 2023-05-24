@@ -242,7 +242,7 @@ impl Connection {
               let p = sb::Packet::read(&mut m).map_err(|err| {
                 io::Error::new(
                   io::ErrorKind::InvalidData,
-                  format!("while reading packet got err: {}", err),
+                  format!("while reading packet got err: {err}"),
                 )
               })?;
               let n = m.index();
@@ -250,10 +250,7 @@ impl Connection {
               if n != len {
                 return Err(io::Error::new(
                   io::ErrorKind::InvalidData,
-                  format!(
-                    "packet did not parse enough bytes (expected {}, only parsed {})",
-                    len, n
-                  ),
+                  format!("packet did not parse enough bytes (expected {len}, only parsed {n})"),
                 ));
               }
               out.push(p);
@@ -261,20 +258,14 @@ impl Connection {
               // This is the first packet, so it must be a login packet.
               let mut m = MessageReader::new(&self.incoming[..len]);
               let info: JoinInfo = m.read().map_err(|e| {
-                io::Error::new(
-                  io::ErrorKind::InvalidData,
-                  format!("error reading handshake: {}", e),
-                )
+                io::Error::new(io::ErrorKind::InvalidData, format!("error reading handshake: {e}"))
               })?;
               let n = m.index();
               self.incoming.drain(0..n);
               if n != len {
                 return Err(io::Error::new(
                   io::ErrorKind::InvalidData,
-                  format!(
-                    "handshake did not parse enough bytes (expected {}, only parsed {})",
-                    len, n
-                  ),
+                  format!("handshake did not parse enough bytes (expected {len}, only parsed {n})"),
                 ));
               }
               self.ver = Some(ProtocolVersion::from(info.ver as i32));
@@ -292,7 +283,7 @@ impl Connection {
           } else {
             return Err(io::Error::new(
               io::ErrorKind::InvalidData,
-              format!("error reading packet id: {}", e),
+              format!("error reading packet id: {e}"),
             ));
           }
         }

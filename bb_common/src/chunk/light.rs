@@ -114,7 +114,7 @@ impl LightSection {
   /// If the light level is outside of 0..16.
   pub fn set_all(&mut self, level: u8) {
     if level >= 16 {
-      panic!("light level cannot be above 15: {}", level);
+      panic!("light level cannot be above 15: {level}");
     }
     let value = (level << 4) | level;
     for elem in &mut self.data {
@@ -130,7 +130,7 @@ impl LightSection {
   /// outside of 0.16.
   pub fn set(&mut self, pos: SectionRelPos, level: u8) {
     if level >= 16 {
-      panic!("light level cannot be above 15: {}", level);
+      panic!("light level cannot be above 15: {level}");
     }
     // SAFETY: We just garunteed that this is a valid level, and `pos` is going to
     // be within 0..16 on all axis

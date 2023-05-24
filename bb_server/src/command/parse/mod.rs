@@ -17,18 +17,18 @@ where
   if let Some(min) = min {
     if num < *min {
       if let Some(max) = max {
-        return Err(w.expected(format!("a number between {} and {}", min, max)));
+        return Err(w.expected(format!("a number between {min} and {max}")));
       } else {
-        return Err(w.expected(format!("a number above {}", min)));
+        return Err(w.expected(format!("a number above {min}")));
       }
     }
   }
   if let Some(max) = max {
     if num > *max {
       if let Some(min) = min {
-        return Err(w.expected(format!("a number between {} and {}", min, max)));
+        return Err(w.expected(format!("a number between {min} and {max}")));
       } else {
-        return Err(w.expected(format!("a number below {}", max)));
+        return Err(w.expected(format!("a number below {max}")));
       }
     }
   }

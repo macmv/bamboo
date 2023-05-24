@@ -426,7 +426,7 @@ pub enum Color {
 impl Color {
   /// Creates a new rgb color. This is only valid for 1.16+ clients. For older
   /// clients, this will render as white.
-  pub fn rgb(r: u8, g: u8, b: u8) -> Self { Color::Custom(format!("#{:02x}{:02x}{:02x}", r, g, b)) }
+  pub fn rgb(r: u8, g: u8, b: u8) -> Self { Color::Custom(format!("#{r:02x}{g:02x}{b:02x}")) }
 
   /// Converts the color to a string. This string should be used in chat json.
   pub fn to_str(&self) -> &str {

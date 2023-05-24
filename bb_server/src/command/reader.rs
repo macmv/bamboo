@@ -16,7 +16,7 @@ impl fmt::Display for ReadError {
   fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
     match self {
       Self::EOF => write!(f, "Unexpected EOF while reading command"),
-      Self::IO(e) => writeln!(f, "{} while reading command", e),
+      Self::IO(e) => writeln!(f, "{e} while reading command"),
     }
   }
 }
@@ -24,8 +24,8 @@ impl fmt::Display for ReadError {
 impl ReadError {
   pub fn pretty_print(&self, text: &str, f: &mut fmt::Formatter) -> fmt::Result {
     match self {
-      Self::EOF => writeln!(f, "Unexpected EOF while reading {}", text),
-      Self::IO(e) => writeln!(f, "{} while reading {}", e, text),
+      Self::EOF => writeln!(f, "Unexpected EOF while reading {text}"),
+      Self::IO(e) => writeln!(f, "{e} while reading {text}"),
     }
   }
 }

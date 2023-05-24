@@ -103,7 +103,7 @@ impl DigStatus {
       0 => Self::Start,
       1 => Self::Cancel,
       2 => Self::Finish,
-      _ => panic!("invalid dig status: {}", id),
+      _ => panic!("invalid dig status: {id}"),
     }
   }
 }

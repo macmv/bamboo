@@ -45,9 +45,9 @@ pub fn hexdigest(hash: Sha1) -> String {
       }
     }
   }
-  let out = format!("{:x}", hex).trim_start_matches('0').into();
+  let out = format!("{hex:x}").trim_start_matches('0').into();
   if negative {
-    format!("-{}", out)
+    format!("-{out}")
   } else {
     out
   }

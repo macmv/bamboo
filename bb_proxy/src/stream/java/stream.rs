@@ -128,7 +128,7 @@ impl PacketStream for JavaStream {
         Ok(Some(tcp::Packet::from_buf(buf.read_all(), ver)?))
       } else {
         let decompressed = decompress_to_vec_zlib(&buf.read_all()).map_err(|e| {
-          io::Error::new(ErrorKind::InvalidData, format!("invalid zlib data: {:?}", e))
+          io::Error::new(ErrorKind::InvalidData, format!("invalid zlib data: {e:?}"))
         })?;
         Ok(Some(tcp::Packet::from_buf(decompressed, ver)?))
       }

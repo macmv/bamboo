@@ -146,7 +146,7 @@ impl NBT {
         let ty = v.ty();
         for v in inner {
           if v.ty() != ty {
-            panic!("the given list contains multiple types: {:?}", inner);
+            panic!("the given list contains multiple types: {inner:?}");
           }
         }
       }
@@ -163,7 +163,7 @@ impl NBT {
     if let Tag::List(inner) = &mut self.tag {
       if let Some(v) = inner.get(0) {
         if tag.ty() != v.ty() {
-          panic!("cannot add different types to list. current: {:?}, new: {:?}", inner, tag);
+          panic!("cannot add different types to list. current: {inner:?}, new: {tag:?}");
         } else {
           inner.push(tag);
         }
@@ -172,7 +172,7 @@ impl NBT {
         inner.push(tag);
       }
     } else {
-      panic!("called list_add on non-list type: {:?}", self);
+      panic!("called list_add on non-list type: {self:?}");
     }
   }
 
@@ -182,7 +182,7 @@ impl NBT {
     if let Tag::Compound(inner) = &mut self.tag {
       inner.insert(name, value);
     } else {
-      panic!("called compound_add on non-compound type: {:?}", self);
+      panic!("called compound_add on non-compound type: {self:?}");
     }
   }
 

@@ -134,7 +134,7 @@ where
       // dbg!(&self.age);
       if !self.data.contains_key(key) {
         dbg!(&self.age);
-        panic!("invalid key: {:?}", key);
+        panic!("invalid key: {key:?}");
       }
     }
   }

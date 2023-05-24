@@ -458,7 +458,7 @@ mod tests {
       total += 1;
       match i {
         0 => assert_eq!(p, Pos::new(1, 2, 3)),
-        _ => panic!("invalid index {}", i),
+        _ => panic!("invalid index {i}"),
       }
     }
     assert_eq!(total, 1);
@@ -474,7 +474,7 @@ mod tests {
         5 => assert_eq!(p, Pos::new(1, 1, 0)),
         6 => assert_eq!(p, Pos::new(0, 1, 1)),
         7 => assert_eq!(p, Pos::new(1, 1, 1)),
-        _ => panic!("invalid index {}", i),
+        _ => panic!("invalid index {i}"),
       }
     }
     total = 0;
@@ -489,7 +489,7 @@ mod tests {
         5 => assert_eq!(p, Pos::new(1, 1, 0)),
         6 => assert_eq!(p, Pos::new(0, 1, 1)),
         7 => assert_eq!(p, Pos::new(1, 1, 1)),
-        _ => panic!("invalid index {}", i),
+        _ => panic!("invalid index {i}"),
       }
     }
     assert_eq!(total, 8);

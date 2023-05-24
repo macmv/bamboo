@@ -116,7 +116,7 @@ impl Hand {
     match id {
       0 => Self::Main,
       1 => Self::Off,
-      _ => panic!("invalid hand: {}", id),
+      _ => panic!("invalid hand: {id}"),
     }
   }
 }
@@ -150,7 +150,7 @@ impl GameMode {
       1 => Self::Creative,
       2 => Self::Adventure,
       3 => Self::Spectator,
-      _ => panic!("invalid gamemode: {}", id),
+      _ => panic!("invalid gamemode: {id}"),
     }
   }
 }
@@ -239,7 +239,7 @@ impl Face {
       3 => Self::South,
       4 => Self::West,
       5 => Self::East,
-      _ => panic!("invalid block face: {}", id),
+      _ => panic!("invalid block face: {id}"),
     }
   }
 
@@ -291,8 +291,8 @@ impl fmt::Display for UUIDParseError {
       f,
       "error while parsing uuid: {}",
       match self {
-        Self::Int(e) => format!("int parsing error: {}", e),
-        Self::Length(len) => format!("invalid length: {}", len),
+        Self::Int(e) => format!("int parsing error: {e}"),
+        Self::Length(len) => format!("invalid length: {len}"),
       }
     )
   }

@@ -33,7 +33,7 @@ pub(crate) fn handle(wm: &Arc<WorldManager>, mut player: &Arc<Player>, p: sb::Pa
   */
   if wm
     .events()
-    .player_request(event::ReceivePacket { player: player.clone(), data: format!("{:?}", p) })
+    .player_request(event::ReceivePacket { player: player.clone(), data: format!("{p:?}") })
     .is_handled()
   {
     return;

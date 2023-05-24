@@ -36,7 +36,7 @@ impl PBlockKind {
   pub fn from_s(name: &str) -> Result<PBlockKind, RuntimeError> {
     Ok(PBlockKind {
       inner: block::Kind::from_str(name).map_err(|_| {
-        RuntimeError::custom(format!("invalid block name '{}'", name), Span::call_site())
+        RuntimeError::custom(format!("invalid block name '{name}'"), Span::call_site())
       })?,
     })
   }

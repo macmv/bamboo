@@ -278,10 +278,10 @@ fn format(args: &[Var]) -> String {
   let mut msg = String::new();
   let mut iter = args.iter();
   if let Some(a) = iter.next() {
-    msg += &format!("{}", a);
+    msg += &format!("{a}");
   }
   for a in iter {
-    msg += &format!(" {}", a);
+    msg += &format!(" {a}");
   }
   msg
 }

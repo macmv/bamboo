@@ -83,7 +83,7 @@ impl BitArray {
   /// This is checked all of the time, as invalid bpe will cause a lot of
   /// problems.
   pub fn new(bpe: u8) -> Self {
-    assert!(bpe < 32, "bpe of {} is too large (must be less than 32)", bpe);
+    assert!(bpe < 32, "bpe of {bpe} is too large (must be less than 32)");
     let epl = 64 / bpe as usize;
     let len = (4096 + epl - 1) / epl;
     BitArray { bpe, data: vec![0; len] }
@@ -100,7 +100,7 @@ impl BitArray {
   /// convert data from protobufs, which can have any data in them.
   #[track_caller]
   pub fn from_data(bpe: u8, data: Vec<u64>) -> Self {
-    assert!(bpe < 32, "bpe of {} is too large (must be less than 32)", bpe);
+    assert!(bpe < 32, "bpe of {bpe} is too large (must be less than 32)");
     let epl = 64 / bpe as usize;
     let len = (4096 + epl - 1) / epl;
     assert_eq!(data.len(), len, "while creating a bit array from existing data, got incorrect len");
@@ -113,7 +113,7 @@ impl BitArray {
     writeln!(
       f,
       "  {}",
-      format!("{:064b}", val)
+      format!("{val:064b}")
         .chars()
         .collect::<Vec<char>>()
         .rchunks(self.bpe.into())
@@ -230,7 +230,7 @@ impl BitArray {
         match v.checked_add(shift_amount) {
           // SAFETY: `i` is within 0..4096, so this is safe
           Some(res) => unsafe { self.set(i, res as u32) },
-          None => panic!("while shifting, tried to add {} to {} (got overflow)", shift_amount, v),
+          None => panic!("while shifting, tried to add {shift_amount} to {v} (got overflow)"),
         }
         #[cfg(not(debug_assertions))]
         // SAFETY: `i` is within 0..4096, so this is safe
@@ -308,7 +308,7 @@ mod tests {
 
     for i in 0..4096 {
       unsafe {
-        assert_eq!(arr.get(i), 31, "failed at {}", i);
+        assert_eq!(arr.get(i), 31, "failed at {i}");
       }
     }
 
@@ -317,7 +317,7 @@ mod tests {
 
     for i in 0..4096 {
       unsafe {
-        assert_eq!(arr.get(i), 15, "failed at {}", i);
+        assert_eq!(arr.get(i), 15, "failed at {i}");
       }
     }
 
@@ -326,7 +326,7 @@ mod tests {
 
     for i in 0..4096 {
       unsafe {
-        assert_eq!(arr.get(i), 7, "failed at {}", i);
+        assert_eq!(arr.get(i), 7, "failed at {i}");
       }
     }
   }
@@ -341,7 +341,7 @@ mod tests {
       for i in 0..4096 {
         unsafe {
           arr.set(i, i as u32 % max);
-          assert_eq!(arr.get(i), i as u32 % max, "failed at index {}", i);
+          assert_eq!(arr.get(i), i as u32 % max, "failed at index {i}");
         }
       }
     }

@@ -44,7 +44,7 @@ impl<K: Eq + Hash + Debug + Clone + Copy, V> Registry<K, V> {
   /// Panics if the key already exists.
   pub fn insert(&mut self, k: K, v: V) {
     if self.ids.contains_key(&k) {
-      panic!("registry already contains key {:?}", k);
+      panic!("registry already contains key {k:?}");
     }
     // Shifts all ids after index up by one, so that they correctly index into
     // self.items.
@@ -146,7 +146,7 @@ impl<K: Eq + Hash + Debug + Clone + Copy, V> Registry<K, V> {
   /// [`get(k)`](Self::get) returns `None`, then this function will not panic.
   pub fn add(&mut self, k: K, v: V) {
     if self.ids.contains_key(&k) {
-      panic!("registry already contains key {:?}", k);
+      panic!("registry already contains key {k:?}");
     }
     self.index = self.items.len();
     self.ids.insert(k, self.index);
@@ -263,7 +263,7 @@ impl<Ver: Eq + Hash + Debug + Clone + Copy, K: Eq + Hash + Debug + Clone + Copy,
 
   pub fn add_version(&mut self, ver: Ver) {
     match self.versions.get_mut(&ver) {
-      Some(_) => panic!("already contains version {:?}", ver),
+      Some(_) => panic!("already contains version {ver:?}"),
       None => {
         let new = Rc::new(RefCell::new(CloningRegistry::new()));
         self.versions[&self.current].borrow_mut().add_child(new.clone());
@@ -276,20 +276,20 @@ impl<Ver: Eq + Hash + Debug + Clone + Copy, K: Eq + Hash + Debug + Clone + Copy,
   pub fn insert(&mut self, ver: Ver, k: K, v: V) {
     match self.versions.get_mut(&ver) {
       Some(reg) => reg.borrow_mut().insert(k, Rc::new(v)),
-      None => panic!("unknown version {:?}", ver),
+      None => panic!("unknown version {ver:?}"),
     }
   }
   pub fn insert_at(&mut self, ver: Ver, i: usize, k: K, v: V) {
     match self.versions.get_mut(&ver) {
       Some(reg) => reg.borrow_mut().insert_at(i, k, Rc::new(v)),
-      None => panic!("unknown version {:?}", ver),
+      None => panic!("unknown version {ver:?}"),
     }
   }
 
   pub fn add(&mut self, ver: Ver, k: K, v: V) {
     match self.versions.get_mut(&ver) {
       Some(reg) => reg.borrow_mut().add(k, Rc::new(v)),
-      None => panic!("unknown version {:?}", ver),
+      None => panic!("unknown version {ver:?}"),
     }
   }
 

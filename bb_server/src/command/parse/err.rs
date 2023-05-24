@@ -56,7 +56,7 @@ impl ParseError {
       ErrorFormat::Minecraft => {
         out.add(prefix).color(Color::Red);
         if self.pos.start == text.len() {
-          out.add(format!("{} ", text)).color(Color::White);
+          out.add(format!("{text} ")).color(Color::White);
           out.add(" ").color(Color::Red).underlined();
         } else {
           out.add(&text[..self.pos.start]).color(Color::White);
@@ -96,7 +96,7 @@ impl fmt::Display for ChildError {
   fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
     match self {
       Self::Invalid(p) => write!(f, "{}", p.desc()),
-      Self::Expected(s) => write!(f, "`{}`", s),
+      Self::Expected(s) => write!(f, "`{s}`"),
     }
   }
 }
@@ -115,11 +115,11 @@ impl fmt::Display for ErrorKind {
           write!(f, "expected ")?;
           for (i, e) in errors.iter().enumerate() {
             if i == errors.len() - 1 {
-              write!(f, "or {}", e)?;
+              write!(f, "or {e}")?;
             } else if i == errors.len() - 2 {
-              write!(f, "{} ", e)?;
+              write!(f, "{e} ")?;
             } else {
-              write!(f, "{}, ", e)?;
+              write!(f, "{e}, ")?;
             }
           }
           Ok(())
@@ -130,17 +130,17 @@ impl fmt::Display for ErrorKind {
       Self::Trailing => write!(f, "trailing characters"),
       Self::EOF => write!(f, "command ended early"),
       Self::Expected(expected) => {
-        write!(f, "expected {}", expected)
+        write!(f, "expected {expected}")
       }
       Self::Range(v, min, max) => {
         if let (Some(min), Some(max)) = (min, max) {
-          write!(f, "{} is out of range {}..{}", v, min, max)
+          write!(f, "{v} is out of range {min}..{max}")
         } else if let Some(min) = min {
-          write!(f, "{} is less than min {}", v, min)
+          write!(f, "{v} is less than min {min}")
         } else if let Some(max) = max {
-          write!(f, "{} is greater than max {}", v, max)
+          write!(f, "{v} is greater than max {max}")
         } else {
-          write!(f, "{} is out of range none (should never happen)", v)
+          write!(f, "{v} is out of range none (should never happen)")
         }
       }
     }

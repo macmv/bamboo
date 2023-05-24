@@ -216,7 +216,7 @@ to_tcp!(CommandList => (self, conn, ver) {
   use bb_common::net::cb::CommandType;
 
   if ver < ProtocolVersion::V1_13 {
-    panic!("command tree doesn't exist for version {}", ver);
+    panic!("command tree doesn't exist for version {ver}");
   }
   if ver >= ProtocolVersion::V1_19 {
     return Ok(smallvec![]);

@@ -73,7 +73,7 @@ impl fmt::Display for ReadError {
 impl fmt::Display for ValidReadError {
   fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
     match self {
-      Self::InvalidUtf8(e) => write!(f, "invalid utf8: {}", e),
+      Self::InvalidUtf8(e) => write!(f, "invalid utf8: {e}"),
       Self::InvalidVariant(variant) => {
         write!(f, "invalid variant: {variant}")
       }
@@ -106,7 +106,7 @@ impl fmt::Display for MessageReader<'_> {
     writeln!(f, "Message ({} bytes) {{", self.data.len())?;
     let mut reader = MessageReader::new(self.data);
     while reader.can_read() {
-      writeln!(f, "Field: {:#?}", reader)?;
+      writeln!(f, "Field: {reader:#?}")?;
       reader.skip_field().unwrap();
     }
     write!(f, "}}")?;
@@ -1206,7 +1206,7 @@ mod tests {
     assert_eq!(m.read_struct::<RemovedFieldStruct>().unwrap(), RemovedFieldStruct { a: 2, b: 0 });
     assert_eq!(m.read_struct::<EmptyStruct>().unwrap(), EmptyStruct {});
     let err = m.read_struct::<IntStruct>().unwrap_err();
-    assert!(matches!(err, ReadError::Invalid(InvalidReadError::EOF)), "unexpected error {:?}", err);
+    assert!(matches!(err, ReadError::Invalid(InvalidReadError::EOF)), "unexpected error {err:?}");
   }
 
   #[test]

@@ -115,7 +115,7 @@ mod tests {
       dbg!(p);
       assert_eq!(p, Pos::new(x as i32 + 32, 0, z as i32 + 48));
       if i > 256 {
-        panic!("invalid index {}", i);
+        panic!("invalid index {i}");
       }
     }
     assert_eq!(total, 256);
@@ -127,7 +127,7 @@ mod tests {
       dbg!(p);
       assert_eq!(p, Pos::new(x as i32 - 16, 0, z as i32 - 48));
       if i > 256 {
-        panic!("invalid index {}", i);
+        panic!("invalid index {i}");
       }
     }
     assert_eq!(total, 256);
