@@ -21,7 +21,7 @@ pub fn add_world_generator(
 
 #[no_mangle]
 extern "C" fn generate_chunk_and_lock(name: *const i8, x: i32, z: i32) -> *const u8 {
-  let generator_name = unsafe { std::ffi::CStr::from_ptr(name) };
+  let generator_name = unsafe { std::ffi::CStr::from_ptr(name as _) };
   let mut sections = vec![];
   let map = GENERATORS.lock();
   let chunk = if let Some(gen) = map.get(generator_name.to_str().unwrap()) {
