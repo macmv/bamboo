@@ -11,15 +11,15 @@ bb_common = { path = "../bb_common" }
 log = "0.4"
 
 # auth
-rand = "0.8.3"
+rand = "0.8"
 rsa = "0.8.1"
 
 # networking
-mio = "0.8.5"
-crossbeam-channel = "0.5.1"
-parking_lot = "0.12.1"
+mio = "0.8"
+crossbeam-channel = "0.5"
+parking_lot = "0.12"
 
 # for the cli
-rustyline = "10.1.1"
-crossterm = "0.26.0"
-ansi_term = "0.12.1"
+rustyline = "11.0"
+crossterm = "0.26"
+ansi_term = "0.12"
