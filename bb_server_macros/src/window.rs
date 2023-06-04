@@ -13,11 +13,11 @@ pub fn window(input: TokenStream) -> TokenStream {
   'fields: for field in &input.fields {
     let mut output = false;
     for attr in &field.attrs {
-      if attr.path.get_ident().map(|i| i == "output").unwrap_or(false) {
+      if attr.path().get_ident().map(|i| i == "output").unwrap_or(false) {
         output = true;
-      } else if attr.path.get_ident().map(|i| i == "not_inv").unwrap_or(false) {
+      } else if attr.path().get_ident().map(|i| i == "not_inv").unwrap_or(false) {
         continue 'fields;
-      } else if attr.path.get_ident().map(|i| i == "filter").unwrap_or(false) {
+      } else if attr.path().get_ident().map(|i| i == "filter").unwrap_or(false) {
         // TODO: Handle
       }
     }
@@ -156,7 +156,7 @@ pub fn window_enum(input: TokenStream) -> TokenStream {
   for v in input.variants.iter() {
     let mut found_name = false;
     for attr in &v.attrs {
-      if attr.path.get_ident().map(|i| i == "name").unwrap_or(false) {
+      if attr.path().get_ident().map(|i| i == "name").unwrap_or(false) {
         match attr.parse_args::<LitStr>() {
           Ok(lit) => {
             names.push(lit);

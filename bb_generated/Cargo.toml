@@ -32,5 +32,5 @@ serde = "1.0"
 sc_data = { path = "../sc_data" }
 
 [dev-dependencies]
-pprof = { version = "0.11.0", features = ["criterion", "flamegraph"] }
+pprof = { version = "0.11", features = ["criterion", "flamegraph"] }
 criterion = "0.4.0"

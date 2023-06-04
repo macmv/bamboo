@@ -1,7 +1,7 @@
 use super::chunk::MultiChunk;
 use crate::{block, config::WorldConfig, math::WarpedVoronoi};
 use bb_common::math::{ChunkPos, Pos, RelPos, RngCore, WyhashRng};
-use noise::{BasicMulti, NoiseFn};
+use noise::{BasicMulti, NoiseFn, Perlin};
 use std::{
   cmp::Ordering,
   collections::{HashMap, HashSet},
@@ -201,8 +201,8 @@ pub struct WorldGen {
   seed:        u64,
   biome_map:   WarpedVoronoi,
   biomes:      Vec<Box<dyn BiomeGen + Send + Sync>>,
-  stone:       BasicMulti,
-  max_height:  BasicMulti,
+  stone:       BasicMulti<Perlin>,
+  max_height:  BasicMulti<Perlin>,
   #[allow(unused)]
   underground: Underground,
   debug:       bool,
@@ -210,9 +210,9 @@ pub struct WorldGen {
 
 impl WorldGen {
   pub fn new() -> Self {
-    let mut stone = BasicMulti::new();
+    let mut stone = BasicMulti::<Perlin>::default();
     stone.octaves = 3;
-    let mut max_height = BasicMulti::new();
+    let mut max_height = BasicMulti::<Perlin>::default();
     max_height.octaves = 1;
     let seed = 3210471203948712039;
     WorldGen {

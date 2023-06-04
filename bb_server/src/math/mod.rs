@@ -10,22 +10,22 @@ pub use point_grid::PointGrid;
 pub use vec::Vec3;
 pub use voronoi::Voronoi;
 
-use noise::{BasicMulti, MultiFractal, NoiseFn, Seedable};
+use noise::{BasicMulti, MultiFractal, NoiseFn, Seedable, Perlin};
 
 /// This is a voronoi map, but all the input coordinates are shifted by two
 /// noise maps.
 pub struct WarpedVoronoi {
   map: Voronoi,
-  x:   BasicMulti,
-  y:   BasicMulti,
+  x:   BasicMulti<Perlin>,
+  y:   BasicMulti<Perlin>,
 }
 
 impl WarpedVoronoi {
   pub fn new(seed: u64) -> Self {
     WarpedVoronoi {
       map: Voronoi::new(seed),
-      x:   BasicMulti::new().set_octaves(5).set_seed(seed as u32),
-      y:   BasicMulti::new().set_octaves(5).set_seed((seed >> 32) as u32),
+      x:   BasicMulti::<Perlin>::default().set_octaves(5).set_seed(seed as u32),
+      y:  BasicMulti::<Perlin>::default().set_octaves(5).set_seed((seed >> 32) as u32),
     }
   }
 

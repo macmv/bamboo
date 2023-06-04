@@ -1,20 +1,20 @@
 use crate::{block, world::chunk::MultiChunk};
 use bb_common::math::ChunkPos;
-use noise::{BasicMulti, NoiseFn};
+use noise::{BasicMulti, NoiseFn, Perlin};
 
 pub struct CaveNoise {
-  noise:  BasicMulti,
-  middle: BasicMulti,
-  offset: BasicMulti,
+  noise:  BasicMulti<Perlin>,
+  middle: BasicMulti<Perlin>,
+  offset: BasicMulti<Perlin>,
 }
 
 impl CaveNoise {
   pub fn new(_seed: u64) -> Self {
-    let mut noise = BasicMulti::new();
+    let mut noise = BasicMulti::<Perlin>::default();
     noise.octaves = 5;
-    let mut middle = BasicMulti::new();
+    let mut middle = BasicMulti::<Perlin>::default();
     middle.octaves = 3;
-    let mut offset = BasicMulti::new();
+    let mut offset = BasicMulti::<Perlin>::default();
     offset.octaves = 1;
     CaveNoise { noise, middle, offset }
   }

@@ -20,8 +20,8 @@ crossbeam-channel = "0.5"
 parking_lot = { version = "0.12", optional = true }
 
 asn1 = "0.15"
-rsa = { version = "0.8.1", optional = true }
-sha-1 = "0.10.1"
+rsa = { version = "0.8", optional = true }
+sha-1 = "0.10"
 byteorder = "1.4"
 
 num = "0.4"
@@ -48,7 +48,7 @@ indexmap = "1.9"
 bb_data = { path = "../bb_data" }
 
 [dev-dependencies]
-pprof = { version = "0.11.0", features = ["criterion", "flamegraph"] }
+pprof = { version = "0.11", features = ["criterion", "flamegraph"] }
 criterion = "0.4.0"
 pretty_assertions = "1.3.0"
 

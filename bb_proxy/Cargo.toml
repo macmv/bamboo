@@ -23,8 +23,8 @@ serde_json = "1.0"
 
 md5 = "0.7.0"
 rand = "0.8"
-rsa = "0.8.1"
-sha-1 = "0.10.1"
+rsa = "0.8"
+sha-1 = "0.10"
 
 # for mojang auth
 ureq = "2"
@@ -37,14 +37,14 @@ crossbeam-channel = "0.5"
 image = { version = "0.24.6", default-features = false, features = ["png"] }
 base64 = "0.21"
 
-cfb8 = "0.7.1"
-aes = "0.7.2"
+cfb8 = "0.7"
+aes = "0.7"
 miniz_oxide = "0.7.1"
 flate2 = "1.0"
 smallvec = "1.10.0"
 
 # profiling
-pprof = { version = "0.11.0", features = ["protobuf"], optional = true }
+pprof = { version = "0.11", features = ["protobuf"], optional = true }
 
 # command line args
 clap = { version = "4.3.1", features = ["derive"] }
