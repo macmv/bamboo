@@ -1,3 +1,4 @@
+use asn1::{WriteBuf, WriteResult};
 use rsa::{PublicKeyParts, RsaPublicKey};
 
 /// Represents an ASN.1 `BIT STRING`. Need this because the constructor is
@@ -21,11 +22,12 @@ impl<'a> BitString<'a> {
   }
 }
 
-impl<'a> asn1::SimpleAsn1Writable<'a> for BitString<'a> {
-  const TAG: u8 = 0x03;
-  fn write_data(&self, dest: &mut Vec<u8>) {
-    dest.push(self.padding);
-    dest.extend_from_slice(self.data);
+impl<'a> asn1::SimpleAsn1Writable for BitString<'a> {
+  const TAG: asn1::Tag = asn1::Tag::primitive(0x03);
+
+  fn write_data(&self, dest: &mut WriteBuf) -> WriteResult {
+    dest.push_byte(self.padding)?;
+    dest.push_slice(self.data)
   }
 }
 
@@ -79,28 +81,26 @@ fn write_big_uint(w: &mut asn1::Writer, int: &rsa::BigUint) {
   w.write_element(&out);
 }
 
-pub fn encode(key: &RsaPublicKey) -> Vec<u8> {
+pub fn encode(key: &RsaPublicKey) -> WriteResult<Vec<u8>> {
   asn1::write(|w| {
-    w.write_element(&asn1::SequenceWriter::new(&|w| {
+    w.write_element(&asn1::SequenceWriter::new(&|w: &mut asn1::Writer| {
       // A sequence containing the algorithm used.
       w.write_element(&asn1::SequenceWriter::new(&|w| {
-        w.write_element(&asn1::ObjectIdentifier::from_string("1.2.840.113549.1.1.1"));
-        w.write_element(&()); // NULL value
-      }));
+        w.write_element(&asn1::ObjectIdentifier::from_string("1.2.840.113549.1.1.1"))?;
+        w.write_element(&())?; // NULL value
+        Ok(())
+      }))?;
       // A bitstring containing the N and E of the key
-      w.write_element(
-        &BitString::new(
-          &asn1::write(|w| {
-            w.write_element(&asn1::SequenceWriter::new(&|w| {
-              write_big_uint(w, key.n());
-              write_big_uint(w, key.e());
-            }));
-          }),
-          0,
-        )
-        .unwrap(),
-      );
-    }));
+      let encoded_key = asn1::write(|w| {
+        w.write_element(&asn1::SequenceWriter::new(&|w| {
+          write_big_uint(w, key.n());
+          write_big_uint(w, key.e());
+          Ok(())
+        }))
+      })?;
+      w.write_element(&BitString::new(&encoded_key, 0))?;
+      Ok(())
+    }))
   })
 }
 
@@ -115,7 +115,7 @@ mod tests {
     let mut rng = OsRng;
     let key = RsaPrivateKey::new(&mut rng, 1024).expect("failed to generate a key");
 
-    let bytes = encode(&key);
+    let bytes = encode(&key).unwrap();
     let new_key = decode(&bytes).unwrap();
 
     assert_eq!(key.n(), new_key.n());

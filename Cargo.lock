@@ -145,23 +145,22 @@ checksum = "8da52d66c7071e2e3fa2a1e5c6d088fec47b593032b254f5e980de8ea54454d6"
 
 [[package]]
 name = "asn1"
-version = "0.6.5"
+version = "0.15.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ce848fd2d6385bf7a731bbc7816079dd877b8d0c0b995d5990a01412bd2c13d6"
+checksum = "28c19b9324de5b815b6487e0f8098312791b09de0dbf3d5c2db1fe2d95bab973"
 dependencies = [
  "asn1_derive",
- "chrono",
 ]
 
 [[package]]
 name = "asn1_derive"
-version = "0.6.5"
+version = "0.15.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0d5ea4f2cb9cb2e223b2c68a2256a56b8b9c5104946318e68de9d9fd3568f056"
+checksum = "a045c3ccad89f244a86bd1e6cf1a7bf645296e7692698b056399b6efd4639407"
 dependencies = [
  "proc-macro2",
  "quote",
- "syn 1.0.109",
+ "syn 2.0.18",
 ]
 
 [[package]]

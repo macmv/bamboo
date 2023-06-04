@@ -140,7 +140,7 @@ impl Proxy {
   /// Enables or disables encryption for this connection.
   pub fn with_encryption(mut self, encryption: bool) -> Self {
     if encryption {
-      self.der_key = Some(der::encode(&self.key));
+      self.der_key = Some(der::encode(&self.key).unwrap());
     } else {
       self.der_key = None
     }
