@@ -285,7 +285,7 @@ impl<T> MessageRead<'_> for PhantomData<T> {
   fn read(m: &mut MessageReader) -> Result<Self, ReadError> { m.read_struct() }
 }
 impl<T> StructRead<'_> for PhantomData<T> {
-  fn read_struct(_: StructReader) -> Result<Self, ReadError> { Ok(PhantomData::default()) }
+  fn read_struct(_: StructReader) -> Result<Self, ReadError> { Ok(PhantomData) }
 }
 impl<T> MessageWrite for PhantomData<T> {
   fn write<W: Write>(&self, m: &mut MessageWriter<W>) -> Result<(), WriteError> {

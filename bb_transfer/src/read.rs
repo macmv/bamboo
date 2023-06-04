@@ -718,7 +718,7 @@ impl<'a> MessageReader<'a> {
         reader: MessageReader { data: self.data, idx: self.idx },
         current: 0,
         len,
-        phantom: PhantomData::default(),
+        phantom: PhantomData,
       };
       self.skip_fields(len)?;
       Ok(reader)
