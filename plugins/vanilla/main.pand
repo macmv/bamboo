@@ -20,6 +20,8 @@ impl Stairs {
 
 on init() {
   let blocks = @bamboo.block_behaviors()
-  blocks.register("oak_stairs", Stairs {})
-  blocks.register("spruce_stairs", Stairs {})
+
+  for wood in ["oak", "spruce"] {
+    blocks.register(wood + "_stairs", Stairs {})
+  }
 }
