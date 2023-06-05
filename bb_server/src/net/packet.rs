@@ -212,7 +212,7 @@ pub(crate) fn handle(wm: &Arc<WorldManager>, mut player: &Arc<Player>, p: sb::Pa
             pos += face;
           }
 
-          player.place_block_lock(&mut inv, clicked_pos, pos, ty);
+          player.place_block_lock(&mut inv, clicked_pos, pos, ty.ty());
         }
         Err(e) => {
           player.send_hotbar(Chat::new(e.to_string()));

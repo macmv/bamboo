@@ -21,6 +21,26 @@ use bb_common::math::Pos;
 use behavior::BehaviorList;
 use std::{fmt, sync::Arc};
 
+pub enum TypeOrStore<'a> {
+  Type(Type<'a>),
+  Store(TypeStore),
+}
+impl<'a> TypeOrStore<'a> {
+  pub(crate) fn ty(&'a self) -> Type<'a> {
+    match self {
+      Self::Type(ty) => ty.clone(),
+      Self::Store(store) => store.ty(),
+    }
+  }
+}
+
+impl<'a> From<Type<'a>> for TypeOrStore<'a> {
+  fn from(v: Type<'a>) -> Self { TypeOrStore::Type(v) }
+}
+impl From<TypeStore> for TypeOrStore<'static> {
+  fn from(v: TypeStore) -> Self { TypeOrStore::Store(v) }
+}
+
 /// A block in the worl. This simply stores a [`Type`] and a [`Pos`]. This
 /// stores no references to the world, so this may be out of date.
 #[derive(Clone, Copy)]

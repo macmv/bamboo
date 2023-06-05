@@ -1,4 +1,4 @@
-use super::{Block, Data, Kind, Type};
+use super::{Block, Data, Kind, TypeOrStore};
 use crate::{
   event::EventFlow,
   item::Stack,
@@ -17,9 +17,9 @@ pub trait Behavior: Send + Sync {
   ///
   /// This should handle things like logs rotating or torches not placing on
   /// ceilings.
-  fn place<'a>(&self, data: &'a Data, pos: Pos, click: BlockClick) -> Type<'a> {
+  fn place<'a>(&self, data: &'a Data, pos: Pos, click: BlockClick) -> TypeOrStore<'a> {
     let _ = (pos, click);
-    data.default_type()
+    data.default_type().into()
   }
   /// Called after this block is placed. The `block` is the block that was
   /// placed.

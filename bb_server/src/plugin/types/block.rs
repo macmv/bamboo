@@ -103,7 +103,7 @@ struct PluginBehavior {
 }
 
 use crate::{
-  block::{Block, BlockDrops, Data, Type},
+  block::{Block, BlockDrops, Data, TypeOrStore},
   event::EventFlow,
   player::{BlockClick, Player},
   world::{World, WorldManager},
@@ -112,7 +112,7 @@ use bb_common::math::Pos;
 use std::sync::Arc;
 
 impl block::Behavior for PluginBehavior {
-  fn place<'a>(&self, data: &'a Data, pos: Pos, click: BlockClick) -> Type<'a> {
+  fn place<'a>(&self, data: &'a Data, pos: Pos, click: BlockClick) -> TypeOrStore<'a> {
     info!("placing in custom behavior");
 
     let idx = self.bb.idx;
@@ -150,14 +150,13 @@ impl block::Behavior for PluginBehavior {
       Ok(v) => {
         let (_, b) = v.builtin(Span::call_site()).unwrap();
         let ty = b.as_any().downcast_ref::<PBlockType>().unwrap();
-        // TODO: Setup Type with Cow
-        return Box::leak(Box::new(ty.inner.clone())).ty();
+        return ty.inner.clone().into();
       }
       Err(e) => pd.print_err(e),
     }
 
     let _ = (pos, click);
-    data.default_type()
+    data.default_type().into()
   }
   fn update_place(&self, world: &Arc<World>, block: Block) { let _ = (world, block); }
   fn update(&self, world: &Arc<World>, block: Block, old: Block, new: Block) {
