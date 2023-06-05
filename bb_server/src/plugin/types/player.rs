@@ -475,6 +475,14 @@ impl PBlockClick {
     },
   }
 
+  /// The player that performed this block click.
+  #[field]
+  pub fn player(&self) -> PPlayer { self.player.clone().into() }
+  /// The direction the player was facing when this block click occurred.
   #[field]
   pub fn dir(&self) -> super::util::PVec3 { self.dir.into() }
+  /// The position of the user's cursor within the block. This can be used to
+  /// determine if a top or bottom slab can be placed.
+  #[field]
+  pub fn cursor(&self) -> super::util::PFPos { self.cursor.into() }
 }
