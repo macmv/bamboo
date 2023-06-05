@@ -1,0 +1,25 @@
+use bamboo::{
+  block,
+}
+
+struct Stairs {}
+
+impl Stairs {
+  fn place(data, pos, click) {
+    // let dir = click.face.opposite()
+
+    let half = ""
+    bamboo::info(click.dir)
+    if click.dir.y > 0.0 { half = "bottom" } else { half = "top" }
+
+    data.default_type()
+      // .with("facing", dir)
+      .with("half", half)
+  }
+}
+
+on init() {
+  let blocks = @bamboo.block_behaviors()
+  blocks.register("oak_stairs", Stairs {})
+  blocks.register("spruce_stairs", Stairs {})
+}

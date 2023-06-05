@@ -179,7 +179,7 @@ include!(concat!(env!("OUT_DIR"), "/block/ty.rs"));
 
 /// A kind of bounding box. This is from prismarine data. It is not very
 /// helpful, and will be replaced when I have a better data source.
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 #[non_exhaustive]
 pub enum BoundingBoxKind {
   Empty,
@@ -189,7 +189,7 @@ pub enum BoundingBoxKind {
 /// Any data specific to a block kind. This includes all function handlers for
 /// when a block gets placed/broken, and any custom functionality a block might
 /// have.
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub struct Data {
   /// The kind for this data.
   pub kind:         Kind,

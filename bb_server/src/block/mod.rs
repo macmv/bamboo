@@ -61,7 +61,7 @@ impl<'a> Block<'a> {
 }
 
 pub struct BehaviorStore {
-  behaviors: BehaviorList,
+  pub behaviors: BehaviorList,
 }
 
 impl BehaviorStore {

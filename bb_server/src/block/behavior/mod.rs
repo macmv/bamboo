@@ -116,6 +116,11 @@ impl BehaviorList {
     self.behaviors[kind.id() as usize] = Some(imp);
   }
   pub fn call<R>(&self, kind: Kind, f: impl FnOnce(&dyn Behavior) -> R) -> R {
+    if (kind.id() as usize) < self.behaviors.len() {
+      if let Some(b) = &self.behaviors[kind.id() as usize] {
+        return f(b.as_ref());
+      }
+    }
     bb_server_macros::behavior! {
       kind, f -> :Kind:
 
