@@ -81,7 +81,7 @@ fn write_big_uint(w: &mut asn1::Writer, int: &rsa::BigUint) {
   w.write_element(&out);
 }
 
-pub fn encode(key: &RsaPublicKey) -> WriteResult<Vec<u8>> {
+pub fn encode(key: &RsaPublicKey) ->Vec<u8> {
   asn1::write(|w| {
     w.write_element(&asn1::SequenceWriter::new(&|w: &mut asn1::Writer| {
       // A sequence containing the algorithm used.
@@ -101,7 +101,7 @@ pub fn encode(key: &RsaPublicKey) -> WriteResult<Vec<u8>> {
       w.write_element(&BitString::new(&encoded_key, 0))?;
       Ok(())
     }))
-  })
+  }).unwrap()
 }
 
 #[cfg(test)]
@@ -115,7 +115,7 @@ mod tests {
     let mut rng = OsRng;
     let key = RsaPrivateKey::new(&mut rng, 1024).expect("failed to generate a key");
 
-    let bytes = encode(&key).unwrap();
+    let bytes = encode(&key);
     let new_key = decode(&bytes).unwrap();
 
     assert_eq!(key.n(), new_key.n());
