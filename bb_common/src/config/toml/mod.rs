@@ -109,7 +109,7 @@ pub struct ParseError {
 pub enum ParseErrorKind {
   MissingValue,
   MissingKey,
-  Expected(Vec<TokenKind>),
+  Expected(Vec<TokenKind>, TokenKind),
   UnexpectedEOF,
   UnexpectedEOL,
   UnexpectedToken(char),
@@ -129,13 +129,13 @@ impl fmt::Display for ParseErrorKind {
     match self {
       Self::MissingValue => write!(f, "missing value after `=`"),
       Self::MissingKey => write!(f, "missing map key"),
-      Self::Expected(tok) => {
+      Self::Expected(tok, actual) => {
         if tok.is_empty() {
           panic!("cannot have empty missing list")
         } else if tok.len() == 1 {
-          write!(f, "expected {}", tok[0])
+          write!(f, "expected {}, got {actual}", tok[0])
         } else if tok.len() == 2 {
-          write!(f, "expected {} or {}", tok[0], tok[1])
+          write!(f, "expected {} or {}, got {actual}", tok[0], tok[1])
         } else {
           write!(f, "expected ")?;
           for (i, t) in tok.iter().enumerate() {
@@ -147,7 +147,7 @@ impl fmt::Display for ParseErrorKind {
               write!(f, " or")?;
             }
           }
-          Ok(())
+          write!(f, ", got {actual}")
         }
       }
       Self::UnexpectedEOF => write!(f, "unexpected end of file"),
@@ -262,7 +262,7 @@ impl<'a> Tokenizer<'a> {
     if actual.kind() == tok {
       Ok(actual)
     } else {
-      Err(self.err(ParseErrorKind::Expected(vec![tok])))
+      Err(self.err(ParseErrorKind::Expected(vec![tok], actual.kind())))
     }
   }
   pub fn next_opt(&mut self) -> Result<Option<Token<'a>>, ParseError> {
@@ -402,10 +402,11 @@ impl<'a> Tokenizer<'a> {
           match self.next()? {
             Token::Comma => {}
             Token::CloseArr => break,
-            _ => {
-              return Err(
-                self.err(ParseErrorKind::Expected(vec![TokenKind::Comma, TokenKind::CloseArr])),
-              )
+            actual => {
+              return Err(self.err(ParseErrorKind::Expected(
+                vec![TokenKind::Comma, TokenKind::CloseArr],
+                actual.kind(),
+              )))
             }
           }
         }
@@ -428,10 +429,11 @@ impl<'a> Tokenizer<'a> {
           match self.next()? {
             Token::Comma => {}
             Token::CloseBrace => break,
-            _ => {
-              return Err(
-                self.err(ParseErrorKind::Expected(vec![TokenKind::Comma, TokenKind::CloseBrace])),
-              )
+            actual => {
+              return Err(self.err(ParseErrorKind::Expected(
+                vec![TokenKind::Comma, TokenKind::CloseBrace],
+                actual.kind(),
+              )))
             }
           }
         }
@@ -467,8 +469,11 @@ impl<'a> Tokenizer<'a> {
           segments.push(segment.into());
         }
         Token::CloseArr => return Ok(segments),
-        _ => {
-          return Err(self.err(ParseErrorKind::Expected(vec![TokenKind::Dot, TokenKind::CloseArr])))
+        actual => {
+          return Err(self.err(ParseErrorKind::Expected(
+            vec![TokenKind::Dot, TokenKind::CloseArr],
+            actual.kind(),
+          )))
         }
       }
     }
@@ -520,8 +525,11 @@ impl<'a> Tokenizer<'a> {
             }
           }
         }
-        Some(_) => {
-          return Err(self.err(ParseErrorKind::Expected(vec![TokenKind::Word, TokenKind::OpenArr])))
+        Some(actual) => {
+          return Err(self.err(ParseErrorKind::Expected(
+            vec![TokenKind::Word, TokenKind::OpenArr],
+            actual.kind(),
+          )))
         }
         None => return Ok(map),
       }
