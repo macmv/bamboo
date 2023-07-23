@@ -81,6 +81,13 @@ fn parsing() {
     ),
   );
 
+  assert_val(
+    "a.b = true",
+    indexmap! {
+      "b".into() => Value::new(1, true),
+    },
+  );
+
   assert_fail("a = \n1", "line 1: unexpected end of line");
   assert_fail("a =\n", "line 1: unexpected end of line");
   assert_fail("a =$", "line 1: unexpected token `$`");

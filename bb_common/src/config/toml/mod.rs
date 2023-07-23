@@ -453,7 +453,7 @@ impl<'a> Tokenizer<'a> {
     }
   }
   // Parses a path between braces, like `foo.bar.baz`.
-  fn parse_path(&mut self) -> Result<Vec<String>, ParseError> {
+  fn parse_path(&mut self, end: TokenKind) -> Result<Vec<String>, ParseError> {
     let first = match self.expect(TokenKind::Word)? {
       Token::Word(w) => w,
       _ => unreachable!(),
@@ -468,12 +468,9 @@ impl<'a> Tokenizer<'a> {
           };
           segments.push(segment.into());
         }
-        Token::CloseArr => return Ok(segments),
+        t if t.kind() == end => return Ok(segments),
         actual => {
-          return Err(self.err(ParseErrorKind::Expected(
-            vec![TokenKind::Dot, TokenKind::CloseArr],
-            actual.kind(),
-          )))
+          return Err(self.err(ParseErrorKind::Expected(vec![TokenKind::Dot, end], actual.kind())))
         }
       }
     }
@@ -487,25 +484,30 @@ impl<'a> Tokenizer<'a> {
     loop {
       match self.next_opt()? {
         Some(Token::Word(key)) => {
-          self.expect(TokenKind::Eq)?;
+          self.peeked = Some(Token::Word(key));
+          let inner_path = self.parse_path(TokenKind::Eq)?;
           let value = self.parse_value()?;
           let line = self.line;
           self.allow_newlines = true;
+          // Iterate enough times that `map` is the map outside the last element of
+          // inner_path.
           let mut map = &mut map;
-          for key in path.iter().map(|s| s.as_str()).chain([key].into_iter()) {
-            if map.contains_key(key) {
-              map = match &mut map.get_mut(key).unwrap().value {
-                ValueInner::Table(t) => t,
-                _ => return Err(self.err(ParseErrorKind::DuplicateKey(key.into()))),
-              }
-            } else {
+          for key in path.iter().chain(inner_path.iter()).take(path.len() + inner_path.len() - 1) {
+            if !map.contains_key(key) {
               map.insert(key.to_string(), Value::new(line, Map::new()));
             }
+            map = match &mut map.get_mut(key).unwrap().value {
+              ValueInner::Table(t) => t,
+              _ => return Err(self.err(ParseErrorKind::DuplicateKey(key.into()))),
+            }
           }
-          map.insert(key.into(), Value { comments: comments.clone(), line, value });
+          map.insert(
+            inner_path.last().unwrap().into(),
+            Value { comments: comments.clone(), line, value },
+          );
         }
         Some(Token::OpenArr) => {
-          path = self.parse_path()?;
+          path = self.parse_path(TokenKind::CloseArr)?;
           let mut map = &mut map;
           for key in path.iter() {
             if map.contains_key(key) {
