@@ -148,7 +148,7 @@ impl block::Behavior for PluginBehavior {
       ],
     ) {
       Ok(v) => {
-        let (_, b) = v.builtin(Span::call_site()).unwrap();
+        let b = v.strct(Span::call_site()).unwrap().as_builtin(Span::call_site()).unwrap();
         let ty = b.as_any().downcast_ref::<PBlockType>().unwrap();
         return ty.inner.clone().into();
       }
