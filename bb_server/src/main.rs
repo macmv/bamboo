@@ -35,8 +35,8 @@ struct Args {
 //   async fn connection(
 //     &self,
 //     req: Request<Streaming<Packet>>,
-//   ) -> Result<Response<Self::ConnectionStream>, Status> {
-//     let (tx, rx) = mpsc::channel(8);
+//   ) -> Result<Response<Self::ConnectionStream>, Status> { let (tx, rx) =
+//     mpsc::channel(8);
 //
 //     // We need to wait for a packet to be received from the proxy before we
 // can     // create the player (we need a username and uuid). Therefore, we
@@ -59,8 +59,7 @@ struct Args {
 //   async fn reserve_slots(
 //     &self,
 //     req: Request<ReserveSlotsRequest>,
-//   ) -> Result<Response<ReserveSlotsResponse>, Status> {
-//     dbg!(req);
+//   ) -> Result<Response<ReserveSlotsResponse>, Status> { dbg!(req);
 //     Ok(Response::new(ReserveSlotsResponse::default()))
 //   }
 // }
