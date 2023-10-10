@@ -29,6 +29,7 @@ pub mod player;
 pub mod util;
 pub mod world;
 
+use block::PBlockBehaviors;
 use command::PCommand;
 use player::PTeam;
 use std::{fmt, sync::Arc};
@@ -272,6 +273,10 @@ impl Bamboo {
     ));
     Ok(())
   }
+
+  pub fn block_behaviors(&self) -> PBlockBehaviors {
+    block::Behaviors { bb: self.clone(), wm: self.wm.clone() }.into()
+  }
 }
 
 fn format(args: &[Var]) -> String {
@@ -421,8 +426,10 @@ impl PandaPlugin {
     sl.add_builtin_ty::<util::PCountdown>();
     sl.add_builtin_ty::<util::PDuration>();
     sl.add_builtin_ty::<event::PEventFlow>();
+    sl.add_builtin_ty::<block::PBlockData>();
     sl.add_builtin_ty::<block::PBlockKind>();
     sl.add_builtin_ty::<block::PBlockType>();
+    sl.add_builtin_ty::<block::PBlockBehaviors>();
     sl.add_builtin_ty::<chat::PChat>();
     sl.add_builtin_ty::<chat::PChatSection>();
     sl.add_builtin_ty::<item::PClickWindow>();
@@ -430,6 +437,7 @@ impl PandaPlugin {
     sl.add_builtin_ty::<item::PStack>();
     sl.add_builtin_ty::<item::PUI>();
     sl.add_builtin_ty::<command::PCommand>();
+    sl.add_builtin_ty::<player::PBlockClick>();
     sl.add_builtin_ty::<player::PPlayer>();
     sl.add_builtin_ty::<player::PTeam>();
     sl.add_builtin_ty::<player::PWindow>();

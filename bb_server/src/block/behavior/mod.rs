@@ -1,4 +1,4 @@
-use super::{Block, Data, Kind, Type};
+use super::{Block, Data, Kind, TypeOrStore};
 use crate::{
   event::EventFlow,
   item::Stack,
@@ -17,9 +17,9 @@ pub trait Behavior: Send + Sync {
   ///
   /// This should handle things like logs rotating or torches not placing on
   /// ceilings.
-  fn place<'a>(&self, data: &'a Data, pos: Pos, click: BlockClick) -> Type<'a> {
+  fn place<'a>(&self, data: &'a Data, pos: Pos, click: BlockClick) -> TypeOrStore<'a> {
     let _ = (pos, click);
-    data.default_type()
+    data.default_type().into()
   }
   /// Called after this block is placed. The `block` is the block that was
   /// placed.
@@ -116,6 +116,11 @@ impl BehaviorList {
     self.behaviors[kind.id() as usize] = Some(imp);
   }
   pub fn call<R>(&self, kind: Kind, f: impl FnOnce(&dyn Behavior) -> R) -> R {
+    if (kind.id() as usize) < self.behaviors.len() {
+      if let Some(b) = &self.behaviors[kind.id() as usize] {
+        return f(b.as_ref());
+      }
+    }
     bb_server_macros::behavior! {
       kind, f -> :Kind:
 

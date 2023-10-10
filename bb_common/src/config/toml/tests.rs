@@ -81,13 +81,20 @@ fn parsing() {
     ),
   );
 
+  assert_val(
+    "a.b = true",
+    indexmap! {
+      "b".into() => Value::new(1, true),
+    },
+  );
+
   assert_fail("a = \n1", "line 1: unexpected end of line");
   assert_fail("a =\n", "line 1: unexpected end of line");
   assert_fail("a =$", "line 1: unexpected token `$`");
   assert_fail("a = [1,\n2, 3]", "line 1: unexpected end of line");
   assert_fail("\na =", "line 2: unexpected end of file");
 
-  assert_fail("a = [1 2]", "line 1: expected `,` or `]`");
+  assert_fail("a = [1 2]", "line 1: expected `,` or `]`, got integer");
   assert_fail("a = ]", "line 1: missing value after `=`");
 
   assert_value("a_b = true", Value::new(0, indexmap! { "a_b".into() => Value::new(1, true) }));

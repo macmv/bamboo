@@ -31,7 +31,7 @@ use bb_common::{
     GameMode, JoinInfo, ThreadPool, UUID,
   },
 };
-use parking_lot::{Mutex, MutexGuard, RwLock, RwLockReadGuard};
+use parking_lot::{Mutex, MutexGuard, RwLock, RwLockReadGuard, RwLockWriteGuard};
 use std::{
   collections::HashMap,
   convert::TryInto,
@@ -792,6 +792,10 @@ impl WorldManager {
   /// Returns a read lock on the block behavior storage.
   pub fn block_behaviors(&self) -> RwLockReadGuard<'_, block::BehaviorStore> {
     self.block_behaviors.read()
+  }
+  /// Returns a write lock on the block behavior storage.
+  pub fn block_behaviors_mut(&self) -> RwLockWriteGuard<'_, block::BehaviorStore> {
+    self.block_behaviors.write()
   }
 
   /// Returns a read lock on the item behavior storage.

@@ -439,3 +439,50 @@ impl PTeam {
     }
   }
 }
+
+#[derive(Clone, Debug)]
+pub struct PBlockClick {
+  pub player: Arc<Player>,
+  pub dir:    crate::math::Vec3,
+  pub block:  Block,
+  pub face:   bb_common::util::Face,
+  pub cursor: bb_common::math::FPos,
+}
+
+#[derive(Clone)]
+pub struct Block {
+  pub world: Arc<crate::world::World>,
+  pub pos:   bb_common::math::Pos,
+  pub ty:    crate::block::TypeStore,
+}
+
+impl std::fmt::Debug for Block {
+  fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    f.debug_struct("Block").field("pos", &self.pos).field("ty", &self.ty).finish()
+  }
+}
+
+#[define_ty]
+impl PBlockClick {
+  info! {
+    struct_def: false,
+
+    panda: {
+      path: "bamboo::player::BlockClick",
+    },
+    python: {
+      class: "BlockClick",
+    },
+  }
+
+  /// The player that performed this block click.
+  #[field]
+  pub fn player(&self) -> PPlayer { self.player.clone().into() }
+  /// The direction the player was facing when this block click occurred.
+  #[field]
+  pub fn dir(&self) -> super::util::PVec3 { self.dir.into() }
+  /// The position of the user's cursor within the block. This can be used to
+  /// determine if a top or bottom slab can be placed.
+  #[field]
+  pub fn cursor(&self) -> super::util::PFPos { self.cursor.into() }
+}

@@ -109,7 +109,7 @@ pub struct ParseError {
 pub enum ParseErrorKind {
   MissingValue,
   MissingKey,
-  Expected(Vec<TokenKind>),
+  Expected(Vec<TokenKind>, TokenKind),
   UnexpectedEOF,
   UnexpectedEOL,
   UnexpectedToken(char),
@@ -129,13 +129,13 @@ impl fmt::Display for ParseErrorKind {
     match self {
       Self::MissingValue => write!(f, "missing value after `=`"),
       Self::MissingKey => write!(f, "missing map key"),
-      Self::Expected(tok) => {
+      Self::Expected(tok, actual) => {
         if tok.is_empty() {
           panic!("cannot have empty missing list")
         } else if tok.len() == 1 {
-          write!(f, "expected {}", tok[0])
+          write!(f, "expected {}, got {actual}", tok[0])
         } else if tok.len() == 2 {
-          write!(f, "expected {} or {}", tok[0], tok[1])
+          write!(f, "expected {} or {}, got {actual}", tok[0], tok[1])
         } else {
           write!(f, "expected ")?;
           for (i, t) in tok.iter().enumerate() {
@@ -147,7 +147,7 @@ impl fmt::Display for ParseErrorKind {
               write!(f, " or")?;
             }
           }
-          Ok(())
+          write!(f, ", got {actual}")
         }
       }
       Self::UnexpectedEOF => write!(f, "unexpected end of file"),
@@ -262,7 +262,7 @@ impl<'a> Tokenizer<'a> {
     if actual.kind() == tok {
       Ok(actual)
     } else {
-      Err(self.err(ParseErrorKind::Expected(vec![tok])))
+      Err(self.err(ParseErrorKind::Expected(vec![tok], actual.kind())))
     }
   }
   pub fn next_opt(&mut self) -> Result<Option<Token<'a>>, ParseError> {
@@ -402,10 +402,11 @@ impl<'a> Tokenizer<'a> {
           match self.next()? {
             Token::Comma => {}
             Token::CloseArr => break,
-            _ => {
-              return Err(
-                self.err(ParseErrorKind::Expected(vec![TokenKind::Comma, TokenKind::CloseArr])),
-              )
+            actual => {
+              return Err(self.err(ParseErrorKind::Expected(
+                vec![TokenKind::Comma, TokenKind::CloseArr],
+                actual.kind(),
+              )))
             }
           }
         }
@@ -428,10 +429,11 @@ impl<'a> Tokenizer<'a> {
           match self.next()? {
             Token::Comma => {}
             Token::CloseBrace => break,
-            _ => {
-              return Err(
-                self.err(ParseErrorKind::Expected(vec![TokenKind::Comma, TokenKind::CloseBrace])),
-              )
+            actual => {
+              return Err(self.err(ParseErrorKind::Expected(
+                vec![TokenKind::Comma, TokenKind::CloseBrace],
+                actual.kind(),
+              )))
             }
           }
         }
@@ -451,7 +453,7 @@ impl<'a> Tokenizer<'a> {
     }
   }
   // Parses a path between braces, like `foo.bar.baz`.
-  fn parse_path(&mut self) -> Result<Vec<String>, ParseError> {
+  fn parse_path(&mut self, end: TokenKind) -> Result<Vec<String>, ParseError> {
     let first = match self.expect(TokenKind::Word)? {
       Token::Word(w) => w,
       _ => unreachable!(),
@@ -466,9 +468,9 @@ impl<'a> Tokenizer<'a> {
           };
           segments.push(segment.into());
         }
-        Token::CloseArr => return Ok(segments),
-        _ => {
-          return Err(self.err(ParseErrorKind::Expected(vec![TokenKind::Dot, TokenKind::CloseArr])))
+        t if t.kind() == end => return Ok(segments),
+        actual => {
+          return Err(self.err(ParseErrorKind::Expected(vec![TokenKind::Dot, end], actual.kind())))
         }
       }
     }
@@ -482,25 +484,30 @@ impl<'a> Tokenizer<'a> {
     loop {
       match self.next_opt()? {
         Some(Token::Word(key)) => {
-          self.expect(TokenKind::Eq)?;
+          self.peeked = Some(Token::Word(key));
+          let inner_path = self.parse_path(TokenKind::Eq)?;
           let value = self.parse_value()?;
           let line = self.line;
           self.allow_newlines = true;
+          // Iterate enough times that `map` is the map outside the last element of
+          // inner_path.
           let mut map = &mut map;
-          for key in path.iter().map(|s| s.as_str()).chain([key].into_iter()) {
-            if map.contains_key(key) {
-              map = match &mut map.get_mut(key).unwrap().value {
-                ValueInner::Table(t) => t,
-                _ => return Err(self.err(ParseErrorKind::DuplicateKey(key.into()))),
-              }
-            } else {
+          for key in path.iter().chain(inner_path.iter()).take(path.len() + inner_path.len() - 1) {
+            if !map.contains_key(key) {
               map.insert(key.to_string(), Value::new(line, Map::new()));
             }
+            map = match &mut map.get_mut(key).unwrap().value {
+              ValueInner::Table(t) => t,
+              _ => return Err(self.err(ParseErrorKind::DuplicateKey(key.into()))),
+            }
           }
-          map.insert(key.into(), Value { comments: comments.clone(), line, value });
+          map.insert(
+            inner_path.last().unwrap().into(),
+            Value { comments: comments.clone(), line, value },
+          );
         }
         Some(Token::OpenArr) => {
-          path = self.parse_path()?;
+          path = self.parse_path(TokenKind::CloseArr)?;
           let mut map = &mut map;
           for key in path.iter() {
             if map.contains_key(key) {
@@ -520,8 +527,11 @@ impl<'a> Tokenizer<'a> {
             }
           }
         }
-        Some(_) => {
-          return Err(self.err(ParseErrorKind::Expected(vec![TokenKind::Word, TokenKind::OpenArr])))
+        Some(actual) => {
+          return Err(self.err(ParseErrorKind::Expected(
+            vec![TokenKind::Word, TokenKind::OpenArr],
+            actual.kind(),
+          )))
         }
         None => return Ok(map),
       }

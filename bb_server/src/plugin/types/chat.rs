@@ -14,8 +14,8 @@ impl From<Chat> for PChat {
 impl PChat {
   pub fn from_var(var: Var) -> Chat {
     match var {
-      Var::Builtin(_, ref data) => {
-        let borrow = data.borrow();
+      Var::Struct(ref s) => {
+        let borrow = s.as_builtin(Span::call_site()).unwrap();
         let chat = borrow.as_any().downcast_ref::<PChat>();
         chat.map(|c| c.inner.lock().clone()).unwrap_or_else(|| Chat::new(var.to_string()))
       }

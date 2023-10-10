@@ -1,5 +1,5 @@
 use super::{
-  super::{Block, Data, Kind, Type},
+  super::{Block, Data, Kind, TypeOrStore},
   Behavior, BlockDrops, Drops, TileEntity,
 };
 use crate::{
@@ -19,15 +19,18 @@ use std::{any::Any, sync::Arc};
 
 pub struct Log;
 impl Behavior for Log {
-  fn place<'a>(&self, data: &'a Data, _: Pos, click: BlockClick) -> Type<'a> {
-    data.default_type().with(
-      "axis",
-      match click.face {
-        Face::West | Face::East => "x",
-        Face::Top | Face::Bottom => "y",
-        Face::North | Face::South => "z",
-      },
-    )
+  fn place<'a>(&self, data: &'a Data, _: Pos, click: BlockClick) -> TypeOrStore<'a> {
+    data
+      .default_type()
+      .with(
+        "axis",
+        match click.face {
+          Face::West | Face::East => "x",
+          Face::Top | Face::Bottom => "y",
+          Face::North | Face::South => "z",
+        },
+      )
+      .into()
   }
 }
 
@@ -76,8 +79,12 @@ impl Bed {
   }
 }
 impl Behavior for Bed {
-  fn place<'a>(&self, data: &'a Data, _: Pos, click: BlockClick) -> Type<'a> {
-    data.default_type().with("part", "foot").with("facing", click.dir.as_horz_face().as_str())
+  fn place<'a>(&self, data: &'a Data, _: Pos, click: BlockClick) -> TypeOrStore<'a> {
+    data
+      .default_type()
+      .with("part", "foot")
+      .with("facing", click.dir.as_horz_face().as_str())
+      .into()
   }
   fn update_place(&self, world: &Arc<World>, block: Block) {
     if block.ty.prop("part") == "foot" {
@@ -136,11 +143,12 @@ impl TileEntity for ChestTE {
 
 pub struct Trapdoor;
 impl Behavior for Trapdoor {
-  fn place<'a>(&self, data: &'a Data, _: Pos, click: BlockClick) -> Type<'a> {
+  fn place<'a>(&self, data: &'a Data, _: Pos, click: BlockClick) -> TypeOrStore<'a> {
     data
       .default_type()
       .with("half", if click.cursor.y > 0.5 { "top" } else { "bottom" })
       .with("facing", click.dir.as_horz_face().as_str())
+      .into()
   }
   fn interact(&self, mut block: Block, _: &Arc<Player>) -> EventFlow {
     block.set(block.ty.with("open", !block.ty.prop("open").bool()));
@@ -150,8 +158,12 @@ impl Behavior for Trapdoor {
 
 pub struct Door;
 impl Behavior for Door {
-  fn place<'a>(&self, data: &'a Data, _: Pos, click: BlockClick) -> Type<'a> {
-    data.default_type().with("half", "lower").with("facing", click.dir.as_horz_face().as_str())
+  fn place<'a>(&self, data: &'a Data, _: Pos, click: BlockClick) -> TypeOrStore<'a> {
+    data
+      .default_type()
+      .with("half", "lower")
+      .with("facing", click.dir.as_horz_face().as_str())
+      .into()
   }
   fn update_place(&self, world: &Arc<World>, block: Block) {
     if block.ty.prop("half") == "lower" {
