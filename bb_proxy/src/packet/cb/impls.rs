@@ -508,6 +508,10 @@ to_tcp!(JoinGame => (self, conn, ver) {
       // Last death location.
       buf.write_option(&None, |_, _: &()| {});
     }
+
+    if ver >= ProtocolVersion::V1_20 {
+      buf.write_varint(0); // Number of ticks until the player can use a portal.
+    }
   } else if ver >= ProtocolVersion::V1_15_2 {
     buf.write_i32(self.dimension.into());
     // Hashed world seed, used for biomes
@@ -563,7 +567,7 @@ to_tcp!(JoinGame => (self, conn, ver) {
       hardcore:         self.hardcore_mode,
       unknown:          data,
     }),
-    17 | 18 | 19 => gpacket!(JoinGame V17 {
+    17.. => gpacket!(JoinGame V17 {
       player_entity_id: self.eid,
       hardcore:         self.hardcore_mode,
       unknown:          data,
