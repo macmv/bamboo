@@ -23,6 +23,9 @@ pub mod reader;
 mod sender;
 mod serialize;
 
+pub mod custom;
+pub mod vanilla;
+
 #[cfg(feature = "wasm_plugins")]
 mod ffi;
 

@@ -466,9 +466,6 @@ impl Player {
   /// Returns if player is currently alive
   pub fn alive(&self) -> bool { self.health.lock().health > 0.0 }
 
-  /// Returns the player's block position. This is the block that their feet are
-  /// in. This is the same thing as calling [`p.pos().block()`](Self::pos).
-  fn block_pos(&self) -> Pos { self.pos().block() }
   /// Returns the player's position and looking direction. This is only updated
   /// once per tick. This also locks a mutex, so you should not call it very
   /// often.
@@ -908,7 +905,6 @@ impl Player {
 }
 
 impl CommandSender for &Arc<Player> {
-  fn block_pos(&self) -> Option<Pos> { Some(self.as_ref().block_pos()) }
   fn send_message(&mut self, msg: Chat) { self.as_ref().send_message(msg); }
   fn error_format(&self) -> ErrorFormat { ErrorFormat::Minecraft }
   fn as_player(&self) -> Option<&Arc<Player>> { Some(self) }

@@ -68,7 +68,8 @@ impl Parser {
       }
       Self::String(StringType::Word) => Ok(Arg::String(tokens.read_spaced_word()?.to_string())),
       Self::BlockPos => {
-        if let Some(pos) = sender.block_pos() {
+        if let Some(player) = sender.as_player() {
+          let pos = player.pos().block();
           let mut w_x = tokens.read_spaced_text()?;
           let x_rel = w_x.starts_with('~');
           if x_rel {
