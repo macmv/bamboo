@@ -347,6 +347,22 @@ where
     }
   }
 
+  pub fn write_varlong(&mut self, v: i64) {
+    // Need to work with u64, as >> acts differently on i64 vs u64.
+    let mut val = v as u64;
+    for _ in 0..9 {
+      let mut b: u8 = val as u8 & 0b01111111;
+      val >>= 7;
+      if val != 0 {
+        b |= 0b10000000;
+      }
+      self.write_u8(b);
+      if val == 0 {
+        break;
+      }
+    }
+  }
+
   /// Writes a chunk position, as two i32s.
   pub fn write_chunk_pos(&mut self, p: ChunkPos) {
     self.write_i32(p.x());
