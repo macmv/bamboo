@@ -32,6 +32,7 @@ const NAMES: &[&str] = &[
   "sweet_berry_bush",
   "freeze",
   "stalagmite",
+  // 1.20+
   "outside_border",
   "generic_kill",
 ];
