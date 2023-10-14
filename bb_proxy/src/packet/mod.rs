@@ -10,6 +10,7 @@ mod v1_15;
 mod v1_16;
 mod v1_17;
 mod v1_18;
+mod v1_20;
 mod v1_8;
 mod v1_9;
 
@@ -43,6 +44,7 @@ pub fn chunk(
     BlockVersion::V1_16 => v1_16::chunk(chunk, conv),
     BlockVersion::V1_17 => v1_17::chunk(chunk, conv),
     BlockVersion::V1_18 | BlockVersion::V1_19 => v1_18::chunk(chunk, ver, conv),
+    BlockVersion::V1_20 => v1_20::chunk(chunk, ver, conv),
     _ => todo!("chunk on version {}", ver),
   }]
 }
