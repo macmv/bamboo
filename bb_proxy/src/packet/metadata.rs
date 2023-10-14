@@ -91,68 +91,99 @@ pub fn metadata(
     } else {
       out.write_varint(id.into());
       // Thank you minecraft. All of this is just for the metadata types.
-      out.write_u8(match field {
-        Field::Byte(_) => 0,
-        Field::Varint(_) => 1,
-        Field::Float(_) => 2,
-        Field::String(_) => 3,
-        Field::Chat(_) => 5,
-        _ => {
-          if ver >= ProtocolVersion::V1_13 {
-            match field {
-              Field::OptChat(_) => 5,
-              Field::Item(_) => 6,
-              Field::Bool(_) => 7,
-              Field::Rotation(_, _, _) => 8,
-              Field::Position(_) => 9,
-              Field::OptPosition(_) => 10,
-              Field::Direction(_) => 11,
-              Field::OptUUID(_) => 12,
-              Field::BlockID(_) => 13,
-              Field::NBT(_) => 14,
-              Field::Particle(_) => 15,
-              _ => {
-                if ver >= ProtocolVersion::V1_14 {
-                  match field {
-                    Field::VillagerData(_, _, _) => 16,
-                    Field::OptVarint(_) => 17,
-                    Field::Pose(_) => 18,
-                    _ => unreachable!(),
+      if ver >= ProtocolVersion::V1_20 {
+        out.write_u8(match field {
+          Field::Byte(_) => 0,
+          Field::Varint(_) => 1,
+          // this field is new in 1.20, and shifts all the other fields up by one
+          Field::Varlong(_) => 2,
+          Field::Float(_) => 3,
+          Field::String(_) => 4,
+          Field::Chat(_) => 5,
+          Field::OptChat(_) => 6,
+          Field::Item(_) => 7,
+          Field::Bool(_) => 8,
+          Field::Rotation(_, _, _) => 9,
+          Field::Position(_) => 10,
+          Field::OptPosition(_) => 11,
+          Field::Direction(_) => 12,
+          Field::OptUUID(_) => 13,
+          Field::BlockID(_) => 14,
+          // this ones also new in 1.20
+          Field::OptBlockID(_) => 15,
+          Field::NBT(_) => 16,
+          Field::Particle(_) => 17,
+          Field::VillagerData(_, _, _) => 18,
+          Field::OptVarint(_) => 19,
+          Field::Pose(_) => 20,
+          // todo: cat variant i guess?
+          _ => unreachable!(),
+        });
+      } else {
+        out.write_u8(match field {
+          Field::Byte(_) => 0,
+          Field::Varint(_) => 1,
+          Field::Float(_) => 2,
+          Field::String(_) => 3,
+          Field::Chat(_) => 5,
+          _ => {
+            if ver >= ProtocolVersion::V1_13 {
+              match field {
+                Field::OptChat(_) => 5,
+                Field::Item(_) => 6,
+                Field::Bool(_) => 7,
+                Field::Rotation(_, _, _) => 8,
+                Field::Position(_) => 9,
+                Field::OptPosition(_) => 10,
+                Field::Direction(_) => 11,
+                Field::OptUUID(_) => 12,
+                Field::BlockID(_) => 13,
+                Field::NBT(_) => 14,
+                Field::Particle(_) => 15,
+                _ => {
+                  if ver >= ProtocolVersion::V1_14 {
+                    match field {
+                      Field::VillagerData(_, _, _) => 16,
+                      Field::OptVarint(_) => 17,
+                      Field::Pose(_) => 18,
+                      _ => unreachable!(),
+                    }
+                  } else {
+                    unreachable!()
                   }
-                } else {
-                  unreachable!()
                 }
               }
-            }
-          } else {
-            match field {
-              Field::Item(_) => 5,
-              Field::Bool(_) => 6,
-              Field::Rotation(_, _, _) => 7,
-              Field::Position(_) => 8,
-              Field::OptPosition(_) => 9,
-              Field::Direction(_) => 10,
-              Field::OptUUID(_) => 11,
-              Field::BlockID(_) => 12,
-              _ => {
-                if ver == ProtocolVersion::V1_12 {
-                  match field {
-                    Field::NBT(_) => 13,
-                    _ => unreachable!(),
+            } else {
+              match field {
+                Field::Item(_) => 5,
+                Field::Bool(_) => 6,
+                Field::Rotation(_, _, _) => 7,
+                Field::Position(_) => 8,
+                Field::OptPosition(_) => 9,
+                Field::Direction(_) => 10,
+                Field::OptUUID(_) => 11,
+                Field::BlockID(_) => 12,
+                _ => {
+                  if ver == ProtocolVersion::V1_12 {
+                    match field {
+                      Field::NBT(_) => 13,
+                      _ => unreachable!(),
+                    }
+                  } else {
+                    unreachable!()
                   }
-                } else {
-                  unreachable!()
                 }
               }
             }
           }
-        }
-      });
+        });
+      }
       match field {
         Field::Short(_) => unreachable!(),
         Field::Int(_) => unreachable!(),
         Field::Byte(v) => out.write_u8(v),
         Field::Varint(v) => out.write_varint(v),
+        Field::Varlong(v) => out.write_varlong(v),
         Field::Float(v) => out.write_f32(v),
         Field::String(v) => out.write_str(&v),
         Field::Chat(v) => out.write_str(&v),
@@ -227,7 +258,7 @@ pub fn metadata(
             out.write_buf(&v.as_le_bytes());
           }
         }
-        Field::BlockID(v) => out.write_varint(v),
+        Field::BlockID(v) | Field::OptBlockID(v) => out.write_varint(v),
         Field::NBT(v) => out.write_buf(&v),
         Field::Particle(v) => out.write_buf(&v),
         Field::VillagerData(ty, p, l) => {
@@ -285,6 +316,9 @@ fn is_ty(field: &Field, ty: MetadataType) -> bool {
     Field::VillagerData(..) => matches!(ty, MetadataType::VillagerData),
     Field::OptVarint(_) => matches!(ty, MetadataType::OptVarInt),
     Field::Pose(_) => matches!(ty, MetadataType::Pose),
+
+    Field::Varlong(_) => matches!(ty, MetadataType::VarLong),
+    Field::OptBlockID(_) => matches!(ty, MetadataType::OptBlockID),
   }
 }
 fn convert_field(field: &mut Field, ty: MetadataType) -> bool {

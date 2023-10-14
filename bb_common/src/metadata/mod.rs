@@ -89,6 +89,12 @@ pub enum Field {
   OptVarint(Option<i32>),
   #[id = 20]
   Pose(Pose),
+
+  // Valid for 1.20+
+  #[id = 21]
+  Varlong(i64),
+  #[id = 22]
+  OptBlockID(i32),
 }
 
 impl Metadata {

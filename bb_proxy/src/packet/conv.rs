@@ -402,5 +402,9 @@ mod entity_types {
     SnifferState,
     Vector3,
     Vector4,
+
+    // 1.20+
+    VarLong,
+    OptBlockID,
   }
 }
