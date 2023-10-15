@@ -257,6 +257,17 @@ impl Face {
   pub fn is_side(&self) -> bool {
     matches!(self, Self::North | Self::South | Self::West | Self::East)
   }
+
+  pub fn opposite(&self) -> Face {
+    match self {
+      Self::Bottom => Self::Top,
+      Self::Top => Self::Bottom,
+      Self::North => Self::South,
+      Self::South => Self::North,
+      Self::West => Self::East,
+      Self::East => Self::West,
+    }
+  }
 }
 impl From<&str> for Face {
   fn from(s: &str) -> Face {
