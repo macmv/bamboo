@@ -15,8 +15,7 @@ pub struct LightPropogator {
 }
 
 struct ChunkPropogator<'a> {
-  // TODO: This should be &BlockData, but its &mut BlockData for debugging.
-  block: &'a mut BlockData,
+  block: &'a BlockData,
   prop:  &'a mut LightPropogator,
   light: &'a mut LightChunk,
 }
@@ -55,7 +54,7 @@ impl LightPropogator {
 
   fn chunk<'a>(
     &'a mut self,
-    chunk: &'a mut BlockData,
+    chunk: &'a BlockData,
     light: &'a mut BlockLightChunk,
   ) -> ChunkPropogator<'a> {
     ChunkPropogator { block: chunk, prop: self, light: &mut light.data }
@@ -107,25 +106,7 @@ impl ChunkPropogator<'_> {
     }
   }
 
-  fn set(&mut self, pos: RelPos, level: u8) {
-    self.light.set_light(pos, level);
-
-    // This is to debug lights in the debug world.
-    self
-      .block
-      .set_kind(
-        pos.add_y(-1),
-        match level {
-          5 => block::Kind::LightBlueWool,
-          4 => block::Kind::LimeWool,
-          3 => block::Kind::YellowWool,
-          2 => block::Kind::OrangeWool,
-          1 => block::Kind::RedWool,
-          _ => block::Kind::WhiteWool,
-        },
-      )
-      .unwrap();
-  }
+  fn set(&mut self, pos: RelPos, level: u8) { self.light.set_light(pos, level); }
 
   fn increase_block_light(&mut self, pos: RelPos, level: u8) {
     if level > 15 {
@@ -241,18 +222,14 @@ impl super::World {
     self.chunk(pos.chunk(), |mut c| {
       let c: &mut MultiChunk = &mut c;
       let mut light = self.block_light.lock();
-      let mut chunk_prop = light.chunk(&mut c.block, &mut c.block_light);
+      let mut chunk_prop = light.chunk(&c.block, &mut c.block_light);
 
       // TODO: `data.transparent` doesn't work :/
       let old_opacity = opacity(old_ty.kind());
       let new_opacity = opacity(new_ty.kind());
 
       if old_data.emit_light > 0 || new_data.emit_light > 0 {
-        if new_ty.kind() == block::Kind::Torch {
-          chunk_prop.set_light(pos.chunk_rel(), 5);
-        } else {
-          chunk_prop.set_light(pos.chunk_rel(), new_data.emit_light);
-        }
+        chunk_prop.set_light(pos.chunk_rel(), new_data.emit_light);
       } else if old_opacity != new_opacity {
         chunk_prop.set_opacity(pos.chunk_rel(), new_opacity);
       }
