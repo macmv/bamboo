@@ -42,7 +42,10 @@ const NORTH: Dirs = Dirs(0b00000100);
 const SOUTH: Dirs = Dirs(0b00001000);
 const EAST: Dirs = Dirs(0b00010000);
 const WEST: Dirs = Dirs(0b00100000);
-const ALL_DIRS: Dirs = Dirs(0b00111111);
+
+// TODO: Re-enable vertical light propogation
+// const ALL_DIRS: Dirs = Dirs(0b00111111);
+const ALL_DIRS: Dirs = Dirs(0b00111100);
 
 impl LightPropogator {
   pub fn new() -> Self {
