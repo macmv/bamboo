@@ -15,7 +15,8 @@ pub struct LightPropogator {
 }
 
 struct ChunkPropogator<'a> {
-  block: &'a BlockData,
+  // TODO: This should be &BlockData, but its &mut BlockData for debugging.
+  block: &'a mut BlockData,
   prop:  &'a mut LightPropogator,
   light: &'a mut LightChunk,
 }
@@ -54,7 +55,7 @@ impl LightPropogator {
 
   fn chunk<'a>(
     &'a mut self,
-    chunk: &'a BlockData,
+    chunk: &'a mut BlockData,
     light: &'a mut BlockLightChunk,
   ) -> ChunkPropogator<'a> {
     ChunkPropogator { block: chunk, prop: self, light: &mut light.data }
@@ -95,6 +96,26 @@ impl ChunkPropogator<'_> {
     }
   }
 
+  fn set(&mut self, pos: RelPos, level: u8) {
+    self.light.set_light(pos, level);
+
+    // This is to debug lights in the debug world.
+    self
+      .block
+      .set_kind(
+        pos.add_y(-1),
+        match level {
+          5 => block::Kind::LightBlueWool,
+          4 => block::Kind::LimeWool,
+          3 => block::Kind::YellowWool,
+          2 => block::Kind::OrangeWool,
+          1 => block::Kind::RedWool,
+          _ => block::Kind::WhiteWool,
+        },
+      )
+      .unwrap();
+  }
+
   fn increase_block_light(&mut self, pos: RelPos, level: u8) {
     if level > 15 {
       panic!("invalid light level {level}");
@@ -103,7 +124,7 @@ impl ChunkPropogator<'_> {
     let existing_level = self.light.get_light(pos);
     if existing_level < level {
       self.prop.increase_queue.push_back(Increase { pos, level, dirs: ALL_DIRS, recheck: false });
-      self.light.set_light(pos, level);
+      self.set(pos, level);
 
       self.propogate_increase()
     }
@@ -113,7 +134,7 @@ impl ChunkPropogator<'_> {
     let existing_level = self.light.get_light(pos);
     if existing_level > 0 {
       self.prop.decrease_queue.push_back(Decrease { pos, level: existing_level });
-      self.light.set_light(pos, 0);
+      self.set(pos, 0);
 
       self.propogate_decrease();
     }
@@ -137,7 +158,8 @@ impl ChunkPropogator<'_> {
           continue;
         }
 
-        self.light.set_light(neighbor, target_level);
+        self.set(neighbor, target_level);
+
 
         if target_level > 1 && target_level != current_level {
           self.prop.increase_queue.push_back(Increase {
@@ -188,7 +210,8 @@ impl ChunkPropogator<'_> {
           })
         }
 
-        self.light.set_light(neighbor, 0);
+        self.set(neighbor, 0);
+
 
         if target_level > 0 {
           self.prop.decrease_queue.push_back(Decrease { pos: neighbor, level: target_level });
@@ -209,7 +232,7 @@ impl super::World {
     self.chunk(pos.chunk(), |mut c| {
       let c: &mut MultiChunk = &mut c;
       let mut light = self.block_light.lock();
-      let mut chunk_prop = light.chunk(&c.block, &mut c.block_light);
+      let mut chunk_prop = light.chunk(&mut c.block, &mut c.block_light);
 
       // TODO: Test these and figure out what I missed
       if new_data.emit_light > 0 {

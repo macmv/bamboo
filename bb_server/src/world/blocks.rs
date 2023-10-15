@@ -125,6 +125,25 @@ impl World {
         state: self.block_converter.to_old(id, p.ver().block()),
       });
     }
+
+    // TODO: Remove when done debugging
+    for dy in -1..0 {
+      for dz in -5..5 {
+        for dx in -5..5 {
+          let pos = pos + Pos::new(dx, dy, dz);
+          if let Ok(ty) = self.get_block(pos) {
+            let id = ty.id();
+            for p in self.players().iter().in_view(pos.chunk()) {
+              p.send(cb::packet::BlockUpdate {
+                pos,
+                state: self.block_converter.to_old(id, p.ver().block()),
+              });
+            }
+          }
+        }
+      }
+    }
+
     Ok(true)
   }
 
