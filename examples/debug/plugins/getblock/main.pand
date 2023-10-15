@@ -44,6 +44,9 @@ on player_join(event) {
 
   it = Stack::new("debug_stick")
   event.player.set_item(36, it)
+
+  it = Stack::new("torch")
+  event.player.set_item(37, it)
 }
 
 on interact(event, flow) {
