@@ -253,6 +253,7 @@ impl WorldGen {
   pub fn generate(&self, pos: ChunkPos, c: &mut MultiChunk) {
     if self.debug {
       self.debug_world(pos, c);
+      c.block_light.update_all(&c.block);
       return;
     }
     // Fast path for void worlds
