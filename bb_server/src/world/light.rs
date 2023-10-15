@@ -1,8 +1,9 @@
 use bb_common::{
+  chunk::LightChunk,
   math::{Pos, RelPos},
   util::Face,
 };
-use std::{collections::VecDeque, ops::BitOr};
+use std::{cmp, collections::VecDeque, ops::BitOr};
 
 use crate::block::{self, light::BlockLightChunk};
 
@@ -11,6 +12,12 @@ use super::{BlockData, MultiChunk};
 pub struct LightPropogator {
   increase_queue: VecDeque<Increase>,
   decrease_queue: VecDeque<Decrease>,
+}
+
+struct ChunkPropogator<'a> {
+  block: &'a BlockData,
+  prop:  &'a mut LightPropogator,
+  light: &'a mut LightChunk,
 }
 
 struct Increase {
@@ -42,7 +49,153 @@ impl LightPropogator {
     LightPropogator { increase_queue: VecDeque::new(), decrease_queue: VecDeque::new() }
   }
 
-  pub fn increase(&self, chunk: &BlockData, light: &mut BlockLightChunk, pos: RelPos, level: u8) {}
+  fn chunk<'a>(
+    &'a mut self,
+    chunk: &'a BlockData,
+    light: &'a mut BlockLightChunk,
+  ) -> ChunkPropogator<'a> {
+    ChunkPropogator { block: chunk, prop: self, light: &mut light.data }
+  }
+}
+
+impl ChunkPropogator<'_> {
+  fn set_solid(&mut self, pos: RelPos, solid: bool) {
+    if solid {
+      self.decrease_block_light(pos);
+    } else {
+
+      /*
+            # find the max of neighboring lights, and propogate that
+            for [dx, dy] in ALL_DIRS:
+                neighbor_x = x + dx
+                neighbor_y = y + dy
+                if neighbor_x < 0 or neighbor_x >= 32 or neighbor_y < 0 or neighbor_y >= 32:
+                    continue
+                current_level = self.cells[neighbor_y][neighbor_x].level
+                target_level = current_level - max(1, self.cells[neighbor_y][neighbor_x].opacity())
+
+                if target_level > self.cells[y][x].level:
+                    self.cells[y][x].level = target_level
+
+            self.increase_queue.append(Increase(x, y, self.cells[y][x].level, ALL_DIRS, False))
+
+      self.propogate_increase()
+      */
+    }
+  }
+
+  fn set_light(&mut self, pos: RelPos, level: u8) {
+    if level > 0 {
+      self.increase_block_light(pos, level)
+    } else {
+      self.decrease_block_light(pos)
+    }
+  }
+
+  fn increase_block_light(&mut self, pos: RelPos, level: u8) {
+    if level > 15 {
+      panic!("invalid light level {level}");
+    }
+
+    let existing_level = self.light.get_light(pos);
+    if existing_level < level {
+      self.prop.increase_queue.push_back(Increase { pos, level, dirs: ALL_DIRS, recheck: false });
+      self.light.set_light(pos, level);
+
+      self.propogate_increase()
+    }
+  }
+
+  fn decrease_block_light(&mut self, pos: RelPos) {
+    let existing_level = self.light.get_light(pos);
+    if existing_level > 0 {
+      self.prop.decrease_queue.push_back(Decrease { pos, level: existing_level });
+      self.light.set_light(pos, 0);
+
+      self.propogate_decrease();
+    }
+  }
+
+  fn propogate_increase(&mut self) {
+    while let Some(increase) = self.prop.increase_queue.pop_front() {
+      if increase.recheck && self.light.get_light(increase.pos) != increase.level {
+        continue;
+      }
+
+      for face in increase.dirs {
+        let Some(neighbor) = increase.pos.checked_add(face) else { continue };
+        let current_level = self.light.get_light(neighbor);
+
+        // TODO: Use a block converter
+        let opacity = if self.block.get_kind(neighbor).unwrap().zero_state() == 0 { 0 } else { 15 };
+        let target_level = increase.level - cmp::max(1, opacity);
+
+        if target_level <= current_level {
+          continue;
+        }
+
+        self.light.set_light(neighbor, target_level);
+
+        if target_level > 1 && target_level != current_level {
+          self.prop.increase_queue.push_back(Increase {
+            pos:     neighbor,
+            level:   target_level,
+            // all except the opposite of the face we came from
+            dirs:    Dirs(ALL_DIRS.0 & !Dirs::from_face(face.opposite()).0),
+            recheck: increase.recheck,
+          });
+        }
+      }
+    }
+  }
+
+  fn propogate_decrease(&mut self) {
+    while let Some(decrease) = self.prop.decrease_queue.pop_front() {
+      for face in ALL_DIRS.iter() {
+        let Some(neighbor) = decrease.pos.checked_add(face) else { continue };
+        let current_level = self.light.get_light(neighbor);
+
+        if current_level == 0 {
+          continue;
+        }
+
+        // TODO: Use a block converter
+        let opacity = if self.block.get_kind(neighbor).unwrap().zero_state() == 0 { 0 } else { 15 };
+        let target_level = cmp::max(0, decrease.level - cmp::max(1, opacity));
+
+        if current_level > target_level {
+          self.prop.increase_queue.push_back(Increase {
+            pos:     neighbor,
+            level:   current_level,
+            dirs:    ALL_DIRS,
+            recheck: true,
+          });
+          continue;
+        }
+
+        // TODO: Use a block converter
+        let emitted =
+          if self.block.get_kind(neighbor).unwrap() == block::Kind::Torch { 5 } else { 0 };
+        if emitted > 0 {
+          self.prop.increase_queue.push_back(Increase {
+            pos:     neighbor,
+            level:   emitted,
+            dirs:    ALL_DIRS,
+            recheck: false,
+          })
+        }
+
+        self.light.set_light(neighbor, 0);
+
+        if target_level > 0 {
+          self.prop.decrease_queue.push_back(Decrease { pos: neighbor, level: target_level });
+        }
+      }
+    }
+
+    // re-populate any sources we found
+    self.propogate_increase();
+  }
 }
 
 impl super::World {
@@ -50,26 +203,24 @@ impl super::World {
     let old_data = self.block_converter().get(old_ty.kind());
     let new_data = self.block_converter().get(new_ty.kind());
 
-    if new_data.emit_light > 0 {
-      self.chunk(pos.chunk(), |mut c| {
-        let c: &mut MultiChunk = &mut c;
-        self.block_light.lock().increase(
-          &c.block,
-          &mut c.block_light,
-          pos.chunk_rel(),
-          new_data.emit_light,
-        )
-      });
-    } else {
-      /*
-      match (old_data.transparent, new_data.transparent) {
-        (false, true) => self.chunk(pos.chunk(), |c| self.block_light.lock().decrease(pos, old_ty)),
-        (false, false) => {}
-        (true, true) => {}
-        (true, false) => {}
+    self.chunk(pos.chunk(), |mut c| {
+      let c: &mut MultiChunk = &mut c;
+      let mut light = self.block_light.lock();
+      let mut chunk_prop = light.chunk(&c.block, &mut c.block_light);
+
+      // TODO: Test these and figure out what I missed
+      if new_data.emit_light > 0 {
+        if new_ty.kind() == block::Kind::Torch {
+          chunk_prop.set_light(pos.chunk_rel(), 5);
+        } else {
+          chunk_prop.set_light(pos.chunk_rel(), new_data.emit_light);
+        }
+      } else if old_data.transparent && !new_data.transparent {
+        chunk_prop.set_solid(pos.chunk_rel(), true);
+      } else if !old_data.transparent && new_data.transparent {
+        chunk_prop.set_solid(pos.chunk_rel(), false);
       }
-      */
-    }
+    });
   }
 }
 
@@ -82,6 +233,17 @@ impl BitOr for Dirs {
 impl Dirs {
   pub fn contains(&self, dir: Self) -> bool { self.0 & dir.0 != 0 }
   pub fn iter(&self) -> DirsIter { DirsIter { dirs: *self, i: 0 } }
+
+  pub const fn from_face(face: Face) -> Dirs {
+    match face {
+      Face::Top => UP,
+      Face::Bottom => DOWN,
+      Face::North => NORTH,
+      Face::South => SOUTH,
+      Face::East => EAST,
+      Face::West => WEST,
+    }
+  }
 }
 
 struct DirsIter {
