@@ -18,6 +18,7 @@ mod chunks;
 mod entities;
 pub mod gen;
 mod init;
+mod light;
 mod players;
 mod region;
 pub mod schematic;
@@ -106,6 +107,8 @@ pub struct World {
   height: u32,
   /// A height in blocks. Default is `0`.
   min_y:  i32,
+
+  block_light: Mutex<light::LightPropogator>,
 }
 
 /// The world manager. This is essentially a Bamboo type. It stores all the
@@ -185,6 +188,7 @@ impl World {
       config,
       wm,
       chunks_to_load: Mutex::new(ChunksToLoad::new()),
+      block_light: Mutex::new(light::LightPropogator::new()),
     }
   }
 

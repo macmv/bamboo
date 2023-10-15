@@ -41,12 +41,12 @@ impl fmt::Debug for CountedChunk {
 /// because it used to store all of the other versioning data. It would be a
 /// pain to change it, and I don't really want to bother.
 pub struct MultiChunk {
-  block:       BlockData,
-  sky_light:   Option<SkyLightChunk>,
-  block_light: BlockLightChunk,
+  pub block:       BlockData,
+  pub sky_light:   Option<SkyLightChunk>,
+  pub block_light: BlockLightChunk,
 
   /// Set to false when the world is generating, which makes things much faster.
-  update_light: bool,
+  pub update_light: bool,
 }
 
 /// This is the block and tile entity data of a chunk.

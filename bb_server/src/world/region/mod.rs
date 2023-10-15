@@ -129,6 +129,7 @@ impl World {
       let chunk_z = level["zPos"].int()?;
       let pos = ChunkPos::new(chunk_x, chunk_z);
 
+      // TODO: Light updates!
       self.chunk(pos, |mut chunk| {
         for s in level[sections_key].list()? {
           let section = s.compound()?;

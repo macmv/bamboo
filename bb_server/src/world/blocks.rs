@@ -88,6 +88,8 @@ impl World {
       c.set_type(pos.chunk_rel(), ty)?;
       Ok(old_ty)
     })?;
+    self.light_update(pos, old_ty.ty(), ty);
+
     old_block.ty = old_ty.ty();
     // First, handle the update for the block that was just placed.
     self
@@ -138,7 +140,12 @@ impl World {
       return Ok(false);
     }
 
-    self.chunk(pos.chunk(), |mut c| c.set_type(pos.chunk_rel(), ty))?;
+    let old_ty = self.chunk(pos.chunk(), |mut c| {
+      let old_ty = c.get_type(pos.chunk_rel())?.to_store();
+      c.set_type(pos.chunk_rel(), ty)?;
+      Ok(old_ty)
+    })?;
+    self.light_update(pos, old_ty.ty(), ty);
 
     let id = ty.id();
     for p in self.players().iter().in_view(pos.chunk()) {
@@ -184,6 +191,7 @@ impl World {
         let min = RelPos::new(min_x as u8, min.y, min_z as u8);
         let max = RelPos::new(max_x as u8, max.y, max_z as u8);
 
+        // TODO: Light updates!
         self.chunk(pos, |mut c| c.fill(min, max, ty))?;
 
         let num_blocks_changed = min.to(max).len();
