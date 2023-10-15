@@ -26,20 +26,20 @@ impl World {
 
     // we should move this Code to the Proxy
 
-    // let mut c = Command::new("join");
-    // c.add_arg("addr", Parser::String(StringType::Word));
-    // self.commands().add(c, |_, player, args| {
-    //   if let Some(p) = player {
-    //     let addr = match args[1].str().parse::<std::net::SocketAddr>() {
-    //       Ok(a) => a,
-    //       Err(e) => {
-    //         p.send_message(Chat::new(e.to_string()));
-    //         return;
-    //       }
-    //     };
-    //     p.switch_to(SwitchMode::Loading, vec![addr]);
-    //   }
-    // });
+    let mut c = Command::new("join");
+    c.add_arg("addr", Parser::String(StringType::Word));
+    self.commands().add(c, |_, player, args| {
+      if let Some(p) = player {
+        let addr = match args[1].str().parse::<std::net::SocketAddr>() {
+          Ok(a) => a,
+          Err(e) => {
+            p.send_message(Chat::new(e.to_string()));
+            return;
+          }
+        };
+        p.switch_to(SwitchMode::Loading, vec![addr]);
+      }
+    });
 
     info!("generating terrain...");
     /*
