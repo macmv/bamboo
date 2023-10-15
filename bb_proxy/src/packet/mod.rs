@@ -77,8 +77,9 @@ impl ChunkWithPos {
       .packet
       .sections
       .iter()
+      .zip(self.packet.block_light.sections().iter())
       .enumerate()
-      .filter(|(_, section)| section.is_some())
+      .filter(|(_, (s, l))| s.is_some() || l.is_some())
       .map(|(y, _)| 1 << y)
       .sum()
   }

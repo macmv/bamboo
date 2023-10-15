@@ -12,7 +12,12 @@ pub fn chunk(chunk: ChunkWithPos, conv: &TypeConverter) -> Packet {
   let skylight = true; // Assume overworld
 
   // Don't send unload chunks when we really want an empty chunk.
-  let actual_sections = chunk.sections.iter().flatten().count();
+  let actual_sections = chunk
+    .sections
+    .iter()
+    .zip(chunk.block_light.sections().iter())
+    .filter(|(s, l)| s.is_some() || l.is_some())
+    .count();
   let total_sections = if actual_sections == 0 { 1 } else { actual_sections };
 
   let data_len = total_sections * 16 * 16 * 16 * 2 // Chunk data
@@ -29,32 +34,61 @@ pub fn chunk(chunk: ChunkWithPos, conv: &TypeConverter) -> Packet {
   let prefix_len = chunk_buf.index();
 
   if actual_sections == 0 {
-    // We just want 4096 0_u16s for this section.
+    // Write empty blocks
     chunk_buf.skip(16 * 16 * 16 * 2);
+
+    // Write empty block light
+    chunk_buf.skip(16 * 16 * 16 / 2);
   } else {
-    for s in chunk.sections.iter().flatten() {
-      for y in 0..16 {
-        for z in 0..16 {
-          for x in 0..16 {
-            let b = s.get_block(SectionRelPos::new(x, y, z));
-            // Theres a lot of air. Profiling says this helps a lot (~20% improvement for a
-            // superflat world).
-            if b == 0 {
-              chunk_buf.skip(2);
-              continue;
+    for (block_section, light_section) in
+      chunk.sections.iter().zip(chunk.block_light.sections().iter())
+    {
+      if block_section.is_none() && light_section.is_none() {
+        continue;
+      }
+
+      if let Some(s) = block_section {
+        for y in 0..16 {
+          for z in 0..16 {
+            for x in 0..16 {
+              let b = s.get_block(SectionRelPos::new(x, y, z));
+              // Theres a lot of air. Profiling says this helps a lot (~20% improvement for a
+              // superflat world).
+              if b == 0 {
+                chunk_buf.skip(2);
+                continue;
+              }
+              let old_id = conv.block_to_old(b, BlockVersion::V1_8);
+              chunk_buf.write_buf(&(old_id as u16).to_le_bytes());
             }
-            let old_id = conv.block_to_old(b, BlockVersion::V1_8);
-            chunk_buf.write_buf(&(old_id as u16).to_le_bytes());
           }
+        }
+      } else {
+        // This section is all air, but has lighting info, so we need to send it along.
+        chunk_buf.skip(16 * 16 * 16 * 2);
+      }
+    }
+
+    // Block light data
+    for (block_section, light_section) in
+      chunk.sections.iter().zip(chunk.block_light.sections().iter())
+    {
+      if block_section.is_none() && light_section.is_none() {
+        continue;
+      }
+
+      if let Some(s) = light_section {
+        assert_eq!(s.data().len(), 16 * 16 * 16 / 2);
+        chunk_buf.write_buf(s.data());
+      } else {
+        // Each lighting value is 1/2 byte
+        for _ in 0..16 * 16 * 16 / 2 {
+          chunk_buf.write_u8(0x00);
         }
       }
     }
   }
-  // Light data
-  for _ in 0..total_sections * 16 * 16 * 16 / 2 {
-    // Each lighting value is 1/2 byte
-    chunk_buf.write_u8(0xff);
-  }
+  // Sky light data
   if skylight {
     for _ in 0..total_sections * 16 * 16 * 16 / 2 {
       // Each lighting value is 1/2 byte
