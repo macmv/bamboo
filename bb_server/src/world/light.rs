@@ -128,7 +128,7 @@ impl ChunkPropogator<'_> {
 
         // TODO: Use a block converter
         let opacity = if self.block.get_kind(neighbor).unwrap().zero_state() == 0 { 0 } else { 15 };
-        let target_level = increase.level - cmp::max(1, opacity);
+        let Some(target_level) = increase.level.checked_sub(cmp::max(1, opacity)) else { continue };
 
         if target_level <= current_level {
           continue;
