@@ -62,29 +62,40 @@ impl LightPropogator {
   }
 }
 
+fn opacity(kind: block::Kind) -> u8 {
+  match kind {
+    block::Kind::Air => 0,
+    block::Kind::Torch => 0,
+    _ => 15,
+  }
+}
+
 impl ChunkPropogator<'_> {
-  fn set_solid(&mut self, pos: RelPos, solid: bool) {
-    if solid {
+  fn set_opacity(&mut self, pos: RelPos, new_opacity: u8) {
+    if new_opacity == 15 {
       self.decrease_block_light(pos);
     } else {
+      for face in ALL_DIRS.iter() {
+        let Some(neighbor) = pos.checked_add(face) else { continue };
+        let current_level = self.light.get_light(neighbor);
 
-      /*
-            # find the max of neighboring lights, and propogate that
-            for [dx, dy] in ALL_DIRS:
-                neighbor_x = x + dx
-                neighbor_y = y + dy
-                if neighbor_x < 0 or neighbor_x >= 32 or neighbor_y < 0 or neighbor_y >= 32:
-                    continue
-                current_level = self.cells[neighbor_y][neighbor_x].level
-                target_level = current_level - max(1, self.cells[neighbor_y][neighbor_x].opacity())
+        // TODO: Use a block converter
+        let opacity = opacity(self.block.get_kind(neighbor).unwrap());
+        let Some(target_level) = current_level.checked_sub(cmp::max(1, opacity)) else { continue };
 
-                if target_level > self.cells[y][x].level:
-                    self.cells[y][x].level = target_level
+        if target_level > self.light.get_light(pos) {
+          self.set(pos, target_level);
+        }
+      }
 
-            self.increase_queue.append(Increase(x, y, self.cells[y][x].level, ALL_DIRS, False))
+      self.prop.increase_queue.push_back(Increase {
+        pos,
+        level: self.light.get_light(pos),
+        dirs: ALL_DIRS,
+        recheck: true,
+      });
 
       self.propogate_increase()
-      */
     }
   }
 
@@ -151,7 +162,7 @@ impl ChunkPropogator<'_> {
         let current_level = self.light.get_light(neighbor);
 
         // TODO: Use a block converter
-        let opacity = if self.block.get_kind(neighbor).unwrap().zero_state() == 0 { 0 } else { 15 };
+        let opacity = opacity(self.block.get_kind(neighbor).unwrap());
         let Some(target_level) = increase.level.checked_sub(cmp::max(1, opacity)) else { continue };
 
         if target_level <= current_level {
@@ -159,7 +170,6 @@ impl ChunkPropogator<'_> {
         }
 
         self.set(neighbor, target_level);
-
 
         if target_level > 1 && target_level != current_level {
           self.prop.increase_queue.push_back(Increase {
@@ -185,8 +195,8 @@ impl ChunkPropogator<'_> {
         }
 
         // TODO: Use a block converter
-        let opacity = if self.block.get_kind(neighbor).unwrap().zero_state() == 0 { 0 } else { 15 };
-        let target_level = cmp::max(0, decrease.level - cmp::max(1, opacity));
+        let opacity = opacity(self.block.get_kind(neighbor).unwrap());
+        let target_level = decrease.level.saturating_sub(cmp::max(1, opacity));
 
         if current_level > target_level {
           self.prop.increase_queue.push_back(Increase {
@@ -212,7 +222,6 @@ impl ChunkPropogator<'_> {
 
         self.set(neighbor, 0);
 
-
         if target_level > 0 {
           self.prop.decrease_queue.push_back(Decrease { pos: neighbor, level: target_level });
         }
@@ -234,17 +243,18 @@ impl super::World {
       let mut light = self.block_light.lock();
       let mut chunk_prop = light.chunk(&mut c.block, &mut c.block_light);
 
-      // TODO: Test these and figure out what I missed
-      if new_data.emit_light > 0 {
+      // TODO: `data.transparent` doesn't work :/
+      let old_opacity = opacity(old_ty.kind());
+      let new_opacity = opacity(new_ty.kind());
+
+      if old_data.emit_light > 0 || new_data.emit_light > 0 {
         if new_ty.kind() == block::Kind::Torch {
           chunk_prop.set_light(pos.chunk_rel(), 5);
         } else {
           chunk_prop.set_light(pos.chunk_rel(), new_data.emit_light);
         }
-      } else if old_data.transparent && !new_data.transparent {
-        chunk_prop.set_solid(pos.chunk_rel(), true);
-      } else if !old_data.transparent && new_data.transparent {
-        chunk_prop.set_solid(pos.chunk_rel(), false);
+      } else if old_opacity != new_opacity {
+        chunk_prop.set_opacity(pos.chunk_rel(), new_opacity);
       }
     });
   }
