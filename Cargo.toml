@@ -1,4 +1,5 @@
 [workspace]
+resolver = "2"
 members = [
   # Contains some small utilities used in bb_server
   "bb_macros",
