@@ -1,4 +1,4 @@
-use crate::{world::BlockData};
+use crate::world::BlockData;
 use bb_common::{chunk::LightChunk, math::RelPos, util::Face};
 
 #[cfg(test)]

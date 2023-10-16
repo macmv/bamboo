@@ -5,7 +5,7 @@ use bb_common::{
 };
 use std::{cmp, collections::VecDeque, ops::BitOr};
 
-use crate::block::{self, light::BlockLightChunk};
+use crate::block;
 
 use super::{BlockData, MultiChunk};
 
@@ -18,6 +18,7 @@ struct ChunkPropogator<'a> {
   block: &'a BlockData,
   prop:  &'a mut LightPropogator,
   light: &'a mut LightChunk,
+  sky:   bool,
 }
 
 struct Increase {
@@ -52,9 +53,10 @@ impl LightPropogator {
   fn chunk<'a>(
     &'a mut self,
     chunk: &'a BlockData,
-    light: &'a mut BlockLightChunk,
+    light: &'a mut LightChunk,
+    sky: bool,
   ) -> ChunkPropogator<'a> {
-    ChunkPropogator { block: chunk, prop: self, light: &mut light.data }
+    ChunkPropogator { block: chunk, prop: self, light, sky }
   }
 }
 
@@ -141,7 +143,10 @@ impl ChunkPropogator<'_> {
 
         // TODO: Use a block converter
         let opacity = opacity(self.block.get_kind(neighbor).unwrap());
-        let Some(target_level) = increase.level.checked_sub(cmp::max(1, opacity)) else { continue };
+        let min_decrease = if self.sky && face == Face::Bottom { 0 } else { 1 };
+        let Some(target_level) = increase.level.checked_sub(cmp::max(min_decrease, opacity)) else {
+          continue;
+        };
 
         if target_level <= current_level {
           continue;
@@ -219,7 +224,7 @@ impl super::World {
     self.chunk(pos.chunk(), |mut c| {
       let c: &mut MultiChunk = &mut c;
       let mut light = self.block_light.lock();
-      let mut chunk_prop = light.chunk(&c.block, &mut c.block_light);
+      let mut chunk_prop = light.chunk(&c.block, &mut c.block_light.data, false);
 
       // TODO: `data.transparent` doesn't work :/
       let old_opacity = opacity(old_ty.kind());
