@@ -1,7 +1,4 @@
-use self::{fly::FlyCommand, flyspeed::FlySpeedCommand};
-
-use super::CommandTree;
-
+use super::{Command, CommandTree, Parser};
 
 pub fn add_custom_commands(commands: &CommandTree) {
   add_fly_command(commands);

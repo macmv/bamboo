@@ -253,6 +253,7 @@ impl<'a> Conn<'a> {
             payload: String,
           }
           impl CommandSender for Sender {
+            fn block_pos(&self) -> Option<Pos> { None }
             fn send_message(&mut self, msg: Chat) { self.payload += &msg.to_codes(); }
             fn error_format(&self) -> ErrorFormat { ErrorFormat::Monospace }
           }
