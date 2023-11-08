@@ -1,0 +1,24 @@
+use bamboo::{
+  particle,
+  util,
+}
+
+on init() {
+  bamboo::info("owo")
+}
+
+on interact(event, flow) {
+  let player = event.player 
+  let world  = @bamboo.default_world()
+
+  let particle = particle::Particle::new(
+    "witch",
+    player.pos(),
+    true,
+    util::FPos::new(0.0, 0.0, 0.0),
+    100,
+    0.0,
+  )
+
+  world.spawn_particle(particle)
+}

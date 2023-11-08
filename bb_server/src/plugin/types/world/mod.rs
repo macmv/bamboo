@@ -1,6 +1,7 @@
 use super::{
   block::{PBlockKind, PBlockType},
   item::PStack,
+  particle::PParticle,
   util::{PFPos, PPos},
 };
 use crate::{entity, world::World};
@@ -85,6 +86,10 @@ impl PWorld {
     let mut meta = Metadata::new();
     meta.set_item(8, stack.inner.to_item());
     self.inner.summon_meta(entity::Type::Item, pos.inner, meta);
+  }
+
+  pub fn spawn_particle(&self, particle: &PParticle) {
+    self.inner.spawn_particle(particle.inner.clone());
   }
 
   /// Plays the given sound at the given positions. All nearby players will be
