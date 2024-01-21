@@ -1,4 +1,5 @@
-use rsa::{PublicKeyParts, RsaPublicKey};
+use asn1::{Tag, WriteBuf, WriteResult};
+use rsa::{RsaPublicKey, traits::PublicKeyParts};
 
 /// Represents an ASN.1 `BIT STRING`. Need this because the constructor is
 /// private in the asn1 crate.
@@ -21,11 +22,13 @@ impl<'a> BitString<'a> {
   }
 }
 
-impl<'a> asn1::SimpleAsn1Writable<'a> for BitString<'a> {
-  const TAG: u8 = 0x03;
-  fn write_data(&self, dest: &mut Vec<u8>) {
-    dest.push(self.padding);
-    dest.extend_from_slice(self.data);
+impl<'a> asn1::SimpleAsn1Writable for BitString<'a> {
+  const TAG: Tag = asn1::Tag::primitive(0x03);
+
+  fn write_data(&self, dest: &mut WriteBuf) -> WriteResult {
+    dest.push_byte(self.padding);
+    dest.push_slice(self.data);
+    Ok(())
   }
 }
 
@@ -80,42 +83,42 @@ fn write_big_uint(w: &mut asn1::Writer, int: &rsa::BigUint) {
 }
 
 pub fn encode(key: &RsaPublicKey) -> Vec<u8> {
-  asn1::write(|w| {
-    w.write_element(&asn1::SequenceWriter::new(&|w| {
+  asn1::write(|w| Ok({
+    w.write_element(&asn1::SequenceWriter::new(&|w| Ok({
       // A sequence containing the algorithm used.
-      w.write_element(&asn1::SequenceWriter::new(&|w| {
+      w.write_element(&asn1::SequenceWriter::new(&|w| Ok({
         w.write_element(&asn1::ObjectIdentifier::from_string("1.2.840.113549.1.1.1"));
         w.write_element(&()); // NULL value
-      }));
+      })));
       // A bitstring containing the N and E of the key
       w.write_element(
         &BitString::new(
-          &asn1::write(|w| {
-            w.write_element(&asn1::SequenceWriter::new(&|w| {
+          &asn1::write(|w| Ok({
+            w.write_element(&asn1::SequenceWriter::new(&|w| Ok({
               write_big_uint(w, key.n());
               write_big_uint(w, key.e());
-            }));
-          }),
+            })));
+          })).unwrap(),
           0,
         )
         .unwrap(),
       );
-    }));
-  })
+    })));
+  })).unwrap()
 }
 
 #[cfg(test)]
 mod tests {
   use super::*;
   use rand::rngs::OsRng;
-  use rsa::RsaPrivateKey;
+  use rsa::{RsaPrivateKey, traits::PublicKeyParts};
 
   #[test]
   fn encode_decode() {
     let mut rng = OsRng;
     let key = RsaPrivateKey::new(&mut rng, 1024).expect("failed to generate a key");
 
-    let bytes = encode(&key);
+    let bytes = encode(&key.to_public_key());
     let new_key = decode(&bytes).unwrap();
 
     assert_eq!(key.n(), new_key.n());

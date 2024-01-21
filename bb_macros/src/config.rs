@@ -1,6 +1,6 @@
 use proc_macro::TokenStream;
 use proc_macro2::{Ident, Span, TokenStream as TokenStream2};
-use quote::{quote, quote_spanned};
+use quote::{quote, quote_spanned, ToTokens};
 use std::fmt;
 
 use syn::{parse::Parse, parse_macro_input, punctuated::Punctuated, Fields, Item, Token};
@@ -70,8 +70,8 @@ pub fn config(input: TokenStream) -> TokenStream {
             let name_str = name.to_string().replace('_', "-");
             let ty = field.ty;
             let comments = field.attrs.iter().flat_map(|attr| {
-              if attr.path.get_ident().map(|v| v == "doc").unwrap_or(false) {
-                let comment = syn::parse2::<DocComment>(attr.tokens.clone()).unwrap().0;
+              if attr.path().get_ident().map(|v| v == "doc").unwrap_or(false) {
+                let comment = syn::parse2::<DocComment>(attr.to_token_stream().clone()).unwrap().0;
                 let comment = comment.trim();
                 Some(quote!(.with_comment(#comment)))
               } else {

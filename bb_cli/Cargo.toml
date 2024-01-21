@@ -12,14 +12,14 @@ log = "0.4"
 
 # auth
 rand = "0.8.3"
-rsa = "0.8.1"
+rsa = "0.9.6"
 
 # networking
-mio = "0.8.5"
-crossbeam-channel = "0.5.1"
-parking_lot = "0.12.1"
+mio = "0.8"
+crossbeam-channel = "0.5"
+parking_lot = "0.12"
 
 # for the cli
-rustyline = "10.1.1"
-crossterm = "0.26.0"
+rustyline = "13"
+crossterm = "0.27"
 ansi_term = "0.12.1"

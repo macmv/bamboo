@@ -24,11 +24,11 @@ log = "0.4"
 #rng
 rand = "0.8"
 # par_iter
-rayon = "1.5.1"
+rayon = "1.8"
 # networking
-mio = { version = "0.8.5", default-features = false, features = ["os-poll", "net"] }
+mio = { version = "0.8", default-features = false, features = ["os-poll", "net"] }
 # better channels
-crossbeam-channel = "0.5.1"
+crossbeam-channel = "0.5"
 # better locks
 parking_lot = "0.12"
 # better errors
@@ -37,40 +37,40 @@ thiserror = "1.0"
 # number stuff. TODO: replace
 num = "0.4"
 num-traits = "0.2"
-num-derive = "0.3"
+num-derive = "0.4"
 
 # noise maps. TODO: replace
-noise = { version = "0.7.0", default-features = false }
+noise = { version = "0.8", default-features = false }
 
 # scripting language
 panda = { git = "https://gitlab.com/macmv/panda", features = ["docs"], optional = true }
 
 # command line args
-clap = { version = "4.1.4", features = ["derive"] }
+clap = { version = "4.4", features = ["derive"] }
 
 # plugins
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
-pyo3 = { version = "0.18.1", default-features = false, features = ["macros"], optional = true }
-wasmer = { version = "2.2.1", default-features = false, features = ["default-cranelift", "default-universal"], optional = true }
+pyo3 = { version = "0.20.2", default-features = false, features = ["macros"], optional = true }
+wasmer = { version = "4.2.5", default-features = false, features = ["cranelift", "engine"], optional = true }
 bb_ffi = { path = "../bb_ffi", features = ["host"], optional = true }
 
 # better thread::sleep
-spin_sleep = "1.1.1"
+spin_sleep = "1.2"
 
 # rcon parsing TODO: bb_common::util::Buffer should support little endian
-byteorder = "1.4"
+byteorder = "1"
 
 # ctrlc without spawning an entire extra thread
-nix = "0.26.2"
+nix = "0.27"
 
 [build-dependencies]
 bb_data = { path = "../bb_data" }
 
 [dev-dependencies]
-pprof = { version = "0.11.0", features = ["criterion", "flamegraph"] }
-criterion = "0.4.0"
-pretty_assertions = "1.2.0"
+pprof = { version = "0.13.0", features = ["criterion", "flamegraph"] }
+criterion = "0.5"
+pretty_assertions = "1.4"
 
 [features]
 default = ["panda_plugins"]

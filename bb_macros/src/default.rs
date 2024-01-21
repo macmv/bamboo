@@ -1,6 +1,6 @@
 use proc_macro::TokenStream;
 use proc_macro2::{Ident, Span, TokenStream as TokenStream2};
-use quote::{quote, quote_spanned};
+use quote::{quote, quote_spanned, ToTokens};
 use syn::spanned::Spanned;
 
 use syn::{
@@ -48,8 +48,8 @@ pub fn default(input: TokenStream) -> TokenStream {
           .map(|field| {
             let name = field.ident.unwrap();
             for attr in &field.attrs {
-              if attr.path.get_ident().map(|i| i == "default").unwrap_or(false) {
-                let value = syn::parse::<DefaultValue>(attr.tokens.clone().into()).unwrap().0;
+              if attr.path().get_ident().map(|i| i == "default").unwrap_or(false) {
+                let value = syn::parse::<DefaultValue>(attr.to_token_stream().clone().into()).unwrap().0;
                 return quote!(#name: #value);
               }
             }
@@ -77,7 +77,7 @@ pub fn default(input: TokenStream) -> TokenStream {
         .map(|variant| match variant.fields {
           Fields::Unit => {
             for attr in &variant.attrs {
-              if attr.path.get_ident().map(|i| i == "default").unwrap_or(false) {
+              if attr.path().get_ident().map(|i| i == "default").unwrap_or(false) {
                 return Ok(Some(&variant.ident));
               }
             }
