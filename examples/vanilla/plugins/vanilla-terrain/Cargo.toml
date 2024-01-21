@@ -10,7 +10,7 @@ crate-type = ["lib", "cdylib"]
 [dependencies]
 bb_plugin = { path = "../../../../bb_plugin" }
 float-ord = "0.3.2"
-parking_lot = "0.12.0"
+parking_lot = "0.12"
 md5 = "0.7.0"
 
 # Separate workspace
@@ -24,9 +24,9 @@ inherits = "dev"
 opt-level = 0
 
 [dev-dependencies]
-pretty_assertions = "1.2.1"
-pprof = { version = "0.3", features = ["flamegraph"] }
-criterion = "0.3.5"
+pretty_assertions = "1.4"
+pprof = { version = "0.13", features = ["flamegraph"] }
+criterion = "0.5"
 
 [[bench]]
 name = "chunk"

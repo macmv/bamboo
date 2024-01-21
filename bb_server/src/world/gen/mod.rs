@@ -210,9 +210,9 @@ pub struct WorldGen {
 
 impl WorldGen {
   pub fn new() -> Self {
-    let mut stone = BasicMulti::new();
+    let mut stone = BasicMulti::new(BasicMulti::DEFAULT_SEED);
     stone.octaves = 3;
-    let mut max_height = BasicMulti::new();
+    let mut max_height = BasicMulti::new(BasicMulti::DEFAULT_SEED);
     max_height.octaves = 1;
     let seed = 3210471203948712039;
     WorldGen {

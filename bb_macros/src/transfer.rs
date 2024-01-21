@@ -1,6 +1,6 @@
 use proc_macro::TokenStream;
 use proc_macro2::{Span, TokenStream as TokenStream2};
-use quote::{quote, quote_spanned};
+use quote::{quote, quote_spanned, ToTokens};
 use syn::{
   parse::{ParseStream, Parser},
   parse_macro_input, Attribute, Fields, Ident, Item, LitInt, Token,
@@ -158,8 +158,8 @@ fn parse_id(input: ParseStream) -> Result<u64, syn::Error> {
 
 fn find_id(attrs: &[Attribute]) -> Option<(usize, u64)> {
   for (i, a) in attrs.iter().enumerate() {
-    if a.path.get_ident().map(|i| i == "id").unwrap_or(false) {
-      let id = match parse_id.parse2(a.tokens.clone()) {
+    if a.path().get_ident().map(|i| i == "id").unwrap_or(false) {
+      let id = match parse_id.parse2(a.to_token_stream().clone()) {
         Ok(v) => v,
         Err(_) => continue,
       };
@@ -170,7 +170,7 @@ fn find_id(attrs: &[Attribute]) -> Option<(usize, u64)> {
 }
 fn find_must_exist(attrs: &[Attribute]) -> Option<usize> {
   for (i, a) in attrs.iter().enumerate() {
-    if a.path.get_ident().map(|i| i == "must_exist").unwrap_or(false) {
+    if a.path().get_ident().map(|i| i == "must_exist").unwrap_or(false) {
       return Some(i);
     }
   }

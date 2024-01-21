@@ -1,4 +1,5 @@
 use proc_macro2::TokenStream as TokenStream2;
+use quote::ToTokens;
 use syn::{
   AttrStyle, Attribute, Expr, Field, Fields, ItemEnum, ItemStruct, ItemUnion, Path, Type, Variant,
   Visibility,
@@ -138,15 +139,15 @@ impl SourceFmt for Visibility {
     match self {
       Visibility::Inherited => Ok(()),
       Visibility::Public(_) => write!(f, "pub "),
-      Visibility::Crate(_) => write!(f, "pub(crate) "),
+      Visibility::Restricted(_) => write!(f, "pub(crate) "),
       _ => Ok(()),
     }
   }
 }
 impl SourceFmt for Attribute {
   fn fmt(&self, f: &mut Writer) -> fmt::Result {
-    if matches!(self.path.get_ident(), Some(path) if path == "doc") {
-      let doc = format!("{}", self.tokens);
+    if matches!(self.path().get_ident(), Some(path) if path == "doc") {
+      let doc = format!("{}", self.to_token_stream());
       let doc = &doc[3..doc.len() - 1];
       let mut unescaped = String::with_capacity(doc.len());
       let mut skip = false;
@@ -166,8 +167,8 @@ impl SourceFmt for Attribute {
         _ => {}
       }
       write!(f, "[")?;
-      f.write_src(&self.path)?;
-      let mut iter = self.tokens.clone().into_iter();
+      f.write_src(self.path())?;
+      let mut iter = self.to_token_stream().clone().into_iter();
       // If we have the #[foo = "bar"] syntax, we want a space before the token
       // stream.
       if let Some(first) = iter.next() {
@@ -175,7 +176,7 @@ impl SourceFmt for Attribute {
           write!(f, " ")?;
         }
       }
-      f.write_src(&self.tokens)?;
+      f.write_src(&self.to_token_stream())?;
       write!(f, "]")?;
     }
     Ok(())

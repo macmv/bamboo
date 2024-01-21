@@ -1,14 +1,14 @@
 use super::gen_docs;
 use proc_macro::TokenStream;
 use proc_macro2::{Span, TokenStream as TokenStream2};
-use quote::{quote, quote_spanned};
+use quote::{quote, quote_spanned, ToTokens};
 use syn::{
   parse_macro_input,
   punctuated::Punctuated,
   spanned::Spanned,
   token::{Brace, Bracket},
   Attribute, Field, Fields, FieldsNamed, Ident, ItemEnum, ItemStruct, ItemUnion, Path,
-  PathArguments, PathSegment, Token, Type, TypePath, VisPublic, Visibility,
+  PathArguments, PathSegment, Token, Type, TypePath, Visibility,
 };
 
 macro_rules! punct {
@@ -20,10 +20,11 @@ macro_rules! punct {
 }
 macro_rules! fields_named {
   { $($name:ident: $ty:expr,)* } => {
-    FieldsNamed { brace_token: Brace { span: Span::call_site() }, named: punct![$(
+    FieldsNamed { brace_token: Brace { ..Default::default() }, named: punct![$(
       Field {
         attrs: vec![],
-        vis: Visibility::Public(VisPublic { pub_token: Token![pub](Span::call_site()) }),
+        vis: Visibility::Public(Token![pub](Span::call_site())),
+        mutability: syn::FieldMutability::None,
         ident: Some(Ident::new(stringify!($name), Span::call_site())),
         colon_token: Some(Token![:](Span::call_site())),
         ty: $ty,
@@ -119,11 +120,11 @@ impl CEnum {
         Fields::Named(named) => {
           let mut name = None;
           for attr in v.attrs {
-            if attr.path.get_ident().map(|i| i == "name").unwrap_or(false) {
+            if attr.path().get_ident().map(|i| i == "name").unwrap_or(false) {
               if name.is_some() {
                 return Err(quote_spanned!(named.span() => compile_error!("cannot have two #[name] attributes");));
               }
-              let t: TokenStream = attr.tokens.into();
+              let t: TokenStream = attr.to_token_stream().into();
               let mut iter = t.into_iter();
               iter.next().unwrap();
               let tree = iter.next().unwrap();
@@ -150,7 +151,8 @@ impl CEnum {
     let fields = self.variants.iter().flat_map(|v| {
       Some(Field {
         attrs:       vec![],
-        vis:         Visibility::Public(VisPublic { pub_token: Token![pub](Span::call_site()) }),
+        vis:         Visibility::Public(Token![pub](Span::call_site())),
+        mutability: syn::FieldMutability::None,
         ident:       Some(v.field_name()),
         colon_token: Some(Token![:](Span::call_site())),
         ty:          match &v.ty {
@@ -168,7 +170,7 @@ impl CEnum {
       })
     });
     FieldsNamed {
-      brace_token: Brace { span: Span::call_site() },
+      brace_token: Brace { ..Default::default() },
       named:       {
         let mut punct = Punctuated::new();
         punct.extend(fields);
@@ -451,7 +453,7 @@ pub fn cenum(_args: TokenStream, input: TokenStream) -> TokenStream {
 
   let mut input_enum = input.clone();
   for variant in &mut input_enum.variants {
-    variant.attrs.retain(|attr| attr.path.get_ident().map(|i| i != "name").unwrap_or(true));
+    variant.attrs.retain(|attr| attr.path().get_ident().map(|i| i != "name").unwrap_or(true));
   }
 
   let name = input.ident.clone();
@@ -515,9 +517,8 @@ pub fn cenum(_args: TokenStream, input: TokenStream) -> TokenStream {
     attrs:        vec![Attribute {
       pound_token:   Token![#](Span::call_site()),
       style:         syn::AttrStyle::Outer,
-      bracket_token: Bracket { span: Span::call_site() },
-      path:          path!(repr),
-      tokens:        quote!((C)),
+      bracket_token: Bracket { ..Default::default() },
+      meta: syn::Meta::Path(path!(repr)),
     }],
     vis:          input.vis.clone(),
     struct_token: Token![struct](Span::call_site()),
@@ -538,11 +539,10 @@ pub fn cenum(_args: TokenStream, input: TokenStream) -> TokenStream {
     attrs: vec![Attribute {
       pound_token:   Token![#](Span::call_site()),
       style:         syn::AttrStyle::Outer,
-      bracket_token: Bracket { span: Span::call_site() },
-      path:          path!(repr),
-      tokens:        quote!((C)),
+      bracket_token: Bracket { ..Default::default() },
+      meta: syn::Meta::Path(path!(repr)),
     }],
-    vis: Visibility::Public(VisPublic { pub_token: Token![pub](Span::call_site()) }),
+    vis: Visibility::Public(Token![pub](Span::call_site())),
     union_token: Token![union](Span::call_site()),
     ident: data_name.clone(),
     generics: gen_struct.generics.clone(),

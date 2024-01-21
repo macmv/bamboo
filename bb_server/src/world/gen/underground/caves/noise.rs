@@ -10,11 +10,11 @@ pub struct CaveNoise {
 
 impl CaveNoise {
   pub fn new(_seed: u64) -> Self {
-    let mut noise = BasicMulti::new();
+    let mut noise = BasicMulti::new(BasicMulti::DEFAULT_SEED);
     noise.octaves = 5;
-    let mut middle = BasicMulti::new();
+    let mut middle = BasicMulti::new(BasicMulti::DEFAULT_SEED);
     middle.octaves = 3;
-    let mut offset = BasicMulti::new();
+    let mut offset = BasicMulti::new(BasicMulti::DEFAULT_SEED);
     offset.octaves = 1;
     CaveNoise { noise, middle, offset }
   }

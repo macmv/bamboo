@@ -1,9 +1,9 @@
 use super::gen_docs;
 use proc_macro::TokenStream;
-use proc_macro2::Span;
+use proc_macro2::{Span};
 use quote::quote;
 use syn::{
-  parse_macro_input, punctuated::Punctuated, token::Bracket, AttrStyle, Attribute, Field, Fields,
+  parse_macro_input, punctuated::Punctuated, AttrStyle, Attribute, Field, Fields,
   GenericArgument, Ident, ItemStruct, Path, Token, Type,
 };
 
@@ -24,16 +24,14 @@ pub fn ctype(_args: TokenStream, input: TokenStream) -> TokenStream {
           field.attrs.push(Attribute {
             pound_token:   Token![#](Span::call_site()),
             style:         AttrStyle::Outer,
-            bracket_token: Bracket { span: Span::call_site() },
-            path:          path(&["cfg"]),
-            tokens:        quote!((feature = "host")),
+            bracket_token: Default::default(),
+            meta: syn::Meta::Path(path(&["cfg"])),
           });
           not_host.attrs.push(Attribute {
             pound_token:   Token![#](Span::call_site()),
             style:         AttrStyle::Outer,
-            bracket_token: Bracket { span: Span::call_site() },
-            path:          path(&["cfg"]),
-            tokens:        quote!((not(feature = "host"))),
+            bracket_token: Default::default(),
+            meta: syn::Meta::Path(path(&["cfg"])),
           });
           new_fields.push(field);
           new_fields.push(not_host);
